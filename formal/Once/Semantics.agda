@@ -24,6 +24,25 @@ open import Data.Nat using (ℕ)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
+-- Import shared definitions from SemanticBase
+------------------------------------------------------------------------
+
+-- Re-export core type interpretation
+open import Once.SemanticBase public
+  using (⟦Fix⟧; wrap; unwrap; Closure; env-addr; code-ptr; semantics; ⟦_⟧)
+  renaming ()
+
+-- Re-export encoding postulates
+open import Once.SemanticBase public
+  using ( encode-pair-addr; encode-inl-addr; encode-inr-addr
+        ; encode-closure-addr; encode-int; encode-float
+        ; encode-str; encode-buffer; evalPrim; encode)
+
+-- Re-export encoding properties
+open import Once.SemanticBase public
+  using (encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity)
+
+------------------------------------------------------------------------
 -- Word Type (imported from Once.Memory)
 ------------------------------------------------------------------------
 
@@ -57,64 +76,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 -- See docs/formal/what-is-proven.md for options to address this.
 --
 ------------------------------------------------------------------------
-record ⟦Fix⟧ (A : Set) : Set where
-  constructor wrap
-  field unwrap : A
-
-open ⟦Fix⟧
-
-------------------------------------------------------------------------
--- Closure Record (Explicit Function Representation)
-------------------------------------------------------------------------
---
--- Closures are represented explicitly with:
---   - env-addr: Address of captured environment (for encoding)
---   - code-ptr: Address of thunk code (for apply)
---   - semantics: Actual function behavior
---
--- This makes closures inspectable, allowing `encode` to be computable.
--- Previously, ⟦ A ⇒ B ⟧ = ⟦ A ⟧ → ⟦ B ⟧ was opaque.
-------------------------------------------------------------------------
-
--- | Semantic interpretation of types
---
--- Maps Once types to Agda types (Sets).
--- This is the object mapping of a functor from Once's CCC to Set.
---
--- NOTE: Closure and ⟦_⟧ are mutually recursive because:
---   - Closure.semantics has type ⟦ A ⟧ → ⟦ B ⟧
---   - ⟦ A ⇒ B ⟧ = Closure A B
-
--- NOTE: NO_POSITIVITY_CHECK is needed because Closure and ⟦_⟧ are mutually
--- recursive: Closure.semantics : ⟦ A ⟧ → ⟦ B ⟧, and ⟦ A ⇒ B ⟧ = Closure A B.
--- This appears non-strictly-positive, but is actually well-founded because:
---   1. Closures are only created via `eval (curry f)` for finite IR terms
---   2. The recursion terminates because IR has finite depth
---   3. No actual infinite regress occurs in practice
-{-# NO_POSITIVITY_CHECK #-}
-mutual
-  record Closure (A B : Type) : Set where
-    field
-      env-addr  : Word           -- Encoded captured environment address
-      code-ptr  : Word           -- Thunk code address
-      semantics : ⟦ A ⟧ → ⟦ B ⟧  -- Actual function behavior
-
-  ⟦_⟧ : Type → Set
-  ⟦ Unit ⟧         = ⊤
-  ⟦ Void ⟧         = ⊥
-  ⟦ A * B ⟧        = ⟦ A ⟧ × ⟦ B ⟧
-  ⟦ A + B ⟧        = ⟦ A ⟧ ⊎ ⟦ B ⟧
-  ⟦ A ⇒[ q ] B ⟧   = Closure A B     -- Quantity erased at runtime
-  ⟦ Eff A B ⟧      = Closure A B     -- D032: Same as pure function
-  ⟦ Fix F ⟧        = ⟦Fix⟧ ⟦ F ⟧
-  -- Base types
-  ⟦ Int ⟧          = ℤ
-  ⟦ Float ⟧        = AgdaFloat
-  ⟦ Str ⟧          = String
-  ⟦ Buffer ⟧       = String           -- Simplified: use String for bytes
-  ⟦ TVar _ ⟧       = ⊤                 -- Type variables: use Unit as placeholder
-
-open Closure public
 
 -- | Propositional η-equality for Closure records
 -- Records in mutual blocks lack definitional η-equality in Agda.
@@ -132,82 +93,7 @@ postulate
            ; semantics = semantics cl } ≡ cl
 
 ------------------------------------------------------------------------
--- Encoding (moved here so eval can use it for closures)
-------------------------------------------------------------------------
-
--- | Encode semantic values as machine words
---
--- encode maps semantic values to their runtime addresses/representations.
--- For compound types (pairs, sums, closures), encoding returns an ALLOCATION
--- ADDRESS where the value is stored in memory. For simple types (Unit, Fix),
--- encoding is a direct computation.
---
--- This is defined here (not in Postulates.agda) so eval can set
--- env-addr = encode a when creating closures.
---
--- PARTIALLY CONCRETE: Some types have obvious encodings that don't need
--- allocation state. These are defined concretely, making their encoding
--- axioms provable as refl.
-
--- | Abstract encoding primitives for types needing allocation addresses
--- These are the TRUE postulates - compound types need allocation.
-postulate
-  encode-pair-addr : ∀ {A B : Type} → ⟦ A ⟧ → ⟦ B ⟧ → Word      -- Pair allocation address
-  encode-inl-addr  : ∀ {A B : Type} → ⟦ A ⟧ → Word              -- Left sum allocation address
-  encode-inr-addr  : ∀ {A B : Type} → ⟦ B ⟧ → Word              -- Right sum allocation address
-  encode-closure-addr : ∀ {A B : Type} → Closure A B → Word     -- Closure allocation address
-  encode-int       : ℤ → Word                                    -- Integer encoding
-  encode-float     : AgdaFloat → Word                            -- Float encoding (IEEE 754 bits)
-  encode-str       : String → Word                               -- String encoding
-  encode-buffer    : String → Word                               -- Buffer encoding
-
--- | Primitive evaluation (opaque operations)
--- Primitives are external operations whose semantics are defined by the runtime.
--- This postulate specifies the interface; the implementation is in the compiler.
-postulate
-  evalPrim : ∀ {A B : Type} → String → ⟦ A ⟧ → ⟦ B ⟧
-
--- | Concrete encode function
--- TERMINATING: Fix case recurses on smaller type (unwrapped value).
--- The recursion terminates because types are finite structures.
-{-# TERMINATING #-}
-encode : ∀ {A} → ⟦ A ⟧ → Word
-encode {Unit} tt = 0                                          -- Unit → 0 (CONCRETE!)
-encode {Void} ()                                              -- Void has no values
-encode {A * B} (a , b) = encode-pair-addr {A} {B} a b         -- Needs allocation
-encode {A + B} (inj₁ a) = encode-inl-addr {A} {B} a           -- Needs allocation
-encode {A + B} (inj₂ b) = encode-inr-addr {A} {B} b           -- Needs allocation
-encode {A ⇒[ q ] B} cl = encode-closure-addr cl               -- Quantity erased
-encode {Eff A B} cl = encode-closure-addr cl                  -- Same as ⇒ (CONCRETE!)
-encode {Fix F} (wrap x) = encode {F} x                        -- Identity (CONCRETE!)
-encode {Int} n = encode-int n                                 -- Primitive
-encode {Float} f = encode-float f                             -- Primitive (IEEE 754 bits)
-encode {Str} s = encode-str s                                 -- Primitive
-encode {Buffer} b = encode-buffer b                           -- Primitive
-encode {TVar _} _ = 0                                         -- Placeholder
-
-------------------------------------------------------------------------
--- PROVEN Encoding Properties (now refl!)
-------------------------------------------------------------------------
-
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
-
--- | encode-unit: Unit encodes to 0 (PROVEN - was postulated!)
-encode-unit : encode {Unit} tt ≡ 0
-encode-unit = refl
-
--- | encode-fix-wrap: wrapping doesn't change encoding (PROVEN - was postulated!)
-encode-fix-wrap : ∀ {F} (x : ⟦ F ⟧) → encode {F} x ≡ encode {Fix F} (wrap x)
-encode-fix-wrap x = refl
-
--- | encode-fix-unwrap: unwrapping doesn't change encoding (PROVEN - was postulated!)
-encode-fix-unwrap : ∀ {F} (x : ⟦ Fix F ⟧) → encode {Fix F} x ≡ encode {F} (unwrap x)
-encode-fix-unwrap (wrap x) = refl
-
--- | encode-arr-identity: Eff and ⇒ have same encoding (PROVEN - was postulated!)
-encode-arr-identity : ∀ {A B} (cl : Closure A B) → encode {A ⇒ B} cl ≡ encode {Eff A B} cl
-encode-arr-identity cl = refl
-
+-- Evaluation of IR morphisms
 ------------------------------------------------------------------------
 
 -- | Evaluation of IR morphisms
