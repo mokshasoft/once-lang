@@ -563,11 +563,13 @@ case-inl-cleanup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
   readReg (regs s) rbp ≡ orig-rsp ∸ slot-size →
   -- Memory at rbp contains the saved orig-rbp
   readMem (memory s) (readReg (regs s) rbp) ≡ just orig-rbp →
+  -- Stack has capacity (orig-rsp ≥ slot-size for subtraction to be valid)
+  slot-size ≤ orig-rsp →
   StackInvariant s →
   let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
   in ∃[ s-final ] CaseCleanupResult {A} {B} {C} prefix suffix f g s s-final orig-rsp orig-rbp
 case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
-    h-false pc-eq rbp-eq mem-rbp stack-inv =
+    h-false pc-eq rbp-eq mem-rbp rsp-cap stack-inv =
     s3 , result
   where
     len-f = compile-length f
@@ -906,12 +908,9 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
 
     -- ========== Final register values ==========
     -- rsp in s3 = rbp-val + slot-size = (orig-rsp - slot-size) + slot-size = orig-rsp
-    postulate
-      slot-size≤orig-rsp : slot-size ≤ orig-rsp  -- stack has capacity
-
     rsp3 : readReg (regs s3) rsp ≡ orig-rsp
     rsp3 = trans (readReg-writeReg-same (writeReg (regs s2) rbp orig-rbp) rsp (rbp-val +ℕ slot-size))
-                 (trans (cong (_+ℕ slot-size) rbp-eq) (m∸n+n≡m slot-size≤orig-rsp))
+                 (trans (cong (_+ℕ slot-size) rbp-eq) (m∸n+n≡m rsp-cap))
       where
         open import Data.Nat.Properties using (m∸n+n≡m)
 

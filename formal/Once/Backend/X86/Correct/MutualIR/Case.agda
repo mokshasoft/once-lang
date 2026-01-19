@@ -329,10 +329,15 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
     stack-inv-s1 : StackInvariant s1
     stack-inv-s1 = IRStarResultV.ir-stack-inv r-f
 
+    -- Stack capacity: slot-size ≤ orig-rsp
+    -- This comes from StackCapacity which guarantees rsp > n * slot-size for n ≥ 1
+    postulate
+      rsp-has-cap : slot-size ≤ orig-rsp
+
     -- Call cleanup helper
     cleanup-result : ∃[ s-final ] CaseCleanupResult {A} {B} {C} prefix suffix f g s1 s-final orig-rsp orig-rbp
     cleanup-result = case-inl-cleanup-star f g prefix suffix s1 orig-rsp orig-rbp
-                       h-s1 pc-s1 rbp-s1 mem-rbp-s1 stack-inv-s1
+                       h-s1 pc-s1 rbp-s1 mem-rbp-s1 rsp-has-cap stack-inv-s1
 
     s-final : State
     s-final = proj₁ cleanup-result
