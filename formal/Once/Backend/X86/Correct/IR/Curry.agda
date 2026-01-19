@@ -37,7 +37,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-at-0; ir-mem-code; ir-mem-heap; ir-closure-wf;
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s; valid-at-preserved-under-write; valid-in-heap)
+  using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s; valid-at-preserved-under-write)
 
 open import Data.Nat using (_>_; _≥_; _<_; s≤s; z≤n)
 -- D041: Arithmetic moved to abstract helpers in StackInvariant.agda
@@ -578,33 +578,21 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- Curry writes to stack (new-rsp and new-rsp+8), not heap
     -- orig-rdi is in heap (from input validity), so validity is preserved
 
-    -- orig-rdi is in heap (from input validity)
-    orig-rdi-in-heap : InHeap orig-rdi
-    orig-rdi-in-heap = valid-in-heap input-valid
-
-    -- s2 writes to new-rsp (stack), not orig-rdi (heap)
-    new-rsp-in-stack : InStack new-rsp
-    new-rsp-in-stack = proj₁ (alloc-2-slots-addrs-in-stack s cap-output-alloc)
-
-    orig-rdi≢new-rsp : orig-rdi ≢ new-rsp
-    orig-rdi≢new-rsp eq = stack-heap-addr-disjoint new-rsp orig-rdi new-rsp-in-stack orig-rdi-in-heap (sym eq)
+    -- s2 writes to new-rsp (stack), validity preserved since ValidAt addresses are in heap
+    -- Derive InStack proofs from capacity
+    write-addrs-in-stack : InStack new-rsp × InStack (new-rsp +ℕ slot-size)
+    write-addrs-in-stack = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
     v-env-s2 : ValidAt x orig-rdi (memory s2)
-    v-env-s2 = valid-at-preserved-under-write input-valid orig-rdi≢new-rsp
+    v-env-s2 = valid-at-preserved-under-write input-valid (proj₁ write-addrs-in-stack)
 
     -- s3 doesn't modify memory
     v-env-s3 : ValidAt x orig-rdi (memory s3)
     v-env-s3 = v-env-s2
 
-    -- s4 writes to new-rsp+8 (stack), not orig-rdi (heap)
-    new-rsp+8-in-stack : InStack (new-rsp +ℕ slot-size)
-    new-rsp+8-in-stack = proj₂ (alloc-2-slots-addrs-in-stack s cap-output-alloc)
-
-    orig-rdi≢new-rsp+8 : orig-rdi ≢ new-rsp +ℕ slot-size
-    orig-rdi≢new-rsp+8 eq = stack-heap-addr-disjoint (new-rsp +ℕ slot-size) orig-rdi new-rsp+8-in-stack orig-rdi-in-heap (sym eq)
-
+    -- s4 writes to new-rsp+8 (stack), validity preserved
     v-env-s4 : ValidAt x orig-rdi (memory s4)
-    v-env-s4 = valid-at-preserved-under-write v-env-s3 orig-rdi≢new-rsp+8
+    v-env-s4 = valid-at-preserved-under-write v-env-s3 (proj₂ write-addrs-in-stack)
 
     -- s5, s6, s7 don't modify memory
     v-env-final : ValidAt x orig-rdi (memory s-final)

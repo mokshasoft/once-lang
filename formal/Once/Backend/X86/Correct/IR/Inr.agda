@@ -59,11 +59,9 @@ run-inr-star-v : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State)
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (inr {A} {B})) →
   RbpInvariant s →
-  (addr-neq-1 : readReg (regs s) rdi ≢ readReg (regs s) rsp ∸ slots (ir-rsp-delta (inr {A} {B}))) →
-  (addr-neq-2 : readReg (regs s) rdi ≢ (readReg (regs s) rsp ∸ slots (ir-rsp-delta (inr {A} {B}))) +ℕ slot-size) →
   let prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (inr {A} {B}) prog s s' x (length prefix)
-run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv addr-neq-1 addr-neq-2 =
+run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
     s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
@@ -295,8 +293,12 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     inr-at = inr-at-s mem-tag-s4 mem-val-s4
 
     -- Input validity preserved under memory writes
+    -- Derive InStack proofs from capacity
+    write-addrs-in-stack : InStack new-rsp × InStack (new-rsp +ℕ slot-size)
+    write-addrs-in-stack = alloc-2-slots-addrs-in-stack s cap-output-alloc
+
     input-valid-preserved : ValidAt x orig-rdi (memory s4)
-    input-valid-preserved = valid-at-preserved-under-writes input-valid addr-neq-1 addr-neq-2
+    input-valid-preserved = valid-at-preserved-under-writes input-valid (proj₁ write-addrs-in-stack) (proj₂ write-addrs-in-stack)
 
     -- Final result validity: ValidAt (inj₂ x) rax (memory s4)
     result-valid : ValidAt {A + B} (inj₂ x) (readReg (regs s4) rax) (memory s4)
@@ -513,28 +515,4 @@ run-inr-star-v-auto : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : S
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (inr {A} {B}) prog s s' x (length prefix)
-run-inr-star-v-auto {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
-  run-inr-star-v prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv
-    addr-neq-1 addr-neq-2
-  where
-    rsp-val = readReg (regs s) rsp
-    rdi-val = readReg (regs s) rdi
-
-    -- Derive StackCapacity s (ir-rsp-delta inr) from cap using named lemma
-    rsp>slots-delta : rsp-val > slots (ir-rsp-delta (inr {A} {B}))
-    rsp>slots-delta = ≤-<-trans (slots-mono-≤ (inr-rsp-delta≤inr-req {A} {B})) (StackCapacity.rsp-sufficient cap)
-      where open import Data.Nat.Properties using (≤-<-trans)
-
-    cap-delta : StackCapacity s (ir-rsp-delta (inr {A} {B}))
-    cap-delta = rsp-bound-to-capacity (ir-rsp-delta (inr {A} {B})) s (StackCapacity.rsp-in-stack cap) rsp>slots-delta
-
-    -- Stack slot addresses are in stack region (uses cap-delta, no postulate!)
-    slots-in-stack : InStack (rsp-val ∸ slots (ir-rsp-delta (inr {A} {B}))) × InStack ((rsp-val ∸ slots (ir-rsp-delta (inr {A} {B}))) +ℕ slot-size)
-    slots-in-stack = alloc-2-slots-addrs-in-stack s cap-delta
-
-    -- Derive disjointness using valid-disjoint-from-stack
-    addr-neq-1 : rdi-val ≢ rsp-val ∸ slots (ir-rsp-delta (inr {A} {B}))
-    addr-neq-1 = valid-disjoint-from-stack input-valid (proj₁ slots-in-stack)
-
-    addr-neq-2 : rdi-val ≢ (rsp-val ∸ slots (ir-rsp-delta (inr {A} {B}))) +ℕ slot-size
-    addr-neq-2 = valid-disjoint-from-stack input-valid (proj₂ slots-in-stack)
+run-inr-star-v-auto = run-inr-star-v

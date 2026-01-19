@@ -67,11 +67,9 @@ run-inl-star-v : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State)
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (inl {A} {B})) →
   RbpInvariant s →
-  (addr-neq-1 : readReg (regs s) rdi ≢ readReg (regs s) rsp ∸ slots (ir-rsp-delta (inl {A} {B}))) →
-  (addr-neq-2 : readReg (regs s) rdi ≢ (readReg (regs s) rsp ∸ slots (ir-rsp-delta (inl {A} {B}))) +ℕ slot-size) →
   let prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (inl {A} {B}) prog s s' x (length prefix)
-run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv addr-neq-1 addr-neq-2 =
+run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
     s4 , record
     { ir-star = star-proof
     ; ir-halted = h4
@@ -299,8 +297,12 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
 
     -- NEW: Preserve input validity through memory writes
     -- memory s4 = memory s3 = writeMem (writeMem (memory s) new-rsp 0) (new-rsp + 8) orig-rdi
+    -- Derive InStack proofs from capacity
+    write-addrs-in-stack : InStack new-rsp × InStack (new-rsp +ℕ slot-size)
+    write-addrs-in-stack = alloc-2-slots-addrs-in-stack s cap-output-alloc
+
     input-valid-preserved : ValidAt x orig-rdi (memory s4)
-    input-valid-preserved = valid-at-preserved-under-writes input-valid addr-neq-1 addr-neq-2
+    input-valid-preserved = valid-at-preserved-under-writes input-valid (proj₁ write-addrs-in-stack) (proj₂ write-addrs-in-stack)
 
     -- NEW: Construct result validity using valid-inl
     result-valid : ValidAt {A + B} (inj₁ x) (readReg (regs s4) rax) (memory s4)
@@ -516,8 +518,9 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
 -- Eliminates need for caller to provide addr-neq-1 and addr-neq-2.
 ------------------------------------------------------------------------
 
--- | Validity-based inl with automatic disjointness derivation
--- Takes StackCapacity s (ir-stack-requirement inl) directly (uses dynamic capacity)
+-- | Validity-based inl with automatic disjointness derivation (deprecated)
+-- This function is now equivalent to run-inl-star-v since InStack proofs
+-- are derived internally. Kept for backwards compatibility.
 run-inl-star-v-auto : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -527,28 +530,4 @@ run-inl-star-v-auto : ∀ {A B} (prefix suffix : Program) (x : ⟦ A ⟧) (s : S
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (inl {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (inl {A} {B}) prog s s' x (length prefix)
-run-inl-star-v-auto {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
-  run-inl-star-v prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv
-    addr-neq-1 addr-neq-2
-  where
-    rsp-val = readReg (regs s) rsp
-    rdi-val = readReg (regs s) rdi
-
-    -- Derive StackCapacity s (ir-rsp-delta inl) from cap using named lemma
-    rsp>slots-delta : rsp-val > slots (ir-rsp-delta (inl {A} {B}))
-    rsp>slots-delta = ≤-<-trans (slots-mono-≤ (inl-rsp-delta≤inl-req {A} {B})) (StackCapacity.rsp-sufficient cap)
-      where open import Data.Nat.Properties using (≤-<-trans)
-
-    cap-delta : StackCapacity s (ir-rsp-delta (inl {A} {B}))
-    cap-delta = rsp-bound-to-capacity (ir-rsp-delta (inl {A} {B})) s (StackCapacity.rsp-in-stack cap) rsp>slots-delta
-
-    -- Stack slot addresses are in stack region (uses cap-delta, no postulate!)
-    slots-in-stack : InStack (rsp-val ∸ slots (ir-rsp-delta (inl {A} {B}))) × InStack ((rsp-val ∸ slots (ir-rsp-delta (inl {A} {B}))) +ℕ slot-size)
-    slots-in-stack = alloc-2-slots-addrs-in-stack s cap-delta
-
-    -- Derive disjointness using valid-disjoint-from-stack
-    addr-neq-1 : rdi-val ≢ rsp-val ∸ slots (ir-rsp-delta (inl {A} {B}))
-    addr-neq-1 = valid-disjoint-from-stack input-valid (proj₁ slots-in-stack)
-
-    addr-neq-2 : rdi-val ≢ (rsp-val ∸ slots (ir-rsp-delta (inl {A} {B}))) +ℕ slot-size
-    addr-neq-2 = valid-disjoint-from-stack input-valid (proj₂ slots-in-stack)
+run-inl-star-v-auto = run-inl-star-v

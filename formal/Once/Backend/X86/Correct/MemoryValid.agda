@@ -21,7 +21,8 @@ open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writ
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
 open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
 open import Once.Backend.Common.MemoryRegions
-  using (InStack; InHeap; stack-heap-addr-disjoint)
+  using (InStack; InHeap; stack-heap-addr-disjoint; heap-offset)
+open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (encode-in-heap-sem)
 
@@ -186,44 +187,9 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
     ValidAt x addr m →
     ValidAt {Fix F} (wrap x) addr m
 
-------------------------------------------------------------------------
--- ValidAt preservation under memory writes
---
--- Key insight: if we write to addresses disjoint from those referenced
--- by a validity proof, the validity is preserved.
---
--- This is a postulate for now, to be proven by induction on ValidAt
--- once we have better region reasoning. It's conceptually sound and
--- replaces the more problematic encode postulates.
-------------------------------------------------------------------------
-
--- | ValidAt is preserved when writing to disjoint addresses
--- The write addresses (w1, w2) must not overlap with any address
--- referenced by the validity proof at addr-v.
---
--- For stack-allocated sums/pairs written at w1 and w1+8,
--- this holds when addr-v points to:
--- - Heap-allocated data (heap ≠ stack)
--- - Previously stack-allocated data above the current rsp
--- - Simple types like Unit (no memory dependency)
---
--- TODO: Prove by induction on ValidAt structure
-postulate
-  valid-at-preserved-under-write :
-    ∀ {A} {v : ⟦ A ⟧} {addr-v w : Word} {val : Word} {m : Memory} →
-    ValidAt v addr-v m →
-    addr-v ≢ w →  -- write address different from validity address
-    ValidAt v addr-v (writeMem m w val)
-
--- | Convenience: preservation under two writes (common for alloc-2-slots)
-valid-at-preserved-under-writes :
-  ∀ {A} {v : ⟦ A ⟧} {addr-v w1 w2 : Word} {val1 val2 : Word} {m : Memory} →
-  ValidAt v addr-v m →
-  addr-v ≢ w1 →
-  addr-v ≢ w2 →
-  ValidAt v addr-v (writeMem (writeMem m w1 val1) w2 val2)
-valid-at-preserved-under-writes valid neq1 neq2 =
-  valid-at-preserved-under-write (valid-at-preserved-under-write valid neq1) neq2
+-- NOTE: ValidAt preservation under memory writes is defined below,
+-- after the valid-in-heap postulate which it depends on.
+-- See: valid-at-preserved-under-stack-write, valid-at-preserved-under-write
 
 ------------------------------------------------------------------------
 -- Entry Point: encode → ValidAt
@@ -375,6 +341,189 @@ valid-disjoint-from-stack : ∀ {A : Type} {v : ⟦ A ⟧} {addr stack-addr : Wo
   addr ≢ stack-addr
 valid-disjoint-from-stack {A} {v} {addr} {stack-addr} {m} valid stack-proof addr-eq =
   stack-heap-addr-disjoint stack-addr addr stack-proof (valid-addr-in-heap valid) (sym addr-eq)
+
+------------------------------------------------------------------------
+-- ValidAt preservation under memory writes
+--
+-- Key insight: writes to stack addresses cannot affect ValidAt proofs
+-- because ValidAt structures only reference heap addresses.
+--
+-- Proof strategy:
+-- 1. ValidAt v addr m → InHeap addr (by valid-in-heap)
+-- 2. AtS structures read from addr and addr+slot-size, both in heap
+-- 3. InStack w means w is disjoint from all heap addresses
+-- 4. Therefore readMem (writeMem m w val) heap-addr = readMem m heap-addr
+------------------------------------------------------------------------
+
+-- | Helper: PairAtS preserved under stack writes
+PairAtS-preserved-under-stack-write :
+  ∀ {addr-a addr-b addr w val : Word} {m : Memory} →
+  PairAtS addr-a addr-b addr m →
+  InHeap addr →
+  InStack w →
+  PairAtS addr-a addr-b addr (writeMem m w val)
+PairAtS-preserved-under-stack-write {addr-a} {addr-b} {addr} {w} {val} {m} pairS addr-in-heap w-in-stack =
+  pair-at-s fst-pres snd-pres
+  where
+    -- w is in stack, addr is in heap, so w ≢ addr
+    w≢addr : w ≢ addr
+    w≢addr eq = stack-heap-addr-disjoint w addr w-in-stack addr-in-heap eq
+
+    -- addr+slot-size is in heap (heap-offset), so w ≢ addr+slot-size
+    addr+8-in-heap : InHeap (addr +ℕ slot-size)
+    addr+8-in-heap = heap-offset addr slot-size addr-in-heap
+
+    w≢addr+8 : w ≢ (addr +ℕ slot-size)
+    w≢addr+8 eq = stack-heap-addr-disjoint w (addr +ℕ slot-size) w-in-stack addr+8-in-heap eq
+
+    fst-pres : readMem (writeMem m w val) addr ≡ just addr-a
+    fst-pres = trans (readMem-writeMem-diff m w addr val w≢addr) (fst-valid-s pairS)
+
+    snd-pres : readMem (writeMem m w val) (addr +ℕ slot-size) ≡ just addr-b
+    snd-pres = trans (readMem-writeMem-diff m w (addr +ℕ slot-size) val w≢addr+8) (snd-valid-s pairS)
+
+-- | Helper: InlAtS preserved under stack writes
+InlAtS-preserved-under-stack-write :
+  ∀ {addr-val addr-sum w val : Word} {m : Memory} →
+  InlAtS addr-val addr-sum m →
+  InHeap addr-sum →
+  InStack w →
+  InlAtS addr-val addr-sum (writeMem m w val)
+InlAtS-preserved-under-stack-write {addr-val} {addr-sum} {w} {val} {m} inlS addr-in-heap w-in-stack =
+  inl-at-s tag-pres val-pres
+  where
+    w≢addr : w ≢ addr-sum
+    w≢addr eq = stack-heap-addr-disjoint w addr-sum w-in-stack addr-in-heap eq
+
+    addr+8-in-heap : InHeap (addr-sum +ℕ slot-size)
+    addr+8-in-heap = heap-offset addr-sum slot-size addr-in-heap
+
+    w≢addr+8 : w ≢ (addr-sum +ℕ slot-size)
+    w≢addr+8 eq = stack-heap-addr-disjoint w (addr-sum +ℕ slot-size) w-in-stack addr+8-in-heap eq
+
+    tag-pres : readMem (writeMem m w val) addr-sum ≡ just 0
+    tag-pres = trans (readMem-writeMem-diff m w addr-sum val w≢addr) (tag-valid-inl-s inlS)
+
+    val-pres : readMem (writeMem m w val) (addr-sum +ℕ slot-size) ≡ just addr-val
+    val-pres = trans (readMem-writeMem-diff m w (addr-sum +ℕ slot-size) val w≢addr+8) (val-valid-inl-s inlS)
+
+-- | Helper: InrAtS preserved under stack writes
+InrAtS-preserved-under-stack-write :
+  ∀ {addr-val addr-sum w val : Word} {m : Memory} →
+  InrAtS addr-val addr-sum m →
+  InHeap addr-sum →
+  InStack w →
+  InrAtS addr-val addr-sum (writeMem m w val)
+InrAtS-preserved-under-stack-write {addr-val} {addr-sum} {w} {val} {m} inrS addr-in-heap w-in-stack =
+  inr-at-s tag-pres val-pres
+  where
+    w≢addr : w ≢ addr-sum
+    w≢addr eq = stack-heap-addr-disjoint w addr-sum w-in-stack addr-in-heap eq
+
+    addr+8-in-heap : InHeap (addr-sum +ℕ slot-size)
+    addr+8-in-heap = heap-offset addr-sum slot-size addr-in-heap
+
+    w≢addr+8 : w ≢ (addr-sum +ℕ slot-size)
+    w≢addr+8 eq = stack-heap-addr-disjoint w (addr-sum +ℕ slot-size) w-in-stack addr+8-in-heap eq
+
+    tag-pres : readMem (writeMem m w val) addr-sum ≡ just 1
+    tag-pres = trans (readMem-writeMem-diff m w addr-sum val w≢addr) (tag-valid-inr-s inrS)
+
+    val-pres : readMem (writeMem m w val) (addr-sum +ℕ slot-size) ≡ just addr-val
+    val-pres = trans (readMem-writeMem-diff m w (addr-sum +ℕ slot-size) val w≢addr+8) (val-valid-inr-s inrS)
+
+-- | Helper: ClosureAtS preserved under stack writes
+ClosureAtS-preserved-under-stack-write :
+  ∀ {env-addr code-ptr addr-closure w val : Word} {m : Memory} →
+  ClosureAtS env-addr code-ptr addr-closure m →
+  InHeap addr-closure →
+  InStack w →
+  ClosureAtS env-addr code-ptr addr-closure (writeMem m w val)
+ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {addr-closure} {w} {val} {m} closS addr-in-heap w-in-stack =
+  closure-at-s env-pres code-pres
+  where
+    w≢addr : w ≢ addr-closure
+    w≢addr eq = stack-heap-addr-disjoint w addr-closure w-in-stack addr-in-heap eq
+
+    addr+8-in-heap : InHeap (addr-closure +ℕ slot-size)
+    addr+8-in-heap = heap-offset addr-closure slot-size addr-in-heap
+
+    w≢addr+8 : w ≢ (addr-closure +ℕ slot-size)
+    w≢addr+8 eq = stack-heap-addr-disjoint w (addr-closure +ℕ slot-size) w-in-stack addr+8-in-heap eq
+
+    env-pres : readMem (writeMem m w val) addr-closure ≡ just env-addr
+    env-pres = trans (readMem-writeMem-diff m w addr-closure val w≢addr) (env-valid-s closS)
+
+    code-pres : readMem (writeMem m w val) (addr-closure +ℕ slot-size) ≡ just code-ptr
+    code-pres = trans (readMem-writeMem-diff m w (addr-closure +ℕ slot-size) val w≢addr+8) (code-valid-s closS)
+
+-- | ValidAt is preserved when writing to stack addresses
+-- Proven by induction on ValidAt structure.
+-- Key insight: ValidAt only references heap addresses (via valid-in-heap),
+-- and stack writes cannot affect heap memory.
+valid-at-preserved-under-stack-write :
+  ∀ {A} {v : ⟦ A ⟧} {addr-v w : Word} {val : Word} {m : Memory} →
+  ValidAt v addr-v m →
+  InStack w →
+  ValidAt v addr-v (writeMem m w val)
+valid-at-preserved-under-stack-write valid-unit w-in-stack = valid-unit
+valid-at-preserved-under-stack-write (valid-pair {addr-a = addr-a} {addr-b = addr-b} {addr = addr} va vb pairS) w-in-stack =
+  valid-pair
+    (valid-at-preserved-under-stack-write va w-in-stack)
+    (valid-at-preserved-under-stack-write vb w-in-stack)
+    (PairAtS-preserved-under-stack-write {addr-a} {addr-b} {addr} pairS (valid-in-heap (valid-pair va vb pairS)) w-in-stack)
+valid-at-preserved-under-stack-write {A = A + B} (valid-inl {A} {B} {addr-a = addr-a} {addr = addr} va inlS) w-in-stack =
+  valid-inl
+    (valid-at-preserved-under-stack-write va w-in-stack)
+    (InlAtS-preserved-under-stack-write {addr-a} {addr} inlS (valid-in-heap (valid-inl {A} {B} va inlS)) w-in-stack)
+valid-at-preserved-under-stack-write {A = A + B} (valid-inr {A} {B} {addr-b = addr-b} {addr = addr} vb inrS) w-in-stack =
+  valid-inr
+    (valid-at-preserved-under-stack-write vb w-in-stack)
+    (InrAtS-preserved-under-stack-write {addr-b} {addr} inrS (valid-in-heap (valid-inr {A} {B} vb inrS)) w-in-stack)
+valid-at-preserved-under-stack-write (valid-closure {cl = cl} {addr = addr} closS) w-in-stack =
+  let env-addr = Closure.env-addr cl
+      code-ptr = Closure.code-ptr cl
+      heap-proof = valid-in-heap (valid-closure {cl = cl} closS)
+  in valid-closure
+       (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {addr} closS heap-proof w-in-stack)
+valid-at-preserved-under-stack-write (valid-closure-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} eq venv closS) w-in-stack =
+  valid-closure-env eq
+    (valid-at-preserved-under-stack-write venv w-in-stack)
+    (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {closure-addr}
+      closS (valid-in-heap (valid-closure-env {A} {B} {E} {cl} {env} eq venv closS)) w-in-stack)
+valid-at-preserved-under-stack-write (valid-eff {cl = cl} {addr = addr} closS) w-in-stack =
+  let env-addr = Closure.env-addr cl
+      code-ptr = Closure.code-ptr cl
+      heap-proof = valid-in-heap (valid-eff {cl = cl} closS)
+  in valid-eff
+       (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {addr} closS heap-proof w-in-stack)
+valid-at-preserved-under-stack-write (valid-eff-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} eq venv closS) w-in-stack =
+  valid-eff-env eq
+    (valid-at-preserved-under-stack-write venv w-in-stack)
+    (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {closure-addr}
+      closS (valid-in-heap (valid-eff-env {A} {B} {E} {cl} {env} eq venv closS)) w-in-stack)
+valid-at-preserved-under-stack-write (valid-fix vx) w-in-stack =
+  valid-fix (valid-at-preserved-under-stack-write vx w-in-stack)
+
+-- | ValidAt preserved under write to stack address
+-- This is the main interface for validity preservation.
+-- Takes InStack w to ensure soundness (the write is to stack, not heap).
+valid-at-preserved-under-write :
+  ∀ {A} {v : ⟦ A ⟧} {addr-v w : Word} {val : Word} {m : Memory} →
+  ValidAt v addr-v m →
+  InStack w →
+  ValidAt v addr-v (writeMem m w val)
+valid-at-preserved-under-write = valid-at-preserved-under-stack-write
+
+-- | Convenience: preservation under two writes (common for alloc-2-slots)
+valid-at-preserved-under-writes :
+  ∀ {A} {v : ⟦ A ⟧} {addr-v w1 w2 : Word} {val1 val2 : Word} {m : Memory} →
+  ValidAt v addr-v m →
+  InStack w1 →
+  InStack w2 →
+  ValidAt v addr-v (writeMem (writeMem m w1 val1) w2 val2)
+valid-at-preserved-under-writes valid s1 s2 =
+  valid-at-preserved-under-write (valid-at-preserved-under-write valid s1) s2
 
 ------------------------------------------------------------------------
 -- Creating validity proofs from allocation
