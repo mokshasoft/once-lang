@@ -20,7 +20,8 @@ open import Once.Backend.X86.CodeGen
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step6)
 open import Once.Backend.X86.Correct.FetchStep using (step-exec; fetch-append-skip)
 open import Once.Backend.Common.Fetch using (fetch-0; fetch-1; fetch-2; fetch-3; fetch-4; fetch-5; fetch-append-right)
-open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
+open import Once.Backend.X86.Correct.ExecLemmas
+  using (fetch-at-prefix-end; fetch-case-cleanup-mov; fetch-case-cleanup-pop)
 open import Once.Backend.X86.Correct.InstrExec
   using (execPush-reg; execMov-reg-reg; execMov-reg-mem-base; execMov-reg-mem-disp;
          execCmp-zero; execCmp-one; execJne-not-taken; execJne-taken; execJmp; execPop)
@@ -36,8 +37,9 @@ open import Once.Backend.X86.Correct.StackInstantiation
          make-frame-at-slot; make-frame-at-slot-addr)
 open import Once.Backend.X86.Correct.RegisterLemmas
   using (readReg-writeReg-same; readReg-writeReg-rsp-rbp; readReg-writeReg-rsp-rdi;
-         readReg-writeReg-rsp-r14; readReg-writeReg-rsp-r15;
+         readReg-writeReg-rsp-r14; readReg-writeReg-rsp-r15; readReg-writeReg-rsp-rax;
          readReg-writeReg-rbp-rsp; readReg-writeReg-rbp-rdi; readReg-writeReg-rbp-r14; readReg-writeReg-rbp-r15;
+         readReg-writeReg-rbp-rax;
          readReg-writeReg-r11-rdi; readReg-writeReg-r11-rsp; readReg-writeReg-r11-rbp;
          readReg-writeReg-r11-r14; readReg-writeReg-r11-r15;
          readReg-writeReg-rdi-rsp; readReg-writeReg-rdi-rbp; readReg-writeReg-rdi-r14; readReg-writeReg-rdi-r15)
@@ -541,9 +543,12 @@ record CaseCleanupResult {A B C : Type} (prefix suffix : Program) (f : IR A C) (
     -- Register restoration to original values
     rsp-final : readReg (regs s-final) rsp ≡ orig-rsp
     rbp-final : readReg (regs s-final) rbp ≡ orig-rbp
-    -- Register preservation (r14/r15 unchanged through cleanup)
+    -- Register preservation (r14/r15/rax unchanged through cleanup)
     r14-preserved : readReg (regs s-final) r14 ≡ readReg (regs s) r14
     r15-preserved : readReg (regs s-final) r15 ≡ readReg (regs s) r15
+    rax-preserved : readReg (regs s-final) rax ≡ readReg (regs s) rax
+    -- Memory preservation (cleanup doesn't write to memory)
+    memory-preserved : memory s-final ≡ memory s
 
 ------------------------------------------------------------------------
 -- Case Cleanup Proof (for inl branch)
@@ -598,8 +603,9 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
 
     -- ========== Step 3: pop rbp ==========
     -- pop reads from rsp, stores to rbp, increments rsp
+    -- Define s3 using readReg so execPop directly produces it (no equality conversion needed)
     s3 : State
-    s3 = record s2 { regs = writeReg (writeReg (regs s2) rbp orig-rbp) rsp (rbp-val +ℕ slot-size)
+    s3 = record s2 { regs = writeReg (writeReg (regs s2) rbp orig-rbp) rsp (readReg (regs s2) rsp +ℕ slot-size)
                    ; pc = pc s2 +ℕ 1 }
 
     -- ========== Fetch and step proofs ==========
@@ -757,12 +763,19 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
     fetch-skip-3 i0 i1 i2 xs n = refl
 
     -- fetch at index 9+len-f+len-g in case-code gets cleanup-mov
-    -- Structure: case-code = 6 setup ++ len-f f ++ 3 middle ++ len-g g ++ cleanup ++ suffix
-    -- Position 9+len-f+len-g = case-setup-count + case-prefix-count + len-f + case-middle-count + len-g
-    --                        = position of cleanup-mov
-    -- TODO: Move to FetchLemmas.agda with proper symbolic position computation
-    postulate
-      fetch-case-code-cleanup : fetch case-code (9 +ℕ len-f +ℕ len-g) ≡ just cleanup-mov
+    -- Uses symbolic position from CodeGen: case-cleanup-position f g
+
+    -- Position equivalence: 9 + len-f + len-g = case-cleanup-position f g
+    -- case-cleanup-position f g = ((6 + len-f) + 3) + len-g
+    -- We need to show: (9 + len-f) + len-g = ((6 + len-f) + 3) + len-g
+    pos-eq-cleanup : case-cleanup-position f g ≡ 9 +ℕ len-f +ℕ len-g
+    pos-eq-cleanup = trans (cong (_+ℕ len-g) (+-assoc 6 len-f 3))
+                           (trans (cong (λ x → (6 +ℕ x) +ℕ len-g) (+-comm len-f 3))
+                                  (cong (_+ℕ len-g) (sym (+-assoc 6 3 len-f))))
+
+    fetch-case-code-cleanup : fetch case-code (9 +ℕ len-f +ℕ len-g) ≡ just cleanup-mov
+    fetch-case-code-cleanup = trans (cong (fetch case-code) (sym pos-eq-cleanup))
+                                    (fetch-case-cleanup-mov f g suffix)
 
     -- Prove fetch-mov-cleanup using fetch-case-code-cleanup
     fetch-mov-cleanup : fetch prog (pc s1) ≡ just (mov (reg rsp) (reg rbp))
@@ -831,9 +844,19 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
                       (cong (_+ℕ len-g) (sym (+-assoc (length prefix) 10 len-f)))
 
     -- fetch at index 10+len-f+len-g in case-code gets cleanup-pop
-    -- Use postulate for now - similar structure to fetch-case-code-cleanup
-    postulate
-      fetch-case-code-pop : fetch case-code (10 +ℕ len-f +ℕ len-g) ≡ just cleanup-pop
+    -- Position equivalence: case-cleanup-position f g + 1 = 10 + len-f + len-g
+    pos-eq-pop : case-cleanup-position f g +ℕ 1 ≡ 10 +ℕ len-f +ℕ len-g
+    pos-eq-pop = trans (cong (_+ℕ 1) pos-eq-cleanup)  -- ((9 + len-f) + len-g) + 1
+                       (trans (+-assoc (9 +ℕ len-f) len-g 1)  -- (9 + len-f) + (len-g + 1)
+                              (trans (+-assoc 9 len-f (len-g +ℕ 1))  -- 9 + (len-f + (len-g + 1))
+                                     (trans (cong (9 +ℕ_) (sym (+-assoc len-f len-g 1)))  -- 9 + ((len-f + len-g) + 1)
+                                            (trans (cong (9 +ℕ_) (+-comm (len-f +ℕ len-g) 1))  -- 9 + (1 + (len-f + len-g))
+                                                   (trans (sym (+-assoc 9 1 (len-f +ℕ len-g)))  -- 10 + (len-f + len-g)
+                                                          (sym (+-assoc 10 len-f len-g)))))))  -- (10 + len-f) + len-g
+
+    fetch-case-code-pop : fetch case-code (10 +ℕ len-f +ℕ len-g) ≡ just cleanup-pop
+    fetch-case-code-pop = trans (cong (fetch case-code) (sym pos-eq-pop))
+                                (fetch-case-cleanup-pop f g suffix)
 
     fetch-pop : fetch prog (pc s2) ≡ just (pop rbp)
     fetch-pop =
@@ -850,11 +873,21 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
       in trans (cong (fetch prog) pc-eq') (trans step1' fetch-case-code-pop)
 
     -- step3: execute pop rbp instruction
-    -- The pop reads from memory at rsp (which is rbp-val after step2), getting orig-rbp
-    -- This requires using mem-rbp hypothesis: memory s rbp-val = just orig-rbp
-    -- And showing memory is unchanged through steps 1 and 2
-    postulate
-      step3 : step prog s2 ≡ just s3
+    -- Memory is unchanged through jmp (s1) and mov (s2): memory s2 = memory s
+    -- After mov rsp, rbp: readReg (regs s2) rsp = rbp-val = readReg (regs s) rbp
+
+    -- rsp in s2 = rbp-val (from mov rsp, rbp)
+    rsp-s2 : readReg (regs s2) rsp ≡ rbp-val
+    rsp-s2 = readReg-writeReg-same (regs s1) rsp rbp-val
+
+    -- Memory at rsp in s2 = memory at rbp-val in s = orig-rbp
+    mem-s2-at-rsp : readMem (memory s2) (readReg (regs s2) rsp) ≡ just orig-rbp
+    mem-s2-at-rsp = trans (cong (readMem (memory s2)) rsp-s2) mem-rbp
+
+    -- execPop directly produces s3 (no equality conversion needed)
+    step3 : step prog s2 ≡ just s3
+    step3 = trans (step-exec prog s2 cleanup-pop h2 fetch-pop)
+                  (execPop prog s2 rbp orig-rbp mem-s2-at-rsp)
 
     star3 : Star prog s s3
     star3 = star-step3 h-false step1 h1 step2 h2 step3
@@ -910,31 +943,39 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
         step6' = refl  -- case-overhead = 11 definitionally
 
     -- ========== Final register values ==========
-    -- rsp in s3 = rbp-val + slot-size = (orig-rsp - slot-size) + slot-size = orig-rsp
+    -- rsp in s3 = readReg (regs s2) rsp + slot-size = rbp-val + slot-size = orig-rsp
+    open import Data.Nat.Properties using (m∸n+n≡m)
+
     rsp3 : readReg (regs s3) rsp ≡ orig-rsp
-    rsp3 = trans (readReg-writeReg-same (writeReg (regs s2) rbp orig-rbp) rsp (rbp-val +ℕ slot-size))
-                 (trans (cong (_+ℕ slot-size) rbp-eq) (m∸n+n≡m rsp-cap))
-      where
-        open import Data.Nat.Properties using (m∸n+n≡m)
+    rsp3 = trans (readReg-writeReg-same (writeReg (regs s2) rbp orig-rbp) rsp (readReg (regs s2) rsp +ℕ slot-size))
+                 (trans (cong (_+ℕ slot-size) rsp-s2)
+                        (trans (cong (_+ℕ slot-size) rbp-eq) (m∸n+n≡m rsp-cap)))
 
     -- rbp in s3 = orig-rbp (the value loaded from memory)
     rbp3 : readReg (regs s3) rbp ≡ orig-rbp
-    rbp3 = trans (readReg-writeReg-rsp-rbp (writeReg (regs s2) rbp orig-rbp) (rbp-val +ℕ slot-size))
+    rbp3 = trans (readReg-writeReg-rsp-rbp (writeReg (regs s2) rbp orig-rbp) (readReg (regs s2) rsp +ℕ slot-size))
                  (readReg-writeReg-same (regs s2) rbp orig-rbp)
 
-    -- r14 unchanged through cleanup: jmp (no reg change), mov rsp (doesn't touch r14), pop rbp (doesn't touch r14)
-    -- s1 = record s { pc = ... }, so regs s1 = regs s
-    -- s2 = record s1 { regs = writeReg (regs s1) rsp ... }, r14 s2 = r14 s1
-    -- s3 = record s2 { regs = writeReg (writeReg (regs s2) rbp ...) rsp ... }, r14 s3 = r14 s2
+    -- r14 unchanged through cleanup
     r14-3 : readReg (regs s3) r14 ≡ readReg (regs s) r14
-    r14-3 = trans (readReg-writeReg-rsp-r14 (writeReg (regs s2) rbp orig-rbp) (rbp-val +ℕ slot-size))
+    r14-3 = trans (readReg-writeReg-rsp-r14 (writeReg (regs s2) rbp orig-rbp) (readReg (regs s2) rsp +ℕ slot-size))
                   (trans (readReg-writeReg-rbp-r14 (regs s2) orig-rbp)
                          (readReg-writeReg-rsp-r14 (regs s1) rbp-val))
 
     r15-3 : readReg (regs s3) r15 ≡ readReg (regs s) r15
-    r15-3 = trans (readReg-writeReg-rsp-r15 (writeReg (regs s2) rbp orig-rbp) (rbp-val +ℕ slot-size))
+    r15-3 = trans (readReg-writeReg-rsp-r15 (writeReg (regs s2) rbp orig-rbp) (readReg (regs s2) rsp +ℕ slot-size))
                   (trans (readReg-writeReg-rbp-r15 (regs s2) orig-rbp)
                          (readReg-writeReg-rsp-r15 (regs s1) rbp-val))
+
+    -- rax unchanged through cleanup
+    rax-3 : readReg (regs s3) rax ≡ readReg (regs s) rax
+    rax-3 = trans (readReg-writeReg-rsp-rax (writeReg (regs s2) rbp orig-rbp) (readReg (regs s2) rsp +ℕ slot-size))
+                  (trans (readReg-writeReg-rbp-rax (regs s2) orig-rbp)
+                         (readReg-writeReg-rsp-rax (regs s1) rbp-val))
+
+    -- Memory unchanged through cleanup (jmp, mov, pop don't write memory)
+    mem-3 : memory s3 ≡ memory s
+    mem-3 = refl  -- s1, s2, s3 only update regs and pc, not memory
 
     -- ========== Assemble result ==========
     result : CaseCleanupResult {A} {B} {C} prefix suffix f g s s3 orig-rsp orig-rbp
@@ -946,5 +987,7 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
       ; rbp-final = rbp3
       ; r14-preserved = r14-3
       ; r15-preserved = r15-3
+      ; rax-preserved = rax-3
+      ; memory-preserved = mem-3
       }
 

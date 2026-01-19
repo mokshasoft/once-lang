@@ -140,6 +140,10 @@ case-cleanup-count = 2
 case-overhead : ℕ
 case-overhead = case-setup-count +ℕ case-prefix-count +ℕ case-middle-count +ℕ case-cleanup-count
 
+-- Combined counts for fetch proofs (computed from codegen, single source of truth)
+case-setup-prefix-count : ℕ
+case-setup-prefix-count = case-setup-count +ℕ case-prefix-count  -- = 6
+
 -- Jump offset bases (derived from layout with setup)
 -- Layout: setup(2) + prefix(4) + f + middle(3) + g + cleanup(2)
 case-jne-base : ℕ
@@ -288,6 +292,11 @@ compile-length fold = simple-instr-count
 compile-length unfold = simple-instr-count
 compile-length arr = simple-instr-count
 compile-length (Prim _) = simple-instr-count
+
+-- Position of cleanup instructions (symbolic, computed from code structure)
+-- cleanup-position f g = setup-prefix + |f| + middle + |g|
+case-cleanup-position : ∀ {A B C} → IR A C → IR B C → ℕ
+case-cleanup-position f g = case-setup-prefix-count +ℕ compile-length f +ℕ case-middle-count +ℕ compile-length g
 
 ------------------------------------------------------------------------
 -- Code generation

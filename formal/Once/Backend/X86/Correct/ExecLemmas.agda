@@ -21,6 +21,7 @@ open import Data.Nat.Properties using (∸-+-assoc; +-assoc; +-comm)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≢_; cong₂; subst₂) renaming ([_] to Reveal[_])
+open import Once.Backend.X86.Correct.CompileLength using (compile-length-correct)
 
 ------------------------------------------------------------------------
 -- Exec Lemmas
@@ -539,3 +540,163 @@ compile-length>0 fold = s≤s z≤n
 compile-length>0 unfold = s≤s z≤n
 compile-length>0 arr = s≤s z≤n
 compile-length>0 (Prim _) = s≤s z≤n
+
+------------------------------------------------------------------------
+-- Case cleanup fetch lemmas
+--
+-- Proves fetch at cleanup position by stepping through the code structure:
+-- skip setup (6) → skip compile-x86 f → skip middle (3) → skip compile-x86 g → head
+------------------------------------------------------------------------
+
+-- | Fetch cleanup-mov at case-cleanup-position
+-- Position = 6 + len-f + 3 + len-g (computed symbolically in CodeGen)
+fetch-case-cleanup-mov : ∀ {A B C} (f : IR A C) (g : IR B C) (suffix : Program) →
+  fetch (compile-x86 [ f , g ] ++ suffix) (case-cleanup-position f g) ≡
+  just (mov (reg rsp) (reg rbp))
+fetch-case-cleanup-mov f g suffix =
+  trans (cong (λ n → fetch code n) pos-expand)
+        (trans skip-setup
+               (trans skip-f
+                      (trans skip-middle
+                             (trans skip-g refl))))
+  where
+    len-f = compile-length f
+    len-g = compile-length g
+    code = compile-x86 [ f , g ] ++ suffix
+
+    -- Expand case-cleanup-position to 6 + (len-f + (3 + len-g))
+    -- case-cleanup-position f g = ((6 + len-f) + 3) + len-g  (left-assoc)
+    -- = (6 + len-f) + (3 + len-g)  [+-assoc]
+    -- = 6 + (len-f + (3 + len-g))  [+-assoc]
+    pos-expand : case-cleanup-position f g ≡ 6 +ℕ (len-f +ℕ (3 +ℕ len-g))
+    pos-expand = trans (+-assoc (6 +ℕ len-f) 3 len-g)
+                       (+-assoc 6 len-f (3 +ℕ len-g))
+
+    -- The code segments inside compile-x86 [ f , g ]
+    -- rest = compile-x86 f ++ (jmp ∷ label ∷ mov ∷ (compile-x86 g ++ (mov rsp rbp ∷ pop ∷ [])))
+    rest-inner = jmp (case-jmp-base +ℕ len-g) ∷
+                 label (case-right-label-base +ℕ len-f) ∷
+                 mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+                 compile-x86 g ++
+                 mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
+
+    rest = compile-x86 f ++ rest-inner
+
+    -- after-setup = rest ++ suffix (correctly structured)
+    after-setup = rest ++ suffix
+
+    -- Skip 6 setup instructions (definitional - just list indexing)
+    skip-setup : fetch code (6 +ℕ (len-f +ℕ (3 +ℕ len-g))) ≡
+                 fetch after-setup (len-f +ℕ (3 +ℕ len-g))
+    skip-setup = refl
+
+    -- Use ++-assoc to rewrite after-setup for the next step
+    -- after-setup = (compile-x86 f ++ rest-inner) ++ suffix
+    --             = compile-x86 f ++ (rest-inner ++ suffix)
+    after-f-inner = rest-inner ++ suffix
+
+    after-setup-assoc : after-setup ≡ compile-x86 f ++ after-f-inner
+    after-setup-assoc = ++-assoc (compile-x86 f) rest-inner suffix
+
+    -- Skip compile-x86 f using fetch-append-right
+    skip-f : fetch after-setup (len-f +ℕ (3 +ℕ len-g)) ≡ fetch after-f-inner (3 +ℕ len-g)
+    skip-f = trans (cong (λ xs → fetch xs (len-f +ℕ (3 +ℕ len-g))) after-setup-assoc)
+                   (trans (cong (λ n → fetch (compile-x86 f ++ after-f-inner) (n +ℕ (3 +ℕ len-g)))
+                                (sym (compile-length-correct f)))
+                          (fetch-append-right (compile-x86 f) after-f-inner (3 +ℕ len-g)))
+
+    -- The code after middle (3 instructions)
+    -- after-f-inner = (jmp ∷ label ∷ mov ∷ (compile-x86 g ++ [mov, pop])) ++ suffix
+    -- By ++-assoc: = jmp ∷ label ∷ mov ∷ ((compile-x86 g ++ [mov, pop]) ++ suffix)
+    g-cleanup = compile-x86 g ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
+    after-middle = g-cleanup ++ suffix
+
+    -- Skip 3 middle instructions (definitional after the ++ distributes through ∷)
+    skip-middle : fetch after-f-inner (3 +ℕ len-g) ≡ fetch after-middle len-g
+    skip-middle = refl
+
+    -- Use ++-assoc again for compile-x86 g
+    cleanup = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ suffix
+
+    after-middle-assoc : after-middle ≡ compile-x86 g ++ cleanup
+    after-middle-assoc = ++-assoc (compile-x86 g) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []) suffix
+
+    -- Skip compile-x86 g using fetch-append-right
+    skip-g : fetch after-middle len-g ≡ fetch cleanup 0
+    skip-g = trans (cong (λ xs → fetch xs len-g) after-middle-assoc)
+                   (trans (cong (λ n → fetch (compile-x86 g ++ cleanup) n)
+                                (trans (sym (compile-length-correct g))
+                                       (sym (+-identityʳ (length (compile-x86 g))))))
+                          (fetch-append-right (compile-x86 g) cleanup 0))
+      where
+        open import Data.Nat.Properties using (+-identityʳ)
+
+-- | Fetch cleanup-pop at case-cleanup-position + 1
+fetch-case-cleanup-pop : ∀ {A B C} (f : IR A C) (g : IR B C) (suffix : Program) →
+  fetch (compile-x86 [ f , g ] ++ suffix) (case-cleanup-position f g +ℕ 1) ≡
+  just (pop rbp)
+fetch-case-cleanup-pop f g suffix =
+  trans (cong (λ n → fetch code n) pos-expand)
+        (trans skip-setup
+               (trans skip-f
+                      (trans skip-middle
+                             (trans skip-g refl))))
+  where
+    len-f = compile-length f
+    len-g = compile-length g
+    code = compile-x86 [ f , g ] ++ suffix
+
+    -- Expand case-cleanup-position + 1 to 6 + (len-f + (3 + (len-g + 1)))
+    -- case-cleanup-position f g + 1 = (((6 + len-f) + 3) + len-g) + 1
+    -- Step 1: (((6 + len-f) + 3) + len-g) + 1 = ((6 + len-f) + 3) + (len-g + 1)
+    -- Step 2: ((6 + len-f) + 3) + (len-g + 1) = (6 + len-f) + (3 + (len-g + 1))
+    -- Step 3: (6 + len-f) + (3 + (len-g + 1)) = 6 + (len-f + (3 + (len-g + 1)))
+    pos-expand : case-cleanup-position f g +ℕ 1 ≡ 6 +ℕ (len-f +ℕ (3 +ℕ (len-g +ℕ 1)))
+    pos-expand = trans (+-assoc ((6 +ℕ len-f) +ℕ 3) len-g 1)
+                       (trans (+-assoc (6 +ℕ len-f) 3 (len-g +ℕ 1))
+                              (+-assoc 6 len-f (3 +ℕ (len-g +ℕ 1))))
+
+    -- Structure: same as fetch-case-cleanup-mov but fetch index is len-g + 1 instead of len-g
+    rest-inner = jmp (case-jmp-base +ℕ len-g) ∷
+                 label (case-right-label-base +ℕ len-f) ∷
+                 mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+                 compile-x86 g ++
+                 mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
+
+    rest = compile-x86 f ++ rest-inner
+    after-setup = rest ++ suffix
+
+    skip-setup : fetch code (6 +ℕ (len-f +ℕ (3 +ℕ (len-g +ℕ 1)))) ≡
+                 fetch after-setup (len-f +ℕ (3 +ℕ (len-g +ℕ 1)))
+    skip-setup = refl
+
+    -- Use ++-assoc to rewrite after-setup for the next step
+    after-f-inner = rest-inner ++ suffix
+
+    after-setup-assoc : after-setup ≡ compile-x86 f ++ after-f-inner
+    after-setup-assoc = ++-assoc (compile-x86 f) rest-inner suffix
+
+    skip-f : fetch after-setup (len-f +ℕ (3 +ℕ (len-g +ℕ 1))) ≡ fetch after-f-inner (3 +ℕ (len-g +ℕ 1))
+    skip-f = trans (cong (λ xs → fetch xs (len-f +ℕ (3 +ℕ (len-g +ℕ 1)))) after-setup-assoc)
+                   (trans (cong (λ n → fetch (compile-x86 f ++ after-f-inner) (n +ℕ (3 +ℕ (len-g +ℕ 1))))
+                                (sym (compile-length-correct f)))
+                          (fetch-append-right (compile-x86 f) after-f-inner (3 +ℕ (len-g +ℕ 1))))
+
+    -- The code after middle (3 instructions)
+    g-cleanup = compile-x86 g ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
+    after-middle = g-cleanup ++ suffix
+
+    skip-middle : fetch after-f-inner (3 +ℕ (len-g +ℕ 1)) ≡ fetch after-middle (len-g +ℕ 1)
+    skip-middle = refl
+
+    -- Use ++-assoc again for compile-x86 g
+    cleanup = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ suffix
+
+    after-middle-assoc : after-middle ≡ compile-x86 g ++ cleanup
+    after-middle-assoc = ++-assoc (compile-x86 g) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []) suffix
+
+    skip-g : fetch after-middle (len-g +ℕ 1) ≡ fetch cleanup 1
+    skip-g = trans (cong (λ xs → fetch xs (len-g +ℕ 1)) after-middle-assoc)
+                   (trans (cong (λ n → fetch (compile-x86 g ++ cleanup) (n +ℕ 1))
+                                (sym (compile-length-correct g)))
+                          (fetch-append-right (compile-x86 g) cleanup 1))

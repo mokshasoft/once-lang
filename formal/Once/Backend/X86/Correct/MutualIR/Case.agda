@@ -28,7 +28,7 @@ open import Once.Backend.Common.MemoryRegions
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; [,]-f-smaller; [,]-g-smaller)
 open import Data.Bool using (Bool; false)
-open import Data.Nat using (ℕ; _>_; _≤_; _<_; _∸_; _⊔_; suc) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _≤_; _<_; _∸_; _⊔_; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; _++_; length; _∷_; [])
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂; _,_; _×_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; cong; sym; subst; subst₂; cong₂)
@@ -60,9 +60,10 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-inr-tag-is-1; valid-inr-child; valid-inr-val-ptr; valid-addr-in-heap)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (slots; slot-size; StackCapacity; ir-stack-requirement; ir-output-capacity;
-         capacity-from-larger; capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged)
+         capacity-from-larger; capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged;
+         rsp-sufficient)
 open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode; heap-offset)
-open import Data.Nat.Properties using (≤-trans; <-trans; ≤-<-trans; <⇒≤; m≤m⊔n; m≤n⊔m; m∸n≤m; +-comm; suc-injective)
+open import Data.Nat.Properties using (≤-trans; <-trans; ≤-<-trans; <⇒≤; m≤m⊔n; m≤n⊔m; m∸n≤m; +-comm; suc-injective; m≤m+n)
 open import Data.List.Properties using (++-assoc)
 open import Once.Backend.X86.Correct.CompileLength using (length-++)
 open import Data.Maybe using (just; nothing)
@@ -330,9 +331,14 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
     stack-inv-s1 = IRStarResultV.ir-stack-inv r-f
 
     -- Stack capacity: slot-size ≤ orig-rsp
-    -- This comes from StackCapacity which guarantees rsp > n * slot-size for n ≥ 1
-    postulate
-      rsp-has-cap : slot-size ≤ orig-rsp
+    -- Derived from StackCapacity which guarantees rsp > n * slot-size for n ≥ 1
+    -- Since case-req = suc (f-req ⊔ g-req), we have rsp > (suc k) * slot-size ≥ slot-size
+    rsp-has-cap : slot-size ≤ orig-rsp
+    rsp-has-cap = <⇒≤ (≤-<-trans slot≤suc*slot (rsp-sufficient cap-in'))
+      where
+        -- suc n * slot-size = slot-size + n * slot-size, so slot-size ≤ suc n * slot-size
+        slot≤suc*slot : slot-size ≤ (suc (f-req ⊔ g-req)) *ℕ slot-size
+        slot≤suc*slot = m≤m+n slot-size ((f-req ⊔ g-req) *ℕ slot-size)
 
     -- Call cleanup helper
     cleanup-result : ∃[ s-final ] CaseCleanupResult {A} {B} {C} prefix suffix f g s1 s-final orig-rsp orig-rbp
@@ -499,16 +505,39 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
     rsp-eq = rsp-final  -- slots 0 = 0, so orig-rsp ∸ slots 0 = orig-rsp ∸ 0 = orig-rsp
 
     -- Result validity: eval [ f , g ] (inj₁ a) = eval f a
-    -- Need to show ValidAt (eval f a) (rax s-final) (memory s-final)
+    -- Chain: r-f gives ValidAt (eval f a) (rax s1) (memory s1)
+    -- cleanup preserves: rax s-final = rax s1, memory s-final = memory s1
+    rax-s-final : readReg (regs s-final) rax ≡ readReg (regs s1) rax
+    rax-s-final = CaseCleanupResult.rax-preserved cleanup-res
+
+    mem-s-final : memory s-final ≡ memory s1
+    mem-s-final = CaseCleanupResult.memory-preserved cleanup-res
+
+    result-valid-f : ValidAt (eval f a) (readReg (regs s1) rax) (memory s1)
+    result-valid-f = IRStarResultV.ir-result-valid r-f
+
+    result-valid : ValidAt (eval [ f , g ] (inj₁ a)) (readReg (regs s-final) rax) (memory s-final)
+    result-valid = subst₂ (ValidAt (eval f a)) (sym rax-s-final) (sym mem-s-final) result-valid-f
+
+    -- Memory preservation: chain through s → s-setup → s1 → s-final
+    -- s-final ≡ s1 (cleanup-res.memory-preserved)
+    -- s1 uses s-setup as reference for ir-mem-*
+    -- s-setup uses s as reference for mem-heap-setup
+
+    mem-heap : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-heap addr in-heap = trans (cong (λ m → readMem m addr) mem-s-final)
+                                  (trans (IRStarResultV.ir-mem-heap r-f addr in-heap)
+                                         (mem-heap-setup addr in-heap))
+
+    -- These memory preservation proofs require fields not yet in CaseInlSetupResult
+    -- For now, use postulates. TODO: add mem-code-setup, mem-at-0-setup to CaseInlSetupResult
     postulate
-      result-valid : ValidAt (eval [ f , g ] (inj₁ a)) (readReg (regs s-final) rax) (memory s-final)
+      mem-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-at-0 : readMem (memory s-final) 0 ≡ readMem (memory s) 0
       mem-r15 : readMem (memory s-final) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
       mem-rbp : readMem (memory s-final) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
       mem-rbp+8 : readMem (memory s-final) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
       mem-above : ∀ addr → addr > orig-rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
-      mem-at-0 : readMem (memory s-final) 0 ≡ readMem (memory s) 0
-      mem-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
-      mem-heap : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
       stack-inv-final : StackInvariant s-final
       cap-final : StackCapacity s-final (ir-output-capacity [ f , g ])
       rbp-inv-final : RbpInvariant s-final
