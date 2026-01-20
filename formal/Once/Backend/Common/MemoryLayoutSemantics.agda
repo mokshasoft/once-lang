@@ -212,7 +212,7 @@ to-raw-code ca = CodeAddr.addr ca
 record StackGrowth : Set₁ where
   field
     --------------------------------------------------------------------
-    -- Slot Address Computation
+    -- Slot Address Computation (pure arithmetic properties)
     --------------------------------------------------------------------
 
     -- | Compute address at slot offset k from base address
@@ -227,7 +227,20 @@ record StackGrowth : Set₁ where
     -- | Different base addresses yield different slot addresses (same offset)
     grow-addr-injective : ∀ a₁ a₂ k → a₁ ≢ a₂ → grow a₁ k ≢ grow a₂ k
 
+    --------------------------------------------------------------------
+    -- Region Preservation
+    --
+    -- NOTE: This is a CAPACITY property, not pure arithmetic.
+    -- It says "growing stays in stack region", which requires sufficient
+    -- stack capacity. In the zero-postulates architecture, this is
+    -- derived from StackCapacity at each use site.
+    --
+    -- For backward compatibility, we keep it here but it should be
+    -- proven from capacity evidence, not postulated.
+    --------------------------------------------------------------------
+
     -- | Growth preserves stack region membership
+    -- DEPRECATION: This will be removed; use StackCapacity-based proofs
     grow-preserves-region : ∀ a k → InStack a → InStack (grow a k)
 
     --------------------------------------------------------------------
