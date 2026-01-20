@@ -203,6 +203,14 @@ thunk-cap-after-pushes = thunk-setup-capacity ∸ 2
 output-fits-thunk-cap : output-slots ≤ thunk-setup-capacity
 output-fits-thunk-cap = from-yes-≤ (output-slots ≤? thunk-setup-capacity)
 
+-- Intermediate capacity fits thunk-setup (used during thunk execution)
+apply-cap-after-push-fits-thunk-cap : apply-cap-after-push ≤ thunk-setup-capacity
+apply-cap-after-push-fits-thunk-cap = from-yes-≤ (apply-cap-after-push ≤? thunk-setup-capacity)
+
+-- Apply capacity fits thunk-setup (used for push sequence in thunk)
+apply-capacity-fits-thunk-cap : apply-capacity ≤ thunk-setup-capacity
+apply-capacity-fits-thunk-cap = from-yes-≤ (apply-capacity ≤? thunk-setup-capacity)
+
 -- Apply capacity relationships
 output-fits-apply-cap : output-slots ≤ apply-cap-after-push
 output-fits-apply-cap = from-yes-≤ (output-slots ≤? apply-cap-after-push)

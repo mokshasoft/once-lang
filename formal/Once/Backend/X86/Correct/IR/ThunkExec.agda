@@ -11,8 +11,11 @@ open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-
 open import Once.Backend.X86.Correct.ArithmeticLemmas
   using (pair-fits-post-rbp-push; word-fits-word-plus-one; thunk-min-fits-actual;
          four-slots-fit-thunk-actual; post-rbp-push-fits-thunk-actual;
-         three-slots-fit-four-slots; output-fits-thunk-setup; thunk-intermediate-fits-setup; thunk-pushes-fit-setup;
+         three-slots-fit-four-slots;
          word-positive; pair-positive; single-slot-fits-thunk-bound)
+-- Note: Capacity lemmas (formerly output-fits-thunk-setup etc.) now use symbolic
+-- names from StackInstantiation: output-fits-thunk-cap, apply-cap-after-push-fits-thunk-cap,
+-- apply-capacity-fits-thunk-cap
 open import Once.Backend.X86.Correct.Arithmetic using (word-plus-one-fits-pair)
 open import Once.Postulates using (encode; encode-pair-construct)
 -- Postulates removed: rsp-bound-after-stack-op, rsp-in-stack-after-stack-op
@@ -887,7 +890,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     addr-rsp-16-in-stack : InStack rsp-after-push-rbp
     addr-rsp-16-in-stack = subst (λ x → InStack x) (sym rsp-after-push-rbp-eq)
-                                 (abstract-to-rsp-slots-in-stack 2 s cap output-fits-thunk-setup)
+                                 (abstract-to-rsp-slots-in-stack 2 s cap output-fits-thunk-cap)
 
     -- RbpInvariant: thunk creates a new frame at rsp-after-push-rbp = old-rsp - 16
     -- addr-rsp-16-in-stack has type InStack rsp-after-push-rbp
@@ -917,7 +920,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     addr-rsp-32-in-stack : InStack new-rsp
     addr-rsp-32-in-stack = subst (λ x → InStack x) (sym new-rsp-eq)
-                                 (abstract-to-rsp-slots-in-stack 4 s cap thunk-pushes-fit-setup)
+                                 (abstract-to-rsp-slots-in-stack 4 s cap apply-capacity-fits-thunk-cap)
 
     -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3 = old-rsp ∸ 3*8
     -- Proof using stdlib: m∸n+n≡m and +-∸-assoc
@@ -955,7 +958,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     addr-rsp-24-in-stack : InStack (new-rsp +ℕ slot-size)
     addr-rsp-24-in-stack = subst (λ x → InStack x) (sym new-rsp+8-eq)
-                                 (abstract-to-rsp-slots-in-stack 3 s cap thunk-intermediate-fits-setup)
+                                 (abstract-to-rsp-slots-in-stack 3 s cap apply-cap-after-push-fits-thunk-cap)
 
     ------------------------------------------------------------------------
     -- D041: Memory at code-region addresses preserved

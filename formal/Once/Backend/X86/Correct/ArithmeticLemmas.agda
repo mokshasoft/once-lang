@@ -90,21 +90,8 @@ word-fits-thunk-bound = from-yes-≤ (word-size ≤? 17)
 word-fits-thunk-bound-strict : word-size < 17
 word-fits-thunk-bound-strict = from-yes-< (word-size <? 17)
 
-------------------------------------------------------------------------
--- Capacity containment (output/intermediate slots fit in operation capacity)
-------------------------------------------------------------------------
-
--- | Output capacity fits apply-intermediate (2 slots output, 3 slots intermediate)
-output-fits-apply-intermediate : 2 ≤ 3
-output-fits-apply-intermediate = from-yes-≤ (2 ≤? 3)
-
--- | Apply-intermediate fits pair-setup capacity (3 slots, 5 slots)
-apply-fits-pair-setup : 3 ≤ 5
-apply-fits-pair-setup = from-yes-≤ (3 ≤? 5)
-
--- | Output capacity fits pair-setup (2 slots output, 5 slots pair-setup)
-output-fits-pair-setup : 2 ≤ 5
-output-fits-pair-setup = from-yes-≤ (2 ≤? 5)
+-- NOTE: Capacity containment lemmas moved to StackInstantiation.agda
+-- with symbolic names (output-slots, apply-capacity, etc.)
 
 ------------------------------------------------------------------------
 -- Code region containment
@@ -150,21 +137,8 @@ post-rbp-push-fits-thunk-actual = from-yes-≤ (25 ≤? 49)
 three-slots-fit-four-slots : 24 ≤ 32
 three-slots-fit-four-slots = from-yes-≤ (24 ≤? 32)
 
-------------------------------------------------------------------------
--- Thunk setup capacity (6 slots)
-------------------------------------------------------------------------
-
--- | Output fits thunk-setup capacity (2 output, 6 thunk-setup)
-output-fits-thunk-setup : 2 ≤ 6
-output-fits-thunk-setup = from-yes-≤ (2 ≤? 6)
-
--- | Thunk-intermediate fits thunk-setup capacity
-thunk-intermediate-fits-setup : 3 ≤ 6
-thunk-intermediate-fits-setup = from-yes-≤ (3 ≤? 6)
-
--- | Thunk-pushes fit thunk-setup capacity (4 pushes, 6 capacity)
-thunk-pushes-fit-setup : 4 ≤ 6
-thunk-pushes-fit-setup = from-yes-≤ (4 ≤? 6)
+-- NOTE: Thunk setup capacity lemmas moved to StackInstantiation.agda
+-- See: output-fits-thunk-cap, apply-cap-after-push-fits-thunk-cap, apply-capacity-fits-thunk-cap
 
 ------------------------------------------------------------------------
 -- Positive bounds (non-zero)
@@ -182,13 +156,8 @@ pair-positive = from-yes-< (0 <? pair-alloc)
 regs-positive : 0 < saved-regs-size
 regs-positive = from-yes-< (0 <? saved-regs-size)
 
-------------------------------------------------------------------------
--- Apply capacity bounds
-------------------------------------------------------------------------
-
--- | Single slot fits apply-intermediate
-single-slot-fits-apply : 1 ≤ 3
-single-slot-fits-apply = from-yes-≤ (1 ≤? 3)
+-- NOTE: Apply capacity bounds moved to StackInstantiation.agda
+-- See: single-slot-fits-apply-cap
 
 ------------------------------------------------------------------------
 -- Inr capacity bounds
