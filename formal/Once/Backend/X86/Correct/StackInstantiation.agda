@@ -50,7 +50,7 @@ open import Once.Backend.X86.Correct.StackInvariant public
 open RbpInvariant public
 
 -- Import region abstractions (interval-based model)
-open import Once.Backend.Common.MemoryRegions
+open import Once.Backend.Common.MemoryRegionLemmas
   using (Addr; InStack; InHeap; InCode;
          stack-heap-disjoint; stack-code-disjoint;
          stack-heap-addr-disjoint; stack-code-addr-disjoint;
@@ -61,7 +61,7 @@ open import Once.Backend.Common.MemoryRegions
          slot-addr-1-is-base+8;
          encode-in-heap; heap-offset;
          stack-bounds; lower; upper)
-open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr; in-stack to sp-in-stack)
+open import Once.Backend.Common.MemoryRegionLemmas using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 open import Data.Unit using (⊤; tt)
 
 -- Arithmetic imports (the instantiation layer uses these)

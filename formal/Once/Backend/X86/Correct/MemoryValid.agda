@@ -20,7 +20,7 @@ open ⟦Fix⟧
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writeMem)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
 open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
-open import Once.Backend.Common.MemoryRegions
+open import Once.Backend.Common.MemoryRegionLemmas
   using (InStack; InHeap; stack-heap-addr-disjoint; heap-offset)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
 open import Once.Backend.X86.Correct.Star using (just-injective)

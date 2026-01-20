@@ -25,7 +25,7 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤; ir-stack-requirement; ir-rsp-delta; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req; pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot)
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>; m≤m+n; m≤m⊔n; m≤n⊔m)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (rsp-min-pair-fits-frame; word-fits-thunk-bound-strict)
-open import Once.Backend.Common.MemoryRegions
+open import Once.Backend.Common.MemoryRegionLemmas
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller)
@@ -57,8 +57,8 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (valid-subst-heap-preserved)
 
 -- Import region definitions for D041 memory preservation proofs
-open import Once.Backend.Common.MemoryRegions using (InStack; InHeap; InCode)
-open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
+open import Once.Backend.Common.MemoryRegionLemmas using (InStack; InHeap; InCode)
+open import Once.Backend.Common.MemoryRegionLemmas using () renaming (addr to sp-addr)
 
 -- Import StackInstantiation (re-exports StackInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation

@@ -23,10 +23,10 @@ open import Once.Backend.X86.Correct.StackInstantiation
          curry-frame-disjoint-from-rbp; curry-rbp-inv-update; curry-stack-inv-frame-bound-update;
          curry-alloc-below-rbp; curry-alloc-nonzero)
 open import Data.Nat.Properties using (≤-<-trans)
-open import Once.Backend.Common.MemoryRegions
+open import Once.Backend.Common.MemoryRegionLemmas
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
          stackAddr-write-preserves-heap; slot-addr)
-open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
+open import Once.Backend.Common.MemoryRegionLemmas using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_)

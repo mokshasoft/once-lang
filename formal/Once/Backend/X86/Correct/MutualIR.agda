@@ -33,11 +33,11 @@ open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-transfer-eq; compose-g-eq)
 
 -- Import memory region definitions
-open import Once.Backend.Common.MemoryRegions
+open import Once.Backend.Common.MemoryRegionLemmas
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; StackPointer; frameSlot; slot-addr;
          slot-addr-above-thunk-rbp; slot-addr-≥-base)
 -- Internal glue for abstraction boundary (implementation use only!)
-open import Once.Backend.Common.MemoryRegions using (module FrameSlotInternal)
+open import Once.Backend.Common.MemoryRegionLemmas using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
 
 -- Import stack capacity and region lemmas for D041 approach

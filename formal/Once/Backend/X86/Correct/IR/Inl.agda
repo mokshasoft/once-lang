@@ -22,11 +22,11 @@ open import Once.Backend.X86.Correct.StackInstantiation
          alloc-2-slots-addrs-in-stack; slots-mono-≤;
          ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
          inl-rsp-delta≤inl-req)
-open import Once.Backend.Common.MemoryRegions
+open import Once.Backend.Common.MemoryRegionLemmas
   using (InStack; InHeap; InCode;
          stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap; slot-addr)
-open import Once.Backend.Common.MemoryRegions using () renaming (addr to sp-addr)
+open import Once.Backend.Common.MemoryRegionLemmas using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;

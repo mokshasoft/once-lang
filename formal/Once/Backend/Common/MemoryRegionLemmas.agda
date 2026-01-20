@@ -1,18 +1,18 @@
 ------------------------------------------------------------------------
--- Once.Backend.Common.MemoryRegions
+-- Once.Backend.Common.MemoryRegionLemmas
 --
--- Interval-based memory region model for compiler correctness proofs.
+-- Lemmas and theorems derived from the memory layout semantics.
 --
--- KEY INSIGHT:
--- Model memory regions as address INTERVALS. Region membership is
--- interval membership. This gives us:
---   1. Minimal postulates: just bounds existence + intervals-disjoint
---   2. Disjointness is a THEOREM from interval non-overlap
---   3. No magic numbers or sentinel addresses
---   4. Clear semantics - regions ARE intervals
+-- This module re-exports MemoryLayoutSemantics and provides:
+--   1. Derived disjointness theorems
+--   2. Stack/heap/code region properties
+--   3. Memory preservation lemmas
+--
+-- TODO: Some items here are still postulates that should be
+-- converted to definitions or proven from capacity.
 ------------------------------------------------------------------------
 
-module Once.Backend.Common.MemoryRegions where
+module Once.Backend.Common.MemoryRegionLemmas where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m∸n≤m; ≤-step)
@@ -23,65 +23,11 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 
--- Import Memory type from Common.Memory
-open import Once.Backend.Common.Memory using (Memory; Word; readMem; writeMem)
+-- Re-export foundational semantics
+open import Once.Backend.Common.MemoryLayoutSemantics public
 
-------------------------------------------------------------------------
--- Address Type
-------------------------------------------------------------------------
-
-Addr : Set
-Addr = ℕ
-
-------------------------------------------------------------------------
--- Region Bounds (CORE ABSTRACTION)
-------------------------------------------------------------------------
-
--- | A region is defined by its address interval [lower, upper]
-record RegionBounds : Set where
-  field
-    lower : Addr
-    upper : Addr
-    bounds-valid : lower ≤ upper
-
-open RegionBounds public
-
-------------------------------------------------------------------------
--- Region Bounds Postulates (STRUCTURAL)
-------------------------------------------------------------------------
-
-postulate
-  stack-bounds : RegionBounds
-  heap-bounds  : RegionBounds
-  code-bounds  : RegionBounds
-
-------------------------------------------------------------------------
--- Region Membership (DEFINITIONS, not postulates!)
-------------------------------------------------------------------------
-
--- | Address is in stack if within [lower, upper]
-InStack : Addr → Set
-InStack a = lower stack-bounds ≤ a × a ≤ upper stack-bounds
-
--- | Address is in heap if within [lower, upper]
-InHeap : Addr → Set
-InHeap a = lower heap-bounds ≤ a × a ≤ upper heap-bounds
-
--- | Address is in code if within [lower, upper]
-InCode : Addr → Set
-InCode a = lower code-bounds ≤ a × a ≤ upper code-bounds
-
-------------------------------------------------------------------------
--- Region Disjointness (THE KEY POSTULATE)
-------------------------------------------------------------------------
-
--- | The three regions don't overlap
--- JUSTIFICATION: Runtime initializes memory with non-overlapping regions.
-postulate
-  intervals-disjoint : ∀ a →
-    ¬ (InStack a × InHeap a) ×
-    ¬ (InStack a × InCode a) ×
-    ¬ (InHeap a × InCode a)
+-- Import Memory operations
+open import Once.Backend.Common.Memory using (Memory; readMem; writeMem)
 
 ------------------------------------------------------------------------
 -- Derived Disjointness THEOREMS
@@ -103,10 +49,9 @@ stack-code-addr-disjoint a₁ a₂ in-s in-c a₁≡a₂ =
   stack-code-disjoint a₂ (subst InStack a₁≡a₂ in-s) in-c
 
 ------------------------------------------------------------------------
--- Stack Subtraction (POSTULATE)
+-- Stack Subtraction
 --
--- JUSTIFICATION: Runtime initializes the stack with sufficient capacity.
--- When k ≤ a and a is in stack, a ∸ k remains in stack.
+-- TODO: Convert to proof from capacity
 ------------------------------------------------------------------------
 
 postulate
@@ -139,6 +84,9 @@ open HeapPointer public
 
 ------------------------------------------------------------------------
 -- Stack Slot Addressing
+--
+-- TODO: Convert slot-addr to definition (slot-addr sp k = addr sp + k * 8)
+-- Then most of these become trivially provable.
 ------------------------------------------------------------------------
 
 postulate
@@ -155,6 +103,8 @@ postulate
 
 ------------------------------------------------------------------------
 -- Heap Region Properties
+--
+-- TODO: Determine if these can be proven or must remain postulates
 ------------------------------------------------------------------------
 
 postulate
@@ -163,6 +113,8 @@ postulate
 
 ------------------------------------------------------------------------
 -- Code Region Properties
+--
+-- TODO: Determine if this can be proven from code-bounds
 ------------------------------------------------------------------------
 
 postulate
@@ -170,10 +122,18 @@ postulate
 
 ------------------------------------------------------------------------
 -- Abstract Frame Operations
+--
+-- TODO: Convert frameSlot to definition
 ------------------------------------------------------------------------
 
 postulate
   frameSlot : Memory → StackPointer → ℕ → Maybe Word
+
+------------------------------------------------------------------------
+-- Memory Preservation
+--
+-- TODO: Prove from disjointness + writeMem semantics
+------------------------------------------------------------------------
 
 postulate
   stackAddr-write-preserves-heap : ∀ mem addr val heap-addr →
