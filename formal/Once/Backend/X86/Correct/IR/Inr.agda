@@ -16,7 +16,7 @@ open import Once.Backend.Common.Memory using (n≢n+suc)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.Arithmetic using (∸-preserves-<; <⇒≢; ∸+<-lemma)
-open import Once.Backend.X86.Correct.ArithmeticLemmas using (inr-setup-within-injection)
+-- NOTE: inr-setup-within-injection (33≤57) was imported but never used - removed
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.StackInstantiation
   using (rsp-bound-to-capacity; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;

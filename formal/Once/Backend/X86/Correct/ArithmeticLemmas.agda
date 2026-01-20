@@ -114,24 +114,9 @@ pair-fits-post-rbp-push = from-yes-≤ (pair-alloc ≤? 25)
 word-fits-word-plus-one : word-size ≤ 9
 word-fits-word-plus-one = from-yes-≤ (word-size ≤? 9)
 
--- | Thunk minimum fits actual thunk capacity
-thunk-min-fits-actual : 41 ≤ 49
-thunk-min-fits-actual = from-yes-≤ (41 ≤? 49)
-
--- | Four slots fit thunk actual capacity
-four-slots-fit-thunk-actual : 32 ≤ 49
-four-slots-fit-thunk-actual = from-yes-≤ (32 ≤? 49)
-
--- | Post-rbp-push minimum fits thunk actual
-post-rbp-push-fits-thunk-actual : 25 ≤ 49
-post-rbp-push-fits-thunk-actual = from-yes-≤ (25 ≤? 49)
-
--- | Three slots fit four slots
-three-slots-fit-four-slots : 24 ≤ 32
-three-slots-fit-four-slots = from-yes-≤ (24 ≤? 32)
-
--- NOTE: Thunk setup capacity lemmas moved to StackInstantiation.agda
--- See: output-fits-thunk-cap, apply-cap-after-push-fits-thunk-cap, apply-capacity-fits-thunk-cap
+-- NOTE: Thunk capacity bounds (41≤49, 32≤49, 25≤49, 24≤32) moved to StackInstantiation
+-- as symbolic lemmas: after-push1-fits-initial, four-slots-fits-initial,
+-- post-rbp-push-fits-initial, three-slots-fits-four
 
 ------------------------------------------------------------------------
 -- Positive bounds (non-zero)
@@ -152,10 +137,4 @@ regs-positive = from-yes-< (0 <? saved-regs-size)
 -- NOTE: Apply capacity bounds moved to StackInstantiation.agda
 -- See: single-slot-fits-apply-cap
 
-------------------------------------------------------------------------
--- Inr capacity bounds
-------------------------------------------------------------------------
-
--- | Inr-setup fits within full injection capacity
-inr-setup-within-injection : 33 ≤ 57
-inr-setup-within-injection = from-yes-≤ (33 ≤? 57)
+-- NOTE: inr-setup-within-injection (33≤57) was unused and deleted

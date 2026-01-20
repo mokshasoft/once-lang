@@ -9,10 +9,11 @@ module Once.Backend.X86.Correct.IR.ThunkExec where
 
 open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-size≢n)
 open import Once.Backend.X86.Correct.ArithmeticLemmas
-  using (pair-fits-post-rbp-push; word-fits-word-plus-one; thunk-min-fits-actual;
-         four-slots-fit-thunk-actual; post-rbp-push-fits-thunk-actual;
-         three-slots-fit-four-slots;
+  using (pair-fits-post-rbp-push; word-fits-word-plus-one;
          word-positive; pair-positive)
+-- Note: Numeric lemmas (thunk-min-fits-actual, etc.) replaced with symbolic
+-- versions from StackInstantiation: after-push1-fits-initial, four-slots-fits-initial,
+-- post-rbp-push-fits-initial, three-slots-fits-four
 -- Note: Capacity lemmas (formerly output-fits-thunk-setup etc.) now use symbolic
 -- names from StackInstantiation: output-fits-thunk-cap, apply-cap-after-push-fits-thunk-cap,
 -- apply-capacity-fits-thunk-cap
@@ -638,7 +639,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- (Note: m > n = suc n ≤ m, so rsp > 48 is already 49 ≤ rsp)
     -- We derive 41 ≤ rsp via 41 ≤ 49 ≤ rsp
     rsp-above-r15-slot-bound : 41 ≤ old-rsp
-    rsp-above-r15-slot-bound = ≤-trans thunk-min-fits-actual (StackCapacity.rsp-sufficient cap)
+    rsp-above-r15-slot-bound = ≤-trans after-push1-fits-initial (StackCapacity.rsp-sufficient cap)
 
     -- Semantic: rsp remains safe after first push (r15)
     -- old-rsp ≥ 41, so rsp-after-push-r15 = old-rsp - 8 ≥ 33
@@ -818,10 +819,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- Semantic: rsp is at least 4 slots above the r15 slot bound
         -- (Note: rsp-sufficient cap : old-rsp > 48 = 49 ≤ old-rsp)
         rsp-above-4-slots : 32 ≤ old-rsp
-        rsp-above-4-slots = ≤-trans four-slots-fit-thunk-actual (StackCapacity.rsp-sufficient cap)
+        rsp-above-4-slots = ≤-trans four-slots-fits-initial (StackCapacity.rsp-sufficient cap)
         -- Semantic: rsp is above 3-slot offset (for new-rsp + slot calculation)
         rsp-above-3-slot-offset : old-rsp > 24
-        rsp-above-3-slot-offset = ≤-trans post-rbp-push-fits-thunk-actual (StackCapacity.rsp-sufficient cap)
+        rsp-above-3-slot-offset = ≤-trans post-rbp-push-fits-initial (StackCapacity.rsp-sufficient cap)
         -- new-rsp = old-rsp ∸ slots 4
         new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
         new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
@@ -938,7 +939,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- Semantic: rsp is large enough for 4-slot addressing
         -- (Note: rsp-sufficient cap : old-rsp > 48 = 49 ≤ old-rsp)
         rsp-fits-4-slots : 32 ≤ old-rsp
-        rsp-fits-4-slots = ≤-trans four-slots-fit-thunk-actual (StackCapacity.rsp-sufficient cap)
+        rsp-fits-4-slots = ≤-trans four-slots-fits-initial (StackCapacity.rsp-sufficient cap)
 
         -- Semantic: offset + 4-slots = original rsp
         offset-plus-4-slots≡orig : rsp-offset-4-slots +ℕ slots 4 ≡ old-rsp
@@ -946,7 +947,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
         -- Semantic: 3 slots fit in 4 slots allocation (for associativity)
         three-slots-fit-in-four : slots 3 ≤ slots 4
-        three-slots-fit-in-four = three-slots-fit-four-slots
+        three-slots-fit-in-four = three-slots-fits-four
 
         -- Semantic: associativity for 4-slot minus 3-slot = offset + slot-size
         assoc-4-minus-3 : (rsp-offset-4-slots +ℕ slots 4) ∸ slots 3 ≡ rsp-offset-4-slots +ℕ 8

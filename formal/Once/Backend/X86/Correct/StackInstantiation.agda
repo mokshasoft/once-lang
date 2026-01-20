@@ -66,7 +66,7 @@ open import Data.Unit using (⊤; tt)
 
 -- Arithmetic imports (the instantiation layer uses these)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≤?_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; +-monoʳ-<; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢; ⊔-mono-≤; m∸n+n≡m; m≤n⊔m; m≤m+n; m≤m⊔n)
+open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; +-monoʳ-<; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢; ⊔-mono-≤; m∸n+n≡m; m≤n⊔m; m≤m+n; m≤m⊔n; n≤1+n)
 open import Relation.Nullary using (yes; no)
 
 -- Import constant comparisons from Arithmetic (replaces verbose s≤s chains)
@@ -103,6 +103,13 @@ four-slot-offset = slots 4                 -- 32: four slots
 
 five-slot-offset : ℕ
 five-slot-offset = slots 5                 -- 40: five slots
+
+-- | Slot monotonicity for ≤ (follows from slots being multiplication)
+-- Useful for deriving smaller bounds: a ≤ b → slots a ≤ slots b
+-- Defined early to be in scope for RSP threshold lemmas
+slots-mono-≤ : ∀ {a b} → a ≤ b → slots a ≤ slots b
+slots-mono-≤ {zero} {b} _ = z≤n
+slots-mono-≤ {suc a} {suc b} (s≤s a≤b) = +-monoʳ-≤ slot-size (slots-mono-≤ a≤b)
 
 thunk-local-size : ℕ
 thunk-local-size = slots 2                 -- 16: sub rsp, 16 in thunk
@@ -197,6 +204,82 @@ thunk-cap-after-first-push = thunk-setup-capacity ∸ 1
 -- Capacity after both pushes (push r15 + push rbp) in thunk setup
 thunk-cap-after-pushes : ℕ
 thunk-cap-after-pushes = thunk-setup-capacity ∸ 2
+
+-- Capacity after sub rsp, 16 (equivalent to 2 more slots)
+thunk-cap-after-alloc : ℕ
+thunk-cap-after-alloc = thunk-setup-capacity ∸ 4
+
+------------------------------------------------------------------------
+-- RSP thresholds (minimum RSP values for capacity bounds)
+--
+-- For capacity n, rsp-sufficient gives: rsp > slots n
+-- This means rsp ≥ suc (slots n), so the threshold is suc (slots n).
+------------------------------------------------------------------------
+
+-- RSP threshold for capacity n: minimum RSP value satisfying capacity n
+cap-rsp-min : ℕ → ℕ
+cap-rsp-min n = suc (slots n)
+
+-- Thunk RSP thresholds at each setup stage
+thunk-initial-rsp-min : ℕ
+thunk-initial-rsp-min = cap-rsp-min thunk-setup-capacity  -- 49 (initial)
+
+thunk-after-push1-rsp-min : ℕ
+thunk-after-push1-rsp-min = cap-rsp-min thunk-cap-after-first-push  -- 41
+
+thunk-after-push2-rsp-min : ℕ
+thunk-after-push2-rsp-min = cap-rsp-min thunk-cap-after-pushes  -- 33
+
+thunk-after-alloc-rsp-min : ℕ
+thunk-after-alloc-rsp-min = cap-rsp-min thunk-cap-after-alloc  -- 17
+
+-- Verify computed values match expected
+_ : thunk-initial-rsp-min ≡ 49
+_ = refl
+
+_ : thunk-after-push1-rsp-min ≡ 41
+_ = refl
+
+_ : thunk-after-push2-rsp-min ≡ 33
+_ = refl
+
+_ : thunk-after-alloc-rsp-min ≡ 17
+_ = refl
+
+-- Thunk stage transitions (RSP threshold decreases at each stage)
+-- These replace the numeric lemmas 41≤49, 33≤49, etc.
+-- Uses from-yes-≤ for fast type-checking with symbolic types
+
+-- After push r15: threshold 41 fits initial 49
+after-push1-fits-initial : thunk-after-push1-rsp-min ≤ thunk-initial-rsp-min
+after-push1-fits-initial = from-yes-≤ (thunk-after-push1-rsp-min ≤? thunk-initial-rsp-min)
+
+-- After push rbp: threshold 33 fits initial 49
+after-push2-fits-initial : thunk-after-push2-rsp-min ≤ thunk-initial-rsp-min
+after-push2-fits-initial = from-yes-≤ (thunk-after-push2-rsp-min ≤? thunk-initial-rsp-min)
+
+-- After sub rsp,16: threshold 17 fits initial 49
+after-alloc-fits-initial : thunk-after-alloc-rsp-min ≤ thunk-initial-rsp-min
+after-alloc-fits-initial = from-yes-≤ (thunk-after-alloc-rsp-min ≤? thunk-initial-rsp-min)
+
+-- Four slots (32 bytes) fits initial threshold (49)
+four-slots-fits-initial : slots 4 ≤ thunk-initial-rsp-min
+four-slots-fits-initial = from-yes-≤ (slots 4 ≤? thunk-initial-rsp-min)
+
+-- Three slots (24 bytes) fits four slots (32 bytes)
+three-slots-fits-four : slots 3 ≤ slots 4
+three-slots-fits-four = from-yes-≤ (slots 3 ≤? slots 4)
+
+-- Post-rbp-push threshold (25) fits initial threshold (49)
+-- 25 = suc (slots 3), 49 = suc (slots 6)
+post-rbp-push-min : ℕ
+post-rbp-push-min = suc (slots 3)  -- 25
+
+_ : post-rbp-push-min ≡ 25
+_ = refl
+
+post-rbp-push-fits-initial : post-rbp-push-min ≤ thunk-initial-rsp-min
+post-rbp-push-fits-initial = from-yes-≤ (post-rbp-push-min ≤? thunk-initial-rsp-min)
 
 -- Semantic relationships: capacity invariants for thunk-setup
 -- Used when deriving bounds from capacity proofs
@@ -1626,12 +1709,6 @@ curry-alloc-nonzero s rsp-sufficient = diff-new-rsp , diff-new-rsp+slot
 ------------------------------------------------------------------------
 -- Apply helpers: 1-slot allocation (push r15)
 ------------------------------------------------------------------------
-
--- | Slot monotonicity for ≤ (follows from slots being multiplication)
--- Useful for deriving smaller bounds: a ≤ b → slots a ≤ slots b
-slots-mono-≤ : ∀ {a b} → a ≤ b → slots a ≤ slots b
-slots-mono-≤ {zero} {b} _ = z≤n
-slots-mono-≤ {suc a} {suc b} (s≤s a≤b) = +-monoʳ-≤ slot-size (slots-mono-≤ a≤b)
 
 -- | Compose rsp delta: chain two rsp deltas into one
 -- Given: rsp₁ = rsp₀ ∸ slots a, rsp₂ = rsp₁ ∸ slots b
