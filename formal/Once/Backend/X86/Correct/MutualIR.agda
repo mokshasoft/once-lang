@@ -35,7 +35,7 @@ open import Once.Backend.Common.ProgramLemmas
 -- Import memory region definitions
 open import Once.Backend.Common.MemoryRegionLemmas
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; StackPointer; frameSlot; slot-addr;
-         slot-addr-above-thunk-rbp; slot-addr-≥-base)
+         slot-addr-above-thunk-rbp; slot-addr-≥-base; addr; in-stack)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.Common.MemoryRegionLemmas using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
@@ -505,7 +505,7 @@ mutual
     readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
     StackInvariant s →
     StackCapacity s thunk-cap →  -- Threaded capacity: 4 + ir-stack-requirement f
-    StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ slot-size →  -- D041: caller-sp bound
+    addr caller-sp ≡ readReg (regs s) rsp +ℕ slot-size →  -- D041: caller-sp bound
     InCode (readReg (regs s) r15) →  -- r15 in code region (from Apply)
     Acc _<_ (ir-size (curry f)) →  -- Acc for curry f
     ∃[ s' ] (ThunkResult prog s s' caller-sp (λ b → eval f (env , b)) arg
@@ -1205,12 +1205,12 @@ mutual
 
       -- s-final.rsp = caller-sp.addr (ret returns to caller's frame)
       -- This follows from: s-final.rsp = s.rsp + 8 = caller-sp.addr
-      rsp-final-is-caller : readReg (regs s-final) rsp ≡ StackPointer.addr caller-sp
+      rsp-final-is-caller : readReg (regs s-final) rsp ≡ addr caller-sp
       rsp-final-is-caller = trans thunk-rsp-plus-8-proof (sym caller-sp-bound)
 
       -- InStack for s-final.rsp derived from caller-sp (no postulate needed!)
       rsp-final-in-stack : InStack (readReg (regs s-final) rsp)
-      rsp-final-in-stack = subst InStack (sym rsp-final-is-caller) (StackPointer.in-stack caller-sp)
+      rsp-final-in-stack = subst InStack (sym rsp-final-is-caller) (in-stack caller-sp)
 
       -- Validity propagation from s-after-f-raw to s-final
       -- Chain: s-after-f-raw → s-after-cleanup (= s-after-f) → s-final

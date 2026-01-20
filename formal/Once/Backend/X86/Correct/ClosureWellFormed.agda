@@ -29,7 +29,7 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-output-capacity; thunk-setup-capacity)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.Common.MemoryRegionLemmas
-  using (InCode; InHeap; StackPointer; frameSlot)
+  using (InCode; InHeap; StackPointer; frameSlot; addr)
 
 open import Once.Postulates using (encode)
 
@@ -154,7 +154,7 @@ record ClosureWellFormed {E A B : Type} (prog : Program)
       readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →  -- Return address on stack
       StackInvariant s →
       StackCapacity s thunk-capacity →  -- Capacity threaded from caller
-      StackPointer.addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
+      addr caller-sp ≡ readReg (regs s) rsp +ℕ 8 →  -- D041: caller-sp bound
       InCode (readReg (regs s) r15) →  -- r15 in code region (from Apply)
       ∃[ s' ] (ThunkResult prog s s' caller-sp semantics a
               × pc s' ≡ ret-addr)

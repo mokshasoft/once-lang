@@ -1151,7 +1151,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     -- D041: Prove caller-sp bound for thunk-correct
     -- apply-sp.addr = s-setup.rsp = s-call.rsp + 8
     -- Inline proof: s-call.rsp = s-setup.rsp - 8, so s-call.rsp + 8 = s-setup.rsp
-    apply-sp-bound : StackPointer.addr apply-sp ≡ readReg (regs s-call) rsp +ℕ slot-size
+    apply-sp-bound : sp-addr apply-sp ≡ readReg (regs s-call) rsp +ℕ slot-size
     apply-sp-bound = sym (trans (cong (_+ℕ slot-size) rsp-call) (m∸n+n≡m 8≤setup))
       where
         open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m; m≤m+n)
@@ -1247,8 +1247,8 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
             ≡⟨ frame-pres ⟩
           frameSlot (memory s-call) apply-sp 0
             ≡⟨ frameSlot-0-is-top (memory s-call) apply-sp ⟩
-          readMem (memory s-call) (StackPointer.addr apply-sp)
-            ≡⟨⟩  -- addr apply-sp = readReg (regs s-setup) rsp by definition
+          readMem (memory s-call) (sp-addr apply-sp)
+            ≡⟨⟩  -- sp-addr apply-sp = readReg (regs s-setup) rsp by definition
           readMem (memory s-call) (readReg (regs s-setup) rsp)
           ∎
 

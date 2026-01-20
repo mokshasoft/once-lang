@@ -61,26 +61,16 @@ postulate
     InStack (a ∸ k)
 
 ------------------------------------------------------------------------
--- Abstract Stack Pointer
+-- Abstract Stack/Heap Pointers (aliases for Semantics types)
 ------------------------------------------------------------------------
 
-record StackPointer : Set where
-  field
-    addr : Addr
-    in-stack : InStack addr
+-- StackPointer = StackAddr from Semantics (re-exported)
+StackPointer : Set
+StackPointer = StackAddr
 
-open StackPointer public
-
-------------------------------------------------------------------------
--- Abstract Heap Pointer
-------------------------------------------------------------------------
-
-record HeapPointer : Set where
-  field
-    haddr : Addr
-    in-heap : InHeap haddr
-
-open HeapPointer public
+-- HeapPointer = HeapAddr from Semantics (re-exported)
+HeapPointer : Set
+HeapPointer = HeapAddr
 
 ------------------------------------------------------------------------
 -- Stack Slot Addressing

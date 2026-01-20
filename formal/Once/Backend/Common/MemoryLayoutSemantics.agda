@@ -81,3 +81,66 @@ postulate
     ¬ (InStack a × InHeap a) ×
     ¬ (InStack a × InCode a) ×
     ¬ (InHeap a × InCode a)
+
+------------------------------------------------------------------------
+-- Abstract Address Types (in-region by construction)
+--
+-- These types bundle an address with proof of region membership.
+-- Using these types guarantees addresses are in the correct region
+-- without carrying proofs separately.
+------------------------------------------------------------------------
+
+-- | Stack address: in stack region by construction
+-- Note: Field names match existing StackPointer for compatibility
+record StackAddr : Set where
+  constructor stack-addr
+  field
+    addr : Addr
+    in-stack : InStack addr
+
+open StackAddr public
+
+-- | Heap address: in heap region by construction
+-- Note: Field name 'haddr' matches existing HeapPointer
+record HeapAddr : Set where
+  constructor heap-addr
+  field
+    haddr : Addr
+    in-heap : InHeap haddr
+
+open HeapAddr public
+
+-- | Code address: in code region by construction
+record CodeAddr : Set where
+  constructor code-addr
+  field
+    addr : Addr
+    in-code : InCode addr
+
+open CodeAddr public
+
+------------------------------------------------------------------------
+-- Boundary Conversions
+--
+-- Use these at the edges where abstract addresses meet concrete ℕ.
+------------------------------------------------------------------------
+
+-- | Enter abstract world (requires proof)
+from-raw-stack : (a : Addr) → InStack a → StackAddr
+from-raw-stack a proof = stack-addr a proof
+
+from-raw-heap : (a : Addr) → InHeap a → HeapAddr
+from-raw-heap a proof = heap-addr a proof
+
+from-raw-code : (a : Addr) → InCode a → CodeAddr
+from-raw-code a proof = code-addr a proof
+
+-- | Exit abstract world (extract raw address)
+to-raw-stack : StackAddr → Addr
+to-raw-stack sa = StackAddr.addr sa
+
+to-raw-heap : HeapAddr → Addr
+to-raw-heap ha = HeapAddr.haddr ha
+
+to-raw-code : CodeAddr → Addr
+to-raw-code ca = CodeAddr.addr ca

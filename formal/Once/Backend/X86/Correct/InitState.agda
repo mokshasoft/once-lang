@@ -46,7 +46,7 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation
   using (encode-in-heap-sem)
 open import Once.Backend.Common.MemoryRegionLemmas
-  using (StackPointer; HeapPointer; InStack; InHeap)
+  using (StackPointer; HeapPointer; InStack; InHeap; in-stack)
 open import Once.Backend.Common.MemoryRegionLemmas using () renaming (addr to sp-addr; haddr to hp-addr)
 
 open import Data.Bool using (Bool; true; false)
@@ -121,7 +121,7 @@ initWithInput-stack-capacity : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) →
   sp-addr sp > slots 2 →
   StackCapacity (initWithInput sp x) 2
 initWithInput-stack-capacity sp x addr-bound =
-  rsp-bound-to-capacity 2 (initWithInput sp x) (StackPointer.in-stack sp) addr-bound
+  rsp-bound-to-capacity 2 (initWithInput sp x) (in-stack sp) addr-bound
 
 -- | Initial state has sufficient rsp (derived from capacity)
 initWithInput-rsp-sufficient : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) →
