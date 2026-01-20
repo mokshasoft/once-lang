@@ -185,7 +185,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
 
     -- The 7 instructions that actually execute
     i0 : Instr
-    i0 = sub (reg rsp) (imm (slots 2))
+    i0 = sub (reg rsp) (imm (pair-alloc))
 
     i1 : Instr
     i1 = mov (mem (base rsp)) (reg rdi)
@@ -303,7 +303,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
       push (reg r15) ∷                 -- save r15 (apply uses it as scratch)
       push (reg rbp) ∷                 -- save frame pointer
       mov (reg rbp) (reg rsp) ∷        -- set frame pointer
-      sub (reg rsp) (imm (slots 2)) ∷         -- allocate pair
+      sub (reg rsp) (imm (pair-alloc)) ∷         -- allocate pair
       mov (mem (base rsp)) (reg r12) ∷
       mov (mem (base+disp rsp 8)) (reg rdi) ∷
       mov (reg rdi) (reg rsp) ∷
@@ -319,7 +319,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
         ≡⟨ refl ⟩
       length (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
               label 6 ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
-              sub (reg rsp) (imm (slots 2)) ∷
+              sub (reg rsp) (imm (pair-alloc)) ∷
               mov (mem (base rsp)) (reg r12) ∷
               mov (mem (base+disp rsp 8)) (reg rdi) ∷
               mov (reg rdi) (reg rsp) ∷
@@ -349,7 +349,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     curry-split : compile-x86 (curry f) ≡ curry-before-end-label ++ i6-label ∷ []
     curry-split = cong (λ rest → i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
                                  label 6 ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
-                                 sub (reg rsp) (imm (slots 2)) ∷
+                                 sub (reg rsp) (imm (pair-alloc)) ∷
                                  mov (mem (base rsp)) (reg r12) ∷
                                  mov (mem (base+disp rsp 8)) (reg rdi) ∷
                                  mov (reg rdi) (reg rsp) ∷ rest) curry-inner-split

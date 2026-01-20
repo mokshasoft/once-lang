@@ -145,7 +145,7 @@ record ClosureWellFormed {E A B : Type} (prog : Program)
     -- r15-in-code-evidence: r15 is in code region (set by Apply before call)
     -- v-arg: validity proof for argument (eliminates encode bridging!)
     -- v-env: validity proof for environment (eliminates encode bridging!)
-    -- cap: StackCapacity threaded from caller (replaces rsp > slots 2)
+    -- cap: StackCapacity threaded from caller (replaces rsp > pair-alloc)
     thunk-correct : ∀ (a : ⟦ A ⟧) (s : State) (ret-addr : ℕ) (caller-sp : StackPointer) →
       halted s ≡ false →
       pc s ≡ code-ptr →
@@ -259,7 +259,7 @@ open ApplyWithWFResult public
 --   pc s ≡ length prefix →
 --   readReg (regs s) rdi ≡ encode (cl , a) →
 --   StackInvariant s →
---   readReg (regs s) rsp > slots 2 →
+--   readReg (regs s) rsp > pair-alloc →
 --   ∃[ s' ] ApplyWithWFResult (prefix ++ compile-x86 (apply {A} {B}) ++ suffix)
 --                              s s' cl a (length prefix)
 -- run-apply-with-wf = ?

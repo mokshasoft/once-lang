@@ -470,8 +470,8 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     -- Memory at [orig-rsp - 8] in s2 (after push r15 at step 2)
     -- push r15 wrote to [orig-rsp - 16], not [orig-rsp - 8]
     -- s2.memory = writeMem (memory s1) (orig-rsp ∸ two-push-offset) orig-r15 (by write-addr-s2 and r15-s1)
-    -- Derive rsp > slots 2 from rsp-gt-slots3 using slot monotonicity
-    rsp-gt-slots2 : orig-rsp > slots 2
+    -- Derive rsp > pair-alloc from rsp-gt-slots3 using slot monotonicity
+    rsp-gt-slots2 : orig-rsp > pair-alloc
     rsp-gt-slots2 = ≤-<-trans (slots-mono-≤ output-fits-apply-cap) rsp-gt-slots3
 
     mem-s2-at-r14slot : readMem (memory s2) (orig-rsp ∸ slot-size) ≡ just orig-r14
@@ -563,7 +563,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         0<slot : 0 < slot-size
         0<slot = word-positive
 
-        0<slots2 : 0 < slots 2
+        0<slots2 : 0 < pair-alloc
         0<slots2 = pair-positive
 
         0<slots3 : 0 < saved-regs-size
@@ -573,7 +573,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         slot1≤rsp : slot-size ≤ orig-rsp
         slot1≤rsp = <⇒≤ rsp-gt-slots1
 
-        slots2≤rsp : slots 2 ≤ orig-rsp
+        slots2≤rsp : pair-alloc ≤ orig-rsp
         slots2≤rsp = <⇒≤ rsp-gt-slots2
 
         slots3≤rsp : saved-regs-size ≤ orig-rsp

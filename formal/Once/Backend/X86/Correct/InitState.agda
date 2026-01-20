@@ -112,21 +112,21 @@ initWithInput-stack-inv {A} sp x = r15-in-heap (encode-in-heap-sem x)
 open import Data.Nat using (ℕ; _>_; _≤_)
 open import Data.Nat.Properties using (≤-refl)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound; slots)
+  using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound; slots; pair-alloc)
 
 -- | Stack capacity for initial state
 -- The capacity comes from the StackPointer's properties.
 -- We require that the caller provides a StackPointer with sufficient capacity.
 initWithInput-stack-capacity : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) →
-  sp-addr sp > slots 2 →
+  sp-addr sp > pair-alloc →
   StackCapacity (initWithInput sp x) 2
 initWithInput-stack-capacity sp x addr-bound =
   rsp-bound-to-capacity 2 (initWithInput sp x) (in-stack sp) addr-bound
 
 -- | Initial state has sufficient rsp (derived from capacity)
 initWithInput-rsp-sufficient : ∀ {A} (sp : StackPointer) (x : ⟦ A ⟧) →
-  sp-addr sp > slots 2 →
-  readReg (regs (initWithInput sp x)) rsp > slots 2
+  sp-addr sp > pair-alloc →
+  readReg (regs (initWithInput sp x)) rsp > pair-alloc
 initWithInput-rsp-sufficient sp x addr-bound =
   capacity-2-to-rsp-bound (initWithInput sp x) (initWithInput-stack-capacity sp x addr-bound)
 

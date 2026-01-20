@@ -41,7 +41,7 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end; just-injective)
 open import Once.Backend.X86.Correct.InstrExec using (execPop)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (slot-size; slots; rsp-bound-to-capacity; R15Status; StackInvariant;
+  using (slot-size; slots; pair-alloc; rsp-bound-to-capacity; R15Status; StackInvariant;
          r15-in-heap; r15-in-code; r15-in-stack;
          stack-write-preserves-code-r15;
          stack-write-preserves-r15; stack-inv-for-code-ptr;
@@ -168,7 +168,7 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × readReg (regs s') r14 ≡ readReg (regs s) r14
           × readReg (regs s') rbp ≡ readReg (regs s) rbp
           × StackInvariant s'
-          × StackCapacity s' 3  -- Capacity after push (was rsp > slots 2)
+          × StackCapacity s' 3  -- Capacity after push (was rsp > pair-alloc)
           -- NEW: original r15 is saved on stack (at rsp after push = old rsp - 8)
           × readMem (memory s') (readReg (regs s') rsp) ≡ just (readReg (regs s) r15)
           -- RSP tracking: s'.rsp = s.rsp - 8 (push decrements by 8)
@@ -187,9 +187,9 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     new-rsp = old-rsp ∸ slot-size
 
     -- Extract rsp-bound from cap for internal use (cap : StackCapacity s 4 gives > slots 4)
-    -- Derive > slots 2 for helpers that need weaker bound
+    -- Derive > pair-alloc for helpers that need weaker bound
     open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
-    rsp-bound : readReg (regs s) rsp > slots 2
+    rsp-bound : readReg (regs s) rsp > pair-alloc
     rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 2)) (StackCapacity.rsp-sufficient cap)
 
     -- D041: Stack region proof for new-rsp (uses cap directly, no postulate!)
@@ -572,7 +572,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     ret-addr = offset +ℕ 7  -- Updated
 
     -- Extract rsp-bound from cap for internal use (cap : StackCapacity s apply-cap-after-push gives > saved-regs-size)
-    -- Used where > slots 2 suffices (saved-regs-size > slots 2)
+    -- Used where > pair-alloc suffices (saved-regs-size > pair-alloc)
     rsp-bound : readReg (regs s) rsp > slots apply-cap-after-call
     rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 1)) (StackCapacity.rsp-sufficient cap)
 
@@ -670,7 +670,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     rsp-sufficient-1 = capacity-after-push s s1 apply-cap-after-call cap rsp1-eq
 
     -- Memory at original rsp preserved (call writes at new-rsp = old-rsp - 8, not old-rsp)
-    -- Since old-rsp > slots 2, we have old-rsp > 8, so old-rsp - 8 ≠ old-rsp
+    -- Since old-rsp > pair-alloc, we have old-rsp > 8, so old-rsp - 8 ≠ old-rsp
     -- D041: Use abstract helper from StackInvariant
     old-rsp≢new-rsp : old-rsp ≢ new-rsp
     old-rsp≢new-rsp = apply-rsp-diff-from-alloc s rsp-bound
@@ -717,7 +717,7 @@ record ApplyPopResult {A B : Type} (prefix suffix : Program)
     r14-pop      : readReg (regs s') r14 ≡ readReg (regs s) r14
     rbp-pop      : readReg (regs s') rbp ≡ readReg (regs s) rbp
     stack-inv-pop : StackInvariant s'
-    rsp-sufficient-pop   : readReg (regs s') rsp > slots 2
+    rsp-sufficient-pop   : readReg (regs s') rsp > pair-alloc
     rsp-restored : readReg (regs s') rsp ≡ orig-rsp  -- RSP restored to original
     -- Pop doesn't write memory, so all memory is preserved
     mem-pop-preserved : memory s' ≡ memory s
@@ -747,7 +747,7 @@ apply-pop-star : ∀ {A B} (prefix suffix : Program)
   readMem (memory s) (readReg (regs s) rsp) ≡ just old-r15 →
   readReg (regs s) rsp ≡ orig-rsp ∸ slot-size →
   R15OrigInfo old-r15 orig-rsp →  -- Changed from disjunction to R15OrigInfo
-  readReg (regs s) rsp > slots 2 →
+  readReg (regs s) rsp > pair-alloc →
   ∃[ s' ] ApplyPopResult {A} {B} prefix suffix old-r15 orig-rsp s s'
 apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rsp-eq orig-inv rsp-sufficient =
   s1 , record
@@ -854,7 +854,7 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
       orig-rsp ∎
       where
         -- Need 8 ≤ orig-rsp for m∸n+n≡m
-        -- From rsp-sufficient : s.rsp > slots 2, and rsp-eq : s.rsp = orig-rsp - 8
+        -- From rsp-sufficient : s.rsp > pair-alloc, and rsp-eq : s.rsp = orig-rsp - 8
         -- So orig-rsp - 8 > 16, hence orig-rsp > 24 ≥ 8
         open import Data.Nat using (s≤s; z≤n)
         open import Data.Nat.Properties using (<⇒≤; m∸n≤m)
@@ -863,7 +863,7 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
         s-rsp≤orig : readReg (regs s) rsp ≤ orig-rsp
         s-rsp≤orig = subst (_≤ orig-rsp) (sym rsp-eq) (m∸n≤m orig-rsp slot-size)
 
-        -- Note: rsp-sufficient : s.rsp > slots 2 = 17 ≤ s.rsp (m > n = suc n ≤ m)
+        -- Note: rsp-sufficient : s.rsp > pair-alloc = 17 ≤ s.rsp (m > n = suc n ≤ m)
         -- So we can use it directly without <⇒≤
         8≤orig-rsp : 8 ≤ orig-rsp
         8≤orig-rsp = ≤-trans word-fits-thunk-bound (≤-trans rsp-sufficient s-rsp≤orig)
@@ -886,22 +886,22 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
                        (subst (sp-addr frame ≥_) (sym rsp1-eq-orig) frame-bound)
 
     -- Derive rsp-sufficient-1 from preconditions (no postulate!)
-    -- s.rsp = orig-rsp - 8 and s.rsp > slots 2
-    -- orig-rsp ≥ s.rsp (since m ∸ n ≤ m), and s.rsp ≥ 17 (from s.rsp > slots 2 = 16)
-    -- By transitivity: orig-rsp ≥ 17 = suc (slots 2), i.e., orig-rsp > slots 2
+    -- s.rsp = orig-rsp - 8 and s.rsp > pair-alloc
+    -- orig-rsp ≥ s.rsp (since m ∸ n ≤ m), and s.rsp ≥ 17 (from s.rsp > pair-alloc = 16)
+    -- By transitivity: orig-rsp ≥ 17 = suc (pair-alloc), i.e., orig-rsp > pair-alloc
     -- s1.rsp = orig-rsp (after pop restores)
-    rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
-    rsp-sufficient-1 = subst (_> slots 2) (sym rsp1-eq-orig) orig-rsp>slots2
+    rsp-sufficient-1 : readReg (regs s1) rsp > pair-alloc
+    rsp-sufficient-1 = subst (_> pair-alloc) (sym rsp1-eq-orig) orig-rsp>slots2
       where
         open import Data.Nat.Properties using (≤-trans; m∸n≤m)
-        -- rsp-sufficient : s.rsp > slots 2 = slots 2 < s.rsp = suc (slots 2) ≤ s.rsp = 17 ≤ s.rsp
+        -- rsp-sufficient : s.rsp > pair-alloc = pair-alloc < s.rsp = suc (pair-alloc) ≤ s.rsp = 17 ≤ s.rsp
         -- orig-rsp ≥ s.rsp (since s.rsp = orig-rsp ∸ 8 ≤ orig-rsp by m∸n≤m)
         orig-rsp≥s-rsp : orig-rsp ≥ readReg (regs s) rsp
         orig-rsp≥s-rsp = subst (orig-rsp ≥_) (sym rsp-eq) (m∸n≤m orig-rsp slot-size)
 
         -- By transitivity: 17 ≤ s.rsp ≤ orig-rsp, so 17 ≤ orig-rsp
-        -- 17 ≤ orig-rsp is suc (slots 2) ≤ orig-rsp = slots 2 < orig-rsp = orig-rsp > slots 2
-        orig-rsp>slots2 : orig-rsp > slots 2
+        -- 17 ≤ orig-rsp is suc (pair-alloc) ≤ orig-rsp = pair-alloc < orig-rsp = orig-rsp > pair-alloc
+        orig-rsp>slots2 : orig-rsp > pair-alloc
         orig-rsp>slots2 = ≤-trans rsp-sufficient orig-rsp≥s-rsp
 
 ------------------------------------------------------------------------
@@ -924,7 +924,7 @@ record ApplyWfResult {A B : Type} (prefix suffix : Program)
     r15-final    : readReg (regs s') r15 ≡ readReg (regs s) r15
     rbp-final    : readReg (regs s') rbp ≡ readReg (regs s) rbp
     stack-inv    : StackInvariant s'
-    rsp-sufficient : readReg (regs s') rsp > slots 2
+    rsp-sufficient : readReg (regs s') rsp > pair-alloc
     rsp-restored : readReg (regs s') rsp ≡ readReg (regs s) rsp
     mem-above    : ∀ addr → addr ≥ readReg (regs s) rsp →
                    readMem (memory s') addr ≡ readMem (memory s) addr
@@ -1026,9 +1026,9 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
 
     -- Extract rsp-bound from cap for internal use
     -- cap : StackCapacity s (apply-consumed-slots + wf.thunk-capacity) gives > slots (2 + thunk-cap)
-    -- Derive > slots 2 for helpers that need weaker bound (since 2 ≤ 2 + thunk-cap)
+    -- Derive > pair-alloc for helpers that need weaker bound (since 2 ≤ 2 + thunk-cap)
     open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
-    rsp-bound : readReg (regs s) rsp > slots 2
+    rsp-bound : readReg (regs s) rsp > pair-alloc
     rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 (ClosureWellFormed.thunk-capacity wf))) (StackCapacity.rsp-sufficient cap)
 
     -- Derive StackCapacity s 4 for apply-setup-star
@@ -1424,7 +1424,7 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
           × pc s' ≡ offset +ℕ 8  -- compile-length apply = 8
           × ValidAt (semantics arg) (readReg (regs s') rax) (memory s')
           × StackInvariant s'
-          × readReg (regs s') rsp > slots 2)
+          × readReg (regs s') rsp > pair-alloc)
 run-apply-star-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr s
                        wf h-eq pc-eq stack-inv cap input-valid mem-layout v-arg v-env =
   let result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s
@@ -1442,7 +1442,7 @@ run-apply-star-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
 -- ALL PROPERTIES NOW FULLY PROVEN (zero local postulates!):
 --   - star, halted, pc, rax (from thunk-correct)
 --   - r14, r15, rbp (r15 preserved via push/pop!)
---   - stack-inv, rsp > slots 2 (from thunk-correct)
+--   - stack-inv, rsp > pair-alloc (from thunk-correct)
 --   - Memory at rbp preserved (via mem-above + RbpInvariant.rsp≤rbp)
 --   - Memory at rbp+8 preserved (via mem-above + rsp ≤ rbp ≤ rbp+8)
 --   - Memory above rbp preserved (via mem-above + addr > rbp ≥ rsp)

@@ -101,7 +101,7 @@ record ThunkSetupResult {A B C : Type} (f : IR (A * B) C)
 
     -- Stack invariants
     stack-inv-setup : StackInvariant s'
-    rsp-sufficient-setup : readReg (regs s') rsp > slots 2
+    rsp-sufficient-setup : readReg (regs s') rsp > pair-alloc
     rbp-inv-setup : RbpInvariant s'
 
     -- RSP delta: thunk setup consumes thunk-setup-consumed-slots (4) slots
@@ -600,14 +600,14 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     open import Data.Nat.Properties using (m∸n+n≡m; +-monoˡ-<; m<m+n; 0<1+n)
 
     -- Proof: new-rsp = rsp-after-push-rbp - 16 ≢ rsp-after-push-rbp
-    -- Key insight: rsp-after-push-rbp = old-rsp - 16 ≥ 1 (since old-rsp > slots 2)
+    -- Key insight: rsp-after-push-rbp = old-rsp - 16 ≥ 1 (since old-rsp > pair-alloc)
     -- Case 1: If rsp-after-push-rbp ≥ 16, then new-rsp = rsp-after-push-rbp - 16 < rsp-after-push-rbp
     -- Case 2: If rsp-after-push-rbp < 16, then new-rsp = 0, but rsp-after-push-rbp ≥ 1 > 0
     open import Data.Nat using (_≤?_; z<s)
     open import Relation.Nullary using (yes; no)
 
     -- First, show rsp-after-push-rbp ≥ 1 (stronger than just > 0)
-    -- rsp-sufficient : old-rsp > slots 2, i.e., old-rsp ≥ 17
+    -- rsp-sufficient : old-rsp > pair-alloc, i.e., old-rsp ≥ 17
     -- rsp-after-push-rbp = old-rsp - 16 ≥ 17 - 16 = 1
     open import Data.Nat.Properties using (∸-monoˡ-≤)
     open import Data.Empty using (⊥-elim)
@@ -728,7 +728,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- Derive new-rsp = old-rsp ∸ thunk-frame-size locally
         new-rsp-eq-local : new-rsp ≡ old-rsp ∸ thunk-frame-size
         new-rsp-eq-local = trans (cong (_∸ two-push-offset) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp two-push-offset thunk-local-size)
-        -- Use abstract helper: (old-rsp ∸ thunk-frame-size) < old-rsp when old-rsp > slots 2
+        -- Use abstract helper: (old-rsp ∸ thunk-frame-size) < old-rsp when old-rsp > pair-alloc
         new-rsp<old-rsp : new-rsp < old-rsp
         new-rsp<old-rsp = subst (_< old-rsp) (sym new-rsp-eq-local) (n∸4slot<n-raw old-rsp rsp-bound)
 
@@ -742,7 +742,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- new-rsp + 8 = (old-rsp ∸ thunk-frame-size) + 8
         new-rsp+8-eq : new-rsp +ℕ slot-size ≡ (old-rsp ∸ thunk-frame-size) +ℕ 8
         new-rsp+8-eq = cong (_+ℕ 8) new-rsp-eq-local
-        -- Use abstract helper: (old-rsp ∸ thunk-frame-size) + 8 < old-rsp when old-rsp > slots 2
+        -- Use abstract helper: (old-rsp ∸ thunk-frame-size) + 8 < old-rsp when old-rsp > pair-alloc
         new-rsp+8<old-rsp : new-rsp +ℕ slot-size < old-rsp
         new-rsp+8<old-rsp = subst (_< old-rsp) (sym new-rsp+8-eq) (n∸4slot+slot<n-raw old-rsp rsp-bound)
 
@@ -1189,7 +1189,7 @@ record ThunkRetResult (prog : Program) (s s' : State) (ret-addr : ℕ) : Set whe
     ret-r15 : readReg (regs s') r15 ≡ readReg (regs s) r15
     ret-rbp : readReg (regs s') rbp ≡ readReg (regs s) rbp
     ret-stack-inv : StackInvariant s'
-    ret-rsp-bound : readReg (regs s') rsp > slots 2
+    ret-rsp-bound : readReg (regs s') rsp > pair-alloc
     ret-rsp-plus-8 : readReg (regs s') rsp ≡ readReg (regs s) rsp +ℕ 8
     ret-mem-preserved : ∀ addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
@@ -1206,7 +1206,7 @@ thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
   pc s ≡ ret-offset →
   readMem (memory s) (readReg (regs s) rsp) ≡ just ret-addr →
   InCode (readReg (regs s) r15) →  -- r15 in code region (from Apply)
-  readReg (regs s) rsp > slots 2 →
+  readReg (regs s) rsp > pair-alloc →
   ∃[ s' ] ThunkRetResult prog s s' ret-addr
 thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
                h-false pc-eq mem-ret r15-code rsp-sufficient =
@@ -1286,11 +1286,11 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
     rsp1 = readReg-writeReg-same (regs s) rsp (old-rsp +ℕ 8)
 
     -- Derive rsp-sufficient-1 from input rsp-sufficient (no postulate needed!)
-    -- Input: rsp-sufficient : old-rsp > slots 2 = 16
+    -- Input: rsp-sufficient : old-rsp > pair-alloc = 16
     -- After ret: rsp' = old-rsp + 8
-    -- Proof: slots 2 < old-rsp ≤ old-rsp + 8 = rsp'
-    rsp-sufficient-1 : readReg (regs s1) rsp > slots 2
-    rsp-sufficient-1 = subst (_> slots 2) (sym rsp1) (<-≤-trans rsp-sufficient (m≤m+n old-rsp 8))
+    -- Proof: pair-alloc < old-rsp ≤ old-rsp + 8 = rsp'
+    rsp-sufficient-1 : readReg (regs s1) rsp > pair-alloc
+    rsp-sufficient-1 = subst (_> pair-alloc) (sym rsp1) (<-≤-trans rsp-sufficient (m≤m+n old-rsp 8))
       where
         open import Data.Nat.Properties using (<-≤-trans)
 

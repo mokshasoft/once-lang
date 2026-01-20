@@ -19,7 +19,7 @@ open import Once.Backend.X86.MemoryRegionLemmas using (InStack; InHeap; InCode; 
 open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
-         capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged; slots;
+         capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged; slots; pair-alloc;
          ir-rsp-delta; ir-stack-requirement; ir-output-capacity; output-slots)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
@@ -125,7 +125,7 @@ IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s 
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  readReg (regs s) rsp > pair-alloc →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
 
@@ -205,7 +205,7 @@ IRRunnerV = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s
   readReg (regs s) rdi ≡ addr-in →
   ValidAt x addr-in (memory s) →  -- Input validity (replaces encode x)
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  readReg (regs s) rsp > pair-alloc →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
@@ -222,7 +222,7 @@ IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A �
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
-  readReg (regs s) rsp > slots 2 →
+  readReg (regs s) rsp > pair-alloc →
   RbpInvariant s →
   ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
   let prog = prefix ++ compile-x86 ir ++ suffix

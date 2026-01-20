@@ -37,7 +37,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; apply-capacity; apply-consumed-slots)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; pair-alloc; StackCapacity; apply-capacity; apply-consumed-slots)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -206,7 +206,7 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
           × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
           × ValidAt (semantics arg) (readReg (regs s') rax) (memory s')
           × StackInvariant s'
-          × readReg (regs s') rsp > slots 2)
+          × readReg (regs s') rsp > pair-alloc)
 run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr arg-addr env
                        semantics arg s wf mem-layout h-eq pc-eq stack-inv cap input-valid v-arg v-env =
   s' , R.star , R.h-final , R.pc-final , R.rax-valid , R.stack-inv , R.rsp-sufficient
@@ -301,7 +301,7 @@ test-apply-with-wf-eliminates-postulate :
           × pc s' ≡ offset +ℕ compile-length (apply {A} {B})
           × ValidAt (semantics arg) (readReg (regs s') rax) (memory s')
           × StackInvariant s'
-          × readReg (regs s') rsp > slots 2)
+          × readReg (regs s') rsp > pair-alloc)
 test-apply-with-wf-eliminates-postulate = run-apply-with-full-wf
 -- ^^^ This is the key: we just delegate to run-apply-with-full-wf!
 -- The postulate is NOT used in this path.

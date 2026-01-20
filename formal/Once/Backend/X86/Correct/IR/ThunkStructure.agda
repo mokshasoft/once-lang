@@ -21,7 +21,7 @@ open import Once.Backend.X86.Correct.Foundation
 -- Additional imports not in Foundation
 open import Once.Backend.X86.Correct.CompileLength using (compile-length-correct)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; pair-alloc)
 open import Once.Backend.X86.Correct.Arithmetic using (from-yes-<)
 open import Data.Nat using (_<?_)
 
@@ -104,7 +104,7 @@ curry-closure-setup : ∀ {A B C} (f : IR (A * B) C) → Program
 curry-closure-setup {A} {B} {C} f =
   let len-f = compile-length f
   in
-  sub (reg rsp) (imm (slots 2)) ∷
+  sub (reg rsp) (imm (pair-alloc)) ∷
   mov (mem (base rsp)) (reg rdi) ∷
   lea r9 (rip+disp 4) ∷
   mov (mem (base+disp rsp 8)) (reg r9) ∷
@@ -134,7 +134,7 @@ thunk-i3 : Instr
 thunk-i3 = mov (reg rbp) (reg rsp)
 
 thunk-i4 : Instr
-thunk-i4 = sub (reg rsp) (imm (slots 2))
+thunk-i4 = sub (reg rsp) (imm (pair-alloc))
 
 thunk-i5 : Instr
 thunk-i5 = mov (mem (base rsp)) (reg r12)

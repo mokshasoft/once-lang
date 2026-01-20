@@ -564,7 +564,7 @@ mutual
       -- Prefix for f: prefix ++ first 14 instructions of curry (6 closure + 8 thunk)
       curry-closure-setup : Program
       curry-closure-setup =
-        sub (reg rsp) (imm (slots 2)) ∷
+        sub (reg rsp) (imm (pair-alloc)) ∷
         mov (mem (base rsp)) (reg rdi) ∷
         lea r9 (rip+disp 4) ∷
         mov (mem (base+disp rsp slot-size)) (reg r9) ∷
@@ -577,7 +577,7 @@ mutual
         push (reg r15) ∷                       -- save r15 (apply's scratch register)
         push (reg rbp) ∷                       -- save frame pointer
         mov (reg rbp) (reg rsp) ∷              -- set frame pointer
-        sub (reg rsp) (imm (slots 2)) ∷
+        sub (reg rsp) (imm (pair-alloc)) ∷
         mov (mem (base rsp)) (reg r12) ∷
         mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
         mov (reg rdi) (reg rsp) ∷ []
@@ -728,7 +728,7 @@ mutual
       -- 3. Memory at s.rsp contains ret-addr (never modified)
 
       -- rbp value after f: preserved from setup, which set it to s.rsp - 16
-      rbp-after-f : readReg (regs s-after-f-raw) rbp ≡ readReg (regs s) rsp ∸ slots 2
+      rbp-after-f : readReg (regs s-after-f-raw) rbp ≡ readReg (regs s) rsp ∸ pair-alloc
       rbp-after-f = trans (IRStarResultV.ir-rbp r-f-v) rbp-setup
 
       -- Fetch cleanup instructions
@@ -791,7 +791,7 @@ mutual
       mem-c1-eq-f addr = refl
 
       -- rsp in s-c1 = rbp-val = old-rsp-s - 16 (computed inline, same as rsp-c1 below)
-      rsp-c1-inline : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ slots 2
+      rsp-c1-inline : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ pair-alloc
       rsp-c1-inline = trans (readReg-writeReg-same (regs s-after-f-raw) rsp rbp-val) rbp-after-f
 
       -- Chain: memory at rbp after setup is preserved through f, available at rsp after cleanup
@@ -800,16 +800,16 @@ mutual
       mem-rbp-preserved-f = IRStarResultV.ir-mem-rbp r-f-v
 
       -- Convert address from rbp-after-setup to old-rsp-s ∸ 16
-      rbp-setup-addr : readReg (regs s-after-setup) rbp ≡ old-rsp-s ∸ slots 2
+      rbp-setup-addr : readReg (regs s-after-setup) rbp ≡ old-rsp-s ∸ pair-alloc
       rbp-setup-addr = rbp-setup
 
       pop-rbp-mem : readMem (memory s-c1) (readReg (regs s-c1) rsp) ≡ just (readReg (regs s) rbp)
       pop-rbp-mem = begin
         readMem (memory s-c1) (readReg (regs s-c1) rsp)
           ≡⟨ cong (readMem (memory s-c1)) rsp-c1-inline ⟩
-        readMem (memory s-c1) (old-rsp-s ∸ slots 2)
-          ≡⟨ mem-c1-eq-f (old-rsp-s ∸ slots 2) ⟩
-        readMem (memory s-after-f-raw) (old-rsp-s ∸ slots 2)
+        readMem (memory s-c1) (old-rsp-s ∸ pair-alloc)
+          ≡⟨ mem-c1-eq-f (old-rsp-s ∸ pair-alloc) ⟩
+        readMem (memory s-after-f-raw) (old-rsp-s ∸ pair-alloc)
           ≡⟨ cong (readMem (memory s-after-f-raw)) (sym rbp-setup-addr) ⟩
         readMem (memory s-after-f-raw) (readReg (regs s-after-setup) rbp)
           ≡⟨ mem-rbp-preserved-f ⟩
@@ -831,14 +831,14 @@ mutual
                     (+-assoc cleanup-offset 1 1)
 
       -- rsp after mov rsp rbp = old-rsp-s - 16
-      rsp-c1 : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ slots 2
+      rsp-c1 : readReg (regs s-c1) rsp ≡ old-rsp-s ∸ pair-alloc
       rsp-c1 = trans (readReg-writeReg-same (regs s-after-f-raw) rsp rbp-val) rbp-after-f
 
       -- Precondition: 16 ≤ old-rsp-s (for m+[n∸m]≡n later)
-      -- Derive rsp > slots 2 from cap-thunk (capacity 4 + ir-req f ≥ 2)
-      rsp>slots2 : readReg (regs s) rsp > slots 2
+      -- Derive rsp > pair-alloc from cap-thunk (capacity 4 + ir-req f ≥ 2)
+      rsp>slots2 : readReg (regs s) rsp > pair-alloc
       rsp>slots2 = ≤-<-trans (slots-mono-≤ (m≤m+n 2 (output-slots +ℕ ir-stack-requirement f))) (StackCapacity.rsp-sufficient cap-thunk)
-      16≤rsp : slots 2 ≤ readReg (regs s) rsp
+      16≤rsp : pair-alloc ≤ readReg (regs s) rsp
       16≤rsp = Data.Nat.Properties.<⇒≤ rsp>slots2
 
       -- rsp after pop rbp = (old-rsp-s - 16) + 8 = old-rsp-s - 8
@@ -854,7 +854,7 @@ mutual
                                    (readReg (regs s-c1) rsp +ℕ slot-size) ⟩
         readReg (regs s-c1) rsp +ℕ slot-size
           ≡⟨ cong (_+ℕ slot-size) rsp-c1 ⟩
-        (old-rsp-s ∸ slots 2) +ℕ slot-size
+        (old-rsp-s ∸ pair-alloc) +ℕ slot-size
           ≡⟨ cong (_+ℕ slot-size) (sym (∸-+-assoc old-rsp-s slot-size slot-size)) ⟩
         ((old-rsp-s ∸ slot-size) ∸ slot-size) +ℕ slot-size
           ≡⟨ trans (+-comm ((old-rsp-s ∸ slot-size) ∸ slot-size) slot-size) (m+[n∸m]≡n 8≤old-rsp-8) ⟩
@@ -924,7 +924,7 @@ mutual
       -- old-rsp - 8 > rbp because rbp = old-rsp - 16
       -- Need: old-rsp-s ∸ 16 < old-rsp-s ∸ slot-size
       -- Use ∸-monoʳ-< : o < n → n ≤ m → m ∸ n < m ∸ o
-      rsp-16<rsp-8 : readReg (regs s) rsp ∸ slots 2 < readReg (regs s) rsp ∸ slot-size
+      rsp-16<rsp-8 : readReg (regs s) rsp ∸ pair-alloc < readReg (regs s) rsp ∸ slot-size
       rsp-16<rsp-8 = Data.Nat.Properties.∸-monoʳ-< word-fits-pair-strict 16≤rsp
 
       old-rsp-8>rbp : old-rsp-s ∸ slot-size > readReg (regs s-after-setup) rbp
@@ -1021,8 +1021,8 @@ mutual
 
       -- Stack invariant and rsp bound
       -- rsp-sufficient-c3 follows from rsp-c3 (rsp restored to original) and rsp>slots2 (original > 16)
-      rsp-sufficient-c3 : readReg (regs s-c3) rsp > slots 2
-      rsp-sufficient-c3 = subst (_> slots 2) (sym rsp-c3) rsp>slots2
+      rsp-sufficient-c3 : readReg (regs s-c3) rsp > pair-alloc
+      rsp-sufficient-c3 = subst (_> pair-alloc) (sym rsp-c3) rsp>slots2
 
       -- Stack invariant: r15 and rsp restored to original
       r15-s-to-c3 : readReg (regs s-c3) r15 ≡ readReg (regs s) r15
@@ -1061,14 +1061,14 @@ mutual
       -- Need: old-rsp > (old-rsp ∸ 16)
       -- m<m+n proves: (old-rsp ∸ 16) < (old-rsp ∸ 16) + 16
       -- Chain: (old-rsp ∸ 16) + 16 ≡ 16 + (old-rsp ∸ 16) ≡ old-rsp
-      rbp+16≡old-rsp : readReg (regs s-after-setup) rbp +ℕ slots 2 ≡ old-rsp-s
-      rbp+16≡old-rsp = trans (cong (_+ℕ slots 2) rbp-setup-addr)
-                             (trans (+-comm (old-rsp-s ∸ slots 2) (slots 2)) (m+[n∸m]≡n 16≤rsp))
+      rbp+16≡old-rsp : readReg (regs s-after-setup) rbp +ℕ pair-alloc ≡ old-rsp-s
+      rbp+16≡old-rsp = trans (cong (_+ℕ pair-alloc) rbp-setup-addr)
+                             (trans (+-comm (old-rsp-s ∸ pair-alloc) (pair-alloc)) (m+[n∸m]≡n 16≤rsp))
 
       old-rsp>rbp : old-rsp-s > readReg (regs s-after-setup) rbp
       old-rsp>rbp = subst (_> readReg (regs s-after-setup) rbp)
                          rbp+16≡old-rsp
-                         (Data.Nat.Properties.m<m+n (readReg (regs s-after-setup) rbp) {slots 2} (s≤s z≤n))
+                         (Data.Nat.Properties.m<m+n (readReg (regs s-after-setup) rbp) {pair-alloc} (s≤s z≤n))
 
       mem-ret-through-f : readMem (memory s-after-f-raw) old-rsp-s ≡ just ret-addr
       mem-ret-through-f = begin
@@ -1120,7 +1120,7 @@ mutual
       stack-inv-f : StackInvariant s-after-f
       stack-inv-f = stack-inv-c3
 
-      rsp-sufficient-f : readReg (regs s-after-f) rsp > slots 2
+      rsp-sufficient-f : readReg (regs s-after-f) rsp > pair-alloc
       rsp-sufficient-f = rsp-sufficient-c3
 
       mem-ret-f : readMem (memory s-after-f) (readReg (regs s-after-f) rsp) ≡ just ret-addr
@@ -1180,7 +1180,7 @@ mutual
       stack-inv-final : StackInvariant s-final
       stack-inv-final = ret-stack-inv ret-rec
 
-      rsp-sufficient-final : readReg (regs s-final) rsp > slots 2
+      rsp-sufficient-final : readReg (regs s-final) rsp > pair-alloc
       rsp-sufficient-final = ret-rsp-bound ret-rec
 
       rsp-ret-plus-8 : readReg (regs s-final) rsp ≡ readReg (regs s-after-f) rsp +ℕ slot-size
@@ -1345,8 +1345,8 @@ mutual
           open import Data.Nat.Properties using (<-trans)
           -- addr > rsp > rsp - 16 = rbp-after-setup
           -- Use private m∸n<m-when-positive helper instead of local definition
-          rsp>rsp-16 : readReg (regs s) rsp > readReg (regs s) rsp ∸ slots 2
-          rsp>rsp-16 = m∸n<m-when-positive (readReg (regs s) rsp) (slots 2) (≤-trans (s≤s z≤n) rsp>slots2) (s≤s z≤n)
+          rsp>rsp-16 : readReg (regs s) rsp > readReg (regs s) rsp ∸ pair-alloc
+          rsp>rsp-16 = m∸n<m-when-positive (readReg (regs s) rsp) (pair-alloc) (≤-trans (s≤s z≤n) rsp>slots2) (s≤s z≤n)
           addr>rbp : addr > readReg (regs s-after-setup) rbp
           addr>rbp = subst (addr >_) (sym rbp-setup) (<-trans rsp>rsp-16 addr>rsp)
 

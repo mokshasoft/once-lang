@@ -103,7 +103,7 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
 
     -- The 4 instructions of inr
     i0 : Instr
-    i0 = sub (reg rsp) (imm (slots 2))
+    i0 = sub (reg rsp) (imm (pair-alloc))
     i1 : Instr
     i1 = mov (mem (base rsp)) (imm 1)
     i2 : Instr

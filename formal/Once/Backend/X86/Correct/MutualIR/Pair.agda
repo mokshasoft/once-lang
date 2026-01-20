@@ -22,7 +22,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; slot-size; StackCapacity; slots-mono-≤; ir-stack-requirement; ir-rsp-delta; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req; pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot; saved-regs-size; frame-size)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; slot-size; pair-alloc; StackCapacity; slots-mono-≤; ir-stack-requirement; ir-rsp-delta; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req; pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot; saved-regs-size; frame-size)
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>; m≤m+n; m≤m⊔n; m≤n⊔m)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (rsp-min-pair-fits-frame; word-fits-thunk-bound-strict)
 open import Once.Backend.X86.MemoryRegionLemmas
@@ -109,7 +109,7 @@ private
 
   -- Helper: m ∸ 40 + 8 < m when m > 16 (used in mem-above-final proof)
   -- This replaces a complex `with` clause that was defined inline
-  rsp∸40+8<rsp : ∀ (rsp-val : ℕ) → rsp-val > slots 2 → rsp-val ∸ frame-size +ℕ slot-size < rsp-val
+  rsp∸40+8<rsp : ∀ (rsp-val : ℕ) → rsp-val > pair-alloc → rsp-val ∸ frame-size +ℕ slot-size < rsp-val
   rsp∸40+8<rsp rsp-val rsp>16 with 40 ≤? rsp-val
   ... | yes 40≤rsp = subst (_< rsp-val) (sym m∸40+8≡m∸32) (m∸n<m-when-m>n rsp-val 32 (s≤s z≤n) rsp>32)
     where
