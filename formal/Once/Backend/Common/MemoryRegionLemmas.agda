@@ -102,13 +102,15 @@ offset-distinct sp k₁ k₂ k₁≢k₂ = grow-injective (addr sp) k₁ k₂ k�
 slot-in-stack : ∀ sp k → InStack (slot-addr sp k)
 slot-in-stack sp k = grow-preserves-region (addr sp) k (in-stack sp)
 
--- Remaining slot properties require additional assumptions or are arch-specific
-postulate
-  -- | Different stack pointers give different slot addresses
-  -- (requires: grow a₁ k ≢ grow a₂ k when a₁ ≢ a₂)
-  sp-distinct : ∀ sp₁ sp₂ k → addr sp₁ ≢ addr sp₂ → slot-addr sp₁ k ≢ slot-addr sp₂ k
+-- | Different stack pointers give different slot addresses (same offset)
+-- Proven from grow-addr-injective
+sp-distinct : ∀ sp₁ sp₂ k → addr sp₁ ≢ addr sp₂ → slot-addr sp₁ k ≢ slot-addr sp₂ k
+sp-distinct sp₁ sp₂ k addr≢ = grow-addr-injective (addr sp₁) (addr sp₂) k addr≢
 
+-- Remaining slot property requires additional assumptions
+postulate
   -- | Different frames have disjoint slots
+  -- NOTE: This is only true if frames don't overlap. Requires frame separation guarantee.
   frames-disjoint-slots : ∀ sp₁ sp₂ k₁ k₂ → addr sp₁ ≢ addr sp₂ → slot-addr sp₁ k₁ ≢ slot-addr sp₂ k₂
 
 ------------------------------------------------------------------------

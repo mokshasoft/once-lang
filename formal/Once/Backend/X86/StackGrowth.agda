@@ -44,9 +44,21 @@ x86-grow-identity : ∀ a → x86-grow a zero ≡ a
 x86-grow-identity a = +-identityʳ a
 
 -- | Different offsets yield different addresses
--- This is simpler to postulate than fight Agda's type inference
-postulate
-  x86-grow-injective : ∀ a k₁ k₂ → k₁ ≢ k₂ → x86-grow a k₁ ≢ x86-grow a k₂
+-- Proof: a + k₁ * 8 = a + k₂ * 8 implies k₁ * 8 = k₂ * 8 implies k₁ = k₂
+x86-grow-injective : ∀ a k₁ k₂ → k₁ ≢ k₂ → x86-grow a k₁ ≢ x86-grow a k₂
+x86-grow-injective a k₁ k₂ k₁≢k₂ eq = k₁≢k₂ (cancel-*8 (+-cancelˡ-≡ a _ _ eq))
+  where
+    open import Data.Nat.Properties using (*-cancelʳ-≡)
+    -- If k₁ * 8 = k₂ * 8, then k₁ = k₂ (cancel the 8 on the right)
+    cancel-*8 : k₁ * word-size ≡ k₂ * word-size → k₁ ≡ k₂
+    cancel-*8 eq' = *-cancelʳ-≡ k₁ k₂ word-size eq'
+
+-- | Different base addresses yield different slot addresses (same offset)
+-- Proof: a₁ + k * 8 = a₂ + k * 8 implies a₁ = a₂ (cancel the k * 8)
+x86-grow-addr-injective : ∀ a₁ a₂ k → a₁ ≢ a₂ → x86-grow a₁ k ≢ x86-grow a₂ k
+x86-grow-addr-injective a₁ a₂ k a₁≢a₂ eq = a₁≢a₂ (+-cancelʳ-≡ (k * word-size) a₁ a₂ eq)
+  where
+    open import Data.Nat.Properties using (+-cancelʳ-≡)
 
 -- | Growth preserves stack region membership
 -- This is a postulate because it depends on capacity guarantees
@@ -97,6 +109,7 @@ x86-stack-growth = record
   { grow = x86-grow
   ; grow-identity = x86-grow-identity
   ; grow-injective = x86-grow-injective
+  ; grow-addr-injective = x86-grow-addr-injective
   ; grow-preserves-region = x86-grow-preserves-region
   ; FramePreserved = X86FramePreserved
   ; StackGrew = X86StackGrew

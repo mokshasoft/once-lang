@@ -181,6 +181,9 @@ record StackGrowth : Set₁ where
     -- | Different offsets yield different addresses
     grow-injective : ∀ a k₁ k₂ → k₁ ≢ k₂ → grow a k₁ ≢ grow a k₂
 
+    -- | Different base addresses yield different slot addresses (same offset)
+    grow-addr-injective : ∀ a₁ a₂ k → a₁ ≢ a₂ → grow a₁ k ≢ grow a₂ k
+
     -- | Growth preserves stack region membership
     grow-preserves-region : ∀ a k → InStack a → InStack (grow a k)
 
