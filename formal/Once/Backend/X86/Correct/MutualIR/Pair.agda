@@ -116,12 +116,12 @@ private
       rsp>32 : rsp-val > 32
       rsp>32 = ≤-trans rsp-min-pair-fits-frame 40≤rsp
       k = rsp-val ∸ frame-size
-      m∸40+8≡m∸32 : rsp-val ∸ frame-size +ℕ slot-size ≡ rsp-val ∸ slots 4
+      m∸40+8≡m∸32 : rsp-val ∸ frame-size +ℕ slot-size ≡ rsp-val ∸ (frame-size ∸ slot-size)
       m∸40+8≡m∸32 =
-        let step1 : rsp-val ∸ slots 4 ≡ (k +ℕ frame-size) ∸ slots 4
-            step1 = cong (_∸ slots 4) (sym (m∸n+n≡m 40≤rsp))
-            k+40∸32≡k+8 : (k +ℕ frame-size) ∸ slots 4 ≡ k +ℕ slot-size
-            k+40∸32≡k+8 = trans (cong (_∸ slots 4) (sym (+-assoc k 8 32))) (m+n∸n≡m (k +ℕ slot-size) 32)
+        let step1 : rsp-val ∸ (frame-size ∸ slot-size) ≡ (k +ℕ frame-size) ∸ (frame-size ∸ slot-size)
+            step1 = cong (_∸ (frame-size ∸ slot-size)) (sym (m∸n+n≡m 40≤rsp))
+            k+40∸32≡k+8 : (k +ℕ frame-size) ∸ (frame-size ∸ slot-size) ≡ k +ℕ slot-size
+            k+40∸32≡k+8 = trans (cong (_∸ (frame-size ∸ slot-size)) (sym (+-assoc k 8 32))) (m+n∸n≡m (k +ℕ slot-size) 32)
         in sym (trans step1 k+40∸32≡k+8)
   ... | no 40>rsp = subst (_< rsp-val) (sym 0+8≡8) 8<rsp
     where

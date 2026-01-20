@@ -54,6 +54,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          r15-in-code; slot-size; slots; slots-mono-≤;
          -- Semantic frame sizes and lemmas
          saved-regs-size; saved-regs-fits-four-slots;
+         thunk-frame-size; two-push-offset; pair-alloc;
          -- Capacity constants (no hard-coded literals)
          thunk-setup-capacity; output-slots; thunk-local-size;
          thunk-cap-after-first-push; thunk-cap-after-pushes;
@@ -96,7 +97,7 @@ record ThunkSetupResult {A B C : Type} (f : IR (A * B) C)
     r15-setup : readReg (regs s') r15 ≡ readReg (regs s) r15
 
     -- Frame pointer setup
-    rbp-setup : readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ slots 2
+    rbp-setup : readReg (regs s') rbp ≡ readReg (regs s) rsp ∸ two-push-offset
 
     -- Stack invariants
     stack-inv-setup : StackInvariant s'
@@ -179,7 +180,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     i1 = push (reg r15)                    -- save r15 (apply's scratch register)
     i2 = push (reg rbp)                    -- save frame pointer
     i3 = mov (reg rbp) (reg rsp)           -- set frame pointer
-    i4 = sub (reg rsp) (imm (slots 2))            -- allocate pair
+    i4 = sub (reg rsp) (imm thunk-local-size)            -- allocate pair
     i5 = mov (mem (base rsp)) (reg r12)    -- store env
     i6 = mov (mem (base+disp rsp slot-size)) (reg rdi)  -- store arg
     i7 = mov (reg rdi) (reg rsp)           -- rdi = pair address
@@ -199,7 +200,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- curry-closure-setup: first 6 instructions of curry (positions 0-5)
     curry-closure-setup : Program
     curry-closure-setup =
-      sub (reg rsp) (imm (slots 2)) ∷
+      sub (reg rsp) (imm thunk-local-size) ∷
       mov (mem (base rsp)) (reg rdi) ∷
       lea r9 (rip+disp 4) ∷
       mov (mem (base+disp rsp slot-size)) (reg r9) ∷
@@ -334,7 +335,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     step4 : step prog s4 ≡ just s5
     step4 = trans (step-exec prog s4 i4 h4 (subst (λ p → fetch prog p ≡ just i4) (sym pc4) fetch4))
-                  (execSub-reg-imm [] s4 rsp (slots 2))
+                  (execSub-reg-imm [] s4 rsp thunk-local-size)
 
     h5 : halted s5 ≡ false
     h5 = h-false
@@ -489,14 +490,14 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
                  (trans (readReg-writeReg-rsp-rbp (regs s4) new-rsp)  -- s5: writes rsp
                         (readReg-writeReg-same (regs s3) rbp rsp-after-push-rbp))  -- s4: writes rbp
 
-    -- Prove that (old-rsp ∸ slot-size) ∸ 8 ≡ old-rsp ∸ slots 2
+    -- Prove that (old-rsp ∸ slot-size) ∸ 8 ≡ old-rsp ∸ two-push-offset
     -- Using ∸-+-assoc : ∀ m n o → (m ∸ n) ∸ o ≡ m ∸ (n + o)
     open import Data.Nat.Properties using (∸-+-assoc)
-    rsp-after-push-rbp≡old-rsp∸16 : rsp-after-push-rbp ≡ old-rsp ∸ slots 2
+    rsp-after-push-rbp≡old-rsp∸16 : rsp-after-push-rbp ≡ old-rsp ∸ two-push-offset
     rsp-after-push-rbp≡old-rsp∸16 = ∸-+-assoc old-rsp slot-size slot-size
 
     -- Convert to expected type
-    rbp8 : readReg (regs s8) rbp ≡ old-rsp ∸ slots 2
+    rbp8 : readReg (regs s8) rbp ≡ old-rsp ∸ two-push-offset
     rbp8 = trans rbp8' rsp-after-push-rbp≡old-rsp∸16
 
     -- StackInvariant proof: rsp decreased, r15 unchanged
@@ -506,22 +507,22 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- new-rsp = ((old-rsp - 8) - 8) - 16 = old-rsp - 32 ≤ old-rsp
     rsp-decreased : new-rsp ≤ old-rsp
-    rsp-decreased = ≤-trans (≤-trans (m∸n≤m rsp-after-push-rbp (slots 2)) (m∸n≤m rsp-after-push-r15 slot-size)) (m∸n≤m old-rsp slot-size)
+    rsp-decreased = ≤-trans (≤-trans (m∸n≤m rsp-after-push-rbp thunk-local-size) (m∸n≤m rsp-after-push-r15 slot-size)) (m∸n≤m old-rsp slot-size)
 
     rsp-s8≤s : readReg (regs s8) rsp ≤ readReg (regs s) rsp
     rsp-s8≤s = subst (_≤ old-rsp) (sym rsp-s8) rsp-decreased
 
     -- RSP delta for capacity threading: s8.rsp = old-rsp - slots thunk-setup-consumed-slots
-    -- Derivation: new-rsp = (old-rsp - slots 2) - slots 2 = old-rsp - slots 4 = old-rsp - slots thunk-setup-consumed-slots
+    -- Derivation: new-rsp = (old-rsp - two-push-offset) - thunk-local-size = old-rsp - thunk-frame-size
     rsp-setup-8 : readReg (regs s8) rsp ≡ old-rsp ∸ slots thunk-setup-consumed-slots
     rsp-setup-8 = trans rsp-s8 new-rsp-eq-global
       where
-        -- new-rsp = rsp-after-push-rbp - slots 2
-        -- rsp-after-push-rbp = old-rsp - slots 2
-        -- So new-rsp = old-rsp - slots 2 - slots 2 = old-rsp - slots 4
+        -- new-rsp = rsp-after-push-rbp - thunk-local-size
+        -- rsp-after-push-rbp = old-rsp - two-push-offset
+        -- So new-rsp = old-rsp - two-push-offset - thunk-local-size = old-rsp - thunk-frame-size
         new-rsp-eq-global : new-rsp ≡ old-rsp ∸ slots thunk-setup-consumed-slots
-        new-rsp-eq-global = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16)
-                                  (∸-+-assoc old-rsp (slots 2) (slots 2))
+        new-rsp-eq-global = trans (cong (_∸ two-push-offset) rsp-after-push-rbp≡old-rsp∸16)
+                                  (∸-+-assoc old-rsp two-push-offset thunk-local-size)
 
     stack-inv8 : StackInvariant s8
     stack-inv8 = stack-inv-preserved-r15-unchanged s s8 stack-inv r15-8 rsp-s8≤s
@@ -628,7 +629,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- D041: Use centralized ∸-gives-different from StackInstantiation
     new-rsp≢rsp-after-push-rbp : new-rsp ≢ rsp-after-push-rbp
-    new-rsp≢rsp-after-push-rbp = ∸-gives-different rsp-after-push-rbp (slots 2) rsp-after-push-rbp>0 pair-positive
+    new-rsp≢rsp-after-push-rbp = ∸-gives-different rsp-after-push-rbp thunk-local-size rsp-after-push-rbp>0 pair-positive
 
     -- For new-rsp + 8 ≢ rsp-after-push-rbp:
     -- new-rsp + 8 = (rsp-after-push-rbp - 16) + 8
@@ -696,9 +697,9 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     mem-s8-at-rsp-after-push-rbp : readMem (memory s8) rsp-after-push-rbp ≡ just old-rbp
     mem-s8-at-rsp-after-push-rbp = mem-s7-at-rsp-after-push-rbp
 
-    -- Finally, using rbp8: rbp s8 = old-rsp ∸ slots 2
-    -- First convert mem-s8-at-rsp-after-push-rbp to use old-rsp ∸ slots 2
-    mem-s8-at-old-rsp∸16 : readMem (memory s8) (old-rsp ∸ slots 2) ≡ just old-rbp
+    -- Finally, using rbp8: rbp s8 = old-rsp ∸ two-push-offset
+    -- First convert mem-s8-at-rsp-after-push-rbp to use old-rsp ∸ two-push-offset
+    mem-s8-at-old-rsp∸16 : readMem (memory s8) (old-rsp ∸ two-push-offset) ≡ just old-rbp
     mem-s8-at-old-rsp∸16 = subst (λ addr → readMem (memory s8) addr ≡ just old-rbp)
                                   rsp-after-push-rbp≡old-rsp∸16 mem-s8-at-rsp-after-push-rbp
     mem-at-rbp8 : readMem (memory s8) (readReg (regs s8) rbp) ≡ just old-rbp
@@ -724,10 +725,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     new-rsp≢old-rsp : new-rsp ≢ old-rsp
     new-rsp≢old-rsp eq = <⇒≢-neq new-rsp<old-rsp eq
       where
-        -- Derive new-rsp = old-rsp ∸ slots 4 locally
-        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
-        new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
-        -- Use abstract helper: (old-rsp ∸ slots 4) < old-rsp when old-rsp > slots 2
+        -- Derive new-rsp = old-rsp ∸ thunk-frame-size locally
+        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ thunk-frame-size
+        new-rsp-eq-local = trans (cong (_∸ two-push-offset) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp two-push-offset thunk-local-size)
+        -- Use abstract helper: (old-rsp ∸ thunk-frame-size) < old-rsp when old-rsp > slots 2
         new-rsp<old-rsp : new-rsp < old-rsp
         new-rsp<old-rsp = subst (_< old-rsp) (sym new-rsp-eq-local) (n∸4slot<n-raw old-rsp rsp-bound)
 
@@ -735,13 +736,13 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     new-rsp+8≢old-rsp : new-rsp +ℕ slot-size ≢ old-rsp
     new-rsp+8≢old-rsp eq = <⇒≢-neq new-rsp+8<old-rsp eq
       where
-        -- Derive new-rsp = old-rsp ∸ slots 4 locally
-        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
-        new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
-        -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8
-        new-rsp+8-eq : new-rsp +ℕ slot-size ≡ (old-rsp ∸ slots 4) +ℕ 8
+        -- Derive new-rsp = old-rsp ∸ thunk-frame-size locally
+        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ thunk-frame-size
+        new-rsp-eq-local = trans (cong (_∸ two-push-offset) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp two-push-offset thunk-local-size)
+        -- new-rsp + 8 = (old-rsp ∸ thunk-frame-size) + 8
+        new-rsp+8-eq : new-rsp +ℕ slot-size ≡ (old-rsp ∸ thunk-frame-size) +ℕ 8
         new-rsp+8-eq = cong (_+ℕ 8) new-rsp-eq-local
-        -- Use abstract helper: (old-rsp ∸ slots 4) + 8 < old-rsp when old-rsp > slots 2
+        -- Use abstract helper: (old-rsp ∸ thunk-frame-size) + 8 < old-rsp when old-rsp > slots 2
         new-rsp+8<old-rsp : new-rsp +ℕ slot-size < old-rsp
         new-rsp+8<old-rsp = subst (_< old-rsp) (sym new-rsp+8-eq) (n∸4slot+slot<n-raw old-rsp rsp-bound)
 
@@ -798,7 +799,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- new-rsp = old-rsp - 32, rsp-after-push-r15 = old-rsp - 8
         -- new-rsp < rsp-after-push-r15 (since 32 > 8)
         new-rsp≤rsp-after-push-rbp : new-rsp ≤ rsp-after-push-rbp
-        new-rsp≤rsp-after-push-rbp = m∸n≤m rsp-after-push-rbp (slots 2)
+        new-rsp≤rsp-after-push-rbp = m∸n≤m rsp-after-push-rbp thunk-local-size
         rsp-after-push-rbp≤rsp-after-push-r15 : rsp-after-push-rbp ≤ rsp-after-push-r15
         rsp-after-push-rbp≤rsp-after-push-r15 = m∸n≤m rsp-after-push-r15 slot-size
         new-rsp≤rsp-after-push-r15 : new-rsp ≤ rsp-after-push-r15
@@ -824,10 +825,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- Semantic: rsp is above 3-slot offset (for new-rsp + slot calculation)
         rsp-above-3-slot-offset : old-rsp > 24
         rsp-above-3-slot-offset = ≤-trans post-rbp-push-fits-initial (StackCapacity.rsp-sufficient cap)
-        -- new-rsp = old-rsp ∸ slots 4
-        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
-        new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
-        -- new-rsp + slot-size = (old-rsp ∸ slots 4) + slot-size = old-rsp ∸ saved-regs-size
+        -- new-rsp = old-rsp ∸ thunk-frame-size
+        new-rsp-eq-local : new-rsp ≡ old-rsp ∸ thunk-frame-size
+        new-rsp-eq-local = trans (cong (_∸ two-push-offset) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp two-push-offset thunk-local-size)
+        -- new-rsp + slot-size = (old-rsp ∸ thunk-frame-size) + slot-size = old-rsp ∸ saved-regs-size
         new-rsp+slot≡old-rsp∸3slots : new-rsp +ℕ slot-size ≡ old-rsp ∸ saved-regs-size
         new-rsp+slot≡old-rsp∸3slots = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸4slot+slot≡n∸3slot old-rsp rsp-above-4-slots)
         -- old-rsp ∸ saved-regs-size < old-rsp ∸ slot-size = rsp-after-push-r15
@@ -886,8 +887,8 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     addr-rsp-8-in-stack : InStack rsp-after-push-r15
     addr-rsp-8-in-stack = abstract-to-rsp-slot-in-stack s cap
 
-    -- rsp-after-push-rbp = (old-rsp ∸ slot-size) ∸ 8 = old-rsp ∸ slots 2 = old-rsp ∸ 2*8
-    rsp-after-push-rbp-eq : rsp-after-push-rbp ≡ old-rsp ∸ slots 2
+    -- rsp-after-push-rbp = (old-rsp ∸ slot-size) ∸ 8 = old-rsp ∸ two-push-offset = old-rsp ∸ 2*8
+    rsp-after-push-rbp-eq : rsp-after-push-rbp ≡ old-rsp ∸ two-push-offset
     rsp-after-push-rbp-eq = ∸-+-assoc old-rsp slot-size slot-size
 
     addr-rsp-16-in-stack : InStack rsp-after-push-rbp
@@ -896,38 +897,38 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- RbpInvariant: thunk creates a new frame at rsp-after-push-rbp = old-rsp - 16
     -- addr-rsp-16-in-stack has type InStack rsp-after-push-rbp
-    -- We need InStack (old-rsp ∸ slots 2), so use rsp-after-push-rbp-eq to convert
+    -- We need InStack (old-rsp ∸ two-push-offset), so use rsp-after-push-rbp-eq to convert
     setup-thunk-frame : StackPointer
     setup-thunk-frame = record
-      { addr = old-rsp ∸ slots 2
+      { addr = old-rsp ∸ two-push-offset
       ; in-stack = subst (λ x → InStack x) rsp-after-push-rbp-eq addr-rsp-16-in-stack
       }
 
-    new-rsp≤frame : new-rsp ≤ old-rsp ∸ slots 2
-    new-rsp≤frame = subst (new-rsp ≤_) rsp-after-push-rbp≡old-rsp∸16 (m∸n≤m rsp-after-push-rbp (slots 2))
+    new-rsp≤frame : new-rsp ≤ old-rsp ∸ two-push-offset
+    new-rsp≤frame = subst (new-rsp ≤_) rsp-after-push-rbp≡old-rsp∸16 (m∸n≤m rsp-after-push-rbp thunk-local-size)
 
     setup-thunk-frame-bound : sp-addr setup-thunk-frame ≥ readReg (regs s8) rsp
-    setup-thunk-frame-bound = subst (old-rsp ∸ slots 2 ≥_) (sym rsp-s8) new-rsp≤frame
+    setup-thunk-frame-bound = subst (old-rsp ∸ two-push-offset ≥_) (sym rsp-s8) new-rsp≤frame
 
     rbp-inv8 : RbpInvariant s8
     rbp-inv8 = record
       { rbp-frame = setup-thunk-frame
-      ; rbp-is-base = rbp8  -- rbp s8 = old-rsp ∸ slots 2 = sp-addr setup-thunk-frame
+      ; rbp-is-base = rbp8  -- rbp s8 = old-rsp ∸ two-push-offset = sp-addr setup-thunk-frame
       ; frame-bound = setup-thunk-frame-bound
       }
 
-    -- new-rsp = ((old-rsp ∸ slot-size) ∸ 8) ∸ 16 = (old-rsp ∸ slots 2) ∸ 16 = old-rsp ∸ slots 4 = old-rsp ∸ 4*8
-    new-rsp-eq : new-rsp ≡ old-rsp ∸ slots 4
-    new-rsp-eq = trans (cong (_∸ slots 2) rsp-after-push-rbp-eq) (∸-+-assoc old-rsp (slots 2) (slots 2))
+    -- new-rsp = ((old-rsp ∸ slot-size) ∸ 8) ∸ 16 = (old-rsp ∸ two-push-offset) ∸ 16 = old-rsp ∸ thunk-frame-size = old-rsp ∸ 4*8
+    new-rsp-eq : new-rsp ≡ old-rsp ∸ thunk-frame-size
+    new-rsp-eq = trans (cong (_∸ two-push-offset) rsp-after-push-rbp-eq) (∸-+-assoc old-rsp two-push-offset thunk-local-size)
 
     addr-rsp-32-in-stack : InStack new-rsp
     addr-rsp-32-in-stack = subst (λ x → InStack x) (sym new-rsp-eq)
                                  (abstract-to-rsp-slots-in-stack 4 s cap apply-capacity-fits-thunk-cap)
 
-    -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8 = old-rsp ∸ saved-regs-size = old-rsp ∸ 3*8
+    -- new-rsp + 8 = (old-rsp ∸ thunk-frame-size) + 8 = old-rsp ∸ saved-regs-size = old-rsp ∸ 3*8
     -- Proof using stdlib: m∸n+n≡m and +-∸-assoc
-    -- Strategy: (old-rsp ∸ slots 4) + 8 = old-rsp ∸ saved-regs-size
-    --   Let k = old-rsp ∸ slots 4. Then k + 32 = old-rsp (by m∸n+n≡m).
+    -- Strategy: (old-rsp ∸ thunk-frame-size) + 8 = old-rsp ∸ saved-regs-size
+    --   Let k = old-rsp ∸ thunk-frame-size. Then k + 32 = old-rsp (by m∸n+n≡m).
     --   old-rsp ∸ saved-regs-size = (k + 32) ∸ saved-regs-size = k + (32 ∸ saved-regs-size) = k + 8 (by +-∸-assoc)
     new-rsp+8-eq : new-rsp +ℕ slot-size ≡ old-rsp ∸ saved-regs-size
     new-rsp+8-eq = trans (cong (_+ℕ 8) new-rsp-eq) offset-plus-slot≡orig-minus-3slots
@@ -935,7 +936,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         open import Data.Nat.Properties using (+-∸-assoc)
 
         -- Semantic: offset from original rsp to 4-slot position
-        rsp-offset-4-slots = old-rsp ∸ slots 4
+        rsp-offset-4-slots = old-rsp ∸ thunk-frame-size
 
         -- Semantic: rsp is large enough for 4-slot addressing
         -- (Note: rsp-sufficient cap : old-rsp > 48 = 49 ≤ old-rsp)
@@ -943,15 +944,15 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         rsp-fits-4-slots = ≤-trans four-slots-fits-initial (StackCapacity.rsp-sufficient cap)
 
         -- Semantic: offset + 4-slots = original rsp
-        offset-plus-4-slots≡orig : rsp-offset-4-slots +ℕ slots 4 ≡ old-rsp
+        offset-plus-4-slots≡orig : rsp-offset-4-slots +ℕ thunk-frame-size ≡ old-rsp
         offset-plus-4-slots≡orig = m∸n+n≡m rsp-fits-4-slots
 
         -- Semantic: saved-regs fits in 4 slots allocation (for associativity)
-        three-slots-fit-in-four : saved-regs-size ≤ slots 4
+        three-slots-fit-in-four : saved-regs-size ≤ thunk-frame-size
         three-slots-fit-in-four = saved-regs-fits-four-slots
 
         -- Semantic: associativity for 4-slot minus 3-slot = offset + slot-size
-        assoc-4-minus-3 : (rsp-offset-4-slots +ℕ slots 4) ∸ saved-regs-size ≡ rsp-offset-4-slots +ℕ 8
+        assoc-4-minus-3 : (rsp-offset-4-slots +ℕ thunk-frame-size) ∸ saved-regs-size ≡ rsp-offset-4-slots +ℕ 8
         assoc-4-minus-3 = +-∸-assoc rsp-offset-4-slots three-slots-fit-in-four
 
         -- Semantic: offset + slot-size = old-rsp - 3 slots
