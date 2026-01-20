@@ -1469,23 +1469,24 @@ n+frame∸slot≢n+slot n eq = n≢n+suc-m (n +ℕ slot-size) 23 (+-assoc-cancel
     +-assoc-cancel : n +ℕ (frame-size ∸ slot-size) ≡ n +ℕ slot-size → n +ℕ slot-size ≡ (n +ℕ slot-size) +ℕ saved-regs-size
     +-assoc-cancel p = sym (trans (+-assoc n slot-size saved-regs-size) p)
 
--- | If m ≥ 40, then (m ∸ saved-regs-size) = (m ∸ frame-size) + 16
-∸-offset-relationship : ∀ m → 40 ≤ m → m ∸ saved-regs-size ≡ (m ∸ frame-size) +ℕ pair-alloc
-∸-offset-relationship m 40≤m = trans step1 step2
+-- | If m ≥ frame-size, then (m ∸ saved-regs-size) = (m ∸ frame-size) + pair-alloc
+∸-offset-relationship : ∀ m → frame-size ≤ m → m ∸ saved-regs-size ≡ (m ∸ frame-size) +ℕ pair-alloc
+∸-offset-relationship m frame≤m = trans step1 step2
   where
-    -- m ∸ saved-regs-size = m ∸ frame-size + 16 when m ≥ 40
-    -- Because m ∸ saved-regs-size = (m ∸ frame-size + 40) ∸ saved-regs-size = (m ∸ frame-size) + (40 ∸ saved-regs-size) = (m ∸ frame-size) + 16
+    -- m ∸ saved-regs-size = m ∸ frame-size + pair-alloc when m ≥ frame-size
+    -- Because m ∸ saved-regs-size = (m ∸ frame-size + frame-size) ∸ saved-regs-size
+    --   = (m ∸ frame-size) + (frame-size ∸ saved-regs-size) = (m ∸ frame-size) + pair-alloc
     step1 : m ∸ saved-regs-size ≡ (m ∸ frame-size +ℕ frame-size) ∸ saved-regs-size
-    step1 = cong (_∸ saved-regs-size) (sym (m∸n+n≡m 40≤m))
+    step1 = cong (_∸ saved-regs-size) (sym (m∸n+n≡m frame≤m))
 
     step2 : (m ∸ frame-size +ℕ frame-size) ∸ saved-regs-size ≡ (m ∸ frame-size) +ℕ pair-alloc
     step2 = lemma (m ∸ frame-size)
       where
-        -- (k + 40) ∸ saved-regs-size = k + 16
+        -- (k + frame-size) ∸ saved-regs-size = k + pair-alloc
         lemma : ∀ k → (k +ℕ frame-size) ∸ saved-regs-size ≡ k +ℕ pair-alloc
-        lemma k = trans (cong (_∸ saved-regs-size) (+-comm k 40)) (trans step-a (+-comm 16 k))
+        lemma k = trans (cong (_∸ saved-regs-size) (+-comm k frame-size)) (trans step-a (+-comm pair-alloc k))
           where
-            step-a : (40 +ℕ k) ∸ saved-regs-size ≡ 16 +ℕ k
+            step-a : (frame-size +ℕ k) ∸ saved-regs-size ≡ pair-alloc +ℕ k
             step-a = refl
 
 -- | If m ∸ n > 0, then n ≤ m
