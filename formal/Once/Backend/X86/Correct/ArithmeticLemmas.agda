@@ -116,8 +116,8 @@ pair-fits-post-rbp-push = from-yes-≤ (pair-alloc ≤? post-rbp-push-min)
 -- NOTE: word-fits-word-plus-one deleted - use n≤1+n word-size directly
 
 -- NOTE: Thunk capacity bounds (41≤49, 32≤49, 25≤49, 24≤32) moved to StackInstantiation
--- as symbolic lemmas: after-push1-fits-initial, four-slots-fits-initial,
--- post-rbp-push-fits-initial, three-slots-fits-four
+-- as symbolic lemmas: after-push1-fits-initial, thunk-frame-fits-initial,
+-- post-rbp-push-fits-initial, saved-regs-fits-thunk-frame
 
 ------------------------------------------------------------------------
 -- Positive bounds (non-zero)

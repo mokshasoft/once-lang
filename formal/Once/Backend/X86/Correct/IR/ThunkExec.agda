@@ -11,7 +11,7 @@ open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-
 open import Once.Backend.X86.Correct.ArithmeticLemmas
   using (pair-fits-post-rbp-push; word-positive; pair-positive)
 -- Note: Numeric lemmas (thunk-min-fits-actual, etc.) replaced with symbolic
--- versions from StackInstantiation: after-push1-fits-initial, four-slots-fits-initial,
+-- versions from StackInstantiation: after-push1-fits-initial, thunk-frame-fits-initial,
 -- post-rbp-push-fits-initial, three-slots-fits-four
 -- Note: Capacity lemmas (formerly output-fits-thunk-setup etc.) now use symbolic
 -- names from StackInstantiation: output-fits-thunk-cap, apply-cap-after-push-fits-thunk-cap,
@@ -53,8 +53,8 @@ open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code; slot-size; slots; slots-mono-≤;
          -- Semantic frame sizes and lemmas
-         saved-regs-size; saved-regs-fits-four-slots;
-         thunk-frame-size; two-push-offset; pair-alloc;
+         saved-regs-size; saved-regs-fits-thunk-frame;
+         thunk-frame-size; thunk-frame-fits-initial; two-push-offset; pair-alloc;
          -- Capacity constants (no hard-coded literals)
          thunk-setup-capacity; output-slots; thunk-local-size;
          thunk-cap-after-first-push; thunk-cap-after-pushes;
@@ -63,10 +63,10 @@ open import Once.Backend.X86.Correct.StackInstantiation
          abstract-to-rsp-slot-in-stack; abstract-to-rsp-slots-in-stack;
          -- D041: Abstract helpers for thunk arithmetic (State-based)
          apply-alloc-below-rsp; thunk-2slot-below-1slot; thunk-2slot-below-orig;
-         thunk-2slot-diff-from-orig; thunk-4slot-below-orig; thunk-4slot-diff-from-above;
-         -- D041: Raw ℕ helpers for local variable patterns (renamed to semantic names)
-         n∸slot<n-raw; n∸2slot<n∸slot-raw; n∸2slot<n-raw; n∸3slot<n-raw; n∸3slot<n∸slot-raw;
-         n∸4slot<n-raw; n∸4slot+slot<n-raw; n∸4slot+slot≡n∸3slot;
+         thunk-2slot-diff-from-orig; thunk-frame-below-orig; thunk-frame-diff-from-above;
+         -- D041: Raw ℕ helpers for local variable patterns (semantic names)
+         n∸slot<n-raw; n∸2slot<n∸slot-raw; n∸2slot<n-raw; n∸saved-regs<n; n∸saved-regs<n∸slot;
+         n∸thunk-frame<n; n∸thunk-frame+slot<n; n∸thunk-frame+slot≡n∸saved-regs;
          -- D041: Generic arithmetic helpers
          ∸-gives-different; ∸-gives-smaller)
 
@@ -730,7 +730,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp-eq-local = trans (cong (_∸ two-push-offset) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp two-push-offset thunk-local-size)
         -- Use abstract helper: (old-rsp ∸ thunk-frame-size) < old-rsp when old-rsp > pair-alloc
         new-rsp<old-rsp : new-rsp < old-rsp
-        new-rsp<old-rsp = subst (_< old-rsp) (sym new-rsp-eq-local) (n∸4slot<n-raw old-rsp rsp-bound)
+        new-rsp<old-rsp = subst (_< old-rsp) (sym new-rsp-eq-local) (n∸thunk-frame<n old-rsp rsp-bound)
 
     -- new-rsp + 8 = (old-rsp - 32) + 8 < old-rsp (D041: eliminate with, use abstract helper)
     new-rsp+8≢old-rsp : new-rsp +ℕ slot-size ≢ old-rsp
@@ -744,7 +744,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp+8-eq = cong (_+ℕ 8) new-rsp-eq-local
         -- Use abstract helper: (old-rsp ∸ thunk-frame-size) + 8 < old-rsp when old-rsp > pair-alloc
         new-rsp+8<old-rsp : new-rsp +ℕ slot-size < old-rsp
-        new-rsp+8<old-rsp = subst (_< old-rsp) (sym new-rsp+8-eq) (n∸4slot+slot<n-raw old-rsp rsp-bound)
+        new-rsp+8<old-rsp = subst (_< old-rsp) (sym new-rsp+8-eq) (n∸thunk-frame+slot<n old-rsp rsp-bound)
 
     -- s1 doesn't write memory (label instruction)
     mem-s1-old-rsp : readMem (memory s1) old-rsp ≡ readMem (memory s) old-rsp
@@ -821,7 +821,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- Semantic: rsp is at least 4 slots above the r15 slot bound
         -- (Note: rsp-sufficient cap : old-rsp > 48 = 49 ≤ old-rsp)
         rsp-above-4-slots : 32 ≤ old-rsp
-        rsp-above-4-slots = ≤-trans four-slots-fits-initial (StackCapacity.rsp-sufficient cap)
+        rsp-above-4-slots = ≤-trans thunk-frame-fits-initial (StackCapacity.rsp-sufficient cap)
         -- Semantic: rsp is above 3-slot offset (for new-rsp + slot calculation)
         rsp-above-3-slot-offset : old-rsp > 24
         rsp-above-3-slot-offset = ≤-trans post-rbp-push-fits-initial (StackCapacity.rsp-sufficient cap)
@@ -830,10 +830,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp-eq-local = trans (cong (_∸ two-push-offset) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp two-push-offset thunk-local-size)
         -- new-rsp + slot-size = (old-rsp ∸ thunk-frame-size) + slot-size = old-rsp ∸ saved-regs-size
         new-rsp+slot≡old-rsp∸3slots : new-rsp +ℕ slot-size ≡ old-rsp ∸ saved-regs-size
-        new-rsp+slot≡old-rsp∸3slots = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸4slot+slot≡n∸3slot old-rsp rsp-above-4-slots)
+        new-rsp+slot≡old-rsp∸3slots = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸thunk-frame+slot≡n∸saved-regs old-rsp rsp-above-4-slots)
         -- old-rsp ∸ saved-regs-size < old-rsp ∸ slot-size = rsp-after-push-r15
         offset-3slots-lt-1slot : old-rsp ∸ saved-regs-size < old-rsp ∸ slot-size
-        offset-3slots-lt-1slot = n∸3slot<n∸slot-raw old-rsp rsp-above-3-slot-offset
+        offset-3slots-lt-1slot = n∸saved-regs<n∸slot old-rsp rsp-above-3-slot-offset
         -- Therefore new-rsp + slot-size < rsp-after-push-r15
         new-rsp+8<rsp-after-push-r15 : new-rsp +ℕ slot-size < rsp-after-push-r15
         new-rsp+8<rsp-after-push-r15 = subst (_< old-rsp ∸ slot-size) (sym new-rsp+slot≡old-rsp∸3slots) offset-3slots-lt-1slot
@@ -941,7 +941,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- Semantic: rsp is large enough for 4-slot addressing
         -- (Note: rsp-sufficient cap : old-rsp > 48 = 49 ≤ old-rsp)
         rsp-fits-4-slots : 32 ≤ old-rsp
-        rsp-fits-4-slots = ≤-trans four-slots-fits-initial (StackCapacity.rsp-sufficient cap)
+        rsp-fits-4-slots = ≤-trans thunk-frame-fits-initial (StackCapacity.rsp-sufficient cap)
 
         -- Semantic: offset + 4-slots = original rsp
         offset-plus-4-slots≡orig : rsp-offset-4-slots +ℕ thunk-frame-size ≡ old-rsp
@@ -949,7 +949,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
         -- Semantic: saved-regs fits in 4 slots allocation (for associativity)
         three-slots-fit-in-four : saved-regs-size ≤ thunk-frame-size
-        three-slots-fit-in-four = saved-regs-fits-four-slots
+        three-slots-fit-in-four = saved-regs-fits-thunk-frame
 
         -- Semantic: associativity for 4-slot minus 3-slot = offset + slot-size
         assoc-4-minus-3 : (rsp-offset-4-slots +ℕ thunk-frame-size) ∸ saved-regs-size ≡ rsp-offset-4-slots +ℕ 8

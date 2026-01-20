@@ -102,9 +102,6 @@ two-push-offset = slots 2                  -- 16: push r15 + push rbp
 -- NOTE: saved-regs-size (24) and frame-size (40) imported from Arithmetic
 -- Use those semantic names instead of saved-regs-size/frame-size
 
-four-slot-offset : ℕ
-four-slot-offset = slots 4                 -- 32: four slots
-
 -- | Slot monotonicity for ≤ (follows from slots being multiplication)
 -- Useful for deriving smaller bounds: a ≤ b → slots a ≤ slots b
 -- Defined early to be in scope for RSP threshold lemmas
@@ -116,7 +113,7 @@ thunk-local-size : ℕ
 thunk-local-size = slots 2                 -- 16: sub rsp, 16 in thunk
 
 thunk-frame-size : ℕ
-thunk-frame-size = four-slot-offset        -- 32: total thunk frame (2 pushes + 16 local)
+thunk-frame-size = slots 4                 -- 32: total thunk frame (2 pushes + 16 local)
 
 -- NOTE: frame-size (40) is imported from Arithmetic (saved-regs + pair-alloc)
 
@@ -138,7 +135,7 @@ pair-snd-offset = slot-size                -- 8: offset to second element of pai
 
 -- Minimum rsp bounds for safe operations (DEPRECATED: use slot-based constants below)
 thunk-min-rsp : ℕ
-thunk-min-rsp = thunk-frame-size +ℕ slot-size   -- 40: need > four-slot-offset with buffer
+thunk-min-rsp = thunk-frame-size +ℕ slot-size   -- 40: need > thunk-frame-size with buffer
 
 pair-min-rsp : ℕ
 pair-min-rsp = frame-size +ℕ slot-size          -- 48: need > frame-size with buffer
@@ -262,13 +259,13 @@ after-push2-fits-initial = from-yes-≤ (thunk-after-push2-rsp-min ≤? thunk-in
 after-alloc-fits-initial : thunk-after-alloc-rsp-min ≤ thunk-initial-rsp-min
 after-alloc-fits-initial = from-yes-≤ (thunk-after-alloc-rsp-min ≤? thunk-initial-rsp-min)
 
--- Four slots (32 bytes) fits initial threshold (49)
-four-slots-fits-initial : slots 4 ≤ thunk-initial-rsp-min
-four-slots-fits-initial = from-yes-≤ (slots 4 ≤? thunk-initial-rsp-min)
+-- Thunk frame (32 bytes) fits initial threshold (49)
+thunk-frame-fits-initial : thunk-frame-size ≤ thunk-initial-rsp-min
+thunk-frame-fits-initial = from-yes-≤ (thunk-frame-size ≤? thunk-initial-rsp-min)
 
--- Saved registers (24 bytes) fits four-slot offset (32 bytes)
-saved-regs-fits-four-slots : saved-regs-size ≤ slots 4
-saved-regs-fits-four-slots = from-yes-≤ (saved-regs-size ≤? slots 4)
+-- Saved registers (24 bytes) fits thunk frame (32 bytes)
+saved-regs-fits-thunk-frame : saved-regs-size ≤ thunk-frame-size
+saved-regs-fits-thunk-frame = from-yes-≤ (saved-regs-size ≤? thunk-frame-size)
 
 -- Post-rbp-push threshold: minimum RSP after 3 slots allocated
 post-rbp-push-min : ℕ
@@ -1290,13 +1287,13 @@ pair-second-slot-in-stack s cap =
     slot-4≤pair-setup = from-yes-≤ (4 ≤? pair-setup-consumed-slots)
     cap-to-pair-setup-rsp-bound : StackCapacity s pair-setup-consumed-slots → readReg (regs s) rsp ≥ frame-size
     cap-to-pair-setup-rsp-bound cap = <⇒≤ (rsp-sufficient cap)
-    alloc-5-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ frame-size → (rsp-val ∸ frame-size) +ℕ slot-size ≡ rsp-val ∸ four-slot-offset
+    alloc-5-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ frame-size → (rsp-val ∸ frame-size) +ℕ slot-size ≡ rsp-val ∸ thunk-frame-size
     alloc-5-slots-second-addr-eq rsp-val rsp≥5slot = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits-after-4-slots)
       where
-        step1 : rsp-val ∸ frame-size ≡ (rsp-val ∸ four-slot-offset) ∸ slot-size
-        step1 = sym (∸-+-assoc rsp-val four-slot-offset slot-size)
-        word-fits-after-4-slots : slot-size ≤ rsp-val ∸ four-slot-offset
-        word-fits-after-4-slots = ∸-monoˡ-≤ four-slot-offset rsp≥5slot
+        step1 : rsp-val ∸ frame-size ≡ (rsp-val ∸ thunk-frame-size) ∸ slot-size
+        step1 = sym (∸-+-assoc rsp-val thunk-frame-size slot-size)
+        word-fits-after-4-slots : slot-size ≤ rsp-val ∸ thunk-frame-size
+        word-fits-after-4-slots = ∸-monoˡ-≤ thunk-frame-size rsp≥5slot
 
 -- | Get StackCapacity for Pair setup from runtime rsp bound
 pair-stack-capacity : ∀ (s : State) →
@@ -1821,27 +1818,27 @@ thunk-2slot-diff-from-orig s rsp-sufficient eq =
   where
     open import Data.Nat.Properties using (<⇒≢)
 
--- | Helper: 4-slot is below orig-rsp when rsp > two-push-offset
-thunk-4slot-below-orig : ∀ (s : State) →
+-- | Helper: thunk-frame is below orig-rsp when rsp > two-push-offset
+thunk-frame-below-orig : ∀ (s : State) →
   readReg (regs s) rsp > two-push-offset →
   let rsp-val = readReg (regs s) rsp
-  in (rsp-val ∸ four-slot-offset) < rsp-val
-thunk-4slot-below-orig s rsp-sufficient = ≤-<-trans rsp∸4slot≤rsp∸slot rsp∸slot<rsp
+  in (rsp-val ∸ thunk-frame-size) < rsp-val
+thunk-frame-below-orig s rsp-sufficient = ≤-<-trans rsp∸thunk-frame≤rsp∸slot rsp∸slot<rsp
   where
     open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
     rsp-val = readReg (regs s) rsp
     rsp∸slot<rsp = apply-alloc-below-rsp s rsp-sufficient
-    rsp∸4slot≤rsp∸slot : (rsp-val ∸ four-slot-offset) ≤ (rsp-val ∸ slot-size)
-    rsp∸4slot≤rsp∸slot = ∸-monoʳ-≤ rsp-val word-fits-frame-remainder
+    rsp∸thunk-frame≤rsp∸slot : (rsp-val ∸ thunk-frame-size) ≤ (rsp-val ∸ slot-size)
+    rsp∸thunk-frame≤rsp∸slot = ∸-monoʳ-≤ rsp-val word-fits-frame-remainder
 
--- | Helper: 4-slot is different from addresses >= orig-rsp
-thunk-4slot-diff-from-above : ∀ (s : State) →
+-- | Helper: thunk-frame is different from addresses >= orig-rsp
+thunk-frame-diff-from-above : ∀ (s : State) →
   readReg (regs s) rsp > two-push-offset →
   (addr : ℕ) →
   addr ≥ readReg (regs s) rsp →
-  (readReg (regs s) rsp ∸ four-slot-offset) ≢ addr
-thunk-4slot-diff-from-above s rsp-sufficient addr addr≥rsp =
-  <⇒≢ (<-≤-trans (thunk-4slot-below-orig s rsp-sufficient) addr≥rsp)
+  (readReg (regs s) rsp ∸ thunk-frame-size) ≢ addr
+thunk-frame-diff-from-above s rsp-sufficient addr addr≥rsp =
+  <⇒≢ (<-≤-trans (thunk-frame-below-orig s rsp-sufficient) addr≥rsp)
   where
     open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
 
@@ -1863,48 +1860,48 @@ n∸2slot<n-raw n n>2slot = <-trans (n∸2slot<n∸slot-raw n n>2slot) (n∸slot
   where
     open import Data.Nat.Properties using (<-trans)
 
--- | Raw ℕ version: 4-slot below orig when n > two-push-offset
-n∸4slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ four-slot-offset) < n
-n∸4slot<n-raw n n>2slot = ≤-<-trans n∸4slot≤n∸slot (n∸slot<n-raw n n>2slot)
+-- | Raw ℕ version: thunk-frame below orig when n > two-push-offset
+n∸thunk-frame<n : ∀ (n : ℕ) → n > two-push-offset → (n ∸ thunk-frame-size) < n
+n∸thunk-frame<n n n>2slot = ≤-<-trans n∸thunk-frame≤n∸slot (n∸slot<n-raw n n>2slot)
   where
     open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
-    n∸4slot≤n∸slot : (n ∸ four-slot-offset) ≤ (n ∸ slot-size)
-    n∸4slot≤n∸slot = ∸-monoʳ-≤ n word-fits-frame-remainder
+    n∸thunk-frame≤n∸slot : (n ∸ thunk-frame-size) ≤ (n ∸ slot-size)
+    n∸thunk-frame≤n∸slot = ∸-monoʳ-≤ n word-fits-frame-remainder
 
--- | Raw ℕ version: 3-slot below orig when n > two-push-offset
-n∸3slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ saved-regs-size) < n
-n∸3slot<n-raw n n>2slot = ≤-<-trans n∸3slot≤n∸slot (n∸slot<n-raw n n>2slot)
+-- | Raw ℕ version: saved-regs below orig when n > two-push-offset
+n∸saved-regs<n : ∀ (n : ℕ) → n > two-push-offset → (n ∸ saved-regs-size) < n
+n∸saved-regs<n n n>2slot = ≤-<-trans n∸saved-regs≤n∸slot (n∸slot<n-raw n n>2slot)
   where
     open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
-    n∸3slot≤n∸slot : (n ∸ saved-regs-size) ≤ (n ∸ slot-size)
-    n∸3slot≤n∸slot = ∸-monoʳ-≤ n word-fits-regs
+    n∸saved-regs≤n∸slot : (n ∸ saved-regs-size) ≤ (n ∸ slot-size)
+    n∸saved-regs≤n∸slot = ∸-monoʳ-≤ n word-fits-regs
 
--- | Raw ℕ version: 3-slot below < 1-slot below when n > saved-regs-size
-n∸3slot<n∸slot-raw : ∀ (n : ℕ) → n > saved-regs-size → (n ∸ saved-regs-size) < (n ∸ slot-size)
-n∸3slot<n∸slot-raw n n>3slot = ∸-monoʳ-< word-fits-regs-strict (<⇒≤ n>3slot)
+-- | Raw ℕ version: saved-regs below < slot below when n > saved-regs-size
+n∸saved-regs<n∸slot : ∀ (n : ℕ) → n > saved-regs-size → (n ∸ saved-regs-size) < (n ∸ slot-size)
+n∸saved-regs<n∸slot n n>saved-regs = ∸-monoʳ-< word-fits-regs-strict (<⇒≤ n>saved-regs)
 
--- | Identity: (n ∸ four-slot-offset) + slot-size ≡ n ∸ saved-regs-size when n ≥ 32
+-- | Identity: (n ∸ thunk-frame-size) + slot-size ≡ n ∸ saved-regs-size when n ≥ 32
 -- Uses slot1-plus-word≡slot2 from Arithmetic
-n∸4slot+slot≡n∸3slot : ∀ (n : ℕ) → four-slot-offset ≤ n → (n ∸ four-slot-offset) +ℕ slot-size ≡ n ∸ saved-regs-size
-n∸4slot+slot≡n∸3slot = slot1-plus-word≡slot2
+n∸thunk-frame+slot≡n∸saved-regs : ∀ (n : ℕ) → thunk-frame-size ≤ n → (n ∸ thunk-frame-size) +ℕ slot-size ≡ n ∸ saved-regs-size
+n∸thunk-frame+slot≡n∸saved-regs = slot1-plus-word≡slot2
 
--- | Raw ℕ version: 4-slot below orig + slot-size < orig when n > two-push-offset
-n∸4slot+slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ four-slot-offset) +ℕ slot-size < n
-n∸4slot+slot<n-raw n n>2slot = <-≤-trans step-slot<step-2slot step-2slot≤n
+-- | Raw ℕ version: thunk-frame below orig + slot-size < orig when n > two-push-offset
+n∸thunk-frame+slot<n : ∀ (n : ℕ) → n > two-push-offset → (n ∸ thunk-frame-size) +ℕ slot-size < n
+n∸thunk-frame+slot<n n n>2slot = <-≤-trans step-slot<step-2slot step-2slot≤n
   where
     open import Data.Nat.Properties using (<-≤-trans; +-monoˡ-≤; +-monoʳ-<; ∸-monoʳ-≤; m∸n+n≡m)
-    step-slot<step-2slot : (n ∸ four-slot-offset) +ℕ slot-size < (n ∸ four-slot-offset) +ℕ two-push-offset
-    step-slot<step-2slot = +-monoʳ-< (n ∸ four-slot-offset) word-fits-pair-strict
-    n∸4slot≤n∸2slot : (n ∸ four-slot-offset) ≤ (n ∸ two-push-offset)
-    n∸4slot≤n∸2slot = ∸-monoʳ-≤ n pair-fits-frame-remainder
-    step-2slot≤n∸2slot+2slot : (n ∸ four-slot-offset) +ℕ two-push-offset ≤ (n ∸ two-push-offset) +ℕ two-push-offset
-    step-2slot≤n∸2slot+2slot = +-monoˡ-≤ two-push-offset n∸4slot≤n∸2slot
+    step-slot<step-2slot : (n ∸ thunk-frame-size) +ℕ slot-size < (n ∸ thunk-frame-size) +ℕ two-push-offset
+    step-slot<step-2slot = +-monoʳ-< (n ∸ thunk-frame-size) word-fits-pair-strict
+    n∸thunk-frame≤n∸two-push : (n ∸ thunk-frame-size) ≤ (n ∸ two-push-offset)
+    n∸thunk-frame≤n∸two-push = ∸-monoʳ-≤ n pair-fits-frame-remainder
+    step-2slot≤n∸2slot+2slot : (n ∸ thunk-frame-size) +ℕ two-push-offset ≤ (n ∸ two-push-offset) +ℕ two-push-offset
+    step-2slot≤n∸2slot+2slot = +-monoˡ-≤ two-push-offset n∸thunk-frame≤n∸two-push
     2slot≤n : two-push-offset ≤ n
     2slot≤n = <⇒≤ n>2slot
     n∸2slot+2slot≡n : (n ∸ two-push-offset) +ℕ two-push-offset ≡ n
     n∸2slot+2slot≡n = m∸n+n≡m 2slot≤n
-    step-2slot≤n : (n ∸ four-slot-offset) +ℕ two-push-offset ≤ n
-    step-2slot≤n = subst ((n ∸ four-slot-offset) +ℕ two-push-offset ≤_) n∸2slot+2slot≡n step-2slot≤n∸2slot+2slot
+    step-2slot≤n : (n ∸ thunk-frame-size) +ℕ two-push-offset ≤ n
+    step-2slot≤n = subst ((n ∸ thunk-frame-size) +ℕ two-push-offset ≤_) n∸2slot+2slot≡n step-2slot≤n∸2slot+2slot
 
 -- | Subtraction with positive n gives different result
 ∸-gives-different : ∀ m n → m > 0 → n > 0 → m ∸ n ≢ m
