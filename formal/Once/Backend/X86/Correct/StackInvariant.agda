@@ -24,10 +24,11 @@ open import Once.Backend.X86.MemoryRegionLemmas
          stack-heap-addr-disjoint; stack-code-addr-disjoint;
          pc-in-code;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
-         frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base)
+         frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base;
+         FramePreserved; StackGrew; frame-preserved-under-growth)
 open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
@@ -49,11 +50,11 @@ data R15Status (s : State) : Set where
 
   -- r15 points to stack (e.g., during Pair where r15 = result address)
   -- r15 is a slot in some frame, identified by frame and slot index.
-  -- The frame-rsp-bound ensures writes below current rsp don't affect r15.
+  -- The frame-preserved ensures writes at current stack-ptr don't affect r15.
   r15-in-stack : (frame : StackPointer) →
                  (slot : ℕ) →
                  readReg (regs s) r15 ≡ slot-addr frame slot →
-                 sp-addr frame ≥ readReg (regs s) rsp →
+                 FramePreserved (sp-addr frame) (readReg (regs s) rsp) →
                  R15Status s
 
 ------------------------------------------------------------------------
@@ -66,9 +67,10 @@ record RbpInvariant (s : State) : Set where
   field
     rbp-frame : StackPointer
     rbp-is-base : readReg (regs s) rbp ≡ sp-addr rbp-frame
-    frame-bound : sp-addr rbp-frame ≥ readReg (regs s) rsp
+    frame-bound : FramePreserved (sp-addr rbp-frame) (readReg (regs s) rsp)
 
   -- Backward compatibility: derive rsp≤rbp from frame-bound + rbp-is-base
+  -- Note: This relies on x86's FramePreserved = _≥_ instantiation
   rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
   rsp≤rbp = subst (readReg (regs s) rsp ≤_) (sym rbp-is-base) frame-bound
 
@@ -166,23 +168,23 @@ stack-inv-preserved-unchanged s s' (r15-in-code r15-code) r15-eq _ =
   r15-in-code (subst InCode (sym r15-eq) r15-code)
 stack-inv-preserved-unchanged s s' (r15-in-stack frame slot r15-eq-slot frame-bound) r15-eq rsp-eq =
   r15-in-stack frame slot (trans r15-eq r15-eq-slot)
-               (subst (sp-addr frame ≥_) (sym rsp-eq) frame-bound)
+               (subst (FramePreserved (sp-addr frame)) (sym rsp-eq) frame-bound)
 
--- | Stack invariant preservation when r15 unchanged and rsp decreased/unchanged
-open import Data.Nat.Properties using (≤-trans)
-
+-- | Stack invariant preservation when r15 unchanged and stack grew
+-- Note: StackGrew old new means stack expanded from old to new position
 stack-inv-preserved-r15-unchanged : ∀ (s s' : State) →
   StackInvariant s →
   readReg (regs s') r15 ≡ readReg (regs s) r15 →
-  readReg (regs s') rsp ≤ readReg (regs s) rsp →
+  StackGrew (readReg (regs s) rsp) (readReg (regs s') rsp) →
   StackInvariant s'
 stack-inv-preserved-r15-unchanged s s' (r15-in-heap r15-heap) r15-eq _ =
   r15-in-heap (subst InHeap (sym r15-eq) r15-heap)
 stack-inv-preserved-r15-unchanged s s' (r15-in-code r15-code) r15-eq _ =
   r15-in-code (subst InCode (sym r15-eq) r15-code)
-stack-inv-preserved-r15-unchanged s s' (r15-in-stack frame slot r15-eq-slot frame-bound) r15-eq rsp-ord =
+stack-inv-preserved-r15-unchanged s s' (r15-in-stack frame slot r15-eq-slot frame-bound) r15-eq stack-grew =
   r15-in-stack frame slot (trans r15-eq r15-eq-slot)
-               (≤-trans rsp-ord frame-bound)
+               (frame-preserved-under-growth (sp-addr frame) (readReg (regs s) rsp) (readReg (regs s') rsp)
+                 frame-bound stack-grew)
 
 -- | Create StackInvariant when r15 holds a code pointer
 stack-inv-for-code-ptr : ∀ (s : State) (prog-len : ℕ) →
