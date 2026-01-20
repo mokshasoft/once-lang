@@ -151,16 +151,42 @@ pc-in-code pc prog-len pc<prog-len = (lower≤pc , pc≤upper)
 -- X86-Specific Calling Convention Lemmas
 ------------------------------------------------------------------------
 
--- | Slot address is above thunk's rbp
+-- | Slot address is above thunk's rbp (PROVEN)
 -- This is specific to x86-64 calling convention where:
 --   - caller-sp = rsp + 8 (after call pushes return address)
 --   - thunk-rbp = rsp - 16 (thunk's saved frame pointer)
-postulate
-  slot-addr-above-thunk-rbp : ∀ sp k rsp thunk-rbp →
-    addr sp ≡ rsp + 8 →
-    thunk-rbp ≡ rsp ∸ 16 →
-    rsp > 16 →
-    slot-addr sp k > thunk-rbp
+--
+-- Proof: slot-addr sp k = (rsp + 8) + k * 8 ≥ rsp + 8
+--        thunk-rbp = rsp ∸ 16 ≤ rsp (by m∸n≤m)
+--        rsp + 8 > rsp ≥ rsp ∸ 16 = thunk-rbp
+slot-addr-above-thunk-rbp : ∀ sp k rsp thunk-rbp →
+  addr sp ≡ rsp + 8 →
+  thunk-rbp ≡ rsp ∸ 16 →
+  rsp > 16 →
+  slot-addr sp k > thunk-rbp
+slot-addr-above-thunk-rbp sp k rsp thunk-rbp addr-eq rbp-eq rsp>16 = slot>rbp
+  where
+    open import Data.Nat.Properties using (m≤n⇒m<n∨m≡n; n<1+n; ≤-<-trans; <-transʳ)
+
+    -- slot-addr sp k = addr sp + k * word-size = (rsp + 8) + k * 8
+    slot-eq : slot-addr sp k ≡ (rsp + 8) + k * word-size
+    slot-eq = cong (λ a → a + k * word-size) addr-eq
+
+    -- slot-addr sp k ≥ rsp + 8 (adding k * 8 ≥ 0)
+    slot≥rsp+8 : slot-addr sp k ≥ rsp + 8
+    slot≥rsp+8 = subst (_≥ rsp + 8) (sym slot-eq) (m≤m+n (rsp + 8) (k * word-size))
+
+    -- rsp + 8 > rsp (adding 8 > 0)
+    rsp+8>rsp : rsp + 8 > rsp
+    rsp+8>rsp = m<m+n rsp (s≤s z≤n)
+
+    -- thunk-rbp = rsp ∸ 16 ≤ rsp
+    rbp≤rsp : thunk-rbp ≤ rsp
+    rbp≤rsp = subst (_≤ rsp) (sym rbp-eq) (m∸n≤m rsp 16)
+
+    -- Chain: slot-addr sp k ≥ rsp + 8 > rsp ≥ thunk-rbp
+    slot>rbp : slot-addr sp k > thunk-rbp
+    slot>rbp = ≤-<-trans rbp≤rsp (<-≤-trans rsp+8>rsp slot≥rsp+8)
 
 ------------------------------------------------------------------------
 -- Re-export FrameSlotInternal at top level
