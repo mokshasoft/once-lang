@@ -70,9 +70,9 @@ record FrameSetupResult (prog : Program) (s : State) (pc-after : ℕ) : Set wher
     -- Register values after setup
     r14-setup : readReg (regs s-setup) r14 ≡ readReg (regs s) rdi
     rdi-setup : readReg (regs s-setup) rdi ≡ readReg (regs s) rdi
-    r15-setup : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ slots 5
-    rsp-setup : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ slots 5
-    rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ slots 3
+    r15-setup : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ frame-size
+    rsp-setup : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ frame-size
+    rbp-setup : readReg (regs s-setup) rbp ≡ readReg (regs s) rsp ∸ saved-regs-size
 
     -- Stack slot memory (rbp-relative addressing)
     -- These express memory layout without requiring arithmetic at use sites
@@ -137,11 +137,11 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     orig-rbp = readReg (regs s) rbp
 
     -- Extract rsp bound from capacity - we need 5 slots total
-    rsp-bound : orig-rsp > slots 5
+    rsp-bound : orig-rsp > frame-size
     rsp-bound = rsp-sufficient cap
 
-    -- Derive smaller bounds using slot monotonicity: 3 ≤ 5 → slots 3 ≤ slots 5
-    rsp-gt-slots3 : orig-rsp > slots 3
+    -- Derive smaller bounds using slot monotonicity: 3 ≤ 5 → saved-regs-size ≤ frame-size
+    rsp-gt-slots3 : orig-rsp > saved-regs-size
     rsp-gt-slots3 = ≤-<-trans (slots-mono-≤ apply-cap-fits-pair-setup) rsp-bound
 
     -- Step 1: push r14 - save r14 to stack, decrement rsp by 8
@@ -239,7 +239,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     rsp-s3-raw : readReg (regs s3) rsp ≡ readReg (regs s2) rsp ∸ slot-size
     rsp-s3-raw = readReg-writeReg-same (regs s2) rsp (readReg (regs s2) rsp ∸ slot-size)
 
-    rsp-s3 : readReg (regs s3) rsp ≡ orig-rsp ∸ slots 3
+    rsp-s3 : readReg (regs s3) rsp ≡ orig-rsp ∸ saved-regs-size
     rsp-s3 = trans rsp-s3-raw (trans (cong (_∸ slot-size) rsp-s2) (∸-+-assoc orig-rsp (slots 2) slot-size))
 
     -- Step 4: mov rbp, rsp - set rbp to current rsp (frame base)
@@ -268,10 +268,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     pc4 : pc s4 ≡ length prefix +ℕ 4
     pc4 = trans (cong (λ n → n +ℕ 1) pc3) (+-assoc (length prefix) 3 1)
 
-    rbp-s4 : readReg (regs s4) rbp ≡ orig-rsp ∸ slots 3
+    rbp-s4 : readReg (regs s4) rbp ≡ orig-rsp ∸ saved-regs-size
     rbp-s4 = trans (readReg-writeReg-same (regs s3) rbp (readReg (regs s3) rsp)) rsp-s3
 
-    rsp-s4 : readReg (regs s4) rsp ≡ orig-rsp ∸ slots 3
+    rsp-s4 : readReg (regs s4) rsp ≡ orig-rsp ∸ saved-regs-size
     rsp-s4 = trans (readReg-writeReg-rbp-rsp (regs s3) (readReg (regs s3) rsp)) rsp-s3
 
     -- Step 5: sub rsp, 16 - allocate 16 bytes on stack
@@ -304,10 +304,10 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     rsp-s5-raw : readReg (regs s5) rsp ≡ readReg (regs s4) rsp ∸ slots 2
     rsp-s5-raw = readReg-writeReg-same (regs s4) rsp (readReg (regs s4) rsp ∸ slots 2)
 
-    rsp-s5 : readReg (regs s5) rsp ≡ orig-rsp ∸ slots 5
-    rsp-s5 = trans rsp-s5-raw (trans (cong (_∸ slots 2) rsp-s4) (∸-+-assoc orig-rsp (slots 3) (slots 2)))
+    rsp-s5 : readReg (regs s5) rsp ≡ orig-rsp ∸ frame-size
+    rsp-s5 = trans rsp-s5-raw (trans (cong (_∸ slots 2) rsp-s4) (∸-+-assoc orig-rsp (saved-regs-size) (slots 2)))
 
-    rbp-s5 : readReg (regs s5) rbp ≡ orig-rsp ∸ slots 3
+    rbp-s5 : readReg (regs s5) rbp ≡ orig-rsp ∸ saved-regs-size
     rbp-s5 = trans (readReg-writeReg-rsp-rbp (regs s4) (readReg (regs s4) rsp ∸ slots 2)) rbp-s4
 
     -- Step 6: mov r15, rsp - set r15 to current rsp (pair base address)
@@ -336,13 +336,13 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     pc6 : pc s6 ≡ length prefix +ℕ 6
     pc6 = trans (cong (λ n → n +ℕ 1) pc5) (+-assoc (length prefix) 5 1)
 
-    r15-s6 : readReg (regs s6) r15 ≡ orig-rsp ∸ slots 5
+    r15-s6 : readReg (regs s6) r15 ≡ orig-rsp ∸ frame-size
     r15-s6 = trans (readReg-writeReg-same (regs s5) r15 (readReg (regs s5) rsp)) rsp-s5
 
-    rsp-s6 : readReg (regs s6) rsp ≡ orig-rsp ∸ slots 5
+    rsp-s6 : readReg (regs s6) rsp ≡ orig-rsp ∸ frame-size
     rsp-s6 = trans (readReg-writeReg-r15-rsp (regs s5) (readReg (regs s5) rsp)) rsp-s5
 
-    rbp-s6 : readReg (regs s6) rbp ≡ orig-rsp ∸ slots 3
+    rbp-s6 : readReg (regs s6) rbp ≡ orig-rsp ∸ saved-regs-size
     rbp-s6 = trans (readReg-writeReg-r15-rbp (regs s5) (readReg (regs s5) rsp)) rbp-s5
 
     rdi-s6 : readReg (regs s6) rdi ≡ orig-rdi
@@ -388,13 +388,13 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     rdi-eq : readReg (regs s7) rdi ≡ orig-rdi
     rdi-eq = trans (readReg-writeReg-r14-rdi (regs s6) (readReg (regs s6) rdi)) rdi-s6
 
-    r15-eq : readReg (regs s7) r15 ≡ orig-rsp ∸ slots 5
+    r15-eq : readReg (regs s7) r15 ≡ orig-rsp ∸ frame-size
     r15-eq = trans (readReg-writeReg-r14-r15 (regs s6) (readReg (regs s6) rdi)) r15-s6
 
-    rsp-eq : readReg (regs s7) rsp ≡ orig-rsp ∸ slots 5
+    rsp-eq : readReg (regs s7) rsp ≡ orig-rsp ∸ frame-size
     rsp-eq = trans (readReg-writeReg-r14-rsp (regs s6) (readReg (regs s6) rdi)) rsp-s6
 
-    rbp-eq : readReg (regs s7) rbp ≡ orig-rsp ∸ slots 3
+    rbp-eq : readReg (regs s7) rbp ≡ orig-rsp ∸ saved-regs-size
     rbp-eq = trans (readReg-writeReg-r14-rbp (regs s6) (readReg (regs s6) rdi)) rbp-s6
 
     -- Memory proofs: stack slots contain saved registers
@@ -408,21 +408,21 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     --   [rbp + 16] = orig-r14  (at orig-rsp - 8)
 
     -- Address where step 3 writes: (orig-rsp - 16) - 8 = orig-rsp - 24
-    write-addr-s3 : readReg (regs s2) rsp ∸ slot-size ≡ orig-rsp ∸ slots 3
+    write-addr-s3 : readReg (regs s2) rsp ∸ slot-size ≡ orig-rsp ∸ saved-regs-size
     write-addr-s3 = trans (cong (_∸ slot-size) rsp-s2) (∸-+-assoc orig-rsp (slots 2) slot-size)
 
     -- Memory after step 3: push rbp wrote orig-rbp to [orig-rsp - 24]
     -- Steps 4-7 don't write to memory (only mov/sub instructions)
-    mem-s3-at-rbp : readMem (memory s3) (orig-rsp ∸ slots 3) ≡ just orig-rbp
+    mem-s3-at-rbp : readMem (memory s3) (orig-rsp ∸ saved-regs-size) ≡ just orig-rbp
     mem-s3-at-rbp = begin
-        readMem (memory s3) (orig-rsp ∸ slots 3)
+        readMem (memory s3) (orig-rsp ∸ saved-regs-size)
       ≡⟨⟩
-        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 3)
-      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ slots 3)) write-addr-s3 ⟩
-        readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 3)
-      ≡⟨ cong (λ v → readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) v) (orig-rsp ∸ slots 3)) rbp-s2 ⟩
-        readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) orig-rbp) (orig-rsp ∸ slots 3)
-      ≡⟨ mem-read-write {memory s2} {orig-rsp ∸ slots 3} {orig-rbp} ⟩
+        readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)) (orig-rsp ∸ saved-regs-size)
+      ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ saved-regs-size)) write-addr-s3 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ saved-regs-size) (readReg (regs s2) rbp)) (orig-rsp ∸ saved-regs-size)
+      ≡⟨ cong (λ v → readMem (writeMem (memory s2) (orig-rsp ∸ saved-regs-size) v) (orig-rsp ∸ saved-regs-size)) rbp-s2 ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ saved-regs-size) orig-rbp) (orig-rsp ∸ saved-regs-size)
+      ≡⟨ mem-read-write {memory s2} {orig-rsp ∸ saved-regs-size} {orig-rbp} ⟩
         just orig-rbp
       ∎
 
@@ -493,8 +493,8 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
       ≡⟨⟩
         readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)
       ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)) write-addr-s3 ⟩
-        readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)
-      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ slots 3} {orig-rsp ∸ slot-size} {readReg (regs s2) rbp} (∸three-slot≢∸one-slot orig-rsp rsp-gt-slots3) ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ saved-regs-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slot-size)
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ saved-regs-size} {orig-rsp ∸ slot-size} {readReg (regs s2) rbp} (∸three-slot≢∸one-slot orig-rsp rsp-gt-slots3) ⟩
         readMem (memory s2) (orig-rsp ∸ slot-size)
       ≡⟨ mem-s2-at-r14slot ⟩
         just orig-r14
@@ -508,8 +508,8 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
       ≡⟨⟩
         readMem (writeMem (memory s2) (readReg (regs s2) rsp ∸ slot-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)
       ≡⟨ cong (λ addr → readMem (writeMem (memory s2) addr (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)) write-addr-s3 ⟩
-        readMem (writeMem (memory s2) (orig-rsp ∸ slots 3) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)
-      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ slots 3} {orig-rsp ∸ slots 2} {readReg (regs s2) rbp} (∸three-slot≢∸two-slot orig-rsp rsp-gt-slots3) ⟩
+        readMem (writeMem (memory s2) (orig-rsp ∸ saved-regs-size) (readReg (regs s2) rbp)) (orig-rsp ∸ slots 2)
+      ≡⟨ mem-read-other {memory s2} {orig-rsp ∸ saved-regs-size} {orig-rsp ∸ slots 2} {readReg (regs s2) rbp} (∸three-slot≢∸two-slot orig-rsp rsp-gt-slots3) ⟩
         readMem (memory s2) (orig-rsp ∸ slots 2)
       ≡⟨ mem-s2-at-r15slot ⟩
         just orig-r15
@@ -549,7 +549,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         -- All write addresses are < orig-rsp, hence ≠ addr
         write1 = orig-rsp ∸ slot-size    -- step 1 write address
         write2 = orig-rsp ∸ slots 2   -- step 2 write address
-        write3 = orig-rsp ∸ slots 3   -- step 3 write address
+        write3 = orig-rsp ∸ saved-regs-size   -- step 3 write address
 
         -- Derive smaller bounds using slot monotonicity
         -- rsp > slots 1 (i.e., > 8)
@@ -564,7 +564,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         0<slots2 : 0 < slots 2
         0<slots2 = pair-positive
 
-        0<slots3 : 0 < slots 3
+        0<slots3 : 0 < saved-regs-size
         0<slots3 = regs-positive
 
         -- Bounds for memory write proofs
@@ -574,7 +574,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         slots2≤rsp : slots 2 ≤ orig-rsp
         slots2≤rsp = <⇒≤ rsp-gt-slots2
 
-        slots3≤rsp : slots 3 ≤ orig-rsp
+        slots3≤rsp : saved-regs-size ≤ orig-rsp
         slots3≤rsp = <⇒≤ rsp-gt-slots3
 
         -- write1 < orig-rsp (using ∸-monoʳ-<)
@@ -628,7 +628,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         -- Write addresses (from x86 semantics)
         write1 = orig-rsp ∸ slot-size
         write2 = orig-rsp ∸ slots 2
-        write3 = orig-rsp ∸ slots 3
+        write3 = orig-rsp ∸ saved-regs-size
 
         -- Write addresses are in stack region (via capacity-maintained from cap parameter)
         write1-in-stack : InStack write1
@@ -664,7 +664,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
         -- Write addresses (from x86 semantics)
         write1 = orig-rsp ∸ slot-size
         write2 = orig-rsp ∸ slots 2
-        write3 = orig-rsp ∸ slots 3
+        write3 = orig-rsp ∸ saved-regs-size
 
         -- Write addresses are in stack region (via capacity-maintained from cap parameter)
         write1-in-stack : InStack write1

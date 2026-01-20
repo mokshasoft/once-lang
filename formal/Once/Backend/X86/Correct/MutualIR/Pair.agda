@@ -22,7 +22,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; slots-mono-≤; ir-stack-requirement; ir-rsp-delta; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req; pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; slot-size; StackCapacity; slots-mono-≤; ir-stack-requirement; ir-rsp-delta; pair-setup-consumed-slots; pair-setup≤pair-req; pair-inner-requirement; output-slots; output-slots≤pair-req; pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot; saved-regs-size; frame-size)
 open import Data.Nat.Properties using (≤-<-trans; ≤-trans; <-trans; <-≤-trans; <⇒≤; m∸n≤m; m≤n⇒m∸n≡0; ≰⇒>; m≤m+n; m≤m⊔n; m≤n⊔m)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (rsp-min-pair-fits-frame; word-fits-thunk-bound-strict)
 open import Once.Backend.X86.MemoryRegionLemmas
@@ -109,25 +109,25 @@ private
 
   -- Helper: m ∸ 40 + 8 < m when m > 16 (used in mem-above-final proof)
   -- This replaces a complex `with` clause that was defined inline
-  rsp∸40+8<rsp : ∀ (rsp-val : ℕ) → rsp-val > slots 2 → rsp-val ∸ slots 5 +ℕ slot-size < rsp-val
+  rsp∸40+8<rsp : ∀ (rsp-val : ℕ) → rsp-val > slots 2 → rsp-val ∸ frame-size +ℕ slot-size < rsp-val
   rsp∸40+8<rsp rsp-val rsp>16 with 40 ≤? rsp-val
   ... | yes 40≤rsp = subst (_< rsp-val) (sym m∸40+8≡m∸32) (m∸n<m-when-m>n rsp-val 32 (s≤s z≤n) rsp>32)
     where
       rsp>32 : rsp-val > 32
       rsp>32 = ≤-trans rsp-min-pair-fits-frame 40≤rsp
-      k = rsp-val ∸ slots 5
-      m∸40+8≡m∸32 : rsp-val ∸ slots 5 +ℕ slot-size ≡ rsp-val ∸ slots 4
+      k = rsp-val ∸ frame-size
+      m∸40+8≡m∸32 : rsp-val ∸ frame-size +ℕ slot-size ≡ rsp-val ∸ slots 4
       m∸40+8≡m∸32 =
-        let step1 : rsp-val ∸ slots 4 ≡ (k +ℕ slots 5) ∸ slots 4
+        let step1 : rsp-val ∸ slots 4 ≡ (k +ℕ frame-size) ∸ slots 4
             step1 = cong (_∸ slots 4) (sym (m∸n+n≡m 40≤rsp))
-            k+40∸32≡k+8 : (k +ℕ slots 5) ∸ slots 4 ≡ k +ℕ slot-size
+            k+40∸32≡k+8 : (k +ℕ frame-size) ∸ slots 4 ≡ k +ℕ slot-size
             k+40∸32≡k+8 = trans (cong (_∸ slots 4) (sym (+-assoc k 8 32))) (m+n∸n≡m (k +ℕ slot-size) 32)
         in sym (trans step1 k+40∸32≡k+8)
   ... | no 40>rsp = subst (_< rsp-val) (sym 0+8≡8) 8<rsp
     where
-      rsp∸40≡0 : rsp-val ∸ slots 5 ≡ 0
+      rsp∸40≡0 : rsp-val ∸ frame-size ≡ 0
       rsp∸40≡0 = m≤n⇒m∸n≡0 (<⇒≤ (≰⇒> 40>rsp))
-      0+8≡8 : rsp-val ∸ slots 5 +ℕ slot-size ≡ 8
+      0+8≡8 : rsp-val ∸ frame-size +ℕ slot-size ≡ 8
       0+8≡8 = cong (_+ℕ slot-size) rsp∸40≡0
       8<rsp : 8 < rsp-val
       8<rsp = ≤-trans word-fits-thunk-bound-strict rsp>16
@@ -352,14 +352,14 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           mem-setup = PairSetupResultV.mem-above-rsp-setup setup-res addr addr≥rsp
 
           setup-rbp = readReg (regs s-setup) rbp
-          setup-rbp-eq : setup-rbp ≡ orig-rsp ∸ slots 3
+          setup-rbp-eq : setup-rbp ≡ orig-rsp ∸ saved-regs-size
           setup-rbp-eq = PairSetupResultV.rbp-setup setup-res
 
           -- Use private m∸n<m-when-positive instead of local definition
-          rsp∸24<rsp : orig-rsp ∸ slots 3 < orig-rsp
+          rsp∸24<rsp : orig-rsp ∸ saved-regs-size < orig-rsp
           rsp∸24<rsp = m∸n<m-when-positive orig-rsp 24 (≤-trans (s≤s z≤n) rsp>16) (s≤s z≤n)
 
-          rsp∸24<addr : orig-rsp ∸ slots 3 < addr
+          rsp∸24<addr : orig-rsp ∸ saved-regs-size < addr
           rsp∸24<addr = <-trans (<-≤-trans rsp∸24<rsp (RbpInvariant.rsp≤rbp rbp-inv)) addr>rbp
 
           addr>setup-rbp : addr > setup-rbp
@@ -369,11 +369,11 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           mem-f = IRStarResultV.ir-mem-above r-f-v addr addr>setup-rbp
 
           s1-r15 = readReg (regs s1) r15
-          s1-r15-eq : s1-r15 ≡ orig-rsp ∸ slots 5
+          s1-r15-eq : s1-r15 ≡ orig-rsp ∸ frame-size
           s1-r15-eq = trans (IRStarResultV.ir-r15 r-f-v) (PairSetupResultV.r15-setup setup-res)
 
           -- Use private m∸n<m-when-positive instead of local definition
-          rsp∸40<rsp : orig-rsp ∸ slots 5 < orig-rsp
+          rsp∸40<rsp : orig-rsp ∸ frame-size < orig-rsp
           rsp∸40<rsp = m∸n<m-when-positive orig-rsp 40 (≤-trans (s≤s z≤n) rsp>16) (s≤s z≤n)
 
           s1-r15<addr : s1-r15 < addr
@@ -386,7 +386,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           mem-mid = PairMiddleResultV.mem-above-r15-mid mid-res addr addr≢s1-r15
 
           s2-rbp = readReg (regs s2) rbp
-          s2-rbp-eq : s2-rbp ≡ orig-rsp ∸ slots 3
+          s2-rbp-eq : s2-rbp ≡ orig-rsp ∸ saved-regs-size
           s2-rbp-eq = trans (PairMiddleResultV.rbp-mid mid-res) (trans (IRStarResultV.ir-rbp r-f-v) setup-rbp-eq)
 
           addr>s2-rbp : addr > s2-rbp
@@ -396,7 +396,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
           mem-g = IRStarResultV.ir-mem-above r-g-v addr addr>s2-rbp
 
           s3-r15 = readReg (regs s3) r15
-          s3-r15-eq : s3-r15 ≡ orig-rsp ∸ slots 5
+          s3-r15-eq : s3-r15 ≡ orig-rsp ∸ frame-size
           s3-r15-eq = trans (IRStarResultV.ir-r15 r-g-v) (trans (PairMiddleResultV.r15-mid mid-res) (trans (IRStarResultV.ir-r15 r-f-v) (PairSetupResultV.r15-setup setup-res)))
 
           -- Use private module-level helper instead of inline with-clause

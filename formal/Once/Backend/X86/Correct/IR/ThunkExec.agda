@@ -52,6 +52,8 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code; slot-size; slots; slots-mono-≤;
+         -- Semantic frame sizes and lemmas
+         saved-regs-size; saved-regs-fits-four-slots;
          -- Capacity constants (no hard-coded literals)
          thunk-setup-capacity; output-slots; thunk-local-size;
          thunk-cap-after-first-push; thunk-cap-after-pushes;
@@ -825,11 +827,11 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         -- new-rsp = old-rsp ∸ slots 4
         new-rsp-eq-local : new-rsp ≡ old-rsp ∸ slots 4
         new-rsp-eq-local = trans (cong (_∸ slots 2) rsp-after-push-rbp≡old-rsp∸16) (∸-+-assoc old-rsp (slots 2) (slots 2))
-        -- new-rsp + slot-size = (old-rsp ∸ slots 4) + slot-size = old-rsp ∸ slots 3
-        new-rsp+slot≡old-rsp∸3slots : new-rsp +ℕ slot-size ≡ old-rsp ∸ slots 3
+        -- new-rsp + slot-size = (old-rsp ∸ slots 4) + slot-size = old-rsp ∸ saved-regs-size
+        new-rsp+slot≡old-rsp∸3slots : new-rsp +ℕ slot-size ≡ old-rsp ∸ saved-regs-size
         new-rsp+slot≡old-rsp∸3slots = trans (cong (_+ℕ 8) new-rsp-eq-local) (n∸4slot+slot≡n∸3slot old-rsp rsp-above-4-slots)
-        -- old-rsp ∸ slots 3 < old-rsp ∸ slot-size = rsp-after-push-r15
-        offset-3slots-lt-1slot : old-rsp ∸ slots 3 < old-rsp ∸ slot-size
+        -- old-rsp ∸ saved-regs-size < old-rsp ∸ slot-size = rsp-after-push-r15
+        offset-3slots-lt-1slot : old-rsp ∸ saved-regs-size < old-rsp ∸ slot-size
         offset-3slots-lt-1slot = n∸3slot<n∸slot-raw old-rsp rsp-above-3-slot-offset
         -- Therefore new-rsp + slot-size < rsp-after-push-r15
         new-rsp+8<rsp-after-push-r15 : new-rsp +ℕ slot-size < rsp-after-push-r15
@@ -922,12 +924,12 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     addr-rsp-32-in-stack = subst (λ x → InStack x) (sym new-rsp-eq)
                                  (abstract-to-rsp-slots-in-stack 4 s cap apply-capacity-fits-thunk-cap)
 
-    -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3 = old-rsp ∸ 3*8
+    -- new-rsp + 8 = (old-rsp ∸ slots 4) + 8 = old-rsp ∸ saved-regs-size = old-rsp ∸ 3*8
     -- Proof using stdlib: m∸n+n≡m and +-∸-assoc
-    -- Strategy: (old-rsp ∸ slots 4) + 8 = old-rsp ∸ slots 3
+    -- Strategy: (old-rsp ∸ slots 4) + 8 = old-rsp ∸ saved-regs-size
     --   Let k = old-rsp ∸ slots 4. Then k + 32 = old-rsp (by m∸n+n≡m).
-    --   old-rsp ∸ slots 3 = (k + 32) ∸ slots 3 = k + (32 ∸ slots 3) = k + 8 (by +-∸-assoc)
-    new-rsp+8-eq : new-rsp +ℕ slot-size ≡ old-rsp ∸ slots 3
+    --   old-rsp ∸ saved-regs-size = (k + 32) ∸ saved-regs-size = k + (32 ∸ saved-regs-size) = k + 8 (by +-∸-assoc)
+    new-rsp+8-eq : new-rsp +ℕ slot-size ≡ old-rsp ∸ saved-regs-size
     new-rsp+8-eq = trans (cong (_+ℕ 8) new-rsp-eq) offset-plus-slot≡orig-minus-3slots
       where
         open import Data.Nat.Properties using (+-∸-assoc)
@@ -944,17 +946,17 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         offset-plus-4-slots≡orig : rsp-offset-4-slots +ℕ slots 4 ≡ old-rsp
         offset-plus-4-slots≡orig = m∸n+n≡m rsp-fits-4-slots
 
-        -- Semantic: 3 slots fit in 4 slots allocation (for associativity)
-        three-slots-fit-in-four : slots 3 ≤ slots 4
-        three-slots-fit-in-four = three-slots-fits-four
+        -- Semantic: saved-regs fits in 4 slots allocation (for associativity)
+        three-slots-fit-in-four : saved-regs-size ≤ slots 4
+        three-slots-fit-in-four = saved-regs-fits-four-slots
 
         -- Semantic: associativity for 4-slot minus 3-slot = offset + slot-size
-        assoc-4-minus-3 : (rsp-offset-4-slots +ℕ slots 4) ∸ slots 3 ≡ rsp-offset-4-slots +ℕ 8
+        assoc-4-minus-3 : (rsp-offset-4-slots +ℕ slots 4) ∸ saved-regs-size ≡ rsp-offset-4-slots +ℕ 8
         assoc-4-minus-3 = +-∸-assoc rsp-offset-4-slots three-slots-fit-in-four
 
         -- Semantic: offset + slot-size = old-rsp - 3 slots
-        offset-plus-slot≡orig-minus-3slots : rsp-offset-4-slots +ℕ 8 ≡ old-rsp ∸ slots 3
-        offset-plus-slot≡orig-minus-3slots = sym (trans (cong (_∸ slots 3) (sym offset-plus-4-slots≡orig)) assoc-4-minus-3)
+        offset-plus-slot≡orig-minus-3slots : rsp-offset-4-slots +ℕ 8 ≡ old-rsp ∸ saved-regs-size
+        offset-plus-slot≡orig-minus-3slots = sym (trans (cong (_∸ saved-regs-size) (sym offset-plus-4-slots≡orig)) assoc-4-minus-3)
 
     addr-rsp-24-in-stack : InStack (new-rsp +ℕ slot-size)
     addr-rsp-24-in-stack = subst (λ x → InStack x) (sym new-rsp+8-eq)

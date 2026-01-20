@@ -571,8 +571,8 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
     offset = length prefix
     ret-addr = offset +ℕ 7  -- Updated
 
-    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s apply-cap-after-push gives > slots 3)
-    -- Used where > slots 2 suffices (slots 3 > slots 2)
+    -- Extract rsp-bound from cap for internal use (cap : StackCapacity s apply-cap-after-push gives > saved-regs-size)
+    -- Used where > slots 2 suffices (saved-regs-size > slots 2)
     rsp-bound : readReg (regs s) rsp > slots apply-cap-after-call
     rsp-bound = ≤-<-trans (slots-mono-≤ (m≤m+n 2 1)) (StackCapacity.rsp-sufficient cap)
 
@@ -1152,7 +1152,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     apply-sp-bound = sym (trans (cong (_+ℕ slot-size) rsp-call) (m∸n+n≡m 8≤setup))
       where
         open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m; m≤m+n)
-        -- rsp > slots 3 = 24, so 24 ≤ rsp. Since 8 ≤ 8+16 = 24, we get 8 ≤ rsp
+        -- rsp > saved-regs-size = 24, so 24 ≤ rsp. Since 8 ≤ 8+16 = 24, we get 8 ≤ rsp
         8≤setup : 8 ≤ readReg (regs s-setup) rsp
         8≤setup = ≤-trans (m≤m+n 8 16) (<⇒≤ (StackCapacity.rsp-sufficient rsp-sufficient-setup))
 
@@ -1208,7 +1208,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     rsp-thunk-eq = thunk-rsp-plus-8 thunk-res
 
     -- s-call.rsp = s-setup.rsp - 8 (call pushes return address)
-    -- Therefore: s-call.rsp + 8 = s-setup.rsp (rsp > slots 3 = 24, so 8 ≤ 24 ≤ rsp)
+    -- Therefore: s-call.rsp + 8 = s-setup.rsp (rsp > saved-regs-size = 24, so 8 ≤ 24 ≤ rsp)
     8≤setup-rsp : 8 ≤ readReg (regs s-setup) rsp
     8≤setup-rsp = ≤-trans (m≤m+n 8 16) (<⇒≤ (StackCapacity.rsp-sufficient rsp-sufficient-setup))
       where

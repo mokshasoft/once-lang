@@ -69,7 +69,11 @@ open import Data.Nat using (ℕ; zero; suc; _∸_; _<_; _≤_; _>_; _≥_; s≤s
 open import Data.Nat.Properties using (+-comm; +-assoc; ∸-+-assoc; +-∸-assoc; m+n∸n≡m; ≤-trans; +-monoʳ-≤; +-monoʳ-<; m∸n≤m; ≤-refl; ∸-monoʳ-<; m≤n⇒m∸n≡0; ≰⇒>; <⇒≤; <⇒≢; ⊔-mono-≤; m∸n+n≡m; m≤n⊔m; m≤m+n; m≤m⊔n; n≤1+n)
 open import Relation.Nullary using (yes; no)
 
--- Import constant comparisons from Arithmetic (replaces verbose s≤s chains)
+-- Import and re-export semantic frame sizes from Arithmetic (single source of truth)
+open import Once.Backend.X86.Correct.Arithmetic public
+  using (saved-regs-size; pair-alloc; frame-size)
+
+-- Import constant comparisons from Arithmetic (internal use)
 open import Once.Backend.X86.Correct.Arithmetic
   using (word-fits-pair-strict; word-fits-pair; word-fits-regs-strict; word-fits-regs; pair-fits-regs;
          word-fits-frame-remainder; pair-fits-frame-remainder; regs-fits-frame-remainder;
@@ -95,14 +99,11 @@ push-offset = slots 1                      -- 8: one push instruction
 two-push-offset : ℕ
 two-push-offset = slots 2                  -- 16: push r15 + push rbp
 
-three-slot-offset : ℕ
-three-slot-offset = slots 3                -- 24: three slots
+-- NOTE: saved-regs-size (24) and frame-size (40) imported from Arithmetic
+-- Use those semantic names instead of saved-regs-size/frame-size
 
 four-slot-offset : ℕ
 four-slot-offset = slots 4                 -- 32: four slots
-
-five-slot-offset : ℕ
-five-slot-offset = slots 5                 -- 40: five slots
 
 -- | Slot monotonicity for ≤ (follows from slots being multiplication)
 -- Useful for deriving smaller bounds: a ≤ b → slots a ≤ slots b
@@ -117,8 +118,7 @@ thunk-local-size = slots 2                 -- 16: sub rsp, 16 in thunk
 thunk-frame-size : ℕ
 thunk-frame-size = four-slot-offset        -- 32: total thunk frame (2 pushes + 16 local)
 
-pair-frame-size : ℕ
-pair-frame-size = five-slot-offset         -- 40: Pair operation (5 slots)
+-- NOTE: frame-size (40) is imported from Arithmetic (saved-regs + pair-alloc)
 
 curry-frame-size : ℕ
 curry-frame-size = slots 2                 -- 16: Curry closure setup
@@ -141,7 +141,7 @@ thunk-min-rsp : ℕ
 thunk-min-rsp = thunk-frame-size +ℕ slot-size   -- 40: need > four-slot-offset with buffer
 
 pair-min-rsp : ℕ
-pair-min-rsp = pair-frame-size +ℕ slot-size     -- 48: need > five-slot-offset with buffer
+pair-min-rsp = frame-size +ℕ slot-size          -- 48: need > frame-size with buffer
 
 apply-min-rsp : ℕ
 apply-min-rsp = two-push-offset                -- 16: need > two-push-offset for apply
@@ -266,9 +266,9 @@ after-alloc-fits-initial = from-yes-≤ (thunk-after-alloc-rsp-min ≤? thunk-in
 four-slots-fits-initial : slots 4 ≤ thunk-initial-rsp-min
 four-slots-fits-initial = from-yes-≤ (slots 4 ≤? thunk-initial-rsp-min)
 
--- Three slots (24 bytes) fits four slots (32 bytes)
-three-slots-fits-four : slots 3 ≤ slots 4
-three-slots-fits-four = from-yes-≤ (slots 3 ≤? slots 4)
+-- Saved registers (24 bytes) fits four-slot offset (32 bytes)
+saved-regs-fits-four-slots : saved-regs-size ≤ slots 4
+saved-regs-fits-four-slots = from-yes-≤ (saved-regs-size ≤? slots 4)
 
 -- Post-rbp-push threshold: minimum RSP after 3 slots allocated
 post-rbp-push-min : ℕ
@@ -1251,12 +1251,12 @@ pair-frame-slot-1-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 1
 
 -- | Pair frame 0 address equals rsp - 40
 pair-frame-0-addr-eq : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
-                       sp-addr (pair-frame-0 s cap) ≡ readReg (regs s) rsp ∸ five-slot-offset
+                       sp-addr (pair-frame-0 s cap) ≡ readReg (regs s) rsp ∸ frame-size
 pair-frame-0-addr-eq s cap = refl
 
--- | Pair frame slot 1 address equals (rsp - five-slot-offset) + slot-size
+-- | Pair frame slot 1 address equals (rsp - frame-size) + slot-size
 pair-frame-slot-1-addr-eq : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
-                            slot-addr (pair-frame-0 s cap) 1 ≡ (readReg (regs s) rsp ∸ five-slot-offset) +ℕ slot-size
+                            slot-addr (pair-frame-0 s cap) 1 ≡ (readReg (regs s) rsp ∸ frame-size) +ℕ slot-size
 pair-frame-slot-1-addr-eq s cap =
   trans (slot-addr-next-is-base-plus-word (pair-frame-0 s cap))
         (cong (_+ℕ slot-size) (pair-frame-0-addr-eq s cap))
@@ -1272,13 +1272,13 @@ pair-rbp-frame-≥-r15-frame s cap =
 -- | rsp - 40 is in stack region when we have pair-setup capacity
 pair-r15-in-stack : ∀ (s : State) →
   StackCapacity s pair-setup-consumed-slots →
-  InStack (readReg (regs s) rsp ∸ five-slot-offset)
+  InStack (readReg (regs s) rsp ∸ frame-size)
 pair-r15-in-stack s cap = capacity-maintained cap pair-setup-consumed-slots ≤-refl
 
--- | (rsp - five-slot-offset) + slot-size is in stack region when we have pair-setup capacity
+-- | (rsp - frame-size) + slot-size is in stack region when we have pair-setup capacity
 pair-second-slot-in-stack : ∀ (s : State) →
   StackCapacity s pair-setup-consumed-slots →
-  InStack ((readReg (regs s) rsp ∸ five-slot-offset) +ℕ slot-size)
+  InStack ((readReg (regs s) rsp ∸ frame-size) +ℕ slot-size)
 pair-second-slot-in-stack s cap =
   subst InStack
         (sym (alloc-5-slots-second-addr-eq rsp-val (cap-to-pair-setup-rsp-bound cap)))
@@ -1288,12 +1288,12 @@ pair-second-slot-in-stack s cap =
     rsp-val = readReg (regs s) rsp
     slot-4≤pair-setup : 4 ≤ pair-setup-consumed-slots
     slot-4≤pair-setup = from-yes-≤ (4 ≤? pair-setup-consumed-slots)
-    cap-to-pair-setup-rsp-bound : StackCapacity s pair-setup-consumed-slots → readReg (regs s) rsp ≥ five-slot-offset
+    cap-to-pair-setup-rsp-bound : StackCapacity s pair-setup-consumed-slots → readReg (regs s) rsp ≥ frame-size
     cap-to-pair-setup-rsp-bound cap = <⇒≤ (rsp-sufficient cap)
-    alloc-5-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ five-slot-offset → (rsp-val ∸ five-slot-offset) +ℕ slot-size ≡ rsp-val ∸ four-slot-offset
+    alloc-5-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ frame-size → (rsp-val ∸ frame-size) +ℕ slot-size ≡ rsp-val ∸ four-slot-offset
     alloc-5-slots-second-addr-eq rsp-val rsp≥5slot = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits-after-4-slots)
       where
-        step1 : rsp-val ∸ five-slot-offset ≡ (rsp-val ∸ four-slot-offset) ∸ slot-size
+        step1 : rsp-val ∸ frame-size ≡ (rsp-val ∸ four-slot-offset) ∸ slot-size
         step1 = sym (∸-+-assoc rsp-val four-slot-offset slot-size)
         word-fits-after-4-slots : slot-size ≤ rsp-val ∸ four-slot-offset
         word-fits-after-4-slots = ∸-monoˡ-≤ four-slot-offset rsp≥5slot
@@ -1301,24 +1301,24 @@ pair-second-slot-in-stack s cap =
 -- | Get StackCapacity for Pair setup from runtime rsp bound
 pair-stack-capacity : ∀ (s : State) →
   InStack (readReg (regs s) rsp) →
-  readReg (regs s) rsp > five-slot-offset →
+  readReg (regs s) rsp > frame-size →
   StackCapacity s pair-setup-consumed-slots
 pair-stack-capacity s rsp-in-stack rsp-bound = rsp-bound-to-capacity pair-setup-consumed-slots s rsp-in-stack rsp-bound
 
 -- | Create StackInvariant for state after Pair setup
 pair-setup-stack-inv : ∀ (s s-setup : State) →
   StackCapacity s pair-setup-consumed-slots →
-  readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ five-slot-offset →
-  readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ five-slot-offset →
+  readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ frame-size →
+  readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ frame-size →
   StackInvariant s-setup
 pair-setup-stack-inv s s-setup cap r15-eq rsp-eq =
   r15-in-stack pair-frame 0 r15-is-slot0 pair-frame-bound
   where
-    base-in-stack : InStack (readReg (regs s) rsp ∸ five-slot-offset)
+    base-in-stack : InStack (readReg (regs s) rsp ∸ frame-size)
     base-in-stack = pair-r15-in-stack s cap
     pair-frame : StackPointer
     pair-frame = record
-      { addr = readReg (regs s) rsp ∸ five-slot-offset
+      { addr = readReg (regs s) rsp ∸ frame-size
       ; in-stack = base-in-stack
       }
     r15-is-slot0 : readReg (regs s-setup) r15 ≡ slot-addr pair-frame 0
@@ -1872,20 +1872,20 @@ n∸4slot<n-raw n n>2slot = ≤-<-trans n∸4slot≤n∸slot (n∸slot<n-raw n n
     n∸4slot≤n∸slot = ∸-monoʳ-≤ n word-fits-frame-remainder
 
 -- | Raw ℕ version: 3-slot below orig when n > two-push-offset
-n∸3slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ three-slot-offset) < n
+n∸3slot<n-raw : ∀ (n : ℕ) → n > two-push-offset → (n ∸ saved-regs-size) < n
 n∸3slot<n-raw n n>2slot = ≤-<-trans n∸3slot≤n∸slot (n∸slot<n-raw n n>2slot)
   where
     open import Data.Nat.Properties using (≤-<-trans; ∸-monoʳ-≤)
-    n∸3slot≤n∸slot : (n ∸ three-slot-offset) ≤ (n ∸ slot-size)
+    n∸3slot≤n∸slot : (n ∸ saved-regs-size) ≤ (n ∸ slot-size)
     n∸3slot≤n∸slot = ∸-monoʳ-≤ n word-fits-regs
 
--- | Raw ℕ version: 3-slot below < 1-slot below when n > three-slot-offset
-n∸3slot<n∸slot-raw : ∀ (n : ℕ) → n > three-slot-offset → (n ∸ three-slot-offset) < (n ∸ slot-size)
+-- | Raw ℕ version: 3-slot below < 1-slot below when n > saved-regs-size
+n∸3slot<n∸slot-raw : ∀ (n : ℕ) → n > saved-regs-size → (n ∸ saved-regs-size) < (n ∸ slot-size)
 n∸3slot<n∸slot-raw n n>3slot = ∸-monoʳ-< word-fits-regs-strict (<⇒≤ n>3slot)
 
--- | Identity: (n ∸ four-slot-offset) + slot-size ≡ n ∸ three-slot-offset when n ≥ 32
+-- | Identity: (n ∸ four-slot-offset) + slot-size ≡ n ∸ saved-regs-size when n ≥ 32
 -- Uses slot1-plus-word≡slot2 from Arithmetic
-n∸4slot+slot≡n∸3slot : ∀ (n : ℕ) → four-slot-offset ≤ n → (n ∸ four-slot-offset) +ℕ slot-size ≡ n ∸ three-slot-offset
+n∸4slot+slot≡n∸3slot : ∀ (n : ℕ) → four-slot-offset ≤ n → (n ∸ four-slot-offset) +ℕ slot-size ≡ n ∸ saved-regs-size
 n∸4slot+slot≡n∸3slot = slot1-plus-word≡slot2
 
 -- | Raw ℕ version: 4-slot below orig + slot-size < orig when n > two-push-offset
@@ -1964,13 +1964,13 @@ thunk-frame-eq m = ∸-+-assoc m two-push-offset thunk-local-size
 ∸two-slot≢∸one-slot : ∀ m → m > two-push-offset → m ∸ two-push-offset ≢ m ∸ push-offset
 ∸two-slot≢∸one-slot m m>16 = ∸-different-offsets m push-offset two-push-offset word-fits-pair-strict (<⇒≤ m>16)
 
--- m ∸ three-slot-offset ≢ m ∸ slot-size when m > three-slot-offset
-∸three-slot≢∸one-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ push-offset
-∸three-slot≢∸one-slot m m>24 = ∸-different-offsets m push-offset three-slot-offset word-fits-regs-strict (<⇒≤ m>24)
+-- m ∸ saved-regs-size ≢ m ∸ slot-size when m > saved-regs-size
+∸three-slot≢∸one-slot : ∀ m → m > saved-regs-size → m ∸ saved-regs-size ≢ m ∸ push-offset
+∸three-slot≢∸one-slot m m>24 = ∸-different-offsets m push-offset saved-regs-size word-fits-regs-strict (<⇒≤ m>24)
 
--- m ∸ three-slot-offset ≢ m ∸ two-push-offset when m > three-slot-offset
-∸three-slot≢∸two-slot : ∀ m → m > three-slot-offset → m ∸ three-slot-offset ≢ m ∸ two-push-offset
-∸three-slot≢∸two-slot m m>24 = ∸-different-offsets m two-push-offset three-slot-offset pair-fits-regs-strict (<⇒≤ m>24)
+-- m ∸ saved-regs-size ≢ m ∸ two-push-offset when m > saved-regs-size
+∸three-slot≢∸two-slot : ∀ m → m > saved-regs-size → m ∸ saved-regs-size ≢ m ∸ two-push-offset
+∸three-slot≢∸two-slot m m>24 = ∸-different-offsets m two-push-offset saved-regs-size pair-fits-regs-strict (<⇒≤ m>24)
 
 ------------------------------------------------------------------------
 -- SlotFrame Abstraction (D041 Phase B)
