@@ -38,7 +38,7 @@ open import Once.Backend.X86.MemoryRegionLemmas
   using (InStack; InHeap; InCode; stack-code-disjoint; stack-code-addr-disjoint;
          stack-heap-disjoint; stack-heap-addr-disjoint;
          slot-addr; slot-addr-≥-base;
-         slot-addr-0-is-base; slot-addr-1-is-base+8; StackPointer)
+         init-slot-at-base; slot-addr-next-is-base-plus-word; StackPointer)
 open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec using (frame-setup-star; FrameSetupResult; pair-middle-star-at; PairMiddleStarResult)
@@ -79,7 +79,7 @@ abstract-to-rsp-40-in-stack : ∀ (s : State) (cap : StackCapacity s pair-setup-
                               InStack (readReg (regs s) rsp ∸ slots pair-setup-consumed-slots)
 abstract-to-rsp-40-in-stack s cap =
   subst InStack
-        (trans (slot-addr-0-is-base (pair-frame-0 s cap))
+        (trans (init-slot-at-base (pair-frame-0 s cap))
                (pair-frame-0-addr-eq s cap))
         (pair-frame-slot-0-in-stack s cap)
 

@@ -24,7 +24,7 @@ open import Once.Backend.X86.MemoryRegionLemmas
          stack-heap-addr-disjoint; stack-code-addr-disjoint;
          pc-in-code;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
-         frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base;
+         frames-disjoint-slots; slot-in-stack; init-slot-at-base;
          FramePreserved; StackGrew; frame-preserved-under-growth)
 open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 

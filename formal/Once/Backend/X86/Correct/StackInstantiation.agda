@@ -57,8 +57,8 @@ open import Once.Backend.X86.MemoryRegionLemmas
          pc-in-code;
          stack-sub-preserves;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
-         frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base;
-         slot-addr-1-is-base+8;
+         frames-disjoint-slots; slot-in-stack; init-slot-at-base;
+         slot-addr-next-is-base-plus-word;
          encode-in-heap; heap-offset;
          stack-bounds; lower; upper)
 open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr; in-stack to sp-in-stack)
@@ -1096,7 +1096,7 @@ abstract-to-rsp-slot-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc 
                              InStack (readReg (regs s) rsp ∸ slot-size)
 abstract-to-rsp-slot-in-stack s cap =
   subst InStack
-        (trans (slot-addr-0-is-base (apply-frame-1 s cap))
+        (trans (init-slot-at-base (apply-frame-1 s cap))
                (make-frame-at-slot-addr 1 s cap (s≤s z≤n)))
         (apply-frame-slot-0-in-stack s cap)
 
@@ -1161,7 +1161,7 @@ pair-frame-0-addr-eq s cap = refl
 pair-frame-slot-1-addr-eq : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
                             slot-addr (pair-frame-0 s cap) 1 ≡ (readReg (regs s) rsp ∸ five-slot-offset) +ℕ slot-size
 pair-frame-slot-1-addr-eq s cap =
-  trans (slot-addr-1-is-base+8 (pair-frame-0 s cap))
+  trans (slot-addr-next-is-base-plus-word (pair-frame-0 s cap))
         (cong (_+ℕ slot-size) (pair-frame-0-addr-eq s cap))
 
 -- | Pair rbp frame (at pair-rbp-slot) ≥ r15 frame (at pair-setup-consumed-slots)
@@ -1225,7 +1225,7 @@ pair-setup-stack-inv s s-setup cap r15-eq rsp-eq =
       ; in-stack = base-in-stack
       }
     r15-is-slot0 : readReg (regs s-setup) r15 ≡ slot-addr pair-frame 0
-    r15-is-slot0 = trans r15-eq (sym (slot-addr-0-is-base pair-frame))
+    r15-is-slot0 = trans r15-eq (sym (init-slot-at-base pair-frame))
     pair-frame-bound : sp-addr pair-frame ≥ readReg (regs s-setup) rsp
     pair-frame-bound = subst (sp-addr pair-frame ≥_) (sym rsp-eq) ≤-refl
 
@@ -1331,7 +1331,7 @@ stack-write-slot-2-preserves-r15 s inv = helper (r15-status inv)
           frames-neq : sp-addr write-frame ≢ sp-addr r15-frame
           frames-neq = <⇒≢ addr<frame
       in stack-write-preserves-instack-r15 s stack-addr
-           write-frame 0 (sym (slot-addr-0-is-base write-frame))
+           write-frame 0 (sym (init-slot-at-base write-frame))
            r15-frame r15-slot r15-eq frames-neq
 
 -- | Similarly for (rsp - slot-size)
@@ -1359,7 +1359,7 @@ stack-write-slot-1-preserves-r15 s inv = helper (r15-status inv)
           frames-neq : sp-addr write-frame ≢ sp-addr r15-frame
           frames-neq = <⇒≢ addr<frame
       in stack-write-preserves-instack-r15 s stack-addr
-           write-frame 0 (sym (slot-addr-0-is-base write-frame))
+           write-frame 0 (sym (init-slot-at-base write-frame))
            r15-frame r15-slot r15-eq frames-neq
 
 -- | Proof that stack writes don't affect heap-allocated data
@@ -1422,7 +1422,7 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
           frames-neq : sp-addr write-frame ≢ sp-addr r15-frame
           frames-neq = <⇒≢ addr<frame
       in stack-write-preserves-instack-r15 s addr
-           write-frame 0 (sym (slot-addr-0-is-base write-frame))
+           write-frame 0 (sym (init-slot-at-base write-frame))
            r15-frame r15-slot r15-eq frames-neq
     diff1 = diff-helper stack-addr1 write1-in-stack addr1<rsp stack-inv
     diff2 = diff-helper stack-addr2 write2-in-stack addr2<rsp stack-inv

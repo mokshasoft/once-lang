@@ -70,7 +70,7 @@ open import Once.Backend.X86.MemoryRegionLemmas
          stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap;
          pc-in-code; slot-addr; slot-addr-≥-base)
-open import Once.Backend.X86.MemoryRegionLemmas using (frameSlot-0-is-top) renaming (addr to sp-addr)
+open import Once.Backend.X86.MemoryRegionLemmas using (init-frame-slot-at-base) renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase
@@ -1232,18 +1232,18 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
         frame-pres : frameSlot (memory s-thunk) apply-sp 0 ≡ frameSlot (memory s-call) apply-sp 0
         frame-pres = thunk-preserves-frame thunk-res 0
 
-        -- Use frameSlot-0-is-top glue to connect abstract to concrete
-        -- frameSlot-0-is-top : frameSlot mem sp 0 ≡ readMem mem (addr sp)
+        -- Use init-frame-slot-at-base glue to connect abstract to concrete
+        -- init-frame-slot-at-base : frameSlot mem sp 0 ≡ readMem mem (addr sp)
         -- addr apply-sp = readReg (regs s-setup) rsp by definition
         frame-preservation-as-mem : readMem (memory s-thunk) (readReg (regs s-setup) rsp) ≡
                                     readMem (memory s-call) (readReg (regs s-setup) rsp)
         frame-preservation-as-mem = begin
           readMem (memory s-thunk) (readReg (regs s-setup) rsp)
-            ≡⟨ sym (frameSlot-0-is-top (memory s-thunk) apply-sp) ⟩
+            ≡⟨ sym (init-frame-slot-at-base (memory s-thunk) apply-sp) ⟩
           frameSlot (memory s-thunk) apply-sp 0
             ≡⟨ frame-pres ⟩
           frameSlot (memory s-call) apply-sp 0
-            ≡⟨ frameSlot-0-is-top (memory s-call) apply-sp ⟩
+            ≡⟨ init-frame-slot-at-base (memory s-call) apply-sp ⟩
           readMem (memory s-call) (sp-addr apply-sp)
             ≡⟨⟩  -- sp-addr apply-sp = readReg (regs s-setup) rsp by definition
           readMem (memory s-call) (readReg (regs s-setup) rsp)

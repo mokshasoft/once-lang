@@ -601,13 +601,13 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
         open import Once.Backend.X86.Correct.StackInvariant
           using (stack-write-preserves-r15; FrameEvidenceFor;
                  R15Status; r15-in-heap; r15-in-code; r15-in-stack)
-        open import Once.Backend.X86.MemoryRegionLemmas using (slot-addr; slot-addr-0-is-base)
+        open import Once.Backend.X86.MemoryRegionLemmas using (slot-addr; init-slot-at-base)
         open import Data.Unit using (tt)
         open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
 
         -- push-addr = slot-addr new-frame 0 (slot 0 of the new frame)
         push-addr-is-slot0 : push-addr ≡ slot-addr new-frame 0
-        push-addr-is-slot0 = sym (trans (slot-addr-0-is-base new-frame) new-frame-addr)
+        push-addr-is-slot0 = sym (trans (init-slot-at-base new-frame) new-frame-addr)
 
         -- Helper to compute frame evidence by case analysis
         -- Can't use 'with' on module parameter, so we use a helper function
@@ -1281,12 +1281,12 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         open import Once.Backend.X86.Correct.StackInvariant
           using (stack-write-preserves-r15; FrameEvidenceFor;
                  R15Status; r15-in-heap; r15-in-code; r15-in-stack)
-        open import Once.Backend.X86.MemoryRegionLemmas using (slot-addr; slot-addr-0-is-base)
+        open import Once.Backend.X86.MemoryRegionLemmas using (slot-addr; init-slot-at-base)
         open import Data.Unit using (tt)
         open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
 
         push-addr-is-slot0 : push-addr ≡ slot-addr new-frame 0
-        push-addr-is-slot0 = sym (trans (slot-addr-0-is-base new-frame) new-frame-addr)
+        push-addr-is-slot0 = sym (trans (init-slot-at-base new-frame) new-frame-addr)
 
         compute-frame-evidence : (inv : R15Status s) → FrameEvidenceFor new-frame inv
         compute-frame-evidence (r15-in-heap _) = tt

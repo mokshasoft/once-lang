@@ -49,27 +49,10 @@ postulate
     slot-addr sp k > thunk-rbp
 
 ------------------------------------------------------------------------
--- Backwards Compatibility Aliases
---
--- These provide the old names for gradual migration.
--- TODO: Remove after all usages are updated.
+-- Re-export FrameSlotInternal at top level
 ------------------------------------------------------------------------
 
--- | Old name for init-slot-at-base
-slot-addr-0-is-base : ∀ sp → slot-addr sp zero ≡ addr sp
-slot-addr-0-is-base = init-slot-at-base
+-- | frameSlot at slot 0 reads from the stack pointer address
+init-frame-slot-at-base : ∀ mem sp → frameSlot mem sp zero ≡ readMem mem (addr sp)
+init-frame-slot-at-base = FrameSlotInternal.init-frame-slot-at-base
 
--- | Old name for slot-addr-next-is-base-plus-word
-slot-addr-1-is-base+8 : ∀ sp → slot-addr sp 1 ≡ addr sp + 8
-slot-addr-1-is-base+8 = slot-addr-next-is-base-plus-word
-
-------------------------------------------------------------------------
--- FrameSlot Compatibility
---
--- The FrameSlotInternal module is re-exported from Common.MemoryRegionLemmas.
--- We add the old name alias here at the top level.
-------------------------------------------------------------------------
-
--- Old name alias for backwards compatibility
-frameSlot-0-is-top : ∀ mem sp → frameSlot mem sp zero ≡ readMem mem (addr sp)
-frameSlot-0-is-top = FrameSlotInternal.init-frame-slot-at-base
