@@ -24,7 +24,8 @@ open import Once.Backend.X86.MemoryRegionLemmas
          stack-heap-addr-disjoint; stack-code-addr-disjoint;
          pc-in-code;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
-         frames-disjoint-slots; slot-in-stack; init-slot-at-base;
+         frame-below-slot0-disjoint;  -- PROVEN lemma for slot 0 disjointness
+         slot-in-stack; init-slot-at-base;
          FramePreserved; StackGrew; frame-preserved-under-growth)
 open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 
@@ -88,13 +89,14 @@ StackInvariant = R15Status
 -- Evidence for stack-write preservation (abstract)
 ------------------------------------------------------------------------
 
--- | Evidence needed for r15-in-stack case: write frame is different from r15 frame
+-- | Evidence needed for r15-in-stack case: write frame is BELOW r15 frame
+-- This enables proving slot disjointness via arithmetic (not a postulate!)
 -- For other R15Status cases, no additional evidence is needed.
 FrameEvidenceFor : ∀ {s : State} → StackPointer → R15Status s → Set
 FrameEvidenceFor write-frame (r15-in-heap _) = ⊤
 FrameEvidenceFor write-frame (r15-in-code _) = ⊤
 FrameEvidenceFor write-frame (r15-in-stack r15-frame r15-slot _ _) =
-  sp-addr write-frame ≢ sp-addr r15-frame
+  sp-addr write-frame < sp-addr r15-frame  -- CHANGED: < instead of ≢
 
 ------------------------------------------------------------------------
 -- Memory Disjointness from Region Membership (Abstract)
@@ -116,41 +118,46 @@ stack-write-preserves-code-r15 : ∀ (s : State) (stack-addr : Addr) →
 stack-write-preserves-code-r15 s stack-addr stack-in r15-code =
   stack-code-addr-disjoint stack-addr (readReg (regs s) r15) stack-in r15-code
 
--- | Stack writes in one frame don't affect r15 when r15 is in a different frame.
+-- | Stack writes to slot 0 don't affect r15 when write-frame < r15-frame
+-- PROVEN using frame-below-slot0-disjoint (no postulate!)
+--
+-- This is specialized to slot 0 because:
+-- 1. All current callers write to slot 0 (push instructions)
+-- 2. frame-below-slot0-disjoint is proven for slot 0
+-- If other slots are needed, add frame-below-any-slot-disjoint lemma.
 stack-write-preserves-instack-r15 : ∀ (s : State) (stack-addr : Addr) →
   (write-frame : StackPointer) →
-  (write-slot : ℕ) →
-  stack-addr ≡ slot-addr write-frame write-slot →
+  stack-addr ≡ slot-addr write-frame 0 →  -- SPECIALIZED: slot 0 only
   (r15-frame : StackPointer) →
   (r15-slot : ℕ) →
   readReg (regs s) r15 ≡ slot-addr r15-frame r15-slot →
-  sp-addr write-frame ≢ sp-addr r15-frame →
+  sp-addr write-frame < sp-addr r15-frame →  -- Ordering evidence (not just ≢)
   stack-addr ≢ readReg (regs s) r15
-stack-write-preserves-instack-r15 s stack-addr write-frame write-slot addr-eq
-                                  r15-frame r15-slot r15-eq frames-neq eq =
-  frames-disjoint-slots write-frame r15-frame write-slot r15-slot frames-neq
+stack-write-preserves-instack-r15 s stack-addr write-frame addr-eq
+                                  r15-frame r15-slot r15-eq frame< eq =
+  frame-below-slot0-disjoint write-frame r15-frame r15-slot frame<
     (trans (sym addr-eq) (trans eq r15-eq))
 
--- | General: stack writes don't affect r15 based on R15Status
+-- | General: stack writes to slot 0 don't affect r15 based on R15Status
+-- Specialized to slot 0 because all callers write to slot 0 (push instructions)
 stack-write-preserves-r15 : ∀ (s : State) (stack-addr : Addr) →
   (write-frame : StackPointer) →
-  (write-slot : ℕ) →
-  stack-addr ≡ slot-addr write-frame write-slot →
+  stack-addr ≡ slot-addr write-frame 0 →  -- SPECIALIZED: slot 0 only
   (r15-inv : R15Status s) →
   FrameEvidenceFor write-frame r15-inv →
   stack-addr ≢ readReg (regs s) r15
-stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq (r15-in-heap r15-heap) _ =
+stack-write-preserves-r15 s stack-addr write-frame addr-eq (r15-in-heap r15-heap) _ =
   stack-write-preserves-heap-r15 s stack-addr
-    (subst InStack (sym addr-eq) (slot-in-stack write-frame write-slot))
+    (subst InStack (sym addr-eq) (slot-in-stack write-frame 0))
     r15-heap
-stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq (r15-in-code r15-code) _ =
+stack-write-preserves-r15 s stack-addr write-frame addr-eq (r15-in-code r15-code) _ =
   stack-write-preserves-code-r15 s stack-addr
-    (subst InStack (sym addr-eq) (slot-in-stack write-frame write-slot))
+    (subst InStack (sym addr-eq) (slot-in-stack write-frame 0))
     r15-code
-stack-write-preserves-r15 s stack-addr write-frame write-slot addr-eq
-                          (r15-in-stack r15-frame r15-slot r15-eq _) frames-neq =
-  stack-write-preserves-instack-r15 s stack-addr write-frame write-slot addr-eq
-                                    r15-frame r15-slot r15-eq frames-neq
+stack-write-preserves-r15 s stack-addr write-frame addr-eq
+                          (r15-in-stack r15-frame r15-slot r15-eq _) frame< =
+  stack-write-preserves-instack-r15 s stack-addr write-frame addr-eq
+                                    r15-frame r15-slot r15-eq frame<
 
 ------------------------------------------------------------------------
 -- Invariant Preservation (Abstract - no arithmetic)

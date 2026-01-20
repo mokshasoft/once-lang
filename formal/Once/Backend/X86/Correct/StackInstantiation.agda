@@ -57,7 +57,7 @@ open import Once.Backend.X86.MemoryRegionLemmas
          pc-in-code;
          stack-sub-preserves;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
-         frames-disjoint-slots; slot-in-stack; init-slot-at-base;
+         slot-in-stack; init-slot-at-base;
          slot-addr-next-is-base-plus-word;
          encode-in-heap; heap-offset;
          stack-bounds; lower; upper)
@@ -1422,11 +1422,10 @@ stack-write-slot-2-preserves-r15 s inv = helper (r15-status inv)
           addr<frame = <-≤-trans addr<rsp frame-bound
           write-frame : StackPointer
           write-frame = record { addr = write-addr ; in-stack = stack-addr-in-stack }
-          frames-neq : sp-addr write-frame ≢ sp-addr r15-frame
-          frames-neq = <⇒≢ addr<frame
+      -- Use < evidence directly (no conversion to ≢ needed!)
       in stack-write-preserves-instack-r15 s stack-addr
-           write-frame 0 (sym (init-slot-at-base write-frame))
-           r15-frame r15-slot r15-eq frames-neq
+           write-frame (sym (init-slot-at-base write-frame))
+           r15-frame r15-slot r15-eq addr<frame
 
 -- | Similarly for (rsp - slot-size)
 stack-write-slot-1-preserves-r15 : ∀ (s : State) →
@@ -1450,11 +1449,10 @@ stack-write-slot-1-preserves-r15 s inv = helper (r15-status inv)
           addr<frame = <-≤-trans addr<rsp frame-bound
           write-frame : StackPointer
           write-frame = record { addr = write-addr ; in-stack = stack-addr-in-stack }
-          frames-neq : sp-addr write-frame ≢ sp-addr r15-frame
-          frames-neq = <⇒≢ addr<frame
+      -- Use < evidence directly (no conversion to ≢ needed!)
       in stack-write-preserves-instack-r15 s stack-addr
-           write-frame 0 (sym (init-slot-at-base write-frame))
-           r15-frame r15-slot r15-eq frames-neq
+           write-frame (sym (init-slot-at-base write-frame))
+           r15-frame r15-slot r15-eq addr<frame
 
 -- | Proof that stack writes don't affect heap-allocated data
 stack-write-preserves-heap-data : ∀ (s : State) (heap-addr : Addr) →
@@ -1513,11 +1511,10 @@ addr-diff-from-invariant s stack-inv rsp-in-stack rsp-suff = diff1 , diff2
           addr<frame = <-≤-trans addr<rsp frame-bound
           write-frame : StackPointer
           write-frame = record { addr = addr ; in-stack = addr-in-stack }
-          frames-neq : sp-addr write-frame ≢ sp-addr r15-frame
-          frames-neq = <⇒≢ addr<frame
+      -- Use < evidence directly (no conversion to ≢ needed!)
       in stack-write-preserves-instack-r15 s addr
-           write-frame 0 (sym (init-slot-at-base write-frame))
-           r15-frame r15-slot r15-eq frames-neq
+           write-frame (sym (init-slot-at-base write-frame))
+           r15-frame r15-slot r15-eq addr<frame
     diff1 = diff-helper stack-addr1 write1-in-stack addr1<rsp stack-inv
     diff2 = diff-helper stack-addr2 write2-in-stack addr2<rsp stack-inv
 

@@ -610,17 +610,16 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
         push-addr-is-slot0 = sym (trans (init-slot-at-base new-frame) new-frame-addr)
 
         -- Helper to compute frame evidence by case analysis
-        -- Can't use 'with' on module parameter, so we use a helper function
+        -- For r15-in-stack case, provides ORDERING evidence (not just ≢)
         compute-frame-evidence : (inv : R15Status s) → FrameEvidenceFor new-frame inv
         compute-frame-evidence (r15-in-heap _) = tt
         compute-frame-evidence (r15-in-code _) = tt
-        compute-frame-evidence (r15-in-stack r15-frame r15-slot r15-eq r15-frame-bound) = new-frame≢r15-frame
+        compute-frame-evidence (r15-in-stack r15-frame r15-slot r15-eq r15-frame-bound) = new-frame<r15-frame
           where
             -- sp-addr new-frame = orig-rsp - slot-size
             -- sp-addr r15-frame ≥ orig-rsp (from r15-frame-bound)
-            -- We need: orig-rsp - slot-size < orig-rsp ≤ sp-addr r15-frame
-            -- Therefore: sp-addr new-frame < sp-addr r15-frame, so they're ≠
-
+            -- We prove: orig-rsp - slot-size < orig-rsp ≤ sp-addr r15-frame
+            -- Therefore: sp-addr new-frame < sp-addr r15-frame (direct < evidence!)
             new-frame<r15-frame : sp-addr new-frame < sp-addr r15-frame
             new-frame<r15-frame = <-≤-trans new-frame<rsp r15-frame-bound
               where
@@ -628,14 +627,11 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
                 new-frame<rsp : sp-addr new-frame < orig-rsp
                 new-frame<rsp = subst (_< orig-rsp) (sym new-frame-addr) push-addr<rsp
 
-            new-frame≢r15-frame : sp-addr new-frame ≢ sp-addr r15-frame
-            new-frame≢r15-frame = <⇒≢ new-frame<r15-frame
-
         frame-evidence : FrameEvidenceFor new-frame stack-inv
         frame-evidence = compute-frame-evidence stack-inv
 
         push-addr≢r15 : push-addr ≢ orig-r15
-        push-addr≢r15 = stack-write-preserves-r15 s push-addr new-frame 0
+        push-addr≢r15 = stack-write-preserves-r15 s push-addr new-frame
                           push-addr-is-slot0 stack-inv frame-evidence
 
     -- ========== Assemble result ==========
@@ -1291,22 +1287,20 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         compute-frame-evidence : (inv : R15Status s) → FrameEvidenceFor new-frame inv
         compute-frame-evidence (r15-in-heap _) = tt
         compute-frame-evidence (r15-in-code _) = tt
-        compute-frame-evidence (r15-in-stack r15-frame r15-slot r15-eq r15-frame-bound) = new-frame≢r15-frame
+        compute-frame-evidence (r15-in-stack r15-frame r15-slot r15-eq r15-frame-bound) = new-frame<r15-frame
           where
+            -- Direct < evidence (no conversion to ≢ needed!)
             new-frame<r15-frame : sp-addr new-frame < sp-addr r15-frame
             new-frame<r15-frame = <-≤-trans new-frame<rsp r15-frame-bound
               where
                 new-frame<rsp : sp-addr new-frame < orig-rsp
                 new-frame<rsp = subst (_< orig-rsp) (sym new-frame-addr) push-addr<rsp
 
-            new-frame≢r15-frame : sp-addr new-frame ≢ sp-addr r15-frame
-            new-frame≢r15-frame = <⇒≢ new-frame<r15-frame
-
         frame-evidence : FrameEvidenceFor new-frame stack-inv
         frame-evidence = compute-frame-evidence stack-inv
 
         push-addr≢r15 : push-addr ≢ orig-r15
-        push-addr≢r15 = stack-write-preserves-r15 s push-addr new-frame 0
+        push-addr≢r15 = stack-write-preserves-r15 s push-addr new-frame
                           push-addr-is-slot0 stack-inv frame-evidence
 
     -- ========== Assemble result ==========

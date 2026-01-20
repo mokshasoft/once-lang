@@ -107,12 +107,6 @@ slot-in-stack sp k = grow-preserves-region (addr sp) k (in-stack sp)
 sp-distinct : ∀ sp₁ sp₂ k → addr sp₁ ≢ addr sp₂ → slot-addr sp₁ k ≢ slot-addr sp₂ k
 sp-distinct sp₁ sp₂ k addr≢ = grow-addr-injective (addr sp₁) (addr sp₂) k addr≢
 
--- Remaining slot property requires additional assumptions
-postulate
-  -- | Different frames have disjoint slots
-  -- NOTE: This is only true if frames don't overlap. Requires frame separation guarantee.
-  frames-disjoint-slots : ∀ sp₁ sp₂ k₁ k₂ → addr sp₁ ≢ addr sp₂ → slot-addr sp₁ k₁ ≢ slot-addr sp₂ k₂
-
 ------------------------------------------------------------------------
 -- Heap Region Properties
 --
