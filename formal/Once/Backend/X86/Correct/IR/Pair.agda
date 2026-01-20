@@ -22,7 +22,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
   using (StackInvariant; StackCapacity; RbpInvariant; r15-in-heap; r15-in-code; r15-in-stack;
          rsp-bound-to-capacity; pair-stack-capacity; slots; slot-size;
          -- Semantic frame sizes (use instead of saved-regs-size, frame-size)
-         saved-regs-size; frame-size;
+         saved-regs-size; pair-alloc; frame-size;
          rsp-in-stack; rsp-sufficient; capacity-maintained; slots-mono-≤; slots-distribute;
          pair-setup-consumed-slots; pair-capacity; pair-setup-fits-capacity;
          -- Dynamic capacity functions
@@ -215,7 +215,7 @@ make-pair-context {A} {B} {C} f g prefix suffix = record
     setup-push-r15 = push (reg r15)
     setup-push-rbp = push (reg rbp)
     setup-frame = mov (reg rbp) (reg rsp)
-    setup-sub = sub (reg rsp) (imm (slots 2))
+    setup-sub = sub (reg rsp) (imm (pair-alloc))
     setup-base = mov (reg r15) (reg rsp)
     setup-save = mov (reg r14) (reg rdi)
 
@@ -397,7 +397,7 @@ record PairSetupResult {A B C : Type} (f : IR C A) (g : IR C B)
     -- Stack slot memory proofs: saved registers on stack
     mem-stack-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
     mem-stack-r15 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
-    mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
+    mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ pair-alloc) ≡ just (readReg (regs s) r14)
     -- Code region preservation (D041)
     mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- Heap region preservation (D041)
@@ -560,7 +560,7 @@ record PairSetupResultV {A B C : Type} (f : IR C A) (g : IR C B)
     mem-above-rsp-setup : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-stack-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
     mem-stack-r15 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
-    mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
+    mem-stack-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ pair-alloc) ≡ just (readReg (regs s) r14)
     mem-code-setup : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     mem-heap-setup : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- StackCapacity s pair-setup-consumed-slots derived from input capacity (for downstream use)
@@ -892,22 +892,22 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
         ∸>0⇒≤-local (suc m) (suc n) sm∸sn>0 = s≤s (∸>0⇒≤-local m n sm∸sn>0)
         setup-frame-fits : slots setup-slots-local ≤ rsp-s
         setup-frame-fits = ∸>0⇒≤-local rsp-s (slots setup-slots-local) rsp-after-setup>0
-        -- Local ∸-offset-relationship: m ∸ saved-regs-size ≡ (m ∸ frame-size) + slots 2 when setup-frame-fits
-        rsp∸rbp-offset-eq : rsp-s ∸ saved-regs-size ≡ (rsp-s ∸ frame-size) +ℕ slots 2
+        -- Local ∸-offset-relationship: m ∸ saved-regs-size ≡ (m ∸ frame-size) + pair-alloc when setup-frame-fits
+        rsp∸rbp-offset-eq : rsp-s ∸ saved-regs-size ≡ (rsp-s ∸ frame-size) +ℕ pair-alloc
         rsp∸rbp-offset-eq = trans step1 step2
           where
             step1 : rsp-s ∸ saved-regs-size ≡ (rsp-s ∸ frame-size +ℕ frame-size) ∸ saved-regs-size
             step1 = cong (_∸ saved-regs-size) (sym (m∸n+n≡m setup-frame-fits))
-            step2 : (rsp-s ∸ frame-size +ℕ frame-size) ∸ saved-regs-size ≡ (rsp-s ∸ frame-size) +ℕ slots 2
+            step2 : (rsp-s ∸ frame-size +ℕ frame-size) ∸ saved-regs-size ≡ (rsp-s ∸ frame-size) +ℕ pair-alloc
             step2 = lemma (rsp-s ∸ frame-size)
               where
-                lemma : ∀ k → (k +ℕ frame-size) ∸ saved-regs-size ≡ k +ℕ slots 2
+                lemma : ∀ k → (k +ℕ frame-size) ∸ saved-regs-size ≡ k +ℕ pair-alloc
                 lemma k = trans (cong (_∸ saved-regs-size) (+-comm k 40)) (trans step-a (+-comm 16 k))
                   where
                     step-a : (40 +ℕ k) ∸ saved-regs-size ≡ 16 +ℕ k
                     step-a = refl
         -- Now: (rsp - r15-offset) = (rsp - rbp-offset) = (rsp - r15-offset) + frame-gap, contradiction
-        contra : rsp-s ∸ frame-size ≡ (rsp-s ∸ frame-size) +ℕ slots 2
+        contra : rsp-s ∸ frame-size ≡ (rsp-s ∸ frame-size) +ℕ pair-alloc
         contra = trans eq' rsp∸rbp-offset-eq
 
     -- Memory preserved via readMem-writeMem-diff
@@ -1406,7 +1406,7 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     -- Stack layout: pushed registers accessible via rbp
     stack-rbp : readMem (memory s3) (readReg (regs s3) rbp) ≡ just (readReg (regs s) rbp)
     stack-r15 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
-    stack-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
+    stack-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ pair-alloc) ≡ just (readReg (regs s) r14)
     -- Stack invariant propagation
     stack-inv-s3 : StackInvariant s3
     -- Original stack invariant (for s9 restoration proof)
@@ -1422,7 +1422,7 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
     -- The write at r15-s3 + 8 doesn't affect stack at rbp-s3, rbp-s3 + 8, rbp-s3 + 16
     disjoint-rbp : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ slot-size
     disjoint-r15 : readReg (regs s3) rbp +ℕ slot-size ≢ readReg (regs s3) r15 +ℕ slot-size
-    disjoint-r14 : readReg (regs s3) rbp +ℕ slots 2 ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-r14 : readReg (regs s3) rbp +ℕ pair-alloc ≢ readReg (regs s3) r15 +ℕ slot-size
     -- Disjointness for mem-orig-preserved
     disjoint-orig : readReg (regs s) r15 ≢ readReg (regs s3) r15 +ℕ slot-size
     -- Disjointness for mem-rbp-preserved (original rbp not touched by final write)
@@ -1444,33 +1444,33 @@ record PairFinalPrecond {A B C : Type} (f : IR C A) (g : IR C B)
 n+word-size≢n : ∀ (n : ℕ) → n +ℕ slot-size ≢ n
 n+word-size≢n n eq = n≢n+word-size n (sym eq)
 
--- | n + slots 2 ≢ n + slot-size
-n+slots2≢n+slot-size : ∀ (n : ℕ) → n +ℕ slots 2 ≢ n +ℕ slot-size
-n+slots2≢n+slot-size n eq = n≢n+word-size (n +ℕ slot-size) (+-assoc-cancel eq)
+-- | n + pair-alloc ≢ n + slot-size
+n+pair-alloc≢n+slot : ∀ (n : ℕ) → n +ℕ pair-alloc ≢ n +ℕ slot-size
+n+pair-alloc≢n+slot n eq = n≢n+word-size (n +ℕ slot-size) (+-assoc-cancel eq)
   where
-    -- If n + 16 = n + 8, then (n + 8) + 8 = n + 8, so n + 8 = (n + 8) + 8
-    -- n + 16 = (n + 8) + 8 by +-assoc
-    +-assoc-cancel : n +ℕ slots 2 ≡ n +ℕ slot-size → n +ℕ slot-size ≡ (n +ℕ slot-size) +ℕ slot-size
-    +-assoc-cancel p = sym (trans (+-assoc n 8 8) p)
+    -- If n + pair-alloc = n + slot-size, then (n + slot-size) + slot-size = n + slot-size
+    -- n + pair-alloc = (n + slot-size) + slot-size by +-assoc
+    +-assoc-cancel : n +ℕ pair-alloc ≡ n +ℕ slot-size → n +ℕ slot-size ≡ (n +ℕ slot-size) +ℕ slot-size
+    +-assoc-cancel p = sym (trans (+-assoc n slot-size slot-size) p)
 
--- | n + 24 ≢ n + 8
-n+24≢n+8 : ∀ (n : ℕ) → n +ℕ saved-regs-size ≢ n +ℕ slot-size
-n+24≢n+8 n eq = n≢n+suc-m (n +ℕ slot-size) 15 (+-assoc-cancel eq)
+-- | n + saved-regs-size ≢ n + slot-size
+n+saved-regs≢n+slot : ∀ (n : ℕ) → n +ℕ saved-regs-size ≢ n +ℕ slot-size
+n+saved-regs≢n+slot n eq = n≢n+suc-m (n +ℕ slot-size) 15 (+-assoc-cancel eq)
   where
-    -- n + 24 = (n + 8) + 16 by +-assoc
-    +-assoc-cancel : n +ℕ saved-regs-size ≡ n +ℕ slot-size → n +ℕ slot-size ≡ (n +ℕ slot-size) +ℕ slots 2
-    +-assoc-cancel p = sym (trans (+-assoc n 8 16) p)
+    -- n + saved-regs-size = (n + slot-size) + pair-alloc by +-assoc
+    +-assoc-cancel : n +ℕ saved-regs-size ≡ n +ℕ slot-size → n +ℕ slot-size ≡ (n +ℕ slot-size) +ℕ pair-alloc
+    +-assoc-cancel p = sym (trans (+-assoc n slot-size pair-alloc) p)
 
--- | n + 32 ≢ n + 8
-n+32≢n+8 : ∀ (n : ℕ) → n +ℕ slots 4 ≢ n +ℕ slot-size
-n+32≢n+8 n eq = n≢n+suc-m (n +ℕ slot-size) 23 (+-assoc-cancel eq)
+-- | n + (frame-size ∸ slot-size) ≢ n + slot-size
+n+frame∸slot≢n+slot : ∀ (n : ℕ) → n +ℕ (frame-size ∸ slot-size) ≢ n +ℕ slot-size
+n+frame∸slot≢n+slot n eq = n≢n+suc-m (n +ℕ slot-size) 23 (+-assoc-cancel eq)
   where
-    -- n + 32 = (n + 8) + 24 by +-assoc
-    +-assoc-cancel : n +ℕ slots 4 ≡ n +ℕ slot-size → n +ℕ slot-size ≡ (n +ℕ slot-size) +ℕ saved-regs-size
-    +-assoc-cancel p = sym (trans (+-assoc n 8 24) p)
+    -- n + (frame-size ∸ slot-size) = (n + slot-size) + saved-regs-size by +-assoc
+    +-assoc-cancel : n +ℕ (frame-size ∸ slot-size) ≡ n +ℕ slot-size → n +ℕ slot-size ≡ (n +ℕ slot-size) +ℕ saved-regs-size
+    +-assoc-cancel p = sym (trans (+-assoc n slot-size saved-regs-size) p)
 
 -- | If m ≥ 40, then (m ∸ saved-regs-size) = (m ∸ frame-size) + 16
-∸-offset-relationship : ∀ m → 40 ≤ m → m ∸ saved-regs-size ≡ (m ∸ frame-size) +ℕ slots 2
+∸-offset-relationship : ∀ m → 40 ≤ m → m ∸ saved-regs-size ≡ (m ∸ frame-size) +ℕ pair-alloc
 ∸-offset-relationship m 40≤m = trans step1 step2
   where
     -- m ∸ saved-regs-size = m ∸ frame-size + 16 when m ≥ 40
@@ -1478,11 +1478,11 @@ n+32≢n+8 n eq = n≢n+suc-m (n +ℕ slot-size) 23 (+-assoc-cancel eq)
     step1 : m ∸ saved-regs-size ≡ (m ∸ frame-size +ℕ frame-size) ∸ saved-regs-size
     step1 = cong (_∸ saved-regs-size) (sym (m∸n+n≡m 40≤m))
 
-    step2 : (m ∸ frame-size +ℕ frame-size) ∸ saved-regs-size ≡ (m ∸ frame-size) +ℕ slots 2
+    step2 : (m ∸ frame-size +ℕ frame-size) ∸ saved-regs-size ≡ (m ∸ frame-size) +ℕ pair-alloc
     step2 = lemma (m ∸ frame-size)
       where
         -- (k + 40) ∸ saved-regs-size = k + 16
-        lemma : ∀ k → (k +ℕ frame-size) ∸ saved-regs-size ≡ k +ℕ slots 2
+        lemma : ∀ k → (k +ℕ frame-size) ∸ saved-regs-size ≡ k +ℕ pair-alloc
         lemma k = trans (cong (_∸ saved-regs-size) (+-comm k 40)) (trans step-a (+-comm 16 k))
           where
             step-a : (40 +ℕ k) ∸ saved-regs-size ≡ 16 +ℕ k
@@ -1524,9 +1524,9 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
   ; stack-inv-s = stack-inv
   ; rbp-chain = rbp-chain
   ; mem-frame = mem-frame-s3
-  ; disjoint-rbp = disjoint-rbp-s3
-  ; disjoint-r15 = disjoint-r15-s3
-  ; disjoint-r14 = disjoint-r14-s3
+  ; disjoint-rbp = disjoint-base-ptr
+  ; disjoint-r15 = disjoint-r15-saved-regs
+  ; disjoint-r14 = disjoint-r14-save
   ; disjoint-orig = disjoint-orig-s3
   ; disjoint-orig-rbp = disjoint-orig-rbp-s3
   ; disjoint-orig-rbp+8 = disjoint-orig-rbp+8-s3
@@ -1634,40 +1634,40 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     offset-eq : readReg (regs s) rsp ∸ slots rbp-offset-local ≡ (readReg (regs s) rsp ∸ slots setup-slots-local) +ℕ slots delta-local
     offset-eq = ∸-offset-relationship (readReg (regs s) rsp) setup-frame-fits
 
-    rbp-eq-r15-plus-16 : readReg (regs s3) rbp ≡ readReg (regs s3) r15 +ℕ slots 2
-    rbp-eq-r15-plus-16 = trans rbp-chain (trans offset-eq (cong (_+ℕ slots 2) (sym r15-chain)))
+    rbp-eq-r15-plus-16 : readReg (regs s3) rbp ≡ readReg (regs s3) r15 +ℕ pair-alloc
+    rbp-eq-r15-plus-16 = trans rbp-chain (trans offset-eq (cong (_+ℕ pair-alloc) (sym r15-chain)))
 
     -- Derived relationships for disjointness
     rbp+8-is-r15+24 : readReg (regs s3) rbp +ℕ slot-size ≡ readReg (regs s3) r15 +ℕ saved-regs-size
-    rbp+8-is-r15+24 = trans (cong (_+ℕ slot-size) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) 16 8)
+    rbp+8-is-r15+24 = trans (cong (_+ℕ slot-size) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) pair-alloc slot-size)
 
-    rbp+16-is-r15+32 : readReg (regs s3) rbp +ℕ slots 2 ≡ readReg (regs s3) r15 +ℕ slots 4
-    rbp+16-is-r15+32 = trans (cong (_+ℕ slots 2) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) 16 16)
+    rbp+16-is-r15+32 : readReg (regs s3) rbp +ℕ pair-alloc ≡ readReg (regs s3) r15 +ℕ (frame-size ∸ slot-size)
+    rbp+16-is-r15+32 = trans (cong (_+ℕ pair-alloc) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) pair-alloc pair-alloc)
 
-    -- disjoint-rbp-s3: rbp-s3 ≢ r15-s3 + 8
-    -- rbp-s3 = r15-s3 + 16, so r15-s3 + 16 ≢ r15-s3 + 8
-    disjoint-rbp-s3 : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ slot-size
-    disjoint-rbp-s3 eq = n+slots2≢n+slot-size (readReg (regs s3) r15) combined-eq
+    -- disjoint-base-ptr: base pointer ≢ frame-base + slot-size
+    -- rbp = frame-base + pair-alloc, so frame-base + pair-alloc ≢ frame-base + slot-size
+    disjoint-base-ptr : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-base-ptr eq = n+pair-alloc≢n+slot (readReg (regs s3) r15) combined-eq
       where
         -- subst (λ x → x ≡ r15+8) (rbp ≡ r15+16) : (rbp ≡ r15+8) → (r15+16 ≡ r15+8)
-        combined-eq : readReg (regs s3) r15 +ℕ slots 2 ≡ readReg (regs s3) r15 +ℕ slot-size
+        combined-eq : readReg (regs s3) r15 +ℕ pair-alloc ≡ readReg (regs s3) r15 +ℕ slot-size
         combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ slot-size) rbp-eq-r15-plus-16 eq
 
-    -- disjoint-r15-s3: rbp-s3 + 8 ≢ r15-s3 + 8
-    -- rbp + 8 = r15 + 24, so this becomes r15 + 24 ≢ r15 + 8
-    disjoint-r15-s3 : readReg (regs s3) rbp +ℕ slot-size ≢ readReg (regs s3) r15 +ℕ slot-size
-    disjoint-r15-s3 eq = n+24≢n+8 (readReg (regs s3) r15) combined-eq
+    -- disjoint-r15-saved-regs: r15-save location ≢ output slot
+    -- rbp + slot-size = frame-base + saved-regs-size, so frame-base + saved-regs-size ≢ frame-base + slot-size
+    disjoint-r15-saved-regs : readReg (regs s3) rbp +ℕ slot-size ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-r15-saved-regs eq = n+saved-regs≢n+slot (readReg (regs s3) r15) combined-eq
       where
         -- Use subst to explicitly convert: rbp+8 = r15+24, and rbp+8 = r15+8, so r15+24 = r15+8
         combined-eq : readReg (regs s3) r15 +ℕ saved-regs-size ≡ readReg (regs s3) r15 +ℕ slot-size
         combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ slot-size) rbp+8-is-r15+24 eq
 
-    -- disjoint-r14-s3: rbp-s3 + 16 ≢ r15-s3 + 8
-    -- rbp + 16 = r15 + 32, so this becomes r15 + 32 ≢ r15 + 8
-    disjoint-r14-s3 : readReg (regs s3) rbp +ℕ slots 2 ≢ readReg (regs s3) r15 +ℕ slot-size
-    disjoint-r14-s3 eq = n+32≢n+8 (readReg (regs s3) r15) combined-eq
+    -- disjoint-r14-save: r14-save location ≢ output slot
+    -- rbp + pair-alloc = frame-base + (frame-size ∸ slot-size), so frame-base + (frame-size ∸ slot-size) ≢ frame-base + slot-size
+    disjoint-r14-save : readReg (regs s3) rbp +ℕ pair-alloc ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-r14-save eq = n+frame∸slot≢n+slot (readReg (regs s3) r15) combined-eq
       where
-        combined-eq : readReg (regs s3) r15 +ℕ slots 4 ≡ readReg (regs s3) r15 +ℕ slot-size
+        combined-eq : readReg (regs s3) r15 +ℕ (frame-size ∸ slot-size) ≡ readReg (regs s3) r15 +ℕ slot-size
         combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ slot-size) rbp+16-is-r15+32 eq
 
     -- disjoint-orig-s3: r15-s ≢ r15-s3 + 8
@@ -1988,12 +1988,12 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     setup-rbp+8≢s1-r15 : readReg (regs s-setup) rbp +ℕ slot-size ≢ readReg (regs s1) r15
     setup-rbp+8≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp+8-eq) (sym s1-r15-eq-proof2) rsp∸16≢rsp∸40
       where
-        setup-rbp+8-eq : readReg (regs s-setup) rbp +ℕ slot-size ≡ readReg (regs s) rsp ∸ slots 2
+        setup-rbp+8-eq : readReg (regs s-setup) rbp +ℕ slot-size ≡ readReg (regs s) rsp ∸ pair-alloc
         setup-rbp+8-eq = trans (cong (_+ℕ slot-size) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ saved-regs-size)
                                                      (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)))
                                rsp∸24+8≡rsp∸16
           where
-            rsp∸24+8≡rsp∸16 : readReg (regs s) rsp ∸ saved-regs-size +ℕ slot-size ≡ readReg (regs s) rsp ∸ slots 2
+            rsp∸24+8≡rsp∸16 : readReg (regs s) rsp ∸ saved-regs-size +ℕ slot-size ≡ readReg (regs s) rsp ∸ pair-alloc
             rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp word-fits-regs
               where
                 24≤rsp : 24 ≤ readReg (regs s) rsp
@@ -2003,11 +2003,11 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         s1-r15-eq-proof2 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ frame-size
         s1-r15-eq-proof2 = trans (ir-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ frame-size)
                                                      (sym s-setup-eq) (PairSetupResult.r15-setup setup-res))
-        rsp∸16≢rsp∸40 : readReg (regs s) rsp ∸ slots 2 ≢ readReg (regs s) rsp ∸ frame-size
+        rsp∸16≢rsp∸40 : readReg (regs s) rsp ∸ pair-alloc ≢ readReg (regs s) rsp ∸ frame-size
         rsp∸16≢rsp∸40 eq = <⇒≢ rsp∸40<rsp∸16 (sym eq)
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
-            rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ frame-size < readReg (regs s) rsp ∸ slots 2
+            rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ frame-size < readReg (regs s) rsp ∸ pair-alloc
             rsp∸40<rsp∸16 = ∸-monoʳ-< pair-fits-frame-strict setup-frame-fits
 
     stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
@@ -2053,15 +2053,15 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                            (ir-mem-rbp+8 r-g)
 
     -- s-setup.rbp+16 ≠ s1.r15 (since rsp-8 ≠ rsp-40)
-    setup-rbp+16≢s1-r15 : readReg (regs s-setup) rbp +ℕ slots 2 ≢ readReg (regs s1) r15
+    setup-rbp+16≢s1-r15 : readReg (regs s-setup) rbp +ℕ pair-alloc ≢ readReg (regs s1) r15
     setup-rbp+16≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp+16-eq) (sym s1-r15-eq-proof3) rsp∸8≢rsp∸40
       where
-        setup-rbp+16-eq : readReg (regs s-setup) rbp +ℕ slots 2 ≡ readReg (regs s) rsp ∸ slot-size
-        setup-rbp+16-eq = trans (cong (_+ℕ slots 2) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ saved-regs-size)
+        setup-rbp+16-eq : readReg (regs s-setup) rbp +ℕ pair-alloc ≡ readReg (regs s) rsp ∸ slot-size
+        setup-rbp+16-eq = trans (cong (_+ℕ pair-alloc) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ saved-regs-size)
                                                        (sym s-setup-eq) (PairSetupResult.rbp-setup setup-res)))
                                 rsp∸24+16≡rsp∸8
           where
-            rsp∸24+16≡rsp∸8 : readReg (regs s) rsp ∸ saved-regs-size +ℕ slots 2 ≡ readReg (regs s) rsp ∸ slot-size
+            rsp∸24+16≡rsp∸8 : readReg (regs s) rsp ∸ saved-regs-size +ℕ pair-alloc ≡ readReg (regs s) rsp ∸ slot-size
             rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' pair-fits-regs
               where
                 24≤rsp' : 24 ≤ readReg (regs s) rsp
@@ -2078,57 +2078,57 @@ make-pair-final-precond {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             rsp∸40<rsp∸8 : readReg (regs s) rsp ∸ frame-size < readReg (regs s) rsp ∸ slot-size
             rsp∸40<rsp∸8 = ∸-monoʳ-< word-fits-frame-strict setup-frame-fits
 
-    stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
+    stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ pair-alloc) ≡ just (readReg (regs s) r14)
     stack-r14-s3 = trans mem-g-r14 (trans mem-mid-r14 (trans mem-f-r14 mem-setup-r14))
       where
-        mem-setup-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
-        mem-setup-r14 = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14))
+        mem-setup-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ pair-alloc) ≡ just (readReg (regs s) r14)
+        mem-setup-r14 = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp +ℕ pair-alloc) ≡ just (readReg (regs s) r14))
                               (sym s-setup-eq)
                               (PairSetupResult.mem-stack-r14 setup-res)
         -- For rbp+16: chain through f, middle, g
         -- f preserves via ir-mem-above (rbp+16 > s-setup.rbp)
-        rbp+16>setup-rbp : readReg (regs s-setup) rbp +ℕ slots 2 > readReg (regs s-setup) rbp
+        rbp+16>setup-rbp : readReg (regs s-setup) rbp +ℕ pair-alloc > readReg (regs s-setup) rbp
         rbp+16>setup-rbp = n<n+k (readReg (regs s-setup) rbp) 15  -- suc 15 = 16
           where
             -- n < n + suc k (always holds since suc k ≥ 1)
             n<n+k : ∀ n k → n < n +ℕ suc k
             n<n+k zero k = s≤s z≤n
             n<n+k (suc n) k = s≤s (n<n+k n k)
-        mem-f-r14 : readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2)
-        mem-f-r14 = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2))
-                          (sym (cong (_+ℕ slots 2) (ir-rbp r-f)))
-                          (ir-mem-above r-f (readReg (regs s-setup) rbp +ℕ slots 2) rbp+16>setup-rbp)
-        setup-rbp+16≢s1-r15' : readReg (regs s1) rbp +ℕ slots 2 ≢ readReg (regs s-setup) r15
-        setup-rbp+16≢s1-r15' = subst₂ (λ a b → a ≢ b) (sym (cong (_+ℕ slots 2) (ir-rbp r-f))) (ir-r15 r-f) setup-rbp+16≢s1-r15
+        mem-f-r14 : readMem (memory s1) (readReg (regs s1) rbp +ℕ pair-alloc) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ pair-alloc)
+        mem-f-r14 = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ pair-alloc))
+                          (sym (cong (_+ℕ pair-alloc) (ir-rbp r-f)))
+                          (ir-mem-above r-f (readReg (regs s-setup) rbp +ℕ pair-alloc) rbp+16>setup-rbp)
+        setup-rbp+16≢s1-r15' : readReg (regs s1) rbp +ℕ pair-alloc ≢ readReg (regs s-setup) r15
+        setup-rbp+16≢s1-r15' = subst₂ (λ a b → a ≢ b) (sym (cong (_+ℕ pair-alloc) (ir-rbp r-f))) (ir-r15 r-f) setup-rbp+16≢s1-r15
         -- mem-mid-r14: memory at rbp+16 preserved through middle phase
-        mem-mid-r14 : readMem (memory s2) (readReg (regs s2) rbp +ℕ slots 2) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2)
-        mem-mid-r14 = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2))
+        mem-mid-r14 : readMem (memory s2) (readReg (regs s2) rbp +ℕ pair-alloc) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ pair-alloc)
+        mem-mid-r14 = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ pair-alloc))
                              (cong memory (sym s2-eq))
                              (sym rbp+16-s2-eq-s1-local)
                              mem-at-s1-rbp+16-preserved
           where
             rbp-midres-eq-s1-r14 : readReg (regs (PairMiddleResult.s2 mid-res)) rbp ≡ readReg (regs s1) rbp
             rbp-midres-eq-s1-r14 = PairMiddleResult.rbp-mid mid-res
-            rbp+16-mid-res-eq-s1-local : readReg (regs (PairMiddleResult.s2 mid-res)) rbp +ℕ slots 2 ≡ readReg (regs s1) rbp +ℕ slots 2
-            rbp+16-mid-res-eq-s1-local = cong (_+ℕ slots 2) rbp-midres-eq-s1-r14
-            rbp+16-s2-eq-s1-local : readReg (regs s2) rbp +ℕ slots 2 ≡ readReg (regs s1) rbp +ℕ slots 2
-            rbp+16-s2-eq-s1-local = subst (λ st → readReg (regs st) rbp +ℕ slots 2 ≡ readReg (regs s1) rbp +ℕ slots 2)
+            rbp+16-mid-res-eq-s1-local : readReg (regs (PairMiddleResult.s2 mid-res)) rbp +ℕ pair-alloc ≡ readReg (regs s1) rbp +ℕ pair-alloc
+            rbp+16-mid-res-eq-s1-local = cong (_+ℕ pair-alloc) rbp-midres-eq-s1-r14
+            rbp+16-s2-eq-s1-local : readReg (regs s2) rbp +ℕ pair-alloc ≡ readReg (regs s1) rbp +ℕ pair-alloc
+            rbp+16-s2-eq-s1-local = subst (λ st → readReg (regs st) rbp +ℕ pair-alloc ≡ readReg (regs s1) rbp +ℕ pair-alloc)
                                    (sym s2-eq) rbp+16-mid-res-eq-s1-local
-            s1-rbp+16≢s1-r15-local : readReg (regs s1) rbp +ℕ slots 2 ≢ readReg (regs s1) r15
-            s1-rbp+16≢s1-r15-local = subst (readReg (regs s1) rbp +ℕ slots 2 ≢_) (sym (ir-r15 r-f)) setup-rbp+16≢s1-r15'
-            mem-at-s1-rbp+16-preserved : readMem (memory (PairMiddleResult.s2 mid-res)) (readReg (regs s1) rbp +ℕ slots 2) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2)
-            mem-at-s1-rbp+16-preserved = PairMiddleResult.mem-above-r15-mid mid-res (readReg (regs s1) rbp +ℕ slots 2) s1-rbp+16≢s1-r15-local
+            s1-rbp+16≢s1-r15-local : readReg (regs s1) rbp +ℕ pair-alloc ≢ readReg (regs s1) r15
+            s1-rbp+16≢s1-r15-local = subst (readReg (regs s1) rbp +ℕ pair-alloc ≢_) (sym (ir-r15 r-f)) setup-rbp+16≢s1-r15'
+            mem-at-s1-rbp+16-preserved : readMem (memory (PairMiddleResult.s2 mid-res)) (readReg (regs s1) rbp +ℕ pair-alloc) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ pair-alloc)
+            mem-at-s1-rbp+16-preserved = PairMiddleResult.mem-above-r15-mid mid-res (readReg (regs s1) rbp +ℕ pair-alloc) s1-rbp+16≢s1-r15-local
         -- g preserves via ir-mem-above (rbp+16 > s2.rbp)
-        rbp+16>s2-rbp : readReg (regs s2) rbp +ℕ slots 2 > readReg (regs s2) rbp
+        rbp+16>s2-rbp : readReg (regs s2) rbp +ℕ pair-alloc > readReg (regs s2) rbp
         rbp+16>s2-rbp = n<n+k'' (readReg (regs s2) rbp) 15  -- suc 15 = 16
           where
             n<n+k'' : ∀ n k → n < n +ℕ suc k
             n<n+k'' zero k = s≤s z≤n
             n<n+k'' (suc n) k = s≤s (n<n+k'' n k)
-        mem-g-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slots 2) ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ slots 2)
-        mem-g-r14 = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ slots 2))
-                          (sym (cong (_+ℕ slots 2) (ir-rbp r-g)))
-                          (ir-mem-above r-g (readReg (regs s2) rbp +ℕ slots 2) rbp+16>s2-rbp)
+        mem-g-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ pair-alloc) ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ pair-alloc)
+        mem-g-r14 = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ pair-alloc))
+                          (sym (cong (_+ℕ pair-alloc) (ir-rbp r-g)))
+                          (ir-mem-above r-g (readReg (regs s2) rbp +ℕ pair-alloc) rbp+16>s2-rbp)
 
     -- ========== mem-frame-s3: PROVEN via 4-phase chain ==========
     -- Memory at original r15 is preserved through all phases
@@ -2296,9 +2296,9 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
   ; stack-inv-s = stack-inv
   ; rbp-chain = rbp-chain
   ; mem-frame = mem-frame-s3
-  ; disjoint-rbp = disjoint-rbp-s3
-  ; disjoint-r15 = disjoint-r15-s3
-  ; disjoint-r14 = disjoint-r14-s3
+  ; disjoint-rbp = disjoint-base-ptr
+  ; disjoint-r15 = disjoint-r15-saved-regs
+  ; disjoint-r14 = disjoint-r14-save
   ; disjoint-orig = disjoint-orig-s3
   ; disjoint-orig-rbp = disjoint-orig-rbp-s3
   ; disjoint-orig-rbp+8 = disjoint-orig-rbp+8-s3
@@ -2409,38 +2409,38 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     rsp-bound-s = ≤-trans slots-rbp-offset≤setup setup-frame-fits
 
     -- rbp-s3 = r15-s3 + 16 (key relationship for disjointness)
-    offset-eq : readReg (regs s) rsp ∸ saved-regs-size ≡ (readReg (regs s) rsp ∸ frame-size) +ℕ slots 2
+    offset-eq : readReg (regs s) rsp ∸ saved-regs-size ≡ (readReg (regs s) rsp ∸ frame-size) +ℕ pair-alloc
     offset-eq = ∸-offset-relationship (readReg (regs s) rsp) setup-frame-fits
 
-    rbp-eq-r15-plus-16 : readReg (regs s3) rbp ≡ readReg (regs s3) r15 +ℕ slots 2
-    rbp-eq-r15-plus-16 = trans rbp-chain (trans offset-eq (cong (_+ℕ slots 2) (sym r15-chain)))
+    rbp-eq-r15-plus-16 : readReg (regs s3) rbp ≡ readReg (regs s3) r15 +ℕ pair-alloc
+    rbp-eq-r15-plus-16 = trans rbp-chain (trans offset-eq (cong (_+ℕ pair-alloc) (sym r15-chain)))
 
     -- Derived relationships for disjointness
     rbp+8-is-r15+24 : readReg (regs s3) rbp +ℕ slot-size ≡ readReg (regs s3) r15 +ℕ saved-regs-size
-    rbp+8-is-r15+24 = trans (cong (_+ℕ slot-size) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) 16 8)
+    rbp+8-is-r15+24 = trans (cong (_+ℕ slot-size) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) pair-alloc slot-size)
 
-    rbp+16-is-r15+32 : readReg (regs s3) rbp +ℕ slots 2 ≡ readReg (regs s3) r15 +ℕ slots 4
-    rbp+16-is-r15+32 = trans (cong (_+ℕ slots 2) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) 16 16)
+    rbp+16-is-r15+32 : readReg (regs s3) rbp +ℕ pair-alloc ≡ readReg (regs s3) r15 +ℕ (frame-size ∸ slot-size)
+    rbp+16-is-r15+32 = trans (cong (_+ℕ pair-alloc) rbp-eq-r15-plus-16) (+-assoc (readReg (regs s3) r15) pair-alloc pair-alloc)
 
-    -- disjoint-rbp-s3: rbp-s3 ≢ r15-s3 + 8
-    disjoint-rbp-s3 : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ slot-size
-    disjoint-rbp-s3 eq = n+slots2≢n+slot-size (readReg (regs s3) r15) combined-eq
+    -- disjoint-base-ptr: rbp-s3 ≢ r15-s3 + 8
+    disjoint-base-ptr : readReg (regs s3) rbp ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-base-ptr eq = n+pair-alloc≢n+slot (readReg (regs s3) r15) combined-eq
       where
-        combined-eq : readReg (regs s3) r15 +ℕ slots 2 ≡ readReg (regs s3) r15 +ℕ slot-size
+        combined-eq : readReg (regs s3) r15 +ℕ pair-alloc ≡ readReg (regs s3) r15 +ℕ slot-size
         combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ slot-size) rbp-eq-r15-plus-16 eq
 
-    -- disjoint-r15-s3: rbp-s3 + 8 ≢ r15-s3 + 8
-    disjoint-r15-s3 : readReg (regs s3) rbp +ℕ slot-size ≢ readReg (regs s3) r15 +ℕ slot-size
-    disjoint-r15-s3 eq = n+24≢n+8 (readReg (regs s3) r15) combined-eq
+    -- disjoint-r15-saved-regs: rbp-s3 + 8 ≢ r15-s3 + 8
+    disjoint-r15-saved-regs : readReg (regs s3) rbp +ℕ slot-size ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-r15-saved-regs eq = n+saved-regs≢n+slot (readReg (regs s3) r15) combined-eq
       where
         combined-eq : readReg (regs s3) r15 +ℕ saved-regs-size ≡ readReg (regs s3) r15 +ℕ slot-size
         combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ slot-size) rbp+8-is-r15+24 eq
 
-    -- disjoint-r14-s3: rbp-s3 + 16 ≢ r15-s3 + 8
-    disjoint-r14-s3 : readReg (regs s3) rbp +ℕ slots 2 ≢ readReg (regs s3) r15 +ℕ slot-size
-    disjoint-r14-s3 eq = n+32≢n+8 (readReg (regs s3) r15) combined-eq
+    -- disjoint-r14-save: rbp-s3 + 16 ≢ r15-s3 + 8
+    disjoint-r14-save : readReg (regs s3) rbp +ℕ pair-alloc ≢ readReg (regs s3) r15 +ℕ slot-size
+    disjoint-r14-save eq = n+frame∸slot≢n+slot (readReg (regs s3) r15) combined-eq
       where
-        combined-eq : readReg (regs s3) r15 +ℕ slots 4 ≡ readReg (regs s3) r15 +ℕ slot-size
+        combined-eq : readReg (regs s3) r15 +ℕ (frame-size ∸ slot-size) ≡ readReg (regs s3) r15 +ℕ slot-size
         combined-eq = subst (λ x → x ≡ readReg (regs s3) r15 +ℕ slot-size) rbp+16-is-r15+32 eq
 
     -- disjoint-orig-s3: r15-s ≢ r15-s3 + 8
@@ -2704,12 +2704,12 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
     setup-rbp+8≢s1-r15 : readReg (regs s-setup) rbp +ℕ slot-size ≢ readReg (regs s1) r15
     setup-rbp+8≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp+8-eq) (sym s1-r15-eq-proof2) rsp∸16≢rsp∸40
       where
-        setup-rbp+8-eq : readReg (regs s-setup) rbp +ℕ slot-size ≡ readReg (regs s) rsp ∸ slots 2
+        setup-rbp+8-eq : readReg (regs s-setup) rbp +ℕ slot-size ≡ readReg (regs s) rsp ∸ pair-alloc
         setup-rbp+8-eq = trans (cong (_+ℕ slot-size) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ saved-regs-size)
                                                      (sym s-setup-eq) (PairSetupResultV.rbp-setup setup-res)))
                                rsp∸24+8≡rsp∸16
           where
-            rsp∸24+8≡rsp∸16 : readReg (regs s) rsp ∸ saved-regs-size +ℕ slot-size ≡ readReg (regs s) rsp ∸ slots 2
+            rsp∸24+8≡rsp∸16 : readReg (regs s) rsp ∸ saved-regs-size +ℕ slot-size ≡ readReg (regs s) rsp ∸ pair-alloc
             rsp∸24+8≡rsp∸16 = m∸n+k≡m∸n-k (readReg (regs s) rsp) 24 8 24≤rsp word-fits-regs
               where
                 24≤rsp : 24 ≤ readReg (regs s) rsp
@@ -2717,11 +2717,11 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
         s1-r15-eq-proof2 : readReg (regs s1) r15 ≡ readReg (regs s) rsp ∸ frame-size
         s1-r15-eq-proof2 = trans (v-r15 r-f) (subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ frame-size)
                                                      (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res))
-        rsp∸16≢rsp∸40 : readReg (regs s) rsp ∸ slots 2 ≢ readReg (regs s) rsp ∸ frame-size
+        rsp∸16≢rsp∸40 : readReg (regs s) rsp ∸ pair-alloc ≢ readReg (regs s) rsp ∸ frame-size
         rsp∸16≢rsp∸40 eq = <⇒≢ rsp∸40<rsp∸16 (sym eq)
           where
             open import Data.Nat.Properties using (∸-monoʳ-<)
-            rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ frame-size < readReg (regs s) rsp ∸ slots 2
+            rsp∸40<rsp∸16 : readReg (regs s) rsp ∸ frame-size < readReg (regs s) rsp ∸ pair-alloc
             rsp∸40<rsp∸16 = ∸-monoʳ-< pair-fits-frame-strict setup-frame-fits
 
     stack-r15-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slot-size) ≡ just (readReg (regs s) r15)
@@ -2763,15 +2763,15 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
                            (sym rbp+8-s3)
                            (v-mem-rbp+8 r-g)
 
-    setup-rbp+16≢s1-r15 : readReg (regs s-setup) rbp +ℕ slots 2 ≢ readReg (regs s1) r15
+    setup-rbp+16≢s1-r15 : readReg (regs s-setup) rbp +ℕ pair-alloc ≢ readReg (regs s1) r15
     setup-rbp+16≢s1-r15 = subst₂ (λ a b → a ≢ b) (sym setup-rbp+16-eq) (sym s1-r15-eq-proof3) rsp∸8≢rsp∸40
       where
-        setup-rbp+16-eq : readReg (regs s-setup) rbp +ℕ slots 2 ≡ readReg (regs s) rsp ∸ slot-size
-        setup-rbp+16-eq = trans (cong (_+ℕ slots 2) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ saved-regs-size)
+        setup-rbp+16-eq : readReg (regs s-setup) rbp +ℕ pair-alloc ≡ readReg (regs s) rsp ∸ slot-size
+        setup-rbp+16-eq = trans (cong (_+ℕ pair-alloc) (subst (λ ss → readReg (regs ss) rbp ≡ readReg (regs s) rsp ∸ saved-regs-size)
                                                        (sym s-setup-eq) (PairSetupResultV.rbp-setup setup-res)))
                                 rsp∸24+16≡rsp∸8
           where
-            rsp∸24+16≡rsp∸8 : readReg (regs s) rsp ∸ saved-regs-size +ℕ slots 2 ≡ readReg (regs s) rsp ∸ slot-size
+            rsp∸24+16≡rsp∸8 : readReg (regs s) rsp ∸ saved-regs-size +ℕ pair-alloc ≡ readReg (regs s) rsp ∸ slot-size
             rsp∸24+16≡rsp∸8 = m∸n+k≡m∸n-k' (readReg (regs s) rsp) 24 16 24≤rsp' pair-fits-regs
               where
                 24≤rsp' : 24 ≤ readReg (regs s) rsp
@@ -2786,52 +2786,52 @@ make-pair-final-precond-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3
             rsp∸40<rsp∸8 : readReg (regs s) rsp ∸ frame-size < readReg (regs s) rsp ∸ slot-size
             rsp∸40<rsp∸8 = ∸-monoʳ-< word-fits-frame-strict setup-frame-fits
 
-    stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
+    stack-r14-s3 : readMem (memory s3) (readReg (regs s3) rbp +ℕ pair-alloc) ≡ just (readReg (regs s) r14)
     stack-r14-s3 = trans mem-g-r14 (trans mem-mid-r14 (trans mem-f-r14 mem-setup-r14))
       where
-        mem-setup-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14)
-        mem-setup-r14 = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp +ℕ slots 2) ≡ just (readReg (regs s) r14))
+        mem-setup-r14 : readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ pair-alloc) ≡ just (readReg (regs s) r14)
+        mem-setup-r14 = subst (λ ss → readMem (memory ss) (readReg (regs ss) rbp +ℕ pair-alloc) ≡ just (readReg (regs s) r14))
                               (sym s-setup-eq)
                               (PairSetupResultV.mem-stack-r14 setup-res)
-        rbp+16>setup-rbp : readReg (regs s-setup) rbp +ℕ slots 2 > readReg (regs s-setup) rbp
+        rbp+16>setup-rbp : readReg (regs s-setup) rbp +ℕ pair-alloc > readReg (regs s-setup) rbp
         rbp+16>setup-rbp = n<n+k (readReg (regs s-setup) rbp) 15
           where
             n<n+k : ∀ n k → n < n +ℕ suc k
             n<n+k zero k = s≤s z≤n
             n<n+k (suc n) k = s≤s (n<n+k n k)
-        mem-f-r14 : readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2)
-        mem-f-r14 = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ slots 2))
-                          (sym (cong (_+ℕ slots 2) (v-rbp r-f)))
-                          (v-mem-above r-f (readReg (regs s-setup) rbp +ℕ slots 2) rbp+16>setup-rbp)
-        setup-rbp+16≢s1-r15' : readReg (regs s1) rbp +ℕ slots 2 ≢ readReg (regs s-setup) r15
-        setup-rbp+16≢s1-r15' = subst₂ (λ a b → a ≢ b) (sym (cong (_+ℕ slots 2) (v-rbp r-f))) (v-r15 r-f) setup-rbp+16≢s1-r15
-        mem-mid-r14 : readMem (memory s2) (readReg (regs s2) rbp +ℕ slots 2) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2)
-        mem-mid-r14 = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2))
+        mem-f-r14 : readMem (memory s1) (readReg (regs s1) rbp +ℕ pair-alloc) ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ pair-alloc)
+        mem-f-r14 = subst (λ a → readMem (memory s1) a ≡ readMem (memory s-setup) (readReg (regs s-setup) rbp +ℕ pair-alloc))
+                          (sym (cong (_+ℕ pair-alloc) (v-rbp r-f)))
+                          (v-mem-above r-f (readReg (regs s-setup) rbp +ℕ pair-alloc) rbp+16>setup-rbp)
+        setup-rbp+16≢s1-r15' : readReg (regs s1) rbp +ℕ pair-alloc ≢ readReg (regs s-setup) r15
+        setup-rbp+16≢s1-r15' = subst₂ (λ a b → a ≢ b) (sym (cong (_+ℕ pair-alloc) (v-rbp r-f))) (v-r15 r-f) setup-rbp+16≢s1-r15
+        mem-mid-r14 : readMem (memory s2) (readReg (regs s2) rbp +ℕ pair-alloc) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ pair-alloc)
+        mem-mid-r14 = subst₂ (λ m a → readMem m a ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ pair-alloc))
                              (cong memory (sym s2-eq))
                              (sym rbp+16-s2-eq-s1-local)
                              mem-at-s1-rbp+16-preserved
           where
             rbp-midres-eq-s1-r14 : readReg (regs (PairMiddleResultV.s2 mid-res)) rbp ≡ readReg (regs s1) rbp
             rbp-midres-eq-s1-r14 = PairMiddleResultV.rbp-mid mid-res
-            rbp+16-mid-res-eq-s1-local : readReg (regs (PairMiddleResultV.s2 mid-res)) rbp +ℕ slots 2 ≡ readReg (regs s1) rbp +ℕ slots 2
-            rbp+16-mid-res-eq-s1-local = cong (_+ℕ slots 2) rbp-midres-eq-s1-r14
-            rbp+16-s2-eq-s1-local : readReg (regs s2) rbp +ℕ slots 2 ≡ readReg (regs s1) rbp +ℕ slots 2
-            rbp+16-s2-eq-s1-local = subst (λ st → readReg (regs st) rbp +ℕ slots 2 ≡ readReg (regs s1) rbp +ℕ slots 2)
+            rbp+16-mid-res-eq-s1-local : readReg (regs (PairMiddleResultV.s2 mid-res)) rbp +ℕ pair-alloc ≡ readReg (regs s1) rbp +ℕ pair-alloc
+            rbp+16-mid-res-eq-s1-local = cong (_+ℕ pair-alloc) rbp-midres-eq-s1-r14
+            rbp+16-s2-eq-s1-local : readReg (regs s2) rbp +ℕ pair-alloc ≡ readReg (regs s1) rbp +ℕ pair-alloc
+            rbp+16-s2-eq-s1-local = subst (λ st → readReg (regs st) rbp +ℕ pair-alloc ≡ readReg (regs s1) rbp +ℕ pair-alloc)
                                    (sym s2-eq) rbp+16-mid-res-eq-s1-local
-            s1-rbp+16≢s1-r15-local : readReg (regs s1) rbp +ℕ slots 2 ≢ readReg (regs s1) r15
-            s1-rbp+16≢s1-r15-local = subst (readReg (regs s1) rbp +ℕ slots 2 ≢_) (sym (v-r15 r-f)) setup-rbp+16≢s1-r15'
-            mem-at-s1-rbp+16-preserved : readMem (memory (PairMiddleResultV.s2 mid-res)) (readReg (regs s1) rbp +ℕ slots 2) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ slots 2)
-            mem-at-s1-rbp+16-preserved = PairMiddleResultV.mem-above-r15-mid mid-res (readReg (regs s1) rbp +ℕ slots 2) s1-rbp+16≢s1-r15-local
-        rbp+16>s2-rbp : readReg (regs s2) rbp +ℕ slots 2 > readReg (regs s2) rbp
+            s1-rbp+16≢s1-r15-local : readReg (regs s1) rbp +ℕ pair-alloc ≢ readReg (regs s1) r15
+            s1-rbp+16≢s1-r15-local = subst (readReg (regs s1) rbp +ℕ pair-alloc ≢_) (sym (v-r15 r-f)) setup-rbp+16≢s1-r15'
+            mem-at-s1-rbp+16-preserved : readMem (memory (PairMiddleResultV.s2 mid-res)) (readReg (regs s1) rbp +ℕ pair-alloc) ≡ readMem (memory s1) (readReg (regs s1) rbp +ℕ pair-alloc)
+            mem-at-s1-rbp+16-preserved = PairMiddleResultV.mem-above-r15-mid mid-res (readReg (regs s1) rbp +ℕ pair-alloc) s1-rbp+16≢s1-r15-local
+        rbp+16>s2-rbp : readReg (regs s2) rbp +ℕ pair-alloc > readReg (regs s2) rbp
         rbp+16>s2-rbp = n<n+k'' (readReg (regs s2) rbp) 15
           where
             n<n+k'' : ∀ n k → n < n +ℕ suc k
             n<n+k'' zero k = s≤s z≤n
             n<n+k'' (suc n) k = s≤s (n<n+k'' n k)
-        mem-g-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ slots 2) ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ slots 2)
-        mem-g-r14 = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ slots 2))
-                          (sym (cong (_+ℕ slots 2) (v-rbp r-g)))
-                          (v-mem-above r-g (readReg (regs s2) rbp +ℕ slots 2) rbp+16>s2-rbp)
+        mem-g-r14 : readMem (memory s3) (readReg (regs s3) rbp +ℕ pair-alloc) ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ pair-alloc)
+        mem-g-r14 = subst (λ a → readMem (memory s3) a ≡ readMem (memory s2) (readReg (regs s2) rbp +ℕ pair-alloc))
+                          (sym (cong (_+ℕ pair-alloc) (v-rbp r-g)))
+                          (v-mem-above r-g (readReg (regs s2) rbp +ℕ pair-alloc) rbp+16>s2-rbp)
 
     -- ========== mem-frame-s3: PROVEN via 4-phase chain ==========
     orig-r15 : ℕ
@@ -3021,9 +3021,9 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
                     stack-r15)
 
       -- pop-r14-mem: readMem (memory s6) (rsp-s6 + 16) = just (regs s).r14
-      pop-r14-mem : readMem (memory s6) (readReg (regs s6) rsp +ℕ slots 2) ≡ just (readReg (regs s) r14)
-      pop-r14-mem = trans (cong (λ addr → readMem (memory s6) (addr +ℕ slots 2)) rsp-s6-eq-rbp-s3)
-                    (trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ slot-size} {readReg (regs s3) rbp +ℕ slots 2} {readReg (regs s3) rax} (λ eq → disjoint-r14 (sym eq)))
+      pop-r14-mem : readMem (memory s6) (readReg (regs s6) rsp +ℕ pair-alloc) ≡ just (readReg (regs s) r14)
+      pop-r14-mem = trans (cong (λ addr → readMem (memory s6) (addr +ℕ pair-alloc)) rsp-s6-eq-rbp-s3)
+                    (trans (mem-read-other {memory s3} {readReg (regs s3) r15 +ℕ slot-size} {readReg (regs s3) rbp +ℕ pair-alloc} {readReg (regs s3) rax} (λ eq → disjoint-r14 (sym eq)))
                     stack-r14)
 
       s7 : State
@@ -3107,7 +3107,7 @@ pair-final-star {A} {B} {C} f g prefix suffix s s3 precond = record
       pop-r15-mem' = subst (λ addr → readMem (memory s7) addr ≡ just (readReg (regs s) r15)) (sym rsp-s7) pop-r15-mem
       step8 : step prog-final s7 ≡ just s8
       step8 = trans (step-exec prog-final s7 final-pop-r15 h7 fetch8) (execPop prog-final s7 r15 (readReg (regs s) r15) pop-r15-mem')
-      rsp-s8 : readReg (regs s8) rsp ≡ readReg (regs s6) rsp +ℕ slots 2
+      rsp-s8 : readReg (regs s8) rsp ≡ readReg (regs s6) rsp +ℕ pair-alloc
       rsp-s8 = trans (readReg-writeReg-same (writeReg (regs s7) r15 (readReg (regs s) r15)) rsp (readReg (regs s7) rsp +ℕ slot-size)) (trans (cong (_+ℕ slot-size) rsp-s7) (+-assoc (readReg (regs s6) rsp) 8 8))
       pop-r14-mem' : readMem (memory s8) (readReg (regs s8) rsp) ≡ just (readReg (regs s) r14)
       pop-r14-mem' = subst (λ addr → readMem (memory s8) addr ≡ just (readReg (regs s) r14)) (sym rsp-s8) pop-r14-mem
