@@ -243,7 +243,7 @@ The only inputs are module parameters from the compiler.
 
 ## Current State vs Target State
 
-### Current (postulates scattered)
+### Before (postulates scattered)
 ```
 MemoryLayoutSemantics
   ├── postulate stack-bounds, heap-bounds, code-bounds
@@ -255,22 +255,51 @@ X86.MemoryRegionLemmas
   └── postulate prog-fits-in-code
 ```
 
-### Target (zero postulates)
+### After Parameterization (DONE - commit c48f9c1)
 ```
 MemoryLayoutSemantics
-  └── Interface definitions only (RegionBounds, InStack, etc.)
+  ├── MemoryLayout record (interface)
+  ├── StackGrowth record (interface)
+  └── default-* postulates (UNUSED - to be removed)
 
-X86Layout (code-size stack-size heap-size : ℕ)
-  ├── x86-*-bounds = record { ... }     -- definitions
-  ├── intervals-disjoint = ...          -- proven
-  └── *-lower-is-zero = refl            -- definitional
-
-X86Init
-  └── init-capacity = ...               -- proven from layout
+Common.MemoryRegionLemmas (layout : MemoryLayout) (sg : StackGrowth)
+  └── Generic lemmas, parameterized
 
 X86.MemoryRegionLemmas
-  └── stack-sub-preserves = ...         -- proven from layout
+  ├── x86-layout with lower = 0 by definition
+  ├── x86-stack-lower-zero = refl       -- ELIMINATED (was postulate)
+  ├── x86-code-lower-zero = refl        -- ELIMINATED (was postulate)
+  ├── prog-fits-in-code (runtime postulate - legitimate)
+  └── x86-intervals-disjoint (runtime postulate - legitimate)
 ```
+
+### Target (clean architecture)
+```
+Common.MemoryLayoutSemantics
+  └── Interface definitions only (NO default postulates)
+      MemoryLayout record, StackGrowth record
+
+Common.Regions (layout)
+  └── InStack, InHeap, InCode, disjointness lemmas
+
+Common.StackSlots (sg)
+  └── slot-addr, offset-distinct, slot-in-stack
+
+Common.FrameOps (layout) (sg)
+  └── frameSlot, memory preservation
+
+X86.StackGrowth  ← already exists
+  └── x86-stack-growth : StackGrowth
+
+X86.Layout
+  ├── x86-layout : MemoryLayout (lower = 0)
+  ├── Runtime postulates (bounds, disjointness, prog-fits)
+  └── Instantiates Common modules with concrete values
+```
+
+**Import pattern:**
+- IR proofs → `Common.Regions`, `Common.StackSlots` (abstract)
+- Top-level only → `X86.Layout` (concrete wiring)
 
 ## Migration Path
 
@@ -307,6 +336,100 @@ module Compilation where
   -- • stack-sub-preserves (from lower = 0)
   -- • pc-in-code (from code bounds)
 ```
+
+## Architectural Insight: Separation by Abstraction Level
+
+### The Problem with Current Structure
+
+Currently `Common.MemoryRegionLemmas` mixes multiple abstraction levels:
+- Region predicates (InStack, InHeap, InCode)
+- Address types (StackAddr, HeapAddr)
+- Slot addressing (slot-addr, offset-distinct)
+- Frame operations (frameSlot)
+- Memory preservation lemmas
+
+This means IR proofs that should stay abstract can accidentally use
+concrete operations - there's no compile-time enforcement.
+
+### Key Insight: Split Common by Abstraction Level
+
+```
+Common.Regions
+  └── InStack, InHeap, InCode, disjointness
+      (ONLY abstract region predicates)
+
+Common.StackSlots (sg : StackGrowth)
+  └── slot-addr, offset-distinct, slot-in-stack
+      (stack slot addressing, derived from StackGrowth)
+
+Common.FrameOps (layout) (sg)
+  └── frameSlot, memory preservation lemmas
+      (frame-level operations)
+
+Common.AddressTypes (layout)
+  └── StackAddr, HeapAddr, CodeAddr, conversions
+      (typed address wrappers)
+```
+
+**The import itself enforces abstraction level:**
+```agda
+-- IR/Apply.agda - forced to stay abstract
+open import Common.Regions using (InStack; InHeap; InCode)
+-- Can't accidentally use slot-addr - it's not in scope!
+```
+
+### Architecture Side: Just X86.Layout
+
+Most proofs import Common modules (abstract). Only the top-level entry
+point imports the architecture-specific layout:
+
+```
+IR proofs (Apply, Compose, Case, etc.)
+  └── import Common.Regions (abstract)
+      import Common.StackSlots (abstract)
+
+         ↓ parameters flow down from top
+
+WholeProgram / top-level
+  └── import X86.Layout (concrete instantiation)
+      Wires x86-layout and x86-stack-growth into Common modules
+```
+
+**X86.Layout is the only architecture-specific module needed:**
+```
+X86.StackGrowth  ← already exists
+  └── x86-stack-growth : StackGrowth
+
+X86.Layout
+  ├── x86-layout : MemoryLayout (with lower = 0)
+  ├── Runtime postulates (bounds, disjointness, prog-fits)
+  └── Instantiates & re-exports Common modules
+```
+
+### Why This Works
+
+1. **Proofs never import X86.Layout** - they use abstract Common modules
+2. **Adding AArch64** = new `AArch64.Layout`, same Common modules
+3. **X86.Layout is small** - just concrete values + postulates + wiring
+4. **Abstraction enforced by imports** - wrong abstraction level = import error
+
+### Current "X86-Specific" Lemmas Aren't X86-Specific
+
+| Lemma | Actually X86-specific? | Belongs in |
+|-------|----------------------|------------|
+| `slot-addr-≥-base` | No - follows from StackGrowth | Common.StackSlots |
+| `frame-below-slot0-disjoint` | No - follows from StackGrowth | Common.StackSlots |
+| `stack-sub-preserves` | No - needs `lower = 0` precondition | Common.Regions |
+| `pc-in-code` | No - needs `lower = 0` + `prog-fits` | Common.Regions |
+| `slot-addr-above-thunk-rbp` | **YES** - X86 calling convention | Proof file or X86.CallingConvention |
+
+### Migration Steps
+
+1. Split `Common.MemoryRegionLemmas` into focused modules
+2. Remove `default-*` postulates from MemoryLayoutSemantics
+3. Rename `X86.MemoryRegionLemmas` to `X86.Layout`
+4. Update IR proofs to import from appropriate Common modules
+5. Move truly X86-specific code to proof files or X86.CallingConvention
 
 ## Related Documents
 
