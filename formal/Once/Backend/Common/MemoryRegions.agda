@@ -93,9 +93,6 @@ stack-heap-disjoint a in-s in-h = proj₁ (intervals-disjoint a) (in-s , in-h)
 stack-code-disjoint : ∀ a → InStack a → InCode a → ⊥
 stack-code-disjoint a in-s in-c = proj₁ (proj₂ (intervals-disjoint a)) (in-s , in-c)
 
-heap-code-disjoint : ∀ a → InHeap a → InCode a → ⊥
-heap-code-disjoint a in-h in-c = proj₂ (proj₂ (intervals-disjoint a)) (in-h , in-c)
-
 -- | Two addresses in different regions are distinct
 stack-heap-addr-disjoint : ∀ a₁ a₂ → InStack a₁ → InHeap a₂ → a₁ ≢ a₂
 stack-heap-addr-disjoint a₁ a₂ in-s in-h a₁≡a₂ =
@@ -104,10 +101,6 @@ stack-heap-addr-disjoint a₁ a₂ in-s in-h a₁≡a₂ =
 stack-code-addr-disjoint : ∀ a₁ a₂ → InStack a₁ → InCode a₂ → a₁ ≢ a₂
 stack-code-addr-disjoint a₁ a₂ in-s in-c a₁≡a₂ =
   stack-code-disjoint a₂ (subst InStack a₁≡a₂ in-s) in-c
-
-heap-code-addr-disjoint : ∀ a₁ a₂ → InHeap a₁ → InCode a₂ → a₁ ≢ a₂
-heap-code-addr-disjoint a₁ a₂ in-h in-c a₁≡a₂ =
-  heap-code-disjoint a₂ (subst InHeap a₁≡a₂ in-h) in-c
 
 ------------------------------------------------------------------------
 -- Stack Subtraction (POSTULATE)
@@ -133,9 +126,6 @@ record StackPointer : Set where
 
 open StackPointer public
 
-mkStackPointer : (a : Addr) → InStack a → StackPointer
-mkStackPointer a proof = record { addr = a ; in-stack = proof }
-
 ------------------------------------------------------------------------
 -- Abstract Heap Pointer
 ------------------------------------------------------------------------
@@ -146,9 +136,6 @@ record HeapPointer : Set where
     in-heap : InHeap haddr
 
 open HeapPointer public
-
-mkHeapPointer : (a : Addr) → InHeap a → HeapPointer
-mkHeapPointer a proof = record { haddr = a ; in-heap = proof }
 
 ------------------------------------------------------------------------
 -- Stack Slot Addressing
@@ -180,18 +167,6 @@ postulate
 
 postulate
   pc-in-code : ∀ (pc : Addr) (prog-len : ℕ) → pc < prog-len → InCode pc
-
-------------------------------------------------------------------------
--- Memory Preservation: Stack writes don't affect heap/code
-------------------------------------------------------------------------
-
-stack-preserves-heap : ∀ (stack-addr heap-addr : Addr) →
-  InStack stack-addr → InHeap heap-addr → stack-addr ≢ heap-addr
-stack-preserves-heap = stack-heap-addr-disjoint
-
-stack-preserves-code : ∀ (stack-addr code-addr : Addr) →
-  InStack stack-addr → InCode code-addr → stack-addr ≢ code-addr
-stack-preserves-code = stack-code-addr-disjoint
 
 ------------------------------------------------------------------------
 -- Abstract Frame Operations
