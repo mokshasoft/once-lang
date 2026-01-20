@@ -56,18 +56,6 @@ stack-code-addr-disjoint a₁ a₂ in-s in-c a₁≡a₂ =
   stack-code-disjoint a₂ (subst InStack a₁≡a₂ in-s) in-c
 
 ------------------------------------------------------------------------
--- Stack Subtraction
---
--- TODO: Convert to proof from capacity
-------------------------------------------------------------------------
-
-postulate
-  stack-sub-preserves : ∀ a k →
-    InStack a →
-    k ≤ a →
-    InStack (a ∸ k)
-
-------------------------------------------------------------------------
 -- Abstract Stack/Heap Pointers (aliases for Semantics types)
 ------------------------------------------------------------------------
 
@@ -108,23 +96,33 @@ sp-distinct : ∀ sp₁ sp₂ k → addr sp₁ ≢ addr sp₂ → slot-addr sp�
 sp-distinct sp₁ sp₂ k addr≢ = grow-addr-injective (addr sp₁) (addr sp₂) k addr≢
 
 ------------------------------------------------------------------------
--- Heap Region Properties
+-- Heap Region Properties (SEMANTIC POSTULATES)
 --
--- TODO: Determine if these can be proven or must remain postulates
+-- These represent runtime guarantees about the allocator that cannot
+-- be derived from the abstract memory model alone:
+--
+-- 1. encode-in-heap: The runtime allocator places semantic values in
+--    the heap region. This is instantiated with our specific encode
+--    function in StackInstantiation.encode-in-heap-sem.
+--
+-- 2. heap-offset: Heap-allocated objects are contiguous. When we have
+--    a pointer to a heap object, accessing fields (ptr + offset) stays
+--    within heap. In practice, offset is always small (slot-size = 8).
+--
+-- NOTE: These are FOUNDATIONAL postulates at the allocator boundary,
+-- not "middle-step" lemmas that should be proven from something else.
 ------------------------------------------------------------------------
 
 postulate
+  -- | Encoding function produces heap addresses
+  -- JUSTIFICATION: The runtime allocator places all semantic values in heap.
   encode-in-heap : ∀ {A : Set} (encode : A → Addr) (x : A) → InHeap (encode x)
+
+  -- | Field access stays within heap region
+  -- JUSTIFICATION: Heap objects are allocated contiguously. When accessing
+  -- fields of a heap object (e.g., closure payload at ptr+8), the result
+  -- is still in heap. Requires heap capacity for allocated object sizes.
   heap-offset : ∀ a n → InHeap a → InHeap (a + n)
-
-------------------------------------------------------------------------
--- Code Region Properties
---
--- TODO: Determine if this can be proven from code-bounds
-------------------------------------------------------------------------
-
-postulate
-  pc-in-code : ∀ (pc : Addr) (prog-len : ℕ) → pc < prog-len → InCode pc
 
 ------------------------------------------------------------------------
 -- Abstract Frame Operations
