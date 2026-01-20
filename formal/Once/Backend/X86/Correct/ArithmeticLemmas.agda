@@ -17,6 +17,10 @@ open import Data.Nat using (ℕ; _<_; _≤_; _<?_; _≤?_; _∸_)
 open import Once.Backend.X86.Correct.Arithmetic
   using (from-yes-<; from-yes-≤;
          word-size; pair-alloc; saved-regs-size; frame-size)
+-- Import symbolic constants for RSP thresholds and frame offsets
+open import Once.Backend.X86.Correct.StackInstantiation
+  using (thunk-after-alloc-rsp-min; post-rbp-push-min; four-slot-offset)
+open import Data.Nat using (suc)
 
 ------------------------------------------------------------------------
 -- Frame containment (components fit within frame)
@@ -75,18 +79,19 @@ pair-fits-regs = from-yes-≤ (pair-alloc ≤? saved-regs-size)
 ------------------------------------------------------------------------
 
 -- | Minimum rsp for pair frame fits within frame
-rsp-min-pair-fits-frame : 33 ≤ frame-size
-rsp-min-pair-fits-frame = from-yes-≤ (33 ≤? frame-size)
+-- 33 = suc four-slot-offset = suc (slots 4)
+rsp-min-pair-fits-frame : suc four-slot-offset ≤ frame-size
+rsp-min-pair-fits-frame = from-yes-≤ (suc four-slot-offset ≤? frame-size)
 
 -- NOTE: single-slot-fits-thunk-bound deleted, use slots-bound-positive from StackInstantiation
 
--- | Word fits thunk rsp bound
-word-fits-thunk-bound : word-size ≤ 17
-word-fits-thunk-bound = from-yes-≤ (word-size ≤? 17)
+-- | Word fits thunk rsp bound (17 = thunk-after-alloc-rsp-min)
+word-fits-thunk-bound : word-size ≤ thunk-after-alloc-rsp-min
+word-fits-thunk-bound = from-yes-≤ (word-size ≤? thunk-after-alloc-rsp-min)
 
 -- | Word fits strictly within thunk rsp bound
-word-fits-thunk-bound-strict : word-size < 17
-word-fits-thunk-bound-strict = from-yes-< (word-size <? 17)
+word-fits-thunk-bound-strict : word-size < thunk-after-alloc-rsp-min
+word-fits-thunk-bound-strict = from-yes-< (word-size <? thunk-after-alloc-rsp-min)
 
 -- NOTE: Capacity containment lemmas moved to StackInstantiation.agda
 -- with symbolic names (output-slots, apply-capacity, etc.)
@@ -106,13 +111,11 @@ word-fits-pair-strict = from-yes-< (word-size <? pair-alloc)
 -- Thunk capacity bounds
 ------------------------------------------------------------------------
 
--- | Pair-alloc fits post-rbp-push minimum
-pair-fits-post-rbp-push : pair-alloc ≤ 25
-pair-fits-post-rbp-push = from-yes-≤ (pair-alloc ≤? 25)
+-- | Pair-alloc fits post-rbp-push minimum (25 = post-rbp-push-min)
+pair-fits-post-rbp-push : pair-alloc ≤ post-rbp-push-min
+pair-fits-post-rbp-push = from-yes-≤ (pair-alloc ≤? post-rbp-push-min)
 
--- | Word fits word+1 bound
-word-fits-word-plus-one : word-size ≤ 9
-word-fits-word-plus-one = from-yes-≤ (word-size ≤? 9)
+-- NOTE: word-fits-word-plus-one deleted - use n≤1+n word-size directly
 
 -- NOTE: Thunk capacity bounds (41≤49, 32≤49, 25≤49, 24≤32) moved to StackInstantiation
 -- as symbolic lemmas: after-push1-fits-initial, four-slots-fits-initial,

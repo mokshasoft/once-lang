@@ -9,8 +9,7 @@ module Once.Backend.X86.Correct.IR.ThunkExec where
 
 open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-size≢n)
 open import Once.Backend.X86.Correct.ArithmeticLemmas
-  using (pair-fits-post-rbp-push; word-fits-word-plus-one;
-         word-positive; pair-positive)
+  using (pair-fits-post-rbp-push; word-positive; pair-positive)
 -- Note: Numeric lemmas (thunk-min-fits-actual, etc.) replaced with symbolic
 -- versions from StackInstantiation: after-push1-fits-initial, four-slots-fits-initial,
 -- post-rbp-push-fits-initial, three-slots-fits-four
@@ -804,9 +803,9 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
         new-rsp≤rsp-after-push-r15 = ≤-trans new-rsp≤rsp-after-push-rbp rsp-after-push-rbp≤rsp-after-push-r15
         -- new-rsp = rsp-after-push-rbp - 16 ≤ rsp-after-push-rbp < rsp-after-push-r15
         -- Chain: new-rsp ≤ rsp-after-push-rbp < rsp-after-push-r15
-        open import Data.Nat.Properties using (∸-monoʳ-<)
+        open import Data.Nat.Properties using (∸-monoʳ-<; n≤1+n)
         8≤rsp-after-push-r15''' : 8 ≤ rsp-after-push-r15
-        8≤rsp-after-push-r15''' = ≤-trans word-fits-word-plus-one 9≤rsp-after-push-r15
+        8≤rsp-after-push-r15''' = ≤-trans (n≤1+n slot-size) 9≤rsp-after-push-r15
         rsp-after-push-rbp<rsp-after-push-r15''' : rsp-after-push-rbp < rsp-after-push-r15
         rsp-after-push-rbp<rsp-after-push-r15''' = ∸-monoʳ-< (s≤s z≤n) 8≤rsp-after-push-r15'''
         new-rsp<rsp-after-push-r15 : new-rsp < rsp-after-push-r15
