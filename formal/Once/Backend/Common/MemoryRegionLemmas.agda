@@ -86,9 +86,23 @@ init-slot-at-base sp = grow-identity (addr sp)
 offset-distinct : ∀ sp k₁ k₂ → k₁ ≢ k₂ → slot-addr sp k₁ ≢ slot-addr sp k₂
 offset-distinct sp k₁ k₂ k₁≢k₂ = grow-injective (addr sp) k₁ k₂ k₁≢k₂
 
--- | Slot is in stack region (from grow-preserves-region)
+-- | Slot 0 is in stack region (trivial: slot-addr sp 0 = addr sp)
+-- For k > 0, use StackCapacity.capacity-maintained instead
+slot-in-stack-0 : ∀ sp → InStack (slot-addr sp 0)
+slot-in-stack-0 sp = subst InStack (sym (grow-identity (addr sp))) (in-stack sp)
+
+-- | DEPRECATED: General slot-in-stack requires capacity evidence for k > 0
+-- Kept for backward compatibility; callers should migrate to:
+--   k = 0: use slot-in-stack-0
+--   k > 0: use StackCapacity.capacity-maintained
 slot-in-stack : ∀ sp k → InStack (slot-addr sp k)
-slot-in-stack sp k = grow-preserves-region (addr sp) k (in-stack sp)
+slot-in-stack sp zero = slot-in-stack-0 sp
+slot-in-stack sp (suc k) = slot-in-stack-suc sp k
+  where
+    -- For k > 0, we need capacity. This postulate represents that requirement.
+    -- It will be eliminated when callers use capacity-maintained directly.
+    postulate
+      slot-in-stack-suc : ∀ sp k → InStack (slot-addr sp (suc k))
 
 -- | Different stack pointers give different slot addresses (same offset)
 -- Proven from grow-addr-injective

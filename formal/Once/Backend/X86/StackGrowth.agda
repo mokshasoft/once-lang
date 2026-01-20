@@ -60,12 +60,6 @@ x86-grow-addr-injective a₁ a₂ k a₁≢a₂ eq = a₁≢a₂ (+-cancelʳ-≡
   where
     open import Data.Nat.Properties using (+-cancelʳ-≡)
 
--- | Growth preserves stack region membership
--- This is a postulate because it depends on capacity guarantees
--- The runtime ensures sufficient stack space is allocated
-postulate
-  x86-grow-preserves-region : ∀ a k → InStack a → InStack (x86-grow a k)
-
 ------------------------------------------------------------------------
 -- X86-64 Frame Preservation
 --
@@ -110,7 +104,6 @@ x86-stack-growth = record
   ; grow-identity = x86-grow-identity
   ; grow-injective = x86-grow-injective
   ; grow-addr-injective = x86-grow-addr-injective
-  ; grow-preserves-region = x86-grow-preserves-region
   ; FramePreserved = X86FramePreserved
   ; StackGrew = X86StackGrew
   ; frame-preserved-under-growth = x86-frame-preserved-under-growth
