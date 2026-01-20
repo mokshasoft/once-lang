@@ -18,14 +18,14 @@ open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 
-open import Once.Backend.Common.MemoryRegionLemmas
+open import Once.Backend.X86.MemoryRegionLemmas
   using (Addr; InStack; InHeap; InCode;
          stack-heap-disjoint; stack-code-disjoint;
          stack-heap-addr-disjoint; stack-code-addr-disjoint;
          pc-in-code;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
          frames-disjoint-slots; slot-in-stack; slot-addr-0-is-base)
-open import Once.Backend.Common.MemoryRegionLemmas using () renaming (addr to sp-addr; in-stack to sp-in-stack)
+open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; s≤s; z≤n)
 open import Data.Unit using (⊤; tt)

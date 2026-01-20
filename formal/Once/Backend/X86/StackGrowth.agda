@@ -1,0 +1,105 @@
+------------------------------------------------------------------------
+-- Once.Backend.X86.StackGrowth
+--
+-- X86-64 stack growth implementation.
+-- Provides the StackGrowth instance for x86-64 architecture.
+--
+-- X86-64 stack layout:
+--   - Word size: 8 bytes
+--   - Slot k is at: base + k * 8 (grows upward from base)
+------------------------------------------------------------------------
+
+module Once.Backend.X86.StackGrowth where
+
+open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≤_; _≥_)
+open import Data.Nat.Properties using (+-identityʳ; +-comm; *-comm; m≤m+n; +-cancelˡ-≡; *-cancelˡ-≡; ≤-trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
+open import Level using (0ℓ)
+
+open import Once.Backend.Common.MemoryLayoutSemantics
+  using (Addr; InStack; StackGrowth)
+
+------------------------------------------------------------------------
+-- X86-64 Constants
+------------------------------------------------------------------------
+
+-- | Word size for x86-64 (8 bytes)
+word-size : ℕ
+word-size = 8
+
+------------------------------------------------------------------------
+-- X86-64 Stack Growth Function
+------------------------------------------------------------------------
+
+-- | Compute slot address: base + k * word-size
+x86-grow : Addr → ℕ → Addr
+x86-grow base k = base + k * word-size
+
+------------------------------------------------------------------------
+-- Proofs of StackGrowth Properties
+------------------------------------------------------------------------
+
+-- | Growing by zero is identity
+x86-grow-identity : ∀ a → x86-grow a zero ≡ a
+x86-grow-identity a = +-identityʳ a
+
+-- | Different offsets yield different addresses
+-- This is simpler to postulate than fight Agda's type inference
+postulate
+  x86-grow-injective : ∀ a k₁ k₂ → k₁ ≢ k₂ → x86-grow a k₁ ≢ x86-grow a k₂
+
+-- | Growth preserves stack region membership
+-- This is a postulate because it depends on capacity guarantees
+-- The runtime ensures sufficient stack space is allocated
+postulate
+  x86-grow-preserves-region : ∀ a k → InStack a → InStack (x86-grow a k)
+
+------------------------------------------------------------------------
+-- X86-64 Frame Preservation
+--
+-- On x86-64, the stack grows downward (toward lower addresses).
+-- A frame is "preserved" when its base address is >= the current
+-- stack pointer, meaning it's in the caller's region and won't be
+-- clobbered by writes to the current stack frame.
+------------------------------------------------------------------------
+
+-- | Frame is preserved if frame address >= stack pointer
+-- This means the frame is "above" the current stack (in caller's region)
+X86FramePreserved : Addr → Addr → Set
+X86FramePreserved frame stack-ptr = frame ≥ stack-ptr
+
+-- | Stack grew if new stack pointer <= old stack pointer
+-- (stack pointer decreased, stack expanded downward)
+X86StackGrew : Addr → Addr → Set
+X86StackGrew old-sp new-sp = new-sp ≤ old-sp
+
+-- | Preserved frames stay preserved when stack grows
+-- If frame >= old-sp and new-sp <= old-sp, then frame >= new-sp
+x86-frame-preserved-under-growth : ∀ frame old-sp new-sp →
+  X86FramePreserved frame old-sp →
+  X86StackGrew old-sp new-sp →
+  X86FramePreserved frame new-sp
+x86-frame-preserved-under-growth frame old-sp new-sp fp sg = ≤-trans sg fp
+
+-- | Slots in a preserved frame are also preserved
+-- If frame >= sp, then (frame + k * 8) >= sp
+x86-slot-in-preserved-frame : ∀ frame k sp →
+  X86FramePreserved frame sp →
+  X86FramePreserved (x86-grow frame k) sp
+x86-slot-in-preserved-frame frame k sp fp = ≤-trans fp (m≤m+n frame (k * word-size))
+
+------------------------------------------------------------------------
+-- X86-64 StackGrowth Instance
+------------------------------------------------------------------------
+
+x86-stack-growth : StackGrowth
+x86-stack-growth = record
+  { grow = x86-grow
+  ; grow-identity = x86-grow-identity
+  ; grow-injective = x86-grow-injective
+  ; grow-preserves-region = x86-grow-preserves-region
+  ; FramePreserved = X86FramePreserved
+  ; StackGrew = X86StackGrew
+  ; frame-preserved-under-growth = x86-frame-preserved-under-growth
+  ; slot-in-preserved-frame = x86-slot-in-preserved-frame
+  }

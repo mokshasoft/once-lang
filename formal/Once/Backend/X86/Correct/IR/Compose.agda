@@ -16,7 +16,7 @@ open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-g-eq)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation
-open import Once.Backend.Common.MemoryRegionLemmas using (InStack; InHeap; InCode)
+open import Once.Backend.X86.MemoryRegionLemmas using (InStack; InHeap; InCode)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)

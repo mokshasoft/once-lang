@@ -15,8 +15,8 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged)
-open import Once.Backend.Common.MemoryRegionLemmas using (InStack; InHeap; InCode; stack-code-disjoint)
-open import Once.Backend.Common.MemoryRegionLemmas using () renaming (addr to sp-addr)
+open import Once.Backend.X86.MemoryRegionLemmas using (InStack; InHeap; InCode; stack-code-disjoint)
+open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
          capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged; slots;

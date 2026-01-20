@@ -45,9 +45,9 @@ open import Once.Backend.X86.Correct.StackInvariant
 -- Import encode-in-heap-sem for proving r15 is in heap
 open import Once.Backend.X86.Correct.StackInstantiation
   using (encode-in-heap-sem)
-open import Once.Backend.Common.MemoryRegionLemmas
+open import Once.Backend.X86.MemoryRegionLemmas
   using (StackPointer; HeapPointer; InStack; InHeap; in-stack)
-open import Once.Backend.Common.MemoryRegionLemmas using () renaming (addr to sp-addr; haddr to hp-addr)
+open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr; haddr to hp-addr)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)

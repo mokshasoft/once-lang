@@ -23,7 +23,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-stack-requirement)
-open import Once.Backend.Common.MemoryRegionLemmas
+open import Once.Backend.X86.MemoryRegionLemmas
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; ∘-f-smaller; ∘-g-smaller)

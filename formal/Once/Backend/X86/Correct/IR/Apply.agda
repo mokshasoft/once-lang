@@ -64,16 +64,13 @@ open import Once.Backend.X86.Correct.StackInstantiation
          -- Region proofs from encode
          encode-in-heap-sem; encode-offset-in-heap)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound)
-open import Once.Backend.Common.MemoryRegionLemmas
+open import Once.Backend.X86.MemoryRegionLemmas
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
          heap-offset; StackPointer; frameSlot;
          stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap;
          pc-in-code; slot-addr; slot-addr-≥-base)
-open import Once.Backend.Common.MemoryRegionLemmas using () renaming (addr to sp-addr)
--- Internal glue for abstraction boundary (implementation use only!)
-open import Once.Backend.Common.MemoryRegionLemmas using (module FrameSlotInternal)
-open FrameSlotInternal using (frameSlot-0-is-top)
+open import Once.Backend.X86.MemoryRegionLemmas using (frameSlot-0-is-top) renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase

@@ -13,8 +13,9 @@
 
 module Once.Backend.Common.MemoryLayoutSemantics where
 
-open import Data.Nat using (ℕ; _≤_)
+open import Data.Nat using (ℕ; zero; _≤_)
 open import Relation.Nullary using (¬_)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Data.Product using (_×_)
 
 -- Import Memory type from Common.Memory
@@ -144,3 +145,71 @@ to-raw-heap ha = HeapAddr.haddr ha
 
 to-raw-code : CodeAddr → Addr
 to-raw-code ca = CodeAddr.addr ca
+
+------------------------------------------------------------------------
+-- Stack Growth Interface
+--
+-- Architecture provides an implementation of this interface.
+-- This abstracts over word size and growth direction.
+--
+-- Key abstractions:
+--   - grow: slot address computation (direction-independent)
+--   - FramePreserved: "frame won't be clobbered by writes at stack-ptr"
+--   - StackGrew: "stack expanded from old to new"
+--
+-- See: docs/formal/guides/architecture-independent-stack-abstraction.md
+------------------------------------------------------------------------
+
+-- | Abstract interface for stack slot addressing and frame preservation
+-- The architecture provides:
+--   - grow: how to compute address at offset k from base
+--   - FramePreserved: when a frame is safe from stack writes
+--   - StackGrew: when the stack has grown
+--   - proofs that these satisfy required properties
+record StackGrowth : Set₁ where
+  field
+    --------------------------------------------------------------------
+    -- Slot Address Computation
+    --------------------------------------------------------------------
+
+    -- | Compute address at slot offset k from base address
+    grow : Addr → ℕ → Addr
+
+    -- | Growing by zero is identity (origin slot is at base)
+    grow-identity : ∀ a → grow a zero ≡ a
+
+    -- | Different offsets yield different addresses
+    grow-injective : ∀ a k₁ k₂ → k₁ ≢ k₂ → grow a k₁ ≢ grow a k₂
+
+    -- | Growth preserves stack region membership
+    grow-preserves-region : ∀ a k → InStack a → InStack (grow a k)
+
+    --------------------------------------------------------------------
+    -- Frame Preservation (Abstract Ordering)
+    --
+    -- FramePreserved frame stack-ptr means:
+    --   "Memory at frame (and its slots) won't be clobbered by
+    --    stack operations at stack-ptr"
+    --
+    -- X86 instantiation: FramePreserved = _≥_ (frame >= stack-ptr)
+    -- Upward-growth arch: FramePreserved = _≤_ (frame <= stack-ptr)
+    --------------------------------------------------------------------
+
+    -- | Frame is preserved when writing at/below stack-ptr
+    FramePreserved : Addr → Addr → Set
+
+    -- | Stack grew from old position to new position
+    -- X86: StackGrew old new = new ≤ old (stack ptr decreased)
+    -- Upward: StackGrew old new = new ≥ old (stack ptr increased)
+    StackGrew : Addr → Addr → Set
+
+    -- | Preserved frames stay preserved when stack grows
+    frame-preserved-under-growth : ∀ frame old-sp new-sp →
+      FramePreserved frame old-sp →
+      StackGrew old-sp new-sp →
+      FramePreserved frame new-sp
+
+    -- | Slots in a preserved frame are also preserved
+    slot-in-preserved-frame : ∀ frame k sp →
+      FramePreserved frame sp →
+      FramePreserved (grow frame k) sp

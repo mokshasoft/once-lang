@@ -3,16 +3,20 @@
 --
 -- Lemmas and theorems derived from the memory layout semantics.
 --
--- This module re-exports MemoryLayoutSemantics and provides:
---   1. Derived disjointness theorems
---   2. Stack/heap/code region properties
---   3. Memory preservation lemmas
+-- This module is PARAMETERIZED over StackGrowth, which the architecture
+-- provides. This allows the module to work with any stack growth
+-- direction and word size.
 --
--- TODO: Some items here are still postulates that should be
--- converted to definitions or proven from capacity.
+-- Provides:
+--   1. Derived disjointness theorems
+--   2. Stack slot addressing (from StackGrowth)
+--   3. Memory preservation lemmas
 ------------------------------------------------------------------------
 
-module Once.Backend.Common.MemoryRegionLemmas where
+-- Import StackGrowth for module parameter
+open import Once.Backend.Common.MemoryLayoutSemantics using (StackGrowth)
+
+module Once.Backend.Common.MemoryRegionLemmas (sg : StackGrowth) where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m∸n≤m; ≤-step)
@@ -23,11 +27,14 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 
--- Re-export foundational semantics
-open import Once.Backend.Common.MemoryLayoutSemantics public
+-- Re-export foundational semantics (except StackGrowth which is a parameter)
+open import Once.Backend.Common.MemoryLayoutSemantics public hiding (StackGrowth)
 
--- Import Memory operations
-open import Once.Backend.Common.Memory using (Memory; readMem; writeMem)
+-- Open the StackGrowth parameter
+open StackGrowth sg public
+
+-- Import and re-export Memory operations
+open import Once.Backend.Common.Memory using (Memory; readMem; writeMem) public
 
 ------------------------------------------------------------------------
 -- Derived Disjointness THEOREMS
@@ -73,23 +80,36 @@ HeapPointer : Set
 HeapPointer = HeapAddr
 
 ------------------------------------------------------------------------
--- Stack Slot Addressing
+-- Stack Slot Addressing (DERIVED FROM StackGrowth)
 --
--- TODO: Convert slot-addr to definition (slot-addr sp k = addr sp + k * 8)
--- Then most of these become trivially provable.
+-- These definitions and lemmas are derived from the StackGrowth
+-- interface provided by the architecture.
 ------------------------------------------------------------------------
 
+-- | Compute address of slot k in stack frame at sp
+slot-addr : StackPointer → ℕ → Addr
+slot-addr sp k = grow (addr sp) k
+
+-- | Initial slot is at the stack pointer base (from grow-identity)
+init-slot-at-base : ∀ sp → slot-addr sp zero ≡ addr sp
+init-slot-at-base sp = grow-identity (addr sp)
+
+-- | Different offsets give different addresses (from grow-injective)
+offset-distinct : ∀ sp k₁ k₂ → k₁ ≢ k₂ → slot-addr sp k₁ ≢ slot-addr sp k₂
+offset-distinct sp k₁ k₂ k₁≢k₂ = grow-injective (addr sp) k₁ k₂ k₁≢k₂
+
+-- | Slot is in stack region (from grow-preserves-region)
+slot-in-stack : ∀ sp k → InStack (slot-addr sp k)
+slot-in-stack sp k = grow-preserves-region (addr sp) k (in-stack sp)
+
+-- Remaining slot properties require additional assumptions or are arch-specific
 postulate
-  slot-addr : StackPointer → ℕ → Addr
-  slot-in-stack : ∀ sp k → InStack (slot-addr sp k)
-  slot-addr-0-is-base : ∀ sp → slot-addr sp 0 ≡ addr sp
-  slot-addr-1-is-base+8 : ∀ sp → slot-addr sp 1 ≡ addr sp + 8
+  -- | Different stack pointers give different slot addresses
+  -- (requires: grow a₁ k ≢ grow a₂ k when a₁ ≢ a₂)
   sp-distinct : ∀ sp₁ sp₂ k → addr sp₁ ≢ addr sp₂ → slot-addr sp₁ k ≢ slot-addr sp₂ k
-  offset-distinct : ∀ sp k₁ k₂ → k₁ ≢ k₂ → slot-addr sp k₁ ≢ slot-addr sp k₂
+
+  -- | Different frames have disjoint slots
   frames-disjoint-slots : ∀ sp₁ sp₂ k₁ k₂ → addr sp₁ ≢ addr sp₂ → slot-addr sp₁ k₁ ≢ slot-addr sp₂ k₂
-  slot-addr-≥-base : ∀ sp k → slot-addr sp k ≥ addr sp
-  slot-addr-above-thunk-rbp : ∀ sp k rsp thunk-rbp →
-    addr sp ≡ rsp + 8 → thunk-rbp ≡ rsp ∸ 16 → rsp > 16 → slot-addr sp k > thunk-rbp
 
 ------------------------------------------------------------------------
 -- Heap Region Properties
@@ -113,32 +133,45 @@ postulate
 ------------------------------------------------------------------------
 -- Abstract Frame Operations
 --
--- TODO: Convert frameSlot to definition
+-- frameSlot reads the value at slot k of stack frame sp.
 ------------------------------------------------------------------------
 
-postulate
-  frameSlot : Memory → StackPointer → ℕ → Maybe Word
+-- | Read value at slot k of stack frame at sp
+frameSlot : Memory → StackPointer → ℕ → Maybe Word
+frameSlot mem sp k = readMem mem (slot-addr sp k)
 
 ------------------------------------------------------------------------
 -- Memory Preservation
 --
--- TODO: Prove from disjointness + writeMem semantics
+-- Writing to stack doesn't affect heap/code regions (from disjointness).
 ------------------------------------------------------------------------
 
-postulate
-  stackAddr-write-preserves-heap : ∀ mem addr val heap-addr →
-    InStack addr → InHeap heap-addr →
-    readMem (writeMem mem addr val) heap-addr ≡ readMem mem heap-addr
+-- Import readMem-writeMem-diff for the proofs
+open import Once.Backend.Common.Memory using (readMem-writeMem-diff)
 
-  stackAddr-write-preserves-code : ∀ mem addr val code-addr →
-    InStack addr → InCode code-addr →
-    readMem (writeMem mem addr val) code-addr ≡ readMem mem code-addr
+-- | Writing to a stack address preserves heap memory
+stackAddr-write-preserves-heap : ∀ mem a val heap-a →
+  InStack a → InHeap heap-a →
+  readMem (writeMem mem a val) heap-a ≡ readMem mem heap-a
+stackAddr-write-preserves-heap mem a val heap-a in-s in-h =
+  readMem-writeMem-diff mem a heap-a val (stack-heap-addr-disjoint a heap-a in-s in-h)
+
+-- | Writing to a stack address preserves code memory
+stackAddr-write-preserves-code : ∀ mem a val code-a →
+  InStack a → InCode code-a →
+  readMem (writeMem mem a val) code-a ≡ readMem mem code-a
+stackAddr-write-preserves-code mem a val code-a in-s in-c =
+  readMem-writeMem-diff mem a code-a val (stack-code-addr-disjoint a code-a in-s in-c)
 
 ------------------------------------------------------------------------
 -- INTERNAL: Abstraction Boundary Glue
 ------------------------------------------------------------------------
 
 module FrameSlotInternal where
-  postulate
-    frameSlot-0-is-top : ∀ mem sp → frameSlot mem sp 0 ≡ readMem mem (addr sp)
-    frameSlot-is-readMem : ∀ mem sp k → frameSlot mem sp k ≡ readMem mem (slot-addr sp k)
+  -- | frameSlot at initial slot reads from the stack pointer address
+  init-frame-slot-at-base : ∀ mem sp → frameSlot mem sp zero ≡ readMem mem (addr sp)
+  init-frame-slot-at-base mem sp = cong (readMem mem) (init-slot-at-base sp)
+
+  -- | frameSlot is just readMem at the slot address (by definition)
+  frameSlot-is-readMem : ∀ mem sp k → frameSlot mem sp k ≡ readMem mem (slot-addr sp k)
+  frameSlot-is-readMem mem sp k = refl

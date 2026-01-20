@@ -28,7 +28,7 @@ open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-output-capacity; thunk-setup-capacity)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
-open import Once.Backend.Common.MemoryRegionLemmas
+open import Once.Backend.X86.MemoryRegionLemmas
   using (InCode; InHeap; StackPointer; frameSlot; addr)
 
 open import Once.Postulates using (encode)
