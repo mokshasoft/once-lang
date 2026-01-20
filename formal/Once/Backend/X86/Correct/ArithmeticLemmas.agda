@@ -17,10 +17,9 @@ open import Data.Nat using (ℕ; _<_; _≤_; _<?_; _≤?_; _∸_)
 open import Once.Backend.X86.Correct.Arithmetic
   using (from-yes-<; from-yes-≤;
          word-size; pair-alloc; saved-regs-size; frame-size)
--- Import symbolic constants for RSP thresholds and frame offsets
+-- Import symbolic constants for RSP thresholds
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (thunk-after-alloc-rsp-min; post-rbp-push-min; four-slot-offset)
-open import Data.Nat using (suc)
+  using (thunk-after-alloc-rsp-min; post-rbp-push-min; pair-frame-rsp-min)
 
 ------------------------------------------------------------------------
 -- Frame containment (components fit within frame)
@@ -79,9 +78,8 @@ pair-fits-regs = from-yes-≤ (pair-alloc ≤? saved-regs-size)
 ------------------------------------------------------------------------
 
 -- | Minimum rsp for pair frame fits within frame
--- 33 = suc four-slot-offset = suc (slots 4)
-rsp-min-pair-fits-frame : suc four-slot-offset ≤ frame-size
-rsp-min-pair-fits-frame = from-yes-≤ (suc four-slot-offset ≤? frame-size)
+rsp-min-pair-fits-frame : pair-frame-rsp-min ≤ frame-size
+rsp-min-pair-fits-frame = from-yes-≤ (pair-frame-rsp-min ≤? frame-size)
 
 -- NOTE: single-slot-fits-thunk-bound deleted, use slots-bound-positive from StackInstantiation
 

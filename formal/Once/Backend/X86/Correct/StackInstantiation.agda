@@ -270,16 +270,22 @@ four-slots-fits-initial = from-yes-≤ (slots 4 ≤? thunk-initial-rsp-min)
 three-slots-fits-four : slots 3 ≤ slots 4
 three-slots-fits-four = from-yes-≤ (slots 3 ≤? slots 4)
 
--- Post-rbp-push threshold (25) fits initial threshold (49)
--- 25 = suc (slots 3), 49 = suc (slots 6)
+-- Post-rbp-push threshold: minimum RSP after 3 slots allocated
 post-rbp-push-min : ℕ
-post-rbp-push-min = suc (slots 3)  -- 25
+post-rbp-push-min = cap-rsp-min 3  -- 25
 
 _ : post-rbp-push-min ≡ 25
 _ = refl
 
 post-rbp-push-fits-initial : post-rbp-push-min ≤ thunk-initial-rsp-min
 post-rbp-push-fits-initial = from-yes-≤ (post-rbp-push-min ≤? thunk-initial-rsp-min)
+
+-- Pair frame RSP threshold: minimum RSP after 4 slots allocated
+pair-frame-rsp-min : ℕ
+pair-frame-rsp-min = cap-rsp-min 4  -- 33
+
+_ : pair-frame-rsp-min ≡ 33
+_ = refl
 
 -- Semantic relationships: capacity invariants for thunk-setup
 -- Used when deriving bounds from capacity proofs
