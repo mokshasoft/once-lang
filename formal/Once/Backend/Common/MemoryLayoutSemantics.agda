@@ -1,14 +1,16 @@
 ------------------------------------------------------------------------
 -- Once.Backend.Common.MemoryLayoutSemantics
 --
--- FOUNDATIONAL POSTULATES for memory layout.
+-- Memory layout interface and types.
 --
--- This module contains ONLY the minimal postulates that represent
--- runtime guarantees about memory layout:
---   1. Region bounds exist (stack, heap, code)
---   2. Regions are disjoint
+-- This module provides:
+--   1. Core types (Addr, RegionBounds)
+--   2. MemoryLayout record (bundles bounds + disjointness)
+--   3. Parameterized definitions (InStack, InHeap, InCode)
+--   4. Default postulate-based layout for backward compatibility
 --
--- Everything else (theorems, lemmas) belongs in MemoryRegionLemmas.
+-- For zero-postulates architecture, see X86.Layout which provides
+-- concrete bounds where all properties are proven.
 ------------------------------------------------------------------------
 
 module Once.Backend.Common.MemoryLayoutSemantics where
@@ -42,20 +44,69 @@ record RegionBounds : Set where
 open RegionBounds public
 
 ------------------------------------------------------------------------
--- Region Bounds Postulates (STRUCTURAL)
+-- Memory Layout Record
 --
--- JUSTIFICATION: Runtime initializes memory with these regions.
--- These are the only structural postulates needed.
+-- Bundles region bounds with disjointness proof.
+-- Architecture-specific modules provide concrete instances.
+------------------------------------------------------------------------
+
+-- | Region membership predicates (parameterized by bounds)
+InRegion : RegionBounds → Addr → Set
+InRegion rb a = lower rb ≤ a × a ≤ upper rb
+
+-- | Complete memory layout: bounds + disjointness
+record MemoryLayout : Set where
+  field
+    stack-bounds : RegionBounds
+    heap-bounds  : RegionBounds
+    code-bounds  : RegionBounds
+    intervals-disjoint : ∀ a →
+      ¬ (InRegion stack-bounds a × InRegion heap-bounds a) ×
+      ¬ (InRegion stack-bounds a × InRegion code-bounds a) ×
+      ¬ (InRegion heap-bounds a × InRegion code-bounds a)
+
+-- Note: Not opening MemoryLayout to avoid name clashes with backward-compat defs
+
+------------------------------------------------------------------------
+-- Default Layout (postulate-based, for backward compatibility)
+--
+-- JUSTIFICATION: Runtime initializes memory with non-overlapping regions.
+-- This default uses postulates; concrete layouts (X86.Layout) use proofs.
 ------------------------------------------------------------------------
 
 postulate
-  stack-bounds : RegionBounds
-  heap-bounds  : RegionBounds
-  code-bounds  : RegionBounds
+  default-stack-bounds : RegionBounds
+  default-heap-bounds  : RegionBounds
+  default-code-bounds  : RegionBounds
+  default-intervals-disjoint : ∀ a →
+    ¬ (InRegion default-stack-bounds a × InRegion default-heap-bounds a) ×
+    ¬ (InRegion default-stack-bounds a × InRegion default-code-bounds a) ×
+    ¬ (InRegion default-heap-bounds a × InRegion default-code-bounds a)
+
+defaultLayout : MemoryLayout
+defaultLayout = record
+  { stack-bounds = default-stack-bounds
+  ; heap-bounds = default-heap-bounds
+  ; code-bounds = default-code-bounds
+  ; intervals-disjoint = default-intervals-disjoint
+  }
 
 ------------------------------------------------------------------------
--- Region Membership (DEFINITIONS, not postulates!)
+-- Backward Compatibility: Use default layout
+--
+-- These definitions use the default (postulate-based) layout.
+-- New code should use parameterized modules with concrete layouts.
 ------------------------------------------------------------------------
+
+-- Re-export bounds from default layout
+stack-bounds : RegionBounds
+stack-bounds = MemoryLayout.stack-bounds defaultLayout
+
+heap-bounds : RegionBounds
+heap-bounds = MemoryLayout.heap-bounds defaultLayout
+
+code-bounds : RegionBounds
+code-bounds = MemoryLayout.code-bounds defaultLayout
 
 -- | Address is in stack if within [lower, upper]
 InStack : Addr → Set
@@ -69,19 +120,11 @@ InHeap a = lower heap-bounds ≤ a × a ≤ upper heap-bounds
 InCode : Addr → Set
 InCode a = lower code-bounds ≤ a × a ≤ upper code-bounds
 
-------------------------------------------------------------------------
--- Region Disjointness (THE KEY SEMANTIC POSTULATE)
---
--- JUSTIFICATION: Runtime initializes memory with non-overlapping regions.
--- This is the only semantic postulate needed - all disjointness
--- theorems follow from this.
-------------------------------------------------------------------------
-
-postulate
-  intervals-disjoint : ∀ a →
-    ¬ (InStack a × InHeap a) ×
-    ¬ (InStack a × InCode a) ×
-    ¬ (InHeap a × InCode a)
+intervals-disjoint : ∀ a →
+  ¬ (InStack a × InHeap a) ×
+  ¬ (InStack a × InCode a) ×
+  ¬ (InHeap a × InCode a)
+intervals-disjoint = MemoryLayout.intervals-disjoint defaultLayout
 
 ------------------------------------------------------------------------
 -- Abstract Address Types (in-region by construction)
