@@ -91,13 +91,8 @@ word-fits-thunk-bound-strict = from-yes-< (word-size <? 17)
 -- NOTE: Capacity containment lemmas moved to StackInstantiation.agda
 -- with symbolic names (output-slots, apply-capacity, etc.)
 
-------------------------------------------------------------------------
--- Code region containment
-------------------------------------------------------------------------
-
--- | Thunk setup fits within apply code region
-thunk-setup-within-apply-code : 6 < 19
-thunk-setup-within-apply-code = from-yes-< (6 <? 19)
+-- NOTE: thunk-setup-within-apply-code moved to ThunkStructure.agda
+-- as thunk-entry-within-curry-overhead (uses symbolic constants)
 
 ------------------------------------------------------------------------
 -- Word/pair containment

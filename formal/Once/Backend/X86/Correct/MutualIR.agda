@@ -66,7 +66,7 @@ open import Once.Backend.X86.Correct.InitState
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec
-open import Once.Backend.X86.Correct.ArithmeticLemmas using (thunk-setup-within-apply-code; word-fits-thunk-bound; word-fits-pair-strict)
+open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound; word-fits-pair-strict)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
          star-step2; star-step3; star-step4)
@@ -120,7 +120,8 @@ open import Once.Backend.X86.Correct.IR.ThunkStructure
          fetch-thunk-i0; fetch-thunk-i1; fetch-thunk-i2; fetch-thunk-i3; fetch-thunk-i4;
          fetch-thunk-i5; fetch-thunk-i6;
          cleanup-i0; cleanup-i1; cleanup-i2;
-         fetch-cleanup-i0; fetch-cleanup-i1; fetch-cleanup-i2)
+         fetch-cleanup-i0; fetch-cleanup-i1; fetch-cleanup-i2;
+         thunk-entry-offset; thunk-entry-within-curry-overhead)
   renaming (fetch-ret to TS-fetch-ret)
 
 -- Import thunk execution proofs (extracted from mutual block)
@@ -356,20 +357,20 @@ mutual
       inner-len = LP.length-++ (compile-x86 (curry f))
 
 
-      -- 6 < 19 + compile-length f (using: 6 < 19 and 19 ≤ 19 + compile-length f)
-      thunk-setup-within-apply-code+f : 6 < 19 +ℕ compile-length f
-      thunk-setup-within-apply-code+f = <-≤-trans thunk-setup-within-apply-code (m≤m+n 19 (compile-length f))
+      -- thunk-entry-offset < curry-overhead + compile-length f
+      thunk-entry-within-code+f : thunk-entry-offset < curry-overhead +ℕ compile-length f
+      thunk-entry-within-code+f = <-≤-trans thunk-entry-within-curry-overhead (m≤m+n curry-overhead (compile-length f))
 
-      -- 6 < 19 + compile-length f + length suffix
-      thunk-setup-within-apply-code+f+s : 6 < 19 +ℕ compile-length f +ℕ length suffix
-      thunk-setup-within-apply-code+f+s = <-≤-trans thunk-setup-within-apply-code+f (m≤m+n (19 +ℕ compile-length f) (length suffix))
+      -- thunk-entry-offset < curry-overhead + compile-length f + length suffix
+      thunk-entry-within-code+f+s : thunk-entry-offset < curry-overhead +ℕ compile-length f +ℕ length suffix
+      thunk-entry-within-code+f+s = <-≤-trans thunk-entry-within-code+f (m≤m+n (curry-overhead +ℕ compile-length f) (length suffix))
 
-      -- |prefix| + 6 < |prefix| + (19 + compile-length f + length suffix)
-      step1 : length prefix +ℕ 6 < length prefix +ℕ (19 +ℕ compile-length f +ℕ length suffix)
-      step1 = +-monoʳ-< (length prefix) thunk-setup-within-apply-code+f+s
+      -- |prefix| + thunk-entry-offset < |prefix| + (curry-overhead + compile-length f + length suffix)
+      step1 : length prefix +ℕ thunk-entry-offset < length prefix +ℕ (curry-overhead +ℕ compile-length f +ℕ length suffix)
+      step1 = +-monoʳ-< (length prefix) thunk-entry-within-code+f+s
 
       -- Rewrite using curry-len and inner-len
-      step2 : length prefix +ℕ (19 +ℕ compile-length f +ℕ length suffix)
+      step2 : length prefix +ℕ (curry-overhead +ℕ compile-length f +ℕ length suffix)
             ≡ length prefix +ℕ (length (compile-x86 (curry f)) +ℕ length suffix)
       step2 = cong (length prefix +ℕ_) (cong (_+ℕ length suffix) (sym curry-len))
 
@@ -381,8 +382,8 @@ mutual
             ≡ length (prefix ++ compile-x86 (curry f) ++ suffix)
       step4 = sym prog-len
 
-      goal : length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f) ++ suffix)
-      goal = subst (length prefix +ℕ 6 <_) (trans step2 (trans step3 step4)) step1
+      goal : length prefix +ℕ thunk-entry-offset < length (prefix ++ compile-x86 (curry f) ++ suffix)
+      goal = subst (length prefix +ℕ thunk-entry-offset <_) (trans step2 (trans step3 step4)) step1
 
   -- | Star-based curry execution with closure well-formedness proof (with Acc)
   -- Returns CurryResult which includes ClosureWellFormed for use by apply

@@ -22,6 +22,8 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.X86.Correct.CompileLength using (compile-length-correct)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots)
+open import Once.Backend.X86.Correct.Arithmetic using (from-yes-<)
+open import Data.Nat using (_<?_)
 
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc; +-comm)
@@ -69,6 +71,10 @@ thunk-body-offset = closure-setup-len +ℕ thunk-setup-len  -- = 14
 private
   _ : curry-overhead ≡ closure-setup-len +ℕ thunk-setup-len +ℕ tail-len
   _ = refl
+
+-- Thunk entry is within curry overhead (used to prove PC bounds)
+thunk-entry-within-curry-overhead : thunk-entry-offset < curry-overhead
+thunk-entry-within-curry-overhead = from-yes-< (thunk-entry-offset <? curry-overhead)
 
 -- Position of end label relative to start (last instruction in curry)
 -- = thunk-body-offset + cleanup-len + 1 + len-f
