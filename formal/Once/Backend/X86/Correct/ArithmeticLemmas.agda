@@ -78,9 +78,7 @@ pair-fits-regs = from-yes-≤ (pair-alloc ≤? saved-regs-size)
 rsp-min-pair-fits-frame : 33 ≤ frame-size
 rsp-min-pair-fits-frame = from-yes-≤ (33 ≤? frame-size)
 
--- | Single slot fits thunk bound
-single-slot-fits-thunk-bound : 1 ≤ 17
-single-slot-fits-thunk-bound = from-yes-≤ (1 ≤? 17)
+-- NOTE: single-slot-fits-thunk-bound deleted, use slots-bound-positive from StackInstantiation
 
 -- | Word fits thunk rsp bound
 word-fits-thunk-bound : word-size ≤ 17

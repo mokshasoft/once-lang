@@ -214,6 +214,10 @@ slot1-plus-word≡slot2 m 32≤m = m∸n+k≡m∸n-k m (frame-size ∸ word-size
 -- Ordering lemmas for address disjointness
 ------------------------------------------------------------------------
 
+-- | Any n > m is positive (since suc m ≤ n implies 1 ≤ n)
+>-implies-positive : ∀ {n m} → n > m → n > 0
+>-implies-positive bound = ≤-trans (s≤s z≤n) bound
+
 -- | m ≤ n and m > k and k > 0 implies (m - k) < n
 ∸-preserves-< : ∀ {m n k} → m ≤ n → m > k → k > 0 → (m ∸ k) < n
 ∸-preserves-< {suc m} {n} {suc k} m≤n (s≤s m>k) (s≤s z≤n) =

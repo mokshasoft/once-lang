@@ -12,11 +12,11 @@ open import Once.Backend.X86.Correct.ArithmeticLemmas
   using (pair-fits-post-rbp-push; word-fits-word-plus-one; thunk-min-fits-actual;
          four-slots-fit-thunk-actual; post-rbp-push-fits-thunk-actual;
          three-slots-fit-four-slots;
-         word-positive; pair-positive; single-slot-fits-thunk-bound)
+         word-positive; pair-positive)
 -- Note: Capacity lemmas (formerly output-fits-thunk-setup etc.) now use symbolic
 -- names from StackInstantiation: output-fits-thunk-cap, apply-cap-after-push-fits-thunk-cap,
 -- apply-capacity-fits-thunk-cap
-open import Once.Backend.X86.Correct.Arithmetic using (word-plus-one-fits-pair)
+open import Once.Backend.X86.Correct.Arithmetic using (word-plus-one-fits-pair; >-implies-positive)
 open import Once.Postulates using (encode; encode-pair-construct)
 -- Postulates removed: rsp-bound-after-stack-op, rsp-in-stack-after-stack-op
 -- All stack capacity proofs now derived from input StackCapacity parameter
@@ -709,7 +709,7 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- s6 writes at new-rsp = old-rsp - 32 ≠ old-rsp
     -- s7 writes at new-rsp + 8 = old-rsp - 24 ≠ old-rsp
     rsp-after-push-r15≢old-rsp : rsp-after-push-r15 ≢ old-rsp
-    rsp-after-push-r15≢old-rsp = ∸-gives-different old-rsp slot-size (≤-trans single-slot-fits-thunk-bound rsp-bound) word-positive
+    rsp-after-push-r15≢old-rsp = ∸-gives-different old-rsp slot-size (>-implies-positive rsp-bound) word-positive
 
     -- rsp-after-push-rbp = old-rsp - 16 < old-rsp (D041: use abstract helper)
     rsp-after-push-rbp≢old-rsp : rsp-after-push-rbp ≢ old-rsp
