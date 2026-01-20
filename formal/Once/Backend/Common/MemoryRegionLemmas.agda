@@ -3,9 +3,9 @@
 --
 -- Lemmas and theorems derived from the memory layout semantics.
 --
--- This module is PARAMETERIZED over StackGrowth, which the architecture
--- provides. This allows the module to work with any stack growth
--- direction and word size.
+-- This module is PARAMETERIZED over:
+--   - StackGrowth: stack slot addressing (from architecture)
+--   - MemoryLayout: region bounds (concrete or abstract)
 --
 -- Provides:
 --   1. Derived disjointness theorems
@@ -13,10 +13,14 @@
 --   3. Memory preservation lemmas
 ------------------------------------------------------------------------
 
--- Import StackGrowth for module parameter
-open import Once.Backend.Common.MemoryLayoutSemantics using (StackGrowth)
+-- Import types for module parameters
+open import Once.Backend.Common.MemoryLayoutSemantics
+  using (StackGrowth; MemoryLayout; RegionBounds; Addr; lower; upper; InRegion)
 
-module Once.Backend.Common.MemoryRegionLemmas (sg : StackGrowth) where
+module Once.Backend.Common.MemoryRegionLemmas
+  (layout : MemoryLayout)
+  (sg : StackGrowth)
+  where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m∸n≤m; ≤-step)
@@ -27,8 +31,94 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 
--- Re-export foundational semantics (except StackGrowth which is a parameter)
-open import Once.Backend.Common.MemoryLayoutSemantics public hiding (StackGrowth)
+-- Re-export foundational types (not the default layout values or address types)
+open import Once.Backend.Common.MemoryLayoutSemantics public
+  hiding (StackGrowth; MemoryLayout;
+          stack-bounds; heap-bounds; code-bounds;
+          InStack; InHeap; InCode; intervals-disjoint;
+          defaultLayout; default-stack-bounds; default-heap-bounds;
+          default-code-bounds; default-intervals-disjoint;
+          -- Also hide address types that depend on InStack/InHeap/InCode
+          StackAddr; HeapAddr; CodeAddr; stack-addr; heap-addr; code-addr;
+          addr; haddr; in-stack; in-heap; in-code;
+          from-raw-stack; from-raw-heap; from-raw-code;
+          to-raw-stack; to-raw-heap; to-raw-code)
+
+-- Open the MemoryLayout parameter to get bounds
+stack-bounds : RegionBounds
+stack-bounds = MemoryLayout.stack-bounds layout
+
+heap-bounds : RegionBounds
+heap-bounds = MemoryLayout.heap-bounds layout
+
+code-bounds : RegionBounds
+code-bounds = MemoryLayout.code-bounds layout
+
+-- Define region membership from the layout parameter
+InStack : Addr → Set
+InStack a = lower stack-bounds ≤ a × a ≤ upper stack-bounds
+
+InHeap : Addr → Set
+InHeap a = lower heap-bounds ≤ a × a ≤ upper heap-bounds
+
+InCode : Addr → Set
+InCode a = lower code-bounds ≤ a × a ≤ upper code-bounds
+
+intervals-disjoint : ∀ a →
+  ¬ (InStack a × InHeap a) ×
+  ¬ (InStack a × InCode a) ×
+  ¬ (InHeap a × InCode a)
+intervals-disjoint = MemoryLayout.intervals-disjoint layout
+
+------------------------------------------------------------------------
+-- Abstract Address Types (using parameterized InStack/InHeap/InCode)
+------------------------------------------------------------------------
+
+-- | Stack address: in stack region by construction
+record StackAddr : Set where
+  constructor stack-addr
+  field
+    addr : Addr
+    in-stack : InStack addr
+
+open StackAddr public
+
+-- | Heap address: in heap region by construction
+record HeapAddr : Set where
+  constructor heap-addr
+  field
+    haddr : Addr
+    in-heap : InHeap haddr
+
+open HeapAddr public
+
+-- | Code address: in code region by construction
+record CodeAddr : Set where
+  constructor code-addr
+  field
+    addr : Addr
+    in-code : InCode addr
+
+open CodeAddr public
+
+-- Boundary conversions
+from-raw-stack : (a : Addr) → InStack a → StackAddr
+from-raw-stack a proof = stack-addr a proof
+
+from-raw-heap : (a : Addr) → InHeap a → HeapAddr
+from-raw-heap a proof = heap-addr a proof
+
+from-raw-code : (a : Addr) → InCode a → CodeAddr
+from-raw-code a proof = code-addr a proof
+
+to-raw-stack : StackAddr → Addr
+to-raw-stack sa = StackAddr.addr sa
+
+to-raw-heap : HeapAddr → Addr
+to-raw-heap ha = HeapAddr.haddr ha
+
+to-raw-code : CodeAddr → Addr
+to-raw-code ca = CodeAddr.addr ca
 
 -- Open the StackGrowth parameter
 open StackGrowth sg public
