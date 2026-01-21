@@ -60,6 +60,8 @@ X86-MachineInterface = record
   ; output-value = λ s → readReg (regs s) rax  -- X86: output in rax
   ; readMem = readMem
   ; program-length = length  -- Program = List Instr for X86
+  ; empty-program = []       -- Empty list for X86
+  ; empty-program-length = refl
   ; step = step
   }
 

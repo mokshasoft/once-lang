@@ -56,6 +56,8 @@ record MachineInterface : Set₁ where
 
     -- Program operations
     program-length : Program → ℕ
+    empty-program : Program
+    empty-program-length : program-length empty-program ≡ 0
 
     -- Execution
     step : Program → State → Maybe State
