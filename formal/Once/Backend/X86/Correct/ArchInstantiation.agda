@@ -197,13 +197,181 @@ module PairBridge {A B C : Type} (f : IR C A) (g : IR C B) where
       postulate
         cap-for-g : StackCapacity (PairMiddleResultV.s2 res) (ir-stack-requirement g)
 
+  -- | Extract Common CleanupPost from X86's PairFinalResult
+  --
+  -- State mapping:
+  --   s = initial state
+  --   s₁ = after setup
+  --   s₃ = after middle (ready for g) - s3 precondition state
+  --   s₄ = after g execution
+  --   s₅ = final (s-final in PairFinalResult)
+  --
+  -- Note: cleanup-output-valid requires the pair ValidAt which is constructed
+  -- from f and g's ValidAt proofs - this is passed as an additional parameter.
+  extract-cleanup-post : ∀ {prefix suffix : Program} {x : ⟦ C ⟧}
+    {s s-setup s-mid s₄ : State}
+    (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) →
+    (fin : PairFinalResult f g prefix suffix s s₄) →
+    -- Capacity for output (derived from initial capacity + rsp restoration)
+    (cap-out : StackCapacity (PairFinalResult.s-final fin) (ir-output-capacity ⟨ f , g ⟩)) →
+    -- ValidAt for the pair (constructed from f and g validity)
+    (pair-valid : ValidAt {A * B} (fx , gx)
+                          (readReg (regs (PairFinalResult.s-final fin)) rax)
+                          (memory (PairFinalResult.s-final fin))) →
+    CleanupPost s s-setup s-mid s₄ (PairFinalResult.s-final fin) x fx gx
+  extract-cleanup-post {s = s} fx gx fin cap-out pair-valid = record
+    { cleanup-halted = PairFinalResult.h-final fin
+    ; cleanup-stack-inv = PairFinalResult.stack-inv-fin fin
+    ; cleanup-capacity = cap-out
+    ; cleanup-output-valid = pair-valid
+    ; cleanup-saved-regs = saved-regs
+    }
+    where
+      s-final = PairFinalResult.s-final fin
+      saved-regs : X86-SavedRegsPreserved s s-final
+      saved-regs = ( PairFinalResult.r14-fin fin
+                   , PairFinalResult.r15-fin fin
+                   , PairFinalResult.rbp-fin fin
+                   )
+
+------------------------------------------------------------------------
+-- X86 ArchCorrectness Implementation (Skeleton)
+--
+-- This section shows how to implement the ArchCorrectness interface
+-- for X86 by wiring together:
+--   - X86's existing phase proofs (pair-setup-star-v, etc.)
+--   - The bridge extractors defined above
+--
+-- Currently using postulates; full implementation would:
+--   1. Call X86 phase functions (pair-setup-star-v, etc.)
+--   2. Extract Common postconditions using PairBridge extractors
+--   3. Combine into ArchCorrectness record
+------------------------------------------------------------------------
+
+open import Once.Backend.Common.IR.ArchInterface as Arch
+
+-- Postulate leaf lemmas (would delegate to X86's StarBase proofs)
+postulate
+  x86-id-correct : ∀ {A : Type} (x : ⟦ A ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement (id {A})) →
+    ∃[ s' ] IRCorrectness (id {A}) (compile-x86 (id {A})) s s' x 0
+
+  x86-inl-correct : ∀ {A B : Type} (a : ⟦ A ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement (inl {A} {B})) →
+    ∃[ s' ] IRCorrectness (inl {A} {B}) (compile-x86 (inl {A} {B})) s s' a 0
+
+  x86-inr-correct : ∀ {A B : Type} (b : ⟦ B ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement (inr {A} {B})) →
+    ∃[ s' ] IRCorrectness (inr {A} {B}) (compile-x86 (inr {A} {B})) s s' b 0
+
+  x86-fst-correct : ∀ {A B : Type} (p : ⟦ A * B ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement (fst {A} {B})) →
+    ∃[ s' ] IRCorrectness (fst {A} {B}) (compile-x86 (fst {A} {B})) s s' p 0
+
+  x86-snd-correct : ∀ {A B : Type} (p : ⟦ A * B ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement (snd {A} {B})) →
+    ∃[ s' ] IRCorrectness (snd {A} {B}) (compile-x86 (snd {A} {B})) s s' p 0
+
+-- Postulate phase lemmas (would delegate to X86 phase proofs + bridges)
+postulate
+  x86-pair-setup-correct : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
+    (x : ⟦ C ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement ⟨ f , g ⟩) →
+    ∃[ s₁ ] PairSpecs.SetupPost f g s s₁ x
+
+  x86-pair-middle-correct : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
+    (x : ⟦ C ⟧) (s s₁ s₂ : State) (fx : ⟦ A ⟧) →
+    ∃[ s₃ ] PairSpecs.MiddlePost f g s₁ s₂ s₃ x fx
+
+  x86-pair-cleanup-correct : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
+    (x : ⟦ C ⟧) (s s₁ s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) →
+    ∃[ s₅ ] PairSpecs.CleanupPost f g s s₁ s₃ s₄ s₅ x fx gx
+
+  x86-curry-setup-correct : ∀ {A B C : Type} (f : IR (A * B) C)
+    (x : ⟦ A ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement (curry f)) →
+    ∃[ s₁ ] CurrySpecs.SetupPost f s s₁ x
+
+  x86-case-dispatch-left : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+    (a : ⟦ A ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement [ f , g ]) →
+    ∃[ s₁ ] CaseSpecs.DispatchLeftPost f g s s₁ a
+
+  x86-case-dispatch-right : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+    (b : ⟦ B ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement [ f , g ]) →
+    ∃[ s₁ ] CaseSpecs.DispatchRightPost f g s s₁ b
+
+  x86-compose-enables-second : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
+    (x : ⟦ A ⟧) (s s' : State) →
+    IRCorrectness g (compile-x86 g) s s' x 0 →
+    Preconditions s' (readReg (regs s') rax) (ir-stack-requirement f)
+
+  x86-apply-correct :
+    (ih : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+          Preconditions s (readReg (regs s) rax) (ir-stack-requirement ir) →
+          ∃[ s' ] IRCorrectness ir (compile-x86 ir) s s' x 0) →
+    ∀ {A B : Type} (p : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+    Preconditions s (readReg (regs s) rax) (ir-stack-requirement (apply {A} {B})) →
+    ∃[ s' ] IRCorrectness (apply {A} {B}) (compile-x86 (apply {A} {B})) s s' p 0
+
+------------------------------------------------------------------------
+-- X86 ArchCorrectness Record
+--
+-- This bundles all the interfaces and lemmas into the ArchCorrectness
+-- record that MutualRecursion requires.
+------------------------------------------------------------------------
+
+X86-ArchCorrectness : Arch.ArchCorrectness
+X86-ArchCorrectness = record
+  { machine = X86-MachineInterface
+  ; invariants = X86-InvariantInterface
+  ; validity = X86-ValidityInterface
+  ; codegen = X86-CodeGenInterface
+  -- Leaf lemmas
+  ; id-correct = x86-id-correct
+  ; inl-correct = x86-inl-correct
+  ; inr-correct = x86-inr-correct
+  ; fst-correct = x86-fst-correct
+  ; snd-correct = x86-snd-correct
+  -- Phase lemmas
+  ; pair-setup-correct = x86-pair-setup-correct
+  ; pair-middle-correct = x86-pair-middle-correct
+  ; pair-cleanup-correct = x86-pair-cleanup-correct
+  ; curry-setup-correct = x86-curry-setup-correct
+  ; case-dispatch-left = x86-case-dispatch-left
+  ; case-dispatch-right = x86-case-dispatch-right
+  ; compose-enables-second = x86-compose-enables-second
+  ; apply-correct = x86-apply-correct
+  }
+
+------------------------------------------------------------------------
+-- Instantiate MutualRecursion with X86
+--
+-- This gives us the full IR correctness theorem for X86!
+------------------------------------------------------------------------
+
+open import Once.Backend.Common.IR.MutualRecursion as MR
+
+module X86-IRCorrect = MR.IRCorrect X86-ArchCorrectness
+
+-- Export the main theorem
+x86-ir-correct : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+  Preconditions s (readReg (regs s) rax) (ir-stack-requirement ir) →
+  ∃[ s' ] IRCorrectness ir (compile-x86 ir) s s' x 0
+x86-ir-correct = X86-IRCorrect.ir-correct
+
 ------------------------------------------------------------------------
 -- Summary
 --
 -- This module provides:
 --   1. X86 instantiations of all abstract interfaces
 --   2. Bridge functions to extract Common specs from X86 results
+--   3. X86-ArchCorrectness record (currently with postulates)
+--   4. x86-ir-correct: full IR correctness for X86 via MutualRecursion
 --
--- The X86 proofs can use their detailed records internally,
--- while exposing the Common interface for the shared MutualRecursion.
+-- To complete the wiring (eliminate postulates):
+--   - Implement leaf lemmas by wrapping X86's run-*-star-v functions
+--   - Implement phase lemmas by calling X86 phase proofs + PairBridge
+--   - Each postulate has a corresponding X86 proof that needs adapting
 ------------------------------------------------------------------------

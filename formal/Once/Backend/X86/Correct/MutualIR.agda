@@ -97,6 +97,9 @@ open import Once.Backend.X86.Correct.IR.Inl
 open import Once.Backend.X86.Correct.IR.Inr
   using (run-inr-star-v; run-inr-star-v-auto)
 
+-- Import architecture instantiation (verifies Common interface compatibility)
+open import Once.Backend.X86.Correct.ArchInstantiation
+
 -- Import extracted curry proof (non-recursive, entire function extracted)
 open import Once.Backend.X86.Correct.IR.Curry
   using (run-curry-star; CurryExecResult; CurryMemoryResult; closure-addr;
