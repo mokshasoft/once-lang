@@ -4,14 +4,10 @@
 -- Architecture-independent correctness specifications for IR.
 --
 -- This module defines WHAT correctness means for each IR constructor,
--- without specifying HOW to prove it (that's architecture-specific).
+-- parameterized by architecture-specific details.
 --
--- Key abstractions:
---   - IRCorrectness: the core correctness predicate
---   - Phase postconditions: what each phase must establish
---
--- These specs are parameterized by a MachineInterface that abstracts
--- over architecture-specific details (registers, state, etc.)
+-- DESIGN PRINCIPLE: These types are extracted from X86's working proofs,
+-- not invented abstractly. They match what X86 actually provides.
 ------------------------------------------------------------------------
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; inr; fst; snd; arr; unfold; fold)
@@ -31,9 +27,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 ------------------------------------------------------------------------
 -- Abstract Machine Interface
 --
--- Each architecture must provide these types and operations.
--- This allows correctness specs to be stated without mentioning
--- specific registers like rax, r14, x0, a0, etc.
+-- Core types and operations each architecture provides.
+-- Derived from X86's working implementation, designed to generalize
+-- to AArch64 and RISC-V.
 ------------------------------------------------------------------------
 
 record MachineInterface : Set₁ where
@@ -49,20 +45,26 @@ record MachineInterface : Set₁ where
     halted : State → Bool
     memory : State → Memory
 
-    -- Abstract "output location" (rax / x0 / a0)
+    -- Register accessors (architecture names the registers)
+    -- Input register: where function arguments arrive (rdi / x0 / a0)
+    input-value : State → Word
+    -- Output register: where results are placed (rax / x0 / a0)
     output-value : State → Word
 
     -- Memory operations
     readMem : Memory → Word → Maybe Word
 
+    -- Program operations
+    program-length : Program → ℕ
+
     -- Execution
     step : Program → State → Maybe State
 
 ------------------------------------------------------------------------
--- Abstract Invariants
+-- Invariant Interface
 --
--- These are architecture-independent concepts that each backend
--- instantiates with its specific register/frame layout.
+-- Architecture-specific invariants that must be maintained.
+-- Extracted from X86's StackInvariant, RbpInvariant, etc.
 ------------------------------------------------------------------------
 
 record InvariantInterface (M : MachineInterface) : Set₁ where
@@ -75,9 +77,15 @@ record InvariantInterface (M : MachineInterface) : Set₁ where
     -- Stack capacity (enough space for N slots)
     StackCapacity : State → ℕ → Set
 
+    -- Frame pointer invariant (rbp chain valid, etc.)
+    FramePtrInvariant : State → Set
+
     -- Saved registers preserved between states
-    -- (abstracts over which registers: {r14,r15,rbp} vs {x20,x21} vs {s1,s2})
     SavedRegsPreserved : State → State → Set
+
+    -- RSP/SP delta tracking (for capacity threading)
+    -- Returns how much stack pointer changes after executing IR
+    rsp-delta-slots : State → State → ℕ → Set
 
     -- Memory regions
     InStack : Word → Set
@@ -90,12 +98,9 @@ record InvariantInterface (M : MachineInterface) : Set₁ where
     FramePreserved : State → State → Set
 
 ------------------------------------------------------------------------
--- Abstract Validity
+-- Validity Interface
 --
--- ValidAt is the core correctness predicate: "value v is correctly
--- represented at address addr in memory m"
---
--- Parameterized by InvariantInterface to access InHeap.
+-- ValidAt predicate: "value v is correctly represented at addr in memory"
 ------------------------------------------------------------------------
 
 record ValidityInterface (M : MachineInterface) (Inv : InvariantInterface M) : Set₁ where
@@ -113,23 +118,7 @@ record ValidityInterface (M : MachineInterface) (Inv : InvariantInterface M) : S
       ValidAt v addr m₂
 
 ------------------------------------------------------------------------
--- Star (Reflexive-Transitive Closure)
---
--- Already exists in Common/Star.agda, but we need the type here.
-------------------------------------------------------------------------
-
--- Import from Common.Star or define abstractly
--- For now, we assume it's provided
-postulate
-  Star : ∀ {M : MachineInterface} →
-         MachineInterface.Program M →
-         MachineInterface.State M →
-         MachineInterface.State M → Set
-
-------------------------------------------------------------------------
 -- Code Generation Interface
---
--- What each architecture's code generator must provide.
 ------------------------------------------------------------------------
 
 record CodeGenInterface (M : MachineInterface) : Set₁ where
@@ -139,7 +128,7 @@ record CodeGenInterface (M : MachineInterface) : Set₁ where
     -- Compile IR to program
     compile : ∀ {A B} → IR A B → Program
 
-    -- Length of compiled code (for PC advancement proofs)
+    -- Length of compiled code
     compile-length : ∀ {A B} → IR A B → ℕ
 
     -- Stack requirements
@@ -150,15 +139,21 @@ record CodeGenInterface (M : MachineInterface) : Set₁ where
 ------------------------------------------------------------------------
 -- IRCorrectness: The Core Specification
 --
--- This is what it means for IR execution to be correct.
--- Architecture-independent statement; architecture-specific proof.
+-- This matches X86's IRStarResultV structure exactly.
+-- Architecture provides this record; Common defines what fields mean.
+--
+-- Note: Star is provided as a parameter rather than via an interface,
+-- since each architecture's Star has slightly different constructor
+-- signatures (X86's step* requires halted proof, etc.)
 ------------------------------------------------------------------------
 
 module IRSpecs
     (M : MachineInterface)
     (Inv : InvariantInterface M)
     (Val : ValidityInterface M Inv)
-    (CG : CodeGenInterface M) where
+    (CG : CodeGenInterface M)
+    (Star : MachineInterface.Program M → MachineInterface.State M → MachineInterface.State M → Set)
+    where
 
   open MachineInterface M
   open InvariantInterface Inv
@@ -166,119 +161,121 @@ module IRSpecs
   open CodeGenInterface CG
 
   -- Preconditions for IR execution
-  record Preconditions (s : State) (x-addr : Word) (cap-needed : ℕ) : Set where
+  -- Matches X86's run-*-star-vv preconditions exactly
+  record Preconditions {A : Type} (s : State) (x : ⟦ A ⟧)
+                       (prefix : Program) (cap-needed : ℕ) : Set₁ where
     field
       pre-halted : halted s ≡ false
+      pre-pc : pc s ≡ program-length prefix
+      pre-input-valid : ValidAt x (input-value s) (memory s)
       pre-stack-inv : StackInvariant s
       pre-capacity : StackCapacity s cap-needed
+      pre-frame-inv : FramePtrInvariant s
 
-  -- Core correctness: executing IR produces valid output
+  -- Core correctness result
+  -- Matches X86's IRStarResultV structure
   record IRCorrectness {A B : Type} (ir : IR A B)
       (prog : Program) (s s' : State) (x : ⟦ A ⟧) (offset : ℕ) : Set₁ where
     field
-      -- Execution happened
-      exec-star : Star {M} prog s s'
-
-      -- Machine state after execution
+      -- Execution
+      exec-star : Star prog s s'
       exec-halted : halted s' ≡ false
       exec-pc : pc s' ≡ offset + compile-length ir
 
-      -- Output is valid (the key correctness property!)
+      -- Output validity (THE key correctness property)
       exec-output-valid : ValidAt (eval ir x) (output-value s') (memory s')
 
-      -- Invariants maintained
-      exec-stack-inv : StackInvariant s'
-      exec-capacity : StackCapacity s' (ir-output-capacity ir)
-
-      -- Registers/memory preserved
+      -- Register/state preservation
       exec-saved-regs : SavedRegsPreserved s s'
+
+      -- Memory preservation
       exec-heap-preserved : HeapPreserved s s'
       exec-code-preserved : CodePreserved s s'
       exec-frame-preserved : FramePreserved s s'
 
+      -- Invariants maintained
+      exec-stack-inv : StackInvariant s'
+      exec-capacity : StackCapacity s' (ir-output-capacity ir)
+      exec-frame-inv : FramePtrInvariant s'
+
   ------------------------------------------------------------------------
-  -- Phase Specifications
+  -- Phase Specifications for Composite IR
   --
-  -- For composite IR (pair, curry, case), execution is split into phases.
-  -- Each phase has pre/post conditions. The combining logic is shared;
-  -- the phase proofs are architecture-specific.
+  -- These match X86's phase result records.
   ------------------------------------------------------------------------
 
-  -- Pair phases: setup → f → middle → g → cleanup
   module PairSpecs {A B C : Type} (f : IR C A) (g : IR C B) where
 
-    -- After setup: registers saved, pair space allocated, ready for f
-    record SetupPost (s s₁ : State) (x : ⟦ C ⟧) : Set where
+    -- After setup: registers saved, ready for f
+    record SetupPost (s s₁ : State) (x : ⟦ C ⟧) : Set₁ where
       field
         setup-halted : halted s₁ ≡ false
         setup-stack-inv : StackInvariant s₁
-        -- f can now execute with input x
-        setup-ready-for-f : StackCapacity s₁ (ir-stack-requirement f)
+        setup-input-valid : ValidAt x (input-value s₁) (memory s₁)
+        setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
+        setup-frame-inv : FramePtrInvariant s₁
 
     -- After middle: f's result stored, ready for g
-    record MiddlePost (s₁ s₂ s₃ : State) (x : ⟦ C ⟧) (fx : ⟦ A ⟧) : Set where
+    record MiddlePost (s₁ s₂ s₃ : State) (x : ⟦ C ⟧) (fx : ⟦ A ⟧) : Set₁ where
       field
         middle-halted : halted s₃ ≡ false
         middle-stack-inv : StackInvariant s₃
-        -- f's result is stored somewhere (architecture tracks where)
-        -- g can now execute with input x
-        middle-ready-for-g : StackCapacity s₃ (ir-stack-requirement g)
+        middle-input-valid : ValidAt x (input-value s₃) (memory s₃)
+        middle-capacity : StackCapacity s₃ (ir-stack-requirement g)
+        middle-frame-inv : FramePtrInvariant s₃
+        -- f's result is preserved somewhere for later pair construction
 
-    -- After cleanup: pair constructed, result valid
-    record CleanupPost (s s₁ s₃ s₄ s₅ : State) (x : ⟦ C ⟧)
+    -- After cleanup: pair constructed
+    record CleanupPost (s s₅ : State) (x : ⟦ C ⟧)
                        (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) : Set₁ where
       field
         cleanup-halted : halted s₅ ≡ false
         cleanup-stack-inv : StackInvariant s₅
         cleanup-capacity : StackCapacity s₅ (ir-output-capacity ⟨ f , g ⟩)
-        -- The key result: output is valid pair
         cleanup-output-valid : ValidAt {A * B} (fx , gx) (output-value s₅) (memory s₅)
-        -- Saved registers restored
         cleanup-saved-regs : SavedRegsPreserved s s₅
+        cleanup-frame-inv : FramePtrInvariant s₅
 
-  -- Curry phases: setup (create closure, skip thunk)
   module CurrySpecs {A B C : Type} (f : IR (A * B) C) where
 
-    -- After setup: closure created, thunk skipped
     record SetupPost (s s₁ : State) (x : ⟦ A ⟧) : Set₁ where
       field
         setup-halted : halted s₁ ≡ false
         setup-stack-inv : StackInvariant s₁
         setup-capacity : StackCapacity s₁ (ir-output-capacity (curry f))
-        -- The key result: closure is valid
         setup-output-valid : ValidAt {B ⇒ C} (eval (curry f) x) (output-value s₁) (memory s₁)
         setup-saved-regs : SavedRegsPreserved s s₁
+        setup-frame-inv : FramePtrInvariant s₁
 
-  -- Case phases: dispatch → (left branch | right branch)
   module CaseSpecs {A B C : Type} (f : IR A C) (g : IR B C) where
 
-    -- After dispatch for left: tag checked, ready for f
     record DispatchLeftPost (s s₁ : State) (a : ⟦ A ⟧) : Set where
       field
         dispatch-halted : halted s₁ ≡ false
         dispatch-stack-inv : StackInvariant s₁
-        dispatch-ready-for-f : StackCapacity s₁ (ir-stack-requirement f)
-        -- Input is now just 'a', not 'inj₁ a'
+        dispatch-input-valid : ValidAt a (input-value s₁) (memory s₁)
+        dispatch-capacity : StackCapacity s₁ (ir-stack-requirement f)
 
-    -- After dispatch for right: tag checked, ready for g
     record DispatchRightPost (s s₁ : State) (b : ⟦ B ⟧) : Set where
       field
         dispatch-halted : halted s₁ ≡ false
         dispatch-stack-inv : StackInvariant s₁
-        dispatch-ready-for-g : StackCapacity s₁ (ir-stack-requirement g)
-        -- Input is now just 'b', not 'inj₂ b'
+        dispatch-input-valid : ValidAt b (input-value s₁) (memory s₁)
+        dispatch-capacity : StackCapacity s₁ (ir-stack-requirement g)
 
 ------------------------------------------------------------------------
 -- Summary
 --
--- This module defines:
---   1. MachineInterface - abstract machine (State, step, etc.)
---   2. InvariantInterface - abstract invariants (StackInvariant, etc.)
---   3. ValidityInterface - abstract validity (ValidAt)
---   4. CodeGenInterface - abstract codegen (compile, compile-length)
---   5. IRCorrectness - what it means for IR to be correct
---   6. Phase specs - pre/post conditions for composite IR phases
+-- This module defines architecture-independent types that MATCH what
+-- X86 actually provides:
 --
--- Each architecture provides instances of these interfaces,
--- then proves its phases satisfy the specs.
+--   - Preconditions: includes input ValidAt (X86 has this!)
+--   - IRCorrectness: matches IRStarResultV fields
+--   - Phase specs: match X86's phase result records
+--
+-- Key additions from original design:
+--   - input-value in MachineInterface (rdi / x0 / a0)
+--   - FramePtrInvariant in InvariantInterface (RbpInvariant)
+--   - pre-input-valid in Preconditions
+--   - StarInterface (each arch provides Star)
 ------------------------------------------------------------------------
