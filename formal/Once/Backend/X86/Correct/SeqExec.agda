@@ -25,7 +25,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          output-slots≤pair-setup; single-slot-fits-apply-cap)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step4; star-step6; star-step7)
-open import Once.Backend.X86.MemoryRegionLemmas using (InStack; InHeap; InCode)
+open import Once.Backend.X86.Layout using (InStack; InHeap; InCode)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; ∸-+-assoc; <-irrefl; <⇒≤; ≤-<-trans)
@@ -625,7 +625,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     mem-code : ∀ addr → InCode addr → readMem (memory s7) addr ≡ readMem (memory s) addr
     mem-code addr addr-in-code = trans memC-s7-s3 (trans memC-s3-s2 (trans memC-s2-s1 memC-s1-s))
       where
-        open import Once.Backend.X86.MemoryRegionLemmas using (InStack; InCode; stackAddr-write-preserves-code)
+        open import Once.Backend.X86.Layout using (InStack; InCode; stackAddr-write-preserves-code)
 
         -- Write addresses (from x86 semantics)
         write1 = orig-rsp ∸ slot-size
@@ -661,7 +661,7 @@ frame-setup-star prefix rest s h-false pc-eq cap = record
     mem-heap : ∀ addr → InHeap addr → readMem (memory s7) addr ≡ readMem (memory s) addr
     mem-heap addr addr-in-heap = trans memH-s7-s3 (trans memH-s3-s2 (trans memH-s2-s1 memH-s1-s))
       where
-        open import Once.Backend.X86.MemoryRegionLemmas using (InStack; InHeap; stackAddr-write-preserves-heap)
+        open import Once.Backend.X86.Layout using (InStack; InHeap; stackAddr-write-preserves-heap)
 
         -- Write addresses (from x86 semantics)
         write1 = orig-rsp ∸ slot-size

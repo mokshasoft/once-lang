@@ -64,13 +64,13 @@ open import Once.Backend.X86.Correct.StackInstantiation
          -- Region proofs from encode
          encode-in-heap-sem; encode-offset-in-heap)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound)
-open import Once.Backend.X86.MemoryRegionLemmas
+open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
          heap-offset; StackPointer; frameSlot;
          stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap;
          pc-in-code; slot-addr; slot-addr-≥-base)
-open import Once.Backend.X86.MemoryRegionLemmas using (init-frame-slot-at-base) renaming (addr to sp-addr)
+open import Once.Backend.X86.Layout using (init-frame-slot-at-base) renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase

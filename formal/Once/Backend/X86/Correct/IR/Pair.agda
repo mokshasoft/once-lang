@@ -36,12 +36,12 @@ open import Once.Backend.X86.Correct.StackInstantiation
          -- Concrete interface (instantiation layer - arithmetic in types)
          pair-r15-in-stack; pair-second-slot-in-stack;
          pair-setup-stack-inv; stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged)
-open import Once.Backend.X86.MemoryRegionLemmas
+open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-disjoint; stack-code-addr-disjoint;
          stack-heap-disjoint; stack-heap-addr-disjoint;
          slot-addr; slot-addr-≥-base;
          init-slot-at-base; slot-addr-next-is-base-plus-word; StackPointer)
-open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr)
+open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.SeqExec using (frame-setup-star; FrameSetupResult; pair-middle-star-at; PairMiddleStarResult)
 open import Once.Backend.X86.Correct.Star
@@ -54,7 +54,7 @@ open import Once.Backend.X86.Correct.StarBase
          IRStarResultV; ir-result-valid; ir-rsp-bound-v)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write)
-open import Once.Backend.X86.MemoryRegionLemmas using (InHeap; InCode)
+open import Once.Backend.X86.Layout using (InHeap; InCode)
 
 open import Data.Nat using (_>_; _≥_)
 open import Function using (case_of_)

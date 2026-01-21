@@ -41,10 +41,10 @@ open import Relation.Nullary using (yes; no)
 open ≡-Reasoning
 
 -- Import region lemmas for D041 approach
-open import Once.Backend.X86.MemoryRegionLemmas
+open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
          StackPointer)
-open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr)
+open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 
 -- Import validity types for validity-based interface
 open import Once.Backend.X86.Correct.MemoryValid

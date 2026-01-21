@@ -17,7 +17,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Level using (0ℓ)
 
 open import Once.Backend.Common.MemoryLayoutSemantics
-  using (Addr; InStack; StackGrowth)
+  using (Addr; StackGrowth)
 
 ------------------------------------------------------------------------
 -- X86-64 Constants

@@ -29,7 +29,7 @@ open import Once.Backend.X86.Correct.StarBase using (IRStarResultV)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; stack-inv-preserved-r15-unchanged)
-open import Once.Backend.X86.MemoryRegionLemmas
+open import Once.Backend.X86.Layout
   using (StackPointer) renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (slots; slot-size; StackCapacity; ir-stack-requirement; capacity-after-push;
@@ -43,7 +43,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas
          readReg-writeReg-r11-rdi; readReg-writeReg-r11-rsp; readReg-writeReg-r11-rbp;
          readReg-writeReg-r11-r14; readReg-writeReg-r11-r15;
          readReg-writeReg-rdi-rsp; readReg-writeReg-rdi-rbp; readReg-writeReg-rdi-r14; readReg-writeReg-rdi-r15)
-open import Once.Backend.X86.MemoryRegionLemmas
+open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; StackPointer; stack-heap-addr-disjoint;
          stack-code-addr-disjoint)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
@@ -601,7 +601,7 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
         open import Once.Backend.X86.Correct.StackInvariant
           using (stack-write-preserves-r15; FrameEvidenceFor;
                  R15Status; r15-in-heap; r15-in-code; r15-in-stack)
-        open import Once.Backend.X86.MemoryRegionLemmas using (slot-addr; init-slot-at-base)
+        open import Once.Backend.X86.Layout using (slot-addr; init-slot-at-base)
         open import Data.Unit using (tt)
         open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
 
@@ -1277,7 +1277,7 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         open import Once.Backend.X86.Correct.StackInvariant
           using (stack-write-preserves-r15; FrameEvidenceFor;
                  R15Status; r15-in-heap; r15-in-code; r15-in-stack)
-        open import Once.Backend.X86.MemoryRegionLemmas using (slot-addr; init-slot-at-base)
+        open import Once.Backend.X86.Layout using (slot-addr; init-slot-at-base)
         open import Data.Unit using (tt)
         open import Data.Nat.Properties using (<⇒≢; <-≤-trans)
 

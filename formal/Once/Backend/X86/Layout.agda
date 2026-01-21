@@ -1,289 +1,241 @@
 ------------------------------------------------------------------------
 -- Once.Backend.X86.Layout
 --
--- CONCRETE memory layout for X86-64.
--- Parameterized by region sizes from the compiler/runtime.
+-- Concrete X86-64 memory layout.
 --
--- KEY INSIGHT: With concrete bounds, everything is provable:
---   - Region bounds are DEFINITIONS (not postulates)
---   - Disjointness is PROVEN from arithmetic
---   - Lower bound properties are definitional (refl)
+-- This module provides:
+--   - x86-layout : MemoryLayout (with lower = 0 for stack/code)
+--   - Runtime postulates (bounds, disjointness, prog-fits)
+--   - Re-exports Common modules instantiated with X86 values
 --
--- See: docs/formal/guides/memory-region-instantiation.md
+-- IR proofs should NOT import this directly - they should use
+-- Common.Regions, Common.StackSlots, etc. Only the top-level
+-- (WholeProgram) imports X86.Layout for concrete wiring.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Layout where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; z≤n; s≤s)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; +-assoc; +-comm; <-≤-trans; <⇒≢; m<m+n; +-monoˡ-≤; +-monoʳ-≤)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_; s≤s; z≤n)
+open import Data.Nat.Properties using (m≤m+n; ≤-trans; <-≤-trans; m<m+n; m∸n≤m)
 open import Data.Product using (_×_; _,_)
-open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Nullary using (¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
--- Import types from MemoryLayoutSemantics for compatibility
-open import Once.Backend.Common.MemoryLayoutSemantics
-  using (RegionBounds; Addr; lower; upper; MemoryLayout; InRegion)
-  public
+-- Import types for layout construction
+open import Once.Backend.Common.MemoryLayoutSemantics as MLS
+  using (MemoryLayout; RegionBounds; lower; upper; InRegion)
+open MLS using (Addr; lower; upper) public
+
+-- Import and re-export X86 stack growth
+open import Once.Backend.X86.StackGrowth public
+  using (word-size; x86-stack-growth)
 
 ------------------------------------------------------------------------
--- Concrete Layout Module (parameterized by sizes)
+-- X86 Concrete Memory Layout
 --
--- Memory layout:
---   [0, code-size)                           = code region
---   [code-size, code-size + heap-size)       = heap region
---   [code-size + heap-size, total-size)      = stack region (used portion)
---
--- But for capacity proofs, stack lower bound = 0 (simplifies monus proofs)
+-- KEY INSIGHT: By defining bounds with lower = 0, properties become
+-- definitional (refl) instead of postulates!
 ------------------------------------------------------------------------
 
-module ConcreteLayout (code-size heap-size stack-size : ℕ) where
+-- Runtime provides upper bounds (postulates - these are inputs)
+postulate
+  x86-stack-upper : ℕ  -- Stack region upper bound
+  x86-heap-lower  : ℕ  -- Heap region lower bound
+  x86-heap-upper  : ℕ  -- Heap region upper bound
+  x86-code-upper  : ℕ  -- Code region upper bound
 
-  ------------------------------------------------------------------------
-  -- Derived Constants
-  ------------------------------------------------------------------------
+-- Concrete X86 bounds with lower = 0 where applicable
+x86-stack-bounds : RegionBounds
+x86-stack-bounds = record
+  { lower = 0              -- KEY: lower = 0 by definition!
+  ; upper = x86-stack-upper
+  ; bounds-valid = z≤n
+  }
 
-  total-size : ℕ
-  total-size = code-size + heap-size + stack-size
+x86-heap-bounds : RegionBounds
+x86-heap-bounds = record
+  { lower = x86-heap-lower
+  ; upper = x86-heap-upper
+  ; bounds-valid = heap-valid
+  }
+  where postulate heap-valid : x86-heap-lower ≤ x86-heap-upper
 
-  ------------------------------------------------------------------------
-  -- Concrete Region Bounds (DEFINITIONS, not postulates!)
-  ------------------------------------------------------------------------
+x86-code-bounds : RegionBounds
+x86-code-bounds = record
+  { lower = 0              -- KEY: lower = 0 by definition!
+  ; upper = x86-code-upper
+  ; bounds-valid = z≤n
+  }
 
-  -- | Code region: [0, code-size]
-  x86-code-bounds : RegionBounds
-  x86-code-bounds = record
-    { lower = 0
-    ; upper = code-size
-    ; bounds-valid = z≤n
-    }
+-- Disjointness (runtime guarantee)
+postulate
+  x86-intervals-disjoint : ∀ a →
+    ¬ (InRegion x86-stack-bounds a × InRegion x86-heap-bounds a) ×
+    ¬ (InRegion x86-stack-bounds a × InRegion x86-code-bounds a) ×
+    ¬ (InRegion x86-heap-bounds a × InRegion x86-code-bounds a)
 
-  -- | Heap region: [code-size, code-size + heap-size]
-  x86-heap-bounds : RegionBounds
-  x86-heap-bounds = record
-    { lower = code-size
-    ; upper = code-size + heap-size
-    ; bounds-valid = m≤m+n code-size heap-size
-    }
+-- X86 Memory Layout instance
+x86-layout : MemoryLayout
+x86-layout = record
+  { stack-bounds = x86-stack-bounds
+  ; heap-bounds = x86-heap-bounds
+  ; code-bounds = x86-code-bounds
+  ; intervals-disjoint = x86-intervals-disjoint
+  }
 
-  -- | Stack region: [0, total-size] for capacity proofs
-  -- NOTE: Lower = 0 means monus never takes us outside the region.
-  -- The actual stack usage is [code-size + heap-size, total-size),
-  -- but for the formal model, extending lower to 0 simplifies proofs
-  -- without affecting correctness (we just have a larger valid region).
-  x86-stack-bounds : RegionBounds
-  x86-stack-bounds = record
-    { lower = 0
-    ; upper = total-size
-    ; bounds-valid = z≤n
-    }
+------------------------------------------------------------------------
+-- Re-export Common modules instantiated with X86 layout
+------------------------------------------------------------------------
 
-  ------------------------------------------------------------------------
-  -- Region Membership (DEFINITIONS from bounds)
-  ------------------------------------------------------------------------
+-- Regions (InStack, InHeap, InCode, disjointness)
+-- Hide Addr since we already export it from MLS above
+open import Once.Backend.Common.Regions x86-layout public
+  hiding (Addr)
 
-  InStack : Addr → Set
-  InStack a = lower x86-stack-bounds ≤ a × a ≤ upper x86-stack-bounds
+-- Stack slots (slot-addr, StackPointer, etc.)
+-- Hide InStack since it's already exported from Regions
+open import Once.Backend.Common.StackSlots x86-layout x86-stack-growth public
+  hiding (InStack)
 
-  InHeap : Addr → Set
-  InHeap a = lower x86-heap-bounds ≤ a × a ≤ upper x86-heap-bounds
+-- Frame operations (frameSlot, memory preservation)
+open import Once.Backend.Common.FrameOps x86-layout x86-stack-growth public
 
-  InCode : Addr → Set
-  InCode a = lower x86-code-bounds ≤ a × a ≤ upper x86-code-bounds
+-- Allocator semantics (encode-in-heap, heap-offset)
+open import Once.Backend.Common.AllocatorSemantics x86-layout public
 
-  ------------------------------------------------------------------------
-  -- Lower Bound Properties (PROVEN by refl!)
-  ------------------------------------------------------------------------
+-- Re-export Memory operations
+open import Once.Backend.Common.Memory using (Memory; Word; readMem; writeMem) public
 
-  -- | Stack lower bound is 0 - definitional!
-  stack-lower-is-zero : lower x86-stack-bounds ≡ 0
-  stack-lower-is-zero = refl
+------------------------------------------------------------------------
+-- X86-Specific Properties (lower = 0 is definitional)
+------------------------------------------------------------------------
 
-  -- | Code lower bound is 0 - definitional!
-  code-lower-is-zero : lower x86-code-bounds ≡ 0
-  code-lower-is-zero = refl
+-- | X86 stack region has lower bound 0
+-- PROVEN: definitional from x86-stack-bounds!
+x86-stack-lower-zero : lower stack-bounds ≡ 0
+x86-stack-lower-zero = refl
 
-  ------------------------------------------------------------------------
-  -- Disjointness (PROVEN from arithmetic!)
-  --
-  -- Key insight: With concrete non-overlapping intervals, disjointness
-  -- is just arithmetic contradiction.
-  ------------------------------------------------------------------------
+-- | X86 code region has lower bound 0
+-- PROVEN: definitional from x86-code-bounds!
+x86-code-lower-zero : lower code-bounds ≡ 0
+x86-code-lower-zero = refl
 
-  -- Helper: code upper < heap lower (when code-size > 0)
-  -- Actually for our layout: code upper = code-size, heap lower = code-size
-  -- So they TOUCH but don't overlap (code is [0, code-size], heap is [code-size, ...])
-  -- Wait, that's overlapping at code-size!
+-- | Program fits in code region (RUNTIME GUARANTEE)
+postulate
+  prog-fits-in-code : ∀ (prog-len : ℕ) → prog-len ≤ upper code-bounds
 
-  -- Need to be more careful about intervals. Let's use [lower, upper) convention
-  -- or ensure the proof handles the boundary correctly.
+-- | Valid program counter is in code region
+pc-in-code : ∀ (pc : Addr) (prog-len : ℕ) →
+  pc < prog-len →
+  InCode pc
+pc-in-code pc prog-len pc<prog-len = (z≤n , pc≤upper)
+  where
+    open import Data.Nat.Properties using (<⇒≤)
+    pc≤upper : pc ≤ upper code-bounds
+    pc≤upper = ≤-trans (<⇒≤ pc<prog-len) (prog-fits-in-code prog-len)
 
-  -- For now, let's prove specific disjointness cases:
+------------------------------------------------------------------------
+-- Stack Subtraction (uses lower = 0)
+------------------------------------------------------------------------
 
-  -- | Stack-heap disjointness when proper separation exists
-  -- Note: With our simplified model where stack-lower = 0, stack contains
-  -- addresses [0, total-size]. Heap is [code-size, code-size + heap-size].
-  -- These DO overlap unless we add separation constraints.
-  --
-  -- INSIGHT: The postulate `intervals-disjoint` in the abstract model
-  -- represents the runtime guarantee. In the concrete model, we need
-  -- to either:
-  --   (a) Use [lower, upper) intervals (half-open)
-  --   (b) Require separation parameters
-  --   (c) Define stack as actual usage [code+heap, total] not [0, total]
+-- | Subtracting from a stack address preserves stack membership
+stack-sub-preserves : ∀ a k →
+  InStack a →
+  k ≤ a →
+  InStack (a ∸ k)
+stack-sub-preserves a k (lower≤a , a≤upper) k≤a = (z≤n , a∸k≤upper)
+  where
+    a∸k≤upper : a ∸ k ≤ upper stack-bounds
+    a∸k≤upper = ≤-trans (m∸n≤m a k) a≤upper
 
-  -- For now, let's provide the proofs assuming proper separation,
-  -- which the runtime must guarantee.
+------------------------------------------------------------------------
+-- X86-Specific Slot Addressing Lemmas
+--
+-- These lemmas depend on x86's upward stack growth direction.
+------------------------------------------------------------------------
 
-  -- | Addresses in disjoint regions are distinct
-  -- This is provable when we have strict inequality between region boundaries
+-- | Slot address is always ≥ base address (x86 grows upward)
+slot-addr-≥-base : ∀ sp k → slot-addr sp k ≥ addr sp
+slot-addr-≥-base sp k = m≤m+n (addr sp) (k * word-size)
 
-  -- Proof strategy for actual disjointness:
-  -- If a is in code region: a ≤ code-size
-  -- If a is in heap region: code-size ≤ a
-  -- For strict disjointness, we need a < code-size AND code-size ≤ a to be impossible
-  -- But a ≤ code-size allows a = code-size, and code-size ≤ a also allows a = code-size
-  -- So code-size is in both regions!
+-- | Slot 1 is word-size bytes above base (x86-specific)
+slot-addr-next-is-base-plus-word : ∀ sp → slot-addr sp 1 ≡ addr sp + word-size
+slot-addr-next-is-base-plus-word sp = refl
 
-  -- Solution: Use < for upper bound, ≤ for lower bound (half-open intervals [l, u))
-  -- Or: offset the regions so they don't touch
+------------------------------------------------------------------------
+-- Frame Ordering Implies Slot Disjointness (PROVEN)
+------------------------------------------------------------------------
 
-  -- For the abstract interface compatibility, we'll use postulates here
-  -- that represent the runtime's actual guarantee of non-overlapping allocation.
-  -- The point is: these postulates are INSTANTIATION postulates, not semantic ones.
-  -- They say "given this specific layout, regions don't overlap" - which the
-  -- runtime/linker ensures by its memory allocation strategy.
+-- | When frame1 < frame2, slot 0 of frame1 is below any slot of frame2
+frame-below-slot0-disjoint : ∀ (frame1 frame2 : StackPointer) k →
+  addr frame1 < addr frame2 →
+  slot-addr frame1 0 ≢ slot-addr frame2 k
+frame-below-slot0-disjoint frame1 frame2 k frame1<frame2 eq =
+  Data.Nat.Properties.<⇒≢ slot0<slot-k slot0≡slot-k
+  where
+    open import Data.Nat.Properties using (<⇒≢)
+    slot0-eq : slot-addr frame1 0 ≡ addr frame1
+    slot0-eq = grow-identity (addr frame1)
 
-  -- ACTUAL SOLUTION: The abstract model uses closed intervals [lower, upper].
-  -- For concrete instantiation, we can:
-  -- 1. Keep stack as [code+heap, total] (not [0, total]) for disjointness
-  -- 2. Have a SEPARATE simpler abstraction for capacity proofs
+    slot-k-≥-frame2 : slot-addr frame2 k ≥ addr frame2
+    slot-k-≥-frame2 = slot-addr-≥-base frame2 k
 
-  -- Let's define the ACTUAL stack region for disjointness proofs:
+    slot0<slot-k : slot-addr frame1 0 < slot-addr frame2 k
+    slot0<slot-k = subst (_< slot-addr frame2 k) (sym slot0-eq)
+                         (<-≤-trans frame1<frame2 slot-k-≥-frame2)
 
-  x86-stack-bounds-actual : RegionBounds
-  x86-stack-bounds-actual = record
-    { lower = code-size + heap-size
-    ; upper = total-size
-    ; bounds-valid = m≤m+n (code-size + heap-size) stack-size
-    }
+    slot0≡slot-k : slot-addr frame1 0 ≡ slot-addr frame2 k
+    slot0≡slot-k = eq
 
-  InStackActual : Addr → Set
-  InStackActual a = lower x86-stack-bounds-actual ≤ a × a ≤ upper x86-stack-bounds-actual
+-- | When frame1 + word-size ≤ frame2, slot 0 of frame1 ≠ any slot of frame2
+frame-preserved-slot0-disjoint : ∀ (frame1 frame2 : StackPointer) k →
+  addr frame1 + word-size ≤ addr frame2 →
+  slot-addr frame1 0 ≢ slot-addr frame2 k
+frame-preserved-slot0-disjoint frame1 frame2 k frame1+8≤frame2 =
+  frame-below-slot0-disjoint frame1 frame2 k frame1<frame2
+  where
+    word-size>0 : word-size > 0
+    word-size>0 = s≤s z≤n
 
-  -- Now disjointness is provable!
+    frame1<frame1+8 : addr frame1 < addr frame1 + word-size
+    frame1<frame1+8 = m<m+n (addr frame1) word-size>0
 
-  -- | Code and Heap are disjoint (boundary at code-size)
-  -- Code: [0, code-size], Heap: [code-size, code-size + heap-size]
-  -- Overlap only at exactly code-size if both intervals are closed.
-  -- For strict disjointness, assume code-size > 0 and heap-size > 0,
-  -- or use runtime guarantee that allocations are to non-boundary addresses.
+    frame1<frame2 : addr frame1 < addr frame2
+    frame1<frame2 = <-≤-trans frame1<frame1+8 frame1+8≤frame2
 
-  -- | Stack and Heap are disjoint (non-overlapping intervals)
-  -- Stack: [code-size + heap-size, total]
-  -- Heap: [code-size, code-size + heap-size]
-  -- Stack starts where heap ends - they TOUCH at code-size + heap-size.
+------------------------------------------------------------------------
+-- X86-Specific Calling Convention Lemmas
+------------------------------------------------------------------------
 
-  -- With closed intervals, we need runtime to allocate away from boundaries.
-  -- This is actually the correct model: the boundary addresses are "gaps".
+-- | Slot address is above thunk's rbp (PROVEN)
+slot-addr-above-thunk-rbp : ∀ sp k rsp thunk-rbp →
+  addr sp ≡ rsp + 8 →
+  thunk-rbp ≡ rsp ∸ 16 →
+  rsp > 16 →
+  slot-addr sp k > thunk-rbp
+slot-addr-above-thunk-rbp sp k rsp thunk-rbp addr-eq rbp-eq rsp>16 = slot>rbp
+  where
+    open import Data.Nat.Properties using (≤-<-trans)
 
-  -- For the formal proof, we can prove that the INTERIOR of the intervals
-  -- don't overlap, or use the runtime guarantee.
+    slot-eq : slot-addr sp k ≡ (rsp + 8) + k * word-size
+    slot-eq = cong (λ a → a + k * word-size) addr-eq
 
-  -- PRACTICAL APPROACH: Keep postulates for disjointness but make them
-  -- INSTANTIATION postulates that say "our specific layout has this property"
-  -- rather than "some unknown layout has this property".
+    slot≥rsp+8 : slot-addr sp k ≥ rsp + 8
+    slot≥rsp+8 = subst (_≥ rsp + 8) (sym slot-eq) (m≤m+n (rsp + 8) (k * word-size))
 
-  -- These are justified by: the linker produces non-overlapping regions.
-  postulate
-    intervals-disjoint : ∀ a →
-      ¬ (InStackActual a × InHeap a) ×
-      ¬ (InStackActual a × InCode a) ×
-      ¬ (InHeap a × InCode a)
+    rsp+8>rsp : rsp + 8 > rsp
+    rsp+8>rsp = m<m+n rsp (s≤s z≤n)
 
-  ------------------------------------------------------------------------
-  -- Stack Subtraction (PROVEN from stack-lower-is-zero = refl)
-  ------------------------------------------------------------------------
+    rbp≤rsp : thunk-rbp ≤ rsp
+    rbp≤rsp = subst (_≤ rsp) (sym rbp-eq) (m∸n≤m rsp 16)
 
-  -- | Subtracting from a stack address preserves stack membership
-  -- Uses the simplified stack bounds where lower = 0
-  stack-sub-preserves : ∀ a k →
-    InStack a →
-    k ≤ a →
-    InStack (a ∸ k)
-  stack-sub-preserves a k (lower≤a , a≤upper) k≤a = (lower≤a∸k , a∸k≤upper)
-    where
-      open import Data.Nat.Properties using (m∸n≤m)
+    slot>rbp : slot-addr sp k > thunk-rbp
+    slot>rbp = ≤-<-trans rbp≤rsp (<-≤-trans rsp+8>rsp slot≥rsp+8)
 
-      -- Lower bound: 0 ≤ (a ∸ k) is trivially true for ℕ
-      lower≤a∸k : lower x86-stack-bounds ≤ a ∸ k
-      lower≤a∸k = z≤n  -- stack-lower-is-zero = refl, so this is 0 ≤ (a ∸ k)
+------------------------------------------------------------------------
+-- Re-export FrameSlotInternal at top level
+------------------------------------------------------------------------
 
-      -- Upper bound: a ∸ k ≤ a ≤ upper
-      a∸k≤upper : a ∸ k ≤ upper x86-stack-bounds
-      a∸k≤upper = ≤-trans (m∸n≤m a k) a≤upper
-
-  ------------------------------------------------------------------------
-  -- Code Region Properties (PROVEN from code-lower-is-zero = refl)
-  ------------------------------------------------------------------------
-
-  -- | PC in code region when pc < prog-len and prog-len ≤ code-size
-  pc-in-code : ∀ (pc : Addr) (prog-len : ℕ) →
-    pc < prog-len →
-    prog-len ≤ code-size →
-    InCode pc
-  pc-in-code pc prog-len pc<prog-len prog-len≤code-size = (lower≤pc , pc≤upper)
-    where
-      open import Data.Nat.Properties using (<⇒≤)
-
-      -- Lower bound: 0 ≤ pc is trivially true
-      lower≤pc : lower x86-code-bounds ≤ pc
-      lower≤pc = z≤n  -- code-lower-is-zero = refl
-
-      -- Upper bound: pc < prog-len ≤ code-size, so pc < code-size, so pc ≤ code-size
-      pc≤upper : pc ≤ upper x86-code-bounds
-      pc≤upper = ≤-trans (<⇒≤ pc<prog-len) prog-len≤code-size
-
-  ------------------------------------------------------------------------
-  -- MemoryLayout Instance
-  --
-  -- Provides a concrete MemoryLayout that can replace the default
-  -- postulate-based layout from MemoryLayoutSemantics.
-  ------------------------------------------------------------------------
-
-  -- Disjointness using InRegion (compatible with MemoryLayout record)
-  -- Note: We use x86-stack-bounds-actual for proper disjointness
-  postulate
-    intervals-disjoint-inregion : ∀ a →
-      ¬ (InRegion x86-stack-bounds-actual a × InRegion x86-heap-bounds a) ×
-      ¬ (InRegion x86-stack-bounds-actual a × InRegion x86-code-bounds a) ×
-      ¬ (InRegion x86-heap-bounds a × InRegion x86-code-bounds a)
-
-  -- | Concrete X86 memory layout
-  -- Uses actual stack bounds for disjointness (not simplified bounds)
-  x86-layout : MemoryLayout
-  x86-layout = record
-    { stack-bounds = x86-stack-bounds-actual
-    ; heap-bounds = x86-heap-bounds
-    ; code-bounds = x86-code-bounds
-    ; intervals-disjoint = intervals-disjoint-inregion
-    }
-
-  -- | Simplified stack layout for capacity proofs
-  -- Uses stack bounds with lower = 0 (monus-friendly)
-  x86-layout-capacity : MemoryLayout
-  x86-layout-capacity = record
-    { stack-bounds = x86-stack-bounds  -- lower = 0
-    ; heap-bounds = x86-heap-bounds
-    ; code-bounds = x86-code-bounds
-    ; intervals-disjoint = λ a → intervals-disjoint-cap a
-    }
-    where
-      -- For capacity layout, disjointness is assumed (stack overlaps other regions)
-      -- This is OK because capacity layout is only used for monus proofs,
-      -- not for region disjointness
-      postulate
-        intervals-disjoint-cap : ∀ a →
-          ¬ (InRegion x86-stack-bounds a × InRegion x86-heap-bounds a) ×
-          ¬ (InRegion x86-stack-bounds a × InRegion x86-code-bounds a) ×
-          ¬ (InRegion x86-heap-bounds a × InRegion x86-code-bounds a)
+-- | frameSlot at slot 0 reads from the stack pointer address
+init-frame-slot-at-base : ∀ mem sp → frameSlot mem sp zero ≡ readMem mem (addr sp)
+init-frame-slot-at-base = FrameSlotInternal.init-frame-slot-at-base

@@ -18,7 +18,7 @@ open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 
-open import Once.Backend.X86.MemoryRegionLemmas
+open import Once.Backend.X86.Layout
   using (Addr; InStack; InHeap; InCode;
          stack-heap-disjoint; stack-code-disjoint;
          stack-heap-addr-disjoint; stack-code-addr-disjoint;
@@ -27,7 +27,7 @@ open import Once.Backend.X86.MemoryRegionLemmas
          frame-below-slot0-disjoint;  -- PROVEN lemma for slot 0 disjointness
          slot-in-stack; init-slot-at-base;
          FramePreserved; StackGrew; frame-preserved-under-growth)
-open import Once.Backend.X86.MemoryRegionLemmas using () renaming (addr to sp-addr; in-stack to sp-in-stack)
+open import Once.Backend.X86.Layout using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n)
 open import Data.Unit using (⊤; tt)

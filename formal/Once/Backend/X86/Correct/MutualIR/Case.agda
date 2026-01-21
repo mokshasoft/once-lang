@@ -23,7 +23,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-stack-requirement)
-open import Once.Backend.X86.MemoryRegionLemmas
+open import Once.Backend.X86.Layout
   using (StackPointer)
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; [,]-f-smaller; [,]-g-smaller)
@@ -62,7 +62,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
   using (slots; slot-size; StackCapacity; ir-stack-requirement; ir-output-capacity;
          capacity-from-larger; capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged;
          rsp-sufficient)
-open import Once.Backend.X86.MemoryRegionLemmas using (InStack; InHeap; InCode; heap-offset)
+open import Once.Backend.X86.Layout using (InStack; InHeap; InCode; heap-offset)
 open import Data.Nat.Properties using (≤-trans; <-trans; ≤-<-trans; <⇒≤; m≤m⊔n; m≤n⊔m; m∸n≤m; +-comm; suc-injective; m≤m+n)
 open import Data.List.Properties using (++-assoc)
 open import Once.Backend.X86.Correct.CompileLength using (length-++; compile-length-correct)
@@ -585,7 +585,7 @@ run-case-star-direct-inl {A} {B} {C} f g f<bound prefix suffix caller-sp a s h-f
       }
       where
         open import Data.Nat using (_≥_)
-        open import Once.Backend.X86.MemoryRegionLemmas using (StackPointer) renaming (addr to sp-addr)
+        open import Once.Backend.X86.Layout using (StackPointer) renaming (addr to sp-addr)
         orig-frame = RbpInvariant.rbp-frame rbp-inv
 
     -- ClosureWFOutput: transport from f's result to prog
@@ -1078,7 +1078,7 @@ run-case-star-direct-inr {A} {B} {C} f g g<bound prefix suffix caller-sp b s h-f
       }
       where
         open import Data.Nat using (_≥_)
-        open import Once.Backend.X86.MemoryRegionLemmas using (StackPointer) renaming (addr to sp-addr)
+        open import Once.Backend.X86.Layout using (StackPointer) renaming (addr to sp-addr)
         orig-frame = RbpInvariant.rbp-frame rbp-inv
 
     -- ClosureWFOutput: transport from g's result to prog

@@ -89,7 +89,7 @@ module Instantiation (code-size heap-size stack-size : ℕ) where
   ------------------------------------------------------------------------
   -- Summary of what changes from postulates to proofs:
   --
-  -- BEFORE (in X86.MemoryRegionLemmas):
+  -- BEFORE (in X86.Layout):
   --   postulate x86-stack-lower-zero : lower stack-bounds ≡ 0
   --   postulate x86-code-lower-zero : lower code-bounds ≡ 0
   --   postulate prog-fits-in-code : ...

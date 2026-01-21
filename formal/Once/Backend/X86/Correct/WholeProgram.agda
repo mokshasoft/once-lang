@@ -79,7 +79,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-rbp-inv; ir-closure-wf; rbp-inv-preserved-unchanged;
          ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s)
-open import Once.Backend.X86.MemoryRegionLemmas using (StackPointer)
+open import Once.Backend.X86.Layout using (StackPointer)
 
 -- Import closure infrastructure
 open import Once.Backend.X86.Correct.ClosureWellFormed
