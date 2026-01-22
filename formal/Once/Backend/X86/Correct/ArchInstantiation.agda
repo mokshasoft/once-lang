@@ -1583,10 +1583,6 @@ open import Once.Backend.X86.Correct.MutualIR as X86MutualIR
   using (run-ir-star)
 open import Once.Backend.X86.Layout using (StackPointer)
 
--- Dummy caller-sp for run-ir-star (not used in the proofs, just a parameter)
-postulate
-  dummy-caller-sp : StackPointer
-
 -- Export the main theorem (with prefix/suffix)
 -- This DIRECTLY uses X86's proven run-ir-star, converting to IRCorrectness
 x86-ir-correct : ∀ {A B : Type} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
@@ -1600,8 +1596,9 @@ x86-ir-correct {A} {B} ir prefix suffix x s pre =
       stack-inv = Preconditions.pre-stack-inv pre
       cap = Preconditions.pre-capacity pre
       rbp-inv = Preconditions.pre-frame-inv pre
-      -- Call X86's proven run-ir-star (caller-sp is dummy, not used in proofs)
-      (s' , result) = run-ir-star ir prefix suffix dummy-caller-sp x s
+      -- Use caller's frame pointer as caller-sp (from RbpInvariant)
+      caller-sp = RbpInvariant.rbp-frame rbp-inv
+      (s' , result) = run-ir-star ir prefix suffix caller-sp x s
                         h-false pc-eq input-valid stack-inv cap rbp-inv
   in s' , IRStarResultV→IRCorrectness result
 
