@@ -89,7 +89,7 @@ open import Once.Backend.X86.Correct.StarBase public
          run-id-star-vv; run-terminal-star-vv; run-fold-star-vv; run-unfold-star-vv;
          run-arr-star-vv; run-fst-star-vv; run-snd-star-vv; run-prim-star-vv;
          -- Helper functions
-         rbp-inv-preserved-unchanged)
+         rbp-inv-preserved-unchanged; rbp-inv-preserved-through-ir)
 
 -- Import extracted IR base case modules
 open import Once.Backend.X86.Correct.IR.Inl
@@ -134,10 +134,10 @@ open ThunkRetResult
 open import Once.Backend.X86.Correct.IR.Apply
   using (run-apply-to-ir-result; run-apply-to-ir-result-v)
 
--- Import implementation modules (parameterized, will be opened inside dispatcher)
-import Once.Backend.X86.Correct.MutualIR.Compose as ComposeModule
-import Once.Backend.X86.Correct.MutualIR.Pair as PairModule
-import Once.Backend.X86.Correct.MutualIR.Case as CaseModule
+-- Import pair, compose, and case with explicit rec parameter (refactored from MutualIR/*)
+import Once.Backend.X86.Correct.IR.Pair as Pair
+import Once.Backend.X86.Correct.IR.Compose as Compose
+import Once.Backend.X86.Correct.IR.Case as Case
 
 -- Import well-founded recursion and IR size measure
 open import Induction.WellFounded using (Acc; acc)
@@ -145,10 +145,6 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; ∘-f-smaller; ∘-g-smaller; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller;
          [,]-f-smaller; [,]-g-smaller; curry-smaller)
-
--- Import helper from Dispatcher (still used for rbp invariant preservation)
-open import Once.Backend.X86.Correct.MutualIR.Dispatcher
-  using (rbp-inv-preserved-through-ir)
 
 -- Import validity predicates for dispatcher
 open import Once.Backend.X86.Correct.MemoryValid
@@ -1554,34 +1550,22 @@ mutual
   -- Pair: uses Acc to construct size-bounded dispatcher for parameterized module
   -- NOTE: Pair needs StackCapacity s 7 (5 for setup + 2 remaining)
   -- TODO: Dispatcher should take ir-input-capacity ir slots, not fixed 2
+  -- Refactored: Calls IR.Pair.run-pair-star-v directly with rec parameter (no parameterized module)
   run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
-        rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size ⟨ f , g ⟩ →
-              (prefix' suffix' : Program) (caller-sp' : StackPointer) (x' : ⟦ A' ⟧) (s' : State) →
-              halted s' ≡ false → pc s' ≡ length prefix' →
-              ValidAt x' (readReg (regs s') rdi) (memory s') →
-              StackInvariant s' → StackCapacity s' (ir-stack-requirement ir') → RbpInvariant s' →
-              let prog' = prefix' ++ compile-x86 ir' ++ suffix'
-              in ∃[ s'' ] IRStarResultV ir' prog' s' s'' x' (length prefix')
+        rec : Pair.RecDispatcher (ir-size ⟨ f , g ⟩)
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
-        open PairModule (ir-size ⟨ f , g ⟩) rec
         -- cap-in has type StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) which is what run-pair-star-v expects
-    in run-pair-star-v f g (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+    in Pair.run-pair-star-v f g (ir-size ⟨ f , g ⟩) rec (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Compose: uses Acc to construct size-bounded dispatcher for parameterized module
+  -- Compose: refactored to call IR/Compose.run-compose-star-v directly with rec parameter
   run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
-        rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size (g ∘ f) →
-              (prefix' suffix' : Program) (caller-sp' : StackPointer) (x' : ⟦ A' ⟧) (s' : State) →
-              halted s' ≡ false → pc s' ≡ length prefix' →
-              ValidAt x' (readReg (regs s') rdi) (memory s') →
-              StackInvariant s' → StackCapacity s' (ir-stack-requirement ir') → RbpInvariant s' →
-              let prog' = prefix' ++ compile-x86 ir' ++ suffix'
-              in ∃[ s'' ] IRStarResultV ir' prog' s' s'' x' (length prefix')
+        rec : Compose.RecDispatcher (ir-size (g ∘ f))
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
-        open ComposeModule (ir-size (g ∘ f)) rec
-    in run-compose-star-v f g (∘-f-smaller f g) (∘-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+    in Compose.run-compose-star-v f g (ir-size (g ∘ f)) rec (∘-f-smaller f g) (∘-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for id (base case, ignores Acc)
   run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
     run-id-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
@@ -1626,20 +1610,13 @@ mutual
         vb = proj₁ (proj₂ (proj₂ (proj₂ decomp)))
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
     in run-snd-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv
-  -- case: uses Acc to construct size-bounded dispatcher for parameterized module
+  -- Case: refactored to call IR/Case.run-case-star-v directly with rec parameter
   run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
-        rec : ∀ {A' B'} (ir' : IR A' B') → ir-size ir' < ir-size [ f , g ] →
-              (prefix' suffix' : Program) (caller-sp' : StackPointer) (x' : ⟦ A' ⟧) (s' : State) →
-              halted s' ≡ false → pc s' ≡ length prefix' →
-              ValidAt x' (readReg (regs s') rdi) (memory s') →
-              StackInvariant s' → StackCapacity s' (ir-stack-requirement ir') → RbpInvariant s' →
-              let prog' = prefix' ++ compile-x86 ir' ++ suffix'
-              in ∃[ s'' ] IRStarResultV ir' prog' s' s'' x' (length prefix')
+        rec : Case.RecDispatcher (ir-size [ f , g ])
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
-        open CaseModule (ir-size [ f , g ]) rec
-    in run-case-star-v f g ([,]-f-smaller f g) ([,]-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+    in Case.run-case-star-v f g (ir-size [ f , g ]) rec ([,]-f-smaller f g) ([,]-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- curry: passes Acc to recursive calls within curry-thunk-correct-impl
   run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
     run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac

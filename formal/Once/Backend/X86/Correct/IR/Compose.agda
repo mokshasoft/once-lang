@@ -16,7 +16,7 @@ open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-g-eq)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation
-open import Once.Backend.X86.Layout using (InStack; InHeap; InCode)
+open import Once.Backend.X86.Layout using (InStack; InHeap; InCode; StackPointer)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
@@ -529,5 +529,142 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
           mem-s-to-s1-heap : readMem (memory s1) addr ≡ readMem (memory s) addr
           mem-s-to-s1-heap = IRStarResultV.ir-mem-heap r1 addr addr-in-heap
       in trans mem-s2-to-s3-heap (trans mem-s1-to-s2-heap mem-s-to-s1-heap)
+
+------------------------------------------------------------------------
+-- RecDispatcher type and run-compose-star-v
+--
+-- Moved from MutualIR/Compose.agda. The function now takes the recursive
+-- dispatcher as an explicit parameter instead of via module parameterization.
+------------------------------------------------------------------------
+
+-- Import additional modules needed for run-compose-star-v
+open import Once.Backend.X86.Correct.IRSize
+  using (ir-size; ∘-f-smaller; ∘-g-smaller)
+open import Once.Backend.X86.Correct.StackInstantiation
+  using (capacity-preserved-rsp-unchanged; capacity-left-from-max; capacity-right-from-max;
+         capacity-after-delta; ir-rsp-delta)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (valid-subst-addr-mem)
+open import Once.Backend.X86.Correct.StarBase
+  using (rbp-inv-preserved-unchanged)
+  renaming (ir-rsp-v to ir-rsp)
+
+-- | Size-bounded recursive dispatcher type
+-- This is the type of the recursive function that run-compose-star-v receives
+-- to make recursive calls on sub-terms of strictly smaller size.
+RecDispatcher : ℕ → Set₁
+RecDispatcher bound =
+  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  StackCapacity s (ir-stack-requirement ir) →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 ir ++ suffix
+  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
+
+------------------------------------------------------------------------
+-- run-compose-star-v: Validity-based compose execution with explicit dispatcher
+--
+-- This function was previously in MutualIR/Compose.agda as part of a
+-- parameterized module. Now it takes the recursive dispatcher as an
+-- explicit function parameter (rec : RecDispatcher bound).
+------------------------------------------------------------------------
+
+run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) →
+  (bound : ℕ) →
+  (rec : RecDispatcher bound) →
+  ir-size f < bound →
+  ir-size g < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  StackCapacity s (ir-stack-requirement (g ∘ f)) →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
+  in ∃[ s' ] IRStarResultV (g ∘ f) prog s s' x (length prefix)
+run-compose-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
+    s3 , result-v
+    where
+      -- Get context for computed values
+      ctx = make-compose-context f g prefix suffix
+      open ComposeContext ctx
+
+      -- Derive sub-capacities from compose capacity
+      -- ir-stack-requirement (g ∘ f) = ir-stack-requirement f ⊔ (ir-rsp-delta f +ℕ ir-stack-requirement g)
+      cap-f : StackCapacity s (ir-stack-requirement f)
+      cap-f = capacity-left-from-max s (ir-stack-requirement f) (ir-rsp-delta f +ℕ ir-stack-requirement g) cap-in
+
+      -- Step 1: Execute f (RECURSIVE via rec dispatcher)
+      step-f : ∃[ s1 ] IRStarResultV f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
+      step-f = rec f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv cap-f rbp-inv
+
+      s1 : State
+      s1 = proj₁ step-f
+
+      r1-v : IRStarResultV f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
+      r1-v = proj₂ step-f
+
+      -- Step 2: Execute transfer (validity-based helper - no encode bridging!)
+      tr : TransferResultV f g prefix suffix x s s1
+      tr = compose-transfer-star-v f g prefix suffix x s s1 r1-v
+
+      s2 = TransferResultV.s2 tr
+
+      -- RbpInvariant preserved through IR execution
+      rsp-s2-eq-s1 : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
+      rsp-s2-eq-s1 = TransferResultV.rsp-s1-to-s2 tr
+
+      rbp-s2-eq-s1 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
+      rbp-s2-eq-s1 = TransferResultV.rbp-s1-to-s2 tr
+
+      rbp-inv-2 : RbpInvariant s2
+      rbp-inv-2 = rbp-inv-preserved-unchanged s1 s2 (IRStarResultV.ir-rbp-inv r1-v) rsp-s2-eq-s1 rbp-s2-eq-s1
+
+      -- Construct validity for g's input via direct propagation
+      -- The transfer moves rax→rdi and doesn't change memory
+      -- So validity at rax in s1 becomes validity at rdi in s2
+      input-valid-for-g : ValidAt (eval f x) (readReg (regs s2) rdi) (memory s2)
+      input-valid-for-g = valid-subst-addr-mem
+        (IRStarResultV.ir-result-valid r1-v)  -- ValidAt at rax in s1
+        (TransferResultV.rdi2-raw tr)          -- rdi in s2 = rax in s1
+        (TransferResultV.mem-s1-to-s2 tr)      -- memory unchanged
+
+      -- Derive capacity for g from original compose capacity via rsp delta tracking
+      -- f may change rsp by ir-rsp-delta f slots, so we use capacity-after-delta
+      cap-delta-g-at-s : StackCapacity s (ir-rsp-delta f +ℕ ir-stack-requirement g)
+      cap-delta-g-at-s = capacity-right-from-max s (ir-stack-requirement f) (ir-rsp-delta f +ℕ ir-stack-requirement g) cap-in
+
+      -- f changes rsp: rsp s1 = rsp s ∸ slots (ir-rsp-delta f)
+      rsp-s1-delta : readReg (regs s1) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta f)
+      rsp-s1-delta = IRStarResultV.ir-rsp r1-v
+
+      -- Use capacity-after-delta to derive capacity for g at s1
+      cap-g-at-s1 : StackCapacity s1 (ir-stack-requirement g)
+      cap-g-at-s1 = capacity-after-delta s s1 (ir-rsp-delta f) (ir-stack-requirement g) cap-delta-g-at-s rsp-s1-delta
+
+      -- Transfer preserves rsp: rsp s2 = rsp s1
+      cap-g : StackCapacity s2 (ir-stack-requirement g)
+      cap-g = capacity-preserved-rsp-unchanged s1 s2 (ir-stack-requirement g) cap-g-at-s1 (sym rsp-s2-eq-s1)
+
+      -- Step 3: Execute g (RECURSIVE via rec dispatcher)
+      step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
+      step-g = rec g g<bound prefix-g suffix caller-sp (eval f x) s2
+                 (TransferResultV.h2 tr) (TransferResultV.pc2-g tr) input-valid-for-g
+                 (TransferResultV.stack-inv-2 tr) cap-g rbp-inv-2
+
+      s3 : State
+      s3 = proj₁ step-g
+
+      r3-v : IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
+      r3-v = proj₂ step-g
+
+      -- Assemble final result (validity-based - no encode bridging!)
+      result-v : IRStarResultV (g ∘ f) prog s s3 x (length prefix)
+      result-v = assemble-compose-result-v f g prefix suffix x s s1 s2 s3 r1-v tr r3-v refl cap-in
 
 ------------------------------------------------------------------------

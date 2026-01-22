@@ -35,7 +35,10 @@ open import Once.Backend.X86.Correct.StackInstantiation
          pair-frame-0-addr-eq; pair-frame-slot-1-addr-eq;
          -- Concrete interface (instantiation layer - arithmetic in types)
          pair-r15-in-stack; pair-second-slot-in-stack;
-         pair-setup-stack-inv; stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged)
+         pair-setup-stack-inv; stack-inv-preserved-unchanged; stack-inv-preserved-r15-unchanged;
+         -- For run-pair-star-v (moved from MutualIR/Pair)
+         m∸n<m-when-m>n; pair-delta-g-fits-inner; output-slots; output-slots≤pair-req;
+         pair-rbp-slot; pair-rbp-slot≤pair-setup; pair-rbp-frame-≥-r15-frame; make-frame-at-slot)
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-disjoint; stack-code-addr-disjoint;
          stack-heap-disjoint; stack-heap-addr-disjoint;
@@ -51,14 +54,20 @@ open import Once.Backend.X86.Correct.StarBase
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
          rbp-inv-preserved-unchanged;
-         IRStarResultV; ir-result-valid; ir-rsp-bound-v)
+         IRStarResultV; ir-result-valid; ir-rsp-bound-v; ir-capacity)
+  renaming (ir-rsp-v to ir-rsp)
+-- Import IRSize for RecDispatcher type
+open import Once.Backend.X86.Correct.IRSize
+  using (ir-size; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write)
+  using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write;
+         valid-subst-heap-preserved)
 open import Once.Backend.X86.Layout using (InHeap; InCode)
 
-open import Data.Nat using (_>_; _≥_)
+open import Data.Nat using (_>_; _≥_; _≤?_; s≤s; z≤n)
+open import Relation.Nullary using (yes; no)
 open import Function using (case_of_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; ≤-<-trans; +-monoʳ-<; <-trans; m≤m+n) renaming (<⇒≢ to Nat-<⇒≢)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; m∸n+n≡m; <⇒≤; m∸n≤m; ≤-trans; ≤-<-trans; <-≤-trans; +-monoʳ-<; <-trans; m≤m+n; m≤m⊔n; m≤n⊔m; m+n∸n≡m) renaming (<⇒≢ to Nat-<⇒≢)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
@@ -3583,4 +3592,403 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     result-valid : ValidAt (eval ⟨ f , g ⟩ x) (readReg (regs s-final) rax) (memory s-final)
     result-valid = subst (λ addr → ValidAt {A * B} (eval f x , eval g x) addr (memory s-final))
                          (sym rax-fin-is-r15) result-valid-at-r15
+
+------------------------------------------------------------------------
+-- RecDispatcher: Type for recursive dispatcher function
+--
+-- This type represents the recursive dispatcher that IR implementations
+-- receive as a function parameter. It allows calling back into the
+-- dispatcher for sub-IRs (e.g., f and g in pair).
+--
+-- Previously this was passed via parameterized module (MutualIR/Pair.agda).
+-- Now it's passed as an explicit function parameter, eliminating the need
+-- for the MutualIR/*.agda wrapper modules.
+------------------------------------------------------------------------
+
+RecDispatcher : ℕ → Set₁
+RecDispatcher bound =
+  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  StackCapacity s (ir-stack-requirement ir) →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 ir ++ suffix
+  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
+
+------------------------------------------------------------------------
+-- Private helpers for run-pair-star-v
+-- (Moved from MutualIR/Pair.agda to avoid function definitions in where clauses)
+------------------------------------------------------------------------
+private
+  -- Helper: m ∸ n < m when both m > 0 and n > 0
+  m∸n<m-when-positive : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+  m∸n<m-when-positive (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+
+  -- Helper: m ∸ 40 + 8 < m when m > 16 (used in mem-above-final proof)
+  rsp∸40+8<rsp : ∀ (rsp-val : ℕ) → rsp-val > pair-alloc → rsp-val ∸ frame-size +ℕ slot-size < rsp-val
+  rsp∸40+8<rsp rsp-val rsp>16 with 40 ≤? rsp-val
+  ... | yes 40≤rsp = subst (_< rsp-val) (sym m∸40+8≡m∸32) (m∸n<m-when-m>n rsp-val 32 (s≤s z≤n) rsp>32)
+    where
+      open import Once.Backend.X86.Correct.ArithmeticLemmas using (rsp-min-pair-fits-frame)
+      rsp>32 : rsp-val > 32
+      rsp>32 = ≤-trans rsp-min-pair-fits-frame 40≤rsp
+      k = rsp-val ∸ frame-size
+      m∸40+8≡m∸32 : rsp-val ∸ frame-size +ℕ slot-size ≡ rsp-val ∸ (frame-size ∸ slot-size)
+      m∸40+8≡m∸32 =
+        let step1 : rsp-val ∸ (frame-size ∸ slot-size) ≡ (k +ℕ frame-size) ∸ (frame-size ∸ slot-size)
+            step1 = cong (_∸ (frame-size ∸ slot-size)) (sym (m∸n+n≡m 40≤rsp))
+            k+40∸32≡k+8 : (k +ℕ frame-size) ∸ (frame-size ∸ slot-size) ≡ k +ℕ slot-size
+            k+40∸32≡k+8 = trans (cong (_∸ (frame-size ∸ slot-size)) (sym (+-assoc k 8 32))) (m+n∸n≡m (k +ℕ slot-size) 32)
+        in sym (trans step1 k+40∸32≡k+8)
+  ... | no 40>rsp = subst (_< rsp-val) (sym 0+8≡8) 8<rsp
+    where
+      open import Data.Nat.Properties using (m≤n⇒m∸n≡0; ≰⇒>)
+      open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound-strict)
+      rsp∸40≡0 : rsp-val ∸ frame-size ≡ 0
+      rsp∸40≡0 = m≤n⇒m∸n≡0 (<⇒≤ (≰⇒> 40>rsp))
+      0+8≡8 : rsp-val ∸ frame-size +ℕ slot-size ≡ 8
+      0+8≡8 = cong (_+ℕ slot-size) rsp∸40≡0
+      8<rsp : 8 < rsp-val
+      8<rsp = ≤-trans word-fits-thunk-bound-strict rsp>16
+
+------------------------------------------------------------------------
+-- run-pair-star-v: Validity-based pair execution with explicit dispatcher
+--
+-- This function was previously in MutualIR/Pair.agda as part of a
+-- parameterized module. Now it takes the recursive dispatcher as an
+-- explicit function parameter (rec : RecDispatcher bound).
+--
+-- The proof structure is unchanged:
+--   Phase 1: Setup (7 instructions)
+--   Phase 2: Execute f (recursive call via rec)
+--   Phase 3: Middle (2 instructions)
+--   Phase 4: Execute g (recursive call via rec)
+--   Phase 5: Final (6 instructions)
+------------------------------------------------------------------------
+
+run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) →
+  (bound : ℕ) →
+  (rec : RecDispatcher bound) →
+  ir-size f < bound →
+  ir-size g < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ C ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  StackInvariant s →
+  StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) →
+  RbpInvariant s →
+  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+  in ∃[ s' ] IRStarResultV ⟨ f , g ⟩ prog s s' x (length prefix)
+run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
+    s-final , result-v
+    where
+      -- Context and shorthand
+      ctx = make-pair-context f g prefix suffix
+      open PairContext ctx
+
+      -- ========== Phase 1: Setup (7 instructions) ==========
+      setup-res = pair-setup-star-v f g prefix suffix x s h-false pc-eq cap-in
+      s-setup = PairSetupResultV.s-setup setup-res
+
+      -- Input validity for f: propagate through setup using heap preservation
+      input-valid-for-f : ValidAt x (readReg (regs s-setup) rdi) (memory s-setup)
+      input-valid-for-f = valid-subst-heap-preserved
+        input-valid
+        (sym (PairSetupResultV.rdi-setup-raw setup-res))
+        (PairSetupResultV.mem-heap-setup setup-res)
+
+      -- ========== Phase 2: Execute f (recursive call via rec) ==========
+      -- Derive RbpInvariant for s-setup
+      rbp-inv-setup : RbpInvariant s-setup
+      rbp-inv-setup = record
+        { rbp-frame = setup-rbp-frame
+        ; rbp-is-base = PairSetupResultV.rbp-setup setup-res
+        ; frame-bound = setup-frame-bound
+        }
+        where
+          cap-pair-setup : StackCapacity s pair-setup-consumed-slots
+          cap-pair-setup = capacity-from-larger s pair-setup-consumed-slots (ir-stack-requirement ⟨ f , g ⟩) cap-in (pair-setup≤pair-req f g)
+
+          setup-rbp-frame : StackPointer
+          setup-rbp-frame = make-frame-at-slot s cap-pair-setup pair-rbp-slot pair-rbp-slot≤pair-setup
+
+          setup-frame-bound : sp-addr setup-rbp-frame ≥ readReg (regs s-setup) rsp
+          setup-frame-bound = subst (sp-addr setup-rbp-frame ≥_)
+            (sym (PairSetupResultV.rsp-setup setup-res))
+            (pair-rbp-frame-≥-r15-frame s cap-pair-setup)
+
+      -- Derive StackCapacity for f at s-setup
+      cap-setup : StackCapacity s-setup (ir-stack-requirement f)
+      cap-setup = capacity-from-larger s-setup (ir-stack-requirement f) (pair-inner-requirement f g)
+                    (PairSetupResultV.cap-inner setup-res) (m≤m⊔n (ir-stack-requirement f) (ir-rsp-delta f +ℕ ir-stack-requirement g))
+
+      -- Call rec for f
+      step-f : ∃[ s1 ] IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
+      step-f = rec f f<bound prefix-f suffix-f caller-sp x s-setup
+                (PairSetupResultV.h-setup setup-res)
+                (PairSetupResultV.pc-setup-f setup-res)
+                input-valid-for-f
+                (PairSetupResultV.stack-inv-setup setup-res)
+                cap-setup
+                rbp-inv-setup
+
+      s1 : State
+      s1 = proj₁ step-f
+
+      r-f-v : IRStarResultV f (prefix-f ++ code-f ++ suffix-f) s-setup s1 x (length prefix-f)
+      r-f-v = proj₂ step-f
+
+      pc1 : pc s1 ≡ length prefix +ℕ 7 +ℕ len-f
+      pc1 = trans (IRStarResultV.ir-pc r-f-v) (cong (_+ℕ len-f) len-prefix-f)
+
+      -- ========== Phase 3: Middle (2 instructions) ==========
+      mid-res = pair-middle-star-v f g prefix suffix x s s-setup s1 r-f-v setup-res refl (IRStarResultV.ir-halted r-f-v) pc1
+      s2 = PairMiddleResultV.s2 mid-res
+
+      -- ========== Phase 4: Execute g (recursive call via rec) ==========
+      rbp-inv-s1 : RbpInvariant s1
+      rbp-inv-s1 = IRStarResultV.ir-rbp-inv r-f-v
+
+      rsp-s2-eq-s1 : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
+      rsp-s2-eq-s1 = PairMiddleResultV.rsp-mid mid-res
+
+      rbp-s2-eq-s1 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
+      rbp-s2-eq-s1 = PairMiddleResultV.rbp-mid mid-res
+
+      rbp-inv-s2 : RbpInvariant s2
+      rbp-inv-s2 = rbp-inv-preserved-unchanged s1 s2 rbp-inv-s1 rsp-s2-eq-s1 rbp-s2-eq-s1
+
+      -- Construct validity for g's input
+      rdi-s2-eq-s : readReg (regs s2) rdi ≡ readReg (regs s) rdi
+      rdi-s2-eq-s =
+        let rdi2-raw = PairMiddleResultV.rdi2-raw mid-res
+            r14-s1-eq-setup = IRStarResultV.ir-r14 r-f-v
+            r14-setup-eq-rdi = PairSetupResultV.r14-setup setup-res
+        in trans rdi2-raw (trans r14-s1-eq-setup r14-setup-eq-rdi)
+
+      mem-heap-s-to-s2 : ∀ a → InHeap a → readMem (memory s2) a ≡ readMem (memory s) a
+      mem-heap-s-to-s2 a h =
+        let setup-heap = PairSetupResultV.mem-heap-setup setup-res a h
+            f-heap = IRStarResultV.ir-mem-heap r-f-v a h
+            mid-heap = PairMiddleResultV.mem-heap-mid mid-res a h
+        in trans mid-heap (trans f-heap setup-heap)
+
+      input-valid-for-g : ValidAt x (readReg (regs s2) rdi) (memory s2)
+      input-valid-for-g = valid-subst-heap-preserved
+        input-valid
+        rdi-s2-eq-s
+        mem-heap-s-to-s2
+
+      -- Derive StackCapacity for g at s2
+      cap-inner : StackCapacity s-setup (pair-inner-requirement f g)
+      cap-inner = PairSetupResultV.cap-inner setup-res
+
+      cap-adjusted : StackCapacity s-setup (ir-rsp-delta f +ℕ ir-stack-requirement g)
+      cap-adjusted = capacity-from-larger s-setup
+                       (ir-rsp-delta f +ℕ ir-stack-requirement g)
+                       (pair-inner-requirement f g)
+                       cap-inner
+                       (pair-delta-g-fits-inner f g)
+
+      cap-s1 : StackCapacity s1 (ir-stack-requirement g)
+      cap-s1 = capacity-after-delta s-setup s1
+                 (ir-rsp-delta f) (ir-stack-requirement g)
+                 cap-adjusted
+                 (IRStarResultV.ir-rsp r-f-v)
+
+      cap-s2 : StackCapacity s2 (ir-stack-requirement g)
+      cap-s2 = capacity-preserved-rsp-unchanged s1 s2 (ir-stack-requirement g)
+                 cap-s1 rsp-s2-eq-s1
+
+      -- Call rec for g
+      step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
+      step-g = rec g g<bound prefix-g suffix-g caller-sp x s2
+                (PairMiddleResultV.h2 mid-res)
+                (PairMiddleResultV.pc2-g mid-res)
+                input-valid-for-g
+                (PairMiddleResultV.stack-inv-s2 mid-res)
+                cap-s2
+                rbp-inv-s2
+
+      s3 : State
+      s3 = proj₁ step-g
+
+      r-g-v : IRStarResultV g (prefix-g ++ code-g ++ suffix-g) s2 s3 x (length prefix-g)
+      r-g-v = proj₂ step-g
+
+      -- ========== Phase 5: Final (6 instructions) ==========
+      final-precond : PairFinalPrecond f g prefix suffix s s3
+      final-precond = make-pair-final-precond-v f g prefix suffix x s s-setup s1 s2 s3
+                        stack-inv rbp-inv cap-in setup-res r-f-v mid-res r-g-v refl refl
+
+      final-res : PairFinalResult f g prefix suffix s s3
+      final-res = pair-final-star f g prefix suffix s s3 final-precond
+
+      s-final = PairFinalResult.s-final final-res
+      star-fin-raw = PairFinalResult.star-fin final-res
+      h-final = PairFinalResult.h-final final-res
+      pc-fin-raw = PairFinalResult.pc-fin final-res
+      rax-fin-is-r15 = PairFinalResult.rax-fin final-res
+      r14-final = PairFinalResult.r14-fin final-res
+      r15-final = PairFinalResult.r15-fin final-res
+      stack-inv-final = PairFinalResult.stack-inv-fin final-res
+      mem-fst-final = PairFinalResult.mem-fst-fin final-res
+      mem-snd-final = PairFinalResult.mem-snd-fin final-res
+      rbp-final = PairFinalResult.rbp-fin final-res
+      rsp-final-eq = PairFinalResult.rsp-fin final-res
+      mem-final = PairFinalResult.mem-orig-fin final-res
+      mem-rbp-final = PairFinalResult.mem-rbp-fin final-res
+      mem-rbp+8-final = PairFinalResult.mem-rbp+8-fin final-res
+
+      -- Memory above original rbp preserved
+      mem-above-final : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-above-final addr addr>rbp = mem-chain
+        where
+          orig-rsp = readReg (regs s) rsp
+          orig-rbp = readReg (regs s) rbp
+          rsp>pair-req = StackCapacity.rsp-sufficient cap-in
+          rsp>16 : orig-rsp > slots output-slots
+          rsp>16 = ≤-<-trans (slots-mono-≤ (output-slots≤pair-req f g)) rsp>pair-req
+
+          addr≥rsp : addr ≥ orig-rsp
+          addr≥rsp = ≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (<⇒≤ addr>rbp)
+
+          mem-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+          mem-setup = PairSetupResultV.mem-above-rsp-setup setup-res addr addr≥rsp
+
+          setup-rbp = readReg (regs s-setup) rbp
+          setup-rbp-eq : setup-rbp ≡ orig-rsp ∸ saved-regs-size
+          setup-rbp-eq = PairSetupResultV.rbp-setup setup-res
+
+          rsp∸24<rsp : orig-rsp ∸ saved-regs-size < orig-rsp
+          rsp∸24<rsp = m∸n<m-when-positive orig-rsp 24 (≤-trans (s≤s z≤n) rsp>16) (s≤s z≤n)
+
+          rsp∸24<addr : orig-rsp ∸ saved-regs-size < addr
+          rsp∸24<addr = <-trans (<-≤-trans rsp∸24<rsp (RbpInvariant.rsp≤rbp rbp-inv)) addr>rbp
+
+          addr>setup-rbp : addr > setup-rbp
+          addr>setup-rbp = subst (addr >_) (sym setup-rbp-eq) rsp∸24<addr
+
+          mem-f : readMem (memory s1) addr ≡ readMem (memory s-setup) addr
+          mem-f = IRStarResultV.ir-mem-above r-f-v addr addr>setup-rbp
+
+          s1-r15 = readReg (regs s1) r15
+          s1-r15-eq : s1-r15 ≡ orig-rsp ∸ frame-size
+          s1-r15-eq = trans (IRStarResultV.ir-r15 r-f-v) (PairSetupResultV.r15-setup setup-res)
+
+          rsp∸40<rsp : orig-rsp ∸ frame-size < orig-rsp
+          rsp∸40<rsp = m∸n<m-when-positive orig-rsp 40 (≤-trans (s≤s z≤n) rsp>16) (s≤s z≤n)
+
+          s1-r15<addr : s1-r15 < addr
+          s1-r15<addr = subst (_< addr) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp addr≥rsp)
+
+          addr≢s1-r15 : addr ≢ s1-r15
+          addr≢s1-r15 eq = Nat-<⇒≢ s1-r15<addr (sym eq)
+
+          mem-mid : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-mid = PairMiddleResultV.mem-above-r15-mid mid-res addr addr≢s1-r15
+
+          s2-rbp = readReg (regs s2) rbp
+          s2-rbp-eq : s2-rbp ≡ orig-rsp ∸ saved-regs-size
+          s2-rbp-eq = trans (PairMiddleResultV.rbp-mid mid-res) (trans (IRStarResultV.ir-rbp r-f-v) setup-rbp-eq)
+
+          addr>s2-rbp : addr > s2-rbp
+          addr>s2-rbp = subst (addr >_) (sym s2-rbp-eq) rsp∸24<addr
+
+          mem-g : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-g = IRStarResultV.ir-mem-above r-g-v addr addr>s2-rbp
+
+          s3-r15 = readReg (regs s3) r15
+          s3-r15-eq : s3-r15 ≡ orig-rsp ∸ frame-size
+          s3-r15-eq = trans (IRStarResultV.ir-r15 r-g-v) (trans (PairMiddleResultV.r15-mid mid-res) (trans (IRStarResultV.ir-r15 r-f-v) (PairSetupResultV.r15-setup setup-res)))
+
+          s3-r15+8<rsp : s3-r15 +ℕ slot-size < orig-rsp
+          s3-r15+8<rsp = subst (λ r → r +ℕ slot-size < orig-rsp) (sym s3-r15-eq) (rsp∸40+8<rsp orig-rsp rsp>16)
+
+          s3-r15+8<addr : s3-r15 +ℕ slot-size < addr
+          s3-r15+8<addr = <-≤-trans s3-r15+8<rsp addr≥rsp
+
+          addr≢s3-r15+8 : addr ≢ s3-r15 +ℕ slot-size
+          addr≢s3-r15+8 eq = Nat-<⇒≢ s3-r15+8<addr (sym eq)
+
+          mem-final-phase : readMem (memory s-final) addr ≡ readMem (memory s3) addr
+          mem-final-phase = PairFinalResult.mem-above-r15+8-fin final-res addr addr≢s3-r15+8
+
+          mem-chain : readMem (memory s-final) addr ≡ readMem (memory s) addr
+          mem-chain = trans mem-final-phase (trans mem-g (trans mem-mid (trans mem-f mem-setup)))
+
+      -- Memory in code region preserved
+      mem-setup-preserves-code : ∀ addr → InCode addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+      mem-setup-preserves-code = PairSetupResultV.mem-code-setup setup-res
+
+      mem-mid-preserves-code : ∀ addr → InCode addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
+      mem-mid-preserves-code = PairMiddleResultV.mem-code-mid mid-res
+
+      mem-final-preserves-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s3) addr
+      mem-final-preserves-code = PairFinalResult.mem-code-fin final-res
+
+      mem-code-final : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-code-final addr addr-in-code = trans (mem-final-preserves-code addr addr-in-code)
+                                         (trans (IRStarResultV.ir-mem-code r-g-v addr addr-in-code)
+                                         (trans (mem-mid-preserves-code addr addr-in-code)
+                                         (trans (IRStarResultV.ir-mem-code r-f-v addr addr-in-code)
+                                                (mem-setup-preserves-code addr addr-in-code))))
+
+      -- Memory in heap region preserved
+      mem-setup-preserves-heap : ∀ addr → InHeap addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+      mem-setup-preserves-heap = PairSetupResultV.mem-heap-setup setup-res
+
+      mem-mid-preserves-heap : ∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
+      mem-mid-preserves-heap = PairMiddleResultV.mem-heap-mid mid-res
+
+      mem-final-preserves-heap : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s3) addr
+      mem-final-preserves-heap = PairFinalResult.mem-heap-fin final-res
+
+      mem-heap-final : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-heap-final addr addr-in-heap = trans (mem-final-preserves-heap addr addr-in-heap)
+                                         (trans (IRStarResultV.ir-mem-heap r-g-v addr addr-in-heap)
+                                         (trans (mem-mid-preserves-heap addr addr-in-heap)
+                                         (trans (IRStarResultV.ir-mem-heap r-f-v addr addr-in-heap)
+                                                (mem-setup-preserves-heap addr addr-in-heap))))
+
+      -- Convert final Star to prog
+      star-fin : Star prog s3 s-final
+      star-fin = subst (λ p → Star p s3 s-final) (sym prog-eq-final) star-fin-raw
+
+      -- Construct validity for f's result at s-final
+      mem-heap-s1-to-s-final : ∀ a → InHeap a → readMem (memory s-final) a ≡ readMem (memory s1) a
+      mem-heap-s1-to-s-final a h = trans (mem-final-preserves-heap a h)
+                                   (trans (IRStarResultV.ir-mem-heap r-g-v a h)
+                                   (mem-mid-preserves-heap a h))
+
+      valid-f-at-final : ValidAt (eval f x) (readReg (regs s1) rax) (memory s-final)
+      valid-f-at-final = valid-subst-heap-preserved
+        (IRStarResultV.ir-result-valid r-f-v)
+        refl
+        mem-heap-s1-to-s-final
+
+      -- Construct validity for g's result at s-final
+      mem-heap-s3-to-s-final : ∀ a → InHeap a → readMem (memory s-final) a ≡ readMem (memory s3) a
+      mem-heap-s3-to-s-final = mem-final-preserves-heap
+
+      valid-g-at-final : ValidAt (eval g x) (readReg (regs s3) rax) (memory s-final)
+      valid-g-at-final = valid-subst-heap-preserved
+        (IRStarResultV.ir-result-valid r-g-v)
+        refl
+        mem-heap-s3-to-s-final
+
+      -- Assemble validity-based result
+      result-v : IRStarResultV ⟨ f , g ⟩ prog s s-final x (length prefix)
+      result-v = assemble-pair-result-vv f g prefix suffix x s s-setup s1 s2 s3 s-final
+                  setup-res r-f-v mid-res r-g-v
+                  h-final pc-fin-raw rax-fin-is-r15 r14-final r15-final
+                  stack-inv-final cap-in mem-fst-final mem-snd-final
+                  rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-code-final mem-heap-final
+                  star-fin refl refl
+                  rbp-inv rsp-final-eq
+                  valid-f-at-final valid-g-at-final
 
