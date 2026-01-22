@@ -70,9 +70,11 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s; valid-at-preserved-under-write;
          valid-subst-addr-mem)
 
--- Import IRSize for RecDispatcher type
+-- Import IRSize for size proofs
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; curry-smaller)
+-- Import RecDispatcher from central location
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 
 open import Data.Nat using (_>_; _≥_; _<_; _≤_; s≤s; z≤n)
 -- D041: Arithmetic moved to abstract helpers in StackInvariant.agda
@@ -1035,31 +1037,6 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s-final) rax) (memory s-final)
     result-valid = subst (λ addr → ValidAt {B ⇒ C} sem-closure addr (memory s-final))
                          (sym curry-rax-eq) closure-valid-at-addr
-
-------------------------------------------------------------------------
--- RecDispatcher: Type for recursive dispatcher function
---
--- This type represents the recursive dispatcher that IR implementations
--- receive as a function parameter. It allows calling back into the
--- dispatcher for sub-IRs (e.g., f in curry f).
---
--- Previously this was passed via Acc in MutualIR.agda's curry-thunk-correct-impl.
--- Now it's passed as an explicit function parameter, eliminating the need
--- for Acc-based termination tracking in this module.
-------------------------------------------------------------------------
-
-RecDispatcher : ℕ → Set₁
-RecDispatcher bound =
-  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
-  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-  halted s ≡ false →
-  pc s ≡ length prefix →
-  ValidAt x (readReg (regs s) rdi) (memory s) →
-  StackInvariant s →
-  StackCapacity s (ir-stack-requirement ir) →
-  RbpInvariant s →
-  let prog = prefix ++ compile-x86 ir ++ suffix
-  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
 ------------------------------------------------------------------------
 -- Private helpers for curry-thunk-correct-v

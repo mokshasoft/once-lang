@@ -56,9 +56,11 @@ open import Once.Backend.X86.Correct.StarBase
          rbp-inv-preserved-unchanged;
          IRStarResultV; ir-result-valid; ir-rsp-bound-v; ir-capacity)
   renaming (ir-rsp-v to ir-rsp)
--- Import IRSize for RecDispatcher type
+-- Import IRSize for size proofs
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller)
+-- Import RecDispatcher from central location
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write;
          valid-subst-heap-preserved)
@@ -3592,31 +3594,6 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     result-valid : ValidAt (eval ⟨ f , g ⟩ x) (readReg (regs s-final) rax) (memory s-final)
     result-valid = subst (λ addr → ValidAt {A * B} (eval f x , eval g x) addr (memory s-final))
                          (sym rax-fin-is-r15) result-valid-at-r15
-
-------------------------------------------------------------------------
--- RecDispatcher: Type for recursive dispatcher function
---
--- This type represents the recursive dispatcher that IR implementations
--- receive as a function parameter. It allows calling back into the
--- dispatcher for sub-IRs (e.g., f and g in pair).
---
--- Previously this was passed via parameterized module (MutualIR/Pair.agda).
--- Now it's passed as an explicit function parameter, eliminating the need
--- for the MutualIR/*.agda wrapper modules.
-------------------------------------------------------------------------
-
-RecDispatcher : ℕ → Set₁
-RecDispatcher bound =
-  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
-  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-  halted s ≡ false →
-  pc s ≡ length prefix →
-  ValidAt x (readReg (regs s) rdi) (memory s) →
-  StackInvariant s →
-  StackCapacity s (ir-stack-requirement ir) →
-  RbpInvariant s →
-  let prog = prefix ++ compile-x86 ir ++ suffix
-  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
 ------------------------------------------------------------------------
 -- Private helpers for run-pair-star-v

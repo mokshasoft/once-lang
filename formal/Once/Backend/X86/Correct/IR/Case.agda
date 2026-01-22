@@ -2096,6 +2096,7 @@ case-inr-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
 -- Import additional modules needed for run-case-star-v
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; [,]-f-smaller; [,]-g-smaller)
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (capacity-from-larger; capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged;
          rsp-sufficient)
@@ -2106,22 +2107,6 @@ open import Once.Backend.X86.Correct.StarBase using (rbp-inv-preserved-unchanged
 open import Once.Backend.X86.Correct.MemoryValid
   using (valid-subst-heap-preserved; valid-inl-tag-is-0; valid-inl-child; valid-inl-val-ptr;
          valid-inr-tag-is-1; valid-inr-child; valid-inr-val-ptr; valid-addr-in-heap)
-
--- | Size-bounded recursive dispatcher type
--- This is the type of the recursive function that run-case-star-v receives
--- to make recursive calls on sub-terms of strictly smaller size.
-RecDispatcher : ℕ → Set₁
-RecDispatcher bound =
-  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
-  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-  halted s ≡ false →
-  pc s ≡ length prefix →
-  ValidAt x (readReg (regs s) rdi) (memory s) →
-  StackInvariant s →
-  StackCapacity s (ir-stack-requirement ir) →
-  RbpInvariant s →
-  let prog = prefix ++ compile-x86 ir ++ suffix
-  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
 -- Additional imports for case implementation
 open import Once.Backend.X86.Correct.StackInvariant using (stack-inv-preserved-unchanged)

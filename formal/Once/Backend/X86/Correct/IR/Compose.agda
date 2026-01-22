@@ -540,6 +540,7 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
 -- Import additional modules needed for run-compose-star-v
 open import Once.Backend.X86.Correct.IRSize
   using (ir-size; ∘-f-smaller; ∘-g-smaller)
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (capacity-preserved-rsp-unchanged; capacity-left-from-max; capacity-right-from-max;
          capacity-after-delta; ir-rsp-delta)
@@ -548,22 +549,6 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.StarBase
   using (rbp-inv-preserved-unchanged)
   renaming (ir-rsp-v to ir-rsp)
-
--- | Size-bounded recursive dispatcher type
--- This is the type of the recursive function that run-compose-star-v receives
--- to make recursive calls on sub-terms of strictly smaller size.
-RecDispatcher : ℕ → Set₁
-RecDispatcher bound =
-  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
-  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-  halted s ≡ false →
-  pc s ≡ length prefix →
-  ValidAt x (readReg (regs s) rdi) (memory s) →
-  StackInvariant s →
-  StackCapacity s (ir-stack-requirement ir) →
-  RbpInvariant s →
-  let prog = prefix ++ compile-x86 ir ++ suffix
-  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
 ------------------------------------------------------------------------
 -- run-compose-star-v: Validity-based compose execution with explicit dispatcher

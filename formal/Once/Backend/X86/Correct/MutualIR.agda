@@ -101,6 +101,9 @@ open import Once.Backend.X86.Correct.IR.Inl
 open import Once.Backend.X86.Correct.IR.Inr
   using (run-inr-star-v; run-inr-star-v-auto)
 
+-- Import RecDispatcher from central location
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
+
 -- Import extracted curry proof (non-recursive, entire function extracted)
 -- Now includes curry-thunk-correct-v with RecDispatcher pattern
 open import Once.Backend.X86.Correct.IR.Curry
@@ -108,9 +111,8 @@ open import Once.Backend.X86.Correct.IR.Curry
          exec-star; exec-halted; exec-pc; exec-r14; exec-r15; exec-rbp; exec-rsp; exec-mem;
          exec-mem-rbp; exec-mem-rbp+8; exec-stack-inv; exec-capacity; exec-rbp-inv;
          exec-mem-above; exec-mem-code; exec-mem-heap;
-         -- Thunk implementation with RecDispatcher
+         -- Thunk implementation
          curry-thunk-correct-v)
-import Once.Backend.X86.Correct.IR.Curry as Curry
 
 -- Import closure well-formedness infrastructure for whole-program proofs
 open import Once.Backend.X86.Correct.ClosureWellFormed
@@ -323,7 +325,7 @@ mutual
       -- ============================================================
 
       -- Construct size-bounded dispatcher from Acc destructor (rs)
-      rec : Curry.RecDispatcher (ir-size (curry f))
+      rec : RecDispatcher (ir-size (curry f))
       rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
         run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
 
@@ -461,7 +463,7 @@ mutual
       -- (Now uses RecDispatcher pattern like Pair, Compose, Case)
 
       -- Construct size-bounded dispatcher from Acc destructor (rs)
-      rec : Curry.RecDispatcher (ir-size (curry f))
+      rec : RecDispatcher (ir-size (curry f))
       rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
         run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
 
@@ -495,7 +497,7 @@ mutual
           h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁
     }
     where
-      rec : Curry.RecDispatcher (ir-size (curry f))
+      rec : RecDispatcher (ir-size (curry f))
       rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
         run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv'
           (Acc-smaller (<-wellFounded (ir-size (curry f))) lt)
@@ -694,7 +696,7 @@ mutual
   -- Refactored: Calls IR.Pair.run-pair-star-v directly with rec parameter (no parameterized module)
   run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
-        rec : Pair.RecDispatcher (ir-size ⟨ f , g ⟩)
+        rec : RecDispatcher (ir-size ⟨ f , g ⟩)
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
         -- cap-in has type StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) which is what run-pair-star-v expects
@@ -703,7 +705,7 @@ mutual
   -- Compose: refactored to call IR/Compose.run-compose-star-v directly with rec parameter
   run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
-        rec : Compose.RecDispatcher (ir-size (g ∘ f))
+        rec : RecDispatcher (ir-size (g ∘ f))
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
     in Compose.run-compose-star-v f g (ir-size (g ∘ f)) rec (∘-f-smaller f g) (∘-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
@@ -754,7 +756,7 @@ mutual
   -- Case: refactored to call IR/Case.run-case-star-v directly with rec parameter
   run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
-        rec : Case.RecDispatcher (ir-size [ f , g ])
+        rec : RecDispatcher (ir-size [ f , g ])
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
     in Case.run-case-star-v f g (ir-size [ f , g ]) rec ([,]-f-smaller f g) ([,]-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
