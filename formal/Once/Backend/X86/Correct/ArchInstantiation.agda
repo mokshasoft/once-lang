@@ -44,6 +44,10 @@ open import Once.Backend.X86.Correct.Star as X86Star
   using (Star; refl*; step*; star-trans; star-single)
 open import Once.Backend.X86.Correct.StarBase
   using (rbp-inv-preserved-unchanged)
+open import Once.Backend.X86.Correct.StarBase as SB
+  using (ClosureWFOutput; no-closure; has-closure)
+open import Once.Backend.X86.Correct.ClosureWellFormed
+  using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.ExecLemmas using (transfer-star-full)
 open import Once.Backend.X86.Semantics using (writeReg)
 
@@ -150,13 +154,33 @@ X86-CodeGenInterface = record
 -- Open the IRSpecs module with X86 interfaces
 ------------------------------------------------------------------------
 
+-- X86's ClosureWellFormed matches the ClosureWFPredicate type
+X86-ClosureWF : Spec.ClosureWFPredicate Program
+X86-ClosureWF = ClosureWellFormed
+
 open Spec.IRSpecs
   X86-MachineInterface
   X86-InvariantInterface
   X86-ValidityInterface
   X86-CodeGenInterface
   Star  -- X86's Star directly
+  X86-ClosureWF
   public
+
+------------------------------------------------------------------------
+-- Conversion: ClosureWFOutput (X86) → ClosureWFOut (Common)
+--
+-- X86's StarBase defines its own ClosureWFOutput data type.
+-- Common's ClosureWFOut is ClosureWFOutput parameterized by ClosureWF.
+-- These have the same structure, so conversion is straightforward.
+------------------------------------------------------------------------
+
+-- Convert X86's ClosureWFOutput to Common's ClosureWFOut
+X86-WFOutput→Common : ∀ {prog : Program} →
+  SB.ClosureWFOutput prog → ClosureWFOut prog
+X86-WFOutput→Common SB.no-closure = Spec.no-closure
+X86-WFOutput→Common (SB.has-closure closure-addr code-ptr env semantics wf) =
+  Spec.has-closure closure-addr code-ptr env semantics wf
 
 ------------------------------------------------------------------------
 -- Conversion: IRStarResultV → IRCorrectness
@@ -187,6 +211,7 @@ IRStarResultV→IRCorrectness res = record
   ; exec-stack-inv = IRStarResultV.ir-stack-inv res
   ; exec-capacity = IRStarResultV.ir-capacity res
   ; exec-frame-inv = IRStarResultV.ir-rbp-inv res
+  ; exec-closure-wf = X86-WFOutput→Common (IRStarResultV.ir-closure-wf res)
   }
 
 ------------------------------------------------------------------------

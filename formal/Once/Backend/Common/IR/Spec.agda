@@ -148,6 +148,34 @@ record CodeGenInterface (M : MachineInterface) : Set₁ where
     ir-rsp-delta : ∀ {A B} → IR A B → ℕ
 
 ------------------------------------------------------------------------
+-- ClosureWFOutput: Optional closure well-formedness from curry
+--
+-- When curry executes, it produces a closure whose code-ptr points to
+-- valid thunk code within the program. Apply consumes this proof.
+--
+-- The structure is universal; the WF predicate is architecture-specific.
+------------------------------------------------------------------------
+
+-- | Closure well-formedness predicate type
+-- Each architecture provides its own ClosureWF predicate with
+-- architecture-specific preconditions and guarantees.
+ClosureWFPredicate : Set → Set₂
+ClosureWFPredicate Program = ∀ {E A B : Type} →
+  Program → ℕ → ⟦ E ⟧ → (⟦ A ⟧ → ⟦ B ⟧) → Set
+
+-- | Output type tracking optional closure well-formedness
+-- Most IRs produce no-closure; curry produces has-closure with WF proof.
+data ClosureWFOutput {Program : Set}
+    (ClosureWF : ClosureWFPredicate Program)
+    (prog : Program) : Set₁ where
+  no-closure : ClosureWFOutput ClosureWF prog
+  has-closure : ∀ {E A B : Type}
+    (closure-addr code-ptr : ℕ) (env : ⟦ E ⟧)
+    (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+    (wf : ClosureWF {E} {A} {B} prog code-ptr env semantics) →
+    ClosureWFOutput ClosureWF prog
+
+------------------------------------------------------------------------
 -- IRCorrectness: The Core Specification
 --
 -- This matches X86's IRStarResultV structure exactly.
@@ -164,12 +192,17 @@ module IRSpecs
     (Val : ValidityInterface M Inv)
     (CG : CodeGenInterface M)
     (Star : MachineInterface.Program M → MachineInterface.State M → MachineInterface.State M → Set)
+    (ClosureWF : ClosureWFPredicate (MachineInterface.Program M))
     where
 
   open MachineInterface M
   open InvariantInterface Inv
   open ValidityInterface Val
   open CodeGenInterface CG
+
+  -- Alias for ClosureWFOutput with the architecture's WF predicate
+  ClosureWFOut : Program → Set₁
+  ClosureWFOut = ClosureWFOutput ClosureWF
 
   -- Preconditions for IR execution
   -- Matches X86's run-*-star-vv preconditions exactly
@@ -212,6 +245,9 @@ module IRSpecs
       exec-stack-inv : StackInvariant s'
       exec-capacity : StackCapacity s' (ir-output-capacity ir)
       exec-frame-inv : FramePtrInvariant s'
+
+      -- Optional closure well-formedness (produced by curry, consumed by apply)
+      exec-closure-wf : ClosureWFOut prog
 
   ------------------------------------------------------------------------
   -- Phase Specifications for Composite IR
