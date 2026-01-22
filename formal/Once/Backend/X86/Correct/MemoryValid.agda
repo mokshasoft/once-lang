@@ -10,6 +10,10 @@
 --
 -- MemoryValid captures the invariant that values in memory are
 -- properly encoded at their expected addresses.
+--
+-- NOTE: The core ValidAt data type and AtS records are now defined
+-- in Once.Backend.Common.Validity. This module re-exports them and
+-- adds X86-specific region-based preservation lemmas.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Correct.MemoryValid where
@@ -26,6 +30,25 @@ open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff
 open import Once.Backend.X86.Correct.Star using (just-injective)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (encode-in-heap-sem)
+
+-- Re-export ValidAt and AtS records from Common
+open import Once.Backend.Common.Validity public
+  using ( ValidAt
+        ; valid-unit; valid-pair; valid-inl; valid-inr
+        ; valid-closure; valid-closure-env; valid-eff; valid-eff-env; valid-fix
+        ; PairAtS; pair-at-s; fst-valid-s; snd-valid-s
+        ; InlAtS; inl-at-s; tag-valid-inl-s; val-valid-inl-s
+        ; InrAtS; inr-at-s; tag-valid-inr-s; val-valid-inr-s
+        ; ClosureAtS; closure-at-s; env-valid-s; code-valid-s
+        ; valid-subst-addr-mem
+        ; valid-inl-tag-is-0; valid-inr-tag-is-1
+        ; valid-inl-val-ptr; valid-inr-val-ptr
+        ; valid-pair-decompose; valid-arrow-to-eff
+        ; PairAtS-preserved-under-mem-eq
+        ; InlAtS-preserved-under-mem-eq
+        ; InrAtS-preserved-under-mem-eq
+        ; ClosureAtS-preserved-under-mem-eq
+        )
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
@@ -69,130 +92,13 @@ record InrAt {A B : Type} (b : ⟦ B ⟧) (addr : Word) (m : Memory) : Set where
 open InrAt public
 
 ------------------------------------------------------------------------
--- Stateful Validity Predicates (no reference to abstract encode)
+-- NOTE: PairAtS, InlAtS, InrAtS, ClosureAtS, and ValidAt are now
+-- imported from Once.Backend.Common.Validity. See the imports above.
 --
--- These predicates use explicit addresses instead of the abstract
--- `encode` function. This breaks the circular dependency on postulates
--- and allows validity to be proven from stateful allocation theorems.
+-- The AtS records and ValidAt have the same structure across all
+-- architectures - only the preservation lemmas that use InHeap/InStack
+-- are X86-specific and remain here.
 ------------------------------------------------------------------------
-
--- | Pair validity with explicit component addresses
--- Memory at addr-pair contains [addr-a, addr-b]
-record PairAtS (addr-a addr-b addr-pair : Word) (m : Memory) : Set where
-  constructor pair-at-s
-  field
-    fst-valid : readMem m addr-pair ≡ just addr-a
-    snd-valid : readMem m (addr-pair +ℕ slot-size) ≡ just addr-b
-
-open PairAtS public using () renaming (fst-valid to fst-valid-s; snd-valid to snd-valid-s)
-
--- | Left sum validity with explicit value address
--- Memory at addr-sum contains [0, addr-val]
-record InlAtS (addr-val addr-sum : Word) (m : Memory) : Set where
-  constructor inl-at-s
-  field
-    tag-valid : readMem m addr-sum ≡ just 0
-    val-valid : readMem m (addr-sum +ℕ slot-size) ≡ just addr-val
-
-open InlAtS public using () renaming (tag-valid to tag-valid-inl-s; val-valid to val-valid-inl-s)
-
--- | Right sum validity with explicit value address
--- Memory at addr-sum contains [1, addr-val]
-record InrAtS (addr-val addr-sum : Word) (m : Memory) : Set where
-  constructor inr-at-s
-  field
-    tag-valid : readMem m addr-sum ≡ just 1
-    val-valid : readMem m (addr-sum +ℕ slot-size) ≡ just addr-val
-
-open InrAtS public using () renaming (tag-valid to tag-valid-inr-s; val-valid to val-valid-inr-s)
-
--- | Closure validity with explicit addresses
--- Memory at addr-closure contains [env-addr, code-ptr]
-record ClosureAtS (env-addr code-ptr addr-closure : Word) (m : Memory) : Set where
-  constructor closure-at-s
-  field
-    env-valid : readMem m addr-closure ≡ just env-addr
-    code-valid : readMem m (addr-closure +ℕ slot-size) ≡ just code-ptr
-
-open ClosureAtS public using () renaming (env-valid to env-valid-s; code-valid to code-valid-s)
-
-------------------------------------------------------------------------
--- ValidAt: Unified Validity Predicate
---
--- This is the core abstraction for validity-based correctness.
--- ValidAt says "value v is correctly represented at address a in memory m".
---
--- Key insight: Instead of proving "rax ≡ encode (eval ir x)" with postulates,
--- we prove "ValidAt (eval ir x) rax memory" directly from memory writes.
-------------------------------------------------------------------------
-
--- | Unified validity predicate for all types
--- Says "value v is correctly represented at address a in memory m"
-data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
-  -- Unit: value 0, no memory needed
-  valid-unit : ∀ {m} → ValidAt {Unit} tt 0 m
-
-  -- Pair: both components valid at their addresses, pair structure at addr
-  valid-pair : ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧} {addr-a addr-b addr : Word} {m : Memory} →
-    ValidAt a addr-a m →
-    ValidAt b addr-b m →
-    PairAtS addr-a addr-b addr m →
-    ValidAt (a , b) addr m
-
-  -- Left sum: tag=0, value valid
-  valid-inl : ∀ {A B} {a : ⟦ A ⟧} {addr-a addr : Word} {m : Memory} →
-    ValidAt a addr-a m →
-    InlAtS addr-a addr m →
-    ValidAt {A + B} (inj₁ a) addr m
-
-  -- Right sum: tag=1, value valid
-  valid-inr : ∀ {A B} {b : ⟦ B ⟧} {addr-b addr : Word} {m : Memory} →
-    ValidAt b addr-b m →
-    InrAtS addr-b addr m →
-    ValidAt {A + B} (inj₂ b) addr m
-
-  -- Closure: env and code-ptr at addr
-  -- Note: Closures are abstract (env-addr and code-ptr are just words)
-  -- Closure validity: code-ptr is a parameter (not from Closure record)
-  -- code-ptr is a compilation artifact tracked in ClosureAtS/ClosureWellFormed
-  valid-closure : ∀ {A B} {cl : Closure A B} {code-ptr addr : Word} {m : Memory} →
-    ClosureAtS (Closure.env-addr cl) code-ptr addr m →
-    ValidAt {A ⇒ B} cl addr m
-
-  -- Closure from env validity: for curry-created closures
-  -- When curry creates a closure, we have:
-  --   1. Closure.env-addr cl ≡ encode env  (by eval definition for curry)
-  --   2. ValidAt env env-addr m            (env validity from input)
-  --   3. ClosureAtS layout                 (from memory writes)
-  valid-closure-env : ∀ {A B E} {cl : Closure A B} {env : ⟦ E ⟧}
-                      {env-addr code-ptr closure-addr : Word} {m : Memory} →
-    Closure.env-addr cl ≡ encode env →  -- semantic property (refl for curry)
-    ValidAt env env-addr m →             -- env validity at runtime address
-    ClosureAtS env-addr code-ptr closure-addr m →  -- memory layout
-    ValidAt {A ⇒ B} cl closure-addr m
-
-  -- Eff: same as closure (Eff = Closure at runtime)
-  -- code-ptr is a parameter (not from Closure record)
-  valid-eff : ∀ {A B} {cl : Closure A B} {code-ptr addr : Word} {m : Memory} →
-    ClosureAtS (Closure.env-addr cl) code-ptr addr m →
-    ValidAt {Eff A B} cl addr m
-
-  -- Eff from env validity: for curry-created effect closures
-  valid-eff-env : ∀ {A B E} {cl : Closure A B} {env : ⟦ E ⟧}
-                  {env-addr code-ptr closure-addr : Word} {m : Memory} →
-    Closure.env-addr cl ≡ encode env →
-    ValidAt env env-addr m →
-    ClosureAtS env-addr code-ptr closure-addr m →
-    ValidAt {Eff A B} cl closure-addr m
-
-  -- Fix: validity of unwrapped value (Fix is identity at runtime)
-  valid-fix : ∀ {F} {x : ⟦ F ⟧} {addr : Word} {m : Memory} →
-    ValidAt x addr m →
-    ValidAt {Fix F} (wrap x) addr m
-
--- NOTE: ValidAt preservation under memory writes is defined below,
--- after the valid-in-heap postulate which it depends on.
--- See: valid-at-preserved-under-stack-write, valid-at-preserved-under-write
 
 ------------------------------------------------------------------------
 -- Entry Point: encode → ValidAt
@@ -213,16 +119,7 @@ postulate
     ValidAt v addr m
 
 
--- | Convert validity from (A ⇒ B) to (Eff A B)
--- These types have the same runtime representation (Closure A B), but
--- ValidAt uses Type as a type index, so conversion is needed.
--- Proven by pattern matching on valid-closure and constructing valid-eff.
-valid-arrow-to-eff :
-  ∀ {A B} {cl : Closure A B} {addr : Word} {m : Memory} →
-  ValidAt {A ⇒ B} cl addr m →
-  ValidAt {Eff A B} cl addr m
-valid-arrow-to-eff (valid-closure closS) = valid-eff closS
-valid-arrow-to-eff (valid-closure-env sem-eq venv closS) = valid-eff-env sem-eq venv closS
+-- NOTE: valid-arrow-to-eff is imported from Common.Validity
 
 postulate
 
@@ -262,89 +159,8 @@ valid-inr-child (valid-inr {addr-b = addr-b} vb inrS) mem-eq =
   let addr-eq = just-injective (trans (sym (val-valid-inr-s inrS)) mem-eq)
   in subst (λ a → ValidAt _ a _) addr-eq vb
 
-------------------------------------------------------------------------
--- AtS preservation under memory equality
-------------------------------------------------------------------------
-
--- | Helper: PairAtS preserved under memory equality
-PairAtS-preserved-under-mem-eq :
-  ∀ {addr-a addr-b addr : Word} {m1 m2 : Memory} →
-  PairAtS addr-a addr-b addr m1 →
-  (∀ a → readMem m2 a ≡ readMem m1 a) →
-  PairAtS addr-a addr-b addr m2
-PairAtS-preserved-under-mem-eq {addr-a} {addr-b} {addr} pairS mem-eq =
-  pair-at-s (trans (mem-eq addr) (fst-valid-s pairS))
-            (trans (mem-eq (addr +ℕ slot-size)) (snd-valid-s pairS))
-
--- | Helper: InlAtS preserved under memory equality
-InlAtS-preserved-under-mem-eq :
-  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
-  InlAtS addr-val addr-sum m1 →
-  (∀ a → readMem m2 a ≡ readMem m1 a) →
-  InlAtS addr-val addr-sum m2
-InlAtS-preserved-under-mem-eq {addr-val} {addr-sum} inlS mem-eq =
-  inl-at-s (trans (mem-eq addr-sum) (tag-valid-inl-s inlS))
-           (trans (mem-eq (addr-sum +ℕ slot-size)) (val-valid-inl-s inlS))
-
--- | Helper: InrAtS preserved under memory equality
-InrAtS-preserved-under-mem-eq :
-  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
-  InrAtS addr-val addr-sum m1 →
-  (∀ a → readMem m2 a ≡ readMem m1 a) →
-  InrAtS addr-val addr-sum m2
-InrAtS-preserved-under-mem-eq {addr-val} {addr-sum} inrS mem-eq =
-  inr-at-s (trans (mem-eq addr-sum) (tag-valid-inr-s inrS))
-           (trans (mem-eq (addr-sum +ℕ slot-size)) (val-valid-inr-s inrS))
-
--- | Helper: ClosureAtS preserved under memory equality
-ClosureAtS-preserved-under-mem-eq :
-  ∀ {env-addr code-ptr addr-closure : Word} {m1 m2 : Memory} →
-  ClosureAtS env-addr code-ptr addr-closure m1 →
-  (∀ a → readMem m2 a ≡ readMem m1 a) →
-  ClosureAtS env-addr code-ptr addr-closure m2
-ClosureAtS-preserved-under-mem-eq {env-addr} {code-ptr} {addr-closure} closS mem-eq =
-  closure-at-s (trans (mem-eq addr-closure) (env-valid-s closS))
-               (trans (mem-eq (addr-closure +ℕ slot-size)) (code-valid-s closS))
-
-------------------------------------------------------------------------
--- ValidAt preservation under memory equality
-------------------------------------------------------------------------
-
--- | Propagate validity through address/memory substitution
--- If validity holds at addr1/mem1, and addr2=addr1 and mem2 agrees with mem1,
--- then validity holds at addr2/mem2.
--- Proven by induction on ValidAt structure.
-valid-subst-addr-mem :
-  ∀ {A} {v : ⟦ A ⟧} {addr1 addr2 : Word} {mem1 mem2 : Memory} →
-  ValidAt v addr1 mem1 →
-  addr2 ≡ addr1 →
-  (∀ a → readMem mem2 a ≡ readMem mem1 a) →
-  ValidAt v addr2 mem2
-valid-subst-addr-mem valid-unit refl _ = valid-unit
-valid-subst-addr-mem (valid-pair va vb pairS) refl mem-eq =
-  valid-pair (valid-subst-addr-mem va refl mem-eq)
-             (valid-subst-addr-mem vb refl mem-eq)
-             (PairAtS-preserved-under-mem-eq pairS mem-eq)
-valid-subst-addr-mem (valid-inl va inlS) refl mem-eq =
-  valid-inl (valid-subst-addr-mem va refl mem-eq)
-            (InlAtS-preserved-under-mem-eq inlS mem-eq)
-valid-subst-addr-mem (valid-inr vb inrS) refl mem-eq =
-  valid-inr (valid-subst-addr-mem vb refl mem-eq)
-            (InrAtS-preserved-under-mem-eq inrS mem-eq)
-valid-subst-addr-mem (valid-closure closS) refl mem-eq =
-  valid-closure (ClosureAtS-preserved-under-mem-eq closS mem-eq)
-valid-subst-addr-mem (valid-closure-env sem-eq venv closS) refl mem-eq =
-  valid-closure-env sem-eq
-    (valid-subst-addr-mem venv refl mem-eq)
-    (ClosureAtS-preserved-under-mem-eq closS mem-eq)
-valid-subst-addr-mem (valid-eff closS) refl mem-eq =
-  valid-eff (ClosureAtS-preserved-under-mem-eq closS mem-eq)
-valid-subst-addr-mem (valid-eff-env sem-eq venv closS) refl mem-eq =
-  valid-eff-env sem-eq
-    (valid-subst-addr-mem venv refl mem-eq)
-    (ClosureAtS-preserved-under-mem-eq closS mem-eq)
-valid-subst-addr-mem (valid-fix vx) refl mem-eq =
-  valid-fix (valid-subst-addr-mem vx refl mem-eq)
+-- NOTE: AtS-preserved-under-mem-eq and valid-subst-addr-mem
+-- are now imported from Common.Validity
 
 ------------------------------------------------------------------------
 -- ValidAt preservation under heap-only memory preservation
@@ -447,47 +263,9 @@ valid-subst-heap-preserved {Eff A B} {cl} (valid-eff-env {E = E} {env = env} {en
 valid-subst-heap-preserved (valid-fix vx) refl heap-eq =
   valid-fix (valid-subst-heap-preserved vx refl heap-eq)
 
-------------------------------------------------------------------------
--- Proven lemmas from ValidAt structure (moved out of postulate block)
-------------------------------------------------------------------------
-
--- | Left injection tag is 0 in memory
--- Pattern match on ValidAt: only valid-inl can construct ValidAt {A + B} (inj₁ a)
-valid-inl-tag-is-0 :
-  ∀ {A B} {a : ⟦ A ⟧} {addr : Word} {mem : Memory} →
-  ValidAt {A + B} (inj₁ a) addr mem →
-  readMem mem addr ≡ just 0
-valid-inl-tag-is-0 (valid-inl _ inlS) = tag-valid-inl-s inlS
-
--- | Left injection value pointer exists in memory
-valid-inl-val-ptr :
-  ∀ {A B} {a : ⟦ A ⟧} {addr : Word} {mem : Memory} →
-  ValidAt {A + B} (inj₁ a) addr mem →
-  ∃[ val-addr ] (readMem mem (addr +ℕ slot-size) ≡ just val-addr × ValidAt a val-addr mem)
-valid-inl-val-ptr (valid-inl {addr-a = addr-a} va inlS) = addr-a , val-valid-inl-s inlS , va
-
--- | Right injection tag is 1 in memory
-valid-inr-tag-is-1 :
-  ∀ {A B} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
-  ValidAt {A + B} (inj₂ b) addr mem →
-  readMem mem addr ≡ just 1
-valid-inr-tag-is-1 (valid-inr _ inrS) = tag-valid-inr-s inrS
-
--- | Right injection value pointer exists in memory
-valid-inr-val-ptr :
-  ∀ {A B} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
-  ValidAt {A + B} (inj₂ b) addr mem →
-  ∃[ val-addr ] (readMem mem (addr +ℕ slot-size) ≡ just val-addr × ValidAt b val-addr mem)
-valid-inr-val-ptr (valid-inr {addr-b = addr-b} vb inrS) = addr-b , val-valid-inr-s inrS , vb
-
--- | Extract fst component validity from pair validity
-valid-pair-decompose :
-  ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧} {addr : Word} {mem : Memory} →
-  ValidAt {A * B} (a , b) addr mem →
-  ∃[ addr-a ] ∃[ addr-b ]
-    (ValidAt a addr-a mem × ValidAt b addr-b mem × PairAtS addr-a addr-b addr mem)
-valid-pair-decompose (valid-pair {addr-a = addr-a} {addr-b = addr-b} va vb pairS) =
-  addr-a , addr-b , va , vb , pairS
+-- NOTE: valid-inl-tag-is-0, valid-inl-val-ptr, valid-inr-tag-is-1,
+-- valid-inr-val-ptr, and valid-pair-decompose are now imported
+-- from Common.Validity
 
 -- | Extract closure memory layout from closure validity
 -- Returns existential code-ptr since it's not part of the semantic Closure
