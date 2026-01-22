@@ -70,7 +70,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; rsp-bound-to-capacity; ir-stack-requirement; ir-output-capacity; thunk-setup-consumed-slots; thunk-setup-cap≤thunk-consumed+ir-req)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; rsp-bound-to-capacity; ir-stack-requirement; ir-output-capacity)
 open import Data.Nat.Properties using (m≤m+n; ≤-trans)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure;
@@ -92,12 +92,8 @@ open import Once.Backend.X86.Correct.ClosureContext
 
 -- Import modular runner for delegation
 open import Once.Backend.X86.Correct.MutualIR as Modular
-  using (run-ir-star; thunk-offset-in-bounds; curry-thunk-correct-impl;
+  using (run-ir-star; thunk-offset-in-bounds; make-curry-closure-wf;
          IRStarResultV; module IRStarResultV)
-
--- Import ir-size and well-founded induction for curry-thunk-correct-impl Acc parameter
-open import Once.Backend.X86.Correct.IRSize using (ir-size)
-open import Data.Nat.Induction using (<-wellFounded)
 
 -- Import curry proof with memory result
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult; CurryExecResult)
@@ -281,18 +277,10 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
       mem-code-ptr = code-ptr curry-mem-res
       cp-eq : mem-code-ptr ≡ thunk-offset
       cp-eq = code-ptr-is-thunk curry-mem-res
-      -- Build ClosureWellFormed proof at mem-code-ptr (transport from thunk-offset)
+      -- Build ClosureWellFormed proof at thunk-offset using helper from MutualIR
       -- f : IR (A * B) C, so env type is A, arg type is B, result type is C
       wf-at-thunk : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
-      wf-at-thunk = record
-        { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
-        ; thunk-capacity = thunk-setup-consumed-slots +ℕ ir-stack-requirement f
-        ; thunk-capacity-sufficient = thunk-setup-cap≤thunk-consumed+ir-req f
-        ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ →
-            curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
-              h-eq₁ pc-eq₁ v-arg₁ v-env₁ mem-ret₁ stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁
-              (<-wellFounded (ir-size (curry f)))
-        }
+      wf-at-thunk = make-curry-closure-wf f prefix suffix x
       -- Transport wf to use mem-code-ptr (which equals thunk-offset)
       wf : ClosureWellFormed {A} {B} {C} prog mem-code-ptr x (λ b → eval f (x , b))
       wf = subst (λ cp → ClosureWellFormed {A} {B} {C} prog cp x (λ b → eval f (x , b))) (sym cp-eq) wf-at-thunk
