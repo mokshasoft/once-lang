@@ -2,8 +2,8 @@
 -- Once.Backend.X86.Correct.RecDispatcher
 --
 -- Size-bounded recursive dispatcher type for x86 IR proofs.
--- This module defines RecDispatcher once for all x86 IR implementations
--- (Pair, Compose, Case, Curry) to import.
+-- This module instantiates Common.IRDispatcher.RecDispatcherType with
+-- x86-specific types, providing RecDispatcher for all x86 IR modules.
 --
 -- The dispatcher represents the recursive function that IR implementations
 -- receive to make recursive calls on sub-terms of strictly smaller size.
@@ -13,16 +13,19 @@ module Once.Backend.X86.Correct.RecDispatcher where
 
 -- Import consolidated Foundation module (provides State, halted, pc, regs, memory, etc.)
 open import Once.Backend.X86.Correct.Foundation
+open import Once.Backend.X86.Semantics using (Memory)
 
 open import Once.Backend.X86.Layout using (StackPointer)
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (StackCapacity; ir-stack-requirement)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.X86.Correct.StarBase using (IRStarResultV)
-open import Once.Backend.X86.Correct.IRSize using (ir-size)
+
+-- Import Common dispatcher infrastructure
+open import Once.Backend.Common.IRDispatcher
 
 ------------------------------------------------------------------------
--- RecDispatcher: Size-bounded recursive dispatcher type
+-- RecDispatcher: Instantiate Common.RecDispatcherType with x86 types
 --
 -- For any IR smaller than bound, produce an execution result.
 -- This is the type of the `rec` function passed to IR implementation modules.
@@ -34,15 +37,25 @@ open import Once.Backend.X86.Correct.IRSize using (ir-size)
 --     in Pair.run-pair-star-v ... rec ...
 ------------------------------------------------------------------------
 
-RecDispatcher : ℕ → Set₁
-RecDispatcher bound =
-  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
-  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
-  halted s ≡ false →
-  pc s ≡ length prefix →
-  ValidAt x (readReg (regs s) rdi) (memory s) →
-  StackInvariant s →
-  StackCapacity s (ir-stack-requirement ir) →
-  RbpInvariant s →
-  let prog = prefix ++ compile-x86 ir ++ suffix
-  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
+-- x86 input register reader: arguments are passed in rdi
+private
+  x86-readInputReg : State → ℕ
+  x86-readInputReg s = readReg (regs s) rdi
+
+-- Instantiate RecDispatcherType with x86-specific types
+open RecDispatcherType
+  {State} {Memory} {Program} {StackPointer}
+  halted
+  pc
+  x86-readInputReg
+  memory
+  ValidAt
+  StackInvariant
+  StackCapacity
+  RbpInvariant
+  compile-x86
+  _++_
+  length
+  ir-stack-requirement
+  IRStarResultV
+  public

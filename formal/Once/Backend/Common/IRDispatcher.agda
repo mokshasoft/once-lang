@@ -40,9 +40,10 @@ open import Induction.WellFounded using (Acc; acc)
 --
 -- Parameters:
 -- - State: Machine state type
+-- - Memory: Memory type (extracted from State)
 -- - Program: Executable program type
 -- - StackPointer: Stack frame reference type
--- - halted, pc, readInputReg: State inspection functions
+-- - halted, pc, readInputReg, memory: State inspection functions
 -- - ValidAt: Validity predicate for values in memory
 -- - StackInvariant, StackCapacity, RbpInvariant: Stack discipline
 -- - compile: Code generation function
@@ -52,11 +53,12 @@ open import Induction.WellFounded using (Acc; acc)
 ------------------------------------------------------------------------
 
 module RecDispatcherType
-  {State Program StackPointer : Set}
+  {State Memory Program StackPointer : Set}
   (halted : State → Bool)
   (pc : State → ℕ)
   (readInputReg : State → ℕ)
-  (ValidAt : ∀ {A : Type} → ⟦ A ⟧ → ℕ → State → Set)
+  (memory : State → Memory)
+  (ValidAt : ∀ {A : Type} → ⟦ A ⟧ → ℕ → Memory → Set)
   (StackInvariant : State → Set)
   (StackCapacity : State → ℕ → Set)
   (RbpInvariant : State → Set)
@@ -83,11 +85,12 @@ module RecDispatcherType
     (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ lengthₚ prefix →
-    ValidAt x (readInputReg s) s →
+    ValidAt x (readInputReg s) (memory s) →
     StackInvariant s →
     StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
-    ∃[ s' ] IRStarResultV ir ((prefix ++ₚ compile ir) ++ₚ suffix) s s' x (lengthₚ prefix)
+    let prog = prefix ++ₚ (compile ir ++ₚ suffix)
+    in ∃[ s' ] IRStarResultV ir prog s s' x (lengthₚ prefix)
 
 ------------------------------------------------------------------------
 -- Dispatcher Pattern Documentation
