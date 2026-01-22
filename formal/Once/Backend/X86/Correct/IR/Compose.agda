@@ -538,7 +538,7 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
 ------------------------------------------------------------------------
 
 -- Import additional modules needed for run-compose-star-v
-open import Once.Backend.X86.Correct.IRSize
+open import Once.Backend.Common.IRSize
   using (ir-size; ∘-f-smaller; ∘-g-smaller)
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.StackInstantiation

@@ -2094,7 +2094,7 @@ case-inr-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
 ------------------------------------------------------------------------
 
 -- Import additional modules needed for run-case-star-v
-open import Once.Backend.X86.Correct.IRSize
+open import Once.Backend.Common.IRSize
   using (ir-size; [,]-f-smaller; [,]-g-smaller)
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.StackInstantiation

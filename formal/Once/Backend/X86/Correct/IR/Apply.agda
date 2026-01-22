@@ -105,7 +105,7 @@ open ≡-Reasoning
 -- Additional imports for run-apply-star-direct
 open import Once.Semantics using () renaming (Closure-η to Closure-η-sem)
 open import Induction.WellFounded using (Acc)
-open import Once.Backend.X86.Correct.IRSize using (ir-size)
+open import Once.Backend.Common.IRSize using (ir-size)
 
 ------------------------------------------------------------------------
 -- run-apply-with-wf: Apply using ClosureWellFormed

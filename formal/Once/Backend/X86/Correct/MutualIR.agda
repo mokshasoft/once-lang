@@ -153,7 +153,7 @@ import Once.Backend.X86.Correct.IR.Case as Case
 -- Import well-founded recursion and IR size measure
 open import Induction.WellFounded using (Acc; acc)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Once.Backend.X86.Correct.IRSize
+open import Once.Backend.Common.IRSize
   using (ir-size; ∘-f-smaller; ∘-g-smaller; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller;
          [,]-f-smaller; [,]-g-smaller; curry-smaller)
 
