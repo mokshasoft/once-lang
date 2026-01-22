@@ -290,14 +290,26 @@ module IRSpecs
 
   module CurrySpecs {A B C : Type} (f : IR (A * B) C) where
 
-    record SetupPost (s s₁ : State) (x : ⟦ A ⟧) : Set₁ where
+    -- SetupPost includes execution evidence so combine can use it
+    -- prog is the full program: prefix ++ₚ compile (curry f) ++ₚ suffix
+    -- offset is program-length prefix
+    record SetupPost (prog : Program) (offset : ℕ)
+                     (s s₁ : State) (x : ⟦ A ⟧) : Set₁ where
       field
+        -- State properties
         setup-halted : halted s₁ ≡ false
         setup-stack-inv : StackInvariant s₁
         setup-capacity : StackCapacity s₁ (ir-output-capacity (curry f))
         setup-output-valid : ValidAt {B ⇒ C} (eval (curry f) x) (output-value s₁) (memory s₁)
         setup-saved-regs : SavedRegsPreserved s s₁
         setup-frame-inv : FramePtrInvariant s₁
+        -- Execution evidence (for combine to use)
+        setup-star : Star prog s s₁
+        setup-pc : pc s₁ ≡ offset + compile-length (curry f)
+        setup-rsp-delta : rsp-delta-slots s s₁ (ir-rsp-delta (curry f))
+        setup-heap-preserved : HeapPreserved s s₁
+        setup-code-preserved : CodePreserved s s₁
+        setup-frame-preserved : FramePreserved s s₁
 
   module CaseSpecs {A B C : Type} (f : IR A C) (g : IR B C) where
 
@@ -307,6 +319,7 @@ module IRSpecs
         dispatch-stack-inv : StackInvariant s₁
         dispatch-input-valid : ValidAt a (input-value s₁) (memory s₁)
         dispatch-capacity : StackCapacity s₁ (ir-stack-requirement f)
+        dispatch-frame-inv : FramePtrInvariant s₁
 
     record DispatchRightPost (s s₁ : State) (b : ⟦ B ⟧) : Set where
       field
@@ -314,6 +327,7 @@ module IRSpecs
         dispatch-stack-inv : StackInvariant s₁
         dispatch-input-valid : ValidAt b (input-value s₁) (memory s₁)
         dispatch-capacity : StackCapacity s₁ (ir-stack-requirement g)
+        dispatch-frame-inv : FramePtrInvariant s₁
 
 ------------------------------------------------------------------------
 -- ClosuresWF: WF for all closures in values of a given type

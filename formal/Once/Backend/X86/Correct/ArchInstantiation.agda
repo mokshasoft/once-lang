@@ -1104,13 +1104,19 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
 -- Import run-curry-star-v for curry implementation
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star-v)
 
--- Curry setup: runs the full curry and extracts SetupPost
+-- Curry setup: runs the full curry and extracts SetupPost with execution evidence
 x86-curry-setup : ∀ {A B C : Type} (f : IR (A * B) C)
   (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   Preconditions {A} s x prefix (ir-stack-requirement (curry f)) →
-  ∃[ s₁ ] CurrySpecs.SetupPost f s s₁ x
+  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+      offset = length prefix
+  in ∃[ s₁ ] CurrySpecs.SetupPost f prog offset s s₁ x
 x86-curry-setup {A} {B} {C} f prefix suffix x s pre = s₁ , setup
   where
+    -- Program and offset
+    prog = prefix ++ compile-x86 (curry f) ++ suffix
+    offset = length prefix
+
     -- Extract preconditions
     h = Preconditions.pre-halted pre
     pc-eq = Preconditions.pre-pc pre
@@ -1124,8 +1130,8 @@ x86-curry-setup {A} {B} {C} f prefix suffix x s pre = s₁ , setup
     s₁ = proj₁ curry-result
     res = proj₂ curry-result
 
-    -- Extract SetupPost fields from IRStarResultV
-    setup : CurrySpecs.SetupPost f s s₁ x
+    -- Extract SetupPost fields from IRStarResultV (now includes execution evidence)
+    setup : CurrySpecs.SetupPost f prog offset s s₁ x
     setup = record
       { setup-halted = IRStarResultV.ir-halted res
       ; setup-stack-inv = IRStarResultV.ir-stack-inv res
@@ -1133,41 +1139,36 @@ x86-curry-setup {A} {B} {C} f prefix suffix x s pre = s₁ , setup
       ; setup-output-valid = IRStarResultV.ir-result-valid res
       ; setup-saved-regs = (IRStarResultV.ir-r14 res , IRStarResultV.ir-r15 res , IRStarResultV.ir-rbp res)
       ; setup-frame-inv = IRStarResultV.ir-rbp-inv res
+      -- Execution evidence from IRStarResultV
+      ; setup-star = IRStarResultV.ir-star res
+      ; setup-pc = IRStarResultV.ir-pc res
+      ; setup-rsp-delta = IRStarResultV.ir-rsp res
+      ; setup-heap-preserved = IRStarResultV.ir-mem-heap res
+      ; setup-code-preserved = IRStarResultV.ir-mem-code res
+      ; setup-frame-preserved = IRStarResultV.ir-mem-above res
       }
 
--- Curry combine: SetupPost doesn't contain Star/PC/RSP proofs, so we need to
--- reconstruct or postulate them. Since we don't have preconditions here,
--- we use postulates for the execution-specific fields.
+-- Curry combine: uses execution evidence from SetupPost (no postulates needed!)
 x86-curry-combine : ∀ {A B C : Type} (f : IR (A * B) C)
   (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ : State) →
-  CurrySpecs.SetupPost f s s₁ x →
-  IRCorrectness (curry f) (prefix ++ compile-x86 (curry f) ++ suffix) s s₁ x (length prefix)
+  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+      offset = length prefix
+  in CurrySpecs.SetupPost f prog offset s s₁ x →
+  IRCorrectness (curry f) prog s s₁ x offset
 x86-curry-combine {A} {B} {C} f prefix suffix x s s₁ setup = record
-  { exec-star = curry-star
+  { exec-star = CurrySpecs.SetupPost.setup-star setup
   ; exec-halted = CurrySpecs.SetupPost.setup-halted setup
-  ; exec-pc = curry-pc
+  ; exec-pc = CurrySpecs.SetupPost.setup-pc setup
   ; exec-output-valid = CurrySpecs.SetupPost.setup-output-valid setup
   ; exec-saved-regs = CurrySpecs.SetupPost.setup-saved-regs setup
-  ; exec-rsp-delta = curry-rsp-delta
-  ; exec-heap-preserved = curry-heap-preserved
-  ; exec-code-preserved = curry-code-preserved
-  ; exec-frame-preserved = curry-frame-preserved
+  ; exec-rsp-delta = CurrySpecs.SetupPost.setup-rsp-delta setup
+  ; exec-heap-preserved = CurrySpecs.SetupPost.setup-heap-preserved setup
+  ; exec-code-preserved = CurrySpecs.SetupPost.setup-code-preserved setup
+  ; exec-frame-preserved = CurrySpecs.SetupPost.setup-frame-preserved setup
   ; exec-stack-inv = CurrySpecs.SetupPost.setup-stack-inv setup
   ; exec-capacity = CurrySpecs.SetupPost.setup-capacity setup
   ; exec-frame-inv = CurrySpecs.SetupPost.setup-frame-inv setup
   }
-  where
-    prog = prefix ++ compile-x86 (curry f) ++ suffix
-
-    -- Fields not available from SetupPost - these follow from curry semantics
-    -- but require running curry again to prove, which needs preconditions we don't have
-    postulate
-      curry-star : Star prog s s₁
-      curry-pc : pc s₁ ≡ length prefix + compile-length (curry f)
-      curry-rsp-delta : readReg (regs s₁) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta (curry f))
-      curry-heap-preserved : ∀ addr → InHeap addr → readMem (memory s₁) addr ≡ readMem (memory s) addr
-      curry-code-preserved : ∀ addr → InCode addr → readMem (memory s₁) addr ≡ readMem (memory s) addr
-      curry-frame-preserved : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s₁) addr ≡ readMem (memory s) addr
 
 ------------------------------------------------------------------------
 -- Case Glue Lemmas
@@ -1287,6 +1288,7 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
       ; dispatch-stack-inv = CaseInlSetupResult.stack-inv-setup setup-res
       ; dispatch-input-valid = input-valid-for-f
       ; dispatch-capacity = cap-f
+      ; dispatch-frame-inv = CaseInlSetupResult.rbp-inv-setup setup-res
       }
 
 -- Dispatch enables f: converts DispatchLeftPost to Preconditions for f
@@ -1299,16 +1301,15 @@ x86-case-dispatch-enables-f : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   Preconditions {A} s₁ a (proj₁ (x86-case-left-context f g prefix suffix)) (ir-stack-requirement f)
 x86-case-dispatch-enables-f f g prefix suffix a s s₁ dispatch = record
   { pre-halted = CaseSpecs.DispatchLeftPost.dispatch-halted dispatch
-  ; pre-pc = pc-eq  -- Postulated: PC should be length prefix after dispatch
+  ; pre-pc = pc-eq  -- Postulated: PC mismatch (context returns prefix, but actual is prefix+6)
   ; pre-input-valid = CaseSpecs.DispatchLeftPost.dispatch-input-valid dispatch
   ; pre-stack-inv = CaseSpecs.DispatchLeftPost.dispatch-stack-inv dispatch
   ; pre-capacity = CaseSpecs.DispatchLeftPost.dispatch-capacity dispatch
-  ; pre-frame-inv = frame-inv  -- Postulated: DispatchLeftPost doesn't include frame inv
+  ; pre-frame-inv = CaseSpecs.DispatchLeftPost.dispatch-frame-inv dispatch
   }
   where
     postulate
       pc-eq : pc s₁ ≡ length (proj₁ (x86-case-left-context f g prefix suffix))
-      frame-inv : RbpInvariant s₁
 
 -- Case left combine: combines dispatch result and f execution into case result
 -- NOTE: This is heavily postulated because:
@@ -1437,6 +1438,7 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
       ; dispatch-stack-inv = CaseInrSetupResult.stack-inv-setup setup-res
       ; dispatch-input-valid = input-valid-for-g
       ; dispatch-capacity = cap-g
+      ; dispatch-frame-inv = CaseInrSetupResult.rbp-inv-setup setup-res
       }
 
 -- Dispatch enables g: converts DispatchRightPost to Preconditions for g
@@ -1446,16 +1448,15 @@ x86-case-dispatch-enables-g : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   Preconditions {B} s₁ b (proj₁ (x86-case-right-context f g prefix suffix)) (ir-stack-requirement g)
 x86-case-dispatch-enables-g f g prefix suffix b s s₁ dispatch = record
   { pre-halted = CaseSpecs.DispatchRightPost.dispatch-halted dispatch
-  ; pre-pc = pc-eq
+  ; pre-pc = pc-eq  -- Postulated: PC mismatch (context returns prefix, but actual is prefix+7)
   ; pre-input-valid = CaseSpecs.DispatchRightPost.dispatch-input-valid dispatch
   ; pre-stack-inv = CaseSpecs.DispatchRightPost.dispatch-stack-inv dispatch
   ; pre-capacity = CaseSpecs.DispatchRightPost.dispatch-capacity dispatch
-  ; pre-frame-inv = frame-inv
+  ; pre-frame-inv = CaseSpecs.DispatchRightPost.dispatch-frame-inv dispatch
   }
   where
     postulate
       pc-eq : pc s₁ ≡ length (proj₁ (x86-case-right-context f g prefix suffix))
-      frame-inv : RbpInvariant s₁
 
 -- Case right combine: combines dispatch result and g execution into case result
 x86-case-right-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)

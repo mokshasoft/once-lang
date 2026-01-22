@@ -211,12 +211,16 @@ record ArchCorrectness : Set₂ where
     curry-setup : ∀ {A B C : Type} (f : IR (A * B) C)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
       Preconditions {A} s x prefix (ir-stack-requirement (curry f)) →
-      ∃[ s₁ ] CurrySpecs.SetupPost f s s₁ x
+      let prog = prefix ++ₚ compile (curry f) ++ₚ suffix
+          offset = program-length prefix
+      in ∃[ s₁ ] CurrySpecs.SetupPost f prog offset s s₁ x
 
     curry-combine : ∀ {A B C : Type} (f : IR (A * B) C)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ : State) →
-      CurrySpecs.SetupPost f s s₁ x →
-      IRCorrectness (curry f) (prefix ++ₚ compile (curry f) ++ₚ suffix) s s₁ x (program-length prefix)
+      let prog = prefix ++ₚ compile (curry f) ++ₚ suffix
+          offset = program-length prefix
+      in CurrySpecs.SetupPost f prog offset s s₁ x →
+      IRCorrectness (curry f) prog s s₁ x offset
 
     -----------------------------------------------------------------
     -- Case Glue: [ f , g ]
