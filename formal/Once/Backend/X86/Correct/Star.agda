@@ -17,6 +17,8 @@ open State
 open import Data.Bool using (Bool; true; false)
 open import Data.List using (List)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Product using (∃; ∃-syntax; _,_; _×_)
 open import Data.Nat using (ℕ; zero; suc; _≟_; _≤_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-trans; m≤m+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst; inspect; [_])
@@ -167,3 +169,16 @@ star-step7 h₀ step₀ h₁ step₁ h₂ step₂ h₃ step₃ h₄ step₄ h₅
 -- | Helper: extract equality from just
 just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
 just-injective refl = refl
+
+------------------------------------------------------------------------
+-- Step Determinism Helpers
+------------------------------------------------------------------------
+
+-- | Step determinism: if two step proofs start from the same state, they reach the same state.
+-- Given step prog s ≡ just s₁ and step prog s ≡ just s₂, we have s₁ ≡ s₂.
+step-deterministic : ∀ {prog : Program} {s s₁ s₂ : State} →
+  step prog s ≡ just s₁ →
+  step prog s ≡ just s₂ →
+  s₁ ≡ s₂
+step-deterministic step₁ step₂ = just-injective (trans (sym step₁) step₂)
+

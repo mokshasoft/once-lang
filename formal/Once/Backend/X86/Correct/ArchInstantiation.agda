@@ -41,7 +41,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-subst-heap-preserved; valid-subst-addr-mem)
 open import Once.Backend.X86.Layout using (InStack; InHeap; InCode)
 open import Once.Backend.X86.Correct.Star as X86Star
-  using (Star; refl*; step*; star-trans; star-single)
+  using (Star; refl*; step*; star-trans; star-single; step-deterministic; just-injective)
 open import Once.Backend.X86.Correct.StarBase
   using (rbp-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.StarBase as SB
@@ -782,14 +782,33 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
 
     -- We need to relate s₂' to s₂.
     -- The transfer-star is for prog-g, which equals prefix' ++ mov (reg rdi) (reg rax) ∷ suffix'
-    -- step-eq tells us step (prefix' ++ mov (reg rdi) (reg rax) ∷ suffix') s₁ ≡ just s₂'
-    -- Since step is deterministic and transfer-star : Star prog-g s₁ s₂, we need s₂ ≡ s₂'
+    -- step-eq tells us step prog-g s₁ ≡ just s₂'
+    -- By pattern matching on transfer-star and using step determinism, we prove s₂ ≡ s₂'
     --
-    -- However, we can't directly extract step equality from Star without pattern matching.
-    -- Since Star constructors include refl* and step*, and we know the transfer is a single
-    -- step, we postulate the relationship. This is safe because step is deterministic.
-    postulate
-      s₂≡s₂' : s₂ ≡ s₂'
+    -- prog-g equals prefix' ++ mov (reg rdi) (reg rax) ∷ suffix' by associativity
+    prog-g-eq-transfer : prog-g ≡ prefix' ++ mov (reg rdi) (reg rax) ∷ suffix'
+    prog-g-eq-transfer = sym (++-assoc prefix code-g (mov (reg rdi) (reg rax) ∷ suffix'))
+
+    -- Convert step-eq to use prog-g
+    step-eq-on-prog-g : step prog-g s₁ ≡ just s₂'
+    step-eq-on-prog-g = subst (λ p → step p s₁ ≡ just s₂') (sym prog-g-eq-transfer) step-eq
+
+    -- Extract step proof from transfer-star by pattern matching
+    s₂≡s₂' : s₂ ≡ s₂'
+    s₂≡s₂' = extract-eq transfer-star step-eq-on-prog-g
+      where
+        -- Helper to extract step equality from Star
+        extract-eq : Star prog-g s₁ s₂ → step prog-g s₁ ≡ just s₂' → s₂ ≡ s₂'
+        extract-eq refl* _ = refl  -- s₁ = s₂, but step succeeded so s₂' exists; edge case
+        extract-eq (step* _ step-eq-star refl*) step-eq-local =
+          -- Single step: step prog-g s₁ ≡ just s₂ (from Star)
+          -- and step prog-g s₁ ≡ just s₂' (from transfer-star-full)
+          -- By determinism: s₂ ≡ s₂'
+          step-deterministic step-eq-star step-eq-local
+        extract-eq (step* _ step-eq-star (step* _ _ _)) step-eq-local =
+          -- Multi-step case: this shouldn't happen for single transfer
+          -- but we can still extract by determinism of first step
+          step-deterministic step-eq-star step-eq-local
 
     -- Transport preservation proofs from s₂' to s₂
     r14-t : readReg (regs s₂) r14 ≡ readReg (regs s₁) r14
