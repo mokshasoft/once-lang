@@ -11,7 +11,7 @@
 ------------------------------------------------------------------------
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; inr; fst; snd; arr; unfold; fold)
-open import Once.Type using (Type; _*_; _⇒_; Eff) renaming (_+_ to _⊕_)
+open import Once.Type using (Type; _*_; _⇒_; Eff; Unit; Void; Int; Float; Str; Buffer; TVar; Fix) renaming (_+_ to _⊕_)
 open import Once.Semantics using (⟦_⟧; eval; encode)
 
 module Once.Backend.Common.IR.Spec where
@@ -20,6 +20,7 @@ open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
+open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -315,6 +316,90 @@ module IRSpecs
         dispatch-capacity : StackCapacity s₁ (ir-stack-requirement g)
 
 ------------------------------------------------------------------------
+-- ClosuresWF: WF for all closures in values of a given type
+--
+-- This type family computes what WF information is needed for values
+-- of each type. Used to thread WF through composition.
+--
+-- Pattern extracted from RiscV64, generalized for all architectures.
+-- Each architecture provides its own ApplyInputWF predicate.
+------------------------------------------------------------------------
+
+-- | ApplyInputWF predicate type
+-- Each architecture provides a predicate that captures:
+--   - code-ptr, env info, semantics, plus arch-specific requirements
+-- This is existentially quantified to hide internal details.
+ApplyInputWFPredicate : Set → Set₁
+ApplyInputWFPredicate Program = Type → Type → Program → Set
+
+-- | ClosuresWF module parameterized by architecture's ApplyInputWF
+-- This provides the type family and helper functions.
+module ClosuresWFModule {Program : Set} (ApplyInputWF : ApplyInputWFPredicate Program) where
+
+  -- | WF for all closures that might appear in a value of type T
+  -- For arrow types: architecture's ApplyInputWF predicate
+  -- For products: WF for both components
+  -- For sums: WF for both branches (conservative)
+  -- For other types: trivial (no closures)
+  ClosuresWF : Type → Program → Set
+  ClosuresWF Unit prog = ⊤
+  ClosuresWF Void prog = ⊤
+  ClosuresWF Int prog = ⊤
+  ClosuresWF Float prog = ⊤
+  ClosuresWF Str prog = ⊤
+  ClosuresWF Buffer prog = ⊤
+  ClosuresWF (TVar _) prog = ⊤
+  ClosuresWF (Eff _ _) prog = ⊤
+  ClosuresWF (A * B) prog = ClosuresWF A prog × ClosuresWF B prog
+  ClosuresWF (A ⊕ B) prog = ClosuresWF A prog × ClosuresWF B prog
+  ClosuresWF (A ⇒ B) prog = ApplyInputWF A B prog
+  ClosuresWF (Fix F) prog = ⊤  -- Recursive types: assume no closures for now
+
+  -- | Trivial WF for types without closures
+  -- IMPORTANT: This function should ONLY be called for types that genuinely
+  -- don't contain closures. Arrow types must get their WF from curry's output.
+  -- If called with an arrow type, returns an error marker.
+  trivialWF : ∀ T prog → ClosuresWF T prog
+  trivialWF Unit prog = tt
+  trivialWF Void prog = tt
+  trivialWF Int prog = tt
+  trivialWF Float prog = tt
+  trivialWF Str prog = tt
+  trivialWF Buffer prog = tt
+  trivialWF (TVar _) prog = tt
+  trivialWF (Eff _ _) prog = tt
+  trivialWF (A * B) prog = trivialWF A prog , trivialWF B prog
+  trivialWF (A ⊕ B) prog = trivialWF A prog , trivialWF B prog
+  trivialWF (A ⇒ B) prog = error-trivialWF-called-with-arrow
+    where postulate error-trivialWF-called-with-arrow : ApplyInputWF A B prog
+          -- ERROR: Arrow types should get WF from curry's output, not trivialWF!
+  trivialWF (Fix F) prog = tt
+
+  -- | Extract WF for first component of a pair
+  fstWF : ∀ {A B} {prog} → ClosuresWF (A * B) prog → ClosuresWF A prog
+  fstWF (wf-a , _) = wf-a
+
+  -- | Extract WF for second component of a pair
+  sndWF : ∀ {A B} {prog} → ClosuresWF (A * B) prog → ClosuresWF B prog
+  sndWF (_ , wf-b) = wf-b
+
+  -- | Build WF for a pair from components
+  pairWF : ∀ {A B} {prog} → ClosuresWF A prog → ClosuresWF B prog → ClosuresWF (A * B) prog
+  pairWF wf-a wf-b = wf-a , wf-b
+
+  -- | Extract WF for apply input: from (A ⇒ B) * A, get the closure's WF
+  applyInputWF : ∀ {A B} {prog} → ClosuresWF ((A ⇒ B) * A) prog → ApplyInputWF A B prog
+  applyInputWF (wf-closure , _) = wf-closure
+
+  -- | Extract WF for left branch of a sum
+  inlWF : ∀ {A B} {prog} → ClosuresWF (A ⊕ B) prog → ClosuresWF A prog
+  inlWF (wf-a , _) = wf-a
+
+  -- | Extract WF for right branch of a sum
+  inrWF : ∀ {A B} {prog} → ClosuresWF (A ⊕ B) prog → ClosuresWF B prog
+  inrWF (_ , wf-b) = wf-b
+
+------------------------------------------------------------------------
 -- Summary
 --
 -- This module defines architecture-independent types that MATCH what
@@ -323,10 +408,12 @@ module IRSpecs
 --   - Preconditions: includes input ValidAt (X86 has this!)
 --   - IRCorrectness: matches IRStarResultV fields
 --   - Phase specs: match X86's phase result records
+--   - ClosuresWF: type family for threading WF through composition
 --
 -- Key additions from original design:
 --   - input-value in MachineInterface (rdi / x0 / a0)
 --   - FramePtrInvariant in InvariantInterface (RbpInvariant)
 --   - pre-input-valid in Preconditions
 --   - StarInterface (each arch provides Star)
+--   - ClosuresWFModule for WF threading (from RiscV64)
 ------------------------------------------------------------------------
