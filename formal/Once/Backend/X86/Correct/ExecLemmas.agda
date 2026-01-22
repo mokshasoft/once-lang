@@ -100,6 +100,65 @@ transfer-star prefix suffix s h-false pc-eq = s' , step-eq , h' , pc' , rdi-eq ,
     rax-eq : readReg (regs s') rax ≡ readReg (regs s) rax
     rax-eq = readReg-writeReg-rdi-rax (regs s) (readReg (regs s) rax)
 
+-- | Extended transfer-star with full register and memory preservation
+-- Used for implementing compose-run-transfer in ArchInstantiation
+transfer-star-full : ∀ (prefix : Program) (suffix : Program) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ∃[ s' ] (step (prefix ++ mov (reg rdi) (reg rax) ∷ suffix) s ≡ just s'
+         × halted s' ≡ false
+         × pc s' ≡ length prefix +ℕ 1
+         × readReg (regs s') rdi ≡ readReg (regs s) rax
+         × readReg (regs s') rax ≡ readReg (regs s) rax
+         × readReg (regs s') r14 ≡ readReg (regs s) r14
+         × readReg (regs s') r15 ≡ readReg (regs s) r15
+         × readReg (regs s') rsp ≡ readReg (regs s) rsp
+         × readReg (regs s') rbp ≡ readReg (regs s) rbp
+         × (∀ addr → readMem (memory s') addr ≡ readMem (memory s) addr))
+transfer-star-full prefix suffix s h-false pc-eq = s' , step-eq , h' , pc' , rdi-eq , rax-eq , r14-eq , r15-eq , rsp-eq , rbp-eq , mem-eq
+  where
+    prog : Program
+    prog = prefix ++ mov (reg rdi) (reg rax) ∷ suffix
+
+    s' : State
+    s' = record s { regs = writeReg (regs s) rdi (readReg (regs s) rax)
+                  ; pc = pc s +ℕ 1 }
+
+    fetch-eq : fetch prog (pc s) ≡ just (mov (reg rdi) (reg rax))
+    fetch-eq = subst (λ p → fetch prog p ≡ just (mov (reg rdi) (reg rax)))
+                     (sym pc-eq) (fetch-at-prefix-end prefix (mov (reg rdi) (reg rax)) suffix)
+
+    step-eq : step prog s ≡ just s'
+    step-eq = trans (step-exec prog s (mov (reg rdi) (reg rax)) h-false fetch-eq)
+                    (execMov-reg-reg s rdi rax)
+
+    h' : halted s' ≡ false
+    h' = h-false
+
+    pc' : pc s' ≡ length prefix +ℕ 1
+    pc' = cong (λ p → p +ℕ 1) pc-eq
+
+    rdi-eq : readReg (regs s') rdi ≡ readReg (regs s) rax
+    rdi-eq = readReg-writeReg-same (regs s) rdi (readReg (regs s) rax)
+
+    rax-eq : readReg (regs s') rax ≡ readReg (regs s) rax
+    rax-eq = readReg-writeReg-rdi-rax (regs s) (readReg (regs s) rax)
+
+    r14-eq : readReg (regs s') r14 ≡ readReg (regs s) r14
+    r14-eq = readReg-writeReg-rdi-r14 (regs s) (readReg (regs s) rax)
+
+    r15-eq : readReg (regs s') r15 ≡ readReg (regs s) r15
+    r15-eq = readReg-writeReg-rdi-r15 (regs s) (readReg (regs s) rax)
+
+    rsp-eq : readReg (regs s') rsp ≡ readReg (regs s) rsp
+    rsp-eq = readReg-writeReg-rdi-rsp (regs s) (readReg (regs s) rax)
+
+    rbp-eq : readReg (regs s') rbp ≡ readReg (regs s) rbp
+    rbp-eq = readReg-writeReg-rdi-rbp (regs s) (readReg (regs s) rax)
+
+    mem-eq : ∀ addr → readMem (memory s') addr ≡ readMem (memory s) addr
+    mem-eq _ = refl
+
 ------------------------------------------------------------------------
 -- Single-IR execution at offset lemmas
 ------------------------------------------------------------------------

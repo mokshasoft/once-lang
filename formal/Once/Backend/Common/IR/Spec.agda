@@ -33,6 +33,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 ------------------------------------------------------------------------
 
 record MachineInterface : Set₁ where
+  infixr 5 _++ₚ_
+
   field
     -- Core types
     State : Set
@@ -58,6 +60,13 @@ record MachineInterface : Set₁ where
     program-length : Program → ℕ
     empty-program : Program
     empty-program-length : program-length empty-program ≡ 0
+
+    -- Program concatenation (for prefix/suffix patterns)
+    _++ₚ_ : Program → Program → Program
+    ++ₚ-length : ∀ (p₁ p₂ : Program) → program-length (p₁ ++ₚ p₂) ≡ program-length p₁ + program-length p₂
+    ++ₚ-assoc : ∀ (p₁ p₂ p₃ : Program) → (p₁ ++ₚ p₂) ++ₚ p₃ ≡ p₁ ++ₚ (p₂ ++ₚ p₃)
+    ++ₚ-empty-left : ∀ (p : Program) → empty-program ++ₚ p ≡ p
+    ++ₚ-empty-right : ∀ (p : Program) → p ++ₚ empty-program ≡ p
 
     -- Execution
     step : Program → State → Maybe State
@@ -189,6 +198,10 @@ module IRSpecs
 
       -- Register/state preservation
       exec-saved-regs : SavedRegsPreserved s s'
+
+      -- RSP delta tracking (needed for capacity threading through compose)
+      -- rsp s' = rsp s ∸ slots (ir-rsp-delta ir)
+      exec-rsp-delta : rsp-delta-slots s s' (ir-rsp-delta ir)
 
       -- Memory preservation
       exec-heap-preserved : HeapPreserved s s'

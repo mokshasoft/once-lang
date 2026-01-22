@@ -8,6 +8,9 @@
 -- obligations), this module derives full IR correctness via mutual
 -- recursion over the IR structure.
 --
+-- KEY: Sub-IR always runs within the context of the larger program.
+-- The prefix/suffix pattern ensures Star proofs are for the full program.
+--
 -- KEY: This module has NO POSTULATES. All obligations are fields
 -- in the ArchCorrectness record that each architecture must provide.
 ------------------------------------------------------------------------
@@ -23,7 +26,6 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_; length; _++_)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
@@ -35,133 +37,166 @@ open import Once.Backend.Common.IR.ArchInterface
 --
 -- This is the SHARED STRUCTURE. Each architecture instantiates this
 -- module with their ArchCorrectness implementation.
+--
+-- KEY INSIGHT: Sub-IR runs within the context of the full program.
+-- The prefix/suffix parameters ensure this:
+--   - prog = prefix ++ₚ compile ir ++ₚ suffix
+--   - Star proofs are for this full prog
+--   - PC starts at (program-length prefix), ends at (program-length prefix + compile-length ir)
 ------------------------------------------------------------------------
 
 module IRCorrect (Arch : ArchCorrectness) where
 
   open ArchCorrectness Arch
 
-  -- Abbreviation for preconditions with empty prefix
-  Pre : ∀ {A : Type} → State → ⟦ A ⟧ → ℕ → Set₁
-  Pre {A} s x cap = Preconditions {A} s x empty-program cap
-
   ----------------------------------------------------------------------
   -- Mutual Recursion over IR Structure
   --
-  -- This is the heart of the proof. The recursion pattern is:
-  --   - Leaf cases: delegate to ArchCorrectness
-  --   - Compose: run g, then f, combine with compose-combine
-  --   - Pair: setup → f → middle → g → cleanup, combine
-  --   - Curry: setup, then curry-combine
-  --   - Case: dispatch, run branch, combine
-  --   - Apply: use ir-correct as IH
+  -- Every ir-correct call takes prefix and suffix, ensuring sub-IR
+  -- runs in context. This matches X86's proven approach.
+  --
+  -- The recursion pattern is:
+  --   - Leaf cases: delegate to ArchCorrectness with prefix/suffix
+  --   - Compose: g with suffix including f, then f with prefix including g
+  --   - Pair: setup → f → middle → g → cleanup, each in context
+  --   - Curry: setup, combine (no sub-IR execution)
+  --   - Case: dispatch → branch, in context
+  --   - Apply: use ir-correct as IH for thunk
   --
   -- Termination is guaranteed by structural recursion on IR.
-  -- The {-# TERMINATING #-} pragma handles the case for apply
-  -- where we need to call ir-correct on the closure's thunk.
   ----------------------------------------------------------------------
 
   {-# TERMINATING #-}
   mutual
-    -- Main theorem: all IR is correct
-    ir-correct : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
-                 Pre {A} s x (ir-stack-requirement ir) →
-                 ∃[ s' ] IRCorrectness ir (compile ir) s s' x 0
+    -- Main theorem: all IR is correct when run in context
+    -- prog = prefix ++ₚ compile ir ++ₚ suffix
+    ir-correct : ∀ {A B : Type} (ir : IR A B)
+                 (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+                 Preconditions {A} s x prefix (ir-stack-requirement ir) →
+                 ∃[ s' ] IRCorrectness ir (prefix ++ₚ compile ir ++ₚ suffix) s s' x (program-length prefix)
 
     -- Identity: delegate to architecture
-    ir-correct id x s pre = id-correct x s pre
+    ir-correct id prefix suffix x s pre = id-correct prefix suffix x s pre
 
     -- Left injection: delegate to architecture
-    ir-correct inl x s pre = inl-correct x s pre
+    ir-correct inl prefix suffix x s pre = inl-correct prefix suffix x s pre
 
     -- Right injection: delegate to architecture
-    ir-correct inr x s pre = inr-correct x s pre
+    ir-correct inr prefix suffix x s pre = inr-correct prefix suffix x s pre
 
     -- First projection: delegate to architecture
-    ir-correct fst x s pre = fst-correct x s pre
+    ir-correct fst prefix suffix x s pre = fst-correct prefix suffix x s pre
 
     -- Second projection: delegate to architecture
-    ir-correct snd x s pre = snd-correct x s pre
+    ir-correct snd prefix suffix x s pre = snd-correct prefix suffix x s pre
 
     -- Arrow: delegate to architecture
-    ir-correct arr x s pre = arr-correct x s pre
+    ir-correct arr prefix suffix x s pre = arr-correct prefix suffix x s pre
 
     -- Unfold: delegate to architecture
-    ir-correct unfold x s pre = unfold-correct x s pre
+    ir-correct unfold prefix suffix x s pre = unfold-correct prefix suffix x s pre
 
     -- Fold: delegate to architecture
-    ir-correct fold x s pre = fold-correct x s pre
+    ir-correct fold prefix suffix x s pre = fold-correct prefix suffix x s pre
 
     -- Terminal: delegate to architecture
-    ir-correct terminal x s pre = terminal-correct x s pre
+    ir-correct terminal prefix suffix x s pre = terminal-correct prefix suffix x s pre
 
     -- Initial: delegate to architecture
-    ir-correct initial x s pre = initial-correct x s pre
+    ir-correct initial prefix suffix x s pre = initial-correct prefix suffix x s pre
 
     -- Prim: delegate to architecture
-    ir-correct (Prim name) x s pre = prim-correct name x s pre
+    ir-correct (Prim name) prefix suffix x s pre = prim-correct name prefix suffix x s pre
 
     -- Composition: f ∘ g means "first g, then f"
-    ir-correct (f ∘ g) x s pre =
-      let -- Step 1: Get g's preconditions
-          g-pre = compose-g-preconditions f g x s pre
-          -- Step 2: Run g
-          (s₁ , g-corr) = ir-correct g x s g-pre
-          -- Step 3: Get f's preconditions from g's result
-          f-pre = compose-enables-f f g x s s₁ pre g-corr
-          -- Step 4: Run f
-          (s₂ , f-corr) = ir-correct f (eval g x) s₁ f-pre
+    -- compile (f ∘ g) = compile g ++ₚ transfer ++ₚ compile f
+    -- g runs with: prefix, suffix = transfer ++ₚ compile f ++ₚ outer-suffix
+    -- transfer runs after g, before f
+    -- f runs with: prefix = outer-prefix ++ₚ compile g ++ₚ transfer, suffix
+    ir-correct (f ∘ g) prefix suffix x s pre =
+      let -- Compute sub-programs
+          code-g = compile g
+          code-f = compile f
+          transfer = compose-transfer f g
+          suffix-g = transfer ++ₚ code-f ++ₚ suffix
+          prefix-f = prefix ++ₚ code-g ++ₚ transfer
+          -- Step 1: Get g's preconditions
+          g-pre = compose-g-preconditions f g prefix suffix x s pre
+          -- Step 2: Run g in context (suffix includes transfer and f)
+          (s₁ , g-corr) = ir-correct g prefix suffix-g x s g-pre
+          -- Step 3: Run transfer, get f's preconditions
+          (s₂ , transfer-star , f-pre) = compose-run-transfer f g prefix suffix x s s₁ pre g-corr
+          -- Step 4: Run f in context (prefix includes g and transfer)
+          (s₃ , f-corr) = ir-correct f prefix-f suffix (eval g x) s₂ f-pre
           -- Step 5: Combine using architecture's combine lemma
-      in s₂ , compose-combine f g x s s₁ s₂ g-corr f-corr
+      in s₃ , compose-combine f g prefix suffix x s s₁ s₂ s₃ g-corr transfer-star f-corr
 
     -- Pair: setup → f → middle → g → cleanup
-    ir-correct ⟨ f , g ⟩ x s pre =
-      let -- Step 1: Setup phase
-          (s₁ , setup) = pair-setup f g x s pre
+    ir-correct ⟨ f , g ⟩ prefix suffix x s pre =
+      let -- Compute sub-programs (architecture provides the details)
+          (prefix-f , suffix-f , prefix-g , suffix-g) = pair-context f g prefix suffix
+          -- Step 1: Setup phase
+          (s₁ , setup) = pair-setup f g prefix suffix x s pre
           -- Step 2: Get f's preconditions
-          f-pre = pair-setup-enables-f f g x s s₁ setup
-          -- Step 3: Run f
-          (s₂ , f-corr) = ir-correct f x s₁ f-pre
+          f-pre = pair-setup-enables-f f g prefix suffix x s s₁ setup
+          -- Step 3: Run f in context
+          (s₂ , f-corr) = ir-correct f prefix-f suffix-f x s₁ f-pre
           -- Step 4: Middle phase (store f's result, restore input)
-          (s₃ , middle) = pair-middle f g x s₁ s₂ (eval f x) f-corr
+          (s₃ , middle) = pair-middle f g prefix suffix x s₁ s₂ (eval f x) f-corr
           -- Step 5: Get g's preconditions
-          g-pre = pair-middle-enables-g f g x s₁ s₂ s₃ (eval f x) middle
-          -- Step 6: Run g
-          (s₄ , g-corr) = ir-correct g x s₃ g-pre
+          g-pre = pair-middle-enables-g f g prefix suffix x s₁ s₂ s₃ (eval f x) middle
+          -- Step 6: Run g in context
+          (s₄ , g-corr) = ir-correct g prefix-g suffix-g x s₃ g-pre
           -- Step 7: Cleanup phase (construct pair)
-          -- pair-cleanup needs: original s, s₃ (where g started), s₄ (after g), values
-          (s₅ , cleanup) = pair-cleanup f g x s s₃ s₄ (eval f x) (eval g x) g-corr
+          (s₅ , cleanup) = pair-cleanup f g prefix suffix x s s₃ s₄ (eval f x) (eval g x) g-corr
           -- Step 8: Combine all phases
-      in s₅ , pair-combine f g x s s₁ s₂ s₃ s₄ s₅ setup f-corr middle g-corr cleanup
+      in s₅ , pair-combine f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setup f-corr middle g-corr cleanup
 
-    -- Curry: setup creates closure, skips thunk
-    ir-correct (curry f) x s pre =
-      let (s₁ , setup) = curry-setup f x s pre
-      in s₁ , curry-combine f x s s₁ setup
+    -- Curry: setup creates closure, skips thunk (no sub-IR execution needed)
+    ir-correct (curry f) prefix suffix x s pre =
+      let (s₁ , setup) = curry-setup f prefix suffix x s pre
+      in s₁ , curry-combine f prefix suffix x s s₁ setup
 
     -- Apply: use ir-correct as induction hypothesis for thunk
-    ir-correct apply x s pre = apply-correct ir-correct x s pre
+    ir-correct apply prefix suffix x s pre = apply-correct ir-correct prefix suffix x s pre
 
     -- Case: dispatch then branch
-    ir-correct [ f , g ] (inj₁ a) s pre =
-      let -- Step 1: Dispatch (determines it's left branch)
-          (s₁ , dispatch) = case-dispatch-left f g a s pre
+    ir-correct [ f , g ] prefix suffix (inj₁ a) s pre =
+      let -- Compute sub-programs
+          (prefix-f , suffix-f) = case-left-context f g prefix suffix
+          -- Step 1: Dispatch (determines it's left branch)
+          (s₁ , dispatch) = case-dispatch-left f g prefix suffix a s pre
           -- Step 2: Get f's preconditions
-          f-pre = case-dispatch-enables-f f g a s s₁ dispatch
-          -- Step 3: Run f
-          (s₂ , f-corr) = ir-correct f a s₁ f-pre
+          f-pre = case-dispatch-enables-f f g prefix suffix a s s₁ dispatch
+          -- Step 3: Run f in context
+          (s₂ , f-corr) = ir-correct f prefix-f suffix-f a s₁ f-pre
           -- Step 4: Combine dispatch and f
-      in s₂ , case-left-combine f g a s s₁ s₂ dispatch f-corr
+      in s₂ , case-left-combine f g prefix suffix a s s₁ s₂ dispatch f-corr
 
-    ir-correct [ f , g ] (inj₂ b) s pre =
-      let -- Step 1: Dispatch (determines it's right branch)
-          (s₁ , dispatch) = case-dispatch-right f g b s pre
+    ir-correct [ f , g ] prefix suffix (inj₂ b) s pre =
+      let -- Compute sub-programs
+          (prefix-g , suffix-g) = case-right-context f g prefix suffix
+          -- Step 1: Dispatch (determines it's right branch)
+          (s₁ , dispatch) = case-dispatch-right f g prefix suffix b s pre
           -- Step 2: Get g's preconditions
-          g-pre = case-dispatch-enables-g f g b s s₁ dispatch
-          -- Step 3: Run g
-          (s₂ , g-corr) = ir-correct g b s₁ g-pre
+          g-pre = case-dispatch-enables-g f g prefix suffix b s s₁ dispatch
+          -- Step 3: Run g in context
+          (s₂ , g-corr) = ir-correct g prefix-g suffix-g b s₁ g-pre
           -- Step 4: Combine dispatch and g
-      in s₂ , case-right-combine f g b s s₁ s₂ dispatch g-corr
+      in s₂ , case-right-combine f g prefix suffix b s s₁ s₂ dispatch g-corr
+
+  ----------------------------------------------------------------------
+  -- Top-level theorem: IR correct with empty prefix/suffix
+  --
+  -- This is the entry point for whole-program correctness.
+  -- Note: Uses empty-program ++ₚ compile ir ++ₚ empty-program = compile ir
+  -- by ++ₚ-empty-left, ++ₚ-empty-right, and ++ₚ-assoc.
+  ----------------------------------------------------------------------
+
+  ir-correct-toplevel : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
+                        Preconditions {A} s x empty-program (ir-stack-requirement ir) →
+                        ∃[ s' ] IRCorrectness ir (empty-program ++ₚ compile ir ++ₚ empty-program) s s' x (program-length empty-program)
+  ir-correct-toplevel ir x s pre = ir-correct ir empty-program empty-program x s pre
 
 ------------------------------------------------------------------------
 -- Summary
@@ -169,19 +204,16 @@ module IRCorrect (Arch : ArchCorrectness) where
 -- This module provides the SHARED PROOF STRUCTURE for all architectures.
 --
 -- What's shared (this module):
---   - The mutual recursion skeleton
+--   - The mutual recursion skeleton with prefix/suffix threading
 --   - How phases are sequenced (setup → body → cleanup)
---   - The recursive calls pattern
+--   - The recursive calls pattern with proper context
 --
 -- What's per-architecture (ArchCorrectness):
---   - Leaf case proofs (id, inl, fst, etc.)
+--   - Leaf case proofs (id, inl, fst, etc.) with prefix/suffix
 --   - Phase implementations (pair-setup, pair-middle, etc.)
 --   - Glue lemmas (compose-combine, pair-combine, etc.)
+--   - Context computation (pair-context, case-left-context, etc.)
 --
--- The sharing is ~100 lines of recursion structure.
--- Each architecture provides ~thousands of lines of proofs.
---
--- But the key value is: Agda ENFORCES that each architecture follows
--- the same structure. This prevents architectures from drifting
--- or implementing incompatible proof strategies.
+-- KEY DESIGN: Sub-IR always runs within full program context.
+-- This matches how X86 (and all real architectures) actually work.
 ------------------------------------------------------------------------

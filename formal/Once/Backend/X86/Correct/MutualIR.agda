@@ -97,8 +97,8 @@ open import Once.Backend.X86.Correct.IR.Inl
 open import Once.Backend.X86.Correct.IR.Inr
   using (run-inr-star-v; run-inr-star-v-auto)
 
--- Import architecture instantiation (verifies Common interface compatibility)
-open import Once.Backend.X86.Correct.ArchInstantiation
+-- Note: ArchInstantiation import removed to break module cycle.
+-- ArchInstantiation can now import MutualIR to use run-ir-star directly.
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
 open import Once.Backend.X86.Correct.IR.Curry
