@@ -631,7 +631,6 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
     open import Data.Nat.Properties using (+-assoc)
     postulate
       compose-capacity : StackCapacity s₃ (ir-output-capacity (f ∘ g))
-      compose-closure-wf : ClosureWFOut (prefix ++ compile-x86 (f ∘ g) ++ suffix)
 
     -- Shorthands for compiled code
     code-g = compile-x86 g
@@ -665,6 +664,14 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
 
     prog-f-eq-result : prog-f ≡ prog-result
     prog-f-eq-result = trans prog-f-eq-g prog-g-eq-result
+
+    -- Closure WF: prefer f's closure (compose output is f's output), fall back to g
+    compose-closure-wf : ClosureWFOut prog-result
+    compose-closure-wf = prefer-f (IRCorrectness.exec-closure-wf f-corr)
+      where
+        prefer-f : ClosureWFOut prog-f → ClosureWFOut prog-result
+        prefer-f Spec.no-closure = subst ClosureWFOut prog-g-eq-result (IRCorrectness.exec-closure-wf g-corr)
+        prefer-f cwf = subst ClosureWFOut prog-f-eq-result cwf
 
     -- Extract star from g (s → s₁)
     star-g : Star prog-g s s₁
@@ -909,9 +916,10 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
 -- Import pair setup helpers
 open import Once.Backend.X86.Correct.IR.Pair
   using (PairSetupResultV; pair-setup-star-v; make-pair-context; PairContext;
-         PairMiddleResultV; pair-middle-star-v)
+         PairMiddleResultV; pair-middle-star-v;
+         PairFinalPrecond; PairFinalResult; pair-final-star)
 open import Once.Backend.X86.Correct.IR.Pair using (module PairSetupResultV; module PairContext;
-         module PairMiddleResultV)
+         module PairMiddleResultV; module PairFinalResult; module PairFinalPrecond)
 open import Once.Backend.X86.Correct.SeqExec
   using (pair-middle-star-at; PairMiddleStarResult)
 open import Once.Backend.X86.Correct.SeqExec using (module PairMiddleStarResult)
@@ -1136,23 +1144,63 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx g-corr =
     prog-full = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
     offset-end = length prefix + compile-length ⟨ f , g ⟩
 
-    -- All cleanup phase details postulated for now
-    -- (will be proved using pair-final-star when semantic fields are addressed)
+    -- Establish PairFinalPrecond from g-corr and prior phases
     postulate
-      s₅ : State
-      h₅ : halted s₅ ≡ false
-      stack-inv₅ : StackInvariant s₅
+      final-precond : PairFinalPrecond f g prefix suffix s-orig s₄
+
+    -- Run the final 6 cleanup instructions
+    final-result : PairFinalResult f g prefix suffix s-orig s₄
+    final-result = pair-final-star f g prefix suffix s-orig s₄ final-precond
+
+    s₅ = PairFinalResult.s-final final-result
+
+    -- Directly extractable from PairFinalResult
+    h₅ : halted s₅ ≡ false
+    h₅ = PairFinalResult.h-final final-result
+
+    stack-inv₅ : StackInvariant s₅
+    stack-inv₅ = PairFinalResult.stack-inv-fin final-result
+
+    saved-regs₅ : (readReg (regs s₅) r14 ≡ readReg (regs s-orig) r14) ×
+                  (readReg (regs s₅) r15 ≡ readReg (regs s-orig) r15) ×
+                  (readReg (regs s₅) rbp ≡ readReg (regs s-orig) rbp)
+    saved-regs₅ = PairFinalResult.r14-fin final-result
+                , PairFinalResult.r15-fin final-result
+                , PairFinalResult.rbp-fin final-result
+
+    cleanup-heap₅ : X86-HeapPreserved s₄ s₅
+    cleanup-heap₅ = PairFinalResult.mem-heap-fin final-result
+
+    cleanup-code₅ : X86-CodePreserved s₄ s₅
+    cleanup-code₅ = PairFinalResult.mem-code-fin final-result
+
+    -- RSP delta: ir-rsp-delta ⟨ f , g ⟩ = 0, so slots 0 = 0, so rsp s₅ = rsp s-orig
+    cleanup-rsp₅ : readReg (regs s₅) rsp ≡ readReg (regs s-orig) rsp ∸ slots (ir-rsp-delta ⟨ f , g ⟩)
+    cleanup-rsp₅ = PairFinalResult.rsp-fin final-result
+
+    -- Star: transport from PairFinalResult's program to prog-full via prog-eq-final
+    cleanup-star₅ : Star prog-full s₄ s₅
+    cleanup-star₅ = subst (λ p → Star p s₄ s₅) (sym prog-eq-final) (PairFinalResult.star-fin final-result)
+
+    -- PC: length prefix-final + 6 = length prefix + compile-length ⟨ f , g ⟩
+    cleanup-pc₅ : pc s₅ ≡ offset-end
+    cleanup-pc₅ = trans (PairFinalResult.pc-fin final-result)
+                  (trans (cong (_+ 6) len-prefix-final)
+                  (trans (+-assoc (length prefix + 9 + len-f) len-g 6)
+                  (trans (cong ((length prefix + 9 + len-f) +_) (+-comm len-g 6))
+                  (trans (sym (+-assoc (length prefix + 9 + len-f) 6 len-g))
+                  (trans (cong (_+ len-g) (+-assoc (length prefix + 9) len-f 6))
+                  (trans (cong (λ z → (length prefix + 9 + z) + len-g) (+-comm len-f 6))
+                  (trans (cong (_+ len-g) (sym (+-assoc (length prefix + 9) 6 len-f)))
+                  (trans (cong (λ z → (z + len-f) + len-g) (+-assoc (length prefix) 9 6))
+                  (trans (cong (_+ len-g) (+-assoc (length prefix) 15 len-f))
+                  (+-assoc (length prefix) (15 + len-f) len-g))))))))))
+
+    -- Remaining fields that need bridging from original state
+    postulate
       cap₅ : StackCapacity s₅ (ir-output-capacity ⟨ f , g ⟩)
       output-valid₅ : ValidAt {A * B} (fx , gx) (readReg (regs s₅) rax) (memory s₅)
-      saved-regs₅ : (readReg (regs s₅) r14 ≡ readReg (regs s-orig) r14) ×
-                    (readReg (regs s₅) r15 ≡ readReg (regs s-orig) r15) ×
-                    (readReg (regs s₅) rbp ≡ readReg (regs s-orig) rbp)
       frame-inv₅ : RbpInvariant s₅
-      cleanup-star₅ : Star prog-full s₄ s₅
-      cleanup-pc₅ : pc s₅ ≡ offset-end
-      cleanup-rsp₅ : readReg (regs s₅) rsp ≡ readReg (regs s-orig) rsp ∸ slots (ir-rsp-delta ⟨ f , g ⟩)
-      cleanup-heap₅ : X86-HeapPreserved s₄ s₅
-      cleanup-code₅ : X86-CodePreserved s₄ s₅
       cleanup-frame₅ : X86-FramePreserved s₄ s₅
 
     cleanup-post : PairSpecs.CleanupPost f g prog-full offset-end s-orig s₄ s₅ x fx gx
@@ -1243,11 +1291,18 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
       (trans (IRCorrectness.exec-code-preserved f-corr addr in-code)
              (PairSpecs.SetupPost.setup-code-preserved setup addr in-code))))
 
+    -- Closure WF: prefer f's closure (for ⟨curry body, _⟩ pattern), fall back to g
+    pair-closure-wf : ClosureWFOut prog-full
+    pair-closure-wf = prefer-f (IRCorrectness.exec-closure-wf f-corr)
+      where
+        prefer-f : ClosureWFOut (prefix-f ++ code-f ++ suffix-f) → ClosureWFOut prog-full
+        prefer-f Spec.no-closure = subst ClosureWFOut (sym prog-eq-g) (IRCorrectness.exec-closure-wf g-corr)
+        prefer-f cwf = subst ClosureWFOut (sym prog-eq-f) cwf
+
     -- Frame preservation: each phase uses different rbp reference,
     -- so composition requires showing addr > rbp_s implies addr > rbp_s₁ etc.
     postulate
       pair-frame-preserved : X86-FramePreserved s s₅
-      pair-closure-wf : ClosureWFOut prog-full
 
 ------------------------------------------------------------------------
 -- Curry Glue Lemmas
@@ -1325,8 +1380,9 @@ x86-curry-combine {A} {B} {C} f prefix suffix x s s₁ setup = record
   ; exec-closure-wf = curry-closure-wf
   }
   where
-    postulate
-      curry-closure-wf : ClosureWFOut (prefix ++ compile-x86 (curry f) ++ suffix)
+    -- TODO: When curry produces has-closure, thread it through SetupPost
+    curry-closure-wf : ClosureWFOut (prefix ++ compile-x86 (curry f) ++ suffix)
+    curry-closure-wf = Spec.no-closure
 
 ------------------------------------------------------------------------
 -- Case Glue Lemmas
@@ -1565,7 +1621,10 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ dispatch f-cor
       case-stack-inv : StackInvariant s₂
       case-capacity : StackCapacity s₂ (ir-output-capacity [ f , g ])
       case-frame-inv : RbpInvariant s₂
-      case-closure-wf : ClosureWFOut prog
+
+    -- Case output is branch output (doesn't create closures in dispatch)
+    case-closure-wf : ClosureWFOut prog
+    case-closure-wf = Spec.no-closure
 
 -- Dispatch right: runs the 6-instruction setup sequence for inr branch
 x86-case-dispatch-right : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
@@ -1729,7 +1788,10 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-co
       case-stack-inv : StackInvariant s₂
       case-capacity : StackCapacity s₂ (ir-output-capacity [ f , g ])
       case-frame-inv : RbpInvariant s₂
-      case-closure-wf : ClosureWFOut prog
+
+    -- Case output is branch output (doesn't create closures in dispatch)
+    case-closure-wf : ClosureWFOut prog
+    case-closure-wf = Spec.no-closure
 
 ------------------------------------------------------------------------
 -- Apply (takes IH)
@@ -1786,7 +1848,10 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre = s' , apply-result
       apply-stack-inv : StackInvariant s'
       apply-capacity : StackCapacity s' (ir-output-capacity (apply {A} {B}))
       apply-frame-inv : RbpInvariant s'
-      apply-closure-wf : ClosureWFOut prog
+
+    -- Apply output is from thunk execution (doesn't create closures)
+    apply-closure-wf : ClosureWFOut prog
+    apply-closure-wf = Spec.no-closure
 
     apply-result : IRCorrectness (apply {A} {B}) prog s s' p (length prefix)
     apply-result = record
