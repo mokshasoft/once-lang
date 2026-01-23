@@ -83,7 +83,8 @@ open import Once.Backend.X86.Correct.MemoryValid
          PairAtS; fst-valid-s; snd-valid-s;
          ClosureAtS; env-valid-s; code-valid-s;
          valid-subst-addr-mem; valid-subst-heap-preserved;
-         valid-pair-decompose; valid-closure-decompose; valid-in-heap)
+         valid-pair-decompose; valid-closure-decompose; valid-in-heap;
+         valid-from-encode)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -998,18 +999,20 @@ run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-va
                                 apply-v-cl-wf apply-v-arg apply-v-env apply-pair-at apply-closure-at-wf
       in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x-wf-eq-x ir-result'
       where
-        -- REMAINING POSTULATES (4): runtime correspondence
+        -- REMAINING POSTULATES (3): runtime correspondence
         -- ClosureWellFormed: PROVEN (wf' from has-closure)
         -- Semantic correspondence: PROVEN (cl' + cl-env-eq' + cl-sem-eq' + cl-is-input)
         postulate
           -- Memory layout: closure at runtime contains has-closure's env and code-ptr
           apply-closure-at-wf : ClosureAtS (encode env') cp' apply-closure-addr (memory s)
-          -- Environment validity: env value is encoded in memory
-          apply-v-env : ValidAt env' (encode env') (memory s)
           -- Curry-apply correspondence: the closure from curry IS apply's input
           cl-is-input : cl' ≡ cl
           -- Stack capacity: sufficient for apply + thunk
           cap-for-apply : StackCapacity s (apply-consumed-slots +ℕ' ClosureWellFormed.thunk-capacity wf')
+
+        -- Environment validity: env is valid at its encode address (from valid-from-encode axiom)
+        apply-v-env : ValidAt env' (encode env') (memory s)
+        apply-v-env = valid-from-encode refl
 
         -- Construct ValidAt for the closure with has-closure's data
         cl-wf : Closure A B
