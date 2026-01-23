@@ -1699,14 +1699,16 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
   in result  -- Direct passthrough (no conversion needed!)
 
 ------------------------------------------------------------------------
--- run-apply-star-direct: Validity-based apply with postulated closure WF
+-- run-apply-star-direct: Validity-based apply with ClosureWFOutput
 --
 -- This is the top-level apply function that:
 -- 1. Decomposes the input validity into closure and arg components
--- 2. Uses postulates for closure well-formedness (threading through program)
+-- 2. Receives ClosureWFOutput from compose (threaded from curry)
 -- 3. Calls run-apply-to-ir-result-v with the decomposed values
 --
 -- Note: Acc is passed but not used - termination is via thunk's built-in proof
+-- Note: ClosureWFOutput is currently ignored (bound to _). Next step:
+--   pattern-match on has-closure to eliminate E/env/wf postulates.
 ------------------------------------------------------------------------
 
 -- | Validity-based apply execution (with Acc for termination)
@@ -1721,10 +1723,11 @@ run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPo
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   RbpInvariant s →
+  ClosureWFOutput (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) →
   Acc _<_ (ir-size (apply {A} {B})) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap rbp-inv _ =
+run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap rbp-inv _ _ =
   let (s' , ir-result') = run-apply-to-ir-result-v {closure-wf-E} prefix suffix code-ptr closure-wf-env sem apply-closure-addr apply-arg-addr arg s
                             closure-wf-post h-false pc-eq stack-inv cap-for-apply rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
   in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x''-eq-x ir-result'
@@ -1781,11 +1784,11 @@ run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-va
     cl' : Closure A B
     cl' = record { env-addr = env-addr ; semantics = sem }
 
-    -- POSTULATE: Closure well-formedness for closures in the program
-    -- This is justified because all closures come from curry in the same program,
-    -- and curry now produces ClosureWellFormed proofs (see run-curry-star-direct).
-    -- Threading this proof through composition is a future improvement.
-    -- E is the captured environment type, env is the environment value
+    -- POSTULATE: Closure well-formedness values
+    -- ClosureWFOutput is now threaded from curry through compose (see RecDispatcherWithWF).
+    -- The cwf parameter carries has-closure with E, env, and wf proof.
+    -- Remaining postulates: connecting cwf data to runtime memory state.
+    -- Elimination requires proving code-ptr/env-addr consistency with memory.
     postulate
       closure-wf-E : Type
       closure-wf-env : ⟦ closure-wf-E ⟧
@@ -1846,8 +1849,9 @@ run-apply-star-v : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   RbpInvariant s →
+  ClosureWFOutput (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) →
   Acc _<_ (ir-size (apply {A} {B})) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-run-apply-star-v {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
-  run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac
+run-apply-star-v {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
+  run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac

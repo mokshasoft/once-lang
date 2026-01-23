@@ -102,7 +102,7 @@ open import Once.Backend.X86.Correct.IR.Inr
   using (run-inr-star-v; run-inr-star-v-auto)
 
 -- Import RecDispatcher from central location
-open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDispatcherWithWF; unwrap-rec)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
 -- Now includes curry-thunk-correct-v with RecDispatcher pattern
@@ -222,6 +222,7 @@ mutual
     StackInvariant s →
     StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
+    ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →
     Acc _<_ (ir-size ir) →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
@@ -240,10 +241,11 @@ mutual
     StackInvariant s →
     StackCapacity s (ir-stack-requirement (curry f)) →
     RbpInvariant s →
+    ClosureWFOutput (prefix ++ compile-x86 (curry f) ++ suffix) →
     Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
-  run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
+  run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ (acc rs) =
     s' , record
       { ir-star = exec-star exec-res
       ; ir-halted = exec-halted exec-res
@@ -328,7 +330,7 @@ mutual
       -- Construct size-bounded dispatcher from Acc destructor (rs)
       rec : RecDispatcher (ir-size (curry f))
       rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-        run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
+        run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' no-closure (rs lt)
 
       wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
       wf = record
@@ -466,7 +468,7 @@ mutual
       -- Construct size-bounded dispatcher from Acc destructor (rs)
       rec : RecDispatcher (ir-size (curry f))
       rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-        run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
+        run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' no-closure (rs lt)
 
       wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
       wf = record
@@ -500,7 +502,7 @@ mutual
     where
       rec : RecDispatcher (ir-size (curry f))
       rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-        run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv'
+        run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' no-closure
           (Acc-smaller (<-wellFounded (ir-size (curry f))) lt)
         where
           -- Helper to get smaller Acc from Acc and proof
@@ -521,12 +523,13 @@ mutual
     StackInvariant s →
     StackCapacity s (ir-stack-requirement (curry f)) →
     RbpInvariant s →
+    ClosureWFOutput (prefix ++ compile-x86 (curry f) ++ suffix) →
     Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
-  run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
+  run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
     -- run-curry-star-direct takes validity input directly, passes Acc for thunk execution
-    run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac
+    run-curry-star-direct f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac
 
   ------------------------------------------------------------------------
   -- Validity-based dispatcher cases (IN mutual block)
@@ -534,55 +537,55 @@ mutual
 
   -- Direct validity-based execution for inl (base case, ignores Acc)
   -- ir-stack-requirement inl = 4, so cap-in : StackCapacity s 4 directly
-  run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity-based execution for inr (base case, ignores Acc)
   -- ir-stack-requirement inr = 4, so cap-in : StackCapacity s 4 directly
-  run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Pair: uses Acc to construct size-bounded dispatcher for parameterized module
   -- NOTE: Pair needs StackCapacity s 7 (5 for setup + 2 remaining)
   -- TODO: Dispatcher should take ir-input-capacity ir slots, not fixed 2
   -- Refactored: Calls IR.Pair.run-pair-star-v directly with rec parameter (no parameterized module)
-  run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
+  run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
         rec : RecDispatcher (ir-size ⟨ f , g ⟩)
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
+          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' no-closure (rs lt)
         -- cap-in has type StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) which is what run-pair-star-v expects
     in Pair.run-pair-star-v f g (ir-size ⟨ f , g ⟩) rec (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Compose: uses Acc to construct size-bounded dispatcher for parameterized module
   -- Compose: refactored to call IR/Compose.run-compose-star-v directly with rec parameter
-  run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
-    let -- Construct size-bounded dispatcher from Acc destructor (rs)
-        rec : RecDispatcher (ir-size (g ∘ f))
-        rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
+  run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ (acc rs) =
+    let -- Construct size-bounded dispatcher with closure-wf from Acc destructor (rs)
+        rec : RecDispatcherWithWF (ir-size (g ∘ f))
+        rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' cwf' =
+          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' cwf' (rs lt)
     in Compose.run-compose-star-v f g (ir-size (g ∘ f)) rec (∘-f-smaller f g) (∘-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for id (base case, ignores Acc)
-  run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-id-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for terminal (base case, ignores Acc)
-  run-ir-star-at-offset-v (terminal {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (terminal {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-terminal-star-vv prefix suffix x s h-false pc-eq stack-inv cap-in rbp-inv
   -- Direct validity for fold (base case, ignores Acc)
-  run-ir-star-at-offset-v (fold {F}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (fold {F}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-fold-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for unfold (base case, ignores Acc)
-  run-ir-star-at-offset-v (unfold {F}) prefix suffix caller-sp (wrap x') s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (unfold {F}) prefix suffix caller-sp (wrap x') s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-unfold-star-vv prefix suffix (wrap x') s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for arr (base case, ignores Acc)
-  run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
-  run-ir-star-at-offset-v (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid stack-proof
     in run-prim-star-vv name prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
   -- Initial: absurd case (base case, ignores Acc)
-  run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x
   -- fst: decompose pair validity (base case, ignores Acc)
-  run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     let a = proj₁ x
         b = proj₂ x
         decomp = valid-pair-decompose input-valid
@@ -593,7 +596,7 @@ mutual
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
     in run-fst-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv
   -- snd: decompose pair validity (base case, ignores Acc)
-  run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ =
+  run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     let a = proj₁ x
         b = proj₂ x
         decomp = valid-pair-decompose input-valid
@@ -604,18 +607,18 @@ mutual
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
     in run-snd-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv
   -- Case: refactored to call IR/Case.run-case-star-v directly with rec parameter
-  run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
+  run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
         rec : RecDispatcher (ir-size [ f , g ])
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' (rs lt)
+          run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' no-closure (rs lt)
     in Case.run-case-star-v f g (ir-size [ f , g ]) rec ([,]-f-smaller f g) ([,]-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- curry: passes Acc to recursive calls within curry-thunk-correct-impl
-  run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
-    run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac
-  -- apply: passes Acc to recursive calls (closure body execution)
-  run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac =
-    run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv ac
+  run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
+    run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac
+  -- apply: passes Acc and ClosureWFOutput to recursive calls (closure body execution)
+  run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
+    run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac
 
 ------------------------------------------------------------------------
 -- Public API: run-ir-star (provides initial Acc using <-wellFounded)
@@ -640,4 +643,4 @@ run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : Sta
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 run-ir-star ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
   run-ir-star-at-offset-v ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
-       (<-wellFounded (ir-size ir))
+       no-closure (<-wellFounded (ir-size ir))

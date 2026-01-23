@@ -540,7 +540,7 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
 -- Import additional modules needed for run-compose-star-v
 open import Once.Backend.Common.IRSize
   using (ir-size; ∘-f-smaller; ∘-g-smaller)
-open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDispatcherWithWF)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (capacity-preserved-rsp-unchanged; capacity-left-from-max; capacity-right-from-max;
          capacity-after-delta; ir-rsp-delta)
@@ -560,7 +560,7 @@ open import Once.Backend.X86.Correct.StarBase
 
 run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) →
   (bound : ℕ) →
-  (rec : RecDispatcher bound) →
+  (rec : RecDispatcherWithWF bound) →
   ir-size f < bound →
   ir-size g < bound →
   (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
@@ -586,7 +586,7 @@ run-compose-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix calle
 
       -- Step 1: Execute f (RECURSIVE via rec dispatcher)
       step-f : ∃[ s1 ] IRStarResultV f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
-      step-f = rec f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv cap-f rbp-inv
+      step-f = rec f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv cap-f rbp-inv no-closure
 
       s1 : State
       s1 = proj₁ step-f
@@ -636,11 +636,18 @@ run-compose-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix calle
       cap-g : StackCapacity s2 (ir-stack-requirement g)
       cap-g = capacity-preserved-rsp-unchanged s1 s2 (ir-stack-requirement g) cap-g-at-s1 (sym rsp-s2-eq-s1)
 
+      -- Transport f's closure-wf output to g's program decomposition
+      -- f gives: ClosureWFOutput (prefix ++ code-f ++ suffix-f)
+      -- g needs: ClosureWFOutput (prefix-g ++ code-g ++ suffix)
+      -- These are the same program, just decomposed differently
+      cwf-for-g : ClosureWFOutput (prefix-g ++ code-g ++ suffix)
+      cwf-for-g = subst ClosureWFOutput (trans prog-eq-transfer prog-eq-g) (IRStarResultV.ir-closure-wf r1-v)
+
       -- Step 3: Execute g (RECURSIVE via rec dispatcher)
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
       step-g = rec g g<bound prefix-g suffix caller-sp (eval f x) s2
                  (TransferResultV.h2 tr) (TransferResultV.pc2-g tr) input-valid-for-g
-                 (TransferResultV.stack-inv-2 tr) cap-g rbp-inv-2
+                 (TransferResultV.stack-inv-2 tr) cap-g rbp-inv-2 cwf-for-g
 
       s3 : State
       s3 = proj₁ step-g
