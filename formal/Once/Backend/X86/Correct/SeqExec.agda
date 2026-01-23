@@ -726,6 +726,12 @@ record PairMiddleStarResult (prog : Program) (s : State) (pc-after : ℕ) : Set 
     -- rsp preserved
     rsp-mid : readReg (regs s-mid) rsp ≡ readReg (regs s) rsp
 
+    -- rbp preserved
+    rbp-mid : readReg (regs s-mid) rbp ≡ readReg (regs s) rbp
+
+    -- r14 preserved
+    r14-mid : readReg (regs s-mid) r14 ≡ readReg (regs s) r14
+
     -- Memory preservation: addresses ≠ r15 are unchanged
     mem-other : ∀ addr → addr ≢ readReg (regs s) r15 → readMem (memory s-mid) addr ≡ readMem (memory s) addr
 
@@ -745,6 +751,8 @@ pair-middle-star-at prefix rest s h-false pc-eq = record
   ; mem-at-r15 = mem-eq
   ; r15-mid = r15-eq
   ; rsp-mid = rsp-eq
+  ; rbp-mid = rbp-eq
+  ; r14-mid = r14-final-eq
   ; mem-other = mem-above-eq
   }
   where
@@ -835,6 +843,14 @@ pair-middle-star-at prefix rest s h-false pc-eq = record
 
     rsp-eq : readReg (regs s-final) rsp ≡ readReg (regs s) rsp
     rsp-eq = trans (readReg-writeReg-rdi-rsp (regs s1) (readReg (regs s1) r14)) rsp-s1-eq
+
+    -- rbp is not touched by either instruction
+    rbp-eq : readReg (regs s-final) rbp ≡ readReg (regs s) rbp
+    rbp-eq = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) r14)
+
+    -- r14 is preserved (mov rdi, r14 writes to rdi, not r14)
+    r14-final-eq : readReg (regs s-final) r14 ≡ readReg (regs s) r14
+    r14-final-eq = readReg-writeReg-rdi-r14 (regs s1) (readReg (regs s1) r14)
 
     mem-eq : readMem (memory s-final) (readReg (regs s-final) r15) ≡ just (readReg (regs s) rax)
     mem-eq = trans (cong (readMem (memory s-final)) r15-eq)

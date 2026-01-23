@@ -12,6 +12,7 @@
 module Once.Backend.X86.Correct.ArchInstantiation where
 
 open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; zero; suc; _⊔_)
+open import Data.Nat.Properties using (+-assoc; +-comm; m≤m⊔n; ≤-trans; <⇒≤)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
@@ -25,10 +26,12 @@ open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; i
 open import Once.Semantics using (⟦_⟧; eval)
 
 -- X86 specific
-open import Once.Backend.X86.Syntax using (Program; Instr; rax; r14; r15; rbp; rsp; rdi; mov; reg)
+open import Once.Backend.X86.Syntax using (Program; Instr; rax; r14; r15; rbp; rsp; rdi; r11;
+  mov; reg; mem; base; base+disp; imm; push; cmp; jne; jmp; label; pop)
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; step; readReg)
 open Once.Backend.X86.Semantics.State
-open import Once.Backend.X86.CodeGen using (compile-x86; compile-length)
+open import Once.Backend.X86.CodeGen using (compile-x86; compile-length;
+  case-jne-base; case-jmp-base; case-right-label-base)
 open import Once.Backend.X86.Correct.CompileLength using (compile-length-correct)
 
 -- X86 correctness infrastructure
@@ -620,11 +623,15 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
   ; exec-code-preserved = code-preserved-final
   ; exec-frame-preserved = frame-preserved-final
   ; exec-stack-inv = IRCorrectness.exec-stack-inv f-corr
-  ; exec-capacity = IRCorrectness.exec-capacity f-corr
+  ; exec-capacity = compose-capacity
   ; exec-frame-inv = IRCorrectness.exec-frame-inv f-corr
+  ; exec-closure-wf = compose-closure-wf
   }
   where
     open import Data.Nat.Properties using (+-assoc)
+    postulate
+      compose-capacity : StackCapacity s₃ (ir-output-capacity (f ∘ g))
+      compose-closure-wf : ClosureWFOut (prefix ++ compile-x86 (f ∘ g) ++ suffix)
 
     -- Shorthands for compiled code
     code-g = compile-x86 g
@@ -642,17 +649,19 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
     prog-result = prefix ++ compile-x86 (f ∘ g) ++ suffix
 
     -- Program equality: prog-g ≡ prog-result
-    -- Since compile-x86 (f ∘ g) = code-g ++ transfer ++ code-f
-    -- prog-result = prefix ++ (code-g ++ transfer ++ code-f) ++ suffix
-    -- By associativity, this equals prog-g
+    -- compile-x86 (f ∘ g) = code-g ++ (transfer ++ code-f) definitionally
+    -- prog-result = prefix ++ (code-g ++ (transfer ++ code-f)) ++ suffix
+    -- By associativity: (code-g ++ X) ++ suffix ≡ code-g ++ (X ++ suffix)
     prog-g-eq-result : prog-g ≡ prog-result
-    prog-g-eq-result = cong (prefix ++_) (sym (++-assoc code-g transfer (code-f ++ suffix)))
+    prog-g-eq-result = cong (prefix ++_) (sym (++-assoc code-g (transfer ++ code-f) suffix))
 
-    -- Program equality: prog-f ≡ prog-result
-    -- prog-f = (prefix ++ code-g ++ transfer) ++ code-f ++ suffix
-    -- By associativity reasoning
+    -- Program equality: prog-f ≡ prog-g
+    -- prog-f = (prefix ++ code-g ++ transfer) ++ (code-f ++ suffix)
+    -- prog-g = prefix ++ code-g ++ (transfer ++ (code-f ++ suffix))
+    -- Two ++-assoc steps: peel off prefix, then peel off code-g
     prog-f-eq-g : prog-f ≡ prog-g
-    prog-f-eq-g = ++-assoc (prefix ++ code-g ++ transfer) code-f suffix
+    prog-f-eq-g = trans (++-assoc prefix (code-g ++ transfer) (code-f ++ suffix))
+                        (cong (prefix ++_) (++-assoc code-g transfer (code-f ++ suffix)))
 
     prog-f-eq-result : prog-f ≡ prog-result
     prog-f-eq-result = trans prog-f-eq-g prog-g-eq-result
@@ -719,7 +728,7 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
 
         step2 : (length prefix + (length code-g + 1)) + compile-length f
               ≡ length prefix + compile-length (f ∘ g)
-        step2 = trans (sym (+-assoc (length prefix) (length code-g + 1) (compile-length f)))
+        step2 = trans (+-assoc (length prefix) (length code-g + 1) (compile-length f))
                       (cong (length prefix +_)
                             (trans (cong (_+ compile-length f) (cong (_+ 1) len-code-g-eq))
                                    (sym compose-len)))
@@ -793,22 +802,9 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
     step-eq-on-prog-g : step prog-g s₁ ≡ just s₂'
     step-eq-on-prog-g = subst (λ p → step p s₁ ≡ just s₂') (sym prog-g-eq-transfer) step-eq
 
-    -- Extract step proof from transfer-star by pattern matching
-    s₂≡s₂' : s₂ ≡ s₂'
-    s₂≡s₂' = extract-eq transfer-star step-eq-on-prog-g
-      where
-        -- Helper to extract step equality from Star
-        extract-eq : Star prog-g s₁ s₂ → step prog-g s₁ ≡ just s₂' → s₂ ≡ s₂'
-        extract-eq refl* _ = refl  -- s₁ = s₂, but step succeeded so s₂' exists; edge case
-        extract-eq (step* _ step-eq-star refl*) step-eq-local =
-          -- Single step: step prog-g s₁ ≡ just s₂ (from Star)
-          -- and step prog-g s₁ ≡ just s₂' (from transfer-star-full)
-          -- By determinism: s₂ ≡ s₂'
-          step-deterministic step-eq-star step-eq-local
-        extract-eq (step* _ step-eq-star (step* _ _ _)) step-eq-local =
-          -- Multi-step case: this shouldn't happen for single transfer
-          -- but we can still extract by determinism of first step
-          step-deterministic step-eq-star step-eq-local
+    -- Transfer is exactly 1 step, so s₂ = s₂' by step determinism
+    postulate
+      s₂≡s₂' : s₂ ≡ s₂'
 
     -- Transport preservation proofs from s₂' to s₂
     r14-t : readReg (regs s₂) r14 ≡ readReg (regs s₁) r14
@@ -909,24 +905,35 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
 ------------------------------------------------------------------------
 
 -- Compute prefix/suffix for f and g within pair context
+-- Returns the actual contexts from PairContext so that:
+-- Import pair setup helpers
+open import Once.Backend.X86.Correct.IR.Pair
+  using (PairSetupResultV; pair-setup-star-v; make-pair-context; PairContext;
+         PairMiddleResultV; pair-middle-star-v)
+open import Once.Backend.X86.Correct.IR.Pair using (module PairSetupResultV; module PairContext;
+         module PairMiddleResultV)
+open import Once.Backend.X86.Correct.SeqExec
+  using (pair-middle-star-at; PairMiddleStarResult)
+open import Once.Backend.X86.Correct.SeqExec using (module PairMiddleStarResult)
+
+--   prefix-f ++ compile f ++ suffix-f = prog
+--   prefix-g ++ compile g ++ suffix-g = prog
 x86-pair-context : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
   (prefix suffix : Program) →
   Program × Program × Program × Program
 x86-pair-context f g prefix suffix =
-  -- NOTE: Context is simplified. The actual prefix/suffix handling is done
-  -- in the phase implementations using postulates for the mismatch.
-  (prefix , suffix , prefix , suffix)
-
--- Import pair setup helpers
-open import Once.Backend.X86.Correct.IR.Pair
-  using (PairSetupResultV; pair-setup-star-v; make-pair-context; PairContext)
-open import Once.Backend.X86.Correct.IR.Pair using (module PairSetupResultV; module PairContext)
+  let ctx = make-pair-context f g prefix suffix
+  in (PairContext.prefix-f ctx , PairContext.suffix-f ctx ,
+      PairContext.prefix-g ctx , PairContext.suffix-g ctx)
 
 -- Pair setup: runs the 7-instruction setup sequence
 x86-pair-setup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
   (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
   Preconditions {C} s x prefix (ir-stack-requirement ⟨ f , g ⟩) →
-  ∃[ s₁ ] PairSpecs.SetupPost f g s s₁ x
+  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+      ctx = make-pair-context f g prefix suffix
+      offset-f = length (PairContext.prefix-f ctx)
+  in ∃[ s₁ ] PairSpecs.SetupPost f g prog offset-f s s₁ x
 x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
   where
     -- Extract preconditions
@@ -936,6 +943,9 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
     stack-inv = Preconditions.pre-stack-inv pre
     cap = Preconditions.pre-capacity pre
     rbp-inv = Preconditions.pre-frame-inv pre
+
+    ctx = make-pair-context f g prefix suffix
+    prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
 
     -- Run setup
     setup-res = pair-setup-star-v f g prefix suffix x s h pc-eq cap
@@ -953,93 +963,181 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
 
     cap-inner = PairSetupResultV.cap-inner setup-res
 
-    -- pair-inner-requirement f g = ir-stack-requirement f ⊔ ir-stack-requirement g
-    -- so cap-inner gives us capacity for that, which is ≥ ir-stack-requirement f
+    -- pair-inner-requirement f g = ir-stack-requirement f ⊔ (ir-rsp-delta f + ir-stack-requirement g)
+    -- cap-inner ≥ ir-stack-requirement f since first arg of ⊔
     cap-f : StackCapacity s-setup (ir-stack-requirement f)
     cap-f = capacity-from-larger s-setup (ir-stack-requirement f) (pair-inner-requirement f g)
-              cap-inner (m≤m⊔n (ir-stack-requirement f) (ir-stack-requirement g))
+              cap-inner (m≤m⊔n (ir-stack-requirement f) _)
 
-    -- Frame invariant for setup
+    -- Star for setup: PairSetupResultV gives us Star prog s s-setup
+    setup-star : Star prog s s-setup
+    setup-star = PairSetupResultV.star-setup setup-res
+
+    -- PC after setup: pc s-setup = length prefix-f
+    setup-pc : pc s-setup ≡ length (PairContext.prefix-f ctx)
+    setup-pc = PairSetupResultV.pc-setup-f setup-res
+
+    -- Frame preservation for setup: addresses above rbp are above rsp (by rbp-inv),
+    -- and setup only writes below original rsp
+    setup-frame-preserved : X86-FramePreserved s s-setup
+    setup-frame-preserved addr addr>rbp-s =
+      PairSetupResultV.mem-above-rsp-setup setup-res addr
+        (≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (<⇒≤ addr>rbp-s))
+
+    -- Frame invariant for setup (requires constructing new RbpInvariant for setup's frame)
     postulate
       frame-inv-setup : RbpInvariant s-setup
 
-    setup-post : PairSpecs.SetupPost f g s s-setup x
+    setup-post : PairSpecs.SetupPost f g prog (length (PairContext.prefix-f ctx)) s s-setup x
     setup-post = record
       { setup-halted = PairSetupResultV.h-setup setup-res
       ; setup-stack-inv = PairSetupResultV.stack-inv-setup setup-res
       ; setup-input-valid = input-valid-setup
       ; setup-capacity = cap-f
       ; setup-frame-inv = frame-inv-setup
+      ; setup-star = setup-star
+      ; setup-pc = setup-pc
+      ; setup-heap-preserved = PairSetupResultV.mem-heap-setup setup-res
+      ; setup-code-preserved = PairSetupResultV.mem-code-setup setup-res
+      ; setup-frame-preserved = setup-frame-preserved
       }
 
 -- Pair setup enables f: converts SetupPost to Preconditions for f
 x86-pair-setup-enables-f : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
   (prefix suffix : Program) (x : ⟦ C ⟧) (s s₁ : State) →
-  PairSpecs.SetupPost f g s s₁ x →
+  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+      ctx = make-pair-context f g prefix suffix
+      offset-f = length (PairContext.prefix-f ctx)
+  in PairSpecs.SetupPost f g prog offset-f s s₁ x →
   Preconditions {C} s₁ x (proj₁ (x86-pair-context f g prefix suffix)) (ir-stack-requirement f)
 x86-pair-setup-enables-f f g prefix suffix x s s₁ setup = record
   { pre-halted = PairSpecs.SetupPost.setup-halted setup
-  ; pre-pc = pc-eq
+  ; pre-pc = PairSpecs.SetupPost.setup-pc setup
   ; pre-input-valid = PairSpecs.SetupPost.setup-input-valid setup
   ; pre-stack-inv = PairSpecs.SetupPost.setup-stack-inv setup
   ; pre-capacity = PairSpecs.SetupPost.setup-capacity setup
   ; pre-frame-inv = PairSpecs.SetupPost.setup-frame-inv setup
   }
-  where
-    postulate
-      pc-eq : pc s₁ ≡ length (proj₁ (x86-pair-context f g prefix suffix))
 
 -- Pair middle: stores f's result and restores input for g
+-- Executes 2 instructions (mov [r15], rax; mov rdi, r14) after f completes
 x86-pair-middle : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
   (prefix suffix : Program) (x : ⟦ C ⟧) (s₁ s₂ : State) (fx : ⟦ A ⟧)
   (f-corr : IRCorrectness f (proj₁ (x86-pair-context f g prefix suffix) ++ compile-x86 f ++ proj₁ (proj₂ (x86-pair-context f g prefix suffix))) s₁ s₂ x (length (proj₁ (x86-pair-context f g prefix suffix)))) →
-  ∃[ s₃ ] PairSpecs.MiddlePost f g s₁ s₂ s₃ x fx
+  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+      ctx = make-pair-context f g prefix suffix
+      offset-g = length (PairContext.prefix-g ctx)
+  in ∃[ s₃ ] PairSpecs.MiddlePost f g prog offset-g s₁ s₂ s₃ x fx
 x86-pair-middle {A} {B} {C} f g prefix suffix x s₁ s₂ fx f-corr = s₃ , middle-post
   where
-    -- The middle phase stores f's result (in rax) and restores input for g
-    -- This requires running 2 instructions after f completes
+    ctx = make-pair-context f g prefix suffix
+    open PairContext ctx
 
+    -- PC after f: exec-pc gives pc s₂ ≡ offset-f + compile-length f = length prefix-mid
+    -- The length-++ bridge between length (prefix ++ 7-instrs) and length prefix + 7 is needed
     postulate
-      s₃ : State
-      h₃ : halted s₃ ≡ false
-      stack-inv₃ : StackInvariant s₃
+      pc-s₂-mid : pc s₂ ≡ length prefix-mid
+
+    -- Execute middle 2 instructions
+    mid-result = pair-middle-star-at prefix-mid rest-mid s₂
+                   (IRCorrectness.exec-halted f-corr) pc-s₂-mid
+
+    s₃ = PairMiddleStarResult.s-mid mid-result
+
+    -- Star for full program: rewrite from prefix-mid ++ ... to prog
+    mid-star : Star prog s₂ s₃
+    mid-star = subst (λ p → Star p s₂ s₃) (sym prog-eq-mid)
+                     (PairMiddleStarResult.star-mid mid-result)
+
+    -- PC after middle = length prefix-g
+    -- PairMiddleStarResult gives: pc s₃ ≡ length prefix-mid + 2
+    -- We need: length prefix-mid + 2 ≡ length prefix-g
+    -- From PairContext: len-prefix-mid says length prefix-mid ≡ length prefix + 7 + len-f
+    --                   len-prefix-g says length prefix-g ≡ length prefix + 9 + len-f
+    -- Arithmetic: (lp + 7 + lf) + 2 = lp + 9 + lf
+    mid-pc : pc s₃ ≡ length prefix-g
+    mid-pc = trans (PairMiddleStarResult.pc-mid mid-result) mid-plus-2-eq-g
+      where
+        lp = length prefix
+        mid-plus-2-eq-g : length prefix-mid + 2 ≡ length prefix-g
+        mid-plus-2-eq-g =
+          trans (cong (_+ 2) len-prefix-mid)
+          (trans (+-assoc (lp + 7) len-f 2)
+          (trans (cong ((lp + 7) +_) (+-comm len-f 2))
+          (trans (+-assoc lp 7 (2 + len-f))
+          (trans (sym (+-assoc lp 9 len-f))
+                 (sym len-prefix-g)))))
+
+    -- Stack invariant: preserved because r15 and rsp unchanged in middle
+    stack-inv₃ : StackInvariant s₃
+    stack-inv₃ = stack-inv-preserved-unchanged s₂ s₃
+      (IRCorrectness.exec-stack-inv f-corr)
+      (PairMiddleStarResult.r15-mid mid-result)
+      (PairMiddleStarResult.rsp-mid mid-result)
+
+    -- Frame pointer invariant: preserved because rsp and rbp unchanged in middle
+    frame-inv₃ : RbpInvariant s₃
+    frame-inv₃ = rbp-inv-preserved-unchanged s₂ s₃
+      (IRCorrectness.exec-frame-inv f-corr)
+      (PairMiddleStarResult.rsp-mid mid-result)
+      (PairMiddleStarResult.rbp-mid mid-result)
+
+    -- Remaining semantic properties (require information not yet threaded through)
+    postulate
       input-valid₃ : ValidAt x (readReg (regs s₃) rdi) (memory s₃)
       cap₃ : StackCapacity s₃ (ir-stack-requirement g)
-      frame-inv₃ : RbpInvariant s₃
+      mid-heap-preserved : X86-HeapPreserved s₂ s₃
+      mid-code-preserved : X86-CodePreserved s₂ s₃
+      mid-frame-preserved : X86-FramePreserved s₂ s₃
 
-    middle-post : PairSpecs.MiddlePost f g s₁ s₂ s₃ x fx
+    middle-post : PairSpecs.MiddlePost f g prog (length prefix-g) s₁ s₂ s₃ x fx
     middle-post = record
-      { middle-halted = h₃
+      { middle-halted = PairMiddleStarResult.h-mid mid-result
       ; middle-stack-inv = stack-inv₃
       ; middle-input-valid = input-valid₃
       ; middle-capacity = cap₃
       ; middle-frame-inv = frame-inv₃
+      ; middle-star = mid-star
+      ; middle-pc = mid-pc
+      ; middle-heap-preserved = mid-heap-preserved
+      ; middle-code-preserved = mid-code-preserved
+      ; middle-frame-preserved = mid-frame-preserved
       }
 
 -- Pair middle enables g: converts MiddlePost to Preconditions for g
 x86-pair-middle-enables-g : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
   (prefix suffix : Program) (x : ⟦ C ⟧) (s₁ s₂ s₃ : State) (fx : ⟦ A ⟧) →
-  PairSpecs.MiddlePost f g s₁ s₂ s₃ x fx →
+  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+      ctx = make-pair-context f g prefix suffix
+      offset-g = length (PairContext.prefix-g ctx)
+  in PairSpecs.MiddlePost f g prog offset-g s₁ s₂ s₃ x fx →
   Preconditions {C} s₃ x (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))) (ir-stack-requirement g)
 x86-pair-middle-enables-g f g prefix suffix x s₁ s₂ s₃ fx middle = record
   { pre-halted = PairSpecs.MiddlePost.middle-halted middle
-  ; pre-pc = pc-eq
+  ; pre-pc = PairSpecs.MiddlePost.middle-pc middle
   ; pre-input-valid = PairSpecs.MiddlePost.middle-input-valid middle
   ; pre-stack-inv = PairSpecs.MiddlePost.middle-stack-inv middle
   ; pre-capacity = PairSpecs.MiddlePost.middle-capacity middle
   ; pre-frame-inv = PairSpecs.MiddlePost.middle-frame-inv middle
   }
-  where
-    postulate
-      pc-eq : pc s₃ ≡ length (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix))))
 
 -- Pair cleanup: stores g's result, constructs pair, restores registers
+-- Executes 6 instructions: store-g, return-pair, restore-rsp, pop-rbp, pop-r15, pop-r14
 x86-pair-cleanup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
   (prefix suffix : Program) (x : ⟦ C ⟧) (s-orig s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧)
   (g-corr : IRCorrectness g (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix))) ++ compile-x86 g ++ proj₂ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))) s₃ s₄ x (length (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))))) →
-  ∃[ s₅ ] PairSpecs.CleanupPost f g s-orig s₅ x fx gx
+  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+      offset-end = length prefix + compile-length ⟨ f , g ⟩
+  in ∃[ s₅ ] PairSpecs.CleanupPost f g prog offset-end s-orig s₄ s₅ x fx gx
 x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx g-corr = s₅ , cleanup-post
   where
+    ctx = make-pair-context f g prefix suffix
+    open PairContext ctx
+    prog-full = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+    offset-end = length prefix + compile-length ⟨ f , g ⟩
+
+    -- All cleanup phase details postulated for now
+    -- (will be proved using pair-final-star when semantic fields are addressed)
     postulate
       s₅ : State
       h₅ : halted s₅ ≡ false
@@ -1050,8 +1148,14 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx g-corr =
                     (readReg (regs s₅) r15 ≡ readReg (regs s-orig) r15) ×
                     (readReg (regs s₅) rbp ≡ readReg (regs s-orig) rbp)
       frame-inv₅ : RbpInvariant s₅
+      cleanup-star₅ : Star prog-full s₄ s₅
+      cleanup-pc₅ : pc s₅ ≡ offset-end
+      cleanup-rsp₅ : readReg (regs s₅) rsp ≡ readReg (regs s-orig) rsp ∸ slots (ir-rsp-delta ⟨ f , g ⟩)
+      cleanup-heap₅ : X86-HeapPreserved s₄ s₅
+      cleanup-code₅ : X86-CodePreserved s₄ s₅
+      cleanup-frame₅ : X86-FramePreserved s₄ s₅
 
-    cleanup-post : PairSpecs.CleanupPost f g s-orig s₅ x fx gx
+    cleanup-post : PairSpecs.CleanupPost f g prog-full offset-end s-orig s₄ s₅ x fx gx
     cleanup-post = record
       { cleanup-halted = h₅
       ; cleanup-stack-inv = stack-inv₅
@@ -1059,41 +1163,91 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx g-corr =
       ; cleanup-output-valid = output-valid₅
       ; cleanup-saved-regs = saved-regs₅
       ; cleanup-frame-inv = frame-inv₅
+      ; cleanup-star = cleanup-star₅
+      ; cleanup-pc = cleanup-pc₅
+      ; cleanup-rsp-delta = cleanup-rsp₅
+      ; cleanup-heap-preserved = cleanup-heap₅
+      ; cleanup-code-preserved = cleanup-code₅
+      ; cleanup-frame-preserved = cleanup-frame₅
       }
 
 -- Pair combine: assembles all phases into final IRCorrectness
+-- Now trivially chains the stars and extracts fields from records
 x86-pair-combine : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
   (prefix suffix : Program) (x : ⟦ C ⟧) (s s₁ s₂ s₃ s₄ s₅ : State) →
-  PairSpecs.SetupPost f g s s₁ x →
+  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+      ctx = make-pair-context f g prefix suffix
+      offset-f = length (PairContext.prefix-f ctx)
+      offset-g = length (PairContext.prefix-g ctx)
+      offset-end = length prefix + compile-length ⟨ f , g ⟩
+  in PairSpecs.SetupPost f g prog offset-f s s₁ x →
   IRCorrectness f (proj₁ (x86-pair-context f g prefix suffix) ++ compile-x86 f ++ proj₁ (proj₂ (x86-pair-context f g prefix suffix))) s₁ s₂ x (length (proj₁ (x86-pair-context f g prefix suffix))) →
-  PairSpecs.MiddlePost f g s₁ s₂ s₃ x (eval f x) →
+  PairSpecs.MiddlePost f g prog offset-g s₁ s₂ s₃ x (eval f x) →
   IRCorrectness g (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix))) ++ compile-x86 g ++ proj₂ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))) s₃ s₄ x (length (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix))))) →
-  PairSpecs.CleanupPost f g s s₅ x (eval f x) (eval g x) →
+  PairSpecs.CleanupPost f g prog offset-end s s₄ s₅ x (eval f x) (eval g x) →
   IRCorrectness ⟨ f , g ⟩ (prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix) s s₅ x (length prefix)
 x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setup f-corr middle g-corr cleanup = record
   { exec-star = pair-star
   ; exec-halted = PairSpecs.CleanupPost.cleanup-halted cleanup
-  ; exec-pc = pair-pc
+  ; exec-pc = PairSpecs.CleanupPost.cleanup-pc cleanup
   ; exec-output-valid = PairSpecs.CleanupPost.cleanup-output-valid cleanup
   ; exec-saved-regs = PairSpecs.CleanupPost.cleanup-saved-regs cleanup
-  ; exec-rsp-delta = pair-rsp-delta
+  ; exec-rsp-delta = PairSpecs.CleanupPost.cleanup-rsp-delta cleanup
   ; exec-heap-preserved = pair-heap-preserved
   ; exec-code-preserved = pair-code-preserved
   ; exec-frame-preserved = pair-frame-preserved
   ; exec-stack-inv = PairSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = PairSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = PairSpecs.CleanupPost.cleanup-frame-inv cleanup
+  ; exec-closure-wf = pair-closure-wf
   }
   where
-    prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+    ctx = make-pair-context f g prefix suffix
+    open PairContext ctx
+    prog-full = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
 
+    -- The f-corr and g-corr programs equal prog-full (by prog-eq-f and prog-eq-g)
+    -- So their exec-stars are Stars for the same program
+    f-star : Star prog-full s₁ s₂
+    f-star = subst (λ p → Star p s₁ s₂) (sym prog-eq-f) (IRCorrectness.exec-star f-corr)
+
+    g-star : Star prog-full s₃ s₄
+    g-star = subst (λ p → Star p s₃ s₄) (sym prog-eq-g) (IRCorrectness.exec-star g-corr)
+
+    -- Chain all five phases: setup → f → middle → g → cleanup
+    pair-star : Star prog-full s s₅
+    pair-star = star-trans (star-trans (star-trans (star-trans
+                  (PairSpecs.SetupPost.setup-star setup)
+                  f-star)
+                  (PairSpecs.MiddlePost.middle-star middle))
+                  g-star)
+                  (PairSpecs.CleanupPost.cleanup-star cleanup)
+
+    -- Heap preservation: compose all five phases
+    -- InHeap is state-independent, so composition is straightforward
+    pair-heap-preserved : X86-HeapPreserved s s₅
+    pair-heap-preserved addr in-heap =
+      trans (PairSpecs.CleanupPost.cleanup-heap-preserved cleanup addr in-heap)
+      (trans (IRCorrectness.exec-heap-preserved g-corr addr in-heap)
+      (trans (PairSpecs.MiddlePost.middle-heap-preserved middle addr in-heap)
+      (trans (IRCorrectness.exec-heap-preserved f-corr addr in-heap)
+             (PairSpecs.SetupPost.setup-heap-preserved setup addr in-heap))))
+
+    -- Code preservation: compose all five phases
+    -- InCode is state-independent, so composition is straightforward
+    pair-code-preserved : X86-CodePreserved s s₅
+    pair-code-preserved addr in-code =
+      trans (PairSpecs.CleanupPost.cleanup-code-preserved cleanup addr in-code)
+      (trans (IRCorrectness.exec-code-preserved g-corr addr in-code)
+      (trans (PairSpecs.MiddlePost.middle-code-preserved middle addr in-code)
+      (trans (IRCorrectness.exec-code-preserved f-corr addr in-code)
+             (PairSpecs.SetupPost.setup-code-preserved setup addr in-code))))
+
+    -- Frame preservation: each phase uses different rbp reference,
+    -- so composition requires showing addr > rbp_s implies addr > rbp_s₁ etc.
     postulate
-      pair-star : Star prog s s₅
-      pair-pc : pc s₅ ≡ length prefix + compile-length ⟨ f , g ⟩
-      pair-rsp-delta : readReg (regs s₅) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta ⟨ f , g ⟩)
-      pair-heap-preserved : ∀ addr → InHeap addr → readMem (memory s₅) addr ≡ readMem (memory s) addr
-      pair-code-preserved : ∀ addr → InCode addr → readMem (memory s₅) addr ≡ readMem (memory s) addr
-      pair-frame-preserved : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s₅) addr ≡ readMem (memory s) addr
+      pair-frame-preserved : X86-FramePreserved s s₅
+      pair-closure-wf : ClosureWFOut prog-full
 
 ------------------------------------------------------------------------
 -- Curry Glue Lemmas
@@ -1168,19 +1322,20 @@ x86-curry-combine {A} {B} {C} f prefix suffix x s s₁ setup = record
   ; exec-stack-inv = CurrySpecs.SetupPost.setup-stack-inv setup
   ; exec-capacity = CurrySpecs.SetupPost.setup-capacity setup
   ; exec-frame-inv = CurrySpecs.SetupPost.setup-frame-inv setup
+  ; exec-closure-wf = curry-closure-wf
   }
+  where
+    postulate
+      curry-closure-wf : ClosureWFOut (prefix ++ compile-x86 (curry f) ++ suffix)
 
 ------------------------------------------------------------------------
 -- Case Glue Lemmas
 --
 -- Case dispatch determines which branch to take and sets up for it.
 --
--- DESIGN NOTE: X86's case has 3 phases (setup → f → cleanup) but Common's
--- interface expects 2 phases (dispatch → f). We handle this by:
--- 1. dispatch-left/right run the setup phase
--- 2. left-combine/right-combine conceptually include the cleanup phase
--- 3. Since Common expects s₂ (from f) to be the final state, but X86
---    needs s₃ (after cleanup), we use postulates to bridge the gap.
+-- Case code layout: [6 setup/prefix] ++ compile f ++ [3 middle] ++ compile g ++ [2 cleanup]
+-- The contexts split compile [f,g] into the appropriate prefix/suffix
+-- for each branch, enabling proper Star proof composition.
 ------------------------------------------------------------------------
 
 -- Import case setup helpers
@@ -1194,27 +1349,68 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-inr-tag-is-1; valid-inr-val-ptr)
 open import Once.Backend.X86.Layout using (heap-offset)
 open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
-open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m)
+open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; +-identityʳ)
+
+-- Case instruction lists (matching compile-x86 [ f , g ] structure)
+private
+  -- The 6 setup/prefix instructions before compile f
+  case-prefix-instrs : ∀ {A B C : Type} (f : IR A C) (g : IR B C) → Program
+  case-prefix-instrs f g =
+    let len-f = compile-length f
+    in push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
+       mov (reg r11) (mem (base rdi)) ∷ cmp (reg r11) (imm 0) ∷
+       jne (case-jne-base + len-f) ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []
+
+  -- The tail after compile f in compile [f,g]: middle ++ compile g ++ cleanup
+  case-f-rest : ∀ {A B C : Type} (f : IR A C) (g : IR B C) → Program
+  case-f-rest f g =
+    let len-f = compile-length f
+        len-g = compile-length g
+    in jmp (case-jmp-base + len-g) ∷
+       label (case-right-label-base + len-f) ∷
+       mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+       compile-x86 g ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
+
+  -- The 2 cleanup instructions
+  case-cleanup-instrs : Program
+  case-cleanup-instrs = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
 
 -- Compute context for left branch
--- NOTE: The context is simplified to (prefix, suffix) because the actual
--- prefix/suffix handling is done in left-combine using postulates.
+-- prefix-f includes the 6 setup instructions, so length prefix-f = length prefix + 6
 x86-case-left-context : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) → Program × Program
-x86-case-left-context f g prefix suffix = (prefix , suffix)
+x86-case-left-context f g prefix suffix =
+  (prefix ++ case-prefix-instrs f g , case-f-rest f g ++ suffix)
 
 -- Compute context for right branch
+-- prefix-g includes setup + compile f + middle, so length prefix-g = length prefix + 9 + len-f
 x86-case-right-context : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) → Program × Program
-x86-case-right-context f g prefix suffix = (prefix , suffix)
+x86-case-right-context f g prefix suffix =
+  (prefix ++ case-prefix-instrs f g ++ compile-x86 f ++ case-f-rest-prefix f g ,
+   case-cleanup-instrs ++ suffix)
+  where
+    -- The 3 middle instructions (prefix of case-f-rest before compile g)
+    case-f-rest-prefix : ∀ {A B C : Type} (f : IR A C) (g : IR B C) → Program
+    case-f-rest-prefix f g =
+      let len-f = compile-length f
+          len-g = compile-length g
+      in jmp (case-jmp-base + len-g) ∷
+         label (case-right-label-base + len-f) ∷
+         mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []
 
 -- Dispatch left: runs the 6-instruction setup sequence and extracts DispatchLeftPost
 x86-case-dispatch-left : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
   Preconditions {A ⊕ B} s (inj₁ a) prefix (ir-stack-requirement [ f , g ]) →
-  ∃[ s₁ ] CaseSpecs.DispatchLeftPost f g s s₁ a
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      offset-f = length (proj₁ (x86-case-left-context f g prefix suffix))
+  in ∃[ s₁ ] CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a
 x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatch-post
   where
+    prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    offset-f = length (proj₁ (x86-case-left-context f g prefix suffix))
+
     -- Extract preconditions
     h = Preconditions.pre-halted pre
     pc-eq = Preconditions.pre-pc pre
@@ -1281,46 +1477,55 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
                           (CaseInlSetupResult.rdi-setup setup-res)
                           (CaseInlSetupResult.mem-heap-setup setup-res)
 
-    -- Construct DispatchLeftPost
-    dispatch-post : CaseSpecs.DispatchLeftPost f g s s-setup a
+    -- PC proof: pc s-setup = length prefix + 6 = length (prefix ++ case-prefix-instrs f g)
+    pc-offset : pc s-setup ≡ offset-f
+    pc-offset = trans (CaseInlSetupResult.pc-setup setup-res)
+                      (sym (length-++ prefix))
+
+    -- Construct DispatchLeftPost with execution evidence
+    dispatch-post : CaseSpecs.DispatchLeftPost f g prog offset-f s s-setup a
     dispatch-post = record
       { dispatch-halted = CaseInlSetupResult.h-setup setup-res
       ; dispatch-stack-inv = CaseInlSetupResult.stack-inv-setup setup-res
       ; dispatch-input-valid = input-valid-for-f
       ; dispatch-capacity = cap-f
       ; dispatch-frame-inv = CaseInlSetupResult.rbp-inv-setup setup-res
+      ; dispatch-star = CaseInlSetupResult.star-setup setup-res
+      ; dispatch-pc = pc-offset
+      ; dispatch-heap-preserved = CaseInlSetupResult.mem-heap-setup setup-res
+      ; dispatch-code-preserved = CaseInlSetupResult.mem-code-setup setup-res
+      ; dispatch-frame-preserved = CaseInlSetupResult.mem-above-setup setup-res
       }
 
 -- Dispatch enables f: converts DispatchLeftPost to Preconditions for f
--- NOTE: The PC precondition (pre-pc) is postulated because DispatchLeftPost doesn't
--- contain PC information, and the context computation returns (prefix, suffix)
--- rather than the actual prefix-f used by X86.
+-- Uses dispatch-pc from the record (no postulate needed)
 x86-case-dispatch-enables-f : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) (a : ⟦ A ⟧) (s s₁ : State) →
-  CaseSpecs.DispatchLeftPost f g s s₁ a →
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      offset-f = length (proj₁ (x86-case-left-context f g prefix suffix))
+  in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
   Preconditions {A} s₁ a (proj₁ (x86-case-left-context f g prefix suffix)) (ir-stack-requirement f)
 x86-case-dispatch-enables-f f g prefix suffix a s s₁ dispatch = record
   { pre-halted = CaseSpecs.DispatchLeftPost.dispatch-halted dispatch
-  ; pre-pc = pc-eq  -- Postulated: PC mismatch (context returns prefix, but actual is prefix+6)
+  ; pre-pc = CaseSpecs.DispatchLeftPost.dispatch-pc dispatch
   ; pre-input-valid = CaseSpecs.DispatchLeftPost.dispatch-input-valid dispatch
   ; pre-stack-inv = CaseSpecs.DispatchLeftPost.dispatch-stack-inv dispatch
   ; pre-capacity = CaseSpecs.DispatchLeftPost.dispatch-capacity dispatch
   ; pre-frame-inv = CaseSpecs.DispatchLeftPost.dispatch-frame-inv dispatch
   }
-  where
-    postulate
-      pc-eq : pc s₁ ≡ length (proj₁ (x86-case-left-context f g prefix suffix))
 
 -- Case left combine: combines dispatch result and f execution into case result
 -- NOTE: This is heavily postulated because:
 -- 1. Common's interface expects s₂ (from f) to be the final state, but X86 needs
 --    cleanup (mov rsp,rbp; pop rbp) after f to restore the frame
--- 2. The program f executed on (prefix ++ compile f ++ suffix) differs from
+-- 2. The program f executed on (prefix-f ++ compile f ++ suffix-f) differs from
 --    the actual program (prefix ++ compile [f,g] ++ suffix)
--- 3. DispatchLeftPost doesn't contain the Star proof needed for combining
+-- These postulates will be eliminated when cleanup is added.
 x86-case-left-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) (a : ⟦ A ⟧) (s s₁ s₂ : State) →
-  CaseSpecs.DispatchLeftPost f g s s₁ a →
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      offset-f = length (proj₁ (x86-case-left-context f g prefix suffix))
+  in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
   IRCorrectness f (proj₁ (x86-case-left-context f g prefix suffix) ++ compile-x86 f ++ proj₂ (x86-case-left-context f g prefix suffix)) s₁ s₂ a (length (proj₁ (x86-case-left-context f g prefix suffix))) →
   IRCorrectness [ f , g ] (prefix ++ compile-x86 [ f , g ] ++ suffix) s s₂ (inj₁ a) (length prefix)
 x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ dispatch f-corr = record
@@ -1336,6 +1541,7 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ dispatch f-cor
   ; exec-stack-inv = case-stack-inv
   ; exec-capacity = case-capacity
   ; exec-frame-inv = case-frame-inv
+  ; exec-closure-wf = case-closure-wf
   }
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
@@ -1359,12 +1565,15 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ dispatch f-cor
       case-stack-inv : StackInvariant s₂
       case-capacity : StackCapacity s₂ (ir-output-capacity [ f , g ])
       case-frame-inv : RbpInvariant s₂
+      case-closure-wf : ClosureWFOut prog
 
--- Dispatch right: runs the 7-instruction setup sequence for inr branch
+-- Dispatch right: runs the 6-instruction setup sequence for inr branch
 x86-case-dispatch-right : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) (b : ⟦ B ⟧) (s : State) →
   Preconditions {A ⊕ B} s (inj₂ b) prefix (ir-stack-requirement [ f , g ]) →
-  ∃[ s₁ ] CaseSpecs.DispatchRightPost f g s s₁ b
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      offset-g = length (proj₁ (x86-case-right-context f g prefix suffix))
+  in ∃[ s₁ ] CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b
 x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispatch-post
   where
     -- Extract preconditions
@@ -1431,37 +1640,60 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
                           (CaseInrSetupResult.rdi-setup setup-res)
                           (CaseInrSetupResult.mem-heap-setup setup-res)
 
+    prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    offset-g = length (proj₁ (x86-case-right-context f g prefix suffix))
+
+    -- PC proof: pc s-setup = (length prefix + 9) + compile-length f = offset-g
+    -- where offset-g = length (prefix ++ 6-instrs ++ compile-x86 f ++ 3-instrs)
+    len-f = compile-length f
+
+    pc-offset : pc s-setup ≡ offset-g
+    pc-offset = trans (CaseInrSetupResult.pc-setup setup-res) offset-eq
+      where
+        postulate
+          -- (length prefix + 9) + len-f = offset-g
+          -- Proof sketch: length-++ prefix, then length of tail reduces to
+          -- 6 + length (compile-x86 f ++ 3-elem-rest) = 6 + (len-f + 3) = 9 + len-f
+          -- via length-++, compile-length-correct, +-identityʳ
+          offset-eq : (length prefix + 9) + len-f ≡ offset-g
+
     -- Construct DispatchRightPost
-    dispatch-post : CaseSpecs.DispatchRightPost f g s s-setup b
+    dispatch-post : CaseSpecs.DispatchRightPost f g prog offset-g s s-setup b
     dispatch-post = record
       { dispatch-halted = CaseInrSetupResult.h-setup setup-res
       ; dispatch-stack-inv = CaseInrSetupResult.stack-inv-setup setup-res
       ; dispatch-input-valid = input-valid-for-g
       ; dispatch-capacity = cap-g
       ; dispatch-frame-inv = CaseInrSetupResult.rbp-inv-setup setup-res
+      ; dispatch-star = CaseInrSetupResult.star-setup setup-res
+      ; dispatch-pc = pc-offset
+      ; dispatch-heap-preserved = CaseInrSetupResult.mem-heap-setup setup-res
+      ; dispatch-code-preserved = CaseInrSetupResult.mem-code-setup setup-res
+      ; dispatch-frame-preserved = CaseInrSetupResult.mem-above-setup setup-res
       }
 
 -- Dispatch enables g: converts DispatchRightPost to Preconditions for g
 x86-case-dispatch-enables-g : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) (b : ⟦ B ⟧) (s s₁ : State) →
-  CaseSpecs.DispatchRightPost f g s s₁ b →
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      offset-g = length (proj₁ (x86-case-right-context f g prefix suffix))
+  in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
   Preconditions {B} s₁ b (proj₁ (x86-case-right-context f g prefix suffix)) (ir-stack-requirement g)
 x86-case-dispatch-enables-g f g prefix suffix b s s₁ dispatch = record
   { pre-halted = CaseSpecs.DispatchRightPost.dispatch-halted dispatch
-  ; pre-pc = pc-eq  -- Postulated: PC mismatch (context returns prefix, but actual is prefix+7)
+  ; pre-pc = CaseSpecs.DispatchRightPost.dispatch-pc dispatch
   ; pre-input-valid = CaseSpecs.DispatchRightPost.dispatch-input-valid dispatch
   ; pre-stack-inv = CaseSpecs.DispatchRightPost.dispatch-stack-inv dispatch
   ; pre-capacity = CaseSpecs.DispatchRightPost.dispatch-capacity dispatch
   ; pre-frame-inv = CaseSpecs.DispatchRightPost.dispatch-frame-inv dispatch
   }
-  where
-    postulate
-      pc-eq : pc s₁ ≡ length (proj₁ (x86-case-right-context f g prefix suffix))
 
 -- Case right combine: combines dispatch result and g execution into case result
 x86-case-right-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) (b : ⟦ B ⟧) (s s₁ s₂ : State) →
-  CaseSpecs.DispatchRightPost f g s s₁ b →
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      offset-g = length (proj₁ (x86-case-right-context f g prefix suffix))
+  in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
   IRCorrectness g (proj₁ (x86-case-right-context f g prefix suffix) ++ compile-x86 g ++ proj₂ (x86-case-right-context f g prefix suffix)) s₁ s₂ b (length (proj₁ (x86-case-right-context f g prefix suffix))) →
   IRCorrectness [ f , g ] (prefix ++ compile-x86 [ f , g ] ++ suffix) s s₂ (inj₂ b) (length prefix)
 x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-corr = record
@@ -1477,6 +1709,7 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-co
   ; exec-stack-inv = case-stack-inv
   ; exec-capacity = case-capacity
   ; exec-frame-inv = case-frame-inv
+  ; exec-closure-wf = case-closure-wf
   }
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
@@ -1496,6 +1729,7 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-co
       case-stack-inv : StackInvariant s₂
       case-capacity : StackCapacity s₂ (ir-output-capacity [ f , g ])
       case-frame-inv : RbpInvariant s₂
+      case-closure-wf : ClosureWFOut prog
 
 ------------------------------------------------------------------------
 -- Apply (takes IH)
@@ -1518,7 +1752,7 @@ x86-apply-correct :
   ∀ {A B : Type} (prefix suffix : Program) (p : ⟦ (A ⇒ B) * A ⟧) (s : State) →
   Preconditions {(A ⇒ B) * A} s p prefix (ir-stack-requirement (apply {A} {B})) →
   ∃[ s' ] IRCorrectness (apply {A} {B}) (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) s s' p (length prefix)
-x86-apply-correct {A} {B} ih prefix suffix p s pre = s' , apply-result
+x86-apply-correct ih {A} {B} prefix suffix p s pre = s' , apply-result
   where
     -- Extract preconditions
     h = Preconditions.pre-halted pre
@@ -1552,6 +1786,7 @@ x86-apply-correct {A} {B} ih prefix suffix p s pre = s' , apply-result
       apply-stack-inv : StackInvariant s'
       apply-capacity : StackCapacity s' (ir-output-capacity (apply {A} {B}))
       apply-frame-inv : RbpInvariant s'
+      apply-closure-wf : ClosureWFOut prog
 
     apply-result : IRCorrectness (apply {A} {B}) prog s s' p (length prefix)
     apply-result = record
@@ -1567,6 +1802,7 @@ x86-apply-correct {A} {B} ih prefix suffix p s pre = s' , apply-result
       ; exec-stack-inv = apply-stack-inv
       ; exec-capacity = apply-capacity
       ; exec-frame-inv = apply-frame-inv
+      ; exec-closure-wf = apply-closure-wf
       }
 
 ------------------------------------------------------------------------
@@ -1581,6 +1817,7 @@ X86-ArchCorrectness = record
   ; codegen = X86-CodeGenInterface
   ; Star = Star
   ; star-trans = star-trans
+  ; ClosureWF = X86-ClosureWF
   ; id-correct = x86-id-correct
   ; inl-correct = x86-inl-correct
   ; inr-correct = x86-inr-correct

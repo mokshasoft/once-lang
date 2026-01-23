@@ -798,13 +798,11 @@ pair-middle-star {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-se
                ; mem-at-r15 to mem-fst-stored
                ; r15-mid to r15-mid
                ; rsp-mid to rsp-mid
+               ; rbp-mid to rbp-mid
+               ; r14-mid to r14-mid
                ; mem-other to mem-above-mid-raw )
 
     s2 = s2-rec
-
-    -- rbp preserved: mov [r15], rax doesn't touch rbp, mov rdi, r14 doesn't touch rbp
-    r14-mid = readReg-writeReg-rdi-r14 (regs s1) (readReg (regs s1) r14)
-    rbp-mid = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) r14)
 
     -- star-mid-raw comes directly from PairMiddleResult (Star-based, no fuel conversion needed)
     star-mid : Star prog s1 s2
@@ -1060,11 +1058,9 @@ pair-middle-star-v {A} {B} {C} f g prefix suffix x s s-setup s1 r-f setup-res s-
                ; mem-at-r15 to mem-at-r15-raw
                ; r15-mid to r15-mid
                ; rsp-mid to rsp-mid
+               ; rbp-mid to rbp-mid
+               ; r14-mid to r14-mid
                ; mem-other to mem-other-raw )
-
-    -- r14 and rbp preserved: middle instructions (mov [r15], rax; mov rdi, r14) don't touch them
-    r14-mid = readReg-writeReg-rdi-r14 (regs s1) (readReg (regs s1) r14)
-    rbp-mid = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) r14)
 
     star-mid : Star prog s1 s2
     star-mid = subst (λ p → Star p s1 s2) (sym prog-eq-mid) star-mid-raw

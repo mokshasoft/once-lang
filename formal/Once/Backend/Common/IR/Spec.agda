@@ -11,7 +11,7 @@
 ------------------------------------------------------------------------
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; inr; fst; snd; arr; unfold; fold)
-open import Once.Type using (Type; _*_; _⇒_; Eff; Unit; Void; Int; Float; Str; Buffer; TVar; Fix) renaming (_+_ to _⊕_)
+open import Once.Type using (Type; _*_; _⇒_; _⇒[_]_; Eff; Unit; Void; Int; Float; Str; Buffer; TVar; Fix) renaming (_+_ to _⊕_)
 open import Once.Semantics using (⟦_⟧; eval; encode)
 
 module Once.Backend.Common.IR.Spec where
@@ -160,7 +160,7 @@ record CodeGenInterface (M : MachineInterface) : Set₁ where
 -- | Closure well-formedness predicate type
 -- Each architecture provides its own ClosureWF predicate with
 -- architecture-specific preconditions and guarantees.
-ClosureWFPredicate : Set → Set₂
+ClosureWFPredicate : Set → Set₁
 ClosureWFPredicate Program = ∀ {E A B : Type} →
   Program → ℕ → ⟦ E ⟧ → (⟦ A ⟧ → ⟦ B ⟧) → Set
 
@@ -259,34 +259,64 @@ module IRSpecs
   module PairSpecs {A B C : Type} (f : IR C A) (g : IR C B) where
 
     -- After setup: registers saved, ready for f
-    record SetupPost (s s₁ : State) (x : ⟦ C ⟧) : Set₁ where
+    -- prog is the full program: prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
+    -- offset-f is program-length prefix-f (where f starts)
+    record SetupPost (prog : Program) (offset-f : ℕ)
+                     (s s₁ : State) (x : ⟦ C ⟧) : Set₁ where
       field
+        -- State properties
         setup-halted : halted s₁ ≡ false
         setup-stack-inv : StackInvariant s₁
         setup-input-valid : ValidAt x (input-value s₁) (memory s₁)
         setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
         setup-frame-inv : FramePtrInvariant s₁
+        -- Execution evidence
+        setup-star : Star prog s s₁
+        setup-pc : pc s₁ ≡ offset-f
+        setup-heap-preserved : HeapPreserved s s₁
+        setup-code-preserved : CodePreserved s s₁
+        setup-frame-preserved : FramePreserved s s₁
 
     -- After middle: f's result stored, ready for g
-    record MiddlePost (s₁ s₂ s₃ : State) (x : ⟦ C ⟧) (fx : ⟦ A ⟧) : Set₁ where
+    -- prog is the full program
+    -- offset-g is program-length prefix-g (where g starts)
+    record MiddlePost (prog : Program) (offset-g : ℕ)
+                      (s₁ s₂ s₃ : State) (x : ⟦ C ⟧) (fx : ⟦ A ⟧) : Set₁ where
       field
+        -- State properties
         middle-halted : halted s₃ ≡ false
         middle-stack-inv : StackInvariant s₃
         middle-input-valid : ValidAt x (input-value s₃) (memory s₃)
         middle-capacity : StackCapacity s₃ (ir-stack-requirement g)
         middle-frame-inv : FramePtrInvariant s₃
-        -- f's result is preserved somewhere for later pair construction
+        -- Execution evidence
+        middle-star : Star prog s₂ s₃
+        middle-pc : pc s₃ ≡ offset-g
+        middle-heap-preserved : HeapPreserved s₂ s₃
+        middle-code-preserved : CodePreserved s₂ s₃
+        middle-frame-preserved : FramePreserved s₂ s₃
 
     -- After cleanup: pair constructed
-    record CleanupPost (s s₅ : State) (x : ⟦ C ⟧)
+    -- prog is the full program
+    -- offset-end is program-length prefix + compile-length ⟨ f , g ⟩
+    record CleanupPost (prog : Program) (offset-end : ℕ)
+                       (s s₄ s₅ : State) (x : ⟦ C ⟧)
                        (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) : Set₁ where
       field
+        -- State properties
         cleanup-halted : halted s₅ ≡ false
         cleanup-stack-inv : StackInvariant s₅
         cleanup-capacity : StackCapacity s₅ (ir-output-capacity ⟨ f , g ⟩)
         cleanup-output-valid : ValidAt {A * B} (fx , gx) (output-value s₅) (memory s₅)
         cleanup-saved-regs : SavedRegsPreserved s s₅
         cleanup-frame-inv : FramePtrInvariant s₅
+        -- Execution evidence
+        cleanup-star : Star prog s₄ s₅
+        cleanup-pc : pc s₅ ≡ offset-end
+        cleanup-rsp-delta : rsp-delta-slots s s₅ (ir-rsp-delta ⟨ f , g ⟩)
+        cleanup-heap-preserved : HeapPreserved s₄ s₅
+        cleanup-code-preserved : CodePreserved s₄ s₅
+        cleanup-frame-preserved : FramePreserved s₄ s₅
 
   module CurrySpecs {A B C : Type} (f : IR (A * B) C) where
 
@@ -313,21 +343,33 @@ module IRSpecs
 
   module CaseSpecs {A B C : Type} (f : IR A C) (g : IR B C) where
 
-    record DispatchLeftPost (s s₁ : State) (a : ⟦ A ⟧) : Set where
+    record DispatchLeftPost (prog : Program) (offset-f : ℕ)
+                            (s s₁ : State) (a : ⟦ A ⟧) : Set₁ where
       field
         dispatch-halted : halted s₁ ≡ false
         dispatch-stack-inv : StackInvariant s₁
         dispatch-input-valid : ValidAt a (input-value s₁) (memory s₁)
         dispatch-capacity : StackCapacity s₁ (ir-stack-requirement f)
         dispatch-frame-inv : FramePtrInvariant s₁
+        dispatch-star : Star prog s s₁
+        dispatch-pc : pc s₁ ≡ offset-f
+        dispatch-heap-preserved : HeapPreserved s s₁
+        dispatch-code-preserved : CodePreserved s s₁
+        dispatch-frame-preserved : FramePreserved s s₁
 
-    record DispatchRightPost (s s₁ : State) (b : ⟦ B ⟧) : Set where
+    record DispatchRightPost (prog : Program) (offset-g : ℕ)
+                             (s s₁ : State) (b : ⟦ B ⟧) : Set₁ where
       field
         dispatch-halted : halted s₁ ≡ false
         dispatch-stack-inv : StackInvariant s₁
         dispatch-input-valid : ValidAt b (input-value s₁) (memory s₁)
         dispatch-capacity : StackCapacity s₁ (ir-stack-requirement g)
         dispatch-frame-inv : FramePtrInvariant s₁
+        dispatch-star : Star prog s s₁
+        dispatch-pc : pc s₁ ≡ offset-g
+        dispatch-heap-preserved : HeapPreserved s s₁
+        dispatch-code-preserved : CodePreserved s s₁
+        dispatch-frame-preserved : FramePreserved s s₁
 
 ------------------------------------------------------------------------
 -- ClosuresWF: WF for all closures in values of a given type
@@ -366,7 +408,7 @@ module ClosuresWFModule {Program : Set} (ApplyInputWF : ApplyInputWFPredicate Pr
   ClosuresWF (Eff _ _) prog = ⊤
   ClosuresWF (A * B) prog = ClosuresWF A prog × ClosuresWF B prog
   ClosuresWF (A ⊕ B) prog = ClosuresWF A prog × ClosuresWF B prog
-  ClosuresWF (A ⇒ B) prog = ApplyInputWF A B prog
+  ClosuresWF (A ⇒[ _ ] B) prog = ApplyInputWF A B prog
   ClosuresWF (Fix F) prog = ⊤  -- Recursive types: assume no closures for now
 
   -- | Trivial WF for types without closures
@@ -384,7 +426,7 @@ module ClosuresWFModule {Program : Set} (ApplyInputWF : ApplyInputWFPredicate Pr
   trivialWF (Eff _ _) prog = tt
   trivialWF (A * B) prog = trivialWF A prog , trivialWF B prog
   trivialWF (A ⊕ B) prog = trivialWF A prog , trivialWF B prog
-  trivialWF (A ⇒ B) prog = error-trivialWF-called-with-arrow
+  trivialWF (A ⇒[ _ ] B) prog = error-trivialWF-called-with-arrow
     where postulate error-trivialWF-called-with-arrow : ApplyInputWF A B prog
           -- ERROR: Arrow types should get WF from curry's output, not trivialWF!
   trivialWF (Fix F) prog = tt

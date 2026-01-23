@@ -70,8 +70,11 @@ record ArchCorrectness : Set₂ where
       Star prog s₂ s₃ →
       Star prog s₁ s₃
 
-  -- Now open IRSpecs with the actual Star
-  open IRSpecs machine invariants validity codegen Star public
+    -- Closure well-formedness predicate (architecture-specific)
+    ClosureWF : ClosureWFPredicate Program
+
+  -- Now open IRSpecs with the actual Star and ClosureWF
+  open IRSpecs machine invariants validity codegen Star ClosureWF public
 
   field
     -----------------------------------------------------------------
@@ -173,35 +176,49 @@ record ArchCorrectness : Set₂ where
     pair-setup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
       (prefix suffix : Program) (x : ⟦ C ⟧) (s : State) →
       Preconditions {C} s x prefix (ir-stack-requirement ⟨ f , g ⟩) →
-      ∃[ s₁ ] PairSpecs.SetupPost f g s s₁ x
+      let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
+          offset-f = program-length (proj₁ (pair-context f g prefix suffix))
+      in ∃[ s₁ ] PairSpecs.SetupPost f g prog offset-f s s₁ x
 
     pair-setup-enables-f : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
       (prefix suffix : Program) (x : ⟦ C ⟧) (s s₁ : State) →
-      PairSpecs.SetupPost f g s s₁ x →
+      let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
+          offset-f = program-length (proj₁ (pair-context f g prefix suffix))
+      in PairSpecs.SetupPost f g prog offset-f s s₁ x →
       Preconditions {C} s₁ x (proj₁ (pair-context f g prefix suffix)) (ir-stack-requirement f)
 
     pair-middle : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
       (prefix suffix : Program) (x : ⟦ C ⟧) (s₁ s₂ : State) (fx : ⟦ A ⟧)
       (f-corr : IRCorrectness f (proj₁ (pair-context f g prefix suffix) ++ₚ compile f ++ₚ proj₁ (proj₂ (pair-context f g prefix suffix))) s₁ s₂ x (program-length (proj₁ (pair-context f g prefix suffix)))) →
-      ∃[ s₃ ] PairSpecs.MiddlePost f g s₁ s₂ s₃ x fx
+      let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
+          offset-g = program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))))
+      in ∃[ s₃ ] PairSpecs.MiddlePost f g prog offset-g s₁ s₂ s₃ x fx
 
     pair-middle-enables-g : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
       (prefix suffix : Program) (x : ⟦ C ⟧) (s₁ s₂ s₃ : State) (fx : ⟦ A ⟧) →
-      PairSpecs.MiddlePost f g s₁ s₂ s₃ x fx →
+      let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
+          offset-g = program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))))
+      in PairSpecs.MiddlePost f g prog offset-g s₁ s₂ s₃ x fx →
       Preconditions {C} s₃ x (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix)))) (ir-stack-requirement g)
 
     pair-cleanup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
       (prefix suffix : Program) (x : ⟦ C ⟧) (s-orig s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧)
       (g-corr : IRCorrectness g (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))) ++ₚ compile g ++ₚ proj₂ (proj₂ (proj₂ (pair-context f g prefix suffix)))) s₃ s₄ x (program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix)))))) →
-      ∃[ s₅ ] PairSpecs.CleanupPost f g s-orig s₅ x fx gx
+      let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
+          offset-end = program-length prefix + compile-length ⟨ f , g ⟩
+      in ∃[ s₅ ] PairSpecs.CleanupPost f g prog offset-end s-orig s₄ s₅ x fx gx
 
     pair-combine : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
       (prefix suffix : Program) (x : ⟦ C ⟧) (s s₁ s₂ s₃ s₄ s₅ : State) →
-      PairSpecs.SetupPost f g s s₁ x →
+      let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
+          offset-f = program-length (proj₁ (pair-context f g prefix suffix))
+          offset-g = program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))))
+          offset-end = program-length prefix + compile-length ⟨ f , g ⟩
+      in PairSpecs.SetupPost f g prog offset-f s s₁ x →
       IRCorrectness f (proj₁ (pair-context f g prefix suffix) ++ₚ compile f ++ₚ proj₁ (proj₂ (pair-context f g prefix suffix))) s₁ s₂ x (program-length (proj₁ (pair-context f g prefix suffix))) →
-      PairSpecs.MiddlePost f g s₁ s₂ s₃ x (eval f x) →
+      PairSpecs.MiddlePost f g prog offset-g s₁ s₂ s₃ x (eval f x) →
       IRCorrectness g (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))) ++ₚ compile g ++ₚ proj₂ (proj₂ (proj₂ (pair-context f g prefix suffix)))) s₃ s₄ x (program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))))) →
-      PairSpecs.CleanupPost f g s s₅ x (eval f x) (eval g x) →
+      PairSpecs.CleanupPost f g prog offset-end s s₄ s₅ x (eval f x) (eval g x) →
       IRCorrectness ⟨ f , g ⟩ (prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix) s s₅ x (program-length prefix)
 
     -----------------------------------------------------------------
@@ -235,32 +252,44 @@ record ArchCorrectness : Set₂ where
     case-dispatch-left : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
       (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
       Preconditions {A ⊕ B} s (inj₁ a) prefix (ir-stack-requirement [ f , g ]) →
-      ∃[ s₁ ] CaseSpecs.DispatchLeftPost f g s s₁ a
+      let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
+          offset-f = program-length (proj₁ (case-left-context f g prefix suffix))
+      in ∃[ s₁ ] CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a
 
     case-dispatch-enables-f : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
       (prefix suffix : Program) (a : ⟦ A ⟧) (s s₁ : State) →
-      CaseSpecs.DispatchLeftPost f g s s₁ a →
+      let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
+          offset-f = program-length (proj₁ (case-left-context f g prefix suffix))
+      in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
       Preconditions {A} s₁ a (proj₁ (case-left-context f g prefix suffix)) (ir-stack-requirement f)
 
     case-left-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
       (prefix suffix : Program) (a : ⟦ A ⟧) (s s₁ s₂ : State) →
-      CaseSpecs.DispatchLeftPost f g s s₁ a →
+      let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
+          offset-f = program-length (proj₁ (case-left-context f g prefix suffix))
+      in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
       IRCorrectness f (proj₁ (case-left-context f g prefix suffix) ++ₚ compile f ++ₚ proj₂ (case-left-context f g prefix suffix)) s₁ s₂ a (program-length (proj₁ (case-left-context f g prefix suffix))) →
       IRCorrectness [ f , g ] (prefix ++ₚ compile [ f , g ] ++ₚ suffix) s s₂ (inj₁ a) (program-length prefix)
 
     case-dispatch-right : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
       (prefix suffix : Program) (b : ⟦ B ⟧) (s : State) →
       Preconditions {A ⊕ B} s (inj₂ b) prefix (ir-stack-requirement [ f , g ]) →
-      ∃[ s₁ ] CaseSpecs.DispatchRightPost f g s s₁ b
+      let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
+          offset-g = program-length (proj₁ (case-right-context f g prefix suffix))
+      in ∃[ s₁ ] CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b
 
     case-dispatch-enables-g : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
       (prefix suffix : Program) (b : ⟦ B ⟧) (s s₁ : State) →
-      CaseSpecs.DispatchRightPost f g s s₁ b →
+      let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
+          offset-g = program-length (proj₁ (case-right-context f g prefix suffix))
+      in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
       Preconditions {B} s₁ b (proj₁ (case-right-context f g prefix suffix)) (ir-stack-requirement g)
 
     case-right-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
       (prefix suffix : Program) (b : ⟦ B ⟧) (s s₁ s₂ : State) →
-      CaseSpecs.DispatchRightPost f g s s₁ b →
+      let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
+          offset-g = program-length (proj₁ (case-right-context f g prefix suffix))
+      in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
       IRCorrectness g (proj₁ (case-right-context f g prefix suffix) ++ₚ compile g ++ₚ proj₂ (case-right-context f g prefix suffix)) s₁ s₂ b (program-length (proj₁ (case-right-context f g prefix suffix))) →
       IRCorrectness [ f , g ] (prefix ++ₚ compile [ f , g ] ++ₚ suffix) s s₂ (inj₂ b) (program-length prefix)
 
