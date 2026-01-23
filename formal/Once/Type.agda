@@ -9,6 +9,7 @@ module Once.Type where
 
 open import Level using (Level)
 open import Data.String using (String)
+open import Data.String.Properties using () renaming (_≟_ to _≟S_)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -153,3 +154,171 @@ infixr 30 _⇒₀_
 -- IO A is sugar for Eff Unit A (effectful computation producing A)
 IO : Type → Type
 IO A = Eff Unit A
+
+------------------------------------------------------------------------
+-- Decidable equality for Type
+------------------------------------------------------------------------
+
+_≟T_ : (A B : Type) → Dec (A ≡ B)
+Unit ≟T Unit = yes refl
+Void ≟T Void = yes refl
+Int ≟T Int = yes refl
+Float ≟T Float = yes refl
+Str ≟T Str = yes refl
+Buffer ≟T Buffer = yes refl
+(A₁ * B₁) ≟T (A₂ * B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
+... | yes refl | yes refl = yes refl
+... | no ¬p | _ = no λ { refl → ¬p refl }
+... | _ | no ¬q = no λ { refl → ¬q refl }
+(A₁ + B₁) ≟T (A₂ + B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
+... | yes refl | yes refl = yes refl
+... | no ¬p | _ = no λ { refl → ¬p refl }
+... | _ | no ¬q = no λ { refl → ¬q refl }
+(A₁ ⇒[ q₁ ] B₁) ≟T (A₂ ⇒[ q₂ ] B₂) with A₁ ≟T A₂ | q₁ ≟q q₂ | B₁ ≟T B₂
+... | yes refl | yes refl | yes refl = yes refl
+... | no ¬p | _ | _ = no λ { refl → ¬p refl }
+... | _ | no ¬q | _ = no λ { refl → ¬q refl }
+... | _ | _ | no ¬r = no λ { refl → ¬r refl }
+(Eff A₁ B₁) ≟T (Eff A₂ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
+... | yes refl | yes refl = yes refl
+... | no ¬p | _ = no λ { refl → ¬p refl }
+... | _ | no ¬q = no λ { refl → ¬q refl }
+(Fix F₁) ≟T (Fix F₂) with F₁ ≟T F₂
+... | yes refl = yes refl
+... | no ¬p = no λ { refl → ¬p refl }
+(TVar x) ≟T (TVar y) with x ≟S y
+... | yes refl = yes refl
+... | no ¬p = no λ { refl → ¬p refl }
+-- All other combinations are unequal
+Unit ≟T Void = no λ ()
+Unit ≟T Int = no λ ()
+Unit ≟T Float = no λ ()
+Unit ≟T Str = no λ ()
+Unit ≟T Buffer = no λ ()
+Unit ≟T (_ * _) = no λ ()
+Unit ≟T (_ + _) = no λ ()
+Unit ≟T (_ ⇒[ _ ] _) = no λ ()
+Unit ≟T Eff _ _ = no λ ()
+Unit ≟T Fix _ = no λ ()
+Unit ≟T TVar _ = no λ ()
+Void ≟T Unit = no λ ()
+Void ≟T Int = no λ ()
+Void ≟T Float = no λ ()
+Void ≟T Str = no λ ()
+Void ≟T Buffer = no λ ()
+Void ≟T (_ * _) = no λ ()
+Void ≟T (_ + _) = no λ ()
+Void ≟T (_ ⇒[ _ ] _) = no λ ()
+Void ≟T Eff _ _ = no λ ()
+Void ≟T Fix _ = no λ ()
+Void ≟T TVar _ = no λ ()
+Int ≟T Unit = no λ ()
+Int ≟T Void = no λ ()
+Int ≟T Float = no λ ()
+Int ≟T Str = no λ ()
+Int ≟T Buffer = no λ ()
+Int ≟T (_ * _) = no λ ()
+Int ≟T (_ + _) = no λ ()
+Int ≟T (_ ⇒[ _ ] _) = no λ ()
+Int ≟T Eff _ _ = no λ ()
+Int ≟T Fix _ = no λ ()
+Int ≟T TVar _ = no λ ()
+Float ≟T Unit = no λ ()
+Float ≟T Void = no λ ()
+Float ≟T Int = no λ ()
+Float ≟T Str = no λ ()
+Float ≟T Buffer = no λ ()
+Float ≟T (_ * _) = no λ ()
+Float ≟T (_ + _) = no λ ()
+Float ≟T (_ ⇒[ _ ] _) = no λ ()
+Float ≟T Eff _ _ = no λ ()
+Float ≟T Fix _ = no λ ()
+Float ≟T TVar _ = no λ ()
+Str ≟T Unit = no λ ()
+Str ≟T Void = no λ ()
+Str ≟T Int = no λ ()
+Str ≟T Float = no λ ()
+Str ≟T Buffer = no λ ()
+Str ≟T (_ * _) = no λ ()
+Str ≟T (_ + _) = no λ ()
+Str ≟T (_ ⇒[ _ ] _) = no λ ()
+Str ≟T Eff _ _ = no λ ()
+Str ≟T Fix _ = no λ ()
+Str ≟T TVar _ = no λ ()
+Buffer ≟T Unit = no λ ()
+Buffer ≟T Void = no λ ()
+Buffer ≟T Int = no λ ()
+Buffer ≟T Float = no λ ()
+Buffer ≟T Str = no λ ()
+Buffer ≟T (_ * _) = no λ ()
+Buffer ≟T (_ + _) = no λ ()
+Buffer ≟T (_ ⇒[ _ ] _) = no λ ()
+Buffer ≟T Eff _ _ = no λ ()
+Buffer ≟T Fix _ = no λ ()
+Buffer ≟T TVar _ = no λ ()
+(_ * _) ≟T Unit = no λ ()
+(_ * _) ≟T Void = no λ ()
+(_ * _) ≟T Int = no λ ()
+(_ * _) ≟T Float = no λ ()
+(_ * _) ≟T Str = no λ ()
+(_ * _) ≟T Buffer = no λ ()
+(_ * _) ≟T (_ + _) = no λ ()
+(_ * _) ≟T (_ ⇒[ _ ] _) = no λ ()
+(_ * _) ≟T Eff _ _ = no λ ()
+(_ * _) ≟T Fix _ = no λ ()
+(_ * _) ≟T TVar _ = no λ ()
+(_ + _) ≟T Unit = no λ ()
+(_ + _) ≟T Void = no λ ()
+(_ + _) ≟T Int = no λ ()
+(_ + _) ≟T Float = no λ ()
+(_ + _) ≟T Str = no λ ()
+(_ + _) ≟T Buffer = no λ ()
+(_ + _) ≟T (_ * _) = no λ ()
+(_ + _) ≟T (_ ⇒[ _ ] _) = no λ ()
+(_ + _) ≟T Eff _ _ = no λ ()
+(_ + _) ≟T Fix _ = no λ ()
+(_ + _) ≟T TVar _ = no λ ()
+(_ ⇒[ _ ] _) ≟T Unit = no λ ()
+(_ ⇒[ _ ] _) ≟T Void = no λ ()
+(_ ⇒[ _ ] _) ≟T Int = no λ ()
+(_ ⇒[ _ ] _) ≟T Float = no λ ()
+(_ ⇒[ _ ] _) ≟T Str = no λ ()
+(_ ⇒[ _ ] _) ≟T Buffer = no λ ()
+(_ ⇒[ _ ] _) ≟T (_ * _) = no λ ()
+(_ ⇒[ _ ] _) ≟T (_ + _) = no λ ()
+(_ ⇒[ _ ] _) ≟T Eff _ _ = no λ ()
+(_ ⇒[ _ ] _) ≟T Fix _ = no λ ()
+(_ ⇒[ _ ] _) ≟T TVar _ = no λ ()
+Eff _ _ ≟T Unit = no λ ()
+Eff _ _ ≟T Void = no λ ()
+Eff _ _ ≟T Int = no λ ()
+Eff _ _ ≟T Float = no λ ()
+Eff _ _ ≟T Str = no λ ()
+Eff _ _ ≟T Buffer = no λ ()
+Eff _ _ ≟T (_ * _) = no λ ()
+Eff _ _ ≟T (_ + _) = no λ ()
+Eff _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
+Eff _ _ ≟T Fix _ = no λ ()
+Eff _ _ ≟T TVar _ = no λ ()
+Fix _ ≟T Unit = no λ ()
+Fix _ ≟T Void = no λ ()
+Fix _ ≟T Int = no λ ()
+Fix _ ≟T Float = no λ ()
+Fix _ ≟T Str = no λ ()
+Fix _ ≟T Buffer = no λ ()
+Fix _ ≟T (_ * _) = no λ ()
+Fix _ ≟T (_ + _) = no λ ()
+Fix _ ≟T (_ ⇒[ _ ] _) = no λ ()
+Fix _ ≟T Eff _ _ = no λ ()
+Fix _ ≟T TVar _ = no λ ()
+TVar _ ≟T Unit = no λ ()
+TVar _ ≟T Void = no λ ()
+TVar _ ≟T Int = no λ ()
+TVar _ ≟T Float = no λ ()
+TVar _ ≟T Str = no λ ()
+TVar _ ≟T Buffer = no λ ()
+TVar _ ≟T (_ * _) = no λ ()
+TVar _ ≟T (_ + _) = no λ ()
+TVar _ ≟T (_ ⇒[ _ ] _) = no λ ()
+TVar _ ≟T Eff _ _ = no λ ()
+TVar _ ≟T Fix _ = no λ ()

@@ -314,7 +314,7 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
     apply-with-wf-check no-closure = apply-fallback
     -- Has closure but types don't match apply's types: use fallback
     -- (The closure might be for a different apply in the program)
-    apply-with-wf-check (has-closure _ _ _ _ _) = apply-fallback
+    apply-with-wf-check (has-closure _ _ _ _ _ _ _ _ _ _ _) = apply-fallback
     -- TODO: When closure types match A, B, use run-apply-with-full-wf
     -- This requires:
     --   1. Type matching logic for closure's A', B' against apply's A, B

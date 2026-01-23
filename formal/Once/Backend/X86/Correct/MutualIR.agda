@@ -264,7 +264,9 @@ mutual
       ; ir-stack-inv = exec-stack-inv exec-res
       ; ir-capacity = exec-capacity exec-res
       ; ir-rbp-inv = exec-rbp-inv exec-res
-      ; ir-closure-wf = has-closure cl-addr thunk-offset x (λ b → eval f (x , b)) wf
+      ; ir-closure-wf = has-closure A B C cl-addr thunk-offset x (λ b → eval f (x , b)) wf
+                          (record { env-addr = encode x ; semantics = λ b → eval f (x , b) })
+                          refl refl
       }
     where
       prog = prefix ++ compile-x86 (curry f) ++ suffix

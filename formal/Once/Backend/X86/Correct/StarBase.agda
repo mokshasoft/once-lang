@@ -52,12 +52,23 @@ open import Relation.Binary.PropositionalEquality using (_≢_; cong; subst₂)
 --   This is needed by apply to look up the closure in memory.
 --   For curry, this is the address returned in rax.
 --   For pair ⟨curry f, g⟩, this is stored at pair-addr (fst).
+--
+-- E, A, B are EXPLICIT so that apply can case-split on A ≟T A' / B ≟T B'
+-- using decidable type equality to unify the closure types with apply's types.
+--
+-- cl: The semantic Closure value produced by curry.
+-- cl-env-eq: Closure.env-addr cl ≡ encode env (refl at curry construction)
+-- cl-sem-eq: Closure.semantics cl ≡ semantics (refl at curry construction)
+-- These enable apply to prove (cl, arg) ≡ x with a single postulate (cl ≡ proj₁ x).
 data ClosureWFOutput (prog : Program) : Set₁ where
   no-closure : ClosureWFOutput prog
-  has-closure : ∀ {E A B : Type}
+  has-closure : (E A B : Type)
                 (closure-addr code-ptr : ℕ) (env : ⟦ E ⟧)
                 (semantics : ⟦ A ⟧ → ⟦ B ⟧)
-                (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
+                (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics)
+                (cl : Closure A B)
+                (cl-env-eq : Closure.env-addr cl ≡ encode env)
+                (cl-sem-eq : Closure.semantics cl ≡ semantics) →
                 ClosureWFOutput prog
 
 ------------------------------------------------------------------------

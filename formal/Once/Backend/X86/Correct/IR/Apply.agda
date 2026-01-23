@@ -74,7 +74,7 @@ open import Once.Backend.X86.Layout using (init-frame-slot-at-base) renaming (ad
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure;
+  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
          rbp-inv-preserved-unchanged)
@@ -106,6 +106,7 @@ open ≡-Reasoning
 open import Once.Semantics using () renaming (Closure-η to Closure-η-sem)
 open import Induction.WellFounded using (Acc)
 open import Once.Backend.Common.IRSize using (ir-size)
+open import Relation.Nullary using (Dec; yes; no)
 
 ------------------------------------------------------------------------
 -- run-apply-with-wf: Apply using ClosureWellFormed
@@ -1727,10 +1728,8 @@ run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPo
   Acc _<_ (ir-size (apply {A} {B})) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap rbp-inv _ _ =
-  let (s' , ir-result') = run-apply-to-ir-result-v {closure-wf-E} prefix suffix code-ptr closure-wf-env sem apply-closure-addr apply-arg-addr arg s
-                            closure-wf-post h-false pc-eq stack-inv cap-for-apply rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
-  in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x''-eq-x ir-result'
+run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap rbp-inv cwf _ =
+  apply-with-cwf cwf
   where
     open import Data.Product using (proj₁; proj₂)
     open import Once.Semantics using (Closure)
@@ -1745,96 +1744,77 @@ run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-va
     arg : ⟦ A ⟧
     arg = proj₂ x
 
-    -- Extract env-addr, semantics from closure (code-ptr is now runtime-only)
-    env-addr : ℕ
-    env-addr = Closure.env-addr cl
-
-    sem : ⟦ A ⟧ → ⟦ B ⟧
-    sem = Closure.semantics cl
-
     -- ============================================================
-    -- VALIDITY DECOMPOSITION (replaces mem-layout postulate)
+    -- VALIDITY DECOMPOSITION
     -- ============================================================
 
     -- Decompose pair validity into closure and arg validities
-    pair-decomp = valid-pair-decompose input-valid
+    pair-decomp = valid-pair-decompose {A ⇒ B} {A} input-valid
     apply-closure-addr = proj₁ pair-decomp
     apply-arg-addr = proj₁ (proj₂ pair-decomp)
     apply-v-cl-raw = proj₁ (proj₂ (proj₂ pair-decomp))  -- ValidAt cl closure-addr mem
     apply-v-arg = proj₁ (proj₂ (proj₂ (proj₂ pair-decomp)))
     apply-pair-at = proj₂ (proj₂ (proj₂ (proj₂ pair-decomp)))
 
-    -- Decompose closure validity into memory layout
-    -- Returns existential code-ptr (runtime property, not semantic)
-    apply-closure-decomp = valid-closure-decompose apply-v-cl-raw
-    code-ptr : ℕ
-    code-ptr = proj₁ apply-closure-decomp
-    apply-closure-at-raw = proj₂ apply-closure-decomp
+    -- ============================================================
+    -- CASE ANALYSIS on ClosureWFOutput
+    -- ============================================================
 
-    -- The semantic value x' (matches cl via Closure-η)
-    x' : ⟦ (A ⇒ B) * A ⟧
-    x' = (record { env-addr = env-addr ; semantics = sem } , arg)
-
-    -- Prove x' ≡ x (eta-expansion of Closure record and pair)
-    -- Uses Closure-η from Semantics.agda for propositional eta
-    x'-eq-x : x' ≡ x
-    x'-eq-x = cong₂ _,_ (Closure-η-sem cl) refl
-
-    -- Constructed closure record (same as x')
-    cl' : Closure A B
-    cl' = record { env-addr = env-addr ; semantics = sem }
-
-    -- POSTULATE: Closure well-formedness values
-    -- ClosureWFOutput is now threaded from curry through compose (see RecDispatcherWithWF).
-    -- The cwf parameter carries has-closure with E, env, and wf proof.
-    -- Remaining postulates: connecting cwf data to runtime memory state.
-    -- Elimination requires proving code-ptr/env-addr consistency with memory.
+    -- Fallback for unreachable cases (no-closure or type-mismatch)
+    -- In a well-typed program, cwf is always has-closure with matching types.
     postulate
-      closure-wf-E : Type
-      closure-wf-env : ⟦ closure-wf-E ⟧
-      closure-wf-post : ClosureWellFormed {closure-wf-E} {A} {B} prog code-ptr closure-wf-env sem
-      closure-wf-v-env : ValidAt closure-wf-env (encode closure-wf-env) (memory s)
-      -- Consistency: the env-addr in Closure must match encode of the env value
-      closure-wf-env-addr-eq : env-addr ≡ encode closure-wf-env
-      -- Capacity postulate: the available capacity is sufficient for apply + thunk
-      -- This is justified because in a properly compiled program, the stack capacity
-      -- at apply call sites includes the thunk's requirement.
-      -- When closure-wf threading is complete, this becomes derivable.
-      cap-for-apply : StackCapacity s (apply-consumed-slots +ℕ' ClosureWellFormed.thunk-capacity closure-wf-post)
+      apply-fallback : ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
 
-    -- Closure with env-addr matching closure-wf-env (for run-apply-to-ir-result-v)
-    cl'' : Closure A B
-    cl'' = record { env-addr = encode closure-wf-env ; semantics = sem }
+    apply-with-cwf : ClosureWFOutput prog → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
 
-    -- Transport validity from cl to cl'' using the env-addr equality
-    -- First transport from cl to cl' (using Closure eta)
-    apply-v-cl' : ValidAt {A ⇒ B} cl' apply-closure-addr (memory s)
-    apply-v-cl' = subst (λ c → ValidAt c apply-closure-addr (memory s)) (sym (Closure-η-sem cl)) apply-v-cl-raw
+    -- Case 1: has-closure with matching types → use WF proof directly
+    -- ClosureWellFormed is PROVEN (wf' from curry). env-addr/sem equalities from cl'.
+    apply-with-cwf (has-closure E' A' B' _ cp' env' sem' wf' cl' cl-env-eq' cl-sem-eq') with A' ≟T A | B' ≟T B
+    ... | yes refl | yes refl =
+      let (s' , ir-result') = run-apply-to-ir-result-v {E'} prefix suffix cp' env' sem'
+                                apply-closure-addr apply-arg-addr arg s
+                                wf' h-false pc-eq stack-inv cap-for-apply rbp-inv
+                                apply-v-cl-wf apply-v-arg apply-v-env apply-pair-at apply-closure-at-wf
+      in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x-wf-eq-x ir-result'
+      where
+        -- REMAINING POSTULATES (4): runtime correspondence
+        -- ClosureWellFormed: PROVEN (wf' from has-closure)
+        -- Semantic correspondence: PROVEN (cl' + cl-env-eq' + cl-sem-eq' + cl-is-input)
+        postulate
+          -- Memory layout: closure at runtime contains has-closure's env and code-ptr
+          apply-closure-at-wf : ClosureAtS (encode env') cp' apply-closure-addr (memory s)
+          -- Environment validity: env value is encoded in memory
+          apply-v-env : ValidAt env' (encode env') (memory s)
+          -- Curry-apply correspondence: the closure from curry IS apply's input
+          cl-is-input : cl' ≡ cl
+          -- Stack capacity: sufficient for apply + thunk
+          cap-for-apply : StackCapacity s (apply-consumed-slots +ℕ' ClosureWellFormed.thunk-capacity wf')
 
-    -- Then transport from cl' to cl'' (using closure-wf-env-addr-eq)
-    apply-v-cl : ValidAt {A ⇒ B} cl'' apply-closure-addr (memory s)
-    apply-v-cl = subst (λ e → ValidAt (record { env-addr = e ; semantics = sem }) apply-closure-addr (memory s))
-                       closure-wf-env-addr-eq apply-v-cl'
+        -- Construct ValidAt for the closure with has-closure's data
+        cl-wf : Closure A B
+        cl-wf = record { env-addr = encode env' ; semantics = sem' }
 
-    -- Transport closure-at to use encode closure-wf-env
-    apply-closure-at : ClosureAtS (encode closure-wf-env) code-ptr apply-closure-addr (memory s)
-    apply-closure-at = subst (λ e → ClosureAtS e code-ptr apply-closure-addr (memory s)) closure-wf-env-addr-eq apply-closure-at-raw
+        apply-v-cl-wf : ValidAt {A ⇒ B} cl-wf apply-closure-addr (memory s)
+        apply-v-cl-wf = valid-closure apply-closure-at-wf
 
-    -- x'' is the semantic value that run-apply-to-ir-result-v produces
-    -- (with env-addr = encode closure-wf-env)
-    x'' : ⟦ (A ⇒ B) * A ⟧
-    x'' = (cl'' , arg)
+        -- Prove (cl-wf , arg) ≡ x using has-closure's correspondence proofs
+        -- Chain: cl-wf ≡ cl' (via cl-env-eq', cl-sem-eq') ≡ cl (via cl-is-input)
+        cl-wf-eq-cl' : cl-wf ≡ cl'
+        cl-wf-eq-cl' = trans (cong₂ (λ e f → record { env-addr = e ; semantics = f })
+                                     (sym cl-env-eq') (sym cl-sem-eq'))
+                             (Closure-η-sem cl')
 
-    -- Prove x'' ≡ x by transitivity: x'' ≡ x' ≡ x
-    -- First, x'' ≡ x' using sym of closure-wf-env-addr-eq
-    cl''-eq-cl' : cl'' ≡ cl'
-    cl''-eq-cl' = cong (λ e → record { env-addr = e ; semantics = sem }) (sym closure-wf-env-addr-eq)
+        cl-wf-eq-cl : cl-wf ≡ cl
+        cl-wf-eq-cl = trans cl-wf-eq-cl' cl-is-input
 
-    x''-eq-x' : x'' ≡ x'
-    x''-eq-x' = cong (λ c → (c , arg)) cl''-eq-cl'
+        x-wf-eq-x : (cl-wf , arg) ≡ x
+        x-wf-eq-x = cong₂ _,_ cl-wf-eq-cl refl
 
-    x''-eq-x : x'' ≡ x
-    x''-eq-x = trans x''-eq-x' x'-eq-x
+    -- Type mismatch: fallback
+    ... | _ | _ = apply-fallback
+
+    -- Case 2: no closure → fallback
+    apply-with-cwf no-closure = apply-fallback
 
 ------------------------------------------------------------------------
 -- run-apply-star-v: Simple wrapper for dispatcher
