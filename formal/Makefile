@@ -426,16 +426,32 @@ malonzo-core:
 	@cp _build/malonzo/MAlonzo/Code/Once/Postulates.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done. Core modules in compiler/src/MAlonzo/Code/Once/"
 
+# Awk script to count postulates (handles both top-level and indented postulate blocks)
+# A postulate block starts with a line matching ^\s*postulate\s*$
+# and ends when a non-blank line has indentation <= the postulate keyword
+define AWK_POSTULATES
+/^[[:space:]]*postulate[[:space:]]*$$/ { \
+	in_postulate = 1; \
+	match($$0, /^[[:space:]]*/); \
+	post_indent = RLENGTH; \
+	next \
+} \
+in_postulate && /[^[:space:]]/ { \
+	match($$0, /^[[:space:]]*/); \
+	if (RLENGTH <= post_indent) { in_postulate = 0 } \
+} \
+in_postulate && /^[[:space:]]+[^[:space:]:]+[[:space:]]*:/ { print }
+endef
+export AWK_POSTULATES
+
 .PHONY: count-postulates
 count-postulates:
 	@echo "Counting postulates in Agda files..."
-	@echo "(Counts type signatures within postulate blocks, not 'postulate' keywords)"
+	@echo "(Counts type signatures within postulate blocks, including indented ones)"
 	@echo ""
 	@echo "=== Postulates by File ==="
 	@find . -name "*.agda" -type f | sort | while read f; do \
-		postulates=$$(awk '/^postulate[[:space:]]*$$/ { in_postulate = 1; next } \
-			/^[^[:space:]]/ { in_postulate = 0 } \
-			in_postulate && /^[[:space:]]+[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*:/ { print }' "$$f"); \
+		postulates=$$(awk "$$AWK_POSTULATES" "$$f"); \
 		if [ -n "$$postulates" ]; then \
 			count=$$(echo "$$postulates" | wc -l | tr -d ' '); \
 			echo ""; \
@@ -445,15 +461,11 @@ count-postulates:
 	done
 	@echo ""
 	@echo "=== Summary ==="
-	@TOTAL=$$(find . -name "*.agda" -type f -exec awk '/^postulate[[:space:]]*$$/ { in_postulate = 1; next } \
-		/^[^[:space:]]/ { in_postulate = 0 } \
-		in_postulate && /^[[:space:]]+[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*:/ { count++ } \
-		END { print count+0 }' {} + | awk '{s+=$$1} END {print s}'); \
+	@TOTAL=$$(find . -name "*.agda" -type f | while read f; do \
+		awk "$$AWK_POSTULATES" "$$f"; \
+	done | wc -l | tr -d ' '); \
 	FILES=$$(find . -name "*.agda" -type f | while read f; do \
-		count=$$(awk '/^postulate[[:space:]]*$$/ { in_postulate = 1; next } \
-			/^[^[:space:]]/ { in_postulate = 0 } \
-			in_postulate && /^[[:space:]]+[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*:/ { count++ } \
-			END { print count+0 }' "$$f"); \
+		count=$$(awk "$$AWK_POSTULATES" "$$f" | wc -l | tr -d ' '); \
 		if [ "$$count" -gt 0 ]; then echo "$$f"; fi; \
 	done | wc -l | tr -d ' '); \
 	echo "Total postulates: $$TOTAL"; \
