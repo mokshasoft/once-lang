@@ -160,7 +160,7 @@ module IRCorrect (Arch : ArchCorrectness) where
     -- Apply: use ir-correct as induction hypothesis for thunk
     ir-correct apply prefix suffix x s pre = apply-correct ir-correct prefix suffix x s pre
 
-    -- Case: dispatch then branch
+    -- Case: dispatch then branch then cleanup
     ir-correct [ f , g ] prefix suffix (inj₁ a) s pre =
       let -- Compute sub-programs
           (prefix-f , suffix-f) = case-left-context f g prefix suffix
@@ -170,8 +170,10 @@ module IRCorrect (Arch : ArchCorrectness) where
           f-pre = case-dispatch-enables-f f g prefix suffix a s s₁ dispatch
           -- Step 3: Run f in context
           (s₂ , f-corr) = ir-correct f prefix-f suffix-f a s₁ f-pre
-          -- Step 4: Combine dispatch and f
-      in s₂ , case-left-combine f g prefix suffix a s s₁ s₂ dispatch f-corr
+          -- Step 4: Run cleanup (jmp + mov rsp,rbp + pop rbp)
+          (s₃ , cleanup) = case-left-cleanup f g prefix suffix a s s₁ s₂ dispatch f-corr
+          -- Step 5: Combine dispatch + f + cleanup
+      in s₃ , case-left-combine f g prefix suffix a s s₁ s₂ s₃ dispatch f-corr cleanup
 
     ir-correct [ f , g ] prefix suffix (inj₂ b) s pre =
       let -- Compute sub-programs
@@ -182,8 +184,10 @@ module IRCorrect (Arch : ArchCorrectness) where
           g-pre = case-dispatch-enables-g f g prefix suffix b s s₁ dispatch
           -- Step 3: Run g in context
           (s₂ , g-corr) = ir-correct g prefix-g suffix-g b s₁ g-pre
-          -- Step 4: Combine dispatch and g
-      in s₂ , case-right-combine f g prefix suffix b s s₁ s₂ dispatch g-corr
+          -- Step 4: Run cleanup (mov rsp,rbp + pop rbp)
+          (s₃ , cleanup) = case-right-cleanup f g prefix suffix b s s₁ s₂ dispatch g-corr
+          -- Step 5: Combine dispatch + g + cleanup
+      in s₃ , case-right-combine f g prefix suffix b s s₁ s₂ s₃ dispatch g-corr cleanup
 
   ----------------------------------------------------------------------
   -- Top-level theorem: IR correct with empty prefix/suffix

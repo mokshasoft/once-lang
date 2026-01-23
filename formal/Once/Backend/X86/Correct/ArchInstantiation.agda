@@ -115,6 +115,16 @@ X86-FramePreserved : State → State → Set
 X86-FramePreserved s s' = ∀ addr → addr > readReg (regs s) rbp →
                           readMem (memory s') addr ≡ readMem (memory s) addr
 
+-- Frame setup info from dispatch (push rbp; mov rbp, rsp pattern)
+-- Records concrete x86 facts about how dispatch set up the call frame.
+X86-FrameSetupInfo : State → State → Set
+X86-FrameSetupInfo s s₁ =
+  (readReg (regs s₁) rbp ≡ readReg (regs s) rsp ∸ slot-size) ×   -- rbp = orig-rsp - 8
+  (readMem (memory s₁) (readReg (regs s₁) rbp) ≡ just (readReg (regs s) rbp)) ×  -- saved orig-rbp at [rbp]
+  (slot-size ≤ readReg (regs s) rsp) ×                             -- orig-rsp ≥ 8 (push didn't underflow)
+  (readReg (regs s₁) r14 ≡ readReg (regs s) r14) ×               -- r14 preserved
+  (readReg (regs s₁) r15 ≡ readReg (regs s) r15)                  -- r15 preserved
+
 X86-InvariantInterface : Spec.InvariantInterface X86-MachineInterface
 X86-InvariantInterface = record
   { StackInvariant = StackInvariant
@@ -128,6 +138,7 @@ X86-InvariantInterface = record
   ; HeapPreserved = X86-HeapPreserved
   ; CodePreserved = X86-CodePreserved
   ; FramePreserved = X86-FramePreserved
+  ; FrameSetupInfo = X86-FrameSetupInfo
   }
 
 ------------------------------------------------------------------------
@@ -992,9 +1003,22 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       PairSetupResultV.mem-above-rsp-setup setup-res addr
         (≤-trans (RbpInvariant.rsp≤rbp rbp-inv) (<⇒≤ addr>rbp-s))
 
-    -- Frame invariant for setup (requires constructing new RbpInvariant for setup's frame)
-    postulate
-      frame-inv-setup : RbpInvariant s-setup
+    -- Frame invariant for setup: rbp at pair-rbp-slot frame, rsp at pair-setup-consumed-slots frame
+    frame-inv-setup : RbpInvariant s-setup
+    frame-inv-setup = record
+      { rbp-frame = rbp-sp
+      ; rbp-is-base = PairSetupResultV.rbp-setup setup-res
+      ; frame-bound = subst (_≤ sp-addr rbp-sp) (sym (PairSetupResultV.rsp-setup setup-res))
+                        (∸-monoʳ-≤ (readReg (regs s) rsp) (m≤m+n saved-regs-size pair-alloc))
+      }
+      where
+        open import Data.Nat.Properties using (∸-monoʳ-≤; m≤m+n)
+        open import Once.Backend.X86.Correct.StackInstantiation
+          using (make-frame-at-slot; pair-rbp-slot≤pair-setup; pair-rbp-slot)
+        open import Once.Backend.X86.Correct.Arithmetic using (saved-regs-size; pair-alloc)
+        open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
+        cap-pair = PairSetupResultV.cap-pair-setup setup-res
+        rbp-sp = make-frame-at-slot s cap-pair pair-rbp-slot pair-rbp-slot≤pair-setup
 
     setup-post : PairSpecs.SetupPost f g prog (length (PairContext.prefix-f ctx)) s s-setup x
     setup-post = record
@@ -1041,10 +1065,12 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s₁ s₂ fx f-corr = s₃ , mid
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
 
-    -- PC after f: exec-pc gives pc s₂ ≡ offset-f + compile-length f = length prefix-mid
-    -- The length-++ bridge between length (prefix ++ 7-instrs) and length prefix + 7 is needed
-    postulate
-      pc-s₂-mid : pc s₂ ≡ length prefix-mid
+    -- PC after f: exec-pc gives pc s₂ ≡ length prefix-f + compile-length f
+    -- Chain: length prefix-f + len-f ≡ (length prefix + 7) + len-f ≡ length prefix-mid
+    pc-s₂-mid : pc s₂ ≡ length prefix-mid
+    pc-s₂-mid = trans (IRCorrectness.exec-pc f-corr)
+                      (trans (cong (_+ len-f) len-prefix-f)
+                             (sym len-prefix-mid))
 
     -- Execute middle 2 instructions
     mid-result = pair-middle-star-at prefix-mid rest-mid s₂
@@ -1397,9 +1423,11 @@ x86-curry-combine {A} {B} {C} f prefix suffix x s s₁ setup = record
 -- Import case setup helpers
 open import Once.Backend.X86.Correct.IR.Case
   using (CaseInlSetupResult; case-inl-setup-star;
-         CaseInrSetupResult; case-inr-setup-star)
+         CaseInrSetupResult; case-inr-setup-star;
+         CaseCleanupResult; case-inl-cleanup-star; case-inr-cleanup-star)
 open import Once.Backend.X86.Correct.IR.Case
-  using (module CaseInlSetupResult; module CaseInrSetupResult)
+  using (module CaseInlSetupResult; module CaseInrSetupResult;
+         module CaseCleanupResult)
 open import Once.Backend.X86.Correct.MemoryValid
   using (valid-inl-tag-is-0; valid-inl-val-ptr; valid-addr-in-heap;
          valid-inr-tag-is-1; valid-inr-val-ptr)
@@ -1431,6 +1459,15 @@ private
   case-cleanup-instrs : Program
   case-cleanup-instrs = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
 
+  -- The 3 middle instructions (prefix of case-f-rest before compile g)
+  case-f-rest-prefix : ∀ {A B C : Type} (f : IR A C) (g : IR B C) → Program
+  case-f-rest-prefix f g =
+    let len-f = compile-length f
+        len-g = compile-length g
+    in jmp (case-jmp-base + len-g) ∷
+       label (case-right-label-base + len-f) ∷
+       mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []
+
 -- Compute context for left branch
 -- prefix-f includes the 6 setup instructions, so length prefix-f = length prefix + 6
 x86-case-left-context : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
@@ -1445,15 +1482,6 @@ x86-case-right-context : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
 x86-case-right-context f g prefix suffix =
   (prefix ++ case-prefix-instrs f g ++ compile-x86 f ++ case-f-rest-prefix f g ,
    case-cleanup-instrs ++ suffix)
-  where
-    -- The 3 middle instructions (prefix of case-f-rest before compile g)
-    case-f-rest-prefix : ∀ {A B C : Type} (f : IR A C) (g : IR B C) → Program
-    case-f-rest-prefix f g =
-      let len-f = compile-length f
-          len-g = compile-length g
-      in jmp (case-jmp-base + len-g) ∷
-         label (case-right-label-base + len-f) ∷
-         mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []
 
 -- Dispatch left: runs the 6-instruction setup sequence and extracts DispatchLeftPost
 x86-case-dispatch-left : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
@@ -1538,6 +1566,14 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
     pc-offset = trans (CaseInlSetupResult.pc-setup setup-res)
                       (sym (length-++ prefix))
 
+    -- Derive orig-rsp-bound from capacity: rsp > suc-max * slot-size ≥ slot-size
+    orig-rsp-bound : slot-size ≤ readReg (regs s) rsp
+    orig-rsp-bound = <⇒≤ (≤-<-trans step1 (rsp-sufficient cap'))
+      where
+        open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
+        step1 : slot-size ≤ suc (f-req ⊔ g-req) *ℕ slot-size
+        step1 = m≤m+n slot-size ((f-req ⊔ g-req) *ℕ slot-size)
+
     -- Construct DispatchLeftPost with execution evidence
     dispatch-post : CaseSpecs.DispatchLeftPost f g prog offset-f s s-setup a
     dispatch-post = record
@@ -1551,6 +1587,12 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
       ; dispatch-heap-preserved = CaseInlSetupResult.mem-heap-setup setup-res
       ; dispatch-code-preserved = CaseInlSetupResult.mem-code-setup setup-res
       ; dispatch-frame-preserved = CaseInlSetupResult.mem-above-setup setup-res
+      ; dispatch-frame-setup =
+          CaseInlSetupResult.rbp-setup setup-res ,
+          CaseInlSetupResult.mem-saved-rbp setup-res ,
+          orig-rsp-bound ,
+          CaseInlSetupResult.r14-setup setup-res ,
+          CaseInlSetupResult.r15-setup setup-res
       }
 
 -- Dispatch enables f: converts DispatchLeftPost to Preconditions for f
@@ -1570,61 +1612,188 @@ x86-case-dispatch-enables-f f g prefix suffix a s s₁ dispatch = record
   ; pre-frame-inv = CaseSpecs.DispatchLeftPost.dispatch-frame-inv dispatch
   }
 
--- Case left combine: combines dispatch result and f execution into case result
--- NOTE: This is heavily postulated because:
--- 1. Common's interface expects s₂ (from f) to be the final state, but X86 needs
---    cleanup (mov rsp,rbp; pop rbp) after f to restore the frame
--- 2. The program f executed on (prefix-f ++ compile f ++ suffix-f) differs from
---    the actual program (prefix ++ compile [f,g] ++ suffix)
--- These postulates will be eliminated when cleanup is added.
-x86-case-left-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+-- Case left cleanup: executes jmp + mov rsp,rbp + pop rbp after f
+-- Produces CaseCleanupPost with the post-cleanup state
+x86-case-left-cleanup : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) (a : ⟦ A ⟧) (s s₁ s₂ : State) →
   let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
       offset-f = length (proj₁ (x86-case-left-context f g prefix suffix))
+      offset-end = length prefix + compile-length [ f , g ]
   in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
   IRCorrectness f (proj₁ (x86-case-left-context f g prefix suffix) ++ compile-x86 f ++ proj₂ (x86-case-left-context f g prefix suffix)) s₁ s₂ a (length (proj₁ (x86-case-left-context f g prefix suffix))) →
-  IRCorrectness [ f , g ] (prefix ++ compile-x86 [ f , g ] ++ suffix) s s₂ (inj₁ a) (length prefix)
-x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ dispatch f-corr = record
+  ∃[ s₃ ] CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval f a)
+x86-case-left-cleanup {A} {B} {C} f g prefix suffix a s s₁ s₂ dispatch f-corr = s₃ , cleanup-post
+  where
+    prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    len-f = compile-length f
+    orig-rsp = readReg (regs s) rsp
+    orig-rbp = readReg (regs s) rbp
+
+    -- Derivable from f-corr
+    h₂ : halted s₂ ≡ false
+    h₂ = IRCorrectness.exec-halted f-corr
+
+    -- PC after f: offset-f + len-f = (length prefix + 6) + len-f
+    -- case-inl-cleanup-star wants: length prefix + 6 + len-f (same by +-assoc)
+    pc₂ : pc s₂ ≡ length prefix +ℕ 6 +ℕ len-f
+    pc₂ = trans (IRCorrectness.exec-pc f-corr) (+-assoc (length prefix) 6 len-f)
+
+    stack-inv₂ : StackInvariant s₂
+    stack-inv₂ = IRCorrectness.exec-stack-inv f-corr
+
+    -- Extract frame setup info from dispatch
+    frame-setup = CaseSpecs.DispatchLeftPost.dispatch-frame-setup dispatch
+    dispatch-rbp-setup = proj₁ frame-setup
+    dispatch-saved-rbp = proj₁ (proj₂ frame-setup)
+    dispatch-rsp-bound = proj₁ (proj₂ (proj₂ frame-setup))
+    dispatch-r14 = proj₁ (proj₂ (proj₂ (proj₂ frame-setup)))
+    dispatch-r15 = proj₂ (proj₂ (proj₂ (proj₂ frame-setup)))
+
+    -- f preserves callee-saved registers
+    f-saved-regs = IRCorrectness.exec-saved-regs f-corr
+
+    -- Derive rbp₂-eq: rbp(s₂) = rbp(s₁) [saved-regs] = rsp(s) - slot-size [frame-setup]
+    rbp₂-eq : readReg (regs s₂) rbp ≡ orig-rsp ∸ slot-size
+    rbp₂-eq = trans (proj₂ (proj₂ f-saved-regs)) dispatch-rbp-setup
+
+    -- orig-rsp-bound: directly from frame-setup
+    orig-rsp-bound : slot-size ≤ orig-rsp
+    orig-rsp-bound = dispatch-rsp-bound
+
+    -- mem-rbp: requires f to preserve [rbp(s₁)] which is at the frame boundary.
+    -- exec-frame-preserved uses strict >, so addr = rbp is NOT covered.
+    -- This is the remaining structural gap (same issue as pair).
+    postulate
+      mem-rbp : readMem (memory s₂) (readReg (regs s₂) rbp) ≡ just orig-rbp
+
+    -- Run the 3-step cleanup: jmp + mov rsp,rbp + pop rbp
+    cleanup-result = case-inl-cleanup-star f g prefix suffix s₂ orig-rsp orig-rbp
+                       h₂ pc₂ rbp₂-eq mem-rbp orig-rsp-bound stack-inv₂
+
+    s₃ : State
+    s₃ = proj₁ cleanup-result
+
+    cres : CaseCleanupResult prefix suffix f g s₂ s₃ orig-rsp orig-rbp
+    cres = proj₂ cleanup-result
+
+    -- Output preserved: rax and memory unchanged through cleanup
+    cleanup-output : ValidAt (eval f a) (readReg (regs s₃) rax) (memory s₃)
+    cleanup-output = subst₂ (λ r m → ValidAt (eval f a) r m)
+                       (sym (CaseCleanupResult.rax-preserved cres))
+                       (sym (CaseCleanupResult.memory-preserved cres))
+                       (IRCorrectness.exec-output-valid f-corr)
+      where
+        open import Relation.Binary.PropositionalEquality using (subst₂)
+
+    -- RSP delta: ir-rsp-delta [f,g] = 0, so rsp(s₃) = rsp(s)
+    cleanup-rsp : X86-RspDelta s s₃ 0
+    cleanup-rsp = CaseCleanupResult.rsp-final cres
+
+    -- Heap/code/frame preservation: trivially from memory-preserved
+    cleanup-heap : X86-HeapPreserved s₂ s₃
+    cleanup-heap addr _ = cong (λ m → readMem m addr) (CaseCleanupResult.memory-preserved cres)
+
+    cleanup-code : X86-CodePreserved s₂ s₃
+    cleanup-code addr _ = cong (λ m → readMem m addr) (CaseCleanupResult.memory-preserved cres)
+
+    cleanup-frame : X86-FramePreserved s₂ s₃
+    cleanup-frame addr _ = cong (λ m → readMem m addr) (CaseCleanupResult.memory-preserved cres)
+
+    -- Saved regs: chain dispatch → f → cleanup for each register
+    cleanup-saved-regs-post : (readReg (regs s₃) r14 ≡ readReg (regs s) r14) ×
+                              (readReg (regs s₃) r15 ≡ readReg (regs s) r15) ×
+                              (readReg (regs s₃) rbp ≡ readReg (regs s) rbp)
+    cleanup-saved-regs-post =
+      ( trans (CaseCleanupResult.r14-preserved cres) (trans (proj₁ f-saved-regs) dispatch-r14)
+      , trans (CaseCleanupResult.r15-preserved cres) (trans (proj₁ (proj₂ f-saved-regs)) dispatch-r15)
+      , CaseCleanupResult.rbp-final cres )
+
+    -- These still require deeper reasoning about state restoration
+    postulate
+      cleanup-capacity-post : StackCapacity s₃ (ir-output-capacity [ f , g ])
+      cleanup-frame-inv-post : RbpInvariant s₃
+      cleanup-stack-inv-post : StackInvariant s₃
+
+    cleanup-post : CaseSpecs.CleanupPost f g prog (length prefix + compile-length [ f , g ]) s s₂ s₃ (eval f a)
+    cleanup-post = record
+      { cleanup-halted = CaseCleanupResult.h-final cres
+      ; cleanup-stack-inv = cleanup-stack-inv-post
+      ; cleanup-capacity = cleanup-capacity-post
+      ; cleanup-output-valid = cleanup-output
+      ; cleanup-saved-regs = cleanup-saved-regs-post
+      ; cleanup-frame-inv = cleanup-frame-inv-post
+      ; cleanup-star = CaseCleanupResult.star-cleanup cres
+      ; cleanup-pc = CaseCleanupResult.pc-final cres
+      ; cleanup-rsp-delta = cleanup-rsp
+      ; cleanup-heap-preserved = cleanup-heap
+      ; cleanup-code-preserved = cleanup-code
+      ; cleanup-frame-preserved = cleanup-frame
+      }
+
+-- Case left combine: chains dispatch + f + cleanup into case result
+-- Most fields come directly from cleanup; star and preservation are chained.
+x86-case-left-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+  (prefix suffix : Program) (a : ⟦ A ⟧) (s s₁ s₂ s₃ : State) →
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      offset-f = length (proj₁ (x86-case-left-context f g prefix suffix))
+      offset-end = length prefix + compile-length [ f , g ]
+  in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
+  IRCorrectness f (proj₁ (x86-case-left-context f g prefix suffix) ++ compile-x86 f ++ proj₂ (x86-case-left-context f g prefix suffix)) s₁ s₂ a (length (proj₁ (x86-case-left-context f g prefix suffix))) →
+  CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval f a) →
+  IRCorrectness [ f , g ] (prefix ++ compile-x86 [ f , g ] ++ suffix) s s₃ (inj₁ a) (length prefix)
+x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch f-corr cleanup = record
   { exec-star = case-star
-  ; exec-halted = case-halted
-  ; exec-pc = case-pc
-  ; exec-output-valid = case-output-valid
-  ; exec-saved-regs = case-saved-regs
-  ; exec-rsp-delta = case-rsp-delta
+  ; exec-halted = CaseSpecs.CleanupPost.cleanup-halted cleanup
+  ; exec-pc = CaseSpecs.CleanupPost.cleanup-pc cleanup
+  ; exec-output-valid = CaseSpecs.CleanupPost.cleanup-output-valid cleanup
+  ; exec-saved-regs = CaseSpecs.CleanupPost.cleanup-saved-regs cleanup
+  ; exec-rsp-delta = CaseSpecs.CleanupPost.cleanup-rsp-delta cleanup
   ; exec-heap-preserved = case-heap-preserved
   ; exec-code-preserved = case-code-preserved
   ; exec-frame-preserved = case-frame-preserved
-  ; exec-stack-inv = case-stack-inv
-  ; exec-capacity = case-capacity
-  ; exec-frame-inv = case-frame-inv
-  ; exec-closure-wf = case-closure-wf
+  ; exec-stack-inv = CaseSpecs.CleanupPost.cleanup-stack-inv cleanup
+  ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
+  ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup
+  ; exec-closure-wf = Spec.no-closure
   }
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
 
-    -- These need to be postulated because:
-    -- 1. The execution actually goes through setup → f → cleanup, not just f
-    -- 2. s₂ from Common's perspective should be after f, but we need after cleanup
-    -- 3. The Star proof needs to be for prog, not for the f-only program
-    postulate
-      case-star : Star prog s s₂
-      case-halted : halted s₂ ≡ false
-      case-pc : pc s₂ ≡ length prefix + compile-length [ f , g ]
-      case-output-valid : ValidAt (eval [ f , g ] (inj₁ a)) (readReg (regs s₂) rax) (memory s₂)
-      case-saved-regs : (readReg (regs s₂) r14 ≡ readReg (regs s) r14) ×
-                        (readReg (regs s₂) r15 ≡ readReg (regs s) r15) ×
-                        (readReg (regs s₂) rbp ≡ readReg (regs s) rbp)
-      case-rsp-delta : readReg (regs s₂) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta [ f , g ])
-      case-heap-preserved : ∀ addr → InHeap addr → readMem (memory s₂) addr ≡ readMem (memory s) addr
-      case-code-preserved : ∀ addr → InCode addr → readMem (memory s₂) addr ≡ readMem (memory s) addr
-      case-frame-preserved : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s₂) addr ≡ readMem (memory s) addr
-      case-stack-inv : StackInvariant s₂
-      case-capacity : StackCapacity s₂ (ir-output-capacity [ f , g ])
-      case-frame-inv : RbpInvariant s₂
+    -- Program equality: f's program = case program (same list, different splits)
+    -- (prefix ++ setup) ++ compile f ++ (rest ++ suffix) = prefix ++ compile [f,g] ++ suffix
+    prog-f = proj₁ (x86-case-left-context f g prefix suffix) ++ compile-x86 f ++ proj₂ (x86-case-left-context f g prefix suffix)
 
-    -- Case output is branch output (doesn't create closures in dispatch)
-    case-closure-wf : ClosureWFOut prog
-    case-closure-wf = Spec.no-closure
+    prog-eq : prog-f ≡ prog
+    prog-eq = trans (++-assoc prefix (case-prefix-instrs f g) (compile-x86 f ++ (case-f-rest f g ++ suffix)))
+                    (cong (prefix ++_) (cong (case-prefix-instrs f g ++_)
+                      (sym (++-assoc (compile-x86 f) (case-f-rest f g) suffix))))
+
+    -- Star composition: dispatch ++ f ++ cleanup
+    f-star : Star prog s₁ s₂
+    f-star = subst (λ p → Star p s₁ s₂) prog-eq (IRCorrectness.exec-star f-corr)
+
+    case-star : Star prog s s₃
+    case-star = star-trans (star-trans (CaseSpecs.DispatchLeftPost.dispatch-star dispatch) f-star)
+                           (CaseSpecs.CleanupPost.cleanup-star cleanup)
+
+    -- Heap preserved: chain dispatch → f → cleanup
+    case-heap-preserved : X86-HeapPreserved s s₃
+    case-heap-preserved addr in-heap =
+      trans (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup addr in-heap)
+      (trans (IRCorrectness.exec-heap-preserved f-corr addr in-heap)
+             (CaseSpecs.DispatchLeftPost.dispatch-heap-preserved dispatch addr in-heap))
+
+    -- Code preserved: chain dispatch → f → cleanup
+    case-code-preserved : X86-CodePreserved s s₃
+    case-code-preserved addr in-code =
+      trans (CaseSpecs.CleanupPost.cleanup-code-preserved cleanup addr in-code)
+      (trans (IRCorrectness.exec-code-preserved f-corr addr in-code)
+             (CaseSpecs.DispatchLeftPost.dispatch-code-preserved dispatch addr in-code))
+
+    -- Frame preserved: requires showing addr > rbp(s) implies addr > rbp(s₁)
+    -- Same structural issue as pair-frame-preserved
+    postulate
+      case-frame-preserved : X86-FramePreserved s s₃
 
 -- Dispatch right: runs the 6-instruction setup sequence for inr branch
 x86-case-dispatch-right : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
@@ -1709,12 +1878,24 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
     pc-offset : pc s-setup ≡ offset-g
     pc-offset = trans (CaseInrSetupResult.pc-setup setup-res) offset-eq
       where
-        postulate
-          -- (length prefix + 9) + len-f = offset-g
-          -- Proof sketch: length-++ prefix, then length of tail reduces to
-          -- 6 + length (compile-x86 f ++ 3-elem-rest) = 6 + (len-f + 3) = 9 + len-f
-          -- via length-++, compile-length-correct, +-identityʳ
-          offset-eq : (length prefix + 9) + len-f ≡ offset-g
+        -- offset-g = length (prefix ++ 6-instrs ++ compile-x86 f ++ 3-instrs)
+        -- Chain: length-++ ×3, compile-length-correct, +-comm, sym +-assoc
+        offset-eq : (length prefix + 9) + len-f ≡ offset-g
+        offset-eq = sym (trans (length-++ prefix)
+                    (trans (cong (length prefix +_)
+                      (trans (length-++ (case-prefix-instrs f g))
+                        (cong (6 +_) (trans (length-++ (compile-x86 f))
+                          (trans (cong (_+ 3) (compile-length-correct f))
+                                 (+-comm len-f 3))))))
+                    (sym (+-assoc (length prefix) 9 len-f))))
+
+    -- Derive orig-rsp-bound from capacity
+    orig-rsp-bound : slot-size ≤ readReg (regs s) rsp
+    orig-rsp-bound = <⇒≤ (≤-<-trans step1 (rsp-sufficient cap'))
+      where
+        open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
+        step1 : slot-size ≤ suc (f-req ⊔ g-req) *ℕ slot-size
+        step1 = m≤m+n slot-size ((f-req ⊔ g-req) *ℕ slot-size)
 
     -- Construct DispatchRightPost
     dispatch-post : CaseSpecs.DispatchRightPost f g prog offset-g s s-setup b
@@ -1729,6 +1910,12 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
       ; dispatch-heap-preserved = CaseInrSetupResult.mem-heap-setup setup-res
       ; dispatch-code-preserved = CaseInrSetupResult.mem-code-setup setup-res
       ; dispatch-frame-preserved = CaseInrSetupResult.mem-above-setup setup-res
+      ; dispatch-frame-setup =
+          CaseInrSetupResult.rbp-setup setup-res ,
+          CaseInrSetupResult.mem-saved-rbp setup-res ,
+          orig-rsp-bound ,
+          CaseInrSetupResult.r14-setup setup-res ,
+          CaseInrSetupResult.r15-setup setup-res
       }
 
 -- Dispatch enables g: converts DispatchRightPost to Preconditions for g
@@ -1747,51 +1934,199 @@ x86-case-dispatch-enables-g f g prefix suffix b s s₁ dispatch = record
   ; pre-frame-inv = CaseSpecs.DispatchRightPost.dispatch-frame-inv dispatch
   }
 
--- Case right combine: combines dispatch result and g execution into case result
-x86-case-right-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+-- Case right cleanup: executes mov rsp,rbp + pop rbp after g
+-- Produces CaseCleanupPost with the post-cleanup state
+x86-case-right-cleanup : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   (prefix suffix : Program) (b : ⟦ B ⟧) (s s₁ s₂ : State) →
   let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
       offset-g = length (proj₁ (x86-case-right-context f g prefix suffix))
+      offset-end = length prefix + compile-length [ f , g ]
   in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
   IRCorrectness g (proj₁ (x86-case-right-context f g prefix suffix) ++ compile-x86 g ++ proj₂ (x86-case-right-context f g prefix suffix)) s₁ s₂ b (length (proj₁ (x86-case-right-context f g prefix suffix))) →
-  IRCorrectness [ f , g ] (prefix ++ compile-x86 [ f , g ] ++ suffix) s s₂ (inj₂ b) (length prefix)
-x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-corr = record
+  ∃[ s₃ ] CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval g b)
+x86-case-right-cleanup {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-corr = s₃ , cleanup-post
+  where
+    prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    len-f = compile-length f
+    len-g = compile-length g
+    orig-rsp = readReg (regs s) rsp
+    orig-rbp = readReg (regs s) rbp
+
+    -- Derivable from g-corr
+    h₂ : halted s₂ ≡ false
+    h₂ = IRCorrectness.exec-halted g-corr
+
+    -- PC after g: exec-pc gives offset-g + len-g
+    -- offset-g = length (prefix ++ 6-instrs ++ compile-x86 f ++ 3-instrs) = length prefix + 9 + len-f
+    -- So: offset-g + len-g = (length prefix + 9 + len-f) + len-g = length prefix + 9 + len-f + len-g
+    postulate
+      pc₂ : pc s₂ ≡ length prefix +ℕ 9 +ℕ len-f +ℕ len-g
+
+    stack-inv₂ : StackInvariant s₂
+    stack-inv₂ = IRCorrectness.exec-stack-inv g-corr
+
+    -- Extract frame setup info from dispatch
+    frame-setup = CaseSpecs.DispatchRightPost.dispatch-frame-setup dispatch
+    dispatch-rbp-setup = proj₁ frame-setup
+    dispatch-saved-rbp = proj₁ (proj₂ frame-setup)
+    dispatch-rsp-bound = proj₁ (proj₂ (proj₂ frame-setup))
+    dispatch-r14 = proj₁ (proj₂ (proj₂ (proj₂ frame-setup)))
+    dispatch-r15 = proj₂ (proj₂ (proj₂ (proj₂ frame-setup)))
+
+    -- g preserves callee-saved registers
+    g-saved-regs = IRCorrectness.exec-saved-regs g-corr
+
+    -- Derive rbp₂-eq: rbp(s₂) = rbp(s₁) [saved-regs] = rsp(s) - slot-size [frame-setup]
+    rbp₂-eq : readReg (regs s₂) rbp ≡ orig-rsp ∸ slot-size
+    rbp₂-eq = trans (proj₂ (proj₂ g-saved-regs)) dispatch-rbp-setup
+
+    -- orig-rsp-bound: directly from frame-setup
+    orig-rsp-bound : slot-size ≤ orig-rsp
+    orig-rsp-bound = dispatch-rsp-bound
+
+    -- mem-rbp: requires g to preserve [rbp(s₁)] which is at the frame boundary.
+    -- exec-frame-preserved uses strict >, so addr = rbp is NOT covered.
+    postulate
+      mem-rbp : readMem (memory s₂) (readReg (regs s₂) rbp) ≡ just orig-rbp
+
+    -- Run the 2-step cleanup: mov rsp,rbp + pop rbp
+    cleanup-result = case-inr-cleanup-star f g prefix suffix s₂ orig-rsp orig-rbp
+                       h₂ pc₂ rbp₂-eq mem-rbp orig-rsp-bound stack-inv₂
+
+    s₃ : State
+    s₃ = proj₁ cleanup-result
+
+    cres : CaseCleanupResult prefix suffix f g s₂ s₃ orig-rsp orig-rbp
+    cres = proj₂ cleanup-result
+
+    -- Output preserved: rax and memory unchanged through cleanup
+    cleanup-output : ValidAt (eval g b) (readReg (regs s₃) rax) (memory s₃)
+    cleanup-output = subst₂ (λ r m → ValidAt (eval g b) r m)
+                       (sym (CaseCleanupResult.rax-preserved cres))
+                       (sym (CaseCleanupResult.memory-preserved cres))
+                       (IRCorrectness.exec-output-valid g-corr)
+      where
+        open import Relation.Binary.PropositionalEquality using (subst₂)
+
+    -- RSP delta: ir-rsp-delta [f,g] = 0, so rsp(s₃) = rsp(s)
+    cleanup-rsp : X86-RspDelta s s₃ 0
+    cleanup-rsp = CaseCleanupResult.rsp-final cres
+
+    -- Heap/code/frame preservation: trivially from memory-preserved
+    cleanup-heap : X86-HeapPreserved s₂ s₃
+    cleanup-heap addr _ = cong (λ m → readMem m addr) (CaseCleanupResult.memory-preserved cres)
+
+    cleanup-code : X86-CodePreserved s₂ s₃
+    cleanup-code addr _ = cong (λ m → readMem m addr) (CaseCleanupResult.memory-preserved cres)
+
+    cleanup-frame : X86-FramePreserved s₂ s₃
+    cleanup-frame addr _ = cong (λ m → readMem m addr) (CaseCleanupResult.memory-preserved cres)
+
+    -- Saved regs: chain dispatch → g → cleanup for each register
+    cleanup-saved-regs-post : (readReg (regs s₃) r14 ≡ readReg (regs s) r14) ×
+                              (readReg (regs s₃) r15 ≡ readReg (regs s) r15) ×
+                              (readReg (regs s₃) rbp ≡ readReg (regs s) rbp)
+    cleanup-saved-regs-post =
+      ( trans (CaseCleanupResult.r14-preserved cres) (trans (proj₁ g-saved-regs) dispatch-r14)
+      , trans (CaseCleanupResult.r15-preserved cres) (trans (proj₁ (proj₂ g-saved-regs)) dispatch-r15)
+      , CaseCleanupResult.rbp-final cres )
+
+    -- These still require deeper reasoning about state restoration
+    postulate
+      cleanup-capacity-post : StackCapacity s₃ (ir-output-capacity [ f , g ])
+      cleanup-frame-inv-post : RbpInvariant s₃
+      cleanup-stack-inv-post : StackInvariant s₃
+
+    cleanup-post : CaseSpecs.CleanupPost f g prog (length prefix + compile-length [ f , g ]) s s₂ s₃ (eval g b)
+    cleanup-post = record
+      { cleanup-halted = CaseCleanupResult.h-final cres
+      ; cleanup-stack-inv = cleanup-stack-inv-post
+      ; cleanup-capacity = cleanup-capacity-post
+      ; cleanup-output-valid = cleanup-output
+      ; cleanup-saved-regs = cleanup-saved-regs-post
+      ; cleanup-frame-inv = cleanup-frame-inv-post
+      ; cleanup-star = CaseCleanupResult.star-cleanup cres
+      ; cleanup-pc = CaseCleanupResult.pc-final cres
+      ; cleanup-rsp-delta = cleanup-rsp
+      ; cleanup-heap-preserved = cleanup-heap
+      ; cleanup-code-preserved = cleanup-code
+      ; cleanup-frame-preserved = cleanup-frame
+      }
+
+-- Case right combine: chains dispatch + g + cleanup into case result
+x86-case-right-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+  (prefix suffix : Program) (b : ⟦ B ⟧) (s s₁ s₂ s₃ : State) →
+  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+      offset-g = length (proj₁ (x86-case-right-context f g prefix suffix))
+      offset-end = length prefix + compile-length [ f , g ]
+  in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
+  IRCorrectness g (proj₁ (x86-case-right-context f g prefix suffix) ++ compile-x86 g ++ proj₂ (x86-case-right-context f g prefix suffix)) s₁ s₂ b (length (proj₁ (x86-case-right-context f g prefix suffix))) →
+  CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval g b) →
+  IRCorrectness [ f , g ] (prefix ++ compile-x86 [ f , g ] ++ suffix) s s₃ (inj₂ b) (length prefix)
+x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch g-corr cleanup = record
   { exec-star = case-star
-  ; exec-halted = case-halted
-  ; exec-pc = case-pc
-  ; exec-output-valid = case-output-valid
-  ; exec-saved-regs = case-saved-regs
-  ; exec-rsp-delta = case-rsp-delta
+  ; exec-halted = CaseSpecs.CleanupPost.cleanup-halted cleanup
+  ; exec-pc = CaseSpecs.CleanupPost.cleanup-pc cleanup
+  ; exec-output-valid = CaseSpecs.CleanupPost.cleanup-output-valid cleanup
+  ; exec-saved-regs = CaseSpecs.CleanupPost.cleanup-saved-regs cleanup
+  ; exec-rsp-delta = CaseSpecs.CleanupPost.cleanup-rsp-delta cleanup
   ; exec-heap-preserved = case-heap-preserved
   ; exec-code-preserved = case-code-preserved
   ; exec-frame-preserved = case-frame-preserved
-  ; exec-stack-inv = case-stack-inv
-  ; exec-capacity = case-capacity
-  ; exec-frame-inv = case-frame-inv
-  ; exec-closure-wf = case-closure-wf
+  ; exec-stack-inv = CaseSpecs.CleanupPost.cleanup-stack-inv cleanup
+  ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
+  ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup
+  ; exec-closure-wf = Spec.no-closure
   }
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
 
-    postulate
-      case-star : Star prog s s₂
-      case-halted : halted s₂ ≡ false
-      case-pc : pc s₂ ≡ length prefix + compile-length [ f , g ]
-      case-output-valid : ValidAt (eval [ f , g ] (inj₂ b)) (readReg (regs s₂) rax) (memory s₂)
-      case-saved-regs : (readReg (regs s₂) r14 ≡ readReg (regs s) r14) ×
-                        (readReg (regs s₂) r15 ≡ readReg (regs s) r15) ×
-                        (readReg (regs s₂) rbp ≡ readReg (regs s) rbp)
-      case-rsp-delta : readReg (regs s₂) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta [ f , g ])
-      case-heap-preserved : ∀ addr → InHeap addr → readMem (memory s₂) addr ≡ readMem (memory s) addr
-      case-code-preserved : ∀ addr → InCode addr → readMem (memory s₂) addr ≡ readMem (memory s) addr
-      case-frame-preserved : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s₂) addr ≡ readMem (memory s) addr
-      case-stack-inv : StackInvariant s₂
-      case-capacity : StackCapacity s₂ (ir-output-capacity [ f , g ])
-      case-frame-inv : RbpInvariant s₂
+    -- Program equality: g's program = case program (by ++-assoc)
+    prog-g = proj₁ (x86-case-right-context f g prefix suffix) ++ compile-x86 g ++ proj₂ (x86-case-right-context f g prefix suffix)
 
-    -- Case output is branch output (doesn't create closures in dispatch)
-    case-closure-wf : ClosureWFOut prog
-    case-closure-wf = Spec.no-closure
+    prog-eq : prog-g ≡ prog
+    prog-eq = trans
+      (++-assoc prefix (case-prefix-instrs f g ++ compile-x86 f ++ case-f-rest-prefix f g)
+                       (compile-x86 g ++ (case-cleanup-instrs ++ suffix)))
+      (cong (prefix ++_)
+        (trans
+          (++-assoc (case-prefix-instrs f g) (compile-x86 f ++ case-f-rest-prefix f g)
+                    (compile-x86 g ++ (case-cleanup-instrs ++ suffix)))
+          (cong (case-prefix-instrs f g ++_)
+            (trans
+              (trans
+                (++-assoc (compile-x86 f) (case-f-rest-prefix f g)
+                          (compile-x86 g ++ (case-cleanup-instrs ++ suffix)))
+                (cong (compile-x86 f ++_)
+                  (cong (case-f-rest-prefix f g ++_)
+                    (sym (++-assoc (compile-x86 g) case-cleanup-instrs suffix)))))
+              (sym (++-assoc (compile-x86 f) (case-f-rest f g) suffix))))))
+
+    -- Star composition: dispatch ++ g ++ cleanup
+    g-star : Star prog s₁ s₂
+    g-star = subst (λ p → Star p s₁ s₂) prog-eq (IRCorrectness.exec-star g-corr)
+
+    case-star : Star prog s s₃
+    case-star = star-trans (star-trans (CaseSpecs.DispatchRightPost.dispatch-star dispatch) g-star)
+                           (CaseSpecs.CleanupPost.cleanup-star cleanup)
+
+    -- Heap preserved: chain dispatch → g → cleanup
+    case-heap-preserved : X86-HeapPreserved s s₃
+    case-heap-preserved addr in-heap =
+      trans (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup addr in-heap)
+      (trans (IRCorrectness.exec-heap-preserved g-corr addr in-heap)
+             (CaseSpecs.DispatchRightPost.dispatch-heap-preserved dispatch addr in-heap))
+
+    -- Code preserved: chain dispatch → g → cleanup
+    case-code-preserved : X86-CodePreserved s s₃
+    case-code-preserved addr in-code =
+      trans (CaseSpecs.CleanupPost.cleanup-code-preserved cleanup addr in-code)
+      (trans (IRCorrectness.exec-code-preserved g-corr addr in-code)
+             (CaseSpecs.DispatchRightPost.dispatch-code-preserved dispatch addr in-code))
+
+    -- Frame preserved: same structural issue as pair
+    postulate
+      case-frame-preserved : X86-FramePreserved s s₃
 
 ------------------------------------------------------------------------
 -- Apply (takes IH)
@@ -1911,9 +2246,11 @@ X86-ArchCorrectness = record
   ; case-right-context = x86-case-right-context
   ; case-dispatch-left = x86-case-dispatch-left
   ; case-dispatch-enables-f = x86-case-dispatch-enables-f
+  ; case-left-cleanup = x86-case-left-cleanup
   ; case-left-combine = x86-case-left-combine
   ; case-dispatch-right = x86-case-dispatch-right
   ; case-dispatch-enables-g = x86-case-dispatch-enables-g
+  ; case-right-cleanup = x86-case-right-cleanup
   ; case-right-combine = x86-case-right-combine
   ; apply-correct = x86-apply-correct
   }

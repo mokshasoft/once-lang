@@ -109,6 +109,11 @@ record InvariantInterface (M : MachineInterface) : Set₁ where
     CodePreserved : State → State → Set
     FramePreserved : State → State → Set
 
+    -- Frame setup information from dispatch (for cleanup derivation)
+    -- Records arch-specific facts about how dispatch set up the call frame.
+    -- Used by cleanup to derive register/memory state after branch execution.
+    FrameSetupInfo : State → State → Set
+
 ------------------------------------------------------------------------
 -- Validity Interface
 --
@@ -356,6 +361,8 @@ module IRSpecs
         dispatch-heap-preserved : HeapPreserved s s₁
         dispatch-code-preserved : CodePreserved s s₁
         dispatch-frame-preserved : FramePreserved s s₁
+        -- Frame setup facts (for cleanup derivation)
+        dispatch-frame-setup : FrameSetupInfo s s₁
 
     record DispatchRightPost (prog : Program) (offset-g : ℕ)
                              (s s₁ : State) (b : ⟦ B ⟧) : Set₁ where
@@ -370,6 +377,33 @@ module IRSpecs
         dispatch-heap-preserved : HeapPreserved s s₁
         dispatch-code-preserved : CodePreserved s s₁
         dispatch-frame-preserved : FramePreserved s s₁
+        -- Frame setup facts (for cleanup derivation)
+        dispatch-frame-setup : FrameSetupInfo s s₁
+
+    -- After cleanup: frame restored, output preserved
+    -- prog is the full program
+    -- offset-end is program-length prefix + compile-length [ f , g ]
+    -- s is the original state (for global saved-regs/rsp-delta)
+    -- s₂ is the state after f (or g) runs
+    -- s₃ is the state after cleanup
+    record CleanupPost (prog : Program) (offset-end : ℕ)
+                       (s s₂ s₃ : State) (cx : ⟦ C ⟧) : Set₁ where
+      field
+        -- State properties
+        cleanup-halted : halted s₃ ≡ false
+        cleanup-stack-inv : StackInvariant s₃
+        cleanup-capacity : StackCapacity s₃ (ir-output-capacity [ f , g ])
+        cleanup-output-valid : ValidAt cx (output-value s₃) (memory s₃)
+        cleanup-saved-regs : SavedRegsPreserved s s₃
+        cleanup-frame-inv : FramePtrInvariant s₃
+        -- Execution evidence
+        cleanup-star : Star prog s₂ s₃
+        cleanup-pc : pc s₃ ≡ offset-end
+        cleanup-rsp-delta : rsp-delta-slots s s₃ (ir-rsp-delta [ f , g ])
+        -- Local preservation (s₂ → s₃, for chaining in combine)
+        cleanup-heap-preserved : HeapPreserved s₂ s₃
+        cleanup-code-preserved : CodePreserved s₂ s₃
+        cleanup-frame-preserved : FramePreserved s₂ s₃
 
 ------------------------------------------------------------------------
 -- ClosuresWF: WF for all closures in values of a given type

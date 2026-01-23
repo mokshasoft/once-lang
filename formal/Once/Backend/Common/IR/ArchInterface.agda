@@ -263,13 +263,24 @@ record ArchCorrectness : Set₂ where
       in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
       Preconditions {A} s₁ a (proj₁ (case-left-context f g prefix suffix)) (ir-stack-requirement f)
 
-    case-left-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+    case-left-cleanup : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
       (prefix suffix : Program) (a : ⟦ A ⟧) (s s₁ s₂ : State) →
       let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
           offset-f = program-length (proj₁ (case-left-context f g prefix suffix))
+          offset-end = program-length prefix + compile-length [ f , g ]
       in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
       IRCorrectness f (proj₁ (case-left-context f g prefix suffix) ++ₚ compile f ++ₚ proj₂ (case-left-context f g prefix suffix)) s₁ s₂ a (program-length (proj₁ (case-left-context f g prefix suffix))) →
-      IRCorrectness [ f , g ] (prefix ++ₚ compile [ f , g ] ++ₚ suffix) s s₂ (inj₁ a) (program-length prefix)
+      ∃[ s₃ ] CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval f a)
+
+    case-left-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+      (prefix suffix : Program) (a : ⟦ A ⟧) (s s₁ s₂ s₃ : State) →
+      let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
+          offset-f = program-length (proj₁ (case-left-context f g prefix suffix))
+          offset-end = program-length prefix + compile-length [ f , g ]
+      in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
+      IRCorrectness f (proj₁ (case-left-context f g prefix suffix) ++ₚ compile f ++ₚ proj₂ (case-left-context f g prefix suffix)) s₁ s₂ a (program-length (proj₁ (case-left-context f g prefix suffix))) →
+      CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval f a) →
+      IRCorrectness [ f , g ] (prefix ++ₚ compile [ f , g ] ++ₚ suffix) s s₃ (inj₁ a) (program-length prefix)
 
     case-dispatch-right : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
       (prefix suffix : Program) (b : ⟦ B ⟧) (s : State) →
@@ -285,13 +296,24 @@ record ArchCorrectness : Set₂ where
       in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
       Preconditions {B} s₁ b (proj₁ (case-right-context f g prefix suffix)) (ir-stack-requirement g)
 
-    case-right-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+    case-right-cleanup : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
       (prefix suffix : Program) (b : ⟦ B ⟧) (s s₁ s₂ : State) →
       let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
           offset-g = program-length (proj₁ (case-right-context f g prefix suffix))
+          offset-end = program-length prefix + compile-length [ f , g ]
       in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
       IRCorrectness g (proj₁ (case-right-context f g prefix suffix) ++ₚ compile g ++ₚ proj₂ (case-right-context f g prefix suffix)) s₁ s₂ b (program-length (proj₁ (case-right-context f g prefix suffix))) →
-      IRCorrectness [ f , g ] (prefix ++ₚ compile [ f , g ] ++ₚ suffix) s s₂ (inj₂ b) (program-length prefix)
+      ∃[ s₃ ] CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval g b)
+
+    case-right-combine : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
+      (prefix suffix : Program) (b : ⟦ B ⟧) (s s₁ s₂ s₃ : State) →
+      let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
+          offset-g = program-length (proj₁ (case-right-context f g prefix suffix))
+          offset-end = program-length prefix + compile-length [ f , g ]
+      in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
+      IRCorrectness g (proj₁ (case-right-context f g prefix suffix) ++ₚ compile g ++ₚ proj₂ (case-right-context f g prefix suffix)) s₁ s₂ b (program-length (proj₁ (case-right-context f g prefix suffix))) →
+      CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval g b) →
+      IRCorrectness [ f , g ] (prefix ++ₚ compile [ f , g ] ++ₚ suffix) s s₃ (inj₂ b) (program-length prefix)
 
     -----------------------------------------------------------------
     -- Apply: Uses Induction Hypothesis
