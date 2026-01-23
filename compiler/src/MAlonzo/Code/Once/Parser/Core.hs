@@ -357,58 +357,58 @@ du_matchToken_174 v0 v1 v2
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TLt_50
+         MAlonzo.Code.Once.Parser.Token.C_TLt_52
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TLt_50
+                MAlonzo.Code.Once.Parser.Token.C_TLt_52
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TLe_52
+         MAlonzo.Code.Once.Parser.Token.C_TLe_54
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TLe_52
+                MAlonzo.Code.Once.Parser.Token.C_TLe_54
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TGt_54
+         MAlonzo.Code.Once.Parser.Token.C_TGt_56
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TGt_54
+                MAlonzo.Code.Once.Parser.Token.C_TGt_56
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TGe_56
+         MAlonzo.Code.Once.Parser.Token.C_TGe_58
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TGe_56
+                MAlonzo.Code.Once.Parser.Token.C_TGe_58
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TEqEq_58
+         MAlonzo.Code.Once.Parser.Token.C_TEqEq_60
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TEqEq_58
+                MAlonzo.Code.Once.Parser.Token.C_TEqEq_60
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TNeq_60
+         MAlonzo.Code.Once.Parser.Token.C_TNeq_62
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TNeq_60
+                MAlonzo.Code.Once.Parser.Token.C_TNeq_62
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TNewline_62
+         MAlonzo.Code.Once.Parser.Token.C_TNewline_64
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TNewline_62
+                MAlonzo.Code.Once.Parser.Token.C_TNewline_64
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
                 _ -> coe v3
-         MAlonzo.Code.Once.Parser.Token.C_TEOF_64
+         MAlonzo.Code.Once.Parser.Token.C_TEOF_66
            -> case coe v1 of
-                MAlonzo.Code.Once.Parser.Token.C_TEOF_64
+                MAlonzo.Code.Once.Parser.Token.C_TEOF_66
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v1) (coe v2))
@@ -585,4 +585,4 @@ d_skipNewlines_336
   = coe
       du_many_280
       (coe
-         d_expect_162 (coe MAlonzo.Code.Once.Parser.Token.C_TNewline_62))
+         d_expect_162 (coe MAlonzo.Code.Once.Parser.Token.C_TNewline_64))

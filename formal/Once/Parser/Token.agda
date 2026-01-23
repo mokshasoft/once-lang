@@ -41,6 +41,7 @@ data Token : Set where
   TStar    : Token              -- *
   TSlash   : Token              -- /
   TPercent : Token              -- %
+  TAmpersand : Token            -- &
 
   -- Comparison operators
   TLt      : Token              -- <

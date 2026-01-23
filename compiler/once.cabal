@@ -254,6 +254,15 @@ library
       MAlonzo.Code.Once.Backend.X86.Syntax
       MAlonzo.Code.Once.IR
       MAlonzo.Code.Once.Optimize
+      MAlonzo.Code.Once.Parser
+      MAlonzo.Code.Once.Parser.Core
+      MAlonzo.Code.Once.Parser.Expr
+      MAlonzo.Code.Once.Parser.Inline
+      MAlonzo.Code.Once.Parser.Lexer
+      MAlonzo.Code.Once.Parser.Module
+      MAlonzo.Code.Once.Parser.Token
+      MAlonzo.Code.Once.Parser.Type
+      MAlonzo.Code.Once.Parser.TypeAlias
       MAlonzo.Code.Once.Postulates
       MAlonzo.Code.Once.Surface.Desugar
       MAlonzo.Code.Once.Surface.Elaborate

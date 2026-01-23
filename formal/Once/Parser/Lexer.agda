@@ -136,8 +136,11 @@ tokenize (' '  ∷ cs) = tokenize cs
 tokenize ('\t' ∷ cs) = tokenize cs
 tokenize ('\r' ∷ cs) = tokenize cs
 
--- Newlines (significant for declaration separation)
-tokenize ('\n' ∷ cs) = TNewline ∷ tokenize cs
+-- Newlines: only significant if the next line starts at column 0 (not indented).
+-- Indented continuation lines are treated as whitespace.
+tokenize ('\n' ∷ ' ' ∷ cs) = tokenize (' ' ∷ cs)   -- continuation (space-indented)
+tokenize ('\n' ∷ '\t' ∷ cs) = tokenize ('\t' ∷ cs)  -- continuation (tab-indented)
+tokenize ('\n' ∷ cs) = TNewline ∷ tokenize cs        -- declaration separator
 
 -- Two-character operators (max munch)
 tokenize ('-' ∷ '>' ∷ cs) = TArrow ∷ tokenize cs
@@ -165,6 +168,7 @@ tokenize ('-' ∷ cs) = TMinus ∷ tokenize cs
 tokenize ('*' ∷ cs) = TStar ∷ tokenize cs
 tokenize ('/' ∷ cs) = TSlash ∷ tokenize cs
 tokenize ('%' ∷ cs) = TPercent ∷ tokenize cs
+tokenize ('&' ∷ cs) = TAmpersand ∷ tokenize cs
 tokenize ('<' ∷ cs) = TLt ∷ tokenize cs
 tokenize ('>' ∷ cs) = TGt ∷ tokenize cs
 tokenize ('.' ∷ cs) = TDot ∷ tokenize cs

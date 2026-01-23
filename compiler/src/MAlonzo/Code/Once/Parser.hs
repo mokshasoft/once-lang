@@ -39,7 +39,7 @@ d_parse_4 ::
 d_parse_4 v0
   = let v1
           = MAlonzo.Code.Once.Parser.Core.d_expect_162
-              (coe MAlonzo.Code.Once.Parser.Token.C_TNewline_62) in
+              (coe MAlonzo.Code.Once.Parser.Token.C_TNewline_64) in
     coe
       (let v2
              = MAlonzo.Code.Once.Parser.Lexer.d_tokenize_202
@@ -47,7 +47,7 @@ d_parse_4 v0
        coe
          (let v3
                 = MAlonzo.Code.Once.Parser.Core.d_expect_162
-                    (coe MAlonzo.Code.Once.Parser.Token.C_TNewline_62)
+                    (coe MAlonzo.Code.Once.Parser.Token.C_TNewline_64)
                     (coe
                        MAlonzo.Code.Once.Parser.Lexer.d_tokenize_202
                        (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)) in
@@ -65,7 +65,7 @@ d_parse_4 v0
                                   -> case coe v8 of
                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v9 v10
                                          -> let v11
-                                                  = MAlonzo.Code.Once.Parser.Module.d_parseDecl_236
+                                                  = MAlonzo.Code.Once.Parser.Module.d_parseDecl_240
                                                       (coe v10) in
                                             coe
                                               (case coe v11 of
@@ -73,7 +73,7 @@ d_parse_4 v0
                                                    -> case coe v12 of
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                           -> let v15
-                                                                   = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_438
+                                                                   = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_468
                                                                        (coe v13) (coe v14) in
                                                              coe
                                                                (case coe v15 of
@@ -118,7 +118,7 @@ d_parse_4 v0
                                        _ -> MAlonzo.RTE.mazUnreachableError
                                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                   -> let v8
-                                           = MAlonzo.Code.Once.Parser.Module.d_parseDecl_236
+                                           = MAlonzo.Code.Once.Parser.Module.d_parseDecl_240
                                                (coe v6) in
                                      coe
                                        (case coe v8 of
@@ -126,7 +126,7 @@ d_parse_4 v0
                                             -> case coe v9 of
                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
                                                    -> let v12
-                                                            = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_438
+                                                            = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_468
                                                                 (coe v10) (coe v11) in
                                                       coe
                                                         (case coe v12 of
@@ -172,14 +172,14 @@ d_parse_4 v0
                       _ -> MAlonzo.RTE.mazUnreachableError
                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                  -> let v4
-                          = MAlonzo.Code.Once.Parser.Module.d_parseDecl_236 (coe v2) in
+                          = MAlonzo.Code.Once.Parser.Module.d_parseDecl_240 (coe v2) in
                     coe
                       (case coe v4 of
                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
                            -> case coe v5 of
                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                                   -> let v8
-                                           = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_438
+                                           = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_468
                                                (coe v6) (coe v7) in
                                      coe
                                        (case coe v8 of

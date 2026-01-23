@@ -361,7 +361,7 @@ d_tokenize_202 v0
       []
         -> coe
              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-             (coe MAlonzo.Code.Once.Parser.Token.C_TEOF_64) (coe v0)
+             (coe MAlonzo.Code.Once.Parser.Token.C_TEOF_66) (coe v0)
       (:) v1 v2
         -> let v3
                  = let v3
@@ -412,10 +412,29 @@ d_tokenize_202 v0
              (case coe v1 of
                 '\t' -> coe d_tokenize_202 (coe v2)
                 '\n'
-                  -> coe
-                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                       (coe MAlonzo.Code.Once.Parser.Token.C_TNewline_62)
-                       (coe d_tokenize_202 (coe v2))
+                  -> let v4
+                           = coe
+                               MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                               (coe MAlonzo.Code.Once.Parser.Token.C_TNewline_64)
+                               (coe d_tokenize_202 (coe v2)) in
+                     coe
+                       (case coe v2 of
+                          (:) v5 v6
+                            -> case coe v5 of
+                                 '\t'
+                                   -> coe
+                                        d_tokenize_202
+                                        (coe
+                                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe '\t')
+                                           (coe v6))
+                                 ' '
+                                   -> coe
+                                        d_tokenize_202
+                                        (coe
+                                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22 (coe ' ')
+                                           (coe v6))
+                                 _ -> coe v4
+                          _ -> coe v4)
                 '\r' -> coe d_tokenize_202 (coe v2)
                 ' ' -> coe d_tokenize_202 (coe v2)
                 '!'
@@ -425,7 +444,7 @@ d_tokenize_202 v0
                               '='
                                 -> coe
                                      MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                     (coe MAlonzo.Code.Once.Parser.Token.C_TNeq_60)
+                                     (coe MAlonzo.Code.Once.Parser.Token.C_TNeq_62)
                                      (coe d_tokenize_202 (coe v5))
                               _ -> coe v3
                        _ -> coe v3
@@ -452,6 +471,11 @@ d_tokenize_202 v0
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe MAlonzo.Code.Once.Parser.Token.C_TPercent_48)
+                       (coe d_tokenize_202 (coe v2))
+                '&'
+                  -> coe
+                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                       (coe MAlonzo.Code.Once.Parser.Token.C_TAmpersand_50)
                        (coe d_tokenize_202 (coe v2))
                 '('
                   -> coe
@@ -520,7 +544,7 @@ d_tokenize_202 v0
                   -> let v4
                            = coe
                                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                               (coe MAlonzo.Code.Once.Parser.Token.C_TLt_50)
+                               (coe MAlonzo.Code.Once.Parser.Token.C_TLt_52)
                                (coe d_tokenize_202 (coe v2)) in
                      coe
                        (case coe v2 of
@@ -529,7 +553,7 @@ d_tokenize_202 v0
                                  '='
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                        (coe MAlonzo.Code.Once.Parser.Token.C_TLe_52)
+                                        (coe MAlonzo.Code.Once.Parser.Token.C_TLe_54)
                                         (coe d_tokenize_202 (coe v6))
                                  _ -> coe v4
                           _ -> coe v4)
@@ -546,7 +570,7 @@ d_tokenize_202 v0
                                  '='
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                        (coe MAlonzo.Code.Once.Parser.Token.C_TEqEq_58)
+                                        (coe MAlonzo.Code.Once.Parser.Token.C_TEqEq_60)
                                         (coe d_tokenize_202 (coe v6))
                                  _ -> coe v4
                           _ -> coe v4)
@@ -554,7 +578,7 @@ d_tokenize_202 v0
                   -> let v4
                            = coe
                                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                               (coe MAlonzo.Code.Once.Parser.Token.C_TGt_54)
+                               (coe MAlonzo.Code.Once.Parser.Token.C_TGt_56)
                                (coe d_tokenize_202 (coe v2)) in
                      coe
                        (case coe v2 of
@@ -563,7 +587,7 @@ d_tokenize_202 v0
                                  '='
                                    -> coe
                                         MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                                        (coe MAlonzo.Code.Once.Parser.Token.C_TGe_56)
+                                        (coe MAlonzo.Code.Once.Parser.Token.C_TGe_58)
                                         (coe d_tokenize_202 (coe v6))
                                  _ -> coe v4
                           _ -> coe v4)
@@ -606,10 +630,10 @@ d_tokenize_202 v0
                 _ -> coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Lexer.tokenizeString
-d_tokenizeString_316 ::
+d_tokenizeString_322 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tokenizeString_316 v0
+d_tokenizeString_322 v0
   = coe
       d_tokenize_202
       (coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0)

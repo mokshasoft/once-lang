@@ -29,5 +29,5 @@ data T_Token_6
     C_TColon_22 | C_TEquals_24 | C_TArrow_26 | C_TLambda_28 |
     C_TComma_30 | C_TSemicolon_32 | C_TAt_34 | C_TPipe_36 | C_TDot_38 |
     C_TPlus_40 | C_TMinus_42 | C_TStar_44 | C_TSlash_46 |
-    C_TPercent_48 | C_TLt_50 | C_TLe_52 | C_TGt_54 | C_TGe_56 |
-    C_TEqEq_58 | C_TNeq_60 | C_TNewline_62 | C_TEOF_64
+    C_TPercent_48 | C_TAmpersand_50 | C_TLt_52 | C_TLe_54 | C_TGt_56 |
+    C_TGe_58 | C_TEqEq_60 | C_TNeq_62 | C_TNewline_64 | C_TEOF_66

@@ -24,25 +24,23 @@ import System.Directory (listDirectory, doesDirectoryExist, removeFile, doesFile
 import System.Exit (exitFailure, exitSuccess)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
 
-import Once.Backend.C (generateC, CModule (..))
-import Once.Arith.Recognize (isArithPrim)
 import Once.Arith.CodeGen.C (arithToC)
 import Once.Backend.CCompiler as CC
 import Once.Backend.Native
   ( compileToAArch64, compileToX86, compileToRiscV64
   , compileFullToAArch64, compileFullToX86, compileFullToRiscV64
-  , containsPrimitives, collectPrimitives
+  , containsPrimitives
   )
 import qualified Once.Backend.Assembler as Asm
--- Type checking and elaboration done directly via MAlonzo (no Haskell type checker)
 import qualified Once.IR (IR (..))
 import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
 import Once.Optimize (optimizeWith, OptimizerBackend (..))
-import Once.Parser (parseModule)
-import Once.Syntax (Module (..), Decl (..), Expr (..), AllocStrategy (..), Name)
+import Once.Syntax (AllocStrategy (..), Import (..))
 import Once.Type (Type (..))
-import Once.TypeAlias (TypeAliasEnv, emptyAliasEnv, extendAliasEnv, convertTypeWithAliases)
-import Once.MAlonzo (toMAlonzoRaw, toMAlonzoType, fromMAlonzoIR)
+import Once.MAlonzo (fromMAlonzoIR, fromMAlonzoType)
+-- Agda parser (MAlonzo-extracted)
+import qualified MAlonzo.Code.Once.Parser as MP
+import qualified MAlonzo.Code.Once.Parser.Module as MPM
 import qualified MAlonzo.Code.Once.TypeCheck.Elaborate as VTE
 import qualified MAlonzo.Code.Once.Surface.Elaborate as VSE
 import qualified MAlonzo.Code.Once.Surface.Syntax as VSS
@@ -152,36 +150,38 @@ runBuild opts = do
   -- Read input file
   source <- TIO.readFile inputPath
 
-  -- Parse
-  case parseModule source of
-    Left err -> do
-      TIO.putStrLn $ "Parse error: " <> T.pack (show err)
+  -- Parse (Agda parser via MAlonzo)
+  case MP.d_parse_4 source of
+    Nothing -> do
+      TIO.putStrLn "Parse error: failed to parse module"
       exitFailure
-    Right m -> do
-      -- Resolve imports (load all imported modules)
-      let initialEnv = emptyModuleEnv strataPath targetExt
-      resolveResult <- resolveImports initialEnv (moduleImports m)
+    Just agdaModule -> do
+      -- Extract imports from Agda module and resolve
+      let imports = extractAgdaImports agdaModule
+          initialEnv = emptyModuleEnv strataPath targetExt
+      resolveResult <- resolveImports initialEnv imports
       case resolveResult of
         Left modErr -> do
           TIO.putStrLn $ "Module error: " <> formatModuleError modErr
           exitFailure
         Right modEnv -> do
-              -- Extract type aliases, primitives, and function definitions
-              let aliases = extractTypeAliases m
-                  primitives = extractPrimitivesWithAliases aliases m
-                  allFunctions = extractFunctionsWithAliases aliases m
+              -- Extract primitives and functions via Agda
+              let aliases = MP.d_extractAliases_18 agdaModule
+                  primitives = extractAgdaPrimitives agdaModule
+                  funInfos = MP.d_extractFunctions_58 aliases agdaModule
+                  allFunInfos = MP.d_inlineAll_120 100 funInfos
 
               -- Generate C based on mode
               case mode of
                 Library -> do
                   -- Library mode: generate code for all functions (no main required)
-                  case allFunctions of
+                  case allFunInfos of
                     [] -> do
                       TIO.putStrLn "Error: No functions found"
                       exitFailure
                     _ -> do
-                      -- Elaborate all functions (Agda-verified, with inlining)
-                      elaborateResult <- elaborateAllVerified allFunctions
+                      -- Elaborate all functions (Agda-verified, already inlined)
+                      elaborateResult <- elaborateAllAgda allFunInfos
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
@@ -253,12 +253,13 @@ runBuild opts = do
 
                 Executable -> do
                   -- Executable mode: requires main
-                  case filter (\(n, _, _, _) -> n == "main") allFunctions of
+                  case filter (\fi -> MP.d_funName_48 fi == "main") allFunInfos of
                     [] -> do
                       TIO.putStrLn "Error: No main function found"
                       exitFailure
-                    ((mainName, mainTy, mainAlloc, mainExpr):_) -> do
+                    (mainFi:_) -> do
                       -- D032: main must be effectful (Eff Unit Unit or IO Unit)
+                      let mainTy = fromMAlonzoType (MP.d_funType_50 mainFi)
                       case mainTy of
                         TEff TUnit TUnit -> pure ()  -- OK: Eff Unit Unit or IO Unit
                         _ -> do
@@ -266,10 +267,10 @@ runBuild opts = do
                           TIO.putStrLn "Hint: Use 'main : IO Unit' or 'main : Eff Unit Unit'"
                           exitFailure
 
-                      -- Elaborate all functions to IR (use verified if enabled)
-                      let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
-                      -- Elaborate all functions (Agda-verified, with inlining)
-                      elaborateResult <- elaborateAllVerified ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions)
+                      -- Elaborate all functions (Agda-verified, already inlined)
+                      -- Put main first, then others
+                      let otherFunInfos = filter (\fi -> MP.d_funName_48 fi /= "main") allFunInfos
+                      elaborateResult <- elaborateAllAgda (mainFi : otherFunInfos)
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
@@ -297,7 +298,7 @@ runBuild opts = do
                               explicitCode <- T.concat <$> mapM TIO.readFile explicitFiles
 
                               let sourcePath = outputBase ++ ".c"
-                                  alloc = mainAlloc <|> buildAlloc opts
+                                  alloc = fromAgdaAlloc (MP.d_funAlloc_52 mainFi) <|> buildAlloc opts
                                   interpCode = interpCodeLegacy <> "\n" <> importedCode <> "\n" <> explicitCode
                                   source' = generateExecutableAll optimizedFunctions alloc primitives interpCode (buildArith opts)
                               TIO.writeFile sourcePath source'
@@ -457,24 +458,26 @@ runCheck opts = do
   -- Read input file
   source <- TIO.readFile inputPath
 
-  -- Parse
-  case parseModule source of
-    Left err -> do
-      TIO.putStrLn $ "Parse error: " <> T.pack (show err)
+  -- Parse (Agda parser via MAlonzo)
+  case MP.d_parse_4 source of
+    Nothing -> do
+      TIO.putStrLn "Parse error: failed to parse module"
       exitFailure
-    Right m -> do
-      -- Resolve imports (load all imported modules for qualified name resolution)
-      let initialEnv = emptyModuleEnv strataPath targetExt
-      resolveResult <- resolveImports initialEnv (moduleImports m)
+    Just agdaModule -> do
+      -- Resolve imports
+      let imports = extractAgdaImports agdaModule
+          initialEnv = emptyModuleEnv strataPath targetExt
+      resolveResult <- resolveImports initialEnv imports
       case resolveResult of
         Left modErr -> do
           TIO.putStrLn $ "Module error: " <> formatModuleError modErr
           exitFailure
         Right _modEnv -> do
           -- Type check by running elaboration (Agda is the type checker)
-          let aliases = extractTypeAliases m
-              allFunctions = extractFunctionsWithAliases aliases m
-          elaborateResult <- elaborateAllVerified allFunctions
+          let aliases = MP.d_extractAliases_18 agdaModule
+              funInfos = MP.d_extractFunctions_58 aliases agdaModule
+              allFunInfos = MP.d_inlineAll_120 100 funInfos
+          elaborateResult <- elaborateAllAgda allFunInfos
           case elaborateResult of
             Left err -> do
               TIO.putStrLn $ "Type error: " <> T.pack err
@@ -492,50 +495,31 @@ loadInterpretationCode interpPath = do
   cContents <- mapM (\f -> TIO.readFile (interpPath </> f)) cFiles
   pure (T.intercalate "\n\n" cContents)
 
--- | Extract type aliases from a module
-extractTypeAliases :: Module -> TypeAliasEnv
-extractTypeAliases (Module _ decls) = foldl go emptyAliasEnv decls
-  where
-    go env (TypeAlias name params body) = extendAliasEnv name params body env
-    go env _ = env
-
--- | Extract all primitives from a module (with type alias expansion)
-extractPrimitivesWithAliases :: TypeAliasEnv -> Module -> [(Text, Type)]
-extractPrimitivesWithAliases aliases (Module _imports decls) =
-  [ (name, convertTypeWithAliases aliases sty) | Primitive name sty <- decls ]
-
--- | Extract all function definitions from a module (with type alias expansion)
--- Returns list of (name, type, allocation, expression)
-extractFunctionsWithAliases :: TypeAliasEnv -> Module -> [(Text, Type, Maybe AllocStrategy, Expr)]
-extractFunctionsWithAliases aliases (Module _imports decls) = go decls
+-- | Extract imports from an Agda-parsed module
+extractAgdaImports :: MPM.T_Module_42 -> [Import]
+extractAgdaImports (MPM.C_mkModule_48 decls) = go decls
   where
     go [] = []
-    go (TypeSig name sty : FunDef name' alloc expr : rest)
-      | name == name' = (name, convertTypeWithAliases aliases sty, alloc, expr) : go rest
-      | otherwise = go rest
+    go (MPM.C_DImport_40 imp : rest) = fromAgdaImport imp : go rest
     go (_ : rest) = go rest
 
--- | Inline all intra-module function references in an expression.
--- Replaces EVar "name" with the source expression of "name" when
--- "name" is a previously-defined function (not a generator/builtin).
--- Generators are left as EVar for Agda's builtinType to handle.
-inlineReferences :: Map.Map Name Expr -> Expr -> Expr
-inlineReferences defs expr = go defs expr
-  where
-    go d (EVar name) = case Map.lookup name d of
-      Just body -> go d body  -- Inline and continue
-      Nothing   -> EVar name  -- Generator or unbound (Agda will check)
-    go d (EApp f x)    = EApp (go d f) (go d x)
-    go d (ELam x e)    = ELam x (go (Map.delete x d) e)  -- Shadow
-    go d (ELet x e1 e2) = ELet x (go d e1) (go (Map.delete x d) e2)
-    go d (EPair a b)   = EPair (go d a) (go d b)
-    go d (ECase s x l y r) = ECase (go d s)
-                                    x (go (Map.delete x d) l)
-                                    y (go (Map.delete y d) r)
-    go d (EAnnot e ty) = EAnnot (go d e) ty
-    go d (EBinOp op a b) = EBinOp op (go d a) (go d b)
-    go d (EUnaryOp op e) = EUnaryOp op (go d e)
-    go _ other         = other  -- EUnit, EInt, EStringLit, EQualified
+-- | Convert Agda Import to Haskell Import
+fromAgdaImport :: MPM.T_Import_18 -> Import
+fromAgdaImport (MPM.C_mkImport_28 path alias) = Import path alias
+
+-- | Extract primitives from an Agda-parsed module (converting types)
+extractAgdaPrimitives :: MPM.T_Module_42 -> [(Text, Type)]
+extractAgdaPrimitives (MPM.C_mkModule_48 decls) =
+  [ (name, fromMAlonzoType ty) | MPM.C_DPrimitive_36 name ty <- decls ]
+
+-- | Convert Agda AllocStrategy to Haskell AllocStrategy
+fromAgdaAlloc :: Maybe MPM.T_AllocStrategy_6 -> Maybe AllocStrategy
+fromAgdaAlloc Nothing = Nothing
+fromAgdaAlloc (Just MPM.C_Stack_8) = Just AllocStack
+fromAgdaAlloc (Just MPM.C_Heap_10) = Just AllocHeap
+fromAgdaAlloc (Just MPM.C_Pool_12) = Just AllocPool
+fromAgdaAlloc (Just MPM.C_Arena_14) = Just AllocArena
+fromAgdaAlloc (Just MPM.C_Const_16) = Just AllocConst
 
 -- | Wrap assembly code with proper directives for a given target (library mode)
 wrapNativeAsm :: Target -> Text -> Text -> Text
@@ -757,36 +741,30 @@ wrapNativeLibAll target funcs = case target of
     [ nativeFuncDef target name body | (name, body) <- funcs ]
   TargetC -> error "wrapNativeLibAll: TargetC is not a native target"
 
--- | Elaborate all functions with verified elaboration and surface-level inlining.
+-- | Elaborate all functions using the Agda-parsed FunInfo list.
 --
 -- For each function:
--- 1. Inline references to previously-defined functions (surface-level substitution)
--- 2. Convert to MAlonzo RawExpr
--- 3. Use Agda's checkElab (checking mode) for type checking + elaboration
--- 4. Convert Surface.Expr → IR via Agda's elaborate
+-- 1. Body is already inlined (via d_inlineAll_120)
+-- 2. RawExpr is passed directly to Agda's inferElab (no Haskell conversion)
+-- 3. Convert Surface.Expr → IR via Agda's elaborate
 --
 -- Agda is the single source of truth for type checking.
--- Programs with >7 levels of nesting are rejected.
-elaborateAllVerified :: [(Text, Type, Maybe AllocStrategy, Expr)]
-                     -> IO (Either String [(Text, Type, Maybe AllocStrategy, Once.IR.IR)])
-elaborateAllVerified fns = go Map.empty fns
+elaborateAllAgda :: [MP.T_FunInfo_38]
+                 -> IO (Either String [(Text, Type, Maybe AllocStrategy, Once.IR.IR)])
+elaborateAllAgda fns = go fns
   where
-    go _ [] = pure (Right [])
-    go defs ((name, ty, alloc, expr):rest) = do
+    go [] = pure (Right [])
+    go (fi:rest) = do
+      let name = MP.d_funName_48 fi
+          rawExpr = MP.d_funBody_54 fi  -- Already T_RawExpr_34, no conversion!
+          ty = fromMAlonzoType (MP.d_funType_50 fi)
+          alloc = fromAgdaAlloc (MP.d_funAlloc_52 fi)
       TIO.hPutStrLn System.IO.stderr $ "Type checking: " <> name
-      -- 1. Inline all references to previously-defined functions
-      let inlined = inlineReferences defs expr
-      -- 2. Convert to MAlonzo RawExpr
-      let rawExpr = toMAlonzoRaw inlined
-      -- 3. Convert expected type to MAlonzo Type
-      let mType = toMAlonzoType ty
-      -- 4. Use Agda checkElab (checking mode) for type checking + elaboration
-      verifiedResult <- try (pure $! elaborateOne rawExpr mType) :: IO (Either SomeException (Either String Once.IR.IR))
+      verifiedResult <- try (pure $! elaborateOne rawExpr) :: IO (Either SomeException (Either String Once.IR.IR))
       case verifiedResult of
         Right (Right ir) -> do
           TIO.hPutStrLn System.IO.stderr $ "  OK: " <> name
-          -- Add this function's source expression to defs for subsequent inlining
-          restResult <- go (Map.insert name expr defs) rest
+          restResult <- go rest
           pure $ case restResult of
             Left err -> Left err
             Right irs -> Right ((name, ty, alloc, ir) : irs)
@@ -798,7 +776,7 @@ elaborateAllVerified fns = go Map.empty fns
           pure (Left $ T.unpack name ++ ": " ++ err)
 
     -- Run Agda type inference + elaboration for a single expression
-    elaborateOne rawExpr _mType =
+    elaborateOne rawExpr =
       case VTE.d_inferElab_1726 VTE.d_emptyCtx_350 rawExpr of
         VTE.C_failure_304 errMsg ->
           Left $ "Type checking failed: " ++ show errMsg

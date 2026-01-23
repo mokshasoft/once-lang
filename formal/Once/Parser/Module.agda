@@ -107,6 +107,7 @@ parseOpChars (TPercent ∷ rest) acc = parseOpChars rest ('%' ∷ acc)
 parseOpChars (TLt ∷ rest) acc = parseOpChars rest ('<' ∷ acc)
 parseOpChars (TGt ∷ rest) acc = parseOpChars rest ('>' ∷ acc)
 parseOpChars (TPipe ∷ rest) acc = parseOpChars rest ('|' ∷ acc)
+parseOpChars (TAmpersand ∷ rest) acc = parseOpChars rest ('&' ∷ acc)
 parseOpChars (TAt ∷ rest) acc = parseOpChars rest ('@' ∷ acc)
 parseOpChars (TRParen ∷ rest) [] = nothing  -- empty operator
 parseOpChars (TRParen ∷ rest) acc = just (Data.String.fromList (reverse acc) , rest)
@@ -180,11 +181,18 @@ parseFunDef name toks =
       (params , toks'') = parseParams toks'
   in parseFunBody name alloc params toks''
 
--- | Try to parse an operator-name declaration
+-- | After parsing an operator name, decide: type sig or fun def
+tryOpDeclAfter : String → List Token → Maybe (Decl × List Token)
+tryOpDeclAfter name (TColon ∷ rest) with parseType rest
+... | just (ty , rest') = just (DTypeSig name ty , rest')
+... | nothing = nothing
+tryOpDeclAfter name rest = parseFunDef name rest
+
+-- | Try to parse an operator-name declaration (type sig or fun def)
 tryOpDecl : List Token → Maybe (Decl × List Token)
 tryOpDecl toks with parseOperatorName toks
-... | just (name , rest) = parseFunDef name rest
 ... | nothing = nothing
+... | just (name , rest) = tryOpDeclAfter name rest
 
 parseDecl [] = nothing
 -- Import

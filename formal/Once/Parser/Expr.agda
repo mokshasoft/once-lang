@@ -17,9 +17,10 @@
 
 module Once.Parser.Expr where
 
-open import Data.List using (List; []; _∷_; foldr)
+open import Data.List using (List; []; _∷_; foldr; reverse)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
+open import Data.Char using (Char)
 open import Data.String using (String)
 
 open import Once.Type using (Type)
@@ -145,11 +146,31 @@ parseParen toks with parseExpr toks
 ... | nothing = nothing
 ... | just (e , rest) = parseParenCont e rest
 
+-- | Parse operator chars inside parens: (&), (.), (|>), etc.
+-- Returns RVar with the operator name.
+parseOpExpr : List Token → List Char → Maybe (RawExpr × List Token)
+parseOpExpr (TDot ∷ rest) acc = parseOpExpr rest ('.' ∷ acc)
+parseOpExpr (TPlus ∷ rest) acc = parseOpExpr rest ('+' ∷ acc)
+parseOpExpr (TMinus ∷ rest) acc = parseOpExpr rest ('-' ∷ acc)
+parseOpExpr (TStar ∷ rest) acc = parseOpExpr rest ('*' ∷ acc)
+parseOpExpr (TSlash ∷ rest) acc = parseOpExpr rest ('/' ∷ acc)
+parseOpExpr (TPercent ∷ rest) acc = parseOpExpr rest ('%' ∷ acc)
+parseOpExpr (TLt ∷ rest) acc = parseOpExpr rest ('<' ∷ acc)
+parseOpExpr (TGt ∷ rest) acc = parseOpExpr rest ('>' ∷ acc)
+parseOpExpr (TPipe ∷ rest) acc = parseOpExpr rest ('|' ∷ acc)
+parseOpExpr (TAmpersand ∷ rest) acc = parseOpExpr rest ('&' ∷ acc)
+parseOpExpr (TAt ∷ rest) acc = parseOpExpr rest ('@' ∷ acc)
+parseOpExpr (TRParen ∷ rest) [] = nothing  -- empty operator
+parseOpExpr (TRParen ∷ rest) acc = just (RVar (Data.String.fromList (reverse acc)) , rest)
+parseOpExpr _ _ = nothing
+
 parseAtomExpr [] = nothing
 -- Unit literal
 parseAtomExpr (TLParen ∷ TRParen ∷ rest) = just (RUnit , rest)
--- Parenthesized expression or tuple
-parseAtomExpr (TLParen ∷ rest) = parseParen rest
+-- Operator as expression: (&), (.), (|>), etc.
+parseAtomExpr (TLParen ∷ rest) with parseOpExpr rest []
+... | just result = just result
+... | nothing = parseParen rest
 -- Lambda
 parseAtomExpr (TLambda ∷ rest) = parseLamParams rest
 -- Let
