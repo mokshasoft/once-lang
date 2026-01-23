@@ -67,6 +67,7 @@ canConvertIR ir = case ir of
   H.Prim _ _ _      -> False
   H.StringLit _     -> False
   H.Let _ _ _       -> False
+  H.Arith _ _       -> False
 
 -- | Check if a type can be converted to MAlonzo format
 canConvertType :: H.Type -> Bool
@@ -94,7 +95,7 @@ optimizeMAlonzo :: H.IR -> H.IR
 optimizeMAlonzo ir
   | canConvertIR ir =
       let mIR = toMAlonzoIR ir
-          mOptimized = MO.d_optimize_1200 (getInputType ir) (getOutputType ir) mIR
+          mOptimized = MO.d_optimize_1386 (getInputType ir) (getOutputType ir) mIR
       in fromMAlonzoIR mOptimized
   | otherwise = ir
 
@@ -133,22 +134,22 @@ fromMAlonzoType t = case t of
   M.C_TVar_56 n       -> H.TVar n  -- MAlonzo uses Text directly
 
 -- | Convert Haskell IR to MAlonzo IR
-toMAlonzoIR :: H.IR -> M.T_IR_4
+toMAlonzoIR :: H.IR -> M.T_IR_10
 toMAlonzoIR ir = case ir of
-  H.Id _            -> M.C_id_10
-  H.Compose g f     -> M.C__'8728'__20 (getMiddleType g f) (toMAlonzoIR g) (toMAlonzoIR f)
+  H.Id _            -> M.C_id_14
+  H.Compose g f     -> M.C__'8728'__22 (getMiddleType g f) (toMAlonzoIR g) (toMAlonzoIR f)
   H.Fst _ _         -> M.C_fst_28
-  H.Snd _ _         -> M.C_snd_36
-  H.Pair f g        -> M.C_'10216'_'44'_'10217'_46 (toMAlonzoIR f) (toMAlonzoIR g)
-  H.Terminal _      -> M.C_terminal_78
-  H.Inl _ _         -> M.C_inl_54
-  H.Inr _ _         -> M.C_inr_62
-  H.Case f g        -> M.C_'91'_'44'_'93'_72 (toMAlonzoIR f) (toMAlonzoIR g)
-  H.Initial _       -> M.C_initial_84
-  H.Curry _ f       -> M.C_curry_94 (toMAlonzoIR f)
-  H.Apply _ _       -> M.C_apply_102
-  H.Fold _          -> M.C_fold_108
-  H.Unfold _        -> M.C_unfold_114
+  H.Snd _ _         -> M.C_snd_34
+  H.Pair f g        -> M.C_'10216'_'44'_'10217'_42 (toMAlonzoIR f) (toMAlonzoIR g) M.C_Stack_6
+  H.Terminal _      -> M.C_terminal_66
+  H.Inl _ _         -> M.C_inl_48 M.C_Stack_6
+  H.Inr _ _         -> M.C_inr_54 M.C_Stack_6
+  H.Case f g        -> M.C_'91'_'44'_'93'_62 (toMAlonzoIR f) (toMAlonzoIR g)
+  H.Initial _       -> M.C_initial_70
+  H.Curry _ f       -> M.C_curry_78 (toMAlonzoIR f) M.C_Stack_6
+  H.Apply _ _       -> M.C_apply_84
+  H.Fold _          -> M.C_fold_88
+  H.Unfold _        -> M.C_unfold_92
   -- These should not occur (checked by canConvertIR)
   H.Var _           -> error "MAlonzo: Var not supported"
   H.LocalVar _      -> error "MAlonzo: LocalVar not supported"
@@ -156,28 +157,30 @@ toMAlonzoIR ir = case ir of
   H.Prim _ _ _      -> error "MAlonzo: Prim not supported"
   H.StringLit _     -> error "MAlonzo: StringLit not supported"
   H.Let _ _ _       -> error "MAlonzo: Let not supported"
+  H.Arith _ _       -> error "MAlonzo: Arith not supported"
 
 -- | Convert MAlonzo IR to Haskell IR
 --
 -- Note: Type information is lost in MAlonzo IR, so we use placeholder types.
 -- This is fine because the optimizer preserves types.
-fromMAlonzoIR :: M.T_IR_4 -> H.IR
+fromMAlonzoIR :: M.T_IR_10 -> H.IR
 fromMAlonzoIR ir = case ir of
-  M.C_id_10                       -> H.Id placeholder
-  M.C__'8728'__20 _ g f           -> H.Compose (fromMAlonzoIR g) (fromMAlonzoIR f)
+  M.C_id_14                       -> H.Id placeholder
+  M.C__'8728'__22 _ g f           -> H.Compose (fromMAlonzoIR g) (fromMAlonzoIR f)
   M.C_fst_28                      -> H.Fst placeholder placeholder
-  M.C_snd_36                      -> H.Snd placeholder placeholder
-  M.C_'10216'_'44'_'10217'_46 f g -> H.Pair (fromMAlonzoIR f) (fromMAlonzoIR g)
-  M.C_terminal_78                 -> H.Terminal placeholder
-  M.C_inl_54                      -> H.Inl placeholder placeholder
-  M.C_inr_62                      -> H.Inr placeholder placeholder
-  M.C_'91'_'44'_'93'_72 f g       -> H.Case (fromMAlonzoIR f) (fromMAlonzoIR g)
-  M.C_initial_84                  -> H.Initial placeholder
-  M.C_curry_94 f                  -> H.Curry "_" (fromMAlonzoIR f)
-  M.C_apply_102                   -> H.Apply placeholder placeholder
-  M.C_fold_108                    -> H.Fold placeholder
-  M.C_unfold_114                  -> H.Unfold placeholder
-  M.C_arr_122                     -> error "MAlonzo: arr not supported in compiler IR"
+  M.C_snd_34                      -> H.Snd placeholder placeholder
+  M.C_'10216'_'44'_'10217'_42 f g _alloc -> H.Pair (fromMAlonzoIR f) (fromMAlonzoIR g)
+  M.C_terminal_66                 -> H.Terminal placeholder
+  M.C_inl_48 _alloc               -> H.Inl placeholder placeholder
+  M.C_inr_54 _alloc               -> H.Inr placeholder placeholder
+  M.C_'91'_'44'_'93'_62 f g       -> H.Case (fromMAlonzoIR f) (fromMAlonzoIR g)
+  M.C_initial_70                  -> H.Initial placeholder
+  M.C_curry_78 f _alloc           -> H.Curry "_" (fromMAlonzoIR f)
+  M.C_apply_84                   -> H.Apply placeholder placeholder
+  M.C_fold_88                    -> H.Fold placeholder
+  M.C_unfold_92                  -> H.Unfold placeholder
+  M.C_arr_98                     -> error "MAlonzo: arr not supported in compiler IR"
+  M.C_Prim_104 _                 -> error "MAlonzo: Prim not supported in compiler IR"
   where
     placeholder = H.TUnit  -- Type info is erased, use placeholder
 
@@ -241,7 +244,7 @@ toMAlonzoRaw expr = case expr of
   S.ELet x e1 e2    -> MR.C_RLet_42 x (toMAlonzoRaw e1) (toMAlonzoRaw e2)
   S.EPair a b       -> MR.C_RPair_44 (toMAlonzoRaw a) (toMAlonzoRaw b)
   S.ECase scr x e1 y e2 ->
-    MR.C_RCase_46 (toMAlonzoRaw scr) x (toMAlonzoRaw e1) y (toMAlonzoRaw e2)
+    MR.C_RDestruct_46 (toMAlonzoRaw scr) x (toMAlonzoRaw e1) y (toMAlonzoRaw e2)
   S.EUnit           -> MR.C_RUnit_48
   S.EInt n          -> MR.C_RInt_50 n
   S.EStringLit s    -> MR.C_RStringLit_52 s

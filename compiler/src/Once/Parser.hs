@@ -72,10 +72,11 @@ reservedWords =
   -- The 12 categorical generators + arr for effects
   , "id", "compose"           -- Category
   , "fst", "snd", "pair"      -- Products
-  , "inl", "inr", "case"      -- Coproducts
+  , "inl", "inr", "case"      -- Coproducts (case = generator, destruct = syntax)
   , "terminal", "initial"     -- Terminal/Initial
   , "curry", "apply"          -- Closed
   , "arr"                     -- Arrow: lift pure to effectful (D032)
+  , "destruct"                -- Sum elimination syntax (D041)
   -- Recursive type generators
   , "fold", "unfold"          -- Fix isomorphism
   -- Allocation strategies
@@ -122,6 +123,21 @@ lowerIdent = lexeme $ try $ do
   if name `elem` reservedWords
     then fail $ "Reserved word: " ++ T.unpack name
     else pure name
+
+-- | Parse an operator identifier: (.) (&) (|>) (+) etc.
+-- Used for operator function definitions like: (.) = compose
+-- Uses try so it backtracks if it doesn't match (e.g., for normal parens)
+operatorIdent :: Parser Name
+operatorIdent = lexeme $ try $ do
+  void $ char '('
+  op <- some (oneOf ("!#$%&*+./<=>?@\\^|-~" :: String))
+  void $ char ')'  -- Must close immediately after operators
+  pure $ T.pack op
+
+-- | Parse a name (either lowercase identifier or operator in parens)
+-- Used for function definitions and type signatures
+nameIdent :: Parser Name
+nameIdent = operatorIdent <|> lowerIdent
 
 -- | Parse an uppercase identifier (module name component)
 upperIdent :: Parser Name
@@ -341,23 +357,24 @@ parseExpr = annotExpr
         _ -> pure e
 
     atomExpr = choice
-      [ EUnit <$ symbol "()"
+      [ EUnit <$ try (symbol "()")  -- try needed: ( might start other things
       , EInt <$> integer
       , EStringLit <$> stringLiteral
-      , caseExpr
+      , destructExpr  -- D041: destruct is the syntax for sum elimination
       , letExpr
       , lamExpr
-      , pairOrParens
       , generator
-      , qualifiedOrVar
+      , qualifiedOrVar  -- Before pairOrParens so (&) operator refs are matched
+      , pairOrParens
       ]
 
     -- Parse either a qualified name (name@Module.Path) or plain variable
     -- The @ for qualified access is different from @alloc annotations:
     -- - @alloc comes after name in definitions: foo @heap = ...
     -- - @Module comes after name in expressions: swap@Product x
+    -- Also supports operator identifiers like (&) for references: (|>) = (&)
     qualifiedOrVar = do
-      name <- lowerIdent
+      name <- nameIdent
       option (EVar name) $ do
         void $ char '@'  -- no space allowed between name and @
         modPath <- modulePath
@@ -372,6 +389,7 @@ parseExpr = annotExpr
       , EVar "pair" <$ reserved "pair"
       , EVar "inl" <$ reserved "inl"
       , EVar "inr" <$ reserved "inr"
+      , EVar "case" <$ reserved "case"  -- Copairing: (A → C) → (B → C) → (A + B → C) (D041)
       , EVar "terminal" <$ reserved "terminal"
       , EVar "initial" <$ reserved "initial"
       , EVar "curry" <$ reserved "curry"
@@ -383,12 +401,13 @@ parseExpr = annotExpr
       , EVar "unfold" <$ reserved "unfold"
       ]
 
+    -- Lambda with multiple parameters: \a b c -> e  desugars to \a -> \b -> \c -> e
     lamExpr = do
       void $ symbol "\\"
-      x <- lowerIdent
+      params <- some lowerIdent  -- one or more parameters
       void $ symbol "->"
       e <- parseExpr
-      pure $ ELam x e
+      pure $ foldr ELam e params
 
     -- let bindings with semicolon separation:
     --   let x = e1; y = e2 in body
@@ -451,8 +470,11 @@ parseExpr = annotExpr
     -- Simple expression that doesn't consume ; or 'in'
     simpleExpr = composeExpr
 
-    caseExpr = do
-      reserved "case"
+    -- Sum elimination: destruct e of { Left x -> e1; Right y -> e2 }
+    -- Note: 'case' is now a generator (copairing). Use 'destruct' for pattern matching.
+    -- D041: The 'destruct' keyword is the syntax for sum elimination with variable binding.
+    destructExpr = do
+      reserved "destruct"
       e <- parseExpr
       reserved "of"
       void $ symbol "{"
@@ -515,16 +537,17 @@ parseDecl = choice
       pure $ TypeAlias name params ty
 
     typeSig = do
-      name <- lowerIdent
+      name <- nameIdent
       void $ symbol ":"
       ty <- parseType
       pure $ TypeSig name ty
 
     -- | Parse function definition with optional named parameters
     -- f x y = e  desugars to  f = \x -> \y -> e
+    -- Also supports operator definitions: (.) = compose
     funDef = do
-      name <- lowerIdent
-      params <- many lowerIdent  -- zero or more parameters
+      name <- nameIdent
+      params <- many lowerIdent  -- zero or more parameters (not for operators)
       alloc <- optional allocAnnotation
       void $ symbol "="
       e <- parseExpr

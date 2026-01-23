@@ -18,6 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Bool
+import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Once.Type
@@ -204,4 +205,15 @@ data T_Expr_162
     C_case''_256 MAlonzo.Code.Once.Type.T_Type_32
                  MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 T_Expr_162 T_Expr_162 |
     C_unit_262 | C_absurd_270 T_Expr_162 |
-    C_let''_280 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 T_Expr_162
+    C_let''_280 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162
+                T_Expr_162 |
+    C_int_286 Integer |
+    C_str_292 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_add_298 T_Expr_162 T_Expr_162 | C_sub_304 T_Expr_162 T_Expr_162 |
+    C_mul_310 T_Expr_162 T_Expr_162 | C_div_316 T_Expr_162 T_Expr_162 |
+    C_mod''_322 T_Expr_162 T_Expr_162 | C_neg_328 T_Expr_162 |
+    C_lt_334 T_Expr_162 T_Expr_162 | C_le_340 T_Expr_162 T_Expr_162 |
+    C_gt_346 T_Expr_162 T_Expr_162 | C_ge_352 T_Expr_162 T_Expr_162 |
+    C_eq_358 T_Expr_162 T_Expr_162 | C_ne_364 T_Expr_162 T_Expr_162 |
+    C_arr''_374 T_Expr_162 | C_roll''_382 T_Expr_162 |
+    C_unroll''_390 T_Expr_162

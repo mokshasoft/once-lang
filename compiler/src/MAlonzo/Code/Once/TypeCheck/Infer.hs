@@ -692,7 +692,7 @@ d_infer_148 v0 v1 v2
                           _ -> MAlonzo.RTE.mazUnreachableError)
                 C_failure_146 v6 -> coe v5
                 _ -> MAlonzo.RTE.mazUnreachableError)
-      MAlonzo.Code.Once.TypeCheck.Raw.C_RCase_46 v3 v4 v5 v6 v7
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_46 v3 v4 v5 v6 v7
         -> let v8 = d_infer_148 (coe v0) (coe v3) (coe v2) in
            coe
              (case coe v8 of

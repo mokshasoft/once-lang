@@ -497,6 +497,23 @@ builtinType "unfold" n =
   in just (Fix f ⇒ f ,
           Surface.lam Many (Surface.unroll' (Surface.var zero)) ,
           suc n)
+-- case: (A → C) → (B → C) → (A + B) → C
+-- case = λf. λg. λx. case' x (f a) (g b)
+-- This is the copairing (coproduct eliminator) as a curried function.
+-- In the body, f is at index 3, g at index 2, x at index 0 in the lambda context.
+-- Inside case' branches, the bound variable is at index 0, so:
+--   - left branch (context extended with a:A): f is at 3, a is at 0
+--   - right branch (context extended with b:B): g is at 2, b is at 0
+builtinType "case" n =
+  let a = TVar (freshTVar n)
+      b = TVar (freshTVar (suc n))
+      c = TVar (freshTVar (suc (suc n)))
+  in just ((a ⇒ c) ⇒ (b ⇒ c) ⇒ (a Once.Type.+ b) ⇒ c ,
+          Surface.lam Many (Surface.lam Many (Surface.lam Many
+            (Surface.case' (Surface.var zero)
+              (Surface.app (Surface.var (suc (suc (suc zero)))) (Surface.var zero))
+              (Surface.app (Surface.var (suc (suc zero))) (Surface.var zero))))) ,
+          suc (suc (suc n)))
 -- Note: pure is NOT a builtin - it's library code defined as:
 --   pure : A → Eff Unit A
 --   pure x = arr (λ_ → x)
@@ -656,7 +673,7 @@ mutual
 
   -- Case analysis (depth = max(scrut, leftBranch + 1, rightBranch + 1) since branches are under binders)
   -- QTT: Combine usage from scrutinee and both branches (drop bound variables from branches)
-  inferElabImpl ctx (Raw.RCase scrut xL eL xR eR) = inferCase (inferElabImpl ctx scrut)
+  inferElabImpl ctx (Raw.RDestruct scrut xL eL xR eR) = inferCase (inferElabImpl ctx scrut)
     where
       extendCtx' : NamedCtx → String → Type → ℕ → NamedCtx
       extendCtx' (mkCtx n Γ Δ _) y C fresh = mkCtx (suc n) (extendCtx Γ y C) (Δ S, C) fresh

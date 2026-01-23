@@ -2661,3 +2661,108 @@ mem-preserved : StackRegion sp → HeapRegion h →
 - D038: Multiple Generator Implementation Profiles
 - `formal/Once/Backend/X86/Correct/StackInvariant.agda` - Current concrete model
 - `formal/Once/Postulates.agda` - Current `heap-stack-disjoint` postulate
+
+---
+
+## D042: Case Generator vs Destruct Syntax
+
+**Date**: 2026-01-22
+**Status**: Accepted
+
+### Context
+
+Per D001, `case` is one of the 12 categorical generators - the coproduct eliminator (copairing). However, the parser had overloaded `case` to mean two different things:
+
+1. **Generator**: The categorical operation `(A → C) → (B → C) → (A + B → C)`
+2. **Syntax**: Pattern matching `case e of { Left x -> e1; Right y -> e2 }`
+
+This conflation caused problems:
+- `mirror = case inr inl` didn't parse (case expected pattern-matching syntax)
+- Inconsistent with D027 (generators should be implicitly available as reserved words)
+- Conflates a categorical operation with binding/naming concerns
+
+### Decision
+
+**Separate the concerns:**
+
+1. **`case` is a pure generator** - coproduct eliminator/copairing
+   - Type: `(A → C) → (B → C) → (A + B → C)`
+   - Available as reserved word per D001/D027
+   - Usage: `case f g` applies f to Left, g to Right
+
+2. **`destruct` is the pattern-matching syntax** - sum elimination with variable binding
+   - Syntax: `destruct e | x -> e1 | y -> e2`
+   - First branch handles `inl` (Left), second handles `inr` (Right)
+   - Positional - no `Left`/`Right` keywords needed
+
+### Syntax Design (Bar-separated patterns)
+
+```once
+destruct e
+  | x -> e1
+  | y -> e2
+```
+
+The first branch handles `inl` (Left), second handles `inr` (Right).
+
+**Examples:**
+
+```once
+-- Bool (if/then/else is just destruct on Unit + Unit)
+destruct b
+  | _ -> trueCase
+  | _ -> falseCase
+
+-- Maybe A = Unit + A
+destruct m
+  | _ -> default
+  | x -> f x
+
+-- Mirror: A + B -> B + A
+mirror x = destruct x
+  | a -> inr a
+  | b -> inl b
+
+-- Nested destruction
+assocR x = destruct x
+  | ab -> destruct ab
+      | a -> inl a
+      | b -> inr (inl b)
+  | c -> inr (inr c)
+```
+
+### Rationale
+
+**Why not just `case`:**
+- `case` as a generator is `(A → C) → (B → C) → (A + B → C)` - takes functions
+- Pattern matching with binding is different - introduces names
+- The generator `case` composes; the syntax `destruct` binds
+
+**Why not `if-then-else`:**
+- `if-then-else` is just `destruct` on `Bool = Unit + Unit`
+- One universal syntax handles all sum types
+- No special case for Bool needed
+
+**Why bar-separated syntax:**
+- Clean visual structure for pattern branches
+- Good for programmer overview of code
+- Similar to Haskell's guards/case arms
+- No verbose braces or keywords
+
+**Why positional (no Left/Right keywords):**
+- Consistent with `inl`/`inr` (first/second injection)
+- Less visual noise
+- Two branches always - sum types are binary
+
+### Consequences
+
+- `case` works as a generator: `mirror = case inr inl`
+- Pattern matching uses `destruct` with bar-separated patterns
+- No `if-then-else` needed - use `destruct` on Bool
+- Parser changes: rename `case` syntax to `destruct`
+- All examples using old `case ... of { ... }` syntax need migration
+
+### See Also
+
+- D001: Generators as Reserved Words
+- D027: No Implicit Imports (generators are implicitly available)

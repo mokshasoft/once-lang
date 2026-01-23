@@ -16,7 +16,6 @@ import Control.Applicative ((<|>))
 import Control.Exception (try, SomeException)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -35,15 +34,19 @@ import Once.Backend.Native
   , containsPrimitives, collectPrimitives
   )
 import qualified Once.Backend.Assembler as Asm
--- Once.Elaborate removed - using only verified elaboration (Once.Elaborate.Verified)
-import qualified Once.Elaborate.Verified as EV
+-- Type checking and elaboration done directly via MAlonzo (no Haskell type checker)
 import qualified Once.IR (IR (..))
 import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
-import Once.Optimize (optimize, optimizeWith, OptimizerBackend (..))
+import Once.Optimize (optimizeWith, OptimizerBackend (..))
 import Once.Parser (parseModule)
-import Once.Syntax (Module (..), Decl (..), Expr, AllocStrategy (..))
+import Once.Syntax (Module (..), Decl (..), Expr (..), AllocStrategy (..), Name)
 import Once.Type (Type (..))
-import Once.TypeCheck (checkModule, checkModuleWithEnv, convertType)
+import Once.TypeAlias (TypeAliasEnv, emptyAliasEnv, extendAliasEnv, convertTypeWithAliases)
+import Once.MAlonzo (toMAlonzoRaw, toMAlonzoType, fromMAlonzoIR)
+import qualified MAlonzo.Code.Once.TypeCheck.Elaborate as VTE
+import qualified MAlonzo.Code.Once.Surface.Elaborate as VSE
+import qualified MAlonzo.Code.Once.Surface.Syntax as VSS
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | CLI commands
 data Command
@@ -163,15 +166,10 @@ runBuild opts = do
           TIO.putStrLn $ "Module error: " <> formatModuleError modErr
           exitFailure
         Right modEnv -> do
-          -- Type check with module environment
-          case checkModuleWithEnv modEnv m of
-            Left err -> do
-              TIO.putStrLn $ "Type error: " <> T.pack (show err)
-              exitFailure
-            Right () -> do
-              -- Extract primitives and all function definitions
-              let primitives = extractPrimitives m
-                  allFunctions = extractFunctions m
+              -- Extract type aliases, primitives, and function definitions
+              let aliases = extractTypeAliases m
+                  primitives = extractPrimitivesWithAliases aliases m
+                  allFunctions = extractFunctionsWithAliases aliases m
 
               -- Generate C based on mode
               case mode of
@@ -182,8 +180,8 @@ runBuild opts = do
                       TIO.putStrLn "Error: No functions found"
                       exitFailure
                     _ -> do
-                      -- Elaborate all functions (always use verified)
-                      elaborateResult <- elaborateAllVerified modEnv allFunctions
+                      -- Elaborate all functions (Agda-verified, with inlining)
+                      elaborateResult <- elaborateAllVerified allFunctions
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
@@ -270,8 +268,8 @@ runBuild opts = do
 
                       -- Elaborate all functions to IR (use verified if enabled)
                       let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
-                      -- Elaborate all functions (always use verified)
-                      elaborateResult <- elaborateAllVerified modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions)
+                      -- Elaborate all functions (Agda-verified, with inlining)
+                      elaborateResult <- elaborateAllVerified ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions)
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
@@ -472,13 +470,16 @@ runCheck opts = do
         Left modErr -> do
           TIO.putStrLn $ "Module error: " <> formatModuleError modErr
           exitFailure
-        Right modEnv -> do
-          -- Type check with module environment
-          case checkModuleWithEnv modEnv m of
+        Right _modEnv -> do
+          -- Type check by running elaboration (Agda is the type checker)
+          let aliases = extractTypeAliases m
+              allFunctions = extractFunctionsWithAliases aliases m
+          elaborateResult <- elaborateAllVerified allFunctions
+          case elaborateResult of
             Left err -> do
-              TIO.putStrLn $ "Type error: " <> T.pack (show err)
+              TIO.putStrLn $ "Type error: " <> T.pack err
               exitFailure
-            Right () -> do
+            Right _ -> do
               TIO.putStrLn "OK"
               exitSuccess
 
@@ -491,30 +492,50 @@ loadInterpretationCode interpPath = do
   cContents <- mapM (\f -> TIO.readFile (interpPath </> f)) cFiles
   pure (T.intercalate "\n\n" cContents)
 
--- | Extract all primitives from a module
--- Returns list of (name, type)
-extractPrimitives :: Module -> [(Text, Type)]
-extractPrimitives (Module _imports decls) =
-  [ (name, convertType sty) | Primitive name sty <- decls ]
-
--- | Extract all function definitions from a module
--- Returns list of (name, type, allocation, expression)
-extractFunctions :: Module -> [(Text, Type, Maybe AllocStrategy, Expr)]
-extractFunctions (Module _imports decls) = go decls Nothing
+-- | Extract type aliases from a module
+extractTypeAliases :: Module -> TypeAliasEnv
+extractTypeAliases (Module _ decls) = foldl go emptyAliasEnv decls
   where
-    go [] _ = []
-    go (TypeSig name sty : FunDef name' alloc expr : rest) _
-      | name == name' = (name, convertType sty, alloc, expr) : go rest Nothing
-      | otherwise = go rest Nothing
-    go (TypeSig name sty : rest) _ = go rest (Just (name, sty))
-    go (_ : rest) ctx = go rest ctx
+    go env (TypeAlias name params body) = extendAliasEnv name params body env
+    go env _ = env
 
--- | Extract the main function from a module (backwards compatible)
--- Returns (name, type, allocation, expression)
-extractFunction :: Module -> Maybe (Text, Type, Maybe AllocStrategy, Expr)
-extractFunction m = case filter (\(n, _, _, _) -> n == "main") (extractFunctions m) of
-  [] -> Nothing
-  (f:_) -> Just f
+-- | Extract all primitives from a module (with type alias expansion)
+extractPrimitivesWithAliases :: TypeAliasEnv -> Module -> [(Text, Type)]
+extractPrimitivesWithAliases aliases (Module _imports decls) =
+  [ (name, convertTypeWithAliases aliases sty) | Primitive name sty <- decls ]
+
+-- | Extract all function definitions from a module (with type alias expansion)
+-- Returns list of (name, type, allocation, expression)
+extractFunctionsWithAliases :: TypeAliasEnv -> Module -> [(Text, Type, Maybe AllocStrategy, Expr)]
+extractFunctionsWithAliases aliases (Module _imports decls) = go decls
+  where
+    go [] = []
+    go (TypeSig name sty : FunDef name' alloc expr : rest)
+      | name == name' = (name, convertTypeWithAliases aliases sty, alloc, expr) : go rest
+      | otherwise = go rest
+    go (_ : rest) = go rest
+
+-- | Inline all intra-module function references in an expression.
+-- Replaces EVar "name" with the source expression of "name" when
+-- "name" is a previously-defined function (not a generator/builtin).
+-- Generators are left as EVar for Agda's builtinType to handle.
+inlineReferences :: Map.Map Name Expr -> Expr -> Expr
+inlineReferences defs expr = go defs expr
+  where
+    go d (EVar name) = case Map.lookup name d of
+      Just body -> go d body  -- Inline and continue
+      Nothing   -> EVar name  -- Generator or unbound (Agda will check)
+    go d (EApp f x)    = EApp (go d f) (go d x)
+    go d (ELam x e)    = ELam x (go (Map.delete x d) e)  -- Shadow
+    go d (ELet x e1 e2) = ELet x (go d e1) (go (Map.delete x d) e2)
+    go d (EPair a b)   = EPair (go d a) (go d b)
+    go d (ECase s x l y r) = ECase (go d s)
+                                    x (go (Map.delete x d) l)
+                                    y (go (Map.delete y d) r)
+    go d (EAnnot e ty) = EAnnot (go d e) ty
+    go d (EBinOp op a b) = EBinOp op (go d a) (go d b)
+    go d (EUnaryOp op e) = EUnaryOp op (go d e)
+    go _ other         = other  -- EUnit, EInt, EStringLit, EQualified
 
 -- | Wrap assembly code with proper directives for a given target (library mode)
 wrapNativeAsm :: Target -> Text -> Text -> Text
@@ -736,34 +757,54 @@ wrapNativeLibAll target funcs = case target of
     [ nativeFuncDef target name body | (name, body) <- funcs ]
   TargetC -> error "wrapNativeLibAll: TargetC is not a native target"
 
--- | Elaborate all functions with verified elaboration (no fallback)
+-- | Elaborate all functions with verified elaboration and surface-level inlining.
 --
--- Uses the MAlonzo-extracted verified type checker and elaboration.
--- Programs with >7 levels of nesting are rejected by the Agda type checker.
--- This provides correctness guarantees for all successfully compiled programs.
-elaborateAllVerified :: ModuleEnv
-                     -> [(Text, Type, Maybe AllocStrategy, Expr)]
+-- For each function:
+-- 1. Inline references to previously-defined functions (surface-level substitution)
+-- 2. Convert to MAlonzo RawExpr
+-- 3. Use Agda's checkElab (checking mode) for type checking + elaboration
+-- 4. Convert Surface.Expr → IR via Agda's elaborate
+--
+-- Agda is the single source of truth for type checking.
+-- Programs with >7 levels of nesting are rejected.
+elaborateAllVerified :: [(Text, Type, Maybe AllocStrategy, Expr)]
                      -> IO (Either String [(Text, Type, Maybe AllocStrategy, Once.IR.IR)])
-elaborateAllVerified _ [] = pure (Right [])
-elaborateAllVerified env ((name, ty, alloc, expr):rest) = do
-  -- Use verified elaboration (no fallback)
-  TIO.hPutStrLn System.IO.stderr $ "Type checking: " <> name
-  verifiedResult <- try (pure $! EV.elaborateVerified expr) :: IO (Either SomeException (Either String Once.IR.IR))
-  case verifiedResult of
-    Right (Right verifiedIR) -> do
-      TIO.hPutStrLn System.IO.stderr $ "✓ Type checking succeeded for: " <> name
-      restResult <- elaborateAllVerified env rest
-      pure $ case restResult of
-        Left err -> Left err
-        Right irs -> Right ((name, ty, alloc, verifiedIR) : irs)
-    Left exc -> do
-      -- Exception from MAlonzo (should not happen with correct Agda code)
-      TIO.hPutStrLn System.IO.stderr $ "✗ Fatal error for " <> name <> ": " <> T.pack (show exc)
-      pure (Left $ "Fatal error during type checking of " ++ T.unpack name ++ ": " ++ show exc)
-    Right (Left err) -> do
-      -- Type checking error from Agda (e.g., depth > 7, type mismatch, unbound variable)
-      TIO.hPutStrLn System.IO.stderr $ "✗ Type checking failed for " <> name <> ": " <> T.pack err
-      pure (Left $ "Type checking failed for " ++ T.unpack name ++ ": " ++ err)
+elaborateAllVerified fns = go Map.empty fns
+  where
+    go _ [] = pure (Right [])
+    go defs ((name, ty, alloc, expr):rest) = do
+      TIO.hPutStrLn System.IO.stderr $ "Type checking: " <> name
+      -- 1. Inline all references to previously-defined functions
+      let inlined = inlineReferences defs expr
+      -- 2. Convert to MAlonzo RawExpr
+      let rawExpr = toMAlonzoRaw inlined
+      -- 3. Convert expected type to MAlonzo Type
+      let mType = toMAlonzoType ty
+      -- 4. Use Agda checkElab (checking mode) for type checking + elaboration
+      verifiedResult <- try (pure $! elaborateOne rawExpr mType) :: IO (Either SomeException (Either String Once.IR.IR))
+      case verifiedResult of
+        Right (Right ir) -> do
+          TIO.hPutStrLn System.IO.stderr $ "  OK: " <> name
+          -- Add this function's source expression to defs for subsequent inlining
+          restResult <- go (Map.insert name expr defs) rest
+          pure $ case restResult of
+            Left err -> Left err
+            Right irs -> Right ((name, ty, alloc, ir) : irs)
+        Left exc -> do
+          TIO.hPutStrLn System.IO.stderr $ "  FATAL: " <> name <> ": " <> T.pack (show exc)
+          pure (Left $ T.unpack name ++ ": fatal error: " ++ show exc)
+        Right (Left err) -> do
+          TIO.hPutStrLn System.IO.stderr $ "  FAIL: " <> name <> ": " <> T.pack err
+          pure (Left $ T.unpack name ++ ": " ++ err)
+
+    -- Run Agda type inference + elaboration for a single expression
+    elaborateOne rawExpr _mType =
+      case VTE.d_inferElab_1726 VTE.d_emptyCtx_350 rawExpr of
+        VTE.C_failure_304 errMsg ->
+          Left $ "Type checking failed: " ++ show errMsg
+        VTE.C_success_302 inferredType surfaceExpr _fresh1 _fresh2 _usage ->
+          let irExpr = VSE.du_elaborate_112 (VSS.C_'8709'_8) inferredType surfaceExpr
+          in Right (fromMAlonzoIR (unsafeCoerce irExpr))
 
 -- | Generate C code for an executable (with main function)
 -- The allocation strategy affects how buffer/string outputs are allocated

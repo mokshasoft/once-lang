@@ -11,7 +11,6 @@ import ModuleSpec (moduleTests)
 import OptimizeSpec (optimizeTests)
 import ParserSpec (parserTests)
 import QuantitySpec (quantityTests)
-import TypeCheckSpec (typeCheckTests)
 
 main :: IO ()
 main = defaultMain $ testGroup "Once"
@@ -21,7 +20,6 @@ main = defaultMain $ testGroup "Once"
   , optimizeTests
   , parserTests
   , elaborateTests
-  , typeCheckTests
   , moduleTests
   , backendTests
   , allocationStressTests

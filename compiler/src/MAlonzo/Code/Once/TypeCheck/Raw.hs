@@ -40,9 +40,9 @@ data T_RawExpr_34
     C_RLet_42 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34
               T_RawExpr_34 |
     C_RPair_44 T_RawExpr_34 T_RawExpr_34 |
-    C_RCase_46 T_RawExpr_34 MAlonzo.Code.Agda.Builtin.String.T_String_6
-               T_RawExpr_34 MAlonzo.Code.Agda.Builtin.String.T_String_6
-               T_RawExpr_34 |
+    C_RDestruct_46 T_RawExpr_34
+                   MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34
+                   MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34 |
     C_RUnit_48 | C_RInt_50 Integer |
     C_RStringLit_52 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_RAnnot_54 T_RawExpr_34 MAlonzo.Code.Once.Type.T_Type_32 |
