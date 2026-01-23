@@ -19,7 +19,20 @@ open import Once.Semantics using (⟦_⟧; encode; Closure; ⟦Fix⟧; wrap)
 open ⟦Fix⟧
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writeMem)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
-open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
+
+-- Import shared AtS records, allocation lemmas, and preservation from Common
+open import Once.Backend.Common.MemoryValid public
+  using ( PairAtS; pair-at-s; fst-valid-s; snd-valid-s
+        ; InlAtS; inl-at-s; tag-valid-inl-s; val-valid-inl-s
+        ; InrAtS; inr-at-s; tag-valid-inr-s; val-valid-inr-s
+        ; ClosureAtS; closure-at-s; env-valid-s; code-valid-s
+        ; NoOverlap; no-overlap
+        ; slot-size
+        ; alloc-pair-creates-valid-s; alloc-inl-creates-valid-s
+        ; alloc-inr-creates-valid-s; alloc-closure-creates-valid-s
+        ; PairAtS-preserved-under-mem-eq; InlAtS-preserved-under-mem-eq
+        ; InrAtS-preserved-under-mem-eq; ClosureAtS-preserved-under-mem-eq
+        )
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; stack-heap-addr-disjoint; heap-offset)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
@@ -67,54 +80,6 @@ record InrAt {A B : Type} (b : ⟦ B ⟧) (addr : Word) (m : Memory) : Set where
     val-valid : readMem m (addr +ℕ slot-size) ≡ just (encode b)
 
 open InrAt public
-
-------------------------------------------------------------------------
--- Stateful Validity Predicates (no reference to abstract encode)
---
--- These predicates use explicit addresses instead of the abstract
--- `encode` function. This breaks the circular dependency on postulates
--- and allows validity to be proven from stateful allocation theorems.
-------------------------------------------------------------------------
-
--- | Pair validity with explicit component addresses
--- Memory at addr-pair contains [addr-a, addr-b]
-record PairAtS (addr-a addr-b addr-pair : Word) (m : Memory) : Set where
-  constructor pair-at-s
-  field
-    fst-valid : readMem m addr-pair ≡ just addr-a
-    snd-valid : readMem m (addr-pair +ℕ slot-size) ≡ just addr-b
-
-open PairAtS public using () renaming (fst-valid to fst-valid-s; snd-valid to snd-valid-s)
-
--- | Left sum validity with explicit value address
--- Memory at addr-sum contains [0, addr-val]
-record InlAtS (addr-val addr-sum : Word) (m : Memory) : Set where
-  constructor inl-at-s
-  field
-    tag-valid : readMem m addr-sum ≡ just 0
-    val-valid : readMem m (addr-sum +ℕ slot-size) ≡ just addr-val
-
-open InlAtS public using () renaming (tag-valid to tag-valid-inl-s; val-valid to val-valid-inl-s)
-
--- | Right sum validity with explicit value address
--- Memory at addr-sum contains [1, addr-val]
-record InrAtS (addr-val addr-sum : Word) (m : Memory) : Set where
-  constructor inr-at-s
-  field
-    tag-valid : readMem m addr-sum ≡ just 1
-    val-valid : readMem m (addr-sum +ℕ slot-size) ≡ just addr-val
-
-open InrAtS public using () renaming (tag-valid to tag-valid-inr-s; val-valid to val-valid-inr-s)
-
--- | Closure validity with explicit addresses
--- Memory at addr-closure contains [env-addr, code-ptr]
-record ClosureAtS (env-addr code-ptr addr-closure : Word) (m : Memory) : Set where
-  constructor closure-at-s
-  field
-    env-valid : readMem m addr-closure ≡ just env-addr
-    code-valid : readMem m (addr-closure +ℕ slot-size) ≡ just code-ptr
-
-open ClosureAtS public using () renaming (env-valid to env-valid-s; code-valid to code-valid-s)
 
 ------------------------------------------------------------------------
 -- ValidAt: Unified Validity Predicate
@@ -261,50 +226,6 @@ valid-inr-child :
 valid-inr-child (valid-inr {addr-b = addr-b} vb inrS) mem-eq =
   let addr-eq = just-injective (trans (sym (val-valid-inr-s inrS)) mem-eq)
   in subst (λ a → ValidAt _ a _) addr-eq vb
-
-------------------------------------------------------------------------
--- AtS preservation under memory equality
-------------------------------------------------------------------------
-
--- | Helper: PairAtS preserved under memory equality
-PairAtS-preserved-under-mem-eq :
-  ∀ {addr-a addr-b addr : Word} {m1 m2 : Memory} →
-  PairAtS addr-a addr-b addr m1 →
-  (∀ a → readMem m2 a ≡ readMem m1 a) →
-  PairAtS addr-a addr-b addr m2
-PairAtS-preserved-under-mem-eq {addr-a} {addr-b} {addr} pairS mem-eq =
-  pair-at-s (trans (mem-eq addr) (fst-valid-s pairS))
-            (trans (mem-eq (addr +ℕ slot-size)) (snd-valid-s pairS))
-
--- | Helper: InlAtS preserved under memory equality
-InlAtS-preserved-under-mem-eq :
-  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
-  InlAtS addr-val addr-sum m1 →
-  (∀ a → readMem m2 a ≡ readMem m1 a) →
-  InlAtS addr-val addr-sum m2
-InlAtS-preserved-under-mem-eq {addr-val} {addr-sum} inlS mem-eq =
-  inl-at-s (trans (mem-eq addr-sum) (tag-valid-inl-s inlS))
-           (trans (mem-eq (addr-sum +ℕ slot-size)) (val-valid-inl-s inlS))
-
--- | Helper: InrAtS preserved under memory equality
-InrAtS-preserved-under-mem-eq :
-  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
-  InrAtS addr-val addr-sum m1 →
-  (∀ a → readMem m2 a ≡ readMem m1 a) →
-  InrAtS addr-val addr-sum m2
-InrAtS-preserved-under-mem-eq {addr-val} {addr-sum} inrS mem-eq =
-  inr-at-s (trans (mem-eq addr-sum) (tag-valid-inr-s inrS))
-           (trans (mem-eq (addr-sum +ℕ slot-size)) (val-valid-inr-s inrS))
-
--- | Helper: ClosureAtS preserved under memory equality
-ClosureAtS-preserved-under-mem-eq :
-  ∀ {env-addr code-ptr addr-closure : Word} {m1 m2 : Memory} →
-  ClosureAtS env-addr code-ptr addr-closure m1 →
-  (∀ a → readMem m2 a ≡ readMem m1 a) →
-  ClosureAtS env-addr code-ptr addr-closure m2
-ClosureAtS-preserved-under-mem-eq {env-addr} {code-ptr} {addr-closure} closS mem-eq =
-  closure-at-s (trans (mem-eq addr-closure) (env-valid-s closS))
-               (trans (mem-eq (addr-closure +ℕ slot-size)) (code-valid-s closS))
 
 ------------------------------------------------------------------------
 -- ValidAt preservation under memory equality
@@ -817,13 +738,6 @@ encode-inr-val-derived b addr m valid = val-valid valid
 ------------------------------------------------------------------------
 -- Preservation: validity survives writes to other addresses
 ------------------------------------------------------------------------
-
--- | Helper: addr₁ ≠ addr₂ and addr₁ ≠ addr₂ + 8 (pair doesn't overlap)
-record NoOverlap (addr₁ addr₂ : Word) : Set where
-  constructor no-overlap
-  field
-    neq-base : addr₁ ≢ addr₂
-    neq-snd  : addr₁ ≢ addr₂ +ℕ slot-size
 
 -- | Writing to a non-overlapping address preserves pair validity
 pair-valid-preserved : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (pair-addr write-addr : Word) (v : Word) (m : Memory) →

@@ -19,9 +19,20 @@ open import Once.Type
 open import Once.Semantics using (⟦_⟧; encode)
 open import Once.Backend.AArch64.Semantics using (State; Memory; Word; readMem; writeMem)
 
--- Import proven memory theorems from Once.Memory
-open import Once.Memory public
-  using (mem-read-write; mem-read-other; n≢n+8)
+-- Import shared AtS records, allocation lemmas, and preservation from Common
+open import Once.Backend.Common.MemoryValid public
+  using ( PairAtS; pair-at-s; fst-valid-s; snd-valid-s
+        ; InlAtS; inl-at-s; tag-valid-inl-s; val-valid-inl-s
+        ; InrAtS; inr-at-s; tag-valid-inr-s; val-valid-inr-s
+        ; ClosureAtS; closure-at-s; env-valid-s; code-valid-s
+        ; NoOverlap; no-overlap
+        ; slot-size
+        ; alloc-pair-creates-valid-s; alloc-inl-creates-valid-s
+        ; alloc-inr-creates-valid-s; alloc-closure-creates-valid-s
+        ; PairAtS-preserved-under-mem-eq; InlAtS-preserved-under-mem-eq
+        ; InrAtS-preserved-under-mem-eq; ClosureAtS-preserved-under-mem-eq
+        ; mem-read-write; mem-read-other; n≢n+8
+        )
 
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
@@ -63,54 +74,6 @@ record InrAt {A B : Type} (b : ⟦ B ⟧) (addr : Word) (m : Memory) : Set where
     val-valid : readMem m (addr +ℕ 8) ≡ just (encode b)
 
 open InrAt public
-
-------------------------------------------------------------------------
--- Stateful Validity Predicates (no reference to abstract encode)
---
--- These predicates use explicit addresses instead of the abstract
--- `encode` function. This breaks the circular dependency on postulates
--- and allows validity to be proven from stateful allocation theorems.
-------------------------------------------------------------------------
-
--- | Pair validity with explicit component addresses
--- Memory at addr-pair contains [addr-a, addr-b]
-record PairAtS (addr-a addr-b addr-pair : Word) (m : Memory) : Set where
-  constructor pair-at-s
-  field
-    fst-valid : readMem m addr-pair ≡ just addr-a
-    snd-valid : readMem m (addr-pair +ℕ 8) ≡ just addr-b
-
-open PairAtS public using () renaming (fst-valid to fst-valid-s; snd-valid to snd-valid-s)
-
--- | Left sum validity with explicit value address
--- Memory at addr-sum contains [0, addr-val]
-record InlAtS (addr-val addr-sum : Word) (m : Memory) : Set where
-  constructor inl-at-s
-  field
-    tag-valid : readMem m addr-sum ≡ just 0
-    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
-
-open InlAtS public using () renaming (tag-valid to tag-valid-inl-s; val-valid to val-valid-inl-s)
-
--- | Right sum validity with explicit value address
--- Memory at addr-sum contains [1, addr-val]
-record InrAtS (addr-val addr-sum : Word) (m : Memory) : Set where
-  constructor inr-at-s
-  field
-    tag-valid : readMem m addr-sum ≡ just 1
-    val-valid : readMem m (addr-sum +ℕ 8) ≡ just addr-val
-
-open InrAtS public using () renaming (tag-valid to tag-valid-inr-s; val-valid to val-valid-inr-s)
-
--- | Closure validity with explicit component addresses
--- Memory at addr-closure contains [env-val, code-ptr]
--- This is the same structure as PairAtS, but with semantic meaning for closures
-record ClosureAtS (env-val code-ptr addr-closure : Word) (m : Memory) : Set where
-  constructor closure-at-s
-  field
-    is-pair : PairAtS env-val code-ptr addr-closure m
-
-open ClosureAtS public using (is-pair)
 
 ------------------------------------------------------------------------
 -- Creating validity proofs from allocation
@@ -175,64 +138,6 @@ alloc-inr-creates-valid b addr m = inr-at tag-proof val-proof
     val-proof = mem-read-write {m₁} {addr +ℕ 8} {encode b}
 
 ------------------------------------------------------------------------
--- Stateful allocation proofs (with explicit addresses)
-------------------------------------------------------------------------
-
--- | Create PairAtS from two writes
-alloc-pair-creates-valid-s : ∀ (addr-a addr-b addr-pair : Word) (m : Memory) →
-  let m₁ = writeMem m addr-pair addr-a
-      m₂ = writeMem m₁ (addr-pair +ℕ 8) addr-b
-  in PairAtS addr-a addr-b addr-pair m₂
-alloc-pair-creates-valid-s addr-a addr-b addr-pair m = pair-at-s fst-proof snd-proof
-  where
-    m₁ = writeMem m addr-pair addr-a
-    m₂ = writeMem m₁ (addr-pair +ℕ 8) addr-b
-
-    fst-proof : readMem m₂ addr-pair ≡ just addr-a
-    fst-proof = trans
-      (mem-read-other {m₁} {addr-pair +ℕ 8} {addr-pair} {addr-b} (λ eq → n≢n+8 addr-pair (sym eq)))
-      (mem-read-write {m} {addr-pair} {addr-a})
-
-    snd-proof : readMem m₂ (addr-pair +ℕ 8) ≡ just addr-b
-    snd-proof = mem-read-write {m₁} {addr-pair +ℕ 8} {addr-b}
-
--- | Create InlAtS from two writes
-alloc-inl-creates-valid-s : ∀ (addr-val addr-sum : Word) (m : Memory) →
-  let m₁ = writeMem m addr-sum 0
-      m₂ = writeMem m₁ (addr-sum +ℕ 8) addr-val
-  in InlAtS addr-val addr-sum m₂
-alloc-inl-creates-valid-s addr-val addr-sum m = inl-at-s tag-proof val-proof
-  where
-    m₁ = writeMem m addr-sum 0
-    m₂ = writeMem m₁ (addr-sum +ℕ 8) addr-val
-
-    tag-proof : readMem m₂ addr-sum ≡ just 0
-    tag-proof = trans
-      (mem-read-other {m₁} {addr-sum +ℕ 8} {addr-sum} {addr-val} (λ eq → n≢n+8 addr-sum (sym eq)))
-      (mem-read-write {m} {addr-sum} {0})
-
-    val-proof : readMem m₂ (addr-sum +ℕ 8) ≡ just addr-val
-    val-proof = mem-read-write {m₁} {addr-sum +ℕ 8} {addr-val}
-
--- | Create InrAtS from two writes
-alloc-inr-creates-valid-s : ∀ (addr-val addr-sum : Word) (m : Memory) →
-  let m₁ = writeMem m addr-sum 1
-      m₂ = writeMem m₁ (addr-sum +ℕ 8) addr-val
-  in InrAtS addr-val addr-sum m₂
-alloc-inr-creates-valid-s addr-val addr-sum m = inr-at-s tag-proof val-proof
-  where
-    m₁ = writeMem m addr-sum 1
-    m₂ = writeMem m₁ (addr-sum +ℕ 8) addr-val
-
-    tag-proof : readMem m₂ addr-sum ≡ just 1
-    tag-proof = trans
-      (mem-read-other {m₁} {addr-sum +ℕ 8} {addr-sum} {addr-val} (λ eq → n≢n+8 addr-sum (sym eq)))
-      (mem-read-write {m} {addr-sum} {1})
-
-    val-proof : readMem m₂ (addr-sum +ℕ 8) ≡ just addr-val
-    val-proof = mem-read-write {m₁} {addr-sum +ℕ 8} {addr-val}
-
-------------------------------------------------------------------------
 -- Deriving encoding properties from validity proofs
 --
 -- These replace the axioms in Postulates.agda with derived lemmas.
@@ -280,13 +185,6 @@ encode-inr-val-derived b addr m valid = val-valid valid
 ------------------------------------------------------------------------
 -- Preservation: validity survives writes to other addresses
 ------------------------------------------------------------------------
-
--- | Helper: addr₁ ≠ addr₂ and addr₁ ≠ addr₂ + 8 (pair doesn't overlap)
-record NoOverlap (addr₁ addr₂ : Word) : Set where
-  constructor no-overlap
-  field
-    neq-base : addr₁ ≢ addr₂
-    neq-snd  : addr₁ ≢ addr₂ +ℕ 8
 
 -- | Writing to a non-overlapping address preserves pair validity
 pair-valid-preserved : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (pair-addr write-addr : Word) (v : Word) (m : Memory) →

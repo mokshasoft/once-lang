@@ -69,8 +69,8 @@ open import Once.Backend.AArch64.Correct.StarBase public
 
 -- Import MemoryValid for stateful validity predicates
 open import Once.Backend.AArch64.Correct.MemoryValid
-  using (PairAtS; pair-at-s; fst-valid-s; InlAtS; InrAtS;
-         ClosureAtS; closure-at-s; is-pair;
+  using (PairAtS; pair-at-s; fst-valid-s; snd-valid-s; InlAtS; InrAtS;
+         ClosureAtS; closure-at-s; env-valid-s;
          alloc-inl-creates-valid-s; alloc-inr-creates-valid-s)
 
 -- Import stateful producers (extracted to reduce compile time)
@@ -2963,9 +2963,9 @@ mutual
       closure-pair : PairAtS (encode x) thunk-offset new-sp (memory s-final)
       closure-pair = pair-at-s mem-env-final mem-code-ptr-final
 
-      -- Construct ClosureAtS from PairAtS
+      -- Construct ClosureAtS from PairAtS fields
       closure-valid : ClosureAtS (encode x) thunk-offset new-sp (memory s-final)
-      closure-valid = closure-at-s closure-pair
+      closure-valid = closure-at-s (fst-valid-s closure-pair) (snd-valid-s closure-pair)
 
       -- ClosureWellFormedS proof (simplified for Phase 2)
       -- TODO Phase 3: Add thunk execution proofs
@@ -3050,7 +3050,7 @@ mutual
         ; ir-x0 = trans (CurryResultS.curry-x0-s curry-res)
                         (encode-closure-construct f x (CurryResultS.curry-closure-addr curry-res)
                                                  (memory s-final)
-                                                 (fst-valid-s (is-pair (CurryResultS.curry-closure-valid curry-res))))
+                                                 (env-valid-s (CurryResultS.curry-closure-valid curry-res)))
         ; ir-x20 = CurryResultS.curry-x20 curry-res
         ; ir-x21 = CurryResultS.curry-x21 curry-res
         ; ir-x29 = CurryResultS.curry-x29 curry-res
