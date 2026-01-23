@@ -53,9 +53,13 @@ lexeme = L.lexeme sc
 symbol :: Text -> Parser Text
 symbol = L.symbol sc
 
+-- | Characters that can continue an identifier (after the first char)
+identContinueChar :: Parser Char
+identContinueChar = alphaNumChar <|> char '_' <|> char '\'' <|> oneOf ("+*!?" :: String)
+
 -- | Parse a reserved word
 reserved :: Text -> Parser ()
-reserved w = lexeme $ try (string w *> notFollowedBy alphaNumChar)
+reserved w = lexeme $ try (string w *> notFollowedBy identContinueChar)
 
 -- | Reserved words (keywords that cannot be used as identifiers)
 reservedWords :: [Text]
@@ -80,7 +84,7 @@ reservedWords =
   -- Recursive type generators
   , "fold", "unfold"          -- Fix isomorphism
   -- Allocation strategies
-  , "stack", "heap", "pool", "arena", "const"
+  , "stack", "heap", "pool", "arena"
   ]
 
 -- | Parse an integer literal
@@ -108,7 +112,7 @@ stringLiteral = lexeme $ do
 typeVar :: Parser Name
 typeVar = lexeme $ try $ do
   c <- upperChar
-  cs <- many (alphaNumChar <|> char '_' <|> char '\'')
+  cs <- many identContinueChar
   let name = T.pack (c : cs)
   if name `elem` ["Unit", "Void", "Left", "Right", "Buffer", "String", "Utf8", "Utf16", "Ascii", "Int", "Float", "Eff", "IO", "Fix"]
     then fail $ "Reserved type: " ++ T.unpack name
@@ -118,7 +122,7 @@ typeVar = lexeme $ try $ do
 lowerIdent :: Parser Name
 lowerIdent = lexeme $ try $ do
   c <- lowerChar <|> char '_'
-  cs <- many (alphaNumChar <|> char '_' <|> char '\'')
+  cs <- many identContinueChar
   let name = T.pack (c : cs)
   if name `elem` reservedWords
     then fail $ "Reserved word: " ++ T.unpack name

@@ -115,7 +115,7 @@ check: compiler spf
 	@echo "All proofs type-check successfully!"
 
 .PHONY: frontend
-frontend: postulates laws surface surfaceir optimize escape fusion
+frontend: postulates laws surface surfaceir optimize escape fusion parser
 	@echo "Frontend proofs type-check successfully!"
 
 .PHONY: postulates
@@ -159,6 +159,11 @@ fusion:
 	@echo "Type-checking fusion/deforestation..."
 	@sh -c '$(AGDA_CMD) $(FUSION)'
 	@sh -c '$(AGDA_CMD) $(FUSION_CORRECT)'
+
+.PHONY: parser
+parser:
+	@echo "Type-checking parser..."
+	@sh -c '$(AGDA_CMD) Once/Parser.agda'
 
 .PHONY: common
 common:
@@ -443,6 +448,17 @@ malonzo-core:
 	@cp _build/malonzo/MAlonzo/Code/Once/Memory.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@cp _build/malonzo/MAlonzo/Code/Once/Postulates.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done. Core modules in compiler/src/MAlonzo/Code/Once/"
+
+.PHONY: malonzo-parser
+malonzo-parser:
+	@echo "Extracting Parser via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Parser.agda'
+	@echo "Copying parser MAlonzo files to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Parser
+	@cp -r _build/malonzo/MAlonzo/Code/Once/Parser/* ../compiler/src/MAlonzo/Code/Once/Parser/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Parser.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@echo "Done. Parser in compiler/src/MAlonzo/Code/Once/Parser/"
 
 .PHONY: count-postulates
 count-postulates:
