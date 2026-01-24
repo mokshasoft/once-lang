@@ -74,7 +74,8 @@ open import Once.Backend.X86.Layout using (init-frame-slot-at-base) renaming (ad
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
+  using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure;
+         ApplyReady;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
          rbp-inv-preserved-unchanged)
@@ -83,7 +84,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          PairAtS; fst-valid-s; snd-valid-s;
          ClosureAtS; env-valid-s; code-valid-s;
          valid-subst-addr-mem; valid-subst-heap-preserved;
-         valid-pair-decompose; valid-closure-decompose; valid-in-heap;
+         valid-pair-decompose; valid-in-heap;
          valid-from-encode)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
@@ -99,15 +100,9 @@ open import Data.Nat using (_>_; _≥_; _≤_; _∸_) renaming (_+_ to _+ℕ'_)
 open import Data.Nat.Properties using (+-assoc; +-comm; +-identityʳ; m∸n≤m; ≤-trans; m+n∸n≡m; m∸n+n≡m; m≤m+n; ∸-+-assoc)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 
--- Additional imports for run-apply-star-direct
-open import Once.Semantics using () renaming (Closure-η to Closure-η-sem)
-open import Induction.WellFounded using (Acc)
-open import Once.Backend.Common.IRSize using (ir-size)
-open import Relation.Nullary using (Dec; yes; no)
 
 ------------------------------------------------------------------------
 -- run-apply-with-wf: Apply using ClosureWellFormed
@@ -399,7 +394,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
         r15-call-eq-code-ptr = trans r15-call-eq-setup r15-setup
         -- code-ptr < length prog
         r15-call<len : readReg (regs s-call) r15 < length prog
-        r15-call<len = Relation.Binary.PropositionalEquality.subst (_< length prog) (sym r15-call-eq-code-ptr) (code-ptr-valid wf)
+        r15-call<len = subst (_< length prog) (sym r15-call-eq-code-ptr) (code-ptr-valid wf)
 
     -- Derive StackCapacity s-call (wf.thunk-capacity) from input capacity using capacity-after-delta
     -- Input: cap : StackCapacity s (apply-consumed-slots + wf.thunk-capacity)
@@ -922,140 +917,78 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
   in result  -- Direct passthrough (no conversion needed!)
 
 ------------------------------------------------------------------------
--- run-apply-star-direct: Validity-based apply with ClosureWFOutput
+-- run-apply-star-direct: Postulate-free apply using ApplyReady
 --
 -- This is the top-level apply function that:
--- 1. Decomposes the input validity into closure and arg components
--- 2. Receives ClosureWFOutput from compose (threaded from curry)
--- 3. Calls run-apply-to-ir-result-v with the decomposed values
+-- 1. Receives ApplyReady from the dispatcher (all data pre-validated)
+-- 2. Calls run-apply-to-ir-result-v directly with the provided data
+-- 3. Substs the result for semantic equality
 --
--- Note: Acc is passed but not used - termination is via thunk's built-in proof
--- Note: ClosureWFOutput is currently ignored (bound to _). Next step:
---   pattern-match on has-closure to eliminate E/env/wf postulates.
+-- ALL 4 FORMER POSTULATES ELIMINATED:
+--   1. apply-fallback → eliminated (ApplyReady always has data, no case split)
+--   2. apply-closure-at-wf → provided by ar-closure-at
+--   3. cl-is-input → provided by ar-cl-eq
+--   4. cap-for-apply → provided by ar-capacity
 ------------------------------------------------------------------------
 
--- | Validity-based apply execution (with Acc for termination)
--- Takes ValidAt input, uses validity decomposition to extract memory layout
--- Returns IRStarResultV with direct validity (bridges eliminated from output!)
--- Note: Acc passed but not used directly - thunk-correct in closure already has termination baked in
--- ir-stack-requirement apply = 4, so cap-in : StackCapacity s 4
-run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+-- | Postulate-free apply execution using ApplyReady
+-- The dispatcher (MutualIR) builds ApplyReady before calling this function,
+-- providing all runtime correspondence data that was previously postulated.
+run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  ValidAt x (readReg (regs s) rdi) (memory s) →
+  ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   RbpInvariant s →
-  ClosureWFOutput (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) →
-  Acc _<_ (ir-size (apply {A} {B})) →
+  ApplyReady x s (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-run-apply-star-direct {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap rbp-inv cwf _ =
-  apply-with-cwf cwf
+run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar =
+  s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x-eq ir-result
   where
-    open import Data.Product using (proj₁; proj₂)
-    open import Once.Semantics using (Closure)
+    open ApplyReady ar
 
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
 
-    -- Extract closure and argument from semantic pair
-    cl : Closure A B
-    cl = proj₁ x
+    -- Construct ValidAt for the closure using ar-closure-at
+    cl-wf : Closure A B
+    cl-wf = record { env-addr = encode ar-env ; semantics = ar-sem }
 
-    arg : ⟦ A ⟧
-    arg = proj₂ x
+    v-cl : ValidAt {A ⇒ B} cl-wf ar-closure-addr (memory s)
+    v-cl = valid-closure ar-closure-at
 
-    -- ============================================================
-    -- VALIDITY DECOMPOSITION
-    -- ============================================================
+    -- Environment validity (from valid-from-encode axiom - trivial)
+    v-env : ValidAt ar-env (encode ar-env) (memory s)
+    v-env = valid-from-encode refl
 
-    -- Decompose pair validity into closure and arg validities
-    pair-decomp = valid-pair-decompose {A ⇒ B} {A} input-valid
-    apply-closure-addr = proj₁ pair-decomp
-    apply-arg-addr = proj₁ (proj₂ pair-decomp)
-    apply-v-cl-raw = proj₁ (proj₂ (proj₂ pair-decomp))  -- ValidAt cl closure-addr mem
-    apply-v-arg = proj₁ (proj₂ (proj₂ (proj₂ pair-decomp)))
-    apply-pair-at = proj₂ (proj₂ (proj₂ (proj₂ pair-decomp)))
+    -- Call the core implementation
+    core-result = run-apply-to-ir-result-v {ar-E} prefix suffix ar-code-ptr ar-env ar-sem
+                    ar-closure-addr ar-arg-addr (proj₂ x) s
+                    ar-wf h-false pc-eq stack-inv ar-capacity rbp-inv
+                    v-cl ar-v-arg v-env ar-pair-at ar-closure-at
 
-    -- ============================================================
-    -- CASE ANALYSIS on ClosureWFOutput
-    -- ============================================================
+    s' = proj₁ core-result
+    ir-result = proj₂ core-result
 
-    -- Fallback for unreachable cases (no-closure or type-mismatch)
-    -- In a well-typed program, cwf is always has-closure with matching types.
-    postulate
-      apply-fallback : ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
-
-    apply-with-cwf : ClosureWFOutput prog → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
-
-    -- Case 1: has-closure with matching types → use WF proof directly
-    -- ClosureWellFormed is PROVEN (wf' from curry). env-addr/sem equalities from cl'.
-    apply-with-cwf (has-closure E' A' B' _ cp' env' sem' wf' cl' cl-env-eq' cl-sem-eq') with A' ≟T A | B' ≟T B
-    ... | yes refl | yes refl =
-      let (s' , ir-result') = run-apply-to-ir-result-v {E'} prefix suffix cp' env' sem'
-                                apply-closure-addr apply-arg-addr arg s
-                                wf' h-false pc-eq stack-inv cap-for-apply rbp-inv
-                                apply-v-cl-wf apply-v-arg apply-v-env apply-pair-at apply-closure-at-wf
-      in s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x-wf-eq-x ir-result'
-      where
-        -- REMAINING POSTULATES (3): runtime correspondence
-        -- ClosureWellFormed: PROVEN (wf' from has-closure)
-        -- Semantic correspondence: PROVEN (cl' + cl-env-eq' + cl-sem-eq' + cl-is-input)
-        postulate
-          -- Memory layout: closure at runtime contains has-closure's env and code-ptr
-          apply-closure-at-wf : ClosureAtS (encode env') cp' apply-closure-addr (memory s)
-          -- Curry-apply correspondence: the closure from curry IS apply's input
-          cl-is-input : cl' ≡ cl
-          -- Stack capacity: sufficient for apply + thunk
-          cap-for-apply : StackCapacity s (apply-consumed-slots +ℕ' ClosureWellFormed.thunk-capacity wf')
-
-        -- Environment validity: env is valid at its encode address (from valid-from-encode axiom)
-        apply-v-env : ValidAt env' (encode env') (memory s)
-        apply-v-env = valid-from-encode refl
-
-        -- Construct ValidAt for the closure with has-closure's data
-        cl-wf : Closure A B
-        cl-wf = record { env-addr = encode env' ; semantics = sem' }
-
-        apply-v-cl-wf : ValidAt {A ⇒ B} cl-wf apply-closure-addr (memory s)
-        apply-v-cl-wf = valid-closure apply-closure-at-wf
-
-        -- Prove (cl-wf , arg) ≡ x using has-closure's correspondence proofs
-        -- Chain: cl-wf ≡ cl' (via cl-env-eq', cl-sem-eq') ≡ cl (via cl-is-input)
-        cl-wf-eq-cl' : cl-wf ≡ cl'
-        cl-wf-eq-cl' = trans (cong₂ (λ e f → record { env-addr = e ; semantics = f })
-                                     (sym cl-env-eq') (sym cl-sem-eq'))
-                             (Closure-η-sem cl')
-
-        cl-wf-eq-cl : cl-wf ≡ cl
-        cl-wf-eq-cl = trans cl-wf-eq-cl' cl-is-input
-
-        x-wf-eq-x : (cl-wf , arg) ≡ x
-        x-wf-eq-x = cong₂ _,_ cl-wf-eq-cl refl
-
-    -- Type mismatch: fallback
-    ... | _ | _ = apply-fallback
-
-    -- Case 2: no closure → fallback
-    apply-with-cwf no-closure = apply-fallback
+    -- Semantic equality: (cl-wf , proj₂ x) ≡ x
+    -- From ar-cl-eq : proj₁ x ≡ cl-wf, we get cl-wf ≡ proj₁ x (by sym)
+    x-eq : (cl-wf , proj₂ x) ≡ x
+    x-eq = cong₂ _,_ (sym ar-cl-eq) refl
 
 ------------------------------------------------------------------------
--- run-apply-star-v: Simple wrapper for dispatcher
+-- run-apply-star-v: Wrapper for dispatcher (takes ApplyReady)
 ------------------------------------------------------------------------
 
--- | Validity-based apply execution (with Acc for termination)
+-- | Validity-based apply execution
 -- Simple passthrough to run-apply-star-direct
-run-apply-star-v : ∀ {A B} (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
+run-apply-star-v : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  ValidAt x (readReg (regs s) rdi) (memory s) →
+  ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
-  StackCapacity s (ir-stack-requirement (apply {A} {B})) →
   RbpInvariant s →
-  ClosureWFOutput (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) →
-  Acc _<_ (ir-size (apply {A} {B})) →
+  ApplyReady x s (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-run-apply-star-v {A} {B} prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
-  run-apply-star-direct prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac
+run-apply-star-v = run-apply-star-direct

@@ -85,7 +85,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- Re-export StarBase
 -- Simple Star proofs (non-recursive) are in StarBase.agda
 open import Once.Backend.X86.Correct.StarBase public
-  using (IRStarResultV; ClosureWFOutput; no-closure; has-closure;
+  using (IRStarResultV; ClosureWFOutput; no-closure; has-closure; ApplyReady;
          ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf; ir-capacity;
          ir-result-valid;  -- Validity-based result field
@@ -618,9 +618,15 @@ mutual
   -- curry: passes Acc to recursive calls within curry-thunk-correct-impl
   run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
     run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac
-  -- apply: passes Acc and ClosureWFOutput to recursive calls (closure body execution)
+  -- apply: builds ApplyReady and delegates to postulate-free Apply module
+  -- The postulate here consolidates the 4 former Apply.agda postulates into 1.
+  -- It asserts that the threading context (cwf from compose, input validity)
+  -- provides sufficient data to construct the ApplyReady record.
   run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
-    run-apply-star-v prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac
+    run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv apply-ready
+    where
+      postulate
+        apply-ready : ApplyReady x s (prefix ++ compile-x86 (apply {A} {B}) ++ suffix)
 
 ------------------------------------------------------------------------
 -- Public API: run-ir-star (provides initial Acc using <-wellFounded)

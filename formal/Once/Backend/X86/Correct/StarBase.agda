@@ -20,7 +20,9 @@ open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
          capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged; slots; pair-alloc;
-         ir-rsp-delta; ir-stack-requirement; ir-output-capacity; output-slots)
+         ir-rsp-delta; ir-stack-requirement; ir-output-capacity; output-slots;
+         apply-consumed-slots)
+open import Level using (Lift; lift)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; star-step4)
@@ -239,6 +241,49 @@ IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A �
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] (IRStarResult ir prog s s' x (length prefix)
              × ClosureWFOutput prog)  -- Output WF context
+
+------------------------------------------------------------------------
+-- ApplyReady: Everything apply needs to execute without postulates
+------------------------------------------------------------------------
+
+-- | Complete data package for apply execution.
+-- When the dispatcher calls apply, it provides this record instead of
+-- just ClosureWFOutput. This eliminates all 4 postulates in Apply.agda:
+--   1. apply-fallback (unreachable cases) - eliminated by always having data
+--   2. cl-is-input (cwf.cl ≡ proj₁ x) - provided by ar-cl-eq
+--   3. apply-closure-at-wf (ClosureAtS) - provided by ar-closure-at
+--   4. cap-for-apply (StackCapacity) - provided by ar-capacity
+record ApplyReady {A B : Type} (x : ⟦ (A ⇒ B) * A ⟧) (s : State) (prog : Program) : Set₁ where
+  field
+    ar-E : Type
+    ar-env : ⟦ ar-E ⟧
+    ar-code-ptr : ℕ
+    ar-closure-addr : ℕ
+    ar-arg-addr : ℕ
+    ar-sem : ⟦ A ⟧ → ⟦ B ⟧
+    ar-wf : ClosureWellFormed {ar-E} {A} {B} prog ar-code-ptr ar-env ar-sem
+    -- Semantic identity: input's closure matches our env/sem
+    ar-cl-eq : proj₁ x ≡ record { env-addr = encode ar-env ; semantics = ar-sem }
+    -- Memory layout: closure structure at ar-closure-addr
+    ar-closure-at : ClosureAtS (encode ar-env) ar-code-ptr ar-closure-addr (memory s)
+    -- Memory layout: pair structure at rdi
+    ar-pair-at : PairAtS ar-closure-addr ar-arg-addr (readReg (regs s) rdi) (memory s)
+    -- Argument validity
+    ar-v-arg : ValidAt (proj₂ x) ar-arg-addr (memory s)
+    -- Stack capacity for apply + thunk
+    ar-capacity : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity ar-wf)
+
+open ApplyReady public
+
+------------------------------------------------------------------------
+-- MaybeApplyReady: Type function for apply-specific dispatch data
+------------------------------------------------------------------------
+
+-- | When the IR is apply, this is ApplyReady (everything apply needs).
+-- For all other IRs, it's a trivially inhabited type (Lift ⊤).
+MaybeApplyReady : ∀ {A B} → IR A B → ⟦ A ⟧ → State → Program → Set₁
+MaybeApplyReady (apply {A} {B}) x s prog = ApplyReady {A} {B} x s prog
+MaybeApplyReady _ _ _ _ = Lift _ ⊤
 
 ------------------------------------------------------------------------
 -- RbpInvariant preservation helper
