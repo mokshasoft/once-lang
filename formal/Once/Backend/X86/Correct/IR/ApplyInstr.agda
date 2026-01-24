@@ -241,7 +241,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     -- Memory at rdi+8 is preserved after push (stack vs heap disjointness)
     stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ slot-size
     stack-heap-disjoint-rdi+8 eq =
-      let rdi+8-in-heap = heap-offset (readReg (regs s) rdi) slot-size rdi-in-heap
+      let rdi+8-in-heap = heap-offset (readReg (regs s) rdi) rdi-in-heap
       in stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi +ℕ slot-size) new-rsp-in-stack rdi+8-in-heap eq
 
     -- Memory at closure-addr is preserved (stack vs heap disjointness)
@@ -251,7 +251,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
 
     stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ slot-size
     stack-heap-disjoint-closure+8 eq =
-      let closure+8-in-heap = heap-offset closure-addr slot-size closure-in-heap
+      let closure+8-in-heap = heap-offset closure-addr closure-in-heap
       in stack-heap-addr-disjoint new-rsp (closure-addr +ℕ slot-size) new-rsp-in-stack closure+8-in-heap eq
 
     -- memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15

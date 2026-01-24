@@ -59,7 +59,7 @@ open import Once.Backend.X86.Layout
          StackPointer; slot-addr; sp-distinct; offset-distinct;
          slot-in-stack; init-slot-at-base;
          slot-addr-next-is-base-plus-word;
-         encode-in-heap; heap-offset;
+         encode-in-heap; heap-offset; word-size;
          stack-bounds; lower; upper)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 open import Data.Unit using (⊤; tt)
@@ -2100,19 +2100,29 @@ mk-thunk-rsp-frame s cap = mk-slot-frame s thunk-setup-consumed-slots thunk-setu
 encode-in-heap-sem : ∀ {A : Type} (x : ⟦ A ⟧) → InHeap (encode x)
 encode-in-heap-sem {A} x = encode-in-heap {⟦ A ⟧} (encode {A}) x
 
--- | Encoded value + offset is in heap region
-encode-offset-in-heap : ∀ {A : Type} (x : ⟦ A ⟧) (offset : ℕ) →
-  InHeap (encode x +ℕ offset)
-encode-offset-in-heap x offset = heap-offset (encode x) offset (encode-in-heap-sem x)
+-- | Encoded value + word-size is in heap region (second slot of a 2-slot block)
+encode-offset-in-heap : ∀ {A : Type} (x : ⟦ A ⟧) →
+  InHeap (encode x +ℕ word-size)
+encode-offset-in-heap x = heap-offset (encode x) (encode-in-heap-sem x)
 
 -- | Heap-stack disjointness via regions (replaces postulate)
--- Usage: heap-stack-disjoint-via-region pair 0 new-rsp stack-proof
-heap-stack-disjoint-via-region : ∀ {A : Type} (x : ⟦ A ⟧) (offset stack-addr : ℕ) →
+-- For base address (offset = 0):
+heap-stack-disjoint-base : ∀ {A : Type} (x : ⟦ A ⟧) (stack-addr : ℕ) →
   InStack stack-addr →
-  (encode x +ℕ offset) ≢ stack-addr
-heap-stack-disjoint-via-region x offset stack-addr stack-proof eq =
-  stack-heap-addr-disjoint stack-addr (encode x +ℕ offset)
+  encode x ≢ stack-addr
+heap-stack-disjoint-base x stack-addr stack-proof eq =
+  stack-heap-addr-disjoint stack-addr (encode x)
     stack-proof
-    (encode-offset-in-heap x offset)
+    (encode-in-heap-sem x)
+    (sym eq)
+
+-- | Heap-stack disjointness via regions for second slot
+heap-stack-disjoint-via-region : ∀ {A : Type} (x : ⟦ A ⟧) (stack-addr : ℕ) →
+  InStack stack-addr →
+  (encode x +ℕ word-size) ≢ stack-addr
+heap-stack-disjoint-via-region x stack-addr stack-proof eq =
+  stack-heap-addr-disjoint stack-addr (encode x +ℕ word-size)
+    stack-proof
+    (encode-offset-in-heap x)
     (sym eq)
 

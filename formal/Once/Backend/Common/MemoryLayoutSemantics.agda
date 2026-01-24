@@ -14,7 +14,7 @@
 
 module Once.Backend.Common.MemoryLayoutSemantics where
 
-open import Data.Nat using (ℕ; zero; _≤_)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Data.Product using (_×_)
@@ -60,6 +60,8 @@ record MemoryLayout : Set where
     stack-bounds : RegionBounds
     heap-bounds  : RegionBounds
     code-bounds  : RegionBounds
+    slot-size    : ℕ
+    slot-size>0  : 0 < slot-size
     intervals-disjoint : ∀ a →
       ¬ (InRegion stack-bounds a × InRegion heap-bounds a) ×
       ¬ (InRegion stack-bounds a × InRegion code-bounds a) ×

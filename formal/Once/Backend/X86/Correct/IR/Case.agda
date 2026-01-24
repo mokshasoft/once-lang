@@ -151,7 +151,7 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     rdi-in-heap = valid-addr-in-heap input-valid
 
     rdi+8-in-heap : InHeap (orig-rdi +ℕ slot-size)
-    rdi+8-in-heap = heap-offset orig-rdi slot-size rdi-in-heap
+    rdi+8-in-heap = heap-offset orig-rdi rdi-in-heap
 
     -- Setup execution
     setup-result : ∃[ s-setup ] CaseInlSetupResult {A} {B} {C} a prefix suffix f g s s-setup val-addr
@@ -570,7 +570,7 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     rdi-in-heap = valid-addr-in-heap input-valid
 
     rdi+8-in-heap : InHeap (orig-rdi +ℕ slot-size)
-    rdi+8-in-heap = heap-offset orig-rdi slot-size rdi-in-heap
+    rdi+8-in-heap = heap-offset orig-rdi rdi-in-heap
 
     -- Setup execution
     setup-result : ∃[ s-setup ] CaseInrSetupResult {A} {B} {C} b prefix suffix f g s s-setup val-addr

@@ -300,7 +300,7 @@ PairAtS-preserved-under-heap-eq :
   (∀ a → InHeap a → readMem m2 a ≡ readMem m1 a) →
   PairAtS addr-a addr-b addr m2
 PairAtS-preserved-under-heap-eq {addr-a} {addr-b} {addr} pairS addr-in-heap heap-eq =
-  let addr+8-in-heap = heap-offset addr slot-size addr-in-heap
+  let addr+8-in-heap = heap-offset addr addr-in-heap
   in pair-at-s (trans (heap-eq addr addr-in-heap) (fst-valid-s pairS))
                (trans (heap-eq (addr +ℕ slot-size) addr+8-in-heap) (snd-valid-s pairS))
 
@@ -312,7 +312,7 @@ InlAtS-preserved-under-heap-eq :
   (∀ a → InHeap a → readMem m2 a ≡ readMem m1 a) →
   InlAtS addr-val addr-sum m2
 InlAtS-preserved-under-heap-eq {addr-val} {addr-sum} inlS addr-in-heap heap-eq =
-  let addr+8-in-heap = heap-offset addr-sum slot-size addr-in-heap
+  let addr+8-in-heap = heap-offset addr-sum addr-in-heap
   in inl-at-s (trans (heap-eq addr-sum addr-in-heap) (tag-valid-inl-s inlS))
               (trans (heap-eq (addr-sum +ℕ slot-size) addr+8-in-heap) (val-valid-inl-s inlS))
 
@@ -324,7 +324,7 @@ InrAtS-preserved-under-heap-eq :
   (∀ a → InHeap a → readMem m2 a ≡ readMem m1 a) →
   InrAtS addr-val addr-sum m2
 InrAtS-preserved-under-heap-eq {addr-val} {addr-sum} inrS addr-in-heap heap-eq =
-  let addr+8-in-heap = heap-offset addr-sum slot-size addr-in-heap
+  let addr+8-in-heap = heap-offset addr-sum addr-in-heap
   in inr-at-s (trans (heap-eq addr-sum addr-in-heap) (tag-valid-inr-s inrS))
               (trans (heap-eq (addr-sum +ℕ slot-size) addr+8-in-heap) (val-valid-inr-s inrS))
 
@@ -336,7 +336,7 @@ ClosureAtS-preserved-under-heap-eq :
   (∀ a → InHeap a → readMem m2 a ≡ readMem m1 a) →
   ClosureAtS env-addr code-ptr addr-closure m2
 ClosureAtS-preserved-under-heap-eq {env-addr} {code-ptr} {addr-closure} closS addr-in-heap heap-eq =
-  let addr+8-in-heap = heap-offset addr-closure slot-size addr-in-heap
+  let addr+8-in-heap = heap-offset addr-closure addr-in-heap
   in closure-at-s (trans (heap-eq addr-closure addr-in-heap) (env-valid-s closS))
                   (trans (heap-eq (addr-closure +ℕ slot-size) addr+8-in-heap) (code-valid-s closS))
 
@@ -493,7 +493,7 @@ PairAtS-preserved-under-stack-write {addr-a} {addr-b} {addr} {w} {val} {m} pairS
 
     -- addr+slot-size is in heap (heap-offset), so w ≢ addr+slot-size
     addr+8-in-heap : InHeap (addr +ℕ slot-size)
-    addr+8-in-heap = heap-offset addr slot-size addr-in-heap
+    addr+8-in-heap = heap-offset addr addr-in-heap
 
     w≢addr+8 : w ≢ (addr +ℕ slot-size)
     w≢addr+8 eq = stack-heap-addr-disjoint w (addr +ℕ slot-size) w-in-stack addr+8-in-heap eq
@@ -518,7 +518,7 @@ InlAtS-preserved-under-stack-write {addr-val} {addr-sum} {w} {val} {m} inlS addr
     w≢addr eq = stack-heap-addr-disjoint w addr-sum w-in-stack addr-in-heap eq
 
     addr+8-in-heap : InHeap (addr-sum +ℕ slot-size)
-    addr+8-in-heap = heap-offset addr-sum slot-size addr-in-heap
+    addr+8-in-heap = heap-offset addr-sum addr-in-heap
 
     w≢addr+8 : w ≢ (addr-sum +ℕ slot-size)
     w≢addr+8 eq = stack-heap-addr-disjoint w (addr-sum +ℕ slot-size) w-in-stack addr+8-in-heap eq
@@ -543,7 +543,7 @@ InrAtS-preserved-under-stack-write {addr-val} {addr-sum} {w} {val} {m} inrS addr
     w≢addr eq = stack-heap-addr-disjoint w addr-sum w-in-stack addr-in-heap eq
 
     addr+8-in-heap : InHeap (addr-sum +ℕ slot-size)
-    addr+8-in-heap = heap-offset addr-sum slot-size addr-in-heap
+    addr+8-in-heap = heap-offset addr-sum addr-in-heap
 
     w≢addr+8 : w ≢ (addr-sum +ℕ slot-size)
     w≢addr+8 eq = stack-heap-addr-disjoint w (addr-sum +ℕ slot-size) w-in-stack addr+8-in-heap eq
@@ -568,7 +568,7 @@ ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {addr-closure} {w} 
     w≢addr eq = stack-heap-addr-disjoint w addr-closure w-in-stack addr-in-heap eq
 
     addr+8-in-heap : InHeap (addr-closure +ℕ slot-size)
-    addr+8-in-heap = heap-offset addr-closure slot-size addr-in-heap
+    addr+8-in-heap = heap-offset addr-closure addr-in-heap
 
     w≢addr+8 : w ≢ (addr-closure +ℕ slot-size)
     w≢addr+8 eq = stack-heap-addr-disjoint w (addr-closure +ℕ slot-size) w-in-stack addr+8-in-heap eq

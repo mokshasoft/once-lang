@@ -80,6 +80,8 @@ x86-layout = record
   { stack-bounds = x86-stack-bounds
   ; heap-bounds = x86-heap-bounds
   ; code-bounds = x86-code-bounds
+  ; slot-size = word-size
+  ; slot-size>0 = s≤s z≤n
   ; intervals-disjoint = x86-intervals-disjoint
   }
 
