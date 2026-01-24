@@ -25,8 +25,11 @@ open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.InstrExec
   using (execPush-reg; execMov-reg-reg; execMov-reg-mem-base; execMov-reg-mem-disp;
          execCmp-zero; execCmp-one; execJne-not-taken; execJne-taken; execJmp; execPop; execLabel)
-open import Once.Backend.X86.Correct.StarBase using (IRStarResultV)
-open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
+open import Once.Backend.X86.Correct.StarBase
+  using (IRStarResultV; ClosureWFOutput; no-closure; has-closure; subst-cwf-prog)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt; ClosureAtS-preserved-under-heap-eq)
+open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; stack-inv-preserved-r15-unchanged)
 open import Once.Backend.X86.Layout
@@ -34,7 +37,7 @@ open import Once.Backend.X86.Layout
 open import Once.Backend.X86.Correct.StackInstantiation
   using (slots; slot-size; StackCapacity; ir-stack-requirement; ir-output-capacity;
          capacity-after-push; capacity-from-larger; slot-1-addr-in-stack; rsp-in-stack;
-         make-frame-at-slot; make-frame-at-slot-addr)
+         make-frame-at-slot; make-frame-at-slot-addr; apply-consumed-slots)
 open import Once.Backend.X86.Correct.RegisterLemmas
   using (readReg-writeReg-same; readReg-writeReg-rsp-rbp; readReg-writeReg-rsp-rdi;
          readReg-writeReg-rsp-r14; readReg-writeReg-rsp-r15; readReg-writeReg-rsp-rax;
@@ -454,11 +457,20 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
         open import Once.Backend.X86.Layout renaming (addr to sp-addr)
         orig-frame = RbpInvariant.rbp-frame rbp-inv
 
-    -- ClosureWFOutput: transport from branch output state to s-final
-    -- Provable: case preserves InHeap memory (frame ops are stack-only)
-    -- and restores rsp (case frame cleanup), giving capacity at s-final
-    postulate
-      closure-wf-final : ClosureWFOutput prog s-final
+    -- ClosureWFOutput: transport f's closure from s1 to s-final
+    -- ClosureAtS trivially preserved (memory s-final ≡ memory s1)
+    closure-wf-final : ClosureWFOutput prog s-final
+    closure-wf-final with IRStarResultV.ir-closure-wf r-f
+    ... | no-closure = no-closure
+    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+      subst-cwf-prog prog-eq-f
+        (has-closure E A' B' ca cp env sem wf cl e1 e2
+          (ClosureAtS-preserved-under-heap-eq cat ih (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
+          ih
+          cwf-cap-final)
+      where
+        postulate
+          cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
 
     result : IRStarResultV [ f , g ] prog s s-final (inj₁ a) (length prefix)
     result = record
@@ -867,9 +879,19 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
         open import Once.Backend.X86.Layout renaming (addr to sp-addr)
         orig-frame = RbpInvariant.rbp-frame rbp-inv
 
-    -- ClosureWFOutput: transport from branch output state to s-final
-    postulate
-      closure-wf-final : ClosureWFOutput prog s-final
+    -- ClosureWFOutput: transport g's closure from s1 to s-final
+    closure-wf-final : ClosureWFOutput prog s-final
+    closure-wf-final with IRStarResultV.ir-closure-wf r-g
+    ... | no-closure = no-closure
+    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+      subst-cwf-prog prog-eq-g
+        (has-closure E A' B' ca cp env sem wf cl e1 e2
+          (ClosureAtS-preserved-under-heap-eq cat ih (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
+          ih
+          cwf-cap-final)
+      where
+        postulate
+          cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
 
     result : IRStarResultV [ f , g ] prog s s-final (inj₂ b) (length prefix)
     result = record

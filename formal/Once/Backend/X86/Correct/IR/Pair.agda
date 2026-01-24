@@ -25,7 +25,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          rsp-in-stack; rsp-sufficient; capacity-maintained; slots-mono-≤; slots-distribute;
          pair-setup-consumed-slots; pair-capacity; pair-setup-fits-capacity;
          -- Dynamic capacity functions
-         ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
+         ir-stack-requirement; ir-rsp-delta; ir-output-capacity; apply-consumed-slots;
          pair-inner-requirement; pair-setup≤pair-req; capacity-from-larger;
          capacity-when-rsp-restored; capacity-preserved-rsp-unchanged;
          capacity-after-delta;  -- For deriving post-setup capacity
@@ -49,7 +49,7 @@ open import Once.Backend.X86.Correct.SeqExec using (frame-setup-star; FrameSetup
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-step6)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResult; ClosureWFOutput; no-closure;
+  using (IRStarResult; ClosureWFOutput; no-closure; has-closure; subst-cwf-prog;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
          rbp-inv-preserved-unchanged;
@@ -62,7 +62,8 @@ open import Once.Backend.Common.IRSize
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write;
-         valid-subst-heap-preserved)
+         valid-subst-heap-preserved; ClosureAtS-preserved-under-heap-eq)
+open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Layout using (InHeap; InCode)
 
 open import Data.Nat using (_>_; _≥_; _≤?_; s≤s; z≤n)
@@ -174,11 +175,29 @@ assemble-pair-result {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-final
     star-g : Star prog s2 s3
     star-g = subst (λ p → Star p s2 s3) (sym prog-eq-g) star-g-raw
 
-    -- Closure WF: prefer f's closure if available (for ⟨curry body, _⟩ pattern)
-    -- Provable: pair preserves InHeap memory (transitively through setup/mid/final phases)
-    -- and restores rsp (rsp-final: rsp s-final = rsp s), so transport from s1/s3 to s-final
-    postulate
-      closure-wf-final : ClosureWFOutput prog s-final
+    -- Closure WF: transport f's closure from s1 to s-final
+    -- ClosureAtS proven via heap preservation chain (s-final → s → s-setup → s1)
+    -- Capacity postulated (thunk-capacity ≤ pair output-capacity)
+    closure-wf-final : ClosureWFOutput prog s-final
+    closure-wf-final with ir-closure-wf r-f
+    ... | no-closure = no-closure
+    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+      subst-cwf-prog (sym prog-eq-f)
+        (has-closure E A' B' ca cp env sem wf cl e1 e2
+          (ClosureAtS-preserved-under-heap-eq cat ih heap-final-to-s1)
+          ih
+          cwf-cap-final)
+      where
+        heap-final-to-s1 : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
+        heap-final-to-s1 addr iha =
+          trans (mem-heap-final addr iha)
+                (sym (trans (ir-mem-heap r-f addr iha)
+                       (subst (λ ss → readMem (memory ss) addr ≡ readMem (memory s) addr)
+                              (sym s-setup-eq)
+                              (PairSetupResult.mem-heap-setup setup-res addr iha))))
+        postulate
+          -- Provable: thunk-capacity wf ≤ pair-inner-requirement (from curry's ir-req ≥ apply-consumed + thunk-cap)
+          cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
 
     -- Compose all 5 phases
     star-all : Star prog s s-final
@@ -321,9 +340,26 @@ assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fina
     star-g : Star prog s2 s3
     star-g = subst (λ p → Star p s2 s3) (sym prog-eq-g) star-g-raw
 
-    -- Closure WF: same transport as assemble-pair-result
-    postulate
-      closure-wf-final : ClosureWFOutput prog s-final
+    -- Closure WF: transport f's closure from s1 to s-final (same as assemble-pair-result)
+    closure-wf-final : ClosureWFOutput prog s-final
+    closure-wf-final with ir-closure-wf r-f
+    ... | no-closure = no-closure
+    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+      subst-cwf-prog (sym prog-eq-f)
+        (has-closure E A' B' ca cp env sem wf cl e1 e2
+          (ClosureAtS-preserved-under-heap-eq cat ih heap-final-to-s1)
+          ih
+          cwf-cap-final)
+      where
+        heap-final-to-s1 : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
+        heap-final-to-s1 addr iha =
+          trans (mem-heap-final addr iha)
+                (sym (trans (ir-mem-heap r-f addr iha)
+                       (subst (λ ss → readMem (memory ss) addr ≡ readMem (memory s) addr)
+                              (sym s-setup-eq)
+                              (PairSetupResult.mem-heap-setup setup-res addr iha))))
+        postulate
+          cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
 
     -- Compose all 5 phases
     star-all : Star prog s s-final
@@ -488,9 +524,26 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     star-g : Star prog s2 s3
     star-g = subst (λ p → Star p s2 s3) (sym prog-eq-g) star-g-raw
 
-    -- Closure WF: same transport as assemble-pair-result (V versions)
-    postulate
-      closure-wf-final : ClosureWFOutput prog s-final
+    -- Closure WF: transport f's closure from s1 to s-final (V versions)
+    closure-wf-final : ClosureWFOutput prog s-final
+    closure-wf-final with IRStarResultV.ir-closure-wf r-f
+    ... | no-closure = no-closure
+    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+      subst-cwf-prog (sym prog-eq-f)
+        (has-closure E A' B' ca cp env sem wf cl e1 e2
+          (ClosureAtS-preserved-under-heap-eq cat ih heap-final-to-s1)
+          ih
+          cwf-cap-final)
+      where
+        heap-final-to-s1 : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
+        heap-final-to-s1 addr iha =
+          trans (mem-heap-final addr iha)
+                (sym (trans (IRStarResultV.ir-mem-heap r-f addr iha)
+                       (subst (λ ss → readMem (memory ss) addr ≡ readMem (memory s) addr)
+                              (sym s-setup-eq)
+                              (PairSetupResultV.mem-heap-setup setup-res addr iha))))
+        postulate
+          cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
 
     -- Compose all 5 phases
     star-all : Star prog s s-final

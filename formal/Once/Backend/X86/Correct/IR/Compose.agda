@@ -27,7 +27,8 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-v; ir-mem-above; ir-mem-code; ir-mem-heap; ir-rbp-inv; ir-closure-wf;
          ir-result-valid; ir-capacity)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt)
+  using (ValidAt; ClosureAtS-preserved-under-heap-eq)
+open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 
 open import Data.Nat using (_>_)
 open import Data.Nat.Properties using (+-assoc)
@@ -403,12 +404,17 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
       in trans mem-s3-to-s2 mem-s2-to-s1
 
     closure-wf-from-f : ClosureWFOutput prog s3
-    closure-wf-from-f = transport-cwf (sym prog-eq-f) heap-s3-to-s1 rsp-s3-eq-s1 (IRStarResultV.ir-closure-wf r1)
+    closure-wf-from-f with IRStarResultV.ir-closure-wf r1
+    ... | no-closure = no-closure
+    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+      subst-cwf-prog (sym prog-eq-f)
+        (has-closure E A' B' ca cp env sem wf cl e1 e2
+          (ClosureAtS-preserved-under-heap-eq cat ih heap-s3-to-s1)
+          ih
+          cwf-cap-from-f)
       where
-      postulate
-        -- Provable: g outputs no-closure → g ≠ curry → ir-rsp-delta g = 0
-        -- Then: rsp s3 = rsp s2 ∸ 0 = rsp s2 = rsp s1
-        rsp-s3-eq-s1 : readReg (regs s3) rsp ≡ readReg (regs s1) rsp
+        postulate
+          cwf-cap-from-f : StackCapacity s3 (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
 
     closure-wf-3 : ClosureWFOutput prog s3
     closure-wf-3 = case closure-wf-from-g of λ where
