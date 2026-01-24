@@ -61,7 +61,8 @@ open import Once.Backend.X86.Correct.StackInstantiation
 -- Remaining: encode-unit, encode-pair-construct, encode-fix-*, encode-arr-identity
 open import Once.Postulates
   using (encode; encode-unit; encode-pair-construct;
-         encode-fix-unwrap; encode-fix-wrap; encode-arr-identity)
+         encode-fix-unwrap; encode-fix-wrap; encode-arr-identity;
+         encode-pair-fst; encode-pair-snd; encode-closure-env)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
@@ -162,7 +163,8 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-disjoint-from-stack;
          valid-pair-decompose; valid-closure-decompose; PairAtS;
          valid-closure-env; ClosureAtS; closure-at-s;
-         valid-subst-addr-mem)
+         valid-subst-addr-mem;
+         valid-addr-is-encode; valid-from-encode)
   renaming (PairAt to MV-PairAt)
 
 open import Data.Bool using (Bool; true; false)
@@ -618,15 +620,81 @@ mutual
   -- curry: passes Acc to recursive calls within curry-thunk-correct-impl
   run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
     run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac
-  -- apply: builds ApplyReady and delegates to postulate-free Apply module
-  -- The postulate here consolidates the 4 former Apply.agda postulates into 1.
-  -- It asserts that the threading context (cwf from compose, input validity)
-  -- provides sufficient data to construct the ApplyReady record.
+  -- apply: builds ApplyReady from encode postulates and delegates to Apply module.
+  -- Derived from common postulates: pair layout (encode-pair-fst/snd),
+  -- argument validity (valid-from-encode), closure env slot (encode-closure-env).
+  -- Remaining postulates: semantic identity (cl-eq), code slot, capacity.
   run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
-    run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv apply-ready
+    construct-apply cwf
     where
-      postulate
-        apply-ready : ApplyReady x s (prefix ++ compile-x86 (apply {A} {B}) ++ suffix)
+      prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+      m = memory s
+      rdi-val = readReg (regs s) rdi
+      cl : ⟦ A ⇒ B ⟧
+      cl = proj₁ x
+      arg : ⟦ A ⟧
+      arg = proj₂ x
+
+      -- From input validity: rdi holds encode x
+      rdi-is-encode : rdi-val ≡ encode x
+      rdi-is-encode = valid-addr-is-encode input-valid
+
+      -- Derived pair layout from encode-pair-fst/snd postulates
+      fst-mem : readMem m rdi-val ≡ just (encode {A ⇒ B} cl)
+      fst-mem = subst (λ a → readMem m a ≡ just (encode {A ⇒ B} cl))
+                  (sym rdi-is-encode) (encode-pair-fst {A ⇒ B} {A} cl arg m)
+
+      snd-mem : readMem m (rdi-val +ℕ slot-size) ≡ just (encode {A} arg)
+      snd-mem = subst (λ a → readMem m (a +ℕ slot-size) ≡ just (encode {A} arg))
+                  (sym rdi-is-encode) (encode-pair-snd {A ⇒ B} {A} cl arg m)
+
+      input-pair-at : PairAtS (encode {A ⇒ B} cl) (encode {A} arg) rdi-val m
+      input-pair-at = pair-at-s fst-mem snd-mem
+
+      -- Derived argument validity from valid-from-encode
+      v-arg : ValidAt arg (encode {A} arg) m
+      v-arg = valid-from-encode {A} refl
+
+      construct-apply : ClosureWFOutput prog → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
+      construct-apply (has-closure E A' B' _ cp env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq)
+        with A' ≟T A | B' ≟T B
+      ... | yes refl | yes refl =
+        run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar
+        where
+          postulate
+            -- Semantic identity: input closure matches curry's output
+            cl-eq : proj₁ x ≡ record { env-addr = encode {E} env ; semantics = sem }
+            -- Code pointer stored at closure + slot-size (no encode-closure-code-ptr)
+            code-slot : readMem m (encode {A ⇒ B} cl +ℕ slot-size) ≡ just cp
+            -- Stack capacity for apply setup + thunk execution
+            cap-for-apply : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
+
+          -- Derived: closure env slot from encode-closure-env + cl-eq
+          env-slot : readMem m (encode {A ⇒ B} cl) ≡ just (encode {E} env)
+          env-slot = trans (encode-closure-env {A} {B} cl m)
+                       (cong just (cong Closure.env-addr cl-eq))
+
+          closure-at : ClosureAtS (encode {E} env) cp (encode {A ⇒ B} cl) m
+          closure-at = closure-at-s env-slot code-slot
+
+          ar : ApplyReady x s prog
+          ar = record
+            { ar-E = E
+            ; ar-env = env
+            ; ar-code-ptr = cp
+            ; ar-closure-addr = encode {A ⇒ B} cl
+            ; ar-arg-addr = encode {A} arg
+            ; ar-sem = sem
+            ; ar-wf = wf
+            ; ar-cl-eq = cl-eq
+            ; ar-closure-at = closure-at
+            ; ar-pair-at = input-pair-at
+            ; ar-v-arg = v-arg
+            ; ar-capacity = cap-for-apply
+            }
+      ... | yes _ | no _ = unreachable where postulate unreachable : _
+      ... | no _ | _ = unreachable where postulate unreachable : _
+      construct-apply no-closure = unreachable where postulate unreachable : _
 
 ------------------------------------------------------------------------
 -- Public API: run-ir-star (provides initial Acc using <-wellFounded)
