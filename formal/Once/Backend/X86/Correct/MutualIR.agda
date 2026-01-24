@@ -166,7 +166,6 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-closure-env; ClosureAtS; closure-at-s;
          valid-subst-addr-mem;
          valid-addr-is-encode; valid-from-encode; valid-in-heap;
-         encode-injective;
          fst-valid-s; code-valid-s)
   renaming (PairAt to MV-PairAt)
 

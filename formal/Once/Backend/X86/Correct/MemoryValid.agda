@@ -186,14 +186,6 @@ postulate
     ValidAt v addr m →
     addr ≡ encode v
 
-  -- | Encoding is injective: different values get different addresses.
-  -- Allocator theorem: each allocation returns a unique address.
-  -- Same status as valid-from-encode, valid-addr-is-encode — all are
-  -- allocator theorems awaiting AllocatorSemantics proofs.
-  encode-injective :
-    ∀ {A} {x y : ⟦ A ⟧} →
-    encode x ≡ encode y → x ≡ y
-
 
 -- | Convert validity from (A ⇒ B) to (Eff A B)
 -- These types have the same runtime representation (Closure A B), but

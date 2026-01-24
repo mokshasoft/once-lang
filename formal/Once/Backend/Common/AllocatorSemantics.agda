@@ -27,6 +27,7 @@ module Once.Backend.Common.AllocatorSemantics (layout : MemoryLayout) where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _<_; s≤s; z≤n)
 open import Data.Nat.Properties using (+-identityʳ)
+open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; subst; cong)
 
 -- Import InHeap from Regions
@@ -99,22 +100,6 @@ postulate
     (addr₁ + i * slot-size) ≢ (addr₂ + j * slot-size)
 
 ------------------------------------------------------------------------
--- Transitional Postulate (bounded field access)
---
--- This will be eliminated when Allocated witnesses are threaded
--- through AtS records. For now, it provides a bounded version of
--- the old arbitrary-offset heap-offset postulate.
---
--- IMPROVEMENT over old model: only allows slot-size offset (not arbitrary n).
--- All existing usages already pass slot-size, so this is the minimal bound.
-------------------------------------------------------------------------
-
-postulate
-  -- | Next slot of a heap address is also InHeap.
-  -- Transitional: will be replaced by threading Allocated witnesses.
-  heap-offset : ∀ a → InHeap a → InHeap (a + slot-size)
-
-------------------------------------------------------------------------
 -- Derived Helpers (backward-compatible with old API)
 --
 -- These are PROVEN from the postulates above, not additional axioms.
@@ -140,3 +125,8 @@ heap-next-slot {addr} alloc =
     (block-in-heap alloc 1 (s≤s (s≤s z≤n)))
   where
     open import Data.Nat.Properties using (*-identityˡ)
+
+-- | Next slot of a heap address is also InHeap.
+-- Derived from alloc-encode + heap-next-slot.
+heap-offset : ∀ a → InHeap a → InHeap (a + slot-size)
+heap-offset a _ = heap-next-slot (alloc-encode (λ (_ : ⊤) → a) tt 2)
