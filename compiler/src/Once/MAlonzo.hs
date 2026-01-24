@@ -5,7 +5,7 @@
 module Once.MAlonzo
   ( -- * Optimization
     optimizeMAlonzo
-  , canConvertIR
+  , optimizeAndConvert
     -- * Conversion functions (for native backends)
   , toMAlonzoType
   , fromMAlonzoType
@@ -16,6 +16,9 @@ module Once.MAlonzo
   ) where
 
 import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.IntMap.Strict as IntMap
+import Text.Read (readMaybe)
 
 import qualified Once.IR as H
 import qualified Once.Type as H
@@ -24,68 +27,71 @@ import qualified MAlonzo.Code.Once.IR as M
 import qualified MAlonzo.Code.Once.Type as M
 import qualified MAlonzo.Code.Once.Optimize as MO
 
--- | Check if an IR can be converted to MAlonzo format
---
--- MAlonzo can only optimize pure categorical IR without:
--- - Var, LocalVar, FunRef (variable references)
--- - Prim (primitive operations)
--- - StringLit (string literals)
--- - Let (let bindings)
--- - TApp, TString (type applications, string types with encoding)
-canConvertIR :: H.IR -> Bool
-canConvertIR ir = case ir of
-  H.Id t            -> canConvertType t
-  H.Compose g f     -> canConvertIR g && canConvertIR f
-  H.Fst a b         -> canConvertType a && canConvertType b
-  H.Snd a b         -> canConvertType a && canConvertType b
-  H.Pair f g        -> canConvertIR f && canConvertIR g
-  H.Terminal t      -> canConvertType t
-  H.Inl a b         -> canConvertType a && canConvertType b
-  H.Inr a b         -> canConvertType a && canConvertType b
-  H.Case f g        -> canConvertIR f && canConvertIR g
-  H.Initial t       -> canConvertType t
-  H.Curry _ f       -> canConvertIR f
-  H.Apply a b       -> canConvertType a && canConvertType b
-  H.Fold t          -> canConvertType t
-  H.Unfold t        -> canConvertType t
-  -- Cannot convert these
-  H.Var _           -> False
-  H.LocalVar _      -> False
-  H.FunRef _        -> False
-  H.Prim _ _ _      -> False
-  H.StringLit _     -> False
-  H.Let _ _ _       -> False
-  H.Arith _ _       -> False
-
--- | Check if a type can be converted to MAlonzo format
-canConvertType :: H.Type -> Bool
-canConvertType t = case t of
-  H.TUnit         -> True
-  H.TVoid         -> True
-  H.TInt          -> True
-  H.TBuffer       -> True
-  H.TProduct a b  -> canConvertType a && canConvertType b
-  H.TSum a b      -> canConvertType a && canConvertType b
-  H.TArrow a b    -> canConvertType a && canConvertType b
-  H.TEff a b      -> canConvertType a && canConvertType b
-  H.TFix f        -> canConvertType f
-  H.TVar n        -> True
-  H.TFloat        -> True   -- Float now in MAlonzo
-  -- Cannot convert these
-  H.TString _     -> False  -- MAlonzo has Str without encoding
-  H.TApp _ _      -> False  -- Type applications not in MAlonzo
-
 -- | Optimize using MAlonzo (verified) optimizer
 --
 -- Uses the formally verified optimizer extracted from Agda via MAlonzo.
--- Falls back to input if IR cannot be converted (contains Var, Prim, etc.)
+-- Non-CCC leaves (StringLit, Arith) are encoded as opaque Prims,
+-- optimized, then restored. Prim is mapped directly (Agda treats it as opaque).
 optimizeMAlonzo :: H.IR -> H.IR
-optimizeMAlonzo ir
-  | canConvertIR ir =
-      let mIR = toMAlonzoIR ir
-          mOptimized = MO.d_optimize_1386 (getInputType ir) (getOutputType ir) mIR
-      in fromMAlonzoIR mOptimized
-  | otherwise = ir
+optimizeMAlonzo ir =
+  let (cleanIR, opaques) = extractOpaques ir
+      mIR = toMAlonzoIR cleanIR
+      mOptimized = MO.d_optimize_1386 (getInputType cleanIR) (getOutputType cleanIR) mIR
+      result = fromMAlonzoIR mOptimized
+  in restoreOpaques opaques result
+
+-- | Optimize a MAlonzo IR with known types, returning Haskell IR.
+-- Use this when the MAlonzo IR is available with correct type annotations
+-- (e.g., directly from the Agda elaborator before type erasure).
+optimizeAndConvert :: M.T_Type_32 -> M.T_Type_32 -> M.T_IR_10 -> H.IR
+optimizeAndConvert inTy outTy mIR =
+  fromMAlonzoIR (MO.d_optimize_1386 inTy outTy mIR)
+
+-- | Extract opaque leaves (StringLit, Arith) from IR, replacing with numbered Prims.
+-- The optimizer treats all Prim as opaque, so the round-trip is safe.
+extractOpaques :: H.IR -> (H.IR, IntMap.IntMap H.IR)
+extractOpaques ir = let (ir', _, m) = go 0 ir in (ir', m)
+  where
+    go :: Int -> H.IR -> (H.IR, Int, IntMap.IntMap H.IR)
+    go n (H.StringLit t) =
+      let key = T.pack ("__opaque_" ++ show n)
+      in (H.Prim key H.TUnit H.TUnit, n + 1, IntMap.singleton n (H.StringLit t))
+    go n (H.Arith nt air) =
+      let key = T.pack ("__opaque_" ++ show n)
+      in (H.Prim key H.TUnit H.TUnit, n + 1, IntMap.singleton n (H.Arith nt air))
+    go n (H.Compose g f) =
+      let (g', n1, m1) = go n g
+          (f', n2, m2) = go n1 f
+      in (H.Compose g' f', n2, IntMap.union m1 m2)
+    go n (H.Pair f g) =
+      let (f', n1, m1) = go n f
+          (g', n2, m2) = go n1 g
+      in (H.Pair f' g', n2, IntMap.union m1 m2)
+    go n (H.Case f g) =
+      let (f', n1, m1) = go n f
+          (g', n2, m2) = go n1 g
+      in (H.Case f' g', n2, IntMap.union m1 m2)
+    go n (H.Curry name f) =
+      let (f', n1, m1) = go n f
+      in (H.Curry name f', n1, m1)
+    go n other = (other, n, IntMap.empty)
+
+-- | Restore opaque leaves after optimization.
+-- Replaces Prim "__opaque_N" back with the original StringLit/Arith.
+restoreOpaques :: IntMap.IntMap H.IR -> H.IR -> H.IR
+restoreOpaques opaques = go
+  where
+    go (H.Prim name _ _)
+      | Just n <- parseOpaqueKey name
+      , Just orig <- IntMap.lookup n opaques = orig
+    go (H.Compose g f) = H.Compose (go g) (go f)
+    go (H.Pair f g) = H.Pair (go f) (go g)
+    go (H.Case f g) = H.Case (go f) (go g)
+    go (H.Curry name f) = H.Curry name (go f)
+    go other = other
+
+    parseOpaqueKey :: Text -> Maybe Int
+    parseOpaqueKey t = T.stripPrefix "__opaque_" t >>= readMaybe . T.unpack
 
 -- | Convert Haskell Type to MAlonzo Type
 toMAlonzoType :: H.Type -> M.T_Type_32
@@ -122,6 +128,10 @@ fromMAlonzoType t = case t of
   M.C_TVar_56 n       -> H.TVar n  -- MAlonzo uses Text directly
 
 -- | Convert Haskell IR to MAlonzo IR
+--
+-- After elaboration, the IR contains CCC generators + Prim.
+-- StringLit/Arith are pre-extracted as opaque Prims by extractOpaques.
+-- Var/LocalVar/FunRef/Let should not appear (resolved during elaboration).
 toMAlonzoIR :: H.IR -> M.T_IR_10
 toMAlonzoIR ir = case ir of
   H.Id _            -> M.C_id_14
@@ -138,19 +148,20 @@ toMAlonzoIR ir = case ir of
   H.Apply _ _       -> M.C_apply_84
   H.Fold _          -> M.C_fold_88
   H.Unfold _        -> M.C_unfold_92
-  -- These should not occur (checked by canConvertIR)
-  H.Var _           -> error "MAlonzo: Var not supported"
-  H.LocalVar _      -> error "MAlonzo: LocalVar not supported"
-  H.FunRef _        -> error "MAlonzo: FunRef not supported"
-  H.Prim _ _ _      -> error "MAlonzo: Prim not supported"
-  H.StringLit _     -> error "MAlonzo: StringLit not supported"
-  H.Let _ _ _       -> error "MAlonzo: Let not supported"
-  H.Arith _ _       -> error "MAlonzo: Arith not supported"
+  -- Prim maps directly to Agda's Prim (treated as opaque by optimizer)
+  H.Prim name _ _   -> M.C_Prim_104 name
+  -- These should not appear after elaboration + extractOpaques
+  H.Var _           -> error "MAlonzo: Var should not appear after elaboration"
+  H.LocalVar _      -> error "MAlonzo: LocalVar should not appear after elaboration"
+  H.FunRef _        -> error "MAlonzo: FunRef should not appear after elaboration"
+  H.StringLit _     -> error "MAlonzo: StringLit should be extracted by extractOpaques"
+  H.Let _ _ _       -> error "MAlonzo: Let should not appear after elaboration"
+  H.Arith _ _       -> error "MAlonzo: Arith should be extracted by extractOpaques"
 
 -- | Convert MAlonzo IR to Haskell IR
 --
 -- Note: Type information is lost in MAlonzo IR, so we use placeholder types.
--- This is fine because the optimizer preserves types.
+-- This is fine because the C backend ignores type annotations (uses wildcards).
 fromMAlonzoIR :: M.T_IR_10 -> H.IR
 fromMAlonzoIR ir = case ir of
   M.C_id_14                       -> H.Id placeholder
@@ -164,11 +175,11 @@ fromMAlonzoIR ir = case ir of
   M.C_'91'_'44'_'93'_62 f g       -> H.Case (fromMAlonzoIR f) (fromMAlonzoIR g)
   M.C_initial_70                  -> H.Initial placeholder
   M.C_curry_78 f _alloc           -> H.Curry "_" (fromMAlonzoIR f)
-  M.C_apply_84                   -> H.Apply placeholder placeholder
-  M.C_fold_88                    -> H.Fold placeholder
-  M.C_unfold_92                  -> H.Unfold placeholder
-  M.C_arr_98                     -> error "MAlonzo: arr not supported in compiler IR"
-  M.C_Prim_104 _                 -> error "MAlonzo: Prim not supported in compiler IR"
+  M.C_apply_84                    -> H.Apply placeholder placeholder
+  M.C_fold_88                     -> H.Fold placeholder
+  M.C_unfold_92                   -> H.Unfold placeholder
+  M.C_arr_98                      -> H.Id placeholder  -- arr ≡ id semantically
+  M.C_Prim_104 name               -> H.Prim name H.TUnit H.TUnit
   where
     placeholder = H.TUnit  -- Type info is erased, use placeholder
 

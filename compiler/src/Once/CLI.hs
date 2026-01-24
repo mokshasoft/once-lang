@@ -35,9 +35,9 @@ import qualified Once.Backend.Assembler as Asm
 import qualified Once.IR (IR (..))
 import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError,
                     LoadedModule (..), Import (..), AllocStrategy (..), extractImports)
-import Once.Optimize (optimizeWith, OptimizerBackend (..))
+import Once.MAlonzo (optimizeMAlonzo, optimizeAndConvert, fromMAlonzoIR, fromMAlonzoType)
+import qualified MAlonzo.Code.Once.Type as MT
 import Once.Type (Type (..))
-import Once.MAlonzo (fromMAlonzoIR, fromMAlonzoType)
 -- Agda parser (MAlonzo-extracted)
 import qualified MAlonzo.Code.Once.Parser as MP
 import qualified MAlonzo.Code.Once.Parser.Module as MPM
@@ -114,7 +114,6 @@ data BuildOptions = BuildOptions
   , buildAlloc  :: Maybe AllocStrategy  -- ^ Default allocation strategy (Nothing = use per-function annotations)
   , buildStrata :: Maybe FilePath       -- ^ Path to Strata directory (default: look relative to input file)
   , buildTarget :: Target               -- ^ Target architecture (default: TargetC)
-  , buildOptimizer :: OptimizerBackend  -- ^ Which optimizer to use (default: HaskellOptimizer)
   , buildSaveTemps :: Bool              -- ^ Keep intermediate files (.c, .s, .o)
   , buildExplicitInterps :: [(InterpType, String)]  -- ^ Explicit interpretations: -I:TYPE MODULE
   , buildAutoResolve :: Maybe [InterpType]          -- ^ Auto-resolve priority: -A:TYPE:TYPE:...
@@ -187,9 +186,8 @@ runBuild opts = do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
                           exitFailure
                         Right irFunctions -> do
-                          -- Optimize and generate for each function
-                          let opt = optimizeWith (buildOptimizer opts)
-                          let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- irFunctions]
+                          -- IRs are already optimized during elaboration
+                          let optimizedFunctions = irFunctions
 
                           -- Branch based on target
                           case target of
@@ -276,9 +274,8 @@ runBuild opts = do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
                           exitFailure
                         Right irFunctions -> do
-                          -- Optimize all IRs
-                          let opt = optimizeWith (buildOptimizer opts)
-                          let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- irFunctions]
+                          -- IRs are already optimized during elaboration
+                          let optimizedFunctions = irFunctions
 
                           -- Branch based on target
                           case target of
@@ -745,10 +742,11 @@ elaborateAllAgda fns = go fns
     go (fi:rest) = do
       let name = MP.d_funName_48 fi
           rawExpr = MP.d_funBody_54 fi  -- Already T_RawExpr_34, no conversion!
-          ty = fromMAlonzoType (MP.d_funType_50 fi)
+          funMType = MP.d_funType_50 fi
+          ty = fromMAlonzoType funMType
           alloc = fromAgdaAlloc (MP.d_funAlloc_52 fi)
       TIO.hPutStrLn System.IO.stderr $ "Type checking: " <> name
-      verifiedResult <- try (pure $! elaborateOne rawExpr) :: IO (Either SomeException (Either String Once.IR.IR))
+      verifiedResult <- try (pure $! elaborateOne funMType rawExpr) :: IO (Either SomeException (Either String Once.IR.IR))
       case verifiedResult of
         Right (Right ir) -> do
           TIO.hPutStrLn System.IO.stderr $ "  OK: " <> name
@@ -763,14 +761,16 @@ elaborateAllAgda fns = go fns
           TIO.hPutStrLn System.IO.stderr $ "  FAIL: " <> name <> ": " <> T.pack err
           pure (Left $ T.unpack name ++ ": " ++ err)
 
-    -- Run Agda type inference + elaboration for a single expression
-    elaborateOne rawExpr =
+    -- Run Agda type inference + elaboration + optimization for a single expression.
+    -- The elaborator with empty context (∅) produces IR with input type = Unit
+    -- (since ⟦∅⟧ = Unit in the context flattening), and output type = inferredType.
+    elaborateOne _funMType rawExpr =
       case VTE.d_inferElab_1726 VTE.d_emptyCtx_350 rawExpr of
         VTE.C_failure_304 errMsg ->
           Left $ "Type checking failed: " ++ show errMsg
         VTE.C_success_302 inferredType surfaceExpr _fresh1 _fresh2 _usage ->
           let irExpr = VSE.du_elaborate_112 (VSS.C_'8709'_8) inferredType surfaceExpr
-          in Right (fromMAlonzoIR (unsafeCoerce irExpr))
+          in Right (optimizeAndConvert MT.C_Unit_34 inferredType (unsafeCoerce irExpr))
 
 -- | Generate C code for an executable (with main function)
 -- The allocation strategy affects how buffer/string outputs are allocated

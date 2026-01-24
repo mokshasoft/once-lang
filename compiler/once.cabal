@@ -51,7 +51,6 @@ library
       Once.IR
       Once.MAlonzo
       Once.Module
-      Once.Optimize
       Once.Type
       Once.Value
       MAlonzo.RTE

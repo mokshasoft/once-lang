@@ -48,8 +48,8 @@ import qualified MAlonzo.Code.Once.Type as M
 -- import qualified MAlonzo.Code.Once.Backend.RiscV64.CodeGen as MRiscV
 -- import qualified MAlonzo.Code.Once.Backend.RiscV64.Emit as MRiscVEmit
 
--- Import MAlonzo bridge functions
-import Once.MAlonzo (canConvertIR, toMAlonzoType, toMAlonzoIR)
+-- MAlonzo bridge functions (available if needed for native backends)
+import Once.MAlonzo (toMAlonzoType, toMAlonzoIR)
 import qualified Once.MAlonzo as MBridge (getInputType, getOutputType)
 
 ------------------------------------------------------------------------

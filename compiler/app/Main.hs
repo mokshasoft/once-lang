@@ -6,7 +6,6 @@ import qualified Data.Text.IO as TIO
 
 import Data.List (isPrefixOf, stripPrefix)
 import Once.CLI (run, Command (..), BuildOptions (..), CheckOptions (..), OutputMode (..), AllocStrategy (..), Target (..), InterpType (..), parseTarget, parseInterpType)
-import Once.Optimize (OptimizerBackend (..))
 
 main :: IO ()
 main = do
@@ -29,7 +28,6 @@ data BuildConfig = BuildConfig
   , bcAlloc      :: Maybe AllocStrategy
   , bcStrata     :: Maybe String
   , bcTarget     :: Target
-  , bcOptimizer  :: OptimizerBackend
   , bcSaveTemps  :: Bool
   , bcExplicit   :: [(InterpType, String)]  -- -I:TYPE MODULE
   , bcAutoRes    :: Maybe [InterpType]      -- -A:PRIORITY
@@ -45,7 +43,6 @@ defaultBuildConfig = BuildConfig
   , bcAlloc     = Nothing
   , bcStrata    = Nothing
   , bcTarget    = TargetC
-  , bcOptimizer = HaskellOptimizer
   , bcSaveTemps = False
   , bcExplicit  = []
   , bcAutoRes   = Nothing
@@ -68,7 +65,6 @@ parseBuild args = go args defaultBuildConfig
         , buildAlloc = bcAlloc cfg
         , buildStrata = bcStrata cfg
         , buildTarget = bcTarget cfg
-        , buildOptimizer = bcOptimizer cfg
         , buildSaveTemps = bcSaveTemps cfg
         , buildExplicitInterps = bcExplicit cfg
         , buildAutoResolve = bcAutoRes cfg
@@ -85,9 +81,6 @@ parseBuild args = go args defaultBuildConfig
     go ("--alloc" : a : rest) cfg = case parseAllocStrategy a of
       Just alloc -> go rest cfg { bcAlloc = Just alloc }
       Nothing -> Nothing  -- invalid allocation strategy
-    go ("--optimizer" : o : rest) cfg = case parseOptimizer o of
-      Just opt -> go rest cfg { bcOptimizer = opt }
-      Nothing -> Nothing  -- invalid optimizer
     go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }
     go ("--arith" : rest) cfg = go rest cfg { bcArith = True }
     -- Parse -I:TYPE MODULE
@@ -115,14 +108,6 @@ parseAutoResolve s = mapM parseInterpType (splitOn ':' s)
     splitOn c str = case break (== c) str of
       (x, [])     -> [x]
       (x, _:rest) -> x : splitOn c rest
-
--- | Parse optimizer backend from string
-parseOptimizer :: String -> Maybe OptimizerBackend
-parseOptimizer s = case s of
-  "haskell" -> Just HaskellOptimizer
-  "malonzo" -> Just MAlonzoOptimizer
-  "verified" -> Just MAlonzoOptimizer  -- alias
-  _         -> Nothing
 
 -- | Parse allocation strategy from string
 parseAllocStrategy :: String -> Maybe AllocStrategy
@@ -164,7 +149,6 @@ usage = do
   TIO.putStrLn "  --save-temps        Keep intermediate files (.c, .s, .o)"
   TIO.putStrLn "  --strata PATH       Path to Strata directory for imports (default: auto-detect)"
   TIO.putStrLn "  --alloc STRATEGY    Default allocation strategy (stack|heap|pool|arena|const)"
-  TIO.putStrLn "  --optimizer BACKEND Optimizer to use (haskell|malonzo) [default: haskell]"
   TIO.putStrLn "  --arith             Enable arithmetic compiler for pure numeric expressions"
   TIO.putStrLn ""
   TIO.putStrLn "Interpretation resolution:"

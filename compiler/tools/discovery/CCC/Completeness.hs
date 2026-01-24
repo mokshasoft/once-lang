@@ -18,7 +18,7 @@ import System.IO (hFlush, stdout)
 
 import Once.IR (IR(..))
 import Once.Type (Type(..))
-import Once.Optimize (optimize)
+import Once.MAlonzo (optimizeMAlonzo)
 
 import Common.Enumerate (enumerate, TypeSig(..), irStructEq)
 import Common.Equivalence (testEquivalent)
@@ -84,7 +84,7 @@ enumerateNormalizedWithProgress src tgt maxDepth = do
   where
     processWithProgress (count, seen) term = do
       let count' = count + 1
-          opt = optimize term
+          opt = optimizeMAlonzo term
           isNew = not (any (irStructEq opt) seen)
       -- Log progress every 500 terms
       when (count' `mod` 500 == 0) $ do

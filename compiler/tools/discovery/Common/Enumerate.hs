@@ -14,7 +14,7 @@ module Common.Enumerate
 
 import Once.IR (IR(..))
 import Once.Type (Type(..))
-import Once.Optimize (optimize)
+import Once.MAlonzo (optimizeMAlonzo)
 import Data.List (nubBy)
 
 -- | Type signature: source and target types
@@ -55,7 +55,7 @@ enumerate src tgt maxDepth = nubBy irEq $ enumIR src tgt maxDepth
 -- Returns list of unique normal forms (already optimized).
 enumerateNormalized :: Type -> Type -> Int -> [IR]
 enumerateNormalized src tgt maxDepth =
-  nubBy irStructEq $ map optimize $ enumIR src tgt maxDepth
+  nubBy irStructEq $ map optimizeMAlonzo $ enumIR src tgt maxDepth
 
 -- | Simple structural equality for IR (ignoring type annotations)
 -- Used by enumerate to dedupe syntactically equal terms
