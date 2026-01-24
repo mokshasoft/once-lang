@@ -37,11 +37,22 @@ open import Once.Backend.RiscV64.Emit
   using ()
   renaming (programToText to riscvProgramToText)
 
+-- Import C backend code generation
+open import Once.Backend.C.CodeGen
+  using (compile-c-expr; compile-c-function)
+
 open import Data.String using (String)
+open import Once.Type using (Type)
 
 ------------------------------------------------------------------------
--- End-to-end compilation: IR → assembly text
+-- End-to-end compilation: IR → C / assembly text
 ------------------------------------------------------------------------
+
+-- | Compile IR to C function text (verified)
+-- Input: Declared function type, function name, IR morphism
+-- Output: C function definition text
+compileCToText : Type → String → ∀ {A B} → IR A B → String
+compileCToText = compile-c-function
 
 -- | Compile IR to AArch64 assembly text (verified)
 -- Input: IR morphism

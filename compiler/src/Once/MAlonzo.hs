@@ -5,7 +5,6 @@
 module Once.MAlonzo
   ( -- * Optimization
     optimizeMAlonzo
-  , optimizeAndConvert
     -- * Conversion functions (for native backends)
   , toMAlonzoType
   , fromMAlonzoType
@@ -39,13 +38,6 @@ optimizeMAlonzo ir =
       mOptimized = MO.d_optimize_1386 (getInputType cleanIR) (getOutputType cleanIR) mIR
       result = fromMAlonzoIR mOptimized
   in restoreOpaques opaques result
-
--- | Optimize a MAlonzo IR with known types, returning Haskell IR.
--- Use this when the MAlonzo IR is available with correct type annotations
--- (e.g., directly from the Agda elaborator before type erasure).
-optimizeAndConvert :: M.T_Type_32 -> M.T_Type_32 -> M.T_IR_10 -> H.IR
-optimizeAndConvert inTy outTy mIR =
-  fromMAlonzoIR (MO.d_optimize_1386 inTy outTy mIR)
 
 -- | Extract opaque leaves (StringLit, Arith) from IR, replacing with numbered Prims.
 -- The optimizer treats all Prim as opaque, so the round-trip is safe.

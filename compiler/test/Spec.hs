@@ -3,7 +3,6 @@ module Main (main) where
 import Test.Tasty
 
 import AllocationSpec (allocationStressTests)
-import Arith.Spec (arithTests)
 import BackendSpec (backendTests)
 import ElaborateSpec (elaborateTests)
 import IRSpec (irTests)
@@ -14,8 +13,7 @@ import QuantitySpec (quantityTests)
 
 main :: IO ()
 main = defaultMain $ testGroup "Once"
-  [ arithTests
-  , quantityTests
+  [ quantityTests
   , irTests
   , optimizeTests
   , parserTests

@@ -39,10 +39,7 @@ library
   import: shared
   exposed-modules:
       Lib
-      Once.Arith.CodeGen.C
-      Once.Arith.Recognize
       Once.Backend.Assembler
-      Once.Backend.C
       Once.Backend.CCompiler
       Once.Backend.Native
       Once.Backend.X86
@@ -238,6 +235,8 @@ library
       MAlonzo.Code.Level
       -- Backend modules temporarily disabled for QTT integration
       -- MAlonzo.Code.Once.Backend.AArch64.CodeGen
+      MAlonzo.Code.Once.Backend.C.CodeGen
+      MAlonzo.Code.Once.Backend.C.Emit
       MAlonzo.Code.Once.Backend.AArch64.Emit
       MAlonzo.Code.Once.Backend.AArch64.Syntax
       -- MAlonzo.Code.Once.Backend.Emit
@@ -395,7 +394,6 @@ test-suite once-test
   main-is: Spec.hs
   other-modules:
       Paths_once
-      Arith.Spec
       Backend.C.Spec
       Backend.X86.Spec
       Backend.Common

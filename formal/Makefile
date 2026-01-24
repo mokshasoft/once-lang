@@ -329,6 +329,19 @@ emit:
 	@sh -c '$(AGDA_CMD) $(RISCV_EMIT)'
 	@sh -c '$(AGDA_CMD) $(EMIT_ALL)'
 
+.PHONY: malonzo-c
+malonzo-c:
+	@echo "Extracting C backend via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Backend/C/CodeGen.agda'
+	@echo "Copying C backend MAlonzo files to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Backend/C
+	@cp _build/malonzo/MAlonzo/Code/Once/Backend/C/*.hs ../compiler/src/MAlonzo/Code/Once/Backend/C/ 2>/dev/null || true
+	@# Copy core dependencies (IR, Type) that C backend needs
+	@cp _build/malonzo/MAlonzo/Code/Once/IR.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Type.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@echo "Done. C backend in compiler/src/MAlonzo/Code/Once/Backend/C/"
+
 .PHONY: malonzo-codegen
 malonzo-codegen:
 	@echo "Extracting verified code generators via MAlonzo..."
