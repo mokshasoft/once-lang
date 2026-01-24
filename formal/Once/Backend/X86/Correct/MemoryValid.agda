@@ -177,6 +177,15 @@ postulate
     addr ≡ encode v →
     ValidAt v addr m
 
+  -- | Converse of valid-from-encode: validity implies encode address
+  -- If a value is validly represented at addr, then addr IS encode v.
+  -- This is the key axiom connecting runtime addresses to semantic values.
+  -- Together with valid-from-encode, establishes: ValidAt v addr m ↔ addr ≡ encode v.
+  valid-addr-is-encode :
+    ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
+    ValidAt v addr m →
+    addr ≡ encode v
+
 
 -- | Convert validity from (A ⇒ B) to (Eff A B)
 -- These types have the same runtime representation (Closure A B), but
@@ -189,17 +198,15 @@ valid-arrow-to-eff :
 valid-arrow-to-eff (valid-closure closS) = valid-eff closS
 valid-arrow-to-eff (valid-closure-env sem-eq venv closS) = valid-eff-env sem-eq venv closS
 
-postulate
-
-  -- | Valid address is in heap region
-  -- ValidAt structures represent heap-allocated data, so the address must be in heap.
-  -- This is the fundamental connection between validity and memory regions.
-  -- ELIMINABLE: Provable by induction on ValidAt structure - all constructors use
-  -- heap addresses (from encode which always returns heap addresses).
-  valid-in-heap :
-    ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
-    ValidAt v addr m →
-    InHeap addr
+-- | Valid address is in heap region
+-- PROVEN from valid-addr-is-encode + encode-in-heap-sem:
+-- ValidAt v addr m → addr ≡ encode v → InHeap (encode v) → InHeap addr
+valid-in-heap :
+  ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
+  ValidAt v addr m →
+  InHeap addr
+valid-in-heap {A} {v} valid =
+  subst InHeap (sym (valid-addr-is-encode valid)) (encode-in-heap-sem v)
 
 -- | Extract validity of left injection's child value
 -- If (inj₁ a) is validly represented at addr, and mem[addr+8] = val-addr,
@@ -411,14 +418,20 @@ valid-pair-decompose (valid-pair {addr-a = addr-a} {addr-b = addr-b} va vb pairS
   addr-a , addr-b , va , vb , pairS
 
 -- | Extract closure memory layout from closure validity
--- Returns existential code-ptr since it's not part of the semantic Closure
--- POSTULATE: The valid-closure-env case requires knowing env-addr = Closure.env-addr cl,
--- which requires env-addr = encode x at function entry. This is an encode boundary issue.
-postulate
-  valid-closure-decompose :
-    ∀ {A B} {cl : Closure A B} {addr : Word} {mem : Memory} →
-    ValidAt {A ⇒ B} cl addr mem →
-    ∃[ code-ptr ] ClosureAtS (Closure.env-addr cl) code-ptr addr mem
+-- Returns existential code-ptr since it's not part of the semantic Closure.
+-- PROVEN using valid-addr-is-encode to connect env-addr to Closure.env-addr cl.
+valid-closure-decompose :
+  ∀ {A B} {cl : Closure A B} {addr : Word} {mem : Memory} →
+  ValidAt {A ⇒ B} cl addr mem →
+  ∃[ code-ptr ] ClosureAtS (Closure.env-addr cl) code-ptr addr mem
+-- Case 1: valid-closure already has ClosureAtS with Closure.env-addr cl
+valid-closure-decompose (valid-closure {code-ptr = cp} closS) = cp , closS
+-- Case 2: valid-closure-env has ClosureAtS with env-addr, need Closure.env-addr cl
+-- env-eq : Closure.env-addr cl ≡ encode env
+-- valid-addr-is-encode v-env : env-addr ≡ encode env
+-- Therefore: env-addr ≡ Closure.env-addr cl
+valid-closure-decompose (valid-closure-env {env-addr = ea} {code-ptr = cp} {closure-addr = ca} {m = m} env-eq v-env closS) =
+  cp , subst (λ a → ClosureAtS a cp ca m) (trans (valid-addr-is-encode v-env) (sym env-eq)) closS
 
 ------------------------------------------------------------------------
 -- Region-based disjointness from validity (Phase 6c-6d)
