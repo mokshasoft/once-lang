@@ -33,9 +33,9 @@ import Once.Backend.Native
   )
 import qualified Once.Backend.Assembler as Asm
 import qualified Once.IR (IR (..))
-import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
+import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError,
+                    LoadedModule (..), Import (..), AllocStrategy (..), extractImports)
 import Once.Optimize (optimizeWith, OptimizerBackend (..))
-import Once.Syntax (AllocStrategy (..), Import (..))
 import Once.Type (Type (..))
 import Once.MAlonzo (fromMAlonzoIR, fromMAlonzoType)
 -- Agda parser (MAlonzo-extracted)
@@ -157,7 +157,7 @@ runBuild opts = do
       exitFailure
     Just agdaModule -> do
       -- Extract imports from Agda module and resolve
-      let imports = extractAgdaImports agdaModule
+      let imports = extractImports agdaModule
           initialEnv = emptyModuleEnv strataPath targetExt
       resolveResult <- resolveImports initialEnv imports
       case resolveResult of
@@ -465,7 +465,7 @@ runCheck opts = do
       exitFailure
     Just agdaModule -> do
       -- Resolve imports
-      let imports = extractAgdaImports agdaModule
+      let imports = extractImports agdaModule
           initialEnv = emptyModuleEnv strataPath targetExt
       resolveResult <- resolveImports initialEnv imports
       case resolveResult of
@@ -494,18 +494,6 @@ loadInterpretationCode interpPath = do
   let cFiles = filter (".c" `isSuffixOf`) files
   cContents <- mapM (\f -> TIO.readFile (interpPath </> f)) cFiles
   pure (T.intercalate "\n\n" cContents)
-
--- | Extract imports from an Agda-parsed module
-extractAgdaImports :: MPM.T_Module_42 -> [Import]
-extractAgdaImports (MPM.C_mkModule_48 decls) = go decls
-  where
-    go [] = []
-    go (MPM.C_DImport_40 imp : rest) = fromAgdaImport imp : go rest
-    go (_ : rest) = go rest
-
--- | Convert Agda Import to Haskell Import
-fromAgdaImport :: MPM.T_Import_18 -> Import
-fromAgdaImport (MPM.C_mkImport_28 path alias) = Import path alias
 
 -- | Extract primitives from an Agda-parsed module (converting types)
 extractAgdaPrimitives :: MPM.T_Module_42 -> [(Text, Type)]

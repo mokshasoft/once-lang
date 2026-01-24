@@ -52,11 +52,7 @@ library
       Once.MAlonzo
       Once.Module
       Once.Optimize
-      Once.Parser
-      Once.Quantity
-      Once.Syntax
       Once.Type
-      Once.TypeAlias
       Once.Value
       MAlonzo.RTE
       MAlonzo.Code.Once.Arith.IR
@@ -351,7 +347,6 @@ library
     , containers
     , directory
     , filepath
-    , megaparsec
     , process
     , text
 

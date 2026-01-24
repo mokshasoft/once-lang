@@ -13,28 +13,16 @@ module Once.MAlonzo
   , fromMAlonzoIR
   , getInputType
   , getOutputType
-    -- * Type checking bridge (OCP-0004)
-  , toMAlonzoRaw
-  , toMAlonzoBinOp
-  , toMAlonzoUnaryOp
-  , fromInferResult
-  , TypeCheckResult
   ) where
 
 import Data.Text (Text)
-import qualified Data.Text as T
 
 import qualified Once.IR as H
-import qualified Once.Syntax as S
 import qualified Once.Type as H
 
 import qualified MAlonzo.Code.Once.IR as M
 import qualified MAlonzo.Code.Once.Type as M
 import qualified MAlonzo.Code.Once.Optimize as MO
-import qualified MAlonzo.Code.Once.TypeCheck.Raw as MR
-import qualified MAlonzo.Code.Once.TypeCheck.Infer as MI
-import qualified MAlonzo.Code.Once.TypeCheck.Error as ME
-import qualified MAlonzo.Code.Agda.Builtin.Sigma as MSig
 
 -- | Check if an IR can be converted to MAlonzo format
 --
@@ -226,132 +214,3 @@ getOutputType ir = case ir of
 getMiddleType :: H.IR -> H.IR -> M.T_Type_32
 getMiddleType _ f = getOutputType f
 
-------------------------------------------------------------------------
--- Type checking bridge (OCP-0004)
-------------------------------------------------------------------------
-
--- | Result of type checking: Either an error or (Type, Fresh counter)
-type TypeCheckResult = Either String (H.Type, Integer)
-
--- | Convert Haskell Expr to MAlonzo RawExpr
---
--- Note: EQualified is not supported (module resolution is external)
-toMAlonzoRaw :: S.Expr -> MR.T_RawExpr_34
-toMAlonzoRaw expr = case expr of
-  S.EVar name       -> MR.C_RVar_36 name
-  S.EApp f arg      -> MR.C_RApp_38 (toMAlonzoRaw f) (toMAlonzoRaw arg)
-  S.ELam x body     -> MR.C_RLam_40 x (toMAlonzoRaw body)
-  S.ELet x e1 e2    -> MR.C_RLet_42 x (toMAlonzoRaw e1) (toMAlonzoRaw e2)
-  S.EPair a b       -> MR.C_RPair_44 (toMAlonzoRaw a) (toMAlonzoRaw b)
-  S.ECase scr x e1 y e2 ->
-    MR.C_RDestruct_46 (toMAlonzoRaw scr) x (toMAlonzoRaw e1) y (toMAlonzoRaw e2)
-  S.EUnit           -> MR.C_RUnit_48
-  S.EInt n          -> MR.C_RInt_50 n
-  S.EStringLit s    -> MR.C_RStringLit_52 s
-  S.EAnnot e ty     -> MR.C_RAnnot_54 (toMAlonzoRaw e) (toMAlonzoTypeFromSType ty)
-  S.EBinOp op a b   -> MR.C_RBinOp_56 (toMAlonzoBinOp op) (toMAlonzoRaw a) (toMAlonzoRaw b)
-  S.EUnaryOp _ e    -> MR.C_RUnaryOp_58 (toMAlonzoRaw e)  -- Only OpNeg exists
-  -- EQualified requires module resolution first
-  S.EQualified _ _  -> error "MAlonzo: EQualified requires module resolution first"
-
--- | Convert Haskell BinOp to MAlonzo BinOp
-toMAlonzoBinOp :: S.BinOp -> MR.T_BinOp_6
-toMAlonzoBinOp op = case op of
-  S.OpAdd -> MR.C_OpAdd_8
-  S.OpSub -> MR.C_OpSub_10
-  S.OpMul -> MR.C_OpMul_12
-  S.OpDiv -> MR.C_OpDiv_14
-  S.OpMod -> MR.C_OpMod_16
-  S.OpLt  -> MR.C_OpLt_18
-  S.OpLe  -> MR.C_OpLe_20
-  S.OpGt  -> MR.C_OpGt_22
-  S.OpGe  -> MR.C_OpGe_24
-  S.OpEq  -> MR.C_OpEq_26
-  S.OpNe  -> MR.C_OpNe_28
-
--- | Convert Haskell UnaryOp to MAlonzo UnaryOp
-toMAlonzoUnaryOp :: S.UnaryOp -> MR.T_UnaryOp_30
-toMAlonzoUnaryOp S.OpNeg = MR.C_OpNeg_32
-
--- | Convert surface type to MAlonzo Type
-toMAlonzoTypeFromSType :: S.SType -> M.T_Type_32
-toMAlonzoTypeFromSType sty = case sty of
-  S.STVar name     -> M.C_TVar_56 name
-  S.STUnit         -> M.C_Unit_34
-  S.STVoid         -> M.C_Void_36
-  S.STInt          -> M.C_Int_48
-  S.STFloat        -> M.C_Float_50
-  S.STBuffer       -> M.C_Buffer_54
-  S.STString _     -> M.C_Str_52  -- MAlonzo doesn't track encoding
-  S.STProduct a b  -> M.C__'42'__38 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
-  S.STSum a b      -> M.C__'43'__40 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
-  S.STArrow a b    -> M.C__'8658''91'_'93'__42 (toMAlonzoTypeFromSType a) M.C_Many_10 (toMAlonzoTypeFromSType b)  -- Default to Many
-  S.STEff a b      -> M.C_Eff_44 (toMAlonzoTypeFromSType a) (toMAlonzoTypeFromSType b)
-  S.STFix f        -> M.C_Fix_46 (toMAlonzoTypeFromSType f)
-  S.STQuant _ t    -> toMAlonzoTypeFromSType t  -- Ignore quantity annotation
-  S.STApp _ _      -> error "MAlonzo: STApp not supported"
-
--- | Convert MAlonzo InferResult to Haskell result
---
--- Returns: Left errorMsg | Right (type, fresh counter)
-fromInferResult :: MI.T_InferResult_142 -> TypeCheckResult
-fromInferResult result = case result of
-  MI.C_success_144 ty _subst fresh ->
-    Right (fromMAlonzoType ty, fresh)
-  MI.C_failure_146 err ->
-    Left (fromMAlonzoError err)
-
--- | Convert MAlonzo TypeError to error string
-fromMAlonzoError :: ME.T_TypeError_6 -> String
-fromMAlonzoError err = case err of
-  ME.C_UnboundVariable_8 name ->
-    "Unbound variable: " ++ T.unpack name
-  ME.C_TypeMismatch_10 expected got ->
-    "Type mismatch: expected " ++ showType (fromMAlonzoType expected)
-    ++ ", got " ++ showType (fromMAlonzoType got)
-  ME.C_NotAFunction_12 ty ->
-    "Not a function: " ++ showType (fromMAlonzoType ty)
-  ME.C_NotAProduct_14 ty ->
-    "Not a product type: " ++ showType (fromMAlonzoType ty)
-  ME.C_NotASum_16 ty ->
-    "Not a sum type: " ++ showType (fromMAlonzoType ty)
-  ME.C_OccursCheck_18 var ty ->
-    "Infinite type: " ++ T.unpack var ++ " occurs in " ++ showType (fromMAlonzoType ty)
-  ME.C_UnificationError_20 t1 t2 ->
-    "Cannot unify " ++ showType (fromMAlonzoType t1)
-    ++ " with " ++ showType (fromMAlonzoType t2)
-  ME.C_ArityMismatch_22 name expected got ->
-    "Arity mismatch for " ++ T.unpack name
-    ++ ": expected " ++ show expected ++ ", got " ++ show got
-  ME.C_SignatureMismatch_24 sig inferred ->
-    "Signature mismatch: declared " ++ showType (fromMAlonzoType sig)
-    ++ ", inferred " ++ showType (fromMAlonzoType inferred)
-  ME.C_LinearUsedMultiple_26 name count ->
-    "Linear variable " ++ T.unpack name ++ " used " ++ show count ++ " times"
-  ME.C_LinearUnused_28 name ->
-    "Linear variable " ++ T.unpack name ++ " not used"
-  ME.C_ErasedUsedAtRuntime_30 name ->
-    "Erased variable " ++ T.unpack name ++ " used at runtime"
-  ME.C_QuantityMismatch_32 name _ _ ->
-    "Quantity mismatch for " ++ T.unpack name
-  ME.C_ArithNonInteger_34 ty ->
-    "Arithmetic requires integer operands, got: " ++ showType (fromMAlonzoType ty)
-  ME.C_CompareNonInteger_36 ty ->
-    "Comparison requires integer operands, got: " ++ showType (fromMAlonzoType ty)
-
--- | Show a type for error messages
-showType :: H.Type -> String
-showType ty = case ty of
-  H.TUnit        -> "Unit"
-  H.TVoid        -> "Void"
-  H.TInt         -> "Int"
-  H.TFloat       -> "Float"
-  H.TBuffer      -> "Buffer"
-  H.TString _    -> "String"
-  H.TVar n       -> T.unpack n
-  H.TProduct a b -> "(" ++ showType a ++ " * " ++ showType b ++ ")"
-  H.TSum a b     -> "(" ++ showType a ++ " + " ++ showType b ++ ")"
-  H.TArrow a b   -> "(" ++ showType a ++ " -> " ++ showType b ++ ")"
-  H.TEff a b     -> "Eff " ++ showType a ++ " " ++ showType b
-  H.TFix f       -> "Fix (" ++ showType f ++ ")"
-  H.TApp n _     -> T.unpack n ++ " ..."
