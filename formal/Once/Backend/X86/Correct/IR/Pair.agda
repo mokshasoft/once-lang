@@ -28,7 +28,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          ir-stack-requirement; ir-rsp-delta; ir-output-capacity; apply-consumed-slots;
          pair-inner-requirement; pair-setup≤pair-req; capacity-from-larger;
          capacity-when-rsp-restored; capacity-preserved-rsp-unchanged;
-         capacity-after-delta;  -- For deriving post-setup capacity
+         capacity-after-delta; capacity-at-higher-rsp;  -- For deriving post-setup/closure capacity
          -- Abstract interface (D041-compliant, no arithmetic in types)
          pair-frame-0; pair-frame-slot-0-in-stack; pair-frame-slot-1-in-stack;
          pair-frame-0-addr-eq; pair-frame-slot-1-addr-eq;
@@ -542,8 +542,19 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
                        (subst (λ ss → readMem (memory ss) addr ≡ readMem (memory s) addr)
                               (sym s-setup-eq)
                               (PairSetupResultV.mem-heap-setup setup-res addr iha))))
-        postulate
-          cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
+        cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
+        cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
+          where
+            rsp-setup-eq : readReg (regs s-setup) rsp ≡ readReg (regs s) rsp ∸ frame-size
+            rsp-setup-eq = subst (λ ss → readReg (regs ss) rsp ≡ readReg (regs s) rsp ∸ frame-size)
+                                 (sym s-setup-eq) (PairSetupResultV.rsp-setup setup-res)
+            rsp-final-≥-s1 : readReg (regs s-final) rsp ≥ readReg (regs s1) rsp
+            rsp-final-≥-s1 = subst (readReg (regs s1) rsp ≤_) (sym rsp-final)
+              (≤-trans
+                (subst (_≤ readReg (regs s-setup) rsp) (sym (IRStarResultV.ir-rsp r-f))
+                       (m∸n≤m (readReg (regs s-setup) rsp) (slots (ir-rsp-delta f))))
+                (subst (_≤ readReg (regs s) rsp) (sym rsp-setup-eq)
+                       (m∸n≤m (readReg (regs s) rsp) frame-size)))
 
     -- Compose all 5 phases
     star-all : Star prog s s-final

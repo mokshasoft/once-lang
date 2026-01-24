@@ -35,8 +35,8 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Layout
   using (StackPointer) renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
-  using (slots; slot-size; StackCapacity; ir-stack-requirement; ir-output-capacity;
-         capacity-after-push; capacity-from-larger; slot-1-addr-in-stack; rsp-in-stack;
+  using (slots; slot-size; StackCapacity; ir-stack-requirement; ir-output-capacity; ir-rsp-delta;
+         capacity-after-push; capacity-from-larger; capacity-at-higher-rsp; slot-1-addr-in-stack; rsp-in-stack;
          make-frame-at-slot; make-frame-at-slot-addr; apply-consumed-slots)
 open import Once.Backend.X86.Correct.RegisterLemmas
   using (readReg-writeReg-same; readReg-writeReg-rsp-rbp; readReg-writeReg-rsp-rdi;
@@ -469,8 +469,16 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
           ih
           cwf-cap-final)
       where
-        postulate
-          cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
+        cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
+        cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
+          where
+            rsp-final-≥-s1 : readReg (regs s-final) rsp ≥ readReg (regs s1) rsp
+            rsp-final-≥-s1 = subst (readReg (regs s1) rsp ≤_) (sym rsp-final)
+              (≤-trans
+                (subst (_≤ readReg (regs s-setup) rsp) (sym (IRStarResultV.ir-rsp r-f))
+                       (m∸n≤m (readReg (regs s-setup) rsp) (slots (ir-rsp-delta f))))
+                (subst (_≤ readReg (regs s) rsp) (sym rsp-setup-from-s)
+                       (m∸n≤m (readReg (regs s) rsp) slot-size)))
 
     result : IRStarResultV [ f , g ] prog s s-final (inj₁ a) (length prefix)
     result = record
@@ -890,8 +898,16 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
           ih
           cwf-cap-final)
       where
-        postulate
-          cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
+        cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
+        cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
+          where
+            rsp-final-≥-s1 : readReg (regs s-final) rsp ≥ readReg (regs s1) rsp
+            rsp-final-≥-s1 = subst (readReg (regs s1) rsp ≤_) (sym rsp-final)
+              (≤-trans
+                (subst (_≤ readReg (regs s-setup) rsp) (sym (IRStarResultV.ir-rsp r-g))
+                       (m∸n≤m (readReg (regs s-setup) rsp) (slots (ir-rsp-delta g))))
+                (subst (_≤ readReg (regs s) rsp) (sym rsp-setup-from-s)
+                       (m∸n≤m (readReg (regs s) rsp) slot-size)))
 
     result : IRStarResultV [ f , g ] prog s s-final (inj₂ b) (length prefix)
     result = record

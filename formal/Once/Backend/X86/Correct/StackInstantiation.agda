@@ -998,6 +998,24 @@ capacity-from-larger s m n cap m≤n = record
       capacity-maintained cap k (≤-trans k≤m m≤n)
   }
 
+-- | Capacity is preserved when rsp increases (or stays the same) and the new
+-- rsp is in the stack region. Higher rsp means more room above the allocation.
+-- Used when pair/case cleanup restores rsp to a value ≥ the inner state's rsp.
+capacity-at-higher-rsp : ∀ (s s' : State) (n : ℕ) →
+  StackCapacity s n →
+  readReg (regs s') rsp ≥ readReg (regs s) rsp →
+  InStack (readReg (regs s') rsp) →
+  StackCapacity s' n
+capacity-at-higher-rsp s s' n cap rsp'≥rsp rsp'-in-stack = record
+  { rsp-in-stack = rsp'-in-stack
+  ; rsp-sufficient = <-≤-trans (rsp-sufficient cap) rsp'≥rsp
+  ; capacity-maintained = λ k k≤n →
+      (z≤n , ≤-trans (m∸n≤m (readReg (regs s') rsp) (k *ℕ slot-size)) (proj₂ rsp'-in-stack))
+  }
+  where
+    open import Data.Nat.Properties using (<-≤-trans)
+    open import Data.Product using (proj₂)
+
 -- | Slot distribution over addition: slots (a + b) = slots a + slots b
 -- This is multiplication distributivity: (a + b) * 8 = a * 8 + b * 8
 -- Used for compose rsp tracking: rsp s3 = rsp s ∸ slots (delta f + delta g)
