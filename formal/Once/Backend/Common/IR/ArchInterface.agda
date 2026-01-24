@@ -146,13 +146,15 @@ record ArchCorrectness : Set₂ where
     -- After g runs, run transfer and derive f's preconditions
     -- g ran in context: prefix ++ₚ compile g ++ₚ (transfer ++ₚ compile f ++ₚ suffix)
     -- Transfer advances PC from end of g to start of f
-    -- Returns: s₂ (state after transfer), Star proof for transfer, Preconditions for f at s₂
+    -- Returns: s₂ (state after transfer), Star proof for transfer, Preconditions for f at s₂,
+    --          and converted ApplyWFInput for f (from g's exec-closure-wf, updated for s₂)
     compose-run-transfer : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ : State) →
       Preconditions {A} s x prefix (ir-stack-requirement (f ∘ g)) →
       IRCorrectness g (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s s₁ x (program-length prefix) →
       ∃[ s₂ ] (Star (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s₁ s₂ ×
-               Preconditions {B} s₂ (eval g x) (prefix ++ₚ compile g ++ₚ compose-transfer f g) (ir-stack-requirement f))
+               Preconditions {B} s₂ (eval g x) (prefix ++ₚ compile g ++ₚ compose-transfer f g) (ir-stack-requirement f) ×
+               ApplyWFInput (ClosureDom B) (ClosureCod B) ((prefix ++ₚ compile g ++ₚ compose-transfer f g) ++ₚ compile f ++ₚ suffix) s₂)
 
     -- Combine g, transfer, and f results into compose result
     compose-combine : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
@@ -232,7 +234,12 @@ record ArchCorrectness : Set₂ where
           offset = program-length prefix
       in ∃[ s₁ ] CurrySpecs.SetupPost f prog offset s s₁ x
 
-    curry-combine : ∀ {A B C : Type} (f : IR (A * B) C)
+    curry-combine :
+      (ih : ∀ {A B : Type} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+            Preconditions {A} s x prefix (ir-stack-requirement ir) →
+            ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s →
+            ∃[ s' ] IRCorrectness ir (prefix ++ₚ compile ir ++ₚ suffix) s s' x (program-length prefix)) →
+      ∀ {A B C : Type} (f : IR (A * B) C)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ : State) →
       let prog = prefix ++ₚ compile (curry f) ++ₚ suffix
           offset = program-length prefix
@@ -322,7 +329,9 @@ record ArchCorrectness : Set₂ where
     apply-correct :
       (ih : ∀ {A B : Type} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
             Preconditions {A} s x prefix (ir-stack-requirement ir) →
+            ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s →
             ∃[ s' ] IRCorrectness ir (prefix ++ₚ compile ir ++ₚ suffix) s s' x (program-length prefix)) →
       ∀ {A B : Type} (prefix suffix : Program) (p : ⟦ (A ⇒ B) * A ⟧) (s : State) →
       Preconditions {(A ⇒ B) * A} s p prefix (ir-stack-requirement (apply {A} {B})) →
+      ApplyWFInput A B (prefix ++ₚ compile (apply {A} {B}) ++ₚ suffix) s →
       ∃[ s' ] IRCorrectness (apply {A} {B}) (prefix ++ₚ compile (apply {A} {B}) ++ₚ suffix) s s' p (program-length prefix)

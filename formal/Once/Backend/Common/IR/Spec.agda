@@ -182,6 +182,28 @@ data ClosureWFOutput {Program : Set}
     ClosureWFOutput ClosureWF prog
 
 ------------------------------------------------------------------------
+-- ClosureTypesOf: Extract closure domain/codomain from a Type
+--
+-- For apply {A} {B} : IR ((A ⇒ B) * A) B, the input type is (A ⇒ B) * A.
+-- ClosureTypesOf extracts (A, B) from this. Similarly for curry's output
+-- type (A ⇒ B). This enables type-safe threading through compose:
+-- g : IR X Y and f : IR Y Z share type Y, so ClosureTypesOf Y gives
+-- the same closure types at both ends.
+------------------------------------------------------------------------
+
+ClosureTypesOf : Type → Type × Type
+ClosureTypesOf ((A ⇒[ _ ] B) * _) = (A , B)
+ClosureTypesOf (A ⇒[ _ ] B) = (A , B)
+ClosureTypesOf _ = (Unit , Unit)
+
+-- Projections for readability
+ClosureDom : Type → Type
+ClosureDom T = proj₁ (ClosureTypesOf T)
+
+ClosureCod : Type → Type
+ClosureCod T = proj₂ (ClosureTypesOf T)
+
+------------------------------------------------------------------------
 -- IRCorrectness: The Core Specification
 --
 -- This matches X86's IRStarResultV structure exactly.
@@ -209,6 +231,25 @@ module IRSpecs
   -- Alias for ClosureWFOutput with the architecture's WF predicate
   ClosureWFOut : Program → Set₁
   ClosureWFOut = ClosureWFOutput ClosureWF
+
+  -- | ApplyWFInput: Everything apply needs from a previous curry
+  --
+  -- Threading: curry produces → compose threads → apply consumes
+  -- Carries: ClosureWF proof, env validity, sufficient capacity
+  --
+  -- A and B are the closure's domain/codomain types. They are
+  -- determined by ClosureTypesOf applied to the IR's input type,
+  -- ensuring they match structurally in compose threading.
+  data ApplyWFInput (A B : Type) (prog : Program) (s : State) : Set₁ where
+    no-apply-wf : ApplyWFInput A B prog s
+    apply-wf : ∀ {E : Type}
+      (code-ptr : ℕ) (env : ⟦ E ⟧) (env-addr : Word)
+      (cap-needed : ℕ)
+      (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+      (wf : ClosureWF {E} {A} {B} prog code-ptr env semantics)
+      (env-valid : ValidAt env env-addr (memory s))
+      (cap : StackCapacity s cap-needed)
+      → ApplyWFInput A B prog s
 
   -- Preconditions for IR execution
   -- Matches X86's run-*-star-vv preconditions exactly
@@ -252,8 +293,9 @@ module IRSpecs
       exec-capacity : StackCapacity s' (ir-output-capacity ir)
       exec-frame-inv : FramePtrInvariant s'
 
-      -- Optional closure well-formedness (produced by curry, consumed by apply)
-      exec-closure-wf : ClosureWFOut prog
+      -- Closure well-formedness (produced by curry, consumed by apply)
+      -- Types come from ClosureTypesOf B (the IR's output type)
+      exec-closure-wf : ApplyWFInput (ClosureDom B) (ClosureCod B) prog s'
 
   ------------------------------------------------------------------------
   -- Phase Specifications for Composite IR
@@ -345,6 +387,11 @@ module IRSpecs
         setup-heap-preserved : HeapPreserved s s₁
         setup-code-preserved : CodePreserved s s₁
         setup-frame-preserved : FramePreserved s s₁
+        -- Closure environment info (for building ApplyWFInput in curry-combine)
+        -- env-addr: where the environment (x) is stored in memory
+        -- env-valid: the environment is validly represented at env-addr
+        setup-env-addr : Word
+        setup-env-valid : ValidAt x setup-env-addr (memory s₁)
 
   module CaseSpecs {A B C : Type} (f : IR A C) (g : IR B C) where
 

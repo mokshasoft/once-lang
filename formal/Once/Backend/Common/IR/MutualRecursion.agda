@@ -70,50 +70,53 @@ module IRCorrect (Arch : ArchCorrectness) where
   mutual
     -- Main theorem: all IR is correct when run in context
     -- prog = prefix ++ₚ compile ir ++ₚ suffix
+    -- cwf: closure well-formedness input (from previous step in compose)
     ir-correct : ∀ {A B : Type} (ir : IR A B)
                  (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
                  Preconditions {A} s x prefix (ir-stack-requirement ir) →
+                 ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s →
                  ∃[ s' ] IRCorrectness ir (prefix ++ₚ compile ir ++ₚ suffix) s s' x (program-length prefix)
 
     -- Identity: delegate to architecture
-    ir-correct id prefix suffix x s pre = id-correct prefix suffix x s pre
+    ir-correct id prefix suffix x s pre _ = id-correct prefix suffix x s pre
 
     -- Left injection: delegate to architecture
-    ir-correct inl prefix suffix x s pre = inl-correct prefix suffix x s pre
+    ir-correct inl prefix suffix x s pre _ = inl-correct prefix suffix x s pre
 
     -- Right injection: delegate to architecture
-    ir-correct inr prefix suffix x s pre = inr-correct prefix suffix x s pre
+    ir-correct inr prefix suffix x s pre _ = inr-correct prefix suffix x s pre
 
     -- First projection: delegate to architecture
-    ir-correct fst prefix suffix x s pre = fst-correct prefix suffix x s pre
+    ir-correct fst prefix suffix x s pre _ = fst-correct prefix suffix x s pre
 
     -- Second projection: delegate to architecture
-    ir-correct snd prefix suffix x s pre = snd-correct prefix suffix x s pre
+    ir-correct snd prefix suffix x s pre _ = snd-correct prefix suffix x s pre
 
     -- Arrow: delegate to architecture
-    ir-correct arr prefix suffix x s pre = arr-correct prefix suffix x s pre
+    ir-correct arr prefix suffix x s pre _ = arr-correct prefix suffix x s pre
 
     -- Unfold: delegate to architecture
-    ir-correct unfold prefix suffix x s pre = unfold-correct prefix suffix x s pre
+    ir-correct unfold prefix suffix x s pre _ = unfold-correct prefix suffix x s pre
 
     -- Fold: delegate to architecture
-    ir-correct fold prefix suffix x s pre = fold-correct prefix suffix x s pre
+    ir-correct fold prefix suffix x s pre _ = fold-correct prefix suffix x s pre
 
     -- Terminal: delegate to architecture
-    ir-correct terminal prefix suffix x s pre = terminal-correct prefix suffix x s pre
+    ir-correct terminal prefix suffix x s pre _ = terminal-correct prefix suffix x s pre
 
     -- Initial: delegate to architecture
-    ir-correct initial prefix suffix x s pre = initial-correct prefix suffix x s pre
+    ir-correct initial prefix suffix x s pre _ = initial-correct prefix suffix x s pre
 
     -- Prim: delegate to architecture
-    ir-correct (Prim name) prefix suffix x s pre = prim-correct name prefix suffix x s pre
+    ir-correct (Prim name) prefix suffix x s pre _ = prim-correct name prefix suffix x s pre
 
     -- Composition: f ∘ g means "first g, then f"
     -- compile (f ∘ g) = compile g ++ₚ transfer ++ₚ compile f
     -- g runs with: prefix, suffix = transfer ++ₚ compile f ++ₚ outer-suffix
     -- transfer runs after g, before f
     -- f runs with: prefix = outer-prefix ++ₚ compile g ++ₚ transfer, suffix
-    ir-correct (f ∘ g) prefix suffix x s pre =
+    -- Key: g's exec-closure-wf is threaded to f as input
+    ir-correct (f ∘ g) prefix suffix x s pre _ =
       let -- Compute sub-programs
           code-g = compile g
           code-f = compile f
@@ -123,16 +126,17 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 1: Get g's preconditions
           g-pre = compose-g-preconditions f g prefix suffix x s pre
           -- Step 2: Run g in context (suffix includes transfer and f)
-          (s₁ , g-corr) = ir-correct g prefix suffix-g x s g-pre
-          -- Step 3: Run transfer, get f's preconditions
-          (s₂ , transfer-star , f-pre) = compose-run-transfer f g prefix suffix x s s₁ pre g-corr
+          (s₁ , g-corr) = ir-correct g prefix suffix-g x s g-pre no-apply-wf
+          -- Step 3: Run transfer, get f's preconditions and threaded ApplyWFInput
+          (s₂ , transfer-star , f-pre , f-cwf) = compose-run-transfer f g prefix suffix x s s₁ pre g-corr
           -- Step 4: Run f in context (prefix includes g and transfer)
-          (s₃ , f-corr) = ir-correct f prefix-f suffix (eval g x) s₂ f-pre
+          -- Thread g's closure-wf to f via compose-run-transfer's converted ApplyWFInput
+          (s₃ , f-corr) = ir-correct f prefix-f suffix (eval g x) s₂ f-pre f-cwf
           -- Step 5: Combine using architecture's combine lemma
       in s₃ , compose-combine f g prefix suffix x s s₁ s₂ s₃ g-corr transfer-star f-corr
 
     -- Pair: setup → f → middle → g → cleanup
-    ir-correct ⟨ f , g ⟩ prefix suffix x s pre =
+    ir-correct ⟨ f , g ⟩ prefix suffix x s pre _ =
       let -- Compute sub-programs (architecture provides the details)
           (prefix-f , suffix-f , prefix-g , suffix-g) = pair-context f g prefix suffix
           -- Step 1: Setup phase
@@ -140,28 +144,28 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 2: Get f's preconditions
           f-pre = pair-setup-enables-f f g prefix suffix x s s₁ setup
           -- Step 3: Run f in context
-          (s₂ , f-corr) = ir-correct f prefix-f suffix-f x s₁ f-pre
+          (s₂ , f-corr) = ir-correct f prefix-f suffix-f x s₁ f-pre no-apply-wf
           -- Step 4: Middle phase (store f's result, restore input)
           (s₃ , middle) = pair-middle f g prefix suffix x s₁ s₂ (eval f x) f-corr
           -- Step 5: Get g's preconditions
           g-pre = pair-middle-enables-g f g prefix suffix x s₁ s₂ s₃ (eval f x) middle
           -- Step 6: Run g in context
-          (s₄ , g-corr) = ir-correct g prefix-g suffix-g x s₃ g-pre
+          (s₄ , g-corr) = ir-correct g prefix-g suffix-g x s₃ g-pre no-apply-wf
           -- Step 7: Cleanup phase (construct pair)
           (s₅ , cleanup) = pair-cleanup f g prefix suffix x s s₃ s₄ (eval f x) (eval g x) g-corr
           -- Step 8: Combine all phases
       in s₅ , pair-combine f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setup f-corr middle g-corr cleanup
 
-    -- Curry: setup creates closure, skips thunk (no sub-IR execution needed)
-    ir-correct (curry f) prefix suffix x s pre =
+    -- Curry: setup creates closure, uses IH to construct ClosureWellFormed
+    ir-correct (curry f) prefix suffix x s pre _ =
       let (s₁ , setup) = curry-setup f prefix suffix x s pre
-      in s₁ , curry-combine f prefix suffix x s s₁ setup
+      in s₁ , curry-combine ir-correct f prefix suffix x s s₁ setup
 
     -- Apply: use ir-correct as induction hypothesis for thunk
-    ir-correct apply prefix suffix x s pre = apply-correct ir-correct prefix suffix x s pre
+    ir-correct apply prefix suffix x s pre cwf = apply-correct ir-correct prefix suffix x s pre cwf
 
     -- Case: dispatch then branch then cleanup
-    ir-correct [ f , g ] prefix suffix (inj₁ a) s pre =
+    ir-correct [ f , g ] prefix suffix (inj₁ a) s pre _ =
       let -- Compute sub-programs
           (prefix-f , suffix-f) = case-left-context f g prefix suffix
           -- Step 1: Dispatch (determines it's left branch)
@@ -169,13 +173,13 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 2: Get f's preconditions
           f-pre = case-dispatch-enables-f f g prefix suffix a s s₁ dispatch
           -- Step 3: Run f in context
-          (s₂ , f-corr) = ir-correct f prefix-f suffix-f a s₁ f-pre
+          (s₂ , f-corr) = ir-correct f prefix-f suffix-f a s₁ f-pre no-apply-wf
           -- Step 4: Run cleanup (jmp + mov rsp,rbp + pop rbp)
           (s₃ , cleanup) = case-left-cleanup f g prefix suffix a s s₁ s₂ dispatch f-corr
           -- Step 5: Combine dispatch + f + cleanup
       in s₃ , case-left-combine f g prefix suffix a s s₁ s₂ s₃ dispatch f-corr cleanup
 
-    ir-correct [ f , g ] prefix suffix (inj₂ b) s pre =
+    ir-correct [ f , g ] prefix suffix (inj₂ b) s pre _ =
       let -- Compute sub-programs
           (prefix-g , suffix-g) = case-right-context f g prefix suffix
           -- Step 1: Dispatch (determines it's right branch)
@@ -183,7 +187,7 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 2: Get g's preconditions
           g-pre = case-dispatch-enables-g f g prefix suffix b s s₁ dispatch
           -- Step 3: Run g in context
-          (s₂ , g-corr) = ir-correct g prefix-g suffix-g b s₁ g-pre
+          (s₂ , g-corr) = ir-correct g prefix-g suffix-g b s₁ g-pre no-apply-wf
           -- Step 4: Run cleanup (mov rsp,rbp + pop rbp)
           (s₃ , cleanup) = case-right-cleanup f g prefix suffix b s s₁ s₂ dispatch g-corr
           -- Step 5: Combine dispatch + g + cleanup
@@ -200,7 +204,7 @@ module IRCorrect (Arch : ArchCorrectness) where
   ir-correct-toplevel : ∀ {A B : Type} (ir : IR A B) (x : ⟦ A ⟧) (s : State) →
                         Preconditions {A} s x empty-program (ir-stack-requirement ir) →
                         ∃[ s' ] IRCorrectness ir (empty-program ++ₚ compile ir ++ₚ empty-program) s s' x (program-length empty-program)
-  ir-correct-toplevel ir x s pre = ir-correct ir empty-program empty-program x s pre
+  ir-correct-toplevel ir x s pre = ir-correct ir empty-program empty-program x s pre no-apply-wf
 
 ------------------------------------------------------------------------
 -- Summary
