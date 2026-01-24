@@ -89,18 +89,18 @@ optimize-compose-correct (⟨ f' , g' ⟩ _) fst x =
   cong₂ _,_ (optimize-compose-correct f' fst x) (optimize-compose-correct g' fst x)
 optimize-compose-correct (⟨ f' , g' ⟩ _) snd x =
   cong₂ _,_ (optimize-compose-correct f' snd x) (optimize-compose-correct g' snd x)
-optimize-compose-correct (⟨ f' , g' ⟩ _) (⟨ h , h' ⟩ _) x =
-  cong₂ _,_ (optimize-compose-correct f' (⟨ h , h' ⟩ Heap) x) (optimize-compose-correct g' (⟨ h , h' ⟩ Heap) x)
-optimize-compose-correct (⟨ f' , g' ⟩ _) (inl _) x =
-  cong₂ _,_ (optimize-compose-correct f' (inl Heap) x) (optimize-compose-correct g' (inl Heap) x)
-optimize-compose-correct (⟨ f' , g' ⟩ _) (inr _) x =
-  cong₂ _,_ (optimize-compose-correct f' (inr Heap) x) (optimize-compose-correct g' (inr Heap) x)
+optimize-compose-correct (⟨ f' , g' ⟩ _) (⟨ h , h' ⟩ m) x =
+  cong₂ _,_ (optimize-compose-correct f' (⟨ h , h' ⟩ m) x) (optimize-compose-correct g' (⟨ h , h' ⟩ m) x)
+optimize-compose-correct (⟨ f' , g' ⟩ _) (inl m) x =
+  cong₂ _,_ (optimize-compose-correct f' (inl m) x) (optimize-compose-correct g' (inl m) x)
+optimize-compose-correct (⟨ f' , g' ⟩ _) (inr m) x =
+  cong₂ _,_ (optimize-compose-correct f' (inr m) x) (optimize-compose-correct g' (inr m) x)
 optimize-compose-correct (⟨ f' , g' ⟩ _) [ h , h' ] x =
   cong₂ _,_ (optimize-compose-correct f' [ h , h' ] x) (optimize-compose-correct g' [ h , h' ] x)
 optimize-compose-correct (⟨ f' , g' ⟩ _) terminal x =
   cong₂ _,_ (optimize-compose-correct f' terminal x) (optimize-compose-correct g' terminal x)
-optimize-compose-correct (⟨ f' , g' ⟩ _) (curry h _) x =
-  cong₂ _,_ (optimize-compose-correct f' (curry h Heap) x) (optimize-compose-correct g' (curry h Heap) x)
+optimize-compose-correct (⟨ f' , g' ⟩ _) (curry h m) x =
+  cong₂ _,_ (optimize-compose-correct f' (curry h m) x) (optimize-compose-correct g' (curry h m) x)
 optimize-compose-correct (⟨ f' , g' ⟩ _) apply x =
   cong₂ _,_ (optimize-compose-correct f' apply x) (optimize-compose-correct g' apply x)
 optimize-compose-correct (⟨ f' , g' ⟩ _) fold x =
@@ -157,7 +157,8 @@ optimize-compose-correct [ f' , g' ] fst x = refl
 optimize-compose-correct [ f' , g' ] snd x = refl
 optimize-compose-correct [ f' , g' ] (inl _) x = refl  -- Coproduct beta
 optimize-compose-correct [ f' , g' ] (inr _) x = refl  -- Coproduct beta
-optimize-compose-correct [ f' , g' ] [ h , h' ] x = refl
+optimize-compose-correct [ f' , g' ] [ h , h' ] (inj₁ a) = optimize-compose-correct [ f' , g' ] h a
+optimize-compose-correct [ f' , g' ] [ h , h' ] (inj₂ b) = optimize-compose-correct [ f' , g' ] h' b
 optimize-compose-correct [ f' , g' ] apply x = refl
 optimize-compose-correct [ f' , g' ] unfold x = refl
 optimize-compose-correct [ f' , g' ] initial ()  -- Initial absorption (Void is empty)
@@ -321,9 +322,8 @@ optimize-compose-correct (h ∘ g) (inl m) x =
 optimize-compose-correct (h ∘ g) (inr m) x =
   trans (optimize-compose-correct h (optimize-compose g (inr m)) x)
         (cong (eval h) (optimize-compose-correct g (inr m) x))
-optimize-compose-correct (h ∘ g) [ f' , f'' ] x =
-  trans (optimize-compose-correct h (optimize-compose g [ f' , f'' ]) x)
-        (cong (eval h) (optimize-compose-correct g [ f' , f'' ] x))
+optimize-compose-correct (h ∘ g) [ f' , f'' ] (inj₁ a) = optimize-compose-correct (h ∘ g) f' a
+optimize-compose-correct (h ∘ g) [ f' , f'' ] (inj₂ b) = optimize-compose-correct (h ∘ g) f'' b
 optimize-compose-correct (h ∘ g) terminal x =
   trans (optimize-compose-correct h (optimize-compose g terminal) x)
         (cong (eval h) (optimize-compose-correct g terminal x))
