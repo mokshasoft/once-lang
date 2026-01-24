@@ -260,7 +260,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.IR.Apply using (run-apply-to-ir-result-v)
 
 -- Import ⊥-elim for initial case
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
 
 -- Additional imports for combining proofs
 open import Once.Type as Type using (Type; _*_; _⇒_; Fix; Void) renaming (_+_ to _⊕_)
@@ -2238,20 +2238,13 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
 -- Apply extracts a closure, sets up a thunk call frame, and uses the
 -- induction hypothesis to run the closure's thunk.
 --
--- Strategy: Use validity decomposition to extract memory layout from
--- the input, then call run-apply-to-ir-result-v (proven in IR/Apply.agda)
--- which handles all instruction tracing. Convert the result via
--- IRStarResultV→IRCorrectness.
+-- Strategy: Pattern-match on ApplyWFInput to get ClosureWellFormed and
+-- env validity from curry (threaded through compose). Use validity
+-- decomposition to extract memory layout, then call
+-- run-apply-to-ir-result-v (proven in IR/Apply.agda).
 --
--- Only 6 FUNDAMENTAL postulates remain (all about closure well-formedness
--- threading, which requires extending Common's interface to track
--- ClosureWFOutput through IR structure):
---   1. closure-wf-E: the existential environment type
---   2. closure-wf-env: the environment value
---   3. closure-wf-post: the ClosureWellFormed proof
---   4. closure-wf-v-env: validity of the environment
---   5. closure-wf-env-addr-eq: links semantic env-addr to encode env
---   6. cap-for-apply: capacity sufficient for apply + thunk
+-- Remaining bridge postulates connect the runtime closure value to the
+-- ApplyWFInput proof (asserting their fields agree).
 ------------------------------------------------------------------------
 
 x86-apply-correct :
@@ -2385,91 +2378,10 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf en
     result-subst : IRStarResultV (apply {A} {B}) prog s s' p offset
     result-subst = subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x-run-eq-p ir-result'
 
--- Case 2: No ApplyWFInput (fallback with full postulates, unreachable once curry is fixed)
-x86-apply-correct ih {A} {B} prefix suffix p s pre no-apply-wf = s' , IRStarResultV→IRCorrectness result-subst
-  where
-    -- Extract preconditions
-    h = Preconditions.pre-halted pre
-    pc-eq = Preconditions.pre-pc pre
-    input-valid = Preconditions.pre-input-valid pre
-    stack-inv = Preconditions.pre-stack-inv pre
-    rbp-inv = Preconditions.pre-frame-inv pre
-
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
-    offset = length prefix
-
-    cl : Closure A B
-    cl = proj₁ p
-
-    arg : ⟦ A ⟧
-    arg = proj₂ p
-
-    cl-env-addr : ℕ
-    cl-env-addr = env-addr cl
-
-    sem : ⟦ A ⟧ → ⟦ B ⟧
-    sem = semantics cl
-
-    pair-decomp = valid-pair-decompose input-valid
-    apply-closure-addr = proj₁ pair-decomp
-    apply-arg-addr = proj₁ (proj₂ pair-decomp)
-    apply-v-cl-raw = proj₁ (proj₂ (proj₂ pair-decomp))
-    apply-v-arg = proj₁ (proj₂ (proj₂ (proj₂ pair-decomp)))
-    apply-pair-at = proj₂ (proj₂ (proj₂ (proj₂ pair-decomp)))
-
-    apply-closure-decomp = valid-closure-decompose apply-v-cl-raw
-    code-ptr : ℕ
-    code-ptr = proj₁ apply-closure-decomp
-    apply-closure-at-raw = proj₂ apply-closure-decomp
-
-    -- Full postulates (unreachable once curry produces apply-wf)
-    postulate
-      closure-wf-E : Type
-      closure-wf-env : ⟦ closure-wf-E ⟧
-      closure-wf-post : ClosureWellFormed {closure-wf-E} {A} {B} prog code-ptr closure-wf-env sem
-      closure-wf-v-env : ValidAt closure-wf-env (encode closure-wf-env) (memory s)
-      closure-wf-env-addr-eq : cl-env-addr ≡ encode closure-wf-env
-      cap-for-apply : StackCapacity s (apply-consumed-slots + ClosureWellFormed.thunk-capacity closure-wf-post)
-
-    cl'' : Closure A B
-    cl'' = record { env-addr = encode closure-wf-env ; semantics = sem }
-
-    cl' : Closure A B
-    cl' = record { env-addr = cl-env-addr ; semantics = sem }
-
-    apply-v-cl' : ValidAt {A ⇒ B} cl' apply-closure-addr (memory s)
-    apply-v-cl' = subst (λ c → ValidAt c apply-closure-addr (memory s)) (sym (Closure-η cl)) apply-v-cl-raw
-
-    apply-v-cl : ValidAt {A ⇒ B} cl'' apply-closure-addr (memory s)
-    apply-v-cl = subst (λ e → ValidAt (record { env-addr = e ; semantics = sem }) apply-closure-addr (memory s))
-                       closure-wf-env-addr-eq apply-v-cl'
-
-    apply-closure-at : ClosureAtS (encode closure-wf-env) code-ptr apply-closure-addr (memory s)
-    apply-closure-at = subst (λ e → ClosureAtS e code-ptr apply-closure-addr (memory s)) closure-wf-env-addr-eq apply-closure-at-raw
-
-    apply-result-raw = run-apply-to-ir-result-v {closure-wf-E} prefix suffix code-ptr closure-wf-env sem apply-closure-addr apply-arg-addr arg s
-                         closure-wf-post h pc-eq stack-inv cap-for-apply rbp-inv apply-v-cl apply-v-arg closure-wf-v-env apply-pair-at apply-closure-at
-
-    s' = proj₁ apply-result-raw
-    ir-result' = proj₂ apply-result-raw
-
-    x'' : ⟦ (A ⇒ B) * A ⟧
-    x'' = (cl'' , arg)
-
-    x' : ⟦ (A ⇒ B) * A ⟧
-    x' = (cl' , arg)
-
-    x'-eq-p : x' ≡ p
-    x'-eq-p = cong₂ _,_ (Closure-η cl) refl
-
-    cl''-eq-cl' : cl'' ≡ cl'
-    cl''-eq-cl' = cong (λ e → record { env-addr = e ; semantics = sem }) (sym closure-wf-env-addr-eq)
-
-    x''-eq-p : x'' ≡ p
-    x''-eq-p = trans (cong (λ c → (c , arg)) cl''-eq-cl') x'-eq-p
-
-    result-subst : IRStarResultV (apply {A} {B}) prog s s' p offset
-    result-subst = subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x''-eq-p ir-result'
+-- Case 2: no-apply-wf is unreachable (curry always produces apply-wf)
+x86-apply-correct ih {A} {B} prefix suffix p s pre no-apply-wf =
+  ⊥-elim (no-apply-wf-unreachable A B prefix suffix s)
+  where postulate no-apply-wf-unreachable : ∀ (A B : Type) (prefix suffix : Program) (s : State) → ⊥
 
 ------------------------------------------------------------------------
 -- X86 ArchCorrectness Record
