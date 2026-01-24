@@ -74,7 +74,7 @@ open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound; word-fits-pair-strict)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_;
-         star-step2; star-step3; star-step4)
+         star-step2; star-step3; star-step4; just-injective)
 open import Once.Backend.X86.Correct.MemoryValid
   using (PairAt; pair-at; fst-valid; snd-valid;
          PairAtS; pair-at-s;
@@ -87,6 +87,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- Simple Star proofs (non-recursive) are in StarBase.agda
 open import Once.Backend.X86.Correct.StarBase public
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure; ApplyReady;
+         transport-cwf; subst-cwf-prog;
          ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf; ir-capacity;
          ir-result-valid;  -- Validity-based result field
@@ -164,7 +165,9 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-pair-decompose; valid-closure-decompose; PairAtS;
          valid-closure-env; ClosureAtS; closure-at-s;
          valid-subst-addr-mem;
-         valid-addr-is-encode; valid-from-encode)
+         valid-addr-is-encode; valid-from-encode; valid-in-heap;
+         encode-injective;
+         fst-valid-s; code-valid-s)
   renaming (PairAt to MV-PairAt)
 
 open import Data.Bool using (Bool; true; false)
@@ -224,7 +227,7 @@ mutual
     StackInvariant s →
     StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
-    ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →
+    ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) s →
     Acc _<_ (ir-size ir) →
     let prog = prefix ++ compile-x86 ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
@@ -243,7 +246,7 @@ mutual
     StackInvariant s →
     StackCapacity s (ir-stack-requirement (curry f)) →
     RbpInvariant s →
-    ClosureWFOutput (prefix ++ compile-x86 (curry f) ++ suffix) →
+    ClosureWFOutput (prefix ++ compile-x86 (curry f) ++ suffix) s →
     Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
@@ -269,6 +272,9 @@ mutual
       ; ir-closure-wf = has-closure A B C cl-addr thunk-offset x (λ b → eval f (x , b)) wf
                           (record { env-addr = encode x ; semantics = λ b → eval f (x , b) })
                           refl refl
+                          closure-at-typed
+                          (valid-in-heap closure-valid-at-addr)
+                          (exec-capacity exec-res)
       }
     where
       prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -310,6 +316,13 @@ mutual
       -- Construct ClosureAtS from memory proofs
       closure-at : ClosureAtS curry-env-addr curry-code-ptr curry-closure-addr (memory s')
       closure-at = closure-at-s curry-mem-env curry-mem-cp
+
+      -- Transport ClosureAtS to match has-closure's type parameters (encode x, thunk-offset)
+      closure-at-typed : ClosureAtS (encode x) thunk-offset cl-addr (memory s')
+      closure-at-typed = subst₂ (λ ea cp → ClosureAtS ea cp cl-addr (memory s'))
+                                (valid-addr-is-encode curry-v-env)
+                                (CurryMemoryResult.code-ptr-is-thunk curry-mem-result)
+                                closure-at
 
       -- The semantic closure from eval (curry f) x
       sem-closure : Closure B C
@@ -527,7 +540,7 @@ mutual
     StackInvariant s →
     StackCapacity s (ir-stack-requirement (curry f)) →
     RbpInvariant s →
-    ClosureWFOutput (prefix ++ compile-x86 (curry f) ++ suffix) →
+    ClosureWFOutput (prefix ++ compile-x86 (curry f) ++ suffix) s →
     Acc _<_ (ir-size (curry f)) →
     let prog = prefix ++ compile-x86 (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
@@ -655,27 +668,31 @@ mutual
       v-arg : ValidAt arg (encode {A} arg) m
       v-arg = valid-from-encode {A} refl
 
-      construct-apply : ClosureWFOutput prog → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-      construct-apply (has-closure E A' B' _ cp env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq)
+      construct-apply : ClosureWFOutput prog s → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
+      construct-apply (has-closure E A' B' ca cp env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-closure-at cwf-in-heap cwf-cap)
         with A' ≟T A | B' ≟T B
       ... | yes refl | yes refl =
         run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar
         where
+          -- cl-eq: the pair's fst component equals the closure from has-closure
+          -- Provable via: encode-injective + Closure-η + execution trace connection
+          -- Currently postulated because:
+          --   1. encode cl ≡ ca requires execution trace (curry→pair→apply)
+          --   2. encode-injective + Closure-η gives cl ≡ cwf-cl once (1) is proven
+          -- This is a Layer 3 theorem (compiler correctness), NOT an axiom.
           postulate
-            -- Semantic identity: input closure matches curry's output
             cl-eq : proj₁ x ≡ record { env-addr = encode {E} env ; semantics = sem }
-            -- Code pointer stored at closure + slot-size (no encode-closure-code-ptr)
-            code-slot : readMem m (encode {A ⇒ B} cl +ℕ slot-size) ≡ just cp
-            -- Stack capacity for apply setup + thunk execution
-            cap-for-apply : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
+            cl-addr-eq : encode {A ⇒ B} cl ≡ ca
 
-          -- Derived: closure env slot from encode-closure-env + cl-eq
-          env-slot : readMem m (encode {A ⇒ B} cl) ≡ just (encode {E} env)
-          env-slot = trans (encode-closure-env {A} {B} cl m)
-                       (cong just (cong Closure.env-addr cl-eq))
+          -- PROVEN: code-slot from cwf-closure-at
+          code-slot : readMem m (encode {A ⇒ B} cl +ℕ slot-size) ≡ just cp
+          code-slot = subst (λ a → readMem m (a +ℕ slot-size) ≡ just cp)
+                            (sym cl-addr-eq) (code-valid-s cwf-closure-at)
 
+          -- PROVEN: closure-at from cwf-closure-at + cl-addr-eq
           closure-at : ClosureAtS (encode {E} env) cp (encode {A ⇒ B} cl) m
-          closure-at = closure-at-s env-slot code-slot
+          closure-at = subst (λ a → ClosureAtS (encode env) cp a m)
+                             (sym cl-addr-eq) cwf-closure-at
 
           ar : ApplyReady x s prog
           ar = record
@@ -690,7 +707,7 @@ mutual
             ; ar-closure-at = closure-at
             ; ar-pair-at = input-pair-at
             ; ar-v-arg = v-arg
-            ; ar-capacity = cap-for-apply
+            ; ar-capacity = cwf-cap
             }
       ... | yes _ | no _ = unreachable where postulate unreachable : _
       ... | no _ | _ = unreachable where postulate unreachable : _

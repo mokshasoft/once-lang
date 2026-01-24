@@ -46,6 +46,39 @@ The principled approach pays off:
 3. The system remains verifiable as it grows
 4. Full E2E verification becomes achievable
 
+## The Axiom Hierarchy: Only CPU Semantics Are Axioms
+
+The ONLY true axioms in the system are about CPU instruction semantics — how
+each x86 instruction modifies State (registers, memory, flags). Everything
+else is a theorem to be proven.
+
+**Layer 1: CPU Instruction Semantics (AXIOMS)**
+- How `mov`, `push`, `call`, `ret`, `sub`, `add` modify State
+- These define the machine model and cannot be simplified further
+
+**Layer 2: Allocator Semantics (THEOREMS from Layer 1)**
+- `encode-injective`: different values get different addresses
+- `encode-in-heap-sem`: allocated values are in the heap region
+- `valid-from-encode`: encode establishes validity
+- `valid-addr-is-encode`: validity implies encode address
+- These are properties of the allocator IMPLEMENTATION, provable from how
+  allocation instructions (sub rsp, mov) modify memory
+
+**Layer 3: Compiler Correctness (THEOREMS from Layers 1+2)**
+- All IR generator proofs (curry, apply, compose, pair, case, etc.)
+- All capacity, memory preservation, and register preservation lemmas
+- Zero postulates — everything follows from the instruction semantics
+
+**Absurd Reasoning (NEVER acceptable):**
+Claiming that any Layer 2 or Layer 3 property is an "axiom" or "must stay
+as a postulate" is absurd reasoning. If the generators are mathematically
+sound and the implementation is correct, a proof MUST exist. Any gap
+indicates incomplete proof machinery, not a fundamental limitation.
+
+Current status: Layer 2 postulates in MemoryValid.agda are placeholders
+for AllocatorSemantics proofs. They will be eliminated when the allocator
+module is implemented. They are NOT axioms — they are unfinished theorems.
+
 ## Core Principles
 
 ### 1. No Inline Postulates

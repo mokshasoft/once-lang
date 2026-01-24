@@ -86,7 +86,7 @@ RecDispatcherWithWF bound =
   StackInvariant s →
   StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →
-  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →
+  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) s →
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 

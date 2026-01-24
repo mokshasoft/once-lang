@@ -260,7 +260,7 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
   StackInvariant s →
   StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →
-  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
+  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) s →  -- Input WF context
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] WholeProgramResult ir prog s s' x (length prefix)
 
@@ -308,13 +308,13 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
       in s' , from-modular-v s' result-v
 
     -- Pattern match on wf-in
-    apply-with-wf-check : ClosureWFOutput prog →
+    apply-with-wf-check : ClosureWFOutput prog s →
                           ∃[ s' ] WholeProgramResult (apply {A} {B}) prog s s' x (length prefix)
     -- No closure: use fallback
     apply-with-wf-check no-closure = apply-fallback
     -- Has closure but types don't match apply's types: use fallback
     -- (The closure might be for a different apply in the program)
-    apply-with-wf-check (has-closure _ _ _ _ _ _ _ _ _ _ _) = apply-fallback
+    apply-with-wf-check (has-closure _ _ _ _ _ _ _ _ _ _ _ _ _ _) = apply-fallback
     -- TODO: When closure types match A, B, use run-apply-with-full-wf
     -- This requires:
     --   1. Type matching logic for closure's A', B' against apply's A, B

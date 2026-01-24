@@ -22,6 +22,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; IRStarResultV; ClosureWFOutput; no-closure; has-closure;
+         transport-cwf; subst-cwf-prog;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp; ir-rsp-v;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-v; ir-mem-above; ir-mem-code; ir-mem-heap; ir-rbp-inv; ir-closure-wf;
          ir-result-valid; ir-capacity)
@@ -386,17 +387,30 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
     rsp-3>16 = ir-rsp-bound-v r3
 
     -- Closure WF: prefer g's closure if available, otherwise use f's
-    closure-wf-f-raw : ClosureWFOutput (prefix ++ code-f ++ suffix-f)
-    closure-wf-f-raw = IRStarResultV.ir-closure-wf r1
-    closure-wf-g-raw : ClosureWFOutput (prefix-g ++ code-g ++ suffix)
-    closure-wf-g-raw = IRStarResultV.ir-closure-wf r3
+    -- g's closure-wf is already at s3 (correct output state)
+    closure-wf-from-g : ClosureWFOutput prog s3
+    closure-wf-from-g = subst-cwf-prog (sym (trans prog-eq-f (trans prog-eq-transfer prog-eq-g))) (IRStarResultV.ir-closure-wf r3)
 
-    closure-wf-from-f : ClosureWFOutput prog
-    closure-wf-from-f = subst ClosureWFOutput (sym prog-eq-f) closure-wf-f-raw
-    closure-wf-from-g : ClosureWFOutput prog
-    closure-wf-from-g = subst ClosureWFOutput (sym (trans prog-eq-f (trans prog-eq-transfer prog-eq-g))) closure-wf-g-raw
+    -- Transport f's closure-wf from s1 to s3
+    -- Heap: provable (s3→s via ir-mem-heap r3, s→s1 via sym ir-mem-heap r1)
+    -- RSP: g outputs no-closure → g ≠ curry → ir-rsp-delta g = 0 → rsp preserved
+    heap-s3-to-s1 : ∀ addr → InHeap addr → readMem (memory s3) addr ≡ readMem (memory s1) addr
+    heap-s3-to-s1 addr ih =
+      let mem-s3-to-s2 = IRStarResultV.ir-mem-heap r3 addr ih
+          mem-s2-to-s1 : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-s2-to-s1 = subst (λ s2'' → readMem (memory s2'') addr ≡ readMem (memory s1) addr)
+                               (sym s2-eq) (mem-s1-to-s2 addr)
+      in trans mem-s3-to-s2 mem-s2-to-s1
 
-    closure-wf-3 : ClosureWFOutput prog
+    closure-wf-from-f : ClosureWFOutput prog s3
+    closure-wf-from-f = transport-cwf (sym prog-eq-f) heap-s3-to-s1 rsp-s3-eq-s1 (IRStarResultV.ir-closure-wf r1)
+      where
+      postulate
+        -- Provable: g outputs no-closure → g ≠ curry → ir-rsp-delta g = 0
+        -- Then: rsp s3 = rsp s2 ∸ 0 = rsp s2 = rsp s1
+        rsp-s3-eq-s1 : readReg (regs s3) rsp ≡ readReg (regs s1) rsp
+
+    closure-wf-3 : ClosureWFOutput prog s3
     closure-wf-3 = case closure-wf-from-g of λ where
       no-closure → closure-wf-from-f
       wf-g → wf-g
@@ -636,12 +650,16 @@ run-compose-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix calle
       cap-g : StackCapacity s2 (ir-stack-requirement g)
       cap-g = capacity-preserved-rsp-unchanged s1 s2 (ir-stack-requirement g) cap-g-at-s1 (sym rsp-s2-eq-s1)
 
-      -- Transport f's closure-wf output to g's program decomposition
-      -- f gives: ClosureWFOutput (prefix ++ code-f ++ suffix-f)
-      -- g needs: ClosureWFOutput (prefix-g ++ code-g ++ suffix)
-      -- These are the same program, just decomposed differently
-      cwf-for-g : ClosureWFOutput (prefix-g ++ code-g ++ suffix)
-      cwf-for-g = subst ClosureWFOutput (trans prog-eq-transfer prog-eq-g) (IRStarResultV.ir-closure-wf r1-v)
+      -- Transport f's closure-wf output to g's program decomposition and state
+      -- f gives: ClosureWFOutput (prefix ++ code-f ++ suffix-f) s1
+      -- g needs: ClosureWFOutput (prefix-g ++ code-g ++ suffix) s2
+      -- Program: same program, just decomposed differently
+      -- State: transfer preserves all memory and rsp
+      cwf-for-g : ClosureWFOutput (prefix-g ++ code-g ++ suffix) s2
+      cwf-for-g = transport-cwf (trans prog-eq-transfer prog-eq-g)
+                    (λ addr _ → TransferResultV.mem-s1-to-s2 tr addr)
+                    (sym rsp-s2-eq-s1)
+                    (IRStarResultV.ir-closure-wf r1-v)
 
       -- Step 3: Execute g (RECURSIVE via rec dispatcher)
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)

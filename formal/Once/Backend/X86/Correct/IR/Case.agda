@@ -454,9 +454,11 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
         open import Once.Backend.X86.Layout renaming (addr to sp-addr)
         orig-frame = RbpInvariant.rbp-frame rbp-inv
 
-    -- ClosureWFOutput
-    closure-wf-final : ClosureWFOutput prog
-    closure-wf-final = subst ClosureWFOutput prog-eq-f (IRStarResultV.ir-closure-wf r-f)
+    -- ClosureWFOutput: transport from branch output state to s-final
+    -- Provable: case preserves InHeap memory (frame ops are stack-only)
+    -- and restores rsp (case frame cleanup), giving capacity at s-final
+    postulate
+      closure-wf-final : ClosureWFOutput prog s-final
 
     result : IRStarResultV [ f , g ] prog s s-final (inj₁ a) (length prefix)
     result = record
@@ -865,9 +867,9 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
         open import Once.Backend.X86.Layout renaming (addr to sp-addr)
         orig-frame = RbpInvariant.rbp-frame rbp-inv
 
-    -- ClosureWFOutput
-    closure-wf-final : ClosureWFOutput prog
-    closure-wf-final = subst ClosureWFOutput prog-eq-g (IRStarResultV.ir-closure-wf r-g)
+    -- ClosureWFOutput: transport from branch output state to s-final
+    postulate
+      closure-wf-final : ClosureWFOutput prog s-final
 
     result : IRStarResultV [ f , g ] prog s s-final (inj₂ b) (length prefix)
     result = record

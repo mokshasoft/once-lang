@@ -456,8 +456,8 @@ ir-stack-requirement (g ∘ f) = ir-stack-requirement f ⊔ (ir-rsp-delta f +ℕ
 ir-stack-requirement ⟨ f , g ⟩ = pair-setup-consumed-slots +ℕ (ir-stack-requirement f ⊔ (ir-rsp-delta f +ℕ ir-stack-requirement g))
 -- Case: frame setup (1 slot for saved rbp), then run left or right branch
 ir-stack-requirement [ l , r ] = 1 +ℕ (ir-stack-requirement l ⊔ ir-stack-requirement r)
--- Curry: closure setup (2) + thunk setup (4) + inner requirement
-ir-stack-requirement (curry f) = 2 +ℕ (4 +ℕ ir-stack-requirement f)
+-- Curry: closure setup (2) + apply consumed (2) + thunk setup (4) + inner requirement
+ir-stack-requirement (curry f) = 2 +ℕ (6 +ℕ ir-stack-requirement f)
 -- Apply: calls thunk from closure (literal 4)
 ir-stack-requirement apply = 4
 
@@ -1100,10 +1100,10 @@ curry-rsp-delta≤curry-capacity f = m≤m+n curry-closure-consumed-slots output
 
 -- | curry-closure-capacity ≤ ir-stack-requirement (curry f)
 -- Proof: curry-closure-capacity = 4
---        ir-stack-requirement (curry f) = 2 + (4 + ir-stack-requirement f) = 6 + ir-stack-requirement f ≥ 6 ≥ 4
+--        ir-stack-requirement (curry f) = 2 + (6 + ir-stack-requirement f) = 8 + ir-stack-requirement f ≥ 8 ≥ 4
 curry-closure-capacity≤curry-req : ∀ {A B C} (f : IR (A * B) C) →
   curry-closure-capacity ≤ ir-stack-requirement (curry f)
-curry-closure-capacity≤curry-req f = ≤-trans (from-yes-≤ (curry-closure-capacity ≤? 6)) (m≤m+n 6 (ir-stack-requirement f))
+curry-closure-capacity≤curry-req f = ≤-trans (from-yes-≤ (curry-closure-capacity ≤? 8)) (m≤m+n 8 (ir-stack-requirement f))
 
 -- | ir-rsp-delta (curry f) ≤ ir-stack-requirement (curry f)
 -- Combines the above two lemmas by transitivity

@@ -32,7 +32,8 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-closure; valid-eff; valid-fix;
          PairAtS; fst-valid-s; snd-valid-s;
          InlAtS; InrAtS; ClosureAtS;
-         valid-arrow-to-eff)
+         valid-arrow-to-eff;
+         ClosureAtS-preserved-under-heap-eq)
 -- NOTE: encode-* postulates no longer needed - using validity-based proofs
 
 open import Data.Nat using (_>_)
@@ -61,17 +62,41 @@ open import Relation.Binary.PropositionalEquality using (_≢_; cong; subst₂)
 -- cl: The semantic Closure value produced by curry.
 -- cl-env-eq: Closure.env-addr cl ≡ encode env (refl at curry construction)
 -- cl-sem-eq: Closure.semantics cl ≡ semantics (refl at curry construction)
--- These enable apply to prove (cl, arg) ≡ x with a single postulate (cl ≡ proj₁ x).
-data ClosureWFOutput (prog : Program) : Set₁ where
-  no-closure : ClosureWFOutput prog
+-- closure-at: ClosureAtS layout at the output state's memory
+-- cwf-cap: StackCapacity for apply + thunk at the output state
+data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
+  no-closure : ClosureWFOutput prog s
   has-closure : (E A B : Type)
                 (closure-addr code-ptr : ℕ) (env : ⟦ E ⟧)
                 (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                 (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics)
                 (cl : Closure A B)
                 (cl-env-eq : Closure.env-addr cl ≡ encode env)
-                (cl-sem-eq : Closure.semantics cl ≡ semantics) →
-                ClosureWFOutput prog
+                (cl-sem-eq : Closure.semantics cl ≡ semantics)
+                (closure-at : ClosureAtS (encode env) code-ptr closure-addr (memory s))
+                (closure-in-heap : InHeap closure-addr)
+                (cwf-cap : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)) →
+                ClosureWFOutput prog s
+
+-- | Transport ClosureWFOutput across program equality and state change.
+-- Requires heap memory preservation (for ClosureAtS) and rsp preservation (for StackCapacity).
+transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
+  prog1 ≡ prog2 →
+  (∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr) →
+  readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
+  ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
+transport-cwf _ _ _ no-closure = no-closure
+transport-cwf {s1 = s1} {s2 = s2} refl heap-eq rsp-eq
+  (has-closure E A B ca cp env sem wf cl cl-env-eq cl-sem-eq closure-at cl-in-heap cwf-cap) =
+  has-closure E A B ca cp env sem wf cl cl-env-eq cl-sem-eq
+    (ClosureAtS-preserved-under-heap-eq closure-at cl-in-heap heap-eq)
+    cl-in-heap
+    (capacity-preserved-rsp-unchanged s1 s2 _ cwf-cap rsp-eq)
+
+-- | Transport ClosureWFOutput across program equality only (same state).
+subst-cwf-prog : ∀ {prog1 prog2 : Program} {s : State} →
+  prog1 ≡ prog2 → ClosureWFOutput prog1 s → ClosureWFOutput prog2 s
+subst-cwf-prog refl cwf = cwf
 
 ------------------------------------------------------------------------
 -- IRStarResult: Result type for Star-based IR execution
@@ -110,7 +135,7 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     -- RbpInvariant preserved: rsp s' ≤ rbp s' (needed for memory disjointness)
     ir-rbp-inv    : RbpInvariant s'
     -- Optional closure well-formedness (produced by curry, consumed by apply)
-    ir-closure-wf : ClosureWFOutput prog
+    ir-closure-wf : ClosureWFOutput prog s'
 
 open IRStarResult public
 
@@ -184,7 +209,7 @@ record IRStarResultV {A B : Type} (ir : IR A B) (prog : Program)
     ir-stack-inv  : StackInvariant s'
     ir-capacity   : StackCapacity s' (ir-output-capacity ir)
     ir-rbp-inv    : RbpInvariant s'
-    ir-closure-wf : ClosureWFOutput prog
+    ir-closure-wf : ClosureWFOutput prog s'
 
 open IRStarResultV public using ()
   renaming ( ir-star to ir-star-v; ir-halted to ir-halted-v; ir-pc to ir-pc-v
@@ -237,10 +262,10 @@ IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A �
   StackInvariant s →
   readReg (regs s) rsp > pair-alloc →
   RbpInvariant s →
-  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) →  -- Input WF context
+  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) s →  -- Input WF context
   let prog = prefix ++ compile-x86 ir ++ suffix
   in ∃[ s' ] (IRStarResult ir prog s s' x (length prefix)
-             × ClosureWFOutput prog)  -- Output WF context
+             × ClosureWFOutput prog s')  -- Output WF context
 
 ------------------------------------------------------------------------
 -- ApplyReady: Everything apply needs to execute without postulates
