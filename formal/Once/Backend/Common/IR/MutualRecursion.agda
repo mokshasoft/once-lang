@@ -17,7 +17,7 @@
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; inr; fst; snd; arr; unfold; fold; terminal; initial; Prim)
 open import Once.Type as Type using (Type; _*_; _⇒_; Eff; Fix; Void) renaming (_+_ to _⊕_)
-open import Once.Semantics using (⟦_⟧; eval; encode)
+open import Once.Semantics using (⟦_⟧; eval; encode; Closure)
 
 module Once.Backend.Common.IR.MutualRecursion where
 
@@ -71,10 +71,11 @@ module IRCorrect (Arch : ArchCorrectness) where
     -- Main theorem: all IR is correct when run in context
     -- prog = prefix ++ₚ compile ir ++ₚ suffix
     -- cwf: closure well-formedness input (from previous step in compose)
+    -- cl = closureOf A x: the closure extracted from the input value
     ir-correct : ∀ {A B : Type} (ir : IR A B)
                  (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
                  Preconditions {A} s x prefix (ir-stack-requirement ir) →
-                 ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s →
+                 ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s (closureOf A x) →
                  ∃[ s' ] IRCorrectness ir (prefix ++ₚ compile ir ++ₚ suffix) s s' x (program-length prefix)
 
     -- Identity: delegate to architecture

@@ -12,7 +12,7 @@
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; inr; fst; snd; arr; unfold; fold)
 open import Once.Type using (Type; _*_; _⇒_; _⇒[_]_; Eff; Unit; Void; Int; Float; Str; Buffer; TVar; Fix) renaming (_+_ to _⊕_)
-open import Once.Semantics using (⟦_⟧; eval; encode)
+open import Once.Semantics using (⟦_⟧; eval; encode; Closure)
 
 module Once.Backend.Common.IR.Spec where
 
@@ -33,6 +33,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 -- to AArch64 and RISC-V.
 ------------------------------------------------------------------------
 
+-- | Word type: ℕ, matching the semantic layer (Once.Memory.Word = ℕ)
+-- This is fixed rather than parameterized since all architectures and
+-- the semantic encode/Closure use ℕ as the word type.
+Word : Set
+Word = ℕ
+
 record MachineInterface : Set₁ where
   infixr 5 _++ₚ_
 
@@ -40,7 +46,6 @@ record MachineInterface : Set₁ where
     -- Core types
     State : Set
     Program : Set
-    Word : Set
     Memory : Set
 
     -- State accessors
@@ -153,6 +158,9 @@ record CodeGenInterface (M : MachineInterface) : Set₁ where
     ir-output-capacity : ∀ {A B} → IR A B → ℕ
     ir-rsp-delta : ∀ {A B} → IR A B → ℕ
 
+    -- Apply overhead: stack slots consumed by apply glue code (before thunk)
+    apply-overhead : ℕ
+
 ------------------------------------------------------------------------
 -- ClosureWFOutput: Optional closure well-formedness from curry
 --
@@ -203,6 +211,42 @@ ClosureDom T = proj₁ (ClosureTypesOf T)
 ClosureCod : Type → Type
 ClosureCod T = proj₂ (ClosureTypesOf T)
 
+-- | Extract the closure value from a typed semantic value
+--
+-- For (A ⇒ B) * _, returns the first component (the closure in a pair)
+-- For A ⇒ B, returns the value itself (it IS a closure)
+-- For other types, returns a dummy (only used with no-apply-wf)
+private
+  dummy-closure : Closure Unit Unit
+  dummy-closure = record { env-addr = 0 ; semantics = λ _ → tt }
+
+closureOf : (T : Type) → ⟦ T ⟧ → Closure (ClosureDom T) (ClosureCod T)
+closureOf ((A ⇒[ _ ] B) * _) (cl , _) = cl
+closureOf (A ⇒[ _ ] B) v = v
+-- Pair cases where first component is NOT an arrow (ClosureTypesOf = (Unit,Unit))
+closureOf (Unit * _) _ = dummy-closure
+closureOf (Void * _) _ = dummy-closure
+closureOf ((A * B) * _) _ = dummy-closure
+closureOf ((A ⊕ B) * _) _ = dummy-closure
+closureOf (Int * _) _ = dummy-closure
+closureOf (Float * _) _ = dummy-closure
+closureOf (Str * _) _ = dummy-closure
+closureOf (Buffer * _) _ = dummy-closure
+closureOf ((TVar _) * _) _ = dummy-closure
+closureOf ((Eff _ _) * _) _ = dummy-closure
+closureOf ((Fix _) * _) _ = dummy-closure
+-- Non-pair, non-arrow cases (ClosureTypesOf = (Unit,Unit))
+closureOf Unit _ = dummy-closure
+closureOf Void _ = dummy-closure
+closureOf (_ ⊕ _) _ = dummy-closure
+closureOf Int _ = dummy-closure
+closureOf Float _ = dummy-closure
+closureOf Str _ = dummy-closure
+closureOf Buffer _ = dummy-closure
+closureOf (TVar _) _ = dummy-closure
+closureOf (Eff _ _) _ = dummy-closure
+closureOf (Fix _) _ = dummy-closure
+
 ------------------------------------------------------------------------
 -- IRCorrectness: The Core Specification
 --
@@ -221,6 +265,9 @@ module IRSpecs
     (CG : CodeGenInterface M)
     (Star : MachineInterface.Program M → MachineInterface.State M → MachineInterface.State M → Set)
     (ClosureWF : ClosureWFPredicate (MachineInterface.Program M))
+    (wf-thunk-capacity : ∀ {E A B : Type} {prog : MachineInterface.Program M} {cp : ℕ}
+                           {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧} →
+                         ClosureWF {E} {A} {B} prog cp env sem → ℕ)
     where
 
   open MachineInterface M
@@ -240,16 +287,28 @@ module IRSpecs
   -- A and B are the closure's domain/codomain types. They are
   -- determined by ClosureTypesOf applied to the IR's input type,
   -- ensuring they match structurally in compose threading.
-  data ApplyWFInput (A B : Type) (prog : Program) (s : State) : Set₁ where
-    no-apply-wf : ApplyWFInput A B prog s
+  --
+  -- cl is the closure value this proof describes. In exec-closure-wf,
+  -- cl = closureOf B (eval ir x). For apply's input, closureOf gives
+  -- proj₁ p, so cl-eq directly bridges runtime and proof values.
+  data ApplyWFInput (A B : Type) (prog : Program) (s : State)
+                    (cl : Closure A B) : Set₁ where
+    no-apply-wf : ApplyWFInput A B prog s cl
     apply-wf : ∀ {E : Type}
-      (code-ptr : ℕ) (env : ⟦ E ⟧) (env-addr : Word)
-      (cap-needed : ℕ)
+      (code-ptr : ℕ) (env : ⟦ E ⟧)
       (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+      -- cl-eq: The closure value matches the WF proof's env/semantics.
+      -- For curry, this is refl by computation (eval (curry f) x = record{...}).
+      -- Eliminates the runtime-matches-proof bridge postulate.
+      (cl-eq : cl ≡ record { env-addr = encode env ; semantics = semantics })
       (wf : ClosureWF {E} {A} {B} prog code-ptr env semantics)
-      (env-valid : ValidAt env env-addr (memory s))
-      (cap : StackCapacity s cap-needed)
-      → ApplyWFInput A B prog s
+      -- env-valid: uses encode env directly (not arbitrary env-addr).
+      -- Eliminates the addr-is-encode bridge postulate.
+      (env-valid : ValidAt env (encode env) (memory s))
+      -- cap: uses the exact formula (not arbitrary cap-needed).
+      -- Eliminates the cap-matches bridge postulate.
+      (cap : StackCapacity s (apply-overhead + wf-thunk-capacity wf))
+      → ApplyWFInput A B prog s cl
 
   -- Preconditions for IR execution
   -- Matches X86's run-*-star-vv preconditions exactly
@@ -259,6 +318,7 @@ module IRSpecs
       pre-halted : halted s ≡ false
       pre-pc : pc s ≡ program-length prefix
       pre-input-valid : ValidAt x (input-value s) (memory s)
+      pre-input-is-encode : input-value s ≡ encode x
       pre-stack-inv : StackInvariant s
       pre-capacity : StackCapacity s cap-needed
       pre-frame-inv : FramePtrInvariant s
@@ -275,6 +335,9 @@ module IRSpecs
 
       -- Output validity (THE key correctness property)
       exec-output-valid : ValidAt (eval ir x) (output-value s') (memory s')
+
+      -- Output encode equality (for compose threading: f's input-encode from g's output-encode)
+      exec-output-is-encode : output-value s' ≡ encode (eval ir x)
 
       -- Register/state preservation
       exec-saved-regs : SavedRegsPreserved s s'
@@ -295,7 +358,9 @@ module IRSpecs
 
       -- Closure well-formedness (produced by curry, consumed by apply)
       -- Types come from ClosureTypesOf B (the IR's output type)
+      -- cl = closureOf B (eval ir x): the closure from the output value
       exec-closure-wf : ApplyWFInput (ClosureDom B) (ClosureCod B) prog s'
+                           (closureOf B (eval ir x))
 
   ------------------------------------------------------------------------
   -- Phase Specifications for Composite IR
@@ -315,6 +380,7 @@ module IRSpecs
         setup-halted : halted s₁ ≡ false
         setup-stack-inv : StackInvariant s₁
         setup-input-valid : ValidAt x (input-value s₁) (memory s₁)
+        setup-input-is-encode : input-value s₁ ≡ encode x
         setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
         setup-frame-inv : FramePtrInvariant s₁
         -- Execution evidence
@@ -334,6 +400,7 @@ module IRSpecs
         middle-halted : halted s₃ ≡ false
         middle-stack-inv : StackInvariant s₃
         middle-input-valid : ValidAt x (input-value s₃) (memory s₃)
+        middle-input-is-encode : input-value s₃ ≡ encode x
         middle-capacity : StackCapacity s₃ (ir-stack-requirement g)
         middle-frame-inv : FramePtrInvariant s₃
         -- Execution evidence
@@ -388,10 +455,9 @@ module IRSpecs
         setup-code-preserved : CodePreserved s s₁
         setup-frame-preserved : FramePreserved s s₁
         -- Closure environment info (for building ApplyWFInput in curry-combine)
-        -- env-addr: where the environment (x) is stored in memory
-        -- env-valid: the environment is validly represented at env-addr
-        setup-env-addr : Word
-        setup-env-valid : ValidAt x setup-env-addr (memory s₁)
+        -- The environment x is valid at its encoding (encode x) in memory.
+        -- This comes from pre-input-valid + pre-input-is-encode + heap preservation.
+        setup-env-valid : ValidAt x (encode x) (memory s₁)
 
   module CaseSpecs {A B C : Type} (f : IR A C) (g : IR B C) where
 
@@ -401,6 +467,7 @@ module IRSpecs
         dispatch-halted : halted s₁ ≡ false
         dispatch-stack-inv : StackInvariant s₁
         dispatch-input-valid : ValidAt a (input-value s₁) (memory s₁)
+        dispatch-input-is-encode : input-value s₁ ≡ encode a
         dispatch-capacity : StackCapacity s₁ (ir-stack-requirement f)
         dispatch-frame-inv : FramePtrInvariant s₁
         dispatch-star : Star prog s s₁
@@ -417,6 +484,7 @@ module IRSpecs
         dispatch-halted : halted s₁ ≡ false
         dispatch-stack-inv : StackInvariant s₁
         dispatch-input-valid : ValidAt b (input-value s₁) (memory s₁)
+        dispatch-input-is-encode : input-value s₁ ≡ encode b
         dispatch-capacity : StackCapacity s₁ (ir-stack-requirement g)
         dispatch-frame-inv : FramePtrInvariant s₁
         dispatch-star : Star prog s s₁

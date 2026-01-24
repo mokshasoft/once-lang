@@ -39,7 +39,7 @@ open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; stack-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; ir-stack-requirement; ir-output-capacity; ir-rsp-delta; slots;
-         compose-rsp-delta; slot-size)
+         compose-rsp-delta; slot-size; apply-consumed-slots)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-subst-heap-preserved; valid-subst-addr-mem)
 open import Once.Backend.X86.Layout using (InStack; InHeap; InCode)
@@ -68,7 +68,6 @@ X86-MachineInterface : Spec.MachineInterface
 X86-MachineInterface = record
   { State = State
   ; Program = Program
-  ; Word = Word
   ; Memory = Memory
   ; pc = pc
   ; halted = halted
@@ -162,6 +161,7 @@ X86-CodeGenInterface = record
   ; ir-stack-requirement = ir-stack-requirement
   ; ir-output-capacity = ir-output-capacity
   ; ir-rsp-delta = ir-rsp-delta
+  ; apply-overhead = apply-consumed-slots
   }
 
 ------------------------------------------------------------------------
@@ -179,6 +179,7 @@ open Spec.IRSpecs
   X86-CodeGenInterface
   Star  -- X86's Star directly
   X86-ClosureWF
+  ClosureWellFormed.thunk-capacity  -- wf-thunk-capacity for X86
   public
 
 ------------------------------------------------------------------------
@@ -210,11 +211,12 @@ IRStarResultV→IRCorrectness : ∀ {A B : Type} {ir : IR A B}
     {prog : Program} {s s' : State} {x : ⟦ A ⟧} {offset : ℕ} →
   IRStarResultV ir prog s s' x offset →
   IRCorrectness ir prog s s' x offset
-IRStarResultV→IRCorrectness res = record
+IRStarResultV→IRCorrectness {ir = ir} {s' = s'} {x = x} res = record
   { exec-star = IRStarResultV.ir-star res
   ; exec-halted = IRStarResultV.ir-halted res
   ; exec-pc = IRStarResultV.ir-pc res
   ; exec-output-valid = IRStarResultV.ir-result-valid res
+  ; exec-output-is-encode = leaf-output-is-encode
   ; exec-saved-regs = ( IRStarResultV.ir-r14 res
                       , IRStarResultV.ir-r15 res
                       , IRStarResultV.ir-rbp res )
@@ -227,6 +229,7 @@ IRStarResultV→IRCorrectness res = record
   ; exec-frame-inv = IRStarResultV.ir-rbp-inv res
   ; exec-closure-wf = no-apply-wf
   }
+  where postulate leaf-output-is-encode : readReg (regs s') rax ≡ encode (eval ir x)
 
 ------------------------------------------------------------------------
 -- X86 ArchCorrectness Implementation
@@ -452,6 +455,7 @@ x86-compose-g-preconditions f g prefix suffix x s pre = record
   { pre-halted = Preconditions.pre-halted pre
   ; pre-pc = Preconditions.pre-pc pre
   ; pre-input-valid = Preconditions.pre-input-valid pre
+  ; pre-input-is-encode = Preconditions.pre-input-is-encode pre
   ; pre-stack-inv = Preconditions.pre-stack-inv pre
   ; pre-capacity = capacity-left-from-max s
       (ir-stack-requirement g)
@@ -468,7 +472,7 @@ x86-compose-run-transfer : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
   IRCorrectness g (prefix ++ compile-x86 g ++ (x86-compose-transfer f g ++ compile-x86 f ++ suffix)) s s₁ x (length prefix) →
   ∃[ s₂ ] (Star (prefix ++ compile-x86 g ++ (x86-compose-transfer f g ++ compile-x86 f ++ suffix)) s₁ s₂ ×
            Preconditions {B} s₂ (eval g x) (prefix ++ compile-x86 g ++ x86-compose-transfer f g) (ir-stack-requirement f) ×
-           ApplyWFInput (ClosureDom B) (ClosureCod B) ((prefix ++ compile-x86 g ++ x86-compose-transfer f g) ++ compile-x86 f ++ suffix) s₂)
+           ApplyWFInput (ClosureDom B) (ClosureCod B) ((prefix ++ compile-x86 g ++ x86-compose-transfer f g) ++ compile-x86 f ++ suffix) s₂ (closureOf B (eval g x)))
 x86-compose-run-transfer {A} {B} {C} f g prefix suffix x s s₁ pre g-corr = s₂ , star₂ , f-pre , f-cwf
   where
     -- Shorthands
@@ -609,12 +613,18 @@ x86-compose-run-transfer {A} {B} {C} f g prefix suffix x s s₁ pre g-corr = s�
       cap-f-at-s₁
       (sym rsp₂)
 
+    -- Input-is-encode for f: rdi s₂ = encode (eval g x)
+    -- From: rdi₂ (rdi s₂ = rax s₁) and g's exec-output-is-encode (rax s₁ = encode (eval g x))
+    input-is-encode-f : readReg (regs s₂) rdi ≡ encode (eval g x)
+    input-is-encode-f = trans rdi₂ (IRCorrectness.exec-output-is-encode g-corr)
+
     -- Build Preconditions for f
     f-pre : Preconditions {B} s₂ (eval g x) (prefix ++ code-g ++ transfer) (ir-stack-requirement f)
     f-pre = record
       { pre-halted = h₂
       ; pre-pc = pc₂
       ; pre-input-valid = input-valid-f
+      ; pre-input-is-encode = input-is-encode-f
       ; pre-stack-inv = stack-inv₂
       ; pre-capacity = cap-f
       ; pre-frame-inv = frame-inv₂
@@ -631,14 +641,25 @@ x86-compose-run-transfer {A} {B} {C} f g prefix suffix x s s₁ pre g-corr = s�
     prog-eq-prog' = trans (cong (prefix ++_) (sym (++-assoc code-g transfer (code-f ++ suffix))))
                           (sym (++-assoc prefix (code-g ++ transfer) (code-f ++ suffix)))
 
-    f-cwf : ApplyWFInput (ClosureDom B) (ClosureCod B) prog' s₂
+    -- Helper: thunk-capacity is preserved under program subst
+    thunk-cap-subst : ∀ {E' A' B' : Type} {p1 p2 : Program}
+                      {cp : ℕ} {env' : ⟦ E' ⟧} {sem' : ⟦ A' ⟧ → ⟦ B' ⟧}
+                      (eq : p1 ≡ p2) (wf' : ClosureWellFormed p1 cp env' sem') →
+      ClosureWellFormed.thunk-capacity (subst (λ p → ClosureWellFormed p cp env' sem') eq wf')
+        ≡ ClosureWellFormed.thunk-capacity wf'
+    thunk-cap-subst refl _ = refl
+
+    f-cwf : ApplyWFInput (ClosureDom B) (ClosureCod B) prog' s₂ (closureOf B (eval g x))
     f-cwf with IRCorrectness.exec-closure-wf g-corr
     ... | no-apply-wf = no-apply-wf
-    ... | apply-wf cp' env' ea' cn' sem' wf' ev' cap' =
-            apply-wf cp' env' ea' cn' sem'
-              (subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq-prog' wf')
-              (valid-subst-addr-mem ev' refl mem₂)
-              (capacity-preserved-rsp-unchanged s₁ s₂ cn' cap' (sym rsp₂))
+    ... | apply-wf cp' env' sem' cl-eq' wf' ev' cap' =
+            let wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq-prog' wf'
+                cap-at-s₂ = capacity-preserved-rsp-unchanged s₁ s₂ _ cap' (sym rsp₂)
+            in apply-wf cp' env' sem' cl-eq' wf-subst
+                 (valid-subst-addr-mem ev' refl mem₂)
+                 (subst (λ n → StackCapacity s₂ (apply-consumed-slots + n))
+                        (sym (thunk-cap-subst prog-eq-prog' wf'))
+                        cap-at-s₂)
 
 -- Combine g, transfer, and f results
 -- This corresponds to X86's assemble-compose-result-v
@@ -653,6 +674,7 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
   ; exec-halted = h₃
   ; exec-pc = pc-final
   ; exec-output-valid = output-valid
+  ; exec-output-is-encode = IRCorrectness.exec-output-is-encode f-corr
   ; exec-saved-regs = saved-regs-final
   ; exec-rsp-delta = rsp-delta-final
   ; exec-heap-preserved = heap-preserved-final
@@ -702,8 +724,8 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
     prog-f-eq-result = trans prog-f-eq-g prog-g-eq-result
 
     -- Closure WF output: f's output threaded through (compose outputs f's result)
-    compose-closure-wf-out : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-result s₃
-    compose-closure-wf-out = subst (λ p → ApplyWFInput (ClosureDom C) (ClosureCod C) p s₃) prog-f-eq-result (IRCorrectness.exec-closure-wf f-corr)
+    compose-closure-wf-out : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-result s₃ (closureOf C (eval f (eval g x)))
+    compose-closure-wf-out = subst (λ p → ApplyWFInput (ClosureDom C) (ClosureCod C) p s₃ (closureOf C (eval f (eval g x)))) prog-f-eq-result (IRCorrectness.exec-closure-wf f-corr)
 
     -- Extract star from g (s → s₁)
     star-g : Star prog-g s s₁
@@ -991,6 +1013,12 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
     setup-res = pair-setup-star-v f g prefix suffix x s h pc-eq cap
     s-setup = PairSetupResultV.s-setup setup-res
 
+    -- Input is encode: rdi preserved from original state
+    input-is-encode = Preconditions.pre-input-is-encode pre
+
+    setup-rdi-is-encode : readReg (regs s-setup) rdi ≡ encode x
+    setup-rdi-is-encode = trans (PairSetupResultV.rdi-setup-raw setup-res) input-is-encode
+
     -- Input validity: rdi preserved, heap preserved
     input-valid-setup : ValidAt x (readReg (regs s-setup) rdi) (memory s-setup)
     input-valid-setup = valid-subst-heap-preserved input-valid
@@ -1046,6 +1074,7 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       { setup-halted = PairSetupResultV.h-setup setup-res
       ; setup-stack-inv = PairSetupResultV.stack-inv-setup setup-res
       ; setup-input-valid = input-valid-setup
+      ; setup-input-is-encode = setup-rdi-is-encode
       ; setup-capacity = cap-f
       ; setup-frame-inv = frame-inv-setup
       ; setup-star = setup-star
@@ -1067,6 +1096,7 @@ x86-pair-setup-enables-f f g prefix suffix x s s₁ setup = record
   { pre-halted = PairSpecs.SetupPost.setup-halted setup
   ; pre-pc = PairSpecs.SetupPost.setup-pc setup
   ; pre-input-valid = PairSpecs.SetupPost.setup-input-valid setup
+  ; pre-input-is-encode = PairSpecs.SetupPost.setup-input-is-encode setup
   ; pre-stack-inv = PairSpecs.SetupPost.setup-stack-inv setup
   ; pre-capacity = PairSpecs.SetupPost.setup-capacity setup
   ; pre-frame-inv = PairSpecs.SetupPost.setup-frame-inv setup
@@ -1140,6 +1170,7 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s₁ s₂ fx f-corr = s₃ , mid
     -- Remaining semantic properties (require information not yet threaded through)
     postulate
       input-valid₃ : ValidAt x (readReg (regs s₃) rdi) (memory s₃)
+      input-is-encode₃ : readReg (regs s₃) rdi ≡ encode x
       cap₃ : StackCapacity s₃ (ir-stack-requirement g)
       mid-heap-preserved : X86-HeapPreserved s₂ s₃
       mid-code-preserved : X86-CodePreserved s₂ s₃
@@ -1150,6 +1181,7 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s₁ s₂ fx f-corr = s₃ , mid
       { middle-halted = PairMiddleStarResult.h-mid mid-result
       ; middle-stack-inv = stack-inv₃
       ; middle-input-valid = input-valid₃
+      ; middle-input-is-encode = input-is-encode₃
       ; middle-capacity = cap₃
       ; middle-frame-inv = frame-inv₃
       ; middle-star = mid-star
@@ -1171,6 +1203,7 @@ x86-pair-middle-enables-g f g prefix suffix x s₁ s₂ s₃ fx middle = record
   { pre-halted = PairSpecs.MiddlePost.middle-halted middle
   ; pre-pc = PairSpecs.MiddlePost.middle-pc middle
   ; pre-input-valid = PairSpecs.MiddlePost.middle-input-valid middle
+  ; pre-input-is-encode = PairSpecs.MiddlePost.middle-input-is-encode middle
   ; pre-stack-inv = PairSpecs.MiddlePost.middle-stack-inv middle
   ; pre-capacity = PairSpecs.MiddlePost.middle-capacity middle
   ; pre-frame-inv = PairSpecs.MiddlePost.middle-frame-inv middle
@@ -1286,6 +1319,7 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
   ; exec-halted = PairSpecs.CleanupPost.cleanup-halted cleanup
   ; exec-pc = PairSpecs.CleanupPost.cleanup-pc cleanup
   ; exec-output-valid = PairSpecs.CleanupPost.cleanup-output-valid cleanup
+  ; exec-output-is-encode = pair-output-is-encode
   ; exec-saved-regs = PairSpecs.CleanupPost.cleanup-saved-regs cleanup
   ; exec-rsp-delta = PairSpecs.CleanupPost.cleanup-rsp-delta cleanup
   ; exec-heap-preserved = pair-heap-preserved
@@ -1344,6 +1378,7 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
     -- so composition requires showing addr > rbp_s implies addr > rbp_s₁ etc.
     postulate
       pair-frame-preserved : X86-FramePreserved s s₅
+      pair-output-is-encode : readReg (regs s₅) rax ≡ encode (eval ⟨ f , g ⟩ x)
 
 ------------------------------------------------------------------------
 -- Curry Glue Lemmas
@@ -1371,6 +1406,7 @@ x86-curry-setup {A} {B} {C} f prefix suffix x s pre = s₁ , setup
     h = Preconditions.pre-halted pre
     pc-eq = Preconditions.pre-pc pre
     input-valid = Preconditions.pre-input-valid pre
+    input-is-encode = Preconditions.pre-input-is-encode pre
     stack-inv = Preconditions.pre-stack-inv pre
     cap = Preconditions.pre-capacity pre
     rbp-inv = Preconditions.pre-frame-inv pre
@@ -1417,9 +1453,11 @@ x86-curry-setup {A} {B} {C} f prefix suffix x s pre = s₁ , setup
       ; setup-heap-preserved = CurryExecResult.exec-mem-heap exec-res
       ; setup-code-preserved = CurryExecResult.exec-mem-code exec-res
       ; setup-frame-preserved = CurryExecResult.exec-mem-above exec-res
-      -- Closure environment info (from CurryMemoryResult)
-      ; setup-env-addr = curry-env-addr
-      ; setup-env-valid = curry-v-env
+      -- Env validity at encode x (from pre-input-valid + pre-input-is-encode + heap preservation)
+      ; setup-env-valid = valid-subst-heap-preserved
+          (subst (λ a → ValidAt x a (memory s)) input-is-encode input-valid)
+          refl
+          (CurryExecResult.exec-mem-heap exec-res)
       }
 
 -- Imports for curry-combine's ClosureWellFormed construction
@@ -1433,7 +1471,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 x86-curry-combine :
   (ih : ∀ {A B : Type} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
         Preconditions {A} s x prefix (ir-stack-requirement ir) →
-        ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ compile-x86 ir ++ suffix) s →
+        ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ compile-x86 ir ++ suffix) s (closureOf A x) →
         ∃[ s' ] IRCorrectness ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)) →
   ∀ {A B C : Type} (f : IR (A * B) C)
   (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ : State) →
@@ -1446,6 +1484,7 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
   ; exec-halted = CurrySpecs.SetupPost.setup-halted setup
   ; exec-pc = CurrySpecs.SetupPost.setup-pc setup
   ; exec-output-valid = CurrySpecs.SetupPost.setup-output-valid setup
+  ; exec-output-is-encode = curry-output-is-encode
   ; exec-saved-regs = CurrySpecs.SetupPost.setup-saved-regs setup
   ; exec-rsp-delta = CurrySpecs.SetupPost.setup-rsp-delta setup
   ; exec-heap-preserved = CurrySpecs.SetupPost.setup-heap-preserved setup
@@ -1460,6 +1499,8 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
     open import Once.Backend.X86.Correct.StackInstantiation
       using (thunk-setup-consumed-slots; apply-consumed-slots;
              thunk-setup-cap≤thunk-consumed+ir-req)
+
+    postulate curry-output-is-encode : readReg (regs s₁) rax ≡ encode {B ⇒ C} (eval (curry f) x)
 
     prog = prefix ++ compile-x86 (curry f) ++ suffix
     thunk-code-ptr = length prefix + 6
@@ -1504,12 +1545,11 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
     curry-semantics : ⟦ B ⟧ → ⟦ C ⟧
     curry-semantics = λ b → eval f (x , b)
 
-    curry-apply-wf : ApplyWFInput B C prog s₁
+    curry-apply-wf : ApplyWFInput B C prog s₁ (closureOf (B ⇒ C) (eval (curry f) x))
     curry-apply-wf = apply-wf {E = A}
       thunk-code-ptr x
-      (CurrySpecs.SetupPost.setup-env-addr setup)
-      curry-cap-needed
       curry-semantics
+      refl  -- cl-eq: eval (curry f) x ≡ record { env-addr = encode x ; semantics = curry-semantics }
       curry-wf
       (CurrySpecs.SetupPost.setup-env-valid setup)
       curry-cap-for-apply
@@ -1665,6 +1705,14 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
                           (CaseInlSetupResult.rdi-setup setup-res)
                           (CaseInlSetupResult.mem-heap-setup setup-res)
 
+    -- val-addr = encode a: the extracted value pointer IS the encoding of a
+    -- Derivable from: ValidAt a val-addr mem implies val-addr = encode a
+    postulate
+      val-addr-is-encode-a : val-addr ≡ encode a
+
+    rdi-is-encode-a : readReg (regs s-setup) rdi ≡ encode a
+    rdi-is-encode-a = trans (CaseInlSetupResult.rdi-setup setup-res) val-addr-is-encode-a
+
     -- PC proof: pc s-setup = length prefix + 6 = length (prefix ++ case-prefix-instrs f g)
     pc-offset : pc s-setup ≡ offset-f
     pc-offset = trans (CaseInlSetupResult.pc-setup setup-res)
@@ -1684,6 +1732,7 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
       { dispatch-halted = CaseInlSetupResult.h-setup setup-res
       ; dispatch-stack-inv = CaseInlSetupResult.stack-inv-setup setup-res
       ; dispatch-input-valid = input-valid-for-f
+      ; dispatch-input-is-encode = rdi-is-encode-a
       ; dispatch-capacity = cap-f
       ; dispatch-frame-inv = CaseInlSetupResult.rbp-inv-setup setup-res
       ; dispatch-star = CaseInlSetupResult.star-setup setup-res
@@ -1711,6 +1760,7 @@ x86-case-dispatch-enables-f f g prefix suffix a s s₁ dispatch = record
   { pre-halted = CaseSpecs.DispatchLeftPost.dispatch-halted dispatch
   ; pre-pc = CaseSpecs.DispatchLeftPost.dispatch-pc dispatch
   ; pre-input-valid = CaseSpecs.DispatchLeftPost.dispatch-input-valid dispatch
+  ; pre-input-is-encode = CaseSpecs.DispatchLeftPost.dispatch-input-is-encode dispatch
   ; pre-stack-inv = CaseSpecs.DispatchLeftPost.dispatch-stack-inv dispatch
   ; pre-capacity = CaseSpecs.DispatchLeftPost.dispatch-capacity dispatch
   ; pre-frame-inv = CaseSpecs.DispatchLeftPost.dispatch-frame-inv dispatch
@@ -1850,6 +1900,7 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
   ; exec-halted = CaseSpecs.CleanupPost.cleanup-halted cleanup
   ; exec-pc = CaseSpecs.CleanupPost.cleanup-pc cleanup
   ; exec-output-valid = CaseSpecs.CleanupPost.cleanup-output-valid cleanup
+  ; exec-output-is-encode = case-left-output-is-encode
   ; exec-saved-regs = CaseSpecs.CleanupPost.cleanup-saved-regs cleanup
   ; exec-rsp-delta = CaseSpecs.CleanupPost.cleanup-rsp-delta cleanup
   ; exec-heap-preserved = case-heap-preserved
@@ -1898,6 +1949,7 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
     -- Same structural issue as pair-frame-preserved
     postulate
       case-frame-preserved : X86-FramePreserved s s₃
+      case-left-output-is-encode : readReg (regs s₃) rax ≡ encode (eval [ f , g ] (inj₁ a))
 
 -- Dispatch right: runs the 6-instruction setup sequence for inr branch
 x86-case-dispatch-right : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
@@ -1972,6 +2024,13 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
                           (CaseInrSetupResult.rdi-setup setup-res)
                           (CaseInrSetupResult.mem-heap-setup setup-res)
 
+    -- val-addr = encode b: the extracted value pointer IS the encoding of b
+    postulate
+      val-addr-is-encode-b : val-addr ≡ encode b
+
+    rdi-is-encode-b : readReg (regs s-setup) rdi ≡ encode b
+    rdi-is-encode-b = trans (CaseInrSetupResult.rdi-setup setup-res) val-addr-is-encode-b
+
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     offset-g = length (proj₁ (x86-case-right-context f g prefix suffix))
 
@@ -2007,6 +2066,7 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
       { dispatch-halted = CaseInrSetupResult.h-setup setup-res
       ; dispatch-stack-inv = CaseInrSetupResult.stack-inv-setup setup-res
       ; dispatch-input-valid = input-valid-for-g
+      ; dispatch-input-is-encode = rdi-is-encode-b
       ; dispatch-capacity = cap-g
       ; dispatch-frame-inv = CaseInrSetupResult.rbp-inv-setup setup-res
       ; dispatch-star = CaseInrSetupResult.star-setup setup-res
@@ -2033,6 +2093,7 @@ x86-case-dispatch-enables-g f g prefix suffix b s s₁ dispatch = record
   { pre-halted = CaseSpecs.DispatchRightPost.dispatch-halted dispatch
   ; pre-pc = CaseSpecs.DispatchRightPost.dispatch-pc dispatch
   ; pre-input-valid = CaseSpecs.DispatchRightPost.dispatch-input-valid dispatch
+  ; pre-input-is-encode = CaseSpecs.DispatchRightPost.dispatch-input-is-encode dispatch
   ; pre-stack-inv = CaseSpecs.DispatchRightPost.dispatch-stack-inv dispatch
   ; pre-capacity = CaseSpecs.DispatchRightPost.dispatch-capacity dispatch
   ; pre-frame-inv = CaseSpecs.DispatchRightPost.dispatch-frame-inv dispatch
@@ -2172,6 +2233,7 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
   ; exec-halted = CaseSpecs.CleanupPost.cleanup-halted cleanup
   ; exec-pc = CaseSpecs.CleanupPost.cleanup-pc cleanup
   ; exec-output-valid = CaseSpecs.CleanupPost.cleanup-output-valid cleanup
+  ; exec-output-is-encode = case-right-output-is-encode
   ; exec-saved-regs = CaseSpecs.CleanupPost.cleanup-saved-regs cleanup
   ; exec-rsp-delta = CaseSpecs.CleanupPost.cleanup-rsp-delta cleanup
   ; exec-heap-preserved = case-heap-preserved
@@ -2231,6 +2293,7 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
     -- Frame preserved: same structural issue as pair
     postulate
       case-frame-preserved : X86-FramePreserved s s₃
+      case-right-output-is-encode : readReg (regs s₃) rax ≡ encode (eval [ f , g ] (inj₂ b))
 
 ------------------------------------------------------------------------
 -- Apply (takes IH)
@@ -2250,14 +2313,14 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
 x86-apply-correct :
   (ih : ∀ {A B : Type} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
         Preconditions {A} s x prefix (ir-stack-requirement ir) →
-        ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ compile-x86 ir ++ suffix) s →
+        ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ compile-x86 ir ++ suffix) s (closureOf A x) →
         ∃[ s' ] IRCorrectness ir (prefix ++ compile-x86 ir ++ suffix) s s' x (length prefix)) →
   ∀ {A B : Type} (prefix suffix : Program) (p : ⟦ (A ⇒ B) * A ⟧) (s : State) →
   Preconditions {(A ⇒ B) * A} s p prefix (ir-stack-requirement (apply {A} {B})) →
-  ApplyWFInput A B (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) s →
+  ApplyWFInput A B (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) s (closureOf ((A ⇒ B) * A) p) →
   ∃[ s' ] IRCorrectness (apply {A} {B}) (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) s s' p (length prefix)
 -- Case 1: ApplyWFInput provides closure well-formedness from curry
-x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf env env-addr-cwf cap-needed semantics-cwf wf env-valid cap-cwf) = s' , IRStarResultV→IRCorrectness result-subst
+x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf env semantics-cwf cl-eq-cwf wf env-valid cap-cwf) = s' , IRStarResultV→IRCorrectness result-subst
   where
     -- Extract preconditions
     h = Preconditions.pre-halted pre
@@ -2294,51 +2357,43 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf en
     apply-closure-at-raw = proj₂ apply-closure-decomp
 
     -- ============================================================
-    -- CLOSURE FOR RUN-APPLY (constructed from apply-wf values)
+    -- CLOSURE FOR RUN-APPLY (from cl-eq directly)
+    -- cl-eq-cwf : cl ≡ record { env-addr = encode env ; semantics = semantics-cwf }
+    -- This eliminates the old runtime-matches-proof postulate.
     -- ============================================================
 
     cl-run : Closure A B
     cl-run = record { env-addr = encode env ; semantics = semantics-cwf }
 
     -- ============================================================
-    -- BRIDGE POSTULATES (semantic invariants)
+    -- REMAINING POSTULATE: code-ptr from memory = code-ptr from WF
     --
-    -- These connect the runtime input value to the apply-wf proof:
-    --   1. The runtime closure matches cl-run (env-addr + semantics)
-    --   2. The cwf env-addr equals encode env (ValidAt address = encoding)
-    --   3. The code-ptr in memory matches the WF proof (heap preserved)
-    --   4. The capacity matches what apply needs (by curry's output cap)
+    -- The code-ptr extracted via valid-closure-decompose (from the
+    -- runtime ValidAt proof) must match the code-ptr-cwf in the
+    -- ClosureWellFormed proof. These agree because curry stored
+    -- code-ptr-cwf at the closure's code slot, and heap preservation
+    -- maintains this through compose. Proving this requires inverting
+    -- the ValidAt construction chain, which is a separate concern.
     -- ============================================================
 
     postulate
-      -- The runtime closure equals the proof closure (combines env-addr and semantics)
-      runtime-matches-proof : cl ≡ cl-run
-      -- The cwf env-addr equals encode env (ValidAt address matches encoding)
-      addr-is-encode : env-addr-cwf ≡ encode env
-      -- The code-ptr from memory matches the WF proof's code-ptr (heap preserved from curry)
       code-ptr-is-cwf : code-ptr ≡ code-ptr-cwf
-      -- The capacity provided matches what apply needs
-      cap-matches : cap-needed ≡ apply-consumed-slots + ClosureWellFormed.thunk-capacity wf
 
     -- ============================================================
-    -- DERIVE all values from apply-wf + bridges
+    -- DERIVE all values (3 postulates eliminated, 1 remains)
     -- ============================================================
 
-    -- Capacity for apply
+    -- Capacity: directly from ApplyWFInput (apply-overhead = apply-consumed-slots)
     cap-for-apply : StackCapacity s (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf)
-    cap-for-apply = subst (StackCapacity s) cap-matches cap-cwf
+    cap-for-apply = cap-cwf
 
-    -- Env validity with encode env address (what run-apply expects)
-    env-valid-encode : ValidAt env (encode env) (memory s)
-    env-valid-encode = subst (λ a → ValidAt env a (memory s)) addr-is-encode env-valid
-
-    -- Transport closure validity: cl → cl-run (direct via runtime-matches-proof)
+    -- Transport closure validity: cl → cl-run (via cl-eq-cwf from ApplyWFInput)
     apply-v-cl : ValidAt {A ⇒ B} cl-run apply-closure-addr (memory s)
-    apply-v-cl = subst (λ c → ValidAt {A ⇒ B} c apply-closure-addr (memory s)) runtime-matches-proof apply-v-cl-raw
+    apply-v-cl = subst (λ c → ValidAt {A ⇒ B} c apply-closure-addr (memory s)) cl-eq-cwf apply-v-cl-raw
 
     -- Derive env-addr equality for closure-at transport
     cl-env-derived : env-addr cl ≡ encode env
-    cl-env-derived = cong env-addr runtime-matches-proof
+    cl-env-derived = cong env-addr cl-eq-cwf
 
     -- Transport closure-at: use encode env and code-ptr-cwf
     apply-closure-at : ClosureAtS (encode env) code-ptr-cwf apply-closure-addr (memory s)
@@ -2351,7 +2406,7 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf en
     -- ============================================================
 
     apply-result-raw = run-apply-to-ir-result-v {E} prefix suffix code-ptr-cwf env semantics-cwf apply-closure-addr apply-arg-addr arg s
-                         wf h pc-eq stack-inv cap-for-apply rbp-inv apply-v-cl apply-v-arg env-valid-encode apply-pair-at apply-closure-at
+                         wf h pc-eq stack-inv cap-for-apply rbp-inv apply-v-cl apply-v-arg env-valid apply-pair-at apply-closure-at
 
     s' = proj₁ apply-result-raw
     ir-result' = proj₂ apply-result-raw
@@ -2363,9 +2418,9 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf en
     x-run : ⟦ (A ⇒ B) * A ⟧
     x-run = (cl-run , arg)
 
-    -- cl-run ≡ cl (direct from bridge)
+    -- cl-run ≡ cl (from cl-eq-cwf)
     cl-run-eq-cl : cl-run ≡ cl
-    cl-run-eq-cl = sym runtime-matches-proof
+    cl-run-eq-cl = sym cl-eq-cwf
 
     x-run-eq-p : x-run ≡ p
     x-run-eq-p = cong₂ _,_ cl-run-eq-cl refl
@@ -2391,6 +2446,7 @@ X86-ArchCorrectness = record
   ; Star = Star
   ; star-trans = star-trans
   ; ClosureWF = X86-ClosureWF
+  ; wf-thunk-capacity = ClosureWellFormed.thunk-capacity
   ; id-correct = x86-id-correct
   ; inl-correct = x86-inl-correct
   ; inr-correct = x86-inr-correct

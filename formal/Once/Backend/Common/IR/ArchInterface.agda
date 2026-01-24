@@ -13,7 +13,7 @@
 
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; inr; fst; snd; arr; unfold; fold; terminal; initial; Prim)
 open import Once.Type as Type using (Type; _*_; _⇒_; Eff; Fix; Void) renaming (_+_ to _⊕_)
-open import Once.Semantics using (⟦_⟧; eval; encode)
+open import Once.Semantics using (⟦_⟧; eval; encode; Closure)
 
 module Once.Backend.Common.IR.ArchInterface where
 
@@ -73,8 +73,14 @@ record ArchCorrectness : Set₂ where
     -- Closure well-formedness predicate (architecture-specific)
     ClosureWF : ClosureWFPredicate Program
 
-  -- Now open IRSpecs with the actual Star and ClosureWF
-  open IRSpecs machine invariants validity codegen Star ClosureWF public
+    -- Extract thunk capacity from a ClosureWF proof
+    -- For X86: ClosureWellFormed.thunk-capacity
+    wf-thunk-capacity : ∀ {E A B : Type} {prog : Program} {cp : ℕ}
+                           {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧} →
+                         ClosureWF {E} {A} {B} prog cp env sem → ℕ
+
+  -- Now open IRSpecs with the actual Star, ClosureWF, and wf-thunk-capacity
+  open IRSpecs machine invariants validity codegen Star ClosureWF wf-thunk-capacity public
 
   field
     -----------------------------------------------------------------
@@ -154,7 +160,7 @@ record ArchCorrectness : Set₂ where
       IRCorrectness g (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s s₁ x (program-length prefix) →
       ∃[ s₂ ] (Star (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s₁ s₂ ×
                Preconditions {B} s₂ (eval g x) (prefix ++ₚ compile g ++ₚ compose-transfer f g) (ir-stack-requirement f) ×
-               ApplyWFInput (ClosureDom B) (ClosureCod B) ((prefix ++ₚ compile g ++ₚ compose-transfer f g) ++ₚ compile f ++ₚ suffix) s₂)
+               ApplyWFInput (ClosureDom B) (ClosureCod B) ((prefix ++ₚ compile g ++ₚ compose-transfer f g) ++ₚ compile f ++ₚ suffix) s₂ (closureOf B (eval g x)))
 
     -- Combine g, transfer, and f results into compose result
     compose-combine : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
@@ -237,7 +243,7 @@ record ArchCorrectness : Set₂ where
     curry-combine :
       (ih : ∀ {A B : Type} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
             Preconditions {A} s x prefix (ir-stack-requirement ir) →
-            ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s →
+            ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s (closureOf A x) →
             ∃[ s' ] IRCorrectness ir (prefix ++ₚ compile ir ++ₚ suffix) s s' x (program-length prefix)) →
       ∀ {A B C : Type} (f : IR (A * B) C)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ : State) →
@@ -329,9 +335,9 @@ record ArchCorrectness : Set₂ where
     apply-correct :
       (ih : ∀ {A B : Type} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
             Preconditions {A} s x prefix (ir-stack-requirement ir) →
-            ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s →
+            ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s (closureOf A x) →
             ∃[ s' ] IRCorrectness ir (prefix ++ₚ compile ir ++ₚ suffix) s s' x (program-length prefix)) →
       ∀ {A B : Type} (prefix suffix : Program) (p : ⟦ (A ⇒ B) * A ⟧) (s : State) →
       Preconditions {(A ⇒ B) * A} s p prefix (ir-stack-requirement (apply {A} {B})) →
-      ApplyWFInput A B (prefix ++ₚ compile (apply {A} {B}) ++ₚ suffix) s →
+      ApplyWFInput A B (prefix ++ₚ compile (apply {A} {B}) ++ₚ suffix) s (closureOf ((A ⇒ B) * A) p) →
       ∃[ s' ] IRCorrectness (apply {A} {B}) (prefix ++ₚ compile (apply {A} {B}) ++ₚ suffix) s s' p (program-length prefix)
