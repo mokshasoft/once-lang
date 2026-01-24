@@ -107,8 +107,8 @@ toMAlonzoType t = case t of
   H.TEff a b     -> M.C_Eff_44 (toMAlonzoType a) (toMAlonzoType b)
   H.TFix f       -> M.C_Fix_46 (toMAlonzoType f)
   H.TVar n       -> M.C_TVar_56 n  -- MAlonzo uses Text directly
-  -- These should not occur (checked by canConvertType)
-  H.TString _    -> error "MAlonzo: TString not supported"
+  -- Not representable in Agda's type system
+  H.TString _    -> error "MAlonzo: TString not supported (use Str)"
   H.TApp _ _     -> error "MAlonzo: TApp not supported"
 
 -- | Convert MAlonzo Type to Haskell Type
