@@ -92,6 +92,7 @@ record ArchCorrectness : Set₂ where
 
     id-correct : ∀ {A : Type} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
       Preconditions {A} s x prefix (ir-stack-requirement (id {A})) →
+      ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile (id {A}) ++ₚ suffix) s (closureOf A x) →
       ∃[ s' ] IRCorrectness (id {A}) (prefix ++ₚ compile (id {A}) ++ₚ suffix) s s' x (program-length prefix)
 
     inl-correct : ∀ {A B : Type} (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →

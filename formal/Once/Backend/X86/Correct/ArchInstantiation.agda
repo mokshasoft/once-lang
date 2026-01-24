@@ -21,7 +21,7 @@ open import Data.List using (List; []; _∷_; length; _++_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 -- Once core
-open import Once.Type using (Type; _*_; _⇒_; Eff) renaming (_+_ to _⊕_)
+open import Once.Type using (Type; _*_; _⇒_; _⇒[_]_; Eff) renaming (_+_ to _⊕_)
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; inr; fst; snd)
 open import Once.Semantics using (⟦_⟧; eval; Closure; env-addr; semantics; encode)
 
@@ -291,13 +291,44 @@ private
 -- Identity
 x86-id-correct : ∀ {A : Type} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   Preconditions {A} s x prefix (ir-stack-requirement (id {A})) →
+  ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ compile-x86 (id {A}) ++ suffix) s (closureOf A x) →
   ∃[ s' ] IRCorrectness (id {A}) (prefix ++ compile-x86 (id {A}) ++ suffix) s s' x (length prefix)
-x86-id-correct {A} prefix suffix x s pre =
+x86-id-correct {A} prefix suffix x s pre cwf =
   let (s' , res) = run-id-star-vv {A} prefix suffix x s
                      (Preconditions.pre-halted pre) (Preconditions.pre-pc pre)
                      (Preconditions.pre-input-valid pre) (Preconditions.pre-stack-inv pre)
                      (Preconditions.pre-capacity pre) (Preconditions.pre-frame-inv pre)
-  in s' , IRStarResultV→IRCorrectness res
+  in s' , record
+    { exec-star = IRStarResultV.ir-star res
+    ; exec-halted = IRStarResultV.ir-halted res
+    ; exec-pc = IRStarResultV.ir-pc res
+    ; exec-output-valid = IRStarResultV.ir-result-valid res
+    ; exec-output-is-encode = id-output-is-encode s' res
+    ; exec-saved-regs = ( IRStarResultV.ir-r14 res
+                        , IRStarResultV.ir-r15 res
+                        , IRStarResultV.ir-rbp res )
+    ; exec-rsp-delta = IRStarResultV.ir-rsp res
+    ; exec-heap-preserved = IRStarResultV.ir-mem-heap res
+    ; exec-code-preserved = IRStarResultV.ir-mem-code res
+    ; exec-frame-preserved = IRStarResultV.ir-mem-above res
+    ; exec-stack-inv = IRStarResultV.ir-stack-inv res
+    ; exec-capacity = IRStarResultV.ir-capacity res
+    ; exec-frame-inv = IRStarResultV.ir-rbp-inv res
+    ; exec-closure-wf = id-closure-wf s' res cwf
+    }
+  where
+    prog = prefix ++ compile-x86 (id {A}) ++ suffix
+    offset = length prefix
+    postulate id-output-is-encode : (s' : State) → IRStarResultV (id {A}) prog s s' x offset → readReg (regs s') rax ≡ encode x
+    -- Transport cwf from s to s': id preserves memory (heap) and rsp
+    id-closure-wf : (s' : State) → IRStarResultV (id {A}) prog s s' x offset →
+                    ApplyWFInput (ClosureDom A) (ClosureCod A) prog s (closureOf A x) →
+                    ApplyWFInput (ClosureDom A) (ClosureCod A) prog s' (closureOf A x)
+    id-closure-wf s' res no-apply-wf = no-apply-wf
+    id-closure-wf s' res (apply-wf cp env sem cl-eq wf ev cap) =
+      apply-wf cp env sem cl-eq wf
+        (valid-subst-heap-preserved ev refl (IRStarResultV.ir-mem-heap res))
+        (capacity-preserved-rsp-unchanged s s' _ cap (IRStarResultV.ir-rsp res))
 
 -- Inl
 x86-inl-correct : ∀ {A B : Type} (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
@@ -1328,7 +1359,7 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
   ; exec-stack-inv = PairSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = PairSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = PairSpecs.CleanupPost.cleanup-frame-inv cleanup
-  ; exec-closure-wf = no-apply-wf
+  ; exec-closure-wf = pair-closure-wf
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -1372,7 +1403,29 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
       (trans (IRCorrectness.exec-code-preserved f-corr addr in-code)
              (PairSpecs.SetupPost.setup-code-preserved setup addr in-code))))
 
-    -- Pair doesn't produce closures in its output position
+    -- Thread f's closure-wf to pair output
+    -- For A = D ⇒[q] E: closureOf ((D⇒E)*B) (v,w) = v = closureOf (D⇒E) v
+    -- So f-corr's cwf has matching type indices, just transport prog/state
+    -- For other A: closureOf (A*B) (...) = dummy-closure, produce no-apply-wf
+    pair-lift-cwf : (A₀ B₀ : Type) (v : ⟦ A₀ ⟧) (w : ⟦ B₀ ⟧) →
+      ApplyWFInput (ClosureDom A₀) (ClosureCod A₀) (prefix-f ++ code-f ++ suffix-f) s₂ (closureOf A₀ v) →
+      ApplyWFInput (ClosureDom (A₀ * B₀)) (ClosureCod (A₀ * B₀)) prog-full s₅ (closureOf (A₀ * B₀) (v , w))
+    pair-lift-cwf (D ⇒[ q ] E) _ v w no-apply-wf = no-apply-wf
+    pair-lift-cwf (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-eq' wf' ev' cap') =
+      apply-wf cp' env' sem' cl-eq' wf-subst ev-at-s₅ cap-at-s₅
+      where
+        wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') (sym prog-eq-f) wf'
+        heap-s₂-to-s₅ : ∀ addr → InHeap addr → readMem (memory s₅) addr ≡ readMem (memory s₂) addr
+        heap-s₂-to-s₅ addr ih =
+          trans (PairSpecs.CleanupPost.cleanup-heap-preserved cleanup addr ih)
+          (trans (IRCorrectness.exec-heap-preserved g-corr addr ih)
+                 (PairSpecs.MiddlePost.middle-heap-preserved middle addr ih))
+        ev-at-s₅ = valid-subst-heap-preserved ev' refl heap-s₂-to-s₅
+        postulate cap-at-s₅ : StackCapacity s₅ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
+    pair-lift-cwf _ _ _ _ _ = no-apply-wf
+
+    pair-closure-wf : ApplyWFInput (ClosureDom (A * B)) (ClosureCod (A * B)) prog-full s₅ (closureOf (A * B) (eval f x , eval g x))
+    pair-closure-wf = pair-lift-cwf A B (eval f x) (eval g x) (IRCorrectness.exec-closure-wf f-corr)
 
     -- Frame preservation: each phase uses different rbp reference,
     -- so composition requires showing addr > rbp_s implies addr > rbp_s₁ etc.
@@ -1909,7 +1962,7 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
   ; exec-stack-inv = CaseSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup
-  ; exec-closure-wf = no-apply-wf
+  ; exec-closure-wf = case-left-closure-wf
   }
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
@@ -1937,6 +1990,20 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
       trans (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup addr in-heap)
       (trans (IRCorrectness.exec-heap-preserved f-corr addr in-heap)
              (CaseSpecs.DispatchLeftPost.dispatch-heap-preserved dispatch addr in-heap))
+
+    -- Thread f's closure-wf to case output (transport prog and state)
+    case-left-closure-wf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
+    case-left-closure-wf = transport-cwf (IRCorrectness.exec-closure-wf f-corr)
+      where
+        transport-cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-f s₂ (closureOf C (eval f a)) →
+                        ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
+        transport-cwf no-apply-wf = no-apply-wf
+        transport-cwf (apply-wf cp' env' sem' cl-eq' wf' ev' cap') =
+          apply-wf cp' env' sem' cl-eq' wf-subst ev-at-s₃ cap-at-s₃
+          where
+            wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
+            ev-at-s₃ = valid-subst-heap-preserved ev' refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
+            postulate cap-at-s₃ : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
 
     -- Code preserved: chain dispatch → f → cleanup
     case-code-preserved : X86-CodePreserved s s₃
@@ -2242,7 +2309,7 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
   ; exec-stack-inv = CaseSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup
-  ; exec-closure-wf = no-apply-wf
+  ; exec-closure-wf = case-right-closure-wf
   }
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
@@ -2282,6 +2349,20 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
       trans (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup addr in-heap)
       (trans (IRCorrectness.exec-heap-preserved g-corr addr in-heap)
              (CaseSpecs.DispatchRightPost.dispatch-heap-preserved dispatch addr in-heap))
+
+    -- Thread g's closure-wf to case output (transport prog and state)
+    case-right-closure-wf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
+    case-right-closure-wf = transport-cwf (IRCorrectness.exec-closure-wf g-corr)
+      where
+        transport-cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-g s₂ (closureOf C (eval g b)) →
+                        ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
+        transport-cwf no-apply-wf = no-apply-wf
+        transport-cwf (apply-wf cp' env' sem' cl-eq' wf' ev' cap') =
+          apply-wf cp' env' sem' cl-eq' wf-subst ev-at-s₃ cap-at-s₃
+          where
+            wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
+            ev-at-s₃ = valid-subst-heap-preserved ev' refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
+            postulate cap-at-s₃ : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
 
     -- Code preserved: chain dispatch → g → cleanup
     case-code-preserved : X86-CodePreserved s s₃

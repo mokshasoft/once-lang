@@ -78,8 +78,8 @@ module IRCorrect (Arch : ArchCorrectness) where
                  ApplyWFInput (ClosureDom A) (ClosureCod A) (prefix ++ₚ compile ir ++ₚ suffix) s (closureOf A x) →
                  ∃[ s' ] IRCorrectness ir (prefix ++ₚ compile ir ++ₚ suffix) s s' x (program-length prefix)
 
-    -- Identity: delegate to architecture
-    ir-correct id prefix suffix x s pre _ = id-correct prefix suffix x s pre
+    -- Identity: delegate to architecture (pass cwf through for WF threading)
+    ir-correct id prefix suffix x s pre cwf = id-correct prefix suffix x s pre cwf
 
     -- Left injection: delegate to architecture
     ir-correct inl prefix suffix x s pre _ = inl-correct prefix suffix x s pre
