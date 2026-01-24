@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 -- Once core
 open import Once.Type using (Type; _*_; _⇒_; Eff) renaming (_+_ to _⊕_)
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; inr; fst; snd)
-open import Once.Semantics using (⟦_⟧; eval; Closure; env-addr; semantics; Closure-η; encode)
+open import Once.Semantics using (⟦_⟧; eval; Closure; env-addr; semantics; encode)
 
 -- X86 specific
 open import Once.Backend.X86.Syntax using (Program; Instr; rax; r12; r14; r15; rbp; rsp; rdi; r11;
@@ -2294,22 +2294,27 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf en
     apply-closure-at-raw = proj₂ apply-closure-decomp
 
     -- ============================================================
+    -- CLOSURE FOR RUN-APPLY (constructed from apply-wf values)
+    -- ============================================================
+
+    cl-run : Closure A B
+    cl-run = record { env-addr = encode env ; semantics = semantics-cwf }
+
+    -- ============================================================
     -- BRIDGE POSTULATES (semantic invariants)
     --
     -- These connect the runtime input value to the apply-wf proof:
-    --   1. The closure's env-addr equals encode env (by eval curry def)
-    --   2. The closure's semantics matches the WF proof (by construction)
+    --   1. The runtime closure matches cl-run (env-addr + semantics)
+    --   2. The cwf env-addr equals encode env (ValidAt address = encoding)
     --   3. The code-ptr in memory matches the WF proof (heap preserved)
     --   4. The capacity matches what apply needs (by curry's output cap)
     -- ============================================================
 
     postulate
-      -- The closure's semantic env-addr is encode env (true by eval curry definition)
-      cl-env-is-encode : env-addr cl ≡ encode env
+      -- The runtime closure equals the proof closure (combines env-addr and semantics)
+      runtime-matches-proof : cl ≡ cl-run
       -- The cwf env-addr equals encode env (ValidAt address matches encoding)
       addr-is-encode : env-addr-cwf ≡ encode env
-      -- The closure's semantics matches the WF proof's semantics
-      sem-is-cwf : semantics cl ≡ semantics-cwf
       -- The code-ptr from memory matches the WF proof's code-ptr (heap preserved from curry)
       code-ptr-is-cwf : code-ptr ≡ code-ptr-cwf
       -- The capacity provided matches what apply needs
@@ -2327,28 +2332,18 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf en
     env-valid-encode : ValidAt env (encode env) (memory s)
     env-valid-encode = subst (λ a → ValidAt env a (memory s)) addr-is-encode env-valid
 
-    -- Closure with env-addr = encode env (what run-apply expects)
-    cl-run : Closure A B
-    cl-run = record { env-addr = encode env ; semantics = semantics-cwf }
-
-    -- Transport closure validity: cl → cl-run
-    cl' : Closure A B
-    cl' = record { env-addr = env-addr cl ; semantics = semantics cl }
-
-    apply-v-cl' : ValidAt {A ⇒ B} cl' apply-closure-addr (memory s)
-    apply-v-cl' = subst (λ c → ValidAt c apply-closure-addr (memory s)) (sym (Closure-η cl)) apply-v-cl-raw
-
-    -- Transport env-addr and semantics to match cl-run
-    cl'-eq-cl-run : cl' ≡ cl-run
-    cl'-eq-cl-run = cong₂ (λ e (f : ⟦ A ⟧ → ⟦ B ⟧) → record { env-addr = e ; semantics = f }) cl-env-is-encode sem-is-cwf
-
+    -- Transport closure validity: cl → cl-run (direct via runtime-matches-proof)
     apply-v-cl : ValidAt {A ⇒ B} cl-run apply-closure-addr (memory s)
-    apply-v-cl = subst (λ c → ValidAt {A ⇒ B} c apply-closure-addr (memory s)) cl'-eq-cl-run apply-v-cl'
+    apply-v-cl = subst (λ c → ValidAt {A ⇒ B} c apply-closure-addr (memory s)) runtime-matches-proof apply-v-cl-raw
 
-    -- Transport closure-at: use encode env and code-ptr-cwf (two nested substs)
+    -- Derive env-addr equality for closure-at transport
+    cl-env-derived : env-addr cl ≡ encode env
+    cl-env-derived = cong env-addr runtime-matches-proof
+
+    -- Transport closure-at: use encode env and code-ptr-cwf
     apply-closure-at : ClosureAtS (encode env) code-ptr-cwf apply-closure-addr (memory s)
     apply-closure-at = subst (λ cp → ClosureAtS (encode env) cp apply-closure-addr (memory s)) code-ptr-is-cwf
-                       (subst (λ e → ClosureAtS e code-ptr apply-closure-addr (memory s)) cl-env-is-encode
+                       (subst (λ e → ClosureAtS e code-ptr apply-closure-addr (memory s)) cl-env-derived
                         apply-closure-at-raw)
 
     -- ============================================================
@@ -2368,9 +2363,9 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf en
     x-run : ⟦ (A ⇒ B) * A ⟧
     x-run = (cl-run , arg)
 
-    -- cl-run ≡ cl (sym of the bridge)
+    -- cl-run ≡ cl (direct from bridge)
     cl-run-eq-cl : cl-run ≡ cl
-    cl-run-eq-cl = trans (sym cl'-eq-cl-run) (Closure-η cl)
+    cl-run-eq-cl = sym runtime-matches-proof
 
     x-run-eq-p : x-run ≡ p
     x-run-eq-p = cong₂ _,_ cl-run-eq-cl refl
