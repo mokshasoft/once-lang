@@ -65,6 +65,15 @@ valid-subst-heap-preserved-inv : ∀ {A : Type} {v : ⟦ A ⟧} {addr : ℕ} {me
   ValidAt v addr mem
 valid-subst-heap-preserved-inv v refl heap-eq = valid-subst-heap-preserved v refl (λ a ih → sym (heap-eq a ih))
 
+-- | thunk-capacity is preserved under program subst
+-- The thunk-capacity field is a ℕ that doesn't depend on the prog parameter
+thunk-cap-subst : ∀ {E A B : Type} {p1 p2 : Program}
+                  {cp : ℕ} {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧}
+                  (eq : p1 ≡ p2) (wf : ClosureWellFormed p1 cp env sem) →
+  ClosureWellFormed.thunk-capacity wf ≡
+  ClosureWellFormed.thunk-capacity (subst (λ p → ClosureWellFormed p cp env sem) eq wf)
+thunk-cap-subst refl _ = refl
+
 ------------------------------------------------------------------------
 -- X86 Machine Interface
 ------------------------------------------------------------------------
@@ -1498,8 +1507,8 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
         cap-bound = ≤-trans (≤-trans (≤-trans bound₁ bound₂) bound₃) bound₄
 
         -- thunk-capacity is preserved across subst (field doesn't depend on prog)
-        -- This is semantically true but requires explicit proof in Agda
-        postulate thunk-cap-eq : ClosureWellFormed.thunk-capacity wf' ≡ ClosureWellFormed.thunk-capacity wf-subst
+        thunk-cap-eq : ClosureWellFormed.thunk-capacity wf' ≡ ClosureWellFormed.thunk-capacity wf-subst
+        thunk-cap-eq = thunk-cap-subst (sym prog-eq-f) wf'
 
         -- Build capacity for wf', then transport to wf-subst
         cap-at-s₅-wf' : StackCapacity s₅ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf')
@@ -2159,7 +2168,9 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
             cap-bound : apply-consumed-slots + ClosureWellFormed.thunk-capacity wf' ≤ ir-output-capacity [ f , g ]
             cap-bound = ≤-trans (≤-trans (≤-trans bound₁ bound₂) bound₃) bound₄
 
-            postulate thunk-cap-eq : ClosureWellFormed.thunk-capacity wf' ≡ ClosureWellFormed.thunk-capacity wf-subst
+            -- thunk-capacity is preserved across subst
+            thunk-cap-eq : ClosureWellFormed.thunk-capacity wf' ≡ ClosureWellFormed.thunk-capacity wf-subst
+            thunk-cap-eq = thunk-cap-subst prog-eq wf'
 
             cap-at-s₃-wf' : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf')
             cap-at-s₃-wf' = capacity-from-larger s₃
@@ -2575,7 +2586,9 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
             cap-bound : apply-consumed-slots + ClosureWellFormed.thunk-capacity wf' ≤ ir-output-capacity [ f , g ]
             cap-bound = ≤-trans (≤-trans (≤-trans bound₁ bound₂) bound₃) bound₄
 
-            postulate thunk-cap-eq : ClosureWellFormed.thunk-capacity wf' ≡ ClosureWellFormed.thunk-capacity wf-subst
+            -- thunk-capacity is preserved across subst
+            thunk-cap-eq : ClosureWellFormed.thunk-capacity wf' ≡ ClosureWellFormed.thunk-capacity wf-subst
+            thunk-cap-eq = thunk-cap-subst prog-eq wf'
 
             cap-at-s₃-wf' : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf')
             cap-at-s₃-wf' = capacity-from-larger s₃
