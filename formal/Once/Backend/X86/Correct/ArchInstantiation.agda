@@ -1582,10 +1582,11 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
         h-eq pc-eq v-arg v-env mem-ret stack-inv' cap' caller-sp-bound r15-in-code
         (<-wellFounded (ir-size (curry f)))
 
-    postulate
-      -- Capacity for apply: after curry, enough stack for apply + thunk
-      -- Gap: curry output-capacity = 4 + req f, but apply needs 2 + 4 + req f
-      curry-cap-for-apply : StackCapacity s₁ curry-cap-needed
+    -- Capacity for apply: after curry, enough stack for apply + thunk
+    -- With ir-stack-requirement (curry f) = 8 + req-f:
+    --   ir-output-capacity (curry f) = 6 + req-f = apply-consumed-slots + thunk-cap = curry-cap-needed
+    curry-cap-for-apply : StackCapacity s₁ curry-cap-needed
+    curry-cap-for-apply = CurrySpecs.SetupPost.setup-capacity setup
 
     curry-wf : ClosureWellFormed {A} {B} {C} prog thunk-code-ptr x (λ b → eval f (x , b))
     curry-wf = record
