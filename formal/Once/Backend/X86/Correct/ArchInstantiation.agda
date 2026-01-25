@@ -108,6 +108,7 @@ X86-MachineInterface = record
   ; input-value = λ s → readReg (regs s) rdi   -- X86: input in rdi
   ; output-value = λ s → readReg (regs s) rax  -- X86: output in rax
   ; saved-input-value = λ s → readReg (regs s) r14  -- X86: pair saves input in r14
+  ; result-slot-addr = λ s → readReg (regs s) r15   -- X86: pair stores f's result at r15
   ; readMem = readMem
   ; program-length = length  -- Program = List Instr for X86
   ; empty-program = []       -- Empty list for X86
@@ -1142,15 +1143,21 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
 
     -- Capacity for f: pair-inner-requirement ≥ max(f-req, g-req) ≥ f-req
     open import Once.Backend.X86.Correct.StackInstantiation
-      using (capacity-from-larger; pair-inner-requirement)
+      using (capacity-from-larger; pair-inner-requirement; pair-r15-in-stack)
 
     cap-inner = PairSetupResultV.cap-inner setup-res
+    cap-pair = PairSetupResultV.cap-pair-setup setup-res
 
     -- pair-inner-requirement f g = ir-stack-requirement f ⊔ (ir-rsp-delta f + ir-stack-requirement g)
     -- cap-inner ≥ ir-stack-requirement f since first arg of ⊔
     cap-f : StackCapacity s-setup (ir-stack-requirement f)
     cap-f = capacity-from-larger s-setup (ir-stack-requirement f) (pair-inner-requirement f g)
               cap-inner (m≤m⊔n (ir-stack-requirement f) _)
+
+    -- r15 is in stack: r15(s-setup) = rsp(s) - frame-size, which is in stack by setup capacity
+    r15-in-stack-setup : InStack (readReg (regs s-setup) r15)
+    r15-in-stack-setup = subst InStack (sym (PairSetupResultV.r15-setup setup-res))
+                               (pair-r15-in-stack s cap-pair)
 
     -- Star for setup: PairSetupResultV gives us Star prog s s-setup
     setup-star : Star prog s s-setup
@@ -1181,7 +1188,6 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
           using (make-frame-at-slot; pair-rbp-slot≤pair-setup; pair-rbp-slot)
         open import Once.Backend.X86.Correct.Arithmetic using (saved-regs-size; pair-alloc)
         open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
-        cap-pair = PairSetupResultV.cap-pair-setup setup-res
         rbp-sp = make-frame-at-slot s cap-pair pair-rbp-slot pair-rbp-slot≤pair-setup
 
     setup-post : PairSpecs.SetupPost f g prog (length (PairContext.prefix-f ctx)) s s-setup x
@@ -1191,6 +1197,7 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       ; setup-input-valid = input-valid-setup
       ; setup-input-is-encode = setup-rdi-is-encode
       ; setup-input-saved = setup-r14-is-encode
+      ; setup-result-slot-in-stack = r15-in-stack-setup
       ; setup-capacity = cap-f
       ; setup-frame-inv = frame-inv-setup
       ; setup-star = setup-star
@@ -1299,12 +1306,35 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
           r14-s₁-eq-encode = PairSpecs.SetupPost.setup-input-saved setup
       in trans rdi-s₃-eq-r14-s₂ (trans r14-s₂-eq-r14-s₁ r14-s₁-eq-encode)
 
-    -- Remaining semantic properties (require information not yet threaded through)
+    -- r15 is in stack at s₂: r15(s₂) = r15(s₁) (f preserves), r15(s₁) in stack (from setup)
+    open import Once.Backend.X86.Layout using (InStack; stack-heap-addr-disjoint; stack-code-addr-disjoint)
+    r15-s₂-eq-r15-s₁ : readReg (regs s₂) r15 ≡ readReg (regs s₁) r15
+    r15-s₂-eq-r15-s₁ = proj₁ (proj₂ (IRCorrectness.exec-saved-regs f-corr))
+    r15-s₁-in-stack : InStack (readReg (regs s₁) r15)
+    r15-s₁-in-stack = PairSpecs.SetupPost.setup-result-slot-in-stack setup
+    r15-s₂-in-stack : InStack (readReg (regs s₂) r15)
+    r15-s₂-in-stack = subst InStack (sym r15-s₂-eq-r15-s₁) r15-s₁-in-stack
+
+    -- Heap preservation: r15 is in stack, heap addresses are disjoint from stack
+    mid-heap-preserved : X86-HeapPreserved s₂ s₃
+    mid-heap-preserved addr addr-in-heap =
+      PairMiddleStarResult.mem-other mid-result addr r15-neq-addr
+      where
+        r15-neq-addr : addr ≢ readReg (regs s₂) r15
+        r15-neq-addr eq = stack-heap-addr-disjoint (readReg (regs s₂) r15) addr r15-s₂-in-stack addr-in-heap (sym eq)
+
+    -- Code preservation: r15 is in stack, code addresses are disjoint from stack
+    mid-code-preserved : X86-CodePreserved s₂ s₃
+    mid-code-preserved addr addr-in-code =
+      PairMiddleStarResult.mem-other mid-result addr r15-neq-addr
+      where
+        r15-neq-addr : addr ≢ readReg (regs s₂) r15
+        r15-neq-addr eq = stack-code-addr-disjoint (readReg (regs s₂) r15) addr r15-s₂-in-stack addr-in-code (sym eq)
+
+    -- Remaining semantic properties (require more threading)
     postulate
       input-valid₃ : ValidAt x (readReg (regs s₃) rdi) (memory s₃)
       cap₃ : StackCapacity s₃ (ir-stack-requirement g)
-      mid-heap-preserved : X86-HeapPreserved s₂ s₃
-      mid-code-preserved : X86-CodePreserved s₂ s₃
       mid-frame-preserved : X86-FramePreserved s₂ s₃
 
     middle-post : PairSpecs.MiddlePost f g prog (length prefix-g) s₁ s₂ s₃ x fx

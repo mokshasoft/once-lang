@@ -60,6 +60,8 @@ record MachineInterface : Set₁ where
     output-value : State → Word
     -- Saved input register: where pair saves the input during evaluation (r14 / x19 / s3)
     saved-input-value : State → Word
+    -- Result slot register: where pair stores f's result during g evaluation (r15 / x20 / s4)
+    result-slot-addr : State → Word
 
     -- Memory operations
     readMem : Memory → Word → Maybe Word
@@ -411,6 +413,7 @@ module IRSpecs
         setup-input-valid : ValidAt x (input-value s₁) (memory s₁)
         setup-input-is-encode : input-value s₁ ≡ encode x
         setup-input-saved : saved-input-value s₁ ≡ encode x  -- Input saved for restoration after f
+        setup-result-slot-in-stack : InStack (result-slot-addr s₁)  -- Result slot is in stack (for middle memory proofs)
         setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
         setup-frame-inv : FramePtrInvariant s₁
         -- Execution evidence
