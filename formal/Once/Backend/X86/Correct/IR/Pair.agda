@@ -255,21 +255,13 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
         --   - Since ca < r15, we have ca ≠ r15 and ca ≠ r15+8
         --   - Therefore closure memory is preserved through all pair phases
         --
-        -- For Heap closures: heap-final-to-s1 provides the proof
-        --
         -- TODO (D-CLOSURE-MEM): Prove this without postulate using:
         --   - cl-below-rsp to show ca < pair's r15
         --   - mem-above-r15-mid, ir-mem-above, mem-above-r15+8-fin for the chain
+        --   - For heap addresses: use mem-heap-final + ir-mem-heap chain
         postulate
           closure-mem-final-to-s1 : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
 
-        heap-final-to-s1 : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
-        heap-final-to-s1 addr iha =
-          trans (mem-heap-final addr iha)
-                (sym (trans (IRStarResultV.ir-mem-heap r-f addr iha)
-                       (subst (λ ss → readMem (memory ss) addr ≡ readMem (memory s) addr)
-                              (sym s-setup-eq)
-                              (PairSetupResultV.mem-heap-setup setup-res addr iha))))
         cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
         cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
           where

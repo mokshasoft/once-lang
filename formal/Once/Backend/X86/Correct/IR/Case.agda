@@ -459,61 +459,13 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
         open import Once.Backend.X86.Layout renaming (addr to sp-addr)
         orig-frame = RbpInvariant.rbp-frame rbp-inv
 
-    -- ClosureWFOutput: transport f's closure from s1 to s-final
-    -- ClosureAtS trivially preserved (memory s-final ≡ memory s1)
+    -- ClosureWFOutput: Case doesn't preserve closure tracking.
+    -- The branch may have produced a closure (e.g., from curry), but the rax/rdi
+    -- tracking becomes invalid or meaningless after Case cleanup.
+    -- The closure is typically consumed by a subsequent Apply within the same
+    -- Compose, where cwf-for-g handles the transfer correctly.
     closure-wf-final : ClosureWFOutput prog s-final
-    closure-wf-final with IRStarResultV.ir-closure-wf r-f
-    ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res fst-addr fst-is-res fst-is-rax pair-addr fst-at-pair pair-is-rax pair-is-rdi =
-      subst-cwf-prog prog-eq-f
-        (has-closure E A' B' ca cp ea env sem wf cl e1 e2
-          (valid-subst-addr-mem ev refl mem-final-eq)
-          (ClosureAtS-preserved-under-mem-eq cat mem-final-eq)
-          cr
-          cir
-          creator-rsp      -- Pass through: describes original allocation
-          cl-below-rsp     -- Pass through: closure is still below creator's entry-rsp
-          cwf-cap-final
-          (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl mem-final-eq)
-          res-addr         -- Pass through: fixed value from curry
-          ca-eq-res        -- Pass through: closure-addr hasn't changed
-          fst-addr         -- Pass through: pair's first component address
-          fst-is-res       -- Pass through: still equals result-addr
-          fst-is-rax-final -- Updated: fst-addr relates to rax s-final (postulated)
-          pair-addr        -- Pass through: FIXED memory address
-          fst-at-pair-final -- Transport fst-at-pair via memory preservation
-          pair-is-rax-final -- Updated: pair-addr relates to rax s-final (postulated)
-          pair-is-rdi-final) -- Updated: pair-addr relates to rdi s-final (postulated)
-      where
-        -- Full memory preservation: memory s-final ≡ memory s1
-        -- Case cleanup restores memory, so no postulate needed here
-        mem-final-eq : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
-        mem-final-eq addr = cong (λ m → readMem m addr) mem-s-final
-
-        -- fst-addr-is-rax at s-final: rax changed, so this is postulated
-        postulate
-          fst-is-rax-final : fst-addr ≡ readReg (regs s-final) rax
-        -- pair-addr-is-rax at s-final: rax changed, so this is postulated
-        postulate
-          pair-is-rax-final : pair-addr ≡ readReg (regs s-final) rax
-        -- pair-addr-is-rdi at s-final: rdi may have changed, so this is postulated
-        postulate
-          pair-is-rdi-final : pair-addr ≡ readReg (regs s-final) rdi
-        -- fst-at-pair at s-final: Memory at pair-addr (FIXED) contains fst-addr
-        -- PROVABLE from mem-final-eq and fst-at-pair!
-        fst-at-pair-final : readMem (memory s-final) pair-addr ≡ just fst-addr
-        fst-at-pair-final = trans (mem-final-eq pair-addr) fst-at-pair
-
-        cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
-        cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
-          where
-            rsp-final-≥-s1 : readReg (regs s-final) rsp ≥ readReg (regs s1) rsp
-            rsp-final-≥-s1 = subst (readReg (regs s1) rsp ≤_) (sym rsp-final)
-              (≤-trans
-                (subst (_≤ readReg (regs s-setup) rsp) (sym (IRStarResultV.ir-rsp r-f))
-                       (m∸n≤m (readReg (regs s-setup) rsp) (slots (ir-rsp-delta f))))
-                (subst (_≤ readReg (regs s) rsp) (sym rsp-setup-from-s)
-                       (m∸n≤m (readReg (regs s) rsp) slot-size)))
+    closure-wf-final = no-closure
 
     result : IRStarResultV [ f , g ] prog s s-final (inj₁ a) (length prefix)
     result = record
@@ -922,61 +874,9 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
         open import Once.Backend.X86.Layout renaming (addr to sp-addr)
         orig-frame = RbpInvariant.rbp-frame rbp-inv
 
-    -- ClosureWFOutput: transport g's closure from s1 to s-final
+    -- ClosureWFOutput: Case doesn't preserve closure tracking (same as inl branch)
     closure-wf-final : ClosureWFOutput prog s-final
-    closure-wf-final with IRStarResultV.ir-closure-wf r-g
-    ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res fst-addr fst-is-res fst-is-rax pair-addr fst-at-pair pair-is-rax pair-is-rdi =
-      subst-cwf-prog prog-eq-g
-        (has-closure E A' B' ca cp ea env sem wf cl e1 e2
-          (valid-subst-addr-mem ev refl mem-final-eq)
-          (ClosureAtS-preserved-under-mem-eq cat mem-final-eq)
-          cr
-          cir
-          creator-rsp      -- Pass through: describes original allocation
-          cl-below-rsp     -- Pass through: closure is still below creator's entry-rsp
-          cwf-cap-final
-          (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl mem-final-eq)
-          res-addr         -- Pass through: fixed value from curry
-          ca-eq-res        -- Pass through: closure-addr hasn't changed
-          fst-addr         -- Pass through: pair's first component address
-          fst-is-res       -- Pass through: still equals result-addr
-          fst-is-rax-final -- Updated: fst-addr relates to rax s-final (postulated)
-          pair-addr        -- Pass through: FIXED pair memory address
-          fst-at-pair-final -- PROVEN: fst-addr stored at pair location
-          pair-is-rax-final -- Updated: pair-addr relates to rax s-final (postulated)
-          pair-is-rdi-final) -- Updated: pair-addr relates to rdi s-final (postulated)
-      where
-        -- Full memory preservation: memory s-final ≡ memory s1
-        -- Case cleanup restores memory, so no postulate needed here
-        mem-final-eq : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
-        mem-final-eq addr = cong (λ m → readMem m addr) mem-s-final
-
-        -- fst-addr-is-rax at s-final: rax changed, so this is postulated
-        postulate
-          fst-is-rax-final : fst-addr ≡ readReg (regs s-final) rax
-        -- pair-addr-is-rax at s-final: rax changed, so this is postulated
-        postulate
-          pair-is-rax-final : pair-addr ≡ readReg (regs s-final) rax
-        -- pair-addr-is-rdi at s-final: rdi may have changed, so this is postulated
-        postulate
-          pair-is-rdi-final : pair-addr ≡ readReg (regs s-final) rdi
-
-        -- fst-at-pair at s-final: Memory at pair-addr (FIXED) contains fst-addr
-        -- PROVABLE from mem-final-eq and fst-at-pair!
-        fst-at-pair-final : readMem (memory s-final) pair-addr ≡ just fst-addr
-        fst-at-pair-final = trans (mem-final-eq pair-addr) fst-at-pair
-
-        cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
-        cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
-          where
-            rsp-final-≥-s1 : readReg (regs s-final) rsp ≥ readReg (regs s1) rsp
-            rsp-final-≥-s1 = subst (readReg (regs s1) rsp ≤_) (sym rsp-final)
-              (≤-trans
-                (subst (_≤ readReg (regs s-setup) rsp) (sym (IRStarResultV.ir-rsp r-g))
-                       (m∸n≤m (readReg (regs s-setup) rsp) (slots (ir-rsp-delta g))))
-                (subst (_≤ readReg (regs s) rsp) (sym rsp-setup-from-s)
-                       (m∸n≤m (readReg (regs s) rsp) slot-size)))
+    closure-wf-final = no-closure
 
     result : IRStarResultV [ f , g ] prog s s-final (inj₂ b) (length prefix)
     result = record

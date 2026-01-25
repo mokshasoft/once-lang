@@ -397,73 +397,14 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
     closure-wf-from-g : ClosureWFOutput prog s3
     closure-wf-from-g = subst-cwf-prog (sym (trans prog-eq-f (trans prog-eq-transfer prog-eq-g))) (IRStarResultV.ir-closure-wf r3)
 
-    -- Transport f's closure-wf from s1 to s3
-    -- Memory preservation: s1→s2 is full (transfer), s2→s3 depends on region:
-    --   - Heap: ir-mem-heap r3
-    --   - Stack above rbp: ir-mem-above r3
-    --   - Stack at/below rbp: modified by g (but closures are above)
-    -- For closure environment and structure, we use full memory preservation.
-    -- Stack closures from curry are above g's rbp (curry frame > g's frame).
-    heap-s3-to-s1 : ∀ addr → InHeap addr → readMem (memory s3) addr ≡ readMem (memory s1) addr
-    heap-s3-to-s1 addr ih =
-      let mem-s3-to-s2 = IRStarResultV.ir-mem-heap r3 addr ih
-          mem-s2-to-s1 : readMem (memory s2) addr ≡ readMem (memory s1) addr
-          mem-s2-to-s1 = subst (λ s2'' → readMem (memory s2'') addr ≡ readMem (memory s1) addr)
-                               (sym s2-eq) (mem-s1-to-s2 addr)
-      in trans mem-s3-to-s2 mem-s2-to-s1
-
-    closure-wf-from-f : ClosureWFOutput prog s3
-    closure-wf-from-f with IRStarResultV.ir-closure-wf r1
-    ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res fst-addr fst-is-res fst-is-rax pair-addr fst-at-pair pair-is-rax pair-is-rdi =
-      subst-cwf-prog (sym prog-eq-f)
-        (has-closure E A' B' ca cp ea env sem wf cl e1 e2
-          (valid-subst-addr-mem ev refl closure-mem-s3-to-s1)
-          (ClosureAtS-preserved-under-mem-eq cat closure-mem-s3-to-s1)
-          cr
-          cir
-          creator-rsp      -- Pass through unchanged: describes original allocation
-          cl-below-rsp     -- Pass through unchanged: still valid
-          cwf-cap-from-f
-          (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl closure-mem-s3-to-s1)
-          res-addr         -- Pass through unchanged: fixed value from curry
-          ca-eq-res        -- Pass through unchanged: closure-addr hasn't changed
-          fst-addr         -- Pass through unchanged: pair's first component address
-          fst-is-res       -- Pass through unchanged: still equals result-addr
-          fst-is-rax-s3    -- Updated: fst-addr relates to rax s3 (postulated, not used)
-          pair-addr        -- Pass through unchanged: FIXED memory address
-          fst-at-pair-s3   -- Transport fst-at-pair via memory preservation
-          pair-is-rax-s3   -- Updated: pair-addr relates to rax s3 (postulated, not used)
-          pair-is-rdi-s3)  -- Updated: pair-addr relates to rdi s3 (postulated, not used)
-      where
-        -- Full memory preservation for closure data (env and closure structure)
-        -- This follows from:
-        --   1. s1→s2: mem-s1-to-s2 (transfer preserves all memory)
-        --   2. s2→s3: closure data is either in Heap (ir-mem-heap) or
-        --             in Stack below creator-entry-rsp (preserved since compose doesn't write)
-        -- TODO (D-CLOSURE-FRAME): Use closure-below-entry-rsp with stack disjointness
-        --       to prove this without postulate
-        postulate
-          closure-mem-s3-to-s1 : ∀ addr → readMem (memory s3) addr ≡ readMem (memory s1) addr
-        postulate
-          cwf-cap-from-f : StackCapacity s3 (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
-        -- fst-addr-is-rax at s3: rax changed, so this is postulated (not used after transfer)
-        postulate
-          fst-is-rax-s3 : fst-addr ≡ readReg (regs s3) rax
-        -- pair-addr-is-rax at s3: rax changed (g's output is in rax), so this is postulated (not used)
-        postulate
-          pair-is-rax-s3 : pair-addr ≡ readReg (regs s3) rax
-        -- pair-addr-is-rdi at s3: rdi may have changed, so this is postulated (not used)
-        postulate
-          pair-is-rdi-s3 : pair-addr ≡ readReg (regs s3) rdi
-        -- fst-at-pair at s3: Memory at pair-addr (FIXED) contains fst-addr
-        -- This is PROVABLE from closure-mem-s3-to-s1 and fst-at-pair!
-        fst-at-pair-s3 : readMem (memory s3) pair-addr ≡ just fst-addr
-        fst-at-pair-s3 = trans (closure-mem-s3-to-s1 pair-addr) fst-at-pair
-
+    -- When g has no closure output, we output no-closure.
+    -- The closure from f has invalid tracking (rax changed after g executed).
+    -- This is correct: if g = apply, the closure was consumed.
+    -- If g = id (preserves rax), the tracking would be valid but we conservatively
+    -- output no-closure since id is rarely used in practice.
     closure-wf-3 : ClosureWFOutput prog s3
     closure-wf-3 = case closure-wf-from-g of λ where
-      no-closure → closure-wf-from-f
+      no-closure → no-closure  -- Closure tracking lost after g executes
       wf-g → wf-g
 
     -- Convert star-t from s2' to s2
