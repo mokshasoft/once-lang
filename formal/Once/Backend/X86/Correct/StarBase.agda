@@ -27,8 +27,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; star-step4)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (PairAt; fst-valid; snd-valid;
-         ValidAt; valid-unit; valid-pair; valid-inl; valid-inr;
+  using (ValidAt; valid-unit; valid-pair; valid-inl; valid-inr;
          valid-closure; valid-eff; valid-fix;
          PairAtS; fst-valid-s; snd-valid-s;
          InlAtS; InrAtS; ClosureAtS;

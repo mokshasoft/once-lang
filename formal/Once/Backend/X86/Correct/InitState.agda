@@ -31,10 +31,9 @@ open import Once.Memory
   renaming (mem to alloc-mem)
 import Once.Memory as Mem
 
--- Import validity predicates (both abstract and stateful versions)
+-- Import validity predicates (address-based versions)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (PairAt; pair-at; InlAt; inl-at; InrAt; inr-at;
-         PairAtS; pair-at-s; InlAtS; inl-at-s; InrAtS; inr-at-s)
+  using (PairAtS; pair-at-s; InlAtS; inl-at-s; InrAtS; inr-at-s)
 
 open import Once.Postulates
   using (encode)
