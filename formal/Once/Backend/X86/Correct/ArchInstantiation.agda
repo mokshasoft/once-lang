@@ -1208,6 +1208,30 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
                                      (sym (PairSetupResultV.rbp-setup setup-res))
                                      (slot0-plus-word<rbp (readReg (regs s) rsp) setup-frame-fits)
 
+    -- rbp(s-setup) < rbp(s): new frame pointer is below original
+    -- Proof: rbp(s-setup) = rsp(s) - 24 < rsp(s) ≤ rbp(s)
+    open import Data.Nat.Properties using (<-≤-trans; m∸n≤m)
+    rbp-setup-below-orig : readReg (regs s-setup) rbp < readReg (regs s) rbp
+    rbp-setup-below-orig = subst (_< readReg (regs s) rbp) (sym (PairSetupResultV.rbp-setup setup-res)) rsp∸24<rbp
+      where
+        -- rsp(s) > 0 from setup-frame-fits (40 ≤ rsp implies rsp > 0)
+        rsp>0 : readReg (regs s) rsp > 0
+        rsp>0 = ≤-<-trans z≤n (≤-<-trans setup-frame-fits (s≤s (m∸n≤m 40 1)))
+          where open import Data.Nat.Properties using (s≤s)
+                open import Data.Nat using (_∸_)
+        -- rsp - 24 < rsp (since rsp > 0 and 24 > 0)
+        rsp∸24<rsp : readReg (regs s) rsp ∸ saved-regs-size < readReg (regs s) rsp
+        rsp∸24<rsp = m∸n<m-proof (readReg (regs s) rsp) saved-regs-size rsp>0 (s≤s z≤n)
+          where
+            m∸n<m-proof : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+            m∸n<m-proof (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+        -- rsp ≤ rbp from RbpInvariant
+        rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
+        rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
+        -- Chain: rsp - 24 < rsp ≤ rbp
+        rsp∸24<rbp : readReg (regs s) rsp ∸ saved-regs-size < readReg (regs s) rbp
+        rsp∸24<rbp = <-≤-trans rsp∸24<rsp rsp≤rbp
+
     -- Star for setup: PairSetupResultV gives us Star prog s s-setup
     setup-star : Star prog s s-setup
     setup-star = PairSetupResultV.star-setup setup-res
@@ -1248,6 +1272,7 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       ; setup-input-saved = setup-r14-is-encode
       ; setup-result-slot-in-stack = r15-in-stack-setup
       ; setup-result-slot-below-frame-ptr = r15-below-rbp-setup
+      ; setup-frame-ptr-below-orig = rbp-setup-below-orig
       ; setup-capacity = cap-f
       ; setup-cap-for-g-after-f = cap-for-g-after-f
       ; setup-frame-inv = frame-inv-setup
@@ -1462,6 +1487,7 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
       ; middle-capacity = cap₃
       ; middle-frame-inv = frame-inv₃
       ; middle-result-slot-below = r15+slot-below-rbp-s₃
+      ; middle-frame-ptr-eq = rbp-s₃-eq-rbp-s₂
       ; middle-star = mid-star
       ; middle-pc = mid-pc
       ; middle-heap-preserved = mid-heap-preserved
@@ -1799,10 +1825,51 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
         -- Catch-all for non-arrow types (produces no-apply-wf with cwf-cap-bound = 0)
         pair-cwf-bound-helper _ _ _ _ _ _ = z≤n
 
-    -- Frame preservation: each phase uses different rbp reference,
-    -- so composition requires showing addr > rbp_s implies addr > rbp_s₁ etc.
-    postulate
-      pair-frame-preserved : X86-FramePreserved s s₅
+    -- Frame preservation: chain through all 5 phases
+    -- Key insight: rbp(s₁) < rbp(s) (from setup-frame-ptr-below-orig)
+    -- and rbp stays constant through f, middle, g (via saved-regs/rbp preservation)
+    pair-frame-preserved : X86-FramePreserved s s₅
+    pair-frame-preserved addr addr>rbp-s =
+      -- Chain: mem s₅ = mem s₄ = mem s₃ = mem s₂ = mem s₁ = mem s
+      trans (PairSpecs.CleanupPost.cleanup-frame-preserved cleanup addr addr>rbp-s₄)
+      (trans (IRCorrectness.exec-frame-preserved g-corr addr addr>rbp-s₃)
+      (trans (PairSpecs.MiddlePost.middle-frame-preserved middle addr addr>rbp-s₂)
+      (trans (IRCorrectness.exec-frame-preserved f-corr addr addr>rbp-s₁)
+             (PairSpecs.SetupPost.setup-frame-preserved setup addr addr>rbp-s))))
+      where
+        open import Data.Nat.Properties using (<-transˡ; <-trans)
+
+        -- rbp(s₁) < rbp(s): from setup
+        rbp-s₁<rbp-s : readReg (regs s₁) rbp < readReg (regs s) rbp
+        rbp-s₁<rbp-s = PairSpecs.SetupPost.setup-frame-ptr-below-orig setup
+
+        -- addr > rbp(s) implies addr > rbp(s₁)
+        addr>rbp-s₁ : addr > readReg (regs s₁) rbp
+        addr>rbp-s₁ = <-trans rbp-s₁<rbp-s addr>rbp-s
+
+        -- rbp(s₂) = rbp(s₁): from f's saved-regs
+        rbp-s₂-eq : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
+        rbp-s₂-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs f-corr))
+
+        -- addr > rbp(s₂)
+        addr>rbp-s₂ : addr > readReg (regs s₂) rbp
+        addr>rbp-s₂ = subst (addr >_) (sym rbp-s₂-eq) addr>rbp-s₁
+
+        -- rbp(s₃) = rbp(s₂): from middle
+        rbp-s₃-eq : readReg (regs s₃) rbp ≡ readReg (regs s₂) rbp
+        rbp-s₃-eq = PairSpecs.MiddlePost.middle-frame-ptr-eq middle
+
+        -- addr > rbp(s₃)
+        addr>rbp-s₃ : addr > readReg (regs s₃) rbp
+        addr>rbp-s₃ = subst (addr >_) (sym rbp-s₃-eq) addr>rbp-s₂
+
+        -- rbp(s₄) = rbp(s₃): from g's saved-regs
+        rbp-s₄-eq : readReg (regs s₄) rbp ≡ readReg (regs s₃) rbp
+        rbp-s₄-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs g-corr))
+
+        -- addr > rbp(s₄)
+        addr>rbp-s₄ : addr > readReg (regs s₄) rbp
+        addr>rbp-s₄ = subst (addr >_) (sym rbp-s₄-eq) addr>rbp-s₃
 
     -- Output encoding: eval ⟨ f , g ⟩ x = (eval f x, eval g x) definitionally
     -- cleanup-output-valid gives ValidAt (eval f x, eval g x) rax (memory s₅)
