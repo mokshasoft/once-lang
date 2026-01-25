@@ -74,6 +74,22 @@ thunk-cap-subst : ∀ {E A B : Type} {p1 p2 : Program}
   ClosureWellFormed.thunk-capacity (subst (λ p → ClosureWellFormed p cp env sem) eq wf)
 thunk-cap-subst refl _ = refl
 
+-- | cap-upper-bound is preserved under program subst
+-- Same reasoning: cap-upper-bound is a ℕ field that doesn't depend on prog
+cap-upper-bound-subst : ∀ {E A B : Type} {p1 p2 : Program}
+                        {cp : ℕ} {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧}
+                        (eq : p1 ≡ p2) (wf : ClosureWellFormed p1 cp env sem) →
+  ClosureWellFormed.cap-upper-bound wf ≡
+  ClosureWellFormed.cap-upper-bound (subst (λ p → ClosureWellFormed p cp env sem) eq wf)
+cap-upper-bound-subst refl _ = refl
+
+-- | cwf-cap-bound is preserved under program subst for ApplyWFInput
+-- By J: subst with refl is identity, so cwf-cap-bound is preserved
+cwf-cap-bound-subst : ∀ {A B : Type} {p1 p2 : Program} {s : State} {cl : Closure A B} →
+  (eq : p1 ≡ p2) → (cwf : ApplyWFInput A B p1 s cl) →
+  cwf-cap-bound (subst (λ p → ApplyWFInput A B p s cl) eq cwf) ≡ cwf-cap-bound cwf
+cwf-cap-bound-subst refl _ = refl
+
 ------------------------------------------------------------------------
 -- X86 Machine Interface
 ------------------------------------------------------------------------
@@ -802,8 +818,23 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
     -- Bound tracking for compose: f's bound ≤ f's req ≤ compose's req
     -- The cwf-cap-bound is preserved through the subst (same underlying wf)
     -- f's exec-cwf-bound-in-req : cwf-cap-bound f ≤ ir-req f
-    -- By compose monotonicity: ir-req f ≤ ir-req (f ∘ g)
-    postulate compose-cwf-bound : cwf-cap-bound compose-closure-wf-out ≤ ir-stack-requirement (f ∘ g)
+    -- ir-req (f ∘ g) = ir-req g ⊔ (ir-rsp-delta g + ir-req f) ≥ ir-req f
+    compose-cwf-bound : cwf-cap-bound compose-closure-wf-out ≤ ir-stack-requirement (f ∘ g)
+    compose-cwf-bound =
+      let -- cwf-cap-bound is preserved by subst
+          eq : cwf-cap-bound compose-closure-wf-out ≡ cwf-cap-bound (IRCorrectness.exec-closure-wf f-corr)
+          eq = cwf-cap-bound-subst prog-f-eq-result (IRCorrectness.exec-closure-wf f-corr)
+          -- f's bound
+          f-bound : cwf-cap-bound (IRCorrectness.exec-closure-wf f-corr) ≤ ir-stack-requirement f
+          f-bound = IRCorrectness.exec-cwf-bound-in-req f-corr
+          -- ir-req f ≤ ir-rsp-delta g + ir-req f ≤ ir-req g ⊔ (ir-rsp-delta g + ir-req f) = ir-req (f ∘ g)
+          open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; m≤n+m)
+          step1 : ir-stack-requirement f ≤ ir-rsp-delta g +ℕ ir-stack-requirement f
+          step1 = m≤n+m (ir-stack-requirement f) (ir-rsp-delta g)
+          step2 : ir-rsp-delta g +ℕ ir-stack-requirement f ≤ ir-stack-requirement (f ∘ g)
+          step2 = m≤n⊔m (ir-stack-requirement g) (ir-rsp-delta g +ℕ ir-stack-requirement f)
+      in subst (λ cap → cap ≤ ir-stack-requirement (f ∘ g)) (sym eq)
+           (≤-trans (≤-trans f-bound step1) step2)
 
     -- Extract star from g (s → s₁)
     star-g : Star prog-g s s₁
@@ -1527,7 +1558,41 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
     pair-closure-wf = pair-lift-cwf A B (eval f x) (eval g x) (IRCorrectness.exec-closure-wf f-corr) (IRCorrectness.exec-cwf-bound-in-req f-corr)
 
     -- Bound tracking for pair: f's bound ≤ f's req ≤ pair's req
-    postulate pair-cwf-bound : cwf-cap-bound pair-closure-wf ≤ ir-stack-requirement ⟨ f , g ⟩
+    -- Proof: match on the form of pair-lift-cwf
+    -- - no-apply-wf: cwf-cap-bound = 0 ≤ anything
+    -- - apply-wf ... wf-subst ...: chain wf-cap-upper-bound ≤ ir-req f ≤ ir-req ⟨f,g⟩
+    pair-cwf-bound : cwf-cap-bound pair-closure-wf ≤ ir-stack-requirement ⟨ f , g ⟩
+    pair-cwf-bound = pair-cwf-bound-helper A B (eval f x) (eval g x)
+                       (IRCorrectness.exec-closure-wf f-corr)
+                       (IRCorrectness.exec-cwf-bound-in-req f-corr)
+      where
+        open import Once.Backend.X86.Correct.StackInstantiation
+          using (pair-inner-requirement; pair-setup-consumed-slots)
+        open import Data.Nat.Properties using (m≤m⊔n; m≤n+m)
+
+        pair-cwf-bound-helper : (A₀ B₀ : Type) (v : ⟦ A₀ ⟧) (w : ⟦ B₀ ⟧) →
+          (cwf : ApplyWFInput (ClosureDom A₀) (ClosureCod A₀) (prefix-f ++ code-f ++ suffix-f) s₂ (closureOf A₀ v)) →
+          (cwf-bnd : cwf-cap-bound cwf ≤ ir-stack-requirement f) →
+          cwf-cap-bound (pair-lift-cwf A₀ B₀ v w cwf cwf-bnd) ≤ ir-stack-requirement ⟨ f , g ⟩
+        -- Case: arrow type with no-apply-wf
+        pair-cwf-bound-helper (D ⇒[ q ] E) _ v w no-apply-wf _ = z≤n
+        -- Case: arrow type with apply-wf
+        pair-cwf-bound-helper (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
+          let -- cap-upper-bound preserved by subst
+              wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') (sym prog-eq-f) wf'
+              cap-eq : ClosureWellFormed.cap-upper-bound wf' ≡ ClosureWellFormed.cap-upper-bound wf-subst
+              cap-eq = cap-upper-bound-subst (sym prog-eq-f) wf'
+              -- Chain: wf-cap-upper-bound ≤ ir-req f ≤ pair-inner ≤ ir-req ⟨f,g⟩
+              step1 : ClosureWellFormed.cap-upper-bound wf' ≤ ir-stack-requirement f
+              step1 = cwf-bnd
+              step2 : ir-stack-requirement f ≤ pair-inner-requirement f g
+              step2 = m≤m⊔n (ir-stack-requirement f) (ir-rsp-delta f + ir-stack-requirement g)
+              step3 : pair-inner-requirement f g ≤ ir-stack-requirement ⟨ f , g ⟩
+              step3 = m≤n+m (pair-inner-requirement f g) pair-setup-consumed-slots
+          in subst (λ cap → cap ≤ ir-stack-requirement ⟨ f , g ⟩) (sym cap-eq)
+               (≤-trans (≤-trans step1 step2) step3)
+        -- Catch-all for non-arrow types (produces no-apply-wf with cwf-cap-bound = 0)
+        pair-cwf-bound-helper _ _ _ _ _ _ = z≤n
 
     -- Frame preservation: each phase uses different rbp reference,
     -- so composition requires showing addr > rbp_s implies addr > rbp_s₁ etc.
@@ -2194,7 +2259,34 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
     -- Same structural issue as pair-frame-preserved
     postulate
       case-frame-preserved : X86-FramePreserved s s₃
-      case-left-cwf-bound : cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
+
+    -- Bound proof: cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
+    -- Pattern match on the input to transport-cwf:
+    -- - no-apply-wf: cwf-cap-bound = 0 ≤ anything (z≤n)
+    -- - apply-wf: chain wf-cap-upper-bound ≤ ir-req f ≤ ir-req [f,g]
+    case-left-cwf-bound : cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
+    case-left-cwf-bound = cwf-bound-helper (IRCorrectness.exec-closure-wf f-corr) (IRCorrectness.exec-cwf-bound-in-req f-corr)
+      where
+        open import Data.Nat.Properties using (m≤m⊔n; m≤n+m)
+
+        cwf-bound-helper : (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-f s₂ (closureOf C (eval f a))) →
+                           cwf-cap-bound cwf ≤ ir-stack-requirement f →
+                           cwf-cap-bound (transport-cwf cwf (IRCorrectness.exec-cwf-bound-in-req f-corr)) ≤ ir-stack-requirement [ f , g ]
+        cwf-bound-helper no-apply-wf _ = z≤n
+        cwf-bound-helper (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
+          let -- cap-upper-bound preserved by subst
+              wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
+              cap-eq : ClosureWellFormed.cap-upper-bound wf' ≡ ClosureWellFormed.cap-upper-bound wf-subst
+              cap-eq = cap-upper-bound-subst prog-eq wf'
+              -- Chain: wf-cap-upper-bound wf' ≤ ir-req f ≤ ir-req f ⊔ ir-req g ≤ ir-req [f,g]
+              step1 : ClosureWellFormed.cap-upper-bound wf' ≤ ir-stack-requirement f
+              step1 = cwf-bnd
+              step2 : ir-stack-requirement f ≤ ir-stack-requirement f ⊔ ir-stack-requirement g
+              step2 = m≤m⊔n (ir-stack-requirement f) (ir-stack-requirement g)
+              step3 : ir-stack-requirement f ⊔ ir-stack-requirement g ≤ ir-stack-requirement [ f , g ]
+              step3 = m≤n+m (ir-stack-requirement f ⊔ ir-stack-requirement g) 1
+          in subst (λ cap → cap ≤ ir-stack-requirement [ f , g ]) (sym cap-eq)
+               (≤-trans (≤-trans step1 step2) step3)
 
     -- Output encoding: eval [ f , g ] (inj₁ a) = eval f a definitionally
     -- cleanup-output-valid gives ValidAt (eval f a) rax (memory s₃)
@@ -2611,7 +2703,34 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
     -- Frame preserved: same structural issue as pair
     postulate
       case-frame-preserved : X86-FramePreserved s s₃
-      case-right-cwf-bound : cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
+
+    -- Bound proof: cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
+    -- Pattern match on the input to transport-cwf:
+    -- - no-apply-wf: cwf-cap-bound = 0 ≤ anything (z≤n)
+    -- - apply-wf: chain wf-cap-upper-bound ≤ ir-req g ≤ ir-req [f,g]
+    case-right-cwf-bound : cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
+    case-right-cwf-bound = cwf-bound-helper (IRCorrectness.exec-closure-wf g-corr) (IRCorrectness.exec-cwf-bound-in-req g-corr)
+      where
+        open import Data.Nat.Properties using (m≤n⊔m; m≤n+m)
+
+        cwf-bound-helper : (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-g s₂ (closureOf C (eval g b))) →
+                           cwf-cap-bound cwf ≤ ir-stack-requirement g →
+                           cwf-cap-bound (transport-cwf cwf (IRCorrectness.exec-cwf-bound-in-req g-corr)) ≤ ir-stack-requirement [ f , g ]
+        cwf-bound-helper no-apply-wf _ = z≤n
+        cwf-bound-helper (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
+          let -- cap-upper-bound preserved by subst
+              wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
+              cap-eq : ClosureWellFormed.cap-upper-bound wf' ≡ ClosureWellFormed.cap-upper-bound wf-subst
+              cap-eq = cap-upper-bound-subst prog-eq wf'
+              -- Chain: wf-cap-upper-bound wf' ≤ ir-req g ≤ ir-req f ⊔ ir-req g ≤ ir-req [f,g]
+              step1 : ClosureWellFormed.cap-upper-bound wf' ≤ ir-stack-requirement g
+              step1 = cwf-bnd
+              step2 : ir-stack-requirement g ≤ ir-stack-requirement f ⊔ ir-stack-requirement g
+              step2 = m≤n⊔m (ir-stack-requirement f) (ir-stack-requirement g)
+              step3 : ir-stack-requirement f ⊔ ir-stack-requirement g ≤ ir-stack-requirement [ f , g ]
+              step3 = m≤n+m (ir-stack-requirement f ⊔ ir-stack-requirement g) 1
+          in subst (λ cap → cap ≤ ir-stack-requirement [ f , g ]) (sym cap-eq)
+               (≤-trans (≤-trans step1 step2) step3)
 
     -- Output encoding: eval [ f , g ] (inj₂ b) = eval g b definitionally
     -- cleanup-output-valid gives ValidAt (eval g b) rax (memory s₃)
