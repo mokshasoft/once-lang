@@ -103,10 +103,13 @@ data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
                 -- This allows apply to connect cl (from has-closure) with proj₁ x (from input)
                 -- NOTE: Explicit {A ⇒ B} to help Agda's type inference
                 (closure-valid : ValidAt {A ⇒ B} cl closure-addr (memory s))
-                -- The address in closure-valid should match addr-a when threading through pair
-                -- At curry: closure-addr = rax, and ir-result-valid is at rax
-                -- At pair: f's result address becomes addr-a in valid-pair
-                -- So closure-addr = addr-a, provable via this tracking
+                -- result-addr: The address where curry stored its result (= rax at curry's output)
+                -- This is a FIXED value that doesn't change during transport.
+                -- At curry: result-addr = rax s'
+                -- At pair: pair uses rax s1 as addr-a, which equals result-addr (since f=curry)
+                -- At apply: cl-addr = addr-a = result-addr = closure-addr
+                (result-addr : Word)
+                (closure-addr-eq-result : closure-addr ≡ result-addr)
                 →
                 ClosureWFOutput prog s
 
@@ -121,7 +124,7 @@ transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
 transport-cwf _ _ _ no-closure = no-closure
 transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
-  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region creator-rsp cl-below-rsp cwf-cap cl-valid) =
+  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region creator-rsp cl-below-rsp cwf-cap cl-valid res-addr ca-eq-res) =
   has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq
     (valid-subst-addr-mem env-valid refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closure-at mem-eq)
@@ -131,6 +134,8 @@ transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
     cl-below-rsp  -- Preserved as-is: describes original allocation
     (capacity-preserved-rsp-unchanged s1 s2 _ cwf-cap rsp-eq)
     cl-valid-transported
+    res-addr       -- Preserved as-is: fixed value from curry
+    ca-eq-res      -- Preserved as-is: closure-addr hasn't changed
   where
     -- Transport closure-valid: ValidAt cl ca (memory s1) → ValidAt cl ca (memory s2)
     cl-valid-transported : ValidAt {A ⇒ B} cl ca (memory s2)

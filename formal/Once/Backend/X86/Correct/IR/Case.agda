@@ -464,7 +464,7 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-f
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res =
       subst-cwf-prog prog-eq-f
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-addr-mem ev refl mem-final-eq)
@@ -474,7 +474,9 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
           creator-rsp      -- Pass through: describes original allocation
           cl-below-rsp     -- Pass through: closure is still below creator's entry-rsp
           cwf-cap-final
-          (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl mem-final-eq))
+          (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl mem-final-eq)
+          res-addr         -- Pass through: fixed value from curry
+          ca-eq-res)       -- Pass through: closure-addr hasn't changed
       where
         -- Full memory preservation: memory s-final ≡ memory s1
         -- Case cleanup restores memory, so no postulate needed here
@@ -903,7 +905,7 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-g
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res =
       subst-cwf-prog prog-eq-g
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-addr-mem ev refl mem-final-eq)
@@ -913,7 +915,9 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
           creator-rsp      -- Pass through: describes original allocation
           cl-below-rsp     -- Pass through: closure is still below creator's entry-rsp
           cwf-cap-final
-          (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl mem-final-eq))
+          (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl mem-final-eq)
+          res-addr         -- Pass through: fixed value from curry
+          ca-eq-res)       -- Pass through: closure-addr hasn't changed
       where
         -- Full memory preservation: memory s-final ≡ memory s1
         -- Case cleanup restores memory, so no postulate needed here

@@ -412,7 +412,7 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
     closure-wf-from-f : ClosureWFOutput prog s3
     closure-wf-from-f with IRStarResultV.ir-closure-wf r1
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res =
       subst-cwf-prog (sym prog-eq-f)
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-addr-mem ev refl closure-mem-s3-to-s1)
@@ -422,7 +422,9 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
           creator-rsp      -- Pass through unchanged: describes original allocation
           cl-below-rsp     -- Pass through unchanged: still valid
           cwf-cap-from-f
-          (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl closure-mem-s3-to-s1))
+          (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl closure-mem-s3-to-s1)
+          res-addr         -- Pass through unchanged: fixed value from curry
+          ca-eq-res)       -- Pass through unchanged: closure-addr hasn't changed
       where
         -- Full memory preservation for closure data (env and closure structure)
         -- This follows from:

@@ -262,6 +262,8 @@ mutual
                           curry-closure-below-entry-rsp
                           (exec-capacity exec-res)
                           curry-cl-valid
+                          (readReg (regs s') rax)  -- result-addr: curry's rax at output
+                          (sym curry-rax-eq)       -- closure-addr-eq-result: cl-addr ≡ rax
       }
     where
       prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -668,7 +670,7 @@ mutual
       pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
 
       construct-apply : ClosureWFOutput prog s → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ _ cwf-cap cwf-cl-valid)
+      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ _ cwf-cap cwf-cl-valid res-addr ca-eq-res)
         with A' ≟T A | B' ≟T B
       ... | yes refl | yes refl =
         run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar
@@ -676,14 +678,24 @@ mutual
           -- CLEAN: Postulate structural threading equalities.
           -- These say that the closure from ClosureWFOutput (produced by curry)
           -- is the same as proj₁ x (the input closure at apply time).
-          -- This is provable by threading through compose/pair (future work).
           --
           -- Key insight: We separate semantics and env-addr equalities.
           -- Apply.agda uses these directly without needing valid-addr-is-encode!
+          --
+          -- PROGRESS: cl-addr-eq is now PROVEN using ca-eq-res and cl-addr-is-res-addr.
+          -- The remaining postulate (cl-addr-is-res-addr) says:
+          --   The first component of the pair (cl-addr from valid-pair-decompose)
+          --   equals the curry's result address (res-addr from has-closure).
+          -- This is provable once pair tracks that it stores rax s1 as addr-a,
+          -- and res-addr = rax s1 (since f=curry set res-addr = its output rax).
           postulate
             sem-eq : sem ≡ Closure.semantics (proj₁ x)
             env-addr-eq : ea ≡ Closure.env-addr (proj₁ x)
-            cl-addr-eq : cl-addr ≡ ca
+            cl-addr-is-res-addr : cl-addr ≡ res-addr
+
+          -- PROVEN: cl-addr-eq using tracked result-addr
+          cl-addr-eq : cl-addr ≡ ca
+          cl-addr-eq = trans cl-addr-is-res-addr (sym ca-eq-res)
 
           closure-at : ClosureAtS ea cp cl-addr m
           closure-at = subst (λ a → ClosureAtS ea cp a m)
