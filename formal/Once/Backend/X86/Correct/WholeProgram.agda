@@ -210,9 +210,13 @@ from-curry-with-wf {A} {B} {C} f prog s s' x offset exec-res mem-res wf = record
     sem-closure : Closure B C
     sem-closure = eval (curry f) x
 
+    -- Extract region from CurryMemoryResult (closure allocated on Stack by `sub rsp`)
+    curry-closure-region = CurryMemoryResult.closure-region mem-res
+    curry-closure-in-region = CurryMemoryResult.closure-in-region mem-res
+
     -- Closure validity via valid-closure-env constructor
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
+    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at curry-closure-region curry-closure-in-region
 
     -- Transport to rax
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
@@ -314,7 +318,7 @@ run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq
     apply-with-wf-check no-closure = apply-fallback
     -- Has closure but types don't match apply's types: use fallback
     -- (The closure might be for a different apply in the program)
-    apply-with-wf-check (has-closure _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) = apply-fallback
+    apply-with-wf-check (has-closure _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) = apply-fallback
     -- TODO: When closure types match A, B, use run-apply-with-full-wf
     -- This requires:
     --   1. Type matching logic for closure's A', B' against apply's A, B

@@ -66,7 +66,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-capacity)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s; valid-at-preserved-under-write;
-         valid-subst-addr-mem)
+         valid-subst-addr-mem; Region; InRegion; Stack)
 
 -- Import IRSize for size proofs
 open import Once.Backend.Common.IRSize
@@ -106,6 +106,9 @@ record CurryMemoryResult {A B C : Type} (f : IR (A * B) C)
     -- Env validity
     v-env : ValidAt x env-addr (memory s-final)
     code-ptr-is-thunk : code-ptr ≡ offset +ℕ 6
+    -- Region: depends on AllocMode (Stack or Heap)
+    closure-region : Region
+    closure-in-region : InRegion closure-region closure-addr
 
 open CurryMemoryResult public
 
@@ -183,6 +186,8 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     ; mem-cp = mem-code-ptr-final
     ; v-env = v-env-final
     ; code-ptr-is-thunk = refl
+    ; closure-region = Stack
+    ; closure-in-region = proj₁ write-addrs-in-stack
     }
   where
     len-f = compile-length f
@@ -1029,8 +1034,11 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     -- Closure validity via valid-closure-env constructor
     -- Closure.env-addr (eval (curry f) x) = encode x (by definition of eval for curry)
     -- So the first arg to valid-closure-env is refl
+    curry-closure-region = CurryMemoryResult.closure-region curry-mem
+    curry-closure-in-region = CurryMemoryResult.closure-in-region curry-mem
+
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s-final)
-    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
+    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at curry-closure-region curry-closure-in-region
 
     -- Transport to rax
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s-final) rax) (memory s-final)

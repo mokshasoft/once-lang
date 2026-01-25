@@ -39,7 +39,7 @@ open import Once.Backend.X86.Correct.StarBase
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-inr; InrAtS; inr-at-s; valid-at-preserved-under-writes;
-         valid-disjoint-from-stack)
+         valid-disjoint-from-stack; Region; Stack)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc; m<m+n)
@@ -299,9 +299,11 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     input-valid-preserved = valid-at-preserved-under-writes input-valid (proj₁ write-addrs-in-stack) (proj₂ write-addrs-in-stack)
 
     -- Final result validity: ValidAt (inj₂ x) rax (memory s4)
+    -- Stack because current codegen uses `sub rsp` for inr allocation
+    -- TODO (escape-analysis): Get region from IR's AllocMode when escape analysis is implemented
     result-valid : ValidAt {A + B} (inj₂ x) (readReg (regs s4) rax) (memory s4)
     result-valid = subst (λ addr → ValidAt {A + B} (inj₂ x) addr (memory s4)) (sym rax-s4)
-                         (valid-inr {A} {B} input-valid-preserved inr-at)
+                         (valid-inr {A} {B} input-valid-preserved inr-at Stack (proj₁ write-addrs-in-stack))
 
     -- ============================================================
     -- Register and memory preservation (same as run-inr-star)

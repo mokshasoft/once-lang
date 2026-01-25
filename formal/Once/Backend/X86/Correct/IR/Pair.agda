@@ -61,7 +61,8 @@ open import Once.Backend.Common.IRSize
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write;
-         valid-subst-heap-preserved; ClosureAtS-preserved-under-heap-eq)
+         valid-subst-heap-preserved; ClosureAtS-preserved-under-heap-eq; region-to-heap;
+         Region; Stack; InRegion)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Layout using (InHeap; InCode)
 
@@ -174,12 +175,13 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-f
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat ih cwfc =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cwfc =
       subst-cwf-prog (sym prog-eq-f)
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-heap-preserved ev refl heap-final-to-s1)
-          (ClosureAtS-preserved-under-heap-eq cat ih heap-final-to-s1)
-          ih
+          (ClosureAtS-preserved-under-heap-eq cat (region-to-heap cr cir) heap-final-to-s1)
+          cr
+          cir
           cwf-cap-final)
       where
         heap-final-to-s1 : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
@@ -246,8 +248,29 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     pair-at : PairAtS (readReg (regs s1) rax) (readReg (regs s3) rax) (readReg (regs s3) r15) (memory s-final)
     pair-at = pair-at-s mem-fst-s-final' mem-snd-s-final'
 
+    -- Stack region proof: pair is allocated on stack via `sub rsp, frame-size`
+    -- Chain: r15(s3) = r15(s1) = r15(s-setup) = rsp(s) - frame-size
+    cap-pair-setup : StackCapacity s pair-setup-consumed-slots
+    cap-pair-setup = subst (λ ss → StackCapacity s pair-setup-consumed-slots)
+                           s-setup-eq (PairSetupResultV.cap-pair-setup setup-res)
+
+    r15-s1-eq-s-setup : readReg (regs s1) r15 ≡ readReg (regs s-setup) r15
+    r15-s1-eq-s-setup = IRStarResultV.ir-r15 r-f
+
+    r15-setup : readReg (regs s-setup) r15 ≡ readReg (regs s) rsp ∸ frame-size
+    r15-setup = subst (λ ss → readReg (regs ss) r15 ≡ readReg (regs s) rsp ∸ frame-size)
+                      (sym s-setup-eq) (PairSetupResultV.r15-setup setup-res)
+
+    r15-s3-eq-rsp-frame : readReg (regs s3) r15 ≡ readReg (regs s) rsp ∸ frame-size
+    r15-s3-eq-rsp-frame = trans r15-chain (trans r15-s1-eq-s-setup r15-setup)
+
+    -- InStack proof for pair address (producer allocates on Stack via `sub rsp`)
+    pair-addr-in-stack : InStack (readReg (regs s3) r15)
+    pair-addr-in-stack = subst InStack (sym r15-s3-eq-rsp-frame)
+                               (pair-r15-in-stack s cap-pair-setup)
+
     result-valid-at-r15 : ValidAt {A * B} (eval f x , eval g x) (readReg (regs s3) r15) (memory s-final)
-    result-valid-at-r15 = valid-pair f-valid-final g-valid-final pair-at
+    result-valid-at-r15 = valid-pair f-valid-final g-valid-final pair-at Stack pair-addr-in-stack
 
     result-valid : ValidAt (eval ⟨ f , g ⟩ x) (readReg (regs s-final) rax) (memory s-final)
     result-valid = subst (λ addr → ValidAt {A * B} (eval f x , eval g x) addr (memory s-final))

@@ -34,7 +34,8 @@ open import Once.Backend.X86.Correct.MemoryValid
          InlAtS; InrAtS; ClosureAtS;
          valid-arrow-to-eff;
          valid-subst-heap-preserved;
-         ClosureAtS-preserved-under-heap-eq)
+         ClosureAtS-preserved-under-heap-eq;
+         Region; InRegion; region-to-heap)
 
 open import Data.Nat using (_>_)
 open import Data.List.Properties using (++-assoc)
@@ -75,12 +76,17 @@ data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
                 (cl-sem-eq : Closure.semantics cl ≡ semantics)
                 (env-valid : ValidAt env env-addr (memory s))
                 (closure-at : ClosureAtS env-addr code-ptr closure-addr (memory s))
-                (closure-in-heap : InHeap closure-addr)
+                -- Region tracking (Option B): closure can be Stack or Heap
+                -- Stack = current codegen (sub rsp), Heap = future heap allocation
+                (closure-region : Region)
+                (closure-in-region : InRegion closure-region closure-addr)
                 (cwf-cap : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)) →
                 ClosureWFOutput prog s
 
 -- | Transport ClosureWFOutput across program equality and state change.
 -- Requires heap memory preservation (for ClosureAtS) and rsp preservation (for StackCapacity).
+-- NOTE: Uses region-to-heap to convert Stack → InHeap via stack-heap-compat postulate.
+-- TODO (D-REGION): Make transport-cwf region-aware once we have proper region preservation.
 transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   prog1 ≡ prog2 →
   (∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr) →
@@ -88,11 +94,12 @@ transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
 transport-cwf _ _ _ no-closure = no-closure
 transport-cwf {s1 = s1} {s2 = s2} refl heap-eq rsp-eq
-  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-in-heap cwf-cap) =
+  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region cwf-cap) =
   has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq
     (valid-subst-heap-preserved env-valid refl heap-eq)
-    (ClosureAtS-preserved-under-heap-eq closure-at cl-in-heap heap-eq)
-    cl-in-heap
+    (ClosureAtS-preserved-under-heap-eq closure-at (region-to-heap cl-region cl-in-region) heap-eq)
+    cl-region
+    cl-in-region
     (capacity-preserved-rsp-unchanged s1 s2 _ cwf-cap rsp-eq)
 
 -- | Transport ClosureWFOutput across program equality only (same state).
@@ -306,8 +313,11 @@ record ApplyReady {A B : Type} (x : ⟦ (A ⇒ B) * A ⟧) (s : State) (prog : P
     ar-env-valid : ValidAt ar-env ar-env-addr (memory s)
     -- Memory layout: pair structure at rdi
     ar-pair-at : PairAtS ar-closure-addr ar-arg-addr (readReg (regs s) rdi) (memory s)
+    -- Closure validity (from valid-pair-decompose in MutualIR)
+    -- Option B: Region is inside this ValidAt, no reconstruction needed
+    ar-v-cl : ValidAt {A ⇒ B} (proj₁ x) ar-closure-addr (memory s)
     -- Argument validity
-    ar-v-arg : ValidAt (proj₂ x) ar-arg-addr (memory s)
+    ar-v-arg : ValidAt {A} (proj₂ x) ar-arg-addr (memory s)
     -- Stack capacity for apply + thunk
     ar-capacity : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity ar-wf)
 

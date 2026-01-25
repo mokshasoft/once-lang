@@ -256,7 +256,8 @@ mutual
                           refl refl
                           curry-v-env
                           closure-at-for-thunk
-                          (valid-in-heap closure-valid-at-addr)
+                          curry-closure-region
+                          curry-closure-in-region
                           (exec-capacity exec-res)
       }
     where
@@ -310,11 +311,15 @@ mutual
       sem-closure : Closure B C
       sem-closure = eval (curry f) x
 
+      -- Extract region from CurryMemoryResult (closure allocated on Stack by `sub rsp`)
+      curry-closure-region = CurryMemoryResult.closure-region curry-mem-result
+      curry-closure-in-region = CurryMemoryResult.closure-in-region curry-mem-result
+
       -- Closure validity via valid-closure-env constructor
       -- Closure.env-addr sem-closure = encode x (by definition of eval curry)
       -- So the first argument to valid-closure-env is refl
       closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
+      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at curry-closure-region curry-closure-in-region
 
       -- Transport to rax
       result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
@@ -451,8 +456,12 @@ mutual
       sem-closure : Closure B C
       sem-closure = eval (curry f) x
 
+      -- Extract region from CurryMemoryResult (closure allocated on Stack by `sub rsp`)
+      curry-closure-region = CurryMemoryResult.closure-region curry-mem-res
+      curry-closure-in-region = CurryMemoryResult.closure-in-region curry-mem-res
+
       closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
+      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at curry-closure-region curry-closure-in-region
 
       result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
       result-valid = subst (λ addr → ValidAt {B ⇒ C} sem-closure addr (memory s'))
@@ -633,7 +642,7 @@ mutual
       pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
 
       construct-apply : ClosureWFOutput prog s → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-in-heap cwf-cap)
+      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region cwf-cap)
         with A' ≟T A | B' ≟T B
       ... | yes refl | yes refl =
         run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar
@@ -669,6 +678,7 @@ mutual
             ; ar-closure-at = closure-at
             ; ar-env-valid = cwf-env-valid
             ; ar-pair-at = pair-at
+            ; ar-v-cl = v-cl  -- From valid-pair-decompose, has region inside!
             ; ar-v-arg = v-arg
             ; ar-capacity = cwf-cap
             }

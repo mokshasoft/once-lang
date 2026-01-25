@@ -858,7 +858,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
 ------------------------------------------------------------------------
 
 -- Takes StackCapacity s (apply-consumed-slots + wf.thunk-capacity) for capacity threading
--- ENCODE-FREE: Uses env-addr parameter directly, no valid-addr-is-encode needed!
+-- Option B: Receives input-valid directly (with regions inside), no reconstruction needed!
 run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (code-ptr : ℕ) (env : ⟦ E ⟧)
                            (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -875,30 +875,18 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
   StackInvariant s →
   StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) →
   RbpInvariant s →
-  -- Validity-based memory layout (encode-free premises):
+  -- Validity-based input (Option B: regions inside, no construction needed)
+  (input-valid : ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s)) →
   (v-arg : ValidAt arg arg-addr (memory s)) →
   (v-env : ValidAt env env-addr (memory s)) →
   (pair-at : PairAtS closure-addr arg-addr (readReg (regs s) rdi) (memory s)) →
   (closure-at : ClosureAtS env-addr code-ptr closure-addr (memory s)) →
   ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
 run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closure-addr arg-addr env-addr arg s
-                         wf h-eq pc-eq stack-inv cap rbp-inv v-arg v-env pair-at closure-at =
+                         wf h-eq pc-eq stack-inv cap rbp-inv input-valid v-arg v-env pair-at closure-at =
   let
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
-
-    -- ENCODE-FREE: Use env-addr directly (no valid-addr-is-encode!)
-    -- The closure uses env-addr, not encode env
-    cl = record { env-addr = env-addr ; semantics = semantics }
-    v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)
-    v-cl = valid-closure closure-at
-
-    x : ⟦ (A ⇒ B) * A ⟧
-    x = (cl , arg)
-
-    -- Construct input validity from component validities
-    input-valid : ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s)
-    input-valid = valid-pair v-cl v-arg pair-at
 
     -- Construct mem-layout from validity predicates
     mem-cl : readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr
@@ -920,7 +908,7 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
         readMem (memory s) (cl-addr +ℕ' slot-size) ≡ just code-ptr)
     mem-layout = closure-addr , mem-cl , mem-arg , mem-env , mem-code-ptr
 
-    -- Call existing implementation (now takes env-addr directly)
+    -- Call existing implementation with input-valid directly (no reconstruction!)
     result = run-apply-to-ir-result prefix suffix code-ptr env semantics arg arg-addr env-addr s
                wf h-eq pc-eq input-valid stack-inv cap rbp-inv mem-layout v-arg v-env
 
@@ -961,15 +949,6 @@ run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq input-valid stack-
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
 
-    -- Call the core implementation (now ENCODE-FREE)
-    core-result = run-apply-to-ir-result-v {ar-E} prefix suffix ar-code-ptr ar-env ar-sem
-                    ar-closure-addr ar-arg-addr ar-env-addr (proj₂ x) s
-                    ar-wf h-false pc-eq stack-inv ar-capacity rbp-inv
-                    ar-v-arg ar-env-valid ar-pair-at ar-closure-at
-
-    s' = proj₁ core-result
-    ir-result = proj₂ core-result
-
     -- ENCODE-FREE: Use ar-sem-eq and ar-env-addr-eq directly!
     -- Internal closure uses ar-env-addr (not encode), matching proj₁ x
     cl-internal : Closure A B
@@ -1002,6 +981,18 @@ run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq input-valid stack-
 
     x-eq : (cl-internal , proj₂ x) ≡ x
     x-eq = cong₂ _,_ cl-internal-is-proj refl
+
+    -- Call the core implementation (Option B: pass input-valid directly)
+    -- input-valid has x=(proj₁ x, proj₂ x), but we need x=(cl-internal, proj₂ x)
+    -- Use cl-internal-is-proj to reconcile
+    core-result = run-apply-to-ir-result-v {ar-E} prefix suffix ar-code-ptr ar-env ar-sem
+                    ar-closure-addr ar-arg-addr ar-env-addr (proj₂ x) s
+                    ar-wf h-false pc-eq stack-inv ar-capacity rbp-inv
+                    (subst (λ cl → ValidAt (cl , proj₂ x) (readReg (regs s) rdi) (memory s)) (sym cl-internal-is-proj) input-valid)
+                    ar-v-arg ar-env-valid ar-pair-at ar-closure-at
+
+    s' = proj₁ core-result
+    ir-result = proj₂ core-result
 
 ------------------------------------------------------------------------
 -- run-apply-star-v: Wrapper for dispatcher (takes ApplyReady)

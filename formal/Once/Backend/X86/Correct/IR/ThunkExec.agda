@@ -48,7 +48,7 @@ open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 
 -- Import validity types for validity-based interface
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; PairAtS; pair-at-s; valid-pair; valid-subst-heap-preserved)
+  using (ValidAt; PairAtS; pair-at-s; valid-pair; valid-subst-heap-preserved; Region; Stack)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code; slot-size; slots; slots-mono-≤;
@@ -1083,11 +1083,11 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     pair-layout : PairAtS orig-r12 orig-rdi new-rsp (memory s8)
     pair-layout = pair-at-s mem-env-raw mem-arg-raw
 
-    -- Step 4: Combine using valid-pair
+    -- Step 4: Combine using valid-pair (stack-allocated temporary)
     v-pair : ValidAt (env , arg) (readReg (regs s8) rdi) (memory s8)
     v-pair = subst (λ addr → ValidAt (env , arg) addr (memory s8))
                    (sym rdi-s8-is-new-rsp)
-                   (valid-pair v-env-at-s8 v-arg-at-s8 pair-layout)
+                   (valid-pair v-env-at-s8 v-arg-at-s8 pair-layout Stack addr-rsp-32-in-stack)
 
     -- D041: Memory above original rsp preserved (for caller frame)
     -- Setup writes to: rsp-8 (push r15), rsp-16 (push rbp), rsp-32 (mov [rsp]), rsp-24 (mov [rsp+8])
