@@ -1518,7 +1518,11 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
     -- so composition requires showing addr > rbp_s implies addr > rbp_s₁ etc.
     postulate
       pair-frame-preserved : X86-FramePreserved s s₅
-      pair-output-is-encode : readReg (regs s₅) rax ≡ encode (eval ⟨ f , g ⟩ x)
+
+    -- Output encoding: eval ⟨ f , g ⟩ x = (eval f x, eval g x) definitionally
+    -- cleanup-output-valid gives ValidAt (eval f x, eval g x) rax (memory s₅)
+    pair-output-is-encode : readReg (regs s₅) rax ≡ encode (eval ⟨ f , g ⟩ x)
+    pair-output-is-encode = valid-addr-is-encode (PairSpecs.CleanupPost.cleanup-output-valid cleanup)
 
 ------------------------------------------------------------------------
 -- Curry Glue Lemmas
