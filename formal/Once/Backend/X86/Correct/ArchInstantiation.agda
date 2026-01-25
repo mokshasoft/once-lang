@@ -1720,12 +1720,13 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
                                      closure-at)
 
     -- Closure address uniqueness: the closure is only valid at curry-closure-addr
-    -- This is true because curry allocates fresh memory and doesn't copy closures
+    -- Proof: closureOf (B ⇒ C) v = v for arrow types, so valid-addr-is-encode gives cl-addr ≡ encode result
+    -- Then curry-output-is-encode gives rax ≡ encode result, and curry-rax-eq gives rax ≡ curry-closure-addr
     curry-closure-addr-unique : (cl-addr : ℕ) →
       ValidAt (closureOf (B ⇒ C) (eval (curry f) x)) cl-addr (memory s₁) →
       cl-addr ≡ curry-closure-addr
-    curry-closure-addr-unique cl-addr v = postulated-curry-addr-unique
-      where postulate postulated-curry-addr-unique : cl-addr ≡ curry-closure-addr
+    curry-closure-addr-unique cl-addr v =
+      trans (valid-addr-is-encode v) (trans (sym curry-output-is-encode) curry-rax-eq)
 
     curry-apply-wf : ApplyWFInput B C prog s₁ (closureOf (B ⇒ C) (eval (curry f) x))
     curry-apply-wf = apply-wf {E = A}
