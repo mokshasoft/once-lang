@@ -168,7 +168,8 @@ runBuild opts = do
               let aliases = MP.d_extractAliases_18 agdaModule
                   primitives = extractAgdaPrimitives agdaModule
                   funInfos = MP.d_extractFunctions_58 aliases agdaModule
-                  allFunInfos = MP.d_inlineAll_120 100 funInfos
+                  -- Don't inline: functions are now in context and will be called
+                  allFunInfos = funInfos
 
               -- Generate C based on mode
               case mode of
@@ -384,7 +385,8 @@ runCheck opts = do
           -- Type check by running elaboration (Agda is the type checker)
           let aliases = MP.d_extractAliases_18 agdaModule
               funInfos = MP.d_extractFunctions_58 aliases agdaModule
-              allFunInfos = MP.d_inlineAll_120 100 funInfos
+              -- Don't inline: functions are now in context and will be called
+              allFunInfos = funInfos
           elaborateResult <- elaborateAllAgda modEnv allFunInfos
           case elaborateResult of
             Left err -> do
@@ -428,21 +430,26 @@ fromAgdaAlloc (Just MPM.C_Const_16) = Just AllocConst
 -- Returns MAlonzo types and IR directly (no Haskell IR conversion).
 elaborateAllAgda :: ModuleEnv -> [MP.T_FunInfo_38]
                  -> IO (Either String [(Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10)])
-elaborateAllAgda modEnv fns = go fns
+elaborateAllAgda modEnv fns = go [] fns
   where
-    go [] = pure (Right [])
-    go (fi:rest) = do
+    -- Base imports from loaded modules
+    baseImportsHs = buildImportsForTypeChecker modEnv
+
+    -- Accumulate defined function signatures as we process each function
+    go _defined [] = pure (Right [])
+    go defined (fi:rest) = do
       let name = MP.d_funName_48 fi
           rawExpr = MP.d_funBody_54 fi  -- Already T_RawExpr_34, no conversion!
           funMType = MP.d_funType_50 fi
           ty = fromMAlonzoType funMType
           alloc = fromAgdaAlloc (MP.d_funAlloc_52 fi)
       TIO.hPutStrLn System.IO.stderr $ "Type checking: " <> name
-      verifiedResult <- try (pure $! elaborateOne name funMType rawExpr) :: IO (Either SomeException (Either String (MT.T_Type_32, MIR.T_IR_10)))
+      verifiedResult <- try (pure $! elaborateOne defined name funMType rawExpr) :: IO (Either SomeException (Either String (MT.T_Type_32, MIR.T_IR_10)))
       case verifiedResult of
         Right (Right (inferredType, optimizedIR)) -> do
           TIO.hPutStrLn System.IO.stderr $ "  OK: " <> name
-          restResult <- go rest
+          -- Add this function to the defined list for subsequent functions
+          restResult <- go ((name, funMType) : defined) rest
           pure $ case restResult of
             Left err -> Left err
             Right irs -> Right ((name, ty, alloc, inferredType, optimizedIR) : irs)
@@ -453,13 +460,16 @@ elaborateAllAgda modEnv fns = go fns
           TIO.hPutStrLn System.IO.stderr $ "  FAIL: " <> name <> ": " <> T.pack err
           pure (Left $ T.unpack name ++ ": " ++ err)
 
-    -- Run Agda type inference + elaboration + optimization for a single expression.
-    -- The elaborator uses a context with imported primitives for qualified name resolution.
-    -- The function's own name and type are added to the context to support recursion.
-    -- Returns the inferred MAlonzo type and optimized MAlonzo IR.
-    elaborateOne funName funType rawExpr =
-      let importsHs = buildImportsForTypeChecker modEnv
-          importsAgda = map (\(n, t) -> Sigma.C__'44'__32 (unsafeCoerce n) (unsafeCoerce t)) importsHs
+    -- Run Agda type checking + elaboration + optimization for a single expression.
+    -- The context includes:
+    -- 1. Imported primitives (from qualified imports)
+    -- 2. Previously defined functions in this module
+    -- 3. The function's own name (for recursion)
+    -- Returns the MAlonzo type and optimized MAlonzo IR.
+    elaborateOne defined funName funType rawExpr =
+      -- Combine base imports with previously defined functions
+      let allImportsHs = baseImportsHs ++ defined
+          importsAgda = map (\(n, t) -> Sigma.C__'44'__32 (unsafeCoerce n) (unsafeCoerce t)) allImportsHs
           -- Add self-reference for recursion: function can call itself
           ctx = VTE.d_ctxWithImportsAndSelf_364 importsAgda (unsafeCoerce funName) (unsafeCoerce funType)
       -- Use checkElab (not inferElab) so lambda parameters get correct types from signature
