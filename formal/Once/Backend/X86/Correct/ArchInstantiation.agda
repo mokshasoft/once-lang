@@ -2253,6 +2253,29 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
         step1 : slot-size ≤ suc (f-req ⊔ g-req) *ℕ slot-size
         step1 = m≤m+n slot-size ((f-req ⊔ g-req) *ℕ slot-size)
 
+    -- rbp(s-setup) < rbp(s): new frame pointer is below original
+    -- Proof: rbp(s-setup) = rsp(s) - 8 < rsp(s) ≤ rbp(s)
+    open import Data.Nat.Properties using (<-≤-trans)
+    rbp-setup-below-orig : readReg (regs s-setup) rbp < readReg (regs s) rbp
+    rbp-setup-below-orig = subst (_< readReg (regs s) rbp) (sym (CaseInlSetupResult.rbp-setup setup-res)) rsp∸8<rbp
+      where
+        -- rsp(s) > 0 from orig-rsp-bound (8 ≤ rsp implies rsp > 0)
+        rsp>0 : readReg (regs s) rsp > 0
+        rsp>0 = ≤-<-trans z≤n (≤-<-trans orig-rsp-bound (s≤s z≤n))
+        -- rsp - 8 < rsp (since rsp > 0 and 8 > 0)
+        rsp∸8<rsp : readReg (regs s) rsp ∸ slot-size < readReg (regs s) rsp
+        rsp∸8<rsp = m∸n<m-proof (readReg (regs s) rsp) slot-size rsp>0 (s≤s z≤n)
+          where
+            open import Data.Nat.Properties using (m∸n≤m)
+            m∸n<m-proof : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+            m∸n<m-proof (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+        -- rsp ≤ rbp from RbpInvariant
+        rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
+        rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
+        -- Chain: rsp - 8 < rsp ≤ rbp
+        rsp∸8<rbp : readReg (regs s) rsp ∸ slot-size < readReg (regs s) rbp
+        rsp∸8<rbp = <-≤-trans rsp∸8<rsp rsp≤rbp
+
     -- Construct DispatchLeftPost with execution evidence
     dispatch-post : CaseSpecs.DispatchLeftPost f g prog offset-f s s-setup a
     dispatch-post = record
@@ -2267,6 +2290,7 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
       ; dispatch-heap-preserved = CaseInlSetupResult.mem-heap-setup setup-res
       ; dispatch-code-preserved = CaseInlSetupResult.mem-code-setup setup-res
       ; dispatch-frame-preserved = CaseInlSetupResult.mem-above-setup setup-res
+      ; dispatch-frame-ptr-below-orig = rbp-setup-below-orig
       ; dispatch-frame-setup =
           CaseInlSetupResult.rbp-setup setup-res ,
           CaseInlSetupResult.mem-saved-rbp setup-res ,
@@ -2527,10 +2551,33 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
       (trans (IRCorrectness.exec-code-preserved f-corr addr in-code)
              (CaseSpecs.DispatchLeftPost.dispatch-code-preserved dispatch addr in-code))
 
-    -- Frame preserved: requires showing addr > rbp(s) implies addr > rbp(s₁)
-    -- Same structural issue as pair-frame-preserved
-    postulate
-      case-frame-preserved : X86-FramePreserved s s₃
+    -- Frame preserved: chain through dispatch → f → cleanup
+    -- Key: rbp(s₁) < rbp(s) from dispatch-frame-ptr-below-orig
+    -- and rbp(s₂) = rbp(s₁) from f's saved-regs
+    case-frame-preserved : X86-FramePreserved s s₃
+    case-frame-preserved addr addr>rbp-s =
+      -- Chain: mem s₃ = mem s₂ = mem s₁ = mem s
+      trans (CaseSpecs.CleanupPost.cleanup-frame-preserved cleanup addr addr>rbp-s₂)
+      (trans (IRCorrectness.exec-frame-preserved f-corr addr addr>rbp-s₁)
+             (CaseSpecs.DispatchLeftPost.dispatch-frame-preserved dispatch addr addr>rbp-s))
+      where
+        open import Data.Nat.Properties using (<-trans)
+
+        -- rbp(s₁) < rbp(s): from dispatch
+        rbp-s₁<rbp-s : readReg (regs s₁) rbp < readReg (regs s) rbp
+        rbp-s₁<rbp-s = CaseSpecs.DispatchLeftPost.dispatch-frame-ptr-below-orig dispatch
+
+        -- addr > rbp(s) implies addr > rbp(s₁)
+        addr>rbp-s₁ : addr > readReg (regs s₁) rbp
+        addr>rbp-s₁ = <-trans rbp-s₁<rbp-s addr>rbp-s
+
+        -- rbp(s₂) = rbp(s₁): from f's saved-regs
+        rbp-s₂-eq : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
+        rbp-s₂-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs f-corr))
+
+        -- addr > rbp(s₂)
+        addr>rbp-s₂ : addr > readReg (regs s₂) rbp
+        addr>rbp-s₂ = subst (addr >_) (sym rbp-s₂-eq) addr>rbp-s₁
 
     -- Bound proof: cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
     -- Pattern match on the input to transport-cwf:
@@ -2675,6 +2722,29 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
         step1 : slot-size ≤ suc (f-req ⊔ g-req) *ℕ slot-size
         step1 = m≤m+n slot-size ((f-req ⊔ g-req) *ℕ slot-size)
 
+    -- rbp(s-setup) < rbp(s): new frame pointer is below original
+    -- Proof: rbp(s-setup) = rsp(s) - 8 < rsp(s) ≤ rbp(s)
+    open import Data.Nat.Properties using (<-≤-trans)
+    rbp-setup-below-orig : readReg (regs s-setup) rbp < readReg (regs s) rbp
+    rbp-setup-below-orig = subst (_< readReg (regs s) rbp) (sym (CaseInrSetupResult.rbp-setup setup-res)) rsp∸8<rbp
+      where
+        -- rsp(s) > 0 from orig-rsp-bound (8 ≤ rsp implies rsp > 0)
+        rsp>0 : readReg (regs s) rsp > 0
+        rsp>0 = ≤-<-trans z≤n (≤-<-trans orig-rsp-bound (s≤s z≤n))
+        -- rsp - 8 < rsp (since rsp > 0 and 8 > 0)
+        rsp∸8<rsp : readReg (regs s) rsp ∸ slot-size < readReg (regs s) rsp
+        rsp∸8<rsp = m∸n<m-proof (readReg (regs s) rsp) slot-size rsp>0 (s≤s z≤n)
+          where
+            open import Data.Nat.Properties using (m∸n≤m)
+            m∸n<m-proof : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+            m∸n<m-proof (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+        -- rsp ≤ rbp from RbpInvariant
+        rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
+        rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
+        -- Chain: rsp - 8 < rsp ≤ rbp
+        rsp∸8<rbp : readReg (regs s) rsp ∸ slot-size < readReg (regs s) rbp
+        rsp∸8<rbp = <-≤-trans rsp∸8<rsp rsp≤rbp
+
     -- Construct DispatchRightPost
     dispatch-post : CaseSpecs.DispatchRightPost f g prog offset-g s s-setup b
     dispatch-post = record
@@ -2689,6 +2759,7 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
       ; dispatch-heap-preserved = CaseInrSetupResult.mem-heap-setup setup-res
       ; dispatch-code-preserved = CaseInrSetupResult.mem-code-setup setup-res
       ; dispatch-frame-preserved = CaseInrSetupResult.mem-above-setup setup-res
+      ; dispatch-frame-ptr-below-orig = rbp-setup-below-orig
       ; dispatch-frame-setup =
           CaseInrSetupResult.rbp-setup setup-res ,
           CaseInrSetupResult.mem-saved-rbp setup-res ,
@@ -2972,9 +3043,33 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
       (trans (IRCorrectness.exec-code-preserved g-corr addr in-code)
              (CaseSpecs.DispatchRightPost.dispatch-code-preserved dispatch addr in-code))
 
-    -- Frame preserved: same structural issue as pair
-    postulate
-      case-frame-preserved : X86-FramePreserved s s₃
+    -- Frame preserved: chain through dispatch → g → cleanup
+    -- Key: rbp(s₁) < rbp(s) from dispatch-frame-ptr-below-orig
+    -- and rbp(s₂) = rbp(s₁) from g's saved-regs
+    case-frame-preserved : X86-FramePreserved s s₃
+    case-frame-preserved addr addr>rbp-s =
+      -- Chain: mem s₃ = mem s₂ = mem s₁ = mem s
+      trans (CaseSpecs.CleanupPost.cleanup-frame-preserved cleanup addr addr>rbp-s₂)
+      (trans (IRCorrectness.exec-frame-preserved g-corr addr addr>rbp-s₁)
+             (CaseSpecs.DispatchRightPost.dispatch-frame-preserved dispatch addr addr>rbp-s))
+      where
+        open import Data.Nat.Properties using (<-trans)
+
+        -- rbp(s₁) < rbp(s): from dispatch
+        rbp-s₁<rbp-s : readReg (regs s₁) rbp < readReg (regs s) rbp
+        rbp-s₁<rbp-s = CaseSpecs.DispatchRightPost.dispatch-frame-ptr-below-orig dispatch
+
+        -- addr > rbp(s) implies addr > rbp(s₁)
+        addr>rbp-s₁ : addr > readReg (regs s₁) rbp
+        addr>rbp-s₁ = <-trans rbp-s₁<rbp-s addr>rbp-s
+
+        -- rbp(s₂) = rbp(s₁): from g's saved-regs
+        rbp-s₂-eq : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
+        rbp-s₂-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs g-corr))
+
+        -- addr > rbp(s₂)
+        addr>rbp-s₂ : addr > readReg (regs s₂) rbp
+        addr>rbp-s₂ = subst (addr >_) (sym rbp-s₂-eq) addr>rbp-s₁
 
     -- Bound proof: cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
     -- Pattern match on the input to transport-cwf:

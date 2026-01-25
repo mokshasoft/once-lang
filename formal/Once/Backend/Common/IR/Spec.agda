@@ -527,6 +527,7 @@ module IRSpecs
         dispatch-heap-preserved : HeapPreserved s s₁
         dispatch-code-preserved : CodePreserved s s₁
         dispatch-frame-preserved : FramePreserved s s₁
+        dispatch-frame-ptr-below-orig : frame-ptr-addr s₁ < frame-ptr-addr s  -- new rbp < orig rbp (for frame preservation composition)
         -- Frame setup facts (for cleanup derivation)
         dispatch-frame-setup : FrameSetupInfo s s₁
 
@@ -544,6 +545,7 @@ module IRSpecs
         dispatch-heap-preserved : HeapPreserved s s₁
         dispatch-code-preserved : CodePreserved s s₁
         dispatch-frame-preserved : FramePreserved s s₁
+        dispatch-frame-ptr-below-orig : frame-ptr-addr s₁ < frame-ptr-addr s  -- new rbp < orig rbp (for frame preservation composition)
         -- Frame setup facts (for cleanup derivation)
         dispatch-frame-setup : FrameSetupInfo s s₁
 
