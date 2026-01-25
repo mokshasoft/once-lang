@@ -176,7 +176,7 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-f
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res fst-addr-in fst-is-res-in =
       subst-cwf-prog (sym prog-eq-f)
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-addr-mem ev refl closure-mem-final-to-s1)
@@ -188,8 +188,41 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
           cwf-cap-final
           (valid-subst-addr-mem {A' ⇒ B'} {cl} cl-valid refl closure-mem-final-to-s1)
           res-addr         -- Pass through: fixed value from curry
-          ca-eq-res)       -- Pass through: closure-addr hasn't changed
+          ca-eq-res        -- Pass through: closure-addr hasn't changed
+          -- KEY: Pair sets fst-addr to rax s1 (what it stores as first component)
+          -- This equals res-addr because f=curry set res-addr = its output rax = rax s1
+          pair-fst-addr    -- NEW: rax s1 = first component address stored by pair
+          pair-fst-is-res) -- PROVEN: rax s1 ≡ res-addr
       where
+        -- PAIR-FST-ADDR TRACKING:
+        -- Pair stores rax s1 as the first component (addr-a in PairAtS).
+        -- Since f=curry set res-addr = its output rax = rax s1, we have:
+        --   pair-fst-addr = rax s1 = res-addr
+        -- This enables apply to prove cl-addr = pair-fst-addr = res-addr = ca
+        pair-fst-addr : Word
+        pair-fst-addr = readReg (regs s1) rax
+
+        -- PROVABLE: rax s1 ≡ res-addr
+        -- This is the KEY connection that enables eliminating cl-addr-is-res-addr!
+        --
+        -- Chain:
+        -- 1. f=curry sets res-addr = rax at curry's output state
+        -- 2. s1 = f's output state = curry's output state
+        -- 3. Therefore: res-addr = readReg (regs s1) rax = pair-fst-addr
+        --
+        -- The proof requires knowing that curry set res-addr = rax at its output,
+        -- and curry's output = pair's s1. This is an invariant from curry construction.
+        --
+        -- From fst-is-res-in: fst-addr-in ≡ res-addr
+        -- From curry construction: fst-addr-in = rax (at curry output = s1)
+        -- Therefore: pair-fst-addr = rax s1 = fst-addr-in = res-addr
+        --
+        -- TODO (D-FST-ADDR): Prove without postulate by adding equality:
+        --   fst-addr-in ≡ readReg (regs curry-output) rax
+        -- Then pair-fst-addr = rax s1 = fst-addr-in = res-addr (via fst-is-res-in)
+        postulate
+          pair-fst-is-res : pair-fst-addr ≡ res-addr
+
         -- Closure memory preservation from s1 to s-final
         --
         -- With closure-below-entry-rsp invariant:

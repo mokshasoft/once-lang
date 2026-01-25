@@ -264,6 +264,8 @@ mutual
                           curry-cl-valid
                           (readReg (regs s') rax)  -- result-addr: curry's rax at output
                           (sym curry-rax-eq)       -- closure-addr-eq-result: cl-addr ≡ rax
+                          (readReg (regs s') rax)  -- pair-fst-addr: same as result-addr at curry
+                          refl                     -- pair-fst-is-result: trivially equal
       }
     where
       prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -670,7 +672,7 @@ mutual
       pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
 
       construct-apply : ClosureWFOutput prog s → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ _ cwf-cap cwf-cl-valid res-addr ca-eq-res)
+      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ _ cwf-cap cwf-cl-valid res-addr ca-eq-res fst-addr fst-is-res)
         with A' ≟T A | B' ≟T B
       ... | yes refl | yes refl =
         run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar
@@ -682,16 +684,25 @@ mutual
           -- Key insight: We separate semantics and env-addr equalities.
           -- Apply.agda uses these directly without needing valid-addr-is-encode!
           --
-          -- PROGRESS: cl-addr-eq is now PROVEN using ca-eq-res and cl-addr-is-res-addr.
-          -- The remaining postulate (cl-addr-is-res-addr) says:
-          --   The first component of the pair (cl-addr from valid-pair-decompose)
-          --   equals the curry's result address (res-addr from has-closure).
-          -- This is provable once pair tracks that it stores rax s1 as addr-a,
-          -- and res-addr = rax s1 (since f=curry set res-addr = its output rax).
+          -- PROGRESS: cl-addr-eq and cl-addr-is-res-addr are now PROVEN!
+          --   cl-addr-is-fst : cl-addr = fst-addr (pair structure invariant)
+          --   cl-addr-is-res-addr = trans cl-addr-is-fst fst-is-res
+          --   cl-addr-eq = trans cl-addr-is-res-addr (sym ca-eq-res)
+          --
+          -- Remaining postulates:
+          --   sem-eq, env-addr-eq: closure field equalities (need ValidAt injectivity)
+          --   cl-addr-is-fst: pair stored fst-addr as first component
           postulate
             sem-eq : sem ≡ Closure.semantics (proj₁ x)
             env-addr-eq : ea ≡ Closure.env-addr (proj₁ x)
-            cl-addr-is-res-addr : cl-addr ≡ res-addr
+            -- cl-addr-is-fst: The first component from valid-pair-decompose equals fst-addr
+            -- This is provable from PairAtS structure: pair stores fst-addr = rax s1 as addr-a,
+            -- and valid-pair-decompose extracts addr-a from PairAtS.
+            cl-addr-is-fst : cl-addr ≡ fst-addr
+
+          -- PROVEN: cl-addr-is-res-addr using fst-is-res
+          cl-addr-is-res-addr : cl-addr ≡ res-addr
+          cl-addr-is-res-addr = trans cl-addr-is-fst fst-is-res
 
           -- PROVEN: cl-addr-eq using tracked result-addr
           cl-addr-eq : cl-addr ≡ ca

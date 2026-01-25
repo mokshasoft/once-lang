@@ -110,6 +110,13 @@ data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
                 -- At apply: cl-addr = addr-a = result-addr = closure-addr
                 (result-addr : Word)
                 (closure-addr-eq-result : closure-addr ≡ result-addr)
+                -- pair-fst-addr: The address stored as first component of the pair.
+                -- At curry: pair-fst-addr = result-addr (will become pair's first component)
+                -- At pair: pair-fst-addr = rax s1 = result-addr (proven at pair construction)
+                -- At apply: cl-addr (from valid-pair-decompose) = pair-fst-addr = result-addr
+                -- This enables proving cl-addr-is-res-addr at apply!
+                (pair-fst-addr : Word)
+                (pair-fst-is-result : pair-fst-addr ≡ result-addr)
                 →
                 ClosureWFOutput prog s
 
@@ -124,7 +131,7 @@ transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
 transport-cwf _ _ _ no-closure = no-closure
 transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
-  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region creator-rsp cl-below-rsp cwf-cap cl-valid res-addr ca-eq-res) =
+  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region creator-rsp cl-below-rsp cwf-cap cl-valid res-addr ca-eq-res fst-addr fst-is-res) =
   has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq
     (valid-subst-addr-mem env-valid refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closure-at mem-eq)
@@ -136,6 +143,8 @@ transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
     cl-valid-transported
     res-addr       -- Preserved as-is: fixed value from curry
     ca-eq-res      -- Preserved as-is: closure-addr hasn't changed
+    fst-addr       -- Preserved as-is: pair's first component address
+    fst-is-res     -- Preserved as-is: still equals result-addr
   where
     -- Transport closure-valid: ValidAt cl ca (memory s1) → ValidAt cl ca (memory s2)
     cl-valid-transported : ValidAt {A ⇒ B} cl ca (memory s2)
