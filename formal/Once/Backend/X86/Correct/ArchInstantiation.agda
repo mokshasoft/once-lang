@@ -2347,8 +2347,20 @@ x86-case-right-cleanup {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-co
     -- PC after g: exec-pc gives offset-g + len-g
     -- offset-g = length (prefix ++ 6-instrs ++ compile-x86 f ++ 3-instrs) = length prefix + 9 + len-f
     -- So: offset-g + len-g = (length prefix + 9 + len-f) + len-g = length prefix + 9 + len-f + len-g
-    postulate
-      pc₂ : pc s₂ ≡ length prefix + 9 + len-f + len-g
+    offset-g = length (proj₁ (x86-case-right-context f g prefix suffix))
+
+    -- Prove offset-g = (length prefix + 9) + len-f using same technique as dispatch
+    offset-g-eq : offset-g ≡ (length prefix + 9) + len-f
+    offset-g-eq = trans (length-++ prefix)
+                  (trans (cong (length prefix +_)
+                    (trans (length-++ (case-prefix-instrs f g) {compile-x86 f ++ case-f-rest-prefix f g})
+                      (cong (6 +_) (trans (length-++ (compile-x86 f) {case-f-rest-prefix f g})
+                        (trans (cong (_+ 3) (compile-length-correct f))
+                               (+-comm len-f 3))))))
+                  (sym (+-assoc (length prefix) 9 len-f)))
+
+    pc₂ : pc s₂ ≡ length prefix + 9 + len-f + len-g
+    pc₂ = trans (IRCorrectness.exec-pc g-corr) (cong (_+ len-g) offset-g-eq)
 
     stack-inv₂ : StackInvariant s₂
     stack-inv₂ = IRCorrectness.exec-stack-inv g-corr
