@@ -22,6 +22,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.Char using (Char)
 open import Data.String using (String)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam; RLet;
@@ -67,6 +68,16 @@ parseAtomExpr : Parser RawExpr
 ------------------------------------------------------------------------
 -- Atom: variables, literals, parens, lambda, let, destruct
 ------------------------------------------------------------------------
+
+-- | Reserved words that cannot be used as variable names in atom position
+isReserved : String → Bool
+isReserved "in"       = true   -- let ... in
+isReserved "of"       = true   -- destruct ... of
+isReserved "let"      = true   -- let keyword
+isReserved "destruct" = true   -- destruct keyword
+isReserved "Left"     = true   -- pattern branch
+isReserved "Right"    = true   -- pattern branch
+isReserved _          = false
 
 -- | Parse lambda parameters and body: \x y z -> body
 parseLamParams : Parser RawExpr
@@ -182,8 +193,11 @@ parseAtomExpr (TInt n ∷ rest) = just (RInt n , rest)
 -- String literal
 parseAtomExpr (TString s ∷ rest) = just (RStringLit s , rest)
 -- Variable with optional qualified reference: name or name@alias
-parseAtomExpr (TWord name ∷ TAt ∷ TWord alias ∷ rest) = just (RQualified name alias , rest)
-parseAtomExpr (TWord name ∷ rest) = just (RVar name , rest)
+-- Reject reserved words - they are not valid variable names
+parseAtomExpr (TWord name ∷ TAt ∷ TWord alias ∷ rest) =
+  if isReserved name then nothing else just (RQualified name alias , rest)
+parseAtomExpr (TWord name ∷ rest) =
+  if isReserved name then nothing else just (RVar name , rest)
 -- Not an atom
 parseAtomExpr (_ ∷ _) = nothing
 
