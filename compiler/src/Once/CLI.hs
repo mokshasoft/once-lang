@@ -438,7 +438,7 @@ elaborateAllAgda modEnv fns = go fns
           ty = fromMAlonzoType funMType
           alloc = fromAgdaAlloc (MP.d_funAlloc_52 fi)
       TIO.hPutStrLn System.IO.stderr $ "Type checking: " <> name
-      verifiedResult <- try (pure $! elaborateOne rawExpr) :: IO (Either SomeException (Either String (MT.T_Type_32, MIR.T_IR_10)))
+      verifiedResult <- try (pure $! elaborateOne name funMType rawExpr) :: IO (Either SomeException (Either String (MT.T_Type_32, MIR.T_IR_10)))
       case verifiedResult of
         Right (Right (inferredType, optimizedIR)) -> do
           TIO.hPutStrLn System.IO.stderr $ "  OK: " <> name
@@ -455,18 +455,21 @@ elaborateAllAgda modEnv fns = go fns
 
     -- Run Agda type inference + elaboration + optimization for a single expression.
     -- The elaborator uses a context with imported primitives for qualified name resolution.
+    -- The function's own name and type are added to the context to support recursion.
     -- Returns the inferred MAlonzo type and optimized MAlonzo IR.
-    elaborateOne rawExpr =
+    elaborateOne funName funType rawExpr =
       let importsHs = buildImportsForTypeChecker modEnv
           importsAgda = map (\(n, t) -> Sigma.C__'44'__32 (unsafeCoerce n) (unsafeCoerce t)) importsHs
-          ctx = VTE.d_ctxWithImports_360 importsAgda
-      in case VTE.d_inferElab_1890 ctx rawExpr of
-        VTE.C_failure_304 errMsg ->
+          -- Add self-reference for recursion: function can call itself
+          ctx = VTE.d_ctxWithImportsAndSelf_364 importsAgda (unsafeCoerce funName) (unsafeCoerce funType)
+      -- Use checkElab (not inferElab) so lambda parameters get correct types from signature
+      in case VTE.d_checkElab_1964 ctx rawExpr funType of
+        VTE.C_failure_328 errMsg ->
           Left $ "Type checking failed: " ++ show errMsg
-        VTE.C_success_302 inferredType surfaceExpr _fresh1 _fresh2 _usage ->
-          let irExpr = VSE.d_elaborate_112 0 (VSS.C_'8709'_8) inferredType surfaceExpr
-              optimized = MO.d_optimize_1266 MT.C_Unit_34 inferredType (unsafeCoerce irExpr)
-          in Right (inferredType, optimized)
+        VTE.C_success_326 surfaceExpr _depth _fresh _usage ->
+          let irExpr = VSE.d_elaborate_112 0 (VSS.C_'8709'_8) funType surfaceExpr
+              optimized = MO.d_optimize_1266 MT.C_Unit_34 funType (unsafeCoerce irExpr)
+          in Right (funType, optimized)
 
 -- | Compile a function body from MAlonzo IR to C expression text.
 -- Handles the top-level curry unwrapping: the Agda elaborator produces

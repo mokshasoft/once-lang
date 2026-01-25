@@ -294,6 +294,14 @@ emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports
 ctxWithImports : Imports → NamedCtx
 ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps
 
+-- | Create context with imports and self-reference for recursive definitions
+-- The function's own name and type are added to the imports list so it can call itself.
+-- This causes recursive calls to elaborate to `Prim "name"` which the C backend
+-- handles as a function call.
+ctxWithImportsAndSelf : Imports → String → Type → NamedCtx
+ctxWithImportsAndSelf imps name ty =
+  ctxWithImports ((name , ty) ∷ imps)
+
 -- | Extend context with a new binding (preserves fresh counter and imports)
 extendNamedCtx : NamedCtx → String → Type → NamedCtx
 extendNamedCtx (mkCtx n Γ Δ fresh imps) x A = mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps
