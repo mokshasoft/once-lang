@@ -2170,8 +2170,12 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
     -- Same structural issue as pair-frame-preserved
     postulate
       case-frame-preserved : X86-FramePreserved s s₃
-      case-left-output-is-encode : readReg (regs s₃) rax ≡ encode (eval [ f , g ] (inj₁ a))
       case-left-cwf-bound : cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
+
+    -- Output encoding: eval [ f , g ] (inj₁ a) = eval f a definitionally
+    -- cleanup-output-valid gives ValidAt (eval f a) rax (memory s₃)
+    case-left-output-is-encode : readReg (regs s₃) rax ≡ encode (eval [ f , g ] (inj₁ a))
+    case-left-output-is-encode = valid-addr-is-encode (CaseSpecs.CleanupPost.cleanup-output-valid cleanup)
 
 -- Dispatch right: runs the 6-instruction setup sequence for inr branch
 x86-case-dispatch-right : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
@@ -2581,8 +2585,12 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
     -- Frame preserved: same structural issue as pair
     postulate
       case-frame-preserved : X86-FramePreserved s s₃
-      case-right-output-is-encode : readReg (regs s₃) rax ≡ encode (eval [ f , g ] (inj₂ b))
       case-right-cwf-bound : cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
+
+    -- Output encoding: eval [ f , g ] (inj₂ b) = eval g b definitionally
+    -- cleanup-output-valid gives ValidAt (eval g b) rax (memory s₃)
+    case-right-output-is-encode : readReg (regs s₃) rax ≡ encode (eval [ f , g ] (inj₂ b))
+    case-right-output-is-encode = valid-addr-is-encode (CaseSpecs.CleanupPost.cleanup-output-valid cleanup)
 
 ------------------------------------------------------------------------
 -- Apply (takes IH)
