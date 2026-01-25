@@ -224,7 +224,10 @@ record ArchCorrectness : Set₂ where
       Preconditions {C} s₃ x (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix)))) (ir-stack-requirement g)
 
     pair-cleanup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
-      (prefix suffix : Program) (x : ⟦ C ⟧) (s-orig s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧)
+      (prefix suffix : Program) (x : ⟦ C ⟧) (s-orig s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) →
+      StackCapacity s-orig (ir-stack-requirement ⟨ f , g ⟩) →  -- Original capacity for output derivation
+      FramePtrInvariant s-orig →  -- Original frame invariant for restoration
+      result-slot-addr s₄ < frame-ptr-addr s₄ →  -- Result slot below frame ptr (for frame preservation)
       (g-corr : IRCorrectness g (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))) ++ₚ compile g ++ₚ proj₂ (proj₂ (proj₂ (pair-context f g prefix suffix)))) s₃ s₄ x (program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix)))))) →
       let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
           offset-end = program-length prefix + compile-length ⟨ f , g ⟩

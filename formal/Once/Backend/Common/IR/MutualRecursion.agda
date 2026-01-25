@@ -21,13 +21,13 @@ open import Once.Semantics using (⟦_⟧; eval; encode; Closure)
 
 module Once.Backend.Common.IR.MutualRecursion where
 
-open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_)
+open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; _<_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst₂)
 
 open import Once.Backend.Common.IR.Spec
 open import Once.Backend.Common.IR.ArchInterface
@@ -155,7 +155,16 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 6: Run g in context
           (s₄ , g-corr) = ir-correct g prefix-g suffix-g x s₃ g-pre no-apply-wf
           -- Step 7: Cleanup phase (construct pair)
-          (s₅ , cleanup) = pair-cleanup f g prefix suffix x s s₃ s₄ (eval f x) (eval g x) g-corr
+          orig-cap = Preconditions.pre-capacity pre
+          orig-frame-inv = Preconditions.pre-frame-inv pre
+          -- Derive result-slot < frame-ptr at s₄:
+          -- g preserves result-slot-addr and frame-ptr-addr (via saved-regs)
+          result-slot-below-s₃ = PairSpecs.MiddlePost.middle-result-slot-below middle
+          g-saved = IRCorrectness.exec-saved-regs g-corr
+          result-slot-s₄-eq = saved-regs-result-slot s₃ s₄ g-saved
+          frame-ptr-s₄-eq = saved-regs-frame-ptr s₃ s₄ g-saved
+          result-slot-below-s₄ = subst₂ _<_ (sym result-slot-s₄-eq) (sym frame-ptr-s₄-eq) result-slot-below-s₃
+          (s₅ , cleanup) = pair-cleanup f g prefix suffix x s s₃ s₄ (eval f x) (eval g x) orig-cap orig-frame-inv result-slot-below-s₄ g-corr
           -- Step 8: Combine all phases
       in s₅ , pair-combine f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setup f-corr middle g-corr cleanup
 

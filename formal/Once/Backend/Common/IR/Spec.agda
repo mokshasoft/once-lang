@@ -106,6 +106,14 @@ record InvariantInterface (M : MachineInterface) : Set₁ where
     -- Saved registers preserved between states
     SavedRegsPreserved : State → State → Set
 
+    -- Result slot address preserved when saved regs preserved
+    -- (r15 is a saved register on X86)
+    saved-regs-result-slot : ∀ s s' → SavedRegsPreserved s s' → result-slot-addr s' ≡ result-slot-addr s
+
+    -- Frame pointer address preserved when saved regs preserved
+    -- (rbp is a saved register on X86)
+    saved-regs-frame-ptr : ∀ s s' → SavedRegsPreserved s s' → frame-ptr-addr s' ≡ frame-ptr-addr s
+
     -- RSP/SP delta tracking (for capacity threading)
     -- Returns how much stack pointer changes after executing IR
     rsp-delta-slots : State → State → ℕ → Set
@@ -440,6 +448,7 @@ module IRSpecs
         middle-input-is-encode : input-value s₃ ≡ encode x
         middle-capacity : StackCapacity s₃ (ir-stack-requirement g)
         middle-frame-inv : FramePtrInvariant s₃
+        middle-result-slot-below : result-slot-addr s₃ < frame-ptr-addr s₃  -- Preserved for cleanup
         -- Execution evidence
         middle-star : Star prog s₂ s₃
         middle-pc : pc s₃ ≡ offset-g
