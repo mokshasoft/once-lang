@@ -28,7 +28,7 @@ open import Once.Backend.X86.Correct.InstrExec
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure; subst-cwf-prog)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; ClosureAtS-preserved-under-heap-eq)
+  using (ValidAt; ClosureAtS-preserved-under-heap-eq; valid-subst-heap-preserved)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; stack-inv-preserved-r15-unchanged)
@@ -462,9 +462,10 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-f
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat ih cwfc =
       subst-cwf-prog prog-eq-f
-        (has-closure E A' B' ca cp env sem wf cl e1 e2
+        (has-closure E A' B' ca cp ea env sem wf cl e1 e2
+          (valid-subst-heap-preserved ev refl (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
           (ClosureAtS-preserved-under-heap-eq cat ih (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
           ih
           cwf-cap-final)
@@ -891,9 +892,10 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-g
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat ih cwfc =
       subst-cwf-prog prog-eq-g
-        (has-closure E A' B' ca cp env sem wf cl e1 e2
+        (has-closure E A' B' ca cp ea env sem wf cl e1 e2
+          (valid-subst-heap-preserved ev refl (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
           (ClosureAtS-preserved-under-heap-eq cat ih (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
           ih
           cwf-cap-final)

@@ -27,7 +27,7 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-v; ir-mem-above; ir-mem-code; ir-mem-heap; ir-rbp-inv; ir-closure-wf;
          ir-result-valid; ir-capacity)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; ClosureAtS-preserved-under-heap-eq)
+  using (ValidAt; ClosureAtS-preserved-under-heap-eq; valid-subst-heap-preserved)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 
 open import Data.Nat using (_>_)
@@ -406,9 +406,10 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
     closure-wf-from-f : ClosureWFOutput prog s3
     closure-wf-from-f with IRStarResultV.ir-closure-wf r1
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat ih cwfc =
       subst-cwf-prog (sym prog-eq-f)
-        (has-closure E A' B' ca cp env sem wf cl e1 e2
+        (has-closure E A' B' ca cp ea env sem wf cl e1 e2
+          (valid-subst-heap-preserved ev refl heap-s3-to-s1)
           (ClosureAtS-preserved-under-heap-eq cat ih heap-s3-to-s1)
           ih
           cwf-cap-from-f)

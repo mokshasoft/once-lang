@@ -174,9 +174,10 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-f
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp env sem wf cl e1 e2 cat ih cwfc =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat ih cwfc =
       subst-cwf-prog (sym prog-eq-f)
-        (has-closure E A' B' ca cp env sem wf cl e1 e2
+        (has-closure E A' B' ca cp ea env sem wf cl e1 e2
+          (valid-subst-heap-preserved ev refl heap-final-to-s1)
           (ClosureAtS-preserved-under-heap-eq cat ih heap-final-to-s1)
           ih
           cwf-cap-final)

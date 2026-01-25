@@ -33,8 +33,8 @@ open import Once.Backend.X86.Correct.MemoryValid
          PairAtS; fst-valid-s; snd-valid-s;
          InlAtS; InrAtS; ClosureAtS;
          valid-arrow-to-eff;
+         valid-subst-heap-preserved;
          ClosureAtS-preserved-under-heap-eq)
--- NOTE: encode-* postulates no longer needed - using validity-based proofs
 
 open import Data.Nat using (_>_)
 open import Data.List.Properties using (++-assoc)
@@ -60,20 +60,21 @@ open import Relation.Binary.PropositionalEquality using (_≢_; cong; subst₂)
 -- using decidable type equality to unify the closure types with apply's types.
 --
 -- cl: The semantic Closure value produced by curry.
--- cl-env-eq: Closure.env-addr cl ≡ encode env (refl at curry construction)
+-- cl-env-eq: Closure.env-addr cl ≡ env-addr (refl at curry construction)
 -- cl-sem-eq: Closure.semantics cl ≡ semantics (refl at curry construction)
 -- closure-at: ClosureAtS layout at the output state's memory
 -- cwf-cap: StackCapacity for apply + thunk at the output state
 data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
   no-closure : ClosureWFOutput prog s
   has-closure : (E A B : Type)
-                (closure-addr code-ptr : ℕ) (env : ⟦ E ⟧)
+                (closure-addr code-ptr env-addr : ℕ) (env : ⟦ E ⟧)
                 (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                 (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics)
                 (cl : Closure A B)
-                (cl-env-eq : Closure.env-addr cl ≡ encode env)
+                (cl-env-eq : Closure.env-addr cl ≡ env-addr)
                 (cl-sem-eq : Closure.semantics cl ≡ semantics)
-                (closure-at : ClosureAtS (encode env) code-ptr closure-addr (memory s))
+                (env-valid : ValidAt env env-addr (memory s))
+                (closure-at : ClosureAtS env-addr code-ptr closure-addr (memory s))
                 (closure-in-heap : InHeap closure-addr)
                 (cwf-cap : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)) →
                 ClosureWFOutput prog s
@@ -87,8 +88,9 @@ transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
 transport-cwf _ _ _ no-closure = no-closure
 transport-cwf {s1 = s1} {s2 = s2} refl heap-eq rsp-eq
-  (has-closure E A B ca cp env sem wf cl cl-env-eq cl-sem-eq closure-at cl-in-heap cwf-cap) =
-  has-closure E A B ca cp env sem wf cl cl-env-eq cl-sem-eq
+  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-in-heap cwf-cap) =
+  has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq
+    (valid-subst-heap-preserved env-valid refl heap-eq)
     (ClosureAtS-preserved-under-heap-eq closure-at cl-in-heap heap-eq)
     cl-in-heap
     (capacity-preserved-rsp-unchanged s1 s2 _ cwf-cap rsp-eq)
@@ -282,15 +284,18 @@ record ApplyReady {A B : Type} (x : ⟦ (A ⇒ B) * A ⟧) (s : State) (prog : P
   field
     ar-E : Type
     ar-env : ⟦ ar-E ⟧
+    ar-env-addr : ℕ
     ar-code-ptr : ℕ
     ar-closure-addr : ℕ
     ar-arg-addr : ℕ
     ar-sem : ⟦ A ⟧ → ⟦ B ⟧
     ar-wf : ClosureWellFormed {ar-E} {A} {B} prog ar-code-ptr ar-env ar-sem
     -- Semantic identity: input's closure matches our env/sem
-    ar-cl-eq : proj₁ x ≡ record { env-addr = encode ar-env ; semantics = ar-sem }
+    ar-cl-eq : proj₁ x ≡ record { env-addr = ar-env-addr ; semantics = ar-sem }
     -- Memory layout: closure structure at ar-closure-addr
-    ar-closure-at : ClosureAtS (encode ar-env) ar-code-ptr ar-closure-addr (memory s)
+    ar-closure-at : ClosureAtS ar-env-addr ar-code-ptr ar-closure-addr (memory s)
+    -- Env validity at runtime address
+    ar-env-valid : ValidAt ar-env ar-env-addr (memory s)
     -- Memory layout: pair structure at rdi
     ar-pair-at : PairAtS ar-closure-addr ar-arg-addr (readReg (regs s) rdi) (memory s)
     -- Argument validity

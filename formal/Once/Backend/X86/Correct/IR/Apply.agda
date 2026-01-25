@@ -85,7 +85,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          ClosureAtS; env-valid-s; code-valid-s;
          valid-subst-addr-mem; valid-subst-heap-preserved;
          valid-pair-decompose; valid-in-heap;
-         valid-from-encode)
+         valid-addr-is-encode)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -856,7 +856,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
 run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (code-ptr : ℕ) (env : ⟦ E ⟧)
                            (semantics : ⟦ A ⟧ → ⟦ B ⟧)
-                           (closure-addr arg-addr : ℕ)
+                           (closure-addr arg-addr env-addr : ℕ)
                            (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
@@ -869,28 +869,44 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
   StackInvariant s →
   StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf) →
   RbpInvariant s →
-  -- Validity-based memory layout:
-  (v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)) →
+  -- Validity-based memory layout (encode-free premises):
   (v-arg : ValidAt arg arg-addr (memory s)) →
-  (v-env : ValidAt env (encode env) (memory s)) →
+  (v-env : ValidAt env env-addr (memory s)) →
   (pair-at : PairAtS closure-addr arg-addr (readReg (regs s) rdi) (memory s)) →
-  (closure-at : ClosureAtS (encode env) code-ptr closure-addr (memory s)) →
+  (closure-at : ClosureAtS env-addr code-ptr closure-addr (memory s)) →
   ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
-run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closure-addr arg-addr arg s
-                         wf h-eq pc-eq stack-inv cap rbp-inv v-cl v-arg v-env pair-at closure-at =
+run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closure-addr arg-addr env-addr arg s
+                         wf h-eq pc-eq stack-inv cap rbp-inv v-arg v-env pair-at closure-at =
   let
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
-    env-addr = encode env
-    cl = record { env-addr = env-addr ; semantics = semantics }
+
+    -- Bridge: env-addr ≡ encode env (from validity)
+    ea-is-encode : env-addr ≡ encode env
+    ea-is-encode = valid-addr-is-encode v-env
+
+    -- Convert closure-at to encode-based (for internal functions)
+    closure-at-enc : ClosureAtS (encode env) code-ptr closure-addr (memory s)
+    closure-at-enc = subst (λ e → ClosureAtS e code-ptr closure-addr (memory s))
+                           ea-is-encode closure-at
+
+    -- Derive v-cl from closure-at-enc
+    cl = record { env-addr = encode env ; semantics = semantics }
+    v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)
+    v-cl = valid-closure closure-at-enc
+
+    -- Convert v-env to encode-based
+    v-env-enc : ValidAt env (encode env) (memory s)
+    v-env-enc = subst (λ a → ValidAt env a (memory s)) ea-is-encode v-env
+
     x : ⟦ (A ⇒ B) * A ⟧
     x = (cl , arg)
 
-    -- Construct input validity from component validities (no bridge!)
+    -- Construct input validity from component validities
     input-valid : ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s)
     input-valid = valid-pair v-cl v-arg pair-at
 
-    -- Construct mem-layout from validity predicates (no bridge - uses arg-addr directly!)
+    -- Construct mem-layout from validity predicates
     mem-cl : readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr
     mem-cl = fst-valid-s pair-at
 
@@ -898,10 +914,10 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
     mem-arg = snd-valid-s pair-at
 
     mem-env : readMem (memory s) closure-addr ≡ just (encode env)
-    mem-env = env-valid-s closure-at
+    mem-env = env-valid-s closure-at-enc
 
     mem-code-ptr : readMem (memory s) (closure-addr +ℕ' slot-size) ≡ just code-ptr
-    mem-code-ptr = code-valid-s closure-at
+    mem-code-ptr = code-valid-s closure-at-enc
 
     mem-layout : ∃[ cl-addr ] (
         readMem (memory s) (readReg (regs s) rdi) ≡ just cl-addr ×
@@ -910,11 +926,11 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
         readMem (memory s) (cl-addr +ℕ' slot-size) ≡ just code-ptr)
     mem-layout = closure-addr , mem-cl , mem-arg , mem-env , mem-code-ptr
 
-    -- Call existing implementation - returns IRStarResultV directly (no bridge!)
+    -- Call existing implementation
     result = run-apply-to-ir-result prefix suffix code-ptr env semantics arg arg-addr s
-               wf h-eq pc-eq input-valid stack-inv cap rbp-inv mem-layout v-arg v-env
+               wf h-eq pc-eq input-valid stack-inv cap rbp-inv mem-layout v-arg v-env-enc
 
-  in result  -- Direct passthrough (no conversion needed!)
+  in result
 
 ------------------------------------------------------------------------
 -- run-apply-star-direct: Postulate-free apply using ApplyReady
@@ -951,30 +967,32 @@ run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq input-valid stack-
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
 
-    -- Construct ValidAt for the closure using ar-closure-at
-    cl-wf : Closure A B
-    cl-wf = record { env-addr = encode ar-env ; semantics = ar-sem }
-
-    v-cl : ValidAt {A ⇒ B} cl-wf ar-closure-addr (memory s)
-    v-cl = valid-closure ar-closure-at
-
-    -- Environment validity (from valid-from-encode axiom - trivial)
-    v-env : ValidAt ar-env (encode ar-env) (memory s)
-    v-env = valid-from-encode refl
-
-    -- Call the core implementation
+    -- Call the core implementation (bridge is now inside run-apply-to-ir-result-v)
     core-result = run-apply-to-ir-result-v {ar-E} prefix suffix ar-code-ptr ar-env ar-sem
-                    ar-closure-addr ar-arg-addr (proj₂ x) s
+                    ar-closure-addr ar-arg-addr ar-env-addr (proj₂ x) s
                     ar-wf h-false pc-eq stack-inv ar-capacity rbp-inv
-                    v-cl ar-v-arg v-env ar-pair-at ar-closure-at
+                    ar-v-arg ar-env-valid ar-pair-at ar-closure-at
 
     s' = proj₁ core-result
     ir-result = proj₂ core-result
 
-    -- Semantic equality: (cl-wf , proj₂ x) ≡ x
-    -- From ar-cl-eq : proj₁ x ≡ cl-wf, we get cl-wf ≡ proj₁ x (by sym)
+    -- Semantic equality: need (cl-wf , proj₂ x) ≡ x where cl-wf uses encode ar-env
+    -- Derive ea-is-encode for x-eq only
+    ea-is-encode : ar-env-addr ≡ encode ar-env
+    ea-is-encode = valid-addr-is-encode ar-env-valid
+
+    cl-wf : Closure A B
+    cl-wf = record { env-addr = encode ar-env ; semantics = ar-sem }
+
+    -- ar-cl-eq : proj₁ x ≡ record { env-addr = ar-env-addr ; semantics = ar-sem }
+    -- Bridge via ea-is-encode: encode ar-env ≡ ar-env-addr (sym)
+    cl-wf-is-proj : cl-wf ≡ proj₁ x
+    cl-wf-is-proj = trans (cong (λ e → record { env-addr = e ; semantics = ar-sem })
+                                (sym ea-is-encode))
+                          (sym ar-cl-eq)
+
     x-eq : (cl-wf , proj₂ x) ≡ x
-    x-eq = cong₂ _,_ (sym ar-cl-eq) refl
+    x-eq = cong₂ _,_ cl-wf-is-proj refl
 
 ------------------------------------------------------------------------
 -- run-apply-star-v: Wrapper for dispatcher (takes ApplyReady)
