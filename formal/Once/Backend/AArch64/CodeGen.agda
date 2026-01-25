@@ -156,13 +156,13 @@ compile-length snd = 1
 -- Setup: sub-sp 32, stp x20 x21, mov-from-sp x9, add x21 x9 16, mov x20 x0 (5)
 -- After f: str x0 [x21], mov x0 x20 (2)
 -- After g: str x0 [x21+8], mov x0 x21, ldp x20 x21, add-sp 16 (4)
-compile-length ⟨ f , g ⟩ = (pair-overhead +ℕ compile-length f) +ℕ compile-length g
+compile-length (⟨_,_⟩ f g _) = (pair-overhead +ℕ compile-length f) +ℕ compile-length g
 
 -- inl: sub sp + str-zr + str + mov = inl-instr-len instructions
-compile-length inl = inl-instr-len
+compile-length (inl _) = inl-instr-len
 
 -- inr: sub sp + mov + str + str + mov = inr-instr-len instructions
-compile-length inr = inr-instr-len
+compile-length (inr _) = inr-instr-len
 
 -- case: ldr + cmp + b.ne + ldr + f + b + label + ldr + g + label
 -- case-overhead instructions + |f| + |g|
@@ -177,7 +177,7 @@ compile-length initial = 1
 -- curry: complex closure creation (similar structure to x86)
 -- sub sp + str + mov + str + mov-from-sp + b + label + sub sp + stp + mov-from-sp + f + ret + label
 -- curry-overhead instructions + |f|
-compile-length (curry f) = curry-overhead +ℕ compile-length f
+compile-length (curry f _) = curry-overhead +ℕ compile-length f
 
 -- apply: apply-instr-len instructions
 compile-length apply = apply-instr-len
@@ -232,7 +232,7 @@ compile-aarch64 snd = ldr x0 (base+imm x0 sndOffset) ∷ []
 -- We use x21 (callee-saved) for pair pointer
 -- We use x20 (callee-saved) to preserve input across sub-computations
 -- Per ARM64 ABI, we must save/restore callee-saved registers we use
-compile-aarch64 ⟨ f , g ⟩ =
+compile-aarch64 (⟨_,_⟩ f g _) =
   -- Allocate 32 bytes: 16 for saved regs, 16 for pair data
   sub-sp 32 ∷
   -- Save x20, x21 (callee-saved registers we'll modify)
@@ -261,14 +261,14 @@ compile-aarch64 ⟨ f , g ⟩ =
 
 -- Left injection: create tagged union with tag = 0
 -- Stack layout: [tag (8 bytes), value (8 bytes)]
-compile-aarch64 inl =
+compile-aarch64 (inl _) =
   sub-sp 16 ∷                    -- Allocate 16 bytes
   str-zr (sp+imm tagOffset) ∷    -- tag = 0 (using zero register)
   str x0 (sp+imm valueOffset) ∷  -- value
   mov-from-sp x0 ∷ []            -- x0 = sp (return pointer to sum)
 
 -- Right injection: create tagged union with tag = 1
-compile-aarch64 inr =
+compile-aarch64 (inr _) =
   sub-sp 16 ∷                    -- Allocate 16 bytes
   mov x9 (imm 1) ∷               -- Load tag value 1 into temp register
   str x9 (sp+imm tagOffset) ∷    -- tag = 1
@@ -331,7 +331,7 @@ compile-aarch64 initial = brk 0 ∷ []
 --   1. Loads env (a) from x19 (callee-saved environment register)
 --   2. Pairs it with argument (b) in x0
 --   3. Executes compile-aarch64 f
-compile-aarch64 (curry {A} {B} {C} f) =
+compile-aarch64 (curry {A} {B} {C} f _) =
   let len-f = compile-length f
       -- Layout (positions relative to start of curry code):
       --   0: sub sp, sp, #16

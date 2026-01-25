@@ -39,10 +39,7 @@ library
   import: shared
   exposed-modules:
       Lib
-      Once.Backend.Assembler
       Once.Backend.CCompiler
-      Once.Backend.Native
-      Once.Backend.X86
       Once.CLI
       Once.Eval
       Once.IR
@@ -233,17 +230,17 @@ library
       MAlonzo.Code.Induction
       MAlonzo.Code.Induction.WellFounded
       MAlonzo.Code.Level
-      -- Backend modules temporarily disabled for QTT integration
-      -- MAlonzo.Code.Once.Backend.AArch64.CodeGen
-      MAlonzo.Code.Once.Backend.C.CodeGen
-      MAlonzo.Code.Once.Backend.C.Emit
+      -- Backend modules (extracted via MAlonzo from verified Agda)
+      MAlonzo.Code.Once.Backend.AArch64.CodeGen
       MAlonzo.Code.Once.Backend.AArch64.Emit
       MAlonzo.Code.Once.Backend.AArch64.Syntax
-      -- MAlonzo.Code.Once.Backend.Emit
-      -- MAlonzo.Code.Once.Backend.RiscV64.CodeGen
+      MAlonzo.Code.Once.Backend.C.CodeGen
+      MAlonzo.Code.Once.Backend.C.Emit
+      MAlonzo.Code.Once.Backend.Common.StackAnalysis
+      MAlonzo.Code.Once.Backend.Emit
       MAlonzo.Code.Once.Backend.RiscV64.Emit
       MAlonzo.Code.Once.Backend.RiscV64.Syntax
-      -- MAlonzo.Code.Once.Backend.X86.CodeGen
+      MAlonzo.Code.Once.Backend.X86.CodeGen
       MAlonzo.Code.Once.Backend.X86.Emit
       MAlonzo.Code.Once.Backend.X86.Syntax
       MAlonzo.Code.Once.IR
@@ -395,7 +392,6 @@ test-suite once-test
   other-modules:
       Paths_once
       Backend.C.Spec
-      Backend.X86.Spec
       Backend.Common
       BackendSpec
       ElaborateSpec

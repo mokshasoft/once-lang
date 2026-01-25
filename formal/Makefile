@@ -71,6 +71,7 @@ AARCH64_EMIT := Once/Backend/AArch64/Emit.agda
 X86_EMIT := Once/Backend/X86/Emit.agda
 RISCV_EMIT := Once/Backend/RiscV64/Emit.agda
 EMIT_ALL := Once/Backend/Emit.agda
+ASSEMBLER := Once/Backend/Assembler.agda
 SPF := Once/SPF.agda
 TERMINATION := Once/Backend/Termination.agda
 
@@ -347,10 +348,11 @@ malonzo-codegen:
 	@echo "Extracting verified code generators via MAlonzo..."
 	@mkdir -p _build/malonzo
 	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(EMIT_ALL)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ASSEMBLER)'
 	@echo "Copying MAlonzo files to compiler..."
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Backend
 	@cp -r _build/malonzo/MAlonzo/Code/Once/Backend/* ../compiler/src/MAlonzo/Code/Once/Backend/
-	@echo "  - Backend modules copied"
+	@echo "  - Backend modules copied (including Assembler)"
 	@# Copy core dependencies (IR, Type) that Backend modules need
 	@cp _build/malonzo/MAlonzo/Code/Once/IR.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@cp _build/malonzo/MAlonzo/Code/Once/Type.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true

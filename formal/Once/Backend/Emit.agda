@@ -21,8 +21,10 @@ open import Once.Backend.AArch64.CodeGen
 open import Once.Backend.X86.CodeGen
   using (compile-x86)
 
-open import Once.Backend.RiscV64.CodeGen
-  using (compile-riscv)
+-- NOTE: RiscV64.CodeGen uses sized IR (Once.IRS) which is incompatible with
+-- unsized IR (Once.IR) used here. Commenting out until types are unified.
+-- open import Once.Backend.RiscV64.CodeGen
+--   using (compile-riscv)
 
 -- Import assembly text emission from each backend
 open import Once.Backend.AArch64.Emit
@@ -33,9 +35,10 @@ open import Once.Backend.X86.Emit
   using ()
   renaming (programToText to x86ProgramToText)
 
-open import Once.Backend.RiscV64.Emit
-  using ()
-  renaming (programToText to riscvProgramToText)
+-- NOTE: RiscV64.Emit disabled until IR/IRS types are unified
+-- open import Once.Backend.RiscV64.Emit
+--   using ()
+--   renaming (programToText to riscvProgramToText)
 
 -- Import C backend code generation
 open import Once.Backend.C.CodeGen
@@ -67,7 +70,8 @@ compileX86ToText : ∀ {A B} → IR A B → String
 compileX86ToText ir = x86ProgramToText (compile-x86 ir)
 
 -- | Compile IR to RISC-V 64-bit assembly text (verified)
+-- NOTE: Disabled until IR/IRS types are unified
 -- Input: IR morphism
 -- Output: GAS-compatible assembly text for RISC-V 64
-compileRiscVToText : ∀ {A B} → IR A B → String
-compileRiscVToText ir = riscvProgramToText (compile-riscv ir)
+-- compileRiscVToText : ∀ {A B} → IR A B → String
+-- compileRiscVToText ir = riscvProgramToText (compile-riscv ir)
