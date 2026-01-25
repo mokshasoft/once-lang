@@ -34,33 +34,35 @@ data T_UnaryOp_30 = C_OpNeg_32
 d_RawExpr_34 = ()
 data T_RawExpr_34
   = C_RVar_36 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_RApp_38 T_RawExpr_34 T_RawExpr_34 |
-    C_RLam_40 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_RQualified_38 MAlonzo.Code.Agda.Builtin.String.T_String_6
+                    MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_RApp_40 T_RawExpr_34 T_RawExpr_34 |
+    C_RLam_42 MAlonzo.Code.Agda.Builtin.String.T_String_6
               T_RawExpr_34 |
-    C_RLet_42 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34
+    C_RLet_44 MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34
               T_RawExpr_34 |
-    C_RPair_44 T_RawExpr_34 T_RawExpr_34 |
-    C_RDestruct_46 T_RawExpr_34
+    C_RPair_46 T_RawExpr_34 T_RawExpr_34 |
+    C_RDestruct_48 T_RawExpr_34
                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34
                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34 |
-    C_RUnit_48 | C_RInt_50 Integer |
-    C_RStringLit_52 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_RAnnot_54 T_RawExpr_34 MAlonzo.Code.Once.Type.T_Type_32 |
-    C_RBinOp_56 T_BinOp_6 T_RawExpr_34 T_RawExpr_34 |
-    C_RUnaryOp_58 T_RawExpr_34
+    C_RUnit_50 | C_RInt_52 Integer |
+    C_RStringLit_54 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_RAnnot_56 T_RawExpr_34 MAlonzo.Code.Once.Type.T_Type_32 |
+    C_RBinOp_58 T_BinOp_6 T_RawExpr_34 T_RawExpr_34 |
+    C_RUnaryOp_60 T_RawExpr_34
 -- Once.TypeCheck.Raw.RawType
-d_RawType_60 = ()
-data T_RawType_60
-  = C_RTVar_62 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_RTUnit_64 | C_RTVoid_66 | C_RTInt_68 | C_RTFloat_70 |
-    C_RTBuffer_72 | C_RTStr_74 |
-    C_RTProduct_76 T_RawType_60 T_RawType_60 |
-    C_RTSum_78 T_RawType_60 T_RawType_60 |
-    C_RTArrow_80 T_RawType_60 T_RawType_60 |
-    C_RTEff_82 T_RawType_60 T_RawType_60 | C_RTFix_84 T_RawType_60
+d_RawType_62 = ()
+data T_RawType_62
+  = C_RTVar_64 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_RTUnit_66 | C_RTVoid_68 | C_RTInt_70 | C_RTFloat_72 |
+    C_RTBuffer_74 | C_RTStr_76 |
+    C_RTProduct_78 T_RawType_62 T_RawType_62 |
+    C_RTSum_80 T_RawType_62 T_RawType_62 |
+    C_RTArrow_82 T_RawType_62 T_RawType_62 |
+    C_RTEff_84 T_RawType_62 T_RawType_62 | C_RTFix_86 T_RawType_62
 -- Once.TypeCheck.Raw.isComparisonOp
-d_isComparisonOp_86 :: T_BinOp_6 -> Bool
-d_isComparisonOp_86 v0
+d_isComparisonOp_88 :: T_BinOp_6 -> Bool
+d_isComparisonOp_88 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of
@@ -72,8 +74,8 @@ d_isComparisonOp_86 v0
          C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
          _ -> coe v1)
 -- Once.TypeCheck.Raw.isArithmeticOp
-d_isArithmeticOp_88 :: T_BinOp_6 -> Bool
-d_isArithmeticOp_88 v0
+d_isArithmeticOp_90 :: T_BinOp_6 -> Bool
+d_isArithmeticOp_90 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
     coe
       (case coe v0 of

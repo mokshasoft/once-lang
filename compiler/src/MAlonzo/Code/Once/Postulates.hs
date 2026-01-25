@@ -27,9 +27,9 @@ d_closure'45'semantics'45'eq_26
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.closure-semantics-eq"
 -- Once.Postulates.coerceIRArrow
--- Type-level coercion: IR Γ (A ⇒[q₁] B) → IR Γ (A ⇒[q₂] B)
--- Identity at runtime since IR representation doesn't depend on quantity annotation
-d_coerceIRArrow_38 v0 v1 v2 v3 v4 v5 = coe v5
+d_coerceIRArrow_38
+  = error
+      "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.coerceIRArrow"
 -- Once.Postulates.coerceIRArrow-preserves-eval
 d_coerceIRArrow'45'preserves'45'eval_54
   = error
@@ -81,15 +81,11 @@ d_encode'45'pair'45'construct_164
 d_encode'45'closure'45'env_174
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.encode-closure-env"
--- Once.Postulates.encode-closure-code-ptr
-d_encode'45'closure'45'code'45'ptr_184
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.encode-closure-code-ptr"
 -- Once.Postulates.encode-closure-construct
-d_encode'45'closure'45'construct_200
+d_encode'45'closure'45'construct_190
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.encode-closure-construct"
 -- Once.Postulates.coerceQuantity
-d_coerceQuantity_214
+d_coerceQuantity_204
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.coerceQuantity"

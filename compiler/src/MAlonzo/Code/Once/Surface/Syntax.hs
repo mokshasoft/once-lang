@@ -216,4 +216,5 @@ data T_Expr_162
     C_gt_346 T_Expr_162 T_Expr_162 | C_ge_352 T_Expr_162 T_Expr_162 |
     C_eq_358 T_Expr_162 T_Expr_162 | C_ne_364 T_Expr_162 T_Expr_162 |
     C_arr''_374 T_Expr_162 | C_roll''_382 T_Expr_162 |
-    C_unroll''_390 T_Expr_162
+    C_unroll''_390 T_Expr_162 |
+    C_prim_398 MAlonzo.Code.Agda.Builtin.String.T_String_6

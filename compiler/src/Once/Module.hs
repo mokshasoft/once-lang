@@ -24,6 +24,7 @@ module Once.Module
   , loadModuleFile
   , resolveImports
   , extractImports
+  , buildImportsForTypeChecker
     -- * Errors
   , ModuleError (..)
   , formatModuleError
@@ -41,6 +42,7 @@ import System.FilePath ((</>), (<.>))
 
 import qualified MAlonzo.Code.Once.Parser as MP
 import qualified MAlonzo.Code.Once.Parser.Module as MPM
+import qualified MAlonzo.Code.Once.Type as MT
 
 -- | Variable and type names
 type Name = Text
@@ -98,7 +100,13 @@ formatModuleError = \case
 data LoadedModule = LoadedModule
   { lmPath       :: FilePath            -- ^ Source file path
   , lmTargetPath :: Maybe FilePath      -- ^ Target-specific implementation file (.c, .x86_64, etc.)
-  } deriving (Show)
+  , lmPrimitives :: [(Text, MT.T_Type_32)]  -- ^ Primitives exported by this module (name, type)
+  }
+
+instance Show LoadedModule where
+  show lm = "LoadedModule { lmPath = " ++ show (lmPath lm) ++
+            ", lmTargetPath = " ++ show (lmTargetPath lm) ++
+            ", lmPrimitives = <" ++ show (length (lmPrimitives lm)) ++ " primitives> }"
 
 -- | Module environment: tracks all loaded modules and aliases
 data ModuleEnv = ModuleEnv
@@ -156,6 +164,14 @@ extractImports (MPM.C_mkModule_48 decls) = go decls
 fromAgdaImport :: MPM.T_Import_18 -> Import
 fromAgdaImport (MPM.C_mkImport_28 path alias) = Import path alias
 
+-- | Extract primitives from an Agda-parsed module
+extractPrimitives :: MPM.T_Module_42 -> [(Text, MT.T_Type_32)]
+extractPrimitives (MPM.C_mkModule_48 decls) = go decls
+  where
+    go [] = []
+    go (MPM.C_DPrimitive_36 name ty : rest) = (name, ty) : go rest
+    go (_ : rest) = go rest
+
 -- | Load a single module file (returns loaded module and its imports for recursive resolution)
 loadModuleFile :: FilePath -> String -> ModuleName -> IO (Either ModuleError (LoadedModule, [Import]))
 loadModuleFile strataPath targetExt modPath = do
@@ -171,10 +187,12 @@ loadModuleFile strataPath targetExt modPath = do
           let tgtPath = targetFilePath strataPath targetExt modPath
           hasTarget <- doesFileExist tgtPath
           let imports = extractImports agdaModule
+              prims = extractPrimitives agdaModule
           return $ Right
             ( LoadedModule
                 { lmPath = oncePath
                 , lmTargetPath = if hasTarget then Just tgtPath else Nothing
+                , lmPrimitives = prims
                 }
             , imports
             )
@@ -240,3 +258,13 @@ loadModulesWithCycleCheck env loading (modPath : rest) = do
                 case result' of
                   Left err -> return $ Left err
                   Right env'' -> loadModulesWithCycleCheck env'' loading rest
+
+-- | Build the imports list for the type checker from the module environment.
+-- Returns list of (qualified_name, type) where qualified_name is "alias.name".
+buildImportsForTypeChecker :: ModuleEnv -> [(Text, MT.T_Type_32)]
+buildImportsForTypeChecker env =
+  [ (alias <> "." <> name, ty)
+  | (alias, modPath) <- Map.toList (meAliases env)
+  , Just lm <- [Map.lookup modPath (meModules env)]
+  , (name, ty) <- lmPrimitives lm
+  ]

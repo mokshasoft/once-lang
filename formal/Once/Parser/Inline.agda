@@ -16,7 +16,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Nullary using (yes; no; ¬_)
 
-open import Once.TypeCheck.Raw using (RawExpr; RVar; RApp; RLam; RLet;
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam; RLet;
                                        RPair; RDestruct; RUnit; RInt;
                                        RStringLit; RAnnot; RBinOp; RUnaryOp)
 
@@ -54,6 +54,8 @@ inlineReferences zero _ expr = expr  -- fuel exhausted
 inlineReferences (suc fuel) defs (RVar name) with lookupDef name defs
 ... | just body = inlineReferences fuel defs body  -- substitute and continue
 ... | nothing   = RVar name  -- generator or unbound, leave as-is
+-- Qualified names refer to imported functions, don't inline them
+inlineReferences _ _ (RQualified name alias) = RQualified name alias
 inlineReferences (suc fuel) defs (RApp f x) =
   RApp (inlineReferences (suc fuel) defs f)
        (inlineReferences (suc fuel) defs x)

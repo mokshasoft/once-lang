@@ -24,7 +24,7 @@ open import Data.Char using (Char)
 open import Data.String using (String)
 
 open import Once.Type using (Type)
-open import Once.TypeCheck.Raw using (RawExpr; RVar; RApp; RLam; RLet;
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam; RLet;
                                        RPair; RDestruct; RUnit; RInt;
                                        RStringLit; RAnnot; RBinOp; RUnaryOp;
                                        BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
@@ -181,7 +181,8 @@ parseAtomExpr (TWord "destruct" ∷ rest) = parseDestruct rest
 parseAtomExpr (TInt n ∷ rest) = just (RInt n , rest)
 -- String literal
 parseAtomExpr (TString s ∷ rest) = just (RStringLit s , rest)
--- Variable (any word that isn't a keyword starting an expression)
+-- Variable with optional qualified reference: name or name@alias
+parseAtomExpr (TWord name ∷ TAt ∷ TWord alias ∷ rest) = just (RQualified name alias , rest)
 parseAtomExpr (TWord name ∷ rest) = just (RVar name , rest)
 -- Not an atom
 parseAtomExpr (_ ∷ _) = nothing

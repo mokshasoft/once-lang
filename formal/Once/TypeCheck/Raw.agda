@@ -56,6 +56,10 @@ data RawExpr : Set where
   -- Variable reference
   RVar      : String → RawExpr
 
+  -- Qualified variable reference: name@alias (e.g., exit0@S)
+  -- First String is the name, second is the module alias
+  RQualified : String → String → RawExpr
+
   -- Function application
   RApp      : RawExpr → RawExpr → RawExpr
 

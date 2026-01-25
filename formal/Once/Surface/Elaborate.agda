@@ -208,3 +208,7 @@ elaborate (roll' e) = fold ∘ elaborate e
 
 -- unroll unwraps one layer: Fix F → F
 elaborate (unroll' e) = unfold ∘ elaborate e
+
+-- Imported primitive: call external function by name
+-- Like intLit/strLit, ignores environment and produces the result
+elaborate (prim name) = Prim name ∘ terminal

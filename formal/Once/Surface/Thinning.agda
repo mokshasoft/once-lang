@@ -128,6 +128,7 @@ rename θ (Surface.ne a b) = Surface.ne (rename θ a) (rename θ b)
 rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
 rename θ (Surface.roll' e) = Surface.roll' (rename θ e)
 rename θ (Surface.unroll' e) = Surface.unroll' (rename θ e)
+rename θ (Surface.prim name) = Surface.prim name
 
 ------------------------------------------------------------------------
 -- Telescopes (for generalized exchange)

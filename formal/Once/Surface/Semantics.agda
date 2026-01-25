@@ -9,7 +9,7 @@ module Once.Surface.Semantics where
 
 open import Once.Type
 open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; roll'; unroll') renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; roll'; unroll'; prim) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -27,6 +27,11 @@ open import Relation.Nullary using (does)
 postulate
   divℤ : ℤ → ℤ → ℤ
   modℤ : ℤ → ℤ → ℤ
+
+-- Primitive evaluation (external/opaque semantics)
+-- Primitives are defined by the runtime environment
+postulate
+  evalSurfacePrim : ∀ {A} → String → ⟦ A ⟧
 
 -- | Environment: maps variables to values
 --
@@ -120,3 +125,5 @@ evalSurface ρ (arr' f)       = evalSurface ρ f
 -- Fixed point constructors: wrap/unwrap isomorphism
 evalSurface ρ (roll' e)      = wrap (evalSurface ρ e)
 evalSurface ρ (unroll' e)    = ⟦Fix⟧.unwrap (evalSurface ρ e)
+-- Primitives: opaque external operations (semantics defined by runtime)
+evalSurface ρ (prim name)    = evalSurfacePrim name

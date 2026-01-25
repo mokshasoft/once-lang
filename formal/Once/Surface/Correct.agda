@@ -10,7 +10,7 @@ module Once.Surface.Correct where
 open import Once.Type
 open import Once.IR
 open import Once.Semantics as IR using (⟦_⟧; eval; Closure; ⟦Fix⟧; wrap)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; roll'; unroll') renaming (_,_ to _▸_; eq to eq')
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; roll'; unroll'; prim) renaming (_,_ to _▸_; eq to eq')
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR)
@@ -242,6 +242,10 @@ mutual
   -- LHS: evalSurface ρ (unroll' e) = ⟦Fix⟧.unwrap (evalSurface ρ e)
   -- RHS: eval (unfold ∘ elaborate e) γ = ⟦Fix⟧.unwrap (eval (elaborate e) γ)
   elaborate-correct ρ (unroll' e) = cong ⟦Fix⟧.unwrap (elaborate-correct ρ e)
+  -- Primitives: opaque operations with postulated correctness
+  -- The primitive has the same name in both Surface and IR semantics
+  elaborate-correct ρ (prim name) = prim-correct name
+    where postulate prim-correct : ∀ (n : String) → evalSurface ρ (prim n) ≡ eval (elaborate (prim n)) (interpEnv ρ)
 
   -- Helper for comparison correctness
   arith-cmp-correct : ∀ {n} {Γ : Ctx n} (ρ : Env Γ) (e₁ e₂ : Expr Γ Int)

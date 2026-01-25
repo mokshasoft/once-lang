@@ -34,7 +34,7 @@ d_compile_8 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Escape.d_escape_126 v0 v1
       (coe
-         MAlonzo.Code.Once.Optimize.d_optimize_1386 v0 v1
+         MAlonzo.Code.Once.Optimize.d_optimize_1266 v0 v1
          (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16
             (coe v0) (coe v1) (coe v2)))
 -- Once.Compile.compile-no-escape
@@ -45,7 +45,7 @@ d_compile'45'no'45'escape_16 ::
   MAlonzo.Code.Once.IR.T_IR_10
 d_compile'45'no'45'escape_16 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Optimize.d_optimize_1386 v0 v1
+      MAlonzo.Code.Once.Optimize.d_optimize_1266 v0 v1
       (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16
          (coe v0) (coe v1) (coe v2))
 -- Once.Compile.compile-no-opt

@@ -35,7 +35,7 @@ optimizeMAlonzo :: H.IR -> H.IR
 optimizeMAlonzo ir =
   let (cleanIR, opaques) = extractOpaques ir
       mIR = toMAlonzoIR cleanIR
-      mOptimized = MO.d_optimize_1386 (getInputType cleanIR) (getOutputType cleanIR) mIR
+      mOptimized = MO.d_optimize_1266 (getInputType cleanIR) (getOutputType cleanIR) mIR
       result = fromMAlonzoIR mOptimized
   in restoreOpaques opaques result
 

@@ -475,6 +475,29 @@ malonzo-parser:
 	@cp _build/malonzo/MAlonzo/Code/Once/Parser.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done. Parser in compiler/src/MAlonzo/Code/Once/Parser/"
 
+# Extract entire compiler to MAlonzo (clean rebuild)
+# This is the recommended way to update the Haskell compiler after Agda changes
+.PHONY: malonzo-all
+malonzo-all:
+	@echo "Extracting entire compiler via MAlonzo (clean rebuild)..."
+	@rm -rf _build/malonzo
+	@mkdir -p _build/malonzo
+	@# Run all extractions (they write to _build/malonzo but we ignore their copy steps)
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(COMPILE)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(TYPECHECK_MAIN)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Parser.agda'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Backend/C/CodeGen.agda'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(EMIT_ALL)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ASSEMBLER)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_TYPE)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_IR)'
+	@# Copy ALL extracted Once modules to compiler (ensures everything is in sync)
+	@echo "Copying all extracted modules to compiler..."
+	@rm -rf ../compiler/src/MAlonzo/Code/Once
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once
+	@cp -r _build/malonzo/MAlonzo/Code/Once/* ../compiler/src/MAlonzo/Code/Once/
+	@echo "Done! All MAlonzo modules extracted to compiler/src/MAlonzo/Code/Once/"
+
 .PHONY: count-postulates
 count-postulates:
 	@echo "Counting postulates in Agda files..."

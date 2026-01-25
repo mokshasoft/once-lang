@@ -26,5 +26,5 @@ d_typeCheck_4 ::
   MAlonzo.Code.Once.TypeCheck.Elaborate.T_InferElabResult_288
 d_typeCheck_4 v0
   = coe
-      MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_1726
-      (coe MAlonzo.Code.Once.TypeCheck.Elaborate.d_emptyCtx_350) (coe v0)
+      MAlonzo.Code.Once.TypeCheck.Elaborate.d_inferElab_1824
+      (coe MAlonzo.Code.Once.TypeCheck.Elaborate.d_emptyCtx_358) (coe v0)

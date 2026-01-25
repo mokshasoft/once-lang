@@ -29,7 +29,9 @@ import System.Process (readProcessWithExitCode)
 
 import Once.Backend.CCompiler as CC
 import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError,
-                    LoadedModule (..), Import (..), AllocStrategy (..), extractImports)
+                    LoadedModule (..), Import (..), AllocStrategy (..), extractImports,
+                    buildImportsForTypeChecker)
+import qualified MAlonzo.Code.Agda.Builtin.Sigma as Sigma
 import Once.MAlonzo (fromMAlonzoType)
 import qualified MAlonzo.Code.Once.Type as MT
 import qualified MAlonzo.Code.Once.IR as MIR
@@ -178,7 +180,7 @@ runBuild opts = do
                       exitFailure
                     _ -> do
                       -- Elaborate all functions (Agda-verified, already inlined)
-                      elaborateResult <- elaborateAllAgda allFunInfos
+                      elaborateResult <- elaborateAllAgda modEnv allFunInfos
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
@@ -223,7 +225,7 @@ runBuild opts = do
                       -- Elaborate all functions (Agda-verified, already inlined)
                       -- Put main first, then others
                       let otherFunInfos = filter (\fi -> MP.d_funName_48 fi /= "main") allFunInfos
-                      elaborateResult <- elaborateAllAgda (mainFi : otherFunInfos)
+                      elaborateResult <- elaborateAllAgda modEnv (mainFi : otherFunInfos)
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
@@ -378,12 +380,12 @@ runCheck opts = do
         Left modErr -> do
           TIO.putStrLn $ "Module error: " <> formatModuleError modErr
           exitFailure
-        Right _modEnv -> do
+        Right modEnv -> do
           -- Type check by running elaboration (Agda is the type checker)
           let aliases = MP.d_extractAliases_18 agdaModule
               funInfos = MP.d_extractFunctions_58 aliases agdaModule
               allFunInfos = MP.d_inlineAll_120 100 funInfos
-          elaborateResult <- elaborateAllAgda allFunInfos
+          elaborateResult <- elaborateAllAgda modEnv allFunInfos
           case elaborateResult of
             Left err -> do
               TIO.putStrLn $ "Type error: " <> T.pack err
@@ -424,9 +426,9 @@ fromAgdaAlloc (Just MPM.C_Const_16) = Just AllocConst
 -- 4. Optimize using the verified Agda optimizer
 --
 -- Returns MAlonzo types and IR directly (no Haskell IR conversion).
-elaborateAllAgda :: [MP.T_FunInfo_38]
+elaborateAllAgda :: ModuleEnv -> [MP.T_FunInfo_38]
                  -> IO (Either String [(Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10)])
-elaborateAllAgda fns = go fns
+elaborateAllAgda modEnv fns = go fns
   where
     go [] = pure (Right [])
     go (fi:rest) = do
@@ -452,16 +454,18 @@ elaborateAllAgda fns = go fns
           pure (Left $ T.unpack name ++ ": " ++ err)
 
     -- Run Agda type inference + elaboration + optimization for a single expression.
-    -- The elaborator with empty context (∅) produces IR with input type = Unit
-    -- (since ⟦∅⟧ = Unit in the context flattening), and output type = inferredType.
+    -- The elaborator uses a context with imported primitives for qualified name resolution.
     -- Returns the inferred MAlonzo type and optimized MAlonzo IR.
     elaborateOne rawExpr =
-      case VTE.d_inferElab_1726 VTE.d_emptyCtx_350 rawExpr of
+      let importsHs = buildImportsForTypeChecker modEnv
+          importsAgda = map (\(n, t) -> Sigma.C__'44'__32 (unsafeCoerce n) (unsafeCoerce t)) importsHs
+          ctx = VTE.d_ctxWithImports_360 importsAgda
+      in case VTE.d_inferElab_1824 ctx rawExpr of
         VTE.C_failure_304 errMsg ->
           Left $ "Type checking failed: " ++ show errMsg
         VTE.C_success_302 inferredType surfaceExpr _fresh1 _fresh2 _usage ->
           let irExpr = VSE.du_elaborate_112 (VSS.C_'8709'_8) inferredType surfaceExpr
-              optimized = MO.d_optimize_1386 MT.C_Unit_34 inferredType (unsafeCoerce irExpr)
+              optimized = MO.d_optimize_1266 MT.C_Unit_34 inferredType (unsafeCoerce irExpr)
           in Right (inferredType, optimized)
 
 -- | Compile a function body from MAlonzo IR to C expression text.

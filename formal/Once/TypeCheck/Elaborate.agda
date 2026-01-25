@@ -12,7 +12,8 @@
 
 module Once.TypeCheck.Elaborate where
 
-open import Data.String using (String; _≟_; _++_)
+open import Data.String using (String; _++_)
+open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Integer using (ℤ)
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≤?_; _⊔_)
 open import Data.Nat as Nat
@@ -264,8 +265,18 @@ open Surface using (zeroUsage; singleUse; _+ᵘ_; _*ᵘ_) public
 -- Named Context with de Bruijn Correspondence
 ------------------------------------------------------------------------
 
+-- | Imported primitives from other modules (e.g., "S.exit0" → Eff Unit Unit)
+-- These are populated from qualified imports like "import M as S"
+Imports : Set
+Imports = List (String × Type)
+
+-- | Empty imports
+emptyImports : Imports
+emptyImports = []
+
 -- | A named context paired with its de Bruijn representation
 -- Includes a fresh counter for generating unique type variables during instantiation
+-- and imported primitives from other modules
 record NamedCtx : Set where
   constructor mkCtx
   field
@@ -273,18 +284,23 @@ record NamedCtx : Set where
     named       : Ctx
     debruijn    : SCtx size
     freshCounter : ℕ  -- For generating fresh type variables (α₀, α₁, α₂, ...)
+    imports     : Imports  -- Imported primitives (qualified names → types)
 
 -- | Empty context
 emptyCtx : NamedCtx
-emptyCtx = mkCtx 0 ∅ S∅ 0
+emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports
 
--- | Extend context with a new binding (preserves fresh counter)
+-- | Create context with imports
+ctxWithImports : Imports → NamedCtx
+ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps
+
+-- | Extend context with a new binding (preserves fresh counter and imports)
 extendNamedCtx : NamedCtx → String → Type → NamedCtx
-extendNamedCtx (mkCtx n Γ Δ fresh) x A = mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh
+extendNamedCtx (mkCtx n Γ Δ fresh imps) x A = mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps
 
 -- | Bump fresh counter (for generating new type variables)
 bumpFresh : NamedCtx → NamedCtx
-bumpFresh (mkCtx n Γ Δ fresh) = mkCtx n Γ Δ (suc fresh)
+bumpFresh (mkCtx n Γ Δ fresh imps) = mkCtx n Γ Δ (suc fresh) imps
 
 -- | Generate fresh type variable name
 freshTVar : ℕ → String
@@ -297,7 +313,7 @@ freshTVar n = "α" ++ showℕ n
 -- | Find the de Bruijn index of a variable by name in the named context
 -- Returns nothing if the variable is not found (it's a built-in)
 findVarIndex : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx))
-findVarIndex (mkCtx n Γ Δ fresh) x = go Γ Δ
+findVarIndex (mkCtx n Γ Δ fresh imps) x = go Γ Δ
   where
     go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (Fin m)
     go [] S∅ = nothing  -- Variable not found in context (must be built-in)
@@ -524,20 +540,33 @@ builtinType _ _ = nothing
 -- Variable Lookup with Weakening and Instantiation
 ------------------------------------------------------------------------
 
+-- | Look up a type in the imports list by name
+lookupImport : Imports → String → Maybe Type
+lookupImport [] _ = nothing
+lookupImport ((n , ty) ∷ rest) x with StrProp._≟_ n x
+... | yes _ = just ty
+... | no  _ = lookupImport rest x
+
 -- | Look up a variable by name and return its de Bruijn indexed expression
 --
--- First checks the local context, then falls back to built-in generators.
+-- Priority order:
+-- 1. Local context (bound variables)
+-- 2. Built-in generators (id, fst, snd, etc.)
+-- 3. Imported primitives (from qualified imports)
+--
 -- For built-in polymorphic functions, instantiates type variables with fresh names.
 -- Returns the looked-up type/expr and the updated fresh counter.
 --
 lookupVar : (ctx : NamedCtx) → String
           → Maybe (∃[ A ] (SExpr (NamedCtx.debruijn ctx) A × ℕ))
-lookupVar (mkCtx n Γ Δ fresh) x = go Γ Δ fresh
+lookupVar (mkCtx n Γ Δ fresh imps) x = go Γ Δ fresh
   where
     go : ∀ {m} → Ctx → (Δ' : SCtx m) → ℕ → Maybe (∃[ A ] (SExpr Δ' A × ℕ))
     go [] S∅ freshCtr with builtinType x freshCtr
     ... | just (instTy , se , freshCtr') = just (instTy , weakenFromEmpty se , freshCtr')
-    ... | nothing = nothing
+    ... | nothing with lookupImport imps x
+    ...   | just ty = just (ty , Surface.prim x , freshCtr)  -- Imported primitive
+    ...   | nothing = nothing
     go [] (_ S, _ ^ _) _ = nothing  -- impossible case: named context empty but debruijn not
     go (_ ∷ _) S∅ _ = nothing   -- impossible case: named context non-empty but debruijn empty
     go {suc m} (b ∷ Γ') (Δ' S, B ^ Many) freshCtr with Data.String._≟_ x (name b)
@@ -600,6 +629,12 @@ mutual
   ...   | nothing = -- Built-in: no usage (weakened from empty context)
                     success A se 0 fresh' zeroUsage
 
+  -- Qualified variable: name@alias (e.g., exit0@S)
+  -- Look up using "alias.name" format to find imported functions
+  inferElabImpl ctx (Raw.RQualified name alias) with lookupVar ctx (alias ++ "." ++ name)
+  ... | nothing = failure ("Unbound qualified variable: " ++ name ++ "@" ++ alias)
+  ... | just (A , se , fresh') = success A se 0 fresh' zeroUsage  -- Imported: no local usage
+
   -- Lambda: infer body with extended context, wrap in lam (depth = body depth + 1)
   -- QTT: Validate parameter usage respects Many (inferred lambdas are unrestricted),
   --      then drop parameter from usage vector
@@ -624,7 +659,7 @@ mutual
       inferApp (success (A ⇒[ q ] B) funExpr funDepth funFresh usageFun) = inferArg (inferElabImpl (bumpFreshTo ctx funFresh) arg)
         where
           bumpFreshTo : NamedCtx → ℕ → NamedCtx
-          bumpFreshTo (mkCtx n Γ Δ _) fresh = mkCtx n Γ Δ fresh
+          bumpFreshTo (mkCtx n Γ Δ _ imps) fresh = mkCtx n Γ Δ fresh imps
 
           inferArg : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
           inferArg (failure err) = failure err
@@ -650,7 +685,7 @@ mutual
   ... | success A aExpr aDepth aFresh usage1 with inferElabImpl (bumpFresh' ctx aFresh) b
     where
       bumpFresh' : NamedCtx → ℕ → NamedCtx
-      bumpFresh' (mkCtx n Γ Δ _) fresh = mkCtx n Γ Δ fresh
+      bumpFresh' (mkCtx n Γ Δ _ imps) fresh = mkCtx n Γ Δ fresh imps
   ...   | failure err = failure err
   ...   | success B bExpr bDepth bFresh usage2 =
         success (A Once.Type.* B) (Surface.pair aExpr bExpr) (aDepth ⊔ bDepth) bFresh (usage1 +ᵘ usage2)
@@ -666,7 +701,7 @@ mutual
   ... | success A e₁Expr e₁Depth e₁Fresh usage1 with inferElabImpl (extendNamedCtx' ctx x A e₁Fresh) e₂
     where
       extendNamedCtx' : NamedCtx → String → Type → ℕ → NamedCtx
-      extendNamedCtx' (mkCtx n Γ Δ _) y B fresh = mkCtx (suc n) (extendCtx Γ y B) (Δ S, B) fresh
+      extendNamedCtx' (mkCtx n Γ Δ _ imps) y B fresh = mkCtx (suc n) (extendCtx Γ y B) (Δ S, B) fresh imps
   ...   | failure err = failure err
   ...   | success B e₂Expr e₂Depth e₂Fresh usage2 =
         success B (Surface.let' e₁Expr e₂Expr) (e₁Depth ⊔ suc e₂Depth) e₂Fresh (usage1 +ᵘ tailUsage usage2)
@@ -676,7 +711,7 @@ mutual
   inferElabImpl ctx (Raw.RDestruct scrut xL eL xR eR) = inferCase (inferElabImpl ctx scrut)
     where
       extendCtx' : NamedCtx → String → Type → ℕ → NamedCtx
-      extendCtx' (mkCtx n Γ Δ _) y C fresh = mkCtx (suc n) (extendCtx Γ y C) (Δ S, C) fresh
+      extendCtx' (mkCtx n Γ Δ _ imps) y C fresh = mkCtx (suc n) (extendCtx Γ y C) (Δ S, C) fresh imps
 
       inferCase : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
       inferCase (failure err) = failure err
@@ -725,7 +760,7 @@ mutual
   inferElabImpl ctx (Raw.RBinOp op e₁ e₂) = inferOp (inferElabImpl ctx e₁)
     where
       bumpFresh' : NamedCtx → ℕ → NamedCtx
-      bumpFresh' (mkCtx n Γ Δ _) fresh = mkCtx n Γ Δ fresh
+      bumpFresh' (mkCtx n Γ Δ _ imps) fresh = mkCtx n Γ Δ fresh imps
 
       -- Helper to build the result given the inferred operands
       inferOp : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)

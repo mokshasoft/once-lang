@@ -2375,236 +2375,6 @@ d_optimize'45'compose_862 v0 v1 v2 v3 v4
                        (case coe v4 of
                           MAlonzo.Code.Once.IR.C_id_14
                             -> coe MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42 v9 v10 v11
-                          MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42 v18 v19 v20
-                            -> case coe v1 of
-                                 MAlonzo.Code.Once.Type.C__'42'__38 v21 v22
-                                   -> case coe v9 of
-                                        MAlonzo.Code.Once.IR.C__'8728'__22 v24 v26 v27
-                                          -> case coe v27 of
-                                               MAlonzo.Code.Once.IR.C_fst_28
-                                                 -> case coe v10 of
-                                                      MAlonzo.Code.Once.IR.C__'8728'__22 v31 v33 v34
-                                                        -> case coe v34 of
-                                                             MAlonzo.Code.Once.IR.C_snd_34
-                                                               -> case coe v18 of
-                                                                    MAlonzo.Code.Once.IR.C__'8728'__22 v38 v40 v41
-                                                                      -> case coe v41 of
-                                                                           MAlonzo.Code.Once.IR.C_fst_28
-                                                                             -> case coe v0 of
-                                                                                  MAlonzo.Code.Once.Type.C__'42'__38 v44 v45
-                                                                                    -> case coe
-                                                                                              v19 of
-                                                                                         MAlonzo.Code.Once.IR.C__'8728'__22 v47 v49 v50
-                                                                                           -> case coe
-                                                                                                     v50 of
-                                                                                                MAlonzo.Code.Once.IR.C_snd_34
-                                                                                                  -> coe
-                                                                                                       MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
-                                                                                                       (coe
-                                                                                                          MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                          v38
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                             v24
-                                                                                                             v26
-                                                                                                             v40)
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Once.IR.C_fst_28))
-                                                                                                       (coe
-                                                                                                          MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                          v45
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                             v22
-                                                                                                             v33
-                                                                                                             v49)
-                                                                                                          (coe
-                                                                                                             MAlonzo.Code.Once.IR.C_snd_34))
-                                                                                                       v11
-                                                                                                _ -> coe
-                                                                                                       v14
-                                                                                         MAlonzo.Code.Once.IR.C_snd_34
-                                                                                           -> coe
-                                                                                                MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v38
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                      v24
-                                                                                                      v26
-                                                                                                      v40)
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C_fst_28))
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v22
-                                                                                                   v33
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C_snd_34))
-                                                                                                v11
-                                                                                         _ -> coe
-                                                                                                v14
-                                                                                  _ -> coe v14
-                                                                           _ -> coe v14
-                                                                    MAlonzo.Code.Once.IR.C_fst_28
-                                                                      -> case coe v0 of
-                                                                           MAlonzo.Code.Once.Type.C__'42'__38 v39 v40
-                                                                             -> case coe v19 of
-                                                                                  MAlonzo.Code.Once.IR.C__'8728'__22 v42 v44 v45
-                                                                                    -> case coe
-                                                                                              v45 of
-                                                                                         MAlonzo.Code.Once.IR.C_snd_34
-                                                                                           -> coe
-                                                                                                MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v24
-                                                                                                   v26
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C_fst_28))
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v40
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                      v22
-                                                                                                      v33
-                                                                                                      v44)
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C_snd_34))
-                                                                                                v11
-                                                                                         _ -> coe
-                                                                                                v14
-                                                                                  _ -> coe v14
-                                                                           _ -> coe v14
-                                                                    _ -> coe v14
-                                                             _ -> coe v14
-                                                      MAlonzo.Code.Once.IR.C_snd_34
-                                                        -> case coe v18 of
-                                                             MAlonzo.Code.Once.IR.C__'8728'__22 v33 v35 v36
-                                                               -> case coe v36 of
-                                                                    MAlonzo.Code.Once.IR.C_fst_28
-                                                                      -> case coe v0 of
-                                                                           MAlonzo.Code.Once.Type.C__'42'__38 v39 v40
-                                                                             -> case coe v19 of
-                                                                                  MAlonzo.Code.Once.IR.C__'8728'__22 v42 v44 v45
-                                                                                    -> case coe
-                                                                                              v45 of
-                                                                                         MAlonzo.Code.Once.IR.C_snd_34
-                                                                                           -> coe
-                                                                                                MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v33
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                      v24
-                                                                                                      v26
-                                                                                                      v35)
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C_fst_28))
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v40
-                                                                                                   v44
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C_snd_34))
-                                                                                                v11
-                                                                                         _ -> coe
-                                                                                                v14
-                                                                                  MAlonzo.Code.Once.IR.C_snd_34
-                                                                                    -> coe
-                                                                                         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
-                                                                                         (coe
-                                                                                            MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                            v33
-                                                                                            (coe
-                                                                                               MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                               v24
-                                                                                               v26
-                                                                                               v35)
-                                                                                            (coe
-                                                                                               MAlonzo.Code.Once.IR.C_fst_28))
-                                                                                         (coe
-                                                                                            MAlonzo.Code.Once.IR.C_snd_34)
-                                                                                         v11
-                                                                                  _ -> coe v14
-                                                                           _ -> coe v14
-                                                                    _ -> coe v14
-                                                             _ -> coe v14
-                                                      _ -> coe v14
-                                               _ -> coe v14
-                                        MAlonzo.Code.Once.IR.C_fst_28
-                                          -> case coe v10 of
-                                               MAlonzo.Code.Once.IR.C__'8728'__22 v26 v28 v29
-                                                 -> case coe v29 of
-                                                      MAlonzo.Code.Once.IR.C_snd_34
-                                                        -> case coe v18 of
-                                                             MAlonzo.Code.Once.IR.C__'8728'__22 v33 v35 v36
-                                                               -> case coe v36 of
-                                                                    MAlonzo.Code.Once.IR.C_fst_28
-                                                                      -> case coe v0 of
-                                                                           MAlonzo.Code.Once.Type.C__'42'__38 v39 v40
-                                                                             -> case coe v19 of
-                                                                                  MAlonzo.Code.Once.IR.C__'8728'__22 v42 v44 v45
-                                                                                    -> case coe
-                                                                                              v45 of
-                                                                                         MAlonzo.Code.Once.IR.C_snd_34
-                                                                                           -> coe
-                                                                                                MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v33
-                                                                                                   v35
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C_fst_28))
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v40
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                      v22
-                                                                                                      v28
-                                                                                                      v44)
-                                                                                                   (coe
-                                                                                                      MAlonzo.Code.Once.IR.C_snd_34))
-                                                                                                v11
-                                                                                         _ -> coe
-                                                                                                v14
-                                                                                  _ -> coe v14
-                                                                           _ -> coe v14
-                                                                    _ -> coe v14
-                                                             MAlonzo.Code.Once.IR.C_fst_28
-                                                               -> case coe v0 of
-                                                                    MAlonzo.Code.Once.Type.C__'42'__38 v34 v35
-                                                                      -> case coe v19 of
-                                                                           MAlonzo.Code.Once.IR.C__'8728'__22 v37 v39 v40
-                                                                             -> case coe v40 of
-                                                                                  MAlonzo.Code.Once.IR.C_snd_34
-                                                                                    -> coe
-                                                                                         MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
-                                                                                         (coe
-                                                                                            MAlonzo.Code.Once.IR.C_fst_28)
-                                                                                         (coe
-                                                                                            MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                            v35
-                                                                                            (coe
-                                                                                               MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                               v22
-                                                                                               v28
-                                                                                               v39)
-                                                                                            (coe
-                                                                                               MAlonzo.Code.Once.IR.C_snd_34))
-                                                                                         v11
-                                                                                  _ -> coe v14
-                                                                           _ -> coe v14
-                                                                    _ -> coe v14
-                                                             _ -> coe v14
-                                                      _ -> coe v14
-                                               _ -> coe v14
-                                        _ -> coe v14
-                                 _ -> coe v14
                           MAlonzo.Code.Once.IR.C_initial_70
                             -> coe MAlonzo.Code.Once.IR.C_initial_70
                           _ -> coe v14)
@@ -2637,224 +2407,6 @@ d_optimize'45'compose_862 v0 v1 v2 v3 v4
                          -> coe MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62 v9 v10
                        MAlonzo.Code.Once.IR.C_inl_48 v15 -> coe v9
                        MAlonzo.Code.Once.IR.C_inr_54 v15 -> coe v10
-                       MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62 v16 v17
-                         -> case coe v0 of
-                              MAlonzo.Code.Once.Type.C__'43'__40 v18 v19
-                                -> case coe v9 of
-                                     MAlonzo.Code.Once.IR.C__'8728'__22 v21 v23 v24
-                                       -> case coe v23 of
-                                            MAlonzo.Code.Once.IR.C_inl_48 v27
-                                              -> case coe v2 of
-                                                   MAlonzo.Code.Once.Type.C__'43'__40 v28 v29
-                                                     -> case coe v10 of
-                                                          MAlonzo.Code.Once.IR.C__'8728'__22 v31 v33 v34
-                                                            -> case coe v33 of
-                                                                 MAlonzo.Code.Once.IR.C_inr_54 v37
-                                                                   -> case coe v16 of
-                                                                        MAlonzo.Code.Once.IR.C__'8728'__22 v39 v41 v42
-                                                                          -> case coe v41 of
-                                                                               MAlonzo.Code.Once.IR.C_inl_48 v45
-                                                                                 -> case coe v17 of
-                                                                                      MAlonzo.Code.Once.IR.C__'8728'__22 v47 v49 v50
-                                                                                        -> case coe
-                                                                                                  v49 of
-                                                                                             MAlonzo.Code.Once.IR.C_inr_54 v53
-                                                                                               -> coe
-                                                                                                    MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62
-                                                                                                    (coe
-                                                                                                       MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                       v21
-                                                                                                       (coe
-                                                                                                          MAlonzo.Code.Once.IR.C_inl_48
-                                                                                                          v27)
-                                                                                                       (coe
-                                                                                                          MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                          v11
-                                                                                                          v24
-                                                                                                          v42))
-                                                                                                    (coe
-                                                                                                       MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                       v29
-                                                                                                       (coe
-                                                                                                          MAlonzo.Code.Once.IR.C_inr_54
-                                                                                                          v37)
-                                                                                                       (coe
-                                                                                                          MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                          v12
-                                                                                                          v34
-                                                                                                          v50))
-                                                                                             _ -> coe
-                                                                                                    v5
-                                                                                      MAlonzo.Code.Once.IR.C_inr_54 v48
-                                                                                        -> coe
-                                                                                             MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62
-                                                                                             (coe
-                                                                                                MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                v21
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C_inl_48
-                                                                                                   v27)
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v11
-                                                                                                   v24
-                                                                                                   v42))
-                                                                                             (coe
-                                                                                                MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                v29
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C_inr_54
-                                                                                                   v37)
-                                                                                                v34)
-                                                                                      _ -> coe v5
-                                                                               _ -> coe v5
-                                                                        MAlonzo.Code.Once.IR.C_inl_48 v40
-                                                                          -> case coe v17 of
-                                                                               MAlonzo.Code.Once.IR.C__'8728'__22 v42 v44 v45
-                                                                                 -> case coe v44 of
-                                                                                      MAlonzo.Code.Once.IR.C_inr_54 v48
-                                                                                        -> coe
-                                                                                             MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62
-                                                                                             (coe
-                                                                                                MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                v21
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C_inl_48
-                                                                                                   v27)
-                                                                                                v24)
-                                                                                             (coe
-                                                                                                MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                v29
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C_inr_54
-                                                                                                   v37)
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v12
-                                                                                                   v34
-                                                                                                   v45))
-                                                                                      _ -> coe v5
-                                                                               _ -> coe v5
-                                                                        _ -> coe v5
-                                                                 _ -> coe v5
-                                                          MAlonzo.Code.Once.IR.C_inr_54 v32
-                                                            -> case coe v16 of
-                                                                 MAlonzo.Code.Once.IR.C__'8728'__22 v34 v36 v37
-                                                                   -> case coe v36 of
-                                                                        MAlonzo.Code.Once.IR.C_inl_48 v40
-                                                                          -> case coe v17 of
-                                                                               MAlonzo.Code.Once.IR.C__'8728'__22 v42 v44 v45
-                                                                                 -> case coe v44 of
-                                                                                      MAlonzo.Code.Once.IR.C_inr_54 v48
-                                                                                        -> coe
-                                                                                             MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62
-                                                                                             (coe
-                                                                                                MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                v21
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C_inl_48
-                                                                                                   v27)
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v11
-                                                                                                   v24
-                                                                                                   v37))
-                                                                                             (coe
-                                                                                                MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                v12
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C_inr_54
-                                                                                                   v32)
-                                                                                                v45)
-                                                                                      _ -> coe v5
-                                                                               MAlonzo.Code.Once.IR.C_inr_54 v43
-                                                                                 -> coe
-                                                                                      MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62
-                                                                                      (coe
-                                                                                         MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                         v21
-                                                                                         (coe
-                                                                                            MAlonzo.Code.Once.IR.C_inl_48
-                                                                                            v27)
-                                                                                         (coe
-                                                                                            MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                            v11 v24
-                                                                                            v37))
-                                                                                      (coe
-                                                                                         MAlonzo.Code.Once.IR.C_inr_54
-                                                                                         v32)
-                                                                               _ -> coe v5
-                                                                        _ -> coe v5
-                                                                 _ -> coe v5
-                                                          _ -> coe v5
-                                                   _ -> coe v5
-                                            _ -> coe v5
-                                     MAlonzo.Code.Once.IR.C_inl_48 v22
-                                       -> case coe v2 of
-                                            MAlonzo.Code.Once.Type.C__'43'__40 v23 v24
-                                              -> case coe v10 of
-                                                   MAlonzo.Code.Once.IR.C__'8728'__22 v26 v28 v29
-                                                     -> case coe v28 of
-                                                          MAlonzo.Code.Once.IR.C_inr_54 v32
-                                                            -> case coe v16 of
-                                                                 MAlonzo.Code.Once.IR.C__'8728'__22 v34 v36 v37
-                                                                   -> case coe v36 of
-                                                                        MAlonzo.Code.Once.IR.C_inl_48 v40
-                                                                          -> case coe v17 of
-                                                                               MAlonzo.Code.Once.IR.C__'8728'__22 v42 v44 v45
-                                                                                 -> case coe v44 of
-                                                                                      MAlonzo.Code.Once.IR.C_inr_54 v48
-                                                                                        -> coe
-                                                                                             MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62
-                                                                                             (coe
-                                                                                                MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                v11
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C_inl_48
-                                                                                                   v22)
-                                                                                                v37)
-                                                                                             (coe
-                                                                                                MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                v24
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C_inr_54
-                                                                                                   v32)
-                                                                                                (coe
-                                                                                                   MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                                   v12
-                                                                                                   v29
-                                                                                                   v45))
-                                                                                      _ -> coe v5
-                                                                               _ -> coe v5
-                                                                        _ -> coe v5
-                                                                 MAlonzo.Code.Once.IR.C_inl_48 v35
-                                                                   -> case coe v17 of
-                                                                        MAlonzo.Code.Once.IR.C__'8728'__22 v37 v39 v40
-                                                                          -> case coe v39 of
-                                                                               MAlonzo.Code.Once.IR.C_inr_54 v43
-                                                                                 -> coe
-                                                                                      MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62
-                                                                                      (coe
-                                                                                         MAlonzo.Code.Once.IR.C_inl_48
-                                                                                         v22)
-                                                                                      (coe
-                                                                                         MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                         v24
-                                                                                         (coe
-                                                                                            MAlonzo.Code.Once.IR.C_inr_54
-                                                                                            v32)
-                                                                                         (coe
-                                                                                            MAlonzo.Code.Once.IR.C__'8728'__22
-                                                                                            v12 v29
-                                                                                            v40))
-                                                                               _ -> coe v5
-                                                                        _ -> coe v5
-                                                                 _ -> coe v5
-                                                          _ -> coe v5
-                                                   _ -> coe v5
-                                            _ -> coe v5
-                                     _ -> coe v5
-                              _ -> coe v5
                        MAlonzo.Code.Once.IR.C_initial_70
                          -> coe MAlonzo.Code.Once.IR.C_initial_70
                        _ -> coe v5
@@ -2930,6 +2482,11 @@ d_optimize'45'compose_862 v0 v1 v2 v3 v4
                 MAlonzo.Code.Once.IR.C_Prim_104 v9
                   -> coe MAlonzo.Code.Once.IR.C_terminal_66
                 _ -> MAlonzo.RTE.mazUnreachableError
+         MAlonzo.Code.Once.IR.C_initial_70
+           -> coe
+                MAlonzo.Code.Once.IR.C__'8728'__22
+                (coe MAlonzo.Code.Once.Type.C_Void_36)
+                (coe MAlonzo.Code.Once.IR.C_initial_70) v4
          MAlonzo.Code.Once.IR.C_curry_78 v9 v10
            -> case coe v2 of
                 MAlonzo.Code.Once.Type.C__'8658''91'_'93'__42 v11 v12 v13
@@ -3012,15 +2569,15 @@ d_optimize'45'compose_862 v0 v1 v2 v3 v4
                 MAlonzo.Code.Once.IR.C_initial_70
                   -> coe MAlonzo.Code.Once.IR.C_initial_70
                 _ -> coe v5
-         _ -> coe v5)
+         _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Optimize.optimize-pair
-d_optimize'45'pair_1066 ::
+d_optimize'45'pair_946 ::
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.IR.T_IR_10 ->
   MAlonzo.Code.Once.IR.T_IR_10 -> MAlonzo.Code.Once.IR.T_IR_10
-d_optimize'45'pair_1066 v0 v1 v2 v3 v4
+d_optimize'45'pair_946 v0 v1 v2 v3 v4
   = let v5
           = coe
               MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42 v3 v4
@@ -3188,13 +2745,13 @@ d_optimize'45'pair_1066 v0 v1 v2 v3 v4
                 _ -> coe v5
          _ -> coe v5)
 -- Once.Optimize.optimize-case
-d_optimize'45'case_1190 ::
+d_optimize'45'case_1070 ::
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.IR.T_IR_10 ->
   MAlonzo.Code.Once.IR.T_IR_10 -> MAlonzo.Code.Once.IR.T_IR_10
-d_optimize'45'case_1190 v0 v1 v2 v3 v4
+d_optimize'45'case_1070 v0 v1 v2 v3 v4
   = let v5 = coe MAlonzo.Code.Once.IR.C_'91'_'44'_'93'_62 v3 v4 in
     coe
       (case coe v3 of
@@ -3358,27 +2915,27 @@ d_optimize'45'case_1190 v0 v1 v2 v3 v4
                 _ -> coe v5
          _ -> coe v5)
 -- Once.Optimize.optimize-once
-d_optimize'45'once_1344 ::
+d_optimize'45'once_1224 ::
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.IR.T_IR_10 -> MAlonzo.Code.Once.IR.T_IR_10
-d_optimize'45'once_1344 v0 v1 v2
+d_optimize'45'once_1224 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.IR.C_id_14 -> coe MAlonzo.Code.Once.IR.C_id_14
       MAlonzo.Code.Once.IR.C__'8728'__22 v4 v6 v7
         -> coe
              d_optimize'45'compose_862 (coe v0) (coe v4) (coe v1)
-             (coe d_optimize'45'once_1344 (coe v4) (coe v1) (coe v6))
-             (coe d_optimize'45'once_1344 (coe v0) (coe v4) (coe v7))
+             (coe d_optimize'45'once_1224 (coe v4) (coe v1) (coe v6))
+             (coe d_optimize'45'once_1224 (coe v0) (coe v4) (coe v7))
       MAlonzo.Code.Once.IR.C_fst_28 -> coe MAlonzo.Code.Once.IR.C_fst_28
       MAlonzo.Code.Once.IR.C_snd_34 -> coe MAlonzo.Code.Once.IR.C_snd_34
       MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42 v6 v7 v8
         -> case coe v1 of
              MAlonzo.Code.Once.Type.C__'42'__38 v9 v10
                -> coe
-                    d_optimize'45'pair_1066 (coe v9) (coe v10) (coe v0)
-                    (coe d_optimize'45'once_1344 (coe v0) (coe v9) (coe v6))
-                    (coe d_optimize'45'once_1344 (coe v0) (coe v10) (coe v7))
+                    d_optimize'45'pair_946 (coe v9) (coe v10) (coe v0)
+                    (coe d_optimize'45'once_1224 (coe v0) (coe v9) (coe v6))
+                    (coe d_optimize'45'once_1224 (coe v0) (coe v10) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_inl_48 v5
         -> coe MAlonzo.Code.Once.IR.C_inl_48 v5
@@ -3388,9 +2945,9 @@ d_optimize'45'once_1344 v0 v1 v2
         -> case coe v0 of
              MAlonzo.Code.Once.Type.C__'43'__40 v8 v9
                -> coe
-                    d_optimize'45'case_1190 (coe v8) (coe v9) (coe v1)
-                    (coe d_optimize'45'once_1344 (coe v8) (coe v1) (coe v6))
-                    (coe d_optimize'45'once_1344 (coe v9) (coe v1) (coe v7))
+                    d_optimize'45'case_1070 (coe v8) (coe v9) (coe v1)
+                    (coe d_optimize'45'once_1224 (coe v8) (coe v1) (coe v6))
+                    (coe d_optimize'45'once_1224 (coe v9) (coe v1) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.IR.C_terminal_66
         -> coe MAlonzo.Code.Once.IR.C_terminal_66
@@ -3401,7 +2958,7 @@ d_optimize'45'once_1344 v0 v1 v2
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__42 v8 v9 v10
                -> coe
                     MAlonzo.Code.Once.IR.C_curry_78
-                    (d_optimize'45'once_1344
+                    (d_optimize'45'once_1224
                        (coe MAlonzo.Code.Once.Type.C__'42'__38 (coe v0) (coe v8))
                        (coe v10) (coe v6))
                     v7
@@ -3417,23 +2974,23 @@ d_optimize'45'once_1344 v0 v1 v2
         -> coe MAlonzo.Code.Once.IR.C_Prim_104 v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.optimize-n
-d_optimize'45'n_1374 ::
+d_optimize'45'n_1254 ::
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.Type.T_Type_32 ->
   Integer ->
   MAlonzo.Code.Once.IR.T_IR_10 -> MAlonzo.Code.Once.IR.T_IR_10
-d_optimize'45'n_1374 v0 v1 v2 v3
+d_optimize'45'n_1254 v0 v1 v2 v3
   = case coe v2 of
       0 -> coe v3
       _ -> let v4 = subInt (coe v2) (coe (1 :: Integer)) in
            coe
              (coe
-                d_optimize'45'n_1374 (coe v0) (coe v1) (coe v4)
-                (coe d_optimize'45'once_1344 (coe v0) (coe v1) (coe v3)))
+                d_optimize'45'n_1254 (coe v0) (coe v1) (coe v4)
+                (coe d_optimize'45'once_1224 (coe v0) (coe v1) (coe v3)))
 -- Once.Optimize.optimize
-d_optimize_1386 ::
+d_optimize_1266 ::
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.IR.T_IR_10 -> MAlonzo.Code.Once.IR.T_IR_10
-d_optimize_1386 v0 v1
-  = coe d_optimize'45'n_1374 (coe v0) (coe v1) (coe (10 :: Integer))
+d_optimize_1266 v0 v1
+  = coe d_optimize'45'n_1254 (coe v0) (coe v1) (coe (10 :: Integer))

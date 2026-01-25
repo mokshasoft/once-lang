@@ -48,8 +48,6 @@ library
       Once.Type
       Once.Value
       MAlonzo.RTE
-      MAlonzo.Code.Once.Arith.IR
-      MAlonzo.Code.Once.Arith.Type
   other-modules:
       Paths_once
       MAlonzo.Code.Agda.Builtin.Bool
@@ -237,14 +235,20 @@ library
       MAlonzo.Code.Once.Backend.C.CodeGen
       MAlonzo.Code.Once.Backend.C.Emit
       MAlonzo.Code.Once.Backend.Common.StackAnalysis
+      MAlonzo.Code.Once.Backend.Assembler
       MAlonzo.Code.Once.Backend.Emit
-      MAlonzo.Code.Once.Backend.RiscV64.Emit
-      MAlonzo.Code.Once.Backend.RiscV64.Syntax
       MAlonzo.Code.Once.Backend.X86.CodeGen
       MAlonzo.Code.Once.Backend.X86.Emit
       MAlonzo.Code.Once.Backend.X86.Syntax
+      MAlonzo.Code.Once.Compile
+      MAlonzo.Code.Once.Escape
+      MAlonzo.Code.Once.Arith.IR
+      MAlonzo.Code.Once.Arith.Type
       MAlonzo.Code.Once.IR
+      MAlonzo.Code.Once.Memory
       MAlonzo.Code.Once.Optimize
+      MAlonzo.Code.Once.SemanticBase
+      MAlonzo.Code.Once.Semantics
       MAlonzo.Code.Once.Parser
       MAlonzo.Code.Once.Parser.Core
       MAlonzo.Code.Once.Parser.Expr
@@ -265,10 +269,7 @@ library
       MAlonzo.Code.Once.TypeCheck.Context
       MAlonzo.Code.Once.TypeCheck.Elaborate
       MAlonzo.Code.Once.TypeCheck.Error
-      MAlonzo.Code.Once.TypeCheck.Infer
       MAlonzo.Code.Once.TypeCheck.Raw
-      MAlonzo.Code.Once.TypeCheck.Resolve
-      MAlonzo.Code.Once.TypeCheck.Sound
       MAlonzo.Code.Once.TypeCheck.Unify
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles

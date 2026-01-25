@@ -44,19 +44,19 @@ d_parseComp_8 v0
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                  -> let v5 = d_parseMulTail_468 (coe v3) (coe v4) in
+                  -> let v5 = d_parseMulTail_474 (coe v3) (coe v4) in
                      coe
                        (case coe v5 of
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> case coe v6 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                   -> let v9 = d_parseAddTail_534 (coe v7) (coe v8) in
+                                   -> let v9 = d_parseAddTail_540 (coe v7) (coe v8) in
                                       coe
                                         (case coe v9 of
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
                                              -> case coe v10 of
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
-                                                    -> let v13 = d_parseCmpOp_594 (coe v12) in
+                                                    -> let v13 = d_parseCmpOp_600 (coe v12) in
                                                        coe
                                                          (case coe v13 of
                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v14
@@ -71,7 +71,7 @@ d_parseComp_8 v0
                                                                                -> case coe v18 of
                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                       -> let v21
-                                                                                               = d_parseMulTail_468
+                                                                                               = d_parseMulTail_474
                                                                                                    (coe
                                                                                                       v19)
                                                                                                    (coe
@@ -84,7 +84,7 @@ d_parseComp_8 v0
                                                                                                           v22 of
                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                        -> let v25
-                                                                                                                = d_parseAddTail_534
+                                                                                                                = d_parseAddTail_540
                                                                                                                     (coe
                                                                                                                        v23)
                                                                                                                     (coe
@@ -98,7 +98,7 @@ d_parseComp_8 v0
                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                         -> let v29
                                                                                                                                  = coe
-                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                                      (coe
                                                                                                                                         v15)
                                                                                                                                      (coe
@@ -107,7 +107,7 @@ d_parseComp_8 v0
                                                                                                                                         v27) in
                                                                                                                            coe
                                                                                                                              (coe
-                                                                                                                                d_parseCompTail_674
+                                                                                                                                d_parseCompTail_680
                                                                                                                                 (coe
                                                                                                                                    v29)
                                                                                                                                 (coe
@@ -121,7 +121,7 @@ d_parseComp_8 v0
                                                                                                                                   v26 of
                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v27 v28
                                                                                                                                -> coe
-                                                                                                                                    d_parseCompTail_674
+                                                                                                                                    d_parseCompTail_680
                                                                                                                                     (coe
                                                                                                                                        v27)
                                                                                                                                     (coe
@@ -142,7 +142,7 @@ d_parseComp_8 v0
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                               -> let v25
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v15)
                                                                                                                            (coe
@@ -151,7 +151,7 @@ d_parseComp_8 v0
                                                                                                                               v23) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
                                                                                                                          v25)
                                                                                                                       (coe
@@ -165,7 +165,7 @@ d_parseComp_8 v0
                                                                                                                         v22 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
                                                                                                                              v23)
                                                                                                                           (coe
@@ -185,7 +185,7 @@ d_parseComp_8 v0
                                                                                                 v18 of
                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                              -> let v21
-                                                                                                      = d_parseAddTail_534
+                                                                                                      = d_parseAddTail_540
                                                                                                           (coe
                                                                                                              v19)
                                                                                                           (coe
@@ -199,7 +199,7 @@ d_parseComp_8 v0
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                               -> let v25
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v15)
                                                                                                                            (coe
@@ -208,7 +208,7 @@ d_parseComp_8 v0
                                                                                                                               v23) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
                                                                                                                          v25)
                                                                                                                       (coe
@@ -222,7 +222,7 @@ d_parseComp_8 v0
                                                                                                                         v22 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
                                                                                                                              v23)
                                                                                                                           (coe
@@ -243,7 +243,7 @@ d_parseComp_8 v0
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                     -> let v21
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v15)
                                                                                                                  (coe
@@ -252,7 +252,7 @@ d_parseComp_8 v0
                                                                                                                     v19) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
                                                                                                                v21)
                                                                                                             (coe
@@ -266,7 +266,7 @@ d_parseComp_8 v0
                                                                                                               v18 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
                                                                                                                    v19)
                                                                                                                 (coe
@@ -286,7 +286,7 @@ d_parseComp_8 v0
                                                                      -> case coe v14 of
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                             -> coe
-                                                                                 d_parseCompTail_674
+                                                                                 d_parseCompTail_680
                                                                                  (coe v15) (coe v16)
                                                                           _ -> MAlonzo.RTE.mazUnreachableError
                                                                    MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -300,7 +300,7 @@ d_parseComp_8 v0
                                                     -> case coe v10 of
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                            -> coe
-                                                                d_parseCompTail_674 (coe v11)
+                                                                d_parseCompTail_680 (coe v11)
                                                                 (coe v12)
                                                          _ -> MAlonzo.RTE.mazUnreachableError
                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -313,7 +313,7 @@ d_parseComp_8 v0
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                    -> case coe v6 of
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                          -> let v9 = d_parseCmpOp_594 (coe v8) in
+                                          -> let v9 = d_parseCmpOp_600 (coe v8) in
                                              coe
                                                (case coe v9 of
                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
@@ -326,7 +326,7 @@ d_parseComp_8 v0
                                                                      -> case coe v14 of
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                             -> let v17
-                                                                                     = d_parseMulTail_468
+                                                                                     = d_parseMulTail_474
                                                                                          (coe v15)
                                                                                          (coe
                                                                                             v16) in
@@ -337,7 +337,7 @@ d_parseComp_8 v0
                                                                                                 v18 of
                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                              -> let v21
-                                                                                                      = d_parseAddTail_534
+                                                                                                      = d_parseAddTail_540
                                                                                                           (coe
                                                                                                              v19)
                                                                                                           (coe
@@ -351,7 +351,7 @@ d_parseComp_8 v0
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                               -> let v25
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v11)
                                                                                                                            (coe
@@ -360,7 +360,7 @@ d_parseComp_8 v0
                                                                                                                               v23) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
                                                                                                                          v25)
                                                                                                                       (coe
@@ -374,7 +374,7 @@ d_parseComp_8 v0
                                                                                                                         v22 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
                                                                                                                              v23)
                                                                                                                           (coe
@@ -395,7 +395,7 @@ d_parseComp_8 v0
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                     -> let v21
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v11)
                                                                                                                  (coe
@@ -404,7 +404,7 @@ d_parseComp_8 v0
                                                                                                                     v19) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
                                                                                                                v21)
                                                                                                             (coe
@@ -418,7 +418,7 @@ d_parseComp_8 v0
                                                                                                               v18 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
                                                                                                                    v19)
                                                                                                                 (coe
@@ -437,7 +437,7 @@ d_parseComp_8 v0
                                                                             -> case coe v14 of
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                    -> let v17
-                                                                                            = d_parseAddTail_534
+                                                                                            = d_parseAddTail_540
                                                                                                 (coe
                                                                                                    v15)
                                                                                                 (coe
@@ -451,7 +451,7 @@ d_parseComp_8 v0
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                     -> let v21
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v11)
                                                                                                                  (coe
@@ -460,7 +460,7 @@ d_parseComp_8 v0
                                                                                                                     v19) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
                                                                                                                v21)
                                                                                                             (coe
@@ -474,7 +474,7 @@ d_parseComp_8 v0
                                                                                                               v18 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
                                                                                                                    v19)
                                                                                                                 (coe
@@ -494,7 +494,7 @@ d_parseComp_8 v0
                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                           -> let v17
                                                                                                    = coe
-                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                        (coe
                                                                                                           v11)
                                                                                                        (coe
@@ -503,7 +503,7 @@ d_parseComp_8 v0
                                                                                                           v15) in
                                                                                              coe
                                                                                                (coe
-                                                                                                  d_parseCompTail_674
+                                                                                                  d_parseCompTail_680
                                                                                                   (coe
                                                                                                      v17)
                                                                                                   (coe
@@ -517,7 +517,7 @@ d_parseComp_8 v0
                                                                                                     v14 of
                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                                  -> coe
-                                                                                                      d_parseCompTail_674
+                                                                                                      d_parseCompTail_680
                                                                                                       (coe
                                                                                                          v15)
                                                                                                       (coe
@@ -536,7 +536,7 @@ d_parseComp_8 v0
                                                            -> case coe v10 of
                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                   -> coe
-                                                                       d_parseCompTail_674 (coe v11)
+                                                                       d_parseCompTail_680 (coe v11)
                                                                        (coe v12)
                                                                 _ -> MAlonzo.RTE.mazUnreachableError
                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -549,7 +549,7 @@ d_parseComp_8 v0
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                           -> case coe v6 of
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                                 -> coe d_parseCompTail_674 (coe v7) (coe v8)
+                                                 -> coe d_parseCompTail_680 (coe v7) (coe v8)
                                                _ -> MAlonzo.RTE.mazUnreachableError
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                                         _ -> MAlonzo.RTE.mazUnreachableError
@@ -561,13 +561,13 @@ d_parseComp_8 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                   -> case coe v2 of
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                         -> let v5 = d_parseAddTail_534 (coe v3) (coe v4) in
+                         -> let v5 = d_parseAddTail_540 (coe v3) (coe v4) in
                             coe
                               (case coe v5 of
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                    -> case coe v6 of
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                          -> let v9 = d_parseCmpOp_594 (coe v8) in
+                                          -> let v9 = d_parseCmpOp_600 (coe v8) in
                                              coe
                                                (case coe v9 of
                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
@@ -580,7 +580,7 @@ d_parseComp_8 v0
                                                                      -> case coe v14 of
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                             -> let v17
-                                                                                     = d_parseMulTail_468
+                                                                                     = d_parseMulTail_474
                                                                                          (coe v15)
                                                                                          (coe
                                                                                             v16) in
@@ -591,7 +591,7 @@ d_parseComp_8 v0
                                                                                                 v18 of
                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                              -> let v21
-                                                                                                      = d_parseAddTail_534
+                                                                                                      = d_parseAddTail_540
                                                                                                           (coe
                                                                                                              v19)
                                                                                                           (coe
@@ -605,7 +605,7 @@ d_parseComp_8 v0
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                               -> let v25
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v11)
                                                                                                                            (coe
@@ -614,7 +614,7 @@ d_parseComp_8 v0
                                                                                                                               v23) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
                                                                                                                          v25)
                                                                                                                       (coe
@@ -628,7 +628,7 @@ d_parseComp_8 v0
                                                                                                                         v22 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
                                                                                                                              v23)
                                                                                                                           (coe
@@ -649,7 +649,7 @@ d_parseComp_8 v0
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                     -> let v21
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v11)
                                                                                                                  (coe
@@ -658,7 +658,7 @@ d_parseComp_8 v0
                                                                                                                     v19) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
                                                                                                                v21)
                                                                                                             (coe
@@ -672,7 +672,7 @@ d_parseComp_8 v0
                                                                                                               v18 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
                                                                                                                    v19)
                                                                                                                 (coe
@@ -691,7 +691,7 @@ d_parseComp_8 v0
                                                                             -> case coe v14 of
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                    -> let v17
-                                                                                            = d_parseAddTail_534
+                                                                                            = d_parseAddTail_540
                                                                                                 (coe
                                                                                                    v15)
                                                                                                 (coe
@@ -705,7 +705,7 @@ d_parseComp_8 v0
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                     -> let v21
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v11)
                                                                                                                  (coe
@@ -714,7 +714,7 @@ d_parseComp_8 v0
                                                                                                                     v19) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
                                                                                                                v21)
                                                                                                             (coe
@@ -728,7 +728,7 @@ d_parseComp_8 v0
                                                                                                               v18 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
                                                                                                                    v19)
                                                                                                                 (coe
@@ -748,7 +748,7 @@ d_parseComp_8 v0
                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                           -> let v17
                                                                                                    = coe
-                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                        (coe
                                                                                                           v11)
                                                                                                        (coe
@@ -757,7 +757,7 @@ d_parseComp_8 v0
                                                                                                           v15) in
                                                                                              coe
                                                                                                (coe
-                                                                                                  d_parseCompTail_674
+                                                                                                  d_parseCompTail_680
                                                                                                   (coe
                                                                                                      v17)
                                                                                                   (coe
@@ -771,7 +771,7 @@ d_parseComp_8 v0
                                                                                                     v14 of
                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                                  -> coe
-                                                                                                      d_parseCompTail_674
+                                                                                                      d_parseCompTail_680
                                                                                                       (coe
                                                                                                          v15)
                                                                                                       (coe
@@ -790,7 +790,7 @@ d_parseComp_8 v0
                                                            -> case coe v10 of
                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                   -> coe
-                                                                       d_parseCompTail_674 (coe v11)
+                                                                       d_parseCompTail_680 (coe v11)
                                                                        (coe v12)
                                                                 _ -> MAlonzo.RTE.mazUnreachableError
                                                          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -803,7 +803,7 @@ d_parseComp_8 v0
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                           -> case coe v6 of
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                                 -> coe d_parseCompTail_674 (coe v7) (coe v8)
+                                                 -> coe d_parseCompTail_680 (coe v7) (coe v8)
                                                _ -> MAlonzo.RTE.mazUnreachableError
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                                         _ -> MAlonzo.RTE.mazUnreachableError
@@ -814,7 +814,7 @@ d_parseComp_8 v0
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                          -> case coe v2 of
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                                -> let v5 = d_parseCmpOp_594 (coe v4) in
+                                -> let v5 = d_parseCmpOp_600 (coe v4) in
                                    coe
                                      (case coe v5 of
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
@@ -827,7 +827,7 @@ d_parseComp_8 v0
                                                            -> case coe v10 of
                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                   -> let v13
-                                                                           = d_parseMulTail_468
+                                                                           = d_parseMulTail_474
                                                                                (coe v11)
                                                                                (coe v12) in
                                                                      coe
@@ -836,7 +836,7 @@ d_parseComp_8 v0
                                                                             -> case coe v14 of
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                    -> let v17
-                                                                                            = d_parseAddTail_534
+                                                                                            = d_parseAddTail_540
                                                                                                 (coe
                                                                                                    v15)
                                                                                                 (coe
@@ -850,7 +850,7 @@ d_parseComp_8 v0
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                     -> let v21
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v7)
                                                                                                                  (coe
@@ -859,7 +859,7 @@ d_parseComp_8 v0
                                                                                                                     v19) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
                                                                                                                v21)
                                                                                                             (coe
@@ -873,7 +873,7 @@ d_parseComp_8 v0
                                                                                                               v18 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
                                                                                                                    v19)
                                                                                                                 (coe
@@ -893,7 +893,7 @@ d_parseComp_8 v0
                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                           -> let v17
                                                                                                    = coe
-                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                        (coe
                                                                                                           v7)
                                                                                                        (coe
@@ -902,7 +902,7 @@ d_parseComp_8 v0
                                                                                                           v15) in
                                                                                              coe
                                                                                                (coe
-                                                                                                  d_parseCompTail_674
+                                                                                                  d_parseCompTail_680
                                                                                                   (coe
                                                                                                      v17)
                                                                                                   (coe
@@ -916,7 +916,7 @@ d_parseComp_8 v0
                                                                                                     v14 of
                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                                  -> coe
-                                                                                                      d_parseCompTail_674
+                                                                                                      d_parseCompTail_680
                                                                                                       (coe
                                                                                                          v15)
                                                                                                       (coe
@@ -934,7 +934,7 @@ d_parseComp_8 v0
                                                                   -> case coe v10 of
                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                          -> let v13
-                                                                                  = d_parseAddTail_534
+                                                                                  = d_parseAddTail_540
                                                                                       (coe v11)
                                                                                       (coe v12) in
                                                                             coe
@@ -945,7 +945,7 @@ d_parseComp_8 v0
                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                           -> let v17
                                                                                                    = coe
-                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                        (coe
                                                                                                           v7)
                                                                                                        (coe
@@ -954,7 +954,7 @@ d_parseComp_8 v0
                                                                                                           v15) in
                                                                                              coe
                                                                                                (coe
-                                                                                                  d_parseCompTail_674
+                                                                                                  d_parseCompTail_680
                                                                                                   (coe
                                                                                                      v17)
                                                                                                   (coe
@@ -968,7 +968,7 @@ d_parseComp_8 v0
                                                                                                     v14 of
                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                                  -> coe
-                                                                                                      d_parseCompTail_674
+                                                                                                      d_parseCompTail_680
                                                                                                       (coe
                                                                                                          v15)
                                                                                                       (coe
@@ -986,7 +986,7 @@ d_parseComp_8 v0
                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                                 -> let v13
                                                                                          = coe
-                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                              (coe
                                                                                                 v7)
                                                                                              (coe
@@ -995,7 +995,7 @@ d_parseComp_8 v0
                                                                                                 v11) in
                                                                                    coe
                                                                                      (coe
-                                                                                        d_parseCompTail_674
+                                                                                        d_parseCompTail_680
                                                                                         (coe v13)
                                                                                         (coe v12))
                                                                               _ -> MAlonzo.RTE.mazUnreachableError
@@ -1005,7 +1005,7 @@ d_parseComp_8 v0
                                                                                 -> case coe v10 of
                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                                        -> coe
-                                                                                            d_parseCompTail_674
+                                                                                            d_parseCompTail_680
                                                                                             (coe
                                                                                                v11)
                                                                                             (coe
@@ -1023,7 +1023,7 @@ d_parseComp_8 v0
                                                MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                                  -> case coe v6 of
                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                                        -> coe d_parseCompTail_674 (coe v7) (coe v8)
+                                                        -> coe d_parseCompTail_680 (coe v7) (coe v8)
                                                       _ -> MAlonzo.RTE.mazUnreachableError
                                                MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                                                  -> coe v1
@@ -1035,7 +1035,7 @@ d_parseComp_8 v0
                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                                 -> case coe v2 of
                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                                       -> coe d_parseCompTail_674 (coe v3) (coe v4)
+                                       -> coe d_parseCompTail_680 (coe v3) (coe v4)
                                      _ -> MAlonzo.RTE.mazUnreachableError
                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
                               _ -> MAlonzo.RTE.mazUnreachableError
@@ -1053,19 +1053,19 @@ d_parseCmp_10 v0
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                  -> let v5 = d_parseMulTail_468 (coe v3) (coe v4) in
+                  -> let v5 = d_parseMulTail_474 (coe v3) (coe v4) in
                      coe
                        (case coe v5 of
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> case coe v6 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                   -> let v9 = d_parseAddTail_534 (coe v7) (coe v8) in
+                                   -> let v9 = d_parseAddTail_540 (coe v7) (coe v8) in
                                       coe
                                         (case coe v9 of
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
                                              -> case coe v10 of
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
-                                                    -> let v13 = d_parseCmpOp_594 (coe v12) in
+                                                    -> let v13 = d_parseCmpOp_600 (coe v12) in
                                                        coe
                                                          (case coe v13 of
                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v14
@@ -1080,7 +1080,7 @@ d_parseCmp_10 v0
                                                                                -> case coe v18 of
                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                       -> let v21
-                                                                                               = d_parseMulTail_468
+                                                                                               = d_parseMulTail_474
                                                                                                    (coe
                                                                                                       v19)
                                                                                                    (coe
@@ -1093,7 +1093,7 @@ d_parseCmp_10 v0
                                                                                                           v22 of
                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v23 v24
                                                                                                        -> let v25
-                                                                                                                = d_parseAddTail_534
+                                                                                                                = d_parseAddTail_540
                                                                                                                     (coe
                                                                                                                        v23)
                                                                                                                     (coe
@@ -1110,7 +1110,7 @@ d_parseCmp_10 v0
                                                                                                                              (coe
                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                 (coe
-                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                                    (coe
                                                                                                                                       v15)
                                                                                                                                    (coe
@@ -1137,7 +1137,7 @@ d_parseCmp_10 v0
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                          (coe
                                                                                                                             v15)
                                                                                                                          (coe
@@ -1160,7 +1160,7 @@ d_parseCmp_10 v0
                                                                                                 v18 of
                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                              -> let v21
-                                                                                                      = d_parseAddTail_534
+                                                                                                      = d_parseAddTail_540
                                                                                                           (coe
                                                                                                              v19)
                                                                                                           (coe
@@ -1177,7 +1177,7 @@ d_parseCmp_10 v0
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                          (coe
                                                                                                                             v15)
                                                                                                                          (coe
@@ -1204,7 +1204,7 @@ d_parseCmp_10 v0
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                (coe
                                                                                                                   v15)
                                                                                                                (coe
@@ -1233,7 +1233,7 @@ d_parseCmp_10 v0
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                    -> case coe v6 of
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                          -> let v9 = d_parseCmpOp_594 (coe v8) in
+                                          -> let v9 = d_parseCmpOp_600 (coe v8) in
                                              coe
                                                (case coe v9 of
                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
@@ -1246,7 +1246,7 @@ d_parseCmp_10 v0
                                                                      -> case coe v14 of
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                             -> let v17
-                                                                                     = d_parseMulTail_468
+                                                                                     = d_parseMulTail_474
                                                                                          (coe v15)
                                                                                          (coe
                                                                                             v16) in
@@ -1257,7 +1257,7 @@ d_parseCmp_10 v0
                                                                                                 v18 of
                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                              -> let v21
-                                                                                                      = d_parseAddTail_534
+                                                                                                      = d_parseAddTail_540
                                                                                                           (coe
                                                                                                              v19)
                                                                                                           (coe
@@ -1274,7 +1274,7 @@ d_parseCmp_10 v0
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                          (coe
                                                                                                                             v11)
                                                                                                                          (coe
@@ -1301,7 +1301,7 @@ d_parseCmp_10 v0
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                (coe
                                                                                                                   v11)
                                                                                                                (coe
@@ -1323,7 +1323,7 @@ d_parseCmp_10 v0
                                                                             -> case coe v14 of
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                    -> let v17
-                                                                                            = d_parseAddTail_534
+                                                                                            = d_parseAddTail_540
                                                                                                 (coe
                                                                                                    v15)
                                                                                                 (coe
@@ -1340,7 +1340,7 @@ d_parseCmp_10 v0
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                (coe
                                                                                                                   v11)
                                                                                                                (coe
@@ -1366,7 +1366,7 @@ d_parseCmp_10 v0
                                                                                                (coe
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                      (coe
                                                                                                         v11)
                                                                                                      (coe
@@ -1395,13 +1395,13 @@ d_parseCmp_10 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                   -> case coe v2 of
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                         -> let v5 = d_parseAddTail_534 (coe v3) (coe v4) in
+                         -> let v5 = d_parseAddTail_540 (coe v3) (coe v4) in
                             coe
                               (case coe v5 of
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                    -> case coe v6 of
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                          -> let v9 = d_parseCmpOp_594 (coe v8) in
+                                          -> let v9 = d_parseCmpOp_600 (coe v8) in
                                              coe
                                                (case coe v9 of
                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
@@ -1414,7 +1414,7 @@ d_parseCmp_10 v0
                                                                      -> case coe v14 of
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                             -> let v17
-                                                                                     = d_parseMulTail_468
+                                                                                     = d_parseMulTail_474
                                                                                          (coe v15)
                                                                                          (coe
                                                                                             v16) in
@@ -1425,7 +1425,7 @@ d_parseCmp_10 v0
                                                                                                 v18 of
                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v19 v20
                                                                                              -> let v21
-                                                                                                      = d_parseAddTail_534
+                                                                                                      = d_parseAddTail_540
                                                                                                           (coe
                                                                                                              v19)
                                                                                                           (coe
@@ -1442,7 +1442,7 @@ d_parseCmp_10 v0
                                                                                                                    (coe
                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                          (coe
                                                                                                                             v11)
                                                                                                                          (coe
@@ -1469,7 +1469,7 @@ d_parseCmp_10 v0
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                (coe
                                                                                                                   v11)
                                                                                                                (coe
@@ -1491,7 +1491,7 @@ d_parseCmp_10 v0
                                                                             -> case coe v14 of
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                    -> let v17
-                                                                                            = d_parseAddTail_534
+                                                                                            = d_parseAddTail_540
                                                                                                 (coe
                                                                                                    v15)
                                                                                                 (coe
@@ -1508,7 +1508,7 @@ d_parseCmp_10 v0
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                (coe
                                                                                                                   v11)
                                                                                                                (coe
@@ -1534,7 +1534,7 @@ d_parseCmp_10 v0
                                                                                                (coe
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                      (coe
                                                                                                         v11)
                                                                                                      (coe
@@ -1562,7 +1562,7 @@ d_parseCmp_10 v0
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                          -> case coe v2 of
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                                -> let v5 = d_parseCmpOp_594 (coe v4) in
+                                -> let v5 = d_parseCmpOp_600 (coe v4) in
                                    coe
                                      (case coe v5 of
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
@@ -1575,7 +1575,7 @@ d_parseCmp_10 v0
                                                            -> case coe v10 of
                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                   -> let v13
-                                                                           = d_parseMulTail_468
+                                                                           = d_parseMulTail_474
                                                                                (coe v11)
                                                                                (coe v12) in
                                                                      coe
@@ -1584,7 +1584,7 @@ d_parseCmp_10 v0
                                                                             -> case coe v14 of
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                                    -> let v17
-                                                                                            = d_parseAddTail_534
+                                                                                            = d_parseAddTail_540
                                                                                                 (coe
                                                                                                    v15)
                                                                                                 (coe
@@ -1601,7 +1601,7 @@ d_parseCmp_10 v0
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                (coe
                                                                                                                   v7)
                                                                                                                (coe
@@ -1627,7 +1627,7 @@ d_parseCmp_10 v0
                                                                                                (coe
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                      (coe
                                                                                                         v7)
                                                                                                      (coe
@@ -1648,7 +1648,7 @@ d_parseCmp_10 v0
                                                                   -> case coe v10 of
                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                                          -> let v13
-                                                                                  = d_parseAddTail_534
+                                                                                  = d_parseAddTail_540
                                                                                       (coe v11)
                                                                                       (coe v12) in
                                                                             coe
@@ -1662,7 +1662,7 @@ d_parseCmp_10 v0
                                                                                                (coe
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                      (coe
                                                                                                         v7)
                                                                                                      (coe
@@ -1686,7 +1686,7 @@ d_parseCmp_10 v0
                                                                                      (coe
                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                         (coe
-                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                            (coe v7)
                                                                                            (coe v3)
                                                                                            (coe
@@ -1717,13 +1717,13 @@ d_parseAdd_12 v0
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                  -> let v5 = d_parseMulTail_468 (coe v3) (coe v4) in
+                  -> let v5 = d_parseMulTail_474 (coe v3) (coe v4) in
                      coe
                        (case coe v5 of
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> case coe v6 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                   -> coe d_parseAddTail_534 (coe v7) (coe v8)
+                                   -> coe d_parseAddTail_540 (coe v7) (coe v8)
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                           _ -> MAlonzo.RTE.mazUnreachableError)
@@ -1733,7 +1733,7 @@ d_parseAdd_12 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                   -> case coe v2 of
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                         -> coe d_parseAddTail_534 (coe v3) (coe v4)
+                         -> coe d_parseAddTail_540 (coe v3) (coe v4)
                        _ -> MAlonzo.RTE.mazUnreachableError
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
                 _ -> MAlonzo.RTE.mazUnreachableError
@@ -1749,7 +1749,7 @@ d_parseMul_14 v0
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                  -> coe d_parseMulTail_468 (coe v3) (coe v4)
+                  -> coe d_parseMulTail_474 (coe v3) (coe v4)
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
          _ -> MAlonzo.RTE.mazUnreachableError)
@@ -1774,7 +1774,7 @@ d_parseUnary_16 v0
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                           (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_58 v6)
+                                           (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60 v6)
                                            (coe v7))
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v4
@@ -1792,7 +1792,7 @@ d_parseApp_18 v0
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                  -> coe d_parseAppTail_408 (coe v3) (coe v4)
+                  -> coe d_parseAppTail_414 (coe v3) (coe v4)
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
          _ -> MAlonzo.RTE.mazUnreachableError)
@@ -1809,12 +1809,34 @@ d_parseAtomExpr_20 v0
              (case coe v1 of
                 MAlonzo.Code.Once.Parser.Token.C_TWord_8 v4
                   -> let v5
-                           = coe
-                               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                               (coe
-                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                  (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 (coe v4))
-                                  (coe v2)) in
+                           = let v5
+                                   = coe
+                                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                       (coe
+                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                          (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 (coe v4))
+                                          (coe v2)) in
+                             coe
+                               (case coe v2 of
+                                  (:) v6 v7
+                                    -> case coe v6 of
+                                         MAlonzo.Code.Once.Parser.Token.C_TAt_34
+                                           -> case coe v7 of
+                                                (:) v8 v9
+                                                  -> case coe v8 of
+                                                       MAlonzo.Code.Once.Parser.Token.C_TWord_8 v10
+                                                         -> coe
+                                                              MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
+                                                              (coe
+                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
+                                                                 (coe
+                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RQualified_38
+                                                                    (coe v4) (coe v10))
+                                                                 (coe v9))
+                                                       _ -> coe v5
+                                                _ -> coe v5
+                                         _ -> coe v5
+                                  _ -> coe v5) in
                      coe
                        (case coe v4 of
                           l | (==) l ("destruct" :: Data.Text.Text) ->
@@ -1826,13 +1848,13 @@ d_parseAtomExpr_20 v0
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                          (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_50 (coe v4)) (coe v2))
+                          (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_52 (coe v4)) (coe v2))
                 MAlonzo.Code.Once.Parser.Token.C_TString_12 v4
                   -> coe
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                          (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_52 (coe v4))
+                          (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_54 (coe v4))
                           (coe v2))
                 MAlonzo.Code.Once.Parser.Token.C_TLParen_14
                   -> let v4
@@ -1855,7 +1877,7 @@ d_parseAtomExpr_20 v0
                                         MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                           (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RUnit_48)
+                                           (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RUnit_50)
                                            (coe v6))
                                  _ -> coe v4
                           _ -> coe v4)
@@ -1885,7 +1907,7 @@ d_parseLamParams_22 v0
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                            (coe
-                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_40 (coe v4)
+                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 (coe v4)
                                               (coe v7))
                                            (coe v8))
                                  _ -> MAlonzo.RTE.mazUnreachableError
@@ -1977,7 +1999,7 @@ d_parseLetCont_48 v0 v1 v2
                                               (coe
                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                  (coe
-                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_42
+                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44
                                                     (coe v0) (coe v1) (coe v9))
                                                  (coe v10))
                                        _ -> MAlonzo.RTE.mazUnreachableError
@@ -1996,7 +2018,7 @@ d_parseLetCont_48 v0 v1 v2
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                            (coe
-                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_42 (coe v0)
+                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 (coe v0)
                                               (coe v1) (coe v8))
                                            (coe v9))
                                  _ -> MAlonzo.RTE.mazUnreachableError
@@ -2051,7 +2073,7 @@ d_parseRightBranch_138 v0 v1 v2 v3
                                                                                                       (coe
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                          (coe
-                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_46
+                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48
                                                                                                             (coe
                                                                                                                v0)
                                                                                                             (coe
@@ -2179,7 +2201,7 @@ d_parseParenTriple_228 v0 v1 v2
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                        (coe
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                          (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_44 (coe v0) (coe v1))
+                          (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46 (coe v0) (coe v1))
                           (coe v5))
                 MAlonzo.Code.Once.Parser.Token.C_TComma_30
                   -> let v6 = d_parseExpr_6 (coe v5) in
@@ -2197,9 +2219,9 @@ d_parseParenTriple_228 v0 v1 v2
                                                       (coe
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                          (coe
-                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_44
+                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
                                                             (coe
-                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_44
+                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
                                                                (coe v0) (coe v1))
                                                             (coe v8))
                                                          (coe v11))
@@ -2268,7 +2290,7 @@ d_parseParenCont_262 v0 v1
                                                                                                          (coe
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_54
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
                                                                                                                (coe
                                                                                                                   v0)
                                                                                                                (coe
@@ -2298,7 +2320,7 @@ d_parseParenCont_262 v0 v1
                                                                                                (coe
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_54
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
                                                                                                      (coe
                                                                                                         v0)
                                                                                                      (coe
@@ -2334,7 +2356,7 @@ d_parseParenCont_262 v0 v1
                                                                                                (coe
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_54
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
                                                                                                      (coe
                                                                                                         v0)
                                                                                                      (coe
@@ -2360,7 +2382,7 @@ d_parseParenCont_262 v0 v1
                                                                                      (coe
                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                         (coe
-                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_54
+                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
                                                                                            (coe v0)
                                                                                            (coe
                                                                                               v11))
@@ -2403,7 +2425,7 @@ d_parseParenCont_262 v0 v1
                                                                                                (coe
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_54
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
                                                                                                      (coe
                                                                                                         v0)
                                                                                                      (coe
@@ -2429,7 +2451,7 @@ d_parseParenCont_262 v0 v1
                                                                                      (coe
                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                         (coe
-                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_54
+                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
                                                                                            (coe v0)
                                                                                            (coe
                                                                                               v11))
@@ -2462,7 +2484,7 @@ d_parseParenCont_262 v0 v1
                                                                                      (coe
                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                         (coe
-                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_54
+                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
                                                                                            (coe v0)
                                                                                            (coe
                                                                                               v11))
@@ -2486,7 +2508,7 @@ d_parseParenCont_262 v0 v1
                                                                            (coe
                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                               (coe
-                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_54
+                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
                                                                                  (coe v0) (coe v7))
                                                                               (coe v10))
                                                                     _ -> coe v5
@@ -2609,11 +2631,11 @@ d_parseOpExpr_324 v0 v1
                 _ -> coe v2
          _ -> coe v2)
 -- Once.Parser.Expr.parseAppTail
-d_parseAppTail_408 ::
+d_parseAppTail_414 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseAppTail_408 v0 v1
+d_parseAppTail_414 v0 v1
   = let v2 = d_parseAtomExpr_20 (coe v1) in
     coe
       (case coe v2 of
@@ -2621,8 +2643,8 @@ d_parseAppTail_408 v0 v1
            -> case coe v3 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                   -> coe
-                       d_parseAppTail_408
-                       (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38 (coe v0) (coe v4))
+                       d_parseAppTail_414
+                       (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40 (coe v0) (coe v4))
                        (coe v5)
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
@@ -2631,10 +2653,10 @@ d_parseAppTail_408 v0 v1
                 (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v0) (coe v1))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Expr.tryMulOp
-d_tryMulOp_460 ::
+d_tryMulOp_466 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_tryMulOp_460 v0
+d_tryMulOp_466 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -2661,12 +2683,12 @@ d_tryMulOp_460 v0
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Expr.parseMulTail
-d_parseMulTail_468 ::
+d_parseMulTail_474 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseMulTail_468 v0 v1
-  = let v2 = d_tryMulOp_460 (coe v1) in
+d_parseMulTail_474 v0 v1
+  = let v2 = d_tryMulOp_466 (coe v1) in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
@@ -2679,9 +2701,9 @@ d_parseMulTail_468 v0 v1
                             -> case coe v7 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
                                    -> coe
-                                        d_parseMulTail_468
+                                        d_parseMulTail_474
                                         (coe
-                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56 (coe v4)
+                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58 (coe v4)
                                            (coe v0) (coe v8))
                                         (coe v9)
                                  _ -> MAlonzo.RTE.mazUnreachableError
@@ -2694,10 +2716,10 @@ d_parseMulTail_468 v0 v1
                 (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v0) (coe v1))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Expr.tryAddOp
-d_tryAddOp_528 ::
+d_tryAddOp_534 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_tryAddOp_528 v0
+d_tryAddOp_534 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -2718,12 +2740,12 @@ d_tryAddOp_528 v0
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Expr.parseAddTail
-d_parseAddTail_534 ::
+d_parseAddTail_540 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseAddTail_534 v0 v1
-  = let v2 = d_tryAddOp_528 (coe v1) in
+d_parseAddTail_540 v0 v1
+  = let v2 = d_tryAddOp_534 (coe v1) in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
@@ -2735,16 +2757,16 @@ d_parseAddTail_534 v0 v1
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
                             -> case coe v7 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
-                                   -> let v10 = d_parseMulTail_468 (coe v8) (coe v9) in
+                                   -> let v10 = d_parseMulTail_474 (coe v8) (coe v9) in
                                       coe
                                         (case coe v10 of
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v11
                                              -> case coe v11 of
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v12 v13
                                                     -> coe
-                                                         d_parseAddTail_534
+                                                         d_parseAddTail_540
                                                          (coe
-                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                             (coe v4) (coe v0) (coe v12))
                                                          (coe v13)
                                                   _ -> MAlonzo.RTE.mazUnreachableError
@@ -2757,9 +2779,9 @@ d_parseAddTail_534 v0 v1
                                    -> case coe v7 of
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v8 v9
                                           -> coe
-                                               d_parseAddTail_534
+                                               d_parseAddTail_540
                                                (coe
-                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                   (coe v4) (coe v0) (coe v8))
                                                (coe v9)
                                         _ -> MAlonzo.RTE.mazUnreachableError
@@ -2773,10 +2795,10 @@ d_parseAddTail_534 v0 v1
                 (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v0) (coe v1))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Expr.parseCmpOp
-d_parseCmpOp_594 ::
+d_parseCmpOp_600 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseCmpOp_594 v0
+d_parseCmpOp_600 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -2821,10 +2843,10 @@ d_parseCmpOp_594 v0
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Expr.tryCompOp
-d_tryCompOp_670 ::
+d_tryCompOp_676 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe [MAlonzo.Code.Once.Parser.Token.T_Token_6]
-d_tryCompOp_670 v0
+d_tryCompOp_676 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -2835,12 +2857,12 @@ d_tryCompOp_670 v0
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Expr.parseCompTail
-d_parseCompTail_674 ::
+d_parseCompTail_680 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseCompTail_674 v0 v1
-  = let v2 = d_tryCompOp_670 (coe v1) in
+d_parseCompTail_680 v0 v1
+  = let v2 = d_tryCompOp_676 (coe v1) in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
@@ -2850,20 +2872,20 @@ d_parseCompTail_674 v0 v1
                    MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
                      -> case coe v5 of
                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
-                            -> let v8 = d_parseMulTail_468 (coe v6) (coe v7) in
+                            -> let v8 = d_parseMulTail_474 (coe v6) (coe v7) in
                                coe
                                  (case coe v8 of
                                     MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
                                       -> case coe v9 of
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
-                                             -> let v12 = d_parseAddTail_534 (coe v10) (coe v11) in
+                                             -> let v12 = d_parseAddTail_540 (coe v10) (coe v11) in
                                                 coe
                                                   (case coe v12 of
                                                      MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v13
                                                        -> case coe v13 of
                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                               -> let v16
-                                                                       = d_parseCmpOp_594
+                                                                       = d_parseCmpOp_600
                                                                            (coe v15) in
                                                                  coe
                                                                    (case coe v16 of
@@ -2881,7 +2903,7 @@ d_parseCompTail_674 v0 v1
                                                                                                    v21 of
                                                                                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                 -> let v24
-                                                                                                         = d_parseMulTail_468
+                                                                                                         = d_parseMulTail_474
                                                                                                              (coe
                                                                                                                 v22)
                                                                                                              (coe
@@ -2894,7 +2916,7 @@ d_parseCompTail_674 v0 v1
                                                                                                                     v25 of
                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                  -> let v28
-                                                                                                                          = d_parseAddTail_534
+                                                                                                                          = d_parseAddTail_540
                                                                                                                               (coe
                                                                                                                                  v26)
                                                                                                                               (coe
@@ -2908,7 +2930,7 @@ d_parseCompTail_674 v0 v1
                                                                                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v30 v31
                                                                                                                                   -> let v32
                                                                                                                                            = coe
-                                                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                                                (coe
                                                                                                                                                   v18)
                                                                                                                                                (coe
@@ -2917,11 +2939,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                                   v30) in
                                                                                                                                      coe
                                                                                                                                        (coe
-                                                                                                                                          d_parseCompTail_674
+                                                                                                                                          d_parseCompTail_680
                                                                                                                                           (coe
-                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                              (coe
-                                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                                    (coe
@@ -2943,11 +2965,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                             v29 of
                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v30 v31
                                                                                                                                          -> coe
-                                                                                                                                              d_parseCompTail_674
+                                                                                                                                              d_parseCompTail_680
                                                                                                                                               (coe
-                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                                  (coe
-                                                                                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                                     (coe
                                                                                                                                                        MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                                        (coe
@@ -2976,7 +2998,7 @@ d_parseCompTail_674 v0 v1
                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                         -> let v28
                                                                                                                                  = coe
-                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                                      (coe
                                                                                                                                         v18)
                                                                                                                                      (coe
@@ -2985,11 +3007,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                         v26) in
                                                                                                                            coe
                                                                                                                              (coe
-                                                                                                                                d_parseCompTail_674
+                                                                                                                                d_parseCompTail_680
                                                                                                                                 (coe
-                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                    (coe
-                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                       (coe
                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                          (coe
@@ -3011,11 +3033,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                   v25 of
                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                -> coe
-                                                                                                                                    d_parseCompTail_674
+                                                                                                                                    d_parseCompTail_680
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                        (coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                              (coe
@@ -3044,7 +3066,7 @@ d_parseCompTail_674 v0 v1
                                                                                                           v21 of
                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                        -> let v24
-                                                                                                                = d_parseAddTail_534
+                                                                                                                = d_parseAddTail_540
                                                                                                                     (coe
                                                                                                                        v22)
                                                                                                                     (coe
@@ -3058,7 +3080,7 @@ d_parseCompTail_674 v0 v1
                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                         -> let v28
                                                                                                                                  = coe
-                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                                      (coe
                                                                                                                                         v18)
                                                                                                                                      (coe
@@ -3067,11 +3089,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                         v26) in
                                                                                                                            coe
                                                                                                                              (coe
-                                                                                                                                d_parseCompTail_674
+                                                                                                                                d_parseCompTail_680
                                                                                                                                 (coe
-                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                    (coe
-                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                       (coe
                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                          (coe
@@ -3093,11 +3115,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                   v25 of
                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                -> coe
-                                                                                                                                    d_parseCompTail_674
+                                                                                                                                    d_parseCompTail_680
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                        (coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                              (coe
@@ -3126,7 +3148,7 @@ d_parseCompTail_674 v0 v1
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                               -> let v24
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v18)
                                                                                                                            (coe
@@ -3135,11 +3157,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                               v22) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                          (coe
-                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                (coe
@@ -3161,11 +3183,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                         v21 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                    (coe
@@ -3193,11 +3215,11 @@ d_parseCompTail_674 v0 v1
                                                                                -> case coe v17 of
                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                       -> coe
-                                                                                           d_parseCompTail_674
+                                                                                           d_parseCompTail_680
                                                                                            (coe
-                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                               (coe
-                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                  (coe
                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                     (coe
@@ -3221,11 +3243,11 @@ d_parseCompTail_674 v0 v1
                                                               -> case coe v13 of
                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                      -> coe
-                                                                          d_parseCompTail_674
+                                                                          d_parseCompTail_680
                                                                           (coe
-                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                              (coe
-                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                 (coe
                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                    (coe
@@ -3246,7 +3268,7 @@ d_parseCompTail_674 v0 v1
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
                                              -> case coe v9 of
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
-                                                    -> let v12 = d_parseCmpOp_594 (coe v11) in
+                                                    -> let v12 = d_parseCmpOp_600 (coe v11) in
                                                        coe
                                                          (case coe v12 of
                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v13
@@ -3261,7 +3283,7 @@ d_parseCompTail_674 v0 v1
                                                                                -> case coe v17 of
                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                       -> let v20
-                                                                                               = d_parseMulTail_468
+                                                                                               = d_parseMulTail_474
                                                                                                    (coe
                                                                                                       v18)
                                                                                                    (coe
@@ -3274,7 +3296,7 @@ d_parseCompTail_674 v0 v1
                                                                                                           v21 of
                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                        -> let v24
-                                                                                                                = d_parseAddTail_534
+                                                                                                                = d_parseAddTail_540
                                                                                                                     (coe
                                                                                                                        v22)
                                                                                                                     (coe
@@ -3288,7 +3310,7 @@ d_parseCompTail_674 v0 v1
                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                         -> let v28
                                                                                                                                  = coe
-                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                                      (coe
                                                                                                                                         v14)
                                                                                                                                      (coe
@@ -3297,11 +3319,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                         v26) in
                                                                                                                            coe
                                                                                                                              (coe
-                                                                                                                                d_parseCompTail_674
+                                                                                                                                d_parseCompTail_680
                                                                                                                                 (coe
-                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                    (coe
-                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                       (coe
                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                          (coe
@@ -3323,11 +3345,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                   v25 of
                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                -> coe
-                                                                                                                                    d_parseCompTail_674
+                                                                                                                                    d_parseCompTail_680
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                        (coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                              (coe
@@ -3356,7 +3378,7 @@ d_parseCompTail_674 v0 v1
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                               -> let v24
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v14)
                                                                                                                            (coe
@@ -3365,11 +3387,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                               v22) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                          (coe
-                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                (coe
@@ -3391,11 +3413,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                         v21 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                    (coe
@@ -3423,7 +3445,7 @@ d_parseCompTail_674 v0 v1
                                                                                                 v17 of
                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                              -> let v20
-                                                                                                      = d_parseAddTail_534
+                                                                                                      = d_parseAddTail_540
                                                                                                           (coe
                                                                                                              v18)
                                                                                                           (coe
@@ -3437,7 +3459,7 @@ d_parseCompTail_674 v0 v1
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                               -> let v24
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v14)
                                                                                                                            (coe
@@ -3446,11 +3468,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                               v22) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                          (coe
-                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                (coe
@@ -3472,11 +3494,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                         v21 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                    (coe
@@ -3505,7 +3527,7 @@ d_parseCompTail_674 v0 v1
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                     -> let v20
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v14)
                                                                                                                  (coe
@@ -3514,11 +3536,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                     v18) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                (coe
-                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                   (coe
                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                      (coe
@@ -3540,11 +3562,11 @@ d_parseCompTail_674 v0 v1
                                                                                                               v17 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                          (coe
@@ -3572,11 +3594,11 @@ d_parseCompTail_674 v0 v1
                                                                      -> case coe v13 of
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                             -> coe
-                                                                                 d_parseCompTail_674
+                                                                                 d_parseCompTail_680
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                     (coe
-                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                        (coe
                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                           (coe
@@ -3598,11 +3620,11 @@ d_parseCompTail_674 v0 v1
                                                     -> case coe v9 of
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
                                                            -> coe
-                                                                d_parseCompTail_674
+                                                                d_parseCompTail_680
                                                                 (coe
-                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                    (coe
-                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                       (coe
                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                          (coe
@@ -3624,13 +3646,13 @@ d_parseCompTail_674 v0 v1
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
                             -> case coe v5 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
-                                   -> let v8 = d_parseAddTail_534 (coe v6) (coe v7) in
+                                   -> let v8 = d_parseAddTail_540 (coe v6) (coe v7) in
                                       coe
                                         (case coe v8 of
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
                                              -> case coe v9 of
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
-                                                    -> let v12 = d_parseCmpOp_594 (coe v11) in
+                                                    -> let v12 = d_parseCmpOp_600 (coe v11) in
                                                        coe
                                                          (case coe v12 of
                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v13
@@ -3645,7 +3667,7 @@ d_parseCompTail_674 v0 v1
                                                                                -> case coe v17 of
                                                                                     MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                       -> let v20
-                                                                                               = d_parseMulTail_468
+                                                                                               = d_parseMulTail_474
                                                                                                    (coe
                                                                                                       v18)
                                                                                                    (coe
@@ -3658,7 +3680,7 @@ d_parseCompTail_674 v0 v1
                                                                                                           v21 of
                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                        -> let v24
-                                                                                                                = d_parseAddTail_534
+                                                                                                                = d_parseAddTail_540
                                                                                                                     (coe
                                                                                                                        v22)
                                                                                                                     (coe
@@ -3672,7 +3694,7 @@ d_parseCompTail_674 v0 v1
                                                                                                                       MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                         -> let v28
                                                                                                                                  = coe
-                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                                      (coe
                                                                                                                                         v14)
                                                                                                                                      (coe
@@ -3681,11 +3703,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                         v26) in
                                                                                                                            coe
                                                                                                                              (coe
-                                                                                                                                d_parseCompTail_674
+                                                                                                                                d_parseCompTail_680
                                                                                                                                 (coe
-                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                    (coe
-                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                       (coe
                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                          (coe
@@ -3707,11 +3729,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                                   v25 of
                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v26 v27
                                                                                                                                -> coe
-                                                                                                                                    d_parseCompTail_674
+                                                                                                                                    d_parseCompTail_680
                                                                                                                                     (coe
-                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                        (coe
-                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                           (coe
                                                                                                                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                              (coe
@@ -3740,7 +3762,7 @@ d_parseCompTail_674 v0 v1
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                               -> let v24
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v14)
                                                                                                                            (coe
@@ -3749,11 +3771,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                               v22) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                          (coe
-                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                (coe
@@ -3775,11 +3797,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                         v21 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                    (coe
@@ -3807,7 +3829,7 @@ d_parseCompTail_674 v0 v1
                                                                                                 v17 of
                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                              -> let v20
-                                                                                                      = d_parseAddTail_534
+                                                                                                      = d_parseAddTail_540
                                                                                                           (coe
                                                                                                              v18)
                                                                                                           (coe
@@ -3821,7 +3843,7 @@ d_parseCompTail_674 v0 v1
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                               -> let v24
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v14)
                                                                                                                            (coe
@@ -3830,11 +3852,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                               v22) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                          (coe
-                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                (coe
@@ -3856,11 +3878,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                         v21 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                    (coe
@@ -3889,7 +3911,7 @@ d_parseCompTail_674 v0 v1
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                     -> let v20
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v14)
                                                                                                                  (coe
@@ -3898,11 +3920,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                     v18) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                (coe
-                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                   (coe
                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                      (coe
@@ -3924,11 +3946,11 @@ d_parseCompTail_674 v0 v1
                                                                                                               v17 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                          (coe
@@ -3956,11 +3978,11 @@ d_parseCompTail_674 v0 v1
                                                                      -> case coe v13 of
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                             -> coe
-                                                                                 d_parseCompTail_674
+                                                                                 d_parseCompTail_680
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                     (coe
-                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                        (coe
                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                           (coe
@@ -3982,11 +4004,11 @@ d_parseCompTail_674 v0 v1
                                                     -> case coe v9 of
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
                                                            -> coe
-                                                                d_parseCompTail_674
+                                                                d_parseCompTail_680
                                                                 (coe
-                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                    (coe
-                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                       (coe
                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                          (coe
@@ -4007,7 +4029,7 @@ d_parseCompTail_674 v0 v1
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v5
                                    -> case coe v5 of
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
-                                          -> let v8 = d_parseCmpOp_594 (coe v7) in
+                                          -> let v8 = d_parseCmpOp_600 (coe v7) in
                                              coe
                                                (case coe v8 of
                                                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
@@ -4020,7 +4042,7 @@ d_parseCompTail_674 v0 v1
                                                                      -> case coe v13 of
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                             -> let v16
-                                                                                     = d_parseMulTail_468
+                                                                                     = d_parseMulTail_474
                                                                                          (coe v14)
                                                                                          (coe
                                                                                             v15) in
@@ -4031,7 +4053,7 @@ d_parseCompTail_674 v0 v1
                                                                                                 v17 of
                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                              -> let v20
-                                                                                                      = d_parseAddTail_534
+                                                                                                      = d_parseAddTail_540
                                                                                                           (coe
                                                                                                              v18)
                                                                                                           (coe
@@ -4045,7 +4067,7 @@ d_parseCompTail_674 v0 v1
                                                                                                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                               -> let v24
                                                                                                                        = coe
-                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                            (coe
                                                                                                                               v10)
                                                                                                                            (coe
@@ -4054,11 +4076,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                               v22) in
                                                                                                                  coe
                                                                                                                    (coe
-                                                                                                                      d_parseCompTail_674
+                                                                                                                      d_parseCompTail_680
                                                                                                                       (coe
-                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                          (coe
-                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                (coe
@@ -4080,11 +4102,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                         v21 of
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v22 v23
                                                                                                                      -> coe
-                                                                                                                          d_parseCompTail_674
+                                                                                                                          d_parseCompTail_680
                                                                                                                           (coe
-                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                                 (coe
                                                                                                                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                                    (coe
@@ -4113,7 +4135,7 @@ d_parseCompTail_674 v0 v1
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                     -> let v20
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v10)
                                                                                                                  (coe
@@ -4122,11 +4144,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                     v18) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                (coe
-                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                   (coe
                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                      (coe
@@ -4148,11 +4170,11 @@ d_parseCompTail_674 v0 v1
                                                                                                               v17 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                          (coe
@@ -4179,7 +4201,7 @@ d_parseCompTail_674 v0 v1
                                                                             -> case coe v13 of
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                                    -> let v16
-                                                                                            = d_parseAddTail_534
+                                                                                            = d_parseAddTail_540
                                                                                                 (coe
                                                                                                    v14)
                                                                                                 (coe
@@ -4193,7 +4215,7 @@ d_parseCompTail_674 v0 v1
                                                                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                     -> let v20
                                                                                                              = coe
-                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                                  (coe
                                                                                                                     v10)
                                                                                                                  (coe
@@ -4202,11 +4224,11 @@ d_parseCompTail_674 v0 v1
                                                                                                                     v18) in
                                                                                                        coe
                                                                                                          (coe
-                                                                                                            d_parseCompTail_674
+                                                                                                            d_parseCompTail_680
                                                                                                             (coe
-                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                (coe
-                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                   (coe
                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                      (coe
@@ -4228,11 +4250,11 @@ d_parseCompTail_674 v0 v1
                                                                                                               v17 of
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v18 v19
                                                                                                            -> coe
-                                                                                                                d_parseCompTail_674
+                                                                                                                d_parseCompTail_680
                                                                                                                 (coe
-                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                                       (coe
                                                                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                          (coe
@@ -4260,7 +4282,7 @@ d_parseCompTail_674 v0 v1
                                                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                                           -> let v16
                                                                                                    = coe
-                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_56
+                                                                                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58
                                                                                                        (coe
                                                                                                           v10)
                                                                                                        (coe
@@ -4269,11 +4291,11 @@ d_parseCompTail_674 v0 v1
                                                                                                           v14) in
                                                                                              coe
                                                                                                (coe
-                                                                                                  d_parseCompTail_674
+                                                                                                  d_parseCompTail_680
                                                                                                   (coe
-                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                     MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                      (coe
-                                                                                                        MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                        MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                         (coe
                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                            (coe
@@ -4295,11 +4317,11 @@ d_parseCompTail_674 v0 v1
                                                                                                     v13 of
                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v14 v15
                                                                                                  -> coe
-                                                                                                      d_parseCompTail_674
+                                                                                                      d_parseCompTail_680
                                                                                                       (coe
-                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                          (coe
-                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                                                             (coe
                                                                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                                                (coe
@@ -4326,11 +4348,11 @@ d_parseCompTail_674 v0 v1
                                                            -> case coe v9 of
                                                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
                                                                   -> coe
-                                                                       d_parseCompTail_674
+                                                                       d_parseCompTail_680
                                                                        (coe
-                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                           (coe
-                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                                              (coe
                                                                                 MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                                 (coe
@@ -4352,11 +4374,11 @@ d_parseCompTail_674 v0 v1
                                           -> case coe v5 of
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                                                  -> coe
-                                                      d_parseCompTail_674
+                                                      d_parseCompTail_680
                                                       (coe
-                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                          (coe
-                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_38
+                                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
                                                             (coe
                                                                MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                                                (coe ("compose" :: Data.Text.Text)))

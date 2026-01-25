@@ -189,3 +189,8 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
   roll'   : ∀ {n} {Γ : Ctx n} {F} → Expr Γ F → Expr Γ (Fix F)
   -- unroll unwraps one layer: Fix F → F
   unroll' : ∀ {n} {Γ : Ctx n} {F} → Expr Γ (Fix F) → Expr Γ F
+
+  -- Primitive reference (imported functions)
+  -- Used for qualified imports like exit0@S → prim "S.exit0"
+  -- The type A is determined by the import
+  prim    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ A
