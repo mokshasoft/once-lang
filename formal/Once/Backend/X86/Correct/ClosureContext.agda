@@ -211,7 +211,10 @@ run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr arg-addr 
                        semantics arg s wf mem-layout h-eq pc-eq stack-inv cap input-valid v-arg v-env =
   s' , R.star , R.h-final , R.pc-final , R.rax-valid , R.stack-inv , R.rsp-sufficient
   where
-    result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s wf h-eq pc-eq stack-inv cap input-valid
+    -- This function still uses encode env (from its type signature).
+    -- The new run-apply-with-wf takes env-addr as a parameter.
+    env-addr = encode env
+    result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr env-addr s wf h-eq pc-eq stack-inv cap input-valid
         (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
          mem-env mem-layout , mem-cp mem-layout) v-arg v-env
     s' = proj₁ result

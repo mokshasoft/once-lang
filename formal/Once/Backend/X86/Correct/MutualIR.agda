@@ -638,8 +638,16 @@ mutual
       ... | yes refl | yes refl =
         run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar
         where
+          -- CLEAN: Postulate structural threading equalities.
+          -- These say that the closure from ClosureWFOutput (produced by curry)
+          -- is the same as proj₁ x (the input closure at apply time).
+          -- This is provable by threading through compose/pair (future work).
+          --
+          -- Key insight: We separate semantics and env-addr equalities.
+          -- Apply.agda uses these directly without needing valid-addr-is-encode!
           postulate
-            cl-eq : proj₁ x ≡ record { env-addr = ea ; semantics = sem }
+            sem-eq : sem ≡ Closure.semantics (proj₁ x)
+            env-addr-eq : ea ≡ Closure.env-addr (proj₁ x)
             cl-addr-eq : cl-addr ≡ ca
 
           closure-at : ClosureAtS ea cp cl-addr m
@@ -656,7 +664,8 @@ mutual
             ; ar-arg-addr = arg-addr
             ; ar-sem = sem
             ; ar-wf = wf
-            ; ar-cl-eq = cl-eq
+            ; ar-sem-eq = sem-eq
+            ; ar-env-addr-eq = env-addr-eq
             ; ar-closure-at = closure-at
             ; ar-env-valid = cwf-env-valid
             ; ar-pair-at = pair-at

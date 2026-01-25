@@ -277,9 +277,14 @@ IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A �
 -- When the dispatcher calls apply, it provides this record instead of
 -- just ClosureWFOutput. This eliminates all 4 postulates in Apply.agda:
 --   1. apply-fallback (unreachable cases) - eliminated by always having data
---   2. cl-is-input (cwf.cl ≡ proj₁ x) - provided by ar-cl-eq
+--   2. cl-is-input (cwf.sem ≡ semantics) - provided by ar-sem-eq (semantics only!)
 --   3. apply-closure-at-wf (ClosureAtS) - provided by ar-closure-at
 --   4. cap-for-apply (StackCapacity) - provided by ar-capacity
+--
+-- KEY DESIGN: ar-sem-eq provides ONLY semantics equality, not full Closure equality.
+-- This is sufficient for correctness because eval apply (cl, arg) = (Closure.semantics cl) arg.
+-- The env-addr field of the input closure is IRRELEVANT to correctness — what matters
+-- is the runtime memory layout (ar-closure-at, ar-env-valid) and the semantics match.
 record ApplyReady {A B : Type} (x : ⟦ (A ⇒ B) * A ⟧) (s : State) (prog : Program) : Set₁ where
   field
     ar-E : Type
@@ -290,8 +295,11 @@ record ApplyReady {A B : Type} (x : ⟦ (A ⇒ B) * A ⟧) (s : State) (prog : P
     ar-arg-addr : ℕ
     ar-sem : ⟦ A ⟧ → ⟦ B ⟧
     ar-wf : ClosureWellFormed {ar-E} {A} {B} prog ar-code-ptr ar-env ar-sem
-    -- Semantic identity: input's closure matches our env/sem
-    ar-cl-eq : proj₁ x ≡ record { env-addr = ar-env-addr ; semantics = ar-sem }
+    -- Structural equalities: connect ClosureWFOutput to input closure
+    -- These are threading proofs (provable by tracing curry → compose/pair → apply)
+    -- Apply.agda uses these directly, eliminating need for valid-addr-is-encode!
+    ar-sem-eq : ar-sem ≡ Closure.semantics (proj₁ x)
+    ar-env-addr-eq : ar-env-addr ≡ Closure.env-addr (proj₁ x)
     -- Memory layout: closure structure at ar-closure-addr
     ar-closure-at : ClosureAtS ar-env-addr ar-code-ptr ar-closure-addr (memory s)
     -- Env validity at runtime address

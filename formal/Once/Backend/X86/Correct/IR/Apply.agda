@@ -84,8 +84,9 @@ open import Once.Backend.X86.Correct.MemoryValid
          PairAtS; fst-valid-s; snd-valid-s;
          ClosureAtS; env-valid-s; code-valid-s;
          valid-subst-addr-mem; valid-subst-heap-preserved;
-         valid-pair-decompose; valid-in-heap;
-         valid-addr-is-encode)
+         valid-pair-decompose; valid-in-heap)
+  -- NOTE: valid-addr-is-encode NO LONGER IMPORTED!
+  -- Apply.agda is now ENCODE-FREE - uses env-addr parameters directly.
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -164,13 +165,16 @@ open ApplyWfResult public
 -- E is the env type, env is the captured environment value
 -- Takes StackCapacity s (apply-consumed-slots + wf.thunk-capacity) for capacity threading
 -- This is a dynamic capacity requirement that depends on the closure being applied
+--
+-- ENCODE-FREE: Takes env-addr as a parameter (runtime address), NOT encode env.
+-- This allows callers to work with ValidAt-derived addresses directly.
 run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
                     (code-ptr : ℕ) (env : ⟦ E ⟧)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
-                    (arg : ⟦ A ⟧) (arg-addr : ℕ) (s : State) →
+                    (arg : ⟦ A ⟧) (arg-addr env-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; semantics = semantics }
+      cl = record { env-addr = env-addr ; semantics = semantics }
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
@@ -182,14 +186,14 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
     readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just arg-addr ×
-    readMem (memory s) closure-addr ≡ just (encode env) ×
+    readMem (memory s) closure-addr ≡ just env-addr ×
     readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)) →
   -- Validity-based argument (for thunk-correct)
   ValidAt arg arg-addr (memory s) →
   -- Validity-based environment (for thunk-correct)
-  ValidAt env (encode env) (memory s) →
+  ValidAt env env-addr (memory s) →
   ∃[ s' ] ApplyWfResult {A} {B} prefix suffix semantics arg s s'
-run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr s
+run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr env-addr s
                   wf h-eq pc-eq stack-inv cap input-valid (closure-addr , mem-cl , mem-arg , mem-env , mem-cp) v-arg v-env =
   s-final , record
     { star         = star-all
@@ -211,8 +215,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     offset = length prefix
     ret-addr = offset +ℕ 7  -- Updated: thunk returns to pop r15 instruction
     old-r15 = readReg (regs s) r15
-    -- Construct the closure from its components (env-addr = encode env)
-    env-addr = encode env
+    -- Construct the closure from its components (uses env-addr parameter, NOT encode!)
     cl : Closure A B
     cl = record { env-addr = env-addr ; semantics = semantics }
 
@@ -616,13 +619,14 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
 
 -- | Wrapper that produces IRStarResult from run-apply-with-wf
 -- Takes StackCapacity s (apply-consumed-slots + wf.thunk-capacity) for capacity threading
+-- ENCODE-FREE: Takes env-addr as a parameter (runtime address)
 run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
-                         (arg : ⟦ A ⟧) (arg-addr : ℕ) (s : State) →
+                         (arg : ⟦ A ⟧) (arg-addr env-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; semantics = semantics }
+      cl = record { env-addr = env-addr ; semantics = semantics }
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
@@ -634,12 +638,12 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
     readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just arg-addr ×
-    readMem (memory s) closure-addr ≡ just (encode env) ×
+    readMem (memory s) closure-addr ≡ just env-addr ×
     readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)) →
   -- Validity-based argument (for thunk-correct)
   ValidAt arg arg-addr (memory s) →
   -- Validity-based environment (for thunk-correct)
-  ValidAt env (encode env) (memory s) →
+  ValidAt env env-addr (memory s) →
   -- Note: The input type for apply is (closure , arg) but we abstract over semantics
   -- Validity-based return (no encode!)
   ∃[ s' ] (Star prog s s'
@@ -648,9 +652,9 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
           × ValidAt (semantics arg) (readReg (regs s') rax) (memory s')
           × StackInvariant s'
           × readReg (regs s') rsp > pair-alloc)
-run-apply-star-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr s
+run-apply-star-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr env-addr s
                        wf h-eq pc-eq stack-inv cap input-valid mem-layout v-arg v-env =
-  let result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s
+  let result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr env-addr s
                  wf h-eq pc-eq stack-inv cap input-valid mem-layout v-arg v-env
       s' = proj₁ result
       module R = ApplyWfResult (proj₂ result)
@@ -691,13 +695,14 @@ open import Once.Backend.X86.Correct.StarBase
 open import Once.Backend.X86.Correct.StackInvariant using (RbpInvariant)
 
 -- Takes StackCapacity s (apply-consumed-slots + wf.thunk-capacity) for capacity threading
+-- ENCODE-FREE: Takes env-addr as a parameter (runtime address)
 run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
-                         (arg : ⟦ A ⟧) (arg-addr : ℕ) (s : State) →
+                         (arg : ⟦ A ⟧) (arg-addr env-addr : ℕ) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      x = (record { env-addr = encode env ; semantics = semantics } , arg)
+      x = (record { env-addr = env-addr ; semantics = semantics } , arg)
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
   halted s ≡ false →
@@ -710,14 +715,14 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
   (∃[ closure-addr ] (
     readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr ×
     readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just arg-addr ×
-    readMem (memory s) closure-addr ≡ just (encode env) ×
+    readMem (memory s) closure-addr ≡ just env-addr ×
     readMem (memory s) (closure-addr +ℕ slot-size) ≡ just code-ptr)) →
   -- Validity-based argument (for thunk-correct)
   ValidAt arg arg-addr (memory s) →
   -- Validity-based environment (for thunk-correct)
-  ValidAt env (encode env) (memory s) →
+  ValidAt env env-addr (memory s) →
   ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x offset
-run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr s
+run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr env-addr s
                        wf h-eq pc-eq input-valid stack-inv cap rbp-inv mem-layout v-arg v-env =
   s' , record
     { ir-star = WfR.star
@@ -752,12 +757,12 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     open import Once.Semantics using (Closure)
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
-    env-addr = encode env
+    -- NOTE: Uses env-addr parameter directly (no encode!)
     x : ⟦ (A ⇒ B) * A ⟧
     x = (record { env-addr = env-addr ; semantics = semantics } , arg)
 
-    -- Use proven run-apply-with-wf
-    wf-result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr s
+    -- Use proven run-apply-with-wf (now takes env-addr parameter)
+    wf-result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr env-addr s
                   wf h-eq pc-eq stack-inv cap input-valid mem-layout v-arg v-env
     s' = proj₁ wf-result
     module WfR = ApplyWfResult (proj₂ wf-result)
@@ -853,6 +858,7 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
 ------------------------------------------------------------------------
 
 -- Takes StackCapacity s (apply-consumed-slots + wf.thunk-capacity) for capacity threading
+-- ENCODE-FREE: Uses env-addr parameter directly, no valid-addr-is-encode needed!
 run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (code-ptr : ℕ) (env : ⟦ E ⟧)
                            (semantics : ⟦ A ⟧ → ⟦ B ⟧)
@@ -860,7 +866,7 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; semantics = semantics }
+      cl = record { env-addr = env-addr ; semantics = semantics }
       x = (cl , arg)
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
@@ -881,23 +887,11 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
 
-    -- Bridge: env-addr ≡ encode env (from validity)
-    ea-is-encode : env-addr ≡ encode env
-    ea-is-encode = valid-addr-is-encode v-env
-
-    -- Convert closure-at to encode-based (for internal functions)
-    closure-at-enc : ClosureAtS (encode env) code-ptr closure-addr (memory s)
-    closure-at-enc = subst (λ e → ClosureAtS e code-ptr closure-addr (memory s))
-                           ea-is-encode closure-at
-
-    -- Derive v-cl from closure-at-enc
-    cl = record { env-addr = encode env ; semantics = semantics }
+    -- ENCODE-FREE: Use env-addr directly (no valid-addr-is-encode!)
+    -- The closure uses env-addr, not encode env
+    cl = record { env-addr = env-addr ; semantics = semantics }
     v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)
-    v-cl = valid-closure closure-at-enc
-
-    -- Convert v-env to encode-based
-    v-env-enc : ValidAt env (encode env) (memory s)
-    v-env-enc = subst (λ a → ValidAt env a (memory s)) ea-is-encode v-env
+    v-cl = valid-closure closure-at
 
     x : ⟦ (A ⇒ B) * A ⟧
     x = (cl , arg)
@@ -913,22 +907,22 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
     mem-arg : readMem (memory s) (readReg (regs s) rdi +ℕ' slot-size) ≡ just arg-addr
     mem-arg = snd-valid-s pair-at
 
-    mem-env : readMem (memory s) closure-addr ≡ just (encode env)
-    mem-env = env-valid-s closure-at-enc
+    mem-env : readMem (memory s) closure-addr ≡ just env-addr
+    mem-env = env-valid-s closure-at
 
     mem-code-ptr : readMem (memory s) (closure-addr +ℕ' slot-size) ≡ just code-ptr
-    mem-code-ptr = code-valid-s closure-at-enc
+    mem-code-ptr = code-valid-s closure-at
 
     mem-layout : ∃[ cl-addr ] (
         readMem (memory s) (readReg (regs s) rdi) ≡ just cl-addr ×
         readMem (memory s) (readReg (regs s) rdi +ℕ' slot-size) ≡ just arg-addr ×
-        readMem (memory s) cl-addr ≡ just (encode env) ×
+        readMem (memory s) cl-addr ≡ just env-addr ×
         readMem (memory s) (cl-addr +ℕ' slot-size) ≡ just code-ptr)
     mem-layout = closure-addr , mem-cl , mem-arg , mem-env , mem-code-ptr
 
-    -- Call existing implementation
-    result = run-apply-to-ir-result prefix suffix code-ptr env semantics arg arg-addr s
-               wf h-eq pc-eq input-valid stack-inv cap rbp-inv mem-layout v-arg v-env-enc
+    -- Call existing implementation (now takes env-addr directly)
+    result = run-apply-to-ir-result prefix suffix code-ptr env semantics arg arg-addr env-addr s
+               wf h-eq pc-eq input-valid stack-inv cap rbp-inv mem-layout v-arg v-env
 
   in result
 
@@ -967,7 +961,7 @@ run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq input-valid stack-
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
     offset = length prefix
 
-    -- Call the core implementation (bridge is now inside run-apply-to-ir-result-v)
+    -- Call the core implementation (now ENCODE-FREE)
     core-result = run-apply-to-ir-result-v {ar-E} prefix suffix ar-code-ptr ar-env ar-sem
                     ar-closure-addr ar-arg-addr ar-env-addr (proj₂ x) s
                     ar-wf h-false pc-eq stack-inv ar-capacity rbp-inv
@@ -976,23 +970,38 @@ run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq input-valid stack-
     s' = proj₁ core-result
     ir-result = proj₂ core-result
 
-    -- Semantic equality: need (cl-wf , proj₂ x) ≡ x where cl-wf uses encode ar-env
-    -- Derive ea-is-encode for x-eq only
-    ea-is-encode : ar-env-addr ≡ encode ar-env
-    ea-is-encode = valid-addr-is-encode ar-env-valid
+    -- ENCODE-FREE: Use ar-sem-eq and ar-env-addr-eq directly!
+    -- Internal closure uses ar-env-addr (not encode), matching proj₁ x
+    cl-internal : Closure A B
+    cl-internal = record { env-addr = ar-env-addr ; semantics = ar-sem }
 
-    cl-wf : Closure A B
-    cl-wf = record { env-addr = encode ar-env ; semantics = ar-sem }
+    -- Derive cl-internal ≡ proj₁ x from the two equalities + Closure-η
+    -- ar-sem-eq : ar-sem ≡ Closure.semantics (proj₁ x)
+    -- ar-env-addr-eq : ar-env-addr ≡ Closure.env-addr (proj₁ x)
+    -- Closure-η : record { env-addr = e ; semantics = s } ≡ cl when e = env-addr cl, s = semantics cl
+    open import Once.Semantics using (Closure-η)
+    open import Relation.Binary.PropositionalEquality using (trans; cong₂)
 
-    -- ar-cl-eq : proj₁ x ≡ record { env-addr = ar-env-addr ; semantics = ar-sem }
-    -- Bridge via ea-is-encode: encode ar-env ≡ ar-env-addr (sym)
-    cl-wf-is-proj : cl-wf ≡ proj₁ x
-    cl-wf-is-proj = trans (cong (λ e → record { env-addr = e ; semantics = ar-sem })
-                                (sym ea-is-encode))
-                          (sym ar-cl-eq)
+    -- First build record with proj₁ x's fields
+    cl-from-fields : Closure A B
+    cl-from-fields = record { env-addr = Closure.env-addr (proj₁ x)
+                            ; semantics = Closure.semantics (proj₁ x) }
 
-    x-eq : (cl-wf , proj₂ x) ≡ x
-    x-eq = cong₂ _,_ cl-wf-is-proj refl
+    -- cl-internal ≡ cl-from-fields (via cong₂)
+    cl-internal-eq-fields : cl-internal ≡ cl-from-fields
+    cl-internal-eq-fields = cong₂ (λ e s → record { env-addr = e ; semantics = s })
+                                   ar-env-addr-eq ar-sem-eq
+
+    -- cl-from-fields ≡ proj₁ x (via Closure-η)
+    cl-fields-eq-proj : cl-from-fields ≡ proj₁ x
+    cl-fields-eq-proj = Closure-η (proj₁ x)
+
+    -- Chain them
+    cl-internal-is-proj : cl-internal ≡ proj₁ x
+    cl-internal-is-proj = trans cl-internal-eq-fields cl-fields-eq-proj
+
+    x-eq : (cl-internal , proj₂ x) ≡ x
+    x-eq = cong₂ _,_ cl-internal-is-proj refl
 
 ------------------------------------------------------------------------
 -- run-apply-star-v: Wrapper for dispatcher (takes ApplyReady)
