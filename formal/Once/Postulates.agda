@@ -305,76 +305,35 @@ readMem m addr = m addr
 --   2. Replace encode-based proofs with validity-based proofs
 --   3. Remove these postulates
 
+-- ELIMINATED FOR X86: The following postulates are NO LONGER USED by x86.
+-- X86 uses validity-based proofs (ValidAt, PairAtS, InlAtS, InrAtS, ClosureAtS)
+-- instead of encode-based postulates. Other backends (RISC-V, AArch64) may
+-- still use these and will need to be updated separately.
+--
+-- REMOVED (x86 doesn't use):
+--   encode-pair-fst, encode-pair-snd (replaced by PairAtS + fst-valid-s/snd-valid-s)
+--   encode-inl-tag, encode-inl-val (replaced by InlAtS + tag-valid/val-valid)
+--   encode-inr-tag, encode-inr-val (replaced by InrAtS + tag-valid/val-valid)
+--   encode-inl-construct, encode-inr-construct (replaced by valid-inl/valid-inr)
+--   encode-closure-env (replaced by ClosureAtS + env-valid-s)
+--
+-- REMAINING (x86 still uses for producers - to be eliminated next):
+
 postulate
-  -- ELIMINABLE via PairAtS + run-fst-star-s (see StarBase.agda)
-  -- Encoding preserves pair structure
-  -- encode (a , b) is an address pointing to [encode a, encode b]
-  encode-pair-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
-    readMem m (encode (a , b)) ≡ just (encode a)
-
-  -- ELIMINABLE via PairAtS + run-snd-star-s (see StarBase.agda)
-  encode-pair-snd : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
-    readMem m ((encode (a , b)) +ℕ 8) ≡ just (encode b)
-
-  -- ELIMINABLE via InlAtS + inl-tag-from-validity (see StarBase.agda)
-  -- Encoding preserves sum structure
-  -- encode (inj₁ a) is address pointing to [0, encode a]
-  -- encode (inj₂ b) is address pointing to [1, encode b]
-  encode-inl-tag : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
-    readMem m (encode {A + B} (inj₁ a)) ≡ just 0
-
-  -- ELIMINABLE via InlAtS + inl-val-from-validity (see StarBase.agda)
-  encode-inl-val : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
-    readMem m ((encode {A + B} (inj₁ a)) +ℕ 8) ≡ just (encode a)
-
-  -- ELIMINABLE via InrAtS + inr-tag-from-validity (see StarBase.agda)
-  encode-inr-tag : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
-    readMem m (encode {A + B} (inj₂ b)) ≡ just 1
-
-  -- ELIMINABLE via InrAtS + inr-val-from-validity (see StarBase.agda)
-  encode-inr-val : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
-    readMem m ((encode {A + B} (inj₂ b)) +ℕ 8) ≡ just (encode b)
-
-  -- Encoding construction axioms:
-  -- If memory at p has the correct shape, then p is the encoding
-  -- These are the "constructors" for encoded values
-
-  -- ELIMINABLE: run-inl-star-s produces InlAtS directly from memory writes
-  -- No need to prove p ≡ encode; just track the address
-  encode-inl-construct : ∀ {A B} (a : ⟦ A ⟧) (p : Word) (m : Memory) →
-    readMem m p ≡ just 0 →
-    readMem m (p +ℕ 8) ≡ just (encode a) →
-    p ≡ encode {A + B} (inj₁ a)
-
-  -- ELIMINABLE: run-inr-star-s produces InrAtS directly from memory writes
-  encode-inr-construct : ∀ {A B} (b : ⟦ B ⟧) (p : Word) (m : Memory) →
-    readMem m p ≡ just 1 →
-    readMem m (p +ℕ 8) ≡ just (encode b) →
-    p ≡ encode {A + B} (inj₂ b)
-
   -- ELIMINABLE: pair-stores-create-validity produces PairAtS from memory writes
   -- Encoding construction for pairs:
   -- If memory at p has [encode a, encode b], then p is encode (a, b)
+  -- USED BY: x86 PairInstr, PairFinal, ThunkExec
   encode-pair-construct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
     readMem m (p +ℕ 8) ≡ just (encode b) →
     p ≡ encode {A * B} (a , b)
 
-  -- ELIMINABLE: Need ClosureAtS validity predicate (similar to PairAtS)
-  -- Encoding preserves closure structure
-  -- A closure is encoded as a pointer to [env-addr, code-ptr]
-  -- env-addr is part of the semantic Closure; code-ptr is a compilation artifact
-  encode-closure-env : ∀ {A B} (closure : ⟦ A ⇒ B ⟧) (m : Memory) →
-    readMem m (encode {A ⇒ B} closure) ≡ just (Closure.env-addr closure)
-
-  -- NOTE: encode-closure-code-ptr removed - code-ptr is not in semantic Closure
-  -- Runtime code-ptr is tracked via ClosureAtS and ClosureWellFormed
-
   -- ELIMINABLE: ClosureAtS produces closures directly from memory writes
   -- Encoding construction for closures (functions):
   -- A closure representing curry f applied to a is encoded as a pointer to [env, code]
   -- where env = encode a
-  -- NOTE: With explicit Closure record, this may become derivable from env-addr field
+  -- USED BY: x86 CurryInstr, Curry
   encode-closure-construct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
     -- (code pointer is abstract - we just need env to be correct)
