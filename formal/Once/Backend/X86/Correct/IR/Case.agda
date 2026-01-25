@@ -28,7 +28,8 @@ open import Once.Backend.X86.Correct.InstrExec
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure; subst-cwf-prog)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; ClosureAtS-preserved-under-heap-eq; valid-subst-heap-preserved; region-to-heap)
+  using (ValidAt; ClosureAtS-preserved-under-heap-eq; valid-subst-heap-preserved;
+         valid-subst-addr-mem; ClosureAtS-preserved-under-mem-eq)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; stack-inv-preserved-r15-unchanged)
@@ -465,12 +466,15 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cwfc =
       subst-cwf-prog prog-eq-f
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
-          (valid-subst-heap-preserved ev refl (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
-          (ClosureAtS-preserved-under-heap-eq cat (region-to-heap cr cir) (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
+          (valid-subst-addr-mem ev refl mem-final-eq)
+          (ClosureAtS-preserved-under-mem-eq cat mem-final-eq)
           cr
           cir
           cwf-cap-final)
       where
+        -- Full memory preservation: memory s-final ≡ memory s1
+        mem-final-eq : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
+        mem-final-eq addr = cong (λ m → readMem m addr) mem-s-final
         cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
         cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
           where
@@ -896,12 +900,15 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cwfc =
       subst-cwf-prog prog-eq-g
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
-          (valid-subst-heap-preserved ev refl (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
-          (ClosureAtS-preserved-under-heap-eq cat (region-to-heap cr cir) (λ addr _ → cong (λ m → readMem m addr) mem-s-final))
+          (valid-subst-addr-mem ev refl mem-final-eq)
+          (ClosureAtS-preserved-under-mem-eq cat mem-final-eq)
           cr
           cir
           cwf-cap-final)
       where
+        -- Full memory preservation: memory s-final ≡ memory s1
+        mem-final-eq : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
+        mem-final-eq addr = cong (λ m → readMem m addr) mem-s-final
         cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
         cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
           where

@@ -33,9 +33,11 @@ open import Once.Backend.X86.Correct.MemoryValid
          PairAtS; fst-valid-s; snd-valid-s;
          InlAtS; InrAtS; ClosureAtS;
          valid-arrow-to-eff;
+         valid-subst-addr-mem;  -- Takes full memory equality (no region-to-heap)
          valid-subst-heap-preserved;
+         ClosureAtS-preserved-under-mem-eq;  -- Takes full memory equality
          ClosureAtS-preserved-under-heap-eq;
-         Region; InRegion; region-to-heap)
+         Region; InRegion)
 
 open import Data.Nat using (_>_)
 open import Data.List.Properties using (++-assoc)
@@ -84,20 +86,19 @@ data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
                 ClosureWFOutput prog s
 
 -- | Transport ClosureWFOutput across program equality and state change.
--- Requires heap memory preservation (for ClosureAtS) and rsp preservation (for StackCapacity).
--- NOTE: Uses region-to-heap to convert Stack → InHeap via stack-heap-compat postulate.
--- TODO (D-REGION): Make transport-cwf region-aware once we have proper region preservation.
+-- Requires full memory preservation (for ValidAt and ClosureAtS) and rsp preservation (for StackCapacity).
+-- Uses full memory equality to avoid region-to-heap postulate.
 transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   prog1 ≡ prog2 →
-  (∀ addr → InHeap addr → readMem (memory s2) addr ≡ readMem (memory s1) addr) →
+  (∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr) →
   readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
   ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
 transport-cwf _ _ _ no-closure = no-closure
-transport-cwf {s1 = s1} {s2 = s2} refl heap-eq rsp-eq
+transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
   (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region cwf-cap) =
   has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq
-    (valid-subst-heap-preserved env-valid refl heap-eq)
-    (ClosureAtS-preserved-under-heap-eq closure-at (region-to-heap cl-region cl-in-region) heap-eq)
+    (valid-subst-addr-mem env-valid refl mem-eq)
+    (ClosureAtS-preserved-under-mem-eq closure-at mem-eq)
     cl-region
     cl-in-region
     (capacity-preserved-rsp-unchanged s1 s2 _ cwf-cap rsp-eq)

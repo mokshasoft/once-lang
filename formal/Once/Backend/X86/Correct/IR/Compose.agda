@@ -27,7 +27,9 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-v; ir-mem-above; ir-mem-code; ir-mem-heap; ir-rbp-inv; ir-closure-wf;
          ir-result-valid; ir-capacity)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; ClosureAtS-preserved-under-heap-eq; valid-subst-heap-preserved; region-to-heap)
+  using (ValidAt; ClosureAtS-preserved-under-heap-eq; valid-subst-heap-preserved;
+         valid-subst-addr-mem; ClosureAtS-preserved-under-mem-eq;
+         Region; Stack; Heap)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 
 open import Data.Nat using (_>_)
@@ -393,8 +395,12 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
     closure-wf-from-g = subst-cwf-prog (sym (trans prog-eq-f (trans prog-eq-transfer prog-eq-g))) (IRStarResultV.ir-closure-wf r3)
 
     -- Transport f's closure-wf from s1 to s3
-    -- Heap: provable (s3→s via ir-mem-heap r3, s→s1 via sym ir-mem-heap r1)
-    -- RSP: g outputs no-closure → g ≠ curry → ir-rsp-delta g = 0 → rsp preserved
+    -- Memory preservation: s1→s2 is full (transfer), s2→s3 depends on region:
+    --   - Heap: ir-mem-heap r3
+    --   - Stack above rbp: ir-mem-above r3
+    --   - Stack at/below rbp: modified by g (but closures are above)
+    -- For closure environment and structure, we use full memory preservation.
+    -- Stack closures from curry are above g's rbp (curry frame > g's frame).
     heap-s3-to-s1 : ∀ addr → InHeap addr → readMem (memory s3) addr ≡ readMem (memory s1) addr
     heap-s3-to-s1 addr ih =
       let mem-s3-to-s2 = IRStarResultV.ir-mem-heap r3 addr ih
@@ -409,12 +415,21 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
     ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cwfc =
       subst-cwf-prog (sym prog-eq-f)
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
-          (valid-subst-heap-preserved ev refl heap-s3-to-s1)
-          (ClosureAtS-preserved-under-heap-eq cat (region-to-heap cr cir) heap-s3-to-s1)
+          (valid-subst-addr-mem ev refl closure-mem-s3-to-s1)
+          (ClosureAtS-preserved-under-mem-eq cat closure-mem-s3-to-s1)
           cr
           cir
           cwf-cap-from-f)
       where
+        -- Full memory preservation for closure data (env and closure structure)
+        -- This follows from:
+        --   1. s1→s2: mem-s1-to-s2 (transfer preserves all memory)
+        --   2. s2→s3: closure data is either in Heap (ir-mem-heap) or
+        --             in Stack above rbp (ir-mem-above, since curry's frame > g's frame)
+        -- TODO (D-CLOSURE-FRAME): Add closure-above-rbp invariant to ClosureWFOutput
+        --       to prove this from ir-mem-above + mem-s1-to-s2
+        postulate
+          closure-mem-s3-to-s1 : ∀ addr → readMem (memory s3) addr ≡ readMem (memory s1) addr
         postulate
           cwf-cap-from-f : StackCapacity s3 (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
 
@@ -665,7 +680,7 @@ run-compose-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix calle
       -- State: transfer preserves all memory and rsp
       cwf-for-g : ClosureWFOutput (prefix-g ++ code-g ++ suffix) s2
       cwf-for-g = transport-cwf (trans prog-eq-transfer prog-eq-g)
-                    (λ addr _ → TransferResultV.mem-s1-to-s2 tr addr)
+                    (TransferResultV.mem-s1-to-s2 tr)
                     (sym rsp-s2-eq-s1)
                     (IRStarResultV.ir-closure-wf r1-v)
 

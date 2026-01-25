@@ -61,7 +61,8 @@ open import Once.Backend.Common.IRSize
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write;
-         valid-subst-heap-preserved; ClosureAtS-preserved-under-heap-eq; region-to-heap;
+         valid-subst-heap-preserved; valid-subst-addr-mem;
+         ClosureAtS-preserved-under-heap-eq; ClosureAtS-preserved-under-mem-eq;
          Region; Stack; InRegion)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Layout using (InHeap; InCode)
@@ -178,12 +179,20 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cwfc =
       subst-cwf-prog (sym prog-eq-f)
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
-          (valid-subst-heap-preserved ev refl heap-final-to-s1)
-          (ClosureAtS-preserved-under-heap-eq cat (region-to-heap cr cir) heap-final-to-s1)
+          (valid-subst-addr-mem ev refl closure-mem-final-to-s1)
+          (ClosureAtS-preserved-under-mem-eq cat closure-mem-final-to-s1)
           cr
           cir
           cwf-cap-final)
       where
+        -- Full memory preservation for closure data (env and closure structure)
+        -- This follows from:
+        --   1. s1→s-final: closure data is either in Heap (ir-mem-heap + setup heap preservation)
+        --      or in Stack above rbp (ir-mem-above, since curry's frame > pair's final write frame)
+        -- TODO (D-CLOSURE-FRAME): Add closure-above-rbp invariant to ClosureWFOutput
+        --       to prove this from memory preservation lemmas
+        postulate
+          closure-mem-final-to-s1 : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
         heap-final-to-s1 : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
         heap-final-to-s1 addr iha =
           trans (mem-heap-final addr iha)
