@@ -559,9 +559,10 @@ x86-compose-run-transfer : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
   Preconditions {A} s x prefix (ir-stack-requirement (f ∘ g)) →
   IRCorrectness g (prefix ++ compile-x86 g ++ (x86-compose-transfer f g ++ compile-x86 f ++ suffix)) s s₁ x (length prefix) →
   ∃[ s₂ ] (Star (prefix ++ compile-x86 g ++ (x86-compose-transfer f g ++ compile-x86 f ++ suffix)) s₁ s₂ ×
+           readReg (regs s₂) rsp ≡ readReg (regs s₁) rsp ×  -- Transfer preserves rsp
            Preconditions {B} s₂ (eval g x) (prefix ++ compile-x86 g ++ x86-compose-transfer f g) (ir-stack-requirement f) ×
            ApplyWFInput (ClosureDom B) (ClosureCod B) ((prefix ++ compile-x86 g ++ x86-compose-transfer f g) ++ compile-x86 f ++ suffix) s₂ (closureOf B (eval g x)))
-x86-compose-run-transfer {A} {B} {C} f g prefix suffix x s s₁ pre g-corr = s₂ , star₂ , f-pre , f-cwf
+x86-compose-run-transfer {A} {B} {C} f g prefix suffix x s s₁ pre g-corr = s₂ , star₂ , rsp₂ , f-pre , f-cwf
   where
     -- Shorthands
     code-g = compile-x86 g
@@ -756,11 +757,12 @@ x86-compose-run-transfer {A} {B} {C} f g prefix suffix x s s₁ pre g-corr = s�
 x86-compose-combine : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
   (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ s₂ s₃ : State) →
   StackCapacity s (ir-stack-requirement (f ∘ g)) →  -- Original capacity
+  readReg (regs s₂) rsp ≡ readReg (regs s₁) rsp →   -- Transfer preserves rsp
   IRCorrectness g (prefix ++ compile-x86 g ++ (x86-compose-transfer f g ++ compile-x86 f ++ suffix)) s s₁ x (length prefix) →
   Star (prefix ++ compile-x86 g ++ (x86-compose-transfer f g ++ compile-x86 f ++ suffix)) s₁ s₂ →
   IRCorrectness f ((prefix ++ compile-x86 g ++ x86-compose-transfer f g) ++ compile-x86 f ++ suffix) s₂ s₃ (eval g x) (length (prefix ++ compile-x86 g ++ x86-compose-transfer f g)) →
   IRCorrectness (f ∘ g) (prefix ++ compile-x86 (f ∘ g) ++ suffix) s s₃ x (length prefix)
-x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ orig-cap g-corr transfer-star f-corr = record
+x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ orig-cap rsp-transfer g-corr transfer-star f-corr = record
   { exec-star = star-all
   ; exec-halted = h₃
   ; exec-pc = pc-final
@@ -783,23 +785,11 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ orig-cap g-
       using (ir-requirement-split; compose-rsp-delta)
 
     -- Derive rsp-compose: rsp(s₃) = rsp(s) - slots(delta(f ∘ g))
-    -- Chain: rsp(s₁) = rsp(s) - slots(delta-g), rsp(s₂) = rsp(s₁) (transfer), rsp(s₃) = rsp(s₂) - slots(delta-f)
-    rsp-s₂-eq-s₁ : readReg (regs s₂) rsp ≡ readReg (regs s₁) rsp
-    rsp-s₂-eq-s₁ = single-star-eq transfer-star (IRCorrectness.exec-rsp-delta g-corr)
-      where
-        -- Transfer is single step, doesn't change rsp
-        -- single-star-eq extracts equality from transfer-star
-        -- We need step result rsp = input rsp
-        -- This is a simplification - transfer [mov rdi rax] doesn't change rsp
-        postulate
-          single-star-eq : Star (prefix ++ compile-x86 g ++ (x86-compose-transfer f g ++ compile-x86 f ++ suffix)) s₁ s₂ →
-                           readReg (regs s₁) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta g) →
-                           readReg (regs s₂) rsp ≡ readReg (regs s₁) rsp
-
+    -- Chain: rsp(s₁) = rsp(s) - slots(delta-g), rsp(s₂) = rsp(s₁) (from rsp-transfer), rsp(s₃) = rsp(s₂) - slots(delta-f)
     rsp-compose : readReg (regs s₃) rsp ≡ readReg (regs s) rsp ∸ slots (ir-rsp-delta (f ∘ g))
     rsp-compose = compose-rsp-delta (readReg (regs s) rsp) (readReg (regs s₂) rsp) (readReg (regs s₃) rsp)
                     (ir-rsp-delta g) (ir-rsp-delta f)
-                    (trans rsp-s₂-eq-s₁ (IRCorrectness.exec-rsp-delta g-corr))
+                    (trans rsp-transfer (IRCorrectness.exec-rsp-delta g-corr))
                     (IRCorrectness.exec-rsp-delta f-corr)
 
     -- Derive output capacity from input capacity via capacity-after-delta

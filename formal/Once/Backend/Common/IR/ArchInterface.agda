@@ -159,21 +159,23 @@ record ArchCorrectness : Set₂ where
     -- After g runs, run transfer and derive f's preconditions
     -- g ran in context: prefix ++ₚ compile g ++ₚ (transfer ++ₚ compile f ++ₚ suffix)
     -- Transfer advances PC from end of g to start of f
-    -- Returns: s₂ (state after transfer), Star proof for transfer, Preconditions for f at s₂,
-    --          and converted ApplyWFInput for f (from g's exec-closure-wf, updated for s₂)
+    -- Returns: s₂ (state after transfer), Star proof for transfer, rsp preservation,
+    --          Preconditions for f at s₂, and converted ApplyWFInput for f
     compose-run-transfer : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ : State) →
       Preconditions {A} s x prefix (ir-stack-requirement (f ∘ g)) →
       IRCorrectness g (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s s₁ x (program-length prefix) →
       ∃[ s₂ ] (Star (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s₁ s₂ ×
+               rsp-value s₂ ≡ rsp-value s₁ ×  -- Transfer preserves rsp
                Preconditions {B} s₂ (eval g x) (prefix ++ₚ compile g ++ₚ compose-transfer f g) (ir-stack-requirement f) ×
                ApplyWFInput (ClosureDom B) (ClosureCod B) ((prefix ++ₚ compile g ++ₚ compose-transfer f g) ++ₚ compile f ++ₚ suffix) s₂ (closureOf B (eval g x)))
 
     -- Combine g, transfer, and f results into compose result
-    -- Takes original capacity for deriving compose output capacity
+    -- Takes original capacity and rsp preservation for deriving compose output capacity
     compose-combine : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ s₂ s₃ : State) →
       StackCapacity s (ir-stack-requirement (f ∘ g)) →  -- Original capacity for output derivation
+      rsp-value s₂ ≡ rsp-value s₁ →  -- Transfer preserves rsp (for rsp-compose)
       IRCorrectness g (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s s₁ x (program-length prefix) →
       Star (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s₁ s₂ →
       IRCorrectness f ((prefix ++ₚ compile g ++ₚ compose-transfer f g) ++ₚ compile f ++ₚ suffix) s₂ s₃ (eval g x) (program-length (prefix ++ₚ compile g ++ₚ compose-transfer f g)) →

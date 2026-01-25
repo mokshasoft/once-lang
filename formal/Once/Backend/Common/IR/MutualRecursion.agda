@@ -128,15 +128,15 @@ module IRCorrect (Arch : ArchCorrectness) where
           g-pre = compose-g-preconditions f g prefix suffix x s pre
           -- Step 2: Run g in context (suffix includes transfer and f)
           (s₁ , g-corr) = ir-correct g prefix suffix-g x s g-pre no-apply-wf
-          -- Step 3: Run transfer, get f's preconditions and threaded ApplyWFInput
-          (s₂ , transfer-star , f-pre , f-cwf) = compose-run-transfer f g prefix suffix x s s₁ pre g-corr
+          -- Step 3: Run transfer, get f's preconditions, rsp preservation, and threaded ApplyWFInput
+          (s₂ , transfer-star , rsp-transfer , f-pre , f-cwf) = compose-run-transfer f g prefix suffix x s s₁ pre g-corr
           -- Step 4: Run f in context (prefix includes g and transfer)
           -- Thread g's closure-wf to f via compose-run-transfer's converted ApplyWFInput
           (s₃ , f-corr) = ir-correct f prefix-f suffix (eval g x) s₂ f-pre f-cwf
           -- Step 5: Combine using architecture's combine lemma
-          -- Pass original capacity for deriving compose output capacity
+          -- Pass original capacity and rsp preservation for deriving compose output capacity
           orig-cap = Preconditions.pre-capacity pre
-      in s₃ , compose-combine f g prefix suffix x s s₁ s₂ s₃ orig-cap g-corr transfer-star f-corr
+      in s₃ , compose-combine f g prefix suffix x s s₁ s₂ s₃ orig-cap rsp-transfer g-corr transfer-star f-corr
 
     -- Pair: setup → f → middle → g → cleanup
     ir-correct ⟨ f , g ⟩ prefix suffix x s pre _ =
