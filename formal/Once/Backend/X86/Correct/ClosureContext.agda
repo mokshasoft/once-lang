@@ -32,7 +32,7 @@ open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
 
-open import Once.Postulates using (encode)
+-- NOTE: encode import removed - all functions now take env-addr as parameter
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
@@ -180,17 +180,19 @@ open ApplyMemoryLayout public
 open import Once.Backend.X86.Correct.IR.Apply as ApplyProof
   using (run-apply-with-wf)
 
+-- | run-apply-with-full-wf: Execute apply with ClosureWellFormed proof
+-- Now takes env-addr as a parameter instead of computing encode env.
 run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
-                         (code-ptr closure-addr arg-addr : ℕ)
+                         (code-ptr closure-addr arg-addr env-addr : ℕ)
                          (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                          (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; semantics = semantics }
+      cl = record { env-addr = env-addr ; semantics = semantics }
   in
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
-  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg-addr →
+  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr env-addr arg-addr →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
@@ -199,7 +201,7 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
   ValidAt arg arg-addr (memory s) →
-  ValidAt env (encode env) (memory s) →
+  ValidAt env env-addr (memory s) →
   -- Validity-based return (no encode!)
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
@@ -207,13 +209,11 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
           × ValidAt (semantics arg) (readReg (regs s') rax) (memory s')
           × StackInvariant s'
           × readReg (regs s') rsp > pair-alloc)
-run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr arg-addr env
+run-apply-with-full-wf {E} {A} {B} prefix suffix code-ptr closure-addr arg-addr env-addr env
                        semantics arg s wf mem-layout h-eq pc-eq stack-inv cap input-valid v-arg v-env =
   s' , R.star , R.h-final , R.pc-final , R.rax-valid , R.stack-inv , R.rsp-sufficient
   where
-    -- This function still uses encode env (from its type signature).
-    -- The new run-apply-with-wf takes env-addr as a parameter.
-    env-addr = encode env
+    -- env-addr is now a parameter, not computed from encode
     result = run-apply-with-wf prefix suffix code-ptr env semantics arg arg-addr env-addr s wf h-eq pc-eq stack-inv cap input-valid
         (closure-addr , mem-fst mem-layout , mem-snd mem-layout ,
          mem-env mem-layout , mem-cp mem-layout) v-arg v-env
@@ -278,17 +278,17 @@ curry-output-to-apply-input {A} f prog offset x cow = record
 -- is sufficient to eliminate the postulate.
 test-apply-with-wf-eliminates-postulate :
   ∀ {E A B : Type} (prefix suffix : Program)
-    (code-ptr closure-addr arg-addr : ℕ)
+    (code-ptr closure-addr arg-addr env-addr : ℕ)
     (env : ⟦ E ⟧)
     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
     (arg : ⟦ A ⟧) (s : State) →
   let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
       offset = length prefix
-      cl = record { env-addr = encode env ; semantics = semantics }
+      cl = record { env-addr = env-addr ; semantics = semantics }
   in
   -- Preconditions that would be established by curry + pair
   (wf : ClosureWellFormed {E} {A} {B} prog code-ptr env semantics) →
-  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr (encode env) arg-addr →
+  ApplyMemoryLayout {A} {B} prog s closure-addr code-ptr env-addr arg-addr →
   halted s ≡ false →
   pc s ≡ offset →
   StackInvariant s →
@@ -297,7 +297,7 @@ test-apply-with-wf-eliminates-postulate :
   ValidAt {(A ⇒ B) * A} (cl , arg) (readReg (regs s) rdi) (memory s) →
   -- Validity-based arguments (for thunk-correct)
   ValidAt arg arg-addr (memory s) →
-  ValidAt env (encode env) (memory s) →
+  ValidAt env env-addr (memory s) →
   -- Result: apply correctness WITHOUT using apply-produces-result!
   ∃[ s' ] (Star prog s s'
           × halted s' ≡ false
