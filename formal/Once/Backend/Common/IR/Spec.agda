@@ -62,6 +62,8 @@ record MachineInterface : Set₁ where
     saved-input-value : State → Word
     -- Result slot register: where pair stores f's result during g evaluation (r15 / x20 / s4)
     result-slot-addr : State → Word
+    -- Frame pointer register (rbp / x29 / s0)
+    frame-ptr-addr : State → Word
 
     -- Memory operations
     readMem : Memory → Word → Maybe Word
@@ -414,6 +416,7 @@ module IRSpecs
         setup-input-is-encode : input-value s₁ ≡ encode x
         setup-input-saved : saved-input-value s₁ ≡ encode x  -- Input saved for restoration after f
         setup-result-slot-in-stack : InStack (result-slot-addr s₁)  -- Result slot is in stack (for middle memory proofs)
+        setup-result-slot-below-frame-ptr : result-slot-addr s₁ < frame-ptr-addr s₁  -- r15 < rbp (for frame preservation)
         setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
         setup-frame-inv : FramePtrInvariant s₁
         -- Execution evidence

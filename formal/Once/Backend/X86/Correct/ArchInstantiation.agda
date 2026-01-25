@@ -109,6 +109,7 @@ X86-MachineInterface = record
   ; output-value = λ s → readReg (regs s) rax  -- X86: output in rax
   ; saved-input-value = λ s → readReg (regs s) r14  -- X86: pair saves input in r14
   ; result-slot-addr = λ s → readReg (regs s) r15   -- X86: pair stores f's result at r15
+  ; frame-ptr-addr = λ s → readReg (regs s) rbp     -- X86: frame pointer in rbp
   ; readMem = readMem
   ; program-length = length  -- Program = List Instr for X86
   ; empty-program = []       -- Empty list for X86
@@ -1159,6 +1160,28 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
     r15-in-stack-setup = subst InStack (sym (PairSetupResultV.r15-setup setup-res))
                                (pair-r15-in-stack s cap-pair)
 
+    -- r15 < rbp: rsp - frame-size < rsp - saved-regs-size (40 > 24)
+    open import Once.Backend.X86.Correct.ArithmeticLemmas using (regs-fits-frame-strict)
+    open import Once.Backend.X86.Correct.Arithmetic using (frame-size; saved-regs-size)
+    open import Data.Nat.Properties using (∸-monoʳ-<)
+    open import Once.Backend.X86.Correct.StackInstantiation using (slots; ∸>0⇒≤)
+
+    -- Derive frame-size ≤ rsp(s) from setup capacity
+    rsp-after-setup>0 : readReg (regs s) rsp ∸ slots pair-setup-consumed-slots > 0
+    rsp-after-setup>0 = ≤-<-trans z≤n (subst (_> slots (pair-inner-requirement f g))
+                          (PairSetupResultV.rsp-setup setup-res)
+                          (PairSetupResultV.rsp-sufficient-setup setup-res))
+      where open import Once.Backend.X86.Correct.StackInstantiation using (pair-setup-consumed-slots)
+    setup-frame-fits : slots pair-setup-consumed-slots ≤ readReg (regs s) rsp
+    setup-frame-fits = ∸>0⇒≤ (readReg (regs s) rsp) (slots pair-setup-consumed-slots) rsp-after-setup>0
+      where open import Once.Backend.X86.Correct.StackInstantiation using (pair-setup-consumed-slots)
+
+    -- r15(s-setup) < rbp(s-setup) via arithmetic
+    r15-below-rbp-setup : readReg (regs s-setup) r15 < readReg (regs s-setup) rbp
+    r15-below-rbp-setup = subst₂ _<_ (sym (PairSetupResultV.r15-setup setup-res))
+                                     (sym (PairSetupResultV.rbp-setup setup-res))
+                                     (∸-monoʳ-< regs-fits-frame-strict setup-frame-fits)
+
     -- Star for setup: PairSetupResultV gives us Star prog s s-setup
     setup-star : Star prog s s-setup
     setup-star = PairSetupResultV.star-setup setup-res
@@ -1198,6 +1221,7 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       ; setup-input-is-encode = setup-rdi-is-encode
       ; setup-input-saved = setup-r14-is-encode
       ; setup-result-slot-in-stack = r15-in-stack-setup
+      ; setup-result-slot-below-frame-ptr = r15-below-rbp-setup
       ; setup-capacity = cap-f
       ; setup-frame-inv = frame-inv-setup
       ; setup-star = setup-star
@@ -1331,11 +1355,30 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
         r15-neq-addr : addr ≢ readReg (regs s₂) r15
         r15-neq-addr eq = stack-code-addr-disjoint (readReg (regs s₂) r15) addr r15-s₂-in-stack addr-in-code (sym eq)
 
+    -- Frame preserved: r15 < rbp, so addr > rbp implies addr ≠ r15
+    -- Chain: r15(s₁) < rbp(s₁), both preserved by f, so r15(s₂) < rbp(s₂)
+    open import Data.Nat.Properties using (<-irrefl; <-trans)
+    r15-below-rbp-s₁ : readReg (regs s₁) r15 < readReg (regs s₁) rbp
+    r15-below-rbp-s₁ = PairSpecs.SetupPost.setup-result-slot-below-frame-ptr setup
+
+    rbp-s₂-eq-rbp-s₁ : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
+    rbp-s₂-eq-rbp-s₁ = proj₂ (proj₂ (IRCorrectness.exec-saved-regs f-corr))
+
+    r15-below-rbp-s₂ : readReg (regs s₂) r15 < readReg (regs s₂) rbp
+    r15-below-rbp-s₂ = subst₂ _<_ (sym r15-s₂-eq-r15-s₁) (sym rbp-s₂-eq-rbp-s₁) r15-below-rbp-s₁
+
+    mid-frame-preserved : X86-FramePreserved s₂ s₃
+    mid-frame-preserved addr addr>rbp-s₂ =
+      PairMiddleStarResult.mem-other mid-result addr r15-neq-addr
+      where
+        -- If addr > rbp(s₂) and r15(s₂) < rbp(s₂), then addr ≠ r15(s₂)
+        r15-neq-addr : addr ≢ readReg (regs s₂) r15
+        r15-neq-addr eq = <-irrefl refl (<-trans r15-below-rbp-s₂ (subst (_< addr) eq addr>rbp-s₂))
+
     -- Remaining semantic properties (require more threading)
     postulate
       input-valid₃ : ValidAt x (readReg (regs s₃) rdi) (memory s₃)
       cap₃ : StackCapacity s₃ (ir-stack-requirement g)
-      mid-frame-preserved : X86-FramePreserved s₂ s₃
 
     middle-post : PairSpecs.MiddlePost f g prog (length prefix-g) s₁ s₂ s₃ x fx
     middle-post = record
