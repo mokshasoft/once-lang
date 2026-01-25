@@ -12,7 +12,7 @@ open import Once.Backend.X86.Correct.Foundation
 
 -- Additional imports not in Foundation
 open import Once.Backend.Common.Memory using (n≢n+suc)
--- NOTE: encode-inl-construct eliminated via validity-based proofs
+open import Once.Postulates using (encode-inl-construct)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas using (fetch-at-prefix-end)
 open import Once.Backend.X86.Correct.Arithmetic using (∸-preserves-<; <⇒≢; ∸+<-lemma)
@@ -38,7 +38,7 @@ open import Once.Backend.X86.Correct.StarBase
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-inl; InlAtS; inl-at-s; valid-at-preserved-under-writes;
-         valid-disjoint-from-stack)
+         valid-disjoint-from-stack; valid-addr-is-encode)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc; <⇒≤; m<m+n)
@@ -302,10 +302,22 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     input-valid-preserved : ValidAt x orig-rdi (memory s4)
     input-valid-preserved = valid-at-preserved-under-writes input-valid (proj₁ write-addrs-in-stack) (proj₂ write-addrs-in-stack)
 
+    -- Derive encoding proof for the inl result using encode-inl-construct
+    orig-rdi-is-encode-x : orig-rdi ≡ encode x
+    orig-rdi-is-encode-x = valid-addr-is-encode input-valid-preserved
+
+    -- Memory at value slot contains encode x
+    mem-val-encode : readMem (memory s4) (new-rsp +ℕ slot-size) ≡ just (encode x)
+    mem-val-encode = trans mem-val-s4 (cong just orig-rdi-is-encode-x)
+
+    -- By encode-inl-construct: new-rsp ≡ encode (inj₁ x)
+    new-rsp-is-encode-inl : new-rsp ≡ encode {A + B} (inj₁ x)
+    new-rsp-is-encode-inl = encode-inl-construct {A} {B} x new-rsp (memory s4) mem-tag-s4 mem-val-encode
+
     -- NEW: Construct result validity using valid-inl
     result-valid : ValidAt {A + B} (inj₁ x) (readReg (regs s4) rax) (memory s4)
     result-valid = subst (λ addr → ValidAt {A + B} (inj₁ x) addr (memory s4)) (sym rax-s4)
-                         (valid-inl {A} {B} input-valid-preserved inl-at)
+                         (valid-inl {A} {B} input-valid-preserved inl-at new-rsp-is-encode-inl)
 
     -- Register preservation (same as run-inl-star)
     r14-eq : readReg (regs s4) r14 ≡ readReg (regs s) r14

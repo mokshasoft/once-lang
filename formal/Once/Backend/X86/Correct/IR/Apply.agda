@@ -83,7 +83,8 @@ open import Once.Backend.X86.Correct.MemoryValid
          PairAtS; fst-valid-s; snd-valid-s;
          ClosureAtS; env-valid-s; code-valid-s;
          valid-subst-addr-mem; valid-subst-heap-preserved;
-         valid-pair-decompose; valid-in-heap)
+         valid-pair-decompose; valid-in-heap; valid-addr-is-encode)
+open import Once.Postulates using (encode-pair-construct)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -1663,9 +1664,27 @@ run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closur
     x : ⟦ (A ⇒ B) * A ⟧
     x = (cl , arg)
 
-    -- Construct input validity from component validities (no bridge!)
+    -- Derive encoding proofs from ValidAt invariant
+    closure-addr-is-encode-cl : closure-addr ≡ encode {A ⇒ B} cl
+    closure-addr-is-encode-cl = valid-addr-is-encode v-cl
+
+    arg-addr-is-encode-arg : arg-addr ≡ encode arg
+    arg-addr-is-encode-arg = valid-addr-is-encode v-arg
+
+    -- Derive memory proofs with encode values for encode-pair-construct
+    mem-cl-encode : readMem (memory s) (readReg (regs s) rdi) ≡ just (encode {A ⇒ B} cl)
+    mem-cl-encode = trans (fst-valid-s pair-at) (cong just closure-addr-is-encode-cl)
+
+    mem-arg-encode : readMem (memory s) (readReg (regs s) rdi +ℕ' slot-size) ≡ just (encode arg)
+    mem-arg-encode = trans (snd-valid-s pair-at) (cong just arg-addr-is-encode-arg)
+
+    -- By encode-pair-construct: rdi ≡ encode (cl, arg)
+    rdi-is-encode-pair : readReg (regs s) rdi ≡ encode (cl , arg)
+    rdi-is-encode-pair = encode-pair-construct {A ⇒ B} {A} cl arg (readReg (regs s) rdi) (memory s) mem-cl-encode mem-arg-encode
+
+    -- Construct input validity from component validities
     input-valid : ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s)
-    input-valid = valid-pair v-cl v-arg pair-at
+    input-valid = valid-pair v-cl v-arg pair-at rdi-is-encode-pair
 
     -- Construct mem-layout from validity predicates (no bridge - uses arg-addr directly!)
     mem-cl : readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr

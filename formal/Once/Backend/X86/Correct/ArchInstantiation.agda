@@ -1741,7 +1741,7 @@ open import Once.Backend.X86.Correct.IR.Case
          module CaseCleanupResult)
 open import Once.Backend.X86.Correct.MemoryValid
   using (valid-inl-tag-is-0; valid-inl-val-ptr; valid-addr-in-heap;
-         valid-inr-tag-is-1; valid-inr-val-ptr)
+         valid-inr-tag-is-1; valid-inr-val-ptr; valid-addr-is-encode)
 open import Once.Backend.X86.Layout using (heap-offset)
 open import Once.Backend.X86.Correct.StackInstantiation using (slot-size)
 open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; +-identityʳ)
@@ -1873,9 +1873,9 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
                           (CaseInlSetupResult.mem-heap-setup setup-res)
 
     -- val-addr = encode a: the extracted value pointer IS the encoding of a
-    -- Derivable from: ValidAt a val-addr mem implies val-addr = encode a
-    postulate
-      val-addr-is-encode-a : val-addr ≡ encode a
+    -- Proven from ValidAt's addr ≡ encode v invariant
+    val-addr-is-encode-a : val-addr ≡ encode a
+    val-addr-is-encode-a = valid-addr-is-encode input-valid-a
 
     rdi-is-encode-a : readReg (regs s-setup) rdi ≡ encode a
     rdi-is-encode-a = trans (CaseInlSetupResult.rdi-setup setup-res) val-addr-is-encode-a
@@ -2246,8 +2246,9 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
                           (CaseInrSetupResult.mem-heap-setup setup-res)
 
     -- val-addr = encode b: the extracted value pointer IS the encoding of b
-    postulate
-      val-addr-is-encode-b : val-addr ≡ encode b
+    -- Proven from ValidAt's addr ≡ encode v invariant
+    val-addr-is-encode-b : val-addr ≡ encode b
+    val-addr-is-encode-b = valid-addr-is-encode input-valid-b
 
     rdi-is-encode-b : readReg (regs s-setup) rdi ≡ encode b
     rdi-is-encode-b = trans (CaseInrSetupResult.rdi-setup setup-res) val-addr-is-encode-b

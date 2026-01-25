@@ -993,16 +993,25 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid rdi-i
     sem-closure : Closure B C
     sem-closure = eval (curry f) x
 
-    -- The runtime env-addr equals encode x because:
-    -- curry-env-addr = orig-rdi = readReg (regs s) rdi = encode x (by rdi-is-encode)
+    -- The runtime env-addr equals encode x (from CurryMemoryResult)
     curry-env-addr-eq : curry-env-addr ≡ encode x
-    curry-env-addr-eq = rdi-is-encode
+    curry-env-addr-eq = CurryMemoryResult.env-addr-eq curry-mem
+
+    -- Derive closure-addr ≡ encode sem-closure using encode-closure-construct
+    -- mem-env: readMem m closure-addr ≡ just env-addr
+    -- env-addr-eq: env-addr ≡ encode x
+    -- Therefore: readMem m closure-addr ≡ just (encode x)
+    mem-env-encode-x : readMem (memory s-final) curry-closure-addr ≡ just (encode x)
+    mem-env-encode-x = trans curry-mem-env (cong just curry-env-addr-eq)
+
+    -- By encode-closure-construct: closure-addr ≡ encode (eval (curry f) x)
+    closure-addr-encoding : curry-closure-addr ≡ encode {B ⇒ C} sem-closure
+    closure-addr-encoding = encode-closure-construct f x curry-closure-addr (memory s-final) mem-env-encode-x
 
     -- Closure validity via valid-closure-env constructor
-    -- First arg: Closure.env-addr (eval (curry f) x) = encode x (by definition of eval for curry)
-    -- Second arg: curry-env-addr = encode x (by curry-env-addr-eq)
+    -- Args: sem-eq venv closS enc-eq
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s-final)
-    closure-valid-at-addr = valid-closure-env refl curry-env-addr-eq curry-v-env closure-at
+    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at closure-addr-encoding
 
     -- Transport to rax
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s-final) rax) (memory s-final)

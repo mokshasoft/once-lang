@@ -64,7 +64,7 @@ open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
 
 -- NOTE: encode-* reading postulates eliminated via validity-based proofs
-open import Once.Postulates using (encode)
+open import Once.Postulates using (encode; encode-closure-construct)
 
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
@@ -217,9 +217,16 @@ from-curry-with-wf {A} {B} {C} f prog s s' x offset exec-res mem-res wf = record
     -- Extract env-addr-eq from CurryMemoryResult
     curry-env-addr-eq = CurryMemoryResult.env-addr-eq mem-res
 
+    -- Derive encoding proof for closure using encode-closure-construct
+    mem-env-encode-x : readMem (memory s') curry-closure-addr ≡ just (encode x)
+    mem-env-encode-x = trans curry-mem-env (cong just curry-env-addr-eq)
+
+    closure-addr-encoding : curry-closure-addr ≡ encode {B ⇒ C} sem-closure
+    closure-addr-encoding = encode-closure-construct f x curry-closure-addr (memory s') mem-env-encode-x
+
     -- Closure validity via valid-closure-env constructor
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-    closure-valid-at-addr = valid-closure-env refl curry-env-addr-eq curry-v-env closure-at
+    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at closure-addr-encoding
 
     -- Transport to rax
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')

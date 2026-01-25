@@ -56,9 +56,9 @@ open import Once.Backend.X86.Correct.StackInstantiation
          apply-thunk-cap-in-curry-req)
 
 -- NOTE: Most encode-* reading postulates eliminated via validity-based proofs.
--- Remaining: encode-unit, encode-pair-construct, encode-fix-*, encode-arr-identity
+-- Remaining: encode-unit, encode-pair-construct, encode-closure-construct, encode-fix-*, encode-arr-identity
 open import Once.Postulates
-  using (encode; encode-unit; encode-pair-construct;
+  using (encode; encode-unit; encode-pair-construct; encode-closure-construct;
          encode-fix-unwrap; encode-fix-wrap; encode-arr-identity)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.FetchStep
@@ -310,14 +310,27 @@ mutual
       sem-closure = eval (curry f) x
 
       -- Closure validity via valid-closure-env constructor
-      -- Closure.env-addr sem-closure = encode x (by definition of eval curry)
-      -- So the first argument to valid-closure-env is refl
-      -- The second arg is curry-env-addr ≡ encode x, which follows from rdi-is-encode
-      env-addr-eq : curry-env-addr ≡ encode x
-      env-addr-eq = rdi-is-encode
+      -- valid-closure-env args: sem-eq venv closS enc-eq
+      -- sem-eq: Closure.env-addr sem-closure = encode x (by definition of eval curry) = refl
+      -- venv: curry-v-env : ValidAt x curry-env-addr (memory s')
+      -- closS: closure-at : ClosureAtS curry-env-addr curry-code-ptr curry-closure-addr (memory s')
+      -- enc-eq: curry-closure-addr ≡ encode sem-closure (derived from encode-closure-construct)
+
+      -- Derive mem-env-encode: readMem m curry-closure-addr ≡ just (encode x)
+      -- curry-mem-env: readMem m curry-closure-addr ≡ just curry-env-addr
+      -- CurryMemoryResult.env-addr-eq: curry-env-addr ≡ encode x
+      curry-env-addr-eq : curry-env-addr ≡ encode x
+      curry-env-addr-eq = CurryMemoryResult.env-addr-eq curry-mem-result
+
+      mem-env-encode : readMem (memory s') curry-closure-addr ≡ just (encode x)
+      mem-env-encode = trans curry-mem-env (cong just curry-env-addr-eq)
+
+      -- By encode-closure-construct: curry-closure-addr ≡ encode sem-closure
+      closure-addr-encoding : curry-closure-addr ≡ encode {B ⇒ C} sem-closure
+      closure-addr-encoding = encode-closure-construct f x curry-closure-addr (memory s') mem-env-encode
 
       closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-      closure-valid-at-addr = valid-closure-env refl env-addr-eq curry-v-env closure-at
+      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at closure-addr-encoding
 
       -- Transport to rax
       result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
@@ -454,12 +467,19 @@ mutual
       sem-closure : Closure B C
       sem-closure = eval (curry f) x
 
-      -- curry-env-addr ≡ encode x follows from rdi-is-encode since curry-env-addr = orig-rdi
-      env-addr-eq : curry-env-addr ≡ encode x
-      env-addr-eq = rdi-is-encode
+      -- Derive mem-env-encode for encode-closure-construct
+      curry-env-addr-eq : curry-env-addr ≡ encode x
+      curry-env-addr-eq = CurryMemoryResult.env-addr-eq curry-mem-res
+
+      mem-env-encode : readMem (memory s') curry-closure-addr ≡ just (encode x)
+      mem-env-encode = trans curry-mem-env (cong just curry-env-addr-eq)
+
+      -- By encode-closure-construct: curry-closure-addr ≡ encode sem-closure
+      closure-addr-encoding : curry-closure-addr ≡ encode {B ⇒ C} sem-closure
+      closure-addr-encoding = encode-closure-construct f x curry-closure-addr (memory s') mem-env-encode
 
       closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-      closure-valid-at-addr = valid-closure-env refl env-addr-eq curry-v-env closure-at
+      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at closure-addr-encoding
 
       result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
       result-valid = subst (λ addr → ValidAt {B ⇒ C} sem-closure addr (memory s'))

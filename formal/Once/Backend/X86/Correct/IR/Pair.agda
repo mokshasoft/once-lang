@@ -53,7 +53,7 @@ open import Once.Backend.X86.Correct.StarBase
          rbp-inv-preserved-unchanged;
          IRStarResultV; ir-result-valid; ir-rsp-bound-v)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write)
+  using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write; valid-addr-is-encode)
 open import Once.Backend.X86.Layout using (InHeap; InCode)
 
 open import Data.Nat using (_>_; _≥_)
@@ -3407,13 +3407,28 @@ assemble-pair-result-v {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fina
     pair-at : PairAtS (readReg (regs s1) rax) (readReg (regs s3) rax) (readReg (regs s3) r15) (memory s-final)
     pair-at = pair-at-s mem-fst-s-final' mem-snd-s-final'
 
+    -- Derive encoding proof using encode-pair-construct
+    -- mem-fst-encode: readMem m r15 ≡ just (encode (eval f x))
+    mem-fst-encode : readMem (memory s-final) (readReg (regs s3) r15) ≡ just (encode (eval f x))
+    mem-fst-encode = trans mem-fst-s-final' (cong just rax1)
+
+    -- mem-snd-encode: readMem m (r15 + slot-size) ≡ just (encode (eval g x))
+    mem-snd-encode : readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (encode (eval g x))
+    mem-snd-encode = trans mem-snd-s-final' (cong just rax3)
+
+    -- By encode-pair-construct: r15 ≡ encode (eval f x, eval g x)
+    r15-is-pair-encoding : readReg (regs s3) r15 ≡ encode (eval f x , eval g x)
+    r15-is-pair-encoding = encode-pair-construct (eval f x) (eval g x) (readReg (regs s3) r15) (memory s-final)
+                             mem-fst-encode mem-snd-encode
+
     -- Final result: rax = r15 points to valid pair
     -- valid-pair needs:
     -- 1. ValidAt (eval f x) addr-a (memory s-final) -- f-valid-final
     -- 2. ValidAt (eval g x) addr-b (memory s-final) -- g-valid-final
     -- 3. PairAtS addr-a addr-b r15 (memory s-final) -- pair-at
+    -- 4. r15 ≡ encode (eval f x, eval g x) -- r15-is-pair-encoding
     result-valid-at-r15 : ValidAt {A * B} (eval f x , eval g x) (readReg (regs s3) r15) (memory s-final)
-    result-valid-at-r15 = valid-pair f-valid-final g-valid-final pair-at
+    result-valid-at-r15 = valid-pair f-valid-final g-valid-final pair-at r15-is-pair-encoding
 
     -- Transport to rax (rax-s-final = r15-s3)
     result-valid : ValidAt (eval ⟨ f , g ⟩ x) (readReg (regs s-final) rax) (memory s-final)
@@ -3573,8 +3588,26 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     pair-at : PairAtS (readReg (regs s1) rax) (readReg (regs s3) rax) (readReg (regs s3) r15) (memory s-final)
     pair-at = pair-at-s mem-fst-s-final' mem-snd-s-final'
 
+    -- Derive encoding proofs from ValidAt invariant
+    rax1-eq : readReg (regs s1) rax ≡ encode (eval f x)
+    rax1-eq = valid-addr-is-encode f-valid-final
+
+    rax3-eq : readReg (regs s3) rax ≡ encode (eval g x)
+    rax3-eq = valid-addr-is-encode g-valid-final
+
+    -- Derive encoding proof using encode-pair-construct
+    mem-fst-encode : readMem (memory s-final) (readReg (regs s3) r15) ≡ just (encode (eval f x))
+    mem-fst-encode = trans mem-fst-s-final' (cong just rax1-eq)
+
+    mem-snd-encode : readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (encode (eval g x))
+    mem-snd-encode = trans mem-snd-s-final' (cong just rax3-eq)
+
+    r15-is-pair-encoding : readReg (regs s3) r15 ≡ encode (eval f x , eval g x)
+    r15-is-pair-encoding = encode-pair-construct (eval f x) (eval g x) (readReg (regs s3) r15) (memory s-final)
+                             mem-fst-encode mem-snd-encode
+
     result-valid-at-r15 : ValidAt {A * B} (eval f x , eval g x) (readReg (regs s3) r15) (memory s-final)
-    result-valid-at-r15 = valid-pair f-valid-final g-valid-final pair-at
+    result-valid-at-r15 = valid-pair f-valid-final g-valid-final pair-at r15-is-pair-encoding
 
     result-valid : ValidAt (eval ⟨ f , g ⟩ x) (readReg (regs s-final) rax) (memory s-final)
     result-valid = subst (λ addr → ValidAt {A * B} (eval f x , eval g x) addr (memory s-final))
