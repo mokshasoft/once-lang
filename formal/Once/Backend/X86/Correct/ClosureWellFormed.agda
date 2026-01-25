@@ -26,7 +26,7 @@ open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant)
-open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-output-capacity; thunk-setup-capacity)
+open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; ir-output-capacity; thunk-setup-capacity; apply-consumed-slots)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.X86.Layout
   using (InCode; InHeap; StackPointer; frameSlot; addr)
@@ -34,7 +34,7 @@ open import Once.Backend.X86.Layout
 open import Once.Postulates using (encode)
 
 open import Data.Bool using (false)
-open import Data.Nat using (ℕ; _>_; _<_; _≥_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _>_; _<_; _≥_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.List using (List; _++_; length)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -137,6 +137,15 @@ record ClosureWellFormed {E A B : Type} (prog : Program)
     -- This is always true since thunk-capacity = 4 + ir-req f ≥ 4 + 2 = 6
     -- Needed by apply to derive it has enough capacity for setup
     thunk-capacity-sufficient : thunk-capacity ≥ thunk-setup-capacity
+
+    -- Upper bound on apply-consumed-slots + thunk-capacity
+    -- Curry sets this to ir-stack-requirement (curry f) = 8 + req-inner
+    -- Used by pair/case to derive capacity at output state via capacity-from-larger
+    cap-upper-bound : ℕ
+
+    -- Proof that actual capacity need fits in the upper bound
+    -- apply-consumed-slots + thunk-capacity = 2 + (4 + req) = 6 + req ≤ 8 + req = cap-upper-bound
+    cap-in-bound : apply-consumed-slots +ℕ thunk-capacity ≤ cap-upper-bound
 
     -- Executing from code-ptr produces correct result for any input
     -- ret-addr: the return address (pushed by call, popped by ret)

@@ -79,8 +79,14 @@ record ArchCorrectness : Set₂ where
                            {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧} →
                          ClosureWF {E} {A} {B} prog cp env sem → ℕ
 
-  -- Now open IRSpecs with the actual Star, ClosureWF, and wf-thunk-capacity
-  open IRSpecs machine invariants validity codegen Star ClosureWF wf-thunk-capacity public
+    -- Extract cap-upper-bound from a ClosureWF proof
+    -- For X86: ClosureWellFormed.cap-upper-bound
+    wf-cap-upper-bound : ∀ {E A B : Type} {prog : Program} {cp : ℕ}
+                            {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧} →
+                          ClosureWF {E} {A} {B} prog cp env sem → ℕ
+
+  -- Now open IRSpecs with the actual Star, ClosureWF, and capacity extractors
+  open IRSpecs machine invariants validity codegen Star ClosureWF wf-thunk-capacity wf-cap-upper-bound public
 
   field
     -----------------------------------------------------------------

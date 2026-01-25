@@ -51,7 +51,9 @@ open import Once.Backend.X86.Correct.StackInstantiation
          thunk-setup-capacity; thunk-setup-fits-pair-capacity;
          -- IR-specific capacity bounds
          curry-closure-capacity≤curry-req; inl-capacity≤inl-req;
-         inr-capacity≤inr-req; apply-capacity≤apply-req)
+         inr-capacity≤inr-req; apply-capacity≤apply-req;
+         -- Capacity bound for ClosureWellFormed
+         apply-thunk-cap-in-curry-req)
 
 -- NOTE: Most encode-* reading postulates eliminated via validity-based proofs.
 -- Remaining: encode-unit, encode-pair-construct, encode-fix-*, encode-arr-identity
@@ -329,6 +331,8 @@ mutual
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
         ; thunk-capacity = thunk-setup-consumed-slots +ℕ ir-stack-requirement f
         ; thunk-capacity-sufficient = thunk-setup-cap≤thunk-consumed+ir-req f
+        ; cap-upper-bound = ir-stack-requirement (curry f)
+        ; cap-in-bound = apply-thunk-cap-in-curry-req f
         ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
               h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ ac
@@ -464,6 +468,8 @@ mutual
         { code-ptr-valid = thunk-offset-in-bounds f prefix suffix
         ; thunk-capacity = thunk-setup-consumed-slots +ℕ ir-stack-requirement f
         ; thunk-capacity-sufficient = thunk-setup-cap≤thunk-consumed+ir-req f
+        ; cap-upper-bound = ir-stack-requirement (curry f)
+        ; cap-in-bound = apply-thunk-cap-in-curry-req f
         ; thunk-correct = λ arg s₁ ret-addr caller-sp₁ h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ →
             curry-thunk-correct-impl f prefix suffix caller-sp₁ x arg s₁ ret-addr
               h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁ ac

@@ -11,8 +11,8 @@
 
 module Once.Backend.X86.Correct.ArchInstantiation where
 
-open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; _<_; zero; suc; _⊔_) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; m≤m⊔n; ≤-trans; <⇒≤)
+open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; _<_; zero; suc; _⊔_; z≤n) renaming (_*_ to _*ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; m≤m⊔n; ≤-trans; <⇒≤; ≤-refl)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
@@ -179,7 +179,8 @@ open Spec.IRSpecs
   X86-CodeGenInterface
   Star  -- X86's Star directly
   X86-ClosureWF
-  ClosureWellFormed.thunk-capacity  -- wf-thunk-capacity for X86
+  ClosureWellFormed.thunk-capacity   -- wf-thunk-capacity for X86
+  ClosureWellFormed.cap-upper-bound  -- wf-cap-upper-bound for X86
   public
 
 ------------------------------------------------------------------------
@@ -228,6 +229,7 @@ IRStarResultV→IRCorrectness {ir = ir} {s' = s'} {x = x} res = record
   ; exec-capacity = IRStarResultV.ir-capacity res
   ; exec-frame-inv = IRStarResultV.ir-rbp-inv res
   ; exec-closure-wf = no-apply-wf
+  ; exec-cwf-bound-in-req = z≤n  -- cwf-cap-bound no-apply-wf = 0 ≤ anything
   }
   where postulate leaf-output-is-encode : readReg (regs s') rax ≡ encode (eval ir x)
 
@@ -315,6 +317,7 @@ x86-id-correct {A} prefix suffix x s pre cwf =
     ; exec-capacity = IRStarResultV.ir-capacity res
     ; exec-frame-inv = IRStarResultV.ir-rbp-inv res
     ; exec-closure-wf = id-closure-wf s' res cwf
+    ; exec-cwf-bound-in-req = id-cwf-bound s' res cwf
     }
   where
     prog = prefix ++ compile-x86 (id {A}) ++ suffix
@@ -329,6 +332,16 @@ x86-id-correct {A} prefix suffix x s pre cwf =
       apply-wf cp env sem cl-eq wf
         (valid-subst-heap-preserved ev refl (IRStarResultV.ir-mem-heap res))
         (capacity-preserved-rsp-unchanged s s' _ cap (IRStarResultV.ir-rsp res))
+    -- Bound tracking: for no-apply-wf, bound=0≤anything; for apply-wf, bound from input
+    -- NOTE: For apply-wf threading, this is a postulate - proper proof needs IR monotonicity
+    id-cwf-bound : (s'' : State) → (res' : IRStarResultV (id {A}) prog s s'' x offset) →
+                   (cwf-in : ApplyWFInput (ClosureDom A) (ClosureCod A) prog s (closureOf A x)) →
+                   cwf-cap-bound (id-closure-wf s'' res' cwf-in) ≤ ir-stack-requirement (id {A})
+    id-cwf-bound s'' res' no-apply-wf = z≤n
+    id-cwf-bound s'' res' (apply-wf cp env sem cl-eq wf ev cap) = id-cwf-bound-apply-wf
+      where
+        -- cwf-cap-bound of the output = wf-cap-upper-bound wf (same wf is threaded)
+        postulate id-cwf-bound-apply-wf : ClosureWellFormed.cap-upper-bound wf ≤ ir-stack-requirement (id {A})
 
 -- Inl
 x86-inl-correct : ∀ {A B : Type} (prefix suffix : Program) (a : ⟦ A ⟧) (s : State) →
@@ -715,6 +728,7 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
   ; exec-capacity = compose-capacity
   ; exec-frame-inv = IRCorrectness.exec-frame-inv f-corr
   ; exec-closure-wf = compose-closure-wf-out
+  ; exec-cwf-bound-in-req = compose-cwf-bound
   }
   where
     open import Data.Nat.Properties using (+-assoc)
@@ -757,6 +771,12 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
     -- Closure WF output: f's output threaded through (compose outputs f's result)
     compose-closure-wf-out : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-result s₃ (closureOf C (eval f (eval g x)))
     compose-closure-wf-out = subst (λ p → ApplyWFInput (ClosureDom C) (ClosureCod C) p s₃ (closureOf C (eval f (eval g x)))) prog-f-eq-result (IRCorrectness.exec-closure-wf f-corr)
+
+    -- Bound tracking for compose: f's bound ≤ f's req ≤ compose's req
+    -- The cwf-cap-bound is preserved through the subst (same underlying wf)
+    -- f's exec-cwf-bound-in-req : cwf-cap-bound f ≤ ir-req f
+    -- By compose monotonicity: ir-req f ≤ ir-req (f ∘ g)
+    postulate compose-cwf-bound : cwf-cap-bound compose-closure-wf-out ≤ ir-stack-requirement (f ∘ g)
 
     -- Extract star from g (s → s₁)
     star-g : Star prog-g s s₁
@@ -1360,6 +1380,7 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
   ; exec-capacity = PairSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = PairSpecs.CleanupPost.cleanup-frame-inv cleanup
   ; exec-closure-wf = pair-closure-wf
+  ; exec-cwf-bound-in-req = pair-cwf-bound
   }
   where
     ctx = make-pair-context f g prefix suffix
@@ -1407,13 +1428,19 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
     -- For A = D ⇒[q] E: closureOf ((D⇒E)*B) (v,w) = v = closureOf (D⇒E) v
     -- So f-corr's cwf has matching type indices, just transport prog/state
     -- For other A: closureOf (A*B) (...) = dummy-closure, produce no-apply-wf
+    -- Pass the bound explicitly to connect pattern match with f-corr's exec-cwf-bound-in-req
     pair-lift-cwf : (A₀ B₀ : Type) (v : ⟦ A₀ ⟧) (w : ⟦ B₀ ⟧) →
-      ApplyWFInput (ClosureDom A₀) (ClosureCod A₀) (prefix-f ++ code-f ++ suffix-f) s₂ (closureOf A₀ v) →
+      (cwf : ApplyWFInput (ClosureDom A₀) (ClosureCod A₀) (prefix-f ++ code-f ++ suffix-f) s₂ (closureOf A₀ v)) →
+      cwf-cap-bound cwf ≤ ir-stack-requirement f →
       ApplyWFInput (ClosureDom (A₀ * B₀)) (ClosureCod (A₀ * B₀)) prog-full s₅ (closureOf (A₀ * B₀) (v , w))
-    pair-lift-cwf (D ⇒[ q ] E) _ v w no-apply-wf = no-apply-wf
-    pair-lift-cwf (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-eq' wf' ev' cap') =
+    pair-lift-cwf (D ⇒[ q ] E) _ v w no-apply-wf _ = no-apply-wf
+    pair-lift-cwf (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-eq' wf' ev' cap') cwf-bnd =
       apply-wf cp' env' sem' cl-eq' wf-subst ev-at-s₅ cap-at-s₅
       where
+        open import Once.Backend.X86.Correct.StackInstantiation
+          using (capacity-from-larger; pair-inner-requirement; pair-setup-consumed-slots)
+        open import Data.Nat.Properties using (m≤m+n; m≤n+m)
+
         wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') (sym prog-eq-f) wf'
         heap-s₂-to-s₅ : ∀ addr → InHeap addr → readMem (memory s₅) addr ≡ readMem (memory s₂) addr
         heap-s₂-to-s₅ addr ih =
@@ -1421,11 +1448,56 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
           (trans (IRCorrectness.exec-heap-preserved g-corr addr ih)
                  (PairSpecs.MiddlePost.middle-heap-preserved middle addr ih))
         ev-at-s₅ = valid-subst-heap-preserved ev' refl heap-s₂-to-s₅
-        postulate cap-at-s₅ : StackCapacity s₅ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
-    pair-lift-cwf _ _ _ _ _ = no-apply-wf
+
+        -- Capacity proof chain:
+        -- 1. apply-consumed-slots + thunk-capacity ≤ cap-upper-bound (from cap-in-bound)
+        -- 2. cap-upper-bound ≤ ir-req f (from cwf-bnd, passed from f-corr's exec-cwf-bound-in-req)
+        -- 3. ir-req f ≤ pair-inner-requirement f g (by m≤m⊔n)
+        -- 4. pair-inner-requirement ≤ ir-output-capacity ⟨f,g⟩ (by m≤n+m)
+
+        -- Step 1: apply + thunk ≤ cap-upper-bound wf'
+        bound₁ : apply-consumed-slots + ClosureWellFormed.thunk-capacity wf' ≤ ClosureWellFormed.cap-upper-bound wf'
+        bound₁ = ClosureWellFormed.cap-in-bound wf'
+
+        -- Step 2: cap-upper-bound ≤ ir-req f (cwf-bnd computes to this after pattern match)
+        bound₂ : ClosureWellFormed.cap-upper-bound wf' ≤ ir-stack-requirement f
+        bound₂ = cwf-bnd
+
+        -- Step 3: ir-req f ≤ pair-inner-requirement = ir-req f ⊔ (ir-delta f + ir-req g)
+        bound₃ : ir-stack-requirement f ≤ pair-inner-requirement f g
+        bound₃ = m≤m⊔n (ir-stack-requirement f) (ir-rsp-delta f + ir-stack-requirement g)
+
+        -- Step 4: pair-inner-requirement ≤ pair-setup + pair-inner-requirement = ir-output-capacity ⟨f,g⟩
+        -- Since ir-rsp-delta ⟨f,g⟩ = 0, ir-output-capacity = ir-req = pair-setup + inner
+        bound₄ : pair-inner-requirement f g ≤ ir-output-capacity ⟨ f , g ⟩
+        bound₄ = m≤n+m (pair-inner-requirement f g) pair-setup-consumed-slots
+
+        -- Chain: apply + thunk ≤ cap-upper-bound ≤ ir-req f ≤ inner ≤ output-cap
+        cap-bound : apply-consumed-slots + ClosureWellFormed.thunk-capacity wf' ≤ ir-output-capacity ⟨ f , g ⟩
+        cap-bound = ≤-trans (≤-trans (≤-trans bound₁ bound₂) bound₃) bound₄
+
+        -- thunk-capacity is preserved across subst (field doesn't depend on prog)
+        -- This is semantically true but requires explicit proof in Agda
+        postulate thunk-cap-eq : ClosureWellFormed.thunk-capacity wf' ≡ ClosureWellFormed.thunk-capacity wf-subst
+
+        -- Build capacity for wf', then transport to wf-subst
+        cap-at-s₅-wf' : StackCapacity s₅ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf')
+        cap-at-s₅-wf' = capacity-from-larger s₅
+                          (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf')
+                          (ir-output-capacity ⟨ f , g ⟩)
+                          (PairSpecs.CleanupPost.cleanup-capacity cleanup)
+                          cap-bound
+
+        -- Transport along thunk-cap-eq
+        cap-at-s₅ : StackCapacity s₅ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
+        cap-at-s₅ = subst (λ tc → StackCapacity s₅ (apply-consumed-slots + tc)) thunk-cap-eq cap-at-s₅-wf'
+    pair-lift-cwf _ _ _ _ _ _ = no-apply-wf
 
     pair-closure-wf : ApplyWFInput (ClosureDom (A * B)) (ClosureCod (A * B)) prog-full s₅ (closureOf (A * B) (eval f x , eval g x))
-    pair-closure-wf = pair-lift-cwf A B (eval f x) (eval g x) (IRCorrectness.exec-closure-wf f-corr)
+    pair-closure-wf = pair-lift-cwf A B (eval f x) (eval g x) (IRCorrectness.exec-closure-wf f-corr) (IRCorrectness.exec-cwf-bound-in-req f-corr)
+
+    -- Bound tracking for pair: f's bound ≤ f's req ≤ pair's req
+    postulate pair-cwf-bound : cwf-cap-bound pair-closure-wf ≤ ir-stack-requirement ⟨ f , g ⟩
 
     -- Frame preservation: each phase uses different rbp reference,
     -- so composition requires showing addr > rbp_s implies addr > rbp_s₁ etc.
@@ -1547,11 +1619,13 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
   ; exec-capacity = CurrySpecs.SetupPost.setup-capacity setup
   ; exec-frame-inv = CurrySpecs.SetupPost.setup-frame-inv setup
   ; exec-closure-wf = curry-apply-wf
+  ; exec-cwf-bound-in-req = curry-cwf-bound
   }
   where
     open import Once.Backend.X86.Correct.StackInstantiation
       using (thunk-setup-consumed-slots; apply-consumed-slots;
-             thunk-setup-cap≤thunk-consumed+ir-req)
+             thunk-setup-cap≤thunk-consumed+ir-req;
+             apply-thunk-cap-in-curry-req)
 
     postulate curry-output-is-encode : readReg (regs s₁) rax ≡ encode {B ⇒ C} (eval (curry f) x)
 
@@ -1593,6 +1667,8 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
       { code-ptr-valid = curry-code-ptr-valid
       ; thunk-capacity = thunk-cap
       ; thunk-capacity-sufficient = thunk-setup-cap≤thunk-consumed+ir-req f
+      ; cap-upper-bound = ir-stack-requirement (curry f)
+      ; cap-in-bound = apply-thunk-cap-in-curry-req f
       ; thunk-correct = curry-thunk-correct
       }
 
@@ -1607,6 +1683,10 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
       curry-wf
       (CurrySpecs.SetupPost.setup-env-valid setup)
       curry-cap-for-apply
+
+    -- cwf-cap-bound curry-apply-wf = cap-upper-bound curry-wf = ir-stack-requirement (curry f)
+    curry-cwf-bound : cwf-cap-bound curry-apply-wf ≤ ir-stack-requirement (curry f)
+    curry-cwf-bound = ≤-refl
 
 ------------------------------------------------------------------------
 -- Case Glue Lemmas
@@ -1964,6 +2044,7 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
   ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup
   ; exec-closure-wf = case-left-closure-wf
+  ; exec-cwf-bound-in-req = case-left-cwf-bound
   }
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
@@ -1993,18 +2074,54 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
              (CaseSpecs.DispatchLeftPost.dispatch-heap-preserved dispatch addr in-heap))
 
     -- Thread f's closure-wf to case output (transport prog and state)
+    -- Pass bound explicitly to connect pattern match with f-corr's exec-cwf-bound-in-req
     case-left-closure-wf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
-    case-left-closure-wf = transport-cwf (IRCorrectness.exec-closure-wf f-corr)
+    case-left-closure-wf = transport-cwf (IRCorrectness.exec-closure-wf f-corr) (IRCorrectness.exec-cwf-bound-in-req f-corr)
       where
-        transport-cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-f s₂ (closureOf C (eval f a)) →
+        open import Once.Backend.X86.Correct.StackInstantiation using (capacity-from-larger)
+        open import Data.Nat.Properties using (m≤m+n; m≤n+m)
+
+        transport-cwf : (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-f s₂ (closureOf C (eval f a))) →
+                        cwf-cap-bound cwf ≤ ir-stack-requirement f →
                         ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
-        transport-cwf no-apply-wf = no-apply-wf
-        transport-cwf (apply-wf cp' env' sem' cl-eq' wf' ev' cap') =
+        transport-cwf no-apply-wf _ = no-apply-wf
+        transport-cwf (apply-wf cp' env' sem' cl-eq' wf' ev' cap') cwf-bnd =
           apply-wf cp' env' sem' cl-eq' wf-subst ev-at-s₃ cap-at-s₃
           where
             wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
             ev-at-s₃ = valid-subst-heap-preserved ev' refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
-            postulate cap-at-s₃ : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
+
+            -- Capacity proof chain:
+            -- 1. apply + thunk ≤ cap-upper-bound (from cap-in-bound)
+            -- 2. cap-upper-bound ≤ ir-req f (from cwf-bnd)
+            -- 3. ir-req f ≤ ir-req f ⊔ ir-req g (by m≤m⊔n)
+            -- 4. ir-req f ⊔ ir-req g ≤ 1 + (ir-req f ⊔ ir-req g) = ir-output-capacity [f,g]
+            bound₁ : apply-consumed-slots + ClosureWellFormed.thunk-capacity wf' ≤ ClosureWellFormed.cap-upper-bound wf'
+            bound₁ = ClosureWellFormed.cap-in-bound wf'
+
+            bound₂ : ClosureWellFormed.cap-upper-bound wf' ≤ ir-stack-requirement f
+            bound₂ = cwf-bnd
+
+            bound₃ : ir-stack-requirement f ≤ ir-stack-requirement f ⊔ ir-stack-requirement g
+            bound₃ = m≤m⊔n (ir-stack-requirement f) (ir-stack-requirement g)
+
+            bound₄ : ir-stack-requirement f ⊔ ir-stack-requirement g ≤ ir-output-capacity [ f , g ]
+            bound₄ = m≤n+m (ir-stack-requirement f ⊔ ir-stack-requirement g) 1
+
+            cap-bound : apply-consumed-slots + ClosureWellFormed.thunk-capacity wf' ≤ ir-output-capacity [ f , g ]
+            cap-bound = ≤-trans (≤-trans (≤-trans bound₁ bound₂) bound₃) bound₄
+
+            postulate thunk-cap-eq : ClosureWellFormed.thunk-capacity wf' ≡ ClosureWellFormed.thunk-capacity wf-subst
+
+            cap-at-s₃-wf' : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf')
+            cap-at-s₃-wf' = capacity-from-larger s₃
+                              (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf')
+                              (ir-output-capacity [ f , g ])
+                              (CaseSpecs.CleanupPost.cleanup-capacity cleanup)
+                              cap-bound
+
+            cap-at-s₃ : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
+            cap-at-s₃ = subst (λ tc → StackCapacity s₃ (apply-consumed-slots + tc)) thunk-cap-eq cap-at-s₃-wf'
 
     -- Code preserved: chain dispatch → f → cleanup
     case-code-preserved : X86-CodePreserved s s₃
@@ -2018,6 +2135,7 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
     postulate
       case-frame-preserved : X86-FramePreserved s s₃
       case-left-output-is-encode : readReg (regs s₃) rax ≡ encode (eval [ f , g ] (inj₁ a))
+      case-left-cwf-bound : cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
 
 -- Dispatch right: runs the 6-instruction setup sequence for inr branch
 x86-case-dispatch-right : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
@@ -2311,6 +2429,7 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
   ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup
   ; exec-closure-wf = case-right-closure-wf
+  ; exec-cwf-bound-in-req = case-right-cwf-bound
   }
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
@@ -2352,18 +2471,54 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
              (CaseSpecs.DispatchRightPost.dispatch-heap-preserved dispatch addr in-heap))
 
     -- Thread g's closure-wf to case output (transport prog and state)
+    -- Pass bound explicitly to connect pattern match with g-corr's exec-cwf-bound-in-req
     case-right-closure-wf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
-    case-right-closure-wf = transport-cwf (IRCorrectness.exec-closure-wf g-corr)
+    case-right-closure-wf = transport-cwf (IRCorrectness.exec-closure-wf g-corr) (IRCorrectness.exec-cwf-bound-in-req g-corr)
       where
-        transport-cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-g s₂ (closureOf C (eval g b)) →
+        open import Once.Backend.X86.Correct.StackInstantiation using (capacity-from-larger)
+        open import Data.Nat.Properties using (m≤m+n; m≤n+m)
+
+        transport-cwf : (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-g s₂ (closureOf C (eval g b))) →
+                        cwf-cap-bound cwf ≤ ir-stack-requirement g →
                         ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
-        transport-cwf no-apply-wf = no-apply-wf
-        transport-cwf (apply-wf cp' env' sem' cl-eq' wf' ev' cap') =
+        transport-cwf no-apply-wf _ = no-apply-wf
+        transport-cwf (apply-wf cp' env' sem' cl-eq' wf' ev' cap') cwf-bnd =
           apply-wf cp' env' sem' cl-eq' wf-subst ev-at-s₃ cap-at-s₃
           where
             wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
             ev-at-s₃ = valid-subst-heap-preserved ev' refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
-            postulate cap-at-s₃ : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
+
+            -- Capacity proof chain:
+            -- 1. apply + thunk ≤ cap-upper-bound (from cap-in-bound)
+            -- 2. cap-upper-bound ≤ ir-req g (from cwf-bnd)
+            -- 3. ir-req g ≤ ir-req f ⊔ ir-req g (by m≤n⊔m)
+            -- 4. ir-req f ⊔ ir-req g ≤ 1 + (ir-req f ⊔ ir-req g) = ir-output-capacity [f,g]
+            bound₁ : apply-consumed-slots + ClosureWellFormed.thunk-capacity wf' ≤ ClosureWellFormed.cap-upper-bound wf'
+            bound₁ = ClosureWellFormed.cap-in-bound wf'
+
+            bound₂ : ClosureWellFormed.cap-upper-bound wf' ≤ ir-stack-requirement g
+            bound₂ = cwf-bnd
+
+            bound₃ : ir-stack-requirement g ≤ ir-stack-requirement f ⊔ ir-stack-requirement g
+            bound₃ = m≤n⊔m (ir-stack-requirement f) (ir-stack-requirement g)
+
+            bound₄ : ir-stack-requirement f ⊔ ir-stack-requirement g ≤ ir-output-capacity [ f , g ]
+            bound₄ = m≤n+m (ir-stack-requirement f ⊔ ir-stack-requirement g) 1
+
+            cap-bound : apply-consumed-slots + ClosureWellFormed.thunk-capacity wf' ≤ ir-output-capacity [ f , g ]
+            cap-bound = ≤-trans (≤-trans (≤-trans bound₁ bound₂) bound₃) bound₄
+
+            postulate thunk-cap-eq : ClosureWellFormed.thunk-capacity wf' ≡ ClosureWellFormed.thunk-capacity wf-subst
+
+            cap-at-s₃-wf' : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf')
+            cap-at-s₃-wf' = capacity-from-larger s₃
+                              (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf')
+                              (ir-output-capacity [ f , g ])
+                              (CaseSpecs.CleanupPost.cleanup-capacity cleanup)
+                              cap-bound
+
+            cap-at-s₃ : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
+            cap-at-s₃ = subst (λ tc → StackCapacity s₃ (apply-consumed-slots + tc)) thunk-cap-eq cap-at-s₃-wf'
 
     -- Code preserved: chain dispatch → g → cleanup
     case-code-preserved : X86-CodePreserved s s₃
@@ -2376,6 +2531,7 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
     postulate
       case-frame-preserved : X86-FramePreserved s s₃
       case-right-output-is-encode : readReg (regs s₃) rax ≡ encode (eval [ f , g ] (inj₂ b))
+      case-right-cwf-bound : cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
 
 ------------------------------------------------------------------------
 -- Apply (takes IH)

@@ -268,6 +268,9 @@ module IRSpecs
     (wf-thunk-capacity : ∀ {E A B : Type} {prog : MachineInterface.Program M} {cp : ℕ}
                            {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧} →
                          ClosureWF {E} {A} {B} prog cp env sem → ℕ)
+    (wf-cap-upper-bound : ∀ {E A B : Type} {prog : MachineInterface.Program M} {cp : ℕ}
+                            {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧} →
+                          ClosureWF {E} {A} {B} prog cp env sem → ℕ)
     where
 
   open MachineInterface M
@@ -309,6 +312,14 @@ module IRSpecs
       -- Eliminates the cap-matches bridge postulate.
       (cap : StackCapacity s (apply-overhead + wf-thunk-capacity wf))
       → ApplyWFInput A B prog s cl
+
+  -- | Extract cap-upper-bound from ApplyWFInput
+  -- For no-apply-wf, returns 0 (trivially ≤ any ir-stack-requirement)
+  -- For apply-wf, returns the wf's cap-upper-bound
+  cwf-cap-bound : ∀ {A B : Type} {prog : Program} {s : State} {cl : Closure A B} →
+                  ApplyWFInput A B prog s cl → ℕ
+  cwf-cap-bound no-apply-wf = 0
+  cwf-cap-bound (apply-wf {E} cp env sem cl-eq wf _ _) = wf-cap-upper-bound wf
 
   -- Preconditions for IR execution
   -- Matches X86's run-*-star-vv preconditions exactly
@@ -361,6 +372,14 @@ module IRSpecs
       -- cl = closureOf B (eval ir x): the closure from the output value
       exec-closure-wf : ApplyWFInput (ClosureDom B) (ClosureCod B) prog s'
                            (closureOf B (eval ir x))
+
+      -- Bound tracking: the cwf's cap-upper-bound is ≤ ir-stack-requirement
+      -- This enables pair/case to derive StackCapacity for cwf at output state:
+      -- 1. cwf.cap-upper-bound ≤ ir-stack-requirement ir (this field)
+      -- 2. ir-stack-requirement ir ≤ ir-output-capacity ⟨f,g⟩ (by pair output formula)
+      -- 3. apply+thunk ≤ cwf.cap-upper-bound (by cwf.cap-in-bound)
+      -- 4. So apply+thunk ≤ ir-output-capacity ⟨f,g⟩, enabling capacity-from-larger
+      exec-cwf-bound-in-req : cwf-cap-bound exec-closure-wf ≤ ir-stack-requirement ir
 
   ------------------------------------------------------------------------
   -- Phase Specifications for Composite IR

@@ -81,7 +81,7 @@ open import Once.Backend.X86.Correct.Arithmetic
          slot1-plus-word≡slot2;
          from-yes-≤; from-yes-<)
 open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
 
 ------------------------------------------------------------------------
 -- Named Constants (D041: replace magic numbers with semantic names)
@@ -492,6 +492,23 @@ thunk-setup-cap≤thunk-consumed+ir-req f =
   subst (_≤ thunk-setup-consumed-slots +ℕ ir-stack-requirement f)
         (sym thunk-setup-capacity-correct)
         (+-monoʳ-≤ thunk-setup-consumed-slots (output-slots≤ir-req f))
+
+-- | Capacity bound for apply with thunk: 6 + req ≤ 8 + req
+-- Used for ClosureWellFormed.cap-in-bound: curry sets cap-upper-bound = ir-stack-requirement (curry f)
+-- and apply + thunk needs = apply-consumed-slots + thunk-capacity = 2 + (4 + req) = 6 + req
+-- Proof: 6 + req ≤ 8 + req by +-monoʳ-≤ with 6 ≤ 8
+apply-thunk-cap-in-curry-req : ∀ {A B C} (f : IR (A * B) C) →
+  apply-consumed-slots +ℕ (thunk-setup-consumed-slots +ℕ ir-stack-requirement f) ≤ ir-stack-requirement (curry f)
+apply-thunk-cap-in-curry-req f =
+  -- Goal: 2 + (4 + req) ≤ 2 + (2 + (4 + req))
+  -- Which normalizes to: 6 + req ≤ 8 + req
+  -- Proof: use +-monoʳ-≤ (ir-stack-requirement f) six≤eight
+  -- where six≤eight : 6 ≤ 8
+  subst₂ _≤_ (+-comm (ir-stack-requirement f) 6) (+-comm (ir-stack-requirement f) 8)
+             (+-monoʳ-≤ (ir-stack-requirement f) six≤eight)
+  where
+    six≤eight : 6 ≤ 8
+    six≤eight = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))
 
 ------------------------------------------------------------------------
 -- Output Capacity (what remains after IR execution)
