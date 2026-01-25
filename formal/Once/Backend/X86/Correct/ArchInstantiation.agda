@@ -1375,9 +1375,25 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
         r15-neq-addr : addr ≢ readReg (regs s₂) r15
         r15-neq-addr eq = <-irrefl refl (<-trans r15-below-rbp-s₂ (subst (_< addr) eq addr>rbp-s₂))
 
+    -- Input valid at s₃: chain validity through f and middle via heap preservation
+    -- Step 1: ValidAt x (encode x) (memory s₁) from setup
+    input-valid-at-encode-s₁ : ValidAt x (encode x) (memory s₁)
+    input-valid-at-encode-s₁ = subst (λ a → ValidAt x a (memory s₁))
+                                     (PairSpecs.SetupPost.setup-input-is-encode setup)
+                                     (PairSpecs.SetupPost.setup-input-valid setup)
+    -- Step 2: f preserves heap → ValidAt x (encode x) (memory s₂)
+    input-valid-at-encode-s₂ : ValidAt x (encode x) (memory s₂)
+    input-valid-at-encode-s₂ = valid-subst-heap-preserved input-valid-at-encode-s₁ refl
+                                 (IRCorrectness.exec-heap-preserved f-corr)
+    -- Step 3: middle preserves heap → ValidAt x (encode x) (memory s₃)
+    input-valid-at-encode-s₃ : ValidAt x (encode x) (memory s₃)
+    input-valid-at-encode-s₃ = valid-subst-heap-preserved input-valid-at-encode-s₂ refl mid-heap-preserved
+    -- Step 4: rdi(s₃) = encode x → ValidAt x (rdi(s₃)) (memory s₃)
+    input-valid₃ : ValidAt x (readReg (regs s₃) rdi) (memory s₃)
+    input-valid₃ = subst (λ a → ValidAt x a (memory s₃)) (sym input-is-encode₃) input-valid-at-encode-s₃
+
     -- Remaining semantic properties (require more threading)
     postulate
-      input-valid₃ : ValidAt x (readReg (regs s₃) rdi) (memory s₃)
       cap₃ : StackCapacity s₃ (ir-stack-requirement g)
 
     middle-post : PairSpecs.MiddlePost f g prog (length prefix-g) s₁ s₂ s₃ x fx
