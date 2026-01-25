@@ -214,9 +214,9 @@ from-curry-with-wf {A} {B} {C} f prog s s' x offset exec-res mem-res wf = record
     curry-closure-region = CurryMemoryResult.closure-region mem-res
     curry-closure-in-region = CurryMemoryResult.closure-in-region mem-res
 
-    -- Closure validity via valid-closure-env constructor
+    -- Closure validity via valid-closure-env constructor (no encode constraint needed)
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at curry-closure-region curry-closure-in-region
+    closure-valid-at-addr = valid-closure-env curry-v-env closure-at curry-closure-region curry-closure-in-region
 
     -- Transport to rax
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')

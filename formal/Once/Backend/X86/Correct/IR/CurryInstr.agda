@@ -1032,13 +1032,13 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     sem-closure = eval (curry f) x
 
     -- Closure validity via valid-closure-env constructor
-    -- Closure.env-addr (eval (curry f) x) = encode x (by definition of eval for curry)
-    -- So the first arg to valid-closure-env is refl
+    -- NOTE: valid-closure-env no longer requires Closure.env-addr ≡ encode env constraint
+    -- The env-addr is tracked in proof infrastructure, not semantic Closure type
     curry-closure-region = CurryMemoryResult.closure-region curry-mem
     curry-closure-in-region = CurryMemoryResult.closure-in-region curry-mem
 
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s-final)
-    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at curry-closure-region curry-closure-in-region
+    closure-valid-at-addr = valid-closure-env curry-v-env closure-at curry-closure-region curry-closure-in-region
 
     -- Transport to rax
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s-final) rax) (memory s-final)

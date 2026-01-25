@@ -333,10 +333,9 @@ mutual
         curry-closure-below-entry-rsp : curry-closure-region ≡ Stack → cl-addr < curry-entry-rsp
 
       -- Closure validity via valid-closure-env constructor
-      -- Closure.env-addr sem-closure = encode x (by definition of eval curry)
-      -- So the first argument to valid-closure-env is refl
+      -- NOTE: valid-closure-env no longer requires Closure.env-addr ≡ encode env
       closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at curry-closure-region curry-closure-in-region
+      closure-valid-at-addr = valid-closure-env curry-v-env closure-at curry-closure-region curry-closure-in-region
 
       -- Transport to rax
       result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
@@ -478,7 +477,7 @@ mutual
       curry-closure-in-region = CurryMemoryResult.closure-in-region curry-mem-res
 
       closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s')
-      closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at curry-closure-region curry-closure-in-region
+      closure-valid-at-addr = valid-closure-env curry-v-env closure-at curry-closure-region curry-closure-in-region
 
       result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
       result-valid = subst (λ addr → ValidAt {B ⇒ C} sem-closure addr (memory s'))

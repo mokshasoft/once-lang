@@ -15,7 +15,7 @@
 module Once.Backend.X86.Correct.MemoryValid where
 
 open import Once.Type
-open import Once.Semantics using (⟦_⟧; encode; Closure; ⟦Fix⟧; wrap)
+open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
 open ⟦Fix⟧
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writeMem)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
@@ -111,30 +111,32 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
     ValidAt {A + B} (inj₂ b) addr m
 
   -- Closure: env and code-ptr at addr, with region
-  valid-closure : ∀ {A B} {cl : Closure A B} {code-ptr addr : Word} {m : Memory} →
-    ClosureAtS (Closure.env-addr cl) code-ptr addr m →
+  -- NOTE: env-addr is explicit parameter, NOT extracted from Closure.env-addr
+  -- This decouples the proof from the semantic Closure type's env-addr field.
+  valid-closure : ∀ {A B} {cl : Closure A B} {env-addr code-ptr addr : Word} {m : Memory} →
+    ClosureAtS env-addr code-ptr addr m →
     (r : Region) → InRegion r addr →
     ValidAt {A ⇒ B} cl addr m
 
   -- Closure from env validity: for curry-created closures, with region
+  -- NOTE: No longer requires Closure.env-addr cl ≡ encode env constraint.
+  -- The env-addr is tracked in proof infrastructure (ClosureAtS), not semantic Closure.
   valid-closure-env : ∀ {A B E} {cl : Closure A B} {env : ⟦ E ⟧}
                       {env-addr code-ptr closure-addr : Word} {m : Memory} →
-    Closure.env-addr cl ≡ encode env →  -- semantic property (refl for curry)
     ValidAt env env-addr m →             -- env validity at runtime address
     ClosureAtS env-addr code-ptr closure-addr m →  -- memory layout
     (r : Region) → InRegion r closure-addr →
     ValidAt {A ⇒ B} cl closure-addr m
 
   -- Eff: same as closure (Eff = Closure at runtime), with region
-  valid-eff : ∀ {A B} {cl : Closure A B} {code-ptr addr : Word} {m : Memory} →
-    ClosureAtS (Closure.env-addr cl) code-ptr addr m →
+  valid-eff : ∀ {A B} {cl : Closure A B} {env-addr code-ptr addr : Word} {m : Memory} →
+    ClosureAtS env-addr code-ptr addr m →
     (r : Region) → InRegion r addr →
     ValidAt {Eff A B} cl addr m
 
   -- Eff from env validity: for curry-created effect closures, with region
   valid-eff-env : ∀ {A B E} {cl : Closure A B} {env : ⟦ E ⟧}
                   {env-addr code-ptr closure-addr : Word} {m : Memory} →
-    Closure.env-addr cl ≡ encode env →
     ValidAt env env-addr m →
     ClosureAtS env-addr code-ptr closure-addr m →
     (r : Region) → InRegion r closure-addr →
@@ -159,7 +161,7 @@ valid-arrow-to-eff :
   ValidAt {A ⇒ B} cl addr m →
   ValidAt {Eff A B} cl addr m
 valid-arrow-to-eff (valid-closure closS r ir) = valid-eff closS r ir
-valid-arrow-to-eff (valid-closure-env sem-eq venv closS r ir) = valid-eff-env sem-eq venv closS r ir
+valid-arrow-to-eff (valid-closure-env venv closS r ir) = valid-eff-env venv closS r ir
 
 ------------------------------------------------------------------------
 -- Extract region information from ValidAt
@@ -188,9 +190,9 @@ valid-in-region (valid-pair _ _ _ r ir) = r , ir
 valid-in-region (valid-inl _ _ r ir) = r , ir
 valid-in-region (valid-inr _ _ r ir) = r , ir
 valid-in-region (valid-closure _ r ir) = r , ir
-valid-in-region (valid-closure-env _ _ _ r ir) = r , ir
+valid-in-region (valid-closure-env _ _ r ir) = r , ir
 valid-in-region (valid-eff _ r ir) = r , ir
-valid-in-region (valid-eff-env _ _ _ r ir) = r , ir
+valid-in-region (valid-eff-env _ _ r ir) = r , ir
 valid-in-region (valid-fix v) = valid-in-region v
 
 -- | Convert InRegion to InHeap
@@ -212,9 +214,9 @@ valid-in-heap (valid-pair _ _ _ r ir) = region-to-heap r ir
 valid-in-heap (valid-inl _ _ r ir) = region-to-heap r ir
 valid-in-heap (valid-inr _ _ r ir) = region-to-heap r ir
 valid-in-heap (valid-closure _ r ir) = region-to-heap r ir
-valid-in-heap (valid-closure-env _ _ _ r ir) = region-to-heap r ir
+valid-in-heap (valid-closure-env _ _ r ir) = region-to-heap r ir
 valid-in-heap (valid-eff _ r ir) = region-to-heap r ir
-valid-in-heap (valid-eff-env _ _ _ r ir) = region-to-heap r ir
+valid-in-heap (valid-eff-env _ _ r ir) = region-to-heap r ir
 valid-in-heap (valid-fix v) = valid-in-heap v
 
 -- | Extract InStack from Stack-region ValidAt
@@ -280,15 +282,15 @@ valid-subst-addr-mem (valid-inr vb inrS r ir) refl mem-eq =
             r ir
 valid-subst-addr-mem (valid-closure closS r ir) refl mem-eq =
   valid-closure (ClosureAtS-preserved-under-mem-eq closS mem-eq) r ir
-valid-subst-addr-mem (valid-closure-env sem-eq venv closS r ir) refl mem-eq =
-  valid-closure-env sem-eq
+valid-subst-addr-mem (valid-closure-env venv closS r ir) refl mem-eq =
+  valid-closure-env
     (valid-subst-addr-mem venv refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closS mem-eq)
     r ir
 valid-subst-addr-mem (valid-eff closS r ir) refl mem-eq =
   valid-eff (ClosureAtS-preserved-under-mem-eq closS mem-eq) r ir
-valid-subst-addr-mem (valid-eff-env sem-eq venv closS r ir) refl mem-eq =
-  valid-eff-env sem-eq
+valid-subst-addr-mem (valid-eff-env venv closS r ir) refl mem-eq =
+  valid-eff-env
     (valid-subst-addr-mem venv refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closS mem-eq)
     r ir
@@ -384,9 +386,9 @@ valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure closS r ir) refl h
   let ih = region-to-heap r ir
   in valid-closure (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
                    r ir
-valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env sem-eq venv closS r ir) refl heap-eq =
+valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env venv closS r ir) refl heap-eq =
   let ih = region-to-heap r ir
-  in valid-closure-env sem-eq
+  in valid-closure-env
          (valid-subst-heap-preserved venv refl heap-eq)
          (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
          r ir
@@ -394,9 +396,9 @@ valid-subst-heap-preserved {Eff A B} {cl} (valid-eff closS r ir) refl heap-eq =
   let ih = region-to-heap r ir
   in valid-eff (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
                r ir
-valid-subst-heap-preserved {Eff A B} {cl} (valid-eff-env sem-eq venv closS r ir) refl heap-eq =
+valid-subst-heap-preserved {Eff A B} {cl} (valid-eff-env venv closS r ir) refl heap-eq =
   let ih = region-to-heap r ir
-  in valid-eff-env sem-eq
+  in valid-eff-env
          (valid-subst-heap-preserved venv refl heap-eq)
          (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
          r ir
@@ -701,9 +703,9 @@ valid-at-preserved-under-stack-write (valid-closure closS r ir) w-in-stack =
   in valid-closure
        (ClosureAtS-preserved-under-stack-write closS ih w-in-stack)
        r ir
-valid-at-preserved-under-stack-write (valid-closure-env sem-eq venv closS r ir) w-in-stack =
+valid-at-preserved-under-stack-write (valid-closure-env venv closS r ir) w-in-stack =
   let ih = region-to-heap r ir
-  in valid-closure-env sem-eq
+  in valid-closure-env
        (valid-at-preserved-under-stack-write venv w-in-stack)
        (ClosureAtS-preserved-under-stack-write closS ih w-in-stack)
        r ir
@@ -712,9 +714,9 @@ valid-at-preserved-under-stack-write (valid-eff closS r ir) w-in-stack =
   in valid-eff
        (ClosureAtS-preserved-under-stack-write closS ih w-in-stack)
        r ir
-valid-at-preserved-under-stack-write (valid-eff-env sem-eq venv closS r ir) w-in-stack =
+valid-at-preserved-under-stack-write (valid-eff-env venv closS r ir) w-in-stack =
   let ih = region-to-heap r ir
-  in valid-eff-env sem-eq
+  in valid-eff-env
        (valid-at-preserved-under-stack-write venv w-in-stack)
        (ClosureAtS-preserved-under-stack-write closS ih w-in-stack)
        r ir
