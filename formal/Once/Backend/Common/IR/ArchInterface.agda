@@ -170,8 +170,10 @@ record ArchCorrectness : Set₂ where
                ApplyWFInput (ClosureDom B) (ClosureCod B) ((prefix ++ₚ compile g ++ₚ compose-transfer f g) ++ₚ compile f ++ₚ suffix) s₂ (closureOf B (eval g x)))
 
     -- Combine g, transfer, and f results into compose result
+    -- Takes original capacity for deriving compose output capacity
     compose-combine : ∀ {A B C : Type} (f : IR B C) (g : IR A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s s₁ s₂ s₃ : State) →
+      StackCapacity s (ir-stack-requirement (f ∘ g)) →  -- Original capacity for output derivation
       IRCorrectness g (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s s₁ x (program-length prefix) →
       Star (prefix ++ₚ compile g ++ₚ (compose-transfer f g ++ₚ compile f ++ₚ suffix)) s₁ s₂ →
       IRCorrectness f ((prefix ++ₚ compile g ++ₚ compose-transfer f g) ++ₚ compile f ++ₚ suffix) s₂ s₃ (eval g x) (program-length (prefix ++ₚ compile g ++ₚ compose-transfer f g)) →

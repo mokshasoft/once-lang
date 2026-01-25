@@ -134,7 +134,9 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Thread g's closure-wf to f via compose-run-transfer's converted ApplyWFInput
           (s₃ , f-corr) = ir-correct f prefix-f suffix (eval g x) s₂ f-pre f-cwf
           -- Step 5: Combine using architecture's combine lemma
-      in s₃ , compose-combine f g prefix suffix x s s₁ s₂ s₃ g-corr transfer-star f-corr
+          -- Pass original capacity for deriving compose output capacity
+          orig-cap = Preconditions.pre-capacity pre
+      in s₃ , compose-combine f g prefix suffix x s s₁ s₂ s₃ orig-cap g-corr transfer-star f-corr
 
     -- Pair: setup → f → middle → g → cleanup
     ir-correct ⟨ f , g ⟩ prefix suffix x s pre _ =
