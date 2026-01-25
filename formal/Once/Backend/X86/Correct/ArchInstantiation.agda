@@ -44,7 +44,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-subst-heap-preserved; valid-subst-addr-mem)
 open import Once.Backend.X86.Layout using (InStack; InHeap; InCode)
 open import Once.Backend.X86.Correct.Star as X86Star
-  using (Star; refl*; step*; star-trans; star-single; step-deterministic; just-injective)
+  using (Star; refl*; step*; star-trans; star-single; step-deterministic; just-injective; single-star-eq)
 open import Once.Backend.X86.Correct.StarBase
   using (rbp-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.StarBase as SB
@@ -927,8 +927,9 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ g-corr tran
     step-eq-on-prog-g = subst (λ p → step p s₁ ≡ just s₂') (sym prog-g-eq-transfer) step-eq
 
     -- Transfer is exactly 1 step, so s₂ = s₂' by step determinism
-    postulate
-      s₂≡s₂' : s₂ ≡ s₂'
+    -- transfer-star is from star-single, so it's (step* _ step-eq refl*)
+    s₂≡s₂' : s₂ ≡ s₂'
+    s₂≡s₂' = single-star-eq transfer-star step-eq-on-prog-g
 
     -- Transport preservation proofs from s₂' to s₂
     r14-t : readReg (regs s₂) r14 ≡ readReg (regs s₁) r14

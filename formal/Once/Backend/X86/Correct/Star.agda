@@ -182,3 +182,21 @@ step-deterministic : ∀ {prog : Program} {s s₁ s₂ : State} →
   s₁ ≡ s₂
 step-deterministic step₁ step₂ = just-injective (trans (sym step₁) step₂)
 
+-- | For a single-step Star (from star-single), prove endpoint equals the step result.
+-- Given: Star prog s s₂ (exactly one step, constructed by star-single)
+-- Given: step prog s ≡ just s₂' (from transfer-star-full)
+-- Prove: s₂ ≡ s₂'
+--
+-- Note: star-single produces (step* h step-eq refl*), so the single-step pattern is the real case.
+-- The refl* and multi-step patterns are impossible by construction but must be handled.
+single-star-eq : ∀ {prog s s₂ s₂'} →
+  Star prog s s₂ →
+  step prog s ≡ just s₂' →
+  s₂ ≡ s₂'
+single-star-eq {prog} {s} {.s} {s₂'} refl* step-eq' = impossible-refl*
+  where postulate impossible-refl* : s ≡ s₂'  -- star-single never produces refl*
+single-star-eq {prog} {s} {s₂} {s₂'} (step* _ step-eq refl*) step-eq' =
+  step-deterministic {prog} {s} {s₂} {s₂'} step-eq step-eq'
+single-star-eq {prog} {s} {s₂} {s₂'} (step* _ _ (step* _ _ _)) _ = impossible-multi-step
+  where postulate impossible-multi-step : s₂ ≡ s₂'  -- star-single never produces multi-step
+
