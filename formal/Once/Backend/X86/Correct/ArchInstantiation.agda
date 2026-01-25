@@ -239,7 +239,10 @@ IRStarResultV→IRCorrectness {ir = ir} {s' = s'} {x = x} res = record
   ; exec-closure-wf = no-apply-wf
   ; exec-cwf-bound-in-req = z≤n  -- cwf-cap-bound no-apply-wf = 0 ≤ anything
   }
-  where postulate leaf-output-is-encode : readReg (regs s') rax ≡ encode (eval ir x)
+  where
+    -- Output encoding: ir-result-valid gives ValidAt (eval ir x) rax (memory s')
+    leaf-output-is-encode : readReg (regs s') rax ≡ encode (eval ir x)
+    leaf-output-is-encode = valid-addr-is-encode (IRStarResultV.ir-result-valid res)
 
 ------------------------------------------------------------------------
 -- X86 ArchCorrectness Implementation
@@ -330,7 +333,10 @@ x86-id-correct {A} prefix suffix x s pre cwf =
   where
     prog = prefix ++ compile-x86 (id {A}) ++ suffix
     offset = length prefix
-    postulate id-output-is-encode : (s' : State) → IRStarResultV (id {A}) prog s s' x offset → readReg (regs s') rax ≡ encode x
+    -- Output encoding: ir-result-valid gives ValidAt (eval id x) rax (memory s')
+    -- and eval id x = x definitionally
+    id-output-is-encode : (s' : State) → IRStarResultV (id {A}) prog s s' x offset → readReg (regs s') rax ≡ encode x
+    id-output-is-encode s' res = valid-addr-is-encode (IRStarResultV.ir-result-valid res)
     -- Transport cwf from s to s': id preserves memory (heap) and rsp
     id-closure-wf : (s' : State) → IRStarResultV (id {A}) prog s s' x offset →
                     ApplyWFInput (ClosureDom A) (ClosureCod A) prog s (closureOf A x) →
@@ -1646,7 +1652,9 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
              thunk-setup-cap≤thunk-consumed+ir-req;
              apply-thunk-cap-in-curry-req)
 
-    postulate curry-output-is-encode : readReg (regs s₁) rax ≡ encode {B ⇒ C} (eval (curry f) x)
+    -- Output encoding: setup-output-valid gives ValidAt (eval (curry f) x) rax (memory s₁)
+    curry-output-is-encode : readReg (regs s₁) rax ≡ encode {B ⇒ C} (eval (curry f) x)
+    curry-output-is-encode = valid-addr-is-encode (CurrySpecs.SetupPost.setup-output-valid setup)
 
     prog = prefix ++ compile-x86 (curry f) ++ suffix
     thunk-code-ptr = length prefix + 6
