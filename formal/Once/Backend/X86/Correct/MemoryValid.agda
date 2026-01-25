@@ -160,27 +160,15 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
 -- See: valid-at-preserved-under-stack-write, valid-at-preserved-under-write
 
 ------------------------------------------------------------------------
--- Entry Point: encode → ValidAt
+-- Encode bridge postulate (TEMPORARY - to be eliminated)
 --
--- This foundational postulate establishes validity at system entry:
--- when external code provides input x encoded in memory at address addr,
--- this asserts the validity predicate holds.
+-- This connects ValidAt addresses back to encode for InHeap derivation.
+-- TODO: Eliminate by tracking InHeap alongside ValidAt constructors.
 ------------------------------------------------------------------------
 postulate
-  -- | Construct validity from encode address at entry point
-  -- This is a foundational postulate for the system entry point:
-  -- when external code provides input x, it is encoded in memory, and
-  -- this establishes validity at the encoded address.
-  -- Used by codegen-x86-correct to establish initial input validity.
-  valid-from-encode :
-    ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
-    addr ≡ encode v →
-    ValidAt v addr m
-
-  -- | Converse of valid-from-encode: validity implies encode address
-  -- If a value is validly represented at addr, then addr IS encode v.
-  -- This is the key axiom connecting runtime addresses to semantic values.
-  -- Together with valid-from-encode, establishes: ValidAt v addr m ↔ addr ≡ encode v.
+  -- | Validity implies encode address (TEMPORARY)
+  -- Used by valid-in-heap and ClosureAtS-from-ValidAt.
+  -- Will be eliminated when InHeap is tracked alongside ValidAt.
   valid-addr-is-encode :
     ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
     ValidAt v addr m →
@@ -699,54 +687,7 @@ alloc-inr-creates-valid b addr m = inr-at tag-proof val-proof
     val-proof : readMem m₂ (addr +ℕ slot-size) ≡ just (encode b)
     val-proof = mem-read-write {m₁} {addr +ℕ slot-size} {encode b}
 
-------------------------------------------------------------------------
--- Deriving encoding properties from validity proofs
---
--- These replace the axioms in Postulates.agda with derived lemmas.
--- The key difference: they require a validity proof as input.
-------------------------------------------------------------------------
-
--- | Derived: reading first component of a valid pair
--- Replaces: encode-pair-fst axiom
-encode-pair-fst-derived : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (addr : Word) (m : Memory) →
-  PairAt a b addr m →
-  readMem m addr ≡ just (encode a)
-encode-pair-fst-derived a b addr m valid = fst-valid valid
-
--- | Derived: reading second component of a valid pair
--- Replaces: encode-pair-snd axiom
-encode-pair-snd-derived : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (addr : Word) (m : Memory) →
-  PairAt a b addr m →
-  readMem m (addr +ℕ slot-size) ≡ just (encode b)
-encode-pair-snd-derived a b addr m valid = snd-valid valid
-
--- | Derived: reading tag of a valid left sum
--- Replaces: encode-inl-tag axiom
-encode-inl-tag-derived : ∀ {A B} (a : ⟦ A ⟧) (addr : Word) (m : Memory) →
-  InlAt {A} {B} a addr m →
-  readMem m addr ≡ just 0
-encode-inl-tag-derived a addr m valid = tag-valid valid
-
--- | Derived: reading value of a valid left sum
--- Replaces: encode-inl-val axiom
-encode-inl-val-derived : ∀ {A B} (a : ⟦ A ⟧) (addr : Word) (m : Memory) →
-  InlAt {A} {B} a addr m →
-  readMem m (addr +ℕ slot-size) ≡ just (encode a)
-encode-inl-val-derived a addr m valid = val-valid valid
-
--- | Derived: reading tag of a valid right sum
--- Replaces: encode-inr-tag axiom
-encode-inr-tag-derived : ∀ {A B} (b : ⟦ B ⟧) (addr : Word) (m : Memory) →
-  InrAt {A} {B} b addr m →
-  readMem m addr ≡ just 1
-encode-inr-tag-derived b addr m valid = tag-valid valid
-
--- | Derived: reading value of a valid right sum
--- Replaces: encode-inr-val axiom
-encode-inr-val-derived : ∀ {A B} (b : ⟦ B ⟧) (addr : Word) (m : Memory) →
-  InrAt {A} {B} b addr m →
-  readMem m (addr +ℕ slot-size) ≡ just (encode b)
-encode-inr-val-derived b addr m valid = val-valid valid
+-- NOTE: encode-*-derived functions removed (unused - just re-export PairAt/InlAt/InrAt fields)
 
 ------------------------------------------------------------------------
 -- Preservation: validity survives writes to other addresses
@@ -773,97 +714,5 @@ pair-valid-preserved a b pair-addr write-addr v m valid no-over neq-snd =
       (mem-read-other {m} {write-addr} {pair-addr +ℕ slot-size} {v} neq-snd)
       (snd-valid valid)
 
-------------------------------------------------------------------------
--- Connection to encode function
---
--- Key bridge: if encode (a, b) = addr and PairAt a b addr m,
--- then the encoding axioms hold.
-------------------------------------------------------------------------
-
--- NOTE: encode-*-is-addr postulates were removed (unused).
--- These are trivially true (encode always produces an addr) but added
--- no semantic value. Real progress comes from stateful encoding.
-
-------------------------------------------------------------------------
--- Bridge lemmas: Connect validity to abstract encode
---
--- These make it easy to replace axioms with derived lemmas.
--- Precondition: PairAt a b (encode (a , b)) (memory s)
--- This says: "the pair is properly encoded at its encode address"
-------------------------------------------------------------------------
-
--- | If pair is valid at encode address, derive the axiom property
-pair-valid-at-encode-fst : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
-  PairAt a b (encode (a , b)) m →
-  readMem m (encode (a , b)) ≡ just (encode a)
-pair-valid-at-encode-fst a b m valid = fst-valid valid
-
-pair-valid-at-encode-snd : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (m : Memory) →
-  PairAt a b (encode (a , b)) m →
-  readMem m (encode (a , b) +ℕ slot-size) ≡ just (encode b)
-pair-valid-at-encode-snd a b m valid = snd-valid valid
-
--- | If left sum is valid at encode address, derive the axiom property
-inl-valid-at-encode-tag : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
-  InlAt {A} {B} a (encode (inj₁ a)) m →
-  readMem m (encode {A + B} (inj₁ a)) ≡ just 0
-inl-valid-at-encode-tag a m valid = tag-valid valid
-
-inl-valid-at-encode-val : ∀ {A B} (a : ⟦ A ⟧) (m : Memory) →
-  InlAt {A} {B} a (encode (inj₁ a)) m →
-  readMem m (encode {A + B} (inj₁ a) +ℕ slot-size) ≡ just (encode a)
-inl-valid-at-encode-val a m valid = val-valid valid
-
--- | If right sum is valid at encode address, derive the axiom property
-inr-valid-at-encode-tag : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
-  InrAt {A} {B} b (encode (inj₂ b)) m →
-  readMem m (encode {A + B} (inj₂ b)) ≡ just 1
-inr-valid-at-encode-tag b m valid = tag-valid valid
-
-inr-valid-at-encode-val : ∀ {A B} (b : ⟦ B ⟧) (m : Memory) →
-  InrAt {A} {B} b (encode (inj₂ b)) m →
-  readMem m (encode {A + B} (inj₂ b) +ℕ slot-size) ≡ just (encode b)
-inr-valid-at-encode-val b m valid = val-valid valid
-
-------------------------------------------------------------------------
--- MemoryValid: Combined validity for all values in state
---
--- This is analogous to StackInvariant - a predicate that captures
--- the invariant for the entire memory state.
-------------------------------------------------------------------------
-
--- | A single value's validity record
-data ValueValid (m : Memory) : Set₁ where
-  valid-pair : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) → PairAt a b (encode {A * B} (a , b)) m → ValueValid m
-  valid-inl  : ∀ {A B} (a : ⟦ A ⟧) → InlAt {A} {B} a (encode {A + B} (inj₁ a)) m → ValueValid m
-  valid-inr  : ∀ {A B} (b : ⟦ B ⟧) → InrAt {A} {B} b (encode {A + B} (inj₂ b)) m → ValueValid m
-
-open import Data.List using (List; []; _∷_)
-
--- | MemoryValid: list of all valid values in memory
--- Analogous to StackInvariant, this is threaded through proofs
-MemoryValid : Memory → Set₁
-MemoryValid m = List (ValueValid m)
-
--- | Empty memory has no valid values
-empty-memory-valid : ∀ (m : Memory) → MemoryValid m
-empty-memory-valid m = []
-
--- | Lookup a pair's validity from MemoryValid
--- (Would need decidable equality on values to make this practical)
-
-------------------------------------------------------------------------
--- Summary: How to use this module
---
--- OLD (using axioms from Postulates.agda):
---   mem-eq = encode-pair-fst a b (memory s)
---
--- NEW (using derived lemmas with validity proof):
---   mem-eq = encode-pair-fst-derived a b addr (memory s) valid
---   where valid : PairAt a b addr (memory s) is a precondition
---
--- The validity proof can be:
--- 1. Created by alloc-*-creates-valid when allocating
--- 2. Preserved through writes using *-valid-preserved
--- 3. Threaded as a precondition like StackInvariant
-------------------------------------------------------------------------
+-- NOTE: encode bridge lemmas removed (unused - these were artifacts of encode-based architecture)
+-- NOTE: ValueValid/MemoryValid data types removed (unused)
