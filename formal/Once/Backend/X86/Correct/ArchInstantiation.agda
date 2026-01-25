@@ -57,6 +57,14 @@ open import Once.Backend.X86.Semantics using (writeReg)
 -- Common framework
 open import Once.Backend.Common.IR.Spec as Spec
 
+-- | Inverse of valid-subst-heap-preserved: go from new memory to old memory
+-- If memories agree on heap, ValidAt at new memory implies ValidAt at old memory
+valid-subst-heap-preserved-inv : ∀ {A : Type} {v : ⟦ A ⟧} {addr : ℕ} {mem mem' : Memory} →
+  ValidAt v addr mem' → addr ≡ addr →
+  (∀ a → InHeap a → readMem mem' a ≡ readMem mem a) →
+  ValidAt v addr mem
+valid-subst-heap-preserved-inv v refl heap-eq = valid-subst-heap-preserved v refl (λ a ih → sym (heap-eq a ih))
+
 ------------------------------------------------------------------------
 -- X86 Machine Interface
 ------------------------------------------------------------------------
@@ -328,8 +336,10 @@ x86-id-correct {A} prefix suffix x s pre cwf =
                     ApplyWFInput (ClosureDom A) (ClosureCod A) prog s (closureOf A x) →
                     ApplyWFInput (ClosureDom A) (ClosureCod A) prog s' (closureOf A x)
     id-closure-wf s' res no-apply-wf = no-apply-wf
-    id-closure-wf s' res (apply-wf cp env sem cl-eq wf ev cap) =
-      apply-wf cp env sem cl-eq wf
+    id-closure-wf s' res (apply-wf cp env sem cl-addr cl-eq wf closure-at addr-unique ev cap) =
+      apply-wf cp env sem cl-addr cl-eq wf
+        (ClosureAtS-preserved-under-heap-eq closure-at (valid-addr-in-heap ev) (IRStarResultV.ir-mem-heap res))
+        (λ cl-addr' v → addr-unique cl-addr' (valid-subst-heap-preserved-inv v refl (IRStarResultV.ir-mem-heap res)))
         (valid-subst-heap-preserved ev refl (IRStarResultV.ir-mem-heap res))
         (capacity-preserved-rsp-unchanged s s' _ cap (IRStarResultV.ir-rsp res))
     -- Bound tracking: for no-apply-wf, bound=0≤anything; for apply-wf, bound from input
@@ -338,7 +348,7 @@ x86-id-correct {A} prefix suffix x s pre cwf =
                    (cwf-in : ApplyWFInput (ClosureDom A) (ClosureCod A) prog s (closureOf A x)) →
                    cwf-cap-bound (id-closure-wf s'' res' cwf-in) ≤ ir-stack-requirement (id {A})
     id-cwf-bound s'' res' no-apply-wf = z≤n
-    id-cwf-bound s'' res' (apply-wf cp env sem cl-eq wf ev cap) = id-cwf-bound-apply-wf
+    id-cwf-bound s'' res' (apply-wf cp env sem cl-addr cl-eq wf closure-at addr-unique ev cap) = id-cwf-bound-apply-wf
       where
         -- cwf-cap-bound of the output = wf-cap-upper-bound wf (same wf is threaded)
         postulate id-cwf-bound-apply-wf : ClosureWellFormed.cap-upper-bound wf ≤ ir-stack-requirement (id {A})
@@ -696,10 +706,12 @@ x86-compose-run-transfer {A} {B} {C} f g prefix suffix x s s₁ pre g-corr = s�
     f-cwf : ApplyWFInput (ClosureDom B) (ClosureCod B) prog' s₂ (closureOf B (eval g x))
     f-cwf with IRCorrectness.exec-closure-wf g-corr
     ... | no-apply-wf = no-apply-wf
-    ... | apply-wf cp' env' sem' cl-eq' wf' ev' cap' =
+    ... | apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap' =
             let wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq-prog' wf'
                 cap-at-s₂ = capacity-preserved-rsp-unchanged s₁ s₂ _ cap' (sym rsp₂)
-            in apply-wf cp' env' sem' cl-eq' wf-subst
+                closure-at-s₂ = ClosureAtS-preserved-under-heap-eq closure-at' (valid-addr-in-heap ev') mem₂
+                addr-unique-s₂ = λ cl-addr v → addr-unique' cl-addr (valid-subst-heap-preserved-inv v refl mem₂)
+            in apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₂ addr-unique-s₂
                  (valid-subst-addr-mem ev' refl mem₂)
                  (subst (λ n → StackCapacity s₂ (apply-consumed-slots + n))
                         (sym (thunk-cap-subst prog-eq-prog' wf'))
@@ -1434,8 +1446,8 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
       cwf-cap-bound cwf ≤ ir-stack-requirement f →
       ApplyWFInput (ClosureDom (A₀ * B₀)) (ClosureCod (A₀ * B₀)) prog-full s₅ (closureOf (A₀ * B₀) (v , w))
     pair-lift-cwf (D ⇒[ q ] E) _ v w no-apply-wf _ = no-apply-wf
-    pair-lift-cwf (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-eq' wf' ev' cap') cwf-bnd =
-      apply-wf cp' env' sem' cl-eq' wf-subst ev-at-s₅ cap-at-s₅
+    pair-lift-cwf (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
+      apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₅ addr-unique-s₅ ev-at-s₅ cap-at-s₅
       where
         open import Once.Backend.X86.Correct.StackInstantiation
           using (capacity-from-larger; pair-inner-requirement; pair-setup-consumed-slots)
@@ -1447,6 +1459,8 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
           trans (PairSpecs.CleanupPost.cleanup-heap-preserved cleanup addr ih)
           (trans (IRCorrectness.exec-heap-preserved g-corr addr ih)
                  (PairSpecs.MiddlePost.middle-heap-preserved middle addr ih))
+        closure-at-s₅ = ClosureAtS-preserved-under-heap-eq closure-at' (valid-addr-in-heap ev') heap-s₂-to-s₅
+        addr-unique-s₅ = λ cl-addr v → addr-unique' cl-addr (valid-subst-heap-preserved-inv v refl heap-s₂-to-s₅)
         ev-at-s₅ = valid-subst-heap-preserved ev' refl heap-s₂-to-s₅
 
         -- Capacity proof chain:
@@ -1675,12 +1689,31 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
     curry-semantics : ⟦ B ⟧ → ⟦ C ⟧
     curry-semantics = λ b → eval f (x , b)
 
+    -- Transport closure-at to use encode x and thunk-code-ptr
+    curry-closure-at-for-wf : ClosureAtS (encode x) thunk-code-ptr curry-closure-addr (memory s₁)
+    curry-closure-at-for-wf = subst (λ cp → ClosureAtS (encode x) cp curry-closure-addr (memory s₁))
+                                    (CurryMemoryResult.code-ptr-is-thunk mem-res)
+                              (subst (λ ea → ClosureAtS ea curry-code-ptr curry-closure-addr (memory s₁))
+                                     (CurryMemoryResult.env-addr-eq mem-res)
+                                     closure-at)
+
+    -- Closure address uniqueness: the closure is only valid at curry-closure-addr
+    -- This is true because curry allocates fresh memory and doesn't copy closures
+    curry-closure-addr-unique : (cl-addr : ℕ) →
+      ValidAt (closureOf (B ⇒ C) (eval (curry f) x)) cl-addr (memory s₁) →
+      cl-addr ≡ curry-closure-addr
+    curry-closure-addr-unique cl-addr v = postulated-curry-addr-unique
+      where postulate postulated-curry-addr-unique : cl-addr ≡ curry-closure-addr
+
     curry-apply-wf : ApplyWFInput B C prog s₁ (closureOf (B ⇒ C) (eval (curry f) x))
     curry-apply-wf = apply-wf {E = A}
       thunk-code-ptr x
       curry-semantics
+      curry-closure-addr  -- closure address
       refl  -- cl-eq: eval (curry f) x ≡ record { env-addr = encode x ; semantics = curry-semantics }
       curry-wf
+      curry-closure-at-for-wf  -- ClosureAtS proof
+      curry-closure-addr-unique  -- closure-addr-unique
       (CurrySpecs.SetupPost.setup-env-valid setup)
       curry-cap-for-apply
 
@@ -2085,10 +2118,12 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
                         cwf-cap-bound cwf ≤ ir-stack-requirement f →
                         ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
         transport-cwf no-apply-wf _ = no-apply-wf
-        transport-cwf (apply-wf cp' env' sem' cl-eq' wf' ev' cap') cwf-bnd =
-          apply-wf cp' env' sem' cl-eq' wf-subst ev-at-s₃ cap-at-s₃
+        transport-cwf (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
+          apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ addr-unique-s₃ ev-at-s₃ cap-at-s₃
           where
             wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
+            closure-at-s₃ = ClosureAtS-preserved-under-heap-eq closure-at' (valid-addr-in-heap ev') (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
+            addr-unique-s₃ = λ cl-addr v → addr-unique' cl-addr (valid-subst-heap-preserved-inv v refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup))
             ev-at-s₃ = valid-subst-heap-preserved ev' refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
 
             -- Capacity proof chain:
@@ -2482,10 +2517,12 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
                         cwf-cap-bound cwf ≤ ir-stack-requirement g →
                         ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
         transport-cwf no-apply-wf _ = no-apply-wf
-        transport-cwf (apply-wf cp' env' sem' cl-eq' wf' ev' cap') cwf-bnd =
-          apply-wf cp' env' sem' cl-eq' wf-subst ev-at-s₃ cap-at-s₃
+        transport-cwf (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
+          apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ addr-unique-s₃ ev-at-s₃ cap-at-s₃
           where
             wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
+            closure-at-s₃ = ClosureAtS-preserved-under-heap-eq closure-at' (valid-addr-in-heap ev') (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
+            addr-unique-s₃ = λ cl-addr v → addr-unique' cl-addr (valid-subst-heap-preserved-inv v refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup))
             ev-at-s₃ = valid-subst-heap-preserved ev' refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
 
             -- Capacity proof chain:
@@ -2558,7 +2595,7 @@ x86-apply-correct :
   ApplyWFInput A B (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) s (closureOf ((A ⇒ B) * A) p) →
   ∃[ s' ] IRCorrectness (apply {A} {B}) (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) s s' p (length prefix)
 -- Case 1: ApplyWFInput provides closure well-formedness from curry
-x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf env semantics-cwf cl-eq-cwf wf env-valid cap-cwf) = s' , IRStarResultV→IRCorrectness result-subst
+x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf env semantics-cwf closure-addr-cwf cl-eq-cwf wf closure-at-cwf closure-addr-unique env-valid cap-cwf) = s' , IRStarResultV→IRCorrectness result-subst
   where
     -- Extract preconditions
     h = Preconditions.pre-halted pre
@@ -2604,18 +2641,35 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf en
     cl-run = record { env-addr = encode env ; semantics = semantics-cwf }
 
     -- ============================================================
-    -- REMAINING POSTULATE: code-ptr from memory = code-ptr from WF
+    -- PROVE: code-ptr from memory = code-ptr from WF
     --
     -- The code-ptr extracted via valid-closure-decompose (from the
     -- runtime ValidAt proof) must match the code-ptr-cwf in the
-    -- ClosureWellFormed proof. These agree because curry stored
-    -- code-ptr-cwf at the closure's code slot, and heap preservation
-    -- maintains this through compose. Proving this requires inverting
-    -- the ValidAt construction chain, which is a separate concern.
+    -- ClosureWellFormed proof. We prove this using:
+    -- 1. closure-addr-unique: apply-closure-addr ≡ closure-addr-cwf
+    -- 2. Both ClosureAtS read code-ptr from the same memory location
+    -- 3. By determinism of memory read, code-ptr ≡ code-ptr-cwf
     -- ============================================================
 
-    postulate
-      code-ptr-is-cwf : code-ptr ≡ code-ptr-cwf
+    -- Step 1: The closure addresses are the same (from closure-addr-unique)
+    apply-closure-addr-eq : apply-closure-addr ≡ closure-addr-cwf
+    apply-closure-addr-eq = closure-addr-unique apply-closure-addr apply-v-cl-raw
+
+    -- Step 2: closure-at-cwf says: readMem mem (closure-addr-cwf + ws) ≡ just code-ptr-cwf
+    -- apply-closure-at-raw says: readMem mem (apply-closure-addr + ws) ≡ just code-ptr
+    -- Transport apply-closure-at-raw's code-slot to closure-addr-cwf
+    apply-code-slot-at-cwf-addr : readMem (memory s) (closure-addr-cwf + word-size) ≡ just code-ptr
+    apply-code-slot-at-cwf-addr = subst (λ addr → readMem (memory s) (addr + word-size) ≡ just code-ptr)
+                                        apply-closure-addr-eq
+                                        (ClosureAtS.code-slot apply-closure-at-raw)
+
+    -- closure-at-cwf's code slot (uses cl-env-derived to align env-addr first)
+    cwf-code-slot : readMem (memory s) (closure-addr-cwf + word-size) ≡ just code-ptr-cwf
+    cwf-code-slot = ClosureAtS.code-slot closure-at-cwf
+
+    -- Step 3: Both read the same location, so the values are equal
+    code-ptr-is-cwf : code-ptr ≡ code-ptr-cwf
+    code-ptr-is-cwf = just-injective (trans (sym apply-code-slot-at-cwf-addr) cwf-code-slot)
 
     -- ============================================================
     -- DERIVE all values (3 postulates eliminated, 1 remains)

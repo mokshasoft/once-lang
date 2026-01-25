@@ -300,11 +300,19 @@ module IRSpecs
     apply-wf : ∀ {E : Type}
       (code-ptr : ℕ) (env : ⟦ E ⟧)
       (semantics : ⟦ A ⟧ → ⟦ B ⟧)
+      (closure-addr : ℕ)  -- Address where closure is stored
       -- cl-eq: The closure value matches the WF proof's env/semantics.
       -- For curry, this is refl by computation (eval (curry f) x = record{...}).
       -- Eliminates the runtime-matches-proof bridge postulate.
       (cl-eq : cl ≡ record { env-addr = encode env ; semantics = semantics })
       (wf : ClosureWF {E} {A} {B} prog code-ptr env semantics)
+      -- closure-at: Memory layout proof showing code-ptr is at closure-addr+8.
+      -- Enables proving code-ptr from ValidAt decomposition = code-ptr from WF.
+      (closure-at : ClosureAtS (encode env) code-ptr closure-addr (memory s))
+      -- closure-addr-unique: The closure is only valid at closure-addr.
+      -- This captures that closures aren't duplicated in memory.
+      -- Enables proving apply-closure-addr = closure-addr at apply time.
+      (closure-addr-unique : (cl-addr : ℕ) → ValidAt cl cl-addr (memory s) → cl-addr ≡ closure-addr)
       -- env-valid: uses encode env directly (not arbitrary env-addr).
       -- Eliminates the addr-is-encode bridge postulate.
       (env-valid : ValidAt env (encode env) (memory s))
@@ -319,7 +327,7 @@ module IRSpecs
   cwf-cap-bound : ∀ {A B : Type} {prog : Program} {s : State} {cl : Closure A B} →
                   ApplyWFInput A B prog s cl → ℕ
   cwf-cap-bound no-apply-wf = 0
-  cwf-cap-bound (apply-wf {E} cp env sem cl-eq wf _ _) = wf-cap-upper-bound wf
+  cwf-cap-bound (apply-wf {E} cp env sem cl-addr cl-eq wf _ _ _ _) = wf-cap-upper-bound wf
 
   -- Preconditions for IR execution
   -- Matches X86's run-*-star-vv preconditions exactly
