@@ -64,7 +64,7 @@ open Once.Backend.X86.Semantics.State
 open import Once.Backend.X86.CodeGen
 
 -- NOTE: encode-* reading postulates eliminated via validity-based proofs
-open import Once.Postulates using (encode)
+-- encode import removed - all x86 proofs now use ValidAt-based architecture
 
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)

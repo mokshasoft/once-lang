@@ -31,7 +31,7 @@ open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.X86.Layout
   using (InCode; InHeap; StackPointer; frameSlot; addr)
 
-open import Once.Postulates using (encode)
+-- NOTE: encode import removed - ValidAt used instead
 
 open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _>_; _<_; _≥_) renaming (_+_ to _+ℕ_)
@@ -228,7 +228,8 @@ record ApplyWithWFResult {A B : Type} (prog : Program) (s s' : State)
     apply-star     : Star prog s s'
     apply-halted   : halted s' ≡ false
     apply-pc       : pc s' ≡ offset +ℕ compile-length (apply {A} {B})
-    apply-rax      : readReg (regs s') rax ≡ encode (Closure.semantics cl a)
+    -- Validity-based result (no encode!)
+    apply-rax-valid : ValidAt (Closure.semantics cl a) (readReg (regs s') rax) (memory s')
     apply-r14      : readReg (regs s') r14 ≡ readReg (regs s) r14
     apply-r15      : readReg (regs s') r15 ≡ readReg (regs s) r15
     apply-rbp      : readReg (regs s') rbp ≡ readReg (regs s) rbp
