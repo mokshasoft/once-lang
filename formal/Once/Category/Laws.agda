@@ -168,9 +168,10 @@ eval-initial-unique f ()
 -- | apply ∘ ⟨ curry f ∘ fst , snd ⟩ ≡ f (semantically)
 --
 -- This is the beta law for exponentials.
+-- The quantity {q} is phantom; the law holds for any quantity.
 --
-eval-curry-apply : ∀ {A B C} (f : IR (A * B) C) (m₁ m₂ : AllocMode) (x : ⟦ A * B ⟧)
-                 → eval (apply ∘ ⟨ curry f m₁ ∘ fst , snd ⟩ m₂) x ≡ eval f x
+eval-curry-apply : ∀ {A B C q} (f : IR (A * B) C) (m₁ m₂ : AllocMode) (x : ⟦ A * B ⟧)
+                 → eval (apply {q = q} ∘ ⟨ curry {q = q} f m₁ ∘ fst , snd ⟩ m₂) x ≡ eval f x
 eval-curry-apply f m₁ m₂ (a , b) = refl
 
 -- | curry (apply ∘ ⟨ g ∘ fst , snd ⟩) ≡ g (semantically, for functions)
@@ -180,8 +181,9 @@ eval-curry-apply f m₁ m₂ (a , b) = refl
 -- but we can prove it pointwise.
 --
 -- With explicit Closure, application uses Closure.semantics
-eval-curry-eta : ∀ {A B C} (g : IR A (B ⇒ C)) (m₁ m₂ : AllocMode) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
-               → Closure.semantics (eval (curry (apply ∘ ⟨ g ∘ fst , snd ⟩ m₁) m₂) a) b ≡ Closure.semantics (eval g a) b
+-- The quantity {q} is phantom; the law holds for any quantity.
+eval-curry-eta : ∀ {A B C q} (g : IR A (B ⇒[ q ] C)) (m₁ m₂ : AllocMode) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
+               → Closure.semantics (eval (curry {q = q} (apply {q = q} ∘ ⟨ g ∘ fst , snd ⟩ m₁) m₂) a) b ≡ Closure.semantics (eval g a) b
 eval-curry-eta g m₁ m₂ a b = refl
 
 ------------------------------------------------------------------------

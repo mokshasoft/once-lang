@@ -10,7 +10,7 @@ module Once.Surface.Elaborate where
 open import Once.Type
 open import Once.IR
 open import Once.Surface.Syntax
-open import Once.Postulates using (coerceIRArrow)
+-- coerceIRArrow eliminated: curry/apply are now quantity-polymorphic
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -137,13 +137,13 @@ elaborate (var i) = proj i
 
 -- Lambda: λ^q x.e becomes curry of (elaborate e)
 -- Context (Γ, A) has type ⟦Γ⟧ᶜ * A = ⟦Γ,A⟧ᶜ
--- IR curry always produces (A ⇒ B), so we coerce to (A ⇒[ q ] B)
+-- IR curry is quantity-polymorphic, so it directly produces (A ⇒[ q ] B)
 -- The quantity q is enforced during type checking, not during elaboration
-elaborate (lam q e) = coerceIRArrow (curry (elaborate e) Heap)
+elaborate (lam q e) = curry (elaborate e) Heap
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
--- IR's apply only works with unrestricted arrows, so coerce to Many
-elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩ Heap
+-- IR's apply is quantity-polymorphic, no coercion needed
+elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩ Heap
 
 -- Effect application: same as app but for Eff A B
 -- Eff A B is semantically an effectful morphism A → B

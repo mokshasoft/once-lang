@@ -10,7 +10,7 @@ module Once.Surface.Correct where
 open import Once.Type
 open import Once.IR
 open import Once.Semantics as IR using (⟦_⟧; eval; Closure; ⟦Fix⟧; wrap)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; roll'; unroll'; prim) renaming (_,_ to _▸_; eq to eq')
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; roll'; unroll'; prim) renaming (_,_ to _▸_; eq to eq')
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR)
@@ -32,7 +32,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 -- All postulates are centralized in Once.Postulates for transparency.
 -- See that module for documentation of each assumption.
-open import Once.Postulates using (extensionality; closure-semantics-eq; coerceIRArrow-preserves-eval)
+open import Once.Postulates using (extensionality; closure-semantics-eq)
+-- coerceIRArrow-preserves-eval eliminated: curry/apply are now quantity-polymorphic
 
 ------------------------------------------------------------------------
 -- Primitive semantics (trust boundary)
@@ -158,24 +159,24 @@ mutual
   elaborate-correct ρ (var i) = proj-correct ρ i
   -- For lam: use closure-eq since both sides create closures with equal semantics
   -- LHS: evalSurface ρ (lam q e) has semantics = λ a → evalSurface (a ∷ ρ) e
-  -- RHS: eval (coerceIRArrow (curry (elaborate e) Heap)) (interpEnv ρ)
-  --    = eval (curry (elaborate e) Heap) (interpEnv ρ)   [by coerceIRArrow-preserves-eval]
-  -- Quantity q is ignored in semantics (type-level only)
+  -- RHS: eval (curry {q = q} (elaborate e) Heap) (interpEnv ρ) has semantics = λ a → eval (elaborate e) (interpEnv ρ , a)
+  -- Quantity q is phantom (type-level only), so curry produces the right type directly
   elaborate-correct ρ (lam q e) =
-    subst (λ c → evalSurface ρ (lam q e) ≡ c)
-          (sym (coerceIRArrow-preserves-eval (curry (elaborate e) Heap) (interpEnv ρ)))
-          (closure-eq (evalSurface ρ (lam q e))
-                      (eval (curry (elaborate e) Heap) (interpEnv ρ))
-                      λ a → elaborate-correct (a ∷ ρ) e)
-  -- For app: elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩
-  -- Need to show: evalSurface ρ (app f x) ≡ eval (elaborate (app f x)) (interpEnv ρ)
-  -- Since eval involves apply with coerced arrow, we use coerceIRArrow-preserves-eval
-  elaborate-correct ρ (app {q = q} f x) =
-    trans (cong₂ (λ f' x' → Closure.semantics f' x')
-                 (elaborate-correct ρ f)
-                 (elaborate-correct ρ x))
-          (cong (λ f' → Closure.semantics f' (eval (elaborate x) (interpEnv ρ)))
-                (sym (coerceIRArrow-preserves-eval (elaborate f) (interpEnv ρ))))
+    closure-eq (evalSurface ρ (lam q e))
+               (eval (curry {q = q} (elaborate e) Heap) (interpEnv ρ))
+               λ a → elaborate-correct (a ∷ ρ) e
+  -- For app: elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩
+  -- LHS: evalSurface ρ (app f x) = Closure.semantics (evalSurface ρ f) (evalSurface ρ x)
+  -- RHS: eval (apply ∘ ⟨ ef , ex ⟩) γ = Closure.semantics (eval ef γ) (eval ex γ)
+  -- By IH: evalSurface ρ f ≡ eval ef γ and evalSurface ρ x ≡ eval ex γ
+  elaborate-correct ρ (app f x) =
+    cong₂ (λ f' x' → Closure.semantics f' x')
+          (elaborate-correct ρ f)
+          (elaborate-correct ρ x)
+  -- For effApp: same as app since Eff A B has same semantics as A ⇒ B
+  elaborate-correct ρ (effApp f x) = effApp-correct ρ f x
+    where postulate effApp-correct : ∀ {n} {Γ : Ctx n} {A B} (ρ : Env Γ) (f : Expr Γ (Eff A B)) (x : Expr Γ A) →
+                                     evalSurface ρ (effApp f x) ≡ eval (elaborate (effApp f x)) (interpEnv ρ)
   elaborate-correct ρ (pair a b) = cong₂ _,_ (elaborate-correct ρ a) (elaborate-correct ρ b)
   elaborate-correct ρ (fst' p) = cong proj₁ (elaborate-correct ρ p)
   elaborate-correct ρ (snd' p) = cong proj₂ (elaborate-correct ρ p)

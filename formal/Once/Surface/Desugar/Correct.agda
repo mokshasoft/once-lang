@@ -68,9 +68,9 @@ evalSurface S.terminal _ = tt
 evalSurface S.initial ()
 
 -- Exponential (with explicit Closure)
+-- NOTE: code-ptr removed from Closure - it's a compilation artifact, not semantic
 evalSurface (S.curry f) a = record
   { env-addr  = encode a
-  ; code-ptr  = 0
   ; semantics = λ b → evalSurface f (a , b)
   }
 evalSurface S.apply (cl , a) = semantics cl a
@@ -153,8 +153,9 @@ desugar-correct S.initial ()
 -- Exponential (with explicit Closure)
 -- Both eval (curry (desugar f) Heap) and evalSurface (S.curry f) create Closure records.
 -- We prove equality via closure-semantics-eq by showing their semantics are equal.
+-- NOTE: curry is quantity-polymorphic; we use Many since SurfaceIR.curry produces B ⇒ C (= B ⇒[ Many ] C)
 desugar-correct (S.curry f) a = closure-semantics-eq
-  (eval (C.curry (desugar f) C.Heap) a)
+  (eval (C.curry {q = Many} (desugar f) C.Heap) a)
   (evalSurface (S.curry f) a)
   (extensionality (λ b → desugar-correct f (a , b)))
 desugar-correct S.apply (cl , a) = refl

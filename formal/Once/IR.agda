@@ -60,9 +60,12 @@ data IR : Type → Type → Set where
   -- Initial object (Void)
   initial : ∀ {A} → IR Void A
 
-  -- Exponential (A ⇒ B)
-  curry   : ∀ {A B C} → IR (A * B) C → AllocMode → IR A (B ⇒ C)
-  apply   : ∀ {A B} → IR ((A ⇒ B) * A) B
+  -- Exponential (A ⇒[q] B) - quantity-polymorphic
+  -- The quantity q is phantom: it exists only in types, not at runtime.
+  -- This allows elaborating Surface syntax with any quantity annotation
+  -- directly to IR without needing coerceIRArrow.
+  curry   : ∀ {A B C q} → IR (A * B) C → AllocMode → IR A (B ⇒[ q ] C)
+  apply   : ∀ {A B q} → IR ((A ⇒[ q ] B) * A) B
 
   -- Recursive types (Fixed point isomorphism)
   -- Fix F ≅ F (Fix F), witnessed by fold/unfold

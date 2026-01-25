@@ -135,20 +135,20 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   ty-initial : ∀ {Γ A} → Γ ⊢ Void ⟶ A
 
-  -- Curry
+  -- Curry (quantity-polymorphic)
   --
-  --    Γ ⊢ (A * B) ⟶ C
-  -- ─────────────────────
-  --   Γ ⊢ A ⟶ (B ⇒ C)
+  --      Γ ⊢ (A * B) ⟶ C
+  -- ─────────────────────────────
+  --   Γ ⊢ A ⟶ (B ⇒[ q ] C)
   --
-  ty-curry : ∀ {Γ A B C} → Γ ⊢ (A * B) ⟶ C → Γ ⊢ A ⟶ (B ⇒ C)
+  ty-curry : ∀ {Γ A B C q} → Γ ⊢ (A * B) ⟶ C → Γ ⊢ A ⟶ (B ⇒[ q ] C)
 
-  -- Apply
+  -- Apply (quantity-polymorphic)
   --
-  -- ───────────────────────────
-  -- Γ ⊢ ((A ⇒ B) * A) ⟶ B
+  -- ─────────────────────────────────
+  -- Γ ⊢ ((A ⇒[ q ] B) * A) ⟶ B
   --
-  ty-apply : ∀ {Γ A B} → Γ ⊢ ((A ⇒ B) * A) ⟶ B
+  ty-apply : ∀ {Γ A B q} → Γ ⊢ ((A ⇒[ q ] B) * A) ⟶ B
 
   -- Fold (constructor for recursive types)
   --
@@ -254,9 +254,9 @@ round-trip-ir [ f , g ] (inj₁ a) = round-trip-ir f a
 round-trip-ir [ f , g ] (inj₂ b) = round-trip-ir g b
 round-trip-ir terminal x = refl
 round-trip-ir initial ()
-round-trip-ir (curry f _) x = closure-semantics-eq
-  (eval (curry ⌊ ⌈ f ⌉ ⌋ Heap) x)
-  (eval (curry f Heap) x)
+round-trip-ir (curry {q = q} f _) x = closure-semantics-eq
+  (eval (curry {q = q} ⌊ ⌈ f ⌉ ⌋ Heap) x)
+  (eval (curry {q = q} f Heap) x)
   (extensionality (λ b → round-trip-ir f (x , b)))
 round-trip-ir apply x = refl
 round-trip-ir fold x = refl

@@ -558,10 +558,10 @@ fusion-once-correct [ f , g ] (inj₂ b) = fusion-once-correct g b
 fusion-once-correct terminal x = refl
 fusion-once-correct initial ()
 
-fusion-once-correct (curry f _) x =
+fusion-once-correct (curry {q = q} f _) x =
   closure-semantics-eq
-    (eval (curry (fusion-once f) Heap) x)
-    (eval (curry f Heap) x)
+    (eval (curry {q = q} (fusion-once f) Heap) x)
+    (eval (curry {q = q} f Heap) x)
     (extensionality (λ b → fusion-once-correct f (x , b)))
 
 fusion-once-correct apply x = refl

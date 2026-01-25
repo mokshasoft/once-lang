@@ -278,10 +278,10 @@ escape-once-correct [ f , g ] (inj₂ b) = escape-once-correct g b
 escape-once-correct terminal x = refl
 escape-once-correct initial ()
 
-escape-once-correct (curry f _) x =
+escape-once-correct (curry {q = q} f _) x =
   closure-semantics-eq
-    (eval (curry (escape-once f) Heap) x)
-    (eval (curry f Heap) x)
+    (eval (curry {q = q} (escape-once f) Heap) x)
+    (eval (curry {q = q} f Heap) x)
     (extensionality (λ b → escape-once-correct f (x , b)))
 
 escape-once-correct apply x = refl

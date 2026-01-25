@@ -72,7 +72,7 @@ escape-compose [ f , g ] (inr _) = [ f , g ] ∘ inr Stack
 -- Rule 5: apply ∘ ⟨ curry f m₁ , x ⟩ m₂ → apply ∘ ⟨ curry f Stack , x ⟩ Stack
 -- The closure is immediately applied, and the argument pair is immediately
 -- consumed by apply. Neither the closure nor the pair escape.
-escape-compose apply (⟨ curry f _ , x ⟩ _) = apply ∘ ⟨ curry f Stack , x ⟩ Stack
+escape-compose apply (⟨ curry {q = q} f _ , x ⟩ _) = apply ∘ ⟨ curry {q = q} f Stack , x ⟩ Stack
 
 -- Rule 6: apply ∘ ⟨ f , x ⟩ m → apply ∘ ⟨ f , x ⟩ Stack (for non-curry f)
 -- The pair is immediately consumed by apply, regardless of how f produces
@@ -82,9 +82,9 @@ escape-compose apply (⟨ g ∘ h , x ⟩ _) = apply ∘ ⟨ g ∘ h , x ⟩ Sta
 escape-compose apply (⟨ fst , x ⟩ _) = apply ∘ ⟨ fst , x ⟩ Stack
 escape-compose apply (⟨ snd , x ⟩ _) = apply ∘ ⟨ snd , x ⟩ Stack
 escape-compose apply (⟨ [ f , g ] , x ⟩ _) = apply ∘ ⟨ [ f , g ] , x ⟩ Stack
-escape-compose apply (⟨ initial , x ⟩ _) = apply ∘ ⟨ initial , x ⟩ Stack
-escape-compose apply (⟨ apply , x ⟩ _) = apply ∘ ⟨ apply , x ⟩ Stack
-escape-compose apply (⟨ Prim name , x ⟩ _) = apply ∘ ⟨ Prim name , x ⟩ Stack
+escape-compose (apply {q = q}) (⟨ initial , x ⟩ _) = apply {q = q} ∘ ⟨ initial , x ⟩ Stack
+escape-compose (apply {q = q₁}) (⟨ apply {q = q₂} , x ⟩ _) = apply {q = q₁} ∘ ⟨ apply {q = q₂} , x ⟩ Stack
+escape-compose (apply {q = q}) (⟨ Prim name , x ⟩ _) = apply {q = q} ∘ ⟨ Prim name , x ⟩ Stack
 
 -- Rule 7: fold ∘ inl m → fold ∘ inl Stack
 -- The left injection is immediately consumed by fold to construct a Fix value.
@@ -100,7 +100,7 @@ escape-compose fold (inr _) = fold ∘ inr Stack
 
 -- Rules 9-10: terminal discards values (edge cases for dead code)
 escape-compose terminal (⟨ f , g ⟩ _) = terminal ∘ ⟨ f , g ⟩ Stack
-escape-compose terminal (curry f _) = terminal ∘ curry f Stack
+escape-compose terminal (curry {q = q} f _) = terminal ∘ curry {q = q} f Stack
 
 -- Rules 11-12: (f ∘ fst/snd) ∘ ⟨ g , h ⟩ - projection inside composition
 -- The pair is consumed by the projection, even when followed by another function.
@@ -150,7 +150,7 @@ escape-once initial = initial
 
 -- Curry: recurse into body, preserve mode
 -- (Mode may be optimized when this closure is consumed in a composition)
-escape-once (curry f m) = curry (escape-once f) m
+escape-once (curry {q = q} f m) = curry {q = q} (escape-once f) m
 
 -- Apply: no allocation in apply itself
 escape-once apply = apply

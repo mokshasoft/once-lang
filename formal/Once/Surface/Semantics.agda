@@ -9,7 +9,7 @@ module Once.Surface.Semantics where
 
 open import Once.Type
 open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; roll'; unroll'; prim) renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; roll'; unroll'; prim) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -57,11 +57,14 @@ envLookup (_ ∷ ρ) (Fin.suc i) = envLookup ρ i
 evalSurface : ∀ {n} {Γ : Ctx n} {A} → Env Γ → Expr Γ A → ⟦ A ⟧
 
 evalSurface ρ (var i)        = envLookup ρ i
--- Create explicit Closure for lambda (env-addr and code-ptr are placeholders)
+-- Create explicit Closure for lambda (env-addr is placeholder)
 -- Quantity q is ignored in semantics (type-level only)
-evalSurface ρ (lam q e)      = record { env-addr = 0; code-ptr = 0; semantics = λ a → evalSurface (a ∷ ρ) e }
+-- NOTE: code-ptr is not in Closure - it's a compilation artifact, not semantic
+evalSurface ρ (lam q e)      = record { env-addr = 0; semantics = λ a → evalSurface (a ∷ ρ) e }
 -- Apply closure using semantics field
 evalSurface ρ (app f x)      = Closure.semantics (evalSurface ρ f) (evalSurface ρ x)
+-- Effect application: same as app since Eff A B has same semantics as A ⇒ B
+evalSurface ρ (effApp f x)   = Closure.semantics (evalSurface ρ f) (evalSurface ρ x)
 evalSurface ρ (pair a b)     = (evalSurface ρ a , evalSurface ρ b)
 evalSurface ρ (fst' p)       = proj₁ (evalSurface ρ p)
 evalSurface ρ (snd' p)       = proj₂ (evalSurface ρ p)
