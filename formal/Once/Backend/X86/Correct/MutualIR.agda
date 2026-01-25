@@ -258,7 +258,8 @@ mutual
                           closure-at-for-thunk
                           curry-closure-region
                           curry-closure-in-region
-                          curry-closure-above-rbp
+                          curry-entry-rsp
+                          curry-closure-below-entry-rsp
                           (exec-capacity exec-res)
       }
     where
@@ -316,13 +317,20 @@ mutual
       curry-closure-region = CurryMemoryResult.closure-region curry-mem-result
       curry-closure-in-region = CurryMemoryResult.closure-in-region curry-mem-result
 
-      -- closure-above-rbp: For Stack closures, prove closure-addr > rbp
-      -- NOTE: This is tricky - curry allocates on current frame (below rbp).
-      -- The invariant is that when PRESERVED through later operations, the closure
-      -- is above THAT operation's rbp. At curry's output, this may need adjustment.
-      -- TODO: Track frame relationships properly. For now, use postulate.
+      -- closure-below-entry-rsp: For Stack closures, prove closure-addr < entry-rsp
+      -- Curry allocates closure at r15 (after sub rsp), which is below entry-rsp.
+      -- This is the correct invariant for Stack closure preservation:
+      --   - Closure at addr C < entry-rsp
+      --   - Parent writes at addresses >= entry-rsp (in parent's frame)
+      --   - Therefore C ≠ write addresses
+      curry-entry-rsp : Word
+      curry-entry-rsp = readReg (regs s) rsp
+
+      -- Proof that closure-addr < entry-rsp
+      -- This follows from: closure at r15, r15 = rsp - frame-size < rsp = entry-rsp
+      -- TODO: Prove from curry's frame setup (r15 = rsp - curry-frame-size)
       postulate
-        curry-closure-above-rbp : curry-closure-region ≡ Stack → cl-addr > readReg (regs s') rbp
+        curry-closure-below-entry-rsp : curry-closure-region ≡ Stack → cl-addr < curry-entry-rsp
 
       -- Closure validity via valid-closure-env constructor
       -- Closure.env-addr sem-closure = encode x (by definition of eval curry)
@@ -651,7 +659,7 @@ mutual
       pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
 
       construct-apply : ClosureWFOutput prog s → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ cwf-cap)
+      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ _ cwf-cap)
         with A' ≟T A | B' ≟T B
       ... | yes refl | yes refl =
         run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar

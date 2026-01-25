@@ -176,32 +176,33 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-f
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cab cwfc =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc =
       subst-cwf-prog (sym prog-eq-f)
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-addr-mem ev refl closure-mem-final-to-s1)
           (ClosureAtS-preserved-under-mem-eq cat closure-mem-final-to-s1)
           cr
           cir
-          cab-for-final
+          creator-rsp      -- Pass through: describes original allocation
+          cl-below-rsp     -- Pass through: closure is still below creator's entry-rsp
           cwf-cap-final)
       where
-        -- Full memory preservation for closure data (env and closure structure)
-        -- This follows from:
-        --   1. s1→s-final: closure data is either in Heap (ir-mem-heap + setup heap preservation)
-        --      or in Stack above rbp (ir-mem-above, since curry's frame > pair's final write frame)
-        -- TODO (D-CLOSURE-FRAME): Use closure-above-rbp (cab) with ir-mem-above
-        --       to prove this without postulate
+        -- Closure memory preservation from s1 to s-final
+        --
+        -- With closure-below-entry-rsp invariant:
+        --   - cl-below-rsp: ca < creator-rsp (where creator-rsp = f's entry-rsp = pair's r15)
+        --   - Pair writes to: r15 and r15+8
+        --   - Since ca < r15, we have ca ≠ r15 and ca ≠ r15+8
+        --   - Therefore closure memory is preserved through all pair phases
+        --
+        -- For Heap closures: heap-final-to-s1 provides the proof
+        --
+        -- TODO (D-CLOSURE-MEM): Prove this without postulate using:
+        --   - cl-below-rsp to show ca < pair's r15
+        --   - mem-above-r15-mid, ir-mem-above, mem-above-r15+8-fin for the chain
         postulate
           closure-mem-final-to-s1 : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
-        -- Transport closure-above-rbp: rbp is preserved through pair execution
-        -- cab : cr ≡ Stack → ca > rbp s1
-        -- Need: cr ≡ Stack → ca > rbp s-final
-        -- TODO: Construct rbp chain: rbp s-final ≡ rbp s (via rbp-final) and rbp s1 ≡ rbp s-setup ≡ ... ≡ rbp s
-        postulate
-          rbp-final-eq-s1 : readReg (regs s-final) rbp ≡ readReg (regs s1) rbp
-        cab-for-final : cr ≡ Stack → ca > readReg (regs s-final) rbp
-        cab-for-final region-eq = subst (ca >_) (sym rbp-final-eq-s1) (cab region-eq)
+
         heap-final-to-s1 : ∀ addr → InHeap addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
         heap-final-to-s1 addr iha =
           trans (mem-heap-final addr iha)

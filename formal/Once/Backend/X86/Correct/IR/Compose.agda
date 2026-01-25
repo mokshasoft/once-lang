@@ -412,37 +412,28 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
     closure-wf-from-f : ClosureWFOutput prog s3
     closure-wf-from-f with IRStarResultV.ir-closure-wf r1
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cab cwfc =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc =
       subst-cwf-prog (sym prog-eq-f)
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-addr-mem ev refl closure-mem-s3-to-s1)
           (ClosureAtS-preserved-under-mem-eq cat closure-mem-s3-to-s1)
           cr
           cir
-          cab-for-s3
+          creator-rsp      -- Pass through unchanged: describes original allocation
+          cl-below-rsp     -- Pass through unchanged: still valid
           cwf-cap-from-f)
       where
         -- Full memory preservation for closure data (env and closure structure)
         -- This follows from:
         --   1. s1→s2: mem-s1-to-s2 (transfer preserves all memory)
         --   2. s2→s3: closure data is either in Heap (ir-mem-heap) or
-        --             in Stack above rbp (ir-mem-above, since curry's frame > g's frame)
-        -- TODO (D-CLOSURE-FRAME): Use closure-above-rbp (cab) with ir-mem-above
+        --             in Stack below creator-entry-rsp (preserved since compose doesn't write)
+        -- TODO (D-CLOSURE-FRAME): Use closure-below-entry-rsp with stack disjointness
         --       to prove this without postulate
         postulate
           closure-mem-s3-to-s1 : ∀ addr → readMem (memory s3) addr ≡ readMem (memory s1) addr
         postulate
           cwf-cap-from-f : StackCapacity s3 (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
-
-        -- Transport closure-above-rbp: rbp is preserved through IR execution
-        -- cab : cr ≡ Stack → ca > rbp s1
-        -- Need: cr ≡ Stack → ca > rbp s3
-        -- From: ir-rbp r3 : rbp s3 ≡ rbp s2, and rbp-s2-eq-s1 : rbp s2 ≡ rbp s1
-        -- Note: s2-eq : s2 ≡ s2', and rbp-s1-to-s2 is for s2'
-        rbp-s2-eq-s1' : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
-        rbp-s2-eq-s1' = subst (λ s → readReg (regs s) rbp ≡ readReg (regs s1) rbp) (sym s2-eq) rbp-s1-to-s2
-        cab-for-s3 : cr ≡ Stack → ca > readReg (regs s3) rbp
-        cab-for-s3 region-eq = subst (ca >_) (sym (trans (IRStarResultV.ir-rbp r3) rbp-s2-eq-s1')) (cab region-eq)
 
     closure-wf-3 : ClosureWFOutput prog s3
     closure-wf-3 = case closure-wf-from-g of λ where
@@ -693,7 +684,6 @@ run-compose-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix calle
       cwf-for-g = transport-cwf (trans prog-eq-transfer prog-eq-g)
                     (TransferResultV.mem-s1-to-s2 tr)
                     (sym rsp-s2-eq-s1)
-                    (sym rbp-s2-eq-s1)
                     (IRStarResultV.ir-closure-wf r1-v)
 
       -- Step 3: Execute g (RECURSIVE via rec dispatcher)

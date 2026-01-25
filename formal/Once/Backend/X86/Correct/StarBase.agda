@@ -39,7 +39,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          ClosureAtS-preserved-under-heap-eq;
          Region; Stack; Heap; InRegion)
 
-open import Data.Nat using (_>_)
+open import Data.Nat using (_>_; _<_)
 open import Data.List.Properties using (++-assoc)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≢_; cong; subst₂)
@@ -78,36 +78,39 @@ data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
                 (cl-sem-eq : Closure.semantics cl ≡ semantics)
                 (env-valid : ValidAt env env-addr (memory s))
                 (closure-at : ClosureAtS env-addr code-ptr closure-addr (memory s))
-                -- Region tracking (Option B): closure can be Stack or Heap
+                -- Region tracking: closure can be Stack or Heap
                 -- Stack = current codegen (sub rsp), Heap = future heap allocation
                 (closure-region : Region)
                 (closure-in-region : InRegion closure-region closure-addr)
-                -- Stack closures are from caller's frame, above current rbp.
-                -- This enables Stack preservation without postulates:
-                -- If closure-addr > rbp and write-addr ≤ rbp, then closure-addr ≢ write-addr.
-                (closure-above-rbp : closure-region ≡ Stack → closure-addr > readReg (regs s) rbp)
+                -- Stack closure preservation invariant:
+                -- Track the entry-rsp of the IR that created this closure.
+                -- Stack closures are allocated BELOW creator's entry-rsp (in the creator's frame).
+                -- When parent IR writes at addresses >= creator-entry-rsp, the closure is preserved
+                -- because closure-addr < creator-entry-rsp <= write-addresses.
+                (creator-entry-rsp : Word)
+                (closure-below-entry-rsp : closure-region ≡ Stack → closure-addr < creator-entry-rsp)
                 (cwf-cap : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)) →
                 ClosureWFOutput prog s
 
 -- | Transport ClosureWFOutput across program equality and state change.
--- Requires full memory preservation (for ValidAt and ClosureAtS), rsp preservation (for StackCapacity),
--- and rbp preservation (for closure-above-rbp).
+-- Requires full memory preservation (for ValidAt and ClosureAtS) and rsp preservation (for StackCapacity).
+-- The creator-entry-rsp and closure-below-entry-rsp are preserved as-is (they describe the original allocation).
 -- Uses full memory equality to avoid region-to-heap postulate.
 transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   prog1 ≡ prog2 →
   (∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr) →
   readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
-  readReg (regs s2) rbp ≡ readReg (regs s1) rbp →
   ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
-transport-cwf _ _ _ _ no-closure = no-closure
-transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq rbp-eq
-  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region cl-above-rbp cwf-cap) =
+transport-cwf _ _ _ no-closure = no-closure
+transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
+  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region creator-rsp cl-below-rsp cwf-cap) =
   has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq
     (valid-subst-addr-mem env-valid refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closure-at mem-eq)
     cl-region
     cl-in-region
-    (λ region-eq → subst (ca >_) (sym rbp-eq) (cl-above-rbp region-eq))
+    creator-rsp
+    cl-below-rsp  -- Preserved as-is: describes original allocation
     (capacity-preserved-rsp-unchanged s1 s2 _ cwf-cap rsp-eq)
 
 -- | Transport ClosureWFOutput across program equality only (same state).
