@@ -58,6 +58,8 @@ record MachineInterface : Set₁ where
     input-value : State → Word
     -- Output register: where results are placed (rax / x0 / a0)
     output-value : State → Word
+    -- Saved input register: where pair saves the input during evaluation (r14 / x19 / s3)
+    saved-input-value : State → Word
 
     -- Memory operations
     readMem : Memory → Word → Maybe Word
@@ -408,6 +410,7 @@ module IRSpecs
         setup-stack-inv : StackInvariant s₁
         setup-input-valid : ValidAt x (input-value s₁) (memory s₁)
         setup-input-is-encode : input-value s₁ ≡ encode x
+        setup-input-saved : saved-input-value s₁ ≡ encode x  -- Input saved for restoration after f
         setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
         setup-frame-inv : FramePtrInvariant s₁
         -- Execution evidence

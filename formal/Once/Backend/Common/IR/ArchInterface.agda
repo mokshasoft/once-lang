@@ -203,7 +203,10 @@ record ArchCorrectness : Set₂ where
       Preconditions {C} s₁ x (proj₁ (pair-context f g prefix suffix)) (ir-stack-requirement f)
 
     pair-middle : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
-      (prefix suffix : Program) (x : ⟦ C ⟧) (s₁ s₂ : State) (fx : ⟦ A ⟧)
+      (prefix suffix : Program) (x : ⟦ C ⟧) (s s₁ s₂ : State) (fx : ⟦ A ⟧)
+      (setup : let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
+                   offset-f = program-length (proj₁ (pair-context f g prefix suffix))
+               in PairSpecs.SetupPost f g prog offset-f s s₁ x)
       (f-corr : IRCorrectness f (proj₁ (pair-context f g prefix suffix) ++ₚ compile f ++ₚ proj₁ (proj₂ (pair-context f g prefix suffix))) s₁ s₂ x (program-length (proj₁ (pair-context f g prefix suffix)))) →
       let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
           offset-g = program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))))

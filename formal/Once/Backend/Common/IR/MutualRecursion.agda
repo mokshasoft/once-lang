@@ -147,7 +147,7 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 3: Run f in context
           (s₂ , f-corr) = ir-correct f prefix-f suffix-f x s₁ f-pre no-apply-wf
           -- Step 4: Middle phase (store f's result, restore input)
-          (s₃ , middle) = pair-middle f g prefix suffix x s₁ s₂ (eval f x) f-corr
+          (s₃ , middle) = pair-middle f g prefix suffix x s s₁ s₂ (eval f x) setup f-corr
           -- Step 5: Get g's preconditions
           g-pre = pair-middle-enables-g f g prefix suffix x s₁ s₂ s₃ (eval f x) middle
           -- Step 6: Run g in context

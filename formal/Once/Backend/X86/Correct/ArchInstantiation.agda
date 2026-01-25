@@ -107,6 +107,7 @@ X86-MachineInterface = record
   ; memory = memory
   ; input-value = λ s → readReg (regs s) rdi   -- X86: input in rdi
   ; output-value = λ s → readReg (regs s) rax  -- X86: output in rax
+  ; saved-input-value = λ s → readReg (regs s) r14  -- X86: pair saves input in r14
   ; readMem = readMem
   ; program-length = length  -- Program = List Instr for X86
   ; empty-program = []       -- Empty list for X86
@@ -1129,6 +1130,10 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
     setup-rdi-is-encode : readReg (regs s-setup) rdi ≡ encode x
     setup-rdi-is-encode = trans (PairSetupResultV.rdi-setup-raw setup-res) input-is-encode
 
+    -- Saved input (r14) is encode: pair-setup copies rdi to r14
+    setup-r14-is-encode : readReg (regs s-setup) r14 ≡ encode x
+    setup-r14-is-encode = trans (PairSetupResultV.r14-setup setup-res) input-is-encode
+
     -- Input validity: rdi preserved, heap preserved
     input-valid-setup : ValidAt x (readReg (regs s-setup) rdi) (memory s-setup)
     input-valid-setup = valid-subst-heap-preserved input-valid
@@ -1185,6 +1190,7 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       ; setup-stack-inv = PairSetupResultV.stack-inv-setup setup-res
       ; setup-input-valid = input-valid-setup
       ; setup-input-is-encode = setup-rdi-is-encode
+      ; setup-input-saved = setup-r14-is-encode
       ; setup-capacity = cap-f
       ; setup-frame-inv = frame-inv-setup
       ; setup-star = setup-star
@@ -1215,13 +1221,17 @@ x86-pair-setup-enables-f f g prefix suffix x s s₁ setup = record
 -- Pair middle: stores f's result and restores input for g
 -- Executes 2 instructions (mov [r15], rax; mov rdi, r14) after f completes
 x86-pair-middle : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
-  (prefix suffix : Program) (x : ⟦ C ⟧) (s₁ s₂ : State) (fx : ⟦ A ⟧)
+  (prefix suffix : Program) (x : ⟦ C ⟧) (s s₁ s₂ : State) (fx : ⟦ A ⟧)
+  (setup : let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+               ctx = make-pair-context f g prefix suffix
+               offset-f = length (PairContext.prefix-f ctx)
+           in PairSpecs.SetupPost f g prog offset-f s s₁ x)
   (f-corr : IRCorrectness f (proj₁ (x86-pair-context f g prefix suffix) ++ compile-x86 f ++ proj₁ (proj₂ (x86-pair-context f g prefix suffix))) s₁ s₂ x (length (proj₁ (x86-pair-context f g prefix suffix)))) →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
       ctx = make-pair-context f g prefix suffix
       offset-g = length (PairContext.prefix-g ctx)
   in ∃[ s₃ ] PairSpecs.MiddlePost f g prog offset-g s₁ s₂ s₃ x fx
-x86-pair-middle {A} {B} {C} f g prefix suffix x s₁ s₂ fx f-corr = s₃ , middle-post
+x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s₃ , middle-post
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -1277,10 +1287,21 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s₁ s₂ fx f-corr = s₃ , mid
       (PairMiddleStarResult.rsp-mid mid-result)
       (PairMiddleStarResult.rbp-mid mid-result)
 
+    -- Input is encode: rdi(s₃) = r14(s₂) = r14(s₁) = encode x
+    -- Chain: middle does "mov rdi, r14", f preserves r14, setup saved input to r14
+    input-is-encode₃ : readReg (regs s₃) rdi ≡ encode x
+    input-is-encode₃ =
+      let -- rdi(s₃) = r14(s₂): middle instruction "mov rdi, r14"
+          rdi-s₃-eq-r14-s₂ = PairMiddleStarResult.rdi-mid mid-result
+          -- r14(s₂) = r14(s₁): f preserves r14 (callee-saved)
+          r14-s₂-eq-r14-s₁ = proj₁ (IRCorrectness.exec-saved-regs f-corr)
+          -- r14(s₁) = encode x: setup saved input to r14
+          r14-s₁-eq-encode = PairSpecs.SetupPost.setup-input-saved setup
+      in trans rdi-s₃-eq-r14-s₂ (trans r14-s₂-eq-r14-s₁ r14-s₁-eq-encode)
+
     -- Remaining semantic properties (require information not yet threaded through)
     postulate
       input-valid₃ : ValidAt x (readReg (regs s₃) rdi) (memory s₃)
-      input-is-encode₃ : readReg (regs s₃) rdi ≡ encode x
       cap₃ : StackCapacity s₃ (ir-stack-requirement g)
       mid-heap-preserved : X86-HeapPreserved s₂ s₃
       mid-code-preserved : X86-CodePreserved s₂ s₃
