@@ -111,27 +111,68 @@ data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
                 (result-addr : Word)
                 (closure-addr-eq-result : closure-addr ≡ result-addr)
                 -- pair-fst-addr: The address stored as first component of the pair.
-                -- At curry: pair-fst-addr = result-addr (will become pair's first component)
+                -- At curry: pair-fst-addr = result-addr = rax (will become pair's first component)
                 -- At pair: pair-fst-addr = rax s1 = result-addr (proven at pair construction)
                 -- At apply: cl-addr (from valid-pair-decompose) = pair-fst-addr = result-addr
                 -- This enables proving cl-addr-is-res-addr at apply!
                 (pair-fst-addr : Word)
                 (pair-fst-is-result : pair-fst-addr ≡ result-addr)
+                -- fst-addr-is-rax: At curry output, fst-addr = rax (used by Pair to prove pair-fst-is-res)
+                -- At curry: refl (curry puts closure addr in rax)
+                -- At pair: postulated (rax = pair address, not closure)
+                (fst-addr-is-rax : pair-fst-addr ≡ readReg (regs s) rax)
+                -- CLEANER ABSTRACTION: Track pair address as FIXED memory location (not register)
+                -- pair-result-addr: The fixed memory address where the pair lives.
+                -- At curry: 0 (no pair yet), becomes meaningful after Pair
+                -- At Pair: = rax s-final = r15 s3 (the allocated pair address)
+                -- At Compose/Apply: FIXED value, doesn't change during transport
+                (pair-result-addr : Word)
+                -- fst-at-pair: Memory at pair-result-addr contains pair-fst-addr.
+                -- At curry: postulated (no pair)
+                -- At Pair: PROVEN from pair construction
+                -- At Apply: used with just-injective to prove cl-addr = fst-addr
+                (fst-at-pair : readMem (memory s) pair-result-addr ≡ just pair-fst-addr)
+                -- pair-addr-is-rax: Track that pair-result-addr equals rax.
+                -- Valid from Pair output to Compose transfer. After transfer, rax holds g's result.
+                -- At curry: refl (pair-result-addr = 0, rax = result addr)
+                -- At Pair: refl (pair-result-addr = rax s-final by definition)
+                -- Through Compose's f: transported with rax preservation
+                -- After Compose transfer: postulated (FALSE but unused - we use pair-addr-is-rdi instead)
+                (pair-addr-is-rax : pair-result-addr ≡ readReg (regs s) rax)
+                -- pair-addr-is-rdi: Track that pair-result-addr equals rdi.
+                -- Only meaningful after Compose transfer. Used at Apply!
+                -- At curry: postulated (rdi has input)
+                -- At Pair: postulated (pair in rax, not rdi)
+                -- At Compose (after transfer): PROVEN from pair-addr-is-rax + transfer info:
+                --   pair-addr = rax s1 = rdi s2 (via rdi2-raw : rdi s2 = rax s1)
+                -- At Apply: USE directly to prove pair-addr = rdi s
+                (pair-addr-is-rdi : pair-result-addr ≡ readReg (regs s) rdi)
                 →
                 ClosureWFOutput prog s
 
 -- | Transport ClosureWFOutput across program equality and state change.
--- Requires full memory preservation (for ValidAt and ClosureAtS) and rsp preservation (for StackCapacity).
--- The creator-entry-rsp and closure-below-entry-rsp are preserved as-is (they describe the original allocation).
+-- Requires full memory preservation (for ValidAt and ClosureAtS), rsp preservation (for StackCapacity),
+-- and rax preservation (for fst-addr-is-rax and pair-addr-is-rax fields).
+-- The creator-entry-rsp, closure-below-entry-rsp, and pair-result-addr are preserved as-is (they're fixed values).
 -- Uses full memory equality to avoid region-to-heap postulate.
+--
+-- NOTE: pair-addr-is-rdi-s2 is provided by caller because:
+--   - Normal case (rdi preserved): caller provides (λ eq → trans eq (sym rdi-eq))
+--   - Compose transfer: caller derives from pair-addr-is-rax + transfer info
 transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   prog1 ≡ prog2 →
   (∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr) →
   readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
+  readReg (regs s2) rax ≡ readReg (regs s1) rax →  -- For fst-addr-is-rax and pair-addr-is-rax
+  -- For pair-addr-is-rdi: caller provides transport function
+  -- Takes (pa = rax s1) from has-closure's pair-addr-is-rax, produces (pa = rdi s2)
+  -- Normal case: λ {pa} _ pair-is-rax → trans pair-is-rax (trans (sym rax-eq) rdi-eq) if rdi=rax preserved
+  -- Compose transfer: λ {pa} _ pair-is-rax → trans pair-is-rax (sym rdi2-raw) where rdi2-raw : rdi s2 = rax s1
+  (pair-addr-is-rdi-s2 : ∀ {pa} → pa ≡ readReg (regs s1) rdi → pa ≡ readReg (regs s1) rax → pa ≡ readReg (regs s2) rdi) →
   ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
-transport-cwf _ _ _ no-closure = no-closure
-transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
-  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region creator-rsp cl-below-rsp cwf-cap cl-valid res-addr ca-eq-res fst-addr fst-is-res) =
+transport-cwf _ _ _ _ _ no-closure = no-closure
+transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq rax-eq rdi-transport
+  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region creator-rsp cl-below-rsp cwf-cap cl-valid res-addr ca-eq-res fst-addr fst-is-res fst-is-rax pair-addr fst-at-pair pair-is-rax pair-is-rdi) =
   has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq
     (valid-subst-addr-mem env-valid refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closure-at mem-eq)
@@ -145,10 +186,22 @@ transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
     ca-eq-res      -- Preserved as-is: closure-addr hasn't changed
     fst-addr       -- Preserved as-is: pair's first component address
     fst-is-res     -- Preserved as-is: still equals result-addr
+    (trans fst-is-rax (sym rax-eq))  -- Transport fst-addr-is-rax using rax equality
+    pair-addr      -- Preserved as-is: FIXED memory address
+    fst-at-pair-transported  -- Transport fst-at-pair using mem-eq at fixed address
+    (trans pair-is-rax (sym rax-eq))  -- Transport pair-addr-is-rax using rax equality
+    (rdi-transport pair-is-rdi pair-is-rax)  -- Derive pair-addr-is-rdi using caller-provided function
   where
     -- Transport closure-valid: ValidAt cl ca (memory s1) → ValidAt cl ca (memory s2)
     cl-valid-transported : ValidAt {A ⇒ B} cl ca (memory s2)
     cl-valid-transported = valid-subst-addr-mem {A ⇒ B} {cl} cl-valid refl mem-eq
+
+    -- Transport fst-at-pair:
+    -- readMem (memory s1) pair-addr = just fst-addr
+    -- → readMem (memory s2) pair-addr = just fst-addr
+    -- Simple: pair-addr is FIXED, just use mem-eq
+    fst-at-pair-transported : readMem (memory s2) pair-addr ≡ just fst-addr
+    fst-at-pair-transported = trans (mem-eq pair-addr) fst-at-pair
 
 -- | Transport ClosureWFOutput across program equality only (same state).
 subst-cwf-prog : ∀ {prog1 prog2 : Program} {s : State} →

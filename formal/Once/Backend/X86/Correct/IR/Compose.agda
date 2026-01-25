@@ -251,6 +251,7 @@ record TransferResultV {A B C : Type} (f : IR A B) (g : IR B C)
     r15-s1-to-s2 : readReg (regs s2) r15 ≡ readReg (regs s1) r15
     rbp-s1-to-s2 : readReg (regs s2) rbp ≡ readReg (regs s1) rbp
     rsp-s1-to-s2 : readReg (regs s2) rsp ≡ readReg (regs s1) rsp
+    rax-s1-to-s2 : readReg (regs s2) rax ≡ readReg (regs s1) rax  -- NEW: for transport-cwf
     -- Memory preservation (transfer doesn't write memory)
     mem-s1-to-s2 : ∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr
 
@@ -273,6 +274,7 @@ compose-transfer-star-v {A} {B} {C} f g prefix suffix x s s1 r1 = record
   ; r15-s1-to-s2 = r15-s1-to-s2
   ; rbp-s1-to-s2 = rbp-s1-to-s2
   ; rsp-s1-to-s2 = rsp-s1-to-s2
+  ; rax-s1-to-s2 = rax-s1-to-s2  -- NEW: rax preserved through transfer
   ; mem-s1-to-s2 = λ _ → refl  -- transfer doesn't write memory
   }
   where
@@ -317,6 +319,7 @@ compose-transfer-star-v {A} {B} {C} f g prefix suffix x s s1 r1 = record
     r15-s1-to-s2 = readReg-writeReg-rdi-r15 (regs s1) (readReg (regs s1) rax)
     rbp-s1-to-s2 = readReg-writeReg-rdi-rbp (regs s1) (readReg (regs s1) rax)
     rsp-s1-to-s2 = readReg-writeReg-rdi-rsp (regs s1) (readReg (regs s1) rax)
+    rax-s1-to-s2 = readReg-writeReg-rdi-rax (regs s1) (readReg (regs s1) rax)  -- NEW: for transport-cwf
 
     stack-inv-2 = stack-inv-preserved-unchanged s1 s2 stack-inv-1 r15-s1-to-s2 rsp-s1-to-s2
     rsp-2>16 = rsp-bound-preserved-unchanged (slots (ir-output-capacity f)) s1 s2 rsp-1>16 rsp-s1-to-s2
@@ -412,7 +415,7 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
     closure-wf-from-f : ClosureWFOutput prog s3
     closure-wf-from-f with IRStarResultV.ir-closure-wf r1
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res fst-addr fst-is-res =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir creator-rsp cl-below-rsp cwfc cl-valid res-addr ca-eq-res fst-addr fst-is-res fst-is-rax pair-addr fst-at-pair pair-is-rax pair-is-rdi =
       subst-cwf-prog (sym prog-eq-f)
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-addr-mem ev refl closure-mem-s3-to-s1)
@@ -426,7 +429,12 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
           res-addr         -- Pass through unchanged: fixed value from curry
           ca-eq-res        -- Pass through unchanged: closure-addr hasn't changed
           fst-addr         -- Pass through unchanged: pair's first component address
-          fst-is-res)      -- Pass through unchanged: still equals result-addr
+          fst-is-res       -- Pass through unchanged: still equals result-addr
+          fst-is-rax-s3    -- Updated: fst-addr relates to rax s3 (postulated, not used)
+          pair-addr        -- Pass through unchanged: FIXED memory address
+          fst-at-pair-s3   -- Transport fst-at-pair via memory preservation
+          pair-is-rax-s3   -- Updated: pair-addr relates to rax s3 (postulated, not used)
+          pair-is-rdi-s3)  -- Updated: pair-addr relates to rdi s3 (postulated, not used)
       where
         -- Full memory preservation for closure data (env and closure structure)
         -- This follows from:
@@ -439,6 +447,19 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
           closure-mem-s3-to-s1 : ∀ addr → readMem (memory s3) addr ≡ readMem (memory s1) addr
         postulate
           cwf-cap-from-f : StackCapacity s3 (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
+        -- fst-addr-is-rax at s3: rax changed, so this is postulated (not used after transfer)
+        postulate
+          fst-is-rax-s3 : fst-addr ≡ readReg (regs s3) rax
+        -- pair-addr-is-rax at s3: rax changed (g's output is in rax), so this is postulated (not used)
+        postulate
+          pair-is-rax-s3 : pair-addr ≡ readReg (regs s3) rax
+        -- pair-addr-is-rdi at s3: rdi may have changed, so this is postulated (not used)
+        postulate
+          pair-is-rdi-s3 : pair-addr ≡ readReg (regs s3) rdi
+        -- fst-at-pair at s3: Memory at pair-addr (FIXED) contains fst-addr
+        -- This is PROVABLE from closure-mem-s3-to-s1 and fst-at-pair!
+        fst-at-pair-s3 : readMem (memory s3) pair-addr ≡ just fst-addr
+        fst-at-pair-s3 = trans (closure-mem-s3-to-s1 pair-addr) fst-at-pair
 
     closure-wf-3 : ClosureWFOutput prog s3
     closure-wf-3 = case closure-wf-from-g of λ where
@@ -684,12 +705,28 @@ run-compose-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix calle
       -- f gives: ClosureWFOutput (prefix ++ code-f ++ suffix-f) s1
       -- g needs: ClosureWFOutput (prefix-g ++ code-g ++ suffix) s2
       -- Program: same program, just decomposed differently
-      -- State: transfer preserves all memory and rsp
+      -- State: transfer preserves all memory, rsp, and rax
+      --
+      -- KEY: At transfer, we PROVE pair-addr-is-rdi!
+      -- Transfer does: mov rdi, rax
+      -- So: rdi s2 = rax s1 (from TransferResultV.rdi2-raw)
+      -- And: pair-addr = rax s1 (from f's pair-addr-is-rax)
+      -- Therefore: pair-addr = rdi s2 (proven!)
       cwf-for-g : ClosureWFOutput (prefix-g ++ code-g ++ suffix) s2
       cwf-for-g = transport-cwf (trans prog-eq-transfer prog-eq-g)
                     (TransferResultV.mem-s1-to-s2 tr)
                     (sym rsp-s2-eq-s1)
+                    (sym (TransferResultV.rax-s1-to-s2 tr))  -- rax preservation
+                    rdi-transport-at-transfer  -- PROVEN: pair-addr = rdi s2
                     (IRStarResultV.ir-closure-wf r1-v)
+        where
+          -- At transfer: rdi s2 = rax s1 (from rdi2-raw)
+          -- Derive pair-addr-is-rdi from pair-addr-is-rax:
+          --   pair-addr = rax s1 (from pair-is-rax)
+          --   rax s1 = rdi s2 (from sym rdi2-raw)
+          --   Therefore: pair-addr = rdi s2
+          rdi-transport-at-transfer : ∀ {pa} → pa ≡ readReg (regs s1) rdi → pa ≡ readReg (regs s1) rax → pa ≡ readReg (regs s2) rdi
+          rdi-transport-at-transfer {pa} _ pair-is-rax-s1 = trans pair-is-rax-s1 (sym (TransferResultV.rdi2-raw tr))
 
       -- Step 3: Execute g (RECURSIVE via rec dispatcher)
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)

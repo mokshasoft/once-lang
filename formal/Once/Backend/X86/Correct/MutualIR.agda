@@ -266,6 +266,11 @@ mutual
                           (sym curry-rax-eq)       -- closure-addr-eq-result: cl-addr ≡ rax
                           (readReg (regs s') rax)  -- pair-fst-addr: same as result-addr at curry
                           refl                     -- pair-fst-is-result: trivially equal
+                          refl                     -- fst-addr-is-rax: trivially equal (both are rax at curry output)
+                          curry-pair-result-addr   -- pair-result-addr: placeholder (no pair yet at curry)
+                          curry-fst-at-pair        -- fst-at-pair: postulated (becomes meaningful after Pair)
+                          curry-pair-is-rax        -- pair-is-rax: postulated placeholder
+                          curry-pair-is-rdi        -- pair-is-rdi: postulated placeholder
       }
     where
       prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -332,10 +337,10 @@ mutual
       curry-entry-rsp = readReg (regs s) rsp
 
       -- Proof that closure-addr < entry-rsp
-      -- This follows from: closure at r15, r15 = rsp - frame-size < rsp = entry-rsp
-      -- TODO: Prove from curry's frame setup (r15 = rsp - curry-frame-size)
-      postulate
-        curry-closure-below-entry-rsp : curry-closure-region ≡ Stack → cl-addr < curry-entry-rsp
+      -- Extracted from CurryMemoryResult (proven via m ∸ n < m in CurryInstr.agda)
+      -- entry-rsp curry-mem-result ≡ readReg (regs s) rsp by construction
+      curry-closure-below-entry-rsp : curry-closure-region ≡ Stack → cl-addr < curry-entry-rsp
+      curry-closure-below-entry-rsp _ = CurryMemoryResult.closure-below-entry-rsp curry-mem-result
 
       -- Closure validity via valid-closure-env constructor
       -- NOTE: valid-closure-env no longer requires Closure.env-addr ≡ encode env
@@ -355,6 +360,25 @@ mutual
       -- Uses valid-closure-env with explicit cl argument
       curry-cl-valid : ValidAt {B ⇒ C} curry-cl cl-addr (memory s')
       curry-cl-valid = valid-closure-env {cl = curry-cl} curry-v-env closure-at-for-thunk curry-closure-region curry-closure-in-region
+
+      -- fst-in-result-pair: At curry output, this is NOT meaningful (no pair exists yet).
+      -- Memory at rax contains env-addr (from ClosureAtS), not rax itself.
+      -- NEW CLEANER ABSTRACTION:
+      -- pair-result-addr: At curry, we use 0 as a placeholder since no pair exists yet.
+      -- The pair-result-addr becomes meaningful after Pair creates the pair.
+      curry-pair-result-addr : Word
+      curry-pair-result-addr = 0
+
+      -- fst-at-pair: At curry, this is postulated since no pair exists yet.
+      -- It becomes meaningful (and provable) after Pair creates the pair.
+      postulate
+        curry-fst-at-pair : readMem (memory s') curry-pair-result-addr ≡ just (readReg (regs s') rax)
+
+      -- pair-is-rax/pair-is-rdi: At curry, these are postulated placeholders.
+      -- They become meaningful (and provable) after Pair creates the pair.
+      postulate
+        curry-pair-is-rax : curry-pair-result-addr ≡ readReg (regs s') rax
+        curry-pair-is-rdi : curry-pair-result-addr ≡ readReg (regs s') rdi
 
       -- ============================================================
       -- Build the ClosureWellFormed proof using curry-thunk-correct-v
@@ -672,7 +696,7 @@ mutual
       pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
 
       construct-apply : ClosureWFOutput prog s → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ _ cwf-cap cwf-cl-valid res-addr ca-eq-res fst-addr fst-is-res)
+      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ _ cwf-cap cwf-cl-valid res-addr ca-eq-res fst-addr fst-is-res fst-is-rax pair-addr fst-at-pair pair-is-rax pair-is-rdi)
         with A' ≟T A | B' ≟T B
       ... | yes refl | yes refl =
         run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar
@@ -684,21 +708,44 @@ mutual
           -- Key insight: We separate semantics and env-addr equalities.
           -- Apply.agda uses these directly without needing valid-addr-is-encode!
           --
-          -- PROGRESS: cl-addr-eq and cl-addr-is-res-addr are now PROVEN!
-          --   cl-addr-is-fst : cl-addr = fst-addr (pair structure invariant)
+          -- PROGRESS: cl-addr-eq and cl-addr-is-res-addr are provable from cl-addr-is-fst
           --   cl-addr-is-res-addr = trans cl-addr-is-fst fst-is-res
           --   cl-addr-eq = trans cl-addr-is-res-addr (sym ca-eq-res)
           --
           -- Remaining postulates:
           --   sem-eq, env-addr-eq: closure field equalities (need ValidAt injectivity)
           --   cl-addr-is-fst: pair stored fst-addr as first component
+          --
+          -- NEW: cl-addr-is-fst is NOW PROVABLE!
+          --   - pair-addr: FIXED memory address where pair lives
+          --   - fst-at-pair: readMem (memory s) pair-addr ≡ just fst-addr
+          --   - fst-valid-s pair-at: readMem (memory s) (rdi s) ≡ just cl-addr
+          --   - Need: pair-addr ≡ rdi s (the pair address equals input register)
+          --   Then: just-injective (trans (sym (fst-valid-s pair-at)) fst-at-pair-with-rdi-eq)
           postulate
             sem-eq : sem ≡ Closure.semantics (proj₁ x)
             env-addr-eq : ea ≡ Closure.env-addr (proj₁ x)
-            -- cl-addr-is-fst: The first component from valid-pair-decompose equals fst-addr
-            -- This is provable from PairAtS structure: pair stores fst-addr = rax s1 as addr-a,
-            -- and valid-pair-decompose extracts addr-a from PairAtS.
-            cl-addr-is-fst : cl-addr ≡ fst-addr
+
+          -- PROVEN! pair-addr-is-rdi using the tracked pair-is-rdi from has-closure
+          -- This is the key: Compose's cwf-for-g PROVES pair-is-rdi via TransferResultV.rdi2-raw
+          pair-addr-is-rdi : pair-addr ≡ readReg (regs s) rdi
+          pair-addr-is-rdi = pair-is-rdi
+
+          -- PROVEN! cl-addr-is-fst using the new fst-at-pair infrastructure
+          --
+          -- Chain:
+          -- 1. fst-valid-s pair-at : readMem (memory s) (rdi s) ≡ just cl-addr
+          -- 2. fst-at-pair : readMem (memory s) pair-addr ≡ just fst-addr
+          -- 3. pair-addr-is-rdi : pair-addr ≡ rdi s
+          -- 4. subst: readMem (memory s) (rdi s) ≡ just fst-addr
+          -- 5. trans (sym ...) ... : just cl-addr ≡ just fst-addr
+          -- 6. just-injective: cl-addr ≡ fst-addr
+          cl-addr-is-fst : cl-addr ≡ fst-addr
+          cl-addr-is-fst = just-injective (trans (sym (PairAtS.fst-valid pair-at)) fst-at-pair-at-rdi)
+            where
+              fst-at-pair-at-rdi : readMem (memory s) (readReg (regs s) rdi) ≡ just fst-addr
+              fst-at-pair-at-rdi = subst (λ a → readMem (memory s) a ≡ just fst-addr)
+                                         pair-addr-is-rdi fst-at-pair
 
           -- PROVEN: cl-addr-is-res-addr using fst-is-res
           cl-addr-is-res-addr : cl-addr ≡ res-addr

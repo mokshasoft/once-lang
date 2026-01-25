@@ -109,6 +109,10 @@ record CurryMemoryResult {A B C : Type} (f : IR (A * B) C)
     -- Region: depends on AllocMode (Stack or Heap)
     closure-region : Region
     closure-in-region : InRegion closure-region closure-addr
+    -- Entry rsp for frame proofs (input state's rsp before curry execution)
+    entry-rsp : ℕ
+    -- Proof that closure-addr < entry-rsp (closure allocated below entry rsp)
+    closure-below-entry-rsp : closure-addr < entry-rsp
 
 open CurryMemoryResult public
 
@@ -188,6 +192,8 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     ; code-ptr-is-thunk = refl
     ; closure-region = Stack
     ; closure-in-region = proj₁ write-addrs-in-stack
+    ; entry-rsp = orig-rsp
+    ; closure-below-entry-rsp = closure-addr-below-entry-rsp
     }
   where
     len-f = compile-length f
@@ -225,6 +231,21 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- new-rsp uses ir-rsp-delta to avoid hardcoding
     new-rsp : Word
     new-rsp = orig-rsp ∸ slots (ir-rsp-delta (curry f))
+
+    -- Proof that closure-addr (= new-rsp) < entry-rsp (= orig-rsp)
+    -- Uses m ∸ n < m when both m > 0 and n > 0
+    closure-addr-below-entry-rsp : new-rsp < orig-rsp
+    closure-addr-below-entry-rsp = m∸n<m-when-positive orig-rsp (slots (ir-rsp-delta (curry f))) orig-rsp>0 slots>0
+      where
+        -- Helper for m ∸ n < m when m > 0 and n > 0
+        m∸n<m-when-positive : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+        m∸n<m-when-positive (suc m') (suc n') _ _ = s≤s (Data.Nat.Properties.m∸n≤m m' n')
+        -- orig-rsp > 0 follows from rsp-bound: orig-rsp > slots (...) ≥ 16 > 0
+        orig-rsp>0 : orig-rsp > 0
+        orig-rsp>0 = <-trans (s≤s z≤n) rsp-bound
+        -- slots (ir-rsp-delta (curry f)) > 0 since it equals 16 (2 slots * 8)
+        slots>0 : slots (ir-rsp-delta (curry f)) > 0
+        slots>0 = s≤s z≤n  -- 1 ≤ 16
 
     -- The 7 instructions that actually execute
     i0 : Instr
