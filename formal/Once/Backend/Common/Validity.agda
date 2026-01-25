@@ -161,9 +161,14 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
   --   1. Closure.env-addr cl ≡ encode env  (by eval definition for curry)
   --   2. ValidAt env env-addr m            (env validity from input)
   --   3. ClosureAtS layout                 (from memory writes)
+  --   4. env-addr ≡ encode env             (runtime address = encoded value)
+  -- The fourth constraint enables valid-closure-decompose to be proven:
+  -- pattern matching gives env-addr, and with (1) + (4) we derive
+  -- env-addr = encode env = Closure.env-addr cl, so ClosureAtS can be retyped.
   valid-closure-env : ∀ {A B E} {cl : Closure A B} {env : ⟦ E ⟧}
                       {env-addr code-ptr closure-addr : Word} {m : Memory} →
     Closure.env-addr cl ≡ encode env →  -- semantic property (refl for curry)
+    env-addr ≡ encode env →              -- runtime address = encoded value
     ValidAt env env-addr m →             -- env validity at runtime address
     ClosureAtS env-addr code-ptr closure-addr m →  -- memory layout
     ValidAt {A ⇒ B} cl closure-addr m
@@ -178,6 +183,7 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
   valid-eff-env : ∀ {A B E} {cl : Closure A B} {env : ⟦ E ⟧}
                   {env-addr code-ptr closure-addr : Word} {m : Memory} →
     Closure.env-addr cl ≡ encode env →
+    env-addr ≡ encode env →
     ValidAt env env-addr m →
     ClosureAtS env-addr code-ptr closure-addr m →
     ValidAt {Eff A B} cl closure-addr m
@@ -217,14 +223,14 @@ valid-subst-addr-mem (valid-inr vb inrS) refl mem-eq =
             (InrAtS-preserved-under-mem-eq inrS mem-eq)
 valid-subst-addr-mem (valid-closure closS) refl mem-eq =
   valid-closure (ClosureAtS-preserved-under-mem-eq closS mem-eq)
-valid-subst-addr-mem (valid-closure-env sem-eq venv closS) refl mem-eq =
-  valid-closure-env sem-eq
+valid-subst-addr-mem (valid-closure-env sem-eq addr-eq venv closS) refl mem-eq =
+  valid-closure-env sem-eq addr-eq
     (valid-subst-addr-mem venv refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closS mem-eq)
 valid-subst-addr-mem (valid-eff closS) refl mem-eq =
   valid-eff (ClosureAtS-preserved-under-mem-eq closS mem-eq)
-valid-subst-addr-mem (valid-eff-env sem-eq venv closS) refl mem-eq =
-  valid-eff-env sem-eq
+valid-subst-addr-mem (valid-eff-env sem-eq addr-eq venv closS) refl mem-eq =
+  valid-eff-env sem-eq addr-eq
     (valid-subst-addr-mem venv refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closS mem-eq)
 valid-subst-addr-mem (valid-fix vx) refl mem-eq =
@@ -279,7 +285,7 @@ valid-arrow-to-eff :
   ValidAt {A ⇒ B} cl addr m →
   ValidAt {Eff A B} cl addr m
 valid-arrow-to-eff (valid-closure closS) = valid-eff closS
-valid-arrow-to-eff (valid-closure-env sem-eq venv closS) = valid-eff-env sem-eq venv closS
+valid-arrow-to-eff (valid-closure-env sem-eq addr-eq venv closS) = valid-eff-env sem-eq addr-eq venv closS
 
 ------------------------------------------------------------------------
 -- ValidAt Interface (for compatibility with abstract proofs)

@@ -247,17 +247,17 @@ valid-subst-heap-preserved {A + B} (valid-inr {b = b} {addr-b = addr-b} {addr = 
 valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure {code-ptr = cp} {addr = addr} closS) refl heap-eq =
   let heap-proof = valid-in-heap (valid-closure {cl = cl} {code-ptr = cp} closS)
   in valid-closure (ClosureAtS-preserved-under-heap-eq closS heap-proof heap-eq)
-valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env {E = E} {env = env} {env-addr = ea} {code-ptr = cp} {closure-addr = addr} sem-eq venv closS) refl heap-eq =
-  let heap-proof = valid-in-heap (valid-closure-env {A} {B} {E} {cl} {env} sem-eq venv closS)
-  in valid-closure-env sem-eq
+valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env {E = E} {env = env} {env-addr = ea} {code-ptr = cp} {closure-addr = addr} sem-eq addr-eq venv closS) refl heap-eq =
+  let heap-proof = valid-in-heap (valid-closure-env {A} {B} {E} {cl} {env} sem-eq addr-eq venv closS)
+  in valid-closure-env sem-eq addr-eq
        (valid-subst-heap-preserved venv refl heap-eq)
        (ClosureAtS-preserved-under-heap-eq closS heap-proof heap-eq)
 valid-subst-heap-preserved {Eff A B} {cl} (valid-eff {code-ptr = cp} {addr = addr} closS) refl heap-eq =
   let heap-proof = valid-in-heap (valid-eff {cl = cl} {code-ptr = cp} closS)
   in valid-eff (ClosureAtS-preserved-under-heap-eq closS heap-proof heap-eq)
-valid-subst-heap-preserved {Eff A B} {cl} (valid-eff-env {E = E} {env = env} {env-addr = ea} {code-ptr = cp} {closure-addr = addr} sem-eq venv closS) refl heap-eq =
-  let heap-proof = valid-in-heap (valid-eff-env {A} {B} {E} {cl} {env} sem-eq venv closS)
-  in valid-eff-env sem-eq
+valid-subst-heap-preserved {Eff A B} {cl} (valid-eff-env {E = E} {env = env} {env-addr = ea} {code-ptr = cp} {closure-addr = addr} sem-eq addr-eq venv closS) refl heap-eq =
+  let heap-proof = valid-in-heap (valid-eff-env {A} {B} {E} {cl} {env} sem-eq addr-eq venv closS)
+  in valid-eff-env sem-eq addr-eq
        (valid-subst-heap-preserved venv refl heap-eq)
        (ClosureAtS-preserved-under-heap-eq closS heap-proof heap-eq)
 valid-subst-heap-preserved (valid-fix vx) refl heap-eq =
@@ -269,13 +269,23 @@ valid-subst-heap-preserved (valid-fix vx) refl heap-eq =
 
 -- | Extract closure memory layout from closure validity
 -- Returns existential code-ptr since it's not part of the semantic Closure
--- POSTULATE: The valid-closure-env case requires knowing env-addr = Closure.env-addr cl,
--- which requires env-addr = encode x at function entry. This is an encode boundary issue.
-postulate
-  valid-closure-decompose :
-    ∀ {A B} {cl : Closure A B} {addr : Word} {mem : Memory} →
-    ValidAt {A ⇒ B} cl addr mem →
-    ∃[ code-ptr ] ClosureAtS (Closure.env-addr cl) code-ptr addr mem
+-- Proven by pattern matching on ValidAt constructors:
+-- - valid-closure: closureAt directly has Closure.env-addr cl
+-- - valid-closure-env: use addr-eq and sem-eq to derive env-addr = Closure.env-addr cl
+valid-closure-decompose :
+  ∀ {A B} {cl : Closure A B} {addr : Word} {mem : Memory} →
+  ValidAt {A ⇒ B} cl addr mem →
+  ∃[ code-ptr ] ClosureAtS (Closure.env-addr cl) code-ptr addr mem
+valid-closure-decompose (valid-closure {code-ptr = cp} closureAt) = cp , closureAt
+valid-closure-decompose {cl = cl} (valid-closure-env {env = env} {env-addr = ea} {code-ptr = cp} {closure-addr = caddr} sem-eq addr-eq _ closureAt) =
+  -- sem-eq : Closure.env-addr cl ≡ encode env
+  -- addr-eq : env-addr ≡ encode env
+  -- closureAt : ClosureAtS env-addr code-ptr closure-addr mem
+  -- Need: ClosureAtS (Closure.env-addr cl) code-ptr closure-addr mem
+  -- Derive: Closure.env-addr cl = encode env = env-addr
+  let env-addr-eq : ea ≡ Closure.env-addr cl
+      env-addr-eq = trans addr-eq (sym sem-eq)
+  in cp , subst (λ e → ClosureAtS e cp caddr _) env-addr-eq closureAt
 
 ------------------------------------------------------------------------
 -- Region-based disjointness from validity (Phase 6c-6d)
@@ -443,21 +453,21 @@ valid-at-preserved-under-stack-write (valid-closure {cl = cl} {code-ptr = code-p
       heap-proof = valid-in-heap (valid-closure {cl = cl} {code-ptr = code-ptr} closS)
   in valid-closure
        (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {addr} closS heap-proof w-in-stack)
-valid-at-preserved-under-stack-write (valid-closure-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} sem-eq venv closS) w-in-stack =
-  valid-closure-env sem-eq
+valid-at-preserved-under-stack-write (valid-closure-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} sem-eq addr-eq venv closS) w-in-stack =
+  valid-closure-env sem-eq addr-eq
     (valid-at-preserved-under-stack-write venv w-in-stack)
     (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {closure-addr}
-      closS (valid-in-heap (valid-closure-env {A} {B} {E} {cl} {env} sem-eq venv closS)) w-in-stack)
+      closS (valid-in-heap (valid-closure-env {A} {B} {E} {cl} {env} sem-eq addr-eq venv closS)) w-in-stack)
 valid-at-preserved-under-stack-write (valid-eff {cl = cl} {code-ptr = code-ptr} {addr = addr} closS) w-in-stack =
   let env-addr = Closure.env-addr cl
       heap-proof = valid-in-heap (valid-eff {cl = cl} {code-ptr = code-ptr} closS)
   in valid-eff
        (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {addr} closS heap-proof w-in-stack)
-valid-at-preserved-under-stack-write (valid-eff-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} sem-eq venv closS) w-in-stack =
-  valid-eff-env sem-eq
+valid-at-preserved-under-stack-write (valid-eff-env {A} {B} {E} {cl} {env} {env-addr = env-addr} {code-ptr = code-ptr} {closure-addr = closure-addr} sem-eq addr-eq venv closS) w-in-stack =
+  valid-eff-env sem-eq addr-eq
     (valid-at-preserved-under-stack-write venv w-in-stack)
     (ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {closure-addr}
-      closS (valid-in-heap (valid-eff-env {A} {B} {E} {cl} {env} sem-eq venv closS)) w-in-stack)
+      closS (valid-in-heap (valid-eff-env {A} {B} {E} {cl} {env} sem-eq addr-eq venv closS)) w-in-stack)
 valid-at-preserved-under-stack-write (valid-fix vx) w-in-stack =
   valid-fix (valid-at-preserved-under-stack-write vx w-in-stack)
 

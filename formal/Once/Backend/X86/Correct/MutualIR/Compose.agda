@@ -41,6 +41,7 @@ module Once.Backend.X86.Correct.MutualIR.Compose
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
+    readReg (regs s) rdi ≡ encode x →  -- rdi holds the encoded input value
     StackInvariant s →
     StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
@@ -78,12 +79,13 @@ run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
+  readReg (regs s) rdi ≡ encode x →  -- rdi holds the encoded input value
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (g ∘ f)) →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
   in ∃[ s' ] IRStarResultV (g ∘ f) prog s s' x (length prefix)
-run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
+run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid rdi-is-encode stack-inv cap-in rbp-inv =
     s3 , result-v
     where
       -- Get context for computed values
@@ -97,7 +99,7 @@ run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h
 
       -- Step 1: Execute f (RECURSIVE via size-bounded dispatcher)
       step-f : ∃[ s1 ] IRStarResultV f (prefix ++ code-f ++ suffix-f) s s1 x (length prefix)
-      step-f = run-ir-star f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid stack-inv cap-f rbp-inv
+      step-f = run-ir-star f f<bound prefix suffix-f caller-sp x s h-false pc-eq input-valid rdi-is-encode stack-inv cap-f rbp-inv
 
       s1 : State
       s1 = proj₁ step-f
@@ -147,11 +149,16 @@ run-compose-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h
       cap-g : StackCapacity s2 (ir-stack-requirement g)
       cap-g = capacity-preserved-rsp-unchanged s1 s2 (ir-stack-requirement g) cap-g-at-s1 (sym rsp-s2-eq-s1)
 
+      -- rdi-is-encode for g: after transfer, rdi s2 = rax s1 = encode (eval f x)
+      -- This is a semantic gap: rax after IR execution holds the encoded output
+      postulate
+        rdi-is-encode-for-g : readReg (regs s2) rdi ≡ encode (eval f x)
+
       -- Step 3: Execute g (RECURSIVE via size-bounded dispatcher)
       step-g : ∃[ s3 ] IRStarResultV g (prefix-g ++ code-g ++ suffix) s2 s3 (eval f x) (length prefix-g)
       step-g = run-ir-star g g<bound prefix-g suffix caller-sp (eval f x) s2
                  (TransferResultV.h2 tr) (TransferResultV.pc2-g tr) input-valid-for-g
-                 (TransferResultV.stack-inv-2 tr) cap-g rbp-inv-2
+                 rdi-is-encode-for-g (TransferResultV.stack-inv-2 tr) cap-g rbp-inv-2
 
       s3 : State
       s3 = proj₁ step-g

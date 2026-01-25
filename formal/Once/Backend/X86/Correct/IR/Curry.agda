@@ -67,6 +67,8 @@ record CurryMemoryResult {A B C : Type} (f : IR (A * B) C)
     mem-cp : readMem (memory s-final) (closure-addr +ℕ slot-size) ≡ just code-ptr
     -- Env validity
     v-env : ValidAt x env-addr (memory s-final)
+    -- Env address equals encode x (for valid-closure-env)
+    env-addr-eq : env-addr ≡ encode x
     code-ptr-is-thunk : code-ptr ≡ offset +ℕ 6
 
 open CurryMemoryResult public
@@ -112,13 +114,14 @@ run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : �
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
+  readReg (regs s) rdi ≡ encode x →  -- rdi holds the encoded input value
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (curry f)) →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] (CurryExecResult f prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
-run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
+run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid rdi-is-encode stack-inv cap rbp-inv =
   s-final , record
     { exec-star = star-all
     ; exec-halted = h-final
@@ -144,6 +147,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     ; mem-env = mem-at-new-rsp-final
     ; mem-cp = mem-code-ptr-final
     ; v-env = v-env-final
+    ; env-addr-eq = rdi-is-encode
     ; code-ptr-is-thunk = refl
     }
   where
@@ -931,12 +935,13 @@ run-curry-star-v : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x :
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
+  readReg (regs s) rdi ≡ encode x →  -- rdi holds the encoded input value
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (curry f)) →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 (curry f) ++ suffix
   in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
-run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
+run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid rdi-is-encode stack-inv cap rbp-inv =
   s-final , record
     { ir-star = exec-star exec-result
     ; ir-halted = exec-halted exec-result
@@ -961,7 +966,7 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     -- Call curry with validity (no bridges!)
     curry-result : ∃[ s' ] (CurryExecResult f (prefix ++ compile-x86 (curry f) ++ suffix) s s' x (length prefix)
                            × CurryMemoryResult f (prefix ++ compile-x86 (curry f) ++ suffix) s' x (length prefix))
-    curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv
+    curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid rdi-is-encode stack-inv cap rbp-inv
 
     s-final = proj₁ curry-result
     exec-result = proj₁ (proj₂ curry-result)
@@ -988,11 +993,16 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     sem-closure : Closure B C
     sem-closure = eval (curry f) x
 
+    -- The runtime env-addr equals encode x because:
+    -- curry-env-addr = orig-rdi = readReg (regs s) rdi = encode x (by rdi-is-encode)
+    curry-env-addr-eq : curry-env-addr ≡ encode x
+    curry-env-addr-eq = rdi-is-encode
+
     -- Closure validity via valid-closure-env constructor
-    -- Closure.env-addr (eval (curry f) x) = encode x (by definition of eval for curry)
-    -- So the first arg to valid-closure-env is refl
+    -- First arg: Closure.env-addr (eval (curry f) x) = encode x (by definition of eval for curry)
+    -- Second arg: curry-env-addr = encode x (by curry-env-addr-eq)
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s-final)
-    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
+    closure-valid-at-addr = valid-closure-env refl curry-env-addr-eq curry-v-env closure-at
 
     -- Transport to rax
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s-final) rax) (memory s-final)

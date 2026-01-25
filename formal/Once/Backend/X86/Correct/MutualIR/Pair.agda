@@ -43,6 +43,7 @@ module Once.Backend.X86.Correct.MutualIR.Pair
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
+    readReg (regs s) rdi ≡ encode x →  -- rdi holds the encoded input value
     StackInvariant s →
     StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
@@ -150,12 +151,13 @@ run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
+  readReg (regs s) rdi ≡ encode x →  -- rdi holds the encoded input value
   StackInvariant s →
   StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) →
   RbpInvariant s →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
   in ∃[ s' ] IRStarResultV ⟨ f , g ⟩ prog s s' x (length prefix)
-run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
+run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid rdi-is-encode stack-inv cap-in rbp-inv =
     s-final , result-v
     where
       open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
@@ -176,6 +178,10 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         input-valid
         (sym (PairSetupResultV.rdi-setup-raw setup-res))  -- rdi in s-setup = rdi in s
         (PairSetupResultV.mem-heap-setup setup-res)        -- heap memory preserved
+
+      -- rdi-is-encode for f: rdi is preserved through setup
+      rdi-is-encode-for-f : readReg (regs s-setup) rdi ≡ encode x
+      rdi-is-encode-for-f = trans (PairSetupResultV.rdi-setup-raw setup-res) rdi-is-encode
 
       -- ========== Phase 2: Execute f (recursive call via validity-based dispatcher) ==========
       -- Derive RbpInvariant for s-setup
@@ -210,6 +216,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
                 (PairSetupResultV.h-setup setup-res)
                 (PairSetupResultV.pc-setup-f setup-res)
                 input-valid-for-f
+                rdi-is-encode-for-f
                 (PairSetupResultV.stack-inv-setup setup-res)
                 cap-setup
                 rbp-inv-setup
@@ -264,6 +271,10 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
         rdi-s2-eq-s            -- rdi in s2 = rdi in s
         mem-heap-s-to-s2        -- heap memory preserved
 
+      -- rdi-is-encode for g: rdi s2 = rdi s = encode x
+      rdi-is-encode-for-g : readReg (regs s2) rdi ≡ encode x
+      rdi-is-encode-for-g = trans rdi-s2-eq-s rdi-is-encode
+
       -- Derive StackCapacity for g at s2 by threading through:
       --   cap-inner (s-setup) → cap-adjusted (s-setup) → cap-s1 (s1) → cap-s2 (s2)
 
@@ -296,6 +307,7 @@ run-pair-star-v {A} {B} {C} f g f<bound g<bound prefix suffix caller-sp x s h-fa
                 (PairMiddleResultV.h2 mid-res)
                 (PairMiddleResultV.pc2-g mid-res)
                 input-valid-for-g
+                rdi-is-encode-for-g
                 (PairMiddleResultV.stack-inv-s2 mid-res)
                 cap-s2
                 rbp-inv-s2
