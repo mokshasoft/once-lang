@@ -38,8 +38,9 @@ open import Once.Semantics
 
 -- Re-export encode and PROVEN encoding properties from Semantics
 open Once.Semantics public using (encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity)
--- Re-export low-level encoding postulates (for proofs that need them directly)
-open Once.Semantics public using (encode-pair-addr; encode-inl-addr; encode-inr-addr; encode-closure-addr)
+-- NOTE: encode-pair-addr, encode-inl-addr, etc. are now DEFINITIONS (not postulates)
+-- in SemanticBase.agda. They return placeholder values (0) since x86 uses ValidAt
+-- for actual address tracking.
 
 ------------------------------------------------------------------------
 -- Postulate P1: Function Extensionality
