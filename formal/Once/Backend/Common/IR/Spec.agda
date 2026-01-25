@@ -48,6 +48,10 @@ record MachineInterface : Set₁ where
     Program : Set
     Memory : Set
 
+    -- Architecture constants
+    -- Slot size: machine word size in bytes (8 for 64-bit architectures)
+    slot-size : ℕ
+
     -- State accessors
     pc : State → ℕ
     halted : State → Bool
@@ -424,7 +428,7 @@ module IRSpecs
         setup-input-is-encode : input-value s₁ ≡ encode x
         setup-input-saved : saved-input-value s₁ ≡ encode x  -- Input saved for restoration after f
         setup-result-slot-in-stack : InStack (result-slot-addr s₁)  -- Result slot is in stack (for middle memory proofs)
-        setup-result-slot-below-frame-ptr : result-slot-addr s₁ < frame-ptr-addr s₁  -- r15 < rbp (for frame preservation)
+        setup-result-slot-below-frame-ptr : result-slot-addr s₁ + slot-size < frame-ptr-addr s₁  -- r15 + slot-size < rbp (for frame preservation)
         setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
         setup-cap-for-g-after-f : StackCapacity s₁ (ir-rsp-delta f + ir-stack-requirement g)  -- For deriving g's capacity after f runs
         setup-frame-inv : FramePtrInvariant s₁
@@ -448,7 +452,7 @@ module IRSpecs
         middle-input-is-encode : input-value s₃ ≡ encode x
         middle-capacity : StackCapacity s₃ (ir-stack-requirement g)
         middle-frame-inv : FramePtrInvariant s₃
-        middle-result-slot-below : result-slot-addr s₃ < frame-ptr-addr s₃  -- Preserved for cleanup
+        middle-result-slot-below : result-slot-addr s₃ + slot-size < frame-ptr-addr s₃  -- Preserved for cleanup
         -- Execution evidence
         middle-star : Star prog s₂ s₃
         middle-pc : pc s₃ ≡ offset-g

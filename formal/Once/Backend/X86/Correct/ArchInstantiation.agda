@@ -102,6 +102,7 @@ X86-MachineInterface = record
   { State = State
   ; Program = Program
   ; Memory = Memory
+  ; slot-size = slot-size  -- X86: 8 bytes per slot
   ; pc = pc
   ; halted = halted
   ; memory = memory
@@ -1185,10 +1186,8 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
     r15-in-stack-setup = subst InStack (sym (PairSetupResultV.r15-setup setup-res))
                                (pair-r15-in-stack s cap-pair)
 
-    -- r15 < rbp: rsp - frame-size < rsp - saved-regs-size (40 > 24)
-    open import Once.Backend.X86.Correct.ArithmeticLemmas using (regs-fits-frame-strict)
-    open import Once.Backend.X86.Correct.Arithmetic using (frame-size; saved-regs-size)
-    open import Data.Nat.Properties using (∸-monoʳ-<)
+    -- r15 + slot-size < rbp: (rsp - frame-size) + word-size < rsp - saved-regs-size
+    open import Once.Backend.X86.Correct.Arithmetic using (frame-size; saved-regs-size; word-size; slot0-plus-word<rbp)
     open import Once.Backend.X86.Correct.StackInstantiation using (slots; ∸>0⇒≤)
 
     -- Derive frame-size ≤ rsp(s) from setup capacity
@@ -1201,11 +1200,13 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
     setup-frame-fits = ∸>0⇒≤ (readReg (regs s) rsp) (slots pair-setup-consumed-slots) rsp-after-setup>0
       where open import Once.Backend.X86.Correct.StackInstantiation using (pair-setup-consumed-slots)
 
-    -- r15(s-setup) < rbp(s-setup) via arithmetic
-    r15-below-rbp-setup : readReg (regs s-setup) r15 < readReg (regs s-setup) rbp
-    r15-below-rbp-setup = subst₂ _<_ (sym (PairSetupResultV.r15-setup setup-res))
+    -- r15(s-setup) + slot-size < rbp(s-setup) via arithmetic
+    -- Uses slot0-plus-word<rbp: (m - frame-size) + word-size < m - saved-regs-size when frame-size ≤ m
+    -- Since word-size = slot-size, this gives r15 + slot-size < rbp
+    r15-below-rbp-setup : readReg (regs s-setup) r15 + slot-size < readReg (regs s-setup) rbp
+    r15-below-rbp-setup = subst₂ _<_ (sym (cong (_+ slot-size) (PairSetupResultV.r15-setup setup-res)))
                                      (sym (PairSetupResultV.rbp-setup setup-res))
-                                     (∸-monoʳ-< regs-fits-frame-strict setup-frame-fits)
+                                     (slot0-plus-word<rbp (readReg (regs s) rsp) setup-frame-fits)
 
     -- Star for setup: PairSetupResultV gives us Star prog s s-setup
     setup-star : Star prog s s-setup
@@ -1381,27 +1382,35 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
         r15-neq-addr : addr ≢ readReg (regs s₂) r15
         r15-neq-addr eq = stack-code-addr-disjoint (readReg (regs s₂) r15) addr r15-s₂-in-stack addr-in-code (sym eq)
 
-    -- Frame preserved: r15 < rbp, so addr > rbp implies addr ≠ r15
-    -- Chain: r15(s₁) < rbp(s₁), both preserved by f, so r15(s₂) < rbp(s₂)
-    open import Data.Nat.Properties using (<-irrefl; <-trans)
-    r15-below-rbp-s₁ : readReg (regs s₁) r15 < readReg (regs s₁) rbp
-    r15-below-rbp-s₁ = PairSpecs.SetupPost.setup-result-slot-below-frame-ptr setup
+    -- Frame preserved: r15 + slot-size < rbp, so addr > rbp implies addr ≠ r15
+    -- Chain: r15(s₁) + slot-size < rbp(s₁), both preserved by f, so r15(s₂) + slot-size < rbp(s₂)
+    open import Data.Nat.Properties using (<-irrefl; <-trans; m<m+n; 0<1+n)
+    -- Strong version: r15 + slot-size < rbp (for interface)
+    r15+slot-below-rbp-s₁ : readReg (regs s₁) r15 + slot-size < readReg (regs s₁) rbp
+    r15+slot-below-rbp-s₁ = PairSpecs.SetupPost.setup-result-slot-below-frame-ptr setup
 
     rbp-s₂-eq-rbp-s₁ : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
     rbp-s₂-eq-rbp-s₁ = proj₂ (proj₂ (IRCorrectness.exec-saved-regs f-corr))
 
-    r15-below-rbp-s₂ : readReg (regs s₂) r15 < readReg (regs s₂) rbp
-    r15-below-rbp-s₂ = subst₂ _<_ (sym r15-s₂-eq-r15-s₁) (sym rbp-s₂-eq-rbp-s₁) r15-below-rbp-s₁
+    -- Strong version at s₂: r15(s₂) + slot-size < rbp(s₂)
+    r15+slot-below-rbp-s₂ : readReg (regs s₂) r15 + slot-size < readReg (regs s₂) rbp
+    r15+slot-below-rbp-s₂ = subst₂ _<_ (sym (cong (_+ slot-size) r15-s₂-eq-r15-s₁)) (sym rbp-s₂-eq-rbp-s₁) r15+slot-below-rbp-s₁
 
-    -- r15 < rbp at s₃: middle preserves r15 and rbp
+    -- r15 + slot-size < rbp at s₃: middle preserves r15 and rbp
     r15-s₃-eq-r15-s₂ : readReg (regs s₃) r15 ≡ readReg (regs s₂) r15
     r15-s₃-eq-r15-s₂ = PairMiddleStarResult.r15-mid mid-result
 
     rbp-s₃-eq-rbp-s₂ : readReg (regs s₃) rbp ≡ readReg (regs s₂) rbp
     rbp-s₃-eq-rbp-s₂ = PairMiddleStarResult.rbp-mid mid-result
 
-    r15-below-rbp-s₃ : readReg (regs s₃) r15 < readReg (regs s₃) rbp
-    r15-below-rbp-s₃ = subst₂ _<_ (sym r15-s₃-eq-r15-s₂) (sym rbp-s₃-eq-rbp-s₂) r15-below-rbp-s₂
+    -- Strong version at s₃: r15(s₃) + slot-size < rbp(s₃) (for interface)
+    r15+slot-below-rbp-s₃ : readReg (regs s₃) r15 + slot-size < readReg (regs s₃) rbp
+    r15+slot-below-rbp-s₃ = subst₂ _<_ (sym (cong (_+ slot-size) r15-s₃-eq-r15-s₂)) (sym rbp-s₃-eq-rbp-s₂) r15+slot-below-rbp-s₂
+
+    -- Weak version: r15 < rbp (for frame preservation)
+    -- Derived from: r15 < r15 + slot-size < rbp
+    r15-below-rbp-s₂ : readReg (regs s₂) r15 < readReg (regs s₂) rbp
+    r15-below-rbp-s₂ = <-trans (m<m+n (readReg (regs s₂) r15) 0<1+n) r15+slot-below-rbp-s₂
 
     mid-frame-preserved : X86-FramePreserved s₂ s₃
     mid-frame-preserved addr addr>rbp-s₂ =
@@ -1452,7 +1461,7 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
       ; middle-input-is-encode = input-is-encode₃
       ; middle-capacity = cap₃
       ; middle-frame-inv = frame-inv₃
-      ; middle-result-slot-below = r15-below-rbp-s₃
+      ; middle-result-slot-below = r15+slot-below-rbp-s₃
       ; middle-star = mid-star
       ; middle-pc = mid-pc
       ; middle-heap-preserved = mid-heap-preserved
@@ -1484,12 +1493,12 @@ x86-pair-cleanup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
   (prefix suffix : Program) (x : ⟦ C ⟧) (s-orig s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) →
   StackCapacity s-orig (ir-stack-requirement ⟨ f , g ⟩) →  -- Original capacity for output derivation
   RbpInvariant s-orig →  -- Original frame invariant for restoration
-  readReg (regs s₄) r15 < readReg (regs s₄) rbp →  -- Result slot below frame ptr
+  readReg (regs s₄) r15 + slot-size < readReg (regs s₄) rbp →  -- Result slot + word below frame ptr
   (g-corr : IRCorrectness g (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix))) ++ compile-x86 g ++ proj₂ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))) s₃ s₄ x (length (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))))) →
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
       offset-end = length prefix + compile-length ⟨ f , g ⟩
   in ∃[ s₅ ] PairSpecs.CleanupPost f g prog offset-end s-orig s₄ s₅ x fx gx
-x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx orig-cap orig-frame-inv r15-below-rbp-s₄ g-corr = s₅ , cleanup-post
+x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx orig-cap orig-frame-inv r15+slot-below-rbp-s₄ g-corr = s₅ , cleanup-post
   where
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
@@ -1579,13 +1588,9 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx orig-cap
         -- Key: r15 + 8 < rbp (r15 is pair alloc address << rbp which is stack frame)
         -- So addr > rbp > r15 + 8 implies addr ≠ r15 + 8
         addr-neq-r15+8 : addr ≢ readReg (regs s₄) r15 +ℕ slot-size
-        addr-neq-r15+8 eq = <-irrefl refl (<-trans r15+8-below-rbp addr>rbp-subst)
+        addr-neq-r15+8 eq = <-irrefl refl (<-trans r15+slot-below-rbp-s₄ addr>rbp-subst)
           where
-            -- r15(s₄) + 8 < rbp(s₄): from r15(s₄) < rbp(s₄) and slot-size = 8
-            -- Need: r15 + 8 < rbp. This is stricter than r15 < rbp.
-            -- In practice, heap << stack, so this holds.
-            -- Use postulate for now; can prove with region arithmetic later
-            postulate r15+8-below-rbp : readReg (regs s₄) r15 +ℕ slot-size < readReg (regs s₄) rbp
+            -- r15(s₄) + slot-size < rbp(s₄): from interface parameter
             addr>rbp-subst : readReg (regs s₄) rbp < addr
             addr>rbp-subst = subst (_< addr) eq addr>rbp-s₄
 

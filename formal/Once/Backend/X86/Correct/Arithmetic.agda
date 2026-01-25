@@ -10,7 +10,7 @@ module Once.Backend.X86.Correct.Arithmetic where
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _≤_; _>_; z≤n; s≤s; _<_; _≤?_; _<?_)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; +-identityˡ; +-suc;
                                        ≤-refl; ≤-trans; m≤m+n; m∸n≤m;
-                                       m+n∸m≡n; m+n∸n≡m; ∸-+-assoc; +-monoʳ-<)
+                                       m+n∸m≡n; m+n∸n≡m; ∸-+-assoc; +-monoʳ-<; ∸-monoʳ-<)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
 open import Relation.Nullary using (yes; no; Dec)
 open import Data.Empty using (⊥-elim)
@@ -239,3 +239,31 @@ slot-addrs-distinct k = +-monoʳ-< k (from-yes-< (word-size <? pair-alloc))
     open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m)
     eq : (m ∸ pair-alloc) + pair-alloc ≡ m
     eq = m∸n+n≡m (<⇒≤ m>alloc)
+
+------------------------------------------------------------------------
+-- r15+8 < rbp: slot0 + word-size < rbp offset
+--
+-- Proof: r15 = rsp - 40, rbp = rsp - 24
+-- r15 + 8 = rsp - 32 (via slot0-plus-word≡slot1)
+-- 24 < 32, so by ∸-monoʳ-<: rsp - 32 < rsp - 24
+------------------------------------------------------------------------
+
+-- | 24 < 32 definitionally
+saved-regs-below-slot1 : saved-regs-size < frame-size ∸ word-size
+saved-regs-below-slot1 = from-yes-< (saved-regs-size <? (frame-size ∸ word-size))
+
+-- | slot0 + word-size < rbp: (m - 40) + 8 < m - 24 when frame-size ≤ m
+-- This proves r15 + slot-size < rbp in pair cleanup
+slot0-plus-word<rbp : ∀ m → frame-size ≤ m → m ∸ frame-size + word-size < m ∸ saved-regs-size
+slot0-plus-word<rbp m frame≤m =
+  subst (_< m ∸ saved-regs-size) (sym (slot0-plus-word≡slot1 m frame≤m))
+        (∸-monoʳ-< saved-regs-below-slot1 slot1≤m)
+  where
+    -- frame-size ≤ m implies (frame-size - word-size) ≤ m
+    slot1≤m : frame-size ∸ word-size ≤ m
+    slot1≤m = ≤-trans (m∸n≤m frame-size word-size) frame≤m
+
+-- | Alternative: r15 + word-size < r15 + pair-alloc (from word < pair-alloc)
+-- Since rbp = r15 + pair-alloc (slot0-plus-pair≡rbp), this gives r15 + word-size < rbp
+r15+word<r15+pair : ∀ (r15 : ℕ) → r15 + word-size < r15 + pair-alloc
+r15+word<r15+pair r15 = +-monoʳ-< r15 word-fits-pair-strict

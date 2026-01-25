@@ -157,13 +157,15 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 7: Cleanup phase (construct pair)
           orig-cap = Preconditions.pre-capacity pre
           orig-frame-inv = Preconditions.pre-frame-inv pre
-          -- Derive result-slot < frame-ptr at s₄:
+          -- Derive result-slot + slot-size < frame-ptr at s₄:
           -- g preserves result-slot-addr and frame-ptr-addr (via saved-regs)
           result-slot-below-s₃ = PairSpecs.MiddlePost.middle-result-slot-below middle
           g-saved = IRCorrectness.exec-saved-regs g-corr
           result-slot-s₄-eq = saved-regs-result-slot s₃ s₄ g-saved
           frame-ptr-s₄-eq = saved-regs-frame-ptr s₃ s₄ g-saved
-          result-slot-below-s₄ = subst₂ _<_ (sym result-slot-s₄-eq) (sym frame-ptr-s₄-eq) result-slot-below-s₃
+          -- Lift result-slot-addr equality to include + slot-size
+          result-slot-plus-s₄-eq = cong (_+ slot-size) result-slot-s₄-eq
+          result-slot-below-s₄ = subst₂ _<_ (sym result-slot-plus-s₄-eq) (sym frame-ptr-s₄-eq) result-slot-below-s₃
           (s₅ , cleanup) = pair-cleanup f g prefix suffix x s s₃ s₄ (eval f x) (eval g x) orig-cap orig-frame-inv result-slot-below-s₄ g-corr
           -- Step 8: Combine all phases
       in s₅ , pair-combine f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setup f-corr middle g-corr cleanup
