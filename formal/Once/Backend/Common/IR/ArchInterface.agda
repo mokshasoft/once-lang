@@ -17,7 +17,7 @@ open import Once.Semantics using (⟦_⟧; eval; encode; Closure)
 
 module Once.Backend.Common.IR.ArchInterface where
 
-open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_)
+open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; _<_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
@@ -85,8 +85,12 @@ record ArchCorrectness : Set₂ where
                             {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧} →
                           ClosureWF {E} {A} {B} prog cp env sem → ℕ
 
+    -- Closure layout predicate: [env-addr, code-ptr] at addr in memory
+    -- For X86: Once.Backend.Common.Validity.ClosureAtS
+    ClosureAtS : Word → Word → Word → Memory → Set
+
   -- Now open IRSpecs with the actual Star, ClosureWF, and capacity extractors
-  open IRSpecs machine invariants validity codegen Star ClosureWF wf-thunk-capacity wf-cap-upper-bound public
+  open IRSpecs machine invariants validity codegen Star ClosureWF wf-thunk-capacity wf-cap-upper-bound ClosureAtS public
 
   field
     -----------------------------------------------------------------
@@ -224,13 +228,20 @@ record ArchCorrectness : Set₂ where
       Preconditions {C} s₃ x (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix)))) (ir-stack-requirement g)
 
     pair-cleanup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
-      (prefix suffix : Program) (x : ⟦ C ⟧) (s-orig s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) →
+      (prefix suffix : Program) (x : ⟦ C ⟧) (s-orig s₁ s₂ s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) →
       StackCapacity s-orig (ir-stack-requirement ⟨ f , g ⟩) →  -- Original capacity for output derivation
       FramePtrInvariant s-orig →  -- Original frame invariant for restoration
+      StackInvariant s-orig →  -- Original stack invariant for PairFinalPrecond
       result-slot-addr s₄ + slot-size < frame-ptr-addr s₄ →  -- Result slot + word below frame ptr (for frame preservation)
-      (g-corr : IRCorrectness g (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))) ++ₚ compile g ++ₚ proj₂ (proj₂ (proj₂ (pair-context f g prefix suffix)))) s₃ s₄ x (program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix)))))) →
+      -- Intermediate results needed for PairFinalPrecond construction
       let prog = prefix ++ₚ compile ⟨ f , g ⟩ ++ₚ suffix
-          offset-end = program-length prefix + compile-length ⟨ f , g ⟩
+          offset-f = program-length (proj₁ (pair-context f g prefix suffix))
+          offset-g = program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))))
+      in (setup : PairSpecs.SetupPost f g prog offset-f s-orig s₁ x) →
+      (f-corr : IRCorrectness f (proj₁ (pair-context f g prefix suffix) ++ₚ compile f ++ₚ proj₁ (proj₂ (pair-context f g prefix suffix))) s₁ s₂ x (program-length (proj₁ (pair-context f g prefix suffix)))) →
+      (middle : PairSpecs.MiddlePost f g prog offset-g s₁ s₂ s₃ x fx) →
+      (g-corr : IRCorrectness g (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix))) ++ₚ compile g ++ₚ proj₂ (proj₂ (proj₂ (pair-context f g prefix suffix)))) s₃ s₄ x (program-length (proj₁ (proj₂ (proj₂ (pair-context f g prefix suffix)))))) →
+      let offset-end = program-length prefix + compile-length ⟨ f , g ⟩
       in ∃[ s₅ ] PairSpecs.CleanupPost f g prog offset-end s-orig s₄ s₅ x fx gx
 
     pair-combine : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
@@ -298,7 +309,9 @@ record ArchCorrectness : Set₂ where
       let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
           offset-f = program-length (proj₁ (case-left-context f g prefix suffix))
           offset-end = program-length prefix + compile-length [ f , g ]
-      in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
+      -- Original preconditions (needed for capacity/invariant restoration)
+      in Preconditions {A ⊕ B} s (inj₁ a) prefix (ir-stack-requirement [ f , g ]) →
+      CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
       IRCorrectness f (proj₁ (case-left-context f g prefix suffix) ++ₚ compile f ++ₚ proj₂ (case-left-context f g prefix suffix)) s₁ s₂ a (program-length (proj₁ (case-left-context f g prefix suffix))) →
       ∃[ s₃ ] CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval f a)
 
@@ -331,7 +344,9 @@ record ArchCorrectness : Set₂ where
       let prog = prefix ++ₚ compile [ f , g ] ++ₚ suffix
           offset-g = program-length (proj₁ (case-right-context f g prefix suffix))
           offset-end = program-length prefix + compile-length [ f , g ]
-      in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
+      -- Original preconditions (needed for capacity/invariant restoration)
+      in Preconditions {A ⊕ B} s (inj₂ b) prefix (ir-stack-requirement [ f , g ]) →
+      CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
       IRCorrectness g (proj₁ (case-right-context f g prefix suffix) ++ₚ compile g ++ₚ proj₂ (case-right-context f g prefix suffix)) s₁ s₂ b (program-length (proj₁ (case-right-context f g prefix suffix))) →
       ∃[ s₃ ] CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval g b)
 

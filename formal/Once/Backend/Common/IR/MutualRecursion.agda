@@ -157,6 +157,7 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 7: Cleanup phase (construct pair)
           orig-cap = Preconditions.pre-capacity pre
           orig-frame-inv = Preconditions.pre-frame-inv pre
+          orig-stack-inv = Preconditions.pre-stack-inv pre
           -- Derive result-slot + slot-size < frame-ptr at s₄:
           -- g preserves result-slot-addr and frame-ptr-addr (via saved-regs)
           result-slot-below-s₃ = PairSpecs.MiddlePost.middle-result-slot-below middle
@@ -166,7 +167,8 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Lift result-slot-addr equality to include + slot-size
           result-slot-plus-s₄-eq = cong (_+ slot-size) result-slot-s₄-eq
           result-slot-below-s₄ = subst₂ _<_ (sym result-slot-plus-s₄-eq) (sym frame-ptr-s₄-eq) result-slot-below-s₃
-          (s₅ , cleanup) = pair-cleanup f g prefix suffix x s s₃ s₄ (eval f x) (eval g x) orig-cap orig-frame-inv result-slot-below-s₄ g-corr
+          -- Pass all intermediate results for PairFinalPrecond construction
+          (s₅ , cleanup) = pair-cleanup f g prefix suffix x s s₁ s₂ s₃ s₄ (eval f x) (eval g x) orig-cap orig-frame-inv orig-stack-inv result-slot-below-s₄ setup f-corr middle g-corr
           -- Step 8: Combine all phases
       in s₅ , pair-combine f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setup f-corr middle g-corr cleanup
 
@@ -189,7 +191,7 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 3: Run f in context
           (s₂ , f-corr) = ir-correct f prefix-f suffix-f a s₁ f-pre no-apply-wf
           -- Step 4: Run cleanup (jmp + mov rsp,rbp + pop rbp)
-          (s₃ , cleanup) = case-left-cleanup f g prefix suffix a s s₁ s₂ dispatch f-corr
+          (s₃ , cleanup) = case-left-cleanup f g prefix suffix a s s₁ s₂ pre dispatch f-corr
           -- Step 5: Combine dispatch + f + cleanup
       in s₃ , case-left-combine f g prefix suffix a s s₁ s₂ s₃ dispatch f-corr cleanup
 
@@ -203,7 +205,7 @@ module IRCorrect (Arch : ArchCorrectness) where
           -- Step 3: Run g in context
           (s₂ , g-corr) = ir-correct g prefix-g suffix-g b s₁ g-pre no-apply-wf
           -- Step 4: Run cleanup (mov rsp,rbp + pop rbp)
-          (s₃ , cleanup) = case-right-cleanup f g prefix suffix b s s₁ s₂ dispatch g-corr
+          (s₃ , cleanup) = case-right-cleanup f g prefix suffix b s s₁ s₂ pre dispatch g-corr
           -- Step 5: Combine dispatch + g + cleanup
       in s₃ , case-right-combine f g prefix suffix b s s₁ s₂ s₃ dispatch g-corr cleanup
 

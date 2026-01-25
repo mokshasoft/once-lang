@@ -16,7 +16,7 @@ open import Once.Semantics using (⟦_⟧; eval; encode; Closure)
 
 module Once.Backend.Common.IR.Spec where
 
-open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_)
+open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; _<_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
@@ -68,6 +68,8 @@ record MachineInterface : Set₁ where
     result-slot-addr : State → Word
     -- Frame pointer register (rbp / x29 / s0)
     frame-ptr-addr : State → Word
+    -- Stack pointer register (rsp / sp / sp) - for rsp preservation proofs
+    rsp-value : State → Word
 
     -- Memory operations
     readMem : Memory → Word → Maybe Word
@@ -289,6 +291,7 @@ module IRSpecs
     (wf-cap-upper-bound : ∀ {E A B : Type} {prog : MachineInterface.Program M} {cp : ℕ}
                             {env : ⟦ E ⟧} {sem : ⟦ A ⟧ → ⟦ B ⟧} →
                           ClosureWF {E} {A} {B} prog cp env sem → ℕ)
+    (ClosureAtS : Word → Word → Word → MachineInterface.Memory M → Set)
     where
 
   open MachineInterface M
@@ -327,10 +330,13 @@ module IRSpecs
       -- closure-at: Memory layout proof showing code-ptr is at closure-addr+8.
       -- Enables proving code-ptr from ValidAt decomposition = code-ptr from WF.
       (closure-at : ClosureAtS (encode env) code-ptr closure-addr (memory s))
+      -- closure-addr-in-heap: The closure is allocated in the heap.
+      -- Needed for ClosureAtS preservation under heap-only memory changes.
+      (closure-addr-in-heap : InHeap closure-addr)
       -- closure-addr-unique: The closure is only valid at closure-addr.
       -- This captures that closures aren't duplicated in memory.
       -- Enables proving apply-closure-addr = closure-addr at apply time.
-      (closure-addr-unique : (cl-addr : ℕ) → ValidAt cl cl-addr (memory s) → cl-addr ≡ closure-addr)
+      (closure-addr-unique : (cl-addr : ℕ) → ValidAt {A ⇒ B} cl cl-addr (memory s) → cl-addr ≡ closure-addr)
       -- env-valid: uses encode env directly (not arbitrary env-addr).
       -- Eliminates the addr-is-encode bridge postulate.
       (env-valid : ValidAt env (encode env) (memory s))
@@ -345,7 +351,7 @@ module IRSpecs
   cwf-cap-bound : ∀ {A B : Type} {prog : Program} {s : State} {cl : Closure A B} →
                   ApplyWFInput A B prog s cl → ℕ
   cwf-cap-bound no-apply-wf = 0
-  cwf-cap-bound (apply-wf {E} cp env sem cl-addr cl-eq wf _ _ _ _) = wf-cap-upper-bound wf
+  cwf-cap-bound (apply-wf {E} cp env sem cl-addr cl-eq wf _ _ _ _ _) = wf-cap-upper-bound wf
 
   -- Preconditions for IR execution
   -- Matches X86's run-*-star-vv preconditions exactly
@@ -387,6 +393,10 @@ module IRSpecs
       exec-heap-preserved : HeapPreserved s s'
       exec-code-preserved : CodePreserved s s'
       exec-frame-preserved : FramePreserved s s'
+
+      -- Memory at frame pointer (not covered by frame-preserved's strict >)
+      -- Preserves saved linkage at [rbp] for frame restoration
+      exec-mem-frame-ptr : readMem (memory s') (frame-ptr-addr s) ≡ readMem (memory s) (frame-ptr-addr s)
 
       -- Invariants maintained
       exec-stack-inv : StackInvariant s'
@@ -439,6 +449,7 @@ module IRSpecs
         setup-heap-preserved : HeapPreserved s s₁
         setup-code-preserved : CodePreserved s s₁
         setup-frame-preserved : FramePreserved s s₁
+        setup-mem-frame-ptr-orig : readMem (memory s₁) (frame-ptr-addr s) ≡ readMem (memory s) (frame-ptr-addr s)
 
     -- After middle: f's result stored, ready for g
     -- prog is the full program
@@ -506,10 +517,26 @@ module IRSpecs
         setup-heap-preserved : HeapPreserved s s₁
         setup-code-preserved : CodePreserved s s₁
         setup-frame-preserved : FramePreserved s s₁
+        setup-mem-frame-ptr : readMem (memory s₁) (frame-ptr-addr s) ≡ readMem (memory s) (frame-ptr-addr s)
         -- Closure environment info (for building ApplyWFInput in curry-combine)
         -- The environment x is valid at its encoding (encode x) in memory.
         -- This comes from pre-input-valid + pre-input-is-encode + heap preservation.
         setup-env-valid : ValidAt x (encode x) (memory s₁)
+        -- Closure address: where the closure is stored in memory
+        -- Needed for building ApplyWFInput in curry-combine
+        setup-closure-addr : ℕ
+        -- Code pointer: where the thunk code starts (offset + 6 for X86)
+        -- This is architecture-specific but passed through for ApplyWFInput
+        setup-thunk-code-ptr : ℕ
+        -- Proof that code-ptr is at offset + 6 (for unifying with thunk-code-ptr)
+        setup-thunk-code-ptr-eq : setup-thunk-code-ptr ≡ offset + 6
+        -- ClosureAtS: proof that closure is laid out at setup-closure-addr
+        -- Needs code-ptr and env-addr = encode x
+        setup-closure-at : ClosureAtS (encode x) setup-thunk-code-ptr setup-closure-addr (memory s₁)
+        -- Closure address is in heap (for ClosureAtS preservation)
+        setup-closure-addr-in-heap : InHeap setup-closure-addr
+        -- Output value equals closure address (for uniqueness proof)
+        setup-output-is-closure-addr : output-value s₁ ≡ setup-closure-addr
 
   module CaseSpecs {A B C : Type} (f : IR A C) (g : IR B C) where
 
@@ -527,6 +554,7 @@ module IRSpecs
         dispatch-heap-preserved : HeapPreserved s s₁
         dispatch-code-preserved : CodePreserved s s₁
         dispatch-frame-preserved : FramePreserved s s₁
+        dispatch-mem-frame-ptr-orig : readMem (memory s₁) (frame-ptr-addr s) ≡ readMem (memory s) (frame-ptr-addr s)
         dispatch-frame-ptr-below-orig : frame-ptr-addr s₁ < frame-ptr-addr s  -- new rbp < orig rbp (for frame preservation composition)
         -- Frame setup facts (for cleanup derivation)
         dispatch-frame-setup : FrameSetupInfo s s₁
@@ -545,6 +573,7 @@ module IRSpecs
         dispatch-heap-preserved : HeapPreserved s s₁
         dispatch-code-preserved : CodePreserved s s₁
         dispatch-frame-preserved : FramePreserved s s₁
+        dispatch-mem-frame-ptr-orig : readMem (memory s₁) (frame-ptr-addr s) ≡ readMem (memory s) (frame-ptr-addr s)
         dispatch-frame-ptr-below-orig : frame-ptr-addr s₁ < frame-ptr-addr s  -- new rbp < orig rbp (for frame preservation composition)
         -- Frame setup facts (for cleanup derivation)
         dispatch-frame-setup : FrameSetupInfo s s₁

@@ -12,13 +12,13 @@
 module Once.Backend.X86.Correct.ArchInstantiation where
 
 open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; _<_; zero; suc; _⊔_; z≤n) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; m≤m⊔n; ≤-trans; <⇒≤; ≤-refl)
+open import Data.Nat.Properties using (+-assoc; +-comm; m≤m⊔n; m≤n⊔m; ≤-trans; <⇒≤; ≤-refl; ≤-<-trans)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length; _++_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂)
 
 -- Once core
 open import Once.Type using (Type; _*_; _⇒_; _⇒[_]_; Eff) renaming (_+_ to _⊕_)
@@ -39,9 +39,12 @@ open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; stack-inv-preserved-unchanged)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; ir-stack-requirement; ir-output-capacity; ir-rsp-delta; slots;
-         compose-rsp-delta; slot-size; apply-consumed-slots)
+         compose-rsp-delta; slot-size; apply-consumed-slots;
+         capacity-when-rsp-restored)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-subst-heap-preserved; valid-subst-addr-mem)
+  using (ValidAt; valid-subst-heap-preserved; valid-subst-addr-mem; ClosureAtS;
+         valid-addr-is-encode; ClosureAtS-preserved-under-heap-eq;
+         valid-addr-in-heap)
 open import Once.Backend.X86.Layout using (InStack; InHeap; InCode)
 open import Once.Backend.X86.Correct.Star as X86Star
   using (Star; refl*; step*; star-trans; star-single; step-deterministic; just-injective; single-star-eq)
@@ -83,13 +86,6 @@ cap-upper-bound-subst : ∀ {E A B : Type} {p1 p2 : Program}
   ClosureWellFormed.cap-upper-bound (subst (λ p → ClosureWellFormed p cp env sem) eq wf)
 cap-upper-bound-subst refl _ = refl
 
--- | cwf-cap-bound is preserved under program subst for ApplyWFInput
--- By J: subst with refl is identity, so cwf-cap-bound is preserved
-cwf-cap-bound-subst : ∀ {A B : Type} {p1 p2 : Program} {s : State} {cl : Closure A B} →
-  (eq : p1 ≡ p2) → (cwf : ApplyWFInput A B p1 s cl) →
-  cwf-cap-bound (subst (λ p → ApplyWFInput A B p s cl) eq cwf) ≡ cwf-cap-bound cwf
-cwf-cap-bound-subst refl _ = refl
-
 ------------------------------------------------------------------------
 -- X86 Machine Interface
 ------------------------------------------------------------------------
@@ -111,6 +107,7 @@ X86-MachineInterface = record
   ; saved-input-value = λ s → readReg (regs s) r14  -- X86: pair saves input in r14
   ; result-slot-addr = λ s → readReg (regs s) r15   -- X86: pair stores f's result at r15
   ; frame-ptr-addr = λ s → readReg (regs s) rbp     -- X86: frame pointer in rbp
+  ; rsp-value = λ s → readReg (regs s) rsp          -- X86: stack pointer in rsp
   ; readMem = readMem
   ; program-length = length  -- Program = List Instr for X86
   ; empty-program = []       -- Empty list for X86
@@ -220,7 +217,15 @@ open Spec.IRSpecs
   X86-ClosureWF
   ClosureWellFormed.thunk-capacity   -- wf-thunk-capacity for X86
   ClosureWellFormed.cap-upper-bound  -- wf-cap-upper-bound for X86
+  ClosureAtS                         -- X86's closure memory layout predicate
   public
+
+-- | cwf-cap-bound is preserved under program subst for ApplyWFInput
+-- By J: subst with refl is identity, so cwf-cap-bound is preserved
+cwf-cap-bound-subst : ∀ {A B : Type} {p1 p2 : Program} {s : State} {cl : Closure A B} →
+  (eq : p1 ≡ p2) → (cwf : ApplyWFInput A B p1 s cl) →
+  cwf-cap-bound (subst (λ p → ApplyWFInput A B p s cl) eq cwf) ≡ cwf-cap-bound cwf
+cwf-cap-bound-subst refl _ = refl
 
 ------------------------------------------------------------------------
 -- Conversion: ClosureWFOutput (X86) → ClosureWFOut (Common)
@@ -264,6 +269,7 @@ IRStarResultV→IRCorrectness {ir = ir} {s' = s'} {x = x} res = record
   ; exec-heap-preserved = IRStarResultV.ir-mem-heap res
   ; exec-code-preserved = IRStarResultV.ir-mem-code res
   ; exec-frame-preserved = IRStarResultV.ir-mem-above res
+  ; exec-mem-frame-ptr = IRStarResultV.ir-mem-rbp res
   ; exec-stack-inv = IRStarResultV.ir-stack-inv res
   ; exec-capacity = IRStarResultV.ir-capacity res
   ; exec-frame-inv = IRStarResultV.ir-rbp-inv res
@@ -310,7 +316,7 @@ open import Once.Backend.X86.Correct.IR.Apply using (run-apply-to-ir-result-v)
 open import Data.Empty using (⊥; ⊥-elim)
 
 -- Additional imports for combining proofs
-open import Once.Type as Type using (Type; _*_; _⇒_; Fix; Void) renaming (_+_ to _⊕_)
+open import Once.Type as Type using (Type; _*_; _⇒_; Fix; Void; Unit; Int; Float; Str; Buffer; TVar; Eff) renaming (_+_ to _⊕_)
 open import Once.IR using (IR; id; _∘_; ⟨_,_⟩; curry; apply; [_,_]; inl; inr; fst; snd; arr; fold; unfold; terminal; initial; Prim)
 open import Data.String using (String)
 
@@ -355,6 +361,7 @@ x86-id-correct {A} prefix suffix x s pre cwf =
     ; exec-heap-preserved = IRStarResultV.ir-mem-heap res
     ; exec-code-preserved = IRStarResultV.ir-mem-code res
     ; exec-frame-preserved = IRStarResultV.ir-mem-above res
+    ; exec-mem-frame-ptr = IRStarResultV.ir-mem-rbp res
     ; exec-stack-inv = IRStarResultV.ir-stack-inv res
     ; exec-capacity = IRStarResultV.ir-capacity res
     ; exec-frame-inv = IRStarResultV.ir-rbp-inv res
@@ -373,9 +380,10 @@ x86-id-correct {A} prefix suffix x s pre cwf =
                     ApplyWFInput (ClosureDom A) (ClosureCod A) prog s (closureOf A x) →
                     ApplyWFInput (ClosureDom A) (ClosureCod A) prog s' (closureOf A x)
     id-closure-wf s' res no-apply-wf = no-apply-wf
-    id-closure-wf s' res (apply-wf cp env sem cl-addr cl-eq wf closure-at addr-unique ev cap) =
+    id-closure-wf s' res (apply-wf cp env sem cl-addr cl-eq wf closure-at cl-in-heap addr-unique ev cap) =
       apply-wf cp env sem cl-addr cl-eq wf
-        (ClosureAtS-preserved-under-heap-eq closure-at (valid-addr-in-heap ev) (IRStarResultV.ir-mem-heap res))
+        (ClosureAtS-preserved-under-heap-eq closure-at cl-in-heap (IRStarResultV.ir-mem-heap res))
+        cl-in-heap
         (λ cl-addr' v → addr-unique cl-addr' (valid-subst-heap-preserved-inv v refl (IRStarResultV.ir-mem-heap res)))
         (valid-subst-heap-preserved ev refl (IRStarResultV.ir-mem-heap res))
         (capacity-preserved-rsp-unchanged s s' _ cap (IRStarResultV.ir-rsp res))
@@ -385,7 +393,7 @@ x86-id-correct {A} prefix suffix x s pre cwf =
                    (cwf-in : ApplyWFInput (ClosureDom A) (ClosureCod A) prog s (closureOf A x)) →
                    cwf-cap-bound (id-closure-wf s'' res' cwf-in) ≤ ir-stack-requirement (id {A})
     id-cwf-bound s'' res' no-apply-wf = z≤n
-    id-cwf-bound s'' res' (apply-wf cp env sem cl-addr cl-eq wf closure-at addr-unique ev cap) = id-cwf-bound-apply-wf
+    id-cwf-bound s'' res' (apply-wf cp env sem cl-addr cl-eq wf closure-at cl-in-heap addr-unique ev cap) = id-cwf-bound-apply-wf
       where
         -- cwf-cap-bound of the output = wf-cap-upper-bound wf (same wf is threaded)
         postulate id-cwf-bound-apply-wf : ClosureWellFormed.cap-upper-bound wf ≤ ir-stack-requirement (id {A})
@@ -733,26 +741,19 @@ x86-compose-run-transfer {A} {B} {C} f g prefix suffix x s s₁ pre g-corr = s�
     prog-eq-prog' = trans (cong (prefix ++_) (sym (++-assoc code-g transfer (code-f ++ suffix))))
                           (sym (++-assoc prefix (code-g ++ transfer) (code-f ++ suffix)))
 
-    -- Helper: thunk-capacity is preserved under program subst
-    thunk-cap-subst : ∀ {E' A' B' : Type} {p1 p2 : Program}
-                      {cp : ℕ} {env' : ⟦ E' ⟧} {sem' : ⟦ A' ⟧ → ⟦ B' ⟧}
-                      (eq : p1 ≡ p2) (wf' : ClosureWellFormed p1 cp env' sem') →
-      ClosureWellFormed.thunk-capacity (subst (λ p → ClosureWellFormed p cp env' sem') eq wf')
-        ≡ ClosureWellFormed.thunk-capacity wf'
-    thunk-cap-subst refl _ = refl
-
     f-cwf : ApplyWFInput (ClosureDom B) (ClosureCod B) prog' s₂ (closureOf B (eval g x))
     f-cwf with IRCorrectness.exec-closure-wf g-corr
     ... | no-apply-wf = no-apply-wf
-    ... | apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap' =
+    ... | apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' cl-in-heap' addr-unique' ev' cap' =
             let wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq-prog' wf'
                 cap-at-s₂ = capacity-preserved-rsp-unchanged s₁ s₂ _ cap' (sym rsp₂)
-                closure-at-s₂ = ClosureAtS-preserved-under-heap-eq closure-at' (valid-addr-in-heap ev') mem₂
-                addr-unique-s₂ = λ cl-addr v → addr-unique' cl-addr (valid-subst-heap-preserved-inv v refl mem₂)
-            in apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₂ addr-unique-s₂
+                heap-eq-s₂ = λ a _ → mem₂ a  -- Wrap mem₂ to accept InHeap argument
+                closure-at-s₂ = ClosureAtS-preserved-under-heap-eq closure-at' cl-in-heap' heap-eq-s₂
+                addr-unique-s₂ = λ cl-addr v → addr-unique' cl-addr (valid-subst-heap-preserved-inv v refl heap-eq-s₂)
+            in apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₂ cl-in-heap' addr-unique-s₂
                  (valid-subst-addr-mem ev' refl mem₂)
                  (subst (λ n → StackCapacity s₂ (apply-consumed-slots + n))
-                        (sym (thunk-cap-subst prog-eq-prog' wf'))
+                        (thunk-cap-subst prog-eq-prog' wf')
                         cap-at-s₂)
 
 -- Combine g, transfer, and f results
@@ -776,6 +777,7 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ orig-cap rs
   ; exec-heap-preserved = heap-preserved-final
   ; exec-code-preserved = code-preserved-final
   ; exec-frame-preserved = frame-preserved-final
+  ; exec-mem-frame-ptr = mem-frame-ptr-final
   ; exec-stack-inv = IRCorrectness.exec-stack-inv f-corr
   ; exec-capacity = compose-capacity
   ; exec-frame-inv = IRCorrectness.exec-frame-inv f-corr
@@ -844,21 +846,21 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ orig-cap rs
     -- f's exec-cwf-bound-in-req : cwf-cap-bound f ≤ ir-req f
     -- ir-req (f ∘ g) = ir-req g ⊔ (ir-rsp-delta g + ir-req f) ≥ ir-req f
     compose-cwf-bound : cwf-cap-bound compose-closure-wf-out ≤ ir-stack-requirement (f ∘ g)
-    compose-cwf-bound =
-      let -- cwf-cap-bound is preserved by subst
-          eq : cwf-cap-bound compose-closure-wf-out ≡ cwf-cap-bound (IRCorrectness.exec-closure-wf f-corr)
-          eq = cwf-cap-bound-subst prog-f-eq-result (IRCorrectness.exec-closure-wf f-corr)
-          -- f's bound
-          f-bound : cwf-cap-bound (IRCorrectness.exec-closure-wf f-corr) ≤ ir-stack-requirement f
-          f-bound = IRCorrectness.exec-cwf-bound-in-req f-corr
-          -- ir-req f ≤ ir-rsp-delta g + ir-req f ≤ ir-req g ⊔ (ir-rsp-delta g + ir-req f) = ir-req (f ∘ g)
-          open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; m≤n+m)
-          step1 : ir-stack-requirement f ≤ ir-rsp-delta g +ℕ ir-stack-requirement f
-          step1 = m≤n+m (ir-stack-requirement f) (ir-rsp-delta g)
-          step2 : ir-rsp-delta g +ℕ ir-stack-requirement f ≤ ir-stack-requirement (f ∘ g)
-          step2 = m≤n⊔m (ir-stack-requirement g) (ir-rsp-delta g +ℕ ir-stack-requirement f)
-      in subst (λ cap → cap ≤ ir-stack-requirement (f ∘ g)) (sym eq)
-           (≤-trans (≤-trans f-bound step1) step2)
+    compose-cwf-bound = subst (λ cap → cap ≤ ir-stack-requirement (f ∘ g)) (sym eq)
+                              (≤-trans (≤-trans f-bound step1) step2)
+      where
+        open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; m≤n+m)
+        -- cwf-cap-bound is preserved by subst
+        eq : cwf-cap-bound compose-closure-wf-out ≡ cwf-cap-bound (IRCorrectness.exec-closure-wf f-corr)
+        eq = cwf-cap-bound-subst prog-f-eq-result (IRCorrectness.exec-closure-wf f-corr)
+        -- f's bound
+        f-bound : cwf-cap-bound (IRCorrectness.exec-closure-wf f-corr) ≤ ir-stack-requirement f
+        f-bound = IRCorrectness.exec-cwf-bound-in-req f-corr
+        -- ir-req f ≤ ir-rsp-delta g + ir-req f ≤ ir-req g ⊔ (ir-rsp-delta g + ir-req f) = ir-req (f ∘ g)
+        step1 : ir-stack-requirement f ≤ ir-rsp-delta g + ir-stack-requirement f
+        step1 = m≤n+m (ir-stack-requirement f) (ir-rsp-delta g)
+        step2 : ir-rsp-delta g + ir-stack-requirement f ≤ ir-stack-requirement (f ∘ g)
+        step2 = m≤n⊔m (ir-stack-requirement g) (ir-rsp-delta g + ir-stack-requirement f)
 
     -- Extract star from g (s → s₁)
     star-g : Star prog-g s s₁
@@ -1092,6 +1094,28 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ orig-cap rs
         addr>rbp-s₂ : addr > readReg (regs s₂) rbp
         addr>rbp-s₂ = subst (addr >_) (sym rbp-t) addr>rbp-s₁
 
+    -- Memory at frame pointer preservation (s → s₃)
+    -- Similar to frame-preserved but for the exact rbp address (not addr > rbp)
+    mem-frame-ptr-g = IRCorrectness.exec-mem-frame-ptr g-corr
+    mem-frame-ptr-f = IRCorrectness.exec-mem-frame-ptr f-corr
+
+    -- Transfer preserves memory at rbp s (rbp s = rbp s₁)
+    mem-frame-ptr-t : readMem (memory s₂) (readReg (regs s) rbp) ≡ readMem (memory s₁) (readReg (regs s) rbp)
+    mem-frame-ptr-t = subst (λ s₂' → readMem (memory s₂') (readReg (regs s) rbp) ≡ readMem (memory s₁) (readReg (regs s) rbp))
+                            (sym s₂≡s₂') (mem₂' (readReg (regs s) rbp))
+
+    -- f preserves memory at rbp s₂, but rbp s₂ = rbp s via rbp-t ∘ rbp-g
+    -- So we rewrite f's preservation to be about rbp s
+    rbp-s₂-eq-s : readReg (regs s₂) rbp ≡ readReg (regs s) rbp
+    rbp-s₂-eq-s = trans rbp-t rbp-g
+
+    mem-frame-ptr-f' : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s₂) (readReg (regs s) rbp)
+    mem-frame-ptr-f' = subst (λ addr → readMem (memory s₃) addr ≡ readMem (memory s₂) addr)
+                             rbp-s₂-eq-s mem-frame-ptr-f
+
+    mem-frame-ptr-final : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    mem-frame-ptr-final = trans mem-frame-ptr-f' (trans mem-frame-ptr-t mem-frame-ptr-g)
+
 ------------------------------------------------------------------------
 -- Pair Glue Lemmas
 --
@@ -1188,17 +1212,20 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
 
     -- r15 + slot-size < rbp: (rsp - frame-size) + word-size < rsp - saved-regs-size
     open import Once.Backend.X86.Correct.Arithmetic using (frame-size; saved-regs-size; word-size; slot0-plus-word<rbp)
-    open import Once.Backend.X86.Correct.StackInstantiation using (slots; ∸>0⇒≤)
+    open import Once.Backend.X86.Correct.StackInstantiation using (slots; pair-setup-consumed-slots)
+    open import Data.Nat.Properties using (m∸n≢0⇒n<m; 1+n≢0)
 
     -- Derive frame-size ≤ rsp(s) from setup capacity
     rsp-after-setup>0 : readReg (regs s) rsp ∸ slots pair-setup-consumed-slots > 0
     rsp-after-setup>0 = ≤-<-trans z≤n (subst (_> slots (pair-inner-requirement f g))
                           (PairSetupResultV.rsp-setup setup-res)
                           (PairSetupResultV.rsp-sufficient-setup setup-res))
-      where open import Once.Backend.X86.Correct.StackInstantiation using (pair-setup-consumed-slots)
+    -- Convert m ∸ n > 0 to n ≤ m via: m ∸ n > 0 → m ∸ n ≢ 0 → n < m → n ≤ m
     setup-frame-fits : slots pair-setup-consumed-slots ≤ readReg (regs s) rsp
-    setup-frame-fits = ∸>0⇒≤ (readReg (regs s) rsp) (slots pair-setup-consumed-slots) rsp-after-setup>0
-      where open import Once.Backend.X86.Correct.StackInstantiation using (pair-setup-consumed-slots)
+    setup-frame-fits = <⇒≤ (m∸n≢0⇒n<m (>0⇒≢0 rsp-after-setup>0))
+      where
+        >0⇒≢0 : ∀ {k} → k > 0 → k ≢ 0
+        >0⇒≢0 {suc _} _ ()
 
     -- r15(s-setup) + slot-size < rbp(s-setup) via arithmetic
     -- Uses slot0-plus-word<rbp: (m - frame-size) + word-size < m - saved-regs-size when frame-size ≤ m
@@ -1215,16 +1242,15 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
     rbp-setup-below-orig = subst (_< readReg (regs s) rbp) (sym (PairSetupResultV.rbp-setup setup-res)) rsp∸24<rbp
       where
         -- rsp(s) > 0 from setup-frame-fits (40 ≤ rsp implies rsp > 0)
+        -- We have 40 ≤ rsp, and 0 < 40, so 0 < rsp
         rsp>0 : readReg (regs s) rsp > 0
-        rsp>0 = ≤-<-trans z≤n (≤-<-trans setup-frame-fits (s≤s (m∸n≤m 40 1)))
-          where open import Data.Nat.Properties using (s≤s)
-                open import Data.Nat using (_∸_)
+        rsp>0 = <-≤-trans (Data.Nat.s≤s z≤n) setup-frame-fits
         -- rsp - 24 < rsp (since rsp > 0 and 24 > 0)
         rsp∸24<rsp : readReg (regs s) rsp ∸ saved-regs-size < readReg (regs s) rsp
-        rsp∸24<rsp = m∸n<m-proof (readReg (regs s) rsp) saved-regs-size rsp>0 (s≤s z≤n)
+        rsp∸24<rsp = m∸n<m-proof (readReg (regs s) rsp) saved-regs-size rsp>0 (Data.Nat.s≤s z≤n)
           where
             m∸n<m-proof : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-            m∸n<m-proof (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+            m∸n<m-proof (suc m') (suc n') _ _ = Data.Nat.s≤s (m∸n≤m m' n')
         -- rsp ≤ rbp from RbpInvariant
         rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
         rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
@@ -1263,6 +1289,14 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
         open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
         rbp-sp = make-frame-at-slot s cap-pair pair-rbp-slot pair-rbp-slot≤pair-setup
 
+    -- Memory at original rbp preserved: setup writes below rsp, and rsp ≤ rbp
+    orig-rbp = readReg (regs s) rbp
+    rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
+    rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
+
+    setup-mem-rbp-orig : readMem (memory s-setup) orig-rbp ≡ readMem (memory s) orig-rbp
+    setup-mem-rbp-orig = PairSetupResultV.mem-above-rsp-setup setup-res orig-rbp rsp≤rbp
+
     setup-post : PairSpecs.SetupPost f g prog (length (PairContext.prefix-f ctx)) s s-setup x
     setup-post = record
       { setup-halted = PairSetupResultV.h-setup setup-res
@@ -1281,6 +1315,7 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       ; setup-heap-preserved = PairSetupResultV.mem-heap-setup setup-res
       ; setup-code-preserved = PairSetupResultV.mem-code-setup setup-res
       ; setup-frame-preserved = setup-frame-preserved
+      ; setup-mem-frame-ptr-orig = setup-mem-rbp-orig
       }
 
 -- Pair setup enables f: converts SetupPost to Preconditions for f
@@ -1409,7 +1444,7 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
 
     -- Frame preserved: r15 + slot-size < rbp, so addr > rbp implies addr ≠ r15
     -- Chain: r15(s₁) + slot-size < rbp(s₁), both preserved by f, so r15(s₂) + slot-size < rbp(s₂)
-    open import Data.Nat.Properties using (<-irrefl; <-trans; m<m+n; 0<1+n)
+    open import Data.Nat.Properties using (<-irrefl; <-trans; <-asym; m<m+n; 0<1+n)
     -- Strong version: r15 + slot-size < rbp (for interface)
     r15+slot-below-rbp-s₁ : readReg (regs s₁) r15 + slot-size < readReg (regs s₁) rbp
     r15+slot-below-rbp-s₁ = PairSpecs.SetupPost.setup-result-slot-below-frame-ptr setup
@@ -1443,7 +1478,7 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
       where
         -- If addr > rbp(s₂) and r15(s₂) < rbp(s₂), then addr ≠ r15(s₂)
         r15-neq-addr : addr ≢ readReg (regs s₂) r15
-        r15-neq-addr eq = <-irrefl refl (<-trans r15-below-rbp-s₂ (subst (_< addr) eq addr>rbp-s₂))
+        r15-neq-addr eq = <-asym r15-below-rbp-s₂ (subst (readReg (regs s₂) rbp <_) eq addr>rbp-s₂)
 
     -- Input valid at s₃: chain validity through f and middle via heap preservation
     -- Step 1: ValidAt x (encode x) (memory s₁) from setup
@@ -1516,16 +1551,25 @@ x86-pair-middle-enables-g f g prefix suffix x s₁ s₂ s₃ fx middle = record
 -- Pair cleanup: stores g's result, constructs pair, restores registers
 -- Executes 6 instructions: store-g, return-pair, restore-rsp, pop-rbp, pop-r15, pop-r14
 x86-pair-cleanup : ∀ {A B C : Type} (f : IR C A) (g : IR C B)
-  (prefix suffix : Program) (x : ⟦ C ⟧) (s-orig s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) →
+  (prefix suffix : Program) (x : ⟦ C ⟧) (s-orig s₁ s₂ s₃ s₄ : State) (fx : ⟦ A ⟧) (gx : ⟦ B ⟧) →
   StackCapacity s-orig (ir-stack-requirement ⟨ f , g ⟩) →  -- Original capacity for output derivation
   RbpInvariant s-orig →  -- Original frame invariant for restoration
+  StackInvariant s-orig →  -- Original stack invariant for PairFinalPrecond
   readReg (regs s₄) r15 + slot-size < readReg (regs s₄) rbp →  -- Result slot + word below frame ptr
-  (g-corr : IRCorrectness g (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix))) ++ compile-x86 g ++ proj₂ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))) s₃ s₄ x (length (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))))) →
+  -- Intermediate results needed for PairFinalPrecond construction
   let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
-      offset-end = length prefix + compile-length ⟨ f , g ⟩
+      ctx = make-pair-context f g prefix suffix
+      offset-f = length (PairContext.prefix-f ctx)
+      offset-g = length (PairContext.prefix-g ctx)
+  in (setup : PairSpecs.SetupPost f g prog offset-f s-orig s₁ x) →
+  (f-corr : IRCorrectness f (proj₁ (x86-pair-context f g prefix suffix) ++ compile-x86 f ++ proj₁ (proj₂ (x86-pair-context f g prefix suffix))) s₁ s₂ x (length (proj₁ (x86-pair-context f g prefix suffix)))) →
+  (middle : PairSpecs.MiddlePost f g prog offset-g s₁ s₂ s₃ x fx) →
+  (g-corr : IRCorrectness g (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix))) ++ compile-x86 g ++ proj₂ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))) s₃ s₄ x (length (proj₁ (proj₂ (proj₂ (x86-pair-context f g prefix suffix)))))) →
+  let offset-end = length prefix + compile-length ⟨ f , g ⟩
   in ∃[ s₅ ] PairSpecs.CleanupPost f g prog offset-end s-orig s₄ s₅ x fx gx
-x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx orig-cap orig-frame-inv r15+slot-below-rbp-s₄ g-corr = s₅ , cleanup-post
+x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx gx orig-cap orig-frame-inv orig-stack-inv r15+slot-below-rbp-s₄ setup f-corr middle g-corr = s₅ , cleanup-post
   where
+    open import Once.Backend.X86.Correct.StackInstantiation using (rsp-bound-to-capacity; rsp-in-stack)
     ctx = make-pair-context f g prefix suffix
     open PairContext ctx
     prog-full = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
@@ -1593,11 +1637,11 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx orig-cap
     -- Derive frame invariant: rsp and rbp restored to original
     frame-inv₅ : RbpInvariant s₅
     frame-inv₅ = rbp-inv-preserved-unchanged s-orig s₅ orig-frame-inv
-                   (sym (PairFinalResult.rsp-fin final-result))
-                   (sym (PairFinalResult.rbp-fin final-result))
+                   (PairFinalResult.rsp-fin final-result)
+                   (PairFinalResult.rbp-fin final-result)
 
     -- Frame preserved: r15 < rbp, so addr > rbp implies addr ≠ r15+8
-    open import Data.Nat.Properties using (<-irrefl; <-trans; m≤m+n; <-transˡ; +-monoʳ-<)
+    open import Data.Nat.Properties using (<-irrefl; <-trans; <-asym; m≤m+n; <-transˡ; +-monoʳ-<)
     -- r15(s₄) + 8 < rbp(s₄): follows from r15(s₄) < rbp(s₄) and 8 > 0
     -- Actually, r15 + 8 < rbp doesn't follow directly... we need r15 + 8 ≤ rbp
     -- But if r15 < rbp and they're far apart (rbp = frame base, r15 = pair alloc on heap)
@@ -1613,12 +1657,8 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₃ s₄ fx gx orig-cap
         -- But we also need to ensure addr ≠ r15 + 8 even when addr could equal r15 + 8
         -- Key: r15 + 8 < rbp (r15 is pair alloc address << rbp which is stack frame)
         -- So addr > rbp > r15 + 8 implies addr ≠ r15 + 8
-        addr-neq-r15+8 : addr ≢ readReg (regs s₄) r15 +ℕ slot-size
-        addr-neq-r15+8 eq = <-irrefl refl (<-trans r15+slot-below-rbp-s₄ addr>rbp-subst)
-          where
-            -- r15(s₄) + slot-size < rbp(s₄): from interface parameter
-            addr>rbp-subst : readReg (regs s₄) rbp < addr
-            addr>rbp-subst = subst (_< addr) eq addr>rbp-s₄
+        addr-neq-r15+8 : addr ≢ readReg (regs s₄) r15 + slot-size
+        addr-neq-r15+8 eq = <-asym r15+slot-below-rbp-s₄ (subst (readReg (regs s₄) rbp <_) eq addr>rbp-s₄)
 
     -- Remaining fields that need bridging from original state
     postulate
@@ -1666,6 +1706,7 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
   ; exec-heap-preserved = pair-heap-preserved
   ; exec-code-preserved = pair-code-preserved
   ; exec-frame-preserved = pair-frame-preserved
+  ; exec-mem-frame-ptr = pair-mem-frame-ptr
   ; exec-stack-inv = PairSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = PairSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = PairSpecs.CleanupPost.cleanup-frame-inv cleanup
@@ -1724,8 +1765,8 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
       cwf-cap-bound cwf ≤ ir-stack-requirement f →
       ApplyWFInput (ClosureDom (A₀ * B₀)) (ClosureCod (A₀ * B₀)) prog-full s₅ (closureOf (A₀ * B₀) (v , w))
     pair-lift-cwf (D ⇒[ q ] E) _ v w no-apply-wf _ = no-apply-wf
-    pair-lift-cwf (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
-      apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₅ addr-unique-s₅ ev-at-s₅ cap-at-s₅
+    pair-lift-cwf (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' cl-in-heap' addr-unique' ev' cap') cwf-bnd =
+      apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₅ cl-in-heap' addr-unique-s₅ ev-at-s₅ cap-at-s₅
       where
         open import Once.Backend.X86.Correct.StackInstantiation
           using (capacity-from-larger; pair-inner-requirement; pair-setup-consumed-slots)
@@ -1737,7 +1778,7 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
           trans (PairSpecs.CleanupPost.cleanup-heap-preserved cleanup addr ih)
           (trans (IRCorrectness.exec-heap-preserved g-corr addr ih)
                  (PairSpecs.MiddlePost.middle-heap-preserved middle addr ih))
-        closure-at-s₅ = ClosureAtS-preserved-under-heap-eq closure-at' (valid-addr-in-heap ev') heap-s₂-to-s₅
+        closure-at-s₅ = ClosureAtS-preserved-under-heap-eq closure-at' cl-in-heap' heap-s₂-to-s₅
         addr-unique-s₅ = λ cl-addr v → addr-unique' cl-addr (valid-subst-heap-preserved-inv v refl heap-s₂-to-s₅)
         ev-at-s₅ = valid-subst-heap-preserved ev' refl heap-s₂-to-s₅
 
@@ -1808,7 +1849,7 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
         -- Case: arrow type with no-apply-wf
         pair-cwf-bound-helper (D ⇒[ q ] E) _ v w no-apply-wf _ = z≤n
         -- Case: arrow type with apply-wf
-        pair-cwf-bound-helper (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
+        pair-cwf-bound-helper (D ⇒[ q ] E) _ v w (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' cl-in-heap' addr-unique' ev' cap') cwf-bnd =
           let -- cap-upper-bound preserved by subst
               wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') (sym prog-eq-f) wf'
               cap-eq : ClosureWellFormed.cap-upper-bound wf' ≡ ClosureWellFormed.cap-upper-bound wf-subst
@@ -1820,10 +1861,20 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
               step2 = m≤m⊔n (ir-stack-requirement f) (ir-rsp-delta f + ir-stack-requirement g)
               step3 : pair-inner-requirement f g ≤ ir-stack-requirement ⟨ f , g ⟩
               step3 = m≤n+m (pair-inner-requirement f g) pair-setup-consumed-slots
-          in subst (λ cap → cap ≤ ir-stack-requirement ⟨ f , g ⟩) (sym cap-eq)
+          in subst (λ cap → cap ≤ ir-stack-requirement ⟨ f , g ⟩) cap-eq
                (≤-trans (≤-trans step1 step2) step3)
-        -- Catch-all for non-arrow types (produces no-apply-wf with cwf-cap-bound = 0)
-        pair-cwf-bound-helper _ _ _ _ _ _ = z≤n
+        -- Non-arrow types: pair-lift-cwf produces no-apply-wf, so cwf-cap-bound = 0
+        pair-cwf-bound-helper Unit _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper Void _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper (A₁ * A₂) _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper (A₁ ⊕ A₂) _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper (Eff A₁ A₂) _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper (Fix A₁) _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper Int _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper Float _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper Str _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper Buffer _ _ _ _ _ = z≤n
+        pair-cwf-bound-helper (TVar _) _ _ _ _ _ = z≤n
 
     -- Frame preservation: chain through all 5 phases
     -- Key insight: rbp(s₁) < rbp(s) (from setup-frame-ptr-below-orig)
@@ -1871,6 +1922,63 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
         addr>rbp-s₄ : addr > readReg (regs s₄) rbp
         addr>rbp-s₄ = subst (addr >_) (sym rbp-s₄-eq) addr>rbp-s₃
 
+    -- Memory at original frame pointer preservation (s → s₅)
+    -- Key insight: rbp s > rbp s₁ (from setup-frame-ptr-below-orig)
+    -- So phases 2-5 all have frame-preserved that covers address rbp s
+    -- Only setup needs the explicit setup-mem-frame-ptr-orig
+    pair-mem-frame-ptr : readMem (memory s₅) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    pair-mem-frame-ptr = trans cleanup-mem
+                         (trans g-mem
+                         (trans middle-mem
+                         (trans f-mem
+                                (PairSpecs.SetupPost.setup-mem-frame-ptr-orig setup))))
+      where
+        open import Data.Nat.Properties using (<-trans)
+
+        -- rbp(s₁) < rbp(s): from setup
+        rbp-s₁<rbp-s : readReg (regs s₁) rbp < readReg (regs s) rbp
+        rbp-s₁<rbp-s = PairSpecs.SetupPost.setup-frame-ptr-below-orig setup
+
+        -- rbp s > rbp s₁, so f's frame-preserved covers rbp s
+        rbp-s>rbp-s₁ : readReg (regs s) rbp > readReg (regs s₁) rbp
+        rbp-s>rbp-s₁ = rbp-s₁<rbp-s
+
+        f-mem : readMem (memory s₂) (readReg (regs s) rbp) ≡ readMem (memory s₁) (readReg (regs s) rbp)
+        f-mem = IRCorrectness.exec-frame-preserved f-corr (readReg (regs s) rbp) rbp-s>rbp-s₁
+
+        -- rbp(s₂) = rbp(s₁) from f's saved-regs
+        rbp-s₂-eq : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
+        rbp-s₂-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs f-corr))
+
+        -- rbp s > rbp s₂
+        rbp-s>rbp-s₂ : readReg (regs s) rbp > readReg (regs s₂) rbp
+        rbp-s>rbp-s₂ = subst (readReg (regs s) rbp >_) (sym rbp-s₂-eq) rbp-s>rbp-s₁
+
+        middle-mem : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s₂) (readReg (regs s) rbp)
+        middle-mem = PairSpecs.MiddlePost.middle-frame-preserved middle (readReg (regs s) rbp) rbp-s>rbp-s₂
+
+        -- rbp(s₃) = rbp(s₂) from middle
+        rbp-s₃-eq : readReg (regs s₃) rbp ≡ readReg (regs s₂) rbp
+        rbp-s₃-eq = PairSpecs.MiddlePost.middle-frame-ptr-eq middle
+
+        -- rbp s > rbp s₃
+        rbp-s>rbp-s₃ : readReg (regs s) rbp > readReg (regs s₃) rbp
+        rbp-s>rbp-s₃ = subst (readReg (regs s) rbp >_) (sym rbp-s₃-eq) rbp-s>rbp-s₂
+
+        g-mem : readMem (memory s₄) (readReg (regs s) rbp) ≡ readMem (memory s₃) (readReg (regs s) rbp)
+        g-mem = IRCorrectness.exec-frame-preserved g-corr (readReg (regs s) rbp) rbp-s>rbp-s₃
+
+        -- rbp(s₄) = rbp(s₃) from g's saved-regs
+        rbp-s₄-eq : readReg (regs s₄) rbp ≡ readReg (regs s₃) rbp
+        rbp-s₄-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs g-corr))
+
+        -- rbp s > rbp s₄
+        rbp-s>rbp-s₄ : readReg (regs s) rbp > readReg (regs s₄) rbp
+        rbp-s>rbp-s₄ = subst (readReg (regs s) rbp >_) (sym rbp-s₄-eq) rbp-s>rbp-s₃
+
+        cleanup-mem : readMem (memory s₅) (readReg (regs s) rbp) ≡ readMem (memory s₄) (readReg (regs s) rbp)
+        cleanup-mem = PairSpecs.CleanupPost.cleanup-frame-preserved cleanup (readReg (regs s) rbp) rbp-s>rbp-s₄
+
     -- Output encoding: eval ⟨ f , g ⟩ x = (eval f x, eval g x) definitionally
     -- cleanup-output-valid gives ValidAt (eval f x, eval g x) rax (memory s₅)
     pair-output-is-encode : readReg (regs s₅) rax ≡ encode (eval ⟨ f , g ⟩ x)
@@ -1884,6 +1992,7 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
 
 -- Import run-curry-star for curry implementation (exposes CurryMemoryResult for env fields)
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryExecResult; CurryMemoryResult)
+open import Once.Postulates using (encode-closure-construct)
 
 -- Curry setup: runs the full curry and extracts SetupPost with execution evidence
 x86-curry-setup : ∀ {A B C : Type} (f : IR (A * B) C)
@@ -1908,7 +2017,7 @@ x86-curry-setup {A} {B} {C} f prefix suffix x s pre = s₁ , setup
     rbp-inv = Preconditions.pre-frame-inv pre
 
     -- Run curry (get both exec and memory results)
-    curry-result = run-curry-star f prefix suffix x s h pc-eq input-valid stack-inv cap rbp-inv
+    curry-result = run-curry-star f prefix suffix x s h pc-eq input-valid input-is-encode stack-inv cap rbp-inv
     s₁ = proj₁ curry-result
     exec-res = proj₁ (proj₂ curry-result)
     mem-res = proj₂ (proj₂ curry-result)
@@ -1926,8 +2035,18 @@ x86-curry-setup {A} {B} {C} f prefix suffix x s pre = s₁ , setup
     sem-closure : Closure B C
     sem-closure = eval (curry f) x
 
+    -- Prove closure-addr encodes the semantic closure
+    curry-env-addr-eq : curry-env-addr ≡ encode x
+    curry-env-addr-eq = CurryMemoryResult.env-addr-eq mem-res
+
+    mem-env-encode-x : readMem (memory s₁) curry-closure-addr ≡ just (encode x)
+    mem-env-encode-x = trans (CurryMemoryResult.mem-env mem-res) (cong just curry-env-addr-eq)
+
+    closure-addr-encoding : curry-closure-addr ≡ encode {B ⇒ C} sem-closure
+    closure-addr-encoding = encode-closure-construct f x curry-closure-addr (memory s₁) mem-env-encode-x
+
     closure-valid-at-addr : ValidAt {B ⇒ C} sem-closure curry-closure-addr (memory s₁)
-    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at
+    closure-valid-at-addr = valid-closure-env refl curry-v-env closure-at closure-addr-encoding
 
     result-valid : ValidAt (eval (curry f) x) (readReg (regs s₁) rax) (memory s₁)
     result-valid = subst (λ addr → ValidAt {B ⇒ C} sem-closure addr (memory s₁))
@@ -1949,11 +2068,21 @@ x86-curry-setup {A} {B} {C} f prefix suffix x s pre = s₁ , setup
       ; setup-heap-preserved = CurryExecResult.exec-mem-heap exec-res
       ; setup-code-preserved = CurryExecResult.exec-mem-code exec-res
       ; setup-frame-preserved = CurryExecResult.exec-mem-above exec-res
+      ; setup-mem-frame-ptr = CurryExecResult.exec-mem-rbp exec-res
       -- Env validity at encode x (from pre-input-valid + pre-input-is-encode + heap preservation)
       ; setup-env-valid = valid-subst-heap-preserved
           (subst (λ a → ValidAt x a (memory s)) input-is-encode input-valid)
           refl
           (CurryExecResult.exec-mem-heap exec-res)
+      -- Closure address and layout
+      ; setup-closure-addr = curry-closure-addr
+      ; setup-thunk-code-ptr = curry-code-ptr
+      ; setup-thunk-code-ptr-eq = CurryMemoryResult.code-ptr-is-thunk mem-res
+      ; setup-closure-at = subst (λ ea → ClosureAtS ea curry-code-ptr curry-closure-addr (memory s₁))
+                                 (CurryMemoryResult.env-addr-eq mem-res)
+                                 closure-at
+      ; setup-closure-addr-in-heap = valid-addr-in-heap closure-valid-at-addr
+      ; setup-output-is-closure-addr = curry-rax-eq
       }
 
 -- Imports for curry-combine's ClosureWellFormed construction
@@ -1986,6 +2115,7 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
   ; exec-heap-preserved = CurrySpecs.SetupPost.setup-heap-preserved setup
   ; exec-code-preserved = CurrySpecs.SetupPost.setup-code-preserved setup
   ; exec-frame-preserved = CurrySpecs.SetupPost.setup-frame-preserved setup
+  ; exec-mem-frame-ptr = CurrySpecs.SetupPost.setup-mem-frame-ptr setup
   ; exec-stack-inv = CurrySpecs.SetupPost.setup-stack-inv setup
   ; exec-capacity = CurrySpecs.SetupPost.setup-capacity setup
   ; exec-frame-inv = CurrySpecs.SetupPost.setup-frame-inv setup
@@ -2048,22 +2178,24 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
     curry-semantics : ⟦ B ⟧ → ⟦ C ⟧
     curry-semantics = λ b → eval f (x , b)
 
-    -- Transport closure-at to use encode x and thunk-code-ptr
+    -- Closure address from SetupPost
+    curry-closure-addr : ℕ
+    curry-closure-addr = CurrySpecs.SetupPost.setup-closure-addr setup
+
+    -- ClosureAtS proof from SetupPost, subst to use thunk-code-ptr
     curry-closure-at-for-wf : ClosureAtS (encode x) thunk-code-ptr curry-closure-addr (memory s₁)
     curry-closure-at-for-wf = subst (λ cp → ClosureAtS (encode x) cp curry-closure-addr (memory s₁))
-                                    (CurryMemoryResult.code-ptr-is-thunk mem-res)
-                              (subst (λ ea → ClosureAtS ea curry-code-ptr curry-closure-addr (memory s₁))
-                                     (CurryMemoryResult.env-addr-eq mem-res)
-                                     closure-at)
+                                    (CurrySpecs.SetupPost.setup-thunk-code-ptr-eq setup)
+                                    (CurrySpecs.SetupPost.setup-closure-at setup)
 
     -- Closure address uniqueness: the closure is only valid at curry-closure-addr
     -- Proof: closureOf (B ⇒ C) v = v for arrow types, so valid-addr-is-encode gives cl-addr ≡ encode result
-    -- Then curry-output-is-encode gives rax ≡ encode result, and curry-rax-eq gives rax ≡ curry-closure-addr
+    -- Then curry-output-is-encode gives rax ≡ encode result, and setup-output-is-closure-addr gives rax ≡ closure-addr
     curry-closure-addr-unique : (cl-addr : ℕ) →
-      ValidAt (closureOf (B ⇒ C) (eval (curry f) x)) cl-addr (memory s₁) →
+      ValidAt {B ⇒ C} (closureOf (B ⇒ C) (eval (curry f) x)) cl-addr (memory s₁) →
       cl-addr ≡ curry-closure-addr
     curry-closure-addr-unique cl-addr v =
-      trans (valid-addr-is-encode v) (trans (sym curry-output-is-encode) curry-rax-eq)
+      trans (valid-addr-is-encode v) (trans (sym curry-output-is-encode) (CurrySpecs.SetupPost.setup-output-is-closure-addr setup))
 
     curry-apply-wf : ApplyWFInput B C prog s₁ (closureOf (B ⇒ C) (eval (curry f) x))
     curry-apply-wf = apply-wf {E = A}
@@ -2073,6 +2205,7 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
       refl  -- cl-eq: eval (curry f) x ≡ record { env-addr = encode x ; semantics = curry-semantics }
       curry-wf
       curry-closure-at-for-wf  -- ClosureAtS proof
+      (CurrySpecs.SetupPost.setup-closure-addr-in-heap setup)  -- closure addr in heap
       curry-closure-addr-unique  -- closure-addr-unique
       (CurrySpecs.SetupPost.setup-env-valid setup)
       curry-cap-for-apply
@@ -2259,16 +2392,16 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
     rbp-setup-below-orig : readReg (regs s-setup) rbp < readReg (regs s) rbp
     rbp-setup-below-orig = subst (_< readReg (regs s) rbp) (sym (CaseInlSetupResult.rbp-setup setup-res)) rsp∸8<rbp
       where
-        -- rsp(s) > 0 from orig-rsp-bound (8 ≤ rsp implies rsp > 0)
+        -- rsp(s) > 0 from orig-rsp-bound (8 ≤ rsp implies rsp > 0, since 1 ≤ 8)
         rsp>0 : readReg (regs s) rsp > 0
-        rsp>0 = ≤-<-trans z≤n (≤-<-trans orig-rsp-bound (s≤s z≤n))
+        rsp>0 = ≤-trans (Data.Nat.s≤s z≤n) orig-rsp-bound
         -- rsp - 8 < rsp (since rsp > 0 and 8 > 0)
         rsp∸8<rsp : readReg (regs s) rsp ∸ slot-size < readReg (regs s) rsp
-        rsp∸8<rsp = m∸n<m-proof (readReg (regs s) rsp) slot-size rsp>0 (s≤s z≤n)
+        rsp∸8<rsp = m∸n<m-proof (readReg (regs s) rsp) slot-size rsp>0 (Data.Nat.s≤s z≤n)
           where
             open import Data.Nat.Properties using (m∸n≤m)
             m∸n<m-proof : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-            m∸n<m-proof (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+            m∸n<m-proof (suc m') (suc n') _ _ = Data.Nat.s≤s (m∸n≤m m' n')
         -- rsp ≤ rbp from RbpInvariant
         rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
         rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
@@ -2290,6 +2423,7 @@ x86-case-dispatch-left {A} {B} {C} f g prefix suffix a s pre = s-setup , dispatc
       ; dispatch-heap-preserved = CaseInlSetupResult.mem-heap-setup setup-res
       ; dispatch-code-preserved = CaseInlSetupResult.mem-code-setup setup-res
       ; dispatch-frame-preserved = CaseInlSetupResult.mem-above-setup setup-res
+      ; dispatch-mem-frame-ptr-orig = CaseInlSetupResult.mem-rbp-setup setup-res
       ; dispatch-frame-ptr-below-orig = rbp-setup-below-orig
       ; dispatch-frame-setup =
           CaseInlSetupResult.rbp-setup setup-res ,
@@ -2324,10 +2458,12 @@ x86-case-left-cleanup : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
       offset-f = length (proj₁ (x86-case-left-context f g prefix suffix))
       offset-end = length prefix + compile-length [ f , g ]
-  in CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
+  -- Original preconditions (needed for capacity/invariant restoration)
+  in Preconditions {A ⊕ B} s (inj₁ a) prefix (ir-stack-requirement [ f , g ]) →
+  CaseSpecs.DispatchLeftPost f g prog offset-f s s₁ a →
   IRCorrectness f (proj₁ (x86-case-left-context f g prefix suffix) ++ compile-x86 f ++ proj₂ (x86-case-left-context f g prefix suffix)) s₁ s₂ a (length (proj₁ (x86-case-left-context f g prefix suffix))) →
   ∃[ s₃ ] CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval f a)
-x86-case-left-cleanup {A} {B} {C} f g prefix suffix a s s₁ s₂ dispatch f-corr = s₃ , cleanup-post
+x86-case-left-cleanup {A} {B} {C} f g prefix suffix a s s₁ s₂ orig-pre dispatch f-corr = s₃ , cleanup-post
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     len-f = compile-length f
@@ -2365,11 +2501,17 @@ x86-case-left-cleanup {A} {B} {C} f g prefix suffix a s s₁ s₂ dispatch f-cor
     orig-rsp-bound : slot-size ≤ orig-rsp
     orig-rsp-bound = dispatch-rsp-bound
 
-    -- mem-rbp: requires f to preserve [rbp(s₁)] which is at the frame boundary.
-    -- exec-frame-preserved uses strict >, so addr = rbp is NOT covered.
-    -- This is the remaining structural gap (same issue as pair).
-    postulate
-      mem-rbp : readMem (memory s₂) (readReg (regs s₂) rbp) ≡ just orig-rbp
+    -- mem-rbp: Chain from exec-mem-frame-ptr and dispatch-frame-setup
+    -- f preserves memory at rbp(s₁), and dispatch wrote orig-rbp there
+    rbp-preserved : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
+    rbp-preserved = proj₂ (proj₂ f-saved-regs)
+
+    mem-frame-ptr-preserved : readMem (memory s₂) (readReg (regs s₁) rbp) ≡ readMem (memory s₁) (readReg (regs s₁) rbp)
+    mem-frame-ptr-preserved = IRCorrectness.exec-mem-frame-ptr f-corr
+
+    mem-rbp : readMem (memory s₂) (readReg (regs s₂) rbp) ≡ just orig-rbp
+    mem-rbp = trans (cong (readMem (memory s₂)) rbp-preserved)
+                    (trans mem-frame-ptr-preserved dispatch-saved-rbp)
 
     -- Run the 3-step cleanup: jmp + mov rsp,rbp + pop rbp
     cleanup-result = case-inl-cleanup-star f g prefix suffix s₂ orig-rsp orig-rbp
@@ -2413,11 +2555,35 @@ x86-case-left-cleanup {A} {B} {C} f g prefix suffix a s s₁ s₂ dispatch f-cor
       , trans (CaseCleanupResult.r15-preserved cres) (trans (proj₁ (proj₂ f-saved-regs)) dispatch-r15)
       , CaseCleanupResult.rbp-final cres )
 
-    -- These still require deeper reasoning about state restoration
-    postulate
-      cleanup-capacity-post : StackCapacity s₃ (ir-output-capacity [ f , g ])
-      cleanup-frame-inv-post : RbpInvariant s₃
-      cleanup-stack-inv-post : StackInvariant s₃
+    -- Derive invariants from original preconditions and RSP/register restoration
+    -- Original preconditions
+    orig-cap = Preconditions.pre-capacity orig-pre
+    orig-frame-inv = Preconditions.pre-frame-inv orig-pre
+    orig-stack-inv = Preconditions.pre-stack-inv orig-pre
+
+    -- RSP equality: rsp(s₃) = orig-rsp = rsp(s)
+    rsp-s₃-eq-s : readReg (regs s₃) rsp ≡ readReg (regs s) rsp
+    rsp-s₃-eq-s = CaseCleanupResult.rsp-final cres
+
+    -- r15 equality from cleanup-saved-regs-post
+    r15-s₃-eq-s : readReg (regs s₃) r15 ≡ readReg (regs s) r15
+    r15-s₃-eq-s = proj₁ (proj₂ cleanup-saved-regs-post)
+
+    -- rbp equality from cleanup result
+    rbp-s₃-eq-s : readReg (regs s₃) rbp ≡ readReg (regs s) rbp
+    rbp-s₃-eq-s = CaseCleanupResult.rbp-final cres
+
+    -- Capacity: since ir-rsp-delta [f,g] = 0, output-capacity = stack-requirement
+    cleanup-capacity-post : StackCapacity s₃ (ir-output-capacity [ f , g ])
+    cleanup-capacity-post = capacity-when-rsp-restored s s₃ (ir-output-capacity [ f , g ]) orig-cap rsp-s₃-eq-s
+
+    -- RbpInvariant: rsp and rbp restored to original values
+    cleanup-frame-inv-post : RbpInvariant s₃
+    cleanup-frame-inv-post = rbp-inv-preserved-unchanged s s₃ orig-frame-inv rsp-s₃-eq-s rbp-s₃-eq-s
+
+    -- StackInvariant: r15 and rsp restored to original values
+    cleanup-stack-inv-post : StackInvariant s₃
+    cleanup-stack-inv-post = stack-inv-preserved-unchanged s s₃ orig-stack-inv r15-s₃-eq-s rsp-s₃-eq-s
 
     cleanup-post : CaseSpecs.CleanupPost f g prog (length prefix + compile-length [ f , g ]) s s₂ s₃ (eval f a)
     cleanup-post = record
@@ -2457,6 +2623,7 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
   ; exec-heap-preserved = case-heap-preserved
   ; exec-code-preserved = case-code-preserved
   ; exec-frame-preserved = case-frame-preserved
+  ; exec-mem-frame-ptr = case-mem-frame-ptr
   ; exec-stack-inv = CaseSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup
@@ -2502,11 +2669,11 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
                         cwf-cap-bound cwf ≤ ir-stack-requirement f →
                         ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
         transport-cwf no-apply-wf _ = no-apply-wf
-        transport-cwf (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
-          apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ addr-unique-s₃ ev-at-s₃ cap-at-s₃
+        transport-cwf (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' cl-in-heap' addr-unique' ev' cap') cwf-bnd =
+          apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ cl-in-heap' addr-unique-s₃ ev-at-s₃ cap-at-s₃
           where
             wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
-            closure-at-s₃ = ClosureAtS-preserved-under-heap-eq closure-at' (valid-addr-in-heap ev') (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
+            closure-at-s₃ = ClosureAtS-preserved-under-heap-eq closure-at' cl-in-heap' (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
             addr-unique-s₃ = λ cl-addr v → addr-unique' cl-addr (valid-subst-heap-preserved-inv v refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup))
             ev-at-s₃ = valid-subst-heap-preserved ev' refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
 
@@ -2579,33 +2746,42 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
         addr>rbp-s₂ : addr > readReg (regs s₂) rbp
         addr>rbp-s₂ = subst (addr >_) (sym rbp-s₂-eq) addr>rbp-s₁
 
-    -- Bound proof: cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
-    -- Pattern match on the input to transport-cwf:
-    -- - no-apply-wf: cwf-cap-bound = 0 ≤ anything (z≤n)
-    -- - apply-wf: chain wf-cap-upper-bound ≤ ir-req f ≤ ir-req [f,g]
-    case-left-cwf-bound : cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
-    case-left-cwf-bound = cwf-bound-helper (IRCorrectness.exec-closure-wf f-corr) (IRCorrectness.exec-cwf-bound-in-req f-corr)
+    -- Memory at original frame pointer preservation (s → s₃)
+    -- Key: rbp s > rbp s₁ (from dispatch-frame-ptr-below-orig)
+    -- So f and cleanup's frame-preserved covers address rbp s
+    case-mem-frame-ptr : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    case-mem-frame-ptr = trans cleanup-mem-rbp (trans f-mem-rbp dispatch-mem-rbp)
       where
-        open import Data.Nat.Properties using (m≤m⊔n; m≤n+m)
+        -- dispatch preserves memory at rbp s (from new field)
+        dispatch-mem-rbp : readMem (memory s₁) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+        dispatch-mem-rbp = CaseSpecs.DispatchLeftPost.dispatch-mem-frame-ptr-orig dispatch
 
-        cwf-bound-helper : (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-f s₂ (closureOf C (eval f a))) →
-                           cwf-cap-bound cwf ≤ ir-stack-requirement f →
-                           cwf-cap-bound (transport-cwf cwf (IRCorrectness.exec-cwf-bound-in-req f-corr)) ≤ ir-stack-requirement [ f , g ]
-        cwf-bound-helper no-apply-wf _ = z≤n
-        cwf-bound-helper (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
-          let -- cap-upper-bound preserved by subst
-              wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
-              cap-eq : ClosureWellFormed.cap-upper-bound wf' ≡ ClosureWellFormed.cap-upper-bound wf-subst
-              cap-eq = cap-upper-bound-subst prog-eq wf'
-              -- Chain: wf-cap-upper-bound wf' ≤ ir-req f ≤ ir-req f ⊔ ir-req g ≤ ir-req [f,g]
-              step1 : ClosureWellFormed.cap-upper-bound wf' ≤ ir-stack-requirement f
-              step1 = cwf-bnd
-              step2 : ir-stack-requirement f ≤ ir-stack-requirement f ⊔ ir-stack-requirement g
-              step2 = m≤m⊔n (ir-stack-requirement f) (ir-stack-requirement g)
-              step3 : ir-stack-requirement f ⊔ ir-stack-requirement g ≤ ir-stack-requirement [ f , g ]
-              step3 = m≤n+m (ir-stack-requirement f ⊔ ir-stack-requirement g) 1
-          in subst (λ cap → cap ≤ ir-stack-requirement [ f , g ]) (sym cap-eq)
-               (≤-trans (≤-trans step1 step2) step3)
+        -- rbp s > rbp s₁ (same as in case-frame-preserved)
+        rbp-s>rbp-s₁ : readReg (regs s) rbp > readReg (regs s₁) rbp
+        rbp-s>rbp-s₁ = CaseSpecs.DispatchLeftPost.dispatch-frame-ptr-below-orig dispatch
+
+        -- f preserves memory at rbp s (using frame-preserved with rbp s > rbp s₁)
+        f-mem-rbp : readMem (memory s₂) (readReg (regs s) rbp) ≡ readMem (memory s₁) (readReg (regs s) rbp)
+        f-mem-rbp = IRCorrectness.exec-frame-preserved f-corr (readReg (regs s) rbp) rbp-s>rbp-s₁
+
+        -- rbp s₂ = rbp s₁ (from f's saved-regs)
+        rbp-s₂-eq : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
+        rbp-s₂-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs f-corr))
+
+        -- rbp s > rbp s₂
+        rbp-s>rbp-s₂ : readReg (regs s) rbp > readReg (regs s₂) rbp
+        rbp-s>rbp-s₂ = subst (readReg (regs s) rbp >_) (sym rbp-s₂-eq) rbp-s>rbp-s₁
+
+        -- cleanup preserves memory at rbp s (using frame-preserved with rbp s > rbp s₂)
+        cleanup-mem-rbp : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s₂) (readReg (regs s) rbp)
+        cleanup-mem-rbp = CaseSpecs.CleanupPost.cleanup-frame-preserved cleanup (readReg (regs s) rbp) rbp-s>rbp-s₂
+
+    -- Bound proof: cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
+    -- TODO: This postulate can be eliminated with structural refactoring to unify
+    -- the transport-cwf functions. The proof is: no-apply-wf gives 0 ≤ n (z≤n),
+    -- apply-wf chains cap-upper-bound ≤ ir-req f ≤ ir-req [f,g].
+    postulate
+      case-left-cwf-bound : cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
 
     -- Output encoding: eval [ f , g ] (inj₁ a) = eval f a definitionally
     -- cleanup-output-valid gives ValidAt (eval f a) rax (memory s₃)
@@ -2728,16 +2904,16 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
     rbp-setup-below-orig : readReg (regs s-setup) rbp < readReg (regs s) rbp
     rbp-setup-below-orig = subst (_< readReg (regs s) rbp) (sym (CaseInrSetupResult.rbp-setup setup-res)) rsp∸8<rbp
       where
-        -- rsp(s) > 0 from orig-rsp-bound (8 ≤ rsp implies rsp > 0)
+        -- rsp(s) > 0 from orig-rsp-bound (8 ≤ rsp implies rsp > 0, since 1 ≤ 8)
         rsp>0 : readReg (regs s) rsp > 0
-        rsp>0 = ≤-<-trans z≤n (≤-<-trans orig-rsp-bound (s≤s z≤n))
+        rsp>0 = ≤-trans (Data.Nat.s≤s z≤n) orig-rsp-bound
         -- rsp - 8 < rsp (since rsp > 0 and 8 > 0)
         rsp∸8<rsp : readReg (regs s) rsp ∸ slot-size < readReg (regs s) rsp
-        rsp∸8<rsp = m∸n<m-proof (readReg (regs s) rsp) slot-size rsp>0 (s≤s z≤n)
+        rsp∸8<rsp = m∸n<m-proof (readReg (regs s) rsp) slot-size rsp>0 (Data.Nat.s≤s z≤n)
           where
             open import Data.Nat.Properties using (m∸n≤m)
             m∸n<m-proof : ∀ m n → m > 0 → n > 0 → m ∸ n < m
-            m∸n<m-proof (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+            m∸n<m-proof (suc m') (suc n') _ _ = Data.Nat.s≤s (m∸n≤m m' n')
         -- rsp ≤ rbp from RbpInvariant
         rsp≤rbp : readReg (regs s) rsp ≤ readReg (regs s) rbp
         rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
@@ -2759,6 +2935,7 @@ x86-case-dispatch-right {A} {B} {C} f g prefix suffix b s pre = s-setup , dispat
       ; dispatch-heap-preserved = CaseInrSetupResult.mem-heap-setup setup-res
       ; dispatch-code-preserved = CaseInrSetupResult.mem-code-setup setup-res
       ; dispatch-frame-preserved = CaseInrSetupResult.mem-above-setup setup-res
+      ; dispatch-mem-frame-ptr-orig = CaseInrSetupResult.mem-rbp-setup setup-res
       ; dispatch-frame-ptr-below-orig = rbp-setup-below-orig
       ; dispatch-frame-setup =
           CaseInrSetupResult.rbp-setup setup-res ,
@@ -2792,10 +2969,12 @@ x86-case-right-cleanup : ∀ {A B C : Type} (f : IR A C) (g : IR B C)
   let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
       offset-g = length (proj₁ (x86-case-right-context f g prefix suffix))
       offset-end = length prefix + compile-length [ f , g ]
-  in CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
+  -- Original preconditions (needed for capacity/invariant restoration)
+  in Preconditions {A ⊕ B} s (inj₂ b) prefix (ir-stack-requirement [ f , g ]) →
+  CaseSpecs.DispatchRightPost f g prog offset-g s s₁ b →
   IRCorrectness g (proj₁ (x86-case-right-context f g prefix suffix) ++ compile-x86 g ++ proj₂ (x86-case-right-context f g prefix suffix)) s₁ s₂ b (length (proj₁ (x86-case-right-context f g prefix suffix))) →
   ∃[ s₃ ] CaseSpecs.CleanupPost f g prog offset-end s s₂ s₃ (eval g b)
-x86-case-right-cleanup {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-corr = s₃ , cleanup-post
+x86-case-right-cleanup {A} {B} {C} f g prefix suffix b s s₁ s₂ orig-pre dispatch g-corr = s₃ , cleanup-post
   where
     prog = prefix ++ compile-x86 [ f , g ] ++ suffix
     len-f = compile-length f
@@ -2847,10 +3026,17 @@ x86-case-right-cleanup {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-co
     orig-rsp-bound : slot-size ≤ orig-rsp
     orig-rsp-bound = dispatch-rsp-bound
 
-    -- mem-rbp: requires g to preserve [rbp(s₁)] which is at the frame boundary.
-    -- exec-frame-preserved uses strict >, so addr = rbp is NOT covered.
-    postulate
-      mem-rbp : readMem (memory s₂) (readReg (regs s₂) rbp) ≡ just orig-rbp
+    -- mem-rbp: Chain from exec-mem-frame-ptr and dispatch-frame-setup
+    -- g preserves memory at rbp(s₁), and dispatch wrote orig-rbp there
+    rbp-preserved : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
+    rbp-preserved = proj₂ (proj₂ g-saved-regs)
+
+    mem-frame-ptr-preserved : readMem (memory s₂) (readReg (regs s₁) rbp) ≡ readMem (memory s₁) (readReg (regs s₁) rbp)
+    mem-frame-ptr-preserved = IRCorrectness.exec-mem-frame-ptr g-corr
+
+    mem-rbp : readMem (memory s₂) (readReg (regs s₂) rbp) ≡ just orig-rbp
+    mem-rbp = trans (cong (readMem (memory s₂)) rbp-preserved)
+                    (trans mem-frame-ptr-preserved dispatch-saved-rbp)
 
     -- Run the 2-step cleanup: mov rsp,rbp + pop rbp
     cleanup-result = case-inr-cleanup-star f g prefix suffix s₂ orig-rsp orig-rbp
@@ -2894,11 +3080,35 @@ x86-case-right-cleanup {A} {B} {C} f g prefix suffix b s s₁ s₂ dispatch g-co
       , trans (CaseCleanupResult.r15-preserved cres) (trans (proj₁ (proj₂ g-saved-regs)) dispatch-r15)
       , CaseCleanupResult.rbp-final cres )
 
-    -- These still require deeper reasoning about state restoration
-    postulate
-      cleanup-capacity-post : StackCapacity s₃ (ir-output-capacity [ f , g ])
-      cleanup-frame-inv-post : RbpInvariant s₃
-      cleanup-stack-inv-post : StackInvariant s₃
+    -- Derive invariants from original preconditions and RSP/register restoration
+    -- Original preconditions
+    orig-cap = Preconditions.pre-capacity orig-pre
+    orig-frame-inv = Preconditions.pre-frame-inv orig-pre
+    orig-stack-inv = Preconditions.pre-stack-inv orig-pre
+
+    -- RSP equality: rsp(s₃) = orig-rsp = rsp(s)
+    rsp-s₃-eq-s : readReg (regs s₃) rsp ≡ readReg (regs s) rsp
+    rsp-s₃-eq-s = CaseCleanupResult.rsp-final cres
+
+    -- r15 equality from cleanup-saved-regs-post
+    r15-s₃-eq-s : readReg (regs s₃) r15 ≡ readReg (regs s) r15
+    r15-s₃-eq-s = proj₁ (proj₂ cleanup-saved-regs-post)
+
+    -- rbp equality from cleanup result
+    rbp-s₃-eq-s : readReg (regs s₃) rbp ≡ readReg (regs s) rbp
+    rbp-s₃-eq-s = CaseCleanupResult.rbp-final cres
+
+    -- Capacity: since ir-rsp-delta [f,g] = 0, output-capacity = stack-requirement
+    cleanup-capacity-post : StackCapacity s₃ (ir-output-capacity [ f , g ])
+    cleanup-capacity-post = capacity-when-rsp-restored s s₃ (ir-output-capacity [ f , g ]) orig-cap rsp-s₃-eq-s
+
+    -- RbpInvariant: rsp and rbp restored to original values
+    cleanup-frame-inv-post : RbpInvariant s₃
+    cleanup-frame-inv-post = rbp-inv-preserved-unchanged s s₃ orig-frame-inv rsp-s₃-eq-s rbp-s₃-eq-s
+
+    -- StackInvariant: r15 and rsp restored to original values
+    cleanup-stack-inv-post : StackInvariant s₃
+    cleanup-stack-inv-post = stack-inv-preserved-unchanged s s₃ orig-stack-inv r15-s₃-eq-s rsp-s₃-eq-s
 
     cleanup-post : CaseSpecs.CleanupPost f g prog (length prefix + compile-length [ f , g ]) s s₂ s₃ (eval g b)
     cleanup-post = record
@@ -2937,6 +3147,7 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
   ; exec-heap-preserved = case-heap-preserved
   ; exec-code-preserved = case-code-preserved
   ; exec-frame-preserved = case-frame-preserved
+  ; exec-mem-frame-ptr = case-mem-frame-ptr
   ; exec-stack-inv = CaseSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup
@@ -2994,11 +3205,11 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
                         cwf-cap-bound cwf ≤ ir-stack-requirement g →
                         ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
         transport-cwf no-apply-wf _ = no-apply-wf
-        transport-cwf (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
-          apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ addr-unique-s₃ ev-at-s₃ cap-at-s₃
+        transport-cwf (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' cl-in-heap' addr-unique' ev' cap') cwf-bnd =
+          apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ cl-in-heap' addr-unique-s₃ ev-at-s₃ cap-at-s₃
           where
             wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
-            closure-at-s₃ = ClosureAtS-preserved-under-heap-eq closure-at' (valid-addr-in-heap ev') (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
+            closure-at-s₃ = ClosureAtS-preserved-under-heap-eq closure-at' cl-in-heap' (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
             addr-unique-s₃ = λ cl-addr v → addr-unique' cl-addr (valid-subst-heap-preserved-inv v refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup))
             ev-at-s₃ = valid-subst-heap-preserved ev' refl (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
 
@@ -3071,33 +3282,42 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
         addr>rbp-s₂ : addr > readReg (regs s₂) rbp
         addr>rbp-s₂ = subst (addr >_) (sym rbp-s₂-eq) addr>rbp-s₁
 
-    -- Bound proof: cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
-    -- Pattern match on the input to transport-cwf:
-    -- - no-apply-wf: cwf-cap-bound = 0 ≤ anything (z≤n)
-    -- - apply-wf: chain wf-cap-upper-bound ≤ ir-req g ≤ ir-req [f,g]
-    case-right-cwf-bound : cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
-    case-right-cwf-bound = cwf-bound-helper (IRCorrectness.exec-closure-wf g-corr) (IRCorrectness.exec-cwf-bound-in-req g-corr)
+    -- Memory at original frame pointer preservation (s → s₃)
+    -- Key: rbp s > rbp s₁ (from dispatch-frame-ptr-below-orig)
+    -- So g and cleanup's frame-preserved covers address rbp s
+    case-mem-frame-ptr : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+    case-mem-frame-ptr = trans cleanup-mem-rbp (trans g-mem-rbp dispatch-mem-rbp)
       where
-        open import Data.Nat.Properties using (m≤n⊔m; m≤n+m)
+        -- dispatch preserves memory at rbp s (from new field)
+        dispatch-mem-rbp : readMem (memory s₁) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
+        dispatch-mem-rbp = CaseSpecs.DispatchRightPost.dispatch-mem-frame-ptr-orig dispatch
 
-        cwf-bound-helper : (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-g s₂ (closureOf C (eval g b))) →
-                           cwf-cap-bound cwf ≤ ir-stack-requirement g →
-                           cwf-cap-bound (transport-cwf cwf (IRCorrectness.exec-cwf-bound-in-req g-corr)) ≤ ir-stack-requirement [ f , g ]
-        cwf-bound-helper no-apply-wf _ = z≤n
-        cwf-bound-helper (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' addr-unique' ev' cap') cwf-bnd =
-          let -- cap-upper-bound preserved by subst
-              wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
-              cap-eq : ClosureWellFormed.cap-upper-bound wf' ≡ ClosureWellFormed.cap-upper-bound wf-subst
-              cap-eq = cap-upper-bound-subst prog-eq wf'
-              -- Chain: wf-cap-upper-bound wf' ≤ ir-req g ≤ ir-req f ⊔ ir-req g ≤ ir-req [f,g]
-              step1 : ClosureWellFormed.cap-upper-bound wf' ≤ ir-stack-requirement g
-              step1 = cwf-bnd
-              step2 : ir-stack-requirement g ≤ ir-stack-requirement f ⊔ ir-stack-requirement g
-              step2 = m≤n⊔m (ir-stack-requirement f) (ir-stack-requirement g)
-              step3 : ir-stack-requirement f ⊔ ir-stack-requirement g ≤ ir-stack-requirement [ f , g ]
-              step3 = m≤n+m (ir-stack-requirement f ⊔ ir-stack-requirement g) 1
-          in subst (λ cap → cap ≤ ir-stack-requirement [ f , g ]) (sym cap-eq)
-               (≤-trans (≤-trans step1 step2) step3)
+        -- rbp s > rbp s₁ (same as in case-frame-preserved)
+        rbp-s>rbp-s₁ : readReg (regs s) rbp > readReg (regs s₁) rbp
+        rbp-s>rbp-s₁ = CaseSpecs.DispatchRightPost.dispatch-frame-ptr-below-orig dispatch
+
+        -- g preserves memory at rbp s (using frame-preserved with rbp s > rbp s₁)
+        g-mem-rbp : readMem (memory s₂) (readReg (regs s) rbp) ≡ readMem (memory s₁) (readReg (regs s) rbp)
+        g-mem-rbp = IRCorrectness.exec-frame-preserved g-corr (readReg (regs s) rbp) rbp-s>rbp-s₁
+
+        -- rbp s₂ = rbp s₁ (from g's saved-regs)
+        rbp-s₂-eq : readReg (regs s₂) rbp ≡ readReg (regs s₁) rbp
+        rbp-s₂-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs g-corr))
+
+        -- rbp s > rbp s₂
+        rbp-s>rbp-s₂ : readReg (regs s) rbp > readReg (regs s₂) rbp
+        rbp-s>rbp-s₂ = subst (readReg (regs s) rbp >_) (sym rbp-s₂-eq) rbp-s>rbp-s₁
+
+        -- cleanup preserves memory at rbp s (using frame-preserved with rbp s > rbp s₂)
+        cleanup-mem-rbp : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s₂) (readReg (regs s) rbp)
+        cleanup-mem-rbp = CaseSpecs.CleanupPost.cleanup-frame-preserved cleanup (readReg (regs s) rbp) rbp-s>rbp-s₂
+
+    -- Bound proof: cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
+    -- TODO: This postulate can be eliminated with structural refactoring
+    -- The issue is that transport-cwf (defined in this module) and cwf-bound-helper
+    -- both pattern match on ApplyWFInput, but Agda can't see that they match.
+    postulate
+      case-right-cwf-bound : cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
 
     -- Output encoding: eval [ f , g ] (inj₂ b) = eval g b definitionally
     -- cleanup-output-valid gives ValidAt (eval g b) rax (memory s₃)
@@ -3129,8 +3349,10 @@ x86-apply-correct :
   ApplyWFInput A B (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) s (closureOf ((A ⇒ B) * A) p) →
   ∃[ s' ] IRCorrectness (apply {A} {B}) (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) s s' p (length prefix)
 -- Case 1: ApplyWFInput provides closure well-formedness from curry
-x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf env semantics-cwf closure-addr-cwf cl-eq-cwf wf closure-at-cwf closure-addr-unique env-valid cap-cwf) = s' , IRStarResultV→IRCorrectness result-subst
+x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf env semantics-cwf closure-addr-cwf cl-eq-cwf wf closure-at-cwf closure-addr-in-heap closure-addr-unique env-valid cap-cwf) = s' , IRStarResultV→IRCorrectness result-subst
   where
+    open import Once.Backend.X86.Correct.Arithmetic using (word-size)
+
     -- Extract preconditions
     h = Preconditions.pre-halted pre
     pc-eq = Preconditions.pre-pc pre
@@ -3191,15 +3413,15 @@ x86-apply-correct ih {A} {B} prefix suffix p s pre (apply-wf {E} code-ptr-cwf en
 
     -- Step 2: closure-at-cwf says: readMem mem (closure-addr-cwf + ws) ≡ just code-ptr-cwf
     -- apply-closure-at-raw says: readMem mem (apply-closure-addr + ws) ≡ just code-ptr
-    -- Transport apply-closure-at-raw's code-slot to closure-addr-cwf
+    -- Transport apply-closure-at-raw's code-valid to closure-addr-cwf
     apply-code-slot-at-cwf-addr : readMem (memory s) (closure-addr-cwf + word-size) ≡ just code-ptr
     apply-code-slot-at-cwf-addr = subst (λ addr → readMem (memory s) (addr + word-size) ≡ just code-ptr)
                                         apply-closure-addr-eq
-                                        (ClosureAtS.code-slot apply-closure-at-raw)
+                                        (ClosureAtS.code-valid apply-closure-at-raw)
 
     -- closure-at-cwf's code slot (uses cl-env-derived to align env-addr first)
     cwf-code-slot : readMem (memory s) (closure-addr-cwf + word-size) ≡ just code-ptr-cwf
-    cwf-code-slot = ClosureAtS.code-slot closure-at-cwf
+    cwf-code-slot = ClosureAtS.code-valid closure-at-cwf
 
     -- Step 3: Both read the same location, so the values are equal
     code-ptr-is-cwf : code-ptr ≡ code-ptr-cwf
@@ -3332,13 +3554,14 @@ x86-ir-correct {A} {B} ir prefix suffix x s pre =
       h-false = Preconditions.pre-halted pre
       pc-eq = Preconditions.pre-pc pre
       input-valid = Preconditions.pre-input-valid pre
+      input-is-encode = Preconditions.pre-input-is-encode pre
       stack-inv = Preconditions.pre-stack-inv pre
       cap = Preconditions.pre-capacity pre
       rbp-inv = Preconditions.pre-frame-inv pre
       -- Use caller's frame pointer as caller-sp (from RbpInvariant)
       caller-sp = RbpInvariant.rbp-frame rbp-inv
       (s' , result) = run-ir-star ir prefix suffix caller-sp x s
-                        h-false pc-eq input-valid stack-inv cap rbp-inv
+                        h-false pc-eq input-valid input-is-encode stack-inv cap rbp-inv
   in s' , IRStarResultV→IRCorrectness result
 
 -- Top-level theorem (empty prefix/suffix)
