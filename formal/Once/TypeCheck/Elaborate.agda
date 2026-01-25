@@ -674,7 +674,17 @@ mutual
       inferApp (success Buffer _ _ _ _) = failure "Expected function type in application"
       inferApp (success (_ Once.Type.* _) _ _ _ _) = failure "Expected function type in application"
       inferApp (success (_ Once.Type.+ _) _ _ _ _) = failure "Expected function type in application"
-      inferApp (success (Eff _ _) _ _ _ _) = failure "Expected function type in application"
+      -- Eff A B is applicable like A ⇒ B (effectful morphism application)
+      inferApp (success (Eff A B) funExpr funDepth funFresh usageFun) = inferArgEff (inferElabImpl (bumpFreshToEff ctx funFresh) arg)
+        where
+          bumpFreshToEff : NamedCtx → ℕ → NamedCtx
+          bumpFreshToEff (mkCtx n Γ Δ _ imps) fresh = mkCtx n Γ Δ fresh imps
+
+          inferArgEff : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
+          inferArgEff (failure err) = failure err
+          inferArgEff (success A' argExpr argDepth argFresh usageArg) with A ≟T A'
+          ... | yes refl = success B (Surface.effApp funExpr argExpr) (funDepth ⊔ argDepth) argFresh (usageFun +ᵘ usageArg)
+          ... | no _ = failure "Type mismatch in effect application"
       inferApp (success (Fix _) _ _ _ _) = failure "Expected function type in application"
       inferApp (success (TVar _) _ _ _ _) = failure "Expected function type in application"
 

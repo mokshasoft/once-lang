@@ -145,6 +145,15 @@ elaborate (lam q e) = coerceIRArrow (curry (elaborate e) Heap)
 -- IR's apply only works with unrestricted arrows, so coerce to Many
 elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩ Heap
 
+-- Effect application: same as app but for Eff A B
+-- Eff A B is semantically an effectful morphism A → B
+elaborate (effApp f x) = apply ∘ ⟨ coerceEffToArrow (elaborate f) , elaborate x ⟩ Heap
+  where
+    -- Coerce Eff A B to A ⇒ B for IR's apply
+    coerceEffToArrow : ∀ {E A B} → IR E (Eff A B) → IR E (A ⇒[ Many ] B)
+    coerceEffToArrow = unsafeCoerce
+      where postulate unsafeCoerce : ∀ {E A B} → IR E (Eff A B) → IR E (A ⇒[ Many ] B)
+
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩ Heap
 

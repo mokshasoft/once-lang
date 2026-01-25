@@ -198,23 +198,25 @@ data T_Expr_162
     C_lam_182 T_Expr_162 |
     C_app_194 MAlonzo.Code.Once.Type.T_Type_32
               MAlonzo.Code.Once.Type.T_Quantity_4 T_Expr_162 T_Expr_162 |
-    C_pair_204 T_Expr_162 T_Expr_162 |
-    C_fst''_214 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 |
-    C_snd''_224 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 |
-    C_inl''_234 T_Expr_162 | C_inr''_244 T_Expr_162 |
-    C_case''_256 MAlonzo.Code.Once.Type.T_Type_32
+    C_effApp_204 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162
+                 T_Expr_162 |
+    C_pair_214 T_Expr_162 T_Expr_162 |
+    C_fst''_224 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 |
+    C_snd''_234 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 |
+    C_inl''_244 T_Expr_162 | C_inr''_254 T_Expr_162 |
+    C_case''_266 MAlonzo.Code.Once.Type.T_Type_32
                  MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 T_Expr_162 T_Expr_162 |
-    C_unit_262 | C_absurd_270 T_Expr_162 |
-    C_let''_280 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162
+    C_unit_272 | C_absurd_280 T_Expr_162 |
+    C_let''_290 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162
                 T_Expr_162 |
-    C_int_286 Integer |
-    C_str_292 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_add_298 T_Expr_162 T_Expr_162 | C_sub_304 T_Expr_162 T_Expr_162 |
-    C_mul_310 T_Expr_162 T_Expr_162 | C_div_316 T_Expr_162 T_Expr_162 |
-    C_mod''_322 T_Expr_162 T_Expr_162 | C_neg_328 T_Expr_162 |
-    C_lt_334 T_Expr_162 T_Expr_162 | C_le_340 T_Expr_162 T_Expr_162 |
-    C_gt_346 T_Expr_162 T_Expr_162 | C_ge_352 T_Expr_162 T_Expr_162 |
-    C_eq_358 T_Expr_162 T_Expr_162 | C_ne_364 T_Expr_162 T_Expr_162 |
-    C_arr''_374 T_Expr_162 | C_roll''_382 T_Expr_162 |
-    C_unroll''_390 T_Expr_162 |
-    C_prim_398 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_int_296 Integer |
+    C_str_302 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_add_308 T_Expr_162 T_Expr_162 | C_sub_314 T_Expr_162 T_Expr_162 |
+    C_mul_320 T_Expr_162 T_Expr_162 | C_div_326 T_Expr_162 T_Expr_162 |
+    C_mod''_332 T_Expr_162 T_Expr_162 | C_neg_338 T_Expr_162 |
+    C_lt_344 T_Expr_162 T_Expr_162 | C_le_350 T_Expr_162 T_Expr_162 |
+    C_gt_356 T_Expr_162 T_Expr_162 | C_ge_362 T_Expr_162 T_Expr_162 |
+    C_eq_368 T_Expr_162 T_Expr_162 | C_ne_374 T_Expr_162 T_Expr_162 |
+    C_arr''_384 T_Expr_162 | C_roll''_392 T_Expr_162 |
+    C_unroll''_400 T_Expr_162 |
+    C_prim_408 MAlonzo.Code.Agda.Builtin.String.T_String_6

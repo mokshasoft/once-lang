@@ -460,11 +460,11 @@ elaborateAllAgda modEnv fns = go fns
       let importsHs = buildImportsForTypeChecker modEnv
           importsAgda = map (\(n, t) -> Sigma.C__'44'__32 (unsafeCoerce n) (unsafeCoerce t)) importsHs
           ctx = VTE.d_ctxWithImports_360 importsAgda
-      in case VTE.d_inferElab_1824 ctx rawExpr of
+      in case VTE.d_inferElab_1890 ctx rawExpr of
         VTE.C_failure_304 errMsg ->
           Left $ "Type checking failed: " ++ show errMsg
         VTE.C_success_302 inferredType surfaceExpr _fresh1 _fresh2 _usage ->
-          let irExpr = VSE.du_elaborate_112 (VSS.C_'8709'_8) inferredType surfaceExpr
+          let irExpr = VSE.d_elaborate_112 0 (VSS.C_'8709'_8) inferredType surfaceExpr
               optimized = MO.d_optimize_1266 MT.C_Unit_34 inferredType (unsafeCoerce irExpr)
           in Right (inferredType, optimized)
 

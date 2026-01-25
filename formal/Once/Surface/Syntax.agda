@@ -128,8 +128,11 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
   -- lam q e represents λ^q x. e where q is the usage quantity for x
   lam   : ∀ {n} {Γ : Ctx n} {A B} (q : Quantity) → Expr (Γ , A) B → Expr Γ (A ⇒[ q ] B)
 
-  -- Application
+  -- Application (pure function)
   app   : ∀ {n} {Γ : Ctx n} {A B} {q : Quantity} → Expr Γ (A ⇒[ q ] B) → Expr Γ A → Expr Γ B
+
+  -- Effect application (effectful morphism)
+  effApp : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (Eff A B) → Expr Γ A → Expr Γ B
 
   -- Pair introduction
   pair  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ A → Expr Γ B → Expr Γ (A * B)

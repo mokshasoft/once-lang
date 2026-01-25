@@ -100,6 +100,7 @@ rename {Δ = Δ} θ (Surface.var i) =
   subst (SExpr Δ) (sym (thin-var-lookup θ i)) (Surface.var (thin-var θ i))
 rename θ (Surface.lam q e) = Surface.lam q (rename (keep θ) e)
 rename θ (Surface.app f x) = Surface.app (rename θ f) (rename θ x)
+rename θ (Surface.effApp f x) = Surface.effApp (rename θ f) (rename θ x)
 rename θ (Surface.pair a b) = Surface.pair (rename θ a) (rename θ b)
 rename θ (Surface.fst' p) = Surface.fst' (rename θ p)
 rename θ (Surface.snd' p) = Surface.snd' (rename θ p)
