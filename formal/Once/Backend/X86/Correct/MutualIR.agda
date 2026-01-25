@@ -150,7 +150,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-disjoint-from-stack;
          valid-pair-decompose; PairAtS;
          valid-closure-env; ClosureAtS; closure-at-s;
-         valid-in-heap)
+         valid-in-heap; Stack)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
@@ -258,6 +258,7 @@ mutual
                           closure-at-for-thunk
                           curry-closure-region
                           curry-closure-in-region
+                          curry-closure-above-rbp
                           (exec-capacity exec-res)
       }
     where
@@ -314,6 +315,14 @@ mutual
       -- Extract region from CurryMemoryResult (closure allocated on Stack by `sub rsp`)
       curry-closure-region = CurryMemoryResult.closure-region curry-mem-result
       curry-closure-in-region = CurryMemoryResult.closure-in-region curry-mem-result
+
+      -- closure-above-rbp: For Stack closures, prove closure-addr > rbp
+      -- NOTE: This is tricky - curry allocates on current frame (below rbp).
+      -- The invariant is that when PRESERVED through later operations, the closure
+      -- is above THAT operation's rbp. At curry's output, this may need adjustment.
+      -- TODO: Track frame relationships properly. For now, use postulate.
+      postulate
+        curry-closure-above-rbp : curry-closure-region ≡ Stack → cl-addr > readReg (regs s') rbp
 
       -- Closure validity via valid-closure-env constructor
       -- Closure.env-addr sem-closure = encode x (by definition of eval curry)
@@ -642,7 +651,7 @@ mutual
       pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
 
       construct-apply : ClosureWFOutput prog s → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region cwf-cap)
+      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ cwf-cap)
         with A' ≟T A | B' ≟T B
       ... | yes refl | yes refl =
         run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar

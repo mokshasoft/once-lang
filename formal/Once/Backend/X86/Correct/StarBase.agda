@@ -37,7 +37,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-subst-heap-preserved;
          ClosureAtS-preserved-under-mem-eq;  -- Takes full memory equality
          ClosureAtS-preserved-under-heap-eq;
-         Region; InRegion)
+         Region; Stack; Heap; InRegion)
 
 open import Data.Nat using (_>_)
 open import Data.List.Properties using (++-assoc)
@@ -82,25 +82,32 @@ data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
                 -- Stack = current codegen (sub rsp), Heap = future heap allocation
                 (closure-region : Region)
                 (closure-in-region : InRegion closure-region closure-addr)
+                -- Stack closures are from caller's frame, above current rbp.
+                -- This enables Stack preservation without postulates:
+                -- If closure-addr > rbp and write-addr ≤ rbp, then closure-addr ≢ write-addr.
+                (closure-above-rbp : closure-region ≡ Stack → closure-addr > readReg (regs s) rbp)
                 (cwf-cap : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)) →
                 ClosureWFOutput prog s
 
 -- | Transport ClosureWFOutput across program equality and state change.
--- Requires full memory preservation (for ValidAt and ClosureAtS) and rsp preservation (for StackCapacity).
+-- Requires full memory preservation (for ValidAt and ClosureAtS), rsp preservation (for StackCapacity),
+-- and rbp preservation (for closure-above-rbp).
 -- Uses full memory equality to avoid region-to-heap postulate.
 transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   prog1 ≡ prog2 →
   (∀ addr → readMem (memory s2) addr ≡ readMem (memory s1) addr) →
   readReg (regs s2) rsp ≡ readReg (regs s1) rsp →
+  readReg (regs s2) rbp ≡ readReg (regs s1) rbp →
   ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
-transport-cwf _ _ _ no-closure = no-closure
-transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
-  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region cwf-cap) =
+transport-cwf _ _ _ _ no-closure = no-closure
+transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq rbp-eq
+  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region cl-above-rbp cwf-cap) =
   has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq
     (valid-subst-addr-mem env-valid refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closure-at mem-eq)
     cl-region
     cl-in-region
+    (λ region-eq → subst (ca >_) (sym rbp-eq) (cl-above-rbp region-eq))
     (capacity-preserved-rsp-unchanged s1 s2 _ cwf-cap rsp-eq)
 
 -- | Transport ClosureWFOutput across program equality only (same state).

@@ -619,10 +619,92 @@ ClosureAtS-preserved-under-stack-write {env-addr} {code-ptr} {addr-closure} {w} 
     code-pres : readMem (writeMem m w val) (addr-closure +ℕ slot-size) ≡ just code-ptr
     code-pres = trans (readMem-writeMem-diff m w (addr-closure +ℕ slot-size) val w≢addr+8) (code-valid-s closS)
 
+------------------------------------------------------------------------
+-- Stack-region preservation helpers (Phase 1 of stack-heap-compat elimination)
+--
+-- These helpers preserve *AtS structures when BOTH the value and write
+-- address are in Stack region. Requires explicit proof that addresses differ.
+------------------------------------------------------------------------
+
+-- | Helper: PairAtS preserved under write to DIFFERENT stack address
+PairAtS-preserved-under-diff-stack-write :
+  ∀ {addr-a addr-b addr w val : Word} {m : Memory} →
+  PairAtS addr-a addr-b addr m →
+  w ≢ addr →
+  w ≢ addr +ℕ slot-size →
+  PairAtS addr-a addr-b addr (writeMem m w val)
+PairAtS-preserved-under-diff-stack-write {addr-a} {addr-b} {addr} {w} {val} {m} pairS w≢addr w≢addr+8 =
+  pair-at-s fst-pres snd-pres
+  where
+    fst-pres : readMem (writeMem m w val) addr ≡ just addr-a
+    fst-pres = trans (readMem-writeMem-diff m w addr val w≢addr) (fst-valid-s pairS)
+
+    snd-pres : readMem (writeMem m w val) (addr +ℕ slot-size) ≡ just addr-b
+    snd-pres = trans (readMem-writeMem-diff m w (addr +ℕ slot-size) val w≢addr+8) (snd-valid-s pairS)
+
+-- | Helper: InlAtS preserved under write to DIFFERENT stack address
+InlAtS-preserved-under-diff-stack-write :
+  ∀ {addr-val addr-sum w val : Word} {m : Memory} →
+  InlAtS addr-val addr-sum m →
+  w ≢ addr-sum →
+  w ≢ addr-sum +ℕ slot-size →
+  InlAtS addr-val addr-sum (writeMem m w val)
+InlAtS-preserved-under-diff-stack-write {addr-val} {addr-sum} {w} {val} {m} inlS w≢addr w≢addr+8 =
+  inl-at-s tag-pres val-pres
+  where
+    tag-pres : readMem (writeMem m w val) addr-sum ≡ just 0
+    tag-pres = trans (readMem-writeMem-diff m w addr-sum val w≢addr) (tag-valid-inl-s inlS)
+
+    val-pres : readMem (writeMem m w val) (addr-sum +ℕ slot-size) ≡ just addr-val
+    val-pres = trans (readMem-writeMem-diff m w (addr-sum +ℕ slot-size) val w≢addr+8) (val-valid-inl-s inlS)
+
+-- | Helper: InrAtS preserved under write to DIFFERENT stack address
+InrAtS-preserved-under-diff-stack-write :
+  ∀ {addr-val addr-sum w val : Word} {m : Memory} →
+  InrAtS addr-val addr-sum m →
+  w ≢ addr-sum →
+  w ≢ addr-sum +ℕ slot-size →
+  InrAtS addr-val addr-sum (writeMem m w val)
+InrAtS-preserved-under-diff-stack-write {addr-val} {addr-sum} {w} {val} {m} inrS w≢addr w≢addr+8 =
+  inr-at-s tag-pres val-pres
+  where
+    tag-pres : readMem (writeMem m w val) addr-sum ≡ just 1
+    tag-pres = trans (readMem-writeMem-diff m w addr-sum val w≢addr) (tag-valid-inr-s inrS)
+
+    val-pres : readMem (writeMem m w val) (addr-sum +ℕ slot-size) ≡ just addr-val
+    val-pres = trans (readMem-writeMem-diff m w (addr-sum +ℕ slot-size) val w≢addr+8) (val-valid-inr-s inrS)
+
+-- | Helper: ClosureAtS preserved under write to DIFFERENT stack address
+ClosureAtS-preserved-under-diff-stack-write :
+  ∀ {env-addr code-ptr addr-closure w val : Word} {m : Memory} →
+  ClosureAtS env-addr code-ptr addr-closure m →
+  w ≢ addr-closure →
+  w ≢ addr-closure +ℕ slot-size →
+  ClosureAtS env-addr code-ptr addr-closure (writeMem m w val)
+ClosureAtS-preserved-under-diff-stack-write {env-addr} {code-ptr} {addr-closure} {w} {val} {m} closS w≢addr w≢addr+8 =
+  closure-at-s env-pres code-pres
+  where
+    env-pres : readMem (writeMem m w val) addr-closure ≡ just env-addr
+    env-pres = trans (readMem-writeMem-diff m w addr-closure val w≢addr) (env-valid-s closS)
+
+    code-pres : readMem (writeMem m w val) (addr-closure +ℕ slot-size) ≡ just code-ptr
+    code-pres = trans (readMem-writeMem-diff m w (addr-closure +ℕ slot-size) val w≢addr+8) (code-valid-s closS)
+
 -- | ValidAt is preserved when writing to stack addresses
 -- Proven by induction on ValidAt structure.
--- Key insight: ValidAt only references heap addresses (via valid-in-heap),
--- and stack writes cannot affect heap memory.
+--
+-- For HEAP-REGION values: Uses stack-heap disjointness (NO postulate needed).
+-- Stack and heap are disjoint memory regions, so InStack w and InHeap addr
+-- implies w ≢ addr, and the heap memory is preserved.
+--
+-- For STACK-REGION values: Currently uses stack-heap-compat postulate.
+-- The CORRECT fix is to track that Stack values from caller's frame are above rbp:
+--   1. Add closure-above-rbp : closure-addr > rbp to ClosureWFOutput
+--   2. For Stack values, require addr > rbp (from caller's frame)
+--   3. Write addresses w are in current frame, so w ≤ rbp
+--   4. Therefore addr > rbp ≥ w, so addr ≢ w
+-- This fix requires modifying ClosureWFOutput and threading the proof.
+-- See ir-mem-above in IRStarResultV for the high-level preservation strategy.
 valid-at-preserved-under-stack-write :
   ∀ {A} {v : ⟦ A ⟧} {addr-v w : Word} {val : Word} {m : Memory} →
   ValidAt v addr-v m →

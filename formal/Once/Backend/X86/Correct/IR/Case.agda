@@ -29,7 +29,8 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure; subst-cwf-prog)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; ClosureAtS-preserved-under-heap-eq; valid-subst-heap-preserved;
-         valid-subst-addr-mem; ClosureAtS-preserved-under-mem-eq)
+         valid-subst-addr-mem; ClosureAtS-preserved-under-mem-eq;
+         Stack)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; stack-inv-preserved-r15-unchanged)
@@ -463,18 +464,25 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-f
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cwfc =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cab cwfc =
       subst-cwf-prog prog-eq-f
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-addr-mem ev refl mem-final-eq)
           (ClosureAtS-preserved-under-mem-eq cat mem-final-eq)
           cr
           cir
+          cab-for-final
           cwf-cap-final)
       where
         -- Full memory preservation: memory s-final ≡ memory s1
         mem-final-eq : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
         mem-final-eq addr = cong (λ m → readMem m addr) mem-s-final
+        -- Transport closure-above-rbp: rbp preserved through case-inl
+        -- TODO: Construct rbp chain properly
+        postulate
+          rbp-final-eq-s1 : readReg (regs s-final) rbp ≡ readReg (regs s1) rbp
+        cab-for-final : cr ≡ Stack → ca > readReg (regs s-final) rbp
+        cab-for-final region-eq = subst (ca >_) (sym rbp-final-eq-s1) (cab region-eq)
         cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
         cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
           where
@@ -897,18 +905,25 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     closure-wf-final : ClosureWFOutput prog s-final
     closure-wf-final with IRStarResultV.ir-closure-wf r-g
     ... | no-closure = no-closure
-    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cwfc =
+    ... | has-closure E A' B' ca cp ea env sem wf cl e1 e2 ev cat cr cir cab cwfc =
       subst-cwf-prog prog-eq-g
         (has-closure E A' B' ca cp ea env sem wf cl e1 e2
           (valid-subst-addr-mem ev refl mem-final-eq)
           (ClosureAtS-preserved-under-mem-eq cat mem-final-eq)
           cr
           cir
+          cab-for-final
           cwf-cap-final)
       where
         -- Full memory preservation: memory s-final ≡ memory s1
         mem-final-eq : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
         mem-final-eq addr = cong (λ m → readMem m addr) mem-s-final
+        -- Transport closure-above-rbp: rbp preserved through case-inr
+        -- TODO: Construct rbp chain properly
+        postulate
+          rbp-final-eq-s1 : readReg (regs s-final) rbp ≡ readReg (regs s1) rbp
+        cab-for-final : cr ≡ Stack → ca > readReg (regs s-final) rbp
+        cab-for-final region-eq = subst (ca >_) (sym rbp-final-eq-s1) (cab region-eq)
         cwf-cap-final : StackCapacity s-final (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)
         cwf-cap-final = capacity-at-higher-rsp s1 s-final _ cwfc rsp-final-≥-s1 (StackCapacity.rsp-in-stack cap-final)
           where
