@@ -42,12 +42,8 @@ open import Once.Backend.Common.Memory
   renaming (n≢n+word-size-bool to n≢n+word-size; n+word-size≢n-bool to n+word-size≢n; readMem-writeMem-diff-bool to readMem-writeMem-diff-common)
   public
 
--- Import encoding axioms from centralized Once.Postulates
--- NOTE: Most encode-* postulates eliminated in X86 via validity-based proofs.
--- Only encode-pair-construct still used (in IR/Pair.agda).
-open import Once.Postulates
-  using ( encode-pair-construct )
-  public
+-- NOTE: All encode-* postulates eliminated in X86 via validity-based proofs.
+-- encode-pair-construct and encode-closure-construct removed (unused)
 
 ------------------------------------------------------------------------
 -- Re-export from helper modules (consolidated imports)

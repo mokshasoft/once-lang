@@ -12,7 +12,6 @@ module Once.Backend.X86.Correct.IR.PairFinal where
 open import Once.Backend.X86.Correct.Foundation hiding (n≢n+word-size; n+word-size≢n)
 
 -- Additional imports not in Foundation
-open import Once.Postulates using (encode-pair-construct)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size; n≢n+suc-m)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.Arithmetic using (m∸n+k≡m∸n-k; m∸n+k≡m∸n-k'; <⇒≢)

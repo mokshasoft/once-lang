@@ -17,8 +17,8 @@ open import Once.Backend.X86.Correct.ArithmeticLemmas
 -- names from StackInstantiation: output-fits-thunk-cap, apply-cap-after-push-fits-thunk-cap,
 -- apply-capacity-fits-thunk-cap
 open import Once.Backend.X86.Correct.Arithmetic using (word-plus-one-fits-pair; >-implies-positive)
-open import Once.Postulates using (encode; encode-pair-construct)
 -- Postulates removed: rsp-bound-after-stack-op, rsp-in-stack-after-stack-op
+-- encode, encode-pair-construct removed (unused - only in comments)
 -- All stack capacity proofs now derived from input StackCapacity parameter
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation

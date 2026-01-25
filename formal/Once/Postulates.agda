@@ -305,39 +305,20 @@ readMem m addr = m addr
 --   2. Replace encode-based proofs with validity-based proofs
 --   3. Remove these postulates
 
--- ELIMINATED FOR X86: The following postulates are NO LONGER USED by x86.
+-- ALL ENCODE POSTULATES ELIMINATED FOR X86:
 -- X86 uses validity-based proofs (ValidAt, PairAtS, InlAtS, InrAtS, ClosureAtS)
--- instead of encode-based postulates. Other backends (RISC-V, AArch64) may
--- still use these and will need to be updated separately.
+-- instead of encode-based postulates.
 --
--- REMOVED (x86 doesn't use):
+-- REMOVED:
 --   encode-pair-fst, encode-pair-snd (replaced by PairAtS + fst-valid-s/snd-valid-s)
 --   encode-inl-tag, encode-inl-val (replaced by InlAtS + tag-valid/val-valid)
 --   encode-inr-tag, encode-inr-val (replaced by InrAtS + tag-valid/val-valid)
 --   encode-inl-construct, encode-inr-construct (replaced by valid-inl/valid-inr)
 --   encode-closure-env (replaced by ClosureAtS + env-valid-s)
+--   encode-pair-construct (x86 now uses validity-based allocation)
+--   encode-closure-construct (x86 now uses validity-based allocation)
 --
--- REMAINING (x86 still uses for producers - to be eliminated next):
-
-postulate
-  -- ELIMINABLE: pair-stores-create-validity produces PairAtS from memory writes
-  -- Encoding construction for pairs:
-  -- If memory at p has [encode a, encode b], then p is encode (a, b)
-  -- USED BY: x86 PairInstr, PairFinal, ThunkExec
-  encode-pair-construct : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) (p : Word) (m : Memory) →
-    readMem m p ≡ just (encode a) →
-    readMem m (p +ℕ 8) ≡ just (encode b) →
-    p ≡ encode {A * B} (a , b)
-
-  -- ELIMINABLE: ClosureAtS produces closures directly from memory writes
-  -- Encoding construction for closures (functions):
-  -- A closure representing curry f applied to a is encoded as a pointer to [env, code]
-  -- where env = encode a
-  -- USED BY: x86 CurryInstr, Curry
-  encode-closure-construct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
-    readMem m p ≡ just (encode a) →
-    -- (code pointer is abstract - we just need env to be correct)
-    p ≡ encode {B ⇒ C} (eval (curry f) a)
+-- Other backends (RISC-V, AArch64) will need updating separately.
 
 ------------------------------------------------------------------------
 -- Postulate P3: QTT Quantity Erasure (Coercion)
