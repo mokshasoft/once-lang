@@ -1155,6 +1155,11 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
     cap-f = capacity-from-larger s-setup (ir-stack-requirement f) (pair-inner-requirement f g)
               cap-inner (m≤m⊔n (ir-stack-requirement f) _)
 
+    -- cap-inner ≥ (ir-rsp-delta f + ir-stack-requirement g) since second arg of ⊔
+    cap-for-g-after-f : StackCapacity s-setup (ir-rsp-delta f + ir-stack-requirement g)
+    cap-for-g-after-f = capacity-from-larger s-setup (ir-rsp-delta f + ir-stack-requirement g) (pair-inner-requirement f g)
+                          cap-inner (m≤n⊔m (ir-stack-requirement f) _)
+
     -- r15 is in stack: r15(s-setup) = rsp(s) - frame-size, which is in stack by setup capacity
     r15-in-stack-setup : InStack (readReg (regs s-setup) r15)
     r15-in-stack-setup = subst InStack (sym (PairSetupResultV.r15-setup setup-res))
@@ -1223,6 +1228,7 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       ; setup-result-slot-in-stack = r15-in-stack-setup
       ; setup-result-slot-below-frame-ptr = r15-below-rbp-setup
       ; setup-capacity = cap-f
+      ; setup-cap-for-g-after-f = cap-for-g-after-f
       ; setup-frame-inv = frame-inv-setup
       ; setup-star = setup-star
       ; setup-pc = setup-pc
@@ -1392,9 +1398,21 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
     input-valid₃ : ValidAt x (readReg (regs s₃) rdi) (memory s₃)
     input-valid₃ = subst (λ a → ValidAt x a (memory s₃)) (sym input-is-encode₃) input-valid-at-encode-s₃
 
-    -- Remaining semantic properties (require more threading)
-    postulate
-      cap₃ : StackCapacity s₃ (ir-stack-requirement g)
+    -- Capacity for g at s₃:
+    -- Step 1: StackCapacity s₁ (ir-rsp-delta f + ir-stack-requirement g) from setup
+    cap-delta-g-s₁ : StackCapacity s₁ (ir-rsp-delta f + ir-stack-requirement g)
+    cap-delta-g-s₁ = PairSpecs.SetupPost.setup-cap-for-g-after-f setup
+    -- Step 2: f runs with rsp delta → StackCapacity s₂ (ir-stack-requirement g)
+    -- Uses capacity-after-delta: if we have cap for (d+n) at rsp, after rsp decreases by d slots, we have cap for n
+    rsp-delta-s₁-s₂ : readReg (regs s₂) rsp ≡ readReg (regs s₁) rsp ∸ slots (ir-rsp-delta f)
+    rsp-delta-s₁-s₂ = IRCorrectness.exec-rsp-delta f-corr
+    cap-g-s₂ : StackCapacity s₂ (ir-stack-requirement g)
+    cap-g-s₂ = capacity-after-delta s₁ s₂ (ir-rsp-delta f) (ir-stack-requirement g) cap-delta-g-s₁ rsp-delta-s₁-s₂
+    -- Step 3: middle preserves rsp → StackCapacity s₃ (ir-stack-requirement g)
+    rsp-mid-preserved : readReg (regs s₃) rsp ≡ readReg (regs s₂) rsp
+    rsp-mid-preserved = PairMiddleStarResult.rsp-mid mid-result
+    cap₃ : StackCapacity s₃ (ir-stack-requirement g)
+    cap₃ = capacity-preserved-rsp-unchanged s₂ s₃ (ir-stack-requirement g) cap-g-s₂ (sym rsp-mid-preserved)
 
     middle-post : PairSpecs.MiddlePost f g prog (length prefix-g) s₁ s₂ s₃ x fx
     middle-post = record

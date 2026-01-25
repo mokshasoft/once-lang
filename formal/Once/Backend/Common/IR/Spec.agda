@@ -418,6 +418,7 @@ module IRSpecs
         setup-result-slot-in-stack : InStack (result-slot-addr s₁)  -- Result slot is in stack (for middle memory proofs)
         setup-result-slot-below-frame-ptr : result-slot-addr s₁ < frame-ptr-addr s₁  -- r15 < rbp (for frame preservation)
         setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
+        setup-cap-for-g-after-f : StackCapacity s₁ (ir-rsp-delta f + ir-stack-requirement g)  -- For deriving g's capacity after f runs
         setup-frame-inv : FramePtrInvariant s₁
         -- Execution evidence
         setup-star : Star prog s s₁
