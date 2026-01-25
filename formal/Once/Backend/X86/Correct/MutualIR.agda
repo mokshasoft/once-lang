@@ -252,7 +252,7 @@ mutual
       ; ir-capacity = exec-capacity exec-res
       ; ir-rbp-inv = exec-rbp-inv exec-res
       ; ir-closure-wf = has-closure A B C cl-addr thunk-offset curry-env-addr x (λ b → eval f (x , b)) wf
-                          (record { env-addr = curry-env-addr ; semantics = λ b → eval f (x , b) })
+                          curry-cl
                           refl refl
                           curry-v-env
                           closure-at-for-thunk
@@ -261,6 +261,7 @@ mutual
                           curry-entry-rsp
                           curry-closure-below-entry-rsp
                           (exec-capacity exec-res)
+                          curry-cl-valid
       }
     where
       prog = prefix ++ compile-x86 (curry f) ++ suffix
@@ -341,6 +342,15 @@ mutual
       result-valid : ValidAt (eval (curry f) x) (readReg (regs s') rax) (memory s')
       result-valid = subst (λ addr → ValidAt {B ⇒ C} sem-closure addr (memory s'))
                            (sym curry-rax-eq) closure-valid-at-addr
+
+      -- Closure for has-closure with explicit env-addr (runtime address, not encode placeholder)
+      curry-cl : Closure B C
+      curry-cl = record { env-addr = curry-env-addr ; semantics = λ b → eval f (x , b) }
+
+      -- ValidAt for curry-cl at cl-addr
+      -- Uses valid-closure-env with explicit cl argument
+      curry-cl-valid : ValidAt {B ⇒ C} curry-cl cl-addr (memory s')
+      curry-cl-valid = valid-closure-env {cl = curry-cl} curry-v-env closure-at-for-thunk curry-closure-region curry-closure-in-region
 
       -- ============================================================
       -- Build the ClosureWellFormed proof using curry-thunk-correct-v
@@ -658,7 +668,7 @@ mutual
       pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
 
       construct-apply : ClosureWFOutput prog s → ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
-      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ _ cwf-cap)
+      construct-apply (has-closure E A' B' ca cp ea env sem wf cwf-cl cwf-cl-env-eq cwf-cl-sem-eq cwf-env-valid cwf-closure-at cwf-region cwf-in-region _ _ cwf-cap cwf-cl-valid)
         with A' ≟T A | B' ≟T B
       ... | yes refl | yes refl =
         run-apply-star-v prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar

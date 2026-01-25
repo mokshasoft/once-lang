@@ -66,6 +66,15 @@ open import Relation.Binary.PropositionalEquality using (_≢_; cong; subst₂)
 -- cl-sem-eq: Closure.semantics cl ≡ semantics (refl at curry construction)
 -- closure-at: ClosureAtS layout at the output state's memory
 -- cwf-cap: StackCapacity for apply + thunk at the output state
+--
+-- CLOSURE IDENTITY TRACKING (eliminates sem-eq/env-addr-eq/cl-addr-eq postulates):
+-- - closure-valid: ValidAt for the closure at closure-addr
+-- - closure-addr-from-rax: proof that closure-addr equals the result address
+--   (curry returns closure in rax, pair's first component is at this address)
+--
+-- This enables apply to prove:
+-- - cl-addr (from valid-pair-decompose) = closure-addr (from has-closure)
+-- - proj₁ x (runtime closure) = cl (tracked closure)
 data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
   no-closure : ClosureWFOutput prog s
   has-closure : (E A B : Type)
@@ -88,7 +97,17 @@ data ClosureWFOutput (prog : Program) (s : State) : Set₁ where
                 -- because closure-addr < creator-entry-rsp <= write-addresses.
                 (creator-entry-rsp : Word)
                 (closure-below-entry-rsp : closure-region ≡ Stack → closure-addr < creator-entry-rsp)
-                (cwf-cap : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf)) →
+                (cwf-cap : StackCapacity s (apply-consumed-slots +ℕ ClosureWellFormed.thunk-capacity wf))
+                -- CLOSURE IDENTITY TRACKING:
+                -- closure-valid: ValidAt for the semantic closure at closure-addr
+                -- This allows apply to connect cl (from has-closure) with proj₁ x (from input)
+                -- NOTE: Explicit {A ⇒ B} to help Agda's type inference
+                (closure-valid : ValidAt {A ⇒ B} cl closure-addr (memory s))
+                -- The address in closure-valid should match addr-a when threading through pair
+                -- At curry: closure-addr = rax, and ir-result-valid is at rax
+                -- At pair: f's result address becomes addr-a in valid-pair
+                -- So closure-addr = addr-a, provable via this tracking
+                →
                 ClosureWFOutput prog s
 
 -- | Transport ClosureWFOutput across program equality and state change.
@@ -102,7 +121,7 @@ transport-cwf : ∀ {prog1 prog2 : Program} {s1 s2 : State} →
   ClosureWFOutput prog1 s1 → ClosureWFOutput prog2 s2
 transport-cwf _ _ _ no-closure = no-closure
 transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
-  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region creator-rsp cl-below-rsp cwf-cap) =
+  (has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq env-valid closure-at cl-region cl-in-region creator-rsp cl-below-rsp cwf-cap cl-valid) =
   has-closure E A B ca cp ea env sem wf cl cl-env-eq cl-sem-eq
     (valid-subst-addr-mem env-valid refl mem-eq)
     (ClosureAtS-preserved-under-mem-eq closure-at mem-eq)
@@ -111,6 +130,11 @@ transport-cwf {s1 = s1} {s2 = s2} refl mem-eq rsp-eq
     creator-rsp
     cl-below-rsp  -- Preserved as-is: describes original allocation
     (capacity-preserved-rsp-unchanged s1 s2 _ cwf-cap rsp-eq)
+    cl-valid-transported
+  where
+    -- Transport closure-valid: ValidAt cl ca (memory s1) → ValidAt cl ca (memory s2)
+    cl-valid-transported : ValidAt {A ⇒ B} cl ca (memory s2)
+    cl-valid-transported = valid-subst-addr-mem {A ⇒ B} {cl} cl-valid refl mem-eq
 
 -- | Transport ClosureWFOutput across program equality only (same state).
 subst-cwf-prog : ∀ {prog1 prog2 : Program} {s : State} →
