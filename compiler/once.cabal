@@ -392,6 +392,7 @@ test-suite once-test
   main-is: Spec.hs
   other-modules:
       Paths_once
+      AllocationSpec
       Backend.C.Spec
       Backend.Common
       BackendSpec
@@ -401,6 +402,7 @@ test-suite once-test
       OptimizeSpec
       ParserSpec
       QuantitySpec
+      TypeCheckSpec
   autogen-modules:
       Paths_once
   hs-source-dirs:
@@ -418,4 +420,5 @@ test-suite once-test
     , tasty
     , tasty-hunit
     , tasty-quickcheck
+    , temporary
     , text
