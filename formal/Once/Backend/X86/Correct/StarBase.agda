@@ -227,19 +227,46 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     ir-mem-rbp    : readMem (memory s') (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     -- Memory at rbp+8 preserved (where ret-addr is stored in thunk context)
     ir-mem-rbp+8  : readMem (memory s') (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
+
+    ------------------------------------------------------------------------
+    -- REFACTORING OPPORTUNITY: The following two fields (ir-mem-above and
+    -- ir-mem-heap) are derivable from ir-mem-preserved and can be removed.
+    --
+    -- Benefits of removal:
+    --   - Simpler mental model: one unified "addresses ≥ entry-rsp preserved"
+    --   - Fewer fields to prove when constructing IRStarResult
+    --   - Cleaner separation: ir-mem-preserved handles all memory preservation
+    --
+    -- How to derive them:
+    --   - ir-mem-above: addr > rbp ≥ rsp = entry-rsp (needs input RbpInvariant)
+    --     See: IRStarDerived.derive-mem-above
+    --   - ir-mem-heap: InHeap addr → addr ≥ entry-rsp (via heap-addr-≥-stack-addr)
+    --     See: IRStarDerived.derive-heap-preserved
+    --
+    -- What needs to be done:
+    --   1. Add ir-input-rbp-inv : RbpInvariant s field (to derive ir-mem-above)
+    --   2. Update 13 files that construct IRStarResult/V to remove these fields
+    --   3. Update consumer call sites to use derived versions or ir-mem-preserved
+    --   4. Files affected: Pair, Case, Compose, Curry, Apply, Inl, Inr, etc.
+    --
+    -- Note: ir-mem-code CANNOT be removed (code region has lower=0, no ordering)
+    ------------------------------------------------------------------------
     -- Memory above frame preserved (for caller's rbp in pair proofs)
     -- Any address strictly above rbp is not touched by IR execution
+    -- DERIVABLE: See IRStarDerived.derive-mem-above
     ir-mem-above  : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
     -- D041: Memory at code-region addresses preserved
     -- IR only writes to stack region, code region is disjoint from stack (stack-code-disjoint)
     -- Therefore code addresses are never written by IR execution
+    -- NOT DERIVABLE from ir-mem-preserved (code region has lower=0)
     ir-mem-code   : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
     -- D041: Memory at heap-region addresses preserved
     -- IR only writes to stack region, heap region is disjoint from stack (stack-heap-disjoint)
     -- Therefore heap addresses are never written by IR execution
+    -- DERIVABLE: See IRStarDerived.derive-heap-preserved
     ir-mem-heap   : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
-    -- NEW: Write bounds for stack escape analysis
+    -- Write bounds for stack escape analysis
     -- IR execution only writes to addresses < entry-rsp (its own stack frame)
     -- Therefore addresses >= entry-rsp are preserved (caller's frame, heap, code)
     ir-entry-rsp : ℕ
