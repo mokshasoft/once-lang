@@ -1716,13 +1716,96 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
         slots-eq : slots pair-setup-consumed-slots ≡ frame-size
         slots-eq = refl
 
+    -- Derive mem-frame-rbp via frame preservation chain
+    -- Key: rbp(s-orig) > rbp(s₁) and rbp preserved through f, middle, g
+    -- So rbp(s-orig) > rbp(s₁) = rbp(s₂) = rbp(s₃) = rbp(s₄)
+    -- Therefore mem[rbp(s-orig)] is preserved by frame-preserved at each step
+    rbp-orig = readReg (regs s-orig) rbp
+    rbp-s₁ = readReg (regs s₁) rbp
+
+    -- rbp(s-orig) > rbp(s₁) from setup
+    rbp-orig>rbp-s₁ : rbp-orig > rbp-s₁
+    rbp-orig>rbp-s₁ = PairSpecs.SetupPost.setup-frame-ptr-below-orig setup
+
+    -- rbp(s₂) = rbp(s₁) from f's saved-regs
+    rbp-s₂-eq : readReg (regs s₂) rbp ≡ rbp-s₁
+    rbp-s₂-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs f-corr))
+
+    -- rbp(s₃) = rbp(s₂) from middle
+    rbp-s₃-eq : readReg (regs s₃) rbp ≡ readReg (regs s₂) rbp
+    rbp-s₃-eq = PairSpecs.MiddlePost.middle-frame-ptr-eq middle
+
+    -- rbp(s₄) = rbp(s₃) from g's saved-regs
+    rbp-s₄-eq : readReg (regs s₄) rbp ≡ readReg (regs s₃) rbp
+    rbp-s₄-eq = proj₂ (proj₂ (IRCorrectness.exec-saved-regs g-corr))
+
+    -- Chain: rbp-orig > rbp-s₁ = rbp-s₂ = rbp-s₃ = rbp-s₄
+    rbp-orig>rbp-s₂ : rbp-orig > readReg (regs s₂) rbp
+    rbp-orig>rbp-s₂ = subst (rbp-orig >_) (sym rbp-s₂-eq) rbp-orig>rbp-s₁
+
+    rbp-orig>rbp-s₃ : rbp-orig > readReg (regs s₃) rbp
+    rbp-orig>rbp-s₃ = subst (rbp-orig >_) (sym rbp-s₃-eq) rbp-orig>rbp-s₂
+
+    -- Memory preservation chain for rbp-orig
+    -- s-orig → s₁: setup-mem-frame-ptr-orig
+    mem-rbp-s₁ : readMem (memory s₁) rbp-orig ≡ readMem (memory s-orig) rbp-orig
+    mem-rbp-s₁ = PairSpecs.SetupPost.setup-mem-frame-ptr-orig setup
+
+    -- s₁ → s₂: f's frame-preserved (since rbp-orig > rbp-s₁)
+    mem-rbp-s₂ : readMem (memory s₂) rbp-orig ≡ readMem (memory s₁) rbp-orig
+    mem-rbp-s₂ = IRCorrectness.exec-frame-preserved f-corr rbp-orig rbp-orig>rbp-s₁
+
+    -- s₂ → s₃: middle's frame-preserved (since rbp-orig > rbp-s₂)
+    mem-rbp-s₃ : readMem (memory s₃) rbp-orig ≡ readMem (memory s₂) rbp-orig
+    mem-rbp-s₃ = PairSpecs.MiddlePost.middle-frame-preserved middle rbp-orig rbp-orig>rbp-s₂
+
+    -- s₃ → s₄: g's frame-preserved (since rbp-orig > rbp-s₃)
+    mem-rbp-s₄ : readMem (memory s₄) rbp-orig ≡ readMem (memory s₃) rbp-orig
+    mem-rbp-s₄ = IRCorrectness.exec-frame-preserved g-corr rbp-orig rbp-orig>rbp-s₃
+
+    -- Chain all together
+    final-precond-mem-frame-rbp : readMem (memory s₄) rbp-orig ≡ readMem (memory s-orig) rbp-orig
+    final-precond-mem-frame-rbp = trans mem-rbp-s₄ (trans mem-rbp-s₃ (trans mem-rbp-s₂ mem-rbp-s₁))
+
+    -- Similarly for rbp-orig + slot-size (which is > rbp-orig > all intermediate rbps)
+    rbp-orig+8 = rbp-orig +ℕ slot-size
+    rbp-orig+8>rbp-s₁ : rbp-orig+8 > rbp-s₁
+    rbp-orig+8>rbp-s₁ = <-trans rbp-orig>rbp-s₁ (m<m+n rbp-orig (s≤s z≤n))
+
+    rbp-orig+8>rbp-s₂ : rbp-orig+8 > readReg (regs s₂) rbp
+    rbp-orig+8>rbp-s₂ = subst (rbp-orig+8 >_) (sym rbp-s₂-eq) rbp-orig+8>rbp-s₁
+
+    rbp-orig+8>rbp-s₃ : rbp-orig+8 > readReg (regs s₃) rbp
+    rbp-orig+8>rbp-s₃ = subst (rbp-orig+8 >_) (sym rbp-s₃-eq) rbp-orig+8>rbp-s₂
+
+    -- rbp-orig+8 > rbp-orig, so setup-frame-preserved applies
+    rbp-orig+8>rbp-orig : rbp-orig+8 > rbp-orig
+    rbp-orig+8>rbp-orig = m<m+n rbp-orig (s≤s z≤n)
+
+    mem-rbp+8-s₁ : readMem (memory s₁) rbp-orig+8 ≡ readMem (memory s-orig) rbp-orig+8
+    mem-rbp+8-s₁ = PairSpecs.SetupPost.setup-frame-preserved setup rbp-orig+8 rbp-orig+8>rbp-orig
+
+    -- s₁ → s₂: f's frame-preserved (since rbp-orig+8 > rbp-s₁)
+    mem-rbp+8-s₂ : readMem (memory s₂) rbp-orig+8 ≡ readMem (memory s₁) rbp-orig+8
+    mem-rbp+8-s₂ = IRCorrectness.exec-frame-preserved f-corr rbp-orig+8 rbp-orig+8>rbp-s₁
+
+    -- s₂ → s₃: middle's frame-preserved (since rbp-orig+8 > rbp-s₂)
+    mem-rbp+8-s₃ : readMem (memory s₃) rbp-orig+8 ≡ readMem (memory s₂) rbp-orig+8
+    mem-rbp+8-s₃ = PairSpecs.MiddlePost.middle-frame-preserved middle rbp-orig+8 rbp-orig+8>rbp-s₂
+
+    -- s₃ → s₄: g's frame-preserved (since rbp-orig+8 > rbp-s₃)
+    mem-rbp+8-s₄ : readMem (memory s₄) rbp-orig+8 ≡ readMem (memory s₃) rbp-orig+8
+    mem-rbp+8-s₄ = IRCorrectness.exec-frame-preserved g-corr rbp-orig+8 rbp-orig+8>rbp-s₃
+
+    -- Chain all together
+    final-precond-mem-frame-rbp+8 : readMem (memory s₄) rbp-orig+8 ≡ readMem (memory s-orig) rbp-orig+8
+    final-precond-mem-frame-rbp+8 = trans mem-rbp+8-s₄ (trans mem-rbp+8-s₃ (trans mem-rbp+8-s₂ mem-rbp+8-s₁))
+
     -- Remaining postulates
     postulate
       final-precond-pc3 : pc s₄ ≡ length prefix-final
       final-precond-rbp-chain : readReg (regs s₄) rbp ≡ readReg (regs s-orig) rsp ∸ saved-regs-size
       final-precond-mem-frame : readMem (memory s₄) (readReg (regs s-orig) r15) ≡ readMem (memory s-orig) (readReg (regs s-orig) r15)
-      final-precond-mem-frame-rbp : readMem (memory s₄) (readReg (regs s-orig) rbp) ≡ readMem (memory s-orig) (readReg (regs s-orig) rbp)
-      final-precond-mem-frame-rbp+8 : readMem (memory s₄) (readReg (regs s-orig) rbp +ℕ slot-size) ≡ readMem (memory s-orig) (readReg (regs s-orig) rbp +ℕ slot-size)
       final-precond-disjoint-rbp : readReg (regs s₄) rbp ≢ readReg (regs s₄) r15 +ℕ slot-size
       final-precond-disjoint-r15 : readReg (regs s₄) rbp +ℕ slot-size ≢ readReg (regs s₄) r15 +ℕ slot-size
       final-precond-disjoint-r14 : readReg (regs s₄) rbp +ℕ pair-alloc ≢ readReg (regs s₄) r15 +ℕ slot-size
