@@ -16,7 +16,7 @@
 module Once.Backend.X86.Layout where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_; s≤s; z≤n)
-open import Data.Nat.Properties using (m≤m+n; ≤-trans; <-≤-trans; m<m+n; m∸n≤m)
+open import Data.Nat.Properties using (m≤m+n; ≤-trans; <-≤-trans; ≤-<-trans; <⇒≤; m<m+n; m∸n≤m)
 open import Data.Product using (_×_; _,_)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
@@ -73,6 +73,12 @@ postulate
     ¬ (InRegion x86-stack-bounds a × InRegion x86-heap-bounds a) ×
     ¬ (InRegion x86-stack-bounds a × InRegion x86-code-bounds a) ×
     ¬ (InRegion x86-heap-bounds a × InRegion x86-code-bounds a)
+
+-- Region ordering (runtime guarantee)
+-- Stack region ends below where heap region begins
+-- (Code uses disjointness, not ordering, since both have lower = 0)
+postulate
+  stack-heap-ordering : x86-stack-upper < x86-heap-lower
 
 -- X86 Memory Layout instance
 x86-layout : MemoryLayout
@@ -149,6 +155,17 @@ stack-sub-preserves a k (lower≤a , a≤upper) k≤a = (z≤n , a∸k≤upper)
   where
     a∸k≤upper : a ∸ k ≤ upper stack-bounds
     a∸k≤upper = ≤-trans (m∸n≤m a k) a≤upper
+
+------------------------------------------------------------------------
+-- Region Ordering Lemmas (derived from stack-heap-ordering)
+------------------------------------------------------------------------
+
+-- | Heap addresses are ≥ any stack address
+-- Derived from: s ≤ stack-upper < heap-lower ≤ h
+heap-addr-≥-stack-addr : ∀ {h s} → InHeap h → InStack s → h ≥ s
+heap-addr-≥-stack-addr {h} {s} (heap-lo≤h , _) (_ , s≤stack-hi) =
+  -- s ≤ stack-upper < heap-lower ≤ h, so s < h, so h ≥ s
+  <⇒≤ (<-≤-trans (≤-<-trans s≤stack-hi stack-heap-ordering) heap-lo≤h)
 
 ------------------------------------------------------------------------
 -- X86-Specific Slot Addressing Lemmas
