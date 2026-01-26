@@ -34,7 +34,8 @@ open import Once.Backend.Common.MemoryValid public
         ; InrAtS-preserved-under-mem-eq; ClosureAtS-preserved-under-mem-eq
         )
 open import Once.Backend.X86.Layout
-  using (InStack; InHeap; stack-heap-addr-disjoint; heap-offset)
+  using (InStack; InHeap; stack-heap-addr-disjoint; heap-offset; heap-addr-≥-stack-addr)
+open import Data.Nat using (_≥_)
 
 ------------------------------------------------------------------------
 -- Region: Where an allocation lives
@@ -886,3 +887,208 @@ valid-at-preserved-under-writes valid s1 s2 =
 -- NOTE: Encode-based PairAt/InlAt/InrAt records removed (superseded by PairAtS/InlAtS/InrAtS)
 -- NOTE: alloc-*-creates-valid for encode-based records removed (use alloc-*-creates-valid-s)
 -- NOTE: pair-valid-preserved removed (use PairAtS-preserved-under-mem-eq)
+
+------------------------------------------------------------------------
+-- Bounds-based preservation: valid-subst-mem-above
+--
+-- This function propagates ValidAt through memory changes using
+-- bounds-based preservation (addr ≥ entry-rsp) instead of requiring
+-- separate heap-eq and stack-eq.
+--
+-- KEY INSIGHT:
+--   - For Heap addresses: derive addr ≥ entry-rsp via heap-addr-≥-stack-addr
+--   - For Stack addresses: require explicit proof that addr ≥ entry-rsp
+--
+-- The explicit bound requirement captures the CALLER-FRAME INVARIANT:
+-- inputs from caller's frame have addresses ≥ current entry-rsp because
+-- the caller's frame is above the current frame.
+--
+-- This eliminates the need for caller-stack-preserved-* postulates when
+-- the caller can provide bounds proofs for Stack addresses.
+------------------------------------------------------------------------
+
+-- | Helper: PairAtS preserved when addresses ≥ entry-rsp are preserved
+PairAtS-preserved-under-mem-above :
+  ∀ {addr-a addr-b addr : Word} {m1 m2 : Memory} {entry-rsp : Word} →
+  PairAtS addr-a addr-b addr m1 →
+  InStack entry-rsp →
+  addr ≥ entry-rsp →
+  (∀ a → a ≥ entry-rsp → readMem m2 a ≡ readMem m1 a) →
+  PairAtS addr-a addr-b addr m2
+PairAtS-preserved-under-mem-above {addr-a} {addr-b} {addr} {m1} {m2} {entry-rsp} pairS _ addr≥rsp mem-above =
+  pair-at-s (trans (mem-above addr addr≥rsp) (fst-valid-s pairS))
+            (trans (mem-above (addr +ℕ slot-size) addr+8≥rsp) (snd-valid-s pairS))
+  where
+    open import Data.Nat.Properties using (≤-trans; m≤m+n)
+    addr+8≥rsp : (addr +ℕ slot-size) ≥ entry-rsp
+    addr+8≥rsp = ≤-trans addr≥rsp (m≤m+n addr slot-size)
+
+-- | Helper: InlAtS preserved when addresses ≥ entry-rsp are preserved
+InlAtS-preserved-under-mem-above :
+  ∀ {addr-a addr : Word} {m1 m2 : Memory} {entry-rsp : Word} →
+  InlAtS addr-a addr m1 →
+  InStack entry-rsp →
+  addr ≥ entry-rsp →
+  (∀ a → a ≥ entry-rsp → readMem m2 a ≡ readMem m1 a) →
+  InlAtS addr-a addr m2
+InlAtS-preserved-under-mem-above {addr-a} {addr} {m1} {m2} {entry-rsp} inlS _ addr≥rsp mem-above =
+  inl-at-s (trans (mem-above addr addr≥rsp) (tag-valid-inl-s inlS))
+           (trans (mem-above (addr +ℕ slot-size) addr+8≥rsp) (val-valid-inl-s inlS))
+  where
+    open import Data.Nat.Properties using (≤-trans; m≤m+n)
+    addr+8≥rsp : (addr +ℕ slot-size) ≥ entry-rsp
+    addr+8≥rsp = ≤-trans addr≥rsp (m≤m+n addr slot-size)
+
+-- | Helper: InrAtS preserved when addresses ≥ entry-rsp are preserved
+InrAtS-preserved-under-mem-above :
+  ∀ {addr-b addr : Word} {m1 m2 : Memory} {entry-rsp : Word} →
+  InrAtS addr-b addr m1 →
+  InStack entry-rsp →
+  addr ≥ entry-rsp →
+  (∀ a → a ≥ entry-rsp → readMem m2 a ≡ readMem m1 a) →
+  InrAtS addr-b addr m2
+InrAtS-preserved-under-mem-above {addr-b} {addr} {m1} {m2} {entry-rsp} inrS _ addr≥rsp mem-above =
+  inr-at-s (trans (mem-above addr addr≥rsp) (tag-valid-inr-s inrS))
+           (trans (mem-above (addr +ℕ slot-size) addr+8≥rsp) (val-valid-inr-s inrS))
+  where
+    open import Data.Nat.Properties using (≤-trans; m≤m+n)
+    addr+8≥rsp : (addr +ℕ slot-size) ≥ entry-rsp
+    addr+8≥rsp = ≤-trans addr≥rsp (m≤m+n addr slot-size)
+
+-- | Helper: ClosureAtS preserved when addresses ≥ entry-rsp are preserved
+ClosureAtS-preserved-under-mem-above :
+  ∀ {env-addr code-ptr addr : Word} {m1 m2 : Memory} {entry-rsp : Word} →
+  ClosureAtS env-addr code-ptr addr m1 →
+  InStack entry-rsp →
+  addr ≥ entry-rsp →
+  (∀ a → a ≥ entry-rsp → readMem m2 a ≡ readMem m1 a) →
+  ClosureAtS env-addr code-ptr addr m2
+ClosureAtS-preserved-under-mem-above {env-addr} {code-ptr} {addr} {m1} {m2} {entry-rsp} closS _ addr≥rsp mem-above =
+  closure-at-s (trans (mem-above addr addr≥rsp) (env-valid-s closS))
+               (trans (mem-above (addr +ℕ slot-size) addr+8≥rsp) (code-valid-s closS))
+  where
+    open import Data.Nat.Properties using (≤-trans; m≤m+n)
+    addr+8≥rsp : (addr +ℕ slot-size) ≥ entry-rsp
+    addr+8≥rsp = ≤-trans addr≥rsp (m≤m+n addr slot-size)
+
+-- | Propagate ValidAt using bounds-based preservation
+--
+-- For Heap addresses: automatically derives ≥ entry-rsp
+-- For Stack addresses: requires explicit addr ≥ entry-rsp proof
+--
+-- The stack-bound function is called for each Stack-region address,
+-- providing the bound proof needed for preservation.
+valid-subst-mem-above :
+  ∀ {A} {v : ⟦ A ⟧} {addr : Word} {mem1 mem2 : Memory} →
+  (va : ValidAt v addr mem1) →
+  (entry-rsp : Word) →
+  InStack entry-rsp →
+  (mem-above : ∀ a → a ≥ entry-rsp → readMem mem2 a ≡ readMem mem1 a) →
+  -- For Stack addresses, provide bound proofs
+  (stack-bound : ∀ a → InStack a → a ≥ entry-rsp) →
+  ValidAt v addr mem2
+valid-subst-mem-above valid-unit _ _ _ _ = valid-unit
+-- Pair: dispatch on region, derive bound for preservation
+valid-subst-mem-above (valid-pair va vb pairS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-pair
+    (valid-subst-mem-above va entry-rsp rsp-in-stack mem-above stack-bound)
+    (valid-subst-mem-above vb entry-rsp rsp-in-stack mem-above stack-bound)
+    (PairAtS-preserved-under-mem-above pairS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
+    Heap ih
+valid-subst-mem-above (valid-pair va vb pairS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-pair
+    (valid-subst-mem-above va entry-rsp rsp-in-stack mem-above stack-bound)
+    (valid-subst-mem-above vb entry-rsp rsp-in-stack mem-above stack-bound)
+    (PairAtS-preserved-under-mem-above pairS rsp-in-stack (stack-bound _ is) mem-above)
+    Stack is
+-- Inl: dispatch on region
+valid-subst-mem-above {A + B} (valid-inl va inlS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-inl
+    (valid-subst-mem-above va entry-rsp rsp-in-stack mem-above stack-bound)
+    (InlAtS-preserved-under-mem-above inlS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
+    Heap ih
+valid-subst-mem-above {A + B} (valid-inl va inlS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-inl
+    (valid-subst-mem-above va entry-rsp rsp-in-stack mem-above stack-bound)
+    (InlAtS-preserved-under-mem-above inlS rsp-in-stack (stack-bound _ is) mem-above)
+    Stack is
+-- Inr: dispatch on region
+valid-subst-mem-above {A + B} (valid-inr vb inrS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-inr
+    (valid-subst-mem-above vb entry-rsp rsp-in-stack mem-above stack-bound)
+    (InrAtS-preserved-under-mem-above inrS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
+    Heap ih
+valid-subst-mem-above {A + B} (valid-inr vb inrS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-inr
+    (valid-subst-mem-above vb entry-rsp rsp-in-stack mem-above stack-bound)
+    (InrAtS-preserved-under-mem-above inrS rsp-in-stack (stack-bound _ is) mem-above)
+    Stack is
+-- Closure: dispatch on region
+valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure closS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-closure
+    (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
+    Heap ih
+valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure closS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-closure
+    (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (stack-bound _ is) mem-above)
+    Stack is
+-- Closure with env: dispatch on region
+valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure-env venv closS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-closure-env
+    (valid-subst-mem-above venv entry-rsp rsp-in-stack mem-above stack-bound)
+    (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
+    Heap ih
+valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure-env venv closS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-closure-env
+    (valid-subst-mem-above venv entry-rsp rsp-in-stack mem-above stack-bound)
+    (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (stack-bound _ is) mem-above)
+    Stack is
+-- Eff: dispatch on region
+valid-subst-mem-above {Eff A B} (valid-eff closS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-eff
+    (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
+    Heap ih
+valid-subst-mem-above {Eff A B} (valid-eff closS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-eff
+    (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (stack-bound _ is) mem-above)
+    Stack is
+-- Eff with env: dispatch on region
+valid-subst-mem-above {Eff A B} (valid-eff-env venv closS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-eff-env
+    (valid-subst-mem-above venv entry-rsp rsp-in-stack mem-above stack-bound)
+    (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
+    Heap ih
+valid-subst-mem-above {Eff A B} (valid-eff-env venv closS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-eff-env
+    (valid-subst-mem-above venv entry-rsp rsp-in-stack mem-above stack-bound)
+    (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (stack-bound _ is) mem-above)
+    Stack is
+-- Fix: recurse
+valid-subst-mem-above (valid-fix vx) entry-rsp rsp-in-stack mem-above stack-bound =
+  valid-fix (valid-subst-mem-above vx entry-rsp rsp-in-stack mem-above stack-bound)
+
+------------------------------------------------------------------------
+-- Caller-stack-preserved postulates: documentation
+--
+-- The caller-stack-preserved-* postulates in IR/*.agda capture the
+-- CALLER-FRAME INVARIANT: inputs from caller's frame have Stack
+-- addresses ≥ current entry-rsp.
+--
+-- These postulates are semantically correct because:
+-- 1. Inputs come from previous IRs or program entry
+-- 2. Previous IRs allocated at addresses < their entry-rsp
+-- 3. Current entry-rsp ≤ all previously allocated addresses
+-- 4. Therefore caller's Stack addresses ≥ current entry-rsp
+--
+-- To PROVE these postulates, use valid-subst-mem-above with:
+-- 1. mem-above from the IR's instruction tracing
+-- 2. stack-bound = the caller-frame invariant
+--
+-- The stack-bound proof requires tracking that inputs are from
+-- caller's frame, which can be done by:
+-- a) Adding input-addr ≥ entry-rsp as IR precondition
+-- b) Tracking allocation provenance through ValidAt
+-- c) Proving at IR composition boundaries
+--
+-- For now, the postulates correctly capture this invariant.
+------------------------------------------------------------------------
