@@ -177,6 +177,24 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
     cap-final : StackCapacity s-final (ir-output-capacity ⟨ f , g ⟩)
     cap-final = capacity-preserved-rsp-unchanged s s-final (ir-stack-requirement ⟨ f , g ⟩) cap rsp-final
 
+    -- Address chains (moved before closure-wf-final for fst-at-pair-final proof)
+    r15-s3-v = IRStarResultV.ir-r15 r-g
+    r15-mid' = subst (λ s2' → readReg (regs s2') r15 ≡ readReg (regs s1) r15) (sym s2-eq) (PairMiddleResultV.r15-mid mid-res)
+
+    -- First component: memory at r15 contains addr-a (rax-s1)
+    mem-fst-stored' = subst (λ s2' → readMem (memory s2') (readReg (regs s1) r15) ≡ just (readReg (regs s1) rax)) (sym s2-eq) (PairMiddleResultV.mem-fst-stored mid-res)
+
+    mem-fst-s3' : readMem (memory s3) (readReg (regs s3) r15) ≡ just (readReg (regs s1) rax)
+    mem-fst-s3' = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s3) (readReg (regs s2) r15))
+                               (sym r15-s3-v) refl)
+                        (trans (IRStarResultV.ir-mem r-g)
+                        (trans (subst (λ addr → readMem (memory s2) addr ≡ readMem (memory s2) (readReg (regs s1) r15))
+                                      (sym r15-mid') refl)
+                               mem-fst-stored'))
+
+    mem-fst-s-final' : readMem (memory s-final) (readReg (regs s3) r15) ≡ just (readReg (regs s1) rax)
+    mem-fst-s-final' = trans mem-fst-final mem-fst-s3'
+
     -- Star proofs from each phase (using V versions)
     star-setup' : Star prog s s-setup
     star-setup' = subst (λ ss → Star prog s ss) (sym s-setup-eq) (PairSetupResultV.star-setup setup-res)
@@ -251,15 +269,13 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
         pair-result-addr = readReg (regs s-final) rax
 
         -- fst-at-pair: Memory at pair-result-addr contains pair-fst-addr
-        -- This is PROVABLE! Using:
+        -- PROVEN! Using:
         -- 1. rax-fin-is-r15 : readReg (regs s-final) rax ≡ readReg (regs s3) r15
         -- 2. mem-fst-s-final' : readMem (memory s-final) (readReg (regs s3) r15) ≡ just (readReg (regs s1) rax)
         -- 3. pair-fst-addr = readReg (regs s1) rax (by definition)
-        --
-        -- TODO (D-FST-AT-PAIR): Move mem-fst-s-final' definition before closure-wf-final
-        -- to make this proof available. For now, postulate.
-        postulate
-          fst-at-pair-final : readMem (memory s-final) pair-result-addr ≡ just pair-fst-addr
+        fst-at-pair-final : readMem (memory s-final) pair-result-addr ≡ just pair-fst-addr
+        fst-at-pair-final = subst (λ addr → readMem (memory s-final) addr ≡ just pair-fst-addr)
+                                   (sym rax-fin-is-r15) mem-fst-s-final'
 
         -- pair-is-rax-final: TRIVIAL! pair-result-addr = rax s-final by definition
         pair-is-rax-final : pair-result-addr ≡ readReg (regs s-final) rax
@@ -315,25 +331,9 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
                (trans (cong (_+ℕ len-g) (+-assoc (length prefix) 15 len-f))
                (+-assoc (length prefix) (15 +ℕ len-f) len-g))))))))))
 
-    -- Address chains (using V versions)
-    r15-s3-v = IRStarResultV.ir-r15 r-g
-    r15-mid' = subst (λ s2' → readReg (regs s2') r15 ≡ readReg (regs s1) r15) (sym s2-eq) (PairMiddleResultV.r15-mid mid-res)
+    -- r15-chain: relates r15 at s3 to s1 (used for pair address tracking)
     r15-chain : readReg (regs s3) r15 ≡ readReg (regs s1) r15
     r15-chain = trans r15-s3-v r15-mid'
-
-    -- First component: memory at r15 contains addr-a (rax-s1)
-    mem-fst-stored' = subst (λ s2' → readMem (memory s2') (readReg (regs s1) r15) ≡ just (readReg (regs s1) rax)) (sym s2-eq) (PairMiddleResultV.mem-fst-stored mid-res)
-
-    mem-fst-s3' : readMem (memory s3) (readReg (regs s3) r15) ≡ just (readReg (regs s1) rax)
-    mem-fst-s3' = trans (subst (λ addr → readMem (memory s3) addr ≡ readMem (memory s3) (readReg (regs s2) r15))
-                               (sym r15-s3-v) refl)
-                        (trans (IRStarResultV.ir-mem r-g)
-                        (trans (subst (λ addr → readMem (memory s2) addr ≡ readMem (memory s2) (readReg (regs s1) r15))
-                                      (sym r15-mid') refl)
-                               mem-fst-stored'))
-
-    mem-fst-s-final' : readMem (memory s-final) (readReg (regs s3) r15) ≡ just (readReg (regs s1) rax)
-    mem-fst-s-final' = trans mem-fst-final mem-fst-s3'
 
     mem-snd-s-final' : readMem (memory s-final) (readReg (regs s3) r15 +ℕ slot-size) ≡ just (readReg (regs s3) rax)
     mem-snd-s-final' = mem-snd-final
