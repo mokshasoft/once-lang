@@ -9,14 +9,16 @@
 
 module Once.Backend.X86.Correct.IRStarDerived where
 
-open import Data.Nat using (ℕ; _≥_; _<_; _≤_)
+open import Data.Nat using (ℕ; _≥_; _<_; _≤_; _>_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
+open import Data.Nat.Properties using (<⇒≤; ≤-trans)
 open import Once.Backend.Common.Memory using (Memory; Word; readMem)
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; heap-addr-≥-stack-addr;
          stack-heap-addr-disjoint; stack-code-addr-disjoint)
+open import Once.Backend.X86.Correct.StackInvariant using (RbpInvariant)
 
 ------------------------------------------------------------------------
 -- Derive heap preservation from ir-mem-preserved
@@ -61,6 +63,21 @@ derive-region-preservation :
   (∀ addr → addr ≥ entry-rsp → readMem mem2 addr ≡ readMem mem1 addr)
 derive-region-preservation entry-in-stack mem-preserved =
   derive-heap-preserved entry-in-stack mem-preserved , mem-preserved
+
+------------------------------------------------------------------------
+-- Derive ir-mem-above from ir-mem-preserved + RbpInvariant
+------------------------------------------------------------------------
+
+-- | Memory above rbp is preserved when addresses ≥ entry-rsp are preserved
+-- Derivation: addr > rbp ≥ rsp = entry-rsp (by RbpInvariant)
+-- Therefore addr > entry-rsp, so addr ≥ entry-rsp
+derive-mem-above :
+  ∀ {mem1 mem2 : Memory} {entry-rsp rbp : Word} →
+  entry-rsp ≤ rbp →  -- From RbpInvariant: rsp ≤ rbp
+  (∀ addr → addr ≥ entry-rsp → readMem mem2 addr ≡ readMem mem1 addr) →
+  (∀ addr → addr > rbp → readMem mem2 addr ≡ readMem mem1 addr)
+derive-mem-above rsp≤rbp mem-preserved addr addr>rbp =
+  mem-preserved addr (≤-trans rsp≤rbp (<⇒≤ addr>rbp))
 
 ------------------------------------------------------------------------
 -- Caller-provided input invariant
