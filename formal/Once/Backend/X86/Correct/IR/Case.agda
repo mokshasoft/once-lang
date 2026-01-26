@@ -53,6 +53,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; StackPointer; stack-heap-addr-disjoint;
          stack-code-addr-disjoint)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
 
 open import Data.Bool using (Bool; true; false)
@@ -101,23 +102,6 @@ open import Data.Nat using (s≤s; z≤n)
 -- Setup phases only write to our frame (below rbp), so caller inputs are
 -- preserved. This is more honest than stack-to-heap-compat (which is FALSE).
 --
--- TODO: Prove from caller-frame tracking (ValidAt addresses are above rbp)
-------------------------------------------------------------------------
-postulate
-  -- For caller-provided inputs, Stack addresses are preserved by setup
-  -- because they're in the caller's frame (above our rbp)
-  caller-stack-preserved-inl : ∀ {A B C} {a : ⟦ A ⟧}
-    {prefix suffix : Program} {f : IR A C} {g : IR B C}
-    {s s-setup : State} {val-addr : ℕ} →
-    CaseInlSetupResult a prefix suffix f g s s-setup val-addr →
-    ∀ addr → InStack addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
-
-  caller-stack-preserved-inr : ∀ {A B C} {b : ⟦ B ⟧}
-    {prefix suffix : Program} {f : IR A C} {g : IR B C}
-    {s s-setup : State} {val-addr : ℕ} →
-    CaseInrSetupResult b prefix suffix f g s s-setup val-addr →
-    ∀ addr → InStack addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
-
 ------------------------------------------------------------------------
 -- run-case-star-direct-inl: Validity-based case execution (inl branch)
 --
@@ -248,14 +232,11 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     rbp-inv-setup : RbpInvariant s-setup
     rbp-inv-setup = CaseInlSetupResult.rbp-inv-setup setup-res
 
-    -- Use valid-subst-region-preserved with both heap-eq and stack-eq
-    -- Stack-eq comes from caller-stack-preserved-inl (honest postulate)
-    stack-eq-setup : ∀ addr → InStack addr → readMem (memory s-setup) addr ≡ readMem orig-mem addr
-    stack-eq-setup = caller-stack-preserved-inl setup-res
-
+    -- Use caller-input-preserved with mem-preserved-setup (replaces postulate)
     input-valid-for-f : ValidAt a (readReg (regs s-setup) rdi) (memory s-setup)
     input-valid-for-f = subst (λ addr → ValidAt a addr (memory s-setup)) (sym rdi-setup)
-                          (valid-subst-region-preserved input-valid-a mem-heap-setup stack-eq-setup)
+                          (caller-input-preserved input-valid-a (rsp-in-stack cap-in)
+                            (CaseInlSetupResult.mem-preserved-setup setup-res))
 
     -- Setup instructions and program structure
     setup-instrs : Program
@@ -686,14 +667,11 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     rbp-inv-setup : RbpInvariant s-setup
     rbp-inv-setup = CaseInrSetupResult.rbp-inv-setup setup-res
 
-    -- Use valid-subst-region-preserved with both heap-eq and stack-eq
-    -- Stack-eq comes from caller-stack-preserved-inr (honest postulate)
-    stack-eq-setup : ∀ addr → InStack addr → readMem (memory s-setup) addr ≡ readMem orig-mem addr
-    stack-eq-setup = caller-stack-preserved-inr setup-res
-
+    -- Use caller-input-preserved with mem-preserved-setup (replaces postulate)
     input-valid-for-g : ValidAt b (readReg (regs s-setup) rdi) (memory s-setup)
     input-valid-for-g = subst (λ addr → ValidAt b addr (memory s-setup)) (sym rdi-setup)
-                          (valid-subst-region-preserved input-valid-b mem-heap-setup stack-eq-setup)
+                          (caller-input-preserved input-valid-b (rsp-in-stack cap-in)
+                            (CaseInrSetupResult.mem-preserved-setup setup-res))
 
     -- Program structure for g
     setup-instrs-before-f : Program

@@ -90,6 +90,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-pair-decompose; valid-in-region; Region; InRegion)
   -- NOTE: valid-addr-is-encode and valid-in-heap NO LONGER IMPORTED!
   -- Apply.agda is now ENCODE-FREE and uses valid-in-region for Region proofs.
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
 open import Data.Product using (∃; ∃-syntax; proj₁; proj₂)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
@@ -111,17 +112,6 @@ open ≡-Reasoning
 ------------------------------------------------------------------------
 -- Focused postulate for caller-provided inputs
 --
--- Caller-provided Stack inputs are in the caller's frame (above our rbp).
--- Apply's setup only writes one slot (push r15), which is in our frame.
--- Caller's data is preserved. More honest than stack-to-heap-compat.
---
--- TODO: Prove from caller-frame tracking
-------------------------------------------------------------------------
-postulate
-  -- For apply's arg and env, Stack addresses are preserved through setup+call
-  caller-stack-preserved-apply : ∀ {s s-call : State} →
-    ∀ addr → InStack addr → readMem (memory s-call) addr ≡ readMem (memory s) addr
-
 ------------------------------------------------------------------------
 -- run-apply-with-wf: Apply using ClosureWellFormed
 ------------------------------------------------------------------------
@@ -373,23 +363,33 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     heap-pres-s-to-call a a-in-heap = trans (mem-heap-call-phase a a-in-heap)
                                             (heap-pres-setup a a-in-heap)
 
-    -- Stack preservation for caller-provided inputs (honest postulate)
-    stack-pres-s-to-call : ∀ a → InStack a →
-                           readMem (memory s-call) a ≡ readMem (memory s) a
-    stack-pres-s-to-call = caller-stack-preserved-apply {s} {s-call}
+    -- Compose memory preservation from s to s-call
+    -- s-setup.rsp = s.rsp - 8, so s-setup.rsp ≤ s.rsp
+    rsp-lower : readReg (regs s-setup) rsp ≤ readReg (regs s) rsp
+    rsp-lower = subst (λ x → x ≤ readReg (regs s) rsp) (sym rsp-setup) (m∸n≤m (readReg (regs s) rsp) slot-size)
 
-    -- Validity at s-call: propagate using region-aware preservation
+    -- mem-above-setup: addr ≥ s.rsp → s-setup memory preserved
+    -- mem-above-call: addr ≥ s-setup.rsp → s-call memory preserved
+    -- For addr ≥ s.rsp, we have addr ≥ s-setup.rsp (via rsp-lower), so both apply
+    mem-preserved-s-to-call : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-call) addr ≡ readMem (memory s) addr
+    mem-preserved-s-to-call addr addr≥rsp =
+      trans (mem-above-call addr (≤-trans rsp-lower addr≥rsp))
+            (mem-above-setup addr addr≥rsp)
+
+    -- Use caller-input-preserved with composed memory preservation (replaces postulate)
     arg-valid-at-call : ValidAt arg (readReg (regs s-call) rdi) (memory s-call)
     arg-valid-at-call = subst (λ addr → ValidAt arg addr (memory s-call)) (sym rdi-for-thunk)
-                          (valid-subst-region-preserved v-arg heap-pres-s-to-call stack-pres-s-to-call)
+                          (caller-input-preserved v-arg (StackCapacity.rsp-in-stack cap)
+                            mem-preserved-s-to-call)
 
     r12-for-thunk : readReg (regs s-call) r12 ≡ env-addr
     r12-for-thunk = trans r12-call r12-setup
 
-    -- Validity for env at s-call: propagate using region-aware preservation
+    -- Validity for env at s-call: use caller-input-preserved (replaces postulate)
     env-valid-at-call : ValidAt env (readReg (regs s-call) r12) (memory s-call)
     env-valid-at-call = subst (λ addr → ValidAt env addr (memory s-call)) (sym r12-for-thunk)
-                          (valid-subst-region-preserved v-env heap-pres-s-to-call stack-pres-s-to-call)
+                          (caller-input-preserved v-env (StackCapacity.rsp-in-stack cap)
+                            mem-preserved-s-to-call)
 
     -- Construct apply-sp : StackPointer for apply's frame
     -- This is where old-r15 was pushed (at s-setup.rsp)
