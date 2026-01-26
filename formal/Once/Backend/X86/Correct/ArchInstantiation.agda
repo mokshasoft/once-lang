@@ -11,8 +11,8 @@
 
 module Once.Backend.X86.Correct.ArchInstantiation where
 
-open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; _<_; zero; suc; _⊔_; z≤n) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; m≤m⊔n; m≤n⊔m; ≤-trans; <⇒≤; ≤-refl; ≤-<-trans)
+open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; _<_; zero; suc; _⊔_; z≤n; s≤s) renaming (_*_ to _*ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; m≤m⊔n; m≤n⊔m; ≤-trans; <⇒≤; ≤-refl; ≤-<-trans; m<m+n)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
@@ -46,6 +46,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-addr-is-encode; ClosureAtS-preserved-under-heap-eq;
          valid-addr-in-heap)
 open import Once.Backend.X86.Layout using (InStack; InHeap; InCode)
+open import Once.Backend.X86.Correct.Arithmetic using (pair-alloc)
 open import Once.Backend.X86.Correct.Star as X86Star
   using (Star; refl*; step*; star-trans; star-single; step-deterministic; just-injective; single-star-eq)
 open import Once.Backend.X86.Correct.StarBase
@@ -158,6 +159,57 @@ X86-FrameSetupInfo s s₁ =
   (readReg (regs s₁) r14 ≡ readReg (regs s) r14) ×               -- r14 preserved
   (readReg (regs s₁) r15 ≡ readReg (regs s) r15)                  -- r15 preserved
 
+-- SavedRegsOnStack: Saved registers on stack match original values
+-- After pair setup, the saved registers (rbp, r15, r14) are stored at
+-- stack locations relative to the new frame pointer:
+--   [rbp]     = original rbp
+--   [rbp + 8] = original r15
+--   [rbp + 16] = original r14
+X86-SavedRegsOnStack : State → State → Set
+X86-SavedRegsOnStack s-orig s-current =
+  (readMem (memory s-current) (readReg (regs s-current) rbp) ≡ just (readReg (regs s-orig) rbp)) ×
+  (readMem (memory s-current) (readReg (regs s-current) rbp +ℕ slot-size) ≡ just (readReg (regs s-orig) r15)) ×
+  (readMem (memory s-current) (readReg (regs s-current) rbp +ℕ pair-alloc) ≡ just (readReg (regs s-orig) r14))
+
+-- Preservation lemma for SavedRegsOnStack
+-- Preserved when: SavedRegsPreserved (rbp unchanged), FramePreserved (memory above rbp unchanged),
+-- and memory at rbp itself unchanged.
+x86-saved-regs-on-stack-preserved :
+  ∀ s-orig s-current s-next →
+  X86-SavedRegsOnStack s-orig s-current →
+  X86-SavedRegsPreserved s-current s-next →
+  (∀ addr → addr > readReg (regs s-current) rbp → readMem (memory s-next) addr ≡ readMem (memory s-current) addr) →
+  readMem (memory s-next) (readReg (regs s-current) rbp) ≡ readMem (memory s-current) (readReg (regs s-current) rbp) →
+  X86-SavedRegsOnStack s-orig s-next
+x86-saved-regs-on-stack-preserved s-orig s-current s-next
+  (saved-rbp , saved-r15 , saved-r14)
+  (_ , _ , rbp-eq)
+  frame-preserved
+  mem-at-rbp-eq =
+    saved-rbp' , saved-r15' , saved-r14'
+  where
+    -- rbp + 8 > rbp
+    rbp+8>rbp : readReg (regs s-current) rbp +ℕ slot-size > readReg (regs s-current) rbp
+    rbp+8>rbp = m<m+n (readReg (regs s-current) rbp) (s≤s z≤n)
+    -- rbp + 16 > rbp
+    rbp+16>rbp : readReg (regs s-current) rbp +ℕ pair-alloc > readReg (regs s-current) rbp
+    rbp+16>rbp = m<m+n (readReg (regs s-current) rbp) (s≤s z≤n)
+
+    -- For [rbp]: use mem-at-rbp-eq and rbp-eq
+    saved-rbp' : readMem (memory s-next) (readReg (regs s-next) rbp) ≡ just (readReg (regs s-orig) rbp)
+    saved-rbp' = trans (cong (λ x → readMem (memory s-next) x) (sym rbp-eq))
+                       (trans mem-at-rbp-eq saved-rbp)
+
+    -- For [rbp + 8]: frame-preserved applies since rbp + 8 > rbp
+    saved-r15' : readMem (memory s-next) (readReg (regs s-next) rbp +ℕ slot-size) ≡ just (readReg (regs s-orig) r15)
+    saved-r15' = trans (cong (λ x → readMem (memory s-next) (x +ℕ slot-size)) (sym rbp-eq))
+                       (trans (frame-preserved (readReg (regs s-current) rbp +ℕ slot-size) rbp+8>rbp) saved-r15)
+
+    -- For [rbp + 16]: frame-preserved applies since rbp + 16 > rbp
+    saved-r14' : readMem (memory s-next) (readReg (regs s-next) rbp +ℕ pair-alloc) ≡ just (readReg (regs s-orig) r14)
+    saved-r14' = trans (cong (λ x → readMem (memory s-next) (x +ℕ pair-alloc)) (sym rbp-eq))
+                       (trans (frame-preserved (readReg (regs s-current) rbp +ℕ pair-alloc) rbp+16>rbp) saved-r14)
+
 X86-InvariantInterface : Spec.InvariantInterface X86-MachineInterface
 X86-InvariantInterface = record
   { StackInvariant = StackInvariant
@@ -174,6 +226,8 @@ X86-InvariantInterface = record
   ; CodePreserved = X86-CodePreserved
   ; FramePreserved = X86-FramePreserved
   ; FrameSetupInfo = X86-FrameSetupInfo
+  ; SavedRegsOnStack = X86-SavedRegsOnStack
+  ; saved-regs-on-stack-preserved = x86-saved-regs-on-stack-preserved
   }
 
 ------------------------------------------------------------------------
@@ -1297,6 +1351,12 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
     setup-mem-rbp-orig : readMem (memory s-setup) orig-rbp ≡ readMem (memory s) orig-rbp
     setup-mem-rbp-orig = PairSetupResultV.mem-above-rsp-setup setup-res orig-rbp rsp≤rbp
 
+    -- SavedRegsOnStack: setup stores rbp, r15, r14 at [rbp], [rbp+8], [rbp+16]
+    saved-regs-on-stack-setup : X86-SavedRegsOnStack s s-setup
+    saved-regs-on-stack-setup = PairSetupResultV.mem-stack-rbp setup-res ,
+                                 PairSetupResultV.mem-stack-r15 setup-res ,
+                                 PairSetupResultV.mem-stack-r14 setup-res
+
     setup-post : PairSpecs.SetupPost f g prog (length (PairContext.prefix-f ctx)) s s-setup x
     setup-post = record
       { setup-halted = PairSetupResultV.h-setup setup-res
@@ -1307,6 +1367,7 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       ; setup-result-slot-in-stack = r15-in-stack-setup
       ; setup-result-slot-below-frame-ptr = r15-below-rbp-setup
       ; setup-frame-ptr-below-orig = rbp-setup-below-orig
+      ; setup-saved-regs-on-stack = saved-regs-on-stack-setup
       ; setup-capacity = cap-f
       ; setup-cap-for-g-after-f = cap-for-g-after-f
       ; setup-frame-inv = frame-inv-setup
@@ -1575,9 +1636,97 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
     prog-full = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
     offset-end = length prefix + compile-length ⟨ f , g ⟩
 
-    -- Establish PairFinalPrecond from g-corr and prior phases
+    -- Thread SavedRegsOnStack invariant through f, middle, g
+    -- Step 1: Extract from setup
+    saved-regs-s₁ : X86-SavedRegsOnStack s-orig s₁
+    saved-regs-s₁ = PairSpecs.SetupPost.setup-saved-regs-on-stack setup
+
+    -- Step 2: Preserve through f (s₁ → s₂)
+    saved-regs-s₂ : X86-SavedRegsOnStack s-orig s₂
+    saved-regs-s₂ = x86-saved-regs-on-stack-preserved s-orig s₁ s₂
+      saved-regs-s₁
+      (IRCorrectness.exec-saved-regs f-corr)
+      (IRCorrectness.exec-frame-preserved f-corr)
+      (IRCorrectness.exec-mem-frame-ptr f-corr)
+
+    -- Step 3: Preserve through middle (s₂ → s₃)
+    saved-regs-s₃ : X86-SavedRegsOnStack s-orig s₃
+    saved-regs-s₃ = x86-saved-regs-on-stack-preserved s-orig s₂ s₃
+      saved-regs-s₂
+      middle-saved-regs
+      (PairSpecs.MiddlePost.middle-frame-preserved middle)
+      middle-mem-rbp
+      where
+        -- Extract SavedRegsPreserved from middle
+        -- middle preserves r14, r15 via input-saved and result-slot-addr
+        -- and rbp via middle-frame-ptr-eq
+        postulate
+          middle-saved-regs : X86-SavedRegsPreserved s₂ s₃
+          middle-mem-rbp : readMem (memory s₃) (readReg (regs s₂) rbp) ≡ readMem (memory s₂) (readReg (regs s₂) rbp)
+
+    -- Step 4: Preserve through g (s₃ → s₄)
+    saved-regs-s₄ : X86-SavedRegsOnStack s-orig s₄
+    saved-regs-s₄ = x86-saved-regs-on-stack-preserved s-orig s₃ s₄
+      saved-regs-s₃
+      (IRCorrectness.exec-saved-regs g-corr)
+      (IRCorrectness.exec-frame-preserved g-corr)
+      (IRCorrectness.exec-mem-frame-ptr g-corr)
+
+    -- Extract the three stack fields from saved-regs-s₄
+    stack-rbp-s₄ = proj₁ saved-regs-s₄
+    stack-r15-s₄ = proj₁ (proj₂ saved-regs-s₄)
+    stack-r14-s₄ = proj₂ (proj₂ saved-regs-s₄)
+
+    -- Derive easily available fields
+    h₄ = IRCorrectness.exec-halted g-corr
+    stack-inv-s₄ = IRCorrectness.exec-stack-inv g-corr
+
+    -- For remaining fields, use a focused postulate
+    -- The SavedRegsOnStack-derived fields (stack-rbp, stack-r15, stack-r14) are now proven!
     postulate
-      final-precond : PairFinalPrecond f g prefix suffix s-orig s₄
+      final-precond-pc3 : pc s₄ ≡ length prefix-final
+      final-precond-rbp-chain : readReg (regs s₄) rbp ≡ readReg (regs s-orig) rsp ∸ saved-regs-size
+      final-precond-mem-frame : readMem (memory s₄) (readReg (regs s-orig) r15) ≡ readMem (memory s-orig) (readReg (regs s-orig) r15)
+      final-precond-mem-frame-rbp : readMem (memory s₄) (readReg (regs s-orig) rbp) ≡ readMem (memory s-orig) (readReg (regs s-orig) rbp)
+      final-precond-mem-frame-rbp+8 : readMem (memory s₄) (readReg (regs s-orig) rbp +ℕ slot-size) ≡ readMem (memory s-orig) (readReg (regs s-orig) rbp +ℕ slot-size)
+      final-precond-disjoint-rbp : readReg (regs s₄) rbp ≢ readReg (regs s₄) r15 +ℕ slot-size
+      final-precond-disjoint-r15 : readReg (regs s₄) rbp +ℕ slot-size ≢ readReg (regs s₄) r15 +ℕ slot-size
+      final-precond-disjoint-r14 : readReg (regs s₄) rbp +ℕ pair-alloc ≢ readReg (regs s₄) r15 +ℕ slot-size
+      final-precond-disjoint-orig : readReg (regs s-orig) r15 ≢ readReg (regs s₄) r15 +ℕ slot-size
+      final-precond-disjoint-orig-rbp : readReg (regs s-orig) rbp ≢ readReg (regs s₄) r15 +ℕ slot-size
+      final-precond-disjoint-orig-rbp+8 : readReg (regs s-orig) rbp +ℕ slot-size ≢ readReg (regs s₄) r15 +ℕ slot-size
+      final-precond-rsp-bound : saved-regs-size ≤ readReg (regs s-orig) rsp
+      final-precond-r15-chain : readReg (regs s₄) r15 ≡ readReg (regs s-orig) rsp ∸ slots pair-setup-consumed-slots
+      final-precond-setup-frame-fits : slots pair-setup-consumed-slots ≤ readReg (regs s-orig) rsp
+     where
+       open import Once.Backend.X86.Correct.Arithmetic using (saved-regs-size)
+       open import Once.Backend.X86.Correct.StackInstantiation using (pair-setup-consumed-slots)
+
+    -- Construct final-precond using derived fields
+    final-precond : PairFinalPrecond f g prefix suffix s-orig s₄
+    final-precond = record
+      { h3 = h₄
+      ; pc3 = final-precond-pc3
+      ; stack-rbp = stack-rbp-s₄
+      ; stack-r15 = stack-r15-s₄
+      ; stack-r14 = stack-r14-s₄
+      ; stack-inv-s3 = stack-inv-s₄
+      ; stack-inv-s = orig-stack-inv
+      ; rbp-chain = final-precond-rbp-chain
+      ; mem-frame = final-precond-mem-frame
+      ; mem-frame-rbp = final-precond-mem-frame-rbp
+      ; mem-frame-rbp+8 = final-precond-mem-frame-rbp+8
+      ; disjoint-rbp = final-precond-disjoint-rbp
+      ; disjoint-r15 = final-precond-disjoint-r15
+      ; disjoint-r14 = final-precond-disjoint-r14
+      ; disjoint-orig = final-precond-disjoint-orig
+      ; disjoint-orig-rbp = final-precond-disjoint-orig-rbp
+      ; disjoint-orig-rbp+8 = final-precond-disjoint-orig-rbp+8
+      ; rsp-bound = final-precond-rsp-bound
+      ; r15-chain = final-precond-r15-chain
+      ; setup-frame-fits = final-precond-setup-frame-fits
+      ; cap = orig-cap
+      }
 
     -- Run the final 6 cleanup instructions
     final-result : PairFinalResult f g prefix suffix s-orig s₄

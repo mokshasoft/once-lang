@@ -139,6 +139,27 @@ record InvariantInterface (M : MachineInterface) : Set₁ where
     -- Used by cleanup to derive register/memory state after branch execution.
     FrameSetupInfo : State → State → Set
 
+    -- SavedRegsOnStack: Abstract invariant for saved registers
+    -- After setup, saved registers (original frame-ptr, result-slot, saved-input)
+    -- are stored at specific stack locations relative to the new frame pointer.
+    -- This invariant is:
+    --   - Established by pair/case setup
+    --   - Preserved through f, middle, g execution (they don't write above their frame)
+    --   - Consumed by cleanup to restore registers
+    SavedRegsOnStack : State → State → Set
+
+    -- Preservation lemma: SavedRegsOnStack is preserved when:
+    --   1. frame-ptr-addr preserved (from SavedRegsPreserved)
+    --   2. memory at frame-ptr-addr preserved (from exec-mem-frame-ptr)
+    --   3. memory above frame-ptr-addr preserved (from FramePreserved)
+    saved-regs-on-stack-preserved :
+      ∀ s-orig s-current s-next →
+      SavedRegsOnStack s-orig s-current →
+      SavedRegsPreserved s-current s-next →
+      (∀ addr → addr > frame-ptr-addr s-current → readMem (memory s-next) addr ≡ readMem (memory s-current) addr) →
+      readMem (memory s-next) (frame-ptr-addr s-current) ≡ readMem (memory s-current) (frame-ptr-addr s-current) →
+      SavedRegsOnStack s-orig s-next
+
 ------------------------------------------------------------------------
 -- Validity Interface
 --
@@ -440,6 +461,7 @@ module IRSpecs
         setup-result-slot-in-stack : InStack (result-slot-addr s₁)  -- Result slot is in stack (for middle memory proofs)
         setup-result-slot-below-frame-ptr : result-slot-addr s₁ + slot-size < frame-ptr-addr s₁  -- r15 + slot-size < rbp (for frame preservation)
         setup-frame-ptr-below-orig : frame-ptr-addr s₁ < frame-ptr-addr s  -- new rbp < orig rbp (for frame preservation composition)
+        setup-saved-regs-on-stack : SavedRegsOnStack s s₁  -- Saved registers stored at [rbp], [rbp+8], [rbp+16]
         setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
         setup-cap-for-g-after-f : StackCapacity s₁ (ir-rsp-delta f + ir-stack-requirement g)  -- For deriving g's capacity after f runs
         setup-frame-inv : FramePtrInvariant s₁
