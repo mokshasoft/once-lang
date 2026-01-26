@@ -326,6 +326,7 @@ IRStarResultV→IRCorrectness {ir = ir} {s' = s'} {x = x} res = record
   ; exec-code-preserved = IRStarResultV.ir-mem-code res
   ; exec-frame-preserved = IRStarResultV.ir-mem-above res
   ; exec-mem-frame-ptr = IRStarResultV.ir-mem-rbp res
+  ; exec-mem-result-slot = IRStarResultV.ir-mem res
   ; exec-stack-inv = IRStarResultV.ir-stack-inv res
   ; exec-capacity = IRStarResultV.ir-capacity res
   ; exec-frame-inv = IRStarResultV.ir-rbp-inv res
@@ -418,6 +419,7 @@ x86-id-correct {A} prefix suffix x s pre cwf =
     ; exec-code-preserved = IRStarResultV.ir-mem-code res
     ; exec-frame-preserved = IRStarResultV.ir-mem-above res
     ; exec-mem-frame-ptr = IRStarResultV.ir-mem-rbp res
+    ; exec-mem-result-slot = IRStarResultV.ir-mem res
     ; exec-stack-inv = IRStarResultV.ir-stack-inv res
     ; exec-capacity = IRStarResultV.ir-capacity res
     ; exec-frame-inv = IRStarResultV.ir-rbp-inv res
@@ -834,6 +836,7 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ orig-cap rs
   ; exec-code-preserved = code-preserved-final
   ; exec-frame-preserved = frame-preserved-final
   ; exec-mem-frame-ptr = mem-frame-ptr-final
+  ; exec-mem-result-slot = mem-result-slot-final
   ; exec-stack-inv = IRCorrectness.exec-stack-inv f-corr
   ; exec-capacity = compose-capacity
   ; exec-frame-inv = IRCorrectness.exec-frame-inv f-corr
@@ -1171,6 +1174,26 @@ x86-compose-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ orig-cap rs
 
     mem-frame-ptr-final : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     mem-frame-ptr-final = trans mem-frame-ptr-f' (trans mem-frame-ptr-t mem-frame-ptr-g)
+
+    -- Memory at result slot (r15) preservation (s → s₃)
+    mem-result-slot-g = IRCorrectness.exec-mem-result-slot g-corr
+    mem-result-slot-f = IRCorrectness.exec-mem-result-slot f-corr
+
+    -- Transfer preserves memory at r15 s (r15 s = r15 s₁)
+    mem-result-slot-t : readMem (memory s₂) (readReg (regs s) r15) ≡ readMem (memory s₁) (readReg (regs s) r15)
+    mem-result-slot-t = subst (λ s₂' → readMem (memory s₂') (readReg (regs s) r15) ≡ readMem (memory s₁) (readReg (regs s) r15))
+                              (sym s₂≡s₂') (mem₂' (readReg (regs s) r15))
+
+    -- f preserves memory at r15 s₂, but r15 s₂ = r15 s via r15-t ∘ r15-g
+    r15-s₂-eq-s : readReg (regs s₂) r15 ≡ readReg (regs s) r15
+    r15-s₂-eq-s = trans r15-t r15-g
+
+    mem-result-slot-f' : readMem (memory s₃) (readReg (regs s) r15) ≡ readMem (memory s₂) (readReg (regs s) r15)
+    mem-result-slot-f' = subst (λ addr → readMem (memory s₃) addr ≡ readMem (memory s₂) addr)
+                               r15-s₂-eq-s mem-result-slot-f
+
+    mem-result-slot-final : readMem (memory s₃) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    mem-result-slot-final = trans mem-result-slot-f' (trans mem-result-slot-t mem-result-slot-g)
 
 ------------------------------------------------------------------------
 -- Pair Glue Lemmas
@@ -1593,6 +1616,7 @@ x86-pair-middle {A} {B} {C} f g prefix suffix x s s₁ s₂ fx setup f-corr = s�
       ; middle-heap-preserved = mid-heap-preserved
       ; middle-code-preserved = mid-code-preserved
       ; middle-frame-preserved = mid-frame-preserved
+      ; middle-fst-stored = PairMiddleStarResult.mem-at-r15 mid-result
       }
 
 -- Pair middle enables g: converts MiddlePost to Preconditions for g
@@ -2139,9 +2163,95 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
         addr-neq-r15+8 : addr ≢ readReg (regs s₄) r15 + slot-size
         addr-neq-r15+8 eq = <-asym r15+slot-below-rbp-s₄ (subst (readReg (regs s₄) rbp <_) eq addr>rbp-s₄)
 
-    -- Remaining fields that need bridging from original state
-    postulate
-      output-valid₅ : ValidAt {A * B} (fx , gx) (readReg (regs s₅) rax) (memory s₅)
+    -- Derive output-valid₅: ValidAt (fx, gx) (rax s₅) (memory s₅)
+    -- The pair is at r15 s₄, with:
+    --   mem[r15 s₄] = encode fx (f's result, stored by middle, preserved by g and cleanup)
+    --   mem[r15 s₄ + 8] = encode gx (g's result, stored by cleanup)
+    --   rax s₅ = r15 s₄ (set by cleanup)
+
+    -- Step 1: Chain memory preservation from s₂ → s₅ for fx's validity
+    -- f's output is valid at rax s₂ in memory s₂; transport to memory s₅
+    heap-s₂-to-s₅ : ∀ addr → InHeap addr → readMem (memory s₅) addr ≡ readMem (memory s₂) addr
+    heap-s₂-to-s₅ addr in-heap =
+      trans (PairFinalResult.mem-heap-fin final-result addr in-heap)
+      (trans (IRCorrectness.exec-heap-preserved g-corr addr in-heap)
+             (PairSpecs.MiddlePost.middle-heap-preserved middle addr in-heap))
+
+    f-valid-s₅ : ValidAt fx (encode fx) (memory s₅)
+    f-valid-s₅ = valid-subst-heap-preserved
+      (subst (λ a → ValidAt fx a (memory s₂)) f-output-is-encode (IRCorrectness.exec-output-valid f-corr))
+      refl heap-s₂-to-s₅
+      where
+        f-output-is-encode = IRCorrectness.exec-output-is-encode f-corr
+
+    -- Step 2: Chain memory preservation from s₄ → s₅ for gx's validity
+    heap-s₄-to-s₅ : ∀ addr → InHeap addr → readMem (memory s₅) addr ≡ readMem (memory s₄) addr
+    heap-s₄-to-s₅ = PairFinalResult.mem-heap-fin final-result
+
+    g-valid-s₅ : ValidAt gx (encode gx) (memory s₅)
+    g-valid-s₅ = valid-subst-heap-preserved
+      (subst (λ a → ValidAt gx a (memory s₄)) g-output-is-encode (IRCorrectness.exec-output-valid g-corr))
+      refl heap-s₄-to-s₅
+      where
+        g-output-is-encode = IRCorrectness.exec-output-is-encode g-corr
+
+    -- Step 3: Construct PairAtS from memory layout
+    -- Need: mem s₅ [r15 s₄] = just (encode fx)
+    --       mem s₅ [r15 s₄ + 8] = just (encode gx)
+
+    -- Memory at r15 s₄: chain middle → g → cleanup
+    -- Middle stores rax s₂ at r15; g preserves; cleanup preserves
+    mem-fst-chain : readMem (memory s₅) (readReg (regs s₄) r15) ≡ just (encode fx)
+    mem-fst-chain =
+      -- cleanup: mem s₅ [r15 s₄] = mem s₄ [r15 s₄]
+      trans (PairFinalResult.mem-fst-fin final-result)
+      -- g preserves: mem s₄ [r15 s₄] = mem s₃ [r15 s₃] (via exec-mem-result-slot + r15 equality)
+      (trans (subst (λ addr → readMem (memory s₄) addr ≡ readMem (memory s₃) addr)
+                    (proj₁ (proj₂ (IRCorrectness.exec-saved-regs g-corr)))
+                    (IRCorrectness.exec-mem-result-slot g-corr))
+      -- middle: mem s₃ [r15 s₃] = just (rax s₂)
+      (trans mid-mem-at-r15
+      -- rax s₂ = encode fx
+             (cong just (IRCorrectness.exec-output-is-encode f-corr))))
+      where
+        -- Get middle's mem-at-r15 via the underlying PairMiddleStarResult
+        -- PairMiddleStarResult.mem-at-r15 : mem s₃ [r15 s₃] = just (rax s₂)
+        -- but we need to trace through how middle is constructed...
+        -- Actually, let's use a different approach: derive from the MiddlePost record
+        -- MiddlePost doesn't have mem-at-r15 directly, but we know middle stores f's result
+        -- The key is that we have access to mid-result in x86-pair-middle
+        -- For now, we can use the heap preservation approach...
+        -- Actually, let me check what's available...
+        -- Since we added exec-mem-result-slot, and r15 is the result slot addr,
+        -- we need to show that the middle phase stores at r15...
+        -- This is getting complex. Let me use a simpler approach.
+        mid-mem-at-r15 : readMem (memory s₃) (readReg (regs s₃) r15) ≡ just (readReg (regs s₂) rax)
+        mid-mem-at-r15 = PairSpecs.MiddlePost.middle-fst-stored middle
+
+    mem-snd-chain : readMem (memory s₅) (readReg (regs s₄) r15 +ℕ slot-size) ≡ just (encode gx)
+    mem-snd-chain =
+      -- cleanup: mem s₅ [r15 s₄ + 8] = just (rax s₄)
+      trans (PairFinalResult.mem-snd-fin final-result)
+      -- rax s₄ = encode gx
+            (cong just (IRCorrectness.exec-output-is-encode g-corr))
+
+    pair-at-s₅ : PairAtS (encode fx) (encode gx) (readReg (regs s₄) r15) (memory s₅)
+    pair-at-s₅ = pair-at-s mem-fst-chain mem-snd-chain
+
+    -- Step 4: Derive r15 s₄ = encode (fx, gx) using encode-pair-construct
+    r15-is-pair-encode : readReg (regs s₄) r15 ≡ encode (fx , gx)
+    r15-is-pair-encode = encode-pair-construct fx gx (readReg (regs s₄) r15) (memory s₅)
+                           mem-fst-chain mem-snd-chain
+
+    -- Step 5: Construct ValidAt for pair at r15 s₄
+    valid-at-r15 : ValidAt {A * B} (fx , gx) (readReg (regs s₄) r15) (memory s₅)
+    valid-at-r15 = valid-pair f-valid-s₅ g-valid-s₅ pair-at-s₅ r15-is-pair-encode
+
+    -- Step 6: Transport to rax s₅ = r15 s₄
+    output-valid₅ : ValidAt {A * B} (fx , gx) (readReg (regs s₅) rax) (memory s₅)
+    output-valid₅ = subst (λ addr → ValidAt {A * B} (fx , gx) addr (memory s₅))
+                          (sym (PairFinalResult.rax-fin final-result))
+                          valid-at-r15
 
     cleanup-post : PairSpecs.CleanupPost f g prog-full offset-end s-orig s₄ s₅ x fx gx
     cleanup-post = record
@@ -2157,6 +2267,7 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
       ; cleanup-heap-preserved = cleanup-heap₅
       ; cleanup-code-preserved = cleanup-code₅
       ; cleanup-frame-preserved = cleanup-frame₅
+      ; cleanup-mem-result-slot = PairFinalResult.mem-orig-fin final-result
       }
 
 -- Pair combine: assembles all phases into final IRCorrectness
@@ -2186,6 +2297,7 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
   ; exec-code-preserved = pair-code-preserved
   ; exec-frame-preserved = pair-frame-preserved
   ; exec-mem-frame-ptr = pair-mem-frame-ptr
+  ; exec-mem-result-slot = pair-mem-result-slot
   ; exec-stack-inv = PairSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = PairSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = PairSpecs.CleanupPost.cleanup-frame-inv cleanup
@@ -2463,6 +2575,10 @@ x86-pair-combine {A} {B} {C} f g prefix suffix x s s₁ s₂ s₃ s₄ s₅ setu
     pair-output-is-encode : readReg (regs s₅) rax ≡ encode (eval ⟨ f , g ⟩ x)
     pair-output-is-encode = valid-addr-is-encode (PairSpecs.CleanupPost.cleanup-output-valid cleanup)
 
+    -- Memory at original result slot preserved (s → s₅)
+    pair-mem-result-slot : readMem (memory s₅) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    pair-mem-result-slot = PairSpecs.CleanupPost.cleanup-mem-result-slot cleanup
+
 ------------------------------------------------------------------------
 -- Curry Glue Lemmas
 --
@@ -2548,6 +2664,7 @@ x86-curry-setup {A} {B} {C} f prefix suffix x s pre = s₁ , setup
       ; setup-code-preserved = CurryExecResult.exec-mem-code exec-res
       ; setup-frame-preserved = CurryExecResult.exec-mem-above exec-res
       ; setup-mem-frame-ptr = CurryExecResult.exec-mem-rbp exec-res
+      ; setup-mem-result-slot = CurryExecResult.exec-mem exec-res
       -- Env validity at encode x (from pre-input-valid + pre-input-is-encode + heap preservation)
       ; setup-env-valid = valid-subst-heap-preserved
           (subst (λ a → ValidAt x a (memory s)) input-is-encode input-valid)
@@ -2595,6 +2712,7 @@ x86-curry-combine _ {A} {B} {C} f prefix suffix x s s₁ setup = record
   ; exec-code-preserved = CurrySpecs.SetupPost.setup-code-preserved setup
   ; exec-frame-preserved = CurrySpecs.SetupPost.setup-frame-preserved setup
   ; exec-mem-frame-ptr = CurrySpecs.SetupPost.setup-mem-frame-ptr setup
+  ; exec-mem-result-slot = CurrySpecs.SetupPost.setup-mem-result-slot setup
   ; exec-stack-inv = CurrySpecs.SetupPost.setup-stack-inv setup
   ; exec-capacity = CurrySpecs.SetupPost.setup-capacity setup
   ; exec-frame-inv = CurrySpecs.SetupPost.setup-frame-inv setup
@@ -3064,6 +3182,34 @@ x86-case-left-cleanup {A} {B} {C} f g prefix suffix a s s₁ s₂ orig-pre dispa
     cleanup-stack-inv-post : StackInvariant s₃
     cleanup-stack-inv-post = stack-inv-preserved-unchanged s s₃ orig-stack-inv r15-s₃-eq-s rsp-s₃-eq-s
 
+    -- Memory at original result slot preserved (s → s₃)
+    -- Chain: dispatch → f → cleanup
+    cleanup-mem-result-slot-post : readMem (memory s₃) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    cleanup-mem-result-slot-post =
+      -- Cleanup: memory entirely preserved (s₂ → s₃)
+      trans (cong (λ m → readMem m (readReg (regs s) r15)) (CaseCleanupResult.memory-preserved cres))
+      -- f preserves r15 memory (s₁ → s₂), need to rewrite r15-s₁ to r15-s via dispatch equality
+      (trans (subst (λ addr → readMem (memory s₂) addr ≡ readMem (memory s₁) addr)
+                    dispatch-r15 (IRCorrectness.exec-mem-result-slot f-corr))
+      -- Dispatch preserves r15 memory using region dispatch
+      (case-dispatch-mem-r15 orig-stack-inv dispatch-preserved))
+      where
+        dispatch-preserved = CaseSpecs.DispatchLeftPost.dispatch-heap-preserved dispatch
+                           , CaseSpecs.DispatchLeftPost.dispatch-code-preserved dispatch
+                           , CaseSpecs.DispatchLeftPost.dispatch-frame-preserved dispatch
+        case-dispatch-mem-r15 : StackInvariant s →
+          (HeapPreserved s s₁ × CodePreserved s s₁ × FramePreserved s s₁) →
+          readMem (memory s₁) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        case-dispatch-mem-r15 (r15-in-heap h) (hp , _ , _) = hp (readReg (regs s) r15) h
+        case-dispatch-mem-r15 (r15-in-code c) (_ , cp , _) = cp (readReg (regs s) r15) c
+        case-dispatch-mem-r15 (r15-in-stack frame slot eq bound) (_ , _ , fp) =
+          fp (readReg (regs s) r15) r15>rbp-s
+          where
+            -- r15 s ≥ rsp s ≥ rbp s (from StackInvariant + RbpInvariant)
+            r15>rbp-s : readReg (regs s) r15 > readReg (regs s) rbp
+            r15>rbp-s = <-≤-trans (RbpInvariant.rbp-below-rsp orig-frame-inv)
+                                   (subst (readReg (regs s) rsp ≤_) (sym eq) bound)
+
     cleanup-post : CaseSpecs.CleanupPost f g prog (length prefix + compile-length [ f , g ]) s s₂ s₃ (eval f a)
     cleanup-post = record
       { cleanup-halted = CaseCleanupResult.h-final cres
@@ -3078,6 +3224,7 @@ x86-case-left-cleanup {A} {B} {C} f g prefix suffix a s s₁ s₂ orig-pre dispa
       ; cleanup-heap-preserved = cleanup-heap
       ; cleanup-code-preserved = cleanup-code
       ; cleanup-frame-preserved = cleanup-frame
+      ; cleanup-mem-result-slot = cleanup-mem-result-slot-post
       }
 
 -- Case left combine: chains dispatch + f + cleanup into case result
@@ -3103,6 +3250,7 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
   ; exec-code-preserved = case-code-preserved
   ; exec-frame-preserved = case-frame-preserved
   ; exec-mem-frame-ptr = case-mem-frame-ptr
+  ; exec-mem-result-slot = CaseSpecs.CleanupPost.cleanup-mem-result-slot cleanup
   ; exec-stack-inv = CaseSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup
@@ -3615,6 +3763,34 @@ x86-case-right-cleanup {A} {B} {C} f g prefix suffix b s s₁ s₂ orig-pre disp
     cleanup-stack-inv-post : StackInvariant s₃
     cleanup-stack-inv-post = stack-inv-preserved-unchanged s s₃ orig-stack-inv r15-s₃-eq-s rsp-s₃-eq-s
 
+    -- Memory at original result slot preserved (s → s₃)
+    -- Chain: dispatch → g → cleanup
+    cleanup-mem-result-slot-post : readMem (memory s₃) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+    cleanup-mem-result-slot-post =
+      -- Cleanup: memory entirely preserved (s₂ → s₃)
+      trans (cong (λ m → readMem m (readReg (regs s) r15)) (CaseCleanupResult.memory-preserved cres))
+      -- g preserves r15 memory (s₁ → s₂), need to rewrite r15-s₁ to r15-s via dispatch equality
+      (trans (subst (λ addr → readMem (memory s₂) addr ≡ readMem (memory s₁) addr)
+                    dispatch-r15 (IRCorrectness.exec-mem-result-slot g-corr))
+      -- Dispatch preserves r15 memory using region dispatch
+      (case-dispatch-mem-r15 orig-stack-inv dispatch-preserved))
+      where
+        dispatch-preserved = CaseSpecs.DispatchRightPost.dispatch-heap-preserved dispatch
+                           , CaseSpecs.DispatchRightPost.dispatch-code-preserved dispatch
+                           , CaseSpecs.DispatchRightPost.dispatch-frame-preserved dispatch
+        case-dispatch-mem-r15 : StackInvariant s →
+          (HeapPreserved s s₁ × CodePreserved s s₁ × FramePreserved s s₁) →
+          readMem (memory s₁) (readReg (regs s) r15) ≡ readMem (memory s) (readReg (regs s) r15)
+        case-dispatch-mem-r15 (r15-in-heap h) (hp , _ , _) = hp (readReg (regs s) r15) h
+        case-dispatch-mem-r15 (r15-in-code c) (_ , cp , _) = cp (readReg (regs s) r15) c
+        case-dispatch-mem-r15 (r15-in-stack frame slot eq bound) (_ , _ , fp) =
+          fp (readReg (regs s) r15) r15>rbp-s
+          where
+            -- r15 s ≥ rsp s ≥ rbp s (from StackInvariant + RbpInvariant)
+            r15>rbp-s : readReg (regs s) r15 > readReg (regs s) rbp
+            r15>rbp-s = <-≤-trans (RbpInvariant.rbp-below-rsp orig-frame-inv)
+                                   (subst (readReg (regs s) rsp ≤_) (sym eq) bound)
+
     cleanup-post : CaseSpecs.CleanupPost f g prog (length prefix + compile-length [ f , g ]) s s₂ s₃ (eval g b)
     cleanup-post = record
       { cleanup-halted = CaseCleanupResult.h-final cres
@@ -3629,6 +3805,7 @@ x86-case-right-cleanup {A} {B} {C} f g prefix suffix b s s₁ s₂ orig-pre disp
       ; cleanup-heap-preserved = cleanup-heap
       ; cleanup-code-preserved = cleanup-code
       ; cleanup-frame-preserved = cleanup-frame
+      ; cleanup-mem-result-slot = cleanup-mem-result-slot-post
       }
 
 -- Case right combine: chains dispatch + g + cleanup into case result
@@ -3653,6 +3830,7 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
   ; exec-code-preserved = case-code-preserved
   ; exec-frame-preserved = case-frame-preserved
   ; exec-mem-frame-ptr = case-mem-frame-ptr
+  ; exec-mem-result-slot = CaseSpecs.CleanupPost.cleanup-mem-result-slot cleanup
   ; exec-stack-inv = CaseSpecs.CleanupPost.cleanup-stack-inv cleanup
   ; exec-capacity = CaseSpecs.CleanupPost.cleanup-capacity cleanup
   ; exec-frame-inv = CaseSpecs.CleanupPost.cleanup-frame-inv cleanup

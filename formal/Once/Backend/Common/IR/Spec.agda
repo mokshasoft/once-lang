@@ -425,6 +425,10 @@ module IRSpecs
       -- Preserves saved linkage at [rbp] for frame restoration
       exec-mem-frame-ptr : readMem (memory s') (frame-ptr-addr s) ≡ readMem (memory s) (frame-ptr-addr s)
 
+      -- Memory at result slot (r15) preserved
+      -- Needed for pair proofs: after middle stores f's result at r15, g preserves it
+      exec-mem-result-slot : readMem (memory s') (result-slot-addr s) ≡ readMem (memory s) (result-slot-addr s)
+
       -- Invariants maintained
       exec-stack-inv : StackInvariant s'
       exec-capacity : StackCapacity s' (ir-output-capacity ir)
@@ -503,6 +507,8 @@ module IRSpecs
         middle-heap-preserved : HeapPreserved s₂ s₃
         middle-code-preserved : CodePreserved s₂ s₃
         middle-frame-preserved : FramePreserved s₂ s₃
+        -- f's result stored at result slot (for pair output construction)
+        middle-fst-stored : readMem (memory s₃) (result-slot-addr s₃) ≡ just (output-value s₂)
 
     -- After cleanup: pair constructed
     -- prog is the full program
@@ -525,6 +531,8 @@ module IRSpecs
         cleanup-heap-preserved : HeapPreserved s₄ s₅
         cleanup-code-preserved : CodePreserved s₄ s₅
         cleanup-frame-preserved : FramePreserved s₄ s₅
+        -- Memory at original result slot preserved (s → s₅)
+        cleanup-mem-result-slot : readMem (memory s₅) (result-slot-addr s) ≡ readMem (memory s) (result-slot-addr s)
 
   module CurrySpecs {A B C : Type} (f : IR (A * B) C) where
 
@@ -549,6 +557,7 @@ module IRSpecs
         setup-code-preserved : CodePreserved s s₁
         setup-frame-preserved : FramePreserved s s₁
         setup-mem-frame-ptr : readMem (memory s₁) (frame-ptr-addr s) ≡ readMem (memory s) (frame-ptr-addr s)
+        setup-mem-result-slot : readMem (memory s₁) (result-slot-addr s) ≡ readMem (memory s) (result-slot-addr s)
         -- Closure environment info (for building ApplyWFInput in curry-combine)
         -- The environment x is valid at its encoding (encode x) in memory.
         -- This comes from pre-input-valid + pre-input-is-encode + heap preservation.
@@ -633,6 +642,8 @@ module IRSpecs
         cleanup-heap-preserved : HeapPreserved s₂ s₃
         cleanup-code-preserved : CodePreserved s₂ s₃
         cleanup-frame-preserved : FramePreserved s₂ s₃
+        -- Memory at original result slot preserved (s → s₃)
+        cleanup-mem-result-slot : readMem (memory s₃) (result-slot-addr s) ≡ readMem (memory s) (result-slot-addr s)
 
 ------------------------------------------------------------------------
 -- ClosuresWF: WF for all closures in values of a given type
