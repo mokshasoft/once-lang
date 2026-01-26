@@ -13,7 +13,7 @@ module Once.Backend.X86.Correct.ArchInstantiation where
 
 open import Data.Nat using (ℕ; _+_; _∸_; _>_; _≤_; _<_; zero; suc; _⊔_; z≤n) renaming (_*_ to _*ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm; m≤m⊔n; m≤n⊔m; ≤-trans; <⇒≤; ≤-refl; ≤-<-trans)
-open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -2658,19 +2658,28 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
              (CaseSpecs.DispatchLeftPost.dispatch-heap-preserved dispatch addr in-heap))
 
     -- Thread f's closure-wf to case output (transport prog and state)
-    -- Pass bound explicitly to connect pattern match with f-corr's exec-cwf-bound-in-req
-    case-left-closure-wf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
-    case-left-closure-wf = transport-cwf (IRCorrectness.exec-closure-wf f-corr) (IRCorrectness.exec-cwf-bound-in-req f-corr)
+    -- Returns both the transported cwf AND its bound proof (pattern match witnesses the case)
+    case-left-closure-wf-with-bound :
+      Σ (ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a)))
+        (λ cwf → cwf-cap-bound cwf ≤ ir-stack-requirement [ f , g ])
+    case-left-closure-wf-with-bound = transport-cwf-with-bound
+      (IRCorrectness.exec-closure-wf f-corr) (IRCorrectness.exec-cwf-bound-in-req f-corr)
       where
         open import Once.Backend.X86.Correct.StackInstantiation using (capacity-from-larger)
         open import Data.Nat.Properties using (m≤m+n; m≤n+m)
 
-        transport-cwf : (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-f s₂ (closureOf C (eval f a))) →
-                        cwf-cap-bound cwf ≤ ir-stack-requirement f →
-                        ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
-        transport-cwf no-apply-wf _ = no-apply-wf
-        transport-cwf (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' cl-in-heap' addr-unique' ev' cap') cwf-bnd =
-          apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ cl-in-heap' addr-unique-s₃ ev-at-s₃ cap-at-s₃
+        -- Pattern match on input cwf to produce both transported cwf and its bound
+        -- This is the key: the pattern match acts as a witness
+        transport-cwf-with-bound :
+          (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-f s₂ (closureOf C (eval f a))) →
+          cwf-cap-bound cwf ≤ ir-stack-requirement f →
+          Σ (ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a)))
+            (λ cwf' → cwf-cap-bound cwf' ≤ ir-stack-requirement [ f , g ])
+        -- Case 1: no-apply-wf → bound is 0 ≤ n (trivially z≤n)
+        transport-cwf-with-bound no-apply-wf _ = no-apply-wf , z≤n
+        -- Case 2: apply-wf → transport and chain bounds
+        transport-cwf-with-bound (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' cl-in-heap' addr-unique' ev' cap') cwf-bnd =
+          transported-cwf , cwf-bound
           where
             wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
             closure-at-s₃ = ClosureAtS-preserved-under-heap-eq closure-at' cl-in-heap' (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
@@ -2710,6 +2719,26 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
 
             cap-at-s₃ : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
             cap-at-s₃ = subst (λ tc → StackCapacity s₃ (apply-consumed-slots + tc)) thunk-cap-eq cap-at-s₃-wf'
+
+            transported-cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
+            transported-cwf = apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ cl-in-heap' addr-unique-s₃ ev-at-s₃ cap-at-s₃
+
+            -- Bound for the transported cwf: cap-upper-bound wf-subst ≤ ir-req [f,g]
+            -- cap-upper-bound wf-subst = cap-upper-bound wf' (by cap-upper-bound-subst)
+            -- Chain: cap-upper-bound wf' ≤ ir-req f ≤ ir-req f ⊔ ir-req g ≤ ir-req [f,g]
+            cap-upper-eq : ClosureWellFormed.cap-upper-bound wf' ≡ ClosureWellFormed.cap-upper-bound wf-subst
+            cap-upper-eq = cap-upper-bound-subst prog-eq wf'
+
+            -- ir-req f ⊔ ir-req g ≤ 1 + (ir-req f ⊔ ir-req g) = ir-req [f,g]
+            bound₃⁺ : ir-stack-requirement f ⊔ ir-stack-requirement g ≤ ir-stack-requirement [ f , g ]
+            bound₃⁺ = m≤n+m (ir-stack-requirement f ⊔ ir-stack-requirement g) 1
+
+            cwf-bound : cwf-cap-bound transported-cwf ≤ ir-stack-requirement [ f , g ]
+            cwf-bound = subst (_≤ ir-stack-requirement [ f , g ]) cap-upper-eq (≤-trans (≤-trans bound₂ bound₃) bound₃⁺)
+
+    -- Extract the closure-wf from the combined definition
+    case-left-closure-wf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval f a))
+    case-left-closure-wf = proj₁ case-left-closure-wf-with-bound
 
     -- Code preserved: chain dispatch → f → cleanup
     case-code-preserved : X86-CodePreserved s s₃
@@ -2776,12 +2805,9 @@ x86-case-left-combine {A} {B} {C} f g prefix suffix a s s₁ s₂ s₃ dispatch 
         cleanup-mem-rbp : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s₂) (readReg (regs s) rbp)
         cleanup-mem-rbp = CaseSpecs.CleanupPost.cleanup-frame-preserved cleanup (readReg (regs s) rbp) rbp-s>rbp-s₂
 
-    -- Bound proof: cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
-    -- TODO: This postulate can be eliminated with structural refactoring to unify
-    -- the transport-cwf functions. The proof is: no-apply-wf gives 0 ≤ n (z≤n),
-    -- apply-wf chains cap-upper-bound ≤ ir-req f ≤ ir-req [f,g].
-    postulate
-      case-left-cwf-bound : cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
+    -- Bound proof: extract from combined definition (pattern match witnesses the case)
+    case-left-cwf-bound : cwf-cap-bound case-left-closure-wf ≤ ir-stack-requirement [ f , g ]
+    case-left-cwf-bound = proj₂ case-left-closure-wf-with-bound
 
     -- Output encoding: eval [ f , g ] (inj₁ a) = eval f a definitionally
     -- cleanup-output-valid gives ValidAt (eval f a) rax (memory s₃)
@@ -3194,19 +3220,28 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
              (CaseSpecs.DispatchRightPost.dispatch-heap-preserved dispatch addr in-heap))
 
     -- Thread g's closure-wf to case output (transport prog and state)
-    -- Pass bound explicitly to connect pattern match with g-corr's exec-cwf-bound-in-req
-    case-right-closure-wf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
-    case-right-closure-wf = transport-cwf (IRCorrectness.exec-closure-wf g-corr) (IRCorrectness.exec-cwf-bound-in-req g-corr)
+    -- Returns both the transported cwf AND its bound proof (pattern match witnesses the case)
+    case-right-closure-wf-with-bound :
+      Σ (ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b)))
+        (λ cwf → cwf-cap-bound cwf ≤ ir-stack-requirement [ f , g ])
+    case-right-closure-wf-with-bound = transport-cwf-with-bound
+      (IRCorrectness.exec-closure-wf g-corr) (IRCorrectness.exec-cwf-bound-in-req g-corr)
       where
         open import Once.Backend.X86.Correct.StackInstantiation using (capacity-from-larger)
         open import Data.Nat.Properties using (m≤m+n; m≤n+m)
 
-        transport-cwf : (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-g s₂ (closureOf C (eval g b))) →
-                        cwf-cap-bound cwf ≤ ir-stack-requirement g →
-                        ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
-        transport-cwf no-apply-wf _ = no-apply-wf
-        transport-cwf (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' cl-in-heap' addr-unique' ev' cap') cwf-bnd =
-          apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ cl-in-heap' addr-unique-s₃ ev-at-s₃ cap-at-s₃
+        -- Pattern match on input cwf to produce both transported cwf and its bound
+        -- This is the key: the pattern match acts as a witness
+        transport-cwf-with-bound :
+          (cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog-g s₂ (closureOf C (eval g b))) →
+          cwf-cap-bound cwf ≤ ir-stack-requirement g →
+          Σ (ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b)))
+            (λ cwf' → cwf-cap-bound cwf' ≤ ir-stack-requirement [ f , g ])
+        -- Case 1: no-apply-wf → bound is 0 ≤ n (trivially z≤n)
+        transport-cwf-with-bound no-apply-wf _ = no-apply-wf , z≤n
+        -- Case 2: apply-wf → transport and chain bounds
+        transport-cwf-with-bound (apply-wf cp' env' sem' cl-addr' cl-eq' wf' closure-at' cl-in-heap' addr-unique' ev' cap') cwf-bnd =
+          transported-cwf , cwf-bound
           where
             wf-subst = subst (λ p → ClosureWellFormed p cp' env' sem') prog-eq wf'
             closure-at-s₃ = ClosureAtS-preserved-under-heap-eq closure-at' cl-in-heap' (CaseSpecs.CleanupPost.cleanup-heap-preserved cleanup)
@@ -3246,6 +3281,25 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
 
             cap-at-s₃ : StackCapacity s₃ (apply-consumed-slots + ClosureWellFormed.thunk-capacity wf-subst)
             cap-at-s₃ = subst (λ tc → StackCapacity s₃ (apply-consumed-slots + tc)) thunk-cap-eq cap-at-s₃-wf'
+
+            transported-cwf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
+            transported-cwf = apply-wf cp' env' sem' cl-addr' cl-eq' wf-subst closure-at-s₃ cl-in-heap' addr-unique-s₃ ev-at-s₃ cap-at-s₃
+
+            -- Bound for the transported cwf: cap-upper-bound wf-subst ≤ ir-req [f,g]
+            -- Chain: cap-upper-bound wf' ≤ ir-req g ≤ ir-req f ⊔ ir-req g ≤ ir-req [f,g]
+            cap-upper-eq : ClosureWellFormed.cap-upper-bound wf' ≡ ClosureWellFormed.cap-upper-bound wf-subst
+            cap-upper-eq = cap-upper-bound-subst prog-eq wf'
+
+            -- ir-req f ⊔ ir-req g ≤ 1 + (ir-req f ⊔ ir-req g) = ir-req [f,g]
+            bound₃⁺ : ir-stack-requirement f ⊔ ir-stack-requirement g ≤ ir-stack-requirement [ f , g ]
+            bound₃⁺ = m≤n+m (ir-stack-requirement f ⊔ ir-stack-requirement g) 1
+
+            cwf-bound : cwf-cap-bound transported-cwf ≤ ir-stack-requirement [ f , g ]
+            cwf-bound = subst (_≤ ir-stack-requirement [ f , g ]) cap-upper-eq (≤-trans (≤-trans bound₂ bound₃) bound₃⁺)
+
+    -- Extract the closure-wf from the combined definition
+    case-right-closure-wf : ApplyWFInput (ClosureDom C) (ClosureCod C) prog s₃ (closureOf C (eval g b))
+    case-right-closure-wf = proj₁ case-right-closure-wf-with-bound
 
     -- Code preserved: chain dispatch → g → cleanup
     case-code-preserved : X86-CodePreserved s s₃
@@ -3312,12 +3366,9 @@ x86-case-right-combine {A} {B} {C} f g prefix suffix b s s₁ s₂ s₃ dispatch
         cleanup-mem-rbp : readMem (memory s₃) (readReg (regs s) rbp) ≡ readMem (memory s₂) (readReg (regs s) rbp)
         cleanup-mem-rbp = CaseSpecs.CleanupPost.cleanup-frame-preserved cleanup (readReg (regs s) rbp) rbp-s>rbp-s₂
 
-    -- Bound proof: cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
-    -- TODO: This postulate can be eliminated with structural refactoring
-    -- The issue is that transport-cwf (defined in this module) and cwf-bound-helper
-    -- both pattern match on ApplyWFInput, but Agda can't see that they match.
-    postulate
-      case-right-cwf-bound : cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
+    -- Bound proof: extract from combined definition (pattern match witnesses the case)
+    case-right-cwf-bound : cwf-cap-bound case-right-closure-wf ≤ ir-stack-requirement [ f , g ]
+    case-right-cwf-bound = proj₂ case-right-closure-wf-with-bound
 
     -- Output encoding: eval [ f , g ] (inj₂ b) = eval g b definitionally
     -- cleanup-output-valid gives ValidAt (eval g b) rax (memory s₃)
