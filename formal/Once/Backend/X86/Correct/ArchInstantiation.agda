@@ -1905,10 +1905,75 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
     final-precond-disjoint-orig-rbp+8 : readReg (regs s-orig) rbp +ℕ slot-size ≢ readReg (regs s₄) r15 +ℕ slot-size
     final-precond-disjoint-orig-rbp+8 eq = <-irrefl eq rbp-orig+8>r15+slot
 
-    -- Remaining postulates
+    -- Derive disjoint-orig via StackInvariant
+    -- Key: r15(s₄) + 8 = rsp - 32 < rsp, and StackInvariant says r15-orig is either:
+    --   - In heap/code: addresses < stack addresses, so < rsp - 32
+    --   - In stack: r15-orig ≥ rsp > rsp - 32
+    open import Once.Backend.X86.Layout using (InCode; InHeap; InStack;
+                                                stack-heap-addr-disjoint; stack-code-addr-disjoint)
+    open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-in-heap; r15-in-code; r15-in-stack;
+                                                               FrameEvidenceFor; slot-addr; slot-addr-≥-base)
+
+    r15-orig = readReg (regs s-orig) r15
+    r15-s₄+8 = readReg (regs s₄) r15 +ℕ slot-size
+
+    -- r15(s₄) + 8 = rsp - 32 is InStack (follows from r15(s₄) = rsp - 40 being in stack)
+    -- We have r15-s₁-in-stack from earlier; chain to s₄
+    r15-s₄-in-stack : InStack (readReg (regs s₄) r15)
+    r15-s₄-in-stack = subst InStack (sym r15-s₄-to-s₁) r15-s₁-in-stack
+
+    -- r15(s₄) + 8 < rsp: follows from r15-chain and arithmetic
+    -- r15(s₄) + 8 = (rsp - 40) + 8 < rsp when 40 ≤ rsp and 8 < 40
+    r15-s₄+8<rsp : r15-s₄+8 < rsp-orig
+    r15-s₄+8<rsp = subst (λ n → n +ℕ slot-size < rsp-orig) (sym final-precond-r15-chain) arith-step
+      where
+        -- (rsp ∸ frame-size) + slot-size < rsp when frame-size ≤ rsp and slot-size < frame-size
+        k = rsp-orig ∸ frame-size
+        k+8<k+40 : k +ℕ slot-size < k +ℕ frame-size
+        k+8<k+40 = +-monoʳ-< k word-fits-pair-strict  -- slot-size < pair-alloc = 16, but need < 40
+          where
+            open import Data.Nat.Properties using (+-monoʳ-<)
+            open import Once.Backend.X86.Correct.Arithmetic using (word-fits-pair-strict)
+        arith-step : k +ℕ slot-size < rsp-orig
+        arith-step = subst (k +ℕ slot-size <_) (m∸n+n≡m (<⇒≤ (StackCapacity.rsp-sufficient orig-cap))) k+40<rsp∸40+40
+          where
+            k+40<rsp∸40+40 : k +ℕ slot-size < k +ℕ frame-size
+            k+40<rsp∸40+40 = +-monoʳ-< k (from-yes-< (slot-size <? frame-size))
+
+    -- Case split on StackInvariant
+    final-precond-disjoint-orig : readReg (regs s-orig) r15 ≢ readReg (regs s₄) r15 +ℕ slot-size
+    final-precond-disjoint-orig = case-stack-inv orig-stack-inv
+      where
+        -- If r15-orig in heap: heap addresses disjoint from stack addresses
+        case-r15-heap : InHeap r15-orig → r15-orig ≢ r15-s₄+8
+        case-r15-heap r15-heap = stack-heap-addr-disjoint (readReg (regs s₄) r15 +ℕ slot-size) r15-orig
+                                   (stack-sub-preserves (readReg (regs s₄) r15) slot-size r15-s₄-in-stack) r15-heap
+
+        -- If r15-orig in code: code addresses disjoint from stack addresses
+        case-r15-code : InCode r15-orig → r15-orig ≢ r15-s₄+8
+        case-r15-code r15-code = stack-code-addr-disjoint (readReg (regs s₄) r15 +ℕ slot-size) r15-orig
+                                   (stack-sub-preserves (readReg (regs s₄) r15) slot-size r15-s₄-in-stack) r15-code
+
+        -- If r15-orig in stack (r15-orig ≥ rsp): r15-orig ≥ rsp > r15-s₄+8
+        case-r15-stack : (frame : FrameEvidenceFor r15-orig) (slot : ℕ) →
+                         r15-orig ≡ slot-addr frame slot →
+                         rsp-orig ≤ slot-addr frame slot →
+                         r15-orig ≢ r15-s₄+8
+        case-r15-stack frame slot r15-eq rsp≤slot eq = <⇒≢ r15-s₄+8<r15-orig (sym eq)
+          where
+            r15-orig≥rsp : r15-orig ≥ rsp-orig
+            r15-orig≥rsp = subst (rsp-orig ≤_) (sym r15-eq) rsp≤slot
+            r15-s₄+8<r15-orig : r15-s₄+8 < r15-orig
+            r15-s₄+8<r15-orig = <-≤-trans r15-s₄+8<rsp r15-orig≥rsp
+
+        case-stack-inv : StackInvariant s-orig → r15-orig ≢ r15-s₄+8
+        case-stack-inv (r15-in-heap h) = case-r15-heap h
+        case-stack-inv (r15-in-code c) = case-r15-code c
+        case-stack-inv (r15-in-stack frame slot eq bound) = case-r15-stack frame slot eq bound
+
+    -- Remaining postulate (mem-frame requires region-based memory preservation)
     postulate
       final-precond-mem-frame : readMem (memory s₄) (readReg (regs s-orig) r15) ≡ readMem (memory s-orig) (readReg (regs s-orig) r15)
-      final-precond-disjoint-orig : readReg (regs s-orig) r15 ≢ readReg (regs s₄) r15 +ℕ slot-size
 
     -- Construct final-precond using derived fields
     final-precond : PairFinalPrecond f g prefix suffix s-orig s₄
