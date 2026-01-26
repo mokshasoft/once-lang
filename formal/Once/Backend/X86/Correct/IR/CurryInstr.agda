@@ -39,6 +39,7 @@ open import Once.Backend.X86.Correct.FetchStep using (step-exec)
 open import Once.Backend.X86.Correct.InstrExec using (execMov-reg-reg; execPop)
 open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-pair-strict)
+open import Once.Backend.X86.Correct.Arithmetic using (∸-preserves-<; <⇒≢; ∸+<-lemma)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_; star-trans)
 open import Once.Backend.X86.Correct.StarBase
@@ -983,9 +984,29 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
       where
         open import Data.Product using (proj₁; proj₂)
 
-    -- Phase 2 TODO: Prove from write bounds (curry writes only below entry-rsp)
-    postulate
-      mem-write-preserved : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    -- Addresses at or above entry-rsp are preserved (curry writes only below entry-rsp)
+    new-rsp+8<orig-rsp : (new-rsp +ℕ slot-size) < orig-rsp
+    new-rsp+8<orig-rsp = ∸+<-lemma rsp-bound
+
+    mem-write-preserved : ∀ addr → addr ≥ orig-rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-write-preserved addr addr≥rsp =
+      let -- new-rsp < orig-rsp ≤ addr, so new-rsp < addr and new-rsp ≢ addr
+          new-rsp<addr = <-≤-trans closure-addr-below-entry-rsp addr≥rsp
+          new-rsp+8<addr = <-≤-trans new-rsp+8<orig-rsp addr≥rsp
+          diff-new-rsp = <⇒≢ new-rsp<addr
+          diff-new-rsp+8 = <⇒≢ new-rsp+8<addr
+          -- Chain through all states (s1-s7)
+          mem-s1 : readMem (memory s1) addr ≡ readMem (memory s) addr
+          mem-s1 = refl
+          mem-s2 : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-s2 = readMem-writeMem-diff (memory s1) (readReg (regs s1) rsp) addr
+                     (readReg (regs s1) rdi) (subst (λ x → x ≢ addr) (sym rsp-s1) diff-new-rsp)
+          mem-s3 : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-s3 = refl
+          mem-s4 : readMem (memory s4) addr ≡ readMem (memory s3) addr
+          mem-s4 = readMem-writeMem-diff (memory s3) (readReg (regs s3) rsp +ℕ slot-size) addr
+                     (readReg (regs s3) r9) (subst (λ x → (x +ℕ slot-size) ≢ addr) (sym rsp-s3) diff-new-rsp+8)
+      in trans mem-s4 (trans mem-s3 (trans mem-s2 mem-s1))
 
 ------------------------------------------------------------------------
 -- Validity-Based Curry Proof

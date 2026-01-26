@@ -799,9 +799,9 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     s' = proj₁ wf-result
     module WfR = ApplyWfResult (proj₂ wf-result)
 
-    -- Phase 2 TODO: Prove from write bounds (apply writes only below entry-rsp)
-    postulate
-      mem-preserved : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s') addr ≡ readMem (memory s) addr
+    -- Addresses at or above entry-rsp are preserved (directly from WfR.mem-above)
+    mem-preserved : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s') addr ≡ readMem (memory s) addr
+    mem-preserved = WfR.mem-above
 
     -- Capacity derivation for ir-capacity
     -- ir-output-capacity apply = 4, thunk-capacity ≥ 6, so 4 ≤ 2 + 6 ≤ 2 + thunk-capacity

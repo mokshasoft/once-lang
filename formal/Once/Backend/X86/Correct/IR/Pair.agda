@@ -711,9 +711,84 @@ run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-s
                                          (trans (IRStarResultV.ir-mem-heap r-f-v addr addr-in-heap)
                                                 (mem-setup-preserves-heap addr addr-in-heap))))
 
-      -- Phase 2 TODO: Prove from write bounds (pair writes only below entry-rsp)
-      postulate
-        mem-preserved-final : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      -- Proven: Pair writes only below entry-rsp (at r15 and r15+8)
+      -- Chain through 5 phases, each preserving addresses ≥ entry-rsp
+      mem-preserved-final : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+      mem-preserved-final addr addr≥rsp = mem-chain-preserved
+        where
+          orig-rsp = readReg (regs s) rsp
+          rsp>pair-req = StackCapacity.rsp-sufficient cap-in
+          rsp>16 : orig-rsp > slots output-slots
+          rsp>16 = ≤-<-trans (slots-mono-≤ (output-slots≤pair-req f g)) rsp>pair-req
+
+          -- Phase 1: Setup preserves addresses ≥ rsp
+          mem-setup-pres : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+          mem-setup-pres = PairSetupResultV.mem-above-rsp-setup setup-res addr addr≥rsp
+
+          -- Phase 2: f execution preserves via ir-mem-preserved
+          -- Need: addr ≥ setup's entry-rsp (which is ≤ orig-rsp since setup doesn't change rsp bound)
+          setup-rsp = readReg (regs s-setup) rsp
+          setup-rsp-eq : setup-rsp ≡ orig-rsp ∸ frame-size
+          setup-rsp-eq = PairSetupResultV.rsp-setup setup-res
+          setup-rsp≤orig-rsp : setup-rsp ≤ orig-rsp
+          setup-rsp≤orig-rsp = subst (_≤ orig-rsp) (sym setup-rsp-eq) (m∸n≤m orig-rsp frame-size)
+          addr≥setup-rsp : addr ≥ setup-rsp
+          addr≥setup-rsp = ≤-trans setup-rsp≤orig-rsp addr≥rsp
+          mem-f-pres : readMem (memory s1) addr ≡ readMem (memory s-setup) addr
+          mem-f-pres = subst (λ e → ∀ a → a ≥ e → readMem (memory s1) a ≡ readMem (memory s-setup) a)
+                             (IRStarResultV.ir-entry-rsp-eq r-f-v)
+                             (IRStarResultV.ir-mem-preserved r-f-v) addr addr≥setup-rsp
+
+          -- Phase 3: Middle writes at r15, need addr ≠ r15
+          s1-r15 = readReg (regs s1) r15
+          s1-r15-eq : s1-r15 ≡ orig-rsp ∸ frame-size
+          s1-r15-eq = trans (IRStarResultV.ir-r15 r-f-v) (PairSetupResultV.r15-setup setup-res)
+          rsp∸40<rsp : orig-rsp ∸ frame-size < orig-rsp
+          rsp∸40<rsp = m∸n<m-when-positive orig-rsp 40 (≤-trans (s≤s z≤n) rsp>16) (s≤s z≤n)
+          s1-r15<addr : s1-r15 < addr
+          s1-r15<addr = subst (_< addr) (sym s1-r15-eq) (<-≤-trans rsp∸40<rsp addr≥rsp)
+          addr≢s1-r15 : addr ≢ s1-r15
+          addr≢s1-r15 eq = Nat-<⇒≢ s1-r15<addr (sym eq)
+          mem-mid-pres : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-mid-pres = PairMiddleResultV.mem-above-r15-mid mid-res addr addr≢s1-r15
+
+          -- Phase 4: g execution preserves via ir-mem-preserved
+          -- s2.rsp = s1.rsp (middle doesn't change rsp)
+          -- s1.rsp ≤ s-setup.rsp ≤ orig-rsp
+          s1-rsp = readReg (regs s1) rsp
+          s1-rsp≤setup-rsp : s1-rsp ≤ setup-rsp
+          s1-rsp≤setup-rsp = subst (_≤ setup-rsp) (sym (IRStarResultV.ir-rsp r-f-v))
+                                    (m∸n≤m setup-rsp (slots (ir-rsp-delta f)))
+          s1-rsp≤orig-rsp : s1-rsp ≤ orig-rsp
+          s1-rsp≤orig-rsp = ≤-trans s1-rsp≤setup-rsp setup-rsp≤orig-rsp
+          s2-rsp = readReg (regs s2) rsp
+          s2-rsp-eq-s1 : s2-rsp ≡ s1-rsp
+          s2-rsp-eq-s1 = PairMiddleResultV.rsp-mid mid-res
+          s2-rsp≤orig-rsp : s2-rsp ≤ orig-rsp
+          s2-rsp≤orig-rsp = subst (_≤ orig-rsp) (sym s2-rsp-eq-s1) s1-rsp≤orig-rsp
+          addr≥s2-rsp : addr ≥ s2-rsp
+          addr≥s2-rsp = ≤-trans s2-rsp≤orig-rsp addr≥rsp
+          mem-g-pres : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-g-pres = subst (λ e → ∀ a → a ≥ e → readMem (memory s3) a ≡ readMem (memory s2) a)
+                             (IRStarResultV.ir-entry-rsp-eq r-g-v)
+                             (IRStarResultV.ir-mem-preserved r-g-v) addr addr≥s2-rsp
+
+          -- Phase 5: Final writes at r15+8, need addr ≠ r15+8
+          s3-r15 = readReg (regs s3) r15
+          s3-r15-eq : s3-r15 ≡ orig-rsp ∸ frame-size
+          s3-r15-eq = trans (IRStarResultV.ir-r15 r-g-v) (trans (PairMiddleResultV.r15-mid mid-res) (trans (IRStarResultV.ir-r15 r-f-v) (PairSetupResultV.r15-setup setup-res)))
+          s3-r15+8<rsp : s3-r15 +ℕ slot-size < orig-rsp
+          s3-r15+8<rsp = subst (λ r → r +ℕ slot-size < orig-rsp) (sym s3-r15-eq) (rsp∸40+8<rsp orig-rsp rsp>16)
+          s3-r15+8<addr : s3-r15 +ℕ slot-size < addr
+          s3-r15+8<addr = <-≤-trans s3-r15+8<rsp addr≥rsp
+          addr≢s3-r15+8 : addr ≢ s3-r15 +ℕ slot-size
+          addr≢s3-r15+8 eq = Nat-<⇒≢ s3-r15+8<addr (sym eq)
+          mem-final-pres : readMem (memory s-final) addr ≡ readMem (memory s3) addr
+          mem-final-pres = PairFinalResult.mem-above-r15+8-fin final-res addr addr≢s3-r15+8
+
+          -- Chain all phases
+          mem-chain-preserved : readMem (memory s-final) addr ≡ readMem (memory s) addr
+          mem-chain-preserved = trans mem-final-pres (trans mem-g-pres (trans mem-mid-pres (trans mem-f-pres mem-setup-pres)))
 
       -- Convert final Star to prog
       star-fin : Star prog s3 s-final
