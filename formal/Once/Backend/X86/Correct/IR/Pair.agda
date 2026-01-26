@@ -85,13 +85,31 @@ open import Once.Backend.X86.Correct.IR.PairFinal public
 ------------------------------------------------------------------------
 -- Focused postulate for caller-provided inputs
 --
--- Caller-provided Stack inputs are in the caller's frame (above our rbp).
--- Pair phases only write to our frame. More honest than stack-to-heap-compat.
+-- INVARIANT: Caller-provided ValidAt values have all Stack addresses
+-- in the caller's frame (≥ entry-rsp).
 --
--- TODO: Prove from caller-frame tracking
+-- WHY THIS IS TRUE:
+-- - Pair writes ONLY to its frame: r15 and r15+8 (where r15 < entry-rsp)
+-- - Caller-provided inputs are in caller's frame: addresses ≥ entry-rsp
+-- - Therefore: caller's stack addresses are NOT written by pair
+--
+-- HOW TO PROVE (requires architectural changes):
+-- 1. Track in ValidAt that all Stack addresses are ≥ some bound
+-- 2. At function entry, bound = entry-rsp (caller's frame is above)
+-- 3. Use valid-subst-mem-above with:
+--    - mem-above : ∀ a → a ≥ entry-rsp → readMem m2 a ≡ readMem m1 a
+--    - stack-bound : ∀ a → InStack a → a ≥ entry-rsp (from tracked invariant)
+--
+-- The valid-subst-mem-above function in MemoryValid.agda provides the
+-- machinery, but eliminating this postulate requires propagating the
+-- bound invariant through all IR constructions.
+--
+-- See: Once.Backend.X86.Correct.MemoryValid.valid-subst-mem-above
+-- See: docs/arch/aarch64-full-proof-architecture.md (similar AArch64 analysis)
 ------------------------------------------------------------------------
 postulate
   -- For pair's inputs and results, Stack addresses are preserved through phases
+  -- CAVEAT: Overly general signature (any s s'). True only for pair execution.
   caller-stack-preserved-pair : ∀ {s s' : State} →
     ∀ addr → InStack addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
@@ -287,16 +305,34 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
 
         -- Closure memory preservation from s1 to s-final
         --
-        -- With closure-below-entry-rsp invariant:
-        --   - cl-below-rsp: ca < creator-rsp (where creator-rsp = f's entry-rsp = pair's r15)
-        --   - Pair writes to: r15 and r15+8
-        --   - Since ca < r15, we have ca ≠ r15 and ca ≠ r15+8
-        --   - Therefore closure memory is preserved through all pair phases
+        -- PROOF STRATEGY (verified but requires architectural changes to prove):
         --
-        -- TODO (D-CLOSURE-MEM): Prove this without postulate using:
-        --   - cl-below-rsp to show ca < pair's r15
-        --   - mem-above-r15-mid, ir-mem-above, mem-above-r15+8-fin for the chain
-        --   - For heap addresses: use mem-heap-final + ir-mem-heap chain
+        -- Key insight: Curry allocates closure at ca = creator-rsp - 16, so:
+        --   - ca = r15(s1) - 16 (since creator-rsp = r15(s1) from pair setup)
+        --   - ca + 8 = r15(s1) - 8
+        --   - Pair writes at r15(s1) and r15(s1) + 8
+        --
+        -- Phase 3 (middle, s1→s2): writes at r15(s1)
+        --   - ca = r15 - 16 ≠ r15 ✓
+        --   - ca + 8 = r15 - 8 ≠ r15 ✓ (REQUIRES ca = r15 - 16, not just ca < r15!)
+        --
+        -- Phase 4 (g, s2→s3): uses ir-mem-preserved for addr ≥ entry-rsp(g)
+        --   - entry-rsp(g) = s2.rsp = s1.rsp = creator-rsp - 16 = ca
+        --   - So ca ≥ entry-rsp(g) ✓ (with equality)
+        --   - Closure preserved by ir-mem-preserved of g
+        --
+        -- Phase 5 (final, s3→s-final): writes at r15(s3) + 8 = r15(s1) + 8
+        --   - ca = r15 - 16 ≠ r15 + 8 ✓
+        --   - ca + 8 = r15 - 8 ≠ r15 + 8 ✓
+        --
+        -- TO PROVE: Need ClosureWFOutput field:
+        --   closure-addr-eq : ca ≡ creator-rsp - closure-frame-size
+        -- where closure-frame-size = 16 for curry.
+        --
+        -- This would allow deriving ca + 8 ≠ r15 from:
+        --   ca + 8 = (creator-rsp - 16) + 8 = creator-rsp - 8 ≠ creator-rsp = r15
+        --
+        -- Current cl-below-rsp (ca < creator-rsp) only gives upper bound, not exact position.
         postulate
           closure-mem-final-to-s1 : ∀ addr → readMem (memory s-final) addr ≡ readMem (memory s1) addr
 
