@@ -46,7 +46,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-addr-is-encode; ClosureAtS-preserved-under-heap-eq;
          valid-addr-in-heap)
 open import Once.Backend.X86.Layout using (InStack; InHeap; InCode)
-open import Once.Backend.X86.Correct.Arithmetic using (pair-alloc)
+open import Once.Backend.X86.Correct.Arithmetic using (pair-alloc; saved-regs-size; frame-size)
 open import Once.Backend.X86.Correct.Star as X86Star
   using (Star; refl*; step*; star-trans; star-single; step-deterministic; just-injective; single-star-eq)
 open import Once.Backend.X86.Correct.StarBase
@@ -228,6 +228,8 @@ X86-InvariantInterface = record
   ; FrameSetupInfo = X86-FrameSetupInfo
   ; SavedRegsOnStack = X86-SavedRegsOnStack
   ; saved-regs-on-stack-preserved = x86-saved-regs-on-stack-preserved
+  ; frame-ptr-offset = saved-regs-size    -- 24: rbp = rsp - 24 after setup
+  ; result-slot-offset = frame-size       -- 40: r15 = rsp - 40 after setup
   }
 
 ------------------------------------------------------------------------
@@ -1368,6 +1370,8 @@ x86-pair-setup {A} {B} {C} f g prefix suffix x s pre = s-setup , setup-post
       ; setup-result-slot-below-frame-ptr = r15-below-rbp-setup
       ; setup-frame-ptr-below-orig = rbp-setup-below-orig
       ; setup-saved-regs-on-stack = saved-regs-on-stack-setup
+      ; setup-frame-ptr-chain = PairSetupResultV.rbp-setup setup-res
+      ; setup-result-slot-chain = PairSetupResultV.r15-setup setup-res
       ; setup-capacity = cap-f
       ; setup-cap-for-g-after-f = cap-for-g-after-f
       ; setup-frame-inv = frame-inv-setup
@@ -1815,17 +1819,96 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
         compile-g-eq : compile-length g ≡ len-g
         compile-g-eq = refl
 
+    -- Derive rbp-chain from setup-frame-ptr-chain and register preservation
+    -- Chain: rbp(s₄) = rbp(s₃) = rbp(s₂) = rbp(s₁) = rsp(s-orig) ∸ saved-regs-size
+    rbp-s₄-to-s₁ : readReg (regs s₄) rbp ≡ readReg (regs s₁) rbp
+    rbp-s₄-to-s₁ = trans rbp-s₄-eq (trans rbp-s₃-eq rbp-s₂-eq)
+
+    final-precond-rbp-chain : readReg (regs s₄) rbp ≡ readReg (regs s-orig) rsp ∸ saved-regs-size
+    final-precond-rbp-chain = trans rbp-s₄-to-s₁ (PairSpecs.SetupPost.setup-frame-ptr-chain setup)
+
+    -- Derive r15-chain from setup-result-slot-chain and register preservation
+    -- Chain: r15(s₄) = r15(s₃) = r15(s₂) = r15(s₁) = rsp(s-orig) ∸ frame-size
+    r15-s₄-eq-r15-s₃ : readReg (regs s₄) r15 ≡ readReg (regs s₃) r15
+    r15-s₄-eq-r15-s₃ = proj₁ (proj₂ (IRCorrectness.exec-saved-regs g-corr))
+
+    r15-s₄-to-s₁ : readReg (regs s₄) r15 ≡ readReg (regs s₁) r15
+    r15-s₄-to-s₁ = trans r15-s₄-eq-r15-s₃ (trans r15-s₃-eq-r15-s₂ r15-s₂-eq-r15-s₁)
+
+    -- frame-size = slots pair-setup-consumed-slots (both = 40)
+    final-precond-r15-chain : readReg (regs s₄) r15 ≡ readReg (regs s-orig) rsp ∸ slots pair-setup-consumed-slots
+    final-precond-r15-chain = trans r15-s₄-to-s₁ (PairSpecs.SetupPost.setup-result-slot-chain setup)
+
+    -- Derive disjoint-* from chain equations and offset arithmetic
+    -- Import arithmetic lemmas for offset-based disjointness
+    open import Once.Backend.X86.Correct.Arithmetic
+      using (slot1-offset; rbp-plus-8-offset; rbp-plus-16-offset;
+             rbp-neq-slot1; rbp+8-neq-slot1; rbp+16-neq-slot1;
+             slot0-plus-word≡slot1; rbp-plus-word≡r15-save; rbp-plus-pair≡r14-save;
+             word-fits-frame-remainder; pair-fits-frame-remainder; regs-fits-frame-remainder)
+
+    -- Shorthand for original rsp
+    rsp-orig = readReg (regs s-orig) rsp
+
+    -- Need: slot1-offset (=32) ≤ rsp-orig for disjointness lemmas
+    -- We have: frame-size (=40) ≤ rsp-orig from capacity
+    -- And: slot1-offset = frame-size - word-size = 32 ≤ 40 = frame-size
+    slot1≤rsp : slot1-offset ≤ rsp-orig
+    slot1≤rsp = ≤-trans (m∸n≤m frame-size word-size) final-precond-setup-frame-fits
+
+    -- r15(s₄) + slot-size = (rsp ∸ 40) + 8 = rsp ∸ 32 = rsp ∸ slot1-offset
+    r15+8-eq-slot1 : readReg (regs s₄) r15 +ℕ slot-size ≡ rsp-orig ∸ slot1-offset
+    r15+8-eq-slot1 = trans (cong (_+ℕ slot-size) final-precond-r15-chain)
+                           (slot0-plus-word≡slot1 rsp-orig final-precond-setup-frame-fits)
+
+    -- disjoint-rbp: rbp(s₄) = rsp ∸ 24 ≢ rsp ∸ 32 = r15(s₄) + 8
+    final-precond-disjoint-rbp : readReg (regs s₄) rbp ≢ readReg (regs s₄) r15 +ℕ slot-size
+    final-precond-disjoint-rbp eq = rbp-neq-slot1 rsp-orig slot1≤rsp
+      (trans (sym final-precond-rbp-chain) (trans eq r15+8-eq-slot1))
+
+    -- disjoint-r15: rbp(s₄) + 8 = rsp ∸ 16 ≢ rsp ∸ 32 = r15(s₄) + 8
+    -- rbp(s₄) + 8 = (rsp ∸ 24) + 8 = rsp ∸ 16 = rsp ∸ rbp-plus-8-offset
+    rbp+8-eq : readReg (regs s₄) rbp +ℕ slot-size ≡ rsp-orig ∸ rbp-plus-8-offset
+    rbp+8-eq = trans (cong (_+ℕ slot-size) final-precond-rbp-chain)
+                     (rbp-plus-word≡r15-save rsp-orig final-precond-rsp-bound)
+
+    final-precond-disjoint-r15 : readReg (regs s₄) rbp +ℕ slot-size ≢ readReg (regs s₄) r15 +ℕ slot-size
+    final-precond-disjoint-r15 eq = rbp+8-neq-slot1 rsp-orig slot1≤rsp
+      (trans (sym rbp+8-eq) (trans eq r15+8-eq-slot1))
+
+    -- disjoint-r14: rbp(s₄) + 16 = rsp ∸ 8 ≢ rsp ∸ 32 = r15(s₄) + 8
+    -- rbp(s₄) + 16 = (rsp ∸ 24) + 16 = rsp ∸ 8 = rsp ∸ rbp-plus-16-offset
+    rbp+16-eq : readReg (regs s₄) rbp +ℕ pair-alloc ≡ rsp-orig ∸ rbp-plus-16-offset
+    rbp+16-eq = trans (cong (_+ℕ pair-alloc) final-precond-rbp-chain)
+                      (rbp-plus-pair≡r14-save rsp-orig final-precond-rsp-bound)
+
+    final-precond-disjoint-r14 : readReg (regs s₄) rbp +ℕ pair-alloc ≢ readReg (regs s₄) r15 +ℕ slot-size
+    final-precond-disjoint-r14 eq = rbp+16-neq-slot1 rsp-orig slot1≤rsp
+      (trans (sym rbp+16-eq) (trans eq r15+8-eq-slot1))
+
+    -- Derive disjoint-orig-rbp and disjoint-orig-rbp+8 via inequality chain
+    -- Chain: rbp-orig > rbp(s₄) > r15(s₄) + slot-size
+    rbp-orig>rbp-s₄ : rbp-orig > readReg (regs s₄) rbp
+    rbp-orig>rbp-s₄ = subst (rbp-orig >_) (sym (trans rbp-s₄-eq (trans rbp-s₃-eq rbp-s₂-eq))) rbp-orig>rbp-s₁
+
+    -- rbp-orig > rbp(s₄) > r15(s₄) + slot-size, so rbp-orig > r15(s₄) + slot-size
+    rbp-orig>r15+slot : rbp-orig > readReg (regs s₄) r15 +ℕ slot-size
+    rbp-orig>r15+slot = <-trans r15+slot-below-rbp-s₄ rbp-orig>rbp-s₄
+
+    final-precond-disjoint-orig-rbp : readReg (regs s-orig) rbp ≢ readReg (regs s₄) r15 +ℕ slot-size
+    final-precond-disjoint-orig-rbp eq = <-irrefl eq rbp-orig>r15+slot
+
+    -- rbp-orig + slot-size > rbp-orig > r15(s₄) + slot-size
+    rbp-orig+8>r15+slot : rbp-orig +ℕ slot-size > readReg (regs s₄) r15 +ℕ slot-size
+    rbp-orig+8>r15+slot = <-trans rbp-orig>r15+slot (m<m+n rbp-orig 0<1+n)
+
+    final-precond-disjoint-orig-rbp+8 : readReg (regs s-orig) rbp +ℕ slot-size ≢ readReg (regs s₄) r15 +ℕ slot-size
+    final-precond-disjoint-orig-rbp+8 eq = <-irrefl eq rbp-orig+8>r15+slot
+
     -- Remaining postulates
     postulate
-      final-precond-rbp-chain : readReg (regs s₄) rbp ≡ readReg (regs s-orig) rsp ∸ saved-regs-size
       final-precond-mem-frame : readMem (memory s₄) (readReg (regs s-orig) r15) ≡ readMem (memory s-orig) (readReg (regs s-orig) r15)
-      final-precond-disjoint-rbp : readReg (regs s₄) rbp ≢ readReg (regs s₄) r15 +ℕ slot-size
-      final-precond-disjoint-r15 : readReg (regs s₄) rbp +ℕ slot-size ≢ readReg (regs s₄) r15 +ℕ slot-size
-      final-precond-disjoint-r14 : readReg (regs s₄) rbp +ℕ pair-alloc ≢ readReg (regs s₄) r15 +ℕ slot-size
       final-precond-disjoint-orig : readReg (regs s-orig) r15 ≢ readReg (regs s₄) r15 +ℕ slot-size
-      final-precond-disjoint-orig-rbp : readReg (regs s-orig) rbp ≢ readReg (regs s₄) r15 +ℕ slot-size
-      final-precond-disjoint-orig-rbp+8 : readReg (regs s-orig) rbp +ℕ slot-size ≢ readReg (regs s₄) r15 +ℕ slot-size
-      final-precond-r15-chain : readReg (regs s₄) r15 ≡ readReg (regs s-orig) rsp ∸ slots pair-setup-consumed-slots
 
     -- Construct final-precond using derived fields
     final-precond : PairFinalPrecond f g prefix suffix s-orig s₄

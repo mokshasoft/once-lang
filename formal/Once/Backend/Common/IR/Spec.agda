@@ -148,6 +148,12 @@ record InvariantInterface (M : MachineInterface) : Set₁ where
     --   - Consumed by cleanup to restore registers
     SavedRegsOnStack : State → State → Set
 
+    -- Frame layout offsets (architecture-specific)
+    -- These define where setup places the new frame-ptr and result-slot relative to original rsp
+    -- For X86: frame-ptr-offset = 24 (saved-regs-size), result-slot-offset = 40 (frame-size)
+    frame-ptr-offset : ℕ
+    result-slot-offset : ℕ
+
     -- Preservation lemma: SavedRegsOnStack is preserved when:
     --   1. frame-ptr-addr preserved (from SavedRegsPreserved)
     --   2. memory at frame-ptr-addr preserved (from exec-mem-frame-ptr)
@@ -462,6 +468,9 @@ module IRSpecs
         setup-result-slot-below-frame-ptr : result-slot-addr s₁ + slot-size < frame-ptr-addr s₁  -- r15 + slot-size < rbp (for frame preservation)
         setup-frame-ptr-below-orig : frame-ptr-addr s₁ < frame-ptr-addr s  -- new rbp < orig rbp (for frame preservation composition)
         setup-saved-regs-on-stack : SavedRegsOnStack s s₁  -- Saved registers stored at [rbp], [rbp+8], [rbp+16]
+        -- Frame layout chain equations: new registers relative to original rsp
+        setup-frame-ptr-chain : frame-ptr-addr s₁ ≡ rsp-value s ∸ frame-ptr-offset
+        setup-result-slot-chain : result-slot-addr s₁ ≡ rsp-value s ∸ result-slot-offset
         setup-capacity : StackCapacity s₁ (ir-stack-requirement f)
         setup-cap-for-g-after-f : StackCapacity s₁ (ir-rsp-delta f + ir-stack-requirement g)  -- For deriving g's capacity after f runs
         setup-frame-inv : FramePtrInvariant s₁

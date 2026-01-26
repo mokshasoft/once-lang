@@ -271,3 +271,57 @@ slot0-plus-word<rbp m frame≤m =
 -- Since rbp = r15 + pair-alloc (slot0-plus-pair≡rbp), this gives r15 + word-size < rbp
 r15+word<r15+pair : ∀ (r15 : ℕ) → r15 + word-size < r15 + pair-alloc
 r15+word<r15+pair r15 = +-monoʳ-< r15 word-fits-pair-strict
+
+------------------------------------------------------------------------
+-- Address disjointness via offset arithmetic
+--
+-- Key lemma: if m ≥ max(a, b) and a < b, then (m ∸ b) < (m ∸ a), hence ≢
+-- This allows deriving disjointness from offset differences.
+------------------------------------------------------------------------
+
+-- | (m - b) < (m - a) when a < b and b ≤ m
+-- This uses ∸-monoʳ-< which takes o < n and n ≤ m → m ∸ n < m ∸ o
+∸-mono-< : ∀ {m a b} → a < b → b ≤ m → (m ∸ b) < (m ∸ a)
+∸-mono-< a<b b≤m = ∸-monoʳ-< a<b b≤m
+
+-- | Disjointness from offset ordering
+∸-neq-from-< : ∀ {m a b} → a < b → b ≤ m → (m ∸ a) ≢ (m ∸ b)
+∸-neq-from-< a<b b≤m eq = <⇒≢ (∸-mono-< a<b b≤m) (sym eq)
+
+-- Frame-specific offsets (for pair cleanup disjointness)
+-- slot1 = rsp ∸ 32 (where result-slot + slot-size is stored)
+-- rbp   = rsp ∸ 24 (frame pointer)
+-- rbp+8 = rsp ∸ 16 (r15 save location)
+-- rbp+16= rsp ∸ 8  (r14 save location)
+slot1-offset : ℕ
+slot1-offset = frame-size ∸ word-size  -- 40 - 8 = 32
+
+rbp-plus-8-offset : ℕ
+rbp-plus-8-offset = saved-regs-size ∸ word-size  -- 24 - 8 = 16
+
+rbp-plus-16-offset : ℕ
+rbp-plus-16-offset = saved-regs-size ∸ pair-alloc  -- 24 - 16 = 8
+
+_ : slot1-offset ≡ 32
+_ = refl
+
+_ : rbp-plus-8-offset ≡ 16
+_ = refl
+
+_ : rbp-plus-16-offset ≡ 8
+_ = refl
+
+-- | rbp ≢ slot1: 24 < 32, so (rsp ∸ 24) ≢ (rsp ∸ 32)
+-- Requires 32 ≤ m (i.e., slot1-offset ≤ m)
+rbp-neq-slot1 : ∀ m → slot1-offset ≤ m → (m ∸ saved-regs-size) ≢ (m ∸ slot1-offset)
+rbp-neq-slot1 m 32≤m = ∸-neq-from-< saved-regs-below-slot1 32≤m
+
+-- | rbp+8 ≢ slot1: 16 < 32, so (rsp ∸ 16) ≢ (rsp ∸ 32)
+-- Requires 32 ≤ m
+rbp+8-neq-slot1 : ∀ m → slot1-offset ≤ m → (m ∸ rbp-plus-8-offset) ≢ (m ∸ slot1-offset)
+rbp+8-neq-slot1 m 32≤m = ∸-neq-from-< (from-yes-< (rbp-plus-8-offset <? slot1-offset)) 32≤m
+
+-- | rbp+16 ≢ slot1: 8 < 32, so (rsp ∸ 8) ≢ (rsp ∸ 32)
+-- Requires 32 ≤ m
+rbp+16-neq-slot1 : ∀ m → slot1-offset ≤ m → (m ∸ rbp-plus-16-offset) ≢ (m ∸ slot1-offset)
+rbp+16-neq-slot1 m 32≤m = ∸-neq-from-< (from-yes-< (rbp-plus-16-offset <? slot1-offset)) 32≤m
