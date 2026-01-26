@@ -1801,9 +1801,22 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
     final-precond-mem-frame-rbp+8 : readMem (memory s₄) rbp-orig+8 ≡ readMem (memory s-orig) rbp-orig+8
     final-precond-mem-frame-rbp+8 = trans mem-rbp+8-s₄ (trans mem-rbp+8-s₃ (trans mem-rbp+8-s₂ mem-rbp+8-s₁))
 
+    -- Derive pc3 from g-corr.exec-pc
+    -- g-corr.exec-pc : pc s₄ = offset-g + compile-length g
+    -- offset-g = length prefix-g
+    -- len-prefix-final : length prefix-final = length prefix + 9 + len-f + len-g
+    -- len-prefix-g : length prefix-g = length prefix + 9 + len-f
+    -- So length prefix-final = length prefix-g + len-g = offset-g + compile-length g
+    final-precond-pc3 : pc s₄ ≡ length prefix-final
+    final-precond-pc3 = trans (IRCorrectness.exec-pc g-corr)
+                              (sym (trans len-prefix-final
+                                          (cong (length prefix + 9 + len-f +_) (sym compile-g-eq))))
+      where
+        compile-g-eq : compile-length g ≡ len-g
+        compile-g-eq = refl
+
     -- Remaining postulates
     postulate
-      final-precond-pc3 : pc s₄ ≡ length prefix-final
       final-precond-rbp-chain : readReg (regs s₄) rbp ≡ readReg (regs s-orig) rsp ∸ saved-regs-size
       final-precond-mem-frame : readMem (memory s₄) (readReg (regs s-orig) r15) ≡ readMem (memory s-orig) (readReg (regs s-orig) r15)
       final-precond-disjoint-rbp : readReg (regs s₄) rbp ≢ readReg (regs s₄) r15 +ℕ slot-size
