@@ -1977,9 +1977,60 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
         case-stack-inv (r15-in-code c) = case-r15-code c
         case-stack-inv (r15-in-stack frame slot eq bound) = case-r15-stack frame slot eq bound
 
-    -- Remaining postulate (mem-frame requires region-based memory preservation)
-    postulate
-      final-precond-mem-frame : readMem (memory s₄) (readReg (regs s-orig) r15) ≡ readMem (memory s-orig) (readReg (regs s-orig) r15)
+    -- Derive mem-frame via region-based preservation chain
+    -- Dispatch on StackInvariant: heap, code, or stack region
+    final-precond-mem-frame : readMem (memory s₄) (readReg (regs s-orig) r15) ≡ readMem (memory s-orig) (readReg (regs s-orig) r15)
+    final-precond-mem-frame = case-mem-frame orig-stack-inv
+      where
+        -- Heap case: chain heap-preserved through all phases
+        case-r15-heap : InHeap r15-orig → readMem (memory s₄) r15-orig ≡ readMem (memory s-orig) r15-orig
+        case-r15-heap in-heap = trans mem-g (trans mem-mid (trans mem-f mem-setup))
+          where
+            mem-setup = PairSpecs.SetupPost.setup-heap-preserved setup r15-orig in-heap
+            mem-f = IRCorrectness.exec-heap-preserved f-corr r15-orig in-heap
+            mem-mid = PairSpecs.MiddlePost.middle-heap-preserved middle r15-orig in-heap
+            mem-g = IRCorrectness.exec-heap-preserved g-corr r15-orig in-heap
+
+        -- Code case: chain code-preserved through all phases
+        case-r15-code : InCode r15-orig → readMem (memory s₄) r15-orig ≡ readMem (memory s-orig) r15-orig
+        case-r15-code in-code = trans mem-g (trans mem-mid (trans mem-f mem-setup))
+          where
+            mem-setup = PairSpecs.SetupPost.setup-code-preserved setup r15-orig in-code
+            mem-f = IRCorrectness.exec-code-preserved f-corr r15-orig in-code
+            mem-mid = PairSpecs.MiddlePost.middle-code-preserved middle r15-orig in-code
+            mem-g = IRCorrectness.exec-code-preserved g-corr r15-orig in-code
+
+        -- Stack case: r15-orig ≥ rsp ≥ rbp-orig > rbp-s1 = ... = rbp-s4
+        -- So r15-orig > all intermediate rbps, use frame-preserved
+        case-r15-stack : (frame : FrameEvidenceFor r15-orig) (slot : ℕ) →
+                         r15-orig ≡ slot-addr frame slot →
+                         rsp-orig ≤ slot-addr frame slot →
+                         readMem (memory s₄) r15-orig ≡ readMem (memory s-orig) r15-orig
+        case-r15-stack frame slot r15-eq rsp≤slot = trans mem-g (trans mem-mid (trans mem-f mem-setup))
+          where
+            -- r15-orig ≥ rsp-orig ≥ rbp-orig (from RbpInvariant)
+            r15-orig≥rsp : r15-orig ≥ rsp-orig
+            r15-orig≥rsp = subst (rsp-orig ≤_) (sym r15-eq) rsp≤slot
+            r15-orig≥rbp-orig : r15-orig ≥ rbp-orig
+            r15-orig≥rbp-orig = ≤-trans (RbpInvariant.rsp≤rbp orig-frame-inv) r15-orig≥rsp
+            -- rbp-orig > rbp-s1 from setup
+            r15-orig>rbp-s₁ : r15-orig > readReg (regs s₁) rbp
+            r15-orig>rbp-s₁ = ≤-trans rbp-orig>rbp-s₁ r15-orig≥rbp-orig
+            -- Chain through preserved rbp values
+            r15-orig>rbp-s₂ : r15-orig > readReg (regs s₂) rbp
+            r15-orig>rbp-s₂ = subst (r15-orig >_) (sym rbp-s₂-eq) r15-orig>rbp-s₁
+            r15-orig>rbp-s₃ : r15-orig > readReg (regs s₃) rbp
+            r15-orig>rbp-s₃ = subst (r15-orig >_) (sym rbp-s₃-eq) r15-orig>rbp-s₂
+            -- Memory preservation chain via frame-preserved
+            mem-setup = PairSpecs.SetupPost.setup-frame-preserved setup r15-orig r15-orig>rbp-s₁
+            mem-f = IRCorrectness.exec-frame-preserved f-corr r15-orig r15-orig>rbp-s₁
+            mem-mid = PairSpecs.MiddlePost.middle-frame-preserved middle r15-orig r15-orig>rbp-s₂
+            mem-g = IRCorrectness.exec-frame-preserved g-corr r15-orig r15-orig>rbp-s₃
+
+        case-mem-frame : StackInvariant s-orig → readMem (memory s₄) r15-orig ≡ readMem (memory s-orig) r15-orig
+        case-mem-frame (r15-in-heap h) = case-r15-heap h
+        case-mem-frame (r15-in-code c) = case-r15-code c
+        case-mem-frame (r15-in-stack frame slot eq bound) = case-r15-stack frame slot eq bound
 
     -- Construct final-precond using derived fields
     final-precond : PairFinalPrecond f g prefix suffix s-orig s₄
