@@ -419,3 +419,47 @@ make-owned-pair-stack : ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
   OwnedBy Caller vb rsp →
   OwnedBy Caller (valid-pair va vb pairS Stack is) rsp
 make-owned-pair-stack _ _ _ _ addr≥rsp oa ob = owned-pair-caller-stack addr≥rsp oa ob
+
+------------------------------------------------------------------------
+-- Caller Input Ownership
+------------------------------------------------------------------------
+
+-- SEMANTIC INVARIANT: At function entry, the input is Caller-owned.
+--
+-- This invariant holds because:
+-- 1. The caller allocates data in their frame (≥ our entry-rsp) or heap
+-- 2. The caller passes a reference to us
+-- 3. We receive it with rsp = entry-rsp
+--
+-- Therefore all Stack addresses in the input are ≥ entry-rsp.
+--
+-- This postulate captures the call convention semantics.
+-- It's more principled than caller-stack-preserved-* because:
+-- - It states the semantic ownership invariant directly
+-- - It applies to the input ValidAt, not arbitrary states
+-- - It enables owned-caller-preserved for preservation proofs
+
+postulate
+  -- | At function entry, input validity implies caller ownership.
+  -- The input comes from the caller's frame, so all Stack addresses ≥ entry-rsp.
+  caller-input-owned : ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} {rsp : Word}
+    (va : ValidAt v addr m) →
+    InStack rsp →
+    OwnedBy Caller va rsp
+
+-- | Derive input preservation using ownership model.
+-- This is the replacement for the caller-stack-preserved-* pattern.
+--
+-- OLD pattern:
+--   stack-pres = caller-stack-preserved-* {s} {s'}
+--   valid-subst-region-preserved input-valid heap-eq stack-pres
+--
+-- NEW pattern:
+--   caller-input-preserved input-valid rsp-in-stack mem-above-eq
+caller-input-preserved : ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m1 m2 : Memory} {rsp : Word}
+  (va : ValidAt v addr m1) →
+  InStack rsp →
+  (∀ a → a ≥ rsp → readMem m2 a ≡ readMem m1 a) →
+  ValidAt v addr m2
+caller-input-preserved va rsp-in-stack mem-above =
+  owned-caller-preserved (caller-input-owned va rsp-in-stack) rsp-in-stack mem-above

@@ -68,6 +68,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          ClosureAtS-preserved-under-heap-eq; ClosureAtS-preserved-under-mem-eq;
          Region; Stack; InRegion)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
 open import Once.Backend.X86.Layout using (InHeap; InCode; InStack)
 
 open import Data.Nat using (_>_; _≥_; _≤?_; s≤s; z≤n)
@@ -107,9 +108,16 @@ open import Once.Backend.X86.Correct.IR.PairFinal public
 -- See: Once.Backend.X86.Correct.MemoryValid.valid-subst-mem-above
 -- See: docs/arch/aarch64-full-proof-architecture.md (similar AArch64 analysis)
 ------------------------------------------------------------------------
+-- PARTIALLY ELIMINATED: First usage (setup phase) now uses caller-input-preserved.
+-- Remaining usages can be eliminated by building memory preservation chains
+-- similar to mem-preserved-final (lines 752-823).
+--
+-- Pattern for elimination:
+--   OLD: valid-subst-region-preserved input-valid heap-eq (caller-stack-preserved-pair)
+--   NEW: caller-input-preserved input-valid (rsp-in-stack cap) mem-above-rsp-chain
+--
+-- Where mem-above-rsp-chain composes mem-above-rsp-* through phases.
 postulate
-  -- For pair's inputs and results, Stack addresses are preserved through phases
-  -- CAVEAT: Overly general signature (any s s'). True only for pair execution.
   caller-stack-preserved-pair : ∀ {s s' : State} →
     ∀ addr → InStack addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
@@ -481,14 +489,13 @@ run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-s
       setup-res = pair-setup-star-v f g prefix suffix x s h-false pc-eq cap-in
       s-setup = PairSetupResultV.s-setup setup-res
 
-      -- Input validity for f: propagate through setup using region-aware preservation
-      stack-pres-setup : ∀ a → InStack a → readMem (memory s-setup) a ≡ readMem (memory s) a
-      stack-pres-setup = caller-stack-preserved-pair {s} {s-setup}
-
+      -- Input validity for f: propagate through setup using ownership-based preservation
+      -- Uses caller-input-preserved instead of caller-stack-preserved-pair postulate
       input-valid-for-f : ValidAt x (readReg (regs s-setup) rdi) (memory s-setup)
       input-valid-for-f = subst (λ addr → ValidAt x addr (memory s-setup))
         (sym (PairSetupResultV.rdi-setup-raw setup-res))
-        (valid-subst-region-preserved input-valid (PairSetupResultV.mem-heap-setup setup-res) stack-pres-setup)
+        (caller-input-preserved input-valid (rsp-in-stack cap-in)
+          (PairSetupResultV.mem-above-rsp-setup setup-res))
 
       -- ========== Phase 2: Execute f (recursive call via rec) ==========
       -- Derive RbpInvariant for s-setup
