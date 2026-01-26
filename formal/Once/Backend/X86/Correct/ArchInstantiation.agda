@@ -1654,19 +1654,25 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
       (IRCorrectness.exec-mem-frame-ptr f-corr)
 
     -- Step 3: Preserve through middle (s₂ → s₃)
+    -- Derive middle-saved-regs from PairMiddleStarResult register preservation
+    middle-saved-regs : X86-SavedRegsPreserved s₂ s₃
+    middle-saved-regs = PairMiddleStarResult.r14-mid mid-result
+                      , r15-s₃-eq-r15-s₂
+                      , rbp-s₃-eq-rbp-s₂
+
+    -- Derive middle-mem-rbp via mem-other (rbp ≠ r15 since r15 < rbp)
+    rbp≠r15-s₂ : readReg (regs s₂) rbp ≢ readReg (regs s₂) r15
+    rbp≠r15-s₂ eq = <-irrefl (sym eq) r15-below-rbp-s₂
+
+    middle-mem-rbp : readMem (memory s₃) (readReg (regs s₂) rbp) ≡ readMem (memory s₂) (readReg (regs s₂) rbp)
+    middle-mem-rbp = PairMiddleStarResult.mem-other mid-result (readReg (regs s₂) rbp) rbp≠r15-s₂
+
     saved-regs-s₃ : X86-SavedRegsOnStack s-orig s₃
     saved-regs-s₃ = x86-saved-regs-on-stack-preserved s-orig s₂ s₃
       saved-regs-s₂
       middle-saved-regs
       (PairSpecs.MiddlePost.middle-frame-preserved middle)
       middle-mem-rbp
-      where
-        -- Extract SavedRegsPreserved from middle
-        -- middle preserves r14, r15 via input-saved and result-slot-addr
-        -- and rbp via middle-frame-ptr-eq
-        postulate
-          middle-saved-regs : X86-SavedRegsPreserved s₂ s₃
-          middle-mem-rbp : readMem (memory s₃) (readReg (regs s₂) rbp) ≡ readMem (memory s₂) (readReg (regs s₂) rbp)
 
     -- Step 4: Preserve through g (s₃ → s₄)
     saved-regs-s₄ : X86-SavedRegsOnStack s-orig s₄
