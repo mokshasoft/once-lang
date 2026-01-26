@@ -35,6 +35,7 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         ir-entry-rsp; ir-entry-rsp-eq; ir-mem-preserved;
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-inl; InlAtS; inl-at-s; valid-at-preserved-under-writes;
@@ -84,6 +85,9 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     ; ir-mem-above = mem-above-preserved
     ; ir-mem-code = mem-code-preserved
     ; ir-mem-heap = mem-heap-preserved
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = mem-write-preserved
     ; ir-stack-inv = stack-inv'
     ; ir-capacity = output-capacity
     ; ir-rbp-inv = rbp-inv'
@@ -91,7 +95,7 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
-    open import Data.Nat.Properties using (≤-trans; m∸n≤m; ≤-refl; <-trans; m+n∸n≡m; m∸n+n≡m; ∸-monoˡ-<; +-monoˡ-<; ∸-monoˡ-≤; ≤-reflexive; m≤n⇒m∸n≡0; <⇒≱; ≤-<-trans)
+    open import Data.Nat.Properties using (≤-trans; m∸n≤m; ≤-refl; <-trans; m+n∸n≡m; m∸n+n≡m; ∸-monoˡ-<; +-monoˡ-<; ∸-monoˡ-≤; ≤-reflexive; m≤n⇒m∸n≡0; <⇒≱; ≤-<-trans; <-≤-trans)
 
     -- Derive rsp bound from StackCapacity using dynamic requirement
     -- ir-rsp-delta inl ≤ ir-stack-requirement inl via named lemma
@@ -445,6 +449,24 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
           after-tag-write = stackAddr-write-preserves-heap (memory s1) new-rsp 0 addr tag-addr-in-stack addr-in-heap
           after-val-write = stackAddr-write-preserves-heap (memory s2) (new-rsp +ℕ slot-size) orig-rdi addr val-addr-in-stack addr-in-heap
       in trans after-val-write after-tag-write
+
+    -- Proof: inl writes only below entry-rsp (at new-rsp and new-rsp+8)
+    -- Addresses at or above entry-rsp are preserved
+    new-rsp<orig-rsp : new-rsp < orig-rsp
+    new-rsp<orig-rsp = ∸-preserves-< ≤-refl rsp-bound (s≤s z≤n)
+
+    new-rsp+8<orig-rsp : (new-rsp +ℕ slot-size) < orig-rsp
+    new-rsp+8<orig-rsp = ∸+<-lemma rsp-bound
+
+    mem-write-preserved : ∀ addr → addr ≥ orig-rsp → readMem (memory s4) addr ≡ readMem (memory s) addr
+    mem-write-preserved addr addr≥rsp =
+      let new-rsp<addr = <-≤-trans new-rsp<orig-rsp addr≥rsp
+          new-rsp+8<addr = <-≤-trans new-rsp+8<orig-rsp addr≥rsp
+          diff-1 = <⇒≢ new-rsp<addr
+          diff-2 = <⇒≢ new-rsp+8<addr
+          mem-s2-pres = readMem-writeMem-diff (memory s1) new-rsp addr 0 diff-1
+          mem-s3-pres = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ slot-size) addr orig-rdi diff-2) mem-s2-pres
+      in mem-s3-pres
 
     -- Stack invariant preserved
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15

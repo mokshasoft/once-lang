@@ -45,8 +45,10 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         ir-entry-rsp; ir-entry-rsp-eq; ir-mem-preserved;
          IRStarResultV; ir-result-valid; ir-capacity; ir-rsp-bound-v)
   renaming (ir-rsp-v to ir-rsp)
+open import Data.Nat using (_≥_)
 
 -- Import thunk execution proofs
 open import Once.Backend.X86.Correct.IR.ThunkExec
@@ -144,6 +146,10 @@ record CurryExecResult {A B C : Type} (f : IR (A * B) C)
     exec-mem-above : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s') addr ≡ readMem (memory s) addr
     exec-mem-code : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
     exec-mem-heap : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
+    -- Write bounds: addresses ≥ entry-rsp are preserved
+    exec-entry-rsp : ℕ
+    exec-entry-rsp-eq : exec-entry-rsp ≡ readReg (regs s) rsp
+    exec-mem-preserved : ∀ addr → addr ≥ exec-entry-rsp → readMem (memory s') addr ≡ readMem (memory s) addr
 
 open CurryExecResult public
 
@@ -181,6 +187,9 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     ; exec-mem-above = mem-above-final
     ; exec-mem-code = mem-code-final
     ; exec-mem-heap = mem-heap-final
+    ; exec-entry-rsp = readReg (regs s) rsp
+    ; exec-entry-rsp-eq = refl
+    ; exec-mem-preserved = mem-write-preserved
     } , record
     { closure-addr = new-rsp
     ; code-ptr = thunk-offset
@@ -974,6 +983,10 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
       where
         open import Data.Product using (proj₁; proj₂)
 
+    -- Phase 2 TODO: Prove from write bounds (curry writes only below entry-rsp)
+    postulate
+      mem-write-preserved : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+
 ------------------------------------------------------------------------
 -- Validity-Based Curry Proof
 ------------------------------------------------------------------------
@@ -1019,6 +1032,9 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     ; ir-mem-above = exec-mem-above exec-result
     ; ir-mem-code = exec-mem-code exec-result
     ; ir-mem-heap = exec-mem-heap exec-result
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = mem-preserved
     ; ir-closure-wf = no-closure  -- TODO: curry should produce ClosureWellFormed
     }
   where
@@ -1030,6 +1046,12 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     s-final = proj₁ curry-result
     exec-result = proj₁ (proj₂ curry-result)
     curry-mem = proj₂ (proj₂ curry-result)
+
+    -- Use mem-write-preserved from exec-result (chaining)
+    mem-preserved : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-preserved addr addr≥rsp = subst (λ e → ∀ addr → addr ≥ e → readMem (memory s-final) addr ≡ readMem (memory s) addr)
+                                         (exec-entry-rsp-eq exec-result)
+                                         (exec-mem-preserved exec-result) addr addr≥rsp
 
     -- ============================================================
     -- VALIDITY-BASED PROOF (NO BRIDGES - uses valid-closure-env constructor)

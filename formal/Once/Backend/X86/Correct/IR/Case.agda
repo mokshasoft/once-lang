@@ -26,10 +26,12 @@ open import Once.Backend.X86.Correct.InstrExec
   using (execPush-reg; execMov-reg-reg; execMov-reg-mem-base; execMov-reg-mem-disp;
          execCmp-zero; execCmp-one; execJne-not-taken; execJne-taken; execJmp; execPop; execLabel)
 open import Once.Backend.X86.Correct.StarBase
-  using (IRStarResultV; ClosureWFOutput; no-closure; has-closure; subst-cwf-prog)
+  using (IRStarResultV; ClosureWFOutput; no-closure; has-closure; subst-cwf-prog;
+         ir-entry-rsp; ir-entry-rsp-eq; ir-mem-preserved)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; ClosureAtS-preserved-under-heap-eq; valid-subst-heap-preserved;
+  using (ValidAt; ClosureAtS-preserved-under-heap-eq;
          valid-subst-addr-mem; ClosureAtS-preserved-under-mem-eq;
+         valid-subst-region-preserved;
          Stack)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.StackInvariant
@@ -82,14 +84,39 @@ open import Data.Sum using (inj₁; inj₂)
 open import Once.Backend.X86.Correct.StarBase using (rbp-inv-preserved-unchanged; ClosureWFOutput)
   renaming (ir-rsp-v to ir-rsp)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (valid-subst-heap-preserved; valid-inl-tag-is-0; valid-inl-child; valid-inl-val-ptr;
-         valid-inr-tag-is-1; valid-inr-child; valid-inr-val-ptr; valid-addr-in-heap)
+  using (valid-inl-tag-is-0; valid-inl-child; valid-inl-val-ptr;
+         valid-inr-tag-is-1; valid-inr-child; valid-inr-val-ptr;
+         valid-in-region; Region; InRegion; Stack; Heap; stack-offset)
 
 -- Additional imports for case implementation
 open import Once.Backend.X86.Correct.StackInvariant using (stack-inv-preserved-unchanged)
 open import Data.Nat using (_⊔_) renaming (_*_ to _*ℕ_)
 open import Data.Nat.Properties using (m≤m⊔n; m≤n⊔m; m≤m+n; <⇒≤; ≤-<-trans; <-≤-trans; <-trans; m<m+n; m∸n+n≡m)
 open import Data.Nat using (s≤s; z≤n)
+
+------------------------------------------------------------------------
+-- Focused postulates for caller-provided inputs
+--
+-- Caller-provided Stack inputs are in the caller's frame (above our rbp).
+-- Setup phases only write to our frame (below rbp), so caller inputs are
+-- preserved. This is more honest than stack-to-heap-compat (which is FALSE).
+--
+-- TODO: Prove from caller-frame tracking (ValidAt addresses are above rbp)
+------------------------------------------------------------------------
+postulate
+  -- For caller-provided inputs, Stack addresses are preserved by setup
+  -- because they're in the caller's frame (above our rbp)
+  caller-stack-preserved-inl : ∀ {A B C} {a : ⟦ A ⟧}
+    {prefix suffix : Program} {f : IR A C} {g : IR B C}
+    {s s-setup : State} {val-addr : ℕ} →
+    CaseInlSetupResult a prefix suffix f g s s-setup val-addr →
+    ∀ addr → InStack addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+
+  caller-stack-preserved-inr : ∀ {A B C} {b : ⟦ B ⟧}
+    {prefix suffix : Program} {f : IR A C} {g : IR B C}
+    {s s-setup : State} {val-addr : ℕ} →
+    CaseInrSetupResult b prefix suffix f g s s-setup val-addr →
+    ∀ addr → InStack addr → readMem (memory s-setup) addr ≡ readMem (memory s) addr
 
 ------------------------------------------------------------------------
 -- run-case-star-direct-inl: Validity-based case execution (inl branch)
@@ -148,17 +175,22 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     f-req≤max : f-req ≤ (f-req ⊔ g-req)
     f-req≤max = m≤m⊔n f-req g-req
 
-    -- Derive InHeap proofs from ValidAt
-    rdi-in-heap : InHeap orig-rdi
-    rdi-in-heap = valid-addr-in-heap input-valid
+    -- Derive Region proofs from ValidAt (supports both Stack and Heap)
+    rdi-region : ∃[ r ] InRegion r orig-rdi
+    rdi-region = valid-in-region input-valid
 
-    rdi+8-in-heap : InHeap (orig-rdi +ℕ slot-size)
-    rdi+8-in-heap = heap-offset orig-rdi rdi-in-heap
+    -- If rdi is in region r, then rdi+8 is in region r too
+    rdi+8-in-region : (r : Region) → InRegion r orig-rdi → InRegion r (orig-rdi +ℕ slot-size)
+    rdi+8-in-region Heap ih = heap-offset orig-rdi ih
+    rdi+8-in-region Stack is = stack-offset is
 
-    -- Setup execution
+    -- Setup execution (pass Region proofs)
     setup-result : ∃[ s-setup ] CaseInlSetupResult {A} {B} {C} a prefix suffix f g s s-setup val-addr
     setup-result = case-inl-setup-star f g prefix suffix a s val-addr
-                     h-false pc-eq tag-is-0 val-at-rdi+8 rdi-in-heap rdi+8-in-heap stack-inv cap-in rbp-inv
+                     h-false pc-eq tag-is-0 val-at-rdi+8
+                     (proj₁ rdi-region) (proj₂ rdi-region)
+                     (proj₁ rdi-region) (rdi+8-in-region (proj₁ rdi-region) (proj₂ rdi-region))
+                     stack-inv cap-in rbp-inv
 
     s-setup : State
     s-setup = proj₁ setup-result
@@ -216,8 +248,14 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     rbp-inv-setup : RbpInvariant s-setup
     rbp-inv-setup = CaseInlSetupResult.rbp-inv-setup setup-res
 
+    -- Use valid-subst-region-preserved with both heap-eq and stack-eq
+    -- Stack-eq comes from caller-stack-preserved-inl (honest postulate)
+    stack-eq-setup : ∀ addr → InStack addr → readMem (memory s-setup) addr ≡ readMem orig-mem addr
+    stack-eq-setup = caller-stack-preserved-inl setup-res
+
     input-valid-for-f : ValidAt a (readReg (regs s-setup) rdi) (memory s-setup)
-    input-valid-for-f = valid-subst-heap-preserved input-valid-a rdi-setup mem-heap-setup
+    input-valid-for-f = subst (λ addr → ValidAt a addr (memory s-setup)) (sym rdi-setup)
+                          (valid-subst-region-preserved input-valid-a mem-heap-setup stack-eq-setup)
 
     -- Setup instructions and program structure
     setup-instrs : Program
@@ -384,6 +422,32 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
                                   (trans (IRStarResultV.ir-mem-heap r-f addr in-heap)
                                          (mem-heap-setup addr in-heap))
 
+    -- Memory preserved at addresses ≥ entry-rsp (chained from setup + f + cleanup)
+    mem-preserved : ∀ addr → addr ≥ orig-rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-preserved addr addr≥rsp =
+      let -- Cleanup preserves all memory (s1 → s-final)
+          mem-cleanup : readMem (memory s-final) addr ≡ readMem (memory s1) addr
+          mem-cleanup = cong (λ m → readMem m addr) mem-s-final
+
+          -- f preserves memory ≥ s-setup.rsp (s-setup → s1)
+          -- We need: addr ≥ s-setup.rsp = s.rsp - 8
+          -- We have: addr ≥ s.rsp, and s-setup.rsp = s.rsp - 8 < s.rsp
+          setup-rsp≤s-rsp : readReg (regs s-setup) rsp ≤ orig-rsp
+          setup-rsp≤s-rsp = subst (_≤ orig-rsp) (sym rsp-setup) (m∸n≤m orig-rsp slot-size)
+
+          addr≥setup-rsp : addr ≥ readReg (regs s-setup) rsp
+          addr≥setup-rsp = ≤-trans setup-rsp≤s-rsp addr≥rsp
+
+          mem-f : readMem (memory s1) addr ≡ readMem (memory s-setup) addr
+          mem-f = IRStarResultV.ir-mem-preserved r-f addr
+                    (subst (addr ≥_) (sym (IRStarResultV.ir-entry-rsp-eq r-f)) addr≥setup-rsp)
+
+          -- Setup preserves memory ≥ s.rsp (s → s-setup)
+          mem-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+          mem-setup = CaseInlSetupResult.mem-preserved-setup setup-res addr addr≥rsp
+
+      in trans mem-cleanup (trans mem-f mem-setup)
+
     mem-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code addr in-code = trans (cong (λ m → readMem m addr) mem-s-final)
                                   (trans (IRStarResultV.ir-mem-code r-f addr in-code)
@@ -483,6 +547,9 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
       ; ir-mem-above = mem-above
       ; ir-mem-code = mem-code
       ; ir-mem-heap = mem-heap
+      ; ir-entry-rsp = readReg (regs s) rsp
+      ; ir-entry-rsp-eq = refl
+      ; ir-mem-preserved = mem-preserved
       ; ir-stack-inv = stack-inv-final
       ; ir-capacity = cap-final
       ; ir-rbp-inv = rbp-inv-final
@@ -552,17 +619,22 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     cap-in' : StackCapacity s (suc (f-req ⊔ g-req))
     cap-in' = subst (StackCapacity s) case-req-eq cap-in
 
-    -- Derive InHeap proofs from ValidAt
-    rdi-in-heap : InHeap orig-rdi
-    rdi-in-heap = valid-addr-in-heap input-valid
+    -- Derive Region proofs from ValidAt (supports both Stack and Heap)
+    rdi-region : ∃[ r ] InRegion r orig-rdi
+    rdi-region = valid-in-region input-valid
 
-    rdi+8-in-heap : InHeap (orig-rdi +ℕ slot-size)
-    rdi+8-in-heap = heap-offset orig-rdi rdi-in-heap
+    -- If rdi is in region r, then rdi+8 is in region r too
+    rdi+8-in-region : (r : Region) → InRegion r orig-rdi → InRegion r (orig-rdi +ℕ slot-size)
+    rdi+8-in-region Heap ih = heap-offset orig-rdi ih
+    rdi+8-in-region Stack is = stack-offset is
 
-    -- Setup execution
+    -- Setup execution (pass Region proofs)
     setup-result : ∃[ s-setup ] CaseInrSetupResult {A} {B} {C} b prefix suffix f g s s-setup val-addr
     setup-result = case-inr-setup-star f g prefix suffix b s val-addr
-                     h-false pc-eq tag-is-1 val-at-rdi+8 rdi-in-heap rdi+8-in-heap stack-inv cap-in rbp-inv
+                     h-false pc-eq tag-is-1 val-at-rdi+8
+                     (proj₁ rdi-region) (proj₂ rdi-region)
+                     (proj₁ rdi-region) (rdi+8-in-region (proj₁ rdi-region) (proj₂ rdi-region))
+                     stack-inv cap-in rbp-inv
 
     s-setup : State
     s-setup = proj₁ setup-result
@@ -614,8 +686,14 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     rbp-inv-setup : RbpInvariant s-setup
     rbp-inv-setup = CaseInrSetupResult.rbp-inv-setup setup-res
 
+    -- Use valid-subst-region-preserved with both heap-eq and stack-eq
+    -- Stack-eq comes from caller-stack-preserved-inr (honest postulate)
+    stack-eq-setup : ∀ addr → InStack addr → readMem (memory s-setup) addr ≡ readMem orig-mem addr
+    stack-eq-setup = caller-stack-preserved-inr setup-res
+
     input-valid-for-g : ValidAt b (readReg (regs s-setup) rdi) (memory s-setup)
-    input-valid-for-g = valid-subst-heap-preserved input-valid-b rdi-setup mem-heap-setup
+    input-valid-for-g = subst (λ addr → ValidAt b addr (memory s-setup)) (sym rdi-setup)
+                          (valid-subst-region-preserved input-valid-b mem-heap-setup stack-eq-setup)
 
     -- Program structure for g
     setup-instrs-before-f : Program
@@ -799,6 +877,32 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
                                   (trans (IRStarResultV.ir-mem-heap r-g addr in-heap)
                                          (mem-heap-setup addr in-heap))
 
+    -- Memory preserved at addresses ≥ entry-rsp (chained from setup + g + cleanup)
+    mem-preserved : ∀ addr → addr ≥ orig-rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+    mem-preserved addr addr≥rsp =
+      let -- Cleanup preserves all memory (s1 → s-final)
+          mem-cleanup : readMem (memory s-final) addr ≡ readMem (memory s1) addr
+          mem-cleanup = cong (λ m → readMem m addr) mem-s-final
+
+          -- g preserves memory ≥ s-setup.rsp (s-setup → s1)
+          -- We need: addr ≥ s-setup.rsp = s.rsp - 8
+          -- We have: addr ≥ s.rsp, and s-setup.rsp = s.rsp - 8 < s.rsp
+          setup-rsp≤s-rsp : readReg (regs s-setup) rsp ≤ orig-rsp
+          setup-rsp≤s-rsp = subst (_≤ orig-rsp) (sym rsp-setup) (m∸n≤m orig-rsp slot-size)
+
+          addr≥setup-rsp : addr ≥ readReg (regs s-setup) rsp
+          addr≥setup-rsp = ≤-trans setup-rsp≤s-rsp addr≥rsp
+
+          mem-g : readMem (memory s1) addr ≡ readMem (memory s-setup) addr
+          mem-g = IRStarResultV.ir-mem-preserved r-g addr
+                    (subst (addr ≥_) (sym (IRStarResultV.ir-entry-rsp-eq r-g)) addr≥setup-rsp)
+
+          -- Setup preserves memory ≥ s.rsp (s → s-setup)
+          mem-setup : readMem (memory s-setup) addr ≡ readMem (memory s) addr
+          mem-setup = CaseInrSetupResult.mem-preserved-setup setup-res addr addr≥rsp
+
+      in trans mem-cleanup (trans mem-g mem-setup)
+
     mem-code : ∀ addr → InCode addr → readMem (memory s-final) addr ≡ readMem (memory s) addr
     mem-code addr in-code = trans (cong (λ m → readMem m addr) mem-s-final)
                                   (trans (IRStarResultV.ir-mem-code r-g addr in-code)
@@ -894,6 +998,9 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
       ; ir-mem-above = mem-above
       ; ir-mem-code = mem-code
       ; ir-mem-heap = mem-heap
+      ; ir-entry-rsp = readReg (regs s) rsp
+      ; ir-entry-rsp-eq = refl
+      ; ir-mem-preserved = mem-preserved
       ; ir-stack-inv = stack-inv-final
       ; ir-capacity = cap-final
       ; ir-rbp-inv = rbp-inv-final

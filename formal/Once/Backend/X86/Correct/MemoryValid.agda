@@ -82,8 +82,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 -- - Runtime temporaries (always Stack)
 --
 -- This enables:
--- - valid-in-heap extracts InHeap from Heap-region ValidAt
--- - Stack-allocated values have InStack for different preservation
+-- - valid-in-region extracts the Region and InRegion proof
+-- - Heap-allocated values use stack-heap disjointness for preservation
+-- - Stack-allocated values use frame-separation for preservation
 data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
   -- Unit: value 0, no memory needed (address 0 is special, no region)
   valid-unit : ∀ {m} → ValidAt {Unit} tt 0 m
@@ -148,8 +149,7 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
     ValidAt x addr m →
     ValidAt {Fix F} (wrap x) addr m
 
--- NOTE: ValidAt preservation under memory writes is defined below,
--- after the valid-in-heap postulate which it depends on.
+-- NOTE: ValidAt preservation under memory writes is defined below.
 -- See: valid-at-preserved-under-stack-write, valid-at-preserved-under-write
 
 -- | Convert validity from (A ⇒ B) to (Eff A B)
@@ -244,52 +244,8 @@ valid-in-region (valid-eff-env _ _ r ir) = r , ir
 valid-in-region (valid-fix v) = valid-in-region v
 
 ------------------------------------------------------------------------
--- Backward compatibility: Stack-to-Heap conversion
---
--- WARNING: This postulate is FALSE (Stack and Heap are disjoint).
--- It exists ONLY for backward compatibility with callers that pass
--- Stack-region values to valid-in-heap or valid-subst-heap-preserved.
---
--- In practice, callers typically pass Heap-region values (inputs from
--- caller are usually heap-allocated). The Stack path is rarely exercised.
---
--- TODO: Remove this by making callers use valid-in-region instead of
--- valid-in-heap, and valid-subst-addr-mem instead of valid-subst-heap-preserved.
+-- ValidAt child extraction lemmas
 ------------------------------------------------------------------------
-postulate
-  stack-to-heap-compat : ∀ {addr} → InStack addr → InHeap addr
-
--- | Extract InHeap from ValidAt
--- NOTE: For Heap-region values, returns the InHeap proof directly.
--- For Stack-region values, uses stack-to-heap-compat (FALSE, for backward compat).
--- Callers with Stack values should use valid-in-region instead.
-valid-in-heap :
-  ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
-  ValidAt v addr m →
-  InHeap addr
-valid-in-heap valid-unit = unit-in-heap
-valid-in-heap (valid-pair _ _ _ Heap ih) = ih
-valid-in-heap (valid-pair _ _ _ Stack is) = stack-to-heap-compat is
-valid-in-heap (valid-inl _ _ Heap ih) = ih
-valid-in-heap (valid-inl _ _ Stack is) = stack-to-heap-compat is
-valid-in-heap (valid-inr _ _ Heap ih) = ih
-valid-in-heap (valid-inr _ _ Stack is) = stack-to-heap-compat is
-valid-in-heap (valid-closure _ Heap ih) = ih
-valid-in-heap (valid-closure _ Stack is) = stack-to-heap-compat is
-valid-in-heap (valid-closure-env _ _ Heap ih) = ih
-valid-in-heap (valid-closure-env _ _ Stack is) = stack-to-heap-compat is
-valid-in-heap (valid-eff _ Heap ih) = ih
-valid-in-heap (valid-eff _ Stack is) = stack-to-heap-compat is
-valid-in-heap (valid-eff-env _ _ Heap ih) = ih
-valid-in-heap (valid-eff-env _ _ Stack is) = stack-to-heap-compat is
-valid-in-heap (valid-fix v) = valid-in-heap v
-
--- | Extract InStack from Stack-region ValidAt
-valid-in-stack :
-  ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
-  ValidAt v addr m →
-  ∃[ r ] InRegion r addr
-valid-in-stack = valid-in-region
 
 -- | Extract validity of left injection's child value
 -- If (inj₁ a) is validly represented at addr, and mem[addr+8] = val-addr,
@@ -366,11 +322,8 @@ valid-subst-addr-mem (valid-fix vx) refl mem-eq =
 -- ValidAt preservation under heap-only memory preservation
 ------------------------------------------------------------------------
 
--- The key insight: ValidAt only references heap addresses (established by valid-in-heap),
--- so heap preservation is sufficient for validity propagation.
-
--- Note: These helpers require InHeap proofs which come from valid-in-heap (postulate).
--- We define them here but they rely on valid-in-heap being called appropriately.
+-- These helpers preserve HEAP-region values under heap memory preservation.
+-- For Stack-region values, use the *-under-stack-eq variants instead.
 
 -- | Helper: PairAtS preserved under heap-only memory equality
 PairAtS-preserved-under-heap-eq :
@@ -420,86 +373,143 @@ ClosureAtS-preserved-under-heap-eq {env-addr} {code-ptr} {addr-closure} closS ad
   in closure-at-s (trans (heap-eq addr-closure addr-in-heap) (env-valid-s closS))
                   (trans (heap-eq (addr-closure +ℕ slot-size) addr+8-in-heap) (code-valid-s closS))
 
--- | Propagate validity when only heap memory is preserved
--- For HEAP-region values: heap equality preserves them (correct)
--- For STACK-region values: uses stack-to-heap-compat to apply heap equality
---   (conceptually wrong - heap eq says nothing about stack - but works for backward compat)
---   Callers with Stack values should use valid-subst-addr-mem instead.
-valid-subst-heap-preserved :
-  ∀ {A} {v : ⟦ A ⟧} {addr1 addr2 : Word} {mem1 mem2 : Memory} →
-  ValidAt v addr1 mem1 →
-  addr2 ≡ addr1 →
+------------------------------------------------------------------------
+-- AtS preservation under stack-only memory preservation
+------------------------------------------------------------------------
+
+-- | Helper: PairAtS preserved under stack-only memory equality
+PairAtS-preserved-under-stack-eq :
+  ∀ {addr-a addr-b addr : Word} {m1 m2 : Memory} →
+  PairAtS addr-a addr-b addr m1 →
+  InStack addr →
+  (∀ a → InStack a → readMem m2 a ≡ readMem m1 a) →
+  PairAtS addr-a addr-b addr m2
+PairAtS-preserved-under-stack-eq {addr-a} {addr-b} {addr} pairS addr-in-stack stack-eq =
+  let addr+8-in-stack = stack-offset addr-in-stack
+  in pair-at-s (trans (stack-eq addr addr-in-stack) (fst-valid-s pairS))
+               (trans (stack-eq (addr +ℕ slot-size) addr+8-in-stack) (snd-valid-s pairS))
+
+-- | Helper: InlAtS preserved under stack-only memory equality
+InlAtS-preserved-under-stack-eq :
+  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
+  InlAtS addr-val addr-sum m1 →
+  InStack addr-sum →
+  (∀ a → InStack a → readMem m2 a ≡ readMem m1 a) →
+  InlAtS addr-val addr-sum m2
+InlAtS-preserved-under-stack-eq {addr-val} {addr-sum} inlS addr-in-stack stack-eq =
+  let addr+8-in-stack = stack-offset addr-in-stack
+  in inl-at-s (trans (stack-eq addr-sum addr-in-stack) (tag-valid-inl-s inlS))
+              (trans (stack-eq (addr-sum +ℕ slot-size) addr+8-in-stack) (val-valid-inl-s inlS))
+
+-- | Helper: InrAtS preserved under stack-only memory equality
+InrAtS-preserved-under-stack-eq :
+  ∀ {addr-val addr-sum : Word} {m1 m2 : Memory} →
+  InrAtS addr-val addr-sum m1 →
+  InStack addr-sum →
+  (∀ a → InStack a → readMem m2 a ≡ readMem m1 a) →
+  InrAtS addr-val addr-sum m2
+InrAtS-preserved-under-stack-eq {addr-val} {addr-sum} inrS addr-in-stack stack-eq =
+  let addr+8-in-stack = stack-offset addr-in-stack
+  in inr-at-s (trans (stack-eq addr-sum addr-in-stack) (tag-valid-inr-s inrS))
+              (trans (stack-eq (addr-sum +ℕ slot-size) addr+8-in-stack) (val-valid-inr-s inrS))
+
+-- | Helper: ClosureAtS preserved under stack-only memory equality
+ClosureAtS-preserved-under-stack-eq :
+  ∀ {env-addr code-ptr addr-closure : Word} {m1 m2 : Memory} →
+  ClosureAtS env-addr code-ptr addr-closure m1 →
+  InStack addr-closure →
+  (∀ a → InStack a → readMem m2 a ≡ readMem m1 a) →
+  ClosureAtS env-addr code-ptr addr-closure m2
+ClosureAtS-preserved-under-stack-eq {env-addr} {code-ptr} {addr-closure} closS addr-in-stack stack-eq =
+  let addr+8-in-stack = stack-offset addr-in-stack
+  in closure-at-s (trans (stack-eq addr-closure addr-in-stack) (env-valid-s closS))
+                  (trans (stack-eq (addr-closure +ℕ slot-size) addr+8-in-stack) (code-valid-s closS))
+
+------------------------------------------------------------------------
+-- ValidAt preservation under region-aware memory preservation
+--
+-- Takes BOTH heap-eq AND stack-eq, dispatches based on Region.
+-- This is the correct approach - no FALSE postulates needed!
+------------------------------------------------------------------------
+
+-- | Propagate validity when both heap and stack memory is preserved
+-- For HEAP-region values: uses heap equality
+-- For STACK-region values: uses stack equality
+valid-subst-region-preserved :
+  ∀ {A} {v : ⟦ A ⟧} {addr : Word} {mem1 mem2 : Memory} →
+  ValidAt v addr mem1 →
   (∀ a → InHeap a → readMem mem2 a ≡ readMem mem1 a) →
-  ValidAt v addr2 mem2
-valid-subst-heap-preserved valid-unit refl _ = valid-unit
+  (∀ a → InStack a → readMem mem2 a ≡ readMem mem1 a) →
+  ValidAt v addr mem2
+valid-subst-region-preserved valid-unit _ _ = valid-unit
 -- Pair: dispatch on region
-valid-subst-heap-preserved (valid-pair va vb pairS Heap ih) refl heap-eq =
-  valid-pair (valid-subst-heap-preserved va refl heap-eq)
-             (valid-subst-heap-preserved vb refl heap-eq)
+valid-subst-region-preserved (valid-pair va vb pairS Heap ih) heap-eq stack-eq =
+  valid-pair (valid-subst-region-preserved va heap-eq stack-eq)
+             (valid-subst-region-preserved vb heap-eq stack-eq)
              (PairAtS-preserved-under-heap-eq pairS ih heap-eq)
              Heap ih
-valid-subst-heap-preserved (valid-pair va vb pairS Stack is) refl heap-eq =
-  valid-pair (valid-subst-heap-preserved va refl heap-eq)
-             (valid-subst-heap-preserved vb refl heap-eq)
-             (PairAtS-preserved-under-heap-eq pairS (stack-to-heap-compat is) heap-eq)
+valid-subst-region-preserved (valid-pair va vb pairS Stack is) heap-eq stack-eq =
+  valid-pair (valid-subst-region-preserved va heap-eq stack-eq)
+             (valid-subst-region-preserved vb heap-eq stack-eq)
+             (PairAtS-preserved-under-stack-eq pairS is stack-eq)
              Stack is
 -- Inl: dispatch on region
-valid-subst-heap-preserved {A + B} (valid-inl va inlS Heap ih) refl heap-eq =
-  valid-inl (valid-subst-heap-preserved va refl heap-eq)
+valid-subst-region-preserved {A + B} (valid-inl va inlS Heap ih) heap-eq stack-eq =
+  valid-inl (valid-subst-region-preserved va heap-eq stack-eq)
             (InlAtS-preserved-under-heap-eq inlS ih heap-eq)
             Heap ih
-valid-subst-heap-preserved {A + B} (valid-inl va inlS Stack is) refl heap-eq =
-  valid-inl (valid-subst-heap-preserved va refl heap-eq)
-            (InlAtS-preserved-under-heap-eq inlS (stack-to-heap-compat is) heap-eq)
+valid-subst-region-preserved {A + B} (valid-inl va inlS Stack is) heap-eq stack-eq =
+  valid-inl (valid-subst-region-preserved va heap-eq stack-eq)
+            (InlAtS-preserved-under-stack-eq inlS is stack-eq)
             Stack is
 -- Inr: dispatch on region
-valid-subst-heap-preserved {A + B} (valid-inr vb inrS Heap ih) refl heap-eq =
-  valid-inr (valid-subst-heap-preserved vb refl heap-eq)
+valid-subst-region-preserved {A + B} (valid-inr vb inrS Heap ih) heap-eq stack-eq =
+  valid-inr (valid-subst-region-preserved vb heap-eq stack-eq)
             (InrAtS-preserved-under-heap-eq inrS ih heap-eq)
             Heap ih
-valid-subst-heap-preserved {A + B} (valid-inr vb inrS Stack is) refl heap-eq =
-  valid-inr (valid-subst-heap-preserved vb refl heap-eq)
-            (InrAtS-preserved-under-heap-eq inrS (stack-to-heap-compat is) heap-eq)
+valid-subst-region-preserved {A + B} (valid-inr vb inrS Stack is) heap-eq stack-eq =
+  valid-inr (valid-subst-region-preserved vb heap-eq stack-eq)
+            (InrAtS-preserved-under-stack-eq inrS is stack-eq)
             Stack is
 -- Closure: dispatch on region
-valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure closS Heap ih) refl heap-eq =
+valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure closS Heap ih) heap-eq stack-eq =
   valid-closure (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
                 Heap ih
-valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure closS Stack is) refl heap-eq =
-  valid-closure (ClosureAtS-preserved-under-heap-eq closS (stack-to-heap-compat is) heap-eq)
+valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure closS Stack is) heap-eq stack-eq =
+  valid-closure (ClosureAtS-preserved-under-stack-eq closS is stack-eq)
                 Stack is
 -- Closure with env: dispatch on region
-valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env venv closS Heap ih) refl heap-eq =
+valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env venv closS Heap ih) heap-eq stack-eq =
   valid-closure-env
-    (valid-subst-heap-preserved venv refl heap-eq)
+    (valid-subst-region-preserved venv heap-eq stack-eq)
     (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
     Heap ih
-valid-subst-heap-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env venv closS Stack is) refl heap-eq =
+valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env venv closS Stack is) heap-eq stack-eq =
   valid-closure-env
-    (valid-subst-heap-preserved venv refl heap-eq)
-    (ClosureAtS-preserved-under-heap-eq closS (stack-to-heap-compat is) heap-eq)
+    (valid-subst-region-preserved venv heap-eq stack-eq)
+    (ClosureAtS-preserved-under-stack-eq closS is stack-eq)
     Stack is
 -- Eff: dispatch on region
-valid-subst-heap-preserved {Eff A B} {cl} (valid-eff closS Heap ih) refl heap-eq =
+valid-subst-region-preserved {Eff A B} {cl} (valid-eff closS Heap ih) heap-eq stack-eq =
   valid-eff (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
             Heap ih
-valid-subst-heap-preserved {Eff A B} {cl} (valid-eff closS Stack is) refl heap-eq =
-  valid-eff (ClosureAtS-preserved-under-heap-eq closS (stack-to-heap-compat is) heap-eq)
+valid-subst-region-preserved {Eff A B} {cl} (valid-eff closS Stack is) heap-eq stack-eq =
+  valid-eff (ClosureAtS-preserved-under-stack-eq closS is stack-eq)
             Stack is
 -- Eff with env: dispatch on region
-valid-subst-heap-preserved {Eff A B} {cl} (valid-eff-env venv closS Heap ih) refl heap-eq =
+valid-subst-region-preserved {Eff A B} {cl} (valid-eff-env venv closS Heap ih) heap-eq stack-eq =
   valid-eff-env
-    (valid-subst-heap-preserved venv refl heap-eq)
+    (valid-subst-region-preserved venv heap-eq stack-eq)
     (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
     Heap ih
-valid-subst-heap-preserved {Eff A B} {cl} (valid-eff-env venv closS Stack is) refl heap-eq =
+valid-subst-region-preserved {Eff A B} {cl} (valid-eff-env venv closS Stack is) heap-eq stack-eq =
   valid-eff-env
-    (valid-subst-heap-preserved venv refl heap-eq)
-    (ClosureAtS-preserved-under-heap-eq closS (stack-to-heap-compat is) heap-eq)
+    (valid-subst-region-preserved venv heap-eq stack-eq)
+    (ClosureAtS-preserved-under-stack-eq closS is stack-eq)
     Stack is
 -- Fix: recurse
-valid-subst-heap-preserved (valid-fix vx) refl heap-eq =
-  valid-fix (valid-subst-heap-preserved vx refl heap-eq)
+valid-subst-region-preserved (valid-fix vx) heap-eq stack-eq =
+  valid-fix (valid-subst-region-preserved vx heap-eq stack-eq)
 
 ------------------------------------------------------------------------
 -- Proven lemmas from ValidAt structure (moved out of postulate block)
@@ -546,36 +556,35 @@ valid-pair-decompose (valid-pair {addr-a = addr-a} {addr-b = addr-b} va vb pairS
 -- NOTE: valid-closure-decompose removed (unused, depended on valid-addr-is-encode)
 
 ------------------------------------------------------------------------
--- Region-based disjointness from validity (Phase 6c-6d)
+-- Region-based disjointness from validity
 --
 -- These lemmas derive heap-stack disjointness from ValidAt.
--- Uses valid-in-heap postulate directly - no addr-from-valid dependency!
+-- Uses valid-in-region to dispatch on region.
 ------------------------------------------------------------------------
-
--- | Valid address is in heap
--- Direct application of valid-in-heap postulate.
-valid-addr-in-heap : ∀ {A : Type} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
-  ValidAt v addr m →
-  InHeap addr
-valid-addr-in-heap = valid-in-heap
 
 -- | Valid address is disjoint from stack addresses
 -- If addr has ValidAt and stack-addr is in stack, then addr ≢ stack-addr
+-- Uses region-based dispatch: Heap → stack-heap disjoint, Stack → frame-separation
 valid-disjoint-from-stack : ∀ {A : Type} {v : ⟦ A ⟧} {addr stack-addr : Word} {m : Memory} →
   ValidAt v addr m →
   InStack stack-addr →
   addr ≢ stack-addr
-valid-disjoint-from-stack {A} {v} {addr} {stack-addr} {m} valid stack-proof addr-eq =
-  stack-heap-addr-disjoint stack-addr addr stack-proof (valid-addr-in-heap valid) (sym addr-eq)
+valid-disjoint-from-stack {A} {v} {addr} {stack-addr} {m} valid stack-proof =
+  region-dispatch (proj₁ region) (proj₂ region)
+  where
+    region = valid-in-region valid
+    region-dispatch : (r : Region) → InRegion r addr → addr ≢ stack-addr
+    region-dispatch Heap ih = λ addr-eq → stack-heap-addr-disjoint stack-addr addr stack-proof ih (sym addr-eq)
+    region-dispatch Stack is = λ addr-eq → frame-separation is stack-proof (sym addr-eq)
 
 ------------------------------------------------------------------------
--- ValidAt preservation under memory writes
+-- ValidAt preservation under memory writes (HEAP ONLY)
 --
--- Key insight: writes to stack addresses cannot affect ValidAt proofs
--- because ValidAt structures only reference heap addresses.
+-- These lemmas preserve HEAP-region values under STACK writes.
+-- They require InHeap addr as a precondition.
 --
 -- Proof strategy:
--- 1. ValidAt v addr m → InHeap addr (by valid-in-heap)
+-- 1. addr is in heap (precondition)
 -- 2. AtS structures read from addr and addr+slot-size, both in heap
 -- 3. InStack w means w is disjoint from all heap addresses
 -- 4. Therefore readMem (writeMem m w val) heap-addr = readMem m heap-addr

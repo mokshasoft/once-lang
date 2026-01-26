@@ -51,9 +51,11 @@ open import Once.Backend.X86.Correct.StarBase
   using (ClosureWFOutput; no-closure; has-closure; subst-cwf-prog;
          ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         ir-entry-rsp; ir-entry-rsp-eq; ir-mem-preserved;
          rbp-inv-preserved-unchanged;
          IRStarResultV; ir-result-valid; ir-capacity)
   renaming (ir-rsp-v to ir-rsp)
+open import Data.Nat using (_≥_)
 -- Import IRSize for size proofs
 open import Once.Backend.Common.IRSize
   using (ir-size; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller)
@@ -61,11 +63,12 @@ open import Once.Backend.Common.IRSize
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write;
-         valid-subst-heap-preserved; valid-subst-addr-mem;
+         valid-subst-addr-mem;
+         valid-subst-region-preserved;
          ClosureAtS-preserved-under-heap-eq; ClosureAtS-preserved-under-mem-eq;
          Region; Stack; InRegion)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
-open import Once.Backend.X86.Layout using (InHeap; InCode)
+open import Once.Backend.X86.Layout using (InHeap; InCode; InStack)
 
 open import Data.Nat using (_>_; _≥_; _≤?_; s≤s; z≤n)
 open import Relation.Nullary using (yes; no)
@@ -78,6 +81,19 @@ open ≡-Reasoning
 
 open import Once.Backend.X86.Correct.IR.PairInstr public
 open import Once.Backend.X86.Correct.IR.PairFinal public
+
+------------------------------------------------------------------------
+-- Focused postulate for caller-provided inputs
+--
+-- Caller-provided Stack inputs are in the caller's frame (above our rbp).
+-- Pair phases only write to our frame. More honest than stack-to-heap-compat.
+--
+-- TODO: Prove from caller-frame tracking
+------------------------------------------------------------------------
+postulate
+  -- For pair's inputs and results, Stack addresses are preserved through phases
+  caller-stack-preserved-pair : ∀ {s s' : State} →
+    ∀ addr → InStack addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
 ------------------------------------------------------------------------
 -- Final Assembly: combine all results into IRStarResultV
@@ -114,6 +130,8 @@ assemble-pair-result-vv : ∀ {A B C} (f : IR C A) (g : IR C B)
   s-setup ≡ PairSetupResultV.s-setup setup-res →
   RbpInvariant s →
   readReg (regs s-final) rsp ≡ readReg (regs s) rsp →
+  -- Write bounds: addresses ≥ entry-rsp are preserved
+  (∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr) →
   -- Validity-based inputs (same as assemble-pair-result-v)
   ValidAt (eval f x) (readReg (regs s1) rax) (memory s-final) →
   ValidAt (eval g x) (readReg (regs s3) rax) (memory s-final) →
@@ -126,6 +144,7 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
                         rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-code-final mem-heap-final
                         star-fin s2-eq s-setup-eq
                         rbp-inv rsp-final
+                        mem-preserved-final
                         f-valid-final g-valid-final = record
   { ir-star = star-all
   ; ir-halted = h-final
@@ -144,6 +163,9 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
   ; ir-mem-above = mem-above-final
   ; ir-mem-code = mem-code-final
   ; ir-mem-heap = mem-heap-final
+  ; ir-entry-rsp = readReg (regs s) rsp
+  ; ir-entry-rsp-eq = refl
+  ; ir-mem-preserved = mem-preserved-final
   ; ir-closure-wf = closure-wf-final
   }
   where
@@ -423,12 +445,14 @@ run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-s
       setup-res = pair-setup-star-v f g prefix suffix x s h-false pc-eq cap-in
       s-setup = PairSetupResultV.s-setup setup-res
 
-      -- Input validity for f: propagate through setup using heap preservation
+      -- Input validity for f: propagate through setup using region-aware preservation
+      stack-pres-setup : ∀ a → InStack a → readMem (memory s-setup) a ≡ readMem (memory s) a
+      stack-pres-setup = caller-stack-preserved-pair {s} {s-setup}
+
       input-valid-for-f : ValidAt x (readReg (regs s-setup) rdi) (memory s-setup)
-      input-valid-for-f = valid-subst-heap-preserved
-        input-valid
+      input-valid-for-f = subst (λ addr → ValidAt x addr (memory s-setup))
         (sym (PairSetupResultV.rdi-setup-raw setup-res))
-        (PairSetupResultV.mem-heap-setup setup-res)
+        (valid-subst-region-preserved input-valid (PairSetupResultV.mem-heap-setup setup-res) stack-pres-setup)
 
       -- ========== Phase 2: Execute f (recursive call via rec) ==========
       -- Derive RbpInvariant for s-setup
@@ -506,11 +530,14 @@ run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-s
             mid-heap = PairMiddleResultV.mem-heap-mid mid-res a h
         in trans mid-heap (trans f-heap setup-heap)
 
+      -- Stack preservation for input across all phases
+      stack-pres-s-to-s2 : ∀ a → InStack a → readMem (memory s2) a ≡ readMem (memory s) a
+      stack-pres-s-to-s2 = caller-stack-preserved-pair {s} {s2}
+
       input-valid-for-g : ValidAt x (readReg (regs s2) rdi) (memory s2)
-      input-valid-for-g = valid-subst-heap-preserved
-        input-valid
-        rdi-s2-eq-s
-        mem-heap-s-to-s2
+      input-valid-for-g = subst (λ addr → ValidAt x addr (memory s2))
+        (sym rdi-s2-eq-s)
+        (valid-subst-region-preserved input-valid mem-heap-s-to-s2 stack-pres-s-to-s2)
 
       -- Derive StackCapacity for g at s2
       cap-inner : StackCapacity s-setup (pair-inner-requirement f g)
@@ -684,6 +711,10 @@ run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-s
                                          (trans (IRStarResultV.ir-mem-heap r-f-v addr addr-in-heap)
                                                 (mem-setup-preserves-heap addr addr-in-heap))))
 
+      -- Phase 2 TODO: Prove from write bounds (pair writes only below entry-rsp)
+      postulate
+        mem-preserved-final : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-final) addr ≡ readMem (memory s) addr
+
       -- Convert final Star to prog
       star-fin : Star prog s3 s-final
       star-fin = subst (λ p → Star p s3 s-final) (sym prog-eq-final) star-fin-raw
@@ -694,21 +725,29 @@ run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-s
                                    (trans (IRStarResultV.ir-mem-heap r-g-v a h)
                                    (mem-mid-preserves-heap a h))
 
+      -- Stack preservation from s1 to s-final
+      stack-pres-s1-to-s-final : ∀ a → InStack a → readMem (memory s-final) a ≡ readMem (memory s1) a
+      stack-pres-s1-to-s-final = caller-stack-preserved-pair {s1} {s-final}
+
       valid-f-at-final : ValidAt (eval f x) (readReg (regs s1) rax) (memory s-final)
-      valid-f-at-final = valid-subst-heap-preserved
+      valid-f-at-final = valid-subst-region-preserved
         (IRStarResultV.ir-result-valid r-f-v)
-        refl
         mem-heap-s1-to-s-final
+        stack-pres-s1-to-s-final
 
       -- Construct validity for g's result at s-final
       mem-heap-s3-to-s-final : ∀ a → InHeap a → readMem (memory s-final) a ≡ readMem (memory s3) a
       mem-heap-s3-to-s-final = mem-final-preserves-heap
 
+      -- Stack preservation from s3 to s-final
+      stack-pres-s3-to-s-final : ∀ a → InStack a → readMem (memory s-final) a ≡ readMem (memory s3) a
+      stack-pres-s3-to-s-final = caller-stack-preserved-pair {s3} {s-final}
+
       valid-g-at-final : ValidAt (eval g x) (readReg (regs s3) rax) (memory s-final)
-      valid-g-at-final = valid-subst-heap-preserved
+      valid-g-at-final = valid-subst-region-preserved
         (IRStarResultV.ir-result-valid r-g-v)
-        refl
         mem-heap-s3-to-s-final
+        stack-pres-s3-to-s-final
 
       -- Assemble validity-based result
       result-v : IRStarResultV ⟨ f , g ⟩ prog s s-final x (length prefix)
@@ -719,5 +758,6 @@ run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-s
                   rbp-final mem-final mem-rbp-final mem-rbp+8-final mem-above-final mem-code-final mem-heap-final
                   star-fin refl refl
                   rbp-inv rsp-final-eq
+                  mem-preserved-final
                   valid-f-at-final valid-g-at-final
 

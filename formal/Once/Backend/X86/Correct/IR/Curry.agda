@@ -45,6 +45,7 @@ open import Once.Backend.X86.Correct.StarBase
   using (IRStarResult; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         ir-entry-rsp; ir-entry-rsp-eq; ir-mem-preserved;
          IRStarResultV; ir-result-valid; ir-capacity; ir-rsp-bound-v)
   renaming (ir-rsp-v to ir-rsp)
 

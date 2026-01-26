@@ -33,12 +33,11 @@ open import Once.Backend.X86.Correct.MemoryValid
          InlAtS; InrAtS; ClosureAtS;
          valid-arrow-to-eff;
          valid-subst-addr-mem;  -- Takes full memory equality (no region-to-heap)
-         valid-subst-heap-preserved;
          ClosureAtS-preserved-under-mem-eq;  -- Takes full memory equality
          ClosureAtS-preserved-under-heap-eq;
          Region; Stack; Heap; InRegion)
 
-open import Data.Nat using (_>_; _<_)
+open import Data.Nat using (_>_; _<_; _≥_)
 open import Data.List.Properties using (++-assoc)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≢_; cong; subst₂)
@@ -239,6 +238,14 @@ record IRStarResult {A B : Type} (ir : IR A B) (prog : Program)
     -- IR only writes to stack region, heap region is disjoint from stack (stack-heap-disjoint)
     -- Therefore heap addresses are never written by IR execution
     ir-mem-heap   : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
+
+    -- NEW: Write bounds for stack escape analysis
+    -- IR execution only writes to addresses < entry-rsp (its own stack frame)
+    -- Therefore addresses >= entry-rsp are preserved (caller's frame, heap, code)
+    ir-entry-rsp : ℕ
+    ir-entry-rsp-eq : ir-entry-rsp ≡ readReg (regs s) rsp
+    ir-mem-preserved : ∀ addr → addr ≥ ir-entry-rsp → readMem (memory s') addr ≡ readMem (memory s) addr
+
     ir-stack-inv  : StackInvariant s'
     -- Abstract stack capacity (output = input - consumed)
     ir-capacity   : StackCapacity s' (ir-output-capacity ir)
@@ -315,6 +322,13 @@ record IRStarResultV {A B : Type} (ir : IR A B) (prog : Program)
     ir-mem-code   : ∀ addr → InCode addr → readMem (memory s') addr ≡ readMem (memory s) addr
     ir-mem-heap   : ∀ addr → InHeap addr → readMem (memory s') addr ≡ readMem (memory s) addr
 
+    -- NEW: Write bounds for stack escape analysis
+    -- IR execution only writes to addresses < entry-rsp (its own stack frame)
+    -- Therefore addresses >= entry-rsp are preserved (caller's frame, heap, code)
+    ir-entry-rsp : ℕ
+    ir-entry-rsp-eq : ir-entry-rsp ≡ readReg (regs s) rsp
+    ir-mem-preserved : ∀ addr → addr ≥ ir-entry-rsp → readMem (memory s') addr ≡ readMem (memory s) addr
+
     -- Invariants (same as IRStarResult)
     ir-stack-inv  : StackInvariant s'
     ir-capacity   : StackCapacity s' (ir-output-capacity ir)
@@ -328,6 +342,8 @@ open IRStarResultV public using ()
            ; ir-mem to ir-mem-v; ir-mem-rbp to ir-mem-rbp-v; ir-mem-rbp+8 to ir-mem-rbp+8-v
            ; ir-mem-above to ir-mem-above-v
            ; ir-mem-code to ir-mem-code-v; ir-mem-heap to ir-mem-heap-v
+           ; ir-entry-rsp to ir-entry-rsp-v; ir-entry-rsp-eq to ir-entry-rsp-eq-v
+           ; ir-mem-preserved to ir-mem-preserved-v
            ; ir-stack-inv to ir-stack-inv-v; ir-capacity to ir-capacity-v
            ; ir-rbp-inv to ir-rbp-inv-v; ir-closure-wf to ir-closure-wf-v )
 
@@ -522,6 +538,9 @@ run-id-star-vv {A} prefix suffix x s h-false pc-eq input-valid stack-inv cap-in 
     ; ir-mem-above = λ _ _ → refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -564,6 +583,9 @@ run-terminal-star-vv {A} prefix suffix x s h-false pc-eq stack-inv cap-in rbp-in
     ; ir-mem-above = λ _ _ → refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) 0)
                        rsp-eq
@@ -617,6 +639,9 @@ run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv cap-i
     ; ir-mem-above = λ _ _ → refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -673,6 +698,9 @@ run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-
     ; ir-mem-above = λ _ _ → refl
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) (readReg (regs s) rdi))
                        rsp-eq
@@ -741,6 +769,9 @@ run-fst-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
     ; ir-mem-above = λ _ _ → refl  -- fst doesn't write memory
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) addr-a)
                        rsp-eq
@@ -802,6 +833,9 @@ run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
     ; ir-mem-above = λ _ _ → refl  -- snd doesn't write memory
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) addr-b)
                        rsp-eq
@@ -884,6 +918,9 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
     ; ir-mem-above = λ _ _ → refl  -- arr doesn't write memory
     ; ir-mem-code = λ _ _ → refl
     ; ir-mem-heap = λ _ _ → refl
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = λ _ _ → refl
     ; ir-stack-inv = stack-inv-preserved-unchanged s s' stack-inv
                        (readReg-writeReg-rax-r15 (regs s) input-addr)
                        rsp-eq

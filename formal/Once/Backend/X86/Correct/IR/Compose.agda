@@ -25,15 +25,17 @@ open import Once.Backend.X86.Correct.StarBase
          transport-cwf; subst-cwf-prog;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp; ir-rsp-v;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rsp-bound-v; ir-mem-above; ir-mem-code; ir-mem-heap; ir-rbp-inv; ir-closure-wf;
+         ir-entry-rsp; ir-entry-rsp-eq; ir-mem-preserved;
          ir-result-valid; ir-capacity)
+open import Data.Nat using (_≥_; _≤_)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; ClosureAtS-preserved-under-heap-eq; valid-subst-heap-preserved;
+  using (ValidAt; ClosureAtS-preserved-under-heap-eq;
          valid-subst-addr-mem; ClosureAtS-preserved-under-mem-eq;
          Region; Stack; Heap)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 
 open import Data.Nat using (_>_)
-open import Data.Nat.Properties using (+-assoc)
+open import Data.Nat.Properties using (+-assoc; ≤-trans; m∸n≤m; ≤-reflexive)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
@@ -355,6 +357,9 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
   ; ir-mem-above = mem-above-3
   ; ir-mem-code = mem-code-3
   ; ir-mem-heap = mem-heap-3
+  ; ir-entry-rsp = readReg (regs s) rsp
+  ; ir-entry-rsp-eq = refl
+  ; ir-mem-preserved = mem-preserved
   ; ir-stack-inv = stack-inv-3
   ; ir-capacity = cap-out
   ; ir-rbp-inv = IRStarResultV.ir-rbp-inv r3
@@ -535,6 +540,36 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
           mem-s-to-s1-heap : readMem (memory s1) addr ≡ readMem (memory s) addr
           mem-s-to-s1-heap = IRStarResultV.ir-mem-heap r1 addr addr-in-heap
       in trans mem-s2-to-s3-heap (trans mem-s1-to-s2-heap mem-s-to-s1-heap)
+
+    -- Memory preserved at addresses ≥ entry-rsp (chained from sub-results)
+    -- Chain: s → f → s1 → transfer → s2 → g → s3
+    mem-preserved : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s3) addr ≡ readMem (memory s) addr
+    mem-preserved addr addr≥rsp-s =
+      let -- Step 1: f preserves memory ≥ s.rsp (r1's entry-rsp = s.rsp)
+          mem-s-to-s1 : readMem (memory s1) addr ≡ readMem (memory s) addr
+          mem-s-to-s1 = IRStarResultV.ir-mem-preserved r1 addr
+                          (subst (addr ≥_) (sym (IRStarResultV.ir-entry-rsp-eq r1)) addr≥rsp-s)
+
+          -- Step 2: transfer preserves all memory
+          mem-s1-to-s2-addr : readMem (memory s2) addr ≡ readMem (memory s1) addr
+          mem-s1-to-s2-addr = subst (λ s2'' → readMem (memory s2'') addr ≡ readMem (memory s1) addr)
+                                    (sym s2-eq) (mem-s1-to-s2 addr)
+
+          -- Step 3: g preserves memory ≥ s2.rsp
+          -- We need: addr ≥ s2.rsp
+          -- We have: addr ≥ s.rsp, and s2.rsp = s.rsp ∸ slots(delta_f) ≤ s.rsp
+          -- So: addr ≥ s.rsp ≥ s2.rsp, hence addr ≥ s2.rsp
+          s2-rsp≤s-rsp : readReg (regs s2) rsp ≤ readReg (regs s) rsp
+          s2-rsp≤s-rsp = subst (_≤ readReg (regs s) rsp) (sym rsp-2) (m∸n≤m (readReg (regs s) rsp) (slots (ir-rsp-delta f)))
+
+          addr≥rsp-s2 : addr ≥ readReg (regs s2) rsp
+          addr≥rsp-s2 = ≤-trans s2-rsp≤s-rsp addr≥rsp-s
+
+          mem-s2-to-s3 : readMem (memory s3) addr ≡ readMem (memory s2) addr
+          mem-s2-to-s3 = IRStarResultV.ir-mem-preserved r3 addr
+                           (subst (addr ≥_) (sym (IRStarResultV.ir-entry-rsp-eq r3)) addr≥rsp-s2)
+
+      in trans mem-s2-to-s3 (trans mem-s1-to-s2-addr mem-s-to-s1)
 
 ------------------------------------------------------------------------
 -- RecDispatcher type and run-compose-star-v

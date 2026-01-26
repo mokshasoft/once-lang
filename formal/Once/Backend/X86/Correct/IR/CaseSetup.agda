@@ -29,7 +29,8 @@ open import Once.Backend.X86.Correct.InstrExec
   using (execPush-reg; execMov-reg-reg; execMov-reg-mem-base; execMov-reg-mem-disp;
          execCmp-zero; execCmp-one; execJne-not-taken; execJne-taken; execJmp; execPop; execLabel)
 open import Once.Backend.X86.Correct.StarBase using (IRStarResultV)
-open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (ValidAt; Region; InRegion; Stack; Heap; frame-separation; stack-offset)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; stack-inv-preserved-r15-unchanged)
 open import Once.Backend.X86.Layout
@@ -53,7 +54,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _>_; _≤_; _<_; _≥_; _∸_; suc; zero; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; ≤-<-trans; <⇒≤; <⇒≢; m∸n≤m; ≤-refl; m<m+n; m∸n+n≡m)
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-trans; <-trans; ≤-<-trans; <-≤-trans; <⇒≤; <⇒≢; m∸n≤m; ≤-refl; m<m+n; m∸n+n≡m)
 open import Data.List using (List; _++_; length; _∷_; [])
 open import Data.List.Properties using (++-assoc)
 open import Once.Backend.X86.Correct.CompileLength using (length-++; compile-length-correct)
@@ -97,6 +98,8 @@ record CaseInlSetupResult {A B C : Type} (a : ⟦ A ⟧)
     mem-rbp-setup  : readMem (memory s-setup) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     mem-rbp+8-setup : readMem (memory s-setup) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
     mem-above-setup : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    -- Memory preserved at addresses ≥ entry-rsp (push writes only at rsp - 8)
+    mem-preserved-setup : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- Stack frame: push wrote orig-rbp at (rsp - slot-size) = rbp
     mem-saved-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
     -- Invariants
@@ -124,15 +127,15 @@ case-inl-setup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
   readMem (memory s) (readReg (regs s) rdi) ≡ just 0 →
   -- Value pointer is at rdi+8
   readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just val-addr →
-  -- rdi and rdi+8 point to heap (for heap/stack disjointness)
-  InHeap (readReg (regs s) rdi) →
-  InHeap (readReg (regs s) rdi +ℕ slot-size) →
+  -- Region proofs for rdi and rdi+8 (supports both Stack and Heap values)
+  (rdi-r : Region) → InRegion rdi-r (readReg (regs s) rdi) →
+  (rdi+8-r : Region) → InRegion rdi+8-r (readReg (regs s) rdi +ℕ slot-size) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement [ f , g ]) →
   RbpInvariant s →
   ∃[ s-setup ] CaseInlSetupResult {A} {B} {C} a prefix suffix f g s s-setup val-addr
 case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
-    h-false pc-eq tag-is-0 val-ptr-eq rdi-in-heap rdi+8-in-heap stack-inv cap rbp-inv =
+    h-false pc-eq tag-is-0 val-ptr-eq rdi-r rdi-in-region rdi+8-r rdi+8-in-region stack-inv cap rbp-inv =
     s6 , result
   where
     open import Data.Nat.Properties using (+-assoc)
@@ -284,9 +287,13 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
     push-addr-in-stack : InStack push-addr
     push-addr-in-stack = slot-1-addr-in-stack s cap-1
 
-    -- Disjointness: push-addr ≢ orig-rdi
+    -- Disjointness: push-addr ≢ orig-rdi (region-based)
     push-addr≢orig-rdi : push-addr ≢ orig-rdi
-    push-addr≢orig-rdi eq = stack-heap-addr-disjoint push-addr orig-rdi push-addr-in-stack rdi-in-heap eq
+    push-addr≢orig-rdi = region-disjoint-rdi rdi-r rdi-in-region
+      where
+        region-disjoint-rdi : (r : Region) → InRegion r orig-rdi → push-addr ≢ orig-rdi
+        region-disjoint-rdi Heap ih = λ eq → stack-heap-addr-disjoint push-addr orig-rdi push-addr-in-stack ih eq
+        region-disjoint-rdi Stack is = frame-separation is push-addr-in-stack
 
     -- Memory preserved at orig-rdi after push (s1 = push result)
     tag-still-0-s1 : readMem (memory s1) orig-rdi ≡ just 0
@@ -312,9 +319,13 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
     rdi-s5 : readReg (regs s5) rdi ≡ orig-rdi
     rdi-s5 = rdi-s4  -- s5 has same regs as s4
 
-    -- Value pointer at rdi+8 is also preserved via stack/heap disjointness
+    -- Value pointer at rdi+8 is also preserved via stack/heap disjointness (region-based)
     push-addr≢orig-rdi+8 : push-addr ≢ (orig-rdi +ℕ slot-size)
-    push-addr≢orig-rdi+8 eq = stack-heap-addr-disjoint push-addr (orig-rdi +ℕ slot-size) push-addr-in-stack rdi+8-in-heap eq
+    push-addr≢orig-rdi+8 = region-disjoint-rdi+8 rdi+8-r rdi+8-in-region
+      where
+        region-disjoint-rdi+8 : (r : Region) → InRegion r (orig-rdi +ℕ slot-size) → push-addr ≢ (orig-rdi +ℕ slot-size)
+        region-disjoint-rdi+8 Heap ih = λ eq → stack-heap-addr-disjoint push-addr (orig-rdi +ℕ slot-size) push-addr-in-stack ih eq
+        region-disjoint-rdi+8 Stack is = frame-separation is push-addr-in-stack
 
     -- Memory s1 preserves value pointer
     val-ptr-still-valid-s1 : readMem (memory s1) (orig-rdi +ℕ slot-size) ≡ just val-addr
@@ -596,6 +607,17 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
         push-addr≢addr : push-addr ≢ addr
         push-addr≢addr = <⇒≢ push-addr<addr
 
+    -- Memory preserved at addresses ≥ entry-rsp (push writes at rsp - 8 < rsp)
+    mem-preserved-6 : ∀ addr → addr ≥ orig-rsp → readMem (memory s6) addr ≡ readMem orig-mem addr
+    mem-preserved-6 addr addr≥rsp = readMem-writeMem-diff orig-mem push-addr addr orig-rbp push-addr≢addr
+      where
+        -- push-addr = orig-rsp - 8 < orig-rsp ≤ addr
+        push-addr<addr : push-addr < addr
+        push-addr<addr = <-≤-trans push-addr<rsp addr≥rsp
+
+        push-addr≢addr : push-addr ≢ addr
+        push-addr≢addr = <⇒≢ push-addr<addr
+
     -- Memory at r15 preserved
     -- Uses stack-write-preserves-r15 which handles all R15Status cases
     mem-r15-6 : readMem (memory s6) (readReg (regs s) r15) ≡ readMem orig-mem (readReg (regs s) r15)
@@ -654,6 +676,7 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
       ; mem-rbp-setup = mem-rbp-6
       ; mem-rbp+8-setup = mem-rbp+8-6
       ; mem-above-setup = mem-above-6
+      ; mem-preserved-setup = mem-preserved-6
       ; mem-saved-rbp = mem-at-rbp6
       ; stack-inv-setup = stack-inv6
       ; rbp-inv-setup = rbp-inv6
@@ -699,6 +722,8 @@ record CaseInrSetupResult {A B C : Type} (b : ⟦ B ⟧)
     mem-rbp-setup  : readMem (memory s-setup) (readReg (regs s) rbp) ≡ readMem (memory s) (readReg (regs s) rbp)
     mem-rbp+8-setup : readMem (memory s-setup) (readReg (regs s) rbp +ℕ 8) ≡ readMem (memory s) (readReg (regs s) rbp +ℕ 8)
     mem-above-setup : ∀ addr → addr > readReg (regs s) rbp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
+    -- Memory preserved at addresses ≥ entry-rsp (push writes only at rsp - 8)
+    mem-preserved-setup : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s-setup) addr ≡ readMem (memory s) addr
     -- Stack frame: push wrote orig-rbp at (rsp - slot-size) = rbp
     mem-saved-rbp : readMem (memory s-setup) (readReg (regs s-setup) rbp) ≡ just (readReg (regs s) rbp)
     -- Invariants
@@ -726,15 +751,15 @@ case-inr-setup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
   readMem (memory s) (readReg (regs s) rdi) ≡ just 1 →
   -- Value pointer is at rdi+8
   readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just val-addr →
-  -- rdi and rdi+8 point to heap (for heap/stack disjointness)
-  InHeap (readReg (regs s) rdi) →
-  InHeap (readReg (regs s) rdi +ℕ slot-size) →
+  -- Region proofs for rdi and rdi+8 (supports both Stack and Heap values)
+  (rdi-r : Region) → InRegion rdi-r (readReg (regs s) rdi) →
+  (rdi+8-r : Region) → InRegion rdi+8-r (readReg (regs s) rdi +ℕ slot-size) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement [ f , g ]) →
   RbpInvariant s →
   ∃[ s-setup ] CaseInrSetupResult {A} {B} {C} b prefix suffix f g s s-setup val-addr
 case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
-    h-false pc-eq tag-is-1 val-ptr-eq rdi-in-heap rdi+8-in-heap stack-inv cap rbp-inv =
+    h-false pc-eq tag-is-1 val-ptr-eq rdi-r rdi-in-region rdi+8-r rdi+8-in-region stack-inv cap rbp-inv =
     s7 , result
   where
     open import Data.Nat.Properties using (+-assoc)
@@ -1035,7 +1060,11 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
     push-addr-in-stack = slot-1-addr-in-stack s cap-1
 
     push-addr≢orig-rdi : push-addr ≢ orig-rdi
-    push-addr≢orig-rdi eq = stack-heap-addr-disjoint push-addr orig-rdi push-addr-in-stack rdi-in-heap eq
+    push-addr≢orig-rdi = region-disjoint-rdi rdi-r rdi-in-region
+      where
+        region-disjoint-rdi : (r : Region) → InRegion r orig-rdi → push-addr ≢ orig-rdi
+        region-disjoint-rdi Heap ih = λ eq → stack-heap-addr-disjoint push-addr orig-rdi push-addr-in-stack ih eq
+        region-disjoint-rdi Stack is = frame-separation is push-addr-in-stack
 
     -- Tag still reads as 1 after push
     tag-still-1-s1 : readMem (memory s1) orig-rdi ≡ just 1
@@ -1044,9 +1073,13 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
     mem3 : readMem (memory s2) (readReg (regs s2) rdi) ≡ just 1
     mem3 = subst (λ addr → readMem (memory s2) addr ≡ just 1) (sym rdi-s2) tag-still-1-s1
 
-    -- Value pointer preserved for step 7
+    -- Value pointer preserved for step 7 (region-based)
     push-addr≢orig-rdi+8 : push-addr ≢ (orig-rdi +ℕ slot-size)
-    push-addr≢orig-rdi+8 eq = stack-heap-addr-disjoint push-addr (orig-rdi +ℕ slot-size) push-addr-in-stack rdi+8-in-heap eq
+    push-addr≢orig-rdi+8 = region-disjoint-rdi+8 rdi+8-r rdi+8-in-region
+      where
+        region-disjoint-rdi+8 : (r : Region) → InRegion r (orig-rdi +ℕ slot-size) → push-addr ≢ (orig-rdi +ℕ slot-size)
+        region-disjoint-rdi+8 Heap ih = λ eq → stack-heap-addr-disjoint push-addr (orig-rdi +ℕ slot-size) push-addr-in-stack ih eq
+        region-disjoint-rdi+8 Stack is = frame-separation is push-addr-in-stack
 
     val-ptr-still-valid-s1 : readMem (memory s1) (orig-rdi +ℕ slot-size) ≡ just val-addr
     val-ptr-still-valid-s1 = trans (readMem-writeMem-diff orig-mem push-addr (orig-rdi +ℕ slot-size) orig-rbp push-addr≢orig-rdi+8) val-ptr-eq
@@ -1273,6 +1306,17 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         push-addr≢addr : push-addr ≢ addr
         push-addr≢addr = <⇒≢ push-addr<addr
 
+    -- Memory preserved at addresses ≥ entry-rsp (push writes at rsp - 8 < rsp)
+    mem-preserved-6 : ∀ addr → addr ≥ orig-rsp → readMem (memory s6) addr ≡ readMem orig-mem addr
+    mem-preserved-6 addr addr≥rsp = readMem-writeMem-diff orig-mem push-addr addr orig-rbp push-addr≢addr
+      where
+        -- push-addr = orig-rsp - 8 < orig-rsp ≤ addr
+        push-addr<addr : push-addr < addr
+        push-addr<addr = <-≤-trans push-addr<rsp addr≥rsp
+
+        push-addr≢addr : push-addr ≢ addr
+        push-addr≢addr = <⇒≢ push-addr<addr
+
     -- Memory at r15 preserved
     mem-r15-6 : readMem (memory s6) (readReg (regs s) r15) ≡ readMem orig-mem (readReg (regs s) r15)
     mem-r15-6 = readMem-writeMem-diff orig-mem push-addr orig-r15 orig-rbp push-addr≢r15
@@ -1325,6 +1369,7 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
       ; mem-rbp-setup = mem-rbp-6
       ; mem-rbp+8-setup = mem-rbp+8-6
       ; mem-above-setup = mem-above-6
+      ; mem-preserved-setup = mem-preserved-6
       ; mem-saved-rbp = mem-at-rbp7
       ; stack-inv-setup = stack-inv7
       ; rbp-inv-setup = rbp-inv7

@@ -99,6 +99,7 @@ open import Once.Backend.X86.Correct.IR.Curry
          exec-star; exec-halted; exec-pc; exec-r14; exec-r15; exec-rbp; exec-rsp; exec-mem;
          exec-mem-rbp; exec-mem-rbp+8; exec-stack-inv; exec-capacity; exec-rbp-inv;
          exec-mem-above; exec-mem-code; exec-mem-heap;
+         exec-entry-rsp; exec-entry-rsp-eq; exec-mem-preserved;
          -- Thunk implementation
          curry-thunk-correct-v)
 
@@ -150,7 +151,7 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-disjoint-from-stack;
          valid-pair-decompose; PairAtS;
          valid-closure-env; ClosureAtS; closure-at-s;
-         valid-in-heap; Stack)
+         Stack)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
@@ -248,6 +249,9 @@ mutual
       ; ir-mem-above = exec-mem-above exec-res
       ; ir-mem-code = exec-mem-code exec-res
       ; ir-mem-heap = exec-mem-heap exec-res
+      ; ir-entry-rsp = exec-entry-rsp exec-res
+      ; ir-entry-rsp-eq = exec-entry-rsp-eq exec-res
+      ; ir-mem-preserved = exec-mem-preserved exec-res
       ; ir-stack-inv = exec-stack-inv exec-res
       ; ir-capacity = exec-capacity exec-res
       ; ir-rbp-inv = exec-rbp-inv exec-res

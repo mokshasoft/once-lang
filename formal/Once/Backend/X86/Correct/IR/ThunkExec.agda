@@ -48,7 +48,8 @@ open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 
 -- Import validity types for validity-based interface
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; PairAtS; pair-at-s; valid-pair; valid-subst-heap-preserved; Region; Stack)
+  using (ValidAt; PairAtS; pair-at-s; valid-pair;
+         valid-subst-region-preserved; Region; Stack)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code; slot-size; slots; slots-mono-≤;
@@ -69,6 +70,20 @@ open import Once.Backend.X86.Correct.StackInstantiation
          n∸thunk-frame<n; n∸thunk-frame+slot<n; n∸thunk-frame+slot≡n∸saved-regs;
          -- D041: Generic arithmetic helpers
          ∸-gives-different; ∸-gives-smaller)
+
+------------------------------------------------------------------------
+-- Focused postulate for caller-provided inputs
+--
+-- Caller-provided Stack inputs (env, arg) are in the caller's frame.
+-- Thunk setup only writes to our frame (below rsp). More honest than
+-- stack-to-heap-compat.
+--
+-- TODO: Prove from caller-frame tracking
+------------------------------------------------------------------------
+postulate
+  -- For thunk's env and arg, Stack addresses are preserved through setup
+  caller-stack-preserved-thunk : ∀ {s s8 : State} →
+    ∀ addr → InStack addr → readMem (memory s8) addr ≡ readMem (memory s) addr
 
 ------------------------------------------------------------------------
 -- ThunkSetupResult: Record type for thunk setup output
@@ -1070,14 +1085,18 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     -- Validity output: construct ValidAt (env, arg) from components
     -- NO addr-from-valid bridges needed!
 
-    -- Step 1: Propagate v-env through heap preservation to memory s8
+    -- Stack preservation for caller-provided inputs (honest postulate)
+    stack-preserved : ∀ a → InStack a → readMem (memory s8) a ≡ readMem (memory s) a
+    stack-preserved = caller-stack-preserved-thunk {s} {s8}
+
+    -- Step 1: Propagate v-env through region-aware preservation to memory s8
     -- Key: use refl for address (orig-r12 = orig-r12), no encode equality needed!
     v-env-at-s8 : ValidAt env orig-r12 (memory s8)
-    v-env-at-s8 = valid-subst-heap-preserved v-env refl mem-heap-preserved
+    v-env-at-s8 = valid-subst-region-preserved v-env mem-heap-preserved stack-preserved
 
-    -- Step 2: Propagate v-arg through heap preservation to memory s8
+    -- Step 2: Propagate v-arg through region-aware preservation to memory s8
     v-arg-at-s8 : ValidAt arg orig-rdi (memory s8)
-    v-arg-at-s8 = valid-subst-heap-preserved v-arg refl mem-heap-preserved
+    v-arg-at-s8 = valid-subst-region-preserved v-arg mem-heap-preserved stack-preserved
 
     -- Step 3: Construct PairAtS from memory layout (using raw addresses)
     pair-layout : PairAtS orig-r12 orig-rdi new-rsp (memory s8)

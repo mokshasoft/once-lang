@@ -40,6 +40,8 @@ open import Once.Backend.X86.Layout
          stackAddr-write-preserves-heap;
          slot-addr; slot-addr-≥-base)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (Region; InRegion; Stack; Heap; frame-separation; stack-offset)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_)
 
@@ -71,10 +73,9 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
   pc s ≡ offset →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (apply {A} {B})) →
-  -- Region proof: rdi is in heap (for heap-stack disjointness)
-  InHeap (readReg (regs s) rdi) →
-  -- Region proof: closure-addr is in heap (for heap-stack disjointness)
-  InHeap closure-addr →
+  -- Region proofs for disjointness (supports both Stack and Heap values)
+  (rdi-r : Region) → InRegion rdi-r (readReg (regs s) rdi) →
+  (closure-r : Region) → InRegion closure-r closure-addr →
   -- Memory layout (derivable from validity, explicit for convenience)
   readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr →
   readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just arg-addr →
@@ -102,7 +103,7 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × (∀ addr → addr ≥ readReg (regs s) rsp →
              readMem (memory s') addr ≡ readMem (memory s) addr))
 apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
-                 h-false pc-eq stack-inv cap rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp code-ptr<len =
+                 h-false pc-eq stack-inv cap rdi-r rdi-in-region closure-r closure-in-region mem-cl mem-arg mem-env mem-cp code-ptr<len =
   s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp-sufficient-6 , mem-r15-saved , rsp6 , mem-above-setup
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -208,10 +209,15 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     rdi-s1 : readReg (regs s1) rdi ≡ readReg (regs s) rdi
     rdi-s1 = readReg-writeReg-rsp-rdi (regs s) new-rsp
 
-    -- Memory at rdi is preserved after push (stack vs heap disjointness)
+    -- Memory at rdi is preserved after push (region-based disjointness)
+    -- For Heap: stack-heap disjointness (stack and heap are disjoint regions)
+    -- For Stack: frame-separation (caller's stack ≢ current frame)
     stack-heap-disjoint-rdi : new-rsp ≢ readReg (regs s) rdi
-    stack-heap-disjoint-rdi eq =
-      stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi) new-rsp-in-stack rdi-in-heap eq
+    stack-heap-disjoint-rdi = region-disjoint-rdi rdi-r rdi-in-region
+      where
+        region-disjoint-rdi : (r : Region) → InRegion r (readReg (regs s) rdi) → new-rsp ≢ readReg (regs s) rdi
+        region-disjoint-rdi Heap ih = λ eq → stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi) new-rsp-in-stack ih eq
+        region-disjoint-rdi Stack is = frame-separation is new-rsp-in-stack
 
     mem-cl-s1 : readMem (memory s1) (readReg (regs s1) rdi) ≡ just closure-addr
     mem-cl-s1 = subst (λ addr → readMem (memory s1) addr ≡ just closure-addr)
@@ -238,21 +244,30 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     rdi-s2 : readReg (regs s2) rdi ≡ readReg (regs s) rdi
     rdi-s2 = trans (readReg-writeReg-r15-rdi (regs s1) closure-addr) rdi-s1
 
-    -- Memory at rdi+8 is preserved after push (stack vs heap disjointness)
+    -- Memory at rdi+8 is preserved after push (region-based disjointness)
     stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ slot-size
-    stack-heap-disjoint-rdi+8 eq =
-      let rdi+8-in-heap = heap-offset (readReg (regs s) rdi) rdi-in-heap
-      in stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi +ℕ slot-size) new-rsp-in-stack rdi+8-in-heap eq
+    stack-heap-disjoint-rdi+8 = region-disjoint-rdi+8 rdi-r rdi-in-region
+      where
+        region-disjoint-rdi+8 : (r : Region) → InRegion r (readReg (regs s) rdi) → new-rsp ≢ readReg (regs s) rdi +ℕ slot-size
+        region-disjoint-rdi+8 Heap ih = λ eq → let rdi+8-in-heap = heap-offset (readReg (regs s) rdi) ih
+                                               in stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi +ℕ slot-size) new-rsp-in-stack rdi+8-in-heap eq
+        region-disjoint-rdi+8 Stack is = frame-separation (stack-offset is) new-rsp-in-stack
 
-    -- Memory at closure-addr is preserved (stack vs heap disjointness)
+    -- Memory at closure-addr is preserved (region-based disjointness)
     stack-heap-disjoint-closure : new-rsp ≢ closure-addr
-    stack-heap-disjoint-closure eq =
-      stack-heap-addr-disjoint new-rsp closure-addr new-rsp-in-stack closure-in-heap eq
+    stack-heap-disjoint-closure = region-disjoint-closure closure-r closure-in-region
+      where
+        region-disjoint-closure : (r : Region) → InRegion r closure-addr → new-rsp ≢ closure-addr
+        region-disjoint-closure Heap ih = λ eq → stack-heap-addr-disjoint new-rsp closure-addr new-rsp-in-stack ih eq
+        region-disjoint-closure Stack is = frame-separation is new-rsp-in-stack
 
     stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ slot-size
-    stack-heap-disjoint-closure+8 eq =
-      let closure+8-in-heap = heap-offset closure-addr closure-in-heap
-      in stack-heap-addr-disjoint new-rsp (closure-addr +ℕ slot-size) new-rsp-in-stack closure+8-in-heap eq
+    stack-heap-disjoint-closure+8 = region-disjoint-closure+8 closure-r closure-in-region
+      where
+        region-disjoint-closure+8 : (r : Region) → InRegion r closure-addr → new-rsp ≢ closure-addr +ℕ slot-size
+        region-disjoint-closure+8 Heap ih = λ eq → let closure+8-in-heap = heap-offset closure-addr ih
+                                                   in stack-heap-addr-disjoint new-rsp (closure-addr +ℕ slot-size) new-rsp-in-stack closure+8-in-heap eq
+        region-disjoint-closure+8 Stack is = frame-separation (stack-offset is) new-rsp-in-stack
 
     -- memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15
     mem-s2-eq-s1 : memory s2 ≡ memory s1

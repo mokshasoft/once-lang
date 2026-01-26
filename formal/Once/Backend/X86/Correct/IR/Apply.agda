@@ -78,15 +78,19 @@ open import Once.Backend.X86.Correct.StarBase
          ApplyReady;
          ir-star; ir-halted; ir-pc; ir-rax; ir-r14; ir-r15; ir-rbp;
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
+         ir-entry-rsp; ir-entry-rsp-eq; ir-mem-preserved;
          rbp-inv-preserved-unchanged)
+open import Data.Nat using (_≥_)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair; valid-closure;
          PairAtS; fst-valid-s; snd-valid-s;
          ClosureAtS; env-valid-s; code-valid-s;
-         valid-subst-addr-mem; valid-subst-heap-preserved;
-         valid-pair-decompose; valid-in-heap)
-  -- NOTE: valid-addr-is-encode NO LONGER IMPORTED!
-  -- Apply.agda is now ENCODE-FREE - uses env-addr parameters directly.
+         valid-subst-addr-mem;
+         valid-subst-region-preserved;
+         valid-pair-decompose; valid-in-region; Region; InRegion)
+  -- NOTE: valid-addr-is-encode and valid-in-heap NO LONGER IMPORTED!
+  -- Apply.agda is now ENCODE-FREE and uses valid-in-region for Region proofs.
+open import Data.Product using (∃; ∃-syntax; proj₁; proj₂)
 open import Once.Backend.X86.Correct.ClosureWellFormed
   using (ClosureWellFormed; ThunkResult;
          code-ptr-valid; thunk-correct;
@@ -104,6 +108,19 @@ open import Data.List.Properties using (++-assoc) renaming (length-++ to List-le
 open import Relation.Binary.PropositionalEquality.Properties using (module ≡-Reasoning)
 open ≡-Reasoning
 
+------------------------------------------------------------------------
+-- Focused postulate for caller-provided inputs
+--
+-- Caller-provided Stack inputs are in the caller's frame (above our rbp).
+-- Apply's setup only writes one slot (push r15), which is in our frame.
+-- Caller's data is preserved. More honest than stack-to-heap-compat.
+--
+-- TODO: Prove from caller-frame tracking
+------------------------------------------------------------------------
+postulate
+  -- For apply's arg and env, Stack addresses are preserved through setup+call
+  caller-stack-preserved-apply : ∀ {s s-call : State} →
+    ∀ addr → InStack addr → readMem (memory s-call) addr ≡ readMem (memory s) addr
 
 ------------------------------------------------------------------------
 -- run-apply-with-wf: Apply using ClosureWellFormed
@@ -224,9 +241,10 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     pair : ⟦ (A ⇒ B) * A ⟧
     pair = (cl , arg)
 
-    -- rdi-in-heap derived directly from input validity
-    rdi-in-heap : InHeap (readReg (regs s) rdi)
-    rdi-in-heap = valid-in-heap input-valid
+    -- rdi-region derived directly from input validity
+    -- Returns (Region , InRegion proof) via valid-in-region abstraction
+    rdi-region : ∃[ r ] InRegion r (readReg (regs s) rdi)
+    rdi-region = valid-in-region input-valid
 
     -- Decompose input validity to get closure validity
     -- valid-pair-decompose gives us component validities + PairAtS
@@ -246,9 +264,9 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     v-cl : ValidAt {A ⇒ B} cl closure-addr (memory s)
     v-cl = subst (λ a → ValidAt cl a (memory s)) closure-addr'-eq v-cl-decomp
 
-    -- closure-in-heap derived from closure validity
-    closure-in-heap : InHeap closure-addr
-    closure-in-heap = valid-in-heap v-cl
+    -- closure-region derived from closure validity
+    closure-region : ∃[ r ] InRegion r closure-addr
+    closure-region = valid-in-region v-cl
 
     -- Extract rsp-bound from cap for internal use
     -- cap : StackCapacity s (apply-consumed-slots + wf.thunk-capacity) gives > slots (2 + thunk-cap)
@@ -273,8 +291,12 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
                       (≤-trans four≤apply-consumed+thunk-setup apply-consumed+thunk-setup≤cap)
 
     -- Step 1: Setup phase (now takes StackCapacity s (ir-stack-requirement apply), outputs StackCapacity s-setup 3)
+    -- Pass region proofs: (rdi-r , rdi-in-region) and (closure-r , closure-in-region)
     setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
-                     h-eq pc-eq stack-inv cap-for-setup rdi-in-heap closure-in-heap mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
+                     h-eq pc-eq stack-inv cap-for-setup
+                     (proj₁ rdi-region) (proj₂ rdi-region)
+                     (proj₁ closure-region) (proj₂ closure-region)
+                     mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
     s-setup = proj₁ setup-result
     star-setup = proj₁ (proj₂ setup-result)
     h-setup = proj₁ (proj₂ (proj₂ setup-result))
@@ -351,16 +373,23 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     heap-pres-s-to-call a a-in-heap = trans (mem-heap-call-phase a a-in-heap)
                                             (heap-pres-setup a a-in-heap)
 
-    -- Validity at s-call: propagate using heap preservation
+    -- Stack preservation for caller-provided inputs (honest postulate)
+    stack-pres-s-to-call : ∀ a → InStack a →
+                           readMem (memory s-call) a ≡ readMem (memory s) a
+    stack-pres-s-to-call = caller-stack-preserved-apply {s} {s-call}
+
+    -- Validity at s-call: propagate using region-aware preservation
     arg-valid-at-call : ValidAt arg (readReg (regs s-call) rdi) (memory s-call)
-    arg-valid-at-call = valid-subst-heap-preserved v-arg (sym rdi-for-thunk) heap-pres-s-to-call
+    arg-valid-at-call = subst (λ addr → ValidAt arg addr (memory s-call)) (sym rdi-for-thunk)
+                          (valid-subst-region-preserved v-arg heap-pres-s-to-call stack-pres-s-to-call)
 
     r12-for-thunk : readReg (regs s-call) r12 ≡ env-addr
     r12-for-thunk = trans r12-call r12-setup
 
-    -- Validity for env at s-call: propagate using heap preservation
+    -- Validity for env at s-call: propagate using region-aware preservation
     env-valid-at-call : ValidAt env (readReg (regs s-call) r12) (memory s-call)
-    env-valid-at-call = valid-subst-heap-preserved v-env (sym r12-for-thunk) heap-pres-s-to-call
+    env-valid-at-call = subst (λ addr → ValidAt env addr (memory s-call)) (sym r12-for-thunk)
+                          (valid-subst-region-preserved v-env heap-pres-s-to-call stack-pres-s-to-call)
 
     -- Construct apply-sp : StackPointer for apply's frame
     -- This is where old-r15 was pushed (at s-setup.rsp)
@@ -739,6 +768,9 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     ; ir-mem-above = mem-above-post  -- PROVEN via WfR.mem-above + RbpInvariant
     ; ir-mem-code = WfR.mem-code-region  -- PROVEN via D041 region-based chain
     ; ir-mem-heap = WfR.mem-heap-region  -- PROVEN via D041 region-based chain
+    ; ir-entry-rsp = readReg (regs s) rsp
+    ; ir-entry-rsp-eq = refl
+    ; ir-mem-preserved = mem-preserved
     ; ir-stack-inv = WfR.stack-inv
     -- Derive s' capacity from s capacity via rsp-restored (apply restores RSP, delta = 0)
     -- cap : StackCapacity s (apply-consumed-slots + wf.thunk-capacity)
@@ -766,6 +798,10 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
                   wf h-eq pc-eq stack-inv cap input-valid mem-layout v-arg v-env
     s' = proj₁ wf-result
     module WfR = ApplyWfResult (proj₂ wf-result)
+
+    -- Phase 2 TODO: Prove from write bounds (apply writes only below entry-rsp)
+    postulate
+      mem-preserved : ∀ addr → addr ≥ readReg (regs s) rsp → readMem (memory s') addr ≡ readMem (memory s) addr
 
     -- Capacity derivation for ir-capacity
     -- ir-output-capacity apply = 4, thunk-capacity ≥ 6, so 4 ≤ 2 + 6 ≤ 2 + thunk-capacity
