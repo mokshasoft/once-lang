@@ -1681,8 +1681,42 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
     h₄ = IRCorrectness.exec-halted g-corr
     stack-inv-s₄ = IRCorrectness.exec-stack-inv g-corr
 
-    -- For remaining fields, use a focused postulate
-    -- The SavedRegsOnStack-derived fields (stack-rbp, stack-r15, stack-r14) are now proven!
+    -- Derive rsp-bound and setup-frame-fits from capacity
+    open import Once.Backend.X86.Correct.Arithmetic using (saved-regs-size; frame-size)
+    open import Once.Backend.X86.Correct.StackInstantiation using (pair-setup-consumed-slots; pair-inner-requirement)
+    open import Data.Nat.Properties using (<⇒≤; <-transʳ; m≤m+n)
+
+    -- rsp > slots (ir-stack-requirement ⟨f,g⟩) from capacity
+    rsp-sufficient-orig : readReg (regs s-orig) rsp > slots (ir-stack-requirement ⟨ f , g ⟩)
+    rsp-sufficient-orig = StackCapacity.rsp-sufficient orig-cap
+
+    -- ir-stack-requirement ⟨f,g⟩ = pair-setup-consumed-slots + inner-requirement
+    -- So rsp > slots pair-setup-consumed-slots (since total ≥ setup slots)
+    final-precond-setup-frame-fits : slots pair-setup-consumed-slots ≤ readReg (regs s-orig) rsp
+    final-precond-setup-frame-fits = <⇒≤ (<-transʳ setup≤total rsp-sufficient-orig)
+      where
+        -- pair-setup-consumed-slots ≤ ir-stack-requirement ⟨f,g⟩
+        setup≤total : slots pair-setup-consumed-slots ≤ slots (ir-stack-requirement ⟨ f , g ⟩)
+        setup≤total = subst (slots pair-setup-consumed-slots ≤_) (sym (cong slots ir-req-pair-eq))
+                            (m≤m+n (slots pair-setup-consumed-slots) (slots (pair-inner-requirement f g)))
+          where
+            ir-req-pair-eq : ir-stack-requirement ⟨ f , g ⟩ ≡ pair-setup-consumed-slots + pair-inner-requirement f g
+            ir-req-pair-eq = refl
+
+    -- saved-regs-size ≤ frame-size = slots pair-setup-consumed-slots
+    -- So if setup-frame-fits then rsp-bound follows
+    open import Once.Backend.X86.Correct.Arithmetic using (saved-regs-fits-frame)
+
+    final-precond-rsp-bound : saved-regs-size ≤ readReg (regs s-orig) rsp
+    final-precond-rsp-bound = ≤-trans saved-regs-fits-frame
+                                       (subst (_≤ readReg (regs s-orig) rsp)
+                                              slots-eq final-precond-setup-frame-fits)
+      where
+        -- slots pair-setup-consumed-slots ≡ frame-size (both = 40)
+        slots-eq : slots pair-setup-consumed-slots ≡ frame-size
+        slots-eq = refl
+
+    -- Remaining postulates
     postulate
       final-precond-pc3 : pc s₄ ≡ length prefix-final
       final-precond-rbp-chain : readReg (regs s₄) rbp ≡ readReg (regs s-orig) rsp ∸ saved-regs-size
@@ -1695,12 +1729,7 @@ x86-pair-cleanup {A} {B} {C} f g prefix suffix x s-orig s₁ s₂ s₃ s₄ fx g
       final-precond-disjoint-orig : readReg (regs s-orig) r15 ≢ readReg (regs s₄) r15 +ℕ slot-size
       final-precond-disjoint-orig-rbp : readReg (regs s-orig) rbp ≢ readReg (regs s₄) r15 +ℕ slot-size
       final-precond-disjoint-orig-rbp+8 : readReg (regs s-orig) rbp +ℕ slot-size ≢ readReg (regs s₄) r15 +ℕ slot-size
-      final-precond-rsp-bound : saved-regs-size ≤ readReg (regs s-orig) rsp
       final-precond-r15-chain : readReg (regs s₄) r15 ≡ readReg (regs s-orig) rsp ∸ slots pair-setup-consumed-slots
-      final-precond-setup-frame-fits : slots pair-setup-consumed-slots ≤ readReg (regs s-orig) rsp
-     where
-       open import Once.Backend.X86.Correct.Arithmetic using (saved-regs-size)
-       open import Once.Backend.X86.Correct.StackInstantiation using (pair-setup-consumed-slots)
 
     -- Construct final-precond using derived fields
     final-precond : PairFinalPrecond f g prefix suffix s-orig s₄

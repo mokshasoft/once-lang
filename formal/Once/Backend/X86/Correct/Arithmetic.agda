@@ -201,6 +201,10 @@ word-plus-one-fits-pair = from-yes-≤ ((word-size + 1) ≤? pair-alloc)
 pair-fits-regs-strict : pair-alloc < saved-regs-size
 pair-fits-regs-strict = from-yes-< (pair-alloc <? saved-regs-size)
 
+-- | Saved-regs fits within frame (24 ≤ 40)
+saved-regs-fits-frame : saved-regs-size ≤ frame-size
+saved-regs-fits-frame = from-yes-≤ (saved-regs-size ≤? frame-size)
+
 ------------------------------------------------------------------------
 -- Slot arithmetic for deeper stack offsets
 ------------------------------------------------------------------------
