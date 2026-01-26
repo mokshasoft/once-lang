@@ -80,19 +80,47 @@ derive-mem-above rsp≤rbp mem-preserved addr addr>rbp =
   mem-preserved addr (≤-trans rsp≤rbp (<⇒≤ addr>rbp))
 
 ------------------------------------------------------------------------
+-- Integration with Ownership model
+------------------------------------------------------------------------
+
+-- The Ownership module provides:
+--   OwnedBy Caller va rsp : predicate that all Stack addresses in va are ≥ rsp
+--   owned-caller-preserved : OwnedBy Caller → mem-preserved → ValidAt in new memory
+--
+-- Combined with derive-heap-preserved and ir-mem-preserved:
+--
+-- USAGE PATTERN (to replace caller-stack-preserved-* postulates):
+--
+--   1. Establish that input is Caller-owned:
+--      input-owned : OwnedBy Caller input-valid entry-rsp
+--
+--   2. Have ir-mem-preserved for the phase:
+--      phase-mem-preserved : ∀ a → a ≥ entry-rsp → readMem m2 a ≡ readMem m1 a
+--
+--   3. Derive preservation:
+--      preserved-valid : ValidAt x addr m2
+--      preserved-valid = owned-caller-preserved input-owned rsp-in-stack phase-mem-preserved
+--
+-- This eliminates caller-stack-preserved-* by:
+--   - Making the bound explicit (entry-rsp)
+--   - Tracking ownership semantically (OwnedBy Caller)
+--   - Requiring proof that phase preserves memory ≥ entry-rsp
+--
+-- The key insight: IR phases write ONLY below entry-rsp, so addresses ≥ entry-rsp
+-- are preserved. Once we prove this for each phase, postulates are eliminated.
+
+------------------------------------------------------------------------
 -- Caller-provided input invariant
 ------------------------------------------------------------------------
 
--- INVARIANT: Caller-provided ValidAt values have all Stack addresses
--- in the caller's frame (≥ entry-rsp).
+-- INVARIANT: Caller-provided ValidAt values are OwnedBy Caller entry-rsp.
 --
 -- This invariant holds because:
 -- 1. Heap addresses: always ≥ entry-rsp (via heap-addr-≥-stack-addr)
 -- 2. Caller's Stack addresses: in caller's frame which is ≥ entry-rsp
 --
--- The existing caller-stack-preserved-* postulates express this invariant.
--- They state: for caller-provided inputs, InStack addresses are preserved.
--- This is TRUE because such addresses are ≥ entry-rsp.
+-- The existing caller-stack-preserved-* postulates will be eliminated
+-- once we track OwnedBy Caller at function entry and prove ir-mem-preserved
+-- for each IR execution phase.
 --
--- Future work: Track this invariant type-theoretically in ValidAt.
--- For now, the postulates correctly capture the semantic invariant.
+-- See: Ownership.agda for the OwnedBy predicate and owned-caller-preserved lemma
