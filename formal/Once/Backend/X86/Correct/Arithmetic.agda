@@ -7,7 +7,7 @@
 
 module Once.Backend.X86.Correct.Arithmetic where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _≤_; _>_; z≤n; s≤s; _<_; _≤?_; _<?_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _≤_; _≥_; _>_; z≤n; s≤s; _<_; _≤?_; _<?_)
 open import Data.Nat.Properties using (+-comm; +-assoc; +-identityʳ; +-identityˡ; +-suc;
                                        ≤-refl; ≤-trans; m≤m+n; m∸n≤m;
                                        m+n∸m≡n; m+n∸n≡m; ∸-+-assoc; +-monoʳ-<)
@@ -239,3 +239,43 @@ slot-addrs-distinct k = +-monoʳ-< k (from-yes-< (word-size <? pair-alloc))
     open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m)
     eq : (m ∸ pair-alloc) + pair-alloc ≡ m
     eq = m∸n+n≡m (<⇒≤ m>alloc)
+
+------------------------------------------------------------------------
+-- Caller-Current Frame Disjointness
+--
+-- These lemmas prove that addresses from caller's frame (≥ entry-rsp)
+-- are disjoint from addresses in current frame (< entry-rsp).
+--
+-- This is the CORRECT replacement for the false `frame-separation`
+-- postulate which claimed ALL stack addresses differ.
+--
+-- Key insight: Keep this arithmetic in the arch-specific layer.
+-- The portable Ownership model establishes which addresses are ≥ rsp,
+-- then these lemmas prove disjointness.
+------------------------------------------------------------------------
+
+-- | Caller address ≢ current frame address
+-- If addr ≥ rsp and w < rsp, then addr ≢ w
+--
+-- This is the core lemma replacing frame-separation.
+-- The portable Ownership model establishes:
+--   - Caller's ValidAt addresses are ≥ entry-rsp (via OwnedBy Caller)
+--   - Current frame writes are < entry-rsp (via ir-mem-preserved bounds)
+-- Then this arithmetic lemma proves they're disjoint.
+caller-current-disjoint : ∀ {addr w rsp : ℕ} →
+  addr ≥ rsp →  -- Caller's address (from Ownership)
+  w < rsp →     -- Current frame write
+  addr ≢ w
+caller-current-disjoint {addr} {w} {rsp} addr≥rsp w<rsp addr≡w =
+  <⇒≢ (<-≤-trans w<rsp addr≥rsp) (sym addr≡w)
+  where
+    open import Data.Nat.Properties using (<-≤-trans)
+
+-- | Variant: also for addr + offset
+-- When addr ≥ rsp and w < rsp, then (addr + k) ≢ w for any k
+caller-current-disjoint-plus : ∀ {addr w rsp k : ℕ} →
+  addr ≥ rsp →
+  w < rsp →
+  (addr + k) ≢ w
+caller-current-disjoint-plus {addr} {w} {rsp} {k} addr≥rsp w<rsp addr+k≡w =
+  caller-current-disjoint (≤-trans addr≥rsp (m≤m+n addr k)) w<rsp addr+k≡w
