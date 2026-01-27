@@ -66,7 +66,7 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-star; thunk-halted; thunk-result-valid;
          thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-capacity)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s; valid-at-preserved-under-write;
+  using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s;
          valid-subst-addr-mem)
 
 -- Import IRSize for size proofs

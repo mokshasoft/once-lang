@@ -60,7 +60,7 @@ open import Once.Backend.Common.IRSize
 -- Import RecDispatcher from central location
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-pair; PairAtS; pair-at-s; valid-at-preserved-under-write)
+  using (ValidAt; valid-pair; PairAtS; pair-at-s)
 open import Once.Backend.X86.Layout using (InHeap; InCode)
 
 open import Data.Nat using (_>_; _≥_; _≤?_; s≤s; z≤n)
