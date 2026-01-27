@@ -38,8 +38,11 @@ open import Once.Backend.X86.Correct.StarBase
          ir-mem; ir-mem-rbp; ir-mem-rbp+8; ir-stack-inv; ir-rsp-bound; ir-rbp-inv; ir-mem-above; ir-mem-code; ir-mem-heap; ir-closure-wf;
          IRStarResultV; ir-result-valid)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-inr; InrAtS; inr-at-s; valid-at-preserved-under-writes;
-         valid-disjoint-from-stack; Region; Stack)
+  using (ValidAt; valid-inr; InrAtS; inr-at-s;
+         valid-disjoint-from-stack; Region; Stack;
+         stack-write-2-preserves-above)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
+open import Once.Backend.X86.Correct.Arithmetic using (∸+<-lemma; ∸-preserves-<)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
 open import Data.Nat.Properties using (≡ᵇ⇒≡; ≡⇒≡ᵇ; +-comm; +-assoc; +-identityʳ; m+[n∸m]≡n; ∸-+-assoc; m<m+n)
@@ -293,20 +296,12 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     inr-at : InrAtS orig-rdi new-rsp (memory s4)
     inr-at = inr-at-s mem-tag-s4 mem-val-s4
 
-    -- Input validity preserved under memory writes
-    -- Derive InStack proofs from capacity
+    -- Derive InStack proofs from capacity (needed for result validity)
     write-addrs-in-stack : InStack new-rsp × InStack (new-rsp +ℕ slot-size)
     write-addrs-in-stack = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
-    input-valid-preserved : ValidAt x orig-rdi (memory s4)
-    input-valid-preserved = valid-at-preserved-under-writes input-valid (proj₁ write-addrs-in-stack) (proj₂ write-addrs-in-stack)
-
-    -- Final result validity: ValidAt (inj₂ x) rax (memory s4)
-    -- Stack because current codegen uses `sub rsp` for inr allocation
-    -- TODO (escape-analysis): Get region from IR's AllocMode when escape analysis is implemented
-    result-valid : ValidAt {A + B} (inj₂ x) (readReg (regs s4) rax) (memory s4)
-    result-valid = subst (λ addr → ValidAt {A + B} (inj₂ x) addr (memory s4)) (sym rax-s4)
-                         (valid-inr {A} {B} input-valid-preserved inr-at Stack (proj₁ write-addrs-in-stack))
+    -- Input validity preserved using Ownership model - see input-valid-preserved below
+    -- result-valid is defined after input-valid-preserved (after mem-write-preserved)
 
     -- ============================================================
     -- Register and memory preservation (same as run-inr-star)
@@ -456,6 +451,17 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
           mem-s2-pres = readMem-writeMem-diff (memory s1) new-rsp addr 1 diff-1
           mem-s3-pres = trans (readMem-writeMem-diff (memory s2) (new-rsp +ℕ slot-size) addr orig-rdi diff-2) mem-s2-pres
       in mem-s3-pres
+
+    -- Input validity preserved using Ownership model (replaces valid-at-preserved-under-writes)
+    input-valid-preserved : ValidAt x orig-rdi (memory s4)
+    input-valid-preserved = caller-input-preserved input-valid rsp-region mem-write-preserved
+
+    -- Final result validity: ValidAt (inj₂ x) rax (memory s4)
+    -- Stack because current codegen uses `sub rsp` for inr allocation
+    -- TODO (escape-analysis): Get region from IR's AllocMode when escape analysis is implemented
+    result-valid : ValidAt {A + B} (inj₂ x) (readReg (regs s4) rax) (memory s4)
+    result-valid = subst (λ addr → ValidAt {A + B} (inj₂ x) addr (memory s4)) (sym rax-s4)
+                         (valid-inr {A} {B} input-valid-preserved inr-at Stack (proj₁ write-addrs-in-stack))
 
     -- StackInvariant preservation
     r15-s4-eq : readReg (regs s4) r15 ≡ readReg (regs s) r15

@@ -68,8 +68,10 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
          thunk-star; thunk-halted; thunk-result-valid;
          thunk-r14; thunk-r15; thunk-rbp; thunk-stack-inv; thunk-capacity)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s; valid-at-preserved-under-write;
-         valid-subst-addr-mem; Region; InRegion; Stack)
+  using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s;
+         valid-subst-addr-mem; Region; InRegion; Stack;
+         stack-write-preserves-above; stack-write-2-preserves-above)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
 
 -- Import IRSize for size proofs
 open import Once.Backend.Common.IRSize
@@ -643,31 +645,35 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     mem-at-new-rsp-final = mem-at-new-rsp-s4
 
     -- ============================================================
-    -- Env validity tracking (no bridges in this section)
+    -- Env validity tracking (using Ownership model)
     -- ============================================================
     -- input-valid : ValidAt x orig-rdi (memory s)
-    -- Curry writes to stack (new-rsp and new-rsp+8), not heap
-    -- orig-rdi is in heap (from input validity), so validity is preserved
+    -- Curry writes to stack (new-rsp and new-rsp+8), both < orig-rsp
+    -- Using caller-input-preserved: caller values are preserved when
+    -- writes are in current frame (< entry-rsp)
 
-    -- s2 writes to new-rsp (stack), validity preserved since ValidAt addresses are in heap
-    -- Derive InStack proofs from capacity
+    -- Derive InStack proofs from capacity (still needed for other uses)
     write-addrs-in-stack : InStack new-rsp × InStack (new-rsp +ℕ slot-size)
     write-addrs-in-stack = alloc-2-slots-addrs-in-stack s cap-output-alloc
 
-    v-env-s2 : ValidAt x orig-rdi (memory s2)
-    v-env-s2 = valid-at-preserved-under-write input-valid (proj₁ write-addrs-in-stack)
+    -- Proof that second write address is also below entry-rsp
+    -- new-rsp + slot-size = (orig-rsp - 16) + 8 = orig-rsp - 8 < orig-rsp
+    -- Uses ∸+<-lemma from Arithmetic: m > pair-alloc → (m ∸ pair-alloc) + word-size < m
+    write2-below-entry-rsp : (new-rsp +ℕ slot-size) < orig-rsp
+    write2-below-entry-rsp = ∸+<-lemma rsp-bound
 
-    -- s3 doesn't modify memory
-    v-env-s3 : ValidAt x orig-rdi (memory s3)
-    v-env-s3 = v-env-s2
+    -- Combined memory preservation for both writes
+    -- memory s4 = writeMem (writeMem (memory s) new-rsp val1) (new-rsp+8) val2
+    -- Both writes are < orig-rsp, so addresses ≥ orig-rsp are preserved
+    mem-above-s-to-s4 : ∀ a → a ≥ orig-rsp → readMem (memory s4) a ≡ readMem (memory s) a
+    mem-above-s-to-s4 = stack-write-2-preserves-above (memory s) new-rsp (new-rsp +ℕ slot-size)
+                          (readReg (regs s1) rdi) (readReg (regs s3) r9)
+                          closure-addr-below-entry-rsp write2-below-entry-rsp
 
-    -- s4 writes to new-rsp+8 (stack), validity preserved
-    v-env-s4 : ValidAt x orig-rdi (memory s4)
-    v-env-s4 = valid-at-preserved-under-write v-env-s3 (proj₂ write-addrs-in-stack)
-
-    -- s5, s6, s7 don't modify memory
+    -- Final validity using Ownership model
+    -- input-valid is from caller, preserved since all writes are < entry-rsp
     v-env-final : ValidAt x orig-rdi (memory s-final)
-    v-env-final = v-env-s4
+    v-env-final = caller-input-preserved input-valid rsp-region mem-above-s-to-s4
 
     -- Thunk offset: the code-ptr stored in the closure
     -- The thunk entry label is at index 6 within curry's compiled code

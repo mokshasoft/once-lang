@@ -658,6 +658,38 @@ caller-disjoint-plus-from-current {addr} {w} {entry-rsp} addr≥rsp w<rsp =
   where
     open import Data.Nat.Properties using (≤-trans; m≤m+n)
 
+-- | Stack write preserves memory above entry-rsp
+-- This connects single writes to the memory-above property used by
+-- caller-input-preserved and owned-caller-preserved.
+--
+-- Key insight: If w < entry-rsp and a ≥ entry-rsp, then w ≠ a,
+-- so readMem (writeMem m w v) a = readMem m a.
+--
+-- Usage pattern:
+--   caller-input-preserved input-valid rsp-in-stack
+--     (stack-write-preserves-above m w v w<rsp)
+stack-write-preserves-above :
+  ∀ (m : Memory) (w : Word) (v : Word) {entry-rsp : Word} →
+  w < entry-rsp →
+  (∀ a → a ≥ entry-rsp → readMem (writeMem m w v) a ≡ readMem m a)
+stack-write-preserves-above m w v {entry-rsp} w<rsp a a≥rsp =
+  readMem-writeMem-diff m w a v w≢a
+  where
+    -- caller-disjoint-from-current gives a ≢ w, flip to get w ≢ a
+    w≢a : w ≢ a
+    w≢a w≡a = caller-disjoint-from-current a≥rsp w<rsp (sym w≡a)
+
+-- | Variant for two consecutive writes
+-- Useful when allocating 2-slot structures (pairs, closures).
+stack-write-2-preserves-above :
+  ∀ (m : Memory) (w1 w2 : Word) (v1 v2 : Word) {entry-rsp : Word} →
+  w1 < entry-rsp →
+  w2 < entry-rsp →
+  (∀ a → a ≥ entry-rsp → readMem (writeMem (writeMem m w1 v1) w2 v2) a ≡ readMem m a)
+stack-write-2-preserves-above m w1 w2 v1 v2 {entry-rsp} w1<rsp w2<rsp a a≥rsp =
+  trans (stack-write-preserves-above (writeMem m w1 v1) w2 v2 w2<rsp a a≥rsp)
+        (stack-write-preserves-above m w1 v1 w1<rsp a a≥rsp)
+
 ------------------------------------------------------------------------
 -- ValidAt preservation under memory writes (HEAP ONLY)
 --
