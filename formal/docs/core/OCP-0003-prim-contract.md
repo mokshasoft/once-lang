@@ -16,7 +16,11 @@ Define `PrimContract` as a uniform interface that domain compilers (Arith, futur
 
 2. **Postulated Prim correctness**: The `run-prim-star-vv` postulate in `StarBase.agda` is trusted code that assumes Prim operations are correct without proof.
 
-3. **No clear interface**: Domain compilers (Arith) don't have a defined contract specifying what proofs they must provide.
+3. **Postulated evalPrim**: The `evalPrim` postulate in `SemanticBase.agda` defines primitive semantics without proof - we just trust that primitives compute what we expect.
+
+4. **Boundary.agda indirection**: The current design converts ArithIR → IR with string-named `Prim` nodes (e.g., `Prim "arith.add.int"`) via Boundary.agda, then CCC looks up these names. This indirection is unnecessary.
+
+5. **No clear interface**: Domain compilers (Arith) don't have a defined contract specifying what proofs they must provide.
 
 ### Intended Architecture
 
@@ -26,20 +30,24 @@ Source Code
     ▼
 Elaborator (recognizes arithmetic patterns)
     │
-    ├──► Arith Compiler ──► Program + PrimContract proof
-    │                              │
-    ▼                              ▼
-CCC Compiler (sees Prim node) ◄────┘
-    │
+    ├──► Arith Compiler ──► (Program, PrimContract proof)
+    │                                    │
+    ▼                                    ▼
+CCC Compiler ◄───────────────────────────┘
+    │         receives proven assembly block directly
     ▼
 x86/AArch64/RISC-V Code
 ```
 
 The Arith compiler runs immediately when an arithmetic pattern is recognized, producing:
-1. A compiled `Program` (x86 instructions)
-2. A `PrimContract` proof that the program is correct
+1. A compiled `Program` (x86 assembly block)
+2. A `PrimContract` proof that the assembly is correct
 
-CCC only sees a `Prim` node referencing the compiled block, not the ArithIR tree.
+Key points:
+- CCC receives the **proven assembly block directly** - no string-named Prim indirection
+- The `PrimContract` IS the proof (Agda-verified), not a claim to be trusted
+- No postulates: `prim-correct` must be constructed and type-checked by Agda
+- Boundary.agda is eliminated - no need to convert ArithIR → IR with Prim nodes
 
 ## Design
 
@@ -125,41 +133,48 @@ run-prim-from-contract sem contract =
 ### IR Changes
 
 ```agda
--- Before: ArithIR carried through
+-- Before: ArithIR carried through, string-named Prims
 data IR : Type → Type → Set where
   ...
   Arith : NumType → ArithIR → IR A B  -- Carries expression tree
-  Prim  : String → IR A B             -- Opaque name
+  Prim  : String → IR A B             -- Opaque name (looked up by string)
 
--- After: Only Prim, with associated contract
+-- After: Proven assembly blocks directly
 data IR : Type → Type → Set where
   ...
-  Prim : String → IR A B              -- Opaque primitive
+  -- Option A: Prim holds the contract directly
+  Prim : ∀ {sem} → PrimContract sem → IR A B
 
--- Contract lookup (populated by domain compilers)
-prim-contracts : String → ∃[ A ] ∃[ B ] ∃[ sem ] PrimContract {A} {B} sem
+  -- Option B: Prim holds reference to externally-provided contract
+  -- (simpler for code generation, contract passed separately)
 ```
+
+The key change: **no string-based lookup**. The assembly and its proof travel together as a `PrimContract`. CCC receives proven code, not a name to look up.
 
 ## Integration Path
 
-### Phase 1: Define PrimContract
+### Phase 1: Define PrimContract ✓
 1. Create `Once/Backend/X86/Correct/PrimContract.agda`
-2. Define the `PrimContract` record
+2. Define the `PrimContract` and `PrimResult` records
 3. Create helper lemmas for constructing contracts
 
 ### Phase 2: Arith Integration
-1. Update Arith compiler to produce `PrimContract` proofs
-2. This requires lifting ArithState proofs to x86 State proofs
-3. Either rewrite Arith proofs against x86 State, or create embedding/adapter
+1. Rewrite Arith proofs directly against x86 State (cleaner than ArithState adapter)
+2. Create `Once/Arith/Backend/X86/Contract.agda` with PrimContract instances
+3. Arith compiler produces `(Program, PrimContract)` pairs
 
-### Phase 3: Eliminate Postulates
-1. Replace `run-prim-star-vv` with `run-prim-from-contract`
-2. Remove `Arith` constructor from IR
-3. Update elaborator to run Arith compiler immediately
+### Phase 3: Eliminate Postulates and Dead Code
+1. Replace `run-prim-star-vv` postulate with proof from PrimContract
+2. Eliminate `evalPrim` postulate - semantics now explicit in contract's `sem` parameter
+3. Remove `Arith` constructor from IR datatype
+4. **Eliminate `Once/Arith/Boundary.agda`** - no longer needed:
+   - Was: ArithIR → embedArith → IR with `Prim "name"` nodes → CCC
+   - Now: ArithIR → Arith compiler → (Program, PrimContract) → CCC directly
+5. Remove string-based primitive lookup infrastructure
 
 ### Phase 4: IO Interpretations
 1. Define contracts for IO operations (print, read, etc.)
-2. System calls become Prim nodes with contracts
+2. IO operations provide `(Program, PrimContract)` pairs directly
 
 ## Future Work: PrimContract as Foundation for All IRs
 
@@ -199,7 +214,9 @@ This would unify the proof structure across:
 
 ## References
 
-- `Once/Backend/X86/Correct/StarBase.agda`: Current `run-prim-star-vv` postulate
+- `Once/Backend/X86/Correct/StarBase.agda`: Current `run-prim-star-vv` postulate (to be eliminated)
+- `Once/Backend/X86/Correct/PrimContract.agda`: New PrimContract interface (Phase 1 complete)
 - `Once/Backend/X86/Correct/IRStarDerived.agda`: Ownership integration documentation
-- `Once/Arith/Backend/X86/Correct.agda`: Current Arith proof structure
-- `Once/Arith/Boundary.agda`: Current Arith-CCC boundary
+- `Once/SemanticBase.agda`: Current `evalPrim` postulate (to be eliminated)
+- `Once/Arith/Backend/X86/Correct.agda`: Current Arith proof structure (reference for rewrite)
+- `Once/Arith/Boundary.agda`: Current Arith-CCC boundary (to be eliminated)
