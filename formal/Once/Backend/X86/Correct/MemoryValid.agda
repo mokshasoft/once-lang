@@ -42,7 +42,7 @@ open import Once.Backend.Common.MemoryValid public
         )
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; stack-heap-addr-disjoint; heap-offset; heap-addr-≥-stack-addr)
-open import Data.Nat using (_≥_)
+open import Data.Nat using (_≥_; _<_)
 
 ------------------------------------------------------------------------
 -- AllocMode: Allocation mode from escape analysis
@@ -92,6 +92,7 @@ InRegion = InAllocRegion
 
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
 open import Once.Backend.X86.Correct.Star using (just-injective)
+open import Once.Backend.X86.Correct.Arithmetic using (caller-current-disjoint)
 -- NOTE: encode-in-heap-sem no longer needed - InHeap comes from ValidAt constructors
 
 open import Data.Maybe using (Maybe; just; nothing)
@@ -619,6 +620,43 @@ valid-disjoint-from-stack {A} {v} {addr} {stack-addr} {m} valid stack-proof =
     region-dispatch : (mode : AllocMode) → InAllocRegion mode addr → addr ≢ stack-addr
     region-dispatch HeapAlloc ih = λ addr-eq → stack-heap-addr-disjoint stack-addr addr stack-proof ih (sym addr-eq)
     region-dispatch StackAlloc is = λ addr-eq → frame-separation is stack-proof (sym addr-eq)
+
+------------------------------------------------------------------------
+-- Caller-Current Frame Disjointness (CORRECT replacement for frame-separation)
+--
+-- This is the CORRECT way to prove caller address ≢ current frame address.
+-- Uses entry-rsp as the boundary between caller and current frames.
+--
+-- The old `frame-separation` postulate is FALSE (claims all stack addresses
+-- differ, but addr can equal itself!). This replacement:
+--   1. Takes entry-rsp as boundary
+--   2. Requires proof that caller address ≥ entry-rsp
+--   3. Requires proof that current frame address < entry-rsp
+--   4. Uses arithmetic lemma caller-current-disjoint
+--
+-- Migration: Change call sites to provide the bounds instead of InStack.
+------------------------------------------------------------------------
+
+-- | Caller address is disjoint from current frame address
+-- Given entry-rsp boundary, addr ≥ rsp (caller), w < rsp (current), prove addr ≢ w
+--
+-- This replaces the pattern: frame-separation is w-is
+-- With: caller-disjoint-from-current addr≥rsp w<rsp
+caller-disjoint-from-current : ∀ {addr w entry-rsp : Word} →
+  addr ≥ entry-rsp →      -- Caller's address (from Ownership or input bounds)
+  w < entry-rsp →         -- Current frame write address
+  addr ≢ w
+caller-disjoint-from-current = caller-current-disjoint
+
+-- | Variant for offset addresses: (addr + k) ≢ w
+caller-disjoint-plus-from-current : ∀ {addr w entry-rsp : Word} →
+  addr ≥ entry-rsp →
+  w < entry-rsp →
+  (addr +ℕ slot-size) ≢ w
+caller-disjoint-plus-from-current {addr} {w} {entry-rsp} addr≥rsp w<rsp =
+  caller-disjoint-from-current (≤-trans addr≥rsp (m≤m+n addr slot-size)) w<rsp
+  where
+    open import Data.Nat.Properties using (≤-trans; m≤m+n)
 
 ------------------------------------------------------------------------
 -- ValidAt preservation under memory writes (HEAP ONLY)

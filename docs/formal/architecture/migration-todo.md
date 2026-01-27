@@ -4,8 +4,8 @@ This document tracks migration tasks to achieve the clean proof architecture.
 
 ## Priority 1: Eliminate Postulates
 
-### [ ] Replace `frame-separation` with arithmetic lemma
-**File:** `MemoryValid.agda:209-213`
+### [~] Replace `frame-separation` with arithmetic lemma
+**File:** `MemoryValid.agda:247-250`
 **Problem:** Current postulate claims ALL stack addresses differ (false!)
 ```agda
 -- WRONG
@@ -17,9 +17,18 @@ frame-separation : InStack addr → InStack w → w ≢ addr
 caller-current-disjoint : addr ≥ entry-rsp → w < entry-rsp → addr ≢ w
 ```
 **Steps:**
-1. Add `caller-current-disjoint` lemma to `Arithmetic.agda` or new `FrameSeparation.agda`
-2. Update call sites to use Ownership + arithmetic lemma instead
-3. Remove `frame-separation` postulate
+1. [x] Add `caller-current-disjoint` lemma to `Arithmetic.agda`
+2. [x] Add wrapper functions in `MemoryValid.agda`:
+   - `caller-disjoint-from-current` - direct wrapper
+   - `caller-disjoint-plus-from-current` - for addr+slot-size
+3. [ ] Update call sites to use Ownership + new functions
+4. [ ] Remove `frame-separation` postulate
+
+**Call sites to migrate:**
+- `MemoryValid.agda:621` - `valid-disjoint-from-stack` region-dispatch
+- `MemoryValid.agda:841-903` - preservation lemmas (8 usages)
+- `CaseSetup.agda:296,328,1067,1082` - 4 usages
+- `ApplyInstr.agda:220,254,262,270` - 4 usages
 
 ### [ ] Eliminate `caller-stack-preserved-pair`
 **File:** `IR/Pair.agda:120-122`
