@@ -10,6 +10,13 @@
 --
 -- MemoryValid captures the invariant that values in memory are
 -- properly encoded at their expected addresses.
+--
+-- KEY CONCEPTS:
+--   AllocMode      : Escape analysis result (StackAlloc | HeapAlloc)
+--   InAllocRegion  : Maps AllocMode to address predicate (InStack/InHeap)
+--   ValidAt        : Unified validity predicate carrying AllocMode
+--
+-- See: docs/formal/architecture/proof-stack-architecture.md
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Correct.MemoryValid where
@@ -38,21 +45,51 @@ open import Once.Backend.X86.Layout
 open import Data.Nat using (_≥_)
 
 ------------------------------------------------------------------------
--- Region: Where an allocation lives
+-- AllocMode: Allocation mode from escape analysis
 --
--- This corresponds to AllocMode in the IR (from escape analysis).
--- Stack = value doesn't escape, can be stack-allocated
--- Heap  = value may escape, must be heap-allocated
+-- Determines WHERE a value is allocated at runtime:
+--   StackAlloc = value doesn't escape, allocated on stack (deterministic addr)
+--   HeapAlloc  = value may escape, allocated on heap (via allocator)
+--
+-- NOTE: This is DISTINCT from InStack/InHeap (address predicates).
+--   - AllocMode is a compile-time decision (escape analysis result)
+--   - InStack/InHeap are runtime address predicates (where it lives)
+--   - InAllocRegion bridges them: maps AllocMode to the address predicate
+--
+-- For portability, IR proofs should use AllocMode and InAllocRegion,
+-- not directly reference InStack/InHeap.
 ------------------------------------------------------------------------
 
-data Region : Set where
-  Stack : Region
-  Heap  : Region
+data AllocMode : Set where
+  StackAlloc : AllocMode  -- Escape analysis: local, stack-allocate
+  HeapAlloc  : AllocMode  -- Escape analysis: escapes, heap-allocate
 
--- | Region predicate: address is in the given region
-InRegion : Region → Word → Set
-InRegion Stack = InStack
-InRegion Heap  = InHeap
+-- | Map allocation mode to address predicate
+-- StackAlloc → InStack (address is in stack region)
+-- HeapAlloc  → InHeap  (address is in heap region)
+InAllocRegion : AllocMode → Word → Set
+InAllocRegion StackAlloc = InStack
+InAllocRegion HeapAlloc  = InHeap
+
+------------------------------------------------------------------------
+-- Backwards-compatible aliases (for migration)
+-- These allow existing code to use old names until fully migrated.
+-- TODO: Remove after all dependent files are updated.
+------------------------------------------------------------------------
+
+-- Old name → New name
+Region : Set
+Region = AllocMode
+
+Stack : AllocMode
+Stack = StackAlloc
+
+Heap : AllocMode
+Heap = HeapAlloc
+
+InRegion : AllocMode → Word → Set
+InRegion = InAllocRegion
+
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
 open import Once.Backend.X86.Correct.Star using (just-injective)
 -- NOTE: encode-in-heap-sem no longer needed - InHeap comes from ValidAt constructors
@@ -77,15 +114,15 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 -- | Unified validity predicate for all types
 -- Says "value v is correctly represented at address a in memory m"
 --
--- DESIGN (Option B): Each allocating constructor carries region info.
--- The region (r : Region) and proof (InRegion r addr) come from:
--- - IR's AllocMode (Stack/Heap from escape analysis)
--- - Runtime temporaries (always Stack)
+-- DESIGN: Each allocating constructor carries AllocMode info.
+-- The mode (m : AllocMode) and proof (InAllocRegion m addr) come from:
+-- - IR's AllocMode (StackAlloc/HeapAlloc from escape analysis)
+-- - Runtime temporaries (always StackAlloc)
 --
 -- This enables:
--- - valid-in-region extracts the Region and InRegion proof
--- - Heap-allocated values use stack-heap disjointness for preservation
--- - Stack-allocated values use frame-separation for preservation
+-- - valid-in-alloc-region extracts the AllocMode and InAllocRegion proof
+-- - HeapAlloc values use stack-heap disjointness for preservation
+-- - StackAlloc values use frame-separation for preservation
 data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
   -- Unit: value 0, no memory needed (address 0 is special, no region)
   valid-unit : ∀ {m} → ValidAt {Unit} tt 0 m
@@ -95,21 +132,21 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
     ValidAt a addr-a m →
     ValidAt b addr-b m →
     PairAtS addr-a addr-b addr m →
-    (r : Region) → InRegion r addr →
+    (mode : AllocMode) → InAllocRegion mode addr →
     ValidAt (a , b) addr m
 
   -- Left sum: tag=0, value valid, with region
   valid-inl : ∀ {A B} {a : ⟦ A ⟧} {addr-a addr : Word} {m : Memory} →
     ValidAt a addr-a m →
     InlAtS addr-a addr m →
-    (r : Region) → InRegion r addr →
+    (mode : AllocMode) → InAllocRegion mode addr →
     ValidAt {A + B} (inj₁ a) addr m
 
   -- Right sum: tag=1, value valid, with region
   valid-inr : ∀ {A B} {b : ⟦ B ⟧} {addr-b addr : Word} {m : Memory} →
     ValidAt b addr-b m →
     InrAtS addr-b addr m →
-    (r : Region) → InRegion r addr →
+    (mode : AllocMode) → InAllocRegion mode addr →
     ValidAt {A + B} (inj₂ b) addr m
 
   -- Closure: env and code-ptr at addr, with region
@@ -117,7 +154,7 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
   -- This decouples the proof from the semantic Closure type's env-addr field.
   valid-closure : ∀ {A B} {cl : Closure A B} {env-addr code-ptr addr : Word} {m : Memory} →
     ClosureAtS env-addr code-ptr addr m →
-    (r : Region) → InRegion r addr →
+    (mode : AllocMode) → InAllocRegion mode addr →
     ValidAt {A ⇒ B} cl addr m
 
   -- Closure from env validity: for curry-created closures, with region
@@ -127,13 +164,13 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
                       {env-addr code-ptr closure-addr : Word} {m : Memory} →
     ValidAt env env-addr m →             -- env validity at runtime address
     ClosureAtS env-addr code-ptr closure-addr m →  -- memory layout
-    (r : Region) → InRegion r closure-addr →
+    (mode : AllocMode) → InAllocRegion mode closure-addr →
     ValidAt {A ⇒ B} cl closure-addr m
 
   -- Eff: same as closure (Eff = Closure at runtime), with region
   valid-eff : ∀ {A B} {cl : Closure A B} {env-addr code-ptr addr : Word} {m : Memory} →
     ClosureAtS env-addr code-ptr addr m →
-    (r : Region) → InRegion r addr →
+    (mode : AllocMode) → InAllocRegion mode addr →
     ValidAt {Eff A B} cl addr m
 
   -- Eff from env validity: for curry-created effect closures, with region
@@ -141,7 +178,7 @@ data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
                   {env-addr code-ptr closure-addr : Word} {m : Memory} →
     ValidAt env env-addr m →
     ClosureAtS env-addr code-ptr closure-addr m →
-    (r : Region) → InRegion r closure-addr →
+    (mode : AllocMode) → InAllocRegion mode closure-addr →
     ValidAt {Eff A B} cl closure-addr m
 
   -- Fix: validity of unwrapped value (Fix is identity at runtime)
@@ -176,8 +213,8 @@ postulate
 ------------------------------------------------------------------------
 -- Stack frame separation: caller vs current frame
 --
--- For Heap-region values: Use stack-heap disjointness (no postulate needed)
--- For Stack-region values: Use FRAME SEPARATION
+-- For HeapAlloc values: Use stack-heap disjointness (no postulate needed)
+-- For StackAlloc values: Use FRAME SEPARATION
 --
 -- Frame separation invariant (from call convention):
 --   push rbp; mov rbp, rsp  -- establishes frame boundary
@@ -228,21 +265,26 @@ frame-separation-plus : ∀ {addr w : Word} →
   w ≢ addr +ℕ slot-size
 frame-separation-plus is w-is = frame-separation (stack-offset is) w-is
 
--- | Extract InRegion proof from ValidAt
--- Returns the region proof stored in the constructor.
-valid-in-region :
+-- | Extract InAllocRegion proof from ValidAt
+-- Returns the allocation mode and region proof stored in the constructor.
+valid-in-alloc-region :
   ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
   (va : ValidAt v addr m) →
-  ∃[ r ] InRegion r addr
-valid-in-region valid-unit = Heap , unit-in-heap
-valid-in-region (valid-pair _ _ _ r ir) = r , ir
-valid-in-region (valid-inl _ _ r ir) = r , ir
-valid-in-region (valid-inr _ _ r ir) = r , ir
-valid-in-region (valid-closure _ r ir) = r , ir
-valid-in-region (valid-closure-env _ _ r ir) = r , ir
-valid-in-region (valid-eff _ r ir) = r , ir
-valid-in-region (valid-eff-env _ _ r ir) = r , ir
-valid-in-region (valid-fix v) = valid-in-region v
+  ∃[ mode ] InAllocRegion mode addr
+valid-in-alloc-region valid-unit = HeapAlloc , unit-in-heap
+valid-in-alloc-region (valid-pair _ _ _ mode ir) = mode , ir
+valid-in-alloc-region (valid-inl _ _ mode ir) = mode , ir
+valid-in-alloc-region (valid-inr _ _ mode ir) = mode , ir
+valid-in-alloc-region (valid-closure _ mode ir) = mode , ir
+valid-in-alloc-region (valid-closure-env _ _ mode ir) = mode , ir
+valid-in-alloc-region (valid-eff _ mode ir) = mode , ir
+valid-in-alloc-region (valid-eff-env _ _ mode ir) = mode , ir
+valid-in-alloc-region (valid-fix v) = valid-in-alloc-region v
+
+-- Backwards-compatible alias
+valid-in-region : ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} →
+  ValidAt v addr m → ∃[ mode ] InAllocRegion mode addr
+valid-in-region = valid-in-alloc-region
 
 ------------------------------------------------------------------------
 -- ValidAt child extraction lemmas
@@ -324,7 +366,7 @@ valid-subst-addr-mem (valid-fix vx) refl mem-eq =
 ------------------------------------------------------------------------
 
 -- These helpers preserve HEAP-region values under heap memory preservation.
--- For Stack-region values, use the *-under-stack-eq variants instead.
+-- For StackAlloc values, use the *-under-stack-eq variants instead.
 
 -- | Helper: PairAtS preserved under heap-only memory equality
 PairAtS-preserved-under-heap-eq :
@@ -444,70 +486,70 @@ valid-subst-region-preserved :
   ValidAt v addr mem2
 valid-subst-region-preserved valid-unit _ _ = valid-unit
 -- Pair: dispatch on region
-valid-subst-region-preserved (valid-pair va vb pairS Heap ih) heap-eq stack-eq =
+valid-subst-region-preserved (valid-pair va vb pairS HeapAlloc ih) heap-eq stack-eq =
   valid-pair (valid-subst-region-preserved va heap-eq stack-eq)
              (valid-subst-region-preserved vb heap-eq stack-eq)
              (PairAtS-preserved-under-heap-eq pairS ih heap-eq)
-             Heap ih
-valid-subst-region-preserved (valid-pair va vb pairS Stack is) heap-eq stack-eq =
+             HeapAlloc ih
+valid-subst-region-preserved (valid-pair va vb pairS StackAlloc is) heap-eq stack-eq =
   valid-pair (valid-subst-region-preserved va heap-eq stack-eq)
              (valid-subst-region-preserved vb heap-eq stack-eq)
              (PairAtS-preserved-under-stack-eq pairS is stack-eq)
-             Stack is
+             StackAlloc is
 -- Inl: dispatch on region
-valid-subst-region-preserved {A + B} (valid-inl va inlS Heap ih) heap-eq stack-eq =
+valid-subst-region-preserved {A + B} (valid-inl va inlS HeapAlloc ih) heap-eq stack-eq =
   valid-inl (valid-subst-region-preserved va heap-eq stack-eq)
             (InlAtS-preserved-under-heap-eq inlS ih heap-eq)
-            Heap ih
-valid-subst-region-preserved {A + B} (valid-inl va inlS Stack is) heap-eq stack-eq =
+            HeapAlloc ih
+valid-subst-region-preserved {A + B} (valid-inl va inlS StackAlloc is) heap-eq stack-eq =
   valid-inl (valid-subst-region-preserved va heap-eq stack-eq)
             (InlAtS-preserved-under-stack-eq inlS is stack-eq)
-            Stack is
+            StackAlloc is
 -- Inr: dispatch on region
-valid-subst-region-preserved {A + B} (valid-inr vb inrS Heap ih) heap-eq stack-eq =
+valid-subst-region-preserved {A + B} (valid-inr vb inrS HeapAlloc ih) heap-eq stack-eq =
   valid-inr (valid-subst-region-preserved vb heap-eq stack-eq)
             (InrAtS-preserved-under-heap-eq inrS ih heap-eq)
-            Heap ih
-valid-subst-region-preserved {A + B} (valid-inr vb inrS Stack is) heap-eq stack-eq =
+            HeapAlloc ih
+valid-subst-region-preserved {A + B} (valid-inr vb inrS StackAlloc is) heap-eq stack-eq =
   valid-inr (valid-subst-region-preserved vb heap-eq stack-eq)
             (InrAtS-preserved-under-stack-eq inrS is stack-eq)
-            Stack is
+            StackAlloc is
 -- Closure: dispatch on region
-valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure closS Heap ih) heap-eq stack-eq =
+valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure closS HeapAlloc ih) heap-eq stack-eq =
   valid-closure (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
-                Heap ih
-valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure closS Stack is) heap-eq stack-eq =
+                HeapAlloc ih
+valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure closS StackAlloc is) heap-eq stack-eq =
   valid-closure (ClosureAtS-preserved-under-stack-eq closS is stack-eq)
-                Stack is
+                StackAlloc is
 -- Closure with env: dispatch on region
-valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env venv closS Heap ih) heap-eq stack-eq =
+valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env venv closS HeapAlloc ih) heap-eq stack-eq =
   valid-closure-env
     (valid-subst-region-preserved venv heap-eq stack-eq)
     (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
-    Heap ih
-valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env venv closS Stack is) heap-eq stack-eq =
+    HeapAlloc ih
+valid-subst-region-preserved {A ⇒[ _ ] B} {cl} (valid-closure-env venv closS StackAlloc is) heap-eq stack-eq =
   valid-closure-env
     (valid-subst-region-preserved venv heap-eq stack-eq)
     (ClosureAtS-preserved-under-stack-eq closS is stack-eq)
-    Stack is
+    StackAlloc is
 -- Eff: dispatch on region
-valid-subst-region-preserved {Eff A B} {cl} (valid-eff closS Heap ih) heap-eq stack-eq =
+valid-subst-region-preserved {Eff A B} {cl} (valid-eff closS HeapAlloc ih) heap-eq stack-eq =
   valid-eff (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
-            Heap ih
-valid-subst-region-preserved {Eff A B} {cl} (valid-eff closS Stack is) heap-eq stack-eq =
+            HeapAlloc ih
+valid-subst-region-preserved {Eff A B} {cl} (valid-eff closS StackAlloc is) heap-eq stack-eq =
   valid-eff (ClosureAtS-preserved-under-stack-eq closS is stack-eq)
-            Stack is
+            StackAlloc is
 -- Eff with env: dispatch on region
-valid-subst-region-preserved {Eff A B} {cl} (valid-eff-env venv closS Heap ih) heap-eq stack-eq =
+valid-subst-region-preserved {Eff A B} {cl} (valid-eff-env venv closS HeapAlloc ih) heap-eq stack-eq =
   valid-eff-env
     (valid-subst-region-preserved venv heap-eq stack-eq)
     (ClosureAtS-preserved-under-heap-eq closS ih heap-eq)
-    Heap ih
-valid-subst-region-preserved {Eff A B} {cl} (valid-eff-env venv closS Stack is) heap-eq stack-eq =
+    HeapAlloc ih
+valid-subst-region-preserved {Eff A B} {cl} (valid-eff-env venv closS StackAlloc is) heap-eq stack-eq =
   valid-eff-env
     (valid-subst-region-preserved venv heap-eq stack-eq)
     (ClosureAtS-preserved-under-stack-eq closS is stack-eq)
-    Stack is
+    StackAlloc is
 -- Fix: recurse
 valid-subst-region-preserved (valid-fix vx) heap-eq stack-eq =
   valid-fix (valid-subst-region-preserved vx heap-eq stack-eq)
@@ -565,7 +607,7 @@ valid-pair-decompose (valid-pair {addr-a = addr-a} {addr-b = addr-b} va vb pairS
 
 -- | Valid address is disjoint from stack addresses
 -- If addr has ValidAt and stack-addr is in stack, then addr ≢ stack-addr
--- Uses region-based dispatch: Heap → stack-heap disjoint, Stack → frame-separation
+-- Uses AllocMode dispatch: HeapAlloc → stack-heap disjoint, StackAlloc → frame-separation
 valid-disjoint-from-stack : ∀ {A : Type} {v : ⟦ A ⟧} {addr stack-addr : Word} {m : Memory} →
   ValidAt v addr m →
   InStack stack-addr →
@@ -574,9 +616,9 @@ valid-disjoint-from-stack {A} {v} {addr} {stack-addr} {m} valid stack-proof =
   region-dispatch (proj₁ region) (proj₂ region)
   where
     region = valid-in-region valid
-    region-dispatch : (r : Region) → InRegion r addr → addr ≢ stack-addr
-    region-dispatch Heap ih = λ addr-eq → stack-heap-addr-disjoint stack-addr addr stack-proof ih (sym addr-eq)
-    region-dispatch Stack is = λ addr-eq → frame-separation is stack-proof (sym addr-eq)
+    region-dispatch : (mode : AllocMode) → InAllocRegion mode addr → addr ≢ stack-addr
+    region-dispatch HeapAlloc ih = λ addr-eq → stack-heap-addr-disjoint stack-addr addr stack-proof ih (sym addr-eq)
+    region-dispatch StackAlloc is = λ addr-eq → frame-separation is stack-proof (sym addr-eq)
 
 ------------------------------------------------------------------------
 -- ValidAt preservation under memory writes (HEAP ONLY)
@@ -786,80 +828,80 @@ valid-at-preserved-under-stack-write :
   ValidAt v addr-v (writeMem m w val)
 valid-at-preserved-under-stack-write valid-unit w-in-stack = valid-unit
 -- Pair: dispatch on region
-valid-at-preserved-under-stack-write (valid-pair va vb pairS Heap ih) w-in-stack =
+valid-at-preserved-under-stack-write (valid-pair va vb pairS HeapAlloc ih) w-in-stack =
   valid-pair
     (valid-at-preserved-under-stack-write va w-in-stack)
     (valid-at-preserved-under-stack-write vb w-in-stack)
     (PairAtS-preserved-under-stack-write pairS ih w-in-stack)
-    Heap ih
-valid-at-preserved-under-stack-write (valid-pair va vb pairS Stack is) w-in-stack =
+    HeapAlloc ih
+valid-at-preserved-under-stack-write (valid-pair va vb pairS StackAlloc is) w-in-stack =
   valid-pair
     (valid-at-preserved-under-stack-write va w-in-stack)
     (valid-at-preserved-under-stack-write vb w-in-stack)
     (PairAtS-preserved-under-diff-stack-write pairS (frame-separation is w-in-stack) (frame-separation-plus is w-in-stack))
-    Stack is
+    StackAlloc is
 -- Inl: dispatch on region
-valid-at-preserved-under-stack-write {A = A + B} (valid-inl va inlS Heap ih) w-in-stack =
+valid-at-preserved-under-stack-write {A = A + B} (valid-inl va inlS HeapAlloc ih) w-in-stack =
   valid-inl
     (valid-at-preserved-under-stack-write va w-in-stack)
     (InlAtS-preserved-under-stack-write inlS ih w-in-stack)
-    Heap ih
-valid-at-preserved-under-stack-write {A = A + B} (valid-inl va inlS Stack is) w-in-stack =
+    HeapAlloc ih
+valid-at-preserved-under-stack-write {A = A + B} (valid-inl va inlS StackAlloc is) w-in-stack =
   valid-inl
     (valid-at-preserved-under-stack-write va w-in-stack)
     (InlAtS-preserved-under-diff-stack-write inlS (frame-separation is w-in-stack) (frame-separation-plus is w-in-stack))
-    Stack is
+    StackAlloc is
 -- Inr: dispatch on region
-valid-at-preserved-under-stack-write {A = A + B} (valid-inr vb inrS Heap ih) w-in-stack =
+valid-at-preserved-under-stack-write {A = A + B} (valid-inr vb inrS HeapAlloc ih) w-in-stack =
   valid-inr
     (valid-at-preserved-under-stack-write vb w-in-stack)
     (InrAtS-preserved-under-stack-write inrS ih w-in-stack)
-    Heap ih
-valid-at-preserved-under-stack-write {A = A + B} (valid-inr vb inrS Stack is) w-in-stack =
+    HeapAlloc ih
+valid-at-preserved-under-stack-write {A = A + B} (valid-inr vb inrS StackAlloc is) w-in-stack =
   valid-inr
     (valid-at-preserved-under-stack-write vb w-in-stack)
     (InrAtS-preserved-under-diff-stack-write inrS (frame-separation is w-in-stack) (frame-separation-plus is w-in-stack))
-    Stack is
+    StackAlloc is
 -- Closure: dispatch on region
-valid-at-preserved-under-stack-write (valid-closure closS Heap ih) w-in-stack =
+valid-at-preserved-under-stack-write (valid-closure closS HeapAlloc ih) w-in-stack =
   valid-closure
     (ClosureAtS-preserved-under-stack-write closS ih w-in-stack)
-    Heap ih
-valid-at-preserved-under-stack-write (valid-closure closS Stack is) w-in-stack =
+    HeapAlloc ih
+valid-at-preserved-under-stack-write (valid-closure closS StackAlloc is) w-in-stack =
   valid-closure
     (ClosureAtS-preserved-under-diff-stack-write closS (frame-separation is w-in-stack) (frame-separation-plus is w-in-stack))
-    Stack is
+    StackAlloc is
 -- Closure with env: dispatch on region
-valid-at-preserved-under-stack-write (valid-closure-env venv closS Heap ih) w-in-stack =
+valid-at-preserved-under-stack-write (valid-closure-env venv closS HeapAlloc ih) w-in-stack =
   valid-closure-env
     (valid-at-preserved-under-stack-write venv w-in-stack)
     (ClosureAtS-preserved-under-stack-write closS ih w-in-stack)
-    Heap ih
-valid-at-preserved-under-stack-write (valid-closure-env venv closS Stack is) w-in-stack =
+    HeapAlloc ih
+valid-at-preserved-under-stack-write (valid-closure-env venv closS StackAlloc is) w-in-stack =
   valid-closure-env
     (valid-at-preserved-under-stack-write venv w-in-stack)
     (ClosureAtS-preserved-under-diff-stack-write closS (frame-separation is w-in-stack) (frame-separation-plus is w-in-stack))
-    Stack is
+    StackAlloc is
 -- Eff: dispatch on region
-valid-at-preserved-under-stack-write (valid-eff closS Heap ih) w-in-stack =
+valid-at-preserved-under-stack-write (valid-eff closS HeapAlloc ih) w-in-stack =
   valid-eff
     (ClosureAtS-preserved-under-stack-write closS ih w-in-stack)
-    Heap ih
-valid-at-preserved-under-stack-write (valid-eff closS Stack is) w-in-stack =
+    HeapAlloc ih
+valid-at-preserved-under-stack-write (valid-eff closS StackAlloc is) w-in-stack =
   valid-eff
     (ClosureAtS-preserved-under-diff-stack-write closS (frame-separation is w-in-stack) (frame-separation-plus is w-in-stack))
-    Stack is
+    StackAlloc is
 -- Eff with env: dispatch on region
-valid-at-preserved-under-stack-write (valid-eff-env venv closS Heap ih) w-in-stack =
+valid-at-preserved-under-stack-write (valid-eff-env venv closS HeapAlloc ih) w-in-stack =
   valid-eff-env
     (valid-at-preserved-under-stack-write venv w-in-stack)
     (ClosureAtS-preserved-under-stack-write closS ih w-in-stack)
-    Heap ih
-valid-at-preserved-under-stack-write (valid-eff-env venv closS Stack is) w-in-stack =
+    HeapAlloc ih
+valid-at-preserved-under-stack-write (valid-eff-env venv closS StackAlloc is) w-in-stack =
   valid-eff-env
     (valid-at-preserved-under-stack-write venv w-in-stack)
     (ClosureAtS-preserved-under-diff-stack-write closS (frame-separation is w-in-stack) (frame-separation-plus is w-in-stack))
-    Stack is
+    StackAlloc is
 -- Fix: recurse
 valid-at-preserved-under-stack-write (valid-fix vx) w-in-stack =
   valid-fix (valid-at-preserved-under-stack-write vx w-in-stack)
@@ -989,80 +1031,80 @@ valid-subst-mem-above :
   ValidAt v addr mem2
 valid-subst-mem-above valid-unit _ _ _ _ = valid-unit
 -- Pair: dispatch on region, derive bound for preservation
-valid-subst-mem-above (valid-pair va vb pairS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+valid-subst-mem-above (valid-pair va vb pairS HeapAlloc ih) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-pair
     (valid-subst-mem-above va entry-rsp rsp-in-stack mem-above stack-bound)
     (valid-subst-mem-above vb entry-rsp rsp-in-stack mem-above stack-bound)
     (PairAtS-preserved-under-mem-above pairS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
-    Heap ih
-valid-subst-mem-above (valid-pair va vb pairS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+    HeapAlloc ih
+valid-subst-mem-above (valid-pair va vb pairS StackAlloc is) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-pair
     (valid-subst-mem-above va entry-rsp rsp-in-stack mem-above stack-bound)
     (valid-subst-mem-above vb entry-rsp rsp-in-stack mem-above stack-bound)
     (PairAtS-preserved-under-mem-above pairS rsp-in-stack (stack-bound _ is) mem-above)
-    Stack is
+    StackAlloc is
 -- Inl: dispatch on region
-valid-subst-mem-above {A + B} (valid-inl va inlS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+valid-subst-mem-above {A + B} (valid-inl va inlS HeapAlloc ih) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-inl
     (valid-subst-mem-above va entry-rsp rsp-in-stack mem-above stack-bound)
     (InlAtS-preserved-under-mem-above inlS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
-    Heap ih
-valid-subst-mem-above {A + B} (valid-inl va inlS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+    HeapAlloc ih
+valid-subst-mem-above {A + B} (valid-inl va inlS StackAlloc is) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-inl
     (valid-subst-mem-above va entry-rsp rsp-in-stack mem-above stack-bound)
     (InlAtS-preserved-under-mem-above inlS rsp-in-stack (stack-bound _ is) mem-above)
-    Stack is
+    StackAlloc is
 -- Inr: dispatch on region
-valid-subst-mem-above {A + B} (valid-inr vb inrS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+valid-subst-mem-above {A + B} (valid-inr vb inrS HeapAlloc ih) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-inr
     (valid-subst-mem-above vb entry-rsp rsp-in-stack mem-above stack-bound)
     (InrAtS-preserved-under-mem-above inrS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
-    Heap ih
-valid-subst-mem-above {A + B} (valid-inr vb inrS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+    HeapAlloc ih
+valid-subst-mem-above {A + B} (valid-inr vb inrS StackAlloc is) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-inr
     (valid-subst-mem-above vb entry-rsp rsp-in-stack mem-above stack-bound)
     (InrAtS-preserved-under-mem-above inrS rsp-in-stack (stack-bound _ is) mem-above)
-    Stack is
+    StackAlloc is
 -- Closure: dispatch on region
-valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure closS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure closS HeapAlloc ih) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-closure
     (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
-    Heap ih
-valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure closS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+    HeapAlloc ih
+valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure closS StackAlloc is) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-closure
     (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (stack-bound _ is) mem-above)
-    Stack is
+    StackAlloc is
 -- Closure with env: dispatch on region
-valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure-env venv closS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure-env venv closS HeapAlloc ih) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-closure-env
     (valid-subst-mem-above venv entry-rsp rsp-in-stack mem-above stack-bound)
     (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
-    Heap ih
-valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure-env venv closS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+    HeapAlloc ih
+valid-subst-mem-above {A ⇒[ _ ] B} (valid-closure-env venv closS StackAlloc is) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-closure-env
     (valid-subst-mem-above venv entry-rsp rsp-in-stack mem-above stack-bound)
     (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (stack-bound _ is) mem-above)
-    Stack is
+    StackAlloc is
 -- Eff: dispatch on region
-valid-subst-mem-above {Eff A B} (valid-eff closS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+valid-subst-mem-above {Eff A B} (valid-eff closS HeapAlloc ih) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-eff
     (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
-    Heap ih
-valid-subst-mem-above {Eff A B} (valid-eff closS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+    HeapAlloc ih
+valid-subst-mem-above {Eff A B} (valid-eff closS StackAlloc is) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-eff
     (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (stack-bound _ is) mem-above)
-    Stack is
+    StackAlloc is
 -- Eff with env: dispatch on region
-valid-subst-mem-above {Eff A B} (valid-eff-env venv closS Heap ih) entry-rsp rsp-in-stack mem-above stack-bound =
+valid-subst-mem-above {Eff A B} (valid-eff-env venv closS HeapAlloc ih) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-eff-env
     (valid-subst-mem-above venv entry-rsp rsp-in-stack mem-above stack-bound)
     (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (heap-addr-≥-stack-addr ih rsp-in-stack) mem-above)
-    Heap ih
-valid-subst-mem-above {Eff A B} (valid-eff-env venv closS Stack is) entry-rsp rsp-in-stack mem-above stack-bound =
+    HeapAlloc ih
+valid-subst-mem-above {Eff A B} (valid-eff-env venv closS StackAlloc is) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-eff-env
     (valid-subst-mem-above venv entry-rsp rsp-in-stack mem-above stack-bound)
     (ClosureAtS-preserved-under-mem-above closS rsp-in-stack (stack-bound _ is) mem-above)
-    Stack is
+    StackAlloc is
 -- Fix: recurse
 valid-subst-mem-above (valid-fix vx) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-fix (valid-subst-mem-above vx entry-rsp rsp-in-stack mem-above stack-bound)
