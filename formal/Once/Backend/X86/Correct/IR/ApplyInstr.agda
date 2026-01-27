@@ -31,7 +31,9 @@ open import Once.Backend.X86.Correct.StackInstantiation
          apply-cap-after-push; apply-cap-after-call;
          abstract-to-rsp-slot-in-stack;
          apply-alloc-diff-from-above;
-         apply-rsp-diff-from-alloc)
+         apply-rsp-diff-from-alloc;
+         rsp-sufficient; capacity-from-larger;
+         rsp>slot-from-2slot)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound)
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-heap-addr-disjoint;
@@ -41,12 +43,12 @@ open import Once.Backend.X86.Layout
          slot-addr; slot-addr-≥-base)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (Region; InRegion; Stack; Heap; frame-separation; stack-offset)
+  using (Region; InRegion; Stack; Heap; HeapAlloc; StackAlloc; stack-offset; caller-disjoint-from-current)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; ⟨_,_⟩◅_)
 
-open import Data.Nat using (_>_; _≥_; _≤_; _∸_) renaming (_+_ to _+ℕ'_)
-open import Data.Nat.Properties using (+-assoc; +-comm; m∸n≤m; ≤-trans; m∸n+n≡m; m≤m+n)
+open import Data.Nat using (_>_; _≥_; _≤_; _∸_; s≤s; z≤n) renaming (_+_ to _+ℕ'_)
+open import Data.Nat.Properties using (+-assoc; +-comm; m∸n≤m; ≤-trans; m∸n+n≡m; m≤m+n; <⇒≤; m<m+n)
 open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 
@@ -76,6 +78,9 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
   -- Region proofs for disjointness (supports both Stack and Heap values)
   (rdi-r : Region) → InRegion rdi-r (readReg (regs s) rdi) →
   (closure-r : Region) → InRegion closure-r closure-addr →
+  -- Stack ownership bounds (for Stack case, from Ownership model)
+  (rdi-r ≡ Stack → readReg (regs s) rdi ≥ readReg (regs s) rsp) →
+  (closure-r ≡ Stack → closure-addr ≥ readReg (regs s) rsp) →
   -- Memory layout (derivable from validity, explicit for convenience)
   readMem (memory s) (readReg (regs s) rdi) ≡ just closure-addr →
   readMem (memory s) (readReg (regs s) rdi +ℕ slot-size) ≡ just arg-addr →
@@ -103,7 +108,8 @@ apply-setup-star : ∀ {A B} (prefix suffix : Program)
           × (∀ addr → addr ≥ readReg (regs s) rsp →
              readMem (memory s') addr ≡ readMem (memory s) addr))
 apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
-                 h-false pc-eq stack-inv cap rdi-r rdi-in-region closure-r closure-in-region mem-cl mem-arg mem-env mem-cp code-ptr<len =
+                 h-false pc-eq stack-inv cap rdi-r rdi-in-region closure-r closure-in-region
+                 rdi-stack-bound closure-stack-bound mem-cl mem-arg mem-env mem-cp code-ptr<len =
   s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp-sufficient-6 , mem-r15-saved , rsp6 , mem-above-setup
   where
     prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
@@ -121,6 +127,20 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
     -- D041: Stack region proof for new-rsp (uses cap directly, no postulate!)
     new-rsp-in-stack : InStack new-rsp
     new-rsp-in-stack = abstract-to-rsp-slot-in-stack s cap
+
+    -- Proof that new-rsp < old-rsp (needed for caller-disjoint-from-current)
+    slot-size<old-rsp : slot-size < old-rsp
+    slot-size<old-rsp = rsp>slot-from-2slot rsp-bound
+
+    new-rsp<old-rsp : new-rsp < old-rsp
+    new-rsp<old-rsp = subst (new-rsp <_) sum-eq new-rsp<sum
+      where
+        slot-size≤old-rsp : slot-size ≤ old-rsp
+        slot-size≤old-rsp = <⇒≤ slot-size<old-rsp
+        sum-eq : new-rsp +ℕ slot-size ≡ old-rsp
+        sum-eq = m∸n+n≡m slot-size≤old-rsp
+        new-rsp<sum : new-rsp < new-rsp +ℕ slot-size
+        new-rsp<sum = m<m+n new-rsp {slot-size} (s≤s z≤n)
 
     -- The 6 instructions (push + 5 movs)
     i0 = push (reg r15)
@@ -211,13 +231,14 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
 
     -- Memory at rdi is preserved after push (region-based disjointness)
     -- For Heap: stack-heap disjointness (stack and heap are disjoint regions)
-    -- For Stack: frame-separation (caller's stack ≢ current frame)
+    -- For Stack: caller-disjoint-from-current (ownership model)
     stack-heap-disjoint-rdi : new-rsp ≢ readReg (regs s) rdi
-    stack-heap-disjoint-rdi = region-disjoint-rdi rdi-r rdi-in-region
+    stack-heap-disjoint-rdi = region-disjoint-rdi rdi-r rdi-in-region refl
       where
-        region-disjoint-rdi : (r : Region) → InRegion r (readReg (regs s) rdi) → new-rsp ≢ readReg (regs s) rdi
-        region-disjoint-rdi Heap ih = λ eq → stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi) new-rsp-in-stack ih eq
-        region-disjoint-rdi Stack is = frame-separation is new-rsp-in-stack
+        region-disjoint-rdi : (r : Region) → InRegion r (readReg (regs s) rdi) → rdi-r ≡ r → new-rsp ≢ readReg (regs s) rdi
+        region-disjoint-rdi HeapAlloc ih _ = λ eq → stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi) new-rsp-in-stack ih eq
+        region-disjoint-rdi StackAlloc _ r-eq = λ eq →
+          caller-disjoint-from-current (rdi-stack-bound r-eq) new-rsp<old-rsp (sym eq)
 
     mem-cl-s1 : readMem (memory s1) (readReg (regs s1) rdi) ≡ just closure-addr
     mem-cl-s1 = subst (λ addr → readMem (memory s1) addr ≡ just closure-addr)
@@ -246,28 +267,35 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
 
     -- Memory at rdi+8 is preserved after push (region-based disjointness)
     stack-heap-disjoint-rdi+8 : new-rsp ≢ readReg (regs s) rdi +ℕ slot-size
-    stack-heap-disjoint-rdi+8 = region-disjoint-rdi+8 rdi-r rdi-in-region
+    stack-heap-disjoint-rdi+8 = region-disjoint-rdi+8 rdi-r rdi-in-region refl
       where
-        region-disjoint-rdi+8 : (r : Region) → InRegion r (readReg (regs s) rdi) → new-rsp ≢ readReg (regs s) rdi +ℕ slot-size
-        region-disjoint-rdi+8 Heap ih = λ eq → let rdi+8-in-heap = heap-offset (readReg (regs s) rdi) ih
+        region-disjoint-rdi+8 : (r : Region) → InRegion r (readReg (regs s) rdi) → rdi-r ≡ r → new-rsp ≢ readReg (regs s) rdi +ℕ slot-size
+        region-disjoint-rdi+8 HeapAlloc ih _ = λ eq → let rdi+8-in-heap = heap-offset (readReg (regs s) rdi) ih
                                                in stack-heap-addr-disjoint new-rsp (readReg (regs s) rdi +ℕ slot-size) new-rsp-in-stack rdi+8-in-heap eq
-        region-disjoint-rdi+8 Stack is = frame-separation (stack-offset is) new-rsp-in-stack
+        region-disjoint-rdi+8 StackAlloc _ r-eq = λ eq →
+          let rdi-bound = rdi-stack-bound r-eq
+              rdi+8-bound = ≤-trans rdi-bound (m≤m+n (readReg (regs s) rdi) slot-size)
+          in caller-disjoint-from-current rdi+8-bound new-rsp<old-rsp (sym eq)
 
     -- Memory at closure-addr is preserved (region-based disjointness)
     stack-heap-disjoint-closure : new-rsp ≢ closure-addr
-    stack-heap-disjoint-closure = region-disjoint-closure closure-r closure-in-region
+    stack-heap-disjoint-closure = region-disjoint-closure closure-r closure-in-region refl
       where
-        region-disjoint-closure : (r : Region) → InRegion r closure-addr → new-rsp ≢ closure-addr
-        region-disjoint-closure Heap ih = λ eq → stack-heap-addr-disjoint new-rsp closure-addr new-rsp-in-stack ih eq
-        region-disjoint-closure Stack is = frame-separation is new-rsp-in-stack
+        region-disjoint-closure : (r : Region) → InRegion r closure-addr → closure-r ≡ r → new-rsp ≢ closure-addr
+        region-disjoint-closure HeapAlloc ih _ = λ eq → stack-heap-addr-disjoint new-rsp closure-addr new-rsp-in-stack ih eq
+        region-disjoint-closure StackAlloc _ r-eq = λ eq →
+          caller-disjoint-from-current (closure-stack-bound r-eq) new-rsp<old-rsp (sym eq)
 
     stack-heap-disjoint-closure+8 : new-rsp ≢ closure-addr +ℕ slot-size
-    stack-heap-disjoint-closure+8 = region-disjoint-closure+8 closure-r closure-in-region
+    stack-heap-disjoint-closure+8 = region-disjoint-closure+8 closure-r closure-in-region refl
       where
-        region-disjoint-closure+8 : (r : Region) → InRegion r closure-addr → new-rsp ≢ closure-addr +ℕ slot-size
-        region-disjoint-closure+8 Heap ih = λ eq → let closure+8-in-heap = heap-offset closure-addr ih
+        region-disjoint-closure+8 : (r : Region) → InRegion r closure-addr → closure-r ≡ r → new-rsp ≢ closure-addr +ℕ slot-size
+        region-disjoint-closure+8 HeapAlloc ih _ = λ eq → let closure+8-in-heap = heap-offset closure-addr ih
                                                    in stack-heap-addr-disjoint new-rsp (closure-addr +ℕ slot-size) new-rsp-in-stack closure+8-in-heap eq
-        region-disjoint-closure+8 Stack is = frame-separation (stack-offset is) new-rsp-in-stack
+        region-disjoint-closure+8 StackAlloc _ r-eq = λ eq →
+          let closure-bound = closure-stack-bound r-eq
+              closure+8-bound = ≤-trans closure-bound (m≤m+n closure-addr slot-size)
+          in caller-disjoint-from-current closure+8-bound new-rsp<old-rsp (sym eq)
 
     -- memory s2 = memory s1 = writeMem (memory s) new-rsp old-r15
     mem-s2-eq-s1 : memory s2 ≡ memory s1

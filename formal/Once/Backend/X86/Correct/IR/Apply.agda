@@ -46,7 +46,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
          stack-write-preserves-code-r15;
          stack-write-preserves-r15; stack-inv-for-code-ptr;
          stack-inv-preserved-r15-unchanged; stack-inv-preserved-unchanged;
-         StackCapacity; capacity-maintained; slots-mono-≤;
+         StackCapacity; capacity-maintained; slots-mono-≤; rsp-in-stack;
          capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged;
          capacity-when-rsp-restored; capacity-after-delta;
          ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
@@ -63,6 +63,10 @@ open import Once.Backend.X86.Correct.StackInstantiation
          heap-stack-disjoint-via-region;
          -- Region proofs from encode
          encode-in-heap-sem; encode-offset-in-heap)
+open import Once.Backend.X86.Correct.Ownership
+  using (caller-input-owned; owned-implies-stack-bound)
+open import Once.Backend.X86.Correct.MemoryValid
+  using (HeapAlloc; StackAlloc; Stack)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound)
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
@@ -258,6 +262,21 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     closure-region : ∃[ r ] InRegion r closure-addr
     closure-region = valid-in-region v-cl
 
+    -- Stack bounds from Ownership model (for Stack case only)
+    rdi-stack-bound : proj₁ rdi-region ≡ Stack → readReg (regs s) rdi ≥ readReg (regs s) rsp
+    rdi-stack-bound r-eq = get-bound (proj₁ rdi-region) (proj₂ rdi-region) r-eq
+      where
+        get-bound : (r : Region) → InRegion r (readReg (regs s) rdi) → r ≡ Stack → readReg (regs s) rdi ≥ readReg (regs s) rsp
+        get-bound StackAlloc is _ = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap)) is
+        get-bound HeapAlloc _ ()
+
+    closure-stack-bound : proj₁ closure-region ≡ Stack → closure-addr ≥ readReg (regs s) rsp
+    closure-stack-bound r-eq = get-bound (proj₁ closure-region) (proj₂ closure-region) r-eq
+      where
+        get-bound : (r : Region) → InRegion r closure-addr → r ≡ Stack → closure-addr ≥ readReg (regs s) rsp
+        get-bound StackAlloc is _ = owned-implies-stack-bound (caller-input-owned v-cl (rsp-in-stack cap)) is
+        get-bound HeapAlloc _ ()
+
     -- Extract rsp-bound from cap for internal use
     -- cap : StackCapacity s (apply-consumed-slots + wf.thunk-capacity) gives > slots (2 + thunk-cap)
     -- Derive > pair-alloc for helpers that need weaker bound (since 2 ≤ 2 + thunk-cap)
@@ -282,10 +301,12 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
 
     -- Step 1: Setup phase (now takes StackCapacity s (ir-stack-requirement apply), outputs StackCapacity s-setup 3)
     -- Pass region proofs: (rdi-r , rdi-in-region) and (closure-r , closure-in-region)
+    -- Pass stack bounds from Ownership model
     setup-result = apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
                      h-eq pc-eq stack-inv cap-for-setup
                      (proj₁ rdi-region) (proj₂ rdi-region)
                      (proj₁ closure-region) (proj₂ closure-region)
+                     rdi-stack-bound closure-stack-bound
                      mem-cl mem-arg mem-env mem-cp (code-ptr-valid wf)
     s-setup = proj₁ setup-result
     star-setup = proj₁ (proj₂ setup-result)
