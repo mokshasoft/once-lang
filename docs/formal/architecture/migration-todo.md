@@ -21,14 +21,17 @@ caller-current-disjoint : addr ≥ entry-rsp → w < entry-rsp → addr ≢ w
 2. [x] Add wrapper functions in `MemoryValid.agda`:
    - `caller-disjoint-from-current` - direct wrapper
    - `caller-disjoint-plus-from-current` - for addr+slot-size
-3. [ ] Update call sites to use Ownership + new functions
+   - `stack-write-preserves-above` - connects writes to mem-above
+   - `stack-write-2-preserves-above` - for 2-slot allocations
+3. [~] Update call sites to use Ownership + new functions
+   - [x] `CurryInstr.agda` - migrated to caller-input-preserved
+   - [x] `Inl.agda` - migrated to caller-input-preserved
+   - [x] `Inr.agda` - migrated to caller-input-preserved
+   - [ ] `MemoryValid.agda:621` - valid-disjoint-from-stack
+   - [ ] `MemoryValid.agda:841-903` - preservation lemmas
+   - [ ] `CaseSetup.agda:296,328,1067,1082` - 4 usages
+   - [ ] `ApplyInstr.agda:220,254,262,270` - 4 usages
 4. [ ] Remove `frame-separation` postulate
-
-**Call sites to migrate:**
-- `MemoryValid.agda:621` - `valid-disjoint-from-stack` region-dispatch
-- `MemoryValid.agda:841-903` - preservation lemmas (8 usages)
-- `CaseSetup.agda:296,328,1067,1082` - 4 usages
-- `ApplyInstr.agda:220,254,262,270` - 4 usages
 
 ### [ ] Eliminate `caller-stack-preserved-pair`
 **File:** `IR/Pair.agda:120-122`
