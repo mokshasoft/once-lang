@@ -53,7 +53,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; StackPointer; stack-heap-addr-disjoint;
          stack-code-addr-disjoint)
-open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved; caller-input-owned; owned-implies-stack-bound)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
 
 open import Data.Bool using (Bool; true; false)
@@ -87,7 +87,7 @@ open import Once.Backend.X86.Correct.StarBase using (rbp-inv-preserved-unchanged
 open import Once.Backend.X86.Correct.MemoryValid
   using (valid-inl-tag-is-0; valid-inl-child; valid-inl-val-ptr;
          valid-inr-tag-is-1; valid-inr-child; valid-inr-val-ptr;
-         valid-in-region; Region; InRegion; Stack; Heap; stack-offset)
+         valid-in-region; Region; InRegion; Stack; Heap; HeapAlloc; StackAlloc; stack-offset)
 
 -- Additional imports for case implementation
 open import Once.Backend.X86.Correct.StackInvariant using (stack-inv-preserved-unchanged)
@@ -165,15 +165,40 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
 
     -- If rdi is in region r, then rdi+8 is in region r too
     rdi+8-in-region : (r : Region) → InRegion r orig-rdi → InRegion r (orig-rdi +ℕ slot-size)
-    rdi+8-in-region Heap ih = heap-offset orig-rdi ih
-    rdi+8-in-region Stack is = stack-offset is
+    rdi+8-in-region HeapAlloc ih = heap-offset orig-rdi ih
+    rdi+8-in-region StackAlloc is = stack-offset is
 
-    -- Setup execution (pass Region proofs)
+    -- Stack ownership bounds (for Stack case, from Ownership model)
+    cap-ownership : StackCapacity s 1
+    cap-ownership = capacity-from-larger s 1 case-req cap-in (s≤s z≤n)
+
+    -- Helper to get stack bound - pattern match on the region directly
+    get-stack-bound : (r : Region) → InRegion r orig-rdi → r ≡ Stack → orig-rdi ≥ orig-rsp
+    get-stack-bound StackAlloc is _ = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap-ownership)) is
+    get-stack-bound HeapAlloc _ ()
+
+    get-stack-bound+8 : (r : Region) → InRegion r orig-rdi → r ≡ Stack → (orig-rdi +ℕ slot-size) ≥ orig-rsp
+    get-stack-bound+8 StackAlloc is _ = ≤-trans rdi-bound rdi+8-bound
+      where
+        rdi-bound : orig-rdi ≥ orig-rsp
+        rdi-bound = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap-ownership)) is
+        rdi+8-bound : (orig-rdi +ℕ slot-size) ≥ orig-rdi
+        rdi+8-bound = m≤m+n orig-rdi slot-size
+    get-stack-bound+8 HeapAlloc _ ()
+
+    rdi-stack-bound : (proj₁ rdi-region) ≡ Stack → orig-rdi ≥ orig-rsp
+    rdi-stack-bound eq = get-stack-bound (proj₁ rdi-region) (proj₂ rdi-region) eq
+
+    rdi+8-stack-bound : (proj₁ rdi-region) ≡ Stack → (orig-rdi +ℕ slot-size) ≥ orig-rsp
+    rdi+8-stack-bound eq = get-stack-bound+8 (proj₁ rdi-region) (proj₂ rdi-region) eq
+
+    -- Setup execution (pass Region proofs and stack bounds)
     setup-result : ∃[ s-setup ] CaseInlSetupResult {A} {B} {C} a prefix suffix f g s s-setup val-addr
     setup-result = case-inl-setup-star f g prefix suffix a s val-addr
                      h-false pc-eq tag-is-0 val-at-rdi+8
                      (proj₁ rdi-region) (proj₂ rdi-region)
                      (proj₁ rdi-region) (rdi+8-in-region (proj₁ rdi-region) (proj₂ rdi-region))
+                     rdi-stack-bound rdi+8-stack-bound
                      stack-inv cap-in rbp-inv
 
     s-setup : State
@@ -606,15 +631,40 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
 
     -- If rdi is in region r, then rdi+8 is in region r too
     rdi+8-in-region : (r : Region) → InRegion r orig-rdi → InRegion r (orig-rdi +ℕ slot-size)
-    rdi+8-in-region Heap ih = heap-offset orig-rdi ih
-    rdi+8-in-region Stack is = stack-offset is
+    rdi+8-in-region HeapAlloc ih = heap-offset orig-rdi ih
+    rdi+8-in-region StackAlloc is = stack-offset is
 
-    -- Setup execution (pass Region proofs)
+    -- Stack ownership bounds (for Stack case, from Ownership model)
+    cap-ownership : StackCapacity s 1
+    cap-ownership = capacity-from-larger s 1 case-req cap-in (s≤s z≤n)
+
+    -- Helper to get stack bound - pattern match on the region directly
+    get-stack-bound : (r : Region) → InRegion r orig-rdi → r ≡ Stack → orig-rdi ≥ orig-rsp
+    get-stack-bound StackAlloc is _ = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap-ownership)) is
+    get-stack-bound HeapAlloc _ ()
+
+    get-stack-bound+8 : (r : Region) → InRegion r orig-rdi → r ≡ Stack → (orig-rdi +ℕ slot-size) ≥ orig-rsp
+    get-stack-bound+8 StackAlloc is _ = ≤-trans rdi-bound rdi+8-bound
+      where
+        rdi-bound : orig-rdi ≥ orig-rsp
+        rdi-bound = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap-ownership)) is
+        rdi+8-bound : (orig-rdi +ℕ slot-size) ≥ orig-rdi
+        rdi+8-bound = m≤m+n orig-rdi slot-size
+    get-stack-bound+8 HeapAlloc _ ()
+
+    rdi-stack-bound : (proj₁ rdi-region) ≡ Stack → orig-rdi ≥ orig-rsp
+    rdi-stack-bound eq = get-stack-bound (proj₁ rdi-region) (proj₂ rdi-region) eq
+
+    rdi+8-stack-bound : (proj₁ rdi-region) ≡ Stack → (orig-rdi +ℕ slot-size) ≥ orig-rsp
+    rdi+8-stack-bound eq = get-stack-bound+8 (proj₁ rdi-region) (proj₂ rdi-region) eq
+
+    -- Setup execution (pass Region proofs and stack bounds)
     setup-result : ∃[ s-setup ] CaseInrSetupResult {A} {B} {C} b prefix suffix f g s s-setup val-addr
     setup-result = case-inr-setup-star f g prefix suffix b s val-addr
                      h-false pc-eq tag-is-1 val-at-rdi+8
                      (proj₁ rdi-region) (proj₂ rdi-region)
                      (proj₁ rdi-region) (rdi+8-in-region (proj₁ rdi-region) (proj₂ rdi-region))
+                     rdi-stack-bound rdi+8-stack-bound
                      stack-inv cap-in rbp-inv
 
     s-setup : State

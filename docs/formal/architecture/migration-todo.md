@@ -27,9 +27,9 @@ caller-current-disjoint : addr ≥ entry-rsp → w < entry-rsp → addr ≢ w
    - [x] `CurryInstr.agda` - migrated to caller-input-preserved
    - [x] `Inl.agda` - migrated to caller-input-preserved
    - [x] `Inr.agda` - migrated to caller-input-preserved
+   - [x] `CaseSetup.agda` - migrated to Ownership with stack bounds
    - [ ] `MemoryValid.agda:621` - valid-disjoint-from-stack
    - [ ] `MemoryValid.agda:841-903` - preservation lemmas
-   - [ ] `CaseSetup.agda:296,328,1067,1082` - 4 usages
    - [ ] `ApplyInstr.agda:220,254,262,270` - 4 usages
 4. [ ] Remove `frame-separation` postulate
 

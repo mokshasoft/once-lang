@@ -30,7 +30,7 @@ open import Once.Backend.X86.Correct.InstrExec
          execCmp-zero; execCmp-one; execJne-not-taken; execJne-taken; execJmp; execPop; execLabel)
 open import Once.Backend.X86.Correct.StarBase using (IRStarResultV)
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; Region; InRegion; Stack; Heap; frame-separation; stack-offset)
+  using (ValidAt; Region; InRegion; Stack; Heap; HeapAlloc; StackAlloc; stack-offset; caller-disjoint-from-current)
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant; stack-inv-preserved-r15-unchanged)
 open import Once.Backend.X86.Layout
@@ -38,7 +38,7 @@ open import Once.Backend.X86.Layout
 open import Once.Backend.X86.Correct.StackInstantiation
   using (slots; slot-size; StackCapacity; ir-stack-requirement; ir-output-capacity;
          capacity-after-push; capacity-from-larger; slot-1-addr-in-stack; rsp-in-stack;
-         make-frame-at-slot; make-frame-at-slot-addr)
+         make-frame-at-slot; make-frame-at-slot-addr; rsp-sufficient)
 open import Once.Backend.X86.Correct.RegisterLemmas
   using (readReg-writeReg-same; readReg-writeReg-rsp-rbp; readReg-writeReg-rsp-rdi;
          readReg-writeReg-rsp-r14; readReg-writeReg-rsp-r15; readReg-writeReg-rsp-rax;
@@ -130,12 +130,16 @@ case-inl-setup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
   -- Region proofs for rdi and rdi+8 (supports both Stack and Heap values)
   (rdi-r : Region) → InRegion rdi-r (readReg (regs s) rdi) →
   (rdi+8-r : Region) → InRegion rdi+8-r (readReg (regs s) rdi +ℕ slot-size) →
+  -- Stack ownership bounds (for Stack case, from Ownership model)
+  (rdi-r ≡ Stack → readReg (regs s) rdi ≥ readReg (regs s) rsp) →
+  (rdi+8-r ≡ Stack → (readReg (regs s) rdi +ℕ slot-size) ≥ readReg (regs s) rsp) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement [ f , g ]) →
   RbpInvariant s →
   ∃[ s-setup ] CaseInlSetupResult {A} {B} {C} a prefix suffix f g s s-setup val-addr
 case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
-    h-false pc-eq tag-is-0 val-ptr-eq rdi-r rdi-in-region rdi+8-r rdi+8-in-region stack-inv cap rbp-inv =
+    h-false pc-eq tag-is-0 val-ptr-eq rdi-r rdi-in-region rdi+8-r rdi+8-in-region
+    rdi-stack-bound rdi+8-stack-bound stack-inv cap rbp-inv =
     s6 , result
   where
     open import Data.Nat.Properties using (+-assoc)
@@ -287,13 +291,30 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
     push-addr-in-stack : InStack push-addr
     push-addr-in-stack = slot-1-addr-in-stack s cap-1
 
-    -- Disjointness: push-addr ≢ orig-rdi (region-based)
-    push-addr≢orig-rdi : push-addr ≢ orig-rdi
-    push-addr≢orig-rdi = region-disjoint-rdi rdi-r rdi-in-region
+    -- push-addr < orig-rsp (needed for Ownership-based disjointness)
+    slot-size<rsp : slot-size < orig-rsp
+    slot-size<rsp = rsp-sufficient cap-1
+
+    push-addr<rsp : push-addr < orig-rsp
+    push-addr<rsp = subst (push-addr <_) sum-eq push-addr<sum
       where
-        region-disjoint-rdi : (r : Region) → InRegion r orig-rdi → push-addr ≢ orig-rdi
-        region-disjoint-rdi Heap ih = λ eq → stack-heap-addr-disjoint push-addr orig-rdi push-addr-in-stack ih eq
-        region-disjoint-rdi Stack is = frame-separation is push-addr-in-stack
+        slot-size≤rsp : slot-size ≤ orig-rsp
+        slot-size≤rsp = <⇒≤ slot-size<rsp
+
+        sum-eq : push-addr +ℕ slot-size ≡ orig-rsp
+        sum-eq = m∸n+n≡m slot-size≤rsp
+
+        push-addr<sum : push-addr < push-addr +ℕ slot-size
+        push-addr<sum = m<m+n push-addr {slot-size} (s≤s z≤n)
+
+    -- Disjointness: push-addr ≢ orig-rdi (region-based with Ownership for Stack)
+    push-addr≢orig-rdi : push-addr ≢ orig-rdi
+    push-addr≢orig-rdi = region-disjoint rdi-r rdi-in-region refl
+      where
+        region-disjoint : (r : Region) → InRegion r orig-rdi → rdi-r ≡ r → push-addr ≢ orig-rdi
+        region-disjoint HeapAlloc ih _ = λ eq → stack-heap-addr-disjoint push-addr orig-rdi push-addr-in-stack ih eq
+        region-disjoint StackAlloc _ r-eq = λ eq →
+          caller-disjoint-from-current (rdi-stack-bound r-eq) push-addr<rsp (sym eq)
 
     -- Memory preserved at orig-rdi after push (s1 = push result)
     tag-still-0-s1 : readMem (memory s1) orig-rdi ≡ just 0
@@ -319,13 +340,14 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
     rdi-s5 : readReg (regs s5) rdi ≡ orig-rdi
     rdi-s5 = rdi-s4  -- s5 has same regs as s4
 
-    -- Value pointer at rdi+8 is also preserved via stack/heap disjointness (region-based)
+    -- Value pointer at rdi+8 is also preserved via stack/heap disjointness (region-based with Ownership for Stack)
     push-addr≢orig-rdi+8 : push-addr ≢ (orig-rdi +ℕ slot-size)
-    push-addr≢orig-rdi+8 = region-disjoint-rdi+8 rdi+8-r rdi+8-in-region
+    push-addr≢orig-rdi+8 = region-disjoint rdi+8-r rdi+8-in-region refl
       where
-        region-disjoint-rdi+8 : (r : Region) → InRegion r (orig-rdi +ℕ slot-size) → push-addr ≢ (orig-rdi +ℕ slot-size)
-        region-disjoint-rdi+8 Heap ih = λ eq → stack-heap-addr-disjoint push-addr (orig-rdi +ℕ slot-size) push-addr-in-stack ih eq
-        region-disjoint-rdi+8 Stack is = frame-separation is push-addr-in-stack
+        region-disjoint : (r : Region) → InRegion r (orig-rdi +ℕ slot-size) → rdi+8-r ≡ r → push-addr ≢ (orig-rdi +ℕ slot-size)
+        region-disjoint HeapAlloc ih _ = λ eq → stack-heap-addr-disjoint push-addr (orig-rdi +ℕ slot-size) push-addr-in-stack ih eq
+        region-disjoint StackAlloc _ r-eq = λ eq →
+          caller-disjoint-from-current (rdi+8-stack-bound r-eq) push-addr<rsp (sym eq)
 
     -- Memory s1 preserves value pointer
     val-ptr-still-valid-s1 : readMem (memory s1) (orig-rdi +ℕ slot-size) ≡ just val-addr
@@ -542,29 +564,6 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
     -- Key: push writes to (orig-rsp - slot-size), and RbpInvariant says rbp ≥ rsp
     -- So push-addr = rsp - slot-size < rsp ≤ rbp, meaning push-addr < rbp
 
-    -- From StackCapacity s 1: slot-size < orig-rsp
-    slot-size<rsp : slot-size < orig-rsp
-    slot-size<rsp = rsp-sufficient cap-1
-      where
-        open import Once.Backend.X86.Correct.StackInstantiation using (rsp-sufficient)
-
-    -- Therefore push-addr < orig-rsp
-    -- Proof: slot-size ≤ rsp, so (rsp - slot-size) + slot-size = rsp
-    --        And slot-size > 0, so (rsp - slot-size) < (rsp - slot-size) + slot-size = rsp
-    push-addr<rsp : push-addr < orig-rsp
-    push-addr<rsp = subst (push-addr <_) sum-eq push-addr<sum
-      where
-        slot-size≤rsp : slot-size ≤ orig-rsp
-        slot-size≤rsp = <⇒≤ slot-size<rsp
-
-        -- (orig-rsp - slot-size) + slot-size = orig-rsp
-        sum-eq : push-addr +ℕ slot-size ≡ orig-rsp
-        sum-eq = m∸n+n≡m slot-size≤rsp
-
-        -- slot-size > 0, so push-addr < push-addr + slot-size
-        push-addr<sum : push-addr < push-addr +ℕ slot-size
-        push-addr<sum = m<m+n push-addr {slot-size} (s≤s z≤n)
-
     -- From RbpInvariant: rsp ≤ rbp
     rsp≤rbp : orig-rsp ≤ orig-rbp
     rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
@@ -754,12 +753,16 @@ case-inr-setup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
   -- Region proofs for rdi and rdi+8 (supports both Stack and Heap values)
   (rdi-r : Region) → InRegion rdi-r (readReg (regs s) rdi) →
   (rdi+8-r : Region) → InRegion rdi+8-r (readReg (regs s) rdi +ℕ slot-size) →
+  -- Stack ownership bounds (for Stack case, from Ownership model)
+  (rdi-r ≡ Stack → readReg (regs s) rdi ≥ readReg (regs s) rsp) →
+  (rdi+8-r ≡ Stack → (readReg (regs s) rdi +ℕ slot-size) ≥ readReg (regs s) rsp) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement [ f , g ]) →
   RbpInvariant s →
   ∃[ s-setup ] CaseInrSetupResult {A} {B} {C} b prefix suffix f g s s-setup val-addr
 case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
-    h-false pc-eq tag-is-1 val-ptr-eq rdi-r rdi-in-region rdi+8-r rdi+8-in-region stack-inv cap rbp-inv =
+    h-false pc-eq tag-is-1 val-ptr-eq rdi-r rdi-in-region rdi+8-r rdi+8-in-region
+    rdi-stack-bound rdi+8-stack-bound stack-inv cap rbp-inv =
     s7 , result
   where
     open import Data.Nat.Properties using (+-assoc)
@@ -1059,12 +1062,29 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
     push-addr-in-stack : InStack push-addr
     push-addr-in-stack = slot-1-addr-in-stack s cap-1
 
-    push-addr≢orig-rdi : push-addr ≢ orig-rdi
-    push-addr≢orig-rdi = region-disjoint-rdi rdi-r rdi-in-region
+    -- push-addr < orig-rsp (needed for Ownership-based disjointness)
+    slot-size<rsp : slot-size < orig-rsp
+    slot-size<rsp = rsp-sufficient cap-1
+
+    push-addr<rsp : push-addr < orig-rsp
+    push-addr<rsp = subst (push-addr <_) sum-eq push-addr<sum
       where
-        region-disjoint-rdi : (r : Region) → InRegion r orig-rdi → push-addr ≢ orig-rdi
-        region-disjoint-rdi Heap ih = λ eq → stack-heap-addr-disjoint push-addr orig-rdi push-addr-in-stack ih eq
-        region-disjoint-rdi Stack is = frame-separation is push-addr-in-stack
+        slot-size≤rsp : slot-size ≤ orig-rsp
+        slot-size≤rsp = <⇒≤ slot-size<rsp
+
+        sum-eq : push-addr +ℕ slot-size ≡ orig-rsp
+        sum-eq = m∸n+n≡m slot-size≤rsp
+
+        push-addr<sum : push-addr < push-addr +ℕ slot-size
+        push-addr<sum = m<m+n push-addr {slot-size} (s≤s z≤n)
+
+    push-addr≢orig-rdi : push-addr ≢ orig-rdi
+    push-addr≢orig-rdi = region-disjoint rdi-r rdi-in-region refl
+      where
+        region-disjoint : (r : Region) → InRegion r orig-rdi → rdi-r ≡ r → push-addr ≢ orig-rdi
+        region-disjoint HeapAlloc ih _ = λ eq → stack-heap-addr-disjoint push-addr orig-rdi push-addr-in-stack ih eq
+        region-disjoint StackAlloc _ r-eq = λ eq →
+          caller-disjoint-from-current (rdi-stack-bound r-eq) push-addr<rsp (sym eq)
 
     -- Tag still reads as 1 after push
     tag-still-1-s1 : readMem (memory s1) orig-rdi ≡ just 1
@@ -1073,13 +1093,14 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
     mem3 : readMem (memory s2) (readReg (regs s2) rdi) ≡ just 1
     mem3 = subst (λ addr → readMem (memory s2) addr ≡ just 1) (sym rdi-s2) tag-still-1-s1
 
-    -- Value pointer preserved for step 7 (region-based)
+    -- Value pointer preserved for step 7 (region-based with Ownership for Stack)
     push-addr≢orig-rdi+8 : push-addr ≢ (orig-rdi +ℕ slot-size)
-    push-addr≢orig-rdi+8 = region-disjoint-rdi+8 rdi+8-r rdi+8-in-region
+    push-addr≢orig-rdi+8 = region-disjoint rdi+8-r rdi+8-in-region refl
       where
-        region-disjoint-rdi+8 : (r : Region) → InRegion r (orig-rdi +ℕ slot-size) → push-addr ≢ (orig-rdi +ℕ slot-size)
-        region-disjoint-rdi+8 Heap ih = λ eq → stack-heap-addr-disjoint push-addr (orig-rdi +ℕ slot-size) push-addr-in-stack ih eq
-        region-disjoint-rdi+8 Stack is = frame-separation is push-addr-in-stack
+        region-disjoint : (r : Region) → InRegion r (orig-rdi +ℕ slot-size) → rdi+8-r ≡ r → push-addr ≢ (orig-rdi +ℕ slot-size)
+        region-disjoint HeapAlloc ih _ = λ eq → stack-heap-addr-disjoint push-addr (orig-rdi +ℕ slot-size) push-addr-in-stack ih eq
+        region-disjoint StackAlloc _ r-eq = λ eq →
+          caller-disjoint-from-current (rdi+8-stack-bound r-eq) push-addr<rsp (sym eq)
 
     val-ptr-still-valid-s1 : readMem (memory s1) (orig-rdi +ℕ slot-size) ≡ just val-addr
     val-ptr-still-valid-s1 = trans (readMem-writeMem-diff orig-mem push-addr (orig-rdi +ℕ slot-size) orig-rbp push-addr≢orig-rdi+8) val-ptr-eq
@@ -1258,21 +1279,6 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         push-wrote-rbp = push-wrote-orig-rbp  -- memory unchanged through s1 → s7
 
     -- ========== Memory at rbp addresses ==========
-    slot-size<rsp : slot-size < orig-rsp
-    slot-size<rsp = rsp-sufficient cap-1
-      where
-        open import Once.Backend.X86.Correct.StackInstantiation using (rsp-sufficient)
-
-    push-addr<rsp : push-addr < orig-rsp
-    push-addr<rsp = subst (push-addr <_) sum-eq push-addr<sum
-      where
-        slot-size≤rsp : slot-size ≤ orig-rsp
-        slot-size≤rsp = <⇒≤ slot-size<rsp
-        sum-eq : push-addr +ℕ slot-size ≡ orig-rsp
-        sum-eq = m∸n+n≡m slot-size≤rsp
-        push-addr<sum : push-addr < push-addr +ℕ slot-size
-        push-addr<sum = m<m+n push-addr {slot-size} (s≤s z≤n)
-
     rsp≤rbp : orig-rsp ≤ orig-rbp
     rsp≤rbp = RbpInvariant.rsp≤rbp rbp-inv
 
