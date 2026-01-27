@@ -2,14 +2,39 @@
 
 This document defines the target architecture for x86 backend verification, specifying which postulates are acceptable and which must be eliminated.
 
-## Core Principle
+## Core Principles
+
+### 1. Postulate-Free IR Proofs
 
 **IR proofs must be postulate-free.** The only allowed postulates are:
 
 1. **CPU Semantics** - The machine model (x86 instruction semantics)
 2. **Allocator Semantics** - Memory allocation guarantees (heap block properties)
+3. **Memory Layout** - Runtime-provided region bounds
 
 Everything else - IR correctness proofs, memory preservation, validity threading - must be proven from first principles.
+
+### 2. Portability Through Layering
+
+**Address arithmetic must NOT appear in portable data types.**
+
+Portable types (work across architectures):
+- `ValidAt` - value validity predicate
+- `AllocMode` - escape analysis result (StackAlloc | HeapAlloc)
+- `Owner` - ownership classification (Caller | Current)
+- `OwnedBy` - ownership indexed by ValidAt
+
+Architecture-specific (contains address arithmetic):
+- Arithmetic lemmas like `addr ≥ rsp ∧ w < rsp → addr ≢ w`
+- Concrete slot sizes, frame layouts
+- Stack growth direction
+
+This separation means porting to a new architecture only requires:
+1. New CPU semantics
+2. New memory layout bounds
+3. Re-proving arithmetic lemmas
+
+The core proof structure (ValidAt, Ownership, IRStarResultV) remains unchanged.
 
 ## Postulate Categories
 
@@ -91,11 +116,23 @@ caller-stack-preserved-apply : ...
 #### 3. Frame Separation Postulates
 
 ```agda
--- ELIMINATE: stack frame disjointness
+-- WRONG: Claims ANY two stack addresses differ (this is false!)
 frame-separation : InStack addr → InStack w → w ≢ addr
 ```
 
-**How to eliminate:** Track `addr > rbp` for caller values, `w ≤ rbp` for current writes. Derive from arithmetic.
+**Why this is wrong:** Two stack addresses CAN be equal. The postulate is too strong.
+
+**Correct approach:** Use Ownership model + architecture-specific arithmetic lemma:
+
+```agda
+-- Portable: Ownership establishes addr ≥ entry-rsp for caller values
+-- Portable: ir-mem-preserved establishes writes are < entry-rsp
+
+-- Architecture-specific arithmetic lemma (proven, not postulated):
+caller-current-disjoint : addr ≥ entry-rsp → w < entry-rsp → addr ≢ w
+```
+
+**Key insight:** Keep `ValidAt` and `Ownership` portable (no address arithmetic in types). Put arithmetic in architecture-specific **lemmas** that connect ownership to memory preservation.
 
 ## Stack Escape Analysis Architecture
 

@@ -36,6 +36,41 @@ InAllocRegion StackAlloc = InStack
 InAllocRegion HeapAlloc  = InHeap
 ```
 
+## Portability Principle
+
+**Address arithmetic must NOT appear in portable data types.**
+
+The key insight is that `ValidAt` and `Ownership` are portable concepts that should work across architectures (x86, AArch64, RISC-V). Address arithmetic (like `addr ≥ rsp`) belongs in architecture-specific **lemmas**, not in data type definitions.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  PORTABLE LAYER (no address arithmetic in types)               │
+├─────────────────────────────────────────────────────────────────┤
+│  ValidAt      : value × address × memory → Set                 │
+│  AllocMode    : StackAlloc | HeapAlloc                         │
+│  Owner        : Caller | Current                               │
+│  OwnedBy      : Owner → ValidAt → entry-rsp → Set              │
+│                                                                 │
+│  These define WHAT ownership means, not HOW to prove it        │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  ARCHITECTURE-SPECIFIC LAYER (arithmetic lemmas here)          │
+├─────────────────────────────────────────────────────────────────┤
+│  Lemma: OwnedBy Caller va rsp → InStack addr → addr ≥ rsp      │
+│  Lemma: addr ≥ rsp ∧ w < rsp → addr ≢ w                        │
+│  Lemma: InHeap addr → addr ≥ any_stack_addr                    │
+│                                                                 │
+│  These DERIVE properties using concrete arithmetic             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+This separation means:
+- `ValidAt` works unchanged across architectures
+- `Ownership` concept is portable
+- Only the arithmetic lemmas need to be re-proven per architecture
+
 ## The Proof Stack
 
 ```
@@ -110,7 +145,9 @@ InAllocRegion HeapAlloc  = InHeap
 │                                                                     │
 │  REMAINING POSTULATES (to eliminate):                              │
 │  ├─ frame-separation : caller stack ≠ current stack writes        │
-│  │   → ELIMINATE: track addr > rbp (caller), w ≤ rbp (current)    │
+│  │   → WRONG: claims ALL stack addrs differ (false!)              │
+│  │   → CORRECT: prove addr ≥ rsp ∧ w < rsp → addr ≢ w             │
+│  │   → Uses Ownership (portable) + arithmetic lemma (arch-specific)│
 │  └─ stack-offset : InStack addr → InStack (addr + 8)               │
 │      → ELIMINATE: prove from stack region bounds                   │
 │                                                                     │
@@ -257,9 +294,29 @@ ESCAPE ANALYSIS (compile-time)
 | Postulate | Location | Elimination Strategy |
 |-----------|----------|---------------------|
 | `caller-input-owned` | Ownership.agda | Prove from call convention + IR composition |
-| `frame-separation` | MemoryValid.agda | Track addr > rbp (caller), w ≤ rbp (current) |
+| `frame-separation` | MemoryValid.agda | **WRONG** - claims all stack addrs differ. Replace with arithmetic lemma: `addr ≥ rsp ∧ w < rsp → addr ≢ w` |
 | `stack-offset` | MemoryValid.agda | Prove from stack region bounds |
 | `caller-stack-preserved-*` | Various IR/*.agda | Use `caller-input-preserved` from Ownership |
+
+### The frame-separation Fix
+
+The current postulate is incorrect:
+```agda
+-- WRONG: Claims ANY two stack addresses differ (false!)
+frame-separation : InStack addr → InStack w → w ≢ addr
+```
+
+The correct approach uses Ownership + arithmetic:
+```agda
+-- CORRECT: Caller frame addresses ≥ entry-rsp, current writes < entry-rsp
+caller-current-disjoint : addr ≥ entry-rsp → w < entry-rsp → addr ≢ w
+caller-current-disjoint addr≥rsp w<rsp = ... -- arithmetic proof
+```
+
+This keeps the proof portable:
+1. `Ownership` establishes `addr ≥ entry-rsp` (portable concept)
+2. `ir-mem-preserved` establishes writes are `< entry-rsp` (portable concept)
+3. Architecture-specific arithmetic lemma proves `addr ≢ w`
 
 ## Stack Escape Analysis Integration
 
