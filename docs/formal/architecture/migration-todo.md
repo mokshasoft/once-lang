@@ -29,9 +29,15 @@ caller-current-disjoint : addr ≥ entry-rsp → w < entry-rsp → addr ≢ w
    - [x] `Inr.agda` - migrated to caller-input-preserved
    - [x] `CaseSetup.agda` - migrated to Ownership with stack bounds
    - [x] `ApplyInstr.agda` - migrated to Ownership with stack bounds (4 usages)
-   - [ ] `MemoryValid.agda:621` - valid-disjoint-from-stack
-   - [ ] `MemoryValid.agda:841-903` - preservation lemmas
-4. [ ] Remove `frame-separation` postulate
+   - [~] `MemoryValid.agda:622` - valid-disjoint-from-stack
+     - Used only in MutualIR.agda for Prim case
+     - Fix requires adding RSP to signature and propagating change
+     - LOW PRIORITY: Prim inputs likely HeapAlloc only
+   - [~] `MemoryValid.agda:911-973` - valid-at-preserved-under-stack-write
+     - Appears to be DEAD CODE - imported but not used in migrated IR files
+     - IR files now use caller-input-preserved from Ownership model
+     - Fix would require RSP in signature (same as above)
+4. [ ] Remove `frame-separation` postulate (after all usages migrated)
 
 ### [ ] Eliminate `caller-stack-preserved-pair`
 **File:** `IR/Pair.agda:120-122`
