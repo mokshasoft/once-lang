@@ -1,11 +1,14 @@
 ------------------------------------------------------------------------
 -- Once.TypeCheck.Elaborate
 --
--- Combined type inference and elaboration.
+-- Bidirectional type checking for Once.
 -- Produces intrinsically-typed Surface.Syntax.Expr directly from RawExpr.
 --
--- This avoids the problem with separate Resolve step needing subexpression
--- types that aren't available.
+-- This module is PURE TYPE CHECKING - it does not produce IR.
+-- Compilation to IR is a separate step (see Once.Compile).
+--
+-- This separation ensures type checking is machine-independent:
+-- the same type checker works for all backends (x86, ARM, RISC-V).
 --
 -- Part of OCP-0004: MAlonzo Compiler Replacement
 ------------------------------------------------------------------------
@@ -31,8 +34,7 @@ open import Induction.WellFounded using (Acc; acc; WfRec)
 open import Data.Nat.Induction using (<-wellFounded)
 
 open import Once.Type
-open Once.Type using (showQuantity) public
-open import Once.IR as IR
+open Once.Type using (showQuantity; _≟T_) public
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Context using (Ctx; ∅; Binding; mkBinding; name; type)
@@ -41,7 +43,6 @@ open import Once.Surface.Syntax as Surface using (lookup; lookupQuantity; lookup
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 open import Once.Surface.Thinning
   using (weaken; exchange; exchange₂; exchange₃; exchange₄; exchange₅; exchange₆; exchange₇; exchange₈)
-open import Once.Surface.Elaborate as Elab using (elaborate; ⟦_⟧ᶜ)
 open import Once.Postulates using (coerceQuantity)
 
 ------------------------------------------------------------------------
@@ -60,175 +61,6 @@ weakenFromEmpty {Γ = S∅} e = e
 weakenFromEmpty {Γ = Γ S, B ^ Many} e = weaken {A = B} {q = Many} (weakenFromEmpty {Γ = Γ} e)
 -- For non-Many quantities, coerce (Step 2: infrastructure only, actual tracking in Step 3)
 weakenFromEmpty {Γ = Γ S, B ^ q} e = coerceQuantity (weaken {A = B} {q = q} (weakenFromEmpty {Γ = Γ} e))
-
-------------------------------------------------------------------------
--- Type Equality (Decidable with proof)
-------------------------------------------------------------------------
-
--- | Decidable type equality
-_≟T_ : (A B : Type) → Dec (A ≡ B)
-Unit ≟T Unit = yes refl
-Void ≟T Void = yes refl
-Int ≟T Int = yes refl
-Float ≟T Float = yes refl
-Str ≟T Str = yes refl
-Buffer ≟T Buffer = yes refl
-(A₁ Once.Type.* B₁) ≟T (A₂ Once.Type.* B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
-(A₁ Once.Type.+ B₁) ≟T (A₂ Once.Type.+ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
-(A₁ ⇒[ q₁ ] B₁) ≟T (A₂ ⇒[ q₂ ] B₂) with A₁ ≟T A₂ | q₁ ≟q q₂ | B₁ ≟T B₂
-... | yes refl | yes refl | yes refl = yes refl
-... | no ¬p | _ | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q | _ = no λ { refl → ¬q refl }
-... | _ | _ | no ¬r = no λ { refl → ¬r refl }
-(Eff A₁ B₁) ≟T (Eff A₂ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
-(Fix F₁) ≟T (Fix F₂) with F₁ ≟T F₂
-... | yes refl = yes refl
-... | no ¬p = no λ { refl → ¬p refl }
-(TVar x) ≟T (TVar y) with Data.String._≟_ x y
-... | yes refl = yes refl
-... | no ¬p = no λ { refl → ¬p refl }
--- All other combinations are unequal
-Unit ≟T Void = no λ ()
-Unit ≟T Int = no λ ()
-Unit ≟T Float = no λ ()
-Unit ≟T Str = no λ ()
-Unit ≟T Buffer = no λ ()
-Unit ≟T (_ Once.Type.* _) = no λ ()
-Unit ≟T (_ Once.Type.+ _) = no λ ()
-Unit ≟T (_ ⇒[ _ ] _) = no λ ()
-Unit ≟T Eff _ _ = no λ ()
-Unit ≟T Fix _ = no λ ()
-Unit ≟T TVar _ = no λ ()
-Void ≟T Unit = no λ ()
-Void ≟T Int = no λ ()
-Void ≟T Float = no λ ()
-Void ≟T Str = no λ ()
-Void ≟T Buffer = no λ ()
-Void ≟T (_ Once.Type.* _) = no λ ()
-Void ≟T (_ Once.Type.+ _) = no λ ()
-Void ≟T (_ ⇒[ _ ] _) = no λ ()
-Void ≟T Eff _ _ = no λ ()
-Void ≟T Fix _ = no λ ()
-Void ≟T TVar _ = no λ ()
-Int ≟T Unit = no λ ()
-Int ≟T Void = no λ ()
-Int ≟T Float = no λ ()
-Int ≟T Str = no λ ()
-Int ≟T Buffer = no λ ()
-Int ≟T (_ Once.Type.* _) = no λ ()
-Int ≟T (_ Once.Type.+ _) = no λ ()
-Int ≟T (_ ⇒[ _ ] _) = no λ ()
-Int ≟T Eff _ _ = no λ ()
-Int ≟T Fix _ = no λ ()
-Int ≟T TVar _ = no λ ()
-Float ≟T Unit = no λ ()
-Float ≟T Void = no λ ()
-Float ≟T Int = no λ ()
-Float ≟T Str = no λ ()
-Float ≟T Buffer = no λ ()
-Float ≟T (_ Once.Type.* _) = no λ ()
-Float ≟T (_ Once.Type.+ _) = no λ ()
-Float ≟T (_ ⇒[ _ ] _) = no λ ()
-Float ≟T Eff _ _ = no λ ()
-Float ≟T Fix _ = no λ ()
-Float ≟T TVar _ = no λ ()
-Str ≟T Unit = no λ ()
-Str ≟T Void = no λ ()
-Str ≟T Int = no λ ()
-Str ≟T Float = no λ ()
-Str ≟T Buffer = no λ ()
-Str ≟T (_ Once.Type.* _) = no λ ()
-Str ≟T (_ Once.Type.+ _) = no λ ()
-Str ≟T (_ ⇒[ _ ] _) = no λ ()
-Str ≟T Eff _ _ = no λ ()
-Str ≟T Fix _ = no λ ()
-Str ≟T TVar _ = no λ ()
-Buffer ≟T Unit = no λ ()
-Buffer ≟T Void = no λ ()
-Buffer ≟T Int = no λ ()
-Buffer ≟T Float = no λ ()
-Buffer ≟T Str = no λ ()
-Buffer ≟T (_ Once.Type.* _) = no λ ()
-Buffer ≟T (_ Once.Type.+ _) = no λ ()
-Buffer ≟T (_ ⇒[ _ ] _) = no λ ()
-Buffer ≟T Eff _ _ = no λ ()
-Buffer ≟T Fix _ = no λ ()
-Buffer ≟T TVar _ = no λ ()
-(_ Once.Type.* _) ≟T Unit = no λ ()
-(_ Once.Type.* _) ≟T Void = no λ ()
-(_ Once.Type.* _) ≟T Int = no λ ()
-(_ Once.Type.* _) ≟T Float = no λ ()
-(_ Once.Type.* _) ≟T Str = no λ ()
-(_ Once.Type.* _) ≟T Buffer = no λ ()
-(_ Once.Type.* _) ≟T (_ Once.Type.+ _) = no λ ()
-(_ Once.Type.* _) ≟T (_ ⇒[ _ ] _) = no λ ()
-(_ Once.Type.* _) ≟T Eff _ _ = no λ ()
-(_ Once.Type.* _) ≟T Fix _ = no λ ()
-(_ Once.Type.* _) ≟T TVar _ = no λ ()
-(_ Once.Type.+ _) ≟T Unit = no λ ()
-(_ Once.Type.+ _) ≟T Void = no λ ()
-(_ Once.Type.+ _) ≟T Int = no λ ()
-(_ Once.Type.+ _) ≟T Float = no λ ()
-(_ Once.Type.+ _) ≟T Str = no λ ()
-(_ Once.Type.+ _) ≟T Buffer = no λ ()
-(_ Once.Type.+ _) ≟T (_ Once.Type.* _) = no λ ()
-(_ Once.Type.+ _) ≟T (_ ⇒[ _ ] _) = no λ ()
-(_ Once.Type.+ _) ≟T Eff _ _ = no λ ()
-(_ Once.Type.+ _) ≟T Fix _ = no λ ()
-(_ Once.Type.+ _) ≟T TVar _ = no λ ()
-(_ ⇒[ _ ] _) ≟T Unit = no λ ()
-(_ ⇒[ _ ] _) ≟T Void = no λ ()
-(_ ⇒[ _ ] _) ≟T Int = no λ ()
-(_ ⇒[ _ ] _) ≟T Float = no λ ()
-(_ ⇒[ _ ] _) ≟T Str = no λ ()
-(_ ⇒[ _ ] _) ≟T Buffer = no λ ()
-(_ ⇒[ _ ] _) ≟T (_ Once.Type.* _) = no λ ()
-(_ ⇒[ _ ] _) ≟T (_ Once.Type.+ _) = no λ ()
-(_ ⇒[ _ ] _) ≟T Eff _ _ = no λ ()
-(_ ⇒[ _ ] _) ≟T Fix _ = no λ ()
-(_ ⇒[ _ ] _) ≟T TVar _ = no λ ()
-Eff _ _ ≟T Unit = no λ ()
-Eff _ _ ≟T Void = no λ ()
-Eff _ _ ≟T Int = no λ ()
-Eff _ _ ≟T Float = no λ ()
-Eff _ _ ≟T Str = no λ ()
-Eff _ _ ≟T Buffer = no λ ()
-Eff _ _ ≟T (_ Once.Type.* _) = no λ ()
-Eff _ _ ≟T (_ Once.Type.+ _) = no λ ()
-Eff _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
-Eff _ _ ≟T Fix _ = no λ ()
-Eff _ _ ≟T TVar _ = no λ ()
-Fix _ ≟T Unit = no λ ()
-Fix _ ≟T Void = no λ ()
-Fix _ ≟T Int = no λ ()
-Fix _ ≟T Float = no λ ()
-Fix _ ≟T Str = no λ ()
-Fix _ ≟T Buffer = no λ ()
-Fix _ ≟T (_ Once.Type.* _) = no λ ()
-Fix _ ≟T (_ Once.Type.+ _) = no λ ()
-Fix _ ≟T (_ ⇒[ _ ] _) = no λ ()
-Fix _ ≟T Eff _ _ = no λ ()
-Fix _ ≟T TVar _ = no λ ()
-TVar _ ≟T Unit = no λ ()
-TVar _ ≟T Void = no λ ()
-TVar _ ≟T Int = no λ ()
-TVar _ ≟T Float = no λ ()
-TVar _ ≟T Str = no λ ()
-TVar _ ≟T Buffer = no λ ()
-TVar _ ≟T (_ Once.Type.* _) = no λ ()
-TVar _ ≟T (_ Once.Type.+ _) = no λ ()
-TVar _ ≟T (_ ⇒[ _ ] _) = no λ ()
-TVar _ ≟T Eff _ _ = no λ ()
-TVar _ ≟T Fix _ = no λ ()
 
 ------------------------------------------------------------------------
 -- Bidirectional Type Checking Results
@@ -723,27 +555,29 @@ checkElab ctx expr ty with checkElabImpl ctx expr ty
                        "  Proven depth limit: 7\n" ++
                        "  Please refactor to reduce nesting of λ/case/let expressions.")
 
--- | Compile with type signature (PRIMARY INTERFACE - uses checking mode)
+-- | Type check with type signature (PRIMARY INTERFACE - uses checking mode)
 --
--- This is the recommended way to compile Once programs, as all top-level
+-- This is the recommended way to type check Once programs, as all top-level
 -- declarations should have type signatures (Once philosophy: explicit > implicit).
 --
 -- Uses bidirectional checking mode for better error messages and polymorphism.
-compileExprTyped : RawExpr → (A : Type) → Maybe (IR Unit A)
-compileExprTyped e A with checkElab emptyCtx e A
+-- Returns the typed surface expression; use Once.Compile to produce IR.
+typeCheckExpr : RawExpr → (A : Type) → Maybe (SExpr S∅ A)
+typeCheckExpr e A with checkElab emptyCtx e A
 ... | failure _ = nothing
-... | success se _ _ _ = just (elaborate se)
+... | success se _ _ _ = just se
 
--- | Compile without type signature (FALLBACK - uses inference mode)
+-- | Type check without type signature (FALLBACK - uses inference mode)
 --
--- This is provided for compatibility, but users should prefer compileExprTyped
+-- This is provided for compatibility, but users should prefer typeCheckExpr
 -- with explicit type signatures. Inference-only mode has limitations:
 -- - Cannot handle all polymorphic cases
 -- - Less helpful error messages
 -- - May fail where checking succeeds
 --
 -- Once philosophy: Types guide, signatures required.
-compileExpr : RawExpr → Maybe (∃[ A ] IR Unit A)
-compileExpr e with inferElab emptyCtx e
+-- Returns the inferred type and typed surface expression; use Once.Compile to produce IR.
+inferExpr : RawExpr → Maybe (∃[ A ] SExpr S∅ A)
+inferExpr e with inferElab emptyCtx e
 ... | failure _ = nothing
-... | success A se _ _ _ = just (A , elaborate se)
+... | success A se _ _ _ = just (A , se)
