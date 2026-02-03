@@ -104,6 +104,10 @@ word32-from-ℤ (-[1+ n ]) = 2^32 ∸ (suc n ℕ.% 2^32)
 word32-to-ℤ : Word32 → ℤ
 word32-to-ℤ n = + n
 
+-- Convert Word32 to ℕ (identity since Word32 = ℕ)
+word32-to-ℕ : Word32 → ℕ
+word32-to-ℕ n = n
+
 ------------------------------------------------------------------------
 -- Word32Interface: MachineInterface for 32-bit backends
 ------------------------------------------------------------------------
@@ -127,6 +131,7 @@ Word32Interface = record
   ; word-one = 1
   ; word-from-ℤ = word32-from-ℤ
   ; word-to-ℤ = word32-to-ℤ
+  ; word-to-ℕ = word32-to-ℕ
   }
 
 ------------------------------------------------------------------------

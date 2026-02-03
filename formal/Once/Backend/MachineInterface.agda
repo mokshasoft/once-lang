@@ -77,6 +77,10 @@ record MachineInterface : Set₁ where
     -- Convert word back to mathematical integer (for observing results)
     word-to-ℤ : Word → ℤ
 
+    -- Convert word to natural number (for memory encoding)
+    -- This is identity for Word64/Word32 where Word = ℕ
+    word-to-ℕ : Word → ℕ
+
     --------------------------------------------------------------------
     -- Properties (optional, for proofs)
     --------------------------------------------------------------------
@@ -166,4 +170,5 @@ TrivialMachineInterface = record
   ; word-one = + 1
   ; word-from-ℤ = λ n → n
   ; word-to-ℤ = λ n → n
+  ; word-to-ℕ = ℤ.∣_∣
   }

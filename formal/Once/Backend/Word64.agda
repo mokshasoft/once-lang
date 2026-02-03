@@ -126,6 +126,10 @@ word64-from-ℤ (-[1+ n ]) = 2^64 ∸ (suc n ℕ.% 2^64)
 word64-to-ℤ : Word64 → ℤ
 word64-to-ℤ n = + n
 
+-- Convert Word64 to ℕ (identity since Word64 = ℕ)
+word64-to-ℕ : Word64 → ℕ
+word64-to-ℕ n = n
+
 ------------------------------------------------------------------------
 -- Word64Interface: MachineInterface for 64-bit backends
 ------------------------------------------------------------------------
@@ -149,6 +153,7 @@ Word64Interface = record
   ; word-one = 1
   ; word-from-ℤ = word64-from-ℤ
   ; word-to-ℤ = word64-to-ℤ
+  ; word-to-ℕ = word64-to-ℕ
   }
 
 ------------------------------------------------------------------------

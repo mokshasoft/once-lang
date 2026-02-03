@@ -102,13 +102,11 @@ encode-closure-addr : ∀ {A B : Type} → Closure A B → MemWord
 encode-closure-addr _ = 0
 
 -- Integer encoding: convert IntWord to MemWord
+-- Uses word-to-ℕ from MachineInterface.
 -- For Word64Interface/Word32Interface where IntWord = ℕ = MemWord,
--- this is identity. For other interfaces, we use word-to-ℕ.
---
--- NOTE: We postulate this to keep the module general.
--- For concrete instantiations (Word64, Word32), this is identity.
-postulate
-  encode-int : IntWord → MemWord
+-- this is identity.
+encode-int : IntWord → MemWord
+encode-int = MachineInterface.word-to-ℕ MI
 
 encode-float        : AgdaFloat → MemWord
 encode-float _ = 0

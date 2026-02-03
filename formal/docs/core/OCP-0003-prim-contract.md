@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress (Phase 2 - Core modules restructured and compiling)
+**Phase 2 Complete** - Integer arithmetic postulates eliminated
 
 ## Summary
 
@@ -271,7 +271,7 @@ module Once.Arith.BoundaryMachine (MI : MachineInterface) where
 - [x] `Word64Interface`, `Word32Interface` - concrete instantiations
 - [x] `SemanticBaseMachine` - `⟦_⟧` parameterized by MachineInterface
 
-### Phase 2: Migration (In Progress)
+### Phase 2: Migration ✓
 - [x] Update Makefile to use machine-based files
 - [x] Remove TrivialContract (was hiding a false postulate)
 - [x] Remove default TrivialInterface instantiations
@@ -280,8 +280,9 @@ module Once.Arith.BoundaryMachine (MI : MachineInterface) where
   - [x] `IRMachine` - parameterize by ⟦_⟧
   - [x] `ArithContracts` - use Word-specialized contract types
   - [x] `BoundaryMachine` - parameterize by MI, specialize contracts
-- [ ] Integrate with x86 backend (instantiate with Word64Interface)
-- [ ] Test full compilation pipeline
+- [x] Add `word-to-ℕ` to MachineInterface (eliminates encode-int postulate)
+- [x] Integrate with x86 backend (instantiate with Word64Interface)
+- [x] Test full compilation pipeline (make x86-compiler passes)
 
 ### Phase 3: Eliminate Old Infrastructure
 - [ ] Delete `Once/SemanticBase.agda` (uses ℤ)
