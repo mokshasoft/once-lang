@@ -73,9 +73,8 @@ open import Once.Backend.X86.Correct.MemoryValid
          stack-write-preserves-above; stack-write-2-preserves-above)
 open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
 
--- Import IRSize for size proofs
-open import Once.Backend.Common.IRSize
-  using (ir-size; curry-smaller)
+-- ir-size and curry-smaller are re-exported from Foundation
+
 -- Import RecDispatcher from central location
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 

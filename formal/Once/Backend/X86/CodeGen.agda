@@ -9,12 +9,20 @@
 --   - Output value in rax (return value)
 --   - r12 reserved for environment pointer (closures)
 --   - Stack used for pair/sum allocation
+--
+-- The module is parameterized by ContractInterface to support different
+-- contract types (TrivialContract for pure semantics, PrimContract for X86).
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.CodeGen where
 
 open import Once.Type
-open import Once.IR
+open import Once.IR as IR using (ContractInterface; TrivialInterface; TrivialContract; trivial)
+open IR using (module IRDef)
+
+-- X86-specific contract support
+open import Once.Backend.X86.Correct.PrimContract using (PrimContract; X86ContractInterface)
+open PrimContract using (prim-assembly)
 
 open import Once.Backend.X86.Syntax
 
@@ -269,233 +277,253 @@ pair-rbp-slot : ℕ
 pair-rbp-slot = 3
 
 ------------------------------------------------------------------------
--- Compile length calculation
+-- Parameterized CodeGen Module
 ------------------------------------------------------------------------
 
--- | Calculate the number of instructions generated for an IR morphism
--- This is needed for computing jump targets in case analysis and curry.
-compile-length : ∀ {A B} → IR A B → ℕ
+-- | CodeGen parameterized by ContractInterface
+-- The instruction type is fixed to X86's Instr since this is X86 CodeGen.
+--
+module CodeGenDef (CI : ContractInterface Instr) where
+  open IRDef CI
+  open ContractInterface CI
 
-compile-length id = simple-instr-count
-compile-length (g ∘ f) = (compile-length f +ℕ simple-instr-count) +ℕ compile-length g
-compile-length fst = simple-instr-count
-compile-length snd = simple-instr-count
-compile-length ⟨ f , g ⟩ = (pair-overhead +ℕ compile-length f) +ℕ compile-length g
-compile-length inl = injection-instr-count
-compile-length inr = injection-instr-count
-compile-length [ f , g ] = (case-overhead +ℕ compile-length f) +ℕ compile-length g
-compile-length terminal = simple-instr-count
-compile-length initial = simple-instr-count
-compile-length (curry f) = curry-overhead +ℕ compile-length f
-compile-length apply = apply-instr-count
-compile-length fold = simple-instr-count
-compile-length unfold = simple-instr-count
-compile-length arr = simple-instr-count
-compile-length (Prim _) = simple-instr-count
+  ------------------------------------------------------------------------
+  -- Compile length calculation
+  ------------------------------------------------------------------------
 
--- Position of cleanup instructions (symbolic, computed from code structure)
--- cleanup-position f g = setup-prefix + |f| + middle + |g|
-case-cleanup-position : ∀ {A B C} → IR A C → IR B C → ℕ
-case-cleanup-position f g = case-setup-prefix-count +ℕ compile-length f +ℕ case-middle-count +ℕ compile-length g
+  -- | Calculate the number of instructions generated for an IR morphism
+  -- This is needed for computing jump targets in case analysis and curry.
+  compile-length : ∀ {A B} → IR A B → ℕ
+
+  compile-length id = simple-instr-count
+  compile-length (g ∘ f) = (compile-length f +ℕ simple-instr-count) +ℕ compile-length g
+  compile-length fst = simple-instr-count
+  compile-length snd = simple-instr-count
+  compile-length ⟨ f , g ⟩ = (pair-overhead +ℕ compile-length f) +ℕ compile-length g
+  compile-length inl = injection-instr-count
+  compile-length inr = injection-instr-count
+  compile-length [ f , g ] = (case-overhead +ℕ compile-length f) +ℕ compile-length g
+  compile-length terminal = simple-instr-count
+  compile-length initial = simple-instr-count
+  compile-length (curry f) = curry-overhead +ℕ compile-length f
+  compile-length apply = apply-instr-count
+  compile-length fold = simple-instr-count
+  compile-length unfold = simple-instr-count
+  compile-length arr = simple-instr-count
+  -- Prim: use actual assembly length from contract
+  compile-length (Prim _ _ c) = contract-length c
+
+  -- Position of cleanup instructions (symbolic, computed from code structure)
+  -- cleanup-position f g = setup-prefix + |f| + middle + |g|
+  case-cleanup-position : ∀ {A B C} → IR A C → IR B C → ℕ
+  case-cleanup-position f g = case-setup-prefix-count +ℕ compile-length f +ℕ case-middle-count +ℕ compile-length g
+
+  ------------------------------------------------------------------------
+  -- Code generation
+  ------------------------------------------------------------------------
+
+  -- | Generate x86-64 code for an IR morphism
+  --
+  -- compile-x86 : IR A B → Program
+  --
+  -- The generated code:
+  --   - Expects input in rdi
+  --   - Produces output in rax
+  --   - May use stack for intermediate allocations
+  --   - Preserves callee-saved registers
+  --
+  compile-x86 : ∀ {A B} → IR A B → Program
+
+  -- Identity: just move input to output
+  compile-x86 id = mov (reg rax) (reg rdi) ∷ []
+
+  -- Composition: sequence the generated code
+  -- First apply f (input in rdi, output in rax)
+  -- Then move result to rdi and apply g
+  compile-x86 (g ∘ f) =
+    compile-x86 f ++
+    mov (reg rdi) (reg rax) ∷ [] ++
+    compile-x86 g
+
+  -- First projection: load from offset 0 of pair pointer
+  compile-x86 fst = mov (reg rax) (mem (base rdi)) ∷ []
+
+  -- Second projection: load from offset 8 of pair pointer
+  compile-x86 snd = mov (reg rax) (mem (base+disp rdi slot-size)) ∷ []
+
+  -- Pairing: allocate pair on stack, compute both components
+  -- Uses pair-setup/middle/cleanup instruction lists defined above.
+  compile-x86 ⟨ f , g ⟩ =
+    pair-setup ++
+    compile-x86 f ++
+    pair-middle ++
+    compile-x86 g ++
+    pair-cleanup
+
+  -- Left injection: uses inl-instrs defined above
+  compile-x86 inl = inl-instrs
+
+  -- Right injection: uses inr-instrs defined above
+  compile-x86 inr = inr-instrs
+
+  -- Case analysis: branch on tag
+  -- Jump offsets are PC-relative: target = pc + 1 + offset
+  -- Note: Uses r11 (scratch register) for tag to avoid clobbering r15 (callee-save)
+  -- Stack frame: push/pop rbp to restore rsp after branch execution (branches may have non-zero delta)
+  compile-x86 [ f , g ] =
+    let len-f = compile-length f
+        len-g = compile-length g
+        -- Layout with stack frame:
+        --   0: push rbp             ; setup - save frame pointer
+        --   1: mov rbp, rsp         ; setup - establish frame
+        --   2: mov r11, [rdi]       ; load tag into scratch register
+        --   3: cmp r11, 0
+        --   4: jne right-offset     ; target = 7+len-f, offset = 2+len-f
+        --   5: mov rdi, [rdi+8]
+        --   6 to 5+|f|: compile-x86 f
+        --   6+|f|: jmp cleanup      ; target = 9+len-f+len-g, offset = 2+len-g
+        --   7+|f|: label (right-branch)
+        --   8+|f|: mov rdi, [rdi+8]
+        --   9+|f| to 8+|f|+|g|: compile-x86 g
+        --   9+|f|+|g|: mov rsp, rbp ; cleanup - restore rsp
+        --   10+|f|+|g|: pop rbp     ; cleanup - restore rbp
+        right-offset = case-jne-base +ℕ len-f
+        cleanup-offset = case-jmp-base +ℕ len-g
+        right-label = case-right-label-base +ℕ len-f
+    in
+    -- Setup: establish stack frame
+    push (reg rbp) ∷
+    mov (reg rbp) (reg rsp) ∷
+    -- Load tag into r11 (scratch register, doesn't clobber r15)
+    mov (reg r11) (mem (base rdi)) ∷
+    -- Compare with 0
+    cmp (reg r11) (imm 0) ∷
+    -- Jump to right branch if not zero (PC-relative)
+    jne right-offset ∷
+    -- Left branch: load value and apply f
+    mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+    compile-x86 f ++
+    jmp cleanup-offset ∷
+    -- Right branch: load value and apply g
+    label right-label ∷
+    mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+    compile-x86 g ++
+    -- Cleanup: restore stack frame (undoes any branch delta)
+    mov (reg rsp) (reg rbp) ∷
+    pop rbp ∷ []
+
+  -- Terminal: return unit (represented as 0)
+  compile-x86 terminal = mov (reg rax) (imm 0) ∷ []
+
+  -- Initial: unreachable (Void has no inhabitants)
+  compile-x86 initial = ud2 ∷ []
+
+  -- Curry: create closure
+  -- Closure layout: [env (8 bytes), code_ptr (8 bytes)]
+  -- For curry f, the closure captures the current environment (input a)
+  -- and points to a thunk that, when called with b, computes f(a,b)
+  --
+  -- The code_ptr points to inline code that:
+  --   1. Loads env (a) from r12
+  --   2. Pairs it with argument (b) in rdi
+  --   3. Executes compile-x86 f
+  --
+  -- Jump offsets are PC-relative: target = pc + 1 + offset
+  compile-x86 (curry {A} {B} {C} f) =
+    let len-f = compile-length f
+        -- Layout (with RIP-relative code-ptr, frame pointer, and r15 save/restore):
+        --   0: sub rsp, 16
+        --   1: mov [rsp], rdi
+        --   2: lea r9, [rip+4]      -- r9 = pc+4 = 2+4 = 6 (thunk entry)
+        --   3: mov [rsp+8], r9
+        --   4: mov rax, rsp
+        --   5: jmp end-offset       ; target = 18+len-f, offset = (18+len-f) - 6 = 12+len-f
+        --   6: label code-ptr
+        --   7: push r15             -- save r15 (apply uses it as scratch)
+        --   8: push rbp             -- save frame pointer
+        --   9: mov rbp, rsp         -- set frame pointer
+        --   10: sub rsp, 16         -- allocate pair
+        --   11: mov [rsp], r12      -- store env
+        --   12: mov [rsp+8], rdi    -- store arg
+        --   13: mov rdi, rsp        -- rdi = pair address
+        --   14 to 13+|f|: compile-x86 f
+        --   14+|f|: mov rsp, rbp    -- restore stack (cleans up pair + any f allocations)
+        --   15+|f|: pop rbp         -- restore frame pointer
+        --   16+|f|: pop r15         -- restore r15
+        --   17+|f|: ret             -- now pops from correct location
+        --   18+|f|: label end
+        code-ptr-label = curry-thunk-label
+        rip-offset = curry-rip-offset
+        end-offset = curry-jmp-base +ℕ len-f
+        end-label = curry-end-label-base +ℕ len-f
+    in
+    -- Allocate closure on stack
+    sub (reg rsp) (imm (slots 2)) ∷
+    -- Store environment (input a in rdi) as closure.env
+    mov (mem (base rsp)) (reg rdi) ∷
+    -- Compute code pointer using RIP-relative addressing
+    -- At pc=2, lea computes pc+4=6 (thunk entry address)
+    lea r9 (rip+disp rip-offset) ∷
+    -- Store code pointer from r9
+    mov (mem (base+disp rsp slot-size)) (reg r9) ∷
+    -- Return closure pointer
+    mov (reg rax) (reg rsp) ∷
+    -- Jump over the thunk code (PC-relative)
+    jmp end-offset ∷
+    -- Thunk code: called via apply with b in rdi, env in r12
+    label code-ptr-label ∷
+    -- Save r15 (apply uses it as scratch for code-ptr)
+    push (reg r15) ∷
+    -- Save and set frame pointer (for proper stack cleanup)
+    push (reg rbp) ∷
+    mov (reg rbp) (reg rsp) ∷
+    -- Allocate pair (a, b) on stack
+    sub (reg rsp) (imm (slots 2)) ∷
+    -- Store a (from r12) at [rsp]
+    mov (mem (base rsp)) (reg r12) ∷
+    -- Store b (from rdi) at [rsp+8]
+    mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
+    -- Set rdi = pointer to pair
+    mov (reg rdi) (reg rsp) ∷
+    -- Execute f on the pair
+    compile-x86 f ++
+    -- Restore stack to frame (cleans up pair + any f allocations)
+    mov (reg rsp) (reg rbp) ∷
+    -- Restore frame pointer
+    pop rbp ∷
+    -- Restore r15
+    pop r15 ∷
+    -- Return (rax already has result, stack properly restored)
+    ret ∷
+    -- End of thunk
+    label end-label ∷ []
+
+  -- Apply: call closure
+  -- Uses apply-instrs instruction list defined above.
+  compile-x86 apply = apply-instrs
+
+  -- Fold: identity at runtime (wrap into Fix)
+  compile-x86 fold = mov (reg rax) (reg rdi) ∷ []
+
+  -- Unfold: identity at runtime (unwrap from Fix)
+  compile-x86 unfold = mov (reg rax) (reg rdi) ∷ []
+
+  -- Arr: identity at runtime (lift pure to Eff)
+  compile-x86 arr = mov (reg rax) (reg rdi) ∷ []
+
+  -- Prim: emit actual assembly from contract
+  -- The contract provides the real instructions via contract-program
+  compile-x86 (Prim _ _ c) = contract-program c
 
 ------------------------------------------------------------------------
--- Code generation
+-- Default Instantiation (for backwards compatibility)
 ------------------------------------------------------------------------
 
--- | Generate x86-64 code for an IR morphism
+-- | For modules that use the default TrivialContract,
+-- we provide a default instantiation.
+-- Uses X86's Instr type since this is X86 CodeGen.
 --
--- compile-x86 : IR A B → Program
---
--- The generated code:
---   - Expects input in rdi
---   - Produces output in rax
---   - May use stack for intermediate allocations
---   - Preserves callee-saved registers
---
-compile-x86 : ∀ {A B} → IR A B → Program
-
--- Identity: just move input to output
-compile-x86 id = mov (reg rax) (reg rdi) ∷ []
-
--- Composition: sequence the generated code
--- First apply f (input in rdi, output in rax)
--- Then move result to rdi and apply g
-compile-x86 (g ∘ f) =
-  compile-x86 f ++
-  mov (reg rdi) (reg rax) ∷ [] ++
-  compile-x86 g
-
--- First projection: load from offset 0 of pair pointer
-compile-x86 fst = mov (reg rax) (mem (base rdi)) ∷ []
-
--- Second projection: load from offset 8 of pair pointer
-compile-x86 snd = mov (reg rax) (mem (base+disp rdi slot-size)) ∷ []
-
--- Pairing: allocate pair on stack, compute both components
--- Uses pair-setup/middle/cleanup instruction lists defined above.
-compile-x86 ⟨ f , g ⟩ =
-  pair-setup ++
-  compile-x86 f ++
-  pair-middle ++
-  compile-x86 g ++
-  pair-cleanup
-
--- Left injection: uses inl-instrs defined above
-compile-x86 inl = inl-instrs
-
--- Right injection: uses inr-instrs defined above
-compile-x86 inr = inr-instrs
-
--- Case analysis: branch on tag
--- Jump offsets are PC-relative: target = pc + 1 + offset
--- Note: Uses r11 (scratch register) for tag to avoid clobbering r15 (callee-save)
--- Stack frame: push/pop rbp to restore rsp after branch execution (branches may have non-zero delta)
-compile-x86 [ f , g ] =
-  let len-f = compile-length f
-      len-g = compile-length g
-      -- Layout with stack frame:
-      --   0: push rbp             ; setup - save frame pointer
-      --   1: mov rbp, rsp         ; setup - establish frame
-      --   2: mov r11, [rdi]       ; load tag into scratch register
-      --   3: cmp r11, 0
-      --   4: jne right-offset     ; target = 7+len-f, offset = 2+len-f
-      --   5: mov rdi, [rdi+8]
-      --   6 to 5+|f|: compile-x86 f
-      --   6+|f|: jmp cleanup      ; target = 9+len-f+len-g, offset = 2+len-g
-      --   7+|f|: label (right-branch)
-      --   8+|f|: mov rdi, [rdi+8]
-      --   9+|f| to 8+|f|+|g|: compile-x86 g
-      --   9+|f|+|g|: mov rsp, rbp ; cleanup - restore rsp
-      --   10+|f|+|g|: pop rbp     ; cleanup - restore rbp
-      right-offset = case-jne-base +ℕ len-f
-      cleanup-offset = case-jmp-base +ℕ len-g
-      right-label = case-right-label-base +ℕ len-f
-  in
-  -- Setup: establish stack frame
-  push (reg rbp) ∷
-  mov (reg rbp) (reg rsp) ∷
-  -- Load tag into r11 (scratch register, doesn't clobber r15)
-  mov (reg r11) (mem (base rdi)) ∷
-  -- Compare with 0
-  cmp (reg r11) (imm 0) ∷
-  -- Jump to right branch if not zero (PC-relative)
-  jne right-offset ∷
-  -- Left branch: load value and apply f
-  mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
-  compile-x86 f ++
-  jmp cleanup-offset ∷
-  -- Right branch: load value and apply g
-  label right-label ∷
-  mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
-  compile-x86 g ++
-  -- Cleanup: restore stack frame (undoes any branch delta)
-  mov (reg rsp) (reg rbp) ∷
-  pop rbp ∷ []
-
--- Terminal: return unit (represented as 0)
-compile-x86 terminal = mov (reg rax) (imm 0) ∷ []
-
--- Initial: unreachable (Void has no inhabitants)
-compile-x86 initial = ud2 ∷ []
-
--- Curry: create closure
--- Closure layout: [env (8 bytes), code_ptr (8 bytes)]
--- For curry f, the closure captures the current environment (input a)
--- and points to a thunk that, when called with b, computes f(a,b)
---
--- The code_ptr points to inline code that:
---   1. Loads env (a) from r12
---   2. Pairs it with argument (b) in rdi
---   3. Executes compile-x86 f
---
--- Jump offsets are PC-relative: target = pc + 1 + offset
-compile-x86 (curry {A} {B} {C} f) =
-  let len-f = compile-length f
-      -- Layout (with RIP-relative code-ptr, frame pointer, and r15 save/restore):
-      --   0: sub rsp, 16
-      --   1: mov [rsp], rdi
-      --   2: lea r9, [rip+4]      -- r9 = pc+4 = 2+4 = 6 (thunk entry)
-      --   3: mov [rsp+8], r9
-      --   4: mov rax, rsp
-      --   5: jmp end-offset       ; target = 18+len-f, offset = (18+len-f) - 6 = 12+len-f
-      --   6: label code-ptr
-      --   7: push r15             -- save r15 (apply uses it as scratch)
-      --   8: push rbp             -- save frame pointer
-      --   9: mov rbp, rsp         -- set frame pointer
-      --   10: sub rsp, 16         -- allocate pair
-      --   11: mov [rsp], r12      -- store env
-      --   12: mov [rsp+8], rdi    -- store arg
-      --   13: mov rdi, rsp        -- rdi = pair address
-      --   14 to 13+|f|: compile-x86 f
-      --   14+|f|: mov rsp, rbp    -- restore stack (cleans up pair + any f allocations)
-      --   15+|f|: pop rbp         -- restore frame pointer
-      --   16+|f|: pop r15         -- restore r15
-      --   17+|f|: ret             -- now pops from correct location
-      --   18+|f|: label end
-      code-ptr-label = curry-thunk-label
-      rip-offset = curry-rip-offset
-      end-offset = curry-jmp-base +ℕ len-f
-      end-label = curry-end-label-base +ℕ len-f
-  in
-  -- Allocate closure on stack
-  sub (reg rsp) (imm (slots 2)) ∷
-  -- Store environment (input a in rdi) as closure.env
-  mov (mem (base rsp)) (reg rdi) ∷
-  -- Compute code pointer using RIP-relative addressing
-  -- At pc=2, lea computes pc+4=6 (thunk entry address)
-  lea r9 (rip+disp rip-offset) ∷
-  -- Store code pointer from r9
-  mov (mem (base+disp rsp slot-size)) (reg r9) ∷
-  -- Return closure pointer
-  mov (reg rax) (reg rsp) ∷
-  -- Jump over the thunk code (PC-relative)
-  jmp end-offset ∷
-  -- Thunk code: called via apply with b in rdi, env in r12
-  label code-ptr-label ∷
-  -- Save r15 (apply uses it as scratch for code-ptr)
-  push (reg r15) ∷
-  -- Save and set frame pointer (for proper stack cleanup)
-  push (reg rbp) ∷
-  mov (reg rbp) (reg rsp) ∷
-  -- Allocate pair (a, b) on stack
-  sub (reg rsp) (imm (slots 2)) ∷
-  -- Store a (from r12) at [rsp]
-  mov (mem (base rsp)) (reg r12) ∷
-  -- Store b (from rdi) at [rsp+8]
-  mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
-  -- Set rdi = pointer to pair
-  mov (reg rdi) (reg rsp) ∷
-  -- Execute f on the pair
-  compile-x86 f ++
-  -- Restore stack to frame (cleans up pair + any f allocations)
-  mov (reg rsp) (reg rbp) ∷
-  -- Restore frame pointer
-  pop rbp ∷
-  -- Restore r15
-  pop r15 ∷
-  -- Return (rax already has result, stack properly restored)
-  ret ∷
-  -- End of thunk
-  label end-label ∷ []
-
--- Apply: call closure
--- Uses apply-instrs instruction list defined above.
-compile-x86 apply = apply-instrs
-
--- Fold: identity at runtime (wrap into Fix)
-compile-x86 fold = mov (reg rax) (reg rdi) ∷ []
-
--- Unfold: identity at runtime (unwrap from Fix)
-compile-x86 unfold = mov (reg rax) (reg rdi) ∷ []
-
--- Arr: identity at runtime (lift pure to Eff)
-compile-x86 arr = mov (reg rax) (reg rdi) ∷ []
-
--- Prim: opaque primitive operation
--- At runtime, primitives are resolved by the runtime system.
--- Here we emit a placeholder that passes through the input.
--- Actual primitive implementation is platform-specific.
-compile-x86 (Prim _) = mov (reg rax) (reg rdi) ∷ []
+open CodeGenDef (TrivialInterface {Instr}) public
 
 ------------------------------------------------------------------------
 -- Value encoding

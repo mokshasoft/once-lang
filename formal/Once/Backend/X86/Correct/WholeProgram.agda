@@ -54,14 +54,18 @@
 
 module Once.Backend.X86.Correct.WholeProgram where
 
-open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (env-addr; semantics)
-
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.Semantics
-open Once.Backend.X86.Semantics.State
-open import Once.Backend.X86.CodeGen
+open import Once.Backend.X86.Correct.Foundation
+  using (Type; _*_; _⇒_; IR; curry; apply; ⟦_⟧; eval; Closure;
+         Instr; Program; Memory; State; halted; pc; memory; regs;
+         readReg; readMem;
+         rax; rdi; r14; r15; rbp;
+         compile-x86; compile-length;
+         ℕ; _+ℕ_; _≤_; _<_; just;
+         List; []; _∷_; _++_; length;
+         _≡_; refl; sym; trans; cong; subst;
+         _×_; _,_; proj₁; proj₂; ∃; ∃-syntax;
+         Bool; true; false;
+         ⊤; tt)
 
 -- NOTE: encode-* reading postulates eliminated via validity-based proofs
 -- encode import removed - all x86 proofs now use ValidAt-based architecture
@@ -71,7 +75,6 @@ open import Once.Backend.X86.Correct.Star
 open import Once.Backend.X86.Correct.StackInvariant
   using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (slots; StackCapacity; rsp-bound-to-capacity; ir-stack-requirement; ir-output-capacity)
-open import Data.Nat.Properties using (m≤m+n; ≤-trans)
 open import Once.Backend.X86.Correct.StarBase
   using (IRStarResultV; ClosureWFOutput; no-closure; has-closure;
          ir-star; ir-halted; ir-pc; ir-r14; ir-r15; ir-rbp;
@@ -101,14 +104,9 @@ open import Once.Backend.X86.Correct.IR.Curry using (closure-addr; code-ptr; env
 -- CurryExecResult field accessors
 open import Once.Backend.X86.Correct.IR.Curry using (exec-star; exec-halted; exec-pc; exec-r14; exec-r15; exec-rbp; exec-stack-inv; exec-capacity; exec-rbp-inv)
 
-open import Data.Bool using (Bool; true; false)
-open import Data.Nat using (ℕ; _>_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.Nat using (_>_)
+open import Data.Nat.Properties using (m≤m+n; ≤-trans)
 open import Data.List.Properties using (++-identityʳ)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Maybe using (just)
-open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 ------------------------------------------------------------------------
 -- ClosureMemoryOutput: Combined WF and memory layout from curry

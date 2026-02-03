@@ -247,24 +247,24 @@ postulate
 ------------------------------------------------------------------------
 --
 -- Prim: opaque primitive - correctness postulated until proper Prim compilation
--- NOTE: Current compile-aarch64 (Prim _) = nop (identity)
--- But eval (Prim name) x = evalPrim name x (arbitrary function)
+-- NOTE: Current compile-aarch64 (Prim _ _ _) = nop (identity)
+-- But eval (Prim name sem _) x = sem x (explicit semantic function)
 -- These don't match, so correctness is postulated.
 --
 ------------------------------------------------------------------------
 
 postulate
-  run-prim-star : ∀ {A B : Type} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-prim-star : ∀ {A B : Type} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : Contract sem) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode {A} x →
     StackInvariant s →
     readSP (regs s) > 16 →
-    let prog = prefix ++ compile-aarch64 (Prim {A} {B} name) ++ suffix
+    let prog = prefix ++ compile-aarch64 (Prim {A} {B} name sem contract) ++ suffix
     in ∃[ s' ] (Star prog s s'
               × halted s' ≡ false
-              × pc s' ≡ length prefix +ℕ compile-length (Prim {A} {B} name)
-              × readReg (regs s') x0 ≡ encode {B} (eval (Prim {A} {B} name) x)
+              × pc s' ≡ length prefix +ℕ compile-length (Prim {A} {B} name sem contract)
+              × readReg (regs s') x0 ≡ encode {B} (eval (Prim {A} {B} name sem contract) x)
               × readReg (regs s') x20 ≡ readReg (regs s) x20
               × readReg (regs s') x21 ≡ readReg (regs s) x21
               × readReg (regs s') x29 ≡ readReg (regs s) x29

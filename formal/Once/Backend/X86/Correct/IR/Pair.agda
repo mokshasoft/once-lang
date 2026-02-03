@@ -56,9 +56,8 @@ open import Once.Backend.X86.Correct.StarBase
          IRStarResultV; ir-result-valid; ir-capacity)
   renaming (ir-rsp-v to ir-rsp)
 open import Data.Nat using (_≥_)
--- Import IRSize for size proofs
-open import Once.Backend.Common.IRSize
-  using (ir-size; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller)
+-- ir-size and ⟨,⟩-f-smaller, ⟨,⟩-g-smaller are re-exported from Foundation
+
 -- Import RecDispatcher from central location
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.MemoryValid

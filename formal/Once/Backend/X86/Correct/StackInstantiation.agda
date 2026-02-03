@@ -19,23 +19,36 @@
 module Once.Backend.X86.Correct.StackInstantiation where
 
 open import Once.Type
-open import Once.Semantics
-open import Once.IR
 
--- Import slot-size and slots from Syntax (single source of truth)
-open import Once.Backend.X86.Syntax public using (slot-size; slots)
-open import Once.Backend.X86.Syntax hiding (slot-size; slots)
-
--- Import computed slot consumption values from CodeGen (derived from instruction lists)
-open import Once.Backend.X86.CodeGen public
-  using (apply-consumed-slots; pair-setup-consumed-slots;
+-- Import from Foundation to get X86ContractInterface-instantiated types
+open import Once.Backend.X86.Correct.Foundation
+  using (IR; _∘_; id; fst; snd; ⟨_,_⟩; inl; inr; [_,_]; terminal; initial;
+         curry; apply; fold; unfold; arr; Prim;
+         -- Semantic interpretation and encoding
+         ⟦_⟧; encode;
+         -- CodeGen slot consumption values (computed from instruction lists)
+         apply-consumed-slots; pair-setup-consumed-slots;
          thunk-setup-consumed-slots; curry-closure-consumed-slots;
          injection-consumed-slots;
          -- Slot positions (semantic names for frame layout)
          thunk-r15-slot; thunk-rbp-slot;
          pair-r14-slot; pair-r15-slot; pair-rbp-slot)
+  public
+
+-- Import slot-size and slots from Syntax (single source of truth)
+open import Once.Backend.X86.Syntax public using (slot-size; slots)
+open import Once.Backend.X86.Syntax hiding (slot-size; slots)
+
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
+
+-- Import and re-export StackCapacity from base module
+open import Once.Backend.X86.Correct.StackCapacityBase public
+  using (StackCapacity; rsp-in-stack; rsp-sufficient; capacity-maintained;
+         capacity-preserved-rsp-unchanged; capacity-after-push;
+         rsp-bound-to-capacity; capacity-2-to-rsp-bound;
+         capacity-weaken; slots-mono-≤;
+         rsp-bound-preserved-unchanged; two-push-offset)
 
 -- Import and re-export abstract types from StackInvariant
 open import Once.Backend.X86.Correct.StackInvariant public
@@ -96,18 +109,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 push-offset : ℕ
 push-offset = slots 1                      -- 8: one push instruction
 
-two-push-offset : ℕ
-two-push-offset = slots 2                  -- 16: push r15 + push rbp
+-- NOTE: two-push-offset and slots-mono-≤ are now imported from StackCapacityBase
 
 -- NOTE: saved-regs-size (24) and frame-size (40) imported from Arithmetic
 -- Use those semantic names instead of saved-regs-size/frame-size
-
--- | Slot monotonicity for ≤ (follows from slots being multiplication)
--- Useful for deriving smaller bounds: a ≤ b → slots a ≤ slots b
--- Defined early to be in scope for RSP threshold lemmas
-slots-mono-≤ : ∀ {a b} → a ≤ b → slots a ≤ slots b
-slots-mono-≤ {zero} {b} _ = z≤n
-slots-mono-≤ {suc a} {suc b} (s≤s a≤b) = +-monoʳ-≤ slot-size (slots-mono-≤ a≤b)
 
 thunk-local-size : ℕ
 thunk-local-size = slots 2                 -- 16: sub rsp, 16 in thunk
@@ -400,7 +405,7 @@ ir-rsp-delta initial = 0
 ir-rsp-delta fold = 0
 ir-rsp-delta unfold = 0
 ir-rsp-delta arr = 0
-ir-rsp-delta (Prim _) = 0
+ir-rsp-delta (Prim _ _ _) = 0
 -- Injections: allocate slots on stack for tag+value, do NOT restore
 -- Value derived from CodeGen.injection-consumed-slots (computes from inl-instrs)
 ir-rsp-delta inl = injection-consumed-slots
@@ -444,7 +449,7 @@ ir-stack-requirement unfold = 2
 -- Effect lifting: essentially identity at runtime
 ir-stack-requirement arr = 2
 -- Primitives: external operations, assume simple capacity
-ir-stack-requirement (Prim _) = 2
+ir-stack-requirement (Prim _ _ _) = 2
 -- Injections: need capacity for tag+value write (literal 4)
 ir-stack-requirement inl = 4
 ir-stack-requirement inr = 4
@@ -472,7 +477,7 @@ output-slots≤ir-req initial = ≤-refl
 output-slots≤ir-req fold = ≤-refl
 output-slots≤ir-req unfold = ≤-refl
 output-slots≤ir-req arr = ≤-refl
-output-slots≤ir-req (Prim _) = ≤-refl
+output-slots≤ir-req (Prim _ _ _) = ≤-refl
 output-slots≤ir-req inl = from-yes-≤ (output-slots ≤? 4)
 output-slots≤ir-req inr = from-yes-≤ (output-slots ≤? 4)
 output-slots≤ir-req (g ∘ f) = ≤-trans (output-slots≤ir-req f) (m≤m⊔n _ _)
@@ -517,7 +522,7 @@ ir-delta-≤-requirement initial = z≤n
 ir-delta-≤-requirement fold = z≤n
 ir-delta-≤-requirement unfold = z≤n
 ir-delta-≤-requirement arr = z≤n
-ir-delta-≤-requirement (Prim _) = z≤n
+ir-delta-≤-requirement (Prim _ _ _) = z≤n
 ir-delta-≤-requirement inl = m≤m+n injection-consumed-slots output-slots  -- 2 ≤ 4
 ir-delta-≤-requirement inr = m≤m+n injection-consumed-slots output-slots  -- 2 ≤ 4
 ir-delta-≤-requirement (g ∘ f) =
@@ -595,29 +600,8 @@ rsp>slot-from-2slot n>2slot = ≤-trans word-plus-one-fits-pair (<⇒≤ n>2slot
 m∸n<m-when-m>n : ∀ m n → n > 0 → m > n → m ∸ n < m
 m∸n<m-when-m>n (suc m') (suc n') _ (s≤s m'≥n') = s≤s (m∸n≤m m' n')
 
-------------------------------------------------------------------------
--- Stack Capacity (X86 instantiation)
-------------------------------------------------------------------------
-
--- | Stack capacity: X86-specific proof that stack can accommodate n slots.
--- Each slot is 8 bytes (one word on x86-64).
---
--- This type contains ARITHMETIC in its fields (rsp > n *ℕ slot-size).
--- The proof layer should not use these fields directly.
--- Instead, use the abstract interface functions below.
-record StackCapacity (s : State) (n : ℕ) : Set where
-  field
-    -- rsp points to stack region (interval membership)
-    rsp-in-stack : InStack (readReg (regs s) rsp)
-
-    -- rsp has sufficient space for n slots (concrete X86 bound)
-    rsp-sufficient : readReg (regs s) rsp > n *ℕ slot-size
-
-    -- After allocating k slots (k ≤ n), still in stack region
-    capacity-maintained : ∀ k → k ≤ n →
-      InStack (readReg (regs s) rsp ∸ (k *ℕ slot-size))
-
-open StackCapacity public
+-- NOTE: StackCapacity definition moved to StackCapacityBase.agda
+-- Re-exported above from StackCapacityBase
 
 ------------------------------------------------------------------------
 -- IR Stack Frame Requirements
@@ -647,7 +631,7 @@ ir-frame-slots apply          = 3   -- call + thunk frame setup
 ir-frame-slots fold           = 0
 ir-frame-slots unfold         = 0
 ir-frame-slots arr            = 0
-ir-frame-slots (Prim _)       = 0
+ir-frame-slots (Prim _ _ _)       = 0
 
 -- | Input capacity needed: frame slots + output capacity (2)
 -- This ensures that after the operation, we have capacity for 2 slots.
@@ -658,75 +642,8 @@ ir-input-capacity ir = ir-frame-slots ir +ℕ 2
 -- Capacity Operations (arithmetic-heavy)
 ------------------------------------------------------------------------
 
--- | Capacity is preserved when rsp doesn't change
-capacity-preserved-rsp-unchanged : ∀ (s s' : State) (n : ℕ) →
-  StackCapacity s n →
-  readReg (regs s') rsp ≡ readReg (regs s) rsp →
-  StackCapacity s' n
-capacity-preserved-rsp-unchanged s s' n cap rsp-eq = record
-  { rsp-in-stack = subst InStack (sym rsp-eq) (rsp-in-stack cap)
-  ; rsp-sufficient = subst (_> n *ℕ slot-size) (sym rsp-eq) (rsp-sufficient cap)
-  ; capacity-maintained = λ k k≤n →
-      subst InStack (sym (cong (_∸ (k *ℕ slot-size)) rsp-eq))
-            (capacity-maintained cap k k≤n)
-  }
-
--- | After push (rsp -= slot-size), capacity decreases by 1
-capacity-after-push : ∀ (s s' : State) (n : ℕ) →
-  StackCapacity s (suc n) →
-  readReg (regs s') rsp ≡ readReg (regs s) rsp ∸ slot-size →
-  StackCapacity s' n
-capacity-after-push s s' n cap rsp-eq = record
-  { rsp-in-stack = rsp'-in-stack
-  ; rsp-sufficient = rsp'-sufficient
-  ; capacity-maintained = cap-maintained
-  }
-  where
-    open import Data.Nat.Properties using (m+n∸n≡m; m∸n+n≡m; <⇒≤; +-monoʳ-<)
-
-    old-rsp = readReg (regs s) rsp
-    new-rsp = readReg (regs s') rsp
-
-    rsp'-in-stack : InStack new-rsp
-    rsp'-in-stack = subst InStack (sym rsp-eq) (capacity-maintained cap 1 (s≤s z≤n))
-
-    rsp'-sufficient : new-rsp > n *ℕ slot-size
-    rsp'-sufficient = subst (_> n *ℕ slot-size) (sym rsp-eq) sub-lemma
-      where
-        open import Data.Nat.Properties using (≤-<-trans; m≤m+n; +-cancelʳ-<; +-comm)
-
-        old-bound : old-rsp > slot-size +ℕ n *ℕ slot-size
-        old-bound = rsp-sufficient cap
-
-        slot-size≤old : slot-size ≤ old-rsp
-        slot-size≤old = <⇒≤ (≤-<-trans (m≤m+n slot-size (n *ℕ slot-size)) old-bound)
-
-        old-rsp-eq : (old-rsp ∸ slot-size) +ℕ slot-size ≡ old-rsp
-        old-rsp-eq = m∸n+n≡m slot-size≤old
-
-        old-bound' : old-rsp > n *ℕ slot-size +ℕ slot-size
-        old-bound' = subst (old-rsp >_) (+-comm slot-size (n *ℕ slot-size)) old-bound
-
-        sub-lemma : old-rsp ∸ slot-size > n *ℕ slot-size
-        sub-lemma = +-cancelʳ-< slot-size (n *ℕ slot-size) (old-rsp ∸ slot-size) bound-step
-          where
-            bound-step : n *ℕ slot-size +ℕ slot-size < (old-rsp ∸ slot-size) +ℕ slot-size
-            bound-step = subst (n *ℕ slot-size +ℕ slot-size <_) (sym old-rsp-eq) old-bound'
-
-    cap-maintained : ∀ k → k ≤ n → InStack (new-rsp ∸ (k *ℕ slot-size))
-    cap-maintained k k≤n =
-      let 1+k≤sn : (1 +ℕ k) ≤ suc n
-          1+k≤sn = s≤s k≤n
-          old-cap-at-1+k : InStack (old-rsp ∸ ((1 +ℕ k) *ℕ slot-size))
-          old-cap-at-1+k = capacity-maintained cap (1 +ℕ k) 1+k≤sn
-          step1 : (old-rsp ∸ slot-size) ∸ (k *ℕ slot-size) ≡ old-rsp ∸ (slot-size +ℕ k *ℕ slot-size)
-          step1 = ∸-+-assoc old-rsp slot-size (k *ℕ slot-size)
-          arith-eq : slot-size +ℕ k *ℕ slot-size ≡ (1 +ℕ k) *ℕ slot-size
-          arith-eq = refl
-          addr-eq : new-rsp ∸ (k *ℕ slot-size) ≡ old-rsp ∸ ((1 +ℕ k) *ℕ slot-size)
-          addr-eq = trans (cong (λ r → r ∸ (k *ℕ slot-size)) rsp-eq)
-                          (trans step1 (cong (old-rsp ∸_) arith-eq))
-      in subst InStack (sym addr-eq) old-cap-at-1+k
+-- NOTE: capacity-preserved-rsp-unchanged and capacity-after-push moved to StackCapacityBase.agda
+-- Re-exported above from StackCapacityBase
 
 -- | After pop (rsp += slot-size), capacity increases by 1
 capacity-after-pop : ∀ (s s' : State) (n : ℕ) →
@@ -909,43 +826,8 @@ slot-1-addr-in-stack : ∀ (s : State) →
   InStack (readReg (regs s) rsp ∸ slot-size)
 slot-1-addr-in-stack s cap = capacity-maintained cap 1 (s≤s z≤n)
 
-------------------------------------------------------------------------
--- Converting from rsp bounds to StackCapacity
-------------------------------------------------------------------------
-
--- | General conversion: rsp > n*8 gives StackCapacity s n
-rsp-bound-to-capacity : ∀ (n : ℕ) (s : State) →
-  InStack (readReg (regs s) rsp) →
-  readReg (regs s) rsp > n *ℕ slot-size →
-  StackCapacity s n
-rsp-bound-to-capacity n s rsp-in-stack rsp-bound = record
-  { rsp-in-stack = rsp-in-stack
-  ; rsp-sufficient = rsp-bound
-  ; capacity-maintained = cap-maintained
-  }
-  where
-    open import Data.Nat.Properties using (*-monoˡ-≤; <⇒≤; ≤-<-trans)
-    rsp-val = readReg (regs s) rsp
-    k*slot≤rsp : ∀ k → k ≤ n → k *ℕ slot-size ≤ rsp-val
-    k*slot≤rsp k k≤n = <⇒≤ (≤-<-trans (*-monoˡ-≤ slot-size k≤n) rsp-bound)
-    cap-maintained : ∀ k → k ≤ n → InStack (rsp-val ∸ (k *ℕ slot-size))
-    cap-maintained k k≤n = stack-sub-preserves rsp-val (k *ℕ slot-size) rsp-in-stack (k*slot≤rsp k k≤n)
-
--- Note: rsp-to-capacity-N wrappers have been removed.
--- Use rsp-bound-to-capacity n s rsp-in-stack rsp-bound directly.
-
--- | Convert StackCapacity back to concrete bound (for compatibility)
-capacity-2-to-rsp-bound : ∀ (s : State) →
-  StackCapacity s 2 →
-  readReg (regs s) rsp > two-push-offset
-capacity-2-to-rsp-bound s cap = rsp-sufficient cap
-
--- | rsp > bound preservation when rsp is unchanged (generic version)
-rsp-bound-preserved-unchanged : ∀ (bound : ℕ) (s s' : State) →
-  readReg (regs s) rsp > bound →
-  readReg (regs s') rsp ≡ readReg (regs s) rsp →
-  readReg (regs s') rsp > bound
-rsp-bound-preserved-unchanged bound s s' rsp-sufficient rsp-eq = subst (_> bound) (sym rsp-eq) rsp-sufficient
+-- NOTE: rsp-bound-to-capacity, capacity-2-to-rsp-bound, and rsp-bound-preserved-unchanged
+-- moved to StackCapacityBase.agda and re-exported above.
 
 ------------------------------------------------------------------------
 -- Max-based Capacity Derivation (for compose/case/pair threading)
@@ -1359,22 +1241,12 @@ alloc-2-slots-addrs-in-stack s cap =
       write2-in-stack : InStack (new-rsp +ℕ slot-size)
       write2-in-stack = subst InStack
                               (sym (alloc-2-slots-second-addr-eq rsp-val (cap-to-inl-inr-rsp-bound cap)))
-                              (slot-1-addr-in-stack s (capacity-weaken cap))
+                              (slot-1-addr-in-stack s (capacity-weaken s 1 2 (s≤s z≤n) cap))
   in write1-in-stack , write2-in-stack
   where
     open import Data.Nat.Properties using (<⇒≤; m∸n+n≡m; ∸-+-assoc; ∸-monoˡ-≤; <-trans)
     cap-to-inl-inr-rsp-bound : StackCapacity s 2 → readReg (regs s) rsp ≥ two-push-offset
     cap-to-inl-inr-rsp-bound cap = <⇒≤ (rsp-sufficient cap)
-    capacity-weaken : StackCapacity s 2 → StackCapacity s 1
-    capacity-weaken cap-input = record
-      { rsp-in-stack = rsp-in-stack cap-input
-      ; rsp-sufficient = <-trans slot<2slot (rsp-sufficient cap-input)
-      ; capacity-maintained = λ k k≤1 →
-          capacity-maintained cap-input k (≤-trans k≤1 (s≤s z≤n))
-      }
-      where
-        slot<2slot : slot-size < two-push-offset
-        slot<2slot = word-fits-pair-strict
     alloc-2-slots-second-addr-eq : ∀ (rsp-val : ℕ) → rsp-val ≥ two-push-offset → (rsp-val ∸ two-push-offset) +ℕ slot-size ≡ rsp-val ∸ slot-size
     alloc-2-slots-second-addr-eq rsp-val rsp≥2slot = trans (cong (_+ℕ slot-size) step1) (m∸n+n≡m word-fits-after-1-slot)
       where

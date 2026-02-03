@@ -17,13 +17,22 @@
 -- - Make the Acc-based termination pattern explicit
 ------------------------------------------------------------------------
 
-module Once.Backend.Common.IRDispatcher where
-
 open import Once.Type using (Type; _*_; _+_; _⇒_; Fix)
-open import Once.IR using (IR; id; terminal; fold; unfold; fst; snd; inl; inr;
-                           arr; Prim; initial; _∘_; ⟨_,_⟩; [_,_]; curry; apply)
-open import Once.Semantics using (⟦_⟧; eval; wrap)
-open import Once.Backend.Common.IRSize using (ir-size)
+open import Once.Backend.ContractInterface using (ContractInterface)
+import Once.IR as IR
+import Once.Semantics as Semantics
+import Once.Backend.Common.IRSize as IRSize
+
+-- ⟦_⟧ comes from SemanticBase (architecture-independent type interpretation)
+open import Once.SemanticBase using (⟦_⟧; wrap)
+
+-- | IRDispatcher parameterized by instruction type and ContractInterface
+-- This allows each backend to use their own contract type
+module Once.Backend.Common.IRDispatcher {Instr : Set} (CI : ContractInterface Instr) where
+
+open IR.IRDef CI
+open Semantics.SemanticsDef CI
+open IRSize CI
 
 open import Data.Bool using (Bool; false)
 open import Data.Nat using (ℕ; _<_)

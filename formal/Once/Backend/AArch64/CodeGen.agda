@@ -186,7 +186,7 @@ compile-length apply = apply-instr-len
 compile-length fold = 1
 compile-length unfold = 1
 compile-length arr = 1
-compile-length (Prim _) = 1  -- Primitives are opaque runtime calls
+compile-length (Prim _ _ _) = 1  -- Primitives are opaque runtime calls
 
 ------------------------------------------------------------------------
 -- Code generation
@@ -415,7 +415,7 @@ compile-aarch64 arr = nop ∷ []
 
 -- Prim: opaque primitive operation
 -- At runtime, primitives are resolved by the runtime system.
-compile-aarch64 (Prim _) = nop ∷ []
+compile-aarch64 (Prim _ _ _) = nop ∷ []
 
 ------------------------------------------------------------------------
 -- Value encoding

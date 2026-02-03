@@ -36,6 +36,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          ClosureAtS-preserved-under-mem-eq;  -- Takes full memory equality
          ClosureAtS-preserved-under-heap-eq;
          Region; Stack; Heap; InRegion)
+open import Once.Backend.X86.Correct.PrimContract using (PrimContract)
 
 open import Data.Nat using (_>_; _<_; _≥_)
 open import Data.List.Properties using (++-assoc)
@@ -956,19 +957,27 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
     ; ir-closure-wf = no-closure
     }
 
--- | Validity-based prim execution (POSTULATE - semantic gap)
+-- | Validity-based prim execution (POSTULATE - awaiting domain compiler proofs)
 --
--- ISSUE: compile-x86 (Prim _) = mov rax, rdi (identity/passthrough)
---        but eval (Prim name) x = evalPrim name x (arbitrary operation)
+-- ARCHITECTURE: compile-x86 (Prim _ _ c) now uses contract-program c (actual assembly).
+-- The compile-x86/compile-length mismatch has been ELIMINATED.
 --
--- The codegen is a STUB - it doesn't implement actual primitive operations.
--- This postulate hides that gap. To eliminate it, codegen would need to
--- generate actual runtime calls for each primitive operation.
+-- This postulate remains because domain compilers haven't yet provided
+-- PrimContract instances with full proofs. When they do, this postulate
+-- can be eliminated by unpacking prim-correct from the contract:
+--
+--   prim-correct : ∀ ... → ∃[ s' ] PrimEffect sem x prog s s'
+--
+-- The PrimEffect includes:
+--   - effect-star: Star trace proving assembly executes
+--   - effect-result-valid: ValidAt (sem x) rax m'
+--   - All register/memory preservation proofs
 --
 -- For programs not using Prim, the correctness proof is complete.
--- For programs using Prim (arithmetic, comparisons, etc.), this is trusted.
+-- For programs using Prim, this is trusted until Arith/IO provide contracts.
 postulate
-  run-prim-star-vv : ∀ {A B} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  -- Awaiting domain compiler contracts (Arith, IO, etc.)
+  run-prim-star-vv : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : PrimContract sem) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -976,5 +985,6 @@ postulate
     StackInvariant s →
     StackCapacity s output-slots →
     RbpInvariant s →
-    let prog = prefix ++ compile-x86 (Prim {A} {B} name) ++ suffix
-    in ∃[ s' ] IRStarResultV (Prim {A} {B} name) prog s s' x (length prefix)
+    let prog = prefix ++ compile-x86 (Prim {A} {B} name sem contract) ++ suffix
+    in ∃[ s' ] IRStarResultV (Prim {A} {B} name sem contract) prog s s' x (length prefix)
+

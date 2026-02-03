@@ -21,6 +21,7 @@ open import Once.Type hiding (_+_)
 open import Once.IRS
 open import Size using (Size; ↑_; ∞)
 open import Data.String using (String)
+open import Once.SemanticBase using (⟦_⟧)
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _+_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (m≤m+n; m≤n+m; ≤-refl)
@@ -51,7 +52,7 @@ ir-size inr = 1
 ir-size fold = 1
 ir-size unfold = 1
 ir-size arr = 1
-ir-size (Prim _) = 1
+ir-size (Prim _ _ _) = 1
 
 ------------------------------------------------------------------------
 -- Size decrease lemmas
@@ -122,7 +123,7 @@ module IRProcessor
   (process-fold : ∀ {F} → Process (fold {F = F}))
   (process-unfold : ∀ {F} → Process (unfold {F = F}))
   (process-arr : ∀ {A B} → Process (arr {A = A} {B}))
-  (process-prim : ∀ {A B} (name : String) → Process (Prim {A = A} {B} name))
+  (process-prim : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) → Process (Prim {A = A} {B} name sem))
 
   -- How to process recursive cases (using results from subterms)
   (process-compose : ∀ {A B C} (f : IR ∞ A B) (g : IR ∞ B C) →
@@ -155,7 +156,7 @@ module IRProcessor
       helper fold _ = process-fold
       helper unfold _ = process-unfold
       helper arr _ = process-arr
-      helper (Prim name) _ = process-prim name
+      helper (Prim name sem _) _ = process-prim name sem
 
       -- Recursive cases: use induction hypothesis
       helper (g ∘ f) (acc rec) = process-compose f g

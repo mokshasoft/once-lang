@@ -4,18 +4,21 @@
 -- Size measure for IR terms and size decrease lemmas.
 -- Used for well-founded recursion to prove termination of IR execution.
 --
--- This module is architecture-independent: it depends only on Once.IR
--- and provides the structural size measure needed by all backends.
+-- This module is parameterized by ContractInterface to support different
+-- backend contract types.
 ------------------------------------------------------------------------
 
-module Once.Backend.Common.IRSize where
-
 open import Once.Type hiding (_+_)
-open import Once.IR
+open import Once.IR using (ContractInterface)
+import Once.IR as IR
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _+_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (m≤m+n; m≤n+m; ≤-refl)
 open import Data.String using (String)
+
+module Once.Backend.Common.IRSize {Instr : Set} (CI : ContractInterface Instr) where
+
+open IR.IRDef CI
 
 ------------------------------------------------------------------------
 -- Size measure for IR terms
@@ -40,7 +43,7 @@ ir-size inr = 1
 ir-size fold = 1
 ir-size unfold = 1
 ir-size arr = 1
-ir-size (Prim _) = 1
+ir-size (Prim _ _ _) = 1
 
 ------------------------------------------------------------------------
 -- Size decrease lemmas

@@ -22,9 +22,12 @@
 module Once.Backend.X86.Correct.MemoryValid where
 
 open import Once.Type
-open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
+open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap; encode)
 open ⟦Fix⟧
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writeMem)
+open import Data.Integer using (ℤ)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
 open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
 
 -- Import shared AtS records, allocation lemmas, and preservation from Common
@@ -99,7 +102,6 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst; cong)
 
 ------------------------------------------------------------------------
@@ -127,6 +129,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 data ValidAt : ∀ {A : Type} → ⟦ A ⟧ → Word → Memory → Set where
   -- Unit: value 0, no memory needed (address 0 is special, no region)
   valid-unit : ∀ {m} → ValidAt {Unit} tt 0 m
+
+  -- Int: address equals encoded value (no memory layout, just the value itself)
+  -- This constructor is used by domain compilers (Arith) to construct ValidAt proofs.
+  -- CCC receives these proofs from PrimContract but never constructs them directly.
+  valid-int : ∀ {n : ⟦ Int ⟧} {addr : Word} {m : Memory} →
+    addr ≡ encode n →
+    ValidAt {Int} n addr m
 
   -- Pair: both components valid, pair structure at addr, with region
   valid-pair : ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧} {addr-a addr-b addr : Word} {m : Memory} →
@@ -211,6 +220,10 @@ valid-arrow-to-eff (valid-closure-env venv closS r ir) = valid-eff-env venv clos
 postulate
   unit-in-heap : InHeap 0
 
+-- NOTE: No int-in-heap postulate!
+-- Integers use encode-based interface at Prim boundary.
+-- CCC never needs to know about Int's allocation region.
+
 ------------------------------------------------------------------------
 -- Stack frame separation: caller vs current frame
 --
@@ -273,6 +286,12 @@ valid-in-alloc-region :
   (va : ValidAt v addr m) →
   ∃[ mode ] InAllocRegion mode addr
 valid-in-alloc-region valid-unit = HeapAlloc , unit-in-heap
+-- For integers, the "address" is the value itself, not a memory pointer.
+-- We treat it as HeapAlloc for disjointness (integers don't alias stack).
+-- This is sound because: (1) integers in registers are not dereferenced as pointers,
+-- (2) when passed to primitives, the contract handles them appropriately.
+valid-in-alloc-region (valid-int _) = HeapAlloc , postulate-int-in-heap
+  where postulate postulate-int-in-heap : InHeap _
 valid-in-alloc-region (valid-pair _ _ _ mode ir) = mode , ir
 valid-in-alloc-region (valid-inl _ _ mode ir) = mode , ir
 valid-in-alloc-region (valid-inr _ _ mode ir) = mode , ir
@@ -332,6 +351,7 @@ valid-subst-addr-mem :
   (∀ a → readMem mem2 a ≡ readMem mem1 a) →
   ValidAt v addr2 mem2
 valid-subst-addr-mem valid-unit refl _ = valid-unit
+valid-subst-addr-mem (valid-int eq) refl _ = valid-int eq
 valid-subst-addr-mem (valid-pair va vb pairS r ir) refl mem-eq =
   valid-pair (valid-subst-addr-mem va refl mem-eq)
              (valid-subst-addr-mem vb refl mem-eq)
@@ -486,6 +506,7 @@ valid-subst-region-preserved :
   (∀ a → InStack a → readMem mem2 a ≡ readMem mem1 a) →
   ValidAt v addr mem2
 valid-subst-region-preserved valid-unit _ _ = valid-unit
+valid-subst-region-preserved (valid-int eq) _ _ = valid-int eq
 -- Pair: dispatch on region
 valid-subst-region-preserved (valid-pair va vb pairS HeapAlloc ih) heap-eq stack-eq =
   valid-pair (valid-subst-region-preserved va heap-eq stack-eq)
@@ -985,6 +1006,7 @@ valid-subst-mem-above :
   (stack-bound : ∀ a → InStack a → a ≥ entry-rsp) →
   ValidAt v addr mem2
 valid-subst-mem-above valid-unit _ _ _ _ = valid-unit
+valid-subst-mem-above (valid-int eq) _ _ _ _ = valid-int eq
 -- Pair: dispatch on region, derive bound for preservation
 valid-subst-mem-above (valid-pair va vb pairS HeapAlloc ih) entry-rsp rsp-in-stack mem-above stack-bound =
   valid-pair

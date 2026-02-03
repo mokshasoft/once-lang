@@ -16,6 +16,7 @@ module Once.IRS where
 
 open import Size
 open import Once.Type
+open import Once.SemanticBase using (⟦_⟧)
 open import Data.String using (String)
 
 -- | IR: Morphisms in a Cartesian Closed Category (sized)
@@ -74,8 +75,11 @@ data IR : Size → Type → Type → Set where
 
   -- Primitive operations (opaque to optimizer)
   -- External operations provided by the runtime/platform.
-  -- The String names the primitive (e.g., "arith.add.int").
-  Prim    : ∀ {i A B} → String → IR (↑ i) A B
+  -- The semantic function is explicit, eliminating the need for evalPrim postulate.
+  -- Each primitive carries:
+  --   - name: Human-readable identifier (for debugging/emission)
+  --   - sem: The semantic function defining the operation's behavior
+  Prim    : ∀ {i A B} → String → (⟦ A ⟧ → ⟦ B ⟧) → IR (↑ i) A B
 
 -- | Size-polymorphic IR (for backwards compatibility)
 -- Most code can use IR∞ which works at any size

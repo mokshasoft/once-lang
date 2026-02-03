@@ -10,6 +10,7 @@
 module Once.Surface.IR where
 
 open import Once.Type
+open import Once.SemanticBase using (⟦_⟧)
 
 open import Data.String using (String)
 
@@ -77,10 +78,13 @@ data SurfaceIR : Type → Type → Set where
   --
   -- Primitives are opaque operations provided by the runtime/platform.
   -- They cannot be optimized or decomposed into categorical generators.
+  -- Each primitive carries:
+  --   - name: Human-readable identifier (for debugging/emission)
+  --   - sem: The semantic function defining the operation's behavior
   --
   -- Examples: syscalls, arithmetic, string operations
   --
-  Prim    : ∀ {A B} → String → SurfaceIR A B
+  Prim    : ∀ {A B} → String → (⟦ A ⟧ → ⟦ B ⟧) → SurfaceIR A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

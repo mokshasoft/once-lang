@@ -24,13 +24,20 @@
 module Once.Backend.X86.Correct.ClosureContext where
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (env-addr; semantics)
+open import Once.SemanticBase using (⟦_⟧)
+
+-- Use X86ContractInterface for IR and Semantics
+open import Once.Backend.X86.Correct.PrimContract using (X86ContractInterface)
+import Once.IR as IR
+open IR.IRDef X86ContractInterface
+import Once.Semantics as Semantics
+open Semantics.SemanticsDef X86ContractInterface
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
-open import Once.Backend.X86.CodeGen
+import Once.Backend.X86.CodeGen as CodeGen
+open CodeGen.CodeGenDef X86ContractInterface
 
 -- NOTE: encode import removed - all functions now take env-addr as parameter
 open import Once.Backend.X86.Correct.Star

@@ -1321,7 +1321,7 @@ result-pc (_ ∘ _) r = IRStarResult.ir-pc r
 result-pc ⟨ _ , _ ⟩ r = IRStarResult.ir-pc r
 result-pc [ _ , _ ] r = IRStarResult.ir-pc r
 result-pc apply r = IRStarResult.ir-pc r
-result-pc (Prim _) r = IRStarResult.ir-pc r
+result-pc (Prim _ _ _) r = IRStarResult.ir-pc r
 
 result-halted : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                 IRResultFor ir prog s s' x offset →
@@ -1341,7 +1341,7 @@ result-halted (_ ∘ _) r = IRStarResult.ir-halted r
 result-halted ⟨ _ , _ ⟩ r = IRStarResult.ir-halted r
 result-halted [ _ , _ ] r = IRStarResult.ir-halted r
 result-halted apply r = IRStarResult.ir-halted r
-result-halted (Prim _) r = IRStarResult.ir-halted r
+result-halted (Prim _ _ _) r = IRStarResult.ir-halted r
 
 -- Helper: Prove that curry's closure address equals the encoded semantic value
 -- This bridges the gap between stateful CurryResultS (uses explicit addresses)
@@ -1370,7 +1370,7 @@ result-x0 (_ ∘ _) r = IRStarResult.ir-x0 r
 result-x0 ⟨ _ , _ ⟩ r = IRStarResult.ir-x0 r
 result-x0 [ _ , _ ] r = IRStarResult.ir-x0 r
 result-x0 apply r = IRStarResult.ir-x0 r
-result-x0 (Prim _) r = IRStarResult.ir-x0 r
+result-x0 (Prim _ _ _) r = IRStarResult.ir-x0 r
 
 result-stack-inv : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                    IRResultFor ir prog s s' x offset →
@@ -1390,7 +1390,7 @@ result-stack-inv (_ ∘ _) r = IRStarResult.ir-stack-inv r
 result-stack-inv ⟨ _ , _ ⟩ r = IRStarResult.ir-stack-inv r
 result-stack-inv [ _ , _ ] r = IRStarResult.ir-stack-inv r
 result-stack-inv apply r = IRStarResult.ir-stack-inv r
-result-stack-inv (Prim _) r = IRStarResult.ir-stack-inv r
+result-stack-inv (Prim _ _ _) r = IRStarResult.ir-stack-inv r
 
 result-x29 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
              IRResultFor ir prog s s' x offset →
@@ -1410,7 +1410,7 @@ result-x29 (_ ∘ _) r = IRStarResult.ir-x29 r
 result-x29 ⟨ _ , _ ⟩ r = IRStarResult.ir-x29 r
 result-x29 [ _ , _ ] r = IRStarResult.ir-x29 r
 result-x29 apply r = IRStarResult.ir-x29 r
-result-x29 (Prim _) r = IRStarResult.ir-x29 r
+result-x29 (Prim _ _ _) r = IRStarResult.ir-x29 r
 
 result-sp : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
             IRResultFor ir prog s s' x offset →
@@ -1430,7 +1430,7 @@ result-sp (_ ∘ _) r = IRStarResult.ir-sp r
 result-sp ⟨ _ , _ ⟩ r = IRStarResult.ir-sp r
 result-sp [ _ , _ ] r = IRStarResult.ir-sp r
 result-sp apply r = IRStarResult.ir-sp r
-result-sp (Prim _) r = IRStarResult.ir-sp r
+result-sp (Prim _ _ _) r = IRStarResult.ir-sp r
 
 result-sp-bound : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                   IRResultFor ir prog s s' x offset →
@@ -1450,7 +1450,7 @@ result-sp-bound (_ ∘ _) r = IRStarResult.ir-sp-bound r
 result-sp-bound ⟨ _ , _ ⟩ r = IRStarResult.ir-sp-bound r
 result-sp-bound [ _ , _ ] r = IRStarResult.ir-sp-bound r
 result-sp-bound apply r = IRStarResult.ir-sp-bound r
-result-sp-bound (Prim _) r = IRStarResult.ir-sp-bound r
+result-sp-bound (Prim _ _ _) r = IRStarResult.ir-sp-bound r
 
 result-star : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
               IRResultFor ir prog s s' x offset →
@@ -1470,7 +1470,7 @@ result-star (_ ∘ _) r = IRStarResult.ir-star r
 result-star ⟨ _ , _ ⟩ r = IRStarResult.ir-star r
 result-star [ _ , _ ] r = IRStarResult.ir-star r
 result-star apply r = IRStarResult.ir-star r
-result-star (Prim _) r = IRStarResult.ir-star r
+result-star (Prim _ _ _) r = IRStarResult.ir-star r
 
 result-x20 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
              IRResultFor ir prog s s' x offset →
@@ -1490,7 +1490,7 @@ result-x20 (_ ∘ _) r = IRStarResult.ir-x20 r
 result-x20 ⟨ _ , _ ⟩ r = IRStarResult.ir-x20 r
 result-x20 [ _ , _ ] r = IRStarResult.ir-x20 r
 result-x20 apply r = IRStarResult.ir-x20 r
-result-x20 (Prim _) r = IRStarResult.ir-x20 r
+result-x20 (Prim _ _ _) r = IRStarResult.ir-x20 r
 
 result-x21 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
              IRResultFor ir prog s s' x offset →
@@ -1510,7 +1510,7 @@ result-x21 (_ ∘ _) r = IRStarResult.ir-x21 r
 result-x21 ⟨ _ , _ ⟩ r = IRStarResult.ir-x21 r
 result-x21 [ _ , _ ] r = IRStarResult.ir-x21 r
 result-x21 apply r = IRStarResult.ir-x21 r
-result-x21 (Prim _) r = IRStarResult.ir-x21 r
+result-x21 (Prim _ _ _) r = IRStarResult.ir-x21 r
 
 result-x30 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
              IRResultFor ir prog s s' x offset →
@@ -1530,7 +1530,7 @@ result-x30 (_ ∘ _) r = IRStarResult.ir-x30 r
 result-x30 ⟨ _ , _ ⟩ r = IRStarResult.ir-x30 r
 result-x30 [ _ , _ ] r = IRStarResult.ir-x30 r
 result-x30 apply r = IRStarResult.ir-x30 r
-result-x30 (Prim _) r = IRStarResult.ir-x30 r
+result-x30 (Prim _ _ _) r = IRStarResult.ir-x30 r
 
 result-mem-x21 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                  IRResultFor ir prog s s' x offset →
@@ -1550,7 +1550,7 @@ result-mem-x21 (_ ∘ _) r = IRStarResult.ir-mem-x21 r
 result-mem-x21 ⟨ _ , _ ⟩ r = IRStarResult.ir-mem-x21 r
 result-mem-x21 [ _ , _ ] r = IRStarResult.ir-mem-x21 r
 result-mem-x21 apply r = IRStarResult.ir-mem-x21 r
-result-mem-x21 (Prim _) r = IRStarResult.ir-mem-x21 r
+result-mem-x21 (Prim _ _ _) r = IRStarResult.ir-mem-x21 r
 
 result-mem-x29 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                  IRResultFor ir prog s s' x offset →
@@ -1570,7 +1570,7 @@ result-mem-x29 (_ ∘ _) r = IRStarResult.ir-mem-x29 r
 result-mem-x29 ⟨ _ , _ ⟩ r = IRStarResult.ir-mem-x29 r
 result-mem-x29 [ _ , _ ] r = IRStarResult.ir-mem-x29 r
 result-mem-x29 apply r = IRStarResult.ir-mem-x29 r
-result-mem-x29 (Prim _) r = IRStarResult.ir-mem-x29 r
+result-mem-x29 (Prim _ _ _) r = IRStarResult.ir-mem-x29 r
 
 result-mem-x29+8 : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                    IRResultFor ir prog s s' x offset →
@@ -1590,7 +1590,7 @@ result-mem-x29+8 (_ ∘ _) r = IRStarResult.ir-mem-x29+8 r
 result-mem-x29+8 ⟨ _ , _ ⟩ r = IRStarResult.ir-mem-x29+8 r
 result-mem-x29+8 [ _ , _ ] r = IRStarResult.ir-mem-x29+8 r
 result-mem-x29+8 apply r = IRStarResult.ir-mem-x29+8 r
-result-mem-x29+8 (Prim _) r = IRStarResult.ir-mem-x29+8 r
+result-mem-x29+8 (Prim _ _ _) r = IRStarResult.ir-mem-x29+8 r
 
 result-x29-inv : ∀ {A B} (ir : IR A B) {prog s s' x offset} →
                  IRResultFor ir prog s s' x offset →
@@ -1610,7 +1610,7 @@ result-x29-inv (_ ∘ _) r = IRStarResult.ir-x29-inv r
 result-x29-inv ⟨ _ , _ ⟩ r = IRStarResult.ir-x29-inv r
 result-x29-inv [ _ , _ ] r = IRStarResult.ir-x29-inv r
 result-x29-inv apply r = IRStarResult.ir-x29-inv r
-result-x29-inv (Prim _) r = IRStarResult.ir-x29-inv r
+result-x29-inv (Prim _ _ _) r = IRStarResult.ir-x29-inv r
 
 -- | Convert IRResultFor to IRStarResult
 -- For non-curry IR, IRResultFor ir = IRStarResult ir, so this is identity.
@@ -1698,23 +1698,23 @@ mutual
     run-curry-star-direct {A} {B} {C} f prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
   run-ir-star-at-offset (apply {A} {B}) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
     run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16
-  run-ir-star-at-offset (Prim {A} {B} name) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
-    run-prim-star-direct {A} {B} name prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+  run-ir-star-at-offset (Prim {A} {B} name sem contract) prefix suffix x s h-false pc-eq x0-eq stack-inv x29-inv sp>16 =
+    run-prim-star-direct {A} {B} name sem contract prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
 
   -- | Star-based prim execution (delegates to postulate)
-  run-prim-star-direct : ∀ {A B} (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-prim-star-direct : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : Contract sem) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     readReg (regs s) x0 ≡ encode x →
     StackInvariant s →
     readSP (regs s) > 16 →
-    let prog = prefix ++ compile-aarch64 (Prim {A} {B} name) ++ suffix
-    in ∃[ s' ] IRStarResult (Prim {A} {B} name) prog s s' x (length prefix)
-  run-prim-star-direct {A} {B} name prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
+    let prog = prefix ++ compile-aarch64 (Prim {A} {B} name sem contract) ++ suffix
+    in ∃[ s' ] IRStarResult (Prim {A} {B} name sem contract) prog s s' x (length prefix)
+  run-prim-star-direct {A} {B} name sem contract prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16 =
     let (s' , star-proof , halted-eq , pc-eq' , x0-eq' ,
          x20-eq , x21-eq , x29-eq , x30-eq , sp-leq ,
          mem-x21 , mem-x29 , mem-x29+8 , stack-inv' , x29-inv' , sp>16') =
-           run-prim-star {A} {B} name prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
+           run-prim-star {A} {B} name sem contract prefix suffix x s h-false pc-eq x0-eq stack-inv sp>16
     in s' , record
       { ir-star = star-proof
       ; ir-halted = halted-eq

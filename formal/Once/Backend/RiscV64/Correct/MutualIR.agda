@@ -313,8 +313,8 @@ mutual
     run-apply-star {A} {B} prefix suffix x s h-false pc-eq a0-eq
 
   -- Prim: opaque primitive - correctness postulated until proper Prim compilation
-  run-ir-star-at-offset (Prim {A} {B} name) prefix suffix x s h-false pc-eq a0-eq _ =
-    run-prim-star name prefix suffix x s h-false pc-eq a0-eq
+  run-ir-star-at-offset (Prim {A} {B} name sem contract) prefix suffix x s h-false pc-eq a0-eq _ =
+    run-prim-star name sem contract prefix suffix x s h-false pc-eq a0-eq
 
   -- Compose: postulated to break mutual recursion
   run-ir-star-at-offset (g ∘ f) prefix suffix x s h-false pc-eq a0-eq sp-bound =

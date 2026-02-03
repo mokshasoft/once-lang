@@ -9,6 +9,10 @@
 --   - ⟦_⟧ type interpretation
 --   - Encoding postulates
 --   - encode function
+--
+-- NOTE: This module uses ℤ for integer semantics (mathematical integers).
+-- For machine-word semantics (no encode gap), see Once.SemanticBase64
+-- which uses Word64 from MachineInterface.
 ------------------------------------------------------------------------
 
 module Once.SemanticBase where
@@ -107,10 +111,10 @@ encode-str _ = 0  -- placeholder (string interning address)
 encode-buffer       : String → Word
 encode-buffer _ = 0  -- placeholder (buffer allocation address)
 
--- evalPrim: Still a postulate (defines primitive operation semantics)
--- This is a genuine semantic axiom - what do primitives mean?
-postulate
-  evalPrim            : ∀ {A B : Type} → String → ⟦ A ⟧ → ⟦ B ⟧
+-- NOTE: evalPrim postulate has been ELIMINATED!
+-- Primitive semantics are now carried directly in the IR constructor:
+--   Prim : String → (⟦ A ⟧ → ⟦ B ⟧) → IR A B
+-- This makes primitive behavior explicit and eliminates a trust boundary.
 
 ------------------------------------------------------------------------
 -- Encode Function

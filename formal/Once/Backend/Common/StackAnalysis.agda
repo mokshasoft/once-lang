@@ -79,7 +79,7 @@ StackDelta apply = 0                -- thunk deallocates its frame
 StackDelta fold = 0
 StackDelta unfold = 0
 StackDelta arr = 0
-StackDelta (Prim _) = 0  -- Primitives don't allocate stack
+StackDelta (Prim _ _ _) = 0  -- Primitives don't allocate stack
 
 ------------------------------------------------------------------------
 -- Stack Depth: Maximum Stack Usage
@@ -120,7 +120,7 @@ StackDepth apply = apply-frame  -- thunk frame; actual f depth unknown staticall
 StackDepth fold = 0
 StackDepth unfold = 0
 StackDepth arr = 0
-StackDepth (Prim _) = 0  -- Primitives don't need stack depth
+StackDepth (Prim _ _ _) = 0  -- Primitives don't need stack depth
 
 ------------------------------------------------------------------------
 -- Key Property: StackDepth Is Computable

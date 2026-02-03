@@ -34,7 +34,7 @@ open import Once.Semantics public
   using ( ⟦Fix⟧; wrap; unwrap; Closure; env-addr; code-ptr; semantics; ⟦_⟧
         ; encode-pair-addr; encode-inl-addr; encode-inr-addr
         ; encode-closure-addr; encode-int; encode-float
-        ; encode-str; encode-buffer; evalPrim; encode
+        ; encode-str; encode-buffer; encode
         ; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity
         )
 
@@ -95,5 +95,5 @@ eval unfold x          = unwrap x
 -- Both have the same Closure representation
 eval arr cl            = cl
 
--- Primitives (opaque operations)
-eval (Prim name) x     = evalPrim name x
+-- Primitives (explicit semantic function - no evalPrim postulate needed!)
+eval (Prim _ sem _) x  = sem x

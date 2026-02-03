@@ -8,14 +8,20 @@
 module Once.Backend.X86.Correct.IR.Case where
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (env-addr; semantics)
+
+-- Import from Foundation to get X86ContractInterface-instantiated types
+open import Once.Backend.X86.Correct.Foundation
+  using (IR; [_,_]; inl; inr; ⟦_⟧; eval; compile-x86; compile-length;
+         case-overhead; case-right-label-base; case-jmp-base; case-jne-base;
+         case-setup-count; case-prefix-count; case-cleanup-count;
+         case-cleanup-position; case-middle-count;
+         ir-size; [,]-f-smaller; [,]-g-smaller;
+         Instr; Program)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open Once.Backend.X86.Semantics.Flags
-open import Once.Backend.X86.CodeGen
 
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step6; star-step7)
 open import Once.Backend.X86.Correct.FetchStep using (step-exec; fetch-append-skip)
@@ -73,9 +79,7 @@ open import Once.Backend.X86.Correct.IR.CaseSetup public
 open import Once.Backend.X86.Correct.IR.CaseCleanup public
 
 
--- Import additional modules needed for run-case-star-v
-open import Once.Backend.Common.IRSize
-  using (ir-size; [,]-f-smaller; [,]-g-smaller)
+-- ir-size and [,]-f-smaller, [,]-g-smaller are re-exported from Foundation
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (capacity-from-larger; capacity-after-push; capacity-after-pop; capacity-preserved-rsp-unchanged;

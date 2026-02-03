@@ -14,9 +14,14 @@ open import Once.Postulates using (coerceIRArrow)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
-open import Data.Integer using (ℤ)
+open import Data.Integer as ℤ using (ℤ; +_; _<?_; _≤?_; _≟_) renaming (_+_ to _ℤ+_; _-_ to _ℤ-_; _*_ to _ℤ*_; -_ to ℤ-_)
+open import Relation.Nullary using (yes; no)
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.String using (String; _++_)
+open import Data.Sum using (inj₁; inj₂)
+open import Data.Unit using (tt)
+open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to _P,_)
+open import Once.SemanticBase using (⟦_⟧)
 
 ------------------------------------------------------------------------
 -- Arithmetic IR Primitives
@@ -30,49 +35,83 @@ open import Data.String using (String; _++_)
 -- Literals: constant morphisms that ignore input environment
 -- The value is encoded in the primitive name for runtime interpretation.
 intLit : ℤ → ∀ {Γ} → IR Γ Int
-intLit n = Prim ("lit.int." ++ showℤ n) ∘ terminal
+intLit n = Prim ("lit.int." ++ showℤ n) (λ _ → n) trivial ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
-strLit s = Prim ("lit.str." ++ s) ∘ terminal
+strLit s = Prim ("lit.str." ++ s) (λ _ → s) trivial ∘ terminal
 
 -- Arithmetic operations (Int * Int → Int)
+-- Semantic functions operate on pairs of integers
 addIR : IR (Int * Int) Int
-addIR = Prim "arith.add.int"
+addIR = Prim "arith.add.int" (λ { (a P, b) → a ℤ+ b }) trivial
 
 subIR : IR (Int * Int) Int
-subIR = Prim "arith.sub.int"
+subIR = Prim "arith.sub.int" (λ { (a P, b) → a ℤ- b }) trivial
 
 mulIR : IR (Int * Int) Int
-mulIR = Prim "arith.mul.int"
+mulIR = Prim "arith.mul.int" (λ { (a P, b) → a ℤ* b }) trivial
 
+-- Note: Division and modulo use placeholder identity semantics
+-- Proper integer division would need Data.Integer.DivMod
 divIR : IR (Int * Int) Int
-divIR = Prim "arith.div.int"
+divIR = Prim "arith.div.int" (λ { (a P, b) → a }) trivial
 
 modIR : IR (Int * Int) Int
-modIR = Prim "arith.mod.int"
+modIR = Prim "arith.mod.int" (λ { (a P, b) → a }) trivial
 
 -- Unary negation (Int → Int)
 negIR : IR Int Int
-negIR = Prim "arith.neg.int"
+negIR = Prim "arith.neg.int" (λ x → ℤ- x) trivial
 
 -- Comparison operations (Int * Int → Bool, where Bool = Unit + Unit)
+-- inj₁ tt = true, inj₂ tt = false
 ltIR : IR (Int * Int) (Unit + Unit)
-ltIR = Prim "arith.lt.int"
+ltIR = Prim "arith.lt.int" (λ { (a P, b) → if-lt a b }) trivial
+  where
+    if-lt : ℤ → ℤ → ⟦ Unit + Unit ⟧
+    if-lt a b with a <? b
+    ... | yes _ = inj₁ tt
+    ... | no _  = inj₂ tt
 
 leIR : IR (Int * Int) (Unit + Unit)
-leIR = Prim "arith.le.int"
+leIR = Prim "arith.le.int" (λ { (a P, b) → if-le a b }) trivial
+  where
+    if-le : ℤ → ℤ → ⟦ Unit + Unit ⟧
+    if-le a b with a ≤? b
+    ... | yes _ = inj₁ tt
+    ... | no _  = inj₂ tt
 
 gtIR : IR (Int * Int) (Unit + Unit)
-gtIR = Prim "arith.gt.int"
+gtIR = Prim "arith.gt.int" (λ { (a P, b) → if-gt a b }) trivial
+  where
+    if-gt : ℤ → ℤ → ⟦ Unit + Unit ⟧
+    if-gt a b with b <? a
+    ... | yes _ = inj₁ tt
+    ... | no _  = inj₂ tt
 
 geIR : IR (Int * Int) (Unit + Unit)
-geIR = Prim "arith.ge.int"
+geIR = Prim "arith.ge.int" (λ { (a P, b) → if-ge a b }) trivial
+  where
+    if-ge : ℤ → ℤ → ⟦ Unit + Unit ⟧
+    if-ge a b with b ≤? a
+    ... | yes _ = inj₁ tt
+    ... | no _  = inj₂ tt
 
 eqIR : IR (Int * Int) (Unit + Unit)
-eqIR = Prim "arith.eq.int"
+eqIR = Prim "arith.eq.int" (λ { (a P, b) → if-eq a b }) trivial
+  where
+    if-eq : ℤ → ℤ → ⟦ Unit + Unit ⟧
+    if-eq a b with a ≟ b
+    ... | yes _ = inj₁ tt
+    ... | no _  = inj₂ tt
 
 neIR : IR (Int * Int) (Unit + Unit)
-neIR = Prim "arith.ne.int"
+neIR = Prim "arith.ne.int" (λ { (a P, b) → if-ne a b }) trivial
+  where
+    if-ne : ℤ → ℤ → ⟦ Unit + Unit ⟧
+    if-ne a b with a ≟ b
+    ... | yes _ = inj₂ tt
+    ... | no _  = inj₁ tt
 
 -- | Interpret context as a product type (environment type)
 --

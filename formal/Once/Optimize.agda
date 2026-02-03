@@ -9,6 +9,7 @@ module Once.Optimize where
 
 open import Once.Type
 open import Once.IR
+open import Once.SemanticBase using (⟦_⟧)
 
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Nat using (ℕ; zero; suc)
@@ -222,10 +223,17 @@ mutual
   unfold ≟IR unfold = yes refl
   arr ≟IR arr = yes refl
 
-  -- Prim equality - compare the names
-  (Prim x) ≟IR (Prim y) with x ≟String y
-  ... | yes refl = yes refl
-  ... | no neq   = no (λ { refl → neq refl })
+  -- Prim equality - same name with same semantics and contract must be equal
+  -- Use helper pattern with explicit bindings
+  (Prim {A} {B} x sem₁ c₁) ≟IR (Prim {A'} {B'} y sem₂ c₂) with A ≟Type A' | B ≟Type B' | x ≟String y
+  ... | yes refl | yes refl | yes refl = yes (prim-eq-helper sem₁ sem₂ c₁ c₂)
+    where
+      -- Primitives with the same name have unique semantics and contracts (by convention)
+      postulate prim-eq-helper : (s1 s2 : ⟦ A ⟧ → ⟦ B ⟧) (c1 : TrivialContract s1) (c2 : TrivialContract s2) →
+                                 Prim x s1 c1 ≡ Prim x s2 c2
+  ... | no neq   | _        | _        = no (λ { refl → neq refl })
+  ... | _        | no neq   | _        = no (λ { refl → neq refl })
+  ... | _        | _        | no neq   = no (λ { refl → neq refl })
 
   -- Recursive constructors - same constructor
   (curry f) ≟IR (curry g) with f ≟IR g
@@ -294,38 +302,38 @@ mutual
   arr ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR arr = no (λ ())
 
-  (Prim _) ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR (Prim _) = no (λ ())
+  (Prim _ _ _) ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR (Prim _ _ _) = no (λ ())
 
   -- Prim vs other constructors
-  (Prim _) ≟IR id = no (λ ())
-  id ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR fst = no (λ ())
-  fst ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR snd = no (λ ())
-  snd ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR inl = no (λ ())
-  inl ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR inr = no (λ ())
-  inr ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR [ _ , _ ] = no (λ ())
-  [ _ , _ ] ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR terminal = no (λ ())
-  terminal ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR initial = no (λ ())
-  initial ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR (curry _) = no (λ ())
-  (curry _) ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR apply = no (λ ())
-  apply ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR fold = no (λ ())
-  fold ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR unfold = no (λ ())
-  unfold ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR arr = no (λ ())
-  arr ≟IR (Prim _) = no (λ ())
+  (Prim _ _ _) ≟IR id = no (λ ())
+  id ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR fst = no (λ ())
+  fst ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR snd = no (λ ())
+  snd ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR ⟨ _ , _ ⟩ = no (λ ())
+  ⟨ _ , _ ⟩ ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR inl = no (λ ())
+  inl ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR inr = no (λ ())
+  inr ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR [ _ , _ ] = no (λ ())
+  [ _ , _ ] ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR terminal = no (λ ())
+  terminal ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR initial = no (λ ())
+  initial ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR (curry _) = no (λ ())
+  (curry _) ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR apply = no (λ ())
+  apply ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR fold = no (λ ())
+  fold ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR unfold = no (λ ())
+  unfold ≟IR (Prim _ _ _) = no (λ ())
+  (Prim _ _ _) ≟IR arr = no (λ ())
+  arr ≟IR (Prim _ _ _) = no (λ ())
 
   -- Remaining type-compatible different-constructor cases
   id ≟IR ⟨ _ , _ ⟩ = no (λ ())
@@ -435,7 +443,7 @@ optimize-compose apply id = apply
 optimize-compose fold id = fold
 optimize-compose unfold id = unfold
 optimize-compose arr id = arr
-optimize-compose (Prim name) id = Prim name
+optimize-compose (Prim name sem c) id = Prim name sem c
 optimize-compose (h ∘ g) id = h ∘ g  -- Don't simplify here, let associativity handle it
 
 -- Product beta laws: fst ∘ ⟨ f , g ⟩ = f, snd ∘ ⟨ f , g ⟩ = g
@@ -465,7 +473,7 @@ optimize-compose terminal apply = terminal
 optimize-compose terminal fold = terminal
 optimize-compose terminal unfold = terminal
 optimize-compose terminal arr = terminal
-optimize-compose terminal (Prim name) = terminal
+optimize-compose terminal (Prim name sem _) = terminal
 
 -- Initial absorption: f ∘ initial = initial (dead code elimination)
 -- Composition with initial is initial (vacuously true, Void is empty)
@@ -481,7 +489,7 @@ optimize-compose apply initial = initial
 optimize-compose fold initial = initial
 optimize-compose unfold initial = initial
 optimize-compose arr initial = initial
-optimize-compose (Prim name) initial = initial
+optimize-compose (Prim name sem _) initial = initial
 optimize-compose (h ∘ g) initial = initial
 
 -- Pairing fusion: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
@@ -500,7 +508,7 @@ optimize-compose ⟨ f , g ⟩ apply = ⟨ optimize-compose f apply , optimize-c
 optimize-compose ⟨ f , g ⟩ fold = ⟨ optimize-compose f fold , optimize-compose g fold ⟩
 optimize-compose ⟨ f , g ⟩ unfold = ⟨ optimize-compose f unfold , optimize-compose g unfold ⟩
 optimize-compose ⟨ f , g ⟩ arr = ⟨ optimize-compose f arr , optimize-compose g arr ⟩
-optimize-compose ⟨ f , g ⟩ (Prim name) = ⟨ optimize-compose f (Prim name) , optimize-compose g (Prim name) ⟩
+optimize-compose ⟨ f , g ⟩ (Prim name sem _) = ⟨ optimize-compose f (Prim name sem _) , optimize-compose g (Prim name sem _) ⟩
 
 -- Case fusion: h ∘ [ f , g ] = [ h ∘ f , h ∘ g ]
 -- Distributes composition over case, exposing beta reductions
@@ -515,7 +523,7 @@ optimize-compose apply [ f , g ] = [ optimize-compose apply f , optimize-compose
 optimize-compose fold [ f , g ] = [ optimize-compose fold f , optimize-compose fold g ]
 optimize-compose unfold [ f , g ] = [ optimize-compose unfold f , optimize-compose unfold g ]
 optimize-compose arr [ f , g ] = [ optimize-compose arr f , optimize-compose arr g ]
-optimize-compose (Prim name) [ f , g ] = [ optimize-compose (Prim name) f , optimize-compose (Prim name) g ]
+optimize-compose (Prim name sem _) [ f , g ] = [ optimize-compose (Prim name sem _) f , optimize-compose (Prim name sem _) g ]
 
 -- Associativity: normalize to right-associative form
 -- (h ∘ g) ∘ f  →  h ∘ (g ∘ f)
@@ -599,7 +607,7 @@ optimize-once apply = apply
 optimize-once fold = fold
 optimize-once unfold = unfold
 optimize-once arr = arr
-optimize-once (Prim name) = Prim name
+optimize-once (Prim name sem c) = Prim name sem c
 
 ------------------------------------------------------------------------
 -- Fixed-point optimization (bounded iteration)

@@ -13,10 +13,16 @@
 module Once.Backend.X86.Correct.Foundation where
 
 open import Once.Type public
-open import Once.IR public
-open import Once.Semantics
-  using (⟦_⟧; eval; Closure; encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity; wrap; ⟦Fix⟧)
-  public
+
+-- X86 backend uses X86ContractInterface for real PrimContract proofs
+open import Once.Backend.X86.Correct.PrimContract using (X86ContractInterface; PrimContract)
+import Once.IR as IR
+open IR.IRDef X86ContractInterface public
+
+import Once.Semantics as Semantics
+open Semantics using (Closure; encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity; wrap; ⟦Fix⟧) public
+open import Once.SemanticBase using (⟦_⟧) public
+open Semantics.SemanticsDef X86ContractInterface public
 
 open ⟦Fix⟧ public
 
@@ -24,7 +30,25 @@ open import Once.Backend.X86.Syntax public
 open import Once.Backend.X86.Semantics public
 open Once.Backend.X86.Semantics.State public
 open Once.Backend.X86.Semantics.Flags public
-open import Once.Backend.X86.CodeGen public
+import Once.Backend.X86.CodeGen as CodeGen
+open CodeGen using (simple-instr-count; pair-overhead; case-overhead; curry-overhead;
+  injection-instr-count; apply-instr-count; case-setup-prefix-count; case-middle-count;
+  pair-setup; pair-middle; pair-cleanup; inl-instrs; inr-instrs; apply-instrs;
+  curry-closure-instrs; curry-thunk-setup-len-calc; curry-thunk-cleanup;
+  case-setup-count; case-prefix-count; case-cleanup-count;
+  case-jne-base; case-jmp-base; case-right-label-base;
+  curry-thunk-label; curry-rip-offset; curry-end-label-base; curry-jmp-base;
+  apply-consumed-slots; pair-setup-consumed-slots; thunk-setup-consumed-slots; curry-closure-consumed-slots;
+  injection-consumed-slots; thunk-r15-slot; thunk-rbp-slot; pair-r14-slot; pair-r15-slot; pair-rbp-slot)
+  public
+-- Use CodeGenDef with X86ContractInterface
+-- compile-x86 and compile-length now use contract-program and contract-length
+-- which provide actual assembly from PrimContract for Prim nodes
+open CodeGen.CodeGenDef X86ContractInterface public
+
+-- Export contract-nonempty for compile-length>0 proof
+open import Once.Backend.ContractInterface using (ContractInterface)
+open ContractInterface X86ContractInterface public using (contract-nonempty; contract-length; contract-program)
 
 ------------------------------------------------------------------------
 -- Re-export common helpers
@@ -44,6 +68,11 @@ open import Once.Backend.Common.Memory
 
 -- NOTE: All encode-* postulates eliminated in X86 via validity-based proofs.
 -- encode-pair-construct and encode-closure-construct removed (unused)
+
+-- IRSize: parameterized with X86ContractInterface
+open import Once.Backend.Common.IRSize X86ContractInterface public
+  using (ir-size; ∘-f-smaller; ∘-g-smaller; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller;
+         [,]-f-smaller; [,]-g-smaller; curry-smaller)
 
 ------------------------------------------------------------------------
 -- Re-export from helper modules (consolidated imports)

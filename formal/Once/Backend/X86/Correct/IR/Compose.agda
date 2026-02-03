@@ -578,9 +578,7 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
 -- dispatcher as an explicit parameter instead of via module parameterization.
 ------------------------------------------------------------------------
 
--- Import additional modules needed for run-compose-star-v
-open import Once.Backend.Common.IRSize
-  using (ir-size; ∘-f-smaller; ∘-g-smaller)
+-- ir-size and ∘-f-smaller, ∘-g-smaller are re-exported from Foundation
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDispatcherWithWF)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (capacity-preserved-rsp-unchanged; capacity-left-from-max; capacity-right-from-max;

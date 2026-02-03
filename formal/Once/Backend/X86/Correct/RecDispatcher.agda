@@ -21,10 +21,11 @@ open import Once.Backend.X86.Correct.StackInstantiation using (StackCapacity; ir
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.X86.Correct.StarBase using (IRStarResultV; ClosureWFOutput; no-closure)
 
--- Import Common dispatcher infrastructure
-open import Once.Backend.Common.IRDispatcher
+-- Import Common dispatcher infrastructure (parameterized with X86ContractInterface)
+open import Once.Backend.X86.Correct.PrimContract using (X86ContractInterface)
+open import Once.Backend.Common.IRDispatcher X86ContractInterface
 
-open import Once.Backend.Common.IRSize using (ir-size)
+-- ir-size is now re-exported from Foundation (parameterized with X86ContractInterface)
 open import Data.Nat using (ℕ; _<_)
 open import Data.Product using (∃; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_)

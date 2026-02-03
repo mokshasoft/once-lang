@@ -11,14 +11,18 @@
 module Once.Backend.X86.Correct.IR.CaseSetup where
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (env-addr; semantics)
+
+-- Import from Foundation to get X86ContractInterface-instantiated types
+open import Once.Backend.X86.Correct.Foundation
+  using (IR; [_,_]; inl; inr; ⟦_⟧; compile-x86; compile-length;
+         case-overhead; case-right-label-base; case-jmp-base; case-jne-base;
+         case-setup-count; case-prefix-count; case-cleanup-count;
+         Instr; Program)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open Once.Backend.X86.Semantics.Flags
-open import Once.Backend.X86.CodeGen
 
 open import Once.Backend.X86.Correct.Star using (Star; refl*; step*; star-trans; star-step2; star-step3; star-step6; star-step7)
 open import Once.Backend.X86.Correct.FetchStep using (step-exec; fetch-append-skip)

@@ -69,9 +69,8 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s;
          valid-subst-addr-mem)
 
--- Import IRSize for size proofs
-open import Once.Backend.Common.IRSize
-  using (ir-size; curry-smaller)
+-- ir-size and curry-smaller are now re-exported from Foundation
+
 -- Import RecDispatcher from central location
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
 

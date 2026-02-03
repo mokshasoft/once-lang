@@ -14,13 +14,15 @@
 module Once.Backend.X86.Correct.ClosureWellFormed where
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (env-addr; semantics)
+
+-- Import from Foundation to get X86ContractInterface-instantiated types
+open import Once.Backend.X86.Correct.Foundation
+  using (IR; _∘_; curry; apply; compile-x86; compile-length; ⟦_⟧; Closure; eval;
+         curry-overhead; Instr; Program)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
-open import Once.Backend.X86.CodeGen
 
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans)

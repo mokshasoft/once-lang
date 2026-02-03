@@ -17,15 +17,24 @@
 module Once.Backend.X86.Correct.MutualIR where
 
 open import Once.Type
-open import Once.IR
-open import Once.Semantics hiding (env-addr; semantics)
-  renaming (Closure-η to Closure-η-sem)
+
+-- Import from Foundation to get X86ContractInterface-instantiated types
+open import Once.Backend.X86.Correct.Foundation
+  using (IR; _∘_; id; fst; snd; ⟨_,_⟩; inl; inr; [_,_]; terminal; initial;
+         curry; apply; fold; unfold; arr; Prim;
+         ⟦_⟧; eval; Closure; encode; wrap; unwrap;
+         compile-x86; compile-length;
+         ir-size; ∘-f-smaller; ∘-g-smaller; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller;
+         [,]-f-smaller; [,]-g-smaller; curry-smaller;
+         curry-overhead; case-overhead;
+         Instr; Program)
+-- Closure-η is the only thing we need from Semantics that's not in Foundation
+open import Once.Semantics using () renaming (Closure-η to Closure-η-sem)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
 open Once.Backend.X86.Semantics.Flags
-open import Once.Backend.X86.CodeGen
 
 -- Import common memory helper lemmas
 open import Once.Backend.Common.Memory
@@ -142,9 +151,7 @@ import Once.Backend.X86.Correct.IR.Case as Case
 -- Import well-founded recursion and IR size measure
 open import Induction.WellFounded using (Acc; acc)
 open import Data.Nat.Induction using (<-wellFounded)
-open import Once.Backend.Common.IRSize
-  using (ir-size; ∘-f-smaller; ∘-g-smaller; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller;
-         [,]-f-smaller; [,]-g-smaller; curry-smaller)
+-- ir-size and size lemmas are re-exported from Foundation
 
 -- Import validity predicates for dispatcher
 open import Once.Backend.X86.Correct.MemoryValid
@@ -644,9 +651,9 @@ mutual
   run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
-  run-ir-star-at-offset-v (Prim {A} {B} name) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (Prim {A} {B} name sem contract) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid stack-proof
-    in run-prim-star-vv name prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
+    in run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
   -- Initial: absurd case (base case, ignores Acc)
   run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x

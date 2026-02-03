@@ -10,6 +10,7 @@
 module Once.Surface.Desugar where
 
 open import Once.Type
+open import Once.SemanticBase using (⟦_⟧)
 open import Once.Surface.IR as S using (SurfaceIR; Let; Prim)
 open import Once.IR as C
 
@@ -31,8 +32,8 @@ open import Data.String using (String)
 --   3. optimize cases in Once.Optimize (pass through unchanged)
 --   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --
-prim-desugar : ∀ {A B} → String → C.IR A B
-prim-desugar = C.Prim
+prim-desugar : ∀ {A B} → String → (⟦ A ⟧ → ⟦ B ⟧) → C.IR A B
+prim-desugar name sem = C.Prim name sem C.trivial
 
 ------------------------------------------------------------------------
 -- Desugar transformation
@@ -91,4 +92,4 @@ desugar (Let e1 e2) = desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩
 -- | Primitive passthrough
 --
 -- Primitives are opaque - just convert to Core's Prim constructor
-desugar (Prim name) = prim-desugar name
+desugar (Prim name sem) = prim-desugar name sem

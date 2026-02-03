@@ -180,9 +180,11 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   -- Primitives are external operations provided by the runtime/platform.
   -- They cannot be decomposed into categorical generators.
-  -- The String names the primitive (e.g., "arith.add.int").
+  -- Each primitive carries:
+  --   - name: Human-readable identifier (for debugging/emission)
+  --   - sem: The semantic function defining the operation's behavior
   --
-  ty-prim : ∀ {Γ A B} → String → Γ ⊢ A ⟶ B
+  ty-prim : ∀ {Γ A B} → String → (⟦ A ⟧ → ⟦ B ⟧) → Γ ⊢ A ⟶ B
 
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
@@ -208,7 +210,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-fold ⌋ = fold
 ⌊ ty-unfold ⌋ = unfold
 ⌊ ty-arr ⌋ = arr
-⌊ ty-prim name ⌋ = Prim name
+⌊ ty-prim name sem ⌋ = Prim name sem trivial
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -231,7 +233,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ fold ⌉ = ty-fold
 ⌈ unfold ⌉ = ty-unfold
 ⌈ arr ⌉ = ty-arr
-⌈ Prim name ⌉ = ty-prim name
+⌈ Prim name sem _ ⌉ = ty-prim name sem
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f
 --
@@ -266,4 +268,4 @@ round-trip-ir apply = refl
 round-trip-ir fold = refl
 round-trip-ir unfold = refl
 round-trip-ir arr = refl
-round-trip-ir (Prim name) = refl
+round-trip-ir (Prim name sem _) = refl

@@ -14,7 +14,7 @@ open import Once.Type
 open import Once.Surface.IR as S
 open import Once.Surface.Desugar
 open import Once.IR as C
-open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap; Closure; encode; evalPrim)
+open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap; Closure; encode)
 open import Once.Postulates using (extensionality; closure-semantics-eq)
 open ⟦Fix⟧ using (unwrap)
 open Closure
@@ -31,8 +31,8 @@ open import Data.String using (String)
 -- Primitive evaluation
 ------------------------------------------------------------------------
 
--- | evalPrim is now imported from Once.Semantics
--- It was added when Prim constructor was added to Core IR.
+-- | evalPrim postulate has been ELIMINATED!
+-- Primitive semantics are now carried directly in the Prim constructor.
 
 ------------------------------------------------------------------------
 -- Surface IR Semantics
@@ -86,8 +86,8 @@ evalSurface S.arr f = f
 -- evalSurface (Let e1 e2) x = evalSurface e2 (x , evalSurface e1 x)
 evalSurface (S.Let e1 e2) x = evalSurface e2 (x , evalSurface e1 x)
 
--- Surface-only: Primitives
-evalSurface (S.Prim name) x = evalPrim name x
+-- Surface-only: Primitives (explicit semantic function - no evalPrim postulate needed!)
+evalSurface (S.Prim _ sem) x = sem x
 
 ------------------------------------------------------------------------
 -- Correctness theorem
@@ -95,12 +95,12 @@ evalSurface (S.Prim name) x = evalPrim name x
 
 -- | Primitive correctness (now proven)
 --
--- Since prim-desugar = C.Prim and eval (C.Prim name) = evalPrim name,
+-- Since prim-desugar name sem = C.Prim name sem and eval (C.Prim _ sem) x = sem x,
 -- this is just refl.
 --
-desugar-correct-prim : ∀ {A B} (name : String) (x : ⟦ A ⟧)
-                     → eval (prim-desugar {A} {B} name) x ≡ evalPrim {A} {B} name x
-desugar-correct-prim name x = refl
+desugar-correct-prim : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (x : ⟦ A ⟧)
+                     → eval (prim-desugar {A} {B} name sem) x ≡ sem x
+desugar-correct-prim name sem x = refl
 
 -- | Desugar preserves semantics
 --
@@ -194,5 +194,5 @@ desugar-correct (S.Let e1 e2) x =
       ∎
   where open Relation.Binary.PropositionalEquality.≡-Reasoning
 
--- | Primitive correctness (uses postulate from above)
-desugar-correct (S.Prim name) x = desugar-correct-prim name x
+-- | Primitive correctness (no postulate needed!)
+desugar-correct (S.Prim name sem) x = desugar-correct-prim name sem x

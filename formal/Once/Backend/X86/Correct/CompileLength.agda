@@ -7,11 +7,15 @@
 
 module Once.Backend.X86.Correct.CompileLength where
 
-open import Once.Type
-open import Once.IR
-
-open import Once.Backend.X86.Syntax
-open import Once.Backend.X86.CodeGen
+-- Import from Foundation to get X86ContractInterface-instantiated types
+open import Once.Backend.X86.Correct.Foundation
+  using (IR; _∘_; id; fst; snd; ⟨_,_⟩; inl; inr; [_,_]; terminal; initial;
+         curry; apply; fold; unfold; arr; Prim;
+         compile-x86; compile-length; case-overhead; case-right-label-base;
+         case-jmp-base; slot-size; Instr; Program; Reg;
+         r11; r14; r15; rbp; rdi; rsp; rax;
+         mov; reg; mem; base; base+disp; jmp; label; pop; ret;
+         sub; lea; push; call; cmp; jne; ud2; imm; rip+disp; r9; r12; rsi)
 
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm)
@@ -220,4 +224,4 @@ compile-length-correct apply = refl
 compile-length-correct fold = refl
 compile-length-correct unfold = refl
 compile-length-correct arr = refl
-compile-length-correct (Prim _) = refl
+compile-length-correct (Prim _ _ _) = refl
