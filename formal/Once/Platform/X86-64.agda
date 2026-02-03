@@ -1,13 +1,21 @@
 ------------------------------------------------------------------------
--- Once.Platform.X86_64
+-- Once.Platform.X86-64
 --
 -- x86-64 platform instantiation.
 -- This is the SINGLE place that chooses Word64Interface for x86-64.
 --
--- All x86-64 specific code imports from this module.
--- The Machine modules remain fully portable.
+-- Part of OCP-0003: Orthogonal IR design.
 --
--- Part of OCP-0003: Migration to machine word semantics.
+-- ARCHITECTURE:
+--   - Once.Contract: ContractInterface (machine-independent)
+--   - Once.IR: IR (machine-independent)
+--   - Once.Semantics: eval (machine-dependent)
+--
+-- This module provides:
+--   1. ⟦_⟧ from SemanticBaseMachine Word64Interface
+--   2. PlaceholderInterface for frontend modules
+--   3. PlaceholderSemantics for evaluation
+--   4. Instantiated IR and eval
 ------------------------------------------------------------------------
 
 module Once.Platform.X86-64 where
@@ -15,6 +23,7 @@ module Once.Platform.X86-64 where
 open import Once.Type
 open import Once.Backend.Word64 using (Word64Interface)
 open import Once.Backend.MachineInterface using (MachineInterface)
+open import Once.Contract
 
 ------------------------------------------------------------------------
 -- Core Semantic Instantiation
@@ -33,30 +42,6 @@ open import Once.SemanticBaseMachine Word64Interface public
         )
 
 ------------------------------------------------------------------------
--- Contract Interface
-------------------------------------------------------------------------
-
--- Import ContractInterfaceMachine with our ⟦_⟧
-open import Once.Backend.ContractInterfaceMachine ⟦_⟧ public
-  using (ContractInterface)
-
-------------------------------------------------------------------------
--- IR Definition
-------------------------------------------------------------------------
-
--- Import IRMachine with our ⟦_⟧
-open import Once.IRMachine ⟦_⟧ public
-  using (module IRDef)
-
-------------------------------------------------------------------------
--- Semantics Definition
-------------------------------------------------------------------------
-
--- Import SemanticsMachine with Word64Interface
-open import Once.SemanticsMachine Word64Interface public
-  using (Closure-η; module SemanticsDef)
-
-------------------------------------------------------------------------
 -- Placeholder Contract (for frontend modules)
 ------------------------------------------------------------------------
 
@@ -71,34 +56,55 @@ open import Data.String using (String)
 
 PlaceholderInterface : ContractInterface
 PlaceholderInterface = record
-  { Contract = λ {A} {B} _ → ⊤
-  ; contract-assembly = λ {A} {B} {sem} _ → "    nop" ∷ []
-  ; contract-nonempty = λ {A} {B} {sem} _ → s≤s z≤n
+  { Contract = λ A B → ⊤
+  ; contract-assembly = λ _ → "    nop" ∷ []
+  ; contract-nonempty = λ _ → s≤s z≤n
   }
 
--- | Placeholder contract type
-PlaceholderContract : ∀ {A B : Type} → (⟦ A ⟧ → ⟦ B ⟧) → Set
-PlaceholderContract {A} {B} _ = ⊤
-
--- | Trivial contract value for Prim constructors
-trivial : ∀ {A B : Type} {sem : ⟦ A ⟧ → ⟦ B ⟧} → PlaceholderContract {A} {B} sem
-trivial {A} {B} {sem} = tt
-
 ------------------------------------------------------------------------
--- Default IR and Semantics (using PlaceholderInterface)
+-- IR (machine-independent, uses PlaceholderInterface)
 ------------------------------------------------------------------------
 
--- For convenience, provide default IR and eval using PlaceholderInterface
+open import Once.IR public using (module IRDef)
 open IRDef PlaceholderInterface public
-open SemanticsDef PlaceholderInterface public
+
+------------------------------------------------------------------------
+-- Placeholder Contract Semantics
+------------------------------------------------------------------------
+
+-- For PlaceholderInterface, we need to provide semantics.
+-- Since Placeholder contracts are only used for frontend modules
+-- that provide semantics inline (via intLit, addIR, etc.),
+-- we use a postulate here.
+
+postulate
+  placeholder-semantics : ∀ {A B : Type} → ⊤ → ⟦ A ⟧ → ⟦ B ⟧
+
+PlaceholderSemantics : ContractSemantics PlaceholderInterface ⟦_⟧
+PlaceholderSemantics = record
+  { contract-eval = λ {A} {B} c → placeholder-semantics {A} {B} c
+  }
+
+------------------------------------------------------------------------
+-- Semantics (using PlaceholderInterface and PlaceholderSemantics)
+------------------------------------------------------------------------
+
+open import Once.Semantics Word64Interface PlaceholderInterface public
+  using (module SemanticsDef)
+
+open SemanticsDef PlaceholderSemantics public
+
+------------------------------------------------------------------------
+-- Convenience: trivial contract for Prim
+------------------------------------------------------------------------
+
+-- | Placeholder contract value for Prim constructors
+trivial : ∀ {A B : Type} → ContractInterface.Contract PlaceholderInterface A B
+trivial = tt
 
 ------------------------------------------------------------------------
 -- Backward Compatibility Aliases
 ------------------------------------------------------------------------
-
--- TrivialContract/TrivialInterface aliases for migration
-TrivialContract : ∀ {A B : Type} → (⟦ A ⟧ → ⟦ B ⟧) → Set
-TrivialContract {A} {B} = PlaceholderContract {A} {B}
 
 TrivialInterface : ContractInterface
 TrivialInterface = PlaceholderInterface
