@@ -7,8 +7,8 @@
 -- Part of OCP-0003: PrimContract - Unified Interface for Domain Compilers
 --
 -- KEY BENEFIT:
---   ⟦ Int ⟧ = Word (from MachineInterface)
---   encode-int is identity (Word = ℕ for all word sizes)
+--   ⟦ Int ⟧ = ℕ
+--   encode-int is identity
 --   No encode postulates needed for integer arithmetic!
 --
 -- PORTABILITY:
@@ -20,16 +20,11 @@
 --   For x86-64:
 --     open import Once.Backend.Word64 using (Word64Interface)
 --     open import Once.SemanticBaseMachine Word64Interface
---
---   For mathematical semantics (backward compatibility):
---     open import Once.SemanticBase  -- uses ℤ
 ------------------------------------------------------------------------
 
 open import Once.Backend.MachineInterface
 
 module Once.SemanticBaseMachine (MI : MachineInterface) where
-
-open MachineInterface MI renaming (Word to IntWord)
 
 open import Once.Type
 open import Once.Memory as Mem using () renaming (Word to MemWord)
@@ -63,8 +58,8 @@ mutual
       env-addr  : MemWord          -- encoded environment address
       semantics : ⟦ A ⟧ → ⟦ B ⟧   -- the function behavior
 
-  -- | Type interpretation parameterized by MachineInterface
-  -- ⟦ Int ⟧ = IntWord (from MachineInterface parameter)
+  -- | Type interpretation
+  -- ⟦ Int ⟧ = ℕ (natural numbers, with modular arithmetic from MachineInterface)
   ⟦_⟧ : Type → Set
   ⟦ Unit ⟧         = ⊤
   ⟦ Void ⟧         = ⊥
@@ -73,7 +68,7 @@ mutual
   ⟦ A ⇒[ q ] B ⟧   = Closure A B
   ⟦ Eff A B ⟧      = Closure A B
   ⟦ Fix F ⟧        = ⟦Fix⟧ ⟦ F ⟧
-  ⟦ Int ⟧          = IntWord        -- From MachineInterface!
+  ⟦ Int ⟧          = ℕ              -- Natural numbers!
   ⟦ Float ⟧        = AgdaFloat
   ⟦ Str ⟧          = String
   ⟦ Buffer ⟧       = String
@@ -85,7 +80,7 @@ open Closure public
 -- Encoding Functions
 --
 -- encode converts semantic values to memory words.
--- For machine integers, this requires converting IntWord → MemWord.
+-- For integers: ⟦ Int ⟧ = ℕ = MemWord, so encode-int is identity.
 ------------------------------------------------------------------------
 
 -- Compound types: return placeholder (actual addresses tracked by ValidAt)
@@ -101,12 +96,9 @@ encode-inr-addr _ = 0
 encode-closure-addr : ∀ {A B : Type} → Closure A B → MemWord
 encode-closure-addr _ = 0
 
--- Integer encoding: convert IntWord to MemWord
--- Uses word-to-ℕ from MachineInterface.
--- For Word64Interface/Word32Interface where IntWord = ℕ = MemWord,
--- this is identity.
-encode-int : IntWord → MemWord
-encode-int = MachineInterface.word-to-ℕ MI
+-- Integer encoding: identity! ⟦ Int ⟧ = ℕ = MemWord
+encode-int : ℕ → MemWord
+encode-int n = n
 
 encode-float        : AgdaFloat → MemWord
 encode-float _ = 0
@@ -160,46 +152,46 @@ encode-arr-identity cl = refl
 ------------------------------------------------------------------------
 
 -- Arithmetic operations from the MachineInterface
-int-add : IntWord × IntWord → IntWord
+int-add : ℕ × ℕ → ℕ
 int-add = MachineInterface.word-add MI
 
-int-sub : IntWord × IntWord → IntWord
+int-sub : ℕ × ℕ → ℕ
 int-sub = MachineInterface.word-sub MI
 
-int-mul : IntWord × IntWord → IntWord
+int-mul : ℕ × ℕ → ℕ
 int-mul = MachineInterface.word-mul MI
 
-int-div : IntWord × IntWord → IntWord
+int-div : ℕ × ℕ → ℕ
 int-div = MachineInterface.word-div MI
 
-int-mod : IntWord × IntWord → IntWord
+int-mod : ℕ × ℕ → ℕ
 int-mod = MachineInterface.word-mod MI
 
-int-neg : IntWord → IntWord
+int-neg : ℕ → ℕ
 int-neg = MachineInterface.word-neg MI
 
 -- Comparisons
-int-lt : IntWord × IntWord → IntWord
+int-lt : ℕ × ℕ → ℕ
 int-lt = MachineInterface.word-lt MI
 
-int-eq : IntWord × IntWord → IntWord
+int-eq : ℕ × ℕ → ℕ
 int-eq = MachineInterface.word-eq MI
 
 -- Constants
-int-zero : IntWord
+int-zero : ℕ
 int-zero = MachineInterface.word-zero MI
 
-int-one : IntWord
+int-one : ℕ
 int-one = MachineInterface.word-one MI
 
 ------------------------------------------------------------------------
 -- Key Property: Portable and No Encode Gap for Arithmetic
 ------------------------------------------------------------------------
 
--- With ⟦ Int ⟧ = IntWord (from MachineInterface):
+-- With ⟦ Int ⟧ = ℕ:
 --
---   add-int-sem : IntWord × IntWord → IntWord
---   add-int-sem = word-add  (from MachineInterface)
+--   int-add : ℕ × ℕ → ℕ
+--   int-add = word-add  (from MachineInterface)
 --
 --   For Word64Interface: word-add = word64-add (mod 2^64)
 --   For Word32Interface: word-add = word32-add (mod 2^32)

@@ -19,10 +19,27 @@ open import Once.Backend.X86.Correct.PrimContract using (X86ContractInterface; P
 import Once.IR as IR
 open IR.IRDef X86ContractInterface public
 
-import Once.Semantics as Semantics
-open Semantics using (Closure; encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity; wrap; ⟦Fix⟧) public
-open import Once.SemanticBase using (⟦_⟧) public
-open Semantics.SemanticsDef X86ContractInterface public
+-- Import semantic types from Platform.X86-64 (uses Word64Interface)
+open import Once.Platform.X86-64 public
+  using (⟦_⟧; Closure; encode; encode-unit; encode-fix-wrap; encode-fix-unwrap;
+         encode-arr-identity; wrap; ⟦Fix⟧)
+
+-- Import Semantics infrastructure
+open import Once.Backend.Word64 using (Word64Interface)
+open import Once.Contract using (ContractSemantics; ContractInterface)
+open ContractInterface X86ContractInterface using (Contract)
+
+-- X86ContractSemantics: provides evaluation for X86 contracts
+-- For code generation, the contract's semantics are opaque
+postulate
+  x86-contract-eval : ∀ {A B : Type} → Contract A B → ⟦ A ⟧ → ⟦ B ⟧
+
+X86ContractSemantics : ContractSemantics X86ContractInterface ⟦_⟧
+X86ContractSemantics = record { contract-eval = x86-contract-eval }
+
+-- Import eval from Semantics (instantiated with Word64Interface and X86ContractInterface)
+import Once.Semantics Word64Interface X86ContractInterface as Sem
+open Sem.SemanticsDef X86ContractSemantics public
 
 open ⟦Fix⟧ public
 
@@ -47,8 +64,9 @@ open CodeGen using (simple-instr-count; pair-overhead; case-overhead; curry-over
 open CodeGen.CodeGenDef X86ContractInterface public
 
 -- Export contract-nonempty for compile-length>0 proof
-open import Once.Backend.ContractInterface using (ContractInterface)
-open ContractInterface X86ContractInterface public using (contract-nonempty; contract-length; contract-program)
+open import Once.Contract using (ContractInterface)
+open ContractInterface X86ContractInterface public using (contract-nonempty; contract-length)
+  renaming (contract-assembly to contract-program)
 
 ------------------------------------------------------------------------
 -- Re-export common helpers

@@ -17,7 +17,8 @@
 module Once.Backend.X86.CodeGen where
 
 open import Once.Type
-open import Once.IR as IR using (ContractInterface; TrivialInterface; TrivialContract; trivial)
+open import Once.Contract using (ContractInterface)
+import Once.IR as IR
 open IR using (module IRDef)
 
 -- X86-specific contract support
@@ -25,9 +26,27 @@ open import Once.Backend.X86.Correct.PrimContract using (PrimContract; X86Contra
 open PrimContract using (prim-assembly)
 
 open import Once.Backend.X86.Syntax
+open import Once.Backend.X86.Emit using (instrToText)
 
 open import Data.Nat using (ℕ; zero; suc; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List using (List; []; _∷_; _++_; length; map)
+open import Data.String using (String)
+
+------------------------------------------------------------------------
+-- Assembly output type
+------------------------------------------------------------------------
+
+-- | Assembly is List String (opaque text)
+Asm : Set
+Asm = List String
+
+-- | Convert instructions to assembly text
+emit : Program → Asm
+emit = map instrToText
+
+-- | Single instruction to assembly
+emit1 : Instr → Asm
+emit1 i = instrToText i ∷ []
 
 -- slots and instrs-consumed-slots come from Syntax (no circular dependency)
 
@@ -283,9 +302,9 @@ pair-rbp-slot = 3
 -- | CodeGen parameterized by ContractInterface
 -- The instruction type is fixed to X86's Instr since this is X86 CodeGen.
 --
-module CodeGenDef (CI : ContractInterface Instr) where
+module CodeGenDef (CI : ContractInterface) where
   open IRDef CI
-  open ContractInterface CI
+  open ContractInterface CI renaming (contract-assembly to contract-program)
 
   ------------------------------------------------------------------------
   -- Compile length calculation
@@ -311,7 +330,10 @@ module CodeGenDef (CI : ContractInterface Instr) where
   compile-length unfold = simple-instr-count
   compile-length arr = simple-instr-count
   -- Prim: use actual assembly length from contract
-  compile-length (Prim _ _ c) = contract-length c
+  compile-length (Prim _ c) = contract-length c
+  -- Domain: should be compiled before reaching CodeGen (error case)
+  -- For now, treat as 0 instructions - will cause errors if actually compiled
+  compile-length (Domain _) = 0
 
   -- Position of cleanup instructions (symbolic, computed from code structure)
   -- cleanup-position f g = setup-prefix + |f| + middle + |g|
@@ -322,9 +344,9 @@ module CodeGenDef (CI : ContractInterface Instr) where
   -- Code generation
   ------------------------------------------------------------------------
 
-  -- | Generate x86-64 code for an IR morphism
+  -- | Generate x86-64 assembly for an IR morphism
   --
-  -- compile-x86 : IR A B → Program
+  -- compile-x86 : IR A B → Asm
   --
   -- The generated code:
   --   - Expects input in rdi
@@ -332,39 +354,39 @@ module CodeGenDef (CI : ContractInterface Instr) where
   --   - May use stack for intermediate allocations
   --   - Preserves callee-saved registers
   --
-  compile-x86 : ∀ {A B} → IR A B → Program
+  compile-x86 : ∀ {A B} → IR A B → Asm
 
   -- Identity: just move input to output
-  compile-x86 id = mov (reg rax) (reg rdi) ∷ []
+  compile-x86 id = emit1 (mov (reg rax) (reg rdi))
 
   -- Composition: sequence the generated code
   -- First apply f (input in rdi, output in rax)
   -- Then move result to rdi and apply g
   compile-x86 (g ∘ f) =
     compile-x86 f ++
-    mov (reg rdi) (reg rax) ∷ [] ++
+    emit1 (mov (reg rdi) (reg rax)) ++
     compile-x86 g
 
   -- First projection: load from offset 0 of pair pointer
-  compile-x86 fst = mov (reg rax) (mem (base rdi)) ∷ []
+  compile-x86 fst = emit1 (mov (reg rax) (mem (base rdi)))
 
   -- Second projection: load from offset 8 of pair pointer
-  compile-x86 snd = mov (reg rax) (mem (base+disp rdi slot-size)) ∷ []
+  compile-x86 snd = emit1 (mov (reg rax) (mem (base+disp rdi slot-size)))
 
   -- Pairing: allocate pair on stack, compute both components
   -- Uses pair-setup/middle/cleanup instruction lists defined above.
   compile-x86 ⟨ f , g ⟩ =
-    pair-setup ++
+    emit pair-setup ++
     compile-x86 f ++
-    pair-middle ++
+    emit pair-middle ++
     compile-x86 g ++
-    pair-cleanup
+    emit pair-cleanup
 
   -- Left injection: uses inl-instrs defined above
-  compile-x86 inl = inl-instrs
+  compile-x86 inl = emit inl-instrs
 
   -- Right injection: uses inr-instrs defined above
-  compile-x86 inr = inr-instrs
+  compile-x86 inr = emit inr-instrs
 
   -- Case analysis: branch on tag
   -- Jump offsets are PC-relative: target = pc + 1 + offset
@@ -392,31 +414,31 @@ module CodeGenDef (CI : ContractInterface Instr) where
         right-label = case-right-label-base +ℕ len-f
     in
     -- Setup: establish stack frame
-    push (reg rbp) ∷
-    mov (reg rbp) (reg rsp) ∷
-    -- Load tag into r11 (scratch register, doesn't clobber r15)
-    mov (reg r11) (mem (base rdi)) ∷
-    -- Compare with 0
-    cmp (reg r11) (imm 0) ∷
-    -- Jump to right branch if not zero (PC-relative)
-    jne right-offset ∷
-    -- Left branch: load value and apply f
-    mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+    emit (push (reg rbp) ∷
+          mov (reg rbp) (reg rsp) ∷
+          -- Load tag into r11 (scratch register, doesn't clobber r15)
+          mov (reg r11) (mem (base rdi)) ∷
+          -- Compare with 0
+          cmp (reg r11) (imm 0) ∷
+          -- Jump to right branch if not zero (PC-relative)
+          jne right-offset ∷
+          -- Left branch: load value and apply f
+          mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []) ++
     compile-x86 f ++
-    jmp cleanup-offset ∷
-    -- Right branch: load value and apply g
-    label right-label ∷
-    mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
+    emit (jmp cleanup-offset ∷
+          -- Right branch: load value and apply g
+          label right-label ∷
+          mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []) ++
     compile-x86 g ++
     -- Cleanup: restore stack frame (undoes any branch delta)
-    mov (reg rsp) (reg rbp) ∷
-    pop rbp ∷ []
+    emit (mov (reg rsp) (reg rbp) ∷
+          pop rbp ∷ [])
 
   -- Terminal: return unit (represented as 0)
-  compile-x86 terminal = mov (reg rax) (imm 0) ∷ []
+  compile-x86 terminal = emit1 (mov (reg rax) (imm 0))
 
   -- Initial: unreachable (Void has no inhabitants)
-  compile-x86 initial = ud2 ∷ []
+  compile-x86 initial = emit1 ud2
 
   -- Curry: create closure
   -- Closure layout: [env (8 bytes), code_ptr (8 bytes)]
@@ -458,72 +480,75 @@ module CodeGenDef (CI : ContractInterface Instr) where
         end-label = curry-end-label-base +ℕ len-f
     in
     -- Allocate closure on stack
-    sub (reg rsp) (imm (slots 2)) ∷
-    -- Store environment (input a in rdi) as closure.env
-    mov (mem (base rsp)) (reg rdi) ∷
-    -- Compute code pointer using RIP-relative addressing
-    -- At pc=2, lea computes pc+4=6 (thunk entry address)
-    lea r9 (rip+disp rip-offset) ∷
-    -- Store code pointer from r9
-    mov (mem (base+disp rsp slot-size)) (reg r9) ∷
-    -- Return closure pointer
-    mov (reg rax) (reg rsp) ∷
-    -- Jump over the thunk code (PC-relative)
-    jmp end-offset ∷
-    -- Thunk code: called via apply with b in rdi, env in r12
-    label code-ptr-label ∷
-    -- Save r15 (apply uses it as scratch for code-ptr)
-    push (reg r15) ∷
-    -- Save and set frame pointer (for proper stack cleanup)
-    push (reg rbp) ∷
-    mov (reg rbp) (reg rsp) ∷
-    -- Allocate pair (a, b) on stack
-    sub (reg rsp) (imm (slots 2)) ∷
-    -- Store a (from r12) at [rsp]
-    mov (mem (base rsp)) (reg r12) ∷
-    -- Store b (from rdi) at [rsp+8]
-    mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
-    -- Set rdi = pointer to pair
-    mov (reg rdi) (reg rsp) ∷
+    emit (sub (reg rsp) (imm (slots 2)) ∷
+          -- Store environment (input a in rdi) as closure.env
+          mov (mem (base rsp)) (reg rdi) ∷
+          -- Compute code pointer using RIP-relative addressing
+          -- At pc=2, lea computes pc+4=6 (thunk entry address)
+          lea r9 (rip+disp rip-offset) ∷
+          -- Store code pointer from r9
+          mov (mem (base+disp rsp slot-size)) (reg r9) ∷
+          -- Return closure pointer
+          mov (reg rax) (reg rsp) ∷
+          -- Jump over the thunk code (PC-relative)
+          jmp end-offset ∷
+          -- Thunk code: called via apply with b in rdi, env in r12
+          label code-ptr-label ∷
+          -- Save r15 (apply uses it as scratch for code-ptr)
+          push (reg r15) ∷
+          -- Save and set frame pointer (for proper stack cleanup)
+          push (reg rbp) ∷
+          mov (reg rbp) (reg rsp) ∷
+          -- Allocate pair (a, b) on stack
+          sub (reg rsp) (imm (slots 2)) ∷
+          -- Store a (from r12) at [rsp]
+          mov (mem (base rsp)) (reg r12) ∷
+          -- Store b (from rdi) at [rsp+8]
+          mov (mem (base+disp rsp slot-size)) (reg rdi) ∷
+          -- Set rdi = pointer to pair
+          mov (reg rdi) (reg rsp) ∷ []) ++
     -- Execute f on the pair
     compile-x86 f ++
     -- Restore stack to frame (cleans up pair + any f allocations)
-    mov (reg rsp) (reg rbp) ∷
-    -- Restore frame pointer
-    pop rbp ∷
-    -- Restore r15
-    pop r15 ∷
-    -- Return (rax already has result, stack properly restored)
-    ret ∷
-    -- End of thunk
-    label end-label ∷ []
+    emit (mov (reg rsp) (reg rbp) ∷
+          -- Restore frame pointer
+          pop rbp ∷
+          -- Restore r15
+          pop r15 ∷
+          -- Return (rax already has result, stack properly restored)
+          ret ∷
+          -- End of thunk
+          label end-label ∷ [])
 
   -- Apply: call closure
   -- Uses apply-instrs instruction list defined above.
-  compile-x86 apply = apply-instrs
+  compile-x86 apply = emit apply-instrs
 
   -- Fold: identity at runtime (wrap into Fix)
-  compile-x86 fold = mov (reg rax) (reg rdi) ∷ []
+  compile-x86 fold = emit1 (mov (reg rax) (reg rdi))
 
   -- Unfold: identity at runtime (unwrap from Fix)
-  compile-x86 unfold = mov (reg rax) (reg rdi) ∷ []
+  compile-x86 unfold = emit1 (mov (reg rax) (reg rdi))
 
   -- Arr: identity at runtime (lift pure to Eff)
-  compile-x86 arr = mov (reg rax) (reg rdi) ∷ []
+  compile-x86 arr = emit1 (mov (reg rax) (reg rdi))
 
   -- Prim: emit actual assembly from contract
   -- The contract provides the real instructions via contract-program
-  compile-x86 (Prim _ _ c) = contract-program c
+  compile-x86 (Prim _ c) = contract-program c
+
+  -- Domain: should be compiled before reaching CodeGen
+  -- Emit nothing - this is an error case that should never happen
+  compile-x86 (Domain _) = []
 
 ------------------------------------------------------------------------
--- Default Instantiation (for backwards compatibility)
+-- Default Instantiation (using X86ContractInterface)
 ------------------------------------------------------------------------
 
--- | For modules that use the default TrivialContract,
--- we provide a default instantiation.
--- Uses X86's Instr type since this is X86 CodeGen.
+-- | Default instantiation uses X86ContractInterface
+-- which wraps PrimContract with actual proofs
 --
-open CodeGenDef (TrivialInterface {Instr}) public
+open CodeGenDef X86ContractInterface public
 
 ------------------------------------------------------------------------
 -- Value encoding

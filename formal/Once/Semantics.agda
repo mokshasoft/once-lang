@@ -23,6 +23,7 @@ module Once.Semantics
 
 open import Once.Type
 open import Once.SemanticBaseMachine MI
+open import Once.Arith.ExprSemantics MI using (evalArith)
 open import Once.IR
 open IRDef CI
 
@@ -84,3 +85,6 @@ module SemanticsDef (CS : ContractSemantics CI ⟦_⟧) where
 
   -- Primitives: use contract semantics
   eval (Prim _ c) x      = prim-eval c x
+
+  -- Domain expressions: use ArithExpr semantics
+  eval (Domain e) x      = evalArith e x

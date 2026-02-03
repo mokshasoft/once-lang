@@ -17,6 +17,7 @@ module Once.IR where
 
 open import Once.Type
 open import Once.Contract
+open import Once.Arith.Expr using (ArithExpr)
 open import Data.String using (String)
 
 ------------------------------------------------------------------------
@@ -58,10 +59,14 @@ module IRDef (CI : ContractInterface) where
     -- Effect lifting
     arr     : ∀ {A B} → IR (A ⇒ B) (Eff A B)
 
-    -- Primitive operations (opaque to CCC)
+    -- Primitive operations (opaque to CCC, already compiled)
     -- name: identifier for debugging/emission
     -- contract: compiled assembly from domain compiler
     Prim    : ∀ {A B} → (name : String) → Contract A B → IR A B
+
+    -- Domain expressions (not yet compiled)
+    -- These get replaced with Prim by domain compiler passes
+    Domain  : ∀ {A B} → ArithExpr A B → IR A B
 
   IR∞ : Type → Type → Set
   IR∞ = IR

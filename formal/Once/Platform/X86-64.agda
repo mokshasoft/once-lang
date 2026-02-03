@@ -38,7 +38,6 @@ open import Once.SemanticBaseMachine Word64Interface public
         ; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity
         ; int-add; int-sub; int-mul; int-div; int-mod; int-neg
         ; int-lt; int-eq; int-zero; int-one
-        ; semanticBundle
         )
 
 ------------------------------------------------------------------------

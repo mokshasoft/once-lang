@@ -22,7 +22,7 @@
 module Once.Backend.X86.Correct.MemoryValid where
 
 open import Once.Type
-open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap; encode)
+open import Once.Platform.X86-64 using (⟦_⟧; Closure; ⟦Fix⟧; wrap; encode)
 open ⟦Fix⟧
 open import Once.Backend.X86.Semantics using (State; Memory; Word; readMem; writeMem)
 open import Data.Integer using (ℤ)
