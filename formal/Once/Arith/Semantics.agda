@@ -2,9 +2,9 @@
 -- Once.Arith.Semantics
 --
 -- Denotational semantics for the arithmetic IR.
--- Expressions are evaluated to their mathematical values.
 --
 -- Part of OCP-0001: Orthogonal Arithmetic Compiler
+-- OCP-0003: Eliminated ℤ-div and ℤ-mod postulates (uses Data.Integer.DivMod)
 ------------------------------------------------------------------------
 
 module Once.Arith.Semantics where
@@ -13,14 +13,15 @@ open import Once.Arith.Type
 open import Once.Arith.IR
 
 open import Data.Bool using (Bool; true; false)
-open import Data.Integer as ℤ using (ℤ; +_; -_; ∣_∣; _<?_)
-open import Data.Integer.Properties as ℤP using ()
 open import Data.Nat as ℕ using (ℕ; zero; suc)
-open import Relation.Nullary using (does)
+open import Data.Integer as ℤ using (ℤ; +_; -[1+_]; ∣_∣)
+open import Data.Integer.DivMod as ℤDiv using (_/_; _%_)
+open import Data.Integer.Properties using (_<?_)
 open import Data.Float as F using (Float)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
+open import Relation.Nullary.Decidable using (does)
 
 ------------------------------------------------------------------------
 -- Environment
@@ -84,13 +85,15 @@ mul I64 = ℤ._*_
 mul F32 = F._*_
 mul F64 = F._*_
 
--- | Division for each numeric type
--- Note: Integer division requires NonZero proof in stdlib.
--- For now, we postulate a total division function.
--- The proof of non-zero divisor is deferred to the boundary proof.
-postulate
-  ℤ-div : ℤ → ℤ → ℤ  -- Assumed total; undefined for zero divisor
+-- | Integer division (total: returns 0 for division by zero)
+-- OCP-0003: Eliminates ℤ-div postulate
+ℤ-div : ℤ → ℤ → ℤ
+ℤ-div a b with b
+... | + 0 = + 0
+... | + ℕ.suc n = a ℤDiv./ (+ ℕ.suc n)
+... | -[1+ n ] = a ℤDiv./ -[1+ n ]
 
+-- | Division for each numeric type
 div : ∀ τ → ⟦ τ ⟧N → ⟦ τ ⟧N → ⟦ τ ⟧N
 div I8  = ℤ-div
 div I16 = ℤ-div
@@ -99,11 +102,15 @@ div I64 = ℤ-div
 div F32 = F._÷_
 div F64 = F._÷_
 
--- | Modulo for each numeric type
--- Same issue as division: requires NonZero proof.
-postulate
-  ℤ-mod : ℤ → ℤ → ℤ  -- Assumed total; undefined for zero divisor
+-- | Integer modulo (total: returns 0 for mod by zero)
+-- OCP-0003: Eliminates ℤ-mod postulate
+ℤ-mod : ℤ → ℤ → ℤ
+ℤ-mod a b with b
+... | + 0 = + 0
+... | + ℕ.suc n = + (a ℤDiv.% (+ ℕ.suc n))
+... | -[1+ n ] = + (a ℤDiv.% -[1+ n ])
 
+-- | Modulo for each numeric type
 mod : ∀ τ → ⟦ τ ⟧N → ⟦ τ ⟧N → ⟦ τ ⟧N
 mod I8  = ℤ-mod
 mod I16 = ℤ-mod
@@ -124,10 +131,10 @@ neg F64 = F.-_
 -- | Less than comparison for each numeric type
 -- Use 'does' to extract Bool from Dec
 lt : ∀ τ → ⟦ τ ⟧N → ⟦ τ ⟧N → Bool
-lt I8  = λ x y → does (x ℤ.<? y)
-lt I16 = λ x y → does (x ℤ.<? y)
-lt I32 = λ x y → does (x ℤ.<? y)
-lt I64 = λ x y → does (x ℤ.<? y)
+lt I8  = λ x y → does (x <? y)
+lt I16 = λ x y → does (x <? y)
+lt I32 = λ x y → does (x <? y)
+lt I64 = λ x y → does (x <? y)
 lt F32 = F._<ᵇ_
 lt F64 = F._<ᵇ_
 
