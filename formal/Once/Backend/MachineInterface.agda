@@ -115,11 +115,21 @@ private
   pair-mul : ℤ × ℤ → ℤ
   pair-mul p = proj₁ p ℤ.* proj₂ p
 
-  -- Division and modulo are postulated for TrivialMachineInterface
-  -- (Agda's integer division requires NonZero proof)
-  postulate
-    pair-div : ℤ × ℤ → ℤ
-    pair-mod : ℤ × ℤ → ℤ
+  -- Division and modulo for TrivialMachineInterface
+  -- Handle division-by-zero by returning 0
+  open import Data.Integer.DivMod as ℤDiv using (_/_; _%_)
+
+  pair-div : ℤ × ℤ → ℤ
+  pair-div p with proj₂ p
+  ... | + 0 = + 0
+  ... | + ℕ.suc n = (proj₁ p) ℤDiv./ (+ ℕ.suc n)
+  ... | -[1+ n ] = (proj₁ p) ℤDiv./ -[1+ n ]
+
+  pair-mod : ℤ × ℤ → ℤ
+  pair-mod p with proj₂ p
+  ... | + 0 = + 0
+  ... | + ℕ.suc n = + ((proj₁ p) ℤDiv.% (+ ℕ.suc n))
+  ... | -[1+ n ] = + ((proj₁ p) ℤDiv.% -[1+ n ])
 
   if-lt : ℤ × ℤ → ℤ
   if-lt p with proj₁ p <? proj₂ p
