@@ -108,6 +108,12 @@ word32-to-ℤ n = + n
 word32-to-ℕ : Word32 → ℕ
 word32-to-ℕ n = n
 
+-- Convert Word32 to Bool for semantic branching
+-- 0 → false, non-zero → true
+word32-to-bool : Word32 → Bool
+word32-to-bool zero    = false
+word32-to-bool (suc _) = true
+
 ------------------------------------------------------------------------
 -- Word32Interface: MachineInterface for 32-bit backends
 ------------------------------------------------------------------------
@@ -132,6 +138,7 @@ Word32Interface = record
   ; word-from-ℤ = word32-from-ℤ
   ; word-to-ℤ = word32-to-ℤ
   ; word-to-ℕ = word32-to-ℕ
+  ; word-to-bool = word32-to-bool
   }
 
 ------------------------------------------------------------------------

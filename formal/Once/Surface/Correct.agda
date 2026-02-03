@@ -48,7 +48,7 @@ open import Once.Postulates using (extensionality; closure-semantics-eq; coerceI
 -- This is the same pattern as Once.Arith.Boundary: the structure is
 -- proven, but primitive semantics are trusted to the runtime.
 
-open import Once.Surface.Semantics using (divℤ; modℤ) public
+open import Once.Arith.Semantics using (ℤ-div; ℤ-mod) public
 
 postulate
   -- Literals: evalPrim for "lit.int.N" returns N
@@ -60,9 +60,9 @@ postulate
   subIR-correct : ∀ (a b : ℤ) → eval subIR (a , b) ≡ a Data.Integer.- b
   mulIR-correct : ∀ (a b : ℤ) → eval mulIR (a , b) ≡ a Data.Integer.* b
 
-  -- Division and modulo (use postulated semantics from Semantics.agda)
-  divIR-correct : ∀ (a b : ℤ) → eval divIR (a , b) ≡ divℤ a b
-  modIR-correct : ∀ (a b : ℤ) → eval modIR (a , b) ≡ modℤ a b
+  -- Division and modulo
+  divIR-correct : ∀ (a b : ℤ) → eval divIR (a , b) ≡ ℤ-div a b
+  modIR-correct : ∀ (a b : ℤ) → eval modIR (a , b) ≡ ℤ-mod a b
 
   -- Negation
   negIR-correct : ∀ (a : ℤ) → eval negIR a ≡ Data.Integer.- a
@@ -213,10 +213,10 @@ mutual
     trans (cong₂ Data.Integer._*_ (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
           (sym (mulIR-correct (eval (elaborate e₁) (interpEnv ρ)) (eval (elaborate e₂) (interpEnv ρ))))
   elaborate-correct ρ (div e₁ e₂) =
-    trans (cong₂ divℤ (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
+    trans (cong₂ ℤ-div (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
           (sym (divIR-correct (eval (elaborate e₁) (interpEnv ρ)) (eval (elaborate e₂) (interpEnv ρ))))
   elaborate-correct ρ (mod' e₁ e₂) =
-    trans (cong₂ modℤ (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
+    trans (cong₂ ℤ-mod (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
           (sym (modIR-correct (eval (elaborate e₁) (interpEnv ρ)) (eval (elaborate e₂) (interpEnv ρ))))
   elaborate-correct ρ (neg e) =
     trans (cong Data.Integer.-_ (elaborate-correct ρ e))

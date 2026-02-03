@@ -130,6 +130,12 @@ word64-to-ℤ n = + n
 word64-to-ℕ : Word64 → ℕ
 word64-to-ℕ n = n
 
+-- Convert Word64 to Bool for semantic branching
+-- 0 → false, non-zero → true
+word64-to-bool : Word64 → Bool
+word64-to-bool zero    = false
+word64-to-bool (suc _) = true
+
 ------------------------------------------------------------------------
 -- Word64Interface: MachineInterface for 64-bit backends
 ------------------------------------------------------------------------
@@ -154,6 +160,7 @@ Word64Interface = record
   ; word-from-ℤ = word64-from-ℤ
   ; word-to-ℤ = word64-to-ℤ
   ; word-to-ℕ = word64-to-ℕ
+  ; word-to-bool = word64-to-bool
   }
 
 ------------------------------------------------------------------------

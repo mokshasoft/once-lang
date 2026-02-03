@@ -18,26 +18,14 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Integer as ℤ using (ℤ; +_; -[1+_]; _≤ᵇ_)
-open import Data.Integer.DivMod as ℤDiv using (_/_; _%_)
 open import Data.Integer.Properties using (_≟_)
 open import Data.String using (String)
 open import Data.Bool using (Bool; true; false; not)
 open import Data.Nat as ℕ using (ℕ; zero; suc)
 open import Relation.Nullary using (does)
 
--- Division and modulo (total: return 0 for division by zero)
--- OCP-0003: Eliminates divℤ and modℤ postulates
-divℤ : ℤ → ℤ → ℤ
-divℤ a b with b
-... | + 0 = + 0
-... | + ℕ.suc n = a ℤDiv./ (+ ℕ.suc n)
-... | -[1+ n ] = a ℤDiv./ -[1+ n ]
-
-modℤ : ℤ → ℤ → ℤ
-modℤ a b with b
-... | + 0 = + 0
-... | + ℕ.suc n = + (a ℤDiv.% (+ ℕ.suc n))
-... | -[1+ n ] = + (a ℤDiv.% -[1+ n ])
+-- Import division and modulo from Arith.Semantics (single source of truth)
+open import Once.Arith.Semantics using (ℤ-div; ℤ-mod)
 
 -- | Environment: maps variables to values
 --
@@ -90,8 +78,8 @@ evalSurface ρ (str s)        = s
 evalSurface ρ (add e₁ e₂)    = evalSurface ρ e₁ ℤ.+ evalSurface ρ e₂
 evalSurface ρ (sub e₁ e₂)    = evalSurface ρ e₁ ℤ.- evalSurface ρ e₂
 evalSurface ρ (mul e₁ e₂)    = evalSurface ρ e₁ ℤ.* evalSurface ρ e₂
-evalSurface ρ (div e₁ e₂)    = divℤ (evalSurface ρ e₁) (evalSurface ρ e₂)
-evalSurface ρ (mod' e₁ e₂)   = modℤ (evalSurface ρ e₁) (evalSurface ρ e₂)
+evalSurface ρ (div e₁ e₂)    = ℤ-div (evalSurface ρ e₁) (evalSurface ρ e₂)
+evalSurface ρ (mod' e₁ e₂)   = ℤ-mod (evalSurface ρ e₁) (evalSurface ρ e₂)
 -- Negation
 evalSurface ρ (neg e)        = ℤ.- evalSurface ρ e
 
