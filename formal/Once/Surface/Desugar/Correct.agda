@@ -70,7 +70,6 @@ evalSurface S.initial ()
 -- Exponential (with explicit Closure)
 evalSurface (S.curry f) a = record
   { env-addr  = encode a
-  ; code-ptr  = 0
   ; semantics = λ b → evalSurface f (a , b)
   }
 evalSurface S.apply (cl , a) = semantics cl a
