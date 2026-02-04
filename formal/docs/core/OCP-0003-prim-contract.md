@@ -2,7 +2,7 @@
 
 ## Status
 
-**Phase 2 Complete** - Integer arithmetic postulates eliminated
+**Phase 3 Complete** - Machine-based infrastructure in place, old ℤ-based files deleted
 
 ## Summary
 
@@ -147,27 +147,72 @@ The **only** trust is in `MachineInterface` instantiation:
 
 This is stated **once**, not scattered across multiple files with encode postulates.
 
-### Compilation Flow
+### Compilation Pipeline
+
+The compilation pipeline is designed for **modular optimization and proving**:
 
 ```
-Source Code
+Surface Language (all expressions: arithmetic, functions, data structures)
     │
     ▼
-Elaborator (recognizes arithmetic patterns)
+Elaborator
     │
-    ├──► Arith Compiler ──► (Program, PrimContract proof)
-    │                                    │
-    ▼                                    ▼
-CCC Compiler ◄───────────────────────────┘
-    │         receives proven assembly block directly
     ▼
-x86/AArch64/RISC-V Code
+IR (CCC combinators + Domain nodes)
+    │   - fold, unfold, curry, apply, ⟨_,_⟩, etc. (CCC)
+    │   - Domain (ArithExpr A B)  (arithmetic expressions)
+    │
+    ▼
+Domain Compiler Passes (Arith, future: SIMD, etc.)
+    │   Transform: Domain nodes → Prim nodes with proven assembly
+    │
+    ▼
+IR (CCC combinators + Prim nodes)
+    │   - CCC structure preserved
+    │   - Arithmetic now opaque: Prim "add" add-sem contract
+    │
+    ▼
+Loop Optimizer (above CCC)
+    │   Recognizes patterns: fold, recursion over linear types
+    │   Generates: Prim "loop.fold" fold-sem loop-contract
+    │   Can loop over Prim nodes (linearity preserved per-iteration)
+    │
+    ▼
+IR (CCC combinators + Prim nodes, some are loops)
+    │
+    ▼
+CCC Compiler (domain-agnostic)
+    │   Composes proven Prim blocks via category operations
+    │   Doesn't know HOW Prims work, just composes them
+    │
+    ▼
+x86/AArch64/RISC-V Assembly
 ```
 
-Key points:
-- CCC receives **proven assembly blocks directly** - no string-named Prim indirection
-- The `PrimContract` IS the proof (Agda-verified), not a claim to be trusted
-- No postulates required
+**Key architectural principles:**
+
+1. **Separation of concerns**:
+   - Domain compilers handle domain-specific optimization (arithmetic, loops)
+   - CCC compiler handles categorical composition (products, coproducts, closures)
+   - Each layer provides proofs via contracts
+
+2. **Contracts are essential, not over-engineering**:
+   - Enable modular proving: domain optimizations proven separately
+   - Contract composition: loop contracts use body contracts
+   - CCC compiler is domain-agnostic: receives proven blocks, composes them
+
+3. **Prim nodes are the proven interface**:
+   ```agda
+   Prim : ∀ {A B} → (name : String) → (sem : ⟦ A ⟧ → ⟦ B ⟧) → Contract sem → IR A B
+   ```
+   - `sem`: what the code should do
+   - `Contract`: proof that assembly implements `sem`
+   - Currently `correct : ⊤` (placeholder) → **Phase 4 goal: fill in real proofs**
+
+4. **Linearity and loops**:
+   - Prim nodes can be linear (use input exactly once)
+   - Loops over linear types are valid: each iteration gets different linear value
+   - Example: `fold (Prim "add" ...) 0 xs` - each list element used exactly once
 
 ## Design
 
@@ -284,37 +329,94 @@ module Once.Arith.BoundaryMachine (MI : MachineInterface) where
 - [x] Integrate with x86 backend (instantiate with Word64Interface)
 - [x] Test full compilation pipeline (make x86-compiler passes)
 
-### Phase 3: Eliminate Old Infrastructure
-- [ ] Delete `Once/SemanticBase.agda` (uses ℤ)
-- [ ] Delete `Once/Backend/ContractInterface.agda` (has postulate)
-- [ ] Delete `Once/IR.agda` (uses old SemanticBase)
-- [ ] Delete `Once/Arith/Contracts.agda` (uses ℤ)
-- [ ] Delete `Once/Arith/Boundary.agda` (uses old stack)
+### Phase 3: Eliminate Old Infrastructure ✓
+- [x] Delete `Once/SemanticBase.agda` (uses ℤ)
+- [x] Delete `Once/Backend/ContractInterface.agda` (has postulate)
+- [x] Update `Once/IR.agda` (now uses new Contract interface, kept and updated)
+- [x] Delete `Once/Arith/Contracts.agda` (uses ℤ)
+- [x] Delete `Once/Arith/Boundary.agda` (uses old stack)
 
-### Phase 4: Proven Arithmetic Contracts
-- [ ] `add-int-contract` - proven correct (no postulates)
-- [ ] `sub-int-contract`
-- [ ] `mul-int-contract`
-- [ ] Remaining operations
+**Note**: `Once/IR.agda` was updated to the new architecture (part of OCP-0003) rather than deleted. It now uses `ContractInterface` from `Once.Contract` and is machine-independent.
+
+### Phase 4: Prove Contracts Correct
+**Goal**: Replace placeholder proofs (`correct : ⊤`) with real correctness proofs.
+
+**Current state**: Contract infrastructure exists, but proofs are trivial:
+```agda
+record X86MachineContract {A B : Set} (sem : A → B) : Set where
+  field
+    assembly : List String
+    stack-requirement : ℕ
+    correct : ⊤  -- Placeholder! Should be: proof that assembly implements sem
+```
+
+**Phase 4 tasks**:
+- [ ] Define what `correct` should prove (e.g., Star execution relation)
+- [ ] Prove `add-int-contract` correct (replace `correct = tt` with real proof)
+- [ ] Prove `sub-int-contract` correct
+- [ ] Prove `mul-int-contract` correct
+- [ ] Prove comparison operations correct
+- [ ] Prove remaining arithmetic operations
+
+**Why this matters**: Contracts enable modular proving. Once primitives are proven, higher-level optimizations (loops, CCC composition) can use these proven blocks as black boxes.
+
+### Phase 5: Loop Optimization (Future)
+**Goal**: Implement loop optimizer above CCC layer.
+
+- [ ] Pattern recognition: identify `fold`, recursion over linear types
+- [ ] Loop contract definition: prove loop assembly implements fold semantics
+- [ ] Contract composition: loop contracts use body contracts
+- [ ] Linearity preservation: prove each iteration uses linear values exactly once
+
+**Example**:
+```agda
+-- Input: fold (Prim "add" add-sem add-contract) 0 xs
+-- Output: Prim "loop.fold" fold-sem loop-contract
+-- Where loop-contract proves the loop correctly implements fold
+```
 
 ## Files
 
-### New (Machine-based)
+### Core Infrastructure (Machine-based, ℤ eliminated)
 - `Once/Backend/MachineInterface.agda` - word operation interface
-- `Once/Backend/Word64.agda` - 64-bit instantiation
-- `Once/Backend/Word32.agda` - 32-bit instantiation
-- `Once/SemanticBaseMachine.agda` - parameterized type interpretation
-- `Once/Backend/ContractInterfaceMachine.agda` - parameterized contracts
-- `Once/IRMachine.agda` - parameterized IR
-- `Once/Arith/MachineContracts.agda` - arithmetic contracts
-- `Once/Arith/BoundaryMachine.agda` - Arith→IR embedding
+- `Once/Backend/Word64.agda` - 64-bit instantiation (x86-64, AArch64)
+- `Once/Backend/Word32.agda` - 32-bit instantiation (future: x86-32, RISC-V 32)
+- `Once/SemanticBaseMachine.agda` - parameterized type interpretation (`⟦ Int ⟧ = Word`)
+- `Once/Contract.agda` - contract interface
+- `Once/IR.agda` - machine-independent IR (CCC + Domain + Prim)
+- `Once/Arith/Expr.agda` - arithmetic expression type (shared)
 
-### To Delete (ℤ-based, has postulates)
-- `Once/SemanticBase.agda`
-- `Once/Backend/ContractInterface.agda`
-- `Once/IR.agda`
-- `Once/Arith/Contracts.agda`
-- `Once/Arith/Boundary.agda`
+### Arithmetic Domain Compiler
+- `Once/Arith/MachineContracts.agda` - semantic functions and contract interface
+- `Once/Arith/BoundaryMachine.agda` - Arith→IR embedding (Domain → Prim transformation)
+- `Once/Arith/Backend/X86/MachineContract.agda` - x86 arithmetic contracts (currently `correct : ⊤`)
+
+### Deleted (Old ℤ-based infrastructure)
+- ~~`Once/SemanticBase.agda`~~ - used ℤ, had encode postulates
+- ~~`Once/Backend/ContractInterface.agda`~~ - had postulates
+- ~~`Once/Arith/Contracts.agda`~~ - used ℤ
+- ~~`Once/Arith/Boundary.agda`~~ - used old stack
+
+## Summary
+
+**Phase 3 Complete**: The machine-based infrastructure is in place:
+- ✓ `⟦ Int ⟧ = Word` (not ℤ) - eliminates encode gap
+- ✓ Old ℤ-based files deleted
+- ✓ Contract infrastructure established
+- ✓ Arithmetic domain compiler operational (with placeholder proofs)
+
+**Next Steps** (Phase 4):
+- Replace `correct : ⊤` with real proofs in arithmetic contracts
+- Prove x86 ADD, SUB, MUL, etc. implement their semantic functions
+- Enable modular proving for higher-level optimizations
+
+**Architecture Insight**:
+The compilation pipeline (Surface → Domain compilers → Loop optimizer → CCC) enables:
+- **Separation of concerns**: domain optimization vs. categorical composition
+- **Modular proving**: each layer provides contracts, higher layers compose them
+- **Extensibility**: new domain compilers (SIMD, GPU) use same Contract interface
+
+The contract infrastructure is not over-engineering - it's essential for proving the entire compilation pipeline correct while maintaining modularity.
 
 ## Related Work
 
