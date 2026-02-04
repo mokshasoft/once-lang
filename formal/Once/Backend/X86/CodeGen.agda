@@ -331,9 +331,6 @@ module CodeGenDef (CI : ContractInterface) where
   compile-length arr = simple-instr-count
   -- Prim: use actual assembly length from contract
   compile-length (Prim _ c) = contract-length c
-  -- Domain: should be compiled before reaching CodeGen (error case)
-  -- For now, treat as 0 instructions - will cause errors if actually compiled
-  compile-length (Domain _) = 0
 
   -- Position of cleanup instructions (symbolic, computed from code structure)
   -- cleanup-position f g = setup-prefix + |f| + middle + |g|
@@ -536,10 +533,6 @@ module CodeGenDef (CI : ContractInterface) where
   -- Prim: emit actual assembly from contract
   -- The contract provides the real instructions via contract-program
   compile-x86 (Prim _ c) = contract-program c
-
-  -- Domain: should be compiled before reaching CodeGen
-  -- Emit nothing - this is an error case that should never happen
-  compile-x86 (Domain _) = []
 
 ------------------------------------------------------------------------
 -- Default Instantiation (using X86ContractInterface)

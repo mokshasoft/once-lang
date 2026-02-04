@@ -5,10 +5,12 @@
 -- Interprets expressions in an environment.
 ------------------------------------------------------------------------
 
-module Once.Surface.Semantics where
+open import Once.Backend.MachineInterface
+
+module Once.Surface.Semantics (MI : MachineInterface) where
 
 open import Once.Type
-open import Once.Semantics using (⟦_⟧; Closure)
+open import Once.SemanticBaseMachine MI
 open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
@@ -17,15 +19,17 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Integer as ℤ using (ℤ; +_; -[1+_]; _≤ᵇ_)
-open import Data.Integer.Properties using (_≟_)
+open import Data.Integer as ℤ using (ℤ; ∣_∣)
 open import Data.String using (String)
 open import Data.Bool using (Bool; true; false; not)
-open import Data.Nat as ℕ using (ℕ; zero; suc)
+open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _∸_; _*_; _≤ᵇ_; _≟_)
 open import Relation.Nullary using (does)
 
--- Import division and modulo from Arith.Semantics (single source of truth)
-open import Once.Arith.Semantics using (ℤ-div; ℤ-mod)
+-- TECHNICAL DEBT: Unsafe division/modulus (returns 0 for division by 0)
+-- Should be replaced with proper error handling or contracts
+postulate
+  unsafeDiv : ℕ → ℕ → ℕ
+  unsafeMod : ℕ → ℕ → ℕ
 
 -- | Environment: maps variables to values
 --
@@ -69,19 +73,20 @@ evalSurface ρ (absurd v)     = ⊥-elim (evalSurface ρ v)
 -- Let: evaluate e1, extend environment, evaluate e2
 evalSurface ρ (let' e1 e2)   = evalSurface (evalSurface ρ e1 ∷ ρ) e2
 
--- Integer literal
-evalSurface ρ (int n)        = n
+-- Integer literal (convert from ℤ to ℕ using absolute value)
+-- TECHNICAL DEBT: Loses sign information, need proper signed/unsigned handling
+evalSurface ρ (int n)        = ∣ n ∣
 -- String literal
 evalSurface ρ (str s)        = s
 
--- Arithmetic operations
-evalSurface ρ (add e₁ e₂)    = evalSurface ρ e₁ ℤ.+ evalSurface ρ e₂
-evalSurface ρ (sub e₁ e₂)    = evalSurface ρ e₁ ℤ.- evalSurface ρ e₂
-evalSurface ρ (mul e₁ e₂)    = evalSurface ρ e₁ ℤ.* evalSurface ρ e₂
-evalSurface ρ (div e₁ e₂)    = ℤ-div (evalSurface ρ e₁) (evalSurface ρ e₂)
-evalSurface ρ (mod' e₁ e₂)   = ℤ-mod (evalSurface ρ e₁) (evalSurface ρ e₂)
--- Negation
-evalSurface ρ (neg e)        = ℤ.- evalSurface ρ e
+-- Arithmetic operations (using ℕ operations)
+evalSurface ρ (add e₁ e₂)    = (evalSurface ρ e₁) ℕ.+ (evalSurface ρ e₂)
+evalSurface ρ (sub e₁ e₂)    = (evalSurface ρ e₁) ∸ (evalSurface ρ e₂)
+evalSurface ρ (mul e₁ e₂)    = (evalSurface ρ e₁) ℕ.* (evalSurface ρ e₂)
+evalSurface ρ (div e₁ e₂)    = unsafeDiv (evalSurface ρ e₁) (evalSurface ρ e₂)
+evalSurface ρ (mod' e₁ e₂)   = unsafeMod (evalSurface ρ e₁) (evalSurface ρ e₂)
+-- Negation (TECHNICAL DEBT: ℕ has no proper negation, returns 0)
+evalSurface ρ (neg e)        = 0
 
 -- Comparison operations (Bool → Unit + Unit)
 -- true maps to inj₁ tt, false maps to inj₂ tt

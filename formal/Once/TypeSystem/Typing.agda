@@ -10,16 +10,21 @@
 -- correspond to the semantic interpretation.
 ------------------------------------------------------------------------
 
-module Once.TypeSystem.Typing where
+open import Once.Contract
+
+module Once.TypeSystem.Typing (CI : ContractInterface) where
 
 open import Once.Type
 open import Once.IR
-open import Once.Semantics
+open import Once.Arith.Expr
+open IRDef CI
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
+
+open ContractInterface CI
 
 ------------------------------------------------------------------------
 -- Typing Context
@@ -182,9 +187,11 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- They cannot be decomposed into categorical generators.
   -- Each primitive carries:
   --   - name: Human-readable identifier (for debugging/emission)
-  --   - sem: The semantic function defining the operation's behavior
+  --   - contract: Compiled assembly with correctness proof
   --
-  ty-prim : ∀ {Γ A B} → String → (⟦ A ⟧ → ⟦ B ⟧) → Γ ⊢ A ⟶ B
+  ty-prim : ∀ {Γ A B} → String → Contract A B → Γ ⊢ A ⟶ B
+
+  --
 
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
@@ -210,7 +217,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-fold ⌋ = fold
 ⌊ ty-unfold ⌋ = unfold
 ⌊ ty-arr ⌋ = arr
-⌊ ty-prim name sem ⌋ = Prim name sem trivial
+⌊ ty-prim name contract ⌋ = Prim name contract
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -233,7 +240,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ fold ⌉ = ty-fold
 ⌈ unfold ⌉ = ty-unfold
 ⌈ arr ⌉ = ty-arr
-⌈ Prim name sem _ ⌉ = ty-prim name sem
+⌈ Prim name contract ⌉ = ty-prim name contract
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f
 --
@@ -268,4 +275,4 @@ round-trip-ir apply = refl
 round-trip-ir fold = refl
 round-trip-ir unfold = refl
 round-trip-ir arr = refl
-round-trip-ir (Prim name sem _) = refl
+round-trip-ir (Prim name contract) = refl

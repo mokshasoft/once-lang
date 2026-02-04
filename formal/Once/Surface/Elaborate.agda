@@ -3,14 +3,21 @@
 --
 -- Elaboration from surface syntax to IR.
 -- Converts lambda/variable expressions to point-free combinators.
+--
+-- TECHNICAL DEBT: Currently uses postulated contracts.
+-- TODO: Replace Prim nodes with Domain (ArithExpr) - see OCP-0003 Phase 4
 ------------------------------------------------------------------------
 
-module Once.Surface.Elaborate where
+open import Once.Contract
+
+module Once.Surface.Elaborate (CI : ContractInterface) where
 
 open import Once.Type
 open import Once.IR
 open import Once.Surface.Syntax
-open import Once.Postulates using (coerceIRArrow)
+
+open IRDef CI
+open ContractInterface CI
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -18,134 +25,99 @@ open import Data.Integer as ℤ using (ℤ; +_; _<?_; _≤?_; _≟_) renaming (_
 open import Relation.Nullary using (yes; no)
 open import Data.Integer.Show using () renaming (show to showℤ)
 open import Data.String using (String; _++_)
-open import Data.Sum using (inj₁; inj₂)
-open import Data.Unit using (tt)
+open import Data.Sum using (inj₁; inj₂; _⊎_)
+open import Data.Unit using (tt; ⊤)
 open import Data.Product using (_×_; proj₁; proj₂) renaming (_,_ to _P,_)
-open import Once.SemanticBase using (⟦_⟧)
 
 ------------------------------------------------------------------------
--- Arithmetic IR Primitives
+-- Arrow Quantity Coercion (postulated - quantities erased at runtime)
+------------------------------------------------------------------------
+
+postulate
+  coerceIRArrow : ∀ {Γ A B q q'} → IR Γ (A ⇒[ q ] B) → IR Γ (A ⇒[ q' ] B)
+
+------------------------------------------------------------------------
+-- Arithmetic IR Primitives (TECHNICAL DEBT: postulated contracts)
 ------------------------------------------------------------------------
 --
--- These primitives are the interface between Surface.Syntax arithmetic
--- and the IR. They use the Prim constructor for opaque runtime operations.
+-- TODO: Replace these with Domain (ArithExpr) expressions.
+-- The Arith domain compiler will provide real contracts with proofs.
 --
--- Semantics are defined by evalPrim in Once.Semantics (trust boundary).
+
+-- Helper to create postulated contract
+-- TECHNICAL DEBT: This should be provided by domain compilers with real proofs
+postulate
+  makeContract : ∀ (A B : Type) → Contract A B
 
 -- Literals: constant morphisms that ignore input environment
--- The value is encoded in the primitive name for runtime interpretation.
 intLit : ℤ → ∀ {Γ} → IR Γ Int
-intLit n = Prim ("lit.int." ++ showℤ n) (λ _ → n) trivial ∘ terminal
+intLit n = Prim ("lit.int." ++ showℤ n) (makeContract Unit Int) ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
-strLit s = Prim ("lit.str." ++ s) (λ _ → s) trivial ∘ terminal
+strLit s = Prim ("lit.str." ++ s) (makeContract Unit Str) ∘ terminal
 
 -- Arithmetic operations (Int * Int → Int)
--- Semantic functions operate on pairs of integers
 addIR : IR (Int * Int) Int
-addIR = Prim "arith.add.int" (λ { (a P, b) → a ℤ+ b }) trivial
+addIR = Prim "arith.add.int" (makeContract (Int * Int) Int)
 
 subIR : IR (Int * Int) Int
-subIR = Prim "arith.sub.int" (λ { (a P, b) → a ℤ- b }) trivial
+subIR = Prim "arith.sub.int" (makeContract (Int * Int) Int)
 
 mulIR : IR (Int * Int) Int
-mulIR = Prim "arith.mul.int" (λ { (a P, b) → a ℤ* b }) trivial
+mulIR = Prim "arith.mul.int" (makeContract (Int * Int) Int)
 
--- Note: Division and modulo use placeholder identity semantics
--- Proper integer division would need Data.Integer.DivMod
 divIR : IR (Int * Int) Int
-divIR = Prim "arith.div.int" (λ { (a P, b) → a }) trivial
+divIR = Prim "arith.div.int" (makeContract (Int * Int) Int)
 
 modIR : IR (Int * Int) Int
-modIR = Prim "arith.mod.int" (λ { (a P, b) → a }) trivial
+modIR = Prim "arith.mod.int" (makeContract (Int * Int) Int)
 
--- Unary negation (Int → Int)
+-- Unary negation
 negIR : IR Int Int
-negIR = Prim "arith.neg.int" (λ x → ℤ- x) trivial
+negIR = Prim "arith.neg.int" (makeContract Int Int)
 
 -- Comparison operations (Int * Int → Bool, where Bool = Unit + Unit)
--- inj₁ tt = true, inj₂ tt = false
 ltIR : IR (Int * Int) (Unit + Unit)
-ltIR = Prim "arith.lt.int" (λ { (a P, b) → if-lt a b }) trivial
-  where
-    if-lt : ℤ → ℤ → ⟦ Unit + Unit ⟧
-    if-lt a b with a <? b
-    ... | yes _ = inj₁ tt
-    ... | no _  = inj₂ tt
+ltIR = Prim "arith.lt.int" (makeContract (Int * Int) (Unit + Unit))
 
 leIR : IR (Int * Int) (Unit + Unit)
-leIR = Prim "arith.le.int" (λ { (a P, b) → if-le a b }) trivial
-  where
-    if-le : ℤ → ℤ → ⟦ Unit + Unit ⟧
-    if-le a b with a ≤? b
-    ... | yes _ = inj₁ tt
-    ... | no _  = inj₂ tt
+leIR = Prim "arith.le.int" (makeContract (Int * Int) (Unit + Unit))
 
 gtIR : IR (Int * Int) (Unit + Unit)
-gtIR = Prim "arith.gt.int" (λ { (a P, b) → if-gt a b }) trivial
-  where
-    if-gt : ℤ → ℤ → ⟦ Unit + Unit ⟧
-    if-gt a b with b <? a
-    ... | yes _ = inj₁ tt
-    ... | no _  = inj₂ tt
+gtIR = Prim "arith.gt.int" (makeContract (Int * Int) (Unit + Unit))
 
 geIR : IR (Int * Int) (Unit + Unit)
-geIR = Prim "arith.ge.int" (λ { (a P, b) → if-ge a b }) trivial
-  where
-    if-ge : ℤ → ℤ → ⟦ Unit + Unit ⟧
-    if-ge a b with b ≤? a
-    ... | yes _ = inj₁ tt
-    ... | no _  = inj₂ tt
+geIR = Prim "arith.ge.int" (makeContract (Int * Int) (Unit + Unit))
 
 eqIR : IR (Int * Int) (Unit + Unit)
-eqIR = Prim "arith.eq.int" (λ { (a P, b) → if-eq a b }) trivial
-  where
-    if-eq : ℤ → ℤ → ⟦ Unit + Unit ⟧
-    if-eq a b with a ≟ b
-    ... | yes _ = inj₁ tt
-    ... | no _  = inj₂ tt
+eqIR = Prim "arith.eq.int" (makeContract (Int * Int) (Unit + Unit))
 
 neIR : IR (Int * Int) (Unit + Unit)
-neIR = Prim "arith.ne.int" (λ { (a P, b) → if-ne a b }) trivial
-  where
-    if-ne : ℤ → ℤ → ⟦ Unit + Unit ⟧
-    if-ne a b with a ≟ b
-    ... | yes _ = inj₂ tt
-    ... | no _  = inj₁ tt
+neIR = Prim "arith.ne.int" (makeContract (Int * Int) (Unit + Unit))
+
+------------------------------------------------------------------------
+-- Context Interpretation
+------------------------------------------------------------------------
 
 -- | Interpret context as a product type (environment type)
---
--- The context (A₀, A₁, ..., Aₙ₋₁) becomes the nested product
--- (...((Unit * A₀) * A₁) * ... * Aₙ₋₁)
---
--- We use left-nested products so newest binding is easiest to access.
---
 ⟦_⟧ᶜ : ∀ {n} → Ctx n → Type
 ⟦ ∅ ⟧ᶜ         = Unit
 ⟦ Γ , A ^ q ⟧ᶜ = ⟦ Γ ⟧ᶜ * A
 
--- | Project variable from environment (de Bruijn index 0 = rightmost)
---
--- Given context (Γ, A), index 0 projects A (using snd),
--- index n+1 projects from Γ (using fst then recursing).
---
+-- | Project variable from environment (de Bruijn index)
 proj : ∀ {n} {Γ : Ctx n} (i : Fin n) → IR ⟦ Γ ⟧ᶜ (lookup Γ i)
 proj {Γ = Γ , A ^ q} Fin.zero    = snd
 proj {Γ = Γ , A ^ q} (Fin.suc i) = proj i ∘ fst
 
--- | Helper: swap product components
+------------------------------------------------------------------------
+-- Helper Combinators
+------------------------------------------------------------------------
+
+-- | Swap product components
 swap' : ∀ {X Y} → IR (X * Y) (Y * X)
 swap' = ⟨ snd , fst ⟩
 
--- | Distribute environment over sum (distributivity isomorphism)
---
---   Γ * (A + B) → (Γ * A) + (Γ * B)
---
--- Uses curry/apply to thread environment through case:
--- 1. Swap to get (A + B) * Γ
--- 2. Case on sum, currying the injection to capture Γ
--- 3. Apply to reconstruct result
---
+-- | Distribute environment over sum
 distribute : ∀ {Γ A B} → IR (Γ * (A + B)) ((Γ * A) + (Γ * B))
 distribute {Γ} {A} {B} = distrib' ∘ swap'
   where
@@ -161,33 +133,26 @@ distribute {Γ} {A} {B} = distrib' ∘ swap'
     distrib' : IR ((A + B) * Γ) ((Γ * A) + (Γ * B))
     distrib' = apply ∘ ⟨ curryDistrib ∘ fst , snd ⟩
 
+------------------------------------------------------------------------
+-- Elaboration
+------------------------------------------------------------------------
+
 -- | Elaborate surface expression to IR
---
--- elaborate e produces an IR morphism from the environment type to
--- the result type: IR ⟦Γ⟧ᶜ A
---
--- Key insight: lambdas extend the environment (product), variables
--- project from the environment, and applications compose appropriately.
---
 elaborate : ∀ {n} {Γ : Ctx n} {A} → Expr Γ A → IR ⟦ Γ ⟧ᶜ A
 
 -- Variable: project from environment
 elaborate (var i) = proj i
 
--- Lambda: λ^q x.e becomes curry of (elaborate e)
--- Context (Γ, A) has type ⟦Γ⟧ᶜ * A = ⟦Γ,A⟧ᶜ
--- IR curry always produces (A ⇒ B), so we coerce to (A ⇒[ q ] B)
--- The quantity q is enforced during type checking, not during elaboration
+-- Lambda: curry and coerce quantity
 elaborate (lam q e) = coerceIRArrow (curry (elaborate e))
 
--- Application: f x becomes apply ∘ ⟨f, x⟩
--- IR's apply only works with unrestricted arrows, so coerce to Many
+-- Application: apply composition
 elaborate (app f x) = apply ∘ ⟨ coerceIRArrow (elaborate f) , elaborate x ⟩
 
--- Pair: (a, b) becomes ⟨a, b⟩
+-- Pair
 elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩
 
--- Projections: compose with projection
+-- Projections
 elaborate (fst' p) = fst ∘ elaborate p
 elaborate (snd' p) = snd ∘ elaborate p
 
@@ -195,9 +160,7 @@ elaborate (snd' p) = snd ∘ elaborate p
 elaborate (inl' a) = inl ∘ elaborate a
 elaborate (inr' b) = inr ∘ elaborate b
 
--- Case: distribute environment over sum, then case on result
--- s : Expr Γ (A + B), l : Expr (Γ,A) C, r : Expr (Γ,B) C
--- Result: [ el , er ] ∘ distribute ∘ ⟨ id , es ⟩
+-- Case: distribute environment over sum
 elaborate (case' s l r) =
   [ elaborate l , elaborate r ] ∘ distribute ∘ ⟨ id , elaborate s ⟩
 
@@ -207,19 +170,14 @@ elaborate unit = terminal
 -- Absurd (void elimination)
 elaborate (absurd v) = initial ∘ elaborate v
 
--- Let binding: let x = e1 in e2
--- Pairs current environment with computed value, then evaluates e2
--- ⟨ id , e1 ⟩ : Γ → Γ × A  (extend environment with bound value)
--- elaborate e2 : Γ × A → B  (e2 in extended context)
+-- Let binding
 elaborate (let' e1 e2) = elaborate e2 ∘ ⟨ id , elaborate e1 ⟩
 
--- Integer literal: constant that ignores environment
+-- Literals
 elaborate (int n) = intLit n
-
--- String literal: constant that ignores environment
 elaborate (str s) = strLit s
 
--- Arithmetic operations: pair operands, then apply primitive
+-- Arithmetic operations
 elaborate (add e₁ e₂) = addIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
 elaborate (sub e₁ e₂) = subIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩
 elaborate (mul e₁ e₂) = mulIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩

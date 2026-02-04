@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.Backend.X86.Correct.PrimContract
+-- Once.Backend.Common.PrimContract
 --
 -- Contract for primitive operations: opaque assembly for code generation.
 --
@@ -13,9 +13,11 @@
 --
 -- Correctness proofs (Star traces, PrimEffect, etc.) are in separate
 -- modules. Domain compilers provide those proofs independently.
+--
+-- This is architecture-independent - it can be used for x86-64, AArch64, etc.
 ------------------------------------------------------------------------
 
-module Once.Backend.X86.Correct.PrimContract where
+module Once.Backend.Common.PrimContract where
 
 open import Once.Type using (Type)
 

@@ -4,9 +4,20 @@
 
 **Phase 3 Complete** - Machine-based infrastructure in place, old ℤ-based files deleted
 
+**Architectural Simplification** (Current):
+- Removed Domain constructor from IR - it cluttered understanding
+- Two-stage IR: SurfaceIR → IR (not three stages)
+- Single-pass primitive compilation (desugar + compile)
+- Backend type-guarantees no Domain nodes
+
 ## Summary
 
-Define `PrimContract` as a uniform interface that domain compilers (Arith, future Loop compiler, IO interpretations) must satisfy. This eliminates postulates and provides a clean integration point between the CCC compiler and external/domain-specific code generators.
+Define `PrimContract` as a uniform interface that primitive compilers (Arith, future Loop compiler, IO interpretations) must satisfy. This eliminates postulates and provides a clean integration point between the CCC compiler and domain-specific code generators.
+
+**Architecture**: Two-stage IR design:
+- **SurfaceIR** (CCC + Let + Prim[semantics]) - user-facing representation
+- **IR** (CCC + Prim[contract]) - compilation target with proven primitives
+- Single-pass desugar compiles SurfaceIR → IR (no intermediate Domain IR)
 
 ## Core Principles
 
@@ -158,18 +169,21 @@ Surface Language (all expressions: arithmetic, functions, data structures)
 Elaborator
     │
     ▼
-IR (CCC combinators + Domain nodes)
+SurfaceIR (CCC + Let + Prim[semantics])
     │   - fold, unfold, curry, apply, ⟨_,_⟩, etc. (CCC)
-    │   - Domain (ArithExpr A B)  (arithmetic expressions)
+    │   - Let bindings (for convenience)
+    │   - Prim "add" (λ (a,b) → a + b)  (with semantics)
     │
     ▼
-Domain Compiler Passes (Arith, future: SIMD, etc.)
-    │   Transform: Domain nodes → Prim nodes with proven assembly
+Desugar + Primitive Compiler (single pass)
+    │   - Eliminates Let bindings
+    │   - Compiles Prim[semantics] → Prim[contract] with assembly
+    │   - ArithExpr helpers used during compilation (not in IR)
     │
     ▼
-IR (CCC combinators + Prim nodes)
+IR (CCC + Prim[contract])
     │   - CCC structure preserved
-    │   - Arithmetic now opaque: Prim "add" add-sem contract
+    │   - Primitives opaque: Prim "add" contract
     │
     ▼
 Loop Optimizer (above CCC)
@@ -178,7 +192,7 @@ Loop Optimizer (above CCC)
     │   Can loop over Prim nodes (linearity preserved per-iteration)
     │
     ▼
-IR (CCC combinators + Prim nodes, some are loops)
+IR (CCC + Prim[contract], some are loops)
     │
     ▼
 CCC Compiler (domain-agnostic)
@@ -191,25 +205,35 @@ x86/AArch64/RISC-V Assembly
 
 **Key architectural principles:**
 
-1. **Separation of concerns**:
-   - Domain compilers handle domain-specific optimization (arithmetic, loops)
+1. **Two-stage IR design**:
+   - **SurfaceIR**: User-facing (CCC + Let + Prim[semantics])
+   - **IR**: Compilation target (CCC + Prim[contract])
+   - Single-pass desugar eliminates Let and compiles primitives
+   - No intermediate Domain IR - keeps architecture simple
+
+2. **Separation of concerns**:
+   - Primitive compiler handles domain-specific compilation (arithmetic → assembly)
+   - Loop optimizer handles pattern recognition (fold, linear recursion)
    - CCC compiler handles categorical composition (products, coproducts, closures)
    - Each layer provides proofs via contracts
 
-2. **Contracts are essential, not over-engineering**:
-   - Enable modular proving: domain optimizations proven separately
-   - Contract composition: loop contracts use body contracts
+3. **Contracts are essential, not over-engineering**:
+   - Enable modular proving: primitive compilation proven separately
+   - Contract composition: loop contracts use primitive contracts
    - CCC compiler is domain-agnostic: receives proven blocks, composes them
 
-3. **Prim nodes are the proven interface**:
+4. **Prim nodes are the proven interface**:
    ```agda
-   Prim : ∀ {A B} → (name : String) → (sem : ⟦ A ⟧ → ⟦ B ⟧) → Contract sem → IR A B
+   -- SurfaceIR: with semantics
+   Prim : String → (⟦ A ⟧ → ⟦ B ⟧) → SurfaceIR A B
+
+   -- IR: with contract (proof)
+   Prim : String → Contract A B → IR A B
    ```
-   - `sem`: what the code should do
-   - `Contract`: proof that assembly implements `sem`
+   - Desugar compiles semantics → contract (with assembly)
    - Currently `correct : ⊤` (placeholder) → **Phase 4 goal: fill in real proofs**
 
-4. **Linearity and loops**:
+5. **Linearity and loops**:
    - Prim nodes can be linear (use input exactly once)
    - Loops over linear types are valid: each iteration gets different linear value
    - Example: `fold (Prim "add" ...) 0 xs` - each list element used exactly once
@@ -383,12 +407,14 @@ record X86MachineContract {A B : Set} (sem : A → B) : Set where
 - `Once/Backend/Word32.agda` - 32-bit instantiation (future: x86-32, RISC-V 32)
 - `Once/SemanticBaseMachine.agda` - parameterized type interpretation (`⟦ Int ⟧ = Word`)
 - `Once/Contract.agda` - contract interface
-- `Once/IR.agda` - machine-independent IR (CCC + Domain + Prim)
-- `Once/Arith/Expr.agda` - arithmetic expression type (shared)
+- `Once/Surface/IR.agda` - SurfaceIR (CCC + Let + Prim[semantics])
+- `Once/IR.agda` - Core IR (CCC + Prim[contract]) - **No Domain constructor**
+- `Once/Arith/Expr.agda` - arithmetic expression helpers (used during primitive compilation, not in IR)
 
-### Arithmetic Domain Compiler
+### Primitive Compiler
+- `Once/Surface/Desugar.agda` - SurfaceIR → IR transformation (eliminates Let, compiles Prim)
 - `Once/Arith/MachineContracts.agda` - semantic functions and contract interface
-- `Once/Arith/BoundaryMachine.agda` - Arith→IR embedding (Domain → Prim transformation)
+- `Once/Arith/BoundaryMachine.agda` - Arithmetic primitive contract implementations
 - `Once/Arith/Backend/X86/MachineContract.agda` - x86 arithmetic contracts (currently `correct : ⊤`)
 
 ### Deleted (Old ℤ-based infrastructure)

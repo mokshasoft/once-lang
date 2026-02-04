@@ -44,7 +44,6 @@ ir-size fold = 1
 ir-size unfold = 1
 ir-size arr = 1
 ir-size (Prim _ _) = 1
-ir-size (Domain _) = 1
 
 ------------------------------------------------------------------------
 -- Size decrease lemmas
