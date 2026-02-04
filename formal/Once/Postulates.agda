@@ -7,6 +7,8 @@
 -- in the Once formalization. Any proof that depends on unproven
 -- assumptions should import from here, making dependencies explicit.
 --
+-- Parameterized to remain architecture-independent.
+--
 -- When adding new assumptions, document:
 --   1. What is assumed (the postulate or limitation)
 --   2. Why it's needed (which proofs depend on it)
@@ -19,7 +21,21 @@
 --
 ------------------------------------------------------------------------
 
-module Once.Postulates where
+open import Once.Type
+open import Once.Memory using (Word)
+
+module Once.Postulates
+  (⟦_⟧ : Type → Set)
+  (IR : Type → Type → Set)
+  (Closure : Type → Type → Set)
+  (Closure-semantics : ∀ {A B} → Closure A B → (⟦ A ⟧ → ⟦ B ⟧))
+  (encode : ∀ {A} → ⟦ A ⟧ → Word)
+  (eval : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧)
+  where
+
+-- Re-export for convenience
+module Closure where
+  semantics = Closure-semantics
 
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Data.Nat using (ℕ; _≤_) renaming (_+_ to _+ℕ_)
@@ -27,17 +43,6 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
-
-open import Once.Type
-open import Once.IR
-open import Once.Memory using (Word)
-open import Once.Semantics
-
--- Note: X86-specific postulates have been ELIMINATED.
--- All X86 proofs now use proper capacity and region threading.
-
--- Re-export encode and PROVEN encoding properties from Semantics
-open Once.Semantics public using (encode; encode-unit; encode-fix-wrap; encode-fix-unwrap; encode-arr-identity)
 -- NOTE: encode-pair-addr, encode-inl-addr, etc. are now DEFINITIONS (not postulates)
 -- in SemanticBase.agda. They return placeholder values (0) since x86 uses ValidAt
 -- for actual address tracking.
@@ -173,12 +178,6 @@ postulate
 
 postulate
   coerceIRArrow : ∀ {Γ A B q q'} → IR Γ (A ⇒[ q ] B) → IR Γ (A ⇒[ q' ] B)
-
-  -- Coercion preserves evaluation semantics
-  -- Since quantities are erased at runtime, coercing the arrow type
-  -- doesn't change the function's behavior
-  coerceIRArrow-preserves-eval : ∀ {Γ A B q q'} (f : IR Γ (A ⇒[ q ] B)) (γ : ⟦ Γ ⟧) →
-    eval (coerceIRArrow {q' = q'} f) γ ≡ eval f γ
 
 ------------------------------------------------------------------------
 -- Semantic Gap S1: Fixed Point Semantics

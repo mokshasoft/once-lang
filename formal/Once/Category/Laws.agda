@@ -1,308 +1,326 @@
-
 ------------------------------------------------------------------------
 -- Once.Category.Laws
 --
 -- Proofs of the categorical laws for Once's IR.
 -- These establish that IR forms a category.
+--
+-- Parameterized by machine interface and contract semantics.
 ------------------------------------------------------------------------
 
-module Once.Category.Laws where
+open import Once.Backend.MachineInterface
+open import Once.Contract
 
+module Once.Category.Laws
+  (MI : MachineInterface)
+  (CI : ContractInterface)
+  where
 
 open import Once.Type
+open import Once.SemanticBaseMachine MI
 open import Once.IR
-open import Once.Semantics
-
+open import Once.Semantics MI CI
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
-
 open import Function using (_∘′_)
 
-------------------------------------------------------------------------
--- Category Laws
-------------------------------------------------------------------------
+module Laws (CS : ContractSemantics CI ⟦_⟧) where
 
--- | Left identity: id ∘ f ≡ f (semantically)
---
--- For any morphism f : A → B, composing with identity on the left
--- gives back f.
---
-eval-id-left : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-             → eval (id ∘ f) x ≡ eval f x
-eval-id-left f x = refl
+  open IRDef CI
+  open SemanticsDef CS
 
--- | Right identity: f ∘ id ≡ f (semantically)
---
--- For any morphism f : A → B, composing with identity on the right
--- gives back f.
---
-eval-id-right : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
+  ------------------------------------------------------------------------
+  -- Fixity declarations
+  ------------------------------------------------------------------------
+
+  infixr 9 _∘_
+  infixr 4 ⟨_,_⟩
+  infixr 3 [_,_]
+
+  ------------------------------------------------------------------------
+  -- Category Laws
+  ------------------------------------------------------------------------
+
+  -- | Left identity: id ∘ f ≡ f (semantically)
+  --
+  -- For any morphism f : A → B, composing with identity on the left
+  -- gives back f.
+  --
+  eval-id-left : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
+               → eval (id ∘ f) x ≡ eval f x
+  eval-id-left f x = refl
+
+  -- | Right identity: f ∘ id ≡ f (semantically)
+  --
+  -- For any morphism f : A → B, composing with identity on the right
+  -- gives back f.
+  --
+  eval-id-right : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
               → eval (f ∘ id) x ≡ eval f x
-eval-id-right f x = refl
+  eval-id-right f x = refl
 
--- | Associativity: (f ∘ g) ∘ h ≡ f ∘ (g ∘ h) (semantically)
---
--- Composition is associative.
---
-eval-assoc : ∀ {A B C D} (f : IR C D) (g : IR B C) (h : IR A B) (x : ⟦ A ⟧)
+  -- | Associativity: (f ∘ g) ∘ h ≡ f ∘ (g ∘ h) (semantically)
+  --
+  -- Composition is associative.
+  --
+  eval-assoc : ∀ {A B C D} (f : IR C D) (g : IR B C) (h : IR A B) (x : ⟦ A ⟧)
            → eval ((f ∘ g) ∘ h) x ≡ eval (f ∘ (g ∘ h)) x
-eval-assoc f g h x = refl
+  eval-assoc f g h x = refl
 
-------------------------------------------------------------------------
--- Product Laws (Beta)
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Product Laws (Beta)
+  ------------------------------------------------------------------------
 
--- | fst ∘ ⟨ f , g ⟩ ≡ f
---
--- Projecting the first component of a pair gives the first morphism.
---
-eval-fst-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
+  -- | fst ∘ ⟨ f , g ⟩ ≡ f
+  --
+  -- Projecting the first component of a pair gives the first morphism.
+  --
+  eval-fst-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
               → eval (fst ∘ ⟨ f , g ⟩) x ≡ eval f x
-eval-fst-pair f g x = refl
+  eval-fst-pair f g x = refl
 
--- | snd ∘ ⟨ f , g ⟩ ≡ g
---
--- Projecting the second component of a pair gives the second morphism.
---
-eval-snd-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
+  -- | snd ∘ ⟨ f , g ⟩ ≡ g
+  --
+  -- Projecting the second component of a pair gives the second morphism.
+  --
+  eval-snd-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
               → eval (snd ∘ ⟨ f , g ⟩) x ≡ eval g x
-eval-snd-pair f g x = refl
+  eval-snd-pair f g x = refl
 
-------------------------------------------------------------------------
--- Product Laws (Eta/Uniqueness)
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Product Laws (Eta/Uniqueness)
+  ------------------------------------------------------------------------
 
--- | ⟨ fst , snd ⟩ ≡ id (semantically)
---
--- Pairing the projections gives back the identity on products.
---
-eval-pair-eta : ∀ {A B} (x : ⟦ A * B ⟧)
+  -- | ⟨ fst , snd ⟩ ≡ id (semantically)
+  --
+  -- Pairing the projections gives back the identity on products.
+  --
+  eval-pair-eta : ∀ {A B} (x : ⟦ A * B ⟧)
               → eval ⟨ fst , snd ⟩ x ≡ x
-eval-pair-eta (a , b) = refl
+  eval-pair-eta (a , b) = refl
 
--- | Product uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ ≡ h (semantically)
---
--- Any morphism into a product is uniquely determined by its projections.
--- This is the universal property of products.
---
-eval-pair-unique : ∀ {A B C} (h : IR C (A * B)) (x : ⟦ C ⟧)
+  -- | Product uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ ≡ h (semantically)
+  --
+  -- Any morphism into a product is uniquely determined by its projections.
+  -- This is the universal property of products.
+  --
+  eval-pair-unique : ∀ {A B C} (h : IR C (A * B)) (x : ⟦ C ⟧)
                  → eval ⟨ fst ∘ h , snd ∘ h ⟩ x ≡ eval h x
-eval-pair-unique h x with eval h x
-... | (a , b) = refl
+  eval-pair-unique h x with eval h x
+  ... | (a , b) = refl
 
-------------------------------------------------------------------------
--- Coproduct Laws (Beta)
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Coproduct Laws (Beta)
+  ------------------------------------------------------------------------
 
--- | [ f , g ] ∘ inl ≡ f
---
--- Case analysis on a left injection gives the left branch.
---
-eval-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A ⟧)
+  -- | [ f , g ] ∘ inl ≡ f
+  --
+  -- Case analysis on a left injection gives the left branch.
+  --
+  eval-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A ⟧)
               → eval ([ f , g ] ∘ inl) x ≡ eval f x
-eval-case-inl f g x = refl
+  eval-case-inl f g x = refl
 
--- | [ f , g ] ∘ inr ≡ g
---
--- Case analysis on a right injection gives the right branch.
---
-eval-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ B ⟧)
+  -- | [ f , g ] ∘ inr ≡ g
+  --
+  -- Case analysis on a right injection gives the right branch.
+  --
+  eval-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ B ⟧)
               → eval ([ f , g ] ∘ inr) x ≡ eval g x
-eval-case-inr f g x = refl
+  eval-case-inr f g x = refl
 
-------------------------------------------------------------------------
--- Coproduct Laws (Eta/Uniqueness)
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Coproduct Laws (Eta/Uniqueness)
+  ------------------------------------------------------------------------
 
--- | [ inl , inr ] ≡ id (semantically)
---
--- Case analysis that re-injects gives back identity on coproducts.
---
-eval-case-eta : ∀ {A B} (x : ⟦ A + B ⟧)
+  -- | [ inl , inr ] ≡ id (semantically)
+  --
+  -- Case analysis that re-injects gives back identity on coproducts.
+  --
+  eval-case-eta : ∀ {A B} (x : ⟦ A + B ⟧)
               → eval [ inl , inr ] x ≡ x
-eval-case-eta (inj₁ a) = refl
-eval-case-eta (inj₂ b) = refl
+  eval-case-eta (inj₁ a) = refl
+  eval-case-eta (inj₂ b) = refl
 
--- | Coproduct uniqueness: [ h ∘ inl , h ∘ inr ] ≡ h (semantically)
---
--- Any morphism from a coproduct is uniquely determined by its restrictions.
--- This is the universal property of coproducts.
---
-eval-case-unique : ∀ {A B C} (h : IR (A + B) C) (x : ⟦ A + B ⟧)
+  -- | Coproduct uniqueness: [ h ∘ inl , h ∘ inr ] ≡ h (semantically)
+  --
+  -- Any morphism from a coproduct is uniquely determined by its restrictions.
+  -- This is the universal property of coproducts.
+  --
+  eval-case-unique : ∀ {A B C} (h : IR (A + B) C) (x : ⟦ A + B ⟧)
                  → eval [ h ∘ inl , h ∘ inr ] x ≡ eval h x
-eval-case-unique h (inj₁ a) = refl
-eval-case-unique h (inj₂ b) = refl
+  eval-case-unique h (inj₁ a) = refl
+  eval-case-unique h (inj₂ b) = refl
 
-------------------------------------------------------------------------
--- Terminal Object Laws
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Terminal Object Laws
+  ------------------------------------------------------------------------
 
--- | Any two morphisms to Unit are equal (semantically)
---
--- Unit is terminal: there's a unique morphism from any object to Unit.
---
-eval-terminal-unique : ∀ {A} (f : IR A Unit) (x : ⟦ A ⟧)
+  -- | Any two morphisms to Unit are equal (semantically)
+  --
+  -- Unit is terminal: there's a unique morphism from any object to Unit.
+  --
+  eval-terminal-unique : ∀ {A} (f : IR A Unit) (x : ⟦ A ⟧)
                      → eval f x ≡ eval terminal x
-eval-terminal-unique f x with eval f x
-... | tt = refl
+  eval-terminal-unique f x with eval f x
+  ... | tt = refl
 
-------------------------------------------------------------------------
--- Initial Object Laws
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Initial Object Laws
+  ------------------------------------------------------------------------
 
--- | Any two morphisms from Void are equal (semantically)
---
--- Void is initial: there's a unique morphism from Void to any object.
--- This is vacuously true since Void is empty.
---
-eval-initial-unique : ∀ {A} (f : IR Void A) (x : ⟦ Void ⟧)
+  -- | Any two morphisms from Void are equal (semantically)
+  --
+  -- Void is initial: there's a unique morphism from Void to any object.
+  -- This is vacuously true since Void is empty.
+  --
+  eval-initial-unique : ∀ {A} (f : IR Void A) (x : ⟦ Void ⟧)
                     → eval f x ≡ eval initial x
-eval-initial-unique f ()
+  eval-initial-unique f ()
 
-------------------------------------------------------------------------
--- Exponential Laws (Curry/Apply adjunction)
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Exponential Laws (Curry/Apply adjunction)
+  ------------------------------------------------------------------------
 
--- | apply ∘ ⟨ curry f ∘ fst , snd ⟩ ≡ f (semantically)
---
--- This is the beta law for exponentials.
---
-eval-curry-apply : ∀ {A B C} (f : IR (A * B) C) (x : ⟦ A * B ⟧)
+  -- | apply ∘ ⟨ curry f ∘ fst , snd ⟩ ≡ f (semantically)
+  --
+  -- This is the beta law for exponentials.
+  --
+  eval-curry-apply : ∀ {A B C} (f : IR (A * B) C) (x : ⟦ A * B ⟧)
                  → eval (apply ∘ ⟨ curry f ∘ fst , snd ⟩) x ≡ eval f x
-eval-curry-apply f (a , b) = refl
+  eval-curry-apply f (a , b) = refl
 
--- | curry (apply ∘ ⟨ g ∘ fst , snd ⟩) ≡ g (semantically, for functions)
---
--- This is the eta law for exponentials.
--- Note: This requires function extensionality for full generality,
--- but we can prove it pointwise.
---
--- With explicit Closure, application uses Closure.semantics
-eval-curry-eta : ∀ {A B C} (g : IR A (B ⇒ C)) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
+  -- | curry (apply ∘ ⟨ g ∘ fst , snd ⟩) ≡ g (semantically, for functions)
+  --
+  -- This is the eta law for exponentials.
+  -- Note: This requires function extensionality for full generality,
+  -- but we can prove it pointwise.
+  --
+  -- With explicit Closure, application uses Closure.semantics
+  eval-curry-eta : ∀ {A B C} (g : IR A (B ⇒ C)) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
                → Closure.semantics (eval (curry (apply ∘ ⟨ g ∘ fst , snd ⟩)) a) b ≡ Closure.semantics (eval g a) b
-eval-curry-eta g a b = refl
+  eval-curry-eta g a b = refl
 
-------------------------------------------------------------------------
--- Distributivity Laws
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Distributivity Laws
+  ------------------------------------------------------------------------
 
--- Distributivity of products over coproducts (C × (A + B) ≅ (C × A) + (C × B))
--- is proven in Once.Surface.Correct as distribute-inl and distribute-inr.
+  -- Distributivity of products over coproducts (C × (A + B) ≅ (C × A) + (C × B))
+  -- is proven in Once.Surface.Correct as distribute-inl and distribute-inr.
 
-------------------------------------------------------------------------
--- Functoriality of Product and Coproduct
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Functoriality of Product and Coproduct
+  ------------------------------------------------------------------------
 
--- | bimap f g = ⟨ f ∘ fst , g ∘ snd ⟩ preserves identity
---
-eval-bimap-id : ∀ {A B} (x : ⟦ A * B ⟧)
+  -- | bimap f g = ⟨ f ∘ fst , g ∘ snd ⟩ preserves identity
+  --
+  eval-bimap-id : ∀ {A B} (x : ⟦ A * B ⟧)
               → eval ⟨ id ∘ fst , id ∘ snd ⟩ x ≡ x
-eval-bimap-id (a , b) = refl
+  eval-bimap-id (a , b) = refl
 
--- | bimap preserves composition
---
-eval-bimap-compose : ∀ {A B C D E F}
+  -- | bimap preserves composition
+  --
+  eval-bimap-compose : ∀ {A B C D E F}
                      (f : IR B C) (g : IR A B) (h : IR E F) (i : IR D E)
                      (x : ⟦ A * D ⟧)
                    → eval ⟨ (f ∘ g) ∘ fst , (h ∘ i) ∘ snd ⟩ x
                      ≡ eval (⟨ f ∘ fst , h ∘ snd ⟩ ∘ ⟨ g ∘ fst , i ∘ snd ⟩) x
-eval-bimap-compose f g h i (a , d) = refl
+  eval-bimap-compose f g h i (a , d) = refl
 
--- | bicase f g = [ inl ∘ f , inr ∘ g ] preserves identity
---
-eval-bicase-id : ∀ {A B} (x : ⟦ A + B ⟧)
+  -- | bicase f g = [ inl ∘ f , inr ∘ g ] preserves identity
+  --
+  eval-bicase-id : ∀ {A B} (x : ⟦ A + B ⟧)
                → eval [ inl ∘ id , inr ∘ id ] x ≡ x
-eval-bicase-id (inj₁ a) = refl
-eval-bicase-id (inj₂ b) = refl
+  eval-bicase-id (inj₁ a) = refl
+  eval-bicase-id (inj₂ b) = refl
 
-------------------------------------------------------------------------
--- Fixed Point Laws (Recursive Types)
-------------------------------------------------------------------------
---
--- KNOWN LIMITATION: These proofs are trivially refl because the
--- semantics use a simple newtype wrapper, not true fixed points.
--- See Once/Semantics.agda and docs/formal/what-is-proven.md for details.
---
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Fixed Point Laws (Recursive Types)
+  ------------------------------------------------------------------------
+  --
+  -- KNOWN LIMITATION: These proofs are trivially refl because the
+  -- semantics use a simple newtype wrapper, not true fixed points.
+  -- See Once/Semantics.agda and docs/formal/what-is-proven.md for details.
+  --
+  ------------------------------------------------------------------------
 
--- | fold ∘ unfold ≡ id (semantically)
---
--- Folding after unfolding gives back the original fixed point value.
--- NOTE: This is trivial because ⟦Fix⟧ is just a newtype wrapper.
--- A proper proof would require functor semantics with substitution.
---
-eval-fold-unfold : ∀ {F} (x : ⟦ Fix F ⟧)
+  -- | fold ∘ unfold ≡ id (semantically)
+  --
+  -- Folding after unfolding gives back the original fixed point value.
+  -- NOTE: This is trivial because ⟦Fix⟧ is just a newtype wrapper.
+  -- A proper proof would require functor semantics with substitution.
+  --
+  eval-fold-unfold : ∀ {F} (x : ⟦ Fix F ⟧)
                  → eval (fold ∘ unfold) x ≡ x
-eval-fold-unfold x = refl
+  eval-fold-unfold x = refl
 
--- | unfold ∘ fold ≡ id (semantically)
---
--- Unfolding after folding gives back the original value.
--- NOTE: This is trivial because ⟦Fix⟧ is just a newtype wrapper.
--- A proper proof would require functor semantics with substitution.
---
-eval-unfold-fold : ∀ {F} (x : ⟦ F ⟧)
+  -- | unfold ∘ fold ≡ id (semantically)
+  --
+  -- Unfolding after folding gives back the original value.
+  -- NOTE: This is trivial because ⟦Fix⟧ is just a newtype wrapper.
+  -- A proper proof would require functor semantics with substitution.
+  --
+  eval-unfold-fold : ∀ {F} (x : ⟦ F ⟧)
                  → eval (unfold ∘ fold) x ≡ x
-eval-unfold-fold x = refl
+  eval-unfold-fold x = refl
 
-------------------------------------------------------------------------
--- Recursion Scheme Laws
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Recursion Scheme Laws
+  ------------------------------------------------------------------------
 
--- | Catamorphism fusion law (conceptual)
---
--- For any algebra alg : F A → A and morphism h : A → B,
--- if h ∘ alg = alg' ∘ fmap h, then h ∘ cata alg = cata alg'
---
--- This is the key optimization principle for recursion schemes:
--- composing with a catamorphism can be fused into a single catamorphism.
+  -- | Catamorphism fusion law (conceptual)
+  --
+  -- For any algebra alg : F A → A and morphism h : A → B,
+  -- if h ∘ alg = alg' ∘ fmap h, then h ∘ cata alg = cata alg'
+  --
+  -- This is the key optimization principle for recursion schemes:
+  -- composing with a catamorphism can be fused into a single catamorphism.
 
--- | Hylomorphism deforestation (conceptual)
---
--- cata alg ∘ ana coalg = hylo alg coalg
---
--- A catamorphism after an anamorphism can be computed directly
--- without building the intermediate structure. This is the
--- "banana split" or "hylo fusion" theorem.
+  -- | Hylomorphism deforestation (conceptual)
+  --
+  -- cata alg ∘ ana coalg = hylo alg coalg
+  --
+  -- A catamorphism after an anamorphism can be computed directly
+  -- without building the intermediate structure. This is the
+  -- "banana split" or "hylo fusion" theorem.
 
--- Note: Full proofs of recursion scheme laws require:
--- 1. A formalization of functors and their fmap operations
--- 2. The universal properties of initial algebras / final coalgebras
--- 3. These are beyond the scope of the basic categorical laws
---    but the fold/unfold isomorphism is the foundation
+  -- Note: Full proofs of recursion scheme laws require:
+  -- 1. A formalization of functors and their fmap operations
+  -- 2. The universal properties of initial algebras / final coalgebras
+  -- 3. These are beyond the scope of the basic categorical laws
+  --    but the fold/unfold isomorphism is the foundation
 
-------------------------------------------------------------------------
--- Arrow Laws (D032: Effect System)
-------------------------------------------------------------------------
---
--- The arr combinator lifts pure functions to effectful morphisms.
--- arr : (A ⇒ B) → Eff A B
---
--- At runtime, Eff A B is represented the same as A ⇒ B (a function).
--- The distinction is purely for effect tracking at the type level.
---
--- Arrow axioms (from Hughes' "Generalising Monads to Arrows"):
--- In the context of Once, arr is essentially identity on function values.
---
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Arrow Laws (D032: Effect System)
+  ------------------------------------------------------------------------
+  --
+  -- The arr combinator lifts pure functions to effectful morphisms.
+  -- arr : (A ⇒ B) → Eff A B
+  --
+  -- At runtime, Eff A B is represented the same as A ⇒ B (a function).
+  -- The distinction is purely for effect tracking at the type level.
+  --
+  -- Arrow axioms (from Hughes' "Generalising Monads to Arrows"):
+  -- In the context of Once, arr is essentially identity on function values.
+  --
+  ------------------------------------------------------------------------
 
--- | arr is semantically identity
---
--- Lifting a pure function just returns it unchanged, since Eff A B
--- is semantically the same as A ⇒ B.
---
-eval-arr-identity : ∀ {A B} (f : ⟦ A ⇒ B ⟧)
+  -- | arr is semantically identity
+  --
+  -- Lifting a pure function just returns it unchanged, since Eff A B
+  -- is semantically the same as A ⇒ B.
+  --
+  eval-arr-identity : ∀ {A B} (f : ⟦ A ⇒ B ⟧)
                   → eval arr f ≡ f
-eval-arr-identity f = refl
+  eval-arr-identity f = refl
 
--- | arr ∘ curry ≡ curry with effectful codomain (conceptually)
---
--- This captures that currying followed by arr produces an effectful
--- curried function. The semantics are the same because effects are
--- purely a type-level distinction.
---
--- Note: The exact formulation depends on how effectful composition
--- is defined. For Once's simple model where Eff = function at runtime,
--- this is trivially true.
+  -- | arr ∘ curry ≡ curry with effectful codomain (conceptually)
+  --
+  -- This captures that currying followed by arr produces an effectful
+  -- curried function. The semantics are the same because effects are
+  -- purely a type-level distinction.
+  --
+  -- Note: The exact formulation depends on how effectful composition
+  -- is defined. For Once's simple model where Eff = function at runtime,
+  -- this is trivially true.

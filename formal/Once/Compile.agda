@@ -5,6 +5,8 @@
 -- This module re-exports the compilation pipeline functions that will
 -- be generated as Haskell code via MAlonzo.
 --
+-- Uses x86-64 platform instantiation.
+--
 -- See D035: Two-Stage IR and MAlonzo Compilation
 ------------------------------------------------------------------------
 
@@ -13,11 +15,11 @@ module Once.Compile where
 -- Re-export types
 open import Once.Type public
 
--- Re-export Core IR
-open import Once.IR public
+-- Use Platform.X86-64 for instantiation
+open import Once.Platform.X86-64 as Platform public using (⟦_⟧; IR)
 
--- Re-export Surface IR
-open import Once.Surface.IR public
+-- Re-export Surface IR (instantiated with x86-64 semantics)
+open import Once.Surface.IR Platform.⟦_⟧ public
   using (SurfaceIR; Let; Prim)
   renaming
     ( id to S-id
@@ -37,8 +39,8 @@ open import Once.Surface.IR public
     ; arr to S-arr
     )
 
--- Re-export desugar transformation
-open import Once.Surface.Desugar public
+-- Re-export desugar transformation (instantiated with x86-64 semantics)
+open import Once.Surface.Desugar Platform.⟦_⟧ Platform.PlaceholderInterface public
   using (desugar)
 
 -- Re-export optimizer

@@ -4,13 +4,14 @@
 -- Surface Intermediate Representation for Once programs.
 -- Extends Core IR with constructs that are desugared before optimization.
 --
+-- Parameterized by type interpretation to remain architecture-independent.
+--
 -- See D035: Two-Stage IR and MAlonzo Compilation
 ------------------------------------------------------------------------
 
-module Once.Surface.IR where
-
 open import Once.Type
-open import Once.SemanticBase using (⟦_⟧)
+
+module Once.Surface.IR (⟦_⟧ : Type → Set) where
 
 open import Data.String using (String)
 

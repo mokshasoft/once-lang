@@ -4,36 +4,43 @@
 -- Desugaring transformation from Surface IR to Core IR.
 -- Eliminates Let bindings by translating to categorical composition.
 --
+-- Parameterized by type interpretation and contract interface.
+--
 -- See D035: Two-Stage IR and MAlonzo Compilation
 ------------------------------------------------------------------------
 
-module Once.Surface.Desugar where
-
 open import Once.Type
-open import Once.SemanticBase using (⟦_⟧)
-open import Once.Surface.IR as S using (SurfaceIR; Let; Prim)
-open import Once.IR as C
+open import Once.Contract using (ContractInterface)
 
+module Once.Surface.Desugar
+  (⟦_⟧ : Type → Set)
+  (CI : ContractInterface)
+  where
+
+open import Once.Surface.IR ⟦_⟧ as S using (SurfaceIR; Let; Prim)
+open import Once.IR using (module IRDef)
 open import Data.String using (String)
+
+module C = IRDef CI
+open C
+open ContractInterface CI
 
 ------------------------------------------------------------------------
 -- Primitive support in Core IR
 ------------------------------------------------------------------------
 
--- | Primitive desugaring: direct passthrough to Core IR
+-- | Primitive desugaring: needs a contract for the semantic function
 --
--- Prim is a real constructor in Once.IR. Primitives are opaque operations
--- that cannot be expressed in terms of categorical generators (id, ∘, fst,
--- snd, etc.). In MAlonzo compilation, this will be implemented via FFI.
+-- TODO: This is a placeholder. Proper approach is:
+-- 1. Surface Prim should become Domain expression
+-- 2. Domain compiler creates proper contract
+-- 3. For now, postulate a contract factory
 --
--- The Core IR Prim constructor was added with:
---   1. Prim constructor in Once.IR
---   2. eval case in Once.Semantics (using evalPrim postulate)
---   3. optimize cases in Once.Optimize (pass through unchanged)
---   4. proof cases in Once.Optimize.Correct (all trivial refl)
---
+postulate
+  makeContract : ∀ {A B} → (⟦ A ⟧ → ⟦ B ⟧) → Contract A B
+
 prim-desugar : ∀ {A B} → String → (⟦ A ⟧ → ⟦ B ⟧) → C.IR A B
-prim-desugar name sem = C.Prim name sem C.trivial
+prim-desugar name sem = C.Prim name (makeContract sem)
 
 ------------------------------------------------------------------------
 -- Desugar transformation
