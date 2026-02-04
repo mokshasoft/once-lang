@@ -21,9 +21,10 @@ open import Once.Backend.X86.Correct.StackInstantiation using (StackCapacity; ir
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.X86.Correct.StarBase using (IRStarResultV; ClosureWFOutput; no-closure)
 
--- Import Common dispatcher infrastructure (parameterized with X86ContractInterface)
+-- Import Common dispatcher infrastructure (parameterized with ⟦_⟧ and X86ContractInterface)
+open import Once.Platform.X86-64 using (⟦_⟧)
 open import Once.Backend.Common.PrimContract using (X86ContractInterface)
-open import Once.Backend.Common.IRDispatcher X86ContractInterface
+open import Once.Backend.Common.IRDispatcher ⟦_⟧ X86ContractInterface
 
 -- ir-size is now re-exported from Foundation (parameterized with X86ContractInterface)
 open import Data.Nat using (ℕ; _<_)
@@ -59,7 +60,7 @@ open RecDispatcherType
   StackInvariant
   StackCapacity
   RbpInvariant
-  compile-x86
+  compile-instr
   _++_
   length
   ir-stack-requirement
@@ -87,8 +88,8 @@ RecDispatcherWithWF bound =
   StackInvariant s →
   StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →
-  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) s →
-  let prog = prefix ++ compile-x86 ir ++ suffix
+  ClosureWFOutput (prefix ++ compile-instr ir ++ suffix) s →
+  let prog = prefix ++ compile-instr ir ++ suffix
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
 -- | Convert RecDispatcherWithWF to RecDispatcher by passing no-closure

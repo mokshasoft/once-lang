@@ -309,7 +309,7 @@ IRRunner = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s 
   readReg (regs s) rdi ≡ encode x →
   StackInvariant s →
   readReg (regs s) rsp > pair-alloc →
-  let prog = prefix ++ compile-x86 ir ++ suffix
+  let prog = prefix ++ compile-instr ir ++ suffix
   in ∃[ s' ] IRStarResult ir prog s s' x (length prefix)
 
 ------------------------------------------------------------------------
@@ -399,7 +399,7 @@ IRRunnerV = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s
   StackInvariant s →
   readReg (regs s) rsp > pair-alloc →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 ir ++ suffix
+  let prog = prefix ++ compile-instr ir ++ suffix
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
 ------------------------------------------------------------------------
@@ -416,8 +416,8 @@ IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A �
   StackInvariant s →
   readReg (regs s) rsp > pair-alloc →
   RbpInvariant s →
-  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) s →  -- Input WF context
-  let prog = prefix ++ compile-x86 ir ++ suffix
+  ClosureWFOutput (prefix ++ compile-instr ir ++ suffix) s →  -- Input WF context
+  let prog = prefix ++ compile-instr ir ++ suffix
   in ∃[ s' ] (IRStarResult ir prog s s' x (length prefix)
              × ClosureWFOutput prog s')  -- Output WF context
 
@@ -530,10 +530,10 @@ run-id-star-vv : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) �
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (id {A}) ++ suffix
+  let prog = prefix ++ compile-instr (id {A}) ++ suffix
   in ∃[ s' ] IRStarResultV (id {A}) prog s s' x (length prefix)
 run-id-star-vv {A} prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
-  let prog = prefix ++ compile-x86 (id {A}) ++ suffix
+  let prog = prefix ++ compile-instr (id {A}) ++ suffix
       s' : State
       s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
                     ; pc = pc s +ℕ 1 }
@@ -585,11 +585,11 @@ run-terminal-star-vv : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : St
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
+  let prog = prefix ++ compile-instr (terminal {A}) ++ suffix
   in ∃[ s' ] IRStarResultV (terminal {A}) prog s s' x (length prefix)
 run-terminal-star-vv {A} prefix suffix x s h-false pc-eq stack-inv cap-in rbp-inv =
   let (s' , step-eq , h' , pc' , rax-eq') = run-terminal-at-offset {A} prefix suffix x s h-false pc-eq
-      prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
+      prog = prefix ++ compile-instr (terminal {A}) ++ suffix
       rsp-eq = readReg-writeReg-rax-rsp (regs s) 0
       rbp-eq = readReg-writeReg-rax-rbp (regs s) 0
       cap = capacity-preserved-rsp-unchanged s s' 2 cap-in rsp-eq
@@ -631,10 +631,10 @@ run-fold-star-vv : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State)
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
+  let prog = prefix ++ compile-instr (fold {F}) ++ suffix
   in ∃[ s' ] IRStarResultV (fold {F}) prog s s' x (length prefix)
 run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
-  let prog = prefix ++ compile-x86 (fold {F}) ++ suffix
+  let prog = prefix ++ compile-instr (fold {F}) ++ suffix
       s' : State
       s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
                     ; pc = pc s +ℕ 1 }
@@ -688,10 +688,10 @@ run-unfold-star-vv : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : 
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
+  let prog = prefix ++ compile-instr (unfold {F}) ++ suffix
   in ∃[ s' ] IRStarResultV (unfold {F}) prog s s' x (length prefix)
 run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-valid) stack-inv cap-in rbp-inv =
-  let prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
+  let prog = prefix ++ compile-instr (unfold {F}) ++ suffix
       s' : State
       s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
                     ; pc = pc s +ℕ 1 }
@@ -759,11 +759,11 @@ run-fst-star-vv : ∀ {A B} (prefix suffix : Program)
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (fst {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (fst {A} {B}) prog s s' (a , b) (length prefix)
 run-fst-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv =
   let
-    prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (fst {A} {B}) ++ suffix
     input-addr = readReg (regs s) rdi
 
     -- From PairAtS: memory at input-addr contains addr-a
@@ -823,11 +823,11 @@ run-snd-star-vv : ∀ {A B} (prefix suffix : Program)
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (snd {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (snd {A} {B}) prog s s' (a , b) (length prefix)
 run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv =
   let
-    prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (snd {A} {B}) ++ suffix
     input-addr = readReg (regs s) rdi
 
     -- From PairAtS: memory at input-addr+8 contains addr-b
@@ -886,11 +886,11 @@ run-arr-star-vv : ∀ {A B} (prefix suffix : Program) (fn : ⟦ A ⇒ B ⟧) (s 
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (arr {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (arr {A} {B}) prog s s' fn (length prefix)
 run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
   let
-    prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (arr {A} {B}) ++ suffix
     input-addr = readReg (regs s) rdi
 
     -- Final state after mov rax, rdi
@@ -959,8 +959,8 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
 
 -- | Validity-based prim execution (POSTULATE - awaiting domain compiler proofs)
 --
--- ARCHITECTURE: compile-x86 (Prim _ _ c) now uses contract-program c (actual assembly).
--- The compile-x86/compile-length mismatch has been ELIMINATED.
+-- ARCHITECTURE: compile-instr (Prim _ _ c) now uses contract-program c (actual assembly).
+-- The compile-instr/compile-length mismatch has been ELIMINATED.
 --
 -- This postulate remains because domain compilers haven't yet provided
 -- PrimContract instances with full proofs. When they do, this postulate
@@ -977,7 +977,7 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
 -- For programs using Prim, this is trusted until Arith/IO provide contracts.
 postulate
   -- Awaiting domain compiler contracts (Arith, IO, etc.)
-  run-prim-star-vv : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : PrimContract sem) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  run-prim-star-vv : ∀ {A B} (name : String) (contract : Contract A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -985,6 +985,6 @@ postulate
     StackInvariant s →
     StackCapacity s output-slots →
     RbpInvariant s →
-    let prog = prefix ++ compile-x86 (Prim {A} {B} name sem contract) ++ suffix
-    in ∃[ s' ] IRStarResultV (Prim {A} {B} name sem contract) prog s s' x (length prefix)
+    let prog = prefix ++ compile-instr (Prim {A} {B} name contract) ++ suffix
+    in ∃[ s' ] IRStarResultV (Prim {A} {B} name contract) prog s s' x (length prefix)
 

@@ -307,6 +307,11 @@ execInstr prog s (label _) =
   -- Labels are no-ops at runtime
   just (record s { pc = pc s + 1 })
 
+execInstr prog s (Opaque _) =
+  -- Opaque assembly from Prim contracts cannot be symbolically executed
+  -- This should never be reached in CCC correctness proofs (only categorical combinators are proven)
+  nothing
+
 ------------------------------------------------------------------------
 -- Program execution
 ------------------------------------------------------------------------

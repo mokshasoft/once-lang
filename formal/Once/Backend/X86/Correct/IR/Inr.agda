@@ -61,7 +61,7 @@ run-inr-star-v : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : State)
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (inr {A} {B})) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (inr {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (inr {A} {B}) prog s s' x (length prefix)
 run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
     s4 , record
@@ -105,7 +105,7 @@ run-inr-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
 
     -- The program
     prog : Program
-    prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (inr {A} {B}) ++ suffix
 
     -- The 4 instructions of inr
     i0 : Instr
@@ -531,6 +531,6 @@ run-inr-star-v-auto : ∀ {A B} (prefix suffix : Program) (x : ⟦ B ⟧) (s : S
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (inr {A} {B})) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (inr {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (inr {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (inr {A} {B}) prog s s' x (length prefix)
 run-inr-star-v-auto = run-inr-star-v

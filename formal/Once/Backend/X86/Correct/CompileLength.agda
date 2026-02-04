@@ -11,15 +11,17 @@ module Once.Backend.X86.Correct.CompileLength where
 open import Once.Backend.X86.Correct.Foundation
   using (IR; _∘_; id; fst; snd; ⟨_,_⟩; inl; inr; [_,_]; terminal; initial;
          curry; apply; fold; unfold; arr; Prim;
-         compile-x86; compile-length; case-overhead; case-right-label-base;
-         case-jmp-base; slot-size; Instr; Program; Reg;
-         r11; r14; r15; rbp; rdi; rsp; rax;
+         compile-instr; compile-length; case-overhead; case-right-label-base;
+         case-jmp-base; slot-size; Instr; Program; Reg; compose-bridge;
+         r11; r14; r15; rbp; rdi; rsp; rax; Opaque;
          mov; reg; mem; base; base+disp; jmp; label; pop; ret;
-         sub; lea; push; call; cmp; jne; ud2; imm; rip+disp; r9; r12; rsi)
+         sub; lea; push; call; cmp; jne; ud2; imm; rip+disp; r9; r12; rsi;
+         contract-program)
 
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-assoc; +-comm)
-open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List using (List; []; _∷_; _++_; length; map)
+open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; module ≡-Reasoning)
 open ≡-Reasoning
 
@@ -36,10 +38,10 @@ length-++ (x ∷ xs) ys = cong suc (length-++ xs ys)
 -- Compile-length Correctness
 ------------------------------------------------------------------------
 
--- | compile-length correctly computes the length of compile-x86
+-- | compile-length correctly computes the length of compile-instr
 -- This is essential for proving fetch lemmas at computed positions
 compile-length-correct : ∀ {A B} (ir : IR A B) →
-  length (compile-x86 ir) ≡ compile-length ir
+  length (compile-instr ir) ≡ compile-length ir
 compile-length-correct id = refl
 compile-length-correct (g ∘ f) = helper
   where
@@ -47,15 +49,15 @@ compile-length-correct (g ∘ f) = helper
     a+suc≡a+1+ : ∀ a b → a +ℕ suc b ≡ (a +ℕ 1) +ℕ b
     a+suc≡a+1+ a b = sym (+-assoc a 1 b)
 
-    helper : length (compile-x86 f ++ mov (reg rdi) (reg rax) ∷ compile-x86 g) ≡
+    helper : length (compile-instr f ++ compose-bridge ++ compile-instr g) ≡
              (compile-length f +ℕ 1) +ℕ compile-length g
     helper =
       begin
-        length (compile-x86 f ++ mov (reg rdi) (reg rax) ∷ compile-x86 g)
-      ≡⟨ length-++ (compile-x86 f) _ ⟩
-        length (compile-x86 f) +ℕ suc (length (compile-x86 g))
-      ≡⟨ cong (λ x → x +ℕ suc (length (compile-x86 g))) (compile-length-correct f) ⟩
-        compile-length f +ℕ suc (length (compile-x86 g))
+        length (compile-instr f ++ compose-bridge ++ compile-instr g)
+      ≡⟨ length-++ (compile-instr f) _ ⟩
+        length (compile-instr f) +ℕ suc (length (compile-instr g))
+      ≡⟨ cong (λ x → x +ℕ suc (length (compile-instr g))) (compile-length-correct f) ⟩
+        compile-length f +ℕ suc (length (compile-instr g))
       ≡⟨ cong (λ x → compile-length f +ℕ suc x) (compile-length-correct g) ⟩
         compile-length f +ℕ suc (compile-length g)
       ≡⟨ a+suc≡a+1+ (compile-length f) (compile-length g) ⟩
@@ -67,8 +69,8 @@ compile-length-correct ⟨ f , g ⟩ = helper
   where
     -- Structure with frame pointer:
     --   push ∷ push ∷ push ∷ mov ∷ sub ∷ mov ∷ mov ∷
-    --   (compile-x86 f ++ mov ∷ mov ∷
-    --    (compile-x86 g ++ mov ∷ mov ∷ mov ∷ pop ∷ pop ∷ pop ∷ []))
+    --   (compile-instr f ++ mov ∷ mov ∷
+    --    (compile-instr g ++ mov ∷ mov ∷ mov ∷ pop ∷ pop ∷ pop ∷ []))
     -- We need to show: 7 + (|f| + (2 + (|g| + 6))) = (15 + |f|) + |g|
 
     inner-tail : List Instr
@@ -80,22 +82,22 @@ compile-length-correct ⟨ f , g ⟩ = helper
                  pop r14 ∷ []
 
     -- Lemma: length of the trailing part after g
-    len-middle : length (compile-x86 g ++ inner-tail) ≡ compile-length g +ℕ 6
-    len-middle = trans (length-++ (compile-x86 g) inner-tail) (cong (λ x → x +ℕ 6) (compile-length-correct g))
+    len-middle : length (compile-instr g ++ inner-tail) ≡ compile-length g +ℕ 6
+    len-middle = trans (length-++ (compile-instr g) inner-tail) (cong (λ x → x +ℕ 6) (compile-length-correct g))
 
     mid-tail : List Instr
-    mid-tail = mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ (compile-x86 g ++ inner-tail)
+    mid-tail = mov (mem (base r15)) (reg rax) ∷ mov (reg rdi) (reg r14) ∷ (compile-instr g ++ inner-tail)
 
     -- Lemma: length after f
     len-after-f : length mid-tail ≡ 2 +ℕ (compile-length g +ℕ 6)
     len-after-f = cong (λ x → 2 +ℕ x) len-middle
 
     full-tail : List Instr
-    full-tail = compile-x86 f ++ mid-tail
+    full-tail = compile-instr f ++ mid-tail
 
     -- Lemma: length including f
     len-with-f : length full-tail ≡ compile-length f +ℕ (2 +ℕ (compile-length g +ℕ 6))
-    len-with-f = trans (length-++ (compile-x86 f) mid-tail)
+    len-with-f = trans (length-++ (compile-instr f) mid-tail)
                        (trans (cong (λ x → x +ℕ length mid-tail) (compile-length-correct f))
                               (cong (λ x → compile-length f +ℕ x) len-after-f))
 
@@ -118,7 +120,7 @@ compile-length-correct ⟨ f , g ⟩ = helper
         (15 +ℕ a) +ℕ b
       ∎
 
-    helper : length (compile-x86 ⟨ f , g ⟩) ≡ (15 +ℕ compile-length f) +ℕ compile-length g
+    helper : length (compile-instr ⟨ f , g ⟩) ≡ (15 +ℕ compile-length f) +ℕ compile-length g
     helper = trans (cong (λ x → 7 +ℕ x) len-with-f)
                    (arith2 (compile-length f) (compile-length g))
 compile-length-correct inl = refl
@@ -128,9 +130,9 @@ compile-length-correct [ f , g ] = helper
     -- Structure with stack frame:
     --   push rbp ∷ mov rbp rsp ∷                            -- 2 setup
     --   mov r11 [rdi] ∷ cmp r11 0 ∷ jne ∷ mov rdi [rdi+8] ∷ -- 4 prefix
-    --   compile-x86 f ++
+    --   compile-instr f ++
     --   jmp ∷ label ∷ mov rdi [rdi+8] ∷                     -- 3 middle
-    --   compile-x86 g ++
+    --   compile-instr g ++
     --   mov rsp rbp ∷ pop rbp ∷ []                          -- 2 cleanup
     -- Length = 6 + |f| + 3 + |g| + 2 = (case-overhead + |f|) + |g|
 
@@ -144,24 +146,24 @@ compile-length-correct [ f , g ] = helper
     cleanup-tail : List Instr
     cleanup-tail = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
 
-    len-cleanup : length (compile-x86 g ++ cleanup-tail) ≡ compile-length g +ℕ 2
-    len-cleanup = trans (length-++ (compile-x86 g) cleanup-tail)
+    len-cleanup : length (compile-instr g ++ cleanup-tail) ≡ compile-length g +ℕ 2
+    len-cleanup = trans (length-++ (compile-instr g) cleanup-tail)
                         (cong (λ x → x +ℕ 2) (compile-length-correct g))
 
     -- Middle + g + cleanup: jmp ∷ label ∷ mov ∷ (g ++ cleanup)
     mid-tail : List Instr
     mid-tail = jmp cleanup-offset ∷ label right-lbl ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
-               (compile-x86 g ++ cleanup-tail)
+               (compile-instr g ++ cleanup-tail)
 
     len-mid : length mid-tail ≡ 3 +ℕ (compile-length g +ℕ 2)
     len-mid = cong (λ x → 3 +ℕ x) len-cleanup
 
     -- f + middle
     full-tail : List Instr
-    full-tail = compile-x86 f ++ mid-tail
+    full-tail = compile-instr f ++ mid-tail
 
     len-with-f : length full-tail ≡ compile-length f +ℕ (3 +ℕ (compile-length g +ℕ 2))
-    len-with-f = trans (length-++ (compile-x86 f) mid-tail)
+    len-with-f = trans (length-++ (compile-instr f) mid-tail)
                        (trans (cong (λ x → x +ℕ length mid-tail) (compile-length-correct f))
                               (cong (λ x → compile-length f +ℕ x) len-mid))
 
@@ -185,7 +187,7 @@ compile-length-correct [ f , g ] = helper
         (11 +ℕ a) +ℕ b
       ∎
 
-    helper : length (compile-x86 [ f , g ]) ≡ (case-overhead +ℕ compile-length f) +ℕ compile-length g
+    helper : length (compile-instr [ f , g ]) ≡ (case-overhead +ℕ compile-length f) +ℕ compile-length g
     helper = trans (cong (λ x → 6 +ℕ x) len-with-f)
                    (arith (compile-length f) (compile-length g))
 compile-length-correct terminal = refl
@@ -194,7 +196,7 @@ compile-length-correct (curry f) = helper
   where
     -- Structure with RIP-relative addressing, frame pointer, and r15 save/restore:
     -- sub ∷ mov ∷ lea ∷ mov ∷ mov ∷ jmp ∷ label ∷ push-r15 ∷ push-rbp ∷ mov ∷ sub ∷ mov ∷ mov ∷ mov ∷
-    -- (compile-x86 f ++ mov ∷ pop-rbp ∷ pop-r15 ∷ ret ∷ label ∷ [])
+    -- (compile-instr f ++ mov ∷ pop-rbp ∷ pop-r15 ∷ ret ∷ label ∷ [])
     -- Length = 14 + (|f| + 5) = 19 + |f|
 
     end-lbl : ℕ
@@ -203,8 +205,8 @@ compile-length-correct (curry f) = helper
     inner-tail : List Instr
     inner-tail = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ label end-lbl ∷ []
 
-    len-inner : length (compile-x86 f ++ inner-tail) ≡ compile-length f +ℕ 5
-    len-inner = trans (length-++ (compile-x86 f) inner-tail) (cong (λ x → x +ℕ 5) (compile-length-correct f))
+    len-inner : length (compile-instr f ++ inner-tail) ≡ compile-length f +ℕ 5
+    len-inner = trans (length-++ (compile-instr f) inner-tail) (cong (λ x → x +ℕ 5) (compile-length-correct f))
 
     -- Prove: 14 + (a + 5) = 19 + a
     arith : ∀ a → 14 +ℕ (a +ℕ 5) ≡ 19 +ℕ a
@@ -217,11 +219,16 @@ compile-length-correct (curry f) = helper
         19 +ℕ a
       ∎
 
-    helper : length (compile-x86 (curry f)) ≡ 19 +ℕ compile-length f
+    helper : length (compile-instr (curry f)) ≡ 19 +ℕ compile-length f
     helper = trans (cong (λ x → 14 +ℕ x) len-inner)
                    (arith (compile-length f))
 compile-length-correct apply = refl
 compile-length-correct fold = refl
 compile-length-correct unfold = refl
 compile-length-correct arr = refl
-compile-length-correct (Prim _ _) = refl
+compile-length-correct (Prim _ c) = map-length-preserving (contract-program c)
+  where
+    open import Data.List.Properties using (length-map)
+    -- map Opaque doesn't change length
+    map-length-preserving : ∀ (xs : List String) → length (map Opaque xs) ≡ length xs
+    map-length-preserving xs = length-map Opaque xs

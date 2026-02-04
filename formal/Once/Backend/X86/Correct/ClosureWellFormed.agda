@@ -17,7 +17,7 @@ open import Once.Type
 
 -- Import from Foundation to get X86ContractInterface-instantiated types
 open import Once.Backend.X86.Correct.Foundation
-  using (IR; _∘_; curry; apply; compile-x86; compile-length; ⟦_⟧; Closure; eval;
+  using (IR; _∘_; curry; apply; compile-instr; compile-length; ⟦_⟧; Closure; eval;
          curry-overhead; Instr; Program)
 
 open import Once.Backend.X86.Syntax
@@ -257,12 +257,12 @@ open ApplyWithWFResult public
 --
 -- run-apply-with-wf : ∀ {A B} (prefix suffix : Program)
 --                     (cl : Closure A B) (a : ⟦ A ⟧) (s : State) →
---   ClosureWellFormed (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) cl →
+--   ClosureWellFormed (prefix ++ compile-instr (apply {A} {B}) ++ suffix) cl →
 --   halted s ≡ false →
 --   pc s ≡ length prefix →
 --   readReg (regs s) rdi ≡ encode (cl , a) →
 --   StackInvariant s →
 --   readReg (regs s) rsp > pair-alloc →
---   ∃[ s' ] ApplyWithWFResult (prefix ++ compile-x86 (apply {A} {B}) ++ suffix)
+--   ∃[ s' ] ApplyWithWFResult (prefix ++ compile-instr (apply {A} {B}) ++ suffix)
 --                              s s' cl a (length prefix)
 -- run-apply-with-wf = ?

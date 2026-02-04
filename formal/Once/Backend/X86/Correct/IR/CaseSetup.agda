@@ -14,7 +14,7 @@ open import Once.Type
 
 -- Import from Foundation to get X86ContractInterface-instantiated types
 open import Once.Backend.X86.Correct.Foundation
-  using (IR; [_,_]; inl; inr; ⟦_⟧; compile-x86; compile-length;
+  using (IR; [_,_]; inl; inr; ⟦_⟧; compile-instr; compile-length;
          case-overhead; case-right-label-base; case-jmp-base; case-jne-base;
          case-setup-count; case-prefix-count; case-cleanup-count;
          Instr; Program)
@@ -84,7 +84,7 @@ record CaseInlSetupResult {A B C : Type} (a : ⟦ A ⟧)
     (s s-setup : State) (val-addr : ℕ) : Set where
   field
     -- Execution star
-    star-setup : Star (prefix ++ compile-x86 [ f , g ] ++ suffix) s s-setup
+    star-setup : Star (prefix ++ compile-instr [ f , g ] ++ suffix) s s-setup
     -- State properties
     h-setup    : halted s-setup ≡ false
     pc-setup   : pc s-setup ≡ length prefix +ℕ 6
@@ -151,7 +151,7 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
     -- Program and original values
     len-f = compile-length f
     len-g = compile-length g
-    prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    prog = prefix ++ compile-instr [ f , g ] ++ suffix
     orig-rsp = readReg (regs s) rsp
     orig-rbp = readReg (regs s) rbp
     orig-rdi = readReg (regs s) rdi
@@ -205,13 +205,13 @@ case-inl-setup-star {A} {B} {C} f g prefix suffix a s val-addr
                    ; pc = pc s5 +ℕ 1 }
 
     -- ========== Instructions ==========
-    -- Define the first 6 instructions of compile-x86 [ f , g ]
-    -- These are definitionally equal to what compile-x86 produces
+    -- Define the first 6 instructions of compile-instr [ f , g ]
+    -- These are definitionally equal to what compile-instr produces
 
     case-code : Program
-    case-code = compile-x86 [ f , g ] ++ suffix
+    case-code = compile-instr [ f , g ] ++ suffix
 
-    -- The instructions in compile-x86 [ f , g ]:
+    -- The instructions in compile-instr [ f , g ]:
     --   0: push (reg rbp)
     --   1: mov (reg rbp) (reg rsp)
     --   2: mov (reg r11) (mem (base rdi))
@@ -706,7 +706,7 @@ record CaseInrSetupResult {A B C : Type} (b : ⟦ B ⟧)
     len-f = compile-length f
   field
     -- Execution star
-    star-setup : Star (prefix ++ compile-x86 [ f , g ] ++ suffix) s s-setup
+    star-setup : Star (prefix ++ compile-instr [ f , g ] ++ suffix) s s-setup
     -- State properties
     h-setup    : halted s-setup ≡ false
     -- PC after 6 instructions: push, mov, mov, cmp, jne(taken to 8+len-f), mov
@@ -774,7 +774,7 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
     -- Program and original values
     len-f = compile-length f
     len-g = compile-length g
-    prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+    prog = prefix ++ compile-instr [ f , g ] ++ suffix
     orig-rsp = readReg (regs s) rsp
     orig-rbp = readReg (regs s) rbp
     orig-rdi = readReg (regs s) rdi
@@ -842,7 +842,7 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
 
     -- ========== Instructions ==========
     case-code : Program
-    case-code = compile-x86 [ f , g ] ++ suffix
+    case-code = compile-instr [ f , g ] ++ suffix
 
     -- ========== Fetch Proofs ==========
     open import Data.Nat.Properties using (+-identityʳ)
@@ -908,11 +908,11 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         rest-inner = jmp (case-jmp-base +ℕ len-g) ∷
                      label (case-right-label-base +ℕ len-f) ∷
                      mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
-                     compile-x86 g ++
+                     compile-instr g ++
                      mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
 
         rest : Program
-        rest = compile-x86 f ++ rest-inner
+        rest = compile-instr f ++ rest-inner
 
         after-setup : Program
         after-setup = rest ++ suffix
@@ -929,20 +929,20 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         after-f-inner : Program
         after-f-inner = rest-inner ++ suffix
 
-        after-setup-assoc : after-setup ≡ compile-x86 f ++ after-f-inner
-        after-setup-assoc = ++-assoc (compile-x86 f) rest-inner suffix
+        after-setup-assoc : after-setup ≡ compile-instr f ++ after-f-inner
+        after-setup-assoc = ++-assoc (compile-instr f) rest-inner suffix
 
         -- 1 + len-f = len-f + 1 for use with fetch-append-right
         idx-comm : 1 +ℕ len-f ≡ len-f +ℕ 1
         idx-comm = +-comm 1 len-f
 
-        -- Skip compile-x86 f using fetch-append-right
+        -- Skip compile-instr f using fetch-append-right
         skip-f : fetch after-setup (1 +ℕ len-f) ≡ fetch after-f-inner 1
         skip-f = trans (cong (λ xs → fetch xs (1 +ℕ len-f)) after-setup-assoc)
-                       (trans (cong (λ n → fetch (compile-x86 f ++ after-f-inner) n) idx-comm)
-                              (trans (cong (λ n → fetch (compile-x86 f ++ after-f-inner) (n +ℕ 1))
+                       (trans (cong (λ n → fetch (compile-instr f ++ after-f-inner) n) idx-comm)
+                              (trans (cong (λ n → fetch (compile-instr f ++ after-f-inner) (n +ℕ 1))
                                            (sym (compile-length-correct f)))
-                                     (fetch-append-right (compile-x86 f) after-f-inner 1)))
+                                     (fetch-append-right (compile-instr f) after-f-inner 1)))
 
         -- Fetch at index 1 in rest-inner ++ suffix = label (definitional)
         fetch-label : fetch after-f-inner 1 ≡ just (label (case-right-label-base +ℕ len-f))
@@ -982,11 +982,11 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         rest-inner = jmp (case-jmp-base +ℕ len-g) ∷
                      label (case-right-label-base +ℕ len-f) ∷
                      mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
-                     compile-x86 g ++
+                     compile-instr g ++
                      mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
 
         rest : Program
-        rest = compile-x86 f ++ rest-inner
+        rest = compile-instr f ++ rest-inner
 
         after-setup : Program
         after-setup = rest ++ suffix
@@ -1003,20 +1003,20 @@ case-inr-setup-star {A} {B} {C} f g prefix suffix b s val-addr
         after-f-inner : Program
         after-f-inner = rest-inner ++ suffix
 
-        after-setup-assoc : after-setup ≡ compile-x86 f ++ after-f-inner
-        after-setup-assoc = ++-assoc (compile-x86 f) rest-inner suffix
+        after-setup-assoc : after-setup ≡ compile-instr f ++ after-f-inner
+        after-setup-assoc = ++-assoc (compile-instr f) rest-inner suffix
 
         -- 2 + len-f = len-f + 2 for use with fetch-append-right
         idx-comm : 2 +ℕ len-f ≡ len-f +ℕ 2
         idx-comm = +-comm 2 len-f
 
-        -- Skip compile-x86 f using fetch-append-right
+        -- Skip compile-instr f using fetch-append-right
         skip-f : fetch after-setup (2 +ℕ len-f) ≡ fetch after-f-inner 2
         skip-f = trans (cong (λ xs → fetch xs (2 +ℕ len-f)) after-setup-assoc)
-                       (trans (cong (λ n → fetch (compile-x86 f ++ after-f-inner) n) idx-comm)
-                              (trans (cong (λ n → fetch (compile-x86 f ++ after-f-inner) (n +ℕ 2))
+                       (trans (cong (λ n → fetch (compile-instr f ++ after-f-inner) n) idx-comm)
+                              (trans (cong (λ n → fetch (compile-instr f ++ after-f-inner) (n +ℕ 2))
                                            (sym (compile-length-correct f)))
-                                     (fetch-append-right (compile-x86 f) after-f-inner 2)))
+                                     (fetch-append-right (compile-instr f) after-f-inner 2)))
 
         -- Fetch at index 2 in rest-inner ++ suffix = mov rdi [rdi+8] (definitional)
         fetch-mov : fetch after-f-inner 2 ≡ just (mov (reg rdi) (mem (base+disp rdi slot-size)))

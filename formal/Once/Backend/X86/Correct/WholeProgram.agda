@@ -59,7 +59,7 @@ open import Once.Backend.X86.Correct.Foundation
          Instr; Program; Memory; State; halted; pc; memory; regs;
          readReg; readMem;
          rax; rdi; r14; r15; rbp;
-         compile-x86; compile-length;
+         compile-instr; compile-length;
          ℕ; _+ℕ_; _≤_; _<_; just;
          List; []; _∷_; _++_; length;
          _≡_; refl; sym; trans; cong; subst;
@@ -262,14 +262,14 @@ run-ir-star-whole-program : ∀ {A B} (ir : IR A B)
   StackInvariant s →
   StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →
-  ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) s →  -- Input WF context
-  let prog = prefix ++ compile-x86 ir ++ suffix
+  ClosureWFOutput (prefix ++ compile-instr ir ++ suffix) s →  -- Input WF context
+  let prog = prefix ++ compile-instr ir ++ suffix
   in ∃[ s' ] WholeProgramResult ir prog s s' x (length prefix)
 
 -- Curry case: produce has-closure-mem with full memory layout
 -- Note: curry : {A} {B} {C} → IR (A * B) C → IR (↑ i) A (B ⇒ C)
 run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv cap-in rbp-inv _ =
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  let prog = prefix ++ compile-instr (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
       -- Get CurryExecResult and CurryMemoryResult from run-curry-star (uses validity directly)
@@ -300,7 +300,7 @@ run-ir-star-whole-program (curry {A} {B} {C} f) prefix suffix caller-sp x s h-eq
 run-ir-star-whole-program (apply {A} {B}) prefix suffix caller-sp x s h-eq pc-eq input-valid stack-inv cap-in rbp-inv wf-in =
   apply-with-wf-check wf-in
   where
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
 
     -- Fallback: use validity-based modular runner
     apply-fallback : ∃[ s' ] WholeProgramResult (apply {A} {B}) prog s s' x (length prefix)
@@ -352,13 +352,13 @@ whole-program-correct : ∀ {A B} (ir : IR A B)
   StackInvariant s →
   StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →
-  let prog = compile-x86 ir
+  let prog = compile-instr ir
   in ∃[ s' ] (Star prog s s'
             × halted s' ≡ false
             × pc s' ≡ compile-length ir
             × ValidAt (eval ir x) (readReg (regs s') rax) (memory s'))  -- Output validity
 whole-program-correct ir caller-sp x s h-eq pc-eq input-valid stack-inv cap-in rbp-inv =
-  let code = compile-x86 ir
+  let code = compile-instr ir
       -- [] ++ code ++ [] ≡ code ++ [] ≡ code
       prog-eq : [] ++ code ++ [] ≡ code
       prog-eq = ++-identityʳ code

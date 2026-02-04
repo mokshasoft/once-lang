@@ -18,20 +18,15 @@
 ------------------------------------------------------------------------
 
 open import Once.Type using (Type; _*_; _+_; _⇒_; Fix)
-open import Once.Backend.ContractInterface using (ContractInterface)
+open import Once.Contract using (ContractInterface)
 import Once.IR as IR
-import Once.Semantics as Semantics
 import Once.Backend.Common.IRSize as IRSize
 
--- ⟦_⟧ comes from SemanticBase (architecture-independent type interpretation)
-open import Once.SemanticBase using (⟦_⟧; wrap)
-
--- | IRDispatcher parameterized by instruction type and ContractInterface
--- This allows each backend to use their own contract type
-module Once.Backend.Common.IRDispatcher {Instr : Set} (CI : ContractInterface Instr) where
+-- | IRDispatcher parameterized by ⟦_⟧ and ContractInterface
+-- ⟦_⟧ is the type interpretation provided by each architecture
+module Once.Backend.Common.IRDispatcher (⟦_⟧ : Type → Set) (CI : ContractInterface) where
 
 open IR.IRDef CI
-open Semantics.SemanticsDef CI
 open IRSize CI
 
 open import Data.Bool using (Bool; false)

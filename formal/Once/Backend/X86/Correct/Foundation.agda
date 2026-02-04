@@ -27,7 +27,7 @@ open import Once.Platform.X86-64 public
 -- Import Semantics infrastructure
 open import Once.Backend.Word64 using (Word64Interface)
 open import Once.Contract using (ContractSemantics; ContractInterface)
-open ContractInterface X86ContractInterface using (Contract)
+open ContractInterface X86ContractInterface public using (Contract)
 
 -- X86ContractSemantics: provides evaluation for X86 contracts
 -- For code generation, the contract's semantics are opaque
@@ -56,10 +56,11 @@ open CodeGen using (simple-instr-count; pair-overhead; case-overhead; curry-over
   case-jne-base; case-jmp-base; case-right-label-base;
   curry-thunk-label; curry-rip-offset; curry-end-label-base; curry-jmp-base;
   apply-consumed-slots; pair-setup-consumed-slots; thunk-setup-consumed-slots; curry-closure-consumed-slots;
-  injection-consumed-slots; thunk-r15-slot; thunk-rbp-slot; pair-r14-slot; pair-r15-slot; pair-rbp-slot)
+  injection-consumed-slots; thunk-r15-slot; thunk-rbp-slot; pair-r14-slot; pair-r15-slot; pair-rbp-slot;
+  Asm; emit; emit1; compose-bridge)
   public
 -- Use CodeGenDef with X86ContractInterface
--- compile-x86 and compile-length now use contract-program and contract-length
+-- compile-instr and compile-length now use contract-program and contract-length
 -- which provide actual assembly from PrimContract for Prim nodes
 open CodeGen.CodeGenDef X86ContractInterface public
 

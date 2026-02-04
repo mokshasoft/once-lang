@@ -24,14 +24,18 @@
 module Once.Backend.X86.Correct.ClosureContext where
 
 open import Once.Type
-open import Once.SemanticBase using (⟦_⟧)
+open import Once.Platform.X86-64 using (⟦_⟧)
 
 -- Use X86ContractInterface for IR and Semantics
 open import Once.Backend.Common.PrimContract using (X86ContractInterface)
 import Once.IR as IR
 open IR.IRDef X86ContractInterface
-import Once.Semantics as Semantics
-open Semantics.SemanticsDef X86ContractInterface
+
+-- Import ContractSemantics and instantiate Semantics correctly
+open import Once.Backend.Word64 using (Word64Interface)
+open import Once.Backend.X86.Correct.Foundation using (X86ContractSemantics)
+import Once.Semantics Word64Interface X86ContractInterface as Semantics
+open Semantics.SemanticsDef X86ContractSemantics
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
@@ -194,7 +198,7 @@ run-apply-with-full-wf : ∀ {E A B} (prefix suffix : Program)
                          (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                          (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       offset = length prefix
       cl = record { env-addr = env-addr ; semantics = semantics }
   in
@@ -289,7 +293,7 @@ test-apply-with-wf-eliminates-postulate :
     (env : ⟦ E ⟧)
     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
     (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       offset = length prefix
       cl = record { env-addr = env-addr ; semantics = semantics }
   in

@@ -11,7 +11,7 @@ open import Once.Type
 
 -- Import from Foundation to get X86ContractInterface-instantiated types
 open import Once.Backend.X86.Correct.Foundation
-  using (IR; [_,_]; inl; inr; ⟦_⟧; eval; compile-x86; compile-length;
+  using (IR; [_,_]; inl; inr; ⟦_⟧; eval; compile-instr; compile-length;
          case-overhead; case-right-label-base; case-jmp-base; case-jne-base;
          case-setup-count; case-prefix-count; case-cleanup-count;
          case-cleanup-position; case-middle-count;
@@ -124,7 +124,7 @@ run-case-star-direct-inl : ∀ {A B C} (f : IR A C) (g : IR B C) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement [ f , g ]) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+  let prog = prefix ++ compile-instr [ f , g ] ++ suffix
   in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₁ a) (length prefix)
 run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-sp a s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     s-final , result
@@ -132,7 +132,7 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     -- Program and code lengths
     len-f = compile-length f
     len-g = compile-length g
-    case-code = compile-x86 [ f , g ]
+    case-code = compile-instr [ f , g ]
     prog = prefix ++ case-code ++ suffix
 
     -- Original state values
@@ -274,9 +274,9 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
                    jne (case-jne-base +ℕ len-f) ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []
 
     prefix-f = prefix ++ setup-instrs
-    code-f = compile-x86 f
+    code-f = compile-instr f
     suffix-f = jmp (case-jmp-base +ℕ len-g) ∷ label (case-right-label-base +ℕ len-f) ∷
-               mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ compile-x86 g ++
+               mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ compile-instr g ++
                mov (reg rsp) (reg rbp) ∷ pop rbp ∷ suffix
 
     len-prefix-f : length prefix-f ≡ length prefix +ℕ 6
@@ -357,7 +357,7 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
       where
         first-part : Program
         first-part = jmp (case-jmp-base +ℕ len-g) ∷ label (case-right-label-base +ℕ len-f) ∷
-                     mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ compile-x86 g
+                     mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ compile-instr g
 
         cleanup-instrs-local : Program
         cleanup-instrs-local = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
@@ -386,14 +386,14 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
         step6 : prefix-f ++ (code-f ++ case-middle-code) ≡ prefix ++ (setup-instrs ++ (code-f ++ case-middle-code))
         step6 = ++-assoc prefix setup-instrs (code-f ++ case-middle-code)
 
-        step7 : prefix ++ (setup-instrs ++ (code-f ++ case-middle-code)) ≡ prefix ++ compile-x86 [ f , g ]
+        step7 : prefix ++ (setup-instrs ++ (code-f ++ case-middle-code)) ≡ prefix ++ compile-instr [ f , g ]
         step7 = refl
 
-        step8 : (prefix-f ++ (code-f ++ case-middle-code)) ++ suffix ≡ (prefix ++ compile-x86 [ f , g ]) ++ suffix
+        step8 : (prefix-f ++ (code-f ++ case-middle-code)) ++ suffix ≡ (prefix ++ compile-instr [ f , g ]) ++ suffix
         step8 = cong (_++ suffix) (trans step6 step7)
 
-        step9 : (prefix ++ compile-x86 [ f , g ]) ++ suffix ≡ prog
-        step9 = ++-assoc prefix (compile-x86 [ f , g ]) suffix
+        step9 : (prefix ++ compile-instr [ f , g ]) ++ suffix ≡ prog
+        step9 = ++-assoc prefix (compile-instr [ f , g ]) suffix
 
     star-f : Star prog s-setup s1
     star-f = subst (λ p → Star p s-setup s1) prog-eq-f (IRStarResultV.ir-star r-f)
@@ -584,7 +584,7 @@ run-case-star-direct-inr : ∀ {A B C} (f : IR A C) (g : IR B C) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement [ f , g ]) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+  let prog = prefix ++ compile-instr [ f , g ] ++ suffix
   in ∃[ s' ] IRStarResultV [ f , g ] prog s s' (inj₂ b) (length prefix)
 run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-sp b s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     s-final , result
@@ -592,7 +592,7 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     -- Program and code lengths
     len-f = compile-length f
     len-g = compile-length g
-    case-code = compile-x86 [ f , g ]
+    case-code = compile-instr [ f , g ]
     prog = prefix ++ case-code ++ suffix
 
     -- Original state values
@@ -733,7 +733,7 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
                             mov (reg r11) (mem (base rdi)) ∷ cmp (reg r11) (imm 0) ∷
                             jne (case-jne-base +ℕ len-f) ∷ mov (reg rdi) (mem (base+disp rdi slot-size)) ∷ []
 
-    code-f = compile-x86 f
+    code-f = compile-instr f
 
     middle-instrs : Program
     middle-instrs = jmp (case-jmp-base +ℕ len-g) ∷ label (case-right-label-base +ℕ len-f) ∷
@@ -743,7 +743,7 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     cleanup-instrs-local = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
 
     prefix-g = prefix ++ setup-instrs-before-f ++ code-f ++ middle-instrs
-    code-g = compile-x86 g
+    code-g = compile-instr g
     suffix-g = cleanup-instrs-local ++ suffix
 
     len-code-f : length code-f ≡ len-f
@@ -860,17 +860,17 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
                  setup-instrs-before-f ++ (code-f ++ (middle-instrs ++ (code-g ++ cleanup-instrs-local)))
         step7b = cong (setup-instrs-before-f ++_) (++-assoc code-f middle-instrs (code-g ++ cleanup-instrs-local))
 
-        step7c : setup-instrs-before-f ++ (code-f ++ (middle-instrs ++ (code-g ++ cleanup-instrs-local))) ≡ compile-x86 [ f , g ]
+        step7c : setup-instrs-before-f ++ (code-f ++ (middle-instrs ++ (code-g ++ cleanup-instrs-local))) ≡ compile-instr [ f , g ]
         step7c = refl
 
-        step7 : prefix ++ (pre-g ++ (code-g ++ cleanup-instrs-local)) ≡ prefix ++ compile-x86 [ f , g ]
+        step7 : prefix ++ (pre-g ++ (code-g ++ cleanup-instrs-local)) ≡ prefix ++ compile-instr [ f , g ]
         step7 = cong (prefix ++_) (trans step7a (trans step7b step7c))
 
-        step8 : (prefix-g ++ (code-g ++ cleanup-instrs-local)) ++ suffix ≡ (prefix ++ compile-x86 [ f , g ]) ++ suffix
+        step8 : (prefix-g ++ (code-g ++ cleanup-instrs-local)) ++ suffix ≡ (prefix ++ compile-instr [ f , g ]) ++ suffix
         step8 = cong (_++ suffix) (trans step6 step7)
 
-        step9 : (prefix ++ compile-x86 [ f , g ]) ++ suffix ≡ prog
-        step9 = ++-assoc prefix (compile-x86 [ f , g ]) suffix
+        step9 : (prefix ++ compile-instr [ f , g ]) ++ suffix ≡ prog
+        step9 = ++-assoc prefix (compile-instr [ f , g ]) suffix
 
     star-g : Star prog s-setup s1
     star-g = subst (λ p → Star p s-setup s1) prog-eq-g (IRStarResultV.ir-star r-g)
@@ -1057,7 +1057,7 @@ run-case-star-direct : ∀ {A B C} (f : IR A C) (g : IR B C) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement [ f , g ]) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+  let prog = prefix ++ compile-instr [ f , g ] ++ suffix
   in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
 run-case-star-direct {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   with x
@@ -1082,7 +1082,7 @@ run-case-star-v : ∀ {A B C} (f : IR A C) (g : IR B C) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement [ f , g ]) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+  let prog = prefix ++ compile-instr [ f , g ] ++ suffix
   in ∃[ s' ] IRStarResultV [ f , g ] prog s s' x (length prefix)
 run-case-star-v f g bound rec f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
   run-case-star-direct f g bound rec f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv

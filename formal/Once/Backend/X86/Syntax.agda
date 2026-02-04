@@ -12,6 +12,7 @@ module Once.Backend.X86.Syntax where
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Fin using (Fin)
 open import Data.List using (List; []; _∷_; foldr)
+open import Data.String using (String)
 
 ------------------------------------------------------------------------
 -- Registers
@@ -127,6 +128,9 @@ data Instr : Set where
 
   -- Label (pseudo-instruction for assembly)
   label  : ℕ → Instr                    -- label n:
+
+  -- Opaque assembly (for embedding pre-compiled Contract assembly)
+  Opaque : String → Instr               -- Opaque assembly string (from Prim contracts)
 
 ------------------------------------------------------------------------
 -- Programs

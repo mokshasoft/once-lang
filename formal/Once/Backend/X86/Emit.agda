@@ -109,6 +109,9 @@ instrToText ud2 = "    ud2"
 -- Labels (pseudo-instruction)
 instrToText (label n) = ".L" ++ show n ++ ":"
 
+-- Opaque assembly (pass through from Contract)
+instrToText (Opaque s) = s
+
 ------------------------------------------------------------------------
 -- Program emission
 ------------------------------------------------------------------------

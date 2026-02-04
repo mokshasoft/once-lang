@@ -14,7 +14,7 @@ open import Once.Type
 
 -- Import from Foundation to get X86ContractInterface-instantiated types
 open import Once.Backend.X86.Correct.Foundation
-  using (IR; [_,_]; inl; inr; ⟦_⟧; compile-x86; compile-length;
+  using (IR; [_,_]; inl; inr; ⟦_⟧; compile-instr; compile-length;
          case-overhead; case-right-label-base; case-jmp-base; case-jne-base;
          case-setup-count; case-prefix-count; case-cleanup-count;
          case-cleanup-position; case-middle-count;
@@ -71,7 +71,7 @@ record CaseCleanupResult {A B C : Type} (prefix suffix : Program) (f : IR A C) (
     (s s-final : State) (orig-rsp orig-rbp : ℕ) : Set where
   field
     -- Execution star
-    star-cleanup : Star (prefix ++ compile-x86 [ f , g ] ++ suffix) s s-final
+    star-cleanup : Star (prefix ++ compile-instr [ f , g ] ++ suffix) s s-final
     -- State properties
     h-final : halted s-final ≡ false
     pc-final : pc s-final ≡ length prefix +ℕ compile-length [ f , g ]
@@ -106,7 +106,7 @@ case-inl-cleanup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
   -- Stack has capacity (orig-rsp ≥ slot-size for subtraction to be valid)
   slot-size ≤ orig-rsp →
   StackInvariant s →
-  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+  let prog = prefix ++ compile-instr [ f , g ] ++ suffix
   in ∃[ s-final ] CaseCleanupResult {A} {B} {C} prefix suffix f g s s-final orig-rsp orig-rbp
 case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
     h-false pc-eq rbp-eq mem-rbp rsp-cap stack-inv =
@@ -114,8 +114,8 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
   where
     len-f = compile-length f
     len-g = compile-length g
-    prog = prefix ++ compile-x86 [ f , g ] ++ suffix
-    case-code = compile-x86 [ f , g ] ++ suffix
+    prog = prefix ++ compile-instr [ f , g ] ++ suffix
+    case-code = compile-instr [ f , g ] ++ suffix
 
     -- Current rbp value
     rbp-val = readReg (regs s) rbp
@@ -158,8 +158,8 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
       fetch (i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ xs) (6 +ℕ n) ≡ fetch xs n
     fetch-skip-6 i0 i1 i2 i3 i4 i5 xs n = refl
 
-    -- The compile-x86 [ f , g ] structure:
-    -- i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ (compile-x86 f ++ jmp ∷ label ∷ mov ∷ compile-x86 g ++ cleanup)
+    -- The compile-instr [ f , g ] structure:
+    -- i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷ (compile-instr f ++ jmp ∷ label ∷ mov ∷ compile-instr g ++ cleanup)
     -- where cleanup = mov rsp rbp ∷ pop rbp ∷ []
 
     -- Setup instructions (indices 0-5)
@@ -181,36 +181,36 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
 
     -- Middle code structure
     middle-code : List Instr
-    middle-code = jmp-instr ∷ label-instr ∷ mov-rdi-instr ∷ compile-x86 g ++ cleanup-mov ∷ cleanup-pop ∷ []
+    middle-code = jmp-instr ∷ label-instr ∷ mov-rdi-instr ∷ compile-instr g ++ cleanup-mov ∷ cleanup-pop ∷ []
 
     -- The tail after setup instructions
     after-setup : List Instr
-    after-setup = compile-x86 f ++ middle-code
+    after-setup = compile-instr f ++ middle-code
 
-    -- compile-x86 [ f , g ] = setup ++ after-setup
-    case-code-structure : compile-x86 [ f , g ] ≡
+    -- compile-instr [ f , g ] = setup ++ after-setup
+    case-code-structure : compile-instr [ f , g ] ≡
       setup-0 ∷ setup-1 ∷ setup-2 ∷ setup-3 ∷ setup-4 ∷ setup-5 ∷ after-setup
     case-code-structure = refl
 
     -- fetch at index 6+len-f in case-code gets jmp
-    -- First skip 6 setup instrs, then skip len-f instrs of compile-x86 f, get jmp at head
+    -- First skip 6 setup instrs, then skip len-f instrs of compile-instr f, get jmp at head
     fetch-case-code-jmp : fetch case-code (6 +ℕ len-f) ≡ just jmp-instr
     fetch-case-code-jmp =
       let
-        -- Step 1: case-code = compile-x86 [ f , g ] ++ suffix
-        -- fetch case-code (6+len-f) = fetch (compile-x86 [ f , g ] ++ suffix) (6+len-f)
-        -- Since 6+len-f < length (compile-x86 [ f , g ]), we can use fetch-append-left
+        -- Step 1: case-code = compile-instr [ f , g ] ++ suffix
+        -- fetch case-code (6+len-f) = fetch (compile-instr [ f , g ] ++ suffix) (6+len-f)
+        -- Since 6+len-f < length (compile-instr [ f , g ]), we can use fetch-append-left
         -- Actually, let's use a more direct approach
 
-        -- Step 2: compile-x86 [ f , g ] = setup ++ after-setup
-        -- fetch (compile-x86 [ f , g ] ++ suffix) (6+len-f)
+        -- Step 2: compile-instr [ f , g ] = setup ++ after-setup
+        -- fetch (compile-instr [ f , g ] ++ suffix) (6+len-f)
         -- = fetch (setup ++ after-setup ++ suffix) (6+len-f)  where setup has length 6
         -- = fetch (after-setup ++ suffix) len-f  by fetch-append-right
 
-        -- Step 3: after-setup = compile-x86 f ++ middle-code
+        -- Step 3: after-setup = compile-instr f ++ middle-code
         -- fetch (after-setup ++ suffix) len-f
-        -- = fetch ((compile-x86 f ++ middle-code) ++ suffix) len-f
-        -- = fetch (compile-x86 f ++ (middle-code ++ suffix)) len-f  by ++-assoc
+        -- = fetch ((compile-instr f ++ middle-code) ++ suffix) len-f
+        -- = fetch (compile-instr f ++ (middle-code ++ suffix)) len-f  by ++-assoc
         -- = fetch (middle-code ++ suffix) 0  by fetch-append-right
 
         -- Step 4: middle-code = jmp ∷ ...
@@ -221,20 +221,20 @@ case-inl-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
         step1 = trans (cong (λ c → fetch (c ++ suffix) (6 +ℕ len-f)) case-code-structure)
                       (fetch-skip-6 setup-0 setup-1 setup-2 setup-3 setup-4 setup-5 (after-setup ++ suffix) len-f)
 
-        step2 : fetch (after-setup ++ suffix) len-f ≡ fetch ((compile-x86 f ++ middle-code) ++ suffix) len-f
+        step2 : fetch (after-setup ++ suffix) len-f ≡ fetch ((compile-instr f ++ middle-code) ++ suffix) len-f
         step2 = refl
 
-        step3 : fetch ((compile-x86 f ++ middle-code) ++ suffix) len-f ≡ fetch (compile-x86 f ++ (middle-code ++ suffix)) len-f
-        step3 = cong (λ xs → fetch xs len-f) (++-assoc (compile-x86 f) middle-code suffix)
+        step3 : fetch ((compile-instr f ++ middle-code) ++ suffix) len-f ≡ fetch (compile-instr f ++ (middle-code ++ suffix)) len-f
+        step3 = cong (λ xs → fetch xs len-f) (++-assoc (compile-instr f) middle-code suffix)
 
-        -- len-f = compile-length f = length (compile-x86 f) by compile-length-correct
-        len-f-eq : len-f ≡ length (compile-x86 f)
+        -- len-f = compile-length f = length (compile-instr f) by compile-length-correct
+        len-f-eq : len-f ≡ length (compile-instr f)
         len-f-eq = sym (compile-length-correct f)
 
-        step4 : fetch (compile-x86 f ++ (middle-code ++ suffix)) len-f ≡ fetch (middle-code ++ suffix) 0
-        step4 = trans (cong (λ n → fetch (compile-x86 f ++ (middle-code ++ suffix)) n)
-                            (trans len-f-eq (sym (+-identityʳ (length (compile-x86 f))))))
-                      (fetch-append-right (compile-x86 f) (middle-code ++ suffix) 0)
+        step4 : fetch (compile-instr f ++ (middle-code ++ suffix)) len-f ≡ fetch (middle-code ++ suffix) 0
+        step4 = trans (cong (λ n → fetch (compile-instr f ++ (middle-code ++ suffix)) n)
+                            (trans len-f-eq (sym (+-identityʳ (length (compile-instr f))))))
+                      (fetch-append-right (compile-instr f) (middle-code ++ suffix) 0)
 
         step5 : fetch (middle-code ++ suffix) 0 ≡ just jmp-instr
         step5 = refl
@@ -550,7 +550,7 @@ case-inr-cleanup-star : ∀ {A B C} (f : IR A C) (g : IR B C)
   -- Stack has capacity (orig-rsp ≥ slot-size for subtraction to be valid)
   slot-size ≤ orig-rsp →
   StackInvariant s →
-  let prog = prefix ++ compile-x86 [ f , g ] ++ suffix
+  let prog = prefix ++ compile-instr [ f , g ] ++ suffix
   in ∃[ s-final ] CaseCleanupResult {A} {B} {C} prefix suffix f g s s-final orig-rsp orig-rbp
 case-inr-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
     h-false pc-eq rbp-eq mem-rbp rsp-cap stack-inv =
@@ -558,8 +558,8 @@ case-inr-cleanup-star {A} {B} {C} f g prefix suffix s orig-rsp orig-rbp
   where
     len-f = compile-length f
     len-g = compile-length g
-    prog = prefix ++ compile-x86 [ f , g ] ++ suffix
-    case-code = compile-x86 [ f , g ] ++ suffix
+    prog = prefix ++ compile-instr [ f , g ] ++ suffix
+    case-code = compile-instr [ f , g ] ++ suffix
 
     -- Current rbp value
     rbp-val = readReg (regs s) rbp

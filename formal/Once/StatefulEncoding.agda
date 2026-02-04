@@ -11,7 +11,9 @@
 -- that satisfies the property by construction.
 ------------------------------------------------------------------------
 
-module Once.StatefulEncoding where
+open import Once.Backend.MachineInterface
+
+module Once.StatefulEncoding (MI : MachineInterface) where
 
 open import Once.Type
 open import Once.Memory
@@ -29,11 +31,11 @@ open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 ------------------------------------------------------------------------
--- Import type interpretation from Semantics
+-- Import type interpretation from SemanticBaseMachine
 -- We only need ⟦_⟧ and Closure, not eval
 ------------------------------------------------------------------------
 
-open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
+open import Once.SemanticBaseMachine MI using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
 open ⟦Fix⟧
 
 ------------------------------------------------------------------------

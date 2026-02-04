@@ -13,7 +13,7 @@
 module Once.Backend.X86.Correct.InitState where
 
 open import Once.Type
-open import Once.Semantics  -- Word is from X86.Semantics
+open import Once.Platform.X86-64 using (⟦_⟧; encode)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
@@ -21,7 +21,8 @@ open Once.Backend.X86.Semantics.State
 open Once.Backend.X86.Semantics.Flags
 
 -- Import stateful encoding (replaces postulated encode)
-open import Once.StatefulEncoding
+open import Once.Backend.Word64 using (Word64Interface)
+open import Once.StatefulEncoding Word64Interface
   using (encode-s;
          encode-pair-fst-thm; encode-pair-snd-thm;
          encode-inl-tag-thm; encode-inl-val-thm;
@@ -34,9 +35,6 @@ import Once.Memory as Mem
 -- Import validity predicates (address-based versions)
 open import Once.Backend.X86.Correct.MemoryValid
   using (PairAtS; pair-at-s; InlAtS; inl-at-s; InrAtS; inr-at-s)
-
-open import Once.Postulates
-  using (encode)
 
 -- Import StackInvariant for initial state proof
 open import Once.Backend.X86.Correct.StackInvariant

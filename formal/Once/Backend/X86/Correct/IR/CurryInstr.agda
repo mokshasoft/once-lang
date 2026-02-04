@@ -168,7 +168,7 @@ run-curry-star : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x : �
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (curry f)) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  let prog = prefix ++ compile-instr (curry f) ++ suffix
   in ∃[ s' ] (CurryExecResult f prog s s' x (length prefix)
              × CurryMemoryResult f prog s' x (length prefix))
 run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
@@ -208,7 +208,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     }
   where
     len-f = compile-length f
-    prog = prefix ++ compile-x86 (curry f) ++ suffix
+    prog = prefix ++ compile-instr (curry f) ++ suffix
 
     -- Derive rsp bound from StackCapacity using dynamic requirement
     -- ir-rsp-delta (curry f) ≤ ir-stack-requirement (curry f) via named lemma
@@ -382,7 +382,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
       mov (mem (base rsp)) (reg r12) ∷
       mov (mem (base+disp rsp 8)) (reg rdi) ∷
       mov (reg rdi) (reg rsp) ∷
-      compile-x86 f ++                 -- inner function
+      compile-instr f ++                 -- inner function
       mov (reg rsp) (reg rbp) ∷        -- restore stack
       pop rbp ∷                        -- restore frame pointer
       pop r15 ∷                        -- restore r15
@@ -398,11 +398,11 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
               mov (mem (base rsp)) (reg r12) ∷
               mov (mem (base+disp rsp 8)) (reg rdi) ∷
               mov (reg rdi) (reg rsp) ∷
-              compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ [])
+              compile-instr f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ [])
         ≡⟨ refl ⟩
-      14 +ℕ length (compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ [])
-        ≡⟨ cong (14 +ℕ_) (List-length-++ (compile-x86 f)) ⟩
-      14 +ℕ (length (compile-x86 f) +ℕ 4)
+      14 +ℕ length (compile-instr f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ [])
+        ≡⟨ cong (14 +ℕ_) (List-length-++ (compile-instr f)) ⟩
+      14 +ℕ (length (compile-instr f) +ℕ 4)
         ≡⟨ cong (λ z → 14 +ℕ (z +ℕ 4)) (compile-length-correct f) ⟩
       14 +ℕ (len-f +ℕ 4)
         ≡⟨ +-assoc 14 len-f 4 ⟩
@@ -416,12 +416,12 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
         ∎
 
     curry-code-inner : Program
-    curry-code-inner = compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ i6-label ∷ []
+    curry-code-inner = compile-instr f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ i6-label ∷ []
 
-    curry-inner-split : curry-code-inner ≡ (compile-x86 f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ []) ++ i6-label ∷ []
-    curry-inner-split = sym (++-assoc (compile-x86 f) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ []) (i6-label ∷ []))
+    curry-inner-split : curry-code-inner ≡ (compile-instr f ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ []) ++ i6-label ∷ []
+    curry-inner-split = sym (++-assoc (compile-instr f) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ pop r15 ∷ ret ∷ []) (i6-label ∷ []))
 
-    curry-split : compile-x86 (curry f) ≡ curry-before-end-label ++ i6-label ∷ []
+    curry-split : compile-instr (curry f) ≡ curry-before-end-label ++ i6-label ∷ []
     curry-split = cong (λ rest → i0 ∷ i1 ∷ i2 ∷ i3 ∷ i4 ∷ i5 ∷
                                  label 6 ∷ push (reg r15) ∷ push (reg rbp) ∷ mov (reg rbp) (reg rsp) ∷
                                  sub (reg rsp) (imm (pair-alloc)) ∷
@@ -440,7 +440,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     prog-eq-for-fetch6 = begin
       prog
         ≡⟨ refl ⟩
-      prefix ++ compile-x86 (curry f) ++ suffix
+      prefix ++ compile-instr (curry f) ++ suffix
         ≡⟨ cong (λ z → prefix ++ z ++ suffix) curry-split ⟩
       prefix ++ (curry-before-end-label ++ i6-label ∷ []) ++ suffix
         ≡⟨ cong (prefix ++_) (++-assoc curry-before-end-label (i6-label ∷ []) suffix) ⟩
@@ -1037,7 +1037,7 @@ run-curry-star-v : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) (x :
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (curry f)) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  let prog = prefix ++ compile-instr (curry f) ++ suffix
   in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
 run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv =
   s-final , record
@@ -1065,8 +1065,8 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     }
   where
     -- Call curry with validity (no bridges!)
-    curry-result : ∃[ s' ] (CurryExecResult f (prefix ++ compile-x86 (curry f) ++ suffix) s s' x (length prefix)
-                           × CurryMemoryResult f (prefix ++ compile-x86 (curry f) ++ suffix) s' x (length prefix))
+    curry-result : ∃[ s' ] (CurryExecResult f (prefix ++ compile-instr (curry f) ++ suffix) s s' x (length prefix)
+                           × CurryMemoryResult f (prefix ++ compile-instr (curry f) ++ suffix) s' x (length prefix))
     curry-result = run-curry-star f prefix suffix x s h-false pc-eq input-valid stack-inv cap rbp-inv
 
     s-final = proj₁ curry-result

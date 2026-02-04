@@ -111,14 +111,14 @@ run-id-at-offset : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State)
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
-  ∃[ s' ] (step (prefix ++ compile-x86 (id {A}) ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-instr (id {A}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode x)
 run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 (id {A}) ++ suffix
+    prog = prefix ++ compile-instr (id {A}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -146,14 +146,14 @@ run-id-at-offset {A} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' 
 run-terminal-at-offset : ∀ {A} (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
-  ∃[ s' ] (step (prefix ++ compile-x86 (terminal {A}) ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-instr (terminal {A}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode {Unit} tt)
 run-terminal-at-offset {A} prefix suffix x s h-false pc-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 (terminal {A}) ++ suffix
+    prog = prefix ++ compile-instr (terminal {A}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax 0
@@ -177,20 +177,20 @@ run-terminal-at-offset {A} prefix suffix x s h-false pc-eq = s' , step-eq , h' ,
     rax-eq = trans (readReg-writeReg-same (regs s) rax 0) (sym encode-unit)
 
 -- | Execute fold at arbitrary offset in a program (non-halting)
--- compile-x86 fold = [mov rax, rdi] (same as id)
+-- compile-instr fold = [mov rax, rdi] (same as id)
 -- Result is encode (wrap x) = encode x by encode-fix-wrap
 run-fold-at-offset : ∀ {F} (prefix suffix : Program) (x : ⟦ F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
-  ∃[ s' ] (step (prefix ++ compile-x86 (fold {F}) ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-instr (fold {F}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode (wrap x))
 run-fold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 (fold {F}) ++ suffix
+    prog = prefix ++ compile-instr (fold {F}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -215,20 +215,20 @@ run-fold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h
                    (trans rdi-eq (encode-fix-wrap x))
 
 -- | Execute unfold at arbitrary offset in a program (non-halting)
--- compile-x86 unfold = [mov rax, rdi] (same as id)
+-- compile-instr unfold = [mov rax, rdi] (same as id)
 -- Result is encode (eval unfold x) by encode-fix-unwrap
 run-unfold-at-offset : ∀ {F} (prefix suffix : Program) (x : ⟦ Fix F ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode x →
-  ∃[ s' ] (step (prefix ++ compile-x86 (unfold {F}) ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-instr (unfold {F}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode (eval unfold x))
 run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 (unfold {F}) ++ suffix
+    prog = prefix ++ compile-instr (unfold {F}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -254,21 +254,21 @@ run-unfold-at-offset {F} prefix suffix x s h-false pc-eq rdi-eq = s' , step-eq ,
                    (trans rdi-eq (encode-fix-unwrap x))
 
 -- | Execute arr at arbitrary offset in a program (non-halting)
--- compile-x86 arr = [mov rax, rdi] (same as id)
+-- compile-instr arr = [mov rax, rdi] (same as id)
 -- arr : IR (A ⇒ B) (Eff A B), eval arr f = f (identity)
 -- encode (eval arr f) = encode f
 run-arr-at-offset : ∀ {A B} (prefix suffix : Program) (f : ⟦ A ⇒ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode {A ⇒ B} f →
-  ∃[ s' ] (step (prefix ++ compile-x86 (arr {A} {B}) ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-instr (arr {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode {Eff A B} f)
 run-arr-at-offset {A} {B} prefix suffix f s h-false pc-eq rdi-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 (arr {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (arr {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (readReg (regs s) rdi)
@@ -294,20 +294,20 @@ run-arr-at-offset {A} {B} prefix suffix f s h-false pc-eq rdi-eq = s' , step-eq 
                    (trans rdi-eq (encode-arr-identity f))
 
 -- | Execute fst at arbitrary offset in a program (non-halting)
--- compile-x86 fst = [mov rax, [rdi]] (1 instruction)
+-- compile-instr fst = [mov rax, [rdi]] (1 instruction)
 run-fst-at-offset : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode (a , b) →
   readMem (memory s) (encode (a , b)) ≡ just (encode a) →
-  ∃[ s' ] (step (prefix ++ compile-x86 (fst {A} {B}) ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-instr (fst {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode a)
 run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (fst {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (encode a)
@@ -332,20 +332,20 @@ run-fst-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq = s' ,
     rax-eq = readReg-writeReg-same (regs s) rax (encode a)
 
 -- | Execute snd at arbitrary offset in a program (non-halting)
--- compile-x86 snd = [mov rax, [rdi+8]] (1 instruction)
+-- compile-instr snd = [mov rax, [rdi+8]] (1 instruction)
 run-snd-at-offset : ∀ {A B} (prefix suffix : Program) (a : ⟦ A ⟧) (b : ⟦ B ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ encode (a , b) →
   readMem (memory s) (encode (a , b) +ℕ 8) ≡ just (encode b) →
-  ∃[ s' ] (step (prefix ++ compile-x86 (snd {A} {B}) ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-instr (snd {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ encode b)
 run-snd-at-offset {A} {B} prefix suffix a b s h-false pc-eq rdi-eq mem-eq = s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (snd {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax (encode b)
@@ -387,7 +387,7 @@ run-fst-at-offset-s : ∀ {A B : Type} (prefix suffix : Program)
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ addr-pair →
   readMem (memory s) addr-pair ≡ just addr-a →
-  ∃[ s' ] (step (prefix ++ compile-x86 (fst {A} {B}) ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-instr (fst {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ addr-a)
@@ -395,7 +395,7 @@ run-fst-at-offset-s {A} {B} prefix suffix addr-pair addr-a s h-false pc-eq rdi-e
   s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 (fst {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (fst {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax addr-a
@@ -428,7 +428,7 @@ run-snd-at-offset-s : ∀ {A B : Type} (prefix suffix : Program)
   pc s ≡ length prefix →
   readReg (regs s) rdi ≡ addr-pair →
   readMem (memory s) (addr-pair +ℕ 8) ≡ just addr-b →
-  ∃[ s' ] (step (prefix ++ compile-x86 (snd {A} {B}) ++ suffix) s ≡ just s'
+  ∃[ s' ] (step (prefix ++ compile-instr (snd {A} {B}) ++ suffix) s ≡ just s'
          × halted s' ≡ false
          × pc s' ≡ length prefix +ℕ 1
          × readReg (regs s') rax ≡ addr-b)
@@ -436,7 +436,7 @@ run-snd-at-offset-s {A} {B} prefix suffix addr-pair addr-b s h-false pc-eq rdi-e
   s' , step-eq , h' , pc' , rax-eq
   where
     prog : Program
-    prog = prefix ++ compile-x86 (snd {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (snd {A} {B}) ++ suffix
 
     s' : State
     s' = record s { regs = writeReg (regs s) rax addr-b
@@ -540,19 +540,19 @@ compile-length>0 fold = s≤s z≤n
 compile-length>0 unfold = s≤s z≤n
 compile-length>0 arr = s≤s z≤n
 -- Prim: use contract-nonempty from ContractInterface
-compile-length>0 (Prim _ _ c) = contract-nonempty c
+compile-length>0 (Prim _ c) = contract-nonempty c
 
 ------------------------------------------------------------------------
 -- Case cleanup fetch lemmas
 --
 -- Proves fetch at cleanup position by stepping through the code structure:
--- skip setup (6) → skip compile-x86 f → skip middle (3) → skip compile-x86 g → head
+-- skip setup (6) → skip compile-instr f → skip middle (3) → skip compile-instr g → head
 ------------------------------------------------------------------------
 
 -- | Fetch cleanup-mov at case-cleanup-position
 -- Position = 6 + len-f + 3 + len-g (computed symbolically in CodeGen)
 fetch-case-cleanup-mov : ∀ {A B C} (f : IR A C) (g : IR B C) (suffix : Program) →
-  fetch (compile-x86 [ f , g ] ++ suffix) (case-cleanup-position f g) ≡
+  fetch (compile-instr [ f , g ] ++ suffix) (case-cleanup-position f g) ≡
   just (mov (reg rsp) (reg rbp))
 fetch-case-cleanup-mov f g suffix =
   trans (cong (λ n → fetch code n) pos-expand)
@@ -563,7 +563,7 @@ fetch-case-cleanup-mov f g suffix =
   where
     len-f = compile-length f
     len-g = compile-length g
-    code = compile-x86 [ f , g ] ++ suffix
+    code = compile-instr [ f , g ] ++ suffix
 
     -- Expand case-cleanup-position to 6 + (len-f + (3 + len-g))
     -- case-cleanup-position f g = ((6 + len-f) + 3) + len-g  (left-assoc)
@@ -573,15 +573,15 @@ fetch-case-cleanup-mov f g suffix =
     pos-expand = trans (+-assoc (6 +ℕ len-f) 3 len-g)
                        (+-assoc 6 len-f (3 +ℕ len-g))
 
-    -- The code segments inside compile-x86 [ f , g ]
-    -- rest = compile-x86 f ++ (jmp ∷ label ∷ mov ∷ (compile-x86 g ++ (mov rsp rbp ∷ pop ∷ [])))
+    -- The code segments inside compile-instr [ f , g ]
+    -- rest = compile-instr f ++ (jmp ∷ label ∷ mov ∷ (compile-instr g ++ (mov rsp rbp ∷ pop ∷ [])))
     rest-inner = jmp (case-jmp-base +ℕ len-g) ∷
                  label (case-right-label-base +ℕ len-f) ∷
                  mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
-                 compile-x86 g ++
+                 compile-instr g ++
                  mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
 
-    rest = compile-x86 f ++ rest-inner
+    rest = compile-instr f ++ rest-inner
 
     -- after-setup = rest ++ suffix (correctly structured)
     after-setup = rest ++ suffix
@@ -592,49 +592,49 @@ fetch-case-cleanup-mov f g suffix =
     skip-setup = refl
 
     -- Use ++-assoc to rewrite after-setup for the next step
-    -- after-setup = (compile-x86 f ++ rest-inner) ++ suffix
-    --             = compile-x86 f ++ (rest-inner ++ suffix)
+    -- after-setup = (compile-instr f ++ rest-inner) ++ suffix
+    --             = compile-instr f ++ (rest-inner ++ suffix)
     after-f-inner = rest-inner ++ suffix
 
-    after-setup-assoc : after-setup ≡ compile-x86 f ++ after-f-inner
-    after-setup-assoc = ++-assoc (compile-x86 f) rest-inner suffix
+    after-setup-assoc : after-setup ≡ compile-instr f ++ after-f-inner
+    after-setup-assoc = ++-assoc (compile-instr f) rest-inner suffix
 
-    -- Skip compile-x86 f using fetch-append-right
+    -- Skip compile-instr f using fetch-append-right
     skip-f : fetch after-setup (len-f +ℕ (3 +ℕ len-g)) ≡ fetch after-f-inner (3 +ℕ len-g)
     skip-f = trans (cong (λ xs → fetch xs (len-f +ℕ (3 +ℕ len-g))) after-setup-assoc)
-                   (trans (cong (λ n → fetch (compile-x86 f ++ after-f-inner) (n +ℕ (3 +ℕ len-g)))
+                   (trans (cong (λ n → fetch (compile-instr f ++ after-f-inner) (n +ℕ (3 +ℕ len-g)))
                                 (sym (compile-length-correct f)))
-                          (fetch-append-right (compile-x86 f) after-f-inner (3 +ℕ len-g)))
+                          (fetch-append-right (compile-instr f) after-f-inner (3 +ℕ len-g)))
 
     -- The code after middle (3 instructions)
-    -- after-f-inner = (jmp ∷ label ∷ mov ∷ (compile-x86 g ++ [mov, pop])) ++ suffix
-    -- By ++-assoc: = jmp ∷ label ∷ mov ∷ ((compile-x86 g ++ [mov, pop]) ++ suffix)
-    g-cleanup = compile-x86 g ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
+    -- after-f-inner = (jmp ∷ label ∷ mov ∷ (compile-instr g ++ [mov, pop])) ++ suffix
+    -- By ++-assoc: = jmp ∷ label ∷ mov ∷ ((compile-instr g ++ [mov, pop]) ++ suffix)
+    g-cleanup = compile-instr g ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
     after-middle = g-cleanup ++ suffix
 
     -- Skip 3 middle instructions (definitional after the ++ distributes through ∷)
     skip-middle : fetch after-f-inner (3 +ℕ len-g) ≡ fetch after-middle len-g
     skip-middle = refl
 
-    -- Use ++-assoc again for compile-x86 g
+    -- Use ++-assoc again for compile-instr g
     cleanup = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ suffix
 
-    after-middle-assoc : after-middle ≡ compile-x86 g ++ cleanup
-    after-middle-assoc = ++-assoc (compile-x86 g) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []) suffix
+    after-middle-assoc : after-middle ≡ compile-instr g ++ cleanup
+    after-middle-assoc = ++-assoc (compile-instr g) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []) suffix
 
-    -- Skip compile-x86 g using fetch-append-right
+    -- Skip compile-instr g using fetch-append-right
     skip-g : fetch after-middle len-g ≡ fetch cleanup 0
     skip-g = trans (cong (λ xs → fetch xs len-g) after-middle-assoc)
-                   (trans (cong (λ n → fetch (compile-x86 g ++ cleanup) n)
+                   (trans (cong (λ n → fetch (compile-instr g ++ cleanup) n)
                                 (trans (sym (compile-length-correct g))
-                                       (sym (+-identityʳ (length (compile-x86 g))))))
-                          (fetch-append-right (compile-x86 g) cleanup 0))
+                                       (sym (+-identityʳ (length (compile-instr g))))))
+                          (fetch-append-right (compile-instr g) cleanup 0))
       where
         open import Data.Nat.Properties using (+-identityʳ)
 
 -- | Fetch cleanup-pop at case-cleanup-position + 1
 fetch-case-cleanup-pop : ∀ {A B C} (f : IR A C) (g : IR B C) (suffix : Program) →
-  fetch (compile-x86 [ f , g ] ++ suffix) (case-cleanup-position f g +ℕ 1) ≡
+  fetch (compile-instr [ f , g ] ++ suffix) (case-cleanup-position f g +ℕ 1) ≡
   just (pop rbp)
 fetch-case-cleanup-pop f g suffix =
   trans (cong (λ n → fetch code n) pos-expand)
@@ -645,7 +645,7 @@ fetch-case-cleanup-pop f g suffix =
   where
     len-f = compile-length f
     len-g = compile-length g
-    code = compile-x86 [ f , g ] ++ suffix
+    code = compile-instr [ f , g ] ++ suffix
 
     -- Expand case-cleanup-position + 1 to 6 + (len-f + (3 + (len-g + 1)))
     -- case-cleanup-position f g + 1 = (((6 + len-f) + 3) + len-g) + 1
@@ -661,10 +661,10 @@ fetch-case-cleanup-pop f g suffix =
     rest-inner = jmp (case-jmp-base +ℕ len-g) ∷
                  label (case-right-label-base +ℕ len-f) ∷
                  mov (reg rdi) (mem (base+disp rdi slot-size)) ∷
-                 compile-x86 g ++
+                 compile-instr g ++
                  mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
 
-    rest = compile-x86 f ++ rest-inner
+    rest = compile-instr f ++ rest-inner
     after-setup = rest ++ suffix
 
     skip-setup : fetch code (6 +ℕ (len-f +ℕ (3 +ℕ (len-g +ℕ 1)))) ≡
@@ -674,30 +674,30 @@ fetch-case-cleanup-pop f g suffix =
     -- Use ++-assoc to rewrite after-setup for the next step
     after-f-inner = rest-inner ++ suffix
 
-    after-setup-assoc : after-setup ≡ compile-x86 f ++ after-f-inner
-    after-setup-assoc = ++-assoc (compile-x86 f) rest-inner suffix
+    after-setup-assoc : after-setup ≡ compile-instr f ++ after-f-inner
+    after-setup-assoc = ++-assoc (compile-instr f) rest-inner suffix
 
     skip-f : fetch after-setup (len-f +ℕ (3 +ℕ (len-g +ℕ 1))) ≡ fetch after-f-inner (3 +ℕ (len-g +ℕ 1))
     skip-f = trans (cong (λ xs → fetch xs (len-f +ℕ (3 +ℕ (len-g +ℕ 1)))) after-setup-assoc)
-                   (trans (cong (λ n → fetch (compile-x86 f ++ after-f-inner) (n +ℕ (3 +ℕ (len-g +ℕ 1))))
+                   (trans (cong (λ n → fetch (compile-instr f ++ after-f-inner) (n +ℕ (3 +ℕ (len-g +ℕ 1))))
                                 (sym (compile-length-correct f)))
-                          (fetch-append-right (compile-x86 f) after-f-inner (3 +ℕ (len-g +ℕ 1))))
+                          (fetch-append-right (compile-instr f) after-f-inner (3 +ℕ (len-g +ℕ 1))))
 
     -- The code after middle (3 instructions)
-    g-cleanup = compile-x86 g ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
+    g-cleanup = compile-instr g ++ mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []
     after-middle = g-cleanup ++ suffix
 
     skip-middle : fetch after-f-inner (3 +ℕ (len-g +ℕ 1)) ≡ fetch after-middle (len-g +ℕ 1)
     skip-middle = refl
 
-    -- Use ++-assoc again for compile-x86 g
+    -- Use ++-assoc again for compile-instr g
     cleanup = mov (reg rsp) (reg rbp) ∷ pop rbp ∷ suffix
 
-    after-middle-assoc : after-middle ≡ compile-x86 g ++ cleanup
-    after-middle-assoc = ++-assoc (compile-x86 g) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []) suffix
+    after-middle-assoc : after-middle ≡ compile-instr g ++ cleanup
+    after-middle-assoc = ++-assoc (compile-instr g) (mov (reg rsp) (reg rbp) ∷ pop rbp ∷ []) suffix
 
     skip-g : fetch after-middle (len-g +ℕ 1) ≡ fetch cleanup 1
     skip-g = trans (cong (λ xs → fetch xs (len-g +ℕ 1)) after-middle-assoc)
-                   (trans (cong (λ n → fetch (compile-x86 g ++ cleanup) (n +ℕ 1))
+                   (trans (cong (λ n → fetch (compile-instr g ++ cleanup) (n +ℕ 1))
                                 (sym (compile-length-correct g)))
-                          (fetch-append-right (compile-x86 g) cleanup 1))
+                          (fetch-append-right (compile-instr g) cleanup 1))

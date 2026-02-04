@@ -147,7 +147,7 @@ record ApplyWfResult {A B : Type} (prefix suffix : Program)
                      (semantics : ⟦ A ⟧ → ⟦ B ⟧) (arg : ⟦ A ⟧)
                      (s s' : State) : Set where
   private
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
     offset = length prefix
   field
     star         : Star prog s s'
@@ -183,7 +183,7 @@ run-apply-with-wf : ∀ {E A B} (prefix suffix : Program)
                     (code-ptr : ℕ) (env : ⟦ E ⟧)
                     (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                     (arg : ⟦ A ⟧) (arg-addr env-addr : ℕ) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       offset = length prefix
       cl = record { env-addr = env-addr ; semantics = semantics }
   in
@@ -222,7 +222,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     ; mem-heap-region = mem-heap-region-f
     }
   where
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
     offset = length prefix
     ret-addr = offset +ℕ 7  -- Updated: thunk returns to pop r15 instruction
     old-r15 = readReg (regs s) r15
@@ -674,7 +674,7 @@ run-apply-star-with-wf : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                          (arg : ⟦ A ⟧) (arg-addr env-addr : ℕ) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       offset = length prefix
       cl = record { env-addr = env-addr ; semantics = semantics }
   in
@@ -750,7 +750,7 @@ run-apply-to-ir-result : ∀ {E A B} (prefix suffix : Program)
                          (code-ptr : ℕ) (env : ⟦ E ⟧)
                          (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                          (arg : ⟦ A ⟧) (arg-addr env-addr : ℕ) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       offset = length prefix
       x = (record { env-addr = env-addr ; semantics = semantics } , arg)
   in
@@ -807,8 +807,8 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
     }
   where
-    open import Once.Semantics using (Closure)
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    open import Once.Platform.X86-64 using (Closure)
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
     offset = length prefix
     -- NOTE: Uses env-addr parameter directly (no encode!)
     x : ⟦ (A ⇒ B) * A ⟧
@@ -921,7 +921,7 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
                            (semantics : ⟦ A ⟧ → ⟦ B ⟧)
                            (closure-addr arg-addr env-addr : ℕ)
                            (arg : ⟦ A ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       offset = length prefix
       cl = record { env-addr = env-addr ; semantics = semantics }
       x = (cl , arg)
@@ -942,7 +942,7 @@ run-apply-to-ir-result-v : ∀ {E A B} (prefix suffix : Program)
 run-apply-to-ir-result-v {E} {A} {B} prefix suffix code-ptr env semantics closure-addr arg-addr env-addr arg s
                          wf h-eq pc-eq stack-inv cap rbp-inv input-valid v-arg v-env pair-at closure-at =
   let
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
     offset = length prefix
 
     -- Construct mem-layout from validity predicates
@@ -995,15 +995,15 @@ run-apply-star-direct : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) *
   ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
   RbpInvariant s →
-  ApplyReady x s (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  ApplyReady x s (prefix ++ compile-instr (apply {A} {B}) ++ suffix) →
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
 run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv rbp-inv ar =
   s' , subst (λ xv → IRStarResultV (apply {A} {B}) prog s s' xv offset) x-eq ir-result
   where
     open ApplyReady ar
 
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
     offset = length prefix
 
     -- ENCODE-FREE: Use ar-sem-eq and ar-env-addr-eq directly!
@@ -1015,7 +1015,8 @@ run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq input-valid stack-
     -- ar-sem-eq : ar-sem ≡ Closure.semantics (proj₁ x)
     -- ar-env-addr-eq : ar-env-addr ≡ Closure.env-addr (proj₁ x)
     -- Closure-η : record { env-addr = e ; semantics = s } ≡ cl when e = env-addr cl, s = semantics cl
-    open import Once.Semantics using (Closure-η)
+    open import Once.Backend.Word64 using (Word64Interface)
+    open import Once.SemanticsMachine Word64Interface using (Closure-η)
     open import Relation.Binary.PropositionalEquality using (trans; cong₂)
 
     -- First build record with proj₁ x's fields
@@ -1063,7 +1064,7 @@ run-apply-star-v : ∀ {A B} (prefix suffix : Program) (x : ⟦ (A ⇒ B) * A �
   ValidAt {(A ⇒ B) * A} x (readReg (regs s) rdi) (memory s) →
   StackInvariant s →
   RbpInvariant s →
-  ApplyReady x s (prefix ++ compile-x86 (apply {A} {B}) ++ suffix) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  ApplyReady x s (prefix ++ compile-instr (apply {A} {B}) ++ suffix) →
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
   in ∃[ s' ] IRStarResultV (apply {A} {B}) prog s s' x (length prefix)
 run-apply-star-v = run-apply-star-direct

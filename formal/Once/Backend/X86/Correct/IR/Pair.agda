@@ -475,7 +475,7 @@ run-pair-star-v : ∀ {A B C} (f : IR C A) (g : IR C B) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+  let prog = prefix ++ compile-instr ⟨ f , g ⟩ ++ suffix
   in ∃[ s' ] IRStarResultV ⟨ f , g ⟩ prog s s' x (length prefix)
 run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     s-final , result-v

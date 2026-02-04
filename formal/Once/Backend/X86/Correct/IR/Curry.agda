@@ -97,7 +97,7 @@ curry-thunk-correct-v : ∀ {A B C} (f : IR (A * B) C)
                         (f<bound : ir-size f < bound)
                         (prefix suffix : Program) (caller-sp : StackPointer) (env : ⟦ A ⟧)
                         (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  let prog = prefix ++ compile-instr (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
       thunk-cap = thunk-setup-consumed-slots +ℕ ir-stack-requirement f
   in
@@ -129,7 +129,7 @@ curry-thunk-correct-v {A} {B} {C} f bound rec f<bound prefix suffix caller-sp en
           1≤thunk-cap : 1 ≤ thunk-setup-consumed-slots +ℕ ir-stack-requirement f
           1≤thunk-cap = ≤-trans (s≤s z≤n) (m≤m+n thunk-setup-consumed-slots (ir-stack-requirement f))
 
-      prog = prefix ++ compile-x86 (curry f) ++ suffix
+      prog = prefix ++ compile-instr (curry f) ++ suffix
       thunk-offset = length prefix +ℕ 6
       f-offset = length prefix +ℕ 14      -- 6 closure + 8 thunk setup
       ret-offset = length prefix +ℕ 17 +ℕ compile-length f  -- f-offset + len-f + 3 cleanup
@@ -188,16 +188,16 @@ curry-thunk-correct-v {A} {B} {C} f bound rec f<bound prefix suffix caller-sp en
       len-prefix-f = trans (List-length-++ prefix {curry-closure-setup ++ curry-thunk-setup-prog})
                            (cong (length prefix +ℕ_) (List-length-++ curry-closure-setup {curry-thunk-setup-prog}))
 
-      curry-structure : compile-x86 (curry f) ≡
-                        curry-closure-setup ++ curry-thunk-setup-prog ++ compile-x86 f ++ curry-tail
+      curry-structure : compile-instr (curry f) ≡
+                        curry-closure-setup ++ curry-thunk-setup-prog ++ compile-instr f ++ curry-tail
       curry-structure = refl
 
-      prog-eq-f : prog ≡ prefix-f ++ compile-x86 f ++ suffix-f
+      prog-eq-f : prog ≡ prefix-f ++ compile-instr f ++ suffix-f
       prog-eq-f = trans (cong (λ x → prefix ++ x ++ suffix) curry-structure) prog-reassoc
         where
           ccs = curry-closure-setup
           cts = curry-thunk-setup-prog
-          code-f = compile-x86 f
+          code-f = compile-instr f
           cta = curry-tail
           prog-reassoc : prefix ++ (ccs ++ cts ++ code-f ++ cta) ++ suffix ≡ prefix-f ++ code-f ++ suffix-f
           prog-reassoc =
@@ -227,17 +227,17 @@ curry-thunk-correct-v {A} {B} {C} f bound rec f<bound prefix suffix caller-sp en
                     cap-thunk rsp-setup
 
       -- Recursive call via rec (replaces run-ir-star-at-offset-v ... (smaller-acc ...))
-      step-f-v : ∃[ s-f ] IRStarResultV f (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
+      step-f-v : ∃[ s-f ] IRStarResultV f (prefix-f ++ compile-instr f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f-v = rec f f<bound prefix-f suffix-f caller-sp (env , arg) s-after-setup
                    h-setup pc-setup-f input-valid-f stack-inv-setup cap-setup rbp-inv-setup
 
       s-after-f-raw : State
       s-after-f-raw = proj₁ step-f-v
 
-      r-f-v : IRStarResultV f (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-after-f-raw (env , arg) (length prefix-f)
+      r-f-v : IRStarResultV f (prefix-f ++ compile-instr f ++ suffix-f) s-after-setup s-after-f-raw (env , arg) (length prefix-f)
       r-f-v = proj₂ step-f-v
 
-      star-f-raw : Star (prefix-f ++ compile-x86 f ++ suffix-f) s-after-setup s-after-f-raw
+      star-f-raw : Star (prefix-f ++ compile-instr f ++ suffix-f) s-after-setup s-after-f-raw
       star-f-raw = IRStarResultV.ir-star r-f-v
 
       result-valid-f : ValidAt (eval f (env , arg)) (readReg (regs s-after-f-raw) rax) (memory s-after-f-raw)

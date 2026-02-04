@@ -213,9 +213,9 @@ make-pair-context {A} {B} {C} f g prefix suffix = record
   where
     len-f = compile-length f
     len-g = compile-length g
-    code-f = compile-x86 f
-    code-g = compile-x86 g
-    prog = prefix ++ compile-x86 ⟨ f , g ⟩ ++ suffix
+    code-f = compile-instr f
+    code-g = compile-instr g
+    prog = prefix ++ compile-instr ⟨ f , g ⟩ ++ suffix
 
     -- Setup instructions (7)
     setup-push-r14 = push (reg r14)

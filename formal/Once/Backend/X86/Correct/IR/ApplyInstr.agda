@@ -68,7 +68,7 @@ open import Relation.Binary.PropositionalEquality using (_≢_; subst₂)
 apply-setup-star : ∀ {A B} (prefix suffix : Program)
                    (code-ptr env-addr closure-addr arg-addr : ℕ)
                    (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       offset = length prefix
   in
   halted s ≡ false →
@@ -112,7 +112,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
                  rdi-stack-bound closure-stack-bound mem-cl mem-arg mem-env mem-cp code-ptr<len =
   s6 , star-all , h6 , pc6 , rdi6 , r12-6 , r15-6 , r14-6 , rbp6 , stack-inv6 , rsp-sufficient-6 , mem-r15-saved , rsp6 , mem-above-setup
   where
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
     offset = length prefix
     old-r15 = readReg (regs s) r15
     old-rsp = readReg (regs s) rsp
@@ -479,7 +479,7 @@ apply-setup-star {A} {B} prefix suffix code-ptr env-addr closure-addr arg-addr s
 -- Takes StackCapacity s apply-cap-after-push to produce StackCapacity s' apply-cap-after-call (for thunk)
 apply-call-star : ∀ {A B} (prefix suffix : Program)
                   (code-ptr : ℕ) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       offset = length prefix
       ret-addr = offset +ℕ 7
   in
@@ -517,7 +517,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
   where
     open import Data.Nat.Properties using (≤-<-trans; m≤m+n)
 
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
     offset = length prefix
     ret-addr = offset +ℕ 7
 
@@ -649,7 +649,7 @@ apply-call-star {A} {B} prefix suffix code-ptr s h-false pc-eq r15-eq stack-inv 
 record ApplyPopResult {A B : Type} (prefix suffix : Program)
                       (old-r15 orig-rsp : ℕ) (s s' : State) : Set where
   private
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
     offset = length prefix
   field
     star-pop     : Star prog s s'
@@ -685,7 +685,7 @@ data R15OrigInfo (old-r15 orig-rsp : ℕ) : Set where
 -- This restores r15 to its original value (saved at start by push r15)
 apply-pop-star : ∀ {A B} (prefix suffix : Program)
                  (old-r15 orig-rsp : ℕ) (s : State) →
-  let prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+  let prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       offset = length prefix
   in
   halted s ≡ false →
@@ -710,7 +710,7 @@ apply-pop-star {A} {B} prefix suffix old-r15 orig-rsp s h-false pc-eq mem-r15 rs
     ; mem-pop-preserved = refl
     }
   where
-    prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+    prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
     offset = length prefix
 
     -- The pop instruction (i7)

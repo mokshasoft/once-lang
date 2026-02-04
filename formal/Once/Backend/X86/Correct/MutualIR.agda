@@ -23,13 +23,14 @@ open import Once.Backend.X86.Correct.Foundation
   using (IR; _∘_; id; fst; snd; ⟨_,_⟩; inl; inr; [_,_]; terminal; initial;
          curry; apply; fold; unfold; arr; Prim;
          ⟦_⟧; eval; Closure; encode; wrap; unwrap;
-         compile-x86; compile-length;
+         compile-instr; compile-length;
          ir-size; ∘-f-smaller; ∘-g-smaller; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller;
          [,]-f-smaller; [,]-g-smaller; curry-smaller;
          curry-overhead; case-overhead;
          Instr; Program)
--- Closure-η is the only thing we need from Semantics that's not in Foundation
-open import Once.Semantics using () renaming (Closure-η to Closure-η-sem)
+-- Closure-η comes from SemanticsMachine
+open import Once.Backend.Word64 using (Word64Interface)
+open import Once.SemanticsMachine Word64Interface renaming (Closure-η to Closure-η-sem)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
@@ -217,9 +218,9 @@ mutual
     StackInvariant s →
     StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
-    ClosureWFOutput (prefix ++ compile-x86 ir ++ suffix) s →
+    ClosureWFOutput (prefix ++ compile-instr ir ++ suffix) s →
     Acc _<_ (ir-size ir) →
-    let prog = prefix ++ compile-x86 ir ++ suffix
+    let prog = prefix ++ compile-instr ir ++ suffix
     in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
   ------------------------------------------------------------------------
@@ -236,9 +237,9 @@ mutual
     StackInvariant s →
     StackCapacity s (ir-stack-requirement (curry f)) →
     RbpInvariant s →
-    ClosureWFOutput (prefix ++ compile-x86 (curry f) ++ suffix) s →
+    ClosureWFOutput (prefix ++ compile-instr (curry f) ++ suffix) s →
     Acc _<_ (ir-size (curry f)) →
-    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+    let prog = prefix ++ compile-instr (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
   run-curry-star-direct {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ (acc rs) =
     s' , record
@@ -284,7 +285,7 @@ mutual
                           curry-pair-is-rdi        -- pair-is-rdi: postulated placeholder
       }
     where
-      prog = prefix ++ compile-x86 (curry f) ++ suffix
+      prog = prefix ++ compile-instr (curry f) ++ suffix
       offset = length prefix
       thunk-offset = offset +ℕ 6
 
@@ -413,29 +414,29 @@ mutual
         }
 
   -- | Lemma: thunk offset (|prefix| + 6) is within program bounds
-  -- prog = prefix ++ compile-x86 (curry f) ++ suffix
+  -- prog = prefix ++ compile-instr (curry f) ++ suffix
   -- compile-length (curry f) = 19 + compile-length f ≥ 19
-  -- So |prefix| + 6 < |prefix| + 19 ≤ |prefix ++ compile-x86 (curry f) ++ suffix|
+  -- So |prefix| + 6 < |prefix| + 19 ≤ |prefix ++ compile-instr (curry f) ++ suffix|
   thunk-offset-in-bounds : ∀ {A B C} (f : IR (A * B) C) (prefix suffix : Program) →
-    length prefix +ℕ 6 < length (prefix ++ compile-x86 (curry f) ++ suffix)
+    length prefix +ℕ 6 < length (prefix ++ compile-instr (curry f) ++ suffix)
   thunk-offset-in-bounds {A} {B} {C} f prefix suffix = goal
     where
       open import Data.List.Properties as LP using (length-++)
       open import Data.Nat.Properties using (+-mono-<; +-monoʳ-<; m≤m+n; m≤n+m; ≤-trans; <-≤-trans)
 
-      -- Length of compile-x86 (curry f) is 19 + compile-length f
+      -- Length of compile-instr (curry f) is 19 + compile-length f
       -- (6 closure setup + 1 push r15 + 7 thunk setup + len-f + 5 cleanup/end)
-      curry-len : length (compile-x86 (curry f)) ≡ 19 +ℕ compile-length f
+      curry-len : length (compile-instr (curry f)) ≡ 19 +ℕ compile-length f
       curry-len = compile-length-correct (curry f)
 
       -- Length of full program
-      prog-len : length (prefix ++ compile-x86 (curry f) ++ suffix)
-               ≡ length prefix +ℕ length (compile-x86 (curry f) ++ suffix)
+      prog-len : length (prefix ++ compile-instr (curry f) ++ suffix)
+               ≡ length prefix +ℕ length (compile-instr (curry f) ++ suffix)
       prog-len = LP.length-++ prefix
 
-      inner-len : length (compile-x86 (curry f) ++ suffix)
-                ≡ length (compile-x86 (curry f)) +ℕ length suffix
-      inner-len = LP.length-++ (compile-x86 (curry f))
+      inner-len : length (compile-instr (curry f) ++ suffix)
+                ≡ length (compile-instr (curry f)) +ℕ length suffix
+      inner-len = LP.length-++ (compile-instr (curry f))
 
 
       -- thunk-entry-offset < curry-overhead + compile-length f
@@ -452,18 +453,18 @@ mutual
 
       -- Rewrite using curry-len and inner-len
       step2 : length prefix +ℕ (curry-overhead +ℕ compile-length f +ℕ length suffix)
-            ≡ length prefix +ℕ (length (compile-x86 (curry f)) +ℕ length suffix)
+            ≡ length prefix +ℕ (length (compile-instr (curry f)) +ℕ length suffix)
       step2 = cong (length prefix +ℕ_) (cong (_+ℕ length suffix) (sym curry-len))
 
-      step3 : length prefix +ℕ (length (compile-x86 (curry f)) +ℕ length suffix)
-            ≡ length prefix +ℕ length (compile-x86 (curry f) ++ suffix)
+      step3 : length prefix +ℕ (length (compile-instr (curry f)) +ℕ length suffix)
+            ≡ length prefix +ℕ length (compile-instr (curry f) ++ suffix)
       step3 = cong (length prefix +ℕ_) (sym inner-len)
 
-      step4 : length prefix +ℕ length (compile-x86 (curry f) ++ suffix)
-            ≡ length (prefix ++ compile-x86 (curry f) ++ suffix)
+      step4 : length prefix +ℕ length (compile-instr (curry f) ++ suffix)
+            ≡ length (prefix ++ compile-instr (curry f) ++ suffix)
       step4 = sym prog-len
 
-      goal : length prefix +ℕ thunk-entry-offset < length (prefix ++ compile-x86 (curry f) ++ suffix)
+      goal : length prefix +ℕ thunk-entry-offset < length (prefix ++ compile-instr (curry f) ++ suffix)
       goal = subst (length prefix +ℕ thunk-entry-offset <_) (trans step2 (trans step3 step4)) step1
 
   -- | Star-based curry execution with closure well-formedness proof (with Acc)
@@ -477,7 +478,7 @@ mutual
     StackCapacity s (ir-stack-requirement (curry f)) →
     RbpInvariant s →
     Acc _<_ (ir-size (curry f)) →
-    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+    let prog = prefix ++ compile-instr (curry f) ++ suffix
     in ∃[ s' ] CurryResult f prog s s' x (length prefix)
   run-curry-star-with-wf {A} {B} {C} f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv (acc rs) =
     s' , record
@@ -494,7 +495,7 @@ mutual
       ; closure-wf = wf
       }
     where
-      prog = prefix ++ compile-x86 (curry f) ++ suffix
+      prog = prefix ++ compile-instr (curry f) ++ suffix
       offset = length prefix
 
       -- Get CurryExecResult from curry proof (no bridges!)
@@ -560,7 +561,7 @@ mutual
   ------------------------------------------------------------------------
   make-curry-closure-wf : ∀ {A B C} (f : IR (A * B) C)
                           (prefix suffix : Program) (x : ⟦ A ⟧) →
-    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+    let prog = prefix ++ compile-instr (curry f) ++ suffix
         thunk-offset = length prefix +ℕ 6
     in ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
   make-curry-closure-wf {A} {B} {C} f prefix suffix x = record
@@ -596,9 +597,9 @@ mutual
     StackInvariant s →
     StackCapacity s (ir-stack-requirement (curry f)) →
     RbpInvariant s →
-    ClosureWFOutput (prefix ++ compile-x86 (curry f) ++ suffix) s →
+    ClosureWFOutput (prefix ++ compile-instr (curry f) ++ suffix) s →
     Acc _<_ (ir-size (curry f)) →
-    let prog = prefix ++ compile-x86 (curry f) ++ suffix
+    let prog = prefix ++ compile-instr (curry f) ++ suffix
     in ∃[ s' ] IRStarResultV (curry f) prog s s' x (length prefix)
   run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
     -- run-curry-star-direct takes validity input directly, passes Acc for thunk execution
@@ -651,9 +652,9 @@ mutual
   run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
-  run-ir-star-at-offset-v (Prim {A} {B} name sem contract) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (Prim {A} {B} name contract) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid stack-proof
-    in run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
+    in run-prim-star-vv name contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
   -- Initial: absurd case (base case, ignores Acc)
   run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x
@@ -695,7 +696,7 @@ mutual
   run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv cwf ac =
     construct-apply cwf
     where
-      prog = prefix ++ compile-x86 (apply {A} {B}) ++ suffix
+      prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
       m = memory s
 
       -- Decompose input pair validity (no encode!)
@@ -812,7 +813,7 @@ run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : Sta
   StackInvariant s →
   StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 ir ++ suffix
+  let prog = prefix ++ compile-instr ir ++ suffix
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 run-ir-star ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
   run-ir-star-at-offset-v ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv

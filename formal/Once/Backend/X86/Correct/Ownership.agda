@@ -25,7 +25,7 @@ open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans)
 
 open import Once.Type using (Type; Unit; _+_; _⇒[_]_; Eff; Fix)
-open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
+open import Once.Platform.X86-64 using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
 open ⟦Fix⟧
 open import Once.Backend.X86.Semantics using (Memory; Word; readMem)
 open import Once.Backend.X86.Layout using (InStack; InHeap; heap-addr-≥-stack-addr; stack-heap-disjoint)

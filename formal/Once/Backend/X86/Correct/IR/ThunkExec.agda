@@ -140,7 +140,7 @@ open ThunkSetupResult public
 -- Prove thunk setup: label, push r15, push rbp, mov rbp rsp, sub rsp 16, mov [rsp] r12, mov [rsp+8] rdi, mov rdi rsp
 thunk-setup-star : ∀ {A B C} (f : IR (A * B) C)
                    (prefix suffix : Program) (env : ⟦ A ⟧) (arg : ⟦ B ⟧) (s : State) →
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  let prog = prefix ++ compile-instr (curry f) ++ suffix
       thunk-offset = length prefix +ℕ thunk-entry-offset
       f-offset = length prefix +ℕ thunk-body-offset  -- 6 closure-setup + 8 thunk-setup
   in
@@ -177,13 +177,13 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     open import Data.Nat.Properties using (m∸n≤m; ≤-trans)
     open import Once.Backend.X86.Encoding using (mem-read-write; mem-read-other; n≢n+word-size)
 
-    prog = prefix ++ compile-x86 (curry f) ++ suffix
+    prog = prefix ++ compile-instr (curry f) ++ suffix
     offset = length prefix
     thunk-offset = offset +ℕ thunk-entry-offset
     f-offset = offset +ℕ thunk-body-offset  -- 6 closure-setup + 8 thunk-setup
 
     -- The 8 thunk setup instructions (at positions 6-13 within curry)
-    -- These match the compile-x86 curry definition exactly
+    -- These match the compile-instr curry definition exactly
     i0 = label thunk-entry-offset          -- label at thunk entry (code-ptr-label = 6)
     i1 = push (reg r15)                    -- save r15 (apply's scratch register)
     i2 = push (reg rbp)                    -- save frame pointer
@@ -194,8 +194,8 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     i7 = mov (reg rdi) (reg rsp)           -- rdi = pair address
 
     -- Program structure for fetch proofs:
-    -- prog = prefix ++ compile-x86 (curry f) ++ suffix
-    --      = prefix ++ (curry-closure-setup ++ curry-thunk-setup ++ compile-x86 f ++ curry-tail) ++ suffix
+    -- prog = prefix ++ compile-instr (curry f) ++ suffix
+    --      = prefix ++ (curry-closure-setup ++ curry-thunk-setup ++ compile-instr f ++ curry-tail) ++ suffix
     -- where curry-closure-setup has 6 instructions and curry-thunk-setup starts with label 6
     --
     -- For fetch at thunk-offset = offset + 6:
@@ -1216,7 +1216,7 @@ record ThunkRetResult (prog : Program) (s s' : State) (ret-addr : ℕ) : Set whe
 -- Returns a record for clean field access (avoids proj chains)
 thunk-ret-star : ∀ {A B C} (f : IR (A * B) C)
                  (prefix suffix : Program) (ret-addr : ℕ) (s : State) →
-  let prog = prefix ++ compile-x86 (curry f) ++ suffix
+  let prog = prefix ++ compile-instr (curry f) ++ suffix
       ret-offset = length prefix +ℕ 17 +ℕ compile-length f  -- 6 closure + 8 thunk + len-f + 3 cleanup
   in
   halted s ≡ false →
@@ -1243,12 +1243,12 @@ thunk-ret-star {A} {B} {C} f prefix suffix ret-addr s
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)
 
-    prog = prefix ++ compile-x86 (curry f) ++ suffix
+    prog = prefix ++ compile-instr (curry f) ++ suffix
     offset = length prefix
     ret-offset = offset +ℕ 17 +ℕ compile-length f  -- 6 closure + 8 thunk + len-f + 3 cleanup
 
     -- The ret instruction is at ret-offset in curry
-    -- curry layout: [6 closure setup] [8 thunk setup] [compile-x86 f] [3 cleanup] [ret] [label end]
+    -- curry layout: [6 closure setup] [8 thunk setup] [compile-instr f] [3 cleanup] [ret] [label end]
     -- ret is at position 17 + len(f) within curry
 
     -- Fetch the ret instruction (proven in ThunkStructure)

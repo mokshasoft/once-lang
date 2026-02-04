@@ -92,10 +92,10 @@ make-compose-context {A} {B} {C} f g prefix suffix = record
   where
     len-f = compile-length f
     len-g = compile-length g
-    code-f = compile-x86 f
-    code-g = compile-x86 g
+    code-f = compile-instr f
+    code-g = compile-instr g
     transfer = mov (reg rdi) (reg rax)
-    prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
+    prog = prefix ++ compile-instr (g ∘ f) ++ suffix
     suffix-f = transfer ∷ code-g ++ suffix
     prefix-transfer = prefix ++ code-f
     prefix-g = prefix ++ code-f ++ transfer ∷ []
@@ -609,7 +609,7 @@ run-compose-star-v : ∀ {A B C} (f : IR A B) (g : IR B C) →
   StackInvariant s →
   StackCapacity s (ir-stack-requirement (g ∘ f)) →
   RbpInvariant s →
-  let prog = prefix ++ compile-x86 (g ∘ f) ++ suffix
+  let prog = prefix ++ compile-instr (g ∘ f) ++ suffix
   in ∃[ s' ] IRStarResultV (g ∘ f) prog s s' x (length prefix)
 run-compose-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     s3 , result-v
