@@ -22,7 +22,7 @@ open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.X86.Correct.StarBase using (IRStarResultV; ClosureWFOutput; no-closure)
 
 -- Import Common dispatcher infrastructure (parameterized with X86ContractInterface)
-open import Once.Backend.X86.Correct.PrimContract using (X86ContractInterface)
+open import Once.Backend.Common.PrimContract using (X86ContractInterface)
 open import Once.Backend.Common.IRDispatcher X86ContractInterface
 
 -- ir-size is now re-exported from Foundation (parameterized with X86ContractInterface)

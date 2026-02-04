@@ -27,7 +27,7 @@ open import Once.Type
 open import Once.SemanticBase using (⟦_⟧)
 
 -- Use X86ContractInterface for IR and Semantics
-open import Once.Backend.X86.Correct.PrimContract using (X86ContractInterface)
+open import Once.Backend.Common.PrimContract using (X86ContractInterface)
 import Once.IR as IR
 open IR.IRDef X86ContractInterface
 import Once.Semantics as Semantics

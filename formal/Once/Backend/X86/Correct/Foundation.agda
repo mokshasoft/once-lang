@@ -15,7 +15,7 @@ module Once.Backend.X86.Correct.Foundation where
 open import Once.Type public
 
 -- X86 backend uses X86ContractInterface for real PrimContract proofs
-open import Once.Backend.X86.Correct.PrimContract using (X86ContractInterface; PrimContract)
+open import Once.Backend.Common.PrimContract using (X86ContractInterface; PrimContract)
 import Once.IR as IR
 open IR.IRDef X86ContractInterface public
 

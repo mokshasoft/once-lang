@@ -36,7 +36,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          ClosureAtS-preserved-under-mem-eq;  -- Takes full memory equality
          ClosureAtS-preserved-under-heap-eq;
          Region; Stack; Heap; InRegion)
-open import Once.Backend.X86.Correct.PrimContract using (PrimContract)
+open import Once.Backend.Common.PrimContract using (PrimContract)
 
 open import Data.Nat using (_>_; _<_; _≥_)
 open import Data.List.Properties using (++-assoc)

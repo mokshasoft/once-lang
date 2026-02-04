@@ -22,7 +22,7 @@ import Once.IR as IR
 open IR using (module IRDef)
 
 -- X86-specific contract support
-open import Once.Backend.X86.Correct.PrimContract using (PrimContract; X86ContractInterface)
+open import Once.Backend.Common.PrimContract using (PrimContract; X86ContractInterface)
 open PrimContract using (prim-assembly)
 
 open import Once.Backend.X86.Syntax
