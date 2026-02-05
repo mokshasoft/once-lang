@@ -17,6 +17,7 @@ module Once.Backend.Word64 where
 open import Once.Backend.MachineInterface
 
 open import Data.Nat as ℕ using (ℕ; zero; suc; _+_; _∸_; _*_; _<ᵇ_; _≡ᵇ_)
+open import Data.Integer as ℤ using (ℤ; +_; -[1+_])
 open import Data.Product using (_×_; _,_)
 open import Data.Bool using (Bool; true; false)
 
@@ -80,6 +81,16 @@ word64-eq : ℕ × ℕ → ℕ
 word64-eq (a , b) = bool-to-word (a ≡ᵇ b)
 
 ------------------------------------------------------------------------
+-- Conversions
+------------------------------------------------------------------------
+
+-- Convert ℤ to ℕ (modulo 2^64)
+word64-from-ℤ : ℤ → ℕ
+word64-from-ℤ (+ n) = n ℕ.% 2^64
+  where open import Data.Nat.DivMod using (_%_)
+word64-from-ℤ (-[1+ n ]) = 2^64 ∸ suc n  -- two's complement
+
+------------------------------------------------------------------------
 -- Word64Interface: MachineInterface for 64-bit backends
 ------------------------------------------------------------------------
 
@@ -95,6 +106,7 @@ Word64Interface = record
   ; word-eq = word64-eq
   ; word-zero = 0
   ; word-one = 1
+  ; word-from-ℤ = word64-from-ℤ
   }
 
 ------------------------------------------------------------------------

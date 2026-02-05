@@ -24,6 +24,7 @@ module Once.Arith.MachineContracts where
 open import Once.Type using (Type; Int; Unit; _*_)
 open import Once.Type using () renaming (Float to FloatTy)
 open import Once.Backend.MachineInterface using (MachineInterface)
+open import Once.Memory using (Word)
 
 open import Data.Product using (_×_; _,_)
 open import Data.Unit using (⊤; tt)
@@ -51,6 +52,7 @@ NumToType F64 = FloatTy
 
 module Semantics (MI : MachineInterface) where
   open MachineInterface MI
+  open import Data.Nat using (_∸_; _+_)
 
   -- Integer binary operations
   add-int-sem : Word × Word → Word
@@ -76,20 +78,21 @@ module Semantics (MI : MachineInterface) where
   lt-int-sem : Word × Word → Word
   lt-int-sem = word-lt
 
+  -- Derived comparisons using primitives
   le-int-sem : Word × Word → Word
-  le-int-sem = word-le
+  le-int-sem p = word-add (word-lt p , word-eq p)  -- lt OR eq
 
   gt-int-sem : Word × Word → Word
-  gt-int-sem = word-gt
+  gt-int-sem (a , b) = word-lt (b , a)  -- flip arguments
 
   ge-int-sem : Word × Word → Word
-  ge-int-sem = word-ge
+  ge-int-sem (a , b) = le-int-sem (b , a)  -- flip arguments
 
   eq-int-sem : Word × Word → Word
   eq-int-sem = word-eq
 
   ne-int-sem : Word × Word → Word
-  ne-int-sem = word-ne
+  ne-int-sem p = word-one ∸ word-eq p  -- 1 - eq
 
   -- Constant loading
   const-int-sem : Word → ⊤ → Word

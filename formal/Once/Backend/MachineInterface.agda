@@ -23,6 +23,7 @@ module Once.Backend.MachineInterface where
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ)
+open import Data.Integer using (ℤ)
 open import Data.Product using (_×_)
 
 ------------------------------------------------------------------------
@@ -55,6 +56,12 @@ record MachineInterface : Set where
 
     word-zero : ℕ
     word-one  : ℕ
+
+    --------------------------------------------------------------------
+    -- Conversions (for literals)
+    --------------------------------------------------------------------
+
+    word-from-ℤ : ℤ → ℕ
 
 open MachineInterface public
 

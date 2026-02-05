@@ -26,6 +26,7 @@ module Once.Arith.BoundaryMachine (MI : MachineInterface) where
 open import Once.Type as T using (Type; Int; Float; Unit; _*_)
 open import Data.Product using (_×_)
 open import Data.Unit using (⊤)
+open import Data.Nat using (ℕ)
 
 -- Import SemanticBaseMachine MI - defines ⟦_⟧ for this word size
 -- NOTE: ArithContracts MI also imports SemanticBaseMachine MI.
@@ -44,10 +45,11 @@ open ArithContracts MI using (ArithMachineContracts; module ArithMachineContract
 -- Parameterized Embedding Module
 ------------------------------------------------------------------------
 
--- Define IntWord from MachineInterface for contract specialization
+-- Define IntWord for contract specialization
+-- IntWord = ℕ (since ⟦ Int ⟧ = ℕ from SemanticBaseMachine)
 private
   IntWord : Set
-  IntWord = MachineInterface.Word MI
+  IntWord = ℕ
 
 -- Specialize contract types from ContractInterface to Word types.
 -- This works because ⟦ Int ⟧ = IntWord (from SemanticBaseMachine MI).
