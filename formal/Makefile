@@ -27,7 +27,10 @@
 #
 #   Other targets:
 #   make clean        - Remove Agda build artifacts
-#   make count-postulates - Count postulates by file
+#   make count-postulates - Count postulates by file (all architectures)
+#   make count-postulates-x86 - Count postulates for x86-64 compiler only
+#   make count-postulates-riscv - Count postulates for RISC-V compiler only
+#   make count-postulates-arm - Count postulates for AArch64 compiler only
 #   make agda MODULE=path - Type-check a single module
 
 # Main entry points for each module
@@ -444,13 +447,13 @@ in_postulate && /^[[:space:]]+[^[:space:]:]+[[:space:]]*:/ { print }
 endef
 export AWK_POSTULATES
 
-.PHONY: count-postulates
-count-postulates:
-	@echo "Counting postulates in Agda files..."
+# Helper for postulate counting with optional architecture filtering
+define COUNT_POSTULATES
+	@echo "Counting postulates in $(DESC)..."
 	@echo "(Counts type signatures within postulate blocks, including indented ones)"
 	@echo ""
 	@echo "=== Postulates by File ==="
-	@find . -name "*.agda" -type f | sort | while read f; do \
+	@find . -name "*.agda" -type f $(FILTER) | sort | while read f; do \
 		postulates=$$(awk "$$AWK_POSTULATES" "$$f"); \
 		if [ -n "$$postulates" ]; then \
 			count=$$(echo "$$postulates" | wc -l | tr -d ' '); \
@@ -461,15 +464,44 @@ count-postulates:
 	done
 	@echo ""
 	@echo "=== Summary ==="
-	@TOTAL=$$(find . -name "*.agda" -type f | while read f; do \
+	@TOTAL=$$(find . -name "*.agda" -type f $(FILTER) | while read f; do \
 		awk "$$AWK_POSTULATES" "$$f"; \
 	done | wc -l | tr -d ' '); \
-	FILES=$$(find . -name "*.agda" -type f | while read f; do \
+	FILES=$$(find . -name "*.agda" -type f $(FILTER) | while read f; do \
 		count=$$(awk "$$AWK_POSTULATES" "$$f" | wc -l | tr -d ' '); \
 		if [ "$$count" -gt 0 ]; then echo "$$f"; fi; \
 	done | wc -l | tr -d ' '); \
-	echo "Total postulates: $$TOTAL"; \
+	echo "Total postulates$(LABEL): $$TOTAL"; \
 	echo "Files with postulates: $$FILES"
+endef
+
+.PHONY: count-postulates
+count-postulates:
+	$(eval DESC=Once compiler proof postulates)
+	$(eval FILTER=)
+	$(eval LABEL=)
+	$(COUNT_POSTULATES)
+
+.PHONY: count-postulates-x86
+count-postulates-x86:
+	$(eval DESC=Once x86-64 compiler (shared + x86-specific))
+	$(eval FILTER=| grep -Ev "AArch64|RiscV64|RiscV")
+	$(eval LABEL= (x86-64))
+	$(COUNT_POSTULATES)
+
+.PHONY: count-postulates-riscv
+count-postulates-riscv:
+	$(eval DESC=Once RISC-V compiler (shared + RISC-V-specific))
+	$(eval FILTER=| grep -Ev "X86|AArch64")
+	$(eval LABEL= (RISC-V))
+	$(COUNT_POSTULATES)
+
+.PHONY: count-postulates-arm
+count-postulates-arm:
+	$(eval DESC=Once AArch64 compiler (shared + AArch64-specific))
+	$(eval FILTER=| grep -Ev "X86|RiscV64|RiscV")
+	$(eval LABEL= (AArch64))
+	$(COUNT_POSTULATES)
 
 .PHONY: clean
 clean:
