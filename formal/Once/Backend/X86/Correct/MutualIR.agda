@@ -35,9 +35,9 @@ open import Once.Backend.X86.Correct.Foundation
          [,]-f-smaller; [,]-g-smaller; curry-smaller;
          curry-overhead; case-overhead;
          Instr; Program)
--- Closure-η comes from SemanticsMachine
+-- Closure-η comes from Semantics (migrated from SemanticsMachine)
 open import Once.Backend.Word64 using (Word64Interface)
-open import Once.SemanticsMachine Word64Interface renaming (Closure-η to Closure-η-sem)
+open import Once.Semantics Word64Interface using (Closure-η)
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics

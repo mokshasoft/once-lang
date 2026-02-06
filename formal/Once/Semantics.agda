@@ -27,6 +27,18 @@ open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
+-- Propositional η-equality for Closure records
+------------------------------------------------------------------------
+
+-- Records in mutual blocks lack definitional η-equality in Agda.
+-- We prove propositional η by pattern matching: after destructuring,
+-- both sides are definitionally equal.
+Closure-η : ∀ {A B} (cl : Closure A B) →
+  record { env-addr = env-addr cl
+         ; semantics = semantics cl } ≡ cl
+Closure-η record { env-addr = _ ; semantics = _ } = refl
+
+------------------------------------------------------------------------
 -- Semantics Module (parameterized by ContractInterface)
 ------------------------------------------------------------------------
 

@@ -1016,7 +1016,7 @@ run-apply-star-direct {A} {B} prefix suffix x s h-false pc-eq input-valid stack-
     -- ar-env-addr-eq : ar-env-addr ≡ Closure.env-addr (proj₁ x)
     -- Closure-η : record { env-addr = e ; semantics = s } ≡ cl when e = env-addr cl, s = semantics cl
     open import Once.Backend.Word64 using (Word64Interface)
-    open import Once.SemanticsMachine Word64Interface using (Closure-η)
+    open import Once.Semantics Word64Interface using (Closure-η)
     open import Relation.Binary.PropositionalEquality using (trans; cong₂)
 
     -- First build record with proj₁ x's fields

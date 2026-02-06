@@ -86,7 +86,7 @@ ARITH_AARCH64_CORRECT := Once/Arith/Backend/AArch64/Correct.agda
 ARITH_RISCV_SYNTAX := Once/Arith/Backend/RiscV/Syntax.agda
 ARITH_RISCV_CODEGEN := Once/Arith/Backend/RiscV/CodeGen.agda
 ARITH_RISCV_CORRECT := Once/Arith/Backend/RiscV/Correct.agda
-ARITH_BOUNDARY := Once/Arith/BoundaryMachine.agda
+ARITH_BOUNDARY := Once/Arith/Boundary.agda
 ARITH_EMIT := Once/Arith/Backend/Emit.agda
 
 # Verified type checker (OCP-0003)

@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------
--- Once.Arith.BoundaryMachine
+-- Once.Arith.Boundary
 --
--- Arith compiler using machine word semantics.
--- NO ENCODE POSTULATES - machine operations ARE the semantics.
+-- Arith compiler using non-indexed contracts.
+-- Semantics are passed to Prim explicitly, not indexed in Contract.
 --
 -- Part of OCP-0003: PrimContract - Unified Interface for Domain Compilers
 --
@@ -10,73 +10,46 @@
 --   This module is PARAMETERIZED by MachineInterface for portability.
 --   Word size is a backend detail, not visible to this module.
 --
---   Key difference from old Boundary:
---     Boundary:        ⟦ Int ⟧ = ℤ,    needs encode postulates
---     BoundaryMachine: ⟦ Int ⟧ = Word, encode is identity
---
 --   Instantiation happens at the EDGES:
---     open import Once.Arith.BoundaryMachine Word64Interface  -- x86-64
---     open import Once.Arith.BoundaryMachine Word32Interface  -- 32-bit
+--     open import Once.Arith.Boundary Word64Interface  -- x86-64
+--     open import Once.Arith.Boundary Word32Interface  -- 32-bit
 ------------------------------------------------------------------------
 
 open import Once.Backend.MachineInterface
 
-module Once.Arith.BoundaryMachine (MI : MachineInterface) where
+module Once.Arith.Boundary (MI : MachineInterface) where
 
 open import Once.Type as T using (Type; Int; Float; Unit; _*_)
+open import Once.Contract using (ContractInterface; module ContractInterface)
 open import Data.Product using (_×_)
 open import Data.Unit using (⊤)
 open import Data.Nat using (ℕ)
 
 -- Import SemanticBaseMachine MI - defines ⟦_⟧ for this word size
--- NOTE: ArithContracts MI also imports SemanticBaseMachine MI.
--- Since both use the same MI parameter, Agda treats them as the
--- same module instance, giving the same ⟦_⟧.
 open import Once.SemanticBaseMachine MI using (⟦_⟧)
 
--- ContractInterfaceMachine needs ⟦_⟧ passed explicitly
-open import Once.Backend.ContractInterfaceMachine ⟦_⟧
-
--- ArithContracts imports SemanticBaseMachine MI internally (same MI = same ⟦_⟧)
-open import Once.Arith.MachineContracts using (module Semantics; module ArithContracts; NumToType)
-open ArithContracts MI using (ArithMachineContracts; module ArithMachineContracts)
+-- Import non-indexed contracts
+open import Once.Arith.Contracts using (module Semantics; module ArithContracts; NumToType)
 
 ------------------------------------------------------------------------
 -- Parameterized Embedding Module
 ------------------------------------------------------------------------
 
--- Define IntWord for contract specialization
--- IntWord = ℕ (since ⟦ Int ⟧ = ℕ from SemanticBaseMachine)
-private
-  IntWord : Set
-  IntWord = ℕ
+module EmbedDef (CI : ContractInterface) (contracts : ArithContracts.ArithContractsRecord CI) where
 
--- Specialize contract types from ContractInterface to Word types.
--- This works because ⟦ Int ⟧ = IntWord (from SemanticBaseMachine MI).
-module _ (CI : ContractInterface) where
-  open ContractInterface CI
-
-  BinOpContract : (IntWord × IntWord → IntWord) → Set
-  BinOpContract = Contract {Int T.* Int} {Int}
-
-  UnaryOpContract : (IntWord → IntWord) → Set
-  UnaryOpContract = Contract {Int} {Int}
-
-  ConstContract : IntWord → (⊤ → IntWord) → Set
-  ConstContract _ = Contract {Unit} {Int}
-
-module EmbedDef (CI : ContractInterface) (contracts : ArithMachineContracts (BinOpContract CI) (UnaryOpContract CI) (ConstContract CI)) where
-
-  -- Pass ⟦_⟧ to IRMachine
-  open import Once.IRMachine ⟦_⟧ as IR using ()
+  -- Use the non-indexed IR
+  open import Once.IR ⟦_⟧ as IR using ()
   open IR using (module IRDef)
   open IRDef CI
   open ContractInterface CI
 
-  -- Re-open machine semantics (using the parameterized MI)
-  -- Note: use module-level IntWord to avoid shadowing
+  -- Open machine semantics (using the parameterized MI)
   open MachineInterface MI using (word-from-ℤ)
   open Semantics MI
+
+  -- Open contract record
+  open ArithContracts CI using (ArithContractsRecord)
+  open ArithContractsRecord contracts
 
   -- Arith IR
   open import Once.Arith.Type as N using (NumType; I8; I16; I32; I64; F32; F64)
@@ -87,12 +60,7 @@ module EmbedDef (CI : ContractInterface) (contracts : ArithMachineContracts (Bin
   open import Data.Product using (_×_; _,_; proj₁; proj₂)
   open import Data.Unit using (⊤; tt)
   open import Data.Float as F using (Float)
-
-  ----------------------------------------------------------------------
-  -- Type Mapping (imported from MachineContracts)
-  ----------------------------------------------------------------------
-
-  -- NumToType is imported from Once.Arith.MachineContracts
+  open import Once.Memory using (Word)
 
   ----------------------------------------------------------------------
   -- Context Mapping
@@ -122,40 +90,37 @@ module EmbedDef (CI : ContractInterface) (contracts : ArithMachineContracts (Bin
 
   ----------------------------------------------------------------------
   -- Primitive Construction Helpers
+  -- Prim takes (name, semantics, contract) - semantics explicit!
   ----------------------------------------------------------------------
-
-  -- Get contracts from the ArithMachineContracts record
-  private
-    MC = ArithMachineContracts.add-int-contract contracts
 
   -- Binary operation primitives using machine semantics
   prim-add : IR (Int T.* Int) Int
-  prim-add = Prim "arith.add" add-int-sem (ArithMachineContracts.add-int-contract contracts)
+  prim-add = Prim "arith.add" add-int-sem add-int-contract
 
   prim-sub : IR (Int T.* Int) Int
-  prim-sub = Prim "arith.sub" sub-int-sem (ArithMachineContracts.sub-int-contract contracts)
+  prim-sub = Prim "arith.sub" sub-int-sem sub-int-contract
 
   prim-mul : IR (Int T.* Int) Int
-  prim-mul = Prim "arith.mul" mul-int-sem (ArithMachineContracts.mul-int-contract contracts)
+  prim-mul = Prim "arith.mul" mul-int-sem mul-int-contract
 
   prim-div : IR (Int T.* Int) Int
-  prim-div = Prim "arith.div" div-int-sem (ArithMachineContracts.div-int-contract contracts)
+  prim-div = Prim "arith.div" div-int-sem div-int-contract
 
   prim-mod : IR (Int T.* Int) Int
-  prim-mod = Prim "arith.mod" mod-int-sem (ArithMachineContracts.mod-int-contract contracts)
+  prim-mod = Prim "arith.mod" mod-int-sem mod-int-contract
 
   prim-neg : IR Int Int
-  prim-neg = Prim "arith.neg" neg-int-sem (ArithMachineContracts.neg-int-contract contracts)
+  prim-neg = Prim "arith.neg" neg-int-sem neg-int-contract
 
   prim-lt : IR (Int T.* Int) Int
-  prim-lt = Prim "arith.lt" lt-int-sem (ArithMachineContracts.lt-int-contract contracts)
+  prim-lt = Prim "arith.lt" lt-int-sem lt-int-contract
 
   prim-eq : IR (Int T.* Int) Int
-  prim-eq = Prim "arith.eq" eq-int-sem (ArithMachineContracts.eq-int-contract contracts)
+  prim-eq = Prim "arith.eq" eq-int-sem eq-int-contract
 
-  -- Constant loading
-  prim-const : IntWord → IR Unit Int
-  prim-const n = Prim "arith.const" (const-int-sem n) (ArithMachineContracts.const-int-contract contracts n)
+  -- Constant loading - same contract, different semantics
+  prim-const : Word → IR Unit Int
+  prim-const n = Prim "arith.const" (const-int-sem n) const-int-contract
 
   ----------------------------------------------------------------------
   -- Type-directed operation selection
@@ -285,7 +250,7 @@ module EmbedDef (CI : ContractInterface) (contracts : ArithMachineContracts (Bin
       conv F32 F64 = id
       conv F64 F32 = id
       conv F64 F64 = id
-      -- Cross-domain conversions need proper primitives (TODO: OCP-0003 Phase 4)
+      -- Cross-domain conversions need proper primitives
       conv I8  F32 = cross-conv where postulate cross-conv : IR Int T.Float
       conv I8  F64 = cross-conv where postulate cross-conv : IR Int T.Float
       conv I16 F32 = cross-conv where postulate cross-conv : IR Int T.Float
@@ -302,19 +267,3 @@ module EmbedDef (CI : ContractInterface) (contracts : ArithMachineContracts (Bin
       conv F64 I16 = cross-conv where postulate cross-conv : IR T.Float Int
       conv F64 I32 = cross-conv where postulate cross-conv : IR T.Float Int
       conv F64 I64 = cross-conv where postulate cross-conv : IR T.Float Int
-
-------------------------------------------------------------------------
--- Key Benefit: No Encode Postulates!
-------------------------------------------------------------------------
-
--- With ⟦ Int ⟧ = Word (from MachineInterface):
---   add-int-sem : Word × Word → Word = word-add
---   The machine ADD instruction computes word-add.
---   encode-int : Word → MemWord is identity.
---
--- Therefore: NO encode-add, encode-sub, etc. postulates needed!
--- The semantic function IS the machine operation.
---
--- PORTABILITY: Same module works for any MachineInterface:
---   Word64Interface → x86-64, AArch64
---   Word32Interface → x86-32, RISC-V 32-bit
