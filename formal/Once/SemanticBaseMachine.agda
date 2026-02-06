@@ -54,6 +54,7 @@ open ⟦Fix⟧ public
 {-# NO_POSITIVITY_CHECK #-}
 mutual
   record Closure (A B : Type) : Set where
+    pattern
     field
       env-addr  : MemWord          -- encoded environment address
       semantics : ⟦ A ⟧ → ⟦ B ⟧   -- the function behavior

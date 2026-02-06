@@ -35,11 +35,12 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 ------------------------------------------------------------------------
 
 -- Records in mutual blocks lack definitional η-equality in Agda.
--- This postulate provides propositional η.
-postulate
-  Closure-η : ∀ {A B} (cl : Closure A B) →
-    record { env-addr = env-addr cl
-           ; semantics = semantics cl } ≡ cl
+-- We prove propositional η by pattern matching: after destructuring,
+-- both sides are definitionally equal.
+Closure-η : ∀ {A B} (cl : Closure A B) →
+  record { env-addr = env-addr cl
+         ; semantics = semantics cl } ≡ cl
+Closure-η record { env-addr = _ ; semantics = _ } = refl
 
 ------------------------------------------------------------------------
 -- Parameterized Semantics Module
