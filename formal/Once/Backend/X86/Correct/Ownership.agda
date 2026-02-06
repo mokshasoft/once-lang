@@ -12,8 +12,18 @@
 --   - OwnedBy predicate indexed by ValidAt
 --   - Preservation lemmas that connect ownership to ir-mem-preserved
 --
--- This eliminates all caller-stack-preserved-* postulates without
--- reasoning about concrete addresses at each use site.
+-- ARCHITECTURE NOTE (FrameSemantics):
+--   On x86-64, "addr ≥ rsp" means "addr is in caller's frame" because
+--   the stack grows downward. This is captured abstractly by:
+--     - InCallerFrame addr rsp = addr ≥ rsp  (caller allocated above)
+--     - InCalleeFrame addr rsp = addr < rsp  (callee allocates below)
+--   See Once.Backend.Common.FrameSemantics for the architecture-independent
+--   contract, and Once.Backend.X86.FrameInstantiation for the x86 instance.
+--
+-- TRUST BOUNDARY:
+--   - caller-input-owned: POSTULATED for initial program entry
+--   - For internal calls (Apply): will be PROVEN from Apply compilation
+--   The goal is to minimize trust to just the initial state setup.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.Correct.Ownership where
@@ -36,6 +46,11 @@ open import Once.Backend.X86.Correct.MemoryValid
          Region; Stack; Heap; InRegion;
          PairAtS; InlAtS; InrAtS; ClosureAtS;
          unit-in-heap)
+
+-- Import FrameSemantics for architecture-independent documentation
+open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
+open import Once.Backend.X86.FrameInstantiation
+  using (x86-frame-semantics; X86InCallerFrame; X86InCalleeFrame)
 
 ------------------------------------------------------------------------
 -- Owner: Semantic ownership of data
@@ -242,6 +257,27 @@ owned-implies-stack-bound (owned-eff-env-caller-stack addr≥rsp _) is = addr≥
 owned-implies-stack-bound (owned-fix owned) is = owned-implies-stack-bound owned is
 
 ------------------------------------------------------------------------
+-- Connection to FrameSemantics
+--
+-- OwnedBy Caller connects to the architecture-independent FrameSemantics:
+--   - OwnedBy Caller va rsp ⟹ ∀ stack-addr in va. InCallerFrame addr rsp
+--   - On x86-64: InCallerFrame addr rsp = addr ≥ rsp (by definition)
+--
+-- This shows that OwnedBy is the recursive/structural version of
+-- InCallerFrame - it walks the ValidAt structure to ensure ALL addresses
+-- in the value satisfy the frame semantics.
+------------------------------------------------------------------------
+
+-- | OwnedBy Caller implies all stack addresses are in caller's frame
+-- This is exactly owned-implies-stack-bound, renamed for FrameSemantics clarity
+owned-implies-in-caller-frame : ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory}
+  {va : ValidAt v addr m} {rsp : Word} →
+  OwnedBy Caller va rsp →
+  InStack addr →
+  X86InCallerFrame addr rsp
+owned-implies-in-caller-frame = owned-implies-stack-bound
+
+------------------------------------------------------------------------
 -- Preservation: Caller-owned values are preserved by ir-mem-preserved
 --
 -- This is the payoff! Given:
@@ -421,27 +457,35 @@ make-owned-pair-stack : ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
 make-owned-pair-stack _ _ _ _ addr≥rsp oa ob = owned-pair-caller-stack addr≥rsp oa ob
 
 ------------------------------------------------------------------------
--- Caller Input Ownership
+-- Caller Input Ownership (FrameSemantics connection)
 ------------------------------------------------------------------------
 
 -- SEMANTIC INVARIANT: At function entry, the input is Caller-owned.
 --
+-- In terms of FrameSemantics:
+--   All stack addresses in the input satisfy InCallerFrame addr entry-rsp.
+--   On x86-64: InCallerFrame addr rsp = addr ≥ rsp
+--
 -- This invariant holds because:
--- 1. The caller allocates data in their frame (≥ our entry-rsp) or heap
+-- 1. The caller allocates data in their frame (InCallerFrame) or heap
 -- 2. The caller passes a reference to us
--- 3. We receive it with rsp = entry-rsp
+-- 3. We receive it with rsp = entry-rsp (the frame boundary)
 --
--- Therefore all Stack addresses in the input are ≥ entry-rsp.
+-- TRUST BOUNDARY:
+--   - For INTERNAL calls: This will be PROVEN from Apply.agda
+--     (we compile both caller and callee, so we can verify the caller
+--     sets up arguments in their frame)
+--   - For INITIAL program entry: This remains a POSTULATE
+--     (we trust the runtime/OS set up the initial input correctly)
 --
--- This postulate captures the call convention semantics.
--- It's more principled than caller-stack-preserved-* because:
--- - It states the semantic ownership invariant directly
--- - It applies to the input ValidAt, not arbitrary states
--- - It enables owned-caller-preserved for preservation proofs
+-- TODO: Move this postulate to InitState.agda and prove it for Apply.
 
 postulate
   -- | At function entry, input validity implies caller ownership.
-  -- The input comes from the caller's frame, so all Stack addresses ≥ entry-rsp.
+  -- The input is in the caller's frame (InCallerFrame), so preserved by callee.
+  --
+  -- Architecture-independently: all stack addresses in input satisfy
+  -- InCallerFrame addr boundary, where boundary = entry stack pointer.
   caller-input-owned : ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory} {rsp : Word}
     (va : ValidAt v addr m) →
     InStack rsp →
