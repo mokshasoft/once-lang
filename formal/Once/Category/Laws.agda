@@ -30,13 +30,7 @@ module Laws (CS : ContractSemantics CI ⟦_⟧) where
   open IRDef CI
   open SemanticsDef CS
 
-  ------------------------------------------------------------------------
-  -- Fixity declarations
-  ------------------------------------------------------------------------
-
-  infixr 9 _∘_
-  infixr 4 ⟨_,_⟩
-  infixr 3 [_,_]
+  -- Note: Fixity declarations for _∘_, ⟨_,_⟩, [_,_] are inherited from IRDef
 
   ------------------------------------------------------------------------
   -- Category Laws
