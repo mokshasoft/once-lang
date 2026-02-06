@@ -78,19 +78,9 @@ sp-distinct sp₁ sp₂ k addr≢ = grow-addr-injective (addr sp₁) (addr sp₂
 ------------------------------------------------------------------------
 
 -- | Slot 0 is in stack region (trivial: slot-addr sp 0 = addr sp)
-slot-in-stack-0 : ∀ sp → InStack (slot-addr sp 0)
-slot-in-stack-0 sp = subst InStack (sym (grow-identity (addr sp))) (in-stack sp)
-
--- | DEPRECATED: General slot-in-stack requires capacity evidence for k > 0
--- Kept for backward compatibility; callers should migrate to:
---   k = 0: use slot-in-stack-0
---   k > 0: use StackCapacity.capacity-maintained
-slot-in-stack : ∀ sp k → InStack (slot-addr sp k)
-slot-in-stack sp zero = slot-in-stack-0 sp
-slot-in-stack sp (suc k) = slot-in-stack-suc sp k
-  where
-    postulate
-      slot-in-stack-suc : ∀ sp k → InStack (slot-addr sp (suc k))
+-- For k > 0, use StackCapacity.capacity-maintained instead
+base-slot-in-stack : ∀ sp → InStack (slot-addr sp 0)
+base-slot-in-stack sp = subst InStack (sym (grow-identity (addr sp))) (in-stack sp)
 
 ------------------------------------------------------------------------
 -- Address Type Conversions

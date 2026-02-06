@@ -70,7 +70,7 @@ open import Once.Backend.X86.Layout
          pc-in-code;
          stack-sub-preserves;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
-         slot-in-stack; init-slot-at-base;
+         base-slot-in-stack; init-slot-at-base;
          slot-addr-next-is-base-plus-word;
          encode-in-heap; heap-offset; word-size;
          stack-bounds; lower; upper)
@@ -1083,7 +1083,7 @@ apply-frame-1 s cap = make-frame-at-slot s cap 1 (s≤s z≤n)
 
 apply-frame-slot-0-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
                               InStack (slot-addr (apply-frame-1 s cap) 0)
-apply-frame-slot-0-in-stack s cap = slot-in-stack (apply-frame-1 s cap) 0
+apply-frame-slot-0-in-stack s cap = base-slot-in-stack (apply-frame-1 s cap)
 
 -- | Bridge from abstract to concrete for Apply's push address (rsp - slot-size)
 abstract-to-rsp-slot-in-stack : ∀ {n} (s : State) (cap : StackCapacity s (suc n)) →
@@ -1140,11 +1140,7 @@ pair-frame-0 s cap = make-frame-at-slot s cap pair-setup-consumed-slots pair-set
 
 pair-frame-slot-0-in-stack : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
                              InStack (slot-addr (pair-frame-0 s cap) 0)
-pair-frame-slot-0-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 0
-
-pair-frame-slot-1-in-stack : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
-                             InStack (slot-addr (pair-frame-0 s cap) 1)
-pair-frame-slot-1-in-stack s cap = slot-in-stack (pair-frame-0 s cap) 1
+pair-frame-slot-0-in-stack s cap = base-slot-in-stack (pair-frame-0 s cap)
 
 -- | Pair frame 0 address equals rsp - 40
 pair-frame-0-addr-eq : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
@@ -1194,6 +1190,12 @@ pair-second-slot-in-stack s cap =
         step1 = sym (∸-+-assoc rsp-val thunk-frame-size slot-size)
         word-fits-after-4-slots : slot-size ≤ rsp-val ∸ thunk-frame-size
         word-fits-after-4-slots = ∸-monoˡ-≤ thunk-frame-size rsp≥5slot
+
+-- | Pair frame slot 1 is in stack (uses capacity-maintained, not postulate)
+pair-frame-slot-1-in-stack : (s : State) (cap : StackCapacity s pair-setup-consumed-slots) →
+                             InStack (slot-addr (pair-frame-0 s cap) 1)
+pair-frame-slot-1-in-stack s cap =
+  subst InStack (sym (pair-frame-slot-1-addr-eq s cap)) (pair-second-slot-in-stack s cap)
 
 -- | Get StackCapacity for Pair setup from runtime rsp bound
 pair-stack-capacity : ∀ (s : State) →

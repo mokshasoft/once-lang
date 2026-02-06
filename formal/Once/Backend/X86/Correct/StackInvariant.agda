@@ -25,7 +25,7 @@ open import Once.Backend.X86.Layout
          pc-in-code;
          StackPointer; slot-addr; sp-distinct; offset-distinct;
          frame-below-slot0-disjoint;  -- PROVEN lemma for slot 0 disjointness
-         slot-in-stack; init-slot-at-base;
+         base-slot-in-stack; init-slot-at-base;
          FramePreserved; StackGrew; frame-preserved-under-growth)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr; in-stack to sp-in-stack)
 
@@ -148,11 +148,11 @@ stack-write-preserves-r15 : ∀ (s : State) (stack-addr : Addr) →
   stack-addr ≢ readReg (regs s) r15
 stack-write-preserves-r15 s stack-addr write-frame addr-eq (r15-in-heap r15-heap) _ =
   stack-write-preserves-heap-r15 s stack-addr
-    (subst InStack (sym addr-eq) (slot-in-stack write-frame 0))
+    (subst InStack (sym addr-eq) (base-slot-in-stack write-frame))
     r15-heap
 stack-write-preserves-r15 s stack-addr write-frame addr-eq (r15-in-code r15-code) _ =
   stack-write-preserves-code-r15 s stack-addr
-    (subst InStack (sym addr-eq) (slot-in-stack write-frame 0))
+    (subst InStack (sym addr-eq) (base-slot-in-stack write-frame))
     r15-code
 stack-write-preserves-r15 s stack-addr write-frame addr-eq
                           (r15-in-stack r15-frame r15-slot r15-eq _) frame< =
