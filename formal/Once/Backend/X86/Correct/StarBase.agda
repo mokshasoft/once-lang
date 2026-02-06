@@ -35,8 +35,12 @@ open import Once.Backend.X86.Correct.MemoryValid
          valid-subst-addr-mem;  -- Takes full memory equality (no region-to-heap)
          ClosureAtS-preserved-under-mem-eq;  -- Takes full memory equality
          ClosureAtS-preserved-under-heap-eq;
-         Region; Stack; Heap; InRegion)
+         Region; Stack; Heap; InRegion;
+         valid-disjoint-from-stack)  -- For Prim base case
 open import Once.Backend.Common.PrimContract using (PrimContract)
+-- NOTE: We do NOT import PrimCorrectness here to avoid circular dependency.
+-- PrimCorrectness imports StarBase for IRStarResultV.
+-- Instead, PrimProofProvider is defined as a function type below.
 
 open import Data.Nat using (_>_; _<_; _≥_)
 open import Data.List.Properties using (++-assoc)
@@ -957,27 +961,90 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
     ; ir-closure-wf = no-closure
     }
 
--- | Validity-based prim execution (POSTULATE - awaiting domain compiler proofs)
+------------------------------------------------------------------------
+-- Prim correctness proof architecture
+------------------------------------------------------------------------
+
+-- ARCHITECTURE (Two-Stage Contracts):
 --
--- ARCHITECTURE: compile-instr (Prim _ _ c) now uses contract-program c (actual assembly).
--- The compile-instr/compile-length mismatch has been ELIMINATED.
+-- 1. PrimContract (Once.Backend.Common.PrimContract):
+--    - Contains: assembly + structural properties (nonempty)
+--    - Type: Set
+--    - Used by: CodeGen (for code generation)
 --
--- This postulate remains because domain compilers haven't yet provided
--- PrimContract instances with full proofs. When they do, this postulate
--- can be eliminated by unpacking prim-correct from the contract:
+-- 2. PrimCorrectness (Once.Backend.X86.Correct.PrimCorrectness):
+--    - Parameterized by a specific PrimContract instance
+--    - Contains: proof that the contract's assembly is semantically correct
+--    - Type: Set₁
+--    - Field: prim-correct : ∀ (name : String) ... → IRStarResultV ...
+--    - Used by: Correctness proofs (MutualIR, etc.)
 --
---   prim-correct : ∀ ... → ∃[ s' ] PrimEffect sem x prog s s'
+-- This separation breaks the circular dependency:
+--   PrimContract (early, no IRStarResultV)
+--     ↓
+--   CodeGen (uses assembly)
+--     ↓
+--   StarBase (defines IRStarResultV)
+--     ↓
+--   PrimCorrectness (combines PrimContract + IRStarResultV proof)
 --
--- The PrimEffect includes:
---   - effect-star: Star trace proving assembly executes
---   - effect-result-valid: ValidAt (sem x) rax m'
---   - All register/memory preservation proofs
+-- Domain compilers provide:
+--   - PrimContract instances for code generation
+--   - PrimCorrectness proofs for verification
+--
+-- The PrimRunner module below is parameterized by a proof provider.
+-- Domain compilers (Arith, IO, etc.) provide correctness proofs,
+-- which are passed to modules that need them (MutualIR, WholeProgram).
 --
 -- For programs not using Prim, the correctness proof is complete.
--- For programs using Prim, this is trusted until Arith/IO provide contracts.
-postulate
-  -- Awaiting domain compiler contracts (Arith, IO, etc.)
-  run-prim-star-vv : ∀ {A B} (name : String) (contract : Contract A B) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+-- For programs using Prim, domain compilers must provide proofs.
+
+------------------------------------------------------------------------
+-- PrimProofProvider: Type for proof-providing functions
+------------------------------------------------------------------------
+
+-- | Type alias for a single primitive's correctness proof.
+-- This is the proof that executing a contract's assembly produces
+-- correct results while preserving all CCC invariants.
+--
+-- Defined inline to avoid circular dependency with PrimCorrectness.agda.
+-- (PrimCorrectness imports StarBase for IRStarResultV)
+PrimProof : ∀ {A B : Type} → PrimContract A B → Set₁
+PrimProof {A} {B} contract =
+  ∀ (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  ValidAt x (readReg (regs s) rdi) (memory s) →
+  (∀ addr → InStack addr → readReg (regs s) rdi ≢ addr) →
+  StackInvariant s →
+  StackCapacity s output-slots →
+  RbpInvariant s →
+  let prog = prefix ++ compile-instr (Prim {A} {B} name contract) ++ suffix
+  in ∃[ s' ] IRStarResultV (Prim {A} {B} name contract) prog s s' x (length prefix)
+
+-- | A proof provider maps each PrimContract to its correctness proof.
+-- Domain compilers (Arith, etc.) implement this by proving each of
+-- their primitives correct.
+--
+-- This can be constructed from PrimCorrectness.prim-correct:
+--   prim-proof c = PrimCorrectness.prim-correct (my-correctness c)
+PrimProofProvider : Set₁
+PrimProofProvider = ∀ {A B : Type} (c : PrimContract A B) → PrimProof c
+
+------------------------------------------------------------------------
+-- PrimRunner: Parameterized module for Prim execution
+------------------------------------------------------------------------
+
+-- | Module parameterized by a proof provider.
+-- This replaces the postulate with actual proof extraction.
+-- Modules that need to execute Prim (MutualIR, etc.) open this
+-- with a concrete proof provider.
+module PrimRunner (prim-proof : PrimProofProvider) where
+
+  -- | Core prim execution - uses proof from provider
+  -- This is what the postulate used to be, now a real function.
+  run-prim-star-vv : ∀ {A B} (name : String) (contract : Contract A B)
+      (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
@@ -987,4 +1054,25 @@ postulate
     RbpInvariant s →
     let prog = prefix ++ compile-instr (Prim {A} {B} name contract) ++ suffix
     in ∃[ s' ] IRStarResultV (Prim {A} {B} name contract) prog s s' x (length prefix)
+  run-prim-star-vv name contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv =
+    prim-proof contract name prefix suffix x s
+      h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
+
+  -- | Wrapper that derives rdi-not-stack from ValidAt
+  -- This is what MutualIR's Prim case used to do inline.
+  -- Provides a cleaner interface: just pass ValidAt, disjointness is derived.
+  run-prim-star-vv-auto : ∀ {A B} (name : String) (contract : Contract A B)
+      (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
+    halted s ≡ false →
+    pc s ≡ length prefix →
+    ValidAt x (readReg (regs s) rdi) (memory s) →
+    StackInvariant s →
+    StackCapacity s output-slots →
+    RbpInvariant s →
+    let prog = prefix ++ compile-instr (Prim {A} {B} name contract) ++ suffix
+    in ∃[ s' ] IRStarResultV (Prim {A} {B} name contract) prog s s' x (length prefix)
+  run-prim-star-vv-auto name contract prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
+    let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid stack-proof
+    in run-prim-star-vv name contract prefix suffix x s
+         h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
 

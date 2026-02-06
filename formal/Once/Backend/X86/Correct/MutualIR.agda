@@ -12,9 +12,16 @@
 -- IR implementations are in IR/*.agda and take RecDispatcher as parameter.
 -- NOTE: Sized types removed for compilation performance (10-100x speedup).
 -- Termination is guaranteed by well-founded recursion on ir-size.
+--
+-- PARAMETERIZATION:
+-- This module is parameterized by PrimProofProvider, which maps each
+-- PrimContract to its correctness proof. Domain compilers (Arith, etc.)
+-- provide these proofs. This eliminates the run-prim-star-vv postulate.
 ------------------------------------------------------------------------
 
-module Once.Backend.X86.Correct.MutualIR where
+open import Once.Backend.X86.Correct.StarBase using (PrimProofProvider)
+
+module Once.Backend.X86.Correct.MutualIR (prim-proof : PrimProofProvider) where
 
 open import Once.Type
 
@@ -89,9 +96,15 @@ open import Once.Backend.X86.Correct.StarBase public
          ir-result-valid;  -- Validity-based result field
          -- Validity-based versions only
          run-id-star-vv; run-terminal-star-vv; run-fold-star-vv; run-unfold-star-vv;
-         run-arr-star-vv; run-fst-star-vv; run-snd-star-vv; run-prim-star-vv;
+         run-arr-star-vv; run-fst-star-vv; run-snd-star-vv;
          -- Helper functions
-         rbp-inv-preserved-unchanged; rbp-inv-preserved-through-ir)
+         rbp-inv-preserved-unchanged; rbp-inv-preserved-through-ir;
+         -- Prim proof infrastructure (re-export for callers)
+         PrimProofProvider)
+
+-- Open PrimRunner with the provided proof to get run-prim-star-vv-auto
+open import Once.Backend.X86.Correct.StarBase using (module PrimRunner)
+open PrimRunner prim-proof using (run-prim-star-vv-auto)
 
 -- Import extracted IR base case modules
 open import Once.Backend.X86.Correct.IR.Inl
@@ -156,8 +169,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 
 -- Import validity predicates for dispatcher
 open import Once.Backend.X86.Correct.MemoryValid
-  using (ValidAt; valid-disjoint-from-stack;
-         valid-pair-decompose; PairAtS;
+  using (ValidAt; valid-pair-decompose; PairAtS;
          valid-closure-env; ClosureAtS; closure-at-s;
          Stack)
 
@@ -652,9 +664,9 @@ mutual
   run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
+  -- Uses run-prim-star-vv-auto which derives rdi-not-stack from ValidAt
   run-ir-star-at-offset-v (Prim {A} {B} name contract) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
-    let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid stack-proof
-    in run-prim-star-vv name contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
+    run-prim-star-vv-auto name contract prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Initial: absurd case (base case, ignores Acc)
   run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x

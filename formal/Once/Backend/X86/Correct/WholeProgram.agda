@@ -93,10 +93,21 @@ open import Once.Backend.X86.Correct.ClosureWellFormed
 open import Once.Backend.X86.Correct.ClosureContext
   using (ApplyMemoryLayout; run-apply-with-full-wf; CurryOutputWF)
 
--- Import modular runner for delegation
-open import Once.Backend.X86.Correct.MutualIR as Modular
-  using (run-ir-star; thunk-offset-in-bounds; make-curry-closure-wf;
-         IRStarResultV; module IRStarResultV)
+-- Import PrimProofProvider type for parameterization
+open import Once.Backend.X86.Correct.StarBase using (PrimProofProvider)
+
+-- Postulate prim-proof at the boundary
+-- This will be provided by domain compilers (Arith, etc.) once they prove
+-- their primitives correct. For now, this is the only remaining postulate
+-- for Prim correctness.
+postulate
+  prim-proof : PrimProofProvider
+
+-- Import modular runner for delegation (now parameterized by prim-proof)
+-- Note: IRStarResultV is already imported from StarBase above, so we don't
+-- re-import it here to avoid ambiguity.
+open import Once.Backend.X86.Correct.MutualIR prim-proof as Modular
+  using (run-ir-star; thunk-offset-in-bounds; make-curry-closure-wf)
 
 -- Import curry proof with memory result
 open import Once.Backend.X86.Correct.IR.Curry using (run-curry-star; CurryMemoryResult; CurryExecResult)
