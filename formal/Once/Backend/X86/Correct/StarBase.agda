@@ -1080,3 +1080,20 @@ module PrimRunner (prim-proof : PrimProofProvider) where
     in run-prim-star-vv name sem contract prefix suffix x s
          h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
 
+------------------------------------------------------------------------
+-- X86-64 PrimProofSemantics Instantiation
+--
+-- Instantiates the architecture-independent PrimProofSemantics
+-- interface with X86-64 specific types.
+------------------------------------------------------------------------
+
+open import Once.Backend.Common.PrimProofSemantics as PPS
+  using (PrimProofSemantics)
+
+x86-prim-proof-semantics : PrimProofSemantics ⟦_⟧
+x86-prim-proof-semantics = record
+  { PrimProof = PrimProof
+  ; PrimProofProvider = PrimProofProvider
+  ; provider-gives-proof = λ provider sem c → provider sem c
+  }
+
