@@ -2,29 +2,23 @@
 -- Once.Semantics
 --
 -- Denotational semantics for Once IR.
--- Parameterized by MachineInterface (for ⟦_⟧) and ContractSemantics.
+-- Parameterized by MachineInterface (for ⟦_⟧) and ContractInterface.
 --
 -- Part of OCP-0003: Orthogonal IR design.
 --
 -- KEY DESIGN:
---   IR is machine-independent.
---   Semantics brings in machine-dependence via:
---     1. MachineInterface → ⟦_⟧ (type interpretation)
---     2. ContractSemantics → contract-eval (Prim semantics)
+--   Prim embeds semantics directly - no ContractSemantics needed.
+--   eval for Prim just uses the embedded semantic function.
 ------------------------------------------------------------------------
 
 open import Once.Backend.MachineInterface
-open import Once.Contract
 
-module Once.Semantics
-  (MI : MachineInterface)
-  (CI : ContractInterface)
-  where
+module Once.Semantics (MI : MachineInterface) where
 
 open import Once.Type
 open import Once.SemanticBaseMachine MI
-open import Once.IR
-open IRDef CI
+open import Once.Contract
+open import Once.IR ⟦_⟧
 
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -33,13 +27,11 @@ open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
--- Semantics Module (parameterized by ContractSemantics)
+-- Semantics Module (parameterized by ContractInterface)
 ------------------------------------------------------------------------
 
-module SemanticsDef (CS : ContractSemantics CI ⟦_⟧) where
-  private
-    prim-eval : ∀ {A B} → ContractInterface.Contract CI A B → ⟦ A ⟧ → ⟦ B ⟧
-    prim-eval = ContractSemantics.contract-eval CS
+module SemanticsDef (CI : ContractInterface) where
+  open IRDef CI
 
   ------------------------------------------------------------------------
   -- Evaluation of IR morphisms
@@ -82,5 +74,5 @@ module SemanticsDef (CS : ContractSemantics CI ⟦_⟧) where
   -- Effect lifting
   eval arr cl            = cl
 
-  -- Primitives: use contract semantics
-  eval (Prim _ c) x      = prim-eval c x
+  -- Primitives: use embedded semantics (no ContractSemantics needed!)
+  eval (Prim _ sem _) x  = sem x

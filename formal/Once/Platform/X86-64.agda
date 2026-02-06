@@ -61,37 +61,23 @@ PlaceholderInterface = record
   }
 
 ------------------------------------------------------------------------
--- IR (machine-independent, uses PlaceholderInterface)
+-- IR (parameterized by ⟦_⟧, uses PlaceholderInterface)
 ------------------------------------------------------------------------
 
-open import Once.IR public using (module IRDef)
+open import Once.IR ⟦_⟧ public using (module IRDef)
 open IRDef PlaceholderInterface public
 
 ------------------------------------------------------------------------
--- Placeholder Contract Semantics
+-- Semantics (using PlaceholderInterface)
 ------------------------------------------------------------------------
 
--- For PlaceholderInterface, we need to provide semantics.
--- Since Placeholder contracts are only used for frontend modules
--- that provide semantics inline (via intLit, addIR, etc.),
--- we use a postulate here.
+-- With the new design, Prim carries embedded semantics.
+-- No ContractSemantics needed - eval just uses the embedded sem function.
 
-postulate
-  placeholder-semantics : ∀ {A B : Type} → ⊤ → ⟦ A ⟧ → ⟦ B ⟧
-
-PlaceholderSemantics : ContractSemantics PlaceholderInterface ⟦_⟧
-PlaceholderSemantics = record
-  { contract-eval = λ {A} {B} c → placeholder-semantics {A} {B} c
-  }
-
-------------------------------------------------------------------------
--- Semantics (using PlaceholderInterface and PlaceholderSemantics)
-------------------------------------------------------------------------
-
-open import Once.Semantics Word64Interface PlaceholderInterface public
+open import Once.Semantics Word64Interface public
   using (module SemanticsDef)
 
-open SemanticsDef PlaceholderSemantics public
+open SemanticsDef PlaceholderInterface public
 
 ------------------------------------------------------------------------
 -- Convenience: trivial contract for Prim

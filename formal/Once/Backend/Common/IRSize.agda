@@ -10,14 +10,14 @@
 
 open import Once.Type hiding (_+_)
 open import Once.Contract using (ContractInterface)
-import Once.IR as IR
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _+_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (m≤m+n; m≤n+m; ≤-refl)
 open import Data.String using (String)
 
-module Once.Backend.Common.IRSize (CI : ContractInterface) where
+module Once.Backend.Common.IRSize (⟦_⟧ : Type → Set) (CI : ContractInterface) where
 
+import Once.IR ⟦_⟧ as IR
 open IR.IRDef CI
 
 ------------------------------------------------------------------------
@@ -43,7 +43,7 @@ ir-size inr = 1
 ir-size fold = 1
 ir-size unfold = 1
 ir-size arr = 1
-ir-size (Prim _ _) = 1
+ir-size (Prim _ _ _) = 1
 
 ------------------------------------------------------------------------
 -- Size decrease lemmas

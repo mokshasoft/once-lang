@@ -18,16 +18,17 @@ module Once.Optimize.Correct
 
 open import Once.Type
 open import Once.SemanticBaseMachine MI
-open import Once.IR as IRM
-open import Once.Semantics MI CI
-open import Once.Optimize CI
-open import Once.Category.Laws MI CI
+open import Once.IR ⟦_⟧ as IRM
+open import Once.Semantics MI
+open import Once.Optimize ⟦_⟧
+open import Once.Category.Laws MI
 
 open IRM.IRDef CI
 
-module Correct (CS : ContractSemantics CI ⟦_⟧) where
-  open SemanticsDef CS
-  open Laws CS
+module Correct where
+  open SemanticsDef CI
+  open OptimizeDef CI
+  open Laws CI
 
   open import Once.Postulates ⟦_⟧ IR Closure Closure.semantics encode eval
     using (closure-semantics-eq; extensionality)
@@ -79,7 +80,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   -- Case fusion: fst ∘ [ f' , g' ] = [ fst ∘ f' , fst ∘ g' ]
   optimize-compose-correct fst [ f' , g' ] (inj₁ a) = optimize-compose-correct fst f' a
   optimize-compose-correct fst [ f' , g' ] (inj₂ b) = optimize-compose-correct fst g' b
-  optimize-compose-correct fst (Prim name _) x = refl
+  optimize-compose-correct fst (Prim name _ _) x = refl
 
   -- snd cases
   optimize-compose-correct snd id x = refl
@@ -93,7 +94,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   -- Case fusion: snd ∘ [ f' , g' ] = [ snd ∘ f' , snd ∘ g' ]
   optimize-compose-correct snd [ f' , g' ] (inj₁ a) = optimize-compose-correct snd f' a
   optimize-compose-correct snd [ f' , g' ] (inj₂ b) = optimize-compose-correct snd g' b
-  optimize-compose-correct snd (Prim name _) x = refl
+  optimize-compose-correct snd (Prim name _ _) x = refl
 
   -- ⟨_,_⟩ cases - Pairing fusion: ⟨f,g⟩ ∘ h = ⟨f∘h, g∘h⟩
   optimize-compose-correct ⟨ f' , g' ⟩ id x = refl
@@ -124,8 +125,8 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
     cong₂ _,_ (optimize-compose-correct f' unfold x) (optimize-compose-correct g' unfold x)
   optimize-compose-correct ⟨ f' , g' ⟩ arr x =
     cong₂ _,_ (optimize-compose-correct f' arr x) (optimize-compose-correct g' arr x)
-  optimize-compose-correct ⟨ f' , g' ⟩ (Prim name _) x =
-    cong₂ _,_ (optimize-compose-correct f' (Prim name _) x) (optimize-compose-correct g' (Prim name _) x)
+  optimize-compose-correct ⟨ f' , g' ⟩ (Prim name _ _) x =
+    cong₂ _,_ (optimize-compose-correct f' (Prim name _ _) x) (optimize-compose-correct g' (Prim name _ _) x)
 
   -- inl cases - Case fusion: inl ∘ [ f' , g' ] = [ inl ∘ f' , inl ∘ g' ]
   optimize-compose-correct inl id x = refl
@@ -144,7 +145,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct inl initial ()  -- Initial absorption (Void is empty)
   optimize-compose-correct inl [ f' , g' ] (inj₁ a) = optimize-compose-correct inl f' a
   optimize-compose-correct inl [ f' , g' ] (inj₂ b) = optimize-compose-correct inl g' b
-  optimize-compose-correct inl (Prim name _) x = refl
+  optimize-compose-correct inl (Prim name _ _) x = refl
 
   -- inr cases - Case fusion
   optimize-compose-correct inr id x = refl
@@ -163,7 +164,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct inr initial ()  -- Initial absorption (Void is empty)
   optimize-compose-correct inr [ f' , g' ] (inj₁ a) = optimize-compose-correct inr f' a
   optimize-compose-correct inr [ f' , g' ] (inj₂ b) = optimize-compose-correct inr g' b
-  optimize-compose-correct inr (Prim name _) x = refl
+  optimize-compose-correct inr (Prim name _ _) x = refl
 
   -- [_,_] cases (coproduct beta laws)
   optimize-compose-correct [ f' , g' ] id x = refl
@@ -176,7 +177,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct [ f' , g' ] apply x = refl
   optimize-compose-correct [ f' , g' ] unfold x = refl
   optimize-compose-correct [ f' , g' ] initial ()  -- Initial absorption (Void is empty)
-  optimize-compose-correct [ f' , g' ] (Prim name _) x = refl
+  optimize-compose-correct [ f' , g' ] (Prim name _ _) x = refl
 
   -- terminal cases (terminal fusion)
   optimize-compose-correct terminal id x = refl
@@ -194,7 +195,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct terminal unfold x = refl
   optimize-compose-correct terminal arr x = refl
   optimize-compose-correct terminal initial ()  -- Void is empty
-  optimize-compose-correct terminal (Prim name _) x = refl
+  optimize-compose-correct terminal (Prim name _ _) x = refl
 
   -- curry cases - Case fusion: curry ∘ [ f' , g' ] = [ curry ∘ f' , curry ∘ g' ]
   optimize-compose-correct (curry f') id x = refl
@@ -213,7 +214,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct (curry f') initial ()  -- Initial absorption (Void is empty)
   optimize-compose-correct (curry f') [ g' , h ] (inj₁ a) = optimize-compose-correct (curry f') g' a
   optimize-compose-correct (curry f') [ g' , h ] (inj₂ b) = optimize-compose-correct (curry f') h b
-  optimize-compose-correct (curry f') (Prim name _) x = refl
+  optimize-compose-correct (curry f') (Prim name _ _) x = refl
 
   -- apply cases
   optimize-compose-correct apply id x = refl
@@ -226,7 +227,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct apply initial ()  -- Initial absorption (Void is empty)
   optimize-compose-correct apply [ f' , g' ] (inj₁ a) = optimize-compose-correct apply f' a
   optimize-compose-correct apply [ f' , g' ] (inj₂ b) = optimize-compose-correct apply g' b
-  optimize-compose-correct apply (Prim name _) x = refl
+  optimize-compose-correct apply (Prim name _ _) x = refl
 
   -- fold cases
   optimize-compose-correct fold id x = refl
@@ -245,7 +246,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct fold initial ()  -- Initial absorption (Void is empty)
   optimize-compose-correct fold [ f' , g' ] (inj₁ a) = optimize-compose-correct fold f' a
   optimize-compose-correct fold [ f' , g' ] (inj₂ b) = optimize-compose-correct fold g' b
-  optimize-compose-correct fold (Prim name _) x = refl
+  optimize-compose-correct fold (Prim name _ _) x = refl
 
   -- unfold cases
   optimize-compose-correct unfold id x = refl
@@ -258,7 +259,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct unfold initial ()  -- Initial absorption (Void is empty)
   optimize-compose-correct unfold [ f' , g' ] (inj₁ a) = optimize-compose-correct unfold f' a
   optimize-compose-correct unfold [ f' , g' ] (inj₂ b) = optimize-compose-correct unfold g' b
-  optimize-compose-correct unfold (Prim name _) x = refl
+  optimize-compose-correct unfold (Prim name _ _) x = refl
 
   -- arr cases
   optimize-compose-correct arr id x = refl
@@ -271,7 +272,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct arr initial ()  -- Initial absorption (Void is empty)
   optimize-compose-correct arr [ f' , g' ] (inj₁ a) = optimize-compose-correct arr f' a
   optimize-compose-correct arr [ f' , g' ] (inj₂ b) = optimize-compose-correct arr g' b
-  optimize-compose-correct arr (Prim name _) x = refl
+  optimize-compose-correct arr (Prim name _ _) x = refl
 
   -- Associativity: (h ∘ g) ∘ f → optimize h (optimize g f)
   optimize-compose-correct (h ∘ g) id x = refl
@@ -315,28 +316,28 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-compose-correct (h ∘ g) arr x =
     trans (optimize-compose-correct h (optimize-compose g arr) x)
           (cong (eval h) (optimize-compose-correct g arr x))
-  optimize-compose-correct (h ∘ g) (Prim name _) x =
-    trans (optimize-compose-correct h (optimize-compose g (Prim name _)) x)
-          (cong (eval h) (optimize-compose-correct g (Prim name _) x))
+  optimize-compose-correct (h ∘ g) (Prim name _ _) x =
+    trans (optimize-compose-correct h (optimize-compose g (Prim name _ _)) x)
+          (cong (eval h) (optimize-compose-correct g (Prim name _ _) x))
 
   -- Prim cases (primitives are opaque)
-  optimize-compose-correct (Prim name _) id x = refl
-  optimize-compose-correct (Prim name _) (g' ∘ f') x = refl
-  optimize-compose-correct (Prim name _) fst x = refl
-  optimize-compose-correct (Prim name _) snd x = refl
-  optimize-compose-correct (Prim name _) ⟨ f' , g' ⟩ x = refl
-  optimize-compose-correct (Prim name _) inl x = refl
-  optimize-compose-correct (Prim name _) inr x = refl
-  optimize-compose-correct (Prim name _) terminal x = refl
-  optimize-compose-correct (Prim name _) (curry f') x = refl
-  optimize-compose-correct (Prim name _) apply x = refl
-  optimize-compose-correct (Prim name _) fold x = refl
-  optimize-compose-correct (Prim name _) unfold x = refl
-  optimize-compose-correct (Prim name _) arr x = refl
-  optimize-compose-correct (Prim name _) initial ()
-  optimize-compose-correct (Prim name _) [ f' , g' ] (inj₁ a) = optimize-compose-correct (Prim name _) f' a
-  optimize-compose-correct (Prim name _) [ f' , g' ] (inj₂ b) = optimize-compose-correct (Prim name _) g' b
-  optimize-compose-correct (Prim name _) (Prim name' _) x = refl
+  optimize-compose-correct (Prim name _ _) id x = refl
+  optimize-compose-correct (Prim name _ _) (g' ∘ f') x = refl
+  optimize-compose-correct (Prim name _ _) fst x = refl
+  optimize-compose-correct (Prim name _ _) snd x = refl
+  optimize-compose-correct (Prim name _ _) ⟨ f' , g' ⟩ x = refl
+  optimize-compose-correct (Prim name _ _) inl x = refl
+  optimize-compose-correct (Prim name _ _) inr x = refl
+  optimize-compose-correct (Prim name _ _) terminal x = refl
+  optimize-compose-correct (Prim name _ _) (curry f') x = refl
+  optimize-compose-correct (Prim name _ _) apply x = refl
+  optimize-compose-correct (Prim name _ _) fold x = refl
+  optimize-compose-correct (Prim name _ _) unfold x = refl
+  optimize-compose-correct (Prim name _ _) arr x = refl
+  optimize-compose-correct (Prim name _ _) initial ()
+  optimize-compose-correct (Prim name _ _) [ f' , g' ] (inj₁ a) = optimize-compose-correct (Prim name _ _) f' a
+  optimize-compose-correct (Prim name _ _) [ f' , g' ] (inj₂ b) = optimize-compose-correct (Prim name _ _) g' b
+  optimize-compose-correct (Prim name _ _) (Prim name' _ _) x = refl
 
 
   ------------------------------------------------------------------------
@@ -364,7 +365,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-pair-correct fst (curry g) x = refl
   optimize-pair-correct fst apply x = refl
   optimize-pair-correct fst fold x = refl
-  optimize-pair-correct fst (Prim name _) x = refl
+  optimize-pair-correct fst (Prim name _ _) x = refl
 
   -- Uniqueness: ⟨ fst ∘ h , snd ∘ h' ⟩ cases
   optimize-pair-correct (_∘_ {_} {D} {_} (fst {A} {B}) h) (_∘_ {_} {D'} {_} (snd {A'} {B'}) h') x
@@ -409,9 +410,9 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-pair-correct (fst ∘ h) (unfold ∘ g') x = refl
   optimize-pair-correct (fst ∘ h) (arr ∘ g') x = refl
   optimize-pair-correct (fst ∘ h) (initial ∘ g') x = refl
-  optimize-pair-correct (fst ∘ h) ((Prim name _) ∘ g') x = refl
+  optimize-pair-correct (fst ∘ h) ((Prim name _ _) ∘ g') x = refl
   optimize-pair-correct (fst ∘ h) initial x = refl
-  optimize-pair-correct (fst ∘ h) (Prim name _) x = refl
+  optimize-pair-correct (fst ∘ h) (Prim name _ _) x = refl
 
   -- All other cases (non-fst first argument)
   optimize-pair-correct id g x = refl
@@ -430,7 +431,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-pair-correct (arr ∘ h) g x = refl
   -- initial composition cases
   optimize-pair-correct (initial ∘ h) g x = refl
-  optimize-pair-correct ((Prim name _) ∘ h) g x = refl
+  optimize-pair-correct ((Prim name _ _) ∘ h) g x = refl
   optimize-pair-correct snd g x = refl
   optimize-pair-correct ⟨ f , h ⟩ g x = refl
   optimize-pair-correct inl g x = refl
@@ -443,7 +444,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-pair-correct unfold g x = refl
   optimize-pair-correct arr g x = refl
   optimize-pair-correct initial g x = refl
-  optimize-pair-correct (Prim name _) g x = refl
+  optimize-pair-correct (Prim name _ _) g x = refl
 
   ------------------------------------------------------------------------
   -- Correctness of optimize-case
@@ -469,7 +470,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-case-correct inl initial x = refl
   optimize-case-correct inl apply x = refl
   optimize-case-correct inl unfold x = refl
-  optimize-case-correct inl (Prim name _) x = refl
+  optimize-case-correct inl (Prim name _ _) x = refl
 
   -- Uniqueness: [ h ∘ inl , h' ∘ inr ] cases
   optimize-case-correct (_∘_ {_} {D} {_} h (inl {A} {B})) (_∘_ {_} {D'} {_} h' (inr {A'} {B'})) x
@@ -517,8 +518,8 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-case-correct (h ∘ inl) (g ∘ fold) x = refl
   optimize-case-correct (h ∘ inl) (g ∘ unfold) x = refl
   optimize-case-correct (h ∘ inl) (g ∘ arr) x = refl
-  optimize-case-correct (h ∘ inl) (g ∘ Prim name _) x = refl
-  optimize-case-correct (h ∘ inl) (Prim name _) x = refl
+  optimize-case-correct (h ∘ inl) (g ∘ Prim name _ _) x = refl
+  optimize-case-correct (h ∘ inl) (Prim name _ _) x = refl
 
   -- All other first arg cases (not inl at end)
   optimize-case-correct (f ∘ id) g x = refl
@@ -536,7 +537,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-case-correct (f ∘ fold) g x = refl
   optimize-case-correct (f ∘ unfold) g x = refl
   optimize-case-correct (f ∘ arr) g x = refl
-  optimize-case-correct (f ∘ Prim name _) g x = refl
+  optimize-case-correct (f ∘ Prim name _ _) g x = refl
   optimize-case-correct id g x = refl
   optimize-case-correct fst g x = refl
   optimize-case-correct snd g x = refl
@@ -550,7 +551,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-case-correct fold g x = refl
   optimize-case-correct unfold g x = refl
   optimize-case-correct arr g x = refl
-  optimize-case-correct (Prim name _) g x = refl
+  optimize-case-correct (Prim name _ _) g x = refl
 
   ------------------------------------------------------------------------
   -- Correctness of optimize-once
@@ -588,7 +589,7 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
   optimize-once-correct fold x = refl
   optimize-once-correct unfold x = refl
   optimize-once-correct arr x = refl
-  optimize-once-correct (Prim name _) x = refl
+  optimize-once-correct (Prim name _ _) x = refl
 
   ------------------------------------------------------------------------
   -- Correctness of bounded optimization

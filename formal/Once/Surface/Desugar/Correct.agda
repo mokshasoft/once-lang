@@ -19,16 +19,17 @@ module Once.Surface.Desugar.Correct
 open import Once.Type
 open import Once.SemanticBaseMachine MI
 open import Once.Surface.IR ⟦_⟧ as S
-open import Once.Surface.Desugar ⟦_⟧ CI
-open import Once.IR as IRM
-open import Once.Semantics MI CI
+open import Once.Surface.Desugar ⟦_⟧
+open import Once.IR ⟦_⟧ as IRM
+open import Once.Semantics MI
 open import Once.Memory using (Word)
 
-module Correct (CS : ContractSemantics CI ⟦_⟧) where
+module Correct where
 
+  open DesugarDef CI
   open IRM.IRDef CI
   open ContractInterface CI
-  open SemanticsDef CS
+  open SemanticsDef CI
 
   open import Data.Unit using (⊤; tt)
   open import Data.Empty using (⊥; ⊥-elim)
@@ -39,12 +40,6 @@ module Correct (CS : ContractSemantics CI ⟦_⟧) where
 
   open import Once.Postulates ⟦_⟧ IR Closure Closure.semantics encode eval
     using (extensionality; closure-semantics-eq)
-
-  -- TECHNICAL DEBT: Assume makeContract produces contracts that eval to original semantics
-  -- This should be proven when we replace makeContract with real domain compilers
-  postulate
-    makeContract-eval : ∀ {A B} (c : Contract A B) (x : ⟦ A ⟧)
-                      → ContractSemantics.contract-eval CS c x ≡ ContractSemantics.contract-eval CS c x
 
   ------------------------------------------------------------------------
   -- Primitive evaluation

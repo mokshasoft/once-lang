@@ -226,7 +226,7 @@ compile-length-correct apply = refl
 compile-length-correct fold = refl
 compile-length-correct unfold = refl
 compile-length-correct arr = refl
-compile-length-correct (Prim _ c) = map-length-preserving (contract-program c)
+compile-length-correct (Prim _ _ c) = map-length-preserving (contract-program c)
   where
     open import Data.List.Properties using (length-map)
     -- map Opaque doesn't change length

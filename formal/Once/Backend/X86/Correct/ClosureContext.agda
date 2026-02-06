@@ -28,19 +28,18 @@ open import Once.Platform.X86-64 using (⟦_⟧)
 
 -- Use X86ContractInterface for IR and Semantics
 open import Once.Backend.Common.PrimContract using (X86ContractInterface)
-import Once.IR as IR
+import Once.IR ⟦_⟧ as IR
 open IR.IRDef X86ContractInterface
 
--- Import ContractSemantics and instantiate Semantics correctly
+-- Import Semantics (no ContractSemantics needed - semantics embedded in Prim)
 open import Once.Backend.Word64 using (Word64Interface)
-open import Once.Backend.X86.Correct.Foundation using (X86ContractSemantics)
-import Once.Semantics Word64Interface X86ContractInterface as Semantics
-open Semantics.SemanticsDef X86ContractSemantics
+import Once.Semantics Word64Interface as Semantics
+open Semantics.SemanticsDef X86ContractInterface
 
 open import Once.Backend.X86.Syntax
 open import Once.Backend.X86.Semantics
 open Once.Backend.X86.Semantics.State
-import Once.Backend.X86.CodeGen as CodeGen
+import Once.Backend.X86.CodeGen ⟦_⟧ as CodeGen
 open CodeGen.CodeGenDef X86ContractInterface
 
 -- NOTE: encode import removed - all functions now take env-addr as parameter

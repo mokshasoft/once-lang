@@ -14,32 +14,25 @@ module Once.Backend.X86.Correct.Foundation where
 
 open import Once.Type public
 
--- X86 backend uses X86ContractInterface for real PrimContract proofs
-open import Once.Backend.Common.PrimContract using (X86ContractInterface; PrimContract)
-import Once.IR as IR
-open IR.IRDef X86ContractInterface public
-
 -- Import semantic types from Platform.X86-64 (uses Word64Interface)
 open import Once.Platform.X86-64 public
   using (⟦_⟧; Closure; encode; encode-unit; encode-fix-wrap; encode-fix-unwrap;
          encode-arr-identity; wrap; ⟦Fix⟧)
 
+-- X86 backend uses X86ContractInterface for real PrimContract proofs
+open import Once.Backend.Common.PrimContract using (X86ContractInterface; PrimContract)
+import Once.IR ⟦_⟧ as IR
+open IR.IRDef X86ContractInterface public
+
 -- Import Semantics infrastructure
 open import Once.Backend.Word64 using (Word64Interface)
-open import Once.Contract using (ContractSemantics; ContractInterface)
+open import Once.Contract using (ContractInterface)
 open ContractInterface X86ContractInterface public using (Contract)
 
--- X86ContractSemantics: provides evaluation for X86 contracts
--- For code generation, the contract's semantics are opaque
-postulate
-  x86-contract-eval : ∀ {A B : Type} → Contract A B → ⟦ A ⟧ → ⟦ B ⟧
-
-X86ContractSemantics : ContractSemantics X86ContractInterface ⟦_⟧
-X86ContractSemantics = record { contract-eval = x86-contract-eval }
-
 -- Import eval from Semantics (instantiated with Word64Interface and X86ContractInterface)
-import Once.Semantics Word64Interface X86ContractInterface as Sem
-open Sem.SemanticsDef X86ContractSemantics public
+-- With the new design, Prim carries embedded semantics - no ContractSemantics needed
+import Once.Semantics Word64Interface as Sem
+open Sem.SemanticsDef X86ContractInterface public
 
 open ⟦Fix⟧ public
 
@@ -47,7 +40,7 @@ open import Once.Backend.X86.Syntax public
 open import Once.Backend.X86.Semantics public
 open Once.Backend.X86.Semantics.State public
 open Once.Backend.X86.Semantics.Flags public
-import Once.Backend.X86.CodeGen as CodeGen
+import Once.Backend.X86.CodeGen ⟦_⟧ as CodeGen
 open CodeGen using (simple-instr-count; pair-overhead; case-overhead; curry-overhead;
   injection-instr-count; apply-instr-count; case-setup-prefix-count; case-middle-count;
   pair-setup; pair-middle; pair-cleanup; inl-instrs; inr-instrs; apply-instrs;
@@ -88,8 +81,8 @@ open import Once.Backend.Common.Memory
 -- NOTE: All encode-* postulates eliminated in X86 via validity-based proofs.
 -- encode-pair-construct and encode-closure-construct removed (unused)
 
--- IRSize: parameterized with X86ContractInterface
-open import Once.Backend.Common.IRSize X86ContractInterface public
+-- IRSize: parameterized with ⟦_⟧ and X86ContractInterface
+open import Once.Backend.Common.IRSize ⟦_⟧ X86ContractInterface public
   using (ir-size; ∘-f-smaller; ∘-g-smaller; ⟨,⟩-f-smaller; ⟨,⟩-g-smaller;
          [,]-f-smaller; [,]-g-smaller; curry-smaller)
 

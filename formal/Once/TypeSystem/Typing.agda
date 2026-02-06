@@ -8,14 +8,16 @@
 --
 -- This module makes the typing rules explicit and proves they
 -- correspond to the semantic interpretation.
+--
+-- Parameterized by ⟦_⟧ (type interpretation) for IR.
 ------------------------------------------------------------------------
 
+open import Once.Type
 open import Once.Contract
 
-module Once.TypeSystem.Typing (CI : ContractInterface) where
+module Once.TypeSystem.Typing (⟦_⟧ : Type → Set) (CI : ContractInterface) where
 
-open import Once.Type
-open import Once.IR
+open import Once.IR ⟦_⟧
 open import Once.Arith.Expr
 open IRDef CI
 
@@ -187,9 +189,10 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- They cannot be decomposed into categorical generators.
   -- Each primitive carries:
   --   - name: Human-readable identifier (for debugging/emission)
+  --   - sem: Semantic function (embedded in IR)
   --   - contract: Compiled assembly with correctness proof
   --
-  ty-prim : ∀ {Γ A B} → String → Contract A B → Γ ⊢ A ⟶ B
+  ty-prim : ∀ {Γ A B} → String → (⟦ A ⟧ → ⟦ B ⟧) → Contract A B → Γ ⊢ A ⟶ B
 
   --
 
@@ -217,7 +220,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-fold ⌋ = fold
 ⌊ ty-unfold ⌋ = unfold
 ⌊ ty-arr ⌋ = arr
-⌊ ty-prim name contract ⌋ = Prim name contract
+⌊ ty-prim name sem contract ⌋ = Prim name sem contract
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -240,7 +243,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ fold ⌉ = ty-fold
 ⌈ unfold ⌉ = ty-unfold
 ⌈ arr ⌉ = ty-arr
-⌈ Prim name contract ⌉ = ty-prim name contract
+⌈ Prim name sem contract ⌉ = ty-prim name sem contract
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f
 --
@@ -275,4 +278,4 @@ round-trip-ir apply = refl
 round-trip-ir fold = refl
 round-trip-ir unfold = refl
 round-trip-ir arr = refl
-round-trip-ir (Prim name contract) = refl
+round-trip-ir (Prim name sem contract) = refl

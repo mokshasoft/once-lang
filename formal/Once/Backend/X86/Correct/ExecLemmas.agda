@@ -540,7 +540,7 @@ compile-length>0 fold = s≤s z≤n
 compile-length>0 unfold = s≤s z≤n
 compile-length>0 arr = s≤s z≤n
 -- Prim: use contract-nonempty from ContractInterface
-compile-length>0 (Prim _ c) = contract-nonempty c
+compile-length>0 (Prim _ _ c) = contract-nonempty c
 
 ------------------------------------------------------------------------
 -- Case cleanup fetch lemmas

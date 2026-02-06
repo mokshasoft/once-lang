@@ -14,11 +14,12 @@
 -- contract types (TrivialContract for pure semantics, PrimContract for X86).
 ------------------------------------------------------------------------
 
-module Once.Backend.X86.CodeGen where
-
 open import Once.Type
+
+module Once.Backend.X86.CodeGen (⟦_⟧ : Type → Set) where
+
 open import Once.Contract using (ContractInterface)
-import Once.IR as IR
+import Once.IR ⟦_⟧ as IR
 open IR using (module IRDef)
 
 -- X86-specific contract support
@@ -335,7 +336,7 @@ module CodeGenDef (CI : ContractInterface) where
   compile-length unfold = simple-instr-count
   compile-length arr = simple-instr-count
   -- Prim: use actual assembly length from contract
-  compile-length (Prim _ c) = contract-length c
+  compile-length (Prim _ _ c) = contract-length c
 
   -- Position of cleanup instructions (symbolic, computed from code structure)
   -- cleanup-position f g = setup-prefix + |f| + middle + |g|
@@ -537,7 +538,7 @@ module CodeGenDef (CI : ContractInterface) where
 
   -- Prim: wrap contract assembly strings as Opaque instructions
   -- The contract provides pre-compiled assembly via contract-program
-  compile-instr (Prim _ c) = map Opaque (contract-program c)
+  compile-instr (Prim _ _ c) = map Opaque (contract-program c)
 
   -- | Compile to assembly text (wrapper around compile-instr)
   -- This emits the instruction representation to assembly strings

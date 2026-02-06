@@ -19,15 +19,16 @@
 
 open import Once.Type using (Type; _*_; _+_; _⇒_; Fix)
 open import Once.Contract using (ContractInterface)
-import Once.IR as IR
-import Once.Backend.Common.IRSize as IRSize
 
 -- | IRDispatcher parameterized by ⟦_⟧ and ContractInterface
 -- ⟦_⟧ is the type interpretation provided by each architecture
 module Once.Backend.Common.IRDispatcher (⟦_⟧ : Type → Set) (CI : ContractInterface) where
 
+import Once.IR ⟦_⟧ as IR
+import Once.Backend.Common.IRSize ⟦_⟧ CI as IRSize
+
 open IR.IRDef CI
-open IRSize CI
+open IRSize
 
 open import Data.Bool using (Bool; false)
 open import Data.Nat using (ℕ; _<_)

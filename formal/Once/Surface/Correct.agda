@@ -15,18 +15,18 @@ module Once.Surface.Correct
 
 open import Once.Type
 open import Once.SemanticBaseMachine MI
-open import Once.IR as IRM
-open import Once.Semantics MI CI
+open import Once.IR ⟦_⟧ as IRM
+open import Once.Semantics MI
 open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne) renaming (_,_ to _▸_; eq to eq')
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics MI using (Env; ε; _∷_; envLookup; evalSurface)
-open import Once.Surface.Elaborate CI using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR; coerceIRArrow)
+open import Once.Surface.Elaborate ⟦_⟧ CI using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR; coerceIRArrow)
 
 open IRM.IRDef CI
 open ContractInterface CI
 
-module Correct (CS : ContractSemantics CI ⟦_⟧) where
-  open SemanticsDef CS
+module Correct where
+  open SemanticsDef CI
 
   open import Data.Nat as ℕ using (ℕ)
   open import Data.Nat using () renaming (_+_ to _ℕ+_; _∸_ to _ℕ∸_; _*_ to _ℕ*_)

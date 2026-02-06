@@ -1009,8 +1009,10 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
 --
 -- Defined inline to avoid circular dependency with PrimCorrectness.agda.
 -- (PrimCorrectness imports StarBase for IRStarResultV)
-PrimProof : ∀ {A B : Type} → PrimContract A B → Set₁
-PrimProof {A} {B} contract =
+--
+-- Now takes `sem` as a parameter since Prim embeds semantics.
+PrimProof : ∀ {A B : Type} → (⟦ A ⟧ → ⟦ B ⟧) → PrimContract A B → Set₁
+PrimProof {A} {B} sem contract =
   ∀ (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
@@ -1019,17 +1021,19 @@ PrimProof {A} {B} contract =
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
-  let prog = prefix ++ compile-instr (Prim {A} {B} name contract) ++ suffix
-  in ∃[ s' ] IRStarResultV (Prim {A} {B} name contract) prog s s' x (length prefix)
+  let prog = prefix ++ compile-instr (Prim {A} {B} name sem contract) ++ suffix
+  in ∃[ s' ] IRStarResultV (Prim {A} {B} name sem contract) prog s s' x (length prefix)
 
 -- | A proof provider maps each PrimContract to its correctness proof.
 -- Domain compilers (Arith, etc.) implement this by proving each of
 -- their primitives correct.
 --
+-- Now takes `sem` as a parameter since Prim embeds semantics.
+--
 -- This can be constructed from PrimCorrectness.prim-correct:
---   prim-proof c = PrimCorrectness.prim-correct (my-correctness c)
+--   prim-proof sem c = PrimCorrectness.prim-correct (my-correctness c)
 PrimProofProvider : Set₁
-PrimProofProvider = ∀ {A B : Type} (c : PrimContract A B) → PrimProof c
+PrimProofProvider = ∀ {A B : Type} (sem : ⟦ A ⟧ → ⟦ B ⟧) (c : PrimContract A B) → PrimProof sem c
 
 ------------------------------------------------------------------------
 -- PrimRunner: Parameterized module for Prim execution
@@ -1043,7 +1047,7 @@ module PrimRunner (prim-proof : PrimProofProvider) where
 
   -- | Core prim execution - uses proof from provider
   -- This is what the postulate used to be, now a real function.
-  run-prim-star-vv : ∀ {A B} (name : String) (contract : Contract A B)
+  run-prim-star-vv : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : Contract A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1052,16 +1056,16 @@ module PrimRunner (prim-proof : PrimProofProvider) where
     StackInvariant s →
     StackCapacity s output-slots →
     RbpInvariant s →
-    let prog = prefix ++ compile-instr (Prim {A} {B} name contract) ++ suffix
-    in ∃[ s' ] IRStarResultV (Prim {A} {B} name contract) prog s s' x (length prefix)
-  run-prim-star-vv name contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv =
-    prim-proof contract name prefix suffix x s
+    let prog = prefix ++ compile-instr (Prim {A} {B} name sem contract) ++ suffix
+    in ∃[ s' ] IRStarResultV (Prim {A} {B} name sem contract) prog s s' x (length prefix)
+  run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv =
+    prim-proof sem contract name prefix suffix x s
       h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
 
   -- | Wrapper that derives rdi-not-stack from ValidAt
   -- This is what MutualIR's Prim case used to do inline.
   -- Provides a cleaner interface: just pass ValidAt, disjointness is derived.
-  run-prim-star-vv-auto : ∀ {A B} (name : String) (contract : Contract A B)
+  run-prim-star-vv-auto : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : Contract A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
@@ -1069,10 +1073,10 @@ module PrimRunner (prim-proof : PrimProofProvider) where
     StackInvariant s →
     StackCapacity s output-slots →
     RbpInvariant s →
-    let prog = prefix ++ compile-instr (Prim {A} {B} name contract) ++ suffix
-    in ∃[ s' ] IRStarResultV (Prim {A} {B} name contract) prog s s' x (length prefix)
-  run-prim-star-vv-auto name contract prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
+    let prog = prefix ++ compile-instr (Prim {A} {B} name sem contract) ++ suffix
+    in ∃[ s' ] IRStarResultV (Prim {A} {B} name sem contract) prog s s' x (length prefix)
+  run-prim-star-vv-auto name sem contract prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
     let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid stack-proof
-    in run-prim-star-vv name contract prefix suffix x s
+    in run-prim-star-vv name sem contract prefix suffix x s
          h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
 

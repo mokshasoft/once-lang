@@ -2,20 +2,25 @@
 -- Once.IR
 --
 -- The Categorical Combinator Calculus (CCC) Intermediate Representation.
--- Machine-independent: does not depend on ⟦_⟧ or MachineInterface.
+-- Parameterized by ⟦_⟧ (type interpretation).
 --
 -- Part of OCP-0003: Orthogonal IR design.
 --
 -- KEY DESIGN:
---   IR is parameterized only by ContractInterface (for Prim).
---   ContractInterface provides assembly, not semantics.
---   This keeps IR completely machine-independent.
---   Semantics are provided separately in Once.Semantics.
+--   IR is parameterized by ⟦_⟧ for Prim semantics.
+--   Contract is machine-independent (not parameterized).
+--   Prim embeds semantics directly in the IR constructor.
+--
+-- Usage:
+--   open import Once.SemanticBaseMachine MI using (⟦_⟧)
+--   open import Once.IR ⟦_⟧
+--   open IRDef MyContractInterface
 ------------------------------------------------------------------------
 
-module Once.IR where
-
 open import Once.Type
+
+module Once.IR (⟦_⟧ : Type → Set) where
+
 open import Once.Contract
 open import Data.String using (String)
 
@@ -58,10 +63,11 @@ module IRDef (CI : ContractInterface) where
     -- Effect lifting
     arr     : ∀ {A B} → IR (A ⇒ B) (Eff A B)
 
-    -- Primitive operations (opaque to CCC, proven assembly blocks)
+    -- Primitive operations with explicit semantics
     -- name: identifier for debugging/emission
-    -- contract: compiled assembly with proof (from primitive compiler)
-    Prim    : ∀ {A B} → (name : String) → Contract A B → IR A B
+    -- sem: the semantic function (embedded in IR)
+    -- contract: compiled assembly (correctness proven separately via PrimProof)
+    Prim    : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) → Contract A B → IR A B
 
   IR∞ : Type → Type → Set
   IR∞ = IR

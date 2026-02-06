@@ -4,16 +4,18 @@
 -- Elaboration from surface syntax to IR.
 -- Converts lambda/variable expressions to point-free combinators.
 --
--- TECHNICAL DEBT: Currently uses postulated contracts.
+-- Parameterized by ⟦_⟧ (type interpretation) for IR.
+--
+-- TECHNICAL DEBT: Currently uses postulated contracts and semantics.
 -- TODO: Replace Prim nodes with Domain (ArithExpr) - see OCP-0003 Phase 4
 ------------------------------------------------------------------------
 
+open import Once.Type
 open import Once.Contract
 
-module Once.Surface.Elaborate (CI : ContractInterface) where
+module Once.Surface.Elaborate (⟦_⟧ : Type → Set) (CI : ContractInterface) where
 
-open import Once.Type
-open import Once.IR
+open import Once.IR ⟦_⟧
 open import Once.Surface.Syntax
 
 open IRDef CI
@@ -44,56 +46,57 @@ postulate
 -- The Arith domain compiler will provide real contracts with proofs.
 --
 
--- Helper to create postulated contract
--- TECHNICAL DEBT: This should be provided by domain compilers with real proofs
+-- Helper to create postulated contract and semantics
+-- TECHNICAL DEBT: These should be provided by domain compilers with real proofs
 postulate
   makeContract : ∀ (A B : Type) → Contract A B
+  makeSem : ∀ (A B : Type) → ⟦ A ⟧ → ⟦ B ⟧
 
 -- Literals: constant morphisms that ignore input environment
 intLit : ℤ → ∀ {Γ} → IR Γ Int
-intLit n = Prim ("lit.int." ++ showℤ n) (makeContract Unit Int) ∘ terminal
+intLit n = Prim ("lit.int." ++ showℤ n) (makeSem Unit Int) (makeContract Unit Int) ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
-strLit s = Prim ("lit.str." ++ s) (makeContract Unit Str) ∘ terminal
+strLit s = Prim ("lit.str." ++ s) (makeSem Unit Str) (makeContract Unit Str) ∘ terminal
 
 -- Arithmetic operations (Int * Int → Int)
 addIR : IR (Int * Int) Int
-addIR = Prim "arith.add.int" (makeContract (Int * Int) Int)
+addIR = Prim "arith.add.int" (makeSem (Int * Int) Int) (makeContract (Int * Int) Int)
 
 subIR : IR (Int * Int) Int
-subIR = Prim "arith.sub.int" (makeContract (Int * Int) Int)
+subIR = Prim "arith.sub.int" (makeSem (Int * Int) Int) (makeContract (Int * Int) Int)
 
 mulIR : IR (Int * Int) Int
-mulIR = Prim "arith.mul.int" (makeContract (Int * Int) Int)
+mulIR = Prim "arith.mul.int" (makeSem (Int * Int) Int) (makeContract (Int * Int) Int)
 
 divIR : IR (Int * Int) Int
-divIR = Prim "arith.div.int" (makeContract (Int * Int) Int)
+divIR = Prim "arith.div.int" (makeSem (Int * Int) Int) (makeContract (Int * Int) Int)
 
 modIR : IR (Int * Int) Int
-modIR = Prim "arith.mod.int" (makeContract (Int * Int) Int)
+modIR = Prim "arith.mod.int" (makeSem (Int * Int) Int) (makeContract (Int * Int) Int)
 
 -- Unary negation
 negIR : IR Int Int
-negIR = Prim "arith.neg.int" (makeContract Int Int)
+negIR = Prim "arith.neg.int" (makeSem Int Int) (makeContract Int Int)
 
 -- Comparison operations (Int * Int → Bool, where Bool = Unit + Unit)
 ltIR : IR (Int * Int) (Unit + Unit)
-ltIR = Prim "arith.lt.int" (makeContract (Int * Int) (Unit + Unit))
+ltIR = Prim "arith.lt.int" (makeSem (Int * Int) (Unit + Unit)) (makeContract (Int * Int) (Unit + Unit))
 
 leIR : IR (Int * Int) (Unit + Unit)
-leIR = Prim "arith.le.int" (makeContract (Int * Int) (Unit + Unit))
+leIR = Prim "arith.le.int" (makeSem (Int * Int) (Unit + Unit)) (makeContract (Int * Int) (Unit + Unit))
 
 gtIR : IR (Int * Int) (Unit + Unit)
-gtIR = Prim "arith.gt.int" (makeContract (Int * Int) (Unit + Unit))
+gtIR = Prim "arith.gt.int" (makeSem (Int * Int) (Unit + Unit)) (makeContract (Int * Int) (Unit + Unit))
 
 geIR : IR (Int * Int) (Unit + Unit)
-geIR = Prim "arith.ge.int" (makeContract (Int * Int) (Unit + Unit))
+geIR = Prim "arith.ge.int" (makeSem (Int * Int) (Unit + Unit)) (makeContract (Int * Int) (Unit + Unit))
 
 eqIR : IR (Int * Int) (Unit + Unit)
-eqIR = Prim "arith.eq.int" (makeContract (Int * Int) (Unit + Unit))
+eqIR = Prim "arith.eq.int" (makeSem (Int * Int) (Unit + Unit)) (makeContract (Int * Int) (Unit + Unit))
 
 neIR : IR (Int * Int) (Unit + Unit)
-neIR = Prim "arith.ne.int" (makeContract (Int * Int) (Unit + Unit))
+neIR = Prim "arith.ne.int" (makeSem (Int * Int) (Unit + Unit)) (makeContract (Int * Int) (Unit + Unit))
 
 ------------------------------------------------------------------------
 -- Context Interpretation

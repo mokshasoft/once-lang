@@ -2,14 +2,14 @@
 -- Once.Contract
 --
 -- Contract interface for primitive operations.
--- Machine-independent: only defines assembly, not semantics.
+-- Machine-independent: only defines assembly structure.
 --
 -- Part of OCP-0003: Orthogonal IR design.
 --
 -- KEY DESIGN:
---   Contract is parameterized by types only, not by ⟦_⟧ or semantics.
---   This keeps IR machine-independent.
---   Semantics are provided separately via ContractSemantics.
+--   Contract is parameterized by types only.
+--   Semantics is embedded in Prim constructor (not here).
+--   This keeps Contract machine-independent.
 ------------------------------------------------------------------------
 
 module Once.Contract where
@@ -25,7 +25,7 @@ open import Data.String using (String)
 
 record ContractInterface : Set₁ where
   field
-    -- | The contract type, parameterized only by types (not semantics)
+    -- | The contract type, parameterized only by types
     Contract : (A B : Type) → Set
 
     -- | The compiled assembly (opaque - CCC doesn't parse this)
@@ -38,17 +38,6 @@ record ContractInterface : Set₁ where
   contract-length : ∀ {A B : Type} → Contract A B → ℕ
   contract-length c = length (contract-assembly c)
 
-------------------------------------------------------------------------
--- Contract Semantics (machine-dependent, provided separately)
-------------------------------------------------------------------------
-
--- | Semantic interpretation of contracts
---
--- This is separate from ContractInterface to keep IR machine-independent.
--- Modules that need to evaluate IR (like Semantics) use both.
---
-record ContractSemantics (CI : ContractInterface) (⟦_⟧ : Type → Set) : Set₁ where
-  open ContractInterface CI
-  field
-    -- | Evaluate a contract on a value
-    contract-eval : ∀ {A B : Type} → Contract A B → ⟦ A ⟧ → ⟦ B ⟧
+-- Note: ContractSemantics has been removed.
+-- Semantics is now embedded directly in the Prim constructor.
+-- See Once.IR for the new Prim signature.

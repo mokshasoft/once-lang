@@ -4,31 +4,28 @@
 -- Proofs of the categorical laws for Once's IR.
 -- These establish that IR forms a category.
 --
--- Parameterized by machine interface and contract semantics.
+-- Parameterized by machine interface and contract interface.
 ------------------------------------------------------------------------
 
 open import Once.Backend.MachineInterface
-open import Once.Contract
 
-module Once.Category.Laws
-  (MI : MachineInterface)
-  (CI : ContractInterface)
-  where
+module Once.Category.Laws (MI : MachineInterface) where
 
 open import Once.Type
 open import Once.SemanticBaseMachine MI
-open import Once.IR
-open import Once.Semantics MI CI
+open import Once.Contract
+open import Once.IR ⟦_⟧
+open import Once.Semantics MI
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Function using (_∘′_)
 
-module Laws (CS : ContractSemantics CI ⟦_⟧) where
+module Laws (CI : ContractInterface) where
 
   open IRDef CI
-  open SemanticsDef CS
+  open SemanticsDef CI
 
   -- Note: Fixity declarations for _∘_, ⟨_,_⟩, [_,_] are inherited from IRDef
 

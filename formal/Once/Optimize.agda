@@ -3,16 +3,17 @@
 --
 -- Optimizer for Once IR using categorical laws as rewrite rules.
 -- Each rewrite preserves semantics (proven in Once.Optimize.Correct).
+--
+-- Parameterized by ⟦_⟧ to satisfy IR/Contract types, though the
+-- optimizer is purely syntactic and doesn't evaluate semantics.
 ------------------------------------------------------------------------
 
-open import Once.Contract
-
-module Once.Optimize (CI : ContractInterface) where
-
 open import Once.Type
-open import Once.IR
-open IRDef CI
-open ContractInterface CI
+
+module Once.Optimize (⟦_⟧ : Type → Set) where
+
+open import Once.Contract
+open import Once.IR ⟦_⟧
 
 open import Data.Bool using (Bool; true; false; _∨_)
 open import Data.Nat using (ℕ; zero; suc)
@@ -202,433 +203,441 @@ Buffer ≟Type (TVar _) = no (λ ())
 ... | no neq   = no (λ { refl → neq refl })
 
 ------------------------------------------------------------------------
--- Decidable equality for IR (needed for uniqueness optimizations)
+-- Optimizer Module (parameterized by ContractInterface)
 ------------------------------------------------------------------------
 
--- Decidable equality for IR terms of the same type.
--- Many constructor combinations are type-impossible (e.g., id vs fst
--- would require A = A * B which is cyclic). Agda's pattern matching
--- automatically excludes these cases.
+module OptimizeDef (CI : ContractInterface) where
+  open IRDef CI
+  open ContractInterface CI
 
-mutual
-  _≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
+  ------------------------------------------------------------------------
+  -- Decidable equality for IR (needed for uniqueness optimizations)
+  ------------------------------------------------------------------------
 
-  -- Same constructor cases
-  id ≟IR id = yes refl
-  fst ≟IR fst = yes refl
-  snd ≟IR snd = yes refl
-  inl ≟IR inl = yes refl
-  inr ≟IR inr = yes refl
-  terminal ≟IR terminal = yes refl
-  initial ≟IR initial = yes refl
-  apply ≟IR apply = yes refl
-  fold ≟IR fold = yes refl
-  unfold ≟IR unfold = yes refl
-  arr ≟IR arr = yes refl
+  -- Decidable equality for IR terms of the same type.
+  -- Many constructor combinations are type-impossible (e.g., id vs fst
+  -- would require A = A * B which is cyclic). Agda's pattern matching
+  -- automatically excludes these cases.
 
-  -- Prim equality - same name with same semantics and contract must be equal
-  -- Use helper pattern with explicit bindings
-  (Prim {A} {B} x c₁) ≟IR (Prim {A'} {B'} y c₂) with A ≟Type A' | B ≟Type B' | x ≟String y
-  ... | yes refl | yes refl | yes refl = yes (prim-eq-helper c₁ c₂)
-    where
-      -- Primitives with the same name have unique contracts (by convention)
-      -- TECHNICAL DEBT: Should compare contracts structurally
-      postulate prim-eq-helper : (c1 c2 : Contract A B) → Prim x c1 ≡ Prim x c2
-  ... | no neq   | _        | _        = no (λ { refl → neq refl })
-  ... | _        | no neq   | _        = no (λ { refl → neq refl })
-  ... | _        | _        | no neq   = no (λ { refl → neq refl })
+  mutual
+    _≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
 
-  -- Recursive constructors - same constructor
-  (curry f) ≟IR (curry g) with f ≟IR g
-  ... | yes refl = yes refl
-  ... | no neq   = no (λ { refl → neq refl })
+    -- Same constructor cases
+    id ≟IR id = yes refl
+    fst ≟IR fst = yes refl
+    snd ≟IR snd = yes refl
+    inl ≟IR inl = yes refl
+    inr ≟IR inr = yes refl
+    terminal ≟IR terminal = yes refl
+    initial ≟IR initial = yes refl
+    apply ≟IR apply = yes refl
+    fold ≟IR fold = yes refl
+    unfold ≟IR unfold = yes refl
+    arr ≟IR arr = yes refl
 
-  ⟨ f , g ⟩ ≟IR ⟨ f' , g' ⟩ with f ≟IR f' | g ≟IR g'
-  ... | yes refl | yes refl = yes refl
-  ... | no neq   | _        = no (λ { refl → neq refl })
-  ... | _        | no neq   = no (λ { refl → neq refl })
+    -- Prim equality - same name with same semantics and contract must be equal
+    -- Note: Prim now has three arguments: name, sem, contract
+    (Prim {A} {B} x sem₁ c₁) ≟IR (Prim {A'} {B'} y sem₂ c₂) with A ≟Type A' | B ≟Type B' | x ≟String y
+    ... | yes refl | yes refl | yes refl = yes (prim-eq-helper sem₁ c₁ sem₂ c₂)
+      where
+        -- Primitives with the same name have unique semantics/contracts (by convention)
+        -- TECHNICAL DEBT: Should compare semantics structurally
+        postulate prim-eq-helper : (s1 : ⟦ A ⟧ → ⟦ B ⟧) (c1 : Contract A B) (s2 : ⟦ A ⟧ → ⟦ B ⟧) (c2 : Contract A B) → Prim x s1 c1 ≡ Prim x s2 c2
+    ... | no neq   | _        | _        = no (λ { refl → neq refl })
+    ... | _        | no neq   | _        = no (λ { refl → neq refl })
+    ... | _        | _        | no neq   = no (λ { refl → neq refl })
 
-  [ f , g ] ≟IR [ f' , g' ] with f ≟IR f' | g ≟IR g'
-  ... | yes refl | yes refl = yes refl
-  ... | no neq   | _        = no (λ { refl → neq refl })
-  ... | _        | no neq   = no (λ { refl → neq refl })
+    -- Recursive constructors - same constructor
+    (curry f) ≟IR (curry g) with f ≟IR g
+    ... | yes refl = yes refl
+    ... | no neq   = no (λ { refl → neq refl })
 
-  -- Composition vs composition - need matching intermediate types
-  _≟IR_ {A} {C} (_∘_ {.A} {B} {.C} f g) (_∘_ {.A} {B'} {.C} f' g') with B ≟Type B'
-  ... | no neq = no (λ { refl → neq refl })
-  ... | yes refl with f ≟IR f' | g ≟IR g'
-  ...   | yes refl | yes refl = yes refl
-  ...   | no neq   | _        = no (λ { refl → neq refl })
-  ...   | _        | no neq   = no (λ { refl → neq refl })
+    ⟨ f , g ⟩ ≟IR ⟨ f' , g' ⟩ with f ≟IR f' | g ≟IR g'
+    ... | yes refl | yes refl = yes refl
+    ... | no neq   | _        = no (λ { refl → neq refl })
+    ... | _        | no neq   = no (λ { refl → neq refl })
 
-  -- Different constructor cases (type-compatible ones)
-  -- Composition vs non-composition
-  id ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR id = no (λ ())
+    [ f , g ] ≟IR [ f' , g' ] with f ≟IR f' | g ≟IR g'
+    ... | yes refl | yes refl = yes refl
+    ... | no neq   | _        = no (λ { refl → neq refl })
+    ... | _        | no neq   = no (λ { refl → neq refl })
 
-  ⟨ _ , _ ⟩ ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR ⟨ _ , _ ⟩ = no (λ ())
+    -- Composition vs composition - need matching intermediate types
+    _≟IR_ {A} {C} (_∘_ {.A} {B} {.C} f g) (_∘_ {.A} {B'} {.C} f' g') with B ≟Type B'
+    ... | no neq = no (λ { refl → neq refl })
+    ... | yes refl with f ≟IR f' | g ≟IR g'
+    ...   | yes refl | yes refl = yes refl
+    ...   | no neq   | _        = no (λ { refl → neq refl })
+    ...   | _        | no neq   = no (λ { refl → neq refl })
 
-  [ _ , _ ] ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR [ _ , _ ] = no (λ ())
+    -- Different constructor cases (type-compatible ones)
+    -- Composition vs non-composition
+    id ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR id = no (λ ())
 
-  (curry _) ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR (curry _) = no (λ ())
+    ⟨ _ , _ ⟩ ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR ⟨ _ , _ ⟩ = no (λ ())
 
-  terminal ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR terminal = no (λ ())
+    [ _ , _ ] ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR [ _ , _ ] = no (λ ())
 
-  initial ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR initial = no (λ ())
+    (curry _) ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR (curry _) = no (λ ())
 
-  fst ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR fst = no (λ ())
+    terminal ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR terminal = no (λ ())
 
-  snd ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR snd = no (λ ())
+    initial ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR initial = no (λ ())
 
-  inl ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR inl = no (λ ())
+    fst ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR fst = no (λ ())
 
-  inr ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR inr = no (λ ())
+    snd ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR snd = no (λ ())
 
-  apply ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR apply = no (λ ())
+    inl ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR inl = no (λ ())
 
-  fold ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR fold = no (λ ())
+    inr ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR inr = no (λ ())
 
-  unfold ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR unfold = no (λ ())
+    apply ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR apply = no (λ ())
 
-  arr ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR arr = no (λ ())
+    fold ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR fold = no (λ ())
 
-  (Prim _ _) ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR (Prim _ _) = no (λ ())
+    unfold ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR unfold = no (λ ())
 
-  -- Prim vs other constructors
-  (Prim _ _) ≟IR id = no (λ ())
-  id ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR fst = no (λ ())
-  fst ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR snd = no (λ ())
-  snd ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR inl = no (λ ())
-  inl ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR inr = no (λ ())
-  inr ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR [ _ , _ ] = no (λ ())
-  [ _ , _ ] ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR terminal = no (λ ())
-  terminal ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR initial = no (λ ())
-  initial ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR (curry _) = no (λ ())
-  (curry _) ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR apply = no (λ ())
-  apply ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR fold = no (λ ())
-  fold ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR unfold = no (λ ())
-  unfold ≟IR (Prim _ _) = no (λ ())
-  (Prim _ _) ≟IR arr = no (λ ())
-  arr ≟IR (Prim _ _) = no (λ ())
+    arr ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR arr = no (λ ())
 
-  -- Remaining type-compatible different-constructor cases
-  id ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  id ≟IR [ _ , _ ] = no (λ ())
-  id ≟IR terminal = no (λ ())
-  id ≟IR initial = no (λ ())
-  id ≟IR (curry _) = no (λ ())
+    (Prim _ _ _) ≟IR (_ ∘ _) = no (λ ())
+    (_ ∘ _) ≟IR (Prim _ _ _) = no (λ ())
 
-  fst ≟IR snd = no (λ ())
-  fst ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  fst ≟IR terminal = no (λ ())
-  fst ≟IR (curry _) = no (λ ())
+    -- Prim vs other constructors
+    (Prim _ _ _) ≟IR id = no (λ ())
+    id ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR fst = no (λ ())
+    fst ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR snd = no (λ ())
+    snd ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR ⟨ _ , _ ⟩ = no (λ ())
+    ⟨ _ , _ ⟩ ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR inl = no (λ ())
+    inl ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR inr = no (λ ())
+    inr ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR [ _ , _ ] = no (λ ())
+    [ _ , _ ] ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR terminal = no (λ ())
+    terminal ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR initial = no (λ ())
+    initial ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR (curry _) = no (λ ())
+    (curry _) ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR apply = no (λ ())
+    apply ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR fold = no (λ ())
+    fold ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR unfold = no (λ ())
+    unfold ≟IR (Prim _ _ _) = no (λ ())
+    (Prim _ _ _) ≟IR arr = no (λ ())
+    arr ≟IR (Prim _ _ _) = no (λ ())
 
-  snd ≟IR fst = no (λ ())
-  snd ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  snd ≟IR terminal = no (λ ())
-  snd ≟IR (curry _) = no (λ ())
-  snd ≟IR apply = no (λ ())
+    -- Remaining type-compatible different-constructor cases
+    id ≟IR ⟨ _ , _ ⟩ = no (λ ())
+    id ≟IR [ _ , _ ] = no (λ ())
+    id ≟IR terminal = no (λ ())
+    id ≟IR initial = no (λ ())
+    id ≟IR (curry _) = no (λ ())
 
-  ⟨ _ , _ ⟩ ≟IR id = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR fst = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR snd = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR [ _ , _ ] = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR initial = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR apply = no (λ ())
-  ⟨ _ , _ ⟩ ≟IR unfold = no (λ ())
+    fst ≟IR snd = no (λ ())
+    fst ≟IR ⟨ _ , _ ⟩ = no (λ ())
+    fst ≟IR terminal = no (λ ())
+    fst ≟IR (curry _) = no (λ ())
 
-  inl ≟IR inr = no (λ ())
-  inl ≟IR [ _ , _ ] = no (λ ())
-  inl ≟IR initial = no (λ ())
+    snd ≟IR fst = no (λ ())
+    snd ≟IR ⟨ _ , _ ⟩ = no (λ ())
+    snd ≟IR terminal = no (λ ())
+    snd ≟IR (curry _) = no (λ ())
+    snd ≟IR apply = no (λ ())
 
-  inr ≟IR inl = no (λ ())
-  inr ≟IR [ _ , _ ] = no (λ ())
-  inr ≟IR initial = no (λ ())
+    ⟨ _ , _ ⟩ ≟IR id = no (λ ())
+    ⟨ _ , _ ⟩ ≟IR fst = no (λ ())
+    ⟨ _ , _ ⟩ ≟IR snd = no (λ ())
+    ⟨ _ , _ ⟩ ≟IR [ _ , _ ] = no (λ ())
+    ⟨ _ , _ ⟩ ≟IR initial = no (λ ())
+    ⟨ _ , _ ⟩ ≟IR apply = no (λ ())
+    ⟨ _ , _ ⟩ ≟IR unfold = no (λ ())
 
-  [ _ , _ ] ≟IR id = no (λ ())
-  [ _ , _ ] ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  [ _ , _ ] ≟IR inl = no (λ ())
-  [ _ , _ ] ≟IR inr = no (λ ())
-  [ _ , _ ] ≟IR terminal = no (λ ())
-  [ _ , _ ] ≟IR (curry _) = no (λ ())
-  [ _ , _ ] ≟IR fold = no (λ ())
+    inl ≟IR inr = no (λ ())
+    inl ≟IR [ _ , _ ] = no (λ ())
+    inl ≟IR initial = no (λ ())
 
-  terminal ≟IR id = no (λ ())
-  terminal ≟IR fst = no (λ ())
-  terminal ≟IR snd = no (λ ())
-  terminal ≟IR [ _ , _ ] = no (λ ())
-  terminal ≟IR initial = no (λ ())
-  terminal ≟IR apply = no (λ ())
-  terminal ≟IR unfold = no (λ ())
+    inr ≟IR inl = no (λ ())
+    inr ≟IR [ _ , _ ] = no (λ ())
+    inr ≟IR initial = no (λ ())
 
-  initial ≟IR id = no (λ ())
-  initial ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  initial ≟IR inl = no (λ ())
-  initial ≟IR inr = no (λ ())
-  initial ≟IR terminal = no (λ ())
-  initial ≟IR (curry _) = no (λ ())
-  initial ≟IR fold = no (λ ())
+    [ _ , _ ] ≟IR id = no (λ ())
+    [ _ , _ ] ≟IR ⟨ _ , _ ⟩ = no (λ ())
+    [ _ , _ ] ≟IR inl = no (λ ())
+    [ _ , _ ] ≟IR inr = no (λ ())
+    [ _ , _ ] ≟IR terminal = no (λ ())
+    [ _ , _ ] ≟IR (curry _) = no (λ ())
+    [ _ , _ ] ≟IR fold = no (λ ())
 
-  (curry _) ≟IR id = no (λ ())
-  (curry _) ≟IR fst = no (λ ())
-  (curry _) ≟IR snd = no (λ ())
-  (curry _) ≟IR [ _ , _ ] = no (λ ())
-  (curry _) ≟IR initial = no (λ ())
-  (curry _) ≟IR apply = no (λ ())
-  (curry _) ≟IR unfold = no (λ ())
+    terminal ≟IR id = no (λ ())
+    terminal ≟IR fst = no (λ ())
+    terminal ≟IR snd = no (λ ())
+    terminal ≟IR [ _ , _ ] = no (λ ())
+    terminal ≟IR initial = no (λ ())
+    terminal ≟IR apply = no (λ ())
+    terminal ≟IR unfold = no (λ ())
 
-  apply ≟IR snd = no (λ ())
-  apply ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  apply ≟IR terminal = no (λ ())
-  apply ≟IR (curry _) = no (λ ())
+    initial ≟IR id = no (λ ())
+    initial ≟IR ⟨ _ , _ ⟩ = no (λ ())
+    initial ≟IR inl = no (λ ())
+    initial ≟IR inr = no (λ ())
+    initial ≟IR terminal = no (λ ())
+    initial ≟IR (curry _) = no (λ ())
+    initial ≟IR fold = no (λ ())
 
-  fold ≟IR [ _ , _ ] = no (λ ())
-  fold ≟IR initial = no (λ ())
+    (curry _) ≟IR id = no (λ ())
+    (curry _) ≟IR fst = no (λ ())
+    (curry _) ≟IR snd = no (λ ())
+    (curry _) ≟IR [ _ , _ ] = no (λ ())
+    (curry _) ≟IR initial = no (λ ())
+    (curry _) ≟IR apply = no (λ ())
+    (curry _) ≟IR unfold = no (λ ())
 
-  unfold ≟IR ⟨ _ , _ ⟩ = no (λ ())
-  unfold ≟IR terminal = no (λ ())
-  unfold ≟IR (curry _) = no (λ ())
+    apply ≟IR snd = no (λ ())
+    apply ≟IR ⟨ _ , _ ⟩ = no (λ ())
+    apply ≟IR terminal = no (λ ())
+    apply ≟IR (curry _) = no (λ ())
 
-------------------------------------------------------------------------
--- Optimizer: Single-step rewriting
-------------------------------------------------------------------------
+    fold ≟IR [ _ , _ ] = no (λ ())
+    fold ≟IR initial = no (λ ())
 
--- | Optimize a single composition
---
--- Applies categorical laws to simplify f ∘ g patterns.
--- Returns the simplified IR.
---
--- Note: We avoid overlapping patterns to get definitional equalities in proofs.
--- Each constructor is handled explicitly.
---
-optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
+    unfold ≟IR ⟨ _ , _ ⟩ = no (λ ())
+    unfold ≟IR terminal = no (λ ())
+    unfold ≟IR (curry _) = no (λ ())
 
--- Left identity: id ∘ f = f (always applies when left arg is id)
-optimize-compose id f = f
+  ------------------------------------------------------------------------
+  -- Optimizer: Single-step rewriting
+  ------------------------------------------------------------------------
 
--- Right identity: fst ∘ id = fst, etc. (when right arg is id, left is not)
-optimize-compose fst id = fst
-optimize-compose snd id = snd
-optimize-compose ⟨ f , g ⟩ id = ⟨ f , g ⟩
-optimize-compose inl id = inl
-optimize-compose inr id = inr
-optimize-compose [ f , g ] id = [ f , g ]
-optimize-compose terminal id = terminal
-optimize-compose (curry f) id = curry f
-optimize-compose apply id = apply
-optimize-compose fold id = fold
-optimize-compose unfold id = unfold
-optimize-compose arr id = arr
-optimize-compose (Prim name c) id = Prim name c
-optimize-compose (h ∘ g) id = h ∘ g  -- Don't simplify here, let associativity handle it
+  -- | Optimize a single composition
+  --
+  -- Applies categorical laws to simplify f ∘ g patterns.
+  -- Returns the simplified IR.
+  --
+  -- Note: We avoid overlapping patterns to get definitional equalities in proofs.
+  -- Each constructor is handled explicitly.
+  --
+  optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
 
--- Product beta laws: fst ∘ ⟨ f , g ⟩ = f, snd ∘ ⟨ f , g ⟩ = g
-optimize-compose fst ⟨ f , g ⟩ = f
-optimize-compose snd ⟨ f , g ⟩ = g
+  -- Left identity: id ∘ f = f (always applies when left arg is id)
+  optimize-compose id f = f
 
--- Coproduct beta laws: [ f , g ] ∘ inl = f, [ f , g ] ∘ inr = g
-optimize-compose [ f , g ] inl = f
-optimize-compose [ f , g ] inr = g
+  -- Right identity: fst ∘ id = fst, etc. (when right arg is id, left is not)
+  optimize-compose fst id = fst
+  optimize-compose snd id = snd
+  optimize-compose ⟨ f , g ⟩ id = ⟨ f , g ⟩
+  optimize-compose inl id = inl
+  optimize-compose inr id = inr
+  optimize-compose [ f , g ] id = [ f , g ]
+  optimize-compose terminal id = terminal
+  optimize-compose (curry f) id = curry f
+  optimize-compose apply id = apply
+  optimize-compose fold id = fold
+  optimize-compose unfold id = unfold
+  optimize-compose arr id = arr
+  optimize-compose (Prim name sem c) id = Prim name sem c
+  optimize-compose (h ∘ g) id = h ∘ g  -- Don't simplify here, let associativity handle it
 
--- Fixed point laws: fold ∘ unfold = id, unfold ∘ fold = id
-optimize-compose fold unfold = id
-optimize-compose unfold fold = id
+  -- Product beta laws: fst ∘ ⟨ f , g ⟩ = f, snd ∘ ⟨ f , g ⟩ = g
+  optimize-compose fst ⟨ f , g ⟩ = f
+  optimize-compose snd ⟨ f , g ⟩ = g
 
--- Terminal fusion: terminal ∘ f = terminal (dead code elimination)
--- Any computation followed by discarding the result can skip the computation
-optimize-compose terminal (g ∘ f) = terminal
-optimize-compose terminal fst = terminal
-optimize-compose terminal snd = terminal
-optimize-compose terminal ⟨ f , g ⟩ = terminal
-optimize-compose terminal inl = terminal
-optimize-compose terminal inr = terminal
-optimize-compose terminal [ f , g ] = terminal
-optimize-compose terminal terminal = terminal
-optimize-compose terminal (curry f) = terminal
-optimize-compose terminal apply = terminal
-optimize-compose terminal fold = terminal
-optimize-compose terminal unfold = terminal
-optimize-compose terminal arr = terminal
-optimize-compose terminal (Prim name _) = terminal
+  -- Coproduct beta laws: [ f , g ] ∘ inl = f, [ f , g ] ∘ inr = g
+  optimize-compose [ f , g ] inl = f
+  optimize-compose [ f , g ] inr = g
 
--- Initial absorption: f ∘ initial = initial (dead code elimination)
--- Composition with initial is initial (vacuously true, Void is empty)
-optimize-compose fst initial = initial
-optimize-compose snd initial = initial
-optimize-compose ⟨ f , g ⟩ initial = initial
-optimize-compose inl initial = initial
-optimize-compose inr initial = initial
-optimize-compose [ f , g ] initial = initial
-optimize-compose terminal initial = initial
-optimize-compose (curry f) initial = initial
-optimize-compose apply initial = initial
-optimize-compose fold initial = initial
-optimize-compose unfold initial = initial
-optimize-compose arr initial = initial
-optimize-compose (Prim name _) initial = initial
-optimize-compose (h ∘ g) initial = initial
+  -- Fixed point laws: fold ∘ unfold = id, unfold ∘ fold = id
+  optimize-compose fold unfold = id
+  optimize-compose unfold fold = id
 
--- Pairing fusion: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
--- Distributes composition into pairs, exposing beta reductions
--- Note: id and initial cases handled above
-optimize-compose ⟨ f , g ⟩ (h ∘ k) = ⟨ optimize-compose f (h ∘ k) , optimize-compose g (h ∘ k) ⟩
-optimize-compose ⟨ f , g ⟩ fst = ⟨ optimize-compose f fst , optimize-compose g fst ⟩
-optimize-compose ⟨ f , g ⟩ snd = ⟨ optimize-compose f snd , optimize-compose g snd ⟩
-optimize-compose ⟨ f , g ⟩ ⟨ h , k ⟩ = ⟨ optimize-compose f ⟨ h , k ⟩ , optimize-compose g ⟨ h , k ⟩ ⟩
-optimize-compose ⟨ f , g ⟩ inl = ⟨ optimize-compose f inl , optimize-compose g inl ⟩
-optimize-compose ⟨ f , g ⟩ inr = ⟨ optimize-compose f inr , optimize-compose g inr ⟩
-optimize-compose ⟨ f , g ⟩ [ h , k ] = ⟨ optimize-compose f [ h , k ] , optimize-compose g [ h , k ] ⟩
-optimize-compose ⟨ f , g ⟩ terminal = ⟨ optimize-compose f terminal , optimize-compose g terminal ⟩
-optimize-compose ⟨ f , g ⟩ (curry h) = ⟨ optimize-compose f (curry h) , optimize-compose g (curry h) ⟩
-optimize-compose ⟨ f , g ⟩ apply = ⟨ optimize-compose f apply , optimize-compose g apply ⟩
-optimize-compose ⟨ f , g ⟩ fold = ⟨ optimize-compose f fold , optimize-compose g fold ⟩
-optimize-compose ⟨ f , g ⟩ unfold = ⟨ optimize-compose f unfold , optimize-compose g unfold ⟩
-optimize-compose ⟨ f , g ⟩ arr = ⟨ optimize-compose f arr , optimize-compose g arr ⟩
-optimize-compose ⟨ f , g ⟩ (Prim name c) = ⟨ optimize-compose f (Prim name c) , optimize-compose g (Prim name c) ⟩
+  -- Terminal fusion: terminal ∘ f = terminal (dead code elimination)
+  -- Any computation followed by discarding the result can skip the computation
+  optimize-compose terminal (g ∘ f) = terminal
+  optimize-compose terminal fst = terminal
+  optimize-compose terminal snd = terminal
+  optimize-compose terminal ⟨ f , g ⟩ = terminal
+  optimize-compose terminal inl = terminal
+  optimize-compose terminal inr = terminal
+  optimize-compose terminal [ f , g ] = terminal
+  optimize-compose terminal terminal = terminal
+  optimize-compose terminal (curry f) = terminal
+  optimize-compose terminal apply = terminal
+  optimize-compose terminal fold = terminal
+  optimize-compose terminal unfold = terminal
+  optimize-compose terminal arr = terminal
+  optimize-compose terminal (Prim name _ _) = terminal
 
--- Case fusion: h ∘ [ f , g ] = [ h ∘ f , h ∘ g ]
--- Distributes composition over case, exposing beta reductions
--- Note: beta laws ([ f , g ] ∘ inl/inr) and terminal handled above
--- Note: ⟨ h , k ⟩ [ f , g ] is covered by pairing fusion above
-optimize-compose fst [ f , g ] = [ optimize-compose fst f , optimize-compose fst g ]
-optimize-compose snd [ f , g ] = [ optimize-compose snd f , optimize-compose snd g ]
-optimize-compose inl [ f , g ] = [ optimize-compose inl f , optimize-compose inl g ]
-optimize-compose inr [ f , g ] = [ optimize-compose inr f , optimize-compose inr g ]
-optimize-compose (curry h) [ f , g ] = [ optimize-compose (curry h) f , optimize-compose (curry h) g ]
-optimize-compose apply [ f , g ] = [ optimize-compose apply f , optimize-compose apply g ]
-optimize-compose fold [ f , g ] = [ optimize-compose fold f , optimize-compose fold g ]
-optimize-compose unfold [ f , g ] = [ optimize-compose unfold f , optimize-compose unfold g ]
-optimize-compose arr [ f , g ] = [ optimize-compose arr f , optimize-compose arr g ]
-optimize-compose (Prim name c) [ f , g ] = [ optimize-compose (Prim name c) f , optimize-compose (Prim name c) g ]
+  -- Initial absorption: f ∘ initial = initial (dead code elimination)
+  -- Composition with initial is initial (vacuously true, Void is empty)
+  optimize-compose fst initial = initial
+  optimize-compose snd initial = initial
+  optimize-compose ⟨ f , g ⟩ initial = initial
+  optimize-compose inl initial = initial
+  optimize-compose inr initial = initial
+  optimize-compose [ f , g ] initial = initial
+  optimize-compose terminal initial = initial
+  optimize-compose (curry f) initial = initial
+  optimize-compose apply initial = initial
+  optimize-compose fold initial = initial
+  optimize-compose unfold initial = initial
+  optimize-compose arr initial = initial
+  optimize-compose (Prim name _ _) initial = initial
+  optimize-compose (h ∘ g) initial = initial
 
--- Associativity: normalize to right-associative form
--- (h ∘ g) ∘ f  →  h ∘ (g ∘ f)
--- This exposes more optimization opportunities
-optimize-compose (h ∘ g) f = optimize-compose h (optimize-compose g f)
+  -- Pairing fusion: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
+  -- Distributes composition into pairs, exposing beta reductions
+  -- Note: id and initial cases handled above
+  optimize-compose ⟨ f , g ⟩ (h ∘ k) = ⟨ optimize-compose f (h ∘ k) , optimize-compose g (h ∘ k) ⟩
+  optimize-compose ⟨ f , g ⟩ fst = ⟨ optimize-compose f fst , optimize-compose g fst ⟩
+  optimize-compose ⟨ f , g ⟩ snd = ⟨ optimize-compose f snd , optimize-compose g snd ⟩
+  optimize-compose ⟨ f , g ⟩ ⟨ h , k ⟩ = ⟨ optimize-compose f ⟨ h , k ⟩ , optimize-compose g ⟨ h , k ⟩ ⟩
+  optimize-compose ⟨ f , g ⟩ inl = ⟨ optimize-compose f inl , optimize-compose g inl ⟩
+  optimize-compose ⟨ f , g ⟩ inr = ⟨ optimize-compose f inr , optimize-compose g inr ⟩
+  optimize-compose ⟨ f , g ⟩ [ h , k ] = ⟨ optimize-compose f [ h , k ] , optimize-compose g [ h , k ] ⟩
+  optimize-compose ⟨ f , g ⟩ terminal = ⟨ optimize-compose f terminal , optimize-compose g terminal ⟩
+  optimize-compose ⟨ f , g ⟩ (curry h) = ⟨ optimize-compose f (curry h) , optimize-compose g (curry h) ⟩
+  optimize-compose ⟨ f , g ⟩ apply = ⟨ optimize-compose f apply , optimize-compose g apply ⟩
+  optimize-compose ⟨ f , g ⟩ fold = ⟨ optimize-compose f fold , optimize-compose g fold ⟩
+  optimize-compose ⟨ f , g ⟩ unfold = ⟨ optimize-compose f unfold , optimize-compose g unfold ⟩
+  optimize-compose ⟨ f , g ⟩ arr = ⟨ optimize-compose f arr , optimize-compose g arr ⟩
+  optimize-compose ⟨ f , g ⟩ (Prim name sem c) = ⟨ optimize-compose f (Prim name sem c) , optimize-compose g (Prim name sem c) ⟩
 
--- No simplification: return as-is
-optimize-compose g f = g ∘ f
+  -- Case fusion: h ∘ [ f , g ] = [ h ∘ f , h ∘ g ]
+  -- Distributes composition over case, exposing beta reductions
+  -- Note: beta laws ([ f , g ] ∘ inl/inr) and terminal handled above
+  -- Note: ⟨ h , k ⟩ [ f , g ] is covered by pairing fusion above
+  optimize-compose fst [ f , g ] = [ optimize-compose fst f , optimize-compose fst g ]
+  optimize-compose snd [ f , g ] = [ optimize-compose snd f , optimize-compose snd g ]
+  optimize-compose inl [ f , g ] = [ optimize-compose inl f , optimize-compose inl g ]
+  optimize-compose inr [ f , g ] = [ optimize-compose inr f , optimize-compose inr g ]
+  optimize-compose (curry h) [ f , g ] = [ optimize-compose (curry h) f , optimize-compose (curry h) g ]
+  optimize-compose apply [ f , g ] = [ optimize-compose apply f , optimize-compose apply g ]
+  optimize-compose fold [ f , g ] = [ optimize-compose fold f , optimize-compose fold g ]
+  optimize-compose unfold [ f , g ] = [ optimize-compose unfold f , optimize-compose unfold g ]
+  optimize-compose arr [ f , g ] = [ optimize-compose arr f , optimize-compose arr g ]
+  optimize-compose (Prim name sem c) [ f , g ] = [ optimize-compose (Prim name sem c) f , optimize-compose (Prim name sem c) g ]
 
-------------------------------------------------------------------------
--- Optimizer: Simplify pair
-------------------------------------------------------------------------
+  -- Associativity: normalize to right-associative form
+  -- (h ∘ g) ∘ f  →  h ∘ (g ∘ f)
+  -- This exposes more optimization opportunities
+  optimize-compose (h ∘ g) f = optimize-compose h (optimize-compose g f)
 
--- | Optimize a pair
---
--- Applies:
---   1. Eta law: ⟨ fst , snd ⟩ = id
---   2. Uniqueness law: ⟨ fst ∘ h , snd ∘ h ⟩ = h
---
-optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
--- Eta: ⟨ fst , snd ⟩ = id
-optimize-pair (fst {A} {B}) (snd {A'} {B'}) with A ≟Type A' | B ≟Type B'
-... | yes refl | yes refl = id
-... | _        | _        = ⟨ fst , snd ⟩
--- Uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ = h
-optimize-pair (_∘_ {_} {D} {_} (fst {A} {B}) h) (_∘_ {_} {D'} {_} (snd {A'} {B'}) h')
-  with A ≟Type A' | B ≟Type B' | D ≟Type D'
-... | yes refl | yes refl | yes refl with h ≟IR h'
-...   | yes refl = h                  -- ⟨ fst ∘ h , snd ∘ h ⟩ = h
-...   | no _     = ⟨ fst ∘ h , snd ∘ h' ⟩
-optimize-pair (_∘_ (fst {A} {B}) h) (_∘_ (snd {A'} {B'}) h') | _ | _ | _ = ⟨ fst ∘ h , snd ∘ h' ⟩
--- Default: no simplification
-optimize-pair f g = ⟨ f , g ⟩
+  -- No simplification: return as-is
+  optimize-compose g f = g ∘ f
 
-------------------------------------------------------------------------
--- Optimizer: Simplify case
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Optimizer: Simplify pair
+  ------------------------------------------------------------------------
 
--- | Optimize a case
---
--- Applies:
---   1. Eta law: [ inl , inr ] = id
---   2. Uniqueness law: [ h ∘ inl , h ∘ inr ] = h
---
-optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
--- Eta: [ inl , inr ] = id
-optimize-case (inl {A} {B}) (inr {A'} {B'}) with A ≟Type A' | B ≟Type B'
-... | yes refl | yes refl = id
-... | _        | _        = [ inl , inr ]
--- Uniqueness: [ h ∘ inl , h ∘ inr ] = h
-optimize-case (_∘_ {_} {D} {_} h (inl {A} {B})) (_∘_ {_} {D'} {_} h' (inr {A'} {B'}))
-  with A ≟Type A' | B ≟Type B' | D ≟Type D'
-... | yes refl | yes refl | yes refl with h ≟IR h'
-...   | yes refl = h                  -- [ h ∘ inl , h ∘ inr ] = h
-...   | no _     = [ h ∘ inl , h' ∘ inr ]
-optimize-case (_∘_ h (inl {A} {B})) (_∘_ h' (inr {A'} {B'})) | _ | _ | _ = [ h ∘ inl , h' ∘ inr ]
--- Default: no simplification
-optimize-case f g = [ f , g ]
+  -- | Optimize a pair
+  --
+  -- Applies:
+  --   1. Eta law: ⟨ fst , snd ⟩ = id
+  --   2. Uniqueness law: ⟨ fst ∘ h , snd ∘ h ⟩ = h
+  --
+  optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
+  -- Eta: ⟨ fst , snd ⟩ = id
+  optimize-pair (fst {A} {B}) (snd {A'} {B'}) with A ≟Type A' | B ≟Type B'
+  ... | yes refl | yes refl = id
+  ... | _        | _        = ⟨ fst , snd ⟩
+  -- Uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ = h
+  optimize-pair (_∘_ {_} {D} {_} (fst {A} {B}) h) (_∘_ {_} {D'} {_} (snd {A'} {B'}) h')
+    with A ≟Type A' | B ≟Type B' | D ≟Type D'
+  ... | yes refl | yes refl | yes refl with h ≟IR h'
+  ...   | yes refl = h                  -- ⟨ fst ∘ h , snd ∘ h ⟩ = h
+  ...   | no _     = ⟨ fst ∘ h , snd ∘ h' ⟩
+  optimize-pair (_∘_ (fst {A} {B}) h) (_∘_ (snd {A'} {B'}) h') | _ | _ | _ = ⟨ fst ∘ h , snd ∘ h' ⟩
+  -- Default: no simplification
+  optimize-pair f g = ⟨ f , g ⟩
 
-------------------------------------------------------------------------
--- Optimizer: Full recursive optimization
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Optimizer: Simplify case
+  ------------------------------------------------------------------------
 
--- | Single optimization pass
---
--- Recursively optimize all subterms, then apply simplifications.
---
-optimize-once : ∀ {A B} → IR A B → IR A B
-optimize-once id = id
-optimize-once (g ∘ f) = optimize-compose (optimize-once g) (optimize-once f)
-optimize-once fst = fst
-optimize-once snd = snd
-optimize-once ⟨ f , g ⟩ = optimize-pair (optimize-once f) (optimize-once g)
-optimize-once inl = inl
-optimize-once inr = inr
-optimize-once [ f , g ] = optimize-case (optimize-once f) (optimize-once g)
-optimize-once terminal = terminal
-optimize-once initial = initial
-optimize-once (curry f) = curry (optimize-once f)
-optimize-once apply = apply
-optimize-once fold = fold
-optimize-once unfold = unfold
-optimize-once arr = arr
-optimize-once (Prim name c) = Prim name c
+  -- | Optimize a case
+  --
+  -- Applies:
+  --   1. Eta law: [ inl , inr ] = id
+  --   2. Uniqueness law: [ h ∘ inl , h ∘ inr ] = h
+  --
+  optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
+  -- Eta: [ inl , inr ] = id
+  optimize-case (inl {A} {B}) (inr {A'} {B'}) with A ≟Type A' | B ≟Type B'
+  ... | yes refl | yes refl = id
+  ... | _        | _        = [ inl , inr ]
+  -- Uniqueness: [ h ∘ inl , h ∘ inr ] = h
+  optimize-case (_∘_ {_} {D} {_} h (inl {A} {B})) (_∘_ {_} {D'} {_} h' (inr {A'} {B'}))
+    with A ≟Type A' | B ≟Type B' | D ≟Type D'
+  ... | yes refl | yes refl | yes refl with h ≟IR h'
+  ...   | yes refl = h                  -- [ h ∘ inl , h ∘ inr ] = h
+  ...   | no _     = [ h ∘ inl , h' ∘ inr ]
+  optimize-case (_∘_ h (inl {A} {B})) (_∘_ h' (inr {A'} {B'})) | _ | _ | _ = [ h ∘ inl , h' ∘ inr ]
+  -- Default: no simplification
+  optimize-case f g = [ f , g ]
 
-------------------------------------------------------------------------
--- Fixed-point optimization (bounded iteration)
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Optimizer: Full recursive optimization
+  ------------------------------------------------------------------------
 
--- | Optimize with bounded iteration
---
--- Applies optimize-once repeatedly up to n times.
--- In practice, a small bound (e.g., 10) is sufficient.
---
-optimize-n : ∀ {A B} → ℕ → IR A B → IR A B
-optimize-n zero ir = ir
-optimize-n (suc n) ir = optimize-n n (optimize-once ir)
+  -- | Single optimization pass
+  --
+  -- Recursively optimize all subterms, then apply simplifications.
+  --
+  optimize-once : ∀ {A B} → IR A B → IR A B
+  optimize-once id = id
+  optimize-once (g ∘ f) = optimize-compose (optimize-once g) (optimize-once f)
+  optimize-once fst = fst
+  optimize-once snd = snd
+  optimize-once ⟨ f , g ⟩ = optimize-pair (optimize-once f) (optimize-once g)
+  optimize-once inl = inl
+  optimize-once inr = inr
+  optimize-once [ f , g ] = optimize-case (optimize-once f) (optimize-once g)
+  optimize-once terminal = terminal
+  optimize-once initial = initial
+  optimize-once (curry f) = curry (optimize-once f)
+  optimize-once apply = apply
+  optimize-once fold = fold
+  optimize-once unfold = unfold
+  optimize-once arr = arr
+  optimize-once (Prim name sem c) = Prim name sem c
 
--- | Main optimizer entry point
---
--- Uses a fixed bound of 10 iterations.
--- This is sufficient for most practical programs.
---
-optimize : ∀ {A B} → IR A B → IR A B
-optimize = optimize-n 10
+  ------------------------------------------------------------------------
+  -- Fixed-point optimization (bounded iteration)
+  ------------------------------------------------------------------------
+
+  -- | Optimize with bounded iteration
+  --
+  -- Applies optimize-once repeatedly up to n times.
+  -- In practice, a small bound (e.g., 10) is sufficient.
+  --
+  optimize-n : ∀ {A B} → ℕ → IR A B → IR A B
+  optimize-n zero ir = ir
+  optimize-n (suc n) ir = optimize-n n (optimize-once ir)
+
+  -- | Main optimizer entry point
+  --
+  -- Uses a fixed bound of 10 iterations.
+  -- This is sufficient for most practical programs.
+  --
+  optimize : ∀ {A B} → IR A B → IR A B
+  optimize = optimize-n 10

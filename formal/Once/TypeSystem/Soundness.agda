@@ -28,9 +28,9 @@ module Once.TypeSystem.Soundness
 
 open import Once.Type
 open import Once.SemanticBaseMachine MI
-open import Once.IR
-open import Once.Semantics MI CI
-open import Once.TypeSystem.Typing CI
+open import Once.IR ⟦_⟧
+open import Once.Semantics MI
+open import Once.TypeSystem.Typing ⟦_⟧ CI
 
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -38,10 +38,10 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
-module Soundness (CS : ContractSemantics CI ⟦_⟧) where
+module Soundness where
 
   open IRDef CI
-  open SemanticsDef CS
+  open SemanticsDef CI
 
   ------------------------------------------------------------------------
   -- Type Preservation

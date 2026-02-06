@@ -665,8 +665,8 @@ mutual
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
   -- Uses run-prim-star-vv-auto which derives rdi-not-stack from ValidAt
-  run-ir-star-at-offset-v (Prim {A} {B} name contract) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
-    run-prim-star-vv-auto name contract prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+  run-ir-star-at-offset-v (Prim {A} {B} name sem contract) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
+    run-prim-star-vv-auto name sem contract prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Initial: absurd case (base case, ignores Acc)
   run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x

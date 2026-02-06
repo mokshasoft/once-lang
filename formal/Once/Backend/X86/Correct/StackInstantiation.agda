@@ -405,7 +405,7 @@ ir-rsp-delta initial = 0
 ir-rsp-delta fold = 0
 ir-rsp-delta unfold = 0
 ir-rsp-delta arr = 0
-ir-rsp-delta (Prim _ _) = 0
+ir-rsp-delta (Prim _ _ _) = 0
 -- Injections: allocate slots on stack for tag+value, do NOT restore
 -- Value derived from CodeGen.injection-consumed-slots (computes from inl-instrs)
 ir-rsp-delta inl = injection-consumed-slots
@@ -449,7 +449,7 @@ ir-stack-requirement unfold = 2
 -- Effect lifting: essentially identity at runtime
 ir-stack-requirement arr = 2
 -- Primitives: external operations, assume simple capacity
-ir-stack-requirement (Prim _ _) = 2
+ir-stack-requirement (Prim _ _ _) = 2
 -- Injections: need capacity for tag+value write (literal 4)
 ir-stack-requirement inl = 4
 ir-stack-requirement inr = 4
@@ -477,7 +477,7 @@ output-slots≤ir-req initial = ≤-refl
 output-slots≤ir-req fold = ≤-refl
 output-slots≤ir-req unfold = ≤-refl
 output-slots≤ir-req arr = ≤-refl
-output-slots≤ir-req (Prim _ _) = ≤-refl
+output-slots≤ir-req (Prim _ _ _) = ≤-refl
 output-slots≤ir-req inl = from-yes-≤ (output-slots ≤? 4)
 output-slots≤ir-req inr = from-yes-≤ (output-slots ≤? 4)
 output-slots≤ir-req (g ∘ f) = ≤-trans (output-slots≤ir-req f) (m≤m⊔n _ _)
@@ -522,7 +522,7 @@ ir-delta-≤-requirement initial = z≤n
 ir-delta-≤-requirement fold = z≤n
 ir-delta-≤-requirement unfold = z≤n
 ir-delta-≤-requirement arr = z≤n
-ir-delta-≤-requirement (Prim _ _) = z≤n
+ir-delta-≤-requirement (Prim _ _ _) = z≤n
 ir-delta-≤-requirement inl = m≤m+n injection-consumed-slots output-slots  -- 2 ≤ 4
 ir-delta-≤-requirement inr = m≤m+n injection-consumed-slots output-slots  -- 2 ≤ 4
 ir-delta-≤-requirement (g ∘ f) =
@@ -631,7 +631,7 @@ ir-frame-slots apply          = 3   -- call + thunk frame setup
 ir-frame-slots fold           = 0
 ir-frame-slots unfold         = 0
 ir-frame-slots arr            = 0
-ir-frame-slots (Prim _ _)     = 0
+ir-frame-slots (Prim _ _ _)     = 0
 
 -- | Input capacity needed: frame slots + output capacity (2)
 -- This ensures that after the operation, we have capacity for 2 slots.
