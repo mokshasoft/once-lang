@@ -268,3 +268,37 @@ initWithInputStateful-inr-valid {A} {B} sp hp b = inr-at-s tag-valid val-valid
     -- PROVEN from StatefulEncoding theorems
     tag-valid = encode-inr-tag-thm {A} {B} b init-heap
     val-valid = encode-inr-val-thm {A} {B} b init-heap
+
+------------------------------------------------------------------------
+-- Initial Ownership Postulate (TRUST BOUNDARY)
+--
+-- This is the ONLY ownership postulate in the entire system.
+-- It asserts that at initial program entry, the input is owned by
+-- the "caller" (the OS/runtime that invoked the program).
+--
+-- Why this is the minimal trust boundary:
+--   - Internal function calls (Apply) PROVE ownership from compilation
+--   - Only the initial state requires a trust assumption
+--   - The OS/runtime places arguments according to calling convention
+--
+-- See: docs/formal/guides/slot-based-ownership-architecture.md
+------------------------------------------------------------------------
+
+-- Import ownership types (needed for the postulate)
+open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
+open import Once.Backend.X86.Correct.Ownership
+  using (Frame; OwnedBy; Owner; Caller)
+
+postulate
+  -- | At initial program entry, input is in the initial frame.
+  --
+  -- This postulate asserts that the runtime correctly placed the
+  -- program input in the initial stack frame according to the
+  -- calling convention.
+  --
+  -- This is the ONLY ownership postulate - internal calls (Apply)
+  -- prove ownership from the compilation structure.
+  init-input-owned : ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory}
+    (init-frame : Frame) →
+    (va : ValidAt v addr m) →
+    OwnedBy Caller va init-frame

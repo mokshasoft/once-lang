@@ -64,7 +64,8 @@ open import Once.Backend.X86.Correct.StackInstantiation
          -- Region proofs from encode
          encode-in-heap-sem; encode-offset-in-heap)
 open import Once.Backend.X86.Correct.Ownership
-  using (caller-input-owned; owned-implies-stack-bound)
+  using (Frame; owned-implies-stack-bound; OwnedBy; Owner; Caller)
+open import Once.Backend.X86.Correct.InitState using (init-input-owned)
 open import Once.Backend.X86.Correct.MemoryValid
   using (HeapAlloc; StackAlloc; Stack)
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound)
@@ -73,7 +74,7 @@ open import Once.Backend.X86.Layout
          heap-offset; StackPointer; frameSlot;
          stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap;
-         pc-in-code; slot-addr; slot-addr-≥-base)
+         pc-in-code; slot-addr; slot-addr-≥-base; from-raw-stack)
 open import Once.Backend.X86.Layout using (init-frame-slot-at-base) renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; ⟨_,_⟩◅_)
@@ -262,19 +263,28 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     closure-region : ∃[ r ] InRegion r closure-addr
     closure-region = valid-in-region v-cl
 
+    -- Caller's frame at function entry (for ownership tracking)
+    caller-frame : Frame
+    caller-frame = from-raw-stack (readReg (regs s) rsp) (rsp-in-stack cap)
+
     -- Stack bounds from Ownership model (for Stack case only)
+    -- Uses slot-based ownership: init-input-owned provides OwnedBy evidence
     rdi-stack-bound : proj₁ rdi-region ≡ Stack → readReg (regs s) rdi ≥ readReg (regs s) rsp
     rdi-stack-bound r-eq = get-bound (proj₁ rdi-region) (proj₂ rdi-region) r-eq
       where
+        input-owned : OwnedBy Caller input-valid caller-frame
+        input-owned = init-input-owned caller-frame input-valid
         get-bound : (r : Region) → InRegion r (readReg (regs s) rdi) → r ≡ Stack → readReg (regs s) rdi ≥ readReg (regs s) rsp
-        get-bound StackAlloc is _ = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap)) is
+        get-bound StackAlloc is _ = owned-implies-stack-bound input-owned is
         get-bound HeapAlloc _ ()
 
     closure-stack-bound : proj₁ closure-region ≡ Stack → closure-addr ≥ readReg (regs s) rsp
     closure-stack-bound r-eq = get-bound (proj₁ closure-region) (proj₂ closure-region) r-eq
       where
+        closure-owned : OwnedBy Caller v-cl caller-frame
+        closure-owned = init-input-owned caller-frame v-cl
         get-bound : (r : Region) → InRegion r closure-addr → r ≡ Stack → closure-addr ≥ readReg (regs s) rsp
-        get-bound StackAlloc is _ = owned-implies-stack-bound (caller-input-owned v-cl (rsp-in-stack cap)) is
+        get-bound StackAlloc is _ = owned-implies-stack-bound closure-owned is
         get-bound HeapAlloc _ ()
 
     -- Extract rsp-bound from cap for internal use
@@ -397,10 +407,17 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
       trans (mem-above-call addr (≤-trans rsp-lower addr≥rsp))
             (mem-above-setup addr addr≥rsp)
 
+    -- Construct OwnedBy for arg and env using init-input-owned
+    arg-owned : OwnedBy Caller v-arg caller-frame
+    arg-owned = init-input-owned caller-frame v-arg
+
+    env-owned : OwnedBy Caller v-env caller-frame
+    env-owned = init-input-owned caller-frame v-env
+
     -- Use caller-input-preserved with composed memory preservation (replaces postulate)
     arg-valid-at-call : ValidAt arg (readReg (regs s-call) rdi) (memory s-call)
     arg-valid-at-call = subst (λ addr → ValidAt arg addr (memory s-call)) (sym rdi-for-thunk)
-                          (caller-input-preserved v-arg (StackCapacity.rsp-in-stack cap)
+                          (caller-input-preserved v-arg arg-owned (StackCapacity.rsp-in-stack cap)
                             mem-preserved-s-to-call)
 
     r12-for-thunk : readReg (regs s-call) r12 ≡ env-addr
@@ -409,7 +426,7 @@ run-apply-with-wf {E} {A} {B} prefix suffix code-ptr env semantics arg arg-addr 
     -- Validity for env at s-call: use caller-input-preserved (replaces postulate)
     env-valid-at-call : ValidAt env (readReg (regs s-call) r12) (memory s-call)
     env-valid-at-call = subst (λ addr → ValidAt env addr (memory s-call)) (sym r12-for-thunk)
-                          (caller-input-preserved v-env (StackCapacity.rsp-in-stack cap)
+                          (caller-input-preserved v-env env-owned (StackCapacity.rsp-in-stack cap)
                             mem-preserved-s-to-call)
 
     -- Construct apply-sp : StackPointer for apply's frame

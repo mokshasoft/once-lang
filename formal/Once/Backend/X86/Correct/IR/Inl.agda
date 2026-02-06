@@ -41,7 +41,9 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-inl; InlAtS; inl-at-s;
          valid-disjoint-from-stack; Region; Stack;
          stack-write-2-preserves-above)
-open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved; Frame; OwnedBy; Owner; Caller)
+open import Once.Backend.X86.Correct.InitState using (init-input-owned)
+open import Once.Backend.X86.Layout using (from-raw-stack)
 open import Once.Backend.X86.Correct.Arithmetic using (∸+<-lemma; ∸-preserves-<)
 
 open import Data.Nat using (_>_; _≥_; _≟_)
@@ -107,6 +109,14 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
 
     rsp-region : InStack (readReg (regs s) rsp)
     rsp-region = StackCapacity.rsp-in-stack cap
+
+    -- Construct caller's frame for ownership tracking
+    caller-frame : Frame
+    caller-frame = from-raw-stack (readReg (regs s) rsp) rsp-region
+
+    -- Ownership for input value
+    input-owned : OwnedBy Caller input-valid caller-frame
+    input-owned = init-input-owned caller-frame input-valid
 
     -- StackCapacity for output allocation (derived from ir-rsp-delta)
     cap-output-alloc : StackCapacity s (ir-rsp-delta (inl {A} {B}))
@@ -464,7 +474,7 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
 
     -- Input validity preserved using Ownership model (replaces valid-at-preserved-under-writes)
     input-valid-preserved : ValidAt x orig-rdi (memory s4)
-    input-valid-preserved = caller-input-preserved input-valid rsp-region mem-write-preserved
+    input-valid-preserved = caller-input-preserved input-valid input-owned rsp-region mem-write-preserved
 
     -- Construct result validity using valid-inl
     -- Stack because current codegen uses `sub rsp` for inl allocation

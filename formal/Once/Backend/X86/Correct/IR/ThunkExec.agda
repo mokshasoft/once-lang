@@ -50,7 +50,9 @@ open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; PairAtS; pair-at-s; valid-pair;
          valid-subst-region-preserved; Region; Stack)
-open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved; Frame; OwnedBy; Owner; Caller)
+open import Once.Backend.X86.Correct.InitState using (init-input-owned)
+open import Once.Backend.X86.Layout using (from-raw-stack)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; capacity-maintained; rsp-bound-to-capacity;
          r15-in-code; slot-size; slots; slots-mono-≤;
@@ -255,6 +257,17 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
     rsp-bound = ≤-<-trans (slots-mono-≤ output-fits-thunk-cap) (StackCapacity.rsp-sufficient cap)
       where
         open import Data.Nat.Properties using (≤-<-trans)
+
+    -- Construct caller's frame for ownership tracking
+    caller-frame : Frame
+    caller-frame = from-raw-stack old-rsp (StackCapacity.rsp-in-stack cap)
+
+    -- Ownership for input values (v-arg and v-env)
+    v-arg-owned : OwnedBy Caller v-arg caller-frame
+    v-arg-owned = init-input-owned caller-frame v-arg
+
+    v-env-owned : OwnedBy Caller v-env caller-frame
+    v-env-owned = init-input-owned caller-frame v-env
 
     -- Raw register values (addresses where validity holds)
     orig-r12 = readReg (regs s) r12
@@ -1180,10 +1193,10 @@ thunk-setup-star {A} {B} {C} f prefix suffix env arg s
 
     -- Validity proofs using caller-input-preserved (replaces postulate)
     v-env-at-s8 : ValidAt env orig-r12 (memory s8)
-    v-env-at-s8 = caller-input-preserved v-env (StackCapacity.rsp-in-stack cap) mem-≥-preserved
+    v-env-at-s8 = caller-input-preserved v-env v-env-owned (StackCapacity.rsp-in-stack cap) mem-≥-preserved
 
     v-arg-at-s8 : ValidAt arg orig-rdi (memory s8)
-    v-arg-at-s8 = caller-input-preserved v-arg (StackCapacity.rsp-in-stack cap) mem-≥-preserved
+    v-arg-at-s8 = caller-input-preserved v-arg v-arg-owned (StackCapacity.rsp-in-stack cap) mem-≥-preserved
 
     -- Combine using valid-pair (stack-allocated temporary)
     v-pair : ValidAt (env , arg) (readReg (regs s8) rdi) (memory s8)

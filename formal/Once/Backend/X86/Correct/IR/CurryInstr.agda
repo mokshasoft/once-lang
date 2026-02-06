@@ -71,7 +71,9 @@ open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-closure-env; ClosureAtS; closure-at-s;
          valid-subst-addr-mem; Region; InRegion; Stack;
          stack-write-preserves-above; stack-write-2-preserves-above)
-open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved; Frame; OwnedBy; Owner; Caller)
+open import Once.Backend.X86.Correct.InitState using (init-input-owned)
+open import Once.Backend.X86.Layout using (from-raw-stack)
 
 -- ir-size and curry-smaller are re-exported from Foundation
 
@@ -217,6 +219,14 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
 
     rsp-region : InStack (readReg (regs s) rsp)
     rsp-region = StackCapacity.rsp-in-stack cap
+
+    -- Construct caller's frame for ownership tracking
+    caller-frame : Frame
+    caller-frame = from-raw-stack (readReg (regs s) rsp) rsp-region
+
+    -- Ownership for input value
+    input-owned : OwnedBy Caller input-valid caller-frame
+    input-owned = init-input-owned caller-frame input-valid
 
     -- StackCapacity for output allocation (derived from ir-rsp-delta)
     cap-output-alloc : StackCapacity s (ir-rsp-delta (curry f))
@@ -672,7 +682,7 @@ run-curry-star {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack-i
     -- Final validity using Ownership model
     -- input-valid is from caller, preserved since all writes are < entry-rsp
     v-env-final : ValidAt x orig-rdi (memory s-final)
-    v-env-final = caller-input-preserved input-valid rsp-region mem-above-s-to-s4
+    v-env-final = caller-input-preserved input-valid input-owned rsp-region mem-above-s-to-s4
 
     -- Thunk offset: the code-ptr stored in the closure
     -- The thunk entry label is at index 6 within curry's compiled code

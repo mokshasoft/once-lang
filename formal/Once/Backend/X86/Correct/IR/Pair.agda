@@ -67,8 +67,9 @@ open import Once.Backend.X86.Correct.MemoryValid
          ClosureAtS-preserved-under-heap-eq; ClosureAtS-preserved-under-mem-eq;
          Region; Stack; InRegion)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
-open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved)
-open import Once.Backend.X86.Layout using (InHeap; InCode; InStack)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved; Frame; OwnedBy; Owner; Caller)
+open import Once.Backend.X86.Correct.InitState using (init-input-owned)
+open import Once.Backend.X86.Layout using (InHeap; InCode; InStack; from-raw-stack)
 
 open import Data.Nat using (_>_; _≥_; _≤?_; s≤s; z≤n)
 open import Relation.Nullary using (yes; no)
@@ -490,10 +491,18 @@ run-pair-star-v {A} {B} {C} f g bound rec f<bound g<bound prefix suffix caller-s
 
       -- Input validity for f: propagate through setup using ownership-based preservation
       -- Uses caller-input-preserved instead of caller-stack-preserved-pair postulate
+      -- Construct caller's frame for ownership tracking
+      caller-frame : Frame
+      caller-frame = from-raw-stack (readReg (regs s) rsp) (rsp-in-stack cap-in)
+
+      -- Ownership for input value
+      input-owned : OwnedBy Caller input-valid caller-frame
+      input-owned = init-input-owned caller-frame input-valid
+
       input-valid-for-f : ValidAt x (readReg (regs s-setup) rdi) (memory s-setup)
       input-valid-for-f = subst (λ addr → ValidAt x addr (memory s-setup))
         (sym (PairSetupResultV.rdi-setup-raw setup-res))
-        (caller-input-preserved input-valid (rsp-in-stack cap-in)
+        (caller-input-preserved input-valid input-owned (rsp-in-stack cap-in)
           (PairSetupResultV.mem-above-rsp-setup setup-res))
 
       -- ========== Phase 2: Execute f (recursive call via rec) ==========

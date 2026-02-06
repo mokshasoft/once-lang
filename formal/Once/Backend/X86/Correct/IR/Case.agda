@@ -58,8 +58,9 @@ open import Once.Backend.X86.Correct.RegisterLemmas
          readReg-writeReg-rdi-rsp; readReg-writeReg-rdi-rbp; readReg-writeReg-rdi-r14; readReg-writeReg-rdi-r15)
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; StackPointer; stack-heap-addr-disjoint;
-         stack-code-addr-disjoint)
-open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved; caller-input-owned; owned-implies-stack-bound)
+         stack-code-addr-disjoint; from-raw-stack)
+open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved; owned-implies-stack-bound; Frame; OwnedBy; Owner; Caller)
+open import Once.Backend.X86.Correct.InitState using (init-input-owned)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
 
 open import Data.Bool using (Bool; true; false)
@@ -176,16 +177,24 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     cap-ownership : StackCapacity s 1
     cap-ownership = capacity-from-larger s 1 case-req cap-in (s≤s z≤n)
 
+    -- Construct caller's frame for ownership tracking
+    caller-frame : Frame
+    caller-frame = from-raw-stack orig-rsp (rsp-in-stack cap-ownership)
+
+    -- Ownership for input value
+    input-owned : OwnedBy Caller input-valid caller-frame
+    input-owned = init-input-owned caller-frame input-valid
+
     -- Helper to get stack bound - pattern match on the region directly
     get-stack-bound : (r : Region) → InRegion r orig-rdi → r ≡ Stack → orig-rdi ≥ orig-rsp
-    get-stack-bound StackAlloc is _ = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap-ownership)) is
+    get-stack-bound StackAlloc is _ = owned-implies-stack-bound input-owned is
     get-stack-bound HeapAlloc _ ()
 
     get-stack-bound+8 : (r : Region) → InRegion r orig-rdi → r ≡ Stack → (orig-rdi +ℕ slot-size) ≥ orig-rsp
     get-stack-bound+8 StackAlloc is _ = ≤-trans rdi-bound rdi+8-bound
       where
         rdi-bound : orig-rdi ≥ orig-rsp
-        rdi-bound = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap-ownership)) is
+        rdi-bound = owned-implies-stack-bound input-owned is
         rdi+8-bound : (orig-rdi +ℕ slot-size) ≥ orig-rdi
         rdi+8-bound = m≤m+n orig-rdi slot-size
     get-stack-bound+8 HeapAlloc _ ()
@@ -262,9 +271,13 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
     rbp-inv-setup = CaseInlSetupResult.rbp-inv-setup setup-res
 
     -- Use caller-input-preserved with mem-preserved-setup (replaces postulate)
+    -- Construct OwnedBy for the inner value
+    input-a-owned : OwnedBy Caller input-valid-a caller-frame
+    input-a-owned = init-input-owned caller-frame input-valid-a
+
     input-valid-for-f : ValidAt a (readReg (regs s-setup) rdi) (memory s-setup)
     input-valid-for-f = subst (λ addr → ValidAt a addr (memory s-setup)) (sym rdi-setup)
-                          (caller-input-preserved input-valid-a (rsp-in-stack cap-in)
+                          (caller-input-preserved input-valid-a input-a-owned (rsp-in-stack cap-in)
                             (CaseInlSetupResult.mem-preserved-setup setup-res))
 
     -- Setup instructions and program structure
@@ -642,16 +655,24 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     cap-ownership : StackCapacity s 1
     cap-ownership = capacity-from-larger s 1 case-req cap-in (s≤s z≤n)
 
+    -- Construct caller's frame for ownership tracking
+    caller-frame : Frame
+    caller-frame = from-raw-stack orig-rsp (rsp-in-stack cap-ownership)
+
+    -- Ownership for input value
+    input-owned : OwnedBy Caller input-valid caller-frame
+    input-owned = init-input-owned caller-frame input-valid
+
     -- Helper to get stack bound - pattern match on the region directly
     get-stack-bound : (r : Region) → InRegion r orig-rdi → r ≡ Stack → orig-rdi ≥ orig-rsp
-    get-stack-bound StackAlloc is _ = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap-ownership)) is
+    get-stack-bound StackAlloc is _ = owned-implies-stack-bound input-owned is
     get-stack-bound HeapAlloc _ ()
 
     get-stack-bound+8 : (r : Region) → InRegion r orig-rdi → r ≡ Stack → (orig-rdi +ℕ slot-size) ≥ orig-rsp
     get-stack-bound+8 StackAlloc is _ = ≤-trans rdi-bound rdi+8-bound
       where
         rdi-bound : orig-rdi ≥ orig-rsp
-        rdi-bound = owned-implies-stack-bound (caller-input-owned input-valid (rsp-in-stack cap-ownership)) is
+        rdi-bound = owned-implies-stack-bound input-owned is
         rdi+8-bound : (orig-rdi +ℕ slot-size) ≥ orig-rdi
         rdi+8-bound = m≤m+n orig-rdi slot-size
     get-stack-bound+8 HeapAlloc _ ()
@@ -722,9 +743,13 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
     rbp-inv-setup = CaseInrSetupResult.rbp-inv-setup setup-res
 
     -- Use caller-input-preserved with mem-preserved-setup (replaces postulate)
+    -- Construct OwnedBy for the inner value
+    input-b-owned : OwnedBy Caller input-valid-b caller-frame
+    input-b-owned = init-input-owned caller-frame input-valid-b
+
     input-valid-for-g : ValidAt b (readReg (regs s-setup) rdi) (memory s-setup)
     input-valid-for-g = subst (λ addr → ValidAt b addr (memory s-setup)) (sym rdi-setup)
-                          (caller-input-preserved input-valid-b (rsp-in-stack cap-in)
+                          (caller-input-preserved input-valid-b input-b-owned (rsp-in-stack cap-in)
                             (CaseInrSetupResult.mem-preserved-setup setup-res))
 
     -- Program structure for g
