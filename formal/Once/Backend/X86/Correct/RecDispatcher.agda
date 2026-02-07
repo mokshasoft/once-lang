@@ -20,6 +20,7 @@ open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; RbpIn
 open import Once.Backend.X86.Correct.StackInstantiation using (StackCapacity; ir-stack-requirement)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
 open import Once.Backend.X86.Correct.StarBase using (IRStarResultV; ClosureWFOutput; no-closure)
+open import Once.Backend.X86.Correct.Ownership using (OwnedBy; Owner; Caller; Frame)
 
 -- Import Common dispatcher infrastructure (parameterized with ⟦_⟧ and X86ContractInterface)
 open import Once.Platform.X86-64 using (⟦_⟧)
@@ -96,3 +97,33 @@ RecDispatcherWithWF bound =
 unwrap-rec : ∀ {bound} → RecDispatcherWithWF bound → RecDispatcher bound
 unwrap-rec rec ir lt prefix suffix caller-sp x s h-eq pc-eq v-in si sc ri =
   rec ir lt prefix suffix caller-sp x s h-eq pc-eq v-in si sc ri no-closure
+
+------------------------------------------------------------------------
+-- RecDispatcherWithOwnership: Extended dispatcher with input ownership
+--
+-- Like RecDispatcher, but the ValidAt proof is named and an ownership
+-- proof is required. This enables ownership-based memory preservation.
+--
+-- Key design: input-valid is explicitly named so that input-owned can
+-- reference it. This is the "single source of truth" for ownership -
+-- the postulate (init-input-owned) is used only at program entry.
+--
+-- Usage: Dispatcher threads ownership from init-input-owned at entry
+--        through all recursive calls. For Compose (f ; g), f's output
+--        becomes g's input, requiring ownership transfer.
+------------------------------------------------------------------------
+
+RecDispatcherWithOwnership : ℕ → Set₁
+RecDispatcherWithOwnership bound =
+  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  (input-valid : ValidAt x (x86-readInputReg s) (memory s)) →  -- Named for ownership reference
+  OwnedBy Caller input-valid caller-sp →  -- Ownership proof indexed by input-valid
+  StackInvariant s →
+  StackCapacity s (ir-stack-requirement ir) →
+  RbpInvariant s →
+  let prog = prefix ++ compile-instr ir ++ suffix
+  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
+
