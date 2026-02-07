@@ -15,13 +15,13 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged)
-open import Once.Backend.X86.Layout using (InStack; InHeap; InCode; stack-code-disjoint)
+open import Once.Backend.X86.Layout using (InStack; InHeap; InCode; stack-code-disjoint; StackPointer; stack-addr)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
          capacity-preserved-rsp-unchanged; rsp-bound-preserved-unchanged; slots; pair-alloc;
          ir-rsp-delta; ir-stack-requirement; ir-output-capacity; output-slots;
-         apply-consumed-slots)
+         apply-consumed-slots; rsp-in-stack)
 open import Level using (Lift; lift)
 open import Once.Backend.X86.Correct.ClosureWellFormed using (ClosureWellFormed)
 open import Once.Backend.X86.Correct.Star
@@ -367,6 +367,12 @@ record IRStarResultV {A B : Type} (ir : IR A B) (prog : Program)
     ir-rbp-inv    : RbpInvariant s'
     ir-closure-wf : ClosureWFOutput prog s'
 
+    -- NEW: Frame tracking for slot-based reasoning
+    -- Tracks the current frame at entry (before IR allocates)
+    -- This enables proving slot bounds for disjointness
+    ir-entry-frame : StackPointer
+    ir-entry-frame-eq : sp-addr ir-entry-frame ≡ readReg (regs s) rsp
+
 open IRStarResultV public using ()
   renaming ( ir-star to ir-star-v; ir-halted to ir-halted-v; ir-pc to ir-pc-v
            ; ir-result-valid to ir-result-valid
@@ -377,7 +383,8 @@ open IRStarResultV public using ()
            ; ir-entry-rsp to ir-entry-rsp-v; ir-entry-rsp-eq to ir-entry-rsp-eq-v
            ; ir-mem-preserved to ir-mem-preserved-v
            ; ir-stack-inv to ir-stack-inv-v; ir-capacity to ir-capacity-v
-           ; ir-rbp-inv to ir-rbp-inv-v; ir-closure-wf to ir-closure-wf-v )
+           ; ir-rbp-inv to ir-rbp-inv-v; ir-closure-wf to ir-closure-wf-v
+           ; ir-entry-frame to ir-entry-frame-v; ir-entry-frame-eq to ir-entry-frame-eq-v )
 
 -- | Derived: concrete rsp bound from abstract capacity
 -- Returns rsp > slots (ir-output-capacity ir)
@@ -579,6 +586,8 @@ run-id-star-vv {A} prefix suffix x s h-false pc-eq input-valid stack-inv cap-in 
     ; ir-capacity = cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+    ; ir-entry-frame-eq = refl
     }
 
 -- | Validity-based terminal execution
@@ -624,6 +633,8 @@ run-terminal-star-vv {A} prefix suffix x s h-false pc-eq stack-inv cap-in rbp-in
     ; ir-capacity = cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+    ; ir-entry-frame-eq = refl
     }
 
 -- | Validity-based fold execution
@@ -680,6 +691,8 @@ run-fold-star-vv {F} prefix suffix x s h-false pc-eq input-valid stack-inv cap-i
     ; ir-capacity = cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+    ; ir-entry-frame-eq = refl
     }
 
 -- | Validity-based unfold execution
@@ -739,6 +752,8 @@ run-unfold-star-vv {F} prefix suffix (wrap x') s h-false pc-eq (valid-fix input-
     ; ir-capacity = cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+    ; ir-entry-frame-eq = refl
     }
 
 ------------------------------------------------------------------------
@@ -810,6 +825,8 @@ run-fst-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
     ; ir-capacity = cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+    ; ir-entry-frame-eq = refl
     }
 
 -- | Validity-based snd consumer
@@ -874,6 +891,8 @@ run-snd-star-vv {A} {B} prefix suffix a b addr-a addr-b s h-false pc-eq va vb pa
     ; ir-capacity = cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+    ; ir-entry-frame-eq = refl
     }
 
 ------------------------------------------------------------------------
@@ -959,6 +978,8 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
     ; ir-capacity = cap
     ; ir-rbp-inv = rbp-inv-preserved-unchanged s s' rbp-inv rsp-eq rbp-eq
     ; ir-closure-wf = no-closure
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+    ; ir-entry-frame-eq = refl
     }
 
 ------------------------------------------------------------------------
@@ -1062,21 +1083,25 @@ module PrimRunner (prim-proof : PrimProofProvider) where
     prim-proof sem contract name prefix suffix x s
       h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
 
-  -- | Wrapper that derives rdi-not-stack from ValidAt
+  -- | Wrapper that derives rdi-not-stack from ValidAt (HeapAlloc inputs only)
   -- This is what MutualIR's Prim case used to do inline.
-  -- Provides a cleaner interface: just pass ValidAt, disjointness is derived.
+  -- Provides a cleaner interface: just pass ValidAt + InHeap, disjointness is derived.
+  --
+  -- NOTE: Primitive inputs must be in heap. StackAlloc inputs would require
+  -- ownership-based reasoning (see owned-disjoint-from-current-slot in Ownership).
   run-prim-star-vv-auto : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : Contract A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
+    InHeap (readReg (regs s) rdi) →  -- Input must be in heap
     StackInvariant s →
     StackCapacity s output-slots →
     RbpInvariant s →
     let prog = prefix ++ compile-instr (Prim {A} {B} name sem contract) ++ suffix
     in ∃[ s' ] IRStarResultV (Prim {A} {B} name sem contract) prog s s' x (length prefix)
-  run-prim-star-vv-auto name sem contract prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
-    let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid stack-proof
+  run-prim-star-vv-auto name sem contract prefix suffix x s h-false pc-eq input-valid rdi-in-heap stack-inv cap-in rbp-inv =
+    let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid rdi-in-heap stack-proof
     in run-prim-star-vv name sem contract prefix suffix x s
          h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
 

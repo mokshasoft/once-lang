@@ -24,11 +24,11 @@ open import Once.Backend.X86.Correct.StackInstantiation
          -- For thunk implementation
          thunk-setup-consumed-slots; capacity-from-larger; thunk-setup-capacity;
          thunk-setup-cap≤thunk-consumed+ir-req; capacity-after-delta;
-         output-slots; stack-inv-preserved-unchanged)
+         output-slots; stack-inv-preserved-unchanged; rsp-in-stack)
 open import Data.Nat.Properties using (≤-<-trans)
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
-         stackAddr-write-preserves-heap; slot-addr; StackPointer;
+         stackAddr-write-preserves-heap; slot-addr; StackPointer; stack-addr;
          slot-addr-above-thunk-rbp; slot-addr-≥-base; in-stack; frameSlot)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 -- Internal glue for abstraction boundary (implementation use only!)
@@ -1072,6 +1072,8 @@ run-curry-star-v {A} {B} {C} f prefix suffix x s h-false pc-eq input-valid stack
     ; ir-entry-rsp-eq = refl
     ; ir-mem-preserved = mem-preserved
     ; ir-closure-wf = no-closure  -- TODO: curry should produce ClosureWellFormed
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap)
+    ; ir-entry-frame-eq = refl
     }
   where
     -- Call curry with validity (no bridges!)

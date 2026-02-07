@@ -55,7 +55,7 @@ open import Once.Backend.Common.ProgramLemmas
 -- Import memory region definitions
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; StackPointer; frameSlot; slot-addr;
-         slot-addr-above-thunk-rbp; slot-addr-≥-base; addr; in-stack)
+         slot-addr-above-thunk-rbp; slot-addr-≥-base; addr; in-stack; stack-addr)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.X86.Layout using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
@@ -102,9 +102,9 @@ open import Once.Backend.X86.Correct.StarBase public
          -- Prim proof infrastructure (re-export for callers)
          PrimProofProvider)
 
--- Open PrimRunner with the provided proof to get run-prim-star-vv-auto
+-- Open PrimRunner with the provided proof to get run-prim-star-vv
 open import Once.Backend.X86.Correct.StarBase using (module PrimRunner)
-open PrimRunner prim-proof using (run-prim-star-vv-auto)
+open PrimRunner prim-proof using (run-prim-star-vv)
 
 -- Import extracted IR base case modules
 open import Once.Backend.X86.Correct.IR.Inl
@@ -171,7 +171,8 @@ open import Data.Nat.Induction using (<-wellFounded)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-pair-decompose; PairAtS;
          valid-closure-env; ClosureAtS; closure-at-s;
-         Stack)
+         Stack; AllocMode; HeapAlloc; StackAlloc;
+         valid-in-alloc-region; valid-disjoint-from-stack)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _<_; _≤_; _>_; _≥_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
@@ -295,6 +296,8 @@ mutual
                           curry-fst-at-pair        -- fst-at-pair: postulated (becomes meaningful after Pair)
                           curry-pair-is-rax        -- pair-is-rax: postulated placeholder
                           curry-pair-is-rdi        -- pair-is-rdi: postulated placeholder
+      ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+      ; ir-entry-frame-eq = refl
       }
     where
       prog = prefix ++ compile-instr (curry f) ++ suffix
@@ -664,9 +667,27 @@ mutual
   run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
-  -- Uses run-prim-star-vv-auto which derives rdi-not-stack from ValidAt
+  -- Derives rdi-not-stack from ValidAt's allocation mode
   run-ir-star-at-offset-v (Prim {A} {B} name sem contract) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
-    run-prim-star-vv-auto name sem contract prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
+    run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
+    where
+      -- Extract allocation mode from input validity
+      alloc-info = valid-in-alloc-region input-valid
+
+      -- Derive disjointness based on allocation mode
+      -- Pattern match on the pair to get correctly-typed evidence
+      rdi-not-stack : ∀ addr → InStack addr → readReg (regs s) rdi ≢ addr
+      rdi-not-stack addr addr-in-stack with alloc-info
+      ... | HeapAlloc , in-heap = valid-disjoint-from-stack input-valid in-heap addr-in-stack
+      ... | StackAlloc , in-stack = prim-input-stack-disjoint input-valid in-stack addr-in-stack
+        where
+          -- StackAlloc inputs are in caller's frame, disjoint from current frame
+          -- TODO: Replace with ownership-based reasoning (owned-disjoint-from-current-slot)
+          postulate
+            prim-input-stack-disjoint : ValidAt x (readReg (regs s) rdi) (memory s) →
+              InStack (readReg (regs s) rdi) →
+              InStack addr →
+              readReg (regs s) rdi ≢ addr
   -- Initial: absurd case (base case, ignores Acc)
   run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x

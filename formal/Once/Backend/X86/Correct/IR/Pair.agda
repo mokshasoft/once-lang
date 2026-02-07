@@ -40,7 +40,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-disjoint; stack-code-addr-disjoint;
          stack-heap-disjoint; stack-heap-addr-disjoint;
-         slot-addr; slot-addr-≥-base;
+         slot-addr; slot-addr-≥-base; stack-addr;
          init-slot-at-base; slot-addr-next-is-base-plus-word; StackPointer)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.ExecLemmas
@@ -193,6 +193,8 @@ assemble-pair-result-vv {A} {B} {C} f g prefix suffix x s s-setup s1 s2 s3 s-fin
   ; ir-entry-rsp-eq = refl
   ; ir-mem-preserved = mem-preserved-final
   ; ir-closure-wf = closure-wf-final
+  ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap)
+  ; ir-entry-frame-eq = refl
   }
   where
     ctx = make-pair-context f g prefix suffix

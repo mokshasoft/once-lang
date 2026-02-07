@@ -25,7 +25,7 @@ open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode;
          stackAddr-write-preserves-code;
-         stackAddr-write-preserves-heap; slot-addr)
+         stackAddr-write-preserves-heap; slot-addr; stack-addr)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.SeqExec
 open import Once.Backend.X86.Correct.Star
@@ -97,6 +97,8 @@ run-inl-star-v {A} {B} prefix suffix x s h-false pc-eq input-valid stack-inv cap
     ; ir-capacity = output-capacity
     ; ir-rbp-inv = rbp-inv'
     ; ir-closure-wf = no-closure
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) rsp-region
+    ; ir-entry-frame-eq = refl
     }
   where
     open import Data.List.Properties using (++-assoc) renaming (length-++ to List-length-++)

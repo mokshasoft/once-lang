@@ -16,7 +16,8 @@ open import Once.Backend.Common.ProgramLemmas
   using (compose-prog-eq; compose-g-eq)
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation
-open import Once.Backend.X86.Layout using (InStack; InHeap; InCode; StackPointer)
+open import Once.Backend.X86.Layout using (InStack; InHeap; InCode; StackPointer; stack-addr)
+open import Once.Backend.X86.Correct.StackInstantiation using (rsp-in-stack)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.Star
   using (Star; star-trans; star-single)
@@ -364,6 +365,8 @@ assemble-compose-result-v {A} {B} {C} f g prefix suffix x s s1 s2 s3 r1 tr r3 s2
   ; ir-capacity = cap-out
   ; ir-rbp-inv = IRStarResultV.ir-rbp-inv r3
   ; ir-closure-wf = closure-wf-3
+  ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+  ; ir-entry-frame-eq = refl
   }
   where
     ctx = make-compose-context f g prefix suffix

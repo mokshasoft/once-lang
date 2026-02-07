@@ -58,7 +58,7 @@ open import Once.Backend.X86.Correct.RegisterLemmas
          readReg-writeReg-rdi-rsp; readReg-writeReg-rdi-rbp; readReg-writeReg-rdi-r14; readReg-writeReg-rdi-r15)
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; StackPointer; stack-heap-addr-disjoint;
-         stack-code-addr-disjoint; from-raw-stack)
+         stack-code-addr-disjoint; from-raw-stack; stack-addr)
 open import Once.Backend.X86.Correct.Ownership using (caller-input-preserved; owned-implies-stack-bound; Frame; OwnedBy; Owner; Caller)
 open import Once.Backend.X86.Correct.InitState using (init-input-owned)
 open import Once.Backend.X86.Correct.RegisterLemmas using (readMem-writeMem-diff)
@@ -577,6 +577,8 @@ run-case-star-direct-inl {A} {B} {C} f g bound rec f<bound prefix suffix caller-
       ; ir-capacity = cap-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-closure-wf = closure-wf-final
+      ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+      ; ir-entry-frame-eq = refl
       }
 
 ------------------------------------------------------------------------
@@ -1062,6 +1064,8 @@ run-case-star-direct-inr {A} {B} {C} f g bound rec g<bound prefix suffix caller-
       ; ir-capacity = cap-final
       ; ir-rbp-inv = rbp-inv-final
       ; ir-closure-wf = closure-wf-final
+      ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap-in)
+      ; ir-entry-frame-eq = refl
       }
 
 ------------------------------------------------------------------------

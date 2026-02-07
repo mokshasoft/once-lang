@@ -17,8 +17,8 @@
 
 module Once.Backend.X86.FrameInstantiation where
 
-open import Data.Nat using (ℕ; zero; _<_; _≤_; _+_; _*_)
-open import Data.Nat.Properties using (<⇒≢; <-≤-trans; m≤m+n)
+open import Data.Nat using (ℕ; zero; _<_; _≤_; _≥_; _+_; _*_)
+open import Data.Nat.Properties using (<⇒≢; <-≤-trans; ≤-<-trans; m≤m+n)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
@@ -104,11 +104,29 @@ x86-frame-disjoint-slot0-sym : ∀ f₁ f₂ k₂ →
 x86-frame-disjoint-slot0-sym f₁ f₂ k₂ f₁<f₂ eq =
   x86-frame-disjoint-slot0 f₁ f₂ k₂ f₁<f₂ (sym eq)
 
+-- | General frame disjointness (bounded): slot of f₁ ≠ slot of f₂
+-- when the slot stays within the frame's bounds.
+--
+-- PROVEN: If slot-addr f₁ k₁ < addr f₂, and f₂'s slots are ≥ addr f₂,
+-- then the addresses can't be equal.
+x86-frame-disjoint-bounded : ∀ f₁ f₂ k₁ k₂ →
+  f₁ x86-≺ f₂ →
+  x86-slot-addr f₁ k₁ < sp-addr f₂ →  -- Slot is within frame bounds
+  x86-slot-addr f₁ k₁ ≢ x86-slot-addr f₂ k₂
+x86-frame-disjoint-bounded f₁ f₂ k₁ k₂ f₁<f₂ slot<f₂ eq =
+  <⇒≢ slot₁<slot₂ eq
+  where
+    -- slot-addr f₂ k₂ ≥ addr f₂ (slots grow upward)
+    slot₂≥f₂ : x86-slot-addr f₂ k₂ ≥ sp-addr f₂
+    slot₂≥f₂ = slot-addr-≥-base f₂ k₂
+
+    -- Therefore slot-addr f₁ k₁ < slot-addr f₂ k₂
+    slot₁<slot₂ : x86-slot-addr f₁ k₁ < x86-slot-addr f₂ k₂
+    slot₁<slot₂ = <-≤-trans slot<f₂ slot₂≥f₂
+
 -- | General frame disjointness: any slot of f₁ ≠ any slot of f₂
--- POSTULATE: The general case requires tracking frame sizes.
--- Current usage only needs slot 0 writes (frame-disjoint-slot0 above).
--- TODO: Prove this by adding frame capacity tracking or using
--- the fact that allocated frames don't exceed their sub rsp, N size.
+-- POSTULATE: Requires tracking that k₁ is within frame capacity.
+-- Use x86-frame-disjoint-bounded when you have the slot bound proof.
 postulate
   x86-frame-disjoint : ∀ f₁ f₂ k₁ k₂ →
     f₁ x86-≺ f₂ →

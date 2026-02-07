@@ -33,20 +33,21 @@
 
 module Once.Backend.X86.Correct.Ownership where
 
-open import Data.Nat using (ℕ; _+_; _≥_; _<_; _≤_)
+open import Data.Nat using (ℕ; _≥_; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
-open import Once.Type using (Type; Unit; _+_; _⇒[_]_; Eff; Fix)
+open import Once.Type using (Type; Unit; _⇒[_]_; Eff; Fix) renaming (_+_ to _⊎ᵀ_)
 open import Once.Platform.X86-64 using (⟦_⟧; Closure; ⟦Fix⟧; wrap)
 open ⟦Fix⟧
 open import Once.Backend.X86.Semantics using (Memory; Word; readMem)
 open import Once.Backend.X86.Layout
-  using (InStack; InHeap; heap-addr-≥-stack-addr; stack-heap-disjoint;
-         StackPointer; slot-addr; Addr)
-open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
+  using (InStack; InHeap; heap-addr-≥-stack-addr; stack-heap-disjoint; stack-heap-addr-disjoint;
+         StackPointer; slot-addr; Addr; base-slot-in-stack; slot-addr-≥-base)
+open import Once.Backend.X86.Layout using () renaming (addr to sp-addr; in-stack to sp-in-stack)
+open import Once.Backend.X86.Correct.MemoryValid using (stack-offset)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Once.Backend.X86.Correct.MemoryValid
   using (ValidAt; valid-unit; valid-pair; valid-inl; valid-inr;
@@ -331,6 +332,82 @@ owned-implies-stack-bound : ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory}
 owned-implies-stack-bound {addr = addr} {caller-frame = caller-frame} owned in-stack
   with owned-implies-at-slot owned in-stack
 ... | slot , at-slot = at-slot-implies-≥-base addr caller-frame slot at-slot
+
+------------------------------------------------------------------------
+-- Slot-Based Disjointness
+--
+-- Key lemma: Caller-owned values are disjoint from current frame slots.
+-- Uses x86-frame-disjoint for StackAlloc values.
+-- Uses stack-heap disjointness for HeapAlloc values.
+--
+-- This REPLACES the false frame-separation postulate with proven
+-- slot-based reasoning.
+------------------------------------------------------------------------
+
+open import Once.Backend.X86.Correct.MemoryValid using (valid-in-alloc-region; AllocMode; StackAlloc; HeapAlloc)
+open import Data.Nat using (zero; suc)
+
+-- | Any slot in a frame is in the stack region
+-- Proven by induction on slot index using stack-offset
+slot-in-stack : ∀ (frame : Frame) (k : ℕ) → InStack (slot-addr frame k)
+slot-in-stack frame zero = base-slot-in-stack frame
+slot-in-stack frame (suc k) =
+  -- slot-addr frame (suc k) = slot-addr frame k + slot-size
+  -- Use stack-offset: InStack a → InStack (a + slot-size)
+  subst InStack (slot-addr-suc-eq frame k) (stack-offset (slot-in-stack frame k))
+  where
+    open import Once.Backend.Common.MemoryValid using (slot-size)
+    open import Data.Nat.Properties using (+-assoc; +-comm)
+    open import Data.Nat using (_*_; _+_)
+
+    -- slot-addr f k + slot-size ≡ slot-addr f (suc k)
+    -- Proof: (base + k * s) + s = base + (k * s + s) = base + (s + k * s) = base + suc k * s
+    slot-addr-suc-eq : ∀ f k → slot-addr f k + slot-size ≡ slot-addr f (suc k)
+    slot-addr-suc-eq f k = trans step1 (trans step2 step3)
+      where
+        base = sp-addr f
+        s = slot-size
+        -- step1: (base + k * s) + s ≡ base + (k * s + s)
+        step1 : (base + k * s) + s ≡ base + (k * s + s)
+        step1 = +-assoc base (k * s) s
+        -- step2: base + (k * s + s) ≡ base + (s + k * s)
+        step2 : base + (k * s + s) ≡ base + (s + k * s)
+        step2 = cong (base +_) (+-comm (k * s) s)
+        -- step3: base + (s + k * s) ≡ base + suc k * s  (by def of _*_: suc k * s = s + k * s)
+        step3 : base + (s + k * s) ≡ base + suc k * s
+        step3 = refl
+
+-- | Caller-owned value is disjoint from any slot in current frame
+-- For StackAlloc: uses owned-implies-at-slot + x86-frame-disjoint
+-- For HeapAlloc: uses stack-heap disjointness
+--
+-- This is the slot-based replacement for the false frame-separation postulate.
+owned-disjoint-from-current-slot :
+  ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory}
+    {caller-frame current-frame : Frame} {write-slot : ℕ}
+    {va : ValidAt v addr m} →
+  OwnedBy Caller va caller-frame →
+  current-frame x86-≺ caller-frame →
+  addr ≢ slot-addr current-frame write-slot
+owned-disjoint-from-current-slot {addr = addr} {caller-frame = caller-frame}
+    {current-frame} {write-slot} {va} owned frame-ord
+  with valid-in-alloc-region va
+... | HeapAlloc , ih =
+  -- Heap addresses are disjoint from all stack addresses
+  -- stack-heap-addr-disjoint : InStack a₁ → InHeap a₂ → a₁ ≢ a₂
+  -- We have: InStack (slot-addr ...), InHeap addr, want: addr ≢ slot-addr ...
+  let write-addr-in-stack = slot-in-stack current-frame write-slot
+      slot≢addr = stack-heap-addr-disjoint (slot-addr current-frame write-slot) addr write-addr-in-stack ih
+  in λ eq → slot≢addr (sym eq)
+... | StackAlloc , is =
+  -- Stack address in caller-frame is disjoint from current-frame slots
+  let (k , addr≡slot-k) = owned-implies-at-slot owned is
+      -- x86-frame-disjoint: slot-addr current-frame write-slot ≢ slot-addr caller-frame k
+      slots-disjoint = x86-frame-disjoint current-frame caller-frame write-slot k frame-ord
+  -- We have: eq : addr ≡ slot-addr current-frame write-slot
+  -- And: addr≡slot-k : addr ≡ slot-addr caller-frame k
+  -- So: slot-addr current-frame write-slot ≡ addr ≡ slot-addr caller-frame k
+  in λ eq → slots-disjoint (trans (sym eq) addr≡slot-k)
 
 ------------------------------------------------------------------------
 -- Preservation: Caller-owned values are preserved by callee writes

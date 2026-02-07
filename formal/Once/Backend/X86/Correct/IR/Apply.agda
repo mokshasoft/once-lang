@@ -71,7 +71,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.X86.Correct.ArithmeticLemmas using (word-fits-thunk-bound)
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
-         heap-offset; StackPointer; frameSlot;
+         heap-offset; StackPointer; frameSlot; stack-addr;
          stackAddr-write-preserves-code;
          stackAddr-write-preserves-heap;
          pc-in-code; slot-addr; slot-addr-≥-base; from-raw-stack)
@@ -822,6 +822,8 @@ run-apply-to-ir-result {E} {A} {B} prefix suffix code-ptr env semantics arg arg-
                       WfR.rsp-restored
     ; ir-rbp-inv = rbp-inv-derived  -- PROVEN via RSP restoration
     ; ir-closure-wf = no-closure  -- apply consumes closure, doesn't produce one
+    ; ir-entry-frame = stack-addr (readReg (regs s) rsp) (rsp-in-stack cap)
+    ; ir-entry-frame-eq = refl
     }
   where
     open import Once.Platform.X86-64 using (Closure)

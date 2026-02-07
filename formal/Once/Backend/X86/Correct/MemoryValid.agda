@@ -253,16 +253,6 @@ postulate
 -- NOTE: This does NOT claim all stack addresses differ!
 -- It claims: caller_addr ≢ current_write when frames are separated.
 --
--- TODO: Replace with proven lemma once we track:
---   addr-above-rbp : addr > rbp  (value from caller)
---   w-below-rbp    : w ≤ rbp     (write in current frame)
--- Then: addr > rbp ≥ w → addr > w → addr ≢ w (arithmetic)
-postulate
-  frame-separation : ∀ {addr w : Word} →
-    InStack addr →      -- addr is on stack (from caller's frame)
-    InStack w →         -- w is on stack (current frame write)
-    w ≢ addr
-
 -- | Stack allocations span multiple slots
 -- If addr is in stack, so is addr + slot-size (for 2-slot structures)
 -- This mirrors heap-offset for heap allocations.
@@ -270,14 +260,6 @@ postulate
 -- TODO: Prove from stack region bounds (upper bound is large enough)
 postulate
   stack-offset : ∀ {addr} → InStack addr → InStack (addr +ℕ slot-size)
-
--- | Derived: frame separation for second slot
--- Uses stack-offset to get InStack for addr + slot-size
-frame-separation-plus : ∀ {addr w : Word} →
-  InStack addr →
-  InStack w →
-  w ≢ addr +ℕ slot-size
-frame-separation-plus is w-is = frame-separation (stack-offset is) w-is
 
 -- | Extract InAllocRegion proof from ValidAt
 -- Returns the allocation mode and region proof stored in the constructor.
@@ -623,24 +605,29 @@ valid-pair-decompose (valid-pair {addr-a = addr-a} {addr-b = addr-b} va vb pairS
 ------------------------------------------------------------------------
 -- Region-based disjointness from validity
 --
--- These lemmas derive heap-stack disjointness from ValidAt.
--- Uses valid-in-region to dispatch on region.
+-- For HeapAlloc values: proven via stack-heap disjointness
+-- For StackAlloc values: use bounds-based caller-current disjointness
 ------------------------------------------------------------------------
 
--- | Valid address is disjoint from stack addresses
--- If addr has ValidAt and stack-addr is in stack, then addr ≢ stack-addr
--- Uses AllocMode dispatch: HeapAlloc → stack-heap disjoint, StackAlloc → frame-separation
-valid-disjoint-from-stack : ∀ {A : Type} {v : ⟦ A ⟧} {addr stack-addr : Word} {m : Memory} →
+-- | HeapAlloc address is disjoint from stack addresses
+-- Proven: heap region is disjoint from stack region
+valid-heap-disjoint-from-stack : ∀ {A : Type} {v : ⟦ A ⟧} {addr stack-addr : Word} {m : Memory} →
   ValidAt v addr m →
+  InHeap addr →
   InStack stack-addr →
   addr ≢ stack-addr
-valid-disjoint-from-stack {A} {v} {addr} {stack-addr} {m} valid stack-proof =
-  region-dispatch (proj₁ region) (proj₂ region)
-  where
-    region = valid-in-region valid
-    region-dispatch : (mode : AllocMode) → InAllocRegion mode addr → addr ≢ stack-addr
-    region-dispatch HeapAlloc ih = λ addr-eq → stack-heap-addr-disjoint stack-addr addr stack-proof ih (sym addr-eq)
-    region-dispatch StackAlloc is = λ addr-eq → frame-separation is stack-proof (sym addr-eq)
+valid-heap-disjoint-from-stack _ ih is =
+  λ addr-eq → stack-heap-addr-disjoint _ _ is ih (sym addr-eq)
+
+-- | Valid address is disjoint from stack addresses (HeapAlloc only)
+-- For StackAlloc values, use valid-disjoint-from-current-frame with
+-- bounds evidence, or owned-disjoint-from-current-slot from Ownership.
+valid-disjoint-from-stack : ∀ {A : Type} {v : ⟦ A ⟧} {addr stack-addr : Word} {m : Memory} →
+  ValidAt v addr m →
+  InHeap addr →  -- Require HeapAlloc evidence
+  InStack stack-addr →
+  addr ≢ stack-addr
+valid-disjoint-from-stack = valid-heap-disjoint-from-stack
 
 ------------------------------------------------------------------------
 -- Caller-Current Frame Disjointness (CORRECT replacement for frame-separation)
@@ -678,6 +665,25 @@ caller-disjoint-plus-from-current {addr} {w} {entry-rsp} addr≥rsp w<rsp =
   caller-disjoint-from-current (≤-trans addr≥rsp (m≤m+n addr slot-size)) w<rsp
   where
     open import Data.Nat.Properties using (≤-trans; m≤m+n)
+
+-- | Valid caller input is disjoint from current frame writes
+-- Works for BOTH HeapAlloc and StackAlloc inputs.
+--
+-- Key insight: Function inputs (in rdi) have addresses ≥ entry-rsp because:
+-- - HeapAlloc: heap addresses are > all stack addresses
+-- - StackAlloc: input is from caller's frame, which is ≥ entry-rsp
+--
+-- The addr-bound parameter captures this invariant.
+-- For HeapAlloc: derive via heap-addr-≥-stack-addr
+-- For StackAlloc: comes from ownership (OwnedBy Caller implies ≥ frame base)
+valid-disjoint-from-current-frame : ∀ {A : Type} {v : ⟦ A ⟧} {addr write-addr entry-rsp : Word} {m : Memory} →
+  ValidAt v addr m →
+  InStack write-addr →
+  write-addr < entry-rsp →    -- Write is in current frame
+  addr ≥ entry-rsp →          -- Input is from caller (heap or caller's frame)
+  addr ≢ write-addr
+valid-disjoint-from-current-frame _ _ w<rsp addr≥rsp =
+  caller-disjoint-from-current addr≥rsp w<rsp
 
 -- | Stack write preserves memory above entry-rsp
 -- This connects single writes to the memory-above property used by
