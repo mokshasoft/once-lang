@@ -59,7 +59,9 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- Import FrameSemantics for slot-based addressing
 open import Once.Backend.Common.FrameSemantics using (FrameSemantics; AtSlot)
 open import Once.Backend.X86.FrameInstantiation
-  using (x86-frame-semantics; X86Frame; _x86-≺_; x86-frame-disjoint)
+  using (x86-frame-semantics; X86Frame; _x86-≺_;
+         x86-frame-disjoint; x86-frame-disjoint-bounded;
+         x86-frame-disjoint-with-capacity; x86-slot-within-capacity-bound)
 
 ------------------------------------------------------------------------
 -- Frame type alias for clarity
@@ -418,6 +420,35 @@ heap-disjoint-from-stack-slot :
 heap-disjoint-from-stack-slot {addr} frame slot ih eq =
   let slot-in = slot-in-stack frame slot
   in stack-heap-addr-disjoint (slot-addr frame slot) addr slot-in ih (sym eq)
+
+-- | Caller-owned value is disjoint from bounded slot in current frame
+-- PROVEN (no postulates): Uses x86-frame-disjoint-with-capacity
+--
+-- This version requires a capacity bound and gap-sufficient proof,
+-- eliminating the need for the x86-frame-disjoint postulate.
+owned-disjoint-from-current-slot-bounded :
+  ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory}
+    {caller-frame current-frame : Frame} {write-slot capacity : ℕ}
+    {va : ValidAt v addr m} →
+  OwnedBy Caller va caller-frame →
+  current-frame x86-≺ caller-frame →
+  write-slot < capacity →
+  slot-addr current-frame capacity ≤ sp-addr caller-frame →
+  addr ≢ slot-addr current-frame write-slot
+owned-disjoint-from-current-slot-bounded {addr = addr} {caller-frame = caller-frame}
+    {current-frame} {write-slot} {capacity} {va} owned frame-ord slot<cap gap-sufficient
+  with valid-in-alloc-region va
+... | HeapAlloc , ih =
+  -- Heap addresses are disjoint from all stack addresses (proven)
+  let write-addr-in-stack = slot-in-stack current-frame write-slot
+      slot≢addr = stack-heap-addr-disjoint (slot-addr current-frame write-slot) addr write-addr-in-stack ih
+  in λ eq → slot≢addr (sym eq)
+... | StackAlloc , is =
+  -- Stack address in caller-frame is disjoint from current-frame slots (PROVEN)
+  let (k , addr≡slot-k) = owned-implies-at-slot owned is
+      -- x86-frame-disjoint-with-capacity: PROVEN, uses capacity bound
+      slots-disjoint = x86-frame-disjoint-with-capacity current-frame caller-frame write-slot k capacity frame-ord slot<cap gap-sufficient
+  in λ eq → slots-disjoint (trans (sym eq) addr≡slot-k)
 
 ------------------------------------------------------------------------
 -- Preservation: Caller-owned values are preserved by callee writes

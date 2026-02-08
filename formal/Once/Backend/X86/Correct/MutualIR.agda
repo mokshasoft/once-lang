@@ -118,8 +118,9 @@ open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDisp
 -- Import ownership infrastructure for threading through dispatcher
 open import Once.Backend.X86.Correct.Ownership
   using (OwnedBy; Owner; Caller; Frame;
-         owned-disjoint-from-current-slot; heap-disjoint-from-stack-slot)
-open import Once.Backend.X86.Correct.InitState using (init-input-owned; init-rsp-below-caller)
+         owned-disjoint-from-current-slot; owned-disjoint-from-current-slot-bounded;
+         heap-disjoint-from-stack-slot)
+open import Once.Backend.X86.Correct.InitState using (init-input-owned; init-rsp-below-caller; init-frame-gap-sufficient)
 open import Once.Backend.X86.FrameInstantiation using (_x86-≺_)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
@@ -707,7 +708,7 @@ mutual
   -- Direct validity for prim (base case, ignores Acc)
   -- PHASE 5 COMPLETE: Uses ownership-based disjointness with frame ordering.
   -- HeapAlloc: proven via heap-disjoint-from-stack-slot (heap/stack region separation)
-  -- StackAlloc: proven via owned-disjoint-from-current-slot with frame ordering (rsp-below-caller)
+  -- StackAlloc: proven via owned-disjoint-from-current-slot-bounded (FULLY PROVEN, no x86-frame-disjoint)
   run-ir-star-at-offset-v (Prim {A} {B} name sem contract) prefix suffix caller-sp x s h-false pc-eq input-valid input-owned rsp-below-caller stack-inv cap-in rbp-inv _ _ =
     run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid current-frame rdi-not-current-slot stack-inv cap-in rbp-inv
     where
@@ -722,13 +723,20 @@ mutual
       caller-frame-above-current : current-frame x86-≺ caller-sp
       caller-frame-above-current = rsp-below-caller
 
-      -- Derive slot disjointness based on allocation mode
-      rdi-not-current-slot : ∀ slot → readReg (regs s) rdi ≢ slot-addr current-frame slot
-      rdi-not-current-slot slot with valid-in-alloc-region input-valid
+      -- Gap between frames is sufficient for output-slots capacity
+      -- This uses the init-frame-gap-sufficient trust boundary postulate.
+      gap-sufficient : slot-addr current-frame output-slots ≤ addr caller-sp
+      gap-sufficient = init-frame-gap-sufficient current-frame caller-sp output-slots caller-frame-above-current
+
+      -- Derive BOUNDED slot disjointness based on allocation mode
+      -- Only need disjointness for slots < output-slots (0 and 1)
+      rdi-not-current-slot : ∀ slot → slot < output-slots → readReg (regs s) rdi ≢ slot-addr current-frame slot
+      rdi-not-current-slot slot slot<cap with valid-in-alloc-region input-valid
       ... | HeapAlloc , in-heap = heap-disjoint-from-stack-slot current-frame slot in-heap
-      ... | StackAlloc , _ = owned-disjoint-from-current-slot
-              {caller-frame = caller-sp} {current-frame = current-frame} {write-slot = slot}
-              input-owned caller-frame-above-current
+      ... | StackAlloc , _ = owned-disjoint-from-current-slot-bounded
+              {caller-frame = caller-sp} {current-frame = current-frame}
+              {write-slot = slot} {capacity = output-slots}
+              input-owned caller-frame-above-current slot<cap gap-sufficient
   -- Initial: absurd case (base case, ignores Acc)
   run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x

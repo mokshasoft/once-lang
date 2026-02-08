@@ -1035,9 +1035,9 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
 -- Now takes `sem` as a parameter since Prim embeds semantics.
 --
 -- PHASE 4 CHANGE: Interface refined from all-stack disjointness to
--- slot-based disjointness. The old interface claimed rdi ≠ ALL stack addresses,
--- but existing lemmas only prove disjointness from current-frame slots.
--- Primitives only write to current-frame slots, so this weaker interface suffices.
+-- BOUNDED slot-based disjointness. Primitives only write to slots < output-slots,
+-- so we only need disjointness for those slots. This matches what
+-- owned-disjoint-from-current-slot-bounded can prove.
 PrimProof : ∀ {A B : Type} → (⟦ A ⟧ → ⟦ B ⟧) → PrimContract A B → Set₁
 PrimProof {A} {B} sem contract =
   ∀ (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
@@ -1045,7 +1045,7 @@ PrimProof {A} {B} sem contract =
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
   (current-frame : StackPointer) →
-  (∀ slot → readReg (regs s) rdi ≢ slot-addr current-frame slot) →
+  (∀ slot → slot < output-slots → readReg (regs s) rdi ≢ slot-addr current-frame slot) →
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
@@ -1076,16 +1076,16 @@ module PrimRunner (prim-proof : PrimProofProvider) where
   -- | Core prim execution - uses proof from provider
   -- This is what the postulate used to be, now a real function.
   --
-  -- PHASE 4 CHANGE: Uses slot-based disjointness instead of all-stack.
+  -- PHASE 4 CHANGE: Uses BOUNDED slot-based disjointness.
   -- current-frame identifies the executing frame; rdi-not-current-slot proves
-  -- input is disjoint from any slot in that frame.
+  -- input is disjoint from slots < output-slots in that frame.
   run-prim-star-vv : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : Contract A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     (current-frame : StackPointer) →
-    (∀ slot → readReg (regs s) rdi ≢ slot-addr current-frame slot) →
+    (∀ slot → slot < output-slots → readReg (regs s) rdi ≢ slot-addr current-frame slot) →
     StackInvariant s →
     StackCapacity s output-slots →
     RbpInvariant s →
@@ -1099,7 +1099,7 @@ module PrimRunner (prim-proof : PrimProofProvider) where
   -- For HeapAlloc inputs, heap addresses are disjoint from all stack slots.
   --
   -- NOTE: StackAlloc inputs require ownership-based reasoning via
-  -- owned-disjoint-from-current-slot in Ownership.agda.
+  -- owned-disjoint-from-current-slot-bounded in Ownership.agda.
   run-prim-star-vv-auto : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : Contract A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
@@ -1113,8 +1113,8 @@ module PrimRunner (prim-proof : PrimProofProvider) where
     let prog = prefix ++ compile-instr (Prim {A} {B} name sem contract) ++ suffix
     in ∃[ s' ] IRStarResultV (Prim {A} {B} name sem contract) prog s s' x (length prefix)
   run-prim-star-vv-auto name sem contract prefix suffix x s h-false pc-eq input-valid rdi-in-heap current-frame stack-inv cap-in rbp-inv =
-    let -- Heap addresses are disjoint from any stack slot
-        rdi-not-current-slot = λ slot → valid-disjoint-from-stack input-valid rdi-in-heap (slot-in-stack current-frame slot)
+    let -- Heap addresses are disjoint from any stack slot (bounded version just ignores the bound)
+        rdi-not-current-slot = λ slot _ → valid-disjoint-from-stack input-valid rdi-in-heap (slot-in-stack current-frame slot)
     in run-prim-star-vv name sem contract prefix suffix x s
          h-false pc-eq input-valid current-frame rdi-not-current-slot stack-inv cap-in rbp-inv
 

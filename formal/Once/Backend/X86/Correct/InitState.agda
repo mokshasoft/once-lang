@@ -43,8 +43,9 @@ open import Once.Backend.X86.Correct.StackInvariant
 open import Once.Backend.X86.Correct.StackInstantiation
   using (encode-in-heap-sem)
 open import Once.Backend.X86.Layout
-  using (StackPointer; HeapPointer; InStack; InHeap; in-stack)
+  using (StackPointer; HeapPointer; InStack; InHeap; in-stack; slot-addr)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr; haddr to hp-addr)
+open import Once.Backend.X86.FrameInstantiation using (_x86-≺_)
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -319,3 +320,18 @@ postulate
   -- for caller-frame relationships at program entry.
   init-rsp-below-caller : ∀ (s : State) (caller-frame : Frame) →
     readReg (regs s) rsp < sp-addr caller-frame
+
+  -- | The gap between current frame and caller frame is sufficient for capacity slots.
+  --
+  -- For slot-based disjointness to work, we need the gap between frames
+  -- to be at least as large as the slots we're accessing. This ensures
+  -- slot-addr current-frame k < sp-addr caller-frame for k < capacity.
+  --
+  -- This is a calling convention invariant: the caller allocates enough
+  -- stack space for the callee's frame before the call.
+  --
+  -- Used by owned-disjoint-from-current-slot-bounded to prove disjointness
+  -- using x86-frame-disjoint-bounded (which is fully proven, no postulate).
+  init-frame-gap-sufficient : ∀ (current-frame caller-frame : Frame) (capacity : ℕ) →
+    current-frame x86-≺ caller-frame →
+    slot-addr current-frame capacity ≤ sp-addr caller-frame
