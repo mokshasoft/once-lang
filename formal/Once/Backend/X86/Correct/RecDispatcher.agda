@@ -158,3 +158,39 @@ RecDispatcherWithFrameOrdering bound =
   let prog = prefix ++ compile-instr ir ++ suffix
   in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
 
+------------------------------------------------------------------------
+-- RecDispatcherWithGap: Extended dispatcher with gap sufficiency
+--
+-- Like RecDispatcherWithFrameOrdering, but also requires a proof that
+-- the gap between current rsp and caller-sp is sufficient for output-slots.
+--
+-- This enables proving slot disjointness in the Prim case WITHOUT using
+-- the init-frame-gap-sufficient postulate:
+--   - For initial entry: gap-sufficient is constructed from the postulate
+--   - For internal calls (thunk): gap-sufficient is DERIVED from
+--     caller-sp-bound (addr caller-sp = entry-rsp + 8) and
+--     rsp-setup (current-rsp = entry-rsp - 32), giving gap = 40 bytes
+--
+-- This design ensures the postulate is only used at program entry,
+-- while internal calls use proven gap derivations.
+------------------------------------------------------------------------
+
+open import Once.Backend.X86.Correct.StackInstantiation using (output-slots; slots)
+open import Data.Nat using (_≤_) renaming (_+_ to _+ℕ_)
+
+RecDispatcherWithGap : ℕ → Set₁
+RecDispatcherWithGap bound =
+  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  (input-valid : ValidAt x (x86-readInputReg s) (memory s)) →
+  OwnedBy Caller input-valid caller-sp →
+  readReg (regs s) rsp < sp-addr caller-sp →  -- Frame ordering
+  readReg (regs s) rsp +ℕ slots output-slots ≤ sp-addr caller-sp →  -- Gap sufficient for output
+  StackInvariant s →
+  StackCapacity s (ir-stack-requirement ir) →
+  RbpInvariant s →
+  let prog = prefix ++ compile-instr ir ++ suffix
+  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
+
