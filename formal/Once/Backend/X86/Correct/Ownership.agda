@@ -409,6 +409,16 @@ owned-disjoint-from-current-slot {addr = addr} {caller-frame = caller-frame}
   -- So: slot-addr current-frame write-slot ≡ addr ≡ slot-addr caller-frame k
   in λ eq → slots-disjoint (trans (sym eq) addr≡slot-k)
 
+-- | Heap address is disjoint from any stack slot
+-- Used by Prim case for HeapAlloc inputs.
+heap-disjoint-from-stack-slot :
+  ∀ {addr : Word} (frame : Frame) (slot : ℕ) →
+  InHeap addr →
+  addr ≢ slot-addr frame slot
+heap-disjoint-from-stack-slot {addr} frame slot ih eq =
+  let slot-in = slot-in-stack frame slot
+  in stack-heap-addr-disjoint (slot-addr frame slot) addr slot-in ih (sym eq)
+
 ------------------------------------------------------------------------
 -- Preservation: Caller-owned values are preserved by callee writes
 --

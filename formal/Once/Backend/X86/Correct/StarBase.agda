@@ -15,7 +15,7 @@ open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.ExecLemmas
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; r15-in-heap; r15-in-code; RbpInvariant; stack-inv-preserved-unchanged)
-open import Once.Backend.X86.Layout using (InStack; InHeap; InCode; stack-code-disjoint; StackPointer; stack-addr)
+open import Once.Backend.X86.Layout using (InStack; InHeap; InCode; stack-code-disjoint; StackPointer; stack-addr; slot-addr)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound;
@@ -37,6 +37,7 @@ open import Once.Backend.X86.Correct.MemoryValid
          ClosureAtS-preserved-under-heap-eq;
          Region; Stack; Heap; InRegion;
          valid-disjoint-from-stack)  -- For Prim base case
+open import Once.Backend.X86.Correct.Ownership using (slot-in-stack)
 open import Once.Backend.Common.PrimContract using (PrimContract)
 -- NOTE: We do NOT import PrimCorrectness here to avoid circular dependency.
 -- PrimCorrectness imports StarBase for IRStarResultV.
@@ -1032,13 +1033,19 @@ run-arr-star-vv {A} {B} prefix suffix fn s h-false pc-eq input-valid stack-inv c
 -- (PrimCorrectness imports StarBase for IRStarResultV)
 --
 -- Now takes `sem` as a parameter since Prim embeds semantics.
+--
+-- PHASE 4 CHANGE: Interface refined from all-stack disjointness to
+-- slot-based disjointness. The old interface claimed rdi ≠ ALL stack addresses,
+-- but existing lemmas only prove disjointness from current-frame slots.
+-- Primitives only write to current-frame slots, so this weaker interface suffices.
 PrimProof : ∀ {A B : Type} → (⟦ A ⟧ → ⟦ B ⟧) → PrimContract A B → Set₁
 PrimProof {A} {B} sem contract =
   ∀ (name : String) (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
   halted s ≡ false →
   pc s ≡ length prefix →
   ValidAt x (readReg (regs s) rdi) (memory s) →
-  (∀ addr → InStack addr → readReg (regs s) rdi ≢ addr) →
+  (current-frame : StackPointer) →
+  (∀ slot → readReg (regs s) rdi ≢ slot-addr current-frame slot) →
   StackInvariant s →
   StackCapacity s output-slots →
   RbpInvariant s →
@@ -1068,42 +1075,48 @@ module PrimRunner (prim-proof : PrimProofProvider) where
 
   -- | Core prim execution - uses proof from provider
   -- This is what the postulate used to be, now a real function.
+  --
+  -- PHASE 4 CHANGE: Uses slot-based disjointness instead of all-stack.
+  -- current-frame identifies the executing frame; rdi-not-current-slot proves
+  -- input is disjoint from any slot in that frame.
   run-prim-star-vv : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : Contract A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
-    (∀ addr → InStack addr → readReg (regs s) rdi ≢ addr) →
+    (current-frame : StackPointer) →
+    (∀ slot → readReg (regs s) rdi ≢ slot-addr current-frame slot) →
     StackInvariant s →
     StackCapacity s output-slots →
     RbpInvariant s →
     let prog = prefix ++ compile-instr (Prim {A} {B} name sem contract) ++ suffix
     in ∃[ s' ] IRStarResultV (Prim {A} {B} name sem contract) prog s s' x (length prefix)
-  run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv =
+  run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid current-frame rdi-not-current-slot stack-inv cap-in rbp-inv =
     prim-proof sem contract name prefix suffix x s
-      h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
+      h-false pc-eq input-valid current-frame rdi-not-current-slot stack-inv cap-in rbp-inv
 
-  -- | Wrapper that derives rdi-not-stack from ValidAt (HeapAlloc inputs only)
-  -- This is what MutualIR's Prim case used to do inline.
-  -- Provides a cleaner interface: just pass ValidAt + InHeap, disjointness is derived.
+  -- | Wrapper that derives slot disjointness from InHeap (HeapAlloc inputs only)
+  -- For HeapAlloc inputs, heap addresses are disjoint from all stack slots.
   --
-  -- NOTE: Primitive inputs must be in heap. StackAlloc inputs would require
-  -- ownership-based reasoning (see owned-disjoint-from-current-slot in Ownership).
+  -- NOTE: StackAlloc inputs require ownership-based reasoning via
+  -- owned-disjoint-from-current-slot in Ownership.agda.
   run-prim-star-vv-auto : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) (contract : Contract A B)
       (prefix suffix : Program) (x : ⟦ A ⟧) (s : State) →
     halted s ≡ false →
     pc s ≡ length prefix →
     ValidAt x (readReg (regs s) rdi) (memory s) →
     InHeap (readReg (regs s) rdi) →  -- Input must be in heap
+    (current-frame : StackPointer) →
     StackInvariant s →
     StackCapacity s output-slots →
     RbpInvariant s →
     let prog = prefix ++ compile-instr (Prim {A} {B} name sem contract) ++ suffix
     in ∃[ s' ] IRStarResultV (Prim {A} {B} name sem contract) prog s s' x (length prefix)
-  run-prim-star-vv-auto name sem contract prefix suffix x s h-false pc-eq input-valid rdi-in-heap stack-inv cap-in rbp-inv =
-    let rdi-not-stack = λ addr stack-proof → valid-disjoint-from-stack input-valid rdi-in-heap stack-proof
+  run-prim-star-vv-auto name sem contract prefix suffix x s h-false pc-eq input-valid rdi-in-heap current-frame stack-inv cap-in rbp-inv =
+    let -- Heap addresses are disjoint from any stack slot
+        rdi-not-current-slot = λ slot → valid-disjoint-from-stack input-valid rdi-in-heap (slot-in-stack current-frame slot)
     in run-prim-star-vv name sem contract prefix suffix x s
-         h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
+         h-false pc-eq input-valid current-frame rdi-not-current-slot stack-inv cap-in rbp-inv
 
 ------------------------------------------------------------------------
 -- X86-64 PrimProofSemantics Instantiation

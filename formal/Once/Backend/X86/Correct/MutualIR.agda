@@ -55,7 +55,7 @@ open import Once.Backend.Common.ProgramLemmas
 -- Import memory region definitions
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; StackPointer; frameSlot; slot-addr;
-         slot-addr-above-thunk-rbp; slot-addr-≥-base; addr; in-stack; stack-addr)
+         slot-addr-above-thunk-rbp; slot-addr-≥-base; addr; in-stack; stack-addr; from-raw-stack)
 -- Internal glue for abstraction boundary (implementation use only!)
 open import Once.Backend.X86.Layout using (module FrameSlotInternal)
 open FrameSlotInternal using (frameSlot-is-readMem)
@@ -116,8 +116,11 @@ open import Once.Backend.X86.Correct.IR.Inr
 open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDispatcherWithWF; RecDispatcherWithOwnership; unwrap-rec)
 
 -- Import ownership infrastructure for threading through dispatcher
-open import Once.Backend.X86.Correct.Ownership using (OwnedBy; Owner; Caller; Frame)
+open import Once.Backend.X86.Correct.Ownership
+  using (OwnedBy; Owner; Caller; Frame;
+         owned-disjoint-from-current-slot; heap-disjoint-from-stack-slot)
 open import Once.Backend.X86.Correct.InitState using (init-input-owned)
+open import Once.Backend.X86.FrameInstantiation using (_x86-≺_)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
 -- Now includes curry-thunk-correct-v with RecDispatcher pattern
@@ -696,29 +699,34 @@ mutual
   run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
-  -- Derives rdi-not-stack from ValidAt's allocation mode
-  -- NOTE: input-owned is now available for ownership-based disjointness in Phase 5
+  -- PHASE 4: Uses slot-based disjointness instead of all-stack disjointness.
+  -- Constructs current-frame from rsp and derives disjointness per allocation mode.
   run-ir-star-at-offset-v (Prim {A} {B} name sem contract) prefix suffix caller-sp x s h-false pc-eq input-valid input-owned stack-inv cap-in rbp-inv _ _ =
-    run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid rdi-not-stack stack-inv cap-in rbp-inv
+    run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid current-frame rdi-not-current-slot stack-inv cap-in rbp-inv
     where
+      -- Construct current frame from rsp
+      current-frame : StackPointer
+      current-frame = from-raw-stack (readReg (regs s) rsp) (rsp-in-stack cap-in)
+
       -- Extract allocation mode from input validity
       alloc-info = valid-in-alloc-region input-valid
 
-      -- Derive disjointness based on allocation mode
-      -- Pattern match on the pair to get correctly-typed evidence
-      rdi-not-stack : ∀ addr → InStack addr → readReg (regs s) rdi ≢ addr
-      rdi-not-stack addr addr-in-stack with alloc-info
-      ... | HeapAlloc , in-heap = valid-disjoint-from-stack input-valid in-heap addr-in-stack
-      ... | StackAlloc , in-stack = prim-input-stack-disjoint input-valid in-stack addr-in-stack
+      -- Derive slot disjointness based on allocation mode
+      -- HeapAlloc: heap addresses are disjoint from all stack slots
+      -- StackAlloc: use ownership-based reasoning with frame ordering
+      rdi-not-current-slot : ∀ slot → readReg (regs s) rdi ≢ slot-addr current-frame slot
+      rdi-not-current-slot slot with alloc-info
+      ... | HeapAlloc , in-heap = heap-disjoint-from-stack-slot current-frame slot in-heap
+      ... | StackAlloc , in-stack = prim-input-stack-slot-disjoint slot
         where
-          -- StackAlloc inputs are in caller's frame, disjoint from current frame
-          -- Phase 5: Replace with ownership-based reasoning using input-owned:
-          --   owned-disjoint-from-current-slot input-owned frame-ord slot-bound
+          -- Phase 5: Replace with ownership-based reasoning:
+          --   frame-ord : current-frame x86-≺ caller-sp
+          --   owned-disjoint-from-current-slot input-owned frame-ord
+          -- The frame ordering comes from: rsp < sp-addr caller-sp
+          -- (current frame is below caller's frame)
           postulate
-            prim-input-stack-disjoint : ValidAt x (readReg (regs s) rdi) (memory s) →
-              InStack (readReg (regs s) rdi) →
-              InStack addr →
-              readReg (regs s) rdi ≢ addr
+            prim-input-stack-slot-disjoint : ∀ slot →
+              readReg (regs s) rdi ≢ slot-addr current-frame slot
   -- Initial: absurd case (base case, ignores Acc)
   run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x
