@@ -30,7 +30,7 @@
 
 module Once.Backend.Common.FrameSemantics where
 
-open import Data.Nat using (ℕ; zero; _<_)
+open import Data.Nat using (ℕ; zero; _<_; _≤_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 
 -- Import Addr from MemoryLayoutSemantics
@@ -120,3 +120,25 @@ record FrameSemantics : Set₁ where
       slot-addr f₁ k₁ ≢ slot-addr f₂ k₂
 
 open FrameSemantics public
+
+------------------------------------------------------------------------
+-- NOTE: Frame Gap Sufficiency
+--
+-- Gap sufficiency (slot-addr f₁ capacity ≤ frame-base f₂) is NOT part
+-- of the FrameSemantics interface because:
+--
+--   1. It's NOT an inherent property of frames - it depends on how
+--      frames are created (prologue allocation)
+--
+--   2. For INTERNAL calls (Apply/thunk): Gap sufficiency is PROVABLE
+--      from the code generation. The prologue allocates exactly
+--      ir-stack-requirement slots, so slots within that capacity
+--      are guaranteed to be below the caller's frame.
+--
+--   3. Only at PROGRAM ENTRY is gap sufficiency a trust boundary -
+--      we trust the OS/runtime set up sufficient space before calling
+--      our code.
+--
+-- See: Once.Backend.X86.Correct.InitState.init-frame-gap-sufficient
+-- for the program entry trust boundary postulate.
+------------------------------------------------------------------------

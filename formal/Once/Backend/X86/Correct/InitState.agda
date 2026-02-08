@@ -321,14 +321,23 @@ postulate
   init-rsp-below-caller : ∀ (s : State) (caller-frame : Frame) →
     readReg (regs s) rsp < sp-addr caller-frame
 
-  -- | The gap between current frame and caller frame is sufficient for capacity slots.
+  -- | Gap sufficiency at PROGRAM ENTRY (trust boundary with OS/runtime).
   --
-  -- For slot-based disjointness to work, we need the gap between frames
-  -- to be at least as large as the slots we're accessing. This ensures
-  -- slot-addr current-frame k < sp-addr caller-frame for k < capacity.
+  -- At initial program entry, the OS/runtime sets up the stack such that
+  -- the gap between our entry frame and the "caller" (OS/runtime) frame
+  -- is sufficient for our capacity needs.
   --
-  -- This is a calling convention invariant: the caller allocates enough
-  -- stack space for the callee's frame before the call.
+  -- IMPORTANT: This postulate is ONLY needed for the initial entry point.
+  -- For INTERNAL calls (via Apply/thunk), gap sufficiency is PROVABLE from:
+  --   1. ClosureWellFormed provides: addr caller-sp ≡ entry-rsp + 8
+  --   2. Thunk prologue allocates exactly ir-stack-requirement slots
+  --   3. After prologue: current-frame is at entry-rsp - prologue-size
+  --   4. Gap = (entry-rsp + 8) - (entry-rsp - prologue-size) = 8 + prologue-size
+  --   5. For capacity ≤ prologue-slots, slots are within the proven gap
+  --
+  -- TODO: For internal calls, derive this from the compilation structure
+  -- instead of using this postulate. The current code incorrectly uses
+  -- this postulate for ALL calls, not just the initial entry.
   --
   -- Used by owned-disjoint-from-current-slot-bounded to prove disjointness
   -- using x86-frame-disjoint-bounded (which is fully proven, no postulate).

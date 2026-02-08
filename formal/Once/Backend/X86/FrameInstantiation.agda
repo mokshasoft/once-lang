@@ -14,8 +14,8 @@
 --   - Callee's slots: addr(callee) + k * 8, staying below addr(caller)
 --   - Caller's slots: addr(caller) + j * 8, at or above addr(caller)
 --
--- FULLY PROVEN: No postulates needed. The bounded disjointness property
--- follows from arithmetic on slot addresses.
+-- Bounded disjointness is PROVEN from arithmetic on slot addresses.
+-- All lemmas in this module are FULLY PROVEN (no postulates).
 ------------------------------------------------------------------------
 
 module Once.Backend.X86.FrameInstantiation where
@@ -141,7 +141,14 @@ x86-frame-disjoint-with-capacity f₁ f₂ k₁ k₂ capacity f₁<f₂ k₁<cap
     slot-bound = x86-slot-within-capacity-bound f₁ f₂ k₁ capacity k₁<cap gap-sufficient
 
 ------------------------------------------------------------------------
--- X86-64 FrameSemantics Instance (FULLY PROVEN)
+-- X86-64 FrameSemantics Instance
+--
+-- ALL properties are FULLY PROVEN (no postulates).
+--
+-- Gap sufficiency is NOT part of FrameSemantics because it depends on
+-- how frames are created (prologue allocation), not frame semantics.
+-- See: Once.Backend.X86.Correct.InitState.init-frame-gap-sufficient
+-- for the program entry trust boundary.
 ------------------------------------------------------------------------
 
 x86-frame-semantics : FrameSemantics
