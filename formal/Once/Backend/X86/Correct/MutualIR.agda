@@ -699,8 +699,9 @@ mutual
   run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
-  -- PHASE 4: Uses slot-based disjointness instead of all-stack disjointness.
-  -- Constructs current-frame from rsp and derives disjointness per allocation mode.
+  -- PHASE 5: Uses ownership-based disjointness with frame ordering.
+  -- HeapAlloc: proven via heap-stack disjointness
+  -- StackAlloc: uses owned-disjoint-from-current-slot with frame ordering postulate
   run-ir-star-at-offset-v (Prim {A} {B} name sem contract) prefix suffix caller-sp x s h-false pc-eq input-valid input-owned stack-inv cap-in rbp-inv _ _ =
     run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid current-frame rdi-not-current-slot stack-inv cap-in rbp-inv
     where
@@ -708,25 +709,24 @@ mutual
       current-frame : StackPointer
       current-frame = from-raw-stack (readReg (regs s) rsp) (rsp-in-stack cap-in)
 
-      -- Extract allocation mode from input validity
-      alloc-info = valid-in-alloc-region input-valid
+      -- Frame ordering: current frame is below caller's frame
+      -- This holds by the x86 calling convention:
+      --   1. caller-sp is the caller's frame (where input was placed)
+      --   2. current-frame is the callee's frame (at current rsp)
+      --   3. On x86, callee frames are below caller frames (stack grows down)
+      --
+      -- TODO: Prove by threading caller-sp construction through the dispatcher,
+      -- showing it was built from an rsp value above the current frame.
+      postulate
+        caller-frame-above-current : current-frame x86-≺ caller-sp
 
       -- Derive slot disjointness based on allocation mode
-      -- HeapAlloc: heap addresses are disjoint from all stack slots
-      -- StackAlloc: use ownership-based reasoning with frame ordering
       rdi-not-current-slot : ∀ slot → readReg (regs s) rdi ≢ slot-addr current-frame slot
-      rdi-not-current-slot slot with alloc-info
+      rdi-not-current-slot slot with valid-in-alloc-region input-valid
       ... | HeapAlloc , in-heap = heap-disjoint-from-stack-slot current-frame slot in-heap
-      ... | StackAlloc , in-stack = prim-input-stack-slot-disjoint slot
-        where
-          -- Phase 5: Replace with ownership-based reasoning:
-          --   frame-ord : current-frame x86-≺ caller-sp
-          --   owned-disjoint-from-current-slot input-owned frame-ord
-          -- The frame ordering comes from: rsp < sp-addr caller-sp
-          -- (current frame is below caller's frame)
-          postulate
-            prim-input-stack-slot-disjoint : ∀ slot →
-              readReg (regs s) rdi ≢ slot-addr current-frame slot
+      ... | StackAlloc , _ = owned-disjoint-from-current-slot
+              {caller-frame = caller-sp} {current-frame = current-frame} {write-slot = slot}
+              input-owned caller-frame-above-current
   -- Initial: absurd case (base case, ignores Acc)
   run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x
