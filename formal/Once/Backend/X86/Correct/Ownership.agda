@@ -57,10 +57,9 @@ open import Once.Backend.X86.Correct.MemoryValid
          unit-in-heap)
 
 -- Import FrameSemantics for slot-based addressing
-open import Once.Backend.Common.FrameSemantics using (FrameSemantics; AtSlot)
+open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.X86.FrameInstantiation
   using (x86-frame-semantics; X86Frame; _x86-≺_;
-         x86-frame-disjoint-bounded;
          x86-frame-disjoint-with-capacity; x86-slot-within-capacity-bound)
 
 ------------------------------------------------------------------------
