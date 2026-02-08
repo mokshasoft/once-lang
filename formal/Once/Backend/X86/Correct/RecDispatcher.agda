@@ -15,7 +15,7 @@ module Once.Backend.X86.Correct.RecDispatcher where
 open import Once.Backend.X86.Correct.Foundation
 open import Once.Backend.X86.Semantics using (Memory)
 
-open import Once.Backend.X86.Layout using (StackPointer)
+open import Once.Backend.X86.Layout using (StackPointer) renaming (addr to sp-addr)
 open import Once.Backend.X86.Correct.StackInvariant using (StackInvariant; RbpInvariant)
 open import Once.Backend.X86.Correct.StackInstantiation using (StackCapacity; ir-stack-requirement)
 open import Once.Backend.X86.Correct.MemoryValid using (ValidAt)
@@ -121,6 +121,37 @@ RecDispatcherWithOwnership bound =
   pc s ≡ length prefix →
   (input-valid : ValidAt x (x86-readInputReg s) (memory s)) →  -- Named for ownership reference
   OwnedBy Caller input-valid caller-sp →  -- Ownership proof indexed by input-valid
+  StackInvariant s →
+  StackCapacity s (ir-stack-requirement ir) →
+  RbpInvariant s →
+  let prog = prefix ++ compile-instr ir ++ suffix
+  in ∃[ s' ] IRStarResultV ir prog s s' x (length prefix)
+
+------------------------------------------------------------------------
+-- RecDispatcherWithFrameOrdering: Extended dispatcher with frame ordering
+--
+-- Like RecDispatcherWithOwnership, but also requires a proof that
+-- the current rsp is strictly below the caller's frame address.
+--
+-- This enables proving slot disjointness for Prim's StackAlloc case:
+--   - current-frame = from-raw-stack rsp ...
+--   - caller-frame-above-current : current-frame x86-≺ caller-sp
+--   - Since current-frame.addr = rsp, this is: rsp < sp-addr caller-sp
+--
+-- The frame ordering is established at program entry (postulate) and
+-- preserved through recursive calls since rsp only decreases during
+-- inline execution (stack allocations, no returns until outer complete).
+------------------------------------------------------------------------
+
+RecDispatcherWithFrameOrdering : ℕ → Set₁
+RecDispatcherWithFrameOrdering bound =
+  ∀ {A B} (ir : IR A B) → ir-size ir < bound →
+  (prefix suffix : Program) (caller-sp : StackPointer) (x : ⟦ A ⟧) (s : State) →
+  halted s ≡ false →
+  pc s ≡ length prefix →
+  (input-valid : ValidAt x (x86-readInputReg s) (memory s)) →
+  OwnedBy Caller input-valid caller-sp →
+  readReg (regs s) rsp < sp-addr caller-sp →  -- Frame ordering: current frame below caller
   StackInvariant s →
   StackCapacity s (ir-stack-requirement ir) →
   RbpInvariant s →

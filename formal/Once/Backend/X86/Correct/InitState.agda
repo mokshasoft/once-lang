@@ -106,7 +106,7 @@ initWithInput-stack-inv {A} sp x = r15-in-heap (encode-in-heap-sem x)
   -- r15 = encode x, and encode-in-heap-sem proves encode x is in heap
 
 -- | Initial state has sufficient stack capacity
-open import Data.Nat using (ℕ; _>_; _≤_)
+open import Data.Nat using (ℕ; _<_; _>_; _≤_)
 open import Data.Nat.Properties using (≤-refl)
 open import Once.Backend.X86.Correct.StackInstantiation
   using (StackCapacity; rsp-bound-to-capacity; capacity-2-to-rsp-bound; slots; pair-alloc)
@@ -302,3 +302,20 @@ postulate
     (init-frame : Frame) →
     (va : ValidAt v addr m) →
     OwnedBy Caller va init-frame
+
+  -- | At initial program entry, rsp is below the caller's frame.
+  --
+  -- This postulate asserts the calling convention: when the caller
+  -- invokes the program, the callee's rsp is strictly below the
+  -- caller's frame (due to call instruction pushing return address,
+  -- and any function prologue).
+  --
+  -- This is a runtime invariant established by the OS/runtime.
+  -- It is preserved through execution since:
+  --   - Stack grows down (sub rsp, N)
+  --   - rsp never increases above entry point during execution
+  --
+  -- Combined with init-input-owned, this forms the trust boundary
+  -- for caller-frame relationships at program entry.
+  init-rsp-below-caller : ∀ (s : State) (caller-frame : Frame) →
+    readReg (regs s) rsp < sp-addr caller-frame

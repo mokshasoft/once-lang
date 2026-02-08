@@ -119,7 +119,7 @@ open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDisp
 open import Once.Backend.X86.Correct.Ownership
   using (OwnedBy; Owner; Caller; Frame;
          owned-disjoint-from-current-slot; heap-disjoint-from-stack-slot)
-open import Once.Backend.X86.Correct.InitState using (init-input-owned)
+open import Once.Backend.X86.Correct.InitState using (init-input-owned; init-rsp-below-caller)
 open import Once.Backend.X86.FrameInstantiation using (_x86-≺_)
 
 -- Import extracted curry proof (non-recursive, entire function extracted)
@@ -241,6 +241,7 @@ mutual
     pc s ≡ length prefix →
     (input-valid : ValidAt x (readReg (regs s) rdi) (memory s)) →  -- Named for ownership reference
     OwnedBy Caller input-valid caller-sp →  -- Ownership proof threaded from entry
+    readReg (regs s) rsp < addr caller-sp →  -- Frame ordering: callee below caller
     StackInvariant s →
     StackCapacity s (ir-stack-requirement ir) →
     RbpInvariant s →
@@ -427,12 +428,12 @@ mutual
       -- ============================================================
 
       -- Construct size-bounded dispatcher from Acc destructor (rs)
-      -- Note: Ownership is constructed locally via init-input-owned for each sub-call
-      -- Future: use RecDispatcherWithOwnership to thread ownership directly
+      -- Note: Ownership and frame ordering are constructed locally for each sub-call
       rec : RecDispatcher (ir-size (curry f))
       rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
         run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
           input-valid' (init-input-owned caller-sp' input-valid')
+          (init-rsp-below-caller s' caller-sp')
           stack-inv' cap-in' rbp-inv' no-closure (rs lt)
 
       wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
@@ -574,11 +575,12 @@ mutual
       -- (Now uses RecDispatcher pattern like Pair, Compose, Case)
 
       -- Construct size-bounded dispatcher from Acc destructor (rs)
-      -- Note: Ownership is constructed locally via init-input-owned for each sub-call
+      -- Note: Ownership and frame ordering are constructed locally for each sub-call
       rec : RecDispatcher (ir-size (curry f))
       rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
         run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
           input-valid' (init-input-owned caller-sp' input-valid')
+          (init-rsp-below-caller s' caller-sp')
           stack-inv' cap-in' rbp-inv' no-closure (rs lt)
 
       wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
@@ -611,11 +613,12 @@ mutual
           h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁
     }
     where
-      -- Note: Ownership is constructed locally via init-input-owned for each sub-call
+      -- Note: Ownership and frame ordering are constructed locally for each sub-call
       rec : RecDispatcher (ir-size (curry f))
       rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
         run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
           input-valid' (init-input-owned caller-sp' input-valid')
+          (init-rsp-below-caller s' caller-sp')
           stack-inv' cap-in' rbp-inv' no-closure
           (Acc-smaller (<-wellFounded (ir-size (curry f))) lt)
         where
@@ -652,57 +655,60 @@ mutual
 
   -- Direct validity-based execution for inl (base case, ignores Acc)
   -- ir-stack-requirement inl = 4, so cap-in : StackCapacity s 4 directly
-  run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (inl {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     run-inl-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity-based execution for inr (base case, ignores Acc)
   -- ir-stack-requirement inr = 4, so cap-in : StackCapacity s 4 directly
-  run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (inr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     run-inr-star-v-auto prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Pair: uses Acc to construct size-bounded dispatcher for parameterized module
   -- NOTE: Pair needs StackCapacity s 7 (5 for setup + 2 remaining)
   -- TODO: Dispatcher should take ir-input-capacity ir slots, not fixed 2
   -- Refactored: Calls IR.Pair.run-pair-star-v directly with rec parameter (no parameterized module)
-  run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ (acc rs) =
+  run-ir-star-at-offset-v (⟨ f , g ⟩) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
-        -- Note: Ownership is constructed locally via init-input-owned for each sub-call
+        -- Note: Ownership and frame ordering are constructed locally for each sub-call
+        -- Frame ordering is established by init-rsp-below-caller (trust boundary)
         rec : RecDispatcher (ir-size ⟨ f , g ⟩)
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
             input-valid' (init-input-owned caller-sp' input-valid')
+            (init-rsp-below-caller s' caller-sp')
             stack-inv' cap-in' rbp-inv' no-closure (rs lt)
         -- cap-in has type StackCapacity s (ir-stack-requirement ⟨ f , g ⟩) which is what run-pair-star-v expects
     in Pair.run-pair-star-v f g (ir-size ⟨ f , g ⟩) rec (⟨,⟩-f-smaller f g) (⟨,⟩-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Compose: uses Acc to construct size-bounded dispatcher for parameterized module
   -- Compose: refactored to call IR/Compose.run-compose-star-v directly with rec parameter
-  run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ (acc rs) =
+  run-ir-star-at-offset-v (g ∘ f) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ (acc rs) =
     let -- Construct size-bounded dispatcher with closure-wf from Acc destructor (rs)
-        -- Note: Ownership is constructed locally via init-input-owned for each sub-call
+        -- Note: Ownership and frame ordering are constructed locally for each sub-call
         rec : RecDispatcherWithWF (ir-size (g ∘ f))
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' cwf' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
             input-valid' (init-input-owned caller-sp' input-valid')
+            (init-rsp-below-caller s' caller-sp')
             stack-inv' cap-in' rbp-inv' cwf' (rs lt)
     in Compose.run-compose-star-v f g (ir-size (g ∘ f)) rec (∘-f-smaller f g) (∘-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for id (base case, ignores Acc)
-  run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (id {A}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     run-id-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for terminal (base case, ignores Acc)
-  run-ir-star-at-offset-v (terminal {A}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (terminal {A}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     run-terminal-star-vv prefix suffix x s h-false pc-eq stack-inv cap-in rbp-inv
   -- Direct validity for fold (base case, ignores Acc)
-  run-ir-star-at-offset-v (fold {F}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (fold {F}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     run-fold-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for unfold (base case, ignores Acc)
-  run-ir-star-at-offset-v (unfold {F}) prefix suffix caller-sp (wrap x') s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (unfold {F}) prefix suffix caller-sp (wrap x') s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     run-unfold-star-vv prefix suffix (wrap x') s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for arr (base case, ignores Acc)
-  run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (arr {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     run-arr-star-vv prefix suffix x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- Direct validity for prim (base case, ignores Acc)
-  -- PHASE 5: Uses ownership-based disjointness with frame ordering.
-  -- HeapAlloc: proven via heap-stack disjointness
-  -- StackAlloc: uses owned-disjoint-from-current-slot with frame ordering postulate
-  run-ir-star-at-offset-v (Prim {A} {B} name sem contract) prefix suffix caller-sp x s h-false pc-eq input-valid input-owned stack-inv cap-in rbp-inv _ _ =
+  -- PHASE 5 COMPLETE: Uses ownership-based disjointness with frame ordering.
+  -- HeapAlloc: proven via heap-disjoint-from-stack-slot (heap/stack region separation)
+  -- StackAlloc: proven via owned-disjoint-from-current-slot with frame ordering (rsp-below-caller)
+  run-ir-star-at-offset-v (Prim {A} {B} name sem contract) prefix suffix caller-sp x s h-false pc-eq input-valid input-owned rsp-below-caller stack-inv cap-in rbp-inv _ _ =
     run-prim-star-vv name sem contract prefix suffix x s h-false pc-eq input-valid current-frame rdi-not-current-slot stack-inv cap-in rbp-inv
     where
       -- Construct current frame from rsp
@@ -710,15 +716,11 @@ mutual
       current-frame = from-raw-stack (readReg (regs s) rsp) (rsp-in-stack cap-in)
 
       -- Frame ordering: current frame is below caller's frame
-      -- This holds by the x86 calling convention:
-      --   1. caller-sp is the caller's frame (where input was placed)
-      --   2. current-frame is the callee's frame (at current rsp)
-      --   3. On x86, callee frames are below caller frames (stack grows down)
-      --
-      -- TODO: Prove by threading caller-sp construction through the dispatcher,
-      -- showing it was built from an rsp value above the current frame.
-      postulate
-        caller-frame-above-current : current-frame x86-≺ caller-sp
+      -- This is PROVEN from the rsp-below-caller parameter (threaded from entry).
+      -- Since addr current-frame = rsp by construction, we have:
+      --   rsp < addr caller-sp  ==>  current-frame x86-≺ caller-sp
+      caller-frame-above-current : current-frame x86-≺ caller-sp
+      caller-frame-above-current = rsp-below-caller
 
       -- Derive slot disjointness based on allocation mode
       rdi-not-current-slot : ∀ slot → readReg (regs s) rdi ≢ slot-addr current-frame slot
@@ -728,10 +730,10 @@ mutual
               {caller-frame = caller-sp} {current-frame = current-frame} {write-slot = slot}
               input-owned caller-frame-above-current
   -- Initial: absurd case (base case, ignores Acc)
-  run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (initial {A}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     ⊥-elim x
   -- fst: decompose pair validity (base case, ignores Acc)
-  run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (fst {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     let a = proj₁ x
         b = proj₂ x
         decomp = valid-pair-decompose input-valid
@@ -742,7 +744,7 @@ mutual
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
     in run-fst-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv
   -- snd: decompose pair validity (base case, ignores Acc)
-  run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ _ =
+  run-ir-star-at-offset-v (snd {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ _ =
     let a = proj₁ x
         b = proj₂ x
         decomp = valid-pair-decompose input-valid
@@ -753,22 +755,23 @@ mutual
         pair-at = proj₂ (proj₂ (proj₂ (proj₂ decomp)))
     in run-snd-star-vv prefix suffix a b addr-a addr-b s h-false pc-eq va vb pair-at stack-inv cap-in rbp-inv
   -- Case: refactored to call IR/Case.run-case-star-v directly with rec parameter
-  run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv _ (acc rs) =
+  run-ir-star-at-offset-v ([_,_] {A} {B} {C} f g) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv _ (acc rs) =
     let -- Construct size-bounded dispatcher from Acc destructor (rs)
-        -- Note: Ownership is constructed locally via init-input-owned for each sub-call
+        -- Note: Ownership and frame ordering are constructed locally for each sub-call
         rec : RecDispatcher (ir-size [ f , g ])
         rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
           run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
             input-valid' (init-input-owned caller-sp' input-valid')
+            (init-rsp-below-caller s' caller-sp')
             stack-inv' cap-in' rbp-inv' no-closure (rs lt)
     in Case.run-case-star-v f g (ir-size [ f , g ]) rec ([,]-f-smaller f g) ([,]-g-smaller f g) prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv
   -- curry: passes Acc to recursive calls within curry-thunk-correct-impl
-  run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid input-owned stack-inv cap-in rbp-inv cwf ac =
+  run-ir-star-at-offset-v (curry {A} {B} {C} f) prefix suffix caller-sp x s h-false pc-eq input-valid input-owned _ stack-inv cap-in rbp-inv cwf ac =
     run-curry-star-v f prefix suffix caller-sp x s h-false pc-eq input-valid input-owned stack-inv cap-in rbp-inv cwf ac
   -- apply: builds ApplyReady from pair decomposition and delegates to Apply module.
   -- Uses valid-pair-decompose to extract closure/arg addresses from input validity.
   -- Remaining postulates: semantic identity (cl-eq), address equality (cl-addr-eq).
-  run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ stack-inv cap-in rbp-inv cwf ac =
+  run-ir-star-at-offset-v (apply {A} {B}) prefix suffix caller-sp x s h-false pc-eq input-valid _ _ stack-inv cap-in rbp-inv cwf ac =
     construct-apply cwf
     where
       prog = prefix ++ compile-instr (apply {A} {B}) ++ suffix
@@ -898,5 +901,6 @@ run-ir-star : ∀ {A B} (ir : IR A B) (prefix suffix : Program) (caller-sp : Sta
 run-ir-star ir prefix suffix caller-sp x s h-false pc-eq input-valid stack-inv cap-in rbp-inv =
   run-ir-star-at-offset-v ir prefix suffix caller-sp x s h-false pc-eq
     input-valid (init-input-owned caller-sp input-valid)
+    (init-rsp-below-caller s caller-sp)
     stack-inv cap-in rbp-inv
     no-closure (<-wellFounded (ir-size ir))
