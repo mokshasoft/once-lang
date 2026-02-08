@@ -620,8 +620,8 @@ valid-heap-disjoint-from-stack _ ih is =
   λ addr-eq → stack-heap-addr-disjoint _ _ is ih (sym addr-eq)
 
 -- | Valid address is disjoint from stack addresses (HeapAlloc only)
--- For StackAlloc values, use valid-disjoint-from-current-frame with
--- bounds evidence, or owned-disjoint-from-current-slot from Ownership.
+-- For StackAlloc values, use owned-disjoint-from-current-slot-bounded
+-- from Ownership.agda with capacity bounds.
 valid-disjoint-from-stack : ∀ {A : Type} {v : ⟦ A ⟧} {addr stack-addr : Word} {m : Memory} →
   ValidAt v addr m →
   InHeap addr →  -- Require HeapAlloc evidence

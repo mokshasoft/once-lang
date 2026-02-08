@@ -60,7 +60,7 @@ open import Once.Backend.X86.Correct.MemoryValid
 open import Once.Backend.Common.FrameSemantics using (FrameSemantics; AtSlot)
 open import Once.Backend.X86.FrameInstantiation
   using (x86-frame-semantics; X86Frame; _x86-≺_;
-         x86-frame-disjoint; x86-frame-disjoint-bounded;
+         x86-frame-disjoint-bounded;
          x86-frame-disjoint-with-capacity; x86-slot-within-capacity-bound)
 
 ------------------------------------------------------------------------
@@ -339,11 +339,11 @@ owned-implies-stack-bound {addr = addr} {caller-frame = caller-frame} owned in-s
 -- Slot-Based Disjointness
 --
 -- Key lemma: Caller-owned values are disjoint from current frame slots.
--- Uses x86-frame-disjoint for StackAlloc values.
--- Uses stack-heap disjointness for HeapAlloc values.
+-- Uses x86-frame-disjoint-with-capacity for StackAlloc values (PROVEN).
+-- Uses stack-heap disjointness for HeapAlloc values (PROVEN).
 --
--- This REPLACES the false frame-separation postulate with proven
--- slot-based reasoning.
+-- Both cases are fully proven - no postulates required for slot-based
+-- reasoning when capacity bounds are available.
 ------------------------------------------------------------------------
 
 open import Once.Backend.X86.Correct.MemoryValid using (valid-in-alloc-region; AllocMode; StackAlloc; HeapAlloc)
@@ -378,38 +378,6 @@ slot-in-stack frame (suc k) =
         -- step3: base + (s + k * s) ≡ base + suc k * s  (by def of _*_: suc k * s = s + k * s)
         step3 : base + (s + k * s) ≡ base + suc k * s
         step3 = refl
-
--- | Caller-owned value is disjoint from any slot in current frame
--- For StackAlloc: uses owned-implies-at-slot + x86-frame-disjoint
--- For HeapAlloc: uses stack-heap disjointness
---
--- This is the slot-based replacement for the false frame-separation postulate.
-owned-disjoint-from-current-slot :
-  ∀ {A} {v : ⟦ A ⟧} {addr : Word} {m : Memory}
-    {caller-frame current-frame : Frame} {write-slot : ℕ}
-    {va : ValidAt v addr m} →
-  OwnedBy Caller va caller-frame →
-  current-frame x86-≺ caller-frame →
-  addr ≢ slot-addr current-frame write-slot
-owned-disjoint-from-current-slot {addr = addr} {caller-frame = caller-frame}
-    {current-frame} {write-slot} {va} owned frame-ord
-  with valid-in-alloc-region va
-... | HeapAlloc , ih =
-  -- Heap addresses are disjoint from all stack addresses
-  -- stack-heap-addr-disjoint : InStack a₁ → InHeap a₂ → a₁ ≢ a₂
-  -- We have: InStack (slot-addr ...), InHeap addr, want: addr ≢ slot-addr ...
-  let write-addr-in-stack = slot-in-stack current-frame write-slot
-      slot≢addr = stack-heap-addr-disjoint (slot-addr current-frame write-slot) addr write-addr-in-stack ih
-  in λ eq → slot≢addr (sym eq)
-... | StackAlloc , is =
-  -- Stack address in caller-frame is disjoint from current-frame slots
-  let (k , addr≡slot-k) = owned-implies-at-slot owned is
-      -- x86-frame-disjoint: slot-addr current-frame write-slot ≢ slot-addr caller-frame k
-      slots-disjoint = x86-frame-disjoint current-frame caller-frame write-slot k frame-ord
-  -- We have: eq : addr ≡ slot-addr current-frame write-slot
-  -- And: addr≡slot-k : addr ≡ slot-addr caller-frame k
-  -- So: slot-addr current-frame write-slot ≡ addr ≡ slot-addr caller-frame k
-  in λ eq → slots-disjoint (trans (sym eq) addr≡slot-k)
 
 -- | Heap address is disjoint from any stack slot
 -- Used by Prim case for HeapAlloc inputs.

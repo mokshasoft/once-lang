@@ -118,7 +118,7 @@ open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDisp
 -- Import ownership infrastructure for threading through dispatcher
 open import Once.Backend.X86.Correct.Ownership
   using (OwnedBy; Owner; Caller; Frame;
-         owned-disjoint-from-current-slot; owned-disjoint-from-current-slot-bounded;
+         owned-disjoint-from-current-slot-bounded;
          heap-disjoint-from-stack-slot)
 open import Once.Backend.X86.Correct.InitState using (init-input-owned; init-rsp-below-caller; init-frame-gap-sufficient)
 open import Once.Backend.X86.FrameInstantiation using (_x86-≺_)
