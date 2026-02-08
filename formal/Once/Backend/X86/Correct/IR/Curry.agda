@@ -15,7 +15,7 @@ open import Once.Backend.X86.Correct.CompileLength hiding (length-++)
 open import Once.Backend.X86.Correct.StackInstantiation
 open import Once.Backend.X86.Correct.StackInstantiation
   using (rsp-bound-to-capacity; StackCapacity; capacity-after-alloc-2-slots; capacity-2-to-rsp-bound;
-         alloc-2-slots-addrs-in-stack; slots-mono-≤;
+         alloc-2-slots-addrs-in-stack; slots-mono-≤; rsp-in-stack;
          ir-stack-requirement; ir-rsp-delta; ir-output-capacity;
          curry-rsp-delta≤curry-req;
          -- D041: Abstract helpers that encapsulate arithmetic
@@ -24,7 +24,9 @@ open import Once.Backend.X86.Correct.StackInstantiation
          -- For thunk implementation
          thunk-setup-consumed-slots; capacity-from-larger; thunk-setup-capacity;
          thunk-setup-cap≤thunk-consumed+ir-req; capacity-after-delta;
-         output-slots; stack-inv-preserved-unchanged)
+         output-slots; stack-inv-preserved-unchanged;
+         -- Phase 5: Thunk gap derivation lemmas
+         thunk-frame-ordering; thunk-gap-sufficient)
 open import Data.Nat.Properties using (≤-<-trans)
 open import Once.Backend.X86.Layout
   using (InStack; InHeap; InCode; stack-code-addr-disjoint; stack-heap-addr-disjoint;
@@ -72,7 +74,11 @@ open import Once.Backend.X86.Correct.MemoryValid
 -- ir-size and curry-smaller are now re-exported from Foundation
 
 -- Import RecDispatcher from central location
-open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher)
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDispatcherWithGap)
+
+-- Import ownership for gap derivation (Phase 5)
+open import Once.Backend.X86.Correct.Ownership using (OwnedBy; Caller)
+open import Once.Backend.X86.Correct.InitState using (init-input-owned)
 
 open import Data.Nat using (_>_; _≥_; _<_; _≤_; s≤s; z≤n)
 -- D041: Arithmetic moved to abstract helpers in StackInvariant.agda
@@ -93,7 +99,7 @@ m∸n<m-when-positive (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
 
 curry-thunk-correct-v : ∀ {A B C} (f : IR (A * B) C)
                         (bound : ℕ)
-                        (rec : RecDispatcher bound)
+                        (rec : RecDispatcherWithGap bound)  -- Phase 5: Takes gap-aware dispatcher
                         (f<bound : ir-size f < bound)
                         (prefix suffix : Program) (caller-sp : StackPointer) (env : ⟦ A ⟧)
                         (arg : ⟦ B ⟧) (s : State) (ret-addr : ℕ) →
@@ -226,10 +232,39 @@ curry-thunk-correct-v {A} {B} {C} f bound rec f<bound prefix suffix caller-sp en
       cap-setup = capacity-after-delta s s-after-setup thunk-setup-consumed-slots (ir-stack-requirement f)
                     cap-thunk rsp-setup
 
+      -- Phase 5: Derive gap proofs from caller-sp-bound and rsp-setup
+      -- These are FULLY PROVEN - no postulates needed for internal thunk calls!
+      thunk-entry-rsp = readReg (regs s) rsp
+      thunk-current-rsp = readReg (regs s-after-setup) rsp
+      thunk-caller-sp-addr = sp-addr caller-sp
+
+      -- Entry rsp is sufficient (from capacity)
+      thunk-entry-rsp-bound : thunk-entry-rsp ≥ slots thunk-setup-consumed-slots
+      thunk-entry-rsp-bound = <⇒≤ (≤-<-trans (slots-mono-≤ thunk-consumed≤thunk-cap) (rsp-sufficient cap-thunk))
+        where
+          thunk-cap = thunk-setup-consumed-slots +ℕ ir-stack-requirement f
+          thunk-consumed≤thunk-cap : thunk-setup-consumed-slots ≤ thunk-cap
+          thunk-consumed≤thunk-cap = m≤m+n thunk-setup-consumed-slots (ir-stack-requirement f)
+
+      -- Frame ordering: thunk-current-rsp < caller-sp (DERIVED, not postulated!)
+      frame-ordering-f : thunk-current-rsp < thunk-caller-sp-addr
+      frame-ordering-f = thunk-frame-ordering thunk-entry-rsp thunk-current-rsp thunk-caller-sp-addr
+                           caller-sp-bound rsp-setup thunk-entry-rsp-bound
+
+      -- Gap sufficient: thunk-current-rsp + slots output-slots ≤ caller-sp (DERIVED, not postulated!)
+      gap-sufficient-f : thunk-current-rsp +ℕ slots output-slots ≤ thunk-caller-sp-addr
+      gap-sufficient-f = thunk-gap-sufficient thunk-entry-rsp thunk-current-rsp thunk-caller-sp-addr
+                           caller-sp-bound rsp-setup thunk-entry-rsp-bound
+
+      -- Ownership for input (using trust boundary postulate - only used at thunk entry)
+      input-owned-f : OwnedBy Caller input-valid-f caller-sp
+      input-owned-f = init-input-owned caller-sp input-valid-f
+
       -- Recursive call via rec (replaces run-ir-star-at-offset-v ... (smaller-acc ...))
       step-f-v : ∃[ s-f ] IRStarResultV f (prefix-f ++ compile-instr f ++ suffix-f) s-after-setup s-f (env , arg) (length prefix-f)
       step-f-v = rec f f<bound prefix-f suffix-f caller-sp (env , arg) s-after-setup
-                   h-setup pc-setup-f input-valid-f stack-inv-setup cap-setup rbp-inv-setup
+                   h-setup pc-setup-f input-valid-f input-owned-f frame-ordering-f gap-sufficient-f
+                   stack-inv-setup cap-setup rbp-inv-setup
 
       s-after-f-raw : State
       s-after-f-raw = proj₁ step-f-v

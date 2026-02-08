@@ -2000,3 +2000,96 @@ heap-stack-disjoint-via-region x stack-addr stack-proof eq =
     (encode-offset-in-heap x)
     (sym eq)
 
+------------------------------------------------------------------------
+-- Thunk Gap Derivation (Phase 5: Eliminate init-frame-gap-sufficient for internal calls)
+--
+-- For thunk execution (via Apply), the gap between callee's frame and caller's
+-- frame is PROVABLE from the thunk setup arithmetic:
+--
+--   caller-sp-bound: sp-addr caller-sp ≡ entry-rsp + slot-size  (= entry-rsp + 8)
+--   rsp-setup: current-rsp ≡ entry-rsp ∸ slots thunk-setup-consumed-slots  (= entry-rsp - 32)
+--
+-- Frame ordering (current-rsp < caller-sp):
+--   (entry-rsp - 32) < (entry-rsp + 8)  [needs entry-rsp ≥ 32]
+--
+-- Gap sufficient (current-rsp + slots output-slots ≤ caller-sp):
+--   (entry-rsp - 32) + 16 ≤ (entry-rsp + 8)
+--   entry-rsp - 16 ≤ entry-rsp + 8  [always true: 0 ≤ 24]
+--
+-- These lemmas are FULLY PROVEN from arithmetic, eliminating the need for
+-- init-frame-gap-sufficient postulate for internal thunk calls.
+------------------------------------------------------------------------
+
+private
+  module ThunkGapImports where
+    open import Data.Nat.Properties public
+      using (<-≤-trans; +-monoʳ-≤; m+[n∸m]≡n; +-comm; module ≤-Reasoning)
+    open import Relation.Binary.PropositionalEquality public using (subst₂; trans)
+open ThunkGapImports
+
+-- | Thunk frame ordering: after setup, rsp is below caller's frame
+-- Requires that entry rsp was large enough (guaranteed by StackCapacity)
+thunk-frame-ordering : ∀ (entry-rsp current-rsp caller-sp-addr : ℕ) →
+  caller-sp-addr ≡ entry-rsp +ℕ slot-size →           -- caller-sp-bound
+  current-rsp ≡ entry-rsp ∸ slots thunk-setup-consumed-slots →  -- rsp-setup
+  entry-rsp ≥ slots thunk-setup-consumed-slots →      -- capacity guarantee
+  current-rsp < caller-sp-addr
+thunk-frame-ordering entry-rsp current-rsp caller-sp-addr caller-sp-eq rsp-eq entry-rsp-bound =
+  subst₂ _<_ (sym rsp-eq) (sym caller-sp-eq) goal
+  where
+    -- Need: entry-rsp - 32 < entry-rsp + 8
+    -- Since entry-rsp ≥ 32, we have entry-rsp - 32 + 40 = entry-rsp + 8
+    -- So: (entry-rsp - 32) < (entry-rsp - 32) + 40 = entry-rsp + 8
+    goal : entry-rsp ∸ slots thunk-setup-consumed-slots < entry-rsp +ℕ slot-size
+    goal = <-≤-trans (m∸n<m entry-rsp (slots thunk-setup-consumed-slots) entry-rsp-bound thunk-consumed-positive)
+                     (m≤m+n entry-rsp slot-size)
+      where
+        thunk-consumed-positive : slots thunk-setup-consumed-slots > 0
+        thunk-consumed-positive = s≤s z≤n  -- slots 4 = 32 > 0
+        m∸n<m : ∀ m n → m ≥ n → n > 0 → m ∸ n < m
+        m∸n<m (suc m') (suc n') (s≤s m'≥n') _ = s≤s (m∸n≤m m' n')
+
+-- | Thunk gap sufficient: current frame has enough room for output-slots
+-- This is ALWAYS true given the thunk setup arithmetic!
+thunk-gap-sufficient : ∀ (entry-rsp current-rsp caller-sp-addr : ℕ) →
+  caller-sp-addr ≡ entry-rsp +ℕ slot-size →           -- caller-sp-bound
+  current-rsp ≡ entry-rsp ∸ slots thunk-setup-consumed-slots →  -- rsp-setup
+  entry-rsp ≥ slots thunk-setup-consumed-slots →      -- capacity guarantee
+  current-rsp +ℕ slots output-slots ≤ caller-sp-addr
+thunk-gap-sufficient entry-rsp current-rsp caller-sp-addr caller-sp-eq rsp-eq entry-rsp-bound =
+  subst₂ _≤_ (sym lhs-eq) (sym caller-sp-eq) goal
+  where
+    -- LHS: current-rsp + slots output-slots = (entry-rsp - 32) + 16 = entry-rsp - 16
+    -- RHS: caller-sp-addr = entry-rsp + 8
+    -- Need: entry-rsp - 16 ≤ entry-rsp + 8
+    -- Since entry-rsp ≥ 32, entry-rsp - 16 ≤ entry-rsp ≤ entry-rsp + 8
+
+    lhs-eq : current-rsp +ℕ slots output-slots ≡ entry-rsp ∸ slots thunk-setup-consumed-slots +ℕ slots output-slots
+    lhs-eq = cong (_+ℕ slots output-slots) rsp-eq
+
+    -- Key arithmetic: (m - 32) + 16 ≤ m when m ≥ 32
+    -- Proof strategy: (m - 32) + 16 < (m - 32) + 32 = m
+    goal : entry-rsp ∸ slots thunk-setup-consumed-slots +ℕ slots output-slots ≤ entry-rsp +ℕ slot-size
+    goal = ≤-trans lhs≤entry-rsp (m≤m+n entry-rsp slot-size)
+      where
+        -- (entry-rsp - 32) + 16 ≤ entry-rsp (when entry-rsp ≥ 32)
+        -- Key fact: slots thunk-setup-consumed-slots = 32, slots output-slots = 16
+        -- So we need: (n - 32) + 16 ≤ n, i.e., 16 ≤ 32 (true!)
+        --
+        -- Proof: (n - 32) + 16 ≤ (n - 32) + 32 = n (by m+[n∸m]≡n when n ≥ 32)
+        lhs≤entry-rsp : entry-rsp ∸ slots thunk-setup-consumed-slots +ℕ slots output-slots ≤ entry-rsp
+        lhs≤entry-rsp = begin
+          entry-rsp ∸ slots thunk-setup-consumed-slots +ℕ slots output-slots
+            ≤⟨ +-monoʳ-≤ (entry-rsp ∸ slots thunk-setup-consumed-slots) output≤consumed ⟩
+          entry-rsp ∸ slots thunk-setup-consumed-slots +ℕ slots thunk-setup-consumed-slots
+            ≡⟨ +-comm (entry-rsp ∸ slots thunk-setup-consumed-slots) (slots thunk-setup-consumed-slots) ⟩
+          slots thunk-setup-consumed-slots +ℕ (entry-rsp ∸ slots thunk-setup-consumed-slots)
+            ≡⟨ m+[n∸m]≡n entry-rsp-bound ⟩
+          entry-rsp
+            ∎
+          where
+            open ≤-Reasoning
+            -- slots output-slots (16) ≤ slots thunk-setup-consumed-slots (32)
+            output≤consumed : slots output-slots ≤ slots thunk-setup-consumed-slots
+            output≤consumed = from-yes-≤ (slots output-slots ≤? slots thunk-setup-consumed-slots)
+

@@ -113,7 +113,7 @@ open import Once.Backend.X86.Correct.IR.Inr
   using (run-inr-star-v; run-inr-star-v-auto)
 
 -- Import RecDispatcher from central location
-open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDispatcherWithWF; RecDispatcherWithOwnership; unwrap-rec)
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDispatcherWithWF; RecDispatcherWithOwnership; RecDispatcherWithGap; unwrap-rec)
 
 -- Import ownership infrastructure for threading through dispatcher
 open import Once.Backend.X86.Correct.Ownership
@@ -432,20 +432,16 @@ mutual
 
       -- ============================================================
       -- Build the ClosureWellFormed proof using curry-thunk-correct-v
-      -- Now uses RecDispatcher pattern (like Pair, Compose, Case)
+      -- Now uses RecDispatcherWithGap pattern (Phase 5: gap proofs derived in Curry)
       -- ============================================================
 
       -- Construct size-bounded dispatcher from Acc destructor (rs)
-      -- Note: Ownership and frame ordering are constructed locally for each sub-call
-      -- TODO: For internal calls (thunk), derive gap-sufficient from prologue instead of using postulate
-      rec : RecDispatcher (ir-size (curry f))
-      rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-        let current-frame' = from-raw-stack (readReg (regs s') rsp) (rsp-in-stack cap-in')
-            frame-ordering' = init-rsp-below-caller s' caller-sp'
-        in run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
-          input-valid' (init-input-owned caller-sp' input-valid')
-          frame-ordering'
-          (init-frame-gap-sufficient current-frame' caller-sp' output-slots frame-ordering')
+      -- Phase 5: rec is now RecDispatcherWithGap - gap proofs are passed as parameters
+      -- Curry.curry-thunk-correct-v derives the gap proofs internally from caller-sp-bound
+      rec : RecDispatcherWithGap (ir-size (curry f))
+      rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' input-owned' frame-ordering' gap-sufficient' stack-inv' cap-in' rbp-inv' =
+        run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
+          input-valid' input-owned' frame-ordering' gap-sufficient'
           stack-inv' cap-in' rbp-inv' no-closure (rs lt)
 
       wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
@@ -584,19 +580,15 @@ mutual
       thunk-offset = offset +ℕ 6
 
       -- Build the ClosureWellFormed proof using curry-thunk-correct-v
-      -- (Now uses RecDispatcher pattern like Pair, Compose, Case)
+      -- (Now uses RecDispatcherWithGap pattern - Phase 5)
 
       -- Construct size-bounded dispatcher from Acc destructor (rs)
-      -- Note: Ownership and frame ordering are constructed locally for each sub-call
-      -- TODO: For internal calls (thunk), derive gap-sufficient from prologue instead of using postulate
-      rec : RecDispatcher (ir-size (curry f))
-      rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-        let current-frame' = from-raw-stack (readReg (regs s') rsp) (rsp-in-stack cap-in')
-            frame-ordering' = init-rsp-below-caller s' caller-sp'
-        in run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
-          input-valid' (init-input-owned caller-sp' input-valid')
-          frame-ordering'
-          (init-frame-gap-sufficient current-frame' caller-sp' output-slots frame-ordering')
+      -- Phase 5: rec is now RecDispatcherWithGap - gap proofs are passed as parameters
+      -- Curry.curry-thunk-correct-v derives the gap proofs internally from caller-sp-bound
+      rec : RecDispatcherWithGap (ir-size (curry f))
+      rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' input-owned' frame-ordering' gap-sufficient' stack-inv' cap-in' rbp-inv' =
+        run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
+          input-valid' input-owned' frame-ordering' gap-sufficient'
           stack-inv' cap-in' rbp-inv' no-closure (rs lt)
 
       wf : ClosureWellFormed {A} {B} {C} prog thunk-offset x (λ b → eval f (x , b))
@@ -629,16 +621,12 @@ mutual
           h-eq pc-eq₁ v-arg₁ v-env₁ mem-ret stack-inv₁ cap₁ caller-sp-bound₁ r15-in-code₁
     }
     where
-      -- Note: Ownership and frame ordering are constructed locally for each sub-call
-      -- TODO: For internal calls (thunk), derive gap-sufficient from prologue instead of using postulate
-      rec : RecDispatcher (ir-size (curry f))
-      rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' stack-inv' cap-in' rbp-inv' =
-        let current-frame' = from-raw-stack (readReg (regs s') rsp) (rsp-in-stack cap-in')
-            frame-ordering' = init-rsp-below-caller s' caller-sp'
-        in run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
-          input-valid' (init-input-owned caller-sp' input-valid')
-          frame-ordering'
-          (init-frame-gap-sufficient current-frame' caller-sp' output-slots frame-ordering')
+      -- Phase 5: rec is now RecDispatcherWithGap - gap proofs are passed as parameters
+      -- Curry.curry-thunk-correct-v derives the gap proofs internally from caller-sp-bound
+      rec : RecDispatcherWithGap (ir-size (curry f))
+      rec ir' lt prefix' suffix' caller-sp' x' s' h-false' pc-eq' input-valid' input-owned' frame-ordering' gap-sufficient' stack-inv' cap-in' rbp-inv' =
+        run-ir-star-at-offset-v ir' prefix' suffix' caller-sp' x' s' h-false' pc-eq'
+          input-valid' input-owned' frame-ordering' gap-sufficient'
           stack-inv' cap-in' rbp-inv' no-closure
           (Acc-smaller (<-wellFounded (ir-size (curry f))) lt)
         where
