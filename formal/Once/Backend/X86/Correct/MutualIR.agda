@@ -113,7 +113,7 @@ open import Once.Backend.X86.Correct.IR.Inr
   using (run-inr-star-v; run-inr-star-v-auto)
 
 -- Import RecDispatcher from central location
-open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDispatcherWithWF; RecDispatcherWithOwnership; RecDispatcherWithGap; unwrap-rec)
+open import Once.Backend.X86.Correct.RecDispatcher using (RecDispatcher; RecDispatcherWithWF; RecDispatcherWithGap; unwrap-rec)
 
 -- Import ownership infrastructure for threading through dispatcher
 open import Once.Backend.X86.Correct.Ownership
