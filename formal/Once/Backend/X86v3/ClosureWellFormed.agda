@@ -18,7 +18,7 @@
 
 module Once.Backend.X86v3.ClosureWellFormed where
 
-open import Data.Nat using (ℕ; _<_; _≤_; _+_)
+open import Data.Nat using (ℕ; _<_; _≤_; _+_) renaming (_*_ to _*ℕ_)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -122,7 +122,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     field
       -- Given proper setup, body execution succeeds
       -- Takes ValidAtWF and returns IRResultAWF for full consistency
-      -- Includes ir-capacity precondition for capacity proofs
+      -- Includes ir-capacity and body-capacity preconditions for capacity proofs
       execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
         (s : LocState FS) (alloc : AllocState {FS}) →
         -- Preconditions (ValidAtWF for full consistency)
@@ -131,6 +131,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         halted s ≡ false →
         readReg (regs s) RDI ≡ pair-loc →
         next-slot alloc + ir-stack-requirement body ≤ frame-capacity alloc →  -- ir-capacity
+        next-slot alloc + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →  -- body-capacity
         -- Result (IRResultAWF with ValidAtWF inside!)
         IRResultAWF body (pair env arg) s alloc
 
@@ -286,7 +287,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- Used by Curry to construct BodyCorrect.
   -- Takes ValidAtWF input and returns IRResultAWF with ValidAtWF output.
-  -- Includes ir-capacity precondition for capacity proofs.
+  -- Includes ir-capacity and body-capacity preconditions for capacity proofs.
   ------------------------------------------------------------------------
 
   RecDispatcherWF : ℕ → Set
@@ -299,6 +300,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     next-slot alloc + ir-stack-requirement ir ≤ frame-capacity alloc →  -- ir-capacity
+    next-slot alloc + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →  -- body-capacity
     IRResultAWF ir x s alloc
 
   ------------------------------------------------------------------------

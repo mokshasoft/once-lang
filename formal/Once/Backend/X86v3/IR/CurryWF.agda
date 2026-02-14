@@ -9,7 +9,7 @@
 
 module Once.Backend.X86v3.IR.CurryWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n)
+open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; m≤m+n)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
@@ -84,8 +84,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     next-slot alloc + ir-stack-requirement (curry f) ≤ frame-capacity alloc →
+    next-slot alloc + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →  -- body-capacity
     IRResultAWF (curry f) x s alloc
-  run-curry f ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq ir-cap =
+  run-curry f ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq ir-cap body-cap =
     record
       { result-loc = closure-loc
       ; final-state = s-final
@@ -168,9 +169,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Since curry-smaller : ir-size f < ir-size (curry f), we can dispatch to f
       body-correct : BodyCorrect f x input-loc
       body-correct = record
-        { execute = λ arg arg-loc pair-loc s' alloc' pair-valid-wf pair-before not-halt rdi-eq' ir-cap' →
+        { execute = λ arg arg-loc pair-loc s' alloc' pair-valid-wf pair-before not-halt rdi-eq' ir-cap' body-cap' →
             rec-wf f (curry-smaller f) (pair x arg) pair-loc s' alloc'
-              pair-valid-wf pair-before not-halt rdi-eq' ir-cap'
+              pair-valid-wf pair-before not-halt rdi-eq' ir-cap' body-cap'
         }
 
       rax-eq : readReg (regs s-final) RAX ≡ closure-loc

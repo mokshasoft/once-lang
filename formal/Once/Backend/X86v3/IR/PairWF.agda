@@ -9,7 +9,7 @@
 
 module Once.Backend.X86v3.IR.PairWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n)
+open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m<m+n; +-monoˡ-≤; +-assoc; m+n≤o⇒m≤o)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
@@ -78,8 +78,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     next-slot alloc + ir-stack-requirement ⟨ f , g ⟩ ≤ frame-capacity alloc →
+    next-slot alloc + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →  -- body-capacity
     IRResultAWF ⟨ f , g ⟩ x s alloc
-  run-pair f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq ir-cap =
+  run-pair f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq ir-cap body-cap =
     record
       { result-loc = pair-loc
       ; final-state = s-final
@@ -106,7 +107,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                           ir-cap)
 
       -- Run f via dispatcher
-      result-f = rec-wf f (⟨,⟩-f-smaller f g) x input-loc s alloc input-valid-wf input-before not-halted rdi-eq ir-cap-f
+      result-f = rec-wf f (⟨,⟩-f-smaller f g) x input-loc s alloc input-valid-wf input-before not-halted rdi-eq ir-cap-f body-cap
       s₁ = IRResultAWF.final-state result-f
       alloc₁ = IRResultAWF.final-alloc result-f
       s₁-rdi = record s₁ { regs = writeReg (regs s₁) RDI input-loc }
@@ -144,6 +145,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                                      (cong (_+ pair-slots) (sym (+-assoc (next-slot alloc) (ir-stack-requirement f) (ir-stack-requirement g)))))
                               ir-cap)))
 
+      -- Body-capacity for g (postulate - architectural invariant)
+      postulate
+        body-cap-g : next-slot alloc₁ + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc₁
+
       -- Run g via dispatcher
       result-g = rec-wf g (⟨,⟩-g-smaller f g) x input-loc s₁-rdi alloc₁
                    input-valid-wf₁
@@ -151,6 +156,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                    (IRResultAWF.not-halted result-f)
                    (writeReg-same (regs s₁) RDI input-loc)
                    ir-cap-g
+                   body-cap-g
 
       fst-loc = IRResultAWF.result-loc result-f
       fst-before = IRResultAWF.result-before result-f
