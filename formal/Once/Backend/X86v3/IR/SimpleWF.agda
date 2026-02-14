@@ -48,6 +48,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.Backend.X86v3.SlotBoundedLemma
     using (slot-bounded-zero)
 
+  -- Import frontier-same-heap for reclaim-preserves-result
+  open import Once.Backend.X86v3.FrontierLemma using (module FrontierLemmas)
+  open FrontierLemmas {FS}
+    using (frontier-same-heap)
+
   ------------------------------------------------------------------------
   -- Identity: output is same as input
   ------------------------------------------------------------------------
@@ -83,7 +88,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ fits → input-before
+      ; reclaim-preserves-result = λ fits →
+          frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl input-loc input-before
       }
 
   ------------------------------------------------------------------------
@@ -132,7 +138,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ fits → fst-before
+      ; reclaim-preserves-result = λ fits →
+          frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl fst-loc fst-before
       }
 
   ------------------------------------------------------------------------
@@ -181,7 +188,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ fits → snd-before
+      ; reclaim-preserves-result = λ fits →
+          frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl snd-loc snd-before
       }
 
   ------------------------------------------------------------------------
@@ -219,5 +227,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ fits → input-before
+      ; reclaim-preserves-result = λ fits →
+          frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl input-loc input-before
       }

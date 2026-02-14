@@ -9,7 +9,7 @@ module Once.Backend.X86v3.FrontierLemma where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _+_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl; m<m+n; <-trans; n<1+n)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst)
 
 open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
@@ -65,4 +65,25 @@ module FrontierLemmas {FS : FrameSemantics} where
     let alloc' = record alloc { next-slot = next-slot alloc + 2 ; slots-available = slots-avail }
     in BeforeFrontier alloc' (OnStack (current-frame alloc) (next-slot alloc))
   at-frontier-before-closure = at-frontier-before-pair
+
+  ------------------------------------------------------------------------
+  -- frontier-same-heap: BeforeFrontier transfer between equivalent allocs
+  --
+  -- When two AllocState records have the same current-frame, next-slot,
+  -- and next-heap-ref, BeforeFrontier transfers between them.
+  --
+  -- In practice, next-heap-ref is always the same because all our operations
+  -- only modify stack slots, not heap references.
+  ------------------------------------------------------------------------
+  frontier-same-heap : ∀ a1 a2 →
+    current-frame a1 ≡ current-frame a2 →
+    next-slot a1 ≡ next-slot a2 →
+    next-heap-ref a1 ≡ next-heap-ref a2 →
+    ∀ loc → BeforeFrontier a1 loc → BeforeFrontier a2 loc
+  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnStack f k) (stack-before f-eq k<slot) =
+    stack-before (trans f-eq frame-eq) (subst (k <_) slot-eq k<slot)
+  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnStack f k) (stack-other-frame f≢cf) =
+    stack-other-frame (λ f≡cf2 → f≢cf (trans f≡cf2 (sym frame-eq)))
+  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnHeap r o) (heap-before ref<heap) =
+    heap-before (subst (ref-id r <_) heap-eq ref<heap)
 

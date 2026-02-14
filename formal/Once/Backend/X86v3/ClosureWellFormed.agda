@@ -130,7 +130,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     field
       -- Given proper setup, body execution succeeds
       -- Takes ValidAtWF and returns IRResultAWF for full consistency
-      -- Includes ir-capacity and body-capacity preconditions for capacity proofs
+      -- Uses COMBINED capacity: ir-req + body-cap-budget must both fit
       execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
         (s : LocState FS) (alloc : AllocState {FS}) →
         -- Preconditions (ValidAtWF for full consistency)
@@ -138,8 +138,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         BeforeFrontier alloc pair-loc →
         halted s ≡ false →
         readReg (regs s) RDI ≡ pair-loc →
-        next-slot alloc + ir-stack-requirement body ≤ frame-capacity alloc →  -- ir-capacity
-        next-slot alloc + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →  -- body-capacity
+        -- COMBINED capacity: ir-req + body-cap-budget all fit from next-slot
+        next-slot alloc + ir-stack-requirement body + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
         -- Result (IRResultAWF with ValidAtWF inside!)
         IRResultAWF body (pair env arg) s alloc
 
@@ -288,6 +288,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; heap-monotone = IRResultAWF.heap-monotone r
     ; slot-bounded = IRResultAWF.slot-bounded r
     ; capacity-preserved = IRResultAWF.capacity-preserved r
+    ; reclaimable-slot = IRResultAWF.reclaimable-slot r
+    ; reclaim-monotone = IRResultAWF.reclaim-monotone r
+    ; reclaim-bounded = IRResultAWF.reclaim-bounded r
+    ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result r
     }
 
   ------------------------------------------------------------------------
@@ -307,8 +311,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    next-slot alloc + ir-stack-requirement ir ≤ frame-capacity alloc →  -- ir-capacity
-    next-slot alloc + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →  -- body-capacity
+    -- COMBINED capacity: ir-req + body-cap-budget all fit from next-slot
+    next-slot alloc + ir-stack-requirement ir + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF ir x s alloc
 
   ------------------------------------------------------------------------
@@ -711,37 +715,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF alloc v loc s →
     ValidAtWF (reclaim-alloc alloc reclaim-slot monotone fits) v loc s
   validityWF-reclaim {alloc} v loc s rs mono fits loc-bf valid =
-    validityWF-frontier-advance v loc s alloc (reclaim-alloc alloc rs mono fits)
-      refl mono ≤-refl loc-bf valid
+    validityWF-frontier-advance v loc s refl mono ≤-refl valid
     where
       open import Data.Nat.Properties using (≤-refl)
-      -- Helper: ValidAtWF transfers when frontier advances
-      validityWF-frontier-advance : ∀ {A} (v : ⟦ A ⟧) loc s
-        (alloc alloc' : AllocState {FS}) →
-        current-frame alloc ≡ current-frame alloc' →
-        next-slot alloc ≤ next-slot alloc' →
-        next-heap-ref alloc ≤ next-heap-ref alloc' →
-        BeforeFrontier alloc loc →
-        ValidAtWF alloc v loc s →
-        ValidAtWF alloc' v loc s
-      validityWF-frontier-advance {Unit} tt loc s alloc alloc' _ _ _ _ valid-unit-wf =
-        valid-unit-wf
-      validityWF-frontier-advance {A * B} (a , b) loc s alloc alloc' cf-eq slot-≤ heap-≤ loc-bf
-        (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
-        valid-pair-wf fp sp fb' sb' slb' fv' sv'
-        where
-          fb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ fl fb
-          sb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ sl sb
-          slb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (sucLoc loc) slb
-          fv' = validityWF-frontier-advance a fl s alloc alloc' cf-eq slot-≤ heap-≤ fb fv
-          sv' = validityWF-frontier-advance b sl s alloc alloc' cf-eq slot-≤ heap-≤ sb sv
-      validityWF-frontier-advance {A ⇒ B} .(λ arg → eval body (pair env arg)) loc s alloc alloc' cf-eq slot-≤ heap-≤ loc-bf
-        (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
-        valid-closure-wf bb ep cp eb' cb' slb' ev' bc
-        where
-          eb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ el eb
-          cb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ cl cb
-          slb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (sucLoc loc) slb
-          ev' = validityWF-frontier-advance env el s alloc alloc' cf-eq slot-≤ heap-≤ eb ev
 
 
