@@ -97,6 +97,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
       slot-bounded : next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement ir
       capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
+      -- Write isolation: IR execution only writes at/after frontier
+      -- Memory at BeforeFrontier locations is preserved
+      mem-preserved-before : ∀ loc → BeforeFrontier alloc loc →
+        readLoc final-state loc ≡ readLoc s loc
 
   open IRResultAWF public
 
@@ -550,4 +554,96 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
       ev' = validityWF-alloc-advance env el s n fits ev
+
+  ------------------------------------------------------------------------
+  -- Validity transport across arbitrary frontier advancement
+  --
+  -- More general than validityWF-alloc-advance: works for any alloc'
+  -- related by frontier-monotone properties (frame-preserved, slot/heap
+  -- monotone). Used when transporting validity through IR execution.
+  ------------------------------------------------------------------------
+
+  validityWF-frontier-advance : ∀ {alloc alloc' A} (v : ⟦ A ⟧) loc (s : LocState FS) →
+    current-frame alloc' ≡ current-frame alloc →
+    next-slot alloc ≤ next-slot alloc' →
+    next-heap-ref alloc ≤ next-heap-ref alloc' →
+    ValidAtWF alloc v loc s →
+    ValidAtWF alloc' v loc s
+
+  validityWF-frontier-advance {alloc} {alloc'} {Unit} tt loc s cf-eq slot-≤ heap-≤ valid-unit-wf =
+    valid-unit-wf
+
+  validityWF-frontier-advance {alloc} {alloc'} {A * B} (a , b) loc s cf-eq slot-≤ heap-≤
+    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-wf fp sp fb' sb' slb' fv' sv'
+    where
+      fb' : BeforeFrontier alloc' fl
+      fb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ fl fb
+      sb' : BeforeFrontier alloc' sl
+      sb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ sl sb
+      slb' : BeforeFrontier alloc' (sucLoc loc)
+      slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
+      fv' = validityWF-frontier-advance a fl s cf-eq slot-≤ heap-≤ fv
+      sv' = validityWF-frontier-advance b sl s cf-eq slot-≤ heap-≤ sv
+
+  validityWF-frontier-advance {alloc} {alloc'} {A ⇒ B} .(λ arg → eval body (pair env arg)) loc s cf-eq slot-≤ heap-≤
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
+    valid-closure-wf bb ep cp eb' cb' slb' ev' bc
+    where
+      eb' : BeforeFrontier alloc' el
+      eb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ el eb
+      cb' : BeforeFrontier alloc' cl
+      cb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ cl cb
+      slb' : BeforeFrontier alloc' (sucLoc loc)
+      slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
+      ev' = validityWF-frontier-advance env el s cf-eq slot-≤ heap-≤ ev
+
+  ------------------------------------------------------------------------
+  -- Validity preservation when memory at BeforeFrontier is preserved
+  --
+  -- Key lemma for IR execution: if memory at all BeforeFrontier locations
+  -- is preserved (same readLoc values), then ValidAtWF is preserved.
+  -- This is more precise than validityWF-mem-only (full memory equality).
+  --
+  -- The proof works because ValidAtWF at a BeforeFrontier location means
+  -- all reachable sub-locations are also BeforeFrontier (structural).
+  ------------------------------------------------------------------------
+
+  validityWF-mem-preserved : ∀ {alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
+    BeforeFrontier alloc loc →
+    (∀ loc' → BeforeFrontier alloc loc' → readLoc s₂ loc' ≡ readLoc s₁ loc') →
+    ValidAtWF alloc v loc s₁ →
+    ValidAtWF alloc v loc s₂
+
+  validityWF-mem-preserved {alloc} {Unit} tt loc s₁ s₂ loc-before mem-eq valid-unit-wf =
+    valid-unit-wf
+
+  validityWF-mem-preserved {alloc} {A * B} (a , b) loc s₁ s₂ loc-before mem-eq
+    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-wf fp' sp' fb sb slb fv' sv'
+    where
+      -- loc is BeforeFrontier, so readLoc s₂ loc = readLoc s₁ loc
+      -- But we can't directly derive BeforeFrontier loc from the structure...
+      -- Actually we CAN'T use mem-eq loc loc-before because we need loc-before
+      -- Wait - we have loc-before as a parameter! So we can use mem-eq loc loc-before.
+      fp' : readLoc s₂ loc ≡ just fl
+      fp' = trans (mem-eq loc loc-before) fp
+
+      sp' : readLoc s₂ (sucLoc loc) ≡ just sl
+      sp' = trans (mem-eq (sucLoc loc) slb) sp
+
+      fv' = validityWF-mem-preserved a fl s₁ s₂ fb mem-eq fv
+      sv' = validityWF-mem-preserved b sl s₁ s₂ sb mem-eq sv
+
+  validityWF-mem-preserved {alloc} {A ⇒ B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ loc-before mem-eq
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
+    valid-closure-wf bb ep' cp' eb cb slb ev' bc
+    where
+      ep' : readLoc s₂ loc ≡ just el
+      ep' = trans (mem-eq loc loc-before) ep
+
+      cp' : readLoc s₂ (sucLoc loc) ≡ just cl
+      cp' = trans (mem-eq (sucLoc loc) slb) cp
+
+      ev' = validityWF-mem-preserved env el s₁ s₂ eb mem-eq ev
 

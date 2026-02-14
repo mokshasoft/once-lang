@@ -1,0 +1,203 @@
+------------------------------------------------------------------------
+-- Once.Backend.X86v3.IR.SimpleWF
+--
+-- Simple IR cases that don't require recursion: id, fst, snd, terminal.
+-- Extracted from Dispatcher.agda to minimize the mutual block.
+------------------------------------------------------------------------
+
+module Once.Backend.X86v3.IR.SimpleWF where
+
+open import Data.Nat using (ℕ; _<_; _+_; _≤_)
+open import Data.Nat.Properties using (≤-refl)
+open import Data.Bool using (false)
+open import Data.Maybe using (just)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Unit using (tt)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst)
+
+open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
+open import Once.Backend.Common.SlotMachine
+open import Once.Backend.X86v3.Types
+open import Once.Backend.X86v3.IR
+open import Once.Backend.X86v3.Allocation
+
+------------------------------------------------------------------------
+-- Simple IR implementations
+------------------------------------------------------------------------
+
+module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+  open import Once.Backend.X86v3.Validity
+  open ValidityDef {FS} program-bound
+  open FrontierInvariant {FS}
+  open MemOps {FS}
+  open WriteOps {FS}
+  open ExecFinal {FS}
+  open ExecLemmas {FS}
+  open FrameSemantics FS
+
+  -- Import IRResultAWF and ValidAtWF
+  open import Once.Backend.X86v3.IRResult
+  open DispatcherResult {FS} program-bound
+
+  open import Once.Backend.X86v3.ClosureWellFormed
+  open ClosureWellFormedDef {FS} program-bound
+    using (ValidAtWF; IRResultAWF; valid-unit-wf;
+           validityWF-mem-only; decomposePairWF; PairValidWF)
+
+  -- Import slot-bounded-zero
+  open import Once.Backend.X86v3.SlotBoundedLemma
+    using (slot-bounded-zero)
+
+  ------------------------------------------------------------------------
+  -- Identity: output is same as input
+  ------------------------------------------------------------------------
+
+  run-id : ∀ {A}
+    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    IRResultAWF (id {A}) x s alloc
+  run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    let s' = exec (mov RAX RDI) s
+    in record
+      { result-loc = input-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; result-valid-wf = validityWF-mem-only x input-loc s s' refl refl input-valid-wf
+      ; result-before = input-before
+      ; rax-is-result = trans (mov-result RAX RDI s) rdi-eq
+      ; not-halted = not-halted
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; slot-bounded = slot-bounded-zero (next-slot alloc)
+      ; capacity-preserved = refl
+      ; mem-preserved-before = λ loc _ →
+          readLoc-stackMem-eq s' s loc
+            (mov-preserves-stackMem RAX RDI s)
+            (mov-preserves-heapMem RAX RDI s)
+      }
+
+  ------------------------------------------------------------------------
+  -- Fst: extract first component from pair
+  ------------------------------------------------------------------------
+
+  run-fst : ∀ {A B}
+    (x : ⟦ A * B ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    IRResultAWF (fst-ir {A} {B}) x s alloc
+  run-fst {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    let pair-decomp = decomposePairWF input-valid-wf
+        fst-loc = PairValidWF.fst-loc pair-decomp
+        fst-valid-wf = PairValidWF.fst-valid pair-decomp
+        fst-before = PairValidWF.fst-before pair-decomp
+        mem-read : readLoc s (resolveSourceExt (regs s) (IndReg RDI)) ≡ just fst-loc
+        mem-read = subst (λ loc → readLoc s loc ≡ just fst-loc)
+                         (sym rdi-eq) (PairValidWF.fst-ptr pair-decomp)
+        s' = exec (load RAX (IndReg RDI)) s
+        fst-valid-wf-s' = validityWF-mem-only (fst x) fst-loc s s'
+                            (load-preserves-stackMem RAX (IndReg RDI) s)
+                            (load-preserves-heapMem RAX (IndReg RDI) s)
+                            fst-valid-wf
+    in record
+      { result-loc = fst-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; result-valid-wf = fst-valid-wf-s'
+      ; result-before = fst-before
+      ; rax-is-result = load-result RAX (IndReg RDI) s fst-loc mem-read
+      ; not-halted = load-no-halt RAX (IndReg RDI) s fst-loc mem-read not-halted
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; slot-bounded = slot-bounded-zero (next-slot alloc)
+      ; capacity-preserved = refl
+      ; mem-preserved-before = λ loc _ →
+          readLoc-stackMem-eq s' s loc
+            (load-preserves-stackMem RAX (IndReg RDI) s)
+            (load-preserves-heapMem RAX (IndReg RDI) s)
+      }
+
+  ------------------------------------------------------------------------
+  -- Snd: extract second component from pair
+  ------------------------------------------------------------------------
+
+  run-snd : ∀ {A B}
+    (x : ⟦ A * B ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    IRResultAWF (snd-ir {A} {B}) x s alloc
+  run-snd {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    let pair-decomp = decomposePairWF input-valid-wf
+        snd-loc = PairValidWF.snd-loc pair-decomp
+        snd-valid-wf = PairValidWF.snd-valid pair-decomp
+        snd-before = PairValidWF.snd-before pair-decomp
+        mem-read : readLoc s (resolveSourceExt (regs s) (IndRegSuc RDI)) ≡ just snd-loc
+        mem-read = subst (λ loc → readLoc s (sucLoc loc) ≡ just snd-loc)
+                         (sym rdi-eq) (PairValidWF.snd-ptr pair-decomp)
+        s' = exec (load RAX (IndRegSuc RDI)) s
+        snd-valid-wf-s' = validityWF-mem-only (snd x) snd-loc s s'
+                            (load-preserves-stackMem RAX (IndRegSuc RDI) s)
+                            (load-preserves-heapMem RAX (IndRegSuc RDI) s)
+                            snd-valid-wf
+    in record
+      { result-loc = snd-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; result-valid-wf = snd-valid-wf-s'
+      ; result-before = snd-before
+      ; rax-is-result = load-result RAX (IndRegSuc RDI) s snd-loc mem-read
+      ; not-halted = load-no-halt RAX (IndRegSuc RDI) s snd-loc mem-read not-halted
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; slot-bounded = slot-bounded-zero (next-slot alloc)
+      ; capacity-preserved = refl
+      ; mem-preserved-before = λ loc _ →
+          readLoc-stackMem-eq s' s loc
+            (load-preserves-stackMem RAX (IndRegSuc RDI) s)
+            (load-preserves-heapMem RAX (IndRegSuc RDI) s)
+      }
+
+  ------------------------------------------------------------------------
+  -- Terminal: output unit
+  ------------------------------------------------------------------------
+
+  run-terminal : ∀ {A}
+    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    IRResultAWF (terminal {A}) x s alloc
+  run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    let s' = exec (mov RAX RDI) s
+    in record
+      { result-loc = input-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; result-valid-wf = valid-unit-wf
+      ; result-before = input-before
+      ; rax-is-result = trans (mov-result RAX RDI s) rdi-eq
+      ; not-halted = not-halted
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; slot-bounded = slot-bounded-zero (next-slot alloc)
+      ; capacity-preserved = refl
+      ; mem-preserved-before = λ loc _ →
+          readLoc-stackMem-eq s' s loc
+            (mov-preserves-stackMem RAX RDI s)
+            (mov-preserves-heapMem RAX RDI s)
+      }
