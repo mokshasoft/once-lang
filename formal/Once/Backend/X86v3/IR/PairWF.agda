@@ -144,6 +144,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; frame-preserved = trans (trans refl (IRResultAWF.frame-preserved result-g)) (IRResultAWF.frame-preserved result-f)
       ; slot-monotone = ≤-trans (≤-trans (IRResultAWF.slot-monotone result-f) (IRResultAWF.slot-monotone result-g)) (m≤m+n (next-slot alloc₂) pair-slots)
       ; heap-monotone = ≤-trans (IRResultAWF.heap-monotone result-f) (IRResultAWF.heap-monotone result-g)
+      ; heap-preserved = trans (IRResultAWF.heap-preserved result-g) (IRResultAWF.heap-preserved result-f)
       ; slot-bounded = pair-slot-bounded-lemma (next-slot alloc) (next-slot alloc₁) (next-slot alloc₂) (ir-stack-requirement f) (ir-stack-requirement g) pair-slots (IRResultAWF.slot-bounded result-g) (IRResultAWF.slot-bounded result-f)
       ; capacity-preserved = trans (IRResultAWF.capacity-preserved result-g) (IRResultAWF.capacity-preserved result-f)
       ; mem-preserved-before = mem-preserved-pair
@@ -503,6 +504,8 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           -- alloc₃.current-frame = alloc₂.current-frame = alloc.current-frame (by frame-preserved)
           frame-eq : current-frame alloc₃ ≡ current-frame alloc-reclaimed
           frame-eq = trans (trans refl (IRResultAWF.frame-preserved result-g)) (IRResultAWF.frame-preserved result-f)
-          -- heap-ref is unchanged through f and g (they don't allocate heap)
-          postulate heap-eq : next-heap-ref alloc₃ ≡ next-heap-ref alloc-reclaimed
+          -- heap-ref is unchanged through f and g (by heap-preserved)
+          -- alloc₃ = record alloc₂ {...}, alloc-reclaimed = record alloc {...}, only stack fields changed
+          heap-eq : next-heap-ref alloc₃ ≡ next-heap-ref alloc-reclaimed
+          heap-eq = trans (IRResultAWF.heap-preserved result-g) (IRResultAWF.heap-preserved result-f)
         in frontier-same-heap alloc₃ alloc-reclaimed frame-eq refl heap-eq pair-loc pair-before

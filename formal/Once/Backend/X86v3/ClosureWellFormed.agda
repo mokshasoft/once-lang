@@ -95,6 +95,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       frame-preserved : current-frame final-alloc ≡ current-frame alloc
       slot-monotone : next-slot alloc ≤ next-slot final-alloc
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
+      -- Heap preservation: no heap allocation during stack-only IR operations
+      heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
       slot-bounded : next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement ir
       capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
       -- Write isolation: IR execution only writes at/after frontier

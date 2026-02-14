@@ -281,9 +281,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             -- Properties: current-frame, next-slot, next-heap-ref are all equal
             -- current-frame: frame-preserved says alloc₁.current-frame = alloc.current-frame
             -- next-slot: both explicitly set to reclaimable-slot result-g
-            -- next-heap-ref: heap never changes (heap-monotone is ≤-refl for all base cases)
-            -- Therefore alloc₁-reclaimed and alloc-reclaimed have equal BeforeFrontier behavior
-            postulate heap-eq : next-heap-ref alloc₁-reclaimed ≡ next-heap-ref alloc-reclaimed
+            -- next-heap-ref: heap-preserved from result-f gives alloc₁.heap = alloc.heap
+            -- Since record updates only change stack fields, alloc₁-reclaimed.heap = alloc-reclaimed.heap
+            heap-eq : next-heap-ref alloc₁-reclaimed ≡ next-heap-ref alloc-reclaimed
+            heap-eq = IRResultAWF.heap-preserved result-f
           in frontier-same-heap alloc₁-reclaimed alloc-reclaimed
                (IRResultAWF.frame-preserved result-f)
                refl  -- next-slot is the same (both are reclaimable-slot result-g)
@@ -302,6 +303,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; frame-preserved = trans (IRResultAWF.frame-preserved result-g) (IRResultAWF.frame-preserved result-f)
       ; slot-monotone = ≤-trans (IRResultAWF.slot-monotone result-f) (IRResultAWF.slot-monotone result-g)
       ; heap-monotone = ≤-trans (IRResultAWF.heap-monotone result-f) (IRResultAWF.heap-monotone result-g)
+      ; heap-preserved = trans (IRResultAWF.heap-preserved result-g) (IRResultAWF.heap-preserved result-f)
       ; slot-bounded = slot-bounded-compose
       ; capacity-preserved = trans (IRResultAWF.capacity-preserved result-g) (IRResultAWF.capacity-preserved result-f)
       ; mem-preserved-before = mem-preserved-compose

@@ -100,6 +100,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; frame-preserved = frame-preserved-apply
       ; slot-monotone = slot-monotone-apply
       ; heap-monotone = heap-monotone-apply
+      ; heap-preserved = heap-preserved-apply
       ; slot-bounded = slot-bounded-apply
       ; capacity-preserved = capacity-preserved-apply
       ; mem-preserved-before = mem-preserved-apply
@@ -284,6 +285,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       heap-monotone-apply : next-heap-ref alloc ≤ next-heap-ref final-alloc
       heap-monotone-apply = ≤-trans ≤-refl (IRResultAWF.heap-monotone body-result)
+
+      -- Heap preserved: alloc-pair only changes stack fields, body-result preserves heap
+      heap-preserved-apply : next-heap-ref final-alloc ≡ next-heap-ref alloc
+      heap-preserved-apply = IRResultAWF.heap-preserved body-result
 
       -- ARCHITECTURAL ISSUE: ir-stack-requirement apply = pair-slots, but body
       -- uses additional slots. The slot-bounded invariant doesn't hold for apply

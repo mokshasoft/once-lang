@@ -78,6 +78,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; slot-bounded = slot-bounded-zero (next-slot alloc)
       ; capacity-preserved = refl
       ; mem-preserved-before = λ loc _ →
@@ -128,6 +129,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; slot-bounded = slot-bounded-zero (next-slot alloc)
       ; capacity-preserved = refl
       ; mem-preserved-before = λ loc _ →
@@ -178,6 +180,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; slot-bounded = slot-bounded-zero (next-slot alloc)
       ; capacity-preserved = refl
       ; mem-preserved-before = λ loc _ →
@@ -217,6 +220,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
       ; slot-bounded = slot-bounded-zero (next-slot alloc)
       ; capacity-preserved = refl
       ; mem-preserved-before = λ loc _ →

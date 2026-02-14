@@ -98,6 +98,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; frame-preserved = frame-preserved-curry
       ; slot-monotone = slot-monotone-curry
       ; heap-monotone = heap-monotone-curry
+      ; heap-preserved = refl
       ; slot-bounded = ≤-refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-curry
