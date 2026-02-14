@@ -10,8 +10,8 @@
 
 module Once.Backend.X86v3.IR.ApplyWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n)
+open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; +-mono-≤)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
@@ -67,6 +67,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ValidityWriteLemmas {FS} program-bound
     using (at-frontier-neq-before; suc-frontier-neq-before)
 
+  -- Import stack bound lemma for body capacity
+  open import Once.Backend.X86v3.StackBoundLemma
+    using (stack-req-from-size-bound-≤)
+
   ------------------------------------------------------------------------
   -- Apply: Uses body-correct.execute instead of recursive run-ir call
   --
@@ -113,11 +117,16 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       EnvType = ClosureValidWF.EnvType closure-decomp
       body = ClosureValidWF.body closure-decomp
       env = ClosureValidWF.env closure-decomp
+      body<bound = ClosureValidWF.body<bound closure-decomp
       env-loc = ClosureValidWF.env-loc closure-decomp
       env-valid-wf = ClosureValidWF.env-valid closure-decomp
       env-before = ClosureValidWF.env-before closure-decomp
       closure-is-body = ClosureValidWF.f-is-closure closure-decomp
       body-correct = ClosureValidWF.body-correct closure-decomp
+
+      -- Body stack requirement bounded by size
+      body-stack-bounded : ir-stack-requirement body ≤ pair-slots *ℕ program-bound
+      body-stack-bounded = stack-req-from-size-bound-≤ body program-bound body<bound
 
       -- Step 3: Allocate pair-slots for (env, arg) pair
       pair-input-loc = OnStack (current-frame alloc) (next-slot alloc)
@@ -189,9 +198,18 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-rdi-eq = writeReg-same (regs s-write-arg) RDI pair-input-loc
 
       -- Step 4: Use body-correct.execute
-      -- NOTE: body's ir-capacity is postulated (architectural issue)
+      -- Body capacity requires whole-program invariant:
+      -- frame-capacity ≥ next-slot + pair-slots * program-bound
+      -- This ensures any body can execute after pair allocation.
+      --
+      -- From body-stack-bounded: ir-stack-requirement body ≤ pair-slots * program-bound
+      -- From alloc-pair: next-slot alloc-pair = next-slot alloc + pair-slots
+      -- Need: (next-slot alloc + pair-slots) + pair-slots * program-bound ≤ frame-capacity alloc
       postulate
-        body-ir-cap : next-slot alloc-pair + ir-stack-requirement body ≤ frame-capacity alloc-pair
+        frame-capacity-sufficient : next-slot alloc + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc
+
+      body-ir-cap : next-slot alloc-pair + ir-stack-requirement body ≤ frame-capacity alloc-pair
+      body-ir-cap = ≤-trans (+-mono-≤ ≤-refl body-stack-bounded) frame-capacity-sufficient
 
       body-result : IRResultAWF body (pair env (snd x)) s-pair alloc-pair
       body-result = BodyCorrect.execute body-correct (snd x) arg-loc pair-input-loc
@@ -250,6 +268,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       heap-monotone-apply : next-heap-ref alloc ≤ next-heap-ref final-alloc
       heap-monotone-apply = ≤-trans ≤-refl (IRResultAWF.heap-monotone body-result)
 
+      -- ARCHITECTURAL ISSUE: ir-stack-requirement apply = pair-slots, but body
+      -- uses additional slots. The slot-bounded invariant doesn't hold for apply
+      -- with the current ir-stack-requirement definition.
+      -- True bound: next-slot final-alloc ≤ next-slot alloc + pair-slots + ir-stack-requirement body
       postulate
         slot-bounded-apply : next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement (apply {A} {B})
 
