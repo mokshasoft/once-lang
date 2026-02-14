@@ -9,8 +9,8 @@
 
 module Once.Backend.X86v3.IR.CurryWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; m≤m+n; m+n≤o⇒m≤o)
+open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_) renaming (_*_ to _*ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m+n≤o⇒m≤o; +-monoʳ-≤; *-monoˡ-≤; m≤m*n)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
@@ -83,10 +83,12 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    -- COMBINED capacity: ir-req + body-cap-budget all fit from next-slot
-    next-slot alloc + ir-stack-requirement (curry f) + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
+    -- LINEAR capacity: pair-slots * size covers ir-req + recursion
+    next-slot alloc + pair-slots *ℕ ir-size (curry f) ≤ frame-capacity alloc →
+    -- PROGRAM-BOUND capacity: for apply's dynamic body execution
+    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF (curry f) x s alloc
-  run-curry f ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-curry f ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap =
     record
       { result-loc = closure-loc
       ; final-state = s-final
@@ -114,13 +116,19 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       closure-loc = OnStack (current-frame alloc) (next-slot alloc)
 
-      -- PROVEN: closure-fits from combined-cap (drop pair-slots twice)
-      -- combined-cap: (((slot + closure-slots) + pair-slots) + pair-slots*bound) ≤ capacity
-      -- Step 1: drop pair-slots*bound to get (slot + closure-slots) + pair-slots ≤ capacity
-      -- Step 2: drop pair-slots to get slot + closure-slots ≤ capacity
+      -- PROVEN: closure-fits from combined-cap
+      -- combined-cap: slot + pair-slots * size ≤ capacity
+      -- Since size = suc (ir-size f) ≥ 1, pair-slots * size ≥ pair-slots = closure-slots
+      -- So: slot + closure-slots ≤ slot + pair-slots * size ≤ capacity
+      size = ir-size (curry f)
+
+      -- closure-slots = pair-slots ≤ pair-slots * size (since size ≥ 1)
+      -- size = suc (ir-size f) so NonZero instance is inferred
+      closure-bound : closure-slots ≤ pair-slots *ℕ size
+      closure-bound = m≤m*n pair-slots size
+
       closure-fits : next-slot alloc + closure-slots ≤ frame-capacity alloc
-      closure-fits = m+n≤o⇒m≤o (next-slot alloc + closure-slots)
-                       (m+n≤o⇒m≤o ((next-slot alloc + closure-slots) + pair-slots) combined-cap)
+      closure-fits = ≤-trans (+-monoʳ-≤ (next-slot alloc) closure-bound) combined-cap
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
@@ -177,11 +185,16 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- KEY: Construct BodyCorrect using rec-wf!
       -- rec-wf is RecDispatcherWF (ir-size (curry f))
       -- Since curry-smaller : ir-size f < ir-size (curry f), we can dispatch to f
-      body-correct : BodyCorrect f x input-loc
+      --
+      -- X86 pattern: store body-capacity = pair-slots * ir-size f in the closure
+      -- Apply will extract and use this for its capacity requirement
+      body-correct : BodyCorrect f x input-loc program-bound
       body-correct = record
-        { execute = λ arg arg-loc pair-loc s' alloc' pair-valid-wf pair-before not-halt rdi-eq' combined-cap' →
+        { body-capacity = pair-slots *ℕ ir-size f
+        ; body-cap-eq = refl
+        ; execute = λ arg arg-loc pair-loc s' alloc' pair-valid-wf pair-before not-halt rdi-eq' combined-cap' program-bound-cap' →
             rec-wf f (curry-smaller f) (pair x arg) pair-loc s' alloc'
-              pair-valid-wf pair-before not-halt rdi-eq' combined-cap'
+              pair-valid-wf pair-before not-halt rdi-eq' combined-cap' program-bound-cap'
         }
 
       rax-eq : readReg (regs s-final) RAX ≡ closure-loc

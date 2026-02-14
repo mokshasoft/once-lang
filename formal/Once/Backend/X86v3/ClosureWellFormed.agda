@@ -127,12 +127,22 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   record BodyCorrect {EnvType A B : Type}
                      (body : IR (EnvType * A) B)
                      (env : ⟦ EnvType ⟧)
-                     (env-loc : ValueLocation FS) : Set where
+                     (env-loc : ValueLocation FS)
+                     (bound : ℕ) : Set where
     inductive
     field
+      -- Body's capacity requirement, stored by Curry for Apply to use
+      -- Set to: pair-slots * ir-size body
+      -- This is the X86 backend pattern: closure carries its own capacity
+      body-capacity : ℕ
+
+      -- Equation proving body-capacity = pair-slots * ir-size body
+      -- This lets Apply use arithmetic lemmas on body-capacity
+      body-cap-eq : body-capacity ≡ pair-slots *ℕ ir-size body
+
       -- Given proper setup, body execution succeeds
       -- Takes ValidAtWF and returns IRResultAWF for full consistency
-      -- Uses COMBINED capacity: ir-req + body-cap-budget must both fit
+      -- Uses body-capacity for linear recursion, program-bound-cap for apply
       execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
         (s : LocState FS) (alloc : AllocState {FS}) →
         -- Preconditions (ValidAtWF for full consistency)
@@ -140,8 +150,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         BeforeFrontier alloc pair-loc →
         halted s ≡ false →
         readReg (regs s) RDI ≡ pair-loc →
-        -- COMBINED capacity: ir-req + body-cap-budget all fit from next-slot
-        next-slot alloc + ir-stack-requirement body + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
+        -- LINEAR capacity: body-capacity = pair-slots * ir-size body
+        next-slot alloc + body-capacity ≤ frame-capacity alloc →
+        -- PROGRAM-BOUND capacity: for nested apply calls
+        next-slot alloc + pair-slots *ℕ bound ≤ frame-capacity alloc →
         -- Result (IRResultAWF with ValidAtWF inside!)
         IRResultAWF body (pair env arg) s alloc
 
@@ -170,6 +182,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ValidAtWF alloc {A * B} (a , b) pair-loc s
 
     -- Closure with well-formedness: includes body-correct!
+    -- body-correct is parameterized by program-bound for nested apply calls
     valid-closure-wf : ∀ {EnvType A B}
       {body : IR (EnvType * A) B}
       {env : ⟦ EnvType ⟧}
@@ -181,8 +194,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       BeforeFrontier alloc code-loc →
       BeforeFrontier alloc (sucLoc closure-loc) →
       ValidAtWF alloc env env-loc s →
-      -- THE KEY ADDITION: body-correct proof
-      BodyCorrect body env env-loc →
+      -- THE KEY ADDITION: body-correct proof with program-bound
+      BodyCorrect body env env-loc program-bound →
       ValidAtWF alloc {A ⇒ B} (λ arg → eval body (pair env arg)) closure-loc s
 
   ------------------------------------------------------------------------
@@ -209,8 +222,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
       -- Env validity (now using ValidAtWF)
       env-valid : ValidAtWF alloc env env-loc s
-      -- PRE-COMPUTED body execution proof
-      body-correct : BodyCorrect body env env-loc
+      -- PRE-COMPUTED body execution proof with program-bound
+      body-correct : BodyCorrect body env env-loc program-bound
 
   open ClosureWellFormed public
 
@@ -235,8 +248,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       code-before : BeforeFrontier alloc code-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
       env-valid : ValidAtWF alloc env env-loc s
-      -- THE KEY: body-correct is extracted!
-      body-correct : BodyCorrect body env env-loc
+      -- THE KEY: body-correct is extracted with program-bound!
+      body-correct : BodyCorrect body env env-loc program-bound
       f-is-closure : f ≡ (λ arg → eval body (pair env arg))
 
   decomposeClosureWF : ∀ {alloc A B} {f : ⟦ A ⇒ B ⟧} {loc s} →
@@ -301,7 +314,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- Used by Curry to construct BodyCorrect.
   -- Takes ValidAtWF input and returns IRResultAWF with ValidAtWF output.
-  -- Includes ir-capacity and body-capacity preconditions for capacity proofs.
+  --
+  -- Two capacity preconditions:
+  -- 1. LINEAR capacity: pair-slots * ir-size (for structural recursion)
+  -- 2. PROGRAM-BOUND capacity: pair-slots * bound (for apply's dynamic body)
+  --
+  -- Most IRs only use (1). Apply needs (2) because the closure body
+  -- can be any size < bound. This is the X86 backend pattern.
   ------------------------------------------------------------------------
 
   RecDispatcherWF : ℕ → Set
@@ -313,8 +332,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    -- COMBINED capacity: ir-req + body-cap-budget all fit from next-slot
-    next-slot alloc + ir-stack-requirement ir + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
+    -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
+    next-slot alloc + pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
+    -- PROGRAM-BOUND capacity: for apply's dynamic body execution
+    -- Uses module's program-bound (not RecDispatcherWF's bound parameter!)
+    -- This ensures any closure body (size < program-bound) has enough capacity
+    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF ir x s alloc
 
   ------------------------------------------------------------------------

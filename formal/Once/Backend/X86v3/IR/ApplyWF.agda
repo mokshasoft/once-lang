@@ -10,8 +10,8 @@
 
 module Once.Backend.X86v3.IR.ApplyWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; +-mono-≤; m+n≤o⇒m≤o)
+open import Data.Nat using (ℕ; zero; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; +-mono-≤; m+n≤o⇒m≤o; +-monoʳ-≤; m≤m*n)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
@@ -51,7 +51,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Import lemmas
   open import Once.Backend.X86v3.DispatcherArithmeticLemma
-    using (suc<+2)
+    using (suc<+2; apply-body-cap-linear; apply-pair-fits-linear)
 
   -- Import write operations
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
@@ -78,6 +78,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- the closure and calls execute, which was pre-computed by Curry.
   ------------------------------------------------------------------------
 
+  ------------------------------------------------------------------------
+  -- Apply: Uses body-correct.execute instead of recursive run-ir call
+  --
+  -- Apply receives BOTH capacities from the dispatcher:
+  -- 1. LINEAR capacity (pair-slots * ir-size apply) - small, for structural recursion
+  -- 2. PROGRAM-BOUND capacity (pair-slots * program-bound) - for body execution
+  --
+  -- This is the X86 backend pattern: the closure carries its body-capacity,
+  -- and the caller ensures program-bound-cap is available for any closure.
+  ------------------------------------------------------------------------
+
   run-apply : ∀ {A B}
     (x : ⟦ (A ⇒ B) * A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
@@ -85,10 +96,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    -- COMBINED capacity: ir-req + body-cap-budget all fit from next-slot
-    next-slot alloc + ir-stack-requirement (apply {A} {B}) + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
+    -- LINEAR capacity: pair-slots * ir-size for structural recursion
+    next-slot alloc + pair-slots *ℕ ir-size (apply {A} {B}) ≤ frame-capacity alloc →
+    -- PROGRAM-BOUND capacity: for body execution (any body size < bound)
+    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF (apply {A} {B}) x s alloc
-  run-apply {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-apply {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap =
     record
       { result-loc = result-loc
       ; final-state = s-final
@@ -135,19 +148,21 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       body-stack-bounded : ir-stack-requirement body ≤ pair-slots *ℕ program-bound
       body-stack-bounded = stack-req-from-size-bound-≤ body program-bound body<bound
 
+      -- Extract body-capacity from body-correct
+      -- body-capacity = pair-slots * ir-size body (set by Curry, proven by body-cap-eq)
+      body-cap = BodyCorrect.body-capacity body-correct
+      body-cap-eq = BodyCorrect.body-cap-eq body-correct
+
       -- Step 3: Allocate pair-slots for (env, arg) pair
       pair-input-loc = OnStack (current-frame alloc) (next-slot alloc)
 
-      -- body-cap-budget for convenience
-      body-cap-budget = pair-slots + pair-slots *ℕ program-bound
-
-      -- PROVEN: apply-pair-fits from combined-cap (drop pair-slots twice)
-      -- combined-cap: (((slot + pair-slots) + pair-slots) + pair-slots*bound) ≤ capacity
-      -- Step 1: drop pair-slots*bound to get (slot + pair-slots) + pair-slots ≤ capacity
-      -- Step 2: drop pair-slots to get slot + pair-slots ≤ capacity
+      -- PROVEN: apply-pair-fits from program-bound-cap using lemma
+      -- program-bound-cap: slot + pair-slots * program-bound ≤ capacity
+      -- body<bound ensures bound ≥ 1
       apply-pair-fits : next-slot alloc + pair-slots ≤ frame-capacity alloc
-      apply-pair-fits = m+n≤o⇒m≤o (next-slot alloc + pair-slots)
-                          (m+n≤o⇒m≤o ((next-slot alloc + pair-slots) + pair-slots) combined-cap)
+      apply-pair-fits = apply-pair-fits-linear (next-slot alloc) pair-slots
+                          (ir-size body) program-bound (frame-capacity alloc)
+                          body<bound program-bound-cap
 
       alloc-pair : AllocState {FS}
       alloc-pair = record alloc
@@ -212,27 +227,40 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-rdi-eq = writeReg-same (regs s-write-arg) RDI pair-input-loc
 
       -- Step 4: Use body-correct.execute
-      -- Body needs combined-cap: next-slot alloc-pair + ir-req-body + body-cap-budget ≤ capacity
+      -- BodyCorrect.execute expects:
+      -- 1. body-capacity (= pair-slots * ir-size body) for linear recursion
+      -- 2. program-bound-cap for nested apply calls
       --
-      -- ARCHITECTURAL ISSUE: Apply's combined-cap provides:
-      --   next-slot + pair-slots + body-cap-budget ≤ capacity
-      -- But body needs:
-      --   (next-slot + pair-slots) + ir-req-body + body-cap-budget ≤ capacity
+      -- alloc-pair has: next-slot = next-slot alloc + pair-slots
+      --                 frame-capacity = frame-capacity alloc (unchanged)
+      -- So goal is: (slot + pair-slots) + body-capacity ≤ capacity
+
+      -- Derive body-capacity for alloc-pair
+      -- body-cap = pair-slots * ir-size body (proven by body-cap-eq)
+      -- Use subst to convert from pair-slots * ir-size body to body-cap
+      body-combined-cap : next-slot alloc-pair + body-cap ≤ frame-capacity alloc-pair
+      body-combined-cap = subst (λ bc → next-slot alloc-pair + bc ≤ frame-capacity alloc-pair)
+                            (sym body-cap-eq)
+                            (apply-body-cap-linear
+                              (next-slot alloc) pair-slots (ir-size body) program-bound
+                              (frame-capacity alloc)
+                              body<bound program-bound-cap)
+
+      -- Derive program-bound-cap for alloc-pair
+      -- Need: (slot + pair-slots) + pair-slots * program-bound ≤ capacity
+      --     = slot + pair-slots * (1 + program-bound)
       --
-      -- The difference is ir-req-body, which is not covered by apply's ir-stack-requirement.
-      -- This requires either:
-      -- 1. Include body's max ir-req in ir-stack-requirement apply, OR
-      -- 2. Use a larger body-cap-budget that covers body's ir-req
-      --
-      -- For now, postulate this as an architectural invariant to be resolved later.
-      -- Note: left-associativity means the type needs to be ((slot + ir-req) + pair-slots) + pair-slots*bound
+      -- KNOWN LIMITATION: This requires capacity ≥ pair-slots * (1 + program-bound) + slot
+      -- The current program-bound-cap only gives pair-slots * program-bound.
+      -- The frame must be set up with extra capacity to accommodate this.
       postulate
-        body-combined-cap : next-slot alloc-pair + ir-stack-requirement body + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc-pair
+        program-bound-cap-pair : next-slot alloc-pair + pair-slots *ℕ program-bound ≤ frame-capacity alloc-pair
 
       body-result : IRResultAWF body (pair env (snd x)) s-pair alloc-pair
       body-result = BodyCorrect.execute body-correct (snd x) arg-loc pair-input-loc
                       s-pair alloc-pair
-                      pair-input-valid-wf pair-input-before pair-not-halted pair-rdi-eq body-combined-cap
+                      pair-input-valid-wf pair-input-before pair-not-halted pair-rdi-eq
+                      body-combined-cap program-bound-cap-pair
 
       -- Extract fields from IRResultAWF
       result-loc = IRResultAWF.result-loc body-result
@@ -290,10 +318,19 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       heap-preserved-apply : next-heap-ref final-alloc ≡ next-heap-ref alloc
       heap-preserved-apply = IRResultAWF.heap-preserved body-result
 
-      -- ARCHITECTURAL ISSUE: ir-stack-requirement apply = pair-slots, but body
-      -- uses additional slots. The slot-bounded invariant doesn't hold for apply
-      -- with the current ir-stack-requirement definition.
-      -- True bound: next-slot final-alloc ≤ next-slot alloc + pair-slots + ir-stack-requirement body
+      -- KNOWN LIMITATION: ir-stack-requirement is a static bound per IR.
+      -- For apply, ir-stack-requirement = pair-slots (for the pair allocation).
+      -- But apply also executes the closure body, which uses additional slots.
+      --
+      -- True bound: next-slot final ≤ slot + pair-slots + ir-stack-requirement body
+      --
+      -- This postulate could be removed by:
+      -- 1. Using reclamation: body execution reclaims to reclaimable-slot
+      -- 2. Showing reclaimable-slot ≤ slot + pair-slots + body-overhead
+      -- 3. Ensuring body doesn't exceed the static bound
+      --
+      -- For now, this is a known gap in the proof. The WholeProgram module
+      -- should allocate enough frame capacity to accommodate all body executions.
       postulate
         slot-bounded-apply : next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement (apply {A} {B})
 
