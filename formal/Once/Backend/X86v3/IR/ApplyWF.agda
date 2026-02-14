@@ -34,6 +34,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open MemOps {FS}
   open WriteOps {FS}
   open StackAllocation {FS}
+  open ExecLemmas {FS}
   open FrameSemantics FS
 
   -- Import IRResultAWF and ValidAtWF
@@ -60,6 +61,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.Backend.X86v3.FrontierLemma using (module FrontierLemmas)
   open FrontierLemmas {FS}
     using (at-frontier-before-pair)
+
+  -- Import validity write lemmas for frontier inequality helpers
+  open import Once.Backend.X86v3.ValidityWriteLemma using (module ValidityWriteLemmas)
+  open ValidityWriteLemmas {FS} program-bound
+    using (at-frontier-neq-before; suc-frontier-neq-before)
 
   ------------------------------------------------------------------------
   -- Apply: Uses body-correct.execute instead of recursive run-ir call
@@ -200,9 +206,39 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       rax-eq = IRResultAWF.rax-is-result body-result
       not-halted-final = IRResultAWF.not-halted body-result
 
-      postulate
-        mem-preserved-apply : ∀ loc → BeforeFrontier alloc loc →
-          readLoc s-final loc ≡ readLoc s loc
+      -- PROVEN: Memory at BeforeFrontier locations is preserved
+      -- Chain: s → s-write-env → s-write-arg → s-pair → s-final
+      mem-preserved-apply : ∀ loc → BeforeFrontier alloc loc →
+        readLoc s-final loc ≡ readLoc s loc
+      mem-preserved-apply loc bf =
+        let
+          -- Advance frontier: BeforeFrontier alloc → BeforeFrontier alloc-pair
+          bf-pair : BeforeFrontier alloc-pair loc
+          bf-pair = frontier-monotone alloc alloc-pair
+                      refl  -- frame preserved
+                      (m≤m+n (next-slot alloc) pair-slots)  -- slot monotone
+                      ≤-refl  -- heap monotone
+                      loc bf
+
+          -- Step 1: s-final → s-pair (body execution preserves before-frontier)
+          step1 : readLoc s-final loc ≡ readLoc s-pair loc
+          step1 = IRResultAWF.mem-preserved-before body-result loc bf-pair
+
+          -- Step 2: s-pair → s-write-arg (register change only)
+          step2 : readLoc s-pair loc ≡ readLoc s-write-arg loc
+          step2 = readLoc-stackMem-eq s-pair s-write-arg loc refl refl
+
+          -- Step 3: s-write-arg → s-write-env (write at suc-frontier preserves)
+          step3 : readLoc s-write-arg loc ≡ readLoc s-write-env loc
+          step3 = write-preserves-disjoint s-write-env (sucLoc pair-input-loc) arg-loc loc
+                    (λ eq → suc-frontier-neq-before alloc loc bf eq)
+
+          -- Step 4: s-write-env → s (write at frontier preserves)
+          step4 : readLoc s-write-env loc ≡ readLoc s loc
+          step4 = write-preserves-disjoint s pair-input-loc env-loc loc
+                    (λ eq → at-frontier-neq-before alloc loc bf eq)
+
+        in trans step1 (trans step2 (trans step3 step4))
 
       frame-preserved-apply : current-frame final-alloc ≡ current-frame alloc
       frame-preserved-apply = trans (IRResultAWF.frame-preserved body-result) refl
