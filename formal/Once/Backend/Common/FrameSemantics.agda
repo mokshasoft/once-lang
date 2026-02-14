@@ -32,6 +32,7 @@ module Once.Backend.Common.FrameSemantics where
 
 open import Data.Nat using (ℕ; zero; _<_; _≤_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
+open import Relation.Nullary using (Dec)
 
 -- Import Addr from MemoryLayoutSemantics
 open import Once.Backend.Common.MemoryLayoutSemantics using (Addr)
@@ -59,6 +60,9 @@ record FrameSemantics : Set₁ where
     --------------------------------------------------------------------
 
     Frame : Set
+
+    -- | Decidable equality for frames
+    _≟F_ : (f₁ f₂ : Frame) → Dec (f₁ ≡ f₂)
 
     -- | Frame base address (stack pointer at frame creation)
     frame-base : Frame → Addr
@@ -120,6 +124,18 @@ record FrameSemantics : Set₁ where
       slot-addr f₁ k₁ ≢ slot-addr f₂ k₂
 
 open FrameSemantics public
+
+------------------------------------------------------------------------
+-- NOTE: Location (AllocMode) is NOT part of FrameSemantics
+--
+-- Location (StackAlloc frame slot | HeapAlloc addr) is defined in
+-- MemoryValid.agda because:
+--   1. It includes heap locations, which have nothing to do with frames
+--   2. It's specific to validity tracking, not frame semantics
+--   3. FrameSemantics should only deal with stack frames
+--
+-- See: Once.Backend.X86.Correct.MemoryValid for the Location type.
+------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- NOTE: Frame Gap Sufficiency
