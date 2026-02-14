@@ -102,6 +102,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       mem-preserved-before : ∀ loc → BeforeFrontier alloc loc →
         readLoc final-state loc ≡ readLoc s loc
 
+      -- Stack reclamation: After IR completes, only the result needs to persist.
+      -- Intermediate allocations can be reclaimed to free stack space.
+      reclaimable-slot : ℕ
+      reclaim-monotone : next-slot alloc ≤ reclaimable-slot
+      reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
+      reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+        BeforeFrontier (record alloc { next-slot = reclaimable-slot ; slots-available = fits }) result-loc
+
   open IRResultAWF public
 
   ------------------------------------------------------------------------
@@ -648,4 +656,92 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       cp' = trans (mem-eq (sucLoc loc) slb) cp
 
       ev' = validityWF-mem-preserved env el s₁ s₂ eb mem-eq ev
+
+  ------------------------------------------------------------------------
+  -- Stack Reclamation
+  --
+  -- After an IR completes, only the result needs to persist. Intermediate
+  -- allocations can be reclaimed by creating a new allocation state with
+  -- next-slot = reclaimable-slot.
+  --
+  -- Key property: BeforeFrontier is preserved since reclaimable-slot ≥ next-slot
+  -- (from reclaim-monotone).
+  ------------------------------------------------------------------------
+
+  -- Create reclaimed allocation state
+  reclaim-alloc : (alloc : AllocState {FS}) (reclaim-slot : ℕ)
+    (monotone : next-slot alloc ≤ reclaim-slot)
+    (fits : reclaim-slot ≤ frame-capacity alloc) →
+    AllocState {FS}
+  reclaim-alloc alloc rs _ fits = record alloc
+    { next-slot = rs
+    ; slots-available = fits
+    }
+
+  -- BeforeFrontier is preserved after reclamation (frontier only advances)
+  reclaim-preserves-frontier : ∀ (alloc : AllocState {FS}) reclaim-slot
+    (monotone : next-slot alloc ≤ reclaim-slot)
+    (fits : reclaim-slot ≤ frame-capacity alloc)
+    (loc : ValueLocation FS) →
+    BeforeFrontier alloc loc →
+    BeforeFrontier (reclaim-alloc alloc reclaim-slot monotone fits) loc
+  reclaim-preserves-frontier alloc rs monotone fits loc bf =
+    stack-alloc-advances' alloc rs monotone fits loc bf
+    where
+      -- Helper using existing stack-alloc-advances pattern
+      stack-alloc-advances' : ∀ (alloc : AllocState {FS}) (rs : ℕ)
+        (monotone : next-slot alloc ≤ rs)
+        (fits : rs ≤ frame-capacity alloc)
+        (loc : ValueLocation FS) →
+        BeforeFrontier alloc loc →
+        BeforeFrontier (record alloc { next-slot = rs ; slots-available = fits }) loc
+      stack-alloc-advances' alloc rs monotone fits (OnStack f k) (stack-before refl k<next) =
+        stack-before refl (<-≤-trans k<next monotone)
+        where open import Data.Nat.Properties using (<-≤-trans)
+      stack-alloc-advances' alloc rs monotone fits (OnStack f k) (stack-other-frame f≢cf) =
+        stack-other-frame f≢cf
+      stack-alloc-advances' alloc rs monotone fits (OnHeap r o) (heap-before r<next) =
+        heap-before r<next
+
+  -- ValidAtWF is preserved after reclamation
+  validityWF-reclaim : ∀ {alloc A} (v : ⟦ A ⟧) loc s reclaim-slot
+    (monotone : next-slot alloc ≤ reclaim-slot)
+    (fits : reclaim-slot ≤ frame-capacity alloc)
+    (loc-before : BeforeFrontier alloc loc) →
+    ValidAtWF alloc v loc s →
+    ValidAtWF (reclaim-alloc alloc reclaim-slot monotone fits) v loc s
+  validityWF-reclaim {alloc} v loc s rs mono fits loc-bf valid =
+    validityWF-frontier-advance v loc s alloc (reclaim-alloc alloc rs mono fits)
+      refl mono ≤-refl loc-bf valid
+    where
+      open import Data.Nat.Properties using (≤-refl)
+      -- Helper: ValidAtWF transfers when frontier advances
+      validityWF-frontier-advance : ∀ {A} (v : ⟦ A ⟧) loc s
+        (alloc alloc' : AllocState {FS}) →
+        current-frame alloc ≡ current-frame alloc' →
+        next-slot alloc ≤ next-slot alloc' →
+        next-heap-ref alloc ≤ next-heap-ref alloc' →
+        BeforeFrontier alloc loc →
+        ValidAtWF alloc v loc s →
+        ValidAtWF alloc' v loc s
+      validityWF-frontier-advance {Unit} tt loc s alloc alloc' _ _ _ _ valid-unit-wf =
+        valid-unit-wf
+      validityWF-frontier-advance {A * B} (a , b) loc s alloc alloc' cf-eq slot-≤ heap-≤ loc-bf
+        (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+        valid-pair-wf fp sp fb' sb' slb' fv' sv'
+        where
+          fb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ fl fb
+          sb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ sl sb
+          slb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (sucLoc loc) slb
+          fv' = validityWF-frontier-advance a fl s alloc alloc' cf-eq slot-≤ heap-≤ fb fv
+          sv' = validityWF-frontier-advance b sl s alloc alloc' cf-eq slot-≤ heap-≤ sb sv
+      validityWF-frontier-advance {A ⇒ B} .(λ arg → eval body (pair env arg)) loc s alloc alloc' cf-eq slot-≤ heap-≤ loc-bf
+        (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
+        valid-closure-wf bb ep cp eb' cb' slb' ev' bc
+        where
+          eb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ el eb
+          cb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ cl cb
+          slb' = frontier-monotone alloc alloc' cf-eq slot-≤ heap-≤ (sucLoc loc) slb
+          ev' = validityWF-frontier-advance env el s alloc alloc' cf-eq slot-≤ heap-≤ eb ev
+
 

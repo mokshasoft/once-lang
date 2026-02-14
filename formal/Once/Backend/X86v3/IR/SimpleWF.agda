@@ -79,6 +79,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           readLoc-stackMem-eq s' s loc
             (mov-preserves-stackMem RAX RDI s)
             (mov-preserves-heapMem RAX RDI s)
+      -- Reclamation: id doesn't allocate, so we can reclaim to original next-slot
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits → input-before
       }
 
   ------------------------------------------------------------------------
@@ -123,6 +128,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           readLoc-stackMem-eq s' s loc
             (load-preserves-stackMem RAX (IndReg RDI) s)
             (load-preserves-heapMem RAX (IndReg RDI) s)
+      -- Reclamation: fst doesn't allocate
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits → fst-before
       }
 
   ------------------------------------------------------------------------
@@ -167,6 +177,11 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           readLoc-stackMem-eq s' s loc
             (load-preserves-stackMem RAX (IndRegSuc RDI) s)
             (load-preserves-heapMem RAX (IndRegSuc RDI) s)
+      -- Reclamation: snd doesn't allocate
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits → snd-before
       }
 
   ------------------------------------------------------------------------
@@ -200,4 +215,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           readLoc-stackMem-eq s' s loc
             (mov-preserves-stackMem RAX RDI s)
             (mov-preserves-heapMem RAX RDI s)
+      -- Reclamation: terminal doesn't allocate
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits → input-before
       }

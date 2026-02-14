@@ -95,6 +95,11 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; slot-bounded = pair-slot-bounded-lemma (next-slot alloc) (next-slot alloc₁) (next-slot alloc₂) (ir-stack-requirement f) (ir-stack-requirement g) pair-slots (IRResultAWF.slot-bounded result-g) (IRResultAWF.slot-bounded result-f)
       ; capacity-preserved = trans (IRResultAWF.capacity-preserved result-g) (IRResultAWF.capacity-preserved result-f)
       ; mem-preserved-before = mem-preserved-pair
+      -- Reclamation: pair allocates pair-slots at alloc₂'s frontier
+      ; reclaimable-slot = next-slot alloc₂ + pair-slots
+      ; reclaim-monotone = ≤-trans (≤-trans (IRResultAWF.slot-monotone result-f) (IRResultAWF.slot-monotone result-g)) (m≤m+n (next-slot alloc₂) pair-slots)
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits → pair-before
       }
     where
       -- PROVEN: ir-capacity for f from pair's ir-capacity

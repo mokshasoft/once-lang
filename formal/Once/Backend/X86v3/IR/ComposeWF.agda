@@ -137,6 +137,12 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                    (trans (readLoc-stackMem-eq s₁-rdi s₁ loc refl refl)
                           (IRResultAWF.mem-preserved-before result-f loc bf))
 
+        -- Reclamation for compose: use g's reclaimable-slot
+        compose-reclaim-monotone : next-slot alloc ≤ IRResultAWF.reclaimable-slot result-g
+        compose-reclaim-monotone = ≤-trans (IRResultAWF.slot-monotone result-f)
+                                     (≤-trans (IRResultAWF.slot-monotone result-g)
+                                              (IRResultAWF.reclaim-monotone result-g))
+
     in record
       { result-loc = IRResultAWF.result-loc result-g
       ; final-state = IRResultAWF.final-state result-g
@@ -151,4 +157,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; slot-bounded = slot-bounded-compose
       ; capacity-preserved = trans (IRResultAWF.capacity-preserved result-g) (IRResultAWF.capacity-preserved result-f)
       ; mem-preserved-before = mem-preserved-compose
+      -- Reclamation: compose's result is g's result, so use g's reclaimable-slot
+      ; reclaimable-slot = IRResultAWF.reclaimable-slot result-g
+      ; reclaim-monotone = compose-reclaim-monotone
+      ; reclaim-bounded = IRResultAWF.reclaim-bounded result-g
+      ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-g
       }

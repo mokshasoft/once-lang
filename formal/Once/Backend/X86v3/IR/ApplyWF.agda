@@ -104,6 +104,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; slot-bounded = slot-bounded-apply
       ; capacity-preserved = capacity-preserved-apply
       ; mem-preserved-before = mem-preserved-apply
+      -- Reclamation: apply's result is body's result
+      ; reclaimable-slot = apply-reclaimable-slot
+      ; reclaim-monotone = apply-reclaim-monotone
+      ; reclaim-bounded = apply-reclaim-bounded
+      ; reclaim-preserves-result = apply-reclaim-preserves-result
       }
     where
       -- Step 1: Decompose input as pair (closure, arg) using ValidAtWF
@@ -286,3 +291,44 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       result-valid-wf = subst (λ f → ValidAtWF final-alloc (f (snd x)) result-loc s-final)
                               (sym closure-is-body)
                               (IRResultAWF.result-valid-wf body-result)
+
+      -- Reclamation: apply's result is body's result
+      apply-reclaimable-slot : ℕ
+      apply-reclaimable-slot = IRResultAWF.reclaimable-slot body-result
+
+      apply-reclaim-monotone : next-slot alloc ≤ apply-reclaimable-slot
+      apply-reclaim-monotone = ≤-trans (m≤m+n (next-slot alloc) pair-slots)
+                                 (≤-trans (IRResultAWF.slot-monotone body-result)
+                                          (IRResultAWF.reclaim-monotone body-result))
+
+      apply-reclaim-bounded : apply-reclaimable-slot ≤ next-slot final-alloc
+      apply-reclaim-bounded = IRResultAWF.reclaim-bounded body-result
+
+      -- Transfer reclaim-preserves-result from body (alloc-pair) to apply (alloc)
+      -- Both have same current-frame and frame-capacity, so BeforeFrontier transfers
+      apply-reclaim-preserves-result : ∀ (fits : apply-reclaimable-slot ≤ frame-capacity alloc) →
+        BeforeFrontier (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits }) result-loc
+      apply-reclaim-preserves-result fits =
+        let
+          -- frame-capacity alloc-pair = frame-capacity alloc
+          cap-eq : frame-capacity alloc-pair ≡ frame-capacity alloc
+          cap-eq = refl
+
+          -- Transport fits to alloc-pair
+          fits-pair : apply-reclaimable-slot ≤ frame-capacity alloc-pair
+          fits-pair = subst (λ c → apply-reclaimable-slot ≤ c) (sym cap-eq) fits
+
+          -- Get BeforeFrontier from body's reclaim-preserves-result
+          bf-pair : BeforeFrontier (record alloc-pair { next-slot = apply-reclaimable-slot ; slots-available = fits-pair }) result-loc
+          bf-pair = IRResultAWF.reclaim-preserves-result body-result fits-pair
+
+          -- Transfer to alloc (same current-frame, same next-heap-ref)
+          -- record alloc { next-slot = ... } and record alloc-pair { next-slot = ... }
+          -- have the same current-frame, so BeforeFrontier transfers
+        in frontier-monotone
+             (record alloc-pair { next-slot = apply-reclaimable-slot ; slots-available = fits-pair })
+             (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits })
+             refl  -- current-frame is the same
+             ≤-refl  -- next-slot is the same
+             ≤-refl  -- next-heap-ref is the same
+             result-loc bf-pair

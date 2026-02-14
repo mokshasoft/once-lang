@@ -101,6 +101,11 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; slot-bounded = ≤-refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-curry
+      -- Reclamation: curry allocates closure-slots, result at closure-loc
+      ; reclaimable-slot = next-slot alloc + closure-slots
+      ; reclaim-monotone = m≤m+n (next-slot alloc) closure-slots
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits → closure-before
       }
     where
       -- Size bound for body

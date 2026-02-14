@@ -50,6 +50,23 @@ module DispatcherResult {FS : FrameSemantics} (program-bound : ℕ) where
       -- Capacity is preserved (frame size doesn't change within a frame)
       capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
 
+      -- Stack reclamation: After IR completes, only the result needs to persist.
+      -- Intermediate allocations can be reclaimed to free stack space.
+      -- reclaimable-slot is the minimum next-slot that preserves the result.
+      --
+      -- For IRs that don't allocate (id, fst, snd, terminal):
+      --   reclaimable-slot = next-slot alloc
+      -- For IRs that allocate fresh (pair, curry):
+      --   reclaimable-slot = next-slot alloc + result-slots
+      -- For compose/apply: depends on structure
+      reclaimable-slot : ℕ
+      -- reclaimable-slot is between start and end
+      reclaim-monotone : next-slot alloc ≤ reclaimable-slot
+      reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
+      -- Result location survives reclamation (it's before reclaimable-slot)
+      reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+        BeforeFrontier (record alloc { next-slot = reclaimable-slot ; slots-available = fits }) result-loc
+
 ------------------------------------------------------------------------
 -- RecDispatcher: Recursive Dispatch Interface
 ------------------------------------------------------------------------
