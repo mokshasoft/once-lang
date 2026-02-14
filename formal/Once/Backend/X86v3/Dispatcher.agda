@@ -31,7 +31,6 @@ open import Once.Backend.Common.SlotMachine
 open import Once.Backend.X86v3.Validity
 open import Once.Backend.X86v3.IR
 open import Once.Backend.X86v3.Allocation
-open import Once.Backend.X86v3.Apply
 open import Once.Backend.X86v3.ClosureWellFormed
 
 -- Import ValidAtWF types for termination-safe dispatch
@@ -68,8 +67,6 @@ open import Once.Backend.X86v3.IRResult public
 -- Import helper modules
 ------------------------------------------------------------------------
 
-import Once.Backend.X86v3.IR.Compose as ComposeImpl
-import Once.Backend.X86v3.IR.Pair as PairImpl
 import Once.Backend.X86v3.IR.SimpleWF as SimpleWFModule
 import Once.Backend.X86v3.IR.ComposeWF as ComposeWFModule
 import Once.Backend.X86v3.IR.PairWF as PairWFModule
