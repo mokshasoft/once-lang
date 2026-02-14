@@ -10,7 +10,7 @@
 module Once.Backend.X86v3.IR.PairWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o)
 open import Relation.Binary.PropositionalEquality using (module ≡-Reasoning)
 open ≡-Reasoning
 open import Data.Bool using (false)
@@ -208,11 +208,104 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                           (IRResultAWF.heap-monotone result-f)
                           input-valid-wf-s₁-rdi
 
-      -- combined-cap for g: derivable from combined-cap and slot-bounded
-      -- Uses: slot₁ ≤ slot + req-f, capacity₁ = capacity, and rearrange-for-f
-      -- Proof is tedious arithmetic - postulated for now
-      postulate
-        combined-cap-g : next-slot alloc₁ + ir-stack-requirement g + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc₁
+      -- combined-cap for g: derived from combined-cap and slot-bounded
+      -- Key insight: slot₁ ≤ slot + req-f, so we use monotonicity
+      combined-cap-g : next-slot alloc₁ + ir-stack-requirement g + pair-slots + pair-slots *ℕ program-bound ≤ frame-capacity alloc₁
+      combined-cap-g =
+        let
+          a = next-slot alloc
+          b = ir-stack-requirement f
+          c = ir-stack-requirement g
+          d = pair-slots
+          e = pair-slots *ℕ program-bound
+          slot₁ = next-slot alloc₁
+
+          -- slot₁ ≤ a + b (from slot-bounded)
+          slot₁-bound : slot₁ ≤ a + b
+          slot₁-bound = IRResultAWF.slot-bounded result-f
+
+          -- Rearrange combined-cap to: ((a + b) + (d + e)) + (c + d) ≤ capacity
+          rearranged : ((a + b) + (d + e)) + (c + d) ≤ frame-capacity alloc
+          rearranged = subst (_≤ frame-capacity alloc) (rearrange-for-f a b c d e) combined-cap
+
+          -- Drop (c + d) to get: (a + b) + (d + e) ≤ capacity
+          dropped : (a + b) + (d + e) ≤ frame-capacity alloc
+          dropped = m+n≤o⇒m≤o ((a + b) + (d + e)) rearranged
+
+          -- By monotonicity: (slot₁ + (d + e)) ≤ ((a + b) + (d + e)) ≤ capacity
+          step1 : slot₁ + (d + e) ≤ frame-capacity alloc
+          step1 = ≤-trans (+-monoˡ-≤ (d + e) slot₁-bound) dropped
+
+          -- Add c: (slot₁ + c) + (d + e) ≤ (a + b + c) + (d + e)
+          -- And (a + b + c) + (d + e) ≤ (a + b) + (d + e) + (c + d) = rearranged ≤ capacity
+          -- Actually simpler: use (slot₁ + c + (d + e)) ≤ ((a + b) + c + (d + e))
+          --                   and ((a + b) + c + (d + e)) ≤ ((a + b) + (d + e)) + (c + d) (by adding c twice... no)
+
+          -- Better approach: slot₁ + c ≤ (a + b) + c, so
+          -- (slot₁ + c) + (d + e) ≤ ((a + b) + c) + (d + e) ≤ ((a + b) + (c + d)) + (d + e)
+          --                                                 ≤ ((a + b) + (d + e)) + (c + d) (by +-comm in middle)
+          --                                                 = rearranged ≤ capacity
+
+          -- Actually even simpler: we already have dropped : (a + b) + (d + e) ≤ capacity
+          -- We need: ((slot₁ + c) + d) + e ≤ capacity
+          -- = (slot₁ + c) + (d + e) by +-assoc
+          -- ≤ ((a + b) + c) + (d + e) by monotonicity (slot₁ ≤ a + b)
+          -- ≤ ((a + b) + (d + e)) + c by... hmm this adds c not removes it
+
+          -- Let me use the full rearranged form instead
+          -- rearranged: ((a + b) + (d + e)) + (c + d) ≤ capacity
+          -- I need: ((slot₁ + c) + d) + e ≤ capacity
+          -- = (slot₁ + c + d) + e
+          -- ≤ ((a + b) + c + d) + e  (by slot₁ ≤ a + b and monotonicity)
+
+          -- And ((a + b) + c + d) + e ≤ ((a + b) + (d + e)) + (c + d)?
+          -- LHS = (a + b) + c + d + e
+          -- RHS after rearranging = (a + b) + (d + e) + (c + d) = (a + b) + d + e + c + d = (a + b) + c + 2d + e
+          -- So LHS < RHS (has one less d). Good!
+
+          -- ((a + b) + c + d) + e ≤ ((a + b) + (c + d)) + (d + e) ?
+          -- = (a + b + c + d) + e vs (a + b + c + d) + (d + e)
+          -- LHS ≤ RHS by m≤n+m (adding d to e)
+
+          -- First: ((a + b) + c + d) + e ≤ ((a + b) + c + d) + (d + e)
+          -- using m≤n+m e d : e ≤ d + e
+          step2a : ((a + b) + c + d) + e ≤ ((a + b) + c + d) + (d + e)
+          step2a = +-monoʳ-≤ ((a + b) + c + d) (m≤n+m e d)
+
+          -- Then reassociate: ((a + b) + c + d) ≡ (a + b) + (c + d)
+          -- by +-assoc (a + b) c d
+          step2b : ((a + b) + c + d) + (d + e) ≡ ((a + b) + (c + d)) + (d + e)
+          step2b = cong (_+ (d + e)) (+-assoc (a + b) c d)
+
+          step2 : ((a + b) + c + d) + e ≤ ((a + b) + (c + d)) + (d + e)
+          step2 = subst (((a + b) + c + d) + e ≤_) step2b step2a
+
+          -- Transform rearranged to step3's form via equality
+          -- rearranged: ((a + b) + (d + e)) + (c + d) ≤ capacity
+          -- goal: ((a + b) + (c + d)) + (d + e) ≤ capacity
+          rearrange-step3 : ((a + b) + (d + e)) + (c + d) ≡ ((a + b) + (c + d)) + (d + e)
+          rearrange-step3 = begin
+              ((a + b) + (d + e)) + (c + d)
+            ≡⟨ +-assoc (a + b) (d + e) (c + d) ⟩
+              (a + b) + ((d + e) + (c + d))
+            ≡⟨ cong ((a + b) +_) (+-comm (d + e) (c + d)) ⟩
+              (a + b) + ((c + d) + (d + e))
+            ≡⟨ sym (+-assoc (a + b) (c + d) (d + e)) ⟩
+              ((a + b) + (c + d)) + (d + e)
+            ∎
+
+          step3 : ((a + b) + (c + d)) + (d + e) ≤ frame-capacity alloc
+          step3 = subst (_≤ frame-capacity alloc) rearrange-step3 rearranged
+
+          -- Use monotonicity with slot₁ ≤ a + b
+          step4 : ((slot₁ + c) + d) + e ≤ ((a + b) + c + d) + e
+          step4 = +-monoˡ-≤ e (+-monoˡ-≤ d (+-monoˡ-≤ c slot₁-bound))
+
+          -- Chain: ((slot₁ + c) + d) + e ≤ ((a + b) + c + d) + e ≤ ... ≤ capacity
+          step5 : ((slot₁ + c) + d) + e ≤ frame-capacity alloc
+          step5 = ≤-trans step4 (≤-trans step2 step3)
+
+        in subst (((slot₁ + c) + d) + e ≤_) (sym (IRResultAWF.capacity-preserved result-f)) step5
 
       -- Run g via dispatcher
       result-g = rec-wf g (⟨,⟩-g-smaller f g) x input-loc s₁-rdi alloc₁
@@ -232,9 +325,41 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       snd-valid-wf = IRResultAWF.result-valid-wf result-g
       pair-loc = OnStack (current-frame alloc₂) (next-slot alloc₂)
 
-      -- pair-fits: postulated for now (pure arithmetic derivable from combined-cap and slot-bounded)
-      postulate
-        pair-fits : next-slot alloc₂ + pair-slots ≤ frame-capacity alloc₂
+      -- PROVEN: pair-fits derived from combined-cap-g and slot-bounded
+      pair-fits : next-slot alloc₂ + pair-slots ≤ frame-capacity alloc₂
+      pair-fits =
+        let
+          slot₂ = next-slot alloc₂
+          slot₁ = next-slot alloc₁
+          req-g = ir-stack-requirement g
+          ps = pair-slots
+          e = pair-slots *ℕ program-bound
+
+          -- slot₂ ≤ slot₁ + req-g (from slot-bounded)
+          slot₂-bound : slot₂ ≤ slot₁ + req-g
+          slot₂-bound = IRResultAWF.slot-bounded result-g
+
+          -- slot₂ + ps ≤ (slot₁ + req-g) + ps (by monotonicity)
+          step1 : slot₂ + ps ≤ (slot₁ + req-g) + ps
+          step1 = +-monoˡ-≤ ps slot₂-bound
+
+          -- (slot₁ + req-g) + ps ≤ ((slot₁ + req-g) + ps) + e (by m≤m+n)
+          step2 : (slot₁ + req-g) + ps ≤ ((slot₁ + req-g) + ps) + e
+          step2 = m≤m+n ((slot₁ + req-g) + ps) e
+
+          -- ((slot₁ + req-g) + ps) + e ≤ frame-capacity alloc₁ (from combined-cap-g)
+          step3 : ((slot₁ + req-g) + ps) + e ≤ frame-capacity alloc₁
+          step3 = combined-cap-g
+
+          -- chain: slot₂ + ps ≤ frame-capacity alloc₁
+          step4 : slot₂ + ps ≤ frame-capacity alloc₁
+          step4 = ≤-trans step1 (≤-trans step2 step3)
+
+          -- frame-capacity alloc₂ = frame-capacity alloc₁
+          cap-eq : frame-capacity alloc₂ ≡ frame-capacity alloc₁
+          cap-eq = IRResultAWF.capacity-preserved result-g
+
+        in subst (slot₂ + ps ≤_) (sym cap-eq) step4
 
       alloc₃ : AllocState {FS}
       alloc₃ = record alloc₂
