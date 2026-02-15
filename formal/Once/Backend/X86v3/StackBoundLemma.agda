@@ -12,7 +12,7 @@ module Once.Backend.X86v3.StackBoundLemma where
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_; _*_; s≤s; z≤n)
 open import Data.Nat.Properties
   using (≤-refl; ≤-trans; +-mono-≤; *-monoʳ-≤; m≤m+n; m≤n+m; +-comm;
-         ≤-reflexive; *-distribˡ-+; +-assoc; ≤-<-trans; +-suc)
+         ≤-reflexive; *-distribˡ-+; +-assoc; ≤-<-trans; +-suc; m≤m*n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 -- Import IR qualified to avoid _*_ conflict from Types
@@ -34,7 +34,8 @@ ir-stack-req-bounded IR.fst-ir = z≤n
 ir-stack-req-bounded IR.snd-ir = z≤n
 ir-stack-req-bounded IR.terminal = z≤n
 ir-stack-req-bounded IR.apply = ≤-refl  -- pair-slots ≤ pair-slots * 1 = pair-slots
-ir-stack-req-bounded (IR.curry f) = *-monoʳ-≤ pair-slots (s≤s z≤n)  -- 2*1 ≤ 2*(1+n)
+ir-stack-req-bounded (IR.curry f) = m≤m*n pair-slots (2 + IR.ir-size f)
+  -- pair-slots ≤ pair-slots * (2 + ir-size f) since (2 + ir-size f) ≥ 2 ≥ 1
 ir-stack-req-bounded (g IR.∘ f) = ≤-trans step1 (≤-trans step2 step3)
   where
     rf = IR.ir-stack-requirement f

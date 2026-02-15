@@ -429,9 +429,9 @@ malonzo-core:
 	@cp _build/malonzo/MAlonzo/Code/Once/Postulates.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done. Core modules in compiler/src/MAlonzo/Code/Once/"
 
-# Awk script to count postulates (handles both top-level and indented postulate blocks)
-# A postulate block starts with a line matching ^\s*postulate\s*$
-# and ends when a non-blank line has indentation <= the postulate keyword
+# Awk script to count postulates (handles multiple patterns)
+# Pattern 1: Postulate block (postulate alone on line, followed by indented signatures)
+# Pattern 2: Inline postulate (postulate name : Type on same line)
 define AWK_POSTULATES
 /^[[:space:]]*postulate[[:space:]]*$$/ { \
 	in_postulate = 1; \
@@ -443,7 +443,11 @@ in_postulate && /[^[:space:]]/ { \
 	match($$0, /^[[:space:]]*/); \
 	if (RLENGTH <= post_indent) { in_postulate = 0 } \
 } \
-in_postulate && /^[[:space:]]+[^[:space:]:]+[[:space:]]*:/ { print }
+in_postulate && /^[[:space:]]+[^[:space:]:]+[[:space:]]*:/ { print } \
+/^[[:space:]]*postulate[[:space:]]+[^[:space:]:]+[[:space:]]*:/ { \
+	sub(/^[[:space:]]*postulate[[:space:]]+/, ""); \
+	print \
+}
 endef
 export AWK_POSTULATES
 
@@ -487,6 +491,13 @@ count-postulates-x86:
 	$(eval DESC=Once x86-64 compiler (shared + x86-specific))
 	$(eval FILTER=| grep -Ev "AArch64|RiscV64|RiscV")
 	$(eval LABEL= (x86-64))
+	$(COUNT_POSTULATES)
+
+.PHONY: count-postulates-x86v3
+count-postulates-x86v3:
+	$(eval DESC=X86v3 SlotMachine POC (SlotMachine + X86v3))
+	$(eval FILTER=| grep -E "X86v3")
+	$(eval LABEL= (X86v3 POC))
 	$(COUNT_POSTULATES)
 
 .PHONY: count-postulates-riscv

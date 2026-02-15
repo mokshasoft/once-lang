@@ -1,72 +1,124 @@
 # Final Postulate Elimination for X86v3
 
-This document tracks the remaining postulates in X86v3 and strategies for eliminating them.
+This document tracks the remaining postulates in X86v3 and the approach to eliminate them.
 
-See `proof-architecture.md` for design goals (O(1) overhead, heap fallback).
+See `proof-architecture.md` for design goals (O(1) overhead).
 
-## Current Postulates
+## Current Postulates (3 total)
 
 | Location | Postulate | What it needs |
 |----------|-----------|---------------|
-| Postulates.agda | `program-bound-cap` | `slot + ps*bound ≤ capacity` for any alloc |
-| ApplyWF:333 | `slot-bounded-apply` | `final-slot ≤ slot + ir-req apply` |
+| Postulates.agda | `program-bound-cap` | Legacy interface, kept for gradual migration |
+| ApplyWF.agda | `slot-in-working-pair` | `slot + pair-slots ≤ ps * pb` after pair allocation |
+| ApplyWF.agda | `slot-bounded-apply` | `final-slot ≤ slot + ir-req apply` |
 
-The three identical `program-bound-cap-*` postulates (from ComposeWF, PairWF, ApplyWF) were consolidated into one shared postulate in `Postulates.agda`.
+## Progress: Two Capacity Pools Implementation
 
-## Root Cause
+The following infrastructure is now **implemented and proven** in `Postulates.agda`:
 
-All capacity postulates share the same issue:
+```agda
+-- Core predicates
+CapacityInvariant alloc = 2 * ps * pb ≤ frame-capacity alloc
+SlotInWorking alloc = next-slot alloc ≤ ps * pb
 
+-- Main lemma (PROVEN)
+program-bound-cap-from-invariant :
+  CapacityInvariant alloc →
+  SlotInWorking alloc →
+  next-slot alloc + ps * pb ≤ frame-capacity alloc
+
+-- Preservation lemmas (PROVEN)
+invariant-preserved :
+  frame-capacity alloc' ≡ frame-capacity alloc →
+  CapacityInvariant alloc → CapacityInvariant alloc'
+
+slot-in-working-preserved :
+  slot + ps * ir-sz ≤ ps * pb →
+  slot' ≤ slot + ps * ir-sz →
+  slot' ≤ ps * pb
+
+sub-ir-in-working :
+  sf < sz →
+  slot + ps * sz ≤ ps * pb →
+  slot + ps * sf ≤ ps * pb
 ```
-We have:  slot + ps * bound ≤ capacity
-We need:  slot₁ + ps * bound ≤ capacity   (where slot₁ > slot)
-```
 
-After running sub-IR f, the slot advances by up to `ps * ir-size f`. The capacity precondition doesn't transfer because the slot moved.
+## Threading Through the Dispatcher
 
-## Rejected Solution: 2x Capacity
+The following types now take `CapacityInvariant` and `SlotInWorking` instead of `program-bound-cap`:
 
-Requiring `slot + 2 * ps * bound ≤ capacity` works mathematically but wastes O(depth) stack space, violating our O(1) overhead goal.
+- `RecDispatcherWF` (ClosureWellFormed.agda)
+- `BodyCorrect.execute` (ClosureWellFormed.agda)
+- `run-ir-wf` (Dispatcher.agda)
+- `run-wf` / `run` (Dispatcher.agda)
+- `run-compose` (ComposeWF.agda)
+- `run-pair` (PairWF.agda)
+- `run-curry` (CurryWF.agda)
+- `run-apply` (ApplyWF.agda)
 
-## Viable Approaches
+## Remaining Gap: Apply's Pair Allocation
 
-### Option A: Copying Instead of Pointing
+The `slot-in-working-pair` postulate identifies a gap in the current design.
 
-If nested values are COPIED into their parent (not pointed to):
-- `curry h` copies `closure_g` into `closure_h`
-- Original slots for `closure_g` can be reclaimed
-- Each IR has O(1) residue
-- Capacity transfers: `slot₁ ≤ slot + O(1)`
+**Problem:** After apply allocates `pair-slots` for the (env, arg) pair, we need:
+- `slot + pair-slots ≤ ps * pb` (SlotInWorking for alloc-pair)
 
-**Proof impact:** Validity transfer becomes trivial (no pointer chains to preserve).
+**Current state:**
+- We have: `slot ≤ ps * pb` (SlotInWorking for alloc)
+- pair-slots = 2
 
-### Option B: Frame-Based Isolation
+**Issue:** If `ps * pb = 2` (i.e., pb = 1), then slot = 0 is required.
+For general pb, we need `slot ≤ ps * pb - pair-slots = ps * (pb - 1)`.
 
-Each sub-IR runs in its own frame:
-- Results copied to parent frame on return
-- Sub-IR frame fully reclaimed
-- Parent pays only for copied result
+**Potential fixes:**
+1. **Tighter SlotInWorking invariant:** Track `slot ≤ ps * (pb - 1)` instead
+2. **Separate apply pool:** Apply gets its own small allocation pool
+3. **Three pools:** Working + Apply + Reserved
 
-**Proof impact:** Frame ordering provides automatic disjointness.
+For now, this is documented as a known gap with a local postulate.
 
-### Option C: Heap Fallback for Deep Nesting
+## How to Use (Migration Guide)
 
-Since heap is always available (see proof-architecture.md):
-- Stack allocate up to a fixed depth
-- Beyond that depth, fall back to heap
-- Capacity bound becomes: `slot + ps * MAX_STACK_DEPTH ≤ capacity`
+To eliminate the legacy `program-bound-cap` postulate in a module:
 
-**Proof impact:** Postulates become conditional on depth check.
+1. Import the lemmas from ClosureWellFormed:
+   ```agda
+   open ClosureWellFormedDef {FS} program-bound
+     using (CapacityInvariant; SlotInWorking;
+            program-bound-cap-from-invariant;
+            invariant-preserved; slot-in-working-preserved)
+   ```
 
-### Option D: Accept O(depth) for Now
+2. Add `CapacityInvariant alloc` and `SlotInWorking alloc` as preconditions
 
-Keep postulates, document that:
-- They express "stack allocation is safe here"
-- Heap fallback makes them optimization hints, not soundness requirements
-- Future work: implement one of the above
+3. After running sub-IR, derive invariant preservation:
+   ```agda
+   inv₁ = invariant-preserved alloc alloc₁ cap-eq inv
+   slot-in-working₁ = slot-in-working-preserved slot slot₁ sf budget slot-bound
+   ```
 
-## Next Steps
+4. Where you need `program-bound-cap`, use:
+   ```agda
+   pb-cap = program-bound-cap-from-invariant alloc' inv' slot-in-working'
+   ```
 
-1. Decide which approach aligns with Once's goals
-2. Implement chosen approach
-3. Prove postulates or remove them via heap fallback
+## Implementation Steps (Remaining)
+
+1. ~~Thread CapacityInvariant through the dispatcher~~ ✓ DONE
+2. ~~Thread SlotInWorking through the dispatcher~~ ✓ DONE
+3. ~~Replace program-bound-cap usage in ComposeWF, PairWF~~ ✓ DONE
+4. Fix Apply gap (slot-in-working-pair postulate)
+5. Fix slot-bounded-apply (requires body execution accounting)
+6. Create WholeProgram module that sets up initial invariants
+7. Remove legacy program-bound-cap postulate
+
+## Alternative Approaches (Not Recommended)
+
+### Naive 2x Capacity
+Wastes O(bound) space. Rejected.
+
+### Copying Instead of Pointing
+Changes memory model significantly. Higher complexity.
+
+### Frame-Based Isolation
+More infrastructure needed. Could be future optimization.

@@ -48,13 +48,11 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            validityWF-frontier-advance; validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier)
 
+  -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
+
   -- Import lemmas
   open import Once.Backend.X86v3.DispatcherArithmeticLemma
     using (pair-slot-bounded-lemma; suc<+2; compose-f-cap; compose-g-cap; pair-alloc-fits)
-
-  -- Import shared postulates
-  open import Once.Backend.X86v3.Postulates
-  open CapacityPostulates {FS} program-bound
 
   -- Import stack bound lemma
   open import Once.Backend.X86v3.StackBoundLemma
@@ -93,11 +91,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * size covers ir-req + recursion
+    -- This is the ONLY capacity constraint needed (no global invariants)
     next-slot alloc + pair-slots *ℕ ir-size ⟨ f , g ⟩ ≤ frame-capacity alloc →
-    -- PROGRAM-BOUND capacity: for apply's dynamic body execution
-    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF ⟨ f , g ⟩ x s alloc
-  run-pair f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap =
+  run-pair f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     record
       { result-loc = pair-loc
       ; final-state = s-final
@@ -133,8 +130,8 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       combined-cap-f : next-slot alloc + pair-slots *ℕ sf ≤ frame-capacity alloc
       combined-cap-f = compose-f-cap (next-slot alloc) pair-slots sf sg (frame-capacity alloc) combined-cap-converted
 
-      -- Run f via recursive dispatch (with both linear and program-bound capacity)
-      result-f = rec-wf f (⟨,⟩-f-smaller f g) x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap-f program-bound-cap
+      -- Run f via recursive dispatch (with linear capacity only)
+      result-f = rec-wf f (⟨,⟩-f-smaller f g) x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap-f
       s₁ = IRResultAWF.final-state result-f
       alloc₁ = IRResultAWF.final-alloc result-f
       fst-loc = IRResultAWF.result-loc result-f
@@ -154,10 +151,6 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       combined-cap-g = subst (next-slot alloc₁ + pair-slots *ℕ sg ≤_) (sym capacity₁-eq)
                          (compose-g-cap (next-slot alloc) (next-slot alloc₁) pair-slots sf sg
                             (frame-capacity alloc) slot₁-bound combined-cap-converted)
-
-      -- Program-bound capacity for g (see Postulates.agda, final-postulate-elimination.md)
-      program-bound-cap-g : next-slot alloc₁ + pair-slots *ℕ program-bound ≤ frame-capacity alloc₁
-      program-bound-cap-g = program-bound-cap alloc₁
 
       -- Run g via recursive dispatch
       -- g needs same input as f, but input validity is preserved through f
@@ -193,7 +186,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       input-valid-wf₁' = validityWF-mem-only x input-loc s₁ s₁' refl refl input-valid-wf₁
 
       result-g = rec-wf g (⟨,⟩-g-smaller f g) x input-loc s₁' alloc₁
-                   input-valid-wf₁' input-before₁ (IRResultAWF.not-halted result-f) rdi-eq₁ combined-cap-g program-bound-cap-g
+                   input-valid-wf₁' input-before₁ (IRResultAWF.not-halted result-f) rdi-eq₁ combined-cap-g
 
       s₂ = IRResultAWF.final-state result-g
       alloc₂ = IRResultAWF.final-alloc result-g

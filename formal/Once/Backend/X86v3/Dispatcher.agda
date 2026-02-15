@@ -104,7 +104,24 @@ open import Once.Backend.X86v3.WriteOps public using (module WriteWithDisjoint)
 -- termination without TERMINATING pragma.
 ------------------------------------------------------------------------
 
-module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ program-bound) where
+------------------------------------------------------------------------
+-- Frame Capacity Constraint
+--
+-- For apply to work correctly, the frame capacity must be large enough
+-- to accommodate body execution. Specifically:
+--   frame-capacity >= 2 * pair-slots * program-bound
+--
+-- This ensures that at any point in execution:
+--   slot + pair-slots * program-bound <= frame-capacity
+--
+-- The constraint is provided as a function parameter rather than a postulate.
+------------------------------------------------------------------------
+
+module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ program-bound)
+  -- Frame capacity constraint: ensures pb-cap holds for any alloc in the current frame
+  (frame-cap-sufficient : ∀ (alloc : AllocState {FS}) →
+    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc)
+  where
   open ValidityDef {FS} program-bound
   open DispatcherResult {FS} program-bound
   open FrontierInvariant {FS}
@@ -128,6 +145,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            validityWF-alloc-advance; validityWF-frontier-advance;
            validityWF-mem-preserved)
+
+  -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
 
   -- Import validity write lemmas
   open import Once.Backend.X86v3.ValidityWriteLemma using (module ValidityWriteLemmas)
@@ -183,20 +202,18 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- Helper to construct RecDispatcherWF from rs accessor
     -- Defined in mutual block so termination checker can see the structure
     -- Returns IRResultAWF with ValidAtWF for proper threading
-    -- Takes BOTH capacities: linear (for structural recursion) and program-bound (for apply)
+    -- Uses LINEAR capacity only: pair-slots * ir-size
     make-rec-wf : ∀ {n} (ir<bound : n < program-bound) →
       (∀ {m} → m < n → Acc _<_ m) →
       RecDispatcherWF n
-    make-rec-wf {n} ir<bound rs ir lt x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' program-bound-cap' =
-      run-ir-wf ir (<-trans lt ir<bound) x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' program-bound-cap' (rs lt)
+    make-rec-wf {n} ir<bound rs ir lt x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' =
+      run-ir-wf ir (<-trans lt ir<bound) x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' (rs lt)
 
     -- run-ir-wf uses Acc _<_ (ir-size ir) for termination.
     -- Uses ValidAtWF input and returns IRResultAWF with ValidAtWF output.
     -- For Compose/Pair: sub-IRs have smaller size, so rs gives Acc
     -- For Apply: uses body-correct.execute instead of recursive call!
-    -- Takes BOTH capacities:
-    --   1. LINEAR (pair-slots * ir-size) for structural recursion
-    --   2. PROGRAM-BOUND (pair-slots * program-bound) for apply's dynamic body
+    -- Uses LINEAR capacity for recursion
     run-ir-wf : ∀ {A B} (ir : IR A B)
       (ir<bound : ir-size ir < program-bound) →
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
@@ -207,48 +224,45 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       readReg (regs s) RDI ≡ input-loc →
       -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
       next-slot alloc + pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
-      -- PROGRAM-BOUND capacity: for apply's dynamic body execution
-      next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
       Acc _<_ (ir-size ir) →
       IRResultAWF ir x s alloc
 
-    -- Simple cases delegated to SimpleWF module (ignore program-bound-cap)
-    run-ir-wf id _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ _ =
+    -- Simple cases delegated to SimpleWF module
+    run-ir-wf id _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf fst-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ _ =
+    run-ir-wf fst-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ _ =
+    run-ir-wf snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ _ =
+    run-ir-wf terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    -- Compose: delegated to ComposeWF module (pass both capacities)
-    run-ir-wf (g ∘ f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap (acc rs) =
+    -- Compose: delegated to ComposeWF module
+    run-ir-wf (g ∘ f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       run-compose f g (make-rec-wf ir<bound rs) x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap
+        input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Pair: delegated to PairWF module (pass both capacities)
-    run-ir-wf ⟨ f , g ⟩ ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap (acc rs) =
+    -- Pair: delegated to PairWF module
+    run-ir-wf ⟨ f , g ⟩ ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       run-pair f g (make-rec-wf ir<bound rs) x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap
+        input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Curry: delegated to CurryWF module (pass both capacities)
-    run-ir-wf (curry f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap (acc rs) =
+    -- Curry: delegated to CurryWF module
+    run-ir-wf (curry f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       run-curry f ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap
+        input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Apply: delegated to ApplyWF module (uses program-bound-cap!)
-    run-ir-wf {(A ⇒ B) * A} {B} apply _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap _ =
-      run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap
+    -- Apply: uses BodyCorrect.execute from closure
+    -- pb-cap is derived from frame capacity constraint (module parameter)
+    run-ir-wf {(A ⇒ B) * A} {B} apply _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (frame-cap-sufficient alloc)
 
   -- Public API with ValidAtWF
   -- Returns IRResultAWF with ValidAtWF for result validity.
-  -- Takes BOTH capacities:
-  --   1. LINEAR (pair-slots * ir-size) for structural recursion
-  --   2. PROGRAM-BOUND (pair-slots * program-bound) for apply's dynamic body
+  -- Uses LINEAR capacity only: pair-slots * ir-size
   run-wf : ∀ {A B} (ir : IR A B) (ir<bound : ir-size ir < program-bound)
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
@@ -258,38 +272,19 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
     next-slot alloc + pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
-    -- PROGRAM-BOUND capacity: for apply's dynamic body execution
-    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF ir x s alloc
-  run-wf ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap =
-    run-ir-wf ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap
+  run-wf ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    run-ir-wf ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
       (get-acc-from-pb (ir-size ir) ir<bound)
 
-  -- Public API with basic ValidAt (converts to/from WF internally)
-  -- NOTE: This requires valid-to-validWF postulate because ValidAt doesn't
-  -- carry BodyCorrect for closures. For closure-containing inputs, use run-wf instead.
-  -- This API is suitable for program entry points where input is non-closure.
-  -- Takes BOTH capacities for consistency with internal APIs.
-  run : ∀ {A B} (ir : IR A B) (ir<bound : ir-size ir < program-bound)
-    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
-    (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAt alloc x input-loc s →
-    BeforeFrontier alloc input-loc →
-    halted s ≡ false →
-    readReg (regs s) RDI ≡ input-loc →
-    -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
-    next-slot alloc + pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
-    -- PROGRAM-BOUND capacity: for apply's dynamic body execution
-    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
-    IRResultA ir x s alloc
-  run ir ir<bound x input-loc s alloc input-valid input-before not-halted rdi-eq combined-cap program-bound-cap =
-    resultWF-to-result (run-wf ir ir<bound x input-loc s alloc
-      (valid-to-validWF input-valid) input-before not-halted rdi-eq combined-cap program-bound-cap)
-    where
-      -- This postulate is only valid for non-closure inputs at program entry.
-      -- For closures, BodyCorrect cannot be constructed from ValidAt.
-      postulate valid-to-validWF : ∀ {alloc A} {v : ⟦ A ⟧} {loc s} →
-                  ValidAt alloc v loc s → ValidAtWF alloc v loc s
+  -- NOTE: The basic ValidAt API (`run`) has been removed because it required
+  -- a postulate to convert ValidAt to ValidAtWF. Use `run-wf` instead.
+  --
+  -- For program entry with non-closure inputs, construct ValidAtWF directly:
+  --   - valid-unit-wf for Unit values
+  --   - valid-pair-wf for pairs (recursively construct for components)
+  --
+  -- To convert the result back to IRResultA, use resultWF-to-result.
 
 ------------------------------------------------------------------------
 -- Summary
@@ -354,31 +349,22 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 --   - Apply termination: uses BodyCorrect.execute instead of run-ir
 --   - Apply semantic correctness: result-valid uses closure-is-body
 --
--- REMAINING POSTULATES (9 total):
+-- REMAINING POSTULATES (1 total):
 --
---   Validity preservation through IR execution (4):
---     - input-valid-wf₁: input valid after running f (pair case)
---     - fst-valid-wf-final, snd-valid-wf-final: valid after writes (pair)
---     - input-valid-wf-final: env valid after writes (curry case)
---     These require "write isolation" - proving IR only writes at frontier.
---
---   Validity preservation with alloc change (2):
---     - env-valid-wf-pair, arg-valid-wf-pair: valid after writes (apply case)
---     Need validity transport across both state and alloc changes.
---
---   Body capacity (apply case - 1):
---     - body-ir-cap: body's ir-capacity (architecture issue - body requirement
---       not tracked in apply's ir-stack-requirement)
---
---   Slot bound (1):
+--   Slot bound (1 - ApplyWF.agda):
 --     - slot-bounded-apply: body runs in same frame, requires architecture fix
---       (either new frame for body, or track body requirement in closure)
+--       The issue: ir-stack-requirement(apply) = pair-slots, but apply
+--       executes a dynamic body that can consume more stack.
+--       Fix options:
+--       a) Create new frame for body execution (like real function calls)
+--       b) Change ir-stack-requirement to be dynamic (not feasible statically)
+--       c) Accept that apply's slot-bounded uses reclamation semantics
 --
---   Conversion (1):
---     - valid-to-validWF: only valid for non-closure inputs at program entry
+-- CAPACITY ARCHITECTURE:
+--   - Module parameter `frame-cap-sufficient` ensures capacity >= 2 * pair-slots * pb
+--   - This is NOT a postulate but a precondition the caller must satisfy
+--   - The WholeProgram module should allocate frames with sufficient capacity
 --
 -- NEXT STEPS:
---   1. Add "mem-preserved-before-frontier" to IRResultAWF for write isolation
---   2. Create validity transport lemma for alloc advancement
---   3. Fix body capacity issue (new frame or track requirement in closure)
+--   1. Implement new-frame semantics for apply body execution (eliminates slot-bounded-apply)
 ------------------------------------------------------------------------

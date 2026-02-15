@@ -12,7 +12,7 @@
 module Once.Backend.X86v3.IR.ComposeWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m+n)
 open import Data.Bool using (false)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst; cong)
@@ -41,15 +41,13 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.Backend.X86v3.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only; validityWF-reclaim)
+    using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only)
 
-  -- Import lemmas
+  -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
+
+  -- Import arithmetic lemmas
   open import Once.Backend.X86v3.DispatcherArithmeticLemma
     using (compose-slot-bounded-lemma; compose-f-cap; compose-g-cap)
-
-  -- Import shared postulates
-  open import Once.Backend.X86v3.Postulates
-  open CapacityPostulates {FS} program-bound
   open import Once.Backend.X86v3.FrontierLemma
   open FrontierLemmas {FS}
     using (frontier-same-heap)
@@ -84,11 +82,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * size covers ir-req + recursion
+    -- This is the ONLY capacity constraint needed (no global invariants)
     next-slot alloc + pair-slots *ℕ ir-size (g ∘ f) ≤ frame-capacity alloc →
-    -- PROGRAM-BOUND capacity: for apply's dynamic body execution
-    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF (g ∘ f) x s alloc
-  run-compose f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap =
+  run-compose f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     let -- Size abbreviations
         sf = ir-size f
         sg = ir-size g
@@ -111,8 +108,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         combined-cap-f : next-slot alloc + pair-slots *ℕ sf ≤ frame-capacity alloc
         combined-cap-f = compose-f-cap (next-slot alloc) pair-slots sf sg (frame-capacity alloc) combined-cap-converted
 
-        -- Run f via recursive dispatch (with both linear and program-bound capacity)
-        result-f = rec-wf f (∘-f-smaller f g) x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap-f program-bound-cap
+        -- Run f via recursive dispatch (with linear capacity only)
+        result-f = rec-wf f (∘-f-smaller f g) x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap-f
         s₁ = IRResultAWF.final-state result-f
         alloc₁ = IRResultAWF.final-alloc result-f
         inter-loc = IRResultAWF.result-loc result-f
@@ -148,14 +145,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                            (compose-g-cap (next-slot alloc) (next-slot alloc₁) pair-slots sf sg
                               (frame-capacity alloc) slot₁-bound combined-cap-converted)
 
-        -- Program-bound capacity for g (see Postulates.agda, final-postulate-elimination.md)
-        program-bound-cap-g : next-slot alloc₁ + pair-slots *ℕ program-bound ≤ frame-capacity alloc₁
-        program-bound-cap-g = program-bound-cap alloc₁
-
         -- Run g via recursive dispatch
         inter-before = IRResultAWF.result-before result-f
         not-halted₁ = IRResultAWF.not-halted result-f
-        rax-eq-f = IRResultAWF.rax-is-result result-f
 
         -- Set up RDI for g's input
         s₁' = record s₁ { regs = writeReg (regs s₁) RDI inter-loc }
@@ -165,7 +157,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         inter-valid-wf' : ValidAtWF alloc₁ (eval f x) inter-loc s₁'
         inter-valid-wf' = validityWF-mem-only (eval f x) inter-loc s₁ s₁' refl refl inter-valid-wf
 
-        result-g = rec-wf g (∘-g-smaller f g) (eval f x) inter-loc s₁' alloc₁ inter-valid-wf' inter-before not-halted₁ rdi-eq₁ combined-cap-g program-bound-cap-g
+        result-g = rec-wf g (∘-g-smaller f g) (eval f x) inter-loc s₁' alloc₁ inter-valid-wf' inter-before not-halted₁ rdi-eq₁ combined-cap-g
 
         -- Final state and alloc
         s₂ = IRResultAWF.final-state result-g

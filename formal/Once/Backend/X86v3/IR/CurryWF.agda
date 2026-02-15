@@ -10,11 +10,11 @@
 module Once.Backend.X86v3.IR.CurryWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m+n≤o⇒m≤o; +-monoʳ-≤; *-monoˡ-≤; m≤m*n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m+n≤o⇒m≤o; +-monoʳ-≤; *-monoˡ-≤; m≤m*n; +-assoc)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; cong; subst)
 
 open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
@@ -85,10 +85,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * size covers ir-req + recursion
     next-slot alloc + pair-slots *ℕ ir-size (curry f) ≤ frame-capacity alloc →
-    -- PROGRAM-BOUND capacity: for apply's dynamic body execution
-    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF (curry f) x s alloc
-  run-curry f ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap =
+  run-curry f ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     record
       { result-loc = closure-loc
       ; final-state = s-final
@@ -188,13 +186,14 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       --
       -- X86 pattern: store body-capacity = pair-slots * ir-size f in the closure
       -- Apply will extract and use this for its capacity requirement
+      -- SIMPLIFIED: No global invariants needed in execute
       body-correct : BodyCorrect f x input-loc program-bound
       body-correct = record
         { body-capacity = pair-slots *ℕ ir-size f
         ; body-cap-eq = refl
-        ; execute = λ arg arg-loc pair-loc s' alloc' pair-valid-wf pair-before not-halt rdi-eq' combined-cap' program-bound-cap' →
+        ; execute = λ arg arg-loc pair-loc s' alloc' pair-valid-wf pair-before not-halt rdi-eq' combined-cap' →
             rec-wf f (curry-smaller f) (pair x arg) pair-loc s' alloc'
-              pair-valid-wf pair-before not-halt rdi-eq' combined-cap' program-bound-cap'
+              pair-valid-wf pair-before not-halt rdi-eq' combined-cap'
         }
 
       rax-eq : readReg (regs s-final) RAX ≡ closure-loc

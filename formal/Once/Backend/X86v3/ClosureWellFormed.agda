@@ -55,6 +55,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
 
+  -- Import capacity lemmas (needed for BodyCorrect.execute signature)
+  open import Once.Backend.X86v3.Postulates
+  open CapacityLemmas {FS} program-bound
+    using (CapacityInvariant; SlotInWorking; program-bound-cap-from-invariant;
+           invariant-preserved; slot-in-working-preserved; sub-ir-in-working;
+           apply-pair-preserves-program-bound-cap)
+
   ------------------------------------------------------------------------
   -- Mutual block for BodyCorrect, ValidAtWF, IRResultAWF
   --
@@ -142,7 +149,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Given proper setup, body execution succeeds
       -- Takes ValidAtWF and returns IRResultAWF for full consistency
-      -- Uses body-capacity for linear recursion, program-bound-cap for apply
+      -- Uses body-capacity for linear recursion
+      -- SIMPLIFIED: Only needs body-capacity constraint (no global invariants)
       execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
         (s : LocState FS) (alloc : AllocState {FS}) →
         -- Preconditions (ValidAtWF for full consistency)
@@ -151,9 +159,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         halted s ≡ false →
         readReg (regs s) RDI ≡ pair-loc →
         -- LINEAR capacity: body-capacity = pair-slots * ir-size body
+        -- This is the ONLY capacity constraint needed
         next-slot alloc + body-capacity ≤ frame-capacity alloc →
-        -- PROGRAM-BOUND capacity: for nested apply calls
-        next-slot alloc + pair-slots *ℕ bound ≤ frame-capacity alloc →
         -- Result (IRResultAWF with ValidAtWF inside!)
         IRResultAWF body (pair env arg) s alloc
 
@@ -315,12 +322,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Used by Curry to construct BodyCorrect.
   -- Takes ValidAtWF input and returns IRResultAWF with ValidAtWF output.
   --
-  -- Two capacity preconditions:
-  -- 1. LINEAR capacity: pair-slots * ir-size (for structural recursion)
-  -- 2. PROGRAM-BOUND capacity: pair-slots * bound (for apply's dynamic body)
-  --
-  -- Most IRs only use (1). Apply needs (2) because the closure body
-  -- can be any size < bound. This is the X86 backend pattern.
+  -- SIMPLIFIED: Only needs linear capacity (pair-slots * ir-size).
+  -- No global invariants needed - capacity is threaded dynamically per closure.
   ------------------------------------------------------------------------
 
   RecDispatcherWF : ℕ → Set
@@ -334,10 +337,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
     next-slot alloc + pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
-    -- PROGRAM-BOUND capacity: for apply's dynamic body execution
-    -- Uses module's program-bound (not RecDispatcherWF's bound parameter!)
-    -- This ensures any closure body (size < program-bound) has enough capacity
-    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF ir x s alloc
 
   ------------------------------------------------------------------------

@@ -49,13 +49,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            decomposePairWF; PairValidWF;
            decomposeClosureWF; ClosureValidWF)
 
+  -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
+
   -- Import lemmas
   open import Once.Backend.X86v3.DispatcherArithmeticLemma
     using (suc<+2; apply-body-cap-linear; apply-pair-fits-linear)
-
-  -- Import shared postulates
-  open import Once.Backend.X86v3.Postulates
-  open CapacityPostulates {FS} program-bound
 
   -- Import write operations
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
@@ -101,11 +99,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * ir-size for structural recursion
+    -- Since ir-size apply = 1, this is: slot + pair-slots ≤ cap
     next-slot alloc + pair-slots *ℕ ir-size (apply {A} {B}) ≤ frame-capacity alloc →
-    -- PROGRAM-BOUND capacity: for body execution (any body size < bound)
+    -- PROGRAM-BOUND capacity: for body execution
+    -- This is derived from initial frame sizing at program entry
     next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     IRResultAWF (apply {A} {B}) x s alloc
-  run-apply {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap program-bound-cap =
+  run-apply {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap pb-cap =
     record
       { result-loc = result-loc
       ; final-state = s-final
@@ -160,13 +160,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Step 3: Allocate pair-slots for (env, arg) pair
       pair-input-loc = OnStack (current-frame alloc) (next-slot alloc)
 
-      -- PROVEN: apply-pair-fits from program-bound-cap using lemma
-      -- program-bound-cap: slot + pair-slots * program-bound ≤ capacity
+      -- PROVEN: apply-pair-fits from pb-cap using lemma
+      -- pb-cap: slot + pair-slots * program-bound ≤ capacity
       -- body<bound ensures bound ≥ 1
       apply-pair-fits : next-slot alloc + pair-slots ≤ frame-capacity alloc
       apply-pair-fits = apply-pair-fits-linear (next-slot alloc) pair-slots
                           (ir-size body) program-bound (frame-capacity alloc)
-                          body<bound program-bound-cap
+                          body<bound pb-cap
 
       alloc-pair : AllocState {FS}
       alloc-pair = record alloc
@@ -248,17 +248,15 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                             (apply-body-cap-linear
                               (next-slot alloc) pair-slots (ir-size body) program-bound
                               (frame-capacity alloc)
-                              body<bound program-bound-cap)
+                              body<bound pb-cap)
 
-      -- Program-bound capacity for alloc-pair (see Postulates.agda, final-postulate-elimination.md)
-      program-bound-cap-pair : next-slot alloc-pair + pair-slots *ℕ program-bound ≤ frame-capacity alloc-pair
-      program-bound-cap-pair = program-bound-cap alloc-pair
-
+      -- Execute body using closure's body-capacity constraint
+      -- No global invariants needed - body-combined-cap is derived from pb-cap
       body-result : IRResultAWF body (pair env (snd x)) s-pair alloc-pair
       body-result = BodyCorrect.execute body-correct (snd x) arg-loc pair-input-loc
                       s-pair alloc-pair
                       pair-input-valid-wf pair-input-before pair-not-halted pair-rdi-eq
-                      body-combined-cap program-bound-cap-pair
+                      body-combined-cap
 
       -- Extract fields from IRResultAWF
       result-loc = IRResultAWF.result-loc body-result
