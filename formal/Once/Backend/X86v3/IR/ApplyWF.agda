@@ -53,6 +53,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.Backend.X86v3.DispatcherArithmeticLemma
     using (suc<+2; apply-body-cap-linear; apply-pair-fits-linear)
 
+  -- Import shared postulates
+  open import Once.Backend.X86v3.Postulates
+  open CapacityPostulates {FS} program-bound
+
   -- Import write operations
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
@@ -246,15 +250,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                               (frame-capacity alloc)
                               body<bound program-bound-cap)
 
-      -- Derive program-bound-cap for alloc-pair
-      -- Need: (slot + pair-slots) + pair-slots * program-bound ≤ capacity
-      --     = slot + pair-slots * (1 + program-bound)
-      --
-      -- KNOWN LIMITATION: This requires capacity ≥ pair-slots * (1 + program-bound) + slot
-      -- The current program-bound-cap only gives pair-slots * program-bound.
-      -- The frame must be set up with extra capacity to accommodate this.
-      postulate
-        program-bound-cap-pair : next-slot alloc-pair + pair-slots *ℕ program-bound ≤ frame-capacity alloc-pair
+      -- Program-bound capacity for alloc-pair (see Postulates.agda, final-postulate-elimination.md)
+      program-bound-cap-pair : next-slot alloc-pair + pair-slots *ℕ program-bound ≤ frame-capacity alloc-pair
+      program-bound-cap-pair = program-bound-cap alloc-pair
 
       body-result : IRResultAWF body (pair env (snd x)) s-pair alloc-pair
       body-result = BodyCorrect.execute body-correct (snd x) arg-loc pair-input-loc

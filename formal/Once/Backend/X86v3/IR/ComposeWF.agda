@@ -46,6 +46,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Import lemmas
   open import Once.Backend.X86v3.DispatcherArithmeticLemma
     using (compose-slot-bounded-lemma; compose-f-cap; compose-g-cap)
+
+  -- Import shared postulates
+  open import Once.Backend.X86v3.Postulates
+  open CapacityPostulates {FS} program-bound
   open import Once.Backend.X86v3.FrontierLemma
   open FrontierLemmas {FS}
     using (frontier-same-heap)
@@ -144,25 +148,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                            (compose-g-cap (next-slot alloc) (next-slot alloc₁) pair-slots sf sg
                               (frame-capacity alloc) slot₁-bound combined-cap-converted)
 
-        ------------------------------------------------------------------------
-        -- Program-bound capacity for g:
-        -- This requires the frame to have enough capacity that after f runs,
-        -- we still have slot₁ + ps * bound ≤ capacity.
-        --
-        -- ARCHITECTURAL NOTE: This invariant is maintained when the frame
-        -- is set up with capacity ≥ 2 * ps * bound. After f consumes at most
-        -- ps * sf slots (sf < bound), the remaining capacity is sufficient.
-        --
-        -- Derivation:
-        --   slot₁ ≤ slot + ps * sf (from slot-bounded)
-        --   slot₁ + ps * bound ≤ slot + ps * sf + ps * bound
-        --                      = slot + ps * (sf + bound)
-        --                      ≤ capacity (when capacity ≥ 2 * ps * bound)
-        --
-        -- The WholeProgram module ensures this capacity requirement.
-        ------------------------------------------------------------------------
-        postulate
-          program-bound-cap-g : next-slot alloc₁ + pair-slots *ℕ program-bound ≤ frame-capacity alloc₁
+        -- Program-bound capacity for g (see Postulates.agda, final-postulate-elimination.md)
+        program-bound-cap-g : next-slot alloc₁ + pair-slots *ℕ program-bound ≤ frame-capacity alloc₁
+        program-bound-cap-g = program-bound-cap alloc₁
 
         -- Run g via recursive dispatch
         inter-before = IRResultAWF.result-before result-f

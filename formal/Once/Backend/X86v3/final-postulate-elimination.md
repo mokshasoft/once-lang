@@ -8,10 +8,10 @@ See `proof-architecture.md` for design goals (O(1) overhead, heap fallback).
 
 | Location | Postulate | What it needs |
 |----------|-----------|---------------|
-| ComposeWF:165 | `program-bound-cap-g` | `slot₁ + ps*bound ≤ capacity` |
-| PairWF:156 | `program-bound-cap-g` | `slot₁ + ps*bound ≤ capacity` |
-| ApplyWF:257 | `program-bound-cap-pair` | `(slot+ps) + ps*bound ≤ capacity` |
-| ApplyWF:335 | `slot-bounded-apply` | `final-slot ≤ slot + ir-req apply` |
+| Postulates.agda | `program-bound-cap` | `slot + ps*bound ≤ capacity` for any alloc |
+| ApplyWF:333 | `slot-bounded-apply` | `final-slot ≤ slot + ir-req apply` |
+
+The three identical `program-bound-cap-*` postulates (from ComposeWF, PairWF, ApplyWF) were consolidated into one shared postulate in `Postulates.agda`.
 
 ## Root Cause
 

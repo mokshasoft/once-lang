@@ -52,6 +52,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.Backend.X86v3.DispatcherArithmeticLemma
     using (pair-slot-bounded-lemma; suc<+2; compose-f-cap; compose-g-cap; pair-alloc-fits)
 
+  -- Import shared postulates
+  open import Once.Backend.X86v3.Postulates
+  open CapacityPostulates {FS} program-bound
+
   -- Import stack bound lemma
   open import Once.Backend.X86v3.StackBoundLemma
     using (ir-stack-req-bounded)
@@ -151,9 +155,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                          (compose-g-cap (next-slot alloc) (next-slot alloc₁) pair-slots sf sg
                             (frame-capacity alloc) slot₁-bound combined-cap-converted)
 
-      -- Program-bound capacity for g (same issue as compose - needs large frame)
-      postulate
-        program-bound-cap-g : next-slot alloc₁ + pair-slots *ℕ program-bound ≤ frame-capacity alloc₁
+      -- Program-bound capacity for g (see Postulates.agda, final-postulate-elimination.md)
+      program-bound-cap-g : next-slot alloc₁ + pair-slots *ℕ program-bound ≤ frame-capacity alloc₁
+      program-bound-cap-g = program-bound-cap alloc₁
 
       -- Run g via recursive dispatch
       -- g needs same input as f, but input validity is preserved through f
