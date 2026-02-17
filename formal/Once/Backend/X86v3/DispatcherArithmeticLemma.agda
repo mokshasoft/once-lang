@@ -7,7 +7,7 @@
 
 module Once.Backend.X86v3.DispatcherArithmeticLemma where
 
-open import Data.Nat using (ℕ; suc; _+_; _≤_; _<_; s≤s) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; +-assoc; +-monoˡ-≤; +-monoʳ-≤; ≤-reflexive; +-suc; +-identityʳ; +-identityˡ; *-monoʳ-≤; <⇒≤; m≤m+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
@@ -58,6 +58,17 @@ suc<+2 n = subst (suc (suc n) ≤_) (sym eq) (s≤s (s≤s ≤-refl))
     -- n + 2 = n + suc (suc zero) = suc (n + suc zero) = suc (suc (n + zero)) = suc (suc n)
     eq : n + pair-slots ≡ suc (suc n)
     eq = trans (+-suc n 1) (cong suc (trans (+-suc n 0) (cong suc (+-identityʳ n))))
+
+-- pair-slots ≤ suc (n + m) when n ≥ 1
+-- pair-slots = 2, and suc (n + m) ≥ suc (1 + 0) = 2 when n ≥ 1
+-- Proof: 2 ≤ suc (n + m) requires 1 ≤ n + m, which holds since n ≥ 1
+pair-slots≤suc : ∀ n m → 0 < n → pair-slots ≤ suc (n + m)
+pair-slots≤suc (suc n) m (s≤s z≤n) = s≤s (s≤s z≤n)
+
+-- Convenience version for ir-sizes (always ≥ 1)
+-- This is the main lemma used by compose and pair
+pair-slots≤suc-sum : ∀ n m → pair-slots ≤ suc (suc n + m)
+pair-slots≤suc-sum n m = s≤s (s≤s z≤n)
 
 ------------------------------------------------------------------------
 -- Compose/Pair capacity lemmas

@@ -42,10 +42,7 @@ open import Once.Backend.X86v3.ClosureWellFormed
 ------------------------------------------------------------------------
 
 open import Once.Backend.X86v3.DispatcherArithmeticLemma public
-  using (compose-slot-bounded-lemma; pair-slot-bounded-lemma; suc<+2)
-
-open import Once.Backend.X86v3.SlotBoundedLemma public
-  using (slot-bounded-zero)
+  using (suc<+2)
 
 open import Once.Backend.X86v3.FrontierLemma public
   using (module FrontierLemmas)
@@ -121,6 +118,13 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- Frame capacity constraint: ensures pb-cap holds for any alloc in the current frame
   (frame-cap-sufficient : ∀ (alloc : AllocState {FS}) →
     next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc)
+  -- Child frame support for apply's hybrid frame approach
+  -- get-child-frame returns a frame below the parent (child ≺ parent) for body execution
+  (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
+  (child-frame-ordered : ∀ (alloc : AllocState {FS}) →
+    FrameSemantics._≺_ FS (get-child-frame alloc) (current-frame alloc))  -- Child is below parent
+  (child-capacity : ℕ)
+  (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
   where
   open ValidityDef {FS} program-bound
   open DispatcherResult {FS} program-bound
@@ -256,9 +260,11 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Apply: uses BodyCorrect.execute from closure
+    -- Uses PURE RECLAMATION: body executes in same frame, then reclaims stack
     -- pb-cap is derived from frame capacity constraint (module parameter)
     run-ir-wf {(A ⇒ B) * A} {B} apply _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (frame-cap-sufficient alloc)
+      run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+        combined-cap (frame-cap-sufficient alloc)
 
   -- Public API with ValidAtWF
   -- Returns IRResultAWF with ValidAtWF for result validity.

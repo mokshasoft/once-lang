@@ -78,7 +78,7 @@ ir-size (g ∘ f) = 1 + ir-size g + ir-size f
 ir-size ⟨ f , g ⟩ = 1 + ir-size f + ir-size g
 ir-size fst-ir = 1
 ir-size snd-ir = 1
-ir-size (curry f) = 1 + ir-size f
+ir-size (curry f) = 2 + ir-size f  -- Extra slot for apply's pair allocation
 ir-size apply = 1
 ir-size terminal = 1
 
@@ -132,9 +132,11 @@ n≤m+n m n = subst (n ≤_) (+-comm n m) (m≤m+n n m)
 ⟨,⟩-g-smaller f g = s≤s (n≤m+n (ir-size f) (ir-size g))
 
 -- For curry: f is smaller than curry f
+-- ir-size (curry f) = 2 + ir-size f, so we need ir-size f < 2 + ir-size f
 curry-smaller : ∀ {A B C} (f : IR (A * B) C) →
   ir-size f < ir-size (curry f)
-curry-smaller f = n<1+n (ir-size f)
+curry-smaller f = <-trans (n<1+n (ir-size f)) (n<1+n (suc (ir-size f)))
+  where open import Data.Nat.Properties using (<-trans)
 
 ------------------------------------------------------------------------
 -- Stack Requirement

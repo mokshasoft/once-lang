@@ -6,16 +6,24 @@
 --
 -- Apply does NOT need RecDispatcherWF because it uses BodyCorrect.execute
 -- which was pre-computed by Curry.
+--
+-- PURE RECLAMATION APPROACH:
+-- Body executes in the same frame starting at slot + pair-slots.
+-- After body completes, we use reclaim-preserves-result and
+-- reclaim-preserves-validity to transfer result to reclaimed allocation.
+-- Body's stack allocations are reclaimed, only result persists.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86v3.IR.ApplyWF where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; +-mono-≤; m+n≤o⇒m≤o; +-monoʳ-≤; m≤m*n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; +-monoʳ-≤)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; subst; cong)
+open import Relation.Nullary using (yes; no)
 
 open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
@@ -43,9 +51,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.Backend.X86v3.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; BodyCorrect; valid-pair-wf;
+    using (ValidAtWF; IRResultAWF; EscapingResult; BodyCorrect;
+           valid-unit-wf; valid-pair-wf; valid-closure-wf;
            validityWF-mem-only; validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
+           validityWF-frontier-advance;
            decomposePairWF; PairValidWF;
            decomposeClosureWF; ClosureValidWF)
 
@@ -69,26 +79,89 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ValidityWriteLemmas {FS} program-bound
     using (at-frontier-neq-before; suc-frontier-neq-before)
 
-  -- Import stack bound lemma for body capacity
-  open import Once.Backend.X86v3.StackBoundLemma
-    using (stack-req-from-size-bound-≤)
+  ------------------------------------------------------------------------
+  -- BeforeFrontier Transfer Lemmas
+  --
+  -- These lemmas transfer BeforeFrontier between allocation states.
+  -- They take the location as an explicit parameter to enable pattern matching.
+  ------------------------------------------------------------------------
+
+  -- Transfer BeforeFrontier when allocation states have same frame and slot
+  -- but different proof terms. Used for final-alloc to reclaim-alloc transfer.
+  --
+  -- When current-frame, next-slot, and next-heap-ref are propositionally equal,
+  -- BeforeFrontier transfers directly by substitution.
+  bf-same-frame-slot : ∀ (alloc₁ alloc₂ : AllocState {FS})
+    (cf-eq : current-frame alloc₁ ≡ current-frame alloc₂)
+    (ns-eq : next-slot alloc₁ ≡ next-slot alloc₂)
+    (hr-eq : next-heap-ref alloc₁ ≡ next-heap-ref alloc₂)
+    (loc : ValueLocation FS) →
+    BeforeFrontier alloc₁ loc →
+    BeforeFrontier alloc₂ loc
+  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnStack f k) (stack-before f-eq k<ns)
+    rewrite cf-eq | ns-eq = stack-before f-eq k<ns
+  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnStack f k) (stack-ancestor cf≺f src)
+    rewrite cf-eq = stack-ancestor cf≺f src  -- Frame ordering and provenance preserved via equality
+  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnHeap r o) (heap-before r<hr)
+    rewrite hr-eq = heap-before r<hr
+
+  ------------------------------------------------------------------------
+  -- ValidAtWF Frame Transport with explicit BeforeFrontier transfer
+  --
+  -- Transfer ValidAtWF between allocation states using a general
+  -- BeforeFrontier transfer function. This is the core lemma for
+  -- validityWF-frame-transport.
+  --
+  -- The bf-transfer function is applied to all sublocations in the value.
+  --
+  -- For closure types, pattern matching on valid-closure-wf with its complex
+  -- implicit argument structure causes parsing issues, so we use a postulate.
+  -- The proof is straightforward: apply bf-transfer to all sublocation proofs
+  -- (eb, cb, slb) and recursively transfer the env validity (ev).
+  ------------------------------------------------------------------------
+
+  -- ValidAtWF transfer between allocation states
+  -- The recursion is structural on the ValidAtWF proof tree:
+  -- - Unit: base case
+  -- - Pair: recurses on fst-valid and snd-valid subproofs
+  -- - Closure: recurses on env-valid subproof
+  validityWF-with-bf-transfer : ∀ {A} (v : ⟦ A ⟧) loc (s : LocState FS)
+    (a₁ a₂ : AllocState {FS})
+    (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
+    ValidAtWF a₁ v loc s →
+    ValidAtWF a₂ v loc s
+
+  validityWF-with-bf-transfer {Unit} tt loc s a₁ a₂ bf-transfer _ = valid-unit-wf
+
+  validityWF-with-bf-transfer {A * B} (a , b) loc s a₁ a₂ bf-transfer
+    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-wf fp sp (bf-transfer fl fb) (bf-transfer sl sb)
+                  (bf-transfer (sucLoc loc) slb)
+                  (validityWF-with-bf-transfer a fl s a₁ a₂ bf-transfer fv)
+                  (validityWF-with-bf-transfer b sl s a₁ a₂ bf-transfer sv)
+
+  validityWF-with-bf-transfer {A ⇒ B} .(λ arg → eval body (pair env arg)) loc s a₁ a₂ bf-transfer
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
+    valid-closure-wf bb ep cp (bf-transfer el eb) (bf-transfer cl cb)
+      (bf-transfer (sucLoc loc) slb) (validityWF-with-bf-transfer env el s a₁ a₂ bf-transfer ev) bc
 
   ------------------------------------------------------------------------
   -- Apply: Uses body-correct.execute instead of recursive run-ir call
   --
   -- Does NOT need RecDispatcherWF because it extracts BodyCorrect from
   -- the closure and calls execute, which was pre-computed by Curry.
-  ------------------------------------------------------------------------
-
-  ------------------------------------------------------------------------
-  -- Apply: Uses body-correct.execute instead of recursive run-ir call
   --
-  -- Apply receives BOTH capacities from the dispatcher:
-  -- 1. LINEAR capacity (pair-slots * ir-size apply) - small, for structural recursion
-  -- 2. PROGRAM-BOUND capacity (pair-slots * program-bound) - for body execution
+  -- PURE RECLAMATION APPROACH:
+  -- Body executes in the same frame starting at slot + pair-slots.
+  -- After body completes, we use body's reclaim-preserves-result and
+  -- all-escape to transfer result to apply's reclaimed allocation.
   --
-  -- This is the X86 backend pattern: the closure carries its body-capacity,
-  -- and the caller ensures program-bound-cap is available for any closure.
+  -- Why this works:
+  -- 1. Body runs in same frame with alloc-pair (next-slot = slot + pair-slots)
+  -- 2. Body's result must escape the "reclaimed region" [slot + pair-slots, ...)
+  -- 3. Result is either on heap (heap-before), from input (slot < slot + pair-slots),
+  --    or stack-allocated in reclaimed region (IMPOSSIBLE by all-escape)
+  -- 4. Escape analysis ensures escaping values are heap-allocated
   ------------------------------------------------------------------------
 
   run-apply : ∀ {A B}
@@ -101,9 +174,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     -- LINEAR capacity: pair-slots * ir-size for structural recursion
     -- Since ir-size apply = 1, this is: slot + pair-slots ≤ cap
     next-slot alloc + pair-slots *ℕ ir-size (apply {A} {B}) ≤ frame-capacity alloc →
-    -- PROGRAM-BOUND capacity: for body execution
-    -- This is derived from initial frame sizing at program entry
+    -- PROGRAM-BOUND capacity: for body execution in same frame
     next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
+    -- NO child-frame parameters! Body runs in same frame.
     IRResultAWF (apply {A} {B}) x s alloc
   run-apply {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap pb-cap =
     record
@@ -118,16 +191,20 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; slot-monotone = slot-monotone-apply
       ; heap-monotone = heap-monotone-apply
       ; heap-preserved = heap-preserved-apply
-      ; slot-bounded = slot-bounded-apply
       ; capacity-preserved = capacity-preserved-apply
       ; mem-preserved-before = mem-preserved-apply
-      -- Reclamation: apply's result is body's result
+      -- Reclamation: apply uses body's reclamation
       ; reclaimable-slot = apply-reclaimable-slot
       ; reclaim-monotone = apply-reclaim-monotone
       ; reclaim-bounded = apply-reclaim-bounded
       ; reclaim-preserves-result = apply-reclaim-preserves-result
+      ; reclaim-preserves-validity = apply-reclaim-preserves-validity
+      ; reclaim-size-bound = apply-reclaim-size-bound
       }
     where
+      open import Data.Nat using (_≥_)
+      open import Data.Nat.Properties using (*-monoʳ-≤; <⇒≤)
+
       -- Step 1: Decompose input as pair (closure, arg) using ValidAtWF
       pair-decomp = decomposePairWF input-valid-wf
       closure-loc = PairValidWF.fst-loc pair-decomp
@@ -148,16 +225,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       closure-is-body = ClosureValidWF.f-is-closure closure-decomp
       body-correct = ClosureValidWF.body-correct closure-decomp
 
-      -- Body stack requirement bounded by size
-      body-stack-bounded : ir-stack-requirement body ≤ pair-slots *ℕ program-bound
-      body-stack-bounded = stack-req-from-size-bound-≤ body program-bound body<bound
-
       -- Extract body-capacity from body-correct
       -- body-capacity = pair-slots * ir-size body (set by Curry, proven by body-cap-eq)
       body-cap = BodyCorrect.body-capacity body-correct
       body-cap-eq = BodyCorrect.body-cap-eq body-correct
 
-      -- Step 3: Allocate pair-slots for (env, arg) pair
+      -- Step 3: Allocate pair-slots for (env, arg) pair in SAME frame
       pair-input-loc = OnStack (current-frame alloc) (next-slot alloc)
 
       -- PROVEN: apply-pair-fits from pb-cap using lemma
@@ -179,12 +252,45 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       s-write-arg = write-loc s-write-env (sucLoc pair-input-loc) arg-loc
       s-pair = record s-write-arg { regs = writeReg (regs s-write-arg) RDI pair-input-loc }
 
-      pair-input-before : BeforeFrontier alloc-pair pair-input-loc
-      pair-input-before = at-frontier-before-pair alloc apply-pair-fits
+      pair-not-halted : halted s-pair ≡ false
+      pair-not-halted = not-halted
 
-      sucLoc-pair-before : BeforeFrontier alloc-pair (sucLoc pair-input-loc)
-      sucLoc-pair-before = stack-before refl (suc<+2 (next-slot alloc))
+      pair-rdi-eq : readReg (regs s-pair) RDI ≡ pair-input-loc
+      pair-rdi-eq = writeReg-same (regs s-write-arg) RDI pair-input-loc
 
+      ------------------------------------------------------------------------
+      -- Step 4: Execute body in SAME frame (no push)
+      --
+      -- Body executes with alloc-pair (next-slot = slot + pair-slots).
+      -- The pair-input-loc is BeforeFrontier in alloc-pair via stack-before.
+      ------------------------------------------------------------------------
+
+      -- Derive body-cap fits from pb-cap
+      -- body-cap = pair-slots * ir-size body ≤ pair-slots * program-bound
+      body-cap-fits : next-slot alloc-pair + body-cap ≤ frame-capacity alloc-pair
+      body-cap-fits = subst (λ bc → (next-slot alloc + pair-slots) + bc ≤ frame-capacity alloc)
+                        (sym body-cap-eq)
+                        (apply-body-cap-linear (next-slot alloc) pair-slots
+                          (ir-size body) program-bound (frame-capacity alloc)
+                          body<bound pb-cap)
+
+      -- pair-input-loc is BeforeFrontier in alloc-pair via stack-before
+      -- slot < slot + pair-slots
+      pair-slot-bound : next-slot alloc < next-slot alloc + pair-slots
+      pair-slot-bound = m<m+n (next-slot alloc) {pair-slots} (s≤s z≤n)
+        where
+          open import Data.Nat.Properties using (m<m+n)
+
+      pair-input-before-pair : BeforeFrontier alloc-pair pair-input-loc
+      pair-input-before-pair = stack-before refl pair-slot-bound
+
+      sucLoc-pair-slot-bound : suc (next-slot alloc) < next-slot alloc + pair-slots
+      sucLoc-pair-slot-bound = suc<+2 (next-slot alloc)
+
+      sucLoc-pair-before-pair : BeforeFrontier alloc-pair (sucLoc pair-input-loc)
+      sucLoc-pair-before-pair = stack-before refl sucLoc-pair-slot-bound
+
+      -- env-loc and arg-loc are BeforeFrontier in alloc-pair
       env-before-pair : BeforeFrontier alloc-pair env-loc
       env-before-pair = stack-alloc-advances alloc pair-slots apply-pair-fits env-loc env-before
 
@@ -218,69 +324,108 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-arg-ptr : readLoc s-pair (sucLoc pair-input-loc) ≡ just arg-loc
       pair-arg-ptr = write-read-same s-write-env (sucLoc pair-input-loc) arg-loc
 
-      -- Construct ValidAtWF for the pair
-      pair-input-valid-wf : ValidAtWF alloc-pair (pair env (snd x)) pair-input-loc s-pair
-      pair-input-valid-wf = valid-pair-wf pair-env-ptr pair-arg-ptr
-                              env-before-pair arg-before-pair sucLoc-pair-before
-                              env-valid-wf-pair arg-valid-wf-pair
+      -- Construct ValidAtWF for the pair in alloc-pair
+      pair-input-valid-pair : ValidAtWF alloc-pair (pair env (snd x)) pair-input-loc s-pair
+      pair-input-valid-pair = valid-pair-wf pair-env-ptr pair-arg-ptr
+                                env-before-pair arg-before-pair sucLoc-pair-before-pair
+                                env-valid-wf-pair arg-valid-wf-pair
 
-      pair-not-halted : halted s-pair ≡ false
-      pair-not-halted = not-halted
-
-      pair-rdi-eq : readReg (regs s-pair) RDI ≡ pair-input-loc
-      pair-rdi-eq = writeReg-same (regs s-write-arg) RDI pair-input-loc
-
-      -- Step 4: Use body-correct.execute
-      -- BodyCorrect.execute expects:
-      -- 1. body-capacity (= pair-slots * ir-size body) for linear recursion
-      -- 2. program-bound-cap for nested apply calls
+      ------------------------------------------------------------------------
+      -- Step 5: Execute body in same frame (alloc-pair)
       --
-      -- alloc-pair has: next-slot = next-slot alloc + pair-slots
-      --                 frame-capacity = frame-capacity alloc (unchanged)
-      -- So goal is: (slot + pair-slots) + body-capacity ≤ capacity
+      -- Body returns EscapingResult with proof that result escapes
+      -- the body's working region [slot + pair-slots, ...).
+      ------------------------------------------------------------------------
 
-      -- Derive body-capacity for alloc-pair
-      -- body-cap = pair-slots * ir-size body (proven by body-cap-eq)
-      -- Use subst to convert from pair-slots * ir-size body to body-cap
-      body-combined-cap : next-slot alloc-pair + body-cap ≤ frame-capacity alloc-pair
-      body-combined-cap = subst (λ bc → next-slot alloc-pair + bc ≤ frame-capacity alloc-pair)
-                            (sym body-cap-eq)
-                            (apply-body-cap-linear
-                              (next-slot alloc) pair-slots (ir-size body) program-bound
-                              (frame-capacity alloc)
-                              body<bound pb-cap)
+      body-escaping-result : EscapingResult body (pair env (snd x)) s-pair alloc-pair
+      body-escaping-result = BodyCorrect.execute body-correct (snd x) arg-loc pair-input-loc
+                               s-pair alloc-pair
+                               pair-input-valid-pair pair-input-before-pair pair-not-halted pair-rdi-eq
+                               body-cap-fits
 
-      -- Execute body using closure's body-capacity constraint
-      -- No global invariants needed - body-combined-cap is derived from pb-cap
+      -- Extract IRResultAWF from EscapingResult
       body-result : IRResultAWF body (pair env (snd x)) s-pair alloc-pair
-      body-result = BodyCorrect.execute body-correct (snd x) arg-loc pair-input-loc
-                      s-pair alloc-pair
-                      pair-input-valid-wf pair-input-before pair-not-halted pair-rdi-eq
-                      body-combined-cap
+      body-result = EscapingResult.result body-escaping-result
 
-      -- Extract fields from IRResultAWF
+      -- Extract all-escape proof: for slots >= next-slot alloc-pair, result is not there
+      body-all-escape : ∀ loc → BeforeFrontier (IRResultAWF.final-alloc body-result) loc →
+                        ∀ k → k ≥ next-slot alloc-pair → loc ≢ OnStack (current-frame alloc-pair) k
+      body-all-escape = EscapingResult.all-escape body-escaping-result
+
+      ------------------------------------------------------------------------
+      -- Step 6: Reclaim body's stack allocations
+      --
+      -- Create final-alloc = reclaimed allocation at slot + pair-slots.
+      -- Body's result must escape [slot + pair-slots, ...), so it's either:
+      -- 1. On heap (heap-before transfers)
+      -- 2. At slot < slot + pair-slots (from input, stack-before transfers)
+      -- 3. At slot >= slot + pair-slots in current frame (IMPOSSIBLE by all-escape)
+      ------------------------------------------------------------------------
+
+      body-final-alloc = IRResultAWF.final-alloc body-result
+
+      -- Extract fields from body result
       result-loc = IRResultAWF.result-loc body-result
       s-final = IRResultAWF.final-state body-result
-      final-alloc = IRResultAWF.final-alloc body-result
-      result-before = IRResultAWF.result-before body-result
       rax-eq = IRResultAWF.rax-is-result body-result
       not-halted-final = IRResultAWF.not-halted body-result
 
-      -- PROVEN: Memory at BeforeFrontier locations is preserved
-      -- Chain: s → s-write-env → s-write-arg → s-pair → s-final
+      -- Reclaim to slot + pair-slots
+      final-alloc : AllocState {FS}
+      final-alloc = record alloc
+        { next-slot = next-slot alloc + pair-slots
+        ; slots-available = apply-pair-fits
+        }
+
+      ------------------------------------------------------------------------
+      -- bf-body-to-reclaim: Transfer BeforeFrontier from body-final-alloc to final-alloc
+      --
+      -- Using pure reclamation with all-escape:
+      -- 1. heap-before: transfers directly (same heap ref by heap-preserved)
+      -- 2. stack-before in same frame with k < slot + pair-slots: transfers as stack-before
+      -- 3. stack-before in same frame with k >= slot + pair-slots: IMPOSSIBLE (all-escape)
+      -- 4. stack-ancestor: transfers directly (same frame ordering)
+      ------------------------------------------------------------------------
+
+      open import Data.Nat.Properties using (_<?_; ≮⇒≥)
+
+      bf-body-to-reclaim : ∀ loc' → BeforeFrontier body-final-alloc loc' → BeforeFrontier final-alloc loc'
+      bf-body-to-reclaim (OnHeap r o) (heap-before r<hr) =
+        heap-before (subst (ref-id r <_) (IRResultAWF.heap-preserved body-result) r<hr)
+      bf-body-to-reclaim (OnStack f k) (stack-before f-eq k<ns) with k <? (next-slot alloc + pair-slots)
+      bf-body-to-reclaim (OnStack f k) (stack-before f-eq k<ns) | yes k<bound =
+        stack-before (trans f-eq (IRResultAWF.frame-preserved body-result)) k<bound
+      bf-body-to-reclaim (OnStack f k) (stack-before f-eq k<ns) | no k≮bound =
+        ⊥-elim (body-all-escape (OnStack f k) (stack-before f-eq k<ns) k (≮⇒≥ k≮bound) f≡cf-proof)
+        where
+          open import Function using (_∘_)
+          -- f = current-frame body-final-alloc = current-frame alloc-pair
+          f≡cf : f ≡ current-frame alloc-pair
+          f≡cf = trans f-eq (IRResultAWF.frame-preserved body-result)
+          f≡cf-proof : OnStack f k ≡ OnStack (current-frame alloc-pair) k
+          f≡cf-proof = cong (λ frame → OnStack frame k) f≡cf
+      bf-body-to-reclaim (OnStack f k) (stack-ancestor cf≺f src) =
+        stack-ancestor (subst (_≺ f) (IRResultAWF.frame-preserved body-result) cf≺f) src
+
+      result-before : BeforeFrontier final-alloc result-loc
+      result-before = bf-body-to-reclaim result-loc (IRResultAWF.result-before body-result)
+
+      ------------------------------------------------------------------------
+      -- Memory preservation proof
+      ------------------------------------------------------------------------
+
+      -- BeforeFrontier alloc → BeforeFrontier alloc-pair
+      bf-alloc-to-pair : ∀ loc → BeforeFrontier alloc loc → BeforeFrontier alloc-pair loc
+      bf-alloc-to-pair loc bf = stack-alloc-advances alloc pair-slots apply-pair-fits loc bf
+
       mem-preserved-apply : ∀ loc → BeforeFrontier alloc loc →
         readLoc s-final loc ≡ readLoc s loc
-      mem-preserved-apply loc bf =
-        let
-          -- Advance frontier: BeforeFrontier alloc → BeforeFrontier alloc-pair
+      mem-preserved-apply loc bf = trans step1 (trans step2 (trans step3 step4))
+        where
           bf-pair : BeforeFrontier alloc-pair loc
-          bf-pair = frontier-monotone alloc alloc-pair
-                      refl  -- frame preserved
-                      (m≤m+n (next-slot alloc) pair-slots)  -- slot monotone
-                      ≤-refl  -- heap monotone
-                      loc bf
+          bf-pair = bf-alloc-to-pair loc bf
 
-          -- Step 1: s-final → s-pair (body execution preserves before-frontier)
+          -- Step 1: s-final → s-pair (body execution preserves before-frontier in alloc-pair)
           step1 : readLoc s-final loc ≡ readLoc s-pair loc
           step1 = IRResultAWF.mem-preserved-before body-result loc bf-pair
 
@@ -298,83 +443,69 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           step4 = write-preserves-disjoint s pair-input-loc env-loc loc
                     (λ eq → at-frontier-neq-before alloc loc bf eq)
 
-        in trans step1 (trans step2 (trans step3 step4))
+      ------------------------------------------------------------------------
+      -- Frame/slot/heap properties
+      ------------------------------------------------------------------------
 
       frame-preserved-apply : current-frame final-alloc ≡ current-frame alloc
-      frame-preserved-apply = trans (IRResultAWF.frame-preserved body-result) refl
+      frame-preserved-apply = refl
 
       slot-monotone-apply : next-slot alloc ≤ next-slot final-alloc
-      slot-monotone-apply = ≤-trans (m≤m+n (next-slot alloc) pair-slots)
-                                    (IRResultAWF.slot-monotone body-result)
+      slot-monotone-apply = m≤m+n (next-slot alloc) pair-slots
 
       heap-monotone-apply : next-heap-ref alloc ≤ next-heap-ref final-alloc
-      heap-monotone-apply = ≤-trans ≤-refl (IRResultAWF.heap-monotone body-result)
+      heap-monotone-apply = ≤-refl
 
-      -- Heap preserved: alloc-pair only changes stack fields, body-result preserves heap
       heap-preserved-apply : next-heap-ref final-alloc ≡ next-heap-ref alloc
-      heap-preserved-apply = IRResultAWF.heap-preserved body-result
-
-      -- KNOWN LIMITATION: ir-stack-requirement is a static bound per IR.
-      -- For apply, ir-stack-requirement = pair-slots (for the pair allocation).
-      -- But apply also executes the closure body, which uses additional slots.
-      --
-      -- True bound: next-slot final ≤ slot + pair-slots + ir-stack-requirement body
-      --
-      -- This postulate could be removed by:
-      -- 1. Using reclamation: body execution reclaims to reclaimable-slot
-      -- 2. Showing reclaimable-slot ≤ slot + pair-slots + body-overhead
-      -- 3. Ensuring body doesn't exceed the static bound
-      --
-      -- For now, this is a known gap in the proof. The WholeProgram module
-      -- should allocate enough frame capacity to accommodate all body executions.
-      postulate
-        slot-bounded-apply : next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement (apply {A} {B})
+      heap-preserved-apply = refl
 
       capacity-preserved-apply : frame-capacity final-alloc ≡ frame-capacity alloc
-      capacity-preserved-apply = trans (IRResultAWF.capacity-preserved body-result) refl
+      capacity-preserved-apply = refl
 
-      -- Transport result validity using closure-is-body
+      ------------------------------------------------------------------------
+      -- Result validity
+      ------------------------------------------------------------------------
+
+      -- Transport result validity using closure-is-body and validityWF-with-bf-transfer
       result-valid-wf : ValidAtWF final-alloc (eval apply x) result-loc s-final
       result-valid-wf = subst (λ f → ValidAtWF final-alloc (f (snd x)) result-loc s-final)
                               (sym closure-is-body)
-                              (IRResultAWF.result-valid-wf body-result)
+                              (validityWF-with-bf-transfer (eval body (pair env (snd x))) result-loc s-final
+                                body-final-alloc final-alloc
+                                bf-body-to-reclaim
+                                (IRResultAWF.result-valid-wf body-result))
 
-      -- Reclamation: apply's result is body's result
+      ------------------------------------------------------------------------
+      -- Reclamation: apply's reclaimable-slot = slot + pair-slots
+      ------------------------------------------------------------------------
+
       apply-reclaimable-slot : ℕ
-      apply-reclaimable-slot = IRResultAWF.reclaimable-slot body-result
+      apply-reclaimable-slot = next-slot alloc + pair-slots
 
       apply-reclaim-monotone : next-slot alloc ≤ apply-reclaimable-slot
-      apply-reclaim-monotone = ≤-trans (m≤m+n (next-slot alloc) pair-slots)
-                                 (IRResultAWF.reclaim-monotone body-result)
+      apply-reclaim-monotone = m≤m+n (next-slot alloc) pair-slots
 
       apply-reclaim-bounded : apply-reclaimable-slot ≤ next-slot final-alloc
-      apply-reclaim-bounded = IRResultAWF.reclaim-bounded body-result
+      apply-reclaim-bounded = ≤-refl
 
-      -- Transfer reclaim-preserves-result from body (alloc-pair) to apply (alloc)
-      -- Both have same current-frame and frame-capacity, so BeforeFrontier transfers
       apply-reclaim-preserves-result : ∀ (fits : apply-reclaimable-slot ≤ frame-capacity alloc) →
         BeforeFrontier (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits }) result-loc
-      apply-reclaim-preserves-result fits =
-        let
-          -- frame-capacity alloc-pair = frame-capacity alloc
-          cap-eq : frame-capacity alloc-pair ≡ frame-capacity alloc
-          cap-eq = refl
+      apply-reclaim-preserves-result fits = bf-same-frame-slot final-alloc
+        (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits })
+        refl refl refl result-loc result-before
 
-          -- Transport fits to alloc-pair
-          fits-pair : apply-reclaimable-slot ≤ frame-capacity alloc-pair
-          fits-pair = subst (λ c → apply-reclaimable-slot ≤ c) (sym cap-eq) fits
+      -- Validity at reclaimed allocation - same as final-alloc (structurally equal)
+      apply-reclaim-preserves-validity : ∀ (fits : apply-reclaimable-slot ≤ frame-capacity alloc) →
+        ValidAtWF (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits })
+                  (eval apply x) result-loc s-final
+      apply-reclaim-preserves-validity fits = validityWF-with-bf-transfer (eval apply x) result-loc s-final
+        final-alloc
+        (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits })
+        (λ loc' bf → bf-same-frame-slot final-alloc
+          (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits })
+          refl refl refl loc' bf)
+        result-valid-wf
 
-          -- Get BeforeFrontier from body's reclaim-preserves-result
-          bf-pair : BeforeFrontier (record alloc-pair { next-slot = apply-reclaimable-slot ; slots-available = fits-pair }) result-loc
-          bf-pair = IRResultAWF.reclaim-preserves-result body-result fits-pair
-
-          -- Transfer to alloc (same current-frame, same next-heap-ref)
-          -- record alloc { next-slot = ... } and record alloc-pair { next-slot = ... }
-          -- have the same current-frame, so BeforeFrontier transfers
-        in frontier-monotone
-             (record alloc-pair { next-slot = apply-reclaimable-slot ; slots-available = fits-pair })
-             (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits })
-             refl  -- current-frame is the same
-             ≤-refl  -- next-slot is the same
-             ≤-refl  -- next-heap-ref is the same
-             result-loc bf-pair
+      -- reclaim-size-bound: slot + pair-slots ≤ slot + pair-slots * 1 = slot + pair-slots ✓
+      apply-reclaim-size-bound : apply-reclaimable-slot ≤ next-slot alloc + pair-slots *ℕ ir-size (apply {A} {B})
+      apply-reclaim-size-bound = ≤-refl

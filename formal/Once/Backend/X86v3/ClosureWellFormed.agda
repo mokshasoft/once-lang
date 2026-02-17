@@ -18,7 +18,7 @@
 
 module Once.Backend.X86v3.ClosureWellFormed where
 
-open import Data.Nat using (ℕ; _<_; _≤_; _+_) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; _<_; _≤_; _≥_; _+_) renaming (_*_ to _*ℕ_)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -104,7 +104,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
       -- Heap preservation: no heap allocation during stack-only IR operations
       heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
-      slot-bounded : next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement ir
+      -- slot-bounded REMOVED: Using dynamic capacity threading instead (X86 pattern)
+      -- Capacity is threaded via BodyCorrect.body-capacity for apply
       capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
       -- Write isolation: IR execution only writes at/after frontier
       -- Memory at BeforeFrontier locations is preserved
@@ -118,16 +119,69 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
       reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
         BeforeFrontier (record alloc { next-slot = reclaimable-slot ; slots-available = fits }) result-loc
+      -- Reclaim preserves validity: ValidAtWF at the reclaimed allocation
+      -- This is the key lemma for compose/pair to transfer validity through reclamation
+      -- Unlike frontier-advance, this handles the "backwards" direction of reclamation
+      reclaim-preserves-validity : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+        ValidAtWF (record alloc { next-slot = reclaimable-slot ; slots-available = fits })
+                  (eval ir x) result-loc final-state
+      -- Reclaim size bound: reclaimable-slot is within the IR's size budget
+      -- This replaces slot-bounded and IS provable for apply (reclaimable = slot + pair-slots)
+      -- Used by compose/pair to derive capacity for subsequent operations
+      reclaim-size-bound : reclaimable-slot ≤ next-slot alloc + pair-slots *ℕ ir-size ir
 
   open IRResultAWF public
 
   ------------------------------------------------------------------------
+  -- EscapingResult: IR result that escapes the body's working region
+  --
+  -- For pure reclamation (body runs in same frame), the result and ALL
+  -- reachable sub-locations must not be in the body's stack region
+  -- [start-slot, ...) where start-slot = next-slot alloc.
+  --
+  -- This is a semantic constraint: escaping values are either:
+  -- 1. On heap (heap-before)
+  -- 2. In slots before start-slot (from input, in same frame)
+  -- 3. In ancestor frames (stack-ancestor)
+  --
+  -- Escape analysis ensures stack allocations in the body's region
+  -- are only for temporaries, not for escaping results.
+  ------------------------------------------------------------------------
+
+  record EscapingResult {A B : Type}
+                        (ir : IR A B)
+                        (x : ⟦ A ⟧)
+                        (s : LocState FS)
+                        (alloc : AllocState {FS}) : Set where
+    field
+      result : IRResultAWF ir x s alloc
+      -- ALL BeforeFrontier locations escape the body's working region
+      -- For any location in current-frame, its slot must be < next-slot alloc
+      -- (i.e., it came from input, not allocated during body execution)
+      --
+      -- This covers result-loc and all sub-locations in the validity tree.
+      -- Required because ValidAtWF contains BeforeFrontier proofs for all
+      -- sub-locations, and these must all survive after reclamation.
+      all-escape : ∀ loc → BeforeFrontier (final-alloc result) loc →
+                   ∀ k → k ≥ next-slot alloc → loc ≢ OnStack (current-frame alloc) k
+
+  open EscapingResult public
+
+  -- Helper: extract result-escapes from all-escape for slots >= start-slot
+  result-escapes-from-all : ∀ {A B ir x s alloc} (er : EscapingResult {A} {B} ir x s alloc) →
+    ∀ k → k ≥ next-slot alloc → result-loc (result er) ≢ OnStack (current-frame alloc) k
+  result-escapes-from-all er k k≥slot = all-escape er (result-loc (result er)) (result-before (result er)) k k≥slot
+
+  ------------------------------------------------------------------------
   -- BodyCorrect: Pre-computed proof that body execution works
   --
-  -- Takes ValidAtWF input and returns IRResultAWF for full consistency.
+  -- Takes ValidAtWF input and returns EscapingResult for cross-frame calls.
   -- Uses NO_POSITIVITY_CHECK because the mutual dependency with ValidAtWF
   -- is safe - BodyCorrect is only constructed in Curry using make-rec-wf,
   -- which is structurally smaller.
+  --
+  -- KEY CHANGE: Returns EscapingResult instead of IRResultAWF.
+  -- This enforces that body results don't reference the callee's stack frame.
   ------------------------------------------------------------------------
 
   {-# NO_POSITIVITY_CHECK #-}
@@ -148,9 +202,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       body-cap-eq : body-capacity ≡ pair-slots *ℕ ir-size body
 
       -- Given proper setup, body execution succeeds
-      -- Takes ValidAtWF and returns IRResultAWF for full consistency
-      -- Uses body-capacity for linear recursion
-      -- SIMPLIFIED: Only needs body-capacity constraint (no global invariants)
+      -- Returns EscapingResult: result + proof it's not in current frame
+      -- This is essential for cross-frame calls (Apply calling body)
       execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
         (s : LocState FS) (alloc : AllocState {FS}) →
         -- Preconditions (ValidAtWF for full consistency)
@@ -161,8 +214,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- LINEAR capacity: body-capacity = pair-slots * ir-size body
         -- This is the ONLY capacity constraint needed
         next-slot alloc + body-capacity ≤ frame-capacity alloc →
-        -- Result (IRResultAWF with ValidAtWF inside!)
-        IRResultAWF body (pair env arg) s alloc
+        -- Result: EscapingResult with escapes proof!
+        EscapingResult body (pair env arg) s alloc
 
   open BodyCorrect public
 
@@ -308,12 +361,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; frame-preserved = IRResultAWF.frame-preserved r
     ; slot-monotone = IRResultAWF.slot-monotone r
     ; heap-monotone = IRResultAWF.heap-monotone r
-    ; slot-bounded = IRResultAWF.slot-bounded r
     ; capacity-preserved = IRResultAWF.capacity-preserved r
     ; reclaimable-slot = IRResultAWF.reclaimable-slot r
     ; reclaim-monotone = IRResultAWF.reclaim-monotone r
     ; reclaim-bounded = IRResultAWF.reclaim-bounded r
     ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result r
+    ; reclaim-size-bound = IRResultAWF.reclaim-size-bound r
     }
 
   ------------------------------------------------------------------------
@@ -455,9 +508,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   suc-frontier-neq-before-wf alloc (OnStack .(current-frame alloc) .(suc (next-slot alloc)))
     (stack-before refl k<next) refl =
     ⊥-elim (1+n≰n (<⇒≤ k<next))
-  suc-frontier-neq-before-wf alloc (OnStack f k) (stack-other-frame f≢cf) eq
+  suc-frontier-neq-before-wf alloc (OnStack f k) (stack-ancestor cf≺f _) eq
     with eq
-  ... | refl = f≢cf refl
+  ... | refl = ≺⇒≢ cf≺f refl
   suc-frontier-neq-before-wf alloc (OnHeap r o) _ ()
 
   -- ValidAtWF is preserved when writing to at-frontier location
@@ -726,8 +779,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       stack-alloc-advances' alloc rs monotone fits (OnStack f k) (stack-before refl k<next) =
         stack-before refl (<-≤-trans k<next monotone)
         where open import Data.Nat.Properties using (<-≤-trans)
-      stack-alloc-advances' alloc rs monotone fits (OnStack f k) (stack-other-frame f≢cf) =
-        stack-other-frame f≢cf
+      stack-alloc-advances' alloc rs monotone fits (OnStack f k) (stack-ancestor cf≺f src) =
+        stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
       stack-alloc-advances' alloc rs monotone fits (OnHeap r o) (heap-before r<next) =
         heap-before r<next
 

@@ -82,8 +82,8 @@ module FrontierLemmas {FS : FrameSemantics} where
     ∀ loc → BeforeFrontier a1 loc → BeforeFrontier a2 loc
   frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnStack f k) (stack-before f-eq k<slot) =
     stack-before (trans f-eq frame-eq) (subst (k <_) slot-eq k<slot)
-  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnStack f k) (stack-other-frame f≢cf) =
-    stack-other-frame (λ f≡cf2 → f≢cf (trans f≡cf2 (sym frame-eq)))
+  frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnStack f k) (stack-ancestor cf≺f src) =
+    stack-ancestor (subst (_≺ f) frame-eq cf≺f) src  -- Transfer ordering via frame equality, preserve provenance
   frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnHeap r o) (heap-before ref<heap) =
     heap-before (subst (ref-id r <_) heap-eq ref<heap)
 

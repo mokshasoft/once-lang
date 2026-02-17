@@ -11,8 +11,8 @@
 
 module Once.Backend.X86v3.IR.ComposeWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m+n)
+open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m+n; m≤n+m; *-distribˡ-+; *-suc; n≤1+n)
 open import Data.Bool using (false)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst; cong)
@@ -41,21 +41,19 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.Backend.X86v3.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only)
+    using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only;
+           validityWF-frontier-advance; validityWF-mem-preserved)
 
   -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
 
   -- Import arithmetic lemmas
   open import Once.Backend.X86v3.DispatcherArithmeticLemma
-    using (compose-slot-bounded-lemma; compose-f-cap; compose-g-cap)
+    using (compose-f-cap; compose-g-cap)
   open import Once.Backend.X86v3.FrontierLemma
   open FrontierLemmas {FS}
     using (frontier-same-heap)
   open ExecLemmas {FS}
 
-  -- Import stack bound lemma
-  open import Once.Backend.X86v3.StackBoundLemma
-    using (ir-stack-req-bounded)
 
   ------------------------------------------------------------------------
   -- Compose: run f, then run g with f's output
@@ -116,62 +114,68 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         inter-valid-wf = IRResultAWF.result-valid-wf result-f
 
         ------------------------------------------------------------------------
-        -- Derive capacity for g:
-        -- Need: slot₁ + pair-slots * sg ≤ capacity₁
-        --
-        -- Chain:
-        --   slot₁ ≤ slot + req-f (from slot-bounded)
-        --   req-f ≤ pair-slots * sf (from ir-stack-req-bounded)
-        --   slot₁ ≤ slot + pair-slots * sf
-        --   Use compose-g-cap lemma
+        -- Reclaim after f: Reset slot to reclaimable-slot
+        -- This is key to eliminating slot-bounded
         ------------------------------------------------------------------------
+        reclaim-f = IRResultAWF.reclaimable-slot result-f
 
-        -- slot₁ ≤ slot + pair-slots * sf
-        slot₁-bound-step1 : next-slot alloc₁ ≤ next-slot alloc + ir-stack-requirement f
-        slot₁-bound-step1 = IRResultAWF.slot-bounded result-f
-
-        slot₁-bound-step2 : ir-stack-requirement f ≤ pair-slots *ℕ sf
-        slot₁-bound-step2 = ir-stack-req-bounded f
-
-        slot₁-bound : next-slot alloc₁ ≤ next-slot alloc + pair-slots *ℕ sf
-        slot₁-bound = ≤-trans slot₁-bound-step1 (+-monoʳ-≤ (next-slot alloc) slot₁-bound-step2)
+        -- reclaim-f is bounded by f's size
+        reclaim-f-bound : reclaim-f ≤ next-slot alloc + pair-slots *ℕ sf
+        reclaim-f-bound = IRResultAWF.reclaim-size-bound result-f
 
         -- capacity₁ = capacity (frame-capacity preserved)
         capacity₁-eq : frame-capacity alloc₁ ≡ frame-capacity alloc
         capacity₁-eq = IRResultAWF.capacity-preserved result-f
 
-        combined-cap-g : next-slot alloc₁ + pair-slots *ℕ sg ≤ frame-capacity alloc₁
-        combined-cap-g = subst (next-slot alloc₁ + pair-slots *ℕ sg ≤_) (sym capacity₁-eq)
-                           (compose-g-cap (next-slot alloc) (next-slot alloc₁) pair-slots sf sg
-                              (frame-capacity alloc) slot₁-bound combined-cap-converted)
+        -- Derive that reclaim fits in capacity for creating reclaimed alloc
+        -- Chain: reclaim-f ≤ slot + ps*sf ≤ slot + ps*(sf+sg) ≤ slot + ps*suc(sf+sg) ≤ cap
+        reclaim-f-fits : reclaim-f ≤ frame-capacity alloc
+        reclaim-f-fits = ≤-trans reclaim-f-bound
+                           (≤-trans (+-monoʳ-≤ (next-slot alloc) (*-monoʳ-≤ pair-slots (m≤m+n sf sg)))
+                             (≤-trans (+-monoʳ-≤ (next-slot alloc) (*-monoʳ-≤ pair-slots (n≤1+n (sf + sg))))
+                               combined-cap-converted))
 
-        -- Run g via recursive dispatch
+        -- Create reclaimed allocation
+        alloc₁-reclaimed : AllocState {FS}
+        alloc₁-reclaimed = record alloc
+          { next-slot = reclaim-f
+          ; slots-available = reclaim-f-fits
+          }
+
+        ------------------------------------------------------------------------
+        -- Derive capacity for g (using reclaim-f-bound)
+        -- reclaim-f + ps*sg ≤ slot + ps*sf + ps*sg = slot + ps*(sf+sg) < slot + ps*suc(sf+sg) ≤ cap
+        ------------------------------------------------------------------------
+        combined-cap-g : reclaim-f + pair-slots *ℕ sg ≤ frame-capacity alloc
+        combined-cap-g = compose-g-cap (next-slot alloc) reclaim-f pair-slots sf sg
+                           (frame-capacity alloc) reclaim-f-bound combined-cap-converted
+
+        -- Run g via recursive dispatch WITH RECLAIMED ALLOCATION
+        -- inter-loc is BeforeFrontier in reclaimed allocation since reclaim-f ≥ next-slot alloc₁
         inter-before = IRResultAWF.result-before result-f
         not-halted₁ = IRResultAWF.not-halted result-f
+
+        inter-before-reclaimed : BeforeFrontier alloc₁-reclaimed inter-loc
+        inter-before-reclaimed = IRResultAWF.reclaim-preserves-result result-f reclaim-f-fits
+
+        -- Use reclaim-preserves-validity directly to get validity at reclaimed allocation
+        -- This handles the "backwards" direction of reclamation (slot decreases)
+        inter-valid-reclaimed : ValidAtWF alloc₁-reclaimed (eval f x) inter-loc s₁
+        inter-valid-reclaimed = IRResultAWF.reclaim-preserves-validity result-f reclaim-f-fits
 
         -- Set up RDI for g's input
         s₁' = record s₁ { regs = writeReg (regs s₁) RDI inter-loc }
         rdi-eq₁ : readReg (regs s₁') RDI ≡ inter-loc
         rdi-eq₁ = writeReg-same (regs s₁) RDI inter-loc
 
-        inter-valid-wf' : ValidAtWF alloc₁ (eval f x) inter-loc s₁'
-        inter-valid-wf' = validityWF-mem-only (eval f x) inter-loc s₁ s₁' refl refl inter-valid-wf
+        inter-valid-wf' : ValidAtWF alloc₁-reclaimed (eval f x) inter-loc s₁'
+        inter-valid-wf' = validityWF-mem-only (eval f x) inter-loc s₁ s₁' refl refl inter-valid-reclaimed
 
-        result-g = rec-wf g (∘-g-smaller f g) (eval f x) inter-loc s₁' alloc₁ inter-valid-wf' inter-before not-halted₁ rdi-eq₁ combined-cap-g
+        result-g = rec-wf g (∘-g-smaller f g) (eval f x) inter-loc s₁' alloc₁-reclaimed inter-valid-wf' inter-before-reclaimed not-halted₁ rdi-eq₁ combined-cap-g
 
         -- Final state and alloc
         s₂ = IRResultAWF.final-state result-g
         alloc₂ = IRResultAWF.final-alloc result-g
-
-        ------------------------------------------------------------------------
-        -- Compose slot-bounded: final slot ≤ initial slot + ir-req compose
-        ------------------------------------------------------------------------
-        slot-bounded-compose : next-slot alloc₂ ≤ next-slot alloc + ir-stack-requirement (g ∘ f)
-        slot-bounded-compose = compose-slot-bounded-lemma
-                                 (next-slot alloc) (next-slot alloc₁) (next-slot alloc₂)
-                                 (ir-stack-requirement f) (ir-stack-requirement g)
-                                 (IRResultAWF.slot-bounded result-g)
-                                 (IRResultAWF.slot-bounded result-f)
 
         ------------------------------------------------------------------------
         -- Memory preservation for locations before initial frontier
@@ -179,12 +183,14 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         mem-preserved-compose : ∀ loc → BeforeFrontier alloc loc →
           readLoc s₂ loc ≡ readLoc s loc
         mem-preserved-compose loc bf =
-          let bf₁ = frontier-monotone alloc alloc₁
-                      (sym (IRResultAWF.frame-preserved result-f))
-                      (IRResultAWF.slot-monotone result-f)
-                      (IRResultAWF.heap-monotone result-f)
-                      loc bf
-              step-g = IRResultAWF.mem-preserved-before result-g loc bf₁
+          let -- Transfer bf to alloc₁-reclaimed
+              bf-reclaimed : BeforeFrontier alloc₁-reclaimed loc
+              bf-reclaimed = frontier-monotone alloc alloc₁-reclaimed
+                               refl  -- frame preserved
+                               (IRResultAWF.reclaim-monotone result-f)  -- slot ≤ reclaim-f
+                               ≤-refl  -- heap same
+                               loc bf
+              step-g = IRResultAWF.mem-preserved-before result-g loc bf-reclaimed
               step-reg = readLoc-stackMem-eq s₁' s₁ loc refl refl
               step-f = IRResultAWF.mem-preserved-before result-f loc bf
           in trans step-g (trans step-reg step-f)
@@ -192,14 +198,22 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ------------------------------------------------------------------------
         -- Reclamation: Use g's reclaimable-slot as the compose reclaim point
         -- Since compose's result is g's result, we use g's reclaim logic
+        --
+        -- Chain:
+        --   reclaim-g ≤ reclaim-f + pair-slots * sg  (from g's reclaim-size-bound)
+        --   reclaim-f ≤ slot + pair-slots * sf       (from f's reclaim-size-bound)
+        --   reclaim-g ≤ slot + pair-slots * sf + pair-slots * sg
+        --            = slot + pair-slots * (sf + sg)
+        --            < slot + pair-slots * suc(sg + sf)
+        --            = slot + pair-slots * size
         ------------------------------------------------------------------------
         reclaim-g = IRResultAWF.reclaimable-slot result-g
 
         compose-reclaim = reclaim-g
 
-        -- reclaim-g ≥ next-slot alloc₁ ≥ next-slot alloc
+        -- reclaim-g ≥ reclaim-f ≥ next-slot alloc
         compose-reclaim-monotone : next-slot alloc ≤ compose-reclaim
-        compose-reclaim-monotone = ≤-trans (IRResultAWF.slot-monotone result-f)
+        compose-reclaim-monotone = ≤-trans (IRResultAWF.reclaim-monotone result-f)
                                            (IRResultAWF.reclaim-monotone result-g)
 
         compose-reclaim-bounded : compose-reclaim ≤ next-slot alloc₂
@@ -209,20 +223,46 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           BeforeFrontier (record alloc { next-slot = compose-reclaim ; slots-available = fits })
                          (IRResultAWF.result-loc result-g)
         compose-reclaim-preserves-result fits =
-          let -- Use g's reclaim-preserves-result
-              -- g was called with alloc₁, and reclaim-g ≤ frame-capacity alloc₁ = frame-capacity alloc
-              fits₁ : reclaim-g ≤ frame-capacity alloc₁
-              fits₁ = subst (reclaim-g ≤_) (sym capacity₁-eq) fits
-              g-preserves = IRResultAWF.reclaim-preserves-result result-g fits₁
+          let -- g was called with alloc₁-reclaimed, so use its frame-capacity
+              -- frame-capacity alloc₁-reclaimed = frame-capacity alloc
+              fits-reclaimed : reclaim-g ≤ frame-capacity alloc
+              fits-reclaimed = fits
+              g-preserves = IRResultAWF.reclaim-preserves-result result-g fits-reclaimed
               -- Now transfer to alloc with compose-reclaim
           in frontier-same-heap
-               (record alloc₁ { next-slot = reclaim-g ; slots-available = fits₁ })
+               (record alloc { next-slot = reclaim-g ; slots-available = fits-reclaimed })
                (record alloc { next-slot = compose-reclaim ; slots-available = fits })
-               (IRResultAWF.frame-preserved result-f)
                refl
-               (IRResultAWF.heap-preserved result-f)
+               refl
+               refl
                (IRResultAWF.result-loc result-g)
                g-preserves
+
+        -- Validity at reclaimed allocation - use g's reclaim-preserves-validity
+        compose-reclaim-preserves-validity : ∀ (fits : compose-reclaim ≤ frame-capacity alloc) →
+          ValidAtWF (record alloc { next-slot = compose-reclaim ; slots-available = fits })
+                    (eval (g ∘ f) x) (IRResultAWF.result-loc result-g) s₂
+        compose-reclaim-preserves-validity fits = IRResultAWF.reclaim-preserves-validity result-g fits
+
+        -- reclaim-size-bound: compose-reclaim ≤ slot + pair-slots * size
+        -- Chain through f and g's reclaim bounds
+        reclaim-g-bound : reclaim-g ≤ reclaim-f + pair-slots *ℕ sg
+        reclaim-g-bound = IRResultAWF.reclaim-size-bound result-g
+
+        -- reclaim-g ≤ slot + ps*sf + ps*sg = slot + ps*(sf+sg)
+        reclaim-from-slot : compose-reclaim ≤ next-slot alloc + pair-slots *ℕ (sf + sg)
+        reclaim-from-slot = ≤-trans reclaim-g-bound
+                              (≤-trans (+-monoˡ-≤ (pair-slots *ℕ sg) reclaim-f-bound)
+                                (≤-reflexive (trans (+-assoc (next-slot alloc) (pair-slots *ℕ sf) (pair-slots *ℕ sg))
+                                                    (cong (next-slot alloc +_) (sym (*-distribˡ-+ pair-slots sf sg))))))
+
+        -- slot + ps*(sf+sg) ≤ slot + ps*suc(sg+sf) = slot + ps*size
+        -- sf+sg ≤ suc(sf+sg), then subst to suc(sg+sf) = size
+        compose-reclaim-size-bound : compose-reclaim ≤ next-slot alloc + pair-slots *ℕ size
+        compose-reclaim-size-bound = ≤-trans reclaim-from-slot
+                                       (+-monoʳ-≤ (next-slot alloc)
+                                         (*-monoʳ-≤ pair-slots
+                                           (subst (sf + sg ≤_) (cong suc (+-comm sf sg)) (n≤1+n (sf + sg)))))
 
     in record
       { result-loc = IRResultAWF.result-loc result-g
@@ -232,20 +272,20 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; result-before = IRResultAWF.result-before result-g
       ; rax-is-result = IRResultAWF.rax-is-result result-g
       ; not-halted = IRResultAWF.not-halted result-g
-      ; frame-preserved = trans (IRResultAWF.frame-preserved result-g)
-                                (IRResultAWF.frame-preserved result-f)
-      ; slot-monotone = ≤-trans (IRResultAWF.slot-monotone result-f)
+      -- g was run with alloc₁-reclaimed, which has current-frame = alloc.current-frame definitionally
+      ; frame-preserved = IRResultAWF.frame-preserved result-g
+      -- g was run with alloc₁-reclaimed, so chain through reclaim-monotone
+      ; slot-monotone = ≤-trans (IRResultAWF.reclaim-monotone result-f)
                                 (IRResultAWF.slot-monotone result-g)
-      ; heap-monotone = ≤-trans (IRResultAWF.heap-monotone result-f)
-                                (IRResultAWF.heap-monotone result-g)
-      ; heap-preserved = trans (IRResultAWF.heap-preserved result-g)
-                               (IRResultAWF.heap-preserved result-f)
-      ; slot-bounded = slot-bounded-compose
-      ; capacity-preserved = trans (IRResultAWF.capacity-preserved result-g)
-                                   (IRResultAWF.capacity-preserved result-f)
+      -- g was run with alloc₁-reclaimed which has same heap/capacity as alloc
+      ; heap-monotone = IRResultAWF.heap-monotone result-g
+      ; heap-preserved = IRResultAWF.heap-preserved result-g
+      ; capacity-preserved = IRResultAWF.capacity-preserved result-g
       ; mem-preserved-before = mem-preserved-compose
       ; reclaimable-slot = compose-reclaim
       ; reclaim-monotone = compose-reclaim-monotone
       ; reclaim-bounded = compose-reclaim-bounded
       ; reclaim-preserves-result = compose-reclaim-preserves-result
+      ; reclaim-preserves-validity = compose-reclaim-preserves-validity
+      ; reclaim-size-bound = compose-reclaim-size-bound
       }

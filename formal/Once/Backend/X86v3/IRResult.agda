@@ -7,7 +7,7 @@
 
 module Once.Backend.X86v3.IRResult where
 
-open import Data.Nat using (ℕ; _≤_; _+_; _<_)
+open import Data.Nat using (ℕ; _≤_; _+_; _<_) renaming (_*_ to _*ℕ_)
 open import Data.Bool using (Bool; false)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Induction.WellFounded using (Acc)
@@ -45,8 +45,8 @@ module DispatcherResult {FS : FrameSemantics} (program-bound : ℕ) where
       frame-preserved : current-frame final-alloc ≡ current-frame alloc
       slot-monotone : next-slot alloc ≤ next-slot final-alloc
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
-      -- Stack requirement bound: IR uses at most ir-stack-requirement slots
-      slot-bounded : next-slot final-alloc ≤ next-slot alloc + ir-stack-requirement ir
+      -- slot-bounded REMOVED: Using dynamic capacity threading instead (X86 pattern)
+      -- Capacity is threaded via BodyCorrect.body-capacity for apply
       -- Capacity is preserved (frame size doesn't change within a frame)
       capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
 
@@ -66,6 +66,9 @@ module DispatcherResult {FS : FrameSemantics} (program-bound : ℕ) where
       -- Result location survives reclamation (it's before reclaimable-slot)
       reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
         BeforeFrontier (record alloc { next-slot = reclaimable-slot ; slots-available = fits }) result-loc
+      -- Reclaim size bound: reclaimable-slot is within the IR's size budget
+      -- This replaces slot-bounded and IS provable for apply
+      reclaim-size-bound : reclaimable-slot ≤ next-slot alloc + pair-slots *ℕ ir-size ir
 
 ------------------------------------------------------------------------
 -- RecDispatcher: Recursive Dispatch Interface

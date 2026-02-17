@@ -55,9 +55,9 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
     ⊥-elim (1+n≰n (<⇒≤ k<next))
     where
       open import Data.Nat.Properties using (1+n≰n; <⇒≤)
-  suc-frontier-neq-before alloc (OnStack f k) (stack-other-frame f≢cf) eq
+  suc-frontier-neq-before alloc (OnStack f k) (stack-ancestor cf≺f _) eq
     with eq
-  ... | refl = f≢cf refl
+  ... | refl = ≺⇒≢ cf≺f refl
   suc-frontier-neq-before alloc (OnHeap r o) _ ()
 
   ------------------------------------------------------------------------
