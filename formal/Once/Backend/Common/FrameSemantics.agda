@@ -31,6 +31,8 @@
 module Once.Backend.Common.FrameSemantics where
 
 open import Data.Nat using (ℕ; zero; _<_; _≤_)
+open import Data.Empty using (⊥)
+open import Data.Sum using (_⊎_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (Dec)
 
@@ -99,6 +101,22 @@ record FrameSemantics : Set₁ where
 
     -- | Frame ordering: f₁ ≺ f₂ means f₁ is "further" in growth direction
     _≺_ : Frame → Frame → Set
+
+    -- | Frame ordering is transitive
+    -- This follows naturally from address comparison (< is transitive).
+    -- Needed for BeforeFrontier transfer across frame push/pop.
+    ≺-trans : ∀ {f₁ f₂ f₃} → f₁ ≺ f₂ → f₂ ≺ f₃ → f₁ ≺ f₃
+
+    -- | Frame ordering is irreflexive
+    -- This follows naturally from address comparison (< is irreflexive).
+    -- Needed for deriving f ≢ g from g ≺ f (e.g., in BeforeFrontier).
+    ≺-irrefl : ∀ {f} → f ≺ f → ⊥
+
+    -- | Frame ordering is trichotomous (total order)
+    -- For any two frames, exactly one of: f₁ ≺ f₂, f₁ ≡ f₂, f₂ ≺ f₁
+    -- This follows from addresses being natural numbers with trichotomous <.
+    -- Needed for BeforeFrontier transfer between frames.
+    ≺-compare : ∀ f₁ f₂ → (f₁ ≺ f₂) ⊎ (f₁ ≡ f₂) ⊎ (f₂ ≺ f₁)
 
     --------------------------------------------------------------------
     -- Bounded Frame Disjointness (Key Property)
