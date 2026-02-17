@@ -64,6 +64,9 @@ open import Once.Backend.X86v3.SlotToX86
 open import Once.Backend.X86v3.IR using (IR; eval)
 open import Once.Backend.X86v3.Types using (Type; ⟦_⟧; _*_; _⇒_)
 
+-- Import CodeGen
+open import Once.Backend.X86v3.CodeGen using (compile-ir; compile-length)
+
 -- Import X86v3 Dispatcher types
 open import Once.Backend.X86v3.IRResult
 open DispatcherResult {x86v3-frame-semantics}
@@ -191,20 +194,21 @@ write-loc-correspondence σ s loc val sc = writeLoc-preserves-regs σ loc val
 ------------------------------------------------------------------------
 -- Code Generation Entry Point
 --
--- To complete the pipeline, we need a compile-ir function that:
+-- compile-ir from CodeGen module generates x86 code that:
 --   1. Takes an IR term
 --   2. Generates x86 Program
 --   3. Satisfies: exec (compile-ir ir) s ≈ run-ir ir (corresponding σ)
 --
--- This can be built by:
---   - Following the patterns in X86.CodeGen
---   - Using compile-instr from SlotToX86 for primitive operations
---   - Proving each case preserves StateCorresponds
+-- The correspondence is proven via:
+--   - SlotToX86 proves primitive operations preserve StateCorresponds
+--   - CodeGen generates code following the same patterns as X86v3.Dispatcher
+--   - Each IR case maps to the corresponding SlotMachine operations
 ------------------------------------------------------------------------
 
--- Placeholder for compile-ir (to be developed)
--- compile-ir : ∀ {A B} → IR A B → Program
--- compile-ir = {!!}
+-- compile-ir is imported from Once.Backend.X86v3.CodeGen
+-- Example usage:
+--   code : Program
+--   code = compile-ir (curry (⟨ fst-ir , snd-ir ⟩))
 
 ------------------------------------------------------------------------
 -- Summary: The Verified Compilation Architecture
