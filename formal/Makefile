@@ -10,12 +10,14 @@
 #
 #   Architecture-specific:
 #   make x86-compiler    - Type-check x86-64 compiler (frontend + x86 backends)
+#   make x86v3-compiler  - Type-check X86v3 SlotMachine compiler (POC)
 #   make aarch64-compiler - Type-check AArch64 compiler (frontend + AArch64 backends)
 #   make riscv-compiler  - Type-check RISC-V compiler (frontend + RISC-V backends)
 #
 #   CCC backends (categorical combinator code generators):
 #   make ccc          - Type-check all CCC backends
 #   make x86-ccc      - Type-check x86-64 CCC backend (whole-program proofs)
+#   make x86v3-ccc    - Type-check X86v3 SlotMachine CCC backend (POC)
 #   make aarch64-ccc  - Type-check AArch64 CCC backend
 #   make riscv-ccc    - Type-check RISC-V CCC backend
 #
@@ -53,6 +55,7 @@ X86_STAR := Once/Backend/X86/Correct/Star.agda
 X86_STARBASE := Once/Backend/X86/Correct/StarBase.agda
 X86_WHOLEPROGRAM := Once/Backend/X86/Correct/WholeProgram.agda
 X86_ENCODING := Once/Backend/X86/Encoding.agda
+X86V3_DISPATCHER := Once/Backend/X86v3/Dispatcher.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
 AARCH64_CODEGEN := Once/Backend/AArch64/CodeGen.agda
@@ -162,6 +165,11 @@ x86-ccc:
 	@sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
 	@sh -c '$(AGDA_CMD) $(X86_WHOLEPROGRAM)'
 
+.PHONY: x86v3-ccc
+x86v3-ccc:
+	@echo "Type-checking X86v3 SlotMachine CCC backend (POC)..."
+	@sh -c '$(AGDA_CMD) $(X86V3_DISPATCHER)'
+
 .PHONY: x86-star
 x86-star:
 	@echo "Type-checking x86-64 star relation module..."
@@ -209,7 +217,7 @@ riscv-ccc-correct:
 	@if [ -f "$(RISCV_CORRECT)" ]; then sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
 
 .PHONY: ccc
-ccc: x86-ccc aarch64-ccc riscv-ccc
+ccc: x86-ccc x86v3-ccc aarch64-ccc riscv-ccc
 	@echo "All CCC backends type-check successfully!"
 
 .PHONY: riscv-foundation
@@ -272,6 +280,10 @@ aarch64-compiler: frontend common aarch64-ccc aarch64-arith
 .PHONY: riscv-compiler
 riscv-compiler: frontend common riscv-ccc riscv-arith
 	@echo "RISC-V compiler proofs type-check successfully!"
+
+.PHONY: x86v3-compiler
+x86v3-compiler: frontend common x86v3-ccc
+	@echo "X86v3 SlotMachine compiler proofs type-check successfully!"
 
 # All compiler proofs
 .PHONY: compiler

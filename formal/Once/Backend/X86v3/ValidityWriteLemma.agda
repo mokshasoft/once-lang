@@ -75,7 +75,7 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAt alloc v loc s →
     ValidAt alloc v loc (write-loc s (OnStack (current-frame alloc) (next-slot alloc)) val)
 
-  validity-write-at-frontier {alloc} {Unit} tt loc s val loc-before valid-unit = valid-unit
+  validity-write-at-frontier {alloc} {Unit} _ loc s val loc-before valid-unit = valid-unit
 
   validity-write-at-frontier {alloc} {A * B} (a , b) loc s val loc-before
     (valid-pair {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
@@ -117,7 +117,7 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAt alloc v loc s →
     ValidAt alloc v loc (write-loc s (OnStack (current-frame alloc) (suc (next-slot alloc))) val)
 
-  validity-write-at-suc-frontier {alloc} {Unit} tt loc s val loc-before valid-unit = valid-unit
+  validity-write-at-suc-frontier {alloc} {Unit} _ loc s val loc-before valid-unit = valid-unit
 
   validity-write-at-suc-frontier {alloc} {A * B} (a , b) loc s val loc-before
     (valid-pair {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =

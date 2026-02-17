@@ -131,7 +131,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     ValidAtWF a₁ v loc s →
     ValidAtWF a₂ v loc s
 
-  validityWF-with-bf-transfer {Unit} tt loc s a₁ a₂ bf-transfer _ = valid-unit-wf
+  validityWF-with-bf-transfer {Unit} _ loc s a₁ a₂ bf-transfer _ = valid-unit-wf
 
   validityWF-with-bf-transfer {A * B} (a , b) loc s a₁ a₂ bf-transfer
     (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
