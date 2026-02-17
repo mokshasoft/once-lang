@@ -21,8 +21,13 @@
 module Once.Backend.X86.FrameInstantiation where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≥_; _+_; _*_; s≤s; z≤n)
-open import Data.Nat.Properties using (<⇒≢; <-≤-trans; ≤-<-trans; m≤m+n; *-monoˡ-<; +-monoʳ-<)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Data.Nat.Properties using (<⇒≢; <-trans; <-≤-trans; ≤-<-trans; m≤m+n; *-monoˡ-<; +-monoʳ-<; _≟_; ≤-irrelevant; <-irrefl; <-cmp)
+open import Data.Product using (_×_; _,_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Empty using (⊥)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst)
+open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 
 -- Import the architecture-independent interface
 open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
@@ -32,7 +37,8 @@ open import Once.Backend.Common.MemoryLayoutSemantics using (Addr)
 open import Once.Backend.X86.Layout
   using (StackPointer; slot-addr; word-size;
          grow-identity; sp-distinct; offset-distinct;
-         frame-below-slot0-disjoint; slot-addr-≥-base)
+         frame-below-slot0-disjoint; slot-addr-≥-base;
+         slot-addr-suc; InStack; in-stack)
 open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------
@@ -43,6 +49,27 @@ open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
 
 X86Frame : Set
 X86Frame = StackPointer
+
+------------------------------------------------------------------------
+-- Decidable Equality for Frames
+--
+-- Two StackPointers are equal iff their addresses are equal.
+-- The InStack proofs are equal by ≤-irrelevant.
+------------------------------------------------------------------------
+
+-- Helper: InStack proofs are equal when addresses are equal
+InStack-irrelevant : ∀ {a} (p q : InStack a) → p ≡ q
+InStack-irrelevant (p₁ , p₂) (q₁ , q₂) = cong₂ _,_ (≤-irrelevant p₁ q₁) (≤-irrelevant p₂ q₂)
+
+_x86-≟F_ : (f₁ f₂ : X86Frame) → Dec (f₁ ≡ f₂)
+f₁ x86-≟F f₂ with sp-addr f₁ ≟ sp-addr f₂
+... | no  a≢a = no λ { refl → a≢a refl }
+... | yes a≡a = yes (sp-eq a≡a)
+  where
+    -- When addresses are equal, the InStack proofs are also equal
+    sp-eq : sp-addr f₁ ≡ sp-addr f₂ → f₁ ≡ f₂
+    sp-eq refl with InStack-irrelevant (in-stack f₁) (in-stack f₂)
+    ... | refl = refl
 
 ------------------------------------------------------------------------
 -- Frame Base Address
@@ -63,6 +90,11 @@ x86-slot-addr = slot-addr
 x86-slot-zero-at-base : ∀ f → x86-slot-addr f zero ≡ x86-frame-base f
 x86-slot-zero-at-base f = grow-identity (sp-addr f)
 
+-- | Slot (suc k) is word-size bytes above slot k
+-- This is THE canonical slot-addr-suc for use with x86-frame-semantics
+x86-slot-addr-suc : ∀ f k → x86-slot-addr f (suc k) ≡ x86-slot-addr f k + word-size
+x86-slot-addr-suc = slot-addr-suc
+
 x86-slot-injective : ∀ f k₁ k₂ → k₁ ≢ k₂ → x86-slot-addr f k₁ ≢ x86-slot-addr f k₂
 x86-slot-injective = offset-distinct
 
@@ -75,6 +107,25 @@ x86-slot-injective = offset-distinct
 
 _x86-≺_ : X86Frame → X86Frame → Set
 f₁ x86-≺ f₂ = sp-addr f₁ < sp-addr f₂
+
+-- | Frame ordering is transitive (follows from < on addresses)
+x86-≺-trans : ∀ {f₁ f₂ f₃} → f₁ x86-≺ f₂ → f₂ x86-≺ f₃ → f₁ x86-≺ f₃
+x86-≺-trans {f₁} {f₂} {f₃} f₁≺f₂ f₂≺f₃ = <-trans f₁≺f₂ f₂≺f₃
+
+-- | Frame ordering is irreflexive (follows from < on addresses)
+x86-≺-irrefl : ∀ {f} → f x86-≺ f → ⊥
+x86-≺-irrefl {f} f≺f = <-irrefl refl f≺f
+
+-- | Frame ordering is trichotomous (total order on addresses)
+x86-≺-compare : ∀ f₁ f₂ → (f₁ x86-≺ f₂) ⊎ (f₁ ≡ f₂) ⊎ (f₂ x86-≺ f₁)
+x86-≺-compare f₁ f₂ with <-cmp (sp-addr f₁) (sp-addr f₂)
+... | tri< a<b _ _ = inj₁ a<b
+... | tri≈ _ a≡b _ = inj₂ (inj₁ (sp-eq a≡b))
+  where
+    sp-eq : sp-addr f₁ ≡ sp-addr f₂ → f₁ ≡ f₂
+    sp-eq refl with InStack-irrelevant (in-stack f₁) (in-stack f₂)
+    ... | refl = refl
+... | tri> _ _ b<a = inj₂ (inj₂ b<a)
 
 ------------------------------------------------------------------------
 -- Frame Disjointness (FULLY PROVEN)
@@ -149,16 +200,24 @@ x86-frame-disjoint-with-capacity f₁ f₂ k₁ k₂ capacity f₁<f₂ k₁<cap
 -- how frames are created (prologue allocation), not frame semantics.
 -- See: Once.Backend.X86.Correct.InitState.init-frame-gap-sufficient
 -- for the program entry trust boundary.
+--
+-- NOTE: Location (AllocMode) is NOT part of FrameSemantics.
+-- It is defined in MemoryValid.agda because it includes heap addresses,
+-- which have nothing to do with frame semantics.
 ------------------------------------------------------------------------
 
 x86-frame-semantics : FrameSemantics
 x86-frame-semantics = record
   { Frame = X86Frame
+  ; _≟F_ = _x86-≟F_
   ; frame-base = x86-frame-base
   ; slot-addr = x86-slot-addr
   ; slot-zero-at-base = x86-slot-zero-at-base
   ; slot-injective = x86-slot-injective
   ; _≺_ = _x86-≺_
+  ; ≺-trans = λ f₁≺f₂ f₂≺f₃ → <-trans f₁≺f₂ f₂≺f₃
+  ; ≺-irrefl = λ f≺f → <-irrefl refl f≺f
+  ; ≺-compare = x86-≺-compare
   ; frame-disjoint-bounded = x86-frame-disjoint-bounded
   }
 

@@ -16,7 +16,7 @@
 module Once.Backend.X86.Layout where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_; s≤s; z≤n)
-open import Data.Nat.Properties using (m≤m+n; ≤-trans; <-≤-trans; ≤-<-trans; <⇒≤; m<m+n; m∸n≤m)
+open import Data.Nat.Properties using (m≤m+n; ≤-trans; <-≤-trans; ≤-<-trans; <⇒≤; m<m+n; m∸n≤m; +-assoc; +-comm)
 open import Data.Product using (_×_; _,_)
 open import Relation.Nullary using (¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
@@ -180,6 +180,16 @@ slot-addr-≥-base sp k = m≤m+n (addr sp) (k * word-size)
 -- | Slot 1 is word-size bytes above base (x86-specific)
 slot-addr-next-is-base-plus-word : ∀ sp → slot-addr sp 1 ≡ addr sp + word-size
 slot-addr-next-is-base-plus-word sp = refl
+
+-- | Slot (suc k) is word-size bytes above slot k
+-- slot-addr sp (suc k) = slot-addr sp k + word-size
+-- Note: (suc k) * n = n + k * n, so we need comm + assoc
+slot-addr-suc : ∀ sp k → slot-addr sp (suc k) ≡ slot-addr sp k + word-size
+slot-addr-suc sp k =
+  -- slot-addr sp (suc k) = addr sp + (suc k) * word-size = addr sp + (word-size + k * word-size)
+  -- slot-addr sp k + word-size = (addr sp + k * word-size) + word-size
+  trans (cong (addr sp +_) (+-comm word-size (k * word-size)))
+        (sym (+-assoc (addr sp) (k * word-size) word-size))
 
 ------------------------------------------------------------------------
 -- Frame Ordering Implies Slot Disjointness (PROVEN)
