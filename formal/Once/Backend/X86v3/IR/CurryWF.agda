@@ -42,7 +42,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.Backend.X86v3.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; RecDispatcherWF; BodyCorrect; EscapingResult;
+    using (ValidAtWF; IRResultAWF; RecDispatcherWF; BodyCorrect;
            valid-closure-wf; validityWF-mem-only;
            validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier)
@@ -192,49 +192,19 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       --
       -- X86 pattern: store body-capacity = pair-slots * ir-size f in the closure
       -- Apply will extract and use this for its capacity requirement
-      -- SIMPLIFIED: No global invariants needed in execute
-
-      -- Postulate: Body execution results escape the body's working region
       --
-      -- This is a semantic property of the IR: values that escape a closure
-      -- (body results) must be heap-allocated or in slots before the body's region.
-      --
-      -- With pure reclamation (same frame), body runs at next-slot alloc'.
-      -- The escape property says: for any BeforeFrontier location in body's result,
-      -- if it's in the current frame, its slot must be < next-slot alloc' (from input).
-      --
-      -- This holds because:
-      -- 1. Heap locations (heap-before) are OnHeap, not OnStack
-      -- 2. Ancestor frame locations (stack-ancestor) are not in current frame
-      -- 3. Current-frame locations in result are either:
-      --    a. From input (slot < next-slot alloc')
-      --    b. Allocated by body (slot >= next-slot alloc') - but these don't escape!
-      --
-      -- The IR transformation (escape analysis) ensures property 3b.
-      postulate
-        body-all-escape : ∀ (arg : ⟦ _ ⟧) (pair-loc : ValueLocation FS)
-          (s' : LocState FS) (alloc' : AllocState {FS})
-          (pair-valid-wf : ValidAtWF alloc' (pair x arg) pair-loc s')
-          (pair-before : BeforeFrontier alloc' pair-loc)
-          (not-halt : halted s' ≡ false)
-          (rdi-eq' : readReg (regs s') RDI ≡ pair-loc)
-          (combined-cap' : next-slot alloc' + pair-slots *ℕ ir-size f ≤ frame-capacity alloc') →
-          let body-result = rec-wf f (curry-smaller f) (pair x arg) pair-loc s' alloc'
-                              pair-valid-wf pair-before not-halt rdi-eq' combined-cap'
-          in ∀ loc → BeforeFrontier (IRResultAWF.final-alloc body-result) loc →
-             ∀ k → k ≥ next-slot alloc' → loc ≢ OnStack (current-frame alloc') k
+      -- STACK-ALLOCATED RESULTS: No escape postulate needed!
+      -- Body can return stack-allocated values. Apply uses body's reclaimable-slot
+      -- for reclamation, so stack slots below that survive. Body's
+      -- reclaim-preserves-result proves the result survives reclamation.
 
       body-correct : BodyCorrect f x input-loc program-bound
       body-correct = record
         { body-capacity = pair-slots *ℕ ir-size f
         ; body-cap-eq = refl
         ; execute = λ arg arg-loc pair-loc s' alloc' pair-valid-wf pair-before not-halt rdi-eq' combined-cap' →
-            let body-result = rec-wf f (curry-smaller f) (pair x arg) pair-loc s' alloc'
-                                pair-valid-wf pair-before not-halt rdi-eq' combined-cap'
-            in record
-                 { result = body-result
-                 ; all-escape = body-all-escape arg pair-loc s' alloc' pair-valid-wf pair-before not-halt rdi-eq' combined-cap'
-                 }
+            rec-wf f (curry-smaller f) (pair x arg) pair-loc s' alloc'
+              pair-valid-wf pair-before not-halt rdi-eq' combined-cap'
         }
 
       rax-eq : readReg (regs s-final) RAX ≡ closure-loc

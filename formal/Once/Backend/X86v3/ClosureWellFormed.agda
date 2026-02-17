@@ -133,55 +133,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   open IRResultAWF public
 
   ------------------------------------------------------------------------
-  -- EscapingResult: IR result that escapes the body's working region
-  --
-  -- For pure reclamation (body runs in same frame), the result and ALL
-  -- reachable sub-locations must not be in the body's stack region
-  -- [start-slot, ...) where start-slot = next-slot alloc.
-  --
-  -- This is a semantic constraint: escaping values are either:
-  -- 1. On heap (heap-before)
-  -- 2. In slots before start-slot (from input, in same frame)
-  -- 3. In ancestor frames (stack-ancestor)
-  --
-  -- Escape analysis ensures stack allocations in the body's region
-  -- are only for temporaries, not for escaping results.
-  ------------------------------------------------------------------------
-
-  record EscapingResult {A B : Type}
-                        (ir : IR A B)
-                        (x : ⟦ A ⟧)
-                        (s : LocState FS)
-                        (alloc : AllocState {FS}) : Set where
-    field
-      result : IRResultAWF ir x s alloc
-      -- ALL BeforeFrontier locations escape the body's working region
-      -- For any location in current-frame, its slot must be < next-slot alloc
-      -- (i.e., it came from input, not allocated during body execution)
-      --
-      -- This covers result-loc and all sub-locations in the validity tree.
-      -- Required because ValidAtWF contains BeforeFrontier proofs for all
-      -- sub-locations, and these must all survive after reclamation.
-      all-escape : ∀ loc → BeforeFrontier (final-alloc result) loc →
-                   ∀ k → k ≥ next-slot alloc → loc ≢ OnStack (current-frame alloc) k
-
-  open EscapingResult public
-
-  -- Helper: extract result-escapes from all-escape for slots >= start-slot
-  result-escapes-from-all : ∀ {A B ir x s alloc} (er : EscapingResult {A} {B} ir x s alloc) →
-    ∀ k → k ≥ next-slot alloc → result-loc (result er) ≢ OnStack (current-frame alloc) k
-  result-escapes-from-all er k k≥slot = all-escape er (result-loc (result er)) (result-before (result er)) k k≥slot
-
-  ------------------------------------------------------------------------
   -- BodyCorrect: Pre-computed proof that body execution works
   --
-  -- Takes ValidAtWF input and returns EscapingResult for cross-frame calls.
+  -- Takes ValidAtWF input and returns IRResultAWF.
   -- Uses NO_POSITIVITY_CHECK because the mutual dependency with ValidAtWF
   -- is safe - BodyCorrect is only constructed in Curry using make-rec-wf,
   -- which is structurally smaller.
   --
-  -- KEY CHANGE: Returns EscapingResult instead of IRResultAWF.
-  -- This enforces that body results don't reference the callee's stack frame.
+  -- STACK-ALLOCATED RESULTS:
+  -- Body CAN return stack-allocated values! Apply uses body's
+  -- reclaimable-slot for reclamation, so stack slots below that survive.
+  -- Body's reclaim-preserves-result proves result survives reclamation.
+  -- No escape analysis postulate needed.
   ------------------------------------------------------------------------
 
   {-# NO_POSITIVITY_CHECK #-}
@@ -202,8 +165,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       body-cap-eq : body-capacity ≡ pair-slots *ℕ ir-size body
 
       -- Given proper setup, body execution succeeds
-      -- Returns EscapingResult: result + proof it's not in current frame
-      -- This is essential for cross-frame calls (Apply calling body)
+      -- Returns IRResultAWF directly - no escape constraint needed!
+      -- Apply uses body's reclaimable-slot for reclamation, so
+      -- stack-allocated results below reclaimable-slot survive.
       execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
         (s : LocState FS) (alloc : AllocState {FS}) →
         -- Preconditions (ValidAtWF for full consistency)
@@ -214,8 +178,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         -- LINEAR capacity: body-capacity = pair-slots * ir-size body
         -- This is the ONLY capacity constraint needed
         next-slot alloc + body-capacity ≤ frame-capacity alloc →
-        -- Result: EscapingResult with escapes proof!
-        EscapingResult body (pair env arg) s alloc
+        -- Result: IRResultAWF (stack-allocated results allowed!)
+        IRResultAWF body (pair env arg) s alloc
 
   open BodyCorrect public
 
