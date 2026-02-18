@@ -110,6 +110,42 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
 
       ev' = validity-write-at-frontier env el s val eb ev
 
+  validity-write-at-frontier {alloc} {A ⊕ B} .(inl a) loc s val loc-before
+    (valid-inl {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl pp' pb slb pv'
+    where
+      fresh = OnStack (current-frame alloc) (next-slot alloc)
+
+      pp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just pl
+      pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
+                    (at-frontier-neq-before alloc (sucLoc loc) slb)) pp
+
+      pv' = validity-write-at-frontier a pl s val pb pv
+
+  validity-write-at-frontier {alloc} {A ⊕ B} .(inr b) loc s val loc-before
+    (valid-inr {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr pp' pb slb pv'
+    where
+      fresh = OnStack (current-frame alloc) (next-slot alloc)
+
+      pp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just pl
+      pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
+                    (at-frontier-neq-before alloc (sucLoc loc) slb)) pp
+
+      pv' = validity-write-at-frontier b pl s val pb pv
+
+  validity-write-at-frontier {alloc} {Fix F} .(fold v) loc s val loc-before
+    (valid-fold {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold up' ub uv'
+    where
+      fresh = OnStack (current-frame alloc) (next-slot alloc)
+
+      up' : readLoc (write-loc s fresh val) loc ≡ just ul
+      up' = trans (write-preserves-disjoint s fresh val loc
+                    (at-frontier-neq-before alloc loc loc-before)) up
+
+      uv' = validity-write-at-frontier v ul s val ub uv
+
   -- Same for suc next-slot (slot index next-slot + 1)
   validity-write-at-suc-frontier : ∀ {alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
@@ -151,3 +187,39 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
                     (suc-frontier-neq-before alloc (sucLoc loc) slb)) cp
 
       ev' = validity-write-at-suc-frontier env el s val eb ev
+
+  validity-write-at-suc-frontier {alloc} {A ⊕ B} .(inl a) loc s val loc-before
+    (valid-inl {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl pp' pb slb pv'
+    where
+      fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
+
+      pp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just pl
+      pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
+                    (suc-frontier-neq-before alloc (sucLoc loc) slb)) pp
+
+      pv' = validity-write-at-suc-frontier a pl s val pb pv
+
+  validity-write-at-suc-frontier {alloc} {A ⊕ B} .(inr b) loc s val loc-before
+    (valid-inr {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr pp' pb slb pv'
+    where
+      fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
+
+      pp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just pl
+      pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
+                    (suc-frontier-neq-before alloc (sucLoc loc) slb)) pp
+
+      pv' = validity-write-at-suc-frontier b pl s val pb pv
+
+  validity-write-at-suc-frontier {alloc} {Fix F} .(fold v) loc s val loc-before
+    (valid-fold {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold up' ub uv'
+    where
+      fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
+
+      up' : readLoc (write-loc s fresh val) loc ≡ just ul
+      up' = trans (write-preserves-disjoint s fresh val loc
+                    (suc-frontier-neq-before alloc loc loc-before)) up
+
+      uv' = validity-write-at-suc-frontier v ul s val ub uv
