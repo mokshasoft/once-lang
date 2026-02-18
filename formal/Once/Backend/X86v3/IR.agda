@@ -212,33 +212,37 @@ case-g-smaller f g = s≤s (n≤m+n (ir-size f) (ir-size g))
 -- for separately (via program-level capacity bounds).
 ------------------------------------------------------------------------
 
--- Slot sizes for compound values (must match Dispatcher definitions)
+------------------------------------------------------------------------
+-- Slot sizes
+--
+-- For unboxed representation, slot sizes depend on result types.
+-- Constants kept for backwards compatibility in capacity proofs.
+------------------------------------------------------------------------
+
+-- Fixed slot size for capacity calculations (pair-slots * ir-size)
 pair-slots : ℕ
 pair-slots = 2
 
+-- Closure slots (always boxed: env-ptr + code-ptr)
 closure-slots : ℕ
 closure-slots = 2
 
--- Sum type slot size: tag (1) + max payload
--- For now, use fixed size since type-slots is computed at compile time
-sum-slots : ℕ
-sum-slots = 2  -- 1 tag + 1 payload slot (conservative estimate)
-
 -- Stack requirement for an IR (slots allocated in current frame)
+-- Uses type-slots for result types to support unboxed representation
 ir-stack-requirement : ∀ {A B} → IR A B → ℕ
 ir-stack-requirement id = 0
 ir-stack-requirement (g ∘ f) = ir-stack-requirement f + ir-stack-requirement g
-ir-stack-requirement ⟨ f , g ⟩ = ir-stack-requirement f + ir-stack-requirement g + pair-slots
+ir-stack-requirement {_} {B * C} ⟨ f , g ⟩ = ir-stack-requirement f + ir-stack-requirement g + type-slots (B * C)
 ir-stack-requirement fst-ir = 0
 ir-stack-requirement snd-ir = 0
-ir-stack-requirement inl-ir = sum-slots  -- allocates tag + payload
-ir-stack-requirement inr-ir = sum-slots  -- allocates tag + payload
+ir-stack-requirement {_} {A ⊕ B} inl-ir = type-slots (A ⊕ B)  -- allocates tag + payload
+ir-stack-requirement {_} {A ⊕ B} inr-ir = type-slots (A ⊕ B)  -- allocates tag + payload
 ir-stack-requirement (case-ir f g) = ir-stack-requirement f + ir-stack-requirement g  -- branches are mutually exclusive
 ir-stack-requirement terminal = 0
 ir-stack-requirement initial = 0  -- never executed (absurd)
-ir-stack-requirement (curry f) = closure-slots  -- body f runs in NEW frame when applied
+ir-stack-requirement {_} {B ⇒[ _ ] C} (curry f) = type-slots (B ⇒[ Many ] C)  -- closure = 2 slots
 ir-stack-requirement apply = pair-slots  -- forms (env, arg) pair; body requirement separate
-ir-stack-requirement fold-ir = 1  -- allocates heap pointer
+ir-stack-requirement {_} {Fix F} fold-ir = type-slots (Fix F)  -- pointer = 1 slot
 ir-stack-requirement unfold-ir = 0  -- dereferences pointer, no allocation
 
 ------------------------------------------------------------------------
@@ -250,9 +254,9 @@ ir-stack-requirement unfold-ir = 0  -- dereferences pointer, no allocation
   ir-stack-requirement (g ∘ f) ≡ ir-stack-requirement f + ir-stack-requirement g
 ∘-stack-req f g = refl
 
--- Pair: requirement is sum of components plus pair-slots
+-- Pair: requirement is sum of components plus type-slots for result
 ⟨,⟩-stack-req : ∀ {A B C} (f : IR A B) (g : IR A C) →
-  ir-stack-requirement ⟨ f , g ⟩ ≡ ir-stack-requirement f + ir-stack-requirement g + pair-slots
+  ir-stack-requirement ⟨ f , g ⟩ ≡ ir-stack-requirement f + ir-stack-requirement g + type-slots (B * C)
 ⟨,⟩-stack-req f g = refl
 
 -- After running f in compose, g still has enough capacity
@@ -267,18 +271,19 @@ ir-stack-requirement unfold-ir = 0  -- dereferences pointer, no allocation
 -- Simplified: just restate in terms we need for the dispatcher
 ⟨,⟩-capacity-for-pair : ∀ {A B C} (f : IR A B) (g : IR A C) (start-slot capacity : ℕ) →
   start-slot + ir-stack-requirement ⟨ f , g ⟩ ≤ capacity →
-  start-slot + ir-stack-requirement f + ir-stack-requirement g + pair-slots ≤ capacity
-⟨,⟩-capacity-for-pair f g start cap pf = subst (_≤ cap) eq pf
+  start-slot + ir-stack-requirement f + ir-stack-requirement g + type-slots (B * C) ≤ capacity
+⟨,⟩-capacity-for-pair {_} {B} {C} f g start cap pf = subst (_≤ cap) eq pf
   where
     open import Data.Nat.Properties using (+-assoc)
     rf = ir-stack-requirement f
     rg = ir-stack-requirement g
-    -- ir-stack-requirement ⟨ f , g ⟩ = rf + rg + pair-slots by definition
-    -- So: start + (rf + rg + pair-slots) ≡ start + rf + rg + pair-slots
+    ps = type-slots (B * C)
+    -- ir-stack-requirement ⟨ f , g ⟩ = rf + rg + type-slots (B * C) by definition
+    -- So: start + (rf + rg + ps) ≡ start + rf + rg + ps
     -- Using +-assoc twice
-    eq : start + (rf + rg + pair-slots) ≡ start + rf + rg + pair-slots
-    eq = trans (sym (+-assoc start (rf + rg) pair-slots))
-               (cong (_+ pair-slots) (sym (+-assoc start rf rg)))
+    eq : start + (rf + rg + ps) ≡ start + rf + rg + ps
+    eq = trans (sym (+-assoc start (rf + rg) ps))
+               (cong (_+ ps) (sym (+-assoc start rf rg)))
 
 ------------------------------------------------------------------------
 -- Summary
