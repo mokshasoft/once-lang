@@ -53,6 +53,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
+           valid-inl-wf; valid-inr-wf; valid-fold-wf;
            validityWF-mem-only; validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            validityWF-frontier-advance;
@@ -144,6 +145,21 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep cp (bf-transfer el eb) (bf-transfer cl cb)
       (bf-transfer (sucLoc loc) slb) (validityWF-with-bf-transfer env el s a₁ a₂ bf-transfer ev) bc
+
+  validityWF-with-bf-transfer {(A ⊕ B)} .(inl a) loc s a₁ a₂ bf-transfer
+    (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl-wf pp (bf-transfer pl pb) (bf-transfer (sucLoc loc) slb)
+      (validityWF-with-bf-transfer a pl s a₁ a₂ bf-transfer pv)
+
+  validityWF-with-bf-transfer {(A ⊕ B)} .(inr b) loc s a₁ a₂ bf-transfer
+    (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr-wf pp (bf-transfer pl pb) (bf-transfer (sucLoc loc) slb)
+      (validityWF-with-bf-transfer b pl s a₁ a₂ bf-transfer pv)
+
+  validityWF-with-bf-transfer {(Fix F)} .(fold v) loc s a₁ a₂ bf-transfer
+    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold-wf up (bf-transfer ul ub)
+      (validityWF-with-bf-transfer v ul s a₁ a₂ bf-transfer uv)
 
   ------------------------------------------------------------------------
   -- Apply: Uses body-correct.execute instead of recursive run-ir call
