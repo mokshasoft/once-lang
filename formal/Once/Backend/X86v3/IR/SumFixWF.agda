@@ -8,7 +8,8 @@
 module Once.Backend.X86v3.IR.SumFixWF where
 
 open import Data.Nat using (ℕ; _<_; _+_; _≤_; suc; s≤s; z≤n) renaming (_*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-monoʳ-≤; m≤m*n; m<m+n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤)
+-- n≤m+n is imported from IR.agda
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
@@ -44,9 +45,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   open import Once.Backend.X86v3.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; valid-unit-wf;
+    using (ValidAtWF; IRResultAWF; RecDispatcherWF; valid-unit-wf;
            validityWF-mem-only; validityWF-frontier-advance;
-           validityWF-alloc-advance;
+           validityWF-alloc-advance; validityWF-mem-preserved;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            decomposePairWF; PairValidWF;
            valid-inl-wf; valid-inr-wf; valid-fold-wf;
@@ -70,6 +71,14 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Helper: fold is injective (wrap is injective)
   fold-injective : ∀ {F} {a b : ⟦ F ⟧} → fold a ≡ fold b → a ≡ b
   fold-injective refl = refl
+
+  -- Helper: inl is injective
+  inl-injective : ∀ {A B} {a b : ⟦ A ⟧} → inl {A} {B} a ≡ inl {A} {B} b → a ≡ b
+  inl-injective refl = refl
+
+  -- Helper: inr is injective
+  inr-injective : ∀ {A B} {a b : ⟦ B ⟧} → inr {A} {B} a ≡ inr {A} {B} b → a ≡ b
+  inr-injective refl = refl
 
   ------------------------------------------------------------------------
   -- Initial: absurd elimination (input is Void, so never executed)
@@ -424,3 +433,304 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       reclaim-size-bound-inr : next-slot alloc + sum-slots ≤ next-slot alloc + pair-slots *ℕ ir-size (inr-ir {A} {B})
       reclaim-size-bound-inr = +-monoʳ-≤ (next-slot alloc) (sum-slots-bound {A} {B})
+
+  ------------------------------------------------------------------------
+  -- Fold: wrap value in recursive type
+  --
+  -- Creates a fold value (fold x = wrap x) by:
+  -- 1. Allocating type-slots (Fix F) = 1 slot at frontier
+  -- 2. Writing input-loc (pointer to unfolded value) to fold-loc
+  -- 3. Returning fold-loc
+  --
+  -- Memory layout: fold-loc stores pointer to unfolded value
+  ------------------------------------------------------------------------
+
+  -- Helper: type-slots (Fix F) > 0
+  fix-slots-pos : ∀ {F} → 0 < type-slots (Fix F)
+  fix-slots-pos {F} = s≤s z≤n
+
+  -- Postulate: type-slots (Fix F) ≤ pair-slots * ir-size fold-ir
+  -- ir-size fold-ir = 1, so pair-slots * 1 = 2 ≥ type-slots (Fix F) = 1
+  postulate
+    fix-slots-bound : ∀ {F} → type-slots (Fix F) ≤ pair-slots *ℕ ir-size (fold-ir {F})
+
+  run-fold : ∀ {F}
+    (x : ⟦ F ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    next-slot alloc + pair-slots *ℕ ir-size (fold-ir {F}) ≤ frame-capacity alloc →
+    IRResultAWF (fold-ir {F}) x s alloc
+  run-fold {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    record
+      { result-loc = fold-loc
+      ; final-state = s-final
+      ; final-alloc = alloc₁
+      ; result-valid-wf = fold-valid-wf-final
+      ; result-before = fold-before
+      ; rax-is-result = rax-eq
+      ; not-halted = not-halted
+      ; frame-preserved = refl
+      ; slot-monotone = slot-monotone-fold
+      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
+      ; capacity-preserved = refl
+      ; mem-preserved-before = mem-preserved-fold
+      ; reclaimable-slot = next-slot alloc + fix-slots
+      ; reclaim-monotone = m≤m+n (next-slot alloc) fix-slots
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = fold-reclaim-preserves-result
+      ; reclaim-preserves-validity = fold-reclaim-preserves-validity
+      ; reclaim-size-bound = reclaim-size-bound-fold
+      }
+    where
+      fix-slots = type-slots (Fix F)
+      fold-loc = OnStack (current-frame alloc) (next-slot alloc)
+
+      -- Derive capacity for fold allocation
+      fix-fits : next-slot alloc + fix-slots ≤ frame-capacity alloc
+      fix-fits = ≤-trans (+-monoʳ-≤ (next-slot alloc) (fix-slots-bound {F})) combined-cap
+
+      alloc₁ : AllocState {FS}
+      alloc₁ = record alloc
+        { next-slot = next-slot alloc + fix-slots
+        ; slots-available = fix-fits
+        }
+
+      -- Write pointer to unfolded value at fold-loc
+      s₁ = write-loc s fold-loc input-loc
+      s-final = record s₁ { regs = writeReg (regs s₁) RAX fold-loc }
+
+      -- fold-loc is BeforeFrontier after allocation
+      fold-before : BeforeFrontier alloc₁ fold-loc
+      fold-before = at-frontier-becomes-before alloc fix-slots (fix-slots-pos {F}) fix-fits
+
+      -- input-loc stays BeforeFrontier after allocation
+      input-before₁ : BeforeFrontier alloc₁ input-loc
+      input-before₁ = stack-alloc-advances alloc fix-slots fix-fits input-loc input-before
+
+      -- Unfolded pointer: readLoc s-final fold-loc ≡ just input-loc
+      unfolded-ptr : readLoc s-final fold-loc ≡ just input-loc
+      unfolded-ptr = trans (readLoc-stackMem-eq s-final s₁ fold-loc refl refl)
+                           (write-read-same s fold-loc input-loc)
+
+      -- Input validity in final state
+      input-valid-wf-final : ValidAtWF alloc₁ x input-loc s-final
+      input-valid-wf-final =
+        validityWF-alloc-advance x input-loc s-final fix-slots fix-fits
+          (validityWF-mem-only x input-loc s₁ s-final refl refl
+            (validityWF-write-at-frontier x input-loc s input-loc input-before
+              input-valid-wf))
+
+      -- Construct validity for fold x = wrap x
+      fold-valid-wf-final : ValidAtWF alloc₁ (wrap x) fold-loc s-final
+      fold-valid-wf-final = valid-fold-wf unfolded-ptr input-before₁ input-valid-wf-final
+
+      rax-eq : readReg (regs s-final) RAX ≡ fold-loc
+      rax-eq = writeReg-same (regs s₁) RAX fold-loc
+
+      slot-monotone-fold : next-slot alloc ≤ next-slot alloc₁
+      slot-monotone-fold = m≤m+n (next-slot alloc) fix-slots
+
+      mem-preserved-fold : ∀ loc → BeforeFrontier alloc loc →
+        readLoc s-final loc ≡ readLoc s loc
+      mem-preserved-fold loc bf =
+        trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
+              (write-preserves-disjoint s fold-loc input-loc loc
+                (λ eq → at-frontier-neq-before alloc loc bf eq))
+
+      fold-reclaim-preserves-result : ∀ (fits : next-slot alloc + fix-slots ≤ frame-capacity alloc) →
+        BeforeFrontier (record alloc { next-slot = next-slot alloc + fix-slots ; slots-available = fits }) fold-loc
+      fold-reclaim-preserves-result fits = at-frontier-becomes-before alloc fix-slots (fix-slots-pos {F}) fits
+
+      fold-reclaim-preserves-validity : ∀ (fits : next-slot alloc + fix-slots ≤ frame-capacity alloc) →
+        ValidAtWF (record alloc { next-slot = next-slot alloc + fix-slots ; slots-available = fits })
+                  (wrap x) fold-loc s-final
+      fold-reclaim-preserves-validity fits =
+        subst (λ a → ValidAtWF a (wrap x) fold-loc s-final)
+              (alloc-slots-eq alloc fix-slots fix-fits fits)
+              fold-valid-wf-final
+
+      reclaim-size-bound-fold : next-slot alloc + fix-slots ≤ next-slot alloc + pair-slots *ℕ ir-size (fold-ir {F})
+      reclaim-size-bound-fold = +-monoʳ-≤ (next-slot alloc) (fix-slots-bound {F})
+
+  ------------------------------------------------------------------------
+  -- Case: dispatch on sum type
+  --
+  -- For a sum value x : ⟦ A ⊕ B ⟧ (either inl a or inr b):
+  -- 1. Read payload pointer from sucLoc input-loc
+  -- 2. Load payload into RDI
+  -- 3. Dispatch to f (for inl) or g (for inr) via RecDispatcherWF
+  --
+  -- Branches are mutually exclusive, so capacity is shared.
+  -- ir-size (case-ir f g) = suc (ir-size f + ir-size g)
+  ------------------------------------------------------------------------
+
+  run-case : ∀ {A B C} (f : IR A C) (g : IR B C)
+    (rec-wf : RecDispatcherWF (ir-size (case-ir f g)))
+    (x : ⟦ A ⊕ B ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    next-slot alloc + pair-slots *ℕ ir-size (case-ir f g) ≤ frame-capacity alloc →
+    IRResultAWF (case-ir f g) x s alloc
+
+  -- Case for inl: dispatch to f
+  run-case {A} {B} {C} f g rec-wf (inj₁ a) input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    record
+      { result-loc = IRResultAWF.result-loc result-f
+      ; final-state = IRResultAWF.final-state result-f
+      ; final-alloc = IRResultAWF.final-alloc result-f
+      ; result-valid-wf = IRResultAWF.result-valid-wf result-f
+      ; result-before = IRResultAWF.result-before result-f
+      ; rax-is-result = IRResultAWF.rax-is-result result-f
+      ; not-halted = IRResultAWF.not-halted result-f
+      ; frame-preserved = IRResultAWF.frame-preserved result-f
+      ; slot-monotone = IRResultAWF.slot-monotone result-f
+      ; heap-monotone = IRResultAWF.heap-monotone result-f
+      ; heap-preserved = IRResultAWF.heap-preserved result-f
+      ; capacity-preserved = IRResultAWF.capacity-preserved result-f
+      ; mem-preserved-before = λ loc bf → trans (IRResultAWF.mem-preserved-before result-f loc bf)
+                                                (mem-setup-eq loc)
+      ; reclaimable-slot = IRResultAWF.reclaimable-slot result-f
+      ; reclaim-monotone = IRResultAWF.reclaim-monotone result-f
+      ; reclaim-bounded = IRResultAWF.reclaim-bounded result-f
+      ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-f
+      ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity result-f
+      ; reclaim-size-bound = ≤-trans (IRResultAWF.reclaim-size-bound result-f)
+                                      (+-monoʳ-≤ (next-slot alloc) cap-f-bound)
+      }
+    where
+      sf = ir-size f
+      sg = ir-size g
+      size = ir-size (case-ir f g)
+
+      -- Decompose sum validity
+      inl-decomp = decomposeInlWF input-valid-wf
+      a' = InlValidWF.a inl-decomp
+      payload-loc = InlValidWF.payload-loc inl-decomp
+      payload-before = InlValidWF.payload-before inl-decomp
+      payload-valid-wf' = InlValidWF.payload-valid inl-decomp
+
+      -- v-is-inl : inl a ≡ inl a', so a ≡ a' by inl-injective
+      a-eq : a' ≡ a
+      a-eq = inl-injective (sym (InlValidWF.v-is-inl inl-decomp))
+
+      -- Transport payload validity from a' to a
+      payload-valid-wf : ValidAtWF alloc a payload-loc s
+      payload-valid-wf = subst (λ x → ValidAtWF alloc x payload-loc s) a-eq payload-valid-wf'
+
+      -- Capacity bound: pair-slots * sf ≤ pair-slots * size
+      -- Need: sf ≤ size = suc (sf + sg)
+      -- Derivation: sf ≤ sf + sg ≤ suc (sf + sg)
+      sf≤size : sf ≤ size
+      sf≤size = ≤-trans (m≤m+n sf sg) (n≤1+n (sf + sg))
+
+      cap-f-bound : pair-slots *ℕ sf ≤ pair-slots *ℕ size
+      cap-f-bound = *-monoʳ-≤ pair-slots sf≤size
+
+      -- Capacity for f
+      cap-f : next-slot alloc + pair-slots *ℕ sf ≤ frame-capacity alloc
+      cap-f = ≤-trans (+-monoʳ-≤ (next-slot alloc) cap-f-bound) combined-cap
+
+      -- Put payload-loc in RDI for dispatch
+      s-setup = record s { regs = writeReg (regs s) RDI payload-loc }
+
+      -- s-setup preserves memory from s (only regs changed)
+      mem-setup-eq : ∀ loc → readLoc s-setup loc ≡ readLoc s loc
+      mem-setup-eq loc = readLoc-stackMem-eq s-setup s loc refl refl
+
+      rdi-payload : readReg (regs s-setup) RDI ≡ payload-loc
+      rdi-payload = writeReg-same (regs s) RDI payload-loc
+
+      not-halted-setup : halted s-setup ≡ false
+      not-halted-setup = not-halted
+
+      payload-valid-wf-setup : ValidAtWF alloc a payload-loc s-setup
+      payload-valid-wf-setup = validityWF-mem-only a payload-loc s s-setup refl refl payload-valid-wf
+
+      -- Dispatch to f
+      result-f = rec-wf f (case-f-smaller f g) a payload-loc s-setup alloc
+                   payload-valid-wf-setup payload-before not-halted-setup rdi-payload cap-f
+
+  -- Case for inr: dispatch to g
+  run-case {A} {B} {C} f g rec-wf (inj₂ b) input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    record
+      { result-loc = IRResultAWF.result-loc result-g
+      ; final-state = IRResultAWF.final-state result-g
+      ; final-alloc = IRResultAWF.final-alloc result-g
+      ; result-valid-wf = IRResultAWF.result-valid-wf result-g
+      ; result-before = IRResultAWF.result-before result-g
+      ; rax-is-result = IRResultAWF.rax-is-result result-g
+      ; not-halted = IRResultAWF.not-halted result-g
+      ; frame-preserved = IRResultAWF.frame-preserved result-g
+      ; slot-monotone = IRResultAWF.slot-monotone result-g
+      ; heap-monotone = IRResultAWF.heap-monotone result-g
+      ; heap-preserved = IRResultAWF.heap-preserved result-g
+      ; capacity-preserved = IRResultAWF.capacity-preserved result-g
+      ; mem-preserved-before = λ loc bf → trans (IRResultAWF.mem-preserved-before result-g loc bf)
+                                                (mem-setup-eq loc)
+      ; reclaimable-slot = IRResultAWF.reclaimable-slot result-g
+      ; reclaim-monotone = IRResultAWF.reclaim-monotone result-g
+      ; reclaim-bounded = IRResultAWF.reclaim-bounded result-g
+      ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-g
+      ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity result-g
+      ; reclaim-size-bound = ≤-trans (IRResultAWF.reclaim-size-bound result-g)
+                                      (+-monoʳ-≤ (next-slot alloc) cap-g-bound)
+      }
+    where
+      sf = ir-size f
+      sg = ir-size g
+      size = ir-size (case-ir f g)
+
+      -- Decompose sum validity
+      inr-decomp = decomposeInrWF input-valid-wf
+      b' = InrValidWF.b inr-decomp
+      payload-loc = InrValidWF.payload-loc inr-decomp
+      payload-before = InrValidWF.payload-before inr-decomp
+      payload-valid-wf' = InrValidWF.payload-valid inr-decomp
+
+      -- v-is-inr : inr b ≡ inr b', so b ≡ b' by inr-injective
+      b-eq : b' ≡ b
+      b-eq = inr-injective (sym (InrValidWF.v-is-inr inr-decomp))
+
+      -- Transport payload validity from b' to b
+      payload-valid-wf : ValidAtWF alloc b payload-loc s
+      payload-valid-wf = subst (λ x → ValidAtWF alloc x payload-loc s) b-eq payload-valid-wf'
+
+      -- Capacity bound: pair-slots * sg ≤ pair-slots * size
+      -- Need: sg ≤ size = suc (sf + sg)
+      -- Derivation: sg ≤ sf + sg ≤ suc (sf + sg)
+      sg≤size : sg ≤ size
+      sg≤size = ≤-trans (n≤m+n sf sg) (n≤1+n (sf + sg))
+
+      cap-g-bound : pair-slots *ℕ sg ≤ pair-slots *ℕ size
+      cap-g-bound = *-monoʳ-≤ pair-slots sg≤size
+
+      -- Capacity for g
+      cap-g : next-slot alloc + pair-slots *ℕ sg ≤ frame-capacity alloc
+      cap-g = ≤-trans (+-monoʳ-≤ (next-slot alloc) cap-g-bound) combined-cap
+
+      -- Put payload-loc in RDI for dispatch
+      s-setup = record s { regs = writeReg (regs s) RDI payload-loc }
+
+      -- s-setup preserves memory from s (only regs changed)
+      mem-setup-eq : ∀ loc → readLoc s-setup loc ≡ readLoc s loc
+      mem-setup-eq loc = readLoc-stackMem-eq s-setup s loc refl refl
+
+      rdi-payload : readReg (regs s-setup) RDI ≡ payload-loc
+      rdi-payload = writeReg-same (regs s) RDI payload-loc
+
+      not-halted-setup : halted s-setup ≡ false
+      not-halted-setup = not-halted
+
+      payload-valid-wf-setup : ValidAtWF alloc b payload-loc s-setup
+      payload-valid-wf-setup = validityWF-mem-only b payload-loc s s-setup refl refl payload-valid-wf
+
+      -- Dispatch to g
+      result-g = rec-wf g (case-g-smaller f g) b payload-loc s-setup alloc
+                   payload-valid-wf-setup payload-before not-halted-setup rdi-payload cap-g
