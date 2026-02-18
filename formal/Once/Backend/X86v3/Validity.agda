@@ -87,7 +87,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       BeforeFrontier alloc payload-loc →
       BeforeFrontier alloc (sucLoc sum-loc) →
       ValidAt alloc a payload-loc s →
-      ValidAt alloc {A ⊕ B} (inl a) sum-loc s
+      ValidAt alloc {A + B} (inl a) sum-loc s
 
     valid-inr : ∀ {A B} {b : ⟦ B ⟧}
       {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
@@ -95,7 +95,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       BeforeFrontier alloc payload-loc →
       BeforeFrontier alloc (sucLoc sum-loc) →
       ValidAt alloc b payload-loc s →
-      ValidAt alloc {A ⊕ B} (inr b) sum-loc s
+      ValidAt alloc {A + B} (inr b) sum-loc s
 
     -- Recursive type validity: pointer to heap-allocated unfolded value
     -- Memory layout: fix-loc stores pointer to unfolded-loc on heap
@@ -181,7 +181,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
 
   record InlValid (alloc : AllocState {FS}) {A B : Type}
-                  (v : ⟦ A ⊕ B ⟧)
+                  (v : ⟦ A + B ⟧)
                   (sum-loc : ValueLocation FS)
                   (s : LocState FS) : Set where
     field
@@ -194,7 +194,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       v-is-inl : v ≡ inl a
 
   record InrValid (alloc : AllocState {FS}) {A B : Type}
-                  (v : ⟦ A ⊕ B ⟧)
+                  (v : ⟦ A + B ⟧)
                   (sum-loc : ValueLocation FS)
                   (s : LocState FS) : Set where
     field
@@ -260,7 +260,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     }
 
   decomposeInl : ∀ {alloc A B} {a : ⟦ A ⟧} {loc s} →
-    ValidAt alloc {A ⊕ B} (inl {A} {B} a) loc s → InlValid alloc {A} {B} (inl a) loc s
+    ValidAt alloc {A + B} (inl {A} {B} a) loc s → InlValid alloc {A} {B} (inl a) loc s
   decomposeInl {A = A} {B = B} {a = a} (valid-inl {payload-loc = pl} pp pb slb pv) = record
     { a = a
     ; payload-loc = pl
@@ -272,7 +272,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     }
 
   decomposeInr : ∀ {alloc A B} {b : ⟦ B ⟧} {loc s} →
-    ValidAt alloc {A ⊕ B} (inr {A} {B} b) loc s → InrValid alloc {A} {B} (inr b) loc s
+    ValidAt alloc {A + B} (inr {A} {B} b) loc s → InrValid alloc {A} {B} (inr b) loc s
   decomposeInr {A = A} {B = B} {b = b} (valid-inr {payload-loc = pl} pp pb slb pv) = record
     { b = b
     ; payload-loc = pl
@@ -333,7 +333,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc payload-loc →
     BeforeFrontier alloc (sucLoc sum-loc) →
     ValidAt alloc a payload-loc s →
-    ValidAt alloc {A ⊕ B} (inl a) sum-loc s
+    ValidAt alloc {A + B} (inl a) sum-loc s
   composeInl a sum-loc payload-loc s pp pb slb pv = valid-inl pp pb slb pv
 
   -- Compose sum validity (inr)
@@ -343,7 +343,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc payload-loc →
     BeforeFrontier alloc (sucLoc sum-loc) →
     ValidAt alloc b payload-loc s →
-    ValidAt alloc {A ⊕ B} (inr b) sum-loc s
+    ValidAt alloc {A + B} (inr b) sum-loc s
   composeInr b sum-loc payload-loc s pp pb slb pv = valid-inr pp pb slb pv
 
   -- Compose fold validity
@@ -403,7 +403,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       ev' : ValidAt alloc env el s₂
       ev' = validity-mem-only env el s₁ s₂ stack-eq heap-eq ev
 
-  validity-mem-only {alloc} {A ⊕ B} .(inl a) loc s₁ s₂ stack-eq heap-eq
+  validity-mem-only {alloc} {A + B} .(inl a) loc s₁ s₂ stack-eq heap-eq
     (valid-inl {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl pp' pb slb pv'
     where
@@ -413,7 +413,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       pv' : ValidAt alloc a pl s₂
       pv' = validity-mem-only a pl s₁ s₂ stack-eq heap-eq pv
 
-  validity-mem-only {alloc} {A ⊕ B} .(inr b) loc s₁ s₂ stack-eq heap-eq
+  validity-mem-only {alloc} {A + B} .(inr b) loc s₁ s₂ stack-eq heap-eq
     (valid-inr {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr pp' pb slb pv'
     where

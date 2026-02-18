@@ -18,7 +18,7 @@
 
 module Once.Backend.X86v3.ClosureWellFormed where
 
-open import Data.Nat using (ℕ; _<_; _≤_; _≥_; _+_) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc; zero) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -126,9 +126,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         ValidAtWF (record alloc { next-slot = reclaimable-slot ; slots-available = fits })
                   (eval ir x) result-loc final-state
       -- Reclaim size bound: reclaimable-slot is within the IR's size budget
-      -- This replaces slot-bounded and IS provable for apply (reclaimable = slot + pair-slots)
+      -- This replaces slot-bounded and IS provable for apply (reclaimable = slot +ℕ pair-slots)
       -- Used by compose/pair to derive capacity for subsequent operations
-      reclaim-size-bound : reclaimable-slot ≤ next-slot alloc + pair-slots *ℕ ir-size ir
+      reclaim-size-bound : reclaimable-slot ≤ next-slot alloc +ℕ pair-slots *ℕ ir-size ir
 
   open IRResultAWF public
 
@@ -177,7 +177,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         readReg (regs s) RDI ≡ pair-loc →
         -- LINEAR capacity: body-capacity = pair-slots * ir-size body
         -- This is the ONLY capacity constraint needed
-        next-slot alloc + body-capacity ≤ frame-capacity alloc →
+        next-slot alloc +ℕ body-capacity ≤ frame-capacity alloc →
         -- Result: IRResultAWF (stack-allocated results allowed!)
         IRResultAWF body (pair env arg) s alloc
 
@@ -229,7 +229,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       BeforeFrontier alloc payload-loc →
       BeforeFrontier alloc (sucLoc sum-loc) →
       ValidAtWF alloc a payload-loc s →
-      ValidAtWF alloc {A ⊕ B} (inl a) sum-loc s
+      ValidAtWF alloc {A + B} (inl a) sum-loc s
 
     -- Sum type validity (inr)
     valid-inr-wf : ∀ {A B} {b : ⟦ B ⟧}
@@ -238,7 +238,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       BeforeFrontier alloc payload-loc →
       BeforeFrontier alloc (sucLoc sum-loc) →
       ValidAtWF alloc b payload-loc s →
-      ValidAtWF alloc {A ⊕ B} (inr b) sum-loc s
+      ValidAtWF alloc {A + B} (inr b) sum-loc s
 
     -- Recursive type validity (fold)
     valid-fold-wf : ∀ {F} {v : ⟦ F ⟧}
@@ -388,7 +388,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
-    next-slot alloc + pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
+    next-slot alloc +ℕ pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
     IRResultAWF ir x s alloc
 
   ------------------------------------------------------------------------
@@ -455,7 +455,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       v-is-inr : v ≡ inr b
 
   decomposeInlWF : ∀ {alloc A B} {a : ⟦ A ⟧} {loc s} →
-    ValidAtWF alloc {A ⊕ B} (inl {A} {B} a) loc s → InlValidWF alloc {A} {B} (inl a) loc s
+    ValidAtWF alloc {A + B} (inl {A} {B} a) loc s → InlValidWF alloc {A} {B} (inl a) loc s
   -- Explicitly capture a from valid-inl-wf to ensure a and payload-valid match
   decomposeInlWF {A = A} {B = B} (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) = record
     { a = a
@@ -468,7 +468,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     }
 
   decomposeInrWF : ∀ {alloc A B} {b : ⟦ B ⟧} {loc s} →
-    ValidAtWF alloc {A ⊕ B} (inr {A} {B} b) loc s → InrValidWF alloc {A} {B} (inr b) loc s
+    ValidAtWF alloc {A + B} (inr {A} {B} b) loc s → InrValidWF alloc {A} {B} (inr b) loc s
   -- Explicitly capture b from valid-inr-wf to ensure b and payload-valid match
   decomposeInrWF {A = A} {B = B} (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) = record
     { b = b
@@ -566,7 +566,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ev' : ValidAtWF alloc env el s₂
       ev' = validityWF-mem-only env el s₁ s₂ stack-eq heap-eq ev
 
-  validityWF-mem-only {alloc} {A ⊕ B} .(inl a) loc s₁ s₂ stack-eq heap-eq
+  validityWF-mem-only {alloc} {A + B} .(inl a) loc s₁ s₂ stack-eq heap-eq
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp' pb slb pv'
     where
@@ -576,7 +576,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       pv' : ValidAtWF alloc a pl s₂
       pv' = validityWF-mem-only a pl s₁ s₂ stack-eq heap-eq pv
 
-  validityWF-mem-only {alloc} {A ⊕ B} .(inr b) loc s₁ s₂ stack-eq heap-eq
+  validityWF-mem-only {alloc} {A + B} .(inr b) loc s₁ s₂ stack-eq heap-eq
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp' pb slb pv'
     where
@@ -669,7 +669,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       ev' = validityWF-write-at-frontier env el s val eb ev
 
-  validityWF-write-at-frontier {alloc} {A ⊕ B} .(inl a) loc s val loc-before
+  validityWF-write-at-frontier {alloc} {A + B} .(inl a) loc s val loc-before
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp' pb slb pv'
     where
@@ -681,7 +681,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       pv' = validityWF-write-at-frontier a pl s val pb pv
 
-  validityWF-write-at-frontier {alloc} {A ⊕ B} .(inr b) loc s val loc-before
+  validityWF-write-at-frontier {alloc} {A + B} .(inr b) loc s val loc-before
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp' pb slb pv'
     where
@@ -748,7 +748,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       ev' = validityWF-write-at-suc-frontier env el s val eb ev
 
-  validityWF-write-at-suc-frontier {alloc} {A ⊕ B} .(inl a) loc s val loc-before
+  validityWF-write-at-suc-frontier {alloc} {A + B} .(inl a) loc s val loc-before
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp' pb slb pv'
     where
@@ -760,7 +760,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       pv' = validityWF-write-at-suc-frontier a pl s val pb pv
 
-  validityWF-write-at-suc-frontier {alloc} {A ⊕ B} .(inr b) loc s val loc-before
+  validityWF-write-at-suc-frontier {alloc} {A + B} .(inr b) loc s val loc-before
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp' pb slb pv'
     where
@@ -796,9 +796,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
 
   validityWF-alloc-advance : ∀ {alloc A} (v : ⟦ A ⟧) loc s (n : ℕ)
-    (fits : next-slot alloc + n ≤ frame-capacity alloc) →
+    (fits : next-slot alloc +ℕ n ≤ frame-capacity alloc) →
     ValidAtWF alloc v loc s →
-    let alloc' = record alloc { next-slot = next-slot alloc + n ; slots-available = fits }
+    let alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
     in ValidAtWF alloc' v loc s
 
   validityWF-alloc-advance {alloc} {Unit} tt loc s n fits valid-unit-wf =
@@ -808,7 +808,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
     valid-pair-wf fp sp fb' sb' slb' fv' sv'
     where
-      alloc' = record alloc { next-slot = next-slot alloc + n ; slots-available = fits }
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
       fb' : BeforeFrontier alloc' fl
       fb' = stack-alloc-advances alloc n fits fl fb
       sb' : BeforeFrontier alloc' sl
@@ -822,7 +822,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep cp eb' cb' slb' ev' bc
     where
-      alloc' = record alloc { next-slot = next-slot alloc + n ; slots-available = fits }
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
       eb' : BeforeFrontier alloc' el
       eb' = stack-alloc-advances alloc n fits el eb
       cb' : BeforeFrontier alloc' cl
@@ -831,22 +831,22 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
       ev' = validityWF-alloc-advance env el s n fits ev
 
-  validityWF-alloc-advance {alloc} {A ⊕ B} .(inl a) loc s n fits
+  validityWF-alloc-advance {alloc} {A + B} .(inl a) loc s n fits
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp pb' slb' pv'
     where
-      alloc' = record alloc { next-slot = next-slot alloc + n ; slots-available = fits }
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
       pb' : BeforeFrontier alloc' pl
       pb' = stack-alloc-advances alloc n fits pl pb
       slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
       pv' = validityWF-alloc-advance a pl s n fits pv
 
-  validityWF-alloc-advance {alloc} {A ⊕ B} .(inr b) loc s n fits
+  validityWF-alloc-advance {alloc} {A + B} .(inr b) loc s n fits
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp pb' slb' pv'
     where
-      alloc' = record alloc { next-slot = next-slot alloc + n ; slots-available = fits }
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
       pb' : BeforeFrontier alloc' pl
       pb' = stack-alloc-advances alloc n fits pl pb
       slb' : BeforeFrontier alloc' (sucLoc loc)
@@ -857,7 +857,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up ub' uv'
     where
-      alloc' = record alloc { next-slot = next-slot alloc + n ; slots-available = fits }
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
       ub' : BeforeFrontier alloc' ul
       ub' = stack-alloc-advances alloc n fits ul ub
       uv' = validityWF-alloc-advance v ul s n fits uv
@@ -905,7 +905,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       ev' = validityWF-frontier-advance env el s cf-eq slot-≤ heap-≤ ev
 
-  validityWF-frontier-advance {alloc} {alloc'} {A ⊕ B} .(inl a) loc s cf-eq slot-≤ heap-≤
+  validityWF-frontier-advance {alloc} {alloc'} {A + B} .(inl a) loc s cf-eq slot-≤ heap-≤
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp pb' slb' pv'
     where
@@ -915,7 +915,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       pv' = validityWF-frontier-advance a pl s cf-eq slot-≤ heap-≤ pv
 
-  validityWF-frontier-advance {alloc} {alloc'} {A ⊕ B} .(inr b) loc s cf-eq slot-≤ heap-≤
+  validityWF-frontier-advance {alloc} {alloc'} {A + B} .(inr b) loc s cf-eq slot-≤ heap-≤
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp pb' slb' pv'
     where
@@ -982,7 +982,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       ev' = validityWF-mem-preserved env el s₁ s₂ eb mem-eq ev
 
-  validityWF-mem-preserved {alloc} {A ⊕ B} .(inl a) loc s₁ s₂ loc-before mem-eq
+  validityWF-mem-preserved {alloc} {A + B} .(inl a) loc s₁ s₂ loc-before mem-eq
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp' pb slb pv'
     where
@@ -991,7 +991,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       pv' = validityWF-mem-preserved a pl s₁ s₂ pb mem-eq pv
 
-  validityWF-mem-preserved {alloc} {A ⊕ B} .(inr b) loc s₁ s₂ loc-before mem-eq
+  validityWF-mem-preserved {alloc} {A + B} .(inr b) loc s₁ s₂ loc-before mem-eq
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp' pb slb pv'
     where

@@ -26,7 +26,7 @@
 
 module Once.Backend.X86v3.SlotToX86 where
 
-open import Data.Nat using (ℕ; zero; suc; _+_) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; false)

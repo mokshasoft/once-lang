@@ -14,7 +14,7 @@
 
 module Once.Backend.X86v3.CodeGenCorrect where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (_<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false)
@@ -45,7 +45,7 @@ open import Once.Backend.X86.Semantics as X86Sem
             readMem to x86-readMem; writeMem to x86-writeMem)
 
 -- Import IR and eval
-open import Once.Backend.X86v3.IR using (IR; id; _∘_; ⟨_,_⟩; fst-ir; snd-ir; curry; apply; terminal; eval)
+open import Once.Backend.X86v3.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal; eval)
 open import Once.Backend.X86v3.Types using (Type; ⟦_⟧; _*_; _⇒_; Unit; pair; fst; snd)
 
 -- Import CodeGen
@@ -98,7 +98,7 @@ id-correct : ∀ (input-loc : ValueLocation FS)
   -- After mov rax, rdi: rax holds input-loc address
   let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax
                               (x86-readReg (X86Sem.State.regs s) rdi)
-                    ; pc = X86Sem.State.pc s + 1 }
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
   in x86-readReg (X86Sem.State.regs s') rax ≡ loc-to-addr input-loc
 id-correct input-loc σ s sc rdi-eq = trans rax-after-write rdi-eq
   where
@@ -119,7 +119,7 @@ fst-correct : ∀ (input-loc fst-loc : ValueLocation FS)
   ∃[ s' ] (x86-readReg (X86Sem.State.regs s') rax ≡ loc-to-addr fst-loc)
 fst-correct input-loc fst-loc σ s sc rdi-eq mem-eq =
   let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax (loc-to-addr fst-loc)
-                    ; pc = X86Sem.State.pc s + 1 }
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
   in s' , refl
 
 -- | snd correctness: mov rax, [rdi+8] loads snd of pair
@@ -127,18 +127,18 @@ snd-correct : ∀ (input-loc snd-loc : ValueLocation FS)
   (σ : LocState FS) (s : State) →
   StateCorresponds σ s →
   x86-readReg (X86Sem.State.regs s) rdi ≡ loc-to-addr input-loc →
-  x86-readMem (X86Sem.State.memory s) (loc-to-addr input-loc + slot-size) ≡ just (loc-to-addr snd-loc) →
+  x86-readMem (X86Sem.State.memory s) (loc-to-addr input-loc +ℕ slot-size) ≡ just (loc-to-addr snd-loc) →
   ∃[ s' ] (x86-readReg (X86Sem.State.regs s') rax ≡ loc-to-addr snd-loc)
 snd-correct input-loc snd-loc σ s sc rdi-eq mem-eq =
   let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax (loc-to-addr snd-loc)
-                    ; pc = X86Sem.State.pc s + 1 }
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
   in s' , refl
 
 -- | terminal correctness: mov rax, 0 produces unit representation
 terminal-correct : ∀ (σ : LocState FS) (s : State) →
   StateCorresponds σ s →
   let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax 0
-                    ; pc = X86Sem.State.pc s + 1 }
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
   in x86-readReg (X86Sem.State.regs s') rax ≡ 0
 terminal-correct σ s sc = refl
 
@@ -156,7 +156,7 @@ compose-bridge-correct : ∀ (result-loc : ValueLocation FS)
   -- After mov rdi, rax: rdi holds result-loc address
   let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rdi
                               (x86-readReg (X86Sem.State.regs s) rax)
-                    ; pc = X86Sem.State.pc s + 1 }
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
   in x86-readReg (X86Sem.State.regs s') rdi ≡ loc-to-addr result-loc
 compose-bridge-correct result-loc σ s sc rax-eq = trans refl rax-eq
 

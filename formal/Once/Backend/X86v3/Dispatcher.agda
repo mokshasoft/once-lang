@@ -13,7 +13,7 @@
 
 module Once.Backend.X86v3.Dispatcher where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; +-monoʳ-≤; m≤m+n)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -22,6 +22,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥-elim)
+open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym; subst)
 open import Relation.Nullary using (Dec; yes; no)
 open import Induction.WellFounded using (Acc; acc)
@@ -30,7 +31,7 @@ open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
 open import Once.Backend.X86v3.Validity
 open import Once.Backend.X86v3.IR
-open import Once.Backend.X86v3.Allocation
+open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 open import Once.Backend.X86v3.ClosureWellFormed
 
 -- Import ValidAtWF types for termination-safe dispatch
@@ -117,7 +118,7 @@ open import Once.Backend.X86v3.WriteOps public using (module WriteWithDisjoint)
 module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ program-bound)
   -- Frame capacity constraint: ensures pb-cap holds for any alloc in the current frame
   (frame-cap-sufficient : ∀ (alloc : AllocState {FS}) →
-    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc)
+    next-slot alloc +ℕ pair-slots *ℕ program-bound ≤ frame-capacity alloc)
   -- Child frame support for apply's hybrid frame approach
   -- get-child-frame returns a frame below the parent (child ≺ parent) for body execution
   (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
@@ -195,6 +196,20 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   get-acc-from-pb n n<pb = acc-extract acc-pb n<pb
 
   ------------------------------------------------------------------------
+  -- Prim handler: postulate for now (primitives handle their own allocation)
+  -- TODO: Connect to FFI when available
+  ------------------------------------------------------------------------
+  postulate
+    run-prim : ∀ {A B} (name : String)
+      (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) RDI ≡ input-loc →
+      IRResultAWF (Prim {A} {B} name) x s alloc
+
+  ------------------------------------------------------------------------
   -- Main dispatcher (recursive cases use Acc)
   --
   -- ARCHITECTURE: Uses mutual block pattern from X86 backend.
@@ -231,7 +246,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       halted s ≡ false →
       readReg (regs s) RDI ≡ input-loc →
       -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
-      next-slot alloc + pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
+      next-slot alloc +ℕ pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
       Acc _<_ (ir-size ir) →
       IRResultAWF ir x s alloc
 
@@ -248,13 +263,17 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
+    -- Prim: primitive operations (postulated)
+    run-ir-wf (Prim {A} {B} name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      run-prim {A} {B} name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+
     -- Sum type: inject left (delegated to SumFixWF module)
-    run-ir-wf (inl-ir {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      run-inl {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf (inl-ir {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      run-inl {A} {B} {m} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Sum type: inject right (delegated to SumFixWF module)
-    run-ir-wf (inr-ir {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      run-inr {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf (inr-ir {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      run-inr {A} {B} {m} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Sum type: case analysis (delegated to SumFixWF module)
     run-ir-wf (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
@@ -279,13 +298,13 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Pair: delegated to PairWF module
-    run-ir-wf ⟨ f , g ⟩ ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      run-pair f g (make-rec-wf ir<bound rs) x input-loc s alloc
+    run-ir-wf (⟨ f , g ⟩ m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      run-pair f g {m} (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Curry: delegated to CurryWF module
-    run-ir-wf (curry f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      run-curry f ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
+    run-ir-wf (curry f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      run-curry f {m} ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Apply: uses BodyCorrect.execute from closure
@@ -306,7 +325,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
-    next-slot alloc + pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
+    next-slot alloc +ℕ pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
     IRResultAWF ir x s alloc
   run-wf ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     run-ir-wf ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap

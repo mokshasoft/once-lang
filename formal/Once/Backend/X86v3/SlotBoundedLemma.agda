@@ -7,7 +7,7 @@
 
 module Once.Backend.X86v3.SlotBoundedLemma where
 
-open import Data.Nat using (ℕ; _+_; _≤_)
+open import Data.Nat using (ℕ; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; +-identityʳ)
 open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
 
@@ -19,6 +19,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; sym; subst)
 -- Which is: next-slot alloc ≤ next-slot alloc (after +-identityʳ)
 ------------------------------------------------------------------------
 
--- Proof that n ≤ n + 0 (used for ir-stack-requirement = 0 cases)
-slot-bounded-zero : ∀ (n : ℕ) → n ≤ n + 0
+-- Proof that n ≤ n +ℕ 0 (used for ir-stack-requirement = 0 cases)
+slot-bounded-zero : ∀ (n : ℕ) → n ≤ n +ℕ 0
 slot-bounded-zero n = subst (n ≤_) (sym (+-identityʳ n)) ≤-refl

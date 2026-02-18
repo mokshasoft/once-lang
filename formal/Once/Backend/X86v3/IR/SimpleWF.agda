@@ -7,7 +7,7 @@
 
 module Once.Backend.X86v3.IR.SimpleWF where
 
-open import Data.Nat using (ℕ; _<_; _+_; _≤_)
+open import Data.Nat using (ℕ; _<_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; m≤m+n)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
@@ -19,7 +19,7 @@ open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
 open import Once.Backend.X86v3.Types
 open import Once.Backend.X86v3.IR
-open import Once.Backend.X86v3.Allocation
+open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Simple IR implementations

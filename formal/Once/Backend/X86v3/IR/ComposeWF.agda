@@ -11,7 +11,7 @@
 
 module Once.Backend.X86v3.IR.ComposeWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m+n; m≤n+m; *-distribˡ-+; *-suc; n≤1+n)
 open import Data.Bool using (false)
 open import Data.Product using (_×_; _,_)
@@ -21,7 +21,7 @@ open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
 open import Once.Backend.X86v3.Types
 open import Once.Backend.X86v3.IR
-open import Once.Backend.X86v3.Allocation
+open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Compose implementation
@@ -68,7 +68,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --
   -- Key derivation for g's capacity:
   --   slot₁ ≤ slot + pair-slots * sf (by slot-bounded + ir-stack-req-bounded)
-  --   slot₁ + pair-slots * sg ≤ slot + pair-slots * (sf + sg) ≤ slot + pair-slots * size
+  --   slot₁ + pair-slots * sg ≤ slot + pair-slots * (sf +ℕ sg) ≤ slot + pair-slots * size
   ------------------------------------------------------------------------
 
   run-compose : ∀ {A B C} (f : IR A B) (g : IR B C)
@@ -81,29 +81,29 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * size covers ir-req + recursion
     -- This is the ONLY capacity constraint needed (no global invariants)
-    next-slot alloc + pair-slots *ℕ ir-size (g ∘ f) ≤ frame-capacity alloc →
+    next-slot alloc +ℕ pair-slots *ℕ ir-size (g ∘ f) ≤ frame-capacity alloc →
     IRResultAWF (g ∘ f) x s alloc
   run-compose f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     let -- Size abbreviations
         sf = ir-size f
         sg = ir-size g
-        size = ir-size (g ∘ f)  -- = suc (sg + sf)
+        size = ir-size (g ∘ f)  -- = suc (sg +ℕ sf)
 
         ------------------------------------------------------------------------
         -- Derive capacity for f:
         -- Need: slot + pair-slots * sf ≤ capacity
         -- Have: slot + pair-slots * size ≤ capacity (combined-cap)
-        -- size = suc (sg + sf), and sf ≤ suc (sf + sg) = suc (sg + sf) by +-comm
+        -- size = suc (sg +ℕ sf), and sf ≤ suc (sf +ℕ sg) = suc (sg +ℕ sf) by +-comm
         ------------------------------------------------------------------------
-        sf+sg≡sg+sf : suc (sf + sg) ≡ suc (sg + sf)
+        sf+sg≡sg+sf : suc (sf +ℕ sg) ≡ suc (sg +ℕ sf)
         sf+sg≡sg+sf = cong suc (+-comm sf sg)
 
         -- Use compose-f-cap lemma (with sf+sg ordering, then convert to sg+sf = size)
-        combined-cap-converted : next-slot alloc + pair-slots *ℕ suc (sf + sg) ≤ frame-capacity alloc
-        combined-cap-converted = subst (λ n → next-slot alloc + pair-slots *ℕ n ≤ frame-capacity alloc)
+        combined-cap-converted : next-slot alloc +ℕ pair-slots *ℕ suc (sf +ℕ sg) ≤ frame-capacity alloc
+        combined-cap-converted = subst (λ n → next-slot alloc +ℕ pair-slots *ℕ n ≤ frame-capacity alloc)
                                        (sym sf+sg≡sg+sf) combined-cap
 
-        combined-cap-f : next-slot alloc + pair-slots *ℕ sf ≤ frame-capacity alloc
+        combined-cap-f : next-slot alloc +ℕ pair-slots *ℕ sf ≤ frame-capacity alloc
         combined-cap-f = compose-f-cap (next-slot alloc) pair-slots sf sg (frame-capacity alloc) combined-cap-converted
 
         -- Run f via recursive dispatch (with linear capacity only)
@@ -120,7 +120,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         reclaim-f = IRResultAWF.reclaimable-slot result-f
 
         -- reclaim-f is bounded by f's size
-        reclaim-f-bound : reclaim-f ≤ next-slot alloc + pair-slots *ℕ sf
+        reclaim-f-bound : reclaim-f ≤ next-slot alloc +ℕ pair-slots *ℕ sf
         reclaim-f-bound = IRResultAWF.reclaim-size-bound result-f
 
         -- capacity₁ = capacity (frame-capacity preserved)
@@ -132,7 +132,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         reclaim-f-fits : reclaim-f ≤ frame-capacity alloc
         reclaim-f-fits = ≤-trans reclaim-f-bound
                            (≤-trans (+-monoʳ-≤ (next-slot alloc) (*-monoʳ-≤ pair-slots (m≤m+n sf sg)))
-                             (≤-trans (+-monoʳ-≤ (next-slot alloc) (*-monoʳ-≤ pair-slots (n≤1+n (sf + sg))))
+                             (≤-trans (+-monoʳ-≤ (next-slot alloc) (*-monoʳ-≤ pair-slots (n≤1+n (sf +ℕ sg))))
                                combined-cap-converted))
 
         -- Create reclaimed allocation
@@ -144,9 +144,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         ------------------------------------------------------------------------
         -- Derive capacity for g (using reclaim-f-bound)
-        -- reclaim-f + ps*sg ≤ slot + ps*sf + ps*sg = slot + ps*(sf+sg) < slot + ps*suc(sf+sg) ≤ cap
+        -- reclaim-f +ℕ ps*sg ≤ slot + ps*sf + ps*sg = slot + ps*(sf+sg) < slot + ps*suc(sf+sg) ≤ cap
         ------------------------------------------------------------------------
-        combined-cap-g : reclaim-f + pair-slots *ℕ sg ≤ frame-capacity alloc
+        combined-cap-g : reclaim-f +ℕ pair-slots *ℕ sg ≤ frame-capacity alloc
         combined-cap-g = compose-g-cap (next-slot alloc) reclaim-f pair-slots sf sg
                            (frame-capacity alloc) reclaim-f-bound combined-cap-converted
 
@@ -200,11 +200,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         -- Since compose's result is g's result, we use g's reclaim logic
         --
         -- Chain:
-        --   reclaim-g ≤ reclaim-f + pair-slots * sg  (from g's reclaim-size-bound)
+        --   reclaim-g ≤ reclaim-f +ℕ pair-slots * sg  (from g's reclaim-size-bound)
         --   reclaim-f ≤ slot + pair-slots * sf       (from f's reclaim-size-bound)
         --   reclaim-g ≤ slot + pair-slots * sf + pair-slots * sg
-        --            = slot + pair-slots * (sf + sg)
-        --            < slot + pair-slots * suc(sg + sf)
+        --            = slot + pair-slots * (sf +ℕ sg)
+        --            < slot + pair-slots * suc(sg +ℕ sf)
         --            = slot + pair-slots * size
         ------------------------------------------------------------------------
         reclaim-g = IRResultAWF.reclaimable-slot result-g
@@ -246,23 +246,23 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         -- reclaim-size-bound: compose-reclaim ≤ slot + pair-slots * size
         -- Chain through f and g's reclaim bounds
-        reclaim-g-bound : reclaim-g ≤ reclaim-f + pair-slots *ℕ sg
+        reclaim-g-bound : reclaim-g ≤ reclaim-f +ℕ pair-slots *ℕ sg
         reclaim-g-bound = IRResultAWF.reclaim-size-bound result-g
 
         -- reclaim-g ≤ slot + ps*sf + ps*sg = slot + ps*(sf+sg)
-        reclaim-from-slot : compose-reclaim ≤ next-slot alloc + pair-slots *ℕ (sf + sg)
+        reclaim-from-slot : compose-reclaim ≤ next-slot alloc +ℕ pair-slots *ℕ (sf +ℕ sg)
         reclaim-from-slot = ≤-trans reclaim-g-bound
                               (≤-trans (+-monoˡ-≤ (pair-slots *ℕ sg) reclaim-f-bound)
                                 (≤-reflexive (trans (+-assoc (next-slot alloc) (pair-slots *ℕ sf) (pair-slots *ℕ sg))
-                                                    (cong (next-slot alloc +_) (sym (*-distribˡ-+ pair-slots sf sg))))))
+                                                    (cong (next-slot alloc +ℕ_) (sym (*-distribˡ-+ pair-slots sf sg))))))
 
         -- slot + ps*(sf+sg) ≤ slot + ps*suc(sg+sf) = slot + ps*size
         -- sf+sg ≤ suc(sf+sg), then subst to suc(sg+sf) = size
-        compose-reclaim-size-bound : compose-reclaim ≤ next-slot alloc + pair-slots *ℕ size
+        compose-reclaim-size-bound : compose-reclaim ≤ next-slot alloc +ℕ pair-slots *ℕ size
         compose-reclaim-size-bound = ≤-trans reclaim-from-slot
                                        (+-monoʳ-≤ (next-slot alloc)
                                          (*-monoʳ-≤ pair-slots
-                                           (subst (sf + sg ≤_) (cong suc (+-comm sf sg)) (n≤1+n (sf + sg)))))
+                                           (subst (sf +ℕ sg ≤_) (cong suc (+-comm sf sg)) (n≤1+n (sf +ℕ sg)))))
 
     in record
       { result-loc = IRResultAWF.result-loc result-g

@@ -26,7 +26,7 @@
 
 module Once.Backend.X86v3.Pipeline where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (_<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; false)

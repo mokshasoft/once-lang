@@ -13,7 +13,7 @@
 
 module Once.Backend.X86v3.Allocation where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; <⇒≤; +-monoʳ-≤)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -69,40 +69,40 @@ module StackAllocation {FS : FrameSemantics} where
 
   -- Allocate n slots, returning base location
   stack-alloc : (as : AllocState {FS}) (n : ℕ) →
-    next-slot as + n ≤ frame-capacity as →
+    next-slot as +ℕ n ≤ frame-capacity as →
     ValueLocation FS × AllocState {FS}
   stack-alloc as n fits =
     OnStack (current-frame as) (next-slot as) ,
     record as
-      { next-slot = next-slot as + n
+      { next-slot = next-slot as +ℕ n
       ; slots-available = fits
       }
 
   -- The allocated location
   stack-alloc-loc : (as : AllocState {FS}) (n : ℕ) →
-    (fits : next-slot as + n ≤ frame-capacity as) →
+    (fits : next-slot as +ℕ n ≤ frame-capacity as) →
     ValueLocation FS
   stack-alloc-loc as n fits = proj₁ (stack-alloc as n fits)
 
   -- The updated state
   stack-alloc-state : (as : AllocState {FS}) (n : ℕ) →
-    (fits : next-slot as + n ≤ frame-capacity as) →
+    (fits : next-slot as +ℕ n ≤ frame-capacity as) →
     AllocState {FS}
   stack-alloc-state as n fits = proj₂ (stack-alloc as n fits)
 
   -- Key property: allocated slots are in the current frame
   stack-alloc-in-frame : (as : AllocState {FS}) (n : ℕ) →
-    (fits : next-slot as + n ≤ frame-capacity as) →
+    (fits : next-slot as +ℕ n ≤ frame-capacity as) →
     ∃[ slot ] stack-alloc-loc as n fits ≡ OnStack (current-frame as) slot
   stack-alloc-in-frame as n fits = next-slot as , refl
 
   -- Successive slots are at offset from base
   stack-alloc-offset : (as : AllocState {FS}) (n : ℕ) →
-    (fits : next-slot as + n ≤ frame-capacity as) →
+    (fits : next-slot as +ℕ n ≤ frame-capacity as) →
     (k : ℕ) → k < n →
     ValueLocation FS
   stack-alloc-offset as n fits k k<n =
-    OnStack (current-frame as) (next-slot as + k)
+    OnStack (current-frame as) (next-slot as +ℕ k)
 
 ------------------------------------------------------------------------
 -- Heap Allocation
@@ -159,7 +159,7 @@ module Allocator {FS : FrameSemantics} where
 
   -- Stack allocation (requires capacity proof)
   alloc-stack : (as : AllocState {FS}) (n : ℕ) →
-    next-slot as + n ≤ frame-capacity as →
+    next-slot as +ℕ n ≤ frame-capacity as →
     AllocResult as n
   alloc-stack as n fits = record
     { location = stack-alloc-loc as n fits
@@ -338,9 +338,9 @@ module FrontierInvariant {FS : FrameSemantics} where
 
   -- Allocation advances frontier
   stack-alloc-advances : ∀ (alloc : AllocState {FS}) n
-    (fits : next-slot alloc + n ≤ frame-capacity alloc) →
+    (fits : next-slot alloc +ℕ n ≤ frame-capacity alloc) →
     ∀ loc → BeforeFrontier alloc loc →
-    BeforeFrontier (record alloc { next-slot = next-slot alloc + n ; slots-available = fits }) loc
+    BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }) loc
   stack-alloc-advances alloc n fits (OnStack f k) (stack-before refl k<next) =
     stack-before refl (≤-trans k<next (m≤m+n (next-slot alloc) n))
   stack-alloc-advances alloc n fits (OnStack f k) (stack-ancestor cf≺f src) =

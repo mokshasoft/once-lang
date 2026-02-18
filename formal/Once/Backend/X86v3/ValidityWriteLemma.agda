@@ -110,7 +110,7 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
 
       ev' = validity-write-at-frontier env el s val eb ev
 
-  validity-write-at-frontier {alloc} {A ⊕ B} .(inl a) loc s val loc-before
+  validity-write-at-frontier {alloc} {A + B} .(inl a) loc s val loc-before
     (valid-inl {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl pp' pb slb pv'
     where
@@ -122,7 +122,7 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
 
       pv' = validity-write-at-frontier a pl s val pb pv
 
-  validity-write-at-frontier {alloc} {A ⊕ B} .(inr b) loc s val loc-before
+  validity-write-at-frontier {alloc} {A + B} .(inr b) loc s val loc-before
     (valid-inr {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr pp' pb slb pv'
     where
@@ -188,7 +188,7 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
 
       ev' = validity-write-at-suc-frontier env el s val eb ev
 
-  validity-write-at-suc-frontier {alloc} {A ⊕ B} .(inl a) loc s val loc-before
+  validity-write-at-suc-frontier {alloc} {A + B} .(inl a) loc s val loc-before
     (valid-inl {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl pp' pb slb pv'
     where
@@ -200,7 +200,7 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
 
       pv' = validity-write-at-suc-frontier a pl s val pb pv
 
-  validity-write-at-suc-frontier {alloc} {A ⊕ B} .(inr b) loc s val loc-before
+  validity-write-at-suc-frontier {alloc} {A + B} .(inr b) loc s val loc-before
     (valid-inr {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr pp' pb slb pv'
     where

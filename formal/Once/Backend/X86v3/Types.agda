@@ -1,12 +1,14 @@
 ------------------------------------------------------------------------
 -- Once.Backend.X86v3.Types
 --
--- Self-contained type definitions for X86v3 SlotMachine POC.
+-- Type definitions for X86v3 SlotMachine POC.
 --
--- This module is intentionally independent from Once.Type and
--- Once.SemanticBaseMachine. X86v3 uses a simplified semantic
--- interpretation where functions are plain Agda functions (not
--- Closure records). This simplifies the SlotMachine correctness proofs.
+-- Imports Type and Quantity from Once.Type, but provides local
+-- semantic interpretation where functions are plain Agda functions
+-- (not Closure records). This simplifies the SlotMachine proofs.
+--
+-- The main difference: Once.Type uses _+_ for sums, but X86v3 code
+-- historically uses _⊕_. We provide _⊕_ = _+_ as an alias.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86v3.Types where
@@ -21,52 +23,26 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 ------------------------------------------------------------------------
--- Quantity (for graded function types)
+-- Import and re-export Type and Quantity from Once.Type
 ------------------------------------------------------------------------
 
-data Quantity : Set where
-  Zero  : Quantity  -- Erased
-  One   : Quantity  -- Linear
-  Many  : Quantity  -- Unrestricted
+open import Once.Type public
+  using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Eff; Fix; Int; Float; Str; Buffer; TVar;
+         Quantity; Zero; One; Many;
+         _⊸_; _⇒_; _⇒₀_; IO)
 
 ------------------------------------------------------------------------
--- Type definition
+-- Sum operator alias for compatibility with existing X86v3 code
+--
+-- Once.Type uses _+_ for sums (standard categorical notation).
+-- X86v3 code historically uses _⊕_ to avoid conflicts with Data.Nat._+_.
+-- We provide _⊕_ as an alias for backwards compatibility.
 ------------------------------------------------------------------------
 
-data Type : Set where
-  Unit   : Type
-  Void   : Type
-  _*_    : Type → Type → Type
-  _⊕_    : Type → Type → Type  -- Sum type (avoiding conflict with Data.Nat._+_)
-  _⇒[_]_ : Type → Quantity → Type → Type
-  Eff    : Type → Type → Type
-  Fix    : Type → Type
-  Int    : Type
-  Float  : Type
-  Str    : Type
-  Buffer : Type
-  TVar   : String → Type
+_⊕_ : Type → Type → Type
+_⊕_ = _+_
 
-infixr 30 _⇒[_]_
 infixr 40 _⊕_
-infixr 50 _*_
-
--- Smart constructors
-_⊸_ : Type → Type → Type
-A ⊸ B = A ⇒[ One ] B
-
-_⇒_ : Type → Type → Type
-A ⇒ B = A ⇒[ Many ] B
-
-_⇒₀_ : Type → Type → Type
-A ⇒₀ B = A ⇒[ Zero ] B
-
-infixr 30 _⊸_
-infixr 30 _⇒_
-infixr 30 _⇒₀_
-
-IO : Type → Type
-IO A = Eff Unit A
 
 ------------------------------------------------------------------------
 -- Type Slots: Memory representation sizes
@@ -96,7 +72,7 @@ stack-type-slots Float = 1
 stack-type-slots Str = 1          -- pointer to string data (always indirect)
 stack-type-slots Buffer = 1       -- pointer to buffer data (always indirect)
 stack-type-slots (A * B) = stack-type-slots A +ℕ stack-type-slots B
-stack-type-slots (A ⊕ B) = 1 +ℕ (stack-type-slots A ⊔ stack-type-slots B)  -- tag + max payload
+stack-type-slots (A + B) = 1 +ℕ (stack-type-slots A ⊔ stack-type-slots B)  -- tag + max payload
 stack-type-slots (_ ⇒[ _ ] _) = 2  -- closure: env-ptr + code-ptr (always boxed)
 stack-type-slots (Eff _ B) = stack-type-slots B
 stack-type-slots (Fix _) = 1       -- pointer to recursive structure (always boxed)
@@ -111,7 +87,7 @@ heap-type-slots Float = 1
 heap-type-slots Str = 1
 heap-type-slots Buffer = 1
 heap-type-slots (A * B) = 2        -- ptr to fst + ptr to snd
-heap-type-slots (A ⊕ B) = 2        -- tag + ptr to payload
+heap-type-slots (A + B) = 2        -- tag + ptr to payload
 heap-type-slots (_ ⇒[ _ ] _) = 2   -- closure: env-ptr + code-ptr
 heap-type-slots (Eff _ B) = heap-type-slots B
 heap-type-slots (Fix _) = 1        -- pointer to recursive structure
@@ -143,7 +119,7 @@ open ⟦Fix⟧ public
 ⟦ Unit ⟧         = ⊤
 ⟦ Void ⟧         = ⊥
 ⟦ A * B ⟧        = ⟦ A ⟧ × ⟦ B ⟧
-⟦ A ⊕ B ⟧        = ⟦ A ⟧ ⊎ ⟦ B ⟧
+⟦ A + B ⟧        = ⟦ A ⟧ ⊎ ⟦ B ⟧
 ⟦ A ⇒[ _ ] B ⟧   = ⟦ A ⟧ → ⟦ B ⟧
 ⟦ Eff A B ⟧      = ⟦ A ⟧ → ⟦ B ⟧
 ⟦ Fix F ⟧        = ⟦Fix⟧ ⟦ F ⟧
@@ -170,13 +146,13 @@ pair a b = a , b
 -- Sum operations
 ------------------------------------------------------------------------
 
-inl : ∀ {A B} → ⟦ A ⟧ → ⟦ A ⊕ B ⟧
+inl : ∀ {A B} → ⟦ A ⟧ → ⟦ A + B ⟧
 inl = inj₁
 
-inr : ∀ {A B} → ⟦ B ⟧ → ⟦ A ⊕ B ⟧
+inr : ∀ {A B} → ⟦ B ⟧ → ⟦ A + B ⟧
 inr = inj₂
 
-case : ∀ {A B C} → (⟦ A ⟧ → ⟦ C ⟧) → (⟦ B ⟧ → ⟦ C ⟧) → ⟦ A ⊕ B ⟧ → ⟦ C ⟧
+case : ∀ {A B C} → (⟦ A ⟧ → ⟦ C ⟧) → (⟦ B ⟧ → ⟦ C ⟧) → ⟦ A + B ⟧ → ⟦ C ⟧
 case f g (inj₁ a) = f a
 case f g (inj₂ b) = g b
 

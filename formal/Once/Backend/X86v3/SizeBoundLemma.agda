@@ -33,19 +33,19 @@ open import Once.Backend.X86v3.IR
 ∘-g-bound f g pb ir<bound = <-trans (∘-g-smaller f g) ir<bound
 
 -- Pair sub-IR bounds
-⟨,⟩-f-bound : ∀ {A B C} (f : IR A B) (g : IR A C) (program-bound : ℕ) →
-  ir-size ⟨ f , g ⟩ < program-bound →
+⟨,⟩-f-bound : ∀ {A B C} (f : IR A B) (g : IR A C) {m : AllocMode} (program-bound : ℕ) →
+  ir-size (⟨ f , g ⟩ m) < program-bound →
   ir-size f < program-bound
-⟨,⟩-f-bound f g pb ir<bound = <-trans (⟨,⟩-f-smaller f g) ir<bound
+⟨,⟩-f-bound f g {m} pb ir<bound = <-trans (⟨,⟩-f-smaller f g {m}) ir<bound
 
-⟨,⟩-g-bound : ∀ {A B C} (f : IR A B) (g : IR A C) (program-bound : ℕ) →
-  ir-size ⟨ f , g ⟩ < program-bound →
+⟨,⟩-g-bound : ∀ {A B C} (f : IR A B) (g : IR A C) {m : AllocMode} (program-bound : ℕ) →
+  ir-size (⟨ f , g ⟩ m) < program-bound →
   ir-size g < program-bound
-⟨,⟩-g-bound f g pb ir<bound = <-trans (⟨,⟩-g-smaller f g) ir<bound
+⟨,⟩-g-bound f g {m} pb ir<bound = <-trans (⟨,⟩-g-smaller f g {m}) ir<bound
 
 -- Curry body bound
-curry-body-bound : ∀ {A B C} (f : IR (A * B) C) (program-bound : ℕ) →
-  ir-size (curry f) < program-bound →
+curry-body-bound : ∀ {A B C} (f : IR (A * B) C) {m : AllocMode} (program-bound : ℕ) →
+  ir-size (curry f m) < program-bound →
   ir-size f < program-bound
-curry-body-bound f pb ir<bound = <-trans (curry-smaller f) ir<bound
+curry-body-bound f {m} pb ir<bound = <-trans (curry-smaller f {m}) ir<bound
 

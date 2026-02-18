@@ -16,7 +16,7 @@
 
 module Once.Backend.X86v3.CodeGen where
 
-open import Data.Nat using (ℕ; zero; suc; _+_) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
 
 -- Import X86 syntax
@@ -28,7 +28,8 @@ open import Once.Backend.X86.Syntax
          Program; slot-size; slots)
 
 -- Import X86v3 IR
-open import Once.Backend.X86v3.IR using (IR; id; _∘_; ⟨_,_⟩; fst-ir; snd-ir; curry; apply; terminal)
+open import Once.Backend.X86v3.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal;
+                                          inl-ir; inr-ir; case-ir; initial; fold-ir; unfold-ir; Prim)
 
 ------------------------------------------------------------------------
 -- Instruction sequences for each IR construct
@@ -115,7 +116,7 @@ curry-closure-setup body-len =
   lea r9 (rip+disp 4) ∷                 -- r9 = thunk address (rip + 4)
   mov (mem (base+disp rsp slot-size)) (reg r9) ∷  -- [closure+8] = code-ptr
   mov (reg rax) (reg rsp) ∷             -- rax = closure address
-  jmp (12 + body-len) ∷ []              -- jump over thunk code
+  jmp (12 +ℕ body-len) ∷ []              -- jump over thunk code
 
 -- | Thunk code prefix: called with arg in rdi, env in r12
 curry-thunk-setup : Program
@@ -136,7 +137,7 @@ curry-thunk-cleanup body-len =
   pop rbp ∷                             -- restore rbp
   pop r15 ∷                             -- restore r15
   ret ∷                                 -- return to caller
-  label (18 + body-len) ∷ []            -- end label
+  label (18 +ℕ body-len) ∷ []            -- end label
 
 ------------------------------------------------------------------------
 -- Apply: call closure
@@ -163,15 +164,23 @@ apply-instrs =
 -- | Calculate compiled code length (for jump offsets)
 compile-length : ∀ {A B} → IR A B → ℕ
 compile-length id = length id-instrs
-compile-length (g ∘ f) = compile-length f + length compose-bridge + compile-length g
+compile-length (g ∘ f) = compile-length f +ℕ length compose-bridge +ℕ compile-length g
 compile-length fst-ir = length fst-instrs
 compile-length snd-ir = length snd-instrs
-compile-length ⟨ f , g ⟩ = length pair-setup + compile-length f +
-                           length pair-middle + compile-length g +
-                           length pair-cleanup
+compile-length (⟨ f , g ⟩ _) = length pair-setup +ℕ compile-length f +ℕ
+                               length pair-middle +ℕ compile-length g +ℕ
+                               length pair-cleanup
 compile-length terminal = length terminal-instrs
-compile-length (curry f) = 6 + length curry-thunk-setup + compile-length f + 5  -- closure + thunk + cleanup
+compile-length (curry f _) = 6 +ℕ length curry-thunk-setup +ℕ compile-length f +ℕ 5  -- closure + thunk + cleanup
 compile-length apply = length apply-instrs
+-- Sum/fix type operations (postulated for now)
+compile-length (inl-ir _) = 1  -- placeholder
+compile-length (inr-ir _) = 1  -- placeholder
+compile-length (case-ir f g) = compile-length f +ℕ compile-length g +ℕ 2
+compile-length initial = 1      -- absurd elimination
+compile-length fold-ir = 1      -- wrap
+compile-length unfold-ir = 1    -- unwrap
+compile-length (Prim _) = 1     -- primitive
 
 -- | Generate x86 code for IR
 compile-ir : ∀ {A B} → IR A B → Program
@@ -187,7 +196,7 @@ compile-ir fst-ir = fst-instrs
 
 compile-ir snd-ir = snd-instrs
 
-compile-ir ⟨ f , g ⟩ =
+compile-ir (⟨ f , g ⟩ _) =
   pair-setup ++
   compile-ir f ++
   pair-middle ++
@@ -196,7 +205,7 @@ compile-ir ⟨ f , g ⟩ =
 
 compile-ir terminal = terminal-instrs
 
-compile-ir (curry f) =
+compile-ir (curry f _) =
   let body = compile-ir f
       body-len = compile-length f
   in curry-closure-setup body-len ++
@@ -205,6 +214,15 @@ compile-ir (curry f) =
      curry-thunk-cleanup body-len
 
 compile-ir apply = apply-instrs
+
+-- Sum/fix type operations (postulated - TODO: implement)
+compile-ir (inl-ir _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
+compile-ir (inr-ir _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
+compile-ir (case-ir f g) = compile-ir f ++ compile-ir g  -- placeholder
+compile-ir initial = ud2 ∷ []     -- absurd elimination (should never execute)
+compile-ir fold-ir = []           -- wrap is no-op at runtime
+compile-ir unfold-ir = []         -- unwrap is no-op at runtime
+compile-ir (Prim _) = ud2 ∷ []    -- primitives need FFI (placeholder)
 
 ------------------------------------------------------------------------
 -- Summary

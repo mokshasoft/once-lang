@@ -7,7 +7,7 @@
 
 module Once.Backend.X86v3.IR.SumFixWF where
 
-open import Data.Nat using (ℕ; _<_; _+_; _≤_; suc; s≤s; z≤n) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; _<_; _≤_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤)
 -- n≤m+n is imported from IR.agda
 open import Data.Bool using (false)
@@ -22,7 +22,7 @@ open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
 open import Once.Backend.X86v3.Types
 open import Once.Backend.X86v3.IR
-open import Once.Backend.X86v3.Allocation
+open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Sum and Fix IR implementations
@@ -171,41 +171,41 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Inl: inject left into sum type
   --
   -- Creates a sum value (inl x) by:
-  -- 1. Allocating type-slots (A ⊕ B) slots at frontier
+  -- 1. Allocating type-slots (A + B) slots at frontier
   -- 2. Writing input-loc (payload pointer) to sucLoc sum-loc
   -- 3. Returning sum-loc
   --
   -- Memory layout: sum-loc stores tag (implicit), sucLoc sum-loc stores payload ptr
   ------------------------------------------------------------------------
 
-  -- Helper: type-slots (A ⊕ B) > 0
-  sum-slots-pos : ∀ {A B} → 0 < type-slots (A ⊕ B)
+  -- Helper: type-slots (A + B) > 0
+  sum-slots-pos : ∀ {A B} → 0 < type-slots (A + B)
   sum-slots-pos {A} {B} = s≤s z≤n
 
   -- Postulates for sum type allocation (design issue: type-slots can be > pair-slots)
   postulate
-    -- type-slots (A ⊕ B) ≤ pair-slots * ir-size inl-ir (assumes boxed representation)
-    sum-slots-bound : ∀ {A B} → type-slots (A ⊕ B) ≤ pair-slots *ℕ ir-size (inl-ir {A} {B})
+    -- type-slots (A + B) ≤ pair-slots * ir-size inl-ir (assumes boxed representation)
+    sum-slots-bound : ∀ {A B} {m : AllocMode} → type-slots (A + B) ≤ pair-slots *ℕ ir-size (inl-ir {A} {B} m)
 
-    -- suc n < n + type-slots (A ⊕ B) (requires type-slots ≥ 2)
-    sucLoc-sum-in-range : ∀ {A B} (n : ℕ) → suc n < n + type-slots (A ⊕ B)
+    -- suc n < n +ℕ type-slots (A + B) (requires type-slots ≥ 2)
+    sucLoc-sum-in-range : ∀ {A B} (n : ℕ) → suc n < n +ℕ type-slots (A + B)
 
     -- Proof irrelevance for allocation state equality
     alloc-slots-eq : ∀ {FS : FrameSemantics} (alloc : AllocState {FS}) (k : ℕ)
-      (fits₁ fits₂ : next-slot alloc + k ≤ frame-capacity alloc) →
-      record alloc { next-slot = next-slot alloc + k ; slots-available = fits₁ } ≡
-      record alloc { next-slot = next-slot alloc + k ; slots-available = fits₂ }
+      (fits₁ fits₂ : next-slot alloc +ℕ k ≤ frame-capacity alloc) →
+      record alloc { next-slot = next-slot alloc +ℕ k ; slots-available = fits₁ } ≡
+      record alloc { next-slot = next-slot alloc +ℕ k ; slots-available = fits₂ }
 
-  run-inl : ∀ {A B}
+  run-inl : ∀ {A B} {m : AllocMode}
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    next-slot alloc + pair-slots *ℕ ir-size (inl-ir {A} {B}) ≤ frame-capacity alloc →
-    IRResultAWF (inl-ir {A} {B}) x s alloc
-  run-inl {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    next-slot alloc +ℕ pair-slots *ℕ ir-size (inl-ir {A} {B} m) ≤ frame-capacity alloc →
+    IRResultAWF (inl-ir {A} {B} m) x s alloc
+  run-inl {A} {B} {m} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     record
       { result-loc = sum-loc
       ; final-state = s-final
@@ -220,7 +220,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-inl
-      ; reclaimable-slot = next-slot alloc + sum-slots
+      ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
       ; reclaim-bounded = ≤-refl
       ; reclaim-preserves-result = inl-reclaim-preserves-result
@@ -228,28 +228,28 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; reclaim-size-bound = reclaim-size-bound-inl
       }
     where
-      sum-slots = type-slots (A ⊕ B)
+      sum-slots = type-slots (A + B)
       sum-loc = OnStack (current-frame alloc) (next-slot alloc)
 
       -- Derive capacity for sum allocation
       -- ir-size inl-ir = 1, so pair-slots * 1 = pair-slots ≥ sum-slots when sum-slots ≤ 2
-      -- Actually type-slots (A ⊕ B) = 1 + max(type-slots A, type-slots B) could be > 2
-      -- But ir-stack-requirement inl-ir = type-slots (A ⊕ B), and combined-cap uses pair-slots * ir-size
+      -- Actually type-slots (A + B) = 1 + max(type-slots A, type-slots B) could be > 2
+      -- But ir-stack-requirement inl-ir = type-slots (A + B), and combined-cap uses pair-slots * ir-size
       -- Let's check: ir-size inl-ir = 1, so pair-slots * 1 = 2
-      -- This works for boxed representation where type-slots (A ⊕ B) = 2 (tag + pointer)
-      -- For unboxed, we'd need type-slots (A ⊕ B) ≤ pair-slots * ir-size inl-ir
+      -- This works for boxed representation where type-slots (A + B) = 2 (tag + pointer)
+      -- For unboxed, we'd need type-slots (A + B) ≤ pair-slots * ir-size inl-ir
 
       -- For now, use sum-slots directly with a capacity derivation
       -- sum-slots ≤ pair-slots * ir-size inl-ir = pair-slots * 1 = 2
-      -- This holds when type-slots (A ⊕ B) ≤ 2 (boxed representation)
+      -- This holds when type-slots (A + B) ≤ 2 (boxed representation)
       -- NOTE: This is a design issue - type-slots can be > pair-slots for unboxed representation
 
-      sum-fits : next-slot alloc + sum-slots ≤ frame-capacity alloc
-      sum-fits = ≤-trans (+-monoʳ-≤ (next-slot alloc) (sum-slots-bound {A} {B})) combined-cap
+      sum-fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc
+      sum-fits = ≤-trans (+-monoʳ-≤ (next-slot alloc) (sum-slots-bound {A} {B} {m})) combined-cap
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
-        { next-slot = next-slot alloc + sum-slots
+        { next-slot = next-slot alloc +ℕ sum-slots
         ; slots-available = sum-fits
         }
 
@@ -262,7 +262,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       sum-before = at-frontier-becomes-before alloc sum-slots (sum-slots-pos {A} {B}) sum-fits
 
       -- sucLoc sum-loc is BeforeFrontier after allocation
-      -- Need: suc (next-slot alloc) < next-slot alloc + sum-slots = next-slot alloc₁
+      -- Need: suc (next-slot alloc) < next-slot alloc +ℕ sum-slots = next-slot alloc₁
       sucLoc-sum-before : BeforeFrontier alloc₁ (sucLoc sum-loc)
       sucLoc-sum-before = stack-before refl (sucLoc-sum-in-range {A} {B} (next-slot alloc))
 
@@ -300,12 +300,12 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (write-preserves-disjoint s (sucLoc sum-loc) input-loc loc
                 (λ eq → suc-frontier-neq-before alloc loc bf eq))
 
-      inl-reclaim-preserves-result : ∀ (fits : next-slot alloc + sum-slots ≤ frame-capacity alloc) →
-        BeforeFrontier (record alloc { next-slot = next-slot alloc + sum-slots ; slots-available = fits }) sum-loc
+      inl-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+        BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots ; slots-available = fits }) sum-loc
       inl-reclaim-preserves-result fits = at-frontier-becomes-before alloc sum-slots (sum-slots-pos {A} {B}) fits
 
-      inl-reclaim-preserves-validity : ∀ (fits : next-slot alloc + sum-slots ≤ frame-capacity alloc) →
-        ValidAtWF (record alloc { next-slot = next-slot alloc + sum-slots ; slots-available = fits })
+      inl-reclaim-preserves-validity : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+        ValidAtWF (record alloc { next-slot = next-slot alloc +ℕ sum-slots ; slots-available = fits })
                   (inl {A} {B} x) sum-loc s-final
       -- alloc₁ has sum-fits but fits might be different proof object
       -- Use proof irrelevance via postulate
@@ -314,14 +314,14 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (alloc-slots-eq alloc sum-slots sum-fits fits)
               inl-valid-wf-final
 
-      reclaim-size-bound-inl : next-slot alloc + sum-slots ≤ next-slot alloc + pair-slots *ℕ ir-size (inl-ir {A} {B})
-      reclaim-size-bound-inl = +-monoʳ-≤ (next-slot alloc) (sum-slots-bound {A} {B})
+      reclaim-size-bound-inl : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ pair-slots *ℕ ir-size (inl-ir {A} {B} m)
+      reclaim-size-bound-inl = +-monoʳ-≤ (next-slot alloc) (sum-slots-bound {A} {B} {m})
 
   ------------------------------------------------------------------------
   -- Inr: inject right into sum type
   --
   -- Creates a sum value (inr x) by:
-  -- 1. Allocating type-slots (A ⊕ B) slots at frontier
+  -- 1. Allocating type-slots (A + B) slots at frontier
   -- 2. Writing input-loc (payload pointer) to sucLoc sum-loc
   -- 3. Returning sum-loc
   --
@@ -329,16 +329,16 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Same pattern as run-inl, but produces inr instead of inl
   ------------------------------------------------------------------------
 
-  run-inr : ∀ {A B}
+  run-inr : ∀ {A B} {m : AllocMode}
     (x : ⟦ B ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    next-slot alloc + pair-slots *ℕ ir-size (inr-ir {A} {B}) ≤ frame-capacity alloc →
-    IRResultAWF (inr-ir {A} {B}) x s alloc
-  run-inr {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    next-slot alloc +ℕ pair-slots *ℕ ir-size (inr-ir {A} {B} m) ≤ frame-capacity alloc →
+    IRResultAWF (inr-ir {A} {B} m) x s alloc
+  run-inr {A} {B} {m} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     record
       { result-loc = sum-loc
       ; final-state = s-final
@@ -353,7 +353,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-inr
-      ; reclaimable-slot = next-slot alloc + sum-slots
+      ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
       ; reclaim-bounded = ≤-refl
       ; reclaim-preserves-result = inr-reclaim-preserves-result
@@ -361,15 +361,17 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; reclaim-size-bound = reclaim-size-bound-inr
       }
     where
-      sum-slots = type-slots (A ⊕ B)
+      sum-slots = type-slots (A + B)
       sum-loc = OnStack (current-frame alloc) (next-slot alloc)
 
-      sum-fits : next-slot alloc + sum-slots ≤ frame-capacity alloc
-      sum-fits = ≤-trans (+-monoʳ-≤ (next-slot alloc) (sum-slots-bound {A} {B})) combined-cap
+      -- Note: sum-slots-bound now uses inr-ir m, but sum type is the same
+      -- We rely on the fact that ir-size (inl-ir m) = ir-size (inr-ir m) = 1
+      sum-fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc
+      sum-fits = ≤-trans (+-monoʳ-≤ (next-slot alloc) (sum-slots-bound {A} {B} {m})) combined-cap
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
-        { next-slot = next-slot alloc + sum-slots
+        { next-slot = next-slot alloc +ℕ sum-slots
         ; slots-available = sum-fits
         }
 
@@ -419,20 +421,20 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (write-preserves-disjoint s (sucLoc sum-loc) input-loc loc
                 (λ eq → suc-frontier-neq-before alloc loc bf eq))
 
-      inr-reclaim-preserves-result : ∀ (fits : next-slot alloc + sum-slots ≤ frame-capacity alloc) →
-        BeforeFrontier (record alloc { next-slot = next-slot alloc + sum-slots ; slots-available = fits }) sum-loc
+      inr-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+        BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots ; slots-available = fits }) sum-loc
       inr-reclaim-preserves-result fits = at-frontier-becomes-before alloc sum-slots (sum-slots-pos {A} {B}) fits
 
-      inr-reclaim-preserves-validity : ∀ (fits : next-slot alloc + sum-slots ≤ frame-capacity alloc) →
-        ValidAtWF (record alloc { next-slot = next-slot alloc + sum-slots ; slots-available = fits })
+      inr-reclaim-preserves-validity : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+        ValidAtWF (record alloc { next-slot = next-slot alloc +ℕ sum-slots ; slots-available = fits })
                   (inr {A} {B} x) sum-loc s-final
       inr-reclaim-preserves-validity fits =
         subst (λ a → ValidAtWF a (inr {A} {B} x) sum-loc s-final)
               (alloc-slots-eq alloc sum-slots sum-fits fits)
               inr-valid-wf-final
 
-      reclaim-size-bound-inr : next-slot alloc + sum-slots ≤ next-slot alloc + pair-slots *ℕ ir-size (inr-ir {A} {B})
-      reclaim-size-bound-inr = +-monoʳ-≤ (next-slot alloc) (sum-slots-bound {A} {B})
+      reclaim-size-bound-inr : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ pair-slots *ℕ ir-size (inr-ir {A} {B} m)
+      reclaim-size-bound-inr = +-monoʳ-≤ (next-slot alloc) (sum-slots-bound {A} {B} {m})
 
   ------------------------------------------------------------------------
   -- Fold: wrap value in recursive type
@@ -461,7 +463,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    next-slot alloc + pair-slots *ℕ ir-size (fold-ir {F}) ≤ frame-capacity alloc →
+    next-slot alloc +ℕ pair-slots *ℕ ir-size (fold-ir {F}) ≤ frame-capacity alloc →
     IRResultAWF (fold-ir {F}) x s alloc
   run-fold {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     record
@@ -478,7 +480,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-fold
-      ; reclaimable-slot = next-slot alloc + fix-slots
+      ; reclaimable-slot = next-slot alloc +ℕ fix-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) fix-slots
       ; reclaim-bounded = ≤-refl
       ; reclaim-preserves-result = fold-reclaim-preserves-result
@@ -490,12 +492,12 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       fold-loc = OnStack (current-frame alloc) (next-slot alloc)
 
       -- Derive capacity for fold allocation
-      fix-fits : next-slot alloc + fix-slots ≤ frame-capacity alloc
+      fix-fits : next-slot alloc +ℕ fix-slots ≤ frame-capacity alloc
       fix-fits = ≤-trans (+-monoʳ-≤ (next-slot alloc) (fix-slots-bound {F})) combined-cap
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
-        { next-slot = next-slot alloc + fix-slots
+        { next-slot = next-slot alloc +ℕ fix-slots
         ; slots-available = fix-fits
         }
 
@@ -541,25 +543,25 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
               (write-preserves-disjoint s fold-loc input-loc loc
                 (λ eq → at-frontier-neq-before alloc loc bf eq))
 
-      fold-reclaim-preserves-result : ∀ (fits : next-slot alloc + fix-slots ≤ frame-capacity alloc) →
-        BeforeFrontier (record alloc { next-slot = next-slot alloc + fix-slots ; slots-available = fits }) fold-loc
+      fold-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ fix-slots ≤ frame-capacity alloc) →
+        BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ fix-slots ; slots-available = fits }) fold-loc
       fold-reclaim-preserves-result fits = at-frontier-becomes-before alloc fix-slots (fix-slots-pos {F}) fits
 
-      fold-reclaim-preserves-validity : ∀ (fits : next-slot alloc + fix-slots ≤ frame-capacity alloc) →
-        ValidAtWF (record alloc { next-slot = next-slot alloc + fix-slots ; slots-available = fits })
+      fold-reclaim-preserves-validity : ∀ (fits : next-slot alloc +ℕ fix-slots ≤ frame-capacity alloc) →
+        ValidAtWF (record alloc { next-slot = next-slot alloc +ℕ fix-slots ; slots-available = fits })
                   (wrap x) fold-loc s-final
       fold-reclaim-preserves-validity fits =
         subst (λ a → ValidAtWF a (wrap x) fold-loc s-final)
               (alloc-slots-eq alloc fix-slots fix-fits fits)
               fold-valid-wf-final
 
-      reclaim-size-bound-fold : next-slot alloc + fix-slots ≤ next-slot alloc + pair-slots *ℕ ir-size (fold-ir {F})
+      reclaim-size-bound-fold : next-slot alloc +ℕ fix-slots ≤ next-slot alloc +ℕ pair-slots *ℕ ir-size (fold-ir {F})
       reclaim-size-bound-fold = +-monoʳ-≤ (next-slot alloc) (fix-slots-bound {F})
 
   ------------------------------------------------------------------------
   -- Case: dispatch on sum type
   --
-  -- For a sum value x : ⟦ A ⊕ B ⟧ (either inl a or inr b):
+  -- For a sum value x : ⟦ A + B ⟧ (either inl a or inr b):
   -- 1. Read payload pointer from sucLoc input-loc
   -- 2. Load payload into RDI
   -- 3. Dispatch to f (for inl) or g (for inr) via RecDispatcherWF
@@ -570,13 +572,13 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   run-case : ∀ {A B C} (f : IR A C) (g : IR B C)
     (rec-wf : RecDispatcherWF (ir-size (case-ir f g)))
-    (x : ⟦ A ⊕ B ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ A + B ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    next-slot alloc + pair-slots *ℕ ir-size (case-ir f g) ≤ frame-capacity alloc →
+    next-slot alloc +ℕ pair-slots *ℕ ir-size (case-ir f g) ≤ frame-capacity alloc →
     IRResultAWF (case-ir f g) x s alloc
 
   -- Case for inl: dispatch to f
@@ -625,16 +627,16 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       payload-valid-wf = subst (λ x → ValidAtWF alloc x payload-loc s) a-eq payload-valid-wf'
 
       -- Capacity bound: pair-slots * sf ≤ pair-slots * size
-      -- Need: sf ≤ size = suc (sf + sg)
-      -- Derivation: sf ≤ sf + sg ≤ suc (sf + sg)
+      -- Need: sf ≤ size = suc (sf +ℕ sg)
+      -- Derivation: sf ≤ sf +ℕ sg ≤ suc (sf +ℕ sg)
       sf≤size : sf ≤ size
-      sf≤size = ≤-trans (m≤m+n sf sg) (n≤1+n (sf + sg))
+      sf≤size = ≤-trans (m≤m+n sf sg) (n≤1+n (sf +ℕ sg))
 
       cap-f-bound : pair-slots *ℕ sf ≤ pair-slots *ℕ size
       cap-f-bound = *-monoʳ-≤ pair-slots sf≤size
 
       -- Capacity for f
-      cap-f : next-slot alloc + pair-slots *ℕ sf ≤ frame-capacity alloc
+      cap-f : next-slot alloc +ℕ pair-slots *ℕ sf ≤ frame-capacity alloc
       cap-f = ≤-trans (+-monoʳ-≤ (next-slot alloc) cap-f-bound) combined-cap
 
       -- Put payload-loc in RDI for dispatch
@@ -703,16 +705,16 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       payload-valid-wf = subst (λ x → ValidAtWF alloc x payload-loc s) b-eq payload-valid-wf'
 
       -- Capacity bound: pair-slots * sg ≤ pair-slots * size
-      -- Need: sg ≤ size = suc (sf + sg)
-      -- Derivation: sg ≤ sf + sg ≤ suc (sf + sg)
+      -- Need: sg ≤ size = suc (sf +ℕ sg)
+      -- Derivation: sg ≤ sf +ℕ sg ≤ suc (sf +ℕ sg)
       sg≤size : sg ≤ size
-      sg≤size = ≤-trans (n≤m+n sf sg) (n≤1+n (sf + sg))
+      sg≤size = ≤-trans (n≤m+n sf sg) (n≤1+n (sf +ℕ sg))
 
       cap-g-bound : pair-slots *ℕ sg ≤ pair-slots *ℕ size
       cap-g-bound = *-monoʳ-≤ pair-slots sg≤size
 
       -- Capacity for g
-      cap-g : next-slot alloc + pair-slots *ℕ sg ≤ frame-capacity alloc
+      cap-g : next-slot alloc +ℕ pair-slots *ℕ sg ≤ frame-capacity alloc
       cap-g = ≤-trans (+-monoʳ-≤ (next-slot alloc) cap-g-bound) combined-cap
 
       -- Put payload-loc in RDI for dispatch

@@ -9,7 +9,7 @@
 
 module Once.Backend.X86v3.IR.CurryWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _+_; _≤_; _≥_) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m+n≤o⇒m≤o; +-monoʳ-≤; *-monoˡ-≤; m≤m*n; +-assoc)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
@@ -20,7 +20,7 @@ open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
 open import Once.Backend.X86v3.Types
 open import Once.Backend.X86v3.IR
-open import Once.Backend.X86v3.Allocation
+open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Curry implementation
@@ -79,9 +79,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- BodyCorrect.execute which Apply will later use.
   ------------------------------------------------------------------------
 
-  run-curry : ∀ {A B C} (f : IR (A * B) C)
-    (ir<bound : ir-size (curry f) < program-bound)
-    (rec-wf : RecDispatcherWF (ir-size (curry f)))
+  run-curry : ∀ {A B C} (f : IR (A * B) C) {m : AllocMode}
+    (ir<bound : ir-size (curry f m) < program-bound)
+    (rec-wf : RecDispatcherWF (ir-size (curry f m)))
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF alloc x input-loc s →
@@ -89,9 +89,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * size covers ir-req + recursion
-    next-slot alloc + pair-slots *ℕ ir-size (curry f) ≤ frame-capacity alloc →
-    IRResultAWF (curry f) x s alloc
-  run-curry f ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    next-slot alloc +ℕ pair-slots *ℕ ir-size (curry f m) ≤ frame-capacity alloc →
+    IRResultAWF (curry f m) x s alloc
+  run-curry f {m} ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     record
       { result-loc = closure-loc
       ; final-state = s-final
@@ -107,7 +107,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-curry
       -- Reclamation: curry allocates closure-slots, result at closure-loc
-      ; reclaimable-slot = next-slot alloc + closure-slots
+      ; reclaimable-slot = next-slot alloc +ℕ closure-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) closure-slots
       ; reclaim-bounded = ≤-refl
       ; reclaim-preserves-result = curry-reclaim-preserves-result
@@ -116,7 +116,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       }
     where
       -- Size bound for body
-      body<bound = curry-body-bound f program-bound ir<bound
+      body<bound = curry-body-bound f {m} program-bound ir<bound
 
       closure-loc = OnStack (current-frame alloc) (next-slot alloc)
 
@@ -124,19 +124,19 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- combined-cap: slot + pair-slots * size ≤ capacity
       -- Since size = suc (ir-size f) ≥ 1, pair-slots * size ≥ pair-slots = closure-slots
       -- So: slot + closure-slots ≤ slot + pair-slots * size ≤ capacity
-      size = ir-size (curry f)
+      size = ir-size (curry f m)
 
       -- closure-slots = pair-slots ≤ pair-slots * size (since size ≥ 1)
       -- size = suc (ir-size f) so NonZero instance is inferred
       closure-bound : closure-slots ≤ pair-slots *ℕ size
       closure-bound = m≤m*n pair-slots size
 
-      closure-fits : next-slot alloc + closure-slots ≤ frame-capacity alloc
+      closure-fits : next-slot alloc +ℕ closure-slots ≤ frame-capacity alloc
       closure-fits = ≤-trans (+-monoʳ-≤ (next-slot alloc) closure-bound) combined-cap
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
-        { next-slot = next-slot alloc + closure-slots
+        { next-slot = next-slot alloc +ℕ closure-slots
         ; slots-available = closure-fits
         }
 
@@ -187,8 +187,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 input-valid-wf)))
 
       -- KEY: Construct BodyCorrect using rec-wf!
-      -- rec-wf is RecDispatcherWF (ir-size (curry f))
-      -- Since curry-smaller : ir-size f < ir-size (curry f), we can dispatch to f
+      -- rec-wf is RecDispatcherWF (ir-size (curry f m))
+      -- Since curry-smaller : ir-size f < ir-size (curry f m), we can dispatch to f
       --
       -- X86 pattern: store body-capacity = pair-slots * ir-size f in the closure
       -- Apply will extract and use this for its capacity requirement
@@ -203,7 +203,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { body-capacity = pair-slots *ℕ ir-size f
         ; body-cap-eq = refl
         ; execute = λ arg arg-loc pair-loc s' alloc' pair-valid-wf pair-before not-halt rdi-eq' combined-cap' →
-            rec-wf f (curry-smaller f) (pair x arg) pair-loc s' alloc'
+            rec-wf f (curry-smaller f {m}) (pair x arg) pair-loc s' alloc'
               pair-valid-wf pair-before not-halt rdi-eq' combined-cap'
         }
 
@@ -223,34 +223,34 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       heap-monotone-curry = ≤-refl
 
       -- KEY: Output valid-closure-wf with body-correct embedded!
-      curry-result-wf : ValidAtWF alloc-final (eval (curry f) x) closure-loc s-final
+      curry-result-wf : ValidAtWF alloc-final (eval (curry f m) x) closure-loc s-final
       curry-result-wf = valid-closure-wf body<bound
                           env-ptr code-ptr input-before₁ code-before₁ sucLoc-closure-before
                           input-valid-wf-final body-correct
 
       -- Transfer closure-before from alloc₁ to the reclaimed allocation
-      curry-reclaim-preserves-result : ∀ (fits : next-slot alloc + closure-slots ≤ frame-capacity alloc) →
-        BeforeFrontier (record alloc { next-slot = next-slot alloc + closure-slots ; slots-available = fits }) closure-loc
+      curry-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ closure-slots ≤ frame-capacity alloc) →
+        BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ closure-slots ; slots-available = fits }) closure-loc
       curry-reclaim-preserves-result fits =
-        frontier-same-heap alloc₁ (record alloc { next-slot = next-slot alloc + closure-slots ; slots-available = fits })
+        frontier-same-heap alloc₁ (record alloc { next-slot = next-slot alloc +ℕ closure-slots ; slots-available = fits })
           refl refl refl closure-loc closure-before
 
       -- Validity at reclaimed allocation - PROVEN via bf-same-frame-slot
       -- The two allocations have the same current-frame, next-slot, and next-heap-ref.
       -- Only slots-available differs (proof-irrelevant).
-      curry-reclaim-preserves-validity : ∀ (fits : next-slot alloc + closure-slots ≤ frame-capacity alloc) →
-        ValidAtWF (record alloc { next-slot = next-slot alloc + closure-slots ; slots-available = fits })
-                  (eval (curry f) x) closure-loc s-final
+      curry-reclaim-preserves-validity : ∀ (fits : next-slot alloc +ℕ closure-slots ≤ frame-capacity alloc) →
+        ValidAtWF (record alloc { next-slot = next-slot alloc +ℕ closure-slots ; slots-available = fits })
+                  (eval (curry f m) x) closure-loc s-final
       curry-reclaim-preserves-validity fits = validityWF-with-bf-transfer
-        (eval (curry f) x) closure-loc s-final alloc₁
-        (record alloc { next-slot = next-slot alloc + closure-slots ; slots-available = fits })
+        (eval (curry f m) x) closure-loc s-final alloc₁
+        (record alloc { next-slot = next-slot alloc +ℕ closure-slots ; slots-available = fits })
         (λ loc bf → bf-same-frame-slot alloc₁
-          (record alloc { next-slot = next-slot alloc + closure-slots ; slots-available = fits })
+          (record alloc { next-slot = next-slot alloc +ℕ closure-slots ; slots-available = fits })
           refl refl refl loc bf)
         curry-result-wf
 
       -- Reclaim size bound: reclaimable ≤ slot + pair-slots * size
       -- curry: reclaimable = slot + closure-slots = slot + 2
       -- size = suc (ir-size f), so pair-slots * size = 2 * suc (ir-size f) ≥ 2
-      reclaim-size-bound-curry : next-slot alloc + closure-slots ≤ next-slot alloc + pair-slots *ℕ ir-size (curry f)
-      reclaim-size-bound-curry = +-monoʳ-≤ (next-slot alloc) (m≤m*n pair-slots (ir-size (curry f)))
+      reclaim-size-bound-curry : next-slot alloc +ℕ closure-slots ≤ next-slot alloc +ℕ pair-slots *ℕ ir-size (curry f m)
+      reclaim-size-bound-curry = +-monoʳ-≤ (next-slot alloc) (m≤m*n pair-slots (ir-size (curry f m)))

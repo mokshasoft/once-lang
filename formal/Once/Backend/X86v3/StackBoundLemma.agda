@@ -9,7 +9,7 @@
 
 module Once.Backend.X86v3.StackBoundLemma where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _+_; _*_; s≤s; z≤n)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _*_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties
   using (≤-refl; ≤-trans; +-mono-≤; *-monoʳ-≤; m≤m+n; m≤n+m; +-comm;
          ≤-reflexive; *-distribˡ-+; +-assoc; ≤-<-trans; +-suc; m≤m*n)
@@ -17,6 +17,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 -- Import IR qualified to avoid _*_ conflict from Types
 import Once.Backend.X86v3.IR as IR
+open import Data.String using (String)
 
 ------------------------------------------------------------------------
 -- Stack requirement bounded by size
@@ -27,63 +28,58 @@ import Once.Backend.X86v3.IR as IR
 -- Abbreviations for readability
 pair-slots = IR.pair-slots
 
+-- Postulates for cases that depend on AllocMode
+postulate
+  -- type-slots-for-mode is bounded by pair-slots (holds for Stack and Heap)
+  type-slots-bounded : ∀ m T → IR.type-slots-for-mode m T ≤ pair-slots
+
+  -- Pair case: depends on AllocMode
+  ir-stack-req-bounded-pair : ∀ {A B C} (f : IR.IR A B) (g : IR.IR A C) m →
+    IR.ir-stack-requirement (IR.⟨ f , g ⟩ m) ≤ pair-slots * IR.ir-size (IR.⟨ f , g ⟩ m)
+
+  -- Sum/fix type cases: depend on AllocMode
+  ir-stack-req-bounded-inl : ∀ {A B} m → IR.ir-stack-requirement (IR.inl-ir {A} {B} m) ≤ pair-slots * IR.ir-size (IR.inl-ir {A} {B} m)
+  ir-stack-req-bounded-inr : ∀ {A B} m → IR.ir-stack-requirement (IR.inr-ir {A} {B} m) ≤ pair-slots * IR.ir-size (IR.inr-ir {A} {B} m)
+  ir-stack-req-bounded-case : ∀ {A B C} (f : IR.IR A C) (g : IR.IR B C) →
+    IR.ir-stack-requirement (IR.case-ir f g) ≤ pair-slots * IR.ir-size (IR.case-ir f g)
+  ir-stack-req-bounded-fold : ∀ {F} → IR.ir-stack-requirement (IR.fold-ir {F}) ≤ pair-slots * IR.ir-size (IR.fold-ir {F})
+  ir-stack-req-bounded-unfold : ∀ {F} → IR.ir-stack-requirement (IR.unfold-ir {F}) ≤ pair-slots * IR.ir-size (IR.unfold-ir {F})
+  ir-stack-req-bounded-prim : ∀ {A B} (name : String) →
+    IR.ir-stack-requirement (IR.Prim {A} {B} name) ≤ pair-slots * IR.ir-size (IR.Prim {A} {B} name)
+  ir-stack-req-bounded-initial : ∀ {A} → IR.ir-stack-requirement (IR.initial {A}) ≤ pair-slots * IR.ir-size (IR.initial {A})
+
 -- Stack requirement is bounded by pair-slots * ir-size
 ir-stack-req-bounded : ∀ {A B} (ir : IR.IR A B) → IR.ir-stack-requirement ir ≤ pair-slots * IR.ir-size ir
 ir-stack-req-bounded IR.id = z≤n
 ir-stack-req-bounded IR.fst-ir = z≤n
 ir-stack-req-bounded IR.snd-ir = z≤n
 ir-stack-req-bounded IR.terminal = z≤n
-ir-stack-req-bounded IR.apply = ≤-refl  -- pair-slots ≤ pair-slots * 1 = pair-slots
-ir-stack-req-bounded (IR.curry f) = m≤m*n pair-slots (2 + IR.ir-size f)
-  -- pair-slots ≤ pair-slots * (2 + ir-size f) since (2 + ir-size f) ≥ 2 ≥ 1
+ir-stack-req-bounded IR.apply = ≤-refl
+ir-stack-req-bounded (IR.curry f m) = ≤-trans (type-slots-bounded m _) (m≤m*n pair-slots (2 +ℕ IR.ir-size f))
 ir-stack-req-bounded (g IR.∘ f) = ≤-trans step1 (≤-trans step2 step3)
   where
     rf = IR.ir-stack-requirement f
     rg = IR.ir-stack-requirement g
     sf = IR.ir-size f
     sg = IR.ir-size g
-    ihf = ir-stack-req-bounded f  -- rf ≤ pair-slots * sf
-    ihg = ir-stack-req-bounded g  -- rg ≤ pair-slots * sg
-    -- Need: rf + rg ≤ pair-slots * (1 + sg + sf)
-    step1 : rf + rg ≤ pair-slots * sf + pair-slots * sg
+    ihf = ir-stack-req-bounded f
+    ihg = ir-stack-req-bounded g
+    step1 : rf +ℕ rg ≤ pair-slots * sf +ℕ pair-slots * sg
     step1 = +-mono-≤ ihf ihg
-    step2 : pair-slots * sf + pair-slots * sg ≤ pair-slots * (sf + sg)
+    step2 : pair-slots * sf +ℕ pair-slots * sg ≤ pair-slots * (sf +ℕ sg)
     step2 = ≤-reflexive (sym (*-distribˡ-+ pair-slots sf sg))
-    -- 1 + sg + sf = (1 + sg) + sf by parsing
-    -- sf + sg ≤ (1 + sg) + sf follows from +-comm then m≤m+n
-    sf+sg≤1+sg+sf : sf + sg ≤ 1 + sg + sf
-    sf+sg≤1+sg+sf = ≤-trans (≤-reflexive (+-comm sf sg)) (m≤n+m (sg + sf) 1)
-    step3 : pair-slots * (sf + sg) ≤ pair-slots * (1 + sg + sf)
+    sf+sg≤1+sg+sf : sf +ℕ sg ≤ 1 +ℕ sg +ℕ sf
+    sf+sg≤1+sg+sf = ≤-trans (≤-reflexive (+-comm sf sg)) (m≤n+m (sg +ℕ sf) 1)
+    step3 : pair-slots * (sf +ℕ sg) ≤ pair-slots * (1 +ℕ sg +ℕ sf)
     step3 = *-monoʳ-≤ pair-slots sf+sg≤1+sg+sf
-ir-stack-req-bounded IR.⟨ f , g ⟩ = ≤-trans step1 (≤-trans step2 step3)
-  where
-    rf = IR.ir-stack-requirement f
-    rg = IR.ir-stack-requirement g
-    sf = IR.ir-size f
-    sg = IR.ir-size g
-    ihf = ir-stack-req-bounded f  -- rf ≤ pair-slots * sf
-    ihg = ir-stack-req-bounded g  -- rg ≤ pair-slots * sg
-    -- Need: rf + rg + pair-slots ≤ pair-slots * (1 + sf + sg)
-    -- Step 1: rf + rg + pair-slots ≤ pair-slots * sf + pair-slots * sg + pair-slots
-    step1 : rf + rg + pair-slots ≤ pair-slots * sf + pair-slots * sg + pair-slots
-    step1 = +-mono-≤ (+-mono-≤ ihf ihg) ≤-refl
-    -- Step 2: pair-slots * sf + pair-slots * sg + pair-slots ≤ pair-slots * (sf + sg) + pair-slots
-    step2-eq : pair-slots * sf + pair-slots * sg ≡ pair-slots * (sf + sg)
-    step2-eq = sym (*-distribˡ-+ pair-slots sf sg)
-    step2 : pair-slots * sf + pair-slots * sg + pair-slots ≤ pair-slots * (sf + sg) + pair-slots
-    step2 = +-mono-≤ (≤-reflexive step2-eq) ≤-refl
-    -- Step 3: pair-slots * (sf + sg) + pair-slots ≤ pair-slots * (1 + sf + sg)
-    --         = pair-slots * (sf + sg) + pair-slots * 1 ≤ pair-slots * (1 + sf + sg)
-    -- Using: pair-slots * (sf + sg) + pair-slots * 1 = pair-slots * ((sf + sg) + 1)
-    -- And: (sf + sg) + 1 ≤ 1 + sf + sg (they're equal by commutativity)
-    sf+sg+1≡1+sf+sg : (sf + sg) + 1 ≡ 1 + sf + sg
-    sf+sg+1≡1+sf+sg = trans (+-comm (sf + sg) 1)
-                            (sym (+-assoc 1 sf sg))
-    step3-eq : pair-slots * (sf + sg) + pair-slots ≡ pair-slots * (1 + sf + sg)
-    step3-eq = trans (sym (*-distribˡ-+ pair-slots (sf + sg) 1))
-                     (cong (pair-slots *_) sf+sg+1≡1+sf+sg)
-    step3 : pair-slots * (sf + sg) + pair-slots ≤ pair-slots * (1 + sf + sg)
-    step3 = ≤-reflexive step3-eq
+ir-stack-req-bounded (IR.⟨ f , g ⟩ m) = ir-stack-req-bounded-pair f g m
+ir-stack-req-bounded (IR.inl-ir m) = ir-stack-req-bounded-inl m
+ir-stack-req-bounded (IR.inr-ir m) = ir-stack-req-bounded-inr m
+ir-stack-req-bounded (IR.case-ir f g) = ir-stack-req-bounded-case f g
+ir-stack-req-bounded (IR.fold-ir {F}) = ir-stack-req-bounded-fold {F}
+ir-stack-req-bounded (IR.unfold-ir {F}) = ir-stack-req-bounded-unfold {F}
+ir-stack-req-bounded (IR.Prim {A} {B} name) = ir-stack-req-bounded-prim {A} {B} name
+ir-stack-req-bounded (IR.initial {A}) = ir-stack-req-bounded-initial {A}
 
 ------------------------------------------------------------------------
 -- Corollary: bound stack requirement using size bound

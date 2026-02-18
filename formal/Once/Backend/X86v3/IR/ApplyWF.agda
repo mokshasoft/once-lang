@@ -16,7 +16,7 @@
 
 module Once.Backend.X86v3.IR.ApplyWF where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _+_; _≤_; s≤s; z≤n) renaming (_*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; +-monoʳ-≤)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
@@ -29,7 +29,7 @@ open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
 open import Once.Backend.X86v3.Types
 open import Once.Backend.X86v3.IR
-open import Once.Backend.X86v3.Allocation
+open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Apply implementation
@@ -146,12 +146,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     valid-closure-wf bb ep cp (bf-transfer el eb) (bf-transfer cl cb)
       (bf-transfer (sucLoc loc) slb) (validityWF-with-bf-transfer env el s a₁ a₂ bf-transfer ev) bc
 
-  validityWF-with-bf-transfer {(A ⊕ B)} .(inl a) loc s a₁ a₂ bf-transfer
+  validityWF-with-bf-transfer {A + B} .(inl a) loc s a₁ a₂ bf-transfer
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp (bf-transfer pl pb) (bf-transfer (sucLoc loc) slb)
       (validityWF-with-bf-transfer a pl s a₁ a₂ bf-transfer pv)
 
-  validityWF-with-bf-transfer {(A ⊕ B)} .(inr b) loc s a₁ a₂ bf-transfer
+  validityWF-with-bf-transfer {A + B} .(inr b) loc s a₁ a₂ bf-transfer
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp (bf-transfer pl pb) (bf-transfer (sucLoc loc) slb)
       (validityWF-with-bf-transfer b pl s a₁ a₂ bf-transfer pv)
@@ -189,9 +189,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     readReg (regs s) RDI ≡ input-loc →
     -- LINEAR capacity: pair-slots * ir-size for structural recursion
     -- Since ir-size apply = 1, this is: slot + pair-slots ≤ cap
-    next-slot alloc + pair-slots *ℕ ir-size (apply {A} {B}) ≤ frame-capacity alloc →
+    next-slot alloc +ℕ pair-slots *ℕ ir-size (apply {A} {B}) ≤ frame-capacity alloc →
     -- PROGRAM-BOUND capacity: for body execution in same frame
-    next-slot alloc + pair-slots *ℕ program-bound ≤ frame-capacity alloc →
+    next-slot alloc +ℕ pair-slots *ℕ program-bound ≤ frame-capacity alloc →
     -- NO child-frame parameters! Body runs in same frame.
     IRResultAWF (apply {A} {B}) x s alloc
   run-apply {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap pb-cap =
@@ -262,14 +262,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- PROVEN: apply-pair-fits from pb-cap using lemma
       -- pb-cap: slot + pair-slots * program-bound ≤ capacity
       -- body<bound ensures bound ≥ 1
-      apply-pair-fits : next-slot alloc + pair-slots ≤ frame-capacity alloc
+      apply-pair-fits : next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc
       apply-pair-fits = apply-pair-fits-linear (next-slot alloc) pair-slots
                           (ir-size body) program-bound (frame-capacity alloc)
                           body<bound pb-cap
 
       alloc-pair : AllocState {FS}
       alloc-pair = record alloc
-        { next-slot = next-slot alloc + pair-slots
+        { next-slot = next-slot alloc +ℕ pair-slots
         ; slots-available = apply-pair-fits
         }
 
@@ -293,8 +293,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Derive body-cap fits from pb-cap
       -- body-cap = pair-slots * ir-size body ≤ pair-slots * program-bound
-      body-cap-fits : next-slot alloc-pair + body-cap ≤ frame-capacity alloc-pair
-      body-cap-fits = subst (λ bc → (next-slot alloc + pair-slots) + bc ≤ frame-capacity alloc)
+      body-cap-fits : next-slot alloc-pair +ℕ body-cap ≤ frame-capacity alloc-pair
+      body-cap-fits = subst (λ bc → (next-slot alloc +ℕ pair-slots) +ℕ bc ≤ frame-capacity alloc)
                         (sym body-cap-eq)
                         (apply-body-cap-linear (next-slot alloc) pair-slots
                           (ir-size body) program-bound (frame-capacity alloc)
@@ -302,7 +302,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- pair-input-loc is BeforeFrontier in alloc-pair via stack-before
       -- slot < slot + pair-slots
-      pair-slot-bound : next-slot alloc < next-slot alloc + pair-slots
+      pair-slot-bound : next-slot alloc < next-slot alloc +ℕ pair-slots
       pair-slot-bound = m<m+n (next-slot alloc) {pair-slots} (s≤s z≤n)
         where
           open import Data.Nat.Properties using (m<m+n)
@@ -310,7 +310,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-input-before-pair : BeforeFrontier alloc-pair pair-input-loc
       pair-input-before-pair = stack-before refl pair-slot-bound
 
-      sucLoc-pair-slot-bound : suc (next-slot alloc) < next-slot alloc + pair-slots
+      sucLoc-pair-slot-bound : suc (next-slot alloc) < next-slot alloc +ℕ pair-slots
       sucLoc-pair-slot-bound = suc<+2 (next-slot alloc)
 
       sucLoc-pair-before-pair : BeforeFrontier alloc-pair (sucLoc pair-input-loc)
@@ -571,11 +571,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       --
       -- SOLUTION: Apply's reclaim-size-bound uses body's bound + pair-slots.
       -- The caller (dispatcher) provides capacity for the full program-bound.
-      apply-reclaim-size-bound : apply-reclaimable-slot ≤ next-slot alloc + pair-slots *ℕ ir-size (apply {A} {B})
+      apply-reclaim-size-bound : apply-reclaimable-slot ≤ next-slot alloc +ℕ pair-slots *ℕ ir-size (apply {A} {B})
       apply-reclaim-size-bound = ≤-trans body-reclaim-≤-pair-bound pair-slots-1-eq
         where
           -- body-reclaimable ≤ alloc-pair.slot + pair-slots * ir-size body
-          body-reclaim-≤-body-bound : body-reclaimable ≤ next-slot alloc-pair + pair-slots *ℕ ir-size body
+          body-reclaim-≤-body-bound : body-reclaimable ≤ next-slot alloc-pair +ℕ pair-slots *ℕ ir-size body
           body-reclaim-≤-body-bound = IRResultAWF.reclaim-size-bound body-result
 
           -- slot + pair-slots + pair-slots * ir-size body ≤ slot + pair-slots * (suc (ir-size body))
@@ -595,7 +595,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           -- This is a weaker constraint than all-escape: it says the RESULT
           -- is in the first pair-slots worth of body's allocations.
           postulate
-            body-reclaim-≤-pair-bound : body-reclaimable ≤ next-slot alloc + pair-slots
+            body-reclaim-≤-pair-bound : body-reclaimable ≤ next-slot alloc +ℕ pair-slots
 
-          pair-slots-1-eq : next-slot alloc + pair-slots ≤ next-slot alloc + pair-slots *ℕ ir-size (apply {A} {B})
+          pair-slots-1-eq : next-slot alloc +ℕ pair-slots ≤ next-slot alloc +ℕ pair-slots *ℕ ir-size (apply {A} {B})
           pair-slots-1-eq = ≤-refl
