@@ -176,6 +176,80 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open ApplyWFModule.ApplyWFImpl {FS} program-bound
 
   ------------------------------------------------------------------------
+  -- Postulates for new IR constructors (to be implemented in task 6)
+  --
+  -- These handle sum types (inl-ir, inr-ir, case-ir), initial, and
+  -- recursive types (fold-ir, unfold-ir).
+  ------------------------------------------------------------------------
+
+  postulate
+    -- Sum type: inject left
+    run-inl : ∀ {A B}
+      (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) RDI ≡ input-loc →
+      next-slot alloc + pair-slots *ℕ ir-size (inl-ir {A} {B}) ≤ frame-capacity alloc →
+      IRResultAWF (inl-ir {A} {B}) x s alloc
+
+    -- Sum type: inject right
+    run-inr : ∀ {A B}
+      (x : ⟦ B ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) RDI ≡ input-loc →
+      next-slot alloc + pair-slots *ℕ ir-size (inr-ir {A} {B}) ≤ frame-capacity alloc →
+      IRResultAWF (inr-ir {A} {B}) x s alloc
+
+    -- Sum type: case analysis
+    run-case : ∀ {A B C}
+      (f : IR A C) (g : IR B C) →
+      RecDispatcherWF (ir-size (case-ir f g)) →
+      (x : ⟦ A ⊕ B ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) RDI ≡ input-loc →
+      next-slot alloc + pair-slots *ℕ ir-size (case-ir f g) ≤ frame-capacity alloc →
+      IRResultAWF (case-ir f g) x s alloc
+
+    -- Initial object: absurd elimination (never executed)
+    run-initial : ∀ {A}
+      (x : ⟦ Void ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) RDI ≡ input-loc →
+      IRResultAWF (initial {A}) x s alloc
+
+    -- Recursive types: fold
+    run-fold : ∀ {F}
+      (x : ⟦ F ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) RDI ≡ input-loc →
+      next-slot alloc + pair-slots *ℕ ir-size (fold-ir {F}) ≤ frame-capacity alloc →
+      IRResultAWF (fold-ir {F}) x s alloc
+
+    -- Recursive types: unfold
+    run-unfold : ∀ {F}
+      (x : ⟦ Fix F ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) RDI ≡ input-loc →
+      IRResultAWF (unfold-ir {F}) x s alloc
+
+  ------------------------------------------------------------------------
   -- Helper: get Acc for any IR size < program-bound
   -- Used by Apply to get Acc for body (since body<bound comes from closure,
   -- not from structural decrease on the current IR).
@@ -244,6 +318,31 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
+    -- Sum type: inject left (postulated)
+    run-ir-wf (inl-ir {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      run-inl {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+
+    -- Sum type: inject right (postulated)
+    run-ir-wf (inr-ir {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      run-inr {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+
+    -- Sum type: case analysis (postulated)
+    run-ir-wf (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      run-case f g (make-rec-wf ir<bound rs) x input-loc s alloc
+        input-valid-wf input-before not-halted rdi-eq combined-cap
+
+    -- Initial: absurd elimination (postulated)
+    run-ir-wf initial _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      run-initial x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+
+    -- Recursive types: fold (postulated)
+    run-ir-wf (fold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      run-fold {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+
+    -- Recursive types: unfold (postulated)
+    run-ir-wf (unfold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      run-unfold {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+
     -- Compose: delegated to ComposeWF module
     run-ir-wf (g ∘ f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       run-compose f g (make-rec-wf ir<bound rs) x input-loc s alloc
@@ -262,7 +361,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- Apply: uses BodyCorrect.execute from closure
     -- Uses PURE RECLAMATION: body executes in same frame, then reclaims stack
     -- pb-cap is derived from frame capacity constraint (module parameter)
-    run-ir-wf {(A ⇒ B) * A} {B} apply _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+    run-ir-wf {(A ⇒[ _ ] B) * A} {B} apply _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
         combined-cap (frame-cap-sufficient alloc)
 

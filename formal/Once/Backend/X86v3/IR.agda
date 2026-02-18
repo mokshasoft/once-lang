@@ -19,16 +19,36 @@ open import Once.Backend.X86v3.Types public
 ------------------------------------------------------------------------
 
 data IR : Type → Type → Set where
+  -- Category structure
   id : ∀ {A} → IR A A
   _∘_ : ∀ {A B C} → IR B C → IR A B → IR A C
+
+  -- Product (A * B)
   ⟨_,_⟩ : ∀ {A B C} → IR A B → IR A C → IR A (B * C)
   fst-ir : ∀ {A B} → IR (A * B) A
   snd-ir : ∀ {A B} → IR (A * B) B
-  curry : ∀ {A B C} → IR (A * B) C → IR A (B ⇒ C)
-  apply : ∀ {A B} → IR ((A ⇒ B) * A) B
+
+  -- Coproduct (A ⊕ B)
+  inl-ir : ∀ {A B} → IR A (A ⊕ B)
+  inr-ir : ∀ {A B} → IR B (A ⊕ B)
+  case-ir : ∀ {A B C} → IR A C → IR B C → IR (A ⊕ B) C
+
+  -- Terminal object (Unit)
   terminal : ∀ {A} → IR A Unit
 
+  -- Initial object (Void)
+  initial : ∀ {A} → IR Void A
+
+  -- Exponential (A ⇒ B)
+  curry : ∀ {A B C} → IR (A * B) C → IR A (B ⇒ C)
+  apply : ∀ {A B} → IR ((A ⇒ B) * A) B
+
+  -- Recursive types (Fix F)
+  fold-ir : ∀ {F} → IR F (Fix F)
+  unfold-ir : ∀ {F} → IR (Fix F) F
+
 infixr 9 _∘_
+infixr 4 ⟨_,_⟩
 
 ------------------------------------------------------------------------
 -- Semantic Evaluation
@@ -40,9 +60,15 @@ eval (g ∘ f) x = eval g (eval f x)
 eval ⟨ f , g ⟩ x = pair (eval f x) (eval g x)
 eval fst-ir x = fst x
 eval snd-ir x = snd x
+eval inl-ir x = inl x
+eval inr-ir x = inr x
+eval (case-ir f g) x = case (eval f) (eval g) x
+eval terminal x = tt
+eval initial ()
 eval (curry f) x = λ y → eval f (pair x y)
 eval apply (closure , arg) = closure arg
-eval terminal x = tt
+eval fold-ir x = fold x
+eval unfold-ir x = unfold x
 
 ------------------------------------------------------------------------
 -- Evaluation Laws (PROVEN)
@@ -78,9 +104,15 @@ ir-size (g ∘ f) = 1 + ir-size g + ir-size f
 ir-size ⟨ f , g ⟩ = 1 + ir-size f + ir-size g
 ir-size fst-ir = 1
 ir-size snd-ir = 1
+ir-size inl-ir = 1
+ir-size inr-ir = 1
+ir-size (case-ir f g) = 1 + ir-size f + ir-size g
+ir-size terminal = 1
+ir-size initial = 1
 ir-size (curry f) = 2 + ir-size f  -- Extra slot for apply's pair allocation
 ir-size apply = 1
-ir-size terminal = 1
+ir-size fold-ir = 1
+ir-size unfold-ir = 1
 
 ------------------------------------------------------------------------
 -- Size Lemmas (PROVEN)
@@ -93,9 +125,15 @@ ir-size-pos (g ∘ f) = s≤s z≤n
 ir-size-pos ⟨ f , g ⟩ = s≤s z≤n
 ir-size-pos fst-ir = s≤s z≤n
 ir-size-pos snd-ir = s≤s z≤n
+ir-size-pos inl-ir = s≤s z≤n
+ir-size-pos inr-ir = s≤s z≤n
+ir-size-pos (case-ir f g) = s≤s z≤n
+ir-size-pos terminal = s≤s z≤n
+ir-size-pos initial = s≤s z≤n
 ir-size-pos (curry f) = s≤s z≤n
 ir-size-pos apply = s≤s z≤n
-ir-size-pos terminal = s≤s z≤n
+ir-size-pos fold-ir = s≤s z≤n
+ir-size-pos unfold-ir = s≤s z≤n
 
 -- Helper: n ≤ m + n (flip of m≤m+n)
 n≤m+n : ∀ m n → n ≤ m + n
@@ -138,6 +176,18 @@ curry-smaller : ∀ {A B C} (f : IR (A * B) C) →
 curry-smaller f = <-trans (n<1+n (ir-size f)) (n<1+n (suc (ir-size f)))
   where open import Data.Nat.Properties using (<-trans)
 
+-- For case: f is smaller than case-ir f g
+-- ir-size (case-ir f g) = suc (ir-size f + ir-size g)
+case-f-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) →
+  ir-size f < ir-size (case-ir f g)
+case-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
+  where open import Data.Nat.Properties using (m≤m+n)
+
+-- For case: g is smaller than case-ir f g
+case-g-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) →
+  ir-size g < ir-size (case-ir f g)
+case-g-smaller f g = s≤s (n≤m+n (ir-size f) (ir-size g))
+
 ------------------------------------------------------------------------
 -- Stack Requirement
 --
@@ -169,6 +219,11 @@ pair-slots = 2
 closure-slots : ℕ
 closure-slots = 2
 
+-- Sum type slot size: tag (1) + max payload
+-- For now, use fixed size since type-slots is computed at compile time
+sum-slots : ℕ
+sum-slots = 2  -- 1 tag + 1 payload slot (conservative estimate)
+
 -- Stack requirement for an IR (slots allocated in current frame)
 ir-stack-requirement : ∀ {A B} → IR A B → ℕ
 ir-stack-requirement id = 0
@@ -176,9 +231,15 @@ ir-stack-requirement (g ∘ f) = ir-stack-requirement f + ir-stack-requirement g
 ir-stack-requirement ⟨ f , g ⟩ = ir-stack-requirement f + ir-stack-requirement g + pair-slots
 ir-stack-requirement fst-ir = 0
 ir-stack-requirement snd-ir = 0
+ir-stack-requirement inl-ir = sum-slots  -- allocates tag + payload
+ir-stack-requirement inr-ir = sum-slots  -- allocates tag + payload
+ir-stack-requirement (case-ir f g) = ir-stack-requirement f + ir-stack-requirement g  -- branches are mutually exclusive
+ir-stack-requirement terminal = 0
+ir-stack-requirement initial = 0  -- never executed (absurd)
 ir-stack-requirement (curry f) = closure-slots  -- body f runs in NEW frame when applied
 ir-stack-requirement apply = pair-slots  -- forms (env, arg) pair; body requirement separate
-ir-stack-requirement terminal = 0
+ir-stack-requirement fold-ir = 1  -- allocates heap pointer
+ir-stack-requirement unfold-ir = 0  -- dereferences pointer, no allocation
 
 ------------------------------------------------------------------------
 -- Stack Requirement Lemmas

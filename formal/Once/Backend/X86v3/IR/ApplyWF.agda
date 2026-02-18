@@ -140,7 +140,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                   (validityWF-with-bf-transfer a fl s a₁ a₂ bf-transfer fv)
                   (validityWF-with-bf-transfer b sl s a₁ a₂ bf-transfer sv)
 
-  validityWF-with-bf-transfer {A ⇒ B} .(λ arg → eval body (pair env arg)) loc s a₁ a₂ bf-transfer
+  validityWF-with-bf-transfer {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s a₁ a₂ bf-transfer
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep cp (bf-transfer el eb) (bf-transfer cl cb)
       (bf-transfer (sucLoc loc) slb) (validityWF-with-bf-transfer env el s a₁ a₂ bf-transfer ev) bc
@@ -206,15 +206,25 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       open import Data.Nat.Properties using (*-monoʳ-≤; <⇒≤)
 
       -- Step 1: Decompose input as pair (closure, arg) using ValidAtWF
-      pair-decomp = decomposePairWF input-valid-wf
+      -- Explicit type: pair type is (A ⇒[ Many ] B) * A
+      pair-decomp = decomposePairWF {_} {A ⇒[ Many ] B} {A} input-valid-wf
       closure-loc = PairValidWF.fst-loc pair-decomp
       arg-loc = PairValidWF.snd-loc pair-decomp
       closure-valid-wf = PairValidWF.fst-valid pair-decomp
       arg-valid-wf = PairValidWF.snd-valid pair-decomp
       arg-before = PairValidWF.snd-before pair-decomp
 
+      -- Extract closure and arg with explicit types to help inference
+      -- fst and snd need explicit type params because ⟦ A ⇒[ q ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧ for any q
+      closure : ⟦ A ⇒[ Many ] B ⟧
+      closure = fst {A ⇒[ Many ] B} {A} x
+
+      arg : ⟦ A ⟧
+      arg = snd {A ⇒[ Many ] B} {A} x
+
       -- Step 2: Decompose closure to get body-correct!
-      closure-decomp = decomposeClosureWF closure-valid-wf
+      -- Note: fst x : ⟦ A ⇒ B ⟧ = ⟦ A ⇒[ Many ] B ⟧
+      closure-decomp = decomposeClosureWF {_} {Many} {A} {B} closure-valid-wf
       EnvType = ClosureValidWF.EnvType closure-decomp
       body = ClosureValidWF.body closure-decomp
       env = ClosureValidWF.env closure-decomp
@@ -300,19 +310,19 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- PROVEN: env-valid-wf-pair via write helpers and alloc-advance
       env-valid-wf-pair : ValidAtWF alloc-pair env env-loc s-pair
       env-valid-wf-pair =
-        validityWF-alloc-advance env env-loc s-pair pair-slots apply-pair-fits
-          (validityWF-mem-only env env-loc s-write-arg s-pair refl refl
-            (validityWF-write-at-suc-frontier env env-loc s-write-env arg-loc env-before
-              (validityWF-write-at-frontier env env-loc s env-loc env-before
+        validityWF-alloc-advance {_} {EnvType} env env-loc s-pair pair-slots apply-pair-fits
+          (validityWF-mem-only {_} {EnvType} env env-loc s-write-arg s-pair refl refl
+            (validityWF-write-at-suc-frontier {_} {EnvType} env env-loc s-write-env arg-loc env-before
+              (validityWF-write-at-frontier {_} {EnvType} env env-loc s env-loc env-before
                 env-valid-wf)))
 
       -- PROVEN: arg-valid-wf-pair via write helpers and alloc-advance
-      arg-valid-wf-pair : ValidAtWF alloc-pair (snd x) arg-loc s-pair
+      arg-valid-wf-pair : ValidAtWF alloc-pair {A} arg arg-loc s-pair
       arg-valid-wf-pair =
-        validityWF-alloc-advance (snd x) arg-loc s-pair pair-slots apply-pair-fits
-          (validityWF-mem-only (snd x) arg-loc s-write-arg s-pair refl refl
-            (validityWF-write-at-suc-frontier (snd x) arg-loc s-write-env arg-loc arg-before
-              (validityWF-write-at-frontier (snd x) arg-loc s env-loc arg-before
+        validityWF-alloc-advance {_} {A} arg arg-loc s-pair pair-slots apply-pair-fits
+          (validityWF-mem-only {_} {A} arg arg-loc s-write-arg s-pair refl refl
+            (validityWF-write-at-suc-frontier {_} {A} arg arg-loc s-write-env arg-loc arg-before
+              (validityWF-write-at-frontier {_} {A} arg arg-loc s env-loc arg-before
                 arg-valid-wf)))
 
       pair-env-ptr : readLoc s-pair pair-input-loc ≡ just env-loc
@@ -325,7 +335,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       pair-arg-ptr = write-read-same s-write-env (sucLoc pair-input-loc) arg-loc
 
       -- Construct ValidAtWF for the pair in alloc-pair
-      pair-input-valid-pair : ValidAtWF alloc-pair (pair env (snd x)) pair-input-loc s-pair
+      pair-input-valid-pair : ValidAtWF alloc-pair {EnvType * A} (pair env arg) pair-input-loc s-pair
       pair-input-valid-pair = valid-pair-wf pair-env-ptr pair-arg-ptr
                                 env-before-pair arg-before-pair sucLoc-pair-before-pair
                                 env-valid-wf-pair arg-valid-wf-pair
@@ -338,8 +348,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- slots below that survive.
       ------------------------------------------------------------------------
 
-      body-result : IRResultAWF body (pair env (snd x)) s-pair alloc-pair
-      body-result = BodyCorrect.execute body-correct (snd x) arg-loc pair-input-loc
+      body-result : IRResultAWF body (pair env arg) s-pair alloc-pair
+      body-result = BodyCorrect.execute body-correct arg arg-loc pair-input-loc
                       s-pair alloc-pair
                       pair-input-valid-pair pair-input-before-pair pair-not-halted pair-rdi-eq
                       body-cap-fits
@@ -480,20 +490,20 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
 
       -- Body's validity at its reclaim allocation
-      body-result-valid-at-reclaim : ValidAtWF body-reclaim-alloc (eval body (pair env (snd x))) result-loc s-final
+      body-result-valid-at-reclaim : ValidAtWF body-reclaim-alloc {B} (eval body (pair env arg)) result-loc s-final
       body-result-valid-at-reclaim = IRResultAWF.reclaim-preserves-validity body-result body-reclaim-fits-pair
 
       -- Transfer to final-alloc (same frame, slot, heap - just different base record)
-      body-result-valid-at-final : ValidAtWF final-alloc (eval body (pair env (snd x))) result-loc s-final
-      body-result-valid-at-final = validityWF-with-bf-transfer
-        (eval body (pair env (snd x))) result-loc s-final
+      body-result-valid-at-final : ValidAtWF final-alloc {B} (eval body (pair env arg)) result-loc s-final
+      body-result-valid-at-final = validityWF-with-bf-transfer {B}
+        (eval body (pair env arg)) result-loc s-final
         body-reclaim-alloc final-alloc
         (λ loc' bf → bf-same-frame-slot body-reclaim-alloc final-alloc refl refl refl loc' bf)
         body-result-valid-at-reclaim
 
       -- Final: transport via closure-is-body
-      result-valid-wf : ValidAtWF final-alloc (eval apply x) result-loc s-final
-      result-valid-wf = subst (λ f → ValidAtWF final-alloc (f (snd x)) result-loc s-final)
+      result-valid-wf : ValidAtWF final-alloc {B} (eval apply x) result-loc s-final
+      result-valid-wf = subst (λ f → ValidAtWF final-alloc {B} (f arg) result-loc s-final)
                               (sym closure-is-body)
                               body-result-valid-at-final
 

@@ -89,7 +89,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Curry captures (ir-size body < program-bound) when building the closure.
     -- Apply uses this with (rs body<bound) to recurse.
     -- IMPORTANT: sucLoc closure-loc must also be before frontier (for validity-write proofs)
-    valid-closure : ∀ {EnvType A B}
+    valid-closure : ∀ {EnvType q A B}
       {body : IR (EnvType * A) B}
       {env : ⟦ EnvType ⟧}
       (body<bound : ir-size body < program-bound) →  -- Size bound (not Acc!)
@@ -101,7 +101,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       BeforeFrontier alloc (sucLoc closure-loc) →
       ValidAt alloc env env-loc s →
       -- The semantic value matches: closure = λ arg → eval body (pair env arg)
-      ValidAt alloc {A ⇒ B} (λ arg → eval body (pair env arg)) closure-loc s
+      ValidAt alloc {A ⇒[ q ] B} (λ arg → eval body (pair env arg)) closure-loc s
 
   ------------------------------------------------------------------------
   -- PairValid record (extracted structure from valid-pair)
@@ -127,8 +127,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- NOW INCLUDES THE BODY IR AND SIZE BOUND!
   ------------------------------------------------------------------------
 
-  record ClosureValid (alloc : AllocState {FS}) {A B : Type}
-                      (f : ⟦ A ⇒ B ⟧)
+  record ClosureValid (alloc : AllocState {FS}) {q : Quantity} {A B : Type}
+                      (f : ⟦ A ⇒[ q ] B ⟧)
                       (closure-loc : ValueLocation FS)
                       (s : LocState FS) : Set where
     field
@@ -165,9 +165,9 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; snd-valid = sv
     }
 
-  decomposeClosure : ∀ {alloc A B} {f : ⟦ A ⇒ B ⟧} {loc s} →
-    ValidAt alloc f loc s → ClosureValid alloc f loc s
-  decomposeClosure (valid-closure {EnvType} {_} {_} {body} {env}
+  decomposeClosure : ∀ {alloc q A B} {f : ⟦ A ⇒[ q ] B ⟧} {loc s} →
+    ValidAt alloc {A ⇒[ q ] B} f loc s → ClosureValid alloc {q} f loc s
+  decomposeClosure (valid-closure {EnvType} {_} {_} {_} {body} {env}
                      bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) = record
     { EnvType = EnvType
     ; body = body
@@ -202,7 +202,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-pair fp sp fb sb slb fv sv
 
   -- Compose a closure validity from its components
-  composeClosure : ∀ {alloc EnvType A B}
+  composeClosure : ∀ {alloc EnvType q A B}
     (body : IR (EnvType * A) B) (env : ⟦ EnvType ⟧)
     (body<bound : ir-size body < program-bound) →      -- Size bound (not Acc!)
     (closure-loc env-loc code-loc : ValueLocation FS) (s : LocState FS) →
@@ -212,8 +212,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc code-loc →
     BeforeFrontier alloc (sucLoc closure-loc) →
     ValidAt alloc env env-loc s →
-    ValidAt alloc (λ arg → eval body (pair env arg)) closure-loc s
-  composeClosure {_} {_} {_} {_} body env bb closure-loc env-loc code-loc s ep cp eb cb slb ev =
+    ValidAt alloc {A ⇒[ q ] B} (λ arg → eval body (pair env arg)) closure-loc s
+  composeClosure {_} {_} {_} {_} {_} body env bb closure-loc env-loc code-loc s ep cp eb cb slb ev =
     valid-closure {body = body} {env = env} bb ep cp eb cb slb ev
 
   ------------------------------------------------------------------------
@@ -251,8 +251,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' : ValidAt alloc b sl s₂
       sv' = validity-mem-only b sl s₁ s₂ stack-eq heap-eq sv
 
-  validity-mem-only {alloc} {A ⇒ B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
-    (valid-closure {_} {.A} {.B} {body} {env} ba {.loc} {el} {cl} {.s₁} ep cp eb cb slb ev) =
+  validity-mem-only {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
+    (valid-closure {EnvType} {_} {_} {_} {body} {env} ba {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) =
     valid-closure {body = body} {env = env} ba ep' cp' eb cb slb ev'
     where
       ep' : readLoc s₂ loc ≡ just el

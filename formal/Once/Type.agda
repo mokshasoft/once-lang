@@ -156,6 +156,40 @@ IO : Type → Type
 IO A = Eff Unit A
 
 ------------------------------------------------------------------------
+-- Type Slots: Stack space required for unboxed representation
+--
+-- This function computes the number of slots needed to store a value
+-- of the given type in an unboxed representation on the stack.
+--
+-- Design decisions:
+--   - Unit/Void: 0 slots (no runtime representation)
+--   - Int/Float: 1 slot (machine word)
+--   - Str/Buffer: 1 slot (pointer to heap data)
+--   - Product: sum of component slots (unboxed)
+--   - Sum: 1 (tag) + max of variant slots
+--   - Function: 2 slots (closure: env-ptr + code-ptr, always boxed)
+--   - Fix: 1 slot (pointer to recursive heap structure, always boxed)
+--   - Eff: slots for result type
+--   - TVar: 1 slot (polymorphic = pointer, boxed)
+------------------------------------------------------------------------
+
+open import Data.Nat using (ℕ; zero; suc; _⊔_) renaming (_+_ to _+ℕ_)
+
+type-slots : Type → ℕ
+type-slots Unit = 0
+type-slots Void = 0
+type-slots Int = 1
+type-slots Float = 1
+type-slots Str = 1           -- pointer to string data on heap
+type-slots Buffer = 1        -- pointer to buffer data on heap
+type-slots (A * B) = type-slots A +ℕ type-slots B
+type-slots (A + B) = 1 +ℕ (type-slots A ⊔ type-slots B)  -- tag + max payload
+type-slots (_ ⇒[ _ ] _) = 2  -- closure: env-ptr + code-ptr (always boxed)
+type-slots (Eff _ B) = type-slots B  -- result type determines slots
+type-slots (Fix _) = 1       -- pointer to recursive structure (always boxed)
+type-slots (TVar _) = 1      -- polymorphic = pointer (boxed)
+
+------------------------------------------------------------------------
 -- Decidable equality for Type
 ------------------------------------------------------------------------
 

@@ -94,8 +94,8 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
       fv' = validity-write-at-frontier a fl s val fb fv
       sv' = validity-write-at-frontier b sl s val sb sv
 
-  validity-write-at-frontier {alloc} {A ⇒ B} .(λ arg → eval body (pair env arg)) loc s val loc-before
-    (valid-closure {_} {.A} {.B} {body} {env} ba {.loc} {el} {cl} {.s} ep cp eb cb slb ev) =
+  validity-write-at-frontier {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s val loc-before
+    (valid-closure {_} {_} {_} {_} {body} {env} ba {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) =
     valid-closure {body = body} {env = env} ba ep' cp' eb cb slb ev'
     where
       fresh = OnStack (current-frame alloc) (next-slot alloc)
@@ -136,8 +136,8 @@ module ValidityWriteLemmas {FS : FrameSemantics} (program-bound : ℕ) where
       fv' = validity-write-at-suc-frontier a fl s val fb fv
       sv' = validity-write-at-suc-frontier b sl s val sb sv
 
-  validity-write-at-suc-frontier {alloc} {A ⇒ B} .(λ arg → eval body (pair env arg)) loc s val loc-before
-    (valid-closure {_} {.A} {.B} {body} {env} ba {.loc} {el} {cl} {.s} ep cp eb cb slb ev) =
+  validity-write-at-suc-frontier {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s val loc-before
+    (valid-closure {_} {_} {_} {_} {body} {env} ba {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) =
     valid-closure {body = body} {env = env} ba ep' cp' eb cb slb ev'
     where
       fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
