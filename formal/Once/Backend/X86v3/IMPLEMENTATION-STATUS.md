@@ -26,7 +26,10 @@ Dispatcher.agda now imports SumFixWF and uses these implementations.
 
 ### Already Done: type-slots and ir-stack-requirement
 
-- `type-slots : Type → ℕ` defined in Types.agda (unboxed sizes)
+- Types.agda now has two slot functions for hybrid unboxed-stack / boxed-heap:
+  - `stack-type-slots` : Unboxed representation (values inline on stack)
+  - `heap-type-slots` : Boxed representation (pointers to heap data)
+  - `type-slots` : Legacy alias for `stack-type-slots`
 - `ir-stack-requirement` uses `type-slots` for allocation
 
 ## Current Issue: Capacity Formula Mismatch
@@ -44,24 +47,22 @@ The Dispatcher uses `pair-slots * ir-size` for capacity bounds, but `ir-stack-re
 
 ## Next Step: Fix Capacity Formula
 
-**Option A: Change Dispatcher to use ir-stack-requirement directly**
+**Approach: Change Dispatcher to use ir-stack-requirement directly**
 - Replace `pair-slots * ir-size` with `ir-stack-requirement`
 - This matches what the handlers actually allocate
 - Eliminates sum-slots-bound and fix-slots-bound postulates
 
-**Option B: Prove the postulates for current (boxed) representation**
-- For boxed: type-slots (A ⊕ B) = 2, type-slots (Fix F) = 1
-- pair-slots * ir-size = 2 * 1 = 2, so bounds hold
-- But this assumes boxed representation
-
-**Recommended: Option A** - Align capacity formula with actual allocation
+**Note:** We considered changing `type-slots` to use boxed representation globally,
+but this would collapse the unboxed-stack / boxed-heap distinction that is central
+to the design. The slot function decision belongs in the allocation layer based on
+`AllocMode` (StackAlloc vs HeapAlloc), not in the type definition.
 
 ## File Structure
 
 ```
 Once/Backend/X86v3/
 ├── IR.agda                    # IR language definition
-├── Types.agda                 # Type definitions with type-slots
+├── Types.agda                 # Type definitions with stack-type-slots, heap-type-slots
 ├── Validity.agda              # ValidAt predicate
 ├── ClosureWellFormed.agda     # ValidAtWF with closure body proofs
 ├── Dispatcher.agda            # Main dispatcher (imports all IR handlers)

@@ -69,22 +69,57 @@ IO : Type → Type
 IO A = Eff Unit A
 
 ------------------------------------------------------------------------
--- Type Slots: Stack space for unboxed representation
+-- Type Slots: Memory representation sizes
+--
+-- Two representations for hybrid unboxed-stack / boxed-heap design:
+--
+--   stack-type-slots : Unboxed representation (values stored inline)
+--     - Used for stack-allocated, non-escaping values
+--     - Sum types: tag + inline payload (variable size)
+--     - Products: inline concatenation
+--
+--   heap-type-slots : Boxed representation (pointers to heap data)
+--     - Used for heap-allocated, escaping values
+--     - Sum types: tag + pointer (fixed 2 slots)
+--     - Products: pointer to fst + pointer to snd (fixed 2 slots)
+--
+-- The IR specifies allocation mode (StackAlloc vs HeapAlloc) after
+-- escape analysis, and handlers use the appropriate slot function.
 ------------------------------------------------------------------------
 
+-- Unboxed representation: values stored inline on stack
+stack-type-slots : Type → ℕ
+stack-type-slots Unit = 0
+stack-type-slots Void = 0
+stack-type-slots Int = 1
+stack-type-slots Float = 1
+stack-type-slots Str = 1          -- pointer to string data (always indirect)
+stack-type-slots Buffer = 1       -- pointer to buffer data (always indirect)
+stack-type-slots (A * B) = stack-type-slots A +ℕ stack-type-slots B
+stack-type-slots (A ⊕ B) = 1 +ℕ (stack-type-slots A ⊔ stack-type-slots B)  -- tag + max payload
+stack-type-slots (_ ⇒[ _ ] _) = 2  -- closure: env-ptr + code-ptr (always boxed)
+stack-type-slots (Eff _ B) = stack-type-slots B
+stack-type-slots (Fix _) = 1       -- pointer to recursive structure (always boxed)
+stack-type-slots (TVar _) = 1      -- polymorphic = pointer
+
+-- Boxed representation: pointers to heap-allocated data
+heap-type-slots : Type → ℕ
+heap-type-slots Unit = 0
+heap-type-slots Void = 0
+heap-type-slots Int = 1
+heap-type-slots Float = 1
+heap-type-slots Str = 1
+heap-type-slots Buffer = 1
+heap-type-slots (A * B) = 2        -- ptr to fst + ptr to snd
+heap-type-slots (A ⊕ B) = 2        -- tag + ptr to payload
+heap-type-slots (_ ⇒[ _ ] _) = 2   -- closure: env-ptr + code-ptr
+heap-type-slots (Eff _ B) = heap-type-slots B
+heap-type-slots (Fix _) = 1        -- pointer to recursive structure
+heap-type-slots (TVar _) = 1       -- polymorphic = pointer
+
+-- Legacy alias for backwards compatibility (uses unboxed/stack representation)
 type-slots : Type → ℕ
-type-slots Unit = 0
-type-slots Void = 0
-type-slots Int = 1
-type-slots Float = 1
-type-slots Str = 1
-type-slots Buffer = 1
-type-slots (A * B) = type-slots A +ℕ type-slots B
-type-slots (A ⊕ B) = 1 +ℕ (type-slots A ⊔ type-slots B)
-type-slots (_ ⇒[ _ ] _) = 2  -- closure: env-ptr + code-ptr
-type-slots (Eff _ B) = type-slots B
-type-slots (Fix _) = 1  -- pointer to recursive structure
-type-slots (TVar _) = 1  -- polymorphic = pointer
+type-slots = stack-type-slots
 
 ------------------------------------------------------------------------
 -- Fixed Point Wrapper
