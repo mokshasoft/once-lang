@@ -175,79 +175,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- Import apply IR implementation
   open ApplyWFModule.ApplyWFImpl {FS} program-bound
 
-  ------------------------------------------------------------------------
-  -- Postulates for new IR constructors (to be implemented in task 6)
-  --
-  -- These handle sum types (inl-ir, inr-ir, case-ir), initial, and
-  -- recursive types (fold-ir, unfold-ir).
-  ------------------------------------------------------------------------
-
-  postulate
-    -- Sum type: inject left
-    run-inl : ∀ {A B}
-      (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) RDI ≡ input-loc →
-      next-slot alloc + pair-slots *ℕ ir-size (inl-ir {A} {B}) ≤ frame-capacity alloc →
-      IRResultAWF (inl-ir {A} {B}) x s alloc
-
-    -- Sum type: inject right
-    run-inr : ∀ {A B}
-      (x : ⟦ B ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) RDI ≡ input-loc →
-      next-slot alloc + pair-slots *ℕ ir-size (inr-ir {A} {B}) ≤ frame-capacity alloc →
-      IRResultAWF (inr-ir {A} {B}) x s alloc
-
-    -- Sum type: case analysis
-    run-case : ∀ {A B C}
-      (f : IR A C) (g : IR B C) →
-      RecDispatcherWF (ir-size (case-ir f g)) →
-      (x : ⟦ A ⊕ B ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) RDI ≡ input-loc →
-      next-slot alloc + pair-slots *ℕ ir-size (case-ir f g) ≤ frame-capacity alloc →
-      IRResultAWF (case-ir f g) x s alloc
-
-    -- Initial object: absurd elimination (never executed)
-    run-initial : ∀ {A}
-      (x : ⟦ Void ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) RDI ≡ input-loc →
-      IRResultAWF (initial {A}) x s alloc
-
-    -- Recursive types: fold
-    run-fold : ∀ {F}
-      (x : ⟦ F ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) RDI ≡ input-loc →
-      next-slot alloc + pair-slots *ℕ ir-size (fold-ir {F}) ≤ frame-capacity alloc →
-      IRResultAWF (fold-ir {F}) x s alloc
-
-    -- Recursive types: unfold
-    run-unfold : ∀ {F}
-      (x : ⟦ Fix F ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) RDI ≡ input-loc →
-      IRResultAWF (unfold-ir {F}) x s alloc
+  -- Import sum/fix IR implementations (inl, inr, case, initial, fold, unfold)
+  open import Once.Backend.X86v3.IR.SumFixWF as SumFixWFModule
+  open SumFixWFModule.SumFixWFImpl {FS} program-bound
 
   ------------------------------------------------------------------------
   -- Helper: get Acc for any IR size < program-bound
@@ -318,28 +248,28 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    -- Sum type: inject left (postulated)
+    -- Sum type: inject left (delegated to SumFixWF module)
     run-ir-wf (inl-ir {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       run-inl {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Sum type: inject right (postulated)
+    -- Sum type: inject right (delegated to SumFixWF module)
     run-ir-wf (inr-ir {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       run-inr {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Sum type: case analysis (postulated)
+    -- Sum type: case analysis (delegated to SumFixWF module)
     run-ir-wf (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       run-case f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Initial: absurd elimination (postulated)
+    -- Initial: absurd elimination (delegated to SumFixWF module)
     run-ir-wf initial _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-initial x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    -- Recursive types: fold (postulated)
+    -- Recursive types: fold (delegated to SumFixWF module)
     run-ir-wf (fold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       run-fold {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Recursive types: unfold (postulated)
+    -- Recursive types: unfold (delegated to SumFixWF module)
     run-ir-wf (unfold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-unfold {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
@@ -453,8 +383,11 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 --   - Apply setup: extracts body IR and all components from closure
 --   - Apply termination: uses BodyCorrect.execute instead of run-ir
 --   - Apply semantic correctness: result-valid uses closure-is-body
+--   - Sum types: inl-ir, inr-ir, case-ir (all delegated to SumFixWF)
+--   - Recursive types: fold-ir, unfold-ir (all delegated to SumFixWF)
+--   - Initial: absurd elimination (trivial via pattern match on ⊥)
 --
--- REMAINING POSTULATES (1 total):
+-- REMAINING POSTULATES (design-level):
 --
 --   Slot bound (1 - ApplyWF.agda):
 --     - slot-bounded-apply: body runs in same frame, requires architecture fix
@@ -464,6 +397,17 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 --       a) Create new frame for body execution (like real function calls)
 --       b) Change ir-stack-requirement to be dynamic (not feasible statically)
 --       c) Accept that apply's slot-bounded uses reclamation semantics
+--
+--   Sum type capacity (3 - SumFixWF.agda):
+--     - sum-slots-bound: type-slots (A ⊕ B) ≤ pair-slots * ir-size inl-ir
+--     - sucLoc-sum-in-range: suc n < n + type-slots (A ⊕ B)
+--     - alloc-slots-eq: proof irrelevance for allocation state equality
+--     These highlight the tension between fixed pair-slots capacity formula
+--     and type-dependent slot allocation. Will be resolved with unboxed stack.
+--
+--   Fix type capacity (1 - SumFixWF.agda):
+--     - fix-slots-bound: type-slots (Fix F) ≤ pair-slots * ir-size fold-ir
+--     Similar issue to sum types.
 --
 -- CAPACITY ARCHITECTURE:
 --   - Module parameter `frame-cap-sufficient` ensures capacity >= 2 * pair-slots * pb
