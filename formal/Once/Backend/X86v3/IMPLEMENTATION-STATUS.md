@@ -5,7 +5,7 @@
 
 ## Overview
 
-Implementing "Unboxed Stack / Boxed Heap for SlotMachine + Migrate to Once.IR" plan.
+X86v3 backend with correctness proofs for SlotMachine IR execution.
 
 ## Completed Tasks
 
@@ -22,11 +22,16 @@ All sum and recursive type IR handlers are implemented in `IR/SumFixWF.agda`:
 | `run-fold` | Done | Wrap value in recursive type (Fix F) |
 | `run-case` | Done | Case analysis on sum types with recursive dispatch |
 
-Dispatcher.agda now imports SumFixWF and uses these implementations (no more postulates for sum/fix).
+Dispatcher.agda now imports SumFixWF and uses these implementations.
 
-## Current Postulates
+### Already Done: type-slots and ir-stack-requirement
 
-### Design-Level Postulates (to be resolved with unboxed stack)
+- `type-slots : Type → ℕ` defined in Types.agda (unboxed sizes)
+- `ir-stack-requirement` uses `type-slots` for allocation
+
+## Current Issue: Capacity Formula Mismatch
+
+The Dispatcher uses `pair-slots * ir-size` for capacity bounds, but `ir-stack-requirement` uses `type-slots`. This causes the postulates in SumFixWF:
 
 **In SumFixWF.agda:**
 - `sum-slots-bound`: type-slots (A ⊕ B) ≤ pair-slots * ir-size inl-ir
@@ -34,37 +39,22 @@ Dispatcher.agda now imports SumFixWF and uses these implementations (no more pos
 - `alloc-slots-eq`: proof irrelevance for allocation state equality
 - `fix-slots-bound`: type-slots (Fix F) ≤ pair-slots * ir-size fold-ir
 
-These highlight the tension between fixed `pair-slots * ir-size` capacity formula and type-dependent slot allocation.
-
 **In ApplyWF.agda:**
 - `slot-bounded-apply`: body runs in same frame, requires architecture fix
 
-## Remaining Plan Steps
+## Next Step: Fix Capacity Formula
 
-### Step 1: Design Document (TODO)
-Write `unboxed-stack-design.md` documenting:
-- Memory representation changes (boxed → unboxed)
-- type-slots function design
-- Hybrid approach (stack unboxed, heap boxed)
-- ValidAt changes for unboxed pairs
+**Option A: Change Dispatcher to use ir-stack-requirement directly**
+- Replace `pair-slots * ir-size` with `ir-stack-requirement`
+- This matches what the handlers actually allocate
+- Eliminates sum-slots-bound and fix-slots-bound postulates
 
-### Step 2: Add type-slots to Once/Type.agda (PARTIAL)
-`type-slots` already exists in `X86v3/Types.agda`. Need to:
-- Verify it handles all types correctly
-- Possibly move to main Once/Type.agda
+**Option B: Prove the postulates for current (boxed) representation**
+- For boxed: type-slots (A ⊕ B) = 2, type-slots (Fix F) = 1
+- pair-slots * ir-size = 2 * 1 = 2, so bounds hold
+- But this assumes boxed representation
 
-### Step 3: Migrate X86v3 to Once.IR (TODO)
-- X86v3/Types.agda imports from Once.Type
-- X86v3/IR.agda imports from Once.IR
-- Add missing IR cases (Prim, Eff, etc.)
-
-### Step 4: Update SlotMachine for Unboxed Values (TODO)
-- Change memory representation
-- Update allocation to use type-slots
-
-### Step 5: Update Dispatcher and IR Handlers (TODO)
-- Use type-slots instead of pair-slots
-- Handle unboxed value layout
+**Recommended: Option A** - Align capacity formula with actual allocation
 
 ## File Structure
 
@@ -98,13 +88,15 @@ Once/Backend/X86v3/
 
 ## Next Steps (Priority Order)
 
-1. **Resolve capacity postulates** - Either:
-   - Prove them for boxed representation (type-slots ≤ 2)
-   - Or wait until unboxed stack implementation
+1. **Fix capacity formula** - Change Dispatcher from `pair-slots * ir-size` to `ir-stack-requirement`
+   - This eliminates sum-slots-bound, fix-slots-bound postulates
+   - Aligns capacity with actual allocation
 
-2. **Write design document** - Document unboxed stack approach
+2. **Resolve slot-bounded-apply** - Apply body execution issue
+   - Body can consume more stack than apply's static requirement
+   - Options: new frame for body, or accept reclamation semantics
 
-3. **Migrate to Once.IR** - Use main IR instead of simplified X86v3 IR
+3. **Migrate to Once.IR** (optional) - Use main IR instead of simplified X86v3 IR
 
 ## Build Commands
 
