@@ -75,7 +75,7 @@ stack-type-slots (A * B) = stack-type-slots A +ℕ stack-type-slots B
 stack-type-slots (A + B) = 1 +ℕ (stack-type-slots A ⊔ stack-type-slots B)  -- tag + max payload
 stack-type-slots (_ ⇒[ _ ] _) = 2  -- closure: env-ptr + code-ptr (always boxed)
 stack-type-slots (Eff _ B) = stack-type-slots B
-stack-type-slots (Fix _) = 1       -- pointer to recursive structure (always boxed)
+stack-type-slots (Fix F) = stack-type-slots F  -- unboxed: F data stored inline
 stack-type-slots (TVar _) = 1      -- polymorphic = pointer
 
 -- Boxed representation: pointers to heap-allocated data

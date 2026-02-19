@@ -56,7 +56,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            valid-closure-wf;
            valid-inl-boxed-wf; valid-inl-unboxed-wf;
            valid-inr-boxed-wf; valid-inr-unboxed-wf;
-           valid-fold-wf;
+           valid-fold-boxed-wf; valid-fold-unboxed-wf;
            validityWF-mem-only; validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            validityWF-frontier-advance;

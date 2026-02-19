@@ -121,14 +121,31 @@ Pair (a, b) boxed at slot S:
   Total: 2 slots (always)
 ```
 
-### Always Boxed Types
+### Representation by Type
 
-Some types are always boxed regardless of `AllocMode`:
+| Type | Stack Mode (Unboxed) | Heap Mode (Boxed) | Implementation Status |
+|------|---------------------|-------------------|----------------------|
+| Recursive (`Fix F`) | F data inline, size = `stack-type-slots F` | pointer (1 slot) | ✅ Both modes fully proven |
+| Closures (`A ⇒ B`) | Not yet implemented | env-ptr + code-ptr (2 slots) | ⚠️ Heap only |
+| Sum (`A + B`) | tag + payload inline | tag + pointer (2 slots) | ⚠️ Heap only |
+| Pair (`A * B`) | both inline | two pointers (2 slots) | ⚠️ Heap only |
 
-| Type | Reason |
-|------|--------|
-| Closures (`A ⇒ B`) | Code pointer must be a location |
-| Recursive types (`Fix F`) | Self-referential structure requires indirection |
+### Fold Implementation Details
+
+`fold-ir` takes an `AllocMode` parameter:
+
+```agda
+fold-ir : ∀ {F} → AllocMode → IR F (Fix F)
+```
+
+| Mode | Implementation | Allocation |
+|------|----------------|------------|
+| `fold-ir Stack` | F value IS the Fix F value at same location | None (zero slots) |
+| `fold-ir Heap` | Allocate slot, store pointer to unfolded value | 1 slot |
+
+Stack mode uses `valid-fold-unboxed-wf`: the input `ValidAtWF mIn alloc v loc s` becomes `ValidAtWF Stack alloc (fold v) loc s` - same location, just wrapped validity.
+
+Heap mode uses `valid-fold-boxed-wf`: stores pointer to unfolded value, producing boxed representation.
 
 ### ValidAtWF: Mode-Indexed Validity
 

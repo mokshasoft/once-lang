@@ -77,8 +77,8 @@ data IR : Type → Type → Set where
   curry : ∀ {A B C} → IR (A * B) C → AllocMode → IR A (B ⇒ C)
   apply : ∀ {A B} → IR ((A ⇒ B) * A) B
 
-  -- Recursive types (Fix F)
-  fold-ir : ∀ {F} → IR F (Fix F)
+  -- Recursive types (Fix F) - AllocMode specifies where fold is allocated
+  fold-ir : ∀ {F} → AllocMode → IR F (Fix F)
   unfold-ir : ∀ {F} → IR (Fix F) F
 
   -- Primitive operations (opaque to backend)
@@ -113,7 +113,7 @@ eval terminal x = tt
 eval initial ()
 eval (curry f _) x = λ y → eval f (pair x y)  -- AllocMode ignored
 eval apply (closure , arg) = closure arg
-eval fold-ir x = fold x
+eval (fold-ir _) x = fold x  -- AllocMode ignored
 eval unfold-ir x = unfold x
 eval (Prim name) x = prim-semantics name x
 
@@ -179,7 +179,7 @@ ir-size terminal = 1
 ir-size initial = 1
 ir-size (curry f _) = 2 +ℕ ir-size f  -- Extra slot for apply's pair allocation
 ir-size apply = 1
-ir-size fold-ir = 1
+ir-size (fold-ir _) = 1  -- AllocMode ignored
 ir-size unfold-ir = 1
 ir-size (Prim _) = 1
 
@@ -201,7 +201,7 @@ ir-size-pos terminal = s≤s z≤n
 ir-size-pos initial = s≤s z≤n
 ir-size-pos (curry f _) = s≤s z≤n
 ir-size-pos apply = s≤s z≤n
-ir-size-pos fold-ir = s≤s z≤n
+ir-size-pos (fold-ir _) = s≤s z≤n
 ir-size-pos unfold-ir = s≤s z≤n
 ir-size-pos (Prim _) = s≤s z≤n
 
@@ -324,7 +324,7 @@ ir-stack-requirement terminal = 0
 ir-stack-requirement initial = 0  -- never executed (absurd)
 ir-stack-requirement {_} {B ⇒[ _ ] C} (curry f m) = type-slots-for-mode m (B ⇒[ Many ] C)  -- closure = 2 slots
 ir-stack-requirement apply = pair-slots  -- forms (env, arg) pair; body requirement separate
-ir-stack-requirement {_} {Fix F} fold-ir = type-slots (Fix F)  -- pointer = 1 slot (always boxed)
+ir-stack-requirement {_} {Fix F} (fold-ir m) = type-slots-for-mode m (Fix F)  -- Stack: inline F, Heap: pointer
 ir-stack-requirement unfold-ir = 0  -- dereferences pointer, no allocation
 ir-stack-requirement (Prim _) = 0  -- primitives handle their own allocation
 

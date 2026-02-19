@@ -302,9 +302,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       run-initial x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Recursive types: fold (delegated to SumFixWF module)
-    -- Output is always Heap (fold wraps pointer)
-    run-ir-wf mIn (fold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      Heap , run-fold {F} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    -- Output mode is m (from fold-ir m): Stack = unboxed, Heap = pointer
+    run-ir-wf mIn (fold-ir {F} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      m , run-fold {F} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Recursive types: unfold (delegated to SumFixWF module)
     -- Input must be Heap (fold is boxed)

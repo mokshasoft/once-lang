@@ -182,15 +182,26 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         ValidAtWF mB alloc b (sucLoc sum-loc) s →  -- payload inline after tag
         ValidAtWF Stack alloc {A + B} (inr b) sum-loc s
 
-      -- Recursive type (fold): always boxed (pointer to unfolded)
-      valid-fold-wf : ∀ {m F} {v : ⟦ F ⟧}
+      -- Recursive type (fold) boxed: pointer to unfolded value
+      -- Output mode is Heap (boxed representation)
+      valid-fold-boxed-wf : ∀ {F} {v : ⟦ F ⟧}
         {alloc : AllocState {FS}}
         {fix-loc unfolded-loc : ValueLocation FS} {s : LocState FS}
         {mV : AllocMode} →
         readLoc s fix-loc ≡ just unfolded-loc →
         BeforeFrontier alloc unfolded-loc →
         ValidAtWF mV alloc v unfolded-loc s →
-        ValidAtWF m alloc {Fix F} (fold v) fix-loc s
+        ValidAtWF Heap alloc {Fix F} (fold v) fix-loc s
+
+      -- Recursive type (fold) unboxed: F data inline at fix-loc
+      -- Output mode is Stack (unboxed representation)
+      -- The fold value IS the F value at the same location
+      valid-fold-unboxed-wf : ∀ {F} {v : ⟦ F ⟧}
+        {alloc : AllocState {FS}}
+        {fix-loc : ValueLocation FS} {s : LocState FS}
+        {mV : AllocMode} →
+        ValidAtWF mV alloc v fix-loc s →
+        ValidAtWF Stack alloc {Fix F} (fold v) fix-loc s
 
     --------------------------------------------------------------------
     -- IRResultAWF: Mode-indexed IR execution result
@@ -558,10 +569,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- Decomposition for ValidAtWF recursive types (fold)
   ------------------------------------------------------------------------
 
-  record FoldValidWF (alloc : AllocState {FS}) {F : Type}
-                     (v : ⟦ Fix F ⟧)
-                     (fix-loc : ValueLocation FS)
-                     (s : LocState FS) : Set where
+  -- FoldValidWF for boxed fold (pointer indirection)
+  record FoldBoxedValidWF (alloc : AllocState {FS}) {F : Type}
+                          (v : ⟦ Fix F ⟧)
+                          (fix-loc : ValueLocation FS)
+                          (s : LocState FS) : Set where
     field
       unfolded : ⟦ F ⟧
       mV : AllocMode  -- Mode of unfolded value
@@ -571,15 +583,34 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       unfolded-valid : ValidAtWF mV alloc unfolded unfolded-loc s
       v-is-fold : v ≡ fold unfolded
 
-  decomposeFoldWF : ∀ {m alloc F} {v : ⟦ F ⟧} {loc s} →
-    ValidAtWF m alloc {Fix F} (fold v) loc s → FoldValidWF alloc (fold v) loc s
-  -- Explicitly capture v from valid-fold-wf to ensure unfolded and unfolded-valid match
-  decomposeFoldWF (valid-fold-wf {_} {_} {v} {_} {_} {ul} {_} {mV} up ub uv) = record
+  -- FoldValidWF for unboxed fold (value inline at fix-loc)
+  record FoldUnboxedValidWF (alloc : AllocState {FS}) {F : Type}
+                            (v : ⟦ Fix F ⟧)
+                            (fix-loc : ValueLocation FS)
+                            (s : LocState FS) : Set where
+    field
+      unfolded : ⟦ F ⟧
+      mV : AllocMode  -- Mode of unfolded value
+      unfolded-valid : ValidAtWF mV alloc unfolded fix-loc s  -- Value at same location
+      v-is-fold : v ≡ fold unfolded
+
+  decomposeFoldBoxedWF : ∀ {alloc F} {v : ⟦ F ⟧} {loc s} →
+    ValidAtWF Heap alloc {Fix F} (fold v) loc s → FoldBoxedValidWF alloc (fold v) loc s
+  decomposeFoldBoxedWF (valid-fold-boxed-wf {_} {v} {_} {_} {ul} {_} {mV} up ub uv) = record
     { unfolded = v
     ; mV = mV
     ; unfolded-loc = ul
     ; unfolded-ptr = up
     ; unfolded-before = ub
+    ; unfolded-valid = uv
+    ; v-is-fold = refl
+    }
+
+  decomposeFoldUnboxedWF : ∀ {alloc F} {v : ⟦ F ⟧} {loc s} →
+    ValidAtWF Stack alloc {Fix F} (fold v) loc s → FoldUnboxedValidWF alloc (fold v) loc s
+  decomposeFoldUnboxedWF (valid-fold-unboxed-wf {_} {v} {_} {_} {_} {mV} uv) = record
+    { unfolded = v
+    ; mV = mV
     ; unfolded-valid = uv
     ; v-is-fold = refl
     }
@@ -681,14 +712,20 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     where
       pv' = validityWF-mem-only b (sucLoc loc) s₁ s₂ stack-eq heap-eq pv
 
-  validityWF-mem-only {m} {alloc} {Fix F} .(fold v) loc s₁ s₂ stack-eq heap-eq
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up' ub uv'
+  validityWF-mem-only {Heap} {alloc} {Fix F} .(fold v) loc s₁ s₂ stack-eq heap-eq
+    (valid-fold-boxed-wf {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold-boxed-wf up' ub uv'
     where
       up' : readLoc s₂ loc ≡ just ul
       up' = trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) up
 
       uv' = validityWF-mem-only v ul s₁ s₂ stack-eq heap-eq uv
+
+  validityWF-mem-only {Stack} {alloc} {Fix F} .(fold v) loc s₁ s₂ stack-eq heap-eq
+    (valid-fold-unboxed-wf {v = v} uv) =
+    valid-fold-unboxed-wf uv'
+    where
+      uv' = validityWF-mem-only v loc s₁ s₂ stack-eq heap-eq uv
 
   ------------------------------------------------------------------------
   -- ValidAtWF preservation under writes to frontier locations
@@ -796,14 +833,20 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     where
       pv' = validityWF-write-at-frontier b (sucLoc loc) s val slb pv
 
-  validityWF-write-at-frontier {m} {alloc} {Fix F} .(fold v) loc s val loc-before
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up' ub uv'
+  validityWF-write-at-frontier {Heap} {alloc} {Fix F} .(fold v) loc s val loc-before
+    (valid-fold-boxed-wf {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold-boxed-wf up' ub uv'
     where
       fresh = OnStack (current-frame alloc) (next-slot alloc)
       up' = trans (write-preserves-disjoint s fresh val loc
                     (at-frontier-neq-before-wf alloc loc loc-before)) up
       uv' = validityWF-write-at-frontier v ul s val ub uv
+
+  validityWF-write-at-frontier {Stack} {alloc} {Fix F} .(fold v) loc s val loc-before
+    (valid-fold-unboxed-wf {v = v} uv) =
+    valid-fold-unboxed-wf uv'
+    where
+      uv' = validityWF-write-at-frontier v loc s val loc-before uv
 
   -- ValidAtWF is preserved when writing to suc-frontier location
   validityWF-write-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
@@ -881,14 +924,20 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     where
       pv' = validityWF-write-at-suc-frontier b (sucLoc loc) s val slb pv
 
-  validityWF-write-at-suc-frontier {m} {alloc} {Fix F} .(fold v) loc s val loc-before
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up' ub uv'
+  validityWF-write-at-suc-frontier {Heap} {alloc} {Fix F} .(fold v) loc s val loc-before
+    (valid-fold-boxed-wf {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold-boxed-wf up' ub uv'
     where
       fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
       up' = trans (write-preserves-disjoint s fresh val loc
                     (suc-frontier-neq-before-wf alloc loc loc-before)) up
       uv' = validityWF-write-at-suc-frontier v ul s val ub uv
+
+  validityWF-write-at-suc-frontier {Stack} {alloc} {Fix F} .(fold v) loc s val loc-before
+    (valid-fold-unboxed-wf {v = v} uv) =
+    valid-fold-unboxed-wf uv'
+    where
+      uv' = validityWF-write-at-suc-frontier v loc s val loc-before uv
 
   ------------------------------------------------------------------------
   -- Validity transport across allocation advancement
@@ -983,13 +1032,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
       pv' = validityWF-alloc-advance b (sucLoc loc) s n fits pv
 
-  validityWF-alloc-advance {m} {alloc} {Fix F} .(fold v) loc s n fits
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up ub' uv'
+  validityWF-alloc-advance {Heap} {alloc} {Fix F} .(fold v) loc s n fits
+    (valid-fold-boxed-wf {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold-boxed-wf up ub' uv'
     where
       alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
       ub' = stack-alloc-advances alloc n fits ul ub
       uv' = validityWF-alloc-advance v ul s n fits uv
+
+  validityWF-alloc-advance {Stack} {alloc} {Fix F} .(fold v) loc s n fits
+    (valid-fold-unboxed-wf {v = v} uv) =
+    valid-fold-unboxed-wf uv'
+    where
+      uv' = validityWF-alloc-advance v loc s n fits uv
 
   ------------------------------------------------------------------------
   -- Validity transport across arbitrary frontier advancement
@@ -1075,12 +1130,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       pv' = validityWF-frontier-advance b (sucLoc loc) s cf-eq slot-≤ heap-≤ pv
 
-  validityWF-frontier-advance {m} {alloc} {alloc'} {Fix F} .(fold v) loc s cf-eq slot-≤ heap-≤
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up ub' uv'
+  validityWF-frontier-advance {Heap} {alloc} {alloc'} {Fix F} .(fold v) loc s cf-eq slot-≤ heap-≤
+    (valid-fold-boxed-wf {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold-boxed-wf up ub' uv'
     where
       ub' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ ul ub
       uv' = validityWF-frontier-advance v ul s cf-eq slot-≤ heap-≤ uv
+
+  validityWF-frontier-advance {Stack} {alloc} {alloc'} {Fix F} .(fold v) loc s cf-eq slot-≤ heap-≤
+    (valid-fold-unboxed-wf {v = v} uv) =
+    valid-fold-unboxed-wf uv'
+    where
+      uv' = validityWF-frontier-advance v loc s cf-eq slot-≤ heap-≤ uv
 
   ------------------------------------------------------------------------
   -- ValidAtWF transfer between allocation states with BeforeFrontier transfer
@@ -1144,11 +1205,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     valid-inr-unboxed-wf (bf loc pb) (bf (sucLoc loc) slb)
       (validityWF-with-bf-transfer b (sucLoc loc) s a₁ a₂ bf pv)
 
-  -- Fold
-  validityWF-with-bf-transfer {m} {Fix F} .(fold v) loc s a₁ a₂ bf
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up (bf ul ub)
+  -- Fold boxed
+  validityWF-with-bf-transfer {Heap} {Fix F} .(fold v) loc s a₁ a₂ bf
+    (valid-fold-boxed-wf {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold-boxed-wf up (bf ul ub)
       (validityWF-with-bf-transfer v ul s a₁ a₂ bf uv)
+
+  -- Fold unboxed
+  validityWF-with-bf-transfer {Stack} {Fix F} .(fold v) loc s a₁ a₂ bf
+    (valid-fold-unboxed-wf {v = v} uv) =
+    valid-fold-unboxed-wf (validityWF-with-bf-transfer v loc s a₁ a₂ bf uv)
 
   ------------------------------------------------------------------------
   -- Validity preservation when memory at BeforeFrontier is preserved
@@ -1226,12 +1292,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     where
       pv' = validityWF-mem-preserved b (sucLoc loc) s₁ s₂ slb mem-eq pv
 
-  validityWF-mem-preserved {m} {alloc} {Fix F} .(fold v) loc s₁ s₂ loc-before mem-eq
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up' ub uv'
+  validityWF-mem-preserved {Heap} {alloc} {Fix F} .(fold v) loc s₁ s₂ loc-before mem-eq
+    (valid-fold-boxed-wf {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold-boxed-wf up' ub uv'
     where
       up' = trans (mem-eq loc loc-before) up
       uv' = validityWF-mem-preserved v ul s₁ s₂ ub mem-eq uv
+
+  validityWF-mem-preserved {Stack} {alloc} {Fix F} .(fold v) loc s₁ s₂ loc-before mem-eq
+    (valid-fold-unboxed-wf {v = v} uv) =
+    valid-fold-unboxed-wf uv'
+    where
+      uv' = validityWF-mem-preserved v loc s₁ s₂ loc-before mem-eq uv
 
   ------------------------------------------------------------------------
   -- Stack Reclamation
