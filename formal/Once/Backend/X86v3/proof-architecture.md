@@ -90,6 +90,61 @@ A value **escapes** if it outlives its stack frame (returned, stored in closure,
 
 See: `X86/Correct/MemoryValid.agda` (`AllocMode`, `ValidAt`)
 
+## Value Representation: Unboxed Stack / Boxed Heap
+
+Allocation location determines value **representation**:
+
+| AllocMode | Representation | Memory Layout |
+|-----------|----------------|---------------|
+| Stack | **Unboxed** | Values stored inline, variable size |
+| Heap | **Boxed** | Pointers to heap data, fixed size |
+
+### Unboxed (Stack)
+
+Values are stored directly in stack slots:
+
+```
+Pair (a, b) unboxed at slot S:
+  slot[S .. S + type-slots A - 1] = value a (inline)
+  slot[S + type-slots A .. ]      = value b (inline)
+  Total: type-slots A + type-slots B slots
+```
+
+### Boxed (Heap)
+
+Values are stored as pointers:
+
+```
+Pair (a, b) boxed at slot S:
+  slot[S]   = pointer to a
+  slot[S+1] = pointer to b
+  Total: 2 slots (always)
+```
+
+### Always Boxed Types
+
+Some types are always boxed regardless of `AllocMode`:
+
+| Type | Reason |
+|------|--------|
+| Closures (`A ⇒ B`) | Code pointer must be a location |
+| Recursive types (`Fix F`) | Self-referential structure requires indirection |
+
+### ValidAtWF: Mode-Indexed Validity
+
+`ValidAtWF` takes `AllocMode` as its **first parameter**, enforcing correct representation:
+
+```agda
+data ValidAtWF : AllocMode → AllocState → {A : Type} → ⟦ A ⟧ → ValueLocation → LocState → Set where
+  valid-pair-boxed-wf   : ... → ValidAtWF Heap ...   -- Heap mode: boxed
+  valid-pair-unboxed-wf : ... → ValidAtWF Stack ...  -- Stack mode: unboxed
+  valid-closure-wf      : ... → ValidAtWF Heap ...   -- Closures: always Heap
+```
+
+This ensures handlers produce the correct representation for their declared mode.
+
+See: `X86v3/ClosureWellFormed.agda` (`ValidAtWF`), `X86v3/unboxed-stack-design.md`
+
 ## Stack Capacity: Design Goals
 
 When using stack allocation, we need capacity proofs. Key design properties:
@@ -101,6 +156,31 @@ When using stack allocation, we need capacity proofs. Key design properties:
 - Actual stack usage is inherently O(depth) for nested IRs - unavoidable
 - But ADDITIONAL overhead (reserved-but-unused space) must be O(1)
 - Any solution that wastes O(bound) or O(depth) space is rejected
+
+### Dynamic Capacity Threading (X86 Pattern)
+
+Capacity proofs use **dynamic threading**, not bounded reasoning:
+
+| Approach | Description | Overhead |
+|----------|-------------|----------|
+| ❌ Bounded | Reserve `pair-slots * program-bound` everywhere | O(bound) waste |
+| ✅ Dynamic | Each closure carries its `body-capacity` | O(1) overhead |
+
+**Dynamic capacity flow:**
+
+```
+Curry: Creates closure with body-capacity = ir-stack-requirement body
+         ↓
+Compose/Pair: Threads closure (with capacity) through unchanged
+         ↓
+Apply: Extracts body-capacity from closure, verifies capacity fits
+```
+
+**Key insight:** The Dispatcher doesn't need to know body capacity statically. It ensures initial frame has enough space for worst-case `ir-stack-requirement`. Each `Apply` then verifies the specific closure's body fits.
+
+**Anti-pattern (causes postulates):** Trying to prove `ir-stack-requirement ≤ pair-slots * ir-size` globally. This fails for Stack-mode pairs where `stack-type-slots` can exceed `pair-slots`.
+
+See: `X86v3/capacity-migration-plan.md`, `X86/Correct/StarBase.agda` (`ClosureWFOutput`, `ApplyReady`)
 
 ### Escape Analysis
 

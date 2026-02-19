@@ -14,7 +14,7 @@
 
 module Once.Backend.Common.SlotMachine where
 
-open import Data.Nat using (ℕ; zero; suc)
+open import Data.Nat using (ℕ; zero; suc; _+_)
 open import Data.Nat.Properties using (_≟_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false)
@@ -64,6 +64,12 @@ data ValueLocation (FS : FrameSemantics) : Set where
 sucLoc : ∀ {FS} → ValueLocation FS → ValueLocation FS
 sucLoc (OnStack f k) = OnStack f (suc k)
 sucLoc (OnHeap r o)  = OnHeap r (suc o)
+
+-- | Offset location by n slots (for unboxed multi-slot values)
+-- Note: n + k so that offsetLoc _ 1 = sucLoc definitionally
+offsetLoc : ∀ {FS} → ValueLocation FS → ℕ → ValueLocation FS
+offsetLoc (OnStack f k) n = OnStack f (n + k)
+offsetLoc (OnHeap r o) n  = OnHeap r (n + o)
 
 ------------------------------------------------------------------------
 -- Memory: Stores Locations (not Words)

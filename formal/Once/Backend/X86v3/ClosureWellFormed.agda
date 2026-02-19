@@ -29,7 +29,7 @@ open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
 open import Once.Backend.X86v3.Types
 open import Once.Backend.X86v3.IR
-open import Once.Backend.X86v3.Allocation
+open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- BodyResult: Result type for body execution
@@ -63,190 +63,211 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
            apply-pair-preserves-program-bound-cap)
 
   ------------------------------------------------------------------------
-  -- Mutual block for BodyCorrect, ValidAtWF, IRResultAWF
+  -- Mutual block for ValidAtWF, IRResultAWF, BodyCorrect
   --
-  -- These types are mutually dependent:
-  -- - BodyCorrect.execute returns IRResultAWF
-  -- - IRResultAWF.result-valid-wf uses ValidAtWF
-  -- - ValidAtWF.valid-closure-wf uses BodyCorrect
+  -- ValidAtWF is indexed by AllocMode as FIRST parameter.
+  -- Each constructor FIXES its output mode in the type:
+  --   valid-pair-boxed-wf  : ... → ValidAtWF Heap alloc {A * B} ...
+  --   valid-pair-unboxed-wf : ... → ValidAtWF Stack alloc {A * B} ...
   --
-  -- Option A implementation: BodyCorrect.execute takes ValidAtWF input
-  -- and returns IRResultAWF, making the whole system use ValidAtWF
-  -- consistently. This eliminates the need for valid-to-validWF.
+  -- This enforces correct representation at the type level:
+  -- - Handler for ⟨ f , g ⟩ Stack MUST produce ValidAtWF Stack (unboxed)
+  -- - Handler for ⟨ f , g ⟩ Heap MUST produce ValidAtWF Heap (boxed)
+  --
+  -- Non-allocating handlers (fst, snd, id, etc.) pattern match on input
+  -- ValidAtWF to discover the mode, and return the same mode.
   ------------------------------------------------------------------------
 
-  ------------------------------------------------------------------------
-  -- IRResultAWF: IR execution result with ValidAtWF
-  --
-  -- Defined first since BodyCorrect needs it.
-  -- Uses forward declaration pattern for ValidAtWF.
-  ------------------------------------------------------------------------
+  mutual
+    --------------------------------------------------------------------
+    -- ValidAtWF: Mode-indexed validity
+    --
+    -- First parameter is AllocMode - determines memory representation.
+    -- Constructor choice is FORCED by the mode:
+    --   Stack → must use unboxed constructors
+    --   Heap  → must use boxed constructors
+    --------------------------------------------------------------------
 
-  -- Forward declare ValidAtWF type for IRResultAWF
-  data ValidAtWF (alloc : AllocState {FS}) : {A : Type} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set
+    data ValidAtWF : AllocMode → AllocState {FS} →
+         {A : Type} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set where
 
-  record IRResultAWF {A B : Type}
-                     (ir : IR A B)
-                     (x : ⟦ A ⟧)
-                     (s : LocState FS)
-                     (alloc : AllocState {FS}) : Set where
-    inductive
-    field
-      result-loc : ValueLocation FS
-      final-state : LocState FS
-      final-alloc : AllocState {FS}
-      result-valid-wf : ValidAtWF final-alloc (eval ir x) result-loc final-state
-      result-before : BeforeFrontier final-alloc result-loc
-      rax-is-result : readReg (regs final-state) RAX ≡ result-loc
-      not-halted : halted final-state ≡ false
-      frame-preserved : current-frame final-alloc ≡ current-frame alloc
-      slot-monotone : next-slot alloc ≤ next-slot final-alloc
-      heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
-      -- Heap preservation: no heap allocation during stack-only IR operations
-      heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
-      -- slot-bounded REMOVED: Using dynamic capacity threading instead (X86 pattern)
-      -- Capacity is threaded via BodyCorrect.body-capacity for apply
-      capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
-      -- Write isolation: IR execution only writes at/after frontier
-      -- Memory at BeforeFrontier locations is preserved
-      mem-preserved-before : ∀ loc → BeforeFrontier alloc loc →
-        readLoc final-state loc ≡ readLoc s loc
+      -- Unit: valid at any mode (no representation difference)
+      valid-unit-wf : ∀ {m alloc loc s} →
+        ValidAtWF m alloc {Unit} tt loc s
 
-      -- Stack reclamation: After IR completes, only the result needs to persist.
-      -- Intermediate allocations can be reclaimed to free stack space.
-      reclaimable-slot : ℕ
-      reclaim-monotone : next-slot alloc ≤ reclaimable-slot
-      reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
-      reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
-        BeforeFrontier (record alloc { next-slot = reclaimable-slot ; slots-available = fits }) result-loc
-      -- Reclaim preserves validity: ValidAtWF at the reclaimed allocation
-      -- This is the key lemma for compose/pair to transfer validity through reclamation
-      -- Unlike frontier-advance, this handles the "backwards" direction of reclamation
-      reclaim-preserves-validity : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
-        ValidAtWF (record alloc { next-slot = reclaimable-slot ; slots-available = fits })
-                  (eval ir x) result-loc final-state
-      -- Reclaim size bound: reclaimable-slot is within the IR's size budget
-      -- This replaces slot-bounded and IS provable for apply (reclaimable = slot +ℕ pair-slots)
-      -- Used by compose/pair to derive capacity for subsequent operations
-      reclaim-size-bound : reclaimable-slot ≤ next-slot alloc +ℕ pair-slots *ℕ ir-size ir
+      -- Boxed pair (Heap mode): two pointers at pair-loc, sucLoc pair-loc
+      -- Output mode is FIXED to Heap
+      valid-pair-boxed-wf : ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
+        {alloc : AllocState {FS}}
+        {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS}
+        {mA mB : AllocMode} →  -- Component modes can be anything
+        readLoc s pair-loc ≡ just fst-loc →
+        readLoc s (sucLoc pair-loc) ≡ just snd-loc →
+        BeforeFrontier alloc fst-loc →
+        BeforeFrontier alloc snd-loc →
+        BeforeFrontier alloc (sucLoc pair-loc) →
+        ValidAtWF mA alloc a fst-loc s →
+        ValidAtWF mB alloc b snd-loc s →
+        ValidAtWF Heap alloc {A * B} (a , b) pair-loc s  -- Output: Heap
+
+      -- Unboxed pair (Stack mode): values inline at pair-loc
+      -- fst at pair-loc, snd at pair-loc + stack-type-slots A
+      -- Output mode is FIXED to Stack
+      valid-pair-unboxed-wf : ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
+        {alloc : AllocState {FS}}
+        {pair-loc : ValueLocation FS} {s : LocState FS}
+        {mA mB : AllocMode} →  -- Component modes can be anything
+        BeforeFrontier alloc pair-loc →
+        BeforeFrontier alloc (offsetLoc pair-loc (stack-type-slots A)) →
+        ValidAtWF mA alloc a pair-loc s →
+        ValidAtWF mB alloc b (offsetLoc pair-loc (stack-type-slots A)) s →
+        ValidAtWF Stack alloc {A * B} (a , b) pair-loc s  -- Output: Stack
+
+      -- Closure: always boxed (env-ptr + code-ptr), output mode is Heap
+      valid-closure-wf : ∀ {EnvType q A B}
+        {body : IR (EnvType * A) B}
+        {env : ⟦ EnvType ⟧}
+        {alloc : AllocState {FS}}
+        (body<bound : ir-size body < program-bound) →
+        {closure-loc env-loc code-loc : ValueLocation FS} {s : LocState FS}
+        {mEnv : AllocMode} →  -- Env mode can be anything
+        readLoc s closure-loc ≡ just env-loc →
+        readLoc s (sucLoc closure-loc) ≡ just code-loc →
+        BeforeFrontier alloc env-loc →
+        BeforeFrontier alloc code-loc →
+        BeforeFrontier alloc (sucLoc closure-loc) →
+        ValidAtWF mEnv alloc env env-loc s →
+        BodyCorrect body env env-loc program-bound →
+        ValidAtWF Heap alloc {A ⇒[ q ] B} (λ arg → eval body (pair env arg)) closure-loc s
+
+      -- Sum inl: boxed (tag + payload-ptr), output mode is Heap
+      valid-inl-boxed-wf : ∀ {A B} {a : ⟦ A ⟧}
+        {alloc : AllocState {FS}}
+        {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
+        {mA : AllocMode} →
+        readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+        BeforeFrontier alloc payload-loc →
+        BeforeFrontier alloc (sucLoc sum-loc) →
+        ValidAtWF mA alloc a payload-loc s →
+        ValidAtWF Heap alloc {A + B} (inl a) sum-loc s
+
+      -- Sum inl: unboxed (tag + inline payload), output mode is Stack
+      valid-inl-unboxed-wf : ∀ {A B} {a : ⟦ A ⟧}
+        {alloc : AllocState {FS}}
+        {sum-loc : ValueLocation FS} {s : LocState FS}
+        {mA : AllocMode} →
+        BeforeFrontier alloc sum-loc →
+        BeforeFrontier alloc (sucLoc sum-loc) →
+        ValidAtWF mA alloc a (sucLoc sum-loc) s →  -- payload inline after tag
+        ValidAtWF Stack alloc {A + B} (inl a) sum-loc s
+
+      -- Sum inr: boxed (tag + payload-ptr), output mode is Heap
+      valid-inr-boxed-wf : ∀ {A B} {b : ⟦ B ⟧}
+        {alloc : AllocState {FS}}
+        {sum-loc payload-loc : ValueLocation FS} {s : LocState FS}
+        {mB : AllocMode} →
+        readLoc s (sucLoc sum-loc) ≡ just payload-loc →
+        BeforeFrontier alloc payload-loc →
+        BeforeFrontier alloc (sucLoc sum-loc) →
+        ValidAtWF mB alloc b payload-loc s →
+        ValidAtWF Heap alloc {A + B} (inr b) sum-loc s
+
+      -- Sum inr: unboxed (tag + inline payload), output mode is Stack
+      valid-inr-unboxed-wf : ∀ {A B} {b : ⟦ B ⟧}
+        {alloc : AllocState {FS}}
+        {sum-loc : ValueLocation FS} {s : LocState FS}
+        {mB : AllocMode} →
+        BeforeFrontier alloc sum-loc →
+        BeforeFrontier alloc (sucLoc sum-loc) →
+        ValidAtWF mB alloc b (sucLoc sum-loc) s →  -- payload inline after tag
+        ValidAtWF Stack alloc {A + B} (inr b) sum-loc s
+
+      -- Recursive type (fold): always boxed (pointer to unfolded)
+      valid-fold-wf : ∀ {m F} {v : ⟦ F ⟧}
+        {alloc : AllocState {FS}}
+        {fix-loc unfolded-loc : ValueLocation FS} {s : LocState FS}
+        {mV : AllocMode} →
+        readLoc s fix-loc ≡ just unfolded-loc →
+        BeforeFrontier alloc unfolded-loc →
+        ValidAtWF mV alloc v unfolded-loc s →
+        ValidAtWF m alloc {Fix F} (fold v) fix-loc s
+
+    --------------------------------------------------------------------
+    -- IRResultAWF: Mode-indexed IR execution result
+    --
+    -- Indexed by output mode m. For allocating IRs:
+    --   run-pair for ⟨ f , g ⟩ Stack → IRResultAWF Stack ...
+    --   run-pair for ⟨ f , g ⟩ Heap  → IRResultAWF Heap ...
+    --
+    -- For non-allocating IRs (fst, snd, id, etc.), the mode comes
+    -- from pattern matching on input validity.
+    --------------------------------------------------------------------
+
+    record IRResultAWF (m : AllocMode)
+                       {A B : Type}
+                       (ir : IR A B)
+                       (x : ⟦ A ⟧)
+                       (s : LocState FS)
+                       (alloc : AllocState {FS}) : Set where
+      inductive
+      field
+        result-loc : ValueLocation FS
+        final-state : LocState FS
+        final-alloc : AllocState {FS}
+        result-valid-wf : ValidAtWF m final-alloc (eval ir x) result-loc final-state
+        result-before : BeforeFrontier final-alloc result-loc
+        rax-is-result : readReg (regs final-state) RAX ≡ result-loc
+        not-halted : halted final-state ≡ false
+        frame-preserved : current-frame final-alloc ≡ current-frame alloc
+        slot-monotone : next-slot alloc ≤ next-slot final-alloc
+        heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
+        heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
+        capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
+        mem-preserved-before : ∀ loc → BeforeFrontier alloc loc →
+          readLoc final-state loc ≡ readLoc s loc
+        reclaimable-slot : ℕ
+        reclaim-monotone : next-slot alloc ≤ reclaimable-slot
+        reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
+        reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+          BeforeFrontier (record alloc { next-slot = reclaimable-slot ; slots-available = fits }) result-loc
+        reclaim-preserves-validity : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+          ValidAtWF m (record alloc { next-slot = reclaimable-slot ; slots-available = fits })
+                    (eval ir x) result-loc final-state
+        reclaim-size-bound : reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement ir
+
+    --------------------------------------------------------------------
+    -- BodyCorrect: Pre-computed body execution proof
+    --
+    -- Input pair is constructed by Apply as Heap (boxed).
+    -- Output mode comes from body's actual output.
+    --------------------------------------------------------------------
+
+    {-# NO_POSITIVITY_CHECK #-}
+    record BodyCorrect {EnvType A B : Type}
+                       (body : IR (EnvType * A) B)
+                       (env : ⟦ EnvType ⟧)
+                       (env-loc : ValueLocation FS)
+                       (bound : ℕ) : Set where
+      inductive
+      field
+        body-capacity : ℕ
+        body-cap-eq : body-capacity ≡ ir-stack-requirement body
+
+        -- Execute returns mode-indexed result
+        -- Input pair is Heap (boxed) - constructed by Apply
+        -- Output mode is existentially quantified (body decides)
+        execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
+          (s : LocState FS) (alloc : AllocState {FS})
+          (mPair : AllocMode) →  -- Input pair mode (Apply provides Heap)
+          ValidAtWF mPair alloc (pair env arg) pair-loc s →
+          BeforeFrontier alloc pair-loc →
+          halted s ≡ false →
+          readReg (regs s) RDI ≡ pair-loc →
+          next-slot alloc +ℕ body-capacity ≤ frame-capacity alloc →
+          ∃[ mOut ] IRResultAWF mOut body (pair env arg) s alloc
 
   open IRResultAWF public
-
-  ------------------------------------------------------------------------
-  -- BodyCorrect: Pre-computed proof that body execution works
-  --
-  -- Takes ValidAtWF input and returns IRResultAWF.
-  -- Uses NO_POSITIVITY_CHECK because the mutual dependency with ValidAtWF
-  -- is safe - BodyCorrect is only constructed in Curry using make-rec-wf,
-  -- which is structurally smaller.
-  --
-  -- STACK-ALLOCATED RESULTS:
-  -- Body CAN return stack-allocated values! Apply uses body's
-  -- reclaimable-slot for reclamation, so stack slots below that survive.
-  -- Body's reclaim-preserves-result proves result survives reclamation.
-  -- No escape analysis postulate needed.
-  ------------------------------------------------------------------------
-
-  {-# NO_POSITIVITY_CHECK #-}
-  record BodyCorrect {EnvType A B : Type}
-                     (body : IR (EnvType * A) B)
-                     (env : ⟦ EnvType ⟧)
-                     (env-loc : ValueLocation FS)
-                     (bound : ℕ) : Set where
-    inductive
-    field
-      -- Body's capacity requirement, stored by Curry for Apply to use
-      -- Set to: pair-slots * ir-size body
-      -- This is the X86 backend pattern: closure carries its own capacity
-      body-capacity : ℕ
-
-      -- Equation proving body-capacity = pair-slots * ir-size body
-      -- This lets Apply use arithmetic lemmas on body-capacity
-      body-cap-eq : body-capacity ≡ pair-slots *ℕ ir-size body
-
-      -- Given proper setup, body execution succeeds
-      -- Returns IRResultAWF directly - no escape constraint needed!
-      -- Apply uses body's reclaimable-slot for reclamation, so
-      -- stack-allocated results below reclaimable-slot survive.
-      execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
-        (s : LocState FS) (alloc : AllocState {FS}) →
-        -- Preconditions (ValidAtWF for full consistency)
-        ValidAtWF alloc (pair env arg) pair-loc s →
-        BeforeFrontier alloc pair-loc →
-        halted s ≡ false →
-        readReg (regs s) RDI ≡ pair-loc →
-        -- LINEAR capacity: body-capacity = pair-slots * ir-size body
-        -- This is the ONLY capacity constraint needed
-        next-slot alloc +ℕ body-capacity ≤ frame-capacity alloc →
-        -- Result: IRResultAWF (stack-allocated results allowed!)
-        IRResultAWF body (pair env arg) s alloc
-
   open BodyCorrect public
-
-  ------------------------------------------------------------------------
-  -- ValidAtWF: Validity with well-formedness for closures
-  --
-  -- Now defined after BodyCorrect (no cycle in definition).
-  ------------------------------------------------------------------------
-
-  data ValidAtWF alloc where
-
-    valid-unit-wf : ∀ {loc s} →
-      ValidAtWF alloc {Unit} tt loc s
-
-    valid-pair-wf : ∀ {A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧}
-      {pair-loc fst-loc snd-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s pair-loc ≡ just fst-loc →
-      readLoc s (sucLoc pair-loc) ≡ just snd-loc →
-      BeforeFrontier alloc fst-loc →
-      BeforeFrontier alloc snd-loc →
-      BeforeFrontier alloc (sucLoc pair-loc) →
-      ValidAtWF alloc a fst-loc s →
-      ValidAtWF alloc b snd-loc s →
-      ValidAtWF alloc {A * B} (a , b) pair-loc s
-
-    -- Closure with well-formedness: includes body-correct!
-    -- body-correct is parameterized by program-bound for nested apply calls
-    valid-closure-wf : ∀ {EnvType q A B}
-      {body : IR (EnvType * A) B}
-      {env : ⟦ EnvType ⟧}
-      (body<bound : ir-size body < program-bound) →
-      {closure-loc env-loc code-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s closure-loc ≡ just env-loc →
-      readLoc s (sucLoc closure-loc) ≡ just code-loc →
-      BeforeFrontier alloc env-loc →
-      BeforeFrontier alloc code-loc →
-      BeforeFrontier alloc (sucLoc closure-loc) →
-      ValidAtWF alloc env env-loc s →
-      -- THE KEY ADDITION: body-correct proof with program-bound
-      BodyCorrect body env env-loc program-bound →
-      ValidAtWF alloc {A ⇒[ q ] B} (λ arg → eval body (pair env arg)) closure-loc s
-
-    -- Sum type validity (inl)
-    valid-inl-wf : ∀ {A B} {a : ⟦ A ⟧}
-      {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s (sucLoc sum-loc) ≡ just payload-loc →
-      BeforeFrontier alloc payload-loc →
-      BeforeFrontier alloc (sucLoc sum-loc) →
-      ValidAtWF alloc a payload-loc s →
-      ValidAtWF alloc {A + B} (inl a) sum-loc s
-
-    -- Sum type validity (inr)
-    valid-inr-wf : ∀ {A B} {b : ⟦ B ⟧}
-      {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s (sucLoc sum-loc) ≡ just payload-loc →
-      BeforeFrontier alloc payload-loc →
-      BeforeFrontier alloc (sucLoc sum-loc) →
-      ValidAtWF alloc b payload-loc s →
-      ValidAtWF alloc {A + B} (inr b) sum-loc s
-
-    -- Recursive type validity (fold)
-    valid-fold-wf : ∀ {F} {v : ⟦ F ⟧}
-      {fix-loc unfolded-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s fix-loc ≡ just unfolded-loc →
-      BeforeFrontier alloc unfolded-loc →
-      ValidAtWF alloc v unfolded-loc s →
-      ValidAtWF alloc {Fix F} (fold v) fix-loc s
 
   ------------------------------------------------------------------------
   -- ClosureWellFormed: Closure with pre-computed body execution proof
@@ -270,8 +291,9 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       env-before : BeforeFrontier alloc env-loc
       code-before : BeforeFrontier alloc code-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
-      -- Env validity (now using ValidAtWF)
-      env-valid : ValidAtWF alloc env env-loc s
+      -- Env validity (now using ValidAtWF with mode)
+      mEnv : AllocMode
+      env-valid : ValidAtWF mEnv alloc env env-loc s
       -- PRE-COMPUTED body execution proof with program-bound
       body-correct : BodyCorrect body env env-loc program-bound
 
@@ -292,26 +314,29 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       body<bound : ir-size body < program-bound
       env-loc : ValueLocation FS
       code-loc : ValueLocation FS
+      mEnv : AllocMode  -- Mode of env
       env-ptr : readLoc s closure-loc ≡ just env-loc
       code-ptr : readLoc s (sucLoc closure-loc) ≡ just code-loc
       env-before : BeforeFrontier alloc env-loc
       code-before : BeforeFrontier alloc code-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
-      env-valid : ValidAtWF alloc env env-loc s
+      env-valid : ValidAtWF mEnv alloc env env-loc s
       -- THE KEY: body-correct is extracted with program-bound!
       body-correct : BodyCorrect body env env-loc program-bound
       f-is-closure : f ≡ (λ arg → eval body (pair env arg))
 
+  -- Closures are always Heap mode
   decomposeClosureWF : ∀ {alloc q A B} {f : ⟦ A ⇒[ q ] B ⟧} {loc s} →
-    ValidAtWF alloc {A ⇒[ q ] B} f loc s → ClosureValidWF alloc {q} f loc s
-  decomposeClosureWF (valid-closure-wf {EnvType} {_} {_} {_} {body} {env}
-                       bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) = record
+    ValidAtWF Heap alloc {A ⇒[ q ] B} f loc s → ClosureValidWF alloc {q} f loc s
+  decomposeClosureWF (valid-closure-wf {EnvType} {_} {_} {_} {body} {env} {_}
+                       bb {_} {el} {cl} {_} {mE} ep cp eb cb slb ev bc) = record
     { EnvType = EnvType
     ; body = body
     ; env = env
     ; body<bound = bb
     ; env-loc = el
     ; code-loc = cl
+    ; mEnv = mE
     ; env-ptr = ep
     ; code-ptr = cp
     ; env-before = eb
@@ -322,51 +347,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; f-is-closure = refl
     }
 
-  ------------------------------------------------------------------------
-  -- Conversion: ValidAtWF to ValidAt (drops body-correct)
-  ------------------------------------------------------------------------
-
-  validWF-to-valid : ∀ {alloc A} {v : ⟦ A ⟧} {loc s} →
-    ValidAtWF alloc v loc s → ValidAt alloc v loc s
-
-  validWF-to-valid valid-unit-wf = valid-unit
-
-  validWF-to-valid (valid-pair-wf fp sp fb sb slb fv sv) =
-    valid-pair fp sp fb sb slb (validWF-to-valid fv) (validWF-to-valid sv)
-
-  validWF-to-valid (valid-closure-wf {body = body} {env = env} bb ep cp eb cb slb ev _) =
-    valid-closure {body = body} {env = env} bb ep cp eb cb slb (validWF-to-valid ev)
-
-  validWF-to-valid (valid-inl-wf pp pb slb pv) =
-    valid-inl pp pb slb (validWF-to-valid pv)
-
-  validWF-to-valid (valid-inr-wf pp pb slb pv) =
-    valid-inr pp pb slb (validWF-to-valid pv)
-
-  validWF-to-valid (valid-fold-wf up ub uv) =
-    valid-fold up ub (validWF-to-valid uv)
-
-  -- Convert IRResultAWF to IRResultA (drops body-correct info)
-  resultWF-to-result : ∀ {A B} {ir : IR A B} {x s alloc} →
-    IRResultAWF ir x s alloc → IRResultA ir x s alloc
-  resultWF-to-result r = record
-    { result-loc = IRResultAWF.result-loc r
-    ; final-state = IRResultAWF.final-state r
-    ; final-alloc = IRResultAWF.final-alloc r
-    ; result-valid = validWF-to-valid (IRResultAWF.result-valid-wf r)
-    ; result-before = IRResultAWF.result-before r
-    ; rax-is-result = IRResultAWF.rax-is-result r
-    ; not-halted = IRResultAWF.not-halted r
-    ; frame-preserved = IRResultAWF.frame-preserved r
-    ; slot-monotone = IRResultAWF.slot-monotone r
-    ; heap-monotone = IRResultAWF.heap-monotone r
-    ; capacity-preserved = IRResultAWF.capacity-preserved r
-    ; reclaimable-slot = IRResultAWF.reclaimable-slot r
-    ; reclaim-monotone = IRResultAWF.reclaim-monotone r
-    ; reclaim-bounded = IRResultAWF.reclaim-bounded r
-    ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result r
-    ; reclaim-size-bound = IRResultAWF.reclaim-size-bound r
-    }
+  -- Closures are always Heap mode - extract mode equality from validity proof
+  -- Works because the only constructor for closure types is valid-closure-wf
+  -- Arguments: body<bound ep cp eb cb slb ev bc (7 explicit args)
+  closure-mode-is-heap-proof : ∀ {m alloc q A B} {f : ⟦ A ⇒[ q ] B ⟧} {loc s} →
+    ValidAtWF m alloc {A ⇒[ q ] B} f loc s → m ≡ Heap
+  closure-mode-is-heap-proof (valid-closure-wf _ _ _ _ _ _ _ _) = refl
 
   ------------------------------------------------------------------------
   -- RecDispatcherWF: Recursive dispatcher interface with ValidAtWF
@@ -379,42 +365,49 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
 
   RecDispatcherWF : ℕ → Set
-  RecDispatcherWF bound = ∀ {A B} (ir : IR A B) →
+  RecDispatcherWF bound = ∀ {A B} (mIn : AllocMode) (ir : IR A B) →
     ir-size ir < bound →
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS) (s : LocState FS)
     (alloc : AllocState {FS}) →
-    ValidAtWF alloc x input-loc s →
+    ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
-    next-slot alloc +ℕ pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
-    IRResultAWF ir x s alloc
+    -- Capacity using ir-stack-requirement
+    next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
+    ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
   ------------------------------------------------------------------------
-  -- Decomposition for ValidAtWF pairs
+  -- Decomposition for ValidAtWF pairs (Boxed / Heap mode)
+  --
+  -- For boxed pairs: two pointers at pair-loc and sucLoc pair-loc
   ------------------------------------------------------------------------
 
-  record PairValidWF (alloc : AllocState {FS}) {A B : Type}
-                     (p : ⟦ A * B ⟧)
-                     (pair-loc : ValueLocation FS)
-                     (s : LocState FS) : Set where
+  record PairBoxedValidWF (alloc : AllocState {FS}) {A B : Type}
+                          (p : ⟦ A * B ⟧)
+                          (pair-loc : ValueLocation FS)
+                          (s : LocState FS) : Set where
     field
       fst-loc : ValueLocation FS
       snd-loc : ValueLocation FS
+      mA : AllocMode  -- Component A mode
+      mB : AllocMode  -- Component B mode
       fst-ptr : readLoc s pair-loc ≡ just fst-loc
       snd-ptr : readLoc s (sucLoc pair-loc) ≡ just snd-loc
       fst-before : BeforeFrontier alloc fst-loc
       snd-before : BeforeFrontier alloc snd-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc pair-loc)
-      fst-valid : ValidAtWF alloc (fst p) fst-loc s
-      snd-valid : ValidAtWF alloc (snd p) snd-loc s
+      fst-valid : ValidAtWF mA alloc (proj₁ p) fst-loc s
+      snd-valid : ValidAtWF mB alloc (proj₂ p) snd-loc s
 
-  decomposePairWF : ∀ {alloc A B} {p : ⟦ A * B ⟧} {loc s} →
-    ValidAtWF alloc p loc s → PairValidWF alloc p loc s
-  decomposePairWF (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) = record
+  decomposePairBoxedWF : ∀ {alloc A B} {p : ⟦ A * B ⟧} {loc s} →
+    ValidAtWF Heap alloc p loc s → PairBoxedValidWF alloc p loc s
+  decomposePairBoxedWF (valid-pair-boxed-wf {_} {_} {_} {_} {_} {_} {fl} {sl} {_} {mA} {mB}
+                         fp sp fb sb slb fv sv) = record
     { fst-loc = fl
     ; snd-loc = sl
+    ; mA = mA
+    ; mB = mB
     ; fst-ptr = fp
     ; snd-ptr = sp
     ; fst-before = fb
@@ -425,40 +418,71 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     }
 
   ------------------------------------------------------------------------
-  -- Decomposition for ValidAtWF sum types (inl/inr)
+  -- Decomposition for ValidAtWF pairs (Unboxed / Stack mode)
+  --
+  -- For unboxed pairs: fst inline at pair-loc, snd at offset
   ------------------------------------------------------------------------
 
-  record InlValidWF (alloc : AllocState {FS}) {A B : Type}
-                    (v : ⟦ A ⊕ B ⟧)
-                    (sum-loc : ValueLocation FS)
-                    (s : LocState FS) : Set where
+  record PairUnboxedValidWF (alloc : AllocState {FS}) {A B : Type}
+                            (p : ⟦ A * B ⟧)
+                            (pair-loc : ValueLocation FS)
+                            (s : LocState FS) : Set where
+    field
+      mA : AllocMode
+      mB : AllocMode
+      fst-before : BeforeFrontier alloc pair-loc
+      snd-before : BeforeFrontier alloc (offsetLoc pair-loc (stack-type-slots A))
+      fst-valid : ValidAtWF mA alloc (proj₁ p) pair-loc s
+      snd-valid : ValidAtWF mB alloc (proj₂ p) (offsetLoc pair-loc (stack-type-slots A)) s
+
+  decomposePairUnboxedWF : ∀ {alloc A B} {p : ⟦ A * B ⟧} {loc s} →
+    ValidAtWF Stack alloc p loc s → PairUnboxedValidWF alloc {A} {B} p loc s
+  decomposePairUnboxedWF (valid-pair-unboxed-wf {_} {_} {_} {_} {_} {_} {_} {mA} {mB} pb slb fv sv) = record
+    { mA = mA
+    ; mB = mB
+    ; fst-before = pb
+    ; snd-before = slb
+    ; fst-valid = fv
+    ; snd-valid = sv
+    }
+
+  ------------------------------------------------------------------------
+  -- Decomposition for ValidAtWF sum types (inl/inr) - Boxed (Heap mode)
+  ------------------------------------------------------------------------
+
+  record InlBoxedValidWF (alloc : AllocState {FS}) {A B : Type}
+                         (v : ⟦ A ⊕ B ⟧)
+                         (sum-loc : ValueLocation FS)
+                         (s : LocState FS) : Set where
     field
       a : ⟦ A ⟧
+      mA : AllocMode
       payload-loc : ValueLocation FS
       payload-ptr : readLoc s (sucLoc sum-loc) ≡ just payload-loc
       payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
-      payload-valid : ValidAtWF alloc a payload-loc s
+      payload-valid : ValidAtWF mA alloc a payload-loc s
       v-is-inl : v ≡ inl a
 
-  record InrValidWF (alloc : AllocState {FS}) {A B : Type}
-                    (v : ⟦ A ⊕ B ⟧)
-                    (sum-loc : ValueLocation FS)
-                    (s : LocState FS) : Set where
+  record InrBoxedValidWF (alloc : AllocState {FS}) {A B : Type}
+                         (v : ⟦ A ⊕ B ⟧)
+                         (sum-loc : ValueLocation FS)
+                         (s : LocState FS) : Set where
     field
       b : ⟦ B ⟧
+      mB : AllocMode
       payload-loc : ValueLocation FS
       payload-ptr : readLoc s (sucLoc sum-loc) ≡ just payload-loc
       payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
-      payload-valid : ValidAtWF alloc b payload-loc s
+      payload-valid : ValidAtWF mB alloc b payload-loc s
       v-is-inr : v ≡ inr b
 
-  decomposeInlWF : ∀ {alloc A B} {a : ⟦ A ⟧} {loc s} →
-    ValidAtWF alloc {A + B} (inl {A} {B} a) loc s → InlValidWF alloc {A} {B} (inl a) loc s
-  -- Explicitly capture a from valid-inl-wf to ensure a and payload-valid match
-  decomposeInlWF {A = A} {B = B} (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) = record
+  decomposeInlBoxedWF : ∀ {alloc A B} {a : ⟦ A ⟧} {loc s} →
+    ValidAtWF Heap alloc {A + B} (inl {A} {B} a) loc s → InlBoxedValidWF alloc {A} {B} (inl a) loc s
+  decomposeInlBoxedWF {A = A} {B = B} (valid-inl-boxed-wf {_} {_} {a} {_} {_} {pl} {_} {mA} pp pb slb pv) = record
     { a = a
+    ; mA = mA
     ; payload-loc = pl
     ; payload-ptr = pp
     ; payload-before = pb
@@ -467,15 +491,65 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     ; v-is-inl = refl
     }
 
-  decomposeInrWF : ∀ {alloc A B} {b : ⟦ B ⟧} {loc s} →
-    ValidAtWF alloc {A + B} (inr {A} {B} b) loc s → InrValidWF alloc {A} {B} (inr b) loc s
-  -- Explicitly capture b from valid-inr-wf to ensure b and payload-valid match
-  decomposeInrWF {A = A} {B = B} (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) = record
+  decomposeInrBoxedWF : ∀ {alloc A B} {b : ⟦ B ⟧} {loc s} →
+    ValidAtWF Heap alloc {A + B} (inr {A} {B} b) loc s → InrBoxedValidWF alloc {A} {B} (inr b) loc s
+  decomposeInrBoxedWF {A = A} {B = B} (valid-inr-boxed-wf {_} {_} {b} {_} {_} {pl} {_} {mB} pp pb slb pv) = record
     { b = b
+    ; mB = mB
     ; payload-loc = pl
     ; payload-ptr = pp
     ; payload-before = pb
     ; sucLoc-before = slb
+    ; payload-valid = pv
+    ; v-is-inr = refl
+    }
+
+  ------------------------------------------------------------------------
+  -- Decomposition for ValidAtWF sum types (inl/inr) - Unboxed (Stack mode)
+  ------------------------------------------------------------------------
+
+  record InlUnboxedValidWF (alloc : AllocState {FS}) {A B : Type}
+                           (v : ⟦ A ⊕ B ⟧)
+                           (sum-loc : ValueLocation FS)
+                           (s : LocState FS) : Set where
+    field
+      a : ⟦ A ⟧
+      mA : AllocMode
+      tag-before : BeforeFrontier alloc sum-loc
+      payload-before : BeforeFrontier alloc (sucLoc sum-loc)
+      payload-valid : ValidAtWF mA alloc a (sucLoc sum-loc) s  -- payload inline after tag
+      v-is-inl : v ≡ inl a
+
+  record InrUnboxedValidWF (alloc : AllocState {FS}) {A B : Type}
+                           (v : ⟦ A ⊕ B ⟧)
+                           (sum-loc : ValueLocation FS)
+                           (s : LocState FS) : Set where
+    field
+      b : ⟦ B ⟧
+      mB : AllocMode
+      tag-before : BeforeFrontier alloc sum-loc
+      payload-before : BeforeFrontier alloc (sucLoc sum-loc)
+      payload-valid : ValidAtWF mB alloc b (sucLoc sum-loc) s  -- payload inline after tag
+      v-is-inr : v ≡ inr b
+
+  decomposeInlUnboxedWF : ∀ {alloc A B} {a : ⟦ A ⟧} {loc s} →
+    ValidAtWF Stack alloc {A + B} (inl {A} {B} a) loc s → InlUnboxedValidWF alloc {A} {B} (inl a) loc s
+  decomposeInlUnboxedWF {A = A} {B = B} (valid-inl-unboxed-wf {_} {_} {a} {_} {_} {_} {mA} pb slb pv) = record
+    { a = a
+    ; mA = mA
+    ; tag-before = pb
+    ; payload-before = slb
+    ; payload-valid = pv
+    ; v-is-inl = refl
+    }
+
+  decomposeInrUnboxedWF : ∀ {alloc A B} {b : ⟦ B ⟧} {loc s} →
+    ValidAtWF Stack alloc {A + B} (inr {A} {B} b) loc s → InrUnboxedValidWF alloc {A} {B} (inr b) loc s
+  decomposeInrUnboxedWF {A = A} {B = B} (valid-inr-unboxed-wf {_} {_} {b} {_} {_} {_} {mB} pb slb pv) = record
+    { b = b
+    ; mB = mB
+    ; tag-before = pb
+    ; payload-before = slb
     ; payload-valid = pv
     ; v-is-inr = refl
     }
@@ -490,17 +564,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                      (s : LocState FS) : Set where
     field
       unfolded : ⟦ F ⟧
+      mV : AllocMode  -- Mode of unfolded value
       unfolded-loc : ValueLocation FS
       unfolded-ptr : readLoc s fix-loc ≡ just unfolded-loc
       unfolded-before : BeforeFrontier alloc unfolded-loc
-      unfolded-valid : ValidAtWF alloc unfolded unfolded-loc s
+      unfolded-valid : ValidAtWF mV alloc unfolded unfolded-loc s
       v-is-fold : v ≡ fold unfolded
 
-  decomposeFoldWF : ∀ {alloc F} {v : ⟦ F ⟧} {loc s} →
-    ValidAtWF alloc {Fix F} (fold v) loc s → FoldValidWF alloc (fold v) loc s
+  decomposeFoldWF : ∀ {m alloc F} {v : ⟦ F ⟧} {loc s} →
+    ValidAtWF m alloc {Fix F} (fold v) loc s → FoldValidWF alloc (fold v) loc s
   -- Explicitly capture v from valid-fold-wf to ensure unfolded and unfolded-valid match
-  decomposeFoldWF (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) = record
+  decomposeFoldWF (valid-fold-wf {_} {_} {v} {_} {_} {ul} {_} {mV} up ub uv) = record
     { unfolded = v
+    ; mV = mV
     ; unfolded-loc = ul
     ; unfolded-ptr = up
     ; unfolded-before = ub
@@ -515,8 +591,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- This is used when we don't have body-correct info but need ValidAtWF.
   ------------------------------------------------------------------------
 
-  valid-to-validWF-unit : ∀ {alloc loc s} →
-    ValidAtWF alloc {Unit} tt loc s
+  valid-to-validWF-unit : ∀ {m alloc loc s} →
+    ValidAtWF m alloc {Unit} tt loc s
   valid-to-validWF-unit = valid-unit-wf
 
   ------------------------------------------------------------------------
@@ -529,17 +605,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- ValidAtWF only depends on memory, not registers
   -- When memory is preserved (stackMem and heapMem equal), validity transfers
   -- PROVEN by structural induction on ValidAtWF
-  validityWF-mem-only : ∀ {alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
+  validityWF-mem-only : ∀ {m alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     stackMem s₂ ≡ stackMem s₁ →
     heapMem s₂ ≡ heapMem s₁ →
-    ValidAtWF alloc v loc s₁ → ValidAtWF alloc v loc s₂
+    ValidAtWF m alloc v loc s₁ → ValidAtWF m alloc v loc s₂
 
-  validityWF-mem-only {alloc} {Unit} tt loc s₁ s₂ stack-eq heap-eq valid-unit-wf =
+  validityWF-mem-only {m} {alloc} {Unit} tt loc s₁ s₂ stack-eq heap-eq valid-unit-wf =
     valid-unit-wf
 
-  validityWF-mem-only {alloc} {A * B} (a , b) loc s₁ s₂ stack-eq heap-eq
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
-    valid-pair-wf fp' sp' fb sb slb fv' sv'
+  -- Boxed pair
+  validityWF-mem-only {.Heap} {alloc} {A * B} (a , b) loc s₁ s₂ stack-eq heap-eq
+    (valid-pair-boxed-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-boxed-wf fp' sp' fb sb slb fv' sv'
     where
       fp' : readLoc s₂ loc ≡ just fl
       fp' = trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) fp
@@ -547,13 +624,18 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       sp' : readLoc s₂ (sucLoc loc) ≡ just sl
       sp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) sp
 
-      fv' : ValidAtWF alloc a fl s₂
       fv' = validityWF-mem-only a fl s₁ s₂ stack-eq heap-eq fv
-
-      sv' : ValidAtWF alloc b sl s₂
       sv' = validityWF-mem-only b sl s₁ s₂ stack-eq heap-eq sv
 
-  validityWF-mem-only {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
+  -- Unboxed pair
+  validityWF-mem-only {.Stack} {alloc} {A * B} (a , b) loc s₁ s₂ stack-eq heap-eq
+    (valid-pair-unboxed-wf pb slb fv sv) =
+    valid-pair-unboxed-wf pb slb fv' sv'
+    where
+      fv' = validityWF-mem-only a loc s₁ s₂ stack-eq heap-eq fv
+      sv' = validityWF-mem-only b (offsetLoc loc (stack-type-slots A)) s₁ s₂ stack-eq heap-eq sv
+
+  validityWF-mem-only {.Heap} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep' cp' eb cb slb ev' bc
     where
@@ -563,37 +645,49 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       cp' : readLoc s₂ (sucLoc loc) ≡ just cl
       cp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) cp
 
-      ev' : ValidAtWF alloc env el s₂
       ev' = validityWF-mem-only env el s₁ s₂ stack-eq heap-eq ev
 
-  validityWF-mem-only {alloc} {A + B} .(inl a) loc s₁ s₂ stack-eq heap-eq
-    (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
-    valid-inl-wf pp' pb slb pv'
+  -- Boxed inl
+  validityWF-mem-only {.Heap} {alloc} {A + B} .(inl a) loc s₁ s₂ stack-eq heap-eq
+    (valid-inl-boxed-wf {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl-boxed-wf pp' pb slb pv'
     where
       pp' : readLoc s₂ (sucLoc loc) ≡ just pl
       pp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp
 
-      pv' : ValidAtWF alloc a pl s₂
       pv' = validityWF-mem-only a pl s₁ s₂ stack-eq heap-eq pv
 
-  validityWF-mem-only {alloc} {A + B} .(inr b) loc s₁ s₂ stack-eq heap-eq
-    (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
-    valid-inr-wf pp' pb slb pv'
+  -- Unboxed inl
+  validityWF-mem-only {.Stack} {alloc} {A + B} .(inl a) loc s₁ s₂ stack-eq heap-eq
+    (valid-inl-unboxed-wf {a = a} pb slb pv) =
+    valid-inl-unboxed-wf pb slb pv'
+    where
+      pv' = validityWF-mem-only a (sucLoc loc) s₁ s₂ stack-eq heap-eq pv
+
+  -- Boxed inr
+  validityWF-mem-only {.Heap} {alloc} {A + B} .(inr b) loc s₁ s₂ stack-eq heap-eq
+    (valid-inr-boxed-wf {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr-boxed-wf pp' pb slb pv'
     where
       pp' : readLoc s₂ (sucLoc loc) ≡ just pl
       pp' = trans (readLoc-stack-heap-eq s₂ s₁ (sucLoc loc) stack-eq heap-eq) pp
 
-      pv' : ValidAtWF alloc b pl s₂
       pv' = validityWF-mem-only b pl s₁ s₂ stack-eq heap-eq pv
 
-  validityWF-mem-only {alloc} {Fix F} .(fold v) loc s₁ s₂ stack-eq heap-eq
+  -- Unboxed inr
+  validityWF-mem-only {.Stack} {alloc} {A + B} .(inr b) loc s₁ s₂ stack-eq heap-eq
+    (valid-inr-unboxed-wf {b = b} pb slb pv) =
+    valid-inr-unboxed-wf pb slb pv'
+    where
+      pv' = validityWF-mem-only b (sucLoc loc) s₁ s₂ stack-eq heap-eq pv
+
+  validityWF-mem-only {m} {alloc} {Fix F} .(fold v) loc s₁ s₂ stack-eq heap-eq
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up' ub uv'
     where
       up' : readLoc s₂ loc ≡ just ul
       up' = trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) up
 
-      uv' : ValidAtWF alloc v ul s₂
       uv' = validityWF-mem-only v ul s₁ s₂ stack-eq heap-eq uv
 
   ------------------------------------------------------------------------
@@ -627,161 +721,173 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   suc-frontier-neq-before-wf alloc (OnHeap r o) _ ()
 
   -- ValidAtWF is preserved when writing to at-frontier location
-  validityWF-write-at-frontier : ∀ {alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
+  validityWF-write-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
     BeforeFrontier alloc loc →
-    ValidAtWF alloc v loc s →
-    ValidAtWF alloc v loc (write-loc s (OnStack (current-frame alloc) (next-slot alloc)) val)
+    ValidAtWF m alloc v loc s →
+    ValidAtWF m alloc v loc (write-loc s (OnStack (current-frame alloc) (next-slot alloc)) val)
 
-  validityWF-write-at-frontier {alloc} {Unit} _ loc s val loc-before valid-unit-wf =
+  validityWF-write-at-frontier {m} {alloc} {Unit} _ loc s val loc-before valid-unit-wf =
     valid-unit-wf
 
-  validityWF-write-at-frontier {alloc} {A * B} (a , b) loc s val loc-before
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
-    valid-pair-wf fp' sp' fb sb slb fv' sv'
+  -- Boxed pair
+  validityWF-write-at-frontier {.Heap} {alloc} {A * B} (a , b) loc s val loc-before
+    (valid-pair-boxed-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-boxed-wf fp' sp' fb sb slb fv' sv'
     where
       fresh = OnStack (current-frame alloc) (next-slot alloc)
-
-      fp' : readLoc (write-loc s fresh val) loc ≡ just fl
       fp' = trans (write-preserves-disjoint s fresh val loc
                     (at-frontier-neq-before-wf alloc loc loc-before)) fp
-
-      sp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just sl
       sp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
                     (at-frontier-neq-before-wf alloc (sucLoc loc) slb)) sp
-
       fv' = validityWF-write-at-frontier a fl s val fb fv
       sv' = validityWF-write-at-frontier b sl s val sb sv
 
-  validityWF-write-at-frontier {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s val loc-before
+  -- Unboxed pair
+  validityWF-write-at-frontier {.Stack} {alloc} {A * B} (a , b) loc s val loc-before
+    (valid-pair-unboxed-wf pb slb fv sv) =
+    valid-pair-unboxed-wf pb slb fv' sv'
+    where
+      fv' = validityWF-write-at-frontier a loc s val loc-before fv
+      sv' = validityWF-write-at-frontier b (offsetLoc loc (stack-type-slots A)) s val slb sv
+
+  validityWF-write-at-frontier {.Heap} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s val loc-before
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep' cp' eb cb slb ev' bc
     where
       fresh = OnStack (current-frame alloc) (next-slot alloc)
-
-      ep' : readLoc (write-loc s fresh val) loc ≡ just el
       ep' = trans (write-preserves-disjoint s fresh val loc
                     (at-frontier-neq-before-wf alloc loc loc-before)) ep
-
-      cp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just cl
       cp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
                     (at-frontier-neq-before-wf alloc (sucLoc loc) slb)) cp
-
       ev' = validityWF-write-at-frontier env el s val eb ev
 
-  validityWF-write-at-frontier {alloc} {A + B} .(inl a) loc s val loc-before
-    (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
-    valid-inl-wf pp' pb slb pv'
+  -- Boxed inl
+  validityWF-write-at-frontier {.Heap} {alloc} {A + B} .(inl a) loc s val loc-before
+    (valid-inl-boxed-wf {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl-boxed-wf pp' pb slb pv'
     where
       fresh = OnStack (current-frame alloc) (next-slot alloc)
-
-      pp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just pl
       pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
                     (at-frontier-neq-before-wf alloc (sucLoc loc) slb)) pp
-
       pv' = validityWF-write-at-frontier a pl s val pb pv
 
-  validityWF-write-at-frontier {alloc} {A + B} .(inr b) loc s val loc-before
-    (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
-    valid-inr-wf pp' pb slb pv'
+  -- Unboxed inl
+  validityWF-write-at-frontier {.Stack} {alloc} {A + B} .(inl a) loc s val loc-before
+    (valid-inl-unboxed-wf {a = a} pb slb pv) =
+    valid-inl-unboxed-wf pb slb pv'
+    where
+      pv' = validityWF-write-at-frontier a (sucLoc loc) s val slb pv
+
+  -- Boxed inr
+  validityWF-write-at-frontier {.Heap} {alloc} {A + B} .(inr b) loc s val loc-before
+    (valid-inr-boxed-wf {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr-boxed-wf pp' pb slb pv'
     where
       fresh = OnStack (current-frame alloc) (next-slot alloc)
-
-      pp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just pl
       pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
                     (at-frontier-neq-before-wf alloc (sucLoc loc) slb)) pp
-
       pv' = validityWF-write-at-frontier b pl s val pb pv
 
-  validityWF-write-at-frontier {alloc} {Fix F} .(fold v) loc s val loc-before
+  -- Unboxed inr
+  validityWF-write-at-frontier {.Stack} {alloc} {A + B} .(inr b) loc s val loc-before
+    (valid-inr-unboxed-wf {b = b} pb slb pv) =
+    valid-inr-unboxed-wf pb slb pv'
+    where
+      pv' = validityWF-write-at-frontier b (sucLoc loc) s val slb pv
+
+  validityWF-write-at-frontier {m} {alloc} {Fix F} .(fold v) loc s val loc-before
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up' ub uv'
     where
       fresh = OnStack (current-frame alloc) (next-slot alloc)
-
-      up' : readLoc (write-loc s fresh val) loc ≡ just ul
       up' = trans (write-preserves-disjoint s fresh val loc
                     (at-frontier-neq-before-wf alloc loc loc-before)) up
-
       uv' = validityWF-write-at-frontier v ul s val ub uv
 
   -- ValidAtWF is preserved when writing to suc-frontier location
-  validityWF-write-at-suc-frontier : ∀ {alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
+  validityWF-write-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
     BeforeFrontier alloc loc →
-    ValidAtWF alloc v loc s →
-    ValidAtWF alloc v loc (write-loc s (OnStack (current-frame alloc) (suc (next-slot alloc))) val)
+    ValidAtWF m alloc v loc s →
+    ValidAtWF m alloc v loc (write-loc s (OnStack (current-frame alloc) (suc (next-slot alloc))) val)
 
-  validityWF-write-at-suc-frontier {alloc} {Unit} _ loc s val loc-before valid-unit-wf =
+  validityWF-write-at-suc-frontier {m} {alloc} {Unit} _ loc s val loc-before valid-unit-wf =
     valid-unit-wf
 
-  validityWF-write-at-suc-frontier {alloc} {A * B} (a , b) loc s val loc-before
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
-    valid-pair-wf fp' sp' fb sb slb fv' sv'
+  -- Boxed pair
+  validityWF-write-at-suc-frontier {.Heap} {alloc} {A * B} (a , b) loc s val loc-before
+    (valid-pair-boxed-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-boxed-wf fp' sp' fb sb slb fv' sv'
     where
       fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-
-      fp' : readLoc (write-loc s fresh val) loc ≡ just fl
       fp' = trans (write-preserves-disjoint s fresh val loc
                     (suc-frontier-neq-before-wf alloc loc loc-before)) fp
-
-      sp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just sl
       sp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
                     (suc-frontier-neq-before-wf alloc (sucLoc loc) slb)) sp
-
       fv' = validityWF-write-at-suc-frontier a fl s val fb fv
       sv' = validityWF-write-at-suc-frontier b sl s val sb sv
 
-  validityWF-write-at-suc-frontier {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s val loc-before
+  -- Unboxed pair
+  validityWF-write-at-suc-frontier {.Stack} {alloc} {A * B} (a , b) loc s val loc-before
+    (valid-pair-unboxed-wf pb slb fv sv) =
+    valid-pair-unboxed-wf pb slb fv' sv'
+    where
+      fv' = validityWF-write-at-suc-frontier a loc s val loc-before fv
+      sv' = validityWF-write-at-suc-frontier b (offsetLoc loc (stack-type-slots A)) s val slb sv
+
+  validityWF-write-at-suc-frontier {.Heap} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s val loc-before
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep' cp' eb cb slb ev' bc
     where
       fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-
-      ep' : readLoc (write-loc s fresh val) loc ≡ just el
       ep' = trans (write-preserves-disjoint s fresh val loc
                     (suc-frontier-neq-before-wf alloc loc loc-before)) ep
-
-      cp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just cl
       cp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
                     (suc-frontier-neq-before-wf alloc (sucLoc loc) slb)) cp
-
       ev' = validityWF-write-at-suc-frontier env el s val eb ev
 
-  validityWF-write-at-suc-frontier {alloc} {A + B} .(inl a) loc s val loc-before
-    (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
-    valid-inl-wf pp' pb slb pv'
+  -- Boxed inl
+  validityWF-write-at-suc-frontier {.Heap} {alloc} {A + B} .(inl a) loc s val loc-before
+    (valid-inl-boxed-wf {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl-boxed-wf pp' pb slb pv'
     where
       fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-
-      pp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just pl
       pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
                     (suc-frontier-neq-before-wf alloc (sucLoc loc) slb)) pp
-
       pv' = validityWF-write-at-suc-frontier a pl s val pb pv
 
-  validityWF-write-at-suc-frontier {alloc} {A + B} .(inr b) loc s val loc-before
-    (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
-    valid-inr-wf pp' pb slb pv'
+  -- Unboxed inl
+  validityWF-write-at-suc-frontier {.Stack} {alloc} {A + B} .(inl a) loc s val loc-before
+    (valid-inl-unboxed-wf {a = a} pb slb pv) =
+    valid-inl-unboxed-wf pb slb pv'
+    where
+      pv' = validityWF-write-at-suc-frontier a (sucLoc loc) s val slb pv
+
+  -- Boxed inr
+  validityWF-write-at-suc-frontier {.Heap} {alloc} {A + B} .(inr b) loc s val loc-before
+    (valid-inr-boxed-wf {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr-boxed-wf pp' pb slb pv'
     where
       fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-
-      pp' : readLoc (write-loc s fresh val) (sucLoc loc) ≡ just pl
       pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
                     (suc-frontier-neq-before-wf alloc (sucLoc loc) slb)) pp
-
       pv' = validityWF-write-at-suc-frontier b pl s val pb pv
 
-  validityWF-write-at-suc-frontier {alloc} {Fix F} .(fold v) loc s val loc-before
+  -- Unboxed inr
+  validityWF-write-at-suc-frontier {.Stack} {alloc} {A + B} .(inr b) loc s val loc-before
+    (valid-inr-unboxed-wf {b = b} pb slb pv) =
+    valid-inr-unboxed-wf pb slb pv'
+    where
+      pv' = validityWF-write-at-suc-frontier b (sucLoc loc) s val slb pv
+
+  validityWF-write-at-suc-frontier {m} {alloc} {Fix F} .(fold v) loc s val loc-before
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up' ub uv'
     where
       fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-
-      up' : readLoc (write-loc s fresh val) loc ≡ just ul
       up' = trans (write-preserves-disjoint s fresh val loc
                     (suc-frontier-neq-before-wf alloc loc loc-before)) up
-
       uv' = validityWF-write-at-suc-frontier v ul s val ub uv
 
   ------------------------------------------------------------------------
@@ -795,70 +901,93 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- so all constraints in ValidAtWF constructors are preserved.
   ------------------------------------------------------------------------
 
-  validityWF-alloc-advance : ∀ {alloc A} (v : ⟦ A ⟧) loc s (n : ℕ)
+  validityWF-alloc-advance : ∀ {m alloc A} (v : ⟦ A ⟧) loc s (n : ℕ)
     (fits : next-slot alloc +ℕ n ≤ frame-capacity alloc) →
-    ValidAtWF alloc v loc s →
+    ValidAtWF m alloc v loc s →
     let alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-    in ValidAtWF alloc' v loc s
+    in ValidAtWF m alloc' v loc s
 
-  validityWF-alloc-advance {alloc} {Unit} tt loc s n fits valid-unit-wf =
+  validityWF-alloc-advance {m} {alloc} {Unit} tt loc s n fits valid-unit-wf =
     valid-unit-wf
 
-  validityWF-alloc-advance {alloc} {A * B} (a , b) loc s n fits
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
-    valid-pair-wf fp sp fb' sb' slb' fv' sv'
+  -- Boxed pair
+  validityWF-alloc-advance {.Heap} {alloc} {A * B} (a , b) loc s n fits
+    (valid-pair-boxed-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-boxed-wf fp sp fb' sb' slb' fv' sv'
     where
       alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      fb' : BeforeFrontier alloc' fl
       fb' = stack-alloc-advances alloc n fits fl fb
-      sb' : BeforeFrontier alloc' sl
       sb' = stack-alloc-advances alloc n fits sl sb
-      slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
       fv' = validityWF-alloc-advance a fl s n fits fv
       sv' = validityWF-alloc-advance b sl s n fits sv
 
-  validityWF-alloc-advance {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s n fits
+  -- Unboxed pair
+  validityWF-alloc-advance {.Stack} {alloc} {A * B} (a , b) loc s n fits
+    (valid-pair-unboxed-wf pb slb fv sv) =
+    valid-pair-unboxed-wf pb' slb' fv' sv'
+    where
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
+      pb' = stack-alloc-advances alloc n fits loc pb
+      slb' = stack-alloc-advances alloc n fits (offsetLoc loc (stack-type-slots A)) slb
+      fv' = validityWF-alloc-advance a loc s n fits fv
+      sv' = validityWF-alloc-advance b (offsetLoc loc (stack-type-slots A)) s n fits sv
+
+  validityWF-alloc-advance {.Heap} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s n fits
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep cp eb' cb' slb' ev' bc
     where
       alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      eb' : BeforeFrontier alloc' el
       eb' = stack-alloc-advances alloc n fits el eb
-      cb' : BeforeFrontier alloc' cl
       cb' = stack-alloc-advances alloc n fits cl cb
-      slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
       ev' = validityWF-alloc-advance env el s n fits ev
 
-  validityWF-alloc-advance {alloc} {A + B} .(inl a) loc s n fits
-    (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
-    valid-inl-wf pp pb' slb' pv'
+  -- Boxed inl
+  validityWF-alloc-advance {.Heap} {alloc} {A + B} .(inl a) loc s n fits
+    (valid-inl-boxed-wf {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl-boxed-wf pp pb' slb' pv'
     where
       alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      pb' : BeforeFrontier alloc' pl
       pb' = stack-alloc-advances alloc n fits pl pb
-      slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
       pv' = validityWF-alloc-advance a pl s n fits pv
 
-  validityWF-alloc-advance {alloc} {A + B} .(inr b) loc s n fits
-    (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
-    valid-inr-wf pp pb' slb' pv'
+  -- Unboxed inl
+  validityWF-alloc-advance {.Stack} {alloc} {A + B} .(inl a) loc s n fits
+    (valid-inl-unboxed-wf {a = a} pb slb pv) =
+    valid-inl-unboxed-wf pb' slb' pv'
     where
       alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      pb' : BeforeFrontier alloc' pl
+      pb' = stack-alloc-advances alloc n fits loc pb
+      slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
+      pv' = validityWF-alloc-advance a (sucLoc loc) s n fits pv
+
+  -- Boxed inr
+  validityWF-alloc-advance {.Heap} {alloc} {A + B} .(inr b) loc s n fits
+    (valid-inr-boxed-wf {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr-boxed-wf pp pb' slb' pv'
+    where
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
       pb' = stack-alloc-advances alloc n fits pl pb
-      slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
       pv' = validityWF-alloc-advance b pl s n fits pv
 
-  validityWF-alloc-advance {alloc} {Fix F} .(fold v) loc s n fits
+  -- Unboxed inr
+  validityWF-alloc-advance {.Stack} {alloc} {A + B} .(inr b) loc s n fits
+    (valid-inr-unboxed-wf {b = b} pb slb pv) =
+    valid-inr-unboxed-wf pb' slb' pv'
+    where
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
+      pb' = stack-alloc-advances alloc n fits loc pb
+      slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
+      pv' = validityWF-alloc-advance b (sucLoc loc) s n fits pv
+
+  validityWF-alloc-advance {m} {alloc} {Fix F} .(fold v) loc s n fits
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up ub' uv'
     where
       alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      ub' : BeforeFrontier alloc' ul
       ub' = stack-alloc-advances alloc n fits ul ub
       uv' = validityWF-alloc-advance v ul s n fits uv
 
@@ -870,68 +999,156 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- monotone). Used when transporting validity through IR execution.
   ------------------------------------------------------------------------
 
-  validityWF-frontier-advance : ∀ {alloc alloc' A} (v : ⟦ A ⟧) loc (s : LocState FS) →
+  validityWF-frontier-advance : ∀ {m alloc alloc' A} (v : ⟦ A ⟧) loc (s : LocState FS) →
     current-frame alloc' ≡ current-frame alloc →
     next-slot alloc ≤ next-slot alloc' →
     next-heap-ref alloc ≤ next-heap-ref alloc' →
-    ValidAtWF alloc v loc s →
-    ValidAtWF alloc' v loc s
+    ValidAtWF m alloc v loc s →
+    ValidAtWF m alloc' v loc s
 
-  validityWF-frontier-advance {alloc} {alloc'} {Unit} tt loc s cf-eq slot-≤ heap-≤ valid-unit-wf =
+  validityWF-frontier-advance {m} {alloc} {alloc'} {Unit} tt loc s cf-eq slot-≤ heap-≤ valid-unit-wf =
     valid-unit-wf
 
-  validityWF-frontier-advance {alloc} {alloc'} {A * B} (a , b) loc s cf-eq slot-≤ heap-≤
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
-    valid-pair-wf fp sp fb' sb' slb' fv' sv'
+  -- Boxed pair
+  validityWF-frontier-advance {.Heap} {alloc} {alloc'} {A * B} (a , b) loc s cf-eq slot-≤ heap-≤
+    (valid-pair-boxed-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-boxed-wf fp sp fb' sb' slb' fv' sv'
     where
-      fb' : BeforeFrontier alloc' fl
       fb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ fl fb
-      sb' : BeforeFrontier alloc' sl
       sb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ sl sb
-      slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       fv' = validityWF-frontier-advance a fl s cf-eq slot-≤ heap-≤ fv
       sv' = validityWF-frontier-advance b sl s cf-eq slot-≤ heap-≤ sv
 
-  validityWF-frontier-advance {alloc} {alloc'} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s cf-eq slot-≤ heap-≤
+  -- Unboxed pair
+  validityWF-frontier-advance {.Stack} {alloc} {alloc'} {A * B} (a , b) loc s cf-eq slot-≤ heap-≤
+    (valid-pair-unboxed-wf pb slb fv sv) =
+    valid-pair-unboxed-wf pb' slb' fv' sv'
+    where
+      pb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc pb
+      slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (offsetLoc loc (stack-type-slots A)) slb
+      fv' = validityWF-frontier-advance a loc s cf-eq slot-≤ heap-≤ fv
+      sv' = validityWF-frontier-advance b (offsetLoc loc (stack-type-slots A)) s cf-eq slot-≤ heap-≤ sv
+
+  validityWF-frontier-advance {.Heap} {alloc} {alloc'} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s cf-eq slot-≤ heap-≤
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep cp eb' cb' slb' ev' bc
     where
-      eb' : BeforeFrontier alloc' el
       eb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ el eb
-      cb' : BeforeFrontier alloc' cl
       cb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ cl cb
-      slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       ev' = validityWF-frontier-advance env el s cf-eq slot-≤ heap-≤ ev
 
-  validityWF-frontier-advance {alloc} {alloc'} {A + B} .(inl a) loc s cf-eq slot-≤ heap-≤
-    (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
-    valid-inl-wf pp pb' slb' pv'
+  -- Boxed inl
+  validityWF-frontier-advance {.Heap} {alloc} {alloc'} {A + B} .(inl a) loc s cf-eq slot-≤ heap-≤
+    (valid-inl-boxed-wf {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl-boxed-wf pp pb' slb' pv'
     where
-      pb' : BeforeFrontier alloc' pl
       pb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl pb
-      slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       pv' = validityWF-frontier-advance a pl s cf-eq slot-≤ heap-≤ pv
 
-  validityWF-frontier-advance {alloc} {alloc'} {A + B} .(inr b) loc s cf-eq slot-≤ heap-≤
-    (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
-    valid-inr-wf pp pb' slb' pv'
+  -- Unboxed inl
+  validityWF-frontier-advance {.Stack} {alloc} {alloc'} {A + B} .(inl a) loc s cf-eq slot-≤ heap-≤
+    (valid-inl-unboxed-wf {a = a} pb slb pv) =
+    valid-inl-unboxed-wf pb' slb' pv'
     where
-      pb' : BeforeFrontier alloc' pl
+      pb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc pb
+      slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
+      pv' = validityWF-frontier-advance a (sucLoc loc) s cf-eq slot-≤ heap-≤ pv
+
+  -- Boxed inr
+  validityWF-frontier-advance {.Heap} {alloc} {alloc'} {A + B} .(inr b) loc s cf-eq slot-≤ heap-≤
+    (valid-inr-boxed-wf {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr-boxed-wf pp pb' slb' pv'
+    where
       pb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ pl pb
-      slb' : BeforeFrontier alloc' (sucLoc loc)
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       pv' = validityWF-frontier-advance b pl s cf-eq slot-≤ heap-≤ pv
 
-  validityWF-frontier-advance {alloc} {alloc'} {Fix F} .(fold v) loc s cf-eq slot-≤ heap-≤
+  -- Unboxed inr
+  validityWF-frontier-advance {.Stack} {alloc} {alloc'} {A + B} .(inr b) loc s cf-eq slot-≤ heap-≤
+    (valid-inr-unboxed-wf {b = b} pb slb pv) =
+    valid-inr-unboxed-wf pb' slb' pv'
+    where
+      pb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc pb
+      slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
+      pv' = validityWF-frontier-advance b (sucLoc loc) s cf-eq slot-≤ heap-≤ pv
+
+  validityWF-frontier-advance {m} {alloc} {alloc'} {Fix F} .(fold v) loc s cf-eq slot-≤ heap-≤
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up ub' uv'
     where
-      ub' : BeforeFrontier alloc' ul
       ub' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ ul ub
       uv' = validityWF-frontier-advance v ul s cf-eq slot-≤ heap-≤ uv
+
+  ------------------------------------------------------------------------
+  -- ValidAtWF transfer between allocation states with BeforeFrontier transfer
+  --
+  -- Transfer ValidAtWF m a₁ → ValidAtWF m a₂ using a general bf-transfer
+  -- function. This is more general than validityWF-frontier-advance.
+  --
+  -- The proof applies bf-transfer to all sublocation BeforeFrontier proofs
+  -- and recursively transfers nested validity.
+  ------------------------------------------------------------------------
+
+  validityWF-with-bf-transfer : ∀ {m A} (v : ⟦ A ⟧) loc (s : LocState FS)
+    (a₁ a₂ : AllocState {FS})
+    (bf-transfer : ∀ loc' → BeforeFrontier a₁ loc' → BeforeFrontier a₂ loc') →
+    ValidAtWF m a₁ v loc s →
+    ValidAtWF m a₂ v loc s
+
+  validityWF-with-bf-transfer {m} {Unit} tt loc s a₁ a₂ bf valid-unit-wf = valid-unit-wf
+
+  -- Boxed pair
+  validityWF-with-bf-transfer {.Heap} {A * B} (a , b) loc s a₁ a₂ bf
+    (valid-pair-boxed-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-boxed-wf fp sp (bf fl fb) (bf sl sb) (bf (sucLoc loc) slb)
+      (validityWF-with-bf-transfer a fl s a₁ a₂ bf fv)
+      (validityWF-with-bf-transfer b sl s a₁ a₂ bf sv)
+
+  -- Unboxed pair
+  validityWF-with-bf-transfer {.Stack} {A * B} (a , b) loc s a₁ a₂ bf
+    (valid-pair-unboxed-wf pb slb fv sv) =
+    valid-pair-unboxed-wf (bf loc pb) (bf (offsetLoc loc (stack-type-slots A)) slb)
+      (validityWF-with-bf-transfer a loc s a₁ a₂ bf fv)
+      (validityWF-with-bf-transfer b (offsetLoc loc (stack-type-slots A)) s a₁ a₂ bf sv)
+
+  -- Closure
+  validityWF-with-bf-transfer {.Heap} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s a₁ a₂ bf
+    (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
+    valid-closure-wf bb ep cp (bf el eb) (bf cl cb) (bf (sucLoc loc) slb)
+      (validityWF-with-bf-transfer env el s a₁ a₂ bf ev) bc
+
+  -- Boxed inl
+  validityWF-with-bf-transfer {.Heap} {A + B} .(inl a) loc s a₁ a₂ bf
+    (valid-inl-boxed-wf {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl-boxed-wf pp (bf pl pb) (bf (sucLoc loc) slb)
+      (validityWF-with-bf-transfer a pl s a₁ a₂ bf pv)
+
+  -- Unboxed inl
+  validityWF-with-bf-transfer {.Stack} {A + B} .(inl a) loc s a₁ a₂ bf
+    (valid-inl-unboxed-wf {a = a} pb slb pv) =
+    valid-inl-unboxed-wf (bf loc pb) (bf (sucLoc loc) slb)
+      (validityWF-with-bf-transfer a (sucLoc loc) s a₁ a₂ bf pv)
+
+  -- Boxed inr
+  validityWF-with-bf-transfer {.Heap} {A + B} .(inr b) loc s a₁ a₂ bf
+    (valid-inr-boxed-wf {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr-boxed-wf pp (bf pl pb) (bf (sucLoc loc) slb)
+      (validityWF-with-bf-transfer b pl s a₁ a₂ bf pv)
+
+  -- Unboxed inr
+  validityWF-with-bf-transfer {.Stack} {A + B} .(inr b) loc s a₁ a₂ bf
+    (valid-inr-unboxed-wf {b = b} pb slb pv) =
+    valid-inr-unboxed-wf (bf loc pb) (bf (sucLoc loc) slb)
+      (validityWF-with-bf-transfer b (sucLoc loc) s a₁ a₂ bf pv)
+
+  -- Fold
+  validityWF-with-bf-transfer {m} {Fix F} .(fold v) loc s a₁ a₂ bf
+    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
+    valid-fold-wf up (bf ul ub)
+      (validityWF-with-bf-transfer v ul s a₁ a₂ bf uv)
 
   ------------------------------------------------------------------------
   -- Validity preservation when memory at BeforeFrontier is preserved
@@ -944,69 +1161,76 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   -- all reachable sub-locations are also BeforeFrontier (structural).
   ------------------------------------------------------------------------
 
-  validityWF-mem-preserved : ∀ {alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
+  validityWF-mem-preserved : ∀ {m alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     BeforeFrontier alloc loc →
     (∀ loc' → BeforeFrontier alloc loc' → readLoc s₂ loc' ≡ readLoc s₁ loc') →
-    ValidAtWF alloc v loc s₁ →
-    ValidAtWF alloc v loc s₂
+    ValidAtWF m alloc v loc s₁ →
+    ValidAtWF m alloc v loc s₂
 
-  validityWF-mem-preserved {alloc} {Unit} tt loc s₁ s₂ loc-before mem-eq valid-unit-wf =
+  validityWF-mem-preserved {m} {alloc} {Unit} tt loc s₁ s₂ loc-before mem-eq valid-unit-wf =
     valid-unit-wf
 
-  validityWF-mem-preserved {alloc} {A * B} (a , b) loc s₁ s₂ loc-before mem-eq
-    (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
-    valid-pair-wf fp' sp' fb sb slb fv' sv'
+  -- Boxed pair
+  validityWF-mem-preserved {.Heap} {alloc} {A * B} (a , b) loc s₁ s₂ loc-before mem-eq
+    (valid-pair-boxed-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
+    valid-pair-boxed-wf fp' sp' fb sb slb fv' sv'
     where
-      -- loc is BeforeFrontier, so readLoc s₂ loc = readLoc s₁ loc
-      -- But we can't directly derive BeforeFrontier loc from the structure...
-      -- Actually we CAN'T use mem-eq loc loc-before because we need loc-before
-      -- Wait - we have loc-before as a parameter! So we can use mem-eq loc loc-before.
-      fp' : readLoc s₂ loc ≡ just fl
       fp' = trans (mem-eq loc loc-before) fp
-
-      sp' : readLoc s₂ (sucLoc loc) ≡ just sl
       sp' = trans (mem-eq (sucLoc loc) slb) sp
-
       fv' = validityWF-mem-preserved a fl s₁ s₂ fb mem-eq fv
       sv' = validityWF-mem-preserved b sl s₁ s₂ sb mem-eq sv
 
-  validityWF-mem-preserved {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ loc-before mem-eq
+  -- Unboxed pair (no pointer indirection, just recursively preserved)
+  validityWF-mem-preserved {.Stack} {alloc} {A * B} (a , b) loc s₁ s₂ loc-before mem-eq
+    (valid-pair-unboxed-wf pb slb fv sv) =
+    valid-pair-unboxed-wf pb slb fv' sv'
+    where
+      fv' = validityWF-mem-preserved a loc s₁ s₂ loc-before mem-eq fv
+      sv' = validityWF-mem-preserved b (offsetLoc loc (stack-type-slots A)) s₁ s₂ slb mem-eq sv
+
+  validityWF-mem-preserved {.Heap} {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ loc-before mem-eq
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep' cp' eb cb slb ev' bc
     where
-      ep' : readLoc s₂ loc ≡ just el
       ep' = trans (mem-eq loc loc-before) ep
-
-      cp' : readLoc s₂ (sucLoc loc) ≡ just cl
       cp' = trans (mem-eq (sucLoc loc) slb) cp
-
       ev' = validityWF-mem-preserved env el s₁ s₂ eb mem-eq ev
 
-  validityWF-mem-preserved {alloc} {A + B} .(inl a) loc s₁ s₂ loc-before mem-eq
-    (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
-    valid-inl-wf pp' pb slb pv'
+  -- Boxed inl
+  validityWF-mem-preserved {.Heap} {alloc} {A + B} .(inl a) loc s₁ s₂ loc-before mem-eq
+    (valid-inl-boxed-wf {a = a} {payload-loc = pl} pp pb slb pv) =
+    valid-inl-boxed-wf pp' pb slb pv'
     where
-      pp' : readLoc s₂ (sucLoc loc) ≡ just pl
       pp' = trans (mem-eq (sucLoc loc) slb) pp
-
       pv' = validityWF-mem-preserved a pl s₁ s₂ pb mem-eq pv
 
-  validityWF-mem-preserved {alloc} {A + B} .(inr b) loc s₁ s₂ loc-before mem-eq
-    (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
-    valid-inr-wf pp' pb slb pv'
+  -- Unboxed inl
+  validityWF-mem-preserved {.Stack} {alloc} {A + B} .(inl a) loc s₁ s₂ loc-before mem-eq
+    (valid-inl-unboxed-wf {a = a} pb slb pv) =
+    valid-inl-unboxed-wf pb slb pv'
     where
-      pp' : readLoc s₂ (sucLoc loc) ≡ just pl
-      pp' = trans (mem-eq (sucLoc loc) slb) pp
+      pv' = validityWF-mem-preserved a (sucLoc loc) s₁ s₂ slb mem-eq pv
 
+  -- Boxed inr
+  validityWF-mem-preserved {.Heap} {alloc} {A + B} .(inr b) loc s₁ s₂ loc-before mem-eq
+    (valid-inr-boxed-wf {b = b} {payload-loc = pl} pp pb slb pv) =
+    valid-inr-boxed-wf pp' pb slb pv'
+    where
+      pp' = trans (mem-eq (sucLoc loc) slb) pp
       pv' = validityWF-mem-preserved b pl s₁ s₂ pb mem-eq pv
 
-  validityWF-mem-preserved {alloc} {Fix F} .(fold v) loc s₁ s₂ loc-before mem-eq
+  -- Unboxed inr
+  validityWF-mem-preserved {.Stack} {alloc} {A + B} .(inr b) loc s₁ s₂ loc-before mem-eq
+    (valid-inr-unboxed-wf {b = b} pb slb pv) =
+    valid-inr-unboxed-wf pb slb pv'
+    where
+      pv' = validityWF-mem-preserved b (sucLoc loc) s₁ s₂ slb mem-eq pv
+
+  validityWF-mem-preserved {m} {alloc} {Fix F} .(fold v) loc s₁ s₂ loc-before mem-eq
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up' ub uv'
     where
-      up' : readLoc s₂ loc ≡ just ul
       up' = trans (mem-eq loc loc-before) up
-
       uv' = validityWF-mem-preserved v ul s₁ s₂ ub mem-eq uv
 
   ------------------------------------------------------------------------
@@ -1056,13 +1280,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         heap-before r<next
 
   -- ValidAtWF is preserved after reclamation
-  validityWF-reclaim : ∀ {alloc A} (v : ⟦ A ⟧) loc s reclaim-slot
+  validityWF-reclaim : ∀ {m alloc A} (v : ⟦ A ⟧) loc s reclaim-slot
     (monotone : next-slot alloc ≤ reclaim-slot)
     (fits : reclaim-slot ≤ frame-capacity alloc)
     (loc-before : BeforeFrontier alloc loc) →
-    ValidAtWF alloc v loc s →
-    ValidAtWF (reclaim-alloc alloc reclaim-slot monotone fits) v loc s
-  validityWF-reclaim {alloc} v loc s rs mono fits loc-bf valid =
+    ValidAtWF m alloc v loc s →
+    ValidAtWF m (reclaim-alloc alloc reclaim-slot monotone fits) v loc s
+  validityWF-reclaim {m} {alloc} v loc s rs mono fits loc-bf valid =
     validityWF-frontier-advance v loc s refl mono ≤-refl valid
     where
       open import Data.Nat.Properties using (≤-refl)

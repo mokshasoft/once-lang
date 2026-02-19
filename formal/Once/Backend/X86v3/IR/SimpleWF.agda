@@ -11,7 +11,7 @@ open import Data.Nat using (ℕ; _<_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; m≤m+n)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
-open import Data.Product using (_×_; _,_; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst)
 
@@ -43,7 +43,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; valid-unit-wf;
            validityWF-mem-only; validityWF-frontier-advance;
-           decomposePairWF; PairValidWF)
+           decomposePairBoxedWF; PairBoxedValidWF)
 
   -- Import frontier-same-heap for reclaim-preserves-result
   open import Once.Backend.X86v3.FrontierLemma using (module FrontierLemmas)
@@ -51,17 +51,17 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     using (frontier-same-heap)
 
   ------------------------------------------------------------------------
-  -- Identity: output is same as input
+  -- Identity: output is same as input (same mode preserved)
   ------------------------------------------------------------------------
 
-  run-id : ∀ {A}
+  run-id : ∀ {m A}
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF alloc x input-loc s →
+    ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    IRResultAWF (id {A}) x s alloc
+    IRResultAWF m (id {A}) x s alloc
   run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     let s' = exec (mov RAX RDI) s
     in record
@@ -92,35 +92,37 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           -- Then: s → s' (memory preserved)
           validityWF-frontier-advance x input-loc s' refl ≤-refl ≤-refl
             (validityWF-mem-only x input-loc s s' refl refl input-valid-wf)
-      ; reclaim-size-bound = m≤m+n (next-slot alloc) pair-slots  -- slot ≤ slot + ps * 1
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0  -- ir-stack-requirement id = 0
       }
 
   ------------------------------------------------------------------------
-  -- Fst: extract first component from pair
+  -- Fst: extract first component from boxed pair
+  -- Input must be Heap (boxed), output mode is component's mode (mA)
   ------------------------------------------------------------------------
 
   run-fst : ∀ {A B}
     (x : ⟦ A * B ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF alloc x input-loc s →
+    ValidAtWF Heap alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    IRResultAWF (fst-ir {A} {B}) x s alloc
+    ∃[ mA ] IRResultAWF mA (fst-ir {A} {B}) x s alloc
   run-fst {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    let pair-decomp = decomposePairWF input-valid-wf
-        fst-loc = PairValidWF.fst-loc pair-decomp
-        fst-valid-wf = PairValidWF.fst-valid pair-decomp
-        fst-before = PairValidWF.fst-before pair-decomp
+    let pair-decomp = decomposePairBoxedWF input-valid-wf
+        mA = PairBoxedValidWF.mA pair-decomp
+        fst-loc = PairBoxedValidWF.fst-loc pair-decomp
+        fst-valid-wf = PairBoxedValidWF.fst-valid pair-decomp
+        fst-before = PairBoxedValidWF.fst-before pair-decomp
         mem-read : readLoc s (resolveSourceExt (regs s) (IndReg RDI)) ≡ just fst-loc
         mem-read = subst (λ loc → readLoc s loc ≡ just fst-loc)
-                         (sym rdi-eq) (PairValidWF.fst-ptr pair-decomp)
+                         (sym rdi-eq) (PairBoxedValidWF.fst-ptr pair-decomp)
         s' = exec (load RAX (IndReg RDI)) s
-        fst-valid-wf-s' = validityWF-mem-only (fst x) fst-loc s s'
+        fst-valid-wf-s' = validityWF-mem-only (proj₁ x) fst-loc s s'
                             (load-preserves-stackMem RAX (IndReg RDI) s)
                             (load-preserves-heapMem RAX (IndReg RDI) s)
                             fst-valid-wf
-    in record
+    in mA , record
       { result-loc = fst-loc
       ; final-state = s'
       ; final-alloc = alloc
@@ -145,36 +147,38 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl fst-loc fst-before
       ; reclaim-preserves-validity = λ fits →
           -- Transfer from alloc to reclaimed alloc (only slots-available differs)
-          validityWF-frontier-advance (fst x) fst-loc s' refl ≤-refl ≤-refl fst-valid-wf-s'
-      ; reclaim-size-bound = m≤m+n (next-slot alloc) pair-slots
+          validityWF-frontier-advance (proj₁ x) fst-loc s' refl ≤-refl ≤-refl fst-valid-wf-s'
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0  -- ir-stack-requirement fst-ir = 0
       }
 
   ------------------------------------------------------------------------
-  -- Snd: extract second component from pair
+  -- Snd: extract second component from boxed pair
+  -- Input must be Heap (boxed), output mode is component's mode (mB)
   ------------------------------------------------------------------------
 
   run-snd : ∀ {A B}
     (x : ⟦ A * B ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF alloc x input-loc s →
+    ValidAtWF Heap alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    IRResultAWF (snd-ir {A} {B}) x s alloc
+    ∃[ mB ] IRResultAWF mB (snd-ir {A} {B}) x s alloc
   run-snd {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
-    let pair-decomp = decomposePairWF input-valid-wf
-        snd-loc = PairValidWF.snd-loc pair-decomp
-        snd-valid-wf = PairValidWF.snd-valid pair-decomp
-        snd-before = PairValidWF.snd-before pair-decomp
+    let pair-decomp = decomposePairBoxedWF input-valid-wf
+        mB = PairBoxedValidWF.mB pair-decomp
+        snd-loc = PairBoxedValidWF.snd-loc pair-decomp
+        snd-valid-wf = PairBoxedValidWF.snd-valid pair-decomp
+        snd-before = PairBoxedValidWF.snd-before pair-decomp
         mem-read : readLoc s (resolveSourceExt (regs s) (IndRegSuc RDI)) ≡ just snd-loc
         mem-read = subst (λ loc → readLoc s (sucLoc loc) ≡ just snd-loc)
-                         (sym rdi-eq) (PairValidWF.snd-ptr pair-decomp)
+                         (sym rdi-eq) (PairBoxedValidWF.snd-ptr pair-decomp)
         s' = exec (load RAX (IndRegSuc RDI)) s
-        snd-valid-wf-s' = validityWF-mem-only (snd x) snd-loc s s'
+        snd-valid-wf-s' = validityWF-mem-only (proj₂ x) snd-loc s s'
                             (load-preserves-stackMem RAX (IndRegSuc RDI) s)
                             (load-preserves-heapMem RAX (IndRegSuc RDI) s)
                             snd-valid-wf
-    in record
+    in mB , record
       { result-loc = snd-loc
       ; final-state = s'
       ; final-alloc = alloc
@@ -199,22 +203,22 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl snd-loc snd-before
       ; reclaim-preserves-validity = λ fits →
           -- Transfer from alloc to reclaimed alloc (only slots-available differs)
-          validityWF-frontier-advance (snd x) snd-loc s' refl ≤-refl ≤-refl snd-valid-wf-s'
-      ; reclaim-size-bound = m≤m+n (next-slot alloc) pair-slots
+          validityWF-frontier-advance (proj₂ x) snd-loc s' refl ≤-refl ≤-refl snd-valid-wf-s'
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0  -- ir-stack-requirement snd-ir = 0
       }
 
   ------------------------------------------------------------------------
-  -- Terminal: output unit
+  -- Terminal: output unit (any mode, unit is valid at any mode)
   ------------------------------------------------------------------------
 
-  run-terminal : ∀ {A}
+  run-terminal : ∀ {m A}
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF alloc x input-loc s →
+    ValidAtWF m alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    IRResultAWF (terminal {A}) x s alloc
+    IRResultAWF m (terminal {A}) x s alloc
   run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     let s' = exec (mov RAX RDI) s
     in record
@@ -241,5 +245,5 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ; reclaim-preserves-result = λ fits →
           frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl input-loc input-before
       ; reclaim-preserves-validity = λ fits → valid-unit-wf
-      ; reclaim-size-bound = m≤m+n (next-slot alloc) pair-slots
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0  -- ir-stack-requirement terminal = 0
       }

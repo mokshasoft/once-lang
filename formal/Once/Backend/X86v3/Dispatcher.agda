@@ -144,9 +144,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- Import WF types for termination-safe dispatch
   open ClosureWellFormedDef {FS} program-bound
     using (BodyCorrect; ValidAtWF; IRResultAWF; RecDispatcherWF;
-           valid-unit-wf; valid-pair-wf; valid-closure-wf;
-           decomposeClosureWF; ClosureValidWF; decomposePairWF; PairValidWF;
-           validWF-to-valid; resultWF-to-result; validityWF-mem-only;
+           valid-unit-wf; valid-pair-boxed-wf; valid-closure-wf;
+           decomposeClosureWF; ClosureValidWF; decomposePairBoxedWF; PairBoxedValidWF;
+           validityWF-mem-only;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            validityWF-alloc-advance; validityWF-frontier-advance;
            validityWF-mem-preserved)
@@ -200,14 +200,14 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- TODO: Connect to FFI when available
   ------------------------------------------------------------------------
   postulate
-    run-prim : ∀ {A B} (name : String)
+    run-prim : ∀ {A B} (mIn : AllocMode) (name : String)
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF alloc x input-loc s →
+      ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) RDI ≡ input-loc →
-      IRResultAWF (Prim {A} {B} name) x s alloc
+      ∃[ mOut ] IRResultAWF mOut (Prim {A} {B} name) x s alloc
 
   ------------------------------------------------------------------------
   -- Main dispatcher (recursive cases use Acc)
@@ -224,111 +224,141 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   mutual
     -- Helper to construct RecDispatcherWF from rs accessor
     -- Defined in mutual block so termination checker can see the structure
-    -- Returns IRResultAWF with ValidAtWF for proper threading
-    -- Uses LINEAR capacity only: pair-slots * ir-size
+    -- Returns existential mode + IRResultAWF with ValidAtWF for proper threading
+    -- Uses ir-stack-requirement for capacity
     make-rec-wf : ∀ {n} (ir<bound : n < program-bound) →
       (∀ {m} → m < n → Acc _<_ m) →
       RecDispatcherWF n
-    make-rec-wf {n} ir<bound rs ir lt x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' =
-      run-ir-wf ir (<-trans lt ir<bound) x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' (rs lt)
+    make-rec-wf {n} ir<bound rs mIn ir lt x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' =
+      run-ir-wf mIn ir (<-trans lt ir<bound) x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' (rs lt)
 
     -- run-ir-wf uses Acc _<_ (ir-size ir) for termination.
-    -- Uses ValidAtWF input and returns IRResultAWF with ValidAtWF output.
+    -- Uses ValidAtWF input and returns existential mode + IRResultAWF with ValidAtWF output.
     -- For Compose/Pair: sub-IRs have smaller size, so rs gives Acc
     -- For Apply: uses body-correct.execute instead of recursive call!
-    -- Uses LINEAR capacity for recursion
-    run-ir-wf : ∀ {A B} (ir : IR A B)
+    -- Uses ir-stack-requirement for capacity
+    run-ir-wf : ∀ {A B} (mIn : AllocMode) (ir : IR A B)
       (ir<bound : ir-size ir < program-bound) →
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF alloc x input-loc s →
+      ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) RDI ≡ input-loc →
-      -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
-      next-slot alloc +ℕ pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
+      -- Capacity using ir-stack-requirement
+      next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
       Acc _<_ (ir-size ir) →
-      IRResultAWF ir x s alloc
+      ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
-    -- Simple cases delegated to SimpleWF module
-    run-ir-wf id _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    -- Simple cases delegated to SimpleWF module (returns same mode as input for id/terminal)
+    run-ir-wf mIn id _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      mIn , run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf fst-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    -- fst/snd extract component modes from pair (input must be Heap for boxed pair)
+    -- Stack case is impossible (fst/snd operate on boxed pairs)
+    run-ir-wf Heap fst-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Stack fst-ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
+      -- Stack input to fst: would need unboxed pair decomposition (not yet implemented)
+      postulate-stack-fst where postulate postulate-stack-fst : _
+
+    run-ir-wf Heap snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    run-ir-wf Stack snd-ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
+      -- Stack input to snd: would need unboxed pair decomposition (not yet implemented)
+      postulate-stack-snd where postulate postulate-stack-snd : _
+
+    run-ir-wf mIn terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      mIn , run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Prim: primitive operations (postulated)
-    run-ir-wf (Prim {A} {B} name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      run-prim {A} {B} name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    run-ir-wf mIn (Prim name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      run-prim mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Sum type: inject left (delegated to SumFixWF module)
-    run-ir-wf (inl-ir {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      run-inl {A} {B} {m} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    -- Output mode is m (from inl-ir m)
+    run-ir-wf mIn (inl-ir {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      m , run-inl {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Sum type: inject right (delegated to SumFixWF module)
-    run-ir-wf (inr-ir {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      run-inr {A} {B} {m} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    -- Output mode is m (from inr-ir m)
+    run-ir-wf mIn (inr-ir {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      m , run-inr {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Sum type: case analysis (delegated to SumFixWF module)
-    run-ir-wf (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    -- Input must be Heap (boxed sum), output mode from branch
+    run-ir-wf Heap (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       run-case f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
+    run-ir-wf Stack (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      -- Stack input to case: would need unboxed sum decomposition (not yet implemented)
+      postulate-stack-case where postulate postulate-stack-case : _
+
     -- Initial: absurd elimination (delegated to SumFixWF module)
-    run-ir-wf initial _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn initial _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-initial x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Recursive types: fold (delegated to SumFixWF module)
-    run-ir-wf (fold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      run-fold {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    -- Output is always Heap (fold wraps pointer)
+    run-ir-wf mIn (fold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      Heap , run-fold {F} mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Recursive types: unfold (delegated to SumFixWF module)
-    run-ir-wf (unfold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    -- Input must be Heap (fold is boxed)
+    run-ir-wf Heap (unfold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-unfold {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
+    run-ir-wf Stack unfold-ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
+      -- Stack input to unfold: fold is always boxed, so this is impossible
+      postulate-stack-unfold where postulate postulate-stack-unfold : _
+
     -- Compose: delegated to ComposeWF module
-    run-ir-wf (g ∘ f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      run-compose f g (make-rec-wf ir<bound rs) x input-loc s alloc
+    run-ir-wf mIn (g ∘ f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      run-compose mIn f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Pair: delegated to PairWF module
-    run-ir-wf (⟨ f , g ⟩ m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      run-pair f g {m} (make-rec-wf ir<bound rs) x input-loc s alloc
+    -- Output mode is m (from ⟨ f , g ⟩ m)
+    run-ir-wf mIn (⟨ f , g ⟩ m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      m , run-pair mIn f g m (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Curry: delegated to CurryWF module
-    run-ir-wf (curry f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      run-curry f {m} ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
+    -- Output is always Heap (closure is boxed)
+    run-ir-wf mIn (curry f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      Heap , run-curry mIn f m ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Apply: uses BodyCorrect.execute from closure
+    -- Input must be Heap (boxed pair of closure * arg)
     -- Uses PURE RECLAMATION: body executes in same frame, then reclaims stack
     -- pb-cap is derived from frame capacity constraint (module parameter)
-    run-ir-wf {(A ⇒[ _ ] B) * A} {B} apply _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+    run-ir-wf Heap apply _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
         combined-cap (frame-cap-sufficient alloc)
 
+    run-ir-wf Stack apply ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
+      -- Stack input to apply: closure pairs are always boxed
+      postulate-stack-apply where postulate postulate-stack-apply : _
+
   -- Public API with ValidAtWF
-  -- Returns IRResultAWF with ValidAtWF for result validity.
-  -- Uses LINEAR capacity only: pair-slots * ir-size
-  run-wf : ∀ {A B} (ir : IR A B) (ir<bound : ir-size ir < program-bound)
+  -- Returns existential mode + IRResultAWF with ValidAtWF for result validity.
+  -- Uses ir-stack-requirement for capacity
+  run-wf : ∀ {A B} (mIn : AllocMode) (ir : IR A B) (ir<bound : ir-size ir < program-bound)
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF alloc x input-loc s →
+    ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    -- LINEAR capacity: pair-slots * ir-size covers ir-req + recursion
-    next-slot alloc +ℕ pair-slots *ℕ ir-size ir ≤ frame-capacity alloc →
-    IRResultAWF ir x s alloc
-  run-wf ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
-    run-ir-wf ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    -- Capacity using ir-stack-requirement
+    next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
+    ∃[ mOut ] IRResultAWF mOut ir x s alloc
+  run-wf mIn ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    run-ir-wf mIn ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
       (get-acc-from-pb (ir-size ir) ir<bound)
 
   -- NOTE: The basic ValidAt API (`run`) has been removed because it required
