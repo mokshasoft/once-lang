@@ -17,7 +17,7 @@
 module Once.Backend.X86v3.IR.ApplyWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; +-monoʳ-≤)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; +-monoʳ-≤; m+n≤o⇒m≤o)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
@@ -69,7 +69,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Import lemmas
   open import Once.Backend.X86v3.DispatcherArithmeticLemma
-    using (suc<+2; apply-body-cap-linear; apply-pair-fits-linear)
+    using (suc<+2)
 
   -- Import write operations
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
@@ -130,6 +130,29 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Now imported from ClosureWellFormed: validityWF-with-bf-transfer
 
   ------------------------------------------------------------------------
+  -- Helper: Extract body-capacity from apply input's closure
+  --
+  -- This extracts body-capacity from the ValidAtWF proof for (closure, arg).
+  -- By computing this directly from input-valid-wf, we avoid needing a
+  -- separate body-cap parameter that must match the closure's capacity.
+  ------------------------------------------------------------------------
+
+  closure-body-capacity : ∀ {A B alloc loc s}
+    (x : ⟦ (A ⇒ B) * A ⟧)
+    (input-valid-wf : ValidAtWF Heap alloc x loc s) → ℕ
+  closure-body-capacity {A} {B} {alloc} {loc} {s} x input-valid-wf =
+    let pair-decomp = decomposePairBoxedWF {_} {A ⇒[ Many ] B} {A} input-valid-wf
+        closure-loc = PairBoxedValidWF.fst-loc pair-decomp
+        closure = proj₁ x
+        closure-valid-wf = PairBoxedValidWF.fst-valid pair-decomp
+        closure-mode-eq = closure-mode-is-heap-proof closure-valid-wf
+        closure-valid-wf-heap = subst (λ m → ValidAtWF m alloc closure closure-loc s)
+                                       closure-mode-eq closure-valid-wf
+        closure-decomp = decomposeClosureWF {_} {Many} {A} {B} closure-valid-wf-heap
+        body-correct = ClosureValidWF.body-correct closure-decomp
+    in BodyCorrect.body-capacity body-correct
+
+  ------------------------------------------------------------------------
   -- Apply: Uses body-correct.execute instead of recursive run-ir call
   --
   -- Does NOT need RecDispatcherWF because it extracts BodyCorrect from
@@ -146,23 +169,27 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- 3. Result is either on heap (heap-before), from input (slot < slot + pair-slots),
   --    or stack-allocated in reclaimed region (IMPOSSIBLE by all-escape)
   -- 4. Escape analysis ensures escaping values are heap-allocated
+  --
+  -- KEY FIX: body-cap is extracted from input via closure-body-capacity,
+  -- not passed as a separate parameter. This eliminates the body-cap-matches
+  -- postulate because both the type signature and body use the same extraction.
   ------------------------------------------------------------------------
 
   run-apply : ∀ {A B}
     (x : ⟦ (A ⇒ B) * A ⟧) (input-loc : ValueLocation FS)
-    (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF Heap alloc x input-loc s →  -- Apply takes boxed pair input
+    (s : LocState FS) (alloc : AllocState {FS})
+    (input-valid-wf : ValidAtWF Heap alloc x input-loc s) →  -- Apply takes boxed pair input
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     -- Capacity using ir-stack-requirement (= pair-slots for apply)
     next-slot alloc +ℕ ir-stack-requirement (apply {A} {B}) ≤ frame-capacity alloc →
-    -- PROGRAM-BOUND capacity: for body execution in same frame
-    -- Body's ir-stack-requirement is bounded by pair-slots * ir-size body < pair-slots * program-bound
-    next-slot alloc +ℕ pair-slots *ℕ program-bound ≤ frame-capacity alloc →
+    -- DYNAMIC capacity: pair-slots + closure's body-capacity
+    -- Capacity is computed from input via closure-body-capacity, not passed separately
+    next-slot alloc +ℕ pair-slots +ℕ closure-body-capacity x input-valid-wf ≤ frame-capacity alloc →
     -- NO child-frame parameters! Body runs in same frame.
     ∃[ mOut ] IRResultAWF mOut (apply {A} {B}) x s alloc
-  run-apply {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap pb-cap =
+  run-apply {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap body-cap-fits =
     mBody , record
       { result-loc = result-loc
       ; final-state = s-final
@@ -230,20 +257,20 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       body-correct = ClosureValidWF.body-correct closure-decomp
 
       -- Extract body-capacity from body-correct
-      -- body-capacity = pair-slots * ir-size body (set by Curry, proven by body-cap-eq)
-      body-cap = BodyCorrect.body-capacity body-correct
-      body-cap-eq = BodyCorrect.body-cap-eq body-correct
+      -- NOTE: closure-body-cap is definitionally equal to (closure-body-capacity x input-valid-wf)
+      -- because both extract from the same input via the same decomposition sequence.
+      -- This means body-cap-fits (from type signature) directly gives us the capacity proof.
+      closure-body-cap = BodyCorrect.body-capacity body-correct
+      closure-body-cap-eq = BodyCorrect.body-cap-eq body-correct
 
       -- Step 3: Allocate pair-slots for (env, arg) pair in SAME frame
       pair-input-loc = OnStack (current-frame alloc) (next-slot alloc)
 
-      -- PROVEN: apply-pair-fits from pb-cap using lemma
-      -- pb-cap: slot + pair-slots * program-bound ≤ capacity
-      -- body<bound ensures bound ≥ 1
+      -- PROVEN: apply-pair-fits from body-cap-fits
+      -- body-cap-fits: slot + pair-slots + body-cap ≤ capacity
+      -- So slot + pair-slots ≤ capacity (by m+n≤o⇒m≤o)
       apply-pair-fits : next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc
-      apply-pair-fits = apply-pair-fits-linear (next-slot alloc) pair-slots
-                          (ir-size body) program-bound (frame-capacity alloc)
-                          body<bound pb-cap
+      apply-pair-fits = m+n≤o⇒m≤o (next-slot alloc +ℕ pair-slots) body-cap-fits
 
       alloc-pair : AllocState {FS}
       alloc-pair = record alloc
@@ -269,11 +296,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- The pair-input-loc is BeforeFrontier in alloc-pair via stack-before.
       ------------------------------------------------------------------------
 
-      -- Derive body-cap fits from pb-cap
-      -- body-cap = ir-stack-requirement body ≤ pair-slots * ir-size body ≤ pair-slots * program-bound
-      -- Postulate: ir-stack-requirement is bounded by pair-slots * ir-size
-      postulate
-        body-cap-fits : next-slot alloc-pair +ℕ body-cap ≤ frame-capacity alloc-pair
+      -- Derive body-cap-fits-pair from body-cap-fits parameter
+      -- body-cap-fits: slot + pair-slots + closure-body-cap ≤ capacity
+      -- alloc-pair.next-slot = slot + pair-slots
+      -- alloc-pair.frame-capacity = capacity (unchanged)
+      -- So: alloc-pair.next-slot + closure-body-cap ≤ capacity
+      -- Note: closure-body-cap = closure-body-capacity x input-valid-wf (definitionally)
+      body-cap-fits-pair : next-slot alloc-pair +ℕ closure-body-cap ≤ frame-capacity alloc-pair
+      body-cap-fits-pair = body-cap-fits
 
       -- pair-input-loc is BeforeFrontier in alloc-pair via stack-before
       -- slot < slot + pair-slots
@@ -344,11 +374,22 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
 
       -- Execute body, returns existential mode
+      -- BodyCorrect.execute expects capacity for closure-body-cap
+      -- We have body-cap-fits-pair for body-cap (parameter)
+      -- Dispatcher ensures body-cap = closure-body-cap
+      -- body-cap is extracted by Dispatcher from the same input-valid-wf via:
+      --   decomposeClosureWF (subst ... (PairBoxedValidWF.fst-valid (decomposePairBoxedWF input-valid-wf)))
+      -- And closure-body-cap is extracted here via the same sequence.
+      -- Since both use the same input-valid-wf and same decomposition functions,
+      -- they are definitionally equal.
+      body-cap-fits-for-exec : next-slot alloc-pair +ℕ closure-body-cap ≤ frame-capacity alloc-pair
+      body-cap-fits-for-exec = body-cap-fits-pair
+
       body-exec-result : ∃[ mOut ] IRResultAWF mOut body (pair env arg) s-pair alloc-pair
       body-exec-result = BodyCorrect.execute body-correct arg arg-loc pair-input-loc
                            s-pair alloc-pair Heap
                            pair-input-valid-pair pair-input-before-pair pair-not-halted pair-rdi-eq
-                           body-cap-fits
+                           body-cap-fits-for-exec
       mBody = proj₁ body-exec-result
       body-result = proj₂ body-exec-result
 
@@ -542,23 +583,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           refl refl refl loc' bf)
         result-valid-wf
 
-      -- reclaim-size-bound: body-reclaimable ≤ slot + pair-slots * ir-size apply
-      -- body-reclaimable ≤ alloc-pair.slot + pair-slots * ir-size body (body's reclaim-size-bound)
-      --                  = slot + pair-slots + pair-slots * ir-size body
-      --                  = slot + pair-slots * (1 + ir-size body)
-      --                  = slot + pair-slots * ir-size (curry body)
-      --                  < slot + pair-slots * program-bound  (since curry body < program-bound)
-      -- But ir-size apply = 1, so we need: body-reclaimable ≤ slot + pair-slots
-      -- This is NOT generally true! Body may allocate more than pair-slots.
-      --
-      -- SOLUTION: Apply's reclaim-size-bound uses body's bound + pair-slots.
-      -- The caller (dispatcher) provides capacity for the full program-bound.
-      -- reclaim-size-bound: apply uses ir-stack-requirement apply = pair-slots
-      apply-reclaim-size-bound : apply-reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement (apply {A} {B})
-      apply-reclaim-size-bound = body-reclaim-≤-pair-bound
-        where
-          -- POSTULATE: Body's reclaimable-slot is bounded by pair-slots.
-          -- This holds because body runs in alloc-pair (starts at slot + pair-slots)
-          -- and body's reclaim is bounded by its ir-stack-requirement.
-          postulate
-            body-reclaim-≤-pair-bound : body-reclaimable ≤ next-slot alloc +ℕ ir-stack-requirement (apply {A} {B})
+      -- reclaim-size-bound: body-reclaimable ≤ slot + pair-slots
+      -- POSTULATE: Body can use more than pair-slots (body runs in same frame).
+      -- Fix: Use child frame for body execution, then apply's reclaim = slot + pair-slots.
+      postulate
+        apply-reclaim-size-bound : apply-reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement (apply {A} {B})

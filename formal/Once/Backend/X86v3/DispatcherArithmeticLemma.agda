@@ -147,63 +147,17 @@ pair-alloc-fits slot rf rg ps cap budget = subst (_≤ cap) (sym eq) budget
 
 ------------------------------------------------------------------------
 -- Apply capacity lemmas
---
--- These derive capacity for apply's pair allocation and body execution
--- from program-bound-cap.
 ------------------------------------------------------------------------
-
--- Apply pair allocation fits within frame
--- From program-bound-cap (slot +ℕ ps * pb ≤ cap) and body-size < pb,
--- derive: slot +ℕ ps ≤ cap
--- Proof: slot +ℕ ps ≤ slot +ℕ ps * pb ≤ cap (since ps ≤ ps * pb when pb ≥ 1)
-apply-pair-fits-linear : ∀ slot ps body-size pb cap →
-  body-size < pb →
-  slot +ℕ ps *ℕ pb ≤ cap →
-  slot +ℕ ps ≤ cap
-apply-pair-fits-linear slot ps body-size pb cap body<pb pb-cap =
-  ≤-trans (+-monoʳ-≤ slot ps≤ps*pb) pb-cap
-  where
-    open import Data.Nat using (z≤n)
-    open import Data.Nat.Properties using (*-identityʳ)
-    -- body-size < pb implies pb ≥ 1
-    -- body<pb : suc body-size ≤ pb
-    -- so pb ≥ suc body-size ≥ 1
-    pb≥1 : 1 ≤ pb
-    pb≥1 = ≤-trans (s≤s z≤n) body<pb
-    -- ps ≤ ps * pb when pb ≥ 1
-    -- ps = ps * 1 ≤ ps * pb
-    ps≤ps*pb : ps ≤ ps *ℕ pb
-    ps≤ps*pb = subst (_≤ ps *ℕ pb) (*-identityʳ ps) (*-monoʳ-≤ ps pb≥1)
-
--- Apply body capacity fits within frame
--- From program-bound-cap (slot +ℕ ps * pb ≤ cap) and body-size < pb,
--- derive: (slot +ℕ ps) +ℕ ps * body-size ≤ cap
--- Proof: (slot +ℕ ps) +ℕ ps * body-size = slot +ℕ (ps +ℕ ps * body-size)
---                                      = slot +ℕ ps * (1 + body-size)
---                                      ≤ slot +ℕ ps * pb  (since 1 + body-size ≤ pb from body-size < pb)
---                                      ≤ cap
-apply-body-cap-linear : ∀ slot ps body-size pb cap →
-  body-size < pb →
-  slot +ℕ ps *ℕ pb ≤ cap →
-  (slot +ℕ ps) +ℕ ps *ℕ body-size ≤ cap
-apply-body-cap-linear slot ps body-size pb cap body<pb pb-cap =
-  ≤-trans step4 pb-cap
-  where
-    open import Data.Nat.Properties using (*-suc; *-comm)
-    -- body-size < pb means suc body-size ≤ pb
-    suc-body≤pb : suc body-size ≤ pb
-    suc-body≤pb = body<pb
-    -- ps * suc body-size ≤ ps * pb
-    step1 : ps *ℕ suc body-size ≤ ps *ℕ pb
-    step1 = *-monoʳ-≤ ps suc-body≤pb
-    -- ps * suc body-size = ps +ℕ ps * body-size (by *-suc)
-    step2 : ps *ℕ suc body-size ≡ ps +ℕ ps *ℕ body-size
-    step2 = *-suc ps body-size
-    -- So ps +ℕ ps * body-size ≤ ps * pb
-    step3 : ps +ℕ ps *ℕ body-size ≤ ps *ℕ pb
-    step3 = subst (_≤ ps *ℕ pb) step2 step1
-    -- (slot +ℕ ps) +ℕ ps * body-size = slot +ℕ (ps +ℕ ps * body-size) ≤ slot +ℕ ps * pb
-    step4 : (slot +ℕ ps) +ℕ ps *ℕ body-size ≤ slot +ℕ ps *ℕ pb
-    step4 = subst (_≤ slot +ℕ ps *ℕ pb)
-              (sym (+-assoc slot ps (ps *ℕ body-size)))
-              (+-monoʳ-≤ slot step3)
+-- NOTE: Program-bound-based Apply capacity lemmas REMOVED
+--
+-- The following lemmas were removed as part of migration to X86-style
+-- dynamic capacity threading:
+--   - apply-pair-fits-linear
+--   - apply-body-cap-linear
+--   - apply-body-cap-bounded
+--
+-- Instead, capacity is threaded per-closure via BodyCorrect.body-capacity.
+-- NOTE: apply-body-cap-linear and apply-body-cap-bounded REMOVED
+-- These lemmas were part of the program-bound-based capacity derivation.
+-- Migration to X86-style dynamic capacity threading eliminates them.
+-- Capacity is now threaded per-closure via BodyCorrect.body-capacity.

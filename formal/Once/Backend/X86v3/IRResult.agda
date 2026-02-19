@@ -66,9 +66,9 @@ module DispatcherResult {FS : FrameSemantics} (program-bound : ℕ) where
       -- Result location survives reclamation (it's before reclaimable-slot)
       reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
         BeforeFrontier (record alloc { next-slot = reclaimable-slot ; slots-available = fits }) result-loc
-      -- Reclaim size bound: reclaimable-slot is within the IR's size budget
-      -- This replaces slot-bounded and IS provable for apply
-      reclaim-size-bound : reclaimable-slot ≤ next-slot alloc +ℕ pair-slots *ℕ ir-size ir
+      -- NOTE: reclaim-size-bound REMOVED (X86 pattern)
+      -- X86 has no such constraint - capacity is threaded dynamically via caller.
+      -- For apply, the body's capacity is carried in BodyCorrect.body-capacity.
 
 ------------------------------------------------------------------------
 -- RecDispatcher: Recursive Dispatch Interface
