@@ -173,7 +173,7 @@ compile-length (⟨ f , g ⟩ _) = length pair-setup +ℕ compile-length f +ℕ
 compile-length terminal = length terminal-instrs
 compile-length (curry f _) = 6 +ℕ length curry-thunk-setup +ℕ compile-length f +ℕ 5  -- closure + thunk + cleanup
 compile-length apply = length apply-instrs
--- Sum/fix type operations (postulated for now)
+-- Sum/fix type operations (placeholder lengths)
 compile-length (inl-ir _) = 1  -- placeholder
 compile-length (inr-ir _) = 1  -- placeholder
 compile-length (case-ir f g) = compile-length f +ℕ compile-length g  -- placeholder: no dispatch yet
@@ -215,7 +215,7 @@ compile-ir (curry f _) =
 
 compile-ir apply = apply-instrs
 
--- Sum/fix type operations (postulated - TODO: implement)
+-- Sum/fix type operations (TODO: implement)
 compile-ir (inl-ir _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
 compile-ir (inr-ir _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
 compile-ir (case-ir f g) = compile-ir f ++ compile-ir g  -- placeholder

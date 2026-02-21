@@ -155,20 +155,8 @@ module CapacityLemmas {FS : FrameSemantics} (program-bound : ℕ) where
       pools-fit = m+n≤o⇒n≤o pair-slots inv
     in ≤-trans two-pools pools-fit
 
-  -- Helper: after apply's pair allocation, SlotInWorking still holds
-  -- From slot +ℕ ps ≤ ps * pb, we get (slot +ℕ ps) + ps ≤ ps * pb + ps
-  -- But we need (slot +ℕ ps) + ps ≤ ps * pb for SlotInWorking at alloc-pair
-  -- This requires: slot + 2*ps ≤ ps * pb, i.e., slot ≤ ps * (pb - 2)
-  -- This is tighter than what we have!
-  --
-  -- The fix: SlotInWorking should include MORE slack.
-  -- But that complicates things. For now, let's keep the postulate.
-  --
-  -- Alternative: derive program-bound-cap-pair directly without SlotInWorking
-  -- See apply-pair-preserves-program-bound-cap below.
-
   -- After apply's pair allocation, program-bound-cap still holds
-  -- (even though SlotInWorking might not)
+  -- (even though SlotInWorking might not, since slot + 2*ps may exceed ps * pb)
   apply-pair-preserves-program-bound-cap : ∀ (alloc : AllocState {FS}) →
     CapacityInvariant alloc →
     SlotInWorking alloc →
