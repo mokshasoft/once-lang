@@ -100,11 +100,10 @@ module Correctness
              Represents mOut alloc' (eval ir x) result-loc s'
       go mIn x input-loc s alloc repr before ir<bound =
         -- Invoke Dispatcher (with operational details it needs)
-        let (mOut , result) = D.run-ir-wf mIn ir ir<bound x input-loc s alloc
+        let (mOut , result) = D.run-wf mIn ir ir<bound x input-loc s alloc
               repr before
               -- Operational details (not part of the theorem statement)
               not-halted rdi-eq capacity-ok
-              (D.get-acc-from-pb (ir-size ir) ir<bound)
         in mOut
          , CWF.IRResultAWF.result-loc result
          , CWF.IRResultAWF.final-state result
