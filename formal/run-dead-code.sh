@@ -12,7 +12,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-AGDA_BIN="/home/whatever/Repo/OpenSource/agda/dist-newstyle/build/x86_64-linux/ghc-9.6.6/Agda-2.8.0/x/agda/build/agda/agda"
+AGDA_BIN=$(ls -t /home/whatever/Repo/OpenSource/agda/dist-newstyle/build/x86_64-linux/ghc-*/Agda-2.8.0/x/agda/build/agda/agda 2>/dev/null | head -1)                   
 
 ENTRY_POINT="${1:-Once.Backend.X86v3.WholeProgram.Correctness.compile-correct}"
 AGDA_FILE="${2:-Once/Backend/X86v3/WholeProgram.agda}"
