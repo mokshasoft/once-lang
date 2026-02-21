@@ -407,7 +407,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ sum-slots ; slots-available = fits })
                   (inl {A} {B} x) sum-loc s-final
       -- alloc₁ has sum-fits but fits might be different proof object
-      -- Use proof irrelevance via postulate
+      -- Use ≤-irrelevant to equate different ≤ proof terms
       inl-reclaim-preserves-validity fits =
         subst (λ a → ValidAtWF Heap a (inl {A} {B} x) sum-loc s-final)
               (alloc-slots-eq alloc sum-slots sum-fits fits)

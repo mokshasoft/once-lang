@@ -43,9 +43,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            validityWF-with-bf-transfer;
            at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
 
-  -- Import ApplyWF for bf-same-frame-slot
+  -- Import bf-same-frame-slot from BFTransfer module
   open import Once.Backend.X86v3.IR.ApplyWF
-  open ApplyWFImpl {FS} program-bound
+  open BFTransfer {FS}
     using (bf-same-frame-slot)
 
   -- Import lemmas

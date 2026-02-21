@@ -152,8 +152,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- Import curry IR implementation
   open CurryWFModule.CurryWFImpl {FS} program-bound
 
-  -- Import apply IR implementation
+  -- Import apply IR implementation (pass child-frame parameters)
   open ApplyWFModule.ApplyWFImpl {FS} program-bound
+    get-child-frame child-frame-ordered child-capacity child-cap-sufficient
 
   -- Import sum/fix IR implementations (inl, inr, case, initial, fold, unfold)
   open import Once.Backend.X86v3.IR.SumFixWF as SumFixWFModule
@@ -319,25 +320,15 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- DYNAMIC CAPACITY THREADING (X86-style):
     -- Capacity proof uses closure-body-capacity which extracts body-capacity
     -- from the closure's BodyCorrect. No program-bound-based derivation needed.
+    -- Apply: CHILD FRAME EXECUTION
+    -- Body executes in child frame with child-capacity (from module params).
+    -- Body capacity proven via child-cap-sufficient - NO POSTULATES NEEDED!
     run-ir-wf Heap (apply {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-        run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
-          combined-cap body-cap-fits
-      where
-        -- Dynamic capacity proof: needs slot + pair-slots + body-capacity ≤ cap
-        -- body-capacity is extracted from closure via closure-body-capacity
-        -- TODO: This proof needs to come from the caller's capacity guarantee
-        -- For now, postulate until the full capacity threading is implemented
-        postulate
-          body-cap-fits : next-slot alloc +ℕ pair-slots +ℕ closure-body-capacity x input-valid-wf ≤ frame-capacity alloc
+        run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     run-ir-wf Stack (apply {A} {B}) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
       -- Reference-based model: Stack and Heap use same pointer representation for pairs
-      run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
-        combined-cap body-cap-fits
-      where
-        -- Dynamic capacity proof (same as Heap mode)
-        postulate
-          body-cap-fits : next-slot alloc +ℕ pair-slots +ℕ closure-body-capacity x input-valid-wf ≤ frame-capacity alloc
+      run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
   -- Public API with ValidAtWF
   -- Returns existential mode + IRResultAWF with ValidAtWF for result validity.

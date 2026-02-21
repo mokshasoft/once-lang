@@ -59,9 +59,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
 
-  -- Import ApplyWF for bf-same-frame-slot
+  -- Import bf-same-frame-slot from BFTransfer module
   open import Once.Backend.X86v3.IR.ApplyWF
-  open ApplyWFImpl {FS} program-bound
+  open BFTransfer {FS}
     using (bf-same-frame-slot)
 
   ------------------------------------------------------------------------

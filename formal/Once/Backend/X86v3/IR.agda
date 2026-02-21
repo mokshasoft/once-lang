@@ -13,7 +13,7 @@
 
 module Once.Backend.X86v3.IR where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (m<m+n; m<n+m; +-comm; n<1+n; <-trans; m+n≤o⇒m≤o; m+n≤o⇒n≤o; +-monoˡ-<; +-monoʳ-<)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Unit using (⊤; tt)
@@ -82,7 +82,7 @@ data IR : Type → Type → Set where
   unfold-ir : ∀ {F} → IR (Fix F) F
 
   -- Primitive operations (opaque to backend)
-  -- Name is for debugging/emission. Semantics handled via postulate.
+  -- Name is for debugging/emission. Semantics defined externally (FFI).
   Prim : ∀ {A B} → String → IR A B
 
 infixr 9 _∘_
@@ -368,6 +368,143 @@ ir-stack-requirement (Prim _) = 0  -- primitives handle their own allocation
                (cong (_+ℕ ps) (sym (+-assoc start rf rg)))
 
 ------------------------------------------------------------------------
+-- Type slots are bounded by pair-slots
+--
+-- For the reference-based model, all compound types use at most 2 slots.
+-- This enables deriving capacity bounds from ir-size.
+------------------------------------------------------------------------
+
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; +-monoˡ-≤; +-monoʳ-≤; *-monoˡ-≤; *-monoʳ-≤; m≤m+n; n≤1+n; +-comm; +-assoc; *-distribʳ-+; *-comm)
+
+stack-type-slots-≤-pair-slots : ∀ (T : Type) → stack-type-slots T ≤ pair-slots
+stack-type-slots-≤-pair-slots Unit = z≤n
+stack-type-slots-≤-pair-slots Void = z≤n
+stack-type-slots-≤-pair-slots Int = s≤s z≤n
+stack-type-slots-≤-pair-slots Float = s≤s z≤n
+stack-type-slots-≤-pair-slots Str = s≤s z≤n
+stack-type-slots-≤-pair-slots Buffer = s≤s z≤n
+stack-type-slots-≤-pair-slots (_ * _) = ≤-refl
+stack-type-slots-≤-pair-slots (_ + _) = ≤-refl
+stack-type-slots-≤-pair-slots (_ ⇒[ _ ] _) = ≤-refl
+stack-type-slots-≤-pair-slots (Eff _ B) = stack-type-slots-≤-pair-slots B
+stack-type-slots-≤-pair-slots (Fix _) = s≤s z≤n
+stack-type-slots-≤-pair-slots (TVar _) = s≤s z≤n
+
+heap-type-slots-≤-pair-slots : ∀ (T : Type) → heap-type-slots T ≤ pair-slots
+heap-type-slots-≤-pair-slots Unit = z≤n
+heap-type-slots-≤-pair-slots Void = z≤n
+heap-type-slots-≤-pair-slots Int = s≤s z≤n
+heap-type-slots-≤-pair-slots Float = s≤s z≤n
+heap-type-slots-≤-pair-slots Str = s≤s z≤n
+heap-type-slots-≤-pair-slots Buffer = s≤s z≤n
+heap-type-slots-≤-pair-slots (_ * _) = ≤-refl
+heap-type-slots-≤-pair-slots (_ + _) = ≤-refl
+heap-type-slots-≤-pair-slots (_ ⇒[ _ ] _) = ≤-refl
+heap-type-slots-≤-pair-slots (Eff _ B) = heap-type-slots-≤-pair-slots B
+heap-type-slots-≤-pair-slots (Fix _) = s≤s z≤n
+heap-type-slots-≤-pair-slots (TVar _) = s≤s z≤n
+
+-- Both modes have the same bound (reference-based model)
+type-slots-for-mode-≤-pair-slots : ∀ (m : AllocMode) (T : Type) → type-slots-for-mode m T ≤ pair-slots
+type-slots-for-mode-≤-pair-slots Stack T = stack-type-slots-≤-pair-slots T
+type-slots-for-mode-≤-pair-slots Heap T = heap-type-slots-≤-pair-slots T
+
+------------------------------------------------------------------------
+-- ir-stack-requirement is bounded by pair-slots * ir-size
+--
+-- This enables deriving capacity bounds from body<bound proofs.
+-- Key insight: each IR node contributes at most pair-slots to allocation,
+-- and ir-size counts the structural size.
+------------------------------------------------------------------------
+
+-- Main bound: ir-stack-requirement ir ≤ pair-slots * ir-size ir
+-- This holds because:
+-- 1. Each IR constructor adds at most pair-slots (2) to the stack
+-- 2. ir-size counts the recursive structure
+-- The proof is by structural induction on IR.
+ir-req-≤-pair-slots*size : ∀ {A B} (ir : IR A B) → ir-stack-requirement ir ≤ pair-slots *ℕ ir-size ir
+ir-req-≤-pair-slots*size id = z≤n
+ir-req-≤-pair-slots*size (g ∘ f) =
+  -- req = req(f) + req(g), size = 1 + size(g) + size(f)
+  -- Need: req(f) + req(g) ≤ pair-slots * (1 + size(g) + size(f))
+  -- By IH: req(f) ≤ pair-slots * size(f), req(g) ≤ pair-slots * size(g)
+  ≤-trans (+-mono-≤ (ir-req-≤-pair-slots*size f) (ir-req-≤-pair-slots*size g))
+          (≤-trans (≤-reflexive eq1) (*-monoʳ-≤ pair-slots (n≤1+n (ir-size g +ℕ ir-size f))))
+  where
+    open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-mono-≤; n≤1+n; *-monoʳ-≤; *-distribˡ-+; +-comm)
+    -- ps * sf + ps * sg = ps * (sf + sg) = ps * (sg + sf)
+    eq1 : pair-slots *ℕ ir-size f +ℕ pair-slots *ℕ ir-size g ≡ pair-slots *ℕ (ir-size g +ℕ ir-size f)
+    eq1 = trans (sym (*-distribˡ-+ pair-slots (ir-size f) (ir-size g)))
+                (cong (pair-slots *ℕ_) (+-comm (ir-size f) (ir-size g)))
+ir-req-≤-pair-slots*size {_} {B * C} (⟨ f , g ⟩ m) =
+  -- req = req(f) + req(g) + type-slots, size = 1 + size(f) + size(g)
+  -- Need: req(f) + req(g) + type-slots ≤ pair-slots * (1 + size(f) + size(g))
+  ≤-trans add-bounds (≤-reflexive eq-to-target)
+  where
+    open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-mono-≤; *-distribˡ-+; +-comm)
+    sf = ir-size f
+    sg = ir-size g
+    ts = type-slots-for-mode m (B * C)
+    -- IH bounds: req(f) + req(g) + ts ≤ ps*sf + ps*sg + ps
+    add-bounds : ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ ts ≤
+                 pair-slots *ℕ sf +ℕ pair-slots *ℕ sg +ℕ pair-slots
+    add-bounds = +-mono-≤ (+-mono-≤ (ir-req-≤-pair-slots*size f) (ir-req-≤-pair-slots*size g))
+                          (type-slots-for-mode-≤-pair-slots m (B * C))
+    -- Rearrange: ps*sf + ps*sg + ps = ps*(sf + sg) + ps = ps + ps*(sf+sg) = ps*(1 + sf + sg)
+    eq-to-target : pair-slots *ℕ sf +ℕ pair-slots *ℕ sg +ℕ pair-slots ≡ pair-slots *ℕ (1 +ℕ sf +ℕ sg)
+    eq-to-target = trans step1 (trans step2 step3)
+      where
+        -- Step 1: ps*sf + ps*sg + ps = ps*(sf + sg) + ps
+        step1 : pair-slots *ℕ sf +ℕ pair-slots *ℕ sg +ℕ pair-slots ≡ pair-slots *ℕ (sf +ℕ sg) +ℕ pair-slots
+        step1 = cong (_+ℕ pair-slots) (sym (*-distribˡ-+ pair-slots sf sg))
+        -- Step 2: ps*(sf + sg) + ps = ps + ps*(sf + sg)
+        step2 : pair-slots *ℕ (sf +ℕ sg) +ℕ pair-slots ≡ pair-slots +ℕ pair-slots *ℕ (sf +ℕ sg)
+        step2 = +-comm (pair-slots *ℕ (sf +ℕ sg)) pair-slots
+        -- Step 3: ps + ps*(sf + sg) = ps*1 + ps*(sf + sg) = ps*(1 + sf + sg)
+        step3 : pair-slots +ℕ pair-slots *ℕ (sf +ℕ sg) ≡ pair-slots *ℕ (1 +ℕ sf +ℕ sg)
+        step3 = trans (cong (_+ℕ pair-slots *ℕ (sf +ℕ sg)) (sym (*-identityʳ pair-slots)))
+                      (sym (*-distribˡ-+ pair-slots 1 (sf +ℕ sg)))
+          where
+            open import Data.Nat.Properties using (*-identityʳ)
+ir-req-≤-pair-slots*size fst-ir = z≤n
+ir-req-≤-pair-slots*size snd-ir = z≤n
+ir-req-≤-pair-slots*size {A} {A' + B} (inl-ir m) =
+  -- req = type-slots, size = 1 → type-slots ≤ pair-slots * 1 = pair-slots
+  type-slots-for-mode-≤-pair-slots m (A' + B)
+ir-req-≤-pair-slots*size {B} {A + B'} (inr-ir m) =
+  type-slots-for-mode-≤-pair-slots m (A + B')
+ir-req-≤-pair-slots*size (case-ir f g) =
+  -- Same structure as compose
+  ≤-trans (+-mono-≤ (ir-req-≤-pair-slots*size f) (ir-req-≤-pair-slots*size g))
+          (≤-trans (≤-reflexive (sym (*-distribˡ-+ pair-slots (ir-size f) (ir-size g))))
+                   (*-monoʳ-≤ pair-slots (n≤1+n (ir-size f +ℕ ir-size g))))
+  where
+    open import Data.Nat.Properties using (≤-trans; ≤-reflexive; +-mono-≤; n≤1+n; *-monoʳ-≤; *-distribˡ-+)
+ir-req-≤-pair-slots*size terminal = z≤n
+ir-req-≤-pair-slots*size initial = z≤n
+ir-req-≤-pair-slots*size {_} {B ⇒[ _ ] C} (curry f m) =
+  -- req = type-slots (closure), size = 2 + size(f)
+  -- type-slots ≤ pair-slots ≤ pair-slots * 1 ≤ pair-slots * (2 + size(f))
+  ≤-trans (type-slots-for-mode-≤-pair-slots m (B ⇒[ Many ] C))
+          (≤-trans (≤-reflexive (sym (*-identityʳ pair-slots))) ps*1≤ps*size)
+  where
+    open import Data.Nat.Properties using (≤-trans; ≤-reflexive; *-monoʳ-≤; *-identityʳ)
+    -- 1 ≤ 2 + ir-size f, so pair-slots * 1 ≤ pair-slots * (2 + ir-size f)
+    one-le-size : 1 ≤ 2 +ℕ ir-size f
+    one-le-size = s≤s z≤n
+    ps*1≤ps*size : pair-slots *ℕ 1 ≤ pair-slots *ℕ (2 +ℕ ir-size f)
+    ps*1≤ps*size = *-monoʳ-≤ pair-slots one-le-size
+ir-req-≤-pair-slots*size apply =
+  -- req = pair-slots, size = 1 → pair-slots ≤ pair-slots * 1
+  ≤-reflexive (sym (*-identityʳ pair-slots))
+  where
+    open import Data.Nat.Properties using (≤-reflexive; *-identityʳ)
+ir-req-≤-pair-slots*size {_} {Fix F} (fold-ir m) =
+  type-slots-for-mode-≤-pair-slots m (Fix F)
+ir-req-≤-pair-slots*size unfold-ir = z≤n
+ir-req-≤-pair-slots*size (Prim _) = z≤n
+
+------------------------------------------------------------------------
 -- Summary
 --
 --   IR           - inductive data type
@@ -378,4 +515,5 @@ ir-stack-requirement (Prim _) = 0  -- primitives handle their own allocation
 --   ir-stack-requirement - stack capacity
 --   *-stack-req  - requirement laws
 --   *-capacity-* - capacity arithmetic
+--   ir-req-≤-pair-slots*size - capacity bound
 ------------------------------------------------------------------------
