@@ -259,7 +259,7 @@ module FrontierInvariant {FS : FrameSemantics} where
   -- Stack Ancestor Source (Provenance Tracking)
   --
   -- When we have stack-ancestor (current ≺ f), we track where f came from.
-  -- This enables eliminating postulates in child-to-parent transfer:
+  -- This enables clean child-to-parent transfer:
   --
   --   - src-origin: f is the origin frame (e.g., parent frame), with slot bound
   --   - src-above-origin: origin ≺ f (f is above origin in the call stack)
@@ -292,9 +292,8 @@ module FrontierInvariant {FS : FrameSemantics} where
   --   - If child ≺ parent and we have stack-ancestor (parent ≺ f),
   --     then by transitivity child ≺ f, so stack-ancestor still holds.
   --
-  -- The stack-ancestor case now includes provenance tracking via
+  -- The stack-ancestor case includes provenance tracking via
   -- StackAncestorSource, which records where the ancestor proof came from.
-  -- This enables clean child-to-parent transfer without postulates.
   --
   -- Key insight: current-frame ≺ f means f is an ancestor (caller) of current.
   data BeforeFrontier (alloc : AllocState {FS}) : ValueLocation FS → Set where
@@ -547,5 +546,4 @@ module FrameOps {FS : FrameSemantics} where
 --     pop-frame            : restore parent frame after body completes
 --     parent-before-child  : BeforeFrontier transfers via transitivity (child ≺ parent)
 --
--- NO POSTULATES - all operations are concrete.
 ------------------------------------------------------------------------

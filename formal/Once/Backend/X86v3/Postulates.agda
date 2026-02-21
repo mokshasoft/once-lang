@@ -295,11 +295,6 @@ module CapacityLemmas {FS : FrameSemantics} (program-bound : ℕ) where
 
 ------------------------------------------------------------------------
 -- Re-export CapacityLemmas for convenience
---
--- This module re-exports the capacity lemmas from CapacityLemmas.
--- The old postulate interface has been eliminated - all capacity proofs
--- now use program-bound-cap-from-invariant with CapacityInvariant and
--- SlotInWorking threaded through the dispatcher.
 ------------------------------------------------------------------------
 
 module CapacityPostulates {FS : FrameSemantics} (program-bound : ℕ) where

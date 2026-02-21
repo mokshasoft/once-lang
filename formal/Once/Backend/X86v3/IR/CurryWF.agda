@@ -190,10 +190,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       --
       -- Uses ir-stack-requirement for body-capacity
       --
-      -- STACK-ALLOCATED RESULTS: No escape postulate needed!
       -- Body can return stack-allocated values. Apply uses body's reclaimable-slot
-      -- for reclamation, so stack slots below that survive. Body's
-      -- reclaim-preserves-result proves the result survives reclamation.
+      -- for reclamation, so stack slots below that survive.
 
       body-correct : BodyCorrect f x input-loc program-bound
       body-correct = record

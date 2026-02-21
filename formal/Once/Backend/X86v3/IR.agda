@@ -118,7 +118,7 @@ eval unfold-ir x = unfold x
 eval (Prim name) x = prim-semantics name x
 
 ------------------------------------------------------------------------
--- Evaluation Laws (PROVEN)
+-- Evaluation Laws
 --
 -- These laws hold for any AllocMode since AllocMode is phantom.
 ------------------------------------------------------------------------
@@ -184,7 +184,7 @@ ir-size unfold-ir = 1
 ir-size (Prim _) = 1
 
 ------------------------------------------------------------------------
--- Size Lemmas (PROVEN)
+-- Size Lemmas
 ------------------------------------------------------------------------
 
 -- Helper: 0 < ir-size for all IR
@@ -370,14 +370,12 @@ ir-stack-requirement (Prim _) = 0  -- primitives handle their own allocation
 ------------------------------------------------------------------------
 -- Summary
 --
--- ALL definitions and lemmas are PROVEN (no postulates):
---
 --   IR           - inductive data type
---   eval         - pattern matching
---   eval-*       - all refl
---   ir-size      - pattern matching
---   *-smaller    - arithmetic proofs
---   ir-stack-requirement - pattern matching
---   *-stack-req  - all refl
---   *-capacity-* - arithmetic proofs
+--   eval         - denotational semantics
+--   eval-*       - evaluation laws
+--   ir-size      - structural size metric
+--   *-smaller    - size ordering lemmas
+--   ir-stack-requirement - stack capacity
+--   *-stack-req  - requirement laws
+--   *-capacity-* - capacity arithmetic
 ------------------------------------------------------------------------

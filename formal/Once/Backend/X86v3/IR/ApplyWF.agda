@@ -101,23 +101,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnHeap r o) (heap-before r<hr)
     rewrite hr-eq = heap-before r<hr
 
-  ------------------------------------------------------------------------
-  -- ValidAtWF Frame Transport with explicit BeforeFrontier transfer
-  --
-  -- Transfer ValidAtWF between allocation states using a general
-  -- BeforeFrontier transfer function. This is the core lemma for
-  -- validityWF-frame-transport.
-  --
-  -- The bf-transfer function is applied to all sublocations in the value.
-  --
-  -- For closure types, pattern matching on valid-closure-wf with its complex
-  -- implicit argument structure causes parsing issues, so we use a postulate.
-  -- The proof is straightforward: apply bf-transfer to all sublocation proofs
-  -- (eb, cb, slb) and recursively transfer the env validity (ev).
-  ------------------------------------------------------------------------
-
   -- ValidAtWF transfer between allocation states
-  -- Now imported from ClosureWellFormed: validityWF-with-bf-transfer
+  -- Imported from ClosureWellFormed: validityWF-with-bf-transfer
 
   ------------------------------------------------------------------------
   -- Helper: Extract body-capacity from apply input's closure
@@ -160,9 +145,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   --    or stack-allocated in reclaimed region (IMPOSSIBLE by all-escape)
   -- 4. Escape analysis ensures escaping values are heap-allocated
   --
-  -- KEY FIX: body-cap is extracted from input via closure-body-capacity,
-  -- not passed as a separate parameter. This eliminates the body-cap-matches
-  -- postulate because both the type signature and body use the same extraction.
+  -- KEY: body-cap is extracted from input via closure-body-capacity,
+  -- not passed as a separate parameter. Both the type signature and body
+  -- use the same extraction, so they match definitionally.
   ------------------------------------------------------------------------
 
   run-apply : ∀ {A B}

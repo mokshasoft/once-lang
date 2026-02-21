@@ -8,10 +8,7 @@
 --
 -- IMPORTANT: Closures track their body IR!
 -- Since we create all closures via curry, we know exactly what IR
--- each closure contains. This enables Apply to dispatch without
--- postulates.
---
--- NO POSTULATES - everything is defined concretely.
+-- each closure contains. This enables Apply to dispatch to bodies.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86v3.Validity where
@@ -44,7 +41,7 @@ open import Once.Backend.X86v3.IR
 --   - Unit: always valid (no memory requirements)
 --
 -- Key insight: By tracking the body IR in closures, Apply can extract
--- the IR and dispatch to it recursively without postulates.
+-- the IR and dispatch to it recursively.
 ------------------------------------------------------------------------
 
 -- ValidityDef is now parameterized by program-bound for termination
@@ -223,7 +220,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       v-is-fold : v ≡ fold unfolded
 
   ------------------------------------------------------------------------
-  -- Decomposition lemmas (PROVEN, not postulated!)
+  -- Decomposition lemmas
   ------------------------------------------------------------------------
 
   decomposePair : ∀ {alloc A B} {p : ⟦ A * B ⟧} {loc s} →
@@ -356,7 +353,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
   composeFold v fix-loc unfolded-loc s up ub uv = valid-fold up ub uv
 
   ------------------------------------------------------------------------
-  -- Validity depends only on memory (PROVEN)
+  -- Validity depends only on memory
   ------------------------------------------------------------------------
 
   -- Helper for readLoc equality
@@ -436,23 +433,19 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
 ------------------------------------------------------------------------
 -- Summary
 --
--- This module provides CONCRETE definitions (no postulates):
---
 --   Type, ⟦_⟧, fst, snd, pair  - from Types module
 --
 --   ValidAt       - inductive validity predicate
---   valid-closure - NOW TRACKS BODY IR AND ENV!
+--   valid-closure - tracks body IR and env
 --
 --   PairValid     - extracted pair structure
---   ClosureValid  - extracted closure structure WITH BODY IR
+--   ClosureValid  - extracted closure structure with body IR
 --
---   decomposePair     - PROVEN extraction
---   decomposeClosure  - PROVEN extraction, gives body IR
---   composePair       - PROVEN composition
---   composeClosure    - PROVEN composition for closures
---   validity-mem-only - PROVEN memory-only dependence
+--   decomposePair, decomposeClosure  - extraction
+--   composePair, composeClosure      - composition
+--   validity-mem-only                - memory-only dependence
 --
 -- KEY INSIGHT: Since we create all closures via curry, we know their
 -- body IRs. decomposeClosure extracts this, enabling Apply to dispatch
--- to the body without postulates.
+-- to the body.
 ------------------------------------------------------------------------

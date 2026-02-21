@@ -14,8 +14,7 @@
 --   - Callee's slots: addr(callee) + k * 8, staying below addr(caller)
 --   - Caller's slots: addr(caller) + j * 8, at or above addr(caller)
 --
--- Bounded disjointness is PROVEN from arithmetic on slot addresses.
--- All lemmas in this module are FULLY PROVEN (no postulates).
+-- Bounded disjointness follows from arithmetic on slot addresses.
 ------------------------------------------------------------------------
 
 module Once.Backend.X86v3.FrameInstantiation where
@@ -130,7 +129,7 @@ x86-≺-compare f₁ f₂ with <-cmp (sp-addr f₁) (sp-addr f₂)
 ... | tri> _ _ b<a = inj₂ (inj₂ b<a)
 
 ------------------------------------------------------------------------
--- Frame Disjointness (FULLY PROVEN)
+-- Frame Disjointness
 --
 -- When f₁ ≺ f₂ (f₁ at lower address), bounded slots of f₁ are disjoint
 -- from all slots of f₂.
@@ -195,8 +194,6 @@ x86-frame-disjoint-with-capacity f₁ f₂ k₁ k₂ capacity f₁<f₂ k₁<cap
 
 ------------------------------------------------------------------------
 -- X86-64 FrameSemantics Instance
---
--- ALL properties are FULLY PROVEN (no postulates).
 ------------------------------------------------------------------------
 
 x86v3-frame-semantics : FrameSemantics

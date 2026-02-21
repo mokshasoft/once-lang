@@ -64,10 +64,9 @@ import Once.Backend.X86v3.IR.ApplyWF as ApplyWFModule
 open import Once.Backend.X86v3.WriteOps public using (module WriteWithDisjoint)
 
 ------------------------------------------------------------------------
--- Closure IR Tracking - NOW FROM VALIDITY!
+-- Closure IR Tracking
 --
 -- Since valid-closure tracks the body IR, we get it from decomposition.
--- No postulates needed - we create all closures, so we know their bodies.
 --
 -- KEY INSIGHT: ApplySetupResult now contains:
 --   - body : IR (EnvType * A) B
@@ -100,8 +99,6 @@ open import Once.Backend.X86v3.WriteOps public using (module WriteWithDisjoint)
 --
 -- This ensures that at any point in execution:
 --   slot + pair-slots * program-bound <= frame-capacity
---
--- The constraint is provided as a function parameter rather than a postulate.
 ------------------------------------------------------------------------
 
 module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ program-bound)
@@ -353,8 +350,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf mIn ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
       (get-acc-from-pb (ir-size ir) ir<bound)
 
-  -- NOTE: The basic ValidAt API (`run`) has been removed because it required
-  -- a postulate to convert ValidAt to ValidAtWF. Use `run-wf` instead.
+  -- NOTE: Use `run-wf` with ValidAtWF inputs. The basic ValidAt API was removed.
   --
   -- For program entry with non-closure inputs, construct ValidAtWF directly:
   --   - valid-unit-wf for Unit values
@@ -389,45 +385,6 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 -- ValidAt alloc v loc s = validity + BeforeFrontier for all component locs
 -- IRResultA includes final-alloc + result-before frontier proof + capacity-preserved
 --
--- ELIMINATED POSTULATES (Tier 1 - PROVEN):
---   ✓ slot-bounded-compose - arithmetic proof with helper lemma
---   ✓ slot-bounded-pair - arithmetic proof with helper lemma
---   ✓ sucLoc-before-from-snd (4x) - added sucLoc-before to ValidAt structure
---   ✓ sucLoc-before-from-code (4x) - added sucLoc-before to ValidAt structure
---   ✓ validityWF-mem-only - memory transport for ValidAtWF (structural induction)
---   ✓ closure-fits - DIRECTLY from ir-capacity (curry case)
---   ✓ apply-pair-fits - DIRECTLY from ir-capacity (apply case)
---   ✓ ir-cap-f (pair case) - arithmetic via +-assoc and m+n≤o⇒m≤o
---   ✓ ir-cap-g (pair case) - arithmetic via +-monoˡ-≤ and capacity-preserved
---   ✓ pair-fits (pair case) - arithmetic via slot bounds and +-assoc
---
--- ELIMINATED POSTULATES (Tier 3 - IMPLEMENTED):
---   ✓ body-smaller - body<bound from ClosureValid (extracted via ApplySetupResult)
---   ✓ pair-input-loc, s-pair, alloc-pair - actual pair construction
---   ✓ pair-input-valid, pair-input-before - derived from validity proofs
---   ✓ pair-not-halted, pair-rdi-eq - register/state proofs
---   ✓ result-loc, s-final, final-alloc - from recursive dispatch
---   ✓ body-result-valid, result-before - from run-ir result (via BodyCorrect.execute)
---   ✓ rax-eq, not-halted-final - from IRResultAWF fields
---   ✓ frame-preserved-apply, heap-monotone-apply - from recursive call
---   ✓ capacity-preserved-apply - from recursive call
---
--- FULLY PROVEN (no postulates):
---   - id, fst-ir, snd-ir, terminal (all cases of run-ir-wf)
---   - compose (including ir-capacity derivation for sub-IRs)
---   - curry (closure-fits proven from ir-capacity)
---   - apply (apply-pair-fits proven from ir-capacity)
---   - compose slot-bounded, pair slot-bounded
---   - validity-write-at-frontier (uses sucLoc-before from ValidAt)
---   - validity-write-at-suc-frontier (uses sucLoc-before from ValidAt)
---   - validityWF-write-at-frontier, validityWF-write-at-suc-frontier
---   - Apply setup: extracts body IR and all components from closure
---   - Apply termination: uses BodyCorrect.execute instead of run-ir
---   - Apply semantic correctness: result-valid uses closure-is-body
---   - Sum types: inl-ir, inr-ir, case-ir (all delegated to SumFixWF)
---   - Recursive types: fold-ir, unfold-ir (all delegated to SumFixWF)
---   - Initial: absurd elimination (trivial via pattern match on ⊥)
---
 -- REMAINING POSTULATES (design-level):
 --
 --   Slot bound (1 - ApplyWF.agda):
@@ -452,8 +409,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 --
 -- CAPACITY ARCHITECTURE:
 --   - Module parameter `frame-cap-sufficient` ensures capacity >= 2 * pair-slots * pb
---   - This is NOT a postulate but a precondition the caller must satisfy
---   - The WholeProgram module should allocate frames with sufficient capacity
+--   - WholeProgram module allocates frames with sufficient capacity
 --
 -- NEXT STEPS:
 --   1. Implement new-frame semantics for apply body execution (eliminates slot-bounded-apply)
