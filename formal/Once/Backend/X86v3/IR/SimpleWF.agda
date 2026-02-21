@@ -37,7 +37,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; valid-unit-wf;
            validityWF-mem-only; validityWF-frontier-advance;
-           decomposePairBoxedWF; PairBoxedValidWF)
+           decomposePairBoxedWF; PairBoxedValidWF;
+           decomposePairUnboxedWF; PairUnboxedValidWF)
 
   -- Import frontier-same-heap for reclaim-preserves-result
   open import Once.Backend.X86v3.FrontierLemma using (module FrontierLemmas)
@@ -199,6 +200,112 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           -- Transfer from alloc to reclaimed alloc (only slots-available differs)
           validityWF-frontier-advance (proj₂ x) snd-loc s' refl ≤-refl ≤-refl snd-valid-wf-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0  -- ir-stack-requirement snd-ir = 0
+      }
+
+  ------------------------------------------------------------------------
+  -- Fst-Stack: extract first component from unboxed pair
+  -- Input must be Stack (unboxed), output mode is component's mode (mA)
+  --
+  -- For unboxed pairs, the first component IS at input-loc (no dereference)
+  ------------------------------------------------------------------------
+
+  run-stack-fst : ∀ {A B}
+    (x : ⟦ A * B ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF Stack alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    ∃[ mA ] IRResultAWF mA (fst-ir {A} {B}) x s alloc
+  run-stack-fst {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    let pair-decomp = decomposePairUnboxedWF input-valid-wf
+        mA = PairUnboxedValidWF.mA pair-decomp
+        fst-valid-wf = PairUnboxedValidWF.fst-valid pair-decomp
+        fst-before = PairUnboxedValidWF.fst-before pair-decomp
+        -- For unboxed pairs, fst is at input-loc (no dereference needed)
+        -- Just move RDI to RAX
+        s' = exec (mov RAX RDI) s
+        fst-valid-wf-s' = validityWF-mem-only (proj₁ x) input-loc s s'
+                            (mov-preserves-stackMem RAX RDI s)
+                            (mov-preserves-heapMem RAX RDI s)
+                            fst-valid-wf
+    in mA , record
+      { result-loc = input-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; result-valid-wf = fst-valid-wf-s'
+      ; result-before = fst-before
+      ; rax-is-result = trans (mov-result RAX RDI s) rdi-eq
+      ; not-halted = not-halted
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
+      ; capacity-preserved = refl
+      ; mem-preserved-before = λ loc _ →
+          readLoc-stackMem-eq s' s loc
+            (mov-preserves-stackMem RAX RDI s)
+            (mov-preserves-heapMem RAX RDI s)
+      -- Reclamation: fst doesn't allocate
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits →
+          frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl input-loc fst-before
+      ; reclaim-preserves-validity = λ fits →
+          validityWF-frontier-advance (proj₁ x) input-loc s' refl ≤-refl ≤-refl fst-valid-wf-s'
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      }
+
+  ------------------------------------------------------------------------
+  -- Snd-Stack: extract second component from unboxed pair
+  -- Input must be Stack (unboxed), output mode is component's mode (mB)
+  --
+  -- For unboxed pairs, the second component is at offsetLoc input-loc (stack-type-slots A)
+  -- No dereference needed - just compute the offset address
+  ------------------------------------------------------------------------
+
+  run-stack-snd : ∀ {A B}
+    (x : ⟦ A * B ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF Stack alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    ∃[ mB ] IRResultAWF mB (snd-ir {A} {B}) x s alloc
+  run-stack-snd {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    let pair-decomp = decomposePairUnboxedWF input-valid-wf
+        mB = PairUnboxedValidWF.mB pair-decomp
+        snd-loc = offsetLoc input-loc (stack-type-slots A)
+        snd-valid-wf = PairUnboxedValidWF.snd-valid pair-decomp
+        snd-before = PairUnboxedValidWF.snd-before pair-decomp
+        -- For unboxed pairs, snd is at offset (no dereference needed)
+        -- Set RAX to the computed offset location
+        s' = record s { regs = writeReg (regs s) RAX snd-loc }
+        snd-valid-wf-s' = validityWF-mem-only (proj₂ x) snd-loc s s' refl refl snd-valid-wf
+    in mB , record
+      { result-loc = snd-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; result-valid-wf = snd-valid-wf-s'
+      ; result-before = snd-before
+      ; rax-is-result = writeReg-same (regs s) RAX snd-loc
+      ; not-halted = not-halted
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
+      ; capacity-preserved = refl
+      ; mem-preserved-before = λ loc _ → readLoc-stackMem-eq s' s loc refl refl  -- Only registers changed
+      -- Reclamation: snd doesn't allocate
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits →
+          frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl snd-loc snd-before
+      ; reclaim-preserves-validity = λ fits →
+          validityWF-frontier-advance (proj₂ x) snd-loc s' refl ≤-refl ≤-refl snd-valid-wf-s'
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       }
 
   ------------------------------------------------------------------------

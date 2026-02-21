@@ -238,16 +238,16 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf Heap fst-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack fst-ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
-      -- Stack input to fst: would need unboxed pair decomposition (not yet implemented)
-      postulate-stack-fst where postulate postulate-stack-fst : _
+    run-ir-wf Stack fst-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      -- Stack input to fst: extract first component from unboxed pair
+      run-stack-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     run-ir-wf Heap snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack snd-ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
-      -- Stack input to snd: would need unboxed pair decomposition (not yet implemented)
-      postulate-stack-snd where postulate postulate-stack-snd : _
+    run-ir-wf Stack snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      -- Stack input to snd: extract second component from unboxed pair
+      run-stack-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     run-ir-wf mIn terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       mIn , run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
