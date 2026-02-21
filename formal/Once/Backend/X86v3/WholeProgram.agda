@@ -11,17 +11,18 @@
 
 module Once.Backend.X86v3.WholeProgram where
 
+open import Data.Bool using (false)
 open import Data.Nat using (ℕ; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Induction.WellFounded using (Acc)
 
 open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
-open import Once.Backend.Common.SlotMachine using (LocState; ValueLocation)
+open import Once.Backend.Common.SlotMachine using (LocState; ValueLocation; halted; regs; readReg; RDI)
 
 open import Once.Backend.X86v3.Types using (Type; ⟦_⟧)
 open import Once.Backend.X86v3.IR using (IR; eval; ir-size; ir-stack-requirement; AllocMode; pair-slots)
-open import Once.Backend.X86v3.Allocation using (AllocState; module FrontierInvariant)
+open import Once.Backend.X86v3.Allocation using (AllocState; next-slot; frame-capacity; module FrontierInvariant)
 
 ------------------------------------------------------------------------
 -- THE CORRECTNESS THEOREM
@@ -79,6 +80,10 @@ module Correctness
         -- ...and preconditions hold...
         BeforeFrontier alloc input-loc →
         ir-size ir < program-bound →
+        -- Machine is ready to execute (caller must establish)
+        halted s ≡ false →
+        readReg (regs s) RDI ≡ input-loc →
+        next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
         -- ...then output represents (eval ir x)
         ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
           Represents mOut alloc' (eval ir x) result-loc s'
@@ -96,44 +101,33 @@ module Correctness
            Represents mIn alloc x input-loc s →
            BeforeFrontier alloc input-loc →
            ir-size ir < program-bound →
+           halted s ≡ false →
+           readReg (regs s) RDI ≡ input-loc →
+           next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
            ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
              Represents mOut alloc' (eval ir x) result-loc s'
-      go mIn x input-loc s alloc repr before ir<bound =
-        -- Invoke Dispatcher (with operational details it needs)
+      go mIn x input-loc s alloc repr before ir<bound not-halted rdi-eq capacity-ok =
+        -- Invoke Dispatcher with operational preconditions (caller provided)
         let (mOut , result) = D.run-wf mIn ir ir<bound x input-loc s alloc
-              repr before
-              -- Operational details (not part of the theorem statement)
-              not-halted rdi-eq capacity-ok
+              repr before not-halted rdi-eq capacity-ok
         in mOut
          , CWF.IRResultAWF.result-loc result
          , CWF.IRResultAWF.final-state result
          , CWF.IRResultAWF.final-alloc result
          , CWF.IRResultAWF.result-valid-wf result
-           --               ^^^^^^^^^^^^^^^^
-           -- This is: CWF.ValidAtWF mOut alloc' (eval ir x) result-loc s'
-           -- Which is: Represents mOut alloc' (eval ir x) result-loc s'
-        where
-          postulate
-            -- These are runtime/entry-point concerns, not the theorem
-            not-halted : _
-            rdi-eq : _
-            capacity-ok : _
 
 ------------------------------------------------------------------------
 -- SUMMARY
 --
--- Compiler correctness is ONE property:
+-- Compiler correctness:
 --
 --   Represents x input-loc s
+--   ∧ halted s ≡ false           (CPU running)
+--   ∧ RDI = input-loc            (calling convention)
+--   ∧ capacity sufficient        (stack space)
 --     →
 --   Represents (eval ir x) result-loc s'
 --
--- This says: compiled code computes the same as eval.
---
--- The (eval ir x) in the output is the ONLY thing that matters.
--- Everything else (halted, pc, rax, allocation state, reclamation)
--- is internal machinery for making the proof work.
---
--- A proof engineer reading this sees immediately:
---   "Oh, it preserves semantics. eval ir x appears in the result."
+-- The preconditions are the caller's responsibility (runtime/loader).
+-- The theorem says: IF properly set up, THEN semantics preserved.
 ------------------------------------------------------------------------
