@@ -51,9 +51,6 @@ open import Once.Backend.X86v3.FrontierLemma public
 open import Once.Backend.X86v3.SizeBoundLemma public
   using (∘-f-bound; ∘-g-bound; ⟨,⟩-f-bound; ⟨,⟩-g-bound; curry-body-bound)
 
-open import Once.Backend.X86v3.ValidityChainLemma public
-  using (module ValidityChainLemmas)
-
 ------------------------------------------------------------------------
 -- Import helper modules
 ------------------------------------------------------------------------
@@ -145,9 +142,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
   -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
 
-  -- Import frontier and validity chain lemmas
+  -- Import frontier lemmas
   open FrontierLemmas {FS}
-  open ValidityChainLemmas {FS} program-bound
 
   -- Import simple IR implementations (id, fst, snd, terminal)
   open SimpleWFModule.SimpleWFImpl {FS} program-bound
