@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.Backend.X86v3.Postulates
+-- Once.Backend.X86v3.Capacity
 --
 -- Capacity invariants for X86v3 SlotMachine proof.
 --
@@ -10,7 +10,7 @@
 -- See final-postulate-elimination.md for the two-capacity-pools design.
 ------------------------------------------------------------------------
 
-module Once.Backend.X86v3.Postulates where
+module Once.Backend.X86v3.Capacity where
 
 open import Data.Nat using (ℕ; _≤_; _<_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; +-monoˡ-≤; +-monoʳ-≤; m≤m+n; <⇒≤; *-monoʳ-≤; m+n≤o⇒m≤o; m+n≤o⇒n≤o)
@@ -293,9 +293,3 @@ module CapacityLemmas {FS : FrameSemantics} (program-bound : ℕ) where
     pair-slots *ℕ main-size ≤ pair-slots *ℕ program-bound
   main-fits-in-working main-size sz≤pb = *-monoʳ-≤ pair-slots sz≤pb
 
-------------------------------------------------------------------------
--- Re-export CapacityLemmas for convenience
-------------------------------------------------------------------------
-
-module CapacityPostulates {FS : FrameSemantics} (program-bound : ℕ) where
-  open CapacityLemmas {FS} program-bound public

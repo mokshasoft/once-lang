@@ -53,7 +53,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   open WriteWithDisjoint {FS}
 
   -- Import capacity lemmas (needed for BodyCorrect.execute signature)
-  open import Once.Backend.X86v3.Postulates
+  open import Once.Backend.X86v3.Capacity
   open CapacityLemmas {FS} program-bound
     using (CapacityInvariant; SlotInWorking; program-bound-cap-from-invariant;
            invariant-preserved; slot-in-working-preserved; sub-ir-in-working;
