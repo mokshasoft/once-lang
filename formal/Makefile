@@ -55,7 +55,7 @@ X86_STAR := Once/Backend/X86/Correct/Star.agda
 X86_STARBASE := Once/Backend/X86/Correct/StarBase.agda
 X86_WHOLEPROGRAM := Once/Backend/X86/Correct/WholeProgram.agda
 X86_ENCODING := Once/Backend/X86/Encoding.agda
-X86V3_DISPATCHER := Once/Backend/X86v3/Dispatcher.agda
+X86V3_WHOLEPROGRAM := Once/Backend/X86v3/WholeProgram.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
 AARCH64_CODEGEN := Once/Backend/AArch64/CodeGen.agda
@@ -168,7 +168,7 @@ x86-ccc:
 .PHONY: x86v3-ccc
 x86v3-ccc:
 	@echo "Type-checking X86v3 SlotMachine CCC backend (POC)..."
-	@sh -c '$(AGDA_CMD) $(X86V3_DISPATCHER)'
+	@sh -c '$(AGDA_CMD) $(X86V3_WHOLEPROGRAM)'
 
 .PHONY: x86-star
 x86-star:
