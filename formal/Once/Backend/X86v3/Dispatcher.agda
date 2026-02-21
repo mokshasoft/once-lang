@@ -55,13 +55,6 @@ open import Once.Backend.X86v3.ValidityChainLemma public
   using (module ValidityChainLemmas)
 
 ------------------------------------------------------------------------
--- Re-export types from IRResult module
-------------------------------------------------------------------------
-
-open import Once.Backend.X86v3.IRResult public
-  using (module DispatcherResult; module RecDispatcherDef)
-
-------------------------------------------------------------------------
 -- Import helper modules
 ------------------------------------------------------------------------
 
@@ -128,10 +121,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
   where
   open ValidityDef {FS} program-bound
-  open DispatcherResult {FS} program-bound
   open FrontierInvariant {FS}
   open WriteWithDisjoint {FS}
-  open RecDispatcherDef {FS} program-bound
   open MemOps {FS}
   open WriteOps {FS}
   open ExecFinal {FS}

@@ -35,10 +35,6 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open WriteOps {FS}
   open FrameSemantics FS
 
-  -- Import IRResultAWF and ValidAtWF
-  open import Once.Backend.X86v3.IRResult
-  open DispatcherResult {FS} program-bound
-
   open import Once.Backend.X86v3.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only;

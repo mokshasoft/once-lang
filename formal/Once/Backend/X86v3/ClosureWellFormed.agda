@@ -47,10 +47,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   open StackAllocation {FS}
   open FrameSemantics FS
 
-  -- Import IRResultA
-  open import Once.Backend.X86v3.IRResult
-  open DispatcherResult {FS} program-bound
-
   -- Import write operations for validity preservation proofs
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}

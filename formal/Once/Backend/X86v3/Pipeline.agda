@@ -67,10 +67,6 @@ open import Once.Backend.X86v3.Types using (Type; ⟦_⟧; _*_; _⇒_)
 -- Import CodeGen
 open import Once.Backend.X86v3.CodeGen using (compile-ir; compile-length)
 
--- Import X86v3 Dispatcher types
-open import Once.Backend.X86v3.IRResult
-open DispatcherResult {x86v3-frame-semantics}
-
 -- Import X86v3 Validity
 open import Once.Backend.X86v3.Validity
 open ValidityDef {x86v3-frame-semantics}
