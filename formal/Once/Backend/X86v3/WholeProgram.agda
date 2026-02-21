@@ -38,14 +38,13 @@ module Correctness
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
   where
 
-  open FrontierInvariant {FS}
+  open FrontierInvariant {FS} using (BeforeFrontier)
 
   open import Once.Backend.X86v3.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF)
+  module CWF = ClosureWellFormedDef {FS} program-bound
 
   open import Once.Backend.X86v3.Dispatcher
-  open Dispatcher {FS} program-bound acc-pb
+  module D = Dispatcher {FS} program-bound acc-pb
     get-child-frame child-frame-ordered child-capacity child-cap-sufficient
 
   ----------------------------------------------------------------------
@@ -56,7 +55,7 @@ module Correctness
   ----------------------------------------------------------------------
 
   Represents : ∀ {A : Type} → AllocMode → AllocState {FS} → ⟦ A ⟧ → ValueLocation FS → LocState FS → Set
-  Represents m alloc v loc s = ValidAtWF m alloc v loc s
+  Represents m alloc v loc s = CWF.ValidAtWF m alloc v loc s
 
   ----------------------------------------------------------------------
   -- COMPILER CORRECTNESS
@@ -101,18 +100,18 @@ module Correctness
              Represents mOut alloc' (eval ir x) result-loc s'
       go mIn x input-loc s alloc repr before ir<bound =
         -- Invoke Dispatcher (with operational details it needs)
-        let (mOut , result) = run-ir-wf mIn ir ir<bound x input-loc s alloc
+        let (mOut , result) = D.run-ir-wf mIn ir ir<bound x input-loc s alloc
               repr before
               -- Operational details (not part of the theorem statement)
               not-halted rdi-eq capacity-ok
-              (get-acc-from-pb (ir-size ir) ir<bound)
+              (D.get-acc-from-pb (ir-size ir) ir<bound)
         in mOut
-         , IRResultAWF.result-loc result
-         , IRResultAWF.final-state result
-         , IRResultAWF.final-alloc result
-         , IRResultAWF.result-valid-wf result
-           --          ^^^^^^^^^^^^^^^^
-           -- This is: ValidAtWF mOut alloc' (eval ir x) result-loc s'
+         , CWF.IRResultAWF.result-loc result
+         , CWF.IRResultAWF.final-state result
+         , CWF.IRResultAWF.final-alloc result
+         , CWF.IRResultAWF.result-valid-wf result
+           --               ^^^^^^^^^^^^^^^^
+           -- This is: CWF.ValidAtWF mOut alloc' (eval ir x) result-loc s'
            -- Which is: Represents mOut alloc' (eval ir x) result-loc s'
         where
           postulate
