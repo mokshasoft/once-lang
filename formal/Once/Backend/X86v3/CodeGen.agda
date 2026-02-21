@@ -176,9 +176,9 @@ compile-length apply = length apply-instrs
 -- Sum/fix type operations (postulated for now)
 compile-length (inl-ir _) = 1  -- placeholder
 compile-length (inr-ir _) = 1  -- placeholder
-compile-length (case-ir f g) = compile-length f +ℕ compile-length g +ℕ 2
+compile-length (case-ir f g) = compile-length f +ℕ compile-length g  -- placeholder: no dispatch yet
 compile-length initial = 1      -- absurd elimination
-compile-length fold-ir = 1      -- wrap
+compile-length (fold-ir _) = 1      -- wrap
 compile-length unfold-ir = 1    -- unwrap
 compile-length (Prim _) = 1     -- primitive
 
@@ -220,8 +220,8 @@ compile-ir (inl-ir _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
 compile-ir (inr-ir _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
 compile-ir (case-ir f g) = compile-ir f ++ compile-ir g  -- placeholder
 compile-ir initial = ud2 ∷ []     -- absurd elimination (should never execute)
-compile-ir fold-ir = []           -- wrap is no-op at runtime
-compile-ir unfold-ir = []         -- unwrap is no-op at runtime
+compile-ir (fold-ir _) = id-instrs     -- wrap: just transfer rdi → rax (same representation)
+compile-ir unfold-ir = id-instrs       -- unwrap: just transfer rdi → rax (same representation)
 compile-ir (Prim _) = ud2 ∷ []    -- primitives need FFI (placeholder)
 
 ------------------------------------------------------------------------
