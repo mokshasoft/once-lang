@@ -36,8 +36,6 @@ open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 ------------------------------------------------------------------------
 
 module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
-  open import Once.Backend.X86v3.Validity
-  open ValidityDef {FS} program-bound
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}

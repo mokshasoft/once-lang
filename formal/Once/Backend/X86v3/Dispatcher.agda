@@ -29,7 +29,6 @@ open import Induction.WellFounded using (Acc; acc)
 
 open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 open import Once.Backend.Common.SlotMachine
-open import Once.Backend.X86v3.Validity
 open import Once.Backend.X86v3.IR
 open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 open import Once.Backend.X86v3.ClosureWellFormed
@@ -117,7 +116,6 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   (child-capacity : ℕ)
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
   where
-  open ValidityDef {FS} program-bound
   open FrontierInvariant {FS}
   open WriteWithDisjoint {FS}
   open MemOps {FS}
