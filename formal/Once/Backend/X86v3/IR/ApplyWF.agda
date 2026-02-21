@@ -59,7 +59,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            validityWF-with-bf-transfer;
            decomposePairBoxedWF; PairBoxedValidWF;
            decomposeClosureWF; ClosureValidWF;
-           closure-mode-is-heap-proof)
+           closure-mode-is-heap-proof;
+           at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
 
   -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
 
@@ -75,11 +76,6 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.Backend.X86v3.FrontierLemma using (module FrontierLemmas)
   open FrontierLemmas {FS}
     using (at-frontier-before-pair)
-
-  -- Import validity write lemmas for frontier inequality helpers
-  open import Once.Backend.X86v3.ValidityWriteLemma using (module ValidityWriteLemmas)
-  open ValidityWriteLemmas {FS} program-bound
-    using (at-frontier-neq-before; suc-frontier-neq-before)
 
   ------------------------------------------------------------------------
   -- BeforeFrontier Transfer Lemmas
@@ -489,12 +485,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           -- Step 3: s-write-arg → s-write-env (write at suc-frontier preserves)
           step3 : readLoc s-write-arg loc ≡ readLoc s-write-env loc
           step3 = write-preserves-disjoint s-write-env (sucLoc pair-input-loc) arg-loc loc
-                    (λ eq → suc-frontier-neq-before alloc loc bf eq)
+                    (λ eq → suc-frontier-neq-before-wf alloc loc bf eq)
 
           -- Step 4: s-write-env → s (write at frontier preserves)
           step4 : readLoc s-write-env loc ≡ readLoc s loc
           step4 = write-preserves-disjoint s pair-input-loc env-loc loc
-                    (λ eq → at-frontier-neq-before alloc loc bf eq)
+                    (λ eq → at-frontier-neq-before-wf alloc loc bf eq)
 
       ------------------------------------------------------------------------
       -- Frame/slot/heap properties

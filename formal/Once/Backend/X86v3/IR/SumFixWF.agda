@@ -51,7 +51,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            decomposeInlBoxedWF; decomposeInrBoxedWF;
            decomposeFoldBoxedWF; decomposeFoldUnboxedWF;
            InlBoxedValidWF; InrBoxedValidWF;
-           FoldBoxedValidWF; FoldUnboxedValidWF)
+           FoldBoxedValidWF; FoldUnboxedValidWF;
+           at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
 
   -- Import frontier lemmas
   open import Once.Backend.X86v3.FrontierLemma using (module FrontierLemmas)
@@ -61,11 +62,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Import write operations
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
-
-  -- Import validity write lemmas for frontier inequality helpers
-  open import Once.Backend.X86v3.ValidityWriteLemma using (module ValidityWriteLemmas)
-  open ValidityWriteLemmas {FS} program-bound
-    using (at-frontier-neq-before; suc-frontier-neq-before)
 
   -- Import suc<+2 lemma for Heap mode proofs
   open import Once.Backend.X86v3.DispatcherArithmeticLemma using (suc<+2)
@@ -305,7 +301,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       mem-preserved-inl loc bf =
         trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
               (write-preserves-disjoint s (sucLoc sum-loc) input-loc loc
-                (λ eq → suc-frontier-neq-before alloc loc bf eq))
+                (λ eq → suc-frontier-neq-before-wf alloc loc bf eq))
 
       inl-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
         BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots ; slots-available = fits }) sum-loc
@@ -443,7 +439,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       mem-preserved-inr loc bf =
         trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
               (write-preserves-disjoint s (sucLoc sum-loc) input-loc loc
-                (λ eq → suc-frontier-neq-before alloc loc bf eq))
+                (λ eq → suc-frontier-neq-before-wf alloc loc bf eq))
 
       inr-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
         BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots ; slots-available = fits }) sum-loc
@@ -620,7 +616,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       mem-preserved-fold loc bf =
         trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
               (write-preserves-disjoint s fold-loc input-loc loc
-                (λ eq → at-frontier-neq-before alloc loc bf eq))
+                (λ eq → at-frontier-neq-before-wf alloc loc bf eq))
 
       fold-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ fix-slots ≤ frame-capacity alloc) →
         BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ fix-slots ; slots-available = fits }) fold-loc

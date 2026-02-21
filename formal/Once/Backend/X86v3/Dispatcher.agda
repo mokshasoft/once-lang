@@ -145,10 +145,6 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
   -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
 
-  -- Import validity write lemmas
-  open import Once.Backend.X86v3.ValidityWriteLemma using (module ValidityWriteLemmas)
-  open ValidityWriteLemmas {FS} program-bound
-
   -- Import frontier and validity chain lemmas
   open FrontierLemmas {FS}
   open ValidityChainLemmas {FS} program-bound

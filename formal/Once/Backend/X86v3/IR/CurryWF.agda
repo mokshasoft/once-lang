@@ -42,7 +42,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            valid-closure-wf; validityWF-mem-only;
            validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
-           validityWF-with-bf-transfer)
+           validityWF-with-bf-transfer;
+           at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
 
   -- Import ApplyWF for bf-same-frame-slot
   open import Once.Backend.X86v3.IR.ApplyWF
@@ -58,11 +59,6 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Import write operations
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
-
-  -- Import validity write lemmas for frontier inequality helpers
-  open import Once.Backend.X86v3.ValidityWriteLemma using (module ValidityWriteLemmas)
-  open ValidityWriteLemmas {FS} program-bound
-    using (at-frontier-neq-before; suc-frontier-neq-before)
 
   -- Import frontier lemmas
   open import Once.Backend.X86v3.FrontierLemma using (module FrontierLemmas)
@@ -156,9 +152,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       mem-preserved-curry loc bf =
         trans (readLoc-stackMem-eq s-final s₂ loc refl refl)
               (trans (write-preserves-disjoint s₁ (sucLoc closure-loc) code-loc loc
-                       (λ eq → suc-frontier-neq-before alloc loc bf eq))
+                       (λ eq → suc-frontier-neq-before-wf alloc loc bf eq))
                      (write-preserves-disjoint s closure-loc input-loc loc
-                       (λ eq → at-frontier-neq-before alloc loc bf eq)))
+                       (λ eq → at-frontier-neq-before-wf alloc loc bf eq)))
 
       closure-before : BeforeFrontier alloc-final closure-loc
       closure-before = at-frontier-before-closure alloc closure-fits

@@ -44,7 +44,8 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-frontier-advance; validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
-           validityWF-with-bf-transfer)
+           validityWF-with-bf-transfer;
+           at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
 
   -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
 
@@ -59,11 +60,6 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- Import write operations
   open import Once.Backend.X86v3.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
-
-  -- Import validity write lemmas for frontier inequality helpers
-  open import Once.Backend.X86v3.ValidityWriteLemma using (module ValidityWriteLemmas)
-  open ValidityWriteLemmas {FS} program-bound
-    using (at-frontier-neq-before; suc-frontier-neq-before)
 
   -- Import ApplyWF for bf-same-frame-slot
   open import Once.Backend.X86v3.IR.ApplyWF
@@ -473,9 +469,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
             step-f = IRResultAWF.mem-preserved-before result-f loc bf
         in trans (readLoc-stackMem-eq s-final s₄ loc refl refl)
                  (trans (write-preserves-disjoint s₃ (sucLoc pair-loc) snd-loc loc
-                          (λ eq → suc-frontier-neq-before alloc₂-reclaimed loc bf-reclaimed2 eq))
+                          (λ eq → suc-frontier-neq-before-wf alloc₂-reclaimed loc bf-reclaimed2 eq))
                         (trans (write-preserves-disjoint s₂ pair-loc fst-loc loc
-                                 (λ eq → at-frontier-neq-before alloc₂-reclaimed loc bf-reclaimed2 eq))
+                                 (λ eq → at-frontier-neq-before-wf alloc₂-reclaimed loc bf-reclaimed2 eq))
                                (trans step-g (trans step-reg-g step-f))))
 
       ------------------------------------------------------------------------
