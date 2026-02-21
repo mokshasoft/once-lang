@@ -127,8 +127,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- Import WF types for termination-safe dispatch
   open ClosureWellFormedDef {FS} program-bound
     using (BodyCorrect; ValidAtWF; IRResultAWF; RecDispatcherWF;
-           valid-unit-wf; valid-pair-boxed-wf; valid-closure-wf;
-           decomposeClosureWF; ClosureValidWF; decomposePairBoxedWF; PairBoxedValidWF;
+           valid-unit-wf; valid-pair-wf; valid-closure-wf;
+           decomposeClosureWF; ClosureValidWF; decomposePairWF; PairValidWF;
            closure-mode-is-heap-proof;
            validityWF-mem-only;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
@@ -239,15 +239,15 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       run-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     run-ir-wf Stack fst-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      -- Stack input to fst: extract first component from unboxed pair
-      run-stack-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+      -- Reference-based model: Stack and Heap use same pointer representation
+      run-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     run-ir-wf Heap snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     run-ir-wf Stack snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      -- Stack input to snd: extract second component from unboxed pair
-      run-stack-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+      -- Reference-based model: Stack and Heap use same pointer representation
+      run-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     run-ir-wf mIn terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       mIn , run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
@@ -267,14 +267,15 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       m , run-inr {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Sum type: case analysis (delegated to SumFixWF module)
-    -- Input must be Heap (boxed sum), output mode from branch
+    -- Reference-based model: any mode works since sums use pointer representation
     run-ir-wf Heap (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      run-case f g (make-rec-wf ir<bound rs) x input-loc s alloc
+      run-case {Heap} f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
     run-ir-wf Stack (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      -- Stack input to case: would need unboxed sum decomposition (not yet implemented)
-      postulate-stack-case where postulate postulate-stack-case : _
+      -- Reference-based model: Stack and Heap use same pointer representation for sums
+      run-case {Stack} f g (make-rec-wf ir<bound rs) x input-loc s alloc
+        input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Initial: absurd elimination (delegated to SumFixWF module)
     run-ir-wf mIn initial _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
@@ -286,13 +287,13 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       m , run-fold {F} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Recursive types: unfold (delegated to SumFixWF module)
-    -- Input must be Heap (fold is boxed)
+    -- Reference-based model: any mode works since folds use pointer representation
     run-ir-wf Heap (unfold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      run-unfold {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+      run-unfold {Heap} {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack unfold-ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
-      -- Stack input to unfold: fold is always boxed, so this is impossible
-      postulate-stack-unfold where postulate postulate-stack-unfold : _
+    run-ir-wf Stack (unfold-ir {F}) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
+      -- Reference-based model: Stack and Heap use same pointer representation for folds
+      run-unfold {Stack} {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Compose: delegated to ComposeWF module
     run-ir-wf mIn (g ∘ f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
@@ -329,9 +330,14 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
         postulate
           body-cap-fits : next-slot alloc +ℕ pair-slots +ℕ closure-body-capacity x input-valid-wf ≤ frame-capacity alloc
 
-    run-ir-wf Stack apply ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
-      -- Stack input to apply: closure pairs are always boxed
-      postulate-stack-apply where postulate postulate-stack-apply : _
+    run-ir-wf Stack (apply {A} {B}) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
+      -- Reference-based model: Stack and Heap use same pointer representation for pairs
+      run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+        combined-cap body-cap-fits
+      where
+        -- Dynamic capacity proof (same as Heap mode)
+        postulate
+          body-cap-fits : next-slot alloc +ℕ pair-slots +ℕ closure-body-capacity x input-valid-wf ≤ frame-capacity alloc
 
   -- Public API with ValidAtWF
   -- Returns existential mode + IRResultAWF with ValidAtWF for result validity.

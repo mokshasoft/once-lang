@@ -46,16 +46,13 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.Backend.X86v3.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; BodyCorrect;
-           valid-unit-wf; valid-pair-boxed-wf; valid-pair-unboxed-wf;
-           valid-closure-wf;
-           valid-inl-boxed-wf; valid-inl-unboxed-wf;
-           valid-inr-boxed-wf; valid-inr-unboxed-wf;
-           valid-fold-boxed-wf; valid-fold-unboxed-wf;
+           valid-unit-wf; valid-pair-wf; valid-closure-wf;
+           valid-inl-wf; valid-inr-wf; valid-fold-wf;
            validityWF-mem-only; validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            validityWF-frontier-advance;
            validityWF-with-bf-transfer;
-           decomposePairBoxedWF; PairBoxedValidWF;
+           decomposePairWF; PairValidWF;
            decomposeClosureWF; ClosureValidWF;
            closure-mode-is-heap-proof;
            at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
@@ -112,14 +109,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- separate body-cap parameter that must match the closure's capacity.
   ------------------------------------------------------------------------
 
-  closure-body-capacity : ∀ {A B alloc loc s}
+  closure-body-capacity : ∀ {m A B alloc loc s}
     (x : ⟦ (A ⇒ B) * A ⟧)
-    (input-valid-wf : ValidAtWF Heap alloc x loc s) → ℕ
-  closure-body-capacity {A} {B} {alloc} {loc} {s} x input-valid-wf =
-    let pair-decomp = decomposePairBoxedWF {_} {A ⇒[ Many ] B} {A} input-valid-wf
-        closure-loc = PairBoxedValidWF.fst-loc pair-decomp
+    (input-valid-wf : ValidAtWF m alloc x loc s) → ℕ  -- Reference-based: any mode works
+  closure-body-capacity {m} {A} {B} {alloc} {loc} {s} x input-valid-wf =
+    let pair-decomp = decomposePairWF {m} {_} {A ⇒[ Many ] B} {A} input-valid-wf
+        closure-loc = PairValidWF.fst-loc pair-decomp
         closure = proj₁ x
-        closure-valid-wf = PairBoxedValidWF.fst-valid pair-decomp
+        closure-valid-wf = PairValidWF.fst-valid pair-decomp
         closure-mode-eq = closure-mode-is-heap-proof closure-valid-wf
         closure-valid-wf-heap = subst (λ m → ValidAtWF m alloc closure closure-loc s)
                                        closure-mode-eq closure-valid-wf
@@ -150,10 +147,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   -- use the same extraction, so they match definitionally.
   ------------------------------------------------------------------------
 
-  run-apply : ∀ {A B}
+  run-apply : ∀ {m A B}
     (x : ⟦ (A ⇒ B) * A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS})
-    (input-valid-wf : ValidAtWF Heap alloc x input-loc s) →  -- Apply takes boxed pair input
+    (input-valid-wf : ValidAtWF m alloc x input-loc s) →  -- Reference-based: any mode works
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
@@ -164,7 +161,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     next-slot alloc +ℕ pair-slots +ℕ closure-body-capacity x input-valid-wf ≤ frame-capacity alloc →
     -- NO child-frame parameters! Body runs in same frame.
     ∃[ mOut ] IRResultAWF mOut (apply {A} {B}) x s alloc
-  run-apply {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap body-cap-fits =
+  run-apply {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap body-cap-fits =
     mBody , record
       { result-loc = result-loc
       ; final-state = s-final
@@ -193,13 +190,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Step 1: Decompose input as pair (closure, arg) using ValidAtWF
       -- Explicit type: pair type is (A ⇒[ Many ] B) * A
-      pair-decomp = decomposePairBoxedWF {_} {A ⇒[ Many ] B} {A} input-valid-wf
-      closure-loc = PairBoxedValidWF.fst-loc pair-decomp
-      arg-loc = PairBoxedValidWF.snd-loc pair-decomp
-      mArg = PairBoxedValidWF.mB pair-decomp  -- Mode of argument component
-      closure-valid-wf = PairBoxedValidWF.fst-valid pair-decomp
-      arg-valid-wf = PairBoxedValidWF.snd-valid pair-decomp
-      arg-before = PairBoxedValidWF.snd-before pair-decomp
+      -- Reference-based: any mode works since pairs use pointer representation
+      pair-decomp = decomposePairWF {m} {_} {A ⇒[ Many ] B} {A} input-valid-wf
+      closure-loc = PairValidWF.fst-loc pair-decomp
+      arg-loc = PairValidWF.snd-loc pair-decomp
+      mArg = PairValidWF.mB pair-decomp  -- Mode of argument component
+      closure-valid-wf = PairValidWF.fst-valid pair-decomp
+      arg-valid-wf = PairValidWF.snd-valid pair-decomp
+      arg-before = PairValidWF.snd-before pair-decomp
 
       -- Extract closure and arg with explicit types to help inference
       -- fst and snd need explicit type params because ⟦ A ⇒[ q ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧ for any q
@@ -212,7 +210,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Step 2: Decompose closure to get body-correct!
       -- Note: fst x : ⟦ A ⇒ B ⟧ = ⟦ A ⇒[ Many ] B ⟧
       -- Closures are always Heap mode - extract mA=Heap from ValidAtWF proof
-      mClosure = PairBoxedValidWF.mA pair-decomp
+      mClosure = PairValidWF.mA pair-decomp
       -- For closure types, the only constructor is valid-closure-wf which produces Heap
       -- So mClosure must be Heap. Proven by pattern matching in closure-mode-is-heap-proof.
       closure-mode-is-heap : mClosure ≡ Heap
@@ -336,7 +334,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Construct ValidAtWF for the pair in alloc-pair
       -- The constructed pair is boxed (Heap mode) with env and arg components
       pair-input-valid-pair : ValidAtWF Heap alloc-pair {EnvType * A} (pair env arg) pair-input-loc s-pair
-      pair-input-valid-pair = valid-pair-boxed-wf pair-env-ptr pair-arg-ptr
+      pair-input-valid-pair = valid-pair-wf pair-env-ptr pair-arg-ptr
                                 env-before-pair arg-before-pair sucLoc-pair-before-pair
                                 env-valid-wf-pair arg-valid-wf-pair
 
@@ -353,7 +351,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- We have body-cap-fits-pair for body-cap (parameter)
       -- Dispatcher ensures body-cap = closure-body-cap
       -- body-cap is extracted by Dispatcher from the same input-valid-wf via:
-      --   decomposeClosureWF (subst ... (PairBoxedValidWF.fst-valid (decomposePairBoxedWF input-valid-wf)))
+      --   decomposeClosureWF (subst ... (PairValidWF.fst-valid (decomposePairWF input-valid-wf)))
       -- And closure-body-cap is extracted here via the same sequence.
       -- Since both use the same input-valid-wf and same decomposition functions,
       -- they are definitionally equal.

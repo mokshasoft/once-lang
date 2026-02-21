@@ -47,38 +47,37 @@ infixr 40 _⊕_
 ------------------------------------------------------------------------
 -- Type Slots: Memory representation sizes
 --
--- Two representations for hybrid unboxed-stack / boxed-heap design:
+-- Reference-based model: All values accessed by pointer (reference).
+-- Stack vs Heap determines only WHERE allocation occurs, not HOW
+-- values are represented. Both modes use identical pointer-based
+-- representation.
 --
---   stack-type-slots : Unboxed representation (values stored inline)
---     - Used for stack-allocated, non-escaping values
---     - Sum types: tag + inline payload (variable size)
---     - Products: inline concatenation
+-- This enables:
+--   - Linear values passed by reference (zero-copy)
+--   - Semantic copy only when linearity requires duplication
+--   - Simplified proofs (one constructor works for both modes)
+--   - Direct mapping to x86 calling conventions
 --
---   heap-type-slots : Boxed representation (pointers to heap data)
---     - Used for heap-allocated, escaping values
---     - Sum types: tag + pointer (fixed 2 slots)
---     - Products: pointer to fst + pointer to snd (fixed 2 slots)
---
--- The IR specifies allocation mode (StackAlloc vs HeapAlloc) after
--- escape analysis, and handlers use the appropriate slot function.
+-- See unboxed-stack-design.md for full design rationale.
 ------------------------------------------------------------------------
 
--- Unboxed representation: values stored inline on stack
+-- Reference-based representation: all compound types use fixed pointer sizes
 stack-type-slots : Type → ℕ
 stack-type-slots Unit = 0
 stack-type-slots Void = 0
 stack-type-slots Int = 1
 stack-type-slots Float = 1
-stack-type-slots Str = 1          -- pointer to string data (always indirect)
-stack-type-slots Buffer = 1       -- pointer to buffer data (always indirect)
-stack-type-slots (A * B) = stack-type-slots A +ℕ stack-type-slots B
-stack-type-slots (A + B) = 1 +ℕ (stack-type-slots A ⊔ stack-type-slots B)  -- tag + max payload
-stack-type-slots (_ ⇒[ _ ] _) = 2  -- closure: env-ptr + code-ptr (always boxed)
+stack-type-slots Str = 1          -- pointer to string data
+stack-type-slots Buffer = 1       -- pointer to buffer data
+stack-type-slots (A * B) = 2      -- ptr to fst + ptr to snd
+stack-type-slots (A + B) = 2      -- tag + ptr to payload
+stack-type-slots (_ ⇒[ _ ] _) = 2 -- closure: env-ptr + code-ptr
 stack-type-slots (Eff _ B) = stack-type-slots B
-stack-type-slots (Fix F) = stack-type-slots F  -- unboxed: F data stored inline
-stack-type-slots (TVar _) = 1      -- polymorphic = pointer
+stack-type-slots (Fix _) = 1      -- pointer to recursive structure
+stack-type-slots (TVar _) = 1     -- polymorphic = pointer
 
--- Boxed representation: pointers to heap-allocated data
+-- Heap representation: identical to stack (reference-based model)
+-- Kept separate for API compatibility; both are definitionally equal.
 heap-type-slots : Type → ℕ
 heap-type-slots Unit = 0
 heap-type-slots Void = 0
@@ -93,7 +92,7 @@ heap-type-slots (Eff _ B) = heap-type-slots B
 heap-type-slots (Fix _) = 1        -- pointer to recursive structure
 heap-type-slots (TVar _) = 1       -- polymorphic = pointer
 
--- Legacy alias for backwards compatibility (uses unboxed/stack representation)
+-- Legacy alias (all representations now use reference-based model)
 type-slots : Type → ℕ
 type-slots = stack-type-slots
 
