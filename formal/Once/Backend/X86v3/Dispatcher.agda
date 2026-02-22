@@ -21,7 +21,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym; subst)
 open import Relation.Nullary using (Dec; yes; no)
@@ -110,6 +110,11 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
   (child-frame-ordered : ∀ (alloc : AllocState {FS}) →
     FrameSemantics._≺_ FS (get-child-frame alloc) (current-frame alloc))  -- Child is below parent
+  -- Immediate adjacency: no frame exists between child and parent
+  (child-frame-adjacent : ∀ (alloc : AllocState {FS}) (f : FrameSemantics.Frame FS) →
+    FrameSemantics._≺_ FS (get-child-frame alloc) f →
+    FrameSemantics._≺_ FS f (current-frame alloc) →
+    ⊥)
   (child-capacity : ℕ)
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
   where
@@ -154,7 +159,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
   -- Import apply IR implementation (pass child-frame parameters)
   open ApplyWFModule.ApplyWFImpl {FS} program-bound
-    get-child-frame child-frame-ordered child-capacity child-cap-sufficient
+    get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
 
   -- Import sum/fix IR implementations (inl, inr, case, initial, fold, unfold)
   open import Once.Backend.X86v3.IR.SumFixWF as SumFixWFModule

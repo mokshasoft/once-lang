@@ -12,6 +12,7 @@
 module Once.Backend.X86v3.WholeProgram where
 
 open import Data.Bool using (false)
+open import Data.Empty using (⊥)
 open import Data.Nat using (ℕ; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -35,6 +36,10 @@ module Correctness
   (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
   (child-frame-ordered : ∀ (alloc : AllocState {FS}) →
     FrameSemantics._≺_ FS (get-child-frame alloc) (AllocState.current-frame alloc))
+  (child-frame-adjacent : ∀ (alloc : AllocState {FS}) (f : FrameSemantics.Frame FS) →
+    FrameSemantics._≺_ FS (get-child-frame alloc) f →
+    FrameSemantics._≺_ FS f (AllocState.current-frame alloc) →
+    ⊥)
   (child-capacity : ℕ)
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
   where
@@ -46,7 +51,7 @@ module Correctness
 
   open import Once.Backend.X86v3.Dispatcher
   module D = Dispatcher {FS} program-bound acc-pb
-    get-child-frame child-frame-ordered child-capacity child-cap-sufficient
+    get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
 
   ----------------------------------------------------------------------
   -- Represents: value v is stored at location loc in state s

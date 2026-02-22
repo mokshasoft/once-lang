@@ -268,22 +268,27 @@ module FrontierInvariant {FS : FrameSemantics} where
   -- transferring back from child to parent, we never encounter "intermediate"
   -- frames (frames between child and origin that aren't origin itself).
   --
-  -- Design: origin-slot-bound is embedded in src-origin (not a type parameter)
-  -- because it's only relevant for the origin frame case. This allows Agda to
-  -- infer all implicit arguments in the src-above-origin case.
+  -- Design: Both constructors carry slot bounds to enable frame transfer proofs.
+  -- The bound is from the origin frame's allocation state when the location
+  -- was first transferred from stack-before to stack-ancestor.
   ------------------------------------------------------------------------
 
-  data StackAncestorSource (origin-frame : Frame) : Frame → ℕ → Set where
+  -- The bound is an INDEX (4th parameter) so it's visible in the type.
+  -- This enables direct extraction when pattern matching.
+  data StackAncestorSource (origin-frame : Frame) : Frame → ℕ → ℕ → Set where
     -- f is the origin frame, with slot bound from when it was stack-before
     src-origin : ∀ {k} →
       (origin-slot-bound : ℕ) →
       k < origin-slot-bound →
-      StackAncestorSource origin-frame origin-frame k
+      StackAncestorSource origin-frame origin-frame k origin-slot-bound
 
     -- f is above origin in the call stack (origin ≺ f)
+    -- Carries slot bound for transfer back to origin frame
     src-above-origin : ∀ {f k} →
       origin-frame ≺ f →
-      StackAncestorSource origin-frame f k
+      (origin-slot-bound : ℕ) →
+      k < origin-slot-bound →
+      StackAncestorSource origin-frame f k origin-slot-bound
 
   -- Location is before allocation frontier
   --
@@ -302,9 +307,9 @@ module FrontierInvariant {FS : FrameSemantics} where
       k < next-slot alloc →
       BeforeFrontier alloc (OnStack f k)
 
-    stack-ancestor : ∀ {f k origin-frame} →
+    stack-ancestor : ∀ {f k origin-frame bound} →
       current-frame alloc ≺ f →  -- f is above current (caller or higher)
-      StackAncestorSource origin-frame f k →
+      StackAncestorSource origin-frame f k bound →
       BeforeFrontier alloc (OnStack f k)
 
     heap-before : ∀ {r o} →
@@ -462,12 +467,13 @@ module FrameOps {FS : FrameSemantics} where
   -- (via stack-ancestor since child ≺ f by transitivity)
   -- The origin is the parent frame, and since parent ≺ f, we use src-above-origin.
   ancestor-frame-before-child : ∀ (parent : AllocState {FS})
-    (child-frame : Frame) (child-capacity : ℕ) (f : Frame) (k : ℕ) →
+    (child-frame : Frame) (child-capacity : ℕ) (f : Frame) (k : ℕ)
+    (bound : ℕ) (k<bound : k < bound) →
     child-frame ≺ current-frame parent →  -- Child is below parent
     current-frame parent ≺ f →            -- f is above parent
     BeforeFrontier (push-frame parent child-frame child-capacity) (OnStack f k)
-  ancestor-frame-before-child parent cf cc f k cf≺pf pf≺f =
-    stack-ancestor (≺-trans cf≺pf pf≺f) (src-above-origin pf≺f)
+  ancestor-frame-before-child parent cf cc f k bound k<bound cf≺pf pf≺f =
+    stack-ancestor (≺-trans cf≺pf pf≺f) (src-above-origin pf≺f bound k<bound)
 
   -- General lemma: BeforeFrontier parent → BeforeFrontier child
   -- With frame ORDERING and PROVENANCE, this is clean via transitivity!
@@ -487,8 +493,10 @@ module FrameOps {FS : FrameSemantics} where
     BeforeFrontier (push-frame parent child-frame child-capacity) loc
   parent-before-child parent cf cc (OnStack f k) cf≺pf (stack-before refl k<next) =
     stack-ancestor cf≺pf (src-origin (next-slot parent) k<next)  -- f = parent is origin
-  parent-before-child parent cf cc (OnStack f k) cf≺pf (stack-ancestor pf≺f _) =
-    stack-ancestor (≺-trans cf≺pf pf≺f) (src-above-origin pf≺f)  -- f is above parent
+  parent-before-child parent cf cc (OnStack f k) cf≺pf (stack-ancestor pf≺f (src-origin bound k<bound)) =
+    stack-ancestor (≺-trans cf≺pf pf≺f) (src-above-origin pf≺f bound k<bound)
+  parent-before-child parent cf cc (OnStack f k) cf≺pf (stack-ancestor pf≺f (src-above-origin _ bound k<bound)) =
+    stack-ancestor (≺-trans cf≺pf pf≺f) (src-above-origin pf≺f bound k<bound)
   parent-before-child parent cf cc (OnHeap r o) cf≺pf (heap-before r<next) =
     heap-before r<next  -- Heap refs unchanged
 
