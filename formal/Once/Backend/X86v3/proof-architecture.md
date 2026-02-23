@@ -212,3 +212,60 @@ IR (all heap)  →  escape analysis  →  IR (stack where safe)
 3. **Transformed IR**: Non-escaping values rewritten to stack allocation
 
 The correctness proofs support both locations - they don't perform the analysis. The IR itself (post-transformation) specifies each allocation location via `StackAlloc` or `HeapAlloc`.
+
+## Orthogonal Memory Design (Future Direction)
+
+See: `X86v3/orthogonal-memory-design.md` for full details.
+
+### Core Principle
+
+Make proofs **orthogonal** by separating concerns:
+
+| Concern | Handled By | Independent Of |
+|---------|------------|----------------|
+| Stack allocation/deallocation | Frame semantics | Heap concerns |
+| Heap allocation | HeapLocation type | Stack concerns |
+| Heap deallocation | Explicit `free-heap` IR | Allocation strategy |
+| Escape analysis | Separate pass with witness | IR execution |
+
+### Key Invariant: Heap → Heap Only
+
+Heap-allocated values can only reference other heap values, never stack:
+
+```agda
+-- HeapLocation is a subset, can only point to heap
+record HeapLocation : Set where ...
+
+-- HeapMem can ONLY store HeapLocation (enforced by types)
+HeapMem FS = HeapLocation FS → Maybe (HeapLocation FS)
+```
+
+This makes stack deallocation (frame pop) trivially safe -- heap values don't reference stack.
+
+### Explicit Deallocation
+
+Instead of runtime GC/refcounting, compiler emits `free-heap` with proof:
+
+```agda
+free-heap : HeapRef → IR Unit Unit
+
+-- Compiler provides witness that no live refs exist
+record CanFreeHeap (block : HeapRef) : Set where
+  field
+    no-refs : ∀ loc → LiveAt loc → ¬ ReferencesBlock loc block
+```
+
+### Correct by Construction
+
+Invalid programs can't typecheck:
+- `free-heap` without proof → won't compile
+- Stack allocation without escape witness → won't compile
+- Store stack ref in heap → type error (HeapLocation vs ValueLocation)
+
+### Simple Compiler Strategy
+
+A minimal correct compiler:
+1. All allocations → Heap (no escape analysis)
+2. No `free-heap` instructions (leaks memory, but correct)
+
+Optimizations (escape analysis, deallocation) can be added incrementally without changing IR proofs.
