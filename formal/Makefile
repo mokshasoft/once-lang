@@ -60,6 +60,7 @@ X86_STARBASE := Once/Backend/X86/Correct/StarBase.agda
 X86_WHOLEPROGRAM := Once/Backend/X86/Correct/WholeProgram.agda
 X86_ENCODING := Once/Backend/X86/Encoding.agda
 X86V3_WHOLEPROGRAM := Once/Backend/X86v3/WholeProgram.agda
+X86V3_ARITH_PRIMS := Once/Backend/X86v3/Arith/Prims.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
 AARCH64_CODEGEN := Once/Backend/AArch64/CodeGen.agda
@@ -192,6 +193,11 @@ x86v3-ccc:
 	@echo "Type-checking X86v3 SlotMachine CCC backend (POC)..."
 	@sh -c '$(AGDA_CMD) $(X86V3_WHOLEPROGRAM)'
 
+.PHONY: x86v3-arith
+x86v3-arith:
+	@echo "Type-checking X86v3 arithmetic primitives..."
+	@sh -c '$(AGDA_CMD) $(X86V3_ARITH_PRIMS)'
+
 .PHONY: x86-star
 x86-star:
 	@echo "Type-checking x86-64 star relation module..."
@@ -304,7 +310,7 @@ riscv-compiler: frontend common riscv-ccc riscv-arith
 	@echo "RISC-V compiler proofs type-check successfully!"
 
 .PHONY: x86v3-compiler
-x86v3-compiler: frontend common x86v3-ccc x86-arith
+x86v3-compiler: frontend common x86v3-ccc x86v3-arith
 	@echo "X86v3 SlotMachine compiler proofs type-check successfully!"
 
 # All compiler proofs
