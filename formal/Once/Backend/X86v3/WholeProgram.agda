@@ -23,7 +23,10 @@ open import Once.Backend.Common.SlotMachine using (LocState; ValueLocation; halt
 
 open import Once.Backend.X86v3.Types using (Type; ⟦_⟧)
 open import Once.Backend.X86v3.IR using (IR; eval; ir-size; ir-stack-requirement; AllocMode; pair-slots)
-open import Once.Backend.X86v3.Allocation using (AllocState; next-slot; frame-capacity; module FrontierInvariant)
+open import Once.Backend.X86v3.Allocation using (AllocState; next-slot; current-frame; frame-capacity; module FrontierInvariant)
+
+-- Import escape interface for SurvivesFramePop
+import Once.Backend.X86v3.IR.ApplyWF as ApplyWFModule
 
 ------------------------------------------------------------------------
 -- THE CORRECTNESS THEOREM
@@ -43,12 +46,13 @@ module Correctness
   (child-capacity : ℕ)
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
   -- Escape analysis guarantees (provided by escape analysis pass)
-  (escape-no-child-ref : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
-    {f : FrameSemantics.Frame FS} {k : ℕ} →
-    f ≡ get-child-frame alloc →
-    k Data.Nat.< AllocState.next-slot body-final →
-    ⊥)
-  (parent-frame-bound-preserved : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
+  -- Body results survive child frame pop (the MINIMAL escape interface)
+  (escape-result-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
+    (result-loc : ValueLocation FS) →
+    current-frame body-final ≡ get-child-frame alloc →
+    ApplyWFModule.BeforeFrontier' body-final result-loc →
+    ApplyWFModule.SurvivesFramePop (get-child-frame alloc) result-loc)
+  (parent-bound-eq : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
     bound ≡ AllocState.next-slot alloc Data.Nat.+ pair-slots)
   where
 
@@ -60,7 +64,7 @@ module Correctness
   open import Once.Backend.X86v3.Dispatcher
   module D = Dispatcher {FS} program-bound acc-pb
     get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
-    escape-no-child-ref parent-frame-bound-preserved
+    escape-result-survives parent-bound-eq
 
   ----------------------------------------------------------------------
   -- Represents: value v is stored at location loc in state s

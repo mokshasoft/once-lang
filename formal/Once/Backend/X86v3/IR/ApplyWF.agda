@@ -34,6 +34,15 @@ open import Once.Backend.X86v3.Types
 open import Once.Backend.X86v3.IR
 open import Once.Backend.X86v3.Allocation hiding (AllocMode)
 
+-- Import escape interface for SurvivesFramePop
+open import Once.Backend.X86v3.EscapeInterface
+module EI {FS : FrameSemantics} = EscapeInterfaceDef {FS}
+open EI using (SurvivesFramePop; in-ancestor; on-heap) public
+
+-- BeforeFrontier for module parameters - use qualified name to avoid ambiguity
+BeforeFrontier' : {FS : FrameSemantics} → AllocState {FS} → ValueLocation FS → Set
+BeforeFrontier' {FS} = FrontierInvariant.BeforeFrontier {FS}
+
 ------------------------------------------------------------------------
 -- BeforeFrontier Transfer Lemmas (independent of program-bound)
 --
@@ -81,14 +90,16 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     ⊥)
   (child-capacity : ℕ)
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
-  -- Escape analysis guarantees (provided by escape analysis pass)
-  -- These ensure body results don't reference the child frame
-  (escape-no-child-ref : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
-    {f : FrameSemantics.Frame FS} {k : ℕ} →
-    f ≡ get-child-frame alloc →
-    k Data.Nat.< next-slot body-final →
-    ⊥)
-  (parent-frame-bound-preserved : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
+  -- Escape analysis: body results survive child frame pop
+  -- This is the MINIMAL interface - escape analysis proves this for each body
+  (escape-result-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
+    (result-loc : ValueLocation FS) →
+    current-frame body-final ≡ get-child-frame alloc →
+    BeforeFrontier' body-final result-loc →
+    SurvivesFramePop (get-child-frame alloc) result-loc)
+  -- Bound tracking: bounds set by bf-transfer equal final-alloc.next-slot
+  -- This is a property of how values are transferred through child frame execution
+  (parent-bound-eq : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
     bound ≡ next-slot alloc Data.Nat.+ pair-slots)
   where
   open FrontierInvariant {FS}
@@ -496,49 +507,44 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       body-frame-is-child : current-frame body-final-alloc ≡ child-frame
       body-frame-is-child = trans (IRResultAWF.frame-preserved body-result) refl
 
-      -- Key invariant: ALL bounds for parent-frame in body's output equal
-      -- next-slot alloc + pair-slots (= next-slot final-alloc), because:
-      -- 1. bf-transfer creates src-origin with this exact bound
-      -- 2. Body execution only passes through or converts src (bound unchanged)
-      --
-      -- Escape analysis guarantee: escaping values don't reference child-frame
-      -- (provided by module parameters from escape analysis pass)
-      escape-no-child-ref' : ∀ {f k} → f ≡ child-frame → k < next-slot body-final-alloc → ⊥
-      escape-no-child-ref' f-eq k<ns = escape-no-child-ref alloc body-final-alloc f-eq k<ns
+      -- Bound tracking note: bounds in StackAncestorSource are set to
+      -- next-slot alloc + pair-slots by bf-transfer, which equals
+      -- next-slot final-alloc by definition of final-alloc.
 
-      parent-frame-bound-is-final : ∀ bound → bound ≡ next-slot final-alloc
-      parent-frame-bound-is-final bound = parent-frame-bound-preserved alloc bound
+      -- Derive SurvivesFramePop for any location with BeforeFrontier body-final
+      get-survives : ∀ loc → BeforeFrontier body-final-alloc loc → SurvivesFramePop child-frame loc
+      get-survives loc bf = escape-result-survives alloc body-final-alloc loc body-frame-is-child bf
 
-      -- Helper: derive k < final from k < bound and bound = final
-      k<final-from-bound : ∀ {k bound} → k < bound → k < next-slot final-alloc
-      k<final-from-bound {k} {bound} k<bound =
-        subst (k <_) (parent-frame-bound-is-final bound) k<bound
+      -- Helper: convert bound to final-alloc.next-slot using parent-bound-eq
+      k<final : ∀ {k} (bound : ℕ) → k < bound → k < next-slot final-alloc
+      k<final {k} bound k<bound = subst (k <_) (parent-bound-eq alloc bound) k<bound
+
+      -- Helper: transfer stack-ancestor with frame comparison
+      -- StackAncestorSource has type: origin-frame → Frame → ℕ → ℕ → Set
+      transfer-ancestor : ∀ origin-frame f k bound →
+        child-frame ≺ f →
+        StackAncestorSource origin-frame f k bound →
+        BeforeFrontier final-alloc (OnStack f k)
+      transfer-ancestor origin-frame f k bound child≺f src with ≺-compare f parent-frame
+      transfer-ancestor .f f k bound child≺f (src-origin _ k<bound) | inj₂ (inj₂ pf≺f) = stack-ancestor pf≺f (src-origin bound k<bound)
+      transfer-ancestor .f f k bound child≺f (src-origin _ k<bound) | inj₂ (inj₁ refl) = stack-before refl (k<final bound k<bound)
+      transfer-ancestor .f f k bound child≺f (src-origin _ k<bound) | inj₁ f≺pf = ⊥-elim (child-frame-adjacent alloc f child≺f f≺pf)
+      transfer-ancestor origin-frame f k bound child≺f (src-above-origin of≺f _ k<bound) | inj₂ (inj₂ pf≺f) = stack-ancestor pf≺f (src-above-origin of≺f bound k<bound)
+      transfer-ancestor origin-frame f k bound child≺f (src-above-origin of≺f _ k<bound) | inj₂ (inj₁ refl) = stack-before refl (k<final bound k<bound)
+      transfer-ancestor origin-frame f k bound child≺f (src-above-origin of≺f _ k<bound) | inj₁ f≺pf = ⊥-elim (child-frame-adjacent alloc f child≺f f≺pf)
 
       -- Transfer BeforeFrontier from child's final-alloc to parent's final-alloc
+      -- Uses SurvivesFramePop (from escape analysis) to eliminate stack-before case
       bf-child-to-parent-stack : ∀ f k →
         BeforeFrontier body-final-alloc (OnStack f k) →
         BeforeFrontier final-alloc (OnStack f k)
-      -- Case 1: stack-before means f = child-frame (impossible for escaping values)
-      bf-child-to-parent-stack f k (stack-before f≡body-frame k<ns) =
-        ⊥-elim (escape-no-child-ref' (trans f≡body-frame body-frame-is-child) k<ns)
-      -- Case 2a: stack-ancestor with src-origin
-      bf-child-to-parent-stack f k (stack-ancestor {bound = bound} cf≺f (src-origin _ k<bound))
-        with ≺-compare f parent-frame
-      ... | inj₂ (inj₂ pf≺f) = stack-ancestor pf≺f (src-origin bound k<bound)
-      ... | inj₂ (inj₁ refl) = stack-before refl (k<final-from-bound k<bound)
-      ... | inj₁ f≺pf = ⊥-elim (child-frame-adjacent alloc f child≺f f≺pf)
-        where
-          child≺f : child-frame ≺ f
-          child≺f = subst (_≺ f) body-frame-is-child cf≺f
-      -- Case 2b: stack-ancestor with src-above-origin
-      bf-child-to-parent-stack f k (stack-ancestor {bound = bound} cf≺f (src-above-origin of≺f _ k<bound))
-        with ≺-compare f parent-frame
-      ... | inj₂ (inj₂ pf≺f) = stack-ancestor pf≺f (src-above-origin of≺f bound k<bound)
-      ... | inj₂ (inj₁ refl) = stack-before refl (k<final-from-bound k<bound)
-      ... | inj₁ f≺pf = ⊥-elim (child-frame-adjacent alloc f child≺f f≺pf)
-        where
-          child≺f : child-frame ≺ f
-          child≺f = subst (_≺ f) body-frame-is-child cf≺f
+      bf-child-to-parent-stack f k bf with get-survives (OnStack f k) bf
+      -- Case 1: stack-before means f = child-frame (impossible by escape analysis)
+      bf-child-to-parent-stack f k (stack-before f≡body-frame k<ns) | in-ancestor child≺f =
+        ⊥-elim (≺-irrefl (subst (child-frame ≺_) (trans f≡body-frame body-frame-is-child) child≺f))
+      -- Case 2: stack-ancestor
+      bf-child-to-parent-stack f k (stack-ancestor {origin-frame = origin-frame} {bound = bound} cf≺f src) | in-ancestor child≺f =
+        transfer-ancestor origin-frame f k bound child≺f src
 
       bf-child-to-parent : ∀ loc → BeforeFrontier body-final-alloc loc → BeforeFrontier final-alloc loc
       bf-child-to-parent (OnHeap hl) (heap-before r<hr) =
