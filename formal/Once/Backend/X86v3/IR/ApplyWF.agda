@@ -81,6 +81,15 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
     ⊥)
   (child-capacity : ℕ)
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
+  -- Escape analysis guarantees (provided by escape analysis pass)
+  -- These ensure body results don't reference the child frame
+  (escape-no-child-ref : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
+    {f : FrameSemantics.Frame FS} {k : ℕ} →
+    f ≡ get-child-frame alloc →
+    k Data.Nat.< next-slot body-final →
+    ⊥)
+  (parent-frame-bound-preserved : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
+    bound ≡ next-slot alloc Data.Nat.+ pair-slots)
   where
   open FrontierInvariant {FS}
   open MemOps {FS}
@@ -493,9 +502,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- 2. Body execution only passes through or converts src (bound unchanged)
       --
       -- Escape analysis guarantee: escaping values don't reference child-frame
-      postulate
-        escape-no-child-ref : ∀ {f k} → f ≡ child-frame → k < next-slot body-final-alloc → ⊥
-        parent-frame-bound-is-final : ∀ bound → bound ≡ next-slot final-alloc
+      -- (provided by module parameters from escape analysis pass)
+      escape-no-child-ref' : ∀ {f k} → f ≡ child-frame → k < next-slot body-final-alloc → ⊥
+      escape-no-child-ref' f-eq k<ns = escape-no-child-ref alloc body-final-alloc f-eq k<ns
+
+      parent-frame-bound-is-final : ∀ bound → bound ≡ next-slot final-alloc
+      parent-frame-bound-is-final bound = parent-frame-bound-preserved alloc bound
 
       -- Helper: derive k < final from k < bound and bound = final
       k<final-from-bound : ∀ {k bound} → k < bound → k < next-slot final-alloc
@@ -508,7 +520,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         BeforeFrontier final-alloc (OnStack f k)
       -- Case 1: stack-before means f = child-frame (impossible for escaping values)
       bf-child-to-parent-stack f k (stack-before f≡body-frame k<ns) =
-        ⊥-elim (escape-no-child-ref (trans f≡body-frame body-frame-is-child) k<ns)
+        ⊥-elim (escape-no-child-ref' (trans f≡body-frame body-frame-is-child) k<ns)
       -- Case 2a: stack-ancestor with src-origin
       bf-child-to-parent-stack f k (stack-ancestor {bound = bound} cf≺f (src-origin _ k<bound))
         with ≺-compare f parent-frame

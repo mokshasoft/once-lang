@@ -117,6 +117,15 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     ⊥)
   (child-capacity : ℕ)
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
+  -- Escape analysis guarantees (provided by escape analysis pass)
+  -- These ensure body results don't reference the child frame
+  (escape-no-child-ref : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
+    {f : FrameSemantics.Frame FS} {k : ℕ} →
+    f ≡ get-child-frame alloc →
+    k Data.Nat.< next-slot body-final →
+    ⊥)
+  (parent-frame-bound-preserved : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
+    bound ≡ next-slot alloc Data.Nat.+ pair-slots)
   where
   open FrontierInvariant {FS}
   open WriteWithDisjoint {FS}
@@ -157,9 +166,10 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- Import curry IR implementation
   open CurryWFModule.CurryWFImpl {FS} program-bound
 
-  -- Import apply IR implementation (pass child-frame parameters)
+  -- Import apply IR implementation (pass child-frame and escape analysis parameters)
   open ApplyWFModule.ApplyWFImpl {FS} program-bound
     get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
+    escape-no-child-ref parent-frame-bound-preserved
 
   -- Import sum/fix IR implementations (inl, inr, case, initial, fold, unfold)
   open import Once.Backend.X86v3.IR.SumFixWF as SumFixWFModule

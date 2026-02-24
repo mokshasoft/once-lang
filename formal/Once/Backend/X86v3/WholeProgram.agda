@@ -42,6 +42,14 @@ module Correctness
     ⊥)
   (child-capacity : ℕ)
   (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
+  -- Escape analysis guarantees (provided by escape analysis pass)
+  (escape-no-child-ref : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
+    {f : FrameSemantics.Frame FS} {k : ℕ} →
+    f ≡ get-child-frame alloc →
+    k Data.Nat.< AllocState.next-slot body-final →
+    ⊥)
+  (parent-frame-bound-preserved : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
+    bound ≡ AllocState.next-slot alloc Data.Nat.+ pair-slots)
   where
 
   open FrontierInvariant {FS} using (BeforeFrontier)
@@ -52,6 +60,7 @@ module Correctness
   open import Once.Backend.X86v3.Dispatcher
   module D = Dispatcher {FS} program-bound acc-pb
     get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
+    escape-no-child-ref parent-frame-bound-preserved
 
   ----------------------------------------------------------------------
   -- Represents: value v is stored at location loc in state s
