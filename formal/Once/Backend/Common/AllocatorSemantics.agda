@@ -40,7 +40,7 @@ open MemoryLayout layout
 -- Allocation Witness
 --
 -- Records that a block of n slots was allocated at addr.
--- This is an ABSTRACT type — witnesses can only be created through
+-- This is an ABSTRACT type -- witnesses can only be created through
 -- alloc-encode (postulated below).
 --
 -- Generators create these at allocation time:
@@ -90,7 +90,7 @@ postulate
   -- no slot of one block overlaps any slot of the other.
   --
   -- This is the separation guarantee: allocated blocks are independent
-  -- memory regions. Orthogonal to GC/refcounting/linearity — those
+  -- memory regions. Orthogonal to GC/refcounting/linearity -- those
   -- only affect WHEN blocks stop being live, not their addresses.
   blocks-disjoint : ∀ {addr₁ n₁ addr₂ n₂} →
     Allocated addr₁ n₁ →

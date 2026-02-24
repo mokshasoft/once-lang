@@ -447,7 +447,7 @@ IRRunnerWithWF = ∀ {A B} (ir : IR A B) (prefix suffix : Program) (x : ⟦ A �
 --
 -- KEY DESIGN: ar-sem-eq provides ONLY semantics equality, not full Closure equality.
 -- This is sufficient for correctness because eval apply (cl, arg) = (Closure.semantics cl) arg.
--- The env-addr field of the input closure is IRRELEVANT to correctness — what matters
+-- The env-addr field of the input closure is IRRELEVANT to correctness -- what matters
 -- is the runtime memory layout (ar-closure-at, ar-env-valid) and the semantics match.
 record ApplyReady {A B : Type} (x : ⟦ (A ⇒ B) * A ⟧) (s : State) (prog : Program) : Set₁ where
   field
