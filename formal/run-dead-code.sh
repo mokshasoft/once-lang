@@ -46,7 +46,9 @@ echo "  File: $AGDA_FILE"
 echo ""
 
 unset AGDA_DIR
+export LC_ALL=en_US.utf8
 "$AGDA_BIN" \
     --library-file=<(echo "$LOCAL_STD_LIB"; echo "Once.agda-lib") \
+    --transliterate \
     --dead-code="$ENTRY_POINT" \
     "$AGDA_FILE"
