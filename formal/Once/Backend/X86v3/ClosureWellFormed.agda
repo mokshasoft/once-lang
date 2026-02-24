@@ -159,6 +159,33 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         ValidAtWF mV alloc v unfolded-loc s →
         ValidAtWF m alloc {Fix F} (fold v) fix-loc s
 
+      -- Primitive types: valid at any mode if location is before frontier
+      -- Primitives are single-slot values (Int, Float, Str, Buffer).
+      -- No structural constraints needed - just location validity.
+      valid-int-wf : ∀ {m} {n : ⟦ Int ⟧}
+        {alloc : AllocState {FS}}
+        {loc : ValueLocation FS} {s : LocState FS} →
+        BeforeFrontier alloc loc →
+        ValidAtWF m alloc {Int} n loc s
+
+      valid-float-wf : ∀ {m} {x : ⟦ Float ⟧}
+        {alloc : AllocState {FS}}
+        {loc : ValueLocation FS} {s : LocState FS} →
+        BeforeFrontier alloc loc →
+        ValidAtWF m alloc {Float} x loc s
+
+      valid-str-wf : ∀ {m} {x : ⟦ Str ⟧}
+        {alloc : AllocState {FS}}
+        {loc : ValueLocation FS} {s : LocState FS} →
+        BeforeFrontier alloc loc →
+        ValidAtWF m alloc {Str} x loc s
+
+      valid-buffer-wf : ∀ {m} {x : ⟦ Buffer ⟧}
+        {alloc : AllocState {FS}}
+        {loc : ValueLocation FS} {s : LocState FS} →
+        BeforeFrontier alloc loc →
+        ValidAtWF m alloc {Buffer} x loc s
+
     --------------------------------------------------------------------
     -- IRResultAWF: Mode-indexed IR execution result
     --
@@ -560,6 +587,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
 
       uv' = validityWF-mem-only v ul s₁ s₂ stack-eq heap-eq uv
 
+  -- Primitives: memory-independent (BeforeFrontier doesn't depend on state)
+  validityWF-mem-only {m} {alloc} {Int} _ loc s₁ s₂ stack-eq heap-eq (valid-int-wf bf) =
+    valid-int-wf bf
+  validityWF-mem-only {m} {alloc} {Float} _ loc s₁ s₂ stack-eq heap-eq (valid-float-wf bf) =
+    valid-float-wf bf
+  validityWF-mem-only {m} {alloc} {Str} _ loc s₁ s₂ stack-eq heap-eq (valid-str-wf bf) =
+    valid-str-wf bf
+  validityWF-mem-only {m} {alloc} {Buffer} _ loc s₁ s₂ stack-eq heap-eq (valid-buffer-wf bf) =
+    valid-buffer-wf bf
+
   ------------------------------------------------------------------------
   -- ValidAtWF preservation under writes to frontier locations
   --
@@ -654,6 +691,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
                     (at-frontier-neq-before-wf alloc loc loc-before)) up
       uv' = validityWF-write-at-frontier v ul s val ub uv
 
+  -- Primitives: BeforeFrontier unchanged
+  validityWF-write-at-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf) =
+    valid-int-wf bf
+  validityWF-write-at-frontier {m} {alloc} {Float} _ loc s val loc-before (valid-float-wf bf) =
+    valid-float-wf bf
+  validityWF-write-at-frontier {m} {alloc} {Str} _ loc s val loc-before (valid-str-wf bf) =
+    valid-str-wf bf
+  validityWF-write-at-frontier {m} {alloc} {Buffer} _ loc s val loc-before (valid-buffer-wf bf) =
+    valid-buffer-wf bf
+
   -- ValidAtWF is preserved when writing to suc-frontier location
   validityWF-write-at-suc-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
@@ -717,6 +764,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       up' = trans (write-preserves-disjoint s fresh val loc
                     (suc-frontier-neq-before-wf alloc loc loc-before)) up
       uv' = validityWF-write-at-suc-frontier v ul s val ub uv
+
+  -- Primitives: BeforeFrontier unchanged
+  validityWF-write-at-suc-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf) =
+    valid-int-wf bf
+  validityWF-write-at-suc-frontier {m} {alloc} {Float} _ loc s val loc-before (valid-float-wf bf) =
+    valid-float-wf bf
+  validityWF-write-at-suc-frontier {m} {alloc} {Str} _ loc s val loc-before (valid-str-wf bf) =
+    valid-str-wf bf
+  validityWF-write-at-suc-frontier {m} {alloc} {Buffer} _ loc s val loc-before (valid-buffer-wf bf) =
+    valid-buffer-wf bf
 
   ------------------------------------------------------------------------
   -- Validity transport across allocation advancement
@@ -789,6 +846,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ub' = stack-alloc-advances alloc n fits ul ub
       uv' = validityWF-alloc-advance v ul s n fits uv
 
+  -- Primitives: advance BeforeFrontier
+  validityWF-alloc-advance {m} {alloc} {Int} _ loc s n fits (valid-int-wf bf) =
+    valid-int-wf (stack-alloc-advances alloc n fits loc bf)
+  validityWF-alloc-advance {m} {alloc} {Float} _ loc s n fits (valid-float-wf bf) =
+    valid-float-wf (stack-alloc-advances alloc n fits loc bf)
+  validityWF-alloc-advance {m} {alloc} {Str} _ loc s n fits (valid-str-wf bf) =
+    valid-str-wf (stack-alloc-advances alloc n fits loc bf)
+  validityWF-alloc-advance {m} {alloc} {Buffer} _ loc s n fits (valid-buffer-wf bf) =
+    valid-buffer-wf (stack-alloc-advances alloc n fits loc bf)
+
   ------------------------------------------------------------------------
   -- Validity transport across arbitrary frontier advancement
   --
@@ -853,6 +920,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
       ub' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ ul ub
       uv' = validityWF-frontier-advance v ul s cf-eq slot-≤ heap-≤ uv
 
+  -- Primitives: advance BeforeFrontier
+  validityWF-frontier-advance {m} {alloc} {alloc'} {Int} _ loc s cf-eq slot-≤ heap-≤ (valid-int-wf bf) =
+    valid-int-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf)
+  validityWF-frontier-advance {m} {alloc} {alloc'} {Float} _ loc s cf-eq slot-≤ heap-≤ (valid-float-wf bf) =
+    valid-float-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf)
+  validityWF-frontier-advance {m} {alloc} {alloc'} {Str} _ loc s cf-eq slot-≤ heap-≤ (valid-str-wf bf) =
+    valid-str-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf)
+  validityWF-frontier-advance {m} {alloc} {alloc'} {Buffer} _ loc s cf-eq slot-≤ heap-≤ (valid-buffer-wf bf) =
+    valid-buffer-wf (frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ loc bf)
+
   ------------------------------------------------------------------------
   -- ValidAtWF transfer between allocation states with BeforeFrontier transfer
   --
@@ -901,6 +978,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up (bf ul ub)
       (validityWF-with-bf-transfer v ul s a₁ a₂ bf uv)
+
+  -- Primitives: transfer BeforeFrontier
+  validityWF-with-bf-transfer {m} {Int} _ loc s a₁ a₂ bf (valid-int-wf bfr) =
+    valid-int-wf (bf loc bfr)
+  validityWF-with-bf-transfer {m} {Float} _ loc s a₁ a₂ bf (valid-float-wf bfr) =
+    valid-float-wf (bf loc bfr)
+  validityWF-with-bf-transfer {m} {Str} _ loc s a₁ a₂ bf (valid-str-wf bfr) =
+    valid-str-wf (bf loc bfr)
+  validityWF-with-bf-transfer {m} {Buffer} _ loc s a₁ a₂ bf (valid-buffer-wf bfr) =
+    valid-buffer-wf (bf loc bfr)
 
   ------------------------------------------------------------------------
   -- Validity preservation when memory at BeforeFrontier is preserved
@@ -963,6 +1050,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
     where
       up' = trans (mem-eq loc loc-before) up
       uv' = validityWF-mem-preserved v ul s₁ s₂ ub mem-eq uv
+
+  -- Primitives: BeforeFrontier unchanged
+  validityWF-mem-preserved {m} {alloc} {Int} _ loc s₁ s₂ loc-before mem-eq (valid-int-wf bf) =
+    valid-int-wf bf
+  validityWF-mem-preserved {m} {alloc} {Float} _ loc s₁ s₂ loc-before mem-eq (valid-float-wf bf) =
+    valid-float-wf bf
+  validityWF-mem-preserved {m} {alloc} {Str} _ loc s₁ s₂ loc-before mem-eq (valid-str-wf bf) =
+    valid-str-wf bf
+  validityWF-mem-preserved {m} {alloc} {Buffer} _ loc s₁ s₂ loc-before mem-eq (valid-buffer-wf bf) =
+    valid-buffer-wf bf
 
   ------------------------------------------------------------------------
   -- Stack Reclamation
