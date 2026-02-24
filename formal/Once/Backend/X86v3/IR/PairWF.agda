@@ -294,11 +294,11 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       fst-ptr = trans (readLoc-stackMem-eq s-final s₄ pair-loc refl refl)
                       (trans (write-preserves-disjoint s₃ (sucLoc pair-loc) snd-loc pair-loc
                                (sucLoc-neq pair-loc))
-                             (write-read-same s₂ pair-loc fst-loc))
+                             (write-read-same s₂ pair-loc fst-loc stack-valid))
 
       snd-ptr : readLoc s-final (sucLoc pair-loc) ≡ just snd-loc
       snd-ptr = trans (readLoc-stackMem-eq s-final s₄ (sucLoc pair-loc) refl refl)
-                      (write-read-same s₃ (sucLoc pair-loc) snd-loc)
+                      (write-read-same s₃ (sucLoc pair-loc) snd-loc stack-valid)
 
       ------------------------------------------------------------------------
       -- Validity transfer for fst through write operations
@@ -687,11 +687,11 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       fst-ptr = trans (readLoc-stackMem-eq s-final s₄ pair-loc refl refl)
                       (trans (write-preserves-disjoint s₃ (sucLoc pair-loc) snd-loc pair-loc
                                (sucLoc-neq pair-loc))
-                             (write-read-same s₂ pair-loc fst-loc))
+                             (write-read-same s₂ pair-loc fst-loc stack-valid))
 
       snd-ptr : readLoc s-final (sucLoc pair-loc) ≡ just snd-loc
       snd-ptr = trans (readLoc-stackMem-eq s-final s₄ (sucLoc pair-loc) refl refl)
-                      (write-read-same s₃ (sucLoc pair-loc) snd-loc)
+                      (write-read-same s₃ (sucLoc pair-loc) snd-loc stack-valid)
 
       ------------------------------------------------------------------------
       -- Validity transfer for fst through write operations

@@ -167,10 +167,10 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       env-ptr = trans refl (trans
                   (write-preserves-disjoint s₁ (sucLoc closure-loc) code-loc closure-loc
                     (sucLoc-neq closure-loc))
-                  (write-read-same s closure-loc input-loc))
+                  (write-read-same s closure-loc input-loc stack-valid))
 
       code-ptr : readLoc s-final (sucLoc closure-loc) ≡ just code-loc
-      code-ptr = write-read-same s₁ (sucLoc closure-loc) code-loc
+      code-ptr = write-read-same s₁ (sucLoc closure-loc) code-loc stack-valid
 
       sucLoc-closure-before : BeforeFrontier alloc₁ (sucLoc closure-loc)
       sucLoc-closure-before = code-before₁

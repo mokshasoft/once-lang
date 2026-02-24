@@ -262,7 +262,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just input-loc
       payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just input-loc
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
-                          (write-read-same s (sucLoc sum-loc) input-loc)
+                          (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
 
       -- Input validity in final state
       input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final
@@ -371,7 +371,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just input-loc
       payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just input-loc
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
-                          (write-read-same s (sucLoc sum-loc) input-loc)
+                          (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
 
       -- Input validity in final state
       input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final
@@ -502,7 +502,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just input-loc
       payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just input-loc
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
-                          (write-read-same s (sucLoc sum-loc) input-loc)
+                          (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
 
       -- Input validity in final state
       input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final
@@ -610,7 +610,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Payload pointer: readLoc s-final (sucLoc sum-loc) ≡ just input-loc
       payload-ptr : readLoc s-final (sucLoc sum-loc) ≡ just input-loc
       payload-ptr = trans (readLoc-stackMem-eq s-final s₁ (sucLoc sum-loc) refl refl)
-                          (write-read-same s (sucLoc sum-loc) input-loc)
+                          (write-read-same s (sucLoc sum-loc) input-loc stack-valid)
 
       -- Input validity in final state
       input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final
@@ -735,7 +735,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Unfolded pointer: readLoc s-final fold-loc ≡ just input-loc
       unfolded-ptr : readLoc s-final fold-loc ≡ just input-loc
       unfolded-ptr = trans (readLoc-stackMem-eq s-final s₁ fold-loc refl refl)
-                           (write-read-same s fold-loc input-loc)
+                           (write-read-same s fold-loc input-loc stack-valid)
 
       -- Input validity in final state
       input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final
@@ -830,7 +830,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Unfolded pointer: readLoc s-final fold-loc ≡ just input-loc
       unfolded-ptr : readLoc s-final fold-loc ≡ just input-loc
       unfolded-ptr = trans (readLoc-stackMem-eq s-final s₁ fold-loc refl refl)
-                           (write-read-same s fold-loc input-loc)
+                           (write-read-same s fold-loc input-loc stack-valid)
 
       -- Input validity in final state
       input-valid-wf-final : ValidAtWF mIn alloc₁ x input-loc s-final

@@ -398,10 +398,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       pair-env-ptr = trans refl (trans
                        (write-preserves-disjoint s-write-env (sucLoc pair-input-loc) arg-loc pair-input-loc
                          (sucLoc-neq pair-input-loc))
-                       (write-read-same s pair-input-loc env-loc))
+                       (write-read-same s pair-input-loc env-loc stack-valid))
 
       pair-arg-ptr : readLoc s-pair (sucLoc pair-input-loc) ≡ just arg-loc
-      pair-arg-ptr = write-read-same s-write-env (sucLoc pair-input-loc) arg-loc
+      pair-arg-ptr = write-read-same s-write-env (sucLoc pair-input-loc) arg-loc stack-valid
 
       -- Construct ValidAtWF for the pair in alloc-pair
       -- The constructed pair is boxed (Heap mode) with env and arg components
@@ -629,7 +629,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
                               body-result-valid-at-final
         where
           -- Transfer body result validity to final-alloc
-          -- Reuses bf-child-to-parent which handles OnHeap (proven) and OnStack (postulated)
+          -- Reuses bf-child-to-parent which handles OnHeap (proven) and OnStack (via escape params)
           body-result-valid-at-final : ValidAtWF mBody final-alloc {B} (eval body (pair env arg)) result-loc s-final
           body-result-valid-at-final = validityWF-with-bf-transfer {mBody} {B}
             (eval body (pair env arg)) result-loc s-final

@@ -71,19 +71,25 @@ module WriteWithDisjoint {FS : FrameSemantics} where
   ... | yes _ = refl
   ... | no hl≢hl = ⊥-elim (hl≢hl refl)
 
-  -- General write-read-same: for stack locations, always works; for heap, requires OnHeap val
-  -- Note: The OnHeap + OnStack case is impossible by the heap-only invariant (type mismatch)
-  write-read-same : ∀ (s : LocState FS) (loc : ValueLocation FS) (val : ValueLocation FS) →
+  ------------------------------------------------------------------------
+  -- ValidWrite: predicate for semantically valid writes
+  --
+  -- The heap-only invariant means heap locations can only store heap values.
+  -- ValidWrite captures this: stack destinations accept any value, but
+  -- heap destinations require heap values.
+  ------------------------------------------------------------------------
+
+  data ValidWrite : ValueLocation FS → ValueLocation FS → Set where
+    stack-valid : ∀ {f k val} → ValidWrite (OnStack f k) val
+    heap-valid : ∀ {hl v} → ValidWrite (OnHeap hl) (OnHeap v)
+
+  -- General write-read-same: requires ValidWrite proof to ensure semantic validity
+  -- This eliminates the need for postulates - invalid cases can't be constructed
+  write-read-same : ∀ (s : LocState FS) (loc val : ValueLocation FS) →
+    ValidWrite loc val →
     readLoc (write-loc s loc val) loc ≡ just val
-  write-read-same s (OnStack f k) val = write-stack-read-same s f k val
-  write-read-same s (OnHeap hl) (OnHeap v) = write-read-same-heap s hl v
-  -- Invalid case: writing OnStack to OnHeap violates heap-only invariant
-  -- We postulate because this case is unreachable in well-typed programs
-  write-read-same s (OnHeap hl) (OnStack f k) = heap-stack-invalid s hl f k
-    where
-      postulate
-        heap-stack-invalid : ∀ s hl f k →
-          readLoc (write-loc s (OnHeap hl) (OnStack f k)) (OnHeap hl) ≡ just (OnStack f k)
+  write-read-same s (OnStack f k) val stack-valid = write-stack-read-same s f k val
+  write-read-same s (OnHeap hl) (OnHeap v) heap-valid = write-read-same-heap s hl v
 
   -- Helper: hl ≢ sucHL hl (inverse direction of sucHL-neq)
   hl-neq-sucHL : ∀ (hl : HeapLocation) → hl ≢ sucHL hl
