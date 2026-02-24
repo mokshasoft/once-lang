@@ -100,6 +100,7 @@ rename {Δ = Δ} θ (Surface.var i) =
   subst (SExpr Δ) (sym (thin-var-lookup θ i)) (Surface.var (thin-var θ i))
 rename θ (Surface.lam q e) = Surface.lam q (rename (keep θ) e)
 rename θ (Surface.app f x) = Surface.app (rename θ f) (rename θ x)
+rename θ (Surface.effApp f x) = Surface.effApp (rename θ f) (rename θ x)
 rename θ (Surface.pair a b) = Surface.pair (rename θ a) (rename θ b)
 rename θ (Surface.fst' p) = Surface.fst' (rename θ p)
 rename θ (Surface.snd' p) = Surface.snd' (rename θ p)
@@ -125,6 +126,10 @@ rename θ (Surface.gt a b) = Surface.gt (rename θ a) (rename θ b)
 rename θ (Surface.ge a b) = Surface.ge (rename θ a) (rename θ b)
 rename θ (Surface.eq a b) = Surface.eq (rename θ a) (rename θ b)
 rename θ (Surface.ne a b) = Surface.ne (rename θ a) (rename θ b)
+rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
+rename θ (Surface.roll' e) = Surface.roll' (rename θ e)
+rename θ (Surface.unroll' e) = Surface.unroll' (rename θ e)
+rename θ (Surface.prim name) = Surface.prim name
 
 ------------------------------------------------------------------------
 -- Telescopes (for generalized exchange)

@@ -280,13 +280,13 @@ compile-length id = simple-instr-count
 compile-length (g ∘ f) = (compile-length f +ℕ simple-instr-count) +ℕ compile-length g
 compile-length fst = simple-instr-count
 compile-length snd = simple-instr-count
-compile-length ⟨ f , g ⟩ = (pair-overhead +ℕ compile-length f) +ℕ compile-length g
-compile-length inl = injection-instr-count
-compile-length inr = injection-instr-count
+compile-length (⟨_,_⟩ f g _) = (pair-overhead +ℕ compile-length f) +ℕ compile-length g
+compile-length (inl _) = injection-instr-count
+compile-length (inr _) = injection-instr-count
 compile-length [ f , g ] = (case-overhead +ℕ compile-length f) +ℕ compile-length g
 compile-length terminal = simple-instr-count
 compile-length initial = simple-instr-count
-compile-length (curry f) = curry-overhead +ℕ compile-length f
+compile-length (curry f _) = curry-overhead +ℕ compile-length f
 compile-length apply = apply-instr-count
 compile-length fold = simple-instr-count
 compile-length unfold = simple-instr-count
@@ -333,7 +333,7 @@ compile-x86 snd = mov (reg rax) (mem (base+disp rdi slot-size)) ∷ []
 
 -- Pairing: allocate pair on stack, compute both components
 -- Uses pair-setup/middle/cleanup instruction lists defined above.
-compile-x86 ⟨ f , g ⟩ =
+compile-x86 (⟨_,_⟩ f g _) =
   pair-setup ++
   compile-x86 f ++
   pair-middle ++
@@ -341,10 +341,10 @@ compile-x86 ⟨ f , g ⟩ =
   pair-cleanup
 
 -- Left injection: uses inl-instrs defined above
-compile-x86 inl = inl-instrs
+compile-x86 (inl _) = inl-instrs
 
 -- Right injection: uses inr-instrs defined above
-compile-x86 inr = inr-instrs
+compile-x86 (inr _) = inr-instrs
 
 -- Case analysis: branch on tag
 -- Jump offsets are PC-relative: target = pc + 1 + offset
@@ -409,7 +409,7 @@ compile-x86 initial = ud2 ∷ []
 --   3. Executes compile-x86 f
 --
 -- Jump offsets are PC-relative: target = pc + 1 + offset
-compile-x86 (curry {A} {B} {C} f) =
+compile-x86 (curry {A} {B} {C} f _) =
   let len-f = compile-length f
       -- Layout (with RIP-relative code-ptr, frame pointer, and r15 save/restore):
       --   0: sub rsp, 16

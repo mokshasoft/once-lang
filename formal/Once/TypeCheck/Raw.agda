@@ -56,6 +56,10 @@ data RawExpr : Set where
   -- Variable reference
   RVar      : String → RawExpr
 
+  -- Qualified variable reference: name@alias (e.g., exit0@S)
+  -- First String is the name, second is the module alias
+  RQualified : String → String → RawExpr
+
   -- Function application
   RApp      : RawExpr → RawExpr → RawExpr
 
@@ -68,8 +72,9 @@ data RawExpr : Set where
   -- Pair introduction: (e1, e2)
   RPair     : RawExpr → RawExpr → RawExpr
 
-  -- Case analysis: case e of { Left x -> e1; Right y -> e2 }
-  RCase     : RawExpr → String → RawExpr → String → RawExpr → RawExpr
+  -- Sum elimination: destruct e | x -> e1 | y -> e2
+  -- First branch handles inl (Left), second handles inr (Right)
+  RDestruct : RawExpr → String → RawExpr → String → RawExpr → RawExpr
 
   -- Unit value: ()
   RUnit     : RawExpr

@@ -1,0 +1,22 @@
+-- allocation-stress.once: Placeholder for allocation test patterns
+--
+-- NOTE: This test cannot yet be compiled because the current Malonzo-generated
+-- compiler does not implement the 'pair' combinator. This file documents the
+-- allocation patterns we intend to test once pair allocation is implemented.
+--
+-- Intended test patterns (for future implementation):
+-- 1. Pairs immediately consumed (stack candidates)
+--    - test_consume_fst: fst . diagonal
+--    - test_consume_snd: snd . diagonal
+-- 2. Pairs that escape by being returned (heap required)
+--    - test_return_pair: diagonal (returns the pair)
+--    - test_swap: pair snd fst (creates new pair that escapes)
+-- 3. Nested pairs (mixed allocation)
+--    - test_nested: pair diagonal id (outer escapes, inner consumed)
+--
+-- For now, we use a minimal identity function as a placeholder
+-- that will allow the test infrastructure to compile.
+
+-- Placeholder: Simple identity function
+main : A -> A
+main = id

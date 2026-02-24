@@ -58,17 +58,17 @@ eval-assoc f g h x = refl
 --
 -- Projecting the first component of a pair gives the first morphism.
 --
-eval-fst-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
-              → eval (fst ∘ ⟨ f , g ⟩) x ≡ eval f x
-eval-fst-pair f g x = refl
+eval-fst-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) (x : ⟦ C ⟧)
+              → eval (fst ∘ ⟨ f , g ⟩ m) x ≡ eval f x
+eval-fst-pair f g m x = refl
 
 -- | snd ∘ ⟨ f , g ⟩ ≡ g
 --
 -- Projecting the second component of a pair gives the second morphism.
 --
-eval-snd-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
-              → eval (snd ∘ ⟨ f , g ⟩) x ≡ eval g x
-eval-snd-pair f g x = refl
+eval-snd-pair : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) (x : ⟦ C ⟧)
+              → eval (snd ∘ ⟨ f , g ⟩ m) x ≡ eval g x
+eval-snd-pair f g m x = refl
 
 ------------------------------------------------------------------------
 -- Product Laws (Eta/Uniqueness)
@@ -78,18 +78,18 @@ eval-snd-pair f g x = refl
 --
 -- Pairing the projections gives back the identity on products.
 --
-eval-pair-eta : ∀ {A B} (x : ⟦ A * B ⟧)
-              → eval ⟨ fst , snd ⟩ x ≡ x
-eval-pair-eta (a , b) = refl
+eval-pair-eta : ∀ {A B} (m : AllocMode) (x : ⟦ A * B ⟧)
+              → eval (⟨ fst , snd ⟩ m) x ≡ x
+eval-pair-eta m (a , b) = refl
 
 -- | Product uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ ≡ h (semantically)
 --
 -- Any morphism into a product is uniquely determined by its projections.
 -- This is the universal property of products.
 --
-eval-pair-unique : ∀ {A B C} (h : IR C (A * B)) (x : ⟦ C ⟧)
-                 → eval ⟨ fst ∘ h , snd ∘ h ⟩ x ≡ eval h x
-eval-pair-unique h x with eval h x
+eval-pair-unique : ∀ {A B C} (h : IR C (A * B)) (m : AllocMode) (x : ⟦ C ⟧)
+                 → eval (⟨ fst ∘ h , snd ∘ h ⟩ m) x ≡ eval h x
+eval-pair-unique h m x with eval h x
 ... | (a , b) = refl
 
 ------------------------------------------------------------------------
@@ -100,17 +100,17 @@ eval-pair-unique h x with eval h x
 --
 -- Case analysis on a left injection gives the left branch.
 --
-eval-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A ⟧)
-              → eval ([ f , g ] ∘ inl) x ≡ eval f x
-eval-case-inl f g x = refl
+eval-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) (x : ⟦ A ⟧)
+              → eval ([ f , g ] ∘ inl m) x ≡ eval f x
+eval-case-inl f g m x = refl
 
 -- | [ f , g ] ∘ inr ≡ g
 --
 -- Case analysis on a right injection gives the right branch.
 --
-eval-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ B ⟧)
-              → eval ([ f , g ] ∘ inr) x ≡ eval g x
-eval-case-inr f g x = refl
+eval-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) (x : ⟦ B ⟧)
+              → eval ([ f , g ] ∘ inr m) x ≡ eval g x
+eval-case-inr f g m x = refl
 
 ------------------------------------------------------------------------
 -- Coproduct Laws (Eta/Uniqueness)
@@ -120,20 +120,20 @@ eval-case-inr f g x = refl
 --
 -- Case analysis that re-injects gives back identity on coproducts.
 --
-eval-case-eta : ∀ {A B} (x : ⟦ A + B ⟧)
-              → eval [ inl , inr ] x ≡ x
-eval-case-eta (inj₁ a) = refl
-eval-case-eta (inj₂ b) = refl
+eval-case-eta : ∀ {A B} (m : AllocMode) (x : ⟦ A + B ⟧)
+              → eval [ inl m , inr m ] x ≡ x
+eval-case-eta m (inj₁ a) = refl
+eval-case-eta m (inj₂ b) = refl
 
 -- | Coproduct uniqueness: [ h ∘ inl , h ∘ inr ] ≡ h (semantically)
 --
 -- Any morphism from a coproduct is uniquely determined by its restrictions.
 -- This is the universal property of coproducts.
 --
-eval-case-unique : ∀ {A B C} (h : IR (A + B) C) (x : ⟦ A + B ⟧)
-                 → eval [ h ∘ inl , h ∘ inr ] x ≡ eval h x
-eval-case-unique h (inj₁ a) = refl
-eval-case-unique h (inj₂ b) = refl
+eval-case-unique : ∀ {A B C} (h : IR (A + B) C) (m : AllocMode) (x : ⟦ A + B ⟧)
+                 → eval [ h ∘ inl m , h ∘ inr m ] x ≡ eval h x
+eval-case-unique h m (inj₁ a) = refl
+eval-case-unique h m (inj₂ b) = refl
 
 ------------------------------------------------------------------------
 -- Terminal Object Laws
@@ -168,10 +168,11 @@ eval-initial-unique f ()
 -- | apply ∘ ⟨ curry f ∘ fst , snd ⟩ ≡ f (semantically)
 --
 -- This is the beta law for exponentials.
+-- The quantity {q} is phantom; the law holds for any quantity.
 --
-eval-curry-apply : ∀ {A B C} (f : IR (A * B) C) (x : ⟦ A * B ⟧)
-                 → eval (apply ∘ ⟨ curry f ∘ fst , snd ⟩) x ≡ eval f x
-eval-curry-apply f (a , b) = refl
+eval-curry-apply : ∀ {A B C q} (f : IR (A * B) C) (m₁ m₂ : AllocMode) (x : ⟦ A * B ⟧)
+                 → eval (apply {q = q} ∘ ⟨ curry {q = q} f m₁ ∘ fst , snd ⟩ m₂) x ≡ eval f x
+eval-curry-apply f m₁ m₂ (a , b) = refl
 
 -- | curry (apply ∘ ⟨ g ∘ fst , snd ⟩) ≡ g (semantically, for functions)
 --
@@ -180,9 +181,10 @@ eval-curry-apply f (a , b) = refl
 -- but we can prove it pointwise.
 --
 -- With explicit Closure, application uses Closure.semantics
-eval-curry-eta : ∀ {A B C} (g : IR A (B ⇒ C)) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
-               → Closure.semantics (eval (curry (apply ∘ ⟨ g ∘ fst , snd ⟩)) a) b ≡ Closure.semantics (eval g a) b
-eval-curry-eta g a b = refl
+-- The quantity {q} is phantom; the law holds for any quantity.
+eval-curry-eta : ∀ {A B C q} (g : IR A (B ⇒[ q ] C)) (m₁ m₂ : AllocMode) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
+               → Closure.semantics (eval (curry {q = q} (apply {q = q} ∘ ⟨ g ∘ fst , snd ⟩ m₁) m₂) a) b ≡ Closure.semantics (eval g a) b
+eval-curry-eta g m₁ m₂ a b = refl
 
 ------------------------------------------------------------------------
 -- Distributivity Laws
@@ -197,25 +199,25 @@ eval-curry-eta g a b = refl
 
 -- | bimap f g = ⟨ f ∘ fst , g ∘ snd ⟩ preserves identity
 --
-eval-bimap-id : ∀ {A B} (x : ⟦ A * B ⟧)
-              → eval ⟨ id ∘ fst , id ∘ snd ⟩ x ≡ x
-eval-bimap-id (a , b) = refl
+eval-bimap-id : ∀ {A B} (m : AllocMode) (x : ⟦ A * B ⟧)
+              → eval (⟨ id ∘ fst , id ∘ snd ⟩ m) x ≡ x
+eval-bimap-id m (a , b) = refl
 
 -- | bimap preserves composition
 --
 eval-bimap-compose : ∀ {A B C D E F}
                      (f : IR B C) (g : IR A B) (h : IR E F) (i : IR D E)
-                     (x : ⟦ A * D ⟧)
-                   → eval ⟨ (f ∘ g) ∘ fst , (h ∘ i) ∘ snd ⟩ x
-                     ≡ eval (⟨ f ∘ fst , h ∘ snd ⟩ ∘ ⟨ g ∘ fst , i ∘ snd ⟩) x
-eval-bimap-compose f g h i (a , d) = refl
+                     (m₁ m₂ : AllocMode) (x : ⟦ A * D ⟧)
+                   → eval (⟨ (f ∘ g) ∘ fst , (h ∘ i) ∘ snd ⟩ m₁) x
+                     ≡ eval (⟨ f ∘ fst , h ∘ snd ⟩ m₁ ∘ ⟨ g ∘ fst , i ∘ snd ⟩ m₂) x
+eval-bimap-compose f g h i m₁ m₂ (a , d) = refl
 
 -- | bicase f g = [ inl ∘ f , inr ∘ g ] preserves identity
 --
-eval-bicase-id : ∀ {A B} (x : ⟦ A + B ⟧)
-               → eval [ inl ∘ id , inr ∘ id ] x ≡ x
-eval-bicase-id (inj₁ a) = refl
-eval-bicase-id (inj₂ b) = refl
+eval-bicase-id : ∀ {A B} (m : AllocMode) (x : ⟦ A + B ⟧)
+               → eval [ inl m ∘ id , inr m ∘ id ] x ≡ x
+eval-bicase-id m (inj₁ a) = refl
+eval-bicase-id m (inj₂ b) = refl
 
 ------------------------------------------------------------------------
 -- Fixed Point Laws (Recursive Types)

@@ -1,6 +1,7 @@
 # Build artifacts
 .build/
 result
+compiler/dist-newstyle/
 
 # Agda build artifacts
 formal/_build/

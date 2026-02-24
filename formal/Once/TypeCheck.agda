@@ -20,7 +20,7 @@ open import Once.Type public
 
 -- Raw syntax (parser output)
 open import Once.TypeCheck.Raw public
-  using (RawExpr; RVar; RApp; RLam; RLet; RPair; RCase; RUnit; RInt; RStringLit; RAnnot; RBinOp; RUnaryOp)
+  using (RawExpr; RVar; RApp; RLam; RLet; RPair; RDestruct; RUnit; RInt; RStringLit; RAnnot; RBinOp; RUnaryOp)
   using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod; OpLt; OpLe; OpGt; OpGe; OpEq; OpNe)
   using (UnaryOp; OpNeg)
   using (isComparisonOp; isArithmeticOp)
@@ -50,7 +50,6 @@ open import Once.TypeCheck.Unify public
 -- Soundness is trivial by construction: if inferElab returns success,
 -- the expression IS well-typed (the type is encoded in the term).
 open import Once.TypeCheck.Elaborate as Elaborate public
-  using (weaken; exchange)
   using (InferElabResult)
   renaming (success to elab-success; failure to elab-failure)
   using (NamedCtx; emptyCtx; extendNamedCtx)
@@ -58,13 +57,21 @@ open import Once.TypeCheck.Elaborate as Elaborate public
   using (inferElab; checkElab)
   using (compileExpr; compileExprTyped)
 
+-- Thinning operations (weaken, exchange)
+open import Once.Surface.Thinning public
+  using (weaken; exchange)
+
+-- Surface syntax (for empty context S∅)
+open import Once.Surface.Syntax public
+  using () renaming (∅ to S∅)
+
 ------------------------------------------------------------------------
 -- Convenience API
 ------------------------------------------------------------------------
 
 -- | Type check an expression in the empty context
 -- Returns an intrinsically-typed result (soundness by construction)
-typeCheck : RawExpr → InferElabResult Elaborate.[]
+typeCheck : RawExpr → InferElabResult S∅
 typeCheck e = inferElab emptyCtx e
 
 ------------------------------------------------------------------------
@@ -77,17 +84,17 @@ private
   open import Data.Integer using (+_)
 
   -- λx.x has type t0 → t0
-  example-id : InferElabResult Elaborate.[]
+  example-id : InferElabResult S∅
   example-id = typeCheck (RLam "x" (RVar "x"))
 
   -- (λx.x) () should have type Unit
-  example-app : InferElabResult Elaborate.[]
+  example-app : InferElabResult S∅
   example-app = typeCheck (RApp (RLam "x" (RVar "x")) RUnit)
 
   -- 1 + 2 should have type Int
-  example-arith : InferElabResult Elaborate.[]
+  example-arith : InferElabResult S∅
   example-arith = typeCheck (RBinOp OpAdd (RInt (+ 1)) (RInt (+ 2)))
 
   -- 1 < 2 should have type Unit + Unit (Bool)
-  example-cmp : InferElabResult Elaborate.[]
+  example-cmp : InferElabResult S∅
   example-cmp = typeCheck (RBinOp OpLt (RInt (+ 1)) (RInt (+ 2)))

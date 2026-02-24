@@ -15,11 +15,13 @@ module Once.TypeSystem.Typing where
 open import Once.Type
 open import Once.IR
 open import Once.Semantics
+open import Once.Postulates using (closure-semantics-eq; extensionality)
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 
 ------------------------------------------------------------------------
 -- Typing Context
@@ -133,20 +135,20 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   ty-initial : ∀ {Γ A} → Γ ⊢ Void ⟶ A
 
-  -- Curry
+  -- Curry (quantity-polymorphic)
   --
-  --    Γ ⊢ (A * B) ⟶ C
-  -- ─────────────────────
-  --   Γ ⊢ A ⟶ (B ⇒ C)
+  --      Γ ⊢ (A * B) ⟶ C
+  -- ─────────────────────────────
+  --   Γ ⊢ A ⟶ (B ⇒[ q ] C)
   --
-  ty-curry : ∀ {Γ A B C} → Γ ⊢ (A * B) ⟶ C → Γ ⊢ A ⟶ (B ⇒ C)
+  ty-curry : ∀ {Γ A B C q} → Γ ⊢ (A * B) ⟶ C → Γ ⊢ A ⟶ (B ⇒[ q ] C)
 
-  -- Apply
+  -- Apply (quantity-polymorphic)
   --
-  -- ───────────────────────────
-  -- Γ ⊢ ((A ⇒ B) * A) ⟶ B
+  -- ─────────────────────────────────
+  -- Γ ⊢ ((A ⇒[ q ] B) * A) ⟶ B
   --
-  ty-apply : ∀ {Γ A B} → Γ ⊢ ((A ⇒ B) * A) ⟶ B
+  ty-apply : ∀ {Γ A B q} → Γ ⊢ ((A ⇒[ q ] B) * A) ⟶ B
 
   -- Fold (constructor for recursive types)
   --
@@ -197,13 +199,13 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-comp g f ⌋ = ⌊ g ⌋ ∘ ⌊ f ⌋
 ⌊ ty-fst ⌋ = fst
 ⌊ ty-snd ⌋ = snd
-⌊ ty-pair f g ⌋ = ⟨ ⌊ f ⌋ , ⌊ g ⌋ ⟩
-⌊ ty-inl ⌋ = inl
-⌊ ty-inr ⌋ = inr
+⌊ ty-pair f g ⌋ = ⟨ ⌊ f ⌋ , ⌊ g ⌋ ⟩ Heap
+⌊ ty-inl ⌋ = inl Heap
+⌊ ty-inr ⌋ = inr Heap
 ⌊ ty-case f g ⌋ = [ ⌊ f ⌋ , ⌊ g ⌋ ]
 ⌊ ty-terminal ⌋ = terminal
 ⌊ ty-initial ⌋ = initial
-⌊ ty-curry f ⌋ = curry ⌊ f ⌋
+⌊ ty-curry f ⌋ = curry ⌊ f ⌋ Heap
 ⌊ ty-apply ⌋ = apply
 ⌊ ty-fold ⌋ = fold
 ⌊ ty-unfold ⌋ = unfold
@@ -220,50 +222,44 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ g ∘ f ⌉ = ty-comp ⌈ g ⌉ ⌈ f ⌉
 ⌈ fst ⌉ = ty-fst
 ⌈ snd ⌉ = ty-snd
-⌈ ⟨ f , g ⟩ ⌉ = ty-pair ⌈ f ⌉ ⌈ g ⌉
-⌈ inl ⌉ = ty-inl
-⌈ inr ⌉ = ty-inr
+⌈ (⟨ f , g ⟩ _) ⌉ = ty-pair ⌈ f ⌉ ⌈ g ⌉
+⌈ (inl _) ⌉ = ty-inl
+⌈ (inr _) ⌉ = ty-inr
 ⌈ [ f , g ] ⌉ = ty-case ⌈ f ⌉ ⌈ g ⌉
 ⌈ terminal ⌉ = ty-terminal
 ⌈ initial ⌉ = ty-initial
-⌈ curry f ⌉ = ty-curry ⌈ f ⌉
+⌈ (curry f _) ⌉ = ty-curry ⌈ f ⌉
 ⌈ apply ⌉ = ty-apply
 ⌈ fold ⌉ = ty-fold
 ⌈ unfold ⌉ = ty-unfold
 ⌈ arr ⌉ = ty-arr
 ⌈ Prim name ⌉ = ty-prim name
 
--- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f
+-- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f (semantically)
 --
-round-trip-ir : ∀ {A B} (f : IR A B) → ⌊ ⌈ f ⌉ ⌋ ≡ f
-round-trip-ir id = refl
-round-trip-ir (g ∘ f) = cong₂ _∘_ (round-trip-ir g) (round-trip-ir f)
-  where
-    cong₂ : ∀ {A : Set} {B : Set} {C : Set}
-            (f : A → B → C) {x y : A} {u v : B}
-          → x ≡ y → u ≡ v → f x u ≡ f y v
-    cong₂ f refl refl = refl
-round-trip-ir fst = refl
-round-trip-ir snd = refl
-round-trip-ir ⟨ f , g ⟩ = cong₂ ⟨_,_⟩ (round-trip-ir f) (round-trip-ir g)
-  where
-    cong₂ : ∀ {A : Set} {B : Set} {C : Set}
-            (f : A → B → C) {x y : A} {u v : B}
-          → x ≡ y → u ≡ v → f x u ≡ f y v
-    cong₂ f refl refl = refl
-round-trip-ir inl = refl
-round-trip-ir inr = refl
-round-trip-ir [ f , g ] = cong₂ [_,_] (round-trip-ir f) (round-trip-ir g)
-  where
-    cong₂ : ∀ {A : Set} {B : Set} {C : Set}
-            (f : A → B → C) {x y : A} {u v : B}
-          → x ≡ y → u ≡ v → f x u ≡ f y v
-    cong₂ f refl refl = refl
-round-trip-ir terminal = refl
-round-trip-ir initial = refl
-round-trip-ir (curry f) = cong curry (round-trip-ir f)
-round-trip-ir apply = refl
-round-trip-ir fold = refl
-round-trip-ir unfold = refl
-round-trip-ir arr = refl
-round-trip-ir (Prim name) = refl
+-- Note: Syntactic equality doesn't hold because typing derivations don't
+-- track AllocMode, so the round-trip normalizes to Heap allocation.
+-- However, since AllocMode is semantically transparent, we have semantic equality.
+--
+round-trip-ir : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧) → eval ⌊ ⌈ f ⌉ ⌋ x ≡ eval f x
+round-trip-ir id x = refl
+round-trip-ir (g ∘ f) x = cong (eval ⌊ ⌈ g ⌉ ⌋) (round-trip-ir f x) `trans` round-trip-ir g (eval f x)
+  where _`trans`_ = trans
+round-trip-ir fst x = refl
+round-trip-ir snd x = refl
+round-trip-ir (⟨ f , g ⟩ _) x = cong₂ _,_ (round-trip-ir f x) (round-trip-ir g x)
+round-trip-ir (inl _) x = refl
+round-trip-ir (inr _) x = refl
+round-trip-ir [ f , g ] (inj₁ a) = round-trip-ir f a
+round-trip-ir [ f , g ] (inj₂ b) = round-trip-ir g b
+round-trip-ir terminal x = refl
+round-trip-ir initial ()
+round-trip-ir (curry {q = q} f _) x = closure-semantics-eq
+  (eval (curry {q = q} ⌊ ⌈ f ⌉ ⌋ Heap) x)
+  (eval (curry {q = q} f Heap) x)
+  (extensionality (λ b → round-trip-ir f (x , b)))
+round-trip-ir apply x = refl
+round-trip-ir fold x = refl
+round-trip-ir unfold x = refl
+round-trip-ir arr x = refl
+round-trip-ir (Prim name) x = refl

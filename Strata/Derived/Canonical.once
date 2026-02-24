@@ -9,6 +9,15 @@
 -- every category theorist would recognize. See D021 and the glossary.
 
 ------------------------------------------------------------------------
+-- Composition
+------------------------------------------------------------------------
+
+-- | (.) : (B -> C) -> (A -> B) -> A -> C
+-- Alias for compose (function composition)
+(.) : (B -> C) -> (A -> B) -> A -> C
+(.) = compose
+
+------------------------------------------------------------------------
 -- Product Morphisms
 ------------------------------------------------------------------------
 
@@ -112,19 +121,18 @@ voidR : A + Void -> A
 voidR = case id initial
 
 ------------------------------------------------------------------------
--- Distributivity
+-- Terminal / Initial
 ------------------------------------------------------------------------
 
--- | distrib : A * (B + C) -> (A * B) + (A * C)
--- Distribute product over coproduct
-distrib : A * (B + C) -> (A * B) + (A * C)
-distrib = uncurry (case (\a b -> inl (pair (const a) (const b) terminal))
-                        (\a c -> inr (pair (const a) (const c) terminal)))
+-- | unit : A -> Unit
+-- Alias for terminal (discard value)
+unit : A -> Unit
+unit = terminal
 
--- | undistrib : (A * B) + (A * C) -> A * (B + C)
--- Collect coproduct under product
-undistrib : (A * B) + (A * C) -> A * (B + C)
-undistrib = case (pair fst (inl . snd)) (pair fst (inr . snd))
+-- | absurd : Void -> A
+-- Alias for initial (impossible case)
+absurd : Void -> A
+absurd = initial
 
 ------------------------------------------------------------------------
 -- Exponential / Function Morphisms
@@ -161,24 +169,16 @@ eval = apply
 (|>) = (&)
 
 ------------------------------------------------------------------------
--- Terminal / Initial
+-- Distributivity
 ------------------------------------------------------------------------
 
--- | unit : A -> Unit
--- Alias for terminal (discard value)
-unit : A -> Unit
-unit = terminal
+-- | distrib : A * (B + C) -> (A * B) + (A * C)
+-- Distribute product over coproduct
+distrib : A * (B + C) -> (A * B) + (A * C)
+distrib = uncurry (case (\a b -> inl (pair (const a) (const b) terminal))
+                        (\a c -> inr (pair (const a) (const c) terminal)))
 
--- | absurd : Void -> A
--- Alias for initial (impossible case)
-absurd : Void -> A
-absurd = initial
-
-------------------------------------------------------------------------
--- Composition
-------------------------------------------------------------------------
-
--- | (.) : (B -> C) -> (A -> B) -> A -> C
--- Alias for compose (function composition)
-(.) : (B -> C) -> (A -> B) -> A -> C
-(.) = compose
+-- | undistrib : (A * B) + (A * C) -> A * (B + C)
+-- Collect coproduct under product
+undistrib : (A * B) + (A * C) -> A * (B + C)
+undistrib = case (pair fst (inl . snd)) (pair fst (inr . snd))

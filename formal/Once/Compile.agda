@@ -41,23 +41,36 @@ open import Once.Surface.IR public
 open import Once.Surface.Desugar public
   using (desugar)
 
--- Re-export optimizer
+-- Re-export optimizer (includes categorical laws + fusion rules)
 open import Once.Optimize public
   using (optimize; optimize-once; optimize-n)
+
+-- Re-export escape analysis (stack allocation optimization)
+open import Once.Escape public
+  using (escape; escape-once; escape-n)
 
 ------------------------------------------------------------------------
 -- Pipeline composition
 ------------------------------------------------------------------------
 
--- | Compile: desugar then optimize
+-- | Compile: desugar → optimize → escape
 --
 -- This is the main compilation function that will be generated via MAlonzo.
 -- Usage from Haskell:
 --   import qualified MAlonzo.Code.Once.Compile as C
 --   compiledIR = C.d_compile surfaceIR
 --
+-- Pipeline stages:
+--   1. desugar  - Convert SurfaceIR to Core IR (let-binding elimination)
+--   2. optimize - Apply categorical laws + fusion (beta/eta, fold/unfold, map fusion)
+--   3. escape   - Rewrite Heap → Stack where allocations don't escape
+--
 compile : ∀ {A B} → SurfaceIR A B → IR A B
-compile ir = optimize (desugar ir)
+compile ir = escape (optimize (desugar ir))
+
+-- | Compile without escape analysis (for comparison/debugging)
+compile-no-escape : ∀ {A B} → SurfaceIR A B → IR A B
+compile-no-escape ir = optimize (desugar ir)
 
 -- | Compile without optimization (for debugging)
 compile-no-opt : ∀ {A B} → SurfaceIR A B → IR A B

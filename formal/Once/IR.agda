@@ -15,6 +15,17 @@ module Once.IR where
 open import Once.Type
 open import Data.String using (String)
 
+-- | AllocMode: Strategy for allocating compound values
+--
+-- Stack: Safe to allocate on the stack (does not escape)
+-- Heap:  Must allocate on the heap (may escape)
+--
+-- Initially, all allocations use Heap mode for backwards compatibility.
+-- Escape analysis will identify safe Stack allocations.
+data AllocMode : Set where
+  Stack : AllocMode
+  Heap  : AllocMode
+
 -- | IR: Morphisms in a Cartesian Closed Category
 --
 -- IR A B represents a morphism from A to B.
@@ -36,11 +47,11 @@ data IR : Type → Type → Set where
   -- Product (A × B)
   fst     : ∀ {A B} → IR (A * B) A
   snd     : ∀ {A B} → IR (A * B) B
-  ⟨_,_⟩   : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
+  ⟨_,_⟩   : ∀ {A B C} → IR C A → IR C B → AllocMode → IR C (A * B)
 
   -- Coproduct (A + B)
-  inl     : ∀ {A B} → IR A (A + B)
-  inr     : ∀ {A B} → IR B (A + B)
+  inl     : ∀ {A B} → AllocMode → IR A (A + B)
+  inr     : ∀ {A B} → AllocMode → IR B (A + B)
   [_,_]   : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
 
   -- Terminal object (Unit)
@@ -49,9 +60,12 @@ data IR : Type → Type → Set where
   -- Initial object (Void)
   initial : ∀ {A} → IR Void A
 
-  -- Exponential (A ⇒ B)
-  curry   : ∀ {A B C} → IR (A * B) C → IR A (B ⇒ C)
-  apply   : ∀ {A B} → IR ((A ⇒ B) * A) B
+  -- Exponential (A ⇒[q] B) - quantity-polymorphic
+  -- The quantity q is phantom: it exists only in types, not at runtime.
+  -- This allows elaborating Surface syntax with any quantity annotation
+  -- directly to IR without needing coerceIRArrow.
+  curry   : ∀ {A B C q} → IR (A * B) C → AllocMode → IR A (B ⇒[ q ] C)
+  apply   : ∀ {A B q} → IR ((A ⇒[ q ] B) * A) B
 
   -- Recursive types (Fixed point isomorphism)
   -- Fix F ≅ F (Fix F), witnessed by fold/unfold

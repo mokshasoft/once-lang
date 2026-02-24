@@ -47,6 +47,10 @@ SURFACE_DESUGAR_CORRECT := Once/Surface/Desugar/Correct.agda
 COMPILE := Once/Compile.agda
 OPTIMIZE := Once/Optimize.agda
 OPTIMIZE_CORRECT := Once/Optimize/Correct.agda
+ESCAPE := Once/Escape.agda
+ESCAPE_CORRECT := Once/Escape/Correct.agda
+FUSION := Once/Fusion.agda
+FUSION_CORRECT := Once/Fusion/Correct.agda
 X86_SYNTAX := Once/Backend/X86/Syntax.agda
 X86_SEMANTICS := Once/Backend/X86/Semantics.agda
 X86_CODEGEN := Once/Backend/X86/CodeGen.agda
@@ -73,6 +77,7 @@ AARCH64_EMIT := Once/Backend/AArch64/Emit.agda
 X86_EMIT := Once/Backend/X86/Emit.agda
 RISCV_EMIT := Once/Backend/RiscV64/Emit.agda
 EMIT_ALL := Once/Backend/Emit.agda
+ASSEMBLER := Once/Backend/Assembler.agda
 SPF := Once/SPF.agda
 TERMINATION := Once/Backend/Termination.agda
 
@@ -117,7 +122,7 @@ check: compiler spf
 	@echo "All proofs type-check successfully!"
 
 .PHONY: frontend
-frontend: postulates laws surface surfaceir optimize
+frontend: postulates laws surface surfaceir optimize escape fusion parser
 	@echo "Frontend proofs type-check successfully!"
 
 .PHONY: postulates
@@ -149,6 +154,23 @@ optimize:
 	@echo "Type-checking optimizer..."
 	@sh -c '$(AGDA_CMD) $(OPTIMIZE)'
 	@sh -c '$(AGDA_CMD) $(OPTIMIZE_CORRECT)'
+
+.PHONY: escape
+escape:
+	@echo "Type-checking escape analysis..."
+	@sh -c '$(AGDA_CMD) $(ESCAPE)'
+	@sh -c '$(AGDA_CMD) $(ESCAPE_CORRECT)'
+
+.PHONY: fusion
+fusion:
+	@echo "Type-checking fusion/deforestation..."
+	@sh -c '$(AGDA_CMD) $(FUSION)'
+	@sh -c '$(AGDA_CMD) $(FUSION_CORRECT)'
+
+.PHONY: parser
+parser:
+	@echo "Type-checking parser..."
+	@sh -c '$(AGDA_CMD) Once/Parser.agda'
 
 .PHONY: common
 common:
@@ -310,6 +332,8 @@ malonzo:
 	@# Copy optimizer
 	@cp _build/malonzo/MAlonzo/Code/Once/Optimize.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@cp -r _build/malonzo/MAlonzo/Code/Once/Optimize/* ../compiler/src/MAlonzo/Code/Once/Optimize/ 2>/dev/null || true
+	@# Copy escape analysis
+	@cp _build/malonzo/MAlonzo/Code/Once/Escape.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done! Entire compiler extracted to compiler/src/MAlonzo/Code/Once/"
 	@echo "Entry point: MAlonzo.Code.Once.Compile.compile"
 
@@ -321,15 +345,29 @@ emit:
 	@sh -c '$(AGDA_CMD) $(RISCV_EMIT)'
 	@sh -c '$(AGDA_CMD) $(EMIT_ALL)'
 
+.PHONY: malonzo-c
+malonzo-c:
+	@echo "Extracting C backend via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Backend/C/CodeGen.agda'
+	@echo "Copying C backend MAlonzo files to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Backend/C
+	@cp _build/malonzo/MAlonzo/Code/Once/Backend/C/*.hs ../compiler/src/MAlonzo/Code/Once/Backend/C/ 2>/dev/null || true
+	@# Copy core dependencies (IR, Type) that C backend needs
+	@cp _build/malonzo/MAlonzo/Code/Once/IR.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Type.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@echo "Done. C backend in compiler/src/MAlonzo/Code/Once/Backend/C/"
+
 .PHONY: malonzo-codegen
 malonzo-codegen:
 	@echo "Extracting verified code generators via MAlonzo..."
 	@mkdir -p _build/malonzo
 	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(EMIT_ALL)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ASSEMBLER)'
 	@echo "Copying MAlonzo files to compiler..."
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Backend
 	@cp -r _build/malonzo/MAlonzo/Code/Once/Backend/* ../compiler/src/MAlonzo/Code/Once/Backend/
-	@echo "  - Backend modules copied"
+	@echo "  - Backend modules copied (including Assembler)"
 	@# Copy core dependencies (IR, Type) that Backend modules need
 	@cp _build/malonzo/MAlonzo/Code/Once/IR.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@cp _build/malonzo/MAlonzo/Code/Once/Type.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
@@ -440,6 +478,40 @@ malonzo-core:
 	@cp _build/malonzo/MAlonzo/Code/Once/Memory.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@cp _build/malonzo/MAlonzo/Code/Once/Postulates.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done. Core modules in compiler/src/MAlonzo/Code/Once/"
+
+.PHONY: malonzo-parser
+malonzo-parser:
+	@echo "Extracting Parser via MAlonzo..."
+	@mkdir -p _build/malonzo
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Parser.agda'
+	@echo "Copying parser MAlonzo files to compiler..."
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once/Parser
+	@cp -r _build/malonzo/MAlonzo/Code/Once/Parser/* ../compiler/src/MAlonzo/Code/Once/Parser/ 2>/dev/null || true
+	@cp _build/malonzo/MAlonzo/Code/Once/Parser.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
+	@echo "Done. Parser in compiler/src/MAlonzo/Code/Once/Parser/"
+
+# Extract entire compiler to MAlonzo (clean rebuild)
+# This is the recommended way to update the Haskell compiler after Agda changes
+.PHONY: malonzo-all
+malonzo-all:
+	@echo "Extracting entire compiler via MAlonzo (clean rebuild)..."
+	@rm -rf _build/malonzo
+	@mkdir -p _build/malonzo
+	@# Run all extractions (they write to _build/malonzo but we ignore their copy steps)
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(COMPILE)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(TYPECHECK_MAIN)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Parser.agda'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo Once/Backend/C/CodeGen.agda'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(EMIT_ALL)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ASSEMBLER)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_TYPE)'
+	@sh -c '$(AGDA_CMD) -c --ghc-dont-call-ghc --compile-dir=_build/malonzo $(ARITH_IR)'
+	@# Copy ALL extracted Once modules to compiler (ensures everything is in sync)
+	@echo "Copying all extracted modules to compiler..."
+	@rm -rf ../compiler/src/MAlonzo/Code/Once
+	@mkdir -p ../compiler/src/MAlonzo/Code/Once
+	@cp -r _build/malonzo/MAlonzo/Code/Once/* ../compiler/src/MAlonzo/Code/Once/
+	@echo "Done! All MAlonzo modules extracted to compiler/src/MAlonzo/Code/Once/"
 
 # Awk script to count postulates (handles multiple patterns)
 # Pattern 1: Postulate block (postulate alone on line, followed by indented signatures)

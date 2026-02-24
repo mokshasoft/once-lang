@@ -39,30 +39,15 @@ library
   import: shared
   exposed-modules:
       Lib
-      Once.Arith.CodeGen.C
-      Once.Arith.Recognize
-      Once.Backend.Assembler
-      Once.Backend.C
       Once.Backend.CCompiler
-      Once.Backend.Native
-      Once.Backend.X86
       Once.CLI
       Once.Eval
       Once.IR
       Once.MAlonzo
       Once.Module
-      Once.Optimize
-      Once.Parser
-      Once.Quantity
-      Once.Syntax
       Once.Type
-      Once.TypeCheck
-      Once.TypeCheck.Verified
-      Once.Elaborate.Verified
       Once.Value
       MAlonzo.RTE
-      MAlonzo.Code.Once.Arith.IR
-      MAlonzo.Code.Once.Arith.Type
   other-modules:
       Paths_once
       MAlonzo.Code.Agda.Builtin.Bool
@@ -131,6 +116,7 @@ library
       MAlonzo.Code.Data.Integer.Base
       MAlonzo.Code.Data.Integer.Properties
       MAlonzo.Code.Data.Integer.Properties.NatLemmas
+      MAlonzo.Code.Data.Integer.Show
       MAlonzo.Code.Data.Irrelevant
       MAlonzo.Code.Data.List
       MAlonzo.Code.Data.List.Base
@@ -242,33 +228,48 @@ library
       MAlonzo.Code.Induction
       MAlonzo.Code.Induction.WellFounded
       MAlonzo.Code.Level
-      -- Backend modules temporarily disabled for QTT integration
-      -- MAlonzo.Code.Once.Backend.AArch64.CodeGen
+      -- Backend modules (extracted via MAlonzo from verified Agda)
+      MAlonzo.Code.Once.Backend.AArch64.CodeGen
       MAlonzo.Code.Once.Backend.AArch64.Emit
       MAlonzo.Code.Once.Backend.AArch64.Syntax
-      -- MAlonzo.Code.Once.Backend.Emit
-      -- MAlonzo.Code.Once.Backend.RiscV64.CodeGen
-      MAlonzo.Code.Once.Backend.RiscV64.Emit
-      MAlonzo.Code.Once.Backend.RiscV64.Syntax
-      -- MAlonzo.Code.Once.Backend.X86.CodeGen
+      MAlonzo.Code.Once.Backend.C.CodeGen
+      MAlonzo.Code.Once.Backend.C.Emit
+      MAlonzo.Code.Once.Backend.Common.StackAnalysis
+      MAlonzo.Code.Once.Backend.Assembler
+      MAlonzo.Code.Once.Backend.Emit
+      MAlonzo.Code.Once.Backend.X86.CodeGen
       MAlonzo.Code.Once.Backend.X86.Emit
       MAlonzo.Code.Once.Backend.X86.Syntax
+      MAlonzo.Code.Once.Compile
+      MAlonzo.Code.Once.Escape
+      MAlonzo.Code.Once.Arith.IR
+      MAlonzo.Code.Once.Arith.Type
       MAlonzo.Code.Once.IR
-      -- MAlonzo.Code.Once.Optimize
+      MAlonzo.Code.Once.Memory
+      MAlonzo.Code.Once.Optimize
+      MAlonzo.Code.Once.SemanticBase
+      MAlonzo.Code.Once.Semantics
+      MAlonzo.Code.Once.Parser
+      MAlonzo.Code.Once.Parser.Core
+      MAlonzo.Code.Once.Parser.Expr
+      MAlonzo.Code.Once.Parser.Inline
+      MAlonzo.Code.Once.Parser.Lexer
+      MAlonzo.Code.Once.Parser.Module
+      MAlonzo.Code.Once.Parser.Token
+      MAlonzo.Code.Once.Parser.Type
+      MAlonzo.Code.Once.Parser.TypeAlias
       MAlonzo.Code.Once.Postulates
       MAlonzo.Code.Once.Surface.Desugar
       MAlonzo.Code.Once.Surface.Elaborate
       MAlonzo.Code.Once.Surface.IR
       MAlonzo.Code.Once.Surface.Syntax
+      MAlonzo.Code.Once.Surface.Thinning
       MAlonzo.Code.Once.Type
       MAlonzo.Code.Once.TypeCheck
       MAlonzo.Code.Once.TypeCheck.Context
       MAlonzo.Code.Once.TypeCheck.Elaborate
       MAlonzo.Code.Once.TypeCheck.Error
-      MAlonzo.Code.Once.TypeCheck.Infer
       MAlonzo.Code.Once.TypeCheck.Raw
-      MAlonzo.Code.Once.TypeCheck.Resolve
-      MAlonzo.Code.Once.TypeCheck.Sound
       MAlonzo.Code.Once.TypeCheck.Unify
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
@@ -342,7 +343,6 @@ library
     , containers
     , directory
     , filepath
-    , megaparsec
     , process
     , text
 
@@ -364,15 +364,36 @@ executable once
     , once
     , text
 
+executable once-discover
+  import: shared
+  main-is: Main.hs
+  other-modules:
+      Common.Enumerate
+      Common.Equivalence
+      CCC.Cost
+      CCC.Rules
+      CCC.Completeness
+      Escape.Patterns
+  hs-source-dirs:
+      tools/discovery
+  ghc-options:
+      -threaded
+      -rtsopts
+      -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , once
+    , QuickCheck
+    , text
+
 test-suite once-test
   import: shared
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
       Paths_once
-      Arith.Spec
+      AllocationSpec
       Backend.C.Spec
-      Backend.X86.Spec
       Backend.Common
       BackendSpec
       ElaborateSpec
@@ -399,4 +420,5 @@ test-suite once-test
     , tasty
     , tasty-hunit
     , tasty-quickcheck
+    , temporary
     , text

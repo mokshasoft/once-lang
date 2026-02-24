@@ -6,7 +6,10 @@ import Test.Tasty.QuickCheck
 
 import Once.Eval (eval)
 import Once.IR (IR (..))
-import Once.Optimize (optimize)
+import Once.MAlonzo (optimizeMAlonzo)
+
+optimize :: IR -> IR
+optimize = optimizeMAlonzo
 import Once.Type (Type (..))
 import Once.Value (Value (..))
 

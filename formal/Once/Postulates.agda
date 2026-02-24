@@ -117,67 +117,21 @@ postulate
 -- Postulate P1c: Arrow Quantity Coercion for IR
 ------------------------------------------------------------------------
 --
--- STATUS: SHOULD BE ELIMINATED via quantity-polymorphic curry/apply
+-- STATUS: ELIMINATED
 --
--- IR arrows are ungraded (always unrestricted/Many). When elaborating
--- Surface syntax with graded arrows to IR, we need to coerce the
--- quantity annotation on arrow types.
+-- This postulate was eliminated by making curry and apply quantity-
+-- polymorphic in Once.IR:
 --
--- NEEDED BY: Once.Surface.Elaborate (elaborate for graded lambdas)
+--   curry : ∀ {A B C q} → IR (A * B) C → AllocMode → IR A (B ⇒[ q ] C)
+--   apply : ∀ {A B q} → IR ((A ⇒[ q ] B) * A) B
 --
--- JUSTIFICATION:
---   Quantities are erased at runtime - they only exist for static
---   type checking. All IR arrows have the same runtime representation
---   regardless of their quantity annotation in the type.
+-- Now Once.Surface.Elaborate can directly produce the correct type:
+--   elaborate (lam q e) = curry (elaborate e) Heap
+--   elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩ Heap
 --
---   The actual quantity enforcement happens during type checking
---   (in Once.TypeCheck.Elaborate), not during elaboration to IR.
---
--- IMPACT:
---   If this were false, we couldn't compile linear or erased functions
---   to the ungraded IR. But since quantities are compile-time only,
---   this coercion is semantically valid.
---
--- RUNTIME EFFECT: None (quantities are erased)
---
--- ELIMINATION STRATEGY:
---   Make curry and apply quantity-polymorphic in Once.IR and Once.IRS:
---
---   Before:
---     curry : ∀ {A B C} → IR (A * B) C → IR A (B ⇒ C)      -- ⇒ = ⇒[Many]
---     apply : ∀ {A B} → IR ((A ⇒ B) * A) B
---
---   After:
---     curry : ∀ {A B C q} → IR (A * B) C → IR A (B ⇒[q] C)
---     apply : ∀ {A B q} → IR ((A ⇒[q] B) * A) B
---
---   Then:
---     - elaborate (lam q e) = curry (elaborate e)  -- no coercion needed
---     - elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩
---     - coerceIRArrow becomes unnecessary
---
---   BACKEND IMPACT: Orthogonal to generator proofs.
---     Backend proofs gain an extra implicit {q} parameter that is never
---     used in proof bodies. Pattern matching on (curry f) or (apply)
---     stays identical - the quantity is phantom.
---
---     Example:
---       -- Before
---       run-curry-correct : ∀ {A B C} (f : IR (A * B) C) → ...
---       -- After
---       run-curry-correct : ∀ {A B C q} (f : IR (A * B) C) → ...
---                                   -- ^ extra implicit, proof body unchanged
+-- No coercion needed since quantities are phantom type parameters.
 --
 ------------------------------------------------------------------------
-
-postulate
-  coerceIRArrow : ∀ {Γ A B q q'} → IR Γ (A ⇒[ q ] B) → IR Γ (A ⇒[ q' ] B)
-
-  -- Coercion preserves evaluation semantics
-  -- Since quantities are erased at runtime, coercing the arrow type
-  -- doesn't change the function's behavior
-  coerceIRArrow-preserves-eval : ∀ {Γ A B q q'} (f : IR Γ (A ⇒[ q ] B)) (γ : ⟦ Γ ⟧) →
-    eval (coerceIRArrow {q' = q'} f) γ ≡ eval f γ
 
 ------------------------------------------------------------------------
 -- Semantic Gap S1: Fixed Point Semantics
@@ -375,10 +329,11 @@ postulate
   -- A closure representing curry f applied to a is encoded as a pointer to [env, code]
   -- where env = encode a
   -- NOTE: With explicit Closure record, this may become derivable from env-addr field
-  encode-closure-construct : ∀ {A B C} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
+  -- NOTE: {q} parameter added since curry is now quantity-polymorphic
+  encode-closure-construct : ∀ {A B C q} (f : IR (A * B) C) (a : ⟦ A ⟧) (p : Word) (m : Memory) →
     readMem m p ≡ just (encode a) →
     -- (code pointer is abstract - we just need env to be correct)
-    p ≡ encode {B ⇒ C} (eval (curry f) a)
+    p ≡ encode {B ⇒[ q ] C} (eval (curry {q = q} f Heap) a)
 
 ------------------------------------------------------------------------
 -- Postulate P3: QTT Quantity Erasure (Coercion)

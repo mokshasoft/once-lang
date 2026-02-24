@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Once.CLI
   ( run
   , Command (..)
@@ -16,34 +17,36 @@ import Control.Applicative ((<|>))
 import Control.Exception (try, SomeException)
 import Data.List (isSuffixOf)
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import qualified System.IO
-import System.Directory (listDirectory, doesDirectoryExist, removeFile, doesFileExist)
-import System.Exit (exitFailure, exitSuccess)
+import System.Directory (listDirectory, doesDirectoryExist, removeFile)
+import System.Exit (ExitCode(..), exitFailure, exitSuccess)
 import System.FilePath (takeBaseName, takeDirectory, (</>))
+import System.Environment (lookupEnv)
+import System.Process (readProcessWithExitCode)
 
-import Once.Backend.C (generateC, CModule (..))
-import Once.Arith.Recognize (isArithPrim)
-import Once.Arith.CodeGen.C (arithToC)
 import Once.Backend.CCompiler as CC
-import Once.Backend.Native
-  ( compileToAArch64, compileToX86, compileToRiscV64
-  , compileFullToAArch64, compileFullToX86, compileFullToRiscV64
-  , containsPrimitives, collectPrimitives
-  )
-import qualified Once.Backend.Assembler as Asm
--- Once.Elaborate removed - using only verified elaboration (Once.Elaborate.Verified)
-import qualified Once.Elaborate.Verified as EV
-import qualified Once.IR (IR (..))
-import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError, LoadedModule (..))
-import Once.Optimize (optimize, optimizeWith, OptimizerBackend (..))
-import Once.Parser (parseModule)
-import Once.Syntax (Module (..), Decl (..), Expr, AllocStrategy (..))
+import Once.Module (ModuleEnv (..), emptyModuleEnv, resolveImports, formatModuleError,
+                    LoadedModule (..), Import (..), AllocStrategy (..), extractImports,
+                    buildImportsForTypeChecker)
+import qualified MAlonzo.Code.Agda.Builtin.Sigma as Sigma
+import Once.MAlonzo (fromMAlonzoType)
+import qualified MAlonzo.Code.Once.Type as MT
+import qualified MAlonzo.Code.Once.IR as MIR
+import qualified MAlonzo.Code.Once.Optimize as MO
+import qualified MAlonzo.Code.Once.Backend.C.CodeGen as MCG
+import qualified MAlonzo.Code.Once.Backend.C.Emit as MCE
+import qualified MAlonzo.Code.Once.Backend.Emit as MEmit
 import Once.Type (Type (..))
-import Once.TypeCheck (checkModule, checkModuleWithEnv, convertType)
+-- Agda parser (MAlonzo-extracted)
+import qualified MAlonzo.Code.Once.Parser as MP
+import qualified MAlonzo.Code.Once.Parser.Module as MPM
+import qualified MAlonzo.Code.Once.TypeCheck.Elaborate as VTE
+import qualified MAlonzo.Code.Once.Surface.Elaborate as VSE
+import qualified MAlonzo.Code.Once.Surface.Syntax as VSS
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | CLI commands
 data Command
@@ -59,18 +62,18 @@ data OutputMode
 
 -- | Target architecture
 data Target
-  = TargetC       -- ^ C backend (current, default)
-  | TargetX86_64  -- ^ x86-64 assembly (future)
-  | TargetArm64   -- ^ ARM64 assembly (future)
-  | TargetRiscV64 -- ^ RISC-V 64-bit (future)
+  = TargetC       -- ^ C backend (default)
+  | TargetX86_64  -- ^ x86-64 assembly
+  | TargetArm64   -- ^ ARM64 assembly
+  | TargetRiscV64 -- ^ RISC-V 64-bit
   deriving (Eq, Show)
 
 -- | File extension for each target
 targetExtension :: Target -> String
 targetExtension TargetC = ".c"
-targetExtension TargetX86_64 = ".x86_64"
-targetExtension TargetArm64 = ".arm64"
-targetExtension TargetRiscV64 = ".riscv64"
+targetExtension TargetX86_64 = ".s"
+targetExtension TargetArm64 = ".s"
+targetExtension TargetRiscV64 = ".s"
 
 -- | Parse target from string
 parseTarget :: String -> Maybe Target
@@ -113,11 +116,8 @@ data BuildOptions = BuildOptions
   , buildAlloc  :: Maybe AllocStrategy  -- ^ Default allocation strategy (Nothing = use per-function annotations)
   , buildStrata :: Maybe FilePath       -- ^ Path to Strata directory (default: look relative to input file)
   , buildTarget :: Target               -- ^ Target architecture (default: TargetC)
-  , buildOptimizer :: OptimizerBackend  -- ^ Which optimizer to use (default: HaskellOptimizer)
   , buildSaveTemps :: Bool              -- ^ Keep intermediate files (.c, .s, .o)
   , buildExplicitInterps :: [(InterpType, String)]  -- ^ Explicit interpretations: -I:TYPE MODULE
-  , buildAutoResolve :: Maybe [InterpType]          -- ^ Auto-resolve priority: -A:TYPE:TYPE:...
-  , buildArith :: Bool                  -- ^ Enable arithmetic compiler for pure numeric expressions
   } deriving (Eq, Show)
 
 -- | Options for the check command
@@ -149,55 +149,49 @@ runBuild opts = do
   -- Read input file
   source <- TIO.readFile inputPath
 
-  -- Parse
-  case parseModule source of
-    Left err -> do
-      TIO.putStrLn $ "Parse error: " <> T.pack (show err)
+  -- Parse (Agda parser via MAlonzo)
+  case MP.d_parse_4 source of
+    Nothing -> do
+      TIO.putStrLn "Parse error: failed to parse module"
       exitFailure
-    Right m -> do
-      -- Resolve imports (load all imported modules)
-      let initialEnv = emptyModuleEnv strataPath targetExt
-      resolveResult <- resolveImports initialEnv (moduleImports m)
+    Just agdaModule -> do
+      -- Extract imports from Agda module and resolve
+      let imports = extractImports agdaModule
+          initialEnv = emptyModuleEnv strataPath targetExt
+      resolveResult <- resolveImports initialEnv imports
       case resolveResult of
         Left modErr -> do
           TIO.putStrLn $ "Module error: " <> formatModuleError modErr
           exitFailure
         Right modEnv -> do
-          -- Type check with module environment
-          case checkModuleWithEnv modEnv m of
-            Left err -> do
-              TIO.putStrLn $ "Type error: " <> T.pack (show err)
-              exitFailure
-            Right () -> do
-              -- Extract primitives and all function definitions
-              let primitives = extractPrimitives m
-                  allFunctions = extractFunctions m
+              -- Extract primitives and functions via Agda
+              let aliases = MP.d_extractAliases_18 agdaModule
+                  primitives = extractAgdaPrimitives agdaModule
+                  funInfos = MP.d_extractFunctions_58 aliases agdaModule
+                  -- Don't inline: functions are now in context and will be called
+                  allFunInfos = funInfos
 
               -- Generate C based on mode
               case mode of
                 Library -> do
                   -- Library mode: generate code for all functions (no main required)
-                  case allFunctions of
+                  case allFunInfos of
                     [] -> do
                       TIO.putStrLn "Error: No functions found"
                       exitFailure
                     _ -> do
-                      -- Elaborate all functions (always use verified)
-                      elaborateResult <- elaborateAllVerified modEnv allFunctions
+                      -- Elaborate all functions (Agda-verified, already inlined)
+                      elaborateResult <- elaborateAllAgda modEnv allFunInfos
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
                           exitFailure
-                        Right irFunctions -> do
-                          -- Optimize and generate for each function
-                          let opt = optimizeWith (buildOptimizer opts)
-                          let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- irFunctions]
-
+                        Right elaboratedFunctions -> do
                           -- Branch based on target
                           case target of
                             TargetC -> do
-                              -- Generate library with all functions (C backend)
-                              let (header, source') = generateLibraryAll optimizedFunctions
+                              -- Generate library with all functions (C backend via Agda codegen)
+                              let (header, source') = generateLibraryAll elaboratedFunctions
                                   headerPath = outputBase ++ ".h"
                                   sourcePath = outputBase ++ ".c"
                               TIO.writeFile headerPath header
@@ -206,61 +200,22 @@ runBuild opts = do
                               exitSuccess
 
                             nativeTarget -> do
-                              -- Native targets: generate assembly for ALL functions
-                              -- Check if any function has primitives (affects codegen choice)
-                              let hasPrimitives = any (\(_, _, _, ir') -> containsPrimitives ir') optimizedFunctions
-
-                              -- Generate assembly for each function
-                              let generateFuncAsm' :: (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> (Text, Text)
-                                  generateFuncAsm' (name', _, _, ir') =
-                                    let code = if hasPrimitives || containsPrimitives ir'
-                                          then case nativeTarget of
-                                            TargetArm64 -> compileFullToAArch64 ir'
-                                            TargetX86_64 -> compileFullToX86 ir'
-                                            TargetRiscV64 -> compileFullToRiscV64 ir'
-                                            TargetC -> error "unreachable"
-                                          else case (case nativeTarget of
-                                                 TargetArm64 -> compileToAArch64 ir'
-                                                 TargetX86_64 -> compileToX86 ir'
-                                                 TargetRiscV64 -> compileToRiscV64 ir'
-                                                 TargetC -> error "unreachable") of
-                                            Just c -> c
-                                            Nothing -> case nativeTarget of
-                                              TargetArm64 -> compileFullToAArch64 ir'
-                                              TargetX86_64 -> compileFullToX86 ir'
-                                              TargetRiscV64 -> compileFullToRiscV64 ir'
-                                              TargetC -> error "unreachable"
-                                    in (name', code)
-
-                              let allFuncAsm = map generateFuncAsm' optimizedFunctions
-
-                              -- Load interpretation files for native target
-                              -- Convert target to InterpType for file extension
-                              let targetInterpType = case nativeTarget of
-                                    TargetArm64 -> InterpArm64
-                                    TargetX86_64 -> InterpX86_64
-                                    TargetRiscV64 -> InterpRiscV64
-                                    TargetC -> error "unreachable"
-                              -- Filter explicit interps to only those matching target
-                              let targetInterps = [(t, m) | (t, m) <- buildExplicitInterps opts, t == targetInterpType]
-                              let interpFiles = resolveExplicitInterps strataPath targetInterps
-                              interpCode <- T.concat <$> mapM TIO.readFile interpFiles
-
-                              -- Wrap all functions for library export with interpretation code
-                              let wrappedAsm = interpCode <> "\n" <> wrapNativeLibAll nativeTarget allFuncAsm
-                              let asmPath = outputBase ++ ".s"
-                              TIO.writeFile asmPath wrappedAsm
+                              -- Native targets: use MAlonzo-extracted verified backends
+                              let asmSource = generateAssemblyAll nativeTarget elaboratedFunctions
+                                  asmPath = outputBase ++ ".s"
+                              TIO.writeFile asmPath asmSource
                               TIO.putStrLn $ "Generated: " <> T.pack asmPath
                               exitSuccess
 
                 Executable -> do
                   -- Executable mode: requires main
-                  case filter (\(n, _, _, _) -> n == "main") allFunctions of
+                  case filter (\fi -> MP.d_funName_48 fi == "main") allFunInfos of
                     [] -> do
                       TIO.putStrLn "Error: No main function found"
                       exitFailure
-                    ((mainName, mainTy, mainAlloc, mainExpr):_) -> do
+                    (mainFi:_) -> do
                       -- D032: main must be effectful (Eff Unit Unit or IO Unit)
+                      let mainTy = fromMAlonzoType (MP.d_funType_50 mainFi)
                       case mainTy of
                         TEff TUnit TUnit -> pure ()  -- OK: Eff Unit Unit or IO Unit
                         _ -> do
@@ -268,19 +223,15 @@ runBuild opts = do
                           TIO.putStrLn "Hint: Use 'main : IO Unit' or 'main : Eff Unit Unit'"
                           exitFailure
 
-                      -- Elaborate all functions to IR (use verified if enabled)
-                      let otherFunctions = filter (\(n, _, _, _) -> n /= "main") allFunctions
-                      -- Elaborate all functions (always use verified)
-                      elaborateResult <- elaborateAllVerified modEnv ((mainName, mainTy, mainAlloc, mainExpr) : otherFunctions)
+                      -- Elaborate all functions (Agda-verified, already inlined)
+                      -- Put main first, then others
+                      let otherFunInfos = filter (\fi -> MP.d_funName_48 fi /= "main") allFunInfos
+                      elaborateResult <- elaborateAllAgda modEnv (mainFi : otherFunInfos)
                       case elaborateResult of
                         Left err -> do
                           TIO.putStrLn $ "Elaboration error: " <> T.pack (show err)
                           exitFailure
-                        Right irFunctions -> do
-                          -- Optimize all IRs
-                          let opt = optimizeWith (buildOptimizer opts)
-                          let optimizedFunctions = [(n, t, a, opt ir) | (n, t, a, ir) <- irFunctions]
-
+                        Right elaboratedFunctions -> do
                           -- Branch based on target
                           case target of
                             TargetC -> do
@@ -299,9 +250,9 @@ runBuild opts = do
                               explicitCode <- T.concat <$> mapM TIO.readFile explicitFiles
 
                               let sourcePath = outputBase ++ ".c"
-                                  alloc = mainAlloc <|> buildAlloc opts
+                                  alloc = fromAgdaAlloc (MP.d_funAlloc_52 mainFi) <|> buildAlloc opts
                                   interpCode = interpCodeLegacy <> "\n" <> importedCode <> "\n" <> explicitCode
-                                  source' = generateExecutableAll optimizedFunctions alloc primitives interpCode (buildArith opts)
+                                  source' = generateExecutableAll elaboratedFunctions alloc primitives interpCode
                               TIO.writeFile sourcePath source'
 
                               -- Compile C to executable
@@ -320,75 +271,32 @@ runBuild opts = do
                                   exitSuccess
 
                             nativeTarget -> do
-                              -- Native targets: generate code for ALL functions
-                              -- Check if any function has primitives (affects codegen choice)
-                              let hasPrimitives = any (\(_, _, _, ir) -> containsPrimitives ir) optimizedFunctions
-
-                              -- Generate assembly for each function
-                              let generateFuncAsm :: (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> (Text, Text)
-                                  generateFuncAsm (name, _, _, ir) =
-                                    let code = if hasPrimitives || containsPrimitives ir
-                                          then case nativeTarget of
-                                            TargetArm64 -> compileFullToAArch64 ir
-                                            TargetX86_64 -> compileFullToX86 ir
-                                            TargetRiscV64 -> compileFullToRiscV64 ir
-                                            TargetC -> error "unreachable"
-                                          else case (case nativeTarget of
-                                                 TargetArm64 -> compileToAArch64 ir
-                                                 TargetX86_64 -> compileToX86 ir
-                                                 TargetRiscV64 -> compileToRiscV64 ir
-                                                 TargetC -> error "unreachable") of
-                                            Just c -> c
-                                            Nothing -> case nativeTarget of
-                                              TargetArm64 -> compileFullToAArch64 ir
-                                              TargetX86_64 -> compileFullToX86 ir
-                                              TargetRiscV64 -> compileFullToRiscV64 ir
-                                              TargetC -> error "unreachable"
-                                    in (name, code)
-
-                              let allFuncAsm = map generateFuncAsm optimizedFunctions
-
-                              -- Wrap all functions with _start entry point
-                              let wrappedAsm = wrapNativeExeAll nativeTarget allFuncAsm
-                              let asmPath = outputBase ++ ".s"
+                              -- Native targets: generate assembly and assemble/link
+                              let asmSource = generateAssemblyAll nativeTarget elaboratedFunctions
+                                  asmPath = outputBase ++ ".s"
                                   objPath = outputBase ++ ".o"
-                              TIO.writeFile asmPath wrappedAsm
+                              TIO.writeFile asmPath asmSource
 
-                              -- Assemble main .s -> .o
-                              asmResult' <- Asm.assemble asmPath objPath
-                              case asmResult' of
+                              -- Assemble .s to .o
+                              asmResult <- assemble asmPath objPath
+                              case asmResult of
                                 Left err -> do
-                                  TIO.putStrLn $ "Assembly failed: " <> T.pack (show err)
+                                  TIO.putStrLn $ "Assembly failed: " <> T.pack err
                                   exitFailure
                                 Right _ -> do
-                                  -- Collect interpretation files to link if we have primitives
-                                  interpObjFiles <- if hasPrimitives
-                                    then do
-                                      -- Collect interpretation assembly files from:
-                                      -- 1. Explicit -I:TYPE flags matching this target
-                                      let explicitFiles = resolveExplicitNativeInterps strataPath nativeTarget (buildExplicitInterps opts)
-                                      -- 2. Module env (from imports)
-                                      let moduleFiles = collectNativeInterpFiles strataPath nativeTarget modEnv
-                                      let interpAsmFiles = explicitFiles ++ moduleFiles
-                                      -- Assemble each interpretation file
-                                      assembleInterpFiles nativeTarget interpAsmFiles outputBase
-                                    else pure []
-
-                                  -- Link all .o files -> executable
-                                  let allObjFiles = objPath : interpObjFiles
-                                  linkResult <- Asm.link allObjFiles outputBase
+                                  -- Link .o to executable
+                                  linkResult <- link [objPath] outputBase
                                   case linkResult of
                                     Left err -> do
-                                      TIO.putStrLn $ "Linking failed: " <> T.pack (show err)
+                                      TIO.putStrLn $ "Link failed: " <> T.pack err
                                       exitFailure
                                     Right exePath -> do
-                                      -- Clean up unless --save-temps
+                                      -- Clean up intermediate files unless --save-temps
                                       if buildSaveTemps opts
                                         then TIO.putStrLn $ "Generated: " <> T.pack asmPath <> ", " <> T.pack objPath <> ", " <> T.pack exePath
                                         else do
                                           removeFile asmPath
                                           removeFile objPath
-                                          mapM_ removeFile interpObjFiles
                                           TIO.putStrLn $ "Generated: " <> T.pack exePath
                                       exitSuccess
 
@@ -459,26 +367,32 @@ runCheck opts = do
   -- Read input file
   source <- TIO.readFile inputPath
 
-  -- Parse
-  case parseModule source of
-    Left err -> do
-      TIO.putStrLn $ "Parse error: " <> T.pack (show err)
+  -- Parse (Agda parser via MAlonzo)
+  case MP.d_parse_4 source of
+    Nothing -> do
+      TIO.putStrLn "Parse error: failed to parse module"
       exitFailure
-    Right m -> do
-      -- Resolve imports (load all imported modules for qualified name resolution)
-      let initialEnv = emptyModuleEnv strataPath targetExt
-      resolveResult <- resolveImports initialEnv (moduleImports m)
+    Just agdaModule -> do
+      -- Resolve imports
+      let imports = extractImports agdaModule
+          initialEnv = emptyModuleEnv strataPath targetExt
+      resolveResult <- resolveImports initialEnv imports
       case resolveResult of
         Left modErr -> do
           TIO.putStrLn $ "Module error: " <> formatModuleError modErr
           exitFailure
         Right modEnv -> do
-          -- Type check with module environment
-          case checkModuleWithEnv modEnv m of
+          -- Type check by running elaboration (Agda is the type checker)
+          let aliases = MP.d_extractAliases_18 agdaModule
+              funInfos = MP.d_extractFunctions_58 aliases agdaModule
+              -- Don't inline: functions are now in context and will be called
+              allFunInfos = funInfos
+          elaborateResult <- elaborateAllAgda modEnv allFunInfos
+          case elaborateResult of
             Left err -> do
-              TIO.putStrLn $ "Type error: " <> T.pack (show err)
+              TIO.putStrLn $ "Type error: " <> T.pack err
               exitFailure
-            Right () -> do
+            Right _ -> do
               TIO.putStrLn "OK"
               exitSuccess
 
@@ -491,435 +405,118 @@ loadInterpretationCode interpPath = do
   cContents <- mapM (\f -> TIO.readFile (interpPath </> f)) cFiles
   pure (T.intercalate "\n\n" cContents)
 
--- | Extract all primitives from a module
--- Returns list of (name, type)
-extractPrimitives :: Module -> [(Text, Type)]
-extractPrimitives (Module _imports decls) =
-  [ (name, convertType sty) | Primitive name sty <- decls ]
+-- | Extract primitives from an Agda-parsed module (converting types)
+extractAgdaPrimitives :: MPM.T_Module_42 -> [(Text, Type)]
+extractAgdaPrimitives (MPM.C_mkModule_48 decls) =
+  [ (name, fromMAlonzoType ty) | MPM.C_DPrimitive_36 name ty <- decls ]
 
--- | Extract all function definitions from a module
--- Returns list of (name, type, allocation, expression)
-extractFunctions :: Module -> [(Text, Type, Maybe AllocStrategy, Expr)]
-extractFunctions (Module _imports decls) = go decls Nothing
-  where
-    go [] _ = []
-    go (TypeSig name sty : FunDef name' alloc expr : rest) _
-      | name == name' = (name, convertType sty, alloc, expr) : go rest Nothing
-      | otherwise = go rest Nothing
-    go (TypeSig name sty : rest) _ = go rest (Just (name, sty))
-    go (_ : rest) ctx = go rest ctx
+-- | Convert Agda AllocStrategy to Haskell AllocStrategy
+fromAgdaAlloc :: Maybe MPM.T_AllocStrategy_6 -> Maybe AllocStrategy
+fromAgdaAlloc Nothing = Nothing
+fromAgdaAlloc (Just MPM.C_Stack_8) = Just AllocStack
+fromAgdaAlloc (Just MPM.C_Heap_10) = Just AllocHeap
+fromAgdaAlloc (Just MPM.C_Pool_12) = Just AllocPool
+fromAgdaAlloc (Just MPM.C_Arena_14) = Just AllocArena
+fromAgdaAlloc (Just MPM.C_Const_16) = Just AllocConst
 
--- | Extract the main function from a module (backwards compatible)
--- Returns (name, type, allocation, expression)
-extractFunction :: Module -> Maybe (Text, Type, Maybe AllocStrategy, Expr)
-extractFunction m = case filter (\(n, _, _, _) -> n == "main") (extractFunctions m) of
-  [] -> Nothing
-  (f:_) -> Just f
-
--- | Wrap assembly code with proper directives for a given target (library mode)
-wrapNativeAsm :: Target -> Text -> Text -> Text
-wrapNativeAsm target name body = case target of
-  TargetArm64 -> T.unlines
-    [ "// Generated by Once (verified via MAlonzo)"
-    , ".text"
-    , ".globl once_" <> name
-    , ".type once_" <> name <> ", %function"
-    , "once_" <> name <> ":"
-    , body
-    , "    ret"
-    , ".size once_" <> name <> ", .-once_" <> name
-    ]
-  TargetX86_64 -> T.unlines
-    [ "# Generated by Once (verified via MAlonzo)"
-    , ".text"
-    , ".globl once_" <> name
-    , ".type once_" <> name <> ", @function"
-    , "once_" <> name <> ":"
-    , body
-    , "    retq"
-    , ".size once_" <> name <> ", .-once_" <> name
-    ]
-  TargetRiscV64 -> T.unlines
-    [ "# Generated by Once (verified via MAlonzo)"
-    , ".text"
-    , ".globl once_" <> name
-    , ".type once_" <> name <> ", @function"
-    , "once_" <> name <> ":"
-    , body
-    , "    ret"
-    , ".size once_" <> name <> ", .-once_" <> name
-    ]
-  TargetC -> error "wrapNativeAsm: TargetC is not a native target"
-
--- | Wrap assembly code for executable mode (with _start and exit syscall)
-wrapNativeExe :: Target -> Text -> Text -> Text
-wrapNativeExe target name body = case target of
-  TargetArm64 -> T.unlines
-    [ "// Generated by Once (verified via MAlonzo)"
-    , ".text"
-    , ""
-    , "// Once function"
-    , ".globl once_" <> name
-    , ".type once_" <> name <> ", %function"
-    , "once_" <> name <> ":"
-    , body
-    , "    ret"
-    , ".size once_" <> name <> ", .-once_" <> name
-    , ""
-    , "// Entry point"
-    , ".globl _start"
-    , ".type _start, %function"
-    , "_start:"
-    , "    mov x0, #0"            -- arg = NULL (Unit)
-    , "    bl once_" <> name
-    , "    mov x8, #93"           -- syscall: exit
-    , "    mov x0, #0"            -- status = 0
-    , "    svc #0"
-    , ".size _start, .-_start"
-    ]
-  TargetX86_64 -> T.unlines
-    [ "# Generated by Once (verified via MAlonzo)"
-    , ".text"
-    , ""
-    , "# Once function"
-    , ".globl once_" <> name
-    , ".type once_" <> name <> ", @function"
-    , "once_" <> name <> ":"
-    , body
-    , "    retq"
-    , ".size once_" <> name <> ", .-once_" <> name
-    , ""
-    , "# Entry point"
-    , ".globl _start"
-    , ".type _start, @function"
-    , "_start:"
-    , "    xorq %rdi, %rdi"       -- arg = NULL (Unit)
-    , "    call once_" <> name
-    , "    movq $60, %rax"        -- syscall: exit
-    , "    xorq %rdi, %rdi"       -- status = 0
-    , "    syscall"
-    , ".size _start, .-_start"
-    ]
-  TargetRiscV64 -> T.unlines
-    [ "# Generated by Once (verified via MAlonzo)"
-    , ".text"
-    , ""
-    , "# Once function"
-    , ".globl once_" <> name
-    , ".type once_" <> name <> ", @function"
-    , "once_" <> name <> ":"
-    , body
-    , "    ret"
-    , ".size once_" <> name <> ", .-once_" <> name
-    , ""
-    , "# Entry point"
-    , ".globl _start"
-    , ".type _start, @function"
-    , "_start:"
-    , "    li a0, 0"              -- arg = NULL (Unit)
-    , "    call once_" <> name
-    , "    li a7, 93"             -- syscall: exit
-    , "    li a0, 0"              -- status = 0
-    , "    ecall"
-    , ".size _start, .-_start"
-    ]
-  TargetC -> error "wrapNativeExe: TargetC is not a native target"
-
--- | Generate a single function definition for native target (no header/entry point)
-nativeFuncDef :: Target -> Text -> Text -> Text
-nativeFuncDef target name body = case target of
-  TargetArm64 -> T.unlines
-    [ ".globl once_" <> name
-    , ".type once_" <> name <> ", %function"
-    , "once_" <> name <> ":"
-    , body
-    , "    ret"
-    , ".size once_" <> name <> ", .-once_" <> name
-    ]
-  TargetX86_64 -> T.unlines
-    [ ".globl once_" <> name
-    , ".type once_" <> name <> ", @function"
-    , "once_" <> name <> ":"
-    , body
-    , "    retq"
-    , ".size once_" <> name <> ", .-once_" <> name
-    ]
-  TargetRiscV64 -> T.unlines
-    [ ".globl once_" <> name
-    , ".type once_" <> name <> ", @function"
-    , "once_" <> name <> ":"
-    , body
-    , "    ret"
-    , ".size once_" <> name <> ", .-once_" <> name
-    ]
-  TargetC -> error "nativeFuncDef: TargetC is not a native target"
-
--- | Wrap multiple function definitions with header and _start entry point
-wrapNativeExeAll :: Target -> [(Text, Text)] -> Text
-wrapNativeExeAll target funcs = case target of
-  TargetArm64 -> T.unlines $
-    [ "// Generated by Once compiler"
-    , ".text"
-    , ""
-    ] ++
-    [ nativeFuncDef target name body | (name, body) <- funcs ] ++
-    [ ""
-    , "// Entry point"
-    , ".globl _start"
-    , ".type _start, %function"
-    , "_start:"
-    , "    mov x0, #0"
-    , "    bl once_main"
-    , "    mov x8, #93"
-    , "    mov x0, #0"
-    , "    svc #0"
-    , ".size _start, .-_start"
-    ]
-  TargetX86_64 -> T.unlines $
-    [ "# Generated by Once compiler"
-    , ".text"
-    , ""
-    ] ++
-    [ nativeFuncDef target name body | (name, body) <- funcs ] ++
-    [ ""
-    , "# Entry point"
-    , ".globl _start"
-    , ".type _start, @function"
-    , "_start:"
-    , "    xorq %rdi, %rdi"
-    , "    call once_main"
-    , "    movq $60, %rax"
-    , "    xorq %rdi, %rdi"
-    , "    syscall"
-    , ".size _start, .-_start"
-    ]
-  TargetRiscV64 -> T.unlines $
-    [ "# Generated by Once compiler"
-    , ".text"
-    , ""
-    ] ++
-    [ nativeFuncDef target name body | (name, body) <- funcs ] ++
-    [ ""
-    , "# Entry point"
-    , ".globl _start"
-    , ".type _start, @function"
-    , "_start:"
-    , "    li a0, 0"
-    , "    call once_main"
-    , "    li a7, 93"
-    , "    li a0, 0"
-    , "    ecall"
-    , ".size _start, .-_start"
-    ]
-  TargetC -> error "wrapNativeExeAll: TargetC is not a native target"
-
--- | Wrap multiple functions for native library (no _start, just exported functions)
-wrapNativeLibAll :: Target -> [(Text, Text)] -> Text
-wrapNativeLibAll target funcs = case target of
-  TargetArm64 -> T.unlines $
-    [ "// Generated by Once compiler"
-    , ".text"
-    , ""
-    ] ++
-    [ nativeFuncDef target name body | (name, body) <- funcs ]
-  TargetX86_64 -> T.unlines $
-    [ "# Generated by Once compiler"
-    , ".text"
-    , ""
-    ] ++
-    [ nativeFuncDef target name body | (name, body) <- funcs ]
-  TargetRiscV64 -> T.unlines $
-    [ "# Generated by Once compiler"
-    , ".text"
-    , ""
-    ] ++
-    [ nativeFuncDef target name body | (name, body) <- funcs ]
-  TargetC -> error "wrapNativeLibAll: TargetC is not a native target"
-
--- | Elaborate all functions with verified elaboration (no fallback)
+-- | Elaborate all functions using the Agda-parsed FunInfo list.
 --
--- Uses the MAlonzo-extracted verified type checker and elaboration.
--- Programs with >7 levels of nesting are rejected by the Agda type checker.
--- This provides correctness guarantees for all successfully compiled programs.
-elaborateAllVerified :: ModuleEnv
-                     -> [(Text, Type, Maybe AllocStrategy, Expr)]
-                     -> IO (Either String [(Text, Type, Maybe AllocStrategy, Once.IR.IR)])
-elaborateAllVerified _ [] = pure (Right [])
-elaborateAllVerified env ((name, ty, alloc, expr):rest) = do
-  -- Use verified elaboration (no fallback)
-  TIO.hPutStrLn System.IO.stderr $ "Type checking: " <> name
-  verifiedResult <- try (pure $! EV.elaborateVerified expr) :: IO (Either SomeException (Either String Once.IR.IR))
-  case verifiedResult of
-    Right (Right verifiedIR) -> do
-      TIO.hPutStrLn System.IO.stderr $ "✓ Type checking succeeded for: " <> name
-      restResult <- elaborateAllVerified env rest
-      pure $ case restResult of
-        Left err -> Left err
-        Right irs -> Right ((name, ty, alloc, verifiedIR) : irs)
-    Left exc -> do
-      -- Exception from MAlonzo (should not happen with correct Agda code)
-      TIO.hPutStrLn System.IO.stderr $ "✗ Fatal error for " <> name <> ": " <> T.pack (show exc)
-      pure (Left $ "Fatal error during type checking of " ++ T.unpack name ++ ": " ++ show exc)
-    Right (Left err) -> do
-      -- Type checking error from Agda (e.g., depth > 7, type mismatch, unbound variable)
-      TIO.hPutStrLn System.IO.stderr $ "✗ Type checking failed for " <> name <> ": " <> T.pack err
-      pure (Left $ "Type checking failed for " ++ T.unpack name ++ ": " ++ err)
-
--- | Generate C code for an executable (with main function)
--- The allocation strategy affects how buffer/string outputs are allocated
-generateExecutable :: Text -> Type -> Once.IR.IR -> Maybe AllocStrategy -> [(Text, Type)] -> Text -> Text
-generateExecutable name ty ir alloc primitives interpCode = T.unlines
-  [ "/* Generated by Once compiler */"
-  , ""
-  , "/* Interpretation code */"
-  , interpCode
-  , ""
-  , "/* Primitive declarations (fallback) */"
-  , primDecls
-  , ""
-  , "/* Once function */"
-  , onceFuncCode name ty ir
-  , ""
-  , "/* Main entry point */"
-  , "int main(void) {"
-  , "    once_" <> name <> "(((void*)0));"
-  , "}"
-  ]
+-- For each function:
+-- 1. Body is already inlined (via d_inlineAll_120)
+-- 2. RawExpr is passed directly to Agda's inferElab (no Haskell conversion)
+-- 3. Convert Surface.Expr → IR via Agda's elaborate
+-- 4. Optimize using the verified Agda optimizer
+--
+-- Returns MAlonzo types and IR directly (no Haskell IR conversion).
+elaborateAllAgda :: ModuleEnv -> [MP.T_FunInfo_38]
+                 -> IO (Either String [(Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10)])
+elaborateAllAgda modEnv fns = go [] fns
   where
-    -- Generate Once function without include
-    onceFuncCode :: Text -> Type -> Once.IR.IR -> Text
-    onceFuncCode n t i = T.unlines
-      [ funcDecl n t <> " {"
-      , "    return " <> generateIRExpr i "x" <> ";"
-      , "}"
-      ]
+    -- Base imports from loaded modules
+    baseImportsHs = buildImportsForTypeChecker modEnv
 
-    funcDecl :: Text -> Type -> Text
-    funcDecl n t = case t of
-      TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"
-      TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"  -- D032
-      _ -> "void* once_" <> n <> "(void)"
+    -- Accumulate defined function signatures as we process each function
+    go _defined [] = pure (Right [])
+    go defined (fi:rest) = do
+      let name = MP.d_funName_48 fi
+          rawExpr = MP.d_funBody_54 fi  -- Already T_RawExpr_34, no conversion!
+          funMType = MP.d_funType_50 fi
+          ty = fromMAlonzoType funMType
+          alloc = fromAgdaAlloc (MP.d_funAlloc_52 fi)
+      TIO.hPutStrLn System.IO.stderr $ "Type checking: " <> name
+      verifiedResult <- try (pure $! elaborateOne defined name funMType rawExpr) :: IO (Either SomeException (Either String (MT.T_Type_32, MIR.T_IR_10)))
+      case verifiedResult of
+        Right (Right (inferredType, optimizedIR)) -> do
+          TIO.hPutStrLn System.IO.stderr $ "  OK: " <> name
+          -- Add this function to the defined list for subsequent functions
+          restResult <- go ((name, funMType) : defined) rest
+          pure $ case restResult of
+            Left err -> Left err
+            Right irs -> Right ((name, ty, alloc, inferredType, optimizedIR) : irs)
+        Left exc -> do
+          TIO.hPutStrLn System.IO.stderr $ "  FATAL: " <> name <> ": " <> T.pack (show exc)
+          pure (Left $ T.unpack name ++ ": fatal error: " ++ show exc)
+        Right (Left err) -> do
+          TIO.hPutStrLn System.IO.stderr $ "  FAIL: " <> name <> ": " <> T.pack err
+          pure (Left $ T.unpack name ++ ": " ++ err)
 
-    generateIRExpr :: Once.IR.IR -> Text -> Text
-    generateIRExpr i v = case i of
-      Once.IR.Id _ -> v
-      -- When accessing nested pairs, intermediate .fst/.snd returns void*
-      -- which needs to be cast to OncePair* before accessing its members
-      Once.IR.Fst _ _ ->
-        if needsPairCast v
-          then "((OncePair*)" <> v <> ")->fst"
-          else v <> ".fst"
-      Once.IR.Snd _ _ ->
-        if needsPairCast v
-          then "((OncePair*)" <> v <> ")->snd"
-          else v <> ".snd"
-      Once.IR.Pair f g -> "(OncePair){ .fst = " <> generateIRExpr f v <> ", .snd = " <> generateIRExpr g v <> " }"
-      Once.IR.Compose g f -> generateIRExpr g (generateIRExpr f v)
-      Once.IR.Terminal _ -> "((void*)0)"
-      Once.IR.Inl _ _ -> "(OnceSum){ .tag = 0, .value = " <> v <> " }"
-      Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
-      Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> generateIRExpr l (v <> ".value") <> " : " <> generateIRExpr r (v <> ".value") <> ")"
-      Once.IR.Initial _ -> v
-      Once.IR.Curry paramName body ->
-        "({ typeof(" <> v <> ") " <> paramName <> " = " <> v <> "; " <>
-        generateIRExpr body paramName <> "; })"
-      Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
-      Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
-      Once.IR.LocalVar n' -> n'  -- Local variable: just use the name
-      Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
-      Once.IR.Prim n' _ _ ->
-        -- Inline integer primitives like __int_42
-        case T.stripPrefix "__int_" n' of
-          Just numStr -> "(void*)" <> numStr
-          Nothing -> "once_" <> n' <> "(" <> v <> ")"
-      Once.IR.StringLit s -> generateStringLit s
-      -- Recursive type operations (identity at runtime)
-      Once.IR.Fold _ -> v
-      Once.IR.Unfold _ -> v
-      -- Let binding: use GCC statement expression ({ ... })
-      -- let x = e1 in e2 => ({ typeof(e1) x = e1; e2; })
-      -- Using GCC typeof extension to infer the type automatically
-      Once.IR.Let x' e1 e2 ->
-        let e1Code = generateIRExpr e1 v
-        in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> generateIRExpr e2 x' <> "; })"
-      -- Arithmetic expression (OCP-0001)
-      Once.IR.Arith numTy arithExpr -> arithToC numTy arithExpr
+    -- Run Agda type checking + elaboration + optimization for a single expression.
+    -- The context includes:
+    -- 1. Imported primitives (from qualified imports)
+    -- 2. Previously defined functions in this module
+    -- 3. The function's own name (for recursion)
+    -- Returns the MAlonzo type and optimized MAlonzo IR.
+    elaborateOne defined funName funType rawExpr =
+      -- Combine base imports with previously defined functions
+      let allImportsHs = baseImportsHs ++ defined
+          importsAgda = map (\(n, t) -> Sigma.C__'44'__32 (unsafeCoerce n) (unsafeCoerce t)) allImportsHs
+          -- Add self-reference for recursion: function can call itself
+          ctx = VTE.d_ctxWithImportsAndSelf_364 importsAgda (unsafeCoerce funName) (unsafeCoerce funType)
+      -- Use checkElab (not inferElab) so lambda parameters get correct types from signature
+      in case VTE.d_checkElab_1964 ctx rawExpr funType of
+        VTE.C_failure_328 errMsg ->
+          Left $ "Type checking failed: " ++ show errMsg
+        VTE.C_success_326 surfaceExpr _depth _fresh _usage ->
+          let irExpr = VSE.d_elaborate_112 0 (VSS.C_'8709'_8) funType surfaceExpr
+              optimized = MO.d_optimize_1266 MT.C_Unit_34 funType (unsafeCoerce irExpr)
+          in Right (funType, optimized)
 
-    -- Check if a variable expression needs to be cast to OncePair* before accessing .fst/.snd
-    -- This happens when the expression is the result of a previous pair access:
-    -- - ".fst" or ".snd" suffix (first level access like _tuple.fst)
-    -- - ")->fst" or ")->snd" suffix (deeper level access like ((OncePair*)x)->fst)
-    needsPairCast :: Text -> Bool
-    needsPairCast v' =
-      ".fst" `T.isSuffixOf` v' || ".snd" `T.isSuffixOf` v' ||
-      ")->fst" `T.isSuffixOf` v' || ")->snd" `T.isSuffixOf` v'
+-- | Compile a function body from MAlonzo IR to C expression text.
+-- Handles the top-level curry unwrapping: the Agda elaborator produces
+-- curry(body) : Unit → (A ⇒ B) for every function, but C functions receive
+-- the argument directly. We unwrap the curry and compile the body with
+-- a pair expression (OncePair){ .fst = NULL, .snd = x } representing (Unit, arg).
+compileFuncBody :: MT.T_Type_32 -> MIR.T_IR_10 -> Text
+compileFuncBody mType mIR = case mIR of
+  MIR.C_curry_78 body _alloc -> case mType of
+    MT.C__'8658''91'_'93'__42 inTy _q outTy ->
+      let pairTy = MT.C__'42'__38 MT.C_Unit_34 inTy
+          sndExpr = if isStructCType inTy then "(void*)&x" else "x"
+          pairVar = "(OncePair){ .fst = ((void*)0), .snd = " <> sndExpr <> " }"
+      in MCG.d_compile'45'c'45'expr_12 pairTy outTy body pairVar
+    MT.C_Eff_44 inTy outTy ->
+      let pairTy = MT.C__'42'__38 MT.C_Unit_34 inTy
+          sndExpr = if isStructCType inTy then "(void*)&x" else "x"
+          pairVar = "(OncePair){ .fst = ((void*)0), .snd = " <> sndExpr <> " }"
+      in MCG.d_compile'45'c'45'expr_12 pairTy outTy body pairVar
+    _ -> MCG.d_compile'45'c'45'expr_12 MT.C_Unit_34 mType mIR "x"
+  _ -> MCG.d_compile'45'c'45'expr_12 MT.C_Unit_34 mType mIR "x"
 
-    -- Generate string literal based on allocation strategy
-    generateStringLit :: Text -> Text
-    generateStringLit s =
-      let escaped = escapeString s
-          len = T.pack (show (T.length s))
-      in case alloc of
-        -- Default (Nothing) or const: static string in .rodata
-        Nothing -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-        Just AllocConst -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-        -- Stack: compound literal (auto storage duration)
-        Just AllocStack -> "(OnceString){ .data = (char[]){\"" <> escaped <> "\"}, .len = " <> len <> " }"
-        -- Heap: use MallocLike heap_string from interpretation layer
-        Just AllocHeap -> "once_heap_string(" <> len <> ", (OnceBuffer){ .data = \"" <> escaped <> "\", .len = " <> len <> " })"
-        -- Pool/Arena: fallback to static for now (TODO: implement via interpretation layer)
-        Just AllocPool -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-        Just AllocArena -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-
-    escapeString :: Text -> Text
-    escapeString = T.concatMap escapeChar
-      where
-        escapeChar c = case c of
-          '\n' -> "\\n"
-          '\t' -> "\\t"
-          '\r' -> "\\r"
-          '\\' -> "\\\\"
-          '"'  -> "\\\""
-          _    -> T.singleton c
-
-    -- Generate primitive declarations/implementations
-    primDecls = T.unlines $ map primDecl primitives
-
-    primDecl :: (Text, Type) -> Text
-    primDecl (pname, pty) = case pty of
-      TArrow inTy outTy ->
-        -- Declare primitives as extern (interpretation provides them)
-        -- Use once_ prefix to avoid conflicts with stdlib
-        "extern " <> cTypeName outTy <> " once_" <> pname <> "(" <> cTypeName inTy <> " x);"
-      TEff inTy outTy ->  -- D032: Effectful primitives
-        "extern " <> cTypeName outTy <> " once_" <> pname <> "(" <> cTypeName inTy <> " x);"
-      _ -> "/* primitive " <> pname <> " has non-function type */"
-
-    cTypeName :: Type -> Text
-    cTypeName t = case t of
-      TVar _ -> "void*"
-      TUnit -> "void*"
-      TVoid -> "void"
-      TInt -> "int"
-      TFloat -> "double"
-      TBuffer -> "OnceBuffer"
-      TString _ -> "OnceString"
-      TProduct _ _ -> "OncePair"
-      TSum _ _ -> "OnceSum"
-      TArrow _ _ -> "void*"
-      TEff _ _ -> "void*"  -- D032: Eff same as Arrow at runtime
-      TApp _ _ -> "void*"
-      TFix _ -> "void*"
+-- | Check if a MAlonzo type maps to a C struct (passed by value, needs &x for void* storage)
+isStructCType :: MT.T_Type_32 -> Bool
+isStructCType (MT.C__'42'__38 _ _) = True   -- OncePair
+isStructCType (MT.C__'43'__40 _ _) = True   -- OnceSum
+isStructCType _ = False
 
 -- | Generate C code for an executable with multiple functions
+-- Uses Agda-extracted C codegen (MAlonzo) for function bodies.
 -- Functions are reordered so main comes last (helpers first to avoid implicit declarations)
-generateExecutableAll :: [(Text, Type, Maybe AllocStrategy, Once.IR.IR)]
+generateExecutableAll :: [(Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10)]
                       -> Maybe AllocStrategy
                       -> [(Text, Type)]
                       -> Text
-                      -> Bool  -- ^ Enable arithmetic inlining (--arith flag)
                       -> Text
-generateExecutableAll functions defaultAlloc primitives interpCode arithMode = T.unlines
+generateExecutableAll functions _defaultAlloc primitives interpCode = T.unlines
   [ "/* Generated by Once compiler */"
   , ""
   , "/* Type definitions */"
@@ -942,12 +539,9 @@ generateExecutableAll functions defaultAlloc primitives interpCode arithMode = T
   ]
   where
     -- Separate main from helpers, put main last
-    (mainFuncs, helpers) = partition (\(n, _, _, _) -> n == "main") functions
+    (mainFuncs, helpers) = partition (\(n, _, _, _, _) -> n == "main") functions
     orderedFunctions = helpers ++ mainFuncs
     partition p xs = (filter p xs, filter (not . p) xs)
-
-    -- Collect all types from functions and primitives
-    allTypes = map (\(_, t, _, _) -> t) functions ++ map snd primitives
 
     -- Always emit all type definitions with include guard to avoid conflicts with interpretation files
     typeDefinitions = T.unlines
@@ -962,146 +556,36 @@ generateExecutableAll functions defaultAlloc primitives interpCode arithMode = T
       , "#endif"
       ]
 
-    needsPair :: Type -> Bool
-    needsPair t = case t of
-      TProduct _ _ -> True
-      TSum a b -> needsPair a || needsPair b
-      TArrow a b -> needsPair a || needsPair b
-      TEff a b -> needsPair a || needsPair b
-      _ -> False
+    generateFunc :: (Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10) -> Text
+    generateFunc (n, t, _, mType, mIR) =
+      let cBody = compileFuncBody mType mIR
+      in case t of
+        TArrow _ _ -> T.unlines
+          [ mFuncDecl n mType <> " {"
+          , "    return " <> cBody <> ";"
+          , "}"
+          ]
+        TEff _ _ -> T.unlines
+          [ mFuncDecl n mType <> " {"
+          , "    return " <> cBody <> ";"
+          , "}"
+          ]
+        -- Lift non-function types: generate void* -> void* function
+        _ -> T.unlines
+          [ "void* once_" <> n <> "(void* x) {"
+          , "    (void)x;"
+          , "    return " <> cBody <> ";"
+          , "}"
+          ]
 
-    needsSum :: Type -> Bool
-    needsSum t = case t of
-      TSum _ _ -> True
-      TProduct a b -> needsSum a || needsSum b
-      TArrow a b -> needsSum a || needsSum b
-      TEff a b -> needsSum a || needsSum b
-      _ -> False
-
-    needsBuffer :: Type -> Bool
-    needsBuffer t = case t of
-      TBuffer -> True
-      TString _ -> True
-      TProduct a b -> needsBuffer a || needsBuffer b
-      TSum a b -> needsBuffer a || needsBuffer b
-      TArrow a b -> needsBuffer a || needsBuffer b
-      TEff a b -> needsBuffer a || needsBuffer b
-      _ -> False
-
-    needsString :: Type -> Bool
-    needsString t = case t of
-      TString _ -> True
-      TProduct a b -> needsString a || needsString b
-      TSum a b -> needsString a || needsString b
-      TArrow a b -> needsString a || needsString b
-      TEff a b -> needsString a || needsString b
-      _ -> False
-
-    generateFunc :: (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> Text
-    generateFunc (n, t, funcAlloc, ir) =
-      let alloc = funcAlloc <|> defaultAlloc
-      in generateFuncWithAlloc n t ir alloc
-
-    generateFuncWithAlloc :: Text -> Type -> Once.IR.IR -> Maybe AllocStrategy -> Text
-    generateFuncWithAlloc n t ir alloc = case t of
-      TArrow _ _ -> T.unlines
-        [ funcDecl n t <> " {"
-        , "    return " <> generateIRExpr alloc ir "x" <> ";"
-        , "}"
-        ]
-      TEff _ _ -> T.unlines
-        [ funcDecl n t <> " {"
-        , "    return " <> generateIRExpr alloc ir "x" <> ";"
-        , "}"
-        ]
-      -- Lift non-function types: generate Unit -> T function
-      _ -> T.unlines
-        [ funcDecl n t <> " {"
-        , "    (void)x;"
-        , "    return " <> generateIRExpr alloc ir "x" <> ";"
-        , "}"
-        ]
-
-    funcDecl :: Text -> Type -> Text
-    funcDecl n t = case t of
-      TArrow inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"
-      TEff inTy outTy -> cTypeName outTy <> " once_" <> n <> "(" <> cTypeName inTy <> " x)"  -- D032
-      -- Lift non-function types to Unit -> T
+    -- Function declaration from MAlonzo type
+    mFuncDecl :: Text -> MT.T_Type_32 -> Text
+    mFuncDecl n t = case t of
+      MT.C__'8658''91'_'93'__42 inTy _q outTy ->
+        MCE.d_cTypeName_62 outTy <> " once_" <> n <> "(" <> MCE.d_cTypeName_62 inTy <> " x)"
+      MT.C_Eff_44 inTy outTy ->
+        MCE.d_cTypeName_62 outTy <> " once_" <> n <> "(" <> MCE.d_cTypeName_62 inTy <> " x)"
       _ -> "void* once_" <> n <> "(void* x)"
-
-    generateIRExpr :: Maybe AllocStrategy -> Once.IR.IR -> Text -> Text
-    generateIRExpr alloc i v = case i of
-      Once.IR.Id _ -> v
-      Once.IR.Fst _ _ ->
-        if needsPairCast v
-          then "((OncePair*)" <> v <> ")->fst"
-          else v <> ".fst"
-      Once.IR.Snd _ _ ->
-        if needsPairCast v
-          then "((OncePair*)" <> v <> ")->snd"
-          else v <> ".snd"
-      Once.IR.Pair f g -> "(OncePair){ .fst = " <> generateIRExpr alloc f v <> ", .snd = " <> generateIRExpr alloc g v <> " }"
-      Once.IR.Compose g f -> generateIRExpr alloc g (generateIRExpr alloc f v)
-      Once.IR.Terminal _ -> "((void*)0)"
-      Once.IR.Inl _ _ -> "(OnceSum){ .tag = 0, .value = " <> v <> " }"
-      Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
-      Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> generateIRExpr alloc l (v <> ".value") <> " : " <> generateIRExpr alloc r (v <> ".value") <> ")"
-      Once.IR.Initial _ -> v
-      Once.IR.Curry paramName body ->
-        "({ typeof(" <> v <> ") " <> paramName <> " = " <> v <> "; " <>
-        generateIRExpr alloc body paramName <> "; })"
-      Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
-      Once.IR.Var n' ->
-        -- When --arith is enabled, try to inline arithmetic primitives
-        if arithMode
-          then case inlineArithPrim n' v of
-            Just expr -> expr
-            Nothing -> "once_" <> n' <> "(" <> v <> ")"
-          else "once_" <> n' <> "(" <> v <> ")"
-      Once.IR.LocalVar n' -> n'
-      Once.IR.FunRef n' -> "(void*)once_" <> n'  -- Function reference (pointer, not call)
-      Once.IR.Prim n' _ _ ->
-        -- Inline integer primitives like __int_42
-        case T.stripPrefix "__int_" n' of
-          Just numStr -> "(void*)" <> numStr
-          Nothing ->
-            -- When --arith is enabled, try to inline arithmetic primitives
-            if arithMode
-              then case inlineArithPrim n' v of
-                Just expr -> expr
-                Nothing -> "once_" <> n' <> "(" <> v <> ")"
-              else "once_" <> n' <> "(" <> v <> ")"
-      Once.IR.StringLit s -> generateStringLit alloc s
-      Once.IR.Fold _ -> v
-      Once.IR.Unfold _ -> v
-      Once.IR.Let x' e1 e2 ->
-        let e1Code = generateIRExpr alloc e1 v
-        in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> generateIRExpr alloc e2 x' <> "; })"
-      -- Arithmetic expression (OCP-0001)
-      Once.IR.Arith numTy arithExpr -> arithToC numTy arithExpr
-
-    generateStringLit :: Maybe AllocStrategy -> Text -> Text
-    generateStringLit alloc s =
-      let escaped = escapeString s
-          len = T.pack (show (T.length s))
-      in case alloc of
-        Nothing -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-        Just AllocConst -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-        Just AllocStack -> "(OnceString){ .data = (char[]){\"" <> escaped <> "\"}, .len = " <> len <> " }"
-        Just AllocHeap -> "once_heap_string(" <> len <> ", (OnceBuffer){ .data = \"" <> escaped <> "\", .len = " <> len <> " })"
-        Just AllocPool -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-        Just AllocArena -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-
-    escapeString :: Text -> Text
-    escapeString = T.concatMap escapeChar
-      where
-        escapeChar c = case c of
-          '\n' -> "\\n"
-          '\t' -> "\\t"
-          '\r' -> "\\r"
-          '\\' -> "\\\\"
-          '"'  -> "\\\""
-          _    -> T.singleton c
 
     primDecls = T.unlines $ map primDecl primitives
 
@@ -1109,7 +593,7 @@ generateExecutableAll functions defaultAlloc primitives interpCode arithMode = T
     primDecl (pname, pty) = case pty of
       TArrow inTy outTy ->
         "extern " <> cTypeName outTy <> " once_" <> pname <> "(" <> cTypeName inTy <> " x);"
-      TEff inTy outTy ->  -- D032: Eff same as Arrow at runtime
+      TEff inTy outTy ->
         "extern " <> cTypeName outTy <> " once_" <> pname <> "(" <> cTypeName inTy <> " x);"
       _ -> "/* primitive " <> pname <> " has non-function type */"
 
@@ -1125,18 +609,13 @@ generateExecutableAll functions defaultAlloc primitives interpCode arithMode = T
       TProduct _ _ -> "OncePair"
       TSum _ _ -> "OnceSum"
       TArrow _ _ -> "void*"
-      TEff _ _ -> "void*"  -- D032: Eff same as Arrow at runtime
+      TEff _ _ -> "void*"
       TApp _ _ -> "void*"
       TFix _ -> "void*"
 
-    -- Check if a variable expression needs to be cast to OncePair* before accessing .fst/.snd
-    needsPairCast :: Text -> Bool
-    needsPairCast v' =
-      ".fst" `T.isSuffixOf` v' || ".snd" `T.isSuffixOf` v' ||
-      ")->fst" `T.isSuffixOf` v' || ")->snd" `T.isSuffixOf` v'
-
 -- | Generate library header and source for multiple functions (no main required)
-generateLibraryAll :: [(Text, Type, Maybe AllocStrategy, Once.IR.IR)] -> (Text, Text)
+-- Uses Agda-extracted C codegen (MAlonzo) for function bodies.
+generateLibraryAll :: [(Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10)] -> (Text, Text)
 generateLibraryAll functions = (header, source)
   where
     header = T.unlines $
@@ -1170,346 +649,102 @@ generateLibraryAll functions = (header, source)
       , "#endif"
       , ""
       , "/* Function definitions */"
-      ] ++ map (funcDef Nothing) functions
+      ] ++ map funcDef functions
 
-    funcDecl :: (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> Text
-    funcDecl (name, ty, _, _) = case ty of
-      TArrow inTy outTy ->
-        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x);"
-      TEff inTy outTy ->
-        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x);"
-      -- Lift non-function types to Unit -> T (constants become functions)
-      _ -> "void* once_" <> name <> "(void* x);"
+    funcDecl :: (Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10) -> Text
+    funcDecl (name, _, _, mType, _) = mFuncDecl name mType <> ";"
 
-    funcDef :: Maybe AllocStrategy -> (Text, Type, Maybe AllocStrategy, Once.IR.IR) -> Text
-    funcDef globalAlloc (name, ty, localAlloc, ir) = case ty of
-      TArrow inTy outTy ->
-        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x) {\n" <>
-        "    return " <> libGenerateIRExpr (localAlloc <|> globalAlloc) ir "x" <> ";\n" <>
-        "}"
-      TEff inTy outTy ->
-        libCTypeName outTy <> " once_" <> name <> "(" <> libCTypeName inTy <> " x) {\n" <>
-        "    return " <> libGenerateIRExpr (localAlloc <|> globalAlloc) ir "x" <> ";\n" <>
-        "}"
-      -- Lift non-function types: generate Unit -> T function
-      _ -> "void* once_" <> name <> "(void* x) {\n" <>
-        "    (void)x;\n" <>
-        "    return " <> libGenerateIRExpr (localAlloc <|> globalAlloc) ir "x" <> ";\n" <>
-        "}"
+    funcDef :: (Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10) -> Text
+    funcDef (name, ty, _, mType, mIR) =
+      let cBody = compileFuncBody mType mIR
+      in case ty of
+        TArrow _ _ ->
+          mFuncDecl name mType <> " {\n" <>
+          "    return " <> cBody <> ";\n" <>
+          "}"
+        TEff _ _ ->
+          mFuncDecl name mType <> " {\n" <>
+          "    return " <> cBody <> ";\n" <>
+          "}"
+        -- Lift non-function types: generate void* -> void* function
+        _ -> "void* once_" <> name <> "(void* x) {\n" <>
+          "    (void)x;\n" <>
+          "    return " <> cBody <> ";\n" <>
+          "}"
 
-    libCTypeName :: Type -> Text
-    libCTypeName t = case t of
-      TVar _ -> "void*"
-      TUnit -> "void*"
-      TVoid -> "void"
-      TInt -> "int"
-      TFloat -> "double"
-      TBuffer -> "OnceBuffer"
-      TString _ -> "OnceString"
-      TProduct _ _ -> "OncePair"
-      TSum _ _ -> "OnceSum"
-      TArrow _ _ -> "void*"
-      TEff _ _ -> "void*"
-      TApp _ _ -> "void*"
-      TFix _ -> "void*"
-
-    libGenerateIRExpr :: Maybe AllocStrategy -> Once.IR.IR -> Text -> Text
-    libGenerateIRExpr alloc ir v = case ir of
-      Once.IR.Id _ -> v
-      Once.IR.Fst _ _ ->
-        if libNeedsPairCast v
-          then "((OncePair*)" <> v <> ")->fst"
-          else v <> ".fst"
-      Once.IR.Snd _ _ ->
-        if libNeedsPairCast v
-          then "((OncePair*)" <> v <> ")->snd"
-          else v <> ".snd"
-      Once.IR.Pair f g -> "(OncePair){ .fst = " <> libGenerateIRExpr alloc f v <> ", .snd = " <> libGenerateIRExpr alloc g v <> " }"
-      Once.IR.Compose g f -> libGenerateIRExpr alloc g (libGenerateIRExpr alloc f v)
-      Once.IR.Terminal _ -> "((void*)0)"
-      Once.IR.Inl _ _ -> "(OnceSum){ .tag = 0, .value = " <> v <> " }"
-      Once.IR.Inr _ _ -> "(OnceSum){ .tag = 1, .value = " <> v <> " }"
-      Once.IR.Case l r -> "(" <> v <> ".tag == 0 ? " <> libGenerateIRExpr alloc l (v <> ".value") <> " : " <> libGenerateIRExpr alloc r (v <> ".value") <> ")"
-      Once.IR.Initial _ -> v
-      Once.IR.Curry paramName body ->
-        "({ typeof(" <> v <> ") " <> paramName <> " = " <> v <> "; " <>
-        libGenerateIRExpr alloc body paramName <> "; })"
-      Once.IR.Apply _ _ -> "/* apply not yet implemented */ ((void*)0)"
-      Once.IR.Var n' -> "once_" <> n' <> "(" <> v <> ")"
-      Once.IR.LocalVar n' -> n'
-      Once.IR.FunRef n' -> "(void*)once_" <> n'
-      Once.IR.Prim n' _ _ ->
-        -- Inline integer primitives like __int_42
-        case T.stripPrefix "__int_" n' of
-          Just numStr -> "(void*)" <> numStr
-          Nothing -> "once_" <> n' <> "(" <> v <> ")"
-      Once.IR.StringLit s -> libGenerateStringLit alloc s
-      Once.IR.Fold _ -> v
-      Once.IR.Unfold _ -> v
-      Once.IR.Let x' e1 e2 ->
-        let e1Code = libGenerateIRExpr alloc e1 v
-        in "({ typeof(" <> e1Code <> ") " <> x' <> " = " <> e1Code <> "; " <> libGenerateIRExpr alloc e2 x' <> "; })"
-      -- Arithmetic expression (OCP-0001)
-      Once.IR.Arith numTy arithExpr -> arithToC numTy arithExpr
-
-    libGenerateStringLit :: Maybe AllocStrategy -> Text -> Text
-    libGenerateStringLit alloc s =
-      let escaped = libEscapeString s
-          len = T.pack (show (T.length s))
-      in case alloc of
-        Nothing -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-        Just AllocConst -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-        Just AllocStack -> "(OnceString){ .data = (char[]){\"" <> escaped <> "\"}, .len = " <> len <> " }"
-        Just AllocHeap -> "once_heap_string(" <> len <> ", (OnceBuffer){ .data = \"" <> escaped <> "\", .len = " <> len <> " })"
-        Just AllocPool -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-        Just AllocArena -> "(OnceString){ .data = \"" <> escaped <> "\", .len = " <> len <> " }"
-
-    libEscapeString :: Text -> Text
-    libEscapeString = T.concatMap escapeChar
-      where
-        escapeChar c = case c of
-          '\n' -> "\\n"
-          '\t' -> "\\t"
-          '\r' -> "\\r"
-          '\\' -> "\\\\"
-          '"'  -> "\\\""
-          _    -> T.singleton c
-
-    -- Check if a variable expression needs to be cast to OncePair* before accessing .fst/.snd
-    libNeedsPairCast :: Text -> Bool
-    libNeedsPairCast v' =
-      ".fst" `T.isSuffixOf` v' || ".snd" `T.isSuffixOf` v' ||
-      ")->fst" `T.isSuffixOf` v' || ")->snd" `T.isSuffixOf` v'
+    -- Function declaration from MAlonzo type
+    mFuncDecl :: Text -> MT.T_Type_32 -> Text
+    mFuncDecl n t = case t of
+      MT.C__'8658''91'_'93'__42 inTy _q outTy ->
+        MCE.d_cTypeName_62 outTy <> " once_" <> n <> "(" <> MCE.d_cTypeName_62 inTy <> " x)"
+      MT.C_Eff_44 inTy outTy ->
+        MCE.d_cTypeName_62 outTy <> " once_" <> n <> "(" <> MCE.d_cTypeName_62 inTy <> " x)"
+      _ -> "void* once_" <> n <> "(void* x)"
 
 ------------------------------------------------------------------------
--- Native target interpretation file handling
+-- Assembly generation for native targets
+-- Uses MAlonzo-extracted verified backends
 ------------------------------------------------------------------------
 
--- | Get the file extension for native target interpretation files
-nativeTargetExtension :: Target -> String
-nativeTargetExtension TargetX86_64 = ".x86_64"
-nativeTargetExtension TargetArm64 = ".arm64"
-nativeTargetExtension TargetRiscV64 = ".riscv64"
-nativeTargetExtension TargetC = ".c"
+-- | Generate assembly source for all functions using verified backends
+generateAssemblyAll :: Target
+                    -> [(Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10)]
+                    -> Text
+generateAssemblyAll target functions = T.unlines $ map (generateAssemblyFunc target) functions
 
--- | Collect all interpretation assembly files for native targets from loaded modules
-collectNativeInterpFiles :: FilePath -> Target -> ModuleEnv -> [FilePath]
-collectNativeInterpFiles _strataPath _target env =
-  -- Get target-specific files from loaded modules
-  [path | LoadedModule { lmTargetPath = Just path } <- Map.elems (meModules env)]
+-- | Generate assembly for a single function
+generateAssemblyFunc :: Target -> (Text, Type, Maybe AllocStrategy, MT.T_Type_32, MIR.T_IR_10) -> Text
+generateAssemblyFunc target (name, _, _, mType, mIR) =
+  let (inTy, outTy) = extractTypes mType
+      asmBody = case target of
+        TargetX86_64  -> MEmit.d_compileX86ToText_24 inTy outTy mIR
+        TargetArm64   -> MEmit.d_compileAArch64ToText_16 inTy outTy mIR
+        TargetRiscV64 -> "/* RISC-V backend disabled - IR/IRS type mismatch */"
+        TargetC       -> "/* C backend not assembly */"
+  in T.unlines
+    [ "/* Function: " <> name <> " */"
+    , ".globl once_" <> name
+    , "once_" <> name <> ":"
+    , asmBody
+    ]
 
--- | Resolve explicit interpretation files for native targets from -I:TYPE flags
--- Only returns files matching the target's InterpType
-resolveExplicitNativeInterps :: FilePath -> Target -> [(InterpType, String)] -> [FilePath]
-resolveExplicitNativeInterps strataPath target explicitInterps =
-  let targetInterpType = case target of
-        TargetX86_64 -> InterpX86_64
-        TargetArm64 -> InterpArm64
-        TargetRiscV64 -> InterpRiscV64
-        TargetC -> InterpC
-  in [ strataPath </> moduleToPath modPath ++ interpTypeExtension itype
-     | (itype, modPath) <- explicitInterps
-     , itype == targetInterpType
-     ]
-
--- | Assemble interpretation files and return list of .o file paths
-assembleInterpFiles :: Target -> [FilePath] -> FilePath -> IO [FilePath]
-assembleInterpFiles _ [] _ = pure []
-assembleInterpFiles target asmFiles outputBase = do
-  -- For each .{arch} file, assemble to .o
-  results <- mapM assembleOne (zip [0..] asmFiles)
-  pure $ concat results
-  where
-    assembleOne :: (Int, FilePath) -> IO [FilePath]
-    assembleOne (idx, asmPath) = do
-      exists <- doesFileExist asmPath
-      if exists
-        then do
-          let objPath = outputBase ++ "_interp_" ++ show idx ++ ".o"
-          result <- Asm.assemble asmPath objPath
-          case result of
-            Left err -> do
-              TIO.putStrLn $ "Warning: Failed to assemble " <> T.pack asmPath <> ": " <> T.pack (show err)
-              pure []
-            Right _ -> pure [objPath]
-        else do
-          TIO.putStrLn $ "Warning: Interpretation file not found: " <> T.pack asmPath
-          pure []
+-- | Extract domain and codomain types from MAlonzo function type
+extractTypes :: MT.T_Type_32 -> (MT.T_Type_32, MT.T_Type_32)
+extractTypes (MT.C__'8658''91'_'93'__42 inTy _q outTy) = (inTy, outTy)
+extractTypes (MT.C_Eff_44 inTy outTy) = (inTy, outTy)
+extractTypes _ = (MT.C_Unit_34, MT.C_Unit_34)  -- Fallback for non-function types
 
 ------------------------------------------------------------------------
--- Arithmetic Primitive Inlining (OCP-0001)
+-- Assembler/linker invocation (IO layer for native targets)
+-- The pure specification (Target, directives, wrapping) is in
+-- formal/Once/Backend/Assembler.agda
 ------------------------------------------------------------------------
 
--- | Try to inline an arithmetic primitive as a C expression
--- Returns Just expr if it's an arithmetic primitive, Nothing otherwise
---
--- Binary ops expect input as a pair (v.fst op v.snd)
--- Unary ops expect input as a single value (-v)
-inlineArithPrim :: Text -> Text -> Maybe Text
-inlineArithPrim primName v = case primName of
-  -- Addition (with and without __ prefix)
-  -- Results cast to (void*) to maintain type compatibility with OncePair
-  "__add_i8"  -> Just $ voidPtr (fstI8 v <> " + " <> sndI8 v)
-  "__add_i16" -> Just $ voidPtr (fstI16 v <> " + " <> sndI16 v)
-  "__add_i32" -> Just $ voidPtr (fstI32 v <> " + " <> sndI32 v)
-  "__add_i64" -> Just $ voidPtr (fstI64 v <> " + " <> sndI64 v)
-  "__add_f32" -> Just $ voidPtr (fstF32 v <> " + " <> sndF32 v)
-  "__add_f64" -> Just $ voidPtr (fstF64 v <> " + " <> sndF64 v)
-  "add_i8"  -> Just $ voidPtr (fstI8 v <> " + " <> sndI8 v)
-  "add_i16" -> Just $ voidPtr (fstI16 v <> " + " <> sndI16 v)
-  "add_i32" -> Just $ voidPtr (fstI32 v <> " + " <> sndI32 v)
-  "add_i64" -> Just $ voidPtr (fstI64 v <> " + " <> sndI64 v)
-  "add_f32" -> Just $ voidPtr (fstF32 v <> " + " <> sndF32 v)
-  "add_f64" -> Just $ voidPtr (fstF64 v <> " + " <> sndF64 v)
+-- | Assemble a .s file to .o using the system assembler
+-- Checks AS environment variable, falls back to "as"
+assemble :: FilePath -> FilePath -> IO (Either String FilePath)
+assemble asmFile objFile = do
+  as <- maybe "as" id <$> lookupEnv "AS"
+  result <- try $ readProcessWithExitCode as [asmFile, "-o", objFile] ""
+  case result of
+    Left (e :: SomeException) ->
+      pure $ Left $ "Assembler error: " ++ show e
+    Right (exitCode, _stdout, stderr) ->
+      case exitCode of
+        ExitSuccess -> pure $ Right objFile
+        ExitFailure _ -> pure $ Left $ "Assembly failed (" ++ as ++ "): " ++ stderr
 
-  -- Subtraction
-  "__sub_i8"  -> Just $ voidPtr (fstI8 v <> " - " <> sndI8 v)
-  "__sub_i16" -> Just $ voidPtr (fstI16 v <> " - " <> sndI16 v)
-  "__sub_i32" -> Just $ voidPtr (fstI32 v <> " - " <> sndI32 v)
-  "__sub_i64" -> Just $ voidPtr (fstI64 v <> " - " <> sndI64 v)
-  "__sub_f32" -> Just $ voidPtr (fstF32 v <> " - " <> sndF32 v)
-  "__sub_f64" -> Just $ voidPtr (fstF64 v <> " - " <> sndF64 v)
-  "sub_i8"  -> Just $ voidPtr (fstI8 v <> " - " <> sndI8 v)
-  "sub_i16" -> Just $ voidPtr (fstI16 v <> " - " <> sndI16 v)
-  "sub_i32" -> Just $ voidPtr (fstI32 v <> " - " <> sndI32 v)
-  "sub_i64" -> Just $ voidPtr (fstI64 v <> " - " <> sndI64 v)
-  "sub_f32" -> Just $ voidPtr (fstF32 v <> " - " <> sndF32 v)
-  "sub_f64" -> Just $ voidPtr (fstF64 v <> " - " <> sndF64 v)
-
-  -- Multiplication
-  "__mul_i8"  -> Just $ voidPtr (fstI8 v <> " * " <> sndI8 v)
-  "__mul_i16" -> Just $ voidPtr (fstI16 v <> " * " <> sndI16 v)
-  "__mul_i32" -> Just $ voidPtr (fstI32 v <> " * " <> sndI32 v)
-  "__mul_i64" -> Just $ voidPtr (fstI64 v <> " * " <> sndI64 v)
-  "__mul_f32" -> Just $ voidPtr (fstF32 v <> " * " <> sndF32 v)
-  "__mul_f64" -> Just $ voidPtr (fstF64 v <> " * " <> sndF64 v)
-  "mul_i8"  -> Just $ voidPtr (fstI8 v <> " * " <> sndI8 v)
-  "mul_i16" -> Just $ voidPtr (fstI16 v <> " * " <> sndI16 v)
-  "mul_i32" -> Just $ voidPtr (fstI32 v <> " * " <> sndI32 v)
-  "mul_i64" -> Just $ voidPtr (fstI64 v <> " * " <> sndI64 v)
-  "mul_f32" -> Just $ voidPtr (fstF32 v <> " * " <> sndF32 v)
-  "mul_f64" -> Just $ voidPtr (fstF64 v <> " * " <> sndF64 v)
-
-  -- Division
-  "__div_i8"  -> Just $ voidPtr (fstI8 v <> " / " <> sndI8 v)
-  "__div_i16" -> Just $ voidPtr (fstI16 v <> " / " <> sndI16 v)
-  "__div_i32" -> Just $ voidPtr (fstI32 v <> " / " <> sndI32 v)
-  "__div_i64" -> Just $ voidPtr (fstI64 v <> " / " <> sndI64 v)
-  "__div_f32" -> Just $ voidPtr (fstF32 v <> " / " <> sndF32 v)
-  "__div_f64" -> Just $ voidPtr (fstF64 v <> " / " <> sndF64 v)
-  "div_i8"  -> Just $ voidPtr (fstI8 v <> " / " <> sndI8 v)
-  "div_i16" -> Just $ voidPtr (fstI16 v <> " / " <> sndI16 v)
-  "div_i32" -> Just $ voidPtr (fstI32 v <> " / " <> sndI32 v)
-  "div_i64" -> Just $ voidPtr (fstI64 v <> " / " <> sndI64 v)
-  "div_f32" -> Just $ voidPtr (fstF32 v <> " / " <> sndF32 v)
-  "div_f64" -> Just $ voidPtr (fstF64 v <> " / " <> sndF64 v)
-
-  -- Modulo (integers only)
-  "__mod_i8"  -> Just $ voidPtr (fstI8 v <> " % " <> sndI8 v)
-  "__mod_i16" -> Just $ voidPtr (fstI16 v <> " % " <> sndI16 v)
-  "__mod_i32" -> Just $ voidPtr (fstI32 v <> " % " <> sndI32 v)
-  "__mod_i64" -> Just $ voidPtr (fstI64 v <> " % " <> sndI64 v)
-  "mod_i8"  -> Just $ voidPtr (fstI8 v <> " % " <> sndI8 v)
-  "mod_i16" -> Just $ voidPtr (fstI16 v <> " % " <> sndI16 v)
-  "mod_i32" -> Just $ voidPtr (fstI32 v <> " % " <> sndI32 v)
-  "mod_i64" -> Just $ voidPtr (fstI64 v <> " % " <> sndI64 v)
-
-  -- Negation (unary) - cast void* to appropriate type, wrap result
-  "__neg_i8"  -> Just $ voidPtr ("-(int8_t)(long)" <> v)
-  "__neg_i16" -> Just $ voidPtr ("-(int16_t)(long)" <> v)
-  "__neg_i32" -> Just $ voidPtr ("-(int32_t)(long)" <> v)
-  "__neg_i64" -> Just $ voidPtr ("-(int64_t)(long)" <> v)
-  "__neg_f32" -> Just $ voidPtr ("-*(float*)&" <> v)
-  "__neg_f64" -> Just $ voidPtr ("-*(double*)&" <> v)
-  "neg_i8"  -> Just $ voidPtr ("-(int8_t)(long)" <> v)
-  "neg_i16" -> Just $ voidPtr ("-(int16_t)(long)" <> v)
-  "neg_i32" -> Just $ voidPtr ("-(int32_t)(long)" <> v)
-  "neg_i64" -> Just $ voidPtr ("-(int64_t)(long)" <> v)
-  "neg_f32" -> Just $ voidPtr ("-*(float*)&" <> v)
-  "neg_f64" -> Just $ voidPtr ("-*(double*)&" <> v)
-
-  -- Comparisons (return int, wrapped to void*)
-  "__lt_i8"  -> Just $ voidPtr (fstI8 v <> " < " <> sndI8 v)
-  "__lt_i16" -> Just $ voidPtr (fstI16 v <> " < " <> sndI16 v)
-  "__lt_i32" -> Just $ voidPtr (fstI32 v <> " < " <> sndI32 v)
-  "__lt_i64" -> Just $ voidPtr (fstI64 v <> " < " <> sndI64 v)
-  "__lt_f32" -> Just $ voidPtr (fstF32 v <> " < " <> sndF32 v)
-  "__lt_f64" -> Just $ voidPtr (fstF64 v <> " < " <> sndF64 v)
-  "lt_i8"  -> Just $ voidPtr (fstI8 v <> " < " <> sndI8 v)
-  "lt_i16" -> Just $ voidPtr (fstI16 v <> " < " <> sndI16 v)
-  "lt_i32" -> Just $ voidPtr (fstI32 v <> " < " <> sndI32 v)
-  "lt_i64" -> Just $ voidPtr (fstI64 v <> " < " <> sndI64 v)
-  "lt_f32" -> Just $ voidPtr (fstF32 v <> " < " <> sndF32 v)
-  "lt_f64" -> Just $ voidPtr (fstF64 v <> " < " <> sndF64 v)
-
-  "__le_i8"  -> Just $ voidPtr (fstI8 v <> " <= " <> sndI8 v)
-  "__le_i16" -> Just $ voidPtr (fstI16 v <> " <= " <> sndI16 v)
-  "__le_i32" -> Just $ voidPtr (fstI32 v <> " <= " <> sndI32 v)
-  "__le_i64" -> Just $ voidPtr (fstI64 v <> " <= " <> sndI64 v)
-  "le_i8"  -> Just $ voidPtr (fstI8 v <> " <= " <> sndI8 v)
-  "le_i16" -> Just $ voidPtr (fstI16 v <> " <= " <> sndI16 v)
-  "le_i32" -> Just $ voidPtr (fstI32 v <> " <= " <> sndI32 v)
-  "le_i64" -> Just $ voidPtr (fstI64 v <> " <= " <> sndI64 v)
-
-  "__gt_i8"  -> Just $ voidPtr (fstI8 v <> " > " <> sndI8 v)
-  "__gt_i16" -> Just $ voidPtr (fstI16 v <> " > " <> sndI16 v)
-  "__gt_i32" -> Just $ voidPtr (fstI32 v <> " > " <> sndI32 v)
-  "__gt_i64" -> Just $ voidPtr (fstI64 v <> " > " <> sndI64 v)
-  "gt_i8"  -> Just $ voidPtr (fstI8 v <> " > " <> sndI8 v)
-  "gt_i16" -> Just $ voidPtr (fstI16 v <> " > " <> sndI16 v)
-  "gt_i32" -> Just $ voidPtr (fstI32 v <> " > " <> sndI32 v)
-  "gt_i64" -> Just $ voidPtr (fstI64 v <> " > " <> sndI64 v)
-
-  "__ge_i8"  -> Just $ voidPtr (fstI8 v <> " >= " <> sndI8 v)
-  "__ge_i16" -> Just $ voidPtr (fstI16 v <> " >= " <> sndI16 v)
-  "__ge_i32" -> Just $ voidPtr (fstI32 v <> " >= " <> sndI32 v)
-  "__ge_i64" -> Just $ voidPtr (fstI64 v <> " >= " <> sndI64 v)
-  "ge_i8"  -> Just $ voidPtr (fstI8 v <> " >= " <> sndI8 v)
-  "ge_i16" -> Just $ voidPtr (fstI16 v <> " >= " <> sndI16 v)
-  "ge_i32" -> Just $ voidPtr (fstI32 v <> " >= " <> sndI32 v)
-  "ge_i64" -> Just $ voidPtr (fstI64 v <> " >= " <> sndI64 v)
-
-  "__eq_i8"  -> Just $ voidPtr (fstI8 v <> " == " <> sndI8 v)
-  "__eq_i16" -> Just $ voidPtr (fstI16 v <> " == " <> sndI16 v)
-  "__eq_i32" -> Just $ voidPtr (fstI32 v <> " == " <> sndI32 v)
-  "__eq_i64" -> Just $ voidPtr (fstI64 v <> " == " <> sndI64 v)
-  "__eq_f32" -> Just $ voidPtr (fstF32 v <> " == " <> sndF32 v)
-  "__eq_f64" -> Just $ voidPtr (fstF64 v <> " == " <> sndF64 v)
-  "eq_i8"  -> Just $ voidPtr (fstI8 v <> " == " <> sndI8 v)
-  "eq_i16" -> Just $ voidPtr (fstI16 v <> " == " <> sndI16 v)
-  "eq_i32" -> Just $ voidPtr (fstI32 v <> " == " <> sndI32 v)
-  "eq_i64" -> Just $ voidPtr (fstI64 v <> " == " <> sndI64 v)
-  "eq_f32" -> Just $ voidPtr (fstF32 v <> " == " <> sndF32 v)
-  "eq_f64" -> Just $ voidPtr (fstF64 v <> " == " <> sndF64 v)
-
-  "__ne_i8"  -> Just $ voidPtr (fstI8 v <> " != " <> sndI8 v)
-  "__ne_i16" -> Just $ voidPtr (fstI16 v <> " != " <> sndI16 v)
-  "__ne_i32" -> Just $ voidPtr (fstI32 v <> " != " <> sndI32 v)
-  "__ne_i64" -> Just $ voidPtr (fstI64 v <> " != " <> sndI64 v)
-  "ne_i8"  -> Just $ voidPtr (fstI8 v <> " != " <> sndI8 v)
-  "ne_i16" -> Just $ voidPtr (fstI16 v <> " != " <> sndI16 v)
-  "ne_i32" -> Just $ voidPtr (fstI32 v <> " != " <> sndI32 v)
-  "ne_i64" -> Just $ voidPtr (fstI64 v <> " != " <> sndI64 v)
-
-  _ -> Nothing
-  where
-    parens t = "(" <> t <> ")"
-    -- Cast result to void* for storage in OncePair
-    voidPtr t = "(void*)(" <> t <> ")"
-    -- Cast void* to integer type
-    fstI8 x = "(int8_t)(long)" <> x <> ".fst"
-    sndI8 x = "(int8_t)(long)" <> x <> ".snd"
-    fstI16 x = "(int16_t)(long)" <> x <> ".fst"
-    sndI16 x = "(int16_t)(long)" <> x <> ".snd"
-    fstI32 x = "(int32_t)(long)" <> x <> ".fst"
-    sndI32 x = "(int32_t)(long)" <> x <> ".snd"
-    fstI64 x = "(int64_t)(long)" <> x <> ".fst"
-    sndI64 x = "(int64_t)(long)" <> x <> ".snd"
-    -- For floats, we need to pass by value (stored directly in void* as bits)
-    fstF32 x = "*(float*)&" <> x <> ".fst"
-    sndF32 x = "*(float*)&" <> x <> ".snd"
-    fstF64 x = "*(double*)&" <> x <> ".fst"
-    sndF64 x = "*(double*)&" <> x <> ".snd"
-    -- Old generic accessors (kept for reference)
-    fstOf x = x <> ".fst"
-    sndOf x = x <> ".snd"
+-- | Link object files to an executable using the system linker
+-- Checks LD environment variable, falls back to "ld"
+link :: [FilePath] -> FilePath -> IO (Either String FilePath)
+link objFiles output = do
+  ld <- maybe "ld" id <$> lookupEnv "LD"
+  let args = objFiles ++ ["-o", output]
+  result <- try $ readProcessWithExitCode ld args ""
+  case result of
+    Left (e :: SomeException) ->
+      pure $ Left $ "Linker error: " ++ show e
+    Right (exitCode, _stdout, stderr) ->
+      case exitCode of
+        ExitSuccess -> pure $ Right output
+        ExitFailure _ -> pure $ Left $ "Linking failed (" ++ ld ++ "): " ++ stderr

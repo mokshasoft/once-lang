@@ -128,8 +128,11 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
   -- lam q e represents λ^q x. e where q is the usage quantity for x
   lam   : ∀ {n} {Γ : Ctx n} {A B} (q : Quantity) → Expr (Γ , A) B → Expr Γ (A ⇒[ q ] B)
 
-  -- Application
+  -- Application (pure function)
   app   : ∀ {n} {Γ : Ctx n} {A B} {q : Quantity} → Expr Γ (A ⇒[ q ] B) → Expr Γ A → Expr Γ B
+
+  -- Effect application (effectful morphism)
+  effApp : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (Eff A B) → Expr Γ A → Expr Γ B
 
   -- Pair introduction
   pair  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ A → Expr Γ B → Expr Γ (A * B)
@@ -179,3 +182,18 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
   ge    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
   eq    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
   ne    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
+
+  -- Effect lifting (arr combinator from arrow-based effects)
+  -- Lifts a pure function to an effectful morphism
+  arr'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (A ⇒ B) → Expr Γ (Eff A B)
+
+  -- Fixed point constructors (for recursive types)
+  -- roll wraps one layer: F → Fix F
+  roll'   : ∀ {n} {Γ : Ctx n} {F} → Expr Γ F → Expr Γ (Fix F)
+  -- unroll unwraps one layer: Fix F → F
+  unroll' : ∀ {n} {Γ : Ctx n} {F} → Expr Γ (Fix F) → Expr Γ F
+
+  -- Primitive reference (imported functions)
+  -- Used for qualified imports like exit0@S → prim "S.exit0"
+  -- The type A is determined by the import
+  prim    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ A

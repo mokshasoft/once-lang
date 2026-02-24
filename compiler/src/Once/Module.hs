@@ -7,12 +7,15 @@
 -- - Path abbreviations: I. -> Interpretations., D. -> Derived.
 -- - Module loading from Strata directory
 -- - Cycle detection
--- - Qualified name lookup
 module Once.Module
-  ( -- * Module Environment
-    ModuleEnv (..)
+  ( -- * Types
+    Name
+  , ModuleName
+  , Import (..)
+  , AllocStrategy (..)
+    -- * Module Environment
+  , ModuleEnv (..)
   , LoadedModule (..)
-  , DeclInfo (..)
   , emptyModuleEnv
     -- * Path Resolution
   , expandAbbreviations
@@ -20,16 +23,13 @@ module Once.Module
     -- * Module Loading
   , loadModuleFile
   , resolveImports
-  , buildExports
-    -- * Lookup
-  , lookupQualified
-  , resolveAlias
+  , extractImports
+  , buildImportsForTypeChecker
     -- * Errors
   , ModuleError (..)
   , formatModuleError
   ) where
 
-import Control.Monad (foldM)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Set (Set)
@@ -40,8 +40,30 @@ import qualified Data.Text.IO as TIO
 import System.Directory (doesFileExist)
 import System.FilePath ((</>), (<.>))
 
-import Once.Syntax (Module (..), Decl (..), Import (..), ModuleName, Name, SType)
-import Once.Parser (parseModule)
+import qualified MAlonzo.Code.Once.Parser as MP
+import qualified MAlonzo.Code.Once.Parser.Module as MPM
+import qualified MAlonzo.Code.Once.Type as MT
+
+-- | Variable and type names
+type Name = Text
+
+-- | Module names (dot-separated path)
+type ModuleName = [Text]
+
+-- | Import declaration
+data Import = Import
+  { importModule :: ModuleName   -- ^ Module path: ["Canonical", "Product"]
+  , importAlias  :: Maybe Name   -- ^ Optional alias: `import Foo as F`
+  } deriving (Eq, Show)
+
+-- | Allocation strategy for buffer outputs
+data AllocStrategy
+  = AllocStack    -- ^ Stack-allocated, automatic lifetime
+  | AllocHeap     -- ^ Heap-allocated via malloc/free
+  | AllocPool     -- ^ Fixed-size block pool
+  | AllocArena    -- ^ Bump allocation, bulk free
+  | AllocConst    -- ^ Read-only constant section (string literals)
+  deriving (Eq, Show)
 
 -- | Hardcoded path abbreviations
 -- "I" -> ["Interpretations"]
@@ -57,8 +79,6 @@ data ModuleError
   = ModuleNotFound ModuleName FilePath
   | ModuleParseError ModuleName Text
   | CyclicImport [ModuleName]
-  | UnresolvedQualified Name ModuleName
-  | UnknownAlias Name
   | AbbreviationNotFound Text
   deriving (Eq, Show)
 
@@ -71,28 +91,22 @@ formatModuleError = \case
     "Parse error in module " <> formatModPath modPath <> ":\n" <> err
   CyclicImport cycle ->
     "Cyclic import detected: " <> T.intercalate " -> " (map formatModPath cycle)
-  UnresolvedQualified name modPath ->
-    "Name '" <> name <> "' not found in module " <> formatModPath modPath
-  UnknownAlias alias ->
-    "Unknown module alias: " <> alias
   AbbreviationNotFound abbrev ->
     "Unknown path abbreviation: " <> abbrev <> ". (Valid: I for Interpretations, D for Derived)"
   where
     formatModPath = T.intercalate "."
 
--- | A loaded module with its exports
+-- | A loaded module
 data LoadedModule = LoadedModule
-  { lmModule     :: Module              -- ^ The parsed module
-  , lmPath       :: FilePath            -- ^ Source file path
-  , lmExports    :: Map Name DeclInfo   -- ^ Exported names with their declarations
+  { lmPath       :: FilePath            -- ^ Source file path
   , lmTargetPath :: Maybe FilePath      -- ^ Target-specific implementation file (.c, .x86_64, etc.)
-  } deriving (Show)
+  , lmPrimitives :: [(Text, MT.T_Type_32)]  -- ^ Primitives exported by this module (name, type)
+  }
 
--- | Information about an exported declaration
-data DeclInfo = DeclInfo
-  { diType :: Maybe SType   -- ^ Type signature (if any)
-  , diDecl :: Decl          -- ^ The declaration itself
-  } deriving (Show)
+instance Show LoadedModule where
+  show lm = "LoadedModule { lmPath = " ++ show (lmPath lm) ++
+            ", lmTargetPath = " ++ show (lmTargetPath lm) ++
+            ", lmPrimitives = <" ++ show (length (lmPrimitives lm)) ++ " primitives> }"
 
 -- | Module environment: tracks all loaded modules and aliases
 data ModuleEnv = ModuleEnv
@@ -123,7 +137,7 @@ expandAbbreviations (prefix : rest)
         -- Single uppercase letter that's not a known abbreviation is an error
         | T.all (\c -> c >= 'A' && c <= 'Z') prefix ->
             Left (AbbreviationNotFound prefix)
-        -- Otherwise, it's not an abbreviation (shouldn't happen with uppercase)
+        -- Otherwise, it's not an abbreviation
         | otherwise -> Right (prefix : rest)
   | otherwise = Right (prefix : rest)  -- Multi-char, not an abbreviation
 
@@ -134,39 +148,32 @@ moduleToFilePath strataPath modPath =
   strataPath </> foldr1 (</>) (map T.unpack modPath) <.> "once"
 
 -- | Get target-specific implementation file path
--- ["Interpretations", "Linux", "Syscalls"] -> "Strata/Interpretations/Linux/Syscalls.c" (or .x86_64, etc.)
 targetFilePath :: FilePath -> String -> ModuleName -> FilePath
 targetFilePath strataPath ext modPath =
   strataPath </> foldr1 (</>) (map T.unpack modPath) ++ ext
 
--- | Build exports map from a module's declarations
--- Associates each name with its type signature and definition
-buildExports :: Module -> Map Name DeclInfo
-buildExports m = foldr addDecl Map.empty (moduleDecls m)
+-- | Extract imports from an Agda-parsed module
+extractImports :: MPM.T_Module_42 -> [Import]
+extractImports (MPM.C_mkModule_48 decls) = go decls
   where
-    addDecl :: Decl -> Map Name DeclInfo -> Map Name DeclInfo
-    addDecl decl acc = case decl of
-      TypeSig name sty ->
-        -- Add or update type signature
-        Map.alter (addType sty) name acc
-      FunDef name alloc expr ->
-        -- Add function definition
-        Map.alter (addDef (FunDef name alloc expr)) name acc
-      Primitive name sty ->
-        -- Primitive has both type and "definition"
-        Map.insert name (DeclInfo (Just sty) (Primitive name sty)) acc
-      TypeAlias name params sty ->
-        -- Type aliases are exported as-is
-        Map.insert name (DeclInfo Nothing (TypeAlias name params sty)) acc
+    go [] = []
+    go (MPM.C_DImport_40 imp : rest) = fromAgdaImport imp : go rest
+    go (_ : rest) = go rest
 
-    addType sty Nothing = Just (DeclInfo (Just sty) (TypeSig "" sty))  -- placeholder decl
-    addType sty (Just info) = Just info { diType = Just sty }
+-- | Convert Agda Import to Haskell Import
+fromAgdaImport :: MPM.T_Import_18 -> Import
+fromAgdaImport (MPM.C_mkImport_28 path alias) = Import path alias
 
-    addDef decl Nothing = Just (DeclInfo Nothing decl)
-    addDef decl (Just info) = Just info { diDecl = decl }
+-- | Extract primitives from an Agda-parsed module
+extractPrimitives :: MPM.T_Module_42 -> [(Text, MT.T_Type_32)]
+extractPrimitives (MPM.C_mkModule_48 decls) = go decls
+  where
+    go [] = []
+    go (MPM.C_DPrimitive_36 name ty : rest) = (name, ty) : go rest
+    go (_ : rest) = go rest
 
--- | Load a single module file
-loadModuleFile :: FilePath -> String -> ModuleName -> IO (Either ModuleError LoadedModule)
+-- | Load a single module file (returns loaded module and its imports for recursive resolution)
+loadModuleFile :: FilePath -> String -> ModuleName -> IO (Either ModuleError (LoadedModule, [Import]))
 loadModuleFile strataPath targetExt modPath = do
   let oncePath = moduleToFilePath strataPath modPath
   exists <- doesFileExist oncePath
@@ -174,18 +181,21 @@ loadModuleFile strataPath targetExt modPath = do
     then return $ Left (ModuleNotFound modPath oncePath)
     else do
       content <- TIO.readFile oncePath
-      case parseModule content of
-        Left err -> return $ Left (ModuleParseError modPath (T.pack $ show err))
-        Right m -> do
-          -- Check for target-specific implementation file (.c, .x86_64, etc.)
+      case MP.d_parse_4 content of
+        Nothing -> return $ Left (ModuleParseError modPath "parse failed")
+        Just agdaModule -> do
           let tgtPath = targetFilePath strataPath targetExt modPath
           hasTarget <- doesFileExist tgtPath
-          return $ Right LoadedModule
-            { lmModule = m
-            , lmPath = oncePath
-            , lmExports = buildExports m
-            , lmTargetPath = if hasTarget then Just tgtPath else Nothing
-            }
+          let imports = extractImports agdaModule
+              prims = extractPrimitives agdaModule
+          return $ Right
+            ( LoadedModule
+                { lmPath = oncePath
+                , lmTargetPath = if hasTarget then Just tgtPath else Nothing
+                , lmPrimitives = prims
+                }
+            , imports
+            )
 
 -- | Resolve all imports for a module, loading dependencies recursively
 -- Detects cycles and returns error if found
@@ -210,8 +220,6 @@ resolveImports env imports = do
       return imp { importModule = expanded }
 
 -- | Build alias map from imports
--- import D.Canonical as C -> "C" -> ["Derived", "Canonical"]
--- import I.SeL4.IPC -> "IPC" -> ["Interpretations", "SeL4", "IPC"]  (implicit alias from last component)
 buildAliasMap :: [Import] -> Map Name ModuleName
 buildAliasMap imports = Map.fromList
   [ (alias, importModule imp)
@@ -222,7 +230,6 @@ buildAliasMap imports = Map.fromList
   ]
 
 -- | Load modules with cycle detection
--- Uses a "loading" set to detect cycles
 loadModulesWithCycleCheck ::
   ModuleEnv -> Set ModuleName -> [ModuleName] -> IO (Either ModuleError ModuleEnv)
 loadModulesWithCycleCheck env _loading [] = return $ Right env
@@ -240,11 +247,10 @@ loadModulesWithCycleCheck env loading (modPath : rest) = do
         result <- loadModuleFile (meStrataPath env) (meTargetExt env) modPath
         case result of
           Left err -> return $ Left err
-          Right lm -> do
+          Right (lm, subImports) -> do
             -- Add to environment
             let env' = env { meModules = Map.insert modPath lm (meModules env) }
             -- Recursively load this module's imports
-            let subImports = moduleImports (lmModule lm)
             case traverse (\imp -> expandAbbreviations (importModule imp)) subImports of
               Left err -> return $ Left err
               Right expandedPaths -> do
@@ -253,28 +259,12 @@ loadModulesWithCycleCheck env loading (modPath : rest) = do
                   Left err -> return $ Left err
                   Right env'' -> loadModulesWithCycleCheck env'' loading rest
 
--- | Resolve an alias to a canonical module path
--- If the path is a single component matching an alias, return the target
--- Otherwise return the path unchanged
-resolveAlias :: ModuleEnv -> ModuleName -> ModuleName
-resolveAlias env [single] = Map.findWithDefault [single] single (meAliases env)
-resolveAlias _env path = path
-
--- | Look up a qualified name in the module environment
--- swap@C -> look up "swap" in module "C" (resolving aliases first, then abbreviations)
-lookupQualified :: Name -> ModuleName -> ModuleEnv -> Either ModuleError DeclInfo
-lookupQualified name modPath env = do
-  -- First, try to resolve as an alias (single-component paths like "S" from "import ... as S")
-  let aliasResolved = resolveAlias env modPath
-  -- If alias resolution changed the path, use that; otherwise expand abbreviations
-  canonicalPath <- if aliasResolved /= modPath
-    then Right aliasResolved  -- It was an alias, already resolved
-    else expandAbbreviations modPath  -- Not an alias, try abbreviation expansion
-  -- Look up the module
-  case Map.lookup canonicalPath (meModules env) of
-    Nothing -> Left (ModuleNotFound canonicalPath (moduleToFilePath (meStrataPath env) canonicalPath))
-    Just lm ->
-      -- Look up the name in the module's exports
-      case Map.lookup name (lmExports lm) of
-        Nothing -> Left (UnresolvedQualified name canonicalPath)
-        Just info -> Right info
+-- | Build the imports list for the type checker from the module environment.
+-- Returns list of (qualified_name, type) where qualified_name is "alias.name".
+buildImportsForTypeChecker :: ModuleEnv -> [(Text, MT.T_Type_32)]
+buildImportsForTypeChecker env =
+  [ (alias <> "." <> name, ty)
+  | (alias, modPath) <- Map.toList (meAliases env)
+  , Just lm <- [Map.lookup modPath (meModules env)]
+  , (name, ty) <- lmPrimitives lm
+  ]
