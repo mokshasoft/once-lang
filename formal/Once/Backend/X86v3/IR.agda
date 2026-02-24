@@ -23,6 +23,9 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 open import Once.Backend.X86v3.Types public
 open import Once.Backend.Common.SlotMachine using (HeapRef)
 
+-- Forward declaration for PrimContractV3 (defined below after AllocMode)
+-- We define it here to avoid circular imports
+
 ------------------------------------------------------------------------
 -- Allocation Mode
 --
@@ -38,6 +41,25 @@ open import Once.Backend.Common.SlotMachine using (HeapRef)
 data AllocMode : Set where
   Stack : AllocMode  -- Allocate inline on stack (non-escaping)
   Heap  : AllocMode  -- Allocate on heap (escaping)
+
+------------------------------------------------------------------------
+-- PrimContractV3
+--
+-- Contract for primitive operations in SlotMachine.
+-- Specifies what a primitive needs (stack slots) and produces (output mode).
+-- No assembly - SlotMachine is symbolic execution.
+------------------------------------------------------------------------
+
+record PrimContractV3 (A B : Type) : Set where
+  field
+    -- Stack slots required for execution
+    stack-requirement : ℕ
+    -- Output allocation mode (Stack = unboxed, Heap = boxed)
+    output-mode : AllocMode
+    -- Bound: stack-requirement ≤ pair-slots (enables capacity derivation)
+    stack-req-bounded : stack-requirement ≤ 2
+
+open PrimContractV3 public
 
 ------------------------------------------------------------------------
 -- IR Language
@@ -87,9 +109,11 @@ data IR : Type → Type → Set where
   -- Semantically a no-op (doesn't change computed values).
   free-heap : HeapRef → IR Unit Unit
 
-  -- Primitive operations (opaque to backend)
-  -- Name is for debugging/emission. Semantics defined externally (FFI).
-  Prim : ∀ {A B} → String → IR A B
+  -- Primitive operations with embedded semantics
+  -- name: identifier for debugging/emission
+  -- sem: the semantic function (embedded in IR)
+  -- contract: stack requirement and output mode
+  Prim : ∀ {A B} (name : String) (sem : ⟦ A ⟧ → ⟦ B ⟧) → PrimContractV3 A B → IR A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩_
@@ -101,10 +125,6 @@ infixr 4 ⟨_,_⟩_
 -- layout, not the computed values. Escape analysis preserves semantics
 -- because AllocMode doesn't change eval.
 ------------------------------------------------------------------------
-
--- Postulate for Prim semantics - will be connected to external FFI
-postulate
-  prim-semantics : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
 
 eval : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
 eval id x = x
@@ -122,7 +142,7 @@ eval apply (closure , arg) = closure arg
 eval (fold-ir _) x = fold x  -- AllocMode ignored
 eval unfold-ir x = unfold x
 eval (free-heap _) x = x  -- No-op: deallocation doesn't change semantics
-eval (Prim name) x = prim-semantics name x
+eval (Prim _ sem _) x = sem x  -- Semantics is embedded in constructor!
 
 ------------------------------------------------------------------------
 -- Evaluation Laws
@@ -189,7 +209,7 @@ ir-size apply = 1
 ir-size (fold-ir _) = 1  -- AllocMode ignored
 ir-size unfold-ir = 1
 ir-size (free-heap _) = 1  -- Constant-time operation
-ir-size (Prim _) = 1
+ir-size (Prim _ _ _) = 1
 
 ------------------------------------------------------------------------
 -- Size Lemmas
@@ -212,7 +232,7 @@ ir-size-pos apply = s≤s z≤n
 ir-size-pos (fold-ir _) = s≤s z≤n
 ir-size-pos unfold-ir = s≤s z≤n
 ir-size-pos (free-heap _) = s≤s z≤n
-ir-size-pos (Prim _) = s≤s z≤n
+ir-size-pos (Prim _ _ _) = s≤s z≤n
 
 -- Helper: n ≤ m + n (flip of m≤m+n)
 n≤m+n : ∀ m n → n ≤ m +ℕ n
@@ -336,7 +356,7 @@ ir-stack-requirement apply = pair-slots  -- forms (env, arg) pair; body requirem
 ir-stack-requirement {_} {Fix F} (fold-ir m) = type-slots-for-mode m (Fix F)  -- Stack: inline F, Heap: pointer
 ir-stack-requirement unfold-ir = 0  -- dereferences pointer, no allocation
 ir-stack-requirement (free-heap _) = 0  -- deallocation, no stack allocation
-ir-stack-requirement (Prim _) = 0  -- primitives handle their own allocation
+ir-stack-requirement (Prim _ _ c) = stack-requirement c  -- From contract
 
 ------------------------------------------------------------------------
 -- Stack Requirement Lemmas
@@ -513,7 +533,11 @@ ir-req-≤-pair-slots*size {_} {Fix F} (fold-ir m) =
   type-slots-for-mode-≤-pair-slots m (Fix F)
 ir-req-≤-pair-slots*size unfold-ir = z≤n
 ir-req-≤-pair-slots*size (free-heap _) = z≤n  -- 0 ≤ pair-slots * 1
-ir-req-≤-pair-slots*size (Prim _) = z≤n
+ir-req-≤-pair-slots*size (Prim _ _ c) =
+  -- stack-requirement c ≤ pair-slots (from contract) ≤ pair-slots * 1
+  ≤-trans (stack-req-bounded c) (≤-reflexive (sym (*-identityʳ pair-slots)))
+  where
+    open import Data.Nat.Properties using (≤-trans; ≤-reflexive; *-identityʳ)
 
 ------------------------------------------------------------------------
 -- Summary

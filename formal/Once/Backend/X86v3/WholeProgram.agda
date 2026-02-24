@@ -28,6 +28,9 @@ open import Once.Backend.X86v3.Allocation using (AllocState; next-slot; current-
 -- Import escape interface for SurvivesFramePop
 import Once.Backend.X86v3.IR.ApplyWF as ApplyWFModule
 
+-- Import Dispatcher for PrimProofInterface
+import Once.Backend.X86v3.Dispatcher as DispatcherModule
+
 ------------------------------------------------------------------------
 -- THE CORRECTNESS THEOREM
 ------------------------------------------------------------------------
@@ -54,6 +57,8 @@ module Correctness
     ApplyWFModule.SurvivesFramePop (get-child-frame alloc) result-loc)
   (parent-bound-eq : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
     bound ≡ AllocState.next-slot alloc Data.Nat.+ pair-slots)
+  -- Prim proof provider (from domain compilers)
+  (prim-proof : DispatcherModule.PrimProofInterface.PrimProofProviderV3 {FS} program-bound)
   where
 
   open FrontierInvariant {FS} using (BeforeFrontier)
@@ -64,7 +69,7 @@ module Correctness
   open import Once.Backend.X86v3.Dispatcher
   module D = Dispatcher {FS} program-bound acc-pb
     get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
-    escape-result-survives parent-bound-eq
+    escape-result-survives parent-bound-eq prim-proof
 
   ----------------------------------------------------------------------
   -- Represents: value v is stored at location loc in state s

@@ -64,6 +64,43 @@ import Once.Backend.X86v3.IR.ApplyWF as ApplyWFModule
 open import Once.Backend.X86v3.WriteOps public using (module WriteWithDisjoint)
 
 ------------------------------------------------------------------------
+-- Prim Proof Interface
+--
+-- PrimProofV3: what a proof for a primitive must provide
+-- PrimProofProviderV3: interface for domain compilers
+------------------------------------------------------------------------
+
+module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) where
+  open FrontierInvariant {FS} using (BeforeFrontier)
+  open ClosureWellFormedDef {FS} program-bound
+    using (ValidAtWF; IRResultAWF)
+
+  -- What a proof for a primitive must provide
+  PrimProofV3 : ∀ {A B : Type}
+    (sem : ⟦ A ⟧ → ⟦ B ⟧)
+    (c : PrimContractV3 A B)
+    (ir : IR A B) →  -- The actual Prim IR
+    Set
+  PrimProofV3 {A} {B} sem c ir =
+    ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF mIn alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) RDI ≡ input-loc →
+      next-slot alloc +ℕ stack-requirement c ≤ frame-capacity alloc →
+      IRResultAWF (output-mode c) ir x s alloc
+
+  -- Interface for domain compilers
+  PrimProofProviderV3 : Set
+  PrimProofProviderV3 =
+    ∀ {A B : Type}
+      (name : String)
+      (sem : ⟦ A ⟧ → ⟦ B ⟧)
+      (c : PrimContractV3 A B) →
+      PrimProofV3 sem c (Prim name sem c)
+
+------------------------------------------------------------------------
 -- Closure IR Tracking
 --
 -- Since valid-closure tracks the body IR, we get it from decomposition.
@@ -126,6 +163,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     ApplyWFModule.SurvivesFramePop (get-child-frame alloc) result-loc)
   (parent-bound-eq : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
     bound ≡ next-slot alloc Data.Nat.+ pair-slots)
+  -- Prim proof provider (from domain compilers)
+  (prim-proof : PrimProofInterface.PrimProofProviderV3 {FS} program-bound)
   where
   open FrontierInvariant {FS}
   open WriteWithDisjoint {FS}
@@ -191,18 +230,20 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   get-acc-from-pb n n<pb = acc-extract acc-pb n<pb
 
   ------------------------------------------------------------------------
-  -- Prim handler: postulate for now (primitives handle their own allocation)
-  -- TODO: Connect to FFI when available
+  -- Prim handler: uses PrimProofProviderV3 from module parameter
   ------------------------------------------------------------------------
-  postulate
-    run-prim : ∀ {A B} (mIn : AllocMode) (name : String)
-      (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF mIn alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) RDI ≡ input-loc →
-      ∃[ mOut ] IRResultAWF mOut (Prim {A} {B} name) x s alloc
+  run-prim : ∀ {A B} (mIn : AllocMode) (name : String)
+    (sem : ⟦ A ⟧ → ⟦ B ⟧) (c : PrimContractV3 A B)
+    (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF mIn alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    next-slot alloc +ℕ stack-requirement c ≤ frame-capacity alloc →
+    IRResultAWF (output-mode c) (Prim name sem c) x s alloc
+  run-prim mIn name sem c x input-loc s alloc valid bf nh rdi cap =
+    prim-proof name sem c mIn x input-loc s alloc valid bf nh rdi cap
 
   ------------------------------------------------------------------------
   -- Main dispatcher (recursive cases use Acc)
@@ -268,9 +309,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf mIn terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       mIn , run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    -- Prim: primitive operations (postulated)
-    run-ir-wf mIn (Prim name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      run-prim mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    -- Prim: primitive operations (uses proof provider)
+    run-ir-wf mIn (Prim name sem c) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      output-mode c , run-prim mIn name sem c x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Sum type: inject left (delegated to SumFixWF module)
     -- Output mode is m (from inl-ir m)
