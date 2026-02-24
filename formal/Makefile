@@ -304,12 +304,12 @@ riscv-compiler: frontend common riscv-ccc riscv-arith
 	@echo "RISC-V compiler proofs type-check successfully!"
 
 .PHONY: x86v3-compiler
-x86v3-compiler: frontend common x86v3-ccc
+x86v3-compiler: frontend common x86v3-ccc x86-arith
 	@echo "X86v3 SlotMachine compiler proofs type-check successfully!"
 
 # All compiler proofs
 .PHONY: compiler
-compiler: frontend common x86-ccc aarch64-ccc riscv-ccc arith
+compiler: frontend common x86-ccc x86v3-ccc aarch64-ccc riscv-ccc arith
 	@echo "All compiler proofs type-check successfully!"
 
 .PHONY: malonzo

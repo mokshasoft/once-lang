@@ -291,7 +291,7 @@ splitEnvIR : ∀ (Γ₁ Γ₂ : A.Ctx) → IR (EnvType (Γ₁ A.⊕ Γ₂)) (Env
 -- Empty left context: just pair with unit
 -- EnvType ([] ++ Γ₂) = EnvType Γ₂
 -- Target: Unit × EnvType Γ₂
-splitEnvIR [] Γ₂ = ⟨ terminal , id ⟩
+splitEnvIR [] Γ₂ = ⟨ terminal , id ⟩ Heap
 
 -- Non-empty left context: extract first element, recurse on rest
 -- EnvType ((b ∷ Γ₁) ++ Γ₂) = NumToType b.type × EnvType (Γ₁ ++ Γ₂)
@@ -307,7 +307,7 @@ splitEnvIR (b ∷ Γ₁) Γ₂ =
       --   snd gives us: EnvType (Γ₁ ++ Γ₂)
       --   rest-split ∘ snd gives us: EnvType Γ₁ × EnvType Γ₂
       --   Reassemble: ⟨ ⟨ fst , fst ∘ rest-split ∘ snd ⟩ , snd ∘ rest-split ∘ snd ⟩
-  in ⟨ ⟨ fst , fst ∘ rest-split ∘ snd ⟩ , snd ∘ rest-split ∘ snd ⟩
+  in ⟨ ⟨ fst , fst ∘ rest-split ∘ snd ⟩ Heap , snd ∘ rest-split ∘ snd ⟩ Heap
 
 ------------------------------------------------------------------------
 -- Main Embedding Function (CONCRETE, not postulated!)
@@ -329,31 +329,31 @@ embedArith (A.Var p) = projectVar p
 -- Addition: split env, embed both sides, apply add primitive
 embedArith (A.Add {Γ} {Δ} {τ} e₁ e₂) =
   selectBinOp prim-add-int prim-add-float τ
-    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩
+    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩ Heap
     ∘ splitEnvIR Γ Δ
 
 -- Subtraction
 embedArith (A.Sub {Γ} {Δ} {τ} e₁ e₂) =
   selectBinOp prim-sub-int prim-sub-float τ
-    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩
+    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩ Heap
     ∘ splitEnvIR Γ Δ
 
 -- Multiplication
 embedArith (A.Mul {Γ} {Δ} {τ} e₁ e₂) =
   selectBinOp prim-mul-int prim-mul-float τ
-    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩
+    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩ Heap
     ∘ splitEnvIR Γ Δ
 
 -- Division
 embedArith (A.Div {Γ} {Δ} {τ} e₁ e₂) =
   selectBinOp prim-div-int prim-div-float τ
-    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩
+    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩ Heap
     ∘ splitEnvIR Γ Δ
 
 -- Modulo
 embedArith (A.Mod {Γ} {Δ} {τ} e₁ e₂) =
   selectBinOp prim-mod-int prim-mod-float τ
-    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩
+    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩ Heap
     ∘ splitEnvIR Γ Δ
 
 -- Negation: unary operation
@@ -364,7 +364,7 @@ embedArith (A.Neg {Γ} {τ} e) =
 -- Note: Result type matches input type (returns 0 or 1 in same type)
 embedArith (A.Cmp {Γ} {Δ} {τ} op e₁ e₂) =
   selectCmpOp op τ
-    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩
+    ∘ ⟨ embedArith e₁ ∘ fst , embedArith e₂ ∘ snd ⟩ Heap
     ∘ splitEnvIR Γ Δ
   where
     -- Select comparison primitive based on operator and type
