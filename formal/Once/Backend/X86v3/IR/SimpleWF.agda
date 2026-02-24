@@ -16,6 +16,7 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst)
 
 open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
+open import Once.Backend.Common.SlotMachine using (HeapRef)
 open import Once.Backend.Common.SlotMachine
 open import Once.Backend.X86v3.Types
 open import Once.Backend.X86v3.IR
@@ -244,4 +245,51 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl input-loc input-before
       ; reclaim-preserves-validity = λ fits → valid-unit-wf
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0  -- ir-stack-requirement terminal = 0
+      }
+
+  ------------------------------------------------------------------------
+  -- Free-heap: explicit heap deallocation
+  --
+  -- Semantically a no-op (returns input unchanged).
+  -- Actual heap deallocation happens at runtime.
+  -- TODO: Add CanFreeHeap proof requirement when EscapeInterface is ready.
+  ------------------------------------------------------------------------
+
+  run-free-heap : ∀ {m} (ref : HeapRef)
+    (x : ⟦ Unit ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF m alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    IRResultAWF m (free-heap ref) x s alloc
+  run-free-heap ref x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    let s' = exec (mov RAX RDI) s
+    in record
+      { result-loc = input-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; result-valid-wf = validityWF-mem-only x input-loc s s' refl refl input-valid-wf
+      ; result-before = input-before
+      ; rax-is-result = trans (mov-result RAX RDI s) rdi-eq
+      ; not-halted = not-halted
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
+      ; capacity-preserved = refl
+      ; mem-preserved-before = λ loc _ →
+          readLoc-stackMem-eq s' s loc
+            (mov-preserves-stackMem RAX RDI s)
+            (mov-preserves-heapMem RAX RDI s)
+      -- Reclamation: free-heap doesn't allocate stack space
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits →
+          frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl input-loc input-before
+      ; reclaim-preserves-validity = λ fits →
+          validityWF-frontier-advance x input-loc s' refl ≤-refl ≤-refl
+            (validityWF-mem-only x input-loc s s' refl refl input-valid-wf)
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0  -- ir-stack-requirement (free-heap _) = 0
       }

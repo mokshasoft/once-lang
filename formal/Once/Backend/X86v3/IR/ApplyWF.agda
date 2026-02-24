@@ -62,7 +62,7 @@ module BFTransfer {FS : FrameSemantics} where
     rewrite cf-eq | ns-eq = stack-before f-eq k<ns
   bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnStack f k) (stack-ancestor cf≺f src)
     rewrite cf-eq = stack-ancestor cf≺f src  -- Frame ordering and provenance preserved via equality
-  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnHeap r o) (heap-before r<hr)
+  bf-same-frame-slot a₁ a₂ cf-eq ns-eq hr-eq (OnHeap hl) (heap-before r<hr)
     rewrite hr-eq = heap-before r<hr
 
 ------------------------------------------------------------------------
@@ -345,7 +345,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
             stack-ancestor child-frame-below-parent (src-origin (next-slot alloc) k<ns)
           bf-transfer-to-child (OnStack f k) (stack-ancestor cf≺f src) =
             stack-ancestor (≺-trans child-frame-below-parent cf≺f) src
-          bf-transfer-to-child (OnHeap r o) (heap-before r<hr) = heap-before r<hr
+          bf-transfer-to-child (OnHeap hl) (heap-before r<hr) = heap-before r<hr
 
       arg-before-child : BeforeFrontier child-alloc arg-loc
       arg-before-child = bf-transfer-to-child arg-loc arg-before
@@ -355,7 +355,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
             stack-ancestor child-frame-below-parent (src-origin (next-slot alloc) k<ns)
           bf-transfer-to-child (OnStack f k) (stack-ancestor cf≺f src) =
             stack-ancestor (≺-trans child-frame-below-parent cf≺f) src
-          bf-transfer-to-child (OnHeap r o) (heap-before r<hr) = heap-before r<hr
+          bf-transfer-to-child (OnHeap hl) (heap-before r<hr) = heap-before r<hr
 
       -- env-loc and arg-loc are BeforeFrontier in alloc-pair (for ValidAtWF construction)
       env-before-pair : BeforeFrontier alloc-pair env-loc
@@ -415,7 +415,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
             stack-ancestor child-frame-below-parent (src-origin (next-slot alloc +ℕ pair-slots) k<ns)
           bf-transfer (OnStack f k) (stack-ancestor cf≺f src) =
             stack-ancestor (≺-trans child-frame-below-parent cf≺f) src
-          bf-transfer (OnHeap r o) (heap-before r<hr) = heap-before r<hr
+          bf-transfer (OnHeap hl) (heap-before r<hr) = heap-before r<hr
 
       ------------------------------------------------------------------------
       -- Step 5: Execute body in child frame
@@ -529,8 +529,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
           child≺f = subst (_≺ f) body-frame-is-child cf≺f
 
       bf-child-to-parent : ∀ loc → BeforeFrontier body-final-alloc loc → BeforeFrontier final-alloc loc
-      bf-child-to-parent (OnHeap r o) (heap-before r<hr) =
-        heap-before (subst (ref-id r <_) heap-ref-chain r<hr)
+      bf-child-to-parent (OnHeap hl) (heap-before r<hr) =
+        heap-before (subst (ref-id (heap-ref hl) <_) heap-ref-chain r<hr)
           where
             heap-ref-chain : next-heap-ref body-final-alloc ≡ next-heap-ref final-alloc
             heap-ref-chain = trans (IRResultAWF.heap-preserved body-result) refl
@@ -553,7 +553,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
         stack-ancestor child-frame-below-parent (src-origin (next-slot alloc) k<ns)
       bf-alloc-to-child (OnStack f k) (stack-ancestor cf≺f src) =
         stack-ancestor (≺-trans child-frame-below-parent cf≺f) src
-      bf-alloc-to-child (OnHeap r o) (heap-before r<hr) = heap-before r<hr
+      bf-alloc-to-child (OnHeap hl) (heap-before r<hr) = heap-before r<hr
 
       mem-preserved-apply : ∀ loc → BeforeFrontier alloc loc →
         readLoc s-final loc ≡ readLoc s loc

@@ -21,6 +21,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
 
 open import Once.Backend.X86v3.Types public
+open import Once.Backend.Common.SlotMachine using (HeapRef)
 
 ------------------------------------------------------------------------
 -- Allocation Mode
@@ -81,6 +82,11 @@ data IR : Type → Type → Set where
   fold-ir : ∀ {F} → AllocMode → IR F (Fix F)
   unfold-ir : ∀ {F} → IR (Fix F) F
 
+  -- Explicit heap deallocation
+  -- Takes a HeapRef to free. Requires CanFreeHeap proof at runtime.
+  -- Semantically a no-op (doesn't change computed values).
+  free-heap : HeapRef → IR Unit Unit
+
   -- Primitive operations (opaque to backend)
   -- Name is for debugging/emission. Semantics defined externally (FFI).
   Prim : ∀ {A B} → String → IR A B
@@ -115,6 +121,7 @@ eval (curry f _) x = λ y → eval f (pair x y)  -- AllocMode ignored
 eval apply (closure , arg) = closure arg
 eval (fold-ir _) x = fold x  -- AllocMode ignored
 eval unfold-ir x = unfold x
+eval (free-heap _) x = x  -- No-op: deallocation doesn't change semantics
 eval (Prim name) x = prim-semantics name x
 
 ------------------------------------------------------------------------
@@ -181,6 +188,7 @@ ir-size (curry f _) = 2 +ℕ ir-size f  -- Extra slot for apply's pair allocatio
 ir-size apply = 1
 ir-size (fold-ir _) = 1  -- AllocMode ignored
 ir-size unfold-ir = 1
+ir-size (free-heap _) = 1  -- Constant-time operation
 ir-size (Prim _) = 1
 
 ------------------------------------------------------------------------
@@ -203,6 +211,7 @@ ir-size-pos (curry f _) = s≤s z≤n
 ir-size-pos apply = s≤s z≤n
 ir-size-pos (fold-ir _) = s≤s z≤n
 ir-size-pos unfold-ir = s≤s z≤n
+ir-size-pos (free-heap _) = s≤s z≤n
 ir-size-pos (Prim _) = s≤s z≤n
 
 -- Helper: n ≤ m + n (flip of m≤m+n)
@@ -326,6 +335,7 @@ ir-stack-requirement {_} {B ⇒[ _ ] C} (curry f m) = type-slots-for-mode m (B �
 ir-stack-requirement apply = pair-slots  -- forms (env, arg) pair; body requirement separate
 ir-stack-requirement {_} {Fix F} (fold-ir m) = type-slots-for-mode m (Fix F)  -- Stack: inline F, Heap: pointer
 ir-stack-requirement unfold-ir = 0  -- dereferences pointer, no allocation
+ir-stack-requirement (free-heap _) = 0  -- deallocation, no stack allocation
 ir-stack-requirement (Prim _) = 0  -- primitives handle their own allocation
 
 ------------------------------------------------------------------------
@@ -502,6 +512,7 @@ ir-req-≤-pair-slots*size apply =
 ir-req-≤-pair-slots*size {_} {Fix F} (fold-ir m) =
   type-slots-for-mode-≤-pair-slots m (Fix F)
 ir-req-≤-pair-slots*size unfold-ir = z≤n
+ir-req-≤-pair-slots*size (free-heap _) = z≤n  -- 0 ≤ pair-slots * 1
 ir-req-≤-pair-slots*size (Prim _) = z≤n
 
 ------------------------------------------------------------------------

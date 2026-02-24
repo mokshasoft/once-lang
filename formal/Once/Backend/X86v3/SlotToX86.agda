@@ -40,6 +40,7 @@ open import Once.Backend.Common.FrameSemantics using (FrameSemantics)
 -- Import SlotMachine types
 open import Once.Backend.Common.SlotMachine as SlotMachine
   using (ValueLocation; OnStack; OnHeap; HeapRef; Slot;
+         HeapLocation; heap-offset;
          RegId; RAX; RDI; RSI; R12; R14; R15;
          LocSourceExt; Loc; IndReg; IndRegSuc;
          sucLoc;
@@ -117,7 +118,7 @@ reg-indirect-suc r = base+disp r slot-size
 -- For IndRegSuc: use register indirect + 8
 compile-source-to-mem : LocSourceExt x86v3-frame-semantics → Mem
 compile-source-to-mem (Loc (OnStack f k)) = slot-to-mem k
-compile-source-to-mem (Loc (OnHeap r o))  = base+disp rdi (o *ℕ slot-size)  -- TODO: heap addressing
+compile-source-to-mem (Loc (OnHeap hl))   = base+disp rdi (heap-offset hl *ℕ slot-size)  -- TODO: heap addressing
 compile-source-to-mem (IndReg r)          = reg-indirect (compile-reg r)
 compile-source-to-mem (IndRegSuc r)       = reg-indirect-suc (compile-reg r)
 
@@ -168,7 +169,7 @@ FS = x86v3-frame-semantics
 -- This is the key correspondence function.
 loc-to-addr : ValueLocation FS → Word
 loc-to-addr (OnStack f k) = x86-slot-addr f k
-loc-to-addr (OnHeap r o)  = 0  -- TODO: heap base + ref-id * block-size + o * slot-size
+loc-to-addr (OnHeap hl)   = 0  -- TODO: heap base + ref-id * block-size + offset * slot-size
 
 ------------------------------------------------------------------------
 -- State Correspondence
@@ -513,7 +514,7 @@ mov-preserves-heapMem dst src σ = refl
 mov-preserves-readLoc : ∀ (dst src : RegId) (σ : LocState FS) (loc : ValueLocation FS) →
   readLoc (exec (slot-mov dst src) σ) loc ≡ readLoc σ loc
 mov-preserves-readLoc dst src σ (OnStack f k) = refl
-mov-preserves-readLoc dst src σ (OnHeap r o) = refl
+mov-preserves-readLoc dst src σ (OnHeap hl) = refl
 
 -- | mov preserves memory correspondence (memory unchanged)
 mov-mem-corresponds : ∀ (dst src : RegId) (σ : LocState FS) (x86-mem : Memory) →
@@ -574,7 +575,8 @@ load-IndReg-regs-correspond dst src σ x86-regs x86-mem loc rc mc read-eq =
 writeLoc-preserves-regs : ∀ (σ : LocState FS) (loc val : ValueLocation FS) →
   SlotMachine.LocState.regs (writeLoc σ loc val) ≡ SlotMachine.LocState.regs σ
 writeLoc-preserves-regs σ (OnStack f k) val = refl
-writeLoc-preserves-regs σ (OnHeap r o) val = refl
+writeLoc-preserves-regs σ (OnHeap hl) (OnHeap v) = refl    -- Heap write preserves regs
+writeLoc-preserves-regs σ (OnHeap hl) (OnStack _ _) = refl -- Invalid write is no-op
 
 -- | Store preserves register correspondence (registers unchanged)
 store-regs-correspond : ∀ (dst src : RegId) (σ : LocState FS) (x86-regs : RegFile) →

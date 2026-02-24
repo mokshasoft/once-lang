@@ -335,6 +335,11 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       -- Reference-based model: Stack and Heap use same pointer representation for pairs
       run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
+    -- Free-heap: explicit heap deallocation (delegated to SimpleWF module)
+    -- Semantically a no-op (returns input unchanged).
+    run-ir-wf mIn (free-heap ref) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      mIn , run-free-heap ref x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+
   -- Public API with ValidAtWF
   -- Returns existential mode + IRResultAWF with ValidAtWF for result validity.
   -- Uses ir-stack-requirement for capacity

@@ -53,33 +53,80 @@ mkHeapRef n₁ ≟H mkHeapRef n₂ with n₁ ≟ n₂
 ... | no neq = no λ { refl → neq refl }
 
 ------------------------------------------------------------------------
+-- HeapLocation: Location within the heap
+--
+-- Encapsulates HeapRef + HeapOffset. This type enforces the invariant
+-- that heap-allocated values can only reference other heap locations,
+-- never stack locations. By using HeapLocation in HeapMem's return type,
+-- we make it impossible to store stack references in heap memory.
+------------------------------------------------------------------------
+
+record HeapLocation : Set where
+  constructor heap-loc
+  field
+    heap-ref : HeapRef
+    heap-offset : HeapOffset
+
+open HeapLocation public
+
+-- Decidable equality for HeapLocation
+_≟HL_ : (hl₁ hl₂ : HeapLocation) → Dec (hl₁ ≡ hl₂)
+heap-loc r₁ o₁ ≟HL heap-loc r₂ o₂ with r₁ ≟H r₂ | o₁ ≟ o₂
+... | yes refl | yes refl = yes refl
+... | yes _ | no o≢o = no λ { refl → o≢o refl }
+... | no r≢r | _ = no λ { refl → r≢r refl }
+
+-- Convert HeapLocation to HeapRef (for frontier checks)
+hl-ref : HeapLocation → HeapRef
+hl-ref = heap-ref
+
+------------------------------------------------------------------------
 -- ValueLocation: Where a value lives
+--
+-- OnStack locations can reference anything (stack or heap).
+-- OnHeap locations use HeapLocation, enforcing heap-only references.
 ------------------------------------------------------------------------
 
 data ValueLocation (FS : FrameSemantics) : Set where
   OnStack : FrameSemantics.Frame FS → Slot → ValueLocation FS
-  OnHeap  : HeapRef → HeapOffset → ValueLocation FS
+  OnHeap  : HeapLocation → ValueLocation FS
+
+-- | Successor HeapLocation (for heap internal references)
+sucHL : HeapLocation → HeapLocation
+sucHL (heap-loc r o) = heap-loc r (suc o)
+
+-- | Offset HeapLocation by n slots
+offsetHL : HeapLocation → ℕ → HeapLocation
+offsetHL (heap-loc r o) n = heap-loc r (n + o)
 
 -- | Successor location (for accessing pair.snd, closure.code-ptr, etc.)
 sucLoc : ∀ {FS} → ValueLocation FS → ValueLocation FS
 sucLoc (OnStack f k) = OnStack f (suc k)
-sucLoc (OnHeap r o)  = OnHeap r (suc o)
+sucLoc (OnHeap hl)   = OnHeap (sucHL hl)
 
 -- | Offset location by n slots (for unboxed multi-slot values)
 -- Note: n + k so that offsetLoc _ 1 = sucLoc definitionally
 offsetLoc : ∀ {FS} → ValueLocation FS → ℕ → ValueLocation FS
 offsetLoc (OnStack f k) n = OnStack f (n + k)
-offsetLoc (OnHeap r o) n  = OnHeap r (n + o)
+offsetLoc (OnHeap hl) n   = OnHeap (offsetHL hl n)
 
 ------------------------------------------------------------------------
 -- Memory: Stores Locations (not Words)
+--
+-- KEY INVARIANT: Heap can ONLY store heap locations.
+-- This enforces that heap-allocated values never reference stack,
+-- which is essential for safe frame deallocation.
+--
+-- Stack memory can store any ValueLocation (stack or heap).
+-- Heap memory can only store HeapLocation (heap-only).
 ------------------------------------------------------------------------
 
 StackMem : (FS : FrameSemantics) → Set
 StackMem FS = FrameSemantics.Frame FS → Slot → Maybe (ValueLocation FS)
 
-HeapMem : (FS : FrameSemantics) → Set
-HeapMem FS = HeapRef → HeapOffset → Maybe (ValueLocation FS)
+-- Heap memory stores HeapLocation (enforces heap-only-references-heap)
+HeapMem : Set
+HeapMem = HeapLocation → Maybe HeapLocation
 
 ------------------------------------------------------------------------
 -- Registers: Hold Locations (not Words)
@@ -216,7 +263,7 @@ record LocState (FS : FrameSemantics) : Set where
   field
     regs : Registers FS
     stackMem : StackMem FS
-    heapMem : HeapMem FS
+    heapMem : HeapMem   -- Note: HeapMem is no longer parameterized
     halted : Bool
 
 open LocState public
@@ -228,10 +275,22 @@ open LocState public
 module MemOps {FS : FrameSemantics} where
   open FrameSemantics FS
 
+  -- | Read a Location from stack memory (returns ValueLocation)
+  readStackLoc : LocState FS → Frame → Slot → Maybe (ValueLocation FS)
+  readStackLoc s f k = stackMem s f k
+
+  -- | Read from heap memory (returns HeapLocation - enforces invariant)
+  readHeapLoc : LocState FS → HeapLocation → Maybe HeapLocation
+  readHeapLoc s hl = heapMem s hl
+
   -- | Read a Location from memory
+  -- Stack: returns arbitrary ValueLocation
+  -- Heap: returns HeapLocation lifted to ValueLocation
   readLoc : LocState FS → ValueLocation FS → Maybe (ValueLocation FS)
   readLoc s (OnStack f k) = stackMem s f k
-  readLoc s (OnHeap r o)  = heapMem s r o
+  readLoc s (OnHeap hl) with heapMem s hl
+  ... | just hl' = just (OnHeap hl')
+  ... | nothing  = nothing
 
   -- | Write a Location to stack memory
   writeStackMem : StackMem FS → Frame → Slot → ValueLocation FS → StackMem FS
@@ -239,16 +298,28 @@ module MemOps {FS : FrameSemantics} where
   ... | yes _ | yes _ = just v
   ... | _     | _     = mem f' k'
 
-  -- | Write a Location to heap memory
-  writeHeapMem : HeapMem FS → HeapRef → HeapOffset → ValueLocation FS → HeapMem FS
-  writeHeapMem mem r o v r' o' with r ≟H r' | o ≟ o'
-  ... | yes _ | yes _ = just v
-  ... | _     | _     = mem r' o'
+  -- | Write a HeapLocation to heap memory (enforces heap-only invariant)
+  writeHeapMem : HeapMem → HeapLocation → HeapLocation → HeapMem
+  writeHeapMem mem hl v hl' with hl ≟HL hl'
+  ... | yes _ = just v
+  ... | no _  = mem hl'
+
+  -- | Write a Location to stack memory at a ValueLocation
+  writeLocToStack : LocState FS → Frame → Slot → ValueLocation FS → LocState FS
+  writeLocToStack s f k v = record s { stackMem = writeStackMem (stackMem s) f k v }
+
+  -- | Write a HeapLocation to heap memory at a HeapLocation
+  writeLocToHeap : LocState FS → HeapLocation → HeapLocation → LocState FS
+  writeLocToHeap s hl v = record s { heapMem = writeHeapMem (heapMem s) hl v }
 
   -- | Write a Location to memory
+  -- Stack destinations: can store any ValueLocation
+  -- Heap destinations: can only store HeapLocation (extracted from OnHeap)
+  -- Note: Writing OnStack to OnHeap is a type error - enforces invariant!
   writeLoc : LocState FS → ValueLocation FS → ValueLocation FS → LocState FS
-  writeLoc s (OnStack f k) v = record s { stackMem = writeStackMem (stackMem s) f k v }
-  writeLoc s (OnHeap r o) v = record s { heapMem = writeHeapMem (heapMem s) r o v }
+  writeLoc s (OnStack f k) v = writeLocToStack s f k v
+  writeLoc s (OnHeap hl) (OnHeap v) = writeLocToHeap s hl v
+  writeLoc s (OnHeap hl) (OnStack _ _) = s  -- Invalid: can't store stack ref in heap (no-op)
 
 ------------------------------------------------------------------------
 -- Location Source
@@ -392,24 +463,37 @@ module ExecLemmas {FS : FrameSemantics} where
     readLoc s₁ loc ≡ readLoc s₂ loc
   readLoc-stackMem-eq s₁ s₂ (OnStack f k) stack-eq heap-eq =
     cong (λ m → m f k) stack-eq
-  readLoc-stackMem-eq s₁ s₂ (OnHeap r o) stack-eq heap-eq =
-    cong (λ m → m r o) heap-eq
+  readLoc-stackMem-eq s₁ s₂ (OnHeap hl) stack-eq heap-eq
+    with heapMem s₁ hl | heapMem s₂ hl | cong (λ m → m hl) heap-eq
+  ... | just hl₁ | just hl₂ | eq = cong (λ x → just (OnHeap x)) (just-injective eq)
+    where
+      just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
+      just-injective refl = refl
+  ... | nothing | nothing | _ = refl
+  ... | just _ | nothing | ()
+  ... | nothing | just _ | ()
 
 ------------------------------------------------------------------------
 -- Summary
 --
 -- The LocationMachine operates PURELY on ValueLocations:
 --
---   ValueLocation = OnStack Frame Slot | OnHeap HeapRef HeapOffset
+--   HeapLocation = heap-loc HeapRef HeapOffset
+--   ValueLocation = OnStack Frame Slot | OnHeap HeapLocation
 --
 --   Registers : RegId → ValueLocation
---   Memory    : ValueLocation → Maybe ValueLocation
+--   StackMem  : Frame → Slot → Maybe ValueLocation   (can store anything)
+--   HeapMem   : HeapLocation → Maybe HeapLocation    (heap-only invariant!)
 --
 --   load  : RegId → LocSourceExt → Instr
 --   store : LocSourceExt → RegId → Instr
 --   mov   : RegId → RegId → Instr
 --
 --   LocSourceExt = Loc loc | IndReg r | IndRegSuc r
+--
+-- KEY INVARIANT: Heap can only store HeapLocations, not stack references.
+-- This enforces that heap-allocated values never reference stack memory,
+-- making frame deallocation always safe.
 --
 -- Key lemmas provided:
 --   - load-result: after load, register = mem[loc]

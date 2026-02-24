@@ -588,7 +588,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
   suc-frontier-neq-before-wf alloc (OnStack f k) (stack-ancestor cf≺f _) eq
     with eq
   ... | refl = ≺⇒≢ cf≺f refl
-  suc-frontier-neq-before-wf alloc (OnHeap r o) _ ()
+  suc-frontier-neq-before-wf alloc (OnHeap hl) _ ()
 
   -- ValidAtWF is preserved when writing to at-frontier location
   validityWF-write-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
@@ -1007,7 +1007,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         where open import Data.Nat.Properties using (<-≤-trans)
       stack-alloc-advances' alloc rs monotone fits (OnStack f k) (stack-ancestor cf≺f src) =
         stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
-      stack-alloc-advances' alloc rs monotone fits (OnHeap r o) (heap-before r<next) =
+      stack-alloc-advances' alloc rs monotone fits (OnHeap hl) (heap-before r<next) =
         heap-before r<next
 
   -- ValidAtWF is preserved after reclamation
