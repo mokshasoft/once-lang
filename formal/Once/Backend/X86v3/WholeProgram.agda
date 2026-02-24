@@ -88,51 +88,32 @@ module Correctness
   --   - execution (operational semantics)
   ----------------------------------------------------------------------
 
-  record CompileCorrect {A B : Type} (ir : IR A B) : Set where
-    field
-      preserves-semantics :
-        ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
-          (s : LocState FS) (alloc : AllocState {FS}) →
-        -- If input represents x...
-        Represents mIn alloc x input-loc s →
-        -- ...and preconditions hold...
-        BeforeFrontier alloc input-loc →
-        ir-size ir < program-bound →
-        -- Machine is ready to execute (caller must establish)
-        halted s ≡ false →
-        readReg (regs s) RDI ≡ input-loc →
-        next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
-        -- ...then output represents (eval ir x)
-        ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
-          Represents mOut alloc' (eval ir x) result-loc s'
-          --                      ^^^^^^^^^^
-          --            THE SEMANTIC CONNECTION
-
-  ----------------------------------------------------------------------
-  -- THE PROOF
-  ----------------------------------------------------------------------
-
-  compile-correct : ∀ {A B} (ir : IR A B) → CompileCorrect ir
-  compile-correct ir = record { preserves-semantics = go }
-    where
-      go : ∀ mIn x input-loc s alloc →
-           Represents mIn alloc x input-loc s →
-           BeforeFrontier alloc input-loc →
-           ir-size ir < program-bound →
-           halted s ≡ false →
-           readReg (regs s) RDI ≡ input-loc →
-           next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
-           ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
-             Represents mOut alloc' (eval ir x) result-loc s'
-      go mIn x input-loc s alloc repr before ir<bound not-halted rdi-eq capacity-ok =
-        -- Invoke Dispatcher with operational preconditions (caller provided)
-        let (mOut , result) = D.run-wf mIn ir ir<bound x input-loc s alloc
-              repr before not-halted rdi-eq capacity-ok
-        in mOut
-         , CWF.IRResultAWF.result-loc result
-         , CWF.IRResultAWF.final-state result
-         , CWF.IRResultAWF.final-alloc result
-         , CWF.IRResultAWF.result-valid-wf result
+  compile-correct : ∀ {A B} (ir : IR A B)
+    (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    -- If input represents x...
+    Represents mIn alloc x input-loc s →
+    -- ...and preconditions hold...
+    BeforeFrontier alloc input-loc →
+    ir-size ir < program-bound →
+    -- Machine is ready to execute (caller must establish)
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
+    -- ...then output represents (eval ir x)
+    ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
+      Represents mOut alloc' (eval ir x) result-loc s'
+      --                      ^^^^^^^^^^
+      --            THE SEMANTIC CONNECTION
+  compile-correct ir mIn x input-loc s alloc repr before ir<bound not-halted rdi-eq capacity-ok =
+    -- Invoke Dispatcher with operational preconditions (caller provided)
+    let (mOut , result) = D.run-wf mIn ir ir<bound x input-loc s alloc
+          repr before not-halted rdi-eq capacity-ok
+    in mOut
+     , CWF.IRResultAWF.result-loc result
+     , CWF.IRResultAWF.final-state result
+     , CWF.IRResultAWF.final-alloc result
+     , CWF.IRResultAWF.result-valid-wf result
 
 ------------------------------------------------------------------------
 -- SUMMARY
