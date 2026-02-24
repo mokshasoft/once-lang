@@ -10,12 +10,14 @@
 #
 #   Architecture-specific:
 #   make x86-compiler    - Type-check x86-64 compiler (frontend + x86 backends)
+#   make x86v3-compiler  - Type-check X86v3 SlotMachine compiler (POC)
 #   make aarch64-compiler - Type-check AArch64 compiler (frontend + AArch64 backends)
 #   make riscv-compiler  - Type-check RISC-V compiler (frontend + RISC-V backends)
 #
 #   CCC backends (categorical combinator code generators):
 #   make ccc          - Type-check all CCC backends
 #   make x86-ccc      - Type-check x86-64 CCC backend (whole-program proofs)
+#   make x86v3-ccc    - Type-check X86v3 SlotMachine CCC backend (POC)
 #   make aarch64-ccc  - Type-check AArch64 CCC backend
 #   make riscv-ccc    - Type-check RISC-V CCC backend
 #
@@ -27,7 +29,10 @@
 #
 #   Other targets:
 #   make clean        - Remove Agda build artifacts
-#   make count-postulates - Count postulates by file
+#   make count-postulates - Count postulates by file (all architectures)
+#   make count-postulates-x86 - Count postulates for x86-64 compiler only
+#   make count-postulates-riscv - Count postulates for RISC-V compiler only
+#   make count-postulates-arm - Count postulates for AArch64 compiler only
 #   make agda MODULE=path - Type-check a single module
 
 # Main entry points for each module
@@ -50,6 +55,7 @@ X86_STAR := Once/Backend/X86/Correct/Star.agda
 X86_STARBASE := Once/Backend/X86/Correct/StarBase.agda
 X86_WHOLEPROGRAM := Once/Backend/X86/Correct/WholeProgram.agda
 X86_ENCODING := Once/Backend/X86/Encoding.agda
+X86V3_WHOLEPROGRAM := Once/Backend/X86v3/WholeProgram.agda
 AARCH64_SYNTAX := Once/Backend/AArch64/Syntax.agda
 AARCH64_SEMANTICS := Once/Backend/AArch64/Semantics.agda
 AARCH64_CODEGEN := Once/Backend/AArch64/CodeGen.agda
@@ -159,6 +165,11 @@ x86-ccc:
 	@sh -c '$(AGDA_CMD) $(X86_CODEGEN)'
 	@sh -c '$(AGDA_CMD) $(X86_WHOLEPROGRAM)'
 
+.PHONY: x86v3-ccc
+x86v3-ccc:
+	@echo "Type-checking X86v3 SlotMachine CCC backend (POC)..."
+	@sh -c '$(AGDA_CMD) $(X86V3_WHOLEPROGRAM)'
+
 .PHONY: x86-star
 x86-star:
 	@echo "Type-checking x86-64 star relation module..."
@@ -206,7 +217,7 @@ riscv-ccc-correct:
 	@if [ -f "$(RISCV_CORRECT)" ]; then sh -c '$(AGDA_CMD) $(RISCV_CORRECT)'; fi
 
 .PHONY: ccc
-ccc: x86-ccc aarch64-ccc riscv-ccc
+ccc: x86-ccc x86v3-ccc aarch64-ccc riscv-ccc
 	@echo "All CCC backends type-check successfully!"
 
 .PHONY: riscv-foundation
@@ -269,6 +280,10 @@ aarch64-compiler: frontend common aarch64-ccc aarch64-arith
 .PHONY: riscv-compiler
 riscv-compiler: frontend common riscv-ccc riscv-arith
 	@echo "RISC-V compiler proofs type-check successfully!"
+
+.PHONY: x86v3-compiler
+x86v3-compiler: frontend common x86v3-ccc
+	@echo "X86v3 SlotMachine compiler proofs type-check successfully!"
 
 # All compiler proofs
 .PHONY: compiler
@@ -426,16 +441,36 @@ malonzo-core:
 	@cp _build/malonzo/MAlonzo/Code/Once/Postulates.hs ../compiler/src/MAlonzo/Code/Once/ 2>/dev/null || true
 	@echo "Done. Core modules in compiler/src/MAlonzo/Code/Once/"
 
-.PHONY: count-postulates
-count-postulates:
-	@echo "Counting postulates in Agda files..."
-	@echo "(Counts type signatures within postulate blocks, not 'postulate' keywords)"
+# Awk script to count postulates (handles multiple patterns)
+# Pattern 1: Postulate block (postulate alone on line, followed by indented signatures)
+# Pattern 2: Inline postulate (postulate name : Type on same line)
+define AWK_POSTULATES
+/^[[:space:]]*postulate[[:space:]]*$$/ { \
+	in_postulate = 1; \
+	match($$0, /^[[:space:]]*/); \
+	post_indent = RLENGTH; \
+	next \
+} \
+in_postulate && /[^[:space:]]/ { \
+	match($$0, /^[[:space:]]*/); \
+	if (RLENGTH <= post_indent) { in_postulate = 0 } \
+} \
+in_postulate && /^[[:space:]]+[^[:space:]:]+[[:space:]]*:/ { print } \
+/^[[:space:]]*postulate[[:space:]]+[^[:space:]:]+[[:space:]]*:/ { \
+	sub(/^[[:space:]]*postulate[[:space:]]+/, ""); \
+	print \
+}
+endef
+export AWK_POSTULATES
+
+# Helper for postulate counting with optional architecture filtering
+define COUNT_POSTULATES
+	@echo "Counting postulates in $(DESC)..."
+	@echo "(Counts type signatures within postulate blocks, including indented ones)"
 	@echo ""
 	@echo "=== Postulates by File ==="
-	@find . -name "*.agda" -type f | sort | while read f; do \
-		postulates=$$(awk '/^postulate[[:space:]]*$$/ { in_postulate = 1; next } \
-			/^[^[:space:]]/ { in_postulate = 0 } \
-			in_postulate && /^[[:space:]]+[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*:/ { print }' "$$f"); \
+	@find . -name "*.agda" -type f $(FILTER) | sort | while read f; do \
+		postulates=$$(awk "$$AWK_POSTULATES" "$$f"); \
 		if [ -n "$$postulates" ]; then \
 			count=$$(echo "$$postulates" | wc -l | tr -d ' '); \
 			echo ""; \
@@ -445,19 +480,51 @@ count-postulates:
 	done
 	@echo ""
 	@echo "=== Summary ==="
-	@TOTAL=$$(find . -name "*.agda" -type f -exec awk '/^postulate[[:space:]]*$$/ { in_postulate = 1; next } \
-		/^[^[:space:]]/ { in_postulate = 0 } \
-		in_postulate && /^[[:space:]]+[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*:/ { count++ } \
-		END { print count+0 }' {} + | awk '{s+=$$1} END {print s}'); \
-	FILES=$$(find . -name "*.agda" -type f | while read f; do \
-		count=$$(awk '/^postulate[[:space:]]*$$/ { in_postulate = 1; next } \
-			/^[^[:space:]]/ { in_postulate = 0 } \
-			in_postulate && /^[[:space:]]+[a-zA-Z_][a-zA-Z0-9_-]*[[:space:]]*:/ { count++ } \
-			END { print count+0 }' "$$f"); \
+	@TOTAL=$$(find . -name "*.agda" -type f $(FILTER) | while read f; do \
+		awk "$$AWK_POSTULATES" "$$f"; \
+	done | wc -l | tr -d ' '); \
+	FILES=$$(find . -name "*.agda" -type f $(FILTER) | while read f; do \
+		count=$$(awk "$$AWK_POSTULATES" "$$f" | wc -l | tr -d ' '); \
 		if [ "$$count" -gt 0 ]; then echo "$$f"; fi; \
 	done | wc -l | tr -d ' '); \
-	echo "Total postulates: $$TOTAL"; \
+	echo "Total postulates$(LABEL): $$TOTAL"; \
 	echo "Files with postulates: $$FILES"
+endef
+
+.PHONY: count-postulates
+count-postulates:
+	$(eval DESC=Once compiler proof postulates)
+	$(eval FILTER=)
+	$(eval LABEL=)
+	$(COUNT_POSTULATES)
+
+.PHONY: count-postulates-x86
+count-postulates-x86:
+	$(eval DESC=Once x86-64 compiler (shared + x86-specific))
+	$(eval FILTER=| grep -Ev "AArch64|RiscV64|RiscV")
+	$(eval LABEL= (x86-64))
+	$(COUNT_POSTULATES)
+
+.PHONY: count-postulates-x86v3
+count-postulates-x86v3:
+	$(eval DESC=X86v3 SlotMachine POC (SlotMachine + X86v3))
+	$(eval FILTER=| grep -E "X86v3")
+	$(eval LABEL= (X86v3 POC))
+	$(COUNT_POSTULATES)
+
+.PHONY: count-postulates-riscv
+count-postulates-riscv:
+	$(eval DESC=Once RISC-V compiler (shared + RISC-V-specific))
+	$(eval FILTER=| grep -Ev "X86|AArch64")
+	$(eval LABEL= (RISC-V))
+	$(COUNT_POSTULATES)
+
+.PHONY: count-postulates-arm
+count-postulates-arm:
+	$(eval DESC=Once AArch64 compiler (shared + AArch64-specific))
+	$(eval FILTER=| grep -Ev "X86|RiscV64|RiscV")
+	$(eval LABEL= (AArch64))
+	$(COUNT_POSTULATES)
 
 .PHONY: clean
 clean:
