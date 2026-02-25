@@ -289,8 +289,8 @@ ir-size (Prim _) = 1
 -- Curry: body f is smaller than (curry f m)
 -- ir-size (curry f m) = 2 + ir-size f, so ir-size f < 2 + ir-size f
 curry-smaller : ∀ {A B C q} (f : IR (A * B) C) {m : AllocMode} → ir-size f < ir-size (curry {q = q} f m)
-curry-smaller f {m} = ≤-step (n<1+n (ir-size f))
-  where open import Data.Nat.Properties using (n<1+n; ≤-step)
+curry-smaller f {m} = m≤n⇒m≤1+n (n<1+n (ir-size f))
+  where open import Data.Nat.Properties using (n<1+n; m≤n⇒m≤1+n)
 
 -- Case: f and g are smaller than (case-ir f g)
 case-f-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) → ir-size f < ir-size (case-ir f g)
