@@ -27,14 +27,14 @@ open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 -- Compose implementation
 ------------------------------------------------------------------------
 
-module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
   open FrameSemantics FS
 
   open import Once.CCC.Target.X86v3.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved)
 
@@ -141,7 +141,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         inter-before-reclaimed = IRResultAWF.reclaim-preserves-result result-f reclaim-f-fits
 
         -- Use reclaim-preserves-validity for validity at reclaimed allocation
-        inter-valid-reclaimed : ValidAtWF mMid alloc₁-reclaimed (eval f x) inter-loc s₁
+        inter-valid-reclaimed : ValidAtWF mMid alloc₁-reclaimed (eval primSem f x) inter-loc s₁
         inter-valid-reclaimed = IRResultAWF.reclaim-preserves-validity result-f reclaim-f-fits
 
         -- Set up RDI for g's input
@@ -149,11 +149,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         rdi-eq₁ : readReg (regs s₁') RDI ≡ inter-loc
         rdi-eq₁ = writeReg-same (regs s₁) RDI inter-loc
 
-        inter-valid-wf' : ValidAtWF mMid alloc₁-reclaimed (eval f x) inter-loc s₁'
-        inter-valid-wf' = validityWF-mem-only (eval f x) inter-loc s₁ s₁' refl refl inter-valid-reclaimed
+        inter-valid-wf' : ValidAtWF mMid alloc₁-reclaimed (eval primSem f x) inter-loc s₁'
+        inter-valid-wf' = validityWF-mem-only (eval primSem f x) inter-loc s₁ s₁' refl refl inter-valid-reclaimed
 
         -- Run g via recursive dispatch WITH RECLAIMED ALLOCATION
-        (mOut , result-g) = rec-wf mMid g (∘-g-smaller f g) (eval f x) inter-loc s₁' alloc₁-reclaimed inter-valid-wf' inter-before-reclaimed not-halted₁ rdi-eq₁ combined-cap-g
+        (mOut , result-g) = rec-wf mMid g (∘-g-smaller f g) (eval primSem f x) inter-loc s₁' alloc₁-reclaimed inter-valid-wf' inter-before-reclaimed not-halted₁ rdi-eq₁ combined-cap-g
 
         -- Final state and alloc
         s₂ = IRResultAWF.final-state result-g
@@ -210,7 +210,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
         compose-reclaim-preserves-validity : ∀ (fits : compose-reclaim ≤ frame-capacity alloc) →
           ValidAtWF mOut (record alloc { next-slot = compose-reclaim ; slots-available = fits })
-                    (eval (g ∘ f) x) (IRResultAWF.result-loc result-g) s₂
+                    (eval primSem(g ∘ f) x) (IRResultAWF.result-loc result-g) s₂
         compose-reclaim-preserves-validity fits = IRResultAWF.reclaim-preserves-validity result-g fits
 
         -- reclaim-size-bound: compose-reclaim ≤ slot + req(g ∘ f)

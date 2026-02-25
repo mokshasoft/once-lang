@@ -8,8 +8,7 @@
 module Once.CCC.Target.X86v3.IR.SumFixWF where
 
 open import Data.Nat using (ℕ; _<_; _≤_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤; ≤-irrelevant)
--- n≤m+n is imported from IR.agda
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; n≤1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤; ≤-irrelevant)
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -28,7 +27,7 @@ open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 -- Sum and Fix IR implementations
 ------------------------------------------------------------------------
 
-module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -38,7 +37,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
 
   open import Once.CCC.Target.X86v3.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; valid-unit-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-mem-preserved;
@@ -1023,7 +1022,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- case-stack-req: ir-stack-requirement (case-ir f g) = rf + rg
       -- So rg ≤ req-case, hence slot + rg ≤ slot + req-case ≤ cap
       cap-g-bound : next-slot alloc +ℕ rg ≤ next-slot alloc +ℕ req-case
-      cap-g-bound = +-monoʳ-≤ (next-slot alloc) (n≤m+n rf rg)
+      cap-g-bound = +-monoʳ-≤ (next-slot alloc) (m≤n+m rg rf)
 
       cap-g : next-slot alloc +ℕ rg ≤ frame-capacity alloc
       cap-g = ≤-trans cap-g-bound combined-cap

@@ -78,7 +78,7 @@ module BFTransfer {FS : FrameSemantics} where
 -- Apply implementation
 ------------------------------------------------------------------------
 
-module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
+module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
   -- Child frame support for body execution
   (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
   (child-frame-ordered : ∀ (alloc : AllocState {FS}) →
@@ -110,7 +110,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   open FrameSemantics FS
 
   open import Once.CCC.Target.X86v3.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf; valid-fold-wf;
@@ -150,18 +150,18 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   -- separate body-cap parameter that must match the closure's capacity.
   ------------------------------------------------------------------------
 
-  closure-body-capacity : ∀ {m A B alloc loc s}
-    (x : ⟦ (A ⇒ B) * A ⟧)
+  closure-body-capacity : ∀ {m A B q alloc loc s}
+    (x : ⟦ (A ⇒[ q ] B) * A ⟧)
     (input-valid-wf : ValidAtWF m alloc x loc s) → ℕ  -- Reference-based: any mode works
-  closure-body-capacity {m} {A} {B} {alloc} {loc} {s} x input-valid-wf =
-    let pair-decomp = decomposePairWF {m} {_} {A ⇒[ Many ] B} {A} input-valid-wf
+  closure-body-capacity {m} {A} {B} {q} {alloc} {loc} {s} x input-valid-wf =
+    let pair-decomp = decomposePairWF {m} {_} {A ⇒[ q ] B} {A} input-valid-wf
         closure-loc = PairValidWF.fst-loc pair-decomp
         closure = proj₁ x
         closure-valid-wf = PairValidWF.fst-valid pair-decomp
         closure-mode-eq = closure-mode-is-heap-proof closure-valid-wf
         closure-valid-wf-heap = subst (λ m → ValidAtWF m alloc closure closure-loc s)
                                        closure-mode-eq closure-valid-wf
-        closure-decomp = decomposeClosureWF {_} {Many} {A} {B} closure-valid-wf-heap
+        closure-decomp = decomposeClosureWF {_} {q} {A} {B} closure-valid-wf-heap
         body-correct = ClosureValidWF.body-correct closure-decomp
     in BodyCorrect.body-capacity body-correct
 
@@ -188,18 +188,18 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   -- Apply's reclaimable-slot = slot + pair-slots (body allocations in child).
   ------------------------------------------------------------------------
 
-  run-apply : ∀ {m A B}
-    (x : ⟦ (A ⇒ B) * A ⟧) (input-loc : ValueLocation FS)
+  run-apply : ∀ {m A B q}
+    (x : ⟦ (A ⇒[ q ] B) * A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS})
     (input-valid-wf : ValidAtWF m alloc x input-loc s) →  -- Reference-based: any mode works
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     -- Capacity using ir-stack-requirement (= pair-slots for apply)
-    next-slot alloc +ℕ ir-stack-requirement (apply {A} {B}) ≤ frame-capacity alloc →
+    next-slot alloc +ℕ ir-stack-requirement (apply {A} {B} {q}) ≤ frame-capacity alloc →
     -- Body executes in child frame - no dynamic capacity parameter needed
-    ∃[ mOut ] IRResultAWF mOut (apply {A} {B}) x s alloc
-  run-apply {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    ∃[ mOut ] IRResultAWF mOut (apply {A} {B} {q}) x s alloc
+  run-apply {m} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     mBody , record
       { result-loc = result-loc
       ; final-state = s-final
@@ -227,9 +227,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       open import Data.Nat.Properties using (*-monoʳ-≤; <⇒≤; *-monoˡ-≤)
 
       -- Step 1: Decompose input as pair (closure, arg) using ValidAtWF
-      -- Explicit type: pair type is (A ⇒[ Many ] B) * A
+      -- Explicit type: pair type is (A ⇒[ q ] B) * A (quantity-polymorphic)
       -- Reference-based: any mode works since pairs use pointer representation
-      pair-decomp = decomposePairWF {m} {_} {A ⇒[ Many ] B} {A} input-valid-wf
+      pair-decomp = decomposePairWF {m} {_} {A ⇒[ q ] B} {A} input-valid-wf
       closure-loc = PairValidWF.fst-loc pair-decomp
       arg-loc = PairValidWF.snd-loc pair-decomp
       mArg = PairValidWF.mB pair-decomp  -- Mode of argument component
@@ -239,14 +239,14 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- Extract closure and arg with explicit types to help inference
       -- fst and snd need explicit type params because ⟦ A ⇒[ q ] B ⟧ = ⟦ A ⟧ → ⟦ B ⟧ for any q
-      closure : ⟦ A ⇒[ Many ] B ⟧
-      closure = fst {A ⇒[ Many ] B} {A} x
+      closure : ⟦ A ⇒[ q ] B ⟧
+      closure = fst {A ⇒[ q ] B} {A} x
 
       arg : ⟦ A ⟧
-      arg = snd {A ⇒[ Many ] B} {A} x
+      arg = snd {A ⇒[ q ] B} {A} x
 
       -- Step 2: Decompose closure to get body-correct!
-      -- Note: fst x : ⟦ A ⇒ B ⟧ = ⟦ A ⇒[ Many ] B ⟧
+      -- Note: fst x : ⟦ A ⇒[ q ] B ⟧ (quantity-polymorphic)
       -- Closures are always Heap mode - extract mA=Heap from ValidAtWF proof
       mClosure = PairValidWF.mA pair-decomp
       -- For closure types, the only constructor is valid-closure-wf which produces Heap
@@ -256,7 +256,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       closure-valid-wf-heap : ValidAtWF Heap alloc closure closure-loc s
       closure-valid-wf-heap = subst (λ m → ValidAtWF m alloc closure closure-loc s) closure-mode-is-heap closure-valid-wf
 
-      closure-decomp = decomposeClosureWF {_} {Many} {A} {B} closure-valid-wf-heap
+      closure-decomp = decomposeClosureWF {_} {q} {A} {B} closure-valid-wf-heap
       EnvType = ClosureValidWF.EnvType closure-decomp
       body = ClosureValidWF.body closure-decomp
       env = ClosureValidWF.env closure-decomp
@@ -629,16 +629,16 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Transfer validity from child's final-alloc to parent's final-alloc
       -- (body-final-alloc already defined above)
 
-      result-valid-wf : ValidAtWF mBody final-alloc {B} (eval apply x) result-loc s-final
+      result-valid-wf : ValidAtWF mBody final-alloc {B} (eval primSem(apply {A} {B} {q}) x) result-loc s-final
       result-valid-wf = subst (λ f → ValidAtWF mBody final-alloc {B} (f arg) result-loc s-final)
                               (sym closure-is-body)
                               body-result-valid-at-final
         where
           -- Transfer body result validity to final-alloc
           -- Reuses bf-child-to-parent which handles OnHeap (proven) and OnStack (via escape params)
-          body-result-valid-at-final : ValidAtWF mBody final-alloc {B} (eval body (pair env arg)) result-loc s-final
+          body-result-valid-at-final : ValidAtWF mBody final-alloc {B} (eval primSem body (pair env arg)) result-loc s-final
           body-result-valid-at-final = validityWF-with-bf-transfer {mBody} {B}
-            (eval body (pair env arg)) result-loc s-final
+            (eval primSem body (pair env arg)) result-loc s-final
             body-final-alloc final-alloc
             bf-child-to-parent  -- Same transfer function as result-before
             (IRResultAWF.result-valid-wf body-result)
@@ -670,8 +670,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       -- Validity at reclaimed allocation - same as final-alloc
       apply-reclaim-preserves-validity : ∀ (fits : apply-reclaimable-slot ≤ frame-capacity alloc) →
         ValidAtWF mBody (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits })
-                  (eval apply x) result-loc s-final
-      apply-reclaim-preserves-validity fits = validityWF-with-bf-transfer {mBody} (eval apply x) result-loc s-final
+                  (eval primSem(apply {A} {B} {q}) x) result-loc s-final
+      apply-reclaim-preserves-validity fits = validityWF-with-bf-transfer {mBody} (eval primSem(apply {A} {B} {q}) x) result-loc s-final
         final-alloc
         (record alloc { next-slot = apply-reclaimable-slot ; slots-available = fits })
         (λ loc' bf → bf-same-frame-slot final-alloc
@@ -681,5 +681,5 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
 
       -- reclaim-size-bound: PROVEN! slot + pair-slots ≤ slot + ir-stack-requirement apply
       -- Since ir-stack-requirement apply = pair-slots, this is ≤-refl
-      apply-reclaim-size-bound : apply-reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement (apply {A} {B})
+      apply-reclaim-size-bound : apply-reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement (apply {A} {B} {q})
       apply-reclaim-size-bound = ≤-refl

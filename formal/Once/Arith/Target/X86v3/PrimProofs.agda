@@ -29,10 +29,11 @@ open import Once.CCC.SlotMachine
          halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-same;
          RDI; RAX; module MemOps; module ExecLemmas)
-open import Once.CCC.Target.X86v3.Types using (Type; Int; Float; Str; Buffer; ⟦_⟧)
+open import Once.CCC.Target.X86v3.Types using (Type; Int; Float; Str; Buffer; _*_; ⟦_⟧)
 open import Once.CCC.IR
   using (IR; Prim; eval; PrimContractV3; AllocMode; Stack;
-         stack-requirement; output-mode; IsPrimitive; is-int; is-float)
+         stack-requirement; output-mode; IsPrimitive; is-int; is-float;
+         PrimSem; evalPrim; ir-stack-requirement; pair-slots)
 open import Once.CCC.Target.X86v3.Allocation
   using (AllocState; next-slot; next-heap-ref; frame-capacity; current-frame; module FrontierInvariant)
 
@@ -78,19 +79,19 @@ add-int-prim = record
 -- Arithmetic PrimProofProviderV3
 ------------------------------------------------------------------------
 
-module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) where
+module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
     using (BeforeFrontier; stack-before; stack-ancestor; heap-before)
   open MemOps {FS} using (readLoc)
 
   open import Once.CCC.Target.X86v3.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF;
            valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
            valid-primitive-wf)
 
   open import Once.CCC.Target.X86v3.Dispatcher
-  open PrimProofInterface {FS} program-bound
+  open PrimProofInterface {FS} program-bound primSem
     using (PrimProofV3; PrimProofProviderV3)
 
   ------------------------------------------------------------------------
@@ -176,15 +177,19 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) where
   ------------------------------------------------------------------------
 
   -- Core proof with explicit IsPrimitive evidence
+  -- NOTE: With opaque Prim, semantics comes from primSem: eval primSem (Prim name) x = evalPrim primSem name x
+  -- The proof shows execution produces the same result as evalPrim.
   arith-prim-proof-with-evidence : ∀ {A B}
     (is-prim : IsPrimitive B)
     (name : String)
-    (sem : ⟦ A ⟧ → ⟦ B ⟧)
     (c : PrimContractV3 A B) →
-    PrimProofV3 sem c (Prim name sem c)
-  arith-prim-proof-with-evidence {A} {B} is-prim name sem c mIn x input-loc s alloc
+    PrimProofV3 c (Prim name)
+  arith-prim-proof-with-evidence {A} {B} is-prim name c mIn x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq cap-ok =
     let
+      -- Semantics comes from primSem
+      sem = evalPrim primSem {A} {B} name
+
       -- Execute arithmetic (register-only)
       (result-loc , final-state) = exec-arith sem x input-loc s
 
@@ -217,11 +222,11 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) where
       ; reclaim-preserves-validity = λ fits →
           let reclaim-before = before-frontier-slots-irrel alloc fits result-before
           in valid-primitive-wf is-prim reclaim-before
-      ; reclaim-size-bound = m≤m+n (next-slot alloc) (stack-requirement c)
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) pair-slots  -- ir-stack-requirement (Prim _) = pair-slots
       }
 
   -- Proof for a concrete ArithPrimitive (uses embedded evidence)
   arith-prim-proof-concrete : ∀ {A B} (p : ArithPrimitive A B) →
-    PrimProofV3 (sem p) (contract p) (Prim (name p) (sem p) (contract p))
+    PrimProofV3 (contract p) (Prim (name p))
   arith-prim-proof-concrete p =
-    arith-prim-proof-with-evidence (is-prim p) (name p) (sem p) (contract p)
+    arith-prim-proof-with-evidence (is-prim p) (name p) (contract p)

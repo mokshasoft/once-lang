@@ -54,11 +54,11 @@ open import Once.CCC.Target.X86v3.SizeBoundLemma public
 -- Import helper modules
 ------------------------------------------------------------------------
 
-import Once.CCC.IR.SimpleWF as SimpleWFModule
-import Once.CCC.IR.ComposeWF as ComposeWFModule
-import Once.CCC.IR.PairWF as PairWFModule
-import Once.CCC.IR.CurryWF as CurryWFModule
-import Once.CCC.IR.ApplyWF as ApplyWFModule
+import Once.CCC.Target.X86v3.IR.SimpleWF as SimpleWFModule
+import Once.CCC.Target.X86v3.IR.ComposeWF as ComposeWFModule
+import Once.CCC.Target.X86v3.IR.PairWF as PairWFModule
+import Once.CCC.Target.X86v3.IR.CurryWF as CurryWFModule
+import Once.CCC.Target.X86v3.IR.ApplyWF as ApplyWFModule
 
 -- Import write operations from separate module
 open import Once.CCC.Target.X86v3.WriteOps public using (module WriteWithDisjoint)
@@ -68,20 +68,27 @@ open import Once.CCC.Target.X86v3.WriteOps public using (module WriteWithDisjoin
 --
 -- PrimProofV3: what a proof for a primitive must provide
 -- PrimProofProviderV3: interface for domain compilers
+--
+-- With opaque Prim (just a name), the provider gives:
+--   - Contract c: stack requirements and output mode
+--   - Proof: that execution produces correct result
+--
+-- The semantics comes from PrimSem (module parameter).
 ------------------------------------------------------------------------
 
-module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) where
+module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS} using (BeforeFrontier)
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF)
 
   -- What a proof for a primitive must provide
+  -- NOTE: For opaque Prim, eval primSem (Prim name) x = evalPrim primSem name x
+  -- The proof shows that execution of Prim produces eval primSem (Prim name) x
   PrimProofV3 : ∀ {A B : Type}
-    (sem : ⟦ A ⟧ → ⟦ B ⟧)
     (c : PrimContractV3 A B)
     (ir : IR A B) →  -- The actual Prim IR
     Set
-  PrimProofV3 {A} {B} sem c ir =
+  PrimProofV3 {A} {B} c ir =
     ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →
@@ -92,13 +99,13 @@ module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) where
       IRResultAWF (output-mode c) ir x s alloc
 
   -- Interface for domain compilers
+  -- For each primitive name, provide:
+  --   - A contract (stack requirements, output mode)
+  --   - A proof that execution is correct
   PrimProofProviderV3 : Set
   PrimProofProviderV3 =
-    ∀ {A B : Type}
-      (name : String)
-      (sem : ⟦ A ⟧ → ⟦ B ⟧)
-      (c : PrimContractV3 A B) →
-      PrimProofV3 sem c (Prim name sem c)
+    ∀ {A B : Type} (name : String) →
+    ∃[ c ] PrimProofV3 {A} {B} c (Prim name)
 
 ------------------------------------------------------------------------
 -- Closure IR Tracking
@@ -108,7 +115,7 @@ module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) where
 -- KEY INSIGHT: ApplySetupResult now contains:
 --   - body : IR (EnvType * A) B
 --   - env : ⟦ EnvType ⟧
---   - closure-is-body : fst input ≡ (λ arg → eval body (pair env arg))
+--   - closure-is-body : fst input ≡ (λ arg → eval primSem body (pair env arg))
 --   - env-valid, arg-valid for recursive dispatch
 --
 -- To compute (fst input) (snd input), we dispatch to body with (env, snd input).
@@ -139,6 +146,8 @@ module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) where
 ------------------------------------------------------------------------
 
 module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ program-bound)
+  -- PrimSem provides semantics for all primitives (required for eval)
+  (primSem : PrimSem)
   -- NOTE: frame-cap-sufficient and body-cap-bounded REMOVED
   -- Migration to X86-style dynamic capacity threading eliminates program-bound-based derivation.
   -- Capacity is now threaded per-closure via BodyCorrect.body-capacity.
@@ -164,7 +173,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   (parent-bound-eq : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
     bound ≡ next-slot alloc Data.Nat.+ pair-slots)
   -- Prim proof provider (from domain compilers)
-  (prim-proof : PrimProofInterface.PrimProofProviderV3 {FS} program-bound)
+  (prim-proof : PrimProofInterface.PrimProofProviderV3 {FS} program-bound primSem)
   where
   open FrontierInvariant {FS}
   open WriteWithDisjoint {FS}
@@ -178,7 +187,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m<m+n; n≤1+n; n<1+n; <-trans; m+n≤o⇒m≤o; +-suc; +-comm; +-monoˡ-≤; +-monoʳ-≤; +-assoc)
 
   -- Import WF types for termination-safe dispatch
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef {FS} program-bound primSem
     using (BodyCorrect; ValidAtWF; IRResultAWF; RecDispatcherWF;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            decomposeClosureWF; ClosureValidWF; decomposePairWF; PairValidWF;
@@ -194,25 +203,25 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open FrontierLemmas {FS}
 
   -- Import simple IR implementations (id, fst, snd, terminal)
-  open SimpleWFModule.SimpleWFImpl {FS} program-bound
+  open SimpleWFModule.SimpleWFImpl {FS} program-bound primSem
 
   -- Import compose IR implementation
-  open ComposeWFModule.ComposeWFImpl {FS} program-bound
+  open ComposeWFModule.ComposeWFImpl {FS} program-bound primSem
 
   -- Import pair IR implementation
-  open PairWFModule.PairWFImpl {FS} program-bound
+  open PairWFModule.PairWFImpl {FS} program-bound primSem
 
   -- Import curry IR implementation
-  open CurryWFModule.CurryWFImpl {FS} program-bound
+  open CurryWFModule.CurryWFImpl {FS} program-bound primSem
 
   -- Import apply IR implementation (pass child-frame and escape analysis parameters)
-  open ApplyWFModule.ApplyWFImpl {FS} program-bound
+  open ApplyWFModule.ApplyWFImpl {FS} program-bound primSem
     get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
     escape-result-survives parent-bound-eq
 
   -- Import sum/fix IR implementations (inl, inr, case, initial, fold, unfold)
-  open import Once.CCC.IR.SumFixWF as SumFixWFModule
-  open SumFixWFModule.SumFixWFImpl {FS} program-bound
+  open import Once.CCC.Target.X86v3.IR.SumFixWF as SumFixWFModule
+  open SumFixWFModule.SumFixWFImpl {FS} program-bound primSem
 
   ------------------------------------------------------------------------
   -- Helper: get Acc for any IR size < program-bound
@@ -231,19 +240,27 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
   ------------------------------------------------------------------------
   -- Prim handler: uses PrimProofProviderV3 from module parameter
+  --
+  -- With opaque Prim (just a name), we:
+  --   1. Get (contract, proof) from prim-proof
+  --   2. Use proof to execute
   ------------------------------------------------------------------------
   run-prim : ∀ {A B} (mIn : AllocMode) (name : String)
-    (sem : ⟦ A ⟧ → ⟦ B ⟧) (c : PrimContractV3 A B)
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
-    next-slot alloc +ℕ stack-requirement c ≤ frame-capacity alloc →
-    IRResultAWF (output-mode c) (Prim name sem c) x s alloc
-  run-prim mIn name sem c x input-loc s alloc valid bf nh rdi cap =
-    prim-proof name sem c mIn x input-loc s alloc valid bf nh rdi cap
+    -- NOTE: Capacity check needs contract from proof provider
+    -- We check against pair-slots as upper bound (contract.stack-requirement ≤ 2)
+    next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc →
+    ∃[ c ] IRResultAWF (output-mode c) (Prim {A} {B} name) x s alloc
+  run-prim {A} {B} mIn name x input-loc s alloc valid bf nh rdi cap =
+    let (c , proof) = prim-proof {A} {B} name
+        -- Contract guarantees stack-requirement c ≤ pair-slots
+        cap' = ≤-trans (+-monoʳ-≤ (next-slot alloc) (stack-req-bounded c)) cap
+    in c , proof mIn x input-loc s alloc valid bf nh rdi cap'
 
   ------------------------------------------------------------------------
   -- Main dispatcher (recursive cases use Acc)
@@ -309,9 +326,16 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf mIn terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       mIn , run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
+    -- Arr: effectful morphism coercion (delegated to SimpleWF module)
+    -- Converts (A ⇒[ q ] B) to (Eff A B) - semantically identity
+    run-ir-wf mIn (arr {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      mIn , run-arr {mIn} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+
     -- Prim: primitive operations (uses proof provider)
-    run-ir-wf mIn (Prim name sem c) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      output-mode c , run-prim mIn name sem c x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    -- With opaque Prim (just name), contract comes from proof provider
+    run-ir-wf mIn (Prim name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      let (c , result) = run-prim mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+      in output-mode c , result
 
     -- Sum type: inject left (delegated to SumFixWF module)
     -- Output mode is m (from inl-ir m)
@@ -363,13 +387,13 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       m , run-pair mIn f g m (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Curry: delegated to CurryWF module
+    -- Curry: delegated to CurryWF module (quantity-polymorphic)
     -- Output is always Heap (closure is boxed)
-    run-ir-wf mIn (curry f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      Heap , run-curry mIn f m ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
+    run-ir-wf mIn (curry {q = q} f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      Heap , run-curry {q = q} mIn f m ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Apply: uses BodyCorrect.execute from closure
+    -- Apply: uses BodyCorrect.execute from closure (quantity-polymorphic)
     -- Input must be Heap (boxed pair of closure * arg)
     -- Uses PURE RECLAMATION: body executes in same frame, then reclaims stack
     --
@@ -379,12 +403,12 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- Apply: CHILD FRAME EXECUTION
     -- Body executes in child frame with child-capacity (from module params).
     -- Body capacity proven via child-cap-sufficient - NO POSTULATES NEEDED!
-    run-ir-wf Heap (apply {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-        run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf Heap (apply {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+        run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    run-ir-wf Stack (apply {A} {B}) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
+    run-ir-wf Stack (apply {A} {B} {q}) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
       -- Reference-based model: Stack and Heap use same pointer representation for pairs
-      run-apply x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+      run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Free-heap: explicit heap deallocation (delegated to SimpleWF module)
     -- Semantically a no-op (returns input unchanged).

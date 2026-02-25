@@ -61,15 +61,17 @@ open import Once.CCC.Target.X86v3.SlotToX86
          writeLoc-preserves-regs)
 
 -- Import IR and types from X86v3
-open import Once.CCC.IR using (IR; eval)
+open import Once.CCC.IR using (IR; eval; PrimSem)
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧; _*_; _⇒_)
 
 -- Import CodeGen
 open import Once.CCC.Target.X86v3.CodeGen using (compile-ir; compile-length)
 
 -- Import X86v3 Validity
+-- NOTE: ValidityDef requires (program-bound : ℕ) (primSem : PrimSem) parameters.
+-- The actual correctness theorem would be in a module parameterized by these.
 open import Once.CCC.Target.X86v3.Validity
-open ValidityDef {x86v3-frame-semantics}
+-- open ValidityDef {x86v3-frame-semantics}  -- Commented: needs program-bound, primSem
 
 ------------------------------------------------------------------------
 -- Pipeline Theorem Structure

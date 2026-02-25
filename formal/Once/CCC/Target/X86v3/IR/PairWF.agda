@@ -28,7 +28,7 @@ open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 -- Pair implementation
 ------------------------------------------------------------------------
 
-module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -36,7 +36,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
 
   open import Once.CCC.Target.X86v3.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            valid-pair-wf;
            validityWF-mem-only; validityWF-mem-preserved;
@@ -60,7 +60,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open WriteWithDisjoint {FS}
 
   -- Import bf-same-frame-slot from BFTransfer module
-  open import Once.CCC.IR.ApplyWF
+  open import Once.CCC.Target.X86v3.IR.ApplyWF
   open BFTransfer {FS}
     using (bf-same-frame-slot)
 
@@ -307,20 +307,20 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       fst-before-reclaimed : BeforeFrontier alloc₁-reclaimed fst-loc
       fst-before-reclaimed = IRResultAWF.reclaim-preserves-result result-f reclaim-f-fits
 
-      fst-valid-s1-reclaimed : ValidAtWF mF alloc₁-reclaimed (eval f x) fst-loc s₁
+      fst-valid-s1-reclaimed : ValidAtWF mF alloc₁-reclaimed (eval primSem f x) fst-loc s₁
       fst-valid-s1-reclaimed = IRResultAWF.reclaim-preserves-validity result-f reclaim-f-fits
 
-      fst-valid-s1' : ValidAtWF mF alloc₁-reclaimed (eval f x) fst-loc s₁'
-      fst-valid-s1' = validityWF-mem-only (eval f x) fst-loc s₁ s₁' refl refl fst-valid-s1-reclaimed
+      fst-valid-s1' : ValidAtWF mF alloc₁-reclaimed (eval primSem f x) fst-loc s₁'
+      fst-valid-s1' = validityWF-mem-only (eval primSem f x) fst-loc s₁ s₁' refl refl fst-valid-s1-reclaimed
 
-      fst-valid-s2-reclaimed : ValidAtWF mF alloc₁-reclaimed (eval f x) fst-loc s₂
-      fst-valid-s2-reclaimed = validityWF-mem-preserved (eval f x) fst-loc s₁' s₂
+      fst-valid-s2-reclaimed : ValidAtWF mF alloc₁-reclaimed (eval primSem f x) fst-loc s₂
+      fst-valid-s2-reclaimed = validityWF-mem-preserved (eval primSem f x) fst-loc s₁' s₂
                                  fst-before-reclaimed
                                  (λ loc bf → IRResultAWF.mem-preserved-before result-g loc bf)
                                  fst-valid-s1'
 
-      fst-valid-s2-alloc2r : ValidAtWF mF alloc₂-reclaimed (eval f x) fst-loc s₂
-      fst-valid-s2-alloc2r = validityWF-frontier-advance (eval f x) fst-loc s₂
+      fst-valid-s2-alloc2r : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₂
+      fst-valid-s2-alloc2r = validityWF-frontier-advance (eval primSem f x) fst-loc s₂
                                refl
                                (IRResultAWF.reclaim-monotone result-g)
                                ≤-refl
@@ -333,19 +333,19 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                              ≤-refl
                              fst-loc fst-before-reclaimed
 
-      fst-valid-s3 : ValidAtWF mF alloc₂-reclaimed (eval f x) fst-loc s₃
-      fst-valid-s3 = validityWF-write-at-frontier (eval f x) fst-loc s₂ fst-loc
+      fst-valid-s3 : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₃
+      fst-valid-s3 = validityWF-write-at-frontier (eval primSem f x) fst-loc s₂ fst-loc
                        fst-before-alloc2r fst-valid-s2-alloc2r
 
-      fst-valid-s4 : ValidAtWF mF alloc₂-reclaimed (eval f x) fst-loc s₄
-      fst-valid-s4 = validityWF-write-at-suc-frontier (eval f x) fst-loc s₃ snd-loc
+      fst-valid-s4 : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₄
+      fst-valid-s4 = validityWF-write-at-suc-frontier (eval primSem f x) fst-loc s₃ snd-loc
                        fst-before-alloc2r fst-valid-s3
 
-      fst-valid-sfinal-alloc2r : ValidAtWF mF alloc₂-reclaimed (eval f x) fst-loc s-final
-      fst-valid-sfinal-alloc2r = validityWF-mem-only (eval f x) fst-loc s₄ s-final refl refl fst-valid-s4
+      fst-valid-sfinal-alloc2r : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s-final
+      fst-valid-sfinal-alloc2r = validityWF-mem-only (eval primSem f x) fst-loc s₄ s-final refl refl fst-valid-s4
 
-      fst-valid-wf₃ : ValidAtWF mF alloc₃ (eval f x) fst-loc s-final
-      fst-valid-wf₃ = validityWF-alloc-advance (eval f x) fst-loc s-final ps pair-fits-at-reclaim
+      fst-valid-wf₃ : ValidAtWF mF alloc₃ (eval primSem f x) fst-loc s-final
+      fst-valid-wf₃ = validityWF-alloc-advance (eval primSem f x) fst-loc s-final ps pair-fits-at-reclaim
                         fst-valid-sfinal-alloc2r
 
       ------------------------------------------------------------------------
@@ -355,20 +355,20 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       snd-before-alloc2r : BeforeFrontier alloc₂-reclaimed snd-loc
       snd-before-alloc2r = IRResultAWF.reclaim-preserves-result result-g reclaim-g-fits
 
-      snd-valid-s2-reclaimed : ValidAtWF mG alloc₂-reclaimed (eval g x) snd-loc s₂
+      snd-valid-s2-reclaimed : ValidAtWF mG alloc₂-reclaimed (eval primSem g x) snd-loc s₂
       snd-valid-s2-reclaimed = IRResultAWF.reclaim-preserves-validity result-g reclaim-g-fits
 
-      snd-valid-wf₃ : ValidAtWF mG alloc₃ (eval g x) snd-loc s-final
-      snd-valid-wf₃ = validityWF-alloc-advance (eval g x) snd-loc s-final ps pair-fits-at-reclaim
-                        (validityWF-mem-only (eval g x) snd-loc s₄ s-final refl refl
-                          (validityWF-write-at-suc-frontier (eval g x) snd-loc s₃ snd-loc
+      snd-valid-wf₃ : ValidAtWF mG alloc₃ (eval primSem g x) snd-loc s-final
+      snd-valid-wf₃ = validityWF-alloc-advance (eval primSem g x) snd-loc s-final ps pair-fits-at-reclaim
+                        (validityWF-mem-only (eval primSem g x) snd-loc s₄ s-final refl refl
+                          (validityWF-write-at-suc-frontier (eval primSem g x) snd-loc s₃ snd-loc
                             snd-before-alloc2r
-                            (validityWF-write-at-frontier (eval g x) snd-loc s₂ fst-loc
+                            (validityWF-write-at-frontier (eval primSem g x) snd-loc s₂ fst-loc
                               snd-before-alloc2r
                               snd-valid-s2-reclaimed)))
 
       -- Stack mode: use valid-pair-wf constructor (same as Heap mode)
-      pair-valid-wf-final : ValidAtWF Stack alloc₃ (pair (eval f x) (eval g x)) pair-loc s-final
+      pair-valid-wf-final : ValidAtWF Stack alloc₃ (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
       pair-valid-wf-final = valid-pair-wf fst-ptr snd-ptr fst-before₃ snd-before₃ sucLoc-pair-before₃ fst-valid-wf₃ snd-valid-wf₃
 
       rax-eq : readReg (regs s-final) RAX ≡ pair-loc
@@ -441,9 +441,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       pair-reclaim-preserves-validity : ∀ (fits : pair-reclaim ≤ frame-capacity alloc) →
         ValidAtWF Stack (record alloc { next-slot = pair-reclaim ; slots-available = fits })
-                  (pair (eval f x) (eval g x)) pair-loc s-final
+                  (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
       pair-reclaim-preserves-validity fits = validityWF-with-bf-transfer
-        (pair (eval f x) (eval g x)) pair-loc s-final alloc₃
+        (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final alloc₃
         (record alloc { next-slot = pair-reclaim ; slots-available = fits })
         (λ loc bf → bf-same-frame-slot alloc₃
           (record alloc { next-slot = pair-reclaim ; slots-available = fits })
@@ -696,8 +696,8 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       ------------------------------------------------------------------------
       -- Validity transfer for fst through write operations
       --
-      -- fst-valid-wf : ValidAtWF alloc₁ (eval f x) fst-loc s₁
-      -- We need: ValidAtWF alloc₃ (eval f x) fst-loc s-final
+      -- fst-valid-wf : ValidAtWF alloc₁ (eval primSem f x) fst-loc s₁
+      -- We need: ValidAtWF alloc₃ (eval primSem f x) fst-loc s-final
       --
       -- With reclaim-based allocation, we need to be careful:
       -- - pair-loc = OnStack (current-frame alloc) reclaim-g
@@ -711,23 +711,23 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- fst validity at s₁ with alloc₁-reclaimed
       -- Use reclaim-preserves-validity to handle reclamation (slot decreasing)
-      fst-valid-s1-reclaimed : ValidAtWF mF alloc₁-reclaimed (eval f x) fst-loc s₁
+      fst-valid-s1-reclaimed : ValidAtWF mF alloc₁-reclaimed (eval primSem f x) fst-loc s₁
       fst-valid-s1-reclaimed = IRResultAWF.reclaim-preserves-validity result-f reclaim-f-fits
 
       -- Step 1: s₁ → s₁' (register write only)
-      fst-valid-s1' : ValidAtWF mF alloc₁-reclaimed (eval f x) fst-loc s₁'
-      fst-valid-s1' = validityWF-mem-only (eval f x) fst-loc s₁ s₁' refl refl fst-valid-s1-reclaimed
+      fst-valid-s1' : ValidAtWF mF alloc₁-reclaimed (eval primSem f x) fst-loc s₁'
+      fst-valid-s1' = validityWF-mem-only (eval primSem f x) fst-loc s₁ s₁' refl refl fst-valid-s1-reclaimed
 
       -- Step 2: s₁' → s₂ (g execution, memory preserved at BeforeFrontier alloc₁-reclaimed)
-      fst-valid-s2-reclaimed : ValidAtWF mF alloc₁-reclaimed (eval f x) fst-loc s₂
-      fst-valid-s2-reclaimed = validityWF-mem-preserved (eval f x) fst-loc s₁' s₂
+      fst-valid-s2-reclaimed : ValidAtWF mF alloc₁-reclaimed (eval primSem f x) fst-loc s₂
+      fst-valid-s2-reclaimed = validityWF-mem-preserved (eval primSem f x) fst-loc s₁' s₂
                                  fst-before-reclaimed
                                  (λ loc bf → IRResultAWF.mem-preserved-before result-g loc bf)
                                  fst-valid-s1'
 
       -- Transfer fst validity to alloc₂-reclaimed
-      fst-valid-s2-alloc2r : ValidAtWF mF alloc₂-reclaimed (eval f x) fst-loc s₂
-      fst-valid-s2-alloc2r = validityWF-frontier-advance (eval f x) fst-loc s₂
+      fst-valid-s2-alloc2r : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₂
+      fst-valid-s2-alloc2r = validityWF-frontier-advance (eval primSem f x) fst-loc s₂
                                refl
                                (IRResultAWF.reclaim-monotone result-g)
                                ≤-refl
@@ -742,22 +742,22 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                              fst-loc fst-before-reclaimed
 
       -- Step 3: s₂ → s₃ (write at pair-loc = frontier of alloc₂-reclaimed)
-      fst-valid-s3 : ValidAtWF mF alloc₂-reclaimed (eval f x) fst-loc s₃
-      fst-valid-s3 = validityWF-write-at-frontier (eval f x) fst-loc s₂ fst-loc
+      fst-valid-s3 : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₃
+      fst-valid-s3 = validityWF-write-at-frontier (eval primSem f x) fst-loc s₂ fst-loc
                        fst-before-alloc2r fst-valid-s2-alloc2r
 
       -- Step 4: s₃ → s₄ (write at sucLoc pair-loc = suc-frontier of alloc₂-reclaimed)
-      fst-valid-s4 : ValidAtWF mF alloc₂-reclaimed (eval f x) fst-loc s₄
-      fst-valid-s4 = validityWF-write-at-suc-frontier (eval f x) fst-loc s₃ snd-loc
+      fst-valid-s4 : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₄
+      fst-valid-s4 = validityWF-write-at-suc-frontier (eval primSem f x) fst-loc s₃ snd-loc
                        fst-before-alloc2r fst-valid-s3
 
       -- Step 5: s₄ → s-final (register write)
-      fst-valid-sfinal-alloc2r : ValidAtWF mF alloc₂-reclaimed (eval f x) fst-loc s-final
-      fst-valid-sfinal-alloc2r = validityWF-mem-only (eval f x) fst-loc s₄ s-final refl refl fst-valid-s4
+      fst-valid-sfinal-alloc2r : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s-final
+      fst-valid-sfinal-alloc2r = validityWF-mem-only (eval primSem f x) fst-loc s₄ s-final refl refl fst-valid-s4
 
       -- Step 6: alloc₂-reclaimed → alloc₃ (ps-slot allocation)
-      fst-valid-wf₃ : ValidAtWF mF alloc₃ (eval f x) fst-loc s-final
-      fst-valid-wf₃ = validityWF-alloc-advance (eval f x) fst-loc s-final ps pair-fits-at-reclaim
+      fst-valid-wf₃ : ValidAtWF mF alloc₃ (eval primSem f x) fst-loc s-final
+      fst-valid-wf₃ = validityWF-alloc-advance (eval primSem f x) fst-loc s-final ps pair-fits-at-reclaim
                         fst-valid-sfinal-alloc2r
 
       ------------------------------------------------------------------------
@@ -770,20 +770,20 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- snd validity at s₂ with alloc₂-reclaimed
       -- Use reclaim-preserves-validity to handle reclamation (slot decreasing)
-      snd-valid-s2-reclaimed : ValidAtWF mG alloc₂-reclaimed (eval g x) snd-loc s₂
+      snd-valid-s2-reclaimed : ValidAtWF mG alloc₂-reclaimed (eval primSem g x) snd-loc s₂
       snd-valid-s2-reclaimed = IRResultAWF.reclaim-preserves-validity result-g reclaim-g-fits
 
-      snd-valid-wf₃ : ValidAtWF mG alloc₃ (eval g x) snd-loc s-final
-      snd-valid-wf₃ = validityWF-alloc-advance (eval g x) snd-loc s-final ps pair-fits-at-reclaim
-                        (validityWF-mem-only (eval g x) snd-loc s₄ s-final refl refl
-                          (validityWF-write-at-suc-frontier (eval g x) snd-loc s₃ snd-loc
+      snd-valid-wf₃ : ValidAtWF mG alloc₃ (eval primSem g x) snd-loc s-final
+      snd-valid-wf₃ = validityWF-alloc-advance (eval primSem g x) snd-loc s-final ps pair-fits-at-reclaim
+                        (validityWF-mem-only (eval primSem g x) snd-loc s₄ s-final refl refl
+                          (validityWF-write-at-suc-frontier (eval primSem g x) snd-loc s₃ snd-loc
                             snd-before-alloc2r
-                            (validityWF-write-at-frontier (eval g x) snd-loc s₂ fst-loc
+                            (validityWF-write-at-frontier (eval primSem g x) snd-loc s₂ fst-loc
                               snd-before-alloc2r
                               snd-valid-s2-reclaimed)))
 
       -- Heap mode: use valid-pair-wf constructor
-      pair-valid-wf-final : ValidAtWF Heap alloc₃ (pair (eval f x) (eval g x)) pair-loc s-final
+      pair-valid-wf-final : ValidAtWF Heap alloc₃ (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
       pair-valid-wf-final = valid-pair-wf fst-ptr snd-ptr fst-before₃ snd-before₃ sucLoc-pair-before₃ fst-valid-wf₃ snd-valid-wf₃
 
       rax-eq : readReg (regs s-final) RAX ≡ pair-loc
@@ -865,9 +865,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Only slots-available differs (proof-irrelevant).
       pair-reclaim-preserves-validity : ∀ (fits : pair-reclaim ≤ frame-capacity alloc) →
         ValidAtWF Heap (record alloc { next-slot = pair-reclaim ; slots-available = fits })
-                  (pair (eval f x) (eval g x)) pair-loc s-final
+                  (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
       pair-reclaim-preserves-validity fits = validityWF-with-bf-transfer
-        (pair (eval f x) (eval g x)) pair-loc s-final alloc₃
+        (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final alloc₃
         (record alloc { next-slot = pair-reclaim ; slots-available = fits })
         (λ loc bf → bf-same-frame-slot alloc₃
           (record alloc { next-slot = pair-reclaim ; slots-available = fits })

@@ -47,7 +47,8 @@ open import Once.CCC.IR
 -- ValidityDef is now parameterized by program-bound for termination
 -- All IRs in the program have ir-size < program-bound
 -- This enables Apply to call run-ir on body using rs (body<bound)
-module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
+-- Also parameterized by PrimSem for primitive evaluation
+module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open MemOps {FS}
   open FrontierInvariant {FS}
 
@@ -106,7 +107,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     -- Closure validity: tracks the body IR that created this closure!
     --
     -- A closure created by (curry body) with captured env has:
-    --   - semantic value: λ arg → eval body (pair env arg)
+    --   - semantic value: λ arg → eval primSem body (pair env arg)
     --   - memory layout: closure-loc → env-loc, sucLoc closure-loc → code marker
     --   - body IR: stored for Apply to dispatch to
     --   - body<bound: proof that ir-size body < program-bound (enables termination in Apply)
@@ -126,8 +127,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       BeforeFrontier alloc code-loc →
       BeforeFrontier alloc (sucLoc closure-loc) →
       ValidAt alloc env env-loc s →
-      -- The semantic value matches: closure = λ arg → eval body (pair env arg)
-      ValidAt alloc {A ⇒[ q ] B} (λ arg → eval body (pair env arg)) closure-loc s
+      -- The semantic value matches: closure = λ arg → eval primSem body (pair env arg)
+      ValidAt alloc {A ⇒[ q ] B} (λ arg → eval primSem body (pair env arg)) closure-loc s
 
   ------------------------------------------------------------------------
   -- PairValid record (extracted structure from valid-pair)
@@ -171,7 +172,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       sucLoc-before : BeforeFrontier alloc (sucLoc closure-loc)
       env-valid : ValidAt alloc env env-loc s
       -- Proof that f is the closure we expect
-      f-is-closure : f ≡ (λ arg → eval body (pair env arg))
+      f-is-closure : f ≡ (λ arg → eval primSem body (pair env arg))
 
   ------------------------------------------------------------------------
   -- SumValid records (extracted structure from valid-inl/valid-inr)
@@ -319,7 +320,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
     BeforeFrontier alloc code-loc →
     BeforeFrontier alloc (sucLoc closure-loc) →
     ValidAt alloc env env-loc s →
-    ValidAt alloc {A ⇒[ q ] B} (λ arg → eval body (pair env arg)) closure-loc s
+    ValidAt alloc {A ⇒[ q ] B} (λ arg → eval primSem body (pair env arg)) closure-loc s
   composeClosure {_} {_} {_} {_} {_} body env bb closure-loc env-loc code-loc s ep cp eb cb slb ev =
     valid-closure {body = body} {env = env} bb ep cp eb cb slb ev
 
@@ -395,7 +396,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) where
       sv' : ValidAt alloc b sl s₂
       sv' = validity-mem-only b sl s₁ s₂ stack-eq heap-eq sv
 
-  validity-mem-only {alloc} {A ⇒[ _ ] B} .(λ arg → eval body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
+  validity-mem-only {alloc} {A ⇒[ _ ] B} .(λ arg → eval primSem body (pair env arg)) loc s₁ s₂ stack-eq heap-eq
     (valid-closure {EnvType} {_} {_} {_} {body} {env} ba {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) =
     valid-closure {body = body} {env = env} ba ep' cp' eb cb slb ev'
     where

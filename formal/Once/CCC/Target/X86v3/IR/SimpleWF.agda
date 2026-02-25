@@ -26,7 +26,7 @@ open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 -- Simple IR implementations
 ------------------------------------------------------------------------
 
-module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -35,8 +35,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
 
   open import Once.CCC.Target.X86v3.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound
-    using (ValidAtWF; IRResultAWF; valid-unit-wf;
+  open ClosureWellFormedDef {FS} program-bound primSem
+    using (ValidAtWF; IRResultAWF; valid-unit-wf; valid-eff-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            decomposePairWF; PairValidWF)
 
@@ -292,4 +292,57 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
           validityWF-frontier-advance x input-loc s' refl ≤-refl ≤-refl
             (validityWF-mem-only x input-loc s s' refl refl input-valid-wf)
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0  -- ir-stack-requirement (free-heap _) = 0
+      }
+
+  ------------------------------------------------------------------------
+  -- Arr: effectful morphism coercion
+  --
+  -- Converts (A ⇒[ q ] B) to (Eff A B). Semantically identity since
+  -- ⟦ A ⇒[ q ] B ⟧ = ⟦ Eff A B ⟧ = ⟦ A ⟧ → ⟦ B ⟧
+  ------------------------------------------------------------------------
+
+  run-arr : ∀ {m A B q}
+    (x : ⟦ A ⇒[ q ] B ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF m alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) RDI ≡ input-loc →
+    IRResultAWF m (arr {A} {B} {q}) x s alloc
+  run-arr {m} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    let s' = exec (mov RAX RDI) s
+        -- Transfer validity from s to s' (memory preserved)
+        valid-s' : ValidAtWF m alloc x input-loc s'
+        valid-s' = validityWF-mem-only x input-loc s s' refl refl input-valid-wf
+        -- Coerce type from (A ⇒[ q ] B) to (Eff A B)
+        valid-eff : ValidAtWF m alloc {Eff A B} x input-loc s'
+        valid-eff = valid-eff-wf {m} {A} {B} {q} valid-s'
+    in record
+      { result-loc = input-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; result-valid-wf = valid-eff
+      ; result-before = input-before
+      ; rax-is-result = trans (mov-result RAX RDI s) rdi-eq
+      ; not-halted = not-halted
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; heap-preserved = refl
+      ; capacity-preserved = refl
+      ; mem-preserved-before = λ loc _ →
+          readLoc-stackMem-eq s' s loc
+            (mov-preserves-stackMem RAX RDI s)
+            (mov-preserves-heapMem RAX RDI s)
+      -- Reclamation: arr doesn't allocate, so we can reclaim to original next-slot
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ fits →
+          frontier-same-heap alloc (record alloc { slots-available = fits }) refl refl refl input-loc input-before
+      ; reclaim-preserves-validity = λ fits →
+          -- Transfer validity, then coerce type
+          valid-eff-wf {m} {A} {B} {q}
+            (validityWF-frontier-advance x input-loc s' refl ≤-refl ≤-refl valid-s')
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0  -- ir-stack-requirement arr = 0
       }

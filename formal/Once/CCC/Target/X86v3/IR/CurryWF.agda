@@ -26,7 +26,7 @@ open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 -- Curry implementation
 ------------------------------------------------------------------------
 
-module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
+module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -35,7 +35,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
 
   open import Once.CCC.Target.X86v3.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound
+  open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; BodyCorrect;
            valid-closure-wf; validityWF-mem-only;
            validityWF-alloc-advance;
@@ -44,7 +44,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
 
   -- Import bf-same-frame-slot from BFTransfer module
-  open import Once.CCC.IR.ApplyWF
+  open import Once.CCC.Target.X86v3.IR.ApplyWF
   open BFTransfer {FS}
     using (bf-same-frame-slot)
 
@@ -72,14 +72,14 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
   -- Helper: closure-slots ≤ ir-stack-requirement (curry f m) for any AllocMode
   -- Both Stack and Heap modes give type-slots 2 for closures, and closure-slots = 2
-  closure-slots-≤-curry-req : ∀ {A B C} (f : IR (A * B) C) (m : AllocMode) →
-    closure-slots ≤ ir-stack-requirement (curry f m)
+  closure-slots-≤-curry-req : ∀ {A B C q} (f : IR (A * B) C) (m : AllocMode) →
+    closure-slots ≤ ir-stack-requirement (curry {q = q} f m)
   closure-slots-≤-curry-req f Stack = ≤-refl
   closure-slots-≤-curry-req f Heap = ≤-refl
 
-  run-curry : ∀ {A B C} (mIn : AllocMode) (f : IR (A * B) C) (m : AllocMode)
-    (ir<bound : ir-size (curry f m) < program-bound)
-    (rec-wf : RecDispatcherWF (ir-size (curry f m)))
+  run-curry : ∀ {A B C q} (mIn : AllocMode) (f : IR (A * B) C) (m : AllocMode)
+    (ir<bound : ir-size (curry {q = q} f m) < program-bound)
+    (rec-wf : RecDispatcherWF (ir-size (curry {q = q} f m)))
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
@@ -87,9 +87,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
     halted s ≡ false →
     readReg (regs s) RDI ≡ input-loc →
     -- Capacity using ir-stack-requirement
-    next-slot alloc +ℕ ir-stack-requirement (curry f m) ≤ frame-capacity alloc →
-    IRResultAWF Heap (curry f m) x s alloc  -- Closure is always Heap (boxed)
-  run-curry mIn f m ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    next-slot alloc +ℕ ir-stack-requirement (curry {q = q} f m) ≤ frame-capacity alloc →
+    IRResultAWF Heap (curry {q = q} f m) x s alloc  -- Closure is always Heap (boxed)
+  run-curry {q = q} mIn f m ir<bound rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     record
       { result-loc = closure-loc
       ; final-state = s-final
@@ -114,20 +114,20 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       }
     where
       -- Size bound for body
-      body<bound = curry-body-bound f {m} program-bound ir<bound
+      body<bound = curry-body-bound {q = q} f {m} program-bound ir<bound
 
       closure-loc = OnStack (current-frame alloc) (next-slot alloc)
 
       -- PROVEN: closure-fits from combined-cap
-      -- ir-stack-requirement (curry f m) = type-slots-for-mode m (B ⇒[ Many ] C) = 2 = closure-slots
+      -- ir-stack-requirement (curry f m) = type-slots-for-mode m (B ⇒[ q ] C) = 2 = closure-slots
       -- So: closure-slots ≤ ir-stack-requirement (curry f m) trivially
       -- and: slot + closure-slots ≤ slot + ir-stack-requirement ≤ capacity
-      req-curry = ir-stack-requirement (curry f m)
+      req-curry = ir-stack-requirement (curry {q = q} f m)
 
       -- closure-slots ≤ ir-stack-requirement (curry f m)
-      -- ir-stack-requirement (curry f m) = type-slots-for-mode m (B ⇒[ Many ] C) = 2 = closure-slots
+      -- ir-stack-requirement (curry f m) = type-slots-for-mode m (B ⇒[ q ] C) = 2 = closure-slots
       closure-bound : closure-slots ≤ req-curry
-      closure-bound = closure-slots-≤-curry-req f m
+      closure-bound = closure-slots-≤-curry-req {q = q} f m
 
       closure-fits : next-slot alloc +ℕ closure-slots ≤ frame-capacity alloc
       closure-fits = ≤-trans (+-monoʳ-≤ (next-slot alloc) closure-bound) combined-cap
@@ -185,8 +185,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
                 input-valid-wf)))
 
       -- KEY: Construct BodyCorrect using rec-wf!
-      -- rec-wf is RecDispatcherWF (ir-size (curry f m))
-      -- Since curry-smaller : ir-size f < ir-size (curry f m), we can dispatch to f
+      -- rec-wf is RecDispatcherWF (ir-size (curry {q = q} f m))
+      -- Since curry-smaller : ir-size f < ir-size (curry {q = q} f m), we can dispatch to f
       --
       -- Uses ir-stack-requirement for body-capacity
       --
@@ -198,7 +198,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
         { body-capacity = ir-stack-requirement f
         ; body-cap-eq = refl
         ; execute = λ arg arg-loc pair-loc s' alloc' mPair pair-valid-wf pair-before not-halt rdi-eq' combined-cap' →
-            rec-wf mPair f (curry-smaller f {m}) (pair x arg) pair-loc s' alloc'
+            rec-wf mPair f (curry-smaller {q = q} f {m}) (pair x arg) pair-loc s' alloc'
               pair-valid-wf pair-before not-halt rdi-eq' combined-cap'
         }
 
@@ -219,7 +219,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- KEY: Output valid-closure-wf with body-correct embedded!
       -- valid-closure-wf returns ValidAtWF Heap (closure is always boxed)
-      curry-result-wf : ValidAtWF Heap alloc-final (eval (curry f m) x) closure-loc s-final
+      curry-result-wf : ValidAtWF Heap alloc-final (eval primSem(curry {q = q} f m) x) closure-loc s-final
       curry-result-wf = valid-closure-wf body<bound
                           env-ptr code-ptr input-before₁ code-before₁ sucLoc-closure-before
                           input-valid-wf-final body-correct
@@ -236,9 +236,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
       -- Only slots-available differs (proof-irrelevant).
       curry-reclaim-preserves-validity : ∀ (fits : next-slot alloc +ℕ closure-slots ≤ frame-capacity alloc) →
         ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ closure-slots ; slots-available = fits })
-                  (eval (curry f m) x) closure-loc s-final
+                  (eval primSem(curry {q = q} f m) x) closure-loc s-final
       curry-reclaim-preserves-validity fits = validityWF-with-bf-transfer
-        (eval (curry f m) x) closure-loc s-final alloc₁
+        (eval primSem(curry {q = q} f m) x) closure-loc s-final alloc₁
         (record alloc { next-slot = next-slot alloc +ℕ closure-slots ; slots-available = fits })
         (λ loc bf → bf-same-frame-slot alloc₁
           (record alloc { next-slot = next-slot alloc +ℕ closure-slots ; slots-available = fits })
@@ -247,7 +247,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
 
       -- Reclaim size bound: reclaimable ≤ slot + ir-stack-requirement
       -- curry: reclaimable = slot + closure-slots
-      -- ir-stack-requirement (curry f m) = ir-stack-requirement f + closure-slots
-      -- So closure-slots ≤ ir-stack-requirement (curry f m) ✓
+      -- ir-stack-requirement (curry {q = q} f m) = ir-stack-requirement f + closure-slots
+      -- So closure-slots ≤ ir-stack-requirement (curry {q = q} f m) ✓
       reclaim-size-bound-curry : next-slot alloc +ℕ closure-slots ≤ next-slot alloc +ℕ req-curry
       reclaim-size-bound-curry = +-monoʳ-≤ (next-slot alloc) closure-bound
