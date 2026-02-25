@@ -27,9 +27,9 @@ open import Once.Target.X86.Syntax
          Instr; mov; lea; add; sub; cmp; push; pop; call; ret; jmp; jne; label; ud2;
          Program; slot-size; slots)
 
--- Import X86v3 IR
+-- Import CCC IR (via X86v3.IR re-export)
 open import Once.CCC.Target.X86v3.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal;
-                                          inl-ir; inr-ir; case-ir; initial; fold-ir; unfold-ir; Prim)
+                                          inl-ir; inr-ir; case-ir; initial; fold-ir; unfold-ir; free-heap; Prim)
 
 ------------------------------------------------------------------------
 -- Instruction sequences for each IR construct
@@ -180,7 +180,8 @@ compile-length (case-ir f g) = compile-length f +ℕ compile-length g  -- placeh
 compile-length initial = 1      -- absurd elimination
 compile-length (fold-ir _) = 1      -- wrap
 compile-length unfold-ir = 1    -- unwrap
-compile-length (Prim _) = 1     -- primitive
+compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles actual free)
+compile-length (Prim _) = 1       -- primitive
 
 -- | Generate x86 code for IR
 compile-ir : ∀ {A B} → IR A B → Program
@@ -222,6 +223,7 @@ compile-ir (case-ir f g) = compile-ir f ++ compile-ir g  -- placeholder
 compile-ir initial = ud2 ∷ []     -- absurd elimination (should never execute)
 compile-ir (fold-ir _) = id-instrs     -- wrap: just transfer rdi → rax (same representation)
 compile-ir unfold-ir = id-instrs       -- unwrap: just transfer rdi → rax (same representation)
+compile-ir (free-heap _) = []     -- no-op: actual deallocation handled by runtime
 compile-ir (Prim _) = ud2 ∷ []    -- primitives need FFI (placeholder)
 
 ------------------------------------------------------------------------
