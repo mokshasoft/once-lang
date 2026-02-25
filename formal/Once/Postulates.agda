@@ -214,7 +214,7 @@ postulate
 -- REMAINING: Memory-dependent axioms for pairs/sums/closures.
 -- These require knowing that values are properly allocated in memory.
 --
--- NEEDED BY: Once.Backend.X86.Correct (generator proofs)
+-- NEEDED BY: Once.CCC.Target.X86.Correct (generator proofs)
 --
 -- JUSTIFICATION:
 --   These capture the intended memory layout for the x86-64 backend:
@@ -249,7 +249,7 @@ readMem m addr = m addr
 -- predicates (PairAtS, InlAtS, InrAtS) that track actual addresses
 -- instead of using the abstract `encode` function.
 --
--- See Once.Backend.X86.Correct.StarBase for working examples:
+-- See Once.CCC.Target.X86.Correct.StarBase for working examples:
 --   - run-fst-star-s, run-snd-star-s: eliminate encode-pair-fst/snd
 --   - run-inl-star-s, run-inr-star-s: eliminate encode-*-construct
 --   - test-fst/snd/inl/inr-stateful: complete E2E proofs with NO postulates
@@ -444,7 +444,7 @@ postulate
 --   - MemoryRegions.regions-disjoint
 
 ------------------------------------------------------------------------
--- Postulate P5: x86-64 Execution Helpers (in Once.Backend.X86.Correct)
+-- Postulate P5: x86-64 Execution Helpers (in Once.CCC.Target.X86.Correct)
 ------------------------------------------------------------------------
 --
 -- The x86-64 backend has additional postulates for instruction execution:
@@ -463,7 +463,7 @@ postulate
 --   run-curry-seq           : Closure creation sequence
 --   run-apply-seq           : Closure application sequence
 --
--- These are kept in Once.Backend.X86.Correct because they depend on
+-- These are kept in Once.CCC.Target.X86.Correct because they depend on
 -- x86-specific types (State, Program, Instr, etc.).
 --
 -- NEEDED BY: Individual compile-*-correct proofs

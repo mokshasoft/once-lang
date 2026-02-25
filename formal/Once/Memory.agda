@@ -11,7 +11,7 @@
 -- - Proven memory theorems (mem-read-write, mem-read-other)
 --
 -- By centralizing the memory model here, both Once.Semantics and
--- Once.Backend.X86.Encoding can share the same definitions and proofs.
+-- Once.Target.X86.Encoding can share the same definitions and proofs.
 ------------------------------------------------------------------------
 
 module Once.Memory where

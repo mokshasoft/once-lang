@@ -37,17 +37,17 @@ compile-preserves-semantics ir x =
 -- x86-64 backend
 ------------------------------------------------------------------------
 
-open import Once.Backend.X86.Syntax using (rax)
-open import Once.Backend.X86.Semantics as X86
+open import Once.Target.X86.Syntax using (rax)
+open import Once.Target.X86.Semantics as X86
 open X86.State using (regs; halted; memory)
-open import Once.Backend.X86.CodeGen using (compile-x86; compile-length)
-open import Once.Backend.X86.Correct.InitState using (initWithInput; initWithInput-halted; initWithInput-pc; initWithInput-stack-inv; initWithInput-rbp-inv; initWithInput-stack-capacity)
-open import Once.Backend.X86.Correct.Star using (Star)
-open import Once.Backend.X86.Correct.MemoryValid using (ValidAt; valid-from-encode)
-open import Once.Backend.X86.Correct.StackInstantiation using (StackCapacity; ir-stack-requirement; slots; capacity-from-larger)
-open import Once.Backend.X86.Correct.WholeProgram using (whole-program-correct)
-open import Once.Backend.X86.Layout using (StackPointer)
-open import Once.Backend.X86.Layout using () renaming (addr to sp-addr)
+open import Once.CCC.Target.X86.CodeGen using (compile-x86; compile-length)
+open import Once.CCC.Target.X86.Correct.InitState using (initWithInput; initWithInput-halted; initWithInput-pc; initWithInput-stack-inv; initWithInput-rbp-inv; initWithInput-stack-capacity)
+open import Once.CCC.Target.X86.Correct.Star using (Star)
+open import Once.CCC.Target.X86.Correct.MemoryValid using (ValidAt; valid-from-encode)
+open import Once.CCC.Target.X86.Correct.StackInstantiation using (StackCapacity; ir-stack-requirement; slots; capacity-from-larger)
+open import Once.CCC.Target.X86.Correct.WholeProgram using (whole-program-correct)
+open import Once.CCC.Target.X86.Layout using (StackPointer)
+open import Once.CCC.Target.X86.Layout using () renaming (addr to sp-addr)
 open import Once.Postulates using (encode)
 open import Data.Nat using (_>_; _≤_)
 open import Data.Nat.Properties using (≤-trans)
@@ -85,7 +85,7 @@ compile-correct-x86 ir sp x sp-bound =
         (initWithInput-stack-inv sp x) cap (initWithInput-rbp-inv sp x)
   in s , star , h-false , pc-eq , subst-valid result-valid (compile-preserves-semantics ir x)
   where
-    open import Once.Backend.X86.Correct.StackInstantiation using (slots-mono-≤; output-slots≤ir-req)
+    open import Once.CCC.Target.X86.Correct.StackInstantiation using (slots-mono-≤; output-slots≤ir-req)
     -- Helper: 2 ≤ ir-stack-requirement ir' implies slots 2 ≤ slots (ir-stack-requirement ir')
     slots-mono-2-to-req : ∀ {A B} (ir' : Core.IR A B) → slots 2 ≤ slots (ir-stack-requirement ir')
     slots-mono-2-to-req ir' = slots-mono-≤ (output-slots≤ir-req ir')
@@ -97,13 +97,13 @@ compile-correct-x86 ir sp x sp-bound =
 -- RISC-V 64 backend
 ------------------------------------------------------------------------
 
-open import Once.Backend.RiscV64.Syntax using (a0)
-open import Once.Backend.RiscV64.Semantics as RV64
+open import Once.Target.RiscV64.Syntax using (a0)
+open import Once.Target.RiscV64.Semantics as RV64
 open RV64.State using () renaming (regs to regsRV; halted to haltedRV)
-open import Once.Backend.RiscV64.CodeGen using (compile-riscv)
-open import Once.Backend.RiscV64.Correct using (star-codegen-correct)
+open import Once.CCC.Target.RiscV64.CodeGen using (compile-riscv)
+open import Once.CCC.Target.RiscV64.Correct using (star-codegen-correct)
   renaming (initWithInput to initWithInputRV; encode to encodeRV)
-open import Once.Backend.RiscV64.Correct.Star renaming (Star to StarRV)
+open import Once.CCC.Target.RiscV64.Correct.Star renaming (Star to StarRV)
 
 compile-correct-riscv : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →
   ∃[ s ] (StarRV (compile-riscv (compile ir)) (initWithInputRV x) s
@@ -117,11 +117,11 @@ compile-correct-riscv ir x =
 -- AArch64 backend
 ------------------------------------------------------------------------
 
-open import Once.Backend.AArch64.Syntax using (x0)
-open import Once.Backend.AArch64.Semantics as AArch64
+open import Once.Target.AArch64.Syntax using (x0)
+open import Once.Target.AArch64.Semantics as AArch64
 open AArch64.State using () renaming (regs to regsAA; halted to haltedAA)
-open import Once.Backend.AArch64.CodeGen using (compile-aarch64)
-open import Once.Backend.AArch64.Correct.CorrectBridge using (codegen-aarch64-correct)
+open import Once.CCC.Target.AArch64.CodeGen using (compile-aarch64)
+open import Once.CCC.Target.AArch64.Correct.CorrectBridge using (codegen-aarch64-correct)
   renaming (initWithInput to initWithInputAA; encode to encodeAA; Star to StarAA)
 
 compile-correct-aarch64 : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧) →

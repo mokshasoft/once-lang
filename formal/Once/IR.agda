@@ -7,7 +7,7 @@
 -- The ~12 generators form a complete basis for all pure Once programs.
 --
 -- Relies on Agda's default termination checker for structural recursion.
--- See Once.Backend.X86.Correct.MutualIR.Termination for orthogonal termination proof.
+-- See Once.CCC.Target.X86.Correct.MutualIR.Termination for orthogonal termination proof.
 ------------------------------------------------------------------------
 
 module Once.IR where
