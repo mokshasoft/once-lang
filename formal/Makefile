@@ -26,6 +26,9 @@
 #   make arith-x86v3  - Arithmetic primitives for X86v3
 #   make compiler-x86v3 - Full X86v3 compiler
 #
+# Dead code analysis (requires patched Agda):
+#   make dead-code-ccc-x86v3 - Dead code analysis for X86v3 CCC
+#
 # Utilities:
 #   make agda MODULE=path  - Type-check single module
 #   make malonzo           - Extract compiler to Haskell
@@ -156,6 +159,15 @@ malonzo:
 	@mkdir -p ../compiler/src/MAlonzo/Code/Once
 	@cp -r _build/malonzo/MAlonzo/Code/Once/* ../compiler/src/MAlonzo/Code/Once/
 	@echo "Done! MAlonzo modules extracted to compiler/src/MAlonzo/Code/Once/"
+
+#-----------------------------------------------------------------------------
+# Dead Code Analysis (requires patched Agda with --dead-code)
+#-----------------------------------------------------------------------------
+
+.PHONY: dead-code-ccc-x86v3
+dead-code-ccc-x86v3:
+	@echo "Running dead code analysis on X86v3 CCC..."
+	@./run-dead-code.sh Once.CCC.Target.X86v3.WholeProgram.compile-correct Once/CCC/Target/X86v3/WholeProgram.agda
 
 #-----------------------------------------------------------------------------
 # Utilities
