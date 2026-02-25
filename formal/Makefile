@@ -170,6 +170,50 @@ dead-code-ccc-x86v3:
 	@./run-dead-code.sh Once.CCC.Target.X86v3.WholeProgram.compile-correct Once/CCC/Target/X86v3/WholeProgram.agda
 
 #-----------------------------------------------------------------------------
+# Postulate Detection
+#-----------------------------------------------------------------------------
+
+# Patched Agda command (for --warn-postulates)
+# Uses local writable stdlib cache for interface files
+PATCHED_AGDA := $(shell ls -t /home/whatever/Repo/OpenSource/agda/dist-newstyle/build/x86_64-linux/ghc-*/Agda-2.8.0/x/agda/build/agda/agda 2>/dev/null | head -1)
+LOCAL_STD_LIB_DIR := $(HOME)/_stdlib-cache
+
+define PATCHED_AGDA_CMD
+if [ ! -f "$(LOCAL_STD_LIB_DIR)/standard-library.agda-lib" ]; then \
+  NIX_STD_LIB_DIR=$$(dirname $$(find /nix/store -maxdepth 2 -name "standard-library.agda-lib" 2>/dev/null | head -1)); \
+  echo "Creating local writable copy of stdlib..."; \
+  mkdir -p "$(LOCAL_STD_LIB_DIR)"; \
+  cp -r "$$NIX_STD_LIB_DIR"/* "$(LOCAL_STD_LIB_DIR)"/; \
+  chmod -R u+w "$(LOCAL_STD_LIB_DIR)"; \
+fi; \
+unset AGDA_DIR; export LC_ALL=en_US.utf8; $(PATCHED_AGDA) --library-file=<(echo "$(LOCAL_STD_LIB_DIR)/standard-library.agda-lib"; echo "Once.agda-lib") --transliterate --warn-postulates
+endef
+
+# Fast grep scan for postulates
+.PHONY: postulates-grep
+postulates-grep:
+	@echo "Scanning for postulates (grep)..."
+	@grep -rn "^postulate$$\|^postulate $$" --include="*.agda" Once/ || echo "No postulates found."
+	@grep -rn "^ *postulate$$\|^ *postulate " --include="*.agda" Once/ || true
+
+# Precise postulate detection using patched Agda (X86v3 CCC)
+.PHONY: postulates-ccc-x86v3
+postulates-ccc-x86v3:
+	@echo "Checking postulates in X86v3 CCC (precise)..."
+	@sh -c '$(PATCHED_AGDA_CMD) Once/CCC/Target/X86v3/WholeProgram.agda'
+
+# Precise postulate detection using patched Agda (X86v3 Arith)
+.PHONY: postulates-arith-x86v3
+postulates-arith-x86v3:
+	@echo "Checking postulates in X86v3 Arith (precise)..."
+	@sh -c '$(PATCHED_AGDA_CMD) Once/Arith/Target/X86v3/PrimProofs.agda'
+
+# Precise postulate detection for full X86v3 compiler
+.PHONY: postulates-x86v3
+postulates-x86v3: postulates-ccc-x86v3 postulates-arith-x86v3
+	@echo "Postulate check complete for X86v3."
+
+#-----------------------------------------------------------------------------
 # Utilities
 #-----------------------------------------------------------------------------
 
