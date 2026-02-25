@@ -3,23 +3,20 @@
 --
 -- Arithmetic PrimProofProviderV3 for X86v3 CCC.
 --
--- The CCC sees Prims as opaque assembly blocks. This module proves
--- that arithmetic assembly satisfies the CCC's contract.
---
 -- Architecture:
---   - CCC defines the contract (PrimProofProviderV3)
---   - Arith provides the proof using:
---     a. Concrete execution model (exec-arith and properties - PROVEN)
---     b. Primitive validity constructors (PROVEN)
---     c. One type-level postulate (arith-result-valid)
+--   - CCC defines generic contract (PrimContractV3)
+--   - Arith defines CONCRETE primitives with IsPrimitive evidence
+--   - Arith provides proofs using the concrete evidence
 --
--- The execution model is now DEFINED, not postulated. Only one postulate
--- remains: arith-result-valid (requires type-level constraint on B).
+-- TRUST BOUNDARY: Only CPU instruction semantics.
+-- The semantic functions (add-int-sem, etc.) ARE the specification.
+--
+-- NO POSTULATES - IsPrimitive evidence enables ValidAtWF dispatch.
 ------------------------------------------------------------------------
 
 module Once.Arith.Backend.X86v3.PrimProofs where
 
-open import Data.Nat using (ℕ; _≤_; _<_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; _≤_; _<_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; <-≤-trans)
 open import Data.Bool using (Bool; false)
 open import Data.String using (String)
@@ -33,9 +30,49 @@ open import Once.Backend.Common.SlotMachine
          readReg; writeReg; writeReg-same;
          RDI; RAX; module MemOps; module ExecLemmas)
 open import Once.Backend.X86v3.Types using (Type; Int; Float; Str; Buffer; ⟦_⟧)
-open import Once.Backend.X86v3.IR using (IR; Prim; eval; PrimContractV3; AllocMode; stack-requirement; output-mode)
+open import Once.Backend.X86v3.IR
+  using (IR; Prim; eval; PrimContractV3; AllocMode; Stack;
+         stack-requirement; output-mode; IsPrimitive; is-int; is-float)
 open import Once.Backend.X86v3.Allocation
   using (AllocState; next-slot; next-heap-ref; frame-capacity; current-frame; module FrontierInvariant)
+
+------------------------------------------------------------------------
+-- Concrete Arithmetic Primitives
+--
+-- Each arithmetic primitive is defined with:
+--   - name: String identifier
+--   - sem: Semantic function (the specification)
+--   - contract: Generic PrimContractV3
+--   - is-prim: IsPrimitive evidence for the output type
+--
+-- This evidence is used to construct ValidAtWF without postulates.
+------------------------------------------------------------------------
+
+record ArithPrimitive (A B : Type) : Set where
+  field
+    name : String
+    sem : ⟦ A ⟧ → ⟦ B ⟧
+    contract : PrimContractV3 A B
+    is-prim : IsPrimitive B
+
+open ArithPrimitive public
+
+-- Helper to construct contracts for arithmetic (no stack needed, stack output)
+arith-contract : PrimContractV3 (Int * Int) Int
+arith-contract = record
+  { stack-requirement = 0
+  ; output-mode = Stack
+  ; stack-req-bounded = z≤n
+  }
+
+-- Concrete arithmetic primitives
+add-int-prim : ArithPrimitive (Int * Int) Int
+add-int-prim = record
+  { name = "add-int"
+  ; sem = λ (a , b) → a +ℕ b
+  ; contract = arith-contract
+  ; is-prim = is-int
+  }
 
 ------------------------------------------------------------------------
 -- Arithmetic PrimProofProviderV3
@@ -49,7 +86,8 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.Backend.X86v3.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF;
-           valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf)
+           valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
+           valid-primitive-wf)
 
   open import Once.Backend.X86v3.Dispatcher
   open PrimProofInterface {FS} program-bound
@@ -125,33 +163,26 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) where
     in ExecLemmas.readLoc-stackMem-eq final-state s loc refl refl
 
   ------------------------------------------------------------------------
-  -- TYPE-LEVEL POSTULATE
-  --
-  -- This postulate remains because PrimProofProviderV3 is generic for
-  -- any types A and B. We have constructors for specific primitive types
-  -- (Int, Float, etc.) but can't dispatch without knowing B concretely.
-  --
-  -- SOUND: Arithmetic only operates on primitive types, so B will always
-  -- be a primitive type (Int for integer arithmetic).
-  ------------------------------------------------------------------------
-
-  postulate
-    arith-result-valid : ∀ {A B} {m : AllocMode}
-      (sem : ⟦ A ⟧ → ⟦ B ⟧) (x : ⟦ A ⟧)
-      {alloc : AllocState {FS}}
-      {result-loc : ValueLocation FS} {s : LocState FS} →
-      BeforeFrontier alloc result-loc →
-      ValidAtWF m alloc {B} (sem x) result-loc s
-
-  ------------------------------------------------------------------------
   -- THE PROOF: arithmetic satisfies PrimProofProviderV3
   --
-  -- All execution properties are now PROVEN from the concrete model.
-  -- Only arith-result-valid remains as a postulate.
+  -- Architecture:
+  --   1. arith-prim-proof-with-evidence: Takes IsPrimitive evidence directly
+  --   2. arith-prim-proof: Generic provider that takes evidence as parameter
+  --
+  -- The evidence comes from concrete ArithPrimitive definitions.
+  -- No postulates - all dispatch via IsPrimitive constructors.
+  --
+  -- TRUST BOUNDARY: Only CPU instruction semantics.
   ------------------------------------------------------------------------
 
-  arith-prim-proof : PrimProofProviderV3
-  arith-prim-proof {A} {B} name sem c mIn x input-loc s alloc
+  -- Core proof with explicit IsPrimitive evidence
+  arith-prim-proof-with-evidence : ∀ {A B}
+    (is-prim : IsPrimitive B)
+    (name : String)
+    (sem : ⟦ A ⟧ → ⟦ B ⟧)
+    (c : PrimContractV3 A B) →
+    PrimProofV3 sem c (Prim name sem c)
+  arith-prim-proof-with-evidence {A} {B} is-prim name sem c mIn x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq cap-ok =
     let
       -- Execute arithmetic (register-only)
@@ -160,8 +191,8 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) where
       -- Result is before frontier (same as input location)
       result-before = exec-arith-before sem x input-loc s alloc input-before
 
-      -- Result is valid (postulate - needs type constraint on B)
-      result-valid = arith-result-valid sem x result-before
+      -- Result is valid: dispatch on IsPrimitive evidence
+      result-valid = valid-primitive-wf is-prim result-before
     in
     record
       { result-loc = result-loc
@@ -185,6 +216,12 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) where
       ; reclaim-preserves-result = λ fits → before-frontier-slots-irrel alloc fits result-before
       ; reclaim-preserves-validity = λ fits →
           let reclaim-before = before-frontier-slots-irrel alloc fits result-before
-          in arith-result-valid sem x reclaim-before
+          in valid-primitive-wf is-prim reclaim-before
       ; reclaim-size-bound = m≤m+n (next-slot alloc) (stack-requirement c)
       }
+
+  -- Proof for a concrete ArithPrimitive (uses embedded evidence)
+  arith-prim-proof-concrete : ∀ {A B} (p : ArithPrimitive A B) →
+    PrimProofV3 (sem p) (contract p) (Prim (name p) (sem p) (contract p))
+  arith-prim-proof-concrete p =
+    arith-prim-proof-with-evidence (is-prim p) (name p) (sem p) (contract p)

@@ -187,6 +187,26 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) where
         ValidAtWF m alloc {Buffer} x loc s
 
     --------------------------------------------------------------------
+    -- valid-primitive-wf: Dispatch on IsPrimitive evidence
+    --
+    -- For primitive types, ValidAtWF only needs BeforeFrontier.
+    -- This function dispatches based on IsPrimitive evidence,
+    -- eliminating the need for postulates in Prim proofs.
+    --------------------------------------------------------------------
+
+    valid-primitive-wf : ∀ {m} {B : Type} {v : ⟦ B ⟧}
+      {alloc : AllocState {FS}}
+      {loc : ValueLocation FS} {s : LocState FS} →
+      IsPrimitive B →
+      BeforeFrontier alloc loc →
+      ValidAtWF m alloc {B} v loc s
+    valid-primitive-wf is-unit bf = valid-unit-wf
+    valid-primitive-wf is-int bf = valid-int-wf bf
+    valid-primitive-wf is-float bf = valid-float-wf bf
+    valid-primitive-wf is-str bf = valid-str-wf bf
+    valid-primitive-wf is-buffer bf = valid-buffer-wf bf
+
+    --------------------------------------------------------------------
     -- IRResultAWF: Mode-indexed IR execution result
     --
     -- Indexed by output mode m. For allocating IRs:

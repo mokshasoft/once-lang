@@ -43,11 +43,33 @@ data AllocMode : Set where
   Heap  : AllocMode  -- Allocate on heap (escaping)
 
 ------------------------------------------------------------------------
+-- IsPrimitive
+--
+-- Evidence that a type is a primitive type.
+-- This is a TYPE-LEVEL FACT, not a trust assumption.
+-- CPU operations only produce primitive types - this is definitional.
+--
+-- Domain compilers (Arith, etc.) use this when instantiating contracts.
+-- The CCC doesn't need to know about this - it's an implementation detail.
+------------------------------------------------------------------------
+
+data IsPrimitive : Type → Set where
+  is-unit   : IsPrimitive Unit
+  is-int    : IsPrimitive Int
+  is-float  : IsPrimitive Float
+  is-str    : IsPrimitive Str
+  is-buffer : IsPrimitive Buffer
+
+------------------------------------------------------------------------
 -- PrimContractV3
 --
 -- Contract for primitive operations in SlotMachine.
 -- Specifies what a primitive needs (stack slots) and produces (output mode).
 -- No assembly - SlotMachine is symbolic execution.
+--
+-- This is the GENERIC contract that CCC sees. Domain compilers
+-- instantiate this with concrete types and provide IsPrimitive
+-- evidence separately (not part of this record).
 ------------------------------------------------------------------------
 
 record PrimContractV3 (A B : Type) : Set where
