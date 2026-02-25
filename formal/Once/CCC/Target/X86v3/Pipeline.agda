@@ -61,7 +61,7 @@ open import Once.CCC.Target.X86v3.SlotToX86
          writeLoc-preserves-regs)
 
 -- Import IR and types from X86v3
-open import Once.CCC.Target.X86v3.IR using (IR; eval)
+open import Once.CCC.IR using (IR; eval)
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧; _*_; _⇒_)
 
 -- Import CodeGen

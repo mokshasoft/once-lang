@@ -22,11 +22,11 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine using (LocState; ValueLocation; halted; regs; readReg; RDI)
 
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧)
-open import Once.CCC.Target.X86v3.IR using (IR; eval; ir-size; ir-stack-requirement; AllocMode; pair-slots)
+open import Once.CCC.IR using (IR; eval; ir-size; ir-stack-requirement; AllocMode; pair-slots)
 open import Once.CCC.Target.X86v3.Allocation using (AllocState; next-slot; current-frame; frame-capacity; module FrontierInvariant)
 
 -- Import escape interface for SurvivesFramePop
-import Once.CCC.Target.X86v3.IR.ApplyWF as ApplyWFModule
+import Once.CCC.IR.ApplyWF as ApplyWFModule
 
 -- Import Dispatcher for PrimProofInterface
 import Once.CCC.Target.X86v3.Dispatcher as DispatcherModule

@@ -20,7 +20,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
-open import Once.CCC.Target.X86v3.IR
+open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------

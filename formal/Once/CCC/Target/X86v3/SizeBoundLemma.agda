@@ -10,7 +10,7 @@ module Once.CCC.Target.X86v3.SizeBoundLemma where
 open import Data.Nat using (ℕ; _<_)
 open import Data.Nat.Properties using (<-trans)
 
-open import Once.CCC.Target.X86v3.IR
+open import Once.CCC.IR
 
 ------------------------------------------------------------------------
 -- Size bound lemmas

@@ -30,7 +30,7 @@ open import Once.CCC.SlotMachine
          readReg; writeReg; writeReg-same;
          RDI; RAX; module MemOps; module ExecLemmas)
 open import Once.CCC.Target.X86v3.Types using (Type; Int; Float; Str; Buffer; ⟦_⟧)
-open import Once.CCC.Target.X86v3.IR
+open import Once.CCC.IR
   using (IR; Prim; eval; PrimContractV3; AllocMode; Stack;
          stack-requirement; output-mode; IsPrimitive; is-int; is-float)
 open import Once.CCC.Target.X86v3.Allocation

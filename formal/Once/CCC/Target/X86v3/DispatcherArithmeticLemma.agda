@@ -11,7 +11,7 @@ open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; s≤s; z≤n) renaming (
 open import Data.Nat.Properties using (≤-refl; ≤-trans; +-assoc; +-monoˡ-≤; +-monoʳ-≤; ≤-reflexive; +-suc; +-identityʳ; +-identityˡ; *-monoʳ-≤; <⇒≤; m≤m+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; trans; sym; subst)
 
-open import Once.CCC.Target.X86v3.IR using (pair-slots)
+open import Once.CCC.IR using (pair-slots)
 
 ------------------------------------------------------------------------
 -- Slot-bounded lemmas for compose and pair

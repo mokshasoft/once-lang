@@ -19,7 +19,7 @@ open import Once.CCC.Target.X86v3.CodeGen using (compile-ir)
 open import Once.Target.X86.Emit using (programToText)
 
 -- Import X86v3 IR
-open import Once.CCC.Target.X86v3.IR using (IR)
+open import Once.CCC.IR using (IR)
 
 ------------------------------------------------------------------------
 -- End-to-end compilation: X86v3.IR → assembly text

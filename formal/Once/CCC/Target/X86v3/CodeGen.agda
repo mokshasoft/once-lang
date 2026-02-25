@@ -28,7 +28,7 @@ open import Once.Target.X86.Syntax
          Program; slot-size; slots)
 
 -- Import CCC IR (via X86v3.IR re-export)
-open import Once.CCC.Target.X86v3.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal;
+open import Once.CCC.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal;
                                           inl-ir; inr-ir; case-ir; initial; fold-ir; unfold-ir; free-heap; Prim)
 
 ------------------------------------------------------------------------

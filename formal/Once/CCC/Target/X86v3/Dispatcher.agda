@@ -29,7 +29,7 @@ open import Induction.WellFounded using (Acc; acc)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
-open import Once.CCC.Target.X86v3.IR
+open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 open import Once.CCC.Target.X86v3.ClosureWellFormed
 
@@ -54,11 +54,11 @@ open import Once.CCC.Target.X86v3.SizeBoundLemma public
 -- Import helper modules
 ------------------------------------------------------------------------
 
-import Once.CCC.Target.X86v3.IR.SimpleWF as SimpleWFModule
-import Once.CCC.Target.X86v3.IR.ComposeWF as ComposeWFModule
-import Once.CCC.Target.X86v3.IR.PairWF as PairWFModule
-import Once.CCC.Target.X86v3.IR.CurryWF as CurryWFModule
-import Once.CCC.Target.X86v3.IR.ApplyWF as ApplyWFModule
+import Once.CCC.IR.SimpleWF as SimpleWFModule
+import Once.CCC.IR.ComposeWF as ComposeWFModule
+import Once.CCC.IR.PairWF as PairWFModule
+import Once.CCC.IR.CurryWF as CurryWFModule
+import Once.CCC.IR.ApplyWF as ApplyWFModule
 
 -- Import write operations from separate module
 open import Once.CCC.Target.X86v3.WriteOps public using (module WriteWithDisjoint)
@@ -211,7 +211,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     escape-result-survives parent-bound-eq
 
   -- Import sum/fix IR implementations (inl, inr, case, initial, fold, unfold)
-  open import Once.CCC.Target.X86v3.IR.SumFixWF as SumFixWFModule
+  open import Once.CCC.IR.SumFixWF as SumFixWFModule
   open SumFixWFModule.SumFixWFImpl {FS} program-bound
 
   ------------------------------------------------------------------------

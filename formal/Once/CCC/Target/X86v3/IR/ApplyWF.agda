@@ -31,7 +31,7 @@ open import Relation.Nullary using (yes; no)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
-open import Once.CCC.Target.X86v3.IR
+open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 
 -- Import escape interface for SurvivesFramePop
@@ -327,7 +327,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
       body-cap-in-child : 0 +ℕ closure-body-cap ≤ child-capacity
       body-cap-in-child = ≤-trans body-cap-bounded child-cap-sufficient
         where
-          open import Once.CCC.Target.X86v3.IR using (ir-req-≤-pair-slots*size)
+          open import Once.CCC.IR using (ir-req-≤-pair-slots*size)
           -- body-capacity = ir-stack-requirement body
           -- ir-stack-requirement body ≤ pair-slots * ir-size body ≤ pair-slots * (program-bound - 1) < pair-slots * program-bound
           body-cap-bounded : closure-body-cap ≤ pair-slots *ℕ program-bound

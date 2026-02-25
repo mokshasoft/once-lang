@@ -25,7 +25,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Allocation
 open import Once.CCC.Target.X86v3.Types public
-open import Once.CCC.Target.X86v3.IR
+open import Once.CCC.IR
 
 ------------------------------------------------------------------------
 -- ValidAt: Inductive Validity Predicate with Frontier Tracking

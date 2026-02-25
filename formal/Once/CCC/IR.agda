@@ -103,6 +103,36 @@ infixr 9 _∘_
 infixr 4 ⟨_,_⟩_
 
 ------------------------------------------------------------------------
+-- Primitive Type Evidence
+--
+-- IsPrimitive: Evidence that a type is primitive (CPU-native).
+-- Used by backend proofs to construct ValidAtWF without postulates.
+-- CPUs only produce primitive types as results.
+------------------------------------------------------------------------
+
+data IsPrimitive : Type → Set where
+  is-unit   : IsPrimitive Unit
+  is-int    : IsPrimitive Int
+  is-float  : IsPrimitive Float
+  is-str    : IsPrimitive Str
+  is-buffer : IsPrimitive Buffer
+
+------------------------------------------------------------------------
+-- Primitive Contract
+--
+-- PrimContractV3: Contract for primitive operations.
+-- Specifies resource requirements for code generation and verification.
+------------------------------------------------------------------------
+
+record PrimContractV3 (A B : Type) : Set where
+  field
+    stack-requirement : ℕ
+    output-mode : AllocMode
+    stack-req-bounded : stack-requirement ≤ 2
+
+open PrimContractV3 public
+
+------------------------------------------------------------------------
 -- Semantic Evaluation
 --
 -- AllocMode is phantom in semantics - it only affects runtime memory

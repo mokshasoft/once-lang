@@ -45,7 +45,7 @@ open import Once.Target.X86.Semantics as X86Sem
             readMem to x86-readMem; writeMem to x86-writeMem)
 
 -- Import IR and eval
-open import Once.CCC.Target.X86v3.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal; eval)
+open import Once.CCC.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal; eval)
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧; _*_; _⇒_; Unit; pair; fst; snd)
 
 -- Import CodeGen

@@ -20,7 +20,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Allocation
-open import Once.CCC.Target.X86v3.IR using (pair-slots)
+open import Once.CCC.IR using (pair-slots)
 
 ------------------------------------------------------------------------
 -- Two Capacity Pools Design

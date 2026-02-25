@@ -19,7 +19,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; tra
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
-open import Once.CCC.Target.X86v3.IR
+open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
@@ -44,7 +44,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
            at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
 
   -- Import bf-same-frame-slot from BFTransfer module
-  open import Once.CCC.Target.X86v3.IR.ApplyWF
+  open import Once.CCC.IR.ApplyWF
   open BFTransfer {FS}
     using (bf-same-frame-slot)
 
