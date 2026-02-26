@@ -164,13 +164,13 @@ module Correctness
 ------------------------------------------------------------------------
 
 open import Once.Target.X86.Semantics as X86
-  using (State; exec)
+  using (State)
 open import Once.CCC.Target.X86v3.CodeGen.Compile
   using (compile-ir)
 open import Once.CCC.Target.X86v3.Refinement.SlotToX86
   using (StateCorresponds)
-open import Data.List using (length)
-open import Data.Maybe using (Maybe; just)
+open import Once.CCC.Target.X86.Correct.Star
+  using (Star)
 
 -- Instantiate with concrete x86v3 frame semantics
 open import Once.CCC.Target.X86v3.FrameInstantiation using (x86v3-frame-semantics)
@@ -195,9 +195,12 @@ private
 -- STATUS: POSTULATE (Layer 1→2 connection incomplete)
 --
 -- To eliminate this postulate, we need:
---   1. Compose InstrCorrect lemmas for all IR constructs
---   2. Show exec (compile-ir ir) preserves StateCorresponds
+--   1. Compose InstrCorrect Star lemmas for all IR constructs
+--   2. Show Star (compile-ir ir) preserves StateCorresponds
 --   3. Connect final SlotMachine state to compile-correct result
+--
+-- NOTE: Uses Star (not exec) per proof-instructions.md:
+--   "All proofs must use the Star relation"
 ------------------------------------------------------------------------
 
 -- | Full correctness: compile + execute = eval
@@ -207,6 +210,7 @@ private
 --   - Layer 1→2 (InstrCorrect lemmas, partially proven)
 --
 -- When Layer 1→2 is complete, this becomes a theorem.
+-- Uses Star relation for clean composition (no fuel arithmetic).
 postulate
   full-correctness : ∀ {A B : Type} (ir : IR A B)
     (x : ⟦ A ⟧)
@@ -214,7 +218,7 @@ postulate
     (σ-init : LocState FS')
     (input-loc : ValueLocation FS') →
     StateCorresponds σ-init x86-init →
-    -- After executing compiled code:
+    -- After executing compiled code (Star = reaches in zero or more steps):
     ∃[ x86-final ] ∃[ σ-final ]
-      (exec (length (compile-ir ir)) (compile-ir ir) x86-init ≡ just x86-final)
+      Star (compile-ir ir) x86-init x86-final
       × StateCorresponds σ-final x86-final
