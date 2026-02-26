@@ -95,8 +95,8 @@ slot-to-disp k = k *ℕ slot-size
 -- | Stack slot to memory operand (rbp-relative)
 -- Assumes the slot is in the current frame.
 slot-to-mem : Slot → Mem
-slot-to-mem zero = base rbp
-slot-to-mem k    = base+disp rbp (slot-to-disp k)
+slot-to-mem ℕ.zero    = base rbp
+slot-to-mem (ℕ.suc k) = base+disp rbp (slot-to-disp (ℕ.suc k))
 
 -- | Register indirect to memory operand
 reg-indirect : Reg → Mem
