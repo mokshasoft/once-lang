@@ -419,6 +419,29 @@ pop-reg-result : ∀ (prog : Program) (s : State) (r : Reg) (v : Word) →
 pop-reg-result prog s r v mem-eq rewrite mem-eq = refl
 
 ------------------------------------------------------------------------
+-- Memory Read/Write Properties
+------------------------------------------------------------------------
+
+open import Data.Nat using (_≡ᵇ_)
+open import Data.Bool using (if_then_else_)
+
+-- | Reading after writing to a different address returns the original value
+-- Note: Requires address inequality (addr₁ ≢ addr₂)
+readMem-writeMem-diff : ∀ (m : Memory) (addr₁ addr₂ : Word) (v : Word) →
+  addr₁ ≢ addr₂ →
+  x86-readMem (x86-writeMem m addr₁ v) addr₂ ≡ x86-readMem m addr₂
+readMem-writeMem-diff m addr₁ addr₂ v neq with addr₂ ≡ᵇ addr₁ in eq
+... | true = ⊥-elim (neq (sym (≡ᵇ-true-≡ addr₂ addr₁ eq)))
+  where
+    -- Need to show: if a ≡ᵇ b = true, then a ≡ b
+    ≡ᵇ-true-≡ : ∀ (a b : ℕ) → (a ≡ᵇ b) ≡ true → a ≡ b
+    ≡ᵇ-true-≡ zero zero _ = refl
+    ≡ᵇ-true-≡ zero (suc _) ()
+    ≡ᵇ-true-≡ (suc _) zero ()
+    ≡ᵇ-true-≡ (suc a) (suc b) eq = cong suc (≡ᵇ-true-≡ a b eq)
+... | false = refl
+
+------------------------------------------------------------------------
 -- step Lemmas
 --
 -- These connect fetch + execInstr to step.
@@ -899,42 +922,338 @@ pair-not-halted : ∀ (s : State) (n : ℕ) → X86Sem.State.halted s ≡ false 
   n ≤ 17 → X86Sem.State.halted (pair-id-id-final s) ≡ false
 pair-not-halted s n h-eq _ = h-eq  -- halted preserved through all steps
 
--- | Step lemmas for pair (postulated for now, can be proven like compose)
--- Each postulate returns the next state, Star proof, pc equality, AND halted proof
+------------------------------------------------------------------------
+-- Pair Step Proofs
+--
+-- Each phase is proven by showing step produces the expected next state.
+-- Pop instructions require memory reads, so cleanup is partially postulated.
+------------------------------------------------------------------------
+
+-- | Single step helper: given fetch and execInstr results, produce step result
+private
+  make-step : ∀ (s s' : State) (instr : Instr) →
+    X86Sem.State.halted s ≡ false →
+    fetch pair-id-id-prog (X86Sem.State.pc s) ≡ just instr →
+    execInstr pair-id-id-prog s instr ≡ just s' →
+    step pair-id-id-prog s ≡ just s'
+  make-step s s' instr h-eq fetch-eq exec-eq =
+    trans (step-fetch-result pair-id-id-prog s instr h-eq fetch-eq) exec-eq
+
+-- | First id: 1 step (pc 7→8)
+-- Instruction: mov rax, rdi
+-- This is a simple mov, proven directly.
+step-pair-id1 : ∀ (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 7 →
+  ∃[ s' ] (Star pair-id-id-prog s s'
+         × X86Sem.State.pc s' ≡ 8
+         × X86Sem.State.halted s' ≡ false)
+step-pair-id1 s h-eq pc-eq =
+  let fetch-eq : fetch pair-id-id-prog (X86Sem.State.pc s) ≡ just (mov (reg rax) (reg rdi))
+      fetch-eq = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (reg rax) (reg rdi))) (sym pc-eq) refl
+      s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax (x86-readReg (X86Sem.State.regs s) rdi)
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
+      step-eq = make-step s s' (mov (reg rax) (reg rdi)) h-eq fetch-eq (mov-reg-reg-result pair-id-id-prog s rax rdi)
+      pc'-eq : X86Sem.State.pc s' ≡ 8
+      pc'-eq = cong (λ n → n +ℕ 1) pc-eq
+  in s' , star-single h-eq step-eq , pc'-eq , h-eq
+
+-- | Second id: 1 step (pc 10→11)
+-- Instruction: mov rax, rdi
+step-pair-id2 : ∀ (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 10 →
+  ∃[ s' ] (Star pair-id-id-prog s s'
+         × X86Sem.State.pc s' ≡ 11
+         × X86Sem.State.halted s' ≡ false)
+step-pair-id2 s h-eq pc-eq =
+  let fetch-eq : fetch pair-id-id-prog (X86Sem.State.pc s) ≡ just (mov (reg rax) (reg rdi))
+      fetch-eq = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (reg rax) (reg rdi))) (sym pc-eq) refl
+      s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax (x86-readReg (X86Sem.State.regs s) rdi)
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
+      step-eq = make-step s s' (mov (reg rax) (reg rdi)) h-eq fetch-eq (mov-reg-reg-result pair-id-id-prog s rax rdi)
+      pc'-eq : X86Sem.State.pc s' ≡ 11
+      pc'-eq = cong (λ n → n +ℕ 1) pc-eq
+  in s' , star-single h-eq step-eq , pc'-eq , h-eq
+
+-- | Middle phase: 2 steps (pc 8→10)
+-- Instructions: mov [r15], rax; mov rdi, r14
+step-pair-middle : ∀ (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 8 →
+  ∃[ s' ] (Star pair-id-id-prog s s'
+         × X86Sem.State.pc s' ≡ 10
+         × X86Sem.State.halted s' ≡ false)
+step-pair-middle s h-eq pc-eq =
+  let -- pc=8: mov [r15], rax
+      fetch-8 : fetch pair-id-id-prog (X86Sem.State.pc s) ≡ just (mov (mem (base r15)) (reg rax))
+      fetch-8 = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (mem (base r15)) (reg rax))) (sym pc-eq) refl
+      s1 = record s { memory = x86-writeMem (X86Sem.State.memory s)
+                                 (effectiveAddr s (base r15))
+                                 (x86-readReg (X86Sem.State.regs s) rax)
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
+      step-0 = make-step s s1 (mov (mem (base r15)) (reg rax)) h-eq fetch-8
+                 (mov-reg-mem-result pair-id-id-prog s (base r15) rax)
+      pc1-eq : X86Sem.State.pc s1 ≡ 9
+      pc1-eq = cong (λ n → n +ℕ 1) pc-eq
+
+      -- pc=9: mov rdi, r14
+      fetch-9 : fetch pair-id-id-prog (X86Sem.State.pc s1) ≡ just (mov (reg rdi) (reg r14))
+      fetch-9 = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (reg rdi) (reg r14))) (sym pc1-eq) refl
+      s2 = record s1 { regs = x86-writeReg (X86Sem.State.regs s1) rdi (x86-readReg (X86Sem.State.regs s1) r14)
+                     ; pc = X86Sem.State.pc s1 +ℕ 1 }
+      step-1 = make-step s1 s2 (mov (reg rdi) (reg r14)) h-eq fetch-9
+                 (mov-reg-reg-result pair-id-id-prog s1 rdi r14)
+      pc2-eq : X86Sem.State.pc s2 ≡ 10
+      pc2-eq = cong (λ n → n +ℕ 1) pc1-eq
+
+  in s2 , (star-single h-eq step-0 ◅◅ star-single h-eq step-1) , pc2-eq , h-eq
+
+-- | Setup phase: 7 steps (pc 0→7)
+-- Instructions: push r14, push r15, push rbp, mov rbp rsp, sub rsp 16, mov r15 rsp, mov r14 rdi
+step-pair-setup : ∀ (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 0 →
+  ∃[ s' ] (Star pair-id-id-prog s s'
+         × X86Sem.State.pc s' ≡ 7
+         × X86Sem.State.halted s' ≡ false)
+step-pair-setup s h-eq pc-eq =
+  let -- pc=0: push r14
+      fetch-0 : fetch pair-id-id-prog (X86Sem.State.pc s) ≡ just (push (reg r14))
+      fetch-0 = subst (λ n → fetch pair-id-id-prog n ≡ just (push (reg r14))) (sym pc-eq) refl
+      s1 = record s { regs = x86-writeReg (X86Sem.State.regs s) rsp
+                               (x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size)
+                    ; memory = x86-writeMem (X86Sem.State.memory s)
+                                 (x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size)
+                                 (x86-readReg (X86Sem.State.regs s) r14)
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
+      step-0 = make-step s s1 (push (reg r14)) h-eq fetch-0 (push-reg-result pair-id-id-prog s r14)
+      pc1 : X86Sem.State.pc s1 ≡ 1
+      pc1 = cong (λ n → n +ℕ 1) pc-eq
+
+      -- pc=1: push r15
+      fetch-1 : fetch pair-id-id-prog (X86Sem.State.pc s1) ≡ just (push (reg r15))
+      fetch-1 = subst (λ n → fetch pair-id-id-prog n ≡ just (push (reg r15))) (sym pc1) refl
+      s2 = record s1 { regs = x86-writeReg (X86Sem.State.regs s1) rsp
+                                (x86-readReg (X86Sem.State.regs s1) rsp ∸ slot-size)
+                     ; memory = x86-writeMem (X86Sem.State.memory s1)
+                                  (x86-readReg (X86Sem.State.regs s1) rsp ∸ slot-size)
+                                  (x86-readReg (X86Sem.State.regs s1) r15)
+                     ; pc = X86Sem.State.pc s1 +ℕ 1 }
+      step-1 = make-step s1 s2 (push (reg r15)) h-eq fetch-1 (push-reg-result pair-id-id-prog s1 r15)
+      pc2 : X86Sem.State.pc s2 ≡ 2
+      pc2 = cong (λ n → n +ℕ 1) pc1
+
+      -- pc=2: push rbp
+      fetch-2 : fetch pair-id-id-prog (X86Sem.State.pc s2) ≡ just (push (reg rbp))
+      fetch-2 = subst (λ n → fetch pair-id-id-prog n ≡ just (push (reg rbp))) (sym pc2) refl
+      s3 = record s2 { regs = x86-writeReg (X86Sem.State.regs s2) rsp
+                                (x86-readReg (X86Sem.State.regs s2) rsp ∸ slot-size)
+                     ; memory = x86-writeMem (X86Sem.State.memory s2)
+                                  (x86-readReg (X86Sem.State.regs s2) rsp ∸ slot-size)
+                                  (x86-readReg (X86Sem.State.regs s2) rbp)
+                     ; pc = X86Sem.State.pc s2 +ℕ 1 }
+      step-2 = make-step s2 s3 (push (reg rbp)) h-eq fetch-2 (push-reg-result pair-id-id-prog s2 rbp)
+      pc3 : X86Sem.State.pc s3 ≡ 3
+      pc3 = cong (λ n → n +ℕ 1) pc2
+
+      -- pc=3: mov rbp, rsp
+      fetch-3 : fetch pair-id-id-prog (X86Sem.State.pc s3) ≡ just (mov (reg rbp) (reg rsp))
+      fetch-3 = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (reg rbp) (reg rsp))) (sym pc3) refl
+      s4 = record s3 { regs = x86-writeReg (X86Sem.State.regs s3) rbp
+                                (x86-readReg (X86Sem.State.regs s3) rsp)
+                     ; pc = X86Sem.State.pc s3 +ℕ 1 }
+      step-3 = make-step s3 s4 (mov (reg rbp) (reg rsp)) h-eq fetch-3 (mov-reg-reg-result pair-id-id-prog s3 rbp rsp)
+      pc4 : X86Sem.State.pc s4 ≡ 4
+      pc4 = cong (λ n → n +ℕ 1) pc3
+
+      -- pc=4: sub rsp, 16
+      fetch-4 : fetch pair-id-id-prog (X86Sem.State.pc s4) ≡ just (sub (reg rsp) (imm (slots 2)))
+      fetch-4 = subst (λ n → fetch pair-id-id-prog n ≡ just (sub (reg rsp) (imm (slots 2)))) (sym pc4) refl
+      s5 = record s4 { regs = x86-writeReg (X86Sem.State.regs s4) rsp
+                                (x86-readReg (X86Sem.State.regs s4) rsp ∸ slots 2)
+                     ; pc = X86Sem.State.pc s4 +ℕ 1
+                     ; flags = X86Sem.updateFlags
+                                 (x86-readReg (X86Sem.State.regs s4) rsp ∸ slots 2)
+                                 (x86-readReg (X86Sem.State.regs s4) rsp) }
+      step-4 = make-step s4 s5 (sub (reg rsp) (imm (slots 2))) h-eq fetch-4
+                 (sub-imm-reg-result pair-id-id-prog s4 rsp (slots 2))
+      pc5 : X86Sem.State.pc s5 ≡ 5
+      pc5 = cong (λ n → n +ℕ 1) pc4
+
+      -- pc=5: mov r15, rsp
+      fetch-5 : fetch pair-id-id-prog (X86Sem.State.pc s5) ≡ just (mov (reg r15) (reg rsp))
+      fetch-5 = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (reg r15) (reg rsp))) (sym pc5) refl
+      s6 = record s5 { regs = x86-writeReg (X86Sem.State.regs s5) r15
+                                (x86-readReg (X86Sem.State.regs s5) rsp)
+                     ; pc = X86Sem.State.pc s5 +ℕ 1 }
+      step-5 = make-step s5 s6 (mov (reg r15) (reg rsp)) h-eq fetch-5 (mov-reg-reg-result pair-id-id-prog s5 r15 rsp)
+      pc6 : X86Sem.State.pc s6 ≡ 6
+      pc6 = cong (λ n → n +ℕ 1) pc5
+
+      -- pc=6: mov r14, rdi
+      fetch-6 : fetch pair-id-id-prog (X86Sem.State.pc s6) ≡ just (mov (reg r14) (reg rdi))
+      fetch-6 = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (reg r14) (reg rdi))) (sym pc6) refl
+      s7 = record s6 { regs = x86-writeReg (X86Sem.State.regs s6) r14
+                                (x86-readReg (X86Sem.State.regs s6) rdi)
+                     ; pc = X86Sem.State.pc s6 +ℕ 1 }
+      step-6 = make-step s6 s7 (mov (reg r14) (reg rdi)) h-eq fetch-6 (mov-reg-reg-result pair-id-id-prog s6 r14 rdi)
+      pc7 : X86Sem.State.pc s7 ≡ 7
+      pc7 = cong (λ n → n +ℕ 1) pc6
+
+  in s7 , (star-single h-eq step-0 ◅◅
+           star-single h-eq step-1 ◅◅
+           star-single h-eq step-2 ◅◅
+           star-single h-eq step-3 ◅◅
+           star-single h-eq step-4 ◅◅
+           star-single h-eq step-5 ◅◅
+           star-single h-eq step-6)
+        , pc7 , h-eq
+
+-- | Cleanup phase: 6 steps (pc 11→17)
+-- Instructions: mov [r15+8] rax, mov rax r15, mov rsp rbp, pop rbp, pop r15, pop r14
+-- Pop instructions require stack memory reads to succeed.
+--
+-- This is split into mov steps (no memory reads) and pop steps (need memory reads).
+-- The pop steps are proven by requiring memory read preconditions about the
+-- *modified* memory state at each pop point.
+
+-- | First 3 movs of cleanup (pc 11→14)
+step-pair-cleanup-movs : ∀ (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 11 →
+  ∃[ s' ] (Star pair-id-id-prog s s'
+         × X86Sem.State.pc s' ≡ 14
+         × X86Sem.State.halted s' ≡ false)
+step-pair-cleanup-movs s h-eq pc-eq =
+  let -- pc=11: mov [r15+8], rax
+      fetch-11 : fetch pair-id-id-prog (X86Sem.State.pc s) ≡ just (mov (mem (base+disp r15 slot-size)) (reg rax))
+      fetch-11 = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (mem (base+disp r15 slot-size)) (reg rax))) (sym pc-eq) refl
+      s1 = record s { memory = x86-writeMem (X86Sem.State.memory s)
+                                 (effectiveAddr s (base+disp r15 slot-size))
+                                 (x86-readReg (X86Sem.State.regs s) rax)
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
+      step-11 = make-step s s1 (mov (mem (base+disp r15 slot-size)) (reg rax)) h-eq fetch-11
+                  (mov-reg-mem-result pair-id-id-prog s (base+disp r15 slot-size) rax)
+      pc12 : X86Sem.State.pc s1 ≡ 12
+      pc12 = cong (λ n → n +ℕ 1) pc-eq
+
+      -- pc=12: mov rax, r15
+      fetch-12 : fetch pair-id-id-prog (X86Sem.State.pc s1) ≡ just (mov (reg rax) (reg r15))
+      fetch-12 = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (reg rax) (reg r15))) (sym pc12) refl
+      s2 = record s1 { regs = x86-writeReg (X86Sem.State.regs s1) rax
+                                (x86-readReg (X86Sem.State.regs s1) r15)
+                     ; pc = X86Sem.State.pc s1 +ℕ 1 }
+      step-12 = make-step s1 s2 (mov (reg rax) (reg r15)) h-eq fetch-12
+                  (mov-reg-reg-result pair-id-id-prog s1 rax r15)
+      pc13 : X86Sem.State.pc s2 ≡ 13
+      pc13 = cong (λ n → n +ℕ 1) pc12
+
+      -- pc=13: mov rsp, rbp
+      fetch-13 : fetch pair-id-id-prog (X86Sem.State.pc s2) ≡ just (mov (reg rsp) (reg rbp))
+      fetch-13 = subst (λ n → fetch pair-id-id-prog n ≡ just (mov (reg rsp) (reg rbp))) (sym pc13) refl
+      s3 = record s2 { regs = x86-writeReg (X86Sem.State.regs s2) rsp
+                                (x86-readReg (X86Sem.State.regs s2) rbp)
+                     ; pc = X86Sem.State.pc s2 +ℕ 1 }
+      step-13 = make-step s2 s3 (mov (reg rsp) (reg rbp)) h-eq fetch-13
+                  (mov-reg-reg-result pair-id-id-prog s2 rsp rbp)
+      pc14 : X86Sem.State.pc s3 ≡ 14
+      pc14 = cong (λ n → n +ℕ 1) pc13
+
+  in s3 , (star-single h-eq step-11 ◅◅
+           star-single h-eq step-12 ◅◅
+           star-single h-eq step-13)
+        , pc14 , h-eq
+
+-- | Last 3 pops of cleanup (pc 14→17)
+-- Requires memory read preconditions for each pop
+step-pair-cleanup-pops : ∀ (s : State)
+  (v-rbp v-r15 v-r14 : Word) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 14 →
+  -- Memory preconditions: pop reads from rsp, rsp+8, rsp+16
+  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rsp) ≡ just v-rbp →
+  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size) ≡ just v-r15 →
+  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size +ℕ slot-size) ≡ just v-r14 →
+  ∃[ s' ] (Star pair-id-id-prog s s'
+         × X86Sem.State.pc s' ≡ 17
+         × X86Sem.State.halted s' ≡ false)
+step-pair-cleanup-pops s v-rbp v-r15 v-r14 h-eq pc-eq mem-rbp mem-r15 mem-r14 =
+  let -- pc=14: pop rbp
+      fetch-14 : fetch pair-id-id-prog (X86Sem.State.pc s) ≡ just (pop rbp)
+      fetch-14 = subst (λ n → fetch pair-id-id-prog n ≡ just (pop rbp)) (sym pc-eq) refl
+      s1 = record s { regs = x86-writeReg
+                               (x86-writeReg (X86Sem.State.regs s) rbp v-rbp)
+                               rsp
+                               (x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size)
+                    ; pc = X86Sem.State.pc s +ℕ 1 }
+      step-14 = make-step s s1 (pop rbp) h-eq fetch-14 (pop-reg-result pair-id-id-prog s rbp v-rbp mem-rbp)
+      pc15 : X86Sem.State.pc s1 ≡ 15
+      pc15 = cong (λ n → n +ℕ 1) pc-eq
+
+      -- pc=15: pop r15
+      -- After pop rbp: rsp increased by slot-size
+      -- New rsp = old rsp + 8
+      -- Need to show readMem succeeds at new rsp = old rsp + 8
+      -- Memory hasn't changed, only registers
+      -- s1.memory = s.memory, s1.rsp = s.rsp + 8
+      fetch-15 : fetch pair-id-id-prog (X86Sem.State.pc s1) ≡ just (pop r15)
+      fetch-15 = subst (λ n → fetch pair-id-id-prog n ≡ just (pop r15)) (sym pc15) refl
+      -- Show that readMem s1.memory s1.rsp = just v-r15
+      rsp1-eq : x86-readReg (X86Sem.State.regs s1) rsp ≡ x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size
+      rsp1-eq = readReg-writeReg-same (x86-writeReg (X86Sem.State.regs s) rbp v-rbp) rsp
+                  (x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size)
+      mem-r15' : x86-readMem (X86Sem.State.memory s1) (x86-readReg (X86Sem.State.regs s1) rsp) ≡ just v-r15
+      mem-r15' = subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just v-r15) (sym rsp1-eq) mem-r15
+      s2 = record s1 { regs = x86-writeReg
+                                (x86-writeReg (X86Sem.State.regs s1) r15 v-r15)
+                                rsp
+                                (x86-readReg (X86Sem.State.regs s1) rsp +ℕ slot-size)
+                     ; pc = X86Sem.State.pc s1 +ℕ 1 }
+      step-15 = make-step s1 s2 (pop r15) h-eq fetch-15 (pop-reg-result pair-id-id-prog s1 r15 v-r15 mem-r15')
+      pc16 : X86Sem.State.pc s2 ≡ 16
+      pc16 = cong (λ n → n +ℕ 1) pc15
+
+      -- pc=16: pop r14
+      -- s2.rsp = s1.rsp + 8 = s.rsp + 16
+      fetch-16 : fetch pair-id-id-prog (X86Sem.State.pc s2) ≡ just (pop r14)
+      fetch-16 = subst (λ n → fetch pair-id-id-prog n ≡ just (pop r14)) (sym pc16) refl
+      rsp2-eq : x86-readReg (X86Sem.State.regs s2) rsp ≡ x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size +ℕ slot-size
+      rsp2-eq = trans (readReg-writeReg-same (x86-writeReg (X86Sem.State.regs s1) r15 v-r15) rsp
+                         (x86-readReg (X86Sem.State.regs s1) rsp +ℕ slot-size))
+                      (cong (_+ℕ slot-size) rsp1-eq)
+      mem-r14' : x86-readMem (X86Sem.State.memory s2) (x86-readReg (X86Sem.State.regs s2) rsp) ≡ just v-r14
+      mem-r14' = subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just v-r14) (sym rsp2-eq) mem-r14
+      s3 = record s2 { regs = x86-writeReg
+                                (x86-writeReg (X86Sem.State.regs s2) r14 v-r14)
+                                rsp
+                                (x86-readReg (X86Sem.State.regs s2) rsp +ℕ slot-size)
+                     ; pc = X86Sem.State.pc s2 +ℕ 1 }
+      step-16 = make-step s2 s3 (pop r14) h-eq fetch-16 (pop-reg-result pair-id-id-prog s2 r14 v-r14 mem-r14')
+      pc17 : X86Sem.State.pc s3 ≡ 17
+      pc17 = cong (λ n → n +ℕ 1) pc16
+
+  in s3 , (star-single h-eq step-14 ◅◅
+           star-single h-eq step-15 ◅◅
+           star-single h-eq step-16)
+        , pc17 , h-eq
+
+-- | Simple cleanup postulate for pair-id-id-star
+--
+-- NOTE: The full proof would use step-pair-cleanup-movs and step-pair-cleanup-pops:
+--   1. step-pair-cleanup-movs handles pc 11→14 (3 mov instructions) - FULLY PROVEN
+--   2. step-pair-cleanup-pops handles pc 14→17 (3 pop instructions) - FULLY PROVEN
+--
+-- To connect them, we need to show that the memory write in movs (to [r15+8])
+-- doesn't affect the pop read addresses (at rbp, rbp+8, rbp+16).
+-- This requires address disjointness: r15+8 ≠ rbp, rbp+8, rbp+16.
+-- The readMem-writeMem-diff lemma provides this if given the disjointness proof.
+--
+-- The gap is threading the concrete memory state from movs output to pops input,
+-- which requires more explicit state tracking than the existential return type allows.
+-- The full proof requires threading memory state from setup through all phases.
+-- The decomposed proofs (step-pair-cleanup-movs, step-pair-cleanup-pops) show the structure.
 postulate
-  -- Setup phase steps (7 instructions: pc 0→7)
-  step-pair-setup : ∀ (s : State) →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 0 →
-    ∃[ s' ] (Star pair-id-id-prog s s'
-           × X86Sem.State.pc s' ≡ 7
-           × X86Sem.State.halted s' ≡ false)
-
-  -- First id (1 instruction: pc 7→8)
-  step-pair-id1 : ∀ (s : State) →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 7 →
-    ∃[ s' ] (Star pair-id-id-prog s s'
-           × X86Sem.State.pc s' ≡ 8
-           × X86Sem.State.halted s' ≡ false)
-
-  -- Middle phase (2 instructions: pc 8→10)
-  step-pair-middle : ∀ (s : State) →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 8 →
-    ∃[ s' ] (Star pair-id-id-prog s s'
-           × X86Sem.State.pc s' ≡ 10
-           × X86Sem.State.halted s' ≡ false)
-
-  -- Second id (1 instruction: pc 10→11)
-  step-pair-id2 : ∀ (s : State) →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 10 →
-    ∃[ s' ] (Star pair-id-id-prog s s'
-           × X86Sem.State.pc s' ≡ 11
-           × X86Sem.State.halted s' ≡ false)
-
-  -- Cleanup phase (6 instructions: pc 11→17)
   step-pair-cleanup : ∀ (s : State) →
     X86Sem.State.halted s ≡ false →
     X86Sem.State.pc s ≡ 11 →
@@ -1010,23 +1329,34 @@ snd-star s v h-eq pc-eq mem-eq = star-single h-eq (step-snd s v h-eq pc-eq mem-e
 --   ✓ step-compose-{1,2,3} : step at each PC position
 --   ✓ s1-not-halted, s2-not-halted : halted preserved
 --
--- PAIR STAR PROOF (structure proven, step lemmas postulated):
+-- PAIR STAR PROOF:
 --   ✓ pair-id-id-star : ∃[ s' ] Star pair-id-id-prog s s'
 --   ✓ pair-id-id-prog : 17 instructions (setup + id + middle + id + cleanup)
---   ○ step-pair-{setup,id1,middle,id2,cleanup} : postulated phase steps
+--   FULLY PROVEN phases:
+--     ✓ step-pair-setup   : 7 steps (pc 0→7)  - push×3, mov×4
+--     ✓ step-pair-id1     : 1 step  (pc 7→8)  - mov rax, rdi
+--     ✓ step-pair-middle  : 2 steps (pc 8→10) - mov [r15], rax; mov rdi, r14
+--     ✓ step-pair-id2     : 1 step  (pc 10→11)- mov rax, rdi
+--     ✓ step-pair-cleanup-movs : 3 steps (pc 11→14) - mov×3
+--     ✓ step-pair-cleanup-pops : 3 steps (pc 14→17) - pop×3 (with mem preconditions)
+--   POSTULATED (1):
+--     ○ step-pair-cleanup : simple wrapper without mem threading
 --
 -- INSTRUCTION LEMMAS (fully proven):
 --   ✓ mov-reg-reg-result, mov-imm-reg-result, mov-mem-reg-result
 --   ✓ mov-reg-mem-result (memory write)
 --   ✓ sub-imm-reg-result, push-reg-result, pop-reg-result
 --
+-- MEMORY LEMMAS (fully proven):
+--   ✓ readMem-writeMem-diff : write at addr₁ doesn't affect read at addr₂
+--
 -- INFRASTRUCTURE (fully proven):
 --   ✓ compose-bridge, step-bridge, bridge-rdi-result
 --   ✓ fetch-++, fetch-++-right
 --   ✓ readReg-writeReg-same, readReg-writeReg-diff
 --
--- POSTULATES (5 - pair phase steps):
---   step-pair-setup, step-pair-id1, step-pair-middle,
---   step-pair-id2, step-pair-cleanup
---   (Each can be proven by chaining instruction lemmas like compose)
+-- REMAINING POSTULATE (1):
+--   step-pair-cleanup - needs memory state threading from movs to pops
+--   (The decomposed proofs step-pair-cleanup-movs and step-pair-cleanup-pops
+--    show the full structure; connecting them requires explicit state tracking)
 ------------------------------------------------------------------------
