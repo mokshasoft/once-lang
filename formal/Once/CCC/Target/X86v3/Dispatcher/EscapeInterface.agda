@@ -14,7 +14,7 @@
 -- It does NOT expose BeforeFrontier to the outside world.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.EscapeInterface where
+module Once.CCC.Target.X86v3.Dispatcher.EscapeInterface where
 
 open import Data.Nat using (ℕ; _<_)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -31,8 +31,8 @@ open import Once.CCC.SlotMachine using (HeapRef; HeapLocation; heap-ref; ref-id;
 module EscapeInterfaceDef {FS : FrameSemantics} where
   open FrameSemantics FS
   open import Once.CCC.SlotMachine using (ValueLocation; OnStack; OnHeap)
-  open import Once.CCC.Target.X86v3.Allocation using (AllocState; next-heap-ref; current-frame; next-slot)
-  open import Once.CCC.Target.X86v3.Allocation using (module FrontierInvariant)
+  open import Once.CCC.Target.X86v3.Dispatcher.Allocation using (AllocState; next-heap-ref; current-frame; next-slot)
+  open import Once.CCC.Target.X86v3.Dispatcher.Allocation using (module FrontierInvariant)
   open FrontierInvariant {FS}
 
   ------------------------------------------------------------------------

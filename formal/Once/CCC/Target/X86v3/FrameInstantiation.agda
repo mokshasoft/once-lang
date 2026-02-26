@@ -39,7 +39,7 @@ open import Once.CCC.Target.X86.Layout
   using (StackPointer; slot-addr; word-size;
          grow-identity; sp-distinct; offset-distinct;
          frame-below-slot0-disjoint; slot-addr-≥-base;
-         slot-addr-suc; InStack; in-stack)
+         InStack; in-stack)
 open import Once.CCC.Target.X86.Layout using () renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------
@@ -85,16 +85,32 @@ x86-frame-base = sp-addr
 -- X86 slots grow upward from frame base: slot k at base + k * word-size
 ------------------------------------------------------------------------
 
+-- | Direct definition of x86 slot address: base + k * word-size
+-- This gives definitional reduction, unlike using the abstract slot-addr.
 x86-slot-addr : X86Frame → ℕ → Addr
-x86-slot-addr = slot-addr
+x86-slot-addr f k = sp-addr f + k * word-size
+
+-- | Proof that x86-slot-addr equals the abstract slot-addr
+x86-slot-addr-eq : ∀ f k → x86-slot-addr f k ≡ slot-addr f k
+x86-slot-addr-eq f k = refl  -- Both compute to sp-addr f + k * word-size
 
 x86-slot-zero-at-base : ∀ f → x86-slot-addr f zero ≡ x86-frame-base f
-x86-slot-zero-at-base f = grow-identity (sp-addr f)
+x86-slot-zero-at-base f = Data.Nat.Properties.+-identityʳ (sp-addr f)
+  where import Data.Nat.Properties
 
 -- | Slot (suc k) is word-size bytes above slot k
 -- This is THE canonical slot-addr-suc for use with x86-frame-semantics
+--
+-- Proof: slot-addr sp (suc k) = sp + (suc k) * word-size
+--                             = sp + (word-size + k * word-size)   [by def of *]
+--                             = sp + (k * word-size + word-size)   [by +-comm]
+--                             = (sp + k * word-size) + word-size   [by +-assoc]
+--                             = slot-addr sp k + word-size
 x86-slot-addr-suc : ∀ f k → x86-slot-addr f (suc k) ≡ x86-slot-addr f k + word-size
-x86-slot-addr-suc = slot-addr-suc
+x86-slot-addr-suc f k =
+  trans (cong (sp-addr f +_) (+-comm word-size (k * word-size)))
+        (sym (+-assoc (sp-addr f) (k * word-size) word-size))
+  where open import Data.Nat.Properties using (+-assoc; +-comm)
 
 x86-slot-injective : ∀ f k₁ k₂ → k₁ ≢ k₂ → x86-slot-addr f k₁ ≢ x86-slot-addr f k₂
 x86-slot-injective = offset-distinct

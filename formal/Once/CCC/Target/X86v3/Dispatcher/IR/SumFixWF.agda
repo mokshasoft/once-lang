@@ -5,7 +5,7 @@
 -- recursive types (fold-ir, unfold-ir).
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.IR.SumFixWF where
+module Once.CCC.Target.X86v3.Dispatcher.IR.SumFixWF where
 
 open import Data.Nat using (ℕ; _<_; _≤_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; n≤1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤; ≤-irrelevant)
@@ -21,7 +21,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
-open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Sum and Fix IR implementations
@@ -36,7 +36,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   open ExecLemmas {FS}
   open FrameSemantics FS
 
-  open import Once.CCC.Target.X86v3.ClosureWellFormed
+  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; valid-unit-wf;
            validityWF-mem-only; validityWF-frontier-advance;
@@ -49,16 +49,16 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
            at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
 
   -- Import frontier lemmas
-  open import Once.CCC.Target.X86v3.FrontierLemma using (module FrontierLemmas)
+  open import Once.CCC.Target.X86v3.Dispatcher.FrontierLemma using (module FrontierLemmas)
   open FrontierLemmas {FS}
     using (frontier-same-heap; at-frontier-becomes-before)
 
   -- Import write operations
-  open import Once.CCC.Target.X86v3.WriteOps using (module WriteWithDisjoint)
+  open import Once.CCC.Target.X86v3.Dispatcher.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
 
   -- Import suc<+2 lemma for Heap mode proofs
-  open import Once.CCC.Target.X86v3.DispatcherArithmeticLemma using (suc<+2)
+  open import Once.CCC.Target.X86v3.Dispatcher.DispatcherArithmeticLemma using (suc<+2)
 
   -- Helper: fold is injective (wrap is injective)
   fold-injective : ∀ {F} {a b : ⟦ F ⟧} → fold a ≡ fold b → a ≡ b

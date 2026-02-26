@@ -232,6 +232,7 @@ library
       MAlonzo.Code.Once.CCC.IR
       MAlonzo.Code.Once.CCC.SlotMachine
       MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen
+      MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.Compile
       MAlonzo.Code.Once.CCC.Target.X86v3.Types
       MAlonzo.Code.Once.Compile
       MAlonzo.Code.Once.CompileX86v3

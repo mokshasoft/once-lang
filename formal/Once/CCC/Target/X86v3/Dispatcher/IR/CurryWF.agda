@@ -7,7 +7,7 @@
 -- Takes RecDispatcherWF as parameter to construct BodyCorrect.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.IR.CurryWF where
+module Once.CCC.Target.X86v3.Dispatcher.IR.CurryWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m+n≤o⇒m≤o; +-monoʳ-≤; *-monoˡ-≤; m≤m*n; +-assoc)
@@ -20,7 +20,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
-open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Curry implementation
@@ -34,7 +34,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open ExecLemmas {FS}
   open FrameSemantics FS
 
-  open import Once.CCC.Target.X86v3.ClosureWellFormed
+  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; BodyCorrect;
            valid-closure-wf; validityWF-mem-only;
@@ -44,22 +44,22 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
            at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
 
   -- Import bf-same-frame-slot from BFTransfer module
-  open import Once.CCC.Target.X86v3.IR.ApplyWF
+  open import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF
   open BFTransfer {FS}
     using (bf-same-frame-slot)
 
   -- Import lemmas
-  open import Once.CCC.Target.X86v3.DispatcherArithmeticLemma
+  open import Once.CCC.Target.X86v3.Dispatcher.DispatcherArithmeticLemma
     using (suc<+2)
-  open import Once.CCC.Target.X86v3.SizeBoundLemma
+  open import Once.CCC.Target.X86v3.Dispatcher.SizeBoundLemma
     using (curry-body-bound)
 
   -- Import write operations
-  open import Once.CCC.Target.X86v3.WriteOps using (module WriteWithDisjoint)
+  open import Once.CCC.Target.X86v3.Dispatcher.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
 
   -- Import frontier lemmas
-  open import Once.CCC.Target.X86v3.FrontierLemma using (module FrontierLemmas)
+  open import Once.CCC.Target.X86v3.Dispatcher.FrontierLemma using (module FrontierLemmas)
   open FrontierLemmas {FS}
     using (at-frontier-before-closure; frontier-same-heap)
 

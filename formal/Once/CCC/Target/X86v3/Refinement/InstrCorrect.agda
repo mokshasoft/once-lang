@@ -12,7 +12,7 @@
 --   3. Compose for full IR correctness
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.CodeGenCorrect where
+module Once.CCC.Target.X86v3.Refinement.InstrCorrect where
 
 open import Data.Nat using (_<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)
@@ -49,12 +49,12 @@ open import Once.CCC.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry;
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧; _*_; _⇒_; Unit; pair; fst; snd)
 
 -- Import CodeGen
-open import Once.CCC.Target.X86v3.CodeGen
+open import Once.CCC.Target.X86v3.CodeGen.Compile
   using (compile-ir; compile-length;
          id-instrs; fst-instrs; snd-instrs; terminal-instrs; compose-bridge)
 
 -- Import SlotToX86 correspondence
-open import Once.CCC.Target.X86v3.SlotToX86
+open import Once.CCC.Target.X86v3.Refinement.SlotToX86
   using (FS; loc-to-addr; compile-reg;
          RegsCorrespond; MemCorresponds; StateCorresponds;
          mov-regs-correspond; mov-mem-corresponds;

@@ -9,7 +9,7 @@
 -- Uses LINEAR capacity formula: pair-slots * ir-size
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.IR.PairWF where
+module Once.CCC.Target.X86v3.Dispatcher.IR.PairWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m*n; *-distribˡ-+; *-suc; n≤1+n)
@@ -22,7 +22,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
-open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Pair implementation
@@ -35,7 +35,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   open StackAllocation {FS}
   open FrameSemantics FS
 
-  open import Once.CCC.Target.X86v3.ClosureWellFormed
+  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            valid-pair-wf;
@@ -48,19 +48,19 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
 
   -- Import lemmas
-  open import Once.CCC.Target.X86v3.DispatcherArithmeticLemma
+  open import Once.CCC.Target.X86v3.Dispatcher.DispatcherArithmeticLemma
     using (suc<+2; compose-f-cap; compose-g-cap; pair-slot-bounded-lemma; pair-alloc-fits)
-  open import Once.CCC.Target.X86v3.FrontierLemma
+  open import Once.CCC.Target.X86v3.Dispatcher.FrontierLemma
   open FrontierLemmas {FS}
     using (frontier-same-heap; at-frontier-before-pair)
   open ExecLemmas {FS}
 
   -- Import write operations
-  open import Once.CCC.Target.X86v3.WriteOps using (module WriteWithDisjoint)
+  open import Once.CCC.Target.X86v3.Dispatcher.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
 
   -- Import bf-same-frame-slot from BFTransfer module
-  open import Once.CCC.Target.X86v3.IR.ApplyWF
+  open import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF
   open BFTransfer {FS}
     using (bf-same-frame-slot)
 

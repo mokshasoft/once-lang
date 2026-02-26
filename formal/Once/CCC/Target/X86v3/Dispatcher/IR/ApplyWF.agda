@@ -14,7 +14,7 @@
 -- Body's stack allocations are reclaimed, only result persists.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.IR.ApplyWF where
+module Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; <-≤-trans; m≤m+n; +-monoʳ-≤; m+n≤o⇒m≤o; ≤-reflexive)
@@ -32,10 +32,10 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
-open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 -- Import escape interface for SurvivesFramePop
-open import Once.CCC.Target.X86v3.EscapeInterface
+open import Once.CCC.Target.X86v3.Dispatcher.EscapeInterface
 module EI {FS : FrameSemantics} = EscapeInterfaceDef {FS}
 open EI using (SurvivesFramePop; in-ancestor; on-heap) public
 
@@ -109,7 +109,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open ExecLemmas {FS}
   open FrameSemantics FS
 
-  open import Once.CCC.Target.X86v3.ClosureWellFormed
+  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
@@ -126,15 +126,15 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
 
   -- Import lemmas
-  open import Once.CCC.Target.X86v3.DispatcherArithmeticLemma
+  open import Once.CCC.Target.X86v3.Dispatcher.DispatcherArithmeticLemma
     using (suc<+2)
 
   -- Import write operations
-  open import Once.CCC.Target.X86v3.WriteOps using (module WriteWithDisjoint)
+  open import Once.CCC.Target.X86v3.Dispatcher.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
 
   -- Import frontier lemmas
-  open import Once.CCC.Target.X86v3.FrontierLemma using (module FrontierLemmas)
+  open import Once.CCC.Target.X86v3.Dispatcher.FrontierLemma using (module FrontierLemmas)
   open FrontierLemmas {FS}
     using (at-frontier-before-pair)
 

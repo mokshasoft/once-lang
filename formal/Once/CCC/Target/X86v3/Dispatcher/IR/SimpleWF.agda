@@ -5,7 +5,7 @@
 -- Extracted from Dispatcher.agda to minimize the mutual block.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.IR.SimpleWF where
+module Once.CCC.Target.X86v3.Dispatcher.IR.SimpleWF where
 
 open import Data.Nat using (ℕ; _<_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; m≤m+n)
@@ -20,7 +20,7 @@ open import Once.CCC.SlotMachine using (HeapRef)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
-open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Simple IR implementations
@@ -34,14 +34,14 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   open ExecLemmas {FS}
   open FrameSemantics FS
 
-  open import Once.CCC.Target.X86v3.ClosureWellFormed
+  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; valid-unit-wf; valid-eff-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            decomposePairWF; PairValidWF)
 
   -- Import frontier-same-heap for reclaim-preserves-result
-  open import Once.CCC.Target.X86v3.FrontierLemma using (module FrontierLemmas)
+  open import Once.CCC.Target.X86v3.Dispatcher.FrontierLemma using (module FrontierLemmas)
   open FrontierLemmas {FS}
     using (frontier-same-heap)
 

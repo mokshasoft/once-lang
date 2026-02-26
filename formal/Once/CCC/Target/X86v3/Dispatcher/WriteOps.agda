@@ -5,7 +5,7 @@
 -- Separate module to avoid circular dependencies.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.WriteOps where
+module Once.CCC.Target.X86v3.Dispatcher.WriteOps where
 
 open import Data.Nat using (ℕ; suc)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -15,7 +15,7 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
-open import Once.CCC.Target.X86v3.Allocation
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation
 
 ------------------------------------------------------------------------
 -- Write Operations with Disjointness

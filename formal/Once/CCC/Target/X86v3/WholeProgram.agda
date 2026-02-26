@@ -23,13 +23,18 @@ open import Once.CCC.SlotMachine using (LocState; ValueLocation; halted; regs; r
 
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧)
 open import Once.CCC.IR using (IR; eval; ir-size; ir-stack-requirement; AllocMode; pair-slots; PrimSem)
-open import Once.CCC.Target.X86v3.Allocation using (AllocState; next-slot; current-frame; frame-capacity; module FrontierInvariant)
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation using (AllocState; next-slot; current-frame; frame-capacity; module FrontierInvariant)
 
 -- Import escape interface for SurvivesFramePop
-import Once.CCC.Target.X86v3.IR.ApplyWF as ApplyWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF as ApplyWFModule
 
 -- Import Dispatcher for PrimProofInterface
-import Once.CCC.Target.X86v3.Dispatcher as DispatcherModule
+import Once.CCC.Target.X86v3.Dispatcher.Dispatcher as DispatcherModule
+
+-- Import Refinement proofs (Layer 1→2: x86 → SlotMachine)
+-- This imports CodeGen.Compile, completing the verification chain:
+--   WholeProgram → Refinement.InstrCorrect → CodeGen.Compile
+import Once.CCC.Target.X86v3.Refinement.InstrCorrect as RefinementModule
 
 ------------------------------------------------------------------------
 -- THE CORRECTNESS THEOREM
@@ -65,10 +70,10 @@ module Correctness
 
   open FrontierInvariant {FS} using (BeforeFrontier)
 
-  open import Once.CCC.Target.X86v3.ClosureWellFormed
+  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   module CWF = ClosureWellFormedDef {FS} program-bound primSem
 
-  open import Once.CCC.Target.X86v3.Dispatcher
+  open import Once.CCC.Target.X86v3.Dispatcher.Dispatcher
   module D = Dispatcher {FS} program-bound acc-pb primSem
     get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
     escape-result-survives parent-bound-eq prim-proof

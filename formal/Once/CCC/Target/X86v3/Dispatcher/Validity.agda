@@ -11,7 +11,7 @@
 -- each closure contains. This enables Apply to dispatch to bodies.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.Validity where
+module Once.CCC.Target.X86v3.Dispatcher.Validity where
 
 open import Data.Nat using (ℕ; zero; suc; _<_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -23,7 +23,7 @@ open import Induction.WellFounded using (Acc; acc)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
-open import Once.CCC.Target.X86v3.Allocation
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation
 open import Once.CCC.Target.X86v3.Types public
 open import Once.CCC.IR
 

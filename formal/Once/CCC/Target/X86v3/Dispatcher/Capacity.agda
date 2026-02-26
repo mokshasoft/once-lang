@@ -10,7 +10,7 @@
 -- See final-postulate-elimination.md for the two-capacity-pools design.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.Capacity where
+module Once.CCC.Target.X86v3.Dispatcher.Capacity where
 
 open import Data.Nat using (ℕ; _≤_; _<_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; +-monoˡ-≤; +-monoʳ-≤; m≤m+n; <⇒≤; *-monoʳ-≤; m+n≤o⇒m≤o; m+n≤o⇒n≤o)
@@ -19,7 +19,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
-open import Once.CCC.Target.X86v3.Allocation
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation
 open import Once.CCC.IR using (pair-slots)
 
 ------------------------------------------------------------------------

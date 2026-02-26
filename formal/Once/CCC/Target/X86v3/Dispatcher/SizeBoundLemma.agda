@@ -5,7 +5,7 @@
 -- Extracted from Dispatcher.agda for faster compilation.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.SizeBoundLemma where
+module Once.CCC.Target.X86v3.Dispatcher.SizeBoundLemma where
 
 open import Data.Nat using (ℕ; _<_)
 open import Data.Nat.Properties using (<-trans)

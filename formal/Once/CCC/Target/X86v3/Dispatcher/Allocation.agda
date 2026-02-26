@@ -11,7 +11,7 @@
 -- which allocation mode to use for each value.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.Allocation where
+module Once.CCC.Target.X86v3.Dispatcher.Allocation where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; <⇒≤; +-monoʳ-≤)

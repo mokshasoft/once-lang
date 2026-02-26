@@ -27,7 +27,7 @@ import qualified MAlonzo.Code.Data.Nat.Show
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.Sum.Base
 import qualified MAlonzo.Code.Once.CCC.IR
-import qualified MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen
+import qualified MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.Compile
 import qualified MAlonzo.Code.Once.Optimize
 import qualified MAlonzo.Code.Once.Parser
 import qualified MAlonzo.Code.Once.Parser.Core
@@ -112,7 +112,7 @@ d_compileFunctionX86v3_10 v0 v1 v2
                                                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                  (MAlonzo.Code.Once.Target.X86.Emit.d_programToText_76
                                                     (coe
-                                                       MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.d_compile'45'ir_62
+                                                       MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.Compile.d_compile'45'ir_64
                                                        (coe MAlonzo.Code.Once.Type.C_Unit_34)
                                                        (coe v1)
                                                        (coe
@@ -180,7 +180,7 @@ d_compileFunctionX86v3_10 v0 v1 v2
                                                   MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                   (MAlonzo.Code.Once.Target.X86.Emit.d_programToText_76
                                                      (coe
-                                                        MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.d_compile'45'ir_62
+                                                        MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.Compile.d_compile'45'ir_64
                                                         (coe MAlonzo.Code.Once.Type.C_Unit_34)
                                                         (coe v1)
                                                         (coe
@@ -222,7 +222,7 @@ d_compileFunctionX86v3_10 v0 v1 v2
                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
                              (MAlonzo.Code.Once.Target.X86.Emit.d_programToText_76
                                 (coe
-                                   MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.d_compile'45'ir_62
+                                   MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.Compile.d_compile'45'ir_64
                                    (coe MAlonzo.Code.Once.Type.C_Unit_34) (coe v1)
                                    (coe
                                       MAlonzo.Code.Once.CCC.IR.d_fromOnceIR_840
@@ -305,7 +305,7 @@ d_compileAllFunctions_48 v0
                                                                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                                    (MAlonzo.Code.Once.Target.X86.Emit.d_programToText_76
                                                                       (coe
-                                                                         MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.d_compile'45'ir_62
+                                                                         MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.Compile.d_compile'45'ir_64
                                                                          (coe
                                                                             MAlonzo.Code.Once.Type.C_Unit_34)
                                                                          (coe v4)
@@ -397,7 +397,7 @@ d_compileAllFunctions_48 v0
                                                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                                     (MAlonzo.Code.Once.Target.X86.Emit.d_programToText_76
                                                                        (coe
-                                                                          MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.d_compile'45'ir_62
+                                                                          MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.Compile.d_compile'45'ir_64
                                                                           (coe
                                                                              MAlonzo.Code.Once.Type.C_Unit_34)
                                                                           (coe v4)
@@ -460,7 +460,7 @@ d_compileAllFunctions_48 v0
                                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                                (MAlonzo.Code.Once.Target.X86.Emit.d_programToText_76
                                                   (coe
-                                                     MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.d_compile'45'ir_62
+                                                     MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.Compile.d_compile'45'ir_64
                                                      (coe MAlonzo.Code.Once.Type.C_Unit_34) (coe v4)
                                                      (coe
                                                         MAlonzo.Code.Once.CCC.IR.d_fromOnceIR_840

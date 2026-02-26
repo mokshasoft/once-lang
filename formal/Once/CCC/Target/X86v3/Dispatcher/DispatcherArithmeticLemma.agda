@@ -5,7 +5,7 @@
 -- Extracted from Dispatcher.agda for faster compilation.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.DispatcherArithmeticLemma where
+module Once.CCC.Target.X86v3.Dispatcher.DispatcherArithmeticLemma where
 
 open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; +-assoc; +-monoˡ-≤; +-monoʳ-≤; ≤-reflexive; +-suc; +-identityʳ; +-identityˡ; *-monoʳ-≤; <⇒≤; m≤m+n)

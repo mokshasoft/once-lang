@@ -9,7 +9,7 @@
 -- Uses ir-stack-requirement for capacity accounting
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.IR.ComposeWF where
+module Once.CCC.Target.X86v3.Dispatcher.IR.ComposeWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; m≤m+n)
@@ -21,7 +21,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
-open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- Compose implementation
@@ -33,12 +33,12 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   open WriteOps {FS}
   open FrameSemantics FS
 
-  open import Once.CCC.Target.X86v3.ClosureWellFormed
+  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved)
 
-  open import Once.CCC.Target.X86v3.FrontierLemma
+  open import Once.CCC.Target.X86v3.Dispatcher.FrontierLemma
   open FrontierLemmas {FS}
     using (frontier-same-heap)
   open ExecLemmas {FS}

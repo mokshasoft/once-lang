@@ -56,7 +56,7 @@ open import Once.Optimize using (optimize)
 open import Once.CCC.IR as CCCIR using (fromOnceIR)
 
 -- X86v3 code generation and emission
-open import Once.CCC.Target.X86v3.CodeGen using (compile-ir)
+open import Once.CCC.Target.X86v3.CodeGen.Compile using (compile-ir)
 open import Once.Target.X86.Emit using (programToText)
 
 ------------------------------------------------------------------------

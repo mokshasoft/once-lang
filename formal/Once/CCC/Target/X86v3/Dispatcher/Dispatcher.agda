@@ -11,7 +11,7 @@
 -- pair automatically gives BeforeFrontier for components.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.Dispatcher where
+module Once.CCC.Target.X86v3.Dispatcher.Dispatcher where
 
 open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n; _∸_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; +-monoʳ-≤; m≤m+n)
@@ -30,38 +30,38 @@ open import Induction.WellFounded using (Acc; acc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.IR
-open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
-open import Once.CCC.Target.X86v3.ClosureWellFormed
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
+open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
 
 -- Import ValidAtWF types for termination-safe dispatch
-open import Once.CCC.Target.X86v3.ClosureWellFormed
+open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   using (module ClosureWellFormedDef)
 
 ------------------------------------------------------------------------
 -- Import lemma modules
 ------------------------------------------------------------------------
 
-open import Once.CCC.Target.X86v3.DispatcherArithmeticLemma public
+open import Once.CCC.Target.X86v3.Dispatcher.DispatcherArithmeticLemma public
   using (suc<+2)
 
-open import Once.CCC.Target.X86v3.FrontierLemma public
+open import Once.CCC.Target.X86v3.Dispatcher.FrontierLemma public
   using (module FrontierLemmas)
 
-open import Once.CCC.Target.X86v3.SizeBoundLemma public
+open import Once.CCC.Target.X86v3.Dispatcher.SizeBoundLemma public
   using (∘-f-bound; ∘-g-bound; ⟨,⟩-f-bound; ⟨,⟩-g-bound; curry-body-bound)
 
 ------------------------------------------------------------------------
 -- Import helper modules
 ------------------------------------------------------------------------
 
-import Once.CCC.Target.X86v3.IR.SimpleWF as SimpleWFModule
-import Once.CCC.Target.X86v3.IR.ComposeWF as ComposeWFModule
-import Once.CCC.Target.X86v3.IR.PairWF as PairWFModule
-import Once.CCC.Target.X86v3.IR.CurryWF as CurryWFModule
-import Once.CCC.Target.X86v3.IR.ApplyWF as ApplyWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.SimpleWF as SimpleWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.ComposeWF as ComposeWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.PairWF as PairWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.CurryWF as CurryWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF as ApplyWFModule
 
 -- Import write operations from separate module
-open import Once.CCC.Target.X86v3.WriteOps public using (module WriteWithDisjoint)
+open import Once.CCC.Target.X86v3.Dispatcher.WriteOps public using (module WriteWithDisjoint)
 
 ------------------------------------------------------------------------
 -- Prim Proof Interface
@@ -220,7 +220,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     escape-result-survives parent-bound-eq
 
   -- Import sum/fix IR implementations (inl, inr, case, initial, fold, unfold)
-  open import Once.CCC.Target.X86v3.IR.SumFixWF as SumFixWFModule
+  open import Once.CCC.Target.X86v3.Dispatcher.IR.SumFixWF as SumFixWFModule
   open SumFixWFModule.SumFixWFImpl {FS} program-bound primSem
 
   ------------------------------------------------------------------------

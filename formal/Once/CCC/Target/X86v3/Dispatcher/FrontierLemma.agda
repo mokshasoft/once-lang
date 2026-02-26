@@ -5,7 +5,7 @@
 -- Extracted from Dispatcher.agda for faster compilation.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.FrontierLemma where
+module Once.CCC.Target.X86v3.Dispatcher.FrontierLemma where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; m<m+n; <-trans; n<1+n)
@@ -20,7 +20,7 @@ open import Once.CCC.SlotMachine
 
 module FrontierLemmas {FS : FrameSemantics} where
   open FrameSemantics FS
-  open import Once.CCC.Target.X86v3.Allocation
+  open import Once.CCC.Target.X86v3.Dispatcher.Allocation
 
   open FrontierInvariant {FS}
 

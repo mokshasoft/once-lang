@@ -14,7 +14,7 @@
 --   - r14, r15 = callee-saved temporaries
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.CodeGen where
+module Once.CCC.Target.X86v3.CodeGen.Compile where
 
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_; length)

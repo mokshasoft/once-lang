@@ -16,7 +16,7 @@
 -- it just uses the stored proof.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.ClosureWellFormed where
+module Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed where
 
 open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc; zero) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Bool using (false)
@@ -29,7 +29,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
-open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 ------------------------------------------------------------------------
 -- BodyResult: Result type for body execution
@@ -39,7 +39,7 @@ open import Once.CCC.Target.X86v3.Allocation hiding (AllocMode)
 ------------------------------------------------------------------------
 
 module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
-  open import Once.CCC.Target.X86v3.Validity
+  open import Once.CCC.Target.X86v3.Dispatcher.Validity
   open ValidityDef {FS} program-bound primSem
     using (readLoc-stack-heap-eq)
   open FrontierInvariant {FS}
@@ -49,11 +49,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   open FrameSemantics FS
 
   -- Import write operations for validity preservation proofs
-  open import Once.CCC.Target.X86v3.WriteOps using (module WriteWithDisjoint)
+  open import Once.CCC.Target.X86v3.Dispatcher.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
 
   -- Import capacity lemmas (needed for BodyCorrect.execute signature)
-  open import Once.CCC.Target.X86v3.Capacity
+  open import Once.CCC.Target.X86v3.Dispatcher.Capacity
   open CapacityLemmas {FS} program-bound
     using (CapacityInvariant; SlotInWorking; program-bound-cap-from-invariant;
            invariant-preserved; slot-in-working-preserved; sub-ir-in-working;

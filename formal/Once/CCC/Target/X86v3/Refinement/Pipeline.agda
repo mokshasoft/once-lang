@@ -24,7 +24,7 @@
 -- location contains a value corresponding to eval ir input.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.Pipeline where
+module Once.CCC.Target.X86v3.Refinement.Pipeline where
 
 open import Data.Nat using (_<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Induction using (<-wellFounded)
@@ -52,7 +52,7 @@ open import Once.Target.X86.Semantics as X86Sem
   using (Word; RegFile; Memory; State)
 
 -- Import SlotToX86 correspondence
-open import Once.CCC.Target.X86v3.SlotToX86
+open import Once.CCC.Target.X86v3.Refinement.SlotToX86
   using (FS; loc-to-addr; compile-reg;
          RegsCorrespond; MemCorresponds; StateCorresponds;
          mov-regs-correspond; mov-mem-corresponds;
@@ -65,12 +65,12 @@ open import Once.CCC.IR using (IR; eval; PrimSem)
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧; _*_; _⇒_)
 
 -- Import CodeGen
-open import Once.CCC.Target.X86v3.CodeGen using (compile-ir; compile-length)
+open import Once.CCC.Target.X86v3.CodeGen.Compile using (compile-ir; compile-length)
 
 -- Import X86v3 Validity
 -- NOTE: ValidityDef requires (program-bound : ℕ) (primSem : PrimSem) parameters.
 -- The actual correctness theorem would be in a module parameterized by these.
-open import Once.CCC.Target.X86v3.Validity
+open import Once.CCC.Target.X86v3.Dispatcher.Validity
 -- open ValidityDef {x86v3-frame-semantics}  -- Commented: needs program-bound, primSem
 
 ------------------------------------------------------------------------

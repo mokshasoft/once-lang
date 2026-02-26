@@ -24,7 +24,7 @@
 -- Cross-frame access is done via pointer indirection.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.SlotToX86 where
+module Once.CCC.Target.X86v3.Refinement.SlotToX86 where
 
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_)

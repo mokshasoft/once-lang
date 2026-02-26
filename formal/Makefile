@@ -121,7 +121,7 @@ spf:
 
 .PHONY: ccc-x86v3
 ccc-x86v3:
-	@echo "Type-checking X86v3 CCC backend..."
+	@echo "Type-checking X86v3 CCC backend (all proofs + codegen via WholeProgram)..."
 	@sh -c '$(AGDA_CMD) Once/CCC/Target/X86v3/WholeProgram.agda'
 
 #-----------------------------------------------------------------------------
