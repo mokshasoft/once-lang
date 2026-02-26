@@ -36,8 +36,8 @@ open import Once.CCC.SlotMachine as SlotMachine
 
 -- Import X86 types
 open import Once.Target.X86.Syntax as X86
-  using (Reg; rax; rdi; rbp; Program; Instr; mov; slot-size)
-  renaming (reg to x86-reg; mem to x86-mem; imm to x86-imm; base to x86-base)
+  using (Reg; rax; rdi; rbp; Program; Instr; mov; slot-size; Operand; reg; mem; imm)
+  renaming (base to x86-base)
 
 open import Once.Target.X86.Semantics as X86Sem
   using (Word; RegFile; Memory; State; execInstr; step; readOperand; writeOperand)
@@ -216,6 +216,94 @@ mov-rdi-rax-regs-correspond σ-regs x86-regs rc = mov-regs-correspond RDI RAX σ
 -- ✅ compose-bridge-correct: mov rdi, rax transfers result
 -- ✅ mov-rax-rdi-regs-correspond: register correspondence for id
 -- ✅ mov-rdi-rax-regs-correspond: register correspondence for compose bridge
+
+------------------------------------------------------------------------
+-- IR-Level Correctness Theorems
+--
+-- For each IR construct, prove that executing the compiled x86 code
+-- produces the correct result.
+------------------------------------------------------------------------
+
+open import Once.Target.X86.Semantics as X86Sem
+  using (exec; step)
+
+open import Data.Nat using (ℕ; zero; suc)
+
+------------------------------------------------------------------------
+-- id Correctness
+--
+-- compile-ir id = [mov rax, rdi]
+--
+-- After execution:
+--   rax s' = rdi s (input location address)
+--
+-- This is identity: output = input
+------------------------------------------------------------------------
+
+-- | After executing id, rax contains the input location address
+postulate
+  id-exec-result : ∀ (s : State) →
+    X86Sem.State.halted s ≡ false →
+    X86Sem.State.pc s ≡ 0 →
+    ∃[ s' ]
+      exec 1 id-instrs s ≡ just s' ×
+      x86-readReg (X86Sem.State.regs s') rax ≡ x86-readReg (X86Sem.State.regs s) rdi
+
+------------------------------------------------------------------------
+-- fst Correctness
+--
+-- compile-ir fst-ir = [mov rax, [rdi]]
+--
+-- After execution:
+--   rax s' = mem[rdi s] (fst component address)
+------------------------------------------------------------------------
+
+-- | After executing fst, rax contains the address loaded from [rdi]
+postulate
+  fst-exec-result : ∀ (s : State) (fst-addr : Word) →
+    X86Sem.State.halted s ≡ false →
+    X86Sem.State.pc s ≡ 0 →
+    x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just fst-addr →
+    ∃[ s' ]
+      exec 1 fst-instrs s ≡ just s' ×
+      x86-readReg (X86Sem.State.regs s') rax ≡ fst-addr
+
+------------------------------------------------------------------------
+-- snd Correctness
+--
+-- compile-ir snd-ir = [mov rax, [rdi+8]]
+--
+-- After execution:
+--   rax s' = mem[rdi s + 8] (snd component address)
+------------------------------------------------------------------------
+
+-- | After executing snd, rax contains the address loaded from [rdi+8]
+postulate
+  snd-exec-result : ∀ (s : State) (snd-addr : Word) →
+    X86Sem.State.halted s ≡ false →
+    X86Sem.State.pc s ≡ 0 →
+    x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi +ℕ slot-size) ≡ just snd-addr →
+    ∃[ s' ]
+      exec 1 snd-instrs s ≡ just s' ×
+      x86-readReg (X86Sem.State.regs s') rax ≡ snd-addr
+
+------------------------------------------------------------------------
+-- terminal Correctness
+--
+-- compile-ir terminal = [mov rax, 0]
+--
+-- After execution:
+--   rax s' = 0 (unit representation)
+------------------------------------------------------------------------
+
+-- | After executing terminal, rax contains 0
+postulate
+  terminal-exec-result : ∀ (s : State) →
+    X86Sem.State.halted s ≡ false →
+    X86Sem.State.pc s ≡ 0 →
+    ∃[ s' ]
+      exec 1 terminal-instrs s ≡ just s' ×
+      x86-readReg (X86Sem.State.regs s') rax ≡ 0
 
 ------------------------------------------------------------------------
 -- Summary
