@@ -314,8 +314,7 @@ execInstr prog s (label _) =
 -- | fetch is imported from Once.CCC.Fetch
 
 -- | Execute one step when not halted (helper for step)
--- Uses case_of_ (not with) so proofs can work with equations.
--- With creates abstract function names that block unification.
+-- Uses case_of_ for clean equation proofs (step-fetch-result in ExecLemmas).
 step-not-halted : Program → State → Maybe State
 step-not-halted prog s = case fetch prog (pc s) of λ where
   nothing → just (record s { halted = true })  -- End of program = implicit halt

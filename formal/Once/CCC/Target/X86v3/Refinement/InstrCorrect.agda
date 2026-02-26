@@ -222,6 +222,9 @@ mov-rdi-rax-regs-correspond σ-regs x86-regs rc = mov-regs-correspond RDI RAX σ
 --
 -- For each IR construct, prove that executing the compiled x86 code
 -- produces the correct result.
+--
+-- Foundation lemmas (register r/w, exec, step) are in:
+--   Once.Target.X86.ExecLemmas
 ------------------------------------------------------------------------
 
 open import Once.Target.X86.Semantics as X86Sem
@@ -229,127 +232,48 @@ open import Once.Target.X86.Semantics as X86Sem
 
 open import Data.Nat using (ℕ; zero; suc)
 
-------------------------------------------------------------------------
--- id Correctness
---
--- compile-ir id = [mov rax, rdi]
---
--- After execution:
---   rax s' = rdi s (input location address)
---
--- This is identity: output = input
---
--- PROOF SKETCH:
---   1. exec 1 prog s with halted s = false calls step prog s
---   2. step calls fetch prog 0, gets [mov (reg rax) (reg rdi)]
---   3. execInstr for mov reads rdi, writes to rax
---   4. Result state has rax = original rdi
---
--- LEMMAS NEEDED:
---   - fetch-singleton: fetch [i] 0 ≡ just i
---   - exec-1-step: exec 1 prog s ≡ step prog s (when not halted)
---   - mov-reg-reg-effect: execInstr for mov (reg dst) (reg src)
---                         writes readReg src to dst
---   - readReg-writeReg-same: readReg (writeReg regs r v) r ≡ v
-------------------------------------------------------------------------
-
--- | After executing id, rax contains the input location address
-postulate
-  id-exec-result : ∀ (s : State) →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 0 →
-    ∃[ s' ]
-      exec 1 id-instrs s ≡ just s' ×
-      x86-readReg (X86Sem.State.regs s') rax ≡ x86-readReg (X86Sem.State.regs s) rdi
+-- Import foundation lemmas from separate module (Star-based architecture)
+open import Once.Target.X86.ExecLemmas
+  using (readReg-writeReg-same; readReg-writeReg-diff;
+         -- Step-level lemmas for Star proofs
+         step-fetch-result;
+         mov-reg-reg-result; mov-imm-reg-result; mov-mem-reg-result;
+         -- id: mov rax, rdi
+         step-id; id-expected-state; id-instrs; id-rax-result; id-star;
+         -- terminal: mov rax, 0
+         step-terminal; terminal-expected-state; terminal-instrs; terminal-rax-result; terminal-star;
+         -- fst: mov rax, [rdi]
+         step-fst; fst-expected-state; fst-instrs; fst-rax-result; fst-star;
+         -- snd: mov rax, [rdi+8]
+         step-snd; snd-expected-state; snd-instrs; snd-rax-result; snd-star;
+         -- compose infrastructure
+         compose-bridge; bridge-expected-state; step-bridge; bridge-rdi-result;
+         fetch-++;
+         -- compose (id ∘ id) example
+         compose-id-id-prog; compose-id-id-star; compose-id-id-rax-result)
+  public
 
 ------------------------------------------------------------------------
--- fst Correctness
+-- Summary: Star-Based Proof Architecture for Layer 1→2
 --
--- compile-ir fst-ir = [mov rax, [rdi]]
+-- PROVEN (simple IR Star proofs):
+--   ✓ id-star       : Star id-instrs s (id-expected-state s)
+--   ✓ terminal-star : Star terminal-instrs s (terminal-expected-state s)
+--   ✓ fst-star      : Star fst-instrs s (fst-expected-state s v)
+--   ✓ snd-star      : Star snd-instrs s (snd-expected-state s v)
 --
--- After execution:
---   rax s' = mem[rdi s] (fst component address)
-------------------------------------------------------------------------
-
--- | After executing fst, rax contains the address loaded from [rdi]
-postulate
-  fst-exec-result : ∀ (s : State) (fst-addr : Word) →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 0 →
-    x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just fst-addr →
-    ∃[ s' ]
-      exec 1 fst-instrs s ≡ just s' ×
-      x86-readReg (X86Sem.State.regs s') rax ≡ fst-addr
-
-------------------------------------------------------------------------
--- snd Correctness
+-- PROVEN (compose Star proof):
+--   ✓ compose-id-id-star : Star compose-id-id-prog s (s3-id s)
+--   ✓ compose-id-id-rax-result : rax (s3-id s) ≡ rdi s
 --
--- compile-ir snd-ir = [mov rax, [rdi+8]]
+-- COMPOSE INFRASTRUCTURE:
+--   ✓ compose-bridge, step-bridge, bridge-rdi-result
+--   ✓ fetch-++ (fetch on left part of concatenation)
 --
--- After execution:
---   rax s' = mem[rdi s + 8] (snd component address)
-------------------------------------------------------------------------
-
--- | After executing snd, rax contains the address loaded from [rdi+8]
-postulate
-  snd-exec-result : ∀ (s : State) (snd-addr : Word) →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 0 →
-    x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi +ℕ slot-size) ≡ just snd-addr →
-    ∃[ s' ]
-      exec 1 snd-instrs s ≡ just s' ×
-      x86-readReg (X86Sem.State.regs s') rax ≡ snd-addr
-
-------------------------------------------------------------------------
--- terminal Correctness
+-- TO DO:
+--   - pair: Star (setup ++ f ++ middle ++ g ++ cleanup) s s''
+--   - curry/apply: closure creation and invocation
+--   - Generalize compose to arbitrary f, g (not just id ∘ id)
 --
--- compile-ir terminal = [mov rax, 0]
---
--- After execution:
---   rax s' = 0 (unit representation)
-------------------------------------------------------------------------
-
--- | After executing terminal, rax contains 0
-postulate
-  terminal-exec-result : ∀ (s : State) →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 0 →
-    ∃[ s' ]
-      exec 1 terminal-instrs s ≡ just s' ×
-      x86-readReg (X86Sem.State.regs s') rax ≡ 0
-
-------------------------------------------------------------------------
--- Summary: Proof Gaps for Layer 1→2
---
--- To close the full-correctness gap in WholeProgram.agda, we need:
---
--- 1. SIMPLE IR RESULTS (postulates above):
---    - id-exec-result: mov rax, rdi
---    - fst-exec-result: mov rax, [rdi]
---    - snd-exec-result: mov rax, [rdi+8]
---    - terminal-exec-result: mov rax, 0
---
--- 2. COMPOSE RESULT (not yet added):
---    - compose-exec-result: compile-ir f ++ bridge ++ compile-ir g
---
--- 3. COMPLEX IR RESULTS (not yet added):
---    - pair-exec-result: setup + f + middle + g + cleanup
---    - curry-exec-result: closure creation + thunk body
---    - apply-exec-result: closure invocation
---
--- 4. X86 EXECUTION LEMMAS (needed for all proofs):
---    - fetch-singleton: fetch [i] 0 ≡ just i
---    - exec-step-equiv: exec 1 prog s relates to step
---    - mov-reg-effect: mov dst src updates dst with src value
---    - readReg-writeReg: reading after writing returns written value
---    - exec-append: exec n (p1 ++ p2) composes correctly
---
--- 5. STATE CORRESPONDENCE PRESERVATION:
---    - Already partially proven in SlotToX86.agda
---    - Need to connect to x86 execution results
---
--- KEY INSIGHT: Each proof follows the same pattern:
---    1. Show exec succeeds (instruction doesn't fault)
---    2. Show final state has expected register/memory values
---    3. Connect to StateCorresponds
+-- Postulates: None in ExecLemmas! All lemmas fully proven.
 ------------------------------------------------------------------------
