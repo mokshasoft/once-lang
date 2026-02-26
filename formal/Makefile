@@ -121,7 +121,7 @@ spf:
 
 .PHONY: ccc-x86v3
 ccc-x86v3:
-	@echo "Type-checking X86v3 CCC backend (all proofs + codegen via WholeProgram)..."
+	@echo "Type-checking X86v3 CCC backend (Dispatcher + Refinement + CodeGen)..."
 	@sh -c '$(AGDA_CMD) Once/CCC/Target/X86v3/WholeProgram.agda'
 
 #-----------------------------------------------------------------------------
@@ -166,7 +166,7 @@ malonzo:
 
 .PHONY: dead-code-ccc-x86v3
 dead-code-ccc-x86v3:
-	@echo "Running dead code analysis on X86v3 CCC..."
+	@echo "Running dead code analysis on X86v3 (Dispatcher + Refinement + CodeGen)..."
 	@./run-dead-code.sh Once.CCC.Target.X86v3.WholeProgram.compile-correct Once/CCC/Target/X86v3/WholeProgram.agda
 
 #-----------------------------------------------------------------------------
@@ -196,10 +196,10 @@ postulates-grep:
 	@grep -rn "^postulate$$\|^postulate $$" --include="*.agda" Once/ || echo "No postulates found."
 	@grep -rn "^ *postulate$$\|^ *postulate " --include="*.agda" Once/ || true
 
-# Precise postulate detection using patched Agda (X86v3 CCC)
+# Precise postulate detection using patched Agda (X86v3 CCC: Dispatcher + Refinement + CodeGen)
 .PHONY: postulates-ccc-x86v3
 postulates-ccc-x86v3:
-	@echo "Checking postulates in X86v3 CCC (precise)..."
+	@echo "Checking postulates in X86v3 CCC (Dispatcher + Refinement + CodeGen)..."
 	@sh -c '$(PATCHED_AGDA_CMD) Once/CCC/Target/X86v3/WholeProgram.agda'
 
 # Precise postulate detection using patched Agda (X86v3 Arith)
