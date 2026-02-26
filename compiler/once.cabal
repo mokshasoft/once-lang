@@ -39,12 +39,10 @@ library
   import: shared
   exposed-modules:
       Lib
-      Once.Backend.CCompiler
       Once.CLI
       Once.Eval
       Once.IR
       Once.MAlonzo
-      Once.Module
       Once.Type
       Once.Value
       MAlonzo.RTE
@@ -228,27 +226,18 @@ library
       MAlonzo.Code.Induction
       MAlonzo.Code.Induction.WellFounded
       MAlonzo.Code.Level
-      -- Backend modules (extracted via MAlonzo from verified Agda)
-      MAlonzo.Code.Once.Backend.AArch64.CodeGen
-      MAlonzo.Code.Once.Backend.AArch64.Emit
-      MAlonzo.Code.Once.Backend.AArch64.Syntax
-      MAlonzo.Code.Once.Backend.C.CodeGen
-      MAlonzo.Code.Once.Backend.C.Emit
-      MAlonzo.Code.Once.Backend.Common.StackAnalysis
-      MAlonzo.Code.Once.Backend.Assembler
-      MAlonzo.Code.Once.Backend.Emit
-      MAlonzo.Code.Once.Backend.X86.CodeGen
-      MAlonzo.Code.Once.Backend.X86.Emit
-      MAlonzo.Code.Once.Backend.X86.Syntax
-      MAlonzo.Code.Once.Compile
-      MAlonzo.Code.Once.Escape
+      -- Frontend modules (extracted via MAlonzo from verified Agda)
       MAlonzo.Code.Once.Arith.IR
       MAlonzo.Code.Once.Arith.Type
+      MAlonzo.Code.Once.CCC.IR
+      MAlonzo.Code.Once.CCC.SlotMachine
+      MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen
+      MAlonzo.Code.Once.CCC.Target.X86v3.Types
+      MAlonzo.Code.Once.Compile
+      MAlonzo.Code.Once.CompileX86v3
+      MAlonzo.Code.Once.Escape
       MAlonzo.Code.Once.IR
-      MAlonzo.Code.Once.Memory
       MAlonzo.Code.Once.Optimize
-      MAlonzo.Code.Once.SemanticBase
-      MAlonzo.Code.Once.Semantics
       MAlonzo.Code.Once.Parser
       MAlonzo.Code.Once.Parser.Core
       MAlonzo.Code.Once.Parser.Expr
@@ -264,13 +253,12 @@ library
       MAlonzo.Code.Once.Surface.IR
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Surface.Thinning
+      MAlonzo.Code.Once.Target.X86.Emit
+      MAlonzo.Code.Once.Target.X86.Syntax
       MAlonzo.Code.Once.Type
-      MAlonzo.Code.Once.TypeCheck
       MAlonzo.Code.Once.TypeCheck.Context
       MAlonzo.Code.Once.TypeCheck.Elaborate
-      MAlonzo.Code.Once.TypeCheck.Error
       MAlonzo.Code.Once.TypeCheck.Raw
-      MAlonzo.Code.Once.TypeCheck.Unify
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles
       MAlonzo.Code.Relation.Binary.Bundles.Raw

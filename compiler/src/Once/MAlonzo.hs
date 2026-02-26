@@ -136,12 +136,12 @@ toMAlonzoIR ir = case ir of
   H.Inr _ _         -> M.C_inr_54 M.C_Stack_6
   H.Case f g        -> M.C_'91'_'44'_'93'_62 (toMAlonzoIR f) (toMAlonzoIR g)
   H.Initial _       -> M.C_initial_70
-  H.Curry _ f       -> M.C_curry_78 (toMAlonzoIR f) M.C_Stack_6
-  H.Apply _ _       -> M.C_apply_84
-  H.Fold _          -> M.C_fold_88
-  H.Unfold _        -> M.C_unfold_92
+  H.Curry _ f       -> M.C_curry_80 (toMAlonzoIR f) M.C_Stack_6
+  H.Apply _ _       -> M.C_apply_88
+  H.Fold _          -> M.C_fold_92
+  H.Unfold _        -> M.C_unfold_96
   -- Prim maps directly to Agda's Prim (treated as opaque by optimizer)
-  H.Prim name _ _   -> M.C_Prim_104 name
+  H.Prim name _ _   -> M.C_Prim_108 name
   -- These should not appear after elaboration + extractOpaques
   H.Var _           -> error "MAlonzo: Var should not appear after elaboration"
   H.LocalVar _      -> error "MAlonzo: LocalVar should not appear after elaboration"
@@ -166,12 +166,12 @@ fromMAlonzoIR ir = case ir of
   M.C_inr_54 _alloc               -> H.Inr placeholder placeholder
   M.C_'91'_'44'_'93'_62 f g       -> H.Case (fromMAlonzoIR f) (fromMAlonzoIR g)
   M.C_initial_70                  -> H.Initial placeholder
-  M.C_curry_78 f _alloc           -> H.Curry "_" (fromMAlonzoIR f)
-  M.C_apply_84                    -> H.Apply placeholder placeholder
-  M.C_fold_88                     -> H.Fold placeholder
-  M.C_unfold_92                   -> H.Unfold placeholder
-  M.C_arr_98                      -> H.Id placeholder  -- arr ≡ id semantically
-  M.C_Prim_104 name               -> H.Prim name H.TUnit H.TUnit
+  M.C_curry_80 f _alloc           -> H.Curry "_" (fromMAlonzoIR f)
+  M.C_apply_88                    -> H.Apply placeholder placeholder
+  M.C_fold_92                     -> H.Fold placeholder
+  M.C_unfold_96                   -> H.Unfold placeholder
+  M.C_arr_102                     -> H.Id placeholder  -- arr ≡ id semantically
+  M.C_Prim_108 name               -> H.Prim name H.TUnit H.TUnit
   where
     placeholder = H.TUnit  -- Type info is erased, use placeholder
 

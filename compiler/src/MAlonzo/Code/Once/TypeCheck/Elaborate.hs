@@ -55,7 +55,7 @@ d_weakenFromEmpty_12 v0 v1 v2 v3
            coe
              (let v9
                     = coe
-                        MAlonzo.Code.Once.Postulates.d_coerceQuantity_204 v8 v5 v6 v2 v7 v7
+                        MAlonzo.Code.Once.Postulates.d_coerceQuantity_178 v8 v5 v6 v2 v7 v7
                         (coe
                            MAlonzo.Code.Once.Surface.Thinning.du_weaken_484 v5 v6 v2 v7
                            (d_weakenFromEmpty_12 (coe v8) (coe v5) (coe v2) (coe v3))) in
@@ -2405,7 +2405,7 @@ du_go_896 v0 v1 v2 v3 v4 v5
                                                                               (coe
                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                  (coe
-                                                                                    MAlonzo.Code.Once.Postulates.d_coerceQuantity_204
+                                                                                    MAlonzo.Code.Once.Postulates.d_coerceQuantity_178
                                                                                     v12 v9 v10 v18
                                                                                     v11 v11
                                                                                     (coe

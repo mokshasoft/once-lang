@@ -32,11 +32,11 @@ data T_IR_10
     C_'10216'_'44'_'10217'_42 T_IR_10 T_IR_10 T_AllocMode_4 |
     C_inl_48 T_AllocMode_4 | C_inr_54 T_AllocMode_4 |
     C_'91'_'44'_'93'_62 T_IR_10 T_IR_10 | C_terminal_66 |
-    C_initial_70 | C_curry_78 T_IR_10 T_AllocMode_4 | C_apply_84 |
-    C_fold_88 | C_unfold_92 | C_arr_98 |
-    C_Prim_104 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_initial_70 | C_curry_80 T_IR_10 T_AllocMode_4 | C_apply_88 |
+    C_fold_92 | C_unfold_96 | C_arr_102 |
+    C_Prim_108 MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.IR.IR∞
-d_IR'8734'_106 ::
+d_IR'8734'_110 ::
   MAlonzo.Code.Once.Type.T_Type_32 ->
   MAlonzo.Code.Once.Type.T_Type_32 -> ()
-d_IR'8734'_106 = erased
+d_IR'8734'_110 = erased

@@ -32,7 +32,7 @@ d_compile_8 ::
   MAlonzo.Code.Once.IR.T_IR_10
 d_compile_8 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Escape.d_escape_126 v0 v1
+      MAlonzo.Code.Once.Escape.d_escape_140 v0 v1
       (coe
          MAlonzo.Code.Once.Optimize.d_optimize_1266 v0 v1
          (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16

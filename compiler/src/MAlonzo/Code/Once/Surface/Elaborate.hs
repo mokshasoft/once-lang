@@ -22,7 +22,6 @@ import qualified MAlonzo.Code.Data.Fin.Base
 import qualified MAlonzo.Code.Data.Integer.Show
 import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Once.IR
-import qualified MAlonzo.Code.Once.Postulates
 import qualified MAlonzo.Code.Once.Surface.Syntax
 import qualified MAlonzo.Code.Once.Type
 
@@ -37,7 +36,7 @@ du_intLit_8 v0
       MAlonzo.Code.Once.IR.C__'8728'__22
       (coe MAlonzo.Code.Once.Type.C_Unit_34)
       (coe
-         MAlonzo.Code.Once.IR.C_Prim_104
+         MAlonzo.Code.Once.IR.C_Prim_108
          (coe
             MAlonzo.Code.Data.String.Base.d__'43''43'__20
             ("lit.int." :: Data.Text.Text)
@@ -56,7 +55,7 @@ du_strLit_14 v0
       MAlonzo.Code.Once.IR.C__'8728'__22
       (coe MAlonzo.Code.Once.Type.C_Unit_34)
       (coe
-         MAlonzo.Code.Once.IR.C_Prim_104
+         MAlonzo.Code.Once.IR.C_Prim_108
          (coe
             MAlonzo.Code.Data.String.Base.d__'43''43'__20
             ("lit.str." :: Data.Text.Text) v0))
@@ -65,62 +64,62 @@ du_strLit_14 v0
 d_addIR_18 :: MAlonzo.Code.Once.IR.T_IR_10
 d_addIR_18
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.add.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.add.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.subIR
 d_subIR_20 :: MAlonzo.Code.Once.IR.T_IR_10
 d_subIR_20
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.sub.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.sub.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.mulIR
 d_mulIR_22 :: MAlonzo.Code.Once.IR.T_IR_10
 d_mulIR_22
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.mul.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.mul.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.divIR
 d_divIR_24 :: MAlonzo.Code.Once.IR.T_IR_10
 d_divIR_24
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.div.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.div.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.modIR
 d_modIR_26 :: MAlonzo.Code.Once.IR.T_IR_10
 d_modIR_26
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.mod.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.mod.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.negIR
 d_negIR_28 :: MAlonzo.Code.Once.IR.T_IR_10
 d_negIR_28
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.neg.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.neg.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.ltIR
 d_ltIR_30 :: MAlonzo.Code.Once.IR.T_IR_10
 d_ltIR_30
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.lt.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.lt.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.leIR
 d_leIR_32 :: MAlonzo.Code.Once.IR.T_IR_10
 d_leIR_32
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.le.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.le.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.gtIR
 d_gtIR_34 :: MAlonzo.Code.Once.IR.T_IR_10
 d_gtIR_34
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.gt.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.gt.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.geIR
 d_geIR_36 :: MAlonzo.Code.Once.IR.T_IR_10
 d_geIR_36
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.ge.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.ge.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.eqIR
 d_eqIR_38 :: MAlonzo.Code.Once.IR.T_IR_10
 d_eqIR_38
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.eq.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.eq.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.neIR
 d_neIR_40 :: MAlonzo.Code.Once.IR.T_IR_10
 d_neIR_40
   = coe
-      MAlonzo.Code.Once.IR.C_Prim_104 ("arith.ne.int" :: Data.Text.Text)
+      MAlonzo.Code.Once.IR.C_Prim_108 ("arith.ne.int" :: Data.Text.Text)
 -- Once.Surface.Elaborate.⟦_⟧ᶜ
 d_'10214'_'10215''7580'_44 ::
   Integer ->
@@ -198,7 +197,7 @@ du_curryInlSwap_98 ::
   MAlonzo.Code.Once.Type.T_Type_32 -> MAlonzo.Code.Once.IR.T_IR_10
 du_curryInlSwap_98 v0 v1
   = coe
-      MAlonzo.Code.Once.IR.C_curry_78
+      MAlonzo.Code.Once.IR.C_curry_80
       (coe
          MAlonzo.Code.Once.IR.C__'8728'__22
          (coe MAlonzo.Code.Once.Type.C__'42'__38 (coe v0) (coe v1))
@@ -217,7 +216,7 @@ du_curryInrSwap_100 ::
   MAlonzo.Code.Once.Type.T_Type_32 -> MAlonzo.Code.Once.IR.T_IR_10
 du_curryInrSwap_100 v0 v1
   = coe
-      MAlonzo.Code.Once.IR.C_curry_78
+      MAlonzo.Code.Once.IR.C_curry_80
       (coe
          MAlonzo.Code.Once.IR.C__'8728'__22
          (coe MAlonzo.Code.Once.Type.C__'42'__38 (coe v0) (coe v1))
@@ -246,13 +245,14 @@ d_distrib''_104 v0 v1 v2
       (coe
          MAlonzo.Code.Once.Type.C__'42'__38
          (coe
-            MAlonzo.Code.Once.Type.d__'8658'__64 (coe v0)
+            MAlonzo.Code.Once.Type.C__'8658''91'_'93'__42 (coe v0)
+            (coe MAlonzo.Code.Once.Type.C_Many_10)
             (coe
                MAlonzo.Code.Once.Type.C__'43'__40
                (coe MAlonzo.Code.Once.Type.C__'42'__38 (coe v0) (coe v1))
                (coe MAlonzo.Code.Once.Type.C__'42'__38 (coe v0) (coe v2))))
          (coe v0))
-      (coe MAlonzo.Code.Once.IR.C_apply_84)
+      (coe MAlonzo.Code.Once.IR.C_apply_88)
       (coe
          MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
          (coe
@@ -277,39 +277,33 @@ d_elaborate_112 v0 v1 v2 v3
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__42 v10 v11 v12
                -> coe
-                    MAlonzo.Code.Once.Postulates.d_coerceIRArrow_38
-                    (coe du_'10214'_'10215''7580'_44 (coe v1)) v10 v12
-                    (coe MAlonzo.Code.Once.Type.C_Many_10) v11
-                    (coe
-                       MAlonzo.Code.Once.IR.C_curry_78
-                       (d_elaborate_112
-                          (coe addInt (coe (1 :: Integer)) (coe v0))
-                          (coe
-                             MAlonzo.Code.Once.Surface.Syntax.C__'44'_'94'__12 v1 v10
-                             (coe MAlonzo.Code.Once.Type.C_Many_10))
-                          (coe v12) (coe v9))
-                       (coe MAlonzo.Code.Once.IR.C_Heap_8))
+                    MAlonzo.Code.Once.IR.C_curry_80
+                    (d_elaborate_112
+                       (coe addInt (coe (1 :: Integer)) (coe v0))
+                       (coe
+                          MAlonzo.Code.Once.Surface.Syntax.C__'44'_'94'__12 v1 v10
+                          (coe MAlonzo.Code.Once.Type.C_Many_10))
+                       (coe v12) (coe v9))
+                    (coe MAlonzo.Code.Once.IR.C_Heap_8)
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_app_194 v6 v8 v9 v10
         -> coe
              MAlonzo.Code.Once.IR.C__'8728'__22
              (coe
                 MAlonzo.Code.Once.Type.C__'42'__38
-                (coe MAlonzo.Code.Once.Type.d__'8658'__64 (coe v6) (coe v2))
+                (coe
+                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__42 (coe v6) (coe v8)
+                   (coe v2))
                 (coe v6))
-             (coe MAlonzo.Code.Once.IR.C_apply_84)
+             (coe MAlonzo.Code.Once.IR.C_apply_88)
              (coe
                 MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
-                (coe
-                   MAlonzo.Code.Once.Postulates.d_coerceIRArrow_38
-                   (coe du_'10214'_'10215''7580'_44 (coe v1)) v6 v2 v8
-                   (coe MAlonzo.Code.Once.Type.C_Many_10)
-                   (d_elaborate_112
-                      (coe v0) (coe v1)
-                      (coe
-                         MAlonzo.Code.Once.Type.C__'8658''91'_'93'__42 (coe v6) (coe v8)
-                         (coe v2))
-                      (coe v9)))
+                (d_elaborate_112
+                   (coe v0) (coe v1)
+                   (coe
+                      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__42 (coe v6) (coe v8)
+                      (coe v2))
+                   (coe v9))
                 (d_elaborate_112 (coe v0) (coe v1) (coe v6) (coe v10))
                 (coe MAlonzo.Code.Once.IR.C_Heap_8))
       MAlonzo.Code.Once.Surface.Syntax.C_effApp_204 v6 v8 v9
@@ -317,9 +311,11 @@ d_elaborate_112 v0 v1 v2 v3
              MAlonzo.Code.Once.IR.C__'8728'__22
              (coe
                 MAlonzo.Code.Once.Type.C__'42'__38
-                (coe MAlonzo.Code.Once.Type.d__'8658'__64 (coe v6) (coe v2))
+                (coe
+                   MAlonzo.Code.Once.Type.C__'8658''91'_'93'__42 (coe v6)
+                   (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v2))
                 (coe v6))
-             (coe MAlonzo.Code.Once.IR.C_apply_84)
+             (coe MAlonzo.Code.Once.IR.C_apply_88)
              (coe
                 MAlonzo.Code.Once.IR.C_'10216'_'44'_'10217'_42
                 (coe
@@ -623,7 +619,7 @@ d_elaborate_112 v0 v1 v2 v3
                -> coe
                     MAlonzo.Code.Once.IR.C__'8728'__22
                     (MAlonzo.Code.Once.Type.d__'8658'__64 (coe v9) (coe v10))
-                    (coe MAlonzo.Code.Once.IR.C_arr_98)
+                    (coe MAlonzo.Code.Once.IR.C_arr_102)
                     (d_elaborate_112
                        (coe v0) (coe v1)
                        (coe MAlonzo.Code.Once.Type.d__'8658'__64 (coe v9) (coe v10))
@@ -634,14 +630,14 @@ d_elaborate_112 v0 v1 v2 v3
              MAlonzo.Code.Once.Type.C_Fix_46 v8
                -> coe
                     MAlonzo.Code.Once.IR.C__'8728'__22 v8
-                    (coe MAlonzo.Code.Once.IR.C_fold_88)
+                    (coe MAlonzo.Code.Once.IR.C_fold_92)
                     (d_elaborate_112 (coe v0) (coe v1) (coe v8) (coe v7))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_unroll''_400 v7
         -> coe
              MAlonzo.Code.Once.IR.C__'8728'__22
              (coe MAlonzo.Code.Once.Type.C_Fix_46 (coe v2))
-             (coe MAlonzo.Code.Once.IR.C_unfold_92)
+             (coe MAlonzo.Code.Once.IR.C_unfold_96)
              (d_elaborate_112
                 (coe v0) (coe v1) (coe MAlonzo.Code.Once.Type.C_Fix_46 (coe v2))
                 (coe v7))
@@ -649,7 +645,7 @@ d_elaborate_112 v0 v1 v2 v3
         -> coe
              MAlonzo.Code.Once.IR.C__'8728'__22
              (coe MAlonzo.Code.Once.Type.C_Unit_34)
-             (coe MAlonzo.Code.Once.IR.C_Prim_104 v7)
+             (coe MAlonzo.Code.Once.IR.C_Prim_108 v7)
              (coe MAlonzo.Code.Once.IR.C_terminal_66)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Surface.Elaborate._.coerceEffToArrow

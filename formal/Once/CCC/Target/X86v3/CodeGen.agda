@@ -29,7 +29,7 @@ open import Once.Target.X86.Syntax
 
 -- Import CCC IR (via X86v3.IR re-export)
 open import Once.CCC.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal;
-                                          inl-ir; inr-ir; case-ir; initial; fold-ir; unfold-ir; free-heap; Prim)
+                                          inl-ir; inr-ir; case-ir; initial; fold-ir; unfold-ir; arr; free-heap; Prim)
 
 ------------------------------------------------------------------------
 -- Instruction sequences for each IR construct
@@ -182,6 +182,7 @@ compile-length (fold-ir _) = 1      -- wrap
 compile-length unfold-ir = 1    -- unwrap
 compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles actual free)
 compile-length (Prim _) = 1       -- primitive
+compile-length arr = length id-instrs  -- arr is identity at runtime (Eff = Arrow)
 
 -- | Generate x86 code for IR
 compile-ir : ∀ {A B} → IR A B → Program
@@ -225,6 +226,7 @@ compile-ir (fold-ir _) = id-instrs     -- wrap: just transfer rdi → rax (same 
 compile-ir unfold-ir = id-instrs       -- unwrap: just transfer rdi → rax (same representation)
 compile-ir (free-heap _) = []     -- no-op: actual deallocation handled by runtime
 compile-ir (Prim _) = ud2 ∷ []    -- primitives need FFI (placeholder)
+compile-ir arr = id-instrs        -- arr is identity at runtime (Eff = Arrow)
 
 ------------------------------------------------------------------------
 -- Summary
