@@ -238,6 +238,19 @@ open import Data.Nat using (ℕ; zero; suc)
 --   rax s' = rdi s (input location address)
 --
 -- This is identity: output = input
+--
+-- PROOF SKETCH:
+--   1. exec 1 prog s with halted s = false calls step prog s
+--   2. step calls fetch prog 0, gets [mov (reg rax) (reg rdi)]
+--   3. execInstr for mov reads rdi, writes to rax
+--   4. Result state has rax = original rdi
+--
+-- LEMMAS NEEDED:
+--   - fetch-singleton: fetch [i] 0 ≡ just i
+--   - exec-1-step: exec 1 prog s ≡ step prog s (when not halted)
+--   - mov-reg-reg-effect: execInstr for mov (reg dst) (reg src)
+--                         writes readReg src to dst
+--   - readReg-writeReg-same: readReg (writeReg regs r v) r ≡ v
 ------------------------------------------------------------------------
 
 -- | After executing id, rax contains the input location address
@@ -306,19 +319,37 @@ postulate
       x86-readReg (X86Sem.State.regs s') rax ≡ 0
 
 ------------------------------------------------------------------------
--- Summary
+-- Summary: Proof Gaps for Layer 1→2
 --
--- This module proves the key correctness lemmas for compile-ir:
+-- To close the full-correctness gap in WholeProgram.agda, we need:
 --
--- 1. Simple IR operations (id, fst, snd, terminal) produce correct results
--- 2. Compose bridge correctly transfers results between IR components
--- 3. Register correspondence is preserved by mov instructions
+-- 1. SIMPLE IR RESULTS (postulates above):
+--    - id-exec-result: mov rax, rdi
+--    - fst-exec-result: mov rax, [rdi]
+--    - snd-exec-result: mov rax, [rdi+8]
+--    - terminal-exec-result: mov rax, 0
 --
--- The full compile-ir-correct theorem follows by:
--- - Composing these lemmas for each IR construct
--- - Using x86 execution semantics to step through compiled code
--- - Showing StateCorresponds is preserved at each step
+-- 2. COMPOSE RESULT (not yet added):
+--    - compose-exec-result: compile-ir f ++ bridge ++ compile-ir g
 --
--- Key insight: Each x86 instruction corresponds to a SlotMachine operation,
--- and SlotToX86 proves these preserve StateCorresponds.
+-- 3. COMPLEX IR RESULTS (not yet added):
+--    - pair-exec-result: setup + f + middle + g + cleanup
+--    - curry-exec-result: closure creation + thunk body
+--    - apply-exec-result: closure invocation
+--
+-- 4. X86 EXECUTION LEMMAS (needed for all proofs):
+--    - fetch-singleton: fetch [i] 0 ≡ just i
+--    - exec-step-equiv: exec 1 prog s relates to step
+--    - mov-reg-effect: mov dst src updates dst with src value
+--    - readReg-writeReg: reading after writing returns written value
+--    - exec-append: exec n (p1 ++ p2) composes correctly
+--
+-- 5. STATE CORRESPONDENCE PRESERVATION:
+--    - Already partially proven in SlotToX86.agda
+--    - Need to connect to x86 execution results
+--
+-- KEY INSIGHT: Each proof follows the same pattern:
+--    1. Show exec succeeds (instruction doesn't fault)
+--    2. Show final state has expected register/memory values
+--    3. Connect to StateCorresponds
 ------------------------------------------------------------------------
