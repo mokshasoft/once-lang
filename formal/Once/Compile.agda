@@ -49,6 +49,19 @@ open import Once.Optimize public
 open import Once.Escape public
   using (escape; escape-once; escape-n)
 
+-- Re-export Arith types and IR (OCP-0001: Orthogonal Arithmetic Compiler)
+open import Once.Arith.Type public
+open import Once.Arith.IR public
+
+-- Re-export Parser (for module loading)
+open import Once.Parser public
+open import Once.Parser.Module public
+
+-- Re-export X86v3 compilation entry point
+-- This is the single entry point for x86v3 compilation: source → assembly
+open import Once.CompileX86v3 public
+  using (compileX86v3)
+
 ------------------------------------------------------------------------
 -- Pipeline composition
 ------------------------------------------------------------------------
