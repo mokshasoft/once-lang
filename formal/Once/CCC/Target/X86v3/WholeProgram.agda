@@ -3,10 +3,23 @@
 --
 -- COMPILER CORRECTNESS THEOREM
 --
--- The essential property:
---   Represents x s  →  Represents (eval primSem ir x) s'
+-- The FULL correctness property we want to prove:
 --
--- Everything else is implementation detail.
+--   ∀ ir x x86-state →
+--     let program = compile-ir ir
+--         x86-final = exec program x86-state
+--     in rax x86-final represents (eval ir x)
+--
+-- This decomposes into three layers:
+--
+--   Layer 1→2 (Refinement): x86 execution → SlotMachine state
+--   Layer 2→3 (Dispatcher): SlotMachine ops → eval semantics
+--
+-- Current status:
+--   ✓ Layer 2→3: PROVEN (compile-correct below)
+--   ✗ Layer 1→2: PARTIAL (individual instruction lemmas in InstrCorrect)
+--   ✗ Full theorem: NOT YET CONNECTED
+--
 ------------------------------------------------------------------------
 
 module Once.CCC.Target.X86v3.WholeProgram where
@@ -128,10 +141,9 @@ module Correctness
      , CWF.IRResultAWF.result-valid-wf result
 
 ------------------------------------------------------------------------
--- SUMMARY
+-- LAYER 2→3: PROVEN
 --
--- Compiler correctness:
---
+-- compile-correct proves:
 --   Represents x input-loc s
 --   ∧ halted s ≡ false           (CPU running)
 --   ∧ RDI = input-loc            (calling convention)
@@ -140,5 +152,69 @@ module Correctness
 --   Represents (eval primSem ir x) result-loc s'
 --
 -- The preconditions are the caller's responsibility (runtime/loader).
--- The theorem says: IF properly set up, THEN semantics preserved.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- THE FULL THEOREM (Layer 1→2→3)
+--
+-- This is what we WANT to prove end-to-end:
+--   Compiling IR to x86 and executing it produces the correct result.
+--
+-- Gap: Layer 1→2 (x86 execution → SlotMachine) not yet connected.
+------------------------------------------------------------------------
+
+open import Once.Target.X86.Semantics as X86
+  using (State; exec)
+open import Once.CCC.Target.X86v3.CodeGen.Compile
+  using (compile-ir)
+open import Once.CCC.Target.X86v3.Refinement.SlotToX86
+  using (StateCorresponds)
+open import Data.List using (length)
+open import Data.Maybe using (Maybe; just)
+
+-- Instantiate with concrete x86v3 frame semantics
+open import Once.CCC.Target.X86v3.FrameInstantiation using (x86v3-frame-semantics)
+
+private
+  FS' : FrameSemantics
+  FS' = x86v3-frame-semantics
+
+------------------------------------------------------------------------
+-- THE FULL THEOREM (Layer 1→2→3)
+--
+-- Given:
+--   - An IR program
+--   - Initial x86 state corresponding to SlotMachine state
+--   - Input value at the location pointed to by RDI
+--
+-- Then:
+--   - Executing the compiled x86 code produces a final state
+--   - That state corresponds to a SlotMachine state
+--   - RAX points to a location containing (eval ir x)
+--
+-- STATUS: POSTULATE (Layer 1→2 connection incomplete)
+--
+-- To eliminate this postulate, we need:
+--   1. Compose InstrCorrect lemmas for all IR constructs
+--   2. Show exec (compile-ir ir) preserves StateCorresponds
+--   3. Connect final SlotMachine state to compile-correct result
+------------------------------------------------------------------------
+
+-- | Full correctness: compile + execute = eval
+--
+-- This postulate represents the GAP between:
+--   - Layer 2→3 (compile-correct, proven above)
+--   - Layer 1→2 (InstrCorrect lemmas, partially proven)
+--
+-- When Layer 1→2 is complete, this becomes a theorem.
+postulate
+  full-correctness : ∀ {A B : Type} (ir : IR A B)
+    (x : ⟦ A ⟧)
+    (x86-init : State)
+    (σ-init : LocState FS')
+    (input-loc : ValueLocation FS') →
+    StateCorresponds σ-init x86-init →
+    -- After executing compiled code:
+    ∃[ x86-final ] ∃[ σ-final ]
+      (exec (length (compile-ir ir)) (compile-ir ir) x86-init ≡ just x86-final)
+      × StateCorresponds σ-final x86-final
