@@ -167,8 +167,6 @@ open import Once.Target.X86.Semantics as X86
   using (State)
 open import Once.CCC.Target.X86v3.CodeGen.Compile
   using (compile-ir)
-open import Once.CCC.Target.X86v3.Refinement.SlotToX86
-  using (StateCorresponds)
 open import Once.CCC.Target.X86.Correct.Star
   using (Star)
 
@@ -192,33 +190,314 @@ private
 --   - That state corresponds to a SlotMachine state
 --   - RAX points to a location containing (eval ir x)
 --
--- STATUS: POSTULATE (Layer 1→2 connection incomplete)
---
--- To eliminate this postulate, we need:
---   1. Compose InstrCorrect Star lemmas for all IR constructs
---   2. Show Star (compile-ir ir) preserves StateCorresponds
---   3. Connect final SlotMachine state to compile-correct result
+-- ARCHITECTURE: Per-instruction correspondence (portable across backends)
+--   - Dispatcher handles IR semantics (shared, Layer 2→3)
+--   - This module handles x86 simulation (per-backend, Layer 1→2)
+--   - StateCorresponds is the simulation relation
 --
 -- NOTE: Uses Star (not exec) per proof-instructions.md:
 --   "All proofs must use the Star relation"
 ------------------------------------------------------------------------
 
--- | Full correctness: compile + execute = eval
+open import Once.CCC.IR using (id; _∘_; fst-ir; snd-ir; ⟨_,_⟩_; terminal;
+                               inl-ir; inr-ir; case-ir; initial;
+                               curry; apply; arr; fold-ir; unfold-ir;
+                               free-heap; Prim; AllocMode)
+open import Once.CCC.Target.X86v3.Types using (_*_; _+_; _⇒[_]_; Eff; Fix)
+open import Once.CCC.SlotMachine using (HeapRef; mkHeapRef; RegId; RAX; RDI;
+         HeapLocation; heap-loc; OnHeap; OnStack)
+  renaming (Instr to SlotInstr; mov to slot-mov)
+open import Data.String using (String)
+open import Data.Bool using (false)
+open import Data.Maybe using (just)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+
+-- Import SlotMachine exec for simulation proofs
+open import Once.CCC.SlotMachine as SM using (LocState; Registers; readReg; writeReg)
+open SM.ExecFinal {FS'} using () renaming (exec to slot-exec)
+
+-- Import Star combinators
+open import Once.CCC.Target.X86.Correct.Star
+  using (Star; refl*; step*; star-trans; star-single; _◅◅_)
+
+-- Import ExecLemmas for Star proofs
+open import Once.Target.X86.ExecLemmas
+  using (id-star; id-expected-state; id-instrs;
+         terminal-star; terminal-expected-state; terminal-instrs;
+         fst-star; fst-expected-state; fst-instrs;
+         snd-star; snd-expected-state; snd-instrs)
+
+-- Import SlotToX86 for correspondence
+open import Once.CCC.Target.X86v3.Refinement.SlotToX86 as SlotToX86
+  using (RegsCorrespond; MemCorresponds; StateCorresponds;
+         mov-regs-correspond; mov-mem-corresponds;
+         build-regs-correspond-after-write;
+         loc-to-addr; compile-reg)
+open RegsCorrespond
+open MemCorresponds
+open StateCorresponds
+
+open import Once.Target.X86.Semantics as X86Sem
+  renaming (readReg to x86-readReg; writeReg to x86-writeReg)
+open X86Sem.State using (halted; pc)
+
+open import Once.Target.X86.Syntax using (rax; rdi)
+
+------------------------------------------------------------------------
+-- StateCorresponds Preservation Proofs
 --
--- This postulate represents the GAP between:
---   - Layer 2→3 (compile-correct, proven above)
---   - Layer 1→2 (InstrCorrect lemmas, partially proven)
+-- These show that each IR's compiled code preserves StateCorresponds.
+-- Uses SlotToX86 correspondence lemmas (mov-regs-correspond, etc.)
+------------------------------------------------------------------------
+
+-- For each IR construct, we need:
+--   1. Star proof (execution happens) - from ExecLemmas
+--   2. StateCorresponds preservation - use correspondence lemmas
+
+------------------------------------------------------------------------
+-- id: mov rax, rdi
 --
--- When Layer 1→2 is complete, this becomes a theorem.
--- Uses Star relation for clean composition (no fuel arithmetic).
+-- SlotMachine equivalent: exec (mov RAX RDI) σ
+-- X86 equivalent: id-expected-state s
+-- The correspondence is preserved by mov-regs-correspond.
+------------------------------------------------------------------------
+
+-- SlotMachine state after id
+id-slot-state : LocState FS' → LocState FS'
+id-slot-state σ = slot-exec (slot-mov RAX RDI) σ
+
+-- id preserves correspondence (PROVEN - not postulate)
+id-preserves-corresponds : ∀ (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  StateCorresponds (id-slot-state σ) (id-expected-state s)
+id-preserves-corresponds σ s sc = record
+  { regs-correspond = mov-regs-correspond RAX RDI (SM.LocState.regs σ) (X86Sem.State.regs s)
+                        (regs-correspond sc)
+  ; mem-corresponds = mov-mem-corresponds RAX RDI σ (X86Sem.State.memory s) (mem-corresponds sc)
+  ; halted-corresponds = halted-corresponds sc
+  ; rbp-is-frame-base = rbp-is-frame-base sc
+  }
+
+------------------------------------------------------------------------
+-- terminal: mov rax, 0
+--
+-- X86 puts 0 in rax. This represents the Unit value.
+-- We construct σ' where RAX holds an OnHeap location.
+-- Since loc-to-addr (OnHeap _) = 0, the correspondence holds.
+------------------------------------------------------------------------
+
+-- A canonical Unit location (any OnHeap location maps to 0)
+unit-loc : SM.ValueLocation FS'
+unit-loc = OnHeap (heap-loc (mkHeapRef 0) 0)
+
+-- SlotMachine state after terminal: RAX holds unit-loc
+terminal-slot-state : LocState FS' → LocState FS'
+terminal-slot-state σ = record σ { regs = writeReg (SM.LocState.regs σ) RAX unit-loc }
+
+-- Lemma: loc-to-addr unit-loc = 0
+unit-loc-addr : loc-to-addr unit-loc ≡ 0
+unit-loc-addr = refl
+
+-- Helper: readLoc is unchanged when only registers change
+-- (readLoc only uses stackMem and heapMem, not regs)
+private
+  open import Once.CCC.SlotMachine as SM' using (stackMem; heapMem)
+  open SM.MemOps {FS'} using (readLoc)
+
+  terminal-readLoc-unchanged : ∀ (σ : LocState FS') (loc : SM.ValueLocation FS') →
+    readLoc (terminal-slot-state σ) loc ≡ readLoc σ loc
+  terminal-readLoc-unchanged σ (OnStack f k) = refl
+  terminal-readLoc-unchanged σ (OnHeap hl) = refl
+
+-- terminal preserves correspondence (PROVEN - not postulate)
+terminal-preserves-corresponds : ∀ (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  ∃[ σ' ] StateCorresponds σ' (terminal-expected-state s)
+terminal-preserves-corresponds σ s sc =
+  terminal-slot-state σ , record
+    { regs-correspond = terminal-regs-correspond σ s sc
+    ; mem-corresponds = terminal-mem-corresponds σ s sc
+    ; halted-corresponds = halted-corresponds sc
+    ; rbp-is-frame-base = rbp-is-frame-base sc
+    }
+  where
+    -- RAX correspondence: both hold 0
+    -- terminal-expected-state writes 0 to x86 rax
+    -- terminal-slot-state writes unit-loc (which maps to 0) to SlotMachine RAX
+    terminal-regs-correspond : ∀ (σ : LocState FS') (s : State) →
+      StateCorresponds σ s →
+      RegsCorrespond (SM.LocState.regs (terminal-slot-state σ)) (X86Sem.State.regs (terminal-expected-state s))
+    terminal-regs-correspond σ s sc = record
+      { rax-corresponds = refl  -- 0 = loc-to-addr unit-loc = 0
+      ; rdi-corresponds = rdi-corresponds (regs-correspond sc)
+      ; rsi-corresponds = rsi-corresponds (regs-correspond sc)
+      ; r12-corresponds = r12-corresponds (regs-correspond sc)
+      ; r14-corresponds = r14-corresponds (regs-correspond sc)
+      ; r15-corresponds = r15-corresponds (regs-correspond sc)
+      }
+
+    -- Memory correspondence: memory unchanged in both SlotMachine and x86
+    terminal-mem-corresponds : ∀ (σ : LocState FS') (s : State) →
+      StateCorresponds σ s →
+      MemCorresponds (terminal-slot-state σ) (X86Sem.State.memory (terminal-expected-state s))
+    terminal-mem-corresponds σ s sc = record
+      { stack-corresponds = λ loc loc' read-eq →
+          stack-corresponds (mem-corresponds sc) loc loc'
+            (trans (sym (terminal-readLoc-unchanged σ loc)) read-eq)
+      }
+
 postulate
-  full-correctness : ∀ {A B : Type} (ir : IR A B)
-    (x : ⟦ A ⟧)
-    (x86-init : State)
-    (σ-init : LocState FS')
-    (input-loc : ValueLocation FS') →
-    StateCorresponds σ-init x86-init →
-    -- After executing compiled code (Star = reaches in zero or more steps):
+  -- fst: mov rax, [rdi] (needs memory precondition for full proof)
+  fst-simulation : ∀ (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
     ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir ir) x86-init x86-final
-      × StateCorresponds σ-final x86-final
+      Star fst-instrs s x86-final × StateCorresponds σ-final x86-final
+
+  -- snd: mov rax, [rdi+8] (needs memory precondition for full proof)
+  snd-simulation : ∀ (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star snd-instrs s x86-final × StateCorresponds σ-final x86-final
+
+  -- compose: uses IH + star-trans
+  compose-simulation : ∀ {A B C} (g : IR B C) (f : IR A B)
+    (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (g ∘ f)) s x86-final × StateCorresponds σ-final x86-final
+
+  -- pair: setup ++ f ++ middle ++ g ++ cleanup
+  pair-simulation : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode)
+    (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (⟨ f , g ⟩ m)) s x86-final × StateCorresponds σ-final x86-final
+
+  -- Sum types (placeholder implementations in compile-ir)
+  inl-simulation : ∀ {A B} (m : AllocMode) (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (inl-ir {A} {B} m)) s x86-final × StateCorresponds σ-final x86-final
+
+  inr-simulation : ∀ {A B} (m : AllocMode) (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (inr-ir {A} {B} m)) s x86-final × StateCorresponds σ-final x86-final
+
+  case-simulation : ∀ {A B C} (f : IR A C) (g : IR B C) (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (case-ir f g)) s x86-final × StateCorresponds σ-final x86-final
+
+  initial-simulation : ∀ {A} (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (initial {A})) s x86-final × StateCorresponds σ-final x86-final
+
+  -- Closures (complex - needs closure correspondence)
+  curry-simulation : ∀ {A B C q} (f : IR (A * B) C) (m : AllocMode)
+    (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (curry {q = q} f m)) s x86-final × StateCorresponds σ-final x86-final
+
+  apply-simulation : ∀ {A B q} (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (apply {A} {B} {q})) s x86-final × StateCorresponds σ-final x86-final
+
+  -- Remaining constructs
+  arr-simulation : ∀ {A B q} (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (arr {A} {B} {q})) s x86-final × StateCorresponds σ-final x86-final
+
+  fold-simulation : ∀ {F} (m : AllocMode) (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (fold-ir {F} m)) s x86-final × StateCorresponds σ-final x86-final
+
+  unfold-simulation : ∀ {F} (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (unfold-ir {F})) s x86-final × StateCorresponds σ-final x86-final
+
+  free-heap-simulation : ∀ (r : HeapRef) (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (free-heap r)) s x86-final × StateCorresponds σ-final x86-final
+
+  prim-simulation : ∀ {A B} (p : String) (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star (compile-ir (Prim {A} {B} p)) s x86-final × StateCorresponds σ-final x86-final
+
+------------------------------------------------------------------------
+-- Full Correctness by IR Induction
+--
+-- The proof follows compile-ir structure:
+--   - Base cases: id, terminal (proven using Star lemmas + correspondence)
+--   - Memory cases: fst, snd (use simulation postulates)
+--   - Compound cases: compose, pair (use simulation postulates)
+--   - Complex cases: curry, apply, etc. (use simulation postulates)
+--
+-- ARCHITECTURE:
+--   - Postulates are per-construct simulation lemmas
+--   - Each can be eliminated independently
+--   - No re-doing of Dispatcher's IR semantics work
+------------------------------------------------------------------------
+
+full-correctness : ∀ {A B : Type} (ir : IR A B)
+  (x : ⟦ A ⟧)
+  (x86-init : State)
+  (σ-init : LocState FS')
+  (input-loc : ValueLocation FS') →
+  StateCorresponds σ-init x86-init →
+  X86Sem.State.halted x86-init ≡ false →  -- Machine must be running
+  X86Sem.State.pc x86-init ≡ 0 →           -- Start at beginning of compiled code
+  ∃[ x86-final ] ∃[ σ-final ]
+    Star (compile-ir ir) x86-init x86-final
+    × StateCorresponds σ-final x86-final
+
+-- id: mov rax, rdi (1 step) - PROVEN
+full-correctness id x s σ loc sc h-eq pc-eq =
+  id-expected-state s
+  , id-slot-state σ
+  , id-star s h-eq pc-eq
+  , id-preserves-corresponds σ s sc
+
+-- terminal: mov rax, 0 (1 step)
+full-correctness terminal x s σ loc sc h-eq pc-eq =
+  let (σ' , sc') = terminal-preserves-corresponds σ s sc
+  in terminal-expected-state s
+   , σ'
+   , terminal-star s h-eq pc-eq
+   , sc'
+
+-- fst, snd: memory operations
+full-correctness fst-ir x s σ loc sc h-eq pc-eq = fst-simulation σ s sc
+full-correctness snd-ir x s σ loc sc h-eq pc-eq = snd-simulation σ s sc
+
+-- compose, pair: compound structures
+full-correctness (g ∘ f) x s σ loc sc h-eq pc-eq = compose-simulation g f σ s sc
+full-correctness (⟨ f , g ⟩ m) x s σ loc sc h-eq pc-eq = pair-simulation f g m σ s sc
+
+-- sum types
+full-correctness {A} {A+B} (inl-ir {.A} {B} m) x s σ loc sc h-eq pc-eq = inl-simulation {A} {B} m σ s sc
+full-correctness {B} {A+B} (inr-ir {A} {.B} m) x s σ loc sc h-eq pc-eq = inr-simulation {A} {B} m σ s sc
+full-correctness (case-ir f g) x s σ loc sc h-eq pc-eq = case-simulation f g σ s sc
+full-correctness {_} {B} initial x s σ loc sc h-eq pc-eq = initial-simulation {B} σ s sc
+
+-- closures
+full-correctness {A} {.(B ⇒[ _ ] C)} (curry {.A} {B} {C} {q} f m) x s σ loc sc h-eq pc-eq =
+  curry-simulation {A} {B} {C} {q} f m σ s sc
+full-correctness {.((A ⇒[ q ] B) * A)} {B} (apply {A} {.B} {q}) x s σ loc sc h-eq pc-eq =
+  apply-simulation {A} {B} {q} σ s sc
+
+-- remaining
+full-correctness {.(A ⇒[ q ] B)} {.(Eff A B)} (arr {A} {B} {q}) x s σ loc sc h-eq pc-eq =
+  arr-simulation {A} {B} {q} σ s sc
+full-correctness {F} {.(Fix F)} (fold-ir m) x s σ loc sc h-eq pc-eq = fold-simulation {F} m σ s sc
+full-correctness {.(Fix F)} {F} unfold-ir x s σ loc sc h-eq pc-eq = unfold-simulation {F} σ s sc
+full-correctness (free-heap r) x s σ loc sc h-eq pc-eq = free-heap-simulation r σ s sc
+full-correctness {A} {B} (Prim p) x s σ loc sc h-eq pc-eq = prim-simulation {A} {B} p σ s sc
