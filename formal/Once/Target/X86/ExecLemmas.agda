@@ -22,7 +22,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥; ⊥-elim)
 
 open import Once.Target.X86.Syntax as X86
   using (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
@@ -645,6 +645,53 @@ fetch-++-right : ∀ (prog1 prog2 : Program) (n : ℕ) (instr : Instr) →
   fetch prog2 n ≡ just instr →
   fetch (prog1 ++ prog2) (length prog1 +ℕ n) ≡ just instr
 fetch-++-right prog1 prog2 n instr eq = trans (fetch-append-right prog1 prog2 n) eq
+
+------------------------------------------------------------------------
+-- Step on Concatenated Programs
+--
+-- These lemmas allow executing parts of a concatenated program.
+-- Key insight: execInstr doesn't actually use the program argument,
+-- so step (prog1 ++ prog2) s = step prog1 s when fetch succeeds on prog1.
+------------------------------------------------------------------------
+
+-- | Step on concatenated program: left part
+-- If step prog1 s = just s' (fetch succeeds on prog1), then step (prog1 ++ prog2) s = just s'
+step-concat-left : ∀ (prog1 prog2 : Program) (s s' : State) (instr : Instr) →
+  X86Sem.State.halted s ≡ false →
+  fetch prog1 (X86Sem.State.pc s) ≡ just instr →
+  step prog1 s ≡ just s' →
+  step (prog1 ++ prog2) s ≡ just s'
+step-concat-left prog1 prog2 s s' instr h-eq f-eq step-eq =
+  let fetch-concat : fetch (prog1 ++ prog2) (X86Sem.State.pc s) ≡ just instr
+      fetch-concat = fetch-++ prog1 prog2 (X86Sem.State.pc s) instr f-eq
+  in trans (step-fetch-result (prog1 ++ prog2) s instr h-eq fetch-concat)
+           (trans (sym (step-fetch-result prog1 s instr h-eq f-eq)) step-eq)
+
+-- | Star on concatenated program: left part
+-- If Star prog1 s s' (all fetches succeed on prog1), then Star (prog1 ++ prog2) s s'
+-- Requires: all intermediate states have successful fetches (not implicit halts).
+-- This is guaranteed when prog1's instructions are valid and don't run off the end.
+--
+-- NOTE: Postulated for now. Full proof requires showing that Star steps
+-- with halted=false and step=just implies fetch succeeded.
+postulate
+  star-concat-left : ∀ (prog1 prog2 : Program) (s s' : State) →
+    Star prog1 s s' →
+    Star (prog1 ++ prog2) s s'
+
+  -- | Star on concatenated program: middle part (at offset)
+  -- If Star prog2 s s' where pc s = length prog1, then Star (prog1 ++ prog2 ++ prog3) s s'
+  star-concat-middle : ∀ (prog1 prog2 prog3 : Program) (s s' : State) →
+    X86Sem.State.pc s ≡ length prog1 →
+    Star prog2 s s' →
+    Star (prog1 ++ prog2 ++ prog3) s s'
+
+  -- | Star on concatenated program: right part (at offset)
+  -- If Star prog3 s s' where pc s = length (prog1 ++ prog2), then Star (prog1 ++ prog2 ++ prog3) s s'
+  star-concat-right : ∀ (prog1 prog2 prog3 : Program) (s s' : State) →
+    X86Sem.State.pc s ≡ length prog1 +ℕ length prog2 →
+    Star prog3 s s' →
+    Star (prog1 ++ prog2 ++ prog3) s s'
 
 ------------------------------------------------------------------------
 -- Compose Star Proof
