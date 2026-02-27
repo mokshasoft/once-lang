@@ -34,7 +34,10 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 -- Import X86v3 FrameSemantics instance (first, needed for SlotMachine instantiation)
 open import Once.CCC.Target.X86v3.FrameInstantiation
-  using (x86v3-frame-semantics; X86Frame)
+  using (x86v3-frame-semantics; X86Frame; x86-slot-addr-suc; x86-slot-addr)
+
+-- Import word-size for sucLoc correspondence
+open import Once.CCC.Target.X86.Layout using (word-size)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Import SlotMachine types
@@ -170,6 +173,23 @@ FS = x86v3-frame-semantics
 loc-to-addr : ValueLocation FS → Word
 loc-to-addr (OnStack f k) = x86-slot-addr f k
 loc-to-addr (OnHeap hl)   = 0  -- TODO: heap base + ref-id * block-size + offset * slot-size
+
+-- | sucLoc address correspondence for OnStack locations
+-- loc-to-addr (sucLoc loc) = loc-to-addr loc + slot-size
+--
+-- This lemma connects SlotMachine's sucLoc (symbolic) to x86's +slot-size (concrete).
+-- Used by snd-simulation to prove memory access at rdi+8.
+sucLoc-to-addr-OnStack : ∀ (f : X86Frame) (k : ℕ) →
+  loc-to-addr (sucLoc (OnStack f k)) ≡ loc-to-addr (OnStack f k) +ℕ slot-size
+sucLoc-to-addr-OnStack f k =
+  -- sucLoc (OnStack f k) = OnStack f (suc k) by definition
+  -- loc-to-addr (OnStack f (suc k)) = x86-slot-addr f (suc k)
+  -- x86-slot-addr f (suc k) = x86-slot-addr f k + word-size (by x86-slot-addr-suc)
+  -- word-size = slot-size = 8
+  trans (x86-slot-addr-suc f k) (cong (x86-slot-addr f k +ℕ_) word-size≡slot-size)
+  where
+    word-size≡slot-size : word-size ≡ slot-size
+    word-size≡slot-size = refl
 
 ------------------------------------------------------------------------
 -- State Correspondence
