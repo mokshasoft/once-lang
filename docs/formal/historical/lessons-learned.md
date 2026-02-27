@@ -361,6 +361,45 @@ case-analysis-inl ρ s l r a eq with evalSurface ρ s | eq
 ... | inj₁ x | refl = refl
 ```
 
+### Capturing equality proofs from `with` using `in` syntax
+
+**Problem**: After `with X ... | pattern`, the term `X` has been abstracted away. If you need a proof that `X ≡ pattern` to pass to another function, you can't just use `refl`.
+
+```agda
+-- BAD: After matching, heapMem σ hl has been replaced by the pattern
+-- so 'refl' doesn't have type 'heapMem σ hl ≡ just hl''
+helper eq with heapMem σ hl | eq
+... | just hl' | refl = heap-corresponds hl hl' refl  -- ERROR!
+```
+
+**Solution**: Use the `in` syntax (Agda 2.6+) to capture the equality proof:
+
+```agda
+-- GOOD: 'in heapMem-eq' captures the proof that heapMem σ hl ≡ just hl'
+helper eq with heapMem σ hl in heapMem-eq | eq
+... | just hl' | refl = heap-corresponds hl hl' heapMem-eq  -- Works!
+```
+
+**When to use this pattern**:
+- You're matching on a scrutinee AND need to pass proof of what it equals to another function
+- The other function expects `scrutinee ≡ pattern`, not just for the goal to reduce
+
+**Full example from heap correspondence proofs**:
+
+```agda
+-- Need: x86-readMem ... ≡ just (loc-to-addr target)
+-- Have: readLoc σ (OnHeap hl) ≡ just target  (the 'eq' parameter)
+-- Have: heap-corresponds : heapMem σ hl ≡ just hl' → x86-readMem ... ≡ just ...
+
+heap-helper : readLoc σ (OnHeap hl) ≡ just target →
+              x86-readMem mem (loc-to-addr (OnHeap hl)) ≡ just (loc-to-addr target)
+heap-helper eq with heapMem σ hl in heapMem-eq | eq
+-- After matching: heapMem σ hl = just hl', so readLoc returns just (OnHeap hl')
+-- eq : just (OnHeap hl') ≡ just target, so with refl we get target = OnHeap hl'
+-- heapMem-eq : heapMem σ hl ≡ just hl'  (captured by 'in')
+... | just hl' | refl = heap-corresponds hl hl' heapMem-eq
+```
+
 ### List operator precedence (Critical for backend proofs!)
 
 **`++` is RIGHT-associative** (`infixr 5`):
