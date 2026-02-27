@@ -26,7 +26,7 @@
 
 module Once.CCC.Target.X86v3.Refinement.SlotToX86 where
 
-open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; false)
@@ -43,7 +43,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- Import SlotMachine types
 open import Once.CCC.SlotMachine as SlotMachine
   using (ValueLocation; OnStack; OnHeap; HeapRef; Slot;
-         HeapLocation; heap-offset;
+         HeapLocation; heap-loc; heap-offset;
          RegId; RAX; RDI; RSI; R12; R14; R15;
          LocSourceExt; Loc; IndReg; IndRegSuc;
          sucLoc;
@@ -214,21 +214,36 @@ sucLoc-to-addr-OnHeap : ∀ (heap-base : HeapRef → Word) (hl : HeapLocation) �
 sucLoc-to-addr-OnHeap hb (heap-loc ref offset) =
   -- sucLoc (OnHeap (heap-loc ref offset)) = OnHeap (heap-loc ref (suc offset))
   -- loc-to-addr hb (OnHeap (heap-loc ref (suc offset))) = hb ref + (suc offset) * slot-size
-  -- = hb ref + offset * slot-size + slot-size
-  -- = loc-to-addr hb (OnHeap (heap-loc ref offset)) + slot-size
+  -- We need: hb ref + (suc offset) * slot-size = (hb ref + offset * slot-size) + slot-size
   suc-offset-lemma
   where
-    open import Data.Nat.Properties using (+-assoc; *-suc)
-    -- (suc offset) * slot-size = slot-size + offset * slot-size
-    suc-mult : (suc offset) *ℕ slot-size ≡ slot-size +ℕ (offset *ℕ slot-size)
-    suc-mult = *-suc offset slot-size
-    -- hb ref + (suc offset) * slot-size = hb ref + slot-size + offset * slot-size
-    suc-offset-lemma : hb ref +ℕ ((suc offset) *ℕ slot-size) ≡ (hb ref +ℕ (offset *ℕ slot-size)) +ℕ slot-size
-    suc-offset-lemma = trans (cong (hb ref +ℕ_) suc-mult)
-                             (trans (+-assoc (hb ref) slot-size (offset *ℕ slot-size))
-                                    (cong (_+ℕ (offset *ℕ slot-size)) (+-comm (hb ref) slot-size)))
-      where
-        open import Data.Nat.Properties using (+-comm)
+    open import Data.Nat.Properties using (+-assoc; +-comm; *-suc; *-comm)
+    a = hb ref
+    b = slot-size
+    c = offset *ℕ slot-size
+    -- Step 1: Show (suc offset) * slot-size = slot-size + offset * slot-size
+    -- By *-comm: (suc offset) * slot-size = slot-size * (suc offset)
+    -- By *-suc: slot-size * (suc offset) = slot-size + slot-size * offset
+    -- By *-comm: slot-size * offset = offset * slot-size
+    -- So: (suc offset) * slot-size = slot-size + offset * slot-size = b + c
+    suc-mult-eq : (suc offset) *ℕ slot-size ≡ slot-size +ℕ (offset *ℕ slot-size)
+    suc-mult-eq = trans (*-comm (suc offset) slot-size)
+                        (trans (*-suc slot-size offset)
+                               (cong (slot-size +ℕ_) (*-comm slot-size offset)))
+    -- Step 2: Rearrange a + (b + c) = (a + c) + b
+    -- Proof: a + (b + c) = (a + b) + c     [by sym (+-assoc)]
+    --                    = (b + a) + c     [by cong (_+ c) (+-comm a b)]
+    --                    = b + (a + c)     [by +-assoc]
+    --                    = (a + c) + b     [by +-comm]
+    rearrange : ∀ a' b' c' → a' +ℕ (b' +ℕ c') ≡ (a' +ℕ c') +ℕ b'
+    rearrange a' b' c' =
+      trans (sym (+-assoc a' b' c'))
+            (trans (cong (_+ℕ c') (+-comm a' b'))
+                   (trans (+-assoc b' a' c')
+                          (+-comm b' (a' +ℕ c'))))
+    -- Combine: a + (suc offset) * slot-size = a + (b + c) = (a + c) + b
+    suc-offset-lemma : a +ℕ ((suc offset) *ℕ slot-size) ≡ (a +ℕ c) +ℕ b
+    suc-offset-lemma = trans (cong (a +ℕ_) suc-mult-eq) (rearrange a b c)
 
 -- | General sucLoc address correspondence (works for both OnStack and OnHeap)
 sucLoc-to-addr : ∀ (heap-base : HeapRef → Word) (loc : ValueLocation FS) →

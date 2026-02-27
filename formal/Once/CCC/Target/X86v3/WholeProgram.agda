@@ -26,7 +26,7 @@ module Once.CCC.Target.X86v3.WholeProgram where
 
 open import Data.Bool using (false)
 open import Data.Empty using (⊥)
-open import Data.Nat using (ℕ; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Induction.WellFounded using (Acc)
@@ -214,7 +214,7 @@ open import Data.Maybe using (just)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 -- Import SlotMachine exec for simulation proofs
-open import Once.CCC.SlotMachine as SM using (LocState; Registers; readReg; writeReg)
+open import Once.CCC.SlotMachine as SM using (LocState; Registers; readReg; writeReg; sucLoc; sucHL)
 open SM.ExecFinal {FS'} using () renaming (exec to slot-exec)
 
 -- Import Star combinators
@@ -337,20 +337,158 @@ postulate
 -- Precondition: memory at RDI+8 contains snd-loc
 -- After: RAX = snd-loc (both sides)
 --
--- TODO: Update to use heap-base from StateCorresponds and sucLoc-to-addr
+-- PROVEN for both OnStack and OnHeap using sucLoc-to-addr
 ------------------------------------------------------------------------
 
+-- SlotMachine state after snd (given the loaded value)
+snd-slot-state : LocState FS' → SM.ValueLocation FS' → LocState FS'
+snd-slot-state σ snd-loc = record σ { regs = writeReg (SM.LocState.regs σ) RAX snd-loc }
+
+-- snd preserves correspondence (PROVEN - with memory precondition)
+snd-preserves-corresponds : ∀ (σ : LocState FS') (s : State)
+  (snd-loc : SM.ValueLocation FS') →
+  (sc : StateCorresponds σ s) →
+  readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc →
+  StateCorresponds (snd-slot-state σ snd-loc)
+                   (snd-expected-state s (loc-to-addr (heap-base sc) snd-loc))
+snd-preserves-corresponds σ s snd-loc sc mem-pre = record
+  { heap-base = heap-base sc
+  ; regs-correspond = snd-regs-correspond
+  ; mem-corresponds = snd-mem-corresponds
+  ; halted-corresponds = halted-corresponds sc
+  ; rbp-is-frame-base = rbp-is-frame-base sc
+  }
+  where
+    hb = heap-base sc
+
+    snd-regs-correspond : RegsCorrespond hb
+      (SM.LocState.regs (snd-slot-state σ snd-loc))
+      (X86Sem.State.regs (snd-expected-state s (loc-to-addr hb snd-loc)))
+    snd-regs-correspond = record
+      { rax-corresponds = refl
+      ; rdi-corresponds = rdi-corresponds (regs-correspond sc)
+      ; rsi-corresponds = rsi-corresponds (regs-correspond sc)
+      ; r12-corresponds = r12-corresponds (regs-correspond sc)
+      ; r14-corresponds = r14-corresponds (regs-correspond sc)
+      ; r15-corresponds = r15-corresponds (regs-correspond sc)
+      }
+
+    -- Helper: readLoc unchanged when only registers change
+    snd-readLoc-unchanged : ∀ (loc : SM.ValueLocation FS') →
+      readLoc (snd-slot-state σ snd-loc) loc ≡ readLoc σ loc
+    snd-readLoc-unchanged (OnStack f k) = refl
+    snd-readLoc-unchanged (OnHeap hl) = refl
+
+    -- snd-slot-state only changes registers, heapMem is unchanged
+    snd-heapMem-unchanged : SM.LocState.heapMem (snd-slot-state σ snd-loc) ≡ SM.LocState.heapMem σ
+    snd-heapMem-unchanged = refl
+
+    snd-mem-corresponds : MemCorresponds hb (snd-slot-state σ snd-loc)
+                            (X86Sem.State.memory (snd-expected-state s (loc-to-addr hb snd-loc)))
+    snd-mem-corresponds = record
+      { stack-corresponds = λ f k loc' read-eq →
+          stack-corresponds (mem-corresponds sc) f k loc'
+            (trans (sym (snd-readLoc-unchanged (OnStack f k))) read-eq)
+      ; heap-corresponds = λ hl hl' read-eq →
+          heap-corresponds (mem-corresponds sc) hl hl'
+            (trans (sym (cong (λ m → m hl) snd-heapMem-unchanged)) read-eq)
+      }
+
 -- snd simulation with memory precondition
--- Postulated until heap-base threading is complete
-postulate
-  snd-simulation : ∀ (σ : LocState FS') (s : State)
-    (snd-loc : SM.ValueLocation FS') →
-    StateCorresponds σ s →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 0 →
-    readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star snd-instrs s x86-final × StateCorresponds σ-final x86-final
+-- Uses sucLoc-to-addr from SlotToX86 to connect sucLoc to +slot-size
+-- PROVEN for both OnStack and OnHeap cases
+snd-simulation : ∀ (σ : LocState FS') (s : State)
+  (snd-loc : SM.ValueLocation FS') →
+  (sc : StateCorresponds σ s) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 0 →
+  readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc →
+  ∃[ x86-final ] ∃[ σ-final ]
+    Star snd-instrs s x86-final × StateCorresponds σ-final x86-final
+snd-simulation σ s snd-loc sc h-eq pc-eq mem-pre =
+  snd-sim-helper (SM.readReg (SM.LocState.regs σ) RDI) refl mem-pre
+  where
+    hb = heap-base sc
+
+    -- Helper for heap case: use with pattern to match heapMem result and equality proof together
+    -- Defined before snd-sim-helper so it can be used in the OnHeap clause
+    -- Use 'in heapMem-eq' to capture the heapMem equality proof
+    heap-x86-mem-helper : ∀ (hl : HeapLocation) (target : SM.ValueLocation FS') →
+      readLoc σ (OnHeap (SM.sucHL hl)) ≡ just target →
+      x86-readMem (X86Sem.State.memory s) (loc-to-addr hb (SM.sucLoc (OnHeap hl))) ≡ just (loc-to-addr hb target)
+    heap-x86-mem-helper hl target eq with SM.LocState.heapMem σ (SM.sucHL hl) in heapMem-eq | eq
+    ... | just hl' | refl = heap-corresponds (mem-corresponds sc) (SM.sucHL hl) hl' heapMem-eq
+
+    snd-sim-helper : ∀ (rdi-loc : SM.ValueLocation FS') →
+      SM.readReg (SM.LocState.regs σ) RDI ≡ rdi-loc →
+      readLoc σ (SM.sucLoc rdi-loc) ≡ just snd-loc →
+      ∃[ x86-final ] ∃[ σ-final ]
+        Star snd-instrs s x86-final × StateCorresponds σ-final x86-final
+
+    -- OnStack case
+    snd-sim-helper (OnStack f k) rdi-eq mem-pre-stack =
+      let rdi-addr = x86-readReg (X86Sem.State.regs s) rdi
+          -- By regs-correspond + rdi-eq: rdi-addr = loc-to-addr hb (OnStack f k)
+          rdi-corr : rdi-addr ≡ loc-to-addr hb (OnStack f k)
+          rdi-corr = trans (rdi-corresponds (regs-correspond sc)) (cong (loc-to-addr hb) rdi-eq)
+          -- sucLoc location
+          suc-loc = SM.sucLoc (OnStack f k)
+          -- By sucLoc-to-addr: loc-to-addr hb (sucLoc (OnStack f k)) = loc-to-addr hb (OnStack f k) + slot-size
+          sucLoc-eq : loc-to-addr hb suc-loc ≡ loc-to-addr hb (OnStack f k) +ℕ slot-size
+          sucLoc-eq = sucLoc-to-addr hb (OnStack f k)
+          -- By mem-corresponds: x86 memory at addr(suc-loc) = loc-to-addr hb snd-loc
+          x86-mem-eq : x86-readMem (X86Sem.State.memory s) (loc-to-addr hb suc-loc) ≡ just (loc-to-addr hb snd-loc)
+          x86-mem-eq = stack-corresponds (mem-corresponds sc) f (suc k) snd-loc mem-pre-stack
+          -- Combine: rdi-addr + slot-size = loc-to-addr hb suc-loc
+          addr-eq : rdi-addr +ℕ slot-size ≡ loc-to-addr hb suc-loc
+          addr-eq = trans (cong (_+ℕ slot-size) rdi-corr) (sym sucLoc-eq)
+          -- Memory equality at rdi + slot-size
+          x86-mem-at-rdi+8 : x86-readMem (X86Sem.State.memory s) (rdi-addr +ℕ slot-size) ≡ just (loc-to-addr hb snd-loc)
+          x86-mem-at-rdi+8 = subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just (loc-to-addr hb snd-loc))
+                                   (sym addr-eq) x86-mem-eq
+          -- Transport mem-pre back to original form for snd-preserves-corresponds
+          mem-pre-orig : readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc
+          mem-pre-orig = subst (λ loc → readLoc σ (SM.sucLoc loc) ≡ just snd-loc) (sym rdi-eq) mem-pre-stack
+      in snd-expected-state s (loc-to-addr hb snd-loc)
+       , snd-slot-state σ snd-loc
+       , snd-star s (loc-to-addr hb snd-loc) h-eq pc-eq x86-mem-at-rdi+8
+       , snd-preserves-corresponds σ s snd-loc sc mem-pre-orig
+
+    -- OnHeap case (PROVEN using sucLoc-to-addr-OnHeap and heap-corresponds)
+    snd-sim-helper (OnHeap hl) rdi-eq mem-pre-heap =
+      snd-expected-state s (loc-to-addr hb snd-loc)
+      , snd-slot-state σ snd-loc
+      , snd-star s (loc-to-addr hb snd-loc) h-eq pc-eq x86-mem-at-rdi+8
+      , snd-preserves-corresponds σ s snd-loc sc mem-pre-orig
+      where
+        rdi-addr = x86-readReg (X86Sem.State.regs s) rdi
+        suc-loc = SM.sucLoc (OnHeap hl)
+        suc-hl = SM.sucHL hl
+
+        -- By regs-correspond + rdi-eq: rdi-addr = loc-to-addr hb (OnHeap hl)
+        rdi-corr : rdi-addr ≡ loc-to-addr hb (OnHeap hl)
+        rdi-corr = trans (rdi-corresponds (regs-correspond sc)) (cong (loc-to-addr hb) rdi-eq)
+
+        -- By sucLoc-to-addr: loc-to-addr hb (sucLoc (OnHeap hl)) = loc-to-addr hb (OnHeap hl) + slot-size
+        sucLoc-eq : loc-to-addr hb suc-loc ≡ loc-to-addr hb (OnHeap hl) +ℕ slot-size
+        sucLoc-eq = sucLoc-to-addr hb (OnHeap hl)
+
+        -- Use the helper to get x86 memory equality
+        x86-mem-eq : x86-readMem (X86Sem.State.memory s) (loc-to-addr hb suc-loc) ≡ just (loc-to-addr hb snd-loc)
+        x86-mem-eq = heap-x86-mem-helper hl snd-loc mem-pre-heap
+
+        -- Combine: rdi-addr + slot-size = loc-to-addr hb suc-loc
+        addr-eq : rdi-addr +ℕ slot-size ≡ loc-to-addr hb suc-loc
+        addr-eq = trans (cong (_+ℕ slot-size) rdi-corr) (sym sucLoc-eq)
+
+        -- Memory equality at rdi + slot-size
+        x86-mem-at-rdi+8 : x86-readMem (X86Sem.State.memory s) (rdi-addr +ℕ slot-size) ≡ just (loc-to-addr hb snd-loc)
+        x86-mem-at-rdi+8 = subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just (loc-to-addr hb snd-loc))
+                                 (sym addr-eq) x86-mem-eq
+
+        -- Transport mem-pre back to original form
+        mem-pre-orig : readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc
+        mem-pre-orig = subst (λ loc → readLoc σ (SM.sucLoc loc) ≡ just snd-loc) (sym rdi-eq) mem-pre-heap
 
 ------------------------------------------------------------------------
 -- bridge: mov rdi, rax
@@ -368,14 +506,6 @@ postulate
   bridge-preserves-corresponds : ∀ (σ : LocState FS') (s : State) →
     StateCorresponds σ s →
     StateCorresponds (record σ { regs = writeReg (SM.LocState.regs σ) RDI (SM.readReg (SM.LocState.regs σ) RAX) }) (bridge-expected-state s)
-
-    bridge-mem-corresponds : MemCorresponds (bridge-slot-state σ)
-                               (X86Sem.State.memory (bridge-expected-state s))
-    bridge-mem-corresponds = record
-      { stack-corresponds = λ loc loc' read-eq →
-          stack-corresponds (mem-corresponds sc) loc loc'
-            (trans (sym (bridge-readLoc-unchanged σ loc)) read-eq)
-      }
 
 -- SlotMachine state after bridge
 bridge-slot-state : LocState FS' → LocState FS'

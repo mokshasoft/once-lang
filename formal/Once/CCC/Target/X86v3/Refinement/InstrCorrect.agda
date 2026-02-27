@@ -55,7 +55,7 @@ open import Once.CCC.Target.X86v3.CodeGen.Compile
 
 -- Import SlotToX86 correspondence
 open import Once.CCC.Target.X86v3.Refinement.SlotToX86
-  using (FS; loc-to-addr; compile-reg;
+  using (FS; loc-to-addr; compile-reg; HeapBaseMap;
          RegsCorrespond; MemCorresponds; StateCorresponds;
          mov-regs-correspond; mov-mem-corresponds;
          build-regs-correspond-after-write;
@@ -75,12 +75,14 @@ open StateCorresponds
 ------------------------------------------------------------------------
 
 -- | Result correspondence: x86 rax holds address of result location
+-- Now requires heap-base mapping for OnHeap locations
 record ResultCorresponds {B : Type}
+  (heap-base : HeapBaseMap)
   (result : ⟦ B ⟧)
   (result-loc : ValueLocation FS)
   (s : State) : Set where
   field
-    rax-is-result : x86-readReg (X86Sem.State.regs s) rax ≡ loc-to-addr result-loc
+    rax-is-result : x86-readReg (X86Sem.State.regs s) rax ≡ loc-to-addr heap-base result-loc
     -- result-valid would connect to ValidAt, but we focus on address correspondence
 
 open ResultCorresponds
@@ -92,14 +94,14 @@ open ResultCorresponds
 -- | id correctness: mov rax, rdi preserves correspondence
 -- After: rax = rdi (input location), so result = input
 id-correct : ∀ (input-loc : ValueLocation FS)
-  (σ : LocState FS) (s : State) →
-  StateCorresponds σ s →
-  x86-readReg (X86Sem.State.regs s) rdi ≡ loc-to-addr input-loc →
+  (σ : LocState FS) (s : State)
+  (sc : StateCorresponds σ s) →
+  x86-readReg (X86Sem.State.regs s) rdi ≡ loc-to-addr (heap-base sc) input-loc →
   -- After mov rax, rdi: rax holds input-loc address
   let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax
                               (x86-readReg (X86Sem.State.regs s) rdi)
                     ; pc = X86Sem.State.pc s +ℕ 1 }
-  in x86-readReg (X86Sem.State.regs s') rax ≡ loc-to-addr input-loc
+  in x86-readReg (X86Sem.State.regs s') rax ≡ loc-to-addr (heap-base sc) input-loc
 id-correct input-loc σ s sc rdi-eq = trans rax-after-write rdi-eq
   where
     rax-after-write : x86-readReg (x86-writeReg (X86Sem.State.regs s) rax
@@ -111,26 +113,26 @@ id-correct input-loc σ s sc rdi-eq = trans rax-after-write rdi-eq
 -- Requires: memory at input-loc contains fst-loc
 -- After: rax = fst-loc address
 fst-correct : ∀ (input-loc fst-loc : ValueLocation FS)
-  (σ : LocState FS) (s : State) →
-  StateCorresponds σ s →
-  x86-readReg (X86Sem.State.regs s) rdi ≡ loc-to-addr input-loc →
-  x86-readMem (X86Sem.State.memory s) (loc-to-addr input-loc) ≡ just (loc-to-addr fst-loc) →
+  (σ : LocState FS) (s : State)
+  (sc : StateCorresponds σ s) →
+  x86-readReg (X86Sem.State.regs s) rdi ≡ loc-to-addr (heap-base sc) input-loc →
+  x86-readMem (X86Sem.State.memory s) (loc-to-addr (heap-base sc) input-loc) ≡ just (loc-to-addr (heap-base sc) fst-loc) →
   -- After mov rax, [rdi]: rax holds fst-loc address
-  ∃[ s' ] (x86-readReg (X86Sem.State.regs s') rax ≡ loc-to-addr fst-loc)
+  ∃[ s' ] (x86-readReg (X86Sem.State.regs s') rax ≡ loc-to-addr (heap-base sc) fst-loc)
 fst-correct input-loc fst-loc σ s sc rdi-eq mem-eq =
-  let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax (loc-to-addr fst-loc)
+  let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax (loc-to-addr (heap-base sc) fst-loc)
                     ; pc = X86Sem.State.pc s +ℕ 1 }
   in s' , refl
 
 -- | snd correctness: mov rax, [rdi+8] loads snd of pair
 snd-correct : ∀ (input-loc snd-loc : ValueLocation FS)
-  (σ : LocState FS) (s : State) →
-  StateCorresponds σ s →
-  x86-readReg (X86Sem.State.regs s) rdi ≡ loc-to-addr input-loc →
-  x86-readMem (X86Sem.State.memory s) (loc-to-addr input-loc +ℕ slot-size) ≡ just (loc-to-addr snd-loc) →
-  ∃[ s' ] (x86-readReg (X86Sem.State.regs s') rax ≡ loc-to-addr snd-loc)
+  (σ : LocState FS) (s : State)
+  (sc : StateCorresponds σ s) →
+  x86-readReg (X86Sem.State.regs s) rdi ≡ loc-to-addr (heap-base sc) input-loc →
+  x86-readMem (X86Sem.State.memory s) (loc-to-addr (heap-base sc) input-loc +ℕ slot-size) ≡ just (loc-to-addr (heap-base sc) snd-loc) →
+  ∃[ s' ] (x86-readReg (X86Sem.State.regs s') rax ≡ loc-to-addr (heap-base sc) snd-loc)
 snd-correct input-loc snd-loc σ s sc rdi-eq mem-eq =
-  let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax (loc-to-addr snd-loc)
+  let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rax (loc-to-addr (heap-base sc) snd-loc)
                     ; pc = X86Sem.State.pc s +ℕ 1 }
   in s' , refl
 
@@ -150,14 +152,14 @@ terminal-correct σ s sc = refl
 ------------------------------------------------------------------------
 
 compose-bridge-correct : ∀ (result-loc : ValueLocation FS)
-  (σ : LocState FS) (s : State) →
-  StateCorresponds σ s →
-  x86-readReg (X86Sem.State.regs s) rax ≡ loc-to-addr result-loc →
+  (σ : LocState FS) (s : State)
+  (sc : StateCorresponds σ s) →
+  x86-readReg (X86Sem.State.regs s) rax ≡ loc-to-addr (heap-base sc) result-loc →
   -- After mov rdi, rax: rdi holds result-loc address
   let s' = record s { regs = x86-writeReg (X86Sem.State.regs s) rdi
                               (x86-readReg (X86Sem.State.regs s) rax)
                     ; pc = X86Sem.State.pc s +ℕ 1 }
-  in x86-readReg (X86Sem.State.regs s') rdi ≡ loc-to-addr result-loc
+  in x86-readReg (X86Sem.State.regs s') rdi ≡ loc-to-addr (heap-base sc) result-loc
 compose-bridge-correct result-loc σ s sc rax-eq = trans refl rax-eq
 
 ------------------------------------------------------------------------
@@ -168,25 +170,25 @@ compose-bridge-correct result-loc σ s sc rax-eq = trans refl rax-eq
 -- Key: x86 writes rdi's value to rax, SlotMachine does the same
 -- Both sides end up with: rax = (what was in rdi)
 -- This is just the general mov theorem instantiated for RAX ← RDI.
-mov-rax-rdi-regs-correspond : ∀ (σ-regs : Registers FS) (x86-regs : RegFile) →
-  RegsCorrespond σ-regs x86-regs →
+mov-rax-rdi-regs-correspond : ∀ (hb : HeapBaseMap) (σ-regs : Registers FS) (x86-regs : RegFile) →
+  RegsCorrespond hb σ-regs x86-regs →
   let src-loc = readReg σ-regs RDI
       src-val = x86-readReg x86-regs rdi
       x86-regs' = x86-writeReg x86-regs rax src-val
       σ-regs' = writeReg σ-regs RAX src-loc
-  in RegsCorrespond σ-regs' x86-regs'
-mov-rax-rdi-regs-correspond σ-regs x86-regs rc = mov-regs-correspond RAX RDI σ-regs x86-regs rc
+  in RegsCorrespond hb σ-regs' x86-regs'
+mov-rax-rdi-regs-correspond hb σ-regs x86-regs rc = mov-regs-correspond hb RAX RDI σ-regs x86-regs rc
 
 -- | After mov rdi, rax, register correspondence is updated
 -- This is just the general mov theorem instantiated for RDI ← RAX.
-mov-rdi-rax-regs-correspond : ∀ (σ-regs : Registers FS) (x86-regs : RegFile) →
-  RegsCorrespond σ-regs x86-regs →
+mov-rdi-rax-regs-correspond : ∀ (hb : HeapBaseMap) (σ-regs : Registers FS) (x86-regs : RegFile) →
+  RegsCorrespond hb σ-regs x86-regs →
   let src-loc = readReg σ-regs RAX
       src-val = x86-readReg x86-regs rax
       x86-regs' = x86-writeReg x86-regs rdi src-val
       σ-regs' = writeReg σ-regs RDI src-loc
-  in RegsCorrespond σ-regs' x86-regs'
-mov-rdi-rax-regs-correspond σ-regs x86-regs rc = mov-regs-correspond RDI RAX σ-regs x86-regs rc
+  in RegsCorrespond hb σ-regs' x86-regs'
+mov-rdi-rax-regs-correspond hb σ-regs x86-regs rc = mov-regs-correspond hb RDI RAX σ-regs x86-regs rc
 
 ------------------------------------------------------------------------
 -- Main Correctness Theorem Structure
