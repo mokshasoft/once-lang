@@ -226,7 +226,8 @@ open import Once.Target.X86.ExecLemmas
   using (id-star; id-expected-state; id-instrs;
          terminal-star; terminal-expected-state; terminal-instrs;
          fst-star; fst-expected-state; fst-instrs;
-         snd-star; snd-expected-state; snd-instrs)
+         snd-star; snd-expected-state; snd-instrs;
+         bridge-star; bridge-expected-state; compose-bridge)
 
 -- Import SlotToX86 for correspondence
 open import Once.CCC.Target.X86v3.Refinement.SlotToX86 as SlotToX86
@@ -550,6 +551,63 @@ snd-simulation σ s snd-loc sc h-eq pc-eq mem-pre =
             readLoc σ (SM.sucLoc (OnHeap hl)) ≡ just snd-loc →
             ∃[ x86-final ] ∃[ σ-final ]
               Star snd-instrs s x86-final × StateCorresponds σ-final x86-final
+
+------------------------------------------------------------------------
+-- bridge: mov rdi, rax
+--
+-- Transfers the result of f (in rax) to rdi for g.
+-- SlotMachine equivalent: mov RDI RAX
+-- After: RDI = (what was in RAX)
+------------------------------------------------------------------------
+
+-- SlotMachine state after bridge
+bridge-slot-state : LocState FS' → LocState FS'
+bridge-slot-state σ = record σ { regs = writeReg (SM.LocState.regs σ) RDI (SM.readReg (SM.LocState.regs σ) RAX) }
+
+-- Helper: readLoc unchanged when only registers change
+private
+  bridge-readLoc-unchanged : ∀ (σ : LocState FS') (loc : SM.ValueLocation FS') →
+    readLoc (bridge-slot-state σ) loc ≡ readLoc σ loc
+  bridge-readLoc-unchanged σ (OnStack f k) = refl
+  bridge-readLoc-unchanged σ (OnHeap hl) = refl
+
+-- bridge preserves correspondence (PROVEN)
+bridge-preserves-corresponds : ∀ (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  StateCorresponds (bridge-slot-state σ) (bridge-expected-state s)
+bridge-preserves-corresponds σ s sc = record
+  { regs-correspond = bridge-regs-correspond
+  ; mem-corresponds = bridge-mem-corresponds
+  ; halted-corresponds = halted-corresponds sc
+  ; rbp-is-frame-base = rbp-is-frame-base sc
+  }
+  where
+    bridge-regs-correspond : RegsCorrespond
+      (SM.LocState.regs (bridge-slot-state σ))
+      (X86Sem.State.regs (bridge-expected-state s))
+    bridge-regs-correspond = mov-regs-correspond RDI RAX (SM.LocState.regs σ) (X86Sem.State.regs s)
+                               (regs-correspond sc)
+
+    bridge-mem-corresponds : MemCorresponds (bridge-slot-state σ)
+                               (X86Sem.State.memory (bridge-expected-state s))
+    bridge-mem-corresponds = record
+      { stack-corresponds = λ loc loc' read-eq →
+          stack-corresponds (mem-corresponds sc) loc loc'
+            (trans (sym (bridge-readLoc-unchanged σ loc)) read-eq)
+      }
+
+-- bridge simulation (Star + StateCorresponds)
+bridge-simulation : ∀ (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 0 →
+  ∃[ x86-final ] ∃[ σ-final ]
+    Star compose-bridge s x86-final × StateCorresponds σ-final x86-final
+bridge-simulation σ s sc h-eq pc-eq =
+  bridge-expected-state s
+  , bridge-slot-state σ
+  , bridge-star s h-eq pc-eq
+  , bridge-preserves-corresponds σ s sc
 
 ------------------------------------------------------------------------
 -- Simulation postulates for full-correctness

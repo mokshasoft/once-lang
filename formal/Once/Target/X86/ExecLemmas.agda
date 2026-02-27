@@ -607,6 +607,13 @@ bridge-rdi-result : ∀ (s : State) →
 bridge-rdi-result s = readReg-writeReg-same (X86Sem.State.regs s) rdi
                         (x86-readReg (X86Sem.State.regs s) rax)
 
+-- | bridge Star proof: mov rdi, rax reaches expected state in one step
+bridge-star : ∀ (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 0 →
+  Star compose-bridge s (bridge-expected-state s)
+bridge-star s h-eq pc-eq = star-single h-eq (step-bridge s h-eq pc-eq)
+
 ------------------------------------------------------------------------
 -- Generalized Step Lemmas (for concatenated programs)
 --
