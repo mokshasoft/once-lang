@@ -16,8 +16,10 @@
 
 module Once.Target.X86.ExecLemmas where
 
-open import Data.Nat using (ℕ; zero; suc; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _∸_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (n∸n≡0; +-identityʳ)
 open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List.Properties using (++-assoc; length-++)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
@@ -667,30 +669,96 @@ step-concat-left prog1 prog2 s s' instr h-eq f-eq step-eq =
   in trans (step-fetch-result (prog1 ++ prog2) s instr h-eq fetch-concat)
            (trans (sym (step-fetch-result prog1 s instr h-eq f-eq)) step-eq)
 
--- | Star on concatenated program: left part
--- If Star prog1 s s' (all fetches succeed on prog1), then Star (prog1 ++ prog2) s s'
--- Requires: all intermediate states have successful fetches (not implicit halts).
--- This is guaranteed when prog1's instructions are valid and don't run off the end.
+------------------------------------------------------------------------
+-- Key Lemma: step success implies fetch success
 --
--- NOTE: Postulated for now. Full proof requires showing that Star steps
--- with halted=false and step=just implies fetch succeeded.
-postulate
-  star-concat-left : ∀ (prog1 prog2 : Program) (s s' : State) →
-    Star prog1 s s' →
-    Star (prog1 ++ prog2) s s'
+-- If step prog s = just s' with halted s = false and halted s' = false,
+-- then fetch prog (pc s) must have returned just instr for some instr.
+--
+-- Proof: When fetch returns nothing, step sets halted = true.
+-- So if halted s' = false, fetch must have succeeded.
+------------------------------------------------------------------------
 
+-- | If step succeeds and next state is not halted, fetch must have succeeded
+step-not-halted-fetch : ∀ (prog : Program) (s s' : State) →
+  X86Sem.State.halted s ≡ false →
+  step prog s ≡ just s' →
+  X86Sem.State.halted s' ≡ false →
+  ∃[ instr ] fetch prog (X86Sem.State.pc s) ≡ just instr
+step-not-halted-fetch prog s s' h-eq step-eq h'-eq
+  with fetch prog (X86Sem.State.pc s) in f-eq
+... | just instr = instr , refl
+... | nothing = ⊥-elim (halted-contradiction s s' h-eq step-eq h'-eq f-eq)
+  where
+    -- When fetch returns nothing and halted s = false,
+    -- step returns record s { halted = true }, so halted s' = true.
+    -- But we have halted s' = false, contradiction.
+    halted-contradiction : ∀ (st st' : State) →
+      X86Sem.State.halted st ≡ false →
+      step prog st ≡ just st' →
+      X86Sem.State.halted st' ≡ false →
+      fetch prog (X86Sem.State.pc st) ≡ nothing →
+      ⊥
+    halted-contradiction st st' h step-st h' f-nothing
+      with X86Sem.State.halted st | h
+    ... | false | refl with fetch prog (X86Sem.State.pc st) | f-nothing
+    ...   | nothing | refl with step-st
+    -- step prog st = just (record st { halted = true })
+    -- So st' = record st { halted = true }, halted st' = true
+    -- But h' says halted st' = false, contradiction
+    ...     | refl with h'
+    ...       | ()
+
+-- | Star on concatenated program: left part (PROVEN)
+-- If Star prog1 s s' with halted s' = false, then Star (prog1 ++ prog2) s s'
+star-concat-left : ∀ (prog1 prog2 : Program) (s s' : State) →
+  Star prog1 s s' →
+  X86Sem.State.halted s' ≡ false →
+  Star (prog1 ++ prog2) s s'
+star-concat-left prog1 prog2 s .s Star.refl* _ = Star.refl*
+star-concat-left prog1 prog2 s s'' (Star.step* {s' = s'} h-eq step-eq star-rest) h-final =
+  let -- Get halted s' from the continuation
+      h'-eq : X86Sem.State.halted s' ≡ false
+      h'-eq = star-halted-false prog1 s' s'' star-rest h-final
+
+      -- Fetch must have succeeded
+      (instr , f-eq) = step-not-halted-fetch prog1 s s' h-eq step-eq h'-eq
+
+      -- Step on concatenated program
+      step-concat : step (prog1 ++ prog2) s ≡ just s'
+      step-concat = step-concat-left prog1 prog2 s s' instr h-eq f-eq step-eq
+
+  in Star.step* h-eq step-concat (star-concat-left prog1 prog2 s' s'' star-rest h-final)
+  where
+    -- Helper: if Star ends at s' with halted s' = false, all intermediate states are not halted
+    star-halted-false : ∀ (p : Program) (st st' : State) →
+      Star p st st' →
+      X86Sem.State.halted st' ≡ false →
+      X86Sem.State.halted st ≡ false
+    star-halted-false p st .st Star.refl* h' = h'
+    star-halted-false p st st' (Star.step* h _ _) _ = h
+
+-- | Star on concatenated program: middle and right parts
+-- These require offset tracking which is complex.
+-- The issue: Star proofs assume pc starts at 0, but we're at offset length prog1.
+-- The intermediate pc values (0,1,2,...) don't match what we need (offset, offset+1, ...).
+--
+-- For now, postulate these. A full proof would require:
+-- 1. Offset-parameterized Star (like IRStarResult in X86/Correct/StarBase)
+-- 2. Or, proving Star directly on the concatenated program (like compose-id-id-star)
+postulate
   -- | Star on concatenated program: middle part (at offset)
-  -- If Star prog2 s s' where pc s = length prog1, then Star (prog1 ++ prog2 ++ prog3) s s'
   star-concat-middle : ∀ (prog1 prog2 prog3 : Program) (s s' : State) →
     X86Sem.State.pc s ≡ length prog1 →
     Star prog2 s s' →
+    X86Sem.State.halted s' ≡ false →
     Star (prog1 ++ prog2 ++ prog3) s s'
 
   -- | Star on concatenated program: right part (at offset)
-  -- If Star prog3 s s' where pc s = length (prog1 ++ prog2), then Star (prog1 ++ prog2 ++ prog3) s s'
   star-concat-right : ∀ (prog1 prog2 prog3 : Program) (s s' : State) →
     X86Sem.State.pc s ≡ length prog1 +ℕ length prog2 →
     Star prog3 s s' →
+    X86Sem.State.halted s' ≡ false →
     Star (prog1 ++ prog2 ++ prog3) s s'
 
 ------------------------------------------------------------------------

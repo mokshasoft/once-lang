@@ -774,14 +774,24 @@ postulate
 -- PROVEN using star-concat-left, star-concat-middle, star-concat-right
 ------------------------------------------------------------------------
 
+-- Type for IR simulation result (with halted = false guarantee)
+record IRSimResult {A B : Type} (ir : IR A B) (s : State) : Set where
+  field
+    x86-final : State
+    σ-final : LocState FS'
+    star-proof : Star (compile-ir ir) s x86-final
+    corr-proof : StateCorresponds σ-final x86-final
+    halted-false : X86Sem.State.halted x86-final ≡ false
+
+open IRSimResult
+
 -- Type for IR simulation (parameterized for reuse)
 IRSimulation : ∀ {A B} → IR A B → Set
 IRSimulation {A} {B} ir = ∀ (σ : LocState FS') (s : State) →
   StateCorresponds σ s →
   X86Sem.State.halted s ≡ false →
   X86Sem.State.pc s ≡ 0 →
-  ∃[ x86-final ] ∃[ σ-final ]
-    Star (compile-ir ir) s x86-final × StateCorresponds σ-final x86-final
+  IRSimResult ir s
 
 -- compose-simulation: proven assuming simulations for f and g
 compose-simulation-with-IH : ∀ {A B C} (g : IR B C) (f : IR A B) →
@@ -795,20 +805,21 @@ compose-simulation-with-IH : ∀ {A B C} (g : IR B C) (f : IR A B) →
     Star (compile-ir (g ∘ f)) s x86-final × StateCorresponds σ-final x86-final
 compose-simulation-with-IH g f f-sim g-sim σ s sc h-eq pc-eq =
   let -- Step 1: Execute f
-      (sf , σf , star-f , sc-f) = f-sim σ s sc h-eq pc-eq
-
-      -- Step 2: Execute bridge (requires halted sf = false, pc sf = length (compile-ir f))
-      -- For now, we need these as assumptions from f-sim
-      -- In a full proof, f-sim would provide these facts
+      f-result = f-sim σ s sc h-eq pc-eq
+      sf = x86-final f-result
+      σf = σ-final f-result
+      star-f = star-proof f-result
+      sc-f = corr-proof f-result
+      h-sf = halted-false f-result
 
       -- Combine using star-concat
       prog-f = compile-ir f
       prog-g = compile-ir g
       full-prog = prog-f ++ compose-bridge ++ prog-g
 
-      -- Embed f's Star into the full program
+      -- Embed f's Star into the full program (now with halted proof)
       star-f-full : Star full-prog s sf
-      star-f-full = star-concat-left prog-f (compose-bridge ++ prog-g) s sf star-f
+      star-f-full = star-concat-left prog-f (compose-bridge ++ prog-g) s sf star-f h-sf
 
   in sf , σf , star-f-full , sc-f  -- Simplified: just f for now
 
