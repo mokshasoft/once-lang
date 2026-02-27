@@ -166,30 +166,75 @@ FS = x86v3-frame-semantics
 -- Location Concretization
 --
 -- The key function: ValueLocation → Word (address)
+--
+-- For stack locations: concrete rbp-relative address
+-- For heap locations: requires heap-base mapping (part of correspondence)
 ------------------------------------------------------------------------
 
--- | Concretize a ValueLocation to an x86 address
+-- | Concretize a stack location to an x86 address
+-- Stack locations have a fixed mapping via frame base + slot offset.
+stack-loc-to-addr : X86Frame → ℕ → Word
+stack-loc-to-addr f k = x86-slot-addr f k
+
+-- | Concretize a heap location given a heap-base mapping
+-- The heap-base maps each HeapRef to its base address in x86 memory.
+-- heap-loc-to-addr heap-base (heap-loc ref offset) = heap-base ref + offset * slot-size
+heap-loc-to-addr : (HeapRef → Word) → HeapLocation → Word
+heap-loc-to-addr heap-base (heap-loc ref offset) = heap-base ref +ℕ (offset *ℕ slot-size)
+
+-- | Concretize a ValueLocation given a heap-base mapping
 -- This is the key correspondence function.
-loc-to-addr : ValueLocation FS → Word
-loc-to-addr (OnStack f k) = x86-slot-addr f k
-loc-to-addr (OnHeap hl)   = 0  -- TODO: heap base + ref-id * block-size + offset * slot-size
+loc-to-addr : (HeapRef → Word) → ValueLocation FS → Word
+loc-to-addr _         (OnStack f k) = stack-loc-to-addr f k
+loc-to-addr heap-base (OnHeap hl)   = heap-loc-to-addr heap-base hl
 
 -- | sucLoc address correspondence for OnStack locations
--- loc-to-addr (sucLoc loc) = loc-to-addr loc + slot-size
+-- loc-to-addr heap-base (sucLoc loc) = loc-to-addr heap-base loc + slot-size
 --
 -- This lemma connects SlotMachine's sucLoc (symbolic) to x86's +slot-size (concrete).
 -- Used by snd-simulation to prove memory access at rdi+8.
-sucLoc-to-addr-OnStack : ∀ (f : X86Frame) (k : ℕ) →
-  loc-to-addr (sucLoc (OnStack f k)) ≡ loc-to-addr (OnStack f k) +ℕ slot-size
-sucLoc-to-addr-OnStack f k =
+sucLoc-to-addr-OnStack : ∀ (heap-base : HeapRef → Word) (f : X86Frame) (k : ℕ) →
+  loc-to-addr heap-base (sucLoc (OnStack f k)) ≡ loc-to-addr heap-base (OnStack f k) +ℕ slot-size
+sucLoc-to-addr-OnStack hb f k =
   -- sucLoc (OnStack f k) = OnStack f (suc k) by definition
-  -- loc-to-addr (OnStack f (suc k)) = x86-slot-addr f (suc k)
+  -- loc-to-addr hb (OnStack f (suc k)) = x86-slot-addr f (suc k)
   -- x86-slot-addr f (suc k) = x86-slot-addr f k + word-size (by x86-slot-addr-suc)
   -- word-size = slot-size = 8
   trans (x86-slot-addr-suc f k) (cong (x86-slot-addr f k +ℕ_) word-size≡slot-size)
   where
     word-size≡slot-size : word-size ≡ slot-size
     word-size≡slot-size = refl
+
+-- | sucLoc address correspondence for OnHeap locations
+-- loc-to-addr heap-base (sucLoc (OnHeap hl)) = loc-to-addr heap-base (OnHeap hl) + slot-size
+--
+-- This lemma connects SlotMachine's sucHL to x86's +slot-size for heap locations.
+sucLoc-to-addr-OnHeap : ∀ (heap-base : HeapRef → Word) (hl : HeapLocation) →
+  loc-to-addr heap-base (sucLoc (OnHeap hl)) ≡ loc-to-addr heap-base (OnHeap hl) +ℕ slot-size
+sucLoc-to-addr-OnHeap hb (heap-loc ref offset) =
+  -- sucLoc (OnHeap (heap-loc ref offset)) = OnHeap (heap-loc ref (suc offset))
+  -- loc-to-addr hb (OnHeap (heap-loc ref (suc offset))) = hb ref + (suc offset) * slot-size
+  -- = hb ref + offset * slot-size + slot-size
+  -- = loc-to-addr hb (OnHeap (heap-loc ref offset)) + slot-size
+  suc-offset-lemma
+  where
+    open import Data.Nat.Properties using (+-assoc; *-suc)
+    -- (suc offset) * slot-size = slot-size + offset * slot-size
+    suc-mult : (suc offset) *ℕ slot-size ≡ slot-size +ℕ (offset *ℕ slot-size)
+    suc-mult = *-suc offset slot-size
+    -- hb ref + (suc offset) * slot-size = hb ref + slot-size + offset * slot-size
+    suc-offset-lemma : hb ref +ℕ ((suc offset) *ℕ slot-size) ≡ (hb ref +ℕ (offset *ℕ slot-size)) +ℕ slot-size
+    suc-offset-lemma = trans (cong (hb ref +ℕ_) suc-mult)
+                             (trans (+-assoc (hb ref) slot-size (offset *ℕ slot-size))
+                                    (cong (_+ℕ (offset *ℕ slot-size)) (+-comm (hb ref) slot-size)))
+      where
+        open import Data.Nat.Properties using (+-comm)
+
+-- | General sucLoc address correspondence (works for both OnStack and OnHeap)
+sucLoc-to-addr : ∀ (heap-base : HeapRef → Word) (loc : ValueLocation FS) →
+  loc-to-addr heap-base (sucLoc loc) ≡ loc-to-addr heap-base loc +ℕ slot-size
+sucLoc-to-addr hb (OnStack f k) = sucLoc-to-addr-OnStack hb f k
+sucLoc-to-addr hb (OnHeap hl)   = sucLoc-to-addr-OnHeap hb hl
 
 ------------------------------------------------------------------------
 -- State Correspondence
@@ -198,40 +243,73 @@ sucLoc-to-addr-OnStack f k =
 --
 -- Key insight: SlotMachine operates on ValueLocations (symbolic),
 -- X86 operates on Words (concrete addresses).
--- Correspondence is via loc-to-addr.
+-- Correspondence is via loc-to-addr (using heap-base mapping).
 ------------------------------------------------------------------------
 
 -- | Correspondence between SlotMachine registers and X86 registers
 -- Each SlotMachine register holds a location whose address matches
 -- the word in the corresponding X86 register.
-record RegsCorrespond (σ-regs : Registers FS) (x86-regs : RegFile) : Set where
+-- Uses heap-base mapping for OnHeap locations.
+record RegsCorrespond (heap-base : HeapRef → Word) (σ-regs : Registers FS) (x86-regs : RegFile) : Set where
   field
-    rax-corresponds : x86-readReg x86-regs rax ≡ loc-to-addr (readReg σ-regs RAX)
-    rdi-corresponds : x86-readReg x86-regs rdi ≡ loc-to-addr (readReg σ-regs RDI)
-    rsi-corresponds : x86-readReg x86-regs rsi ≡ loc-to-addr (readReg σ-regs RSI)
-    r12-corresponds : x86-readReg x86-regs r12 ≡ loc-to-addr (readReg σ-regs R12)
-    r14-corresponds : x86-readReg x86-regs r14 ≡ loc-to-addr (readReg σ-regs R14)
-    r15-corresponds : x86-readReg x86-regs r15 ≡ loc-to-addr (readReg σ-regs R15)
+    rax-corresponds : x86-readReg x86-regs rax ≡ loc-to-addr heap-base (readReg σ-regs RAX)
+    rdi-corresponds : x86-readReg x86-regs rdi ≡ loc-to-addr heap-base (readReg σ-regs RDI)
+    rsi-corresponds : x86-readReg x86-regs rsi ≡ loc-to-addr heap-base (readReg σ-regs RSI)
+    r12-corresponds : x86-readReg x86-regs r12 ≡ loc-to-addr heap-base (readReg σ-regs R12)
+    r14-corresponds : x86-readReg x86-regs r14 ≡ loc-to-addr heap-base (readReg σ-regs R14)
+    r15-corresponds : x86-readReg x86-regs r15 ≡ loc-to-addr heap-base (readReg σ-regs R15)
 
 open RegsCorrespond
 
+------------------------------------------------------------------------
+-- Heap Base Mapping
+--
+-- Maps each HeapRef to its base address in x86 memory.
+-- This is established when heap blocks are allocated (malloc).
+------------------------------------------------------------------------
+
+HeapBaseMap : Set
+HeapBaseMap = HeapRef → Word
+
+------------------------------------------------------------------------
+-- Memory Correspondence (with heap support)
+--
+-- Stack: concrete rbp-relative addresses
+-- Heap: via heap-base mapping
+------------------------------------------------------------------------
+
 -- | Correspondence between SlotMachine memory and X86 memory
--- If SlotMachine memory at loc contains loc', then X86 memory at
--- addr(loc) contains addr(loc').
-record MemCorresponds (σ : LocState FS) (x86-mem : Memory) : Set where
+-- For stack locations: uses concrete frame-relative addressing
+-- For heap locations: uses heap-base mapping to compute addresses
+record MemCorresponds (heap-base : HeapBaseMap) (σ : LocState FS) (x86-mem : Memory) : Set where
   field
-    stack-corresponds : ∀ loc loc' →
-      readLoc σ loc ≡ just loc' →
-      x86-readMem x86-mem (loc-to-addr loc) ≡ just (loc-to-addr loc')
+    -- Stack memory correspondence (using concrete addresses)
+    stack-corresponds : ∀ (f : X86Frame) (k : ℕ) (loc' : ValueLocation FS) →
+      readLoc σ (OnStack f k) ≡ just loc' →
+      x86-readMem x86-mem (stack-loc-to-addr f k) ≡ just (loc-to-addr heap-base loc')
+
+    -- Heap memory correspondence (using heap-base mapping)
+    heap-corresponds : ∀ (hl hl' : HeapLocation) →
+      SlotMachine.LocState.heapMem σ hl ≡ just hl' →
+      x86-readMem x86-mem (heap-loc-to-addr heap-base hl) ≡ just (heap-loc-to-addr heap-base hl')
 
 open MemCorresponds
 
--- | Full state correspondence
+-- | Full state correspondence (with heap-base mapping)
 record StateCorresponds (σ : LocState FS) (s : State) : Set where
   field
-    regs-correspond : RegsCorrespond (SlotMachine.LocState.regs σ) (X86Sem.State.regs s)
-    mem-corresponds : MemCorresponds σ (X86Sem.State.memory s)
+    -- Heap base mapping (established by allocator)
+    heap-base : HeapBaseMap
+
+    -- Register correspondence (using heap-base for OnHeap locations)
+    regs-correspond : RegsCorrespond heap-base (SlotMachine.LocState.regs σ) (X86Sem.State.regs s)
+
+    -- Memory correspondence (stack + heap)
+    mem-corresponds : MemCorresponds heap-base σ (X86Sem.State.memory s)
+
+    -- Halted flag correspondence
     halted-corresponds : SlotMachine.LocState.halted σ ≡ X86Sem.State.halted s
+
     -- rbp holds current frame base (for frame-relative addressing)
     rbp-is-frame-base : ∀ (current-frame : X86Frame) →
       x86-readReg (X86Sem.State.regs s) rbp ≡ x86-frame-base current-frame
@@ -308,29 +386,29 @@ open SlotMachine.ExecFinal {FS}
   using (exec)
 
 -- | Helper: get the correspondence for a specific register
-get-reg-corresponds : ∀ (r : RegId) (σ-regs : Registers FS) (x86-regs : RegFile) →
-  RegsCorrespond σ-regs x86-regs →
-  x86-readReg x86-regs (compile-reg r) ≡ loc-to-addr (readReg σ-regs r)
-get-reg-corresponds RAX σ-regs x86-regs rc = rax-corresponds rc
-get-reg-corresponds RDI σ-regs x86-regs rc = rdi-corresponds rc
-get-reg-corresponds RSI σ-regs x86-regs rc = rsi-corresponds rc
-get-reg-corresponds R12 σ-regs x86-regs rc = r12-corresponds rc
-get-reg-corresponds R14 σ-regs x86-regs rc = r14-corresponds rc
-get-reg-corresponds R15 σ-regs x86-regs rc = r15-corresponds rc
+get-reg-corresponds : ∀ (heap-base : HeapBaseMap) (r : RegId) (σ-regs : Registers FS) (x86-regs : RegFile) →
+  RegsCorrespond heap-base σ-regs x86-regs →
+  x86-readReg x86-regs (compile-reg r) ≡ loc-to-addr heap-base (readReg σ-regs r)
+get-reg-corresponds hb RAX σ-regs x86-regs rc = rax-corresponds rc
+get-reg-corresponds hb RDI σ-regs x86-regs rc = rdi-corresponds rc
+get-reg-corresponds hb RSI σ-regs x86-regs rc = rsi-corresponds rc
+get-reg-corresponds hb R12 σ-regs x86-regs rc = r12-corresponds rc
+get-reg-corresponds hb R14 σ-regs x86-regs rc = r14-corresponds rc
+get-reg-corresponds hb R15 σ-regs x86-regs rc = r15-corresponds rc
 
 -- | After writing to a register, the correspondence updates correctly
 -- If we write loc to SlotMachine register r, and write loc-to-addr loc to x86 register,
 -- then the correspondence holds for r.
-write-reg-correspondence : ∀ (r : RegId) (loc : ValueLocation FS)
+write-reg-correspondence : ∀ (heap-base : HeapBaseMap) (r : RegId) (loc : ValueLocation FS)
   (σ-regs : Registers FS) (x86-regs : RegFile) →
-  x86-readReg (x86-writeReg x86-regs (compile-reg r) (loc-to-addr loc)) (compile-reg r)
-    ≡ loc-to-addr (readReg (writeReg σ-regs r loc) r)
-write-reg-correspondence RAX loc σ-regs x86-regs = refl
-write-reg-correspondence RDI loc σ-regs x86-regs = refl
-write-reg-correspondence RSI loc σ-regs x86-regs = refl
-write-reg-correspondence R12 loc σ-regs x86-regs = refl
-write-reg-correspondence R14 loc σ-regs x86-regs = refl
-write-reg-correspondence R15 loc σ-regs x86-regs = refl
+  x86-readReg (x86-writeReg x86-regs (compile-reg r) (loc-to-addr heap-base loc)) (compile-reg r)
+    ≡ loc-to-addr heap-base (readReg (writeReg σ-regs r loc) r)
+write-reg-correspondence hb RAX loc σ-regs x86-regs = refl
+write-reg-correspondence hb RDI loc σ-regs x86-regs = refl
+write-reg-correspondence hb RSI loc σ-regs x86-regs = refl
+write-reg-correspondence hb R12 loc σ-regs x86-regs = refl
+write-reg-correspondence hb R14 loc σ-regs x86-regs = refl
+write-reg-correspondence hb R15 loc σ-regs x86-regs = refl
 
 ------------------------------------------------------------------------
 -- Additional imports for proofs
@@ -345,83 +423,83 @@ open import Data.Empty using (⊥-elim)
 ------------------------------------------------------------------------
 
 -- | Writing to different registers preserves correspondence for other registers
-write-preserves-other-correspondence : ∀ (dst r : RegId) (loc : ValueLocation FS)
+write-preserves-other-correspondence : ∀ (heap-base : HeapBaseMap) (dst r : RegId) (loc : ValueLocation FS)
   (σ-regs : Registers FS) (x86-regs : RegFile) →
   dst ≢ r →
-  RegsCorrespond σ-regs x86-regs →
-  x86-readReg (x86-writeReg x86-regs (compile-reg dst) (loc-to-addr loc)) (compile-reg r)
-    ≡ loc-to-addr (readReg (writeReg σ-regs dst loc) r)
-write-preserves-other-correspondence RAX RAX loc σ-regs x86-regs dst≢r rc =
+  RegsCorrespond heap-base σ-regs x86-regs →
+  x86-readReg (x86-writeReg x86-regs (compile-reg dst) (loc-to-addr heap-base loc)) (compile-reg r)
+    ≡ loc-to-addr heap-base (readReg (writeReg σ-regs dst loc) r)
+write-preserves-other-correspondence hb RAX RAX loc σ-regs x86-regs dst≢r rc =
   ⊥-elim (dst≢r refl)
-write-preserves-other-correspondence RAX RDI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RAX RDI loc σ-regs x86-regs dst≢r rc =
   rdi-corresponds rc
-write-preserves-other-correspondence RAX RSI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RAX RSI loc σ-regs x86-regs dst≢r rc =
   rsi-corresponds rc
-write-preserves-other-correspondence RAX R12 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RAX R12 loc σ-regs x86-regs dst≢r rc =
   r12-corresponds rc
-write-preserves-other-correspondence RAX R14 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RAX R14 loc σ-regs x86-regs dst≢r rc =
   r14-corresponds rc
-write-preserves-other-correspondence RAX R15 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RAX R15 loc σ-regs x86-regs dst≢r rc =
   r15-corresponds rc
-write-preserves-other-correspondence RDI RAX loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RDI RAX loc σ-regs x86-regs dst≢r rc =
   rax-corresponds rc
-write-preserves-other-correspondence RDI RDI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RDI RDI loc σ-regs x86-regs dst≢r rc =
   ⊥-elim (dst≢r refl)
-write-preserves-other-correspondence RDI RSI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RDI RSI loc σ-regs x86-regs dst≢r rc =
   rsi-corresponds rc
-write-preserves-other-correspondence RDI R12 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RDI R12 loc σ-regs x86-regs dst≢r rc =
   r12-corresponds rc
-write-preserves-other-correspondence RDI R14 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RDI R14 loc σ-regs x86-regs dst≢r rc =
   r14-corresponds rc
-write-preserves-other-correspondence RDI R15 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RDI R15 loc σ-regs x86-regs dst≢r rc =
   r15-corresponds rc
-write-preserves-other-correspondence RSI RAX loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RSI RAX loc σ-regs x86-regs dst≢r rc =
   rax-corresponds rc
-write-preserves-other-correspondence RSI RDI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RSI RDI loc σ-regs x86-regs dst≢r rc =
   rdi-corresponds rc
-write-preserves-other-correspondence RSI RSI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RSI RSI loc σ-regs x86-regs dst≢r rc =
   ⊥-elim (dst≢r refl)
-write-preserves-other-correspondence RSI R12 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RSI R12 loc σ-regs x86-regs dst≢r rc =
   r12-corresponds rc
-write-preserves-other-correspondence RSI R14 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RSI R14 loc σ-regs x86-regs dst≢r rc =
   r14-corresponds rc
-write-preserves-other-correspondence RSI R15 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb RSI R15 loc σ-regs x86-regs dst≢r rc =
   r15-corresponds rc
-write-preserves-other-correspondence R12 RAX loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R12 RAX loc σ-regs x86-regs dst≢r rc =
   rax-corresponds rc
-write-preserves-other-correspondence R12 RDI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R12 RDI loc σ-regs x86-regs dst≢r rc =
   rdi-corresponds rc
-write-preserves-other-correspondence R12 RSI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R12 RSI loc σ-regs x86-regs dst≢r rc =
   rsi-corresponds rc
-write-preserves-other-correspondence R12 R12 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R12 R12 loc σ-regs x86-regs dst≢r rc =
   ⊥-elim (dst≢r refl)
-write-preserves-other-correspondence R12 R14 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R12 R14 loc σ-regs x86-regs dst≢r rc =
   r14-corresponds rc
-write-preserves-other-correspondence R12 R15 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R12 R15 loc σ-regs x86-regs dst≢r rc =
   r15-corresponds rc
-write-preserves-other-correspondence R14 RAX loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R14 RAX loc σ-regs x86-regs dst≢r rc =
   rax-corresponds rc
-write-preserves-other-correspondence R14 RDI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R14 RDI loc σ-regs x86-regs dst≢r rc =
   rdi-corresponds rc
-write-preserves-other-correspondence R14 RSI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R14 RSI loc σ-regs x86-regs dst≢r rc =
   rsi-corresponds rc
-write-preserves-other-correspondence R14 R12 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R14 R12 loc σ-regs x86-regs dst≢r rc =
   r12-corresponds rc
-write-preserves-other-correspondence R14 R14 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R14 R14 loc σ-regs x86-regs dst≢r rc =
   ⊥-elim (dst≢r refl)
-write-preserves-other-correspondence R14 R15 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R14 R15 loc σ-regs x86-regs dst≢r rc =
   r15-corresponds rc
-write-preserves-other-correspondence R15 RAX loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R15 RAX loc σ-regs x86-regs dst≢r rc =
   rax-corresponds rc
-write-preserves-other-correspondence R15 RDI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R15 RDI loc σ-regs x86-regs dst≢r rc =
   rdi-corresponds rc
-write-preserves-other-correspondence R15 RSI loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R15 RSI loc σ-regs x86-regs dst≢r rc =
   rsi-corresponds rc
-write-preserves-other-correspondence R15 R12 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R15 R12 loc σ-regs x86-regs dst≢r rc =
   r12-corresponds rc
-write-preserves-other-correspondence R15 R14 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R15 R14 loc σ-regs x86-regs dst≢r rc =
   r14-corresponds rc
-write-preserves-other-correspondence R15 R15 loc σ-regs x86-regs dst≢r rc =
+write-preserves-other-correspondence hb R15 R15 loc σ-regs x86-regs dst≢r rc =
   ⊥-elim (dst≢r refl)
 
 ------------------------------------------------------------------------
@@ -429,12 +507,12 @@ write-preserves-other-correspondence R15 R15 loc σ-regs x86-regs dst≢r rc =
 ------------------------------------------------------------------------
 
 -- | After writing loc to dst in both SlotMachine and x86, registers still correspond
-build-regs-correspond-after-write : ∀ (dst : RegId) (loc : ValueLocation FS)
+build-regs-correspond-after-write : ∀ (heap-base : HeapBaseMap) (dst : RegId) (loc : ValueLocation FS)
   (σ-regs : Registers FS) (x86-regs : RegFile) →
-  RegsCorrespond σ-regs x86-regs →
-  RegsCorrespond (writeReg σ-regs dst loc)
-                 (x86-writeReg x86-regs (compile-reg dst) (loc-to-addr loc))
-build-regs-correspond-after-write RAX loc σ-regs x86-regs rc = record
+  RegsCorrespond heap-base σ-regs x86-regs →
+  RegsCorrespond heap-base (writeReg σ-regs dst loc)
+                 (x86-writeReg x86-regs (compile-reg dst) (loc-to-addr heap-base loc))
+build-regs-correspond-after-write hb RAX loc σ-regs x86-regs rc = record
   { rax-corresponds = refl
   ; rdi-corresponds = rdi-corresponds rc
   ; rsi-corresponds = rsi-corresponds rc
@@ -442,7 +520,7 @@ build-regs-correspond-after-write RAX loc σ-regs x86-regs rc = record
   ; r14-corresponds = r14-corresponds rc
   ; r15-corresponds = r15-corresponds rc
   }
-build-regs-correspond-after-write RDI loc σ-regs x86-regs rc = record
+build-regs-correspond-after-write hb RDI loc σ-regs x86-regs rc = record
   { rax-corresponds = rax-corresponds rc
   ; rdi-corresponds = refl
   ; rsi-corresponds = rsi-corresponds rc
@@ -450,7 +528,7 @@ build-regs-correspond-after-write RDI loc σ-regs x86-regs rc = record
   ; r14-corresponds = r14-corresponds rc
   ; r15-corresponds = r15-corresponds rc
   }
-build-regs-correspond-after-write RSI loc σ-regs x86-regs rc = record
+build-regs-correspond-after-write hb RSI loc σ-regs x86-regs rc = record
   { rax-corresponds = rax-corresponds rc
   ; rdi-corresponds = rdi-corresponds rc
   ; rsi-corresponds = refl
@@ -458,7 +536,7 @@ build-regs-correspond-after-write RSI loc σ-regs x86-regs rc = record
   ; r14-corresponds = r14-corresponds rc
   ; r15-corresponds = r15-corresponds rc
   }
-build-regs-correspond-after-write R12 loc σ-regs x86-regs rc = record
+build-regs-correspond-after-write hb R12 loc σ-regs x86-regs rc = record
   { rax-corresponds = rax-corresponds rc
   ; rdi-corresponds = rdi-corresponds rc
   ; rsi-corresponds = rsi-corresponds rc
@@ -466,7 +544,7 @@ build-regs-correspond-after-write R12 loc σ-regs x86-regs rc = record
   ; r14-corresponds = r14-corresponds rc
   ; r15-corresponds = r15-corresponds rc
   }
-build-regs-correspond-after-write R14 loc σ-regs x86-regs rc = record
+build-regs-correspond-after-write hb R14 loc σ-regs x86-regs rc = record
   { rax-corresponds = rax-corresponds rc
   ; rdi-corresponds = rdi-corresponds rc
   ; rsi-corresponds = rsi-corresponds rc
@@ -474,7 +552,7 @@ build-regs-correspond-after-write R14 loc σ-regs x86-regs rc = record
   ; r14-corresponds = refl
   ; r15-corresponds = r15-corresponds rc
   }
-build-regs-correspond-after-write R15 loc σ-regs x86-regs rc = record
+build-regs-correspond-after-write hb R15 loc σ-regs x86-regs rc = record
   { rax-corresponds = rax-corresponds rc
   ; rdi-corresponds = rdi-corresponds rc
   ; rsi-corresponds = rsi-corresponds rc
@@ -495,22 +573,22 @@ build-regs-correspond-after-write R15 loc σ-regs x86-regs rc = record
 -- Since readOperand (reg r) always returns just, mov reg reg never fails.
 
 -- | The core mov correctness: register correspondence preserved
-mov-regs-correspond : ∀ (dst src : RegId) (σ-regs : Registers FS) (x86-regs : RegFile) →
-  RegsCorrespond σ-regs x86-regs →
+mov-regs-correspond : ∀ (heap-base : HeapBaseMap) (dst src : RegId) (σ-regs : Registers FS) (x86-regs : RegFile) →
+  RegsCorrespond heap-base σ-regs x86-regs →
   let src-loc = readReg σ-regs src
       src-addr = x86-readReg x86-regs (compile-reg src)
       σ-regs' = writeReg σ-regs dst src-loc
       x86-regs' = x86-writeReg x86-regs (compile-reg dst) src-addr
-  in RegsCorrespond σ-regs' x86-regs'
-mov-regs-correspond dst src σ-regs x86-regs rc =
+  in RegsCorrespond heap-base σ-regs' x86-regs'
+mov-regs-correspond hb dst src σ-regs x86-regs rc =
   let src-loc = readReg σ-regs src
       src-addr = x86-readReg x86-regs (compile-reg src)
-      -- By correspondence: src-addr ≡ loc-to-addr src-loc
-      src-corresponds = get-reg-corresponds src σ-regs x86-regs rc
-  in subst (λ addr → RegsCorrespond (writeReg σ-regs dst src-loc)
+      -- By correspondence: src-addr ≡ loc-to-addr heap-base src-loc
+      src-corresponds = get-reg-corresponds hb src σ-regs x86-regs rc
+  in subst (λ addr → RegsCorrespond hb (writeReg σ-regs dst src-loc)
                                      (x86-writeReg x86-regs (compile-reg dst) addr))
            (sym src-corresponds)
-           (build-regs-correspond-after-write dst src-loc σ-regs x86-regs rc)
+           (build-regs-correspond-after-write hb dst src-loc σ-regs x86-regs rc)
   where
     open import Relation.Binary.PropositionalEquality using (subst)
 
@@ -537,13 +615,20 @@ mov-preserves-readLoc dst src σ (OnStack f k) = refl
 mov-preserves-readLoc dst src σ (OnHeap hl) = refl
 
 -- | mov preserves memory correspondence (memory unchanged)
-mov-mem-corresponds : ∀ (dst src : RegId) (σ : LocState FS) (x86-mem : Memory) →
-  MemCorresponds σ x86-mem →
-  MemCorresponds (exec (slot-mov dst src) σ) x86-mem
-mov-mem-corresponds dst src σ x86-mem mc = record
-  { stack-corresponds = λ loc loc' read-eq →
-      stack-corresponds mc loc loc' (trans (sym (mov-preserves-readLoc dst src σ loc)) read-eq)
+mov-mem-corresponds : ∀ (heap-base : HeapBaseMap) (dst src : RegId) (σ : LocState FS) (x86-mem : Memory) →
+  MemCorresponds heap-base σ x86-mem →
+  MemCorresponds heap-base (exec (slot-mov dst src) σ) x86-mem
+mov-mem-corresponds hb dst src σ x86-mem mc = record
+  { stack-corresponds = λ f k loc' read-eq →
+      stack-corresponds mc f k loc' (trans (sym (mov-preserves-readLoc dst src σ (OnStack f k))) read-eq)
+  ; heap-corresponds = λ hl hl' read-eq →
+      heap-corresponds mc hl hl' (trans (sym (mov-preserves-heapMem-at hl)) read-eq)
   }
+  where
+    -- Helper: heapMem access unchanged after mov
+    mov-preserves-heapMem-at : ∀ (hl : HeapLocation) →
+      SlotMachine.LocState.heapMem (exec (slot-mov dst src) σ) hl ≡ SlotMachine.LocState.heapMem σ hl
+    mov-preserves-heapMem-at hl = cong (λ m → m hl) (mov-preserves-heapMem dst src σ)
 
 ------------------------------------------------------------------------
 -- Full MOV Correctness (TODO: connect x86 execution)
@@ -567,16 +652,16 @@ mov-mem-corresponds dst src σ x86-mem mc = record
 --   Then both write to dst register.
 
 -- | Load from IndReg correctness (when memory read succeeds)
-load-IndReg-regs-correspond : ∀ (dst src : RegId) (σ : LocState FS) (x86-regs : RegFile) (x86-mem : Memory)
+load-IndReg-regs-correspond : ∀ (heap-base : HeapBaseMap) (dst src : RegId) (σ : LocState FS) (x86-regs : RegFile) (x86-mem : Memory)
   (loc : ValueLocation FS) →
-  RegsCorrespond (SlotMachine.LocState.regs σ) x86-regs →
-  MemCorresponds σ x86-mem →
+  RegsCorrespond heap-base (SlotMachine.LocState.regs σ) x86-regs →
+  MemCorresponds heap-base σ x86-mem →
   readLoc σ (readReg (SlotMachine.LocState.regs σ) src) ≡ just loc →
   let σ-regs' = writeReg (SlotMachine.LocState.regs σ) dst loc
-      x86-regs' = x86-writeReg x86-regs (compile-reg dst) (loc-to-addr loc)
-  in RegsCorrespond σ-regs' x86-regs'
-load-IndReg-regs-correspond dst src σ x86-regs x86-mem loc rc mc read-eq =
-  build-regs-correspond-after-write dst loc (SlotMachine.LocState.regs σ) x86-regs rc
+      x86-regs' = x86-writeReg x86-regs (compile-reg dst) (loc-to-addr heap-base loc)
+  in RegsCorrespond heap-base σ-regs' x86-regs'
+load-IndReg-regs-correspond hb dst src σ x86-regs x86-mem loc rc mc read-eq =
+  build-regs-correspond-after-write hb dst loc (SlotMachine.LocState.regs σ) x86-regs rc
 
 ------------------------------------------------------------------------
 -- STORE Correctness
@@ -599,11 +684,11 @@ writeLoc-preserves-regs σ (OnHeap hl) (OnHeap v) = refl    -- Heap write preser
 writeLoc-preserves-regs σ (OnHeap hl) (OnStack _ _) = refl -- Invalid write is no-op
 
 -- | Store preserves register correspondence (registers unchanged)
-store-regs-correspond : ∀ (dst src : RegId) (σ : LocState FS) (x86-regs : RegFile) →
-  RegsCorrespond (SlotMachine.LocState.regs σ) x86-regs →
-  RegsCorrespond (SlotMachine.LocState.regs (exec (slot-store (IndReg dst) src) σ)) x86-regs
-store-regs-correspond dst src σ x86-regs rc =
-  subst (λ regs → RegsCorrespond regs x86-regs)
+store-regs-correspond : ∀ (heap-base : HeapBaseMap) (dst src : RegId) (σ : LocState FS) (x86-regs : RegFile) →
+  RegsCorrespond heap-base (SlotMachine.LocState.regs σ) x86-regs →
+  RegsCorrespond heap-base (SlotMachine.LocState.regs (exec (slot-store (IndReg dst) src) σ)) x86-regs
+store-regs-correspond hb dst src σ x86-regs rc =
+  subst (λ regs → RegsCorrespond hb regs x86-regs)
         (sym (writeLoc-preserves-regs σ (readReg (SlotMachine.LocState.regs σ) dst)
                                         (readReg (SlotMachine.LocState.regs σ) src)))
         rc
