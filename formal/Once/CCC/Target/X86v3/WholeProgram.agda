@@ -678,31 +678,67 @@ postulate
     ∃[ x86-final ] ∃[ σ-final ]
       Star (compile-ir (apply {A} {B} {q})) s x86-final × StateCorresponds σ-final x86-final
 
-  -- Remaining constructs
-  arr-simulation : ∀ {A B q} (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (arr {A} {B} {q})) s x86-final × StateCorresponds σ-final x86-final
-
-  fold-simulation : ∀ {F} (m : AllocMode) (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (fold-ir {F} m)) s x86-final × StateCorresponds σ-final x86-final
-
-  unfold-simulation : ∀ {F} (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (unfold-ir {F})) s x86-final × StateCorresponds σ-final x86-final
-
-  free-heap-simulation : ∀ (r : HeapRef) (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (free-heap r)) s x86-final × StateCorresponds σ-final x86-final
-
+  -- Remaining postulates (need more infrastructure to prove)
   prim-simulation : ∀ {A B} (p : String) (σ : LocState FS') (s : State) →
     StateCorresponds σ s →
+    X86Sem.State.halted s ≡ false →
+    X86Sem.State.pc s ≡ 0 →
     ∃[ x86-final ] ∃[ σ-final ]
       Star (compile-ir (Prim {A} {B} p)) s x86-final × StateCorresponds σ-final x86-final
+
+------------------------------------------------------------------------
+-- Proven simulations for simple IR constructs
+--
+-- arr, fold-ir, unfold-ir all compile to id-instrs (mov rax, rdi)
+-- free-heap compiles to [] (no-op)
+------------------------------------------------------------------------
+
+-- arr: compiles to id-instrs, same as id
+arr-simulation : ∀ {A B q} (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 0 →
+  ∃[ x86-final ] ∃[ σ-final ]
+    Star (compile-ir (arr {A} {B} {q})) s x86-final × StateCorresponds σ-final x86-final
+arr-simulation σ s sc h-eq pc-eq =
+  id-expected-state s
+  , id-slot-state σ
+  , id-star s h-eq pc-eq
+  , id-preserves-corresponds σ s sc
+
+-- fold-ir: compiles to id-instrs, same as id
+fold-simulation : ∀ {F} (m : AllocMode) (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 0 →
+  ∃[ x86-final ] ∃[ σ-final ]
+    Star (compile-ir (fold-ir {F} m)) s x86-final × StateCorresponds σ-final x86-final
+fold-simulation m σ s sc h-eq pc-eq =
+  id-expected-state s
+  , id-slot-state σ
+  , id-star s h-eq pc-eq
+  , id-preserves-corresponds σ s sc
+
+-- unfold-ir: compiles to id-instrs, same as id
+unfold-simulation : ∀ {F} (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 0 →
+  ∃[ x86-final ] ∃[ σ-final ]
+    Star (compile-ir (unfold-ir {F})) s x86-final × StateCorresponds σ-final x86-final
+unfold-simulation σ s sc h-eq pc-eq =
+  id-expected-state s
+  , id-slot-state σ
+  , id-star s h-eq pc-eq
+  , id-preserves-corresponds σ s sc
+
+-- free-heap: compiles to [] (no-op), zero steps
+free-heap-simulation : ∀ (r : HeapRef) (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  ∃[ x86-final ] ∃[ σ-final ]
+    Star (compile-ir (free-heap r)) s x86-final × StateCorresponds σ-final x86-final
+free-heap-simulation r σ s sc =
+  s , σ , refl* , sc
 
 ------------------------------------------------------------------------
 -- Full Correctness by IR Induction
@@ -766,10 +802,10 @@ full-correctness {A} {.(B ⇒[ _ ] C)} (curry {.A} {B} {C} {q} f m) x s σ loc s
 full-correctness {.((A ⇒[ q ] B) * A)} {B} (apply {A} {.B} {q}) x s σ loc sc h-eq pc-eq =
   apply-simulation {A} {B} {q} σ s sc
 
--- remaining
+-- remaining (arr, fold, unfold compile to id-instrs; free-heap compiles to [])
 full-correctness {.(A ⇒[ q ] B)} {.(Eff A B)} (arr {A} {B} {q}) x s σ loc sc h-eq pc-eq =
-  arr-simulation {A} {B} {q} σ s sc
-full-correctness {F} {.(Fix F)} (fold-ir m) x s σ loc sc h-eq pc-eq = fold-simulation {F} m σ s sc
-full-correctness {.(Fix F)} {F} unfold-ir x s σ loc sc h-eq pc-eq = unfold-simulation {F} σ s sc
+  arr-simulation {A} {B} {q} σ s sc h-eq pc-eq
+full-correctness {F} {.(Fix F)} (fold-ir m) x s σ loc sc h-eq pc-eq = fold-simulation {F} m σ s sc h-eq pc-eq
+full-correctness {.(Fix F)} {F} unfold-ir x s σ loc sc h-eq pc-eq = unfold-simulation {F} σ s sc h-eq pc-eq
 full-correctness (free-heap r) x s σ loc sc h-eq pc-eq = free-heap-simulation r σ s sc
-full-correctness {A} {B} (Prim p) x s σ loc sc h-eq pc-eq = prim-simulation {A} {B} p σ s sc
+full-correctness {A} {B} (Prim p) x s σ loc sc h-eq pc-eq = prim-simulation {A} {B} p σ s sc h-eq pc-eq
