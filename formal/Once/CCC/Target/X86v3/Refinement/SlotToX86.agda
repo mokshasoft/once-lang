@@ -42,7 +42,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Import SlotMachine types
 open import Once.CCC.SlotMachine as SlotMachine
-  using (ValueLocation; OnStack; OnHeap; HeapRef; Slot;
+  using (ValueLocation; OnStack; OnHeap; HeapRef; mkHeapRef; Slot;
          HeapLocation; heap-loc; heap-offset;
          RegId; RAX; RDI; RSI; R12; R14; R15;
          LocSourceExt; Loc; IndReg; IndRegSuc;
@@ -315,6 +315,10 @@ record StateCorresponds (σ : LocState FS) (s : State) : Set where
   field
     -- Heap base mapping (established by allocator)
     heap-base : HeapBaseMap
+
+    -- Unit representation: HeapRef 0 maps to address 0
+    -- This allows terminal (mov rax, 0) to correspond to putting Unit in RAX
+    unit-base-zero : heap-base (mkHeapRef 0) ≡ 0
 
     -- Register correspondence (using heap-base for OnHeap locations)
     regs-correspond : RegsCorrespond heap-base (SlotMachine.LocState.regs σ) (X86Sem.State.regs s)
