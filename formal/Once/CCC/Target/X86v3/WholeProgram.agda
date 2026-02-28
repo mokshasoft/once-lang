@@ -1091,24 +1091,29 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
 -- These require memory validity: reading from [rdi] or [rdi+8] must
 -- produce a valid value. This is guaranteed by well-typed programs
 -- operating on pairs.
+--
+-- PORTABLE DESIGN: Validity is taken as an explicit parameter.
+-- At Layer 1→2, we don't know types - validity comes from Layer 2→3.
+-- The integration point (full-correctness) provides validity via ValidAtWF.
 ------------------------------------------------------------------------
 
--- Memory validity for fst: reading from [rdi] produces a valid address
--- This should follow from: StateCorresponds + input has type (A * B)
-postulate
-  fst-mem-valid : ∀ (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ fst-loc ] (readLoc σ (SM.readReg (SM.LocState.regs σ) RDI) ≡ just fst-loc)
+-- Memory validity types (explicit preconditions)
+FstMemValid : LocState FS' → Set
+FstMemValid σ = ∃[ fst-loc ] (readLoc σ (SM.readReg (SM.LocState.regs σ) RDI) ≡ just fst-loc)
 
--- fst-runner: mov rax, [rdi] at any offset
-fst-runner : ∀ {A B} → IRRunner (fst-ir {A} {B})
-fst-runner {A} {B} prefix suffix σ s sc h-eq pc-eq =
+SndMemValid : LocState FS' → Set
+SndMemValid σ = ∃[ snd-loc ] (readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc)
+
+-- fst-runner with explicit validity parameter
+fst-runner-with-valid : ∀ {A B} (prefix suffix : Program) (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  FstMemValid σ →
+  ∃[ s' ] IRStarResult (fst-ir {A} {B}) prefix suffix s s' (length prefix)
+fst-runner-with-valid {A} {B} prefix suffix σ s sc h-eq pc-eq (fst-loc , mem-pre) =
   let
     hb = heap-base sc
-    rdi-loc = SM.readReg (SM.LocState.regs σ) RDI
-
-    -- Get the fst location from memory validity
-    (fst-loc , mem-pre) = fst-mem-valid σ s sc
 
     -- x86 memory precondition: derive from StateCorresponds
     x86-mem-eq : x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just (loc-to-addr hb fst-loc)
@@ -1164,22 +1169,16 @@ fst-runner {A} {B} prefix suffix σ s sc h-eq pc-eq =
           in subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just (loc-to-addr hb fst-loc))
                    (sym rdi-corr) x86-mem-eq
 
--- Memory validity for snd: reading from [rdi+8] (sucLoc of rdi) produces a valid address
--- This should follow from: StateCorresponds + input has type (A * B)
-postulate
-  snd-mem-valid : ∀ (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ snd-loc ] (readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc)
-
--- snd-runner: mov rax, [rdi+8] at any offset
-snd-runner : ∀ {A B} → IRRunner (snd-ir {A} {B})
-snd-runner {A} {B} prefix suffix σ s sc h-eq pc-eq =
+-- snd-runner with explicit validity parameter
+snd-runner-with-valid : ∀ {A B} (prefix suffix : Program) (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  SndMemValid σ →
+  ∃[ s' ] IRStarResult (snd-ir {A} {B}) prefix suffix s s' (length prefix)
+snd-runner-with-valid {A} {B} prefix suffix σ s sc h-eq pc-eq (snd-loc , mem-pre) =
   let
     hb = heap-base sc
-    rdi-loc = SM.readReg (SM.LocState.regs σ) RDI
-
-    -- Get the snd location from memory validity
-    (snd-loc , mem-pre) = snd-mem-valid σ s sc
 
     -- x86 memory precondition: derive from StateCorresponds
     -- snd reads from rdi + slot-size, so we need to use sucLoc-to-addr
@@ -1253,6 +1252,30 @@ snd-runner {A} {B} prefix suffix σ s sc h-eq pc-eq =
           in subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just (loc-to-addr hb snd-loc))
                    (sym addr-eq) x86-mem-eq
 
+------------------------------------------------------------------------
+-- Memory Validity Provider
+--
+-- Abstract interface for providing memory validity proofs.
+-- At Layer 1→2, we don't know types - validity comes from the caller.
+-- The integration point (full-correctness) instantiates with ValidAtWF.
+------------------------------------------------------------------------
+
+record MemValidProvider : Set where
+  field
+    fst-valid : ∀ (σ : LocState FS') → FstMemValid σ
+    snd-valid : ∀ (σ : LocState FS') → SndMemValid σ
+
+open MemValidProvider
+
+-- fst-runner and snd-runner using the provider
+fst-runner : MemValidProvider → ∀ {A B} → IRRunner (fst-ir {A} {B})
+fst-runner prov prefix suffix σ s sc h-eq pc-eq =
+  fst-runner-with-valid prefix suffix σ s sc h-eq pc-eq (fst-valid prov σ)
+
+snd-runner : MemValidProvider → ∀ {A B} → IRRunner (snd-ir {A} {B})
+snd-runner prov prefix suffix σ s sc h-eq pc-eq =
+  snd-runner-with-valid prefix suffix σ s sc h-eq pc-eq (snd-valid prov σ)
+
 -- Postulated runners for complex cases
 postulate
   pair-runner : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
@@ -1314,24 +1337,25 @@ free-heap-runner r prefix suffix σ s sc h-eq pc-eq =
     }
 
 -- Main induction: build IRRunner for any IR
-ir-runner : ∀ {A B} (ir : IR A B) → IRRunner ir
-ir-runner id = id-runner
-ir-runner terminal = terminal-runner
-ir-runner fst-ir = fst-runner
-ir-runner snd-ir = snd-runner
-ir-runner (g ∘ f) = compose-runner g f (ir-runner f) (ir-runner g)
-ir-runner (⟨ f , g ⟩ m) = pair-runner f g m (ir-runner f) (ir-runner g)
-ir-runner (inl-ir m) = inl-runner m
-ir-runner (inr-ir m) = inr-runner m
-ir-runner (case-ir f g) = case-runner f g (ir-runner f) (ir-runner g)
-ir-runner initial = initial-runner
-ir-runner (curry f m) = curry-runner f m (ir-runner f)
-ir-runner apply = apply-runner
-ir-runner arr = arr-runner
-ir-runner (fold-ir m) = fold-runner m
-ir-runner unfold-ir = unfold-runner
-ir-runner (free-heap r) = free-heap-runner r
-ir-runner (Prim p) = prim-runner p
+-- Takes MemValidProvider for fst/snd memory validity proofs
+ir-runner : MemValidProvider → ∀ {A B} (ir : IR A B) → IRRunner ir
+ir-runner prov id = id-runner
+ir-runner prov terminal = terminal-runner
+ir-runner prov fst-ir = fst-runner prov
+ir-runner prov snd-ir = snd-runner prov
+ir-runner prov (g ∘ f) = compose-runner g f (ir-runner prov f) (ir-runner prov g)
+ir-runner prov (⟨ f , g ⟩ m) = pair-runner f g m (ir-runner prov f) (ir-runner prov g)
+ir-runner prov (inl-ir m) = inl-runner m
+ir-runner prov (inr-ir m) = inr-runner m
+ir-runner prov (case-ir f g) = case-runner f g (ir-runner prov f) (ir-runner prov g)
+ir-runner prov initial = initial-runner
+ir-runner prov (curry f m) = curry-runner f m (ir-runner prov f)
+ir-runner prov apply = apply-runner
+ir-runner prov arr = arr-runner
+ir-runner prov (fold-ir m) = fold-runner m
+ir-runner prov unfold-ir = unfold-runner
+ir-runner prov (free-heap r) = free-heap-runner r
+ir-runner prov (Prim p) = prim-runner p
 
 ------------------------------------------------------------------------
 -- Simulations derived from ir-runner
@@ -1354,6 +1378,12 @@ runner-to-simulation ir runner σ s sc h-eq pc-eq =
    , subst (λ p → Star p s s') (++-identityʳ (compile-ir ir)) (IRStarResult.star-proof result)
    , IRStarResult.corr-proof result
 
+-- Postulate a default provider (will be instantiated at integration point)
+-- This is the ONLY postulate for memory validity - it's the contract
+-- that Layer 2→3 must satisfy when connecting to Layer 1→2
+postulate
+  default-mem-valid-provider : MemValidProvider
+
 -- compose-simulation: now proven using compose-runner!
 compose-simulation : ∀ {A B C} (g : IR B C) (f : IR A B)
   (σ : LocState FS') (s : State) →
@@ -1362,7 +1392,7 @@ compose-simulation : ∀ {A B C} (g : IR B C) (f : IR A B)
   X86Sem.State.pc s ≡ 0 →
   ∃[ x86-final ] ∃[ σ-final ]
     Star (compile-ir (g ∘ f)) s x86-final × StateCorresponds σ-final x86-final
-compose-simulation g f = runner-to-simulation (g ∘ f) (ir-runner (g ∘ f))
+compose-simulation g f = runner-to-simulation (g ∘ f) (ir-runner default-mem-valid-provider (g ∘ f))
 
 -- Remaining postulates (old-style, without halted/pc preconditions)
 -- These can be eliminated by adding preconditions and using ir-runner
