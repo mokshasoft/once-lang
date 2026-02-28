@@ -477,18 +477,6 @@ id-expected-state s = record s
 id-instrs : Program
 id-instrs = mov (reg rax) (reg rdi) ∷ []
 
--- | step on id-instrs produces the expected state
--- USE: star-single h-false (step-id s h-eq pc-eq)
-step-id : ∀ (s : State) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  step id-instrs s ≡ just (id-expected-state s)
-step-id s h-eq pc-eq =
-  let fetch-eq : fetch id-instrs (X86Sem.State.pc s) ≡ just (mov (reg rax) (reg rdi))
-      fetch-eq = subst (λ n → fetch id-instrs n ≡ just (mov (reg rax) (reg rdi))) (sym pc-eq) refl
-  in trans (step-fetch-result id-instrs s (mov (reg rax) (reg rdi)) h-eq fetch-eq)
-           (mov-reg-reg-result id-instrs s rax rdi)
-
 -- | rax after id contains what was in rdi
 id-rax-result : ∀ (s : State) →
   x86-readReg (X86Sem.State.regs (id-expected-state s)) rax ≡
@@ -508,16 +496,6 @@ terminal-expected-state s = record s
 terminal-instrs : Program
 terminal-instrs = mov (reg rax) (imm 0) ∷ []
 
-step-terminal : ∀ (s : State) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  step terminal-instrs s ≡ just (terminal-expected-state s)
-step-terminal s h-eq pc-eq =
-  let fetch-eq : fetch terminal-instrs (X86Sem.State.pc s) ≡ just (mov (reg rax) (imm 0))
-      fetch-eq = subst (λ n → fetch terminal-instrs n ≡ just (mov (reg rax) (imm 0))) (sym pc-eq) refl
-  in trans (step-fetch-result terminal-instrs s (mov (reg rax) (imm 0)) h-eq fetch-eq)
-           (mov-imm-reg-result terminal-instrs s rax 0)
-
 terminal-rax-result : ∀ (s : State) →
   x86-readReg (X86Sem.State.regs (terminal-expected-state s)) rax ≡ 0
 terminal-rax-result s = readReg-writeReg-same (X86Sem.State.regs s) rax 0
@@ -534,17 +512,6 @@ fst-expected-state s v = record s
   { regs = x86-writeReg (X86Sem.State.regs s) rax v
   ; pc = X86Sem.State.pc s +ℕ 1 }
 
-step-fst : ∀ (s : State) (v : Word) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just v →
-  step fst-instrs s ≡ just (fst-expected-state s v)
-step-fst s v h-eq pc-eq mem-eq =
-  let fetch-eq : fetch fst-instrs (X86Sem.State.pc s) ≡ just (mov (reg rax) (mem (base rdi)))
-      fetch-eq = subst (λ n → fetch fst-instrs n ≡ just (mov (reg rax) (mem (base rdi)))) (sym pc-eq) refl
-  in trans (step-fetch-result fst-instrs s (mov (reg rax) (mem (base rdi))) h-eq fetch-eq)
-           (mov-mem-reg-result fst-instrs s rax (base rdi) v mem-eq)
-
 fst-rax-result : ∀ (s : State) (v : Word) →
   x86-readReg (X86Sem.State.regs (fst-expected-state s v)) rax ≡ v
 fst-rax-result s v = readReg-writeReg-same (X86Sem.State.regs s) rax v
@@ -560,17 +527,6 @@ snd-expected-state : State → Word → State
 snd-expected-state s v = record s
   { regs = x86-writeReg (X86Sem.State.regs s) rax v
   ; pc = X86Sem.State.pc s +ℕ 1 }
-
-step-snd : ∀ (s : State) (v : Word) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi +ℕ slot-size) ≡ just v →
-  step snd-instrs s ≡ just (snd-expected-state s v)
-step-snd s v h-eq pc-eq mem-eq =
-  let fetch-eq : fetch snd-instrs (X86Sem.State.pc s) ≡ just (mov (reg rax) (mem (base+disp rdi slot-size)))
-      fetch-eq = subst (λ n → fetch snd-instrs n ≡ just (mov (reg rax) (mem (base+disp rdi slot-size)))) (sym pc-eq) refl
-  in trans (step-fetch-result snd-instrs s (mov (reg rax) (mem (base+disp rdi slot-size))) h-eq fetch-eq)
-           (mov-mem-reg-result snd-instrs s rax (base+disp rdi slot-size) v mem-eq)
 
 snd-rax-result : ∀ (s : State) (v : Word) →
   x86-readReg (X86Sem.State.regs (snd-expected-state s v)) rax ≡ v
@@ -591,30 +547,12 @@ bridge-expected-state s = record s
   { regs = x86-writeReg (X86Sem.State.regs s) rdi (x86-readReg (X86Sem.State.regs s) rax)
   ; pc = X86Sem.State.pc s +ℕ 1 }
 
--- | step on compose-bridge
-step-bridge : ∀ (s : State) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  step compose-bridge s ≡ just (bridge-expected-state s)
-step-bridge s h-eq pc-eq =
-  let fetch-eq : fetch compose-bridge (X86Sem.State.pc s) ≡ just (mov (reg rdi) (reg rax))
-      fetch-eq = subst (λ n → fetch compose-bridge n ≡ just (mov (reg rdi) (reg rax))) (sym pc-eq) refl
-  in trans (step-fetch-result compose-bridge s (mov (reg rdi) (reg rax)) h-eq fetch-eq)
-           (mov-reg-reg-result compose-bridge s rdi rax)
-
 -- | rdi after bridge contains what was in rax
 bridge-rdi-result : ∀ (s : State) →
   x86-readReg (X86Sem.State.regs (bridge-expected-state s)) rdi ≡
   x86-readReg (X86Sem.State.regs s) rax
 bridge-rdi-result s = readReg-writeReg-same (X86Sem.State.regs s) rdi
                         (x86-readReg (X86Sem.State.regs s) rax)
-
--- | bridge Star proof: mov rdi, rax reaches expected state in one step
-bridge-star : ∀ (s : State) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  Star compose-bridge s (bridge-expected-state s)
-bridge-star s h-eq pc-eq = star-single h-eq (step-bridge s h-eq pc-eq)
 
 ------------------------------------------------------------------------
 -- Generalized Step Lemmas (for concatenated programs)
@@ -632,6 +570,131 @@ step-at-fetch : ∀ (prog : Program) (s : State) (instr : Instr) (s' : State) �
   step prog s ≡ just s'
 step-at-fetch prog s instr s' h-eq f-eq exec-eq =
   trans (step-fetch-result prog s instr h-eq f-eq) exec-eq
+
+------------------------------------------------------------------------
+-- Offset-Parameterized Execution (KEY FOR COMPOSE PROOFS)
+--
+-- These lemmas allow executing instructions at arbitrary offsets within
+-- a concatenated program. This is essential for compose proofs where
+-- we execute: prefix ++ ir-code ++ suffix
+--
+-- Pattern: pc s ≡ length prefix means we're at the start of ir-code
+------------------------------------------------------------------------
+
+-- | Fetching at the end of a prefix returns the first element of suffix
+-- fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
+fetch-at-prefix-end : ∀ (prefix : Program) (i : Instr) (rest : Program) →
+  fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
+fetch-at-prefix-end [] i rest = refl
+fetch-at-prefix-end (x ∷ prefix) i rest = fetch-at-prefix-end prefix i rest
+
+-- | Step at arbitrary offset in a program
+-- Used for executing instructions in the middle of a larger program
+step-at-offset : ∀ (prefix : Program) (i : Instr) (suffix : Program) (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  step (prefix ++ i ∷ suffix) s ≡ execInstr (prefix ++ i ∷ suffix) s i
+step-at-offset prefix i suffix s h-false pc-eq =
+  step-fetch-result (prefix ++ i ∷ suffix) s i h-false
+    (subst (λ p → fetch (prefix ++ i ∷ suffix) p ≡ just i)
+           (sym pc-eq) (fetch-at-prefix-end prefix i suffix))
+
+------------------------------------------------------------------------
+-- Offset-Parameterized IR Step/Star Lemmas
+--
+-- These execute each IR's code within a larger program at any offset.
+-- The pattern is: prefix ++ ir-instrs ++ suffix
+-- PC starts at length prefix, ends at length prefix + length ir-instrs
+------------------------------------------------------------------------
+
+-- | id at offset: mov rax, rdi
+step-id-at-offset : ∀ (prefix suffix : Program) (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  step (prefix ++ id-instrs ++ suffix) s ≡ just (id-expected-state s)
+step-id-at-offset prefix suffix s h-eq pc-eq =
+  trans (step-at-offset prefix (mov (reg rax) (reg rdi)) suffix s h-eq pc-eq)
+        (mov-reg-reg-result (prefix ++ id-instrs ++ suffix) s rax rdi)
+
+-- | id Star at offset
+id-star-at-offset : ∀ (prefix suffix : Program) (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  Star (prefix ++ id-instrs ++ suffix) s (id-expected-state s)
+id-star-at-offset prefix suffix s h-eq pc-eq =
+  star-single h-eq (step-id-at-offset prefix suffix s h-eq pc-eq)
+
+-- | terminal at offset: mov rax, 0
+step-terminal-at-offset : ∀ (prefix suffix : Program) (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  step (prefix ++ terminal-instrs ++ suffix) s ≡ just (terminal-expected-state s)
+step-terminal-at-offset prefix suffix s h-eq pc-eq =
+  trans (step-at-offset prefix (mov (reg rax) (imm 0)) suffix s h-eq pc-eq)
+        (mov-imm-reg-result (prefix ++ terminal-instrs ++ suffix) s rax 0)
+
+-- | terminal Star at offset
+terminal-star-at-offset : ∀ (prefix suffix : Program) (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  Star (prefix ++ terminal-instrs ++ suffix) s (terminal-expected-state s)
+terminal-star-at-offset prefix suffix s h-eq pc-eq =
+  star-single h-eq (step-terminal-at-offset prefix suffix s h-eq pc-eq)
+
+-- | fst at offset: mov rax, [rdi]
+step-fst-at-offset : ∀ (prefix suffix : Program) (s : State) (v : Word) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just v →
+  step (prefix ++ fst-instrs ++ suffix) s ≡ just (fst-expected-state s v)
+step-fst-at-offset prefix suffix s v h-eq pc-eq mem-eq =
+  trans (step-at-offset prefix (mov (reg rax) (mem (base rdi))) suffix s h-eq pc-eq)
+        (mov-mem-reg-result (prefix ++ fst-instrs ++ suffix) s rax (base rdi) v mem-eq)
+
+-- | fst Star at offset
+fst-star-at-offset : ∀ (prefix suffix : Program) (s : State) (v : Word) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just v →
+  Star (prefix ++ fst-instrs ++ suffix) s (fst-expected-state s v)
+fst-star-at-offset prefix suffix s v h-eq pc-eq mem-eq =
+  star-single h-eq (step-fst-at-offset prefix suffix s v h-eq pc-eq mem-eq)
+
+-- | snd at offset: mov rax, [rdi+8]
+step-snd-at-offset : ∀ (prefix suffix : Program) (s : State) (v : Word) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi +ℕ slot-size) ≡ just v →
+  step (prefix ++ snd-instrs ++ suffix) s ≡ just (snd-expected-state s v)
+step-snd-at-offset prefix suffix s v h-eq pc-eq mem-eq =
+  trans (step-at-offset prefix (mov (reg rax) (mem (base+disp rdi slot-size))) suffix s h-eq pc-eq)
+        (mov-mem-reg-result (prefix ++ snd-instrs ++ suffix) s rax (base+disp rdi slot-size) v mem-eq)
+
+-- | snd Star at offset
+snd-star-at-offset : ∀ (prefix suffix : Program) (s : State) (v : Word) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi +ℕ slot-size) ≡ just v →
+  Star (prefix ++ snd-instrs ++ suffix) s (snd-expected-state s v)
+snd-star-at-offset prefix suffix s v h-eq pc-eq mem-eq =
+  star-single h-eq (step-snd-at-offset prefix suffix s v h-eq pc-eq mem-eq)
+
+-- | bridge at offset: mov rdi, rax
+step-bridge-at-offset : ∀ (prefix suffix : Program) (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  step (prefix ++ compose-bridge ++ suffix) s ≡ just (bridge-expected-state s)
+step-bridge-at-offset prefix suffix s h-eq pc-eq =
+  trans (step-at-offset prefix (mov (reg rdi) (reg rax)) suffix s h-eq pc-eq)
+        (mov-reg-reg-result (prefix ++ compose-bridge ++ suffix) s rdi rax)
+
+-- | bridge Star at offset
+bridge-star-at-offset : ∀ (prefix suffix : Program) (s : State) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  Star (prefix ++ compose-bridge ++ suffix) s (bridge-expected-state s)
+bridge-star-at-offset prefix suffix s h-eq pc-eq =
+  star-single h-eq (step-bridge-at-offset prefix suffix s h-eq pc-eq)
 
 -- | Fetch from concatenated program: left part
 fetch-++ : ∀ (prog1 prog2 : Program) (n : ℕ) (instr : Instr) →
@@ -737,29 +800,6 @@ star-concat-left prog1 prog2 s s'' (Star.step* {s' = s'} h-eq step-eq star-rest)
       X86Sem.State.halted st ≡ false
     star-halted-false p st .st Star.refl* h' = h'
     star-halted-false p st st' (Star.step* h _ _) _ = h
-
--- | Star on concatenated program: middle and right parts
--- These require offset tracking which is complex.
--- The issue: Star proofs assume pc starts at 0, but we're at offset length prog1.
--- The intermediate pc values (0,1,2,...) don't match what we need (offset, offset+1, ...).
---
--- For now, postulate these. A full proof would require:
--- 1. Offset-parameterized Star (like IRStarResult in X86/Correct/StarBase)
--- 2. Or, proving Star directly on the concatenated program (like compose-id-id-star)
-postulate
-  -- | Star on concatenated program: middle part (at offset)
-  star-concat-middle : ∀ (prog1 prog2 prog3 : Program) (s s' : State) →
-    X86Sem.State.pc s ≡ length prog1 →
-    Star prog2 s s' →
-    X86Sem.State.halted s' ≡ false →
-    Star (prog1 ++ prog2 ++ prog3) s s'
-
-  -- | Star on concatenated program: right part (at offset)
-  star-concat-right : ∀ (prog1 prog2 prog3 : Program) (s s' : State) →
-    X86Sem.State.pc s ≡ length prog1 +ℕ length prog2 →
-    Star prog3 s s' →
-    X86Sem.State.halted s' ≡ false →
-    Star (prog1 ++ prog2 ++ prog3) s s'
 
 ------------------------------------------------------------------------
 -- Compose Star Proof
@@ -1527,46 +1567,19 @@ pair-id-id-star s v-rbp v-r15 v-r14 h-eq pc-eq cleanup-mem =
 -- Usage: star-<ir> s h-eq pc-eq : Star <ir>-instrs s (<ir>-expected-state s)
 ------------------------------------------------------------------------
 
--- | id Star proof: mov rax, rdi reaches expected state in one step
-id-star : ∀ (s : State) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  Star id-instrs s (id-expected-state s)
-id-star s h-eq pc-eq = star-single h-eq (step-id s h-eq pc-eq)
-
--- | terminal Star proof: mov rax, 0 reaches expected state in one step
-terminal-star : ∀ (s : State) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  Star terminal-instrs s (terminal-expected-state s)
-terminal-star s h-eq pc-eq = star-single h-eq (step-terminal s h-eq pc-eq)
-
--- | fst Star proof: mov rax, [rdi] reaches expected state in one step
-fst-star : ∀ (s : State) (v : Word) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just v →
-  Star fst-instrs s (fst-expected-state s v)
-fst-star s v h-eq pc-eq mem-eq = star-single h-eq (step-fst s v h-eq pc-eq mem-eq)
-
--- | snd Star proof: mov rax, [rdi+8] reaches expected state in one step
-snd-star : ∀ (s : State) (v : Word) →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi +ℕ slot-size) ≡ just v →
-  Star snd-instrs s (snd-expected-state s v)
-snd-star s v h-eq pc-eq mem-eq = star-single h-eq (step-snd s v h-eq pc-eq mem-eq)
-
 ------------------------------------------------------------------------
 -- Summary
 --
 -- This module provides Star-based proofs for IR execution:
 --
--- SIMPLE IR STAR PROOFS (fully proven):
---   ✓ id-star       : Star id-instrs s (id-expected-state s)
---   ✓ terminal-star : Star terminal-instrs s (terminal-expected-state s)
---   ✓ fst-star      : Star fst-instrs s (fst-expected-state s v)
---   ✓ snd-star      : Star snd-instrs s (snd-expected-state s v)
+-- OFFSET-PARAMETERIZED STAR PROOFS (KEY FOR COMPOSE):
+--   These execute IR code at any offset within a larger program.
+--   Pattern: prefix ++ ir-instrs ++ suffix, pc starts at (length prefix)
+--   ✓ fetch-at-prefix-end : fetch (prefix ++ i ∷ rest) (length prefix) ≡ just i
+--   ✓ step-at-offset      : step at arbitrary pc = length prefix
+--   ✓ id-star-at-offset, terminal-star-at-offset
+--   ✓ fst-star-at-offset, snd-star-at-offset
+--   ✓ bridge-star-at-offset
 --
 -- COMPOSE STAR PROOFS (fully proven):
 --   ✓ compose-id-id-star : Star compose-id-id-prog s (s3-id s)
@@ -1594,8 +1607,8 @@ snd-star s v h-eq pc-eq mem-eq = star-single h-eq (step-snd s v h-eq pc-eq mem-e
 --   ✓ readMem-writeMem-diff : write at addr₁ doesn't affect read at addr₂
 --
 -- INFRASTRUCTURE (fully proven):
---   ✓ compose-bridge, step-bridge, bridge-rdi-result
---   ✓ fetch-++, fetch-++-right
+--   ✓ compose-bridge, bridge-expected-state, bridge-rdi-result
+--   ✓ fetch-++, fetch-++-right, star-concat-left
 --   ✓ readReg-writeReg-same, readReg-writeReg-diff
 --
 -- POSTULATES: NONE

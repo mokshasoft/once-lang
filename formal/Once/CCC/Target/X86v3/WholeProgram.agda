@@ -26,7 +26,7 @@ module Once.CCC.Target.X86v3.WholeProgram where
 
 open import Data.Bool using (false)
 open import Data.Empty using (⊥)
-open import Data.List using (_++_)
+open import Data.List using (_++_; length; [])
 open import Data.Nat using (ℕ; suc; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
@@ -222,15 +222,18 @@ open SM.ExecFinal {FS'} using () renaming (exec to slot-exec)
 open import Once.CCC.Target.X86.Correct.Star
   using (Star; refl*; step*; star-trans; star-single; _◅◅_)
 
--- Import ExecLemmas for Star proofs
+-- Import ExecLemmas for Star proofs (offset-parameterized only)
 open import Once.Target.X86.ExecLemmas
-  using (id-star; id-expected-state; id-instrs;
-         terminal-star; terminal-expected-state; terminal-instrs;
-         fst-star; fst-expected-state; fst-instrs;
-         snd-star; snd-expected-state; snd-instrs;
-         bridge-star; bridge-expected-state; compose-bridge;
-         -- Star concatenation lemmas for compose
-         star-concat-left; star-concat-middle; star-concat-right)
+  using (id-expected-state; id-instrs;
+         terminal-expected-state; terminal-instrs;
+         fst-expected-state; fst-instrs;
+         snd-expected-state; snd-instrs;
+         bridge-expected-state; compose-bridge;
+         star-concat-left;
+         -- Offset-parameterized lemmas for compose proofs
+         id-star-at-offset; terminal-star-at-offset;
+         fst-star-at-offset; snd-star-at-offset;
+         bridge-star-at-offset)
 
 -- Import SlotToX86 for correspondence
 open import Once.CCC.Target.X86v3.Refinement.SlotToX86 as SlotToX86
@@ -246,7 +249,7 @@ open import Once.Target.X86.Semantics as X86Sem
   renaming (readReg to x86-readReg; writeReg to x86-writeReg; readMem to x86-readMem)
 open X86Sem.State using (halted; pc)
 
-open import Once.Target.X86.Syntax using (rax; rdi; slot-size)
+open import Once.Target.X86.Syntax using (rax; rdi; slot-size; Program)
 
 ------------------------------------------------------------------------
 -- StateCorresponds Preservation Proofs
@@ -477,14 +480,14 @@ fst-simulation σ s fst-loc sc h-eq pc-eq mem-pre =
           mem-pre-orig = subst (λ loc → readLoc σ loc ≡ just fst-loc) (sym rdi-eq) mem-pre-stack
       in fst-expected-state s (loc-to-addr hb fst-loc)
        , fst-slot-state σ fst-loc
-       , fst-star s (loc-to-addr hb fst-loc) h-eq pc-eq x86-mem-at-rdi
+       , fst-star-at-offset [] [] s (loc-to-addr hb fst-loc) h-eq pc-eq x86-mem-at-rdi
        , fst-preserves-corresponds σ s fst-loc sc mem-pre-orig
 
     -- OnHeap case (PROVEN using heap-corresponds)
     fst-sim-helper (OnHeap hl) rdi-eq mem-pre-heap =
       fst-expected-state s (loc-to-addr hb fst-loc)
       , fst-slot-state σ fst-loc
-      , fst-star s (loc-to-addr hb fst-loc) h-eq pc-eq x86-mem-at-rdi
+      , fst-star-at-offset [] [] s (loc-to-addr hb fst-loc) h-eq pc-eq x86-mem-at-rdi
       , fst-preserves-corresponds σ s fst-loc sc mem-pre-orig
       where
         rdi-addr = x86-readReg (X86Sem.State.regs s) rdi
@@ -628,14 +631,14 @@ snd-simulation σ s snd-loc sc h-eq pc-eq mem-pre =
           mem-pre-orig = subst (λ loc → readLoc σ (SM.sucLoc loc) ≡ just snd-loc) (sym rdi-eq) mem-pre-stack
       in snd-expected-state s (loc-to-addr hb snd-loc)
        , snd-slot-state σ snd-loc
-       , snd-star s (loc-to-addr hb snd-loc) h-eq pc-eq x86-mem-at-rdi+8
+       , snd-star-at-offset [] [] s (loc-to-addr hb snd-loc) h-eq pc-eq x86-mem-at-rdi+8
        , snd-preserves-corresponds σ s snd-loc sc mem-pre-orig
 
     -- OnHeap case (PROVEN using sucLoc-to-addr-OnHeap and heap-corresponds)
     snd-sim-helper (OnHeap hl) rdi-eq mem-pre-heap =
       snd-expected-state s (loc-to-addr hb snd-loc)
       , snd-slot-state σ snd-loc
-      , snd-star s (loc-to-addr hb snd-loc) h-eq pc-eq x86-mem-at-rdi+8
+      , snd-star-at-offset [] [] s (loc-to-addr hb snd-loc) h-eq pc-eq x86-mem-at-rdi+8
       , snd-preserves-corresponds σ s snd-loc sc mem-pre-orig
       where
         rdi-addr = x86-readReg (X86Sem.State.regs s) rdi
@@ -736,7 +739,7 @@ bridge-simulation : ∀ (σ : LocState FS') (s : State) →
 bridge-simulation σ s sc h-eq pc-eq =
   bridge-expected-state s
   , bridge-slot-state σ
-  , bridge-star s h-eq pc-eq
+  , bridge-star-at-offset [] [] s h-eq pc-eq
   , bridge-preserves-corresponds σ s sc
 
 ------------------------------------------------------------------------
@@ -761,20 +764,93 @@ postulate
       Star snd-instrs s x86-final × StateCorresponds σ-final x86-final
 
 ------------------------------------------------------------------------
--- compose-simulation
+-- compose-simulation (Offset-Parameterized Approach)
 --
 -- For g ∘ f, we execute: compile-ir f ++ compose-bridge ++ compile-ir g
 --
--- Strategy:
---   1. Execute f: Star (compile-ir f) s sf, StateCorresponds σf sf
---   2. Execute bridge: Star compose-bridge sf sb, StateCorresponds σb sb
---   3. Execute g: Star (compile-ir g) sb sg, StateCorresponds σg sg
---   4. Combine with star-concat lemmas
+-- KEY INSIGHT: Use offset-parameterized Star proofs that work at any pc.
+-- Instead of requiring pc=0, we parameterize by prefix/suffix:
+--   - Execute f at offset (length prefix)
+--   - Execute bridge at offset (length prefix + length (compile-ir f))
+--   - Execute g at offset (length prefix + length (compile-ir f) + 1)
 --
--- PROVEN using star-concat-left, star-concat-middle, star-concat-right
+-- This eliminates the need for star-concat-middle/star-concat-right.
 ------------------------------------------------------------------------
 
--- Type for IR simulation result (with halted = false guarantee)
+open import Once.CCC.Target.X86v3.CodeGen.Compile using (compile-length)
+open import Data.List.Properties using (length-++)
+
+-- Type for IR simulation result at arbitrary offset
+-- The full program is: prefix ++ compile-ir ir ++ suffix
+-- PC starts at (length prefix), ends at (length prefix + compile-length ir)
+record IRStarResult {A B : Type} (ir : IR A B)
+                    (prefix suffix : Program) (s s' : State) (offset : ℕ) : Set where
+  field
+    star-proof     : Star (prefix ++ compile-ir ir ++ suffix) s s'
+    halted-false   : X86Sem.State.halted s' ≡ false
+    pc-advanced    : X86Sem.State.pc s' ≡ offset +ℕ compile-length ir
+    σ-final        : LocState FS'
+    corr-proof     : StateCorresponds σ-final s'
+
+open IRStarResult
+
+-- Type for offset-parameterized IR simulation
+-- Takes prefix/suffix and works at any offset
+IRRunner : ∀ {A B} → IR A B → Set
+IRRunner {A} {B} ir = ∀ (prefix suffix : Program) (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  ∃[ s' ] IRStarResult ir prefix suffix s s' (length prefix)
+
+------------------------------------------------------------------------
+-- Offset-Parameterized IR Runners (NEW APPROACH)
+--
+-- These run each IR at an arbitrary offset within a larger program.
+-- The pattern is: prefix ++ compile-ir ir ++ suffix
+-- PC advances from (length prefix) to (length prefix + compile-length ir)
+------------------------------------------------------------------------
+
+-- | id runner: mov rax, rdi at any offset
+id-runner : ∀ {A} → IRRunner (id {A})
+id-runner prefix suffix σ s sc h-eq pc-eq =
+  id-expected-state s , record
+    { star-proof = id-star-at-offset prefix suffix s h-eq pc-eq
+    ; halted-false = h-eq  -- record update preserves halted
+    ; pc-advanced = cong (_+ℕ 1) pc-eq
+    ; σ-final = id-slot-state σ
+    ; corr-proof = id-preserves-corresponds σ s sc
+    }
+
+-- | terminal runner: mov rax, 0 at any offset
+terminal-runner : ∀ {A} → IRRunner (terminal {A})
+terminal-runner prefix suffix σ s sc h-eq pc-eq =
+  let (σ' , sc') = terminal-preserves-corresponds σ s sc
+  in terminal-expected-state s , record
+    { star-proof = terminal-star-at-offset prefix suffix s h-eq pc-eq
+    ; halted-false = h-eq
+    ; pc-advanced = cong (_+ℕ 1) pc-eq
+    ; σ-final = σ'
+    ; corr-proof = sc'
+    }
+
+-- | bridge runner: mov rdi, rax at any offset
+bridge-runner : ∀ (prefix suffix : Program) (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  ∃[ s' ] (Star (prefix ++ compose-bridge ++ suffix) s s'
+         × X86Sem.State.halted s' ≡ false
+         × X86Sem.State.pc s' ≡ length prefix +ℕ 1
+         × StateCorresponds (bridge-slot-state σ) s')
+bridge-runner prefix suffix σ s sc h-eq pc-eq =
+  bridge-expected-state s
+  , bridge-star-at-offset prefix suffix s h-eq pc-eq
+  , h-eq
+  , cong (_+ℕ 1) pc-eq
+  , bridge-preserves-corresponds σ s sc
+
+-- Legacy type for backward compatibility (will be removed)
 record IRSimResult {A B : Type} (ir : IR A B) (s : State) : Set where
   field
     x86-final : State
@@ -785,7 +861,7 @@ record IRSimResult {A B : Type} (ir : IR A B) (s : State) : Set where
 
 open IRSimResult
 
--- Type for IR simulation (parameterized for reuse)
+-- Legacy type for backward compatibility (will be removed)
 IRSimulation : ∀ {A B} → IR A B → Set
 IRSimulation {A} {B} ir = ∀ (σ : LocState FS') (s : State) →
   StateCorresponds σ s →
@@ -806,11 +882,11 @@ compose-simulation-with-IH : ∀ {A B C} (g : IR B C) (f : IR A B) →
 compose-simulation-with-IH g f f-sim g-sim σ s sc h-eq pc-eq =
   let -- Step 1: Execute f
       f-result = f-sim σ s sc h-eq pc-eq
-      sf = x86-final f-result
-      σf = σ-final f-result
-      star-f = star-proof f-result
-      sc-f = corr-proof f-result
-      h-sf = halted-false f-result
+      sf = IRSimResult.x86-final f-result
+      σf = IRSimResult.σ-final f-result
+      star-f = IRSimResult.star-proof f-result
+      sc-f = IRSimResult.corr-proof f-result
+      h-sf = IRSimResult.halted-false f-result
 
       -- Combine using star-concat
       prog-f = compile-ir f
@@ -896,7 +972,7 @@ arr-simulation : ∀ {A B q} (σ : LocState FS') (s : State) →
 arr-simulation σ s sc h-eq pc-eq =
   id-expected-state s
   , id-slot-state σ
-  , id-star s h-eq pc-eq
+  , id-star-at-offset [] [] s h-eq pc-eq
   , id-preserves-corresponds σ s sc
 
 -- fold-ir: compiles to id-instrs, same as id
@@ -909,7 +985,7 @@ fold-simulation : ∀ {F} (m : AllocMode) (σ : LocState FS') (s : State) →
 fold-simulation m σ s sc h-eq pc-eq =
   id-expected-state s
   , id-slot-state σ
-  , id-star s h-eq pc-eq
+  , id-star-at-offset [] [] s h-eq pc-eq
   , id-preserves-corresponds σ s sc
 
 -- unfold-ir: compiles to id-instrs, same as id
@@ -922,7 +998,7 @@ unfold-simulation : ∀ {F} (σ : LocState FS') (s : State) →
 unfold-simulation σ s sc h-eq pc-eq =
   id-expected-state s
   , id-slot-state σ
-  , id-star s h-eq pc-eq
+  , id-star-at-offset [] [] s h-eq pc-eq
   , id-preserves-corresponds σ s sc
 
 -- free-heap: compiles to [] (no-op), zero steps
@@ -964,7 +1040,7 @@ full-correctness : ∀ {A B : Type} (ir : IR A B)
 full-correctness id x s σ loc sc h-eq pc-eq =
   id-expected-state s
   , id-slot-state σ
-  , id-star s h-eq pc-eq
+  , id-star-at-offset [] [] s h-eq pc-eq
   , id-preserves-corresponds σ s sc
 
 -- terminal: mov rax, 0 (1 step)
@@ -972,7 +1048,7 @@ full-correctness terminal x s σ loc sc h-eq pc-eq =
   let (σ' , sc') = terminal-preserves-corresponds σ s sc
   in terminal-expected-state s
    , σ'
-   , terminal-star s h-eq pc-eq
+   , terminal-star-at-offset [] [] s h-eq pc-eq
    , sc'
 
 -- fst, snd: memory operations

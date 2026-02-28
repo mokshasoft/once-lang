@@ -235,21 +235,27 @@ open import Once.Target.X86.Semantics as X86Sem
 open import Data.Nat using (ℕ; zero; suc)
 
 -- Import foundation lemmas from separate module (Star-based architecture)
+-- Uses offset-parameterized lemmas for compose proofs
 open import Once.Target.X86.ExecLemmas
   using (readReg-writeReg-same; readReg-writeReg-diff;
          -- Step-level lemmas for Star proofs
          step-fetch-result;
          mov-reg-reg-result; mov-imm-reg-result; mov-mem-reg-result;
          -- id: mov rax, rdi
-         step-id; id-expected-state; id-instrs; id-rax-result; id-star;
+         id-expected-state; id-instrs; id-rax-result;
+         id-star-at-offset; step-id-at-offset;
          -- terminal: mov rax, 0
-         step-terminal; terminal-expected-state; terminal-instrs; terminal-rax-result; terminal-star;
+         terminal-expected-state; terminal-instrs; terminal-rax-result;
+         terminal-star-at-offset; step-terminal-at-offset;
          -- fst: mov rax, [rdi]
-         step-fst; fst-expected-state; fst-instrs; fst-rax-result; fst-star;
+         fst-expected-state; fst-instrs; fst-rax-result;
+         fst-star-at-offset; step-fst-at-offset;
          -- snd: mov rax, [rdi+8]
-         step-snd; snd-expected-state; snd-instrs; snd-rax-result; snd-star;
+         snd-expected-state; snd-instrs; snd-rax-result;
+         snd-star-at-offset; step-snd-at-offset;
          -- compose infrastructure
-         compose-bridge; bridge-expected-state; step-bridge; bridge-rdi-result;
+         compose-bridge; bridge-expected-state; bridge-rdi-result;
+         bridge-star-at-offset; step-bridge-at-offset;
          fetch-++;
          -- compose (id ∘ id) example
          compose-id-id-prog; compose-id-id-star; compose-id-id-rax-result)
@@ -258,18 +264,19 @@ open import Once.Target.X86.ExecLemmas
 ------------------------------------------------------------------------
 -- Summary: Star-Based Proof Architecture for Layer 1→2
 --
--- PROVEN (simple IR Star proofs):
---   ✓ id-star       : Star id-instrs s (id-expected-state s)
---   ✓ terminal-star : Star terminal-instrs s (terminal-expected-state s)
---   ✓ fst-star      : Star fst-instrs s (fst-expected-state s v)
---   ✓ snd-star      : Star snd-instrs s (snd-expected-state s v)
+-- OFFSET-PARAMETERIZED IR Star proofs (work at any pc):
+--   ✓ id-star-at-offset       : Star (prefix ++ id-instrs ++ suffix) s s'
+--   ✓ terminal-star-at-offset : Star (prefix ++ terminal-instrs ++ suffix) s s'
+--   ✓ fst-star-at-offset      : Star (prefix ++ fst-instrs ++ suffix) s s'
+--   ✓ snd-star-at-offset      : Star (prefix ++ snd-instrs ++ suffix) s s'
+--   ✓ bridge-star-at-offset   : Star (prefix ++ compose-bridge ++ suffix) s s'
 --
 -- PROVEN (compose Star proof):
 --   ✓ compose-id-id-star : Star compose-id-id-prog s (s3-id s)
 --   ✓ compose-id-id-rax-result : rax (s3-id s) ≡ rdi s
 --
 -- COMPOSE INFRASTRUCTURE:
---   ✓ compose-bridge, step-bridge, bridge-rdi-result
+--   ✓ compose-bridge, bridge-expected-state, bridge-rdi-result
 --   ✓ fetch-++ (fetch on left part of concatenation)
 --
 -- TO DO:
