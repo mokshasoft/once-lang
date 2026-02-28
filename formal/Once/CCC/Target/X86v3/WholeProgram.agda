@@ -777,7 +777,7 @@ postulate
 -- This eliminates the need for star-concat-middle/star-concat-right.
 ------------------------------------------------------------------------
 
-open import Once.CCC.Target.X86v3.CodeGen.Compile using (compile-length)
+open import Once.CCC.Target.X86v3.CodeGen.Compile using (compile-length; compile-ir-length)
 open import Data.List.Properties using (length-++)
 
 -- Type for IR simulation result at arbitrary offset
@@ -850,54 +850,34 @@ bridge-runner prefix suffix σ s sc h-eq pc-eq =
   , cong (_+ℕ 1) pc-eq
   , bridge-preserves-corresponds σ s sc
 
--- Legacy type for backward compatibility (will be removed)
-record IRSimResult {A B : Type} (ir : IR A B) (s : State) : Set where
-  field
-    x86-final : State
-    σ-final : LocState FS'
-    star-proof : Star (compile-ir ir) s x86-final
-    corr-proof : StateCorresponds σ-final x86-final
-    halted-false : X86Sem.State.halted x86-final ≡ false
+------------------------------------------------------------------------
+-- compose-simulation using IRRunner
+--
+-- For g ∘ f, the full program is:
+--   compile-ir f ++ compose-bridge ++ compile-ir g
+--
+-- Using IRRunner, we execute at arbitrary offsets:
+--   1. f at offset 0 (or length prefix for nested case)
+--   2. bridge at offset (length (compile-ir f))
+--   3. g at offset (length (compile-ir f) + 1)
+------------------------------------------------------------------------
 
-open IRSimResult
-
--- Legacy type for backward compatibility (will be removed)
-IRSimulation : ∀ {A B} → IR A B → Set
-IRSimulation {A} {B} ir = ∀ (σ : LocState FS') (s : State) →
-  StateCorresponds σ s →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  IRSimResult ir s
-
--- compose-simulation: proven assuming simulations for f and g
-compose-simulation-with-IH : ∀ {A B C} (g : IR B C) (f : IR A B) →
-  IRSimulation f →
-  IRSimulation g →
-  (σ : LocState FS') (s : State) →
-  StateCorresponds σ s →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  ∃[ x86-final ] ∃[ σ-final ]
-    Star (compile-ir (g ∘ f)) s x86-final × StateCorresponds σ-final x86-final
-compose-simulation-with-IH g f f-sim g-sim σ s sc h-eq pc-eq =
-  let -- Step 1: Execute f
-      f-result = f-sim σ s sc h-eq pc-eq
-      sf = IRSimResult.x86-final f-result
-      σf = IRSimResult.σ-final f-result
-      star-f = IRSimResult.star-proof f-result
-      sc-f = IRSimResult.corr-proof f-result
-      h-sf = IRSimResult.halted-false f-result
-
-      -- Combine using star-concat
-      prog-f = compile-ir f
-      prog-g = compile-ir g
-      full-prog = prog-f ++ compose-bridge ++ prog-g
-
-      -- Embed f's Star into the full program (now with halted proof)
-      star-f-full : Star full-prog s sf
-      star-f-full = star-concat-left prog-f (compose-bridge ++ prog-g) s sf star-f h-sf
-
-  in sf , σf , star-f-full , sc-f  -- Simplified: just f for now
+-- compose-runner: execute g ∘ f at any offset
+-- Takes IRRunner for f and g, returns IRStarResult for the composition
+--
+-- The proof involves complex ++ associativity reasoning.
+-- Structure:
+--   1. Execute f at offset (length prefix)
+--   2. Execute bridge at offset (length prefix + compile-length f)
+--   3. Execute g at offset (length prefix + compile-length f + 1)
+--   4. Chain the Stars together
+--
+-- TODO: prove this using ++-assoc and star-concat-left
+postulate
+  compose-runner : ∀ {A B C} (g : IR B C) (f : IR A B) →
+    IRRunner f →
+    IRRunner g →
+    IRRunner (g ∘ f)
 
 -- The full compose-simulation (postulated until we have full IH infrastructure)
 postulate

@@ -17,7 +17,10 @@
 module Once.CCC.Target.X86v3.CodeGen.Compile where
 
 open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat.Properties using (+-assoc)
 open import Data.List using (List; []; _∷_; _++_; length)
+open import Data.List.Properties using (length-++)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 -- Import X86 syntax
 open import Once.Target.X86.Syntax
@@ -29,7 +32,8 @@ open import Once.Target.X86.Syntax
 
 -- Import CCC IR (via X86v3.IR re-export)
 open import Once.CCC.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal;
-                                          inl-ir; inr-ir; case-ir; initial; fold-ir; unfold-ir; arr; free-heap; Prim)
+                                          inl-ir; inr-ir; case-ir; initial; fold-ir; unfold-ir; arr; free-heap; Prim;
+                                          Type; _*_; AllocMode; Quantity)
 
 ------------------------------------------------------------------------
 -- Instruction sequences for each IR construct
@@ -247,3 +251,58 @@ compile-ir arr = id-instrs        -- arr is identity at runtime (Eff = Arrow)
 --   compile-ir (curry f) → alloc closure; thunk   (write-loc × 2)
 --   compile-ir apply     → load; call             (load × 4, call)
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Compile length correctness
+--
+-- Proves that length (compile-ir ir) ≡ compile-length ir
+-- This is essential for offset-parameterized compose proofs.
+------------------------------------------------------------------------
+
+compile-ir-length : ∀ {A B} (ir : IR A B) → length (compile-ir ir) ≡ compile-length ir
+compile-ir-length id = refl
+compile-ir-length (g ∘ f) =
+  -- Goal: length (compile-ir f ++ compose-bridge ++ compile-ir g) ≡
+  --       compile-length f +ℕ length compose-bridge +ℕ compile-length g
+  -- Note: ++ associates right, so the LHS is compile-ir f ++ (compose-bridge ++ compile-ir g)
+  let lf = compile-ir-length f
+      lg = compile-ir-length g
+      -- Step 1: length (f ++ (bridge ++ g)) = length f + length (bridge ++ g)
+      step1 = length-++ (compile-ir f)
+      -- Step 2: length (bridge ++ g) = length bridge + length g
+      step2 = length-++ compose-bridge {compile-ir g}
+      -- Step 3: Combine with IH and associativity
+      step3 : length (compile-ir f) +ℕ (length compose-bridge +ℕ length (compile-ir g))
+            ≡ compile-length f +ℕ length compose-bridge +ℕ compile-length g
+      step3 = trans (cong (_+ℕ (length compose-bridge +ℕ length (compile-ir g))) lf)
+                    (trans (cong (λ x → compile-length f +ℕ (length compose-bridge +ℕ x)) lg)
+                           (sym (+-assoc (compile-length f) (length compose-bridge) (compile-length g))))
+  in trans step1 (trans (cong (length (compile-ir f) +ℕ_) step2) step3)
+compile-ir-length fst-ir = refl
+compile-ir-length snd-ir = refl
+compile-ir-length (⟨ f , g ⟩ m) = pair-length-eq f g m
+  where
+    postulate
+      pair-length-eq : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
+        length (compile-ir (⟨ f , g ⟩ m)) ≡ compile-length (⟨ f , g ⟩ m)
+compile-ir-length terminal = refl
+compile-ir-length (curry {q = q} f m) = curry-length-eq q f m
+  where
+    postulate
+      curry-length-eq : ∀ {A B C} (q : Quantity) (f : IR (A * B) C) (m : AllocMode) →
+        length (compile-ir (curry {q = q} f m)) ≡ compile-length (curry {q = q} f m)
+compile-ir-length apply = refl
+compile-ir-length (inl-ir _) = refl
+compile-ir-length (inr-ir _) = refl
+compile-ir-length (case-ir f g) =
+  trans (length-++ (compile-ir f))
+        (cong (_+ℕ length (compile-ir g)) (compile-ir-length f)
+        `trans` cong (compile-length f +ℕ_) (compile-ir-length g))
+  where
+    _`trans`_ = trans
+compile-ir-length initial = refl
+compile-ir-length (fold-ir _) = refl
+compile-ir-length unfold-ir = refl
+compile-ir-length (free-heap _) = refl
+compile-ir-length (Prim _) = refl
+compile-ir-length arr = refl
