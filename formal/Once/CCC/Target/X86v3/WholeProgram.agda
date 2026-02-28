@@ -1077,12 +1077,14 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
 -- that proves all IR can be executed at any offset.
 --
 -- Postulated runners (complex, need more infrastructure):
---   - fst-runner, snd-runner: memory operations
 --   - pair-runner: pair construction
---   - inl/inr/case-runner: sum types
---   - initial-runner: void elimination
+--   - inl/inr/case-runner: sum types (codegen not implemented)
 --   - curry/apply-runner: closures
 --   - prim-runner: primitives
+--
+-- NOT postulated (special cases):
+--   - fst-runner, snd-runner: PROVEN via fst/snd-runner-with-valid
+--   - initial-runner: UNPROVABLE (ud2 halts, but Void has no inhabitants)
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
@@ -1129,8 +1131,70 @@ record PairOutputAtLoc (pair-loc : SM.ValueLocation FS') (σ : LocState FS') : S
 
 open PairOutputAtLoc
 
+-- INPUT validity: Closure structure at a known location, RDI points to it
+-- Used by apply-ir which reads closure components
+record ClosureAtLoc (closure-loc : SM.ValueLocation FS') (σ : LocState FS') : Set where
+  field
+    env-loc : SM.ValueLocation FS'
+    code-loc : SM.ValueLocation FS'
+    rdi-eq : SM.readReg (SM.LocState.regs σ) RDI ≡ closure-loc
+    env-ptr : readLoc σ closure-loc ≡ just env-loc
+    code-ptr : readLoc σ (SM.sucLoc closure-loc) ≡ just code-loc
+
+open ClosureAtLoc
+
+-- OUTPUT validity: Closure structure at a known location, RAX points to it
+-- Used by curry which produces closures
+record ClosureOutputAtLoc (closure-loc : SM.ValueLocation FS') (σ : LocState FS') : Set where
+  field
+    env-loc : SM.ValueLocation FS'
+    code-loc : SM.ValueLocation FS'
+    rax-eq : SM.readReg (SM.LocState.regs σ) RAX ≡ closure-loc
+    env-ptr : readLoc σ closure-loc ≡ just env-loc
+    code-ptr : readLoc σ (SM.sucLoc closure-loc) ≡ just code-loc
+
+open ClosureOutputAtLoc
+
+-- INPUT validity: Sum structure at a known location, RDI points to it
+-- Used by case-ir which reads tag and payload
+-- Note: tag is stored as a value at sum-loc, payload pointer at sucLoc
+record SumAtLoc (sum-loc : SM.ValueLocation FS') (σ : LocState FS') : Set where
+  field
+    payload-loc : SM.ValueLocation FS'
+    rdi-eq : SM.readReg (SM.LocState.regs σ) RDI ≡ sum-loc
+    payload-ptr : readLoc σ (SM.sucLoc sum-loc) ≡ just payload-loc
+    -- Note: tag at sum-loc is read as immediate value, not captured here
+
+open SumAtLoc
+
+-- OUTPUT validity: Sum structure at a known location, RAX points to it
+-- Used by inl-ir/inr-ir which produce sums
+record SumOutputAtLoc (sum-loc : SM.ValueLocation FS') (σ : LocState FS') : Set where
+  field
+    payload-loc : SM.ValueLocation FS'
+    rax-eq : SM.readReg (SM.LocState.regs σ) RAX ≡ sum-loc
+    payload-ptr : readLoc σ (SM.sucLoc sum-loc) ≡ just payload-loc
+
+open SumOutputAtLoc
+
+-- INPUT validity for apply: pair of (closure, arg), with closure structure
+-- apply-ir input type is (A ⇒ B) * A
+record ApplyInputAtLoc (input-loc : SM.ValueLocation FS') (σ : LocState FS') : Set where
+  field
+    closure-loc : SM.ValueLocation FS'
+    arg-loc : SM.ValueLocation FS'
+    env-loc : SM.ValueLocation FS'
+    code-loc : SM.ValueLocation FS'
+    rdi-eq : SM.readReg (SM.LocState.regs σ) RDI ≡ input-loc
+    closure-ptr : readLoc σ input-loc ≡ just closure-loc
+    arg-ptr : readLoc σ (SM.sucLoc input-loc) ≡ just arg-loc
+    env-ptr : readLoc σ closure-loc ≡ just env-loc
+    code-ptr : readLoc σ (SM.sucLoc closure-loc) ≡ just code-loc
+
+open ApplyInputAtLoc
+
 ------------------------------------------------------------------------
--- Bridge Transfer: Output validity → Input validity
+-- Bridge Transfers: Output validity → Input validity
 --
 -- After bridge (mov rdi, rax), RDI = RAX and memory unchanged.
 -- So PairOutputAtLoc before bridge becomes PairAtLoc after bridge.
@@ -1153,6 +1217,26 @@ bridge-transfers-pair pair-loc σ out = record
   ; rdi-eq = PairOutputAtLoc.rax-eq out  -- After bridge: RDI = RAX (before)
   ; fst-ptr = trans (bridge-readLoc-eq σ pair-loc) (PairOutputAtLoc.fst-ptr out)
   ; snd-ptr = trans (bridge-readLoc-eq σ (SM.sucLoc pair-loc)) (PairOutputAtLoc.snd-ptr out)
+  }
+
+-- Transfer: ClosureOutputAtLoc σ → ClosureAtLoc (bridge-slot-state σ)
+bridge-transfers-closure : ∀ (closure-loc : SM.ValueLocation FS') (σ : LocState FS') →
+  ClosureOutputAtLoc closure-loc σ → ClosureAtLoc closure-loc (bridge-slot-state σ)
+bridge-transfers-closure closure-loc σ out = record
+  { env-loc = ClosureOutputAtLoc.env-loc out
+  ; code-loc = ClosureOutputAtLoc.code-loc out
+  ; rdi-eq = ClosureOutputAtLoc.rax-eq out
+  ; env-ptr = trans (bridge-readLoc-eq σ closure-loc) (ClosureOutputAtLoc.env-ptr out)
+  ; code-ptr = trans (bridge-readLoc-eq σ (SM.sucLoc closure-loc)) (ClosureOutputAtLoc.code-ptr out)
+  }
+
+-- Transfer: SumOutputAtLoc σ → SumAtLoc (bridge-slot-state σ)
+bridge-transfers-sum : ∀ (sum-loc : SM.ValueLocation FS') (σ : LocState FS') →
+  SumOutputAtLoc sum-loc σ → SumAtLoc sum-loc (bridge-slot-state σ)
+bridge-transfers-sum sum-loc σ out = record
+  { payload-loc = SumOutputAtLoc.payload-loc out
+  ; rdi-eq = SumOutputAtLoc.rax-eq out
+  ; payload-ptr = trans (bridge-readLoc-eq σ (SM.sucLoc sum-loc)) (SumOutputAtLoc.payload-ptr out)
   }
 
 -- fst-runner with explicit location-based validity
@@ -1624,6 +1708,12 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       in trans pc-eq final
 
 -- Postulated runners for complex cases
+--
+-- NOTE: initial-runner is intentionally NOT included because it's unprovable:
+--   - compile-ir initial = ud2 (undefined instruction)
+--   - ud2 sets halted = true
+--   - IRStarResult requires halted-false
+-- This is sound: initial : IR Void A is never called (Void has no inhabitants)
 postulate
   pair-runner : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
     IRRunner f → IRRunner g → IRRunner (⟨ f , g ⟩ m)
@@ -1631,7 +1721,6 @@ postulate
   inr-runner : ∀ {A B} (m : AllocMode) → IRRunner (inr-ir {A} {B} m)
   case-runner : ∀ {A B C} (f : IR A C) (g : IR B C) →
     IRRunner f → IRRunner g → IRRunner (case-ir f g)
-  initial-runner : ∀ {A} → IRRunner (initial {A})
   curry-runner : ∀ {A B C q} (f : IR (A * B) C) (m : AllocMode) →
     IRRunner f → IRRunner (curry {q = q} f m)
   apply-runner : ∀ {A B q} → IRRunner (apply {A} {B} {q})

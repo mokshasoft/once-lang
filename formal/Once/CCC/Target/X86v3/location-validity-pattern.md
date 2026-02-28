@@ -123,3 +123,43 @@ record PairOutputAtLoc (pair-loc : ValueLocation FS) (σ : LocState FS) : Set wh
 
 This enables chaining: output validity of `f` becomes input validity of `g`
 after the bridge instruction (`mov rdi, rax`).
+
+## Apply: Nested Structure
+
+Apply's input type is `(A ⇒ B) * A` - a pair of (closure, arg).
+The closure itself is a pair of (env, code-ptr).
+
+```agda
+record ApplyInputAtLoc (input-loc : ValueLocation FS) (σ : LocState FS) : Set where
+  field
+    closure-loc : ValueLocation FS
+    arg-loc : ValueLocation FS
+    env-loc : ValueLocation FS
+    code-loc : ValueLocation FS
+    rdi-eq : readReg (regs σ) RDI ≡ input-loc
+    closure-ptr : readLoc σ input-loc ≡ just closure-loc
+    arg-ptr : readLoc σ (sucLoc input-loc) ≡ just arg-loc
+    env-ptr : readLoc σ closure-loc ≡ just env-loc
+    code-ptr : readLoc σ (sucLoc closure-loc) ≡ just code-loc
+```
+
+## Implementation Status
+
+| Type | Input Record | Output Record | Bridge Transfer | Runner |
+|------|--------------|---------------|-----------------|--------|
+| Pair | ✓ PairAtLoc | ✓ PairOutputAtLoc | ✓ bridge-transfers-pair | ✓ fst/snd-runner-with-valid |
+| Closure | ✓ ClosureAtLoc | ✓ ClosureOutputAtLoc | ✓ bridge-transfers-closure | ✗ needs instruction lemmas |
+| Sum | ✓ SumAtLoc | ✓ SumOutputAtLoc | ✓ bridge-transfers-sum | ✗ codegen not implemented |
+| Apply | ✓ ApplyInputAtLoc | - | - | ✗ needs instruction lemmas for `call` |
+
+## Blocking Issues
+
+### apply-runner
+- `apply-instrs` includes `call r15` which jumps to closure body
+- Need to reason about body execution and return
+- Requires instruction lemmas for the 8-instruction sequence
+
+### case-runner
+- Codegen is placeholder: `compile-ir f ++ compile-ir g`
+- Need real implementation: read tag, compare, branch to f or g
+- After codegen, proving follows the pattern
