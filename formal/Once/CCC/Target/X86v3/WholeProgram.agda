@@ -743,27 +743,6 @@ bridge-simulation σ s sc h-eq pc-eq =
   , bridge-preserves-corresponds σ s sc
 
 ------------------------------------------------------------------------
--- Simulation postulates for full-correctness
---
--- These are simplified versions without explicit memory preconditions.
--- The detailed versions (fst-simulation, snd-simulation) above have
--- the memory preconditions explicit for compositional proofs.
-------------------------------------------------------------------------
-
-postulate
-  -- fst: needs fst-loc from memory (caller provides StateCorresponds which implies this)
-  fst-simulation-simple : ∀ (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star fst-instrs s x86-final × StateCorresponds σ-final x86-final
-
-  -- snd: needs snd-loc from memory at rdi+8
-  snd-simulation-simple : ∀ (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star snd-instrs s x86-final × StateCorresponds σ-final x86-final
-
-------------------------------------------------------------------------
 -- compose-simulation (Offset-Parameterized Approach)
 --
 -- For g ∘ f, we execute: compile-ir f ++ compose-bridge ++ compile-ir g
@@ -1091,22 +1070,153 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
         final = trans (cong (_+ℕ clg) len-eq) (trans step4 step5)
       in trans pc-eq final
 
--- The full compose-simulation (postulated until we have full IH infrastructure)
+------------------------------------------------------------------------
+-- IR Runner by Induction
+--
+-- Build IRRunner for all IR constructs. This is the main induction
+-- that proves all IR can be executed at any offset.
+--
+-- Postulated runners (complex, need more infrastructure):
+--   - fst-runner, snd-runner: memory operations
+--   - pair-runner: pair construction
+--   - inl/inr/case-runner: sum types
+--   - initial-runner: void elimination
+--   - curry/apply-runner: closures
+--   - prim-runner: primitives
+------------------------------------------------------------------------
+
+-- Postulated runners for complex cases
 postulate
-  compose-simulation : ∀ {A B C} (g : IR B C) (f : IR A B)
-    (σ : LocState FS') (s : State) →
+  fst-runner : ∀ {A B} → IRRunner (fst-ir {A} {B})
+  snd-runner : ∀ {A B} → IRRunner (snd-ir {A} {B})
+  pair-runner : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
+    IRRunner f → IRRunner g → IRRunner (⟨ f , g ⟩ m)
+  inl-runner : ∀ {A B} (m : AllocMode) → IRRunner (inl-ir {A} {B} m)
+  inr-runner : ∀ {A B} (m : AllocMode) → IRRunner (inr-ir {A} {B} m)
+  case-runner : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    IRRunner f → IRRunner g → IRRunner (case-ir f g)
+  initial-runner : ∀ {A} → IRRunner (initial {A})
+  curry-runner : ∀ {A B C q} (f : IR (A * B) C) (m : AllocMode) →
+    IRRunner f → IRRunner (curry {q = q} f m)
+  apply-runner : ∀ {A B q} → IRRunner (apply {A} {B} {q})
+  prim-runner : ∀ {A B} (p : String) → IRRunner (Prim {A} {B} p)
+
+-- arr, fold, unfold compile to id-instrs
+arr-runner : ∀ {A B q} → IRRunner (arr {A} {B} {q})
+arr-runner prefix suffix σ s sc h-eq pc-eq =
+  id-expected-state s , record
+    { star-proof = id-star-at-offset prefix suffix s h-eq pc-eq
+    ; halted-false = h-eq
+    ; pc-advanced = cong (_+ℕ 1) pc-eq
+    ; σ-final = id-slot-state σ
+    ; corr-proof = id-preserves-corresponds σ s sc
+    }
+
+fold-runner : ∀ {F} (m : AllocMode) → IRRunner (fold-ir {F} m)
+fold-runner m prefix suffix σ s sc h-eq pc-eq =
+  id-expected-state s , record
+    { star-proof = id-star-at-offset prefix suffix s h-eq pc-eq
+    ; halted-false = h-eq
+    ; pc-advanced = cong (_+ℕ 1) pc-eq
+    ; σ-final = id-slot-state σ
+    ; corr-proof = id-preserves-corresponds σ s sc
+    }
+
+unfold-runner : ∀ {F} → IRRunner (unfold-ir {F})
+unfold-runner prefix suffix σ s sc h-eq pc-eq =
+  id-expected-state s , record
+    { star-proof = id-star-at-offset prefix suffix s h-eq pc-eq
+    ; halted-false = h-eq
+    ; pc-advanced = cong (_+ℕ 1) pc-eq
+    ; σ-final = id-slot-state σ
+    ; corr-proof = id-preserves-corresponds σ s sc
+    }
+
+-- free-heap compiles to [] (no-op, zero steps)
+-- Special: Star [] s s (refl*), pc unchanged
+-- Note: compile-ir (free-heap r) = []
+-- So: prefix ++ compile-ir (free-heap r) ++ suffix = prefix ++ [] ++ suffix = prefix ++ suffix
+-- compile-length (free-heap r) = 0, so pc-advanced needs: pc s ≡ length prefix + 0
+free-heap-runner : ∀ (r : HeapRef) → IRRunner (free-heap r)
+free-heap-runner r prefix suffix σ s sc h-eq pc-eq =
+  s , record
+    { star-proof = refl*  -- Star (prefix ++ suffix) s s
+    ; halted-false = h-eq
+    ; pc-advanced = trans pc-eq (sym (+-identityʳ (length prefix)))  -- length prefix ≡ length prefix + 0
+    ; σ-final = σ
+    ; corr-proof = sc
+    }
+
+-- Main induction: build IRRunner for any IR
+ir-runner : ∀ {A B} (ir : IR A B) → IRRunner ir
+ir-runner id = id-runner
+ir-runner terminal = terminal-runner
+ir-runner fst-ir = fst-runner
+ir-runner snd-ir = snd-runner
+ir-runner (g ∘ f) = compose-runner g f (ir-runner f) (ir-runner g)
+ir-runner (⟨ f , g ⟩ m) = pair-runner f g m (ir-runner f) (ir-runner g)
+ir-runner (inl-ir m) = inl-runner m
+ir-runner (inr-ir m) = inr-runner m
+ir-runner (case-ir f g) = case-runner f g (ir-runner f) (ir-runner g)
+ir-runner initial = initial-runner
+ir-runner (curry f m) = curry-runner f m (ir-runner f)
+ir-runner apply = apply-runner
+ir-runner arr = arr-runner
+ir-runner (fold-ir m) = fold-runner m
+ir-runner unfold-ir = unfold-runner
+ir-runner (free-heap r) = free-heap-runner r
+ir-runner (Prim p) = prim-runner p
+
+------------------------------------------------------------------------
+-- Simulations derived from ir-runner
+--
+-- These are the old-style simulations (pc=0, no prefix/suffix)
+-- derived by instantiating ir-runner with prefix=[] suffix=[].
+------------------------------------------------------------------------
+
+-- Helper: convert IRRunner to simulation (pc=0 case)
+runner-to-simulation : ∀ {A B} (ir : IR A B) → IRRunner ir →
+  ∀ (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 0 →
+  ∃[ x86-final ] ∃[ σ-final ]
+    Star (compile-ir ir) s x86-final × StateCorresponds σ-final x86-final
+runner-to-simulation ir runner σ s sc h-eq pc-eq =
+  let (s' , result) = runner [] [] σ s sc h-eq pc-eq
+  in s' , IRStarResult.σ-final result
+   , subst (λ p → Star p s s') (++-identityʳ (compile-ir ir)) (IRStarResult.star-proof result)
+   , IRStarResult.corr-proof result
+
+-- compose-simulation: now proven using compose-runner!
+compose-simulation : ∀ {A B C} (g : IR B C) (f : IR A B)
+  (σ : LocState FS') (s : State) →
+  StateCorresponds σ s →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ 0 →
+  ∃[ x86-final ] ∃[ σ-final ]
+    Star (compile-ir (g ∘ f)) s x86-final × StateCorresponds σ-final x86-final
+compose-simulation g f = runner-to-simulation (g ∘ f) (ir-runner (g ∘ f))
+
+-- Remaining postulates (old-style, without halted/pc preconditions)
+-- These can be eliminated by adding preconditions and using ir-runner
+postulate
+  fst-simulation-simple' : ∀ (σ : LocState FS') (s : State) →
     StateCorresponds σ s →
     ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (g ∘ f)) s x86-final × StateCorresponds σ-final x86-final
+      Star fst-instrs s x86-final × StateCorresponds σ-final x86-final
 
-  -- pair: setup ++ f ++ middle ++ g ++ cleanup
+  snd-simulation-simple' : ∀ (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ x86-final ] ∃[ σ-final ]
+      Star snd-instrs s x86-final × StateCorresponds σ-final x86-final
+
   pair-simulation : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode)
     (σ : LocState FS') (s : State) →
     StateCorresponds σ s →
     ∃[ x86-final ] ∃[ σ-final ]
       Star (compile-ir (⟨ f , g ⟩ m)) s x86-final × StateCorresponds σ-final x86-final
 
-  -- Sum types (placeholder implementations in compile-ir)
   inl-simulation : ∀ {A B} (m : AllocMode) (σ : LocState FS') (s : State) →
     StateCorresponds σ s →
     ∃[ x86-final ] ∃[ σ-final ]
@@ -1127,7 +1237,6 @@ postulate
     ∃[ x86-final ] ∃[ σ-final ]
       Star (compile-ir (initial {A})) s x86-final × StateCorresponds σ-final x86-final
 
-  -- Closures (complex - needs closure correspondence)
   curry-simulation : ∀ {A B C q} (f : IR (A * B) C) (m : AllocMode)
     (σ : LocState FS') (s : State) →
     StateCorresponds σ s →
@@ -1139,7 +1248,6 @@ postulate
     ∃[ x86-final ] ∃[ σ-final ]
       Star (compile-ir (apply {A} {B} {q})) s x86-final × StateCorresponds σ-final x86-final
 
-  -- Remaining postulates (need more infrastructure to prove)
   prim-simulation : ∀ {A B} (p : String) (σ : LocState FS') (s : State) →
     StateCorresponds σ s →
     X86Sem.State.halted s ≡ false →
@@ -1244,11 +1352,11 @@ full-correctness terminal x s σ loc sc h-eq pc-eq =
    , sc'
 
 -- fst, snd: memory operations
-full-correctness fst-ir x s σ loc sc h-eq pc-eq = fst-simulation-simple σ s sc
-full-correctness snd-ir x s σ loc sc h-eq pc-eq = snd-simulation-simple σ s sc
+full-correctness fst-ir x s σ loc sc h-eq pc-eq = fst-simulation-simple' σ s sc
+full-correctness snd-ir x s σ loc sc h-eq pc-eq = snd-simulation-simple' σ s sc
 
 -- compose, pair: compound structures
-full-correctness (g ∘ f) x s σ loc sc h-eq pc-eq = compose-simulation g f σ s sc
+full-correctness (g ∘ f) x s σ loc sc h-eq pc-eq = compose-simulation g f σ s sc h-eq pc-eq
 full-correctness (⟨ f , g ⟩ m) x s σ loc sc h-eq pc-eq = pair-simulation f g m σ s sc
 
 -- sum types

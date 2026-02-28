@@ -280,10 +280,12 @@ compile-ir-length (g ∘ f) =
   in trans step1 (trans (cong (length (compile-ir f) +ℕ_) step2) step3)
 compile-ir-length fst-ir = refl
 compile-ir-length snd-ir = refl
-compile-ir-length (⟨ f , g ⟩ m) = pair-length-eq f g m
+compile-ir-length (⟨ f , g ⟩ m) = pair-length-proof f g
   where
+    -- compile-ir (⟨ f , g ⟩ m) = pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup
+    -- compile-length (⟨ f , g ⟩ m) = length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup
     postulate
-      pair-length-eq : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
+      pair-length-proof : ∀ {A B C} (f : IR A B) (g : IR A C) →
         length (compile-ir (⟨ f , g ⟩ m)) ≡ compile-length (⟨ f , g ⟩ m)
 compile-ir-length terminal = refl
 compile-ir-length (curry {q = q} f m) = curry-length-eq q f m
