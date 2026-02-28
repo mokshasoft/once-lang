@@ -1085,10 +1085,176 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
 --   - prim-runner: primitives
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- fst-runner and snd-runner
+--
+-- These require memory validity: reading from [rdi] or [rdi+8] must
+-- produce a valid value. This is guaranteed by well-typed programs
+-- operating on pairs.
+------------------------------------------------------------------------
+
+-- Memory validity for fst: reading from [rdi] produces a valid address
+-- This should follow from: StateCorresponds + input has type (A * B)
+postulate
+  fst-mem-valid : ∀ (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ fst-loc ] (readLoc σ (SM.readReg (SM.LocState.regs σ) RDI) ≡ just fst-loc)
+
+-- fst-runner: mov rax, [rdi] at any offset
+fst-runner : ∀ {A B} → IRRunner (fst-ir {A} {B})
+fst-runner {A} {B} prefix suffix σ s sc h-eq pc-eq =
+  let
+    hb = heap-base sc
+    rdi-loc = SM.readReg (SM.LocState.regs σ) RDI
+
+    -- Get the fst location from memory validity
+    (fst-loc , mem-pre) = fst-mem-valid σ s sc
+
+    -- x86 memory precondition: derive from StateCorresponds
+    x86-mem-eq : x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just (loc-to-addr hb fst-loc)
+    x86-mem-eq = fst-x86-mem-helper σ s sc fst-loc mem-pre
+
+    -- Final state
+    s' = fst-expected-state s (loc-to-addr hb fst-loc)
+    σ' = fst-slot-state σ fst-loc
+
+  in s' , record
+    { star-proof = fst-star-at-offset prefix suffix s (loc-to-addr hb fst-loc) h-eq pc-eq x86-mem-eq
+    ; halted-false = h-eq
+    ; pc-advanced = cong (_+ℕ 1) pc-eq
+    ; σ-final = σ'
+    ; corr-proof = fst-preserves-corresponds σ s fst-loc sc mem-pre
+    }
+  where
+    -- Helper to derive x86 memory equality from SlotMachine memory and correspondence
+    fst-x86-mem-helper : ∀ (σ : LocState FS') (s : State) (sc : StateCorresponds σ s)
+      (fst-loc : SM.ValueLocation FS') →
+      readLoc σ (SM.readReg (SM.LocState.regs σ) RDI) ≡ just fst-loc →
+      x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just (loc-to-addr (heap-base sc) fst-loc)
+    fst-x86-mem-helper σ s sc fst-loc mem-pre =
+      fst-x86-helper (SM.readReg (SM.LocState.regs σ) RDI) refl mem-pre
+      where
+        hb = heap-base sc
+
+        -- Helper to get x86 memory from heap location (defined first to be in scope)
+        heap-x86-mem-from-slot : ∀ (hl : HeapLocation) (target : SM.ValueLocation FS') →
+          readLoc σ (OnHeap hl) ≡ just target →
+          x86-readMem (X86Sem.State.memory s) (loc-to-addr hb (OnHeap hl)) ≡ just (loc-to-addr hb target)
+        heap-x86-mem-from-slot hl target eq with SM.LocState.heapMem σ hl in heapMem-eq | eq
+        ... | just hl' | refl = heap-corresponds (mem-corresponds sc) hl hl' heapMem-eq
+
+        fst-x86-helper : ∀ (rdi-loc : SM.ValueLocation FS') →
+          SM.readReg (SM.LocState.regs σ) RDI ≡ rdi-loc →
+          readLoc σ rdi-loc ≡ just fst-loc →
+          x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just (loc-to-addr hb fst-loc)
+        fst-x86-helper (OnStack f k) rdi-eq mem-pre-stack =
+          let rdi-addr = x86-readReg (X86Sem.State.regs s) rdi
+              rdi-corr : rdi-addr ≡ loc-to-addr hb (OnStack f k)
+              rdi-corr = trans (rdi-corresponds (regs-correspond sc)) (cong (loc-to-addr hb) rdi-eq)
+              x86-mem-eq : x86-readMem (X86Sem.State.memory s) (loc-to-addr hb (OnStack f k)) ≡ just (loc-to-addr hb fst-loc)
+              x86-mem-eq = stack-corresponds (mem-corresponds sc) f k fst-loc mem-pre-stack
+          in subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just (loc-to-addr hb fst-loc))
+                   (sym rdi-corr) x86-mem-eq
+        fst-x86-helper (OnHeap hl) rdi-eq mem-pre-heap =
+          let rdi-addr = x86-readReg (X86Sem.State.regs s) rdi
+              rdi-corr : rdi-addr ≡ loc-to-addr hb (OnHeap hl)
+              rdi-corr = trans (rdi-corresponds (regs-correspond sc)) (cong (loc-to-addr hb) rdi-eq)
+              x86-mem-eq : x86-readMem (X86Sem.State.memory s) (loc-to-addr hb (OnHeap hl)) ≡ just (loc-to-addr hb fst-loc)
+              x86-mem-eq = heap-x86-mem-from-slot hl fst-loc mem-pre-heap
+          in subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just (loc-to-addr hb fst-loc))
+                   (sym rdi-corr) x86-mem-eq
+
+-- Memory validity for snd: reading from [rdi+8] (sucLoc of rdi) produces a valid address
+-- This should follow from: StateCorresponds + input has type (A * B)
+postulate
+  snd-mem-valid : ∀ (σ : LocState FS') (s : State) →
+    StateCorresponds σ s →
+    ∃[ snd-loc ] (readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc)
+
+-- snd-runner: mov rax, [rdi+8] at any offset
+snd-runner : ∀ {A B} → IRRunner (snd-ir {A} {B})
+snd-runner {A} {B} prefix suffix σ s sc h-eq pc-eq =
+  let
+    hb = heap-base sc
+    rdi-loc = SM.readReg (SM.LocState.regs σ) RDI
+
+    -- Get the snd location from memory validity
+    (snd-loc , mem-pre) = snd-mem-valid σ s sc
+
+    -- x86 memory precondition: derive from StateCorresponds
+    -- snd reads from rdi + slot-size, so we need to use sucLoc-to-addr
+    x86-mem-eq : x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi +ℕ slot-size) ≡ just (loc-to-addr hb snd-loc)
+    x86-mem-eq = snd-x86-mem-helper σ s sc snd-loc mem-pre
+
+    -- Final state
+    s' = snd-expected-state s (loc-to-addr hb snd-loc)
+    σ' = snd-slot-state σ snd-loc
+
+  in s' , record
+    { star-proof = snd-star-at-offset prefix suffix s (loc-to-addr hb snd-loc) h-eq pc-eq x86-mem-eq
+    ; halted-false = h-eq
+    ; pc-advanced = cong (_+ℕ 1) pc-eq
+    ; σ-final = σ'
+    ; corr-proof = snd-preserves-corresponds σ s snd-loc sc mem-pre
+    }
+  where
+    -- Helper to derive x86 memory equality from SlotMachine memory and correspondence
+    snd-x86-mem-helper : ∀ (σ : LocState FS') (s : State) (sc : StateCorresponds σ s)
+      (snd-loc : SM.ValueLocation FS') →
+      readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc →
+      x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi +ℕ slot-size) ≡ just (loc-to-addr (heap-base sc) snd-loc)
+    snd-x86-mem-helper σ s sc snd-loc mem-pre =
+      snd-x86-helper (SM.readReg (SM.LocState.regs σ) RDI) refl mem-pre
+      where
+        hb = heap-base sc
+
+        -- Helper to get x86 memory from heap location (defined first to be in scope)
+        heap-x86-mem-from-slot : ∀ (hl : HeapLocation) (target : SM.ValueLocation FS') →
+          readLoc σ (OnHeap (SM.sucHL hl)) ≡ just target →
+          x86-readMem (X86Sem.State.memory s) (loc-to-addr hb (SM.sucLoc (OnHeap hl))) ≡ just (loc-to-addr hb target)
+        heap-x86-mem-from-slot hl target eq with SM.LocState.heapMem σ (SM.sucHL hl) in heapMem-eq | eq
+        ... | just hl' | refl = heap-corresponds (mem-corresponds sc) (SM.sucHL hl) hl' heapMem-eq
+
+        snd-x86-helper : ∀ (rdi-loc : SM.ValueLocation FS') →
+          SM.readReg (SM.LocState.regs σ) RDI ≡ rdi-loc →
+          readLoc σ (SM.sucLoc rdi-loc) ≡ just snd-loc →
+          x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi +ℕ slot-size) ≡ just (loc-to-addr hb snd-loc)
+        snd-x86-helper (OnStack f k) rdi-eq mem-pre-stack =
+          let rdi-addr = x86-readReg (X86Sem.State.regs s) rdi
+              rdi-corr : rdi-addr ≡ loc-to-addr hb (OnStack f k)
+              rdi-corr = trans (rdi-corresponds (regs-correspond sc)) (cong (loc-to-addr hb) rdi-eq)
+              -- sucLoc (OnStack f k) = OnStack f (suc k)
+              suc-loc = SM.sucLoc (OnStack f k)
+              -- By sucLoc-to-addr: loc-to-addr hb (sucLoc (OnStack f k)) = loc-to-addr hb (OnStack f k) + slot-size
+              sucLoc-eq : loc-to-addr hb suc-loc ≡ loc-to-addr hb (OnStack f k) +ℕ slot-size
+              sucLoc-eq = sucLoc-to-addr hb (OnStack f k)
+              -- By mem-corresponds: x86 memory at addr(suc-loc) = loc-to-addr hb snd-loc
+              x86-mem-eq : x86-readMem (X86Sem.State.memory s) (loc-to-addr hb suc-loc) ≡ just (loc-to-addr hb snd-loc)
+              x86-mem-eq = stack-corresponds (mem-corresponds sc) f (suc k) snd-loc mem-pre-stack
+              -- Combine: rdi-addr + slot-size = loc-to-addr hb suc-loc
+              addr-eq : rdi-addr +ℕ slot-size ≡ loc-to-addr hb suc-loc
+              addr-eq = trans (cong (_+ℕ slot-size) rdi-corr) (sym sucLoc-eq)
+          in subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just (loc-to-addr hb snd-loc))
+                   (sym addr-eq) x86-mem-eq
+        snd-x86-helper (OnHeap hl) rdi-eq mem-pre-heap =
+          let rdi-addr = x86-readReg (X86Sem.State.regs s) rdi
+              rdi-corr : rdi-addr ≡ loc-to-addr hb (OnHeap hl)
+              rdi-corr = trans (rdi-corresponds (regs-correspond sc)) (cong (loc-to-addr hb) rdi-eq)
+              suc-loc = SM.sucLoc (OnHeap hl)
+              -- By sucLoc-to-addr: loc-to-addr hb (sucLoc (OnHeap hl)) = loc-to-addr hb (OnHeap hl) + slot-size
+              sucLoc-eq : loc-to-addr hb suc-loc ≡ loc-to-addr hb (OnHeap hl) +ℕ slot-size
+              sucLoc-eq = sucLoc-to-addr hb (OnHeap hl)
+              -- Use the helper to get x86 memory equality
+              x86-mem-eq : x86-readMem (X86Sem.State.memory s) (loc-to-addr hb suc-loc) ≡ just (loc-to-addr hb snd-loc)
+              x86-mem-eq = heap-x86-mem-from-slot hl snd-loc mem-pre-heap
+              -- Combine: rdi-addr + slot-size = loc-to-addr hb suc-loc
+              addr-eq : rdi-addr +ℕ slot-size ≡ loc-to-addr hb suc-loc
+              addr-eq = trans (cong (_+ℕ slot-size) rdi-corr) (sym sucLoc-eq)
+          in subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just (loc-to-addr hb snd-loc))
+                   (sym addr-eq) x86-mem-eq
+
 -- Postulated runners for complex cases
 postulate
-  fst-runner : ∀ {A B} → IRRunner (fst-ir {A} {B})
-  snd-runner : ∀ {A B} → IRRunner (snd-ir {A} {B})
   pair-runner : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
     IRRunner f → IRRunner g → IRRunner (⟨ f , g ⟩ m)
   inl-runner : ∀ {A B} (m : AllocMode) → IRRunner (inl-ir {A} {B} m)

@@ -34,7 +34,7 @@ open import Once.CCC.IR
   using (IR; Prim; eval; PrimContractV3; AllocMode; Stack;
          stack-requirement; output-mode; IsPrimitive; is-int; is-float;
          PrimSem; evalPrim; ir-stack-requirement; pair-slots)
-open import Once.CCC.Target.X86v3.Allocation
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation
   using (AllocState; next-slot; next-heap-ref; frame-capacity; current-frame; module FrontierInvariant)
 
 ------------------------------------------------------------------------
@@ -84,13 +84,13 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
     using (BeforeFrontier; stack-before; stack-ancestor; heap-before)
   open MemOps {FS} using (readLoc)
 
-  open import Once.CCC.Target.X86v3.ClosureWellFormed
+  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF;
            valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
            valid-primitive-wf)
 
-  open import Once.CCC.Target.X86v3.Dispatcher
+  open import Once.CCC.Target.X86v3.Dispatcher.Dispatcher
   open PrimProofInterface {FS} program-bound primSem
     using (PrimProofV3; PrimProofProviderV3)
 
