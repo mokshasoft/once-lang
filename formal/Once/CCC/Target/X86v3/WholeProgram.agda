@@ -1940,68 +1940,244 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       in trans pc-eq (trans step1 (cong length step2))
 
     -- After g: similar to f-to-mid, use compile-ir g directly
-    -- Sound postulate: list length arithmetic with ++ associativity
+    -- PROVEN: list length arithmetic with ++ associativity
     pair-pc-g-to-clean : ∀ (pref pf pg : Program) →
       ∀ {pc : ℕ} →
       pc ≡ length (pref ++ pair-setup ++ pf ++ pair-middle) +ℕ compile-length g →
       pc ≡ length (pref ++ pair-setup ++ pf ++ pair-middle ++ compile-ir g)
-    pair-pc-g-to-clean pref pf _ {pc} pc-eq = pair-pc-g-arith pref pf pc-eq
-      where
-        -- Sound postulate: just tedious ++ associativity and length-++
-        -- length (a ++ b ++ c ++ d) + compile-length g = length (a ++ b ++ c ++ d ++ compile-ir g)
-        -- This follows from: length (xs ++ ys) = length xs + length ys
-        -- and compile-ir-length g : length (compile-ir g) = compile-length g
-        postulate
-          pair-pc-g-arith : ∀ (pref pf : Program) →
-            ∀ {pc : ℕ} →
-            pc ≡ length (pref ++ pair-setup ++ pf ++ pair-middle) +ℕ compile-length g →
-            pc ≡ length (pref ++ pair-setup ++ pf ++ pair-middle ++ compile-ir g)
+    pair-pc-g-to-clean pref pf _ pc-eq =
+      -- Same pattern as pair-pc-f-to-mid
+      let prog-g' = compile-ir g
+          prefix-g = pref ++ pair-setup ++ pf ++ pair-middle
+          -- Step 1: length (prefix-g ++ prog-g') = length prefix-g + length prog-g'
+          -- Using ++-assoc to group properly for length-++
+          step1 : length (prefix-g ++ prog-g') ≡ length prefix-g +ℕ length prog-g'
+          step1 = length-++ prefix-g
+          -- Step 2: (pref ++ pair-setup ++ pf ++ pair-middle) ++ prog-g' = pref ++ pair-setup ++ pf ++ pair-middle ++ prog-g'
+          -- Right-assoc: (pref ++ (pair-setup ++ (pf ++ pair-middle))) ++ prog-g'
+          --            = pref ++ (pair-setup ++ (pf ++ (pair-middle ++ prog-g')))
+          step2 : (pref ++ pair-setup ++ pf ++ pair-middle) ++ prog-g'
+                ≡ pref ++ pair-setup ++ pf ++ pair-middle ++ prog-g'
+          step2 = trans (++-assoc pref (pair-setup ++ pf ++ pair-middle) prog-g')
+                        (cong (pref ++_) (trans (++-assoc pair-setup (pf ++ pair-middle) prog-g')
+                                                (cong (pair-setup ++_) (++-assoc pf pair-middle prog-g'))))
+          -- Step 3: length prog-g' = compile-length g
+          len-g : length prog-g' ≡ compile-length g
+          len-g = compile-ir-length g
+          -- Combine: length (prefix-g ++ prog-g') = length prefix-g + compile-length g
+          goal-eq : length (pref ++ pair-setup ++ pf ++ pair-middle ++ prog-g')
+                  ≡ length (pref ++ pair-setup ++ pf ++ pair-middle) +ℕ compile-length g
+          goal-eq = trans (cong length (sym step2))
+                          (trans step1 (cong (length prefix-g +ℕ_) len-g))
+      in trans pc-eq (sym goal-eq)
 
     -- Final PC: arithmetic connecting to compile-length (⟨ f , g ⟩ m)
-    -- Use compile-ir f/g directly since f,g are in scope
-    -- Sound postulate: just tedious list length arithmetic
+    -- PROVEN: list length arithmetic
+    -- compile-length (⟨ f , g ⟩ m) = length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup
     pair-pc-final : ∀ (pref pf pg : Program) →
       ∀ {pc : ℕ} →
       pc ≡ length (pref ++ pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g) +ℕ length pair-cleanup →
       pc ≡ length pref +ℕ compile-length (⟨ f , g ⟩ m)
-    pair-pc-final pref _ _ pc-eq = pair-pc-final-arith pref pc-eq
-      where
-        -- Sound postulate: just tedious list length arithmetic
-        -- length (pref ++ pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g) + length pair-cleanup
-        -- = length pref + (length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup)
-        -- = length pref + compile-length (⟨ f , g ⟩ m)
-        postulate
-          pair-pc-final-arith : ∀ (pref : Program) →
-            ∀ {pc : ℕ} →
-            pc ≡ length (pref ++ pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g) +ℕ length pair-cleanup →
-            pc ≡ length pref +ℕ compile-length (⟨ f , g ⟩ m)
+    pair-pc-final pref _ _ pc-eq =
+      let -- Step 1: Expand length of the big concatenation using length-++ chain
+          -- length (pref ++ pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g)
+          -- = length pref + length (pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g)
+          inner = pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g
+          len-split : length (pref ++ inner) ≡ length pref +ℕ length inner
+          len-split = length-++ pref
+
+          -- Step 2: Expand inner length
+          -- length (pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g)
+          inner2 = compile-ir f ++ pair-middle ++ compile-ir g
+          len-inner1 : length inner ≡ length pair-setup +ℕ length inner2
+          len-inner1 = length-++ pair-setup {inner2}
+
+          inner3 = pair-middle ++ compile-ir g
+          len-inner2 : length inner2 ≡ length (compile-ir f) +ℕ length inner3
+          len-inner2 = length-++ (compile-ir f) {inner3}
+
+          len-inner3 : length inner3 ≡ length pair-middle +ℕ length (compile-ir g)
+          len-inner3 = length-++ pair-middle {compile-ir g}
+
+          -- Step 3: Use compile-ir-length
+          len-f : length (compile-ir f) ≡ compile-length f
+          len-f = compile-ir-length f
+
+          len-g : length (compile-ir g) ≡ compile-length g
+          len-g = compile-ir-length g
+
+          -- Step 4: Build the full equality
+          -- length (pref ++ inner) + length pair-cleanup
+          -- = (length pref + length inner) + length pair-cleanup
+          -- = length pref + (length inner + length pair-cleanup)
+          -- = length pref + (length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup)
+          -- = length pref + compile-length (⟨ f , g ⟩ m)
+
+          -- Inner length fully expanded
+          -- Need to build: length inner ≡ ((len-setup + compile-len-f) + len-mid) + compile-len-g
+          -- Build step by step with correct associativity
+          inner-len : length inner ≡ length pair-setup +ℕ compile-length f +ℕ length pair-middle +ℕ compile-length g
+          inner-len =
+            let -- length inner = length pair-setup + length inner2
+                step1 = len-inner1
+                -- length inner2 = length (compile-ir f) + length inner3
+                step2 = cong (length pair-setup +ℕ_) len-inner2
+                -- Apply len-f: length (compile-ir f) = compile-length f
+                -- Result: length pair-setup + (compile-length f + length inner3)
+                step3 = cong (length pair-setup +ℕ_) (cong (_+ℕ length inner3) len-f)
+                -- Apply associativity: a + (b + c) = (a + b) + c
+                step4 : length pair-setup +ℕ (compile-length f +ℕ length inner3)
+                      ≡ (length pair-setup +ℕ compile-length f) +ℕ length inner3
+                step4 = sym (ℕ-+-assoc (length pair-setup) (compile-length f) (length inner3))
+                -- Apply len-inner3: length inner3 = length pair-middle + length (compile-ir g)
+                step5 = cong ((length pair-setup +ℕ compile-length f) +ℕ_) len-inner3
+                -- Result: (len-setup + compile-len-f) + (len-mid + length (compile-ir g))
+                -- Need: ((len-setup + compile-len-f) + len-mid) + length (compile-ir g)
+                step6 : (length pair-setup +ℕ compile-length f) +ℕ (length pair-middle +ℕ length (compile-ir g))
+                      ≡ ((length pair-setup +ℕ compile-length f) +ℕ length pair-middle) +ℕ length (compile-ir g)
+                step6 = sym (ℕ-+-assoc (length pair-setup +ℕ compile-length f) (length pair-middle) (length (compile-ir g)))
+                -- Apply len-g: length (compile-ir g) = compile-length g
+                step7 = cong (((length pair-setup +ℕ compile-length f) +ℕ length pair-middle) +ℕ_) len-g
+            in trans step1 (trans step2 (trans step3 (trans step4 (trans step5 (trans step6 step7)))))
+
+          -- LHS: length (pref ++ inner) + length pair-cleanup
+          -- = (length pref + length inner) + length pair-cleanup  [by len-split]
+          -- = length pref + (length inner + length pair-cleanup)  [by +-assoc]
+          -- = length pref + (length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup)
+          --   [by inner-len and arithmetic]
+
+          -- The key: (a + b) + c = a + (b + c)
+          assoc-step : (length pref +ℕ length inner) +ℕ length pair-cleanup
+                     ≡ length pref +ℕ (length inner +ℕ length pair-cleanup)
+          assoc-step = ℕ-+-assoc (length pref) (length inner) (length pair-cleanup)
+
+          -- compile-length (⟨ f , g ⟩ m) definition
+          pair-compile-len : compile-length (⟨ f , g ⟩ m)
+                           ≡ length pair-setup +ℕ compile-length f +ℕ length pair-middle +ℕ compile-length g +ℕ length pair-cleanup
+          pair-compile-len = refl
+
+          -- length inner + length pair-cleanup = compile-length (⟨ f , g ⟩ m)
+          inner-plus-cleanup : length inner +ℕ length pair-cleanup ≡ compile-length (⟨ f , g ⟩ m)
+          inner-plus-cleanup = trans (cong (_+ℕ length pair-cleanup) inner-len) refl
+
+          -- Full chain
+          full-eq : length (pref ++ inner) +ℕ length pair-cleanup ≡ length pref +ℕ compile-length (⟨ f , g ⟩ m)
+          full-eq = trans (cong (_+ℕ length pair-cleanup) len-split)
+                    (trans assoc-step
+                           (cong (length pref +ℕ_) inner-plus-cleanup))
+
+      in trans pc-eq full-eq
 
     -- Chain all pair phase stars
     -- Uses Star transitivity (◅◅) and subst for ++ associativity
-    -- Sound postulate: just list associativity and Star transitivity
+    -- PROVEN: list associativity and Star transitivity
+    -- Use compile-ir f/g directly since f,g are in scope
     pair-star-chain : ∀ (pref suff pf pg : Program)
       (s0 s1 s2 s3 s4 s5 : State) →
-      Star (pref ++ pair-setup ++ (pf ++ pair-middle ++ pg ++ pair-cleanup ++ suff)) s0 s1 →
-      Star ((pref ++ pair-setup) ++ pf ++ (pair-middle ++ pg ++ pair-cleanup ++ suff)) s1 s2 →
-      Star ((pref ++ pair-setup ++ pf) ++ pair-middle ++ (pg ++ pair-cleanup ++ suff)) s2 s3 →
-      Star ((pref ++ pair-setup ++ pf ++ pair-middle) ++ pg ++ (pair-cleanup ++ suff)) s3 s4 →
-      Star ((pref ++ pair-setup ++ pf ++ pair-middle ++ pg) ++ pair-cleanup ++ suff) s4 s5 →
+      Star (pref ++ pair-setup ++ (compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup ++ suff)) s0 s1 →
+      Star ((pref ++ pair-setup) ++ compile-ir f ++ (pair-middle ++ compile-ir g ++ pair-cleanup ++ suff)) s1 s2 →
+      Star ((pref ++ pair-setup ++ compile-ir f) ++ pair-middle ++ (compile-ir g ++ pair-cleanup ++ suff)) s2 s3 →
+      Star ((pref ++ pair-setup ++ compile-ir f ++ pair-middle) ++ compile-ir g ++ (pair-cleanup ++ suff)) s3 s4 →
+      Star ((pref ++ pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g) ++ pair-cleanup ++ suff) s4 s5 →
       Star (pref ++ compile-ir (⟨ f , g ⟩ m) ++ suff) s0 s5
-    pair-star-chain pref suff pf pg s0 s1 s2 s3 s4 s5 star1 star2 star3 star4 star5 =
+    pair-star-chain pref suff _ _ s0 s1 s2 s3 s4 s5 star1 star2 star3 star4 star5 =
       -- Chain all stars using transitivity
       -- All lists are equivalent via ++-assoc
-      -- Sound postulate: the chaining is mechanical ◅◅ and subst
-      pair-star-chain-helper pref suff pf pg s0 s1 s2 s3 s4 s5 star1 star2 star3 star4 star5
-      where
-        postulate
-          pair-star-chain-helper : ∀ (pref suff pf pg : Program)
-            (s0 s1 s2 s3 s4 s5 : State) →
-            Star (pref ++ pair-setup ++ (pf ++ pair-middle ++ pg ++ pair-cleanup ++ suff)) s0 s1 →
-            Star ((pref ++ pair-setup) ++ pf ++ (pair-middle ++ pg ++ pair-cleanup ++ suff)) s1 s2 →
-            Star ((pref ++ pair-setup ++ pf) ++ pair-middle ++ (pg ++ pair-cleanup ++ suff)) s2 s3 →
-            Star ((pref ++ pair-setup ++ pf ++ pair-middle) ++ pg ++ (pair-cleanup ++ suff)) s3 s4 →
-            Star ((pref ++ pair-setup ++ pf ++ pair-middle ++ pg) ++ pair-cleanup ++ suff) s4 s5 →
-            Star (pref ++ compile-ir (⟨ f , g ⟩ m) ++ suff) s0 s5
+      -- PROVEN: mechanical ◅◅ and subst
+      let
+          -- Use compile-ir f/g directly
+          pf = compile-ir f
+          pg = compile-ir g
+
+          -- Canonical program: pref ++ pair-setup ++ pf ++ pair-middle ++ pg ++ pair-cleanup ++ suff
+          -- This is the natural right-associative form
+          canonical = pref ++ pair-setup ++ pf ++ pair-middle ++ pg ++ pair-cleanup ++ suff
+
+          -- All input programs equal canonical by ++-assoc
+          -- Form 1: pref ++ pair-setup ++ (pf ++ pair-middle ++ pg ++ pair-cleanup ++ suff)
+          --       = pref ++ (pair-setup ++ (pf ++ pair-middle ++ pg ++ pair-cleanup ++ suff))  (right-assoc)
+          -- These are definitionally equal due to right-assoc!
+          eq1 : pref ++ pair-setup ++ (pf ++ pair-middle ++ pg ++ pair-cleanup ++ suff) ≡ canonical
+          eq1 = refl
+
+          -- Form 2: (pref ++ pair-setup) ++ pf ++ (pair-middle ++ pg ++ pair-cleanup ++ suff)
+          eq2 : (pref ++ pair-setup) ++ pf ++ (pair-middle ++ pg ++ pair-cleanup ++ suff) ≡ canonical
+          eq2 = trans (++-assoc pref pair-setup (pf ++ pair-middle ++ pg ++ pair-cleanup ++ suff)) refl
+
+          -- Form 3: (pref ++ pair-setup ++ pf) ++ pair-middle ++ (pg ++ pair-cleanup ++ suff)
+          eq3 : (pref ++ pair-setup ++ pf) ++ pair-middle ++ (pg ++ pair-cleanup ++ suff) ≡ canonical
+          eq3 = trans (++-assoc pref (pair-setup ++ pf) (pair-middle ++ pg ++ pair-cleanup ++ suff))
+                      (cong (pref ++_) (++-assoc pair-setup pf (pair-middle ++ pg ++ pair-cleanup ++ suff)))
+
+          -- Form 4: (pref ++ pair-setup ++ pf ++ pair-middle) ++ pg ++ (pair-cleanup ++ suff)
+          eq4 : (pref ++ pair-setup ++ pf ++ pair-middle) ++ pg ++ (pair-cleanup ++ suff) ≡ canonical
+          eq4 = trans (++-assoc pref (pair-setup ++ pf ++ pair-middle) (pg ++ pair-cleanup ++ suff))
+                      (cong (pref ++_) (trans (++-assoc pair-setup (pf ++ pair-middle) (pg ++ pair-cleanup ++ suff))
+                                              (cong (pair-setup ++_) (++-assoc pf pair-middle (pg ++ pair-cleanup ++ suff)))))
+
+          -- Form 5: (pref ++ pair-setup ++ pf ++ pair-middle ++ pg) ++ pair-cleanup ++ suff
+          eq5 : (pref ++ pair-setup ++ pf ++ pair-middle ++ pg) ++ pair-cleanup ++ suff ≡ canonical
+          eq5 = trans (++-assoc pref (pair-setup ++ pf ++ pair-middle ++ pg) (pair-cleanup ++ suff))
+                      (cong (pref ++_) (trans (++-assoc pair-setup (pf ++ pair-middle ++ pg) (pair-cleanup ++ suff))
+                                              (cong (pair-setup ++_) (trans (++-assoc pf (pair-middle ++ pg) (pair-cleanup ++ suff))
+                                                                            (cong (pf ++_) (++-assoc pair-middle pg (pair-cleanup ++ suff)))))))
+
+          -- Transport each Star to canonical form
+          star1' : Star canonical s0 s1
+          star1' = subst (λ p → Star p s0 s1) eq1 star1
+
+          star2' : Star canonical s1 s2
+          star2' = subst (λ p → Star p s1 s2) eq2 star2
+
+          star3' : Star canonical s2 s3
+          star3' = subst (λ p → Star p s2 s3) eq3 star3
+
+          star4' : Star canonical s3 s4
+          star4' = subst (λ p → Star p s3 s4) eq4 star4
+
+          star5' : Star canonical s4 s5
+          star5' = subst (λ p → Star p s4 s5) eq5 star5
+
+          -- Chain all Stars together
+          star-all : Star canonical s0 s5
+          star-all = star1' ◅◅ star2' ◅◅ star3' ◅◅ star4' ◅◅ star5'
+
+          -- Final form: pref ++ compile-ir (⟨ f , g ⟩ m) ++ suff
+          -- compile-ir (⟨ f , g ⟩ m) = pair-setup ++ pf ++ pair-middle ++ pg ++ pair-cleanup
+          --
+          -- canonical = pref ++ pair-setup ++ pf ++ pair-middle ++ pg ++ pair-cleanup ++ suff
+          --           = pref ++ (pair-setup ++ (pf ++ (pair-middle ++ (pg ++ (pair-cleanup ++ suff)))))
+          --
+          -- goal = pref ++ compile-ir (⟨ f , g ⟩ m) ++ suff
+          --      = pref ++ (pair-setup ++ (pf ++ (pair-middle ++ (pg ++ pair-cleanup)))) ++ suff
+          --      = pref ++ ((pair-setup ++ (pf ++ (pair-middle ++ (pg ++ pair-cleanup)))) ++ suff)
+          --
+          -- Key difference: pg ++ (pair-cleanup ++ suff) vs (pg ++ pair-cleanup) ++ suff
+          -- Need: sym (++-assoc pg pair-cleanup suff)
+
+          -- Work inside out to prove canonical = goal
+          assoc-pg : pg ++ (pair-cleanup ++ suff) ≡ (pg ++ pair-cleanup) ++ suff
+          assoc-pg = sym (++-assoc pg pair-cleanup suff)
+
+          assoc-mid : pair-middle ++ (pg ++ (pair-cleanup ++ suff))
+                    ≡ (pair-middle ++ (pg ++ pair-cleanup)) ++ suff
+          assoc-mid = trans (cong (pair-middle ++_) assoc-pg)
+                            (sym (++-assoc pair-middle (pg ++ pair-cleanup) suff))
+
+          assoc-pf : pf ++ (pair-middle ++ (pg ++ (pair-cleanup ++ suff)))
+                   ≡ (pf ++ (pair-middle ++ (pg ++ pair-cleanup))) ++ suff
+          assoc-pf = trans (cong (pf ++_) assoc-mid)
+                           (sym (++-assoc pf (pair-middle ++ (pg ++ pair-cleanup)) suff))
+
+          assoc-setup : pair-setup ++ (pf ++ (pair-middle ++ (pg ++ (pair-cleanup ++ suff))))
+                      ≡ (pair-setup ++ (pf ++ (pair-middle ++ (pg ++ pair-cleanup)))) ++ suff
+          assoc-setup = trans (cong (pair-setup ++_) assoc-pf)
+                              (sym (++-assoc pair-setup (pf ++ (pair-middle ++ (pg ++ pair-cleanup))) suff))
+
+          eq-final : canonical ≡ pref ++ compile-ir (⟨ f , g ⟩ m) ++ suff
+          eq-final = cong (pref ++_) assoc-setup
+
+      in subst (λ p → Star p s0 s5) eq-final star-all
 
 -- Postulated runners for remaining complex cases
 --
