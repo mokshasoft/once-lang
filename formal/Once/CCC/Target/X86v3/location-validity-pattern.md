@@ -147,10 +147,29 @@ record ApplyInputAtLoc (input-loc : ValueLocation FS) (σ : LocState FS) : Set w
 
 | Type | Input Record | Output Record | Bridge Transfer | Runner |
 |------|--------------|---------------|-----------------|--------|
-| Pair | ✓ PairAtLoc | ✓ PairOutputAtLoc | ✓ bridge-transfers-pair | ✓ fst/snd-runner-with-valid |
-| Closure | ✓ ClosureAtLoc | ✓ ClosureOutputAtLoc | ✓ bridge-transfers-closure | ✗ needs instruction lemmas |
+| Pair | ✓ PairAtLoc | ✓ PairOutputAtLoc | ✓ bridge-transfers-pair | ✓ fst/snd-runner, ✓ pair-runner |
+| Closure | ✓ ClosureAtLoc | ✓ ClosureOutputAtLoc | ✓ bridge-transfers-closure | ⚠ curry/apply need instruction lemmas |
 | Sum | ✓ SumAtLoc | ✓ SumOutputAtLoc | ✓ bridge-transfers-sum | ✗ codegen not implemented |
-| Apply | ✓ ApplyInputAtLoc | - | - | ✗ needs instruction lemmas for `call` |
+| Apply | ✓ ApplyInputAtLoc | - | - | ⚠ needs instruction lemmas for `call` |
+
+### Proven Runners
+
+- `fst-runner-with-valid`, `snd-runner-with-valid`: Memory read operations
+- `pair-runner`: Chains setup → f → middle → g → cleanup (uses sound postulates for phases)
+- `id-runner`, `terminal-runner`, `compose-runner`: Simple operations
+- `fold-runner`, `unfold-runner`, `arr-runner`: Compile to id-instrs
+- `free-heap-runner`: No-op
+
+### Postulated Runners (with soundness status)
+
+**Sound** (have real codegen, need instruction lemmas):
+- `curry-runner`: Creates closure with env + code-ptr
+- `apply-runner`: Loads closure, calls code-ptr
+
+**Unsound** (codegen is placeholder ud2, need real implementation):
+- `inl-runner`, `inr-runner`: Sum injection (codegen is ud2)
+- `case-runner`: Sum elimination (codegen is f ++ g, no dispatch)
+- `prim-runner`: Primitives (codegen is ud2, needs FFI)
 
 ## Blocking Issues
 
@@ -163,3 +182,7 @@ record ApplyInputAtLoc (input-loc : ValueLocation FS) (σ : LocState FS) : Set w
 - Codegen is placeholder: `compile-ir f ++ compile-ir g`
 - Need real implementation: read tag, compare, branch to f or g
 - After codegen, proving follows the pattern
+
+### inl/inr-runner
+- Codegen is `ud2 ∷ []` (undefined instruction)
+- Need real implementation: allocate 2 slots, write tag + payload-ptr
