@@ -778,7 +778,8 @@ postulate
 ------------------------------------------------------------------------
 
 open import Once.CCC.Target.X86v3.CodeGen.Compile using (compile-length; compile-ir-length)
-open import Data.List.Properties using (length-++)
+open import Data.List.Properties using (length-++; ++-assoc; ++-identityʳ)
+open import Data.Nat.Properties renaming (+-assoc to ℕ-+-assoc)
 
 -- Type for IR simulation result at arbitrary offset
 -- The full program is: prefix ++ compile-ir ir ++ suffix
@@ -865,19 +866,230 @@ bridge-runner prefix suffix σ s sc h-eq pc-eq =
 -- compose-runner: execute g ∘ f at any offset
 -- Takes IRRunner for f and g, returns IRStarResult for the composition
 --
--- The proof involves complex ++ associativity reasoning.
--- Structure:
---   1. Execute f at offset (length prefix)
---   2. Execute bridge at offset (length prefix + compile-length f)
---   3. Execute g at offset (length prefix + compile-length f + 1)
---   4. Chain the Stars together
+-- The key insight is that ++ is right-associative, so:
+--   prefix ++ prog-f ++ compose-bridge ++ prog-g ++ suffix
+-- parses as:
+--   prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
 --
--- TODO: prove this using ++-assoc and star-concat-left
-postulate
-  compose-runner : ∀ {A B C} (g : IR B C) (f : IR A B) →
-    IRRunner f →
-    IRRunner g →
-    IRRunner (g ∘ f)
+-- We use ++-assoc to regroup and subst to transport Star proofs.
+compose-runner : ∀ {A B C} (g : IR B C) (f : IR A B) →
+  IRRunner f →
+  IRRunner g →
+  IRRunner (g ∘ f)
+compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
+  let -- Programs
+      prog-f = compile-ir f
+      prog-g = compile-ir g
+
+      -- The full program for compose (g ∘ f) is:
+      -- compile-ir (g ∘ f) = prog-f ++ compose-bridge ++ prog-g
+      -- With prefix/suffix: prefix ++ (prog-f ++ compose-bridge ++ prog-g) ++ suffix
+
+      -- Step 1: Execute f at offset (length prefix)
+      -- f-run gets: prefix, (compose-bridge ++ prog-g ++ suffix)
+      -- Star over: prefix ++ prog-f ++ (compose-bridge ++ prog-g ++ suffix)
+      (sf , f-result) = f-run prefix (compose-bridge ++ prog-g ++ suffix) σ s sc h-eq pc-eq
+      σf = IRStarResult.σ-final f-result
+      star-f = IRStarResult.star-proof f-result
+      h-sf = IRStarResult.halted-false f-result
+      pc-sf = IRStarResult.pc-advanced f-result
+      sc-f = IRStarResult.corr-proof f-result
+
+      -- Helper lemmas for length calculations
+      len-prefix-f : length (prefix ++ prog-f) ≡ length prefix +ℕ length prog-f
+      len-prefix-f = length-++ prefix
+
+      -- pc-sf : pc sf ≡ length prefix + compile-length f
+      -- Need: pc sf ≡ length (prefix ++ prog-f)
+      pc-at-bridge : X86Sem.State.pc sf ≡ length (prefix ++ prog-f)
+      pc-at-bridge = trans pc-sf
+                           (trans (cong (length prefix +ℕ_) (sym (compile-ir-length f)))
+                                  (sym len-prefix-f))
+
+      -- Step 2: Execute bridge at offset length (prefix ++ prog-f)
+      -- bridge-runner gets: (prefix ++ prog-f), (prog-g ++ suffix)
+      -- Star over: (prefix ++ prog-f) ++ compose-bridge ++ (prog-g ++ suffix)
+      --
+      -- We need to show this Star works on the same program as step 1's suffix
+      -- By ++-assoc: (prefix ++ prog-f) ++ (compose-bridge ++ (prog-g ++ suffix))
+      --            ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      assoc-for-bridge : (prefix ++ prog-f) ++ (compose-bridge ++ (prog-g ++ suffix))
+                       ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      assoc-for-bridge = ++-assoc prefix prog-f (compose-bridge ++ (prog-g ++ suffix))
+
+      (sb , star-b' , h-sb , pc-sb , sc-b) =
+        bridge-runner (prefix ++ prog-f) (prog-g ++ suffix) σf sf sc-f h-sf pc-at-bridge
+
+      -- Transport bridge's Star to the canonical form
+      star-b : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) sf sb
+      star-b = subst (λ p → Star p sf sb) assoc-for-bridge star-b'
+
+      -- Step 3: Execute g at offset length (prefix ++ prog-f ++ compose-bridge)
+      -- Note: prefix ++ prog-f ++ compose-bridge = prefix ++ (prog-f ++ compose-bridge) (right-assoc)
+      -- We need: length (prefix ++ (prog-f ++ compose-bridge)) ≡ length (prefix ++ prog-f) + length compose-bridge
+      --
+      -- First use ++-assoc: prefix ++ (prog-f ++ compose-bridge) = (prefix ++ prog-f) ++ compose-bridge
+      -- Then length-++: length ((prefix ++ prog-f) ++ compose-bridge) = length (prefix ++ prog-f) + length compose-bridge
+      assoc-prefix-f-bridge : prefix ++ (prog-f ++ compose-bridge) ≡ (prefix ++ prog-f) ++ compose-bridge
+      assoc-prefix-f-bridge = sym (++-assoc prefix prog-f compose-bridge)
+
+      len-prefix-f-bridge : length (prefix ++ prog-f ++ compose-bridge)
+                          ≡ length (prefix ++ prog-f) +ℕ length compose-bridge
+      len-prefix-f-bridge = trans (cong length assoc-prefix-f-bridge) (length-++ (prefix ++ prog-f))
+
+      pc-at-g : X86Sem.State.pc sb ≡ length (prefix ++ prog-f ++ compose-bridge)
+      pc-at-g = trans pc-sb (sym len-prefix-f-bridge)
+
+      -- g-run gets: (prefix ++ prog-f ++ compose-bridge), suffix
+      -- Star over: (prefix ++ prog-f ++ compose-bridge) ++ prog-g ++ suffix
+      --
+      -- Associativity: we need to show this equals the full program
+      -- (prefix ++ (prog-f ++ compose-bridge)) ++ (prog-g ++ suffix)
+      -- = prefix ++ ((prog-f ++ compose-bridge) ++ (prog-g ++ suffix))  by ++-assoc
+      -- = prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))  by ++-assoc on inner
+      assoc-inner : (prog-f ++ compose-bridge) ++ (prog-g ++ suffix)
+                  ≡ prog-f ++ (compose-bridge ++ (prog-g ++ suffix))
+      assoc-inner = ++-assoc prog-f compose-bridge (prog-g ++ suffix)
+
+      assoc-outer : (prefix ++ (prog-f ++ compose-bridge)) ++ (prog-g ++ suffix)
+                  ≡ prefix ++ ((prog-f ++ compose-bridge) ++ (prog-g ++ suffix))
+      assoc-outer = ++-assoc prefix (prog-f ++ compose-bridge) (prog-g ++ suffix)
+
+      assoc-for-g : (prefix ++ (prog-f ++ compose-bridge)) ++ (prog-g ++ suffix)
+                  ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      assoc-for-g = trans assoc-outer (cong (prefix ++_) assoc-inner)
+
+      (sg , g-result) = g-run (prefix ++ prog-f ++ compose-bridge) suffix
+                              (bridge-slot-state σf) sb sc-b h-sb pc-at-g
+      σg = IRStarResult.σ-final g-result
+      star-g' = IRStarResult.star-proof g-result
+      h-sg = IRStarResult.halted-false g-result
+      pc-sg = IRStarResult.pc-advanced g-result
+      sc-g = IRStarResult.corr-proof g-result
+
+      -- Transport g's Star to the canonical form
+      star-g : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) sb sg
+      star-g = subst (λ p → Star p sb sg) assoc-for-g star-g'
+
+      -- Chain the three Stars together
+      -- All three are now over the same program:
+      --   prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      star-fg : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) s sg
+      star-fg = star-f ◅◅ star-b ◅◅ star-g
+
+      -- The result type expects Star over:
+      --   prefix ++ compile-ir (g ∘ f) ++ suffix
+      -- = prefix ++ (prog-f ++ compose-bridge ++ prog-g) ++ suffix
+      -- = prefix ++ ((prog-f ++ compose-bridge ++ prog-g) ++ suffix)  (++ is right-assoc, so this is wrong)
+      --
+      -- Actually: compile-ir (g ∘ f) = prog-f ++ compose-bridge ++ prog-g
+      --         = prog-f ++ (compose-bridge ++ prog-g)
+      -- So: prefix ++ compile-ir (g ∘ f) ++ suffix
+      --   = prefix ++ (prog-f ++ (compose-bridge ++ prog-g)) ++ suffix
+      --   = prefix ++ ((prog-f ++ (compose-bridge ++ prog-g)) ++ suffix)  (by ++ right-assoc)
+      --
+      -- We have: prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      -- Need:    prefix ++ ((prog-f ++ (compose-bridge ++ prog-g)) ++ suffix)
+      --
+      -- These differ in how prog-g and suffix are grouped!
+      -- (compose-bridge ++ (prog-g ++ suffix)) vs ((compose-bridge ++ prog-g) ++ suffix)
+      --
+      -- Use ++-assoc: compose-bridge ++ (prog-g ++ suffix) = (compose-bridge ++ prog-g) ++ suffix
+      assoc-tail : compose-bridge ++ (prog-g ++ suffix) ≡ (compose-bridge ++ prog-g) ++ suffix
+      assoc-tail = sym (++-assoc compose-bridge prog-g suffix)
+
+      -- prog-f ++ (compose-bridge ++ (prog-g ++ suffix)) = prog-f ++ ((compose-bridge ++ prog-g) ++ suffix)
+      --                                                  = (prog-f ++ (compose-bridge ++ prog-g)) ++ suffix
+      assoc-mid : prog-f ++ (compose-bridge ++ (prog-g ++ suffix))
+                ≡ (prog-f ++ (compose-bridge ++ prog-g)) ++ suffix
+      assoc-mid = trans (cong (prog-f ++_) assoc-tail)
+                        (sym (++-assoc prog-f (compose-bridge ++ prog-g) suffix))
+
+      -- Finally: prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      --        = prefix ++ ((prog-f ++ (compose-bridge ++ prog-g)) ++ suffix)
+      prog-eq : prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+              ≡ prefix ++ ((prog-f ++ (compose-bridge ++ prog-g)) ++ suffix)
+      prog-eq = cong (prefix ++_) assoc-mid
+
+      -- Transport to final form
+      star-final : Star (prefix ++ compile-ir (g ∘ f) ++ suffix) s sg
+      star-final = subst (λ p → Star p s sg) prog-eq star-fg
+
+      -- PC calculation
+      -- pc-sg : pc sg ≡ length (prefix ++ prog-f ++ compose-bridge) + compile-length g
+      -- Need: pc sg ≡ length prefix + compile-length (g ∘ f)
+      -- compile-length (g ∘ f) = compile-length f + length compose-bridge + compile-length g
+      --
+      -- length (prefix ++ prog-f ++ compose-bridge) + compile-length g
+      -- = length (prefix ++ (prog-f ++ compose-bridge)) + compile-length g
+      -- = (length prefix + length (prog-f ++ compose-bridge)) + compile-length g
+      -- = (length prefix + (length prog-f + length compose-bridge)) + compile-length g
+      -- = length prefix + (length prog-f + length compose-bridge + compile-length g)
+      -- = length prefix + (compile-length f + length compose-bridge + compile-length g)
+      -- = length prefix + compile-length (g ∘ f)
+
+      -- PC calculation: show pc sg ≡ length prefix + compile-length (g ∘ f)
+      -- pc-sg : pc sg ≡ length (prefix ++ prog-f ++ compose-bridge) + compile-length g
+      -- compile-length (g ∘ f) = compile-length f + length compose-bridge + compile-length g
+      pc-final : X86Sem.State.pc sg ≡ length prefix +ℕ compile-length (g ∘ f)
+      pc-final = compose-pc-lemma prefix prog-f prog-g (compile-length f) (compile-length g)
+                                  (compile-ir-length f) pc-sg
+
+  in sg , record
+    { star-proof = star-final
+    ; halted-false = h-sg
+    ; pc-advanced = pc-final
+    ; σ-final = σg
+    ; corr-proof = sc-g
+    }
+  where
+    -- PC lemma for compose: converts pc result from g-runner to compose format
+    -- Given: length prog-f ≡ compile-length f
+    -- Given: pc ≡ length (prefix ++ prog-f ++ compose-bridge) + clg
+    -- Show:  pc ≡ length prefix + (clf + length compose-bridge + clg)
+    -- Where: compile-length (g ∘ f) = clf + length compose-bridge + clg
+    compose-pc-lemma : ∀ (prefix prog-f prog-g : Program) (clf clg : ℕ) →
+      length prog-f ≡ clf →
+      ∀ {pc : ℕ} →
+      pc ≡ length (prefix ++ prog-f ++ compose-bridge) +ℕ clg →
+      pc ≡ length prefix +ℕ (clf +ℕ length compose-bridge +ℕ clg)
+    compose-pc-lemma prefix prog-f prog-g clf clg len-f-eq {pc} pc-eq =
+      -- pc = length (prefix ++ prog-f ++ compose-bridge) + clg
+      -- Note: prefix ++ prog-f ++ compose-bridge = prefix ++ (prog-f ++ compose-bridge)
+      -- Goal: pc ≡ length prefix + ((clf + length compose-bridge) + clg)
+      --       (since _+ℕ_ is left-associative)
+      let
+        -- Step 1: length (prefix ++ (prog-f ++ compose-bridge)) = length prefix + length (prog-f ++ compose-bridge)
+        step1 : length (prefix ++ (prog-f ++ compose-bridge)) ≡ length prefix +ℕ length (prog-f ++ compose-bridge)
+        step1 = length-++ prefix
+
+        -- Step 2: length (prog-f ++ compose-bridge) = length prog-f + length compose-bridge
+        step2 : length (prog-f ++ compose-bridge) ≡ length prog-f +ℕ length compose-bridge
+        step2 = length-++ prog-f
+
+        -- Step 3: Combine steps
+        len-eq : length (prefix ++ prog-f ++ compose-bridge) ≡ length prefix +ℕ (length prog-f +ℕ length compose-bridge)
+        len-eq = trans step1 (cong (length prefix +ℕ_) step2)
+
+        -- Step 4: Add clg to both sides, rearrange
+        -- (length prefix + (length prog-f + length compose-bridge)) + clg
+        -- = length prefix + ((length prog-f + length compose-bridge) + clg)  by +-assoc
+        step4 : (length prefix +ℕ (length prog-f +ℕ length compose-bridge)) +ℕ clg
+              ≡ length prefix +ℕ ((length prog-f +ℕ length compose-bridge) +ℕ clg)
+        step4 = ℕ-+-assoc (length prefix) (length prog-f +ℕ length compose-bridge) clg
+
+        -- Step 5: Use len-f-eq to replace length prog-f with clf
+        -- (length prog-f + length compose-bridge) + clg = (clf + length compose-bridge) + clg
+        step5 : length prefix +ℕ ((length prog-f +ℕ length compose-bridge) +ℕ clg)
+              ≡ length prefix +ℕ ((clf +ℕ length compose-bridge) +ℕ clg)
+        step5 = cong (λ x → length prefix +ℕ ((x +ℕ length compose-bridge) +ℕ clg)) len-f-eq
+
+        -- Combine all
+        -- Goal type is: length prefix +ℕ (clf +ℕ length compose-bridge +ℕ clg)
+        -- which is:     length prefix +ℕ ((clf +ℕ length compose-bridge) +ℕ clg)  (left-assoc)
+        final : length (prefix ++ prog-f ++ compose-bridge) +ℕ clg ≡ length prefix +ℕ ((clf +ℕ length compose-bridge) +ℕ clg)
+        final = trans (cong (_+ℕ clg) len-eq) (trans step4 step5)
+      in trans pc-eq final
 
 -- The full compose-simulation (postulated until we have full IH infrastructure)
 postulate
