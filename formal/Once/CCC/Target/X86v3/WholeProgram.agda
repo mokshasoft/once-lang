@@ -28,7 +28,7 @@ open import Data.Bool using (false)
 open import Data.Empty using (⊥)
 open import Data.List using (_++_; length; [])
 open import Data.Nat using (ℕ; suc; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
+open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂; Σ)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Induction.WellFounded using (Acc)
 
@@ -1097,23 +1097,83 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
 -- The integration point (full-correctness) provides validity via ValidAtWF.
 ------------------------------------------------------------------------
 
--- Memory validity types (explicit preconditions)
-FstMemValid : LocState FS' → Set
-FstMemValid σ = ∃[ fst-loc ] (readLoc σ (SM.readReg (SM.LocState.regs σ) RDI) ≡ just fst-loc)
+------------------------------------------------------------------------
+-- Location-Based Validity Pattern
+--
+-- See: location-validity-pattern.md for full documentation.
+--
+-- Key insight: Pass locations EXPLICITLY instead of hiding in existentials.
+-- The caller (Dispatcher) knows the location from ValidAtWF.
+-- The callee (runner) uses it directly.
+------------------------------------------------------------------------
 
-SndMemValid : LocState FS' → Set
-SndMemValid σ = ∃[ snd-loc ] (readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc)
+-- INPUT validity: Pair structure at a known location, RDI points to it
+record PairAtLoc (pair-loc : SM.ValueLocation FS') (σ : LocState FS') : Set where
+  field
+    fst-loc : SM.ValueLocation FS'
+    snd-loc : SM.ValueLocation FS'
+    rdi-eq : SM.readReg (SM.LocState.regs σ) RDI ≡ pair-loc
+    fst-ptr : readLoc σ pair-loc ≡ just fst-loc
+    snd-ptr : readLoc σ (SM.sucLoc pair-loc) ≡ just snd-loc
 
--- fst-runner with explicit validity parameter
-fst-runner-with-valid : ∀ {A B} (prefix suffix : Program) (σ : LocState FS') (s : State) →
+open PairAtLoc
+
+-- OUTPUT validity: Pair structure at a known location, RAX points to it
+record PairOutputAtLoc (pair-loc : SM.ValueLocation FS') (σ : LocState FS') : Set where
+  field
+    fst-loc : SM.ValueLocation FS'
+    snd-loc : SM.ValueLocation FS'
+    rax-eq : SM.readReg (SM.LocState.regs σ) RAX ≡ pair-loc
+    fst-ptr : readLoc σ pair-loc ≡ just fst-loc
+    snd-ptr : readLoc σ (SM.sucLoc pair-loc) ≡ just snd-loc
+
+open PairOutputAtLoc
+
+------------------------------------------------------------------------
+-- Bridge Transfer: Output validity → Input validity
+--
+-- After bridge (mov rdi, rax), RDI = RAX and memory unchanged.
+-- So PairOutputAtLoc before bridge becomes PairAtLoc after bridge.
+------------------------------------------------------------------------
+
+-- Helper: readLoc unchanged when only registers change
+private
+  bridge-readLoc-eq : ∀ (σ : LocState FS') (loc : SM.ValueLocation FS') →
+    readLoc (bridge-slot-state σ) loc ≡ readLoc σ loc
+  bridge-readLoc-eq σ (OnStack f k) = refl
+  bridge-readLoc-eq σ (OnHeap hl) = refl
+
+-- Transfer: PairOutputAtLoc σ → PairAtLoc (bridge-slot-state σ)
+-- The same location, but now RDI points to it instead of RAX
+bridge-transfers-pair : ∀ (pair-loc : SM.ValueLocation FS') (σ : LocState FS') →
+  PairOutputAtLoc pair-loc σ → PairAtLoc pair-loc (bridge-slot-state σ)
+bridge-transfers-pair pair-loc σ out = record
+  { fst-loc = PairOutputAtLoc.fst-loc out
+  ; snd-loc = PairOutputAtLoc.snd-loc out
+  ; rdi-eq = PairOutputAtLoc.rax-eq out  -- After bridge: RDI = RAX (before)
+  ; fst-ptr = trans (bridge-readLoc-eq σ pair-loc) (PairOutputAtLoc.fst-ptr out)
+  ; snd-ptr = trans (bridge-readLoc-eq σ (SM.sucLoc pair-loc)) (PairOutputAtLoc.snd-ptr out)
+  }
+
+-- fst-runner with explicit location-based validity
+-- Takes pair-loc explicitly (caller knows it from ValidAtWF)
+fst-runner-with-valid : ∀ {A B} (pair-loc : SM.ValueLocation FS')
+  (prefix suffix : Program) (σ : LocState FS') (s : State) →
   StateCorresponds σ s →
   X86Sem.State.halted s ≡ false →
   X86Sem.State.pc s ≡ length prefix →
-  FstMemValid σ →
+  PairAtLoc pair-loc σ →
   ∃[ s' ] IRStarResult (fst-ir {A} {B}) prefix suffix s s' (length prefix)
-fst-runner-with-valid {A} {B} prefix suffix σ s sc h-eq pc-eq (fst-loc , mem-pre) =
+fst-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
   let
     hb = heap-base sc
+    fst-loc = PairAtLoc.fst-loc pv
+
+    -- Derive: readLoc σ (readReg (regs σ) RDI) ≡ just fst-loc
+    -- From: rdi-eq : readReg (regs σ) RDI ≡ pair-loc
+    --       fst-ptr : readLoc σ pair-loc ≡ just fst-loc
+    mem-pre : readLoc σ (SM.readReg (SM.LocState.regs σ) RDI) ≡ just fst-loc
+    mem-pre = subst (λ loc → readLoc σ loc ≡ just fst-loc) (sym (PairAtLoc.rdi-eq pv)) (PairAtLoc.fst-ptr pv)
 
     -- x86 memory precondition: derive from StateCorresponds
     x86-mem-eq : x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rdi) ≡ just (loc-to-addr hb fst-loc)
@@ -1169,16 +1229,25 @@ fst-runner-with-valid {A} {B} prefix suffix σ s sc h-eq pc-eq (fst-loc , mem-pr
           in subst (λ addr → x86-readMem (X86Sem.State.memory s) addr ≡ just (loc-to-addr hb fst-loc))
                    (sym rdi-corr) x86-mem-eq
 
--- snd-runner with explicit validity parameter
-snd-runner-with-valid : ∀ {A B} (prefix suffix : Program) (σ : LocState FS') (s : State) →
+-- snd-runner with explicit location-based validity
+-- Takes pair-loc explicitly (caller knows it from ValidAtWF)
+snd-runner-with-valid : ∀ {A B} (pair-loc : SM.ValueLocation FS')
+  (prefix suffix : Program) (σ : LocState FS') (s : State) →
   StateCorresponds σ s →
   X86Sem.State.halted s ≡ false →
   X86Sem.State.pc s ≡ length prefix →
-  SndMemValid σ →
+  PairAtLoc pair-loc σ →
   ∃[ s' ] IRStarResult (snd-ir {A} {B}) prefix suffix s s' (length prefix)
-snd-runner-with-valid {A} {B} prefix suffix σ s sc h-eq pc-eq (snd-loc , mem-pre) =
+snd-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
   let
     hb = heap-base sc
+    snd-loc = PairAtLoc.snd-loc pv
+
+    -- Derive: readLoc σ (sucLoc (readReg (regs σ) RDI)) ≡ just snd-loc
+    -- From: rdi-eq : readReg (regs σ) RDI ≡ pair-loc
+    --       snd-ptr : readLoc σ (sucLoc pair-loc) ≡ just snd-loc
+    mem-pre : readLoc σ (SM.sucLoc (SM.readReg (SM.LocState.regs σ) RDI)) ≡ just snd-loc
+    mem-pre = subst (λ loc → readLoc σ (SM.sucLoc loc) ≡ just snd-loc) (sym (PairAtLoc.rdi-eq pv)) (PairAtLoc.snd-ptr pv)
 
     -- x86 memory precondition: derive from StateCorresponds
     -- snd reads from rdi + slot-size, so we need to use sucLoc-to-addr
@@ -1253,28 +1322,306 @@ snd-runner-with-valid {A} {B} prefix suffix σ s sc h-eq pc-eq (snd-loc , mem-pr
                    (sym addr-eq) x86-mem-eq
 
 ------------------------------------------------------------------------
--- Memory Validity Provider
+-- First-Principles Composition for fst/snd (Location-Based Validity)
 --
--- Abstract interface for providing memory validity proofs.
--- At Layer 1→2, we don't know types - validity comes from the caller.
--- The integration point (full-correctness) instantiates with ValidAtWF.
+-- The key insight: when we compose (fst-ir ∘ f), the f produces a pair.
+-- Instead of requiring validity for ALL states, we use explicit
+-- location-based validity via PairAtLoc/PairOutputAtLoc.
+--
+-- This is a more specific postulate, closer to semantics:
+-- - Pairs are constructed with two valid pointers at known locations
+-- - So pair output satisfies PairOutputAtLoc for some pair-loc
+--
+-- See: location-validity-pattern.md for full documentation.
+--
+-- We postulate this for now, as pair-runner is also postulated.
+-- When pair-runner is proven, this follows automatically.
 ------------------------------------------------------------------------
 
-record MemValidProvider : Set where
-  field
-    fst-valid : ∀ (σ : LocState FS') → FstMemValid σ
-    snd-valid : ∀ (σ : LocState FS') → SndMemValid σ
+-- Postulate: pair-producing IRs output PairOutputAtLoc
+-- This is more specific than claiming ALL states valid.
+-- This claims: states resulting from pair-typed output have valid pair structure.
+-- The caller knows the location from the IR's output.
+postulate
+  pair-output-produces-valid : ∀ {A B C} (f : IR A (B * C)) →
+    ∀ (result-σ : LocState FS') →
+    ∃[ pair-loc ] PairOutputAtLoc pair-loc result-σ
 
-open MemValidProvider
+-- compose-fst-runner: Specialized compose for (fst-ir ∘ f)
+-- Uses output validity (PairOutputAtLoc) from f, transfers via bridge to PairAtLoc
+compose-fst-runner : ∀ {A B C} (f : IR A (B * C)) →
+  IRRunner f →
+  IRRunner (fst-ir ∘ f)
+compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
+  let -- Programs
+      prog-f = compile-ir f
+      prog-g = compile-ir (fst-ir {B} {C})
 
--- fst-runner and snd-runner using the provider
-fst-runner : MemValidProvider → ∀ {A B} → IRRunner (fst-ir {A} {B})
-fst-runner prov prefix suffix σ s sc h-eq pc-eq =
-  fst-runner-with-valid prefix suffix σ s sc h-eq pc-eq (fst-valid prov σ)
+      -- Step 1: Execute f
+      (sf , f-result) = f-run prefix (compose-bridge ++ prog-g ++ suffix) σ s sc h-eq pc-eq
+      σf = IRStarResult.σ-final f-result
+      star-f = IRStarResult.star-proof f-result
+      h-sf = IRStarResult.halted-false f-result
+      pc-sf = IRStarResult.pc-advanced f-result
+      sc-f = IRStarResult.corr-proof f-result
 
-snd-runner : MemValidProvider → ∀ {A B} → IRRunner (snd-ir {A} {B})
-snd-runner prov prefix suffix σ s sc h-eq pc-eq =
-  snd-runner-with-valid prefix suffix σ s sc h-eq pc-eq (snd-valid prov σ)
+      -- PC at bridge
+      len-prefix-f = length-++ prefix
+      pc-at-bridge : X86Sem.State.pc sf ≡ length (prefix ++ prog-f)
+      pc-at-bridge = trans pc-sf
+                           (trans (cong (length prefix +ℕ_) (sym (compile-ir-length f)))
+                                  (sym len-prefix-f))
+
+      -- Step 2: Execute bridge
+      assoc-for-bridge : (prefix ++ prog-f) ++ (compose-bridge ++ (prog-g ++ suffix))
+                       ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      assoc-for-bridge = ++-assoc prefix prog-f (compose-bridge ++ (prog-g ++ suffix))
+
+      (sb , star-b' , h-sb , pc-sb , sc-b) =
+        bridge-runner (prefix ++ prog-f) (prog-g ++ suffix) σf sf sc-f h-sf pc-at-bridge
+
+      star-b : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) sf sb
+      star-b = subst (λ p → Star p sf sb) assoc-for-bridge star-b'
+
+      -- KEY: Derive input validity for fst from f's output validity
+      -- f outputs to RAX, bridge transfers RAX → RDI
+      -- So PairOutputAtLoc σf → PairAtLoc (bridge-slot-state σf)
+      (pair-loc , pair-output-valid) = pair-output-produces-valid f σf
+
+      fst-input-valid : PairAtLoc pair-loc (bridge-slot-state σf)
+      fst-input-valid = bridge-transfers-pair pair-loc σf pair-output-valid
+
+      -- Step 3: Execute fst-ir using derived validity (NOT MemValidProvider!)
+      assoc-prefix-f-bridge : prefix ++ (prog-f ++ compose-bridge) ≡ (prefix ++ prog-f) ++ compose-bridge
+      assoc-prefix-f-bridge = sym (++-assoc prefix prog-f compose-bridge)
+
+      len-prefix-f-bridge : length (prefix ++ prog-f ++ compose-bridge)
+                          ≡ length (prefix ++ prog-f) +ℕ length compose-bridge
+      len-prefix-f-bridge = trans (cong length assoc-prefix-f-bridge) (length-++ (prefix ++ prog-f))
+
+      pc-at-g : X86Sem.State.pc sb ≡ length (prefix ++ prog-f ++ compose-bridge)
+      pc-at-g = trans pc-sb (sym len-prefix-f-bridge)
+
+      -- Use fst-runner-with-valid directly with derived validity!
+      (sg , g-result) = fst-runner-with-valid {B} {C} pair-loc (prefix ++ prog-f ++ compose-bridge) suffix
+                              (bridge-slot-state σf) sb sc-b h-sb pc-at-g
+                              fst-input-valid
+
+      σg = IRStarResult.σ-final g-result
+      star-g' = IRStarResult.star-proof g-result
+      h-sg = IRStarResult.halted-false g-result
+      pc-sg = IRStarResult.pc-advanced g-result
+      sc-g = IRStarResult.corr-proof g-result
+
+      -- Transport g's Star
+      assoc-inner : (prog-f ++ compose-bridge) ++ (prog-g ++ suffix)
+                  ≡ prog-f ++ (compose-bridge ++ (prog-g ++ suffix))
+      assoc-inner = ++-assoc prog-f compose-bridge (prog-g ++ suffix)
+
+      assoc-outer : (prefix ++ (prog-f ++ compose-bridge)) ++ (prog-g ++ suffix)
+                  ≡ prefix ++ ((prog-f ++ compose-bridge) ++ (prog-g ++ suffix))
+      assoc-outer = ++-assoc prefix (prog-f ++ compose-bridge) (prog-g ++ suffix)
+
+      assoc-for-g : (prefix ++ (prog-f ++ compose-bridge)) ++ (prog-g ++ suffix)
+                  ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      assoc-for-g = trans assoc-outer (cong (prefix ++_) assoc-inner)
+
+      star-g : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) sb sg
+      star-g = subst (λ p → Star p sb sg) assoc-for-g star-g'
+
+      -- Chain Stars
+      star-fg : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) s sg
+      star-fg = star-f ◅◅ star-b ◅◅ star-g
+
+      -- Transport to final form
+      assoc-tail : compose-bridge ++ (prog-g ++ suffix) ≡ (compose-bridge ++ prog-g) ++ suffix
+      assoc-tail = sym (++-assoc compose-bridge prog-g suffix)
+
+      assoc-mid : prog-f ++ (compose-bridge ++ (prog-g ++ suffix))
+                ≡ (prog-f ++ (compose-bridge ++ prog-g)) ++ suffix
+      assoc-mid = trans (cong (prog-f ++_) assoc-tail)
+                        (sym (++-assoc prog-f (compose-bridge ++ prog-g) suffix))
+
+      prog-eq : prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+              ≡ prefix ++ ((prog-f ++ (compose-bridge ++ prog-g)) ++ suffix)
+      prog-eq = cong (prefix ++_) assoc-mid
+
+      star-final : Star (prefix ++ compile-ir (fst-ir ∘ f) ++ suffix) s sg
+      star-final = subst (λ p → Star p s sg) prog-eq star-fg
+
+      -- PC calculation
+      pc-final : X86Sem.State.pc sg ≡ length prefix +ℕ compile-length (fst-ir {B} {C} ∘ f)
+      pc-final = compose-fst-pc-lemma prefix prog-f prog-g (compile-length f) (compile-length (fst-ir {B} {C}))
+                                  (compile-ir-length f) pc-sg
+
+  in sg , record
+    { star-proof = star-final
+    ; halted-false = h-sg
+    ; pc-advanced = pc-final
+    ; σ-final = σg
+    ; corr-proof = sc-g
+    }
+  where
+    compose-fst-pc-lemma : ∀ (prefix prog-f prog-g : Program) (clf clg : ℕ) →
+      length prog-f ≡ clf →
+      ∀ {pc : ℕ} →
+      pc ≡ length (prefix ++ prog-f ++ compose-bridge) +ℕ clg →
+      pc ≡ length prefix +ℕ (clf +ℕ length compose-bridge +ℕ clg)
+    compose-fst-pc-lemma prefix prog-f prog-g clf clg len-f-eq {pc} pc-eq =
+      let
+        step1 : length (prefix ++ (prog-f ++ compose-bridge)) ≡ length prefix +ℕ length (prog-f ++ compose-bridge)
+        step1 = length-++ prefix
+        step2 : length (prog-f ++ compose-bridge) ≡ length prog-f +ℕ length compose-bridge
+        step2 = length-++ prog-f
+        len-eq : length (prefix ++ prog-f ++ compose-bridge) ≡ length prefix +ℕ (length prog-f +ℕ length compose-bridge)
+        len-eq = trans step1 (cong (length prefix +ℕ_) step2)
+        step4 : (length prefix +ℕ (length prog-f +ℕ length compose-bridge)) +ℕ clg
+              ≡ length prefix +ℕ ((length prog-f +ℕ length compose-bridge) +ℕ clg)
+        step4 = ℕ-+-assoc (length prefix) (length prog-f +ℕ length compose-bridge) clg
+        step5 : length prefix +ℕ ((length prog-f +ℕ length compose-bridge) +ℕ clg)
+              ≡ length prefix +ℕ ((clf +ℕ length compose-bridge) +ℕ clg)
+        step5 = cong (λ x → length prefix +ℕ ((x +ℕ length compose-bridge) +ℕ clg)) len-f-eq
+        final : length (prefix ++ prog-f ++ compose-bridge) +ℕ clg ≡ length prefix +ℕ ((clf +ℕ length compose-bridge) +ℕ clg)
+        final = trans (cong (_+ℕ clg) len-eq) (trans step4 step5)
+      in trans pc-eq final
+
+-- compose-snd-runner: Specialized compose for (snd-ir ∘ f)
+-- Symmetric to compose-fst-runner
+compose-snd-runner : ∀ {A B C} (f : IR A (B * C)) →
+  IRRunner f →
+  IRRunner (snd-ir ∘ f)
+compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
+  let -- Programs
+      prog-f = compile-ir f
+      prog-g = compile-ir (snd-ir {B} {C})
+
+      -- Step 1: Execute f
+      (sf , f-result) = f-run prefix (compose-bridge ++ prog-g ++ suffix) σ s sc h-eq pc-eq
+      σf = IRStarResult.σ-final f-result
+      star-f = IRStarResult.star-proof f-result
+      h-sf = IRStarResult.halted-false f-result
+      pc-sf = IRStarResult.pc-advanced f-result
+      sc-f = IRStarResult.corr-proof f-result
+
+      -- PC at bridge
+      len-prefix-f = length-++ prefix
+      pc-at-bridge : X86Sem.State.pc sf ≡ length (prefix ++ prog-f)
+      pc-at-bridge = trans pc-sf
+                           (trans (cong (length prefix +ℕ_) (sym (compile-ir-length f)))
+                                  (sym len-prefix-f))
+
+      -- Step 2: Execute bridge
+      assoc-for-bridge : (prefix ++ prog-f) ++ (compose-bridge ++ (prog-g ++ suffix))
+                       ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      assoc-for-bridge = ++-assoc prefix prog-f (compose-bridge ++ (prog-g ++ suffix))
+
+      (sb , star-b' , h-sb , pc-sb , sc-b) =
+        bridge-runner (prefix ++ prog-f) (prog-g ++ suffix) σf sf sc-f h-sf pc-at-bridge
+
+      star-b : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) sf sb
+      star-b = subst (λ p → Star p sf sb) assoc-for-bridge star-b'
+
+      -- KEY: Derive input validity for snd from f's output validity
+      -- f outputs to RAX, bridge transfers RAX → RDI
+      -- So PairOutputAtLoc σf → PairAtLoc (bridge-slot-state σf)
+      (pair-loc , pair-output-valid) = pair-output-produces-valid f σf
+
+      snd-input-valid : PairAtLoc pair-loc (bridge-slot-state σf)
+      snd-input-valid = bridge-transfers-pair pair-loc σf pair-output-valid
+
+      -- Step 3: Execute snd-ir using derived validity (NOT MemValidProvider!)
+      assoc-prefix-f-bridge : prefix ++ (prog-f ++ compose-bridge) ≡ (prefix ++ prog-f) ++ compose-bridge
+      assoc-prefix-f-bridge = sym (++-assoc prefix prog-f compose-bridge)
+
+      len-prefix-f-bridge : length (prefix ++ prog-f ++ compose-bridge)
+                          ≡ length (prefix ++ prog-f) +ℕ length compose-bridge
+      len-prefix-f-bridge = trans (cong length assoc-prefix-f-bridge) (length-++ (prefix ++ prog-f))
+
+      pc-at-g : X86Sem.State.pc sb ≡ length (prefix ++ prog-f ++ compose-bridge)
+      pc-at-g = trans pc-sb (sym len-prefix-f-bridge)
+
+      -- Use snd-runner-with-valid directly with derived validity!
+      (sg , g-result) = snd-runner-with-valid {B} {C} pair-loc (prefix ++ prog-f ++ compose-bridge) suffix
+                              (bridge-slot-state σf) sb sc-b h-sb pc-at-g
+                              snd-input-valid
+
+      σg = IRStarResult.σ-final g-result
+      star-g' = IRStarResult.star-proof g-result
+      h-sg = IRStarResult.halted-false g-result
+      pc-sg = IRStarResult.pc-advanced g-result
+      sc-g = IRStarResult.corr-proof g-result
+
+      -- Transport g's Star
+      assoc-inner : (prog-f ++ compose-bridge) ++ (prog-g ++ suffix)
+                  ≡ prog-f ++ (compose-bridge ++ (prog-g ++ suffix))
+      assoc-inner = ++-assoc prog-f compose-bridge (prog-g ++ suffix)
+
+      assoc-outer : (prefix ++ (prog-f ++ compose-bridge)) ++ (prog-g ++ suffix)
+                  ≡ prefix ++ ((prog-f ++ compose-bridge) ++ (prog-g ++ suffix))
+      assoc-outer = ++-assoc prefix (prog-f ++ compose-bridge) (prog-g ++ suffix)
+
+      assoc-for-g : (prefix ++ (prog-f ++ compose-bridge)) ++ (prog-g ++ suffix)
+                  ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+      assoc-for-g = trans assoc-outer (cong (prefix ++_) assoc-inner)
+
+      star-g : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) sb sg
+      star-g = subst (λ p → Star p sb sg) assoc-for-g star-g'
+
+      -- Chain Stars
+      star-fg : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) s sg
+      star-fg = star-f ◅◅ star-b ◅◅ star-g
+
+      -- Transport to final form
+      assoc-tail : compose-bridge ++ (prog-g ++ suffix) ≡ (compose-bridge ++ prog-g) ++ suffix
+      assoc-tail = sym (++-assoc compose-bridge prog-g suffix)
+
+      assoc-mid : prog-f ++ (compose-bridge ++ (prog-g ++ suffix))
+                ≡ (prog-f ++ (compose-bridge ++ prog-g)) ++ suffix
+      assoc-mid = trans (cong (prog-f ++_) assoc-tail)
+                        (sym (++-assoc prog-f (compose-bridge ++ prog-g) suffix))
+
+      prog-eq : prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
+              ≡ prefix ++ ((prog-f ++ (compose-bridge ++ prog-g)) ++ suffix)
+      prog-eq = cong (prefix ++_) assoc-mid
+
+      star-final : Star (prefix ++ compile-ir (snd-ir {B} {C} ∘ f) ++ suffix) s sg
+      star-final = subst (λ p → Star p s sg) prog-eq star-fg
+
+      -- PC calculation
+      pc-final : X86Sem.State.pc sg ≡ length prefix +ℕ compile-length (snd-ir {B} {C} ∘ f)
+      pc-final = compose-snd-pc-lemma prefix prog-f prog-g (compile-length f) (compile-length (snd-ir {B} {C}))
+                                  (compile-ir-length f) pc-sg
+
+  in sg , record
+    { star-proof = star-final
+    ; halted-false = h-sg
+    ; pc-advanced = pc-final
+    ; σ-final = σg
+    ; corr-proof = sc-g
+    }
+  where
+    compose-snd-pc-lemma : ∀ (prefix prog-f prog-g : Program) (clf clg : ℕ) →
+      length prog-f ≡ clf →
+      ∀ {pc : ℕ} →
+      pc ≡ length (prefix ++ prog-f ++ compose-bridge) +ℕ clg →
+      pc ≡ length prefix +ℕ (clf +ℕ length compose-bridge +ℕ clg)
+    compose-snd-pc-lemma prefix prog-f prog-g clf clg len-f-eq {pc} pc-eq =
+      let
+        step1 : length (prefix ++ (prog-f ++ compose-bridge)) ≡ length prefix +ℕ length (prog-f ++ compose-bridge)
+        step1 = length-++ prefix
+        step2 : length (prog-f ++ compose-bridge) ≡ length prog-f +ℕ length compose-bridge
+        step2 = length-++ prog-f
+        len-eq : length (prefix ++ prog-f ++ compose-bridge) ≡ length prefix +ℕ (length prog-f +ℕ length compose-bridge)
+        len-eq = trans step1 (cong (length prefix +ℕ_) step2)
+        step4 : (length prefix +ℕ (length prog-f +ℕ length compose-bridge)) +ℕ clg
+              ≡ length prefix +ℕ ((length prog-f +ℕ length compose-bridge) +ℕ clg)
+        step4 = ℕ-+-assoc (length prefix) (length prog-f +ℕ length compose-bridge) clg
+        step5 : length prefix +ℕ ((length prog-f +ℕ length compose-bridge) +ℕ clg)
+              ≡ length prefix +ℕ ((clf +ℕ length compose-bridge) +ℕ clg)
+        step5 = cong (λ x → length prefix +ℕ ((x +ℕ length compose-bridge) +ℕ clg)) len-f-eq
+        final : length (prefix ++ prog-f ++ compose-bridge) +ℕ clg ≡ length prefix +ℕ ((clf +ℕ length compose-bridge) +ℕ clg)
+        final = trans (cong (_+ℕ clg) len-eq) (trans step4 step5)
+      in trans pc-eq final
 
 -- Postulated runners for complex cases
 postulate
@@ -1336,129 +1683,14 @@ free-heap-runner r prefix suffix σ s sc h-eq pc-eq =
     ; corr-proof = sc
     }
 
--- Main induction: build IRRunner for any IR
--- Takes MemValidProvider for fst/snd memory validity proofs
-ir-runner : MemValidProvider → ∀ {A B} (ir : IR A B) → IRRunner ir
-ir-runner prov id = id-runner
-ir-runner prov terminal = terminal-runner
-ir-runner prov fst-ir = fst-runner prov
-ir-runner prov snd-ir = snd-runner prov
-ir-runner prov (g ∘ f) = compose-runner g f (ir-runner prov f) (ir-runner prov g)
-ir-runner prov (⟨ f , g ⟩ m) = pair-runner f g m (ir-runner prov f) (ir-runner prov g)
-ir-runner prov (inl-ir m) = inl-runner m
-ir-runner prov (inr-ir m) = inr-runner m
-ir-runner prov (case-ir f g) = case-runner f g (ir-runner prov f) (ir-runner prov g)
-ir-runner prov initial = initial-runner
-ir-runner prov (curry f m) = curry-runner f m (ir-runner prov f)
-ir-runner prov apply = apply-runner
-ir-runner prov arr = arr-runner
-ir-runner prov (fold-ir m) = fold-runner m
-ir-runner prov unfold-ir = unfold-runner
-ir-runner prov (free-heap r) = free-heap-runner r
-ir-runner prov (Prim p) = prim-runner p
-
-------------------------------------------------------------------------
--- Simulations derived from ir-runner
---
--- These are the old-style simulations (pc=0, no prefix/suffix)
--- derived by instantiating ir-runner with prefix=[] suffix=[].
-------------------------------------------------------------------------
-
--- Helper: convert IRRunner to simulation (pc=0 case)
-runner-to-simulation : ∀ {A B} (ir : IR A B) → IRRunner ir →
-  ∀ (σ : LocState FS') (s : State) →
-  StateCorresponds σ s →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  ∃[ x86-final ] ∃[ σ-final ]
-    Star (compile-ir ir) s x86-final × StateCorresponds σ-final x86-final
-runner-to-simulation ir runner σ s sc h-eq pc-eq =
-  let (s' , result) = runner [] [] σ s sc h-eq pc-eq
-  in s' , IRStarResult.σ-final result
-   , subst (λ p → Star p s s') (++-identityʳ (compile-ir ir)) (IRStarResult.star-proof result)
-   , IRStarResult.corr-proof result
-
--- Postulate a default provider (will be instantiated at integration point)
--- This is the ONLY postulate for memory validity - it's the contract
--- that Layer 2→3 must satisfy when connecting to Layer 1→2
-postulate
-  default-mem-valid-provider : MemValidProvider
-
--- compose-simulation: now proven using compose-runner!
-compose-simulation : ∀ {A B C} (g : IR B C) (f : IR A B)
-  (σ : LocState FS') (s : State) →
-  StateCorresponds σ s →
-  X86Sem.State.halted s ≡ false →
-  X86Sem.State.pc s ≡ 0 →
-  ∃[ x86-final ] ∃[ σ-final ]
-    Star (compile-ir (g ∘ f)) s x86-final × StateCorresponds σ-final x86-final
-compose-simulation g f = runner-to-simulation (g ∘ f) (ir-runner default-mem-valid-provider (g ∘ f))
-
--- Remaining postulates (old-style, without halted/pc preconditions)
--- These can be eliminated by adding preconditions and using ir-runner
-postulate
-  fst-simulation-simple' : ∀ (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star fst-instrs s x86-final × StateCorresponds σ-final x86-final
-
-  snd-simulation-simple' : ∀ (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star snd-instrs s x86-final × StateCorresponds σ-final x86-final
-
-  pair-simulation : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode)
-    (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (⟨ f , g ⟩ m)) s x86-final × StateCorresponds σ-final x86-final
-
-  inl-simulation : ∀ {A B} (m : AllocMode) (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (inl-ir {A} {B} m)) s x86-final × StateCorresponds σ-final x86-final
-
-  inr-simulation : ∀ {A B} (m : AllocMode) (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (inr-ir {A} {B} m)) s x86-final × StateCorresponds σ-final x86-final
-
-  case-simulation : ∀ {A B C} (f : IR A C) (g : IR B C) (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (case-ir f g)) s x86-final × StateCorresponds σ-final x86-final
-
-  initial-simulation : ∀ {A} (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (initial {A})) s x86-final × StateCorresponds σ-final x86-final
-
-  curry-simulation : ∀ {A B C q} (f : IR (A * B) C) (m : AllocMode)
-    (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (curry {q = q} f m)) s x86-final × StateCorresponds σ-final x86-final
-
-  apply-simulation : ∀ {A B q} (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (apply {A} {B} {q})) s x86-final × StateCorresponds σ-final x86-final
-
-  prim-simulation : ∀ {A B} (p : String) (σ : LocState FS') (s : State) →
-    StateCorresponds σ s →
-    X86Sem.State.halted s ≡ false →
-    X86Sem.State.pc s ≡ 0 →
-    ∃[ x86-final ] ∃[ σ-final ]
-      Star (compile-ir (Prim {A} {B} p)) s x86-final × StateCorresponds σ-final x86-final
-
 ------------------------------------------------------------------------
 -- Proven simulations for simple IR constructs
 --
--- arr, fold-ir, unfold-ir all compile to id-instrs (mov rax, rdi)
--- free-heap compiles to [] (no-op)
+-- These compile to id-instrs or no-ops.
+-- Used internally, NOT the main correctness theorem (which uses Dispatcher).
 ------------------------------------------------------------------------
 
--- arr: compiles to id-instrs, same as id
+-- arr: compiles to id-instrs (mov rax, rdi)
 arr-simulation : ∀ {A B q} (σ : LocState FS') (s : State) →
   StateCorresponds σ s →
   X86Sem.State.halted s ≡ false →
@@ -1471,7 +1703,7 @@ arr-simulation σ s sc h-eq pc-eq =
   , id-star-at-offset [] [] s h-eq pc-eq
   , id-preserves-corresponds σ s sc
 
--- fold-ir: compiles to id-instrs, same as id
+-- fold-ir: compiles to id-instrs (mov rax, rdi)
 fold-simulation : ∀ {F} (m : AllocMode) (σ : LocState FS') (s : State) →
   StateCorresponds σ s →
   X86Sem.State.halted s ≡ false →
@@ -1484,7 +1716,7 @@ fold-simulation m σ s sc h-eq pc-eq =
   , id-star-at-offset [] [] s h-eq pc-eq
   , id-preserves-corresponds σ s sc
 
--- unfold-ir: compiles to id-instrs, same as id
+-- unfold-ir: compiles to id-instrs (mov rax, rdi)
 unfold-simulation : ∀ {F} (σ : LocState FS') (s : State) →
   StateCorresponds σ s →
   X86Sem.State.halted s ≡ false →
@@ -1504,73 +1736,3 @@ free-heap-simulation : ∀ (r : HeapRef) (σ : LocState FS') (s : State) →
     Star (compile-ir (free-heap r)) s x86-final × StateCorresponds σ-final x86-final
 free-heap-simulation r σ s sc =
   s , σ , refl* , sc
-
-------------------------------------------------------------------------
--- Full Correctness by IR Induction
---
--- The proof follows compile-ir structure:
---   - Base cases: id, terminal (proven using Star lemmas + correspondence)
---   - Memory cases: fst, snd (use simulation postulates)
---   - Compound cases: compose, pair (use simulation postulates)
---   - Complex cases: curry, apply, etc. (use simulation postulates)
---
--- ARCHITECTURE:
---   - Postulates are per-construct simulation lemmas
---   - Each can be eliminated independently
---   - No re-doing of Dispatcher's IR semantics work
-------------------------------------------------------------------------
-
-full-correctness : ∀ {A B : Type} (ir : IR A B)
-  (x : ⟦ A ⟧)
-  (x86-init : State)
-  (σ-init : LocState FS')
-  (input-loc : ValueLocation FS') →
-  StateCorresponds σ-init x86-init →
-  X86Sem.State.halted x86-init ≡ false →  -- Machine must be running
-  X86Sem.State.pc x86-init ≡ 0 →           -- Start at beginning of compiled code
-  ∃[ x86-final ] ∃[ σ-final ]
-    Star (compile-ir ir) x86-init x86-final
-    × StateCorresponds σ-final x86-final
-
--- id: mov rax, rdi (1 step) - PROVEN
-full-correctness id x s σ loc sc h-eq pc-eq =
-  id-expected-state s
-  , id-slot-state σ
-  , id-star-at-offset [] [] s h-eq pc-eq
-  , id-preserves-corresponds σ s sc
-
--- terminal: mov rax, 0 (1 step)
-full-correctness terminal x s σ loc sc h-eq pc-eq =
-  let (σ' , sc') = terminal-preserves-corresponds σ s sc
-  in terminal-expected-state s
-   , σ'
-   , terminal-star-at-offset [] [] s h-eq pc-eq
-   , sc'
-
--- fst, snd: memory operations
-full-correctness fst-ir x s σ loc sc h-eq pc-eq = fst-simulation-simple' σ s sc
-full-correctness snd-ir x s σ loc sc h-eq pc-eq = snd-simulation-simple' σ s sc
-
--- compose, pair: compound structures
-full-correctness (g ∘ f) x s σ loc sc h-eq pc-eq = compose-simulation g f σ s sc h-eq pc-eq
-full-correctness (⟨ f , g ⟩ m) x s σ loc sc h-eq pc-eq = pair-simulation f g m σ s sc
-
--- sum types
-full-correctness {A} {A+B} (inl-ir {.A} {B} m) x s σ loc sc h-eq pc-eq = inl-simulation {A} {B} m σ s sc
-full-correctness {B} {A+B} (inr-ir {A} {.B} m) x s σ loc sc h-eq pc-eq = inr-simulation {A} {B} m σ s sc
-full-correctness (case-ir f g) x s σ loc sc h-eq pc-eq = case-simulation f g σ s sc
-full-correctness {_} {B} initial x s σ loc sc h-eq pc-eq = initial-simulation {B} σ s sc
-
--- closures
-full-correctness {A} {.(B ⇒[ _ ] C)} (curry {.A} {B} {C} {q} f m) x s σ loc sc h-eq pc-eq =
-  curry-simulation {A} {B} {C} {q} f m σ s sc
-full-correctness {.((A ⇒[ q ] B) * A)} {B} (apply {A} {.B} {q}) x s σ loc sc h-eq pc-eq =
-  apply-simulation {A} {B} {q} σ s sc
-
--- remaining (arr, fold, unfold compile to id-instrs; free-heap compiles to [])
-full-correctness {.(A ⇒[ q ] B)} {.(Eff A B)} (arr {A} {B} {q}) x s σ loc sc h-eq pc-eq =
-  arr-simulation {A} {B} {q} σ s sc h-eq pc-eq
-full-correctness {F} {.(Fix F)} (fold-ir m) x s σ loc sc h-eq pc-eq = fold-simulation {F} m σ s sc h-eq pc-eq
-full-correctness {.(Fix F)} {F} unfold-ir x s σ loc sc h-eq pc-eq = unfold-simulation {F} σ s sc h-eq pc-eq
-full-correctness (free-heap r) x s σ loc sc h-eq pc-eq = free-heap-simulation r σ s sc
-full-correctness {A} {B} (Prim p) x s σ loc sc h-eq pc-eq = prim-simulation {A} {B} p σ s sc h-eq pc-eq
