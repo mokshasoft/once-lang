@@ -736,7 +736,7 @@ store-regs-correspond hb dst src σ x86-regs rc =
 
 -- Import register inequality proofs
 open import Data.Empty using (⊥-elim)
-open import Once.Target.X86.ExecLemmas using (readReg-writeReg-diff; readMem-writeMem-diff)
+open import Once.Target.X86.ExecLemmas using (readReg-writeReg-same; readReg-writeReg-diff; readMem-writeMem-diff)
 
 -- | Writing to rsp preserves register correspondence
 write-rsp-preserves-regs-correspond : ∀ (heap-base : HeapBaseMap) (σ-regs : Registers FS)
@@ -884,12 +884,43 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc = record
 --
 -- When rbp changes, we're setting up a new frame. The new-frame parameter
 -- specifies what frame rbp now points to.
-postulate
-  mov-rbp-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State) (new-rbp : Word)
-    (new-frame : X86Frame) →
-    x86-frame-base new-frame ≡ new-rbp →  -- new frame's base is the new rbp value
-    StateCorresponds σ s →
-    StateCorresponds σ (record s { regs = x86-writeReg (X86Sem.State.regs s) rbp new-rbp })
+--
+-- PROVEN: rbp is not tracked by RegsCorrespond (only rax,rdi,rsi,r12,r14,r15).
+-- Writing to rbp doesn't affect the tracked register correspondence.
+mov-rbp-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State) (new-rbp : Word)
+  (new-frame : X86Frame) →
+  x86-frame-base new-frame ≡ new-rbp →  -- new frame's base is the new rbp value
+  StateCorresponds σ s →
+  StateCorresponds σ (record s { regs = x86-writeReg (X86Sem.State.regs s) rbp new-rbp })
+mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc = record
+  { heap-base = heap-base sc
+  ; unit-base-zero = unit-base-zero sc
+  ; regs-correspond = rbp-write-preserves-regs
+  ; mem-corresponds = mem-corresponds sc  -- x86 memory unchanged
+  ; halted-corresponds = halted-corresponds sc
+  ; current-frame = new-frame
+  ; rbp-is-frame-base = trans (readReg-writeReg-same (X86Sem.State.regs s) rbp new-rbp)
+                              (sym frame-eq)
+  }
+  where
+    -- Writing to rbp doesn't affect tracked registers (rax, rdi, rsi, r12, r14, r15)
+    new-regs = x86-writeReg (X86Sem.State.regs s) rbp new-rbp
+
+    rbp-write-preserves-regs : RegsCorrespond (heap-base sc) (SlotMachine.LocState.regs σ) new-regs
+    rbp-write-preserves-regs = record
+      { rax-corresponds = trans (readReg-writeReg-diff (X86Sem.State.regs s) rbp rax new-rbp (λ ()))
+                                (rax-corresponds (regs-correspond sc))
+      ; rdi-corresponds = trans (readReg-writeReg-diff (X86Sem.State.regs s) rbp rdi new-rbp (λ ()))
+                                (rdi-corresponds (regs-correspond sc))
+      ; rsi-corresponds = trans (readReg-writeReg-diff (X86Sem.State.regs s) rbp rsi new-rbp (λ ()))
+                                (rsi-corresponds (regs-correspond sc))
+      ; r12-corresponds = trans (readReg-writeReg-diff (X86Sem.State.regs s) rbp r12 new-rbp (λ ()))
+                                (r12-corresponds (regs-correspond sc))
+      ; r14-corresponds = trans (readReg-writeReg-diff (X86Sem.State.regs s) rbp r14 new-rbp (λ ()))
+                                (r14-corresponds (regs-correspond sc))
+      ; r15-corresponds = trans (readReg-writeReg-diff (X86Sem.State.regs s) rbp r15 new-rbp (λ ()))
+                                (r15-corresponds (regs-correspond sc))
+      }
 
 ------------------------------------------------------------------------
 -- SlotMachine + X86 Combined Register Write
