@@ -901,15 +901,19 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       pc4-for-clean = pair-pc-g-to-clean prefix prog-f prog-g pc4
 
       -- RSP preservation through f, g, and middle phases
-      -- The pair frame rsp is preserved because f and g restore their stack frames.
-      -- This is the key invariant that makes pair-loc-corresponds provable.
-      postulate
-        rsp-preserved-through-f : x86-readReg (X86Sem.State.regs s2) rsp ≡ pair-rsp
-        rsp-preserved-through-g : x86-readReg (X86Sem.State.regs s4) rsp ≡ pair-rsp
+      -- PROVEN: f and g preserve rsp (callee-saved via IRStarResult.rsp-preserved)
 
-      -- PROVEN: pair-middle preserves rsp, so if f preserves rsp, middle does too
+      -- f's input rsp = s1.rsp = pair-rsp, f preserves it
+      rsp-preserved-through-f : x86-readReg (X86Sem.State.regs s2) rsp ≡ pair-rsp
+      rsp-preserved-through-f = IRStarResult.rsp-preserved f-result
+
+      -- pair-middle preserves rsp (s3.rsp = s2.rsp = pair-rsp)
       rsp-preserved-through-middle : x86-readReg (X86Sem.State.regs s3) rsp ≡ pair-rsp
       rsp-preserved-through-middle = trans rsp-mid-unchanged rsp-preserved-through-f
+
+      -- g's input rsp = s3.rsp = pair-rsp, g preserves it
+      rsp-preserved-through-g : x86-readReg (X86Sem.State.regs s4) rsp ≡ pair-rsp
+      rsp-preserved-through-g = trans (IRStarResult.rsp-preserved g-result) rsp-preserved-through-middle
 
       -- pair-loc-corresponds: rsp (at cleanup start) = loc-to-addr pair-loc
       -- This is now SOUND because:
@@ -941,15 +945,16 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       pc-final : X86Sem.State.pc s5 ≡ length prefix +ℕ compile-length (⟨ f , g ⟩ m)
       pc-final = pair-pc-final prefix prog-f prog-g pc5
 
-      -- rbp preservation for pair: push rbp → ... → pop rbp
+      -- rbp and rsp preservation for pair: push rbp → ... → pop rbp
       -- Requires FrameInvariant: the pushed rbp value is preserved through f, g execution
       -- After pair-cleanup's pop rbp, rbp = original rbp (from stack)
+      -- After pair-cleanup, rsp = input.rbp + 8 = (s.rsp - 8) + 8 = s.rsp
       --
       -- TODO: Prove using FrameInvariant infrastructure
-      -- For now, postulate this since the stack slot preservation requires
-      -- proving that f and g don't write to parent stack frame.
+      -- For now, postulate these since they require tracing rbp through all phases.
       postulate
         rbp-final : x86-readReg (X86Sem.State.regs s5) rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
+        rsp-final : x86-readReg (X86Sem.State.regs s5) rsp ≡ x86-readReg (X86Sem.State.regs s) rsp
 
       -- Frame preservation for pair
       -- pair allocates a new frame, so current-frame is the new pair frame
@@ -975,6 +980,7 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σ5
     ; corr-proof = sc5
     ; rbp-preserved = rbp-final
+    ; rsp-preserved = rsp-final
     ; current-frame = cf-g
     ; frame-matches-input = pair-frame-matches
     ; output-frame-preserved = pair-output-preserved

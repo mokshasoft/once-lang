@@ -832,6 +832,8 @@ id-runner prefix suffix σ s sc h-eq pc-eq =
     ; corr-proof = id-preserves-corresponds σ s sc
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
+    ; rsp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rsp
+                        (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
     ; current-frame = cf
     ; frame-matches-input = refl  -- cf = state-frame σ s sc = current-frame sc
     ; output-frame-preserved = refl  -- id-preserves-corresponds sets current-frame = current-frame sc
@@ -850,6 +852,7 @@ terminal-runner prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σ'
     ; corr-proof = sc'
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp 0 (λ ())
+    ; rsp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rsp 0 (λ ())
     ; current-frame = cf
     ; frame-matches-input = refl  -- cf = state-frame σ s sc = current-frame sc
     ; output-frame-preserved = refl  -- terminal-preserves-corresponds sets current-frame = current-frame sc
@@ -865,7 +868,8 @@ bridge-runner : ∀ (prefix suffix : Program) (σ : LocState FS') (s : State) �
          × X86Sem.State.halted s' ≡ false
          × X86Sem.State.pc s' ≡ length prefix +ℕ 1
          × StateCorresponds (bridge-slot-state σ) s'
-         × x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rbp)
+         × x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
+         × x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rsp)
 bridge-runner prefix suffix σ s sc h-eq pc-eq =
   bridge-expected-state s
   , bridge-star-at-offset prefix suffix s h-eq pc-eq
@@ -873,6 +877,8 @@ bridge-runner prefix suffix σ s sc h-eq pc-eq =
   , cong (_+ℕ 1) pc-eq
   , bridge-preserves-corresponds σ s sc
   , readReg-writeReg-diff (X86Sem.State.regs s) rdi rbp
+      (x86-readReg (X86Sem.State.regs s) rax) (λ ())
+  , readReg-writeReg-diff (X86Sem.State.regs s) rdi rsp
       (x86-readReg (X86Sem.State.regs s) rax) (λ ())
 
 ------------------------------------------------------------------------
@@ -919,6 +925,7 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
       pc-sf = IRStarResult.pc-advanced f-result
       sc-f = IRStarResult.corr-proof f-result
       rbp-f = IRStarResult.rbp-preserved f-result
+      rsp-f = IRStarResult.rsp-preserved f-result
 
       -- Helper lemmas for length calculations
       len-prefix-f : length (prefix ++ prog-f) ≡ length prefix +ℕ length prog-f
@@ -942,7 +949,7 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
                        ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
       assoc-for-bridge = ++-assoc prefix prog-f (compose-bridge ++ (prog-g ++ suffix))
 
-      (sb , star-b' , h-sb , pc-sb , sc-b , rbp-b) =
+      (sb , star-b' , h-sb , pc-sb , sc-b , rbp-b , rsp-b) =
         bridge-runner (prefix ++ prog-f) (prog-g ++ suffix) σf sf sc-f h-sf pc-at-bridge
 
       -- Transport bridge's Star to the canonical form
@@ -992,6 +999,7 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
       pc-sg = IRStarResult.pc-advanced g-result
       sc-g = IRStarResult.corr-proof g-result
       rbp-g = IRStarResult.rbp-preserved g-result
+      rsp-g = IRStarResult.rsp-preserved g-result
 
       -- Transport g's Star to the canonical form
       star-g : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) sb sg
@@ -1061,9 +1069,12 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
       pc-final = compose-pc-lemma prefix prog-f prog-g (compile-length f) (compile-length g)
                                   (compile-ir-length f) pc-sg
 
-      -- rbp preservation: chain f → bridge → g
+      -- rbp and rsp preservation: chain f → bridge → g
       rbp-final : x86-readReg (X86Sem.State.regs sg) rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
       rbp-final = trans rbp-g (trans rbp-b rbp-f)
+
+      rsp-final : x86-readReg (X86Sem.State.regs sg) rsp ≡ x86-readReg (X86Sem.State.regs s) rsp
+      rsp-final = trans rsp-g (trans rsp-b rsp-f)
 
       -- Frame and parent preservation
       cf-f = IRStarResult.current-frame f-result
@@ -1122,6 +1133,7 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σg
     ; corr-proof = sc-g
     ; rbp-preserved = rbp-final
+    ; rsp-preserved = rsp-final
     ; current-frame = cf-g
     ; frame-matches-input = compose-frame-matches
     ; output-frame-preserved = compose-output-preserved
@@ -1382,6 +1394,8 @@ fst-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
     ; corr-proof = fst-preserves-corresponds σ s fst-loc sc mem-pre
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (loc-to-addr hb fst-loc) (λ ())
+    ; rsp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rsp
+                        (loc-to-addr hb fst-loc) (λ ())
     ; current-frame = cf
     ; frame-matches-input = refl  -- cf = state-frame σ s sc = current-frame sc
     ; output-frame-preserved = refl  -- fst-preserves-corresponds sets current-frame = current-frame sc
@@ -1463,6 +1477,8 @@ snd-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
     ; σ-final = σ'
     ; corr-proof = snd-preserves-corresponds σ s snd-loc sc mem-pre
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
+                        (loc-to-addr hb snd-loc) (λ ())
+    ; rsp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rsp
                         (loc-to-addr hb snd-loc) (λ ())
     ; current-frame = cf
     ; frame-matches-input = refl  -- cf = state-frame σ s sc = current-frame sc
@@ -1569,6 +1585,7 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       pc-sf = IRStarResult.pc-advanced f-result
       sc-f = IRStarResult.corr-proof f-result
       rbp-f = IRStarResult.rbp-preserved f-result
+      rsp-f = IRStarResult.rsp-preserved f-result
 
       -- PC at bridge
       len-prefix-f = length-++ prefix
@@ -1582,7 +1599,7 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
                        ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
       assoc-for-bridge = ++-assoc prefix prog-f (compose-bridge ++ (prog-g ++ suffix))
 
-      (sb , star-b' , h-sb , pc-sb , sc-b , rbp-b) =
+      (sb , star-b' , h-sb , pc-sb , sc-b , rbp-b , rsp-b) =
         bridge-runner (prefix ++ prog-f) (prog-g ++ suffix) σf sf sc-f h-sf pc-at-bridge
 
       star-b : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) sf sb
@@ -1618,6 +1635,7 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       pc-sg = IRStarResult.pc-advanced g-result
       sc-g = IRStarResult.corr-proof g-result
       rbp-g = IRStarResult.rbp-preserved g-result
+      rsp-g = IRStarResult.rsp-preserved g-result
 
       -- Transport g's Star
       assoc-inner : (prog-f ++ compose-bridge) ++ (prog-g ++ suffix)
@@ -1660,9 +1678,12 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       pc-final = compose-fst-pc-lemma prefix prog-f prog-g (compile-length f) (compile-length (fst-ir {B} {C}))
                                   (compile-ir-length f) pc-sg
 
-      -- rbp preservation: chain f → bridge → g
+      -- rbp and rsp preservation: chain f → bridge → g
       rbp-final : x86-readReg (X86Sem.State.regs sg) rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
       rbp-final = trans rbp-g (trans rbp-b rbp-f)
+
+      rsp-final : x86-readReg (X86Sem.State.regs sg) rsp ≡ x86-readReg (X86Sem.State.regs s) rsp
+      rsp-final = trans rsp-g (trans rsp-b rsp-f)
 
       -- Frame and parent preservation
       cf-f = IRStarResult.current-frame f-result
@@ -1707,6 +1728,7 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σg
     ; corr-proof = sc-g
     ; rbp-preserved = rbp-final
+    ; rsp-preserved = rsp-final
     ; current-frame = cf-g
     ; frame-matches-input = compose-frame-matches
     ; output-frame-preserved = compose-output-preserved
@@ -1754,6 +1776,7 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       pc-sf = IRStarResult.pc-advanced f-result
       sc-f = IRStarResult.corr-proof f-result
       rbp-f = IRStarResult.rbp-preserved f-result
+      rsp-f = IRStarResult.rsp-preserved f-result
 
       -- PC at bridge
       len-prefix-f = length-++ prefix
@@ -1767,7 +1790,7 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
                        ≡ prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))
       assoc-for-bridge = ++-assoc prefix prog-f (compose-bridge ++ (prog-g ++ suffix))
 
-      (sb , star-b' , h-sb , pc-sb , sc-b , rbp-b) =
+      (sb , star-b' , h-sb , pc-sb , sc-b , rbp-b , rsp-b) =
         bridge-runner (prefix ++ prog-f) (prog-g ++ suffix) σf sf sc-f h-sf pc-at-bridge
 
       star-b : Star (prefix ++ (prog-f ++ (compose-bridge ++ (prog-g ++ suffix)))) sf sb
@@ -1803,6 +1826,7 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       pc-sg = IRStarResult.pc-advanced g-result
       sc-g = IRStarResult.corr-proof g-result
       rbp-g = IRStarResult.rbp-preserved g-result
+      rsp-g = IRStarResult.rsp-preserved g-result
 
       -- Transport g's Star
       assoc-inner : (prog-f ++ compose-bridge) ++ (prog-g ++ suffix)
@@ -1845,9 +1869,12 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       pc-final = compose-snd-pc-lemma prefix prog-f prog-g (compile-length f) (compile-length (snd-ir {B} {C}))
                                   (compile-ir-length f) pc-sg
 
-      -- rbp preservation: chain f → bridge → g
+      -- rbp and rsp preservation: chain f → bridge → g
       rbp-final : x86-readReg (X86Sem.State.regs sg) rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
       rbp-final = trans rbp-g (trans rbp-b rbp-f)
+
+      rsp-final : x86-readReg (X86Sem.State.regs sg) rsp ≡ x86-readReg (X86Sem.State.regs s) rsp
+      rsp-final = trans rsp-g (trans rsp-b rsp-f)
 
       -- Frame and parent preservation
       cf-f = IRStarResult.current-frame f-result
@@ -1892,6 +1919,7 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σg
     ; corr-proof = sc-g
     ; rbp-preserved = rbp-final
+    ; rsp-preserved = rsp-final
     ; current-frame = cf-g
     ; frame-matches-input = compose-frame-matches
     ; output-frame-preserved = compose-output-preserved
@@ -1978,6 +2006,8 @@ arr-runner prefix suffix σ s sc h-eq pc-eq =
     ; corr-proof = id-preserves-corresponds σ s sc
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
+    ; rsp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rsp
+                        (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
     ; current-frame = cf
     ; frame-matches-input = refl
     ; output-frame-preserved = refl
@@ -1995,6 +2025,8 @@ fold-runner m prefix suffix σ s sc h-eq pc-eq =
     ; corr-proof = id-preserves-corresponds σ s sc
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
+    ; rsp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rsp
+                        (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
     ; current-frame = cf
     ; frame-matches-input = refl
     ; output-frame-preserved = refl
@@ -2011,6 +2043,8 @@ unfold-runner prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = id-slot-state σ
     ; corr-proof = id-preserves-corresponds σ s sc
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
+                        (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
+    ; rsp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rsp
                         (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
     ; current-frame = cf
     ; frame-matches-input = refl
@@ -2033,6 +2067,7 @@ free-heap-runner r prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σ
     ; corr-proof = sc
     ; rbp-preserved = refl  -- s unchanged, so rbp unchanged
+    ; rsp-preserved = refl  -- s unchanged, so rsp unchanged
     ; current-frame = cf
     ; frame-matches-input = refl
     ; output-frame-preserved = refl

@@ -45,7 +45,7 @@ open import Once.Target.X86.Semantics as X86Sem
   renaming (readReg to x86-readReg)
 open X86Sem using (State)
 
-open import Once.Target.X86.Syntax using (rbp; Program)
+open import Once.Target.X86.Syntax using (rbp; rsp; Program)
 
 -- Import SlotToX86 for StateCorresponds
 open import Once.CCC.Target.X86v3.Refinement.SlotToX86 using (StateCorresponds)
@@ -75,8 +75,9 @@ record IRStarResult {A B : Type} (ir : IR A B)
     pc-advanced    : X86Sem.State.pc s' ≡ offset +ℕ compile-length ir
     σ-final        : LocState FS'
     corr-proof     : StateCorresponds σ-final s'
-    -- Frame preservation: rbp is callee-saved
+    -- Frame preservation: rbp and rsp are callee-saved
     rbp-preserved  : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
+    rsp-preserved  : x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rsp
     -- Current frame for this IR execution
     current-frame  : Frame FS'
     -- Frame invariant: current-frame equals input's current-frame
