@@ -696,6 +696,67 @@ bridge-star-at-offset : ∀ (prefix suffix : Program) (s : State) →
 bridge-star-at-offset prefix suffix s h-eq pc-eq =
   star-single h-eq (step-bridge-at-offset prefix suffix s h-eq pc-eq)
 
+------------------------------------------------------------------------
+-- Offset-Parameterized Step Lemmas for Individual Instructions
+--
+-- These execute single instructions at arbitrary offsets within a
+-- larger program. Used by StepChain to build multi-instruction proofs.
+------------------------------------------------------------------------
+
+-- | Expected state after push reg
+push-expected-state : State → Reg → State
+push-expected-state s r = record s
+  { regs = x86-writeReg (X86Sem.State.regs s) rsp
+             (x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size)
+  ; memory = x86-writeMem (X86Sem.State.memory s)
+               (x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size)
+               (x86-readReg (X86Sem.State.regs s) r)
+  ; pc = X86Sem.State.pc s +ℕ 1 }
+
+-- | push at offset
+step-push-at-offset : ∀ (prefix suffix : Program) (s : State) (r : Reg) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  step (prefix ++ push (reg r) ∷ suffix) s ≡ just (push-expected-state s r)
+step-push-at-offset prefix suffix s r h-eq pc-eq =
+  trans (step-at-offset prefix (push (reg r)) suffix s h-eq pc-eq)
+        (push-reg-result (prefix ++ push (reg r) ∷ suffix) s r)
+
+-- | Expected state after mov reg, reg
+mov-rr-expected-state : State → Reg → Reg → State
+mov-rr-expected-state s dst src = record s
+  { regs = x86-writeReg (X86Sem.State.regs s) dst
+             (x86-readReg (X86Sem.State.regs s) src)
+  ; pc = X86Sem.State.pc s +ℕ 1 }
+
+-- | mov reg, reg at offset
+step-mov-rr-at-offset : ∀ (prefix suffix : Program) (s : State) (dst src : Reg) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  step (prefix ++ mov (reg dst) (reg src) ∷ suffix) s ≡ just (mov-rr-expected-state s dst src)
+step-mov-rr-at-offset prefix suffix s dst src h-eq pc-eq =
+  trans (step-at-offset prefix (mov (reg dst) (reg src)) suffix s h-eq pc-eq)
+        (mov-reg-reg-result (prefix ++ mov (reg dst) (reg src) ∷ suffix) s dst src)
+
+-- | Expected state after sub reg, imm
+sub-ri-expected-state : State → Reg → ℕ → State
+sub-ri-expected-state s dst n = record s
+  { regs = x86-writeReg (X86Sem.State.regs s) dst
+             (x86-readReg (X86Sem.State.regs s) dst ∸ n)
+  ; pc = X86Sem.State.pc s +ℕ 1
+  ; flags = X86Sem.updateFlags
+              (x86-readReg (X86Sem.State.regs s) dst ∸ n)
+              (x86-readReg (X86Sem.State.regs s) dst) }
+
+-- | sub reg, imm at offset
+step-sub-ri-at-offset : ∀ (prefix suffix : Program) (s : State) (dst : Reg) (n : ℕ) →
+  X86Sem.State.halted s ≡ false →
+  X86Sem.State.pc s ≡ length prefix →
+  step (prefix ++ sub (reg dst) (imm n) ∷ suffix) s ≡ just (sub-ri-expected-state s dst n)
+step-sub-ri-at-offset prefix suffix s dst n h-eq pc-eq =
+  trans (step-at-offset prefix (sub (reg dst) (imm n)) suffix s h-eq pc-eq)
+        (sub-imm-reg-result (prefix ++ sub (reg dst) (imm n) ∷ suffix) s dst n)
+
 -- | Fetch from concatenated program: left part
 fetch-++ : ∀ (prog1 prog2 : Program) (n : ℕ) (instr : Instr) →
   fetch prog1 n ≡ just instr →
@@ -1614,3 +1675,14 @@ pair-id-id-star s v-rbp v-r15 v-r14 h-eq pc-eq cleanup-mem =
 -- POSTULATES: NONE
 -- All proofs in this module are complete with zero postulates.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Re-export StepChain infrastructure
+--
+-- StepChain provides a higher-level abstraction for multi-instruction
+-- proofs. See Once.CCC.Target.X86.Correct.StepChain for details.
+------------------------------------------------------------------------
+
+open import Once.CCC.Target.X86.Correct.StepChain public
+  using (StepProof; mkStep; StepChain; done; _▸_;
+         chain-to-star; chain-length; single; chain2; chain3)
