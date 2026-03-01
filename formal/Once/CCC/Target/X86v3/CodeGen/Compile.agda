@@ -285,17 +285,139 @@ compile-ir-length fst-ir = refl
 compile-ir-length snd-ir = refl
 compile-ir-length (⟨ f , g ⟩ m) = pair-length-proof f g
   where
+    open import Data.Nat.Properties using (+-identityʳ)
     -- compile-ir (⟨ f , g ⟩ m) = pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup
     -- compile-length (⟨ f , g ⟩ m) = length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup
-    postulate
-      pair-length-proof : ∀ {A B C} (f : IR A B) (g : IR A C) →
-        length (compile-ir (⟨ f , g ⟩ m)) ≡ compile-length (⟨ f , g ⟩ m)
+    -- PROVEN using length-++ and IH
+    pair-length-proof : ∀ {A B C} (f : IR A B) (g : IR A C) →
+      length (compile-ir (⟨ f , g ⟩ m)) ≡ compile-length (⟨ f , g ⟩ m)
+    pair-length-proof f g =
+      let lf = compile-ir-length f
+          lg = compile-ir-length g
+          -- Abbreviations
+          ps = pair-setup
+          pm = pair-middle
+          pc = pair-cleanup
+          cf = compile-ir f
+          cg = compile-ir g
+
+          -- Split using length-++
+          step1 : length (ps ++ cf ++ pm ++ cg ++ pc)
+                ≡ length ps +ℕ length (cf ++ pm ++ cg ++ pc)
+          step1 = length-++ ps {cf ++ pm ++ cg ++ pc}
+
+          step2 : length (cf ++ pm ++ cg ++ pc)
+                ≡ length cf +ℕ length (pm ++ cg ++ pc)
+          step2 = length-++ cf {pm ++ cg ++ pc}
+
+          step3 : length (pm ++ cg ++ pc)
+                ≡ length pm +ℕ length (cg ++ pc)
+          step3 = length-++ pm {cg ++ pc}
+
+          step4 : length (cg ++ pc)
+                ≡ length cg +ℕ length pc
+          step4 = length-++ cg {pc}
+
+          -- After splitting: length ps + (length cf + (length pm + (length cg + length pc)))
+          -- Goal: length ps + compile-length f + length pm + compile-length g + length pc
+          -- Note: compile-length uses left-associative + but we have right-associative from splits
+
+          -- First substitute the IH
+          subst-lg : length pm +ℕ (length cg +ℕ length pc)
+                   ≡ length pm +ℕ (compile-length g +ℕ length pc)
+          subst-lg = cong (length pm +ℕ_) (cong (_+ℕ length pc) lg)
+
+          subst-lf : length cf +ℕ (length pm +ℕ (compile-length g +ℕ length pc))
+                   ≡ compile-length f +ℕ (length pm +ℕ (compile-length g +ℕ length pc))
+          subst-lf = cong (_+ℕ (length pm +ℕ (compile-length g +ℕ length pc))) lf
+
+          -- Now fix associativity to match compile-length
+          -- compile-length = ps + (cf + (pm + (cg + pc))) with left assoc
+          -- = ((((ps + cf) + pm) + cg) + pc)
+          -- Our result: ps + (cf + (pm + (cg + pc))) - need to reassociate
+
+          assoc1 : length ps +ℕ (compile-length f +ℕ (length pm +ℕ (compile-length g +ℕ length pc)))
+                 ≡ (length ps +ℕ compile-length f) +ℕ (length pm +ℕ (compile-length g +ℕ length pc))
+          assoc1 = sym (+-assoc (length ps) (compile-length f) _)
+
+          assoc2 : (length ps +ℕ compile-length f) +ℕ (length pm +ℕ (compile-length g +ℕ length pc))
+                 ≡ ((length ps +ℕ compile-length f) +ℕ length pm) +ℕ (compile-length g +ℕ length pc)
+          assoc2 = sym (+-assoc (length ps +ℕ compile-length f) (length pm) _)
+
+          assoc3 : ((length ps +ℕ compile-length f) +ℕ length pm) +ℕ (compile-length g +ℕ length pc)
+                 ≡ (((length ps +ℕ compile-length f) +ℕ length pm) +ℕ compile-length g) +ℕ length pc
+          assoc3 = sym (+-assoc ((length ps +ℕ compile-length f) +ℕ length pm) (compile-length g) (length pc))
+
+      in trans step1 (trans (cong (length ps +ℕ_) (trans step2 (trans (cong (length cf +ℕ_)
+           (trans step3 (trans (cong (length pm +ℕ_) step4) subst-lg))) subst-lf)))
+           (trans assoc1 (trans assoc2 assoc3)))
 compile-ir-length terminal = refl
 compile-ir-length (curry {q = q} f m) = curry-length-eq q f m
   where
-    postulate
-      curry-length-eq : ∀ {A B C} (q : Quantity) (f : IR (A * B) C) (m : AllocMode) →
-        length (compile-ir (curry {q = q} f m)) ≡ compile-length (curry {q = q} f m)
+    -- curry-closure-setup always has 6 instructions regardless of body-len
+    closure-setup-length : ∀ n → length (curry-closure-setup n) ≡ 6
+    closure-setup-length _ = refl
+
+    -- curry-thunk-cleanup always has 5 instructions regardless of body-len
+    thunk-cleanup-length : ∀ n → length (curry-thunk-cleanup n) ≡ 5
+    thunk-cleanup-length _ = refl
+
+    -- PROVEN using length-++ and IH
+    curry-length-eq : ∀ {A B C} (q : Quantity) (f : IR (A * B) C) (m : AllocMode) →
+      length (compile-ir (curry {q = q} f m)) ≡ compile-length (curry {q = q} f m)
+    curry-length-eq _ f _ =
+      let lf = compile-ir-length f
+          body = compile-ir f
+          body-len = compile-length f
+          ccs = curry-closure-setup body-len
+          cts = curry-thunk-setup
+          ctc = curry-thunk-cleanup body-len
+
+          -- Split using length-++
+          step1 : length (ccs ++ cts ++ body ++ ctc)
+                ≡ length ccs +ℕ length (cts ++ body ++ ctc)
+          step1 = length-++ ccs {cts ++ body ++ ctc}
+
+          step2 : length (cts ++ body ++ ctc)
+                ≡ length cts +ℕ length (body ++ ctc)
+          step2 = length-++ cts {body ++ ctc}
+
+          step3 : length (body ++ ctc)
+                ≡ length body +ℕ length ctc
+          step3 = length-++ body {ctc}
+
+          -- Now we have: length ccs + (length cts + (length body + length ctc))
+          -- Goal: 6 + length cts + compile-length f + 5
+
+          -- Substitute the known lengths
+          ccs-eq : length ccs ≡ 6
+          ccs-eq = closure-setup-length body-len
+
+          ctc-eq : length ctc ≡ 5
+          ctc-eq = thunk-cleanup-length body-len
+
+          -- Combine: length body = compile-length f (IH)
+          inner : length cts +ℕ (length body +ℕ length ctc)
+                ≡ length cts +ℕ (compile-length f +ℕ 5)
+          inner = cong (length cts +ℕ_) (trans (cong (_+ℕ length ctc) lf)
+                                               (cong (compile-length f +ℕ_) ctc-eq))
+
+          outer : length ccs +ℕ (length cts +ℕ (compile-length f +ℕ 5))
+                ≡ 6 +ℕ (length cts +ℕ (compile-length f +ℕ 5))
+          outer = cong (_+ℕ (length cts +ℕ (compile-length f +ℕ 5))) ccs-eq
+
+          -- Fix associativity: 6 + (length cts + (compile-length f + 5))
+          -- Goal: 6 + length cts + compile-length f + 5 (= ((6 + length cts) + compile-length f) + 5)
+          assoc1 : 6 +ℕ (length cts +ℕ (compile-length f +ℕ 5))
+                 ≡ (6 +ℕ length cts) +ℕ (compile-length f +ℕ 5)
+          assoc1 = sym (+-assoc 6 (length cts) (compile-length f +ℕ 5))
+
+          assoc2 : (6 +ℕ length cts) +ℕ (compile-length f +ℕ 5)
+                 ≡ ((6 +ℕ length cts) +ℕ compile-length f) +ℕ 5
+          assoc2 = sym (+-assoc (6 +ℕ length cts) (compile-length f) 5)
+
+      in trans step1 (trans (cong (length ccs +ℕ_) (trans step2 (trans (cong (length cts +ℕ_) step3) inner)))
+                            (trans outer (trans assoc1 assoc2)))
 compile-ir-length apply = refl
 compile-ir-length (inl-ir _) = refl
 compile-ir-length (inr-ir _) = refl
