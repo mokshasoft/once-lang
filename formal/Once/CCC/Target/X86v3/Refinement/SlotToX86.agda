@@ -736,7 +736,7 @@ store-regs-correspond hb dst src σ x86-regs rc =
 
 -- Import register inequality proofs
 open import Data.Empty using (⊥-elim)
-open import Once.Target.X86.ExecLemmas using (readReg-writeReg-diff)
+open import Once.Target.X86.ExecLemmas using (readReg-writeReg-diff; readMem-writeMem-diff)
 
 -- | Writing to rsp preserves register correspondence
 write-rsp-preserves-regs-correspond : ∀ (heap-base : HeapBaseMap) (σ-regs : Registers FS)
@@ -795,12 +795,55 @@ sub-rsp-preserves-state-corresponds σ s new-rsp sc = record
             (rbp-is-frame-base sc)
   }
 
+------------------------------------------------------------------------
+-- Memory Write Disjointness
+--
+-- PROVEN: When write address is disjoint from all tracked slot addresses,
+-- writing to memory preserves MemCorresponds.
+------------------------------------------------------------------------
+
+-- | Writing to a disjoint address preserves MemCorresponds (PROVEN)
+-- Precondition: write-addr ≠ any tracked stack slot address
+-- Uses readMem-writeMem-diff for the proof.
+write-disjoint-preserves-mem-corresponds : ∀ (hb : HeapBaseMap) (σ : LocState FS) (x86-mem : Memory)
+  (write-addr v : Word) →
+  -- Disjointness: write-addr ≠ any stack slot address that σ tracks
+  (stack-disjoint : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
+                    write-addr ≢ stack-loc-to-addr f k) →
+  -- Disjointness: write-addr ≠ any heap location address that σ tracks
+  (heap-disjoint : ∀ hl hl' → SlotMachine.LocState.heapMem σ hl ≡ just hl' →
+                   write-addr ≢ heap-loc-to-addr hb hl) →
+  MemCorresponds hb σ x86-mem →
+  MemCorresponds hb σ (x86-writeMem x86-mem write-addr v)
+write-disjoint-preserves-mem-corresponds hb σ x86-mem write-addr v stack-disj heap-disj mc = record
+  { stack-corresponds = λ f k loc' read-eq →
+      -- Need: x86-readMem (writeMem mem write-addr v) (slot-addr f k) = just (loc-to-addr hb loc')
+      -- By readMem-writeMem-diff since write-addr ≠ slot-addr f k
+      let slot-addr = stack-loc-to-addr f k
+          addr-neq = stack-disj f k loc' read-eq
+          orig = stack-corresponds mc f k loc' read-eq
+      in trans (readMem-writeMem-diff x86-mem write-addr slot-addr v addr-neq) orig
+  ; heap-corresponds = λ hl hl' read-eq →
+      -- Similar for heap locations
+      let h-addr = heap-loc-to-addr hb hl
+          addr-neq = heap-disj hl hl' read-eq
+          orig = heap-corresponds mc hl hl' read-eq
+      in trans (readMem-writeMem-diff x86-mem write-addr h-addr v addr-neq) orig
+  }
+
+------------------------------------------------------------------------
+-- Push preserves StateCorresponds
+------------------------------------------------------------------------
+
 -- | Push preserves StateCorresponds
 -- push r: mem[rsp - 8] := r; rsp := rsp - 8
 --
 -- SOUNDNESS: Push writes BELOW rbp (to x86 call stack), while SlotMachine's
 -- OnStack locations are ABOVE rbp. Region separation makes disjointness automatic.
 -- See proof-architecture.md for the full argument.
+--
+-- The disjointness preconditions are postulated because proving them requires
+-- tracking which frames σ has entries for (a frame scope invariant).
 push-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State)
   (pushed-val new-rsp : Word) →
   StateCorresponds σ s →
@@ -812,8 +855,8 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc = record
   ; unit-base-zero = unit-base-zero sc
   ; regs-correspond = write-rsp-preserves-regs-correspond (heap-base sc)
                         (SlotMachine.LocState.regs σ) (X86Sem.State.regs s) new-rsp (regs-correspond sc)
-  ; mem-corresponds = push-mem-corresponds (heap-base sc) σ (X86Sem.State.memory s)
-                        new-rsp pushed-val (mem-corresponds sc)
+  ; mem-corresponds = write-disjoint-preserves-mem-corresponds (heap-base sc) σ (X86Sem.State.memory s)
+                        new-rsp pushed-val stack-disjoint-proof heap-disjoint-proof (mem-corresponds sc)
   ; halted-corresponds = halted-corresponds sc
   ; current-frame = current-frame sc  -- frame unchanged
   ; rbp-is-frame-base =
@@ -821,13 +864,20 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc = record
             (rbp-is-frame-base sc)
   }
   where
-    -- Push writes below rbp, SlotMachine locations are above rbp → disjoint
+    -- Push writes below rbp (at new-rsp < rbp), SlotMachine locations are above rbp
     -- This follows from region separation (proof-architecture.md)
+    --
+    -- Proving these requires:
+    -- 1. new-rsp < rbp (push decrements rsp, and rsp < rbp after frame setup)
+    -- 2. slot-addr f k ≥ frame-base f (from slot-addr-≥-base)
+    -- 3. For tracked frames f, frame-base f ≥ rbp (current or parent frame)
+    --
+    -- Currently postulated pending frame scope tracking infrastructure.
     postulate
-      push-mem-corresponds : ∀ (hb : HeapBaseMap) (σ : LocState FS) (x86-mem : Memory)
-        (write-addr v : Word) →
-        MemCorresponds hb σ x86-mem →
-        MemCorresponds hb σ (x86-writeMem x86-mem write-addr v)
+      stack-disjoint-proof : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
+                             new-rsp ≢ stack-loc-to-addr f k
+      heap-disjoint-proof : ∀ hl hl' → SlotMachine.LocState.heapMem σ hl ≡ just hl' →
+                            new-rsp ≢ heap-loc-to-addr (heap-base sc) hl
 
 -- | Mov to rbp preserves StateCorresponds (updates frame base)
 -- Used for: mov rbp, rsp (set up new frame)
