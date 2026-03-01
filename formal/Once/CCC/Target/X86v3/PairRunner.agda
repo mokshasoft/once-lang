@@ -290,8 +290,83 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
     -- x86 writes to: stack below original rsp (push), and input-backup slot
     -- SlotMachine memory unchanged (σ' = σ)
     -- Sound: writes are to stack management areas, not SlotMachine-visible memory
+    --
+    -- Two writes to prove disjoint from tracked locations:
+    --   1. Push: writes to s.rsp - 8
+    --   2. Backup: writes to s3.rsp + 16 = s.rsp - 32 + 16 = s.rsp - 16
+    --
+    -- For disjointness, we need:
+    --   write-addr < frame-base current-frame ≤ frame-base f ≤ slot-addr f k
+
+    -- Push write address
+    push-write-addr : Word
+    push-write-addr = x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size
+
+    -- Backup write address (after sub rsp, 24, then +16)
+    backup-write-addr : Word
+    backup-write-addr = effectiveAddr s3 (base+disp rsp (slots 2))
+
+    -- Stack capacity postulates (calling convention invariants)
+    -- These require proof that rsp is below the current frame
     postulate
-      mem-corresponds' : MemCorresponds heap-base' σ' (X86Sem.State.memory s')
+      -- Push address is strictly below current frame (calling convention)
+      push-below-frame : push-write-addr < x86-frame-base (current-frame sc)
+      -- Push address is in stack region (for heap disjointness)
+      push-in-stack : InStack push-write-addr
+      -- Backup address is strictly below current frame
+      backup-below-frame : backup-write-addr < x86-frame-base (current-frame sc)
+      -- Backup address is in stack region
+      backup-in-stack : InStack backup-write-addr
+
+    -- Stack disjointness for push write
+    -- Chain: push-write-addr < frame-base current ≤ frame-base f ≤ slot-addr f k
+    push-stack-disjoint : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
+                          push-write-addr ≢ stack-loc-to-addr f k
+    push-stack-disjoint f k loc' read-eq =
+      <⇒≢ (<-≤-trans push-below-frame
+             (≤-trans (frame-scope sc f k loc' read-eq) (slot-addr-≥-base f k)))
+
+    -- Heap disjointness for push write
+    push-heap-disjoint : ∀ hl hl' → SM.LocState.heapMem σ hl ≡ just hl' →
+                         push-write-addr ≢ heap-loc-to-addr heap-base' hl
+    push-heap-disjoint hl hl' read-eq =
+      stack-heap-addr-disjoint push-write-addr (heap-loc-to-addr heap-base' hl)
+                               push-in-stack (heap-in-heap sc hl hl' read-eq)
+
+    -- Memory after push (s1.memory)
+    mem-after-push : MemCorresponds heap-base' σ (X86Sem.State.memory s1)
+    mem-after-push = write-disjoint-preserves-mem-corresponds heap-base' σ
+                       (X86Sem.State.memory s) push-write-addr
+                       (x86-readReg (X86Sem.State.regs s) rbp)
+                       push-stack-disjoint push-heap-disjoint (mem-corresponds sc)
+
+    -- s2.memory = s1.memory (mov doesn't write memory)
+    -- s3.memory = s2.memory (sub doesn't write memory)
+    mem-s3-eq : X86Sem.State.memory s3 ≡ X86Sem.State.memory s1
+    mem-s3-eq = refl
+
+    -- Stack disjointness for backup write (using s3.memory = s1.memory)
+    -- Chain: backup-write-addr < frame-base current ≤ frame-base f ≤ slot-addr f k
+    backup-stack-disjoint : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
+                            backup-write-addr ≢ stack-loc-to-addr f k
+    backup-stack-disjoint f k loc' read-eq =
+      <⇒≢ (<-≤-trans backup-below-frame
+             (≤-trans (frame-scope sc f k loc' read-eq) (slot-addr-≥-base f k)))
+
+    -- Heap disjointness for backup write
+    backup-heap-disjoint : ∀ hl hl' → SM.LocState.heapMem σ hl ≡ just hl' →
+                           backup-write-addr ≢ heap-loc-to-addr heap-base' hl
+    backup-heap-disjoint hl hl' read-eq =
+      stack-heap-addr-disjoint backup-write-addr (heap-loc-to-addr heap-base' hl)
+                               backup-in-stack (heap-in-heap sc hl hl' read-eq)
+
+    -- Memory after backup write (s4.memory = s'.memory)
+    mem-corresponds' : MemCorresponds heap-base' σ' (X86Sem.State.memory s')
+    mem-corresponds' = write-disjoint-preserves-mem-corresponds heap-base' σ
+                         (X86Sem.State.memory s3) backup-write-addr
+                         (x86-readReg (X86Sem.State.regs s3) rdi)
+                         backup-stack-disjoint backup-heap-disjoint
+                         (subst (MemCorresponds heap-base' σ) mem-s3-eq mem-after-push)
 
     -- halted unchanged
     halted-corresponds' : SM.LocState.halted σ' ≡ X86Sem.State.halted s'
@@ -566,8 +641,61 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
     -- Memory correspondence
     -- x86 writes to: [rsp] (pair.fst slot)
     -- SlotMachine memory unchanged (σ' only differs in regs)
+    --
+    -- Write address = rsp = pair-rsp (within new frame, below tracked slots)
+    -- For disjointness: rsp < rbp = frame-base current-frame ≤ frame-base f ≤ slot-addr f k
+
+    -- Write address for step 0
+    fst-write-addr : Word
+    fst-write-addr = step0-write-addr  -- = x86-readReg s rsp
+
+    -- Stack capacity postulate: fst write address is below current frame
+    -- This holds because rsp (after sub) < rbp (set by mov rbp, rsp before sub)
     postulate
-      mem-corresponds' : MemCorresponds heap-base' σ' (X86Sem.State.memory s')
+      fst-below-frame : fst-write-addr < x86-frame-base (current-frame sc)
+      fst-in-stack : InStack fst-write-addr
+
+    -- Stack disjointness for fst write
+    fst-stack-disjoint : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
+                         fst-write-addr ≢ stack-loc-to-addr f k
+    fst-stack-disjoint f k loc' read-eq =
+      <⇒≢ (<-≤-trans fst-below-frame
+             (≤-trans (frame-scope sc f k loc' read-eq) (slot-addr-≥-base f k)))
+
+    -- Heap disjointness for fst write
+    fst-heap-disjoint : ∀ hl hl' → SM.LocState.heapMem σ hl ≡ just hl' →
+                        fst-write-addr ≢ heap-loc-to-addr heap-base' hl
+    fst-heap-disjoint hl hl' read-eq =
+      stack-heap-addr-disjoint fst-write-addr (heap-loc-to-addr heap-base' hl)
+                               fst-in-stack (heap-in-heap sc hl hl' read-eq)
+
+    -- s1.memory has the write, s'.memory = s2.memory = s1.memory (step 1 doesn't write memory)
+    mem-s'-eq-s1 : X86Sem.State.memory s' ≡ X86Sem.State.memory s1
+    mem-s'-eq-s1 = refl
+
+    -- σ'.stackMem = σ.stackMem (pair-middle-slot-state only changes regs)
+    σ'-stack-eq : ∀ f k → SM.LocState.stackMem σ' f k ≡ SM.LocState.stackMem σ f k
+    σ'-stack-eq f k = refl
+
+    -- σ'.heapMem = σ.heapMem
+    σ'-heap-eq : ∀ hl → SM.LocState.heapMem σ' hl ≡ SM.LocState.heapMem σ hl
+    σ'-heap-eq hl = refl
+
+    -- Memory after fst write
+    mem-after-fst : MemCorresponds heap-base' σ (X86Sem.State.memory s1)
+    mem-after-fst = write-disjoint-preserves-mem-corresponds heap-base' σ
+                      (X86Sem.State.memory s) fst-write-addr
+                      (x86-readReg (X86Sem.State.regs s) rax)
+                      fst-stack-disjoint fst-heap-disjoint (mem-corresponds sc)
+
+    -- Since σ'.stackMem = σ.stackMem and σ'.heapMem = σ.heapMem, we can transport
+    mem-corresponds' : MemCorresponds heap-base' σ' (X86Sem.State.memory s')
+    mem-corresponds' = record
+      { stack-corresponds = λ f k loc' read-eq →
+          stack-corresponds mem-after-fst f k loc' (trans (σ'-stack-eq f k) read-eq)
+      ; heap-corresponds = λ hl hl' read-eq →
+          heap-corresponds mem-after-fst hl hl' (trans (σ'-heap-eq hl) read-eq)
+      }
 
     -- halted unchanged
     halted-corresponds' : SM.LocState.halted σ' ≡ X86Sem.State.halted s'
@@ -773,8 +901,65 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
       }
 
     -- Memory correspondence
+    -- x86 writes to: [rsp+8] (pair.snd slot) in step 0
+    -- Steps 1-3 don't modify memory (register operations)
+    -- SlotMachine memory unchanged (σ' only differs in regs.RAX)
+    --
+    -- Write address = rsp + 8 (within new frame, below tracked slots)
+    -- For disjointness: rsp + 8 < rbp = frame-base current-frame ≤ frame-base f ≤ slot-addr f k
+
+    -- Write address for step 0
+    snd-write-addr : Word
+    snd-write-addr = effectiveAddr s (base+disp rsp slot-size)  -- = x86-readReg s rsp + 8
+
+    -- Stack capacity postulate: snd write address is below current frame
+    -- This holds because rsp + 8 (after sub) < rbp (set by mov rbp, rsp before sub)
     postulate
-      mem-corresponds' : MemCorresponds heap-base' σ' (X86Sem.State.memory s')
+      snd-below-frame : snd-write-addr < x86-frame-base (current-frame sc)
+      snd-in-stack : InStack snd-write-addr
+
+    -- Stack disjointness for snd write
+    snd-stack-disjoint : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
+                         snd-write-addr ≢ stack-loc-to-addr f k
+    snd-stack-disjoint f k loc' read-eq =
+      <⇒≢ (<-≤-trans snd-below-frame
+             (≤-trans (frame-scope sc f k loc' read-eq) (slot-addr-≥-base f k)))
+
+    -- Heap disjointness for snd write
+    snd-heap-disjoint : ∀ hl hl' → SM.LocState.heapMem σ hl ≡ just hl' →
+                        snd-write-addr ≢ heap-loc-to-addr heap-base' hl
+    snd-heap-disjoint hl hl' read-eq =
+      stack-heap-addr-disjoint snd-write-addr (heap-loc-to-addr heap-base' hl)
+                               snd-in-stack (heap-in-heap sc hl hl' read-eq)
+
+    -- s1.memory has the write, s2/s3/s4 don't modify memory
+    -- s' = s4, s'.memory = s4.memory = s3.memory = s2.memory = s1.memory
+    mem-s'-eq-s1 : X86Sem.State.memory s' ≡ X86Sem.State.memory s1
+    mem-s'-eq-s1 = refl
+
+    -- σ'.stackMem = σ.stackMem (pair-cleanup-slot-state only changes regs.RAX)
+    σ'-stack-eq : ∀ f k → SM.LocState.stackMem σ' f k ≡ SM.LocState.stackMem σ f k
+    σ'-stack-eq f k = refl
+
+    -- σ'.heapMem = σ.heapMem
+    σ'-heap-eq : ∀ hl → SM.LocState.heapMem σ' hl ≡ SM.LocState.heapMem σ hl
+    σ'-heap-eq hl = refl
+
+    -- Memory after snd write
+    mem-after-snd : MemCorresponds heap-base' σ (X86Sem.State.memory s1)
+    mem-after-snd = write-disjoint-preserves-mem-corresponds heap-base' σ
+                      (X86Sem.State.memory s) snd-write-addr
+                      (x86-readReg (X86Sem.State.regs s) rax)
+                      snd-stack-disjoint snd-heap-disjoint (mem-corresponds sc)
+
+    -- Since σ'.stackMem = σ.stackMem and σ'.heapMem = σ.heapMem, we can transport
+    mem-corresponds' : MemCorresponds heap-base' σ' (X86Sem.State.memory s')
+    mem-corresponds' = record
+      { stack-corresponds = λ f k loc' read-eq →
+          stack-corresponds mem-after-snd f k loc' (trans (σ'-stack-eq f k) read-eq)
+      ; heap-corresponds = λ hl hl' read-eq →
+          heap-corresponds mem-after-snd hl hl' (trans (σ'-heap-eq hl) read-eq)
+      }
 
     -- halted unchanged
     halted-corresponds' : SM.LocState.halted σ' ≡ X86Sem.State.halted s'
