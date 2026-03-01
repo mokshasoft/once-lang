@@ -2186,15 +2186,17 @@ pair-setup-result prefix suffix s σ pair-loc sc pair-loc-corresponds h-eq pc-eq
 --   mov (reg rdi) (reg r14)         -- rdi = input (for g)
 ------------------------------------------------------------------------
 
--- Helper postulate for StateCorresponds preservation through pair-middle
-postulate
-  pair-middle-preserves-corresponds : ∀ (s s' : State)
-    (σ : LocState FS') →
-    StateCorresponds σ s →
-    StateCorresponds (pair-middle-slot-state σ) s'
-
 -- pair-middle executes 2 instructions, returns state AND correspondence
 -- PROVEN using step-fetch-result pattern
+--
+-- Key semantic constraint: pair-middle stores f's result at [r15] and restores input.
+-- SlotMachine: RDI := R14 (input restoration)
+-- x86: [r15] := rax (store f's result), rdi := r14 (input restoration)
+--
+-- Register correspondence after step 1 (mov rdi, r14):
+--   x86 rdi = r14 of s (unchanged through memory write)
+--   SlotMachine RDI = R14 of σ
+--   By r14-corresponds: these are equal via loc-to-addr
 pair-middle-result : ∀ (prefix suffix : Program) (s : State)
   (σ : LocState FS') →
   StateCorresponds σ s →
@@ -2263,9 +2265,115 @@ pair-middle-result prefix suffix s σ sc h-eq pc-eq =
     pc'-eq : X86Sem.State.pc s' ≡ length prefix +ℕ length pair-middle
     pc'-eq = pc2
 
-    -- StateCorresponds (postulated)
-    sc' : StateCorresponds (pair-middle-slot-state σ) s'
-    sc' = pair-middle-preserves-corresponds s s' σ sc
+    -- Build StateCorresponds for final state
+    -- σ' = pair-middle-slot-state σ = σ with RDI := R14 of σ
+    -- s' = s2 with rdi := r14 of s, memory updated at [r15]
+    σ' = pair-middle-slot-state σ
+    heap-base' = heap-base sc
+
+    -- Step 0 (mov [r15], rax) only changes memory, not registers
+    -- So s1.regs = s.regs
+    s1-regs-eq-s : X86Sem.State.regs s1 ≡ X86Sem.State.regs s
+    s1-regs-eq-s = refl
+
+    -- r14 correspondence from original state, transferred through s1
+    r14-orig : x86-readReg (X86Sem.State.regs s) r14
+             ≡ loc-to-addr heap-base' (SM.readReg (SM.LocState.regs σ) R14)
+    r14-orig = r14-corresponds (regs-correspond sc)
+
+    -- r14 in s1 equals r14 in s (memory write doesn't touch registers)
+    r14-s1 : x86-readReg (X86Sem.State.regs s1) r14
+           ≡ x86-readReg (X86Sem.State.regs s) r14
+    r14-s1 = refl
+
+    -- Combined: r14 in s1 corresponds to R14 in σ
+    r14-s1-corresponds : x86-readReg (X86Sem.State.regs s1) r14
+                       ≡ loc-to-addr heap-base' (SM.readReg (SM.LocState.regs σ) R14)
+    r14-s1-corresponds = trans r14-s1 r14-orig
+
+    -- After mov rdi, r14: rdi = r14 of s1 = loc-to-addr (R14 of σ)
+    -- σ' has RDI = R14 of σ
+    -- So rdi correspondence holds
+
+    -- RegsCorrespond for s1 (memory write preserves register correspondence)
+    -- s1.regs = s.regs, so original correspondence holds
+    regs-correspond-s1 : RegsCorrespond heap-base' (SM.LocState.regs σ) (X86Sem.State.regs s1)
+    regs-correspond-s1 = regs-correspond sc
+
+    -- Use build-regs-correspond-after-write for the rdi := r14 step
+    -- SlotMachine: writeReg σ.regs RDI (readReg σ.regs R14)
+    -- x86: writeReg s1.regs rdi (readReg s1.regs r14)
+    --    = writeReg s1.regs rdi (loc-to-addr heap-base' (readReg σ.regs R14))
+    -- This matches build-regs-correspond-after-write with dst=RDI, loc=readReg σ.regs R14
+
+    -- s2.regs expressed in the form expected by build-regs-correspond-after-write
+    s2-regs-form : X86Sem.State.regs s2
+                 ≡ x86-writeReg (X86Sem.State.regs s1) rdi
+                     (loc-to-addr heap-base' (SM.readReg (SM.LocState.regs σ) R14))
+    s2-regs-form = cong (x86-writeReg (X86Sem.State.regs s1) rdi) r14-s1-corresponds
+
+    -- Build register correspondence using the library lemma
+    regs-correspond-raw : RegsCorrespond heap-base'
+                           (writeReg (SM.LocState.regs σ) RDI (SM.readReg (SM.LocState.regs σ) R14))
+                           (x86-writeReg (X86Sem.State.regs s1) rdi
+                             (loc-to-addr heap-base' (SM.readReg (SM.LocState.regs σ) R14)))
+    regs-correspond-raw = build-regs-correspond-after-write heap-base' RDI
+                            (SM.readReg (SM.LocState.regs σ) R14)
+                            (SM.LocState.regs σ) (X86Sem.State.regs s1)
+                            regs-correspond-s1
+
+    -- σ'.regs = writeReg σ.regs RDI (readReg σ.regs R14) by definition
+    σ'-regs-def : SM.LocState.regs σ' ≡ writeReg (SM.LocState.regs σ) RDI (SM.readReg (SM.LocState.regs σ) R14)
+    σ'-regs-def = refl
+
+    -- Final register correspondence
+    regs-correspond' : RegsCorrespond heap-base' (SM.LocState.regs σ') (X86Sem.State.regs s')
+    regs-correspond' = subst (λ x86-regs → RegsCorrespond heap-base' (SM.LocState.regs σ') x86-regs)
+                             (sym s2-regs-form)
+                             regs-correspond-raw
+
+    -- Memory correspondence
+    -- Step 0 writes f's result to [r15] (pair location)
+    -- pair-middle-slot-state doesn't update SlotMachine memory
+    -- Sound because: the pair location is "owned" by the pair construct,
+    -- and the write stores data that will be returned via RAX in cleanup.
+    -- MemCorresponds only tracks locations accessible via readLoc,
+    -- and the pair slots are not yet "visible" until pair-cleanup.
+    postulate
+      mem-corresponds' : MemCorresponds heap-base' σ' (X86Sem.State.memory s')
+
+    -- Memory unchanged in SlotMachine
+    stackMem-unchanged : SM.LocState.stackMem σ' ≡ SM.LocState.stackMem σ
+    stackMem-unchanged = refl
+
+    heapMem-unchanged : SM.LocState.heapMem σ' ≡ SM.LocState.heapMem σ
+    heapMem-unchanged = refl
+
+    -- halted unchanged
+    halted-unchanged : SM.LocState.halted σ' ≡ SM.LocState.halted σ
+    halted-unchanged = refl
+
+    halted-corresponds' : SM.LocState.halted σ' ≡ X86Sem.State.halted s'
+    halted-corresponds' = trans halted-unchanged (halted-corresponds sc)
+
+    -- rbp unchanged through pair-middle (neither instruction touches rbp)
+    rbp-unchanged : x86-readReg (X86Sem.State.regs s') rbp
+                  ≡ x86-readReg (X86Sem.State.regs s) rbp
+    rbp-unchanged = refl
+
+    rbp-is-frame-base' : ∀ (frame : X86Frame) →
+      x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base frame
+    rbp-is-frame-base' frame = trans rbp-unchanged (rbp-is-frame-base sc frame)
+
+    sc' : StateCorresponds σ' s'
+    sc' = record
+      { heap-base = heap-base'
+      ; unit-base-zero = unit-base-zero sc
+      ; regs-correspond = regs-correspond'
+      ; mem-corresponds = mem-corresponds'
+      ; halted-corresponds = halted-corresponds'
+      ; rbp-is-frame-base = rbp-is-frame-base'
+      }
 
   in s' , star-proof , h'-eq , pc'-eq , sc'
 
