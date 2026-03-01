@@ -26,7 +26,8 @@
 
 module Once.CCC.Target.X86v3.Refinement.SlotToX86 where
 
-open import Data.Nat using (ℕ; suc; _∸_; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; suc; _∸_; z≤n; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat.Properties using (<⇒≢; <-≤-trans; ≤-trans)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; false)
@@ -36,8 +37,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 open import Once.CCC.Target.X86v3.FrameInstantiation
   using (x86v3-frame-semantics; X86Frame; x86-slot-addr-suc; x86-slot-addr)
 
--- Import word-size for sucLoc correspondence
-open import Once.CCC.Target.X86.Layout using (word-size)
+-- Import word-size for sucLoc correspondence, and region predicates for disjointness
+open import Once.CCC.Target.X86.Layout using (word-size; InStack; InHeap; stack-heap-addr-disjoint; slot-addr-≥-base)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Import SlotMachine types
@@ -335,6 +336,16 @@ record StateCorresponds (σ : LocState FS) (s : State) : Set where
 
     -- rbp holds current frame base (for frame-relative addressing)
     rbp-is-frame-base : x86-readReg (X86Sem.State.regs s) rbp ≡ x86-frame-base current-frame
+
+    -- Frame scope: tracked frames are current or parent (have base ≥ current base)
+    -- This ensures that slots tracked by σ are at addresses ≥ rbp.
+    frame-scope : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
+                  x86-frame-base current-frame ≤ x86-frame-base f
+
+    -- Heap region: heap addresses are in the heap region
+    -- This enables cross-domain disjointness proofs.
+    heap-in-heap : ∀ hl hl' → SlotMachine.LocState.heapMem σ hl ≡ just hl' →
+                   InHeap (heap-loc-to-addr heap-base hl)
 
 open StateCorresponds
 
@@ -793,6 +804,8 @@ sub-rsp-preserves-state-corresponds σ s new-rsp sc = record
   ; rbp-is-frame-base =
       trans (readReg-writeReg-diff (X86Sem.State.regs s) rsp rbp new-rsp (λ ()))
             (rbp-is-frame-base sc)
+  ; frame-scope = frame-scope sc  -- σ unchanged, frame-scope preserved
+  ; heap-in-heap = heap-in-heap sc  -- σ and heap-base unchanged
   }
 
 ------------------------------------------------------------------------
@@ -838,19 +851,24 @@ write-disjoint-preserves-mem-corresponds hb σ x86-mem write-addr v stack-disj h
 -- | Push preserves StateCorresponds
 -- push r: mem[rsp - 8] := r; rsp := rsp - 8
 --
--- SOUNDNESS: Push writes BELOW rbp (to x86 call stack), while SlotMachine's
+-- PROVEN: Push writes BELOW rbp (to x86 call stack), while SlotMachine's
 -- OnStack locations are ABOVE rbp. Region separation makes disjointness automatic.
 -- See proof-architecture.md for the full argument.
 --
--- The disjointness preconditions are postulated because proving them requires
--- tracking which frames σ has entries for (a frame scope invariant).
+-- Preconditions:
+--   - rsp-below-frame: new-rsp < frame-base (push is below current frame)
+--   - rsp-in-stack: new-rsp is in the stack region (for heap disjointness)
 push-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State)
   (pushed-val new-rsp : Word) →
-  StateCorresponds σ s →
+  (sc : StateCorresponds σ s) →
+  -- Precondition: push address is below current frame base
+  new-rsp < x86-frame-base (current-frame sc) →
+  -- Precondition: push address is in stack region
+  InStack new-rsp →
   StateCorresponds σ (record s
     { regs = x86-writeReg (X86Sem.State.regs s) rsp new-rsp
     ; memory = x86-writeMem (X86Sem.State.memory s) new-rsp pushed-val })
-push-preserves-state-corresponds σ s pushed-val new-rsp sc = record
+push-preserves-state-corresponds σ s pushed-val new-rsp sc rsp-below-frame rsp-in-stack = record
   { heap-base = heap-base sc
   ; unit-base-zero = unit-base-zero sc
   ; regs-correspond = write-rsp-preserves-regs-correspond (heap-base sc)
@@ -862,22 +880,37 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc = record
   ; rbp-is-frame-base =
       trans (readReg-writeReg-diff (X86Sem.State.regs s) rsp rbp new-rsp (λ ()))
             (rbp-is-frame-base sc)
+  ; frame-scope = frame-scope sc  -- σ unchanged
+  ; heap-in-heap = heap-in-heap sc  -- σ and heap-base unchanged
   }
   where
-    -- Push writes below rbp (at new-rsp < rbp), SlotMachine locations are above rbp
-    -- This follows from region separation (proof-architecture.md)
-    --
-    -- Proving these requires:
-    -- 1. new-rsp < rbp (push decrements rsp, and rsp < rbp after frame setup)
-    -- 2. slot-addr f k ≥ frame-base f (from slot-addr-≥-base)
-    -- 3. For tracked frames f, frame-base f ≥ rbp (current or parent frame)
-    --
-    -- Currently postulated pending frame scope tracking infrastructure.
-    postulate
-      stack-disjoint-proof : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
-                             new-rsp ≢ stack-loc-to-addr f k
-      heap-disjoint-proof : ∀ hl hl' → SlotMachine.LocState.heapMem σ hl ≡ just hl' →
-                            new-rsp ≢ heap-loc-to-addr (heap-base sc) hl
+    -- PROVEN: Stack disjointness from frame ordering
+    -- Chain: new-rsp < frame-base current ≤ frame-base f ≤ slot-addr f k
+    stack-disjoint-proof : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
+                           new-rsp ≢ stack-loc-to-addr f k
+    stack-disjoint-proof f k loc' read-eq =
+      <⇒≢ new-rsp<slot-addr
+      where
+        -- From frame-scope: frame-base current ≤ frame-base f
+        current≤f : x86-frame-base (current-frame sc) ≤ x86-frame-base f
+        current≤f = frame-scope sc f k loc' read-eq
+
+        -- From slot-addr-≥-base: frame-base f ≤ slot-addr f k
+        -- Note: slot-addr-≥-base from Layout uses StackPointer, and x86-frame-base
+        -- on X86Frame (= StackPointer) gives sp-addr, so this works directly.
+        f≤slot : x86-frame-base f ≤ stack-loc-to-addr f k
+        f≤slot = slot-addr-≥-base f k
+
+        -- Chain: new-rsp < current ≤ f ≤ slot
+        new-rsp<slot-addr : new-rsp < stack-loc-to-addr f k
+        new-rsp<slot-addr = <-≤-trans rsp-below-frame (≤-trans current≤f f≤slot)
+
+    -- PROVEN: Heap disjointness from region separation
+    heap-disjoint-proof : ∀ hl hl' → SlotMachine.LocState.heapMem σ hl ≡ just hl' →
+                          new-rsp ≢ heap-loc-to-addr (heap-base sc) hl
+    heap-disjoint-proof hl hl' read-eq =
+      stack-heap-addr-disjoint new-rsp (heap-loc-to-addr (heap-base sc) hl)
+                               rsp-in-stack (heap-in-heap sc hl hl' read-eq)
 
 -- | Mov to rbp preserves StateCorresponds (updates frame base)
 -- Used for: mov rbp, rsp (set up new frame)
@@ -887,12 +920,16 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc = record
 --
 -- PROVEN: rbp is not tracked by RegsCorrespond (only rax,rdi,rsi,r12,r14,r15).
 -- Writing to rbp doesn't affect the tracked register correspondence.
+--
+-- Precondition: new frame base ≤ old frame base (for frame-scope preservation)
 mov-rbp-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State) (new-rbp : Word)
   (new-frame : X86Frame) →
   x86-frame-base new-frame ≡ new-rbp →  -- new frame's base is the new rbp value
-  StateCorresponds σ s →
+  (sc : StateCorresponds σ s) →
+  -- Precondition: new frame is at or below old current frame
+  x86-frame-base new-frame ≤ x86-frame-base (current-frame sc) →
   StateCorresponds σ (record s { regs = x86-writeReg (X86Sem.State.regs s) rbp new-rbp })
-mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc = record
+mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc new≤old = record
   { heap-base = heap-base sc
   ; unit-base-zero = unit-base-zero sc
   ; regs-correspond = rbp-write-preserves-regs
@@ -901,6 +938,8 @@ mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc = record
   ; current-frame = new-frame
   ; rbp-is-frame-base = trans (readReg-writeReg-same (X86Sem.State.regs s) rbp new-rbp)
                               (sym frame-eq)
+  ; frame-scope = new-frame-scope
+  ; heap-in-heap = heap-in-heap sc  -- σ and heap-base unchanged
   }
   where
     -- Writing to rbp doesn't affect tracked registers (rax, rdi, rsi, r12, r14, r15)
@@ -921,6 +960,12 @@ mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc = record
       ; r15-corresponds = trans (readReg-writeReg-diff (X86Sem.State.regs s) rbp r15 new-rbp (λ ()))
                                 (r15-corresponds (regs-correspond sc))
       }
+
+    -- Frame scope: new frame base ≤ old frame base ≤ tracked frame base
+    new-frame-scope : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
+                      x86-frame-base new-frame ≤ x86-frame-base f
+    new-frame-scope f k loc' read-eq =
+      ≤-trans new≤old (frame-scope sc f k loc' read-eq)
 
 ------------------------------------------------------------------------
 -- SlotMachine + X86 Combined Register Write
@@ -971,6 +1016,8 @@ pc-change-preserves-corresponds σ s new-pc sc = record
   ; halted-corresponds = halted-corresponds sc
   ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
+  ; frame-scope = frame-scope sc
+  ; heap-in-heap = heap-in-heap sc
   }
 
 -- | Changing flags preserves StateCorresponds (flags not tracked)
@@ -987,6 +1034,8 @@ flags-change-preserves-corresponds σ s new-flags sc = record
   ; halted-corresponds = halted-corresponds sc
   ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
+  ; frame-scope = frame-scope sc
+  ; heap-in-heap = heap-in-heap sc
   }
 
 -- | Changing both PC and flags preserves StateCorresponds
@@ -1001,6 +1050,8 @@ pc-flags-change-preserves-corresponds σ s new-pc new-flags sc = record
   ; halted-corresponds = halted-corresponds sc
   ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
+  ; frame-scope = frame-scope sc
+  ; heap-in-heap = heap-in-heap sc
   }
 
 ------------------------------------------------------------------------
@@ -1141,19 +1192,19 @@ r15-holds-alloc-loc alloc σ s fsc slot-zero r15-eq-rsp =
 --   - write-rsp-preserves-regs-correspond: rsp write preserves reg correspondence
 --   - write-rbp-preserves-regs-correspond: rbp write preserves reg correspondence
 --   - sub-rsp-preserves-state-corresponds: sub rsp preserves full correspondence
---   - push-preserves-state-corresponds: push preserves full correspondence
+--   - push-preserves-state-corresponds: push preserves full correspondence (PROVEN)
 --   - mov-rbp-preserves-state-corresponds: mov rbp preserves correspondence (PROVEN)
 --   - write-r14-both-preserves-corresponds: R14/r14 write preserves correspondence
 --   - write-r15-both-preserves-corresponds: R15/r15 write preserves correspondence
 --   - derive-alloc-loc-addr: allocation location address = rsp + next-slot * 8
 --   - r15-holds-alloc-loc: after mov r15 rsp, r15 holds the alloc location
 --   - write-disjoint-preserves-mem-corresponds: memory write with disjoint address
+--   - stack-disjoint-proof: push address ≠ tracked stack slot addresses (PROVEN)
+--     Uses frame-scope invariant + slot-addr-≥-base
+--   - heap-disjoint-proof: push address ≠ heap addresses (PROVEN)
+--     Uses stack-heap-addr-disjoint from Regions.agda
 --
--- POSTULATED (sound by region separation, see proof-architecture.md):
---   - stack-disjoint-proof: push address ≠ tracked stack slot addresses
---     (requires frame scope tracking: σ only tracks current/parent frames)
---   - heap-disjoint-proof: push address ≠ heap addresses
---     (requires region instantiation: connecting to Regions.agda)
+-- NO POSTULATES in this file!
 --
 -- These are the core lemmas. The full instruction simulation theorem
 -- requires additional plumbing for x86 program execution context.

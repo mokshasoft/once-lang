@@ -36,7 +36,7 @@ open import Data.List using (_++_; length; []; _∷_)
 open import Data.List.Properties using (length-++; ++-assoc)
 open import Data.Maybe using (just)
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ) renaming (+-assoc to ℕ-+-assoc)
+open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl) renaming (+-assoc to ℕ-+-assoc)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
@@ -50,9 +50,6 @@ open import Once.CCC.Target.X86v3.Types using (Type)
 open import Once.CCC.Target.X86.Correct.Star
   using (Star; refl*; star-single; _◅◅_)
 
--- Import SlotMachine
-open import Once.CCC.SlotMachine as SM using (LocState; writeReg; readReg; RDI; RAX)
-
 -- Instantiate with concrete x86v3 frame semantics
 open import Once.CCC.Target.X86v3.FrameInstantiation
   using (x86v3-frame-semantics; X86Frame; x86-frame-base)
@@ -60,6 +57,10 @@ open import Once.CCC.Target.X86v3.FrameInstantiation
 private
   FS' : FrameSemantics
   FS' = x86v3-frame-semantics
+
+-- Import SlotMachine
+open import Once.CCC.SlotMachine as SM using (LocState; writeReg; readReg; RDI; RAX; OnStack)
+open SM.MemOps {x86v3-frame-semantics} using (readLoc)
 
 -- Import x86 semantics
 open import Once.Target.X86.Semantics as X86Sem
@@ -315,6 +316,8 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
     postulate
       new-frame : X86Frame
       frame-base-eq : x86-frame-base new-frame ≡ x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size
+      -- Frame ordering: new frame is below old current frame (stack grows down)
+      new-frame-below : x86-frame-base new-frame ≤ x86-frame-base (current-frame sc)
 
     -- Chain: rbp in s' = rbp in s3 = rbp in s2 = s1.rsp = s.rsp - slot-size = frame-base new-frame
     -- PROVEN: traces rbp through all 4 instructions
@@ -325,6 +328,12 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
           (trans rbp-after-step1
             (trans rsp-after-push (sym frame-base-eq))))
 
+    -- Frame scope for new frame: new-frame base ≤ old current ≤ tracked frame bases
+    frame-scope' : ∀ f k loc' → readLoc σ' (OnStack f k) ≡ just loc' →
+                   x86-frame-base new-frame ≤ x86-frame-base f
+    frame-scope' f k loc' read-eq =
+      ≤-trans new-frame-below (frame-scope sc f k loc' read-eq)
+
     sc' : StateCorresponds σ' s'
     sc' = record
       { heap-base = heap-base'
@@ -334,6 +343,8 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
       ; halted-corresponds = halted-corresponds'
       ; current-frame = new-frame
       ; rbp-is-frame-base = rbp-is-frame-base'
+      ; frame-scope = frame-scope'
+      ; heap-in-heap = heap-in-heap sc  -- σ' = σ, heap-base unchanged
       }
 
   in s' , star-proof , h'-eq , pc'-eq , sc'
@@ -503,6 +514,8 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq =
       ; halted-corresponds = halted-corresponds'
       ; current-frame = current-frame sc
       ; rbp-is-frame-base = rbp-is-frame-base'
+      ; frame-scope = frame-scope sc  -- σ' stackMem unchanged, current-frame unchanged
+      ; heap-in-heap = heap-in-heap sc  -- σ' heapMem unchanged, heap-base unchanged
       }
 
   in s' , star-proof , h'-eq , pc'-eq , sc'
@@ -685,6 +698,10 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq =
     postulate
       restored-frame : X86Frame
       rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base restored-frame
+      -- Frame scope: restored frame (caller's) is ≥ tracked frame bases
+      -- The σ' stackMem is unchanged from σ, but restored-frame may be different from current-frame
+      restored-frame-scope : ∀ f k loc' → readLoc σ' (OnStack f k) ≡ just loc' →
+                             x86-frame-base restored-frame ≤ x86-frame-base f
 
     sc' : StateCorresponds σ' s'
     sc' = record
@@ -695,6 +712,8 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq =
       ; halted-corresponds = halted-corresponds'
       ; current-frame = restored-frame
       ; rbp-is-frame-base = rbp-is-frame-base'
+      ; frame-scope = restored-frame-scope
+      ; heap-in-heap = heap-in-heap sc  -- σ' heapMem unchanged, heap-base unchanged
       }
 
   in s' , star-proof , h'-eq , pc'-eq , sc'
