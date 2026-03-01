@@ -36,7 +36,7 @@ open import Data.List using (_++_; length; []; _∷_)
 open import Data.List.Properties using (length-++; ++-assoc)
 open import Data.Maybe using (just)
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl) renaming (+-assoc to ℕ-+-assoc)
+open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl; <-≤-trans; <⇒≢) renaming (+-assoc to ℕ-+-assoc)
 
 -- Import slot-level address reasoning
 open import Once.CCC.Target.X86.StackGrowth using (x86-grow; x86-grow-identity; x86-grow-injective)
@@ -56,7 +56,7 @@ open import Once.CCC.Target.X86.Correct.Star
 
 -- Instantiate with concrete x86v3 frame semantics
 open import Once.CCC.Target.X86v3.FrameInstantiation
-  using (x86v3-frame-semantics; X86Frame; x86-frame-base)
+  using (x86v3-frame-semantics; X86Frame; x86-frame-base; x86-slot-zero-at-base)
 
 private
   FS' : FrameSemantics
@@ -80,10 +80,20 @@ open import Once.Target.X86.Syntax
 
 -- Import SlotToX86 for StateCorresponds
 open import Once.CCC.Target.X86v3.Refinement.SlotToX86 as SlotToX86
-  using (StateCorresponds; RegsCorrespond; MemCorresponds; loc-to-addr; HeapBaseMap)
+  using (StateCorresponds; RegsCorrespond; MemCorresponds; loc-to-addr; HeapBaseMap;
+         AllocInvariant; rsp-is-frame-base;
+         write-disjoint-preserves-mem-corresponds; stack-loc-to-addr; heap-loc-to-addr;
+         derive-alloc-loc; derive-alloc-loc-addr-zero)
 open RegsCorrespond
 open MemCorresponds
 open StateCorresponds
+
+-- Import layout helpers for disjointness proofs
+open import Once.CCC.Target.X86.Layout using (slot-addr-≥-base; stack-heap-addr-disjoint; InStack)
+
+-- Import allocation types
+open import Once.CCC.Target.X86v3.Dispatcher.Allocation
+  using (AllocState; current-frame; next-slot; frame-capacity; next-heap-ref)
 
 -- Import CodeGen for compile-ir and compile-length
 open import Once.CCC.Target.X86v3.CodeGen.Compile
@@ -316,7 +326,15 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
 
     -- The new frame for pair execution
     -- Frame construction requires InStack proof (stack capacity tracking)
-    -- Postulate: a frame exists at the computed rbp value
+    --
+    -- NOTE: There are TWO potential frames here:
+    --   1. rbp-frame: base = rsp after push = s.rsp - 8 (for callee-saved invariant)
+    --   2. pair-frame: base = rsp after sub = s.rsp - 8 - 24 = s.rsp - 32 (for pair slots)
+    --
+    -- For StateCorresponds, we use rbp-frame since rbp-is-frame-base needs it.
+    -- For pair-loc, we need pair-frame (tracked separately via AllocInvariant).
+    --
+    -- Postulate: the rbp-frame exists at s.rsp - 8
     postulate
       new-frame : X86Frame
       frame-base-eq : x86-frame-base new-frame ≡ x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size
@@ -375,7 +393,8 @@ pair-middle-result : ∀ (prefix suffix : Program) (s : State)
   ∃[ s' ] (Star (prefix ++ pair-middle ++ suffix) s s'
          × X86Sem.State.halted s' ≡ false
          × X86Sem.State.pc s' ≡ length prefix +ℕ length pair-middle
-         × StateCorresponds (pair-middle-slot-state σ input-loc) s')
+         × StateCorresponds (pair-middle-slot-state σ input-loc) s'
+         × x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rsp)
 pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
   let
     -- The program
@@ -580,7 +599,14 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
       ; heap-in-heap = heap-in-heap sc  -- σ' heapMem unchanged, heap-base unchanged
       }
 
-  in s' , star-proof , h'-eq , pc'-eq , sc'
+    -- PROVEN: rsp unchanged through pair-middle
+    -- s1 = record s { memory = ...; pc = ... }, regs unchanged
+    -- s2 = record s1 { regs = writeReg rdi ...; pc = ... }, rsp unchanged by write to rdi
+    -- s' = s2
+    rsp-unchanged : x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rsp
+    rsp-unchanged = readReg-writeReg-diff (X86Sem.State.regs s1) rdi rsp input-backup-value (λ ())
+
+  in s' , star-proof , h'-eq , pc'-eq , sc' , rsp-unchanged
 
 ------------------------------------------------------------------------
 -- pair-cleanup-result: PROVEN using step-fetch-result pattern
@@ -596,14 +622,16 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
 
 pair-cleanup-result : ∀ (prefix suffix : Program) (s : State)
   (σ : LocState FS') (pair-loc : SM.ValueLocation FS') →
-  StateCorresponds σ s →
+  (sc : StateCorresponds σ s) →
   X86Sem.State.halted s ≡ false →
   X86Sem.State.pc s ≡ length prefix →
+  -- Precondition: rsp points to pair-loc (from AllocInvariant)
+  x86-readReg (X86Sem.State.regs s) rsp ≡ loc-to-addr (heap-base sc) pair-loc →
   ∃[ s' ] (Star (prefix ++ pair-cleanup ++ suffix) s s'
          × X86Sem.State.halted s' ≡ false
          × X86Sem.State.pc s' ≡ length prefix +ℕ length pair-cleanup
          × StateCorresponds (pair-cleanup-slot-state σ pair-loc) s')
-pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq =
+pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-corresponds =
   let
     -- The program
     prog = prefix ++ pair-cleanup ++ suffix
@@ -711,10 +739,7 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq =
     heap-base' = heap-base sc
 
     -- rax now holds rsp value (pair address)
-    -- Need: this corresponds to pair-loc
-    -- PairLocInvariant: rsp (before cleanup) = loc-to-addr pair-loc
-    postulate
-      pair-loc-corresponds : x86-readReg (X86Sem.State.regs s) rsp ≡ loc-to-addr heap-base' pair-loc
+    -- pair-loc-corresponds is now a parameter (provided by caller via AllocInvariant)
 
     -- rax in s' = rsp in s1 = rsp in s (unchanged through step 0)
     rax-is-pair-addr : x86-readReg (X86Sem.State.regs s') rax ≡ x86-readReg (X86Sem.State.regs s) rsp
@@ -798,10 +823,6 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       -- This is what pair-middle will restore to RDI for g
       input-loc = SM.readReg (SM.LocState.regs σ) RDI
 
-      -- pair-loc: where the pair will be allocated (placeholder for now)
-      -- In the full proof, this comes from AllocInvariant after stack allocation
-      pair-loc = SM.readReg (SM.LocState.regs σ) RDI  -- placeholder
-
       -- Define all prefixes/suffixes
       prefix-f = prefix ++ pair-setup
       suffix-f = pair-middle ++ prog-g ++ pair-cleanup ++ suffix
@@ -820,6 +841,22 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       (s1 , star-setup , h1 , pc1 , sc1) =
         pair-setup-result prefix suffix-after-setup s σ sc h-eq pc-eq
       σ1 = pair-setup-slot-state σ
+
+      -- pair-rsp: The rsp value after pair-setup, which is the pair frame base
+      -- After sub rsp, 24 in pair-setup: rsp = s.rsp - 8 - 24 = s.rsp - 32
+      -- This is where pair.fst will be stored ([rsp + 0])
+      pair-rsp : Word
+      pair-rsp = x86-readReg (X86Sem.State.regs s1) rsp
+
+      -- pair-frame: The frame for the pair allocation
+      -- Postulate: this frame exists in the stack region
+      postulate
+        pair-frame : X86Frame
+        pair-frame-base-eq : x86-frame-base pair-frame ≡ pair-rsp
+
+      -- pair-loc: The location where the pair is allocated (slot 0 of pair-frame)
+      pair-loc : SM.ValueLocation FS'
+      pair-loc = OnStack pair-frame 0
 
       -- Phase 2: Execute f
       pc1-for-f : X86Sem.State.pc s1 ≡ length prefix-f
@@ -844,7 +881,7 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
           x86-readMem (X86Sem.State.memory s2) (x86-readReg (X86Sem.State.regs s2) rsp +ℕ slots 2)
             ≡ just (loc-to-addr (heap-base sc2) input-loc)
 
-      (s3 , star-mid , h3 , pc3 , sc3) =
+      (s3 , star-mid , h3 , pc3 , sc3 , rsp-mid-unchanged) =
         pair-middle-result prefix-mid suffix-mid s2 σ2 input-loc sc2 h2 pc2-for-mid input-backup-preserved-through-f
       σ3 = pair-middle-slot-state σ2 input-loc
 
@@ -863,8 +900,36 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       pc4-for-clean : X86Sem.State.pc s4 ≡ length prefix-clean
       pc4-for-clean = pair-pc-g-to-clean prefix prog-f prog-g pc4
 
+      -- RSP preservation through f, g, and middle phases
+      -- The pair frame rsp is preserved because f and g restore their stack frames.
+      -- This is the key invariant that makes pair-loc-corresponds provable.
+      postulate
+        rsp-preserved-through-f : x86-readReg (X86Sem.State.regs s2) rsp ≡ pair-rsp
+        rsp-preserved-through-g : x86-readReg (X86Sem.State.regs s4) rsp ≡ pair-rsp
+
+      -- PROVEN: pair-middle preserves rsp, so if f preserves rsp, middle does too
+      rsp-preserved-through-middle : x86-readReg (X86Sem.State.regs s3) rsp ≡ pair-rsp
+      rsp-preserved-through-middle = trans rsp-mid-unchanged rsp-preserved-through-f
+
+      -- pair-loc-corresponds: rsp (at cleanup start) = loc-to-addr pair-loc
+      -- This is now SOUND because:
+      --   1. pair-loc = OnStack pair-frame 0
+      --   2. loc-to-addr (OnStack pair-frame 0) = x86-frame-base pair-frame = pair-rsp
+      --   3. rsp in s4 = pair-rsp (by rsp-preserved-through-g)
+      pair-loc-addr-eq : loc-to-addr (heap-base sc4) pair-loc ≡ pair-rsp
+      pair-loc-addr-eq =
+        -- loc-to-addr heap-base (OnStack pair-frame 0)
+        -- = stack-loc-to-addr pair-frame 0
+        -- = x86-slot-addr pair-frame 0
+        -- = x86-frame-base pair-frame (by slot-zero-at-base)
+        -- = pair-rsp (by pair-frame-base-eq)
+        trans (x86-slot-zero-at-base pair-frame) pair-frame-base-eq
+
+      pair-loc-corresponds : x86-readReg (X86Sem.State.regs s4) rsp ≡ loc-to-addr (heap-base sc4) pair-loc
+      pair-loc-corresponds = trans rsp-preserved-through-g (sym pair-loc-addr-eq)
+
       (s5 , star-clean , h5 , pc5 , sc5) =
-        pair-cleanup-result prefix-clean suffix s4 σ4 pair-loc sc4 h4 pc4-for-clean
+        pair-cleanup-result prefix-clean suffix s4 σ4 pair-loc sc4 h4 pc4-for-clean pair-loc-corresponds
       σ5 = pair-cleanup-slot-state σ4 pair-loc
 
       -- Chain all stars together
