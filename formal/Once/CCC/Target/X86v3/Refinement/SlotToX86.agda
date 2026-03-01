@@ -1142,15 +1142,18 @@ r15-holds-alloc-loc alloc σ s fsc slot-zero r15-eq-rsp =
 --   - write-rbp-preserves-regs-correspond: rbp write preserves reg correspondence
 --   - sub-rsp-preserves-state-corresponds: sub rsp preserves full correspondence
 --   - push-preserves-state-corresponds: push preserves full correspondence
---   - mov-rbp-preserves-state-corresponds: mov rbp preserves correspondence
+--   - mov-rbp-preserves-state-corresponds: mov rbp preserves correspondence (PROVEN)
 --   - write-r14-both-preserves-corresponds: R14/r14 write preserves correspondence
 --   - write-r15-both-preserves-corresponds: R15/r15 write preserves correspondence
 --   - derive-alloc-loc-addr: allocation location address = rsp + next-slot * 8
 --   - r15-holds-alloc-loc: after mov r15 rsp, r15 holds the alloc location
+--   - write-disjoint-preserves-mem-corresponds: memory write with disjoint address
 --
 -- POSTULATED (sound by region separation, see proof-architecture.md):
---   - push-mem-corresponds: push writes below rbp, SlotMachine above rbp
---   - mov-rbp-preserves-state-corresponds: rbp update during frame setup
+--   - stack-disjoint-proof: push address ≠ tracked stack slot addresses
+--     (requires frame scope tracking: σ only tracks current/parent frames)
+--   - heap-disjoint-proof: push address ≠ heap addresses
+--     (requires region instantiation: connecting to Regions.agda)
 --
 -- These are the core lemmas. The full instruction simulation theorem
 -- requires additional plumbing for x86 program execution context.
