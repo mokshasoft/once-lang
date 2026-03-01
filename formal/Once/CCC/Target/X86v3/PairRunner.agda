@@ -89,7 +89,8 @@ open import Once.CCC.Target.X86v3.CodeGen.Compile
 open import Once.Target.X86.ExecLemmas
   using (step-fetch-result; fetch-++-right;
          push-reg-result; pop-reg-result; mov-reg-reg-result;
-         mov-reg-mem-result; mov-mem-reg-result; sub-imm-reg-result)
+         mov-reg-mem-result; mov-mem-reg-result; sub-imm-reg-result;
+         readReg-writeReg-same; readReg-writeReg-diff)
 
 -- Import shared IR runner types
 open import Once.CCC.Target.X86v3.IRRunnerTypes public
@@ -283,9 +284,46 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
 
     -- rbp is set to frame base in step 1 (mov rbp, rsp)
     -- After setup, rbp points to the new frame
+    -- PROVEN: trace rbp through the 4 instructions
+
+    -- Step 0 (push rbp): writes rsp, rbp unchanged
+    -- Step 1 (mov rbp, rsp): rbp := s1.rsp = s.rsp - slot-size
+    -- Step 2 (sub rsp, N): writes rsp, rbp unchanged
+    -- Step 3 (mov [rsp+16], rdi): writes memory, rbp unchanged
+
+    -- After step 1, rbp = s1.rsp
+    rbp-after-step1 : x86-readReg (X86Sem.State.regs s2) rbp ≡ x86-readReg (X86Sem.State.regs s1) rsp
+    rbp-after-step1 = readReg-writeReg-same (X86Sem.State.regs s1) rbp (x86-readReg (X86Sem.State.regs s1) rsp)
+
+    -- s1.rsp = s.rsp - slot-size (from push)
+    rsp-after-push : x86-readReg (X86Sem.State.regs s1) rsp ≡ x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size
+    rsp-after-push = readReg-writeReg-same (X86Sem.State.regs s) rsp (x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size)
+
+    -- Step 2 (sub rsp) doesn't change rbp
+    rbp-unchanged-step2 : x86-readReg (X86Sem.State.regs s3) rbp ≡ x86-readReg (X86Sem.State.regs s2) rbp
+    rbp-unchanged-step2 = readReg-writeReg-diff (X86Sem.State.regs s2) rsp rbp
+                            (x86-readReg (X86Sem.State.regs s2) rsp ∸ slots 3) (λ ())
+
+    -- Step 3 (mov to memory) doesn't change registers
+    -- s4 = s' only changes memory, regs unchanged
+    rbp-unchanged-step3 : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s3) rbp
+    rbp-unchanged-step3 = refl  -- s4 = record s3 { memory = ... }, regs unchanged
+
+    -- The new frame for pair execution
+    -- Frame construction requires InStack proof (stack capacity tracking)
+    -- Postulate: a frame exists at the computed rbp value
     postulate
       new-frame : X86Frame
-      rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base new-frame
+      frame-base-eq : x86-frame-base new-frame ≡ x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size
+
+    -- Chain: rbp in s' = rbp in s3 = rbp in s2 = s1.rsp = s.rsp - slot-size = frame-base new-frame
+    -- PROVEN: traces rbp through all 4 instructions
+    rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base new-frame
+    rbp-is-frame-base' =
+      trans rbp-unchanged-step3
+        (trans rbp-unchanged-step2
+          (trans rbp-after-step1
+            (trans rsp-after-push (sym frame-base-eq))))
 
     sc' : StateCorresponds σ' s'
     sc' = record
@@ -445,8 +483,16 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq =
 
     -- rbp unchanged (we don't modify rbp in pair-middle)
     -- Frame stays the same as input
-    postulate
-      rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base (current-frame sc)
+    -- Proof: s' = s2, s2 only writes to rdi, s1 only writes to memory
+    rbp-after-s2 : x86-readReg (X86Sem.State.regs s2) rbp ≡ x86-readReg (X86Sem.State.regs s1) rbp
+    rbp-after-s2 = readReg-writeReg-diff (X86Sem.State.regs s1) rdi rbp input-backup-value (λ ())
+
+    -- s1 = record s { memory = ...; pc = ... }, regs unchanged
+    rbp-s1-eq-s : x86-readReg (X86Sem.State.regs s1) rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
+    rbp-s1-eq-s = refl
+
+    rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base (current-frame sc)
+    rbp-is-frame-base' = trans rbp-after-s2 (trans rbp-s1-eq-s (rbp-is-frame-base sc))
 
     sc' : StateCorresponds σ' s'
     sc' = record
