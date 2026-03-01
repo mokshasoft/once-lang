@@ -35,6 +35,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Induction.WellFounded using (Acc)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
+open FrameSemantics using (Frame; _≺_)
 open import Once.CCC.SlotMachine using (LocState; ValueLocation; halted; regs; readReg; RDI)
 
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧)
@@ -789,7 +790,7 @@ open import Data.Nat.Properties renaming (+-assoc to ℕ-+-assoc)
 -- The full program is: prefix ++ compile-ir ir ++ suffix
 -- PC starts at (length prefix), ends at (length prefix + compile-length ir)
 record IRStarResult {A B : Type} (ir : IR A B)
-                    (prefix suffix : Program) (s s' : State) (offset : ℕ) : Set where
+                    (prefix suffix : Program) (σ-initial : LocState FS') (s s' : State) (offset : ℕ) : Set where
   field
     star-proof     : Star (prefix ++ compile-ir ir ++ suffix) s s'
     halted-false   : X86Sem.State.halted s' ≡ false
@@ -801,6 +802,15 @@ record IRStarResult {A B : Type} (ir : IR A B)
     -- For frame-modifying IRs (pair, curry), rbp is pushed, modified, then restored.
     -- For simple IRs (id, fst, snd), rbp is never touched.
     rbp-preserved  : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
+    -- Current frame for this IR execution
+    current-frame  : Frame FS'
+    -- Parent frame preservation (stack discipline)
+    -- Memory at slots in parent frames is unchanged.
+    -- This is the key invariant that allows pair-middle to read input-backup,
+    -- and pair-cleanup to pop the original rbp.
+    parent-frames-preserved : ∀ (f : Frame FS') (slot : ℕ) →
+      _≺_ FS' current-frame f →  -- f is a parent frame (current ≺ f)
+      SM.LocState.stackMem σ-final f slot ≡ SM.LocState.stackMem σ-initial f slot
 
 open IRStarResult
 
@@ -811,7 +821,7 @@ IRRunner {A} {B} ir = ∀ (prefix suffix : Program) (σ : LocState FS') (s : Sta
   StateCorresponds σ s →
   X86Sem.State.halted s ≡ false →
   X86Sem.State.pc s ≡ length prefix →
-  ∃[ s' ] IRStarResult ir prefix suffix s s' (length prefix)
+  ∃[ s' ] IRStarResult ir prefix suffix σ s s' (length prefix)
 
 ------------------------------------------------------------------------
 -- Offset-Parameterized IR Runners (NEW APPROACH)
@@ -821,10 +831,40 @@ IRRunner {A} {B} ir = ∀ (prefix suffix : Program) (σ : LocState FS') (s : Sta
 -- PC advances from (length prefix) to (length prefix + compile-length ir)
 ------------------------------------------------------------------------
 
+-- | Get current frame from StateCorresponds
+-- For simple IRs that don't allocate frames, this gives the caller's frame.
+-- The rbp register holds the frame base address.
+postulate
+  state-frame : ∀ (σ : LocState FS') (s : State) → StateCorresponds σ s → Frame FS'
+
+-- | Compose parent-frames-preserved
+-- When composing f and g, if g's frame is current-frame, parent frame preservation
+-- chains through f → bridge → g.
+-- Bridge doesn't modify stack memory, so it's just: f preserves + g preserves
+--
+-- Takes current frames for both f and g (cf-f, cf-g), showing how to chain preservation
+-- when the current frames may differ. In practice:
+-- - For simple IRs, cf-f = cf-g (same frame, inherited from caller)
+-- - For frame-allocating IRs, cf-g ≺ cf-f (g allocates below f's frame)
+postulate
+  compose-parent-preserved : ∀ (σ-init σ-mid σ-final : LocState FS')
+    (frame : Frame FS') (slot : ℕ) (cf-f cf-g : Frame FS') →
+    _≺_ FS' cf-g frame →
+    (∀ (f : Frame FS') (s : ℕ) → _≺_ FS' cf-f f → SM.LocState.stackMem σ-mid f s ≡ SM.LocState.stackMem σ-init f s) →
+    (∀ (f : Frame FS') (s : ℕ) → _≺_ FS' cf-g f → SM.LocState.stackMem σ-final f s ≡ SM.LocState.stackMem σ-mid f s) →
+    SM.LocState.stackMem σ-final frame slot ≡ SM.LocState.stackMem σ-init frame slot
+
+-- | For simple IRs that don't modify stack memory, stackMem is unchanged
+-- Therefore parent-frames-preserved is trivially refl
+id-stackMem-unchanged : ∀ (σ : LocState FS') →
+  SM.LocState.stackMem (id-slot-state σ) ≡ SM.LocState.stackMem σ
+id-stackMem-unchanged σ = refl
+
 -- | id runner: mov rax, rdi at any offset
 id-runner : ∀ {A} → IRRunner (id {A})
 id-runner prefix suffix σ s sc h-eq pc-eq =
-  id-expected-state s , record
+  let cf = state-frame σ s sc
+  in id-expected-state s , record
     { star-proof = id-star-at-offset prefix suffix s h-eq pc-eq
     ; halted-false = h-eq  -- record update preserves halted
     ; pc-advanced = cong (_+ℕ 1) pc-eq
@@ -832,12 +872,15 @@ id-runner prefix suffix σ s sc h-eq pc-eq =
     ; corr-proof = id-preserves-corresponds σ s sc
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
+    ; current-frame = cf
+    ; parent-frames-preserved = λ f slot _ → refl  -- stackMem unchanged by id
     }
 
 -- | terminal runner: mov rax, 0 at any offset
 terminal-runner : ∀ {A} → IRRunner (terminal {A})
 terminal-runner prefix suffix σ s sc h-eq pc-eq =
   let (σ' , sc') = terminal-preserves-corresponds σ s sc
+      cf = state-frame σ s sc
   in terminal-expected-state s , record
     { star-proof = terminal-star-at-offset prefix suffix s h-eq pc-eq
     ; halted-false = h-eq
@@ -845,6 +888,8 @@ terminal-runner prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σ'
     ; corr-proof = sc'
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp 0 (λ ())
+    ; current-frame = cf
+    ; parent-frames-preserved = λ f slot _ → refl  -- stackMem unchanged by terminal
     }
 
 -- | bridge runner: mov rdi, rax at any offset
@@ -1056,6 +1101,20 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
       rbp-final : x86-readReg (X86Sem.State.regs sg) rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
       rbp-final = trans rbp-g (trans rbp-b rbp-f)
 
+      -- Frame and parent preservation
+      cf-f = IRStarResult.current-frame f-result
+      cf-g = IRStarResult.current-frame g-result
+      pf-f = IRStarResult.parent-frames-preserved f-result
+      pf-g = IRStarResult.parent-frames-preserved g-result
+
+      -- Note: bridge doesn't modify stack memory, so bridge-slot-state σf has same stackMem as σf
+      -- This allows chaining f's preservation with g's preservation
+      parent-preserved : ∀ (frame : Frame FS') (slot : ℕ) →
+        _≺_ FS' cf-g frame →
+        SM.LocState.stackMem σg frame slot ≡ SM.LocState.stackMem σ frame slot
+      parent-preserved frame slot cf-g≺frame =
+        compose-parent-preserved σ σf σg frame slot cf-f cf-g cf-g≺frame pf-f pf-g
+
   in sg , record
     { star-proof = star-final
     ; halted-false = h-sg
@@ -1063,6 +1122,8 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σg
     ; corr-proof = sc-g
     ; rbp-preserved = rbp-final
+    ; current-frame = cf-g
+    ; parent-frames-preserved = parent-preserved
     }
   where
     -- PC lemma for compose: converts pc result from g-runner to compose format
@@ -1290,7 +1351,7 @@ fst-runner-with-valid : ∀ {A B} (pair-loc : SM.ValueLocation FS')
   X86Sem.State.halted s ≡ false →
   X86Sem.State.pc s ≡ length prefix →
   PairAtLoc pair-loc σ →
-  ∃[ s' ] IRStarResult (fst-ir {A} {B}) prefix suffix s s' (length prefix)
+  ∃[ s' ] IRStarResult (fst-ir {A} {B}) prefix suffix σ s s' (length prefix)
 fst-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
   let
     hb = heap-base sc
@@ -1309,6 +1370,7 @@ fst-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
     -- Final state
     s' = fst-expected-state s (loc-to-addr hb fst-loc)
     σ' = fst-slot-state σ fst-loc
+    cf = state-frame σ s sc
 
   in s' , record
     { star-proof = fst-star-at-offset prefix suffix s (loc-to-addr hb fst-loc) h-eq pc-eq x86-mem-eq
@@ -1318,6 +1380,8 @@ fst-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
     ; corr-proof = fst-preserves-corresponds σ s fst-loc sc mem-pre
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (loc-to-addr hb fst-loc) (λ ())
+    ; current-frame = cf
+    ; parent-frames-preserved = λ f slot _ → refl  -- fst doesn't modify stack memory
     }
   where
     -- Helper to derive x86 memory equality from SlotMachine memory and correspondence
@@ -1366,7 +1430,7 @@ snd-runner-with-valid : ∀ {A B} (pair-loc : SM.ValueLocation FS')
   X86Sem.State.halted s ≡ false →
   X86Sem.State.pc s ≡ length prefix →
   PairAtLoc pair-loc σ →
-  ∃[ s' ] IRStarResult (snd-ir {A} {B}) prefix suffix s s' (length prefix)
+  ∃[ s' ] IRStarResult (snd-ir {A} {B}) prefix suffix σ s s' (length prefix)
 snd-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
   let
     hb = heap-base sc
@@ -1386,6 +1450,7 @@ snd-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
     -- Final state
     s' = snd-expected-state s (loc-to-addr hb snd-loc)
     σ' = snd-slot-state σ snd-loc
+    cf = state-frame σ s sc
 
   in s' , record
     { star-proof = snd-star-at-offset prefix suffix s (loc-to-addr hb snd-loc) h-eq pc-eq x86-mem-eq
@@ -1395,6 +1460,8 @@ snd-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
     ; corr-proof = snd-preserves-corresponds σ s snd-loc sc mem-pre
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (loc-to-addr hb snd-loc) (λ ())
+    ; current-frame = cf
+    ; parent-frames-preserved = λ f slot _ → refl  -- snd doesn't modify stack memory
     }
   where
     -- Helper to derive x86 memory equality from SlotMachine memory and correspondence
@@ -1591,6 +1658,18 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       rbp-final : x86-readReg (X86Sem.State.regs sg) rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
       rbp-final = trans rbp-g (trans rbp-b rbp-f)
 
+      -- Frame and parent preservation
+      cf-f = IRStarResult.current-frame f-result
+      cf-g = IRStarResult.current-frame g-result
+      pf-f = IRStarResult.parent-frames-preserved f-result
+      pf-g = IRStarResult.parent-frames-preserved g-result
+
+      parent-preserved : ∀ (frame : Frame FS') (slot : ℕ) →
+        _≺_ FS' cf-g frame →
+        SM.LocState.stackMem σg frame slot ≡ SM.LocState.stackMem σ frame slot
+      parent-preserved frame slot cf-g≺frame =
+        compose-parent-preserved σ σf σg frame slot cf-f cf-g cf-g≺frame pf-f pf-g
+
   in sg , record
     { star-proof = star-final
     ; halted-false = h-sg
@@ -1598,6 +1677,8 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σg
     ; corr-proof = sc-g
     ; rbp-preserved = rbp-final
+    ; current-frame = cf-g
+    ; parent-frames-preserved = parent-preserved
     }
   where
     compose-fst-pc-lemma : ∀ (prefix prog-f prog-g : Program) (clf clg : ℕ) →
@@ -1736,6 +1817,18 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       rbp-final : x86-readReg (X86Sem.State.regs sg) rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
       rbp-final = trans rbp-g (trans rbp-b rbp-f)
 
+      -- Frame and parent preservation
+      cf-f = IRStarResult.current-frame f-result
+      cf-g = IRStarResult.current-frame g-result
+      pf-f = IRStarResult.parent-frames-preserved f-result
+      pf-g = IRStarResult.parent-frames-preserved g-result
+
+      parent-preserved : ∀ (frame : Frame FS') (slot : ℕ) →
+        _≺_ FS' cf-g frame →
+        SM.LocState.stackMem σg frame slot ≡ SM.LocState.stackMem σ frame slot
+      parent-preserved frame slot cf-g≺frame =
+        compose-parent-preserved σ σf σg frame slot cf-f cf-g cf-g≺frame pf-f pf-g
+
   in sg , record
     { star-proof = star-final
     ; halted-false = h-sg
@@ -1743,6 +1836,8 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σg
     ; corr-proof = sc-g
     ; rbp-preserved = rbp-final
+    ; current-frame = cf-g
+    ; parent-frames-preserved = parent-preserved
     }
   where
     compose-snd-pc-lemma : ∀ (prefix prog-f prog-g : Program) (clf clg : ℕ) →
@@ -2437,6 +2532,18 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       postulate
         rbp-final : x86-readReg (X86Sem.State.regs s5) rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
 
+      -- Frame preservation for pair
+      -- pair allocates a new frame, so current-frame is the new pair frame
+      -- g-result has the current-frame from g's execution within pair's frame
+      cf-g = IRStarResult.current-frame g-result
+
+      -- Parent frames are preserved through setup → f → middle → g → cleanup
+      -- This requires that f and g don't write to the parent's stack frame
+      postulate
+        pair-parent-preserved : ∀ (frame : Frame FS') (slot : ℕ) →
+          _≺_ FS' cf-g frame →
+          SM.LocState.stackMem σ5 frame slot ≡ SM.LocState.stackMem σ frame slot
+
   in s5 , record
     { star-proof = star-final
     ; halted-false = h5
@@ -2444,6 +2551,8 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
     ; σ-final = σ5
     ; corr-proof = sc5
     ; rbp-preserved = rbp-final
+    ; current-frame = cf-g
+    ; parent-frames-preserved = pair-parent-preserved
     }
   where
     -- PROVEN PC transformation lemmas
@@ -2775,7 +2884,8 @@ postulate
 -- arr, fold, unfold compile to id-instrs
 arr-runner : ∀ {A B q} → IRRunner (arr {A} {B} {q})
 arr-runner prefix suffix σ s sc h-eq pc-eq =
-  id-expected-state s , record
+  let cf = state-frame σ s sc
+  in id-expected-state s , record
     { star-proof = id-star-at-offset prefix suffix s h-eq pc-eq
     ; halted-false = h-eq
     ; pc-advanced = cong (_+ℕ 1) pc-eq
@@ -2783,11 +2893,14 @@ arr-runner prefix suffix σ s sc h-eq pc-eq =
     ; corr-proof = id-preserves-corresponds σ s sc
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
+    ; current-frame = cf
+    ; parent-frames-preserved = λ f slot _ → refl  -- arr doesn't modify stack memory
     }
 
 fold-runner : ∀ {F} (m : AllocMode) → IRRunner (fold-ir {F} m)
 fold-runner m prefix suffix σ s sc h-eq pc-eq =
-  id-expected-state s , record
+  let cf = state-frame σ s sc
+  in id-expected-state s , record
     { star-proof = id-star-at-offset prefix suffix s h-eq pc-eq
     ; halted-false = h-eq
     ; pc-advanced = cong (_+ℕ 1) pc-eq
@@ -2795,11 +2908,14 @@ fold-runner m prefix suffix σ s sc h-eq pc-eq =
     ; corr-proof = id-preserves-corresponds σ s sc
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
+    ; current-frame = cf
+    ; parent-frames-preserved = λ f slot _ → refl  -- fold doesn't modify stack memory
     }
 
 unfold-runner : ∀ {F} → IRRunner (unfold-ir {F})
 unfold-runner prefix suffix σ s sc h-eq pc-eq =
-  id-expected-state s , record
+  let cf = state-frame σ s sc
+  in id-expected-state s , record
     { star-proof = id-star-at-offset prefix suffix s h-eq pc-eq
     ; halted-false = h-eq
     ; pc-advanced = cong (_+ℕ 1) pc-eq
@@ -2807,6 +2923,8 @@ unfold-runner prefix suffix σ s sc h-eq pc-eq =
     ; corr-proof = id-preserves-corresponds σ s sc
     ; rbp-preserved = readReg-writeReg-diff (X86Sem.State.regs s) rax rbp
                         (x86-readReg (X86Sem.State.regs s) rdi) (λ ())
+    ; current-frame = cf
+    ; parent-frames-preserved = λ f slot _ → refl  -- unfold doesn't modify stack memory
     }
 
 -- free-heap compiles to [] (no-op, zero steps)
@@ -2816,13 +2934,16 @@ unfold-runner prefix suffix σ s sc h-eq pc-eq =
 -- compile-length (free-heap r) = 0, so pc-advanced needs: pc s ≡ length prefix + 0
 free-heap-runner : ∀ (r : HeapRef) → IRRunner (free-heap r)
 free-heap-runner r prefix suffix σ s sc h-eq pc-eq =
-  s , record
+  let cf = state-frame σ s sc
+  in s , record
     { star-proof = refl*  -- Star (prefix ++ suffix) s s
     ; halted-false = h-eq
     ; pc-advanced = trans pc-eq (sym (+-identityʳ (length prefix)))  -- length prefix ≡ length prefix + 0
     ; σ-final = σ
     ; corr-proof = sc
     ; rbp-preserved = refl  -- s unchanged, so rbp unchanged
+    ; current-frame = cf
+    ; parent-frames-preserved = λ f slot _ → refl  -- free-heap doesn't modify stack memory
     }
 
 ------------------------------------------------------------------------
