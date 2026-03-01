@@ -311,6 +311,7 @@ id-preserves-corresponds σ s sc = record
                         (regs-correspond sc)
   ; mem-corresponds = mov-mem-corresponds (heap-base sc) RAX RDI σ (X86Sem.State.memory s) (mem-corresponds sc)
   ; halted-corresponds = halted-corresponds sc
+  ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
   }
 
@@ -354,6 +355,7 @@ terminal-preserves-corresponds σ s sc =
     ; regs-correspond = terminal-regs-correspond
     ; mem-corresponds = terminal-mem-corresponds
     ; halted-corresponds = halted-corresponds sc
+    ; current-frame = current-frame sc
     ; rbp-is-frame-base = rbp-is-frame-base sc
     }
   where
@@ -420,6 +422,7 @@ fst-preserves-corresponds σ s fst-loc sc mem-pre = record
   ; regs-correspond = fst-regs-correspond
   ; mem-corresponds = fst-mem-corresponds
   ; halted-corresponds = halted-corresponds sc
+  ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
   }
   where
@@ -562,6 +565,7 @@ snd-preserves-corresponds σ s snd-loc sc mem-pre = record
   ; regs-correspond = snd-regs-correspond
   ; mem-corresponds = snd-mem-corresponds
   ; halted-corresponds = halted-corresponds sc
+  ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
   }
   where
@@ -716,6 +720,7 @@ bridge-preserves-corresponds σ s sc = record
   ; regs-correspond = bridge-regs-correspond
   ; mem-corresponds = bridge-mem-corresponds
   ; halted-corresponds = halted-corresponds sc
+  ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
   }
   where
@@ -834,25 +839,35 @@ IRRunner {A} {B} ir = ∀ (prefix suffix : Program) (σ : LocState FS') (s : Sta
 -- | Get current frame from StateCorresponds
 -- For simple IRs that don't allocate frames, this gives the caller's frame.
 -- The rbp register holds the frame base address.
-postulate
-  state-frame : ∀ (σ : LocState FS') (s : State) → StateCorresponds σ s → Frame FS'
+-- PROVEN: current-frame is now a field in StateCorresponds
+state-frame : ∀ (σ : LocState FS') (s : State) → StateCorresponds σ s → Frame FS'
+state-frame σ s sc = current-frame sc
 
 -- | Compose parent-frames-preserved
 -- When composing f and g, if g's frame is current-frame, parent frame preservation
 -- chains through f → bridge → g.
 -- Bridge doesn't modify stack memory, so it's just: f preserves + g preserves
 --
--- Takes current frames for both f and g (cf-f, cf-g), showing how to chain preservation
--- when the current frames may differ. In practice:
--- - For simple IRs, cf-f = cf-g (same frame, inherited from caller)
--- - For frame-allocating IRs, cf-g ≺ cf-f (g allocates below f's frame)
-postulate
-  compose-parent-preserved : ∀ (σ-init σ-mid σ-final : LocState FS')
-    (frame : Frame FS') (slot : ℕ) (cf-f cf-g : Frame FS') →
-    _≺_ FS' cf-g frame →
-    (∀ (f : Frame FS') (s : ℕ) → _≺_ FS' cf-f f → SM.LocState.stackMem σ-mid f s ≡ SM.LocState.stackMem σ-init f s) →
-    (∀ (f : Frame FS') (s : ℕ) → _≺_ FS' cf-g f → SM.LocState.stackMem σ-final f s ≡ SM.LocState.stackMem σ-mid f s) →
-    SM.LocState.stackMem σ-final frame slot ≡ SM.LocState.stackMem σ-init frame slot
+-- Key invariant: cf-f ≡ cf-g (IRs restore their frame before returning)
+-- - Simple IRs: cf-f = cf-g = caller's frame (they don't change it)
+-- - Frame-allocating IRs (pair, curry): push/pop rbp restores caller's frame
+--
+-- PROVEN: Uses transitivity of equality
+compose-parent-preserved : ∀ (σ-init σ-mid σ-final : LocState FS')
+  (frame : Frame FS') (slot : ℕ) (cf-f cf-g : Frame FS') →
+  cf-f ≡ cf-g →  -- IRs restore their frame
+  _≺_ FS' cf-g frame →
+  (∀ (f : Frame FS') (s : ℕ) → _≺_ FS' cf-f f → SM.LocState.stackMem σ-mid f s ≡ SM.LocState.stackMem σ-init f s) →
+  (∀ (f : Frame FS') (s : ℕ) → _≺_ FS' cf-g f → SM.LocState.stackMem σ-final f s ≡ SM.LocState.stackMem σ-mid f s) →
+  SM.LocState.stackMem σ-final frame slot ≡ SM.LocState.stackMem σ-init frame slot
+compose-parent-preserved σ-init σ-mid σ-final frame slot cf-f cf-g cf-f≡cf-g cf-g≺frame pf-f pf-g =
+  let -- Step 1: σ-final frame slot ≡ σ-mid frame slot (by pf-g)
+      step1 = pf-g frame slot cf-g≺frame
+      -- Step 2: σ-mid frame slot ≡ σ-init frame slot (by pf-f, using cf-f ≡ cf-g)
+      cf-f≺frame : _≺_ FS' cf-f frame
+      cf-f≺frame = subst (λ x → _≺_ FS' x frame) (sym cf-f≡cf-g) cf-g≺frame
+      step2 = pf-f frame slot cf-f≺frame
+  in trans step1 step2
 
 -- | For simple IRs that don't modify stack memory, stackMem is unchanged
 -- Therefore parent-frames-preserved is trivially refl
@@ -1107,13 +1122,20 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
       pf-f = IRStarResult.parent-frames-preserved f-result
       pf-g = IRStarResult.parent-frames-preserved g-result
 
+      -- IRs restore their frame before returning
+      -- Simple IRs: use state-frame which returns current-frame sc
+      -- Frame-allocating IRs: push/pop rbp restores the original frame
+      -- TODO: This follows from FrameInvariant - prove when that's implemented
+      postulate
+        cf-f≡cf-g : cf-f ≡ cf-g
+
       -- Note: bridge doesn't modify stack memory, so bridge-slot-state σf has same stackMem as σf
       -- This allows chaining f's preservation with g's preservation
       parent-preserved : ∀ (frame : Frame FS') (slot : ℕ) →
         _≺_ FS' cf-g frame →
         SM.LocState.stackMem σg frame slot ≡ SM.LocState.stackMem σ frame slot
       parent-preserved frame slot cf-g≺frame =
-        compose-parent-preserved σ σf σg frame slot cf-f cf-g cf-g≺frame pf-f pf-g
+        compose-parent-preserved σ σf σg frame slot cf-f cf-g cf-f≡cf-g cf-g≺frame pf-f pf-g
 
   in sg , record
     { star-proof = star-final
@@ -1664,11 +1686,14 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       pf-f = IRStarResult.parent-frames-preserved f-result
       pf-g = IRStarResult.parent-frames-preserved g-result
 
+      postulate
+        cf-f≡cf-g : cf-f ≡ cf-g
+
       parent-preserved : ∀ (frame : Frame FS') (slot : ℕ) →
         _≺_ FS' cf-g frame →
         SM.LocState.stackMem σg frame slot ≡ SM.LocState.stackMem σ frame slot
       parent-preserved frame slot cf-g≺frame =
-        compose-parent-preserved σ σf σg frame slot cf-f cf-g cf-g≺frame pf-f pf-g
+        compose-parent-preserved σ σf σg frame slot cf-f cf-g cf-f≡cf-g cf-g≺frame pf-f pf-g
 
   in sg , record
     { star-proof = star-final
@@ -1823,11 +1848,14 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
       pf-f = IRStarResult.parent-frames-preserved f-result
       pf-g = IRStarResult.parent-frames-preserved g-result
 
+      postulate
+        cf-f≡cf-g : cf-f ≡ cf-g
+
       parent-preserved : ∀ (frame : Frame FS') (slot : ℕ) →
         _≺_ FS' cf-g frame →
         SM.LocState.stackMem σg frame slot ≡ SM.LocState.stackMem σ frame slot
       parent-preserved frame slot cf-g≺frame =
-        compose-parent-preserved σ σf σg frame slot cf-f cf-g cf-g≺frame pf-f pf-g
+        compose-parent-preserved σ σf σg frame slot cf-f cf-g cf-f≡cf-g cf-g≺frame pf-f pf-g
 
   in sg , record
     { star-proof = star-final
@@ -2069,10 +2097,11 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
     halted-corresponds' : SM.LocState.halted σ' ≡ X86Sem.State.halted s'
     halted-corresponds' = halted-corresponds sc
 
-    -- rbp is set to frame base in step 1
+    -- rbp is set to frame base in step 1 (mov rbp, rsp)
+    -- After setup, rbp points to the new frame
     postulate
-      rbp-is-frame-base' : ∀ (frame : X86Frame) →
-        x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base frame
+      new-frame : X86Frame
+      rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base new-frame
 
     sc' : StateCorresponds σ' s'
     sc' = record
@@ -2081,6 +2110,7 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
       ; regs-correspond = regs-correspond'
       ; mem-corresponds = mem-corresponds'
       ; halted-corresponds = halted-corresponds'
+      ; current-frame = new-frame
       ; rbp-is-frame-base = rbp-is-frame-base'
       }
 
@@ -2230,9 +2260,9 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq =
     halted-corresponds' = halted-corresponds sc
 
     -- rbp unchanged (we don't modify rbp in pair-middle)
+    -- Frame stays the same as input
     postulate
-      rbp-is-frame-base' : ∀ (frame : X86Frame) →
-        x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base frame
+      rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base (current-frame sc)
 
     sc' : StateCorresponds σ' s'
     sc' = record
@@ -2241,6 +2271,7 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq =
       ; regs-correspond = regs-correspond'
       ; mem-corresponds = mem-corresponds'
       ; halted-corresponds = halted-corresponds'
+      ; current-frame = current-frame sc
       ; rbp-is-frame-base = rbp-is-frame-base'
       }
 
@@ -2419,10 +2450,11 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq =
     halted-corresponds' : SM.LocState.halted σ' ≡ X86Sem.State.halted s'
     halted-corresponds' = halted-corresponds sc
 
-    -- rbp restored to original value
+    -- rbp restored to original value (caller's frame)
+    -- After cleanup, rbp points back to the caller's frame
     postulate
-      rbp-is-frame-base' : ∀ (frame : X86Frame) →
-        x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base frame
+      restored-frame : X86Frame
+      rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base restored-frame
 
     sc' : StateCorresponds σ' s'
     sc' = record
@@ -2431,6 +2463,7 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq =
       ; regs-correspond = regs-correspond'
       ; mem-corresponds = mem-corresponds'
       ; halted-corresponds = halted-corresponds'
+      ; current-frame = restored-frame
       ; rbp-is-frame-base = rbp-is-frame-base'
       }
 

@@ -329,9 +329,12 @@ record StateCorresponds (σ : LocState FS) (s : State) : Set where
     -- Halted flag correspondence
     halted-corresponds : SlotMachine.LocState.halted σ ≡ X86Sem.State.halted s
 
+    -- Current frame (existentially quantified, not universally)
+    -- This is THE frame that rbp points to, not "any" frame
+    current-frame : X86Frame
+
     -- rbp holds current frame base (for frame-relative addressing)
-    rbp-is-frame-base : ∀ (current-frame : X86Frame) →
-      x86-readReg (X86Sem.State.regs s) rbp ≡ x86-frame-base current-frame
+    rbp-is-frame-base : x86-readReg (X86Sem.State.regs s) rbp ≡ x86-frame-base current-frame
 
 open StateCorresponds
 
@@ -786,9 +789,10 @@ sub-rsp-preserves-state-corresponds σ s new-rsp sc = record
                         (SlotMachine.LocState.regs σ) (X86Sem.State.regs s) new-rsp (regs-correspond sc)
   ; mem-corresponds = mem-corresponds sc
   ; halted-corresponds = halted-corresponds sc
-  ; rbp-is-frame-base = λ frame →
+  ; current-frame = current-frame sc  -- frame unchanged
+  ; rbp-is-frame-base =
       trans (readReg-writeReg-diff (X86Sem.State.regs s) rsp rbp new-rsp (λ ()))
-            (rbp-is-frame-base sc frame)
+            (rbp-is-frame-base sc)
   }
 
 -- | Push preserves StateCorresponds
@@ -811,9 +815,10 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc = record
   ; mem-corresponds = push-mem-corresponds (heap-base sc) σ (X86Sem.State.memory s)
                         new-rsp pushed-val (mem-corresponds sc)
   ; halted-corresponds = halted-corresponds sc
-  ; rbp-is-frame-base = λ frame →
+  ; current-frame = current-frame sc  -- frame unchanged
+  ; rbp-is-frame-base =
       trans (readReg-writeReg-diff (X86Sem.State.regs s) rsp rbp new-rsp (λ ()))
-            (rbp-is-frame-base sc frame)
+            (rbp-is-frame-base sc)
   }
   where
     -- Push writes below rbp, SlotMachine locations are above rbp → disjoint
@@ -827,11 +832,12 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc = record
 -- | Mov to rbp preserves StateCorresponds (updates frame base)
 -- Used for: mov rbp, rsp (set up new frame)
 --
--- NOTE: The rbp-is-frame-base field in StateCorresponds is universally quantified,
--- which is a design issue. This postulate is sound because rbp updates only happen
--- during frame setup, and the new rbp value IS the new frame base.
+-- When rbp changes, we're setting up a new frame. The new-frame parameter
+-- specifies what frame rbp now points to.
 postulate
-  mov-rbp-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State) (new-rbp : Word) →
+  mov-rbp-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State) (new-rbp : Word)
+    (new-frame : X86Frame) →
+    x86-frame-base new-frame ≡ new-rbp →  -- new frame's base is the new rbp value
     StateCorresponds σ s →
     StateCorresponds σ (record s { regs = x86-writeReg (X86Sem.State.regs s) rbp new-rbp })
 
@@ -882,6 +888,7 @@ pc-change-preserves-corresponds σ s new-pc sc = record
   ; regs-correspond = regs-correspond sc
   ; mem-corresponds = mem-corresponds sc
   ; halted-corresponds = halted-corresponds sc
+  ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
   }
 
@@ -897,6 +904,7 @@ flags-change-preserves-corresponds σ s new-flags sc = record
   ; regs-correspond = regs-correspond sc
   ; mem-corresponds = mem-corresponds sc
   ; halted-corresponds = halted-corresponds sc
+  ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
   }
 
@@ -910,6 +918,7 @@ pc-flags-change-preserves-corresponds σ s new-pc new-flags sc = record
   ; regs-correspond = regs-correspond sc
   ; mem-corresponds = mem-corresponds sc
   ; halted-corresponds = halted-corresponds sc
+  ; current-frame = current-frame sc
   ; rbp-is-frame-base = rbp-is-frame-base sc
   }
 
