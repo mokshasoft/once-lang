@@ -251,7 +251,16 @@ open import Once.CCC.Target.X86v3.Refinement.SlotToX86 as SlotToX86
   using (RegsCorrespond; MemCorresponds; StateCorresponds; HeapBaseMap;
          mov-regs-correspond; mov-mem-corresponds;
          build-regs-correspond-after-write;
-         loc-to-addr; compile-reg; sucLoc-to-addr-OnStack; sucLoc-to-addr)
+         loc-to-addr; compile-reg; sucLoc-to-addr-OnStack; sucLoc-to-addr;
+         -- X86-only correspondence preservation lemmas
+         push-preserves-state-corresponds; sub-rsp-preserves-state-corresponds;
+         mov-rbp-preserves-state-corresponds;
+         -- PC and flags independence lemmas
+         pc-change-preserves-corresponds; pc-flags-change-preserves-corresponds;
+         -- Combined SlotMachine + x86 register write lemmas
+         write-r14-both-preserves-corresponds; write-r15-both-preserves-corresponds;
+         -- Allocation invariant
+         AllocInvariant; FullStateCorresponds; derive-alloc-loc; derive-alloc-loc-addr-zero)
 open RegsCorrespond
 open MemCorresponds
 open StateCorresponds
@@ -1774,15 +1783,6 @@ pair-cleanup-slot-state σ = record σ
 --   4. Preserves StateCorresponds (postulated helper for now)
 ------------------------------------------------------------------------
 
--- Helper postulate for StateCorresponds preservation through pair-setup
--- TODO: Prove this by tracking register changes through 7 instructions
-postulate
-  pair-setup-preserves-corresponds : ∀ (s s' : State)
-    (σ : LocState FS') (pair-loc : SM.ValueLocation FS') →
-    StateCorresponds σ s →
-    -- s' is the result of executing 7 pair-setup instructions on s
-    StateCorresponds (pair-setup-slot-state σ pair-loc) s'
-
 -- pair-setup executes 7 instructions, returns state AND correspondence
 -- PROVEN using step-fetch-result pattern (like step-pair-setup in ExecLemmas)
 pair-setup-result : ∀ (prefix suffix : Program) (s : State)
@@ -1924,9 +1924,87 @@ pair-setup-result prefix suffix s σ pair-loc sc h-eq pc-eq =
     pc'-eq : X86Sem.State.pc s' ≡ length prefix +ℕ length pair-setup
     pc'-eq = pc7
 
-    -- StateCorresponds (postulated for now)
-    sc' : StateCorresponds (pair-setup-slot-state σ pair-loc) s'
-    sc' = pair-setup-preserves-corresponds s s' σ pair-loc sc
+    -- StateCorresponds preservation through 7 instructions
+    -- Chain: sc →[push×3]→ sc3 →[mov rbp]→ sc4 →[sub rsp]→ sc5 →[mov r15+R15]→ sc6 →[mov r14+R14]→ sc7
+    --
+    -- Each step needs both the register/memory changes AND the PC change.
+    -- We combine push-preserves + pc-change-preserves at each step.
+
+    -- Helper: state after push without PC change
+    s1-no-pc = record s { regs = x86-writeReg (X86Sem.State.regs s) rsp
+                                   (x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size)
+                        ; memory = x86-writeMem (X86Sem.State.memory s)
+                                     (x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size)
+                                     (x86-readReg (X86Sem.State.regs s) r14) }
+
+    -- Steps 0-2: push r14, push r15, push rbp (x86-only, SlotMachine state unchanged)
+    sc1-no-pc : StateCorresponds σ s1-no-pc
+    sc1-no-pc = push-preserves-state-corresponds σ s
+                  (x86-readReg (X86Sem.State.regs s) r14)
+                  (x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size)
+                  sc
+    sc1 : StateCorresponds σ s1
+    sc1 = pc-change-preserves-corresponds σ s1-no-pc (X86Sem.State.pc s +ℕ 1) sc1-no-pc
+
+    s2-no-pc = record s1 { regs = x86-writeReg (X86Sem.State.regs s1) rsp
+                                    (x86-readReg (X86Sem.State.regs s1) rsp ∸ slot-size)
+                         ; memory = x86-writeMem (X86Sem.State.memory s1)
+                                      (x86-readReg (X86Sem.State.regs s1) rsp ∸ slot-size)
+                                      (x86-readReg (X86Sem.State.regs s1) r15)
+                         ; pc = X86Sem.State.pc s1 }
+    sc2-no-pc : StateCorresponds σ s2-no-pc
+    sc2-no-pc = push-preserves-state-corresponds σ s1
+                  (x86-readReg (X86Sem.State.regs s1) r15)
+                  (x86-readReg (X86Sem.State.regs s1) rsp ∸ slot-size)
+                  sc1
+    sc2 : StateCorresponds σ s2
+    sc2 = pc-change-preserves-corresponds σ s2-no-pc (X86Sem.State.pc s1 +ℕ 1) sc2-no-pc
+
+    s3-no-pc = record s2 { regs = x86-writeReg (X86Sem.State.regs s2) rsp
+                                    (x86-readReg (X86Sem.State.regs s2) rsp ∸ slot-size)
+                         ; memory = x86-writeMem (X86Sem.State.memory s2)
+                                      (x86-readReg (X86Sem.State.regs s2) rsp ∸ slot-size)
+                                      (x86-readReg (X86Sem.State.regs s2) rbp)
+                         ; pc = X86Sem.State.pc s2 }
+    sc3-no-pc : StateCorresponds σ s3-no-pc
+    sc3-no-pc = push-preserves-state-corresponds σ s2
+                  (x86-readReg (X86Sem.State.regs s2) rbp)
+                  (x86-readReg (X86Sem.State.regs s2) rsp ∸ slot-size)
+                  sc2
+    sc3 : StateCorresponds σ s3
+    sc3 = pc-change-preserves-corresponds σ s3-no-pc (X86Sem.State.pc s2 +ℕ 1) sc3-no-pc
+
+    -- Step 3: mov rbp, rsp (x86-only, updates frame pointer)
+    s4-no-pc = record s3 { regs = x86-writeReg (X86Sem.State.regs s3) rbp
+                                    (x86-readReg (X86Sem.State.regs s3) rsp)
+                         ; pc = X86Sem.State.pc s3 }
+    sc4-no-pc : StateCorresponds σ s4-no-pc
+    sc4-no-pc = mov-rbp-preserves-state-corresponds σ s3
+                  (x86-readReg (X86Sem.State.regs s3) rsp)
+                  sc3
+    sc4 : StateCorresponds σ s4
+    sc4 = pc-change-preserves-corresponds σ s4-no-pc (X86Sem.State.pc s3 +ℕ 1) sc4-no-pc
+
+    -- Step 4: sub rsp, slots 2 (x86-only, allocates pair space)
+    -- s5 has regs modified, pc advanced, and flags updated
+    s5-no-pc-flags = record s4 { regs = x86-writeReg (X86Sem.State.regs s4) rsp
+                                          (x86-readReg (X86Sem.State.regs s4) rsp ∸ slots 2) }
+    sc5-no-pc-flags : StateCorresponds σ s5-no-pc-flags
+    sc5-no-pc-flags = sub-rsp-preserves-state-corresponds σ s4
+                        (x86-readReg (X86Sem.State.regs s4) rsp ∸ slots 2) sc4
+    sc5 : StateCorresponds σ s5
+    sc5 = pc-flags-change-preserves-corresponds σ s5-no-pc-flags
+            (X86Sem.State.pc s4 +ℕ 1)
+            (updateFlags (x86-readReg (X86Sem.State.regs s4) rsp ∸ slots 2)
+                         (x86-readReg (X86Sem.State.regs s4) rsp))
+            sc5-no-pc-flags
+
+    -- Steps 5-6: mov r15, rsp and mov r14, rdi
+    -- These update BOTH SlotMachine (R15 := pair-loc, R14 := old RDI) AND x86 (r15, r14)
+    -- The key semantic constraint: pair-loc must correspond to allocated address (rsp after sub)
+    -- Postulate this correspondence for the final state
+    postulate
+      sc' : StateCorresponds (pair-setup-slot-state σ pair-loc) s'
 
   in s' , star-proof , h'-eq , pc'-eq , sc'
 
