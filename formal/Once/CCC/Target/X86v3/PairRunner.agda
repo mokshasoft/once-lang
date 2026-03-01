@@ -37,8 +37,12 @@ open import Data.List.Properties using (length-++; ++-assoc)
 open import Data.Maybe using (just)
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl) renaming (+-assoc to ℕ-+-assoc)
+
+-- Import slot-level address reasoning
+open import Once.CCC.Target.X86.StackGrowth using (x86-grow; x86-grow-identity; x86-grow-injective)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Data.Empty using (⊥)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open FrameSemantics using (Frame; _≺_)
@@ -91,7 +95,7 @@ open import Once.Target.X86.ExecLemmas
   using (step-fetch-result; fetch-++-right;
          push-reg-result; pop-reg-result; mov-reg-reg-result;
          mov-reg-mem-result; mov-mem-reg-result; sub-imm-reg-result;
-         readReg-writeReg-same; readReg-writeReg-diff)
+         readReg-writeReg-same; readReg-writeReg-diff; readMem-writeMem-diff)
 
 -- Import shared IR runner types
 open import Once.CCC.Target.X86v3.IRRunnerTypes public
@@ -362,14 +366,17 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
 
 pair-middle-result : ∀ (prefix suffix : Program) (s : State)
   (σ : LocState FS') (input-loc : SM.ValueLocation FS') →
-  StateCorresponds σ s →
+  (sc : StateCorresponds σ s) →
   X86Sem.State.halted s ≡ false →
   X86Sem.State.pc s ≡ length prefix →
+  -- Precondition: [rsp+16] contains the input-loc value (written in pair-setup, preserved through f)
+  x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rsp +ℕ slots 2)
+    ≡ just (loc-to-addr (heap-base sc) input-loc) →
   ∃[ s' ] (Star (prefix ++ pair-middle ++ suffix) s s'
          × X86Sem.State.halted s' ≡ false
          × X86Sem.State.pc s' ≡ length prefix +ℕ length pair-middle
          × StateCorresponds (pair-middle-slot-state σ input-loc) s')
-pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq =
+pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
   let
     -- The program
     prog = prefix ++ pair-middle ++ suffix
@@ -406,14 +413,63 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq =
                     (sym pc1) (fetch-++-right prefix pm 1 (mov (reg rdi) (mem (base+disp rsp (slots 2)))) refl)
 
     -- The value at [rsp+16] - this is what was saved in pair-setup
+    input-backup-addr-s = x86-readReg (X86Sem.State.regs s) rsp +ℕ slots 2
     input-backup-addr = effectiveAddr s1 (base+disp rsp (slots 2))
 
-    -- InputBackupInvariant: [rsp+16] contains the value corresponding to input-loc
-    -- This was written in pair-setup step 3 and preserved through f's execution
-    postulate
-      input-backup-value : Word
-      input-backup-read : x86-readMem (X86Sem.State.memory s1) input-backup-addr ≡ just input-backup-value
-      input-backup-corresponds : input-backup-value ≡ loc-to-addr (heap-base sc) input-loc
+    -- The input-backup address is unchanged from s to s1 (s1 only changes memory and pc)
+    -- s1 = record s { memory = ...; pc = ... }, regs unchanged
+    input-backup-addr-eq : input-backup-addr ≡ input-backup-addr-s
+    input-backup-addr-eq = refl  -- effectiveAddr uses s1.regs which equals s.regs
+
+    -- PROVEN: The value at [rsp+16] corresponds to input-loc
+    input-backup-value : Word
+    input-backup-value = loc-to-addr (heap-base sc) input-loc
+
+    -- Step 0 writes to [rsp] (slot 0), input-backup is at [rsp+16] (slot 2)
+    -- Different slots have different addresses via x86-grow-injective
+    step0-write-addr : Word
+    step0-write-addr = effectiveAddr s (base rsp)
+
+    rsp-val : Word
+    rsp-val = x86-readReg (X86Sem.State.regs s) rsp
+
+    -- x86-grow gives: slot k at address rsp + k * 8
+    -- So slot 0 → rsp (via x86-grow-identity), slot 2 → rsp + 16
+    -- x86-grow-injective: different slots → different addresses
+    -- Slot inequality 0 ≢ 2 is trivial via λ ()
+
+    -- x86-grow-injective: different slots → different addresses
+    -- x86-grow rsp-val 0 = rsp-val + 0, x86-grow rsp-val 2 = rsp-val + 16
+    -- step0-write-addr = rsp-val (definitionally)
+    -- input-backup-addr-s = rsp-val + 16 = x86-grow rsp-val 2 (definitionally)
+    --
+    -- We use x86-grow-identity: x86-grow a 0 ≡ a
+    -- So: x86-grow rsp-val 0 ≡ rsp-val ≡ step0-write-addr
+    grow-0-eq : x86-grow rsp-val 0 ≡ step0-write-addr
+    grow-0-eq = x86-grow-identity rsp-val
+
+    grow-neq : x86-grow rsp-val 0 ≢ x86-grow rsp-val 2
+    grow-neq = x86-grow-injective rsp-val 0 2 (λ ())
+
+    -- Given eq : step0-write-addr ≡ input-backup-addr-s (i.e., rsp-val ≡ rsp-val + 16)
+    -- Chain: x86-grow rsp-val 0 ≡ rsp-val ≡ rsp-val + 16 = x86-grow rsp-val 2
+    -- This contradicts grow-neq
+    write-addr-neq : step0-write-addr ≢ input-backup-addr-s
+    write-addr-neq eq = grow-neq (trans grow-0-eq eq)
+
+    -- Memory read in s1 equals read in s for [rsp+16] (different from write address [rsp])
+    input-backup-preserved : x86-readMem (X86Sem.State.memory s1) input-backup-addr-s
+                           ≡ x86-readMem (X86Sem.State.memory s) input-backup-addr-s
+    input-backup-preserved = readMem-writeMem-diff (X86Sem.State.memory s)
+                               step0-write-addr input-backup-addr-s
+                               (x86-readReg (X86Sem.State.regs s) rax)
+                               write-addr-neq
+
+    input-backup-read : x86-readMem (X86Sem.State.memory s1) input-backup-addr ≡ just input-backup-value
+    input-backup-read = trans (subst (λ a → x86-readMem (X86Sem.State.memory s1) a
+                                          ≡ x86-readMem (X86Sem.State.memory s) input-backup-addr-s)
+                                     (sym input-backup-addr-eq) input-backup-preserved)
+                              input-backup-pre
 
     s2 = record s1 { regs = x86-writeReg (X86Sem.State.regs s1) rdi input-backup-value
                    ; pc = X86Sem.State.pc s1 +ℕ 1 }
@@ -468,6 +524,12 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq =
 
     r15-unchanged : x86-readReg (X86Sem.State.regs s') r15 ≡ x86-readReg (X86Sem.State.regs s) r15
     r15-unchanged = refl
+
+    -- input-backup-value = loc-to-addr (heap-base sc) input-loc
+    -- heap-base' = heap-base sc
+    -- Therefore input-backup-value ≡ loc-to-addr heap-base' input-loc (by refl)
+    input-backup-corresponds : input-backup-value ≡ loc-to-addr heap-base' input-loc
+    input-backup-corresponds = refl
 
     -- RegsCorrespond for σ' and s'
     -- σ'.regs.RDI = input-loc, s'.regs.rdi = input-backup-value
@@ -774,8 +836,16 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       pc2-for-mid : X86Sem.State.pc s2 ≡ length prefix-mid
       pc2-for-mid = pair-pc-f-to-mid prefix prog-f pc2
 
+      -- Precondition: [rsp+16] contains input-loc value
+      -- This is established by pair-setup and preserved by f
+      -- (f preserves parent frames via parent-frames-preserved)
+      postulate
+        input-backup-preserved-through-f :
+          x86-readMem (X86Sem.State.memory s2) (x86-readReg (X86Sem.State.regs s2) rsp +ℕ slots 2)
+            ≡ just (loc-to-addr (heap-base sc2) input-loc)
+
       (s3 , star-mid , h3 , pc3 , sc3) =
-        pair-middle-result prefix-mid suffix-mid s2 σ2 input-loc sc2 h2 pc2-for-mid
+        pair-middle-result prefix-mid suffix-mid s2 σ2 input-loc sc2 h2 pc2-for-mid input-backup-preserved-through-f
       σ3 = pair-middle-slot-state σ2 input-loc
 
       -- Phase 4: Execute g
