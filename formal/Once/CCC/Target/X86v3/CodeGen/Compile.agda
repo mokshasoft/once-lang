@@ -73,35 +73,38 @@ compose-bridge = mov (reg rdi) (reg rax) ∷ []
 -- Pair construction
 --
 -- Allocate pair on stack, run f and g, store results.
--- Layout: [fst-result, snd-result]
+-- Uses stack-based input backup (matching SlotMachine model).
+--
+-- Stack layout after setup (relative to rsp):
+--   [rsp + 0]  = pair.fst (f's result)
+--   [rsp + 8]  = pair.snd (g's result)
+--   [rsp + 16] = input-backup (saved rdi for g)
+--
+-- No callee-saved register saving needed for pair itself.
+-- (apply will need FrameInvariant for function calls)
 ------------------------------------------------------------------------
 
--- Setup: save registers, allocate pair, save input
+-- Setup: save frame pointer, allocate slots, save input
 pair-setup : Program
 pair-setup =
-  push (reg r14) ∷              -- save r14
-  push (reg r15) ∷              -- save r15
-  push (reg rbp) ∷              -- save rbp
-  mov (reg rbp) (reg rsp) ∷     -- set frame pointer
-  sub (reg rsp) (imm (slots 2)) ∷  -- allocate pair
-  mov (reg r15) (reg rsp) ∷     -- r15 = pair address
-  mov (reg r14) (reg rdi) ∷ []  -- r14 = input (saved for g)
+  push (reg rbp) ∷                          -- save rbp
+  mov (reg rbp) (reg rsp) ∷                 -- set frame pointer
+  sub (reg rsp) (imm (slots 3)) ∷           -- allocate: pair.fst, pair.snd, input-backup
+  mov (mem (base+disp rsp (slots 2))) (reg rdi) ∷ []  -- [rsp+16] = input
 
 -- Middle: store f's result, restore input for g
 pair-middle : Program
 pair-middle =
-  mov (mem (base r15)) (reg rax) ∷  -- [pair] = f's result
-  mov (reg rdi) (reg r14) ∷ []       -- rdi = input (for g)
+  mov (mem (base rsp)) (reg rax) ∷                    -- [rsp] = f's result (pair.fst)
+  mov (reg rdi) (mem (base+disp rsp (slots 2))) ∷ []  -- rdi = [rsp+16] (input for g)
 
--- Cleanup: store g's result, return pair, restore
+-- Cleanup: store g's result, return pair address, restore frame
 pair-cleanup : Program
 pair-cleanup =
-  mov (mem (base+disp r15 slot-size)) (reg rax) ∷  -- [pair+8] = g's result
-  mov (reg rax) (reg r15) ∷     -- rax = pair address
+  mov (mem (base+disp rsp slot-size)) (reg rax) ∷  -- [rsp+8] = g's result (pair.snd)
+  mov (reg rax) (reg rsp) ∷     -- rax = pair address (rsp points to pair.fst)
   mov (reg rsp) (reg rbp) ∷     -- restore stack
-  pop rbp ∷                     -- restore rbp
-  pop r15 ∷                     -- restore r15
-  pop r14 ∷ []                  -- restore r14
+  pop rbp ∷ []                  -- restore rbp
 
 ------------------------------------------------------------------------
 -- Curry: create closure
