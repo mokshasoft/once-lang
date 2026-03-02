@@ -1294,11 +1294,14 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       orig-rbp-value : Word
       orig-rbp-value = x86-readReg (X86Sem.State.regs s) rbp
 
-      -- Precondition for cleanup: snd write address differs from rbp
-      -- s4.rsp = pair-rsp = s.rsp - 32 (after setup, preserved through f, middle, g)
-      -- s4.rbp = s1.rbp = s.rsp - 8 (after setup, preserved through f, middle, g)
-      -- s4.rsp + 8 = s.rsp - 24 ≠ s.rsp - 8 = s4.rbp (gap of 16 bytes)
+      -- Stack capacity: pair-setup allocates 32 bytes (8 for push + 24 for locals)
+      -- Requires s.rsp ≥ 32 for safe stack operations
+      -- snd write address differs from rbp:
+      -- s4.rsp + 8 = pair-rsp + 8 = (s.rsp - 32) + 8 = s.rsp - 24
+      -- s4.rbp = s1.rbp = s.rsp - 8
+      -- s.rsp - 24 ≠ s.rsp - 8 when s.rsp ≥ 32 (gap of 16 bytes)
       postulate
+        setup-frame-size≤orig-rsp : slots 4 ≤ x86-readReg (X86Sem.State.regs s) rsp
         snd-write≢rbp-at-cleanup :
           x86-readReg (X86Sem.State.regs s4) rsp +ℕ slot-size ≢ x86-readReg (X86Sem.State.regs s4) rbp
 
