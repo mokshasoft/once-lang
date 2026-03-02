@@ -36,7 +36,7 @@ open import Data.List using (_++_; length; []; _∷_)
 open import Data.List.Properties using (length-++; ++-assoc)
 open import Data.Maybe using (just)
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n; s≤s; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl; <-≤-trans; <⇒≢; m∸n+n≡m) renaming (+-assoc to ℕ-+-assoc)
+open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl; <-≤-trans; <⇒≢; m∸n+n≡m; m∸n≤m) renaming (+-assoc to ℕ-+-assoc)
 
 -- Import slot-level address reasoning
 open import Once.CCC.Target.X86.StackGrowth using (x86-grow; x86-grow-identity; x86-grow-injective)
@@ -451,11 +451,38 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
     frame-scope' f k loc' read-eq =
       ≤-trans new-frame-below (frame-scope sc f k loc' read-eq)
 
-    -- After pair-setup: rsp = old_rsp - 32, rbp = old_rsp - 8
-    -- Since 32 > 8, rsp < rbp, hence rsp ≤ rbp
-    -- This follows from stack capacity (rsp - 32 < rsp - 8 when rsp ≥ 32)
-    postulate
-      rsp-at-or-below-rbp' : x86-readReg (X86Sem.State.regs s') rsp ≤ x86-readReg (X86Sem.State.regs s') rbp
+    -- PROVEN: After pair-setup, rsp ≤ rbp
+    -- Chain: s'.rsp = s3.rsp = s2.rsp ∸ slots 3 = s1.rsp ∸ slots 3
+    --        s'.rbp = s3.rbp = s2.rbp = s1.rsp
+    -- Therefore s'.rsp = s'.rbp ∸ slots 3 ≤ s'.rbp (by m∸n≤m)
+
+    -- s'.rsp = s3.rsp (s4/s' only changes memory)
+    s'-rsp-eq-s3 : x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s3) rsp
+    s'-rsp-eq-s3 = refl
+
+    -- s3.rsp = s2.rsp ∸ slots 3 (from sub rsp instruction)
+    s3-rsp-eq : x86-readReg (X86Sem.State.regs s3) rsp ≡ x86-readReg (X86Sem.State.regs s2) rsp ∸ slots 3
+    s3-rsp-eq = readReg-writeReg-same (X86Sem.State.regs s2) rsp (x86-readReg (X86Sem.State.regs s2) rsp ∸ slots 3)
+
+    -- s2.rsp = s1.rsp (mov rbp, rsp doesn't change rsp)
+    s2-rsp-eq-s1 : x86-readReg (X86Sem.State.regs s2) rsp ≡ x86-readReg (X86Sem.State.regs s1) rsp
+    s2-rsp-eq-s1 = readReg-writeReg-diff (X86Sem.State.regs s1) rbp rsp
+                     (x86-readReg (X86Sem.State.regs s1) rsp) (λ ())
+
+    -- s'.rbp = s2.rbp = s1.rsp (already have rbp-after-step1 and chain)
+    -- rbp-unchanged-step2 : s3.rbp = s2.rbp, rbp-unchanged-step3 : s4.rbp = s3.rbp
+    -- rbp-after-step1 : s2.rbp = s1.rsp
+    s'-rbp-eq-s1-rsp : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s1) rsp
+    s'-rbp-eq-s1-rsp = trans rbp-unchanged-step3 (trans rbp-unchanged-step2 rbp-after-step1)
+
+    -- Chain: s'.rsp = s1.rsp ∸ slots 3
+    s'-rsp-eq-s1-sub : x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s1) rsp ∸ slots 3
+    s'-rsp-eq-s1-sub = trans s'-rsp-eq-s3 (trans s3-rsp-eq (cong (_∸ slots 3) s2-rsp-eq-s1))
+
+    -- Final: s'.rsp = s'.rbp ∸ slots 3 ≤ s'.rbp
+    rsp-at-or-below-rbp' : x86-readReg (X86Sem.State.regs s') rsp ≤ x86-readReg (X86Sem.State.regs s') rbp
+    rsp-at-or-below-rbp' = subst₂ _≤_ (sym s'-rsp-eq-s1-sub) (sym s'-rbp-eq-s1-rsp)
+                             (m∸n≤m (x86-readReg (X86Sem.State.regs s1) rsp) (slots 3))
 
     sc' : StateCorresponds σ' s'
     sc' = record
@@ -801,6 +828,9 @@ pair-cleanup-result : ∀ (prefix suffix : Program) (s : State)
   X86Sem.State.pc s ≡ length prefix →
   -- Precondition: rsp points to pair-loc (from AllocInvariant)
   x86-readReg (X86Sem.State.regs s) rsp ≡ loc-to-addr (heap-base sc) pair-loc →
+  -- Precondition: snd write address differs from rbp (for memory preservation)
+  -- In pair context: rsp + 8 < rbp since gap is 24 (slots 3)
+  x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size ≢ x86-readReg (X86Sem.State.regs s) rbp →
   -- Precondition: saved rbp value is preserved at [rbp] (for rbp-final proof)
   (original-rbp : Word) →
   x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rbp) ≡ just original-rbp →
@@ -812,7 +842,7 @@ pair-cleanup-result : ∀ (prefix suffix : Program) (s : State)
          × x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rbp +ℕ slot-size
          -- rbp after cleanup = original-rbp (the saved value)
          × x86-readReg (X86Sem.State.regs s') rbp ≡ original-rbp)
-pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-corresponds original-rbp saved-rbp-at-rbp =
+pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-corresponds snd-write≢rbp original-rbp saved-rbp-at-rbp =
   let
     -- The program
     prog = prefix ++ pair-cleanup ++ suffix
@@ -898,14 +928,31 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
     rsp-after-restore-eq-s-rbp : rsp-after-restore ≡ x86-readReg (X86Sem.State.regs s) rbp
     rsp-after-restore-eq-s-rbp = trans rsp-after-restore-eq-s2-rbp (trans s2-rbp-eq-s1-rbp s1-rbp-eq-s-rbp)
 
-    -- Memory at s.rbp is preserved through steps 0, 1, 2 (they don't write to [rbp])
+    -- PROVEN: Memory at s.rbp is preserved through steps 0, 1, 2
     -- Step 0: writes to [rsp+8], Step 1: no memory write, Step 2: no memory write
-    -- s3.memory = s2.memory = s1.memory, and s1 writes to [s.rsp + slot-size]
-    -- Need: [s.rsp + slot-size] ≠ [s.rbp] (follows from rsp ≤ rbp with gap for pair frame)
-    postulate
-      mem-preserved-through-cleanup-steps :
-        x86-readMem (X86Sem.State.memory s3) (x86-readReg (X86Sem.State.regs s) rbp) ≡
-        x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rbp)
+    -- s3.memory = s2.memory = s1.memory
+    -- s1.memory = writeMem(s.memory, s.rsp + 8, s.rax)
+    -- Since [s.rsp + 8] ≠ [s.rbp] (from snd-write≢rbp), memory at s.rbp is preserved
+
+    -- s3.memory = s2.memory = s1.memory (steps 1, 2 don't write memory)
+    s3-mem-eq-s1 : X86Sem.State.memory s3 ≡ X86Sem.State.memory s1
+    s3-mem-eq-s1 = refl
+
+    -- s1.memory is s.memory with write at snd-write-addr
+    snd-write-addr-eq : effectiveAddr s (base+disp rsp slot-size) ≡ x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size
+    snd-write-addr-eq = refl
+
+    -- Using readMem-writeMem-diff: write at (s.rsp + 8) doesn't affect read at s.rbp
+    mem-preserved-through-cleanup-steps :
+      x86-readMem (X86Sem.State.memory s3) (x86-readReg (X86Sem.State.regs s) rbp) ≡
+      x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rbp)
+    mem-preserved-through-cleanup-steps =
+      trans (cong (λ m → x86-readMem m (x86-readReg (X86Sem.State.regs s) rbp)) s3-mem-eq-s1)
+            (readMem-writeMem-diff (X86Sem.State.memory s)
+               (x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size)
+               (x86-readReg (X86Sem.State.regs s) rbp)
+               (x86-readReg (X86Sem.State.regs s) rax)
+               snd-write≢rbp)
 
     -- Derive original-rbp-read from saved-rbp-at-rbp and memory preservation
     original-rbp-read : x86-readMem (X86Sem.State.memory s3) rsp-after-restore ≡ just original-rbp
@@ -1247,6 +1294,14 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       orig-rbp-value : Word
       orig-rbp-value = x86-readReg (X86Sem.State.regs s) rbp
 
+      -- Precondition for cleanup: snd write address differs from rbp
+      -- s4.rsp = pair-rsp = s.rsp - 32 (after setup, preserved through f, middle, g)
+      -- s4.rbp = s1.rbp = s.rsp - 8 (after setup, preserved through f, middle, g)
+      -- s4.rsp + 8 = s.rsp - 24 ≠ s.rsp - 8 = s4.rbp (gap of 16 bytes)
+      postulate
+        snd-write≢rbp-at-cleanup :
+          x86-readReg (X86Sem.State.regs s4) rsp +ℕ slot-size ≢ x86-readReg (X86Sem.State.regs s4) rbp
+
       -- Precondition: memory at s4.rbp contains orig-rbp-value
       -- s4.rbp = s1.rbp (by rbp-preserved-through-g)
       -- s1.rbp = s.rsp - slot-size (the address where push rbp stored s.rbp in setup)
@@ -1257,7 +1312,7 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
 
       (s5 , star-clean , h5 , pc5 , sc5 , rsp-cleanup-eq , rbp-cleanup-eq) =
         pair-cleanup-result prefix-clean suffix s4 σ4 pair-loc sc4 h4 pc4-for-clean pair-loc-corresponds
-                            orig-rbp-value saved-rbp-preserved
+                            snd-write≢rbp-at-cleanup orig-rbp-value saved-rbp-preserved
       σ5 = pair-cleanup-slot-state σ4 pair-loc
 
       -- Chain all stars together
