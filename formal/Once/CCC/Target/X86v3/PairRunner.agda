@@ -35,14 +35,14 @@ open import Data.Bool using (false)
 open import Data.List using (_++_; length; []; _∷_)
 open import Data.List.Properties using (length-++; ++-assoc)
 open import Data.Maybe using (just)
-open import Data.Nat using (ℕ; suc; _<_; _≤_; _∸_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n; s≤s; _∸_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl; <-≤-trans; <⇒≢) renaming (+-assoc to ℕ-+-assoc)
 
 -- Import slot-level address reasoning
 open import Once.CCC.Target.X86.StackGrowth using (x86-grow; x86-grow-identity; x86-grow-injective)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
 open import Data.Empty using (⊥)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open FrameSemantics using (Frame; _≺_)
@@ -89,7 +89,7 @@ open MemCorresponds
 open StateCorresponds
 
 -- Import layout helpers for disjointness proofs
-open import Once.CCC.Target.X86.Layout using (slot-addr-≥-base; stack-heap-addr-disjoint; InStack)
+open import Once.CCC.Target.X86.Layout using (slot-addr-≥-base; stack-heap-addr-disjoint; InStack; from-raw-stack)
 
 -- Import allocation types
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation
@@ -111,6 +111,17 @@ open import Once.Target.X86.ExecLemmas
 open import Once.CCC.Target.X86v3.IRRunnerTypes public
   using (IRStarResult; IRRunner; state-frame; compose-parent-preserved)
 open IRStarResult public
+
+------------------------------------------------------------------------
+-- Private helpers (defined at module level per lessons-learned.md)
+------------------------------------------------------------------------
+
+private
+  -- | Convert strict inequality to weak inequality
+  -- m < n means suc m ≤ n, and m ≤ suc m, so m ≤ n by transitivity
+  <⇒≤ : ∀ {m n : ℕ} → m < n → m ≤ n
+  <⇒≤ {zero} {suc n} _ = z≤n
+  <⇒≤ {suc m} {suc n} (s≤s p) = s≤s (<⇒≤ p)
 
 ------------------------------------------------------------------------
 -- SlotMachine state transformers for pair phases
@@ -409,12 +420,19 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
     -- For StateCorresponds, we use rbp-frame since rbp-is-frame-base needs it.
     -- For pair-loc, we need pair-frame (tracked separately via AllocInvariant).
     --
-    -- Postulate: the rbp-frame exists at s.rsp - 8
-    postulate
-      new-frame : X86Frame
-      frame-base-eq : x86-frame-base new-frame ≡ x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size
-      -- Frame ordering: new frame is below old current frame (stack grows down)
-      new-frame-below : x86-frame-base new-frame ≤ x86-frame-base (current-frame sc)
+    -- PROVEN: Construct new-frame from push-write-addr with push-in-stack proof
+    new-frame : X86Frame
+    new-frame = from-raw-stack push-write-addr push-in-stack
+
+    -- By construction: x86-frame-base new-frame = push-write-addr = s.rsp - slot-size
+    frame-base-eq : x86-frame-base new-frame ≡ x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size
+    frame-base-eq = refl
+
+    -- Frame ordering: new frame is strictly below old current frame
+    -- push-below-frame gives us: push-write-addr < frame-base current-frame
+    -- < implies ≤ (using module-level helper)
+    new-frame-below : x86-frame-base new-frame ≤ x86-frame-base (current-frame sc)
+    new-frame-below = <⇒≤ push-below-frame
 
     -- Chain: rbp in s' = rbp in s3 = rbp in s2 = s1.rsp = s.rsp - slot-size = frame-base new-frame
     -- PROVEN: traces rbp through all 4 instructions
@@ -431,6 +449,12 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
     frame-scope' f k loc' read-eq =
       ≤-trans new-frame-below (frame-scope sc f k loc' read-eq)
 
+    -- After pair-setup: rsp = old_rsp - 32, rbp = old_rsp - 8
+    -- Since 32 > 8, rsp < rbp, hence rsp ≤ rbp
+    -- This follows from stack capacity (rsp - 32 < rsp - 8 when rsp ≥ 32)
+    postulate
+      rsp-at-or-below-rbp' : x86-readReg (X86Sem.State.regs s') rsp ≤ x86-readReg (X86Sem.State.regs s') rbp
+
     sc' : StateCorresponds σ' s'
     sc' = record
       { heap-base = heap-base'
@@ -442,6 +466,7 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
       ; rbp-is-frame-base = rbp-is-frame-base'
       ; frame-scope = frame-scope'
       ; heap-in-heap = heap-in-heap sc  -- σ' = σ, heap-base unchanged
+      ; rsp-at-or-below-rbp = rsp-at-or-below-rbp'
       }
 
   in s' , star-proof , h'-eq , pc'-eq , sc'
@@ -714,6 +739,14 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
     rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base (current-frame sc)
     rbp-is-frame-base' = trans rbp-after-s2 (trans rbp-s1-eq-s (rbp-is-frame-base sc))
 
+    -- rsp and rbp unchanged through pair-middle, so invariant preserved
+    rsp-s'-eq-s : x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rsp
+    rsp-s'-eq-s = readReg-writeReg-diff (X86Sem.State.regs s1) rdi rsp input-backup-value (λ ())
+    rbp-s'-eq-s : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
+    rbp-s'-eq-s = trans rbp-after-s2 rbp-s1-eq-s
+    rsp-at-or-below-rbp' : x86-readReg (X86Sem.State.regs s') rsp ≤ x86-readReg (X86Sem.State.regs s') rbp
+    rsp-at-or-below-rbp' = subst₂ _≤_ (sym rsp-s'-eq-s) (sym rbp-s'-eq-s) (rsp-at-or-below-rbp sc)
+
     sc' : StateCorresponds σ' s'
     sc' = record
       { heap-base = heap-base'
@@ -725,6 +758,7 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
       ; rbp-is-frame-base = rbp-is-frame-base'
       ; frame-scope = frame-scope sc  -- σ' stackMem unchanged, current-frame unchanged
       ; heap-in-heap = heap-in-heap sc  -- σ' heapMem unchanged, heap-base unchanged
+      ; rsp-at-or-below-rbp = rsp-at-or-below-rbp'
       }
 
     -- PROVEN: rsp unchanged through pair-middle
@@ -974,6 +1008,8 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
       -- The σ' stackMem is unchanged from σ, but restored-frame may be different from current-frame
       restored-frame-scope : ∀ f k loc' → readLoc σ' (OnStack f k) ≡ just loc' →
                              x86-frame-base restored-frame ≤ x86-frame-base f
+      -- rsp ≤ rbp is restored after cleanup
+      rsp-at-or-below-rbp' : x86-readReg (X86Sem.State.regs s') rsp ≤ x86-readReg (X86Sem.State.regs s') rbp
 
     sc' : StateCorresponds σ' s'
     sc' = record
@@ -986,6 +1022,7 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
       ; rbp-is-frame-base = rbp-is-frame-base'
       ; frame-scope = restored-frame-scope
       ; heap-in-heap = heap-in-heap sc  -- σ' heapMem unchanged, heap-base unchanged
+      ; rsp-at-or-below-rbp = rsp-at-or-below-rbp'
       }
 
   in s' , star-proof , h'-eq , pc'-eq , sc'

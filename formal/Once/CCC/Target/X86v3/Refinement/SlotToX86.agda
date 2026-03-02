@@ -27,11 +27,11 @@
 module Once.CCC.Target.X86v3.Refinement.SlotToX86 where
 
 open import Data.Nat using (ℕ; suc; _∸_; z≤n; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (<⇒≢; <-≤-trans; ≤-trans)
+open import Data.Nat.Properties using (<⇒≢; <⇒≤; <-≤-trans; ≤-trans; ≤-refl)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; false)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
 
 -- Import X86v3 FrameSemantics instance (first, needed for SlotMachine instantiation)
 open import Once.CCC.Target.X86v3.FrameInstantiation
@@ -346,6 +346,11 @@ record StateCorresponds (σ : LocState FS) (s : State) : Set where
     -- This enables cross-domain disjointness proofs.
     heap-in-heap : ∀ hl hl' → SlotMachine.LocState.heapMem σ hl ≡ just hl' →
                    InHeap (heap-loc-to-addr heap-base hl)
+
+    -- Stack pointer is at or below frame base (calling convention invariant)
+    -- This ensures push/sub operations write below tracked memory.
+    -- Combined with frame-scope, this proves stack writes are disjoint from tracked slots.
+    rsp-at-or-below-rbp : x86-readReg (X86Sem.State.regs s) rsp ≤ x86-readReg (X86Sem.State.regs s) rbp
 
 open StateCorresponds
 
@@ -790,10 +795,12 @@ write-rbp-preserves-regs-correspond hb σ-regs x86-regs v rc = record
 ------------------------------------------------------------------------
 
 -- | Sub rsp preserves StateCorresponds (only modifies rsp, a non-tracked register)
+-- Precondition: new-rsp ≤ rbp (calling convention: rsp stays at or below frame base)
 sub-rsp-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State) (new-rsp : Word) →
-  StateCorresponds σ s →
+  (sc : StateCorresponds σ s) →
+  new-rsp ≤ x86-readReg (X86Sem.State.regs s) rbp →
   StateCorresponds σ (record s { regs = x86-writeReg (X86Sem.State.regs s) rsp new-rsp })
-sub-rsp-preserves-state-corresponds σ s new-rsp sc = record
+sub-rsp-preserves-state-corresponds σ s new-rsp sc new-rsp≤rbp = record
   { heap-base = heap-base sc
   ; unit-base-zero = unit-base-zero sc
   ; regs-correspond = write-rsp-preserves-regs-correspond (heap-base sc)
@@ -806,6 +813,9 @@ sub-rsp-preserves-state-corresponds σ s new-rsp sc = record
             (rbp-is-frame-base sc)
   ; frame-scope = frame-scope sc  -- σ unchanged, frame-scope preserved
   ; heap-in-heap = heap-in-heap sc  -- σ and heap-base unchanged
+  ; rsp-at-or-below-rbp = subst (new-rsp ≤_)
+      (sym (readReg-writeReg-diff (X86Sem.State.regs s) rsp rbp new-rsp (λ ())))
+      new-rsp≤rbp
   }
 
 ------------------------------------------------------------------------
@@ -882,6 +892,7 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc rsp-below-frame rsp-
             (rbp-is-frame-base sc)
   ; frame-scope = frame-scope sc  -- σ unchanged
   ; heap-in-heap = heap-in-heap sc  -- σ and heap-base unchanged
+  ; rsp-at-or-below-rbp = rsp-below-rbp-proof
   }
   where
     -- PROVEN: Stack disjointness from frame ordering
@@ -912,6 +923,16 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc rsp-below-frame rsp-
       stack-heap-addr-disjoint new-rsp (heap-loc-to-addr (heap-base sc) hl)
                                rsp-in-stack (heap-in-heap sc hl hl' read-eq)
 
+    -- PROVEN: rsp ≤ rbp after push
+    -- Chain: new-rsp < frame-base = rbp (via rbp-is-frame-base, unchanged by rsp write)
+    new-regs = x86-writeReg (X86Sem.State.regs s) rsp new-rsp
+    rbp-unchanged : x86-readReg new-regs rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
+    rbp-unchanged = readReg-writeReg-diff (X86Sem.State.regs s) rsp rbp new-rsp (λ ())
+    rbp-eq-frame : x86-readReg new-regs rbp ≡ x86-frame-base (current-frame sc)
+    rbp-eq-frame = trans rbp-unchanged (rbp-is-frame-base sc)
+    rsp-below-rbp-proof : x86-readReg new-regs rsp ≤ x86-readReg new-regs rbp
+    rsp-below-rbp-proof = subst (new-rsp ≤_) (sym rbp-eq-frame) (<⇒≤ rsp-below-frame)
+
 -- | Mov to rbp preserves StateCorresponds (updates frame base)
 -- Used for: mov rbp, rsp (set up new frame)
 --
@@ -921,15 +942,19 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc rsp-below-frame rsp-
 -- PROVEN: rbp is not tracked by RegsCorrespond (only rax,rdi,rsi,r12,r14,r15).
 -- Writing to rbp doesn't affect the tracked register correspondence.
 --
--- Precondition: new frame base ≤ old frame base (for frame-scope preservation)
+-- Preconditions:
+--   - new frame base ≤ old frame base (for frame-scope preservation)
+--   - rsp ≤ new-rbp (for rsp-at-or-below-rbp; satisfied by mov rbp, rsp)
 mov-rbp-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State) (new-rbp : Word)
   (new-frame : X86Frame) →
   x86-frame-base new-frame ≡ new-rbp →  -- new frame's base is the new rbp value
   (sc : StateCorresponds σ s) →
   -- Precondition: new frame is at or below old current frame
   x86-frame-base new-frame ≤ x86-frame-base (current-frame sc) →
+  -- Precondition: rsp ≤ new-rbp (trivially true for mov rbp, rsp)
+  x86-readReg (X86Sem.State.regs s) rsp ≤ new-rbp →
   StateCorresponds σ (record s { regs = x86-writeReg (X86Sem.State.regs s) rbp new-rbp })
-mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc new≤old = record
+mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc new≤old rsp≤new-rbp = record
   { heap-base = heap-base sc
   ; unit-base-zero = unit-base-zero sc
   ; regs-correspond = rbp-write-preserves-regs
@@ -940,6 +965,7 @@ mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc new≤old
                               (sym frame-eq)
   ; frame-scope = new-frame-scope
   ; heap-in-heap = heap-in-heap sc  -- σ and heap-base unchanged
+  ; rsp-at-or-below-rbp = rsp-below-new-rbp
   }
   where
     -- Writing to rbp doesn't affect tracked registers (rax, rdi, rsi, r12, r14, r15)
@@ -966,6 +992,13 @@ mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc new≤old
                       x86-frame-base new-frame ≤ x86-frame-base f
     new-frame-scope f k loc' read-eq =
       ≤-trans new≤old (frame-scope sc f k loc' read-eq)
+
+    -- rsp ≤ new-rbp: rsp unchanged by rbp write, rbp = new-rbp after write
+    rsp-below-new-rbp : x86-readReg new-regs rsp ≤ x86-readReg new-regs rbp
+    rsp-below-new-rbp =
+      let rsp-unchanged = readReg-writeReg-diff (X86Sem.State.regs s) rbp rsp new-rbp (λ ())
+          rbp-is-new = readReg-writeReg-same (X86Sem.State.regs s) rbp new-rbp
+      in subst₂ _≤_ (sym rsp-unchanged) (sym rbp-is-new) rsp≤new-rbp
 
 ------------------------------------------------------------------------
 -- SlotMachine + X86 Combined Register Write
@@ -1018,6 +1051,7 @@ pc-change-preserves-corresponds σ s new-pc sc = record
   ; rbp-is-frame-base = rbp-is-frame-base sc
   ; frame-scope = frame-scope sc
   ; heap-in-heap = heap-in-heap sc
+  ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc
   }
 
 -- | Changing flags preserves StateCorresponds (flags not tracked)
@@ -1036,6 +1070,7 @@ flags-change-preserves-corresponds σ s new-flags sc = record
   ; rbp-is-frame-base = rbp-is-frame-base sc
   ; frame-scope = frame-scope sc
   ; heap-in-heap = heap-in-heap sc
+  ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc
   }
 
 -- | Changing both PC and flags preserves StateCorresponds
@@ -1052,6 +1087,7 @@ pc-flags-change-preserves-corresponds σ s new-pc new-flags sc = record
   ; rbp-is-frame-base = rbp-is-frame-base sc
   ; frame-scope = frame-scope sc
   ; heap-in-heap = heap-in-heap sc
+  ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc
   }
 
 ------------------------------------------------------------------------

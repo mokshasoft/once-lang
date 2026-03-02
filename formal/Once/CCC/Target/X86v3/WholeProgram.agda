@@ -315,6 +315,7 @@ id-preserves-corresponds σ s sc = record
   ; rbp-is-frame-base = rbp-is-frame-base sc
   ; frame-scope = frame-scope sc  -- stackMem unchanged by mov
   ; heap-in-heap = heap-in-heap sc  -- heapMem unchanged by mov
+  ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc  -- rsp, rbp unchanged by mov
   }
 
 ------------------------------------------------------------------------
@@ -361,6 +362,7 @@ terminal-preserves-corresponds σ s sc =
     ; rbp-is-frame-base = rbp-is-frame-base sc
     ; frame-scope = frame-scope sc  -- stackMem unchanged
     ; heap-in-heap = heap-in-heap sc  -- heapMem unchanged
+    ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc  -- rsp, rbp unchanged
     }
   where
     hb = heap-base sc
@@ -430,6 +432,7 @@ fst-preserves-corresponds σ s fst-loc sc mem-pre = record
   ; rbp-is-frame-base = rbp-is-frame-base sc
   ; frame-scope = frame-scope sc  -- stackMem unchanged by fst
   ; heap-in-heap = heap-in-heap sc  -- heapMem unchanged by fst
+  ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc  -- rsp, rbp unchanged by fst
   }
   where
     hb = heap-base sc
@@ -575,6 +578,7 @@ snd-preserves-corresponds σ s snd-loc sc mem-pre = record
   ; rbp-is-frame-base = rbp-is-frame-base sc
   ; frame-scope = frame-scope sc  -- stackMem unchanged by snd
   ; heap-in-heap = heap-in-heap sc  -- heapMem unchanged by snd
+  ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc  -- rsp, rbp unchanged by snd
   }
   where
     hb = heap-base sc
@@ -732,6 +736,7 @@ bridge-preserves-corresponds σ s sc = record
   ; rbp-is-frame-base = rbp-is-frame-base sc
   ; frame-scope = frame-scope sc  -- stackMem unchanged by bridge
   ; heap-in-heap = heap-in-heap sc  -- heapMem unchanged by bridge
+  ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc  -- rsp, rbp unchanged by bridge
   }
   where
     hb = heap-base sc
