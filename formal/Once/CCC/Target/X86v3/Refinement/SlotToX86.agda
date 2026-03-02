@@ -352,6 +352,10 @@ record StateCorresponds (σ : LocState FS) (s : State) : Set where
     -- Combined with frame-scope, this proves stack writes are disjoint from tracked slots.
     rsp-at-or-below-rbp : x86-readReg (X86Sem.State.regs s) rsp ≤ x86-readReg (X86Sem.State.regs s) rbp
 
+    -- Stack pointer is in the stack region
+    -- This enables InStack proofs for write addresses derived from rsp.
+    rsp-in-stack : InStack (x86-readReg (X86Sem.State.regs s) rsp)
+
 open StateCorresponds
 
 -- The state correspondence would be:
@@ -796,11 +800,13 @@ write-rbp-preserves-regs-correspond hb σ-regs x86-regs v rc = record
 
 -- | Sub rsp preserves StateCorresponds (only modifies rsp, a non-tracked register)
 -- Precondition: new-rsp ≤ rbp (calling convention: rsp stays at or below frame base)
+-- Precondition: new-rsp is in stack region
 sub-rsp-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State) (new-rsp : Word) →
   (sc : StateCorresponds σ s) →
   new-rsp ≤ x86-readReg (X86Sem.State.regs s) rbp →
+  InStack new-rsp →
   StateCorresponds σ (record s { regs = x86-writeReg (X86Sem.State.regs s) rsp new-rsp })
-sub-rsp-preserves-state-corresponds σ s new-rsp sc new-rsp≤rbp = record
+sub-rsp-preserves-state-corresponds σ s new-rsp sc new-rsp≤rbp new-rsp-in-stack = record
   { heap-base = heap-base sc
   ; unit-base-zero = unit-base-zero sc
   ; regs-correspond = write-rsp-preserves-regs-correspond (heap-base sc)
@@ -816,6 +822,9 @@ sub-rsp-preserves-state-corresponds σ s new-rsp sc new-rsp≤rbp = record
   ; rsp-at-or-below-rbp = subst (new-rsp ≤_)
       (sym (readReg-writeReg-diff (X86Sem.State.regs s) rsp rbp new-rsp (λ ())))
       new-rsp≤rbp
+  ; rsp-in-stack = subst InStack
+      (sym (readReg-writeReg-same (X86Sem.State.regs s) rsp new-rsp))
+      new-rsp-in-stack
   }
 
 ------------------------------------------------------------------------
@@ -878,7 +887,7 @@ push-preserves-state-corresponds : ∀ (σ : LocState FS) (s : State)
   StateCorresponds σ (record s
     { regs = x86-writeReg (X86Sem.State.regs s) rsp new-rsp
     ; memory = x86-writeMem (X86Sem.State.memory s) new-rsp pushed-val })
-push-preserves-state-corresponds σ s pushed-val new-rsp sc rsp-below-frame rsp-in-stack = record
+push-preserves-state-corresponds σ s pushed-val new-rsp sc rsp-below-frame new-rsp-in-stack = record
   { heap-base = heap-base sc
   ; unit-base-zero = unit-base-zero sc
   ; regs-correspond = write-rsp-preserves-regs-correspond (heap-base sc)
@@ -893,6 +902,9 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc rsp-below-frame rsp-
   ; frame-scope = frame-scope sc  -- σ unchanged
   ; heap-in-heap = heap-in-heap sc  -- σ and heap-base unchanged
   ; rsp-at-or-below-rbp = rsp-below-rbp-proof
+  ; rsp-in-stack = subst InStack
+      (sym (readReg-writeReg-same (X86Sem.State.regs s) rsp new-rsp))
+      new-rsp-in-stack
   }
   where
     -- PROVEN: Stack disjointness from frame ordering
@@ -921,7 +933,7 @@ push-preserves-state-corresponds σ s pushed-val new-rsp sc rsp-below-frame rsp-
                           new-rsp ≢ heap-loc-to-addr (heap-base sc) hl
     heap-disjoint-proof hl hl' read-eq =
       stack-heap-addr-disjoint new-rsp (heap-loc-to-addr (heap-base sc) hl)
-                               rsp-in-stack (heap-in-heap sc hl hl' read-eq)
+                               new-rsp-in-stack (heap-in-heap sc hl hl' read-eq)
 
     -- PROVEN: rsp ≤ rbp after push
     -- Chain: new-rsp < frame-base = rbp (via rbp-is-frame-base, unchanged by rsp write)
@@ -966,6 +978,9 @@ mov-rbp-preserves-state-corresponds σ s new-rbp new-frame frame-eq sc new≤old
   ; frame-scope = new-frame-scope
   ; heap-in-heap = heap-in-heap sc  -- σ and heap-base unchanged
   ; rsp-at-or-below-rbp = rsp-below-new-rbp
+  ; rsp-in-stack = subst InStack
+      (sym (readReg-writeReg-diff (X86Sem.State.regs s) rbp rsp new-rbp (λ ())))
+      (rsp-in-stack sc)
   }
   where
     -- Writing to rbp doesn't affect tracked registers (rax, rdi, rsi, r12, r14, r15)
@@ -1052,6 +1067,7 @@ pc-change-preserves-corresponds σ s new-pc sc = record
   ; frame-scope = frame-scope sc
   ; heap-in-heap = heap-in-heap sc
   ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc
+  ; rsp-in-stack = rsp-in-stack sc
   }
 
 -- | Changing flags preserves StateCorresponds (flags not tracked)
@@ -1071,6 +1087,7 @@ flags-change-preserves-corresponds σ s new-flags sc = record
   ; frame-scope = frame-scope sc
   ; heap-in-heap = heap-in-heap sc
   ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc
+  ; rsp-in-stack = rsp-in-stack sc
   }
 
 -- | Changing both PC and flags preserves StateCorresponds
@@ -1088,6 +1105,7 @@ pc-flags-change-preserves-corresponds σ s new-pc new-flags sc = record
   ; frame-scope = frame-scope sc
   ; heap-in-heap = heap-in-heap sc
   ; rsp-at-or-below-rbp = rsp-at-or-below-rbp sc
+  ; rsp-in-stack = rsp-in-stack sc
   }
 
 ------------------------------------------------------------------------

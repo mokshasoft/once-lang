@@ -35,8 +35,8 @@ open import Data.Bool using (false)
 open import Data.List using (_++_; length; []; _∷_)
 open import Data.List.Properties using (length-++; ++-assoc)
 open import Data.Maybe using (just)
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; z≤n; s≤s; _∸_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl; <-≤-trans; <⇒≢; m∸n+n≡m; m∸n≤m) renaming (+-assoc to ℕ-+-assoc)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _>_; z≤n; s≤s; _∸_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl; <-≤-trans; <⇒≢; m∸n+n≡m; m∸n≤m; ∸-+-assoc; ∸-monoʳ-<) renaming (+-assoc to ℕ-+-assoc)
 
 -- Import slot-level address reasoning
 open import Once.CCC.Target.X86.StackGrowth using (x86-grow; x86-grow-identity; x86-grow-injective)
@@ -89,7 +89,7 @@ open MemCorresponds
 open StateCorresponds
 
 -- Import layout helpers for disjointness proofs
-open import Once.CCC.Target.X86.Layout using (slot-addr-≥-base; stack-heap-addr-disjoint; InStack; from-raw-stack)
+open import Once.CCC.Target.X86.Layout using (slot-addr-≥-base; stack-heap-addr-disjoint; InStack; from-raw-stack; stack-sub-preserves)
 
 -- Import allocation types
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation
@@ -122,6 +122,55 @@ private
   <⇒≤ : ∀ {m n : ℕ} → m < n → m ≤ n
   <⇒≤ {zero} {suc n} _ = z≤n
   <⇒≤ {suc m} {suc n} (s≤s p) = s≤s (<⇒≤ p)
+
+  -- | Helper: m - n < m when m > 0 and n > 0
+  m∸n<m : ∀ m n → m > 0 → n > 0 → m ∸ n < m
+  m∸n<m (suc m') (suc n') _ _ = s≤s (m∸n≤m m' n')
+
+  -- | slot-size = 8 > 0
+  slot-size>0 : slot-size > 0
+  slot-size>0 = s≤s z≤n
+
+  -- | slots 2 = 16 > 0
+  slots2>0 : slots 2 > 0
+  slots2>0 = s≤s z≤n
+
+  -- | slot-size = 8 ≤ slots 4 = 32
+  slot-size≤slots4 : slot-size ≤ slots 4
+  slot-size≤slots4 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))
+
+  -- | slots 2 = 16 ≤ slots 4 = 32
+  slots2≤slots4 : slots 2 ≤ slots 4
+  slots2≤slots4 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n)))))))))))))))
+
+  -- | slots 3 = 24 > slot-size = 8
+  slots3>slot-size : slots 3 > slot-size
+  slots3>slot-size = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+  -- | slot-size = 8 < slots 4 = 32
+  slot-size<slots4 : slot-size < slots 4
+  slot-size<slots4 = s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s (s≤s z≤n))))))))
+
+  -- | (m - (n + o)) + o ≡ m - n when n + o ≤ m (simplified for our case)
+  -- For pair-setup: (rsp - 32) + 16 = rsp - 16 when rsp ≥ 32
+  -- Proof strategy:
+  --   1. m - (n + o) = (m - n) - o  (by ∸-+-assoc)
+  --   2. ((m - n) - o) + o = m - n  (by m∸n+n≡m when o ≤ m - n)
+  ∸+≡∸ : ∀ m n o → (n +ℕ o) ≤ m → (m ∸ (n +ℕ o)) +ℕ o ≡ m ∸ n
+  ∸+≡∸ m n o n+o≤m = trans (cong (_+ℕ o) step1) step2
+    where
+      open import Data.Nat.Properties using (m+n≤o⇒m≤o∸n; +-comm)
+      -- First show o ≤ m - n (needed for step 2)
+      n+o≤m' : o +ℕ n ≤ m
+      n+o≤m' = subst (_≤ m) (+-comm n o) n+o≤m
+      o≤m∸n : o ≤ m ∸ n
+      o≤m∸n = m+n≤o⇒m≤o∸n o n+o≤m'
+      -- Step 1: m - (n + o) = (m - n) - o
+      step1 : m ∸ (n +ℕ o) ≡ (m ∸ n) ∸ o
+      step1 = sym (∸-+-assoc m n o)
+      -- Step 2: ((m - n) - o) + o = m - n
+      step2 : ((m ∸ n) ∸ o) +ℕ o ≡ m ∸ n
+      step2 = m∸n+n≡m o≤m∸n
 
 ------------------------------------------------------------------------
 -- SlotMachine state transformers for pair phases
@@ -168,13 +217,17 @@ pair-setup-result : ∀ (prefix suffix : Program) (s : State)
   (sc : StateCorresponds σ s) →
   X86Sem.State.halted s ≡ false →
   X86Sem.State.pc s ≡ length prefix →
+  -- Precondition: sufficient stack capacity for pair-setup (4 slots = push + 3 local slots)
+  slots 4 ≤ x86-readReg (X86Sem.State.regs s) rsp →
   ∃[ s' ] (Star (prefix ++ pair-setup ++ suffix) s s'
          × X86Sem.State.halted s' ≡ false
          × X86Sem.State.pc s' ≡ length prefix +ℕ length pair-setup
          × StateCorresponds (pair-setup-slot-state σ) s'
          -- rbp after setup = original rsp - slot-size (for rsp-final proof)
-         × x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size)
-pair-setup-result prefix suffix s σ sc h-eq pc-eq =
+         × x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size
+         -- rsp < rbp after setup (rsp = rbp - slots 3, so rsp < rbp)
+         × x86-readReg (X86Sem.State.regs s') rsp < x86-readReg (X86Sem.State.regs s') rbp)
+pair-setup-result prefix suffix s σ sc h-eq pc-eq capacity-pre =
   let
     -- The program
     prog = prefix ++ pair-setup ++ suffix
@@ -319,17 +372,81 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
     backup-write-addr : Word
     backup-write-addr = effectiveAddr s3 (base+disp rsp (slots 2))
 
-    -- Stack capacity postulates (calling convention invariants)
-    -- These require proof that rsp is below the current frame
-    postulate
-      -- Push address is strictly below current frame (calling convention)
-      push-below-frame : push-write-addr < x86-frame-base (current-frame sc)
-      -- Push address is in stack region (for heap disjointness)
-      push-in-stack : InStack push-write-addr
-      -- Backup address is strictly below current frame
-      backup-below-frame : backup-write-addr < x86-frame-base (current-frame sc)
-      -- Backup address is in stack region
-      backup-in-stack : InStack backup-write-addr
+    -- Stack capacity proofs (from capacity-pre precondition)
+    -- Using module-level helpers m∸n<m, slot-size>0, slots2>0, slot-size≤slots4, slots2≤slots4
+
+    -- From capacity-pre: slots 4 ≤ s.rsp means s.rsp ≥ 32 > 0
+    rsp-val : Word
+    rsp-val = x86-readReg (X86Sem.State.regs s) rsp
+
+    rsp>0 : rsp-val > 0
+    rsp>0 = ≤-trans (s≤s z≤n) capacity-pre
+
+    -- slot-size ≤ rsp from slots 4 ≤ rsp
+    slot-size≤rsp : slot-size ≤ rsp-val
+    slot-size≤rsp = ≤-trans slot-size≤slots4 capacity-pre
+
+    -- slots 2 ≤ rsp from slots 4 ≤ rsp
+    slots2≤rsp : slots 2 ≤ rsp-val
+    slots2≤rsp = ≤-trans slots2≤slots4 capacity-pre
+
+    -- rsp ≤ frame-base (current-frame sc)
+    rsp≤frame-base : rsp-val ≤ x86-frame-base (current-frame sc)
+    rsp≤frame-base = subst (rsp-val ≤_) (rbp-is-frame-base sc) (rsp-at-or-below-rbp sc)
+
+    -- Push address is strictly below current frame
+    -- Chain: push-write-addr = rsp - 8 < rsp ≤ rbp = frame-base (current-frame sc)
+    push-below-frame : push-write-addr < x86-frame-base (current-frame sc)
+    push-below-frame = <-≤-trans (m∸n<m rsp-val slot-size rsp>0 slot-size>0) rsp≤frame-base
+
+    -- Push address is in stack region
+    push-in-stack : InStack push-write-addr
+    push-in-stack = stack-sub-preserves rsp-val slot-size (rsp-in-stack sc) slot-size≤rsp
+
+    -- For backup-below-frame, we need backup-write-addr < frame-base
+    -- backup-write-addr = s3.rsp + slots 2
+    -- s3.rsp = s.rsp - slots 4 (after push -8 and sub -24)
+    -- So backup-write-addr = (rsp - 32) + 16 = rsp - 16
+
+    -- s3.rsp = s.rsp - slots 4
+    s3-rsp-eq : x86-readReg (X86Sem.State.regs s3) rsp ≡ rsp-val ∸ slots 4
+    s3-rsp-eq =
+      let s1-rsp = readReg-writeReg-same (X86Sem.State.regs s) rsp (rsp-val ∸ slot-size)
+          s2-rsp = readReg-writeReg-diff (X86Sem.State.regs s1) rbp rsp
+                     (x86-readReg (X86Sem.State.regs s1) rsp) (λ ())
+          s3-rsp = readReg-writeReg-same (X86Sem.State.regs s2) rsp
+                     (x86-readReg (X86Sem.State.regs s2) rsp ∸ slots 3)
+          s2-rsp-val : x86-readReg (X86Sem.State.regs s2) rsp ≡ rsp-val ∸ slot-size
+          s2-rsp-val = trans s2-rsp s1-rsp
+          s3-rsp-val : x86-readReg (X86Sem.State.regs s3) rsp ≡ (rsp-val ∸ slot-size) ∸ slots 3
+          s3-rsp-val = trans s3-rsp (cong (_∸ slots 3) s2-rsp-val)
+      in trans s3-rsp-val (∸-+-assoc rsp-val slot-size (slots 3))
+
+    -- backup-write-addr = s3.rsp + slots 2 = (rsp - slots 4) + slots 2
+    backup-addr-eq : backup-write-addr ≡ (rsp-val ∸ slots 4) +ℕ slots 2
+    backup-addr-eq = cong (_+ℕ slots 2) s3-rsp-eq
+
+    -- (rsp - slots 4) + slots 2 = rsp - slots 2 using ∸+≡∸
+    -- ∸+≡∸ : (m ∸ (n + o)) + o ≡ m ∸ n when (n + o) ≤ m
+    -- Here m = rsp-val, n = slots 2, o = slots 2, and n + o = slots 4
+    simplify-backup : (rsp-val ∸ slots 4) +ℕ slots 2 ≡ rsp-val ∸ slots 2
+    simplify-backup = ∸+≡∸ rsp-val (slots 2) (slots 2) capacity-pre
+
+    -- backup-write-addr = rsp - slots 2
+    backup-is-rsp∸16 : backup-write-addr ≡ rsp-val ∸ slots 2
+    backup-is-rsp∸16 = trans backup-addr-eq simplify-backup
+
+    -- Backup address < rsp (since rsp - 16 < rsp when rsp > 0)
+    backup<rsp : backup-write-addr < rsp-val
+    backup<rsp = subst (_< rsp-val) (sym backup-is-rsp∸16) (m∸n<m rsp-val (slots 2) rsp>0 slots2>0)
+
+    -- Backup address is strictly below current frame
+    backup-below-frame : backup-write-addr < x86-frame-base (current-frame sc)
+    backup-below-frame = <-≤-trans backup<rsp rsp≤frame-base
+
+    -- Backup address is in stack region
+    backup-in-stack : InStack backup-write-addr
+    backup-in-stack = subst InStack (sym backup-is-rsp∸16) (stack-sub-preserves rsp-val (slots 2) (rsp-in-stack sc) slots2≤rsp)
 
     -- Stack disjointness for push write
     -- Chain: push-write-addr < frame-base current ≤ frame-base f ≤ slot-addr f k
@@ -484,6 +601,18 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
     rsp-at-or-below-rbp' = subst₂ _≤_ (sym s'-rsp-eq-s1-sub) (sym s'-rbp-eq-s1-rsp)
                              (m∸n≤m (x86-readReg (X86Sem.State.regs s1) rsp) (slots 3))
 
+    -- s'.rsp = s.rsp ∸ slots 4 (push subtracts slot-size=8, sub subtracts slots 3=24)
+    -- Chain: s'.rsp = s1.rsp ∸ slots 3 = (s.rsp ∸ slot-size) ∸ slots 3 = s.rsp ∸ slots 4
+    s'-rsp-eq-s-sub : x86-readReg (X86Sem.State.regs s') rsp ≡ rsp-val ∸ slots 4
+    s'-rsp-eq-s-sub = trans s'-rsp-eq-s1-sub
+                        (trans (cong (_∸ slots 3) rsp-after-push)
+                               (∸-+-assoc rsp-val slot-size (slots 3)))
+
+    -- s'.rsp is in stack (derived from s.rsp being in stack with capacity)
+    rsp-in-stack' : InStack (x86-readReg (X86Sem.State.regs s') rsp)
+    rsp-in-stack' = subst InStack (sym s'-rsp-eq-s-sub)
+                      (stack-sub-preserves rsp-val (slots 4) (rsp-in-stack sc) capacity-pre)
+
     sc' : StateCorresponds σ' s'
     sc' = record
       { heap-base = heap-base'
@@ -496,6 +625,7 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
       ; frame-scope = frame-scope'
       ; heap-in-heap = heap-in-heap sc  -- σ' = σ, heap-base unchanged
       ; rsp-at-or-below-rbp = rsp-at-or-below-rbp'
+      ; rsp-in-stack = rsp-in-stack'
       }
 
     -- rbp after setup = s.rsp - slot-size
@@ -503,7 +633,21 @@ pair-setup-result prefix suffix s σ sc h-eq pc-eq =
     rbp-eq : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rsp ∸ slot-size
     rbp-eq = trans rbp-is-frame-base' frame-base-eq
 
-  in s' , star-proof , h'-eq , pc'-eq , sc' , rbp-eq
+    -- PROVEN: rsp < rbp after setup
+    -- s'.rsp = s.rsp - slots 4, s'.rbp = s.rsp - slot-size
+    -- So s'.rsp = s'.rbp - slots 3
+    -- Since slots 3 > 0, s'.rsp < s'.rbp
+    -- Note: slots 4 = slot-size + slots 3, so s.rsp - slots 4 = (s.rsp - slot-size) - slots 3 = s'.rbp - slots 3
+    -- Use ∸-monoʳ-< : m < n → n ≤ o → o ∸ n < o ∸ m
+    -- Here m = slot-size, n = slots 4, o = rsp-val
+    -- slot-size < slots 4 (8 < 32), and capacity-pre gives slots 4 ≤ rsp-val
+    rsp-val-minus4<rsp-val-minus8 : rsp-val ∸ slots 4 < rsp-val ∸ slot-size
+    rsp-val-minus4<rsp-val-minus8 = ∸-monoʳ-< slot-size<slots4 capacity-pre
+
+    rsp<rbp : x86-readReg (X86Sem.State.regs s') rsp < x86-readReg (X86Sem.State.regs s') rbp
+    rsp<rbp = subst₂ _<_ (sym s'-rsp-eq-s-sub) (sym rbp-eq) rsp-val-minus4<rsp-val-minus8
+
+  in s' , star-proof , h'-eq , pc'-eq , sc' , rbp-eq , rsp<rbp
 
 ------------------------------------------------------------------------
 -- pair-middle-result: PROVEN using step-fetch-result pattern
@@ -524,13 +668,15 @@ pair-middle-result : ∀ (prefix suffix : Program) (s : State)
   -- Precondition: [rsp+16] contains the input-loc value (written in pair-setup, preserved through f)
   x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rsp +ℕ slots 2)
     ≡ just (loc-to-addr (heap-base sc) input-loc) →
+  -- Precondition: rsp < rbp (holds after pair-setup because rsp = rbp - slots 3)
+  x86-readReg (X86Sem.State.regs s) rsp < x86-readReg (X86Sem.State.regs s) rbp →
   ∃[ s' ] (Star (prefix ++ pair-middle ++ suffix) s s'
          × X86Sem.State.halted s' ≡ false
          × X86Sem.State.pc s' ≡ length prefix +ℕ length pair-middle
          × StateCorresponds (pair-middle-slot-state σ input-loc) s'
          × x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rsp
          × x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rbp)
-pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
+pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre rsp<rbp =
   let
     -- The program
     prog = prefix ++ pair-middle ++ suffix
@@ -709,11 +855,16 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
     fst-write-addr : Word
     fst-write-addr = step0-write-addr  -- = x86-readReg s rsp
 
-    -- Stack capacity postulate: fst write address is below current frame
-    -- This holds because rsp (after sub) < rbp (set by mov rbp, rsp before sub)
-    postulate
-      fst-below-frame : fst-write-addr < x86-frame-base (current-frame sc)
-      fst-in-stack : InStack fst-write-addr
+    -- PROVEN: fst write address is below current frame
+    -- Chain: fst-write-addr = rsp < rbp = frame-base(current-frame sc)
+    fst-below-frame : fst-write-addr < x86-frame-base (current-frame sc)
+    fst-below-frame = subst (x86-readReg (X86Sem.State.regs s) rsp <_)
+                            (rbp-is-frame-base sc)
+                            rsp<rbp
+
+    -- PROVEN: fst write address is in stack region (from rsp-in-stack sc)
+    fst-in-stack : InStack fst-write-addr
+    fst-in-stack = rsp-in-stack sc
 
     -- Stack disjointness for fst write
     fst-stack-disjoint : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
@@ -782,6 +933,10 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
     rsp-at-or-below-rbp' : x86-readReg (X86Sem.State.regs s') rsp ≤ x86-readReg (X86Sem.State.regs s') rbp
     rsp-at-or-below-rbp' = subst₂ _≤_ (sym rsp-s'-eq-s) (sym rbp-s'-eq-s) (rsp-at-or-below-rbp sc)
 
+    -- rsp-in-stack is preserved since rsp is unchanged
+    rsp-in-stack' : InStack (x86-readReg (X86Sem.State.regs s') rsp)
+    rsp-in-stack' = subst InStack (sym rsp-s'-eq-s) (rsp-in-stack sc)
+
     sc' : StateCorresponds σ' s'
     sc' = record
       { heap-base = heap-base'
@@ -794,6 +949,7 @@ pair-middle-result prefix suffix s σ input-loc sc h-eq pc-eq input-backup-pre =
       ; frame-scope = frame-scope sc  -- σ' stackMem unchanged, current-frame unchanged
       ; heap-in-heap = heap-in-heap sc  -- σ' heapMem unchanged, heap-base unchanged
       ; rsp-at-or-below-rbp = rsp-at-or-below-rbp'
+      ; rsp-in-stack = rsp-in-stack'
       }
 
     -- PROVEN: rsp unchanged through pair-middle
@@ -828,9 +984,9 @@ pair-cleanup-result : ∀ (prefix suffix : Program) (s : State)
   X86Sem.State.pc s ≡ length prefix →
   -- Precondition: rsp points to pair-loc (from AllocInvariant)
   x86-readReg (X86Sem.State.regs s) rsp ≡ loc-to-addr (heap-base sc) pair-loc →
-  -- Precondition: snd write address differs from rbp (for memory preservation)
+  -- Precondition: snd write address < rbp (for snd-below-frame proof)
   -- In pair context: rsp + 8 < rbp since gap is 24 (slots 3)
-  x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size ≢ x86-readReg (X86Sem.State.regs s) rbp →
+  x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size < x86-readReg (X86Sem.State.regs s) rbp →
   -- Precondition: saved rbp value is preserved at [rbp] (for rbp-final proof)
   (original-rbp : Word) →
   x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rbp) ≡ just original-rbp →
@@ -842,7 +998,7 @@ pair-cleanup-result : ∀ (prefix suffix : Program) (s : State)
          × x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rbp +ℕ slot-size
          -- rbp after cleanup = original-rbp (the saved value)
          × x86-readReg (X86Sem.State.regs s') rbp ≡ original-rbp)
-pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-corresponds snd-write≢rbp original-rbp saved-rbp-at-rbp =
+pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-corresponds snd-write<rbp original-rbp saved-rbp-at-rbp =
   let
     -- The program
     prog = prefix ++ pair-cleanup ++ suffix
@@ -941,6 +1097,10 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
     -- s1.memory is s.memory with write at snd-write-addr
     snd-write-addr-eq : effectiveAddr s (base+disp rsp slot-size) ≡ x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size
     snd-write-addr-eq = refl
+
+    -- Derive ≢ from <
+    snd-write≢rbp : x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size ≢ x86-readReg (X86Sem.State.regs s) rbp
+    snd-write≢rbp = <⇒≢ snd-write<rbp
 
     -- Using readMem-writeMem-diff: write at (s.rsp + 8) doesn't affect read at s.rbp
     mem-preserved-through-cleanup-steps :
@@ -1041,10 +1201,19 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
     snd-write-addr : Word
     snd-write-addr = effectiveAddr s (base+disp rsp slot-size)  -- = x86-readReg s rsp + 8
 
-    -- Stack capacity postulate: snd write address is below current frame
-    -- This holds because rsp + 8 (after sub) < rbp (set by mov rbp, rsp before sub)
+    -- PROVEN: snd write address is below current frame
+    -- Chain: snd-write-addr = rsp + 8 < rbp = frame-base(current-frame sc)
+    snd-below-frame : snd-write-addr < x86-frame-base (current-frame sc)
+    snd-below-frame = subst (x86-readReg (X86Sem.State.regs s) rsp +ℕ slot-size <_)
+                            (rbp-is-frame-base sc)
+                            snd-write<rbp
+
+    -- snd write address is in stack region
+    -- snd-write-addr = rsp + 8, and rsp is in stack (from rsp-in-stack sc)
+    -- Need: InStack (rsp + 8), which requires rsp + 8 within stack bounds
+    -- Postulate: rsp + 8 is within stack region
+    -- This follows from rsp being in a valid stack frame with room for slot-size
     postulate
-      snd-below-frame : snd-write-addr < x86-frame-base (current-frame sc)
       snd-in-stack : InStack snd-write-addr
 
     -- Stack disjointness for snd write
@@ -1105,6 +1274,8 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
                              x86-frame-base restored-frame ≤ x86-frame-base f
       -- rsp ≤ rbp is restored after cleanup
       rsp-at-or-below-rbp' : x86-readReg (X86Sem.State.regs s') rsp ≤ x86-readReg (X86Sem.State.regs s') rbp
+      -- rsp is in stack after cleanup (restored to caller's rsp)
+      rsp-in-stack' : InStack (x86-readReg (X86Sem.State.regs s') rsp)
 
     sc' : StateCorresponds σ' s'
     sc' = record
@@ -1118,6 +1289,7 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
       ; frame-scope = restored-frame-scope
       ; heap-in-heap = heap-in-heap sc  -- σ' heapMem unchanged, heap-base unchanged
       ; rsp-at-or-below-rbp = rsp-at-or-below-rbp'
+      ; rsp-in-stack = rsp-in-stack'
       }
 
     -- Prove: s'.rsp = s.rbp + slot-size
@@ -1171,8 +1343,14 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
 ------------------------------------------------------------------------
 
 pair-runner : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
-  IRRunner f → IRRunner g → IRRunner (⟨ f , g ⟩ m)
-pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
+  IRRunner f → IRRunner g →
+  -- Capacity precondition: pair-setup needs 4 slots (push + 3 local slots)
+  (∀ prefix suffix σ s → (sc : StateCorresponds σ s) →
+   X86Sem.State.halted s ≡ false →
+   X86Sem.State.pc s ≡ length prefix →
+   slots 4 ≤ x86-readReg (X86Sem.State.regs s) rsp) →
+  IRRunner (⟨ f , g ⟩ m)
+pair-runner {A} {B} {C} f g m f-run g-run capacity-pre prefix suffix σ s sc h-eq pc-eq =
   let -- Program components
       prog-f = compile-ir f
       prog-g = compile-ir g
@@ -1196,8 +1374,12 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       -- Phase 1: Execute pair-setup
       suffix-after-setup = prog-f ++ pair-middle ++ prog-g ++ pair-cleanup ++ suffix
 
-      (s1 , star-setup , h1 , pc1 , sc1 , rbp1-eq) =
-        pair-setup-result prefix suffix-after-setup s σ sc h-eq pc-eq
+      -- Get the capacity precondition for this specific call
+      setup-capacity : slots 4 ≤ x86-readReg (X86Sem.State.regs s) rsp
+      setup-capacity = capacity-pre prefix suffix σ s sc h-eq pc-eq
+
+      (s1 , star-setup , h1 , pc1 , sc1 , rbp1-eq , rsp<rbp-s1) =
+        pair-setup-result prefix suffix-after-setup s σ sc h-eq pc-eq setup-capacity
       σ1 = pair-setup-slot-state σ
 
       -- pair-rsp: The rsp value after pair-setup, which is the pair frame base
@@ -1207,10 +1389,15 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
       pair-rsp = x86-readReg (X86Sem.State.regs s1) rsp
 
       -- pair-frame: The frame for the pair allocation
-      -- Postulate: this frame exists in the stack region
-      postulate
-        pair-frame : X86Frame
-        pair-frame-base-eq : x86-frame-base pair-frame ≡ pair-rsp
+      -- PROVEN: Construct from pair-rsp with InStack from sc1's rsp-in-stack
+      pair-in-stack : InStack pair-rsp
+      pair-in-stack = rsp-in-stack sc1
+
+      pair-frame : X86Frame
+      pair-frame = from-raw-stack pair-rsp pair-in-stack
+
+      pair-frame-base-eq : x86-frame-base pair-frame ≡ pair-rsp
+      pair-frame-base-eq = refl
 
       -- pair-loc: The location where the pair is allocated (slot 0 of pair-frame)
       pair-loc : SM.ValueLocation FS'
@@ -1239,8 +1426,15 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
           x86-readMem (X86Sem.State.memory s2) (x86-readReg (X86Sem.State.regs s2) rsp +ℕ slots 2)
             ≡ just (loc-to-addr (heap-base sc2) input-loc)
 
+      -- rsp < rbp after pair-setup (returned from pair-setup-result) and preserved through f
+      -- f preserves both rsp and rbp, so s2.rsp < s2.rbp
+      rsp<rbp-s2 : x86-readReg (X86Sem.State.regs s2) rsp < x86-readReg (X86Sem.State.regs s2) rbp
+      rsp<rbp-s2 = subst₂ _<_ (sym (IRStarResult.rsp-preserved f-result))
+                              (sym (IRStarResult.rbp-preserved f-result))
+                              rsp<rbp-s1
+
       (s3 , star-mid , h3 , pc3 , sc3 , rsp-mid-unchanged , rbp-mid-unchanged) =
-        pair-middle-result prefix-mid suffix-mid s2 σ2 input-loc sc2 h2 pc2-for-mid input-backup-preserved-through-f
+        pair-middle-result prefix-mid suffix-mid s2 σ2 input-loc sc2 h2 pc2-for-mid input-backup-preserved-through-f rsp<rbp-s2
       σ3 = pair-middle-slot-state σ2 input-loc
 
       -- Phase 4: Execute g
@@ -1296,14 +1490,14 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
 
       -- Stack capacity: pair-setup allocates 32 bytes (8 for push + 24 for locals)
       -- Requires s.rsp ≥ 32 for safe stack operations
-      -- snd write address differs from rbp:
+      -- snd write address < rbp:
       -- s4.rsp + 8 = pair-rsp + 8 = (s.rsp - 32) + 8 = s.rsp - 24
       -- s4.rbp = s1.rbp = s.rsp - 8
-      -- s.rsp - 24 ≠ s.rsp - 8 when s.rsp ≥ 32 (gap of 16 bytes)
+      -- s.rsp - 24 < s.rsp - 8 (gap of 16 bytes)
       postulate
         setup-frame-size≤orig-rsp : slots 4 ≤ x86-readReg (X86Sem.State.regs s) rsp
-        snd-write≢rbp-at-cleanup :
-          x86-readReg (X86Sem.State.regs s4) rsp +ℕ slot-size ≢ x86-readReg (X86Sem.State.regs s4) rbp
+        snd-write<rbp-at-cleanup :
+          x86-readReg (X86Sem.State.regs s4) rsp +ℕ slot-size < x86-readReg (X86Sem.State.regs s4) rbp
 
       -- Precondition: memory at s4.rbp contains orig-rbp-value
       -- s4.rbp = s1.rbp (by rbp-preserved-through-g)
@@ -1315,7 +1509,7 @@ pair-runner {A} {B} {C} f g m f-run g-run prefix suffix σ s sc h-eq pc-eq =
 
       (s5 , star-clean , h5 , pc5 , sc5 , rsp-cleanup-eq , rbp-cleanup-eq) =
         pair-cleanup-result prefix-clean suffix s4 σ4 pair-loc sc4 h4 pc4-for-clean pair-loc-corresponds
-                            snd-write≢rbp-at-cleanup orig-rbp-value saved-rbp-preserved
+                            snd-write<rbp-at-cleanup orig-rbp-value saved-rbp-preserved
       σ5 = pair-cleanup-slot-state σ4 pair-loc
 
       -- Chain all stars together
