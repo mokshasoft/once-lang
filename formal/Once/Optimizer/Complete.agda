@@ -18,7 +18,7 @@ open import Once.Optimize
 open import Once.Semantics
 
 open import Once.Optimizer.Cost
-open import Once.Optimizer.CostProof using (optimize-compose-cost-≤)
+open import Once.Optimizer.CostProof using (optimize-compose-cost-≤; optimize-pair-cost-≤; optimize-case-cost-≤)
 open import Once.Optimizer.Depth
 open import Once.Optimizer.Rewrite
 
@@ -69,23 +69,10 @@ postulate
 
 ------------------------------------------------------------------------
 -- Key Lemma: Optimization reduces or preserves cost
+--
+-- optimize-pair-cost-≤, optimize-case-cost-≤, and optimize-compose-cost-≤
+-- are imported from Once.Optimizer.CostProof
 ------------------------------------------------------------------------
-
--- | Helper: optimize-pair never increases cost
-postulate
-  optimize-pair-cost-≤ : ∀ {A B C} (f : IR C A) (g : IR C B) →
-    cost (optimize-pair f g) ≤ suc (cost f ℕ+ cost g)
-
--- | Helper: optimize-case never increases cost
-postulate
-  optimize-case-cost-≤ : ∀ {A B C} (f : IR A C) (g : IR B C) →
-    cost (optimize-case f g) ≤ cost f ℕ+ cost g
-
--- | Helper: optimize-compose never increases cost
---   Proven in Once.Optimizer.CostProof
---   Key insight: each optimization rule either reduces cost (beta/eta)
---   or preserves it (default cases). Distribution only happens when
---   safe-pair-distrib returns true (eta case or terminal case).
 
 -- | Single optimization pass never increases cost
 --   Now provable because distribution is conditional!
