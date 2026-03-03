@@ -382,6 +382,37 @@ mutual
 -- Optimizer: Composition Rules
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- Helper: Check if composition would enable a beta reduction
+------------------------------------------------------------------------
+
+-- | Does f "want" a pair on its right? (i.e., can f ∘ ⟨_,_⟩ reduce?)
+wants-pair : ∀ {A B} → IR A B → Bool
+wants-pair fst = true
+wants-pair snd = true
+wants-pair apply = true  -- apply ∘ ⟨ curry f , g ⟩ reduces
+wants-pair terminal = true  -- terminal absorbs everything
+wants-pair _ = false
+
+-- | Does f "want" a coproduct on its right? (i.e., can f ∘ inl/inr reduce?)
+wants-coprod : ∀ {A B} → IR A B → Bool
+wants-coprod [ _ , _ ] = true
+wants-coprod terminal = true
+wants-coprod _ = false
+
+-- | Does f "want" an unfold on its right?
+wants-unfold : ∀ {A B} → IR A B → Bool
+wants-unfold fold = true
+wants-unfold terminal = true
+wants-unfold _ = false
+
+-- | Does f "want" a fold on its right?
+wants-fold : ∀ {A B} → IR A B → Bool
+wants-fold unfold = true
+wants-fold terminal = true
+wants-fold _ = false
+
+------------------------------------------------------------------------
 -- | Rewrite compositions using categorical laws
 --
 -- Each pattern match clause is one optimization rule.
@@ -498,17 +529,44 @@ optimize-compose (_ ∘ _) initial = initial
 optimize-compose initial f = initial ∘ f
 
 ------------------------------------------------------------------------
--- Distribution Rules
--- Push compositions through pair/case to expose more optimizations
+-- Distribution Rules (CONDITIONAL)
+-- Only distribute when it enables a beta reduction.
+-- Unconditional distribution can INCREASE cost without benefit.
 ------------------------------------------------------------------------
 
 -- Pairing distribution: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
--- Exposes beta reductions when f or g are projections
-optimize-compose (⟨ f , g ⟩ m) h = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
+-- Only when h is a pair and f or g can consume it (fst/snd/apply/terminal)
+optimize-compose (⟨ f , g ⟩ m) h@(⟨ _ , _ ⟩ _) with wants-pair f ∨ wants-pair g
+... | true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
+... | false = (⟨ f , g ⟩ m) ∘ h
+
+-- Pairing distribution when h is inl/inr and f or g is a case
+optimize-compose (⟨ f , g ⟩ m) h@(inl _) with wants-coprod f ∨ wants-coprod g
+... | true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
+... | false = (⟨ f , g ⟩ m) ∘ h
+optimize-compose (⟨ f , g ⟩ m) h@(inr _) with wants-coprod f ∨ wants-coprod g
+... | true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
+... | false = (⟨ f , g ⟩ m) ∘ h
+
+-- Pairing distribution when h is unfold and f or g is fold
+optimize-compose (⟨ f , g ⟩ m) unfold with wants-unfold f ∨ wants-unfold g
+... | true  = ⟨ optimize-compose f unfold , optimize-compose g unfold ⟩ m
+... | false = (⟨ f , g ⟩ m) ∘ unfold
+
+-- Pairing distribution when h is fold and f or g is unfold
+optimize-compose (⟨ f , g ⟩ m) fold with wants-fold f ∨ wants-fold g
+... | true  = ⟨ optimize-compose f fold , optimize-compose g fold ⟩ m
+... | false = (⟨ f , g ⟩ m) ∘ fold
+
+-- Default: don't distribute pairs (would increase cost without benefit)
+optimize-compose (⟨ f , g ⟩ m) h = (⟨ f , g ⟩ m) ∘ h
 
 -- Case distribution: h ∘ [ f , g ] = [ h ∘ f , h ∘ g ]
--- Pushes computation into branches
-optimize-compose h [ f , g ] = [ optimize-compose h f , optimize-compose h g ]
+-- Only when h is a case (for case fusion)
+-- Note: terminal ∘ [ f , g ] = terminal is already handled above
+optimize-compose [ h₁ , h₂ ] [ f , g ] = [ optimize-compose [ h₁ , h₂ ] f , optimize-compose [ h₁ , h₂ ] g ]
+-- Default: don't distribute into cases
+optimize-compose h [ f , g ] = h ∘ [ f , g ]
 
 ------------------------------------------------------------------------
 -- Associativity (enables more optimizations)
