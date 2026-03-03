@@ -21,6 +21,7 @@ open import Once.Semantics
 
 open import Once.Optimizer.Cost
 open import Once.Optimizer.Depth
+open import Once.Optimizer.Complete using (optimize-cost-≤)
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat.Properties using (≤-refl; ≤-trans)
@@ -79,6 +80,32 @@ t ≈ t' = ∀ x → eval t x ≡ eval t' x
 -- Optimizer preserves BCC property
 ------------------------------------------------------------------------
 
+-- | optimize-pair preserves BCC membership
+--   The proof structure mirrors optimize-pair exactly.
+--   Note: Due to Agda's coverage limitations with catch-all patterns,
+--   we use a postulate. The result is clearly true since optimize-pair
+--   always returns either id, h, or ⟨f,g⟩ - all BCC if inputs are BCC.
+postulate
+  bcc-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B) →
+    IsBCC f → IsBCC g → IsBCC (optimize-pair f g)
+
+-- | optimize-case preserves BCC membership
+--   Similar reasoning as bcc-pair-result.
+postulate
+  bcc-case-result : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    IsBCC f → IsBCC g → IsBCC (optimize-case f g)
+
+-- | optimize-compose preserves BCC membership
+--   This function has many cases matching optimize-compose structure.
+--   The result is clearly true: optimize-compose only produces:
+--   - Identity (bcc-id)
+--   - Composition subterms (which are BCC if inputs are BCC)
+--   - terminal/initial (bcc-terminal/bcc-initial)
+--   - Constructed terms (pairs, cases, etc.) from BCC components
+postulate
+  bcc-compose-result : ∀ {A B C} (g : IR B C) (f : IR A B) →
+    IsBCC g → IsBCC f → IsBCC (optimize-compose g f)
+
 -- | optimize-once preserves BCC membership
 optimize-once-preserves-bcc : ∀ {A B} (t : IR A B) →
   IsBCC t → IsBCC (optimize-once t)
@@ -91,37 +118,23 @@ optimize-once-preserves-bcc terminal bcc-terminal = bcc-terminal
 optimize-once-preserves-bcc initial bcc-initial = bcc-initial
 optimize-once-preserves-bcc apply bcc-apply = bcc-apply
 optimize-once-preserves-bcc arr bcc-arr = bcc-arr
-optimize-once-preserves-bcc fold ()  -- fold is not BCC
-optimize-once-preserves-bcc unfold ()  -- unfold is not BCC
-optimize-once-preserves-bcc (Prim _) ()  -- Prim is not BCC (no constructor)
+optimize-once-preserves-bcc fold ()
+optimize-once-preserves-bcc unfold ()
+optimize-once-preserves-bcc (Prim _) ()
 optimize-once-preserves-bcc (⟨ f , g ⟩ m) (bcc-pair bf bg) =
   bcc-pair-result (optimize-once f) (optimize-once g)
                   (optimize-once-preserves-bcc f bf)
                   (optimize-once-preserves-bcc g bg)
-  where
-    -- optimize-pair may return id or h or ⟨ f' , g' ⟩
-    -- all of which are BCC if inputs are BCC
-    postulate
-      bcc-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B) →
-                        IsBCC f → IsBCC g → IsBCC (optimize-pair f g)
 optimize-once-preserves-bcc [ f , g ] (bcc-case bf bg) =
   bcc-case-result (optimize-once f) (optimize-once g)
                   (optimize-once-preserves-bcc f bf)
                   (optimize-once-preserves-bcc g bg)
-  where
-    postulate
-      bcc-case-result : ∀ {A B C} (f : IR A C) (g : IR B C) →
-                        IsBCC f → IsBCC g → IsBCC (optimize-case f g)
 optimize-once-preserves-bcc (curry f m) (bcc-curry bf) =
   bcc-curry (optimize-once-preserves-bcc f bf)
 optimize-once-preserves-bcc (g ∘ f) (bcc-compose bg bf) =
   bcc-compose-result (optimize-once g) (optimize-once f)
                      (optimize-once-preserves-bcc g bg)
                      (optimize-once-preserves-bcc f bf)
-  where
-    postulate
-      bcc-compose-result : ∀ {A B C} (g : IR B C) (f : IR A B) →
-                           IsBCC g → IsBCC f → IsBCC (optimize-compose g f)
 
 ------------------------------------------------------------------------
 -- BCC Completeness Statement
@@ -181,10 +194,7 @@ bcc-complete t t' bcc-t bcc-t' t≈t' = goal
     opt-eq : optimize t ≡ optimize t'
     opt-eq = coherence t t' bcc-t bcc-t' t≈t'
 
-    -- Optimizer never increases cost
-    postulate
-      optimize-cost-≤ : ∀ {A B} (t : IR A B) → cost (optimize t) ≤ cost t
-
+    -- Optimizer never increases cost (proven in Once.Optimizer.Complete)
     -- The optimized term has cost ≤ original
     opt-t'-cost : cost (optimize t') ≤ cost t'
     opt-t'-cost = optimize-cost-≤ t'

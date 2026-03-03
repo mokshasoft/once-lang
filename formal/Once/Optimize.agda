@@ -588,10 +588,11 @@ optimize-compose (⟨ f , g ⟩ m) fold with safe-pair-distrib f g
 -- Default: don't distribute pairs (would increase cost without benefit)
 optimize-compose (⟨ f , g ⟩ m) h = (⟨ f , g ⟩ m) ∘ h
 
--- Case distribution: h ∘ [ f , g ] = [ h ∘ f , h ∘ g ]
--- Only when h is a case (for case fusion)
--- Note: terminal ∘ [ f , g ] = terminal is already handled above
-optimize-compose [ h₁ , h₂ ] [ f , g ] = [ optimize-compose [ h₁ , h₂ ] f , optimize-compose [ h₁ , h₂ ] g ]
+-- Case distribution: [ h₁ , h₂ ] ∘ [ f , g ] = [ [ h₁ , h₂ ] ∘ f , [ h₁ , h₂ ] ∘ g ]
+-- NOTE: Unconditional case fusion was REMOVED because it can increase cost.
+--       Example: [ h₁ , h₂ ] ∘ [ id , id ] → [ [ h₁ , h₂ ] , [ h₁ , h₂ ] ]
+--       This doubles the cost of [ h₁ , h₂ ] without benefit.
+--       For now, we just compose without distribution (fall through to default).
 -- Default: don't distribute into cases
 optimize-compose h [ f , g ] = h ∘ [ f , g ]
 
