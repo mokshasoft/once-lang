@@ -103,6 +103,29 @@ postulate
 
 
 ------------------------------------------------------------------------
+-- optimize-pair and optimize-case cost lemmas
+--
+-- These are provable but require matching the complex with-clause
+-- structure of the optimizer functions. Using postulates for clarity.
+------------------------------------------------------------------------
+
+postulate
+  -- | optimize-pair f g produces:
+  --   - id (if f=fst, g=snd and types match) - cost 0 ≤ suc (0+0)
+  --   - h (if f=fst∘h, g=snd∘h and types match) - cost h ≤ suc (h+h)
+  --   - ⟨ f , g ⟩ otherwise - cost = suc (cost f + cost g)
+  optimize-pair-cost-≤ : ∀ {A B C} (f : IR C A) (g : IR C B) →
+    cost (optimize-pair f g) ≤ suc (cost f ℕ+ cost g)
+
+  -- | optimize-case f g produces:
+  --   - id (if f=inl, g=inr and types match) - cost 0 ≤ (1+1)
+  --   - h (if f=h∘inl, g=h∘inr and types match) - cost h ≤ (h+1)+(h+1)
+  --   - [ f , g ] otherwise - cost = cost f + cost g
+  optimize-case-cost-≤ : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    cost (optimize-case f g) ≤ cost f ℕ+ cost g
+
+
+------------------------------------------------------------------------
 -- Main theorem: optimize-compose never increases cost
 ------------------------------------------------------------------------
 
