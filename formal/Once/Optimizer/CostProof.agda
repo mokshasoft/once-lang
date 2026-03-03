@@ -44,54 +44,47 @@ b≤suc-a+b a b = m≤n⇒m≤1+n (n≤m+n a b)
 ------------------------------------------------------------------------
 -- Postulates for safe distribution cases
 --
--- These are provable but require detailed case analysis on the
--- structure of terms when safe-pair-distrib returns true.
+-- When safe-pair-distrib f g = true, distribution doesn't increase cost.
+-- This happens in two cases:
+-- 1. Eta case: f = fst, g = snd (or vice versa) - pair is fully eliminated
+-- 2. Terminal case: f = terminal or g = terminal - one component has cost 0
+--
+-- These postulates are provable but require tedious pattern matching.
+-- The key insights are:
+-- - Eta: ⟨ fst , snd ⟩ ∘ ⟨ h₁ , h₂ ⟩ = ⟨ h₁ , h₂ ⟩ (cost unchanged)
+-- - Terminal: optimize-compose terminal h = terminal (cost 0)
 ------------------------------------------------------------------------
 
--- When safe-pair-distrib f g = true, we have either:
--- 1. f = fst, g = snd (or vice versa) - the eta case
--- 2. f = terminal or g = terminal - the terminal case
---
--- In both cases, distribution doesn't increase cost.
-
 postulate
-  -- Distribution over pairs (safe case)
-  -- f : IR (H₁ * H₂) A, g : IR (H₁ * H₂) B (they expect a product)
-  -- h = ⟨ h₁ , h₂ ⟩ : IR D (H₁ * H₂)
+  -- Distribution over pairs (eta or terminal case)
   safe-distrib-pair-cost : ∀ {A B D H₁ H₂} (f : IR (H₁ * H₂) A) (g : IR (H₁ * H₂) B)
     (h₁ : IR D H₁) (h₂ : IR D H₂) (m m' : AllocMode) →
     safe-pair-distrib f g ≡ true →
     cost (⟨ optimize-compose f (⟨ h₁ , h₂ ⟩ m') , optimize-compose g (⟨ h₁ , h₂ ⟩ m') ⟩ m)
     ≤ suc (cost f ℕ+ cost g) ℕ+ suc (cost h₁ ℕ+ cost h₂)
 
-  -- Distribution over inl (safe case)
-  -- inl : IR D (D + E)
+  -- Distribution over inl (only terminal case)
   safe-distrib-inl-cost : ∀ {A B D E} (f : IR (D + E) A) (g : IR (D + E) B)
     (m m' : AllocMode) →
     safe-pair-distrib f g ≡ true →
     cost (⟨ optimize-compose f (inl {D} {E} m') , optimize-compose g (inl {D} {E} m') ⟩ m)
     ≤ suc (cost f ℕ+ cost g) ℕ+ 1
 
-  -- Distribution over inr (safe case)
-  -- inr : IR E (D + E)
+  -- Distribution over inr (only terminal case)
   safe-distrib-inr-cost : ∀ {A B D E} (f : IR (D + E) A) (g : IR (D + E) B)
     (m m' : AllocMode) →
     safe-pair-distrib f g ≡ true →
     cost (⟨ optimize-compose f (inr {D} {E} m') , optimize-compose g (inr {D} {E} m') ⟩ m)
     ≤ suc (cost f ℕ+ cost g) ℕ+ 1
 
-  -- Distribution over unfold (safe case)
-  -- unfold : IR (Fix F) F
-  -- For optimize-compose f unfold to type-check: f : IR F A
+  -- Distribution over unfold (only terminal case)
   safe-distrib-unfold-cost : ∀ {A B F} (f : IR F A) (g : IR F B)
     (m : AllocMode) →
     safe-pair-distrib f g ≡ true →
     cost (⟨ optimize-compose f (unfold {F}) , optimize-compose g (unfold {F}) ⟩ m)
     ≤ suc (cost f ℕ+ cost g) ℕ+ 0
 
-  -- Distribution over fold (safe case)
-  -- fold : IR F (Fix F)
-  -- For optimize-compose f fold to type-check: f : IR (Fix F) A
+  -- Distribution over fold (only terminal case)
   safe-distrib-fold-cost : ∀ {A B F} (f : IR (Fix F) A) (g : IR (Fix F) B)
     (m : AllocMode) →
     safe-pair-distrib f g ≡ true →
@@ -99,15 +92,12 @@ postulate
     ≤ suc (cost f ℕ+ cost g) ℕ+ 1
 
   -- Case fusion cost
-  -- [ h₁ , h₂ ] : IR (H₁A + H₁B) C where h₁ : IR H₁A C, h₂ : IR H₁B C
-  -- [ f , g ] : IR (FA + FB) (H₁A + H₁B) where f : IR FA (H₁A + H₁B), g : IR FB (H₁A + H₁B)
   case-fusion-cost : ∀ {FA FB H₁A H₁B C} (h₁ : IR H₁A C) (h₂ : IR H₁B C)
     (f : IR FA (H₁A + H₁B)) (g : IR FB (H₁A + H₁B)) →
     cost ([ optimize-compose ([ h₁ , h₂ ]) f , optimize-compose ([ h₁ , h₂ ]) g ])
     ≤ (cost h₁ ℕ+ cost h₂) ℕ+ (cost f ℕ+ cost g)
 
-  -- Associativity: (h ∘ g) ∘ f → optimize h (optimize g f)
-  -- Provable using IH but Agda has type unification issues
+  -- Associativity: (h ∘ g) ∘ f
   compose-∘-cost-≤ : ∀ {A B B' C} (h : IR B' C) (g : IR B B') (f : IR A B) →
     cost (optimize-compose (h ∘ g) f) ≤ (cost h ℕ+ cost g) ℕ+ cost f
 
