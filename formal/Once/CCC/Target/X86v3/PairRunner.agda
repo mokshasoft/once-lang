@@ -40,7 +40,7 @@ open import Data.Nat.Properties using (+-identityʳ; ≤-trans; ≤-refl; <-≤-
 
 -- Import slot-level address reasoning
 open import Once.CCC.Target.X86.StackGrowth using (x86-grow; x86-grow-identity; x86-grow-injective)
-open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
+open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₂)
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
 
@@ -89,7 +89,7 @@ open MemCorresponds
 open StateCorresponds
 
 -- Import layout helpers for disjointness proofs
-open import Once.CCC.Target.X86.Layout using (slot-addr-≥-base; stack-heap-addr-disjoint; InStack; from-raw-stack; stack-sub-preserves)
+open import Once.CCC.Target.X86.Layout using (slot-addr-≥-base; stack-heap-addr-disjoint; InStack; from-raw-stack; stack-sub-preserves; in-stack)
 
 -- Import allocation types
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation
@@ -990,6 +990,15 @@ pair-cleanup-result : ∀ (prefix suffix : Program) (s : State)
   -- Precondition: saved rbp value is preserved at [rbp] (for rbp-final proof)
   (original-rbp : Word) →
   x86-readMem (X86Sem.State.memory s) (x86-readReg (X86Sem.State.regs s) rbp) ≡ just original-rbp →
+  -- Precondition: original-rbp is in stack (for constructing restored-frame)
+  InStack original-rbp →
+  -- Precondition: frame scope for restored frame (from original StateCorresponds)
+  (∀ f k loc' → readLoc (pair-cleanup-slot-state σ pair-loc) (OnStack f k) ≡ just loc' →
+                original-rbp ≤ x86-frame-base f) →
+  -- Precondition: rsp after cleanup ≤ rbp after cleanup (s.rbp + slot-size ≤ original-rbp)
+  x86-readReg (X86Sem.State.regs s) rbp +ℕ slot-size ≤ original-rbp →
+  -- Precondition: rsp after cleanup is in stack
+  InStack (x86-readReg (X86Sem.State.regs s) rbp +ℕ slot-size) →
   ∃[ s' ] (Star (prefix ++ pair-cleanup ++ suffix) s s'
          × X86Sem.State.halted s' ≡ false
          × X86Sem.State.pc s' ≡ length prefix +ℕ length pair-cleanup
@@ -998,7 +1007,7 @@ pair-cleanup-result : ∀ (prefix suffix : Program) (s : State)
          × x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rbp +ℕ slot-size
          -- rbp after cleanup = original-rbp (the saved value)
          × x86-readReg (X86Sem.State.regs s') rbp ≡ original-rbp)
-pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-corresponds snd-write<rbp original-rbp saved-rbp-at-rbp =
+pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-corresponds snd-write<rbp original-rbp saved-rbp-at-rbp orig-rbp-in-stack restored-frame-scope-param s'-rsp-≤-rbp-param s'-rsp-in-stack-param =
   let
     -- The program
     prog = prefix ++ pair-cleanup ++ suffix
@@ -1208,13 +1217,13 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
                             (rbp-is-frame-base sc)
                             snd-write<rbp
 
-    -- snd write address is in stack region
+    -- PROVEN: snd write address is in stack region
     -- snd-write-addr = rsp + 8, and rsp is in stack (from rsp-in-stack sc)
-    -- Need: InStack (rsp + 8), which requires rsp + 8 within stack bounds
-    -- Postulate: rsp + 8 is within stack region
-    -- This follows from rsp being in a valid stack frame with room for slot-size
-    postulate
-      snd-in-stack : InStack snd-write-addr
+    -- Chain: snd-write-addr < frame-base(current-frame) ≤ upper stack-bounds
+    -- Lower bound: 0 ≤ snd-write-addr (trivially z≤n)
+    -- Upper bound: snd-write-addr < frame-base ≤ upper (from in-stack (current-frame sc))
+    snd-in-stack : InStack snd-write-addr
+    snd-in-stack = z≤n , <⇒≤ (<-≤-trans snd-below-frame (proj₂ (in-stack (current-frame sc))))
 
     -- Stack disjointness for snd write
     snd-stack-disjoint : ∀ f k loc' → readLoc σ (OnStack f k) ≡ just loc' →
@@ -1263,42 +1272,12 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
     halted-corresponds' : SM.LocState.halted σ' ≡ X86Sem.State.halted s'
     halted-corresponds' = halted-corresponds sc
 
-    -- rbp restored to original value (caller's frame)
-    -- After cleanup, rbp points back to the caller's frame
-    postulate
-      restored-frame : X86Frame
-      rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base restored-frame
-      -- Frame scope: restored frame (caller's) is ≥ tracked frame bases
-      -- The σ' stackMem is unchanged from σ, but restored-frame may be different from current-frame
-      restored-frame-scope : ∀ f k loc' → readLoc σ' (OnStack f k) ≡ just loc' →
-                             x86-frame-base restored-frame ≤ x86-frame-base f
-      -- rsp ≤ rbp is restored after cleanup
-      rsp-at-or-below-rbp' : x86-readReg (X86Sem.State.regs s') rsp ≤ x86-readReg (X86Sem.State.regs s') rbp
-      -- rsp is in stack after cleanup (restored to caller's rsp)
-      rsp-in-stack' : InStack (x86-readReg (X86Sem.State.regs s') rsp)
-
-    sc' : StateCorresponds σ' s'
-    sc' = record
-      { heap-base = heap-base'
-      ; unit-base-zero = unit-base-zero sc
-      ; regs-correspond = regs-correspond'
-      ; mem-corresponds = mem-corresponds'
-      ; halted-corresponds = halted-corresponds'
-      ; current-frame = restored-frame
-      ; rbp-is-frame-base = rbp-is-frame-base'
-      ; frame-scope = restored-frame-scope
-      ; heap-in-heap = heap-in-heap sc  -- σ' heapMem unchanged, heap-base unchanged
-      ; rsp-at-or-below-rbp = rsp-at-or-below-rbp'
-      ; rsp-in-stack = rsp-in-stack'
-      }
-
     -- Prove: s'.rsp = s.rbp + slot-size
     -- Chain: s'.rsp = rsp-after-restore + slot-size
     --        rsp-after-restore = s3.rsp = s2.rbp = s1.rbp = s.rbp
+    -- (Moved before restored-frame so rsp-eq is in scope for rsp-at-or-below-rbp')
 
     -- s'.rsp = rsp-after-restore + slot-size (from s4 construction)
-    -- Need to read rsp from writeReg (writeReg s3.regs rsp ...) rbp ...
-    -- Since rsp ≠ rbp, reading rsp gives the value written in the first writeReg
     s'-rsp-from-s4 : x86-readReg (X86Sem.State.regs s') rsp ≡ rsp-after-restore +ℕ slot-size
     s'-rsp-from-s4 =
       trans (readReg-writeReg-diff (x86-writeReg (X86Sem.State.regs s3) rsp (rsp-after-restore +ℕ slot-size))
@@ -1332,6 +1311,51 @@ pair-cleanup-result prefix suffix s σ pair-loc sc h-eq pc-eq pair-loc-correspon
     rbp-eq : x86-readReg (X86Sem.State.regs s') rbp ≡ original-rbp
     rbp-eq = readReg-writeReg-same (x86-writeReg (X86Sem.State.regs s3) rsp (rsp-after-restore +ℕ slot-size))
                                     rbp original-rbp
+
+    -- PROVEN: rbp restored to original value (caller's frame)
+    -- After cleanup, rbp points back to the caller's frame
+    -- Construct restored-frame from original-rbp with InStack proof
+    restored-frame : X86Frame
+    restored-frame = from-raw-stack original-rbp orig-rbp-in-stack
+
+    -- rbp-is-frame-base': s'.rbp = frame-base(restored-frame) = original-rbp
+    -- Chain: s'.rbp = original-rbp (from rbp-eq below)
+    --        frame-base(restored-frame) = original-rbp (by construction)
+    rbp-is-frame-base' : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-frame-base restored-frame
+    rbp-is-frame-base' = readReg-writeReg-same (x86-writeReg (X86Sem.State.regs s3) rsp (rsp-after-restore +ℕ slot-size))
+                                                rbp original-rbp
+
+    -- Frame scope: restored frame (caller's) is ≥ tracked frame bases
+    -- Derived from the parameter passed by caller
+    restored-frame-scope : ∀ f k loc' → readLoc σ' (OnStack f k) ≡ just loc' →
+                           x86-frame-base restored-frame ≤ x86-frame-base f
+    restored-frame-scope = restored-frame-scope-param
+
+    -- rsp ≤ rbp is restored after cleanup
+    -- s'.rsp = s.rbp + slot-size ≤ original-rbp = s'.rbp (from parameter)
+    -- Uses rsp-eq (defined below in mutual let block) for s'.rsp = s.rbp + slot-size
+    rsp-at-or-below-rbp' : x86-readReg (X86Sem.State.regs s') rsp ≤ x86-readReg (X86Sem.State.regs s') rbp
+    rsp-at-or-below-rbp' = subst₂ _≤_ (sym rsp-eq) (sym rbp-is-frame-base') s'-rsp-≤-rbp-param
+
+    -- rsp is in stack after cleanup (from parameter)
+    -- Uses rsp-eq (defined below in mutual let block) for s'.rsp = s.rbp + slot-size
+    rsp-in-stack' : InStack (x86-readReg (X86Sem.State.regs s') rsp)
+    rsp-in-stack' = subst InStack (sym rsp-eq) s'-rsp-in-stack-param
+
+    sc' : StateCorresponds σ' s'
+    sc' = record
+      { heap-base = heap-base'
+      ; unit-base-zero = unit-base-zero sc
+      ; regs-correspond = regs-correspond'
+      ; mem-corresponds = mem-corresponds'
+      ; halted-corresponds = halted-corresponds'
+      ; current-frame = restored-frame
+      ; rbp-is-frame-base = rbp-is-frame-base'
+      ; frame-scope = restored-frame-scope
+      ; heap-in-heap = heap-in-heap sc  -- σ' heapMem unchanged, heap-base unchanged
+      ; rsp-at-or-below-rbp = rsp-at-or-below-rbp'
+      ; rsp-in-stack = rsp-in-stack'
+      }
 
   in s' , star-proof , h'-eq , pc'-eq , sc' , rsp-eq , rbp-eq
 
@@ -1507,9 +1531,57 @@ pair-runner {A} {B} {C} f g m f-run g-run capacity-pre prefix suffix σ s sc h-e
         saved-rbp-preserved :
           x86-readMem (X86Sem.State.memory s4) (x86-readReg (X86Sem.State.regs s4) rbp) ≡ just orig-rbp-value
 
+      -- PROVEN: orig-rbp-value is in stack
+      -- Chain: orig-rbp-value = s.rbp = frame-base(current-frame sc)
+      -- And current-frame sc has InStack (by X86Frame definition)
+      orig-rbp-in-stack : InStack orig-rbp-value
+      orig-rbp-in-stack = subst InStack (sym (rbp-is-frame-base sc)) (in-stack (current-frame sc))
+
+      -- Frame scope for restored frame
+      -- The restored frame (orig-rbp) should be ≤ all tracked frame bases in σ5
+      -- This holds because σ5's stackMem comes from σ4, which comes from f and g execution,
+      -- and all frames tracked are within the pair frame or above
+      postulate
+        restored-frame-scope-at-cleanup :
+          ∀ f k loc' → readLoc (pair-cleanup-slot-state σ4 pair-loc) (OnStack f k) ≡ just loc' →
+                       orig-rbp-value ≤ x86-frame-base f
+
+      -- RBP preservation through f, middle, g phases (moved here for scoping)
+      -- Chain: s4.rbp = s3.rbp = s2.rbp = s1.rbp
+      rbp-preserved-through-f : x86-readReg (X86Sem.State.regs s2) rbp ≡ x86-readReg (X86Sem.State.regs s1) rbp
+      rbp-preserved-through-f = IRStarResult.rbp-preserved f-result
+
+      rbp-preserved-through-middle : x86-readReg (X86Sem.State.regs s3) rbp ≡ x86-readReg (X86Sem.State.regs s1) rbp
+      rbp-preserved-through-middle = trans rbp-mid-unchanged rbp-preserved-through-f
+
+      rbp-preserved-through-g : x86-readReg (X86Sem.State.regs s4) rbp ≡ x86-readReg (X86Sem.State.regs s1) rbp
+      rbp-preserved-through-g = trans (IRStarResult.rbp-preserved g-result) rbp-preserved-through-middle
+
+      -- PROVEN: s4.rbp + slot-size ≤ orig-rbp-value
+      -- Chain: s4.rbp = s1.rbp = s.rsp - slot-size
+      --        s4.rbp + slot-size = s.rsp
+      --        orig-rbp-value = s.rbp
+      --        Need: s.rsp ≤ s.rbp (which is rsp-at-or-below-rbp sc)
+      s4-rbp-plus-slot-eq-s-rsp : x86-readReg (X86Sem.State.regs s4) rbp +ℕ slot-size ≡ x86-readReg (X86Sem.State.regs s) rsp
+      s4-rbp-plus-slot-eq-s-rsp =
+        trans (cong (_+ℕ slot-size) rbp-preserved-through-g)
+              (trans (cong (_+ℕ slot-size) rbp1-eq)
+                     (m∸n+n≡m (≤-trans slot-size≤slots4 setup-capacity)))
+
+      s4-rbp-plus-slot-≤-orig-rbp : x86-readReg (X86Sem.State.regs s4) rbp +ℕ slot-size ≤ orig-rbp-value
+      s4-rbp-plus-slot-≤-orig-rbp = subst (_≤ orig-rbp-value) (sym s4-rbp-plus-slot-eq-s-rsp) (rsp-at-or-below-rbp sc)
+
+      -- PROVEN: s4.rbp + slot-size is in stack
+      -- Chain: s4.rbp + slot-size = s.rsp (from s4-rbp-plus-slot-eq-s-rsp)
+      -- And s.rsp is in stack (from rsp-in-stack sc)
+      s4-rbp-plus-slot-in-stack : InStack (x86-readReg (X86Sem.State.regs s4) rbp +ℕ slot-size)
+      s4-rbp-plus-slot-in-stack = subst InStack (sym s4-rbp-plus-slot-eq-s-rsp) (rsp-in-stack sc)
+
       (s5 , star-clean , h5 , pc5 , sc5 , rsp-cleanup-eq , rbp-cleanup-eq) =
         pair-cleanup-result prefix-clean suffix s4 σ4 pair-loc sc4 h4 pc4-for-clean pair-loc-corresponds
                             snd-write<rbp-at-cleanup orig-rbp-value saved-rbp-preserved
+                            orig-rbp-in-stack restored-frame-scope-at-cleanup
+                            s4-rbp-plus-slot-≤-orig-rbp s4-rbp-plus-slot-in-stack
       σ5 = pair-cleanup-slot-state σ4 pair-loc
 
       -- Chain all stars together
@@ -1520,17 +1592,6 @@ pair-runner {A} {B} {C} f g m f-run g-run capacity-pre prefix suffix σ s sc h-e
       -- PC calculation
       pc-final : X86Sem.State.pc s5 ≡ length prefix +ℕ compile-length (⟨ f , g ⟩ m)
       pc-final = pair-pc-final prefix prog-f prog-g pc5
-
-      -- RBP preservation through f, middle, g phases
-      -- Chain: s4.rbp = s3.rbp = s2.rbp = s1.rbp
-      rbp-preserved-through-f : x86-readReg (X86Sem.State.regs s2) rbp ≡ x86-readReg (X86Sem.State.regs s1) rbp
-      rbp-preserved-through-f = IRStarResult.rbp-preserved f-result
-
-      rbp-preserved-through-middle : x86-readReg (X86Sem.State.regs s3) rbp ≡ x86-readReg (X86Sem.State.regs s1) rbp
-      rbp-preserved-through-middle = trans rbp-mid-unchanged rbp-preserved-through-f
-
-      rbp-preserved-through-g : x86-readReg (X86Sem.State.regs s4) rbp ≡ x86-readReg (X86Sem.State.regs s1) rbp
-      rbp-preserved-through-g = trans (IRStarResult.rbp-preserved g-result) rbp-preserved-through-middle
 
       -- PROVEN: rsp preservation for pair
       -- Chain: s5.rsp = s4.rbp + slot-size = s1.rbp + slot-size = (s.rsp ∸ slot-size) + slot-size = s.rsp
