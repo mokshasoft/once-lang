@@ -22,7 +22,7 @@ open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; n�
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 ------------------------------------------------------------------------
 -- Single-step rewrite relation
@@ -217,9 +217,10 @@ postulate
     -- Apply-curry introduces a new pair but removes a closure.
     -- Net effect: cost may increase by 1 (closure cost 1, new pair cost 1, but we save the old pair)
     -- We prove: cost f + suc (cost g) ≤ suc (suc (cost f)) + cost g
-    -- Which simplifies to: suc (cost f + cost g) ≤ suc (suc (cost f + cost g))
-    postulate
-      apply-curry-cost-lemma : ∀ cf cg → cf ℕ+ suc cg ≤ suc (suc cf) ℕ+ cg
+    -- LHS = suc (cf + cg) by +-suc, RHS = suc (suc (cf + cg)) by definition
+    -- So we need: suc (cf + cg) ≤ suc (suc (cf + cg)), which is n≤1+n
+    apply-curry-cost-lemma : ∀ cf cg → cf ℕ+ suc cg ≤ suc (suc cf) ℕ+ cg
+    apply-curry-cost-lemma cf cg = subst (_≤ suc (suc cf) ℕ+ cg) (sym (+-suc cf cg)) (n≤1+n (suc (cf ℕ+ cg)))
 ⟶-cost-≤ ⟶-terminal = z≤n
 ⟶-cost-≤ ⟶-initial = z≤n
 ⟶-cost-≤ (⟶-compose-left {f = f} step) =

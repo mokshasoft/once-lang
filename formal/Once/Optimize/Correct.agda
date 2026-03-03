@@ -166,8 +166,8 @@ optimize-compose-correct [ f' , g' ] fst x = refl
 optimize-compose-correct [ f' , g' ] snd x = refl
 optimize-compose-correct [ f' , g' ] (inl _) x = refl  -- Coproduct beta
 optimize-compose-correct [ f' , g' ] (inr _) x = refl  -- Coproduct beta
-optimize-compose-correct [ f' , g' ] [ h , h' ] (inj₁ a) = optimize-compose-correct [ f' , g' ] h a
-optimize-compose-correct [ f' , g' ] [ h , h' ] (inj₂ b) = optimize-compose-correct [ f' , g' ] h' b
+-- Case fusion was removed (can increase cost), so now returns h ∘ [ f , g ]
+optimize-compose-correct [ f' , g' ] [ h , h' ] x = refl
 optimize-compose-correct [ f' , g' ] apply x = refl
 optimize-compose-correct [ f' , g' ] unfold x = refl
 optimize-compose-correct [ f' , g' ] initial ()  -- Initial absorption (Void is empty)
