@@ -70,25 +70,26 @@ compose-bridge : Program
 compose-bridge = mov (reg rdi) (reg rax) ∷ []
 
 ------------------------------------------------------------------------
--- Pair construction
+-- Pair construction (FRAMELESS)
 --
 -- Allocate pair on stack, run f and g, store results.
--- Uses stack-based input backup (matching SlotMachine model).
+-- Uses stack-based input backup (matching SlotMachine/Dispatcher model).
+--
+-- FRAMELESS DESIGN: No push rbp / mov rbp, rsp / pop rbp.
+-- This matches the Dispatcher's single-frame reclamation model.
+-- See frameless-codegen-proposal.md for rationale.
 --
 -- Stack layout after setup (relative to rsp):
 --   [rsp + 0]  = pair.fst (f's result)
 --   [rsp + 8]  = pair.snd (g's result)
 --   [rsp + 16] = input-backup (saved rdi for g)
 --
--- No callee-saved register saving needed for pair itself.
--- (apply will need FrameInvariant for function calls)
+-- rbp stays unchanged (points to caller's frame throughout).
 ------------------------------------------------------------------------
 
--- Setup: save frame pointer, allocate slots, save input
+-- Setup: allocate slots, save input (FRAMELESS - no push rbp / mov rbp, rsp)
 pair-setup : Program
 pair-setup =
-  push (reg rbp) ∷                          -- save rbp
-  mov (reg rbp) (reg rsp) ∷                 -- set frame pointer
   sub (reg rsp) (imm (slots 3)) ∷           -- allocate: pair.fst, pair.snd, input-backup
   mov (mem (base+disp rsp (slots 2))) (reg rdi) ∷ []  -- [rsp+16] = input
 
@@ -98,13 +99,12 @@ pair-middle =
   mov (mem (base rsp)) (reg rax) ∷                    -- [rsp] = f's result (pair.fst)
   mov (reg rdi) (mem (base+disp rsp (slots 2))) ∷ []  -- rdi = [rsp+16] (input for g)
 
--- Cleanup: store g's result, return pair address, restore frame
+-- Cleanup: store g's result, return pair address, deallocate (FRAMELESS - no pop rbp)
 pair-cleanup : Program
 pair-cleanup =
   mov (mem (base+disp rsp slot-size)) (reg rax) ∷  -- [rsp+8] = g's result (pair.snd)
-  mov (reg rax) (reg rsp) ∷     -- rax = pair address (rsp points to pair.fst)
-  mov (reg rsp) (reg rbp) ∷     -- restore stack
-  pop rbp ∷ []                  -- restore rbp
+  mov (reg rax) (reg rsp) ∷                        -- rax = pair address (rsp points to pair.fst)
+  add (reg rsp) (imm (slots 3)) ∷ []               -- deallocate
 
 ------------------------------------------------------------------------
 -- Curry: create closure

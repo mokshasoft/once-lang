@@ -395,42 +395,107 @@ This separation means:
 
 ## Implementation Plan for Path 2
 
+### Why Fresh Start on Runner Layer
+
+The current `pair-setup-result` proof is **tightly coupled** to the 4-instruction sequence:
+- Step 0: push rbp effects
+- Step 1: mov rbp, rsp effects
+- Step 2: sub rsp effects
+- Step 3: mov [rsp+16], rdi effects
+
+Changing to 2 instructions breaks nearly all of this - it's not "fix a few things",
+it's "rewrite the whole proof." The current PairRunner is ~1800 lines; the new one
+should be ~300 lines.
+
+### What to Keep vs Fresh Start
+
+```
+KEEP:           Dispatcher (PairWF, Allocation, BeforeFrontier, ValidAtWF)
+KEEP:           IR, Types, Semantics
+SMALL CHANGE:   CodeGen/Compile.agda (pair-setup, pair-cleanup)
+FRESH START:    StateCorresponds → SimpleCorresponds (fewer fields)
+FRESH START:    PairRunner.agda → SimplePairRunner.agda (much smaller)
+```
+
 ### Phase 1: Codegen Changes
 
-1. **Modify `pair-setup`** in CodeGen:
-   ```agda
-   -- Remove: push rbp, mov rbp rsp
-   -- Keep: sub rsp, N; mov [rsp+16], rdi
-   pair-setup = [ sub rsp (slots 3)
-                , mov (mem (base+disp rsp (slots 2))) rdi
-                ]
-   ```
+**Current pair-setup (4 instructions):**
+```agda
+pair-setup =
+  push (reg rbp) ∷                              -- REMOVE
+  mov (reg rbp) (reg rsp) ∷                     -- REMOVE
+  sub (reg rsp) (imm (slots 3)) ∷               -- KEEP
+  mov (mem (base+disp rsp (slots 2))) (reg rdi) ∷ []  -- KEEP
+```
 
-2. **Modify `pair-cleanup`**:
-   ```agda
-   -- Remove: pop rbp
-   -- Keep: mov rax rsp; writes; add rsp N
-   pair-cleanup = [ mov rax rsp
-                  , mov (mem (base rsp)) (reg rax)        -- fst
-                  , mov (mem (base+disp rsp slot-size)) ... -- snd
-                  , add rsp (slots 3)
-                  ]
-   ```
+**New pair-setup (2 instructions):**
+```agda
+pair-setup =
+  sub (reg rsp) (imm (slots 3)) ∷
+  mov (mem (base+disp rsp (slots 2))) (reg rdi) ∷ []
+```
 
-3. **Update other combinators** (compose, apply, etc.) similarly
+**Current pair-cleanup (4 instructions):**
+```agda
+pair-cleanup =
+  mov (mem (base+disp rsp slot-size)) (reg rax) ∷  -- KEEP
+  mov (reg rax) (reg rsp) ∷                        -- KEEP
+  mov (reg rsp) (reg rbp) ∷                        -- REMOVE
+  pop rbp ∷ []                                     -- REMOVE
+```
 
-### Phase 2: Runner Changes
+**New pair-cleanup (3 instructions):**
+```agda
+pair-cleanup =
+  mov (mem (base+disp rsp slot-size)) (reg rax) ∷
+  mov (reg rax) (reg rsp) ∷
+  add (reg rsp) (imm (slots 3)) ∷ []
+```
 
-1. **Remove `new-frame` construction** in pair-setup-result
-2. **Keep `current-frame sc`** unchanged through pair execution
-3. **Update `rbp-is-frame-base`** proofs (rbp stays as caller's)
-4. **Remove `restored-frame-scope-at-cleanup` postulate** (now trivial)
+### Phase 2: Create SimpleCorresponds
 
-### Phase 3: Proof Cleanup
+New minimal StateCorresponds with only essential fields:
 
-1. Remove frame-transition reasoning from runners
-2. Simplify `frame-scope` proofs (no transitions to handle)
-3. `BeforeFrontier` from Dispatcher directly implies `frame-scope`
+```agda
+record SimpleCorresponds (σ : LocState) (s : x86State) : Set where
+  field
+    frame-base : Addr                    -- constant throughout execution
+    regs-correspond : RegsCorrespond σ s
+    mem-corresponds : MemCorresponds frame-base σ s
+    rsp-in-bounds : InStack (x86-readReg regs rsp)
+    rsp-below-frame : x86-readReg regs rsp ≤ frame-base
+    halted-corresponds : halted σ ≡ halted s
+```
+
+**Deleted fields** (no longer needed):
+- `current-frame` - constant, use `frame-base` directly
+- `rbp-is-frame-base` - rbp never changes
+- `frame-scope` - trivially true with one frame
+- `heap-in-heap` - can derive from mem-corresponds if needed
+
+### Phase 3: Create SimplePairRunner
+
+Build new runner using generic instruction lemmas:
+
+```agda
+-- Generic lemmas (reusable across all combinators)
+sub-rsp-valid : ...
+add-rsp-valid : ...
+mov-mem-valid : ...
+mov-reg-valid : ...
+
+-- Simplified pair runner (~300 lines instead of ~1800)
+simple-pair-runner : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
+  SimpleRunner f → SimpleRunner g → SimpleRunner (⟨ f , g ⟩ m)
+simple-pair-runner f g m f-run g-run = ...
+```
+
+### Phase 4: Migration and Cleanup
+
+1. Once SimplePairRunner works, migrate other combinators
+2. Delete old StateCorresponds frame-related fields
+3. Delete old PairRunner.agda
+4. Rename SimpleCorresponds → StateCorresponds
 
 ---
 
