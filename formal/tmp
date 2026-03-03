@@ -1,0 +1,28 @@
+Now I understand the architecture. Let me propose a better abstraction. Here's my analysis:                                                                            
+                                                                                                                                                                         
+  Current Pattern:                                                                                                                                                       
+  - Single-instruction: xxx-expected-state + step-xxx-at-offset + xxx-star-at-offset                                                                                     
+  - Multi-instruction: Need to manually chain with star-step7 etc.                                                                                                       
+                                                                                                                                                                         
+  Proposed Higher-Level Abstraction:                                                                                                                                     
+                                                                                                                                                                         
+  ------------------------------------------------------------------------                                                                                               
+  -- Approach 1: Offset-parameterized step lemmas for each instruction type                                                                                              
+  ------------------------------------------------------------------------                                                                                               
+                                                                                                                                                                         
+  -- For push reg:                                                                                                                                                       
+  push-expected-state : State → Reg → State                                                                                                                              
+  push-expected-state s r = record s                                                                                                                                     
+    { regs = writeReg (regs s) rsp (readReg (regs s) rsp ∸ slot-size)                                                                                                    
+    ; memory = writeMem (memory s) (readReg (regs s) rsp ∸ slot-size) (readReg (regs s) r)                                                                               
+    ; pc = pc s + 1 }                                                                                                                                                    
+                                                                                                                                                                         
+  step-push-at-offset : ∀ (prefix suffix : Program) (s : State) (r : Reg) →                                                                                              
+    halted s ≡ false →                                                                                                                                                   
+    pc s ≡ length prefix →                                                                                                                                               
+    step (prefix ++ push (reg r) ∷ suffix) s ≡ just (push-expected-state s r)                                                                                            
+                                                                                                                                                                         
+  -- Similarly for mov, sub, pop...                                                                                                                                      
+                                                                                                                                                                         
+
+

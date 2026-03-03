@@ -47,8 +47,8 @@ open X86Sem using (State)
 
 open import Once.Target.X86.Syntax using (rbp; rsp; Program)
 
--- Import SlotToX86 for StateCorresponds
-open import Once.CCC.Target.X86v3.Refinement.SlotToX86 using (StateCorresponds)
+-- Import SlotToX86 for StateCorresponds and HeapBaseMap
+open import Once.CCC.Target.X86v3.Refinement.SlotToX86 using (StateCorresponds; HeapBaseMap)
 open StateCorresponds
 
 -- Import CodeGen for compile-ir and compile-length
@@ -88,6 +88,9 @@ record IRStarResult {A B : Type} (ir : IR A B)
     parent-frames-preserved : ∀ (f : Frame FS') (slot : ℕ) →
       _≺_ FS' current-frame f →
       SM.LocState.stackMem σ-final f slot ≡ SM.LocState.stackMem σ-initial f slot
+    -- Heap-base preservation: IR execution doesn't allocate, so heap-base mapping is constant
+    -- This is NOT an allocator property, but an IR execution property.
+    heap-base-preserved : StateCorresponds.heap-base corr-proof ≡ StateCorresponds.heap-base sc-input
 
 open IRStarResult public
 

@@ -30,7 +30,7 @@ open import Once.Target.X86.Syntax as X86
   using (Reg; rax; rbx; rcx; rdx; rsi; rdi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
          Mem; base; base+disp;
          Operand; reg; mem; imm;
-         Instr; mov; sub; push; pop; Program; slot-size; slots)
+         Instr; mov; add; sub; push; pop; Program; slot-size; slots)
 
 open import Once.Target.X86.Semantics as X86Sem
   using (Word; RegFile; Memory; State; step; step-not-halted;
@@ -397,6 +397,17 @@ sub-imm-reg-result : ∀ (prog : Program) (s : State) (dst : Reg) (n : ℕ) →
                             (x86-readReg (X86Sem.State.regs s) dst ∸ n)
                             (x86-readReg (X86Sem.State.regs s) dst) })
 sub-imm-reg-result prog s dst n = refl
+
+-- | add immediate to register effect
+add-imm-reg-result : ∀ (prog : Program) (s : State) (dst : Reg) (n : ℕ) →
+  execInstr prog s (add (reg dst) (imm n)) ≡
+  just (record s { regs = x86-writeReg (X86Sem.State.regs s) dst
+                            (x86-readReg (X86Sem.State.regs s) dst +ℕ n)
+                 ; pc = X86Sem.State.pc s +ℕ 1
+                 ; flags = X86Sem.updateFlags
+                            (x86-readReg (X86Sem.State.regs s) dst +ℕ n)
+                            (x86-readReg (X86Sem.State.regs s) dst) })
+add-imm-reg-result prog s dst n = refl
 
 -- | push register effect
 push-reg-result : ∀ (prog : Program) (s : State) (r : Reg) →

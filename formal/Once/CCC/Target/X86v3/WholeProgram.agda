@@ -848,6 +848,7 @@ id-runner prefix suffix σ s sc h-eq pc-eq =
     ; frame-matches-input = refl  -- cf = state-frame σ s sc = current-frame sc
     ; output-frame-preserved = refl  -- id-preserves-corresponds sets current-frame = current-frame sc
     ; parent-frames-preserved = λ f slot _ → refl  -- stackMem unchanged by id
+    ; heap-base-preserved = refl  -- id-preserves-corresponds sets heap-base = heap-base sc
     }
 
 -- | terminal runner: mov rax, 0 at any offset
@@ -867,6 +868,7 @@ terminal-runner prefix suffix σ s sc h-eq pc-eq =
     ; frame-matches-input = refl  -- cf = state-frame σ s sc = current-frame sc
     ; output-frame-preserved = refl  -- terminal-preserves-corresponds sets current-frame = current-frame sc
     ; parent-frames-preserved = λ f slot _ → refl  -- stackMem unchanged by terminal
+    ; heap-base-preserved = refl  -- terminal-preserves-corresponds sets heap-base = heap-base sc
     }
 
 -- | bridge runner: mov rdi, rax at any offset
@@ -1136,6 +1138,12 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
         let g-out = IRStarResult.output-frame-preserved g-result  -- current-frame sc-g ≡ current-frame sc-b
         in trans g-out (trans sc-b≡sc-f sc-f≡sc)
 
+      -- Heap-base preserved through composition
+      compose-heap-base-preserved : StateCorresponds.heap-base sc-g ≡ StateCorresponds.heap-base sc
+      compose-heap-base-preserved =
+        trans (IRStarResult.heap-base-preserved g-result)
+              (trans (IRStarResult.heap-base-preserved f-result) refl)
+
   in sg , record
     { star-proof = star-final
     ; halted-false = h-sg
@@ -1148,6 +1156,7 @@ compose-runner g f f-run g-run prefix suffix σ s sc h-eq pc-eq =
     ; frame-matches-input = compose-frame-matches
     ; output-frame-preserved = compose-output-preserved
     ; parent-frames-preserved = parent-preserved
+    ; heap-base-preserved = compose-heap-base-preserved
     }
   where
     -- PC lemma for compose: converts pc result from g-runner to compose format
@@ -1410,6 +1419,7 @@ fst-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
     ; frame-matches-input = refl  -- cf = state-frame σ s sc = current-frame sc
     ; output-frame-preserved = refl  -- fst-preserves-corresponds sets current-frame = current-frame sc
     ; parent-frames-preserved = λ f slot _ → refl  -- fst doesn't modify stack memory
+    ; heap-base-preserved = refl  -- fst-preserves-corresponds sets heap-base = heap-base sc
     }
   where
     -- Helper to derive x86 memory equality from SlotMachine memory and correspondence
@@ -1494,6 +1504,7 @@ snd-runner-with-valid {A} {B} pair-loc prefix suffix σ s sc h-eq pc-eq pv =
     ; frame-matches-input = refl  -- cf = state-frame σ s sc = current-frame sc
     ; output-frame-preserved = refl  -- snd-preserves-corresponds sets current-frame = current-frame sc
     ; parent-frames-preserved = λ f slot _ → refl  -- snd doesn't modify stack memory
+    ; heap-base-preserved = refl  -- snd-preserves-corresponds sets heap-base = heap-base sc
     }
   where
     -- Helper to derive x86 memory equality from SlotMachine memory and correspondence
@@ -1731,6 +1742,11 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
         let g-out = IRStarResult.output-frame-preserved g-result
         in trans g-out (trans sc-b≡sc-f sc-f≡sc)
 
+      compose-heap-base-preserved : StateCorresponds.heap-base sc-g ≡ StateCorresponds.heap-base sc
+      compose-heap-base-preserved =
+        trans (IRStarResult.heap-base-preserved g-result)
+              (trans (IRStarResult.heap-base-preserved f-result) refl)
+
   in sg , record
     { star-proof = star-final
     ; halted-false = h-sg
@@ -1743,6 +1759,7 @@ compose-fst-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
     ; frame-matches-input = compose-frame-matches
     ; output-frame-preserved = compose-output-preserved
     ; parent-frames-preserved = parent-preserved
+    ; heap-base-preserved = compose-heap-base-preserved
     }
   where
     compose-fst-pc-lemma : ∀ (prefix prog-f prog-g : Program) (clf clg : ℕ) →
@@ -1922,6 +1939,11 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
         let g-out = IRStarResult.output-frame-preserved g-result
         in trans g-out (trans sc-b≡sc-f sc-f≡sc)
 
+      compose-heap-base-preserved' : StateCorresponds.heap-base sc-g ≡ StateCorresponds.heap-base sc
+      compose-heap-base-preserved' =
+        trans (IRStarResult.heap-base-preserved g-result)
+              (trans (IRStarResult.heap-base-preserved f-result) refl)
+
   in sg , record
     { star-proof = star-final
     ; halted-false = h-sg
@@ -1934,6 +1956,7 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
     ; frame-matches-input = compose-frame-matches
     ; output-frame-preserved = compose-output-preserved
     ; parent-frames-preserved = parent-preserved
+    ; heap-base-preserved = compose-heap-base-preserved'
     }
   where
     compose-snd-pc-lemma : ∀ (prefix prog-f prog-g : Program) (clf clg : ℕ) →
@@ -1962,13 +1985,13 @@ compose-snd-runner {_} {B} {C} f f-run prefix suffix σ s sc h-eq pc-eq =
 ------------------------------------------------------------------------
 -- pair-runner: Execute ⟨ f , g ⟩ at any offset
 --
--- Imported from Once.CCC.Target.X86v3.PairRunner module.
--- See PairRunner.agda for implementation details.
+-- Imported from Once.CCC.Target.X86v3.FramelessPairRunner module.
+-- Uses frameless codegen (no push/pop rbp) for simpler proofs.
+-- See FramelessPairRunner.agda for implementation details.
 ------------------------------------------------------------------------
 
-open import Once.CCC.Target.X86v3.PairRunner public
-  using (pair-runner; pair-setup-result; pair-middle-result; pair-cleanup-result;
-         pair-setup-slot-state; pair-middle-slot-state; pair-cleanup-slot-state)
+open import Once.CCC.Target.X86v3.FramelessPairRunner public
+  using (pair-runner; pair-setup-slot-state; pair-middle-slot-state; pair-cleanup-slot-state)
 
 -- Postulated runners for remaining complex cases
 --
@@ -2022,6 +2045,7 @@ arr-runner prefix suffix σ s sc h-eq pc-eq =
     ; frame-matches-input = refl
     ; output-frame-preserved = refl
     ; parent-frames-preserved = λ f slot _ → refl  -- arr doesn't modify stack memory
+    ; heap-base-preserved = refl  -- id-preserves-corresponds sets heap-base = heap-base sc
     }
 
 fold-runner : ∀ {F} (m : AllocMode) → IRRunner (fold-ir {F} m)
@@ -2041,6 +2065,7 @@ fold-runner m prefix suffix σ s sc h-eq pc-eq =
     ; frame-matches-input = refl
     ; output-frame-preserved = refl
     ; parent-frames-preserved = λ f slot _ → refl  -- fold doesn't modify stack memory
+    ; heap-base-preserved = refl  -- id-preserves-corresponds sets heap-base = heap-base sc
     }
 
 unfold-runner : ∀ {F} → IRRunner (unfold-ir {F})
@@ -2060,6 +2085,7 @@ unfold-runner prefix suffix σ s sc h-eq pc-eq =
     ; frame-matches-input = refl
     ; output-frame-preserved = refl
     ; parent-frames-preserved = λ f slot _ → refl  -- unfold doesn't modify stack memory
+    ; heap-base-preserved = refl  -- id-preserves-corresponds sets heap-base = heap-base sc
     }
 
 -- free-heap compiles to [] (no-op, zero steps)
@@ -2082,6 +2108,7 @@ free-heap-runner r prefix suffix σ s sc h-eq pc-eq =
     ; frame-matches-input = refl
     ; output-frame-preserved = refl
     ; parent-frames-preserved = λ f slot _ → refl  -- free-heap doesn't modify stack memory
+    ; heap-base-preserved = refl  -- corr-proof = sc, so heap-base unchanged
     }
 
 ------------------------------------------------------------------------

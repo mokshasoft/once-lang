@@ -654,6 +654,273 @@ The non-standard stack layout is acceptable because:
 
 ---
 
+## Refined Architecture: Layers and Their Responsibilities
+
+### Overview: What We're Connecting
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  IR Semantics                                                    │
+│  eval : IR A B → ⟦A⟧ → ⟦B⟧                                      │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  Dispatcher (PairWF, etc.)                                       │
+│  - LocState: slot machine state (regs, stackMem, heapMem)       │
+│  - AllocState: allocation tracking (next-slot, capacity)        │
+│  - BeforeFrontier: which locations are allocated                │
+│  - ValidAtWF: value representation validity                     │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  Correspondence Layer (NEW: SimpleCorresponds)                   │
+│  - Maps slot machine state to x86 state                         │
+│  - Minimal fields, no frame tracking                            │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  Instruction Lemmas (NEW: generic, reusable)                     │
+│  - One lemma per instruction type                               │
+│  - Shows how each instruction affects correspondence            │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  x86 Semantics                                                   │
+│  State: regs, memory, pc, halted                                │
+│  step/Star: instruction execution                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Layer 1: Dispatcher (EXISTING - NO CHANGES)
+
+**Purpose**: Compute slot machine state transitions for IR execution.
+
+**Structures**:
+- `LocState`: Abstract machine state
+  - `regs`: Register file (RDI, RAX, etc. hold ValueLocations)
+  - `stackMem`: Frame → Slot → Maybe ValueLocation
+  - `heapMem`: HeapLocation → Maybe HeapLocation
+  - `halted`: Execution status
+
+- `AllocState`: Allocation bookkeeping
+  - `current-frame`: The frame we're allocating in
+  - `next-slot`: Next available slot index
+  - `frame-capacity`: How many slots available
+  - `slots-available`: Proof that next-slot ≤ capacity
+
+- `BeforeFrontier alloc loc`: Proof that `loc` is a valid allocated location
+  - `stack-before`: loc is in current frame, slot < next-slot
+  - `stack-ancestor`: loc is in a parent frame
+  - `heap-before`: loc is on heap with valid ref-id
+
+- `ValidAtWF mode alloc value loc state`: Value is correctly represented at loc
+
+**What Dispatcher handles**:
+- Which slots to allocate for pair (reclamation)
+- Value validity tracking
+- Memory write sequencing
+- Capacity management
+
+**What Dispatcher does NOT handle**:
+- x86 instruction execution
+- Actual memory addresses
+- Register values (just locations)
+
+### Layer 2: Address Mapping (NEW - simple functions)
+
+**Purpose**: Convert slot machine locations to x86 addresses.
+
+```agda
+-- Convert ValueLocation to x86 address
+loc-to-addr : (frame-base : Addr) → (heap-base : HeapRef → Addr) →
+              ValueLocation → Addr
+loc-to-addr fb hb (OnStack frame k) = frame-base frame + k * 8
+loc-to-addr fb hb (OnHeap hl) = heap-base (heap-ref hl) + offset hl * 8
+```
+
+With frameless codegen:
+- `frame-base` = initial rbp value (CONSTANT throughout execution)
+- Stack slots are at addresses relative to this fixed base
+- `rsp` moves but `frame-base` doesn't
+
+**Key insight**: Since rbp never changes, we don't need to track "current frame" -
+there's only one frame for the entire combinator execution.
+
+### Layer 3: SimpleCorresponds (NEW - minimal correspondence)
+
+**Purpose**: Prove slot machine state corresponds to x86 state.
+
+```agda
+record SimpleCorresponds (σ : LocState) (s : x86State) : Set where
+  field
+    -- Address mapping parameters (constant throughout execution)
+    frame-base : Addr
+    heap-base : HeapRef → Addr
+
+    -- Register correspondence
+    regs-correspond : RegsCorrespond frame-base heap-base σ s
+
+    -- Memory correspondence
+    mem-corresponds : MemCorresponds frame-base heap-base σ s
+
+    -- Stack pointer validity
+    rsp-in-bounds : InStack (x86-readReg s.regs rsp)
+    rsp-at-or-below-frame : x86-readReg s.regs rsp ≤ frame-base
+
+    -- Halted flag
+    halted-corresponds : σ.halted ≡ s.halted
+```
+
+**Field explanations**:
+
+| Field | Purpose | Why needed |
+|-------|---------|------------|
+| `frame-base` | Fixed frame base address | Address calculations, constant |
+| `heap-base` | Heap address mapping | Convert HeapRef to address |
+| `regs-correspond` | x86 regs hold addr of slot machine locs | Verify register values |
+| `mem-corresponds` | x86 memory matches slot machine memory | Verify memory contents |
+| `rsp-in-bounds` | Stack pointer in valid region | Memory safety |
+| `rsp-at-or-below-frame` | Haven't overflowed stack | Memory safety |
+| `halted-corresponds` | Halted flags match | Termination |
+
+**What's NOT in SimpleCorresponds** (compared to old StateCorresponds):
+
+| Removed Field | Why removed |
+|---------------|-------------|
+| `current-frame` | Constant - just use `frame-base` |
+| `rbp-is-frame-base` | rbp never changes - trivial |
+| `frame-scope` | Only one frame - trivially true |
+| `heap-in-heap` | Derivable from mem-corresponds |
+
+### Layer 4: RegsCorrespond (SIMPLIFIED)
+
+**Purpose**: Each slot machine register corresponds to x86 register value.
+
+```agda
+record RegsCorrespond (fb : Addr) (hb : HeapRef → Addr)
+                      (σ : LocState) (s : x86State) : Set where
+  field
+    rdi-corresponds : x86-readReg s.regs rdi ≡ loc-to-addr fb hb (readReg σ.regs RDI)
+    rax-corresponds : x86-readReg s.regs rax ≡ loc-to-addr fb hb (readReg σ.regs RAX)
+    -- ... other registers as needed
+```
+
+**Insight**: The x86 register holds the ADDRESS of the slot machine location,
+not the value itself. To get the value, read memory at that address.
+
+### Layer 5: MemCorresponds (SIMPLIFIED)
+
+**Purpose**: Slot machine memory entries exist in x86 memory.
+
+```agda
+record MemCorresponds (fb : Addr) (hb : HeapRef → Addr)
+                      (σ : LocState) (mem : x86Memory) : Set where
+  field
+    stack-corresponds : ∀ f k loc →
+      σ.stackMem f k ≡ just loc →
+      x86-readMem mem (stack-loc-to-addr fb f k) ≡ just (loc-to-addr fb hb loc)
+
+    heap-corresponds : ∀ hl hl' →
+      σ.heapMem hl ≡ just hl' →
+      x86-readMem mem (heap-loc-to-addr hb hl) ≡ just (heap-loc-to-addr hb hl')
+```
+
+### Layer 6: Instruction Lemmas (NEW - generic, reusable)
+
+**Purpose**: Prove how each x86 instruction affects correspondence.
+
+```agda
+-- Allocate stack space
+sub-rsp-lemma : ∀ n →
+  SimpleCorresponds σ s →
+  n ≤ available-capacity →
+  SimpleCorresponds σ (exec (sub rsp n) s)
+
+-- Deallocate stack space
+add-rsp-lemma : ∀ n →
+  SimpleCorresponds σ s →
+  rsp + n ≤ frame-base →
+  SimpleCorresponds σ (exec (add rsp n) s)
+
+-- Write to stack memory
+mov-to-mem-lemma : ∀ offset val →
+  SimpleCorresponds σ s →
+  InStack (rsp + offset) →
+  (rsp + offset) < frame-base →  -- below tracked slots
+  SimpleCorresponds σ (exec (mov [rsp+offset] val) s)
+
+-- Write to register
+mov-to-reg-lemma : ∀ dst src →
+  SimpleCorresponds σ s →
+  SimpleCorresponds (updateReg σ dst (addrToLoc src)) (exec (mov dst src) s)
+```
+
+**Key principle**: Each lemma handles ONE instruction. Combinator proofs compose these.
+
+### Layer 7: Combinator Runners (NEW - compositional)
+
+**Purpose**: Compose instruction lemmas for each combinator.
+
+```agda
+simple-pair-runner : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
+  SimpleRunner f → SimpleRunner g → SimpleRunner (⟨ f , g ⟩ m)
+simple-pair-runner f g m f-run g-run prefix suffix σ s sc =
+  let
+    -- Phase 1: Setup (2 instructions)
+    (s1, sc1) = sub-rsp-lemma (slots 3) sc capacity-ok
+    (s2, sc2) = mov-to-mem-lemma (slots 2) rdi sc1 in-bounds-ok
+
+    -- Phase 2: Run f
+    (s3, σ3, sc3) = f-run ... sc2
+
+    -- Phase 3: Middle (2 instructions)
+    (s4, sc4) = mov-to-mem-lemma 0 rax sc3 ...
+    (s5, sc5) = mov-from-mem-lemma rdi (slots 2) sc4 ...
+
+    -- Phase 4: Run g
+    (s6, σ6, sc6) = g-run ... sc5
+
+    -- Phase 5: Cleanup (3 instructions)
+    (s7, sc7) = mov-to-mem-lemma slot-size rax sc6 ...
+    (s8, sc8) = mov-to-reg-lemma rax rsp sc7
+    (s9, sc9) = add-rsp-lemma (slots 3) sc8 ...
+  in
+    (s9, σ-final, sc9, ...)
+```
+
+**Estimated size**: ~100-150 lines (vs ~1800 in old PairRunner)
+
+### Summary: Division of Responsibilities
+
+| Layer | Handles | Doesn't Handle |
+|-------|---------|----------------|
+| Dispatcher | Allocation, validity, slot indices | x86 addresses, execution |
+| Address Mapping | Location → Address conversion | State tracking |
+| SimpleCorresponds | State correspondence | Allocation policy |
+| Instruction Lemmas | Single instruction effects | Combinator logic |
+| Combinator Runners | Composing instructions | Instruction semantics |
+| x86 Semantics | Instruction execution | Abstract locations |
+
+### File Organization
+
+```
+formal/Once/CCC/Target/X86v3/
+├── Dispatcher/           # UNCHANGED
+│   ├── Allocation.agda
+│   ├── IR/PairWF.agda
+│   └── ...
+├── CodeGen/
+│   └── Compile.agda      # UPDATED (frameless)
+├── Refinement/
+│   ├── SlotToX86.agda    # OLD - keep for reference during migration
+│   ├── SimpleCorresponds.agda   # NEW - minimal correspondence
+│   └── InstructionLemmas.agda   # NEW - generic lemmas
+├── SimplePairRunner.agda  # NEW - compositional runner
+└── PairRunner.agda        # OLD - delete after migration
+```
+
+---
+
 ## Open Questions
 
 1. **Apply combinator**: Does apply need frames for closure calls? May need hybrid approach.

@@ -1,0 +1,100 @@
+Next Step: Complete compose-simulation                                                                                                                                 
+                                                                                                                                                                         
+  The current compose-simulation-with-IH only executes f and embeds it. To complete the compose proof:                                                                   
+                                                                                                                                                                         
+  1. Execute bridge at offset length (compile-ir f) using bridge-star-at-offset                                                                                          
+  2. Execute g at offset length (compile-ir f) + 1 using recursive call                                                                                                  
+  3. Chain all three Stars with star-trans                                                                                                                               
+                                                                                                                                                                         
+  The challenge is that after executing f, the pc is at length (compile-ir f) but IRSimulation requires pc = 0. This is exactly why we need IRRunner instead:            
+                                                                                                                                                                         
+  -- Current: requires pc = 0                                                                                                                                            
+  IRSimulation ir = ... → pc s ≡ 0 → IRSimResult ir s                                                                                                                    
+                                                                                                                                                                         
+  -- Needed: works at any offset                                                                                                                                         
+  IRRunner ir = ... → pc s ≡ length prefix → IRStarResult ir prefix suffix s s' (length prefix)                                                                          
+                                                                                                                                                                         
+  Proposed next step: Convert compose-simulation-with-IH to use IRRunner instead of IRSimulation:                                                                        
+                                                                                                                                                                         
+  1. Change type to take IRRunner f and IRRunner g instead of IRSimulation                                                                                               
+  2. Call f-runner (compile-ir f) (compose-bridge ++ compile-ir g) ...                                                                                                   
+  3. Call bridge-runner at the new offset                                                                                                                                
+  4. Call g-runner at the final offset                                                                                                                                   
+  5. Chain the Stars together                                                                                                                                            
+                                                                                                                                                                         
+  This would eliminate the compose-simulation postulate and prove compose using the offset-parameterized infrastructure we just built.                                   
+                                                                                                                                                                         
+  Want me to implement this?                                                                                                                                             
+                                                                                                                                                                         
+✻ Cooked for 44s                                                                                                                                                         
+                                                                                                                                                                         
+❯ Should IRSimulation be scraped since it works with pc = 0? Seems like the same problem solved in the previous commit?                                                  
+                                                                                                                                                                         
+● You're right. IRSimulation and the old IRSimResult have the same pc=0 problem. Let me remove them and use only IRRunner/IRStarResult.                                  
+
+
+● I found the connection. Looking at ValidAtWF in ClosureWellFormed.agda:                                                                                                
+                                                                                                                                                                         
+  valid-pair-wf : ∀ {m A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧} ... →                                                                                                                
+    readLoc s pair-loc ≡ just fst-loc →           -- ← This proves fst-mem-valid!                                                                                        
+    readLoc s (sucLoc pair-loc) ≡ just snd-loc → -- ← This proves snd-mem-valid!                                                                                         
+    ...                                                                                                                                                                  
+    ValidAtWF m alloc {A * B} (a , b) pair-loc s                                                                                                                         
+                                                                                                                                                                         
+  The key insight: ValidAtWF at Layer 2→3 (Dispatcher) already contains exactly the memory validity proofs we need:                                                      
+  - For fst: readLoc s pair-loc ≡ just fst-loc                                                                                                                           
+  - For snd: readLoc s (sucLoc pair-loc) ≡ just snd-loc                                                                                                                  
+                                                                                                                                                                         
+  The gap: The current IRRunner at Layer 1→2 only has StateCorresponds σ s (correspondence), not ValidAtWF (typing). It operates without type information.               
+                                                                                                                                                                         
+  To eliminate the postulates, we need to either:                                                                                                                        
+  1. Add ValidAtWF to IRRunner - Make runners take validity proofs as input                                                                                              
+  2. Connect the layers - Thread ValidAtWF from Dispatcher down to the runners                                                                                           
+                                                                                                                                                                         
+  The postulates are sound because:                                                                                                                                      
+  - fst-ir is only called on pairs (by typing)                                                                                                                           
+  - Valid pairs have the readLoc preconditions (by valid-pair-wf)                                                                                                        
+  - So when we reach fst-runner, the memory validity must hold                                                                                                           
+                                                                                                                                                                         
+  But proving them requires structural changes to pass type information through. This isn't in the commits you mentioned - it would be new work to connect Layer 2→3's   
+  ValidAtWF with Layer 1→2's IRRunner.                                                                                                                                   
+                                                                                                                                                                         
+✻ Worked for 1m 43s                                                                                                                                                      
+                                                                                                                                                                         
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ add ValidAtWF to IRRunner                                                                                                                                              
+
+
+The most portable solution is to make the memory validity a precondition rather than a postulate inside the runner.                                                    
+                                                                                                                                                                         
+  Currently:                                                                                                                                                             
+  -- Postulate inside fst-runner                                                                                                                                         
+  postulate                                                                                                                                                              
+    fst-mem-valid : ∀ σ s → StateCorresponds σ s →                                                                                                                       
+      ∃[ fst-loc ] (readLoc σ (readReg RDI) ≡ just fst-loc)                                                                                                              
+                                                                                                                                                                         
+  fst-runner : IRRunner fst-ir                                                                                                                                           
+  fst-runner ... = ... fst-mem-valid σ s sc ...                                                                                                                          
+                                                                                                                                                                         
+  Portable approach:                                                                                                                                                     
+  -- fst-runner takes the proof as a parameter                                                                                                                           
+  fst-runner : ∀ {A B} (fst-loc : ValueLocation FS') →                                                                                                                   
+    (mem-valid : ∀ σ s → StateCorresponds σ s →                                                                                                                          
+      readLoc σ (readReg RDI) ≡ just fst-loc) →                                                                                                                          
+    IRRunner (fst-ir {A} {B})                                                                                                                                            
+                                                                                                                                                                         
+  Then ir-runner (which builds IRRunner by induction) also takes a validity parameter:                                                                                   
+  ir-runner : ∀ {A B} (ir : IR A B) →                                                                                                                                    
+    InputValid ir →  -- Abstract predicate, instantiated at integration                                                                                                  
+    IRRunner ir                                                                                                                                                          
+                                                                                                                                                                         
+  Why this is most portable:                                                                                                                                             
+  1. Layer 1→2 stays pure - No assumptions about where validity comes from                                                                                               
+  2. Backend-agnostic - Different backends can provide validity proofs differently                                                                                       
+  3. Testable - Tests can construct validity proofs directly                                                                                                             
+  4. Clean integration - At the full-correctness theorem, we instantiate with ValidAtWF from Layer 2→3                                                                   
+                                                                                                                                                                         
+  The pattern: Push proof obligations to the caller, don't hide them in postulates. The postulate becomes explicit in the type signature, making the contract clear.     
+                                                                                                                                                                         
+  Want me to refactor fst-runner and snd-runner to take the memory validity as a parameter instead of using postulates?                                                  
+
