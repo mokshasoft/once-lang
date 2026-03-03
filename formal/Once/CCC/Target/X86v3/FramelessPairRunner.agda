@@ -200,7 +200,8 @@ record PairMiddleResult (prog : Program) (s s' : State) (σ : LocState FS')
 
 -- | Result of pair-cleanup phase
 record PairCleanupResult (prog : Program) (s s' : State) (σ : LocState FS')
-                         (pair-loc : SM.ValueLocation FS') (prefix : Program) : Set where
+                         (pair-loc : SM.ValueLocation FS') (prefix : Program)
+                         (fc-input : FramelessCorresponds σ s) : Set where
   field
     star-proof    : Star prog s s'
     halted-false  : X86Sem.State.halted s' ≡ false
@@ -209,6 +210,8 @@ record PairCleanupResult (prog : Program) (s s' : State) (σ : LocState FS')
     rsp-increased : x86-readReg (X86Sem.State.regs s') rsp ≡ x86-readReg (X86Sem.State.regs s) rsp +ℕ slots 3
     rbp-unchanged : x86-readReg (X86Sem.State.regs s') rbp ≡ x86-readReg (X86Sem.State.regs s) rbp
     rax-is-pair   : x86-readReg (X86Sem.State.regs s') rax ≡ x86-readReg (X86Sem.State.regs s) rsp
+    -- Frame-base is preserved through cleanup (proven via subst-preserves-frame-base)
+    frame-base-preserved : frame-base fc-preserved ≡ frame-base fc-input
 
 ------------------------------------------------------------------------
 -- pair-setup-result: FRAMELESS (2 instructions)
@@ -579,13 +582,14 @@ pair-cleanup-result-frameless : ∀ (prefix suffix : Program) (s : State)
   x86-readReg (X86Sem.State.regs s) rsp +ℕ slots 3 ≤ frame-base fc →
   InStack (x86-readReg (X86Sem.State.regs s) rsp +ℕ slots 3) →
   let prog = prefix ++ pair-cleanup ++ suffix
-  in ∃[ s' ] PairCleanupResult prog s s' σ pair-loc prefix
+  in ∃[ s' ] PairCleanupResult prog s s' σ pair-loc prefix fc
 pair-cleanup-result-frameless prefix suffix s σ pair-loc fc h-eq pc-eq rsp<frame rsp-is-pair-addr snd<frame snd-in-stack new-rsp≤frame new-rsp-in-stack =
   s' , record
     { star-proof    = star-proof
     ; halted-false  = h'-eq
     ; pc-after      = pc'-eq
     ; fc-preserved  = fc'
+    ; frame-base-preserved = fc'-frame-eq
     ; rsp-increased = rsp-final
     ; rbp-unchanged = rbp-final
     ; rax-is-pair   = rax-final
@@ -740,6 +744,11 @@ pair-cleanup-result-frameless prefix suffix s σ pair-loc fc h-eq pc-eq rsp<fram
     rax-final = trans (readReg-writeReg-diff (X86Sem.State.regs s2) rsp rax new-rsp (λ ()))
                       (trans (readReg-writeReg-same (X86Sem.State.regs s1) rax rax-written)
                              refl)
+
+    -- Frame-base preserved through cleanup
+    -- Chain: fc' = fc3 → fc2-after-add → fc2 → fc (via fc2-frame-eq)
+    fc'-frame-eq : frame-base fc' ≡ frame-base fc
+    fc'-frame-eq = fc2-frame-eq
 
 ------------------------------------------------------------------------
 -- Full frameless-pair-runner
@@ -1124,7 +1133,7 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
       new-rsp4-in-stack : InStack (x86-readReg (X86Sem.State.regs s4) rsp +ℕ slots 3)
 
     -- Run cleanup
-    cleanup-result-exists : ∃[ s5 ] PairCleanupResult (cleanup-prefix ++ pair-cleanup ++ suffix) s4 s5 σ4 pair-loc cleanup-prefix
+    cleanup-result-exists : ∃[ s5 ] PairCleanupResult (cleanup-prefix ++ pair-cleanup ++ suffix) s4 s5 σ4 pair-loc cleanup-prefix fc4
     cleanup-result-exists = pair-cleanup-result-frameless cleanup-prefix suffix s4 σ4 pair-loc fc4
                               h4-eq pc4-eq' rsp4<frame rsp4-is-pair-addr snd4<frame snd4-in-stack new-rsp4≤frame new-rsp4-in-stack
 
@@ -1160,9 +1169,9 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
     σ-final = σ5
 
     -- frame-base fc5 = frame-base fc (preserved through cleanup)
-    -- Postulated because cleanup involves subst which doesn't preserve frame-base definitionally
-    postulate
-      frame-base-fc5-eq : frame-base fc5 ≡ frame-base fc
+    -- Proven via PairCleanupResult.frame-base-preserved and the chain fc4 → fc → sc
+    frame-base-fc5-eq : frame-base fc5 ≡ frame-base fc
+    frame-base-fc5-eq = trans (PairCleanupResult.frame-base-preserved cleanup-result) frame-base-fc4-eq
 
     -- Convert fc5 back to StateCorresponds
     sc-final : StateCorresponds σ-final s-final
