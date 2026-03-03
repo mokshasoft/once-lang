@@ -116,6 +116,39 @@ spf:
 	@sh -c '$(AGDA_CMD) Once/SPF.agda'
 
 #-----------------------------------------------------------------------------
+# Optimizer Completeness Proofs (separate from compiler)
+#-----------------------------------------------------------------------------
+
+.PHONY: optimizer-cost
+optimizer-cost:
+	@echo "Type-checking optimizer cost model..."
+	@sh -c '$(AGDA_CMD) Once/Optimizer/Cost.agda'
+
+.PHONY: optimizer-depth
+optimizer-depth:
+	@echo "Type-checking optimizer depth..."
+	@sh -c '$(AGDA_CMD) Once/Optimizer/Depth.agda'
+
+.PHONY: optimizer-rewrite
+optimizer-rewrite:
+	@echo "Type-checking optimizer rewrite relation..."
+	@sh -c '$(AGDA_CMD) Once/Optimizer/Rewrite.agda'
+
+.PHONY: optimizer-complete
+optimizer-complete:
+	@echo "Type-checking optimizer completeness..."
+	@sh -c '$(AGDA_CMD) Once/Optimizer/Complete.agda'
+
+.PHONY: optimizer-bcc
+optimizer-bcc:
+	@echo "Type-checking BCC completeness..."
+	@sh -c '$(AGDA_CMD) Once/Optimizer/BCC.agda'
+
+.PHONY: optimizer
+optimizer: optimizer-cost optimizer-depth optimizer-rewrite optimizer-complete optimizer-bcc
+	@echo "Optimizer completeness proofs type-check successfully!"
+
+#-----------------------------------------------------------------------------
 # Pipeline: CCC Backend (target-specific)
 #-----------------------------------------------------------------------------
 
