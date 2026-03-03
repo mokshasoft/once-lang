@@ -26,7 +26,7 @@ open import Once.Semantics
 
 open import Once.Optimizer.Cost
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-monoˡ-≤; +-monoʳ-≤)
 open import Data.Product using (_×_; _,_)
@@ -90,7 +90,7 @@ eta-case-reduces : ∀ {A B} (m₁ m₂ : AllocMode) →
 eta-case-reduces m₁ m₂ = s≤s (s≤s z≤n)
 
 ------------------------------------------------------------------------
--- Distribution is now CONDITIONAL (fixed!)
+-- Distribution is now CONDITIONAL with safe-pair-distrib (fixed!)
 ------------------------------------------------------------------------
 
 -- | HISTORICAL NOTE: Distribution USED TO increase cost when no beta fires
@@ -105,10 +105,17 @@ eta-case-reduces m₁ m₂ = s≤s (s≤s z≤n)
 --
 -- Cost INCREASED from 2 to 3!
 --
--- FIXED: The optimizer now only distributes when it enables a beta:
---   wants-pair id = false, so ⟨ id , id ⟩ ∘ h stays as ⟨ id , id ⟩ ∘ h
+-- ALSO PROBLEMATIC: ⟨ fst , id ⟩ ∘ ⟨ h₁ , h₂ ⟩
+-- With wants-pair f ∨ wants-pair g, fst triggers distribution:
+-- Result: ⟨ h₁ , ⟨ h₁ , h₂ ⟩ ⟩ - duplicates h₁!
+-- Cost increases by cost h₁.
 --
--- With the fix, optimize-once-cost-≤ IS provable!
+-- FIXED: The optimizer now uses safe-pair-distrib which only returns true for:
+--   1. Eta case: fst+snd or snd+fst (result is h or swapped h)
+--   2. Terminal case: at least one is terminal (eliminates cost entirely)
+--
+-- With safe-pair-distrib using ∧ for eta and ∨ for terminal,
+-- optimize-once-cost-≤ IS provable! (See Once.Optimizer.CostProof)
 
 ------------------------------------------------------------------------
 -- When does distribution help?
@@ -139,22 +146,17 @@ eta-case-reduces m₁ m₂ = s≤s (s≤s z≤n)
 -- makes things worse.
 
 ------------------------------------------------------------------------
--- What we CAN prove
+-- What we CAN prove (with safe-pair-distrib fix)
 ------------------------------------------------------------------------
 
 -- 1. Beta reductions always reduce cost (proven above)
 -- 2. Eta reductions always reduce cost (proven above)
 -- 3. Identity elimination preserves cost
 -- 4. Terminal/initial absorption reduces cost
-
--- What we CANNOT prove with current optimizer:
--- - optimize-once-cost-≤ : single pass never increases cost
---   (counterexample: distribution without beta)
-
--- What we MIGHT be able to prove:
--- - For terms in "beta-normal form", optimize preserves cost
--- - For BCC terms, optimize reaches a canonical form with minimal cost
---   (this requires coherence, not optimize-once-cost-≤)
+-- 5. optimize-compose-cost-≤: composition optimization never increases cost
+--    (proven in Once.Optimizer.CostProof using safe-pair-distrib)
+-- 6. optimize-once-cost-≤: single optimization pass never increases cost
+--    (proven in Once.Optimizer.Complete using optimize-compose-cost-≤)
 
 ------------------------------------------------------------------------
 -- Alternative: Prove for beta-normal inputs
@@ -175,14 +177,21 @@ eta-case-reduces m₁ m₂ = s≤s (s≤s z≤n)
 -- Summary
 ------------------------------------------------------------------------
 
--- The optimizer's distribution rules can increase syntactic cost.
--- This is intentional: distribution exposes beta reductions.
+-- The optimizer's distribution rules are now CONDITIONAL via safe-pair-distrib.
+-- Distribution only fires when:
+--   1. Eta case: f = fst/snd and g = snd/fst (result is h or swapped)
+--   2. Terminal case: at least one of f, g is terminal
 --
--- For completeness, we use coherence (not cost monotonicity):
+-- This ensures distribution NEVER increases cost:
+--   - In the eta case, the pair structure is fully eliminated
+--   - In the terminal case, at least one component costs 0
+--
+-- With this fix, optimize-compose-cost-≤ and optimize-once-cost-≤ are PROVABLE.
+-- The proofs are in Once.Optimizer.CostProof and Once.Optimizer.Complete.
+--
+-- For BCC completeness, we additionally use coherence:
 --   1. Equivalent BCC terms have the same canonical form
 --   2. The optimizer computes the canonical form
 --   3. Therefore cost(optimize t) = cost(optimize t') for t ≈ t'
---   4. Combined with cost(optimize t') ≤ cost t' for CANONICAL t',
+--   4. Combined with cost(optimize t') ≤ cost t',
 --      we get cost(optimize t) ≤ cost t'
---
--- The key is that canonical/normal forms don't get worse under optimize.
