@@ -23,7 +23,7 @@ module Once.Optimize where
 open import Once.Type
 open import Once.IR
 
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃)
 open import Data.String using (String)
@@ -386,13 +386,38 @@ mutual
 -- Helper: Check if composition would enable a beta reduction
 ------------------------------------------------------------------------
 
--- | Does f "want" a pair on its right? (i.e., can f ∘ ⟨_,_⟩ reduce?)
-wants-pair : ∀ {A B} → IR A B → Bool
-wants-pair fst = true
-wants-pair snd = true
-wants-pair apply = true  -- apply ∘ ⟨ curry f , g ⟩ reduces
-wants-pair terminal = true  -- terminal absorbs everything
-wants-pair _ = false
+-- | Check if pair distribution is safe (won't increase cost)
+--   Safe cases:
+--   1. Eta: ⟨ fst , snd ⟩ or ⟨ snd , fst ⟩ → reduces to h or swapped h
+--   2. Terminal: at least one of f, g is terminal → that component becomes 0
+--
+--   Unsafe: ⟨ fst , fst ⟩ or ⟨ snd , snd ⟩ → duplicates a component's cost
+
+-- Check if f is fst (for pattern matching)
+is-fst? : ∀ {A B} → IR A B → Bool
+is-fst? fst = true
+is-fst? _ = false
+
+-- Check if f is snd (for pattern matching)
+is-snd? : ∀ {A B} → IR A B → Bool
+is-snd? snd = true
+is-snd? _ = false
+
+-- Check if f is terminal (for pattern matching)
+is-terminal? : ∀ {A B} → IR A B → Bool
+is-terminal? terminal = true
+is-terminal? _ = false
+
+-- | Safe to distribute pairs: eta case OR terminal case
+--   f : IR C A, g : IR C B (components of a pair)
+--   Eta: (fst,snd) or (snd,fst) - only when types align
+--   Terminal: at least one is terminal (safe because terminal eliminates cost)
+safe-pair-distrib : ∀ {A B C D} → IR A B → IR C D → Bool
+safe-pair-distrib f g =
+  -- Eta case: fst paired with snd (or vice versa)
+  (is-fst? f ∧ is-snd? g) ∨ (is-snd? f ∧ is-fst? g) ∨
+  -- Terminal case: at least one is terminal
+  is-terminal? f ∨ is-terminal? g
 
 -- | Does f "want" a coproduct on its right? (i.e., can f ∘ inl/inr reduce?)
 wants-coprod : ∀ {A B} → IR A B → Bool
@@ -535,26 +560,28 @@ optimize-compose initial f = initial ∘ f
 ------------------------------------------------------------------------
 
 -- Pairing distribution: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
--- Only when h is a pair and f or g can consume it (fst/snd/apply/terminal)
-optimize-compose (⟨ f , g ⟩ m) h@(⟨ _ , _ ⟩ _) with wants-pair f ∨ wants-pair g
+-- Only when safe: eta case (fst+snd) or terminal case.
+-- This ensures cost never increases from distribution.
+optimize-compose (⟨ f , g ⟩ m) h@(⟨ _ , _ ⟩ _) with safe-pair-distrib f g
 ... | true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
 ... | false = (⟨ f , g ⟩ m) ∘ h
 
--- Pairing distribution when h is inl/inr and f or g is a case
-optimize-compose (⟨ f , g ⟩ m) h@(inl _) with wants-coprod f ∨ wants-coprod g
+-- Pairing distribution when h is inl/inr: safe when at least one is terminal
+-- or when both are cases (case ∘ inl reduces, eliminating a branch)
+optimize-compose (⟨ f , g ⟩ m) h@(inl _) with safe-pair-distrib f g
 ... | true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
 ... | false = (⟨ f , g ⟩ m) ∘ h
-optimize-compose (⟨ f , g ⟩ m) h@(inr _) with wants-coprod f ∨ wants-coprod g
+optimize-compose (⟨ f , g ⟩ m) h@(inr _) with safe-pair-distrib f g
 ... | true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
 ... | false = (⟨ f , g ⟩ m) ∘ h
 
--- Pairing distribution when h is unfold and f or g is fold
-optimize-compose (⟨ f , g ⟩ m) unfold with wants-unfold f ∨ wants-unfold g
+-- Pairing distribution when h is unfold: safe when at least one is terminal
+optimize-compose (⟨ f , g ⟩ m) unfold with safe-pair-distrib f g
 ... | true  = ⟨ optimize-compose f unfold , optimize-compose g unfold ⟩ m
 ... | false = (⟨ f , g ⟩ m) ∘ unfold
 
--- Pairing distribution when h is fold and f or g is unfold
-optimize-compose (⟨ f , g ⟩ m) fold with wants-fold f ∨ wants-fold g
+-- Pairing distribution when h is fold: safe when at least one is terminal
+optimize-compose (⟨ f , g ⟩ m) fold with safe-pair-distrib f g
 ... | true  = ⟨ optimize-compose f fold , optimize-compose g fold ⟩ m
 ... | false = (⟨ f , g ⟩ m) ∘ fold
 

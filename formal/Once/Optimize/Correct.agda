@@ -17,7 +17,7 @@ open import Once.Optimize
 open import Once.Category.Laws
 open import Once.Postulates using (closure-semantics-eq; extensionality)
 
-open import Data.Bool using (Bool; true; false; _∨_)
+open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
@@ -94,28 +94,29 @@ optimize-compose-correct (⟨ f' , g' ⟩ _) apply x = refl
 optimize-compose-correct (⟨ f' , g' ⟩ _) arr x = refl
 optimize-compose-correct (⟨ f' , g' ⟩ _) (Prim name) x = refl
 -- Cases where we CONDITIONALLY distribute (need to match optimizer's with-clause)
+-- Distribution only happens when safe-pair-distrib returns true
 optimize-compose-correct (⟨ f' , g' ⟩ m) (⟨ h , h' ⟩ m') x
-  with wants-pair f' ∨ wants-pair g'
+  with safe-pair-distrib f' g'
 ... | true  = cong₂ _,_ (optimize-compose-correct f' (⟨ h , h' ⟩ m') x)
                         (optimize-compose-correct g' (⟨ h , h' ⟩ m') x)
 ... | false = refl
 optimize-compose-correct (⟨ f' , g' ⟩ m) (inl m') x
-  with wants-coprod f' ∨ wants-coprod g'
+  with safe-pair-distrib f' g'
 ... | true  = cong₂ _,_ (optimize-compose-correct f' (inl m') x)
                         (optimize-compose-correct g' (inl m') x)
 ... | false = refl
 optimize-compose-correct (⟨ f' , g' ⟩ m) (inr m') x
-  with wants-coprod f' ∨ wants-coprod g'
+  with safe-pair-distrib f' g'
 ... | true  = cong₂ _,_ (optimize-compose-correct f' (inr m') x)
                         (optimize-compose-correct g' (inr m') x)
 ... | false = refl
 optimize-compose-correct (⟨ f' , g' ⟩ m) fold x
-  with wants-fold f' ∨ wants-fold g'
+  with safe-pair-distrib f' g'
 ... | true  = cong₂ _,_ (optimize-compose-correct f' fold x)
                         (optimize-compose-correct g' fold x)
 ... | false = refl
 optimize-compose-correct (⟨ f' , g' ⟩ m) unfold x
-  with wants-unfold f' ∨ wants-unfold g'
+  with safe-pair-distrib f' g'
 ... | true  = cong₂ _,_ (optimize-compose-correct f' unfold x)
                         (optimize-compose-correct g' unfold x)
 ... | false = refl
