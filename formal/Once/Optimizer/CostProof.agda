@@ -19,7 +19,7 @@ open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤n⇒m≤1+n; m≤m+n; m≤n+m; n≤1+n;
-                                        +-monoˡ-≤; +-monoʳ-≤; +-identityʳ; +-assoc; +-comm)
+                                        +-monoˡ-≤; +-monoʳ-≤; +-identityˡ; +-identityʳ; +-assoc; +-comm)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst; inspect)
@@ -49,9 +49,15 @@ b≤suc-a+b a b = m≤n⇒m≤1+n (n≤m+n a b)
 -- 1. Eta case: f = fst, g = snd (or vice versa) - pair is fully eliminated
 -- 2. Terminal case: f = terminal or g = terminal - one component has cost 0
 --
--- These postulates are provable but require tedious pattern matching.
--- The key insights are:
--- - Eta: ⟨ fst , snd ⟩ ∘ ⟨ h₁ , h₂ ⟩ = ⟨ h₁ , h₂ ⟩ (cost unchanged)
+-- Key insights:
+-- - For inl/inr/unfold/fold: only terminal case is type-compatible
+--   (fst/snd have product domain, but these constructors have sum/Fix domain)
+-- - For pairs: both eta and terminal cases apply
+-- - optimize-compose terminal h = terminal (cost 0)
+--
+-- These are provable via exhaustive pattern matching but tedious.
+-- The proofs follow from:
+-- - Eta: ⟨ fst , snd ⟩ ∘ ⟨ h₁ , h₂ ⟩ → ⟨ h₁ , h₂ ⟩ (no cost change)
 -- - Terminal: optimize-compose terminal h = terminal (cost 0)
 ------------------------------------------------------------------------
 
@@ -91,22 +97,11 @@ postulate
     cost (⟨ optimize-compose f (fold {F}) , optimize-compose g (fold {F}) ⟩ m)
     ≤ suc (cost f ℕ+ cost g) ℕ+ 1
 
-  -- Case fusion cost
-  case-fusion-cost : ∀ {FA FB H₁A H₁B C} (h₁ : IR H₁A C) (h₂ : IR H₁B C)
-    (f : IR FA (H₁A + H₁B)) (g : IR FB (H₁A + H₁B)) →
-    cost ([ optimize-compose ([ h₁ , h₂ ]) f , optimize-compose ([ h₁ , h₂ ]) g ])
-    ≤ (cost h₁ ℕ+ cost h₂) ℕ+ (cost f ℕ+ cost g)
-
-  -- Associativity: (h ∘ g) ∘ f
-  compose-∘-cost-≤ : ∀ {A B B' C} (h : IR B' C) (g : IR B B') (f : IR A B) →
-    cost (optimize-compose (h ∘ g) f) ≤ (cost h ℕ+ cost g) ℕ+ cost f
-
-
 ------------------------------------------------------------------------
 -- optimize-pair and optimize-case cost lemmas
 --
 -- These are provable but require matching the complex with-clause
--- structure of the optimizer functions. Using postulates for clarity.
+-- structure of the optimizer functions.
 ------------------------------------------------------------------------
 
 postulate
@@ -123,6 +118,16 @@ postulate
   --   - [ f , g ] otherwise - cost = cost f + cost g
   optimize-case-cost-≤ : ∀ {A B C} (f : IR A C) (g : IR B C) →
     cost (optimize-case f g) ≤ cost f ℕ+ cost g
+
+  -- Case fusion cost
+  case-fusion-cost : ∀ {FA FB H₁A H₁B C} (h₁ : IR H₁A C) (h₂ : IR H₁B C)
+    (f : IR FA (H₁A + H₁B)) (g : IR FB (H₁A + H₁B)) →
+    cost ([ optimize-compose ([ h₁ , h₂ ]) f , optimize-compose ([ h₁ , h₂ ]) g ])
+    ≤ (cost h₁ ℕ+ cost h₂) ℕ+ (cost f ℕ+ cost g)
+
+  -- Associativity: (h ∘ g) ∘ f
+  compose-∘-cost-≤ : ∀ {A B B' C} (h : IR B' C) (g : IR B B') (f : IR A B) →
+    cost (optimize-compose (h ∘ g) f) ≤ (cost h ℕ+ cost g) ℕ+ cost f
 
 
 ------------------------------------------------------------------------
