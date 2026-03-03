@@ -126,6 +126,14 @@ private
       ≡ frame-base fc
   subst-preserves-frame-base refl fc = refl
 
+  -- subst over x86 state preserves heap-base (since heap-base doesn't depend on the state)
+  subst-preserves-heap-base : ∀ {σ' : LocState FS'} {s1 : State} {v1 v2 : Word}
+    (eq : v1 ≡ v2)
+    (fc : FramelessCorresponds σ' (record s1 { regs = x86-writeReg (X86Sem.State.regs s1) rax v1 })) →
+    heap-base (subst (λ v → FramelessCorresponds σ' (record s1 { regs = x86-writeReg (X86Sem.State.regs s1) rax v })) eq fc)
+      ≡ heap-base fc
+  subst-preserves-heap-base refl fc = refl
+
 ------------------------------------------------------------------------
 -- Step helper: common pattern for making step proofs
 ------------------------------------------------------------------------
@@ -1203,15 +1211,48 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
     output-frame-eq : SlotToX86.StateCorresponds.current-frame sc-final ≡ cf
     output-frame-eq = refl
 
-    -- Parent frames preserved (postulated for now)
-    postulate
-      parent-preserved : ∀ (frame : Frame FS') (slot : ℕ) →
-        _≺_ FS' cf frame →
-        SM.LocState.stackMem σ-final frame slot ≡ SM.LocState.stackMem σ frame slot
+    -- Parent frames preserved (proven by chaining through phases)
+    -- Chain: σ-final = σ5 → σ4 (cleanup regs only) → σ3 (g's pfp) → σ2 (middle regs only) → σ (f's pfp)
+    parent-preserved : ∀ (frame : Frame FS') (slot : ℕ) →
+      _≺_ FS' cf frame →
+      SM.LocState.stackMem σ-final frame slot ≡ SM.LocState.stackMem σ frame slot
+    parent-preserved frame slot cf≺frame =
+      let
+        -- Step 1: σ5.stackMem = σ4.stackMem (cleanup only changes regs)
+        step5-4 : SM.LocState.stackMem σ5 frame slot ≡ SM.LocState.stackMem σ4 frame slot
+        step5-4 = refl  -- pair-cleanup-slot-state only modifies regs
+
+        -- Step 2: σ4.stackMem = σ3.stackMem (g's parent-frames-preserved)
+        -- Need: cf_g ≺ frame, where cf_g = IRStarResult.current-frame g-result
+        -- By frame-matches-input: cf_g = current-frame sc3 = cf
+        cf-g = IRStarResult.current-frame g-result
+        cf-g≡cf : cf-g ≡ cf
+        cf-g≡cf = IRStarResult.frame-matches-input g-result
+        cf-g≺frame : _≺_ FS' cf-g frame
+        cf-g≺frame = subst (λ x → _≺_ FS' x frame) (sym cf-g≡cf) cf≺frame
+        step4-3 : SM.LocState.stackMem σ4 frame slot ≡ SM.LocState.stackMem σ3 frame slot
+        step4-3 = IRStarResult.parent-frames-preserved g-result frame slot cf-g≺frame
+
+        -- Step 3: σ3.stackMem = σ2.stackMem (middle only changes regs)
+        step3-2 : SM.LocState.stackMem σ3 frame slot ≡ SM.LocState.stackMem σ2 frame slot
+        step3-2 = refl  -- pair-middle-slot-state only modifies regs
+
+        -- Step 4: σ2.stackMem = σ.stackMem (f's parent-frames-preserved)
+        -- Need: cf_f ≺ frame, where cf_f = IRStarResult.current-frame f-result
+        -- By frame-matches-input: cf_f = current-frame sc1 = cf
+        cf-f = IRStarResult.current-frame f-result
+        cf-f≡cf : cf-f ≡ cf
+        cf-f≡cf = IRStarResult.frame-matches-input f-result
+        cf-f≺frame : _≺_ FS' cf-f frame
+        cf-f≺frame = subst (λ x → _≺_ FS' x frame) (sym cf-f≡cf) cf≺frame
+        step2-0 : SM.LocState.stackMem σ2 frame slot ≡ SM.LocState.stackMem σ frame slot
+        step2-0 = IRStarResult.parent-frames-preserved f-result frame slot cf-f≺frame
+      in
+        trans step5-4 (trans step4-3 (trans step3-2 step2-0))
 
     -- Heap-base preserved through pair execution
-    -- Chain: sc → fc (refl) → fc1 (setup refl) → sc1 (refl) → sc2 (f's hbp) → fc2 (refl) → fc3 (middle refl) → sc3 (refl) → sc4 (g's hbp) → fc4 (refl) → fc5 (cleanup refl) → sc-final (refl)
-    -- The actual proof requires chaining through all these conversions
+    -- The chain involves subst in cleanup, so we need explicit intermediate proofs
+    -- Postulated for now - the structure is sound but complex to prove definitionally
     postulate
       heap-base-final : SlotToX86.StateCorresponds.heap-base sc-final ≡ SlotToX86.StateCorresponds.heap-base sc
 
