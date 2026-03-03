@@ -15,6 +15,8 @@ module Once.Optimizer.Complete where
 open import Once.Type
 open import Once.IR
 open import Once.Optimize
+open import Once.Optimize.Correct as OptCorrect using ()
+  renaming (optimize-correct to optimize-correct'; optimize-once-correct to optimize-once-correct')
 open import Once.Semantics
 
 open import Once.Optimizer.Cost
@@ -59,13 +61,15 @@ t ≈ t' = ∀ x → eval t x ≡ eval t' x
 ≈-trans eq₁ eq₂ x = trans (eq₁ x) (eq₂ x)
 
 ------------------------------------------------------------------------
--- Optimizer Correctness
+-- Optimizer Correctness (imported from Once.Optimize.Correct)
 ------------------------------------------------------------------------
 
--- | Optimizer preserves semantics (stated as postulate, proven in Once.Optimize.Correct)
-postulate
-  optimize-correct : ∀ {A B} (t : IR A B) → optimize t ≈ t
-  optimize-once-correct : ∀ {A B} (t : IR A B) → optimize-once t ≈ t
+-- | Optimizer preserves semantics
+optimize-correct : ∀ {A B} (t : IR A B) → optimize t ≈ t
+optimize-correct t x = optimize-correct' t x
+
+optimize-once-correct : ∀ {A B} (t : IR A B) → optimize-once t ≈ t
+optimize-once-correct t x = optimize-once-correct' t x
 
 ------------------------------------------------------------------------
 -- Key Lemma: Optimization reduces or preserves cost
