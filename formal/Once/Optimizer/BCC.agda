@@ -17,6 +17,7 @@ module Once.Optimizer.BCC where
 open import Once.Type
 open import Once.IR
 open import Once.Optimize
+open import Once.Optimize.Shape
 open import Once.Semantics
 
 open import Once.Optimizer.Cost
@@ -91,23 +92,7 @@ bcc-compose-fst : ∀ {A B C} {g : IR B C} {f : IR A B} →
   IsBCC (g ∘ f) → IsBCC g
 bcc-compose-fst (bcc-compose bg _) = bg
 
--- | Characterization of optimize-pair outputs
---   optimize-pair f g returns one of:
---   1. id (when f = fst, g = snd, types match)
---   2. h (when f = fst ∘ h, g = snd ∘ h, h = h', types match)
---   3. ⟨ f , g ⟩ Heap (otherwise)
---   All of these are BCC if inputs are BCC.
-data OptPairShape {A B : Type} : {C : Type} → IR C A → IR C B → IR C (A * B) → Set where
-  ops-id   : OptPairShape (fst {A} {B}) snd id
-  ops-h    : ∀ {C} (h : IR C (A * B)) → OptPairShape (fst ∘ h) (snd ∘ h) h
-  ops-pair : ∀ {C} (f : IR C A) (g : IR C B) → OptPairShape f g (⟨ f , g ⟩ Heap)
-
--- | optimize-pair result is always in one of the three shapes
---   (We use a postulate because Agda's coverage checker struggles
---   with the catch-all pattern structure of optimize-pair)
-postulate
-  optimize-pair-shape : ∀ {A B C} (f : IR C A) (g : IR C B) →
-    OptPairShape f g (optimize-pair f g)
+-- OptPairShape and optimize-pair-shape are imported from Once.Optimize.Shape
 
 -- | BCC is preserved for any shape
 bcc-from-shape : ∀ {A B C} {f : IR C A} {g : IR C B} {r : IR C (A * B)} →
@@ -121,16 +106,7 @@ bcc-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B) →
   IsBCC f → IsBCC g → IsBCC (optimize-pair f g)
 bcc-pair-result f g bf bg = bcc-from-shape bf bg (optimize-pair-shape f g)
 
--- | Characterization of optimize-case outputs
---   Similar to OptPairShape but for case/coproducts
-data OptCaseShape {A B : Type} : {C : Type} → IR A C → IR B C → IR (A + B) C → Set where
-  ocs-id   : ∀ {m₁ m₂} → OptCaseShape (inl {A} {B} m₁) (inr m₂) id
-  ocs-h    : ∀ {C} (h : IR (A + B) C) {m₁ m₂} → OptCaseShape (h ∘ inl m₁) (h ∘ inr m₂) h
-  ocs-case : ∀ {C} (f : IR A C) (g : IR B C) → OptCaseShape f g [ f , g ]
-
-postulate
-  optimize-case-shape : ∀ {A B C} (f : IR A C) (g : IR B C) →
-    OptCaseShape f g (optimize-case f g)
+-- OptCaseShape and optimize-case-shape are imported from Once.Optimize.Shape
 
 bcc-from-case-shape : ∀ {A B C} {f : IR A C} {g : IR B C} {r : IR (A + B) C} →
   IsBCC f → IsBCC g → OptCaseShape f g r → IsBCC r
