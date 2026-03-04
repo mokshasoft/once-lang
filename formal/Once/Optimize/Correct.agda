@@ -18,6 +18,7 @@ open import Once.Category.Laws
 open import Once.Postulates using (closure-semantics-eq; extensionality)
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_)
+open import Data.Empty using (⊥-elim)
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_,_)
 open import Data.Sum using (inj₁; inj₂)
@@ -615,8 +616,14 @@ optimize-once-correct snd x = refl
 optimize-once-correct (⟨ f , g ⟩ _) x =
   trans (optimize-pair-correct (optimize-once f) (optimize-once g) x)
         (cong₂ _,_ (optimize-once-correct f x) (optimize-once-correct g x))
-optimize-once-correct (inl _) x = refl
-optimize-once-correct (inr _) x = refl
+-- inl with Void source: optimize-once returns initial (vacuously correct)
+optimize-once-correct (inl {A} {B} m) x with A ≟Type Void
+... | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, so vacuously true
+... | no _     = refl
+-- inr with Void source: optimize-once returns initial (vacuously correct)
+optimize-once-correct (inr {A} {B} m) x with B ≟Type Void
+... | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, so vacuously true
+... | no _     = refl
 optimize-once-correct [ f , g ] x =
   trans (optimize-case-correct (optimize-once f) (optimize-once g) x)
         (lemma x)

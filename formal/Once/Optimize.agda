@@ -379,6 +379,15 @@ mutual
   unfold ≟IR (curry _ _) = no (λ ())
 
 ------------------------------------------------------------------------
+-- Helper: Check for Void types (enables dead code elimination)
+------------------------------------------------------------------------
+
+-- | Check if a type is Void
+is-Void : Type → Bool
+is-Void Void = true
+is-Void _ = false
+
+------------------------------------------------------------------------
 -- Optimizer: Composition Rules
 ------------------------------------------------------------------------
 
@@ -654,8 +663,14 @@ optimize-once (g ∘ f) = optimize-compose (optimize-once g) (optimize-once f)
 optimize-once fst = fst
 optimize-once snd = snd
 optimize-once (⟨ f , g ⟩ m) = optimize-pair (optimize-once f) (optimize-once g)
-optimize-once (inl m) = inl m
-optimize-once (inr m) = inr m
+-- | inl with Void source is equivalent to initial (no inhabitants)
+optimize-once (inl {A} {B} m) with A ≟Type Void
+... | yes refl = initial
+... | no _     = inl m
+-- | inr with Void source is equivalent to initial (no inhabitants)
+optimize-once (inr {A} {B} m) with B ≟Type Void
+... | yes refl = initial
+... | no _     = inr m
 optimize-once [ f , g ] = optimize-case (optimize-once f) (optimize-once g)
 optimize-once terminal = terminal
 optimize-once initial = initial
