@@ -31,6 +31,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Unit using (⊤; tt)
+open import Data.Bool using (Bool; true; false)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
@@ -120,19 +121,307 @@ bcc-case-result : ∀ {A B C} (f : IR A C) (g : IR B C) →
 bcc-case-result f g bf bg = bcc-from-case-shape bf bg (optimize-case-shape f g)
 
 -- | optimize-compose preserves BCC membership
---   optimize-compose has ~40 cases. Each returns one of:
---   - id (bcc-id): from fold∘unfold, unfold∘fold, etc.
---   - f or g (subterms): from identity laws, beta reductions
---   - terminal/initial (bcc-terminal/bcc-initial): from dead code elimination
---   - ⟨_,_⟩, [_,_], _∘_, curry: from distribution, all BCC if inputs are
---   Since fold/unfold are excluded from BCC inputs, and optimize-compose
---   doesn't introduce them, outputs are BCC if inputs are BCC.
+--   Proof by exhaustive pattern matching on all BCC input combinations.
+--   Since fold/unfold/Prim are not BCC, those cases are impossible.
+
+-- Import optimize-compose and helpers
+open import Once.Optimize using (optimize-compose; safe-pair-distrib)
+
+-- Main theorem
+bcc-compose-result : ∀ {A B C} (g : IR B C) (f : IR A B) →
+  IsBCC g → IsBCC f → IsBCC (optimize-compose g f)
+
+------------------------------------------------------------------------
+-- g = id: optimize-compose id f = f
+------------------------------------------------------------------------
+bcc-compose-result id f bcc-id bf = bf
+
+------------------------------------------------------------------------
+-- f = id: optimize-compose g id = g (various g)
+------------------------------------------------------------------------
+bcc-compose-result fst id bcc-fst bcc-id = bcc-fst
+bcc-compose-result snd id bcc-snd bcc-id = bcc-snd
+bcc-compose-result (⟨ f , g ⟩ m) id (bcc-pair bf bg) bcc-id = bcc-pair bf bg
+bcc-compose-result (inl m) id bcc-inl bcc-id = bcc-inl
+bcc-compose-result (inr m) id bcc-inr bcc-id = bcc-inr
+bcc-compose-result [ f , g ] id (bcc-case bf bg) bcc-id = bcc-case bf bg
+bcc-compose-result terminal id bcc-terminal bcc-id = bcc-terminal
+bcc-compose-result (curry f m) id (bcc-curry bf) bcc-id = bcc-curry bf
+bcc-compose-result apply id bcc-apply bcc-id = bcc-apply
+bcc-compose-result arr id bcc-arr bcc-id = bcc-arr
+bcc-compose-result (g ∘ f) id (bcc-compose bg bf) bcc-id = bcc-compose bg bf
+-- initial ∘ id goes to default case: initial ∘ id
+bcc-compose-result initial id bcc-initial bcc-id = bcc-compose bcc-initial bcc-id
+
+------------------------------------------------------------------------
+-- Beta: fst ∘ ⟨ f , g ⟩ = f, snd ∘ ⟨ f , g ⟩ = g
+------------------------------------------------------------------------
+bcc-compose-result fst (⟨ f , g ⟩ m) bcc-fst (bcc-pair bf bg) = bf
+bcc-compose-result snd (⟨ f , g ⟩ m) bcc-snd (bcc-pair bf bg) = bg
+
+------------------------------------------------------------------------
+-- Beta: [ f , g ] ∘ inl = f, [ f , g ] ∘ inr = g
+------------------------------------------------------------------------
+bcc-compose-result [ f , g ] (inl m) (bcc-case bf bg) bcc-inl = bf
+bcc-compose-result [ f , g ] (inr m) (bcc-case bf bg) bcc-inr = bg
+
+------------------------------------------------------------------------
+-- Beta: apply ∘ ⟨ curry f , g ⟩ = f ∘ ⟨ id , g ⟩
+------------------------------------------------------------------------
+bcc-compose-result apply (⟨ curry f m₁ , g ⟩ m₂) bcc-apply (bcc-pair (bcc-curry bf) bg) =
+  bcc-compose bf (bcc-pair bcc-id bg)
+
+------------------------------------------------------------------------
+-- Dead code: terminal ∘ f = terminal
+------------------------------------------------------------------------
+bcc-compose-result terminal (f ∘ g) bcc-terminal (bcc-compose bf bg) = bcc-terminal
+bcc-compose-result terminal fst bcc-terminal bcc-fst = bcc-terminal
+bcc-compose-result terminal snd bcc-terminal bcc-snd = bcc-terminal
+bcc-compose-result terminal (⟨ f , g ⟩ m) bcc-terminal (bcc-pair bf bg) = bcc-terminal
+bcc-compose-result terminal (inl m) bcc-terminal bcc-inl = bcc-terminal
+bcc-compose-result terminal (inr m) bcc-terminal bcc-inr = bcc-terminal
+bcc-compose-result terminal [ f , g ] bcc-terminal (bcc-case bf bg) = bcc-terminal
+bcc-compose-result terminal terminal bcc-terminal bcc-terminal = bcc-terminal
+bcc-compose-result terminal (curry f m) bcc-terminal (bcc-curry bf) = bcc-terminal
+bcc-compose-result terminal apply bcc-terminal bcc-apply = bcc-terminal
+bcc-compose-result terminal arr bcc-terminal bcc-arr = bcc-terminal
+-- terminal ∘ initial is covered by f ∘ initial cases below
+
+------------------------------------------------------------------------
+-- Initial absorption: f ∘ initial = initial
+------------------------------------------------------------------------
+bcc-compose-result fst initial bcc-fst bcc-initial = bcc-initial
+bcc-compose-result snd initial bcc-snd bcc-initial = bcc-initial
+bcc-compose-result (⟨ f , g ⟩ m) initial (bcc-pair bf bg) bcc-initial = bcc-initial
+bcc-compose-result (inl m) initial bcc-inl bcc-initial = bcc-initial
+bcc-compose-result (inr m) initial bcc-inr bcc-initial = bcc-initial
+bcc-compose-result [ f , g ] initial (bcc-case bf bg) bcc-initial = bcc-initial
+bcc-compose-result terminal initial bcc-terminal bcc-initial = bcc-initial
+bcc-compose-result (curry f m) initial (bcc-curry bf) bcc-initial = bcc-initial
+bcc-compose-result apply initial bcc-apply bcc-initial = bcc-initial
+bcc-compose-result arr initial bcc-arr bcc-initial = bcc-initial
+bcc-compose-result (g ∘ h) initial (bcc-compose bg bh) bcc-initial = bcc-initial
+
+------------------------------------------------------------------------
+-- initial ∘ f = initial ∘ f (no optimization, just compose)
+------------------------------------------------------------------------
+bcc-compose-result initial f bcc-initial bf = bcc-compose bcc-initial bf
+
+------------------------------------------------------------------------
+-- Pair distribution: ⟨ f , g ⟩ ∘ h
+-- Uses `with safe-pair-distrib f g` - need to handle both branches
+------------------------------------------------------------------------
+
+-- ⟨ f , g ⟩ ∘ ⟨ h₁ , h₂ ⟩
+bcc-compose-result (⟨ f , g ⟩ m) h@(⟨ _ , _ ⟩ _) (bcc-pair bf bg) bh
+  with safe-pair-distrib f g
+... | true  = bcc-pair (bcc-compose-result f h bf bh) (bcc-compose-result g h bg bh)
+... | false = bcc-compose (bcc-pair bf bg) bh
+
+-- ⟨ f , g ⟩ ∘ inl
+bcc-compose-result (⟨ f , g ⟩ m) h@(inl _) (bcc-pair bf bg) bh
+  with safe-pair-distrib f g
+... | true  = bcc-pair (bcc-compose-result f h bf bh) (bcc-compose-result g h bg bh)
+... | false = bcc-compose (bcc-pair bf bg) bh
+
+-- ⟨ f , g ⟩ ∘ inr
+bcc-compose-result (⟨ f , g ⟩ m) h@(inr _) (bcc-pair bf bg) bh
+  with safe-pair-distrib f g
+... | true  = bcc-pair (bcc-compose-result f h bf bh) (bcc-compose-result g h bg bh)
+... | false = bcc-compose (bcc-pair bf bg) bh
+
+-- ⟨ f , g ⟩ ∘ other (no distribution, default compose)
+-- fst, snd, case, terminal, curry, apply, arr, compose
+bcc-compose-result (⟨ f , g ⟩ m) fst (bcc-pair bf bg) bcc-fst =
+  bcc-compose (bcc-pair bf bg) bcc-fst
+bcc-compose-result (⟨ f , g ⟩ m) snd (bcc-pair bf bg) bcc-snd =
+  bcc-compose (bcc-pair bf bg) bcc-snd
+bcc-compose-result (⟨ f , g ⟩ m) [ h₁ , h₂ ] (bcc-pair bf bg) (bcc-case bh₁ bh₂) =
+  bcc-compose (bcc-pair bf bg) (bcc-case bh₁ bh₂)
+bcc-compose-result (⟨ f , g ⟩ m) terminal (bcc-pair bf bg) bcc-terminal =
+  bcc-compose (bcc-pair bf bg) bcc-terminal
+bcc-compose-result (⟨ f , g ⟩ m) (curry h n) (bcc-pair bf bg) (bcc-curry bh) =
+  bcc-compose (bcc-pair bf bg) (bcc-curry bh)
+bcc-compose-result (⟨ f , g ⟩ m) apply (bcc-pair bf bg) bcc-apply =
+  bcc-compose (bcc-pair bf bg) bcc-apply
+bcc-compose-result (⟨ f , g ⟩ m) arr (bcc-pair bf bg) bcc-arr =
+  bcc-compose (bcc-pair bf bg) bcc-arr
+bcc-compose-result (⟨ f , g ⟩ m) (h₁ ∘ h₂) (bcc-pair bf bg) (bcc-compose bh₁ bh₂) =
+  bcc-compose (bcc-pair bf bg) (bcc-compose bh₁ bh₂)
+
+------------------------------------------------------------------------
+-- Case composition: h ∘ [ f , g ] = h ∘ [ f , g ] (no distribution)
+------------------------------------------------------------------------
+bcc-compose-result fst [ f , g ] bcc-fst (bcc-case bf bg) =
+  bcc-compose bcc-fst (bcc-case bf bg)
+bcc-compose-result snd [ f , g ] bcc-snd (bcc-case bf bg) =
+  bcc-compose bcc-snd (bcc-case bf bg)
+bcc-compose-result (inl m) [ f , g ] bcc-inl (bcc-case bf bg) =
+  bcc-compose bcc-inl (bcc-case bf bg)
+bcc-compose-result (inr m) [ f , g ] bcc-inr (bcc-case bf bg) =
+  bcc-compose bcc-inr (bcc-case bf bg)
+bcc-compose-result (curry h n) [ f , g ] (bcc-curry bh) (bcc-case bf bg) =
+  bcc-compose (bcc-curry bh) (bcc-case bf bg)
+bcc-compose-result apply [ f , g ] bcc-apply (bcc-case bf bg) =
+  bcc-compose bcc-apply (bcc-case bf bg)
+bcc-compose-result arr [ f , g ] bcc-arr (bcc-case bf bg) =
+  bcc-compose bcc-arr (bcc-case bf bg)
+-- [ h₁ , h₂ ] ∘ [ f , g ] - handled above by default
+bcc-compose-result [ h₁ , h₂ ] [ f , g ] (bcc-case bh₁ bh₂) (bcc-case bf bg) =
+  bcc-compose (bcc-case bh₁ bh₂) (bcc-case bf bg)
+-- Note: terminal ∘ [ f , g ] goes to terminal case (covered above)
+-- Note: ⟨ _ , _ ⟩ ∘ [ f , g ] goes to pair distribution section
+
+------------------------------------------------------------------------
+-- Associativity: (h ∘ g) ∘ f → h ∘ (g ∘ f)
+-- Note: (h ∘ g) ∘ id is handled above (line 128), so f ≠ id here.
+-- We must enumerate non-id cases for f so Agda can reduce optimize-compose.
+------------------------------------------------------------------------
+bcc-compose-result (h ∘ g) fst (bcc-compose bh bg) bcc-fst =
+  bcc-compose-result h (optimize-compose g fst) bh (bcc-compose-result g fst bg bcc-fst)
+bcc-compose-result (h ∘ g) snd (bcc-compose bh bg) bcc-snd =
+  bcc-compose-result h (optimize-compose g snd) bh (bcc-compose-result g snd bg bcc-snd)
+bcc-compose-result (h ∘ g) (⟨ f₁ , f₂ ⟩ m) (bcc-compose bh bg) (bcc-pair bf₁ bf₂) =
+  bcc-compose-result h (optimize-compose g (⟨ f₁ , f₂ ⟩ m)) bh (bcc-compose-result g (⟨ f₁ , f₂ ⟩ m) bg (bcc-pair bf₁ bf₂))
+bcc-compose-result (h ∘ g) (inl m) (bcc-compose bh bg) bcc-inl =
+  bcc-compose-result h (optimize-compose g (inl m)) bh (bcc-compose-result g (inl m) bg bcc-inl)
+bcc-compose-result (h ∘ g) (inr m) (bcc-compose bh bg) bcc-inr =
+  bcc-compose-result h (optimize-compose g (inr m)) bh (bcc-compose-result g (inr m) bg bcc-inr)
+-- Note: optimize-compose (h ∘ g) [ f₁ , f₂ ] = (h ∘ g) ∘ [ f₁ , f₂ ] (line 606, not associativity)
+bcc-compose-result (h ∘ g) [ f₁ , f₂ ] (bcc-compose bh bg) (bcc-case bf₁ bf₂) =
+  bcc-compose (bcc-compose bh bg) (bcc-case bf₁ bf₂)
+bcc-compose-result (h ∘ g) terminal (bcc-compose bh bg) bcc-terminal =
+  bcc-compose-result h (optimize-compose g terminal) bh (bcc-compose-result g terminal bg bcc-terminal)
+-- Note: optimize-compose (h ∘ g) initial = initial (line 559, not associativity)
+bcc-compose-result (h ∘ g) initial (bcc-compose bh bg) bcc-initial = bcc-initial
+bcc-compose-result (h ∘ g) (curry f₁ m) (bcc-compose bh bg) (bcc-curry bf₁) =
+  bcc-compose-result h (optimize-compose g (curry f₁ m)) bh (bcc-compose-result g (curry f₁ m) bg (bcc-curry bf₁))
+bcc-compose-result (h ∘ g) apply (bcc-compose bh bg) bcc-apply =
+  bcc-compose-result h (optimize-compose g apply) bh (bcc-compose-result g apply bg bcc-apply)
+bcc-compose-result (h ∘ g) arr (bcc-compose bh bg) bcc-arr =
+  bcc-compose-result h (optimize-compose g arr) bh (bcc-compose-result g arr bg bcc-arr)
+bcc-compose-result (h ∘ g) (f₁ ∘ f₂) (bcc-compose bh bg) (bcc-compose bf₁ bf₂) =
+  bcc-compose-result h (optimize-compose g (f₁ ∘ f₂)) bh (bcc-compose-result g (f₁ ∘ f₂) bg (bcc-compose bf₁ bf₂))
+
+------------------------------------------------------------------------
+-- Default cases: g ∘ f (line 619 of optimize-compose)
+-- These are all the remaining BCC combinations that fall through to the
+-- default clause `optimize-compose g f = g ∘ f`.
 --
---   A full proof would require a shape characterization like OptPairShape
---   but with ~10 constructors covering all output forms of optimize-compose.
-postulate
-  bcc-compose-result : ∀ {A B C} (g : IR B C) (f : IR A B) →
-    IsBCC g → IsBCC f → IsBCC (optimize-compose g f)
+-- For fst/snd: they only beta-reduce with pairs (handled above).
+-- For inl/inr: they only have special handling when composed with case (handled above).
+-- For curry/apply/arr: they have limited special handling.
+------------------------------------------------------------------------
+
+-- fst ∘ f (f not pair, initial, or id - those handled above)
+-- fst : IR (A * B) A has product source, so f must have product TARGET
+-- Valid f: fst/snd (if nested products), [_,_] (if produces product), _∘_, id, apply (if B = C * D)
+bcc-compose-result fst fst bcc-fst bcc-fst = bcc-compose bcc-fst bcc-fst
+bcc-compose-result fst snd bcc-fst bcc-snd = bcc-compose bcc-fst bcc-snd
+bcc-compose-result fst [ f , g ] bcc-fst (bcc-case bf bg) = bcc-compose bcc-fst (bcc-case bf bg)
+bcc-compose-result fst apply bcc-fst bcc-apply = bcc-compose bcc-fst bcc-apply
+bcc-compose-result fst (f ∘ g) bcc-fst (bcc-compose bf bg) = bcc-compose bcc-fst (bcc-compose bf bg)
+
+-- snd ∘ f (f not pair, initial, or id) - same constraints as fst
+bcc-compose-result snd fst bcc-snd bcc-fst = bcc-compose bcc-snd bcc-fst
+bcc-compose-result snd snd bcc-snd bcc-snd = bcc-compose bcc-snd bcc-snd
+bcc-compose-result snd [ f , g ] bcc-snd (bcc-case bf bg) = bcc-compose bcc-snd (bcc-case bf bg)
+bcc-compose-result snd apply bcc-snd bcc-apply = bcc-compose bcc-snd bcc-apply
+bcc-compose-result snd (f ∘ g) bcc-snd (bcc-compose bf bg) = bcc-compose bcc-snd (bcc-compose bf bg)
+
+-- inl ∘ f (f not initial or id)
+bcc-compose-result (inl m) fst bcc-inl bcc-fst = bcc-compose bcc-inl bcc-fst
+bcc-compose-result (inl m) snd bcc-inl bcc-snd = bcc-compose bcc-inl bcc-snd
+bcc-compose-result (inl m) (⟨ f , g ⟩ n) bcc-inl (bcc-pair bf bg) = bcc-compose bcc-inl (bcc-pair bf bg)
+bcc-compose-result (inl m) (inl n) bcc-inl bcc-inl = bcc-compose bcc-inl bcc-inl
+bcc-compose-result (inl m) (inr n) bcc-inl bcc-inr = bcc-compose bcc-inl bcc-inr
+bcc-compose-result (inl m) [ f , g ] bcc-inl (bcc-case bf bg) = bcc-compose bcc-inl (bcc-case bf bg)
+bcc-compose-result (inl m) terminal bcc-inl bcc-terminal = bcc-compose bcc-inl bcc-terminal
+bcc-compose-result (inl m) (curry f n) bcc-inl (bcc-curry bf) = bcc-compose bcc-inl (bcc-curry bf)
+bcc-compose-result (inl m) apply bcc-inl bcc-apply = bcc-compose bcc-inl bcc-apply
+bcc-compose-result (inl m) arr bcc-inl bcc-arr = bcc-compose bcc-inl bcc-arr
+bcc-compose-result (inl m) (f ∘ g) bcc-inl (bcc-compose bf bg) = bcc-compose bcc-inl (bcc-compose bf bg)
+
+-- inr ∘ f (f not initial or id)
+bcc-compose-result (inr m) fst bcc-inr bcc-fst = bcc-compose bcc-inr bcc-fst
+bcc-compose-result (inr m) snd bcc-inr bcc-snd = bcc-compose bcc-inr bcc-snd
+bcc-compose-result (inr m) (⟨ f , g ⟩ n) bcc-inr (bcc-pair bf bg) = bcc-compose bcc-inr (bcc-pair bf bg)
+bcc-compose-result (inr m) (inl n) bcc-inr bcc-inl = bcc-compose bcc-inr bcc-inl
+bcc-compose-result (inr m) (inr n) bcc-inr bcc-inr = bcc-compose bcc-inr bcc-inr
+bcc-compose-result (inr m) [ f , g ] bcc-inr (bcc-case bf bg) = bcc-compose bcc-inr (bcc-case bf bg)
+bcc-compose-result (inr m) terminal bcc-inr bcc-terminal = bcc-compose bcc-inr bcc-terminal
+bcc-compose-result (inr m) (curry f n) bcc-inr (bcc-curry bf) = bcc-compose bcc-inr (bcc-curry bf)
+bcc-compose-result (inr m) apply bcc-inr bcc-apply = bcc-compose bcc-inr bcc-apply
+bcc-compose-result (inr m) arr bcc-inr bcc-arr = bcc-compose bcc-inr bcc-arr
+bcc-compose-result (inr m) (f ∘ g) bcc-inr (bcc-compose bf bg) = bcc-compose bcc-inr (bcc-compose bf bg)
+
+-- [ h₁ , h₂ ] ∘ f (f not inl, inr, initial, id, or case - those handled above)
+-- [ h₁ , h₂ ] : IR (A + B) C has sum source, so f must have SUM target
+-- Valid f: inl/inr (handled above), [_,_] (handled above), fst/snd (if produce sum), _∘_, id, apply (if B is sum)
+bcc-compose-result [ h₁ , h₂ ] fst (bcc-case bh₁ bh₂) bcc-fst = bcc-compose (bcc-case bh₁ bh₂) bcc-fst
+bcc-compose-result [ h₁ , h₂ ] snd (bcc-case bh₁ bh₂) bcc-snd = bcc-compose (bcc-case bh₁ bh₂) bcc-snd
+bcc-compose-result [ h₁ , h₂ ] apply (bcc-case bh₁ bh₂) bcc-apply = bcc-compose (bcc-case bh₁ bh₂) bcc-apply
+bcc-compose-result [ h₁ , h₂ ] (f ∘ g) (bcc-case bh₁ bh₂) (bcc-compose bf bg) =
+  bcc-compose (bcc-case bh₁ bh₂) (bcc-compose bf bg)
+
+-- curry ∘ f (f not initial or id)
+bcc-compose-result (curry h n) fst (bcc-curry bh) bcc-fst = bcc-compose (bcc-curry bh) bcc-fst
+bcc-compose-result (curry h n) snd (bcc-curry bh) bcc-snd = bcc-compose (bcc-curry bh) bcc-snd
+bcc-compose-result (curry h n) (⟨ f , g ⟩ m) (bcc-curry bh) (bcc-pair bf bg) =
+  bcc-compose (bcc-curry bh) (bcc-pair bf bg)
+bcc-compose-result (curry h n) (inl m) (bcc-curry bh) bcc-inl = bcc-compose (bcc-curry bh) bcc-inl
+bcc-compose-result (curry h n) (inr m) (bcc-curry bh) bcc-inr = bcc-compose (bcc-curry bh) bcc-inr
+bcc-compose-result (curry h n) [ f , g ] (bcc-curry bh) (bcc-case bf bg) =
+  bcc-compose (bcc-curry bh) (bcc-case bf bg)
+bcc-compose-result (curry h n) terminal (bcc-curry bh) bcc-terminal =
+  bcc-compose (bcc-curry bh) bcc-terminal
+bcc-compose-result (curry h n) (curry f m) (bcc-curry bh) (bcc-curry bf) =
+  bcc-compose (bcc-curry bh) (bcc-curry bf)
+bcc-compose-result (curry h n) apply (bcc-curry bh) bcc-apply = bcc-compose (bcc-curry bh) bcc-apply
+bcc-compose-result (curry h n) arr (bcc-curry bh) bcc-arr = bcc-compose (bcc-curry bh) bcc-arr
+bcc-compose-result (curry h n) (f ∘ g) (bcc-curry bh) (bcc-compose bf bg) =
+  bcc-compose (bcc-curry bh) (bcc-compose bf bg)
+
+-- apply ∘ f (f not id, initial, or ⟨ curry _ , _ ⟩)
+-- apply : IR ((A ⇒ B) * A) B, so f must have product target ((A ⇒ B) * A)
+-- The first component of the pair must be a function type, second is A
+-- Valid for f = ⟨ _ , _ ⟩ where first component has function target:
+--   id (if domain is right), [_,_] (if produces function), _∘_, curry (handled above)
+-- For ⟨ first , second ⟩, first must have function target (A ⇒ B):
+--   Valid: id, curry (beta), [_,_], _∘_, arr
+--   Invalid: fst/snd (wrong target), ⟨_,_⟩ (product target), inl/inr (sum), terminal, initial, apply
+bcc-compose-result apply fst bcc-apply bcc-fst = bcc-compose bcc-apply bcc-fst
+bcc-compose-result apply snd bcc-apply bcc-snd = bcc-compose bcc-apply bcc-snd
+-- apply ∘ ⟨ f , g ⟩ where first component f has function type target (not curry, handled above)
+bcc-compose-result apply (⟨ id , g ⟩ m) bcc-apply (bcc-pair bcc-id bg) =
+  bcc-compose bcc-apply (bcc-pair bcc-id bg)
+bcc-compose-result apply (⟨ fst , g ⟩ m) bcc-apply (bcc-pair bcc-fst bg) =
+  bcc-compose bcc-apply (bcc-pair bcc-fst bg)
+bcc-compose-result apply (⟨ snd , g ⟩ m) bcc-apply (bcc-pair bcc-snd bg) =
+  bcc-compose bcc-apply (bcc-pair bcc-snd bg)
+bcc-compose-result apply (⟨ [ f₁ , f₂ ] , g ⟩ m) bcc-apply (bcc-pair (bcc-case bf₁ bf₂) bg) =
+  bcc-compose bcc-apply (bcc-pair (bcc-case bf₁ bf₂) bg)
+bcc-compose-result apply (⟨ initial , g ⟩ m) bcc-apply (bcc-pair bcc-initial bg) =
+  bcc-compose bcc-apply (bcc-pair bcc-initial bg)
+bcc-compose-result apply (⟨ apply , g ⟩ m) bcc-apply (bcc-pair bcc-apply bg) =
+  bcc-compose bcc-apply (bcc-pair bcc-apply bg)
+bcc-compose-result apply (⟨ f₁ ∘ f₂ , g ⟩ m) bcc-apply (bcc-pair (bcc-compose bf₁ bf₂) bg) =
+  bcc-compose bcc-apply (bcc-pair (bcc-compose bf₁ bf₂) bg)
+bcc-compose-result apply apply bcc-apply bcc-apply = bcc-compose bcc-apply bcc-apply
+bcc-compose-result apply [ f , g ] bcc-apply (bcc-case bf bg) =
+  bcc-compose bcc-apply (bcc-case bf bg)
+bcc-compose-result apply (f ∘ g) bcc-apply (bcc-compose bf bg) =
+  bcc-compose bcc-apply (bcc-compose bf bg)
+
+-- arr ∘ f (f not initial or id)
+-- arr : IR (A ⇒ B) (Arr A B) has function source, so f must have FUNCTION target
+-- Valid: id, curry, [_,_] (if produces function), _∘_, fst/snd (if produce function), apply (if B is function)
+bcc-compose-result arr fst bcc-arr bcc-fst = bcc-compose bcc-arr bcc-fst
+bcc-compose-result arr snd bcc-arr bcc-snd = bcc-compose bcc-arr bcc-snd
+bcc-compose-result arr [ f , g ] bcc-arr (bcc-case bf bg) = bcc-compose bcc-arr (bcc-case bf bg)
+bcc-compose-result arr (curry f m) bcc-arr (bcc-curry bf) = bcc-compose bcc-arr (bcc-curry bf)
+bcc-compose-result arr apply bcc-arr bcc-apply = bcc-compose bcc-arr bcc-apply
+bcc-compose-result arr (f ∘ g) bcc-arr (bcc-compose bf bg) = bcc-compose bcc-arr (bcc-compose bf bg)
 
 -- | optimize-once preserves BCC membership
 optimize-once-preserves-bcc : ∀ {A B} (t : IR A B) →
