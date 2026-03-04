@@ -23,7 +23,8 @@ open import Once.Optimizer.Cost
 open import Once.Optimizer.Depth
 open import Once.Optimizer.Complete using (optimize-cost-≤)
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; z≤n; s≤s)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; z≤n; s≤s)
+open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; Σ)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -80,28 +81,79 @@ t ≈ t' = ∀ x → eval t x ≡ eval t' x
 -- Optimizer preserves BCC property
 ------------------------------------------------------------------------
 
--- | optimize-pair preserves BCC membership
---   The proof structure mirrors optimize-pair exactly.
---   Note: Due to Agda's coverage limitations with catch-all patterns,
---   we use a postulate. The result is clearly true since optimize-pair
---   always returns either id, h, or ⟨f,g⟩ - all BCC if inputs are BCC.
+-- | Helper: extract BCC proof for the second component of a composition
+--   If g ∘ f is BCC, then f is BCC (and g is BCC)
+bcc-compose-snd : ∀ {A B C} {g : IR B C} {f : IR A B} →
+  IsBCC (g ∘ f) → IsBCC f
+bcc-compose-snd (bcc-compose _ bf) = bf
+
+bcc-compose-fst : ∀ {A B C} {g : IR B C} {f : IR A B} →
+  IsBCC (g ∘ f) → IsBCC g
+bcc-compose-fst (bcc-compose bg _) = bg
+
+-- | Characterization of optimize-pair outputs
+--   optimize-pair f g returns one of:
+--   1. id (when f = fst, g = snd, types match)
+--   2. h (when f = fst ∘ h, g = snd ∘ h, h = h', types match)
+--   3. ⟨ f , g ⟩ Heap (otherwise)
+--   All of these are BCC if inputs are BCC.
+data OptPairShape {A B : Type} : {C : Type} → IR C A → IR C B → IR C (A * B) → Set where
+  ops-id   : OptPairShape (fst {A} {B}) snd id
+  ops-h    : ∀ {C} (h : IR C (A * B)) → OptPairShape (fst ∘ h) (snd ∘ h) h
+  ops-pair : ∀ {C} (f : IR C A) (g : IR C B) → OptPairShape f g (⟨ f , g ⟩ Heap)
+
+-- | optimize-pair result is always in one of the three shapes
+--   (We use a postulate because Agda's coverage checker struggles
+--   with the catch-all pattern structure of optimize-pair)
 postulate
-  bcc-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B) →
-    IsBCC f → IsBCC g → IsBCC (optimize-pair f g)
+  optimize-pair-shape : ∀ {A B C} (f : IR C A) (g : IR C B) →
+    OptPairShape f g (optimize-pair f g)
+
+-- | BCC is preserved for any shape
+bcc-from-shape : ∀ {A B C} {f : IR C A} {g : IR C B} {r : IR C (A * B)} →
+  IsBCC f → IsBCC g → OptPairShape f g r → IsBCC r
+bcc-from-shape bcc-fst bcc-snd ops-id = bcc-id
+bcc-from-shape (bcc-compose bcc-fst bh) (bcc-compose bcc-snd _) (ops-h h) = bh
+bcc-from-shape bf bg (ops-pair f g) = bcc-pair bf bg
+
+-- | optimize-pair preserves BCC membership
+bcc-pair-result : ∀ {A B C} (f : IR C A) (g : IR C B) →
+  IsBCC f → IsBCC g → IsBCC (optimize-pair f g)
+bcc-pair-result f g bf bg = bcc-from-shape bf bg (optimize-pair-shape f g)
+
+-- | Characterization of optimize-case outputs
+--   Similar to OptPairShape but for case/coproducts
+data OptCaseShape {A B : Type} : {C : Type} → IR A C → IR B C → IR (A + B) C → Set where
+  ocs-id   : ∀ {m₁ m₂} → OptCaseShape (inl {A} {B} m₁) (inr m₂) id
+  ocs-h    : ∀ {C} (h : IR (A + B) C) {m₁ m₂} → OptCaseShape (h ∘ inl m₁) (h ∘ inr m₂) h
+  ocs-case : ∀ {C} (f : IR A C) (g : IR B C) → OptCaseShape f g [ f , g ]
+
+postulate
+  optimize-case-shape : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    OptCaseShape f g (optimize-case f g)
+
+bcc-from-case-shape : ∀ {A B C} {f : IR A C} {g : IR B C} {r : IR (A + B) C} →
+  IsBCC f → IsBCC g → OptCaseShape f g r → IsBCC r
+bcc-from-case-shape bcc-inl bcc-inr ocs-id = bcc-id
+bcc-from-case-shape (bcc-compose bh bcc-inl) (bcc-compose _ bcc-inr) (ocs-h h) = bh
+bcc-from-case-shape bf bg (ocs-case f g) = bcc-case bf bg
 
 -- | optimize-case preserves BCC membership
---   Similar reasoning as bcc-pair-result.
-postulate
-  bcc-case-result : ∀ {A B C} (f : IR A C) (g : IR B C) →
-    IsBCC f → IsBCC g → IsBCC (optimize-case f g)
+bcc-case-result : ∀ {A B C} (f : IR A C) (g : IR B C) →
+  IsBCC f → IsBCC g → IsBCC (optimize-case f g)
+bcc-case-result f g bf bg = bcc-from-case-shape bf bg (optimize-case-shape f g)
 
 -- | optimize-compose preserves BCC membership
---   This function has many cases matching optimize-compose structure.
---   The result is clearly true: optimize-compose only produces:
---   - Identity (bcc-id)
---   - Composition subterms (which are BCC if inputs are BCC)
---   - terminal/initial (bcc-terminal/bcc-initial)
---   - Constructed terms (pairs, cases, etc.) from BCC components
+--   optimize-compose has ~40 cases. Each returns one of:
+--   - id (bcc-id): from fold∘unfold, unfold∘fold, etc.
+--   - f or g (subterms): from identity laws, beta reductions
+--   - terminal/initial (bcc-terminal/bcc-initial): from dead code elimination
+--   - ⟨_,_⟩, [_,_], _∘_, curry: from distribution, all BCC if inputs are
+--   Since fold/unfold are excluded from BCC inputs, and optimize-compose
+--   doesn't introduce them, outputs are BCC if inputs are BCC.
+--
+--   A full proof would require a shape characterization like OptPairShape
+--   but with ~10 constructors covering all output forms of optimize-compose.
 postulate
   bcc-compose-result : ∀ {A B C} (g : IR B C) (f : IR A B) →
     IsBCC g → IsBCC f → IsBCC (optimize-compose g f)
