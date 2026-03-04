@@ -196,18 +196,86 @@ depth-0-is-fixpoint (curry f m) ()
 -- Helper lemmas for depth-0-cost-≤-inhabited
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- DESIGN NOTE: The Prim Cost Limitation
+------------------------------------------------------------------------
+--
+-- The postulates below exist due to a fundamental tension in the
+-- cost model for the Prim constructor.
+--
+-- CURRENT SITUATION:
+--   cost (Prim _) = 0
+--
+-- This treats all primitives as "free" operations (syscalls, FFI calls
+-- that don't allocate). However, Prim can have ANY type, including:
+--   - Sum types: Prim : A → (B + C)
+--   - Recursive types: Prim : A → Fix F
+--
+-- THE PROBLEM:
+-- If Prim p : A → (B + C), then semantically it MUST produce either
+-- an inj₁ or inj₂ value - that's an allocation. Similarly for Fix F
+-- targets - the result must be a fold wrapper. These allocations have
+-- real cost, but cost(Prim _) = 0 doesn't reflect this.
+--
+-- For the completeness proof, we need: if t : IR A (B + C) is depth-0
+-- and semantically equivalent to inl (cost 1), then cost t ≥ 1.
+-- But a Prim with the same semantics has cost 0.
+--
+-- WHY THIS MATTERS:
+-- The cost model measures "eliminable allocations" - allocations the
+-- optimizer could potentially fuse away. Since Prim is opaque to the
+-- optimizer (it can't see what Prim does internally), its allocations
+-- can't be eliminated. So cost(Prim) = 0 is arguably correct from
+-- the optimizer's perspective.
+--
+-- However, this creates a gap in the completeness theorem: it uses
+-- semantic equivalence (∀ x → eval t x ≡ eval t' x), and a Prim might
+-- be semantically equal to an allocating term with different cost.
+--
+-- POTENTIAL SOLUTIONS (for future work):
+--
+-- 1. Add cost to Prim interface:
+--      Prim : ℕ → ⟦ A ⟧ → ⟦ B ⟧ → IR A B
+--    Pro: Enables full proof of completeness
+--    Con: Doesn't help optimizer generate better code (still opaque)
+--
+-- 2. Restrict Prim target types:
+--    Disallow Prim from having sum/Fix targets. Users would write:
+--      inl ∘ Prim p   instead of   Prim p : A → B + C
+--    Pro: Makes allocation explicit in IR, aids optimization
+--    Con: Less flexible primitive interface
+--
+-- 3. Add semantic metadata to Prim:
+--      record PrimSpec (A B : Type) : Set where
+--        field
+--          impl   : ⟦ A ⟧ → ⟦ B ⟧
+--          cost   : ℕ
+--          equiv  : Maybe (IR A B)      -- Known IR equivalent
+--          branch : Maybe WhichBranch   -- For sum targets
+--    Pro: Enables both complete proofs AND smarter optimization
+--    Con: Significant interface expansion
+--
+-- 4. Accept the limitation:
+--    Keep postulates as documented edge cases. The theorem holds for
+--    "well-behaved" primitives that don't secretly allocate sum/Fix
+--    values. In practice, most primitives return base types.
+--
+-- CURRENT CHOICE: Option 4, with these postulates documenting the gap.
+------------------------------------------------------------------------
+
 -- | For sum target types, depth-0 terms have cost ≥ 1
 --
 -- This holds for inl, inr (cost 1). The Prim case is problematic:
 -- cost(Prim _) = 0 but Prim can have any type including B + C.
--- We postulate this lemma; see depth-0-cost-≤-inhabited for justification.
+-- See "The Prim Cost Limitation" above.
 postulate
   depth-0-sum-target-cost-≥1 : ∀ {A B C} (t : IR A (B + C)) →
     Bounded 0 t → 1 ≤ cost t
 
 -- | For Fix target types, depth-0 terms have cost ≥ 1
 --
--- This holds for fold (cost 1). The Prim case is postulated.
+-- This holds for fold (cost 1). The Prim case is problematic.
+-- See "The Prim Cost Limitation" above.
 postulate
   depth-0-fix-target-cost-≥1 : ∀ {A F} (t : IR A (Fix F)) →
     Bounded 0 t → 1 ≤ cost t
