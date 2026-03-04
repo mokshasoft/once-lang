@@ -97,10 +97,16 @@ optimize-once-cost-≤ (inr {A} {B} m) with B ≟Type Void
 optimize-once-cost-≤ terminal = ≤-refl
 optimize-once-cost-≤ initial = ≤-refl
 optimize-once-cost-≤ apply = ≤-refl
-optimize-once-cost-≤ fold = ≤-refl
+-- fold: if F=Void, returns initial (cost 0 ≤ 1); otherwise unchanged
+optimize-once-cost-≤ (fold {F}) with F ≟Type Void
+... | yes refl = z≤n  -- initial has cost 0 ≤ fold cost 1
+... | no _     = ≤-refl
 optimize-once-cost-≤ unfold = ≤-refl
 optimize-once-cost-≤ arr = ≤-refl
-optimize-once-cost-≤ (Prim _) = ≤-refl
+-- Prim: if A=Void, returns initial (cost 0 ≤ 1); otherwise unchanged
+optimize-once-cost-≤ (Prim {A} _) with A ≟Type Void
+... | yes refl = z≤n  -- initial has cost 0 ≤ Prim cost 1
+... | no _     = ≤-refl
 -- Composition: use helper and IH
 optimize-once-cost-≤ (g ∘ f) =
   ≤-trans (optimize-compose-cost-≤ (optimize-once g) (optimize-once f))
@@ -173,43 +179,74 @@ depth-0-is-fixpoint (inr {_} {B} m) _ with B ≟Type Void
 depth-0-is-fixpoint terminal _ = ≤-refl
 depth-0-is-fixpoint initial _ = ≤-refl
 depth-0-is-fixpoint apply _ = ≤-refl
-depth-0-is-fixpoint fold _ = ≤-refl
+depth-0-is-fixpoint (fold {F}) _ with F ≟Type Void
+... | yes refl = z≤n  -- initial (cost 0) ≤ fold (cost 1)
+... | no _     = ≤-refl
 depth-0-is-fixpoint unfold _ = ≤-refl
 depth-0-is-fixpoint arr _ = ≤-refl
-depth-0-is-fixpoint (Prim n) _ = ≤-refl
+depth-0-is-fixpoint (Prim {A} n) _ with A ≟Type Void
+... | yes refl = z≤n  -- initial (cost 0) ≤ Prim (cost 1)
+... | no _     = ≤-refl
 depth-0-is-fixpoint (g ∘ f) ()
 depth-0-is-fixpoint (⟨ f , g ⟩ m) ()
 depth-0-is-fixpoint [ f , g ] ()
 depth-0-is-fixpoint (curry f m) ()
 
--- | At depth 0, cost t ≤ cost t' when t ≈ t'
+-- | At depth 0, cost t ≤ cost t' when t ≈ t' (for inhabited sources)
 --
--- Proof: Depth-0 terms are generators. For most types, there's only one
--- depth-0 term, so equivalent terms are identical.
+-- Proof: Depth-0 terms are generators. For inhabited source types,
+-- there's typically only one depth-0 term of a given type signature,
+-- so equivalent terms are identical and have the same cost.
 --
--- KNOWN LIMITATION: When source type is Void, multiple depth-0 terms
--- can be semantically equivalent with different costs:
---   inl : Void → Void + B  (cost 1)
---   initial : Void → C     (cost 0)
--- These are equivalent (no inputs to distinguish), but inl costs more.
--- The optimizer doesn't simplify inl/inr to initial for Void sources.
--- This is a minor incompleteness for uninhabited types.
+-- For Void sources: The optimizer now simplifies inl/inr/fold with Void
+-- source to initial (cost 0). So cost(optimize t) = 0 ≤ cost t' trivially.
+-- We handle this case specially in complete-0.
 --
--- For inhabited types, the proof holds because:
--- - cost-0 terms satisfy 0 ≤ cost t' trivially
--- - cost-1 terms (inl, inr, fold) can only be equivalent to same-cost terms
+-- For inhabited sources: Equivalent depth-0 terms have the same cost.
 postulate
-  depth-0-cost-≤ : ∀ {A B} (t t' : IR A B) →
+  depth-0-cost-≤-inhabited : ∀ {A B} (t t' : IR A B) →
     Bounded 0 t → Bounded 0 t' → t ≈ t' →
+    ¬ (A ≡ Void) →
     cost t ≤ cost t'
+
+-- | For Void sources, optimization gives cost 0
+--   This covers inl/inr/fold → initial, and id/terminal/initial stay at 0
+--
+--   Depth-0 terms with source Void:
+--   - id {Void}, terminal {Void}, initial, inl {Void}, inr {_} {Void}, fold {Void}, Prim
+--   Terms that can't have source Void syntactically:
+--   - fst, snd, apply, unfold, arr (source is product/fix/function type)
+--   - [ f , g ] (source is sum type)
+--   Terms that could have source Void but have depth > 0:
+--   - g ∘ f, ⟨ f , g ⟩, curry
+optimize-void-cost-0 : ∀ {B} (t : IR Void B) →
+  Bounded 0 t →
+  cost (optimize t) ≤ 0
+optimize-void-cost-0 id _ = z≤n
+optimize-void-cost-0 terminal _ = z≤n
+optimize-void-cost-0 initial _ = z≤n
+-- inl {Void} → initial (cost 0)
+optimize-void-cost-0 (inl _) _ = z≤n
+-- inr {_} {Void} → initial (cost 0)
+optimize-void-cost-0 (inr _) _ = z≤n
+-- fold {Void} → initial (cost 0)
+optimize-void-cost-0 fold _ = z≤n
+-- Prim {Void} → initial (cost 0)
+optimize-void-cost-0 (Prim _) _ = z≤n
+-- Compositions and compound terms have depth > 0 (impossible for depth-0)
+optimize-void-cost-0 (g ∘ f) ()
+optimize-void-cost-0 (⟨ f , g ⟩ _) ()
+optimize-void-cost-0 (curry f _) ()
 
 -- | Completeness at depth 0
 --
--- At depth 0, equivalent terms must have equal cost
--- (they are essentially the same generator).
+-- For Void sources: cost(optimize t) = 0 ≤ cost t' (trivial)
+-- For inhabited sources: Use depth-0-cost-≤-inhabited
 complete-0 : Complete 0
-complete-0 {A} {B} t t' d≤0 d'≤0 t≈t' =
-  ≤-trans (optimize-cost-≤ t) (depth-0-cost-≤ t t' d≤0 d'≤0 t≈t')
+complete-0 {A} {B} t t' d≤0 d'≤0 t≈t' with A ≟Type Void
+... | yes refl = ≤-trans (optimize-void-cost-0 t d≤0) z≤n
+... | no A≢Void =
+  ≤-trans (optimize-cost-≤ t) (depth-0-cost-≤-inhabited t t' d≤0 d'≤0 t≈t' A≢Void)
 
 ------------------------------------------------------------------------
 -- Inductive Step

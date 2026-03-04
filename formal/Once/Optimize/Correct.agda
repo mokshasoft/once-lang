@@ -639,10 +639,16 @@ optimize-once-correct (curry {q = q} f _) x =
     (eval (curry {q = q} f Heap) x)
     (funext (λ b → optimize-once-correct f (x , b)))
 optimize-once-correct apply x = refl
-optimize-once-correct fold x = refl
+-- fold with Void source: optimize-once returns initial (vacuously correct)
+optimize-once-correct (fold {F}) x with F ≟Type Void
+... | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, so vacuously true
+... | no _     = refl
 optimize-once-correct unfold x = refl
 optimize-once-correct arr x = refl
-optimize-once-correct (Prim name) x = refl
+-- Prim with Void source: optimize-once returns initial (vacuously correct)
+optimize-once-correct (Prim {A} name) x with A ≟Type Void
+... | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, so vacuously true
+... | no _     = refl
 
 ------------------------------------------------------------------------
 -- Correctness of bounded optimization

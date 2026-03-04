@@ -676,10 +676,16 @@ optimize-once terminal = terminal
 optimize-once initial = initial
 optimize-once (curry f m) = curry (optimize-once f) m
 optimize-once apply = apply
-optimize-once fold = fold
+-- | fold with Void source is equivalent to initial (no inhabitants)
+optimize-once (fold {F}) with F ≟Type Void
+... | yes refl = initial
+... | no _     = fold
 optimize-once unfold = unfold
 optimize-once arr = arr
-optimize-once (Prim n) = Prim n
+-- | Prim with Void source is equivalent to initial (no inhabitants)
+optimize-once (Prim {A} n) with A ≟Type Void
+... | yes refl = initial
+... | no _     = Prim n
 
 ------------------------------------------------------------------------
 -- Bounded Iteration
