@@ -112,8 +112,14 @@ optimize-once-preserves-bcc : ∀ {A B} (t : IR A B) →
 optimize-once-preserves-bcc id bcc-id = bcc-id
 optimize-once-preserves-bcc fst bcc-fst = bcc-fst
 optimize-once-preserves-bcc snd bcc-snd = bcc-snd
-optimize-once-preserves-bcc (inl m) bcc-inl = bcc-inl
-optimize-once-preserves-bcc (inr m) bcc-inr = bcc-inr
+-- inl: if A=Void, returns initial; otherwise unchanged
+optimize-once-preserves-bcc (inl {A} m) bcc-inl with A ≟Type Void
+... | yes refl = bcc-initial
+... | no _     = bcc-inl
+-- inr: if B=Void, returns initial; otherwise unchanged
+optimize-once-preserves-bcc (inr {_} {B} m) bcc-inr with B ≟Type Void
+... | yes refl = bcc-initial
+... | no _     = bcc-inr
 optimize-once-preserves-bcc terminal bcc-terminal = bcc-terminal
 optimize-once-preserves-bcc initial bcc-initial = bcc-initial
 optimize-once-preserves-bcc apply bcc-apply = bcc-apply

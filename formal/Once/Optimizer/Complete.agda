@@ -86,8 +86,14 @@ optimize-once-cost-≤ : ∀ {A B} (t : IR A B) →
 optimize-once-cost-≤ id = ≤-refl
 optimize-once-cost-≤ fst = ≤-refl
 optimize-once-cost-≤ snd = ≤-refl
-optimize-once-cost-≤ (inl _) = ≤-refl
-optimize-once-cost-≤ (inr _) = ≤-refl
+-- inl: if A=Void, returns initial (cost 0 ≤ 1); otherwise unchanged
+optimize-once-cost-≤ (inl {A} {B} m) with A ≟Type Void
+... | yes refl = z≤n  -- initial has cost 0 ≤ inl cost 1
+... | no _     = ≤-refl
+-- inr: if B=Void, returns initial (cost 0 ≤ 1); otherwise unchanged
+optimize-once-cost-≤ (inr {A} {B} m) with B ≟Type Void
+... | yes refl = z≤n  -- initial has cost 0 ≤ inr cost 1
+... | no _     = ≤-refl
 optimize-once-cost-≤ terminal = ≤-refl
 optimize-once-cost-≤ initial = ≤-refl
 optimize-once-cost-≤ apply = ≤-refl
@@ -145,22 +151,32 @@ Complete N = ∀ {A B} (t t' : IR A B) →
 ------------------------------------------------------------------------
 
 -- | Depth-0 terms are generators (no compositions or compound constructors)
---   We simplify by just stating they optimize to themselves
+--   Most depth-0 terms optimize to themselves, except:
+--   - inl with Void source → initial
+--   - inr with Void source → initial
+--
+--   NOTE: This function is not currently used. The general statement
+--   "depth-0 terms are fixpoints" is false due to Void optimization.
+--   Kept for documentation purposes.
 depth-0-is-fixpoint : ∀ {A B} (t : IR A B) →
   depth t ≡ 0 →
-  optimize-once t ≡ t
-depth-0-is-fixpoint id _ = refl
-depth-0-is-fixpoint fst _ = refl
-depth-0-is-fixpoint snd _ = refl
-depth-0-is-fixpoint (inl m) _ = refl
-depth-0-is-fixpoint (inr m) _ = refl
-depth-0-is-fixpoint terminal _ = refl
-depth-0-is-fixpoint initial _ = refl
-depth-0-is-fixpoint apply _ = refl
-depth-0-is-fixpoint fold _ = refl
-depth-0-is-fixpoint unfold _ = refl
-depth-0-is-fixpoint arr _ = refl
-depth-0-is-fixpoint (Prim n) _ = refl
+  cost (optimize-once t) ≤ cost t  -- Weaker statement: cost never increases
+depth-0-is-fixpoint id _ = ≤-refl
+depth-0-is-fixpoint fst _ = ≤-refl
+depth-0-is-fixpoint snd _ = ≤-refl
+depth-0-is-fixpoint (inl {A} m) _ with A ≟Type Void
+... | yes refl = z≤n  -- initial (cost 0) ≤ inl (cost 1)
+... | no _     = ≤-refl
+depth-0-is-fixpoint (inr {_} {B} m) _ with B ≟Type Void
+... | yes refl = z≤n  -- initial (cost 0) ≤ inr (cost 1)
+... | no _     = ≤-refl
+depth-0-is-fixpoint terminal _ = ≤-refl
+depth-0-is-fixpoint initial _ = ≤-refl
+depth-0-is-fixpoint apply _ = ≤-refl
+depth-0-is-fixpoint fold _ = ≤-refl
+depth-0-is-fixpoint unfold _ = ≤-refl
+depth-0-is-fixpoint arr _ = ≤-refl
+depth-0-is-fixpoint (Prim n) _ = ≤-refl
 depth-0-is-fixpoint (g ∘ f) ()
 depth-0-is-fixpoint (⟨ f , g ⟩ m) ()
 depth-0-is-fixpoint [ f , g ] ()
