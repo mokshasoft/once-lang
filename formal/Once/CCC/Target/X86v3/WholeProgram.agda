@@ -30,7 +30,7 @@ open import Data.List using (_++_; length; [])
 open import Data.List.Properties using (length-++)
 open import Data.Nat.Properties using (+-assoc; +-identityʳ)
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _∸_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂; Σ)
+open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Induction.WellFounded using (Acc)
 
@@ -41,6 +41,9 @@ open import Once.CCC.SlotMachine using (LocState; ValueLocation; halted; regs; r
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧)
 open import Once.CCC.IR using (IR; eval; ir-size; ir-stack-requirement; AllocMode; pair-slots; PrimSem)
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation using (AllocState; next-slot; current-frame; frame-capacity; module FrontierInvariant)
+
+-- Import the new RuntimeContract
+open import Once.CCC.Target.X86v3.RuntimeContract using (RuntimeContract; FrameOps)
 
 -- Import escape interface for SurvivesFramePop
 import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF as ApplyWFModule
@@ -55,35 +58,33 @@ import Once.CCC.Target.X86v3.Refinement.InstrCorrect as RefinementModule
 
 ------------------------------------------------------------------------
 -- THE CORRECTNESS THEOREM
+--
+-- NEW INTERFACE: Uses RuntimeContract instead of scattered parameters
 ------------------------------------------------------------------------
 
 module Correctness
   {FS : FrameSemantics}
-  (program-bound : ℕ)
-  (acc-pb : Acc _<_ program-bound)
+  -- RuntimeContract: bounds + memory layout + region invariants
+  (runtime : RuntimeContract FS)
+  -- FrameOps: calling convention (child frame creation)
+  (frame-ops : FrameOps FS)
   -- PrimSem provides semantics for all primitives (required for eval)
   (primSem : PrimSem)
-  (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
-  (child-frame-ordered : ∀ (alloc : AllocState {FS}) →
-    FrameSemantics._≺_ FS (get-child-frame alloc) (AllocState.current-frame alloc))
-  (child-frame-adjacent : ∀ (alloc : AllocState {FS}) (f : FrameSemantics.Frame FS) →
-    FrameSemantics._≺_ FS (get-child-frame alloc) f →
-    FrameSemantics._≺_ FS f (AllocState.current-frame alloc) →
-    ⊥)
-  (child-capacity : ℕ)
-  (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
   -- Escape analysis guarantees (provided by escape analysis pass)
-  -- Body results survive child frame pop (the MINIMAL escape interface)
   (escape-result-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
     (result-loc : ValueLocation FS) →
-    current-frame body-final ≡ get-child-frame alloc →
+    current-frame body-final ≡ FrameOps.get-child-frame frame-ops (current-frame alloc) →
     ApplyWFModule.BeforeFrontier' body-final result-loc →
-    ApplyWFModule.SurvivesFramePop (get-child-frame alloc) result-loc)
-  (parent-bound-eq : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
-    bound ≡ AllocState.next-slot alloc Data.Nat.+ pair-slots)
+    ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc)
   -- Prim proof provider (from domain compilers)
-  (prim-proof : DispatcherModule.PrimProofInterface.PrimProofProviderV3 {FS} program-bound primSem)
+  (prim-proof : DispatcherModule.PrimProofInterface.PrimProofProviderV3 {FS} (RuntimeContract.program-bound runtime) primSem)
   where
+
+  -- Extract fields from RuntimeContract
+  open RuntimeContract runtime
+
+  -- Extract fields from FrameOps
+  open FrameOps frame-ops
 
   open FrontierInvariant {FS} using (BeforeFrontier)
 
@@ -91,9 +92,26 @@ module Correctness
   module CWF = ClosureWellFormedDef {FS} program-bound primSem
 
   open import Once.CCC.Target.X86v3.Dispatcher.Dispatcher
+
+  -- Adapt FrameOps to Dispatcher interface (takes AllocState instead of Frame)
+  get-child-frame' : AllocState {FS} → FrameSemantics.Frame FS
+  get-child-frame' alloc = get-child-frame (current-frame alloc)
+
+  child-frame-ordered' : ∀ (alloc : AllocState {FS}) →
+    FrameSemantics._≺_ FS (get-child-frame' alloc) (current-frame alloc)
+  child-frame-ordered' alloc = child-frame-ordered (current-frame alloc)
+
+  child-frame-adjacent' : ∀ (alloc : AllocState {FS}) (f : FrameSemantics.Frame FS) →
+    FrameSemantics._≺_ FS (get-child-frame' alloc) f →
+    FrameSemantics._≺_ FS f (current-frame alloc) →
+    ⊥
+  child-frame-adjacent' alloc = child-frame-adjacent (current-frame alloc)
+
+  -- DYNAMIC CAPACITY: No more child-capacity or parent-bound-eq parameters
+  -- Each closure carries its own body-capacity, used when creating child frames.
   module D = Dispatcher {FS} program-bound acc-pb primSem
-    get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
-    escape-result-survives parent-bound-eq prim-proof
+    get-child-frame' child-frame-ordered' child-frame-adjacent'
+    escape-result-survives prim-proof
 
   ----------------------------------------------------------------------
   -- Represents: value v is stored at location loc in state s

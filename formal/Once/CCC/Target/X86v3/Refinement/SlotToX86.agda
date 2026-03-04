@@ -30,7 +30,6 @@ open import Data.Nat using (ℕ; suc; _∸_; z≤n; _<_; _≤_) renaming (_+_ to
 open import Data.Nat.Properties using (<⇒≢; <⇒≤; <-≤-trans; ≤-trans; ≤-refl)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (Bool; false)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst; subst₂)
 
 -- Import X86v3 FrameSemantics instance (first, needed for SlotMachine instantiation)

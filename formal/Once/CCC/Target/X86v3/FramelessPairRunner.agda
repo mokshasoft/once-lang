@@ -212,6 +212,8 @@ record PairCleanupResult (prog : Program) (s s' : State) (σ : LocState FS')
     rax-is-pair   : x86-readReg (X86Sem.State.regs s') rax ≡ x86-readReg (X86Sem.State.regs s) rsp
     -- Frame-base is preserved through cleanup (proven via subst-preserves-frame-base)
     frame-base-preserved : frame-base fc-preserved ≡ frame-base fc-input
+    -- Heap-base is preserved through cleanup (proven via subst-preserves-heap-base)
+    heap-base-preserved : heap-base fc-preserved ≡ heap-base fc-input
 
 ------------------------------------------------------------------------
 -- pair-setup-result: FRAMELESS (2 instructions)
@@ -590,6 +592,7 @@ pair-cleanup-result-frameless prefix suffix s σ pair-loc fc h-eq pc-eq rsp<fram
     ; pc-after      = pc'-eq
     ; fc-preserved  = fc'
     ; frame-base-preserved = fc'-frame-eq
+    ; heap-base-preserved = fc'-heap-eq
     ; rsp-increased = rsp-final
     ; rbp-unchanged = rbp-final
     ; rax-is-pair   = rax-final
@@ -749,6 +752,17 @@ pair-cleanup-result-frameless prefix suffix s σ pair-loc fc h-eq pc-eq rsp<fram
     -- Chain: fc' = fc3 → fc2-after-add → fc2 → fc (via fc2-frame-eq)
     fc'-frame-eq : frame-base fc' ≡ frame-base fc
     fc'-frame-eq = fc2-frame-eq
+
+    -- Heap-base preserved through cleanup (similar chain)
+    -- heap-base fc2 = heap-base fc (via preservation lemmas + subst-preserves-heap-base)
+    fc2-heap-eq : heap-base fc2 ≡ heap-base fc
+    fc2-heap-eq = subst-preserves-heap-base {σ'} {s1}
+                    {loc-to-addr (heap-base fc1) pair-loc}
+                    {x86-readReg (X86Sem.State.regs s1) rsp}
+                    (sym s1-rsp-eq) fc1-rax-write-base
+
+    fc'-heap-eq : heap-base fc' ≡ heap-base fc
+    fc'-heap-eq = fc2-heap-eq
 
 ------------------------------------------------------------------------
 -- Full frameless-pair-runner
@@ -1561,10 +1575,25 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
         trans step5-4 (trans step4-3 (trans step3-2 step2-0))
 
     -- Heap-base preserved through pair execution
-    -- The chain involves subst in cleanup, so we need explicit intermediate proofs
-    -- Postulated for now - the structure is sound but complex to prove definitionally
-    postulate
-      heap-base-final : SlotToX86.StateCorresponds.heap-base sc-final ≡ SlotToX86.StateCorresponds.heap-base sc
+    -- Chain: sc-final ← fc5 ← fc4 ← sc4 ← sc3 ← fc3 ← fc2 ← sc2 ← sc1 ← fc1 ← fc ← sc
+    -- Non-trivial steps: f-result.heap-base-preserved, g-result.heap-base-preserved, cleanup-result.heap-base-preserved
+    heap-base-final : SlotToX86.StateCorresponds.heap-base sc-final ≡ SlotToX86.StateCorresponds.heap-base sc
+    heap-base-final =
+      let
+        -- cleanup: heap-base fc5 = heap-base fc4 (via cleanup-result.heap-base-preserved)
+        hb-cleanup : heap-base fc5 ≡ heap-base fc4
+        hb-cleanup = PairCleanupResult.heap-base-preserved cleanup-result
+
+        -- g execution: heap-base sc4 = heap-base sc3 (via g-result.heap-base-preserved)
+        hb-g : SlotToX86.StateCorresponds.heap-base sc4 ≡ SlotToX86.StateCorresponds.heap-base sc3
+        hb-g = IRStarResult.heap-base-preserved g-result
+
+        -- f execution: heap-base sc2 = heap-base sc1 (via f-result.heap-base-preserved)
+        hb-f : SlotToX86.StateCorresponds.heap-base sc2 ≡ SlotToX86.StateCorresponds.heap-base sc1
+        hb-f = IRStarResult.heap-base-preserved f-result
+      in
+        -- Chain it all together (many steps are refl by construction)
+        trans hb-cleanup (trans hb-g hb-f)
 
 ------------------------------------------------------------------------
 -- Summary

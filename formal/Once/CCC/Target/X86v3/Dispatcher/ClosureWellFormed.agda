@@ -52,12 +52,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   open import Once.CCC.Target.X86v3.Dispatcher.WriteOps using (module WriteWithDisjoint)
   open WriteWithDisjoint {FS}
 
-  -- Import capacity lemmas (needed for BodyCorrect.execute signature)
-  open import Once.CCC.Target.X86v3.Dispatcher.Capacity
-  open CapacityLemmas {FS} program-bound
-    using (CapacityInvariant; SlotInWorking; program-bound-cap-from-invariant;
-           invariant-preserved; slot-in-working-preserved; sub-ir-in-working;
-           apply-pair-preserves-program-bound-cap)
+  -- NOTE: Old static capacity reasoning (CapacityInvariant, SlotInWorking) has been removed.
+  -- Dynamic capacity is now per-closure via BodyCorrect.body-capacity.
 
   ------------------------------------------------------------------------
   -- Mutual block for ValidAtWF, IRResultAWF, BodyCorrect

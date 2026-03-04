@@ -135,22 +135,18 @@ module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) (primSem :
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- Frame Capacity Constraint
+-- Dynamic Capacity Design
 --
--- For apply to work correctly, the frame capacity must be large enough
--- to accommodate body execution. Specifically:
---   frame-capacity >= 2 * pair-slots * program-bound
+-- Each closure carries its body-capacity (= ir-stack-requirement body).
+-- When apply creates a child frame, it uses the closure's body-capacity
+-- as the frame-capacity. No global worst-case allocation needed.
 --
--- This ensures that at any point in execution:
---   slot + pair-slots * program-bound <= frame-capacity
+-- Capacity check: next-slot alloc + ir-stack-requirement ir ≤ frame-capacity alloc
 ------------------------------------------------------------------------
 
 module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ program-bound)
   -- PrimSem provides semantics for all primitives (required for eval)
   (primSem : PrimSem)
-  -- NOTE: frame-cap-sufficient and body-cap-bounded REMOVED
-  -- Migration to X86-style dynamic capacity threading eliminates program-bound-based derivation.
-  -- Capacity is now threaded per-closure via BodyCorrect.body-capacity.
   -- Child frame support for apply's hybrid frame approach
   -- get-child-frame returns a frame below the parent (child ≺ parent) for body execution
   (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
@@ -161,8 +157,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     FrameSemantics._≺_ FS (get-child-frame alloc) f →
     FrameSemantics._≺_ FS f (current-frame alloc) →
     ⊥)
-  (child-capacity : ℕ)
-  (child-cap-sufficient : pair-slots *ℕ program-bound ≤ child-capacity)
+  -- REMOVED: child-capacity and child-cap-sufficient
+  -- DYNAMIC CAPACITY: Each closure's body-capacity determines child frame size.
+  -- No global worst-case allocation - each closure gets exactly what it needs.
   -- Escape analysis guarantees (provided by escape analysis pass)
   -- Body results survive child frame pop (the MINIMAL escape interface)
   (escape-result-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
@@ -170,8 +167,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     current-frame body-final ≡ get-child-frame alloc →
     ApplyWFModule.BeforeFrontier' body-final result-loc →
     ApplyWFModule.SurvivesFramePop (get-child-frame alloc) result-loc)
-  (parent-bound-eq : ∀ (alloc : AllocState {FS}) (bound : ℕ) →
-    bound ≡ next-slot alloc Data.Nat.+ pair-slots)
+  -- REMOVED: parent-bound-eq (handled locally in ApplyWF)
   -- Prim proof provider (from domain compilers)
   (prim-proof : PrimProofInterface.PrimProofProviderV3 {FS} program-bound primSem)
   where
@@ -215,9 +211,10 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open CurryWFModule.CurryWFImpl {FS} program-bound primSem
 
   -- Import apply IR implementation (pass child-frame and escape analysis parameters)
+  -- DYNAMIC CAPACITY: child-capacity and parent-bound-eq removed
   open ApplyWFModule.ApplyWFImpl {FS} program-bound primSem
-    get-child-frame child-frame-ordered child-frame-adjacent child-capacity child-cap-sufficient
-    escape-result-survives parent-bound-eq
+    get-child-frame child-frame-ordered child-frame-adjacent
+    escape-result-survives
 
   -- Import sum/fix IR implementations (inl, inr, case, initial, fold, unfold)
   open import Once.CCC.Target.X86v3.Dispatcher.IR.SumFixWF as SumFixWFModule
@@ -489,9 +486,10 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 --     - fix-slots-bound: type-slots (Fix F) ≤ pair-slots * ir-size fold-ir
 --     Similar issue to sum types.
 --
--- CAPACITY ARCHITECTURE:
---   - Module parameter `frame-cap-sufficient` ensures capacity >= 2 * pair-slots * pb
---   - WholeProgram module allocates frames with sufficient capacity
+-- CAPACITY ARCHITECTURE (DYNAMIC):
+--   - Each closure's BodyCorrect.body-capacity determines child frame size
+--   - No global worst-case allocation - each apply gets exactly what its body needs
+--   - RuntimeContract at CCC boundary provides linker/runtime guarantees
 --
 -- NEXT STEPS:
 --   1. Implement new-frame semantics for apply body execution (eliminates slot-bounded-apply)
