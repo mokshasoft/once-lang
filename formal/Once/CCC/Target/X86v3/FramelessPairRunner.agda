@@ -811,8 +811,20 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
     setup-suffix = compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup ++ suffix
 
     -- Program equivalence for setup phase (list associativity)
-    postulate
-      prog-eq-setup : prog ≡ prefix ++ pair-setup ++ setup-suffix
+    -- prog = prefix ++ pair-code ++ suffix
+    -- pair-code = pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup
+    -- setup-suffix = compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup ++ suffix
+    -- Need: prefix ++ pair-code ++ suffix ≡ prefix ++ pair-setup ++ setup-suffix
+    prog-eq-setup : prog ≡ prefix ++ pair-setup ++ setup-suffix
+    prog-eq-setup =
+      let
+        -- pair-code ++ suffix = pair-setup ++ setup-suffix (by repeated ++-assoc)
+        inner : pair-code ++ suffix ≡ pair-setup ++ setup-suffix
+        inner = trans (++-assoc pair-setup (compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                (cong (pair-setup ++_) (trans (++-assoc (compile-ir f) (pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                (cong (compile-ir f ++_) (trans (++-assoc pair-middle (compile-ir g ++ pair-cleanup) suffix)
+                (cong (pair-middle ++_) (++-assoc (compile-ir g) pair-cleanup suffix))))))
+      in cong (prefix ++_) inner
 
     -- Capacity precondition for setup: slots 3 ≤ rsp
     -- This should follow from StateCorresponds invariants
@@ -869,8 +881,11 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
     sc1 = to-state-corresponds σ s1 fc1 cf refl
 
     -- pc1 = length f-prefix (length-++ associativity)
-    postulate
-      pc1-eq' : X86Sem.State.pc s1 ≡ length f-prefix
+    -- pc1-eq gives: pc s1 = length prefix + length pair-setup
+    -- f-prefix = prefix ++ pair-setup
+    -- By length-++: length f-prefix = length prefix + length pair-setup
+    pc1-eq' : X86Sem.State.pc s1 ≡ length f-prefix
+    pc1-eq' = trans pc1-eq (sym (length-++ prefix {pair-setup}))
 
     -- Run f
     f-result-exists : ∃[ s2 ] IRStarResult f f-prefix f-suffix σ s1 sc1 s2 (length f-prefix)
@@ -916,8 +931,17 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
     input-loc = readReg (SM.LocState.regs σ) RDI
 
     -- pc2 in terms of middle-prefix (length-++ associativity)
-    postulate
-      pc2-eq' : X86Sem.State.pc s2 ≡ length middle-prefix
+    -- pc2-eq gives: pc s2 = length f-prefix + compile-length f
+    -- middle-prefix = prefix ++ pair-setup ++ compile-ir f = f-prefix ++ compile-ir f (by ++-assoc)
+    -- By length-++ and compile-ir-length: length middle-prefix = length f-prefix + compile-length f
+    middle-prefix-eq : middle-prefix ≡ f-prefix ++ compile-ir f
+    middle-prefix-eq = sym (++-assoc prefix pair-setup (compile-ir f))
+
+    pc2-eq' : X86Sem.State.pc s2 ≡ length middle-prefix
+    pc2-eq' = trans pc2-eq
+              (sym (trans (cong length middle-prefix-eq)
+                   (trans (length-++ f-prefix {compile-ir f})
+                          (cong (length f-prefix +ℕ_) (compile-ir-length f)))))
 
     -- frame-base fc2 = frame-base fc (via output-frame-preserved from f)
     -- sc2.current-frame ≡ sc1.current-frame ≡ cf
@@ -1057,8 +1081,15 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
     sc3 = to-state-corresponds σ3 s3 fc3 cf (sym frame-base-fc3-eq)
 
     -- pc3 in terms of g-prefix (length-++ associativity)
-    postulate
-      pc3-eq' : X86Sem.State.pc s3 ≡ length g-prefix
+    -- pc3-eq gives: pc s3 = length middle-prefix + length pair-middle
+    -- g-prefix = prefix ++ pair-setup ++ compile-ir f ++ pair-middle = middle-prefix ++ pair-middle (by ++-assoc)
+    -- By length-++: length g-prefix = length middle-prefix + length pair-middle
+    g-prefix-eq : g-prefix ≡ middle-prefix ++ pair-middle
+    g-prefix-eq = trans (cong (prefix ++_) (sym (++-assoc pair-setup (compile-ir f) pair-middle)))
+                        (sym (++-assoc prefix (pair-setup ++ compile-ir f) pair-middle))
+
+    pc3-eq' : X86Sem.State.pc s3 ≡ length g-prefix
+    pc3-eq' = trans pc3-eq (sym (trans (cong length g-prefix-eq) (length-++ middle-prefix {pair-middle})))
 
     -- Run g
     g-result-exists : ∃[ s4 ] IRStarResult g g-prefix g-suffix σ3 s3 sc3 s4 (length g-prefix)
@@ -1116,8 +1147,30 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
     pair-loc = OnStack cf 0  -- Pair is at slot 0 of current frame
 
     -- pc4 in terms of cleanup-prefix (length-++ associativity)
-    postulate
-      pc4-eq' : X86Sem.State.pc s4 ≡ length cleanup-prefix
+    -- pc4-eq gives: pc s4 = length g-prefix + compile-length g
+    -- cleanup-prefix = prefix ++ pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g = g-prefix ++ compile-ir g (by ++-assoc)
+    -- By length-++ and compile-ir-length: length cleanup-prefix = length g-prefix + compile-length g
+    cleanup-prefix-eq : cleanup-prefix ≡ g-prefix ++ compile-ir g
+    cleanup-prefix-eq =
+      let
+        -- cleanup-prefix = prefix ++ (pair-setup ++ (compile-ir f ++ (pair-middle ++ compile-ir g)))
+        -- g-prefix ++ compile-ir g = (prefix ++ (pair-setup ++ (compile-ir f ++ pair-middle))) ++ compile-ir g
+        -- Use ++-assoc to relate them
+        step1 : g-prefix ++ compile-ir g ≡ prefix ++ ((pair-setup ++ (compile-ir f ++ pair-middle)) ++ compile-ir g)
+        step1 = ++-assoc prefix (pair-setup ++ (compile-ir f ++ pair-middle)) (compile-ir g)
+        step2 : (pair-setup ++ (compile-ir f ++ pair-middle)) ++ compile-ir g ≡ pair-setup ++ ((compile-ir f ++ pair-middle) ++ compile-ir g)
+        step2 = ++-assoc pair-setup (compile-ir f ++ pair-middle) (compile-ir g)
+        step3 : (compile-ir f ++ pair-middle) ++ compile-ir g ≡ compile-ir f ++ (pair-middle ++ compile-ir g)
+        step3 = ++-assoc (compile-ir f) pair-middle (compile-ir g)
+        combined : g-prefix ++ compile-ir g ≡ prefix ++ (pair-setup ++ (compile-ir f ++ (pair-middle ++ compile-ir g)))
+        combined = trans step1 (cong (prefix ++_) (trans step2 (cong (pair-setup ++_) step3)))
+      in sym combined
+
+    pc4-eq' : X86Sem.State.pc s4 ≡ length cleanup-prefix
+    pc4-eq' = trans pc4-eq
+              (sym (trans (cong length cleanup-prefix-eq)
+                   (trans (length-++ g-prefix {compile-ir g})
+                          (cong (length g-prefix +ℕ_) (compile-ir-length g)))))
 
     -- Preconditions for cleanup
     rsp4<frame : x86-readReg (X86Sem.State.regs s4) rsp < frame-base fc4
@@ -1183,12 +1236,118 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
     -- Need to show all phases operate on the same program
     ------------------------------------------------------------------------
 
-    -- Program equivalences (postulated for now - these are tedious list associativity proofs)
-    postulate
-      prog-eq-f : prog ≡ f-prefix ++ compile-ir f ++ f-suffix
-      prog-eq-middle : prog ≡ middle-prefix ++ pair-middle ++ middle-suffix
-      prog-eq-g : prog ≡ g-prefix ++ compile-ir g ++ g-suffix
-      prog-eq-cleanup : prog ≡ cleanup-prefix ++ pair-cleanup ++ suffix
+    -- Program equivalences (list associativity proofs)
+    -- These use ++-assoc repeatedly to reassociate the program structure
+
+    -- prog-eq-f: prog ≡ f-prefix ++ compile-ir f ++ f-suffix
+    -- where f-prefix = prefix ++ pair-setup, f-suffix = pair-middle ++ compile-ir g ++ pair-cleanup ++ suffix
+    prog-eq-f : prog ≡ f-prefix ++ compile-ir f ++ f-suffix
+    prog-eq-f =
+      let
+        -- pair-code = pair-setup ++ (compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup)
+        -- pair-code ++ suffix = pair-setup ++ (compile-ir f ++ (pair-middle ++ compile-ir g ++ pair-cleanup ++ suffix))
+        --                     = pair-setup ++ (compile-ir f ++ f-suffix)
+        inner1 : pair-code ++ suffix ≡ pair-setup ++ (compile-ir f ++ f-suffix)
+        inner1 = trans (++-assoc pair-setup (compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                 (cong (pair-setup ++_) (trans (++-assoc (compile-ir f) (pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                 (cong (compile-ir f ++_) (trans (++-assoc pair-middle (compile-ir g ++ pair-cleanup) suffix)
+                 (cong (pair-middle ++_) (++-assoc (compile-ir g) pair-cleanup suffix))))))
+        -- prefix ++ (pair-setup ++ (compile-ir f ++ f-suffix)) = (prefix ++ pair-setup) ++ (compile-ir f ++ f-suffix)
+        inner2 : prefix ++ (pair-setup ++ (compile-ir f ++ f-suffix)) ≡ f-prefix ++ (compile-ir f ++ f-suffix)
+        inner2 = sym (++-assoc prefix pair-setup (compile-ir f ++ f-suffix))
+      in trans (cong (prefix ++_) inner1) inner2
+
+    -- prog-eq-middle: prog ≡ middle-prefix ++ pair-middle ++ middle-suffix
+    -- where middle-prefix = prefix ++ pair-setup ++ compile-ir f
+    --       middle-suffix = compile-ir g ++ pair-cleanup ++ suffix
+    prog-eq-middle : prog ≡ middle-prefix ++ pair-middle ++ middle-suffix
+    prog-eq-middle =
+      let
+        -- First, get pair-code ++ suffix = pair-setup ++ compile-ir f ++ pair-middle ++ (compile-ir g ++ pair-cleanup ++ suffix)
+        inner1 : pair-code ++ suffix ≡ pair-setup ++ (compile-ir f ++ (pair-middle ++ middle-suffix))
+        inner1 = trans (++-assoc pair-setup (compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                 (cong (pair-setup ++_) (trans (++-assoc (compile-ir f) (pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                 (cong (compile-ir f ++_) (trans (++-assoc pair-middle (compile-ir g ++ pair-cleanup) suffix)
+                 (cong (pair-middle ++_) (++-assoc (compile-ir g) pair-cleanup suffix))))))
+        -- Reassociate: prefix ++ (pair-setup ++ (compile-ir f ++ (pair-middle ++ middle-suffix)))
+        --            = ((prefix ++ pair-setup) ++ compile-ir f) ++ (pair-middle ++ middle-suffix)
+        --            = middle-prefix ++ (pair-middle ++ middle-suffix)
+        step1 : prefix ++ (pair-setup ++ (compile-ir f ++ (pair-middle ++ middle-suffix)))
+                ≡ (prefix ++ pair-setup) ++ (compile-ir f ++ (pair-middle ++ middle-suffix))
+        step1 = sym (++-assoc prefix pair-setup (compile-ir f ++ (pair-middle ++ middle-suffix)))
+        step2 : (prefix ++ pair-setup) ++ (compile-ir f ++ (pair-middle ++ middle-suffix))
+                ≡ ((prefix ++ pair-setup) ++ compile-ir f) ++ (pair-middle ++ middle-suffix)
+        step2 = sym (++-assoc (prefix ++ pair-setup) (compile-ir f) (pair-middle ++ middle-suffix))
+        -- ((prefix ++ pair-setup) ++ compile-ir f) = f-prefix ++ compile-ir f = middle-prefix (by middle-prefix-eq)
+        step3 : ((prefix ++ pair-setup) ++ compile-ir f) ++ (pair-middle ++ middle-suffix)
+                ≡ middle-prefix ++ (pair-middle ++ middle-suffix)
+        step3 = cong (_++ (pair-middle ++ middle-suffix)) (sym middle-prefix-eq)
+      in trans (cong (prefix ++_) inner1) (trans step1 (trans step2 step3))
+
+    -- prog-eq-g: prog ≡ g-prefix ++ compile-ir g ++ g-suffix
+    -- where g-prefix = prefix ++ pair-setup ++ compile-ir f ++ pair-middle
+    --       g-suffix = pair-cleanup ++ suffix
+    prog-eq-g : prog ≡ g-prefix ++ compile-ir g ++ g-suffix
+    prog-eq-g =
+      let
+        -- pair-code ++ suffix with g-suffix = pair-cleanup ++ suffix
+        inner1 : pair-code ++ suffix ≡ pair-setup ++ (compile-ir f ++ (pair-middle ++ (compile-ir g ++ g-suffix)))
+        inner1 = trans (++-assoc pair-setup (compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                 (cong (pair-setup ++_) (trans (++-assoc (compile-ir f) (pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                 (cong (compile-ir f ++_) (trans (++-assoc pair-middle (compile-ir g ++ pair-cleanup) suffix)
+                 (cong (pair-middle ++_) (++-assoc (compile-ir g) pair-cleanup suffix))))))
+        -- Reassociate to get g-prefix ++ (compile-ir g ++ g-suffix)
+        step1 : prefix ++ (pair-setup ++ (compile-ir f ++ (pair-middle ++ (compile-ir g ++ g-suffix))))
+                ≡ (prefix ++ pair-setup) ++ (compile-ir f ++ (pair-middle ++ (compile-ir g ++ g-suffix)))
+        step1 = sym (++-assoc prefix pair-setup _)
+        step2 : (prefix ++ pair-setup) ++ (compile-ir f ++ (pair-middle ++ (compile-ir g ++ g-suffix)))
+                ≡ ((prefix ++ pair-setup) ++ compile-ir f) ++ (pair-middle ++ (compile-ir g ++ g-suffix))
+        step2 = sym (++-assoc (prefix ++ pair-setup) (compile-ir f) _)
+        step3 : ((prefix ++ pair-setup) ++ compile-ir f) ++ (pair-middle ++ (compile-ir g ++ g-suffix))
+                ≡ (((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) ++ (compile-ir g ++ g-suffix)
+        step3 = sym (++-assoc ((prefix ++ pair-setup) ++ compile-ir f) pair-middle _)
+        -- g-prefix = ((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle (via middle-prefix-eq and g-prefix-eq)
+        g-prefix-eq' : (((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) ≡ g-prefix
+        g-prefix-eq' = sym (trans g-prefix-eq (cong (_++ pair-middle) middle-prefix-eq))
+        step4 : (((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) ++ (compile-ir g ++ g-suffix)
+                ≡ g-prefix ++ (compile-ir g ++ g-suffix)
+        step4 = cong (_++ (compile-ir g ++ g-suffix)) g-prefix-eq'
+      in trans (cong (prefix ++_) inner1) (trans step1 (trans step2 (trans step3 step4)))
+
+    -- prog-eq-cleanup: prog ≡ cleanup-prefix ++ pair-cleanup ++ suffix
+    -- where cleanup-prefix = prefix ++ pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g
+    prog-eq-cleanup : prog ≡ cleanup-prefix ++ pair-cleanup ++ suffix
+    prog-eq-cleanup =
+      let
+        inner1 : pair-code ++ suffix ≡ pair-setup ++ (compile-ir f ++ (pair-middle ++ (compile-ir g ++ (pair-cleanup ++ suffix))))
+        inner1 = trans (++-assoc pair-setup (compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                 (cong (pair-setup ++_) (trans (++-assoc (compile-ir f) (pair-middle ++ compile-ir g ++ pair-cleanup) suffix)
+                 (cong (compile-ir f ++_) (trans (++-assoc pair-middle (compile-ir g ++ pair-cleanup) suffix)
+                 (cong (pair-middle ++_) (++-assoc (compile-ir g) pair-cleanup suffix))))))
+        -- Reassociate to get cleanup-prefix ++ (pair-cleanup ++ suffix)
+        step1 : prefix ++ (pair-setup ++ (compile-ir f ++ (pair-middle ++ (compile-ir g ++ (pair-cleanup ++ suffix)))))
+                ≡ (prefix ++ pair-setup) ++ (compile-ir f ++ (pair-middle ++ (compile-ir g ++ (pair-cleanup ++ suffix))))
+        step1 = sym (++-assoc prefix pair-setup _)
+        step2 : (prefix ++ pair-setup) ++ (compile-ir f ++ (pair-middle ++ (compile-ir g ++ (pair-cleanup ++ suffix))))
+                ≡ ((prefix ++ pair-setup) ++ compile-ir f) ++ (pair-middle ++ (compile-ir g ++ (pair-cleanup ++ suffix)))
+        step2 = sym (++-assoc (prefix ++ pair-setup) (compile-ir f) _)
+        step3 : ((prefix ++ pair-setup) ++ compile-ir f) ++ (pair-middle ++ (compile-ir g ++ (pair-cleanup ++ suffix)))
+                ≡ (((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) ++ (compile-ir g ++ (pair-cleanup ++ suffix))
+        step3 = sym (++-assoc ((prefix ++ pair-setup) ++ compile-ir f) pair-middle _)
+        step4 : (((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) ++ (compile-ir g ++ (pair-cleanup ++ suffix))
+                ≡ ((((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) ++ compile-ir g) ++ (pair-cleanup ++ suffix)
+        step4 = sym (++-assoc (((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) (compile-ir g) _)
+        -- cleanup-prefix = g-prefix ++ compile-ir g (by cleanup-prefix-eq)
+        -- g-prefix = ((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle (by g-prefix-eq' from prog-eq-g)
+        -- Use the same g-prefix-eq' derivation
+        g-prefix-eq'' : (((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) ≡ g-prefix
+        g-prefix-eq'' = sym (trans g-prefix-eq (cong (_++ pair-middle) middle-prefix-eq))
+        cleanup-prefix-eq' : ((((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) ++ compile-ir g) ≡ cleanup-prefix
+        cleanup-prefix-eq' = sym (trans cleanup-prefix-eq (sym (cong (_++ compile-ir g) g-prefix-eq'')))
+        step5 : ((((prefix ++ pair-setup) ++ compile-ir f) ++ pair-middle) ++ compile-ir g) ++ (pair-cleanup ++ suffix)
+                ≡ cleanup-prefix ++ (pair-cleanup ++ suffix)
+        step5 = cong (_++ (pair-cleanup ++ suffix)) cleanup-prefix-eq'
+      in trans (cong (prefix ++_) inner1) (trans step1 (trans step2 (trans step3 (trans step4 step5))))
 
     star-final : Star prog s s-final
     star-final = subst (λ p → Star p s s1) (sym prog-eq-setup) star-setup ◅◅
@@ -1201,9 +1360,151 @@ frameless-pair-runner {A} {B} {C} f g m f-runner g-runner prefix suffix σ s sc 
     h-final = h5-eq
 
     -- PC final: length prefix + compile-length (⟨ f , g ⟩ m)
-    -- This is length-++ associativity combined with compile-ir-length
-    postulate
-      pc-final : X86Sem.State.pc s-final ≡ length prefix +ℕ compile-length (⟨ f , g ⟩ m)
+    -- pc5-eq gives: pc s5 = length cleanup-prefix + length pair-cleanup
+    -- We need: length cleanup-prefix + length pair-cleanup = length prefix + compile-length (⟨ f , g ⟩ m)
+    -- cleanup-prefix = prefix ++ pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g
+    -- compile-length (⟨ f , g ⟩ m) = length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup
+    pc-final : X86Sem.State.pc s-final ≡ length prefix +ℕ compile-length (⟨ f , g ⟩ m)
+    pc-final =
+      let
+        -- length cleanup-prefix using length-++ chain
+        len-f-prefix : length f-prefix ≡ length prefix +ℕ length pair-setup
+        len-f-prefix = length-++ prefix {pair-setup}
+
+        -- middle-prefix-eq shows middle-prefix ≡ f-prefix ++ compile-ir f
+        len-middle-prefix : length middle-prefix ≡ length f-prefix +ℕ length (compile-ir f)
+        len-middle-prefix = trans (cong length middle-prefix-eq) (length-++ f-prefix {compile-ir f})
+
+        -- g-prefix-eq shows g-prefix ≡ middle-prefix ++ pair-middle
+        len-g-prefix : length g-prefix ≡ length middle-prefix +ℕ length pair-middle
+        len-g-prefix = trans (cong length g-prefix-eq) (length-++ middle-prefix {pair-middle})
+
+        -- cleanup-prefix-eq shows cleanup-prefix ≡ g-prefix ++ compile-ir g
+        len-cleanup-prefix : length cleanup-prefix ≡ length g-prefix +ℕ length (compile-ir g)
+        len-cleanup-prefix = trans (cong length cleanup-prefix-eq) (length-++ g-prefix {compile-ir g})
+
+        -- Expand cleanup-prefix length in terms of prefix
+        -- length cleanup-prefix = length prefix + length pair-setup + length (compile-ir f) + length pair-middle + length (compile-ir g)
+        -- Build step by step using the -eq proofs
+        len-cleanup-expanded : length cleanup-prefix ≡ length prefix +ℕ length pair-setup +ℕ length (compile-ir f) +ℕ length pair-middle +ℕ length (compile-ir g)
+        len-cleanup-expanded =
+          let
+            -- Start: length cleanup-prefix = length g-prefix + length (compile-ir g)
+            step1 = len-cleanup-prefix
+            -- Substitute len-g-prefix: length g-prefix = length middle-prefix + length pair-middle
+            step2 : length g-prefix +ℕ length (compile-ir g) ≡ (length middle-prefix +ℕ length pair-middle) +ℕ length (compile-ir g)
+            step2 = cong (_+ℕ length (compile-ir g)) len-g-prefix
+            -- Substitute len-middle-prefix: length middle-prefix = length f-prefix + length (compile-ir f)
+            step3 : (length middle-prefix +ℕ length pair-middle) +ℕ length (compile-ir g) ≡ ((length f-prefix +ℕ length (compile-ir f)) +ℕ length pair-middle) +ℕ length (compile-ir g)
+            step3 = cong (λ x → (x +ℕ length pair-middle) +ℕ length (compile-ir g)) len-middle-prefix
+            -- Substitute len-f-prefix: length f-prefix = length prefix + length pair-setup
+            step4 : ((length f-prefix +ℕ length (compile-ir f)) +ℕ length pair-middle) +ℕ length (compile-ir g) ≡ (((length prefix +ℕ length pair-setup) +ℕ length (compile-ir f)) +ℕ length pair-middle) +ℕ length (compile-ir g)
+            step4 = cong (λ x → ((x +ℕ length (compile-ir f)) +ℕ length pair-middle) +ℕ length (compile-ir g)) len-f-prefix
+          in trans step1 (trans step2 (trans step3 step4))
+
+        -- compile-length (⟨ f , g ⟩ m) = length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup
+        -- By compile-ir-length, length (compile-ir x) = compile-length x
+        -- And pair-code = pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup
+        -- So compile-length (⟨ f , g ⟩ m) = length pair-code = length (pair-setup ++ ...) = ...
+
+        -- Use compile-ir-length for the pair
+        pair-len : length (compile-ir (⟨ f , g ⟩ m)) ≡ compile-length (⟨ f , g ⟩ m)
+        pair-len = compile-ir-length (⟨ f , g ⟩ m)
+
+        -- length pair-code = length pair-setup + length (compile-ir f) + length pair-middle + length (compile-ir g) + length pair-cleanup
+        -- by length-++ chain (building left-to-right)
+        len-pair-code : length pair-code ≡ length pair-setup +ℕ length (compile-ir f) +ℕ length pair-middle +ℕ length (compile-ir g) +ℕ length pair-cleanup
+        len-pair-code =
+          let
+            -- pair-code = pair-setup ++ (compile-ir f ++ (pair-middle ++ (compile-ir g ++ pair-cleanup)))
+            -- Step 1: split off pair-setup
+            s1 : length pair-code ≡ length pair-setup +ℕ length (compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup)
+            s1 = length-++ pair-setup {compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup}
+            -- Step 2: split off compile-ir f
+            s2 : length (compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup) ≡ length (compile-ir f) +ℕ length (pair-middle ++ compile-ir g ++ pair-cleanup)
+            s2 = length-++ (compile-ir f) {pair-middle ++ compile-ir g ++ pair-cleanup}
+            -- Step 3: split off pair-middle
+            s3 : length (pair-middle ++ compile-ir g ++ pair-cleanup) ≡ length pair-middle +ℕ length (compile-ir g ++ pair-cleanup)
+            s3 = length-++ pair-middle {compile-ir g ++ pair-cleanup}
+            -- Step 4: split off compile-ir g
+            s4 : length (compile-ir g ++ pair-cleanup) ≡ length (compile-ir g) +ℕ length pair-cleanup
+            s4 = length-++ (compile-ir g) {pair-cleanup}
+            -- Chain: use substitution to build the left-associated result
+            -- We need to convert from right-associated to left-associated
+            step1 : length pair-code ≡ length pair-setup +ℕ (length (compile-ir f) +ℕ length (pair-middle ++ compile-ir g ++ pair-cleanup))
+            step1 = trans s1 (cong (length pair-setup +ℕ_) s2)
+            step2 : length pair-code ≡ length pair-setup +ℕ (length (compile-ir f) +ℕ (length pair-middle +ℕ length (compile-ir g ++ pair-cleanup)))
+            step2 = trans step1 (cong (λ x → length pair-setup +ℕ (length (compile-ir f) +ℕ x)) s3)
+            step3 : length pair-code ≡ length pair-setup +ℕ (length (compile-ir f) +ℕ (length pair-middle +ℕ (length (compile-ir g) +ℕ length pair-cleanup)))
+            step3 = trans step2 (cong (λ x → length pair-setup +ℕ (length (compile-ir f) +ℕ (length pair-middle +ℕ x))) s4)
+            -- Now reassociate to left-associated form using +-assoc
+            -- a + (b + (c + (d + e))) = ((((a + b) + c) + d) + e)
+            -- Use sym +-assoc to move parens left
+            ra1 : length pair-setup +ℕ (length (compile-ir f) +ℕ (length pair-middle +ℕ (length (compile-ir g) +ℕ length pair-cleanup)))
+                  ≡ (length pair-setup +ℕ length (compile-ir f)) +ℕ (length pair-middle +ℕ (length (compile-ir g) +ℕ length pair-cleanup))
+            ra1 = sym (+-assoc (length pair-setup) (length (compile-ir f)) _)
+            ra2 : (length pair-setup +ℕ length (compile-ir f)) +ℕ (length pair-middle +ℕ (length (compile-ir g) +ℕ length pair-cleanup))
+                  ≡ ((length pair-setup +ℕ length (compile-ir f)) +ℕ length pair-middle) +ℕ (length (compile-ir g) +ℕ length pair-cleanup)
+            ra2 = sym (+-assoc (length pair-setup +ℕ length (compile-ir f)) (length pair-middle) _)
+            ra3 : ((length pair-setup +ℕ length (compile-ir f)) +ℕ length pair-middle) +ℕ (length (compile-ir g) +ℕ length pair-cleanup)
+                  ≡ (((length pair-setup +ℕ length (compile-ir f)) +ℕ length pair-middle) +ℕ length (compile-ir g)) +ℕ length pair-cleanup
+            ra3 = sym (+-assoc ((length pair-setup +ℕ length (compile-ir f)) +ℕ length pair-middle) (length (compile-ir g)) _)
+          in trans step3 (trans ra1 (trans ra2 ra3))
+
+        -- compile-length (⟨ f , g ⟩ m) = length pair-setup + length (compile-ir f) + length pair-middle + length (compile-ir g) + length pair-cleanup
+        compile-len-expanded : compile-length (⟨ f , g ⟩ m) ≡ length pair-setup +ℕ length (compile-ir f) +ℕ length pair-middle +ℕ length (compile-ir g) +ℕ length pair-cleanup
+        compile-len-expanded = trans (sym pair-len) len-pair-code
+
+        -- Now: length cleanup-prefix + length pair-cleanup
+        --    = (length prefix + length pair-setup + length (compile-ir f) + length pair-middle + length (compile-ir g)) + length pair-cleanup
+        --    = length prefix + (length pair-setup + length (compile-ir f) + length pair-middle + length (compile-ir g) + length pair-cleanup)
+        --    = length prefix + compile-length (⟨ f , g ⟩ m)
+
+        -- Arithmetic: (a + b + c + d + e) + f = a + (b + c + d + e + f)
+        -- where a = length prefix, b = length pair-setup, etc.
+        -- len-cleanup-expanded gives: length cleanup-prefix ≡ ((((a + b) + c) + d) + e) (left-assoc)
+        -- We want: a + ((((b + c) + d) + e) + f) (with f = length pair-cleanup)
+        arith-step : length cleanup-prefix +ℕ length pair-cleanup ≡ length prefix +ℕ (length pair-setup +ℕ length (compile-ir f) +ℕ length pair-middle +ℕ length (compile-ir g) +ℕ length pair-cleanup)
+        arith-step =
+          let
+            a = length prefix
+            b = length pair-setup
+            c = length (compile-ir f)
+            d = length pair-middle
+            e = length (compile-ir g)
+            pf = length pair-cleanup
+            -- Start: ((((a + b) + c) + d) + e) + f
+            step1 : length cleanup-prefix +ℕ pf ≡ ((((a +ℕ b) +ℕ c) +ℕ d) +ℕ e) +ℕ pf
+            step1 = cong (_+ℕ pf) len-cleanup-expanded
+            -- Use +-assoc repeatedly to pull 'a' to the outside
+            -- ((((a + b) + c) + d) + e) + f = (((a + b) + c) + d) + (e + f)
+            r1 : ((((a +ℕ b) +ℕ c) +ℕ d) +ℕ e) +ℕ pf ≡ (((a +ℕ b) +ℕ c) +ℕ d) +ℕ (e +ℕ pf)
+            r1 = +-assoc (((a +ℕ b) +ℕ c) +ℕ d) e pf
+            -- (((a + b) + c) + d) + (e + f) = ((a + b) + c) + (d + (e + f))
+            r2 : (((a +ℕ b) +ℕ c) +ℕ d) +ℕ (e +ℕ pf) ≡ ((a +ℕ b) +ℕ c) +ℕ (d +ℕ (e +ℕ pf))
+            r2 = +-assoc ((a +ℕ b) +ℕ c) d (e +ℕ pf)
+            -- ((a + b) + c) + (d + (e + f)) = (a + b) + (c + (d + (e + f)))
+            r3 : ((a +ℕ b) +ℕ c) +ℕ (d +ℕ (e +ℕ pf)) ≡ (a +ℕ b) +ℕ (c +ℕ (d +ℕ (e +ℕ pf)))
+            r3 = +-assoc (a +ℕ b) c (d +ℕ (e +ℕ pf))
+            -- (a + b) + (c + (d + (e + f))) = a + (b + (c + (d + (e + f))))
+            r4 : (a +ℕ b) +ℕ (c +ℕ (d +ℕ (e +ℕ pf))) ≡ a +ℕ (b +ℕ (c +ℕ (d +ℕ (e +ℕ pf))))
+            r4 = +-assoc a b (c +ℕ (d +ℕ (e +ℕ pf)))
+            -- Now reassociate the inner part back to left-associated:
+            -- b + (c + (d + (e + f))) = ((((b + c) + d) + e) + f)
+            ra1 : b +ℕ (c +ℕ (d +ℕ (e +ℕ pf))) ≡ (b +ℕ c) +ℕ (d +ℕ (e +ℕ pf))
+            ra1 = sym (+-assoc b c (d +ℕ (e +ℕ pf)))
+            ra2 : (b +ℕ c) +ℕ (d +ℕ (e +ℕ pf)) ≡ ((b +ℕ c) +ℕ d) +ℕ (e +ℕ pf)
+            ra2 = sym (+-assoc (b +ℕ c) d (e +ℕ pf))
+            ra3 : ((b +ℕ c) +ℕ d) +ℕ (e +ℕ pf) ≡ (((b +ℕ c) +ℕ d) +ℕ e) +ℕ pf
+            ra3 = sym (+-assoc ((b +ℕ c) +ℕ d) e pf)
+            inner-reassoc : a +ℕ (b +ℕ (c +ℕ (d +ℕ (e +ℕ pf)))) ≡ a +ℕ ((((b +ℕ c) +ℕ d) +ℕ e) +ℕ pf)
+            inner-reassoc = cong (a +ℕ_) (trans ra1 (trans ra2 ra3))
+          in trans step1 (trans r1 (trans r2 (trans r3 (trans r4 inner-reassoc))))
+
+        final-step : length prefix +ℕ (length pair-setup +ℕ length (compile-ir f) +ℕ length pair-middle +ℕ length (compile-ir g) +ℕ length pair-cleanup)
+                     ≡ length prefix +ℕ compile-length (⟨ f , g ⟩ m)
+        final-step = cong (length prefix +ℕ_) (sym compile-len-expanded)
+      in trans pc5-eq (trans arith-step final-step)
 
     -- rbp preserved through all phases
     rbp-final : x86-readReg (X86Sem.State.regs s-final) rbp ≡ orig-rbp
