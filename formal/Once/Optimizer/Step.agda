@@ -55,6 +55,10 @@ data ComposeStep : ∀ {A B C} → IR B C → IR A B → IR A C → Set where
                   ComposeStep [ f , g ] (inr m) g
 
   -- Exponential beta: apply ∘ ⟨ curry f , g ⟩ = f ∘ ⟨ id , g ⟩
+  -- When f is a composition (h ∘ k), we right-associate to get h ∘ (k ∘ ⟨ id , g ⟩)
+  step-apply-curry-comp : ∀ {A B C D q} {h : IR D C} {k : IR (A * B) D} {g : IR A B} {m₁ m₂} →
+                          ComposeStep apply (⟨ curry {q = q} (h ∘ k) m₁ , g ⟩ m₂) (h ∘ (k ∘ ⟨ id , g ⟩ Heap))
+  -- When f is not a composition
   step-apply-curry : ∀ {A B C q} {f : IR (A * B) C} {g : IR A B} {m₁ m₂} →
                      ComposeStep apply (⟨ curry {q = q} f m₁ , g ⟩ m₂) (f ∘ ⟨ id , g ⟩ Heap)
 
@@ -152,6 +156,7 @@ step-preserves-semantics step-fst-pair x = refl
 step-preserves-semantics step-snd-pair x = refl
 step-preserves-semantics step-case-inl x = refl
 step-preserves-semantics step-case-inr x = refl
+step-preserves-semantics step-apply-curry-comp x = refl  -- associativity
 step-preserves-semantics step-apply-curry x = refl
 step-preserves-semantics step-fold-unfold x = refl
 step-preserves-semantics step-unfold-fold x = refl
@@ -189,6 +194,21 @@ step-reduces-cost (step-case-inl {f = f} {g = g}) =
   ≤-trans (m≤m+n (cost f) (cost g)) (m≤m+n (cost f ℕ+ cost g) 1)
 step-reduces-cost (step-case-inr {f = f} {g = g}) =
   ≤-trans (m≤n+m (cost g) (cost f)) (m≤m+n (cost f ℕ+ cost g) 1)
+step-reduces-cost (step-apply-curry-comp {h = h} {k = k} {g = g}) =
+  -- cost (h ∘ (k ∘ ⟨ id , g ⟩)) = cost h + cost k + 1 + cost g
+  -- cost (apply ∘ ⟨ curry (h ∘ k) , g ⟩) = 0 + 1 + (1 + cost h + cost k) + cost g
+  --                                      = 2 + cost h + cost k + cost g
+  -- Need: cost h + cost k + 1 + cost g ≤ 2 + cost h + cost k + cost g
+  let open Data.Nat.Properties
+      lhs = cost h ℕ+ (cost k ℕ+ suc (cost g))
+      rhs = suc (suc ((cost h ℕ+ cost k) ℕ+ cost g))
+      -- Rearrange lhs
+      eq1 : cost h ℕ+ (cost k ℕ+ suc (cost g)) ≡ (cost h ℕ+ cost k) ℕ+ suc (cost g)
+      eq1 = sym (+-assoc (cost h) (cost k) (suc (cost g)))
+      eq2 : (cost h ℕ+ cost k) ℕ+ suc (cost g) ≡ suc ((cost h ℕ+ cost k) ℕ+ cost g)
+      eq2 = trans (+-comm (cost h ℕ+ cost k) (suc (cost g)))
+                  (cong suc (+-comm (cost g) (cost h ℕ+ cost k)))
+  in subst (_≤ rhs) (sym (trans eq1 eq2)) (n≤1+n (suc ((cost h ℕ+ cost k) ℕ+ cost g)))
 step-reduces-cost (step-apply-curry {f = f} {g = g}) =
   -- cost (f ∘ ⟨ id , g ⟩) = cost f + 1 + cost g
   -- cost (apply ∘ ⟨ curry f , g ⟩) = 0 + 1 + (1 + cost f) + cost g = 2 + cost f + cost g
@@ -373,6 +393,9 @@ optimize-compose-steps [ f , g ] (inl m) = step step-case-inl refl′
 optimize-compose-steps [ f , g ] (inr m) = step step-case-inr refl′
 
 -- Beta law (exponentials)
+-- Composition case: right-associate to avoid left-nesting
+optimize-compose-steps apply (⟨ curry (h ∘ k) m₁ , g ⟩ m₂) = step step-apply-curry-comp refl′
+-- Non-composition case
 optimize-compose-steps apply (⟨ curry f m₁ , g ⟩ m₂) = step step-apply-curry refl′
 
 -- Fixed point laws
