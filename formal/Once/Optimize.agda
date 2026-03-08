@@ -513,12 +513,25 @@ optimize-compose [ f , g ] (inr _) = g
 -- apply ∘ ⟨ curry f , g ⟩ = f ∘ ⟨ id , g ⟩
 -- Eliminates closure allocation when immediately applied
 --
--- Special case: if f is a composition (h ∘ k), we right-associate
--- to avoid left-nested output like (h ∘ k) ∘ ⟨ id , g ⟩
--- which would not be normal (matches red-assoc).
--- Instead produce h ∘ (k ∘ ⟨ id , g ⟩) which is right-associated.
+-- We handle each case explicitly to ensure normal output:
+-- - f = h ∘ k: right-associate to avoid left-nesting
+-- - f = terminal: dead code elimination
+-- - f = id: identity law
+-- - f = fst: beta (fst ∘ ⟨ id , g ⟩ = id)
+-- - f = snd: beta (snd ∘ ⟨ id , g ⟩ = g)
+-- - Otherwise: f ∘ ⟨ id , g ⟩ is already normal
+--
+-- Composition case: right-associate to avoid red-assoc
 optimize-compose apply (⟨ curry (h ∘ k) _ , g ⟩ _) = h ∘ (k ∘ ⟨ id , g ⟩ Heap)
--- Non-composition case: f is not (h ∘ k), so f ∘ ⟨ id , g ⟩ is normal
+-- Dead code: terminal ∘ _ = terminal
+optimize-compose apply (⟨ curry terminal _ , g ⟩ _) = terminal
+-- Identity: id ∘ x = x
+optimize-compose apply (⟨ curry id _ , g ⟩ _) = ⟨ id , g ⟩ Heap
+-- Beta: fst ∘ ⟨ id , g ⟩ = id
+optimize-compose apply (⟨ curry fst _ , g ⟩ _) = id
+-- Beta: snd ∘ ⟨ id , g ⟩ = g
+optimize-compose apply (⟨ curry snd _ , g ⟩ _) = g
+-- Default: f ∘ ⟨ id , g ⟩ is normal for all other f
 optimize-compose apply (⟨ curry f _ , g ⟩ _) = f ∘ ⟨ id , g ⟩ Heap
 
 ------------------------------------------------------------------------
