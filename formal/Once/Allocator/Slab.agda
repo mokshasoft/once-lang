@@ -263,66 +263,129 @@ block-slot-in-heap s n c fc≡c result i i<class = slots-in-heap result i i<clas
 
 open import Once.Allocator.Malloc layout as M using (Malloc)
 
--- Helper: allocate from a specific size class (no with abstraction)
-alloc-from-class : (n : ℕ) (s : SlabState) (c : SizeClass) →
-                   find-class n ≡ just c →
-                   Maybe (Addr × SlabState)
-alloc-from-class n s c eq = Data.Maybe.map
-  (λ result → addr result , new-state result)
-  (alloc n s {c} eq)
-
--- Helper: dispatch based on find-class result
-malloc-alloc-helper : (n : ℕ) (s : SlabState) → Maybe SizeClass → Maybe (Addr × SlabState)
-malloc-alloc-helper n s nothing = nothing
-malloc-alloc-helper n s (just c) = Data.Maybe.map
-  (λ result → addr result , new-state result)
-  (alloc n s {c} (find-class-just n c))
-  where
-    -- This is the key: for each size class, we can prove find-class returns just c
-    find-class-just : ∀ n c → find-class n ≡ just c
-    find-class-just = λ _ _ → trustMe
-      where postulate trustMe : ∀ {A : Set} {x y : A} → x ≡ y
+-- class-slots is always ≥ 1 (needed for InHeap proof)
+class-slots-pos : ∀ c → 0 < class-slots c
+class-slots-pos zero = Data.Nat.s≤s Data.Nat.z≤n
+class-slots-pos (suc zero) = Data.Nat.s≤s Data.Nat.z≤n
+class-slots-pos (suc (suc zero)) = Data.Nat.s≤s Data.Nat.z≤n
+class-slots-pos (suc (suc (suc zero))) = Data.Nat.s≤s Data.Nat.z≤n
 
 -- Malloc-compatible alloc: find size class, allocate from it
+-- Defined by explicit case analysis on find-class
 malloc-alloc : ℕ → SlabState → Maybe (Addr × SlabState)
-malloc-alloc n s = malloc-alloc-helper n s (find-class n)
+malloc-alloc zero s with alloc zero s {zero} refl
+... | nothing = nothing
+... | just result = just (addr result , new-state result)
+malloc-alloc (suc zero) s with alloc 1 s {zero} refl
+... | nothing = nothing
+... | just result = just (addr result , new-state result)
+malloc-alloc (suc (suc zero)) s with alloc 2 s {suc zero} refl
+... | nothing = nothing
+... | just result = just (addr result , new-state result)
+malloc-alloc (suc (suc (suc zero))) s with alloc 3 s {suc (suc zero)} refl
+... | nothing = nothing
+... | just result = just (addr result , new-state result)
+malloc-alloc (suc (suc (suc (suc zero)))) s with alloc 4 s {suc (suc (suc zero))} refl
+... | nothing = nothing
+... | just result = just (addr result , new-state result)
+malloc-alloc (suc (suc (suc (suc (suc _))))) s = nothing  -- > 4 slots not supported
 
--- Malloc-compatible free: find size class from size, free to it
--- Note: caller must provide correct size (compiler knows from type)
+-- Malloc-compatible free: no-op without size info
 malloc-free : Addr → SlabState → SlabState
-malloc-free addr s = s  -- Without size info, we can't free properly
-                        -- Real implementation needs size parameter
+malloc-free addr s = s
 
 -- For proper free, we provide a sized version
 malloc-free-sized : ℕ → Addr → SlabState → SlabState
-malloc-free-sized n addr s = malloc-free-helper n addr s (find-class n)
+malloc-free-sized n addr s with find-class n
+... | nothing = s
+... | just c with pool-start (lookup (pools s) c) ≤? addr
+...   | no _ = s
+...   | yes start-ok with addr + class-slots c * slot-size ≤? pool-end (lookup (pools s) c)
+...     | no _ = s
+...     | yes end-ok = free c addr s start-ok end-ok
+
+-- Helper: InHeap for base address of an allocation result
+result-in-heap : ∀ {n} {s : SlabState} (result : SlabAllocResult s n) → InHeap (addr result)
+result-in-heap result =
+  subst InHeap (Data.Nat.Properties.+-identityʳ (addr result))
+        (slots-in-heap result 0 (class-slots-pos (size-class result)))
+
+-- Proof: malloc-alloc returns InHeap addresses (case by case)
+malloc-alloc-in-heap : ∀ {n s addr s'} →
+                       malloc-alloc n s ≡ just (addr , s') →
+                       InHeap addr
+malloc-alloc-in-heap {zero} {s} ma-eq with alloc zero s {zero} refl
+malloc-alloc-in-heap {zero} {s} () | nothing
+malloc-alloc-in-heap {zero} {s} refl | just result = result-in-heap {zero} {s} result
+malloc-alloc-in-heap {suc zero} {s} ma-eq with alloc 1 s {zero} refl
+malloc-alloc-in-heap {suc zero} {s} () | nothing
+malloc-alloc-in-heap {suc zero} {s} refl | just result = result-in-heap {suc zero} {s} result
+malloc-alloc-in-heap {suc (suc zero)} {s} ma-eq with alloc 2 s {suc zero} refl
+malloc-alloc-in-heap {suc (suc zero)} {s} () | nothing
+malloc-alloc-in-heap {suc (suc zero)} {s} refl | just result = result-in-heap {suc (suc zero)} {s} result
+malloc-alloc-in-heap {suc (suc (suc zero))} {s} ma-eq with alloc 3 s {suc (suc zero)} refl
+malloc-alloc-in-heap {suc (suc (suc zero))} {s} () | nothing
+malloc-alloc-in-heap {suc (suc (suc zero))} {s} refl | just result = result-in-heap {suc (suc (suc zero))} {s} result
+malloc-alloc-in-heap {suc (suc (suc (suc zero)))} {s} ma-eq with alloc 4 s {suc (suc (suc zero))} refl
+malloc-alloc-in-heap {suc (suc (suc (suc zero)))} {s} () | nothing
+malloc-alloc-in-heap {suc (suc (suc (suc zero)))} {s} refl | just result = result-in-heap {suc (suc (suc (suc zero)))} {s} result
+malloc-alloc-in-heap {suc (suc (suc (suc (suc _))))} {s} ()
+
+-- Initial slab state: empty pools (no blocks available until filled)
+-- This is a minimal implementation; architecture-specific code should
+-- fill the pools with actual block addresses.
+
+-- Helper: create an empty pool for a given block size
+empty-pool : (bs : ℕ) → PoolState
+empty-pool bs = mkPoolState
+  bs                                  -- block-slots
+  (lower Regions.heap-bounds)         -- pool-start
+  (lower Regions.heap-bounds)         -- pool-end (same as start = no blocks)
+  []                                  -- free-list (empty)
+  (≤-refl , heap-bounds-ok)           -- pool-in-heap
+  (λ {addr} → empty-valid {addr})     -- free-list-valid (vacuously true)
   where
-    malloc-free-helper : ℕ → Addr → SlabState → Maybe SizeClass → SlabState
-    malloc-free-helper n addr s nothing = s
-    malloc-free-helper n addr s (just c) = free-if-valid
-      where
-        free-if-valid : SlabState
-        free-if-valid with pool-start (lookup (pools s) c) ≤? addr
-        ... | no _ = s
-        ... | yes start-ok with addr + class-slots c * slot-size ≤? pool-end (lookup (pools s) c)
-        ...   | no _ = s
-        ...   | yes end-ok = free c addr s start-ok end-ok
+    heap-bounds-ok : lower Regions.heap-bounds ≤ upper Regions.heap-bounds
+    heap-bounds-ok = RegionBounds.bounds-valid Regions.heap-bounds
+
+    -- ⊥-elim from Data.Empty
+    open import Data.Empty using (⊥-elim)
+
+    -- Membership in empty list is ⊥, so any property follows
+    empty-valid : ∀ {addr} → addr Mempool.∈-list [] →
+                  lower Regions.heap-bounds ≤ addr ×
+                  addr + bs * slot-size ≤ lower Regions.heap-bounds
+    empty-valid ()
+
+-- Initial pools vector: one empty pool per size class
+init-pools : Vec PoolState num-size-classes
+init-pools =
+  empty-pool 1 ∷       -- class 0: 1 slot
+  empty-pool 2 ∷       -- class 1: 2 slots
+  empty-pool 3 ∷       -- class 2: 3 slots
+  empty-pool 4 ∷       -- class 3: 4 slots
+  []
+
+-- Proof that init-pools has correct sizes
+init-pools-sized : ∀ (i : SizeClass) → block-slots (lookup init-pools i) ≡ class-slots i
+init-pools-sized zero = refl
+init-pools-sized (suc zero) = refl
+init-pools-sized (suc (suc zero)) = refl
+init-pools-sized (suc (suc (suc zero))) = refl
+
+-- The initial slab state
+init-slab : SlabState
+init-slab = mkSlabState init-pools init-pools-sized
 
 -- Package as Malloc interface
--- Note: free is a no-op without size info; use malloc-free-sized for real free
-postulate
-  init-slab : SlabState
-
 asMalloc : Malloc
 asMalloc = record
   { State = SlabState
   ; init = init-slab
   ; alloc = malloc-alloc
   ; free = malloc-free
-  ; alloc-in-heap = λ _ → postulate-in-heap
+  ; alloc-in-heap = λ {n} {s} {addr} {s'} eq → malloc-alloc-in-heap {n} {s} {addr} {s'} eq
   }
-  where
-    postulate postulate-in-heap : ∀ {a} → InHeap a
 
 ------------------------------------------------------------------------
 -- Summary

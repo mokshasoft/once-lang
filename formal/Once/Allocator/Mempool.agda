@@ -82,8 +82,8 @@ record PoolState : Set where
     -- Free list (addresses of available blocks)
     free-list : List Addr
 
-    -- Invariants
-    pool-in-heap : pool-start ≡ lower Regions.heap-bounds
+    -- Invariants: pool region is within heap bounds
+    pool-in-heap : lower Regions.heap-bounds ≤ pool-start
                  × pool-end ≤ upper Regions.heap-bounds
 
     -- All free-list addresses are valid pool blocks
@@ -199,7 +199,7 @@ alloc-in-heap s result = pool-addr-in-heap
     in-pool = free-list-in-pool s a (addr-was-free result)
 
     -- Pool is in heap
-    pool-heap : pool-start s ≡ lower Regions.heap-bounds
+    pool-heap : lower Regions.heap-bounds ≤ pool-start s
               × pool-end s ≤ upper Regions.heap-bounds
     pool-heap = pool-in-heap s
 
@@ -208,7 +208,7 @@ alloc-in-heap s result = pool-addr-in-heap
     pool-addr-in-heap = lower≤a , a≤upper
       where
         lower≤a : lower Regions.heap-bounds ≤ a
-        lower≤a = subst (_≤ a) (proj₁ pool-heap) (proj₁ in-pool)
+        lower≤a = ≤-trans (proj₁ pool-heap) (proj₁ in-pool)
 
         a≤upper : a ≤ upper Regions.heap-bounds
         a≤upper = ≤-trans (m≤m+n a (block-slots s * slot-size))
@@ -243,7 +243,7 @@ block-slot-in-heap s result i i<block-slots = slot-in-heap
     slot-in-heap = lower≤slot , slot≤upper
       where
         lower≤slot : lower Regions.heap-bounds ≤ a + i * slot-size
-        lower≤slot = ≤-trans (subst (_≤ a) (proj₁ pool-heap) (proj₁ in-pool))
+        lower≤slot = ≤-trans (≤-trans (proj₁ pool-heap) (proj₁ in-pool))
                              (m≤m+n a (i * slot-size))
 
         slot≤upper : a + i * slot-size ≤ upper Regions.heap-bounds
