@@ -30,6 +30,7 @@ open import Data.Nat.Properties
          +-monoʳ-≤; *-monoˡ-≤; m≤n⇒m≤o+n; ≤-reflexive)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax; Σ-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; _≢_; refl; sym; trans; cong; subst)
@@ -265,6 +266,54 @@ module DerivedSemantics where
       eq = trans (cong (addr +_) suc-mul) (sym (+-assoc addr (i * slot-size) slot-size))
 
 ------------------------------------------------------------------------
+-- Malloc Interface Implementation
+--
+-- Provides the standard malloc-like interface.
+-- free is a no-op (bump allocator doesn't support individual free).
+------------------------------------------------------------------------
+
+open import Once.Allocator.Malloc layout as M using (Malloc)
+
+-- Malloc-compatible alloc: returns Maybe instead of requiring proof
+malloc-alloc : ℕ → AllocatorState → Data.Maybe.Maybe (Addr × AllocatorState)
+malloc-alloc n s with heap-ptr s + (n * slot-size) ≤? heap-end s
+... | yes fits = just (heap-ptr s , new-state (alloc n s fits))
+... | no _ = nothing
+
+-- free is a no-op for bump allocator
+malloc-free : Addr → AllocatorState → AllocatorState
+malloc-free _ s = s
+
+-- The heap-ptr is always InHeap (from state invariants)
+heap-ptr-in-heap : (s : AllocatorState) → InHeap (heap-ptr s)
+heap-ptr-in-heap s = lower≤ptr , ptr≤upper
+  where
+    lower≤ptr : lower Regions.heap-bounds ≤ heap-ptr s
+    lower≤ptr = subst (_≤ heap-ptr s) (start-valid s) (proj₁ (ptr-in-range s))
+
+    ptr≤upper : heap-ptr s ≤ upper Regions.heap-bounds
+    ptr≤upper = subst (heap-ptr s ≤_) (end-valid s) (proj₂ (ptr-in-range s))
+
+-- Proof: malloc-alloc returns InHeap addresses
+-- The key insight: if malloc-alloc succeeds, it returns heap-ptr s, which is InHeap
+malloc-alloc-in-heap : ∀ {n s addr s'} →
+                       malloc-alloc n s ≡ just (addr , s') →
+                       InHeap addr
+malloc-alloc-in-heap {n} {s} {addr} {s'} eq with heap-ptr s + (n * slot-size) ≤? heap-end s
+malloc-alloc-in-heap {n} {s} refl | yes _ = heap-ptr-in-heap s
+malloc-alloc-in-heap {n} {s} () | no _
+
+-- Package as Malloc interface
+asMalloc : Malloc
+asMalloc = record
+  { State = AllocatorState
+  ; init = init-allocator
+  ; alloc = malloc-alloc
+  ; free = malloc-free
+  ; alloc-in-heap = malloc-alloc-in-heap
+  }
+
+------------------------------------------------------------------------
 -- Summary
 --
 -- This module provides a CONCRETE bump allocator where:
@@ -276,6 +325,7 @@ module DerivedSemantics where
 --
 -- No postulates! All properties derived from implementation.
 --
+-- asMalloc provides the standard Malloc interface.
 -- The DerivedSemantics module provides the legacy interface for
 -- backward compatibility with existing proofs.
 ------------------------------------------------------------------------
