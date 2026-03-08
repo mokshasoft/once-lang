@@ -299,35 +299,33 @@ open import Once.Optimizer.CostProof using (safe-distrib-inl-cost; safe-distrib-
 -- optimizer's with-patterns (per lessons-learned.md).
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- Distribution target predicate
+--
+-- The optimizer only distributes pairs over these 5 h constructors.
+-- By requiring this predicate, we make non-distribution cases impossible.
+------------------------------------------------------------------------
+
+data IsDistributionTarget : ∀ {A B} → IR A B → Set where
+  is-pair   : ∀ {A B C m} (h₁ : IR A B) (h₂ : IR A C) → IsDistributionTarget (⟨ h₁ , h₂ ⟩ m)
+  is-inl    : ∀ {A B m} → IsDistributionTarget (inl {A} {B} m)
+  is-inr    : ∀ {A B m} → IsDistributionTarget (inr {A} {B} m)
+  is-unfold : ∀ {F} → IsDistributionTarget (unfold {F})
+  is-fold   : ∀ {F} → IsDistributionTarget (fold {F})
+
 -- Pair distribution cost bound
 -- When safe-pair-distrib f g = true, distribution maintains cost bound.
--- Proven by dispatching to specialized lemmas from CostProof for each h case.
--- For non-distribution cases (where optimize-compose-steps returns 'done'),
--- we prove the bound by case analysis on f and g.
-
+-- The IsDistributionTarget predicate ensures h is one of the 5 distribution cases.
 safe-distrib-cost : ∀ {A B C D} (f : IR C A) (g : IR C B) (h : IR D C) (m : AllocMode) →
+  IsDistributionTarget h →
   safe-pair-distrib f g ≡ true →
   suc (cost (optimize-compose f h) ℕ+ cost (optimize-compose g h)) ≤
   suc (cost f ℕ+ cost g) ℕ+ cost h
--- Distribution cases: these h values are where the optimizer actually distributes.
--- The proofs use lemmas from CostProof that handle the terminal and eta cases.
-safe-distrib-cost f g (⟨ h₁ , h₂ ⟩ m') m eq = safe-distrib-pair-cost f g h₁ h₂ m m' eq
-safe-distrib-cost f g (inl m') m eq = safe-distrib-inl-cost f g m m' eq
-safe-distrib-cost f g (inr m') m eq = safe-distrib-inr-cost f g m m' eq
-safe-distrib-cost f g unfold m eq = safe-distrib-unfold-cost f g m eq
-safe-distrib-cost f g fold m eq = safe-distrib-fold-cost f g m eq
--- Non-distribution cases: the optimizer returns 'done' for these h values,
--- so optimize-compose-steps never calls safe-distrib-cost with these h.
--- We postulate the bound for these operationally unreachable cases.
--- The postulate is sound because:
--- 1. Terminal cases: opt-terminal-cost ensures cost 0 for one component
--- 2. Eta cases: fst/snd have cost 0, bound follows from optimize-compose-cost-≤
--- 3. Other f,g combinations: safe-pair-distrib = false, so eq is impossible
-safe-distrib-cost f g h m eq = non-distrib-bound f g h m eq
-  where postulate non-distrib-bound : ∀ {A B C D} (f : IR C A) (g : IR C B) (h : IR D C) (m : AllocMode) →
-                    safe-pair-distrib f g ≡ true →
-                    suc (cost (optimize-compose f h) ℕ+ cost (optimize-compose g h)) ≤
-                    suc (cost f ℕ+ cost g) ℕ+ cost h
+safe-distrib-cost f g .(⟨ h₁ , h₂ ⟩ _) m (is-pair h₁ h₂) eq = safe-distrib-pair-cost f g h₁ h₂ m _ eq
+safe-distrib-cost f g .(inl _) m is-inl eq = safe-distrib-inl-cost f g m _ eq
+safe-distrib-cost f g .(inr _) m is-inr eq = safe-distrib-inr-cost f g m _ eq
+safe-distrib-cost f g .unfold m is-unfold eq = safe-distrib-unfold-cost f g m eq
+safe-distrib-cost f g .fold m is-fold eq = safe-distrib-fold-cost f g m eq
 
 -- Forward declaration
 optimize-compose-steps : ∀ {A B C} (g : IR B C) (f : IR A B) →
@@ -417,34 +415,35 @@ optimize-compose-steps initial f = done
 
 -- Pair distribution cases: use explicit helper that takes the Bool and equality proof
 -- to ensure the goal type reduces when pattern matching.
+-- The IsDistributionTarget proof ensures only valid h cases reach safe-distrib-cost.
 optimize-compose-steps (⟨ f , g ⟩ m) (⟨ h₁ , h₂ ⟩ m') with safe-pair-distrib f g in eq
 ... | true  = pair-distrib (optimize-compose-steps f (⟨ h₁ , h₂ ⟩ m'))
                            (optimize-compose-steps g (⟨ h₁ , h₂ ⟩ m'))
-                           (safe-distrib-cost f g (⟨ h₁ , h₂ ⟩ m') m eq)
+                           (safe-distrib-cost f g (⟨ h₁ , h₂ ⟩ m') m (is-pair h₁ h₂) eq)
 ... | false = done
 
 optimize-compose-steps (⟨ f , g ⟩ m) (inl m') with safe-pair-distrib f g in eq
 ... | true  = pair-distrib (optimize-compose-steps f (inl m'))
                            (optimize-compose-steps g (inl m'))
-                           (safe-distrib-cost f g (inl m') m eq)
+                           (safe-distrib-cost f g (inl m') m is-inl eq)
 ... | false = done
 
 optimize-compose-steps (⟨ f , g ⟩ m) (inr m') with safe-pair-distrib f g in eq
 ... | true  = pair-distrib (optimize-compose-steps f (inr m'))
                            (optimize-compose-steps g (inr m'))
-                           (safe-distrib-cost f g (inr m') m eq)
+                           (safe-distrib-cost f g (inr m') m is-inr eq)
 ... | false = done
 
 optimize-compose-steps (⟨ f , g ⟩ m) unfold with safe-pair-distrib f g in eq
 ... | true  = pair-distrib (optimize-compose-steps f unfold)
                            (optimize-compose-steps g unfold)
-                           (safe-distrib-cost f g unfold m eq)
+                           (safe-distrib-cost f g unfold m is-unfold eq)
 ... | false = done
 
 optimize-compose-steps (⟨ f , g ⟩ m) fold with safe-pair-distrib f g in eq
 ... | true  = pair-distrib (optimize-compose-steps f fold)
                            (optimize-compose-steps g fold)
-                           (safe-distrib-cost f g fold m eq)
+                           (safe-distrib-cost f g fold m is-fold eq)
 ... | false = done
 
 -- Default pair cases (no distribution possible)
