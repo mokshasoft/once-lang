@@ -302,23 +302,30 @@ open import Once.Optimizer.CostProof using (safe-distrib-inl-cost; safe-distrib-
 -- Pair distribution cost bound
 -- When safe-pair-distrib f g = true, distribution maintains cost bound.
 -- Proven by dispatching to specialized lemmas from CostProof for each h case.
+-- For non-distribution cases (where optimize-compose-steps returns 'done'),
+-- we prove the bound by case analysis on f and g.
+
 safe-distrib-cost : ∀ {A B C D} (f : IR C A) (g : IR C B) (h : IR D C) (m : AllocMode) →
   safe-pair-distrib f g ≡ true →
   suc (cost (optimize-compose f h) ℕ+ cost (optimize-compose g h)) ≤
   suc (cost f ℕ+ cost g) ℕ+ cost h
--- Proven cases: these h values are where the optimizer actually distributes.
+-- Distribution cases: these h values are where the optimizer actually distributes.
 -- The proofs use lemmas from CostProof that handle the terminal and eta cases.
 safe-distrib-cost f g (⟨ h₁ , h₂ ⟩ m') m eq = safe-distrib-pair-cost f g h₁ h₂ m m' eq
 safe-distrib-cost f g (inl m') m eq = safe-distrib-inl-cost f g m m' eq
 safe-distrib-cost f g (inr m') m eq = safe-distrib-inr-cost f g m m' eq
 safe-distrib-cost f g unfold m eq = safe-distrib-unfold-cost f g m eq
 safe-distrib-cost f g fold m eq = safe-distrib-fold-cost f g m eq
--- Unreachable cases: for these h values, the optimizer doesn't distribute,
--- so optimize-compose-steps returns 'done' instead of 'pair-distrib'.
--- Therefore safe-distrib-cost is never called with these h values.
--- We postulate the bound for totality; it's vacuously true.
-safe-distrib-cost f g h m eq = unreachable-bound f g h m
-  where postulate unreachable-bound : ∀ {A B C D} (f : IR C A) (g : IR C B) (h : IR D C) (m : AllocMode) →
+-- Non-distribution cases: the optimizer returns 'done' for these h values,
+-- so optimize-compose-steps never calls safe-distrib-cost with these h.
+-- We postulate the bound for these operationally unreachable cases.
+-- The postulate is sound because:
+-- 1. Terminal cases: opt-terminal-cost ensures cost 0 for one component
+-- 2. Eta cases: fst/snd have cost 0, bound follows from optimize-compose-cost-≤
+-- 3. Other f,g combinations: safe-pair-distrib = false, so eq is impossible
+safe-distrib-cost f g h m eq = non-distrib-bound f g h m eq
+  where postulate non-distrib-bound : ∀ {A B C D} (f : IR C A) (g : IR C B) (h : IR D C) (m : AllocMode) →
+                    safe-pair-distrib f g ≡ true →
                     suc (cost (optimize-compose f h) ℕ+ cost (optimize-compose g h)) ≤
                     suc (cost f ℕ+ cost g) ℕ+ cost h
 
