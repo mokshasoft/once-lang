@@ -46,6 +46,28 @@ open import Once.CCC.Regions layout as Regions using (heap-bounds)
 open import Once.Allocator.Mempool layout as Mempool
   using (PoolState; mkPoolState; pool-start; pool-end; block-slots;
          free-list; pool-in-heap; free-list-valid)
+  renaming (slot-size to mempool-slot-size)
+
+------------------------------------------------------------------------
+-- Vector updateAt lemmas
+------------------------------------------------------------------------
+
+-- lookup at updated index returns the updated value
+lookup-updateAt-same : ∀ {A : Set} {n : ℕ} (xs : Vec A n) (i : Fin n) (f : A → A) →
+                       lookup (updateAt xs i f) i ≡ f (lookup xs i)
+lookup-updateAt-same (x ∷ xs) zero f = refl
+lookup-updateAt-same (x ∷ xs) (suc i) f = lookup-updateAt-same xs i f
+
+-- lookup at different index is unchanged
+lookup-updateAt-diff : ∀ {A : Set} {n : ℕ} (xs : Vec A n) (i j : Fin n) (f : A → A) →
+                       i ≢ j →
+                       lookup (updateAt xs j f) i ≡ lookup xs i
+lookup-updateAt-diff (x ∷ xs) zero zero f i≢j = ⊥-elim (i≢j refl)
+  where open import Data.Empty using (⊥-elim)
+lookup-updateAt-diff (x ∷ xs) zero (suc j) f i≢j = refl
+lookup-updateAt-diff (x ∷ xs) (suc i) zero f i≢j = refl
+lookup-updateAt-diff (x ∷ xs) (suc i) (suc j) f i≢j =
+  lookup-updateAt-diff xs i j f (λ eq → i≢j (cong suc eq))
 
 ------------------------------------------------------------------------
 -- Configuration
@@ -126,8 +148,8 @@ record SlabAllocResult (s : SlabState) (n : ℕ) : Set where
     -- We got at least n slots
     enough-slots : n ≤ class-slots size-class
 
-    -- The address is in heap
-    addr-in-heap : InHeap addr
+    -- All slots of the block are in heap
+    slots-in-heap : ∀ i → i < class-slots size-class → InHeap (addr + i * slot-size)
 
 open SlabAllocResult public
 
@@ -143,25 +165,41 @@ alloc n s {c} fc≡c with Mempool.alloc (lookup (pools s) c)
     s'
     c
     (class-has-slots n c fc≡c)
-    (addr-in-heap-proof result))
+    slots-in-heap-proof)
   where
+    old-pool = lookup (pools s) c
     new-pool = Mempool.AllocResult.new-state result
 
     -- Update the pool in the vector
     new-pools : Vec PoolState num-size-classes
     new-pools = updateAt (pools s) c (λ _ → new-pool)
 
+    -- Mempool.alloc preserves block-slots
+    new-pool-block-slots : block-slots new-pool ≡ block-slots old-pool
+    new-pool-block-slots = Mempool.AllocResult.block-slots-preserved result
+
     -- All pools still have correct sizes
-    -- (updateAt preserves other indices; at c, block-slots is unchanged by alloc)
-    postulate
-      new-pools-sized : ∀ (i : SizeClass) → block-slots (lookup new-pools i) ≡ class-slots i
+    new-pools-sized : ∀ (i : SizeClass) → block-slots (lookup new-pools i) ≡ class-slots i
+    new-pools-sized i with i ≟ c
+    ... | yes refl = trans (cong block-slots (lookup-updateAt-same (pools s) c (λ _ → new-pool)))
+                           (trans new-pool-block-slots (pools-sized s c))
+    ... | no i≢c = trans (cong block-slots (lookup-updateAt-diff (pools s) i c (λ _ → new-pool) i≢c))
+                         (pools-sized s i)
 
     s' : SlabState
     s' = mkSlabState new-pools new-pools-sized
 
-    -- Address is in heap (from Mempool proof)
-    addr-in-heap-proof : (r : Mempool.AllocResult (lookup (pools s) c)) → InHeap (Mempool.AllocResult.addr r)
-    addr-in-heap-proof r = Mempool.alloc-in-heap (lookup (pools s) c) r
+    -- block-slots of old-pool equals class-slots c
+    pool-sized : block-slots old-pool ≡ class-slots c
+    pool-sized = pools-sized s c
+
+    -- Convert i < class-slots c to i < block-slots old-pool
+    class-to-pool : ∀ i → i < class-slots c → i < block-slots old-pool
+    class-to-pool i i<class = subst (i <_) (sym pool-sized) i<class
+
+    -- All slots are in heap (from Mempool proof)
+    slots-in-heap-proof : ∀ i → i < class-slots c → InHeap (Mempool.AllocResult.addr result + i * slot-size)
+    slots-in-heap-proof i i<class = Mempool.block-slot-in-heap old-pool result i (class-to-pool i i<class)
 
 ------------------------------------------------------------------------
 -- Deallocation (Free)
@@ -188,39 +226,33 @@ free c addr s start-ok end-ok = mkSlabState new-pools new-pools-sized
     freed-pool : PoolState
     freed-pool = Mempool.free addr pool start-ok end-ok'
 
+    -- Mempool.free preserves block-slots
+    freed-pool-block-slots : block-slots freed-pool ≡ block-slots pool
+    freed-pool-block-slots = refl
+
     new-pools : Vec PoolState num-size-classes
     new-pools = updateAt (pools s) c (λ _ → freed-pool)
 
     -- All pools still have correct sizes
-    -- (updateAt preserves other indices; at c, block-slots is unchanged by free)
-    postulate
-      new-pools-sized : ∀ (i : SizeClass) → block-slots (lookup new-pools i) ≡ class-slots i
+    new-pools-sized : ∀ (i : SizeClass) → block-slots (lookup new-pools i) ≡ class-slots i
+    new-pools-sized i with i ≟ c
+    ... | yes refl = trans (cong block-slots (lookup-updateAt-same (pools s) c (λ _ → freed-pool)))
+                           (trans freed-pool-block-slots (pools-sized s c))
+    ... | no i≢c = trans (cong block-slots (lookup-updateAt-diff (pools s) i c (λ _ → freed-pool) i≢c))
+                         (pools-sized s i)
 
 ------------------------------------------------------------------------
 -- PROVEN PROPERTY: Block slots are in heap
 ------------------------------------------------------------------------
 
 -- All slots of an allocated block are in heap
+-- (This is now trivial since SlabAllocResult stores the proof directly)
 block-slot-in-heap : (s : SlabState) (n : ℕ) (c : SizeClass)
                      (fc≡c : find-class n ≡ just c)
                      (result : SlabAllocResult s n)
                      (i : ℕ) → i < class-slots (size-class result) →
                      InHeap (addr result + i * slot-size)
-block-slot-in-heap s n c fc≡c result i i<class =
-  -- This follows from Mempool.block-slot-in-heap
-  -- The allocated address came from a mempool, so all its slots are in heap
-  pool-slot-in-heap
-  where
-    -- The pool for this size class
-    pool = lookup (pools s) (size-class result)
-
-    -- We need the original alloc result from the pool
-    -- For now, we use the fact that addr-in-heap implies all slots are in heap
-    -- when the block is properly aligned and sized
-
-    -- Simplified: derive from addr-in-heap and pool bounds
-    postulate
-      pool-slot-in-heap : InHeap (addr result + i * slot-size)
+block-slot-in-heap s n c fc≡c result i i<class = slots-in-heap result i i<class
 
 ------------------------------------------------------------------------
 -- Summary
