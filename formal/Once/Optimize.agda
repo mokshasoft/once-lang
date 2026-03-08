@@ -512,6 +512,13 @@ optimize-compose [ f , g ] (inr _) = g
 
 -- apply ∘ ⟨ curry f , g ⟩ = f ∘ ⟨ id , g ⟩
 -- Eliminates closure allocation when immediately applied
+--
+-- Special case: if f is a composition (h ∘ k), we right-associate
+-- to avoid left-nested output like (h ∘ k) ∘ ⟨ id , g ⟩
+-- which would not be normal (matches red-assoc).
+-- Instead produce h ∘ (k ∘ ⟨ id , g ⟩) which is right-associated.
+optimize-compose apply (⟨ curry (h ∘ k) _ , g ⟩ _) = h ∘ (k ∘ ⟨ id , g ⟩ Heap)
+-- Non-composition case: f is not (h ∘ k), so f ∘ ⟨ id , g ⟩ is normal
 optimize-compose apply (⟨ curry f _ , g ⟩ _) = f ∘ ⟨ id , g ⟩ Heap
 
 ------------------------------------------------------------------------
