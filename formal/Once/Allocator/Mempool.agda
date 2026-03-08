@@ -51,6 +51,18 @@ slot-size : ℕ
 slot-size = 8
 
 ------------------------------------------------------------------------
+-- List Membership
+------------------------------------------------------------------------
+
+open import Data.Empty using (⊥)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+
+-- Address is in a list
+_∈-list_ : Addr → List Addr → Set
+a ∈-list [] = ⊥
+a ∈-list (x ∷ xs) = (a ≡ x) ⊎ (a ∈-list xs)
+
+------------------------------------------------------------------------
 -- Pool State
 --
 -- A mempool is a contiguous region divided into fixed-size blocks.
@@ -77,13 +89,6 @@ record PoolState : Set where
     -- All free-list addresses are valid pool blocks
     free-list-valid : ∀ {addr} → addr ∈-list free-list →
                       pool-start ≤ addr × addr + block-slots * slot-size ≤ pool-end
-
-  -- Helper: address is in free list
-  _∈-list_ : Addr → List Addr → Set
-  a ∈-list [] = ⊥
-    where open import Data.Empty using (⊥)
-  a ∈-list (x ∷ xs) = (a ≡ x) ⊎ (a ∈-list xs)
-    where open import Data.Sum using (_⊎_)
 
 open PoolState public
 
@@ -116,18 +121,30 @@ record AllocResult (s : PoolState) : Set where
 
 open AllocResult public
 
+-- Helper: tail of free list has valid elements
+tail-valid : (s : PoolState) (addr : Addr) (rest : List Addr) →
+             free-list s ≡ addr ∷ rest →
+             ∀ {a} → a ∈-list rest →
+             pool-start s ≤ a × a + block-slots s * slot-size ≤ pool-end s
+tail-valid s addr rest eq a∈rest =
+  free-list-valid s (subst (λ l → _ ∈-list l) (sym eq) (inj₂ a∈rest))
+
 -- Allocate a block (if available)
 alloc : (s : PoolState) → Maybe (AllocResult s)
-alloc s with free-list s
+alloc s with free-list s in eq
 ... | [] = nothing
-... | addr ∷ rest = just (mkAllocResult addr s' addr-was-head)
+... | addr ∷ rest = just (mkAllocResult addr s' addr-in-list)
   where
-    s' : PoolState
-    s' = record s { free-list = rest }
+    rest-valid : ∀ {a} → a ∈-list rest →
+                 pool-start s ≤ a × a + block-slots s * slot-size ≤ pool-end s
+    rest-valid = tail-valid s addr rest eq
 
-    addr-was-head : addr ∈-list (addr ∷ rest)
-    addr-was-head = inj₁ refl
-      where open import Data.Sum using (inj₁)
+    s' : PoolState
+    s' = record s { free-list = rest ; free-list-valid = rest-valid }
+
+    -- addr is in (addr ∷ rest) which equals free-list s
+    addr-in-list : addr ∈-list free-list s
+    addr-in-list = subst (addr ∈-list_) (sym eq) (inj₁ refl)
 
 ------------------------------------------------------------------------
 -- Deallocation (Free)
@@ -146,8 +163,6 @@ free addr s start≤addr end-ok = record s
   ; free-list-valid = new-valid
   }
   where
-    open import Data.Sum using (_⊎_; inj₁; inj₂)
-
     -- Decide membership: either a ≡ addr or a is in the old list
     ∈-list-case : ∀ {a} → a ∈-list (addr ∷ free-list s) →
                   (a ≡ addr) ⊎ (a ∈-list free-list s)
