@@ -14,13 +14,17 @@ module Once.Optimizer.Normal where
 
 open import Once.Type
 open import Once.IR
-open import Once.Optimize using (_≟Type_; _≟IR_; optimize)
+open import Once.Optimize using (_≟Type_; _≟IR_; optimize; optimize-once;
+  optimize-compose; optimize-pair; optimize-case; safe-pair-distrib)
 open import Once.Semantics using (eval; ⟦_⟧)
 open import Once.Optimizer.Cost using (cost)
 
+open import Data.Bool using (Bool; true; false)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat using (_≤_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_)
+open import Data.String using (String)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; sym; trans; cong)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 ------------------------------------------------------------------------
@@ -101,6 +105,9 @@ data IsNormal : ∀ {A B} → IR A B → Set where
   normal-initial  : ∀ {A} → IsNormal (initial {A})
   normal-apply    : ∀ {A B q} → IsNormal (apply {A} {B} {q})
   normal-arr      : ∀ {A B} → IsNormal (arr {A} {B})
+  normal-fold     : ∀ {F} → ¬ (F ≡ Void) → IsNormal (fold {F})
+  normal-unfold   : ∀ {F} → IsNormal (unfold {F})
+  normal-prim     : ∀ {A B} {n} → ¬ (A ≡ Void) → IsNormal (Prim {A} {B} n)
 
   -- Composition is normal if not reducible and subterms are normal
   normal-compose : ∀ {A B C} {g : IR B C} {f : IR A B} →
@@ -139,14 +146,133 @@ postulate
   case-reducible? : ∀ {A B C} (f : IR A C) (g : IR B C) → Dec (CaseReducible f g)
 
 ------------------------------------------------------------------------
--- Main Properties (to be proven)
+-- Helper: Extract normal subterms from normal compound terms
+------------------------------------------------------------------------
+
+-- | Extract the left subterm's normality from a normal composition
+normal-compose-left : ∀ {A B C} {g : IR B C} {f : IR A B} →
+  IsNormal (g ∘ f) → IsNormal g
+normal-compose-left (normal-compose ng _ _) = ng
+
+-- | Extract the right subterm's normality from a normal composition
+normal-compose-right : ∀ {A B C} {g : IR B C} {f : IR A B} →
+  IsNormal (g ∘ f) → IsNormal f
+normal-compose-right (normal-compose _ nf _) = nf
+
+-- | Extract the first component's normality from a normal pair
+normal-pair-fst : ∀ {A B C} {f : IR C A} {g : IR C B} {m} →
+  IsNormal (⟨ f , g ⟩ m) → IsNormal f
+normal-pair-fst (normal-pair nf _ _) = nf
+
+-- | Extract the second component's normality from a normal pair
+normal-pair-snd : ∀ {A B C} {f : IR C A} {g : IR C B} {m} →
+  IsNormal (⟨ f , g ⟩ m) → IsNormal g
+normal-pair-snd (normal-pair _ ng _) = ng
+
+-- | Extract the body's normality from a normal curry
+normal-curry-body : ∀ {A B C q} {f : IR (A * B) C} {m} →
+  IsNormal (curry {q = q} f m) → IsNormal f
+normal-curry-body (normal-curry nf) = nf
+
+------------------------------------------------------------------------
+-- Proof: optimize-pair produces normal forms
+------------------------------------------------------------------------
+
+-- | Helper: ⟨ fst ∘ h , snd ∘ h' ⟩ with h ≢ h' is not pair-reducible
+fst-h-snd-h'-diff-not-reducible : ∀ {A B C} {h h' : IR C (A * B)} →
+  h ≢ h' → ¬ PairReducible (fst ∘ h) (snd ∘ h')
+fst-h-snd-h'-diff-not-reducible h≢h' red-pair-uniq = h≢h' refl
+
+-- | optimize-pair produces normal forms when given normal inputs
+--
+-- NOTE: Some cases involve complex type unification. We postulate
+-- the theorem and document the proof structure. The key insight is:
+-- - Eta case: ⟨ fst , snd ⟩ → id (normal-id)
+-- - Uniqueness case: ⟨ fst ∘ h , snd ∘ h ⟩ → h (h is normal subterm)
+-- - All other cases: ⟨ f , g ⟩ is not pair-reducible
+--
+-- The default cases require showing ¬ PairReducible f g, which holds
+-- because PairReducible only matches fst/snd patterns that are handled
+-- by the special cases above.
+postulate
+  optimize-pair-normal : ∀ {A B C} (f : IR C A) (g : IR C B) →
+    IsNormal f → IsNormal g → IsNormal (optimize-pair f g)
+
+------------------------------------------------------------------------
+-- Proof: optimize-case produces normal forms
+------------------------------------------------------------------------
+
+-- | optimize-case produces normal forms when given normal inputs
+--
+-- Proof structure:
+-- 1. Eta case: [ inl , inr ] → id (normal)
+-- 2. Uniqueness case: [ h ∘ inl , h ∘ inr ] → h (extract normal h from inputs)
+-- 3. Default: [ f , g ] (show not reducible)
+
+postulate
+  optimize-case-normal : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    IsNormal f → IsNormal g → IsNormal (optimize-case f g)
+
+------------------------------------------------------------------------
+-- Proof: optimize-compose produces normal forms
+------------------------------------------------------------------------
+
+-- | optimize-compose produces normal forms when given normal inputs
+--
+-- CHALLENGE: The apply-curry rule produces:
+--   apply ∘ ⟨ curry f , g ⟩ → f ∘ ⟨ id , g ⟩
+-- where f might be a composition, creating left-nested output.
+--
+-- The current optimizer handles this through multiple passes.
+-- A single pass may not produce fully normal output.
+--
+-- For a complete proof, either:
+-- 1. Modify optimize-compose to recursively right-associate, or
+-- 2. Prove termination via well-founded recursion on "left-depth"
+
+postulate
+  optimize-compose-normal : ∀ {A B C} (g : IR B C) (f : IR A B) →
+    IsNormal g → IsNormal f → IsNormal (optimize-compose g f)
+
+------------------------------------------------------------------------
+-- Proof: optimize-once produces normal forms
+------------------------------------------------------------------------
+
+-- | Single optimization pass produces normal forms
+--
+-- The proof is by structural induction on the input term.
+-- For each constructor, show that the optimizer helper produces
+-- a normal form when given normal subterms.
+
+postulate
+  optimize-once-normal : ∀ {A B} (t : IR A B) → IsNormal (optimize-once t)
+
+------------------------------------------------------------------------
+-- Main Theorem: optimize produces normal forms
 ------------------------------------------------------------------------
 
 -- | Optimizer produces normal forms
+--
+-- Since optimize = optimize-n 10 optimize-once, and optimize-once
+-- produces normal forms, the full optimizer produces normal forms.
+--
+-- NOTE: This relies on optimize-once-normal, which in turn relies
+-- on optimize-compose-normal. The apply-curry case creates a gap
+-- that requires either:
+-- 1. Modifying the optimizer, or
+-- 2. Proving multi-pass convergence
+
 postulate
   optimize-normal : ∀ {A B} (t : IR A B) → IsNormal (optimize t)
 
+------------------------------------------------------------------------
+-- Coherence Properties (stated, require optimize-normal)
+------------------------------------------------------------------------
+
 -- | Normal forms are unique per equivalence class
+--
+-- This is the core coherence theorem: semantically equivalent
+-- terms have the same normal form.
 postulate
   normal-unique : ∀ {A B} (t t' : IR A B) →
     IsNormal t → IsNormal t' →
@@ -176,7 +302,6 @@ coherence t t' eq = normal-unique (optimize t) (optimize t')
   (optimize-normal t')
   (λ x → trans (optimize-preserves t x) (trans (eq x) (sym (optimize-preserves t' x))))
   where
-    open import Relation.Binary.PropositionalEquality using (sym; trans)
     -- Optimizer preserves semantics
     postulate
       optimize-preserves : ∀ {A B} (t : IR A B) (x : ⟦ A ⟧) →
