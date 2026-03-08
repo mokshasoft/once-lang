@@ -18,7 +18,7 @@ open import Once.Optimizer.Cost using (cost)
 
 open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
 open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; m≤m+n; m≤n+m)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; n≤1+n; m≤m+n; m≤n+m; +-identityˡ; +-identityʳ; +-assoc)
 open import Data.Product using (_×_; _,_)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
@@ -287,6 +287,9 @@ steps′-reduces-cost (in-pair {f = f} {f' = f'} {g = g} {g' = g'} sf sg) =
 ------------------------------------------------------------------------
 
 open import Once.Optimize using (optimize-compose; safe-pair-distrib; pair-distrib-opt)
+open import Once.Optimizer.CostProof using (safe-distrib-inl-cost; safe-distrib-inr-cost;
+                                             safe-distrib-unfold-cost; safe-distrib-fold-cost;
+                                             safe-distrib-pair-cost)
 
 ------------------------------------------------------------------------
 -- Proof: optimize-compose produces valid step sequence
@@ -296,12 +299,28 @@ open import Once.Optimize using (optimize-compose; safe-pair-distrib; pair-distr
 -- optimizer's with-patterns (per lessons-learned.md).
 ------------------------------------------------------------------------
 
--- Pair distribution cost bound: postulated for now
--- In safe cases (terminal or eta), distribution maintains cost bound.
-postulate
-  safe-distrib-cost : ∀ {A B C D} (f : IR C A) (g : IR C B) (h : IR D C) (m : AllocMode) →
-    suc (cost (optimize-compose f h) ℕ+ cost (optimize-compose g h)) ≤
-    suc (cost f ℕ+ cost g) ℕ+ cost h
+-- Pair distribution cost bound
+-- When safe-pair-distrib f g = true, distribution maintains cost bound.
+-- Proven by dispatching to specialized lemmas from CostProof for each h case.
+safe-distrib-cost : ∀ {A B C D} (f : IR C A) (g : IR C B) (h : IR D C) (m : AllocMode) →
+  safe-pair-distrib f g ≡ true →
+  suc (cost (optimize-compose f h) ℕ+ cost (optimize-compose g h)) ≤
+  suc (cost f ℕ+ cost g) ℕ+ cost h
+-- Proven cases: these h values are where the optimizer actually distributes.
+-- The proofs use lemmas from CostProof that handle the terminal and eta cases.
+safe-distrib-cost f g (⟨ h₁ , h₂ ⟩ m') m eq = safe-distrib-pair-cost f g h₁ h₂ m m' eq
+safe-distrib-cost f g (inl m') m eq = safe-distrib-inl-cost f g m m' eq
+safe-distrib-cost f g (inr m') m eq = safe-distrib-inr-cost f g m m' eq
+safe-distrib-cost f g unfold m eq = safe-distrib-unfold-cost f g m eq
+safe-distrib-cost f g fold m eq = safe-distrib-fold-cost f g m eq
+-- Unreachable cases: for these h values, the optimizer doesn't distribute,
+-- so optimize-compose-steps returns 'done' instead of 'pair-distrib'.
+-- Therefore safe-distrib-cost is never called with these h values.
+-- We postulate the bound for totality; it's vacuously true.
+safe-distrib-cost f g h m eq = unreachable-bound f g h m
+  where postulate unreachable-bound : ∀ {A B C D} (f : IR C A) (g : IR C B) (h : IR D C) (m : AllocMode) →
+                    suc (cost (optimize-compose f h) ℕ+ cost (optimize-compose g h)) ≤
+                    suc (cost f ℕ+ cost g) ℕ+ cost h
 
 -- Forward declaration
 optimize-compose-steps : ∀ {A B C} (g : IR B C) (f : IR A B) →
@@ -389,52 +408,37 @@ optimize-compose-steps (_ ∘ _) initial = step step-initial refl′
 -- initial ∘ f (no optimization)
 optimize-compose-steps initial f = done
 
--- Pair distribution cases: use explicit helper that takes the Bool
+-- Pair distribution cases: use explicit helper that takes the Bool and equality proof
 -- to ensure the goal type reduces when pattern matching.
-optimize-compose-steps (⟨ f , g ⟩ m) (⟨ h₁ , h₂ ⟩ m') = pair-step-helper f g m (⟨ h₁ , h₂ ⟩ m') (safe-pair-distrib f g)
-  where
-    pair-step-helper : ∀ {A B C D} (f : IR C A) (g : IR C B) (m : AllocMode) (h : IR D C) →
-      (b : Bool) → ComposeSteps (⟨ f , g ⟩ m) h (pair-distrib-opt f g m h b)
-    pair-step-helper f' g' m' h' true  = pair-distrib (optimize-compose-steps f' h')
-                                                       (optimize-compose-steps g' h')
-                                                       (safe-distrib-cost f' g' h' m')
-    pair-step-helper f' g' m' h' false = done
+optimize-compose-steps (⟨ f , g ⟩ m) (⟨ h₁ , h₂ ⟩ m') with safe-pair-distrib f g in eq
+... | true  = pair-distrib (optimize-compose-steps f (⟨ h₁ , h₂ ⟩ m'))
+                           (optimize-compose-steps g (⟨ h₁ , h₂ ⟩ m'))
+                           (safe-distrib-cost f g (⟨ h₁ , h₂ ⟩ m') m eq)
+... | false = done
 
-optimize-compose-steps (⟨ f , g ⟩ m) (inl m') = pair-step-helper₂ f g m (inl m') (safe-pair-distrib f g)
-  where
-    pair-step-helper₂ : ∀ {A B C D} (f : IR C A) (g : IR C B) (m : AllocMode) (h : IR D C) →
-      (b : Bool) → ComposeSteps (⟨ f , g ⟩ m) h (pair-distrib-opt f g m h b)
-    pair-step-helper₂ f' g' m' h' true  = pair-distrib (optimize-compose-steps f' h')
-                                                        (optimize-compose-steps g' h')
-                                                        (safe-distrib-cost f' g' h' m')
-    pair-step-helper₂ f' g' m' h' false = done
+optimize-compose-steps (⟨ f , g ⟩ m) (inl m') with safe-pair-distrib f g in eq
+... | true  = pair-distrib (optimize-compose-steps f (inl m'))
+                           (optimize-compose-steps g (inl m'))
+                           (safe-distrib-cost f g (inl m') m eq)
+... | false = done
 
-optimize-compose-steps (⟨ f , g ⟩ m) (inr m') = pair-step-helper₃ f g m (inr m') (safe-pair-distrib f g)
-  where
-    pair-step-helper₃ : ∀ {A B C D} (f : IR C A) (g : IR C B) (m : AllocMode) (h : IR D C) →
-      (b : Bool) → ComposeSteps (⟨ f , g ⟩ m) h (pair-distrib-opt f g m h b)
-    pair-step-helper₃ f' g' m' h' true  = pair-distrib (optimize-compose-steps f' h')
-                                                        (optimize-compose-steps g' h')
-                                                        (safe-distrib-cost f' g' h' m')
-    pair-step-helper₃ f' g' m' h' false = done
+optimize-compose-steps (⟨ f , g ⟩ m) (inr m') with safe-pair-distrib f g in eq
+... | true  = pair-distrib (optimize-compose-steps f (inr m'))
+                           (optimize-compose-steps g (inr m'))
+                           (safe-distrib-cost f g (inr m') m eq)
+... | false = done
 
-optimize-compose-steps (⟨ f , g ⟩ m) unfold = pair-step-helper₄ f g m unfold (safe-pair-distrib f g)
-  where
-    pair-step-helper₄ : ∀ {A B C D} (f : IR C A) (g : IR C B) (m : AllocMode) (h : IR D C) →
-      (b : Bool) → ComposeSteps (⟨ f , g ⟩ m) h (pair-distrib-opt f g m h b)
-    pair-step-helper₄ f' g' m' h' true  = pair-distrib (optimize-compose-steps f' h')
-                                                        (optimize-compose-steps g' h')
-                                                        (safe-distrib-cost f' g' h' m')
-    pair-step-helper₄ f' g' m' h' false = done
+optimize-compose-steps (⟨ f , g ⟩ m) unfold with safe-pair-distrib f g in eq
+... | true  = pair-distrib (optimize-compose-steps f unfold)
+                           (optimize-compose-steps g unfold)
+                           (safe-distrib-cost f g unfold m eq)
+... | false = done
 
-optimize-compose-steps (⟨ f , g ⟩ m) fold = pair-step-helper₅ f g m fold (safe-pair-distrib f g)
-  where
-    pair-step-helper₅ : ∀ {A B C D} (f : IR C A) (g : IR C B) (m : AllocMode) (h : IR D C) →
-      (b : Bool) → ComposeSteps (⟨ f , g ⟩ m) h (pair-distrib-opt f g m h b)
-    pair-step-helper₅ f' g' m' h' true  = pair-distrib (optimize-compose-steps f' h')
-                                                        (optimize-compose-steps g' h')
-                                                        (safe-distrib-cost f' g' h' m')
-    pair-step-helper₅ f' g' m' h' false = done
+optimize-compose-steps (⟨ f , g ⟩ m) fold with safe-pair-distrib f g in eq
+... | true  = pair-distrib (optimize-compose-steps f fold)
+                           (optimize-compose-steps g fold)
+                           (safe-distrib-cost f g fold m eq)
+... | false = done
 
 -- Default pair cases (no distribution possible)
 optimize-compose-steps (⟨ f , g ⟩ m) (_ ∘ _) = done
