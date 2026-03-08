@@ -118,6 +118,8 @@ record AllocResult (s : PoolState) : Set where
     new-state : PoolState
     -- The allocated address was in the free list
     addr-was-free : addr ∈-list free-list s
+    -- block-slots is preserved
+    block-slots-preserved : block-slots new-state ≡ block-slots s
 
 open AllocResult public
 
@@ -133,7 +135,7 @@ tail-valid s addr rest eq a∈rest =
 alloc : (s : PoolState) → Maybe (AllocResult s)
 alloc s with free-list s in eq
 ... | [] = nothing
-... | addr ∷ rest = just (mkAllocResult addr s' addr-in-list)
+... | addr ∷ rest = just (mkAllocResult addr s' addr-in-list refl)
   where
     rest-valid : ∀ {a} → a ∈-list rest →
                  pool-start s ≤ a × a + block-slots s * slot-size ≤ pool-end s
