@@ -455,6 +455,14 @@ wants-fold _ = false
 --
 optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
 
+-- | Helper for pair distribution: takes Bool explicitly instead of using with.
+--   This enables proof reduction because the Bool argument is concrete.
+--   INLINE forces Agda to reduce this during type checking.
+pair-distrib-opt : ∀ {A B C D} → IR C A → IR C B → AllocMode → IR D C → Bool → IR D (A * B)
+pair-distrib-opt f g m h true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
+pair-distrib-opt f g m h false = (⟨ f , g ⟩ m) ∘ h
+{-# INLINE pair-distrib-opt #-}
+
 ------------------------------------------------------------------------
 -- Identity Laws
 ------------------------------------------------------------------------
@@ -571,28 +579,21 @@ optimize-compose initial f = initial ∘ f
 -- Pairing distribution: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
 -- Only when safe: eta case (fst+snd) or terminal case.
 -- This ensures cost never increases from distribution.
-optimize-compose (⟨ f , g ⟩ m) h@(⟨ _ , _ ⟩ _) with safe-pair-distrib f g
-... | true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
-... | false = (⟨ f , g ⟩ m) ∘ h
+-- Uses helper function to avoid 'with' pattern blocking proof reduction.
+-- Note: Must use full pattern (not @-pattern) for reduction in proofs.
+optimize-compose (⟨ f , g ⟩ m) (⟨ h₁ , h₂ ⟩ m') =
+  pair-distrib-opt f g m (⟨ h₁ , h₂ ⟩ m') (safe-pair-distrib f g)
 
 -- Pairing distribution when h is inl/inr: safe when at least one is terminal
 -- or when both are cases (case ∘ inl reduces, eliminating a branch)
-optimize-compose (⟨ f , g ⟩ m) h@(inl _) with safe-pair-distrib f g
-... | true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
-... | false = (⟨ f , g ⟩ m) ∘ h
-optimize-compose (⟨ f , g ⟩ m) h@(inr _) with safe-pair-distrib f g
-... | true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
-... | false = (⟨ f , g ⟩ m) ∘ h
+optimize-compose (⟨ f , g ⟩ m) (inl m') = pair-distrib-opt f g m (inl m') (safe-pair-distrib f g)
+optimize-compose (⟨ f , g ⟩ m) (inr m') = pair-distrib-opt f g m (inr m') (safe-pair-distrib f g)
 
 -- Pairing distribution when h is unfold: safe when at least one is terminal
-optimize-compose (⟨ f , g ⟩ m) unfold with safe-pair-distrib f g
-... | true  = ⟨ optimize-compose f unfold , optimize-compose g unfold ⟩ m
-... | false = (⟨ f , g ⟩ m) ∘ unfold
+optimize-compose (⟨ f , g ⟩ m) unfold = pair-distrib-opt f g m unfold (safe-pair-distrib f g)
 
 -- Pairing distribution when h is fold: safe when at least one is terminal
-optimize-compose (⟨ f , g ⟩ m) fold with safe-pair-distrib f g
-... | true  = ⟨ optimize-compose f fold , optimize-compose g fold ⟩ m
-... | false = (⟨ f , g ⟩ m) ∘ fold
+optimize-compose (⟨ f , g ⟩ m) fold = pair-distrib-opt f g m fold (safe-pair-distrib f g)
 
 -- Default: don't distribute pairs (would increase cost without benefit)
 optimize-compose (⟨ f , g ⟩ m) h = (⟨ f , g ⟩ m) ∘ h
