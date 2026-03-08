@@ -331,16 +331,19 @@ safe-distrib-cost f g .fold m is-fold eq = safe-distrib-fold-cost f g m eq
 optimize-compose-steps : ∀ {A B C} (g : IR B C) (f : IR A B) →
   ComposeSteps g f (optimize-compose g f)
 
--- Associativity case postulated due to implicit argument resolution issues
--- The optimizer has: optimize-compose (h ∘ g) f = optimize-compose h (optimize-compose g f)
--- But the implicit types don't unify properly in the recursive call.
---
--- Remaining cases postulated - requires matching optimizer's exact clause order
-postulate
-  optimize-compose-steps-assoc : ∀ {A B C D} (h : IR C D) (g : IR B C) (f : IR A B) →
-    ComposeSteps (h ∘ g) f (optimize-compose (h ∘ g) f)
-  optimize-compose-steps-remaining : ∀ {A B C} (g : IR B C) (f : IR A B) →
-    ComposeSteps g f (optimize-compose g f)
+-- Associativity case: (h ∘ g) ∘ f → optimize h (optimize g f)
+-- The optimizer reassociates and optimizes both compositions.
+-- Proof: step-assoc-pure gives h ∘ (g ∘ f), then we optimize both parts.
+optimize-compose-steps-assoc : ∀ {A B C D} (h : IR C D) (g : IR B C) (f : IR A B) →
+  ComposeSteps (h ∘ g) f (optimize-compose (h ∘ g) f)
+optimize-compose-steps-assoc h g f =
+  step step-assoc-pure
+       (trans′ (lift-right (in-compose (optimize-compose-steps g f)))
+               (in-compose (optimize-compose-steps h (optimize-compose g f))))
+
+-- Note: Remaining cases all fall through to optimizer's default clause:
+--   optimize-compose g f = g ∘ f
+-- so they all use `done : ComposeSteps g f (g ∘ f)`
 
 -- Identity left: optimize-compose id f = f
 optimize-compose-steps id f = step step-id-left refl′
@@ -475,13 +478,12 @@ optimize-compose-steps (Prim _) [ f , g ] = done
 optimize-compose-steps (_ ∘ _) [ f , g ] = done
 
 -- Associativity: (h ∘ g) ∘ f → optimize h (optimize g f)
--- Uses postulated helper due to implicit argument resolution issues
 -- NOTE: This clause must come AFTER the case distribution clause above,
 -- since the optimizer's case distribution clause catches `(h ∘ g) [ f , g ]` first.
 optimize-compose-steps (h ∘ g) f = optimize-compose-steps-assoc h g f
 
--- Remaining default cases use the postulated helper
-optimize-compose-steps g f = optimize-compose-steps-remaining g f
+-- Remaining default cases: optimizer returns g ∘ f (no optimization)
+optimize-compose-steps g f = done
 
 ------------------------------------------------------------------------
 -- Main theorems derived from step properties
