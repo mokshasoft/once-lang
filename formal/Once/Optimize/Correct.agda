@@ -218,19 +218,21 @@ optimize-compose-correct apply fst x = refl
 optimize-compose-correct apply snd x = refl
 -- Exponential beta law: apply ∘ ⟨ curry f , g ⟩ = f ∘ ⟨ id , g ⟩
 -- Eliminates closure allocation!
--- Special case: f is a composition (h ∘ k), right-associate to get h ∘ (k ∘ ⟨ id , g ⟩)
--- Semantically: (h ∘ k) ∘ ⟨ id , g ⟩ = h ∘ (k ∘ ⟨ id , g ⟩) by associativity
+-- Each case is handled explicitly to ensure normal output.
+-- Composition case: (h ∘ k) ∘ ⟨ id , g ⟩ = h ∘ (k ∘ ⟨ id , g ⟩) by assoc
 optimize-compose-correct apply (⟨ curry (h ∘ k) _ , g' ⟩ _) x = refl
--- Non-composition cases: f : IR (A * B) C, so f ∘ ⟨ id , g ⟩ is the output
--- Type-impossible: [_,_] (sum domain), initial (Void domain), unfold (Fix domain),
---                  arr (function domain)
+-- Dead code: terminal ∘ ⟨ id , g ⟩ = terminal
+optimize-compose-correct apply (⟨ curry terminal _ , g' ⟩ _) x = refl
+-- Identity: id ∘ ⟨ id , g ⟩ = ⟨ id , g ⟩
 optimize-compose-correct apply (⟨ curry id _ , g' ⟩ _) x = refl
+-- Beta: fst ∘ ⟨ id , g ⟩ = id
 optimize-compose-correct apply (⟨ curry fst _ , g' ⟩ _) x = refl
+-- Beta: snd ∘ ⟨ id , g ⟩ = g
 optimize-compose-correct apply (⟨ curry snd _ , g' ⟩ _) x = refl
+-- Default cases: f ∘ ⟨ id , g ⟩ semantics
 optimize-compose-correct apply (⟨ curry (⟨ _ , _ ⟩ _) _ , g' ⟩ _) x = refl
 optimize-compose-correct apply (⟨ curry (inl _) _ , g' ⟩ _) x = refl
 optimize-compose-correct apply (⟨ curry (inr _) _ , g' ⟩ _) x = refl
-optimize-compose-correct apply (⟨ curry terminal _ , g' ⟩ _) x = refl
 optimize-compose-correct apply (⟨ curry (curry _ _) _ , g' ⟩ _) x = refl
 optimize-compose-correct apply (⟨ curry apply _ , g' ⟩ _) x = refl
 optimize-compose-correct apply (⟨ curry fold _ , g' ⟩ _) x = refl
