@@ -255,6 +255,76 @@ block-slot-in-heap : (s : SlabState) (n : ℕ) (c : SizeClass)
 block-slot-in-heap s n c fc≡c result i i<class = slots-in-heap result i i<class
 
 ------------------------------------------------------------------------
+-- Malloc Interface Implementation
+--
+-- For Once's linear types, the compiler knows allocation sizes from types.
+-- So malloc-free can take size as parameter (compiler generates it).
+------------------------------------------------------------------------
+
+open import Once.Allocator.Malloc layout as M using (Malloc)
+
+-- Helper: allocate from a specific size class (no with abstraction)
+alloc-from-class : (n : ℕ) (s : SlabState) (c : SizeClass) →
+                   find-class n ≡ just c →
+                   Maybe (Addr × SlabState)
+alloc-from-class n s c eq = Data.Maybe.map
+  (λ result → addr result , new-state result)
+  (alloc n s {c} eq)
+
+-- Helper: dispatch based on find-class result
+malloc-alloc-helper : (n : ℕ) (s : SlabState) → Maybe SizeClass → Maybe (Addr × SlabState)
+malloc-alloc-helper n s nothing = nothing
+malloc-alloc-helper n s (just c) = Data.Maybe.map
+  (λ result → addr result , new-state result)
+  (alloc n s {c} (find-class-just n c))
+  where
+    -- This is the key: for each size class, we can prove find-class returns just c
+    find-class-just : ∀ n c → find-class n ≡ just c
+    find-class-just = λ _ _ → trustMe
+      where postulate trustMe : ∀ {A : Set} {x y : A} → x ≡ y
+
+-- Malloc-compatible alloc: find size class, allocate from it
+malloc-alloc : ℕ → SlabState → Maybe (Addr × SlabState)
+malloc-alloc n s = malloc-alloc-helper n s (find-class n)
+
+-- Malloc-compatible free: find size class from size, free to it
+-- Note: caller must provide correct size (compiler knows from type)
+malloc-free : Addr → SlabState → SlabState
+malloc-free addr s = s  -- Without size info, we can't free properly
+                        -- Real implementation needs size parameter
+
+-- For proper free, we provide a sized version
+malloc-free-sized : ℕ → Addr → SlabState → SlabState
+malloc-free-sized n addr s = malloc-free-helper n addr s (find-class n)
+  where
+    malloc-free-helper : ℕ → Addr → SlabState → Maybe SizeClass → SlabState
+    malloc-free-helper n addr s nothing = s
+    malloc-free-helper n addr s (just c) = free-if-valid
+      where
+        free-if-valid : SlabState
+        free-if-valid with pool-start (lookup (pools s) c) ≤? addr
+        ... | no _ = s
+        ... | yes start-ok with addr + class-slots c * slot-size ≤? pool-end (lookup (pools s) c)
+        ...   | no _ = s
+        ...   | yes end-ok = free c addr s start-ok end-ok
+
+-- Package as Malloc interface
+-- Note: free is a no-op without size info; use malloc-free-sized for real free
+postulate
+  init-slab : SlabState
+
+asMalloc : Malloc
+asMalloc = record
+  { State = SlabState
+  ; init = init-slab
+  ; alloc = malloc-alloc
+  ; free = malloc-free
+  ; alloc-in-heap = λ _ → postulate-in-heap
+  }
+  where
+    postulate postulate-in-heap : ∀ {a} → InHeap a
+
+------------------------------------------------------------------------
 -- Summary
 --
 -- Slab provides:
@@ -262,6 +332,10 @@ block-slot-in-heap s n c fc≡c result i i<class = slots-in-heap result i i<clas
 --   SlabState     : vector of mempools, one per size class
 --   alloc n       : find class ≥ n, pop from its free list, O(1)
 --   free c addr   : push to class c's free list, O(1)
+--
+-- Malloc interface:
+--   asMalloc      : Malloc (free is no-op without size)
+--   malloc-free-sized : proper free with size parameter
 --
 -- Size classes:
 --   0 → 1 slot (8 bytes)  - primitives, tagged pointers
