@@ -36,7 +36,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat using (ℕ; zero; suc; _≤_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; sym; trans; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; sym; trans; cong; subst)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 ------------------------------------------------------------------------
@@ -164,12 +164,38 @@ postulate
     (∀ x → eval t x ≡ eval t' x) →
     t ≡ t'
 
--- | Normal forms have minimal cost
+-- | Optimization does not increase cost
+--
+-- Each optimization rule either:
+-- - Reduces cost (beta rules eliminate allocations)
+-- - Preserves cost (identity rules, structural rules)
+-- - Distribution only when safe-pair-distrib ensures cost reduction
 postulate
-  normal-minimal : ∀ {A B} (t t' : IR A B) →
-    IsNormal t →
-    (∀ x → eval t x ≡ eval t' x) →
-    cost t ≤ cost t'
+  optimize-cost-le : ∀ {A B} (t : IR A B) → cost (optimize t) ≤ cost t
+
+-- | Normal forms have minimal cost
+--
+-- Proof: If t is normal and semantically equivalent to t', then:
+-- 1. optimize t' is normal (by optimize-normal)
+-- 2. optimize t' is semantically equivalent to t (by optimize-correct + given eq)
+-- 3. By normal-unique: optimize t' ≡ t
+-- 4. By optimize-cost-le: cost (optimize t') ≤ cost t'
+-- 5. Therefore: cost t ≤ cost t'
+normal-minimal : ∀ {A B} (t t' : IR A B) →
+  IsNormal t →
+  (∀ x → eval t x ≡ eval t' x) →
+  cost t ≤ cost t'
+normal-minimal t t' nt eq =
+  let -- optimize t' is semantically equivalent to t
+      opt-equiv : ∀ x → eval (optimize t') x ≡ eval t x
+      opt-equiv = λ x → trans (optimize-correct t' x) (sym (eq x))
+      -- By normal-unique, optimize t' ≡ t
+      opt-eq-t : optimize t' ≡ t
+      opt-eq-t = normal-unique (optimize t') t (optimize-normal t') nt opt-equiv
+      -- cost (optimize t') ≤ cost t'
+      opt-cost : cost (optimize t') ≤ cost t'
+      opt-cost = optimize-cost-le t'
+  in subst (λ z → cost z ≤ cost t') opt-eq-t opt-cost
 
 ------------------------------------------------------------------------
 -- Coherence Theorem
