@@ -35,7 +35,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
 open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; +-mono-≤)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; +-mono-≤; m≤n+m)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; sym; trans; cong; subst)
@@ -188,6 +188,9 @@ postulate
     cost (optimize-pair f g) ≤ suc (cost f ℕ+ cost g)
 
 -- | optimize-case does not increase cost
+--
+-- All cases return terms with cost ≤ input cost.
+-- Proof is complex due to with-clauses blocking reduction.
 postulate
   optimize-case-cost-le : ∀ {A B C} (f : IR A C) (g : IR B C) →
     cost (optimize-case f g) ≤ cost f ℕ+ cost g
