@@ -264,13 +264,44 @@ For `(A → Unit) → B`, the argument type contains Unit but the source type is
 
 `Fix F` types are handled structurally. If `Fix F ≅ Unit` or `Fix F ≅ Void`, the isomorphism would need to be used explicitly. In practice, most Fix types are non-degenerate.
 
-### 4. Effects
+### 4. Effects and IO
 
-The pure semantics (`eval`) has no side effects. For effectful semantics:
-- `f : A → Unit` might have effects that `terminal` doesn't
-- This would require a different treatment
+**Critical**: The Unit optimization relies on Once's effect type discipline.
 
-For now, Once's IR semantics is pure, so this isn't an issue.
+**Type structure**:
+```
+Unit        : pure unit type (single inhabitant: tt)
+Eff A B     : effectful computation from A to B
+IO A        : Eff Unit A (effectful computation producing A)
+```
+
+**The invariant**: Effectful operations use `Eff`/`IO` types, not plain types.
+
+| Term | Type | Safe to optimize? |
+|------|------|-------------------|
+| `terminal` | `A → Unit` | ✅ Already terminal |
+| `f ∘ g` | `A → Unit` | ✅ Pure, can become terminal |
+| `Prim "add"` | `(Int * Int) → Int` | N/A (not Unit target) |
+| `Prim "print"` | `String → IO Unit` | ❌ Not `Unit`, it's `IO Unit` |
+| `Prim "print"` | `String → Unit` | ⚠️ TYPE ERROR - violates discipline |
+
+**Why it's safe**: The Unit rule checks `B ≟Type Unit`. Since `IO Unit = Eff Unit Unit ≠ Unit`, effectful computations don't match.
+
+**The discipline requirement**: Primitives with effects MUST use `Eff`/`IO` types:
+```agda
+-- CORRECT: effectful primitive with effect type
+Prim "print" : IR String (IO Unit)
+
+-- WRONG: effectful primitive with pure type (violates discipline)
+Prim "print" : IR String Unit  -- Would be incorrectly optimized!
+```
+
+**Enforcement**: The type discipline should be enforced at:
+1. Primitive definition time (library authors)
+2. FFI boundary (runtime integration)
+3. Potentially by the type checker for known primitives
+
+**Conclusion**: The Unit optimization is sound IF the effect type discipline is maintained. Effectful operations returning Unit use `IO Unit`, not `Unit`, so they're not affected.
 
 ### 5. Void → Unit
 
