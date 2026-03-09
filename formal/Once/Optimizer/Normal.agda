@@ -33,7 +33,9 @@ open import Once.Optimizer.PairCaseNormal public
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Nat using (ℕ; zero; suc; _≤_)
+open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
+open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; +-mono-≤)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; sym; trans; cong; subst)
@@ -164,14 +166,74 @@ postulate
     (∀ x → eval t x ≡ eval t' x) →
     t ≡ t'
 
--- | Optimization does not increase cost
+------------------------------------------------------------------------
+-- Cost reduction lemmas
+------------------------------------------------------------------------
+
+-- | optimize-compose does not increase cost
 --
--- Each optimization rule either:
--- - Reduces cost (beta rules eliminate allocations)
--- - Preserves cost (identity rules, structural rules)
--- - Distribution only when safe-pair-distrib ensures cost reduction
+-- Each rule either reduces or preserves cost:
+-- - id ∘ f = f: cost 0 + cost f → cost f ✓
+-- - f ∘ id = f: cost f + 0 → cost f ✓
+-- - fst ∘ ⟨ f , g ⟩ = f: eliminates pair allocation ✓
+-- - terminal ∘ f = terminal: eliminates f's cost ✓
+-- - etc.
 postulate
-  optimize-cost-le : ∀ {A B} (t : IR A B) → cost (optimize t) ≤ cost t
+  optimize-compose-cost-le : ∀ {A B C} (g : IR B C) (f : IR A B) →
+    cost (optimize-compose g f) ≤ cost g ℕ+ cost f
+
+-- | optimize-pair does not increase cost beyond the pair allocation
+postulate
+  optimize-pair-cost-le : ∀ {A B C} (f : IR C A) (g : IR C B) →
+    cost (optimize-pair f g) ≤ suc (cost f ℕ+ cost g)
+
+-- | optimize-case does not increase cost
+postulate
+  optimize-case-cost-le : ∀ {A B C} (f : IR A C) (g : IR B C) →
+    cost (optimize-case f g) ≤ cost f ℕ+ cost g
+
+-- | Single optimization pass does not increase cost
+optimize-once-cost-le : ∀ {A B} (t : IR A B) → cost (optimize-once t) ≤ cost t
+optimize-once-cost-le id = ≤-refl
+optimize-once-cost-le (g ∘ f) =
+  ≤-trans (optimize-compose-cost-le (optimize-once g) (optimize-once f))
+          (+-mono-≤ (optimize-once-cost-le g) (optimize-once-cost-le f))
+optimize-once-cost-le fst = ≤-refl
+optimize-once-cost-le snd = ≤-refl
+optimize-once-cost-le (⟨ f , g ⟩ m) =
+  ≤-trans (optimize-pair-cost-le (optimize-once f) (optimize-once g))
+          (s≤s (+-mono-≤ (optimize-once-cost-le f) (optimize-once-cost-le g)))
+optimize-once-cost-le (inl {A} m) with A ≟Type Void
+... | yes refl = z≤n
+... | no _ = ≤-refl
+optimize-once-cost-le (inr {_} {B} m) with B ≟Type Void
+... | yes refl = z≤n
+... | no _ = ≤-refl
+optimize-once-cost-le [ f , g ] =
+  ≤-trans (optimize-case-cost-le (optimize-once f) (optimize-once g))
+          (+-mono-≤ (optimize-once-cost-le f) (optimize-once-cost-le g))
+optimize-once-cost-le terminal = ≤-refl
+optimize-once-cost-le initial = ≤-refl
+optimize-once-cost-le (curry f m) = s≤s (optimize-once-cost-le f)
+optimize-once-cost-le apply = ≤-refl
+optimize-once-cost-le (fold {F}) with F ≟Type Void
+... | yes refl = z≤n
+... | no _ = ≤-refl
+optimize-once-cost-le unfold = ≤-refl
+optimize-once-cost-le arr = ≤-refl
+optimize-once-cost-le (Prim {A} n) with A ≟Type Void
+... | yes refl = z≤n
+... | no _ = ≤-refl
+
+-- | Repeated optimization does not increase cost
+optimize-n-cost-le : ∀ {A B} (n : ℕ) (t : IR A B) → cost (optimize-n n t) ≤ cost t
+optimize-n-cost-le zero t = ≤-refl
+optimize-n-cost-le (suc n) t =
+  ≤-trans (optimize-n-cost-le n (optimize-once t)) (optimize-once-cost-le t)
+
+-- | Optimization does not increase cost
+optimize-cost-le : ∀ {A B} (t : IR A B) → cost (optimize t) ≤ cost t
+optimize-cost-le t = optimize-n-cost-le 10 t
 
 -- | Normal forms have minimal cost
 --
