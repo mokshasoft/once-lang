@@ -167,7 +167,7 @@ malonzo:
 .PHONY: dead-code-ccc-x86v3
 dead-code-ccc-x86v3:
 	@echo "Running dead code analysis on X86v3 (Dispatcher + Refinement + CodeGen)..."
-	@./run-dead-code.sh Once.CCC.Target.X86v3.WholeProgram.compile-correct Once/CCC/Target/X86v3/WholeProgram.agda
+	@./run-dead-code.sh Once.CCC.Target.X86v3.WholeProgram.Correctness.compile-correct Once/CCC/Target/X86v3/WholeProgram.agda
 
 #-----------------------------------------------------------------------------
 # Postulate Detection
@@ -200,13 +200,13 @@ postulates-grep:
 .PHONY: postulates-ccc-x86v3
 postulates-ccc-x86v3:
 	@echo "Checking postulates in X86v3 CCC (Dispatcher + Refinement + CodeGen)..."
-	@sh -c '$(PATCHED_AGDA_CMD) Once/CCC/Target/X86v3/WholeProgram.agda'
+	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/CCC/Target/X86v3/WholeProgram.agda'
 
 # Precise postulate detection using patched Agda (X86v3 Arith)
 .PHONY: postulates-arith-x86v3
 postulates-arith-x86v3:
 	@echo "Checking postulates in X86v3 Arith (precise)..."
-	@sh -c '$(PATCHED_AGDA_CMD) Once/Arith/Target/X86v3/PrimProofs.agda'
+	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/Arith/Target/X86v3/PrimProofs.agda'
 
 # Precise postulate detection for full X86v3 compiler
 .PHONY: postulates-x86v3

@@ -26,7 +26,7 @@ open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine
+open import Once.CCC.SlotMachine hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
@@ -46,6 +46,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   open MemOps {FS}
   open WriteOps {FS}
   open StackAllocation {FS}
+  open AbstractExec {FS}
   open FrameSemantics FS
 
   -- Import write operations for validity preservation proofs
@@ -232,10 +233,19 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       field
         result-loc : ValueLocation FS
         final-state : LocState FS
+        -- Compile-time allocation state (Dispatcher's bookkeeping)
+        -- Has incremented next-slot for BeforeFrontier/validity reasoning
         final-alloc : AllocState {FS}
+        -- Trace: sequence of abstract instructions that produces this result
+        trace : AbstractTrace
+        -- Runtime trace correctness: proves state transformation
+        -- Note: exec-trace returns (final-state, alloc) for non-apply IRs
+        -- since next-slot is compile-time only and traces don't modify it
+        trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
+        -- Existing validity fields
         result-valid-wf : ValidAtWF m final-alloc (eval primSem ir x) result-loc final-state
         result-before : BeforeFrontier final-alloc result-loc
-        rax-is-result : readReg (regs final-state) RAX ≡ result-loc
+        rax-is-result : readReg (regs final-state) Output ≡ result-loc
         not-halted : halted final-state ≡ false
         frame-preserved : current-frame final-alloc ≡ current-frame alloc
         slot-monotone : next-slot alloc ≤ next-slot final-alloc
@@ -248,11 +258,40 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         reclaim-monotone : next-slot alloc ≤ reclaimable-slot
         reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
         reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
-          BeforeFrontier (record alloc { next-slot = reclaimable-slot ; slots-available = fits }) result-loc
+          BeforeFrontier (record alloc { next-slot = reclaimable-slot }) result-loc
         reclaim-preserves-validity : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
-          ValidAtWF m (record alloc { next-slot = reclaimable-slot ; slots-available = fits })
+          ValidAtWF m (record alloc { next-slot = reclaimable-slot })
                     (eval primSem ir x) result-loc final-state
         reclaim-size-bound : reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement ir
+        -- Frontier slot stability: if input-loc is at frontier initially, it stays there
+        -- This is because IR traces either:
+        --   1. Don't write to frontier slot (e.g., inl/inr write to suc)
+        --   2. Write Input to frontier slot (via mov-to-output; store-at-slot)
+        --   3. Push a frame, so writes go to child frame (apply)
+        -- This property enables pair's backup-slot preservation proof.
+        frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
+          halted s' ≡ false →
+          readReg (regs s') Input ≡ input-loc →
+          readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc →
+          readLoc (proj₁ (exec-trace trace s' alloc))
+                  (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc
+        -- Trace slot bound: all stack writes are at slots ≥ next-slot alloc.
+        -- This enables compositional proofs that traces don't write below their frontier.
+        -- Key for pair's g-preserves-backup proof via exec-trace-preserves-disjoint.
+        trace-writes-above : TraceWritesAbove (next-slot alloc) trace
+        -- Trace slot read bound: all stack reads are from slots ≥ next-slot alloc.
+        -- This enables frame-independence proofs: running a trace on a state with
+        -- a slot written (below frontier) produces the same result with that slot preserved.
+        -- Key for pair's trustMe-pair-stack/heap proofs via exec-trace-slot-independent.
+        trace-slot-reads-above : TraceSlotReadsAbove (next-slot alloc) trace
+        -- Trace upper bound: all stack writes are at slots < reclaimable-slot.
+        -- Combined with trace-writes-above, this gives: writes are in [next-slot alloc, reclaimable-slot).
+        -- Key for pair's g-fst-slot preservation: g writes in [reclaim-f, reclaim-g), so fst-slot = reclaim-g is safe.
+        trace-writes-below : TraceWritesBelow reclaimable-slot trace
+        -- Trace slot read upper bound: all stack reads are from slots < reclaimable-slot.
+        -- Combined with trace-slot-reads-above, this gives: reads are in [next-slot alloc, reclaimable-slot).
+        -- Key for pair's g-fst-indep: g reads in [reclaim-f, reclaim-g), so fst-slot = reclaim-g is independent.
+        trace-slot-reads-below : TraceSlotReadsBelow reclaimable-slot trace
 
     --------------------------------------------------------------------
     -- BodyCorrect: Pre-computed body execution proof
@@ -281,7 +320,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
           ValidAtWF mPair alloc (pair env arg) pair-loc s →
           BeforeFrontier alloc pair-loc →
           halted s ≡ false →
-          readReg (regs s) RDI ≡ pair-loc →
+          readReg (regs s) Input ≡ pair-loc →
           next-slot alloc +ℕ body-capacity ≤ frame-capacity alloc →
           ∃[ mOut ] IRResultAWF mOut body (pair env arg) s alloc
 
@@ -391,7 +430,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) RDI ≡ input-loc →
+    readReg (regs s) Input ≡ input-loc →
     -- Capacity using ir-stack-requirement
     next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc
@@ -823,79 +862,73 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   -- so all constraints in ValidAtWF constructors are preserved.
   ------------------------------------------------------------------------
 
-  validityWF-alloc-advance : ∀ {m alloc A} (v : ⟦ A ⟧) loc s (n : ℕ)
-    (fits : next-slot alloc +ℕ n ≤ frame-capacity alloc) →
+  validityWF-alloc-advance : ∀ {m alloc A} (v : ⟦ A ⟧) loc s (n : ℕ) →
     ValidAtWF m alloc v loc s →
-    let alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
+    let alloc' = record alloc { next-slot = next-slot alloc +ℕ n }
     in ValidAtWF m alloc' v loc s
 
-  validityWF-alloc-advance {m} {alloc} {Unit} tt loc s n fits valid-unit-wf =
+  validityWF-alloc-advance {m} {alloc} {Unit} tt loc s n valid-unit-wf =
     valid-unit-wf
 
   -- Pair (any mode)
-  validityWF-alloc-advance {m} {alloc} {A * B} (a , b) loc s n fits
+  validityWF-alloc-advance {m} {alloc} {A * B} (a , b) loc s n
     (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
     valid-pair-wf fp sp fb' sb' slb' fv' sv'
     where
-      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      fb' = stack-alloc-advances alloc n fits fl fb
-      sb' = stack-alloc-advances alloc n fits sl sb
-      slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
-      fv' = validityWF-alloc-advance a fl s n fits fv
-      sv' = validityWF-alloc-advance b sl s n fits sv
+      fb' = stack-alloc-advances alloc n fl fb
+      sb' = stack-alloc-advances alloc n sl sb
+      slb' = stack-alloc-advances alloc n (sucLoc loc) slb
+      fv' = validityWF-alloc-advance a fl s n fv
+      sv' = validityWF-alloc-advance b sl s n sv
 
-  validityWF-alloc-advance {.Heap} {alloc} {A ⇒[ _ ] B} .(λ arg → eval primSem body (pair env arg)) loc s n fits
+  validityWF-alloc-advance {.Heap} {alloc} {A ⇒[ _ ] B} .(λ arg → eval primSem body (pair env arg)) loc s n
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep cp eb' cb' slb' ev' bc
     where
-      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      eb' = stack-alloc-advances alloc n fits el eb
-      cb' = stack-alloc-advances alloc n fits cl cb
-      slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
-      ev' = validityWF-alloc-advance env el s n fits ev
+      eb' = stack-alloc-advances alloc n el eb
+      cb' = stack-alloc-advances alloc n cl cb
+      slb' = stack-alloc-advances alloc n (sucLoc loc) slb
+      ev' = validityWF-alloc-advance env el s n ev
 
   -- Eff (effectful morphism): recurse on underlying closure validity
-  validityWF-alloc-advance {m} {alloc} {Eff A B} f loc s n fits (valid-eff-wf cv) =
-    valid-eff-wf (validityWF-alloc-advance f loc s n fits cv)
+  validityWF-alloc-advance {m} {alloc} {Eff A B} f loc s n (valid-eff-wf cv) =
+    valid-eff-wf (validityWF-alloc-advance f loc s n cv)
 
   -- inl (any mode)
-  validityWF-alloc-advance {m} {alloc} {A + B} .(inl a) loc s n fits
+  validityWF-alloc-advance {m} {alloc} {A + B} .(inl a) loc s n
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp pb' slb' pv'
     where
-      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      pb' = stack-alloc-advances alloc n fits pl pb
-      slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
-      pv' = validityWF-alloc-advance a pl s n fits pv
+      pb' = stack-alloc-advances alloc n pl pb
+      slb' = stack-alloc-advances alloc n (sucLoc loc) slb
+      pv' = validityWF-alloc-advance a pl s n pv
 
   -- inr (any mode)
-  validityWF-alloc-advance {m} {alloc} {A + B} .(inr b) loc s n fits
+  validityWF-alloc-advance {m} {alloc} {A + B} .(inr b) loc s n
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp pb' slb' pv'
     where
-      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      pb' = stack-alloc-advances alloc n fits pl pb
-      slb' = stack-alloc-advances alloc n fits (sucLoc loc) slb
-      pv' = validityWF-alloc-advance b pl s n fits pv
+      pb' = stack-alloc-advances alloc n pl pb
+      slb' = stack-alloc-advances alloc n (sucLoc loc) slb
+      pv' = validityWF-alloc-advance b pl s n pv
 
   -- fold (any mode)
-  validityWF-alloc-advance {m} {alloc} {Fix F} .(fold v) loc s n fits
+  validityWF-alloc-advance {m} {alloc} {Fix F} .(fold v) loc s n
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up ub' uv'
     where
-      alloc' = record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }
-      ub' = stack-alloc-advances alloc n fits ul ub
-      uv' = validityWF-alloc-advance v ul s n fits uv
+      ub' = stack-alloc-advances alloc n ul ub
+      uv' = validityWF-alloc-advance v ul s n uv
 
   -- Primitives: advance BeforeFrontier
-  validityWF-alloc-advance {m} {alloc} {Int} _ loc s n fits (valid-int-wf bf) =
-    valid-int-wf (stack-alloc-advances alloc n fits loc bf)
-  validityWF-alloc-advance {m} {alloc} {Float} _ loc s n fits (valid-float-wf bf) =
-    valid-float-wf (stack-alloc-advances alloc n fits loc bf)
-  validityWF-alloc-advance {m} {alloc} {Str} _ loc s n fits (valid-str-wf bf) =
-    valid-str-wf (stack-alloc-advances alloc n fits loc bf)
-  validityWF-alloc-advance {m} {alloc} {Buffer} _ loc s n fits (valid-buffer-wf bf) =
-    valid-buffer-wf (stack-alloc-advances alloc n fits loc bf)
+  validityWF-alloc-advance {m} {alloc} {Int} _ loc s n (valid-int-wf bf) =
+    valid-int-wf (stack-alloc-advances alloc n loc bf)
+  validityWF-alloc-advance {m} {alloc} {Float} _ loc s n (valid-float-wf bf) =
+    valid-float-wf (stack-alloc-advances alloc n loc bf)
+  validityWF-alloc-advance {m} {alloc} {Str} _ loc s n (valid-str-wf bf) =
+    valid-str-wf (stack-alloc-advances alloc n loc bf)
+  validityWF-alloc-advance {m} {alloc} {Buffer} _ loc s n (valid-buffer-wf bf) =
+    valid-buffer-wf (stack-alloc-advances alloc n loc bf)
 
   ------------------------------------------------------------------------
   -- Validity transport across arbitrary frontier advancement
@@ -1126,48 +1159,40 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   ------------------------------------------------------------------------
 
   -- Create reclaimed allocation state
-  reclaim-alloc : (alloc : AllocState {FS}) (reclaim-slot : ℕ)
-    (monotone : next-slot alloc ≤ reclaim-slot)
-    (fits : reclaim-slot ≤ frame-capacity alloc) →
+  reclaim-alloc : (alloc : AllocState {FS}) (reclaim-slot : ℕ) →
     AllocState {FS}
-  reclaim-alloc alloc rs _ fits = record alloc
-    { next-slot = rs
-    ; slots-available = fits
-    }
+  reclaim-alloc alloc rs = record alloc { next-slot = rs }
 
   -- BeforeFrontier is preserved after reclamation (frontier only advances)
   reclaim-preserves-frontier : ∀ (alloc : AllocState {FS}) reclaim-slot
     (monotone : next-slot alloc ≤ reclaim-slot)
-    (fits : reclaim-slot ≤ frame-capacity alloc)
     (loc : ValueLocation FS) →
     BeforeFrontier alloc loc →
-    BeforeFrontier (reclaim-alloc alloc reclaim-slot monotone fits) loc
-  reclaim-preserves-frontier alloc rs monotone fits loc bf =
-    stack-alloc-advances' alloc rs monotone fits loc bf
+    BeforeFrontier (reclaim-alloc alloc reclaim-slot) loc
+  reclaim-preserves-frontier alloc rs monotone loc bf =
+    stack-alloc-advances' alloc rs monotone loc bf
     where
       -- Helper using existing stack-alloc-advances pattern
       stack-alloc-advances' : ∀ (alloc : AllocState {FS}) (rs : ℕ)
         (monotone : next-slot alloc ≤ rs)
-        (fits : rs ≤ frame-capacity alloc)
         (loc : ValueLocation FS) →
         BeforeFrontier alloc loc →
-        BeforeFrontier (record alloc { next-slot = rs ; slots-available = fits }) loc
-      stack-alloc-advances' alloc rs monotone fits (OnStack f k) (stack-before refl k<next) =
+        BeforeFrontier (record alloc { next-slot = rs }) loc
+      stack-alloc-advances' alloc rs monotone (OnStack f k) (stack-before refl k<next) =
         stack-before refl (<-≤-trans k<next monotone)
         where open import Data.Nat.Properties using (<-≤-trans)
-      stack-alloc-advances' alloc rs monotone fits (OnStack f k) (stack-ancestor cf≺f src) =
+      stack-alloc-advances' alloc rs monotone (OnStack f k) (stack-ancestor cf≺f src) =
         stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
-      stack-alloc-advances' alloc rs monotone fits (OnHeap hl) (heap-before r<next) =
+      stack-alloc-advances' alloc rs monotone (OnHeap hl) (heap-before r<next) =
         heap-before r<next
 
   -- ValidAtWF is preserved after reclamation
   validityWF-reclaim : ∀ {m alloc A} (v : ⟦ A ⟧) loc s reclaim-slot
     (monotone : next-slot alloc ≤ reclaim-slot)
-    (fits : reclaim-slot ≤ frame-capacity alloc)
     (loc-before : BeforeFrontier alloc loc) →
     ValidAtWF m alloc v loc s →
-    ValidAtWF m (reclaim-alloc alloc reclaim-slot monotone fits) v loc s
-  validityWF-reclaim {m} {alloc} v loc s rs mono fits loc-bf valid =
+    ValidAtWF m (reclaim-alloc alloc reclaim-slot) v loc s
+  validityWF-reclaim {m} {alloc} v loc s rs mono loc-bf valid =
     validityWF-frontier-advance v loc s refl mono ≤-refl valid
     where
       open import Data.Nat.Properties using (≤-refl)

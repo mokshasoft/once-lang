@@ -43,26 +43,23 @@ module FrontierLemmas {FS : FrameSemantics} where
   -- after allocating k slots (where k > 0)
   at-frontier-becomes-before : ∀ (alloc : AllocState {FS}) (k : ℕ) →
     (k>0 : 0 < k) →
-    ∀ (slots-avail : next-slot alloc +ℕ k ≤ frame-capacity alloc) →
-    let alloc' = record alloc { next-slot = next-slot alloc +ℕ k ; slots-available = slots-avail }
+    let alloc' = record alloc { next-slot = next-slot alloc +ℕ k }
     in BeforeFrontier alloc' (OnStack (current-frame alloc) (next-slot alloc))
-  at-frontier-becomes-before alloc (suc k) (s≤s z≤n) slots-avail =
+  at-frontier-becomes-before alloc (suc k) (s≤s z≤n) =
     stack-before refl (n<n+suc-k (next-slot alloc) k)
 
   -- Specialized versions for common allocation sizes
 
   -- pair-slots = 2
   at-frontier-before-pair : ∀ (alloc : AllocState {FS}) →
-    ∀ (slots-avail : next-slot alloc +ℕ 2 ≤ frame-capacity alloc) →
-    let alloc' = record alloc { next-slot = next-slot alloc +ℕ 2 ; slots-available = slots-avail }
+    let alloc' = record alloc { next-slot = next-slot alloc +ℕ 2 }
     in BeforeFrontier alloc' (OnStack (current-frame alloc) (next-slot alloc))
-  at-frontier-before-pair alloc slots-avail =
-    at-frontier-becomes-before alloc 2 (s≤s z≤n) slots-avail
+  at-frontier-before-pair alloc =
+    at-frontier-becomes-before alloc 2 (s≤s z≤n)
 
   -- closure-slots = 2
   at-frontier-before-closure : ∀ (alloc : AllocState {FS}) →
-    ∀ (slots-avail : next-slot alloc +ℕ 2 ≤ frame-capacity alloc) →
-    let alloc' = record alloc { next-slot = next-slot alloc +ℕ 2 ; slots-available = slots-avail }
+    let alloc' = record alloc { next-slot = next-slot alloc +ℕ 2 }
     in BeforeFrontier alloc' (OnStack (current-frame alloc) (next-slot alloc))
   at-frontier-before-closure = at-frontier-before-pair
 

@@ -19,16 +19,19 @@ module Once.Arith.Target.X86v3.PrimProofs where
 open import Data.Nat using (ℕ; _≤_; _<_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; <-≤-trans)
 open import Data.Bool using (Bool; false)
+open import Data.Maybe using (just)
+open import Data.List using ([]; _∷_)
 open import Data.String using (String)
-open import Data.Product using (_×_; _,_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Product using (_×_; _,_; proj₁)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine
   using (LocState; mkLocState; ValueLocation; OnStack; OnHeap;
          halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-same;
-         RDI; RAX; module MemOps; module ExecLemmas)
+         Input; Output; AbstractTrace; AbstractInstr; mov-to-output;
+         module MemOps; module ExecLemmas; module AbstractExec)
 open import Once.CCC.Target.X86v3.Types using (Type; Int; Float; Str; Buffer; _*_; ⟦_⟧)
 open import Once.CCC.IR
   using (IR; Prim; eval; PrimContractV3; AllocMode; Stack;
@@ -83,6 +86,7 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
   open FrontierInvariant {FS}
     using (BeforeFrontier; stack-before; stack-ancestor; heap-before)
   open MemOps {FS} using (readLoc)
+  open AbstractExec {FS} using (exec-trace)
 
   open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -98,34 +102,30 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
   -- PROVEN LEMMAS (structural properties)
   ------------------------------------------------------------------------
 
-  -- BeforeFrontier is preserved when only slots-available changes.
+  -- BeforeFrontier is preserved when reclaiming (with same next-slot).
+  -- This is now trivial since slots-available was removed from AllocState.
   before-frontier-slots-irrel : ∀ {loc : ValueLocation FS}
     (alloc : AllocState {FS}) (fits : next-slot alloc ≤ frame-capacity alloc) →
     BeforeFrontier alloc loc →
-    BeforeFrontier (record alloc { next-slot = next-slot alloc ; slots-available = fits }) loc
-  before-frontier-slots-irrel alloc fits (stack-before {f} {k} f≡cf k<next) =
-    stack-before f≡cf k<next
-  before-frontier-slots-irrel alloc fits (stack-ancestor {f} {k} cf≺f src) =
-    stack-ancestor cf≺f src
-  before-frontier-slots-irrel alloc fits (heap-before {hl} r<next) =
-    heap-before r<next
+    BeforeFrontier (record alloc { next-slot = next-slot alloc }) loc
+  before-frontier-slots-irrel alloc fits bf = bf
 
   ------------------------------------------------------------------------
   -- CONCRETE EXECUTION MODEL (PROVEN)
   --
   -- Arithmetic is register-only: it reads from input location, computes
   -- in registers, and returns the result at the input location.
-  -- Only RAX changes (to point to result location = input location).
+  -- Only Output changes (to point to result location = input location).
   -- Memory is unchanged.
   ------------------------------------------------------------------------
 
-  -- Execute arithmetic: result stays at input location, RAX := input-loc
+  -- Execute arithmetic: result stays at input location, Output := input-loc
   exec-arith : ∀ {A B} (sem : ⟦ A ⟧ → ⟦ B ⟧) (x : ⟦ A ⟧)
     (input-loc : ValueLocation FS) (s : LocState FS) →
     ValueLocation FS × LocState FS
   exec-arith sem x input-loc s =
     input-loc ,  -- Result at input location
-    mkLocState (writeReg (regs s) RAX input-loc) (stackMem s) (heapMem s) (halted s)
+    mkLocState (writeReg (regs s) Output input-loc) (stackMem s) (heapMem s) (halted s)
 
   -- Result location is before frontier (given as input precondition)
   exec-arith-before : ∀ {A B} (sem : ⟦ A ⟧ → ⟦ B ⟧) (x : ⟦ A ⟧)
@@ -136,12 +136,12 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
     in BeforeFrontier alloc result-loc
   exec-arith-before sem x input-loc s alloc input-before = input-before
 
-  -- RAX contains result location (trivially true by definition)
+  -- Output contains result location (trivially true by definition)
   exec-arith-rax : ∀ {A B} (sem : ⟦ A ⟧ → ⟦ B ⟧) (x : ⟦ A ⟧)
     (input-loc : ValueLocation FS) (s : LocState FS) →
     let (result-loc , final-state) = exec-arith sem x input-loc s
-    in readReg (regs final-state) RAX ≡ result-loc
-  exec-arith-rax sem x input-loc s = writeReg-same (regs s) RAX input-loc
+    in readReg (regs final-state) Output ≡ result-loc
+  exec-arith-rax sem x input-loc s = writeReg-same (regs s) Output input-loc
 
   -- Not halted (halted flag unchanged)
   exec-arith-not-halted : ∀ {A B} (sem : ⟦ A ⟧ → ⟦ B ⟧) (x : ⟦ A ⟧)
@@ -159,8 +159,31 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
     BeforeFrontier alloc loc →
     let (_ , final-state) = exec-arith sem x input-loc s
     in readLoc final-state loc ≡ readLoc s loc
+
+  -- Arithmetic trace: just mov-to-output (set Output := Input which is input-loc)
+  arith-trace : AbstractTrace
+  arith-trace = mov-to-output ∷ []
+
+  -- Trace state correctness postulate (to be proven when connecting to x86)
+  postulate
+    arith-trace-state-correct : ∀ {A B} (sem : ⟦ A ⟧ → ⟦ B ⟧) (x : ⟦ A ⟧)
+      (input-loc : ValueLocation FS) (s : LocState FS) (alloc : AllocState {FS}) →
+      let (_ , final-state) = exec-arith sem x input-loc s
+      in proj₁ (exec-trace arith-trace s alloc) ≡ final-state
+
+  -- Frontier slot stability: arith only modifies registers, not stack
+  -- The arith-trace is [mov-to-output], which doesn't touch stack memory
+  postulate
+    arith-frontier-stable : ∀ {A B} (sem : ⟦ A ⟧ → ⟦ B ⟧) (x : ⟦ A ⟧)
+      (s' : LocState FS) (input-loc' : ValueLocation FS)
+      (alloc : AllocState {FS}) →
+      halted s' ≡ false →
+      readReg (regs s') Input ≡ input-loc' →
+      readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+      readLoc (proj₁ (exec-trace arith-trace s' alloc))
+              (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
   exec-arith-mem-preserved sem x input-loc s alloc loc bf =
-    let final-state = mkLocState (writeReg (regs s) RAX input-loc) (stackMem s) (heapMem s) (halted s)
+    let final-state = mkLocState (writeReg (regs s) Output input-loc) (stackMem s) (heapMem s) (halted s)
     in ExecLemmas.readLoc-stackMem-eq final-state s loc refl refl
 
   ------------------------------------------------------------------------
@@ -203,6 +226,8 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
       { result-loc = result-loc
       ; final-state = final-state
       ; final-alloc = alloc  -- No allocation changes
+      ; trace = arith-trace
+      ; trace-correct = arith-trace-state-correct sem x input-loc s alloc
       ; result-valid-wf = result-valid
       ; result-before = result-before
       ; rax-is-result = exec-arith-rax sem x input-loc s
@@ -223,6 +248,9 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
           let reclaim-before = before-frontier-slots-irrel alloc fits result-before
           in valid-primitive-wf is-prim reclaim-before
       ; reclaim-size-bound = m≤m+n (next-slot alloc) pair-slots  -- ir-stack-requirement (Prim _) = pair-slots
+      -- Frontier slot stability: arithmetic trace doesn't modify stack
+      ; frontier-slot-stable = λ s' input-loc' s'-not-halted input-eq' slot-eq' →
+          arith-frontier-stable sem x s' input-loc' alloc s'-not-halted input-eq' slot-eq'
       }
 
   -- Proof for a concrete ArithPrimitive (uses embedded evidence)

@@ -1,0 +1,137 @@
+------------------------------------------------------------------------
+-- Once.CCC.Target.X86v3.AbstractToX86
+--
+-- Compilation from AbstractInstr to x86 instructions.
+--
+-- Each AbstractInstr compiles to a short sequence of x86 instructions.
+-- This module provides the mapping; simulation proofs are in
+-- AbstractSimulation.agda.
+------------------------------------------------------------------------
+
+module Once.CCC.Target.X86v3.AbstractToX86 where
+
+open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.List using (List; []; _∷_; _++_)
+
+-- Import X86 syntax
+open import Once.Target.X86.Syntax
+  using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
+         Mem; base; base+disp; rip+disp;
+         Operand; reg; mem; imm;
+         Instr; mov; lea; add; sub; cmp; push; pop; call; ret; jmp; jne; label; ud2;
+         Program; slot-size; slots)
+
+-- Import AbstractInstr from SlotMachine
+open import Once.CCC.SlotMachine
+  using (AbstractInstr; AbstractTrace; Slot;
+         mov-to-output; load-indirect; load-indirect-suc;
+         load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
+         lea-slot; restore-input;
+         instr-alloc-stack; instr-dealloc-stack;
+         instr-push-frame; instr-pop-frame; instr-call-closure)
+
+------------------------------------------------------------------------
+-- Slot to displacement conversion
+--
+-- Convert a logical slot number to an x86 displacement.
+-- Slots are indexed from current frame, growing upward (higher addresses).
+------------------------------------------------------------------------
+
+slot-to-disp : Slot → ℕ
+slot-to-disp n = n *ℕ slot-size
+
+------------------------------------------------------------------------
+-- AbstractInstr → x86 Program
+--
+-- Each AbstractInstr compiles to a short x86 instruction sequence.
+-- The mapping follows the SlotMachine operational semantics.
+------------------------------------------------------------------------
+
+compile-abstract : AbstractInstr → Program
+
+-- mov-to-output: Output := Input
+-- x86: mov rax, rdi
+compile-abstract mov-to-output =
+  mov (reg rax) (reg rdi) ∷ []
+
+-- mov-to-input: Input := Output (compose bridge)
+-- x86: mov rdi, rax
+compile-abstract mov-to-input =
+  mov (reg rdi) (reg rax) ∷ []
+
+-- load-indirect: Output := *Input
+-- x86: mov rax, [rdi]
+compile-abstract load-indirect =
+  mov (reg rax) (mem (base rdi)) ∷ []
+
+-- load-indirect-suc: Output := *(sucLoc Input)
+-- x86: mov rax, [rdi + 8]
+compile-abstract load-indirect-suc =
+  mov (reg rax) (mem (base+disp rdi slot-size)) ∷ []
+
+-- load-from-slot: Output := stack[slot]
+-- x86: mov rax, [rbp + slot*8]
+compile-abstract (load-from-slot n) =
+  mov (reg rax) (mem (base+disp rbp (slot-to-disp n))) ∷ []
+
+-- store-at-slot: stack[slot] := Output
+-- x86: mov [rbp + slot*8], rax
+compile-abstract (store-at-slot n) =
+  mov (mem (base+disp rbp (slot-to-disp n))) (reg rax) ∷ []
+
+-- store-indirect: *Input := Output
+-- x86: mov [rdi], rax
+compile-abstract store-indirect =
+  mov (mem (base rdi)) (reg rax) ∷ []
+
+-- store-indirect-suc: *(sucLoc Input) := Output
+-- x86: mov [rdi + 8], rax
+compile-abstract store-indirect-suc =
+  mov (mem (base+disp rdi slot-size)) (reg rax) ∷ []
+
+-- lea-slot: Output := &stack[slot]
+-- x86: lea rax, [rbp + slot*8]
+compile-abstract (lea-slot n) =
+  lea rax (base+disp rbp (slot-to-disp n)) ∷ []
+
+-- restore-input: Input := stack[slot]
+-- x86: mov rdi, [rbp + slot*8]
+compile-abstract (restore-input n) =
+  mov (reg rdi) (mem (base+disp rbp (slot-to-disp n))) ∷ []
+
+-- instr-alloc-stack: allocate N slots on stack
+-- x86: sub rsp, N*8
+compile-abstract (instr-alloc-stack n) =
+  sub (reg rsp) (imm (slots n)) ∷ []
+
+-- instr-dealloc-stack: deallocate N slots from stack
+-- x86: add rsp, N*8
+compile-abstract (instr-dealloc-stack n) =
+  add (reg rsp) (imm (slots n)) ∷ []
+
+-- instr-push-frame: push new frame with capacity N
+-- x86: push rbp; mov rbp, rsp; sub rsp, N*8
+compile-abstract (instr-push-frame n) =
+  push (reg rbp) ∷
+  mov (reg rbp) (reg rsp) ∷
+  sub (reg rsp) (imm (slots n)) ∷ []
+
+-- instr-pop-frame: restore caller frame
+-- x86: mov rsp, rbp; pop rbp
+compile-abstract instr-pop-frame =
+  mov (reg rsp) (reg rbp) ∷
+  pop rbp ∷ []
+
+-- instr-call-closure: jump to closure code (via indirect call)
+-- Closure in r12, code-ptr at [r12 + 8]
+-- x86: call [r12 + 8]
+compile-abstract instr-call-closure =
+  call (mem (base+disp r12 slot-size)) ∷ []
+
+------------------------------------------------------------------------
+-- Trace compilation: compile a whole trace to x86
+------------------------------------------------------------------------
+
+compile-trace : AbstractTrace → Program
+compile-trace [] = []
+compile-trace (i ∷ is) = compile-abstract i ++ compile-trace is

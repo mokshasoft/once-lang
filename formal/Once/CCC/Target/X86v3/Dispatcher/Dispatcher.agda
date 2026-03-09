@@ -28,7 +28,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Induction.WellFounded using (Acc; acc)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine
+open import Once.CCC.SlotMachine hiding (AllocMode; Stack; Heap)
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
@@ -94,7 +94,7 @@ module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) (primSem :
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
-      readReg (regs s) RDI ≡ input-loc →
+      readReg (regs s) Input ≡ input-loc →
       next-slot alloc +ℕ stack-requirement c ≤ frame-capacity alloc →
       IRResultAWF (output-mode c) ir x s alloc
 
@@ -248,7 +248,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) RDI ≡ input-loc →
+    readReg (regs s) Input ≡ input-loc →
     -- NOTE: Capacity check needs contract from proof provider
     -- We check against pair-slots as upper bound (contract.stack-requirement ≤ 2)
     next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc →
@@ -294,7 +294,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
-      readReg (regs s) RDI ≡ input-loc →
+      readReg (regs s) Input ≡ input-loc →
       -- Capacity using ir-stack-requirement
       next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
       Acc _<_ (ir-size ir) →
@@ -421,7 +421,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
-    readReg (regs s) RDI ≡ input-loc →
+    readReg (regs s) Input ≡ input-loc →
     -- Capacity using ir-stack-requirement
     next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc

@@ -311,7 +311,7 @@ case-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 ir-stack-requirement : ∀ {A B} → IR A B → ℕ
 ir-stack-requirement id = 0               -- No-op: no stack needed
 ir-stack-requirement (g ∘ f) = ir-stack-requirement f +ℕ ir-stack-requirement g  -- Composition: sum of sub-requirements
-ir-stack-requirement (⟨ f , g ⟩ _) = ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots  -- Pair: sub-reqs + pair allocation
+ir-stack-requirement (⟨ f , g ⟩ _) = 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots  -- Pair: 1 backup + sub-reqs + pair allocation
 ir-stack-requirement fst-ir = 0           -- Projection: just returns pointer
 ir-stack-requirement snd-ir = 0           -- Projection: just returns pointer
 ir-stack-requirement (inl-ir _) = pair-slots     -- Sum injection: allocates tagged value
@@ -332,125 +332,39 @@ ir-stack-requirement (Prim _) = pair-slots       -- Primitives: may allocate res
   ir-stack-requirement (g ∘ f) ≡ ir-stack-requirement f +ℕ ir-stack-requirement g
 ∘-stack-req f g = refl
 
--- Stack requirement for pair equals sum of sub-requirements plus pair-slots
+-- Stack requirement for pair equals 1 (backup) + sum of sub-requirements + pair-slots
 ⟨,⟩-stack-req : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) →
-  ir-stack-requirement (⟨ f , g ⟩ m) ≡ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
+  ir-stack-requirement (⟨ f , g ⟩ m) ≡ 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
 ⟨,⟩-stack-req f g m = refl
 
 -- Capacity lemma for pair: converts capacity proof to expanded form
--- Uses associativity: slot + (rf + rg + ps) = ((slot + rf) + rg) + ps
+-- ir-stack-requirement (⟨ f , g ⟩ m) = 1 + rf + rg + ps (1 for backup slot)
+-- Uses associativity to rewrite slot + (1 + rf + rg + ps) to (((slot + 1) + rf) + rg) + ps
 ⟨,⟩-capacity-for-pair : ∀ {A B C} (f : IR A B) (g : IR A C) (m : AllocMode) (slot cap : ℕ) →
   slot +ℕ ir-stack-requirement (⟨ f , g ⟩ m) ≤ cap →
-  slot +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots ≤ cap
+  (slot +ℕ 1) +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots ≤ cap
 ⟨,⟩-capacity-for-pair f g m slot cap pf =
   let rf = ir-stack-requirement f
       rg = ir-stack-requirement g
       ps = pair-slots
-      -- slot + (rf + rg + ps) = slot + ((rf + rg) + ps)
-      -- We need: ((slot + rf) + rg) + ps
-      step1 : slot +ℕ (rf +ℕ rg +ℕ ps) ≤ cap
+      -- pf : slot + (1 + rf + rg + ps) ≤ cap
+      -- We need: (((slot + 1) + rf) + rg) + ps ≤ cap
+      step1 : slot +ℕ (1 +ℕ rf +ℕ rg +ℕ ps) ≤ cap
       step1 = pf
-      step2 : slot +ℕ ((rf +ℕ rg) +ℕ ps) ≤ cap
-      step2 = step1  -- definitionally equal
-      step3 : (slot +ℕ (rf +ℕ rg)) +ℕ ps ≤ cap
-      step3 = subst (_≤ cap) (sym (+-assoc slot (rf +ℕ rg) ps)) step2
-      step4 : ((slot +ℕ rf) +ℕ rg) +ℕ ps ≤ cap
-      step4 = subst (λ x → x +ℕ ps ≤ cap) (sym (+-assoc slot rf rg)) step3
-  in step4
+      step2 : (slot +ℕ 1) +ℕ (rf +ℕ rg +ℕ ps) ≤ cap
+      step2 = subst (_≤ cap) (sym (+-assoc slot 1 (rf +ℕ rg +ℕ ps))) step1
+      step3 : (slot +ℕ 1) +ℕ ((rf +ℕ rg) +ℕ ps) ≤ cap
+      step3 = step2  -- definitionally equal
+      step4 : ((slot +ℕ 1) +ℕ (rf +ℕ rg)) +ℕ ps ≤ cap
+      step4 = subst (_≤ cap) (sym (+-assoc (slot +ℕ 1) (rf +ℕ rg) ps)) step3
+      step5 : (((slot +ℕ 1) +ℕ rf) +ℕ rg) +ℕ ps ≤ cap
+      step5 = subst (λ x → x +ℕ ps ≤ cap) (sym (+-assoc (slot +ℕ 1) rf rg)) step4
+  in step5
 
--- | ir-stack-requirement is bounded by pair-slots * ir-size
--- Proven by induction on IR structure.
--- Key insight: all base cases have req ≤ 2 and size ≥ 1, so req ≤ 2*size.
--- Recursive cases use IH and distributivity of * over +.
-ir-req-≤-pair-slots*size : ∀ {A B} (ir : IR A B) → ir-stack-requirement ir ≤ pair-slots *ℕ ir-size ir
-
--- Base cases: req ≤ 2, size = 1, so req ≤ 2 = 2*1 = pair-slots * size
-ir-req-≤-pair-slots*size id = z≤n
-ir-req-≤-pair-slots*size fst-ir = z≤n
-ir-req-≤-pair-slots*size snd-ir = z≤n
-ir-req-≤-pair-slots*size terminal = z≤n
-ir-req-≤-pair-slots*size initial = z≤n
-ir-req-≤-pair-slots*size arr = z≤n
-ir-req-≤-pair-slots*size unfold-ir = z≤n
-ir-req-≤-pair-slots*size (free-heap _) = z≤n
-
--- Base cases: req = 2, size = 1, so 2 ≤ 2*1 = 2
-ir-req-≤-pair-slots*size (inl-ir _) = ≤-refl
-ir-req-≤-pair-slots*size (inr-ir _) = ≤-refl
-ir-req-≤-pair-slots*size apply = ≤-refl
-ir-req-≤-pair-slots*size (Prim _) = ≤-refl
-
--- fold-ir: req = 1, size = 1, so 1 ≤ 2
-ir-req-≤-pair-slots*size (fold-ir _) = s≤s z≤n
-
--- curry: req = 2, size = 2 + size(f), so 2 ≤ 2*(2 + size(f)) = 4 + 2*size(f) ≥ 4 ≥ 2
-ir-req-≤-pair-slots*size (curry f _) = s≤s (s≤s z≤n)
-
--- Compose: req = req(f) + req(g), size = 1 + size(g) + size(f)
--- IH: req(f) ≤ 2*size(f), req(g) ≤ 2*size(g)
--- Goal: req(f) + req(g) ≤ 2*(1 + size(g) + size(f))
-ir-req-≤-pair-slots*size (g ∘ f) =
-  let sf = ir-size f
-      sg = ir-size g
-      ihf = ir-req-≤-pair-slots*size f  -- rf ≤ 2*sf
-      ihg = ir-req-≤-pair-slots*size g  -- rg ≤ 2*sg
-      -- rf + rg ≤ 2*sf + 2*sg
-      step1 = +-mono-≤ ihf ihg
-      -- 2*sf + 2*sg = 2*(sf + sg) by distribˡ
-      distrib-eq : pair-slots *ℕ (sf +ℕ sg) ≡ (pair-slots *ℕ sf) +ℕ (pair-slots *ℕ sg)
-      distrib-eq = *-distribˡ-+ pair-slots sf sg
-      -- sf + sg ≤ 1 + sg + sf
-      size-ineq : sf +ℕ sg ≤ suc (sg +ℕ sf)
-      size-ineq = subst (sf +ℕ sg ≤_) (cong suc (+-comm sf sg)) (m≤n+m (sf +ℕ sg) 1)
-      -- 2*(sf + sg) ≤ 2*(1 + sg + sf)
-      step2 = *-monoʳ-≤ pair-slots size-ineq
-      -- Combine: 2*sf + 2*sg ≤ 2*(1 + sg + sf)
-      step3 = subst (_≤ pair-slots *ℕ suc (sg +ℕ sf)) distrib-eq step2
-  in ≤-trans step1 step3
-
--- Case: req = req(f) + req(g), size = 1 + size(f) + size(g) (same as compose)
-ir-req-≤-pair-slots*size (case-ir f g) =
-  let sf = ir-size f
-      sg = ir-size g
-      ihf = ir-req-≤-pair-slots*size f
-      ihg = ir-req-≤-pair-slots*size g
-      step1 = +-mono-≤ ihf ihg
-      distrib-eq : pair-slots *ℕ (sf +ℕ sg) ≡ (pair-slots *ℕ sf) +ℕ (pair-slots *ℕ sg)
-      distrib-eq = *-distribˡ-+ pair-slots sf sg
-      size-ineq : sf +ℕ sg ≤ suc (sf +ℕ sg)
-      size-ineq = m≤n+m (sf +ℕ sg) 1
-      step2 = *-monoʳ-≤ pair-slots size-ineq
-      step3 = subst (_≤ pair-slots *ℕ suc (sf +ℕ sg)) distrib-eq step2
-  in ≤-trans step1 step3
-
--- Pair: req = req(f) + req(g) + 2, size = 1 + size(f) + size(g)
--- IH: req(f) ≤ 2*size(f), req(g) ≤ 2*size(g)
--- Goal: req(f) + req(g) + 2 ≤ 2*(1 + size(f) + size(g))
-ir-req-≤-pair-slots*size (⟨ f , g ⟩ _) =
-  let rf = ir-stack-requirement f
-      rg = ir-stack-requirement g
-      sf = ir-size f
-      sg = ir-size g
-      ihf = ir-req-≤-pair-slots*size f
-      ihg = ir-req-≤-pair-slots*size g
-      -- rf + rg ≤ 2*sf + 2*sg
-      step1 : rf +ℕ rg ≤ (pair-slots *ℕ sf) +ℕ (pair-slots *ℕ sg)
-      step1 = +-mono-≤ ihf ihg
-      -- 2*sf + 2*sg = 2*(sf + sg)
-      distrib-eq : pair-slots *ℕ (sf +ℕ sg) ≡ (pair-slots *ℕ sf) +ℕ (pair-slots *ℕ sg)
-      distrib-eq = *-distribˡ-+ pair-slots sf sg
-      -- rf + rg ≤ 2*(sf + sg)
-      step2 : rf +ℕ rg ≤ pair-slots *ℕ (sf +ℕ sg)
-      step2 = subst (rf +ℕ rg ≤_) (sym distrib-eq) step1
-      -- rf + rg + 2 ≤ 2*(sf + sg) + 2
-      step3 : (rf +ℕ rg) +ℕ pair-slots ≤ (pair-slots *ℕ (sf +ℕ sg)) +ℕ pair-slots
-      step3 = +-monoˡ-≤ pair-slots step2
-      -- 2*(sf + sg) + 2 = 2*suc(sf + sg)
-      suc-eq : pair-slots *ℕ suc (sf +ℕ sg) ≡ pair-slots +ℕ (pair-slots *ℕ (sf +ℕ sg))
-      suc-eq = *-suc pair-slots (sf +ℕ sg)
-      final-eq : (pair-slots *ℕ (sf +ℕ sg)) +ℕ pair-slots ≡ pair-slots *ℕ suc (sf +ℕ sg)
-      final-eq = trans (+-comm (pair-slots *ℕ (sf +ℕ sg)) pair-slots) (sym suc-eq)
-  in subst ((rf +ℕ rg) +ℕ pair-slots ≤_) final-eq step3
+-- NOTE: ir-req-≤-pair-slots*size lemma was removed.
+-- With the backup slot for pair (req = 1 + rf + rg + ps), the bound
+-- ir-stack-requirement ir ≤ pair-slots * ir-size ir no longer holds.
+-- The lemma was not used in the dispatcher proofs.
 
 ------------------------------------------------------------------------
 -- Conversion from Once.IR

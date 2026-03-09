@@ -1,6 +1,119 @@
-# X86 Proof Architecture: Disjointness
+# X86 Proof Architecture: Trace-Based Refinement
 
-## Core Insight
+## Overview
+
+This document describes the proof architecture for compiling IR to x86 machine code.
+The key innovation is the **AbstractInstr layer** - an intermediate representation between
+IR and x86 that enables compositional proofs.
+
+## AbstractInstr Layer
+
+### Architecture Problem (Before)
+
+Two independent proof efforts that don't compose well:
+- **Dispatcher**: Proves IR → LocState (abstract machine state)
+- **Runner** (FramelessPairRunner): Proves LocState → x86 (duplicated per IR)
+
+This leads to:
+- Per-IR runner proofs (N proofs for N IR constructors)
+- Postulates to bridge the gap
+- Complex, non-compositional reasoning
+
+### Solution: Trace-Based Refinement
+
+If codegen follows SlotMachine 1-to-1, then:
+1. **SlotMachine emits traces** (what operations happen)
+2. **Each trace operation compiles to concrete instructions**
+3. **Per-instruction simulation proofs compose automatically**
+4. **No per-IR runner needed** - FramelessPairRunner.agda is eliminated
+
+### Two-Register Model
+
+The abstract machine uses only two logical registers:
+
+```agda
+data AbstractReg : Set where
+  Input  : AbstractReg    -- argument location (maps to RDI)
+  Output : AbstractReg    -- result location (maps to RAX)
+```
+
+This simplifies reasoning - all IR operations either read from Input, write to Output,
+or access memory via these registers.
+
+### Abstract Instructions
+
+```agda
+data AbstractInstr : Set where
+  -- Register operations
+  mov-to-output      : AbstractInstr              -- Output := Input
+
+  -- Memory load operations (slot-level, not physical address arithmetic)
+  load-indirect      : AbstractInstr              -- Output := *Input
+  load-indirect-suc  : AbstractInstr              -- Output := *(sucLoc Input)  -- e.g., pair.snd, closure.code-ptr
+  load-from-slot     : Slot → AbstractInstr       -- Output := stack[slot]
+
+  -- Memory store operations
+  store-at-slot      : Slot → AbstractInstr       -- stack[slot] := Output
+  store-indirect     : AbstractInstr              -- *Input := Output
+  store-indirect-suc : AbstractInstr              -- *(Input + 1) := Output
+
+  -- Address computation
+  lea-slot           : Slot → AbstractInstr       -- Output := &stack[slot]
+  restore-input      : Slot → AbstractInstr       -- Input := stack[slot]
+
+  -- Stack management
+  alloc-stack        : ℕ → AbstractInstr          -- allocate N slots
+  dealloc-stack      : ℕ → AbstractInstr          -- deallocate N slots
+
+  -- Apply-specific (function calls)
+  push-frame         : ℕ → AbstractInstr          -- push new frame with capacity
+  pop-frame          : AbstractInstr              -- restore caller frame
+  call-closure       : AbstractInstr              -- jump to closure code
+```
+
+### Traces
+
+```agda
+AbstractTrace : Set
+AbstractTrace = List AbstractInstr
+```
+
+Each IR execution produces a trace. Traces compose via list concatenation:
+- `compose f g`: `f-trace ++ bridge ++ g-trace`
+- `pair f g`: `setup ++ f-trace ++ middle ++ g-trace ++ cleanup`
+
+### Proof Structure
+
+```
+IR ─────────────────────────────────────────────────────────── x86
+ │                                                              │
+ │ dispatch                                           compile   │
+ ↓                                                              ↓
+LocState ──────── AbstractTrace ──────── Program ──────────── State
+         emit            compile-abstract      Star transitivity
+
+IRResultAWF                                    AbstractSimulation
+(with trace field)                             (per-instruction proofs)
+```
+
+1. **Dispatcher** (IRResultAWF): Proves IR → (LocState, AbstractTrace)
+2. **AbstractToX86**: Compiles AbstractTrace → x86 Program
+3. **AbstractSimulation**: Proves each AbstractInstr refines to x86
+4. **TraceRunner**: Composes simulation proofs via Star transitivity
+
+### What Gets Eliminated
+
+| Old Component | Replacement | Why |
+|---------------|-------------|-----|
+| FramelessPairRunner.agda | TraceRunner.agda | Per-IR proofs → trace composition |
+| Complex StateCorresponds | Trace-level correspondence | Simpler invariants |
+| Capacity postulates | Derived from trace semantics | Explicit in trace |
+
+---
+
+## Disjointness (Memory Safety)
+
+### Core Insight
 
 IR proofs need to show their writes don't corrupt other data. This requires **disjointness** - proving written locations are different from preserved locations.
 

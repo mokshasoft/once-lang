@@ -24,38 +24,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine
-
-------------------------------------------------------------------------
--- Allocation Mode (output of escape analysis)
-------------------------------------------------------------------------
-
-data AllocMode : Set where
-  StackAlloc : AllocMode  -- Value doesn't escape, allocate on stack
-  HeapAlloc  : AllocMode  -- Value escapes, allocate on heap
-
-------------------------------------------------------------------------
--- Allocation State
---
--- Tracks available resources for allocation:
---   - Stack: current frame + next available slot + capacity
---   - Heap: next available HeapRef
-------------------------------------------------------------------------
-
-record AllocState {FS : FrameSemantics} : Set where
-  constructor mkAllocState
-  open FrameSemantics FS
-  field
-    -- Stack allocation state
-    current-frame : Frame
-    next-slot : ℕ
-    frame-capacity : ℕ
-    slots-available : next-slot ≤ frame-capacity
-
-    -- Heap allocation state
-    next-heap-ref : ℕ
-
-open AllocState public
+open import Once.CCC.SlotMachine public
 
 ------------------------------------------------------------------------
 -- Stack Allocation
@@ -68,40 +37,32 @@ module StackAllocation {FS : FrameSemantics} where
   open FrameSemantics FS
 
   -- Allocate n slots, returning base location
+  -- Capacity check is the caller's responsibility (Dispatcher verifies this)
   stack-alloc : (as : AllocState {FS}) (n : ℕ) →
-    next-slot as +ℕ n ≤ frame-capacity as →
     ValueLocation FS × AllocState {FS}
-  stack-alloc as n fits =
+  stack-alloc as n =
     OnStack (current-frame as) (next-slot as) ,
-    record as
-      { next-slot = next-slot as +ℕ n
-      ; slots-available = fits
-      }
+    record as { next-slot = next-slot as +ℕ n }
 
   -- The allocated location
-  stack-alloc-loc : (as : AllocState {FS}) (n : ℕ) →
-    (fits : next-slot as +ℕ n ≤ frame-capacity as) →
-    ValueLocation FS
-  stack-alloc-loc as n fits = proj₁ (stack-alloc as n fits)
+  -- The allocated location
+  stack-alloc-loc : (as : AllocState {FS}) (n : ℕ) → ValueLocation FS
+  stack-alloc-loc as n = proj₁ (stack-alloc as n)
 
   -- The updated state
-  stack-alloc-state : (as : AllocState {FS}) (n : ℕ) →
-    (fits : next-slot as +ℕ n ≤ frame-capacity as) →
-    AllocState {FS}
-  stack-alloc-state as n fits = proj₂ (stack-alloc as n fits)
+  stack-alloc-state : (as : AllocState {FS}) (n : ℕ) → AllocState {FS}
+  stack-alloc-state as n = proj₂ (stack-alloc as n)
 
   -- Key property: allocated slots are in the current frame
   stack-alloc-in-frame : (as : AllocState {FS}) (n : ℕ) →
-    (fits : next-slot as +ℕ n ≤ frame-capacity as) →
-    ∃[ slot ] stack-alloc-loc as n fits ≡ OnStack (current-frame as) slot
-  stack-alloc-in-frame as n fits = next-slot as , refl
+    ∃[ slot ] stack-alloc-loc as n ≡ OnStack (current-frame as) slot
+  stack-alloc-in-frame as n = next-slot as , refl
 
   -- Successive slots are at offset from base
   stack-alloc-offset : (as : AllocState {FS}) (n : ℕ) →
-    (fits : next-slot as +ℕ n ≤ frame-capacity as) →
     (k : ℕ) → k < n →
     ValueLocation FS
-  stack-alloc-offset as n fits k k<n =
+  stack-alloc-offset as n k k<n =
     OnStack (current-frame as) (next-slot as +ℕ k)
 
 ------------------------------------------------------------------------
@@ -170,13 +131,12 @@ module Allocator {FS : FrameSemantics} where
       -- The location points to n consecutive slots
       -- sucLoc^k location is valid for k < n
 
-  -- Stack allocation (requires capacity proof)
-  alloc-stack : (as : AllocState {FS}) (n : ℕ) →
-    next-slot as +ℕ n ≤ frame-capacity as →
-    AllocResult as n
-  alloc-stack as n fits = record
-    { location = stack-alloc-loc as n fits
-    ; new-state = stack-alloc-state as n fits
+  -- Stack allocation
+  -- Capacity verification is the caller's responsibility (proof is for documentation)
+  alloc-stack : (as : AllocState {FS}) (n : ℕ) → AllocResult as n
+  alloc-stack as n = record
+    { location = stack-alloc-loc as n
+    ; new-state = stack-alloc-state as n
     }
 
   -- Heap allocation (always succeeds)
@@ -356,15 +316,14 @@ module FrontierInvariant {FS : FrameSemantics} where
   ... | refl = (<⇒≢ r<next) refl
 
   -- Allocation advances frontier
-  stack-alloc-advances : ∀ (alloc : AllocState {FS}) n
-    (fits : next-slot alloc +ℕ n ≤ frame-capacity alloc) →
+  stack-alloc-advances : ∀ (alloc : AllocState {FS}) n →
     ∀ loc → BeforeFrontier alloc loc →
-    BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ n ; slots-available = fits }) loc
-  stack-alloc-advances alloc n fits (OnStack f k) (stack-before refl k<next) =
+    BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ n }) loc
+  stack-alloc-advances alloc n (OnStack f k) (stack-before refl k<next) =
     stack-before refl (≤-trans k<next (m≤m+n (next-slot alloc) n))
-  stack-alloc-advances alloc n fits (OnStack f k) (stack-ancestor cf≺f src) =
+  stack-alloc-advances alloc n (OnStack f k) (stack-ancestor cf≺f src) =
     stack-ancestor cf≺f src  -- Frame ordering and provenance unchanged (same current-frame)
-  stack-alloc-advances alloc n fits (OnHeap hl) (heap-before r<next) =
+  stack-alloc-advances alloc n (OnHeap hl) (heap-before r<next) =
     heap-before r<next
 
   heap-alloc-advances : ∀ (alloc : AllocState {FS}) →
@@ -420,7 +379,6 @@ module FrameOps {FS : FrameSemantics} where
     { current-frame = cf
     ; next-slot = 0
     ; frame-capacity = cc
-    ; slots-available = z≤n
     ; next-heap-ref = next-heap-ref parent  -- Heap shared
     }
 
@@ -430,11 +388,9 @@ module FrameOps {FS : FrameSemantics} where
   pop-frame : (child : AllocState {FS})
             → (parent : AllocState {FS})
             → (result-slot : ℕ)
-            → (fits : result-slot ≤ frame-capacity parent)
             → AllocState {FS}
-  pop-frame child parent rs fits = record parent
+  pop-frame child parent rs = record parent
     { next-slot = rs
-    ; slots-available = fits
     ; next-heap-ref = next-heap-ref child  -- Heap may have advanced
     }
 
@@ -521,20 +477,19 @@ module FrameOps {FS : FrameSemantics} where
 
   -- After pop, parent frame locations at slots < result-slot are BeforeFrontier
   pop-preserves-before : ∀ (child parent : AllocState {FS})
-    (result-slot : ℕ) (fits : result-slot ≤ frame-capacity parent) (k : ℕ) →
+    (result-slot : ℕ) (k : ℕ) →
     k < result-slot →
-    BeforeFrontier (pop-frame child parent result-slot fits)
+    BeforeFrontier (pop-frame child parent result-slot)
                    (OnStack (current-frame parent) k)
-  pop-preserves-before child parent rs fits k k<rs = stack-before refl k<rs
+  pop-preserves-before child parent rs k k<rs = stack-before refl k<rs
 
   -- Heap locations after pop: if they were valid in child, still valid
   -- (heap might have advanced, so we need child's heap state)
   pop-heap-before : ∀ (child parent : AllocState {FS})
-    (result-slot : ℕ) (fits : result-slot ≤ frame-capacity parent)
-    (hl : HeapLocation) →
+    (result-slot : ℕ) (hl : HeapLocation) →
     ref-id (heap-ref hl) < next-heap-ref child →
-    BeforeFrontier (pop-frame child parent result-slot fits) (OnHeap hl)
-  pop-heap-before child parent rs fits hl r<child-heap = heap-before r<child-heap
+    BeforeFrontier (pop-frame child parent result-slot) (OnHeap hl)
+  pop-heap-before child parent rs hl r<child-heap = heap-before r<child-heap
 
 ------------------------------------------------------------------------
 -- Summary
