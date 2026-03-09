@@ -704,8 +704,14 @@ optimize-once (inr {A} {B} m) with B ≟Type Void
 ... | yes refl = initial
 ... | no _     = inr m
 optimize-once [ f , g ] = optimize-case (optimize-once f) (optimize-once g)
-optimize-once terminal = terminal
-optimize-once initial = initial
+-- | terminal with Unit source is equivalent to id (eta for terminal object)
+optimize-once (terminal {A}) with A ≟Type Unit
+... | yes refl = id
+... | no _     = terminal
+-- | initial with Void target is equivalent to id (eta for initial object)
+optimize-once (initial {A}) with A ≟Type Void
+... | yes refl = id
+... | no _     = initial
 optimize-once (curry f m) = curry (optimize-once f) m
 optimize-once apply = apply
 -- | fold with Void source is equivalent to initial (no inhabitants)
