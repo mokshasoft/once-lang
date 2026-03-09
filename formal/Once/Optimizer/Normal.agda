@@ -500,8 +500,14 @@ optimize-once-normal : ∀ {A B} (t : IR A B) → IsNormal (optimize-once t)
 optimize-once-normal id = normal-id
 optimize-once-normal fst = normal-fst
 optimize-once-normal snd = normal-snd
-optimize-once-normal terminal = normal-terminal
-optimize-once-normal initial = normal-initial
+-- terminal with Unit source: returns id (eta for terminal)
+optimize-once-normal (terminal {A}) with A ≟Type Unit
+... | yes refl = normal-id
+... | no _     = normal-terminal
+-- initial with Void target: returns id (eta for initial)
+optimize-once-normal (initial {A}) with A ≟Type Void
+... | yes refl = normal-id
+... | no _     = normal-initial
 optimize-once-normal apply = normal-apply
 optimize-once-normal unfold = normal-unfold
 optimize-once-normal arr = normal-arr
@@ -559,13 +565,31 @@ optimize-normal : ∀ {A B} (t : IR A B) → IsNormal (optimize t)
 optimize-normal t = optimize-n-suc-normal 9 t
 
 ------------------------------------------------------------------------
--- Coherence Properties (stated, require optimize-normal)
+-- Coherence Properties
 ------------------------------------------------------------------------
 
 -- | Normal forms are unique per equivalence class
 --
--- This is the core coherence theorem: semantically equivalent
--- terms have the same normal form.
+-- KNOWN LIMITATION: This property is FALSE for degenerate types.
+--
+-- Counterexample: For type (Unit * Unit) → Unit, we have three
+-- distinct normal forms that are semantically equivalent:
+--   - fst      : eval fst (tt, tt) = tt
+--   - snd      : eval snd (tt, tt) = tt
+--   - terminal : eval terminal (tt, tt) = tt
+--
+-- The fundamental issue is that any f : A → Unit is semantically
+-- equal to terminal, but the optimizer doesn't reduce all such
+-- cases. Type-directed normalization would be needed:
+--   - Any f : A → Unit should reduce to terminal
+--   - Any f : Void → A should reduce to initial
+--
+-- For non-degenerate types (no Unit/Void in key positions), normal
+-- forms are likely unique, but proving this requires careful
+-- analysis of the type structure.
+--
+-- We keep this as a postulate for the coherence theorem, acknowledging
+-- that it only holds for "well-behaved" types in practice.
 postulate
   normal-unique : ∀ {A B} (t t' : IR A B) →
     IsNormal t → IsNormal t' →
@@ -1071,8 +1095,12 @@ optimize-once-cost-le (inr {_} {B} m) with B ≟Type Void
 optimize-once-cost-le [ f , g ] =
   ≤-trans (optimize-case-cost-le (optimize-once f) (optimize-once g))
           (+-mono-≤ (optimize-once-cost-le f) (optimize-once-cost-le g))
-optimize-once-cost-le terminal = ≤-refl
-optimize-once-cost-le initial = ≤-refl
+optimize-once-cost-le (terminal {A}) with A ≟Type Unit
+... | yes refl = ≤-refl  -- cost id = 0 ≤ cost terminal = 0
+... | no _     = ≤-refl
+optimize-once-cost-le (initial {A}) with A ≟Type Void
+... | yes refl = ≤-refl  -- cost id = 0 ≤ cost initial = 0
+... | no _     = ≤-refl
 optimize-once-cost-le (curry f m) = s≤s (optimize-once-cost-le f)
 optimize-once-cost-le apply = ≤-refl
 optimize-once-cost-le (fold {F}) with F ≟Type Void

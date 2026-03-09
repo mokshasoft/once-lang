@@ -665,8 +665,15 @@ optimize-once-correct [ f , g ] x =
     lemma : (y : ⟦ _ + _ ⟧) → eval [ optimize-once f , optimize-once g ] y ≡ eval [ f , g ] y
     lemma (inj₁ a) = optimize-once-correct f a
     lemma (inj₂ b) = optimize-once-correct g b
-optimize-once-correct terminal x = refl
-optimize-once-correct initial ()
+-- terminal with Unit source: optimize-once returns id (eta for terminal object)
+optimize-once-correct (terminal {A}) x with A ≟Type Unit
+... | yes refl = refl  -- eval id tt ≡ eval terminal tt ≡ tt
+... | no _     = refl
+-- initial with Void target: optimize-once returns id (eta for initial object)
+optimize-once-correct (initial {A}) x with A ≟Type Void
+... | yes refl = refl  -- eval id x ≡ eval initial x for x : ⟦ Void ⟧
+... | no _     with x
+...   | ()
 optimize-once-correct (curry {q = q} f _) x =
   closure-semantics-eq
     (eval (curry {q = q} (optimize-once f) Heap) x)
