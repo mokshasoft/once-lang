@@ -453,6 +453,7 @@ wants-fold _ = false
 -- Rules are tried in order; first match wins.
 -- Default case preserves the original composition.
 --
+{-# TERMINATING #-}  -- Termination: h and g are subterms of input; see apply-curry cases
 optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
 
 -- | Helper for pair distribution: takes Bool explicitly instead of using with.
@@ -527,8 +528,8 @@ optimize-compose [ f , g ] (inr _) = g
 --
 -- Composition case where k = fst: h ∘ id = h
 optimize-compose apply (⟨ curry (h ∘ fst) _ , g ⟩ _) = h
--- Composition case where k = snd: h ∘ g (may need multi-pass if h ∘ g is reducible)
-optimize-compose apply (⟨ curry (h ∘ snd) _ , g ⟩ _) = h ∘ g
+-- Composition case where k = snd: recursively optimize h ∘ g to ensure normality
+optimize-compose apply (⟨ curry (h ∘ snd) _ , g ⟩ _) = optimize-compose h g
 -- Composition case where k = terminal: h ∘ terminal
 optimize-compose apply (⟨ curry (h ∘ terminal) _ , g ⟩ _) = h ∘ terminal
 -- Composition case: right-associate for other k

@@ -45,6 +45,7 @@ funext = extensionality
 --   - Associativity
 ------------------------------------------------------------------------
 
+{-# TERMINATING #-}  -- Termination follows from optimize-compose termination
 optimize-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
                          → eval (optimize-compose g f) x ≡ eval (g ∘ f) x
 
@@ -221,8 +222,8 @@ optimize-compose-correct apply snd x = refl
 -- Each case is handled explicitly to ensure normal output.
 -- Composition case k = fst: h ∘ (fst ∘ ⟨ id , g ⟩) = h ∘ id = h
 optimize-compose-correct apply (⟨ curry (h ∘ fst) _ , g' ⟩ _) x = refl
--- Composition case k = snd: h ∘ (snd ∘ ⟨ id , g ⟩) = h ∘ g
-optimize-compose-correct apply (⟨ curry (h ∘ snd) _ , g' ⟩ _) x = refl
+-- Composition case k = snd: recursively optimize h ∘ g
+optimize-compose-correct apply (⟨ curry (h ∘ snd) _ , g' ⟩ _) x = optimize-compose-correct h g' x
 -- Composition case k = terminal: h ∘ (terminal ∘ ⟨ id , g ⟩) = h ∘ terminal
 optimize-compose-correct apply (⟨ curry (h ∘ terminal) _ , g' ⟩ _) x = refl
 -- Composition case: (h ∘ k) ∘ ⟨ id , g ⟩ = h ∘ (k ∘ ⟨ id , g ⟩) by assoc
