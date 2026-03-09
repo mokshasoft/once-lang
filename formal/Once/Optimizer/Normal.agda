@@ -577,30 +577,34 @@ optimize-normal t = optimize-n-suc-normal 9 t
 
 -- | Normal forms are unique per equivalence class
 --
--- STATUS: This property requires proving that the type-directed optimizer
--- produces unique normal forms.
+-- STATUS: Postulate. Proving this requires additional work.
 --
--- TYPE-DIRECTED NORMALIZATION (NOW IMPLEMENTED):
--- The optimizer now applies type-directed rules before structural rules:
+-- TYPE-DIRECTED NORMALIZATION (PARTIALLY IMPLEMENTED):
+-- The optimizer's optimize-once now applies type-directed rules:
 --   - Any f : A → Unit  reduces to terminal  (Unit target rule)
 --   - Any f : Void → B  reduces to initial   (Void source rule)
 --
--- This eliminates the previous counterexample:
+-- This eliminates the direct counterexample:
 --   - fst      : (Unit * Unit) → Unit  now optimizes to terminal
 --   - snd      : (Unit * Unit) → Unit  now optimizes to terminal
 --   - terminal : (Unit * Unit) → Unit  stays terminal
 -- All three now have the same normal form: terminal
 --
--- TO PROVE:
--- 1. For Unit target types: only terminal can result from optimization
--- 2. For Void source types: only initial can result from optimization
--- 3. For non-degenerate types: structural normal forms are unique
+-- REMAINING WORK FOR FULL PROOF:
+-- 1. The optimize-compose function must also be type-directed:
+--    Currently h ∘ terminal can be produced instead of just terminal.
+--    This needs to check target type and return terminal if Unit.
 --
--- The IsNormal predicate itself still allows non-canonical forms (e.g.,
--- IsNormal fst is true even when fst : A → Unit). This is fine because
--- the optimizer output always uses the canonical form.
+-- 2. The IsNormal predicate could be made type-directed:
+--    Add constraints like ¬ (A ≡ Unit) to normal-fst, etc.
+--    This would enforce that non-canonical forms aren't normal.
 --
--- We keep this as a postulate pending full proof.
+-- 3. Once (1) and (2) are done, prove:
+--    a. For Unit target: only terminal is a valid optimizer output
+--    b. For Void source: only initial is a valid optimizer output
+--    c. For non-degenerate types: structural normal forms are unique
+--
+-- See docs/formal/core/normal-unique-analysis.md for detailed analysis.
 postulate
   normal-unique : ∀ {A B} (t t' : IR A B) →
     IsNormal t → IsNormal t' →
