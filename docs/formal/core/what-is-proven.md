@@ -351,6 +351,37 @@ The goal is **zero hidden assumptions**. Anyone auditing the formalization shoul
 
 ## Known Limitations
 
+### Normal Form Uniqueness — Semantic Gap S2
+
+**Status**: The `normal-unique` postulate in `Once/Optimizer/Normal.agda` is FALSE for degenerate types involving Unit/Void.
+
+**The Issue**: Multiple syntactically distinct normal forms can be semantically equivalent when Unit or Void appear in key type positions.
+
+**Counterexample**: For type `(Unit * Unit) → Unit`, three distinct normal forms are semantically equivalent:
+```agda
+fst      : eval fst (tt, tt) = tt
+snd      : eval snd (tt, tt) = tt
+terminal : eval terminal (tt, tt) = tt
+```
+
+All three are valid normal forms, but they're syntactically different while being semantically identical (the unique function from Unit * Unit to Unit).
+
+**Root Cause**: Any `f : A → Unit` is semantically equal to `terminal` because Unit has exactly one inhabitant. The optimizer doesn't perform type-directed normalization to identify these cases.
+
+**What Would Be Needed**: To achieve true coherence (equivalent terms optimize to identical normal forms), the optimizer would need:
+- Reduce any `f : A → Unit` to `terminal`
+- Reduce any `f : Void → A` to `initial`
+
+This requires significant architectural changes beyond pattern-matching rewrite rules.
+
+**Impact**: The `coherence` theorem (equivalent terms optimize to same result) has this same limitation. For non-degenerate types (no Unit/Void in critical positions), normal forms are believed to be unique, but this is not formally proven.
+
+**Mitigations Added**:
+- `terminal : Unit → Unit` now reduces to `id` (terminal object eta rule)
+- `initial : Void → Void` now reduces to `id` (initial object eta rule)
+
+These handle the simplest cases but don't eliminate all counterexamples.
+
 ### Fixed Point Semantics (Fix, fold, unfold) — Semantic Gap S1 — ADDRESSED
 
 **Status**: The SPF module (`Once/SPF.agda`) now provides proper recursive type semantics. Integration into `Type.agda` and `Semantics.agda` is pending.
