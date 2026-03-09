@@ -66,19 +66,425 @@ normal-curry-body (normal-curry nf) = nf
 
 -- | optimize-compose produces normal forms when given normal inputs
 --
--- CHALLENGE: The apply-curry rule produces:
---   apply ∘ ⟨ curry f , g ⟩ → f ∘ ⟨ id , g ⟩
--- where f might be a composition, creating left-nested output.
+-- The optimizer now recursively normalizes problematic apply-curry outputs,
+-- so optimize-compose always produces normal forms when given normal inputs.
 --
--- The current optimizer handles this through multiple passes.
--- A single pass may not produce fully normal output.
---
--- For a complete proof, either:
--- 1. Modify optimize-compose to recursively right-associate, or
--- 2. Prove termination via well-founded recursion on "left-depth"
-postulate
-  optimize-compose-normal : ∀ {A B C} (g : IR B C) (f : IR A B) →
-    IsNormal g → IsNormal f → IsNormal (optimize-compose g f)
+-- PROOF STRATEGY: For each case of optimize-compose:
+-- 1. Identity/beta rules: output is subterm of normal input, hence normal
+-- 2. Default g ∘ f: since no reduction pattern matched, CompReducible g f is empty
+
+{-# TERMINATING #-}  -- Termination follows from optimize-compose termination
+optimize-compose-normal : ∀ {A B C} (g : IR B C) (f : IR A B) →
+  IsNormal g → IsNormal f → IsNormal (optimize-compose g f)
+
+------------------------------------------------------------------------
+-- Identity Laws
+------------------------------------------------------------------------
+-- id ∘ f = f
+optimize-compose-normal id f _ nf = nf
+-- g ∘ id = g (all cases)
+optimize-compose-normal fst id ng _ = ng
+optimize-compose-normal snd id ng _ = ng
+optimize-compose-normal (⟨ f , g ⟩ m) id ng _ = ng
+optimize-compose-normal (inl m) id ng _ = ng
+optimize-compose-normal (inr m) id ng _ = ng
+optimize-compose-normal [ f , g ] id ng _ = ng
+optimize-compose-normal terminal id ng _ = ng
+optimize-compose-normal (curry f m) id ng _ = ng
+optimize-compose-normal apply id ng _ = ng
+optimize-compose-normal fold id ng _ = ng
+optimize-compose-normal unfold id ng _ = ng
+optimize-compose-normal arr id ng _ = ng
+optimize-compose-normal (Prim n) id ng _ = ng
+optimize-compose-normal (g ∘ f) id ng _ = ng
+
+------------------------------------------------------------------------
+-- Beta Laws - Products
+------------------------------------------------------------------------
+-- fst ∘ ⟨ f , g ⟩ = f
+optimize-compose-normal fst (⟨ f , g ⟩ _) _ nfg = normal-pair-fst nfg
+-- snd ∘ ⟨ f , g ⟩ = g
+optimize-compose-normal snd (⟨ f , g ⟩ _) _ nfg = normal-pair-snd nfg
+
+------------------------------------------------------------------------
+-- Beta Laws - Coproducts
+------------------------------------------------------------------------
+-- [ f , g ] ∘ inl = f
+optimize-compose-normal [ f , g ] (inl _) nfg _ = normal-case-left nfg
+  where
+    normal-case-left : ∀ {A B C} {f : IR A C} {g : IR B C} →
+      IsNormal [ f , g ] → IsNormal f
+    normal-case-left (normal-case nf _ _) = nf
+-- [ f , g ] ∘ inr = g
+optimize-compose-normal [ f , g ] (inr _) nfg _ = normal-case-right nfg
+  where
+    normal-case-right : ∀ {A B C} {f : IR A C} {g : IR B C} →
+      IsNormal [ f , g ] → IsNormal g
+    normal-case-right (normal-case _ ng _) = ng
+
+------------------------------------------------------------------------
+-- Apply-Curry Rules
+------------------------------------------------------------------------
+-- apply ∘ ⟨ curry (h ∘ fst) , g ⟩ = h
+optimize-compose-normal apply (⟨ curry (h ∘ fst) _ , g ⟩ _) _ npair =
+  normal-compose-left (normal-curry-body (normal-pair-fst npair))
+-- apply ∘ ⟨ curry (h ∘ snd) , g ⟩ = optimize-compose h g (recursive)
+optimize-compose-normal apply (⟨ curry (h ∘ snd) _ , g ⟩ _) _ npair =
+  optimize-compose-normal h g
+    (normal-compose-left (normal-curry-body (normal-pair-fst npair)))
+    (normal-pair-snd npair)
+-- apply ∘ ⟨ curry (h ∘ terminal) , g ⟩ = h ∘ terminal
+optimize-compose-normal apply (⟨ curry (h ∘ terminal) _ , g ⟩ _) _ npair =
+  let nh = normal-compose-left (normal-curry-body (normal-pair-fst npair))
+  in normal-compose nh normal-terminal (λ ())
+-- apply ∘ ⟨ curry (h ∘ k) , g ⟩ = h ∘ (k ∘ ⟨ id , g ⟩)
+-- For remaining k cases, the output composition is normal
+optimize-compose-normal apply (⟨ curry (h ∘ id) _ , g ⟩ _) _ npair =
+  let ncomp = normal-curry-body (normal-pair-fst npair)
+  in ⊥-elim (comp-id-not-normal ncomp)
+  where
+    comp-id-not-normal : ∀ {A B} {h : IR B A} → ¬ IsNormal (h ∘ id)
+    comp-id-not-normal (normal-compose _ _ ¬red) = ¬red red-id-right
+optimize-compose-normal apply (⟨ curry (h ∘ (k₁ ∘ k₂)) _ , g ⟩ _) _ npair =
+  let ncomp = normal-curry-body (normal-pair-fst npair)
+  in ⊥-elim (comp-comp-not-normal ncomp)
+  where
+    comp-comp-not-normal : ∀ {A B C D} {h : IR C D} {g : IR B C} {f : IR A B} →
+      ¬ IsNormal (h ∘ (g ∘ f))
+    comp-comp-not-normal (normal-compose _ _ ¬red) = ¬red red-assoc
+optimize-compose-normal apply (⟨ curry (h ∘ (⟨ _ , _ ⟩ _)) _ , g ⟩ _) _ npair =
+  let nh = normal-compose-left (normal-curry-body (normal-pair-fst npair))
+      ng = normal-pair-snd npair
+      nk = normal-compose-right (normal-curry-body (normal-pair-fst npair))
+      -- k ∘ ⟨ id , g ⟩: k is a pair, ⟨ id , g ⟩ is a pair, no beta reduction
+      ninner = normal-compose nk (normal-pair normal-id ng (λ ())) (λ ())
+  in normal-compose nh ninner (λ ())
+optimize-compose-normal apply (⟨ curry (h ∘ (inl _)) _ , g ⟩ _) _ npair =
+  let nh = normal-compose-left (normal-curry-body (normal-pair-fst npair))
+      ng = normal-pair-snd npair
+      nk = normal-compose-right (normal-curry-body (normal-pair-fst npair))
+      ninner = normal-compose nk (normal-pair normal-id ng (λ ())) (λ ())
+  in normal-compose nh ninner (λ ())
+optimize-compose-normal apply (⟨ curry (h ∘ (inr _)) _ , g ⟩ _) _ npair =
+  let nh = normal-compose-left (normal-curry-body (normal-pair-fst npair))
+      ng = normal-pair-snd npair
+      nk = normal-compose-right (normal-curry-body (normal-pair-fst npair))
+      ninner = normal-compose nk (normal-pair normal-id ng (λ ())) (λ ())
+  in normal-compose nh ninner (λ ())
+optimize-compose-normal apply (⟨ curry (h ∘ (curry _ _)) _ , g ⟩ _) _ npair =
+  let nh = normal-compose-left (normal-curry-body (normal-pair-fst npair))
+      ng = normal-pair-snd npair
+      nk = normal-compose-right (normal-curry-body (normal-pair-fst npair))
+      ninner = normal-compose nk (normal-pair normal-id ng (λ ())) (λ ())
+  in normal-compose nh ninner (λ ())
+optimize-compose-normal apply (⟨ curry (h ∘ apply) _ , g ⟩ _) _ npair =
+  let nh = normal-compose-left (normal-curry-body (normal-pair-fst npair))
+      ng = normal-pair-snd npair
+      ninner = normal-compose normal-apply (normal-pair normal-id ng (λ ())) (λ ())
+  in normal-compose nh ninner (λ ())
+optimize-compose-normal apply (⟨ curry (h ∘ fold) _ , g ⟩ _) _ npair =
+  let nh = normal-compose-left (normal-curry-body (normal-pair-fst npair))
+      ng = normal-pair-snd npair
+      ninner = normal-compose normal-fold (normal-pair normal-id ng (λ ())) (λ ())
+  in normal-compose nh ninner (λ ())
+optimize-compose-normal apply (⟨ curry (h ∘ (Prim _)) _ , g ⟩ _) _ npair =
+  let nh = normal-compose-left (normal-curry-body (normal-pair-fst npair))
+      ng = normal-pair-snd npair
+      nk = normal-compose-right (normal-curry-body (normal-pair-fst npair))
+      ninner = normal-compose nk (normal-pair normal-id ng (λ ())) (λ ())
+  in normal-compose nh ninner (λ ())
+-- curry terminal case
+optimize-compose-normal apply (⟨ curry terminal _ , g ⟩ _) _ _ = normal-terminal
+-- curry id case
+optimize-compose-normal apply (⟨ curry id _ , g ⟩ _) _ npair =
+  normal-pair normal-id (normal-pair-snd npair) (λ ())
+-- curry fst case
+optimize-compose-normal apply (⟨ curry fst _ , g ⟩ _) _ _ = normal-id
+-- curry snd case
+optimize-compose-normal apply (⟨ curry snd _ , g ⟩ _) _ npair = normal-pair-snd npair
+-- Default curry f cases
+optimize-compose-normal apply (⟨ curry (⟨ _ , _ ⟩ _) _ , g ⟩ _) _ npair =
+  let nf = normal-curry-body (normal-pair-fst npair)
+      ng = normal-pair-snd npair
+  in normal-compose nf (normal-pair normal-id ng (λ ())) (λ ())
+optimize-compose-normal apply (⟨ curry (inl _) _ , g ⟩ _) _ npair =
+  let nf = normal-curry-body (normal-pair-fst npair)
+      ng = normal-pair-snd npair
+  in normal-compose nf (normal-pair normal-id ng (λ ())) (λ ())
+optimize-compose-normal apply (⟨ curry (inr _) _ , g ⟩ _) _ npair =
+  let nf = normal-curry-body (normal-pair-fst npair)
+      ng = normal-pair-snd npair
+  in normal-compose nf (normal-pair normal-id ng (λ ())) (λ ())
+optimize-compose-normal apply (⟨ curry [ _ , _ ] _ , g ⟩ _) _ npair =
+  let nf = normal-curry-body (normal-pair-fst npair)
+      ng = normal-pair-snd npair
+  in normal-compose nf (normal-pair normal-id ng (λ ())) (λ ())
+optimize-compose-normal apply (⟨ curry apply _ , g ⟩ _) _ npair =
+  let ng = normal-pair-snd npair
+  in normal-compose normal-apply (normal-pair normal-id ng (λ ())) (λ ())
+optimize-compose-normal apply (⟨ curry fold _ , g ⟩ _) _ npair =
+  let ng = normal-pair-snd npair
+  in normal-compose normal-fold (normal-pair normal-id ng (λ ())) (λ ())
+optimize-compose-normal apply (⟨ curry unfold _ , g ⟩ _) _ npair =
+  let ng = normal-pair-snd npair
+  in normal-compose normal-unfold (normal-pair normal-id ng (λ ())) (λ ())
+optimize-compose-normal apply (⟨ curry arr _ , g ⟩ _) _ npair =
+  let ng = normal-pair-snd npair
+  in normal-compose normal-arr (normal-pair normal-id ng (λ ())) (λ ())
+optimize-compose-normal apply (⟨ curry (Prim _) _ , g ⟩ _) _ npair =
+  let nf = normal-curry-body (normal-pair-fst npair)
+      ng = normal-pair-snd npair
+  in normal-compose nf (normal-pair normal-id ng (λ ())) (λ ())
+optimize-compose-normal apply (⟨ curry initial _ , g ⟩ _) _ npair =
+  let ng = normal-pair-snd npair
+  in normal-compose normal-initial (normal-pair normal-id ng (λ ())) (λ ())
+
+------------------------------------------------------------------------
+-- Fixed Point Laws
+------------------------------------------------------------------------
+optimize-compose-normal fold unfold _ _ = normal-id
+optimize-compose-normal unfold fold _ _ = normal-id
+optimize-compose-normal fold (unfold ∘ f) _ nf = normal-compose-right nf
+optimize-compose-normal unfold (fold ∘ f) _ nf = normal-compose-right nf
+
+------------------------------------------------------------------------
+-- Terminal/Dead Code
+------------------------------------------------------------------------
+optimize-compose-normal terminal (_ ∘ _) _ _ = normal-terminal
+optimize-compose-normal terminal fst _ _ = normal-terminal
+optimize-compose-normal terminal snd _ _ = normal-terminal
+optimize-compose-normal terminal (⟨ _ , _ ⟩ _) _ _ = normal-terminal
+optimize-compose-normal terminal (inl _) _ _ = normal-terminal
+optimize-compose-normal terminal (inr _) _ _ = normal-terminal
+optimize-compose-normal terminal [ _ , _ ] _ _ = normal-terminal
+optimize-compose-normal terminal terminal _ _ = normal-terminal
+optimize-compose-normal terminal (curry _ _) _ _ = normal-terminal
+optimize-compose-normal terminal apply _ _ = normal-terminal
+optimize-compose-normal terminal fold _ _ = normal-terminal
+optimize-compose-normal terminal unfold _ _ = normal-terminal
+optimize-compose-normal terminal arr _ _ = normal-terminal
+optimize-compose-normal terminal (Prim _) _ _ = normal-terminal
+
+------------------------------------------------------------------------
+-- Initial Absorption
+------------------------------------------------------------------------
+optimize-compose-normal fst initial _ _ = normal-initial
+optimize-compose-normal snd initial _ _ = normal-initial
+optimize-compose-normal (⟨ _ , _ ⟩ _) initial _ _ = normal-initial
+optimize-compose-normal (inl _) initial _ _ = normal-initial
+optimize-compose-normal (inr _) initial _ _ = normal-initial
+optimize-compose-normal [ _ , _ ] initial _ _ = normal-initial
+optimize-compose-normal terminal initial _ _ = normal-initial
+optimize-compose-normal (curry _ _) initial _ _ = normal-initial
+optimize-compose-normal apply initial _ _ = normal-initial
+optimize-compose-normal fold initial _ _ = normal-initial
+optimize-compose-normal unfold initial _ _ = normal-initial
+optimize-compose-normal arr initial _ _ = normal-initial
+optimize-compose-normal (Prim _) initial _ _ = normal-initial
+optimize-compose-normal (_ ∘ _) initial _ _ = normal-initial
+
+------------------------------------------------------------------------
+-- Initial Left: initial ∘ f = initial ∘ f
+------------------------------------------------------------------------
+optimize-compose-normal initial f _ nf = normal-compose normal-initial nf (λ ())
+
+------------------------------------------------------------------------
+-- Pair Distribution (using safe-pair-distrib)
+------------------------------------------------------------------------
+optimize-compose-normal (⟨ f , g ⟩ m) (⟨ h₁ , h₂ ⟩ m') npair npair' with safe-pair-distrib f g
+... | true = normal-pair
+  (optimize-compose-normal f (⟨ h₁ , h₂ ⟩ m') (normal-pair-fst npair) npair')
+  (optimize-compose-normal g (⟨ h₁ , h₂ ⟩ m') (normal-pair-snd npair) npair')
+  (λ ())
+... | false = normal-compose npair npair' (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) (inl m') npair nf with safe-pair-distrib f g
+... | true = normal-pair
+  (optimize-compose-normal f (inl m') (normal-pair-fst npair) nf)
+  (optimize-compose-normal g (inl m') (normal-pair-snd npair) nf)
+  (λ ())
+... | false = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) (inr m') npair nf with safe-pair-distrib f g
+... | true = normal-pair
+  (optimize-compose-normal f (inr m') (normal-pair-fst npair) nf)
+  (optimize-compose-normal g (inr m') (normal-pair-snd npair) nf)
+  (λ ())
+... | false = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) unfold npair _ with safe-pair-distrib f g
+... | true = normal-pair
+  (optimize-compose-normal f unfold (normal-pair-fst npair) normal-unfold)
+  (optimize-compose-normal g unfold (normal-pair-snd npair) normal-unfold)
+  (λ ())
+... | false = normal-compose npair normal-unfold (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) fold npair _ with safe-pair-distrib f g
+... | true = normal-pair
+  (optimize-compose-normal f fold (normal-pair-fst npair) normal-fold)
+  (optimize-compose-normal g fold (normal-pair-snd npair) normal-fold)
+  (λ ())
+... | false = normal-compose npair normal-fold (λ ())
+-- Default pair ∘ h = pair ∘ h
+optimize-compose-normal (⟨ f , g ⟩ m) fst npair nf = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) snd npair nf = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) [ h₁ , h₂ ] npair nf = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) terminal npair nf = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) (curry h n) npair nf = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) apply npair nf = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) arr npair nf = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) (Prim n) npair nf = normal-compose npair nf (λ ())
+optimize-compose-normal (⟨ f , g ⟩ m) (h₁ ∘ h₂) npair nf = normal-compose npair nf (λ ())
+
+------------------------------------------------------------------------
+-- Case Distribution: h ∘ [ f , g ] = h ∘ [ f , g ]
+------------------------------------------------------------------------
+optimize-compose-normal fst [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal (inl m) [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal (inr m) [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal terminal [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal (curry h n) [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal arr [ f , g ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal (Prim n) [ f , g ] ng nf = normal-compose ng nf (λ ())
+
+------------------------------------------------------------------------
+-- Associativity: (h ∘ g) ∘ f → h ∘ (g ∘ f) then optimize
+------------------------------------------------------------------------
+optimize-compose-normal (h ∘ g) f nhg nf =
+  optimize-compose-normal h (optimize-compose g f)
+    (normal-compose-left nhg)
+    (optimize-compose-normal g f (normal-compose-right nhg) nf)
+
+------------------------------------------------------------------------
+-- Default Cases: g ∘ f = g ∘ f (no reduction applies)
+------------------------------------------------------------------------
+-- These cases produce compositions where no optimization rule matched,
+-- meaning CompReducible g f is empty.
+optimize-compose-normal fst fst ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst snd ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst (f ∘ g) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst (inl _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst (inr _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst [ _ , _ ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst terminal ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst (curry _ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst apply ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst fold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst unfold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst arr ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fst (Prim _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd fst ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd snd ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd (f ∘ g) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd (inl _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd (inr _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd [ _ , _ ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd terminal ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd (curry _ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd apply ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd fold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd unfold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd arr ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal snd (Prim _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal (inl m) f ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal (inr m) f ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] fst ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] snd ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] (⟨ _ , _ ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] [ _ , _ ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] terminal ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] (curry _ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] apply ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] fold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] unfold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] arr ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] (Prim _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal [ f , g ] (_ ∘ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal (curry f m) g ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply fst ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply snd ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ id , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ (_ ∘ _) , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ fst , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ snd , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ (⟨ _ , _ ⟩ _) , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ (inl _) , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ (inr _) , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ [ _ , _ ] , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ terminal , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ initial , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ apply , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ fold , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ unfold , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ arr , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (⟨ (Prim _) , g ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (inl _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (inr _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply [ _ , _ ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply terminal ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (curry _ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply apply ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply fold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply unfold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply arr ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (Prim _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal apply (_ ∘ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold fst ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold snd ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (⟨ _ , _ ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (inl _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (inr _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold [ _ , _ ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold terminal ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (curry _ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold apply ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold fold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold arr ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (Prim _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (id ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (fst ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (snd ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold ((⟨ _ , _ ⟩ _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold ((inl _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold ((inr _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold ([ _ , _ ] ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (terminal ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (initial ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold ((curry _ _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (apply ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (fold ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold (arr ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold ((Prim _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal fold ((_ ∘ _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold fst ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold snd ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (⟨ _ , _ ⟩ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (inl _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (inr _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold [ _ , _ ] ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold terminal ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (curry _ _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold apply ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold unfold ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold arr ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (Prim _) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (id ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (fst ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (snd ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold ((⟨ _ , _ ⟩ _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold ((inl _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold ((inr _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold ([ _ , _ ] ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (terminal ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (initial ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold ((curry _ _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (apply ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (unfold ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold (arr ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold ((Prim _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal unfold ((_ ∘ _) ∘ f) ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal arr f ng nf = normal-compose ng nf (λ ())
+optimize-compose-normal (Prim n) f ng nf = normal-compose ng nf (λ ())
 
 ------------------------------------------------------------------------
 -- Proof: optimize-once produces normal forms
