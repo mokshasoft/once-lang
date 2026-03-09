@@ -514,14 +514,24 @@ optimize-compose [ f , g ] (inr _) = g
 -- Eliminates closure allocation when immediately applied
 --
 -- We handle each case explicitly to ensure normal output:
--- - f = h ∘ k: right-associate to avoid left-nesting
+-- - f = h ∘ k: depends on k:
+--     k = fst: h ∘ (fst ∘ ⟨ id , g ⟩) = h ∘ id = h
+--     k = snd: h ∘ (snd ∘ ⟨ id , g ⟩) = h ∘ g
+--     k = terminal: h ∘ (terminal ∘ ⟨ id , g ⟩) = h ∘ terminal
+--     otherwise: h ∘ (k ∘ ⟨ id , g ⟩) is normal (k ∘ pair not reducible)
 -- - f = terminal: dead code elimination
 -- - f = id: identity law
 -- - f = fst: beta (fst ∘ ⟨ id , g ⟩ = id)
 -- - f = snd: beta (snd ∘ ⟨ id , g ⟩ = g)
 -- - Otherwise: f ∘ ⟨ id , g ⟩ is already normal
 --
--- Composition case: right-associate to avoid red-assoc
+-- Composition case where k = fst: h ∘ id = h
+optimize-compose apply (⟨ curry (h ∘ fst) _ , g ⟩ _) = h
+-- Composition case where k = snd: h ∘ g (may need multi-pass if h ∘ g is reducible)
+optimize-compose apply (⟨ curry (h ∘ snd) _ , g ⟩ _) = h ∘ g
+-- Composition case where k = terminal: h ∘ terminal
+optimize-compose apply (⟨ curry (h ∘ terminal) _ , g ⟩ _) = h ∘ terminal
+-- Composition case: right-associate for other k
 optimize-compose apply (⟨ curry (h ∘ k) _ , g ⟩ _) = h ∘ (k ∘ ⟨ id , g ⟩ Heap)
 -- Dead code: terminal ∘ _ = terminal
 optimize-compose apply (⟨ curry terminal _ , g ⟩ _) = terminal
