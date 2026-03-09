@@ -87,8 +87,46 @@ postulate
 -- The proof is by structural induction on the input term.
 -- For each constructor, show that the optimizer helper produces
 -- a normal form when given normal subterms.
-postulate
-  optimize-once-normal : ∀ {A B} (t : IR A B) → IsNormal (optimize-once t)
+optimize-once-normal : ∀ {A B} (t : IR A B) → IsNormal (optimize-once t)
+-- Base cases: constants
+optimize-once-normal id = normal-id
+optimize-once-normal fst = normal-fst
+optimize-once-normal snd = normal-snd
+optimize-once-normal terminal = normal-terminal
+optimize-once-normal initial = normal-initial
+optimize-once-normal apply = normal-apply
+optimize-once-normal unfold = normal-unfold
+optimize-once-normal arr = normal-arr
+-- Composition: use optimize-compose-normal with recursive calls
+optimize-once-normal (g ∘ f) =
+  optimize-compose-normal (optimize-once g) (optimize-once f)
+    (optimize-once-normal g) (optimize-once-normal f)
+-- Pair: use optimize-pair-normal with recursive calls
+optimize-once-normal (⟨ f , g ⟩ m) =
+  optimize-pair-normal (optimize-once f) (optimize-once g)
+    (optimize-once-normal f) (optimize-once-normal g)
+-- Case: use optimize-case-normal with recursive calls
+optimize-once-normal [ f , g ] =
+  optimize-case-normal (optimize-once f) (optimize-once g)
+    (optimize-once-normal f) (optimize-once-normal g)
+-- Curry: normal-curry with recursive call
+optimize-once-normal (curry f m) = normal-curry (optimize-once-normal f)
+-- inl: check for Void source
+optimize-once-normal (inl {A} {B} m) with A ≟Type Void
+... | yes refl = normal-initial
+... | no ¬void = normal-inl ¬void
+-- inr: check for Void source
+optimize-once-normal (inr {A} {B} m) with B ≟Type Void
+... | yes refl = normal-initial
+... | no ¬void = normal-inr ¬void
+-- fold: check for Void functor
+optimize-once-normal (fold {F}) with F ≟Type Void
+... | yes refl = normal-initial
+... | no ¬void = normal-fold ¬void
+-- Prim: check for Void source
+optimize-once-normal (Prim {A} n) with A ≟Type Void
+... | yes refl = normal-initial
+... | no ¬void = normal-prim ¬void
 
 ------------------------------------------------------------------------
 -- Main Theorem: optimize produces normal forms
