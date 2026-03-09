@@ -635,61 +635,70 @@ optimize-case-correct arr g x = refl
 optimize-case-correct (Prim name) g x = refl
 
 ------------------------------------------------------------------------
--- Correctness of optimize-once
+-- Correctness of optimize-once-structural and optimize-once (mutual)
 ------------------------------------------------------------------------
 
-optimize-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-                      → eval (optimize-once f) x ≡ eval f x
-optimize-once-correct id x = refl
-optimize-once-correct (g ∘ f) x =
-  trans (optimize-compose-correct (optimize-once g) (optimize-once f) x)
-        (trans (cong (eval (optimize-once g)) (optimize-once-correct f x))
-               (optimize-once-correct g (eval f x)))
-optimize-once-correct fst x = refl
-optimize-once-correct snd x = refl
-optimize-once-correct (⟨ f , g ⟩ _) x =
-  trans (optimize-pair-correct (optimize-once f) (optimize-once g) x)
-        (cong₂ _,_ (optimize-once-correct f x) (optimize-once-correct g x))
--- inl with Void source: optimize-once returns initial (vacuously correct)
-optimize-once-correct (inl {A} {B} m) x with A ≟Type Void
-... | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, so vacuously true
-... | no _     = refl
--- inr with Void source: optimize-once returns initial (vacuously correct)
-optimize-once-correct (inr {A} {B} m) x with B ≟Type Void
-... | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, so vacuously true
-... | no _     = refl
-optimize-once-correct [ f , g ] x =
-  trans (optimize-case-correct (optimize-once f) (optimize-once g) x)
-        (lemma x)
-  where
-    lemma : (y : ⟦ _ + _ ⟧) → eval [ optimize-once f , optimize-once g ] y ≡ eval [ f , g ] y
-    lemma (inj₁ a) = optimize-once-correct f a
-    lemma (inj₂ b) = optimize-once-correct g b
--- terminal with Unit source: optimize-once returns id (eta for terminal object)
-optimize-once-correct (terminal {A}) x with A ≟Type Unit
-... | yes refl = refl  -- eval id tt ≡ eval terminal tt ≡ tt
-... | no _     = refl
--- initial with Void target: optimize-once returns id (eta for initial object)
-optimize-once-correct (initial {A}) x with A ≟Type Void
-... | yes refl = refl  -- eval id x ≡ eval initial x for x : ⟦ Void ⟧
-... | no _     with x
-...   | ()
-optimize-once-correct (curry {q = q} f _) x =
-  closure-semantics-eq
-    (eval (curry {q = q} (optimize-once f) Heap) x)
-    (eval (curry {q = q} f Heap) x)
-    (funext (λ b → optimize-once-correct f (x , b)))
-optimize-once-correct apply x = refl
--- fold with Void source: optimize-once returns initial (vacuously correct)
-optimize-once-correct (fold {F}) x with F ≟Type Void
-... | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, so vacuously true
-... | no _     = refl
-optimize-once-correct unfold x = refl
-optimize-once-correct arr x = refl
--- Prim with Void source: optimize-once returns initial (vacuously correct)
-optimize-once-correct (Prim {A} name) x with A ≟Type Void
-... | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, so vacuously true
-... | no _     = refl
+mutual
+  -- | Structural optimization preserves semantics
+  optimize-once-structural-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
+                                   → eval (optimize-once-structural f) x ≡ eval f x
+  optimize-once-structural-correct id x = refl
+  optimize-once-structural-correct (g ∘ f) x =
+    trans (optimize-compose-correct (optimize-once g) (optimize-once f) x)
+          (trans (cong (eval (optimize-once g)) (optimize-once-correct f x))
+                 (optimize-once-correct g (eval f x)))
+  optimize-once-structural-correct fst x = refl
+  optimize-once-structural-correct snd x = refl
+  optimize-once-structural-correct (⟨ f , g ⟩ _) x =
+    trans (optimize-pair-correct (optimize-once f) (optimize-once g) x)
+          (cong₂ _,_ (optimize-once-correct f x) (optimize-once-correct g x))
+  -- inl with Void source: returns initial (vacuously correct)
+  optimize-once-structural-correct (inl {A} {B} m) x with A ≟Type Void
+  ... | yes refl = ⊥-elim x
+  ... | no _     = refl
+  -- inr with Void source: returns initial (vacuously correct)
+  optimize-once-structural-correct (inr {A} {B} m) x with B ≟Type Void
+  ... | yes refl = ⊥-elim x
+  ... | no _     = refl
+  optimize-once-structural-correct [ f , g ] x =
+    trans (optimize-case-correct (optimize-once f) (optimize-once g) x)
+          (lemma x)
+    where
+      lemma : (y : ⟦ _ + _ ⟧) → eval [ optimize-once f , optimize-once g ] y ≡ eval [ f , g ] y
+      lemma (inj₁ a) = optimize-once-correct f a
+      lemma (inj₂ b) = optimize-once-correct g b
+  optimize-once-structural-correct terminal x = refl
+  optimize-once-structural-correct initial ()
+  optimize-once-structural-correct (curry {q = q} f _) x =
+    closure-semantics-eq
+      (eval (curry {q = q} (optimize-once f) Heap) x)
+      (eval (curry {q = q} f Heap) x)
+      (funext (λ b → optimize-once-correct f (x , b)))
+  optimize-once-structural-correct apply x = refl
+  -- fold with Void source: returns initial (vacuously correct)
+  optimize-once-structural-correct (fold {F}) x with F ≟Type Void
+  ... | yes refl = ⊥-elim x
+  ... | no _     = refl
+  optimize-once-structural-correct unfold x = refl
+  optimize-once-structural-correct arr x = refl
+  -- Prim with Void source: returns initial (vacuously correct)
+  optimize-once-structural-correct (Prim {A} name) x with A ≟Type Void
+  ... | yes refl = ⊥-elim x
+  ... | no _     = refl
+
+  -- | Type-directed optimization preserves semantics
+  --
+  -- Type-directed rules:
+  --   1. B = Unit: terminal is correct (eval terminal x = tt = eval f x)
+  --   2. A = Void: initial is correct (vacuously, no inputs)
+  --   3. Otherwise: structural rules preserve semantics
+  optimize-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
+                        → eval (optimize-once f) x ≡ eval f x
+  optimize-once-correct {A} {B} f x with B ≟Type Unit
+  ... | yes refl = refl  -- eval terminal x = tt = eval f x (both produce tt)
+  ... | no _ with A ≟Type Void
+  ...   | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, vacuously true
+  ...   | no _ = optimize-once-structural-correct f x
 
 ------------------------------------------------------------------------
 -- Correctness of bounded optimization

@@ -688,42 +688,57 @@ optimize-case f g = [ f , g ]
 -- Full Recursive Optimization
 ------------------------------------------------------------------------
 
--- | Single optimization pass
-optimize-once : ∀ {A B} → IR A B → IR A B
-optimize-once id = id
-optimize-once (g ∘ f) = optimize-compose (optimize-once g) (optimize-once f)
-optimize-once fst = fst
-optimize-once snd = snd
-optimize-once (⟨ f , g ⟩ m) = optimize-pair (optimize-once f) (optimize-once g)
--- | inl with Void source is equivalent to initial (no inhabitants)
-optimize-once (inl {A} {B} m) with A ≟Type Void
-... | yes refl = initial
-... | no _     = inl m
--- | inr with Void source is equivalent to initial (no inhabitants)
-optimize-once (inr {A} {B} m) with B ≟Type Void
-... | yes refl = initial
-... | no _     = inr m
-optimize-once [ f , g ] = optimize-case (optimize-once f) (optimize-once g)
--- | terminal with Unit source is equivalent to id (eta for terminal object)
-optimize-once (terminal {A}) with A ≟Type Unit
-... | yes refl = id
-... | no _     = terminal
--- | initial with Void target is equivalent to id (eta for initial object)
-optimize-once (initial {A}) with A ≟Type Void
-... | yes refl = id
-... | no _     = initial
-optimize-once (curry f m) = curry (optimize-once f) m
-optimize-once apply = apply
--- | fold with Void source is equivalent to initial (no inhabitants)
-optimize-once (fold {F}) with F ≟Type Void
-... | yes refl = initial
-... | no _     = fold
-optimize-once unfold = unfold
-optimize-once arr = arr
--- | Prim with Void source is equivalent to initial (no inhabitants)
-optimize-once (Prim {A} n) with A ≟Type Void
-... | yes refl = initial
-... | no _     = Prim n
+-- | Single optimization pass with type-directed normalization
+--
+-- Type-directed rules (checked first):
+--   1. Any f : A → Unit  becomes terminal (Unit target rule)
+--   2. Any f : Void → B  becomes initial  (Void source rule)
+--
+-- This ensures unique normal forms for degenerate types:
+--   - All morphisms to Unit are terminal
+--   - All morphisms from Void are initial
+--
+-- For non-degenerate types, structural rules apply.
+
+mutual
+  -- | Structural optimization rules (called after type-directed rules)
+  optimize-once-structural : ∀ {A B} → IR A B → IR A B
+  optimize-once-structural id = id
+  optimize-once-structural (g ∘ f) = optimize-compose (optimize-once g) (optimize-once f)
+  optimize-once-structural fst = fst
+  optimize-once-structural snd = snd
+  optimize-once-structural (⟨ f , g ⟩ m) = optimize-pair (optimize-once f) (optimize-once g)
+  -- | inl with Void source is equivalent to initial (no inhabitants)
+  optimize-once-structural (inl {A} {B} m) with A ≟Type Void
+  ... | yes refl = initial
+  ... | no _     = inl m
+  -- | inr with Void source is equivalent to initial (no inhabitants)
+  optimize-once-structural (inr {A} {B} m) with B ≟Type Void
+  ... | yes refl = initial
+  ... | no _     = inr m
+  optimize-once-structural [ f , g ] = optimize-case (optimize-once f) (optimize-once g)
+  optimize-once-structural terminal = terminal
+  optimize-once-structural initial = initial
+  optimize-once-structural (curry f m) = curry (optimize-once f) m
+  optimize-once-structural apply = apply
+  -- | fold with Void source is equivalent to initial (no inhabitants)
+  optimize-once-structural (fold {F}) with F ≟Type Void
+  ... | yes refl = initial
+  ... | no _     = fold
+  optimize-once-structural unfold = unfold
+  optimize-once-structural arr = arr
+  -- | Prim with Void source is equivalent to initial (no inhabitants)
+  optimize-once-structural (Prim {A} n) with A ≟Type Void
+  ... | yes refl = initial
+  ... | no _     = Prim n
+
+  -- | Type-directed optimization
+  optimize-once : ∀ {A B} → IR A B → IR A B
+  optimize-once {A} {B} ir with B ≟Type Unit
+  ... | yes refl = terminal                    -- Target is Unit → terminal
+  ... | no _ with A ≟Type Void
+  ...   | yes refl = initial                   -- Source is Void → initial
+  ...   | no _ = optimize-once-structural ir   -- Otherwise → structural rules
 
 ------------------------------------------------------------------------
 -- Bounded Iteration
