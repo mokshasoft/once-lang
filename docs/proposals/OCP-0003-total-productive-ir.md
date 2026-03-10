@@ -584,6 +584,160 @@ This is a straightforward rewrite rule that eliminates intermediate data structu
 
 ---
 
+## Optimizer Architecture
+
+The layered IR naturally leads to a layered optimizer architecture.
+
+### Phased Optimization
+
+```
+User Code
+    ↓
+┌─────────────────────────────┐
+│ 1. RecursionIR Optimizer    │  High-level: fusion, deforestation
+└─────────────┬───────────────┘
+              ↓
+┌─────────────────────────────┐
+│ 2. Cross-Layer Rules        │  Algebra/coalgebra optimization
+└─────────────┬───────────────┘
+              ↓
+┌─────────────────────────────┐
+│ 3. CCC IR Optimizer         │  Low-level: categorical laws
+└─────────────┬───────────────┘
+              ↓
+          Code Gen
+```
+
+### Phase 1: RecursionIR Optimizer
+
+Handles structural transformations that change the shape of recursion:
+
+```
+-- Deforestation (the big win)
+cata alg ∘ ana coalg           →  hylo alg coalg
+
+-- Functor fusion
+map f ∘ map g                  →  map (f ∘ g)
+filter p ∘ filter q            →  filter (λx → p x ∧ q x)
+map f ∘ filter p               →  cata (case nil (λ(a,as) → if p a then cons (f a) as else as))
+
+-- Cata computation
+cata alg ∘ In                  →  alg ∘ fmap (cata alg)
+
+-- Ana computation
+Out ∘ ana coalg                →  fmap (ana coalg) ∘ coalg
+
+-- Coalgebra composition
+ana coalg ∘ f                  →  ana (coalg ∘ f)
+```
+
+### Phase 2: Cross-Layer Rules
+
+Optimizations that span RecursionIR and CCC IR, working on the algebras and coalgebras:
+
+```
+-- Push post-processing into algebra
+f ∘ cata alg                   →  cata (f ∘ alg)  -- when f is cheap
+
+-- Pull pre-processing out of coalgebra
+ana coalg ∘ f                  →  ana (coalg ∘ f)
+
+-- Simplify algebra using CCC laws
+cata (case (const z) (compose f (pair fst snd)))
+    →  cata (case (const z) f)  -- pair fst snd = id
+```
+
+### Phase 3: CCC IR Optimizer
+
+Handles local simplifications using categorical laws:
+
+```
+-- Identity laws
+compose f id                   →  f
+compose id f                   →  f
+
+-- Product laws
+fst (pair f g)                 →  f
+snd (pair f g)                 →  g
+pair fst snd                   →  id  -- eta for products
+
+-- Coproduct laws
+case f g (inl a)               →  f a
+case f g (inr b)               →  g b
+case inl inr                   →  id  -- eta for coproducts
+
+-- Exponential laws
+apply (pair (curry f) g)       →  compose f (pair id g)
+curry (compose apply (pair (compose f fst) snd))  →  f  -- eta
+```
+
+### Why This Order
+
+1. **RecursionIR first** — Biggest wins. Deforestation eliminates entire intermediate data structures before we worry about small optimizations.
+
+2. **Cross-layer second** — Once high-level structure is optimized, simplify the algebras/coalgebras that remain.
+
+3. **CCC last** — Clean up low-level categorical compositions. These are cheap to apply and polish the final result.
+
+### Example Optimization Trace
+
+```
+-- Original: three separate traversals
+result = length (filter even (map (+1) xs))
+
+-- Elaborate to IR
+result = cata lenAlg (cata filterAlg (cata mapAlg xs))
+
+-- Phase 1: Fuse catas (deforestation)
+result = cata (lenAlg ∘ filterStep ∘ mapStep) xs
+       = cata fusedAlg xs
+
+-- Phase 2: Simplify fused algebra
+fusedAlg = case (const 0) (λ(a, n) →
+             let a' = a + 1
+             in if even a' then n + 1 else n)
+
+-- Phase 3: CCC cleanup (minor simplifications)
+-- (algebra is already simple)
+
+-- Result: Single traversal, no intermediate lists
+```
+
+### Verification Strategy
+
+Each optimizer phase has independent correctness proofs:
+
+| Phase | Proof Obligation |
+|-------|------------------|
+| RecursionIR | Each rule preserves denotational semantics via recursion scheme laws |
+| Cross-layer | Rules preserve semantics by compositionality |
+| CCC IR | Each rule is a categorical law (proven since 1940s) |
+
+The composition of correct phases is correct.
+
+### Implementation Notes
+
+```haskell
+-- Optimizer pipeline
+optimize :: IR -> IR
+optimize = cccOptimize . crossLayerOptimize . recursionOptimize
+
+-- Each phase is a fixpoint of rule application
+recursionOptimize :: IR -> IR
+recursionOptimize = fixpoint applyRecursionRules
+
+cccOptimize :: IR -> IR
+cccOptimize = fixpoint applyCCCRules
+
+-- Rules are pattern-matching rewrites
+applyRecursionRules :: IR -> Maybe IR
+applyRecursionRules (Compose (Cata alg) (Ana coalg seed)) =
+    Just (Hylo alg coalg seed)  -- deforestation
+applyRecursionRules _ = Nothing
+```
+
+---
+
 ## Future Extensions
 
 ### Session Types for Deadlock-Free Communication
