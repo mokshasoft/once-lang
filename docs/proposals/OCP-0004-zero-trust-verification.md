@@ -718,12 +718,292 @@ All Once compilation:
 | Code review | Large | Human judgment |
 | Agda/Coq | 50,000+ LOC | Proof assistant correct |
 | Metamath | ~300 LOC | Small verifier correct |
-| **Once** | **~50-100 LOC** | **Categorical laws as code** |
+| **Once (basic)** | **~50-100 LOC** | **Categorical laws as code** |
+| **Once (trace verifier)** | **~15-20 LOC** | **Trace verification** |
+| **Once (pen-and-paper)** | **~0 LOC** | **Manual trace check** |
 
 The Once approach has a minimal TCB because:
 1. The bootstrap normalizer IS the categorical laws (not an implementation of them)
 2. After bootstrap, Once self-verifies with no additional trust
-3. The ~50-100 lines can be hand-verified against the mathematical definitions
+3. With proof-carrying normalization, only the trace verifier needs trust
+4. The trace verifier can be verified by hand (pen-and-paper) for ultimate minimization
+
+---
+
+## Further TCB Minimization
+
+The ~50-100 line bootstrap normalizer is already small, but can we go smaller? This section explores approaches to reduce the TCB even further.
+
+### The Problem with the Current Approach
+
+The bootstrap normalizer (~50-100 lines) must:
+1. Represent CCC terms (~10 lines)
+2. Pattern match reduction rules (~30 lines)
+3. Apply substitution (~20 lines)
+4. Iterate until normal form (~10 lines)
+
+We trust ALL of this code. Can we reduce what we trust?
+
+### Approach 1: Proof-Carrying Normalization
+
+**Key insight**: Don't trust the normalizer's computation — only trust a trace verifier.
+
+Instead of:
+```
+normalize : CCC → CCC
+```
+
+Use:
+```
+normalize : CCC → (CCC, Trace)
+
+where Trace = [(RuleName, Before, After), ...]
+```
+
+Example trace:
+```
+Input: compose (compose f id) g
+
+Step 1: compose (compose f [id]) g
+        Rule: id-right
+        Before: compose f id
+        After: f
+
+Step 2: compose f g
+        (normal form)
+
+Output: compose f g
+Trace: [(id-right, "compose f id", "f")]
+```
+
+The trace verifier is trivial (~15-20 lines):
+
+```
+verify : Trace → Bool
+verify [] = true
+verify ((rule, before, after) :: rest) =
+  matches rule before &&        -- pattern matches?
+  apply rule before == after && -- correct application?
+  chainedCorrectly rest after &&-- next step starts here?
+  verify rest                   -- rest valid?
+```
+
+**TCB reduction**: ~50-100 lines → ~15-20 lines
+
+The normalizer can be buggy — bugs are caught by the trace verifier, not trusted.
+
+### Approach 2: String Rewriting Systems
+
+CCC reduction rules ARE string rewriting rules:
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                 CCC as String Rewriting                    │
+├────────────────────────────────────────────────────────────┤
+│ compose f id           →  f                                │
+│ compose id f           →  f                                │
+│ fst (pair f g)         →  f                                │
+│ snd (pair f g)         →  g                                │
+│ case f g (inl x)       →  f x                              │
+│ case f g (inr x)       →  g x                              │
+│ apply (pair (curry f) x) →  f x                            │
+│ pair (fst ∘ h) (snd ∘ h) →  h    (when h : A → B × C)     │
+└────────────────────────────────────────────────────────────┘
+```
+
+A string rewriting engine is ~10-15 lines:
+
+```
+rewrite : [Rule] → Term → Maybe Term
+rewrite rules term =
+  case findFirstMatch rules term of
+    Nothing → Nothing
+    Just (rule, subst) → Just (applySubst subst (rhs rule))
+
+normalize : [Rule] → Term → Term
+normalize rules term =
+  case rewrite rules term of
+    Nothing → term
+    Just term' → normalize rules term'
+```
+
+The rules themselves ARE the specification — the rewriter just does mechanical pattern matching.
+
+### Approach 3: Self-Evident Traces
+
+Make the trace format so clear that verification is visual:
+
+```
+═══════════════════════════════════════════════════════════
+REDUCTION TRACE
+═══════════════════════════════════════════════════════════
+
+Input: compose (compose f id) g
+
+Step 1:
+  Term:    compose (compose f id) g
+  Pattern: compose _ id
+  Match:   compose f id
+                   ├─ _ = f
+                   └─ id = id ✓
+  Rule:    id-right: compose X id → X
+  Result:  compose f g
+
+Step 2:
+  Term:    compose f g
+  No patterns match.
+  NORMAL FORM REACHED.
+
+Output: compose f g
+═══════════════════════════════════════════════════════════
+```
+
+A human can verify this by:
+1. Checking highlighted pattern matches the rule's LHS
+2. Checking substitution is applied correctly
+3. Checking result matches
+
+For the bootstrap case (normalizer verifying itself), this could be done **by hand** once.
+
+### Approach 4: Generate Code and Proof Simultaneously
+
+**Deep insight**: In Curry-Howard, programs ARE proofs.
+
+For CCC normalization:
+- A reduction step IS a proof that `before ≡ after`
+- The complete trace IS a proof that `input ≡ result`
+
+```
+normalize : (t : CCC) → Σ (r : CCC) × (t ≡ r)
+--          input        result      proof that input equals result
+```
+
+If we write the normalizer in CCC itself using `cata`:
+
+```
+normalize : CCC → CCC
+normalize = cata normalizeAlgebra
+```
+
+Then:
+- `cata` guarantees termination (Lambek's Lemma)
+- The algebra structure IS the correctness argument
+- The code IS the proof — they're the same object
+
+### Approach 5: Layered TCB Architecture
+
+Separate concerns into layers with decreasing trust requirements:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 0: Mathematical Definitions        (~0 lines of code)│
+│ ─────────────────────────────────────────────────────────── │
+│ The CCC laws written on paper:                              │
+│   compose f id = f                                          │
+│   compose id f = f                                          │
+│   fst (pair f g) = f                                        │
+│   ...                                                       │
+│                                                             │
+│ Trust basis: Mathematics (peer-reviewed since 1960s)        │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 1: Trace Verifier                  (~15-20 lines)     │
+│ ─────────────────────────────────────────────────────────── │
+│ Checks: does each step correctly apply a rule?              │
+│                                                             │
+│ - Pattern match check (tree comparison)                     │
+│ - Substitution check (variable replacement)                 │
+│ - Chain check (each step follows previous)                  │
+│                                                             │
+│ Trust basis: Small enough to verify BY HAND                 │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 2: Normalizer                      (~50-100 lines)    │
+│ ─────────────────────────────────────────────────────────── │
+│ Produces reduction traces                                   │
+│                                                             │
+│ Trust basis: NONE — verified by Layer 1                     │
+│ (Bugs are caught, not trusted)                              │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 3: Once Verifier                   (in Once)          │
+│ ─────────────────────────────────────────────────────────── │
+│ Full verification system                                    │
+│                                                             │
+│ Trust basis: NONE — verified by Layer 2, then self-verifies │
+└─────────────────────────────────────────────────────────────┘
+
+True TCB = Layer 0 (math) + Layer 1 (trace verifier) = ~15-20 lines
+```
+
+### Approach 6: The Pen-and-Paper Bootstrap
+
+The ultimate minimal TCB:
+
+```
+For the ONE-TIME bootstrap verification:
+
+1. Run normalizer on its own IR
+2. Get reduction trace (printed output)
+3. Verify trace BY HAND with pen and paper:
+   - For each step, check pattern matches
+   - For each step, check substitution correct
+   - Confirm final result
+
+This is feasible because:
+- The bootstrap is done ONCE
+- The trace is finite
+- Each step is mechanical (pattern matching)
+- A mathematician can do this in a few hours
+
+After this ONE manual verification:
+- The normalizer is trusted
+- It can verify the Once verifier
+- Once self-verifies everything else
+
+TCB: Literally just mathematics + human pattern matching
+```
+
+### Comparison of Approaches
+
+| Approach | TCB Size | Verification Method |
+|----------|----------|---------------------|
+| Current bootstrap | ~50-100 lines | Code inspection |
+| Proof-carrying + trace verifier | ~15-20 lines | Verify verifier |
+| String rewriting | ~10-15 lines | Rules ARE specification |
+| Pen-and-paper bootstrap | ~0 lines code | Manual trace check |
+
+### Recommended Path
+
+```
+Phase 1: Current approach (~50-100 lines)
+         Good enough to start, enables self-hosting
+
+Phase 2: Add trace generation
+         Normalizer outputs reduction traces
+         Enables manual verification of bootstrap
+
+Phase 3: Implement trace verifier (~15-20 lines)
+         Multiple independent implementations
+         Cross-check on all inputs
+
+Phase 4: Pen-and-paper bootstrap verification
+         One-time manual verification of trace verifier
+         Reduces "opaque" TCB to mathematics itself
+
+Final state:
+┌─────────────────────────────────────────────────────────────┐
+│  Trusted: Mathematics + ~15-20 line trace verifier          │
+│  Verified by traces: Everything else                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### The Theoretical Minimum
+
+The absolute minimum TCB would be:
+
+1. **~0 lines of code**: Define rules on paper, verify traces by hand
+2. **Hardware**: Must execute something (unavoidable)
+3. **Human**: Must check something once (unavoidable for bootstrap)
+
+This is as close to "trust only mathematics" as computationally possible.
 
 ---
 
@@ -735,11 +1015,22 @@ The Once approach has a minimal TCB because:
 
 2. **Hardware**: CPU executes correctly. A hardware bug could cause incorrect verification. (Unavoidable for any computation.)
 
-3. **Bootstrap Normalizer**: The ~50-100 line normalizer correctly implements categorical reduction rules. This is mitigated by:
+3. **Bootstrap Code** (choose your level):
+
+   **Level 1 (~50-100 lines)**: Full bootstrap normalizer
    - Direct correspondence to mathematical definitions
-   - Multiple independent implementations
-   - Exhaustive testing on small examples
-   - Small enough for human verification
+   - Multiple independent implementations possible
+   - Small enough for careful code review
+
+   **Level 2 (~15-20 lines)**: Trace verifier only
+   - Normalizer produces proof traces
+   - Only the trace verifier is trusted
+   - Even smaller, even easier to verify
+
+   **Level 3 (~0 lines)**: Pen-and-paper verification
+   - One-time manual check of bootstrap trace
+   - Trust only human pattern matching ability
+   - Theoretical minimum for any computational system
 
 4. **Encoding**: The IR representation faithfully captures the program. (Can be verified by inspection or multiple encoders.)
 
@@ -781,7 +1072,7 @@ This would require dependent types (per Once's roadmap) but the same minimal-tru
 │                                                             │
 │  1. Mathematics (category theory, since 1960s)              │
 │  2. Hardware (physical computation)                         │
-│  3. Bootstrap normalizer (~50-100 lines)                    │
+│  3. Minimal bootstrap code (see levels below)               │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                     THE MECHANISM                           │
@@ -798,17 +1089,26 @@ This would require dependent types (per Once's roadmap) but the same minimal-tru
 │                     THE RESULT                              │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Software TCB = ~50-100 lines (bootstrap normalizer)        │
+│  Software TCB options (choose your trust level):            │
 │                                                             │
-│  Compare to:                                                │
+│  Level 1: ~50-100 lines (bootstrap normalizer)              │
+│           - Standard approach, code inspection              │
+│           - 500x smaller than proof assistants              │
+│                                                             │
+│  Level 2: ~15-20 lines (trace verifier only)                │
+│           - Proof-carrying normalization                    │
+│           - Normalizer verified by traces, not trusted      │
+│                                                             │
+│  Level 3: ~0 lines (pen-and-paper bootstrap)                │
+│           - One-time manual trace verification              │
+│           - Trust only math + human pattern matching        │
+│                                                             │
+│  Compare to other systems:                                  │
 │  - Typical proof assistant: ~50,000 lines                   │
 │  - Metamath verifier: ~300 lines                            │
-│  - Once bootstrap: ~50-100 lines                            │
-│                                                             │
-│  The bootstrap normalizer is:                               │
-│  - Small enough to hand-verify against math                 │
-│  - The categorical laws themselves, as code                 │
-│  - Implementable multiple times for cross-checking          │
+│  - Once (Level 1): ~50-100 lines                            │
+│  - Once (Level 2): ~15-20 lines                             │
+│  - Once (Level 3): ~0 lines code                            │
 │                                                             │
 │  After bootstrap, Once self-verifies with zero additional   │
 │  trust: the verified Once verifier checks everything else.  │
