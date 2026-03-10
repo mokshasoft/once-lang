@@ -12,7 +12,7 @@
 module Once.CCC.Target.X86v3.Dispatcher.IR.PairWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_; _≟_ to _≟ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m*n; *-distribˡ-+; *-suc; n≤1+n; <⇒≢; _<?; ≮⇒≥)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m*n; *-distribˡ-+; *-suc; n≤1+n; <⇒≢; ≮⇒≥)
 open import Data.Bool using (false)
 open import Data.Unit using (tt)
 open import Data.Maybe using (just)
@@ -2313,7 +2313,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   -- Then prove fst-ptr, snd-ptr, validity, etc. about this state.
   ------------------------------------------------------------------------
 
-  run-pair-v2 : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR A C)
+  run-pair-v2 : ∀ {A B C} (mIn : AllocMode) (f : IR A B) (g : IR A C) (m : AllocMode)
     (rec-wf : RecDispatcherWF (ir-size (⟨ f , g ⟩ Heap)))
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
@@ -2321,10 +2321,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement (⟨ f , g ⟩ Stack) ≤ frame-capacity alloc →
-    IRResultAWF Stack (⟨ f , g ⟩ Stack) x s alloc
+    next-slot alloc +ℕ ir-stack-requirement (⟨ f , g ⟩ m) ≤ frame-capacity alloc →
+    IRResultAWF m (⟨ f , g ⟩ m) x s alloc
 
-  run-pair-v2 {A} {B} {C} mIn f g rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-pair-v2 {A} {B} {C} mIn f g m rec-wf x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
     record
       { result-loc = pair-loc
       ; final-state = s-final
@@ -2357,7 +2357,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       -- Stack requirement abbreviations
       rf = ir-stack-requirement f
       rg = ir-stack-requirement g
-      req-pair = ir-stack-requirement (⟨ f , g ⟩ Stack)
+      req-pair = ir-stack-requirement (⟨ f , g ⟩ m)
       ps : ℕ
       ps = 2
 
@@ -2378,7 +2378,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       alloc-after-backup = record alloc { next-slot = suc (next-slot alloc) }
 
       combined-cap-expanded : (next-slot alloc +ℕ 1) +ℕ rf +ℕ rg +ℕ ps ≤ frame-capacity alloc
-      combined-cap-expanded = ⟨,⟩-capacity-for-pair f g Stack (next-slot alloc) (frame-capacity alloc) combined-cap
+      combined-cap-expanded = ⟨,⟩-capacity-for-pair f g m (next-slot alloc) (frame-capacity alloc) combined-cap
 
       slot+1≡suc-slot : next-slot alloc +ℕ 1 ≡ suc (next-slot alloc)
       slot+1≡suc-slot = +-comm (next-slot alloc) 1
@@ -2406,7 +2406,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ------------------------------------------------------------------------
 
       f-exec-result : ∃[ mOut ] IRResultAWF mOut f x s alloc-after-backup
-      f-exec-result = rec-wf mIn f (⟨,⟩-f-smaller f g {Stack}) x input-loc s alloc-after-backup input-valid-wf-after-backup input-before-after-backup not-halted rdi-eq combined-cap-f
+      f-exec-result = rec-wf mIn f (⟨,⟩-f-smaller f g {m}) x input-loc s alloc-after-backup input-valid-wf-after-backup input-before-after-backup not-halted rdi-eq combined-cap-f
       mF = proj₁ f-exec-result
       result-f = proj₂ f-exec-result
       s₁ = IRResultAWF.final-state result-f
@@ -2470,7 +2470,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ------------------------------------------------------------------------
 
       g-exec-result : ∃[ mOut ] IRResultAWF mOut g x s₁' alloc₁-reclaimed
-      g-exec-result = rec-wf mIn g (⟨,⟩-g-smaller f g {Stack}) x input-loc s₁' alloc₁-reclaimed
+      g-exec-result = rec-wf mIn g (⟨,⟩-g-smaller f g {m}) x input-loc s₁' alloc₁-reclaimed
                         input-valid-wf₁' input-before₁-reclaimed (IRResultAWF.not-halted result-f) rdi-eq₁ combined-cap-g
       mG = proj₁ g-exec-result
       result-g = proj₂ g-exec-result
@@ -4842,8 +4842,8 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                               mem-agree-snd
                               snd-valid-s2)
 
-      pair-valid-wf-final : ValidAtWF Stack alloc₃ (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
+      pair-valid-wf-final : ValidAtWF m alloc₃ (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
       pair-valid-wf-final = valid-pair-wf fst-ptr snd-ptr fst-before₃ snd-before₃ sucLoc-pair-before₃ fst-valid-s-final snd-valid-s-final
 
-      pair-reclaim-preserves-validity : ∀ fits → ValidAtWF Stack alloc₃ (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
+      pair-reclaim-preserves-validity : ∀ fits → ValidAtWF m alloc₃ (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
       pair-reclaim-preserves-validity fits = pair-valid-wf-final
