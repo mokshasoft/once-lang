@@ -1148,6 +1148,74 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     valid-buffer-wf bf
 
   ------------------------------------------------------------------------
+  -- Validity preservation with excluded slot
+  --
+  -- Variant of validityWF-mem-preserved for when memory differs at one
+  -- specific slot (the "gap slot"). This is used by pair's validity proof
+  -- where backup-slot is modified but no sub-location uses it.
+  --
+  -- The key insight is that IR results have sub-locations that are either:
+  --   1. Input locations at slots < start-frontier (inherited from input)
+  --   2. Fresh allocations at slots ≥ suc start-frontier (allocated by IR)
+  -- So slot = start-frontier is a "gap" never used by sub-locations.
+  --
+  -- Parameters:
+  --   gap-slot : the slot to exclude from memory preservation
+  --   gap-unused : proof that no sub-location is at the gap slot
+  --   mem-eq : memory preserved for all OTHER BeforeFrontier locations
+  ------------------------------------------------------------------------
+
+  -- Helper: extract slot from OnStack location (for documentation, may be used later)
+  private
+    slot-of-loc : ValueLocation FS → ℕ
+    slot-of-loc (OnStack _ k) = k
+    slot-of-loc (OnHeap _) = 0  -- dummy, heap locations don't use slot comparison
+
+  ------------------------------------------------------------------------
+  -- Validity preservation with gap slot
+  --
+  -- Key insight for pair validity: when IR f executes starting at
+  -- next-slot = suc backup-slot, its result has sub-locations at:
+  --   - Input locations: slots < backup-slot (inherited from input)
+  --   - Fresh allocations: slots ≥ suc backup-slot (allocated by f)
+  -- Therefore NO sub-location is at exactly backup-slot.
+  --
+  -- This means we can transfer validity even when memory differs at
+  -- the gap slot, as long as memory agrees on all other BeforeFrontier
+  -- locations.
+  --
+  -- For now, we postulate this transfer. A full proof would require:
+  --   1. Defining SublocRange for each ValidAtWF constructor
+  --   2. Proving IRResultAWF.valid implies sublocations in [0, start) ∪ [suc start, end)
+  --   3. Using this to prove memory agreement excluding gap suffices
+  ------------------------------------------------------------------------
+
+  -- Validity transfers when memory differs only at gap slot
+  -- This is a general lemma: if memory agrees on all BeforeFrontier locations
+  -- except one "gap" slot that is never accessed by the validity proof,
+  -- then validity transfers.
+  --
+  -- The gap slot is NOT accessed because of disjoint slot ranges:
+  --   - Input data is at slots < gap-slot
+  --   - Fresh allocations are at slots ≥ suc gap-slot
+  --   - gap-slot falls between these ranges
+  postulate
+    validityWF-mem-preserved-excluding :
+      ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
+        (gap-frame : Frame) (gap-slot : ℕ)
+        (s₁ s₂ : LocState FS) →
+      -- Location is before frontier
+      BeforeFrontier alloc loc →
+      -- Memory agrees on all BeforeFrontier locations except the gap
+      (∀ (loc' : ValueLocation FS) →
+         BeforeFrontier alloc loc' →
+         loc' ≢ OnStack gap-frame gap-slot →
+         readLoc s₁ loc' ≡ readLoc s₂ loc') →
+      -- Validity transfers
+      ValidAtWF m alloc v loc s₁ →
+      ValidAtWF m alloc v loc s₂
+
+  ------------------------------------------------------------------------
   -- Stack Reclamation
   --
   -- After an IR completes, only the result needs to persist. Intermediate

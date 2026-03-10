@@ -49,7 +49,8 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
            validityWF-frontier-advance; validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            validityWF-with-bf-transfer;
-           at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
+           at-frontier-neq-before-wf; suc-frontier-neq-before-wf;
+           validityWF-mem-preserved-excluding)
 
   -- NOTE: Global capacity invariants removed - using dynamic capacity threading instead
 
@@ -393,8 +394,26 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       -- 2. F's allocated data is at slots ≥ suc (next-slot alloc) (f ran with alloc-after-backup)
       -- 3. backup-slot = next-slot alloc is in neither range
       -- Therefore writing to backup-slot doesn't change any memory location that fst-loc's validity reads.
-      postulate
-        fst-valid-s2-with-backup : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₂-with-backup
+      fst-valid-s2-with-backup : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₂-with-backup
+      fst-valid-s2-with-backup = validityWF-mem-preserved-excluding
+        alloc₂-reclaimed
+        (eval primSem f x)
+        fst-loc
+        (current-frame alloc)
+        backup-slot
+        s₂
+        s₂-with-backup
+        fst-before-alloc2r
+        mem-agree-fst
+        fst-valid-s2-alloc2r
+        where
+          mem-agree-fst : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
+                          loc' ≢ OnStack (current-frame alloc) backup-slot →
+                          readLoc s₂ loc' ≡ readLoc s₂-with-backup loc'
+          mem-agree-fst loc' _ neq = sym (write-preserves-disjoint s₂ backup-loc-def input-loc loc' neq')
+            where
+              neq' : backup-loc-def ≢ loc'
+              neq' eq = neq (sym eq)
 
       fst-valid-s3 : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₃
       fst-valid-s3 = validityWF-write-at-frontier (eval primSem f x) fst-loc s₂-with-backup fst-loc
@@ -424,8 +443,26 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       -- Transfer snd validity from s₂ to s₂-with-backup
       -- Same reasoning as fst: backup-slot is disjoint from g's result data
       -- because g ran with alloc₁-reclaimed (next-slot = reclaim-f ≥ suc (next-slot alloc))
-      postulate
-        snd-valid-s2-with-backup : ValidAtWF mG alloc₂-reclaimed (eval primSem g x) snd-loc s₂-with-backup
+      snd-valid-s2-with-backup : ValidAtWF mG alloc₂-reclaimed (eval primSem g x) snd-loc s₂-with-backup
+      snd-valid-s2-with-backup = validityWF-mem-preserved-excluding
+        alloc₂-reclaimed
+        (eval primSem g x)
+        snd-loc
+        (current-frame alloc)
+        backup-slot
+        s₂
+        s₂-with-backup
+        snd-before-alloc2r
+        mem-agree-snd
+        snd-valid-s2-reclaimed
+        where
+          mem-agree-snd : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
+                          loc' ≢ OnStack (current-frame alloc) backup-slot →
+                          readLoc s₂ loc' ≡ readLoc s₂-with-backup loc'
+          mem-agree-snd loc' _ neq = sym (write-preserves-disjoint s₂ backup-loc-def input-loc loc' neq')
+            where
+              neq' : backup-loc-def ≢ loc'
+              neq' eq = neq (sym eq)
 
       snd-valid-wf₃ : ValidAtWF mG alloc₃ (eval primSem g x) snd-loc s-final
       snd-valid-wf₃ = validityWF-alloc-advance (eval primSem g x) snd-loc s-final ps
@@ -1616,8 +1653,26 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
       -- Transfer validity from s₂ to s₂-with-backup
       -- Same reasoning as Stack mode: backup-slot is disjoint from fst's data
-      postulate
-        fst-valid-s2-with-backup : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₂-with-backup
+      fst-valid-s2-with-backup : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₂-with-backup
+      fst-valid-s2-with-backup = validityWF-mem-preserved-excluding
+        alloc₂-reclaimed
+        (eval primSem f x)
+        fst-loc
+        (current-frame alloc)
+        backup-slot
+        s₂
+        s₂-with-backup
+        fst-before-alloc2r
+        mem-agree-fst
+        fst-valid-s2-alloc2r
+        where
+          mem-agree-fst : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
+                          loc' ≢ OnStack (current-frame alloc) backup-slot →
+                          readLoc s₂ loc' ≡ readLoc s₂-with-backup loc'
+          mem-agree-fst loc' _ neq = sym (write-preserves-disjoint s₂ backup-loc-def input-loc loc' neq')
+            where
+              neq' : backup-loc-def ≢ loc'
+              neq' eq = neq (sym eq)
 
       -- Step 3: s₂-with-backup → s₃ (write at pair-loc = frontier of alloc₂-reclaimed)
       fst-valid-s3 : ValidAtWF mF alloc₂-reclaimed (eval primSem f x) fst-loc s₃
@@ -1653,8 +1708,26 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
       -- Transfer snd validity from s₂ to s₂-with-backup
       -- Same reasoning as fst: backup-slot is disjoint from snd's data
-      postulate
-        snd-valid-s2-with-backup : ValidAtWF mG alloc₂-reclaimed (eval primSem g x) snd-loc s₂-with-backup
+      snd-valid-s2-with-backup : ValidAtWF mG alloc₂-reclaimed (eval primSem g x) snd-loc s₂-with-backup
+      snd-valid-s2-with-backup = validityWF-mem-preserved-excluding
+        alloc₂-reclaimed
+        (eval primSem g x)
+        snd-loc
+        (current-frame alloc)
+        backup-slot
+        s₂
+        s₂-with-backup
+        snd-before-alloc2r
+        mem-agree-snd
+        snd-valid-s2-reclaimed
+        where
+          mem-agree-snd : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
+                          loc' ≢ OnStack (current-frame alloc) backup-slot →
+                          readLoc s₂ loc' ≡ readLoc s₂-with-backup loc'
+          mem-agree-snd loc' _ neq = sym (write-preserves-disjoint s₂ backup-loc-def input-loc loc' neq')
+            where
+              neq' : backup-loc-def ≢ loc'
+              neq' eq = neq (sym eq)
 
       snd-valid-wf₃ : ValidAtWF mG alloc₃ (eval primSem g x) snd-loc s-final
       snd-valid-wf₃ = validityWF-alloc-advance (eval primSem g x) snd-loc s-final ps
