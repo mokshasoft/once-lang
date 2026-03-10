@@ -36,7 +36,7 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
 open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; +-mono-≤; m≤n+m; m≤m+n; +-identityʳ; +-comm)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; ≤-antisym; +-mono-≤; m≤n+m; m≤m+n; +-identityʳ; +-comm)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; _≢_; sym; trans; cong; subst)
@@ -876,3 +876,158 @@ coherence t t' eq = normal-unique (optimize t) (optimize t')
   (optimize-normal t)
   (optimize-normal t')
   (λ x → trans (optimize-correct t x) (trans (eq x) (sym (optimize-correct t' x))))
+
+------------------------------------------------------------------------
+-- TRUE Optimality Theorem
+------------------------------------------------------------------------
+
+-- | The optimizer produces truly optimal code.
+--
+-- For ANY term t' semantically equivalent to input t,
+-- the optimized output has cost ≤ cost t'.
+--
+-- This is the REAL optimality statement - no reference to IsNormal.
+-- If we can prove this, the optimizer is truly optimal.
+--
+-- DIRECT PROOF STRATEGY (no normal-unique):
+-- We need to show: cost (optimize t) ≤ cost t'
+--
+-- What we have:
+--   optimize-cost-le : cost (optimize t') ≤ cost t'
+--   optimize-correct : optimize t' ≈ t' ≈ t ≈ optimize t
+--
+-- Key insight: if optimize t ≡ optimize t', we're done:
+--   cost (optimize t) = cost (optimize t') ≤ cost t'
+--
+-- So the real question is: do equivalent terms optimize to the same result?
+-- This is "coherence" but we want to prove it WITHOUT normal-unique.
+--
+-- ALTERNATIVE: prove cost (optimize t) ≤ cost (optimize t')
+-- by showing the optimizer finds a UNIQUE minimum-cost representative.
+
+-- | KEY LEMMA: Equivalent terms optimize to equal-cost results.
+--
+-- This is weaker than coherence (which says they're syntactically equal),
+-- but sufficient for optimality.
+--
+-- FUNDAMENTAL INSIGHT:
+-- To prove this, we need to show the optimizer finds THE global minimum.
+-- This requires showing ALL cost-reducing transformations are applied.
+--
+-- If ANY cost-reducing transformation is missing from the optimizer,
+-- then two equivalent terms might "stop" at different costs.
+--
+-- Example of failure (terminal distribution):
+--   t  = g                        (cost = cost g)
+--   t' = ⟨terminal, g⟩ ∘ id       (cost = cost g + 2, but equivalent to g)
+--
+--   If optimizer doesn't do distribution:
+--     optimize t  = optimize g
+--     optimize t' = ⟨terminal, g⟩   (stuck - no reduction applies!)
+--
+--   These have different costs, so coherent-cost fails.
+--
+-- PROOF STRATEGY:
+-- We need to show: for any term t', either:
+--   (a) cost (optimize t') = minimum cost in equivalence class, OR
+--   (b) there exists a cost-reducing transformation the optimizer applies
+--
+-- This is essentially proving COMPLETENESS of the optimizer:
+-- "The optimizer applies ALL beneficial transformations"
+--
+-- The proof will FAIL at exactly the transformations we're missing.
+-- This is the value of the top-down approach - failures are informative.
+
+-- ALTERNATIVE APPROACH: Prove by contradiction
+--
+-- If there exists t' ≈ t with cost t' < cost (optimize t),
+-- then the optimizer is INCOMPLETE (missed a beneficial transformation).
+--
+-- Proving no such t' exists = proving completeness.
+
+-- | No equivalent term can be cheaper than the optimized result.
+-- This is the COMPLETENESS property of the optimizer.
+--
+-- Proof attempt by structural induction on t':
+-- For each possible form of t', show cost (optimize t) ≤ cost t'.
+--
+-- This will FAIL at exactly the optimizations we're missing!
+optimize-complete : ∀ {A B} (t : IR A B) (t' : IR A B) →
+  (∀ x → eval t x ≡ eval t' x) →
+  cost (optimize t) ≤ cost t'
+optimize-complete t t' eq = go t'
+  where
+    -- We know: optimize t ≈ t ≈ t'
+    -- We need: cost (optimize t) ≤ cost t'
+    --
+    -- By induction on t', if t' has any "reducible" structure,
+    -- we can find a cheaper equivalent term and recurse.
+    -- If t' is "irreducible", we need cost (optimize t) ≤ cost t'.
+    --
+    -- The base case (irreducible t') is where the proof will fail
+    -- if the optimizer is incomplete!
+
+    go : (t' : IR _ _) → cost (optimize t) ≤ cost t'
+    -- INSIGHT: This proof structure CANNOT work as stated!
+    --
+    -- We're doing induction on t', but we need to relate optimize t to t'.
+    -- The only connection is: optimize t ≈ t ≈ t'
+    --
+    -- For each case, we'd need one of:
+    --   (a) t' is reducible → find cheaper t'' ≈ t', recurse
+    --   (b) t' is "minimal" → show cost (optimize t) ≤ cost t'
+    --
+    -- Case (a) requires defining ALL reductions (back to CompReducible)
+    -- Case (b) requires knowing optimize t is THE minimum (back to normal-unique)
+    --
+    -- CONCLUSION: We CANNOT prove optimize-complete without either:
+    --   1. Enumerating all reductions (CompReducible must be COMPLETE)
+    --   2. Proving normal-unique (requires CompReducible to be complete!)
+    --
+    -- The holes below are UNPROVABLE with current structure.
+    -- They represent the SPECIFICATION of what a complete optimizer must do.
+    --
+    go id = {!!}        -- If t ≈ id, need cost (optimize t) ≤ 1
+    go (g ∘ f) = {!!}   -- Composition: can we reduce, or is it minimal?
+    go fst = {!!}
+    go snd = {!!}
+    go (⟨ f , g ⟩ m) = {!!}  -- KEY: What if ⟨terminal, g⟩ ∘ h is here?
+    go (inl m) = {!!}
+    go (inr m) = {!!}
+    go [ f , g ] = {!!}
+    go terminal = {!!}
+    go initial = {!!}
+    go (curry f m) = {!!}
+    go apply = {!!}
+    go fold = {!!}
+    go unfold = {!!}
+    go arr = {!!}
+    go (Prim x) = {!!}
+
+-- Then coherent-cost follows from completeness applied both directions
+optimize-coherent-cost : ∀ {A B} (t t' : IR A B) →
+  (∀ x → eval t x ≡ eval t' x) →
+  cost (optimize t) ≡ cost (optimize t')
+optimize-coherent-cost t t' eq =
+  let -- t ≈ t' ≈ optimize t'  (so optimize-complete t (optimize t') works)
+      t≈opt-t' : ∀ x → eval t x ≡ eval (optimize t') x
+      t≈opt-t' x = trans (eq x) (sym (optimize-correct t' x))
+
+      -- t' ≈ t ≈ optimize t  (so optimize-complete t' (optimize t) works)
+      t'≈opt-t : ∀ x → eval t' x ≡ eval (optimize t) x
+      t'≈opt-t x = trans (sym (eq x)) (sym (optimize-correct t x))
+  in ≤-antisym
+       (optimize-complete t (optimize t') t≈opt-t')
+       (optimize-complete t' (optimize t) t'≈opt-t)
+
+optimize-optimal : ∀ {A B} (t t' : IR A B) →
+  (∀ x → eval t x ≡ eval t' x) →
+  cost (optimize t) ≤ cost t'
+optimize-optimal t t' eq =
+  let opt-t'-cost : cost (optimize t') ≤ cost t'
+      opt-t'-cost = optimize-cost-le t'
+
+      coherent : cost (optimize t) ≡ cost (optimize t')
+      coherent = optimize-coherent-cost t t' eq
+
+  in ≤-trans (≤-reflexive coherent) opt-t'-cost
