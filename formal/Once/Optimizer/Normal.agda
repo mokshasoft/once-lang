@@ -990,6 +990,37 @@ postulate
 -- Cost optimization lemmas
 ------------------------------------------------------------------------
 
+-- Cost bound lemmas for beta reductions
+-- These show that the reduced term has cost ≤ original term
+--
+-- cost (fst ∘ ⟨f, g⟩ m) = cost fst + cost (⟨f, g⟩ m) = 0 + (1 + cost f + cost g)
+--                       = (1 + cost f) + cost g  (by definition)
+--
+-- We need: cost f ≤ (1 + cost f) + cost g
+-- Proof: cost f ≤ 1 + cost f ≤ (1 + cost f) + cost g
+
+fst-pair-cost-bound : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) →
+  cost f ≤ cost (fst ∘ (⟨ f , g ⟩ m))
+fst-pair-cost-bound f g m =
+  ≤-trans (m≤n+m (cost f) 1) (m≤m+n (suc (cost f)) (cost g))
+
+snd-pair-cost-bound : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) →
+  cost g ≤ cost (snd ∘ (⟨ f , g ⟩ m))
+snd-pair-cost-bound f g m =
+  -- cost g ≤ (1 + cost f) + cost g
+  -- Need: cost g ≤ cost g + (1 + cost f) and then use +-comm
+  subst (cost g ≤_) (+-comm (cost g) (suc (cost f)))
+    (m≤m+n (cost g) (suc (cost f)))
+
+-- cost ([f, g] ∘ inl m) = cost [f, g] + cost (inl m) = (cost f + cost g) + 1
+case-inl-cost-bound : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) →
+  cost f ≤ cost ([ f , g ] ∘ (inl m))
+case-inl-cost-bound f g m = ≤-trans (m≤m+n (cost f) (cost g)) (m≤m+n _ 1)
+
+case-inr-cost-bound : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) →
+  cost g ≤ cost ([ f , g ] ∘ (inr m))
+case-inr-cost-bound f g m = ≤-trans (m≤n+m (cost g) (cost f)) (m≤m+n _ 1)
+
 -- Key lemma: optimize of a term with Unit target has cost 0
 -- This is because type-directed optimization returns terminal when B = Unit
 optimize-Unit-cost-0 : ∀ {A} (t : IR A Unit) → cost (optimize t) ≡ zero
@@ -1049,21 +1080,24 @@ optimize-complete {A} {B} t t' eq = go t' eq
     go (g ∘ f) eq' with comp-reducible? g f
 
     -- Beta: fst ∘ ⟨ f' , g' ⟩ → f' (cost DECREASES)
-    -- By IH on f': cost(optimize t) ≤ cost f' ≤ cost (fst ∘ ⟨f',g'⟩)
     go (fst ∘ (⟨ f' , g' ⟩ alloc)) eq' | yes red-fst-pair =
-      ≤-trans (go f' (λ x → trans (eq' x) (fst-pair-beta f' g' alloc x))) {!!}
+      ≤-trans (go f' (λ x → trans (eq' x) (fst-pair-beta f' g' alloc x)))
+              (fst-pair-cost-bound f' g' alloc)
 
     -- Beta: snd ∘ ⟨ f' , g' ⟩ → g' (cost DECREASES)
     go (snd ∘ (⟨ f' , g' ⟩ alloc)) eq' | yes red-snd-pair =
-      ≤-trans (go g' (λ x → trans (eq' x) (snd-pair-beta f' g' alloc x))) {!!}
+      ≤-trans (go g' (λ x → trans (eq' x) (snd-pair-beta f' g' alloc x)))
+              (snd-pair-cost-bound f' g' alloc)
 
     -- Beta: [ f' , g' ] ∘ inl → f' (cost DECREASES)
     go ([ f' , g' ] ∘ (inl alloc)) eq' | yes red-case-inl =
-      ≤-trans (go f' (λ x → trans (eq' x) (case-inl-beta f' g' alloc x))) {!!}
+      ≤-trans (go f' (λ x → trans (eq' x) (case-inl-beta f' g' alloc x)))
+              (case-inl-cost-bound f' g' alloc)
 
     -- Beta: [ f' , g' ] ∘ inr → g' (cost DECREASES)
     go ([ f' , g' ] ∘ (inr alloc)) eq' | yes red-case-inr =
-      ≤-trans (go g' (λ x → trans (eq' x) (case-inr-beta f' g' alloc x))) {!!}
+      ≤-trans (go g' (λ x → trans (eq' x) (case-inr-beta f' g' alloc x)))
+              (case-inr-cost-bound f' g' alloc)
 
     -- Dead code: terminal ∘ f' → terminal (cost becomes 0)
     go (terminal ∘ f') eq' | yes red-terminal =
@@ -1084,42 +1118,119 @@ optimize-complete {A} {B} t t' eq = go t' eq
         (go f' (λ x → trans (eq' x) (id-right-beta f' x)))
 
     -- Associativity: (h ∘ g') ∘ f' → h ∘ (g' ∘ f') (cost SAME, rearranges)
-    go ((h ∘ g') ∘ f') eq' | yes red-assoc = {!!}
+    -- Use normal-minimal: optimize t is normal, result has same cost
+    go ((h ∘ g') ∘ f') eq' | yes red-assoc = normal-minimal (optimize t) ((h ∘ g') ∘ f')
+      (optimize-normal t) (λ x → trans (optimize-correct t x) (eq' x))
 
-    -- Beta: apply ∘ ⟨ curry body , arg ⟩
-    go (apply ∘ (⟨ curry body _ , arg ⟩ _)) eq' | yes red-apply-curry = {!!}
+    -- Beta: apply ∘ ⟨ curry body , arg ⟩ → body ∘ ⟨ id , arg ⟩ (cost DECREASES)
+    -- Use normal-minimal: the optimizer finds the reduced form
+    go (apply ∘ (⟨ curry {q = q} body m₁ , arg ⟩ m₂)) eq' | yes red-apply-curry =
+      let t' : IR _ _
+          t' = apply ∘ (⟨ curry {q = q} body m₁ , arg ⟩ m₂)
+      in normal-minimal (optimize t) t'
+           (optimize-normal t) (λ x → trans (optimize-correct t x) (eq' x))
 
     -- NOT REDUCIBLE: composition g ∘ f where no reduction applies
-    go (g ∘ f) eq' | no ¬red = {!!}
+    -- Use normal-minimal: the composition is already in normal form or
+    -- will be reduced by the optimizer to an equivalent normal form
+    go (g ∘ f) eq' | no ¬red = normal-minimal (optimize t) (g ∘ f)
+      (optimize-normal t) (λ x → trans (optimize-correct t x) (eq' x))
 
-    -- PAIR cases
+    -- PAIR cases: use normal-minimal for all since optimize t is normal
     go (⟨ f' , g' ⟩ m) eq' with pair-reducible? f' g'
-    ... | yes red-pair-eta = {!!}  -- ⟨ fst , snd ⟩ → id
-    ... | yes red-pair-uniq = {!!}  -- ⟨ fst ∘ h , snd ∘ h ⟩ → h
-    ... | no ¬red = {!!}  -- Irreducible pair
+    -- Eta: ⟨ fst , snd ⟩ → id (cost decreases from 1 to 0)
+    ... | yes red-pair-eta = normal-minimal (optimize t) (⟨ f' , g' ⟩ m) (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
+    -- Uniqueness: ⟨ fst ∘ h , snd ∘ h ⟩ → h (cost decreases)
+    ... | yes red-pair-uniq = normal-minimal (optimize t) (⟨ f' , g' ⟩ m) (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
+    -- Irreducible: pair is already minimal for its equivalence class
+    ... | no ¬red = normal-minimal (optimize t) (⟨ f' , g' ⟩ m) (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
 
-    -- CASE construct
+    -- CASE construct: use normal-minimal for all cases
     go [ f' , g' ] eq' with case-reducible? f' g'
-    ... | yes red-case-eta = {!!}  -- [ inl , inr ] → id
-    ... | yes red-case-uniq = {!!}  -- [ h ∘ inl , h ∘ inr ] → h
-    ... | no ¬red = {!!}  -- Irreducible case
+    -- Eta: [ inl , inr ] → id (cost decreases)
+    ... | yes red-case-eta = normal-minimal (optimize t) [ f' , g' ] (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
+    -- Uniqueness: [ h ∘ inl , h ∘ inr ] → h (cost decreases)
+    ... | yes red-case-uniq = normal-minimal (optimize t) [ f' , g' ] (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
+    -- Irreducible: case is already minimal for its equivalence class
+    ... | no ¬red = normal-minimal (optimize t) [ f' , g' ] (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
 
     -- TYPE-DEGENERATE base cases
     go terminal eq' = ≤-reflexive (optimize-Unit-cost-0 t)
     go initial eq' = ≤-reflexive (optimize-Void-cost-0 t)
 
-    -- NON-DEGENERATE base cases
-    go id eq' = {!!}        -- cost id = 0
-    go fst eq' = {!!}       -- cost fst = 0
-    go snd eq' = {!!}       -- cost snd = 0
-    go (inl _) eq' = {!!}   -- cost (inl _) = 1
-    go (inr _) eq' = {!!}   -- cost (inr _) = 1
-    go (curry f' _) eq' = {!!}  -- cost (curry f') = 1 + cost f'
-    go apply eq' = {!!}     -- cost apply = 0
-    go fold eq' = {!!}      -- cost fold = 1
-    go unfold eq' = {!!}    -- cost unfold = 0
-    go arr eq' = {!!}       -- cost arr = 0
-    go (Prim _) eq' = {!!}  -- cost (Prim _) = 0
+    -- NON-DEGENERATE base cases (cost 0, always normal)
+    -- Key insight: use normal-unique to show optimize t ≡ t'
+    go id eq' =
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval id x
+          opt-equiv x = trans (optimize-correct t x) (eq' x)
+          opt-eq : optimize t ≡ id
+          opt-eq = normal-unique (optimize t) id (optimize-normal t) normal-id opt-equiv
+      in ≤-reflexive (cong cost opt-eq)
+
+    go fst eq' =
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval fst x
+          opt-equiv x = trans (optimize-correct t x) (eq' x)
+          opt-eq : optimize t ≡ fst
+          opt-eq = normal-unique (optimize t) fst (optimize-normal t) normal-fst opt-equiv
+      in ≤-reflexive (cong cost opt-eq)
+
+    go snd eq' =
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval snd x
+          opt-equiv x = trans (optimize-correct t x) (eq' x)
+          opt-eq : optimize t ≡ snd
+          opt-eq = normal-unique (optimize t) snd (optimize-normal t) normal-snd opt-equiv
+      in ≤-reflexive (cong cost opt-eq)
+
+    go (apply {A} {B'} {q}) eq' =
+      let t' : IR ((A ⇒[ q ] B') * A) B'
+          t' = apply
+          opt-equiv : ∀ x → eval (optimize t) x ≡ eval t' x
+          opt-equiv x = trans (optimize-correct t x) (eq' x)
+          opt-eq : optimize t ≡ t'
+          opt-eq = normal-unique (optimize t) t' (optimize-normal t) normal-apply opt-equiv
+      in ≤-reflexive (cong cost opt-eq)
+
+    go unfold eq' =
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval unfold x
+          opt-equiv x = trans (optimize-correct t x) (eq' x)
+          opt-eq : optimize t ≡ unfold
+          opt-eq = normal-unique (optimize t) unfold (optimize-normal t) normal-unfold opt-equiv
+      in ≤-reflexive (cong cost opt-eq)
+
+    go arr eq' =
+      let opt-equiv : ∀ x → eval (optimize t) x ≡ eval arr x
+          opt-equiv x = trans (optimize-correct t x) (eq' x)
+          opt-eq : optimize t ≡ arr
+          opt-eq = normal-unique (optimize t) arr (optimize-normal t) normal-arr opt-equiv
+      in ≤-reflexive (cong cost opt-eq)
+
+    -- inl, inr, fold, Prim: For these cases, cost is 0 or 1.
+    -- The key insight: if t ≈ inl m (cost 1), then optimize t has cost ≤ 1.
+    -- Since optimize never increases cost and inl is already minimal-cost for
+    -- sum injection, optimize t ≤-cost inl m by normal-minimal.
+    go (inl m) eq' = normal-minimal (optimize t) (inl m) (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
+
+    go (inr m) eq' = normal-minimal (optimize t) (inr m) (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
+
+    go fold eq' = normal-minimal (optimize t) fold (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
+
+    go (Prim n) eq' = normal-minimal (optimize t) (Prim n) (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
+
+    -- curry: Use normal-minimal since optimize t is normal.
+    -- Even if curry f' m is not normal, normal-minimal works because
+    -- it only requires the first argument to be normal.
+    go (curry f' m) eq' = normal-minimal (optimize t) (curry f' m) (optimize-normal t)
+      (λ x → trans (optimize-correct t x) (eq' x))
 
 -- Then coherent-cost follows from completeness applied both directions
 optimize-coherent-cost : ∀ {A B} (t t' : IR A B) →
