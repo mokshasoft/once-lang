@@ -2067,6 +2067,32 @@ module AbstractExec {FS : FrameSemantics} where
       halted (proj₁ (exec-trace trace s₁ alloc)) ≡
       halted (proj₁ (exec-trace trace s₂ alloc))
 
+    -- Memory equivalence: If two states agree on Input, halted, and slots in read range,
+    -- and a location agrees initially, then it agrees after trace execution.
+    -- Proof sketch: Induction on trace. Each instruction computes the same write
+    -- (since inputs are identical), so resulting states have same values at
+    -- locations that started equal.
+    exec-trace-mem-equiv : ∀ (trace : AbstractTrace) (s₁ s₂ : LocState FS)
+      (alloc : AllocState {FS}) (lo hi : ℕ) (loc : ValueLocation FS) →
+      -- Input registers agree
+      readReg (regs s₁) Input ≡ readReg (regs s₂) Input →
+      -- Halted flags agree
+      halted s₁ ≡ halted s₂ →
+      -- Neither is halted
+      halted s₁ ≡ false →
+      -- All slots in [lo, hi) agree
+      (∀ slot → lo ≤ slot → slot < hi →
+        readLoc s₁ (OnStack (current-frame alloc) slot) ≡
+        readLoc s₂ (OnStack (current-frame alloc) slot)) →
+      -- Trace reads only from [lo, hi)
+      TraceSlotReadsAbove lo trace →
+      TraceSlotReadsBelow hi trace →
+      -- loc was initially equal
+      readLoc s₁ loc ≡ readLoc s₂ loc →
+      -- Then loc is equal after trace execution
+      readLoc (proj₁ (exec-trace trace s₁ alloc)) loc ≡
+      readLoc (proj₁ (exec-trace trace s₂ alloc)) loc
+
     -- Alloc independence: trace execution state depends only on current-frame
     -- and frame-capacity, not on next-slot or next-heap-ref.
     -- This is true because state-affecting operations only use current-frame.
