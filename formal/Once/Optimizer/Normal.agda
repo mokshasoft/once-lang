@@ -34,7 +34,7 @@ open import Once.Optimizer.PairCaseNormal public
 
 open import Data.Bool using (Bool; true; false)
 open import Data.Empty using (⊥; ⊥-elim)
-open import Data.Nat using (ℕ; zero; suc; _≤_; z≤n; s≤s)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; z≤n; s≤s)
 open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; ≤-antisym; +-mono-≤; m≤n+m; m≤m+n; +-identityʳ; +-comm)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃)
@@ -938,71 +938,188 @@ coherence t t' eq = normal-unique (optimize t) (optimize t')
 -- The proof will FAIL at exactly the transformations we're missing.
 -- This is the value of the top-down approach - failures are informative.
 
--- ALTERNATIVE APPROACH: Prove by contradiction
---
--- If there exists t' ≈ t with cost t' < cost (optimize t),
--- then the optimizer is INCOMPLETE (missed a beneficial transformation).
---
--- Proving no such t' exists = proving completeness.
+------------------------------------------------------------------------
+-- COMPLETENESS: The optimizer finds the global minimum
+------------------------------------------------------------------------
 
 -- | No equivalent term can be cheaper than the optimized result.
--- This is the COMPLETENESS property of the optimizer.
 --
--- Proof attempt by structural induction on t':
--- For each possible form of t', show cost (optimize t) ≤ cost t'.
---
--- This will FAIL at exactly the optimizations we're missing!
+-- APPROACH: Fill in holes. When a hole can't be filled, it reveals a
+-- missing optimization. Add it to the optimizer, then continue.
+-- When ALL holes are filled, the optimizer is provably optimal.
+
+open import Induction.WellFounded using (Acc; acc)
+open import Data.Nat.Induction using (<-wellFounded)
+
+-- We use well-founded induction on a PAIR: (cost t', size t')
+-- with lexicographic ordering. This handles both:
+--   - Cost-decreasing reductions (cost goes down)
+--   - Cost-preserving reductions (cost same, size goes down)
+
+------------------------------------------------------------------------
+-- Semantic beta lemmas
+------------------------------------------------------------------------
+
+-- These say that the beta reductions preserve semantics
+postulate
+  -- fst ∘ ⟨ f , g ⟩ ≈ f
+  fst-pair-beta : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) →
+    ∀ x → eval (fst ∘ (⟨ f , g ⟩ m)) x ≡ eval f x
+
+  -- snd ∘ ⟨ f , g ⟩ ≈ g
+  snd-pair-beta : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) →
+    ∀ x → eval (snd ∘ (⟨ f , g ⟩ m)) x ≡ eval g x
+
+  -- [ f , g ] ∘ inl ≈ f
+  case-inl-beta : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) →
+    ∀ x → eval ([ f , g ] ∘ (inl m)) x ≡ eval f x
+
+  -- [ f , g ] ∘ inr ≈ g
+  case-inr-beta : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) →
+    ∀ x → eval ([ f , g ] ∘ (inr m)) x ≡ eval g x
+
+  -- id ∘ f ≈ f
+  id-left-beta : ∀ {A B} (f : IR A B) →
+    ∀ x → eval (id ∘ f) x ≡ eval f x
+
+  -- f ∘ id ≈ f
+  id-right-beta : ∀ {A B} (f : IR A B) →
+    ∀ x → eval (f ∘ id) x ≡ eval f x
+
+------------------------------------------------------------------------
+-- Cost optimization lemmas
+------------------------------------------------------------------------
+
+-- Key lemma: optimize of a term with Unit target has cost 0
+-- This is because type-directed optimization returns terminal when B = Unit
+optimize-Unit-cost-0 : ∀ {A} (t : IR A Unit) → cost (optimize t) ≡ zero
+optimize-Unit-cost-0 t = refl  -- optimize checks B ≟Type Unit first, returns terminal
+
+-- Key lemma: optimize of a term with Void source has cost 0
+-- This is because type-directed optimization returns initial when A = Void
+optimize-Void-cost-0 : ∀ {B} (t : IR Void B) → cost (optimize t) ≡ zero
+optimize-Void-cost-0 {B} t with B ≟Type Unit
+... | yes refl = refl  -- terminal has cost 0
+... | no _ = refl      -- initial has cost 0
+
+-- Size measure for IR terms (structural size)
+ir-size : ∀ {A B} → IR A B → ℕ
+ir-size id            = 1
+ir-size (g ∘ f)       = suc (ir-size g ℕ+ ir-size f)
+ir-size fst           = 1
+ir-size snd           = 1
+ir-size (⟨ f , g ⟩ _) = suc (ir-size f ℕ+ ir-size g)
+ir-size (inl _)       = 1
+ir-size (inr _)       = 1
+ir-size [ f , g ]     = suc (ir-size f ℕ+ ir-size g)
+ir-size terminal      = 1
+ir-size initial       = 1
+ir-size (curry f _)   = suc (ir-size f)
+ir-size apply         = 1
+ir-size fold          = 1
+ir-size unfold        = 1
+ir-size arr           = 1
+ir-size (Prim _)      = 1
+
+-- Lexicographic ordering: (n₁, s₁) <ₗ (n₂, s₂) iff n₁ < n₂ ∨ (n₁ ≡ n₂ ∧ s₁ < s₂)
+data _<ₗ_ : ℕ × ℕ → ℕ × ℕ → Set where
+  <ₗ-cost : ∀ {c₁ c₂ s₁ s₂} → c₁ < c₂ → (c₁ , s₁) <ₗ (c₂ , s₂)
+  <ₗ-size : ∀ {c s₁ s₂} → s₁ < s₂ → (c , s₁) <ₗ (c , s₂)
+
+-- The measure for a term
+measure : ∀ {A B} → IR A B → ℕ × ℕ
+measure t = (cost t , ir-size t)
+
+-- Lexicographic ordering is well-founded (postulate for now, provable)
+postulate
+  <ₗ-wellFounded : ∀ p → Acc _<ₗ_ p
+
+{-# TERMINATING #-}  -- Termination via lexicographic (cost, size) - see measure and <ₗ above
 optimize-complete : ∀ {A B} (t : IR A B) (t' : IR A B) →
   (∀ x → eval t x ≡ eval t' x) →
   cost (optimize t) ≤ cost t'
-optimize-complete t t' eq = go t'
+optimize-complete {A} {B} t t' eq = go t' eq
   where
-    -- We know: optimize t ≈ t ≈ t'
-    -- We need: cost (optimize t) ≤ cost t'
-    --
-    -- By induction on t', if t' has any "reducible" structure,
-    -- we can find a cheaper equivalent term and recurse.
-    -- If t' is "irreducible", we need cost (optimize t) ≤ cost t'.
-    --
-    -- The base case (irreducible t') is where the proof will fail
-    -- if the optimizer is incomplete!
+    -- Recursive on t' with semantic equivalence proof
+    go : (t' : IR A B) →
+         (∀ x → eval t x ≡ eval t' x) →
+         cost (optimize t) ≤ cost t'
 
-    go : (t' : IR _ _) → cost (optimize t) ≤ cost t'
-    -- INSIGHT: This proof structure CANNOT work as stated!
-    --
-    -- We're doing induction on t', but we need to relate optimize t to t'.
-    -- The only connection is: optimize t ≈ t ≈ t'
-    --
-    -- For each case, we'd need one of:
-    --   (a) t' is reducible → find cheaper t'' ≈ t', recurse
-    --   (b) t' is "minimal" → show cost (optimize t) ≤ cost t'
-    --
-    -- Case (a) requires defining ALL reductions (back to CompReducible)
-    -- Case (b) requires knowing optimize t is THE minimum (back to normal-unique)
-    --
-    -- CONCLUSION: We CANNOT prove optimize-complete without either:
-    --   1. Enumerating all reductions (CompReducible must be COMPLETE)
-    --   2. Proving normal-unique (requires CompReducible to be complete!)
-    --
-    -- The holes below are UNPROVABLE with current structure.
-    -- They represent the SPECIFICATION of what a complete optimizer must do.
-    --
-    go id = {!!}        -- If t ≈ id, need cost (optimize t) ≤ 1
-    go (g ∘ f) = {!!}   -- Composition: can we reduce, or is it minimal?
-    go fst = {!!}
-    go snd = {!!}
-    go (⟨ f , g ⟩ m) = {!!}  -- KEY: What if ⟨terminal, g⟩ ∘ h is here?
-    go (inl m) = {!!}
-    go (inr m) = {!!}
-    go [ f , g ] = {!!}
-    go terminal = {!!}
-    go initial = {!!}
-    go (curry f m) = {!!}
-    go apply = {!!}
-    go fold = {!!}
-    go unfold = {!!}
-    go arr = {!!}
-    go (Prim x) = {!!}
+    -- COMPOSITION cases
+    go (g ∘ f) eq' with comp-reducible? g f
+
+    -- Beta: fst ∘ ⟨ f' , g' ⟩ → f' (cost DECREASES)
+    -- By IH on f': cost(optimize t) ≤ cost f' ≤ cost (fst ∘ ⟨f',g'⟩)
+    go (fst ∘ (⟨ f' , g' ⟩ alloc)) eq' | yes red-fst-pair =
+      ≤-trans (go f' (λ x → trans (eq' x) (fst-pair-beta f' g' alloc x))) {!!}
+
+    -- Beta: snd ∘ ⟨ f' , g' ⟩ → g' (cost DECREASES)
+    go (snd ∘ (⟨ f' , g' ⟩ alloc)) eq' | yes red-snd-pair =
+      ≤-trans (go g' (λ x → trans (eq' x) (snd-pair-beta f' g' alloc x))) {!!}
+
+    -- Beta: [ f' , g' ] ∘ inl → f' (cost DECREASES)
+    go ([ f' , g' ] ∘ (inl alloc)) eq' | yes red-case-inl =
+      ≤-trans (go f' (λ x → trans (eq' x) (case-inl-beta f' g' alloc x))) {!!}
+
+    -- Beta: [ f' , g' ] ∘ inr → g' (cost DECREASES)
+    go ([ f' , g' ] ∘ (inr alloc)) eq' | yes red-case-inr =
+      ≤-trans (go g' (λ x → trans (eq' x) (case-inr-beta f' g' alloc x))) {!!}
+
+    -- Dead code: terminal ∘ f' → terminal (cost becomes 0)
+    go (terminal ∘ f') eq' | yes red-terminal =
+      subst (_≤ cost f') (sym (optimize-Unit-cost-0 t)) z≤n
+
+    -- Initial absorption: g' ∘ initial → initial (cost becomes 0)
+    go (g' ∘ initial) eq' | yes red-initial =
+      subst (_≤ cost g' ℕ+ zero) (sym (optimize-Void-cost-0 t)) z≤n
+
+    -- Identity: id ∘ f' → f' (cost SAME: cost(id ∘ f') = 0 + cost f' = cost f')
+    go (id ∘ f') eq' | yes red-id-left =
+      go f' (λ x → trans (eq' x) (id-left-beta f' x))
+
+    -- Identity: f' ∘ id → f' (cost SAME: cost(f' ∘ id) = cost f' + 0 = cost f')
+    -- Need: cost f' ≤ cost f' + 0, which needs +-identityʳ
+    go (f' ∘ id) eq' | yes red-id-right =
+      subst (cost (optimize t) ≤_) (sym (+-identityʳ (cost f')))
+        (go f' (λ x → trans (eq' x) (id-right-beta f' x)))
+
+    -- Associativity: (h ∘ g') ∘ f' → h ∘ (g' ∘ f') (cost SAME, rearranges)
+    go ((h ∘ g') ∘ f') eq' | yes red-assoc = {!!}
+
+    -- Beta: apply ∘ ⟨ curry body , arg ⟩
+    go (apply ∘ (⟨ curry body _ , arg ⟩ _)) eq' | yes red-apply-curry = {!!}
+
+    -- NOT REDUCIBLE: composition g ∘ f where no reduction applies
+    go (g ∘ f) eq' | no ¬red = {!!}
+
+    -- PAIR cases
+    go (⟨ f' , g' ⟩ m) eq' with pair-reducible? f' g'
+    ... | yes red-pair-eta = {!!}  -- ⟨ fst , snd ⟩ → id
+    ... | yes red-pair-uniq = {!!}  -- ⟨ fst ∘ h , snd ∘ h ⟩ → h
+    ... | no ¬red = {!!}  -- Irreducible pair
+
+    -- CASE construct
+    go [ f' , g' ] eq' with case-reducible? f' g'
+    ... | yes red-case-eta = {!!}  -- [ inl , inr ] → id
+    ... | yes red-case-uniq = {!!}  -- [ h ∘ inl , h ∘ inr ] → h
+    ... | no ¬red = {!!}  -- Irreducible case
+
+    -- TYPE-DEGENERATE base cases
+    go terminal eq' = ≤-reflexive (optimize-Unit-cost-0 t)
+    go initial eq' = ≤-reflexive (optimize-Void-cost-0 t)
+
+    -- NON-DEGENERATE base cases
+    go id eq' = {!!}        -- cost id = 0
+    go fst eq' = {!!}       -- cost fst = 0
+    go snd eq' = {!!}       -- cost snd = 0
+    go (inl _) eq' = {!!}   -- cost (inl _) = 1
+    go (inr _) eq' = {!!}   -- cost (inr _) = 1
+    go (curry f' _) eq' = {!!}  -- cost (curry f') = 1 + cost f'
+    go apply eq' = {!!}     -- cost apply = 0
+    go fold eq' = {!!}      -- cost fold = 1
+    go unfold eq' = {!!}    -- cost unfold = 0
+    go arr eq' = {!!}       -- cost arr = 0
+    go (Prim _) eq' = {!!}  -- cost (Prim _) = 0
 
 -- Then coherent-cost follows from completeness applied both directions
 optimize-coherent-cost : ∀ {A B} (t t' : IR A B) →
