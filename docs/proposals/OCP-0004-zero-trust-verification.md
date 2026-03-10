@@ -1,4 +1,4 @@
-# OCP-0004: Zero-Trust Verification via Categorical Foundations
+# OCP-0004: Minimal-Trust Verification via Categorical Foundations
 
 **Author:** [TBD]
 **Status:** Draft
@@ -9,7 +9,7 @@
 
 ## Summary
 
-Establish that Once programs can be formally verified with trust **only in mathematics and hardware** — no trust in any software, proof assistant, or human code review. This is achieved by recognizing that the CCC IR (from OCP-0003) **is** category theory, not an implementation of it. Verification becomes checking conformance to mathematical definitions, eliminating the software trusted computing base (TCB) entirely.
+Establish that Once programs can be formally verified with a **minimal trusted computing base (TCB)**: mathematics, hardware, and a tiny bootstrap normalizer (~50-100 lines). This is achieved by recognizing that the CCC IR (from OCP-0003) **is** category theory, not an implementation of it. Verification becomes checking conformance to mathematical definitions, reducing the software TCB from ~50,000 lines (typical proof assistant) to ~50-100 lines (bootstrap normalizer).
 
 ---
 
@@ -38,18 +38,20 @@ We trust Agda/Coq because "their type checkers are obviously correct" — but th
 ### The Goal
 
 ```
-Zero-Trust Verification Stack:
+Minimal-Trust Verification Stack:
 ─────────────────────────────────────────
 Hardware                    (trusted - unavoidable)
     ↓
 Mathematics                 (trusted - it's math)
     ↓
-Once IR = Math              (no trust needed - they're the same)
+Bootstrap Normalizer        (trusted - ~50-100 lines, verifiable)
+    ↓
+Once IR = Math              (verified by bootstrap)
     ↓
 Verified Code
 ```
 
-**No software TCB.** Trust only in mathematical definitions and physical hardware.
+**Minimal software TCB.** Trust in mathematical definitions, hardware, and a tiny verifiable bootstrap normalizer — NOT a 50,000 line proof assistant.
 
 ### Why This Is Possible for Once
 
@@ -219,12 +221,13 @@ Traditional:
     "Verify this program is correct"
     = Run verification algorithm
     = Trust verification algorithm is correct
+    = Trust: ~50,000 lines of proof assistant
 
-Zero-Trust:
+Minimal-Trust:
     "Verify this program is correct"
     = Check it's a valid CCC morphism
     = Check it satisfies the categorical definitions
-    = Pure mathematics, no algorithm to trust
+    = Trust: ~50-100 lines bootstrap normalizer
 ```
 
 ### The Verification Predicate
@@ -283,7 +286,7 @@ This isn't an algorithm we trust. It's the categorical definitions, expressed in
 
 ---
 
-## The Zero-Trust Argument
+## The Minimal-Trust Argument
 
 ### What We're Claiming
 
@@ -291,12 +294,13 @@ This isn't an algorithm we trust. It's the categorical definitions, expressed in
 Claim: Verifying Once programs requires trust ONLY in:
        1. Mathematics (category theory, logic)
        2. Hardware (physical computation)
+       3. Bootstrap normalizer (~50-100 lines)
 
        No trust required in:
-       - Any proof assistant
-       - Any compiler
-       - Any software implementation
-       - Any human code review
+       - Any proof assistant (50,000+ lines)
+       - Any compiler (verified output, not compiler itself)
+       - Any complex software implementation
+       - Any "obviously correct" human judgment
 ```
 
 ### The Argument
@@ -370,6 +374,12 @@ Conclusion: Trust Chain
 │ ├── CPU executes instructions correctly                    │
 │ ├── Memory stores and retrieves correctly                  │
 │ └── Symbol manipulation works as intended                  │
+│                                                             │
+│ Bootstrap Normalizer (~50-100 lines)                        │
+│ ├── Written outside Once ecosystem                         │
+│ ├── Applies categorical reduction rules                    │
+│ ├── Small enough for human verification                    │
+│ └── Breaks the bootstrapping circular dependency           │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -379,14 +389,67 @@ Conclusion: Trust Chain
 │ ├── Once compiler (can have bugs - we verify its output)   │
 │ ├── Proof assistants (not needed)                          │
 │ ├── Operating system (just runs hardware)                  │
-│ └── Any verification tool (we ARE the verification)        │
+│ └── Complex verification tools (not needed)                │
 │                                                             │
 │ Humans                                                      │
-│ ├── Code review (not needed)                               │
-│ ├── Auditing (not needed)                                  │
-│ └── "This looks correct" (not needed)                      │
+│ ├── Code review of large codebases (not needed)            │
+│ ├── Trust in "obviously correct" (not needed)              │
+│ └── Faith in proof assistants (not needed)                 │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### The Bootstrapping Problem
+
+A fundamental challenge exists: how do we verify the verifier?
+
+```
+The Circular Dependency:
+─────────────────────────
+Once Compiler → needs verification
+    ↓
+Verifier (in Once) → needs compilation
+    ↓
+Once Compiler → needs verification
+    ↓
+... infinite regress
+```
+
+**Solution: Bootstrap Normalizer**
+
+We break the cycle with a tiny external normalizer:
+
+```
+Bootstrap Normalizer (~50-100 lines):
+─────────────────────────────────────
+Input:  CCC/RecursionIR expressions
+Output: Normalized form
+
+Implementation:
+- Written in any trusted language (C, assembly, hand-executed)
+- Implements ONLY categorical reduction rules:
+  * compose f id → f
+  * compose id f → f
+  * fst ∘ pair f g → f
+  * snd ∘ pair f g → g
+  * case f g ∘ inl → f
+  * case f g ∘ inr → g
+  * apply ∘ pair (curry f) id → f
+  * cata alg ∘ In → alg ∘ F(cata alg)  [for recursion]
+
+Why ~50-100 lines suffices:
+- ~12 CCC reduction rules
+- ~4 recursion scheme rules
+- Pattern matching + substitution
+- No complex algorithms
+```
+
+The bootstrap normalizer can be:
+1. Hand-verified by mathematicians (it IS the math)
+2. Implemented multiple times independently
+3. Cross-checked against hand calculations
+4. Run on paper for small examples
+
+Once the bootstrap normalizer verifies the Once verifier, the Once verifier can self-verify and verify everything else.
 
 ---
 
@@ -528,7 +591,7 @@ Phase 6: Now use Once checker for everything
 
 ## Formal Statement
 
-### Theorem: Zero-Trust Verification
+### Theorem: Minimal-Trust Verification
 
 ```
 Let P be a Once program.
@@ -564,17 +627,24 @@ The verification:
 - Requires trust only in math + hardware                     □
 ```
 
-### Corollary: TCB Elimination
+### Corollary: Minimal TCB
 
 ```
-The software TCB for Once verification is empty.
+The software TCB for Once verification is ~50-100 lines.
 
 Proof:
 - Verification = checking categorical structure
 - Categorical structure = mathematical definitions
 - Checking = symbol manipulation (hardware)
-- No software in the trust chain                             □
+- Bootstrap normalizer = categorical laws as code (~50-100 lines)
+- Bootstrap required to break circular dependency
+- After bootstrap, trust chain is: math → bootstrap → Once      □
 ```
+
+This is a dramatic reduction from ~50,000 lines (typical proof assistant) to ~50-100 lines (bootstrap normalizer). The bootstrap normalizer is small enough to be:
+- Hand-verified against the mathematical definitions
+- Implemented multiple times for cross-checking
+- Tested exhaustively on small examples
 
 ---
 
@@ -648,9 +718,12 @@ All Once compilation:
 | Code review | Large | Human judgment |
 | Agda/Coq | 50,000+ LOC | Proof assistant correct |
 | Metamath | ~300 LOC | Small verifier correct |
-| **Once** | **~50 LOC** | **Mathematical definitions** |
+| **Once** | **~50-100 LOC** | **Categorical laws as code** |
 
-The Once approach has the smallest TCB because verification IS the mathematics, not an implementation of mathematics.
+The Once approach has a minimal TCB because:
+1. The bootstrap normalizer IS the categorical laws (not an implementation of them)
+2. After bootstrap, Once self-verifies with no additional trust
+3. The ~50-100 lines can be hand-verified against the mathematical definitions
 
 ---
 
@@ -662,7 +735,13 @@ The Once approach has the smallest TCB because verification IS the mathematics, 
 
 2. **Hardware**: CPU executes correctly. A hardware bug could cause incorrect verification. (Unavoidable for any computation.)
 
-3. **Encoding**: The IR representation faithfully captures the program. (Can be verified by inspection or multiple encoders.)
+3. **Bootstrap Normalizer**: The ~50-100 line normalizer correctly implements categorical reduction rules. This is mitigated by:
+   - Direct correspondence to mathematical definitions
+   - Multiple independent implementations
+   - Exhaustive testing on small examples
+   - Small enough for human verification
+
+4. **Encoding**: The IR representation faithfully captures the program. (Can be verified by inspection or multiple encoders.)
 
 ### What This Doesn't Cover
 
@@ -687,7 +766,7 @@ impl : A → B
 correct : ∀ x → impl x ≡ spec x
 ```
 
-This would require dependent types (per Once's roadmap) but the same zero-trust principle applies: correctness proofs are mathematical objects verified by categorical structure.
+This would require dependent types (per Once's roadmap) but the same minimal-trust principle applies: correctness proofs are mathematical objects verified by categorical structure.
 
 ---
 
@@ -702,8 +781,7 @@ This would require dependent types (per Once's roadmap) but the same zero-trust 
 │                                                             │
 │  1. Mathematics (category theory, since 1960s)              │
 │  2. Hardware (physical computation)                         │
-│                                                             │
-│  No trust required in any software.                         │
+│  3. Bootstrap normalizer (~50-100 lines)                    │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                     THE MECHANISM                           │
@@ -714,15 +792,26 @@ This would require dependent types (per Once's roadmap) but the same zero-trust 
 │  Totality = Lambek's Lemma (math theorem, 1968)            │
 │  Productivity = coalgebra theorems (math)                   │
 │  Verification = checking categorical structure (syntactic)  │
+│  Bootstrap = breaks circular dependency with tiny verifier  │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                     THE RESULT                              │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Software TCB = ∅ (empty)                                   │
+│  Software TCB = ~50-100 lines (bootstrap normalizer)        │
 │                                                             │
-│  This is, to our knowledge, the first programming language │
-│  where verification requires zero trust in software.        │
+│  Compare to:                                                │
+│  - Typical proof assistant: ~50,000 lines                   │
+│  - Metamath verifier: ~300 lines                            │
+│  - Once bootstrap: ~50-100 lines                            │
+│                                                             │
+│  The bootstrap normalizer is:                               │
+│  - Small enough to hand-verify against math                 │
+│  - The categorical laws themselves, as code                 │
+│  - Implementable multiple times for cross-checking          │
+│                                                             │
+│  After bootstrap, Once self-verifies with zero additional   │
+│  trust: the verified Once verifier checks everything else.  │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
