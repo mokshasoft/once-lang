@@ -11,8 +11,8 @@
 
 module Once.CCC.Target.X86v3.Dispatcher.IR.PairWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_; _≟_ to _≟ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m*n; *-distribˡ-+; *-suc; n≤1+n; <⇒≢; ≮⇒≥)
+open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n; _<?_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_; _≟_ to _≟ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m*n; *-distribˡ-+; *-suc; n≤1+n; <⇒≢; ≮⇒≥; <⇒≤; <⇒≱)
 open import Data.Bool using (false)
 open import Data.Unit using (tt)
 open import Data.Maybe using (just)
@@ -2787,9 +2787,18 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       final-trace-writes-above = n≤1+n reclaim-g , tt  -- snd-slot = suc reclaim-g ≥ reclaim-g
 
       -- s₂ and s-before-final agree on locations before alloc₂-reclaimed
-      -- Similar reasoning: g-trace reads slots ≥ reclaim-f and s1', s-before-g agree there
-      -- The proof uses exec-trace-mem-equiv with the infrastructure from s1-agrees-setup-f
-      -- Postulated for now; can be proven using the same techniques
+      -- Both are results of executing g-trace, starting from s₁' and s-before-g respectively.
+      --
+      -- Proof sketch (using exec-trace-mem-equiv):
+      -- 1. s₂ = exec g-trace s₁' alloc₁-reclaimed (via g-correct)
+      -- 2. s-before-final = exec g-trace s-before-g alloc₁-reclaimed (via s-before-final-via-g + same-frame)
+      -- 3. s₁' and s-before-g agree on:
+      --    - Input register (both = input-loc)
+      --    - halted flag (both = false)
+      --    - slots in [reclaim-f, reclaim-g) (both preserve from s)
+      --    - loc' itself (both preserve from s, or equal via slots-eq)
+      -- 4. g-trace reads only from [reclaim-f, reclaim-g)
+      -- 5. Therefore by exec-trace-mem-equiv, g-trace produces same value at loc'
       postulate
         s2-agrees-before-final : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
                                  loc' ≢ OnStack frame backup-slot →
