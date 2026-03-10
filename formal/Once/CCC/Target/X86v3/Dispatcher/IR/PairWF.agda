@@ -2566,19 +2566,150 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       snd-valid-s2 = IRResultAWF.reclaim-preserves-validity result-g reclaim-g-fits
 
       -- Memory agreement from s₁ to s-final, excluding backup-slot
-      -- For slots < backup-slot: preserved via mem-preserved-before + mem-preserved-pair
-      -- For slots ≥ suc backup-slot: preserved since trace after f writes at slots ≥ reclaim-f
-      --
-      -- The proof uses validityWF-mem-preserved-excluding with backup-slot as the gap.
-      -- We postulate the detailed memory preservation lemmas since they require
-      -- trace analysis showing that slots in f's allocation range are preserved.
+      -- Key insight: rest-after-f writes at slots ≥ reclaim-f, so slots < reclaim-f are preserved
+      -- (except backup-slot which is explicitly excluded)
+
+      -- rest-after-f writes above reclaim-f
+      rest-after-f-writes-above : TraceWritesAbove reclaim-f rest-after-f
+      rest-after-f-writes-above =
+        let
+          -- fst-slot = reclaim-g ≥ reclaim-f
+          fst-above : reclaim-f ≤ fst-slot
+          fst-above = IRResultAWF.reclaim-monotone result-g
+
+          -- g-trace writes above reclaim-f
+          g-above : TraceWritesAbove reclaim-f g-trace
+          g-above = IRResultAWF.trace-writes-above result-g
+
+          -- snd-slot = suc reclaim-g > reclaim-g ≥ reclaim-f
+          snd-above : reclaim-f ≤ snd-slot
+          snd-above = ≤-trans fst-above (n≤1+n fst-slot)
+
+          -- final-trace writes above reclaim-f
+          final-above : TraceWritesAbove reclaim-f final-trace
+          final-above = snd-above , tt
+
+          -- g ++ final writes above reclaim-f
+          g-final-above : TraceWritesAbove reclaim-f (g-trace ++ final-trace)
+          g-final-above = trace-writes-above-append reclaim-f g-trace final-trace g-above final-above
+
+          -- restore-input doesn't write to stack, so passes through
+          restore-g-final-above : TraceWritesAbove reclaim-f (restore-input backup-slot ∷ (g-trace ++ final-trace))
+          restore-g-final-above = g-final-above
+
+          -- store fst-slot ++ rest writes above reclaim-f
+          middle-g-final-above : TraceWritesAbove reclaim-f (store-at-slot fst-slot ∷ restore-input backup-slot ∷ (g-trace ++ final-trace))
+          middle-g-final-above = fst-above , restore-g-final-above
+        in middle-g-final-above
+
+      -- State after setup ++ f in the trace
+      s-after-setup-f : LocState FS
+      s-after-setup-f = proj₁ (exec-trace (setup-trace ++ f-trace) s alloc)
+
+      alloc-after-setup-f : AllocState {FS}
+      alloc-after-setup-f = proj₂ (exec-trace (setup-trace ++ f-trace) s alloc)
+
+      -- s-final = exec rest-after-f s-after-setup-f alloc-after-setup-f
+      s-final-via-rest : s-final ≡ proj₁ (exec-trace rest-after-f s-after-setup-f alloc-after-setup-f)
+      s-final-via-rest = exec-trace-append-state (setup-trace ++ f-trace) rest-after-f s alloc
+
+      -- Frame preserved through setup ++ f
+      frame-after-setup-f : current-frame alloc-after-setup-f ≡ frame
+      frame-after-setup-f = exec-trace-preserves-frame (setup-trace ++ f-trace) s alloc
+
+      -- For loc' before alloc₁-reclaimed and loc' ≠ backup-slot:
+      -- 1. rest-after-f preserves loc' (writes above reclaim-f, loc' has slot < reclaim-f)
+      -- 2. Need to relate s₁ to s-after-setup-f
+
+      -- s₁ and s-after-setup-f agree on locations before alloc₁-reclaimed (except backup-slot)
+      -- Both are states after f completes, just with different starting states/allocs
+      -- Key insight: f-trace reads only slots ≥ suc backup-slot (f-slot-reads)
+      -- and s, s-after-setup agree on all such slots (setup only writes backup-slot)
+      -- So f-trace produces same results from both starting states
       postulate
-        mem-agree-fst : ∀ loc' → BeforeFrontier alloc₁-reclaimed loc' →
-                        loc' ≢ OnStack (current-frame alloc) backup-slot →
-                        readLoc s₁ loc' ≡ readLoc s-final loc'
-        mem-agree-snd : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
-                        loc' ≢ OnStack (current-frame alloc) backup-slot →
-                        readLoc s₂ loc' ≡ readLoc s-final loc'
+        s1-agrees-setup-f : ∀ loc' → BeforeFrontier alloc₁-reclaimed loc' →
+                            loc' ≢ OnStack frame backup-slot →
+                            readLoc s₁ loc' ≡ readLoc s-after-setup-f loc'
+
+      mem-agree-fst : ∀ loc' → BeforeFrontier alloc₁-reclaimed loc' →
+                      loc' ≢ OnStack (current-frame alloc) backup-slot →
+                      readLoc s₁ loc' ≡ readLoc s-final loc'
+      -- Helper: extract frame from location
+      frame-of-loc : ValueLocation FS → Frame
+      frame-of-loc (OnStack f _) = f
+      frame-of-loc (OnHeap _) = frame
+
+      -- Disjointness helper: loc' before alloc₁-reclaimed ⇒ loc' not at slots ≥ reclaim-f
+      disjoint-fst : ∀ loc' → BeforeFrontier alloc₁-reclaimed loc' →
+                     ∀ slot' → reclaim-f ≤ slot' → OnStack frame slot' ≢ loc'
+      disjoint-fst loc' (stack-before frame-eq slot<rf) slot' rf≤slot' eq =
+        let slot'-eq : slot' ≡ slot-of loc'
+            slot'-eq = cong slot-of eq
+            slot-of-loc<rf : slot-of loc' < reclaim-f
+            slot-of-loc<rf = subst (_< reclaim-f) (cong slot-of (cong (λ f → OnStack f (slot-of loc')) (sym frame-eq))) slot<rf
+        in <⇒≢ (≤-trans slot-of-loc<rf rf≤slot') (sym slot'-eq)
+      disjoint-fst loc' (stack-ancestor cf≺f _) slot' rf≤slot' eq =
+        ≺⇒≢ cf≺f (cong frame-of-loc eq)
+      disjoint-fst _ (heap-before _) _ _ ()
+
+      mem-agree-fst loc' bf neq-backup =
+        let
+          disjoint : ∀ slot' → reclaim-f ≤ slot' → OnStack frame slot' ≢ loc'
+          disjoint = disjoint-fst loc' bf
+
+          -- rest-after-f preserves loc'
+          rest-preserves : readLoc (proj₁ (exec-trace rest-after-f s-after-setup-f alloc-after-setup-f)) loc' ≡
+                           readLoc s-after-setup-f loc'
+          rest-preserves = exec-trace-preserves-disjoint rest-after-f s-after-setup-f alloc-after-setup-f
+                             loc' reclaim-f rest-after-f-writes-above
+                             (λ slot bound eq → disjoint slot bound (trans (cong (λ f → OnStack f slot) (sym frame-after-setup-f)) eq))
+
+          -- Combine: s-final = exec rest s-after-setup-f, and rest preserves loc'
+          s-final-eq : readLoc s-final loc' ≡ readLoc s-after-setup-f loc'
+          s-final-eq = trans (cong (λ st → readLoc st loc') s-final-via-rest) rest-preserves
+        in trans (s1-agrees-setup-f loc' bf neq-backup) (sym s-final-eq)
+
+      -- Similar for snd: final-trace writes above reclaim-g
+      final-trace-writes-above : TraceWritesAbove reclaim-g final-trace
+      final-trace-writes-above = n≤1+n reclaim-g , tt  -- snd-slot = suc reclaim-g ≥ reclaim-g
+
+      -- s₂ and s-before-final agree on locations before alloc₂-reclaimed
+      -- Similar reasoning: g-trace reads slots ≥ reclaim-f and s₁', s-before-g agree there
+      postulate
+        s2-agrees-before-final : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
+                                 loc' ≢ OnStack frame backup-slot →
+                                 readLoc s₂ loc' ≡ readLoc s-before-final loc'
+
+      mem-agree-snd : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
+                      loc' ≢ OnStack (current-frame alloc) backup-slot →
+                      readLoc s₂ loc' ≡ readLoc s-final loc'
+      -- Disjointness helper for snd
+      disjoint-snd : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
+                     ∀ slot' → reclaim-g ≤ slot' → OnStack frame slot' ≢ loc'
+      disjoint-snd loc' (stack-before frame-eq slot<rg) slot' rg≤slot' eq =
+        let slot'-eq : slot' ≡ slot-of loc'
+            slot'-eq = cong slot-of eq
+            slot-of-loc<rg : slot-of loc' < reclaim-g
+            slot-of-loc<rg = subst (_< reclaim-g) (cong slot-of (cong (λ f → OnStack f (slot-of loc')) (sym frame-eq))) slot<rg
+        in <⇒≢ (≤-trans slot-of-loc<rg rg≤slot') (sym slot'-eq)
+      disjoint-snd loc' (stack-ancestor cf≺f _) slot' rg≤slot' eq =
+        ≺⇒≢ cf≺f (cong frame-of-loc eq)
+      disjoint-snd _ (heap-before _) _ _ ()
+
+      mem-agree-snd loc' bf neq-backup =
+        let
+          disjoint : ∀ slot' → reclaim-g ≤ slot' → OnStack frame slot' ≢ loc'
+          disjoint = disjoint-snd loc' bf
+
+          final-preserves : readLoc (proj₁ (exec-trace final-trace s-before-final alloc-before-final)) loc' ≡
+                            readLoc s-before-final loc'
+          final-preserves = exec-trace-preserves-disjoint final-trace s-before-final alloc-before-final
+                              loc' reclaim-g final-trace-writes-above
+                              (λ slot bound eq → disjoint slot bound (trans (cong (λ f → OnStack f slot) (sym frame-preserved-trace)) eq))
+
+          s-final-eq : readLoc s-final loc' ≡ readLoc s-before-final loc'
+          s-final-eq = trans (cong (λ st → readLoc st loc') s-final-decomp) final-preserves
+        in trans (s2-agrees-before-final loc' bf neq-backup) (sym s-final-eq)
 
       fst-valid-s-final : ValidAtWF mF alloc₃ (eval primSem f x) fst-loc s-final
       fst-valid-s-final = validityWF-frontier-advance (eval primSem f x) fst-loc s-final
