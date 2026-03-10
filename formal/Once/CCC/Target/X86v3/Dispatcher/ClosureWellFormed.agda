@@ -292,6 +292,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- Combined with trace-slot-reads-above, this gives: reads are in [next-slot alloc, reclaimable-slot).
         -- Key for pair's g-fst-indep: g reads in [reclaim-f, reclaim-g), so fst-slot = reclaim-g is independent.
         trace-slot-reads-below : TraceSlotReadsBelow reclaimable-slot trace
+        -- Trace preserves capacity: no instr-push-frame in trace.
+        -- This allows using exec-trace-preserves-capacity' to prove frame-capacity
+        -- is preserved through trace execution. Apply is the only IR that uses
+        -- push-frame, and it handles capacity specially via frame push/pop.
+        trace-preserves-capacity : TracePreservesCapacity trace
 
     --------------------------------------------------------------------
     -- BodyCorrect: Pre-computed body execution proof

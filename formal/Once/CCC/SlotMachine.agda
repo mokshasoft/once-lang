@@ -1076,14 +1076,91 @@ module AbstractExec {FS : FrameSemantics} where
         rest-preserves = exec-trace-preserves-frame rest s' alloc'
     in trans rest-preserves step-preserves
 
-  -- Trace version: frame-capacity is preserved by executing an entire trace
-  -- Postulate: This is provable by induction on trace when no push-frame in trace.
-  -- The IR traces (f-trace, g-trace) don't contain push-frame (only Apply uses it).
-  -- Proof sketch: Each instruction except push-frame preserves capacity.
-  postulate
-    exec-trace-preserves-capacity : ∀ (trace : AbstractTrace) (s : LocState FS)
-      (alloc : AllocState {FS}) →
-      frame-capacity (proj₂ (exec-trace trace s alloc)) ≡ frame-capacity alloc
+  ------------------------------------------------------------------------
+  -- Frame Capacity Preservation
+  --
+  -- frame-capacity is preserved by executing traces, provided the trace
+  -- doesn't contain instr-push-frame (which sets a new capacity).
+  --
+  -- We define:
+  --   InstrPreservesCapacity i : true for all instructions except push-frame
+  --   TracePreservesCapacity t : all instructions in t preserve capacity
+  --
+  -- Then prove exec-trace-preserves-capacity' with the constraint.
+  -- For backward compatibility, we keep a postulate for the unconditional
+  -- version (used when callers know their traces don't have push-frame).
+  ------------------------------------------------------------------------
+
+  -- Predicate: instruction preserves capacity (true for all except push-frame)
+  data InstrPreservesCapacity : AbstractInstr → Set where
+    ipc-mov-to-output      : InstrPreservesCapacity mov-to-output
+    ipc-mov-to-input       : InstrPreservesCapacity mov-to-input
+    ipc-load-indirect      : InstrPreservesCapacity load-indirect
+    ipc-load-indirect-suc  : InstrPreservesCapacity load-indirect-suc
+    ipc-load-from-slot     : ∀ {slot} → InstrPreservesCapacity (load-from-slot slot)
+    ipc-store-at-slot      : ∀ {slot} → InstrPreservesCapacity (store-at-slot slot)
+    ipc-store-indirect     : InstrPreservesCapacity store-indirect
+    ipc-store-indirect-suc : InstrPreservesCapacity store-indirect-suc
+    ipc-lea-slot           : ∀ {slot} → InstrPreservesCapacity (lea-slot slot)
+    ipc-restore-input      : ∀ {slot} → InstrPreservesCapacity (restore-input slot)
+    ipc-alloc-stack        : ∀ {n} → InstrPreservesCapacity (instr-alloc-stack n)
+    ipc-dealloc-stack      : ∀ {n} → InstrPreservesCapacity (instr-dealloc-stack n)
+    ipc-pop-frame          : InstrPreservesCapacity instr-pop-frame
+    ipc-call-closure       : InstrPreservesCapacity instr-call-closure
+    -- Note: instr-push-frame is NOT included - it changes frame-capacity
+
+  -- Predicate: all instructions in trace preserve capacity
+  data TracePreservesCapacity : AbstractTrace → Set where
+    tpc-[]  : TracePreservesCapacity []
+    tpc-∷   : ∀ {i rest} → InstrPreservesCapacity i → TracePreservesCapacity rest →
+              TracePreservesCapacity (i ∷ rest)
+
+  -- Lift: concatenation of capacity-preserving traces is capacity-preserving
+  tpc-++ : ∀ {t₁ t₂} → TracePreservesCapacity t₁ → TracePreservesCapacity t₂ →
+           TracePreservesCapacity (t₁ ++ t₂)
+  tpc-++ tpc-[] tpc₂ = tpc₂
+  tpc-++ (tpc-∷ ipc tpc₁) tpc₂ = tpc-∷ ipc (tpc-++ tpc₁ tpc₂)
+
+  -- Single instruction: capacity is preserved when InstrPreservesCapacity holds
+  exec-abstract-preserves-capacity' : ∀ (i : AbstractInstr) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    InstrPreservesCapacity i →
+    frame-capacity (proj₂ (exec-abstract i s alloc)) ≡ frame-capacity alloc
+  exec-abstract-preserves-capacity' mov-to-output s alloc _ = refl
+  exec-abstract-preserves-capacity' mov-to-input s alloc _ = refl
+  exec-abstract-preserves-capacity' load-indirect s alloc _ = refl
+  exec-abstract-preserves-capacity' load-indirect-suc s alloc _ = refl
+  exec-abstract-preserves-capacity' (load-from-slot slot) s alloc _
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-capacity' (store-at-slot slot) s alloc _ = refl
+  exec-abstract-preserves-capacity' store-indirect s alloc _ = refl
+  exec-abstract-preserves-capacity' store-indirect-suc s alloc _ = refl
+  exec-abstract-preserves-capacity' (lea-slot slot) s alloc _ = refl
+  exec-abstract-preserves-capacity' (restore-input slot) s alloc _
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-capacity' (instr-alloc-stack n) s alloc _ = refl
+  exec-abstract-preserves-capacity' (instr-dealloc-stack n) s alloc _ = refl
+  exec-abstract-preserves-capacity' instr-pop-frame s alloc _ = refl
+  exec-abstract-preserves-capacity' instr-call-closure s alloc _ = refl
+
+  -- Trace version with explicit constraint: capacity is preserved when TracePreservesCapacity
+  exec-trace-preserves-capacity' : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    TracePreservesCapacity trace →
+    frame-capacity (proj₂ (exec-trace trace s alloc)) ≡ frame-capacity alloc
+  exec-trace-preserves-capacity' [] s alloc _ = refl
+  exec-trace-preserves-capacity' (i ∷ rest) s alloc (tpc-∷ ipc tpc-rest) with halted s
+  ... | true = refl
+  ... | false =
+    let s' = proj₁ (exec-abstract i s alloc)
+        alloc' = proj₂ (exec-abstract i s alloc)
+        step-preserves = exec-abstract-preserves-capacity' i s alloc ipc
+        rest-preserves = exec-trace-preserves-capacity' rest s' alloc' tpc-rest
+    in trans rest-preserves step-preserves
 
   -- Core lemma: if frames are equal, exec-abstract produces equal states
   exec-abstract-same-frame : ∀ (i : AbstractInstr) (s : LocState FS)

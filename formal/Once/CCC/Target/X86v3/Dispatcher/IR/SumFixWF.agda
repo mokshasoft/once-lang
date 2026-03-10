@@ -403,6 +403,13 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                          (load-preserves-stackMem Output (IndReg Input) s'')
                          (load-preserves-heapMem Output (IndReg Input) s''))
                        slot-eq'')
+      -- Trace bounds: unfold only has load-indirect which doesn't write to stack
+      ; trace-writes-above = tt
+      ; trace-slot-reads-above = tt
+      ; trace-writes-below = tt
+      ; trace-slot-reads-below = tt
+      -- Trace preserves capacity: no push-frame in unfold-trace
+      ; trace-preserves-capacity = tpc-∷ ipc-load-indirect tpc-[]
       }
 
   ------------------------------------------------------------------------
@@ -473,6 +480,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = suc<+2 (next-slot alloc) , tt
       -- Trace slot reads below: no slot reads in inl-trace
       ; trace-slot-reads-below = tt
+      -- Trace preserves capacity: no push-frame in inl-trace
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       }
     where
       -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
@@ -623,6 +632,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = suc<+2 (next-slot alloc) , tt
       -- Trace slot reads below: no slot reads in inl-trace
       ; trace-slot-reads-below = tt
+      -- Trace preserves capacity: no push-frame in inl-trace
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       }
     where
       -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
@@ -794,6 +805,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = suc<+2 (next-slot alloc) , tt
       -- Trace slot reads below: no slot reads in inr-trace
       ; trace-slot-reads-below = tt
+      -- Trace preserves capacity: no push-frame in inr-trace
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       }
     where
       -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
@@ -937,6 +950,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = suc<+2 (next-slot alloc) , tt
       -- Trace slot reads below: no slot reads in inr-trace
       ; trace-slot-reads-below = tt
+      -- Trace preserves capacity: no push-frame in inr-trace
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       }
     where
       -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
@@ -1112,6 +1127,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = m<m+n (next-slot alloc) {fix-slots} fix-slots≥1 , tt
       -- Trace slot reads below: no slot reads in fold-trace
       ; trace-slot-reads-below = tt
+      -- Trace preserves capacity: no push-frame in fold-trace
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       }
     where
       fix-slots = stack-type-slots (Fix F)  -- Stack mode: 1 slot for pointer
@@ -1240,6 +1257,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = m<m+n (next-slot alloc) {fix-slots} fix-slots≥1 , tt
       -- Trace slot reads below: no slot reads in fold-trace
       ; trace-slot-reads-below = tt
+      -- Trace preserves capacity: no push-frame in fold-trace
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       }
     where
       fix-slots = heap-type-slots (Fix F)  -- Heap mode: 1 slot for pointer
@@ -1396,6 +1415,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = IRResultAWF.trace-writes-below result-f
       -- Trace slot reads below: forward from f
       ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-f
+      -- Trace preserves capacity: setup + f-trace preserves capacity
+      ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity result-f))
       }
     where
       rf = ir-stack-requirement f
@@ -1512,6 +1533,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = IRResultAWF.trace-writes-below result-g
       -- Trace slot reads below: forward from g
       ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-g
+      -- Trace preserves capacity: setup + g-trace preserves capacity
+      ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity result-g))
       }
     where
       rf = ir-stack-requirement f

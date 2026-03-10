@@ -133,6 +133,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt  -- no slot reads
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
       }
 
   ------------------------------------------------------------------------
@@ -203,6 +204,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt  -- no slot reads
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
+      ; trace-preserves-capacity = tpc-∷ ipc-load-indirect tpc-[]
       }
 
   ------------------------------------------------------------------------
@@ -273,6 +275,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt  -- no slot reads
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
+      ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc tpc-[]
       }
 
   ------------------------------------------------------------------------
@@ -324,6 +327,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt  -- no slot reads
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
       }
 
   ------------------------------------------------------------------------
@@ -380,6 +384,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt  -- no slot reads
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
       }
 
   ------------------------------------------------------------------------
@@ -442,4 +447,5 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt  -- no slot reads
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
       }

@@ -124,6 +124,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; trace-slot-reads-above = pair-trace-slot-reads-above
       ; trace-writes-below = pair-trace-writes-below
       ; trace-slot-reads-below = pair-trace-slot-reads-below
+      ; trace-preserves-capacity = pair-trace-preserves-capacity
       }
     where
       -- Stack requirement abbreviations
@@ -337,6 +338,32 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       g-slot-reads-below = IRResultAWF.trace-slot-reads-below result-g
 
       ------------------------------------------------------------------------
+      -- Trace capacity preservation from sub-IRs
+      ------------------------------------------------------------------------
+      f-tpc : TracePreservesCapacity f-trace
+      f-tpc = IRResultAWF.trace-preserves-capacity result-f
+
+      g-tpc : TracePreservesCapacity g-trace
+      g-tpc = IRResultAWF.trace-preserves-capacity result-g
+
+      -- pair-trace preserves capacity: all instructions preserve capacity
+      -- pair-trace = mov-to-output ∷ store-at-slot backup-slot ∷
+      --              f-trace ++
+      --              store-at-slot fst-slot ∷ restore-input backup-slot ∷
+      --              g-trace ++
+      --              store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+      pair-trace-preserves-capacity : TracePreservesCapacity pair-trace
+      pair-trace-preserves-capacity =
+        tpc-∷ ipc-mov-to-output
+        (tpc-∷ ipc-store-at-slot
+        (tpc-++ f-tpc
+        (tpc-∷ ipc-store-at-slot
+        (tpc-∷ ipc-restore-input
+        (tpc-++ g-tpc
+        (tpc-∷ ipc-store-at-slot
+        (tpc-∷ ipc-lea-slot tpc-[])))))))
+
+      ------------------------------------------------------------------------
       -- Trace correctness from sub-IRs
       ------------------------------------------------------------------------
       f-correct : proj₁ (exec-trace f-trace s alloc-after-backup) ≡ s₁
@@ -417,6 +444,16 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
       final-trace : AbstractTrace
       final-trace = store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+
+      -- TPC for trace segments
+      setup-tpc : TracePreservesCapacity setup-trace
+      setup-tpc = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot tpc-[])
+
+      middle-tpc : TracePreservesCapacity middle-trace
+      middle-tpc = tpc-∷ ipc-store-at-slot (tpc-∷ ipc-restore-input tpc-[])
+
+      final-tpc : TracePreservesCapacity final-trace
+      final-tpc = tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[])
 
       -- Rewrite pair-trace in terms of segments
       pair-trace-eq : pair-trace ≡ setup-trace ++ f-trace ++ middle-trace ++ g-trace ++ final-trace
@@ -552,8 +589,17 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       middle-before-g : AbstractTrace
       middle-before-g = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
 
+      middle-before-g-tpc : TracePreservesCapacity middle-before-g
+      middle-before-g-tpc = tpc-∷ ipc-store-at-slot (tpc-∷ ipc-restore-input tpc-[])
+
       prefix-before-g : AbstractTrace
       prefix-before-g = mov-to-output ∷ store-at-slot backup-slot ∷ f-trace ++ middle-before-g
+
+      prefix-before-g-tpc : TracePreservesCapacity prefix-before-g
+      prefix-before-g-tpc =
+        tpc-∷ ipc-mov-to-output
+        (tpc-∷ ipc-store-at-slot
+        (tpc-++ f-tpc middle-before-g-tpc))
 
       -- prefix-trace = prefix-before-g ++ g-trace
       prefix-trace-split : prefix-trace ≡ prefix-before-g ++ g-trace
@@ -584,13 +630,16 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
       -- Alloc capacity equality (both derived from alloc)
       alloc-cap-eq : frame-capacity alloc-before-g ≡ frame-capacity alloc₁-reclaimed
-      alloc-cap-eq = trans (exec-trace-preserves-capacity prefix-before-g s alloc) refl
+      alloc-cap-eq = trans (exec-trace-preserves-capacity' prefix-before-g s alloc prefix-before-g-tpc) refl
 
       ------------------------------------------------------------------------
       -- Intermediate state decomposition (for not-halted-before-final and s2-agrees-before-final)
       ------------------------------------------------------------------------
       setup-seg : AbstractTrace
       setup-seg = mov-to-output ∷ store-at-slot backup-slot ∷ []
+
+      setup-seg-tpc : TracePreservesCapacity setup-seg
+      setup-seg-tpc = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot tpc-[])
 
       s-after-setup' : LocState FS
       s-after-setup' = proj₁ (exec-trace setup-seg s alloc)
@@ -621,7 +670,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       setup-frame-eq = exec-trace-preserves-frame setup-seg s alloc
 
       setup-cap-eq : frame-capacity alloc-after-setup' ≡ frame-capacity alloc
-      setup-cap-eq = exec-trace-preserves-capacity setup-seg s alloc
+      setup-cap-eq = exec-trace-preserves-capacity' setup-seg s alloc setup-seg-tpc
 
       -- State after restore-input
       s-after-restore : LocState FS
@@ -1328,7 +1377,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
               alloc-after-setup-frame-eq = exec-trace-preserves-frame setup-trace s alloc
 
               alloc-after-setup-cap-eq : frame-capacity alloc-after-setup ≡ frame-capacity alloc
-              alloc-after-setup-cap-eq = exec-trace-preserves-capacity setup-trace s alloc
+              alloc-after-setup-cap-eq = exec-trace-preserves-capacity' setup-trace s alloc setup-tpc
 
               -- s-after-setup has same Input as s (mov-to-output doesn't change Input)
               -- and differs from s only in Output register and backup-slot
@@ -1698,7 +1747,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
               setup-here-frame-eq = exec-trace-preserves-frame setup-here s alloc
 
               setup-here-cap-eq : frame-capacity alloc-after-setup-here ≡ frame-capacity alloc
-              setup-here-cap-eq = exec-trace-preserves-capacity setup-here s alloc
+              setup-here-cap-eq = exec-trace-preserves-capacity' setup-here s alloc setup-tpc
 
               -- Input equivalence: s-after-setup-here has same Input as s
               input-after-setup-here' : readReg (regs s-after-setup-here) Input ≡ input-loc
@@ -2097,7 +2146,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                       setup-f-frame-eq = exec-trace-preserves-frame setup-segment s alloc
 
                       setup-f-cap-eq : frame-capacity alloc-after-setup' ≡ frame-capacity alloc
-                      setup-f-cap-eq = exec-trace-preserves-capacity setup-segment s alloc
+                      setup-f-cap-eq = exec-trace-preserves-capacity' setup-segment s alloc setup-tpc
 
                       -- Use exec-trace-state-same-frame
                       f-same-frame' : proj₁ (exec-trace f-trace s-after-setup' alloc-after-setup') ≡
@@ -2836,7 +2885,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
           setup-frame-eq' = trans (exec-trace-preserves-frame setup-trace s alloc) refl
 
           setup-cap-eq' : frame-capacity alloc-after-setup ≡ frame-capacity alloc-after-backup
-          setup-cap-eq' = trans (exec-trace-preserves-capacity setup-trace s alloc) refl
+          setup-cap-eq' = trans (exec-trace-preserves-capacity' setup-trace s alloc setup-tpc) refl
 
           -- exec f-trace s-after-setup alloc-after-setup = exec f-trace s-after-setup alloc-after-backup
           f-same-frame' : proj₁ (exec-trace f-trace s-after-setup alloc-after-setup) ≡

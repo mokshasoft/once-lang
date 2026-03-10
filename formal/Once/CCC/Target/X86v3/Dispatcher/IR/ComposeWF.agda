@@ -336,6 +336,14 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
         g-trace = IRResultAWF.trace result-g
         compose-trace = f-trace ++ mov-to-input ∷ g-trace
 
+        -- Trace preserves capacity
+        f-tpc : TracePreservesCapacity f-trace
+        f-tpc = IRResultAWF.trace-preserves-capacity result-f
+        g-tpc : TracePreservesCapacity g-trace
+        g-tpc = IRResultAWF.trace-preserves-capacity result-g
+        compose-trace-preserves-capacity : TracePreservesCapacity compose-trace
+        compose-trace-preserves-capacity = tpc-++ f-tpc (tpc-∷ ipc-mov-to-input g-tpc)
+
         -- Frontier slot stability for compose uses a postulate (proof outline above)
         compose-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
           halted s' ≡ false →
@@ -468,4 +476,5 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; trace-slot-reads-above = compose-trace-slot-reads-above
       ; trace-writes-below = compose-trace-writes-below
       ; trace-slot-reads-below = compose-trace-slot-reads-below
+      ; trace-preserves-capacity = compose-trace-preserves-capacity
       }

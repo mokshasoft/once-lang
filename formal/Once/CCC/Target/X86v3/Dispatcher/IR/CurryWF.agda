@@ -134,6 +134,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-slot-reads-above = curry-trace-slot-reads-above
       ; trace-writes-below = curry-trace-writes-below
       ; trace-slot-reads-below = curry-trace-slot-reads-below
+      ; trace-preserves-capacity = curry-trace-preserves-capacity
       }
     where
       -- Size bound for body
@@ -393,3 +394,12 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- Trace slot reads below: curry-trace has no slot reads
       curry-trace-slot-reads-below : TraceSlotReadsBelow (next-slot alloc +ℕ closure-slots) curry-trace
       curry-trace-slot-reads-below = tt  -- no load-from-slot or restore-input in curry-trace
+
+      -- Trace preserves capacity: curry-trace has no push-frame
+      curry-trace-preserves-capacity : TracePreservesCapacity curry-trace
+      curry-trace-preserves-capacity =
+        tpc-∷ ipc-mov-to-output
+        (tpc-∷ ipc-store-at-slot
+        (tpc-∷ ipc-lea-slot
+        (tpc-∷ ipc-store-at-slot
+        (tpc-∷ ipc-lea-slot tpc-[]))))
