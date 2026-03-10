@@ -402,6 +402,15 @@ is-Void _ = false
 --
 --   Unsafe: ⟨ fst , fst ⟩ or ⟨ snd , snd ⟩ → duplicates a component's cost
 
+-- Type predicates for type-directed optimization
+isUnitType : Type → Bool
+isUnitType Unit = true
+isUnitType _ = false
+
+isVoidType : Type → Bool
+isVoidType Void = true
+isVoidType _ = false
+
 -- Check if f is fst (for pattern matching)
 is-fst? : ∀ {A B} → IR A B → Bool
 is-fst? fst = true
@@ -447,208 +456,225 @@ wants-fold terminal = true
 wants-fold _ = false
 
 ------------------------------------------------------------------------
--- | Rewrite compositions using categorical laws
+-- | Rewrite compositions using categorical laws (type-directed)
 --
--- Each pattern match clause is one optimization rule.
--- Rules are tried in order; first match wins.
--- Default case preserves the original composition.
+-- Type-directed rules (checked first):
+--   1. Any g ∘ f : A → Unit  becomes terminal (Unit target rule)
+--   2. Any g ∘ f : Void → C  becomes initial  (Void source rule)
+--
+-- For non-degenerate types, structural rules apply.
 --
 {-# TERMINATING #-}  -- Termination: h and g are subterms of input; see apply-curry cases
-optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
+mutual
+  optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
+  optimize-compose {A} {_} {C} g f with C ≟Type Unit
+  ... | yes refl = terminal                    -- Target is Unit → terminal
+  ... | no _ with A ≟Type Void
+  ...   | yes refl = initial                   -- Source is Void → initial
+  ...   | no _ = optimize-compose-structural g f  -- Otherwise → structural rules
 
--- | Helper for pair distribution: takes Bool explicitly instead of using with.
---   This enables proof reduction because the Bool argument is concrete.
---   INLINE forces Agda to reduce this during type checking.
-pair-distrib-opt : ∀ {A B C D} → IR C A → IR C B → AllocMode → IR D C → Bool → IR D (A * B)
-pair-distrib-opt f g m h true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
-pair-distrib-opt f g m h false = (⟨ f , g ⟩ m) ∘ h
-{-# INLINE pair-distrib-opt #-}
+  -- | Structural composition rules (called after type-directed rules)
+  optimize-compose-structural : ∀ {A B C} → IR B C → IR A B → IR A C
 
-------------------------------------------------------------------------
--- Identity Laws
-------------------------------------------------------------------------
+  -- | Helper for pair distribution: takes Bool explicitly instead of using with.
+  --   This enables proof reduction because the Bool argument is concrete.
+  pair-distrib-opt : ∀ {A B C D} → IR C A → IR C B → AllocMode → IR D C → Bool → IR D (A * B)
+  pair-distrib-opt f g m h true  = ⟨ optimize-compose f h , optimize-compose g h ⟩ m
+  pair-distrib-opt f g m h false = (⟨ f , g ⟩ m) ∘ h
 
--- id ∘ f = f (left identity)
-optimize-compose id f = f
+  ------------------------------------------------------------------------
+  -- Identity Laws
+  ------------------------------------------------------------------------
 
--- f ∘ id = f (right identity, by constructor)
-optimize-compose fst id = fst
-optimize-compose snd id = snd
-optimize-compose (⟨ f , g ⟩ m) id = ⟨ f , g ⟩ m
-optimize-compose (inl m) id = inl m
-optimize-compose (inr m) id = inr m
-optimize-compose [ f , g ] id = [ f , g ]
-optimize-compose terminal id = terminal
-optimize-compose (curry f m) id = curry f m
-optimize-compose apply id = apply
-optimize-compose fold id = fold
-optimize-compose unfold id = unfold
-optimize-compose arr id = arr
-optimize-compose (Prim n) id = Prim n
-optimize-compose (g ∘ f) id = g ∘ f
+  -- id ∘ f = f (left identity)
+  optimize-compose-structural id f = f
 
-------------------------------------------------------------------------
--- Beta Laws (Products)
-------------------------------------------------------------------------
+  -- f ∘ id = f (right identity, by constructor)
+  optimize-compose-structural fst id = fst
+  optimize-compose-structural snd id = snd
+  optimize-compose-structural (⟨ f , g ⟩ m) id = ⟨ f , g ⟩ m
+  optimize-compose-structural (inl m) id = inl m
+  optimize-compose-structural (inr m) id = inr m
+  optimize-compose-structural [ f , g ] id = [ f , g ]
+  optimize-compose-structural terminal id = terminal
+  optimize-compose-structural (curry f m) id = curry f m
+  optimize-compose-structural apply id = apply
+  optimize-compose-structural fold id = fold
+  optimize-compose-structural unfold id = unfold
+  optimize-compose-structural arr id = arr
+  optimize-compose-structural (Prim n) id = Prim n
+  optimize-compose-structural (g ∘ f) id = g ∘ f
 
--- fst ∘ ⟨ f , g ⟩ = f
-optimize-compose fst (⟨ f , g ⟩ _) = f
+  ------------------------------------------------------------------------
+  -- Beta Laws (Products)
+  ------------------------------------------------------------------------
 
--- snd ∘ ⟨ f , g ⟩ = g
-optimize-compose snd (⟨ f , g ⟩ _) = g
+  -- fst ∘ ⟨ f , g ⟩ = f
+  optimize-compose-structural fst (⟨ f , g ⟩ _) = f
 
-------------------------------------------------------------------------
--- Beta Laws (Coproducts)
-------------------------------------------------------------------------
+  -- snd ∘ ⟨ f , g ⟩ = g
+  optimize-compose-structural snd (⟨ f , g ⟩ _) = g
 
--- [ f , g ] ∘ inl = f
-optimize-compose [ f , g ] (inl _) = f
+  ------------------------------------------------------------------------
+  -- Beta Laws (Coproducts)
+  ------------------------------------------------------------------------
 
--- [ f , g ] ∘ inr = g
-optimize-compose [ f , g ] (inr _) = g
+  -- [ f , g ] ∘ inl = f
+  optimize-compose-structural [ f , g ] (inl _) = f
 
-------------------------------------------------------------------------
--- Beta Laws (Exponentials)
-------------------------------------------------------------------------
+  -- [ f , g ] ∘ inr = g
+  optimize-compose-structural [ f , g ] (inr _) = g
 
--- apply ∘ ⟨ curry f , g ⟩ = f ∘ ⟨ id , g ⟩
--- Eliminates closure allocation when immediately applied
+  ------------------------------------------------------------------------
+  -- Beta Laws (Exponentials)
+  ------------------------------------------------------------------------
+
+  -- apply ∘ ⟨ curry f , g ⟩ = f ∘ ⟨ id , g ⟩
+  -- Eliminates closure allocation when immediately applied
 --
--- We handle each case explicitly to ensure normal output:
--- - f = h ∘ k: depends on k:
---     k = fst: h ∘ (fst ∘ ⟨ id , g ⟩) = h ∘ id = h
---     k = snd: h ∘ (snd ∘ ⟨ id , g ⟩) = h ∘ g
---     k = terminal: h ∘ (terminal ∘ ⟨ id , g ⟩) = h ∘ terminal
---     otherwise: h ∘ (k ∘ ⟨ id , g ⟩) is normal (k ∘ pair not reducible)
--- - f = terminal: dead code elimination
--- - f = id: identity law
--- - f = fst: beta (fst ∘ ⟨ id , g ⟩ = id)
--- - f = snd: beta (snd ∘ ⟨ id , g ⟩ = g)
--- - Otherwise: f ∘ ⟨ id , g ⟩ is already normal
+  -- We handle each case explicitly to ensure normal output:
+  -- - f = h ∘ k: depends on k:
+  --     k = fst: h ∘ (fst ∘ ⟨ id , g ⟩) = h ∘ id = h
+  --     k = snd: h ∘ (snd ∘ ⟨ id , g ⟩) = h ∘ g
+  --     k = terminal: h ∘ (terminal ∘ ⟨ id , g ⟩) = h ∘ terminal
+  --     otherwise: h ∘ (k ∘ ⟨ id , g ⟩) is normal (k ∘ pair not reducible)
+  -- - f = terminal: dead code elimination
+  -- - f = id: identity law
+  -- - f = fst: beta (fst ∘ ⟨ id , g ⟩ = id)
+  -- - f = snd: beta (snd ∘ ⟨ id , g ⟩ = g)
+  -- - Otherwise: f ∘ ⟨ id , g ⟩ is already normal
 --
--- Composition case where k = fst: h ∘ id = h
-optimize-compose apply (⟨ curry (h ∘ fst) _ , g ⟩ _) = h
--- Composition case where k = snd: recursively optimize h ∘ g to ensure normality
-optimize-compose apply (⟨ curry (h ∘ snd) _ , g ⟩ _) = optimize-compose h g
--- Composition case where k = terminal: h ∘ terminal
-optimize-compose apply (⟨ curry (h ∘ terminal) _ , g ⟩ _) = h ∘ terminal
--- Composition case: right-associate for other k
-optimize-compose apply (⟨ curry (h ∘ k) _ , g ⟩ _) = h ∘ (k ∘ ⟨ id , g ⟩ Heap)
--- Dead code: terminal ∘ _ = terminal
-optimize-compose apply (⟨ curry terminal _ , g ⟩ _) = terminal
--- Identity: id ∘ x = x
-optimize-compose apply (⟨ curry id _ , g ⟩ _) = ⟨ id , g ⟩ Heap
--- Beta: fst ∘ ⟨ id , g ⟩ = id
-optimize-compose apply (⟨ curry fst _ , g ⟩ _) = id
--- Beta: snd ∘ ⟨ id , g ⟩ = g
-optimize-compose apply (⟨ curry snd _ , g ⟩ _) = g
--- Default: f ∘ ⟨ id , g ⟩ is normal for all other f
-optimize-compose apply (⟨ curry f _ , g ⟩ _) = f ∘ ⟨ id , g ⟩ Heap
+  -- Composition case where k = fst: h ∘ id = h
+  optimize-compose-structural apply (⟨ curry (h ∘ fst) _ , g ⟩ _) = h
+  -- Composition case where k = snd: recursively optimize h ∘ g to ensure normality
+  optimize-compose-structural apply (⟨ curry (h ∘ snd) _ , g ⟩ _) = optimize-compose h g
+  -- Composition case where k = terminal: h ∘ terminal
+  optimize-compose-structural apply (⟨ curry (h ∘ terminal) _ , g ⟩ _) = h ∘ terminal
+  -- Composition case where k = k₁ ∘ k₂: recursively optimize to handle associativity
+  optimize-compose-structural apply (⟨ curry (h ∘ (k₁ ∘ k₂)) _ , g ⟩ _) =
+    optimize-compose h (optimize-compose (k₁ ∘ k₂) (⟨ id , g ⟩ Heap))
+  -- Composition case: recursively optimize for all other k
+  optimize-compose-structural apply (⟨ curry (h ∘ k) _ , g ⟩ _) =
+    optimize-compose h (optimize-compose k (⟨ id , g ⟩ Heap))
+  -- Dead code: terminal ∘ _ = terminal
+  optimize-compose-structural apply (⟨ curry terminal _ , g ⟩ _) = terminal
+  -- Identity: id ∘ x = x
+  optimize-compose-structural apply (⟨ curry id _ , g ⟩ _) = ⟨ id , g ⟩ Heap
+  -- Beta: fst ∘ ⟨ id , g ⟩ = id
+  optimize-compose-structural apply (⟨ curry fst _ , g ⟩ _) = id
+  -- Beta: snd ∘ ⟨ id , g ⟩ = g
+  optimize-compose-structural apply (⟨ curry snd _ , g ⟩ _) = g
+  -- Default: f ∘ ⟨ id , g ⟩ is normal for all other f
+  optimize-compose-structural apply (⟨ curry f _ , g ⟩ _) = f ∘ ⟨ id , g ⟩ Heap
 
-------------------------------------------------------------------------
--- Fixed Point Laws
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Fixed Point Laws
+  ------------------------------------------------------------------------
 
--- fold ∘ unfold = id
-optimize-compose fold unfold = id
+  -- fold ∘ unfold = id
+  optimize-compose-structural fold unfold = id
 
--- unfold ∘ fold = id
-optimize-compose unfold fold = id
+  -- unfold ∘ fold = id
+  optimize-compose-structural unfold fold = id
 
--- fold ∘ (unfold ∘ f) = f (associativity + identity)
-optimize-compose fold (unfold ∘ f) = f
+  -- fold ∘ (unfold ∘ f) = f (associativity + identity)
+  optimize-compose-structural fold (unfold ∘ f) = f
 
--- unfold ∘ (fold ∘ f) = f (associativity + identity)
-optimize-compose unfold (fold ∘ f) = f
+  -- unfold ∘ (fold ∘ f) = f (associativity + identity)
+  optimize-compose-structural unfold (fold ∘ f) = f
 
-------------------------------------------------------------------------
--- Dead Code Elimination
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Dead Code Elimination
+  ------------------------------------------------------------------------
 
--- terminal ∘ f = terminal (result discarded)
-optimize-compose terminal (_ ∘ _) = terminal
-optimize-compose terminal fst = terminal
-optimize-compose terminal snd = terminal
-optimize-compose terminal (⟨ _ , _ ⟩ _) = terminal
-optimize-compose terminal (inl _) = terminal
-optimize-compose terminal (inr _) = terminal
-optimize-compose terminal [ _ , _ ] = terminal
-optimize-compose terminal terminal = terminal
-optimize-compose terminal (curry _ _) = terminal
-optimize-compose terminal apply = terminal
-optimize-compose terminal fold = terminal
-optimize-compose terminal unfold = terminal
-optimize-compose terminal arr = terminal
-optimize-compose terminal (Prim _) = terminal
+  -- terminal ∘ f = terminal (result discarded)
+  optimize-compose-structural terminal (_ ∘ _) = terminal
+  optimize-compose-structural terminal fst = terminal
+  optimize-compose-structural terminal snd = terminal
+  optimize-compose-structural terminal (⟨ _ , _ ⟩ _) = terminal
+  optimize-compose-structural terminal (inl _) = terminal
+  optimize-compose-structural terminal (inr _) = terminal
+  optimize-compose-structural terminal [ _ , _ ] = terminal
+  optimize-compose-structural terminal terminal = terminal
+  optimize-compose-structural terminal (curry _ _) = terminal
+  optimize-compose-structural terminal apply = terminal
+  optimize-compose-structural terminal fold = terminal
+  optimize-compose-structural terminal unfold = terminal
+  optimize-compose-structural terminal arr = terminal
+  optimize-compose-structural terminal (Prim _) = terminal
 
--- f ∘ initial = initial (Void has no inhabitants)
-optimize-compose fst initial = initial
-optimize-compose snd initial = initial
-optimize-compose (⟨ _ , _ ⟩ _) initial = initial
-optimize-compose (inl _) initial = initial
-optimize-compose (inr _) initial = initial
-optimize-compose [ _ , _ ] initial = initial
-optimize-compose terminal initial = initial
-optimize-compose (curry _ _) initial = initial
-optimize-compose apply initial = initial
-optimize-compose fold initial = initial
-optimize-compose unfold initial = initial
-optimize-compose arr initial = initial
-optimize-compose (Prim _) initial = initial
-optimize-compose (_ ∘ _) initial = initial
+  -- f ∘ initial = initial (Void has no inhabitants)
+  optimize-compose-structural fst initial = initial
+  optimize-compose-structural snd initial = initial
+  optimize-compose-structural (⟨ _ , _ ⟩ _) initial = initial
+  optimize-compose-structural (inl _) initial = initial
+  optimize-compose-structural (inr _) initial = initial
+  optimize-compose-structural [ _ , _ ] initial = initial
+  optimize-compose-structural terminal initial = initial
+  optimize-compose-structural (curry _ _) initial = initial
+  optimize-compose-structural apply initial = initial
+  optimize-compose-structural fold initial = initial
+  optimize-compose-structural unfold initial = initial
+  optimize-compose-structural arr initial = initial
+  optimize-compose-structural (Prim _) initial = initial
+  optimize-compose-structural (_ ∘ _) initial = initial
 
--- initial ∘ f : no optimization (f maps to Void, composition is vacuous)
--- Must appear before catch-all distribution patterns
-optimize-compose initial f = initial ∘ f
+  -- initial ∘ id = initial (identity law)
+  optimize-compose-structural initial id = initial
+  -- initial ∘ initial = initial (Void → Void is unique)
+  optimize-compose-structural initial initial = initial
+  -- initial ∘ f : no optimization for other f (composition is vacuous)
+  -- Must appear before catch-all distribution patterns
+  optimize-compose-structural initial f = initial ∘ f
 
-------------------------------------------------------------------------
--- Distribution Rules (CONDITIONAL)
--- Only distribute when it enables a beta reduction.
--- Unconditional distribution can INCREASE cost without benefit.
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Distribution Rules (CONDITIONAL)
+  -- Only distribute when it enables a beta reduction.
+  -- Unconditional distribution can INCREASE cost without benefit.
+  ------------------------------------------------------------------------
 
--- Pairing distribution: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
--- Only when safe: eta case (fst+snd) or terminal case.
--- This ensures cost never increases from distribution.
--- Uses helper function to avoid 'with' pattern blocking proof reduction.
--- Note: Must use full pattern (not @-pattern) for reduction in proofs.
-optimize-compose (⟨ f , g ⟩ m) (⟨ h₁ , h₂ ⟩ m') =
-  pair-distrib-opt f g m (⟨ h₁ , h₂ ⟩ m') (safe-pair-distrib f g)
+  -- Pairing distribution: ⟨ f , g ⟩ ∘ h = ⟨ f ∘ h , g ∘ h ⟩
+  -- Only when safe: eta case (fst+snd) or terminal case.
+  -- This ensures cost never increases from distribution.
+  -- Uses helper function to avoid 'with' pattern blocking proof reduction.
+  -- Note: Must use full pattern (not @-pattern) for reduction in proofs.
+  optimize-compose-structural (⟨ f , g ⟩ m) (⟨ h₁ , h₂ ⟩ m') =
+    pair-distrib-opt f g m (⟨ h₁ , h₂ ⟩ m') (safe-pair-distrib f g)
 
--- Pairing distribution when h is inl/inr: safe when at least one is terminal
--- or when both are cases (case ∘ inl reduces, eliminating a branch)
-optimize-compose (⟨ f , g ⟩ m) (inl m') = pair-distrib-opt f g m (inl m') (safe-pair-distrib f g)
-optimize-compose (⟨ f , g ⟩ m) (inr m') = pair-distrib-opt f g m (inr m') (safe-pair-distrib f g)
+  -- Pairing distribution when h is inl/inr: safe when at least one is terminal
+  -- or when both are cases (case ∘ inl reduces, eliminating a branch)
+  optimize-compose-structural (⟨ f , g ⟩ m) (inl m') = pair-distrib-opt f g m (inl m') (safe-pair-distrib f g)
+  optimize-compose-structural (⟨ f , g ⟩ m) (inr m') = pair-distrib-opt f g m (inr m') (safe-pair-distrib f g)
 
--- Pairing distribution when h is unfold: safe when at least one is terminal
-optimize-compose (⟨ f , g ⟩ m) unfold = pair-distrib-opt f g m unfold (safe-pair-distrib f g)
+  -- Pairing distribution when h is unfold: safe when at least one is terminal
+  optimize-compose-structural (⟨ f , g ⟩ m) unfold = pair-distrib-opt f g m unfold (safe-pair-distrib f g)
 
--- Pairing distribution when h is fold: safe when at least one is terminal
-optimize-compose (⟨ f , g ⟩ m) fold = pair-distrib-opt f g m fold (safe-pair-distrib f g)
+  -- Pairing distribution when h is fold: safe when at least one is terminal
+  optimize-compose-structural (⟨ f , g ⟩ m) fold = pair-distrib-opt f g m fold (safe-pair-distrib f g)
 
--- Default: don't distribute pairs (would increase cost without benefit)
-optimize-compose (⟨ f , g ⟩ m) h = (⟨ f , g ⟩ m) ∘ h
+  -- Default: don't distribute pairs (would increase cost without benefit)
+  optimize-compose-structural (⟨ f , g ⟩ m) h = (⟨ f , g ⟩ m) ∘ h
 
--- Case distribution: [ h₁ , h₂ ] ∘ [ f , g ] = [ [ h₁ , h₂ ] ∘ f , [ h₁ , h₂ ] ∘ g ]
--- NOTE: Unconditional case fusion was REMOVED because it can increase cost.
---       Example: [ h₁ , h₂ ] ∘ [ id , id ] → [ [ h₁ , h₂ ] , [ h₁ , h₂ ] ]
---       This doubles the cost of [ h₁ , h₂ ] without benefit.
---       For now, we just compose without distribution (fall through to default).
--- Default: don't distribute into cases
-optimize-compose h [ f , g ] = h ∘ [ f , g ]
+  -- Case distribution: [ h₁ , h₂ ] ∘ [ f , g ] = [ [ h₁ , h₂ ] ∘ f , [ h₁ , h₂ ] ∘ g ]
+  -- NOTE: Unconditional case fusion was REMOVED because it can increase cost.
+  --       Example: [ h₁ , h₂ ] ∘ [ id , id ] → [ [ h₁ , h₂ ] , [ h₁ , h₂ ] ]
+  --       This doubles the cost of [ h₁ , h₂ ] without benefit.
+  --       For now, we just compose without distribution (fall through to default).
+  -- Default: don't distribute into cases
+  optimize-compose-structural h [ f , g ] = h ∘ [ f , g ]
 
-------------------------------------------------------------------------
--- Associativity (enables more optimizations)
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Associativity (enables more optimizations)
+  ------------------------------------------------------------------------
 
--- (h ∘ g) ∘ f → h ∘ (g ∘ f) then optimize
-optimize-compose (h ∘ g) f = optimize-compose h (optimize-compose g f)
+  -- (h ∘ g) ∘ f → h ∘ (g ∘ f) then optimize
+  optimize-compose-structural (h ∘ g) f = optimize-compose h (optimize-compose g f)
 
-------------------------------------------------------------------------
--- Default: No optimization
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Default: No optimization
+  ------------------------------------------------------------------------
 
-optimize-compose g f = g ∘ f
+  optimize-compose-structural g f = g ∘ f
 
 ------------------------------------------------------------------------
 -- Eta Laws (for pairs and cases)
