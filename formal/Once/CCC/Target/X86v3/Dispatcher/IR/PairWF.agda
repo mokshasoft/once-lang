@@ -11,8 +11,8 @@
 
 module Once.CCC.Target.X86v3.Dispatcher.IR.PairWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n; _<?_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_; _≟_ to _≟ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; ≤-antisym; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m*n; *-distribˡ-+; *-suc; n≤1+n; <⇒≢; ≮⇒≥; <⇒≤; <⇒≱)
+open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n; _<?_; _≤?_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_; _≟_ to _≟ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; ≤-antisym; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m*n; *-distribˡ-+; *-suc; n≤1+n; <⇒≢; ≮⇒≥; <⇒≤; <⇒≱; ≤∧≢⇒<; <-≤-trans; ≰⇒>)
 open import Data.Bool using (false)
 open import Data.Unit using (tt)
 open import Data.Maybe using (just)
@@ -21,7 +21,7 @@ open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
 open import Data.Empty using (⊥-elim)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Function using (case_of_)
+open import Function using (case_of_; _∘_)
 open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; cong; cong₂; subst; module ≡-Reasoning)
 
@@ -3016,25 +3016,462 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
         -- 3. Slots in [reclaim-f, reclaim-g) agree
         -- Both s₁' and s-before-g preserve these slots from s
-        -- Proof: s₁' = f-trace(s), s-before-g = restore(store-fst(f-trace(setup(s))))
-        -- For slot in [reclaim-f, reclaim-g):
-        --   - setup writes backup-slot < reclaim-f ≤ slot, so preserves slot
-        --   - f-trace writes in [suc backup-slot, reclaim-f), slot ≥ reclaim-f, so preserves slot
-        --   - store-fst writes fst-slot = reclaim-g > slot, so preserves slot
-        --   - restore-input doesn't write to stack
-        -- Therefore both s₁' and s-before-g have same value at slot as s
-        postulate
-          slots-eq' : ∀ slot → reclaim-f ≤ slot → slot < reclaim-g →
-                      readLoc s₁' (OnStack (current-frame alloc₁-reclaimed) slot) ≡
-                      readLoc s-before-g (OnStack (current-frame alloc₁-reclaimed) slot)
+        -- Symmetric version of slots-eq-g from not-halted-before-final
+        slots-eq' : ∀ slot → reclaim-f ≤ slot → slot < reclaim-g →
+                    readLoc s₁' (OnStack (current-frame alloc₁-reclaimed) slot) ≡
+                    readLoc s-before-g (OnStack (current-frame alloc₁-reclaimed) slot)
+        slots-eq' slot rf≤slot slot<rg =
+          let
+            loc = OnStack (current-frame alloc) slot
+
+            -- s₁' preserves slot from s (f-trace writes below reclaim-f)
+            s1-via-trace : s₁ ≡ proj₁ (exec-trace f-trace s alloc-after-backup)
+            s1-via-trace = sym (IRResultAWF.trace-correct result-f)
+
+            s1-eq-s : readLoc s₁ loc ≡ readLoc s loc
+            s1-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace)
+                            (exec-trace-preserves-slot-above f-trace s alloc-after-backup
+                               (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below)
+
+            s1'-eq-s : readLoc s₁' loc ≡ readLoc s loc
+            s1'-eq-s = s1-eq-s  -- s₁' has same memory as s₁
+
+            -- s-before-g preserves slot from s
+            fst-slot-neq : fst-slot ≢ slot
+            fst-slot-neq eq = <⇒≢ slot<rg (sym eq)
+
+            -- setup preserves slot (writes only backup-slot < reclaim-f ≤ slot)
+            backup-below-rf : backup-slot < reclaim-f
+            backup-below-rf = IRResultAWF.reclaim-monotone result-f
+
+            backup-neq : backup-slot ≢ slot
+            backup-neq eq = <⇒≢ (≤-trans backup-below-rf rf≤slot) eq
+
+            -- Setup preservation
+            s-after-mov'' = proj₁ (exec-trace (mov-to-output ∷ []) s alloc)
+            alloc-after-mov'' = proj₂ (exec-trace (mov-to-output ∷ []) s alloc)
+
+            mov-preserves' : readLoc s-after-mov'' loc ≡ readLoc s loc
+            mov-preserves' = mov-to-output-preserves-readLoc s alloc loc not-halted
+
+            not-halted-mov'' : halted s-after-mov'' ≡ false
+            not-halted-mov'' = trans (cong halted (mov-to-output-state-eq s alloc not-halted)) not-halted
+
+            frame-after-mov'' : current-frame alloc-after-mov'' ≡ current-frame alloc
+            frame-after-mov'' = exec-trace-preserves-frame (mov-to-output ∷ []) s alloc
+
+            loc-neq'' : OnStack (current-frame alloc-after-mov'') backup-slot ≢ loc
+            loc-neq'' eq' = backup-neq (trans (cong slot-of eq') (cong slot-of (cong (λ f → OnStack f slot) (sym frame-after-mov''))))
+
+            store-preserves' : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'')) loc ≡
+                               readLoc s-after-mov'' loc
+            store-preserves' = store-at-slot-preserves-disjoint backup-slot s-after-mov'' alloc-after-mov'' loc loc-neq''
+
+            decomp' : s-after-setup' ≡ proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov'' alloc-after-mov'')
+            decomp' = exec-trace-append-state (mov-to-output ∷ []) (store-at-slot backup-slot ∷ []) s alloc
+
+            store-via-abstract' : proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov'' alloc-after-mov'') ≡
+                                  proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'')
+            store-via-abstract' = cong proj₁ (exec-trace-single (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'' not-halted-mov'')
+
+            setup-preserves' : readLoc s-after-setup' loc ≡ readLoc s loc
+            setup-preserves' = trans (cong (λ st → readLoc st loc) decomp')
+                                     (trans (cong (λ st → readLoc st loc) store-via-abstract')
+                                            (trans store-preserves' mov-preserves'))
+
+            -- store-fst-via-abstract for this context
+            store-fst-via-abstract'' : s-after-store-fst ≡ proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f' alloc-after-f')
+            store-fst-via-abstract'' = cong proj₁ (exec-trace-single (store-at-slot fst-slot) s-after-f' alloc-after-f' not-halted-after-f')
+
+            -- s-before-g preserves slot from s
+            s-before-g-eq-s : readLoc s-before-g loc ≡ readLoc s loc
+            s-before-g-eq-s =
+              trans (cong (λ st → readLoc st loc) s-before-g-eq)
+                    (trans (restore-input-preserves-readLoc backup-slot s-after-store-fst alloc-after-store-fst input-loc loc not-halted-after-store-fst backup-has-input')
+                           (trans (cong (λ st → readLoc st loc) store-fst-via-abstract'')
+                                  (trans (store-at-slot-preserves-disjoint fst-slot s-after-f' alloc-after-f' loc
+                                           (λ eq → fst-slot-neq (trans (cong slot-of eq)
+                                                                       (cong slot-of (cong (λ f → OnStack f slot) (sym frame-after-f'))))))
+                                         (trans (cong (λ st → readLoc st loc) (exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq))
+                                                (trans (exec-trace-preserves-slot-above f-trace s-after-setup' alloc-after-backup
+                                                         (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below)
+                                                       setup-preserves')))))
+          in trans s1'-eq-s (sym s-before-g-eq-s)
 
         -- 4. loc' itself is equal in s₁' and s-before-g
-        -- For locations before alloc₂-reclaimed frontier:
-        --   - stack-before (current frame, slot < reclaim-g): both s₁' and s-before-g preserve from s
-        --   - stack-ancestor (ancestor frame): both preserve (don't write to ancestor frames)
-        --   - heap-before: both preserve (don't write to heap)
-        postulate
-          loc-eq' : readLoc s₁' loc' ≡ readLoc s-before-g loc'
+        -- Case split on BeforeFrontier to handle stack-before, stack-ancestor, heap-before
+        loc-eq' : readLoc s₁' loc' ≡ readLoc s-before-g loc'
+        loc-eq' = loc-eq-by-case bf
+          where
+          -- Helper: s₁' preserves stack locations below suc backup-slot from s
+          -- (f-trace writes above suc backup-slot, and s₁' = s₁ with regs modified)
+          s1'-preserves-below-sb : ∀ slot → slot < suc backup-slot →
+            readLoc s₁' (OnStack (current-frame alloc) slot) ≡
+            readLoc s (OnStack (current-frame alloc) slot)
+          s1'-preserves-below-sb slot slot<sb =
+            let
+              loc = OnStack (current-frame alloc) slot
+              s1-via-trace : s₁ ≡ proj₁ (exec-trace f-trace s alloc-after-backup)
+              s1-via-trace = sym (IRResultAWF.trace-correct result-f)
+              s1-eq-s : readLoc s₁ loc ≡ readLoc s loc
+              s1-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace)
+                              (exec-trace-preserves-disjoint f-trace s alloc-after-backup loc (suc backup-slot)
+                                 (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
+                                 (λ slot' bound eq → <⇒≢ (<-≤-trans slot<sb bound) (sym (cong slot-of eq))))
+            in s1-eq-s
+
+          -- Helper: s-before-g preserves stack locations below suc backup-slot (excluding backup-slot) from s
+          s-before-g-preserves-below-sb : ∀ slot → slot < suc backup-slot → slot ≢ backup-slot →
+            readLoc s-before-g (OnStack (current-frame alloc) slot) ≡
+            readLoc s (OnStack (current-frame alloc) slot)
+          s-before-g-preserves-below-sb slot slot<sb neq-backup' =
+            let
+              loc = OnStack (current-frame alloc) slot
+
+              -- Setup preserves loc (slot ≠ backup-slot)
+              s-after-mov'' = proj₁ (exec-trace (mov-to-output ∷ []) s alloc)
+              alloc-after-mov'' = proj₂ (exec-trace (mov-to-output ∷ []) s alloc)
+              mov-preserves' : readLoc s-after-mov'' loc ≡ readLoc s loc
+              mov-preserves' = mov-to-output-preserves-readLoc s alloc loc not-halted
+              not-halted-mov'' : halted s-after-mov'' ≡ false
+              not-halted-mov'' = trans (cong halted (mov-to-output-state-eq s alloc not-halted)) not-halted
+              frame-after-mov'' : current-frame alloc-after-mov'' ≡ current-frame alloc
+              frame-after-mov'' = exec-trace-preserves-frame (mov-to-output ∷ []) s alloc
+              loc-neq-backup : OnStack (current-frame alloc-after-mov'') backup-slot ≢ loc
+              loc-neq-backup eq' = neq-backup' (sym (cong slot-of eq'))
+              store-preserves' : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'')) loc ≡
+                                 readLoc s-after-mov'' loc
+              store-preserves' = store-at-slot-preserves-disjoint backup-slot s-after-mov'' alloc-after-mov'' loc loc-neq-backup
+              decomp' : s-after-setup' ≡ proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov'' alloc-after-mov'')
+              decomp' = exec-trace-append-state (mov-to-output ∷ []) (store-at-slot backup-slot ∷ []) s alloc
+              store-via-abstract' : proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov'' alloc-after-mov'') ≡
+                                    proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'')
+              store-via-abstract' = cong proj₁ (exec-trace-single (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'' not-halted-mov'')
+              setup-preserves' : readLoc s-after-setup' loc ≡ readLoc s loc
+              setup-preserves' = trans (cong (λ st → readLoc st loc) decomp')
+                                       (trans (cong (λ st → readLoc st loc) store-via-abstract')
+                                              (trans store-preserves' mov-preserves'))
+
+              -- f-trace preserves loc (slot < suc backup-slot means outside f-trace write range)
+              f-preserves : readLoc s-after-f' loc ≡ readLoc s-after-setup' loc
+              f-preserves =
+                trans (cong (λ st → readLoc st loc)
+                         (exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq))
+                      (exec-trace-preserves-disjoint f-trace s-after-setup' alloc-after-backup loc (suc backup-slot)
+                         (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
+                         (λ slot' bound eq → <⇒≢ (<-≤-trans slot<sb bound) (sym (cong slot-of eq))))
+
+              -- store-fst preserves loc (slot < suc backup-slot < reclaim-f ≤ fst-slot)
+              fst-neq : fst-slot ≢ slot
+              fst-neq eq = <⇒≢ (<-≤-trans slot<sb (≤-trans (IRResultAWF.reclaim-monotone result-f) (IRResultAWF.reclaim-monotone result-g))) (sym eq)
+              store-fst-via-abstract'' : s-after-store-fst ≡ proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f' alloc-after-f')
+              store-fst-via-abstract'' = cong proj₁ (exec-trace-single (store-at-slot fst-slot) s-after-f' alloc-after-f' not-halted-after-f')
+              loc-neq-fst : OnStack (current-frame alloc-after-f') fst-slot ≢ loc
+              loc-neq-fst eq = fst-neq (trans (cong slot-of eq) (cong slot-of (cong (λ f → OnStack f slot) (sym frame-after-f'))))
+              store-fst-preserves : readLoc s-after-store-fst loc ≡ readLoc s-after-f' loc
+              store-fst-preserves = trans (cong (λ st → readLoc st loc) store-fst-via-abstract'')
+                                          (store-at-slot-preserves-disjoint fst-slot s-after-f' alloc-after-f' loc loc-neq-fst)
+
+              -- restore-input preserves stack memory
+              restore-preserves : readLoc s-after-restore loc ≡ readLoc s-after-store-fst loc
+              restore-preserves = restore-input-preserves-readLoc backup-slot s-after-store-fst alloc-after-store-fst input-loc loc
+                                    not-halted-after-store-fst backup-has-input'
+            in trans (cong (λ st → readLoc st loc) s-before-g-eq)
+                     (trans restore-preserves (trans store-fst-preserves (trans f-preserves setup-preserves')))
+
+          -- Helper for stack-before case: decide whether k is below suc backup-slot or at/above reclaim-f
+          stack-before-helper : ∀ k → k < reclaim-g → k ≢ backup-slot →
+            readLoc s₁' (OnStack (current-frame alloc) k) ≡
+            readLoc s-before-g (OnStack (current-frame alloc) k)
+          stack-before-helper k slot<rg k-neq-backup with k <? suc backup-slot | reclaim-f ≤? k
+          -- k < suc backup-slot: both preserve from s
+          ... | yes k<sb | _ =
+            let
+              loc = OnStack (current-frame alloc) k
+              s1'-eq : readLoc s₁' loc ≡ readLoc s loc
+              s1'-eq = s1'-preserves-below-sb k k<sb
+              sbg-eq : readLoc s-before-g loc ≡ readLoc s loc
+              sbg-eq = s-before-g-preserves-below-sb k k<sb k-neq-backup
+            in trans s1'-eq (sym sbg-eq)
+          -- reclaim-f ≤ k: use slots-eq'
+          ... | no _ | yes rf≤k = slots-eq' k rf≤k slot<rg
+          -- suc backup-slot ≤ k < reclaim-f: both have f-trace output at k
+          -- Use transitivity through s (both f-trace executions start from equivalent states)
+          ... | no ¬k<sb | no ¬rf≤k =
+            let
+              loc = OnStack (current-frame alloc) k
+              sb≤k : suc backup-slot ≤ k
+              sb≤k = ≮⇒≥ ¬k<sb
+              k<rf : k < reclaim-f
+              k<rf = ≰⇒> ¬rf≤k
+
+              -- Both s₁' and s-before-g have f-trace output at slot k
+              -- s₁' = s₁ = f-trace(s) at k
+              -- s-before-g = restore(store-fst(f-trace(setup(s)))) at k = f-trace(setup(s)) at k
+              -- Since f-trace writes to k and k < reclaim-f ≤ fst-slot, store-fst preserves k
+              -- Since restore doesn't write to stack, restore preserves k
+
+              -- f-trace from s
+              s1-via-f : s₁ ≡ proj₁ (exec-trace f-trace s alloc-after-backup)
+              s1-via-f = sym (IRResultAWF.trace-correct result-f)
+
+              -- s-after-f' is f-trace from s-after-setup'
+              -- s-before-g = restore(store-fst(s-after-f'))
+              -- k < reclaim-f ≤ fst-slot, so store-fst preserves k
+              -- restore preserves stack, so s-before-g has same value at k as s-after-f'
+              k<fst : k < fst-slot
+              k<fst = <-≤-trans k<rf (IRResultAWF.reclaim-monotone result-g)
+
+              fst-neq-k : fst-slot ≢ k
+              fst-neq-k eq = <⇒≢ k<fst (sym eq)
+
+              store-fst-via-abstract'' : s-after-store-fst ≡ proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f' alloc-after-f')
+              store-fst-via-abstract'' = cong proj₁ (exec-trace-single (store-at-slot fst-slot) s-after-f' alloc-after-f' not-halted-after-f')
+
+              loc-neq-fst : OnStack (current-frame alloc-after-f') fst-slot ≢ loc
+              loc-neq-fst eq = fst-neq-k (trans (cong slot-of eq) (cong slot-of (cong (λ f → OnStack f k) (sym frame-after-f'))))
+
+              store-fst-preserves-k : readLoc s-after-store-fst loc ≡ readLoc s-after-f' loc
+              store-fst-preserves-k = trans (cong (λ st → readLoc st loc) store-fst-via-abstract'')
+                                            (store-at-slot-preserves-disjoint fst-slot s-after-f' alloc-after-f' loc loc-neq-fst)
+
+              restore-preserves-k : readLoc s-after-restore loc ≡ readLoc s-after-store-fst loc
+              restore-preserves-k = restore-input-preserves-readLoc backup-slot s-after-store-fst alloc-after-store-fst input-loc loc
+                                      not-halted-after-store-fst backup-has-input'
+
+              sbg-via-f' : readLoc s-before-g loc ≡ readLoc s-after-f' loc
+              sbg-via-f' = trans (cong (λ st → readLoc st loc) s-before-g-eq)
+                                 (trans restore-preserves-k store-fst-preserves-k)
+
+              -- s-after-f' = f-trace(s-after-setup') and we need to relate to f-trace(s)
+              -- Both f-trace executions agree at k because:
+              -- - Input registers are the same (setup preserves Input)
+              -- - Slots in read range [suc backup-slot, reclaim-f) agree (setup preserves these)
+              -- - k is in f-trace write range, so f-trace writes to k
+
+              -- Use exec-trace-preserves-slot-above on f-trace(s-after-setup') for slot k ≥ suc backup-slot
+              -- but k < reclaim-f, so this is the write range, not preserve range
+
+              -- Actually, both s₁' and s-before-g have the OUTPUT of f-trace at k
+              -- Since both f-traces start from equivalent states and agree on inputs,
+              -- they produce the same output at k
+
+              -- For s₁': readLoc s₁' loc = readLoc (f-trace s) loc
+              s1'-via-f : readLoc s₁' loc ≡ readLoc (proj₁ (exec-trace f-trace s alloc-after-backup)) loc
+              s1'-via-f = cong (λ st → readLoc st loc) s1-via-f
+
+              -- For s-before-g: we showed sbg-via-f' : readLoc s-before-g loc ≡ readLoc s-after-f' loc
+              -- s-after-f' = exec f-trace s-after-setup' alloc-after-setup'
+              -- Need to show: exec f-trace s-after-setup' ... ≡ exec f-trace s ... at loc
+
+              -- Use exec-trace-mem-equiv for f-trace comparing s and s-after-setup'
+              -- setup-input-eq : Input s = Input s-after-setup'
+              setup-input-eq' : readReg (regs s) Input ≡ readReg (regs s-after-setup') Input
+              setup-input-eq' =
+                let
+                  s-after-mov = proj₁ (exec-trace (mov-to-output ∷ []) s alloc)
+                  mov-input : readReg (regs s-after-mov) Input ≡ readReg (regs s) Input
+                  mov-input = trans (cong (λ st → readReg (regs st) Input) (mov-to-output-state-eq s alloc not-halted))
+                                    (writeReg-same (regs s) Output (readReg (regs s) Input))
+                  alloc-after-mov = proj₂ (exec-trace (mov-to-output ∷ []) s alloc)
+                  not-halted-mov : halted s-after-mov ≡ false
+                  not-halted-mov = trans (cong halted (mov-to-output-state-eq s alloc not-halted)) not-halted
+                  s-after-store = proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov alloc-after-mov)
+                  store-input : readReg (regs s-after-store) Input ≡ readReg (regs s-after-mov) Input
+                  store-input = trans (cong (λ st → readReg (regs st) Input)
+                                            (store-at-slot-state-eq backup-slot s-after-mov alloc-after-mov not-halted-mov))
+                                      (cong (λ r → readReg r Input)
+                                            (writeLoc-regs s-after-mov (OnStack (current-frame alloc-after-mov) backup-slot) (readReg (regs s-after-mov) Output)))
+                  decomp : s-after-setup' ≡ s-after-store
+                  decomp = exec-trace-append-state (mov-to-output ∷ []) (store-at-slot backup-slot ∷ []) s alloc
+                in sym (trans (cong (λ st → readReg (regs st) Input) decomp) (trans store-input mov-input))
+
+              -- setup-halted-eq' : halted s = halted s-after-setup'
+              setup-halted-eq' : halted s ≡ halted s-after-setup'
+              setup-halted-eq' = sym (trans not-halted-after-setup (sym not-halted))
+
+              -- setup-slots-eq': slots in [suc backup-slot, reclaim-f) agree in s and s-after-setup'
+              setup-slots-eq' : ∀ slot' → suc backup-slot ≤ slot' → slot' < reclaim-f →
+                readLoc s (OnStack (current-frame alloc-after-backup) slot') ≡
+                readLoc s-after-setup' (OnStack (current-frame alloc-after-backup) slot')
+              setup-slots-eq' slot' sb≤slot' slot'<rf =
+                sym (exec-trace-preserves-slot-above setup-seg s alloc (current-frame alloc) slot' (suc backup-slot) refl sb≤slot'
+                      (≤-refl , tt))
+
+              -- setup-loc-eq': k agrees in s and s-after-setup'
+              -- Since k is in [suc backup-slot, reclaim-f), setup preserves k
+              setup-loc-eq' : readLoc s loc ≡ readLoc s-after-setup' loc
+              setup-loc-eq' = sym (exec-trace-preserves-slot-above setup-seg s alloc (current-frame alloc) k (suc backup-slot) refl sb≤k (≤-refl , tt))
+
+              -- Use exec-trace-mem-equiv to relate the two f-trace executions
+              f-same-frame' : proj₁ (exec-trace f-trace s-after-setup' alloc-after-setup') ≡
+                              proj₁ (exec-trace f-trace s-after-setup' alloc-after-backup)
+              f-same-frame' = exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq
+
+              f-equiv : readLoc (proj₁ (exec-trace f-trace s alloc-after-backup)) loc ≡
+                        readLoc (proj₁ (exec-trace f-trace s-after-setup' alloc-after-backup)) loc
+              f-equiv = exec-trace-mem-equiv f-trace s s-after-setup' alloc-after-backup
+                          (suc backup-slot) reclaim-f loc
+                          setup-input-eq' setup-halted-eq' not-halted setup-slots-eq' f-slot-reads f-slot-reads-below setup-loc-eq'
+
+              -- Combine: s₁' at k = f-trace(s) at k = f-trace(s-after-setup') at k = s-after-f' at k = s-before-g at k
+              s-after-f'-via-same-frame : readLoc s-after-f' loc ≡ readLoc (proj₁ (exec-trace f-trace s-after-setup' alloc-after-backup)) loc
+              s-after-f'-via-same-frame = cong (λ st → readLoc st loc) f-same-frame'
+            in trans s1'-via-f (trans f-equiv (trans (sym s-after-f'-via-same-frame) (sym sbg-via-f')))
+
+          -- Case analysis on BeforeFrontier
+          loc-eq-by-case : BeforeFrontier alloc₂-reclaimed loc' → readLoc s₁' loc' ≡ readLoc s-before-g loc'
+          -- Case 1: stack-before - loc' is on current frame with slot < reclaim-g
+          loc-eq-by-case (stack-before {k = k} frame-eq slot<rg) =
+            let
+              loc = OnStack (current-frame alloc) k
+              loc'-eq-loc : loc' ≡ loc
+              loc'-eq-loc = cong (λ f → OnStack f k) frame-eq
+
+              k-neq-backup : k ≢ backup-slot
+              k-neq-backup eq = neq-backup (trans (cong (λ f → OnStack f k) frame-eq) (cong (OnStack frame) eq))
+
+              result : readLoc s₁' loc ≡ readLoc s-before-g loc
+              result = stack-before-helper k slot<rg k-neq-backup
+            in subst (λ l → readLoc s₁' l ≡ readLoc s-before-g l) (sym loc'-eq-loc) result
+
+          -- Case 2: stack-ancestor - loc' is on ancestor frame
+          loc-eq-by-case (stack-ancestor {f'} {k} f'≺frame _) =
+            let
+              -- Both s₁' and s-before-g preserve ancestor frame locations from s
+              -- f-trace only writes to current frame, not ancestor frames
+              loc = OnStack f' k
+
+              -- s₁' = s₁ with modified regs, so readLoc s₁' = readLoc s₁
+              s1-via-trace : s₁ ≡ proj₁ (exec-trace f-trace s alloc-after-backup)
+              s1-via-trace = sym (IRResultAWF.trace-correct result-f)
+
+              -- f-trace preserves ancestor frames (writes to current frame only)
+              -- alloc₂-reclaimed, alloc-after-backup, alloc all have the same current-frame
+              f-preserves-ancestor : readLoc (proj₁ (exec-trace f-trace s alloc-after-backup)) loc ≡ readLoc s loc
+              f-preserves-ancestor = exec-trace-preserves-disjoint f-trace s alloc-after-backup loc (suc backup-slot)
+                                       (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
+                                       (λ slot bound eq → ≺⇒≢ f'≺frame (trans refl (cong frame-of-loc eq)))
+
+              s1'-eq-s : readLoc s₁' loc ≡ readLoc s loc
+              s1'-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace) f-preserves-ancestor
+
+              -- s-before-g also preserves ancestor frames
+              -- Setup preserves (writes current frame only)
+              s-after-mov'' = proj₁ (exec-trace (mov-to-output ∷ []) s alloc)
+              alloc-after-mov'' = proj₂ (exec-trace (mov-to-output ∷ []) s alloc)
+              mov-preserves' : readLoc s-after-mov'' loc ≡ readLoc s loc
+              mov-preserves' = mov-to-output-preserves-readLoc s alloc loc not-halted
+              not-halted-mov'' : halted s-after-mov'' ≡ false
+              not-halted-mov'' = trans (cong halted (mov-to-output-state-eq s alloc not-halted)) not-halted
+              frame-after-mov'' : current-frame alloc-after-mov'' ≡ current-frame alloc
+              frame-after-mov'' = exec-trace-preserves-frame (mov-to-output ∷ []) s alloc
+              loc-neq-backup : OnStack (current-frame alloc-after-mov'') backup-slot ≢ loc
+              loc-neq-backup eq' = ≺⇒≢ f'≺frame (trans (sym frame-after-mov'') (cong frame-of-loc eq'))
+              store-preserves' : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'')) loc ≡
+                                 readLoc s-after-mov'' loc
+              store-preserves' = store-at-slot-preserves-disjoint backup-slot s-after-mov'' alloc-after-mov'' loc loc-neq-backup
+              decomp' : s-after-setup' ≡ proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov'' alloc-after-mov'')
+              decomp' = exec-trace-append-state (mov-to-output ∷ []) (store-at-slot backup-slot ∷ []) s alloc
+              store-via-abstract' : proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov'' alloc-after-mov'') ≡
+                                    proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'')
+              store-via-abstract' = cong proj₁ (exec-trace-single (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'' not-halted-mov'')
+              setup-preserves' : readLoc s-after-setup' loc ≡ readLoc s loc
+              setup-preserves' = trans (cong (λ st → readLoc st loc) decomp')
+                                       (trans (cong (λ st → readLoc st loc) store-via-abstract')
+                                              (trans store-preserves' mov-preserves'))
+
+              -- f-trace preserves ancestor (already shown)
+              f-preserves' : readLoc s-after-f' loc ≡ readLoc s-after-setup' loc
+              f-preserves' =
+                trans (cong (λ st → readLoc st loc)
+                         (exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq))
+                      (exec-trace-preserves-disjoint f-trace s-after-setup' alloc-after-backup loc (suc backup-slot)
+                         (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
+                         (λ slot bound eq → ≺⇒≢ f'≺frame (cong frame-of-loc eq)))
+
+              -- store-fst preserves ancestor
+              store-fst-via-abstract'' : s-after-store-fst ≡ proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f' alloc-after-f')
+              store-fst-via-abstract'' = cong proj₁ (exec-trace-single (store-at-slot fst-slot) s-after-f' alloc-after-f' not-halted-after-f')
+              loc-neq-fst : OnStack (current-frame alloc-after-f') fst-slot ≢ loc
+              loc-neq-fst eq = ≺⇒≢ f'≺frame (trans (sym frame-after-f') (cong frame-of-loc eq))
+              store-fst-preserves : readLoc s-after-store-fst loc ≡ readLoc s-after-f' loc
+              store-fst-preserves = trans (cong (λ st → readLoc st loc) store-fst-via-abstract'')
+                                          (store-at-slot-preserves-disjoint fst-slot s-after-f' alloc-after-f' loc loc-neq-fst)
+
+              -- restore-input preserves stack memory
+              restore-preserves : readLoc s-after-restore loc ≡ readLoc s-after-store-fst loc
+              restore-preserves = restore-input-preserves-readLoc backup-slot s-after-store-fst alloc-after-store-fst input-loc loc
+                                    not-halted-after-store-fst backup-has-input'
+
+              sbg-eq-s : readLoc s-before-g loc ≡ readLoc s loc
+              sbg-eq-s = trans (cong (λ st → readLoc st loc) s-before-g-eq)
+                               (trans restore-preserves (trans store-fst-preserves (trans f-preserves' setup-preserves')))
+            in trans s1'-eq-s (sym sbg-eq-s)
+
+          -- Case 3: heap-before - loc' is on heap
+          loc-eq-by-case (heap-before {a} _) =
+            let
+              loc = OnHeap a
+
+              -- Both s₁' and s-before-g preserve heap locations
+              -- All stack operations preserve heap
+              s1-via-trace : s₁ ≡ proj₁ (exec-trace f-trace s alloc-after-backup)
+              s1-via-trace = sym (IRResultAWF.trace-correct result-f)
+
+              f-preserves-heap : readLoc (proj₁ (exec-trace f-trace s alloc-after-backup)) loc ≡ readLoc s loc
+              f-preserves-heap = exec-trace-preserves-disjoint f-trace s alloc-after-backup loc (suc backup-slot)
+                                   (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
+                                   (λ _ _ ())
+
+              s1'-eq-s : readLoc s₁' loc ≡ readLoc s loc
+              s1'-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace) f-preserves-heap
+
+              -- Setup preserves heap
+              s-after-mov'' = proj₁ (exec-trace (mov-to-output ∷ []) s alloc)
+              alloc-after-mov'' = proj₂ (exec-trace (mov-to-output ∷ []) s alloc)
+              mov-preserves' : readLoc s-after-mov'' loc ≡ readLoc s loc
+              mov-preserves' = mov-to-output-preserves-readLoc s alloc loc not-halted
+              not-halted-mov'' : halted s-after-mov'' ≡ false
+              not-halted-mov'' = trans (cong halted (mov-to-output-state-eq s alloc not-halted)) not-halted
+              store-preserves' : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'')) loc ≡
+                                 readLoc s-after-mov'' loc
+              store-preserves' = store-at-slot-preserves-disjoint backup-slot s-after-mov'' alloc-after-mov'' loc (λ ())
+              decomp' : s-after-setup' ≡ proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov'' alloc-after-mov'')
+              decomp' = exec-trace-append-state (mov-to-output ∷ []) (store-at-slot backup-slot ∷ []) s alloc
+              store-via-abstract' : proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov'' alloc-after-mov'') ≡
+                                    proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'')
+              store-via-abstract' = cong proj₁ (exec-trace-single (store-at-slot backup-slot) s-after-mov'' alloc-after-mov'' not-halted-mov'')
+              setup-preserves' : readLoc s-after-setup' loc ≡ readLoc s loc
+              setup-preserves' = trans (cong (λ st → readLoc st loc) decomp')
+                                       (trans (cong (λ st → readLoc st loc) store-via-abstract')
+                                              (trans store-preserves' mov-preserves'))
+
+              -- f-trace preserves heap
+              f-preserves' : readLoc s-after-f' loc ≡ readLoc s-after-setup' loc
+              f-preserves' =
+                trans (cong (λ st → readLoc st loc)
+                         (exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq))
+                      (exec-trace-preserves-disjoint f-trace s-after-setup' alloc-after-backup loc (suc backup-slot)
+                         (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
+                         (λ _ _ ()))
+
+              -- store-fst preserves heap
+              store-fst-via-abstract'' : s-after-store-fst ≡ proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f' alloc-after-f')
+              store-fst-via-abstract'' = cong proj₁ (exec-trace-single (store-at-slot fst-slot) s-after-f' alloc-after-f' not-halted-after-f')
+              store-fst-preserves : readLoc s-after-store-fst loc ≡ readLoc s-after-f' loc
+              store-fst-preserves = trans (cong (λ st → readLoc st loc) store-fst-via-abstract'')
+                                          (store-at-slot-preserves-disjoint fst-slot s-after-f' alloc-after-f' loc (λ ()))
+
+              -- restore-input preserves heap
+              restore-preserves : readLoc s-after-restore loc ≡ readLoc s-after-store-fst loc
+              restore-preserves = restore-input-preserves-readLoc backup-slot s-after-store-fst alloc-after-store-fst input-loc loc
+                                    not-halted-after-store-fst backup-has-input'
+
+              sbg-eq-s : readLoc s-before-g loc ≡ readLoc s loc
+              sbg-eq-s = trans (cong (λ st → readLoc st loc) s-before-g-eq)
+                               (trans restore-preserves (trans store-fst-preserves (trans f-preserves' setup-preserves')))
+            in trans s1'-eq-s (sym sbg-eq-s)
 
         -- Apply exec-trace-mem-equiv
         result : readLoc (proj₁ (exec-trace g-trace s₁' alloc₁-reclaimed)) loc' ≡
