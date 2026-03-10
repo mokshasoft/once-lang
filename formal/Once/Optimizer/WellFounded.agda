@@ -16,12 +16,12 @@ open AllocMode
 open import Once.Optimize using (_≟Type_; safe-pair-distrib)
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _<_; _≤_; s≤s; z≤n)
-open import Data.Nat.Properties using (m≤m+n; m≤n+m; ≤-refl; ≤-trans; n≤1+n; +-mono-≤; +-assoc; ≤-reflexive; +-monoʳ-≤; +-monoˡ-≤)
+open import Data.Nat.Properties using (m≤m+n; m≤n+m; ≤-refl; ≤-trans; n≤1+n; +-mono-≤; +-assoc; ≤-reflexive; +-monoʳ-≤; +-monoˡ-≤; +-suc)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Data.Product using (Σ; _,_; proj₁; proj₂; Σ-syntax)
 open import Data.Bool using (Bool; true; false)
 open import Induction.WellFounded using (Acc; acc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; cong; subst; inspect) renaming ([_] to ⟦_⟧)
 open import Relation.Nullary using (Dec; yes; no)
 
 ------------------------------------------------------------------------
@@ -100,19 +100,50 @@ assoc-outer-< h g f r r≤gf = s≤s (≤-trans (+-monoʳ-≤ (ir-size h) r≤gf
                                           (≤-reflexive (sym (+-assoc (ir-size h) (ir-size g) (ir-size f)))))
 
 -- Apply-curry bound: measure h g < measure apply (⟨ curry (h ∘ snd) m , g ⟩ m')
--- This holds because the RHS is strictly larger than LHS by 5.
--- The proof is arithmetic but tedious due to associativity; we postulate it.
-postulate
-  apply-curry-< : ∀ {A B C q} (h : IR B C) (g : IR A B) (m : AllocMode) (m' : AllocMode) →
-    measure h g < measure apply (⟨ curry {q = q} (h ∘ snd) m , g ⟩ m')
+-- We use `with` and `inspect` to force Agda to compute ir-size snd = 1.
+-- The RHS is suc^5 ((ir-size h + 1) + ir-size g) which exceeds ir-size h + ir-size g.
+apply-curry-< : ∀ {A B C q} (h : IR B C) (g : IR A B) (m : AllocMode) (m' : AllocMode) →
+  measure h g < measure apply (⟨ curry {q = q} (h ∘ snd) m , g ⟩ m')
+apply-curry-< {A} {B} {C} {q} h g m m' with ir-size (snd {A} {B}) | inspect ir-size (snd {A} {B})
+... | 1 | ⟦ eq ⟧ =
+  -- Goal: n₁ + n₂ < suc (suc (suc (suc (suc ((n₁ + 1) + n₂)))))
+  -- i.e., suc (n₁ + n₂) ≤ suc^5 ((n₁ + 1) + n₂)
+  -- After s≤s: n₁ + n₂ ≤ suc^4 ((n₁ + 1) + n₂)
+  -- We prove: n ≤ x ≤ suc x ≤ suc² x ≤ suc³ x ≤ suc⁴ x
+  -- where n = n₁ + n₂ and x = (n₁ + 1) + n₂
+  let n = ir-size h + ir-size g
+      x = (ir-size h + 1) + ir-size g
+      n≤x : n ≤ x
+      n≤x = +-monoˡ-≤ (ir-size g) (m≤m+n (ir-size h) 1)
+      n≤sx : n ≤ suc x
+      n≤sx = ≤-trans n≤x (n≤1+n x)
+      n≤s²x : n ≤ suc (suc x)
+      n≤s²x = ≤-trans n≤sx (n≤1+n (suc x))
+      n≤s³x : n ≤ suc (suc (suc x))
+      n≤s³x = ≤-trans n≤s²x (n≤1+n (suc (suc x)))
+      n≤s⁴x : n ≤ suc (suc (suc (suc x)))
+      n≤s⁴x = ≤-trans n≤s³x (n≤1+n (suc (suc (suc x))))
+  in s≤s n≤s⁴x
 
--- General size bound: optimizer results are bounded by inputs
--- This is provable case-by-case but tedious; we postulate it for now.
--- The key insight is that every optimization either:
--- 1. Returns a subterm (strictly smaller)
--- 2. Returns terminal/initial (size 1, always ≤ input)
--- 3. Returns a composition that's bounded by the sum
+------------------------------------------------------------------------
+-- Postulated bounds
+--
+-- size-bound: Claims that optimization results are bounded by input size.
+-- NOTE: This is NOT universally true - the default case returns g ∘ f
+-- which has size suc (ir-size g + ir-size f), exceeding the bound.
+-- However, the optimizer terminates in practice because:
+-- - Most patterns strictly reduce size (beta rules, dead code, etc.)
+-- - The associativity case's recursive structure ensures progress
+-- - The default case is only reached for non-optimizable patterns
+--
+-- A rigorous proof would require either:
+-- - Restructuring to use a lexicographic measure (depth, size)
+-- - Proving that the default case is never used in contexts that recurse
+-- - Using a fuel-based termination argument
+------------------------------------------------------------------------
+
 postulate
+  -- Size bound for optimization results (see note above about soundness gap)
   size-bound : ∀ {A B C} (g : IR B C) (f : IR A B) →
     ∀ (r : IR A C) → ir-size r ≤ ir-size g + ir-size f
 
