@@ -12,7 +12,7 @@
 module Once.CCC.Target.X86v3.Dispatcher.IR.PairWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_; _≟_ to _≟ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m*n; *-distribˡ-+; *-suc; n≤1+n; <⇒≢)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; m<m+n; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; *-monoʳ-≤; m≤m*n; *-distribˡ-+; *-suc; n≤1+n; <⇒≢; _<?; ≮⇒≥)
 open import Data.Bool using (false)
 open import Data.Unit using (tt)
 open import Data.Maybe using (just)
@@ -20,8 +20,10 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.List using ([]; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
 open import Data.Empty using (⊥-elim)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Function using (case_of_)
 open import Relation.Nullary using (yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; cong; subst; module ≡-Reasoning)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; cong; cong₂; subst; module ≡-Reasoning)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine hiding (AllocMode; Stack; Heap)
@@ -4771,17 +4773,74 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       -- 4. Both write slots are ≥ reclaim-g > snd-loc's sub-locations (since snd-loc < reclaim-g)
       -- 5. So snd-loc's sub-locations are preserved from s₂ to s-final
       --
-      -- The formal proof is blocked because validityWF-mem-preserved requires mem
-      -- preservation for ALL BeforeFrontier locations, including backup-slot.
-      -- But backup-slot differs between s₁ and s-final (s-final has input-loc there).
-      -- Since backup-slot is not a sub-location of fst-loc/snd-loc, this doesn't
-      -- affect validity, but proving this requires a specialized validity transfer
-      -- lemma that only considers reachable sub-locations.
+      -- Proof uses validityWF-mem-preserved-excluding with backup-slot as the gap.
       ------------------------------------------------------------------------
 
+      -- fst validity at s₁ with alloc₁-reclaimed
+      fst-before₁-reclaimed : BeforeFrontier alloc₁-reclaimed fst-loc
+      fst-before₁-reclaimed = IRResultAWF.reclaim-preserves-result result-f reclaim-f-fits
+
+      fst-valid-s1 : ValidAtWF mF alloc₁-reclaimed (eval primSem f x) fst-loc s₁
+      fst-valid-s1 = IRResultAWF.reclaim-preserves-validity result-f reclaim-f-fits
+
+      -- snd validity at s₂ with alloc₂-reclaimed
+      alloc₂-reclaimed : AllocState {FS}
+      alloc₂-reclaimed = record alloc { next-slot = reclaim-g }
+
+      snd-before₂-reclaimed : BeforeFrontier alloc₂-reclaimed snd-loc
+      snd-before₂-reclaimed = IRResultAWF.reclaim-preserves-result result-g reclaim-g-fits
+
+      snd-valid-s2 : ValidAtWF mG alloc₂-reclaimed (eval primSem g x) snd-loc s₂
+      snd-valid-s2 = IRResultAWF.reclaim-preserves-validity result-g reclaim-g-fits
+
+      -- Memory agreement from s₁ to s-final, excluding backup-slot
+      -- For slots < backup-slot: preserved via mem-preserved-before + mem-preserved-pair
+      -- For slots ≥ suc backup-slot: preserved since trace after f writes at slots ≥ reclaim-f
+      --
+      -- The proof uses validityWF-mem-preserved-excluding with backup-slot as the gap.
+      -- We postulate the detailed memory preservation lemmas since they require
+      -- trace analysis showing that slots in f's allocation range are preserved.
       postulate
-        fst-valid-s-final : ValidAtWF mF alloc₃ (eval primSem f x) fst-loc s-final
-        snd-valid-s-final : ValidAtWF mG alloc₃ (eval primSem g x) snd-loc s-final
+        mem-agree-fst : ∀ loc' → BeforeFrontier alloc₁-reclaimed loc' →
+                        loc' ≢ OnStack (current-frame alloc) backup-slot →
+                        readLoc s₁ loc' ≡ readLoc s-final loc'
+        mem-agree-snd : ∀ loc' → BeforeFrontier alloc₂-reclaimed loc' →
+                        loc' ≢ OnStack (current-frame alloc) backup-slot →
+                        readLoc s₂ loc' ≡ readLoc s-final loc'
+
+      fst-valid-s-final : ValidAtWF mF alloc₃ (eval primSem f x) fst-loc s-final
+      fst-valid-s-final = validityWF-frontier-advance (eval primSem f x) fst-loc s-final
+                            refl  -- frame preserved
+                            (≤-trans (IRResultAWF.reclaim-monotone result-g) (m≤m+n reclaim-g ps))  -- slot monotone
+                            ≤-refl  -- heap monotone
+                            (validityWF-mem-preserved-excluding
+                              alloc₁-reclaimed
+                              (eval primSem f x)
+                              fst-loc
+                              (current-frame alloc)
+                              backup-slot
+                              s₁
+                              s-final
+                              fst-before₁-reclaimed
+                              mem-agree-fst
+                              fst-valid-s1)
+
+      snd-valid-s-final : ValidAtWF mG alloc₃ (eval primSem g x) snd-loc s-final
+      snd-valid-s-final = validityWF-frontier-advance (eval primSem g x) snd-loc s-final
+                            refl  -- frame preserved
+                            (m≤m+n reclaim-g ps)  -- slot monotone
+                            ≤-refl  -- heap monotone
+                            (validityWF-mem-preserved-excluding
+                              alloc₂-reclaimed
+                              (eval primSem g x)
+                              snd-loc
+                              (current-frame alloc)
+                              backup-slot
+                              s₂
+                              s-final
+                              snd-before₂-reclaimed
+                              mem-agree-snd
+                              snd-valid-s2)
 
       pair-valid-wf-final : ValidAtWF Stack alloc₃ (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
       pair-valid-wf-final = valid-pair-wf fst-ptr snd-ptr fst-before₃ snd-before₃ sucLoc-pair-before₃ fst-valid-s-final snd-valid-s-final
