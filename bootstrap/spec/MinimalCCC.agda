@@ -102,6 +102,94 @@ infixr 6 _+_ _⊕_
 ⟦ F ⊗ G ⟧F X = ⟦ F ⟧F X * ⟦ G ⟧F X
 
 ------------------------------------------------------------------------
+-- Decidable Equality for Types and Functors
+------------------------------------------------------------------------
+
+-- Decision type
+data Dec (P : Set) : Set where
+  yes : P → Dec P
+  no  : ¬ P → Dec P
+
+-- Mutually recursive decidable equality
+_≟Ty_ : (A B : Ty) → Dec (A ≡ B)
+_≟Func_ : (F G : Func) → Dec (F ≡ G)
+
+-- Decidable equality for Ty
+Unit ≟Ty Unit = yes refl
+Unit ≟Ty (_ * _) = no (λ ())
+Unit ≟Ty (_ + _) = no (λ ())
+Unit ≟Ty (μ _) = no (λ ())
+
+(A * B) ≟Ty Unit = no (λ ())
+(A * B) ≟Ty (C * D) with A ≟Ty C | B ≟Ty D
+... | yes refl | yes refl = yes refl
+... | yes refl | no neq = no (λ { refl → neq refl })
+... | no neq | _ = no (λ { refl → neq refl })
+(A * B) ≟Ty (_ + _) = no (λ ())
+(A * B) ≟Ty (μ _) = no (λ ())
+
+(A + B) ≟Ty Unit = no (λ ())
+(A + B) ≟Ty (_ * _) = no (λ ())
+(A + B) ≟Ty (C + D) with A ≟Ty C | B ≟Ty D
+... | yes refl | yes refl = yes refl
+... | yes refl | no neq = no (λ { refl → neq refl })
+... | no neq | _ = no (λ { refl → neq refl })
+(A + B) ≟Ty (μ _) = no (λ ())
+
+(μ F) ≟Ty Unit = no (λ ())
+(μ F) ≟Ty (_ * _) = no (λ ())
+(μ F) ≟Ty (_ + _) = no (λ ())
+(μ F) ≟Ty (μ G) with F ≟Func G
+... | yes refl = yes refl
+... | no neq = no (λ { refl → neq refl })
+
+-- Decidable equality for Func
+Id ≟Func Id = yes refl
+Id ≟Func (K _) = no (λ ())
+Id ≟Func (_ ⊕ _) = no (λ ())
+Id ≟Func (_ ⊗ _) = no (λ ())
+
+(K A) ≟Func Id = no (λ ())
+(K A) ≟Func (K B) with A ≟Ty B
+... | yes refl = yes refl
+... | no neq = no (λ { refl → neq refl })
+(K A) ≟Func (_ ⊕ _) = no (λ ())
+(K A) ≟Func (_ ⊗ _) = no (λ ())
+
+(F ⊕ G) ≟Func Id = no (λ ())
+(F ⊕ G) ≟Func (K _) = no (λ ())
+(F ⊕ G) ≟Func (H ⊕ I) with F ≟Func H | G ≟Func I
+... | yes refl | yes refl = yes refl
+... | yes refl | no neq = no (λ { refl → neq refl })
+... | no neq | _ = no (λ { refl → neq refl })
+(F ⊕ G) ≟Func (_ ⊗ _) = no (λ ())
+
+(F ⊗ G) ≟Func Id = no (λ ())
+(F ⊗ G) ≟Func (K _) = no (λ ())
+(F ⊗ G) ≟Func (_ ⊕ _) = no (λ ())
+(F ⊗ G) ≟Func (H ⊗ I) with F ≟Func H | G ≟Func I
+... | yes refl | yes refl = yes refl
+... | yes refl | no neq = no (λ { refl → neq refl })
+... | no neq | _ = no (λ { refl → neq refl })
+
+------------------------------------------------------------------------
+-- Type Structure Queries (for progress proof)
+------------------------------------------------------------------------
+
+-- Views for type structure - simpler than Dec with equality proof
+data TyView : Ty → Set where
+  tv-unit : TyView Unit
+  tv-prod : ∀ A B → TyView (A * B)
+  tv-coprod : ∀ A B → TyView (A + B)
+  tv-mu : ∀ F → TyView (μ F)
+
+tyView : (T : Ty) → TyView T
+tyView Unit = tv-unit
+tyView (A * B) = tv-prod A B
+tyView (A + B) = tv-coprod A B
+tyView (μ F) = tv-mu F
+
+------------------------------------------------------------------------
 -- Part 2: Terms (CCC + cata)
 ------------------------------------------------------------------------
 
