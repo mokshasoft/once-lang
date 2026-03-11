@@ -56,6 +56,10 @@ data ⊥ : Set where
 ⊥-elim : ∀ {A : Set} → ⊥ → A
 ⊥-elim ()
 
+-- Unit type (at Set level, not the Ty level Unit)
+record ⊤ : Set where
+  constructor tt
+
 -- Negation
 ¬_ : Set → Set
 ¬ A = A → ⊥
