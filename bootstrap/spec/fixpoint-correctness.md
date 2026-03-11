@@ -222,6 +222,7 @@ All modules compile with Agda. The mathematical foundations are proven.
 |--------|---------|
 | `Types.agda` | Foundation: prelude, Ty, Func, decidable equality |
 | `MinimalCCC.agda` | Terms, reduction, confluence, termination, fixpoint theorems |
+| `Encoding.agda` | Self-representation: TyFuncCode, TermCode', encoding functions, injectivity |
 | `Fixpoint.agda` | Zero-code TCB argument, documentation |
 | `Progress.agda` | Progress lemma infrastructure |
 | `Termination.agda` | Termination documentation |
@@ -247,16 +248,21 @@ All modules compile with Agda. The mathematical foundations are proven.
 - [x] Reduction preserves well-formedness
 - [x] Self-representation type (TermCode)
 - [x] Fixpoint theorem statements
+- [x] **TYPE ENCODING INJECTIVITY** (⌜⌝Ty-injective: ⌜A⌝ ≡ ⌜B⌝ → A ≡ B)
+- [x] **FUNCTOR ENCODING INJECTIVITY** (⌜⌝Func-injective: ⌜F⌝ ≡ ⌜G⌝ → F ≡ G)
+- [x] Concrete encoding functions (⌜_⌝Ty, ⌜_⌝Func, encode)
+- [x] Composition/pair injectivity lemmas (∘-injective, ⟨⟩-injective)
 
 ### Postulated (Tedious but Mechanical)
 - [ ] progress: decidability of reduction (pattern matching)
 - [ ] ⇒ → ⟶* (parallel to multi-step)
 - [ ] triangle lemma (for diamond property)
 - [ ] max⇒ and its properties
+- [ ] encode-injective: term encoding injectivity (requires dependent type handling)
 
 ### To Complete Bootstrap
-1. [ ] Define ⌜_⌝ encoding concretely
-2. [ ] Prove fixpoint-correctness
+1. [x] Define ⌜_⌝ encoding concretely (done in Encoding.agda)
+2. [ ] Prove fixpoint-correctness (requires encode-injective)
 3. [ ] Prove fixpoint-unique
 4. [ ] Implement actual normalizer
 5. [ ] Verify it reaches fixpoint
