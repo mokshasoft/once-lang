@@ -248,9 +248,60 @@ apply-norm-is-comp N code = refl
 -- LEMMA 3: Encoding is well-formed
 -- The encoding of any term is well-formed (has no unguarded In/cata).
 -- This follows from the structure of encode: it builds trees of In/inl/inr/pair
--- without any cata applications in positive positions.
-postulate
-  encode-wf : ∀ {A B} (t : Term A B) → WellFormed (encode t)
+-- without any cata applications.
+
+-- First, prove type encoding is well-formed
+⌜⌝Ty-wf : (T : Ty) → WellFormed (⌜ T ⌝Ty)
+⌜⌝Func-wf : (F : Func) → WellFormed (⌜ F ⌝Func)
+
+⌜⌝Ty-wf Unit = wf-comp wf-In (wf-comp wf-inl wf-terminal)
+⌜⌝Ty-wf (A * B) = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inl
+                    (wf-pair (⌜⌝Ty-wf A) (⌜⌝Ty-wf B))))
+⌜⌝Ty-wf (A + B) = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inl
+                    (wf-pair (⌜⌝Ty-wf A) (⌜⌝Ty-wf B)))))
+⌜⌝Ty-wf (μ F) = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inl
+                  (⌜⌝Func-wf F)))))
+
+⌜⌝Func-wf Id = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                 (wf-comp wf-inl wf-terminal)))))
+⌜⌝Func-wf (K A) = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                    (wf-comp wf-inr (wf-comp wf-inl (⌜⌝Ty-wf A)))))))
+⌜⌝Func-wf (F ⊕ G) = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                      (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inl
+                        (wf-pair (⌜⌝Func-wf F) (⌜⌝Func-wf G)))))))))
+⌜⌝Func-wf (F ⊗ G) = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                      (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                        (wf-pair (⌜⌝Func-wf F) (⌜⌝Func-wf G)))))))))
+
+-- Now prove term encoding is well-formed
+encode-wf : ∀ {A B} (t : Term A B) → WellFormed (encode t)
+encode-wf id = wf-comp wf-In (wf-comp wf-inl (⌜⌝Ty-wf _))
+encode-wf (f ∘ g) = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inl
+                      (wf-pair (encode-wf f) (encode-wf g))))
+encode-wf fst = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inl
+                  (wf-pair (⌜⌝Ty-wf _) (⌜⌝Ty-wf _)))))
+encode-wf snd = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inl
+                  (wf-pair (⌜⌝Ty-wf _) (⌜⌝Ty-wf _))))))
+encode-wf ⟨ f , g ⟩ = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                        (wf-comp wf-inl (wf-pair (encode-wf f) (encode-wf g)))))))
+encode-wf inl = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                  (wf-comp wf-inr (wf-comp wf-inl (wf-pair (⌜⌝Ty-wf _) (⌜⌝Ty-wf _))))))))
+encode-wf inr = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                  (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inl
+                    (wf-pair (⌜⌝Ty-wf _) (⌜⌝Ty-wf _)))))))))
+encode-wf [ f , g ] = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                        (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inl
+                          (wf-pair (encode-wf f) (encode-wf g))))))))))
+encode-wf terminal = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                       (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                         (wf-comp wf-inl (⌜⌝Ty-wf _))))))))))
+encode-wf In = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                 (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                   (wf-comp wf-inr (wf-comp wf-inl (⌜⌝Func-wf _)))))))))))
+encode-wf (cata F alg) = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                           (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                             (wf-comp wf-inr (wf-comp wf-inr
+                               (wf-pair (⌜⌝Func-wf F) (encode-wf alg))))))))))))
 
 -- LEMMA 4: Well-formed terms applied to well-formed terms are well-formed
 -- (Already proven as wf-comp in MinimalCCC)
