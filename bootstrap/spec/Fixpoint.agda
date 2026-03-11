@@ -230,14 +230,63 @@ compute-nf-reachable t wf with termination-wf t wf
 ... | _ , (t→*u , _) = t→*u
 
 ------------------------------------------------------------------------
+-- Key Lemmas for Fixpoint Theorem
+------------------------------------------------------------------------
+
+-- LEMMA 1: Encoding injectivity (proven in Encoding.agda)
+-- Different types produce different codes:
+--   ⌜⌝Ty-injective : ⌜ A ⌝Ty ≡ ⌜ B ⌝Ty → A ≡ B
+-- Different functors produce different codes:
+--   ⌜⌝Func-injective : ⌜ F ⌝Func ≡ ⌜ G ⌝Func → F ≡ G
+
+-- LEMMA 2: Apply-norm is just composition
+-- For our concrete encoding:
+apply-norm-is-comp : (N : ConcreteNormalizer) (code : Term Unit TermCode') →
+                     _≡_ {Term Unit TermCode'} (apply-norm' N code) (N ∘ code)
+apply-norm-is-comp N code = refl
+
+-- LEMMA 3: Encoding is well-formed
+-- The encoding of any term is well-formed (has no unguarded In/cata).
+-- This follows from the structure of encode: it builds trees of In/inl/inr/pair
+-- without any cata applications in positive positions.
+postulate
+  encode-wf : ∀ {A B} (t : Term A B) → WellFormed (encode t)
+
+-- LEMMA 4: Well-formed terms applied to well-formed terms are well-formed
+-- (Already proven as wf-comp in MinimalCCC)
+
+-- LEMMA 5: Normalizer application preserves well-formedness
+normalizer-wf : (N : ConcreteNormalizer) → WellFormed N →
+                ∀ {A B} (t : Term A B) →
+                WellFormed (apply-norm' N (encode t))
+normalizer-wf N wf-N t = wf-comp wf-N (encode-wf t)
+
+-- LEMMA 6: The encoding of a normal form is a normal form (in codes)
+-- If t is in normal form, then encode t is in normal form.
+-- This is because encode builds a pure data structure (In/inl/inr/pair)
+-- with no redexes.
+postulate
+  encode-nf-is-nf : ∀ {A B} {t : Term A B} → NF t → NF (encode t)
+
+-- LEMMA 7: If N ∘ code is in normal form and equals encode u, then u is nf
+-- This connects the behavior of the normalizer to the actual term.
+postulate
+  decode-nf : ∀ {A B : Ty} {N : ConcreteNormalizer} {code : Term Unit TermCode'}
+              {u : Term A B} →
+              NF (N ∘ code) →
+              _≡_ {Term Unit TermCode'} (N ∘ code) (encode u) →
+              NF u
+
+------------------------------------------------------------------------
 -- The Core Fixpoint Theorem (to be proven)
 ------------------------------------------------------------------------
 
 -- The main theorem connecting fixpoint to correctness.
 -- Currently postulated in MinimalCCC; the proof requires:
---   1. Concrete definition of encoding ⌜_⌝
---   2. Proof that encoding is injective
+--   1. Concrete definition of encoding ⌜_⌝ ✓ (Encoding.agda)
+--   2. Proof that encoding is injective ✓ (for types/functors)
 --   3. Proof that normalizer application preserves reduction
+--   4. The lemmas above
 --
 -- For the Once bootstrap, we OBSERVE the fixpoint and apply the theorem.
 -- The observation is the "test" - if it passes, correctness follows.
@@ -255,6 +304,37 @@ fixpoint-uniq : (N₁ N₂ : Normalizer) →
                 ∀ {A B} (t : Term A B) →
                 apply-norm N₁ ⌜ t ⌝ ≡ apply-norm N₂ ⌜ t ⌝
 fixpoint-uniq = fixpoint-unique
+
+------------------------------------------------------------------------
+-- Concrete Fixpoint Theorem Structure
+------------------------------------------------------------------------
+
+-- For our concrete encoding, the fixpoint theorem says:
+-- If N : Term TermCode' TermCode' and N ∘ encode N ≡ encode N,
+-- then for all terms t:
+--   - t ⟶* u for some normal form u
+--   - N ∘ encode t ≡ encode u
+--
+-- PROOF SKETCH:
+-- 1. Since N ∘ encode N ≡ encode N and encode N is well-formed,
+--    we can reduce N ∘ encode N to normal form.
+-- 2. This normal form is encode N itself (by the fixpoint condition).
+-- 3. Therefore encode N is in normal form.
+-- 4. By compositionality of CCC semantics, N's behavior is determined
+--    by its structure (which is encode N).
+-- 5. Since N correctly normalizes itself, and N is built from CCC
+--    primitives (which have fixed semantics), N correctly normalizes
+--    all terms.
+-- 6. For any term t:
+--    a. t ⟶* u for unique normal form u (by termination + confluence)
+--    b. N ∘ encode t ⟶* encode u (by N being a correct normalizer)
+--    c. Therefore N ∘ encode t ≡ encode u (by uniqueness of normal forms)
+
+-- The key insight: N's correctness on ONE term (itself) implies
+-- correctness on ALL terms, because:
+--   - The encoding is faithful (injective)
+--   - CCC has unique normal forms
+--   - N's behavior is compositional
 
 ------------------------------------------------------------------------
 -- Summary: The Zero-Code TCB Argument
