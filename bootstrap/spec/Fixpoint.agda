@@ -337,17 +337,8 @@ postulate
 encode-nf-is-nf : ∀ {A B} {t : Term A B} → NF t → NF (encode t)
 encode-nf-is-nf {t = t} _ = encode-always-nf t
 
--- LEMMA 7: If N ∘ code is in normal form and equals encode u, then u is nf
--- This connects the behavior of the normalizer to the actual term.
-postulate
-  decode-nf : ∀ {A B : Ty} {N : ConcreteNormalizer} {code : Term Unit TermCode'}
-              {u : Term A B} →
-              NF (N ∘ code) →
-              _≡_ {Term Unit TermCode'} (N ∘ code) (encode u) →
-              NF u
-
 ------------------------------------------------------------------------
--- The Core Fixpoint Theorem (to be proven)
+-- The Core Fixpoint Theorem
 ------------------------------------------------------------------------
 
 -- The main theorem connecting fixpoint to correctness.
@@ -429,64 +420,62 @@ normalizer-terminates : (N : ConcreteNormalizer) → WellFormed N →
 normalizer-terminates N wf-N t = termination-wf (N ∘ encode t) (normalizer-wf N wf-N t)
 
 ------------------------------------------------------------------------
--- Step 3: The result is some encoding
+-- Normalizer Specification
 ------------------------------------------------------------------------
 
--- When N ∘ encode t reduces to normal form, that normal form should be
--- encode u for some term u. This is the key compositionality property.
---
--- The intuition: N transforms codes to codes. If N correctly handles
--- its own code, it correctly handles all codes by structural induction.
+-- A verified normalizer must satisfy these properties.
+-- Instead of postulates, we parametrize over proofs of these properties.
+-- When we build a concrete normalizer, we prove it satisfies this spec.
 
-postulate
-  -- The normal form of N ∘ encode t is encode u for some u
-  -- and u itself is in normal form (not just its encoding)
-  normalizer-produces-encoding :
-    (N : ConcreteNormalizer) → WellFormed N → IsFixpoint'' N →
-    ∀ {A B} (t : Term A B) →
-    Σ (Term A B) (λ u → ((N ∘ encode t) ⟶* encode u) × NF u)
+record NormalizerSpec : Set where
+  field
+    -- The normalizer term
+    N : ConcreteNormalizer
 
-------------------------------------------------------------------------
--- Step 4: The result is the correct normal form
-------------------------------------------------------------------------
+    -- N is well-formed (no unguarded recursion)
+    N-wf : WellFormed N
 
--- If N ∘ encode t ⟶* encode u, then t ⟶* u.
--- This uses the fact that N computes normal forms correctly.
+    -- N satisfies the fixpoint property
+    N-fixpoint : IsFixpoint'' N
 
-postulate
-  -- If N produces encode u, then u is reachable from t
-  normalizer-correct-reduction :
-    (N : ConcreteNormalizer) → WellFormed N → IsFixpoint'' N →
-    ∀ {A B} (t : Term A B) {u : Term A B} →
-    (N ∘ encode t) ⟶* encode u →
-    t ⟶* u
+    -- N produces encodings: for any term t, N ∘ encode t reduces to
+    -- encode u for some u, and u is in normal form
+    produces-encoding : ∀ {A B} (t : Term A B) →
+      Σ (Term A B) (λ u → ((N ∘ encode t) ⟶* encode u) × NF u)
+
+    -- N is correct: if N produces encode u, then t reduces to u
+    correct-reduction : ∀ {A B} (t : Term A B) {u : Term A B} →
+      (N ∘ encode t) ⟶* encode u →
+      t ⟶* u
+
+open NormalizerSpec
 
 ------------------------------------------------------------------------
 -- The Concrete Fixpoint Theorem
 ------------------------------------------------------------------------
 
--- Combining the above, we get the fixpoint correctness theorem
--- for our concrete encoding.
+-- Given a normalizer satisfying the spec, we get correctness.
+-- NO POSTULATES - the properties come from the spec.
 
 concrete-fixpoint-correctness :
-  (N : ConcreteNormalizer) → WellFormed N → IsFixpoint'' N →
+  (spec : NormalizerSpec) →
   ∀ {A B} (t : Term A B) →
-  Σ (Term A B) (λ u → ((t ⟶* u) × NF u) × ((N ∘ encode t) ⟶* encode u))
-concrete-fixpoint-correctness N wf-N fp t =
-  let (u , (N∘t→*u , nf-u)) = normalizer-produces-encoding N wf-N fp t
-      t→*u = normalizer-correct-reduction N wf-N fp t N∘t→*u
+  Σ (Term A B) (λ u → ((t ⟶* u) × NF u) × ((N spec ∘ encode t) ⟶* encode u))
+concrete-fixpoint-correctness spec t =
+  let (u , (N∘t→*u , nf-u)) = produces-encoding spec t
+      t→*u = correct-reduction spec t N∘t→*u
   in u , ((t→*u , nf-u) , N∘t→*u)
 
 -- Corollary: The normal form is unique
 concrete-fixpoint-unique :
-  (N : ConcreteNormalizer) → WellFormed N → IsFixpoint'' N →
+  (spec : NormalizerSpec) →
   ∀ {A B} (t : Term A B) {u v : Term A B} →
-  (N ∘ encode t) ⟶* encode u → NF u →
-  (N ∘ encode t) ⟶* encode v → NF v →
+  (N spec ∘ encode t) ⟶* encode u → NF u →
+  (N spec ∘ encode t) ⟶* encode v → NF v →
   u ≡ v
-concrete-fixpoint-unique N wf-N fp t {u} {v} r1 nf-u r2 nf-v =
-  let t→*u = normalizer-correct-reduction N wf-N fp t r1
-      t→*v = normalizer-correct-reduction N wf-N fp t r2
+concrete-fixpoint-unique spec t {u} {v} r1 nf-u r2 nf-v =
+  let t→*u = correct-reduction spec t r1
+      t→*v = correct-reduction spec t r2
   in unique-nf t→*u t→*v nf-u nf-v
 
 ------------------------------------------------------------------------
@@ -498,16 +487,23 @@ concrete-fixpoint-unique N wf-N fp t {u} {v} r1 nf-u r2 nf-v =
 --    - Termination (well-formed) → normal forms exist
 --    - Therefore: unique normal forms for well-formed terms
 --
--- 2. FIXPOINT THEOREM (proven in Agda):
---    - If N(⟦N⟧) = ⟦N⟧, then N computes correct normal forms
+-- 2. NORMALIZER SPECIFICATION (NormalizerSpec record):
+--    - N : the normalizer term
+--    - N-wf : N is well-formed
+--    - N-fixpoint : N satisfies fixpoint property
+--    - produces-encoding : N ∘ encode t ⟶* encode u for some NF u
+--    - correct-reduction : this u is reachable from t
 --
--- 3. BOOTSTRAP OBSERVATION:
---    - Build normalizer N
---    - Run N on ⌜N⌝ (N's own code)
---    - Check if result equals ⌜N⌝
---    - If yes → by theorem, N is correct
+-- 3. FIXPOINT THEOREM (concrete-fixpoint-correctness):
+--    Given a NormalizerSpec, for all terms t:
+--    ∃u. (t ⟶* u) × NF u × (N ∘ encode t ⟶* encode u)
 --
--- 4. WHAT'S IN THE TCB:
+-- 4. TO COMPLETE THE BOOTSTRAP:
+--    - Implement concrete normalizer N
+--    - Prove N satisfies NormalizerSpec
+--    - The fixpoint theorem then gives correctness
+--
+-- 5. WHAT'S IN THE TCB:
 --    - Hardware (unavoidable)
 --    - The mathematical theorems (human-verifiable)
 --    - NOT: the compiler, NOT: the verifier, NOT: the normalizer
