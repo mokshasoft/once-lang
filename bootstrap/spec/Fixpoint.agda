@@ -23,6 +23,7 @@ module Fixpoint where
 
 open import Types
 open import MinimalCCC
+open import Encoding
 
 ------------------------------------------------------------------------
 -- Review: What We Have Proven
@@ -174,6 +175,35 @@ Normalizer' = Normalizer
 -- Fixpoint condition
 IsFixpoint' : Normalizer → Set
 IsFixpoint' = IsFixpoint
+
+------------------------------------------------------------------------
+-- Concrete Encoding (from Encoding module)
+------------------------------------------------------------------------
+
+-- The Encoding module provides concrete definitions:
+--   TyFuncCode  : Ty                        -- type/functor codes
+--   TermCode'   : Ty                        -- term codes (with type info)
+--   ⌜_⌝Ty      : Ty → Term Unit TyFuncCode
+--   ⌜_⌝Func    : Func → Term Unit TyFuncCode
+--   encode     : Term A B → Term Unit TermCode'
+
+-- Re-export the concrete encoding
+encode-term : ∀ {A B} → Term A B → Term Unit TermCode'
+encode-term = encode
+
+encode-type : Ty → Term Unit TyFuncCode
+encode-type = ⌜_⌝Ty
+
+encode-func : Func → Term Unit TyFuncCode
+encode-func = ⌜_⌝Func
+
+-- The normalizer type using concrete encoding
+ConcreteNormalizer : Set
+ConcreteNormalizer = Normalizer''
+
+-- Fixpoint condition using concrete encoding
+ConcreteFixpoint : ConcreteNormalizer → Set
+ConcreteFixpoint = IsFixpoint''
 
 ------------------------------------------------------------------------
 -- The Compute-NF Function (Specification)
