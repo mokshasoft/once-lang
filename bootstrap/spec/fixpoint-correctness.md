@@ -252,6 +252,8 @@ All modules compile with Agda. The mathematical foundations are proven.
 - [x] **FUNCTOR ENCODING INJECTIVITY** (⌜⌝Func-injective: ⌜F⌝ ≡ ⌜G⌝ → F ≡ G)
 - [x] Concrete encoding functions (⌜_⌝Ty, ⌜_⌝Func, encode)
 - [x] Composition/pair injectivity lemmas (∘-injective, ⟨⟩-injective)
+- [x] **ENCODING WELL-FORMEDNESS** (encode-wf, ⌜⌝Ty-wf, ⌜⌝Func-wf)
+- [x] Normalizer application preserves well-formedness (normalizer-wf)
 
 ### Postulated (Tedious but Mechanical)
 - [ ] progress: decidability of reduction (pattern matching)
@@ -259,6 +261,8 @@ All modules compile with Agda. The mathematical foundations are proven.
 - [ ] triangle lemma (for diamond property)
 - [ ] max⇒ and its properties
 - [ ] encode-injective: term encoding injectivity (requires dependent type handling)
+- [ ] encode-nf-is-nf: encoding preserves normal forms
+- [ ] decode-nf: connect normalizer output to actual terms
 
 ### To Complete Bootstrap
 1. [x] Define ⌜_⌝ encoding concretely (done in Encoding.agda)
