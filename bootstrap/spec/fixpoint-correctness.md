@@ -259,30 +259,33 @@ All modules compile with Agda. The mathematical foundations are proven.
 - [x] **nf-eq**: Equal terms have equal NF status
 - [x] **fixpoint-implies-nf**: ReducesToSelf N code → NF code (proven!)
 - [x] **normalizer-terminates**: WellFormed N → Terminates (N ∘ encode t)
-- [x] **concrete-fixpoint-correctness**: Main theorem (assuming postulates)
-- [x] **concrete-fixpoint-unique**: Uniqueness corollary
+- [x] **NormalizerSpec**: Record parametrizing over normalizer properties
+- [x] **concrete-fixpoint-correctness**: Main theorem (given NormalizerSpec)
+- [x] **concrete-fixpoint-unique**: Uniqueness corollary (given NormalizerSpec)
 
-### Postulated (Tedious but Mechanical)
+### NormalizerSpec Fields
+The fixpoint theorem is parametrized over these properties (no postulates!):
+- **N**: The normalizer term
+- **N-wf**: N is well-formed
+- **N-fixpoint**: N satisfies the fixpoint property
+- **produces-encoding**: N ∘ encode t ⟶* encode u for some NF u
+- **correct-reduction**: If N produces encode u, then t ⟶* u
+
+### Remaining Postulates (Mechanical)
 - [ ] progress: decidability of reduction (pattern matching)
 - [ ] ⇒ → ⟶* (parallel to multi-step)
 - [ ] triangle lemma (for diamond property)
 - [ ] max⇒ and its properties
 - [ ] encode-injective: term encoding injectivity (requires dependent type handling)
-- [ ] encode-always-nf: encoding is always NF (In∘ pattern never matches redexes)
-
-### Postulated (Core Semantic Properties)
-These capture what it means for a normalizer to satisfy the fixpoint condition:
-- [ ] normalizer-produces-encoding: N ∘ encode t ⟶* encode u for some NF u
-- [ ] normalizer-correct-reduction: If N produces encode u, then t ⟶* u
-- [ ] decode-nf: If N ∘ code ≡ encode u and NF (N ∘ code), then NF u
+- [ ] encode-always-nf: encoding is always NF (Agda type inference issue)
 
 ### To Complete Bootstrap
 1. [x] Define ⌜_⌝ encoding concretely (done in Encoding.agda)
 2. [x] Structure fixpoint-correctness theorem (done in Fixpoint.agda)
 3. [x] Prove fixpoint-implies-nf
-4. [ ] Prove semantic postulates (or accept as axioms about normalizers)
-5. [ ] Implement actual normalizer
-6. [ ] Verify it reaches fixpoint
+4. [x] Parametrize over normalizer properties (NormalizerSpec)
+5. [ ] Implement concrete normalizer
+6. [ ] Prove normalizer satisfies NormalizerSpec
 7. [ ] Bootstrap complete
 
 ## References
