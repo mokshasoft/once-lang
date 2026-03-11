@@ -64,6 +64,14 @@ record ⊤ : Set where
 ¬_ : Set → Set
 ¬ A = A → ⊥
 
+-- Inspect idiom for remembering with-pattern results
+record Reveal_·_is_ {A B : Set} (f : A → B) (x : A) (y : B) : Set where
+  constructor ⟪_⟫
+  field eq : f x ≡ y
+
+inspect : ∀ {A B : Set} (f : A → B) (x : A) → Reveal f · x is (f x)
+inspect f x = ⟪ refl ⟫
+
 ------------------------------------------------------------------------
 -- Part 1: Types and Functors
 ------------------------------------------------------------------------
