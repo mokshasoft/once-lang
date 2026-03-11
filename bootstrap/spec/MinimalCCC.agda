@@ -669,6 +669,20 @@ wf-case-right : ∀ {A B C} {f : Term A C} {g : Term B C} →
                 WellFormed [ f , g ] → WellFormed g
 wf-case-right (wf-case _ wf-g) = wf-g
 
+-- Extract WellFormed alg from WellFormed (cata F alg)
+wf-cata-alg-wf : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} →
+                 WellFormed (cata F alg) → WellFormed alg
+wf-cata-alg-wf (wf-cata _ wf-alg) = wf-alg
+
+-- fmap preserves well-formedness
+wf-fmap : ∀ F {A B} {f : Term A B} → WellFormed f → WellFormed (fmap F f)
+wf-fmap Id wf-f = wf-f
+wf-fmap (K _) wf-f = wf-id
+wf-fmap (F ⊕ G) wf-f = wf-case (wf-comp wf-inl (wf-fmap F wf-f))
+                               (wf-comp wf-inr (wf-fmap G wf-f))
+wf-fmap (F ⊗ G) wf-f = wf-pair (wf-comp (wf-fmap F wf-f) wf-fst)
+                               (wf-comp (wf-fmap G wf-f) wf-snd)
+
 -- THE KEY THEOREM for cata-β:
 -- cata F alg ∘ In  has in-count = 0 + 1 = 1
 -- alg ∘ fmap F (cata F alg) has in-count = in-count(alg) + 0 = in-count(alg)
@@ -939,23 +953,71 @@ reduce-decreases-lex-wf _ (eta-case {A} {B}) = <ₗₑₓ-snd (reduce-decreases-
 reduce-decreases-lex-wf wf (cata-β {F} {A} {alg}) =
   cata-β-decreases-wf (wf-comp-left wf)
 
--- TERMINATION THEOREM (FULLY PROVEN - NO POSTULATES!)
---
--- All reductions on well-formed terms decrease the lexicographic measure (in-count, size):
--- - Simple rules (id, products, coproducts, eta): in-count stays same, size decreases
--- - cata-β: in-count decreases from 1 to 0 (because well-formed algebras are InFree!)
---
--- Since (ℕ × ℕ) with lexicographic order is well-founded, reduction terminates.
-
--- NF (normal form) is defined below - it means no reduction is possible
-
-postulate
-  termination : ∀ {A B} (t : Term A B) → ∃[ u ] (t ⟶* u)
-  -- Note: the u returned is in normal form (no further reductions possible)
-
 -- Normal form predicate: no reductions possible
 NF : ∀ {A B} → Term A B → Set
 NF t = ∀ {u} → ¬ (t ⟶ u)
+
+------------------------------------------------------------------------
+-- Reduction Preserves Well-Formedness
+------------------------------------------------------------------------
+
+-- When a well-formed term reduces, the result is also well-formed
+wf-preserved : ∀ {A B} {t u : Term A B} → WellFormed t → t ⟶ u → WellFormed u
+wf-preserved (wf-comp wf-id wf-f) id-left = wf-f
+wf-preserved (wf-comp wf-f wf-id) id-right = wf-f
+wf-preserved (wf-comp wf-fst (wf-pair wf-f wf-g)) fst-pair = wf-f
+wf-preserved (wf-comp wf-snd (wf-pair wf-f wf-g)) snd-pair = wf-g
+wf-preserved (wf-pair wf-fst wf-snd) eta-pair = wf-id
+wf-preserved (wf-comp (wf-case wf-f wf-g) wf-inl) case-inl = wf-f
+wf-preserved (wf-comp (wf-case wf-f wf-g) wf-inr) case-inr = wf-g
+wf-preserved (wf-case wf-inl wf-inr) eta-case = wf-id
+wf-preserved (wf-comp wf-c wf-In) (cata-β {F} {A} {alg}) =
+  wf-comp (wf-cata-alg-wf wf-c) (wf-fmap F wf-c)
+
+-- Multi-step reduction preserves well-formedness
+wf-preserved* : ∀ {A B} {t u : Term A B} → WellFormed t → t ⟶* u → WellFormed u
+wf-preserved* wf-t done = wf-t
+wf-preserved* wf-t (step r rest) = wf-preserved* (wf-preserved wf-t r) rest
+
+------------------------------------------------------------------------
+-- Progress Lemma (Decidability of Reduction)
+------------------------------------------------------------------------
+
+-- Progress: either a term can reduce, or it's in normal form
+-- This is mechanical but tedious to prove (pattern match on all redex shapes)
+postulate
+  progress : ∀ {A B} (t : Term A B) → (∃[ u ] (t ⟶ u)) ⊎ NF t
+
+-- NOTE: progress is decidable by checking each possible redex pattern:
+--   id ∘ f → f, f ∘ id → f, fst ∘ ⟨f,g⟩ → f, snd ∘ ⟨f,g⟩ → g,
+--   ⟨fst,snd⟩ → id, [f,g] ∘ inl → f, [f,g] ∘ inr → g, [inl,inr] → id,
+--   cata F alg ∘ In → alg ∘ fmap F (cata F alg)
+-- Plus recursively checking subterms. Tedious but no insight required.
+
+------------------------------------------------------------------------
+-- TERMINATION THEOREM (Proven via Well-Founded Recursion)
+------------------------------------------------------------------------
+
+-- Terminates: there exists a normal form reachable from t
+Terminates : ∀ {A B} → Term A B → Set
+Terminates t = ∃[ u ] ((t ⟶* u) × NF u)
+
+-- The core termination lemma using well-founded recursion on the measure
+-- Given: well-formed t, accessibility of measure t
+-- Proves: t terminates (reaches a normal form)
+termination-acc : ∀ {A B} (t : Term A B) →
+                  WellFormed t → Acc-lex (measure t) → Terminates t
+termination-acc t wf-t (acc-lex rec) with progress t
+... | inj₂ nf-t = t , (done , nf-t)  -- t is already in normal form
+... | inj₁ (u , t→u) =
+  let wf-u = wf-preserved wf-t t→u
+      measure-decreases = reduce-decreases-lex-wf wf-t t→u
+      (v , (u→*v , nf-v)) = termination-acc u wf-u (rec (measure u) measure-decreases)
+  in v , (step t→u u→*v , nf-v)
+
+-- Main termination theorem for well-formed terms
+termination-wf : ∀ {A B} (t : Term A B) → WellFormed t → Terminates t
+termination-wf t wf-t = termination-acc t wf-t (lex-wf (measure t))
 
 -- Unique normal forms: follows from confluence
 -- If t →* u and t →* v, and both u,v are normal forms, then u ≡ v
@@ -1085,11 +1147,17 @@ postulate
 --   - Its algebras NEVER use the In constructor
 --   Therefore: Once normalizer termination is FULLY PROVEN!
 --
+-- PROVEN (with progress postulate):
+--   ✓ wf-preserved: reduction preserves well-formedness
+--   ✓ wf-preserved*: multi-step preserves well-formedness
+--   ✓ termination-acc: well-founded recursion termination proof
+--   ✓ termination-wf: main termination theorem for well-formed terms
+--
 -- POSTULATED (straightforward but tedious):
+--   - progress: decidability of reduction (mechanical pattern matching)
 --   - ⇒ → ⟶* (parallel to multi-step: induction on ⇒ derivation)
 --   - triangle lemma (for diamond property: induction on ⇒)
 --   - max⇒ and its properties (pattern matching on term structure)
---   - termination (follows from lex-wf + reduce-decreases-lex-wf)
 --
 -- REMAINING TO PROVE:
 --   - Define ⌜_⌝ concretely (encoding terms as data)
