@@ -200,17 +200,41 @@ data EtaView : ∀ {A B} → Term A B → Set where
   ev-other    : ∀ {A B} (t : Term A B) → EtaView t
 
 ------------------------------------------------------------------------
--- Progress proof structure (outline)
+-- Progress Proof
 ------------------------------------------------------------------------
 
--- The full progress proof would:
--- 1. Check if the term matches any root redex pattern
--- 2. If not, recursively check subterms
--- 3. If a subterm can reduce, lift that to a reduction of the whole term
+-- Key insight: The reduction relation _⟶_ only has root redex rules.
+-- There are NO congruence rules (like f ⟶ f' → f ∘ g ⟶ f' ∘ g).
+-- This means a term can reduce IFF it matches a root redex pattern.
 --
--- This is mechanical but requires handling many cases.
--- For now, we keep it as a postulate in MinimalCCC and note that
--- the actual termination theorem (termination-wf) is proven assuming progress.
+-- Root redex patterns:
+--   id ∘ f           (id-left)
+--   f ∘ id           (id-right)
+--   fst ∘ ⟨f, g⟩     (fst-pair)
+--   snd ∘ ⟨f, g⟩     (snd-pair)
+--   ⟨fst, snd⟩       (eta-pair)
+--   [f, g] ∘ inl     (case-inl)
+--   [f, g] ∘ inr     (case-inr)
+--   [inl, inr]       (eta-case)
+--   cata F alg ∘ In  (cata-β)
+
+-- The progress proof strategy is to check each possible redex pattern.
+-- Due to Agda's type inference limitations with catch-all patterns,
+-- we keep progress as a postulate for now.
+--
+-- The key insight: since there are no congruence rules in _⟶_,
+-- a term can only reduce if it IS a root redex. Therefore progress
+-- is decidable by checking if the term matches any of:
+--   id ∘ f, f ∘ id, fst ∘ ⟨f,g⟩, snd ∘ ⟨f,g⟩, ⟨fst,snd⟩,
+--   [f,g] ∘ inl, [f,g] ∘ inr, [inl,inr], cata F alg ∘ In
+--
+-- The nf-from-no-redex lemma (showing completeness of pattern coverage)
+-- requires proving that if no redex pattern matches, then the term is NF.
+-- This follows from exhaustive case analysis on the reduction relation.
+
+-- For now, we note that progress is decidable and keep the postulate
+-- in MinimalCCC. The termination theorem (termination-wf) is fully
+-- proven assuming progress.
 
 ------------------------------------------------------------------------
 -- Summary
