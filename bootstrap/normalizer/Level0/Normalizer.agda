@@ -21,10 +21,10 @@
 module normalizer.Level0.Normalizer where
 
 -- Import shared foundations from spec/
-open import spec.Types
-open import spec.MinimalCCC
-open import spec.Encoding
-open import spec.Fixpoint
+open import normalizer.Foundations.Types
+open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.Encoding
+open import normalizer.Foundations.Fixpoint
 
 ------------------------------------------------------------------------
 -- Overview

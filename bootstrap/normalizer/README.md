@@ -6,6 +6,11 @@ This directory contains the normalizer implementations for each level of the boo
 
 ```
 normalizer/
+├── Foundations/      # Mathematical foundations
+│   ├── Types.agda
+│   ├── MinimalCCC.agda
+│   ├── Encoding.agda
+│   └── Fixpoint.agda
 ├── Level0/           # Minimal CCC normalizer
 │   └── Normalizer.agda
 ├── Level1/           # + Exponentials (curry/apply)
@@ -24,11 +29,11 @@ Each level builds on the previous:
 | **Level 1** | Level 0 + curry, apply | Level 0 normalizer + fixpoint |
 | **Level 2** | Level 1 + ana, Out, guardedness | Level 1 normalizer + fixpoint |
 
-## Shared Foundations
+## Foundations
 
-The normalizers depend on shared modules in `../spec/`:
+The `Foundations/` directory contains the mathematical foundations:
 
-- `Types.agda` — Ty, Func, decidable equality
+- `Types.agda` — Minimal prelude, Ty, Func, decidable equality
 - `MinimalCCC.agda` — Term, reduction, confluence, termination
 - `Encoding.agda` — Term encoding, injectivity proofs
 - `Fixpoint.agda` — NormalizerSpec, fixpoint theorems

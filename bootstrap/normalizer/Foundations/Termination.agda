@@ -8,9 +8,9 @@
 -- FULLY PROVEN for well-formed terms (no postulates except progress).
 ------------------------------------------------------------------------
 
-module spec.Termination where
+module normalizer.Foundations.Termination where
 
-open import spec.MinimalCCC
+open import normalizer.Foundations.MinimalCCC
 
 ------------------------------------------------------------------------
 -- Re-export key termination results from MinimalCCC

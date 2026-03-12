@@ -12,10 +12,10 @@
 --   3. ⌜_⌝Ty, ⌜_⌝Func, ⌜_⌝ - the encoding functions
 ------------------------------------------------------------------------
 
-module spec.Encoding where
+module normalizer.Foundations.Encoding where
 
-open import spec.Types
-open import spec.MinimalCCC
+open import normalizer.Foundations.Types
+open import normalizer.Foundations.MinimalCCC
 
 ------------------------------------------------------------------------
 -- Part 1: Encoding Types and Functors
