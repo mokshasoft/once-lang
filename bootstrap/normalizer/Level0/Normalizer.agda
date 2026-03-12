@@ -886,16 +886,36 @@ produces-encoding t = normalize t , (N-correct t , normalize-nf t)
 
 -- If N normalizes encode t to encode u, then t reduces to u.
 -- This is the semantic correctness of normalization.
--- The proof uses encoding injectivity: since normalize is sound,
--- t ⟶* normalize t, and if N ∘ encode t ⟶* encode u, then by
--- unique normal forms, normalize t = u (up to encoding), so t ⟶* u.
 --
--- The full proof requires showing encoding is injective on normal forms.
--- We postulate this since N is postulated.
-postulate
-  correct-reduction : ∀ {A B} (t : Term A B) {u : Term A B} →
+-- Proof:
+-- 1. By N-correct: N ∘ encode t ⟶* encode (normalize t)
+-- 2. Given: N ∘ encode t ⟶* encode u
+-- 3. Both are NF (by encode-always-nf)
+-- 4. By unique-nf: encode (normalize t) = encode u
+-- 5. By encode-injective: normalize t = u
+-- 6. By normalize-sound: t ⟶* normalize t = u
+correct-reduction : ∀ {A B} (t : Term A B) {u : Term A B} →
     (N ∘ encode t) ⟶* encode u →
     t ⟶* u
+correct-reduction t {u} N∘t→*u =
+  let -- By N-correct: N ∘ encode t ⟶* encode (normalize t)
+      N∘t→*nf : (N ∘ encode t) ⟶* encode (normalize t)
+      N∘t→*nf = N-correct t
+      -- Both encode (normalize t) and encode u are NF
+      nf-encode-normalize : NF (encode (normalize t))
+      nf-encode-normalize = encode-always-nf (normalize t)
+      nf-encode-u : NF (encode u)
+      nf-encode-u = encode-always-nf u
+      -- By unique-nf: encode (normalize t) = encode u
+      encode-eq : encode (normalize t) ≡ encode u
+      encode-eq = unique-nf N∘t→*nf N∘t→*u nf-encode-normalize nf-encode-u
+      -- By encode-injective: normalize t = u
+      normalize-eq : normalize t ≡ u
+      normalize-eq = encode-injective encode-eq
+      -- By normalize-sound: t ⟶* normalize t
+      t→*normalize : t ⟶* normalize t
+      t→*normalize = normalize-sound t
+  in subst (λ v → t ⟶* v) normalize-eq t→*normalize
 
 ------------------------------------------------------------------------
 -- Bundle into NormalizerSpec
