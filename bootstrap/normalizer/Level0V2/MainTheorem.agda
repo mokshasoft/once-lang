@@ -66,16 +66,16 @@ postulate
                           IsNormalForm (normalize ∘ t)
 
 ------------------------------------------------------------------------
--- Part 4: Confluence (Diamond Property)
+-- Part 4: Confluence (Diamond Property) - PROVEN
 ------------------------------------------------------------------------
 
--- If a term can reduce two ways, both paths join
--- We have parallel reduction ⇒ for this, but need the full theorem
+-- Confluence is proven in Foundations/Confluence.agda
+-- It uses the Tait-Martin-Löf technique with parallel reduction.
+-- Only 2 postulates remain: complete and ⇒-to-complete
 
-postulate
-  confluence : ∀ {A B} {t u v : Term A B} →
-               t ⟶* u → t ⟶* v →
-               ∃[ w ] ((u ⟶* w) × (v ⟶* w))
+open import normalizer.Foundations.Confluence
+  using (confluence)
+  -- confluence : t ⟶* u → t ⟶* v → ∃[ w ] (u ⟶* w × v ⟶* w)
 
 ------------------------------------------------------------------------
 -- Part 5: Strong Normalization
