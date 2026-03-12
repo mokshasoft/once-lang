@@ -29,36 +29,31 @@ open import normalizer.Level0V2.Normalizer
 -- - ⇒→⟶* : parallel reduction implies multi-step (proven)
 
 ------------------------------------------------------------------------
--- Part 2: The Real Normalizer (TO BE BUILT)
+-- Part 2: The Real Normalizer - DEFINED in Normalize.agda
 ------------------------------------------------------------------------
 
--- A normalizer is a term that applies CCC reduction rules to encoded terms
--- Unlike `cata TermF In` (which is just identity), this actually reduces.
+-- The normalizer is defined in Level0V2/Normalize.agda
+-- It applies CCC reduction rules to encoded terms.
+-- Structure: normalize = cata TermF normalize-step
 
-postulate
-  -- The actual normalizer that applies reduction rules
-  normalize : Term TermCode' TermCode'
+open import normalizer.Level0V2.Normalize
+  using (normalize; normalize-encoded)
 
-  -- The normalizer is built from a step function that applies reductions:
-  -- normalize = cata TermF normalize-step
-  -- where normalize-step handles:
-  --   inj-comp (inj-id A) f       → f           (id ∘ f → f)
-  --   inj-comp f (inj-id A)       → f           (f ∘ id → f)
-  --   inj-comp inj-fst (inj-pair f g) → f       (fst ∘ ⟨f,g⟩ → f)
-  --   inj-comp inj-snd (inj-pair f g) → g       (snd ∘ ⟨f,g⟩ → g)
-  --   ... etc for all CCC reduction rules
-  --   other → In other            (no reduction applies, rebuild)
+-- normalize : Term TermCode' TermCode'
+-- normalize-encoded : Term Unit TermCode'
 
 ------------------------------------------------------------------------
--- Part 3: Normal Forms
+-- Part 3: Normal Forms - DEFINED
 ------------------------------------------------------------------------
 
 -- A term is in normal form if no reduction rules apply
-postulate
-  IsNormalForm : ∀ {A B} → Term A B → Set
+-- This is simply the negation of "can reduce"
+IsNormalForm : ∀ {A B} → Term A B → Set
+IsNormalForm t = ∀ {u} → ¬ (t ⟶ u)
 
-  -- Normal forms have no redexes
-  nf-no-redex : ∀ {A B} {t : Term A B} → IsNormalForm t → ∀ {u} → ¬ (t ⟶ u)
+-- Normal forms have no redexes (this IS the definition)
+nf-no-redex : ∀ {A B} {t : Term A B} → IsNormalForm t → ∀ {u} → ¬ (t ⟶ u)
+nf-no-redex nf = nf
 
 -- The normalizer produces normal forms
 postulate
@@ -105,9 +100,9 @@ postulate
 -- Part 7: The Fixpoint Property
 ------------------------------------------------------------------------
 
--- The normalizer's own encoding
-normalize-encoded : Term Unit TermCode'
-normalize-encoded = encode normalize
+-- The normalizer's own encoding is defined in Normalize.agda:
+--   normalize-encoded : Term Unit TermCode'
+--   normalize-encoded = encode normalize
 
 -- THE KEY PROPERTY: normalizer achieves fixpoint on its own encoding
 postulate
