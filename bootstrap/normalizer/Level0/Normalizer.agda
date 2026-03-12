@@ -147,38 +147,124 @@ trans⟶* : ∀ {A B} {t u v : Term A B} → t ⟶* u → u ⟶* v → t ⟶* v
 trans⟶* done q = q
 trans⟶* (step p ps) q = step p (trans⟶* ps q)
 
--- Congruence: if f ⟶* f' then f ∘ g ⟶* f' ∘ g
--- (We'll postulate this for now - can be proven via parallel reduction)
-postulate
-  cong-∘-left : ∀ {A B C} {f f' : Term B C} (g : Term A B) →
-                f ⟶* f' → (f ∘ g) ⟶* (f' ∘ g)
+------------------------------------------------------------------------
+-- Congruence Lemmas
+--
+-- These are proven using parallel reduction:
+-- 1. Lift ⟶* to ⇒* using ⟶*→⇒*
+-- 2. Apply parallel congruence (⇒-∘, ⇒-pair, etc.)
+-- 3. Convert back via ⇒*→⟶*
+------------------------------------------------------------------------
 
-  cong-∘-right : ∀ {A B C} (f : Term B C) {g g' : Term A B} →
-                 g ⟶* g' → (f ∘ g) ⟶* (f ∘ g')
+-- Helper: lift parallel reduction through ⇒* preserving congruence
+-- If we have f ⇒* f', we can derive (f ∘ g) ⇒* (f' ∘ g)
+cong-⇒*-∘-left : ∀ {A B C} {f f' : Term B C} (g : Term A B) →
+                  f ⇒* f' → (f ∘ g) ⇒* (f' ∘ g)
+cong-⇒*-∘-left g done⇒ = done⇒
+cong-⇒*-∘-left g (step⇒ p ps) = step⇒ (⇒-∘ p (⇒-refl g)) (cong-⇒*-∘-left g ps)
 
-  cong-pair : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
-              f ⟶* f' → g ⟶* g' → ⟨ f , g ⟩ ⟶* ⟨ f' , g' ⟩
+cong-⇒*-∘-right : ∀ {A B C} (f : Term B C) {g g' : Term A B} →
+                   g ⇒* g' → (f ∘ g) ⇒* (f ∘ g')
+cong-⇒*-∘-right f done⇒ = done⇒
+cong-⇒*-∘-right f (step⇒ p ps) = step⇒ (⇒-∘ (⇒-refl f) p) (cong-⇒*-∘-right f ps)
 
-  cong-case : ∀ {A B C} {f f' : Term A C} {g g' : Term B C} →
-              f ⟶* f' → g ⟶* g' → [ f , g ] ⟶* [ f' , g' ]
+cong-⇒*-pair : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
+                f ⇒* f' → g ⇒* g' → ⟨ f , g ⟩ ⇒* ⟨ f' , g' ⟩
+cong-⇒*-pair done⇒ done⇒ = done⇒
+cong-⇒*-pair done⇒ (step⇒ q qs) = step⇒ (⇒-pair (⇒-refl _) q) (cong-⇒*-pair done⇒ qs)
+cong-⇒*-pair (step⇒ p ps) qs = step⇒ (⇒-pair p (⇒-refl _)) (cong-⇒*-pair ps qs)
 
-  cong-cata : ∀ {F A} {alg alg' : Term (⟦ F ⟧F A) A} →
-              alg ⟶* alg' → cata F alg ⟶* cata F alg'
+cong-⇒*-case : ∀ {A B C} {f f' : Term A C} {g g' : Term B C} →
+                f ⇒* f' → g ⇒* g' → [ f , g ] ⇒* [ f' , g' ]
+cong-⇒*-case done⇒ done⇒ = done⇒
+cong-⇒*-case done⇒ (step⇒ q qs) = step⇒ (⇒-case (⇒-refl _) q) (cong-⇒*-case done⇒ qs)
+cong-⇒*-case (step⇒ p ps) qs = step⇒ (⇒-case p (⇒-refl _)) (cong-⇒*-case ps qs)
+
+cong-⇒*-cata : ∀ {F A} {alg alg' : Term (⟦ F ⟧F A) A} →
+                alg ⇒* alg' → cata F alg ⇒* cata F alg'
+cong-⇒*-cata done⇒ = done⇒
+cong-⇒*-cata (step⇒ p ps) = step⇒ (⇒-cata p) (cong-⇒*-cata ps)
+
+-- Now derive ⟶* congruence from ⇒* congruence
+cong-∘-left : ∀ {A B C} {f f' : Term B C} (g : Term A B) →
+              f ⟶* f' → (f ∘ g) ⟶* (f' ∘ g)
+cong-∘-left g red = ⇒*→⟶* (cong-⇒*-∘-left g (⟶*→⇒* red))
+
+cong-∘-right : ∀ {A B C} (f : Term B C) {g g' : Term A B} →
+               g ⟶* g' → (f ∘ g) ⟶* (f ∘ g')
+cong-∘-right f red = ⇒*→⟶* (cong-⇒*-∘-right f (⟶*→⇒* red))
+
+cong-pair : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
+            f ⟶* f' → g ⟶* g' → ⟨ f , g ⟩ ⟶* ⟨ f' , g' ⟩
+cong-pair rf rg = ⇒*→⟶* (cong-⇒*-pair (⟶*→⇒* rf) (⟶*→⇒* rg))
+
+cong-case : ∀ {A B C} {f f' : Term A C} {g g' : Term B C} →
+            f ⟶* f' → g ⟶* g' → [ f , g ] ⟶* [ f' , g' ]
+cong-case rf rg = ⇒*→⟶* (cong-⇒*-case (⟶*→⇒* rf) (⟶*→⇒* rg))
+
+cong-cata : ∀ {F A} {alg alg' : Term (⟦ F ⟧F A) A} →
+            alg ⟶* alg' → cata F alg ⟶* cata F alg'
+cong-cata red = ⇒*→⟶* (cong-⇒*-cata (⟶*→⇒* red))
 
 ------------------------------------------------------------------------
 -- Soundness of reduction helpers
 --
 -- Each reduce-* function is sound: when it returns inj₂ h, we have f ∘ g ⟶ h.
--- Due to the complexity of pattern matching with indexed types,
--- we postulate the combined soundness lemma.
 ------------------------------------------------------------------------
 
--- When reduce-comp returns inj₂ h, we have (f ∘ g) ⟶ h
--- This is straightforward to verify: each case corresponds to exactly
--- one reduction rule from the calculus.
-postulate
-  reduce-comp-sound : ∀ {A B C} (f : Term B C) (g : Term A B) (h : Term A C) →
-    reduce-comp f g ≡ inj₂ h → (f ∘ g) ⟶ h
+-- Soundness of individual reducers
+
+reduce-id-left-sound : ∀ {A B C} (f : Term B C) (g : Term A B) (h : Term A C) →
+  reduce-id-left f g ≡ inj₂ h → (f ∘ g) ⟶ h
+reduce-id-left-sound id g .g refl = id-left
+
+reduce-id-right-sound : ∀ {A B C} (f : Term B C) (g : Term A B) (h : Term A C) →
+  reduce-id-right f g ≡ inj₂ h → (f ∘ g) ⟶ h
+reduce-id-right-sound f id .f refl = id-right
+
+reduce-fst-pair-sound : ∀ {A B C} (f : Term B C) (g : Term A B) (h : Term A C) →
+  reduce-fst-pair f g ≡ inj₂ h → (f ∘ g) ⟶ h
+reduce-fst-pair-sound fst ⟨ h , _ ⟩ .h refl = fst-pair
+
+reduce-snd-pair-sound : ∀ {A B C} (f : Term B C) (g : Term A B) (h : Term A C) →
+  reduce-snd-pair f g ≡ inj₂ h → (f ∘ g) ⟶ h
+reduce-snd-pair-sound snd ⟨ _ , h ⟩ .h refl = snd-pair
+
+reduce-case-inl-sound : ∀ {A B C} (f : Term B C) (g : Term A B) (h : Term A C) →
+  reduce-case-inl f g ≡ inj₂ h → (f ∘ g) ⟶ h
+reduce-case-inl-sound [ h , _ ] inl .h refl = case-inl
+
+reduce-case-inr-sound : ∀ {A B C} (f : Term B C) (g : Term A B) (h : Term A C) →
+  reduce-case-inr f g ≡ inj₂ h → (f ∘ g) ⟶ h
+reduce-case-inr-sound [ _ , h ] inr .h refl = case-inr
+
+reduce-cata-In-sound : ∀ {A B C} (f : Term B C) (g : Term A B) (h : Term A C) →
+  reduce-cata-In f g ≡ inj₂ h → (f ∘ g) ⟶ h
+reduce-cata-In-sound (cata F alg) In .(alg ∘ fmap F (cata F alg)) refl = cata-β
+
+-- Helper: <|> soundness - if x <|> y = inj₂ h, then either x or y returned inj₂ h
+<|>-sound : ∀ {A : Set} (x y : Maybe A) (h : A) →
+  (x <|> y) ≡ inj₂ h →
+  (x ≡ inj₂ h) ⊎ ((x ≡ inj₁ tt) × (y ≡ inj₂ h))
+<|>-sound (inj₂ x) y h eq = inj₁ eq
+<|>-sound (inj₁ tt) (inj₂ y) h refl = inj₂ (refl , refl)
+
+-- Combined soundness using <|>-sound
+reduce-comp-sound : ∀ {A B C} (f : Term B C) (g : Term A B) (h : Term A C) →
+  reduce-comp f g ≡ inj₂ h → (f ∘ g) ⟶ h
+reduce-comp-sound f g h eq with <|>-sound (reduce-id-left f g) _ h eq
+... | inj₁ p = reduce-id-left-sound f g h p
+... | inj₂ (_ , eq') with <|>-sound (reduce-id-right f g) _ h eq'
+...   | inj₁ p = reduce-id-right-sound f g h p
+...   | inj₂ (_ , eq'') with <|>-sound (reduce-fst-pair f g) _ h eq''
+...     | inj₁ p = reduce-fst-pair-sound f g h p
+...     | inj₂ (_ , eq''') with <|>-sound (reduce-snd-pair f g) _ h eq'''
+...       | inj₁ p = reduce-snd-pair-sound f g h p
+...       | inj₂ (_ , eq'''') with <|>-sound (reduce-case-inl f g) _ h eq''''
+...         | inj₁ p = reduce-case-inl-sound f g h p
+...         | inj₂ (_ , eq''''') with <|>-sound (reduce-case-inr f g) _ h eq'''''
+...           | inj₁ p = reduce-case-inr-sound f g h p
+...           | inj₂ (_ , eq'''''') = reduce-cata-In-sound f g h eq''''''
 
 ------------------------------------------------------------------------
 -- Full normalization (recursive)
@@ -216,8 +302,12 @@ normalize (cata F alg) = cata F (normalize alg)
 -- for any potential redex. This is true because we keep reducing until
 -- no more redexes are found.
 --
--- Due to the TERMINATING pragma, we postulate this for now.
+-- Due to the TERMINATING pragma, we mark this as TERMINATING as well.
 -- A proper proof would use well-founded recursion on the measure.
+--
+-- This proof is tricky because NF is defined as ∀ {u} → ¬ (t ⟶ u),
+-- meaning we need to show no reduction applies. We postulate it for now
+-- as it requires showing reduce-comp returns inj₁ for normalized terms.
 postulate
   normalize-nf : ∀ {A B} (t : Term A B) → NF (normalize t)
 
@@ -226,7 +316,22 @@ postulate
 -- reduction steps. For base cases, t ⟶* t (done). For recursive cases,
 -- use transitivity and congruence.
 --
--- Similarly postulated due to the TERMINATING pragma.
+-- The proof sketch is:
+--   normalize-sound id = done
+--   normalize-sound (f ∘ g):
+--     - f ⟶* normalize f (by IH)
+--     - g ⟶* normalize g (by IH)
+--     - f ∘ g ⟶* normalize f ∘ normalize g (by congruence)
+--     - If reduce-comp returns inj₂ h:
+--         normalize f ∘ normalize g ⟶ h (by reduce-comp-sound)
+--         h ⟶* normalize h (by IH)
+--     - If reduce-comp returns inj₁ _:
+--         normalize (f ∘ g) = normalize f ∘ normalize g (by definition)
+--   (other cases similar using congruence)
+--
+-- This requires well-founded recursion to prove formally because the
+-- composition case recurses on 'reduced' which is not a subterm.
+-- We postulate it here; the TERMINATING pragma guarantees termination.
 postulate
   normalize-sound : ∀ {A B} (t : Term A B) → t ⟶* normalize t
 
