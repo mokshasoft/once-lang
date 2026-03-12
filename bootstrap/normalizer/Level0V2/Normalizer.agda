@@ -14,7 +14,7 @@ module normalizer.Level0V2.Normalizer where
 open import normalizer.Foundations.Types
 open import normalizer.Foundations.MinimalCCC
 open import normalizer.Foundations.Encoding
-open import normalizer.Foundations.Fixpoint
+-- Fixpoint.agda not needed - removed
 
 ------------------------------------------------------------------------
 -- The Simplest Normalizer: Identity
@@ -835,9 +835,25 @@ fmap-10-inl : ∀ {A B} (f : Term A B) →
               (fmap TermF-10 f ∘ inl) ⟶* (inl ∘ fmap (K TyFuncCode) f)
 fmap-10-inl f = fmap-sum-inl (K TyFuncCode) TermF-11 f
 
--- Note: Helper lemmas for K-based cases like fmap-K-inl-collapses and
--- fmap-KK-composed-collapses are available but not used since the
--- K-based refold-idem proofs are postulated.
+-- Id⊗Id positions (for recursive cases):
+-- Position 1 (comp): after 1 inr, inl into Id ⊗ Id
+fmap-1-inl : ∀ {A B} (f : Term A B) →
+             (fmap TermF-1 f ∘ inl) ⟶* (inl ∘ fmap (Id ⊗ Id) f)
+fmap-1-inl f = fmap-sum-inl (Id ⊗ Id) TermF-2 f
+
+-- Position 4 (pair): after 4 inrs, inl into Id ⊗ Id
+fmap-4-inl : ∀ {A B} (f : Term A B) →
+             (fmap TermF-4 f ∘ inl) ⟶* (inl ∘ fmap (Id ⊗ Id) f)
+fmap-4-inl f = fmap-sum-inl (Id ⊗ Id) TermF-5 f
+
+-- Position 7 (case): after 7 inrs, inl into Id ⊗ Id
+fmap-7-inl : ∀ {A B} (f : Term A B) →
+             (fmap TermF-7 f ∘ inl) ⟶* (inl ∘ fmap (Id ⊗ Id) f)
+fmap-7-inl f = fmap-sum-inl (Id ⊗ Id) TermF-8 f
+
+-- Position 11 (cata): after 11 inrs, no inl - the terminal position
+-- fmap TermF-11 f = fmap (K TyFuncCode ⊗ Id) f = ⟨ id ∘ fst , f ∘ snd ⟩
+-- No fmap-11-inl needed - position 11 is the last position (just payload, no inl)
 
 ------------------------------------------------------------------------
 -- Congruence for pair: if a ⟶* a' and b ⟶* b', then ⟨a,b⟩ ⟶* ⟨a',b'⟩
@@ -904,12 +920,8 @@ fmap-10-inl f = fmap-sum-inl (K TyFuncCode) TermF-11 f
 --   In ∘ (inr ∘ (inr ∘ (inl ∘ ⟨...⟩))) = encode fst
 --
 -- All K-based cases follow this pattern with varying inr depths.
--- We postulate them - the proof structure is mechanical but tedious.
 
-postulate
-  refold-idem-fst : ∀ {A B} → (cata TermF In ∘ encode (fst {A} {B})) ⟶* encode (fst {A} {B})
-
--- The remaining K-based cases follow the same pattern as fst:
+-- The remaining K-based cases:
 -- 1. cata-β-right to unfold
 -- 2. Navigate through injection chain with assoc and case reductions
 -- 3. K functor gives fmap K f = id, so fmap reduces away
@@ -918,13 +930,333 @@ postulate
 -- Each case just has more inrs to navigate. The proofs are mechanical but long.
 -- We postulate them - the fst proof above demonstrates the complete pattern.
 
-postulate
-  refold-idem-snd : ∀ {A B} → (cata TermF In ∘ encode (snd {A} {B})) ⟶* encode (snd {A} {B})
-  refold-idem-inl : ∀ {A B} → (cata TermF In ∘ encode (inl {A} {B})) ⟶* encode (inl {A} {B})
-  refold-idem-inr : ∀ {A B} → (cata TermF In ∘ encode (inr {A} {B})) ⟶* encode (inr {A} {B})
-  refold-idem-terminal : ∀ {A} → (cata TermF In ∘ encode (terminal {A})) ⟶* encode (terminal {A})
-  refold-idem-In : ∀ {F} → (cata TermF In ∘ encode (In {F})) ⟶* encode (In {F})
-  refold-idem-Out : ∀ {F} → (cata TermF In ∘ encode (Out {F})) ⟶* encode (Out {F})
+-- refold-idem-fst: position 2 (2 inrs before inl)
+-- encode fst = In ∘ inr^2 ∘ inl ∘ ⟨ ⌜A⌝Ty, ⌜B⌝Ty ⟩
+-- Payload functor: K TyFuncCode ⊗ K TyFuncCode
+refold-idem-fst : ∀ {A B} → (cata TermF In ∘ encode (fst {A} {B})) ⟶* encode (fst {A} {B})
+refold-idem-fst {A} {B} = ⟶*-trans step1 step2
+  where
+    payload : Term Unit (TyFuncCode * TyFuncCode)
+    payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+
+    f : Term TermCode' TermCode'
+    f = cata TermF In
+
+    step1 = cata-β-right
+
+    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
+    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
+
+    -- Final step: fmap TermF-2 f ∘ (inl ∘ payload) ⟶* inl ∘ payload
+    -- fmap TermF-2 f ∘ inl ⟶ inl ∘ fmap (K⊗K) f
+    -- fmap (K⊗K) f ∘ payload ⟶* id ∘ payload ⟶ payload
+    r2 : (fmap TermF-2 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+    r2 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' payload (fmap-2-inl f))
+             (⟶*-trans (step assoc-r done)
+               (⟶*-trans (∘-cong-right' inl
+                 (⟶*-trans (∘-cong-left' payload (fmap-KK-id TyFuncCode TyFuncCode f))
+                   (step id-left done)))
+                 done)))
+
+    reduce-chain =
+      ⟶*-trans r0 (∘-cong-right' inr
+        (⟶*-trans r1 (∘-cong-right' inr r2)))
+
+    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+-- refold-idem-snd: position 3 (3 inrs before inl)
+-- encode snd = In ∘ inr^3 ∘ inl ∘ ⟨ ⌜A⌝Ty, ⌜B⌝Ty ⟩
+-- Payload functor: K TyFuncCode ⊗ K TyFuncCode
+refold-idem-snd : ∀ {A B} → (cata TermF In ∘ encode (snd {A} {B})) ⟶* encode (snd {A} {B})
+refold-idem-snd {A} {B} = ⟶*-trans step1 step2
+  where
+    payload : Term Unit (TyFuncCode * TyFuncCode)
+    payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+
+    f : Term TermCode' TermCode'
+    f = cata TermF In
+
+    step1 = cata-β-right
+
+    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
+    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
+    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
+
+    r3 : (fmap TermF-3 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+    r3 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' payload (fmap-3-inl f))
+             (⟶*-trans (step assoc-r done)
+               (⟶*-trans (∘-cong-right' inl
+                 (⟶*-trans (∘-cong-left' payload (fmap-KK-id TyFuncCode TyFuncCode f))
+                   (step id-left done)))
+                 done)))
+
+    reduce-chain =
+      ⟶*-trans r0 (∘-cong-right' inr
+        (⟶*-trans r1 (∘-cong-right' inr
+          (⟶*-trans r2 (∘-cong-right' inr r3)))))
+
+    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+-- refold-idem-inl: position 5 (5 inrs before inl)
+-- encode inl = In ∘ inr^5 ∘ inl ∘ ⟨ ⌜A⌝Ty, ⌜B⌝Ty ⟩
+-- Payload functor: K TyFuncCode ⊗ K TyFuncCode
+refold-idem-inl : ∀ {A B} → (cata TermF In ∘ encode (inl {A} {B})) ⟶* encode (inl {A} {B})
+refold-idem-inl {A} {B} = ⟶*-trans step1 step2
+  where
+    payload : Term Unit (TyFuncCode * TyFuncCode)
+    payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+
+    f : Term TermCode' TermCode'
+    f = cata TermF In
+
+    step1 = cata-β-right
+
+    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
+    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
+    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
+    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
+    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
+
+    r5 : (fmap TermF-5 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+    r5 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' payload (fmap-5-inl f))
+             (⟶*-trans (step assoc-r done)
+               (⟶*-trans (∘-cong-right' inl
+                 (⟶*-trans (∘-cong-left' payload (fmap-KK-id TyFuncCode TyFuncCode f))
+                   (step id-left done)))
+                 done)))
+
+    reduce-chain =
+      ⟶*-trans r0 (∘-cong-right' inr
+        (⟶*-trans r1 (∘-cong-right' inr
+          (⟶*-trans r2 (∘-cong-right' inr
+            (⟶*-trans r3 (∘-cong-right' inr
+              (⟶*-trans r4 (∘-cong-right' inr r5)))))))))
+
+    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+-- refold-idem-inr: position 6 (6 inrs before inl)
+-- encode inr = In ∘ inr^6 ∘ inl ∘ ⟨ ⌜A⌝Ty, ⌜B⌝Ty ⟩
+-- Payload functor: K TyFuncCode ⊗ K TyFuncCode
+refold-idem-inr : ∀ {A B} → (cata TermF In ∘ encode (inr {A} {B})) ⟶* encode (inr {A} {B})
+refold-idem-inr {A} {B} = ⟶*-trans step1 step2
+  where
+    payload : Term Unit (TyFuncCode * TyFuncCode)
+    payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+
+    f : Term TermCode' TermCode'
+    f = cata TermF In
+
+    step1 = cata-β-right
+
+    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
+    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
+    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
+    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
+    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
+    r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr f)) (step assoc-r done))
+
+    r6 : (fmap TermF-6 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+    r6 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' payload (fmap-6-inl f))
+             (⟶*-trans (step assoc-r done)
+               (⟶*-trans (∘-cong-right' inl
+                 (⟶*-trans (∘-cong-left' payload (fmap-KK-id TyFuncCode TyFuncCode f))
+                   (step id-left done)))
+                 done)))
+
+    reduce-chain =
+      ⟶*-trans r0 (∘-cong-right' inr
+        (⟶*-trans r1 (∘-cong-right' inr
+          (⟶*-trans r2 (∘-cong-right' inr
+            (⟶*-trans r3 (∘-cong-right' inr
+              (⟶*-trans r4 (∘-cong-right' inr
+                (⟶*-trans r5 (∘-cong-right' inr r6)))))))))))
+
+    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+-- refold-idem-terminal: position 8 (8 inrs before inl)
+-- encode terminal = In ∘ inr^8 ∘ inl ∘ ⌜A⌝Ty
+-- Payload functor: K TyFuncCode, so fmap (K _) f = id definitionally
+refold-idem-terminal : ∀ {A} → (cata TermF In ∘ encode (terminal {A})) ⟶* encode (terminal {A})
+refold-idem-terminal {A} = ⟶*-trans step1 step2
+  where
+    payload : Term Unit TyFuncCode
+    payload = ⌜ A ⌝Ty
+
+    f : Term TermCode' TermCode'
+    f = cata TermF In
+
+    -- Step 1: Unfold cata using cata-β-right
+    step1 : (f ∘ (In ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))))))) ⟶*
+            ((In ∘ fmap TermF f) ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))))))
+    step1 = cata-β-right
+
+    -- Navigation helper: (fmapN ∘ (inr ∘ rest)) ⟶* (inr ∘ (fmapN+1 ∘ rest))
+    -- Pattern: assoc-l, reduce fmapN ∘ inr, assoc-r
+
+    -- Chain through all 8 inrs, inlining the pattern
+    r0 : (fmap TermF f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))))) ⟶*
+         (inr ∘ (fmap TermF-1 f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))))))
+    r0 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f))
+             (step assoc-r done))
+
+    r1 : (fmap TermF-1 f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))))) ⟶*
+         (inr ∘ (fmap TermF-2 f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))))
+    r1 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' _ (fmap-1-inr f))
+             (step assoc-r done))
+
+    r2 : (fmap TermF-2 f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))) ⟶*
+         (inr ∘ (fmap TermF-3 f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))))
+    r2 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' _ (fmap-2-inr f))
+             (step assoc-r done))
+
+    r3 : (fmap TermF-3 f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))) ⟶*
+         (inr ∘ (fmap TermF-4 f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))
+    r3 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' _ (fmap-3-inr f))
+             (step assoc-r done))
+
+    r4 : (fmap TermF-4 f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))) ⟶*
+         (inr ∘ (fmap TermF-5 f ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))
+    r4 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' _ (fmap-4-inr f))
+             (step assoc-r done))
+
+    r5 : (fmap TermF-5 f ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))) ⟶*
+         (inr ∘ (fmap TermF-6 f ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))
+    r5 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' _ (fmap-5-inr f))
+             (step assoc-r done))
+
+    r6 : (fmap TermF-6 f ∘ (inr ∘ (inr ∘ (inl ∘ payload)))) ⟶*
+         (inr ∘ (fmap TermF-7 f ∘ (inr ∘ (inl ∘ payload))))
+    r6 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' _ (fmap-6-inr f))
+             (step assoc-r done))
+
+    r7 : (fmap TermF-7 f ∘ (inr ∘ (inl ∘ payload))) ⟶*
+         (inr ∘ (fmap TermF-8 f ∘ (inl ∘ payload)))
+    r7 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' _ (fmap-7-inr f))
+             (step assoc-r done))
+
+    -- Final step: fmap TermF-8 f ∘ inl ⟶* inl (since fmap (K _) f = id)
+    r8 : (fmap TermF-8 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+    r8 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' payload (fmap-8-inl f))
+             (⟶*-trans (∘-cong-left' payload (step id-right done))
+               done))
+
+    -- Chain all together
+    reduce-chain : (fmap TermF f ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))))) ⟶*
+                   (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))))
+    reduce-chain =
+      ⟶*-trans r0 (∘-cong-right' inr
+        (⟶*-trans r1 (∘-cong-right' inr
+          (⟶*-trans r2 (∘-cong-right' inr
+            (⟶*-trans r3 (∘-cong-right' inr
+              (⟶*-trans r4 (∘-cong-right' inr
+                (⟶*-trans r5 (∘-cong-right' inr
+                  (⟶*-trans r6 (∘-cong-right' inr
+                    (⟶*-trans r7 (∘-cong-right' inr r8)))))))))))))))
+
+    step2 : ((In ∘ fmap TermF f) ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))))) ⟶*
+            (In ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))))))
+    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+-- refold-idem-In: position 9 (9 inrs before inl)
+-- encode In = In ∘ inr^9 ∘ inl ∘ ⌜F⌝Func
+-- Payload functor: K TyFuncCode
+refold-idem-In : ∀ {F} → (cata TermF In ∘ encode (In {F})) ⟶* encode (In {F})
+refold-idem-In {F} = ⟶*-trans step1 step2
+  where
+    payload : Term Unit TyFuncCode
+    payload = ⌜ F ⌝Func
+
+    f : Term TermCode' TermCode'
+    f = cata TermF In
+
+    step1 = cata-β-right
+
+    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
+    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
+    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
+    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
+    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
+    r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr f)) (step assoc-r done))
+    r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr f)) (step assoc-r done))
+    r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr f)) (step assoc-r done))
+    r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr f)) (step assoc-r done))
+
+    r9 : (fmap TermF-9 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+    r9 = ⟶*-trans (step assoc-l done)
+           (⟶*-trans (∘-cong-left' payload (fmap-9-inl f))
+             (⟶*-trans (∘-cong-left' payload (step id-right done))
+               done))
+
+    reduce-chain =
+      ⟶*-trans r0 (∘-cong-right' inr
+        (⟶*-trans r1 (∘-cong-right' inr
+          (⟶*-trans r2 (∘-cong-right' inr
+            (⟶*-trans r3 (∘-cong-right' inr
+              (⟶*-trans r4 (∘-cong-right' inr
+                (⟶*-trans r5 (∘-cong-right' inr
+                  (⟶*-trans r6 (∘-cong-right' inr
+                    (⟶*-trans r7 (∘-cong-right' inr
+                      (⟶*-trans r8 (∘-cong-right' inr r9)))))))))))))))))
+
+    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+-- refold-idem-Out: position 10 (10 inrs before inl)
+-- encode Out = In ∘ inr^10 ∘ inl ∘ ⌜F⌝Func
+-- Payload functor: K TyFuncCode
+refold-idem-Out : ∀ {F} → (cata TermF In ∘ encode (Out {F})) ⟶* encode (Out {F})
+refold-idem-Out {F} = ⟶*-trans step1 step2
+  where
+    payload : Term Unit TyFuncCode
+    payload = ⌜ F ⌝Func
+
+    f : Term TermCode' TermCode'
+    f = cata TermF In
+
+    step1 = cata-β-right
+
+    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
+    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
+    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
+    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
+    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
+    r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr f)) (step assoc-r done))
+    r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr f)) (step assoc-r done))
+    r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr f)) (step assoc-r done))
+    r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr f)) (step assoc-r done))
+    r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr f)) (step assoc-r done))
+
+    r10 : (fmap TermF-10 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+    r10 = ⟶*-trans (step assoc-l done)
+            (⟶*-trans (∘-cong-left' payload (fmap-10-inl f))
+              (⟶*-trans (∘-cong-left' payload (step id-right done))
+                done))
+
+    reduce-chain =
+      ⟶*-trans r0 (∘-cong-right' inr
+        (⟶*-trans r1 (∘-cong-right' inr
+          (⟶*-trans r2 (∘-cong-right' inr
+            (⟶*-trans r3 (∘-cong-right' inr
+              (⟶*-trans r4 (∘-cong-right' inr
+                (⟶*-trans r5 (∘-cong-right' inr
+                  (⟶*-trans r6 (∘-cong-right' inr
+                    (⟶*-trans r7 (∘-cong-right' inr
+                      (⟶*-trans r8 (∘-cong-right' inr
+                        (⟶*-trans r9 (∘-cong-right' inr r10)))))))))))))))))))
+
+    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
 
 ------------------------------------------------------------------------
 -- Id-based refold-idem proofs (recursive)
@@ -938,30 +1270,234 @@ postulate
 -- 4. Apply IH recursively
 -- 5. Reassemble
 
-postulate
+-- Mutual recursion block for Id-based cases
+mutual
+  refold-idempotent : ∀ {A B} (t : Term A B) →
+                      (cata TermF In ∘ encode t) ⟶* encode t
+  refold-idempotent id = refold-idem-id
+  refold-idempotent (f ∘ g) = refold-idem-comp f g
+  refold-idempotent fst = refold-idem-fst
+  refold-idempotent snd = refold-idem-snd
+  refold-idempotent ⟨ f , g ⟩ = refold-idem-pair f g
+  refold-idempotent inl = refold-idem-inl
+  refold-idempotent inr = refold-idem-inr
+  refold-idempotent [ f , g ] = refold-idem-case f g
+  refold-idempotent terminal = refold-idem-terminal
+  refold-idempotent In = refold-idem-In
+  refold-idempotent Out = refold-idem-Out
+  refold-idempotent (cata F alg) = refold-idem-cata alg
+
+  -- refold-idem-comp: position 1 (1 inr before inl)
+  -- encode (f ∘ g) = In ∘ inr ∘ inl ∘ ⟨ encode f , encode g ⟩
+  -- Payload functor: Id ⊗ Id
   refold-idem-comp : ∀ {A B C} (f : Term B C) (g : Term A B) →
                      (cata TermF In ∘ encode (f ∘ g)) ⟶* encode (f ∘ g)
+  refold-idem-comp {A} {B} {C} f g = ⟶*-trans step1 step2
+    where
+      payload : Term Unit (TermCode' * TermCode')
+      payload = ⟨ encode f , encode g ⟩
+
+      c : Term TermCode' TermCode'
+      c = cata TermF In
+
+      step1 = cata-β-right
+
+      -- Navigate 1 inr
+      r0 : (fmap TermF c ∘ (inr ∘ (inl ∘ payload))) ⟶*
+           (inr ∘ (fmap TermF-1 c ∘ (inl ∘ payload)))
+      r0 = ⟶*-trans (step assoc-l done)
+             (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c))
+               (step assoc-r done))
+
+      -- Handle inl with Id⊗Id payload
+      -- fmap (Id ⊗ Id) c = ⟨ c ∘ fst , c ∘ snd ⟩
+      -- ⟨ c ∘ fst , c ∘ snd ⟩ ∘ ⟨ encode f , encode g ⟩
+      -- ⟶ ⟨ (c ∘ fst) ∘ payload , (c ∘ snd) ∘ payload ⟩ (by pair-comp)
+      -- ⟶* ⟨ c ∘ encode f , c ∘ encode g ⟩ (by assoc + fst-pair/snd-pair)
+      -- ⟶* ⟨ encode f , encode g ⟩ (by IH)
+
+      r1 : (fmap TermF-1 c ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+      r1 = ⟶*-trans (step assoc-l done)
+             (⟶*-trans (∘-cong-left' payload (fmap-1-inl c))
+               (⟶*-trans (step assoc-r done)
+                 (∘-cong-right' inl ih-step)))
+        where
+          -- fmap (Id ⊗ Id) c ∘ payload ⟶* payload
+          ih-step : (fmap (Id ⊗ Id) c ∘ payload) ⟶* payload
+          ih-step =
+            -- fmap (Id ⊗ Id) c = ⟨ c ∘ fst , c ∘ snd ⟩
+            -- ⟨ c ∘ fst , c ∘ snd ⟩ ∘ ⟨ encode f , encode g ⟩
+            ⟶*-trans (step pair-comp done)  -- ⟶ ⟨ (c ∘ fst) ∘ payload , (c ∘ snd) ∘ payload ⟩
+              (⟨⟩-cong
+                (⟶*-trans (step assoc-r done)  -- (c ∘ fst) ∘ payload ⟶ c ∘ (fst ∘ payload)
+                  (⟶*-trans (∘-cong-right' c (step fst-pair done))  -- ⟶* c ∘ encode f
+                    (refold-idempotent f)))  -- IH: ⟶* encode f
+                (⟶*-trans (step assoc-r done)  -- (c ∘ snd) ∘ payload ⟶ c ∘ (snd ∘ payload)
+                  (⟶*-trans (∘-cong-right' c (step snd-pair done))  -- ⟶* c ∘ encode g
+                    (refold-idempotent g))))  -- IH: ⟶* encode g
+
+      reduce-chain : (fmap TermF c ∘ (inr ∘ (inl ∘ payload))) ⟶*
+                     (inr ∘ (inl ∘ payload))
+      reduce-chain = ⟶*-trans r0 (∘-cong-right' inr r1)
+
+      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+  -- refold-idem-pair: position 4 (4 inrs before inl)
+  -- encode ⟨ f , g ⟩ = In ∘ inr^4 ∘ inl ∘ ⟨ encode f , encode g ⟩
+  -- Payload functor: Id ⊗ Id
   refold-idem-pair : ∀ {A B C} (f : Term C A) (g : Term C B) →
                      (cata TermF In ∘ encode ⟨ f , g ⟩) ⟶* encode ⟨ f , g ⟩
+  refold-idem-pair {A} {B} {C} f g = ⟶*-trans step1 step2
+    where
+      payload : Term Unit (TermCode' * TermCode')
+      payload = ⟨ encode f , encode g ⟩
+
+      c : Term TermCode' TermCode'
+      c = cata TermF In
+
+      step1 = cata-β-right
+
+      r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
+      r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
+      r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
+      r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
+
+      r4 : (fmap TermF-4 c ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+      r4 = ⟶*-trans (step assoc-l done)
+             (⟶*-trans (∘-cong-left' payload (fmap-4-inl c))
+               (⟶*-trans (step assoc-r done)
+                 (∘-cong-right' inl ih-step)))
+        where
+          ih-step : (fmap (Id ⊗ Id) c ∘ payload) ⟶* payload
+          ih-step =
+            ⟶*-trans (step pair-comp done)
+              (⟨⟩-cong
+                (⟶*-trans (step assoc-r done)
+                  (⟶*-trans (∘-cong-right' c (step fst-pair done))
+                    (refold-idempotent f)))
+                (⟶*-trans (step assoc-r done)
+                  (⟶*-trans (∘-cong-right' c (step snd-pair done))
+                    (refold-idempotent g))))
+
+      reduce-chain =
+        ⟶*-trans r0 (∘-cong-right' inr
+          (⟶*-trans r1 (∘-cong-right' inr
+            (⟶*-trans r2 (∘-cong-right' inr
+              (⟶*-trans r3 (∘-cong-right' inr r4)))))))
+
+      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+  -- refold-idem-case: position 7 (7 inrs before inl)
+  -- encode [ f , g ] = In ∘ inr^7 ∘ inl ∘ ⟨ encode f , encode g ⟩
+  -- Payload functor: Id ⊗ Id
   refold-idem-case : ∀ {A B C} (f : Term A C) (g : Term B C) →
                      (cata TermF In ∘ encode [ f , g ]) ⟶* encode [ f , g ]
+  refold-idem-case {A} {B} {C} f g = ⟶*-trans step1 step2
+    where
+      payload : Term Unit (TermCode' * TermCode')
+      payload = ⟨ encode f , encode g ⟩
+
+      c : Term TermCode' TermCode'
+      c = cata TermF In
+
+      step1 = cata-β-right
+
+      r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
+      r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
+      r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
+      r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
+      r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr c)) (step assoc-r done))
+      r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr c)) (step assoc-r done))
+      r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr c)) (step assoc-r done))
+
+      r7 : (fmap TermF-7 c ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+      r7 = ⟶*-trans (step assoc-l done)
+             (⟶*-trans (∘-cong-left' payload (fmap-7-inl c))
+               (⟶*-trans (step assoc-r done)
+                 (∘-cong-right' inl ih-step)))
+        where
+          ih-step : (fmap (Id ⊗ Id) c ∘ payload) ⟶* payload
+          ih-step =
+            ⟶*-trans (step pair-comp done)
+              (⟨⟩-cong
+                (⟶*-trans (step assoc-r done)
+                  (⟶*-trans (∘-cong-right' c (step fst-pair done))
+                    (refold-idempotent f)))
+                (⟶*-trans (step assoc-r done)
+                  (⟶*-trans (∘-cong-right' c (step snd-pair done))
+                    (refold-idempotent g))))
+
+      reduce-chain =
+        ⟶*-trans r0 (∘-cong-right' inr
+          (⟶*-trans r1 (∘-cong-right' inr
+            (⟶*-trans r2 (∘-cong-right' inr
+              (⟶*-trans r3 (∘-cong-right' inr
+                (⟶*-trans r4 (∘-cong-right' inr
+                  (⟶*-trans r5 (∘-cong-right' inr
+                    (⟶*-trans r6 (∘-cong-right' inr r7)))))))))))))
+
+      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+  -- refold-idem-cata: position 11 (11 inrs, no inl - terminal position)
+  -- encode (cata F alg) = In ∘ inr^11 ∘ ⟨ ⌜F⌝Func , encode alg ⟩
+  -- Payload functor: K TyFuncCode ⊗ Id
   refold-idem-cata : ∀ {F A} (alg : Term (⟦ F ⟧F A) A) →
                      (cata TermF In ∘ encode (cata F alg)) ⟶* encode (cata F alg)
+  refold-idem-cata {F} {A} alg = ⟶*-trans step1 step2
+    where
+      payload : Term Unit (TyFuncCode * TermCode')
+      payload = ⟨ ⌜ F ⌝Func , encode alg ⟩
 
-refold-idempotent : ∀ {A B} (t : Term A B) →
-                    (cata TermF In ∘ encode t) ⟶* encode t
-refold-idempotent id = refold-idem-id
-refold-idempotent (f ∘ g) = refold-idem-comp f g
-refold-idempotent fst = refold-idem-fst
-refold-idempotent snd = refold-idem-snd
-refold-idempotent ⟨ f , g ⟩ = refold-idem-pair f g
-refold-idempotent inl = refold-idem-inl
-refold-idempotent inr = refold-idem-inr
-refold-idempotent [ f , g ] = refold-idem-case f g
-refold-idempotent terminal = refold-idem-terminal
-refold-idempotent In = refold-idem-In
-refold-idempotent Out = refold-idem-Out
-refold-idempotent (cata F alg) = refold-idem-cata alg
+      c : Term TermCode' TermCode'
+      c = cata TermF In
+
+      step1 = cata-β-right
+
+      r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
+      r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
+      r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
+      r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
+      r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr c)) (step assoc-r done))
+      r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr c)) (step assoc-r done))
+      r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr c)) (step assoc-r done))
+      r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr c)) (step assoc-r done))
+      r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr c)) (step assoc-r done))
+      r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr c)) (step assoc-r done))
+      r10 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-10-inr c)) (step assoc-r done))
+
+      -- Final step: fmap (K ⊗ Id) c ∘ payload
+      -- fmap (K TyFuncCode ⊗ Id) c = ⟨ id ∘ fst , c ∘ snd ⟩ = ⟨ fst , c ∘ snd ⟩ after id-left
+      -- ⟨ fst , c ∘ snd ⟩ ∘ ⟨ ⌜F⌝Func , encode alg ⟩
+      -- ⟶ ⟨ fst ∘ payload , (c ∘ snd) ∘ payload ⟩ (by pair-comp)
+      -- ⟶ ⟨ ⌜F⌝Func , c ∘ encode alg ⟩ (by fst-pair, assoc+snd-pair)
+      -- ⟶* ⟨ ⌜F⌝Func , encode alg ⟩ (by IH)
+
+      r11 : (fmap TermF-11 c ∘ payload) ⟶* payload
+      r11 =
+        -- fmap TermF-11 c = fmap (K TyFuncCode ⊗ Id) c = ⟨ id ∘ fst , c ∘ snd ⟩
+        ⟶*-trans (step pair-comp done)  -- ⟶ ⟨ (id ∘ fst) ∘ payload , (c ∘ snd) ∘ payload ⟩
+          (⟨⟩-cong
+            (⟶*-trans (step assoc-r done)  -- (id ∘ fst) ∘ payload ⟶ id ∘ (fst ∘ payload)
+              (⟶*-trans (step id-left done)  -- ⟶ fst ∘ payload
+                (step fst-pair done)))  -- ⟶ ⌜F⌝Func
+            (⟶*-trans (step assoc-r done)  -- (c ∘ snd) ∘ payload ⟶ c ∘ (snd ∘ payload)
+              (⟶*-trans (∘-cong-right' c (step snd-pair done))  -- ⟶ c ∘ encode alg
+                (refold-idempotent alg))))  -- IH: ⟶* encode alg
+
+      reduce-chain =
+        ⟶*-trans r0 (∘-cong-right' inr
+          (⟶*-trans r1 (∘-cong-right' inr
+            (⟶*-trans r2 (∘-cong-right' inr
+              (⟶*-trans r3 (∘-cong-right' inr
+                (⟶*-trans r4 (∘-cong-right' inr
+                  (⟶*-trans r5 (∘-cong-right' inr
+                    (⟶*-trans r6 (∘-cong-right' inr
+                      (⟶*-trans r7 (∘-cong-right' inr
+                        (⟶*-trans r8 (∘-cong-right' inr
+                          (⟶*-trans r9 (∘-cong-right' inr
+                            (⟶*-trans r10 (∘-cong-right' inr r11)))))))))))))))))))))
+
+      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
 
 -- The N-refold fixpoint follows from refold-idempotent
 N-refold-fixpoint : (N-refold ∘ encode N-refold) ⟶* encode N-refold
