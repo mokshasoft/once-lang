@@ -13,6 +13,268 @@ Establish that Once programs can be formally verified with a **minimal trusted c
 
 ---
 
+## The Bootstrap Tower (Overview)
+
+The path from "trust only mathematics" to "fully verified Once" is a **bootstrap tower** where each level builds on the previous:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    THE BOOTSTRAP TOWER                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Level 0: Minimal CCC                                            │
+│    IR: id, ∘, fst, snd, ⟨_,_⟩, inl, inr, [_,_], terminal, In, cata │
+│    Verified by: Fixpoint property + mathematical theorems        │
+│    TCB: Mathematics only (~0 lines of code)                      │
+│                        ↓                                         │
+│  Level 1: + Exponentials                                         │
+│    IR: + curry, apply                                            │
+│    Verified by: Level 0 normalizer                               │
+│                        ↓                                         │
+│  Level 2: + Full Recursion Schemes (= OCP-0003 IR)               │
+│    IR: + ana, ν, guardedness checking                            │
+│    Verified by: Level 1 normalizer                               │
+│                        ↓                                         │
+│  Level 3: Once Compiler                                          │
+│    Full compiler: parser, type checker, elaborator, optimizer    │
+│    Verified by: Level 2 normalizer (totality + consistency)      │
+│                        ↓                                         │
+│  Level 4: + Dependent Types                                      │
+│    Proofs as programs, specifications as types                   │
+│    Verified by: Extended normalizer (proof checking)             │
+│                        ↓                                         │
+│  Level 5: Fully Verified Once                                    │
+│    Compiler with correctness proofs, self-hosting                │
+│    Verified by: Itself (all proofs checked by normalizer)        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key insight**: Each level doesn't need to TRUST the previous level's normalizer — it is VERIFIED by it. Trust flows only from mathematics through the fixpoint property at Level 0.
+
+**The end state**: Once + Dependent Types + TCB0 Normalizer = Fully verified language with trust only in math.
+
+---
+
+## The Bootstrap Tower (Detailed)
+
+### How Lower Levels Verify Higher Levels
+
+A crucial question: How can a Level 0 normalizer (which lacks curry/apply) verify a Level 1 normalizer (which uses curry/apply)?
+
+**Answer**: Lower levels don't need higher-level OPERATIONS — they have them as DATA.
+
+```
+Level 0 has:                    Level 0 handles curry/apply as:
+─────────────────               ─────────────────────────────────
+id, ∘, fst, snd, ⟨_,_⟩          DATA tags in the term encoding
+inl, inr, [_,_], terminal       Pattern matching via cata + [_,_]
+In, cata                        Reduction rules as data transformations
+```
+
+The Level 1 normalizer is ENCODED as Level 0 data:
+
+```
+Level 1 term: curry f           Level 0 encoding:
+                                In ∘ inr ∘ ... ∘ inl ∘ encode(f)
+                                     ↑
+                                     tag for "curry"
+```
+
+The Level 0 normalizer recognizes patterns in this encoded data:
+
+```
+Pattern: apply ∘ ⟨curry f, x⟩   (as encoded tags)
+Action:  Return encoding of f ∘ ⟨id, x⟩
+```
+
+This is like writing a Python interpreter in C: C doesn't have Python features, but can simulate them by manipulating data.
+
+### Level 0: Minimal CCC
+
+**IR Operations:**
+- Category: `id`, `_∘_`
+- Products: `fst`, `snd`, `⟨_,_⟩`
+- Coproducts: `inl`, `inr`, `[_,_]`
+- Terminal: `terminal`
+- Initial Algebras: `In`, `cata`
+
+**Verification method**: Fixpoint property
+
+```
+Theorem (from Fixpoint.agda):
+  If N(⟦N⟧) ⟶* ⟦N⟧  (normalizer applied to its own encoding)
+  Then ∀t. N correctly normalizes t
+
+Why this works:
+  1. CCC has unique normal forms (confluence + termination)
+  2. If N fixpoints, ⟦N⟧ must already be in normal form
+  3. By compositionality, N correctly normalizes all terms
+```
+
+**TCB**: Mathematics (categorical laws, Lambek's Lemma) + ~50-100 lines bootstrap code (or less with traces)
+
+**Current status**: In development (`bootstrap-normalizer` branch)
+
+### Level 1: CCC + Exponentials
+
+**Additional IR Operations:**
+- `curry : Term (A × B) C → Term A (B ⇒ C)`
+- `apply : Term ((A ⇒ B) × A) B`
+
+**Additional reduction rules:**
+- `apply ∘ ⟨curry f, x⟩ ⟶ f ∘ ⟨id, x⟩` (β)
+- `curry (apply ∘ ⟨f ∘ fst, snd⟩) ⟶ f` (η)
+
+**Verification method**: Level 0 normalizer
+
+```
+1. Write Level 1 normalizer N₁ (uses curry/apply)
+2. Encode N₁ as Level 0 data
+3. Level 0 normalizer verifies N₁'s encoding is well-formed
+4. N₁ achieves fixpoint on its own encoding
+5. N₁ is verified
+```
+
+**TCB**: Level 0 (already verified)
+
+### Level 2: Full Recursion Schemes (OCP-0003 IR)
+
+**Additional IR Operations:**
+- `ν F` (greatest fixpoint / coinductive types)
+- `Out : νF → F(νF)` (coalgebra structure)
+- `ana : (A → F A) → A → νF` (anamorphism)
+- Guardedness checking for productivity
+
+**This IS the OCP-0003 IR**: The complete Once intermediate representation.
+
+**Verification method**: Level 1 normalizer
+
+```
+1. Write Level 2 normalizer N₂ (uses ana, guardedness)
+2. Encode N₂ as Level 1 data
+3. Level 1 normalizer verifies N₂'s encoding
+4. N₂ achieves fixpoint
+5. N₂ is verified
+```
+
+**TCB**: Levels 0-1 (already verified)
+
+### Level 3: Once Compiler
+
+**Components:**
+- Parser: `String → Maybe AST`
+- Type Checker: `AST → Maybe TypedAST`
+- Elaborator: `TypedAST → IR`
+- Optimizer: `IR → IR`
+- Code Generator: `IR → TargetCode`
+
+**Verification method**: Level 2 normalizer
+
+```
+What the normalizer verifies:
+
+1. TOTALITY
+   - Compile Once compiler to IR
+   - Normalizer checks IR is well-formed
+   - Well-formed IR terminates (by Lambek's Lemma)
+   → The compiler doesn't crash or loop
+
+2. CONSISTENCY (Fixpoint)
+   - Run compiler on its own source
+   - Check: normalize(output) = normalize(compiler)
+   → The compiler is self-consistent
+
+3. OPTIMIZER CORRECTNESS
+   - For each optimization: check normalize(opt(t)) = normalize(t)
+   → Optimizations preserve semantics
+```
+
+**What's NOT yet verified**: Semantic correctness (does the compiler implement the language correctly?)
+
+**TCB**: Levels 0-2 (already verified)
+
+### Level 4: Once + Dependent Types
+
+**Additional capabilities:**
+- Types can depend on values: `Vec : Nat → Type → Type`
+- Propositions as types: `IsEven : Nat → Type`
+- Proofs as programs: `proof : IsEven 4`
+
+**Verification method**: Extended normalizer (proof checking)
+
+```
+With dependent types, we can write SPECIFICATIONS:
+
+compile-correct : ∀ s → ⟦compile s⟧ ≡ ⟦s⟧
+--                      ↑ compiled semantics = source semantics
+
+parse-inverse : ∀ ast → parse (pretty ast) ≡ Just ast
+--                      ↑ parser inverts pretty-printer
+
+The proof terms compile to IR.
+The normalizer checks: does the proof normalize to refl?
+If yes, the specification is satisfied.
+```
+
+**TCB**: Levels 0-3 (already verified)
+
+### Level 5: Fully Verified Once
+
+**The end state:**
+- Once compiler written in Once
+- Correctness proofs written in Once
+- Both compile to IR
+- Normalizer verifies both code and proofs
+- System is self-hosting and self-verifying
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         TCB (TRUSTED)                            │
+├─────────────────────────────────────────────────────────────────┤
+│  Mathematics (category theory, logic)                            │
+│  Hardware (CPU, memory)                                          │
+│  Bootstrap normalizer (~50-100 lines, or less)                   │
+├─────────────────────────────────────────────────────────────────┤
+│                      VERIFIED (NOT TRUSTED)                      │
+├─────────────────────────────────────────────────────────────────┤
+│  Once compiler (parser, type checker, elaborator, optimizer)     │
+│  Correctness proofs for the compiler                             │
+│  Once standard library                                           │
+│  All Once programs and their proofs                              │
+│  The normalizer itself (after bootstrap)                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Summary: Trust Flow
+
+```
+Mathematics (trusted, peer-reviewed since 1960s)
+    ↓ proves
+"Fixpoint ⟹ Correctness" theorem
+    ↓ applied to
+Bootstrap normalizer (~50-100 lines, human-verifiable)
+    ↓ verifies (via fixpoint)
+Level 0 normalizer
+    ↓ verifies
+Level 1 normalizer
+    ↓ verifies
+Level 2 normalizer (OCP-0003 IR)
+    ↓ verifies
+Once compiler (totality, consistency)
+    ↓ with dependent types, verifies
+Once compiler proofs (semantic correctness)
+    ↓ verifies
+All Once programs + proofs
+```
+
+The entire verification chain rests on:
+1. Mathematical theorems (published, peer-reviewed)
+2. A tiny bootstrap (~50-100 lines, or pen-and-paper)
+3. Hardware (unavoidable)
+
+---
+
 ## Motivation
 
 ### The Traditional Trust Problem
@@ -1032,7 +1294,31 @@ This is as close to "trust only mathematics" as computationally possible.
    - Trust only human pattern matching ability
    - Theoretical minimum for any computational system
 
-4. **Encoding**: The IR representation faithfully captures the program. (Can be verified by inspection or multiple encoders.)
+4. **Encoding Faithfulness**: The IR representation faithfully captures the program.
+
+   The normalizer works on ENCODINGS of terms, not terms directly:
+   ```
+   encode : Term A B → Term Unit TermCode
+   ```
+
+   For verification to be meaningful, `encode` must be:
+
+   - **Injective**: Different terms produce different codes
+     ```
+     encode (f ∘ g) ≠ encode (g ∘ f)
+     ```
+     (Proven formally in Encoding.agda)
+
+   - **Structure-preserving**: All relevant information is captured
+     (Constructor tags, type information, subterms)
+
+   - **Faithful to intent**: The Agda definitions match mathematical concepts
+     (Verified by human inspection of ~50 lines of definitions)
+
+   This is a weak assumption:
+   - Injectivity is formally proven
+   - Structure preservation is by construction
+   - Faithfulness is checkable by reading the encoding function
 
 ### What This Doesn't Cover
 
