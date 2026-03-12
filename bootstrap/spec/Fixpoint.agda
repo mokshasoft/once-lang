@@ -19,11 +19,11 @@
 --   3. By compositionality, N correctly normalizes all terms
 ------------------------------------------------------------------------
 
-module Fixpoint where
+module spec.Fixpoint where
 
-open import Types
-open import MinimalCCC
-open import Encoding
+open import spec.Types
+open import spec.MinimalCCC
+open import spec.Encoding
 
 ------------------------------------------------------------------------
 -- Review: What We Have Proven
