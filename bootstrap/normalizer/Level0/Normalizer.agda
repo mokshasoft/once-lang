@@ -136,6 +136,34 @@ reduce-comp f g =
   reduce-cata-In f g
 
 ------------------------------------------------------------------------
+-- Eta reduction (TODO)
+--
+-- The eta rules are:
+--   ⟨ fst , snd ⟩ : Term (A * B) (A * B) ⟶ id   (eta-pair)
+--   [ inl , inr ] : Term (A + B) (A + B) ⟶ id   (eta-case)
+--
+-- Implementing eta reduction in Agda with indexed types is tricky:
+-- - Pattern matching on `fst` constrains the domain to be a product
+-- - A catch-all case must handle all other constructors
+-- - Agda's coverage checker gets stuck on type unification
+--
+-- Possible solutions:
+-- 1. Use decidable term equality with type casts
+-- 2. Use a "tag" representation that erases type indices
+-- 3. Use an external normalization pass for eta
+--
+-- For now, we skip eta reduction. The normalizer is still correct
+-- for beta reduction; eta just means some terms aren't fully reduced.
+------------------------------------------------------------------------
+
+-- Soundness lemmas for eta rules (for future use)
+eta-pair-sound : ∀ {A B} → ⟨ fst {A} {B} , snd ⟩ ⟶ id
+eta-pair-sound = eta-pair
+
+eta-case-sound : ∀ {A B} → [ inl {A} {B} , inr ] ⟶ id
+eta-case-sound = eta-case
+
+------------------------------------------------------------------------
 -- Soundness of reduction helpers
 --
 -- Each reduce-* function, when it returns inj₂ h, corresponds to
@@ -283,12 +311,10 @@ normalize (f ∘ g) with reduce-comp (normalize f) (normalize g)
 ... | inj₁ _       = normalize f ∘ normalize g
 normalize fst = fst
 normalize snd = snd
-normalize ⟨ f , g ⟩ = ⟨ normalize f , normalize g ⟩
--- TODO: eta-pair ⟨fst, snd⟩ ⟶ id requires more careful handling
+normalize ⟨ f , g ⟩ = ⟨ normalize f , normalize g ⟩  -- TODO: eta-pair
 normalize inl = inl
 normalize inr = inr
-normalize [ f , g ] = [ normalize f , normalize g ]
--- TODO: eta-case [inl, inr] ⟶ id requires more careful handling
+normalize [ f , g ] = [ normalize f , normalize g ]  -- TODO: eta-case
 normalize terminal = terminal
 normalize In = In
 normalize (cata F alg) = cata F (normalize alg)
