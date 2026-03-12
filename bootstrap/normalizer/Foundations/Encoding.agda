@@ -163,7 +163,8 @@ TermF = (K TyFuncCode)                              -- 0: id A
       ⊕ (Id ⊗ Id)                                   -- 7: [f, g]
       ⊕ (K TyFuncCode)                              -- 8: terminal A
       ⊕ (K TyFuncCode)                              -- 9: In F (store functor code)
-      ⊕ (K TyFuncCode ⊗ Id)                        -- 10: cata F alg (functor + algebra)
+      ⊕ (K TyFuncCode)                              -- 10: Out F (store functor code)
+      ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata F alg (functor + algebra)
 
 TermCode' : Ty
 TermCode' = μ TermF
@@ -230,9 +231,13 @@ inj-terminal = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ i
 inj-In : Term TyFuncCode UnfoldedTermCode
 inj-In = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
 
+-- Injection for Out
+inj-Out : Term TyFuncCode UnfoldedTermCode
+inj-Out = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+
 -- Injection for cata
 inj-cata : Term (TyFuncCode * TermCode') UnfoldedTermCode
-inj-cata = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr
+inj-cata = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr
 
 ------------------------------------------------------------------------
 -- Part 5: The Term Encoding Function
@@ -257,8 +262,9 @@ encode : ∀ {A B} → Term A B → Term Unit TermCode'
 -- 6: inr        - inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (6 inrs)
 -- 7: case       - inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (7 inrs)
 -- 8: terminal   - inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (8 inrs)
--- 9: In         - inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (9 inrs)
--- 10: cata      - inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr (10 inrs, no inl)
+-- 9: In         - inr^9 ∘ inl (9 inrs)
+-- 10: Out       - inr^10 ∘ inl (10 inrs)
+-- 11: cata      - inr^11 (11 inrs, no inl)
 
 encode (id {A}) = In ∘ inl ∘ ⌜ A ⌝Ty
 
@@ -280,7 +286,9 @@ encode (terminal {A}) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ i
 
 encode (In {F}) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ F ⌝Func
 
-encode (cata F alg) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ ⟨ ⌜ F ⌝Func , encode alg ⟩
+encode (Out {F}) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ F ⌝Func
+
+encode (cata F alg) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ ⟨ ⌜ F ⌝Func , encode alg ⟩
 
 ------------------------------------------------------------------------
 -- Part 6: Properties of the Encoding

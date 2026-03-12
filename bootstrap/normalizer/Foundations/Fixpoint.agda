@@ -298,10 +298,13 @@ encode-wf terminal = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-i
 encode-wf In = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
                  (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
                    (wf-comp wf-inr (wf-comp wf-inl (⌜⌝Func-wf _)))))))))))
+encode-wf Out = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                  (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                    (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inl (⌜⌝Func-wf _))))))))))))
 encode-wf (cata F alg) = wf-comp wf-In (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
                            (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
-                             (wf-comp wf-inr (wf-comp wf-inr
-                               (wf-pair (⌜⌝Func-wf F) (encode-wf alg))))))))))))
+                             (wf-comp wf-inr (wf-comp wf-inr (wf-comp wf-inr
+                               (wf-pair (⌜⌝Func-wf F) (encode-wf alg)))))))))))))
 
 -- LEMMA 4: Well-formed terms applied to well-formed terms are well-formed
 -- (Already proven as wf-comp in MinimalCCC)
@@ -345,6 +348,7 @@ encode-always-nf inr ()
 encode-always-nf [ f , g ] ()
 encode-always-nf terminal ()
 encode-always-nf In ()
+encode-always-nf Out ()
 encode-always-nf (cata F alg) ()
 
 -- Corollary: NF t implies NF (encode t) (trivially, since encode is always NF)
