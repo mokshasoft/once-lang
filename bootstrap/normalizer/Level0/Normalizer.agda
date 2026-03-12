@@ -688,13 +688,164 @@ mutual
 --
 -- N = cata TermF normalizeAlg
 --
--- For now, we postulate this and focus on the meta-level normalize.
+-- The algebra receives "unfolded" terms where subterms are already
+-- normalized (since cata processes bottom-up). For each constructor:
+--   - Most cases: re-wrap with In (no reduction needed)
+--   - Compose case: check for redex patterns and reduce if found
 ------------------------------------------------------------------------
 
-postulate
-  N : ConcreteNormalizer
+------------------------------------------------------------------------
+-- Algebra Helpers: Re-wrapping constructors
+--
+-- Each constructor needs to be wrapped back into TermCode'.
+-- The structure mirrors the encoding injections from Encoding.agda.
+------------------------------------------------------------------------
 
-  -- N corresponds to normalize
+-- For id: In ∘ inl (0 inrs)
+wrap-id : Term TyFuncCode TermCode'
+wrap-id = In ∘ inl
+
+-- For compose: In ∘ inr ∘ inl (1 inr)
+wrap-compose : Term (TermCode' * TermCode') TermCode'
+wrap-compose = In ∘ inr ∘ inl
+
+-- For fst: In ∘ inr ∘ inr ∘ inl (2 inrs)
+wrap-fst : Term (TyFuncCode * TyFuncCode) TermCode'
+wrap-fst = In ∘ inr ∘ inr ∘ inl
+
+-- For snd: In ∘ inr ∘ inr ∘ inr ∘ inl (3 inrs)
+wrap-snd : Term (TyFuncCode * TyFuncCode) TermCode'
+wrap-snd = In ∘ inr ∘ inr ∘ inr ∘ inl
+
+-- For pair: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (4 inrs)
+wrap-pair : Term (TermCode' * TermCode') TermCode'
+wrap-pair = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+
+-- For inl: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (5 inrs)
+wrap-inl : Term (TyFuncCode * TyFuncCode) TermCode'
+wrap-inl = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+
+-- For inr: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (6 inrs)
+wrap-inr : Term (TyFuncCode * TyFuncCode) TermCode'
+wrap-inr = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+
+-- For case: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (7 inrs)
+wrap-case : Term (TermCode' * TermCode') TermCode'
+wrap-case = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+
+-- For terminal: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (8 inrs)
+wrap-terminal : Term TyFuncCode TermCode'
+wrap-terminal = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+
+-- For In: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (9 inrs)
+wrap-In : Term TyFuncCode TermCode'
+wrap-In = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+
+-- For cata: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr (10 inrs)
+wrap-cata : Term (TyFuncCode * TermCode') TermCode'
+wrap-cata = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr
+
+------------------------------------------------------------------------
+-- Composition Handler
+--
+-- This is the key part: when we see a composition (f_code, g_code),
+-- we need to check if f and g form a redex. The redex patterns are:
+--   - id ∘ g        → g           (f_code encodes id)
+--   - f ∘ id        → f           (g_code encodes id)
+--   - fst ∘ ⟨h,k⟩   → h           (f_code encodes fst, g_code encodes pair)
+--   - snd ∘ ⟨h,k⟩   → k           (similar)
+--   - [h,k] ∘ inl   → h           (f_code encodes case, g_code encodes inl)
+--   - [h,k] ∘ inr   → k           (similar)
+--   - cata F a ∘ In → a ∘ fmap... (f_code encodes cata, g_code encodes In)
+--
+-- To detect these patterns, we need to inspect the encoded terms.
+-- This requires "peeking" at what constructor a code represents.
+--
+-- DESIGN CHOICE:
+-- Fully implementing this as a CCC morphism requires:
+-- 1. Decidable equality checks on codes (is this fst? is this pair?)
+-- 2. Case analysis on nested sums to extract constructor tags
+-- 3. Component extraction from pairs within codes
+--
+-- For the bootstrap, we postulate the compose handler and prove
+-- correctness separately. The key insight is that N's behavior
+-- on encodings MUST match the meta-level normalize function.
+------------------------------------------------------------------------
+
+-- Compose handler: check for redex and reduce, or just re-wrap
+-- For full implementation, this would be a complex case analysis.
+-- We postulate it with the correctness property.
+postulate
+  normalizeCompose : Term (TermCode' * TermCode') TermCode'
+
+  -- Correctness: normalizeCompose corresponds to reduce-comp + normalize
+  normalizeCompose-correct : ∀ {A B C} (f : Term B C) (g : Term A B) →
+    (normalizeCompose ∘ ⟨ encode (normalize f) , encode (normalize g) ⟩)
+    ⟶* encode (normalize (f ∘ g))
+
+------------------------------------------------------------------------
+-- The Normalizer Algebra
+--
+-- The algebra dispatches on the 11-way sum using nested case.
+-- Most constructors just re-wrap; compose uses normalizeCompose.
+------------------------------------------------------------------------
+
+-- Type alias for the unfolded term structure
+UnfoldedTerm : Ty
+UnfoldedTerm = ⟦ TermF ⟧F TermCode'
+
+-- Build the algebra as nested case expressions
+-- Structure: [ handler₀ , [ handler₁ , [ handler₂ , ... ]]]
+--
+-- The unfolded type is:
+--   TyFuncCode                    (id)
+--   + TermCode' * TermCode'       (compose)
+--   + TyFuncCode * TyFuncCode     (fst)
+--   + TyFuncCode * TyFuncCode     (snd)
+--   + TermCode' * TermCode'       (pair)
+--   + TyFuncCode * TyFuncCode     (inl)
+--   + TyFuncCode * TyFuncCode     (inr)
+--   + TermCode' * TermCode'       (case)
+--   + TyFuncCode                  (terminal)
+--   + TyFuncCode                  (In)
+--   + TyFuncCode * TermCode'      (cata)
+
+normalizeAlg : Term UnfoldedTerm TermCode'
+normalizeAlg =
+  [ wrap-id                          -- id: just re-wrap
+  , [ normalizeCompose               -- compose: check redex
+    , [ wrap-fst                     -- fst: just re-wrap
+      , [ wrap-snd                   -- snd: just re-wrap
+        , [ wrap-pair                -- pair: just re-wrap (eta handled by normalizeCompose)
+          , [ wrap-inl               -- inl: just re-wrap
+            , [ wrap-inr             -- inr: just re-wrap
+              , [ wrap-case          -- case: just re-wrap (eta handled by normalizeCompose)
+                , [ wrap-terminal    -- terminal: just re-wrap
+                  , [ wrap-In        -- In: just re-wrap
+                    , wrap-cata      -- cata: just re-wrap
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+
+------------------------------------------------------------------------
+-- The Concrete Normalizer
+------------------------------------------------------------------------
+
+-- N is defined as cata over TermF with normalizeAlg
+N : ConcreteNormalizer
+N = cata TermF normalizeAlg
+
+-- N corresponds to normalize (follows from normalizeAlg correctness)
+-- This is the key semantic property: running N on encode t
+-- produces the encoding of normalize t.
+postulate
   N-correct : ∀ {A B} (t : Term A B) →
     (N ∘ encode t) ⟶* encode (normalize t)
 
