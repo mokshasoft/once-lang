@@ -295,13 +295,39 @@ reduce-comp-sound f g h eq with <|>-sound (reduce-id-left f g) _ h eq
 ...           | inj₂ (_ , eq'''''') = reduce-cata-In-sound f g h eq''''''
 
 ------------------------------------------------------------------------
+-- Eta Reduction
+--
+-- The eta patterns are:
+--   ⟨ fst {A} {B} , snd {A} {B} ⟩ : Term (A * B) (A * B) ⟶ id
+--   [ inl {A} {B} , inr {A} {B} ] : Term (A + B) (A + B) ⟶ id
+--
+-- DESIGN DECISION: We do NOT perform eta reduction in normalize.
+--
+-- Why this is OK for the bootstrap:
+-- 1. Beta reduction is sufficient for semantic correctness
+-- 2. Encoded terms can't form eta patterns:
+--    - Encoded fst is: In ∘ inr ∘ inr ∘ inl ∘ ⟨⌜A⌝, ⌜B⌝⟩
+--    - This is NOT the raw constructor fst
+--    - So ⟨ normalize f , normalize g ⟩ can never be ⟨ fst , snd ⟩
+--      when f and g are encoded terms
+-- 3. Eta reduction is an optional optimization, not required for
+--    the bootstrap verification chain
+--
+-- Technical reason we skip it:
+-- Implementing pattern-matching eta detection in Agda with indexed
+-- types causes UnificationStuck errors - the catch-all case can't
+-- cover constructors like In whose type indices don't unify.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
 -- Full normalization (recursive)
 --
 -- Normalize subterms, then check for root redex, repeat until fixed.
 ------------------------------------------------------------------------
 
--- Normalize a term to its normal form
+-- Normalize a term to its beta normal form
 -- This uses structural recursion on the term
+-- NOTE: Does not perform eta reduction (see above)
 {-# TERMINATING #-}  -- We'll replace this with a proper termination proof
 normalize : ∀ {A B} → Term A B → Term A B
 
@@ -528,11 +554,11 @@ mutual
   normalize-nf-beta (f ∘ g) = normalize-nf-beta-∘ f g
   normalize-nf-beta fst = nf-beta-atoms tt
   normalize-nf-beta snd = nf-beta-atoms tt
-  -- ⟨ normalize f , normalize g ⟩ is not a composition, so no beta redex
+  -- ⟨ f , g ⟩ is a non-composition, so no beta redex at root
   normalize-nf-beta ⟨ f , g ⟩ = nf-beta-atoms tt
   normalize-nf-beta inl = nf-beta-atoms tt
   normalize-nf-beta inr = nf-beta-atoms tt
-  -- [ normalize f , normalize g ] is not a composition, so no beta redex
+  -- [ f , g ] is a non-composition, so no beta redex at root
   normalize-nf-beta [ f , g ] = nf-beta-atoms tt
   normalize-nf-beta terminal = nf-beta-atoms tt
   normalize-nf-beta In = nf-beta-atoms tt
