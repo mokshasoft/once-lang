@@ -75,6 +75,21 @@ data _⟶_ : ∀ {A B} → Term A B → Term A B → Set where
               (f ∘ (g ∘ h)) ⟶ ((f ∘ g) ∘ h)
   assoc-r   : ∀ {A B C D} {f : Term C D} {g : Term B C} {h : Term A B} →
               ((f ∘ g) ∘ h) ⟶ (f ∘ (g ∘ h))
+  -- Congruence rules (needed for ⇒→⟶*)
+  ⟶-∘-l    : ∀ {A B C} {f f' : Term B C} {g : Term A B} →
+              f ⟶ f' → (f ∘ g) ⟶ (f' ∘ g)
+  ⟶-∘-r    : ∀ {A B C} {f : Term B C} {g g' : Term A B} →
+              g ⟶ g' → (f ∘ g) ⟶ (f ∘ g')
+  ⟶-pair-l : ∀ {A B C} {f f' : Term C A} {g : Term C B} →
+              f ⟶ f' → ⟨ f , g ⟩ ⟶ ⟨ f' , g ⟩
+  ⟶-pair-r : ∀ {A B C} {f : Term C A} {g g' : Term C B} →
+              g ⟶ g' → ⟨ f , g ⟩ ⟶ ⟨ f , g' ⟩
+  ⟶-case-l : ∀ {A B C} {f f' : Term A C} {g : Term B C} →
+              f ⟶ f' → [ f , g ] ⟶ [ f' , g ]
+  ⟶-case-r : ∀ {A B C} {f : Term A C} {g g' : Term B C} →
+              g ⟶ g' → [ f , g ] ⟶ [ f , g' ]
+  ⟶-cata   : ∀ {F A} {alg alg' : Term (⟦ F ⟧F A) A} →
+              alg ⟶ alg' → cata F alg ⟶ cata F alg'
 
 -- Reflexive-transitive closure
 data _⟶*_ : ∀ {A B} → Term A B → Term A B → Set where
@@ -174,6 +189,13 @@ data _⇒_ : ∀ {A B} → Term A B → Term A B → Set where
 ⟶→⇒ assoc-l = ⇒-assoc-l (⇒-refl _) (⇒-refl _) (⇒-refl _)
 ⟶→⇒ assoc-r = ⇒-assoc-r (⇒-refl _) (⇒-refl _) (⇒-refl _)
 ⟶→⇒ pair-comp = ⇒-pair-comp (⇒-refl _) (⇒-refl _) (⇒-refl _)
+⟶→⇒ (⟶-∘-l r) = ⇒-∘ (⟶→⇒ r) (⇒-refl _)
+⟶→⇒ (⟶-∘-r r) = ⇒-∘ (⇒-refl _) (⟶→⇒ r)
+⟶→⇒ (⟶-pair-l r) = ⇒-pair (⟶→⇒ r) (⇒-refl _)
+⟶→⇒ (⟶-pair-r r) = ⇒-pair (⇒-refl _) (⟶→⇒ r)
+⟶→⇒ (⟶-case-l r) = ⇒-case (⟶→⇒ r) (⇒-refl _)
+⟶→⇒ (⟶-case-r r) = ⇒-case (⇒-refl _) (⟶→⇒ r)
+⟶→⇒ (⟶-cata r) = ⇒-cata (⟶→⇒ r)
 
 ------------------------------------------------------------------------
 -- Part 5: Diamond Property and Confluence
@@ -189,17 +211,99 @@ data _⇒*_ : ∀ {A B} → Term A B → Term A B → Set where
 ⟶*→⇒* done = done⇒
 ⟶*→⇒* (step r rs) = step⇒ (⟶→⇒ r) (⟶*→⇒* rs)
 
+-- Helper: transitivity of ⟶*
+⟶*-trans : ∀ {A B} {t u v : Term A B} → t ⟶* u → u ⟶* v → t ⟶* v
+⟶*-trans done q = q
+⟶*-trans (step p ps) q = step p (⟶*-trans ps q)
+
+-- Helper: lift ⟶* through composition (left)
+⟶*-∘-l : ∀ {A B C} {f f' : Term B C} (g : Term A B) →
+         f ⟶* f' → (f ∘ g) ⟶* (f' ∘ g)
+⟶*-∘-l g done = done
+⟶*-∘-l g (step r rs) = step (⟶-∘-l r) (⟶*-∘-l g rs)
+
+-- Helper: lift ⟶* through composition (right)
+⟶*-∘-r : ∀ {A B C} (f : Term B C) {g g' : Term A B} →
+         g ⟶* g' → (f ∘ g) ⟶* (f ∘ g')
+⟶*-∘-r f done = done
+⟶*-∘-r f (step r rs) = step (⟶-∘-r r) (⟶*-∘-r f rs)
+
+-- Helper: lift ⟶* through pair
+⟶*-pair : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
+          f ⟶* f' → g ⟶* g' → ⟨ f , g ⟩ ⟶* ⟨ f' , g' ⟩
+⟶*-pair done done = done
+⟶*-pair done (step r rs) = step (⟶-pair-r r) (⟶*-pair done rs)
+⟶*-pair (step r rs) gs = step (⟶-pair-l r) (⟶*-pair rs gs)
+
+-- Helper: lift ⟶* through case
+⟶*-case : ∀ {A B C} {f f' : Term A C} {g g' : Term B C} →
+          f ⟶* f' → g ⟶* g' → [ f , g ] ⟶* [ f' , g' ]
+⟶*-case done done = done
+⟶*-case done (step r rs) = step (⟶-case-r r) (⟶*-case done rs)
+⟶*-case (step r rs) gs = step (⟶-case-l r) (⟶*-case rs gs)
+
+-- Helper: lift ⟶* through cata
+⟶*-cata : ∀ F {A} {alg alg' : Term (⟦ F ⟧F A) A} →
+          alg ⟶* alg' → cata F alg ⟶* cata F alg'
+⟶*-cata F done = done
+⟶*-cata F (step r rs) = step (⟶-cata r) (⟶*-cata F rs)
+
+-- Helper: fmap preserves ⟶*
+fmap-⟶* : ∀ F {A B} {f f' : Term A B} →
+          f ⟶* f' → fmap F f ⟶* fmap F f'
+fmap-⟶* Id rs = rs
+fmap-⟶* (K _) _ = done
+fmap-⟶* (F ⊕ G) rs = ⟶*-case (⟶*-∘-r inl (fmap-⟶* F rs)) (⟶*-∘-r inr (fmap-⟶* G rs))
+fmap-⟶* (F ⊗ G) rs = ⟶*-pair (⟶*-∘-l fst (fmap-⟶* F rs)) (⟶*-∘-l snd (fmap-⟶* G rs))
+
 -- Parallel implies multi-step (each parallel step is multiple single steps)
-postulate
-  ⇒→⟶* : ∀ {A B} {t u : Term A B} → t ⇒ u → t ⟶* u
+⇒→⟶* : ∀ {A B} {t u : Term A B} → t ⇒ u → t ⟶* u
+⇒→⟶* ⇒-id = done
+⇒→⟶* ⇒-fst = done
+⇒→⟶* ⇒-snd = done
+⇒→⟶* ⇒-inl = done
+⇒→⟶* ⇒-inr = done
+⇒→⟶* ⇒-terminal = done
+⇒→⟶* ⇒-In = done
+⇒→⟶* ⇒-Out = done
+⇒→⟶* (⇒-∘ pf pg) = ⟶*-trans (⟶*-∘-l _ (⇒→⟶* pf)) (⟶*-∘-r _ (⇒→⟶* pg))
+⇒→⟶* (⇒-pair pf pg) = ⟶*-pair (⇒→⟶* pf) (⇒→⟶* pg)
+⇒→⟶* (⇒-case pf pg) = ⟶*-case (⇒→⟶* pf) (⇒→⟶* pg)
+⇒→⟶* (⇒-cata {F} palg) = ⟶*-cata F (⇒→⟶* palg)
+⇒→⟶* (⇒-id-l pf) = step id-left (⇒→⟶* pf)
+⇒→⟶* (⇒-id-r pf) = step id-right (⇒→⟶* pf)
+⇒→⟶* (⇒-fst-β pf pg) = ⟶*-trans (⟶*-∘-r fst (⟶*-pair (⇒→⟶* pf) (⇒→⟶* pg))) (step fst-pair done)
+⇒→⟶* (⇒-snd-β pf pg) = ⟶*-trans (⟶*-∘-r snd (⟶*-pair (⇒→⟶* pf) (⇒→⟶* pg))) (step snd-pair done)
+⇒→⟶* (⇒-inl-β pf pg) = ⟶*-trans (⟶*-∘-l inl (⟶*-case (⇒→⟶* pf) (⇒→⟶* pg))) (step case-inl done)
+⇒→⟶* (⇒-inr-β pf pg) = ⟶*-trans (⟶*-∘-l inr (⟶*-case (⇒→⟶* pf) (⇒→⟶* pg))) (step case-inr done)
+⇒→⟶* (⇒-cata-β {F} palg) =
+  ⟶*-trans (⟶*-∘-l In (⟶*-cata F (⇒→⟶* palg)))
+    (step cata-β done)
+⇒→⟶* ⇒-η-pair = step eta-pair done
+⇒→⟶* ⇒-η-case = step eta-case done
+⇒→⟶* (⇒-out-in F) = step (out-in F) done
+⇒→⟶* (⇒-in-out F) = step (in-out F) done
+⇒→⟶* (⇒-assoc-l pf pg ph) =
+  -- (f ∘ (g ∘ h)) ⟶* ((f' ∘ g') ∘ h')
+  ⟶*-trans (⟶*-∘-l _ (⇒→⟶* pf))           -- (f ∘ ...) ⟶* (f' ∘ ...)
+    (⟶*-trans (⟶*-∘-r _ (⟶*-∘-l _ (⇒→⟶* pg)))  -- (f' ∘ (g ∘ h)) ⟶* (f' ∘ (g' ∘ h))
+      (⟶*-trans (⟶*-∘-r _ (⟶*-∘-r _ (⇒→⟶* ph))) -- (f' ∘ (g' ∘ h)) ⟶* (f' ∘ (g' ∘ h'))
+        (step assoc-l done)))                    -- (f' ∘ (g' ∘ h')) ⟶ ((f' ∘ g') ∘ h')
+⇒→⟶* (⇒-assoc-r pf pg ph) =
+  -- ((f ∘ g) ∘ h) ⟶* (f' ∘ (g' ∘ h'))
+  ⟶*-trans (⟶*-∘-l _ (⟶*-∘-l _ (⇒→⟶* pf)))  -- ((f ∘ g) ∘ h) ⟶* ((f' ∘ g) ∘ h)
+    (⟶*-trans (⟶*-∘-l _ (⟶*-∘-r _ (⇒→⟶* pg))) -- ((f' ∘ g) ∘ h) ⟶* ((f' ∘ g') ∘ h)
+      (⟶*-trans (⟶*-∘-r _ (⇒→⟶* ph))          -- ((f' ∘ g') ∘ h) ⟶* ((f' ∘ g') ∘ h')
+        (step assoc-r done)))                  -- ((f' ∘ g') ∘ h') ⟶ (f' ∘ (g' ∘ h'))
+⇒→⟶* (⇒-pair-comp pf pg ph) =
+  -- (⟨ f , g ⟩ ∘ h) ⟶* ⟨ f' ∘ h' , g' ∘ h' ⟩
+  ⟶*-trans (⟶*-∘-l _ (⟶*-pair (⇒→⟶* pf) (⇒→⟶* pg)))  -- (⟨ f , g ⟩ ∘ h) ⟶* (⟨ f' , g' ⟩ ∘ h)
+    (⟶*-trans (⟶*-∘-r _ (⇒→⟶* ph))                   -- (⟨ f' , g' ⟩ ∘ h) ⟶* (⟨ f' , g' ⟩ ∘ h')
+      (step pair-comp done))                          -- (⟨ f' , g' ⟩ ∘ h') ⟶ ⟨ f' ∘ h' , g' ∘ h' ⟩
 
 -- ⇒* implies ⟶*
 ⇒*→⟶* : ∀ {A B} {t u : Term A B} → t ⇒* u → t ⟶* u
 ⇒*→⟶* done⇒ = done
-⇒*→⟶* (step⇒ p ps) = trans⟶* (⇒→⟶* p) (⇒*→⟶* ps)
-  where
-    trans⟶* : ∀ {A B} {t u v : Term A B} → t ⟶* u → u ⟶* v → t ⟶* v
-    trans⟶* done q = q
-    trans⟶* (step p ps) q = step p (trans⟶* ps q)
+⇒*→⟶* (step⇒ p ps) = ⟶*-trans (⇒→⟶* p) (⇒*→⟶* ps)
 
 -- End of minimal MinimalCCC for Level0V2

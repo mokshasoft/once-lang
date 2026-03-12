@@ -450,10 +450,7 @@ fmap-inr F G f = step case-inr done
 -- The full proof requires handling all 12 term constructors.
 -- For now, let's prove it for the simpler cases and postulate the rest.
 
--- Helper: transitivity for ⟶*
-⟶*-trans : ∀ {A B} {t u v : Term A B} → t ⟶* u → u ⟶* v → t ⟶* v
-⟶*-trans done q = q
-⟶*-trans (step p ps) q = step p (⟶*-trans ps q)
+-- Note: ⟶*-trans is now provided by MinimalCCC
 
 ------------------------------------------------------------------------
 -- Associativity
