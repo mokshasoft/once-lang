@@ -125,6 +125,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; trace-writes-below = pair-trace-writes-below
       ; trace-slot-reads-below = pair-trace-slot-reads-below
       ; trace-preserves-capacity = pair-trace-preserves-capacity
+      ; trace-no-store-indirect = pair-trace-no-store-indirect
       }
     where
       -- Stack requirement abbreviations
@@ -346,6 +347,15 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       g-tpc : TracePreservesCapacity g-trace
       g-tpc = IRResultAWF.trace-preserves-capacity result-g
 
+      ------------------------------------------------------------------------
+      -- Trace no-store-indirect from sub-IRs
+      ------------------------------------------------------------------------
+      f-tnsi : TraceNoStoreIndirect f-trace
+      f-tnsi = IRResultAWF.trace-no-store-indirect result-f
+
+      g-tnsi : TraceNoStoreIndirect g-trace
+      g-tnsi = IRResultAWF.trace-no-store-indirect result-g
+
       -- pair-trace preserves capacity: all instructions preserve capacity
       -- pair-trace = mov-to-output ∷ store-at-slot backup-slot ∷
       --              f-trace ++
@@ -362,6 +372,29 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
         (tpc-++ g-tpc
         (tpc-∷ ipc-store-at-slot
         (tpc-∷ ipc-lea-slot tpc-[])))))))
+
+      -- TraceNoStoreIndirect: no store-indirect instructions in pair-trace
+      -- None of the instructions in pair-trace are store-indirect:
+      -- mov-to-output, store-at-slot, f-trace, restore-input, g-trace, lea-slot
+      pair-trace-no-store-indirect : TraceNoStoreIndirect pair-trace
+      pair-trace-no-store-indirect =
+        let
+          final-seg : TraceNoStoreIndirect (store-at-slot snd-slot ∷ lea-slot fst-slot ∷ [])
+          final-seg = tt , tt , tt
+          g-plus-final : TraceNoStoreIndirect (g-trace ++ (store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []))
+          g-plus-final = trace-no-store-indirect-append g-trace (store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []) g-tnsi final-seg
+          restore-plus : TraceNoStoreIndirect (restore-input backup-slot ∷ (g-trace ++ (store-at-slot snd-slot ∷ lea-slot fst-slot ∷ [])))
+          restore-plus = tt , g-plus-final
+          fst-plus : TraceNoStoreIndirect (store-at-slot fst-slot ∷ restore-input backup-slot ∷ (g-trace ++ (store-at-slot snd-slot ∷ lea-slot fst-slot ∷ [])))
+          fst-plus = tt , restore-plus
+          fst-plus-rest = store-at-slot fst-slot ∷ restore-input backup-slot ∷ (g-trace ++ (store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []))
+          f-plus : TraceNoStoreIndirect (f-trace ++ fst-plus-rest)
+          f-plus = trace-no-store-indirect-append f-trace fst-plus-rest f-tnsi fst-plus
+          setup : TraceNoStoreIndirect (mov-to-output ∷ store-at-slot backup-slot ∷ [])
+          setup = tt , tt , tt
+          f-plus-rest = f-trace ++ (store-at-slot fst-slot ∷ restore-input backup-slot ∷ (g-trace ++ (store-at-slot snd-slot ∷ lea-slot fst-slot ∷ [])))
+        in
+        trace-no-store-indirect-append (mov-to-output ∷ store-at-slot backup-slot ∷ []) f-plus-rest setup f-plus
 
       ------------------------------------------------------------------------
       -- Trace correctness from sub-IRs
@@ -397,7 +430,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       g-preserves-fst : ∀ (sg : LocState FS) →
         readLoc (proj₁ (exec-trace g-trace sg alloc₁-reclaimed)) fst-loc-stack ≡ readLoc sg fst-loc-stack
       g-preserves-fst sg = exec-trace-preserves-slot-above g-trace sg alloc₁-reclaimed
-        frame fst-slot reclaim-g refl ≤-refl g-writes-below
+        frame fst-slot reclaim-g refl ≤-refl g-writes-below g-tnsi
 
       g-fst-indep : ∀ (s' : LocState FS) (val : ValueLocation FS) →
         proj₁ (exec-trace g-trace (writeLoc s' fst-loc-stack val) alloc₁-reclaimed) ≡
@@ -454,6 +487,16 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
       final-tpc : TracePreservesCapacity final-trace
       final-tpc = tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[])
+
+      -- TNSI for trace segments (no store-indirect instructions)
+      setup-tnsi : TraceNoStoreIndirect setup-trace
+      setup-tnsi = tt , tt , tt
+
+      middle-tnsi : TraceNoStoreIndirect middle-trace
+      middle-tnsi = tt , tt , tt
+
+      final-tnsi : TraceNoStoreIndirect final-trace
+      final-tnsi = tt , tt , tt
 
       -- Rewrite pair-trace in terms of segments
       pair-trace-eq : pair-trace ≡ setup-trace ++ f-trace ++ middle-trace ++ g-trace ++ final-trace
@@ -641,6 +684,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       setup-seg-tpc : TracePreservesCapacity setup-seg
       setup-seg-tpc = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot tpc-[])
 
+      setup-seg-tnsi : TraceNoStoreIndirect setup-seg
+      setup-seg-tnsi = tt , tt , tt
+
       s-after-setup' : LocState FS
       s-after-setup' = proj₁ (exec-trace setup-seg s alloc)
 
@@ -719,9 +765,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
         current-frame a ≡ frame →
         frame-of-loc loc ≺ frame →
         TraceWritesAbove (suc backup-slot) trace →
+        TraceNoStoreIndirect trace →
         readLoc (proj₁ (exec-trace trace st a)) loc ≡ readLoc st loc
-      exec-trace-preserves-ancestor trace st a loc frame-eq f'≺frame writes-above =
-        exec-trace-preserves-disjoint trace st a loc (suc backup-slot) writes-above
+      exec-trace-preserves-ancestor trace st a loc frame-eq f'≺frame writes-above tnsi =
+        exec-trace-preserves-disjoint trace st a loc (suc backup-slot) writes-above tnsi
           (λ slot' bound eq → ≺⇒≢ f'≺frame (trans (sym (cong frame-of-loc eq)) frame-eq))
 
       -- Halted after f-trace (proven via exec-trace-preserves-halted-subir)
@@ -853,7 +900,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                      (exec-trace-preserves-disjoint f-trace s-after-setup' alloc-after-backup
                         (OnStack (current-frame alloc) backup-slot) (suc backup-slot)
                         (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
-                        backup-disjoint)
+                        f-tnsi backup-disjoint)
           -- store-at-slot fst-slot preserves backup-slot (fst-slot ≠ backup-slot)
           fst-neq-backup : fst-slot ≢ backup-slot
           fst-neq-backup eq = <⇒≢ (≤-trans (IRResultAWF.reclaim-monotone result-f)
@@ -1036,7 +1083,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                          (exec-trace-preserves-disjoint f-trace s-after-setup' alloc-after-backup
                             (OnStack (current-frame alloc) backup-slot) (suc backup-slot)
                             (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
-                            backup-disjoint)
+                            f-tnsi backup-disjoint)
 
               -- store-at-slot fst-slot preserves backup-slot (fst-slot ≠ backup-slot)
               fst-neq-backup'' : fst-slot ≢ backup-slot
@@ -1125,7 +1172,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                   s1-eq-s : readLoc s₁ loc ≡ readLoc s loc
                   s1-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace)
                                   (exec-trace-preserves-slot-above f-trace s alloc-after-backup
-                                     (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below)
+                                     (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below f-tnsi)
                 in trans refl s1-eq-s  -- s₁' has same memory as s₁
 
               -- s-before-g preserves slot from s
@@ -1178,7 +1225,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                                                                            (cong slot-of (cong (λ f → OnStack f slot) (sym frame-after-f'))))))
                                               (trans (cong (λ st → readLoc st loc) (exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq))
                                                      (trans (exec-trace-preserves-slot-above f-trace s-after-setup' alloc-after-backup
-                                                              (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below)
+                                                              (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below f-tnsi)
                                                             setup-preserves')))))
             in trans s-before-g-eq-s (sym s1'-eq-s)
 
@@ -1542,7 +1589,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                   setup-writes-below = ≤-refl , tt  -- backup-slot < suc backup-slot, rest is tt
                 in exec-trace-preserves-slot-above setup-trace s alloc
                      (current-frame alloc) slot (suc backup-slot)
-                     refl lo setup-writes-below
+                     refl lo setup-writes-below setup-tnsi
 
               -- Same-frame chain: alloc-after-setup → alloc → alloc-after-backup
               -- Step 1: alloc-after-setup has same frame/capacity as alloc
@@ -1703,7 +1750,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                     in exec-trace-preserves-disjoint f-trace s-after-setup alloc-after-setup
                          (OnStack (current-frame alloc) backup-slot) (suc backup-slot)
                          (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-writes-above)
-                         backup-disjoint
+                         f-tnsi backup-disjoint
 
                   -- before-store = setup ++ f-trace, so s-before-store = exec f-trace s-after-setup
                   s-before-store-via-setup : s-before-store ≡ proj₁ (exec-trace f-trace s-after-setup alloc-after-setup)
@@ -2011,7 +2058,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
               f-preserves-backup = exec-trace-preserves-disjoint f-trace s-after-setup-here alloc-after-setup-here
                                      (OnStack (current-frame alloc) backup-slot) (suc backup-slot)
                                      (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-writes-above)
-                                     backup-disjoint
+                                     f-tnsi backup-disjoint
 
               -- Step 3: store-at-slot fst-slot preserves backup-slot
               backup-at-before-store : readLoc s-before-store-here (OnStack (current-frame alloc) backup-slot) ≡ just input-loc
@@ -2124,7 +2171,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                   s1-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace)
                                   (exec-trace-preserves-slot-above f-trace s alloc-after-backup
                                      (current-frame alloc-after-backup) slot reclaim-f
-                                     refl rf≤slot f-writes-below)
+                                     refl rf≤slot f-writes-below f-tnsi)
                 in trans s1'-same-mem s1-eq-s
 
               -- s-before-g preserves slot from s (none of the operations write to [reclaim-f, reclaim-g))
@@ -2220,7 +2267,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                   f-preserves : readLoc s-after-setup-f loc ≡ readLoc s-after-setup' loc
                   f-preserves = exec-trace-preserves-slot-above f-trace s-after-setup' alloc-after-setup'
                                   (current-frame alloc-after-backup) slot reclaim-f
-                                  setup-f-frame rf≤slot f-writes-below
+                                  setup-f-frame rf≤slot f-writes-below f-tnsi
 
                   -- store fst-slot preserves slot (fst-slot = reclaim-g ≠ slot < reclaim-g)
                   s-after-setup-f-store : LocState FS
@@ -2747,6 +2794,18 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
               fst-plus-tw = fst-gt , restore-plus-tw
             in trace-writes-above-append (suc backup-slot) f-trace _ f-tw fst-plus-tw
 
+          -- rest-tr contains no store-indirect instructions
+          rest-tnsi : TraceNoStoreIndirect rest-tr
+          rest-tnsi =
+            let
+              g-plus-final : TraceNoStoreIndirect (g-trace ++ final-trace)
+              g-plus-final = trace-no-store-indirect-append g-trace final-trace g-tnsi final-tnsi
+              restore-plus : TraceNoStoreIndirect (restore-input backup-slot ∷ (g-trace ++ final-trace))
+              restore-plus = tt , g-plus-final
+              fst-plus : TraceNoStoreIndirect (store-at-slot fst-slot ∷ restore-input backup-slot ∷ (g-trace ++ final-trace))
+              fst-plus = tt , restore-plus
+            in trace-no-store-indirect-append f-trace _ f-tnsi fst-plus
+
           -- Disjointness for backup slot
           backup-disjoint : ∀ slot → suc backup-slot ≤ slot → OnStack (current-frame alloc) slot ≢ backup-loc
           backup-disjoint slot bound eq = <⇒≢ bound (sym (cong slot-of eq))
@@ -2757,7 +2816,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
             readLoc (proj₁ (exec-trace rest-tr sr allocr)) backup-loc ≡ readLoc sr backup-loc
           rest-preserves sr allocr frame-eq =
             exec-trace-preserves-disjoint rest-tr sr allocr backup-loc (suc backup-slot)
-              rest-writes-above
+              rest-writes-above rest-tnsi
               (λ slot bound eq → backup-disjoint slot bound (trans (cong (λ f → OnStack f slot) (sym frame-eq)) eq))
 
           -- After mov-to-output
@@ -3023,7 +3082,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ------------------------------------------------------------------------
       mem-preserved-pair : ∀ loc → BeforeFrontier alloc loc → readLoc s-final loc ≡ readLoc s loc
       mem-preserved-pair loc bf = exec-trace-preserves-disjoint pair-trace s alloc loc (next-slot alloc)
-                                    pair-trace-writes-above disjoint-proof
+                                    pair-trace-writes-above pair-trace-no-store-indirect disjoint-proof
         where
           -- Locations before frontier are disjoint from all slots ≥ next-slot alloc
           disjoint-proof : ∀ slot → next-slot alloc ≤ slot → OnStack (current-frame alloc) slot ≢ loc
@@ -3128,6 +3187,16 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
           middle-g-final-above = fst-above , restore-g-final-above
         in middle-g-final-above
 
+      -- rest-after-f contains no store-indirect instructions
+      rest-after-f-tnsi : TraceNoStoreIndirect rest-after-f
+      rest-after-f-tnsi =
+        let
+          g-final : TraceNoStoreIndirect (g-trace ++ final-trace)
+          g-final = trace-no-store-indirect-append g-trace final-trace g-tnsi final-tnsi
+          restore-g-final : TraceNoStoreIndirect (restore-input backup-slot ∷ (g-trace ++ final-trace))
+          restore-g-final = tt , g-final
+        in tt , restore-g-final  -- middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
+
       -- State after setup ++ f in the trace
       s-after-setup-f : LocState FS
       s-after-setup-f = proj₁ (exec-trace (setup-trace ++ f-trace) s alloc)
@@ -3223,7 +3292,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
               setup-writes-below' : TraceWritesBelow (suc backup-slot) setup-trace
               setup-writes-below' = ≤-refl , tt
             in sym (exec-trace-preserves-slot-above setup-trace s alloc
-                     (current-frame alloc) slot (suc backup-slot) refl lo setup-writes-below')
+                     (current-frame alloc) slot (suc backup-slot) refl lo setup-writes-below' setup-tnsi)
 
           -- loc' agrees in s and s-after-setup (since loc' ≠ backup-slot)
           setup-loc-eq : readLoc s loc' ≡ readLoc s-after-setup loc'
@@ -3295,7 +3364,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
           rest-preserves : readLoc (proj₁ (exec-trace rest-after-f s-after-setup-f alloc-after-setup-f)) loc' ≡
                            readLoc s-after-setup-f loc'
           rest-preserves = exec-trace-preserves-disjoint rest-after-f s-after-setup-f alloc-after-setup-f
-                             loc' reclaim-f rest-after-f-writes-above
+                             loc' reclaim-f rest-after-f-writes-above rest-after-f-tnsi
                              (λ slot bound eq → disjoint slot bound (trans (cong (λ f → OnStack f slot) (sym frame-after-setup-f)) eq))
 
           -- Combine: s-final = exec rest s-after-setup-f, and rest preserves loc'
@@ -3367,7 +3436,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
             s1-eq-s : readLoc s₁ loc ≡ readLoc s loc
             s1-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace)
                             (exec-trace-preserves-slot-above f-trace s alloc-after-backup
-                               (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below)
+                               (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below f-tnsi)
 
             s1'-eq-s : readLoc s₁' loc ≡ readLoc s loc
             s1'-eq-s = s1-eq-s  -- s₁' has same memory as s₁
@@ -3430,7 +3499,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                                                                        (cong slot-of (cong (λ f → OnStack f slot) (sym frame-after-f'))))))
                                          (trans (cong (λ st → readLoc st loc) (exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq))
                                                 (trans (exec-trace-preserves-slot-above f-trace s-after-setup' alloc-after-backup
-                                                         (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below)
+                                                         (current-frame alloc-after-backup) slot reclaim-f refl rf≤slot f-writes-below f-tnsi)
                                                        setup-preserves')))))
           in trans s1'-eq-s (sym s-before-g-eq-s)
 
@@ -3453,7 +3522,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
               s1-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace)
                               (exec-trace-preserves-disjoint f-trace s alloc-after-backup loc (suc backup-slot)
                                  (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
-                                 (λ slot' bound eq → <⇒≢ (<-≤-trans slot<sb bound) (sym (cong slot-of eq))))
+                                 f-tnsi (λ slot' bound eq → <⇒≢ (<-≤-trans slot<sb bound) (sym (cong slot-of eq))))
             in s1-eq-s
 
           -- Helper: s-before-g preserves stack locations below suc backup-slot (excluding backup-slot) from s
@@ -3495,7 +3564,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                          (exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq))
                       (exec-trace-preserves-disjoint f-trace s-after-setup' alloc-after-backup loc (suc backup-slot)
                          (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
-                         (λ slot' bound eq → <⇒≢ (<-≤-trans slot<sb bound) (sym (cong slot-of eq))))
+                         f-tnsi (λ slot' bound eq → <⇒≢ (<-≤-trans slot<sb bound) (sym (cong slot-of eq))))
 
               -- store-fst preserves loc (slot < suc backup-slot < reclaim-f ≤ fst-slot)
               fst-neq : fst-slot ≢ slot
@@ -3632,12 +3701,12 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                 readLoc s-after-setup' (OnStack (current-frame alloc-after-backup) slot')
               setup-slots-eq' slot' sb≤slot' slot'<rf =
                 sym (exec-trace-preserves-slot-above setup-seg s alloc (current-frame alloc) slot' (suc backup-slot) refl sb≤slot'
-                      (≤-refl , tt))
+                      (≤-refl , tt) setup-seg-tnsi)
 
               -- setup-loc-eq': k agrees in s and s-after-setup'
               -- Since k is in [suc backup-slot, reclaim-f), setup preserves k
               setup-loc-eq' : readLoc s loc ≡ readLoc s-after-setup' loc
-              setup-loc-eq' = sym (exec-trace-preserves-slot-above setup-seg s alloc (current-frame alloc) k (suc backup-slot) refl sb≤k (≤-refl , tt))
+              setup-loc-eq' = sym (exec-trace-preserves-slot-above setup-seg s alloc (current-frame alloc) k (suc backup-slot) refl sb≤k (≤-refl , tt) setup-seg-tnsi)
 
               -- Use exec-trace-mem-equiv to relate the two f-trace executions
               f-same-frame' : proj₁ (exec-trace f-trace s-after-setup' alloc-after-setup') ≡
@@ -3687,7 +3756,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
               f-preserves-ancestor : readLoc (proj₁ (exec-trace f-trace s alloc-after-backup)) loc ≡ readLoc s loc
               f-preserves-ancestor = exec-trace-preserves-disjoint f-trace s alloc-after-backup loc (suc backup-slot)
                                        (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
-                                       (λ slot bound eq → ≺⇒≢ f'≺frame (trans refl (cong frame-of-loc eq)))
+                                       f-tnsi (λ slot bound eq → ≺⇒≢ f'≺frame (trans refl (cong frame-of-loc eq)))
 
               s1'-eq-s : readLoc s₁' loc ≡ readLoc s loc
               s1'-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace) f-preserves-ancestor
@@ -3724,7 +3793,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                          (exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq))
                       (exec-trace-preserves-disjoint f-trace s-after-setup' alloc-after-backup loc (suc backup-slot)
                          (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
-                         (λ slot bound eq → ≺⇒≢ f'≺frame (cong frame-of-loc eq)))
+                         f-tnsi (λ slot bound eq → ≺⇒≢ f'≺frame (cong frame-of-loc eq)))
 
               -- store-fst preserves ancestor
               store-fst-via-abstract'' : s-after-store-fst ≡ proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f' alloc-after-f')
@@ -3758,7 +3827,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
               f-preserves-heap : readLoc (proj₁ (exec-trace f-trace s alloc-after-backup)) loc ≡ readLoc s loc
               f-preserves-heap = exec-trace-preserves-disjoint f-trace s alloc-after-backup loc (suc backup-slot)
                                    (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
-                                   (λ _ _ ())
+                                   f-tnsi (λ _ _ ())
 
               s1'-eq-s : readLoc s₁' loc ≡ readLoc s loc
               s1'-eq-s = trans (cong (λ st → readLoc st loc) s1-via-trace) f-preserves-heap
@@ -3790,7 +3859,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                          (exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup setup-frame-eq setup-cap-eq))
                       (exec-trace-preserves-disjoint f-trace s-after-setup' alloc-after-backup loc (suc backup-slot)
                          (trace-writes-above-mono (suc backup-slot) (suc backup-slot) f-trace ≤-refl f-slot-writes)
-                         (λ _ _ ()))
+                         f-tnsi (λ _ _ ()))
 
               -- store-fst preserves heap
               store-fst-via-abstract'' : s-after-store-fst ≡ proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f' alloc-after-f')
@@ -3843,7 +3912,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
           final-preserves : readLoc (proj₁ (exec-trace final-trace s-before-final alloc-before-final)) loc' ≡
                             readLoc s-before-final loc'
           final-preserves = exec-trace-preserves-disjoint final-trace s-before-final alloc-before-final
-                              loc' reclaim-g final-trace-writes-above
+                              loc' reclaim-g final-trace-writes-above final-tnsi
                               (λ slot bound eq → disjoint slot bound (trans (cong (λ f → OnStack f slot) (sym frame-preserved-trace)) eq))
 
           s-final-eq : readLoc s-final loc' ≡ readLoc s-before-final loc'

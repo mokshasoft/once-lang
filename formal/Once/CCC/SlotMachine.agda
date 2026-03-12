@@ -19,6 +19,8 @@ open import Data.Nat.Properties using (_≟_; <⇒≢; ≤-trans)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false)
 open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
+open import Function using (_∘_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
@@ -1406,6 +1408,58 @@ module AbstractExec {FS : FrameSemantics} where
   ... | just slot = ≤-trans (proj₁ tw) m≤n , trace-writes-below-mono n m t m≤n (proj₂ tw)
 
   ------------------------------------------------------------------------
+  -- Trace No Store-Indirect
+  --
+  -- Tracks that a trace contains no store-indirect or store-indirect-suc
+  -- instructions. These instructions write to arbitrary memory locations
+  -- (wherever Input points), so traces containing them require additional
+  -- preconditions about disjointness.
+  ------------------------------------------------------------------------
+
+  -- Per-instruction predicate: not a store-indirect instruction
+  InstrNotStoreIndirect : AbstractInstr → Set
+  InstrNotStoreIndirect store-indirect = ⊥
+  InstrNotStoreIndirect store-indirect-suc = ⊥
+  InstrNotStoreIndirect _ = ⊤
+
+  -- Trace predicate: no store-indirect instructions in trace
+  TraceNoStoreIndirect : AbstractTrace → Set
+  TraceNoStoreIndirect [] = ⊤
+  TraceNoStoreIndirect (i ∷ is) = InstrNotStoreIndirect i × TraceNoStoreIndirect is
+
+  -- Helper: TraceNoStoreIndirect is preserved under append
+  trace-no-store-indirect-append : ∀ t1 t2 →
+    TraceNoStoreIndirect t1 →
+    TraceNoStoreIndirect t2 →
+    TraceNoStoreIndirect (t1 ++ t2)
+  trace-no-store-indirect-append [] t2 _ tn2 = tn2
+  trace-no-store-indirect-append (i ∷ t1) t2 (nsi , tn1) tn2 =
+    nsi , trace-no-store-indirect-append t1 t2 tn1 tn2
+
+  -- Helper: TraceNoStoreIndirect for single non-store-indirect instructions
+  trace-no-store-indirect-single : ∀ (i : AbstractInstr) →
+    InstrNotStoreIndirect i →
+    TraceNoStoreIndirect (i ∷ [])
+  trace-no-store-indirect-single i nsi = nsi , tt
+
+  -- Discharge store-indirect precondition: if InstrNotStoreIndirect i,
+  -- then (i ≡ store-indirect → A) is vacuously provable
+  not-store-indirect-vacuous : ∀ (i : AbstractInstr) {A : Set} →
+    InstrNotStoreIndirect i →
+    i ≡ store-indirect → A
+  not-store-indirect-vacuous i nsi eq with i | eq
+  ... | store-indirect | refl = ⊥-elim nsi
+    where open import Data.Empty using (⊥-elim)
+
+  -- Same for store-indirect-suc
+  not-store-indirect-suc-vacuous : ∀ (i : AbstractInstr) {A : Set} →
+    InstrNotStoreIndirect i →
+    i ≡ store-indirect-suc → A
+  not-store-indirect-suc-vacuous i nsi eq with i | eq
+  ... | store-indirect-suc | refl = ⊥-elim nsi
+    where open import Data.Empty using (⊥-elim)
+
+  ------------------------------------------------------------------------
   -- Trace Slot Reads
   --
   -- Tracks which slots are read by load-from-slot and restore-input.
@@ -1515,58 +1569,65 @@ module AbstractExec {FS : FrameSemantics} where
   --   - loc is OnStack (current-frame alloc) k with k < n (and trace writes above n)
   ------------------------------------------------------------------------
 
-  -- store-indirect: writes to *Input. For stack preservation, we need Input to be OnHeap.
-  -- These are POSTULATES - in practice, our IR traces only use store-indirect with heap destinations.
-  -- A full proof would require tracking that Input is OnHeap at trace construction time.
-  postulate
-    exec-abstract-preserves-all-mem-store-indirect : ∀ (s : LocState FS)
-      (alloc : AllocState {FS}) (loc : ValueLocation FS) →
-      readLoc (proj₁ (exec-abstract store-indirect s alloc)) loc ≡ readLoc s loc
+  -- store-indirect: writes to *Input. Preserves other locations.
+  -- Proof: Uses writeLoc-preserves-other with loc ≢ dest precondition.
+  exec-abstract-preserves-other-mem-store-indirect : ∀ (s : LocState FS)
+    (alloc : AllocState {FS}) (loc : ValueLocation FS) →
+    loc ≢ readReg (regs s) Input →
+    readLoc (proj₁ (exec-abstract store-indirect s alloc)) loc ≡ readLoc s loc
+  exec-abstract-preserves-other-mem-store-indirect s alloc loc loc≢input =
+    writeLoc-preserves-other s (readReg (regs s) Input) loc (readReg (regs s) Output) (loc≢input ∘ sym)
 
-    exec-abstract-preserves-all-mem-store-indirect-suc : ∀ (s : LocState FS)
-      (alloc : AllocState {FS}) (loc : ValueLocation FS) →
-      readLoc (proj₁ (exec-abstract store-indirect-suc s alloc)) loc ≡ readLoc s loc
+  exec-abstract-preserves-other-mem-store-indirect-suc : ∀ (s : LocState FS)
+    (alloc : AllocState {FS}) (loc : ValueLocation FS) →
+    loc ≢ sucLoc (readReg (regs s) Input) →
+    readLoc (proj₁ (exec-abstract store-indirect-suc s alloc)) loc ≡ readLoc s loc
+  exec-abstract-preserves-other-mem-store-indirect-suc s alloc loc loc≢sucinput =
+    writeLoc-preserves-other s (sucLoc (readReg (regs s) Input)) loc (readReg (regs s) Output) (loc≢sucinput ∘ sym)
 
   -- Single instruction preservation: non-store instructions preserve all memory
+  -- For store-indirect/store-indirect-suc, requires loc ≢ destination.
   -- Uses readLoc-stackMem-eq since these instructions only modify registers
   exec-abstract-preserves-all-mem : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) (loc : ValueLocation FS) →
     instr-stack-write-slot i ≡ nothing →
+    (i ≡ store-indirect → loc ≢ readReg (regs s) Input) →
+    (i ≡ store-indirect-suc → loc ≢ sucLoc (readReg (regs s) Input)) →
     readLoc (proj₁ (exec-abstract i s alloc)) loc ≡ readLoc s loc
-  exec-abstract-preserves-all-mem mov-to-output s alloc loc _ =
+  exec-abstract-preserves-all-mem mov-to-output s alloc loc _ _ _ =
     readLoc-stackMem-eq (record s { regs = writeReg (regs s) Output (readReg (regs s) Input) }) s loc refl refl
-  exec-abstract-preserves-all-mem mov-to-input s alloc loc _ =
+  exec-abstract-preserves-all-mem mov-to-input s alloc loc _ _ _ =
     readLoc-stackMem-eq (record s { regs = writeReg (regs s) Input (readReg (regs s) Output) }) s loc refl refl
-  exec-abstract-preserves-all-mem load-indirect s alloc loc _
+  exec-abstract-preserves-all-mem load-indirect s alloc loc _ _ _
     with readLoc s (resolveSourceExt (regs s) (IndReg Input))
   ... | nothing = readLoc-stackMem-eq (record s { halted = true }) s loc refl refl
   ... | just v = readLoc-stackMem-eq (record s { regs = writeReg (regs s) Output v }) s loc refl refl
-  exec-abstract-preserves-all-mem load-indirect-suc s alloc loc _
+  exec-abstract-preserves-all-mem load-indirect-suc s alloc loc _ _ _
     with readLoc s (resolveSourceExt (regs s) (IndRegSuc Input))
   ... | nothing = readLoc-stackMem-eq (record s { halted = true }) s loc refl refl
   ... | just v = readLoc-stackMem-eq (record s { regs = writeReg (regs s) Output v }) s loc refl refl
-  exec-abstract-preserves-all-mem (load-from-slot slot) s alloc loc _
+  exec-abstract-preserves-all-mem (load-from-slot slot) s alloc loc _ _ _
     with stackMem s (current-frame alloc) slot
   ... | nothing = readLoc-stackMem-eq (record s { halted = true }) s loc refl refl
   ... | just v = readLoc-stackMem-eq (record s { regs = writeReg (regs s) Output v }) s loc refl refl
-  exec-abstract-preserves-all-mem store-indirect s alloc loc _ =
-    exec-abstract-preserves-all-mem-store-indirect s alloc loc
-  exec-abstract-preserves-all-mem store-indirect-suc s alloc loc _ =
-    exec-abstract-preserves-all-mem-store-indirect-suc s alloc loc
-  exec-abstract-preserves-all-mem (lea-slot slot) s alloc loc _ =
+  exec-abstract-preserves-all-mem store-indirect s alloc loc _ si-prec _ =
+    exec-abstract-preserves-other-mem-store-indirect s alloc loc (si-prec refl)
+  exec-abstract-preserves-all-mem store-indirect-suc s alloc loc _ _ sis-prec =
+    exec-abstract-preserves-other-mem-store-indirect-suc s alloc loc (sis-prec refl)
+  exec-abstract-preserves-all-mem (lea-slot slot) s alloc loc _ _ _ =
     readLoc-stackMem-eq (record s { regs = writeReg (regs s) Output (OnStack (current-frame alloc) slot) }) s loc refl refl
-  exec-abstract-preserves-all-mem (restore-input slot) s alloc loc _
+  exec-abstract-preserves-all-mem (restore-input slot) s alloc loc _ _ _
     with readLoc s (OnStack (current-frame alloc) slot)
   ... | nothing = readLoc-stackMem-eq (record s { halted = true }) s loc refl refl
   ... | just v = readLoc-stackMem-eq (record s { regs = writeReg (regs s) Input v }) s loc refl refl
-  exec-abstract-preserves-all-mem (instr-alloc-stack n) s alloc loc _ =
+  exec-abstract-preserves-all-mem (instr-alloc-stack n) s alloc loc _ _ _ =
     readLoc-stackMem-eq (record s { regs = incrStackSlot (regs s) n }) s loc refl refl
-  exec-abstract-preserves-all-mem (instr-dealloc-stack n) s alloc loc _ =
+  exec-abstract-preserves-all-mem (instr-dealloc-stack n) s alloc loc _ _ _ =
     readLoc-stackMem-eq (record s { regs = decrStackSlot (regs s) n }) s loc refl refl
-  exec-abstract-preserves-all-mem (instr-push-frame cap) s alloc loc _ =
+  exec-abstract-preserves-all-mem (instr-push-frame cap) s alloc loc _ _ _ =
     readLoc-stackMem-eq (record s { regs = writeStackSlot (regs s) 0 }) s loc refl refl
-  exec-abstract-preserves-all-mem instr-pop-frame s alloc loc _ = refl
-  exec-abstract-preserves-all-mem instr-call-closure s alloc loc _ = refl
+  exec-abstract-preserves-all-mem instr-pop-frame s alloc loc _ _ _ = refl
+  exec-abstract-preserves-all-mem instr-call-closure s alloc loc _ _ _ = refl
 
   -- store-at-slot preserves disjoint locations
   store-at-slot-preserves-disjoint : ∀ slot (s : LocState FS)
@@ -1602,10 +1663,11 @@ module AbstractExec {FS : FrameSemantics} where
   exec-trace-preserves-disjoint : ∀ (trace : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) (loc : ValueLocation FS) (n : ℕ) →
     TraceWritesAbove n trace →
+    TraceNoStoreIndirect trace →
     (∀ slot → n ≤ slot → OnStack (current-frame alloc) slot ≢ loc) →
     readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
-  exec-trace-preserves-disjoint [] s alloc loc n tw disjoint = refl
-  exec-trace-preserves-disjoint (i ∷ is) s alloc loc n tw disjoint with halted s
+  exec-trace-preserves-disjoint [] s alloc loc n tw tnsi disjoint = refl
+  exec-trace-preserves-disjoint (i ∷ is) s alloc loc n tw (nsi , tnsi) disjoint with halted s
   ... | true = refl  -- Halted: exec-trace returns s unchanged
   ... | false with instr-stack-write-slot i | inspect instr-stack-write-slot i
   ...   | nothing | [ eq ] = trans ih step
@@ -1614,6 +1676,8 @@ module AbstractExec {FS : FrameSemantics} where
             alloc' = proj₂ (exec-abstract i s alloc)
             step : readLoc s' loc ≡ readLoc s loc
             step = exec-abstract-preserves-all-mem i s alloc loc eq
+                     (not-store-indirect-vacuous i nsi)
+                     (not-store-indirect-suc-vacuous i nsi)
             frame-eq : current-frame alloc' ≡ current-frame alloc
             frame-eq = exec-abstract-preserves-frame i s alloc
             disjoint' : ∀ slot → n ≤ slot → OnStack (current-frame alloc') slot ≢ loc
@@ -1621,7 +1685,7 @@ module AbstractExec {FS : FrameSemantics} where
             -- No halted assumption needed - if exec-abstract halts, the recursive call
             -- will hit the | true case and return refl
             ih : readLoc (proj₁ (exec-trace is s' alloc')) loc ≡ readLoc s' loc
-            ih = exec-trace-preserves-disjoint is s' alloc' loc n tw disjoint'
+            ih = exec-trace-preserves-disjoint is s' alloc' loc n tw tnsi disjoint'
   ...   | just slot | [ eq ] = trans ih step
           where
             n≤slot : n ≤ slot
@@ -1639,7 +1703,7 @@ module AbstractExec {FS : FrameSemantics} where
             disjoint' : ∀ slot' → n ≤ slot' → OnStack (current-frame alloc') slot' ≢ loc
             disjoint' slot' n≤slot' = subst (λ f → OnStack f slot' ≢ loc) (sym frame-eq) (disjoint slot' n≤slot')
             ih : readLoc (proj₁ (exec-trace is s' alloc')) loc ≡ readLoc s' loc
-            ih = exec-trace-preserves-disjoint is s' alloc' loc n tw' disjoint'
+            ih = exec-trace-preserves-disjoint is s' alloc' loc n tw' tnsi disjoint'
 
   -- exec-trace-preserves-slot-above: If all writes are < n and slot ≥ n, slot is preserved
   -- This is the dual of exec-trace-preserves-disjoint (which uses TraceWritesAbove)
@@ -1648,9 +1712,10 @@ module AbstractExec {FS : FrameSemantics} where
     current-frame alloc ≡ frame →
     n ≤ slot →
     TraceWritesBelow n trace →
+    TraceNoStoreIndirect trace →
     readLoc (proj₁ (exec-trace trace s alloc)) (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
-  exec-trace-preserves-slot-above [] s alloc frame slot n frame-eq n≤slot tw = refl
-  exec-trace-preserves-slot-above (i ∷ is) s alloc frame slot n frame-eq n≤slot tw with halted s
+  exec-trace-preserves-slot-above [] s alloc frame slot n frame-eq n≤slot tw tnsi = refl
+  exec-trace-preserves-slot-above (i ∷ is) s alloc frame slot n frame-eq n≤slot tw (nsi , tnsi) with halted s
   ... | true = refl  -- Halted: exec-trace returns s unchanged
   ... | false with instr-stack-write-slot i | inspect instr-stack-write-slot i
   ...   | nothing | [ eq ] = trans ih step
@@ -1662,9 +1727,11 @@ module AbstractExec {FS : FrameSemantics} where
             tw' : TraceWritesBelow n is
             tw' = tw  -- nothing case: no constraint consumed
             ih : readLoc (proj₁ (exec-trace is s' alloc')) (OnStack frame slot) ≡ readLoc s' (OnStack frame slot)
-            ih = exec-trace-preserves-slot-above is s' alloc' frame slot n frame-eq' n≤slot tw'
+            ih = exec-trace-preserves-slot-above is s' alloc' frame slot n frame-eq' n≤slot tw' tnsi
             step : readLoc s' (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
             step = exec-abstract-preserves-all-mem i s alloc (OnStack frame slot) eq
+                     (not-store-indirect-vacuous i nsi)
+                     (not-store-indirect-suc-vacuous i nsi)
   ...   | just wslot | [ eq ] = trans ih step
           where
             s' = proj₁ (exec-abstract i s alloc)
@@ -1676,7 +1743,7 @@ module AbstractExec {FS : FrameSemantics} where
             tw' : TraceWritesBelow n is
             tw' = proj₂ tw
             ih : readLoc (proj₁ (exec-trace is s' alloc')) (OnStack frame slot) ≡ readLoc s' (OnStack frame slot)
-            ih = exec-trace-preserves-slot-above is s' alloc' frame slot n frame-eq' n≤slot tw'
+            ih = exec-trace-preserves-slot-above is s' alloc' frame slot n frame-eq' n≤slot tw' tnsi
             -- wslot < n ≤ slot, so wslot ≢ slot
             wslot≢slot : wslot ≢ slot
             wslot≢slot = <⇒≢ (≤-trans wslot<n n≤slot)
@@ -2312,11 +2379,12 @@ module AbstractExec {FS : FrameSemantics} where
     (alloc : AllocState {FS}) (lo hi : ℕ) →
     TraceWritesAbove hi trace →
     TraceWritesBelow lo trace →
+    TraceNoStoreIndirect trace →
     (∀ slot → lo ≤ slot → slot < hi →
       readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
       readLoc s (OnStack (current-frame alloc) slot))
-  exec-trace-preserves-slots-in-range trace s alloc lo hi _ twb slot lo≤slot _ =
-    exec-trace-preserves-slot-above trace s alloc (current-frame alloc) slot lo refl lo≤slot twb
+  exec-trace-preserves-slots-in-range trace s alloc lo hi _ twb tnsi slot lo≤slot _ =
+    exec-trace-preserves-slot-above trace s alloc (current-frame alloc) slot lo refl lo≤slot twb tnsi
 
   postulate
 

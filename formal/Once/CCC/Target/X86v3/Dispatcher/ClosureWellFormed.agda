@@ -297,6 +297,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- is preserved through trace execution. Apply is the only IR that uses
         -- push-frame, and it handles capacity specially via frame push/pop.
         trace-preserves-capacity : TracePreservesCapacity trace
+        -- Trace contains no store-indirect instructions.
+        -- store-indirect writes to arbitrary memory (wherever Input points),
+        -- so traces containing it require additional disjointness preconditions.
+        -- Our IR traces don't use store-indirect (they use store-at-slot instead).
+        trace-no-store-indirect : TraceNoStoreIndirect trace
 
     --------------------------------------------------------------------
     -- BodyCorrect: Pre-computed body execution proof

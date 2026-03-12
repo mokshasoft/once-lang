@@ -226,6 +226,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-writes-below = apply-trace-writes-below
       ; trace-slot-reads-below = apply-trace-slot-reads-below
       ; trace-preserves-capacity = apply-trace-preserves-capacity
+      ; trace-no-store-indirect = apply-trace-no-store-indirect
       }
     where
       open import Data.Nat using (_≥_)
@@ -789,3 +790,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         -- TODO: Consider a more principled solution (e.g., making TPC optional
         -- for Apply, or tracking frame context in the capacity preservation proof).
         apply-trace-preserves-capacity : TracePreservesCapacity apply-trace
+        -- Apply's trace contains no store-indirect instructions.
+        -- Apply uses store-at-slot for pair construction, and body-trace
+        -- (from BodyCorrect) also doesn't use store-indirect.
+        apply-trace-no-store-indirect : TraceNoStoreIndirect apply-trace
