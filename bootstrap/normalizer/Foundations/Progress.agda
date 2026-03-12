@@ -9,9 +9,9 @@
 -- for cases where Agda's coverage checker gets stuck on ⟦ F ⟧F (μ F).
 ------------------------------------------------------------------------
 
-module spec.Progress where
+module normalizer.Foundations.Progress where
 
-open import spec.MinimalCCC
+open import normalizer.Foundations.MinimalCCC
 
 ------------------------------------------------------------------------
 -- Simple Head Constructor Enum (not indexed by term)

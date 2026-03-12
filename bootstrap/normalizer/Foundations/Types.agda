@@ -9,7 +9,7 @@
 -- SELF-CONTAINED: This is the bootstrap foundation.
 ------------------------------------------------------------------------
 
-module spec.Types where
+module normalizer.Foundations.Types where
 
 ------------------------------------------------------------------------
 -- Minimal Prelude

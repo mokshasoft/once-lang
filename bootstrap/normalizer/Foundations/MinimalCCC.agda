@@ -9,9 +9,9 @@
 -- Imports Types module for the foundation (prelude, types, functors).
 ------------------------------------------------------------------------
 
-module spec.MinimalCCC where
+module normalizer.Foundations.MinimalCCC where
 
-open import spec.Types public
+open import normalizer.Foundations.Types public
 
 ------------------------------------------------------------------------
 -- Terms (CCC + cata)
