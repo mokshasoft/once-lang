@@ -102,14 +102,29 @@ This is like writing a Python interpreter in C: C doesn't have Python features, 
 **Verification method**: Fixpoint property
 
 ```
-Theorem (from Fixpoint.agda):
-  If N(⟦N⟧) ⟶* ⟦N⟧  (normalizer applied to its own encoding)
-  Then ∀t. N correctly normalizes t
+Theorem (from MainTheorem.agda):
+  In a simple system (confluent + terminating):
 
-Why this works:
-  1. CCC has unique normal forms (confluence + termination)
-  2. If N fixpoints, ⟦N⟧ must already be in normal form
-  3. By compositionality, N correctly normalizes all terms
+  fixpoint-implies-nf:
+    If N(t) ⟶* t  (N achieves fixpoint on t)
+    Then t is in normal form
+
+  Proof:
+    1. N produces normal forms (by construction of normalize-step)
+    2. N(t) ⟶* t (given fixpoint)
+    3. But normal forms can't reduce (nf-stable)
+    4. Therefore t ≡ N(t), so t is normal
+
+  nf-unique (via confluence):
+    Normal forms are unique per equivalence class
+
+  Combined insight:
+    Fixpoint ⟹ normal form ⟹ unique ⟹ correct
+
+Why the fixpoint matters:
+  1. Running N on ⟦N⟧ and reaching fixpoint proves ⟦N⟧ is normal
+  2. The encoding is verified by being normalized
+  3. This is empirically testable (RunTest.agda)
 ```
 
 **TCB**: Mathematics (categorical laws, Lambek's Lemma) + ~50-100 lines bootstrap code (or less with traces)
@@ -251,7 +266,9 @@ If yes, the specification is satisfied.
 ```
 Mathematics (trusted, peer-reviewed since 1960s)
     ↓ proves
-"Fixpoint ⟹ Correctness" theorem
+"Fixpoint ⟹ Normal Form" theorem (in simple systems)
+    + confluence (unique normal forms)
+    + termination (normal forms exist)
     ↓ applied to
 Bootstrap normalizer (~50-100 lines, human-verifiable)
     ↓ verifies (via fixpoint)
@@ -818,12 +835,13 @@ The checker is itself total + productive.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-This is not circular reasoning. It's a **fixpoint**:
+This is not circular reasoning. It's a **fixpoint** with mathematical teeth:
 
-- The checker checks that IR conforms to categorical definitions
-- The checker's own IR conforms to categorical definitions
-- Therefore the checker accepts itself
-- This is mathematically consistent, not self-justifying
+- In a simple system (confluent + terminating), fixpoints are normal forms
+- The checker's own IR achieves fixpoint under normalization
+- Therefore the checker's IR is in normal form (proven, not assumed)
+- Normal forms are unique, so the encoding is THE canonical form
+- This is mathematically forced, not self-justifying
 
 ### The Bootstrap
 
