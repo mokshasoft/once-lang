@@ -61,15 +61,20 @@ data _⟶_ : ∀ {A B} → Term A B → Term A B → Set where
   case-inl  : ∀ {A B C} {f : Term A C} {g : Term B C} → ([ f , g ] ∘ inl) ⟶ f
   case-inr  : ∀ {A B C} {f : Term A C} {g : Term B C} → ([ f , g ] ∘ inr) ⟶ g
   eta-case  : ∀ {A B} → [ inl , inr ] ⟶ id {A + B}
+  -- Pair distribution over composition (CCC axiom)
+  pair-comp : ∀ {A B C D} {f : Term B C} {g : Term B D} {h : Term A B} →
+              (⟨ f , g ⟩ ∘ h) ⟶ ⟨ f ∘ h , g ∘ h ⟩
   -- Catamorphism (the key recursion rule)
   cata-β    : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} →
               (cata F alg ∘ In) ⟶ (alg ∘ fmap F (cata F alg))
   -- In and Out are inverses (F explicit to avoid computed type unification issues)
   out-in    : ∀ F → (Out {F} ∘ In {F}) ⟶ id {⟦ F ⟧F (μ F)}
   in-out    : ∀ F → (In {F} ∘ Out {F}) ⟶ id {μ F}
-  -- Associativity (CCC axiom - normalizes to left-associative form)
+  -- Associativity (CCC axiom - both directions for flexibility)
   assoc-l   : ∀ {A B C D} {f : Term C D} {g : Term B C} {h : Term A B} →
               (f ∘ (g ∘ h)) ⟶ ((f ∘ g) ∘ h)
+  assoc-r   : ∀ {A B C D} {f : Term C D} {g : Term B C} {h : Term A B} →
+              ((f ∘ g) ∘ h) ⟶ (f ∘ (g ∘ h))
 
 -- Reflexive-transitive closure
 data _⟶*_ : ∀ {A B} → Term A B → Term A B → Set where
@@ -130,6 +135,12 @@ data _⇒_ : ∀ {A B} → Term A B → Term A B → Set where
   -- Associativity
   ⇒-assoc-l : ∀ {A B C D} {f f' : Term C D} {g g' : Term B C} {h h' : Term A B} →
               f ⇒ f' → g ⇒ g' → h ⇒ h' → (f ∘ (g ∘ h)) ⇒ ((f' ∘ g') ∘ h')
+  ⇒-assoc-r : ∀ {A B C D} {f f' : Term C D} {g g' : Term B C} {h h' : Term A B} →
+              f ⇒ f' → g ⇒ g' → h ⇒ h' → ((f ∘ g) ∘ h) ⇒ (f' ∘ (g' ∘ h'))
+
+  -- Pair distribution over composition
+  ⇒-pair-comp : ∀ {A B C D} {f f' : Term B C} {g g' : Term B D} {h h' : Term A B} →
+                f ⇒ f' → g ⇒ g' → h ⇒ h' → (⟨ f , g ⟩ ∘ h) ⇒ ⟨ f' ∘ h' , g' ∘ h' ⟩
 
 -- Parallel reduction is reflexive
 ⇒-refl : ∀ {A B} (t : Term A B) → t ⇒ t
@@ -161,6 +172,8 @@ data _⇒_ : ∀ {A B} → Term A B → Term A B → Set where
 ⟶→⇒ (out-in F) = ⇒-out-in F
 ⟶→⇒ (in-out F) = ⇒-in-out F
 ⟶→⇒ assoc-l = ⇒-assoc-l (⇒-refl _) (⇒-refl _) (⇒-refl _)
+⟶→⇒ assoc-r = ⇒-assoc-r (⇒-refl _) (⇒-refl _) (⇒-refl _)
+⟶→⇒ pair-comp = ⇒-pair-comp (⇒-refl _) (⇒-refl _) (⇒-refl _)
 
 ------------------------------------------------------------------------
 -- Part 5: Diamond Property and Confluence
