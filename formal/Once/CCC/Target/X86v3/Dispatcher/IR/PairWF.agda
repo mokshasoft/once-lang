@@ -780,6 +780,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                      (trans (cong (λ st → readLoc st loc) store-via-abstract)
                             (trans store-preserves mov-preserves))
           -- Use exec-trace-preserves-halted-subir with f-trace
+          setup-seg-tph : TracePreservesHeap setup-seg
+          setup-seg-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+          setup-heap-eq : heapMem s-after-setup' ≡ heapMem s
+          setup-heap-eq = exec-trace-preserves-heapMem setup-seg s alloc setup-seg-tph
           halted-f-equiv : halted (proj₁ (exec-trace f-trace s-after-setup' alloc-after-backup)) ≡ false
           halted-f-equiv = exec-trace-preserves-halted-subir f-trace s-after-setup' s alloc-after-backup
                              (suc backup-slot) reclaim-f
@@ -787,6 +791,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                              slots-eq-f'
                              f-slot-reads
                              (IRResultAWF.trace-slot-reads-below result-f)
+                             setup-heap-eq
                              not-halted-setup'
                              not-halted
                              (subst (λ st → halted st ≡ false) (sym f-correct) (IRResultAWF.not-halted result-f))
@@ -945,6 +950,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
             let
               -- Use exec-trace-preserves-halted-subir with f-trace
               -- comparing s-after-setup' with s (the canonical state for result-f)
+              setup-seg-tph' : TracePreservesHeap setup-seg
+              setup-seg-tph' = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+              setup-heap-eq' : heapMem s-after-setup' ≡ heapMem s
+              setup-heap-eq' = exec-trace-preserves-heapMem setup-seg s alloc setup-seg-tph'
               halted-f-equiv : halted (proj₁ (exec-trace f-trace s-after-setup' alloc-after-backup)) ≡ false
               halted-f-equiv = exec-trace-preserves-halted-subir f-trace s-after-setup' s alloc-after-backup
                                  (suc backup-slot) reclaim-f
@@ -952,6 +961,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                                  slots-eq-f
                                  f-slot-reads
                                  (IRResultAWF.trace-slot-reads-below result-f)
+                                 setup-heap-eq'
                                  not-halted-setup'
                                  not-halted
                                  (subst (λ st → halted st ≡ false) (sym f-correct) (IRResultAWF.not-halted result-f))
@@ -1172,6 +1182,115 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                                                             setup-preserves')))))
             in trans s-before-g-eq-s (sym s1'-eq-s)
 
+          -- Heap equality for g-trace: heapMem s-before-g ≡ heapMem s₁'
+          -- Helper definitions moved outside let to avoid where-in-let issues
+          setup-seg-tph-gh : TracePreservesHeap setup-seg
+          setup-seg-tph-gh = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+
+          setup-heap-gh : heapMem s-after-setup' ≡ heapMem s
+          setup-heap-gh = exec-trace-preserves-heapMem setup-seg s alloc setup-seg-tph-gh
+
+          input-eq-for-heap-gh : readReg (regs s-after-setup') Input ≡ readReg (regs s) Input
+          input-eq-for-heap-gh =
+            let
+              s-after-mov-ih = proj₁ (exec-trace (mov-to-output ∷ []) s alloc)
+              alloc-after-mov-ih = proj₂ (exec-trace (mov-to-output ∷ []) s alloc)
+              not-halted-mov-ih : halted s-after-mov-ih ≡ false
+              not-halted-mov-ih = trans (cong halted (mov-to-output-state-eq s alloc not-halted)) not-halted
+              decomp-ih : s-after-setup' ≡ proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov-ih alloc-after-mov-ih)
+              decomp-ih = exec-trace-append-state (mov-to-output ∷ []) (store-at-slot backup-slot ∷ []) s alloc
+              store-via-abstract-ih : proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov-ih alloc-after-mov-ih) ≡
+                                      proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov-ih alloc-after-mov-ih)
+              store-via-abstract-ih = cong proj₁ (exec-trace-single (store-at-slot backup-slot) s-after-mov-ih alloc-after-mov-ih not-halted-mov-ih)
+              input-after-setup-ih : readReg (regs s-after-setup') Input ≡ input-loc
+              input-after-setup-ih = trans (cong (λ st → readReg (regs st) Input) decomp-ih)
+                                           (trans (cong (λ st → readReg (regs st) Input) store-via-abstract-ih)
+                                                  (trans (cong (λ r → readReg r Input)
+                                                           (writeLoc-regs s-after-mov-ih
+                                                             (OnStack (current-frame alloc-after-mov-ih) backup-slot)
+                                                             (readReg (regs s-after-mov-ih) Output)))
+                                                         (trans (cong (λ st → readReg (regs st) Input)
+                                                                  (mov-to-output-state-eq s alloc not-halted)) rdi-eq)))
+            in trans input-after-setup-ih (sym rdi-eq)
+
+          halted-eq-for-heap-gh : halted s-after-setup' ≡ halted s
+          halted-eq-for-heap-gh = trans not-halted-setup' (sym not-halted)
+
+          slots-eq-for-heap-gh : ∀ slot → suc backup-slot ≤ slot → slot < reclaim-f →
+            readLoc s-after-setup' (OnStack (current-frame alloc-after-backup) slot) ≡
+            readLoc s (OnStack (current-frame alloc-after-backup) slot)
+          slots-eq-for-heap-gh slot lo _ =
+            let
+              loc = OnStack (current-frame alloc) slot
+              s-after-mov-sh = proj₁ (exec-trace (mov-to-output ∷ []) s alloc)
+              alloc-after-mov-sh = proj₂ (exec-trace (mov-to-output ∷ []) s alloc)
+              mov-preserves-sh : readLoc s-after-mov-sh loc ≡ readLoc s loc
+              mov-preserves-sh = mov-to-output-preserves-readLoc s alloc loc not-halted
+              not-halted-mov-sh : halted s-after-mov-sh ≡ false
+              not-halted-mov-sh = trans (cong halted (mov-to-output-state-eq s alloc not-halted)) not-halted
+              backup-neq-slot-sh : backup-slot ≢ slot
+              backup-neq-slot-sh eq = <⇒≢ lo eq
+              frame-after-mov-sh : current-frame alloc-after-mov-sh ≡ current-frame alloc
+              frame-after-mov-sh = exec-trace-preserves-frame (mov-to-output ∷ []) s alloc
+              loc-neq-sh : OnStack (current-frame alloc-after-mov-sh) backup-slot ≢ loc
+              loc-neq-sh eq' = backup-neq-slot-sh (trans (cong slot-of eq') (cong slot-of (cong (λ f → OnStack f slot) (sym frame-after-mov-sh))))
+              store-preserves-sh : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov-sh alloc-after-mov-sh)) loc ≡
+                                   readLoc s-after-mov-sh loc
+              store-preserves-sh = store-at-slot-preserves-disjoint backup-slot s-after-mov-sh alloc-after-mov-sh loc loc-neq-sh
+              decomp-sh : s-after-setup' ≡ proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov-sh alloc-after-mov-sh)
+              decomp-sh = exec-trace-append-state (mov-to-output ∷ []) (store-at-slot backup-slot ∷ []) s alloc
+              store-via-abstract-sh : proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov-sh alloc-after-mov-sh) ≡
+                                      proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov-sh alloc-after-mov-sh)
+              store-via-abstract-sh = cong proj₁ (exec-trace-single (store-at-slot backup-slot) s-after-mov-sh alloc-after-mov-sh not-halted-mov-sh)
+            in trans (cong (λ st → readLoc st loc) decomp-sh)
+                     (trans (cong (λ st → readLoc st loc) store-via-abstract-sh)
+                            (trans store-preserves-sh mov-preserves-sh))
+
+          f-heap-equiv-gh : heapMem (proj₁ (exec-trace f-trace s-after-setup' alloc-after-backup)) ≡
+                            heapMem (proj₁ (exec-trace f-trace s alloc-after-backup))
+          f-heap-equiv-gh = exec-trace-heap-equiv f-trace s-after-setup' s alloc-after-backup
+                              (suc backup-slot) reclaim-f
+                              input-eq-for-heap-gh halted-eq-for-heap-gh not-halted-setup'
+                              slots-eq-for-heap-gh f-slot-reads (IRResultAWF.trace-slot-reads-below result-f)
+                              setup-heap-gh
+
+          f-same-frame-gh : proj₁ (exec-trace f-trace s-after-setup' alloc-after-setup') ≡
+                            proj₁ (exec-trace f-trace s-after-setup' alloc-after-backup)
+          f-same-frame-gh = exec-trace-state-same-frame f-trace s-after-setup' alloc-after-setup' alloc-after-backup
+                              setup-frame-eq setup-cap-eq
+
+          s-after-f'-heap-gh : heapMem s-after-f' ≡ heapMem (proj₁ (exec-trace f-trace s alloc-after-backup))
+          s-after-f'-heap-gh = trans (cong heapMem f-same-frame-gh) f-heap-equiv-gh
+
+          store-fst-tph-gh : TracePreservesHeap (store-at-slot fst-slot ∷ [])
+          store-fst-tph-gh = tph-∷ iph-store-at-slot tph-[]
+
+          s-after-store-fst-heap-gh : heapMem s-after-store-fst ≡ heapMem s-after-f'
+          s-after-store-fst-heap-gh = exec-trace-preserves-heapMem (store-at-slot fst-slot ∷ [])
+                                        s-after-f' alloc-after-f' store-fst-tph-gh
+
+          restore-tph-gh : TracePreservesHeap (restore-input backup-slot ∷ [])
+          restore-tph-gh = tph-∷ iph-restore-input tph-[]
+
+          s-after-restore-heap-gh : heapMem s-after-restore ≡ heapMem s-after-store-fst
+          s-after-restore-heap-gh = exec-trace-preserves-heapMem (restore-input backup-slot ∷ [])
+                                      s-after-store-fst alloc-after-store-fst restore-tph-gh
+
+          s-before-g-full-heap-gh : heapMem s-before-g ≡ heapMem (proj₁ (exec-trace f-trace s alloc-after-backup))
+          s-before-g-full-heap-gh = trans (cong heapMem s-before-g-eq)
+                                          (trans s-after-restore-heap-gh
+                                                 (trans s-after-store-fst-heap-gh s-after-f'-heap-gh))
+
+          heap-eq-for-g-here : heapMem s-before-g ≡ heapMem s₁'
+          heap-eq-for-g-here =
+            let
+              s1'-heap-eq-s1 : heapMem s₁' ≡ heapMem s₁
+              s1'-heap-eq-s1 = refl
+              s1-via-trace : s₁ ≡ proj₁ (exec-trace f-trace s alloc-after-backup)
+              s1-via-trace = sym (IRResultAWF.trace-correct result-f)
+            in trans s-before-g-full-heap-gh
+                     (trans (sym (cong heapMem s1-via-trace)) (sym s1'-heap-eq-s1))
+
           -- Halted after g-trace using exec-trace-preserves-halted-subir
           halted-g-equiv : halted (proj₁ (exec-trace g-trace s-before-g alloc₁-reclaimed)) ≡ false
           halted-g-equiv = exec-trace-preserves-halted-subir g-trace s-before-g s₁' alloc₁-reclaimed
@@ -1180,6 +1299,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                              slots-eq-g
                              g-slot-reads
                              g-slot-reads-below
+                             heap-eq-for-g-here
                              not-halted-s-before-g'
                              not-halted-s1'
                              (subst (λ st → halted st ≡ false) (sym g-correct) (IRResultAWF.not-halted result-g))
@@ -1487,6 +1607,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                                    slots-eq-for-f
                                    f-slot-reads
                                    (IRResultAWF.trace-slot-reads-below result-f)
+                                   heap-eq-after-setup
                                    not-halted-after-setup
                                    not-halted
                                    (subst (λ st → halted st ≡ false) (sym f-correct) (IRResultAWF.not-halted result-f))
@@ -1745,6 +1866,12 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                          (sym (store-at-slot-state-eq backup-slot s-after-mov-setup alloc-after-mov-setup not-halted-after-mov-setup))
                          not-halted-after-mov-setup)
 
+          setup-here-tph : TracePreservesHeap setup-here
+          setup-here-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+
+          setup-here-heap-eq : heapMem s-after-setup-here ≡ heapMem s
+          setup-here-heap-eq = exec-trace-preserves-heapMem setup-here s alloc setup-here-tph
+
           -- s-before-store-here = exec f-trace s-after-setup-here
           s-before-store-here-decomp : s-before-store-here ≡ proj₁ (exec-trace f-trace s-after-setup-here alloc-after-setup-here)
           s-before-store-here-decomp = exec-trace-append-state setup-here f-trace s alloc
@@ -1815,6 +1942,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                                  slots-eq-here
                                  f-slot-reads
                                  (IRResultAWF.trace-slot-reads-below result-f)
+                                 setup-here-heap-eq
                                  not-halted-after-setup-here
                                  not-halted
                                  (subst (λ st → halted st ≡ false) (sym f-correct) (IRResultAWF.not-halted result-f))
@@ -2159,6 +2287,13 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                       setup-f-cap-eq : frame-capacity alloc-after-setup' ≡ frame-capacity alloc
                       setup-f-cap-eq = exec-trace-preserves-capacity' setup-segment s alloc setup-tpc
 
+                      -- Heap equality for setup
+                      setup-f-tph : TracePreservesHeap setup-segment
+                      setup-f-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+
+                      setup-f-heap-eq : heapMem s-after-setup' ≡ heapMem s
+                      setup-f-heap-eq = exec-trace-preserves-heapMem setup-segment s alloc setup-f-tph
+
                       -- Use exec-trace-state-same-frame
                       f-same-frame' : proj₁ (exec-trace f-trace s-after-setup' alloc-after-setup') ≡
                                       proj₁ (exec-trace f-trace s-after-setup' alloc-after-backup)
@@ -2173,6 +2308,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                                           slots-eq-for-f'
                                           f-slot-reads
                                           (IRResultAWF.trace-slot-reads-below result-f)
+                                          setup-f-heap-eq
                                           not-halted-after-setup'
                                           not-halted
                                           (subst (λ st → halted st ≡ false) (sym f-correct) (IRResultAWF.not-halted result-f))

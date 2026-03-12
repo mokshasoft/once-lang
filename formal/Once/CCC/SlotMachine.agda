@@ -2294,28 +2294,31 @@ module AbstractExec {FS : FrameSemantics} where
       heapMem (proj₁ (exec-trace trace s₁ alloc)) ≡
       heapMem (proj₁ (exec-trace trace s₂ alloc))
 
-    -- Alloc independence: trace execution state depends only on current-frame
-    -- and frame-capacity, not on next-slot or next-heap-ref.
-    -- This is true because state-affecting operations only use current-frame.
-    -- Proof sketch: Induction on trace, showing each instruction only uses
-    -- current-frame and frame-capacity to compute the resulting state.
-    exec-trace-state-same-frame : ∀ (trace : AbstractTrace) (s : LocState FS)
-      (alloc₁ alloc₂ : AllocState {FS}) →
-      current-frame alloc₁ ≡ current-frame alloc₂ →
-      frame-capacity alloc₁ ≡ frame-capacity alloc₂ →
-      proj₁ (exec-trace trace s alloc₁) ≡ proj₁ (exec-trace trace s alloc₂)
+  -- Alloc independence: trace execution state depends only on current-frame
+  -- and frame-capacity, not on next-slot or next-heap-ref.
+  -- This is true because state-affecting operations only use current-frame.
+  -- Proof: Delegate to exec-trace-same-frame (frame-capacity is unused).
+  exec-trace-state-same-frame : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc₁ alloc₂ : AllocState {FS}) →
+    current-frame alloc₁ ≡ current-frame alloc₂ →
+    frame-capacity alloc₁ ≡ frame-capacity alloc₂ →
+    proj₁ (exec-trace trace s alloc₁) ≡ proj₁ (exec-trace trace s alloc₂)
+  exec-trace-state-same-frame trace s alloc₁ alloc₂ frame-eq _ =
+    exec-trace-same-frame trace s alloc₁ alloc₂ frame-eq
 
-    -- Slots in range [lo, hi) are unchanged when trace writes only outside that range
-    -- This combines TraceWritesAbove and TraceWritesBelow to show slots in a range are preserved.
-    -- Proof sketch: Use exec-trace-preserves-slot-above for slots >= hi (writes below hi)
-    -- and exec-trace-preserves-disjoint for slots < lo (writes above lo).
-    exec-trace-preserves-slots-in-range : ∀ (trace : AbstractTrace) (s : LocState FS)
-      (alloc : AllocState {FS}) (lo hi : ℕ) →
-      TraceWritesAbove hi trace →
-      TraceWritesBelow lo trace →
-      (∀ slot → lo ≤ slot → slot < hi →
-        readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
-        readLoc s (OnStack (current-frame alloc) slot))
+  -- Slots in range [lo, hi) are unchanged when trace writes only outside that range
+  -- Proof: TraceWritesBelow lo means all writes are < lo, so slots >= lo are preserved.
+  exec-trace-preserves-slots-in-range : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) (lo hi : ℕ) →
+    TraceWritesAbove hi trace →
+    TraceWritesBelow lo trace →
+    (∀ slot → lo ≤ slot → slot < hi →
+      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
+      readLoc s (OnStack (current-frame alloc) slot))
+  exec-trace-preserves-slots-in-range trace s alloc lo hi _ twb slot lo≤slot _ =
+    exec-trace-preserves-slot-above trace s alloc (current-frame alloc) slot lo refl lo≤slot twb
+
+  postulate
 
     -- Halted preservation through composed trace with sub-IR
     -- If a sub-IR trace doesn't fail (preserves halted), running it on a different
@@ -2331,6 +2334,8 @@ module AbstractExec {FS : FrameSemantics} where
       -- Trace reads only from [lo, hi)
       TraceSlotReadsAbove lo trace →
       TraceSlotReadsBelow hi trace →
+      -- Heap equality (needed for load-indirect)
+      heapMem s₁ ≡ heapMem s₂ →
       -- Starting states not halted
       halted s₁ ≡ false →
       halted s₂ ≡ false →
