@@ -327,11 +327,25 @@ normalizer-wf N wf-N t = wf-comp wf-N (encode-wf t)
 --   case-inr: [ _ , _ ] ∘ inr (In ∘ t is not a case constructor)
 --   eta-case: [ inl , inr ] (In ∘ t is not a case constructor)
 --   cata-β: cata F alg ∘ In (here In is on the RIGHT, not left)
---
--- Postulated since Agda's type inference has trouble with the
--- functor metavariable in the absurdity proof.
-postulate
-  encode-always-nf : ∀ {A B} (t : Term A B) → NF (encode t)
+
+-- Proof: Each encoding has form In ∘ (inl ∘ ...) or In ∘ (inr ∘ ...).
+-- No reduction rule matches:
+--   - In on left rules out id-left, fst-pair, snd-pair, case-inl, case-inr, cata-β
+--   - The right operand is inl/inr composition, not id, ruling out id-right
+--   - The term is a composition, not ⟨_,_⟩ or [_,_], ruling out eta-pair, eta-case
+encode-always-nf : ∀ {A B} (t : Term A B) → NF (encode t)
+-- Each case: pattern match on the reduction and show contradiction
+encode-always-nf id ()
+encode-always-nf (f ∘ g) ()
+encode-always-nf fst ()
+encode-always-nf snd ()
+encode-always-nf ⟨ f , g ⟩ ()
+encode-always-nf inl ()
+encode-always-nf inr ()
+encode-always-nf [ f , g ] ()
+encode-always-nf terminal ()
+encode-always-nf In ()
+encode-always-nf (cata F alg) ()
 
 -- Corollary: NF t implies NF (encode t) (trivially, since encode is always NF)
 encode-nf-is-nf : ∀ {A B} {t : Term A B} → NF t → NF (encode t)
