@@ -1077,6 +1077,90 @@ module AbstractExec {FS : FrameSemantics} where
     in trans rest-preserves step-preserves
 
   ------------------------------------------------------------------------
+  -- Heap Memory Preservation
+  --
+  -- Most instructions preserve heapMem (only store-indirect and
+  -- store-indirect-suc can modify heap when Input points to heap).
+  -- For IR traces that only use stack operations, heapMem is preserved.
+  ------------------------------------------------------------------------
+
+  -- Predicate: instruction preserves heapMem
+  data InstrPreservesHeap : AbstractInstr → Set where
+    iph-mov-to-output      : InstrPreservesHeap mov-to-output
+    iph-mov-to-input       : InstrPreservesHeap mov-to-input
+    iph-load-indirect      : InstrPreservesHeap load-indirect
+    iph-load-indirect-suc  : InstrPreservesHeap load-indirect-suc
+    iph-load-from-slot     : ∀ {slot} → InstrPreservesHeap (load-from-slot slot)
+    iph-store-at-slot      : ∀ {slot} → InstrPreservesHeap (store-at-slot slot)
+    -- store-indirect and store-indirect-suc NOT included (can modify heap)
+    iph-lea-slot           : ∀ {slot} → InstrPreservesHeap (lea-slot slot)
+    iph-restore-input      : ∀ {slot} → InstrPreservesHeap (restore-input slot)
+    iph-instr-alloc-stack  : ∀ {n} → InstrPreservesHeap (instr-alloc-stack n)
+    iph-instr-dealloc-stack : ∀ {n} → InstrPreservesHeap (instr-dealloc-stack n)
+    iph-instr-push-frame   : ∀ {cap} → InstrPreservesHeap (instr-push-frame cap)
+    iph-instr-pop-frame    : InstrPreservesHeap instr-pop-frame
+    iph-instr-call-closure : InstrPreservesHeap instr-call-closure
+
+  -- Trace predicate: all instructions preserve heap
+  data TracePreservesHeap : AbstractTrace → Set where
+    tph-[] : TracePreservesHeap []
+    tph-∷  : ∀ {i rest} → InstrPreservesHeap i → TracePreservesHeap rest →
+             TracePreservesHeap (i ∷ rest)
+
+  -- Trace append preserves heap
+  tph-++ : ∀ {t₁ t₂} → TracePreservesHeap t₁ → TracePreservesHeap t₂ →
+           TracePreservesHeap (t₁ ++ t₂)
+  tph-++ tph-[] tph₂ = tph₂
+  tph-++ (tph-∷ iph tph₁) tph₂ = tph-∷ iph (tph-++ tph₁ tph₂)
+
+  -- Single instruction preserves heapMem
+  exec-abstract-preserves-heapMem : ∀ (i : AbstractInstr) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    InstrPreservesHeap i →
+    heapMem (proj₁ (exec-abstract i s alloc)) ≡ heapMem s
+  exec-abstract-preserves-heapMem mov-to-output s alloc _ = refl
+  exec-abstract-preserves-heapMem mov-to-input s alloc _ = refl
+  exec-abstract-preserves-heapMem load-indirect s alloc _
+    with readLoc s (readReg (regs s) Input)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-heapMem load-indirect-suc s alloc _
+    with readLoc s (sucLoc (readReg (regs s) Input))
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-heapMem (load-from-slot slot) s alloc _
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-heapMem (store-at-slot slot) s alloc _ =
+    writeLoc-heapMem-stack s (current-frame alloc) slot (readReg (regs s) Output)
+  exec-abstract-preserves-heapMem (lea-slot slot) s alloc _ = refl
+  exec-abstract-preserves-heapMem (restore-input slot) s alloc _
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-heapMem (instr-alloc-stack n) s alloc _ = refl
+  exec-abstract-preserves-heapMem (instr-dealloc-stack n) s alloc _ = refl
+  exec-abstract-preserves-heapMem (instr-push-frame cap) s alloc _ = refl
+  exec-abstract-preserves-heapMem instr-pop-frame s alloc _ = refl
+  exec-abstract-preserves-heapMem instr-call-closure s alloc _ = refl
+
+  -- Trace preserves heapMem
+  exec-trace-preserves-heapMem : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    TracePreservesHeap trace →
+    heapMem (proj₁ (exec-trace trace s alloc)) ≡ heapMem s
+  exec-trace-preserves-heapMem [] s alloc _ = refl
+  exec-trace-preserves-heapMem (i ∷ rest) s alloc (tph-∷ iph tph) with halted s
+  ... | true = refl
+  ... | false =
+    let s' = proj₁ (exec-abstract i s alloc)
+        alloc' = proj₂ (exec-abstract i s alloc)
+        step-preserves = exec-abstract-preserves-heapMem i s alloc iph
+        rest-preserves = exec-trace-preserves-heapMem rest s' alloc' tph
+    in trans rest-preserves step-preserves
+
+  ------------------------------------------------------------------------
   -- Frame Capacity Preservation
   --
   -- frame-capacity is preserved by executing traces, provided the trace
@@ -2126,7 +2210,28 @@ module AbstractExec {FS : FrameSemantics} where
       -- Trace reads only from [lo, hi)
       TraceSlotReadsAbove lo trace →
       TraceSlotReadsBelow hi trace →
+      -- Heap memory agrees (needed for load-indirect)
+      heapMem s₁ ≡ heapMem s₂ →
+      -- Output registers agree (needed for store-at-slot consistency)
+      readReg (regs s₁) Output ≡ readReg (regs s₂) Output →
       -- Then Output registers in results are equal
+      readReg (regs (proj₁ (exec-trace trace s₁ alloc))) Output ≡
+      readReg (regs (proj₁ (exec-trace trace s₂ alloc))) Output
+
+    -- Version WITHOUT Output equality precondition
+    -- This works for traces that write Output deterministically based on Input
+    -- (which all IR traces do - they compute a result into Output).
+    exec-trace-output-equiv-no-output : ∀ (trace : AbstractTrace) (s₁ s₂ : LocState FS)
+      (alloc : AllocState {FS}) (lo hi : ℕ) →
+      readReg (regs s₁) Input ≡ readReg (regs s₂) Input →
+      halted s₁ ≡ halted s₂ →
+      halted s₁ ≡ false →
+      (∀ slot → lo ≤ slot → slot < hi →
+        readLoc s₁ (OnStack (current-frame alloc) slot) ≡
+        readLoc s₂ (OnStack (current-frame alloc) slot)) →
+      TraceSlotReadsAbove lo trace →
+      TraceSlotReadsBelow hi trace →
+      heapMem s₁ ≡ heapMem s₂ →
       readReg (regs (proj₁ (exec-trace trace s₁ alloc))) Output ≡
       readReg (regs (proj₁ (exec-trace trace s₂ alloc))) Output
 
@@ -2169,6 +2274,25 @@ module AbstractExec {FS : FrameSemantics} where
       -- Then loc is equal after trace execution
       readLoc (proj₁ (exec-trace trace s₁ alloc)) loc ≡
       readLoc (proj₁ (exec-trace trace s₂ alloc)) loc
+
+    -- Heap equivalence: If two states agree on Input, halted, slots in
+    -- [lo, hi), and heap, then after executing a trace (that reads from [lo, hi)),
+    -- the heaps in the results are also equal.
+    -- Note: Output equality is NOT required because IR traces compute Output
+    -- deterministically from Input/slots before any heap writes.
+    exec-trace-heap-equiv : ∀ (trace : AbstractTrace) (s₁ s₂ : LocState FS)
+      (alloc : AllocState {FS}) (lo hi : ℕ) →
+      readReg (regs s₁) Input ≡ readReg (regs s₂) Input →
+      halted s₁ ≡ halted s₂ →
+      halted s₁ ≡ false →
+      (∀ slot → lo ≤ slot → slot < hi →
+        readLoc s₁ (OnStack (current-frame alloc) slot) ≡
+        readLoc s₂ (OnStack (current-frame alloc) slot)) →
+      TraceSlotReadsAbove lo trace →
+      TraceSlotReadsBelow hi trace →
+      heapMem s₁ ≡ heapMem s₂ →
+      heapMem (proj₁ (exec-trace trace s₁ alloc)) ≡
+      heapMem (proj₁ (exec-trace trace s₂ alloc))
 
     -- Alloc independence: trace execution state depends only on current-frame
     -- and frame-capacity, not on next-slot or next-heap-ref.

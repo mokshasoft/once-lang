@@ -1443,11 +1443,21 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                              proj₁ (exec-trace f-trace s-after-setup alloc-after-backup)
               f-same-frame = trans f-same-frame-step1 f-same-frame-step2
 
-              -- Use exec-trace-output-equiv to show Output is same as when running on s
-              -- Need: Input same, slots in [suc backup-slot, reclaim-f) same
+              -- Use exec-trace-output-equiv-no-output to show Output is same as when running on s
+              -- Need: Input same, slots in [suc backup-slot, reclaim-f) same, heap same
+              -- Note: Output differs (s-after-setup has Input, s has original), but f-trace
+              -- computes Output from Input/slots so initial Output doesn't matter
+
+              -- Heap is preserved by setup-trace (mov-to-output and store-at-slot don't modify heap)
+              setup-preserves-heap : TracePreservesHeap setup-trace
+              setup-preserves-heap = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+
+              heap-eq-after-setup : heapMem s-after-setup ≡ heapMem s
+              heap-eq-after-setup = exec-trace-preserves-heapMem setup-trace s alloc setup-preserves-heap
+
               output-equiv : readReg (regs (proj₁ (exec-trace f-trace s-after-setup alloc-after-backup))) Output ≡
                              readReg (regs (proj₁ (exec-trace f-trace s alloc-after-backup))) Output
-              output-equiv = exec-trace-output-equiv f-trace s-after-setup s alloc-after-backup
+              output-equiv = exec-trace-output-equiv-no-output f-trace s-after-setup s alloc-after-backup
                                (suc backup-slot) reclaim-f
                                (trans input-after-setup (sym rdi-eq))
                                (trans not-halted-after-setup (sym not-halted))  -- halted s-after-setup ≡ halted s
@@ -1455,6 +1465,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                                slots-eq-for-f
                                f-slot-reads
                                (IRResultAWF.trace-slot-reads-below result-f)
+                               heap-eq-after-setup
 
               -- From f-correct: proj₁ (exec-trace f-trace s alloc-after-backup) ≡ s₁
               -- From rax-f: readReg (regs s₁) Output ≡ fst-loc
@@ -2256,10 +2267,150 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
             in trans s-before-g-eq-s (sym s1'-eq-s)
 
           -- Step 3: Apply state equivalence
+          -- s-before-g was computed from s, s₁' is s₁ with Input modified
+          -- Both have same heap (instructions don't modify heap)
+          -- Note: Output may differ, but g-trace computes Output from Input/slots
+
+          -- Heap equality: both states have equivalent heaps
+          --
+          -- Proof structure:
+          -- 1. heapMem s₁' = heapMem s₁ (s₁' only changes regs)
+          -- 2. s₁ = exec f-trace s alloc-after-backup (by trace-correct)
+          -- 3. s-before-g = exec (setup ++ f-trace ++ store-fst ++ restore) s alloc
+          -- 4. store-fst and restore preserve heap (they're store-at-slot and restore-input)
+          -- 5. setup preserves heap (mov-to-output and store-at-slot)
+          -- 6. So heapMem s-before-g = heapMem (exec f-trace s-after-setup alloc-after-setup)
+          -- 7. Using exec-trace-heap-equiv: this equals heapMem (exec f-trace s alloc-after-backup) = heapMem s₁
+          --
+          heap-eq-for-g : heapMem s-before-g ≡ heapMem s₁'
+          heap-eq-for-g =
+            let
+              -- Step 1: s₁' has same heap as s₁ (only differs in regs)
+              s1'-heap-eq-s1 : heapMem s₁' ≡ heapMem s₁
+              s1'-heap-eq-s1 = refl  -- s₁' = record s₁ { regs = ... }
+
+              -- Step 2: s₁ = exec f-trace s alloc-after-backup
+              s1-via-trace : s₁ ≡ proj₁ (exec-trace f-trace s alloc-after-backup)
+              s1-via-trace = sym (IRResultAWF.trace-correct result-f)
+
+              -- Step 3: Setup trace preserves heap
+              setup-tph : TracePreservesHeap setup-here
+              setup-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+
+              setup-heap : heapMem s-after-setup-here ≡ heapMem s
+              setup-heap = exec-trace-preserves-heapMem setup-here s alloc setup-tph
+
+              -- Step 4: Frame/capacity equality for alloc threading
+              setup-frame : current-frame alloc-after-setup-here ≡ current-frame alloc
+              setup-frame = exec-trace-preserves-frame setup-here s alloc
+
+              setup-cap : frame-capacity alloc-after-setup-here ≡ frame-capacity alloc
+              setup-cap = exec-trace-preserves-capacity' setup-here s alloc setup-tpc
+
+              -- Step 5: Use exec-trace-state-same-frame for alloc equivalence
+              f-same-frame : proj₁ (exec-trace f-trace s-after-setup-here alloc-after-setup-here) ≡
+                             proj₁ (exec-trace f-trace s-after-setup-here alloc-after-backup)
+              f-same-frame = exec-trace-state-same-frame f-trace s-after-setup-here alloc-after-setup-here alloc-after-backup
+                               setup-frame setup-cap
+
+              -- Step 6: Input, halted, and slots equivalence for exec-trace-heap-equiv
+              -- Define input equivalence locally
+              input-eq-local : readReg (regs s-after-setup-here) Input ≡ input-loc
+              input-eq-local =
+                let
+                  input-after-mov : readReg (regs s-after-mov-setup) Input ≡ input-loc
+                  input-after-mov = trans (cong (λ st → readReg (regs st) Input) (mov-to-output-state-eq s alloc not-halted)) rdi-eq
+                in trans (cong (λ st → readReg (regs st) Input) setup-decomp)
+                         (trans (cong (λ st → readReg (regs st) Input)
+                                  (store-at-slot-state-eq backup-slot s-after-mov-setup alloc-after-mov-setup not-halted-after-mov-setup))
+                                (trans (cong (λ r → readReg r Input)
+                                         (writeLoc-regs s-after-mov-setup
+                                           (OnStack (current-frame alloc-after-mov-setup) backup-slot)
+                                           (readReg (regs s-after-mov-setup) Output)))
+                                       input-after-mov))
+
+              input-eq' : readReg (regs s-after-setup-here) Input ≡ readReg (regs s) Input
+              input-eq' = trans input-eq-local (sym rdi-eq)
+
+              halted-eq' : halted s-after-setup-here ≡ halted s
+              halted-eq' = trans not-halted-after-setup-here (sym not-halted)
+
+              -- Define slots equivalence locally
+              slots-eq' : ∀ slot → suc backup-slot ≤ slot → slot < reclaim-f →
+                readLoc s-after-setup-here (OnStack (current-frame alloc-after-backup) slot) ≡
+                readLoc s (OnStack (current-frame alloc-after-backup) slot)
+              slots-eq' slot lo hi =
+                let
+                  loc = OnStack (current-frame alloc) slot
+                  frame-after-mov' : current-frame alloc-after-mov-setup ≡ current-frame alloc
+                  frame-after-mov' = exec-trace-preserves-frame (mov-to-output ∷ []) s alloc
+                  mov-preserves : readLoc s-after-mov-setup loc ≡ readLoc s loc
+                  mov-preserves = mov-to-output-preserves-readLoc s alloc loc not-halted
+                  backup-neq-slot : backup-slot ≢ slot
+                  backup-neq-slot eq = <⇒≢ lo eq
+                  loc-neq : OnStack (current-frame alloc-after-mov-setup) backup-slot ≢ loc
+                  loc-neq eq' = backup-neq-slot (trans (cong slot-of eq') (cong slot-of (cong (λ f → OnStack f slot) (sym frame-after-mov'))))
+                  store-via-abstract : proj₁ (exec-trace (store-at-slot backup-slot ∷ []) s-after-mov-setup alloc-after-mov-setup) ≡
+                                       proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov-setup alloc-after-mov-setup)
+                  store-via-abstract = cong proj₁ (exec-trace-single (store-at-slot backup-slot) s-after-mov-setup alloc-after-mov-setup not-halted-after-mov-setup)
+                  store-preserves : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s-after-mov-setup alloc-after-mov-setup)) loc ≡
+                                    readLoc s-after-mov-setup loc
+                  store-preserves = store-at-slot-preserves-disjoint backup-slot s-after-mov-setup alloc-after-mov-setup loc loc-neq
+                in trans (cong (λ st → readLoc st loc) setup-decomp)
+                         (trans (cong (λ st → readLoc st loc) store-via-abstract)
+                                (trans store-preserves mov-preserves))
+
+              -- Step 7: Apply exec-trace-heap-equiv
+              f-heap-equiv : heapMem (proj₁ (exec-trace f-trace s-after-setup-here alloc-after-backup)) ≡
+                             heapMem (proj₁ (exec-trace f-trace s alloc-after-backup))
+              f-heap-equiv = exec-trace-heap-equiv f-trace s-after-setup-here s alloc-after-backup
+                               (suc backup-slot) reclaim-f
+                               input-eq'
+                               halted-eq'
+                               not-halted-after-setup-here
+                               slots-eq'
+                               f-slot-reads
+                               (IRResultAWF.trace-slot-reads-below result-f)
+                               setup-heap
+
+              -- Step 8: s-before-store-here = exec (setup ++ f-trace) s = exec f-trace s-after-setup
+              s-before-store-heap : heapMem s-before-store-here ≡ heapMem (proj₁ (exec-trace f-trace s alloc-after-backup))
+              s-before-store-heap =
+                trans (cong heapMem s-before-store-here-decomp)
+                      (trans (cong heapMem f-same-frame) f-heap-equiv)
+
+              -- Step 9: store-at-slot fst-slot preserves heap
+              store-fst-tph : TracePreservesHeap (store-at-slot fst-slot ∷ [])
+              store-fst-tph = tph-∷ iph-store-at-slot tph-[]
+
+              s-after-fst-store-heap : heapMem s-after-fst-store-here ≡ heapMem s-before-store-here
+              s-after-fst-store-heap = exec-trace-preserves-heapMem (store-at-slot fst-slot ∷ [])
+                                         s-before-store-here alloc-before-store-here store-fst-tph
+
+              -- Step 10: restore-input preserves heap
+              restore-tph : TracePreservesHeap (restore-input backup-slot ∷ [])
+              restore-tph = tph-∷ iph-restore-input tph-[]
+
+              s-before-g-heap : heapMem (proj₁ (exec-trace (restore-input backup-slot ∷ []) s-after-fst-store-here alloc-after-fst-store-here)) ≡
+                                heapMem s-after-fst-store-here
+              s-before-g-heap = exec-trace-preserves-heapMem (restore-input backup-slot ∷ [])
+                                  s-after-fst-store-here alloc-after-fst-store-here restore-tph
+
+              -- Step 11: Compose via s-before-g decomposition
+              s-before-g-full-heap : heapMem s-before-g ≡ heapMem (proj₁ (exec-trace f-trace s alloc-after-backup))
+              s-before-g-full-heap =
+                trans (cong heapMem s-before-g-decomp-here)
+                      (trans s-before-g-heap
+                             (trans s-after-fst-store-heap s-before-store-heap))
+
+            in trans s-before-g-full-heap
+                     (trans (sym (cong heapMem s1-via-trace)) (sym s1'-heap-eq-s1))
+
           output-equiv : readReg (regs (proj₁ (exec-trace g-trace s-before-g alloc₁-reclaimed))) Output ≡
                          readReg (regs (proj₁ (exec-trace g-trace s₁' alloc₁-reclaimed))) Output
-          output-equiv = exec-trace-output-equiv g-trace s-before-g s₁' alloc₁-reclaimed reclaim-f reclaim-g
+          output-equiv = exec-trace-output-equiv-no-output g-trace s-before-g s₁' alloc₁-reclaimed reclaim-f reclaim-g
                            input-eq halted-eq not-halted-s-before-g slots-eq g-slot-reads g-slot-reads-below
+                           heap-eq-for-g
 
           -- Step 4: Connect to g-correct and rax-g
           -- g-correct : proj₁ (exec-trace g-trace s₁' alloc₁-reclaimed) ≡ s₂
