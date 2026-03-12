@@ -293,35 +293,110 @@ N-id-fixpoint' = ⇒→⟶* (⇒-id-l (⇒-refl (encode N-id)))
 -- For any functor F, fmap F id reduces to id.
 -- This requires multiple steps for sum/product functors.
 --
--- The proof structure:
--- - Id, K cases: definitional equality (done in one step)
--- - ⊕ case: reduce components, then eta-case
--- - ⊗ case: reduce components, then eta-pair
---
--- This is tricky because we need congruence under [,] and ⟨,⟩.
--- Since ⟶ doesn't have congruence, we use ⇒ and ⇒→⟶*.
+-- Proof structure:
+-- - Id, K cases: definitional equality
+-- - ⊕ case: [ inl ∘ fmap F id , inr ∘ fmap G id ] ⟶* [ inl , inr ] ⟶ id
+-- - ⊗ case: ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⟶* ⟨ fst , snd ⟩ ⟶ id
 
--- Helper: multi-step parallel to single parallel (not needed, but clarifying)
--- We'll build ⇒* and convert to ⟶*
+------------------------------------------------------------------------
+-- Infrastructure: Congruence lemmas for ⇒*
+------------------------------------------------------------------------
 
--- For the sum functor case:
--- [ inl ∘ fmap F id , inr ∘ fmap G id ]
--- ⇒* [ inl ∘ id , inr ∘ id ]  (by IH applied to components)
--- ⇒  [ inl , inr ]            (by ⇒-case with ⇒-id-r)
--- ⇒  id                        (by ⇒-η-case)
+-- Transitivity of ⇒*
+⇒*-trans : ∀ {A B} {t u v : Term A B} → t ⇒* u → u ⇒* v → t ⇒* v
+⇒*-trans done⇒ q = q
+⇒*-trans (step⇒ p ps) q = step⇒ p (⇒*-trans ps q)
 
--- We need a congruence lemma for case under ⇒*
--- This is getting complex - let's just postulate the result for now.
+-- Single step to multi-step
+⇒→⇒* : ∀ {A B} {t u : Term A B} → t ⇒ u → t ⇒* u
+⇒→⇒* p = step⇒ p done⇒
 
-postulate
-  fmap-id : ∀ F {A} → fmap F (id {A}) ⟶* id
+-- Congruence: composition on the right
+⇒*-∘-right : ∀ {A B C} {f : Term B C} {g g' : Term A B} →
+             g ⇒* g' → (f ∘ g) ⇒* (f ∘ g')
+⇒*-∘-right done⇒ = done⇒
+⇒*-∘-right (step⇒ p ps) = step⇒ (⇒-∘ (⇒-refl _) p) (⇒*-∘-right ps)
 
--- The proof would use:
--- 1. Induction on F
--- 2. For ⊕/⊗ cases, use ⇒-case/⇒-pair congruence
--- 3. Chain multiple ⇒ steps
--- 4. Convert to ⟶* via ⇒*→⟶*
---
--- The key insight: this is provable but tedious.
--- It requires building congruence lemmas for ⇒*.
+-- Congruence: composition on the left
+⇒*-∘-left : ∀ {A B C} {f f' : Term B C} {g : Term A B} →
+            f ⇒* f' → (f ∘ g) ⇒* (f' ∘ g)
+⇒*-∘-left done⇒ = done⇒
+⇒*-∘-left (step⇒ p ps) = step⇒ (⇒-∘ p (⇒-refl _)) (⇒*-∘-left ps)
+
+-- Congruence: case/coproduct
+⇒*-case : ∀ {A B C} {f f' : Term A C} {g g' : Term B C} →
+          f ⇒* f' → g ⇒* g' → [ f , g ] ⇒* [ f' , g' ]
+⇒*-case done⇒ done⇒ = done⇒
+⇒*-case done⇒ (step⇒ q qs) = step⇒ (⇒-case (⇒-refl _) q) (⇒*-case done⇒ qs)
+⇒*-case (step⇒ p ps) qs = step⇒ (⇒-case p (⇒-refl _)) (⇒*-case ps qs)
+
+-- Congruence: pair/product
+⇒*-pair : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
+          f ⇒* f' → g ⇒* g' → ⟨ f , g ⟩ ⇒* ⟨ f' , g' ⟩
+⇒*-pair done⇒ done⇒ = done⇒
+⇒*-pair done⇒ (step⇒ q qs) = step⇒ (⇒-pair (⇒-refl _) q) (⇒*-pair done⇒ qs)
+⇒*-pair (step⇒ p ps) qs = step⇒ (⇒-pair p (⇒-refl _)) (⇒*-pair ps qs)
+
+------------------------------------------------------------------------
+-- The fmap-id proof
+------------------------------------------------------------------------
+
+-- First in ⇒* form, then convert to ⟶*
+
+fmap-id⇒* : ∀ F {A} → fmap F (id {A}) ⇒* id
+fmap-id⇒* Id = done⇒  -- fmap Id id = id definitionally
+fmap-id⇒* (K _) = done⇒  -- fmap (K _) _ = id definitionally
+fmap-id⇒* (F ⊕ G) =
+  -- fmap (F ⊕ G) id = [ inl ∘ fmap F id , inr ∘ fmap G id ]
+  -- Goal: [ inl ∘ fmap F id , inr ∘ fmap G id ] ⇒* id
+  --
+  -- Step 1: By IH, fmap F id ⇒* id and fmap G id ⇒* id
+  -- Step 2: inl ∘ fmap F id ⇒* inl ∘ id  (congruence)
+  -- Step 3: inl ∘ id ⇒ inl               (id-right)
+  -- Step 4: Similarly for inr side
+  -- Step 5: [ inl , inr ] ⇒ id           (eta-case)
+  let
+    -- IH: fmap F id ⇒* id, fmap G id ⇒* id
+    ih-F = fmap-id⇒* F
+    ih-G = fmap-id⇒* G
+    -- inl ∘ fmap F id ⇒* inl ∘ id ⇒* inl
+    left-reduces : (inl ∘ fmap F id) ⇒* inl
+    left-reduces = ⇒*-trans (⇒*-∘-right ih-F) (⇒→⇒* (⇒-id-r ⇒-inl))
+    -- inr ∘ fmap G id ⇒* inr ∘ id ⇒* inr
+    right-reduces : (inr ∘ fmap G id) ⇒* inr
+    right-reduces = ⇒*-trans (⇒*-∘-right ih-G) (⇒→⇒* (⇒-id-r ⇒-inr))
+    -- [ inl ∘ fmap F id , inr ∘ fmap G id ] ⇒* [ inl , inr ]
+    case-reduces : [ inl ∘ fmap F id , inr ∘ fmap G id ] ⇒* [ inl , inr ]
+    case-reduces = ⇒*-case left-reduces right-reduces
+  in
+    -- [ inl , inr ] ⇒ id by eta-case
+    ⇒*-trans case-reduces (⇒→⇒* ⇒-η-case)
+
+fmap-id⇒* (F ⊗ G) =
+  -- fmap (F ⊗ G) id = ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩
+  -- Goal: ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⇒* id
+  --
+  -- Step 1: By IH, fmap F id ⇒* id and fmap G id ⇒* id
+  -- Step 2: fmap F id ∘ fst ⇒* id ∘ fst ⇒* fst  (congruence + id-left)
+  -- Step 3: Similarly for snd side
+  -- Step 4: ⟨ fst , snd ⟩ ⇒ id                   (eta-pair)
+  let
+    ih-F = fmap-id⇒* F
+    ih-G = fmap-id⇒* G
+    -- fmap F id ∘ fst ⇒* id ∘ fst ⇒ fst
+    left-reduces : (fmap F id ∘ fst) ⇒* fst
+    left-reduces = ⇒*-trans (⇒*-∘-left ih-F) (⇒→⇒* (⇒-id-l ⇒-fst))
+    -- fmap G id ∘ snd ⇒* id ∘ snd ⇒ snd
+    right-reduces : (fmap G id ∘ snd) ⇒* snd
+    right-reduces = ⇒*-trans (⇒*-∘-left ih-G) (⇒→⇒* (⇒-id-l ⇒-snd))
+    -- ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⇒* ⟨ fst , snd ⟩
+    pair-reduces : ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⇒* ⟨ fst , snd ⟩
+    pair-reduces = ⇒*-pair left-reduces right-reduces
+  in
+    -- ⟨ fst , snd ⟩ ⇒ id by eta-pair
+    ⇒*-trans pair-reduces (⇒→⇒* ⇒-η-pair)
+
+-- Convert to ⟶*
+fmap-id : ∀ F {A} → fmap F (id {A}) ⟶* id
+fmap-id F = ⇒*→⟶* (fmap-id⇒* F)
 
