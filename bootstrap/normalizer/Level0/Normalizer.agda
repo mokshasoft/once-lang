@@ -342,24 +342,48 @@ postulate
 -- reduction steps. For base cases, t ⟶* t (done). For recursive cases,
 -- use transitivity and congruence.
 --
--- The proof sketch is:
---   normalize-sound id = done
---   normalize-sound (f ∘ g):
---     - f ⟶* normalize f (by IH)
---     - g ⟶* normalize g (by IH)
---     - f ∘ g ⟶* normalize f ∘ normalize g (by congruence)
---     - If reduce-comp returns inj₂ h:
---         normalize f ∘ normalize g ⟶ h (by reduce-comp-sound)
---         h ⟶* normalize h (by IH)
---     - If reduce-comp returns inj₁ _:
---         normalize (f ∘ g) = normalize f ∘ normalize g (by definition)
---   (other cases similar using congruence)
+-- The composition case is the interesting one:
+--   normalize (f ∘ g) looks at reduce-comp (normalize f) (normalize g)
+--   - If inj₂ reduced: we recurse on reduced (not structurally smaller!)
+--   - If inj₁ _: we return normalize f ∘ normalize g
 --
--- This requires well-founded recursion to prove formally because the
--- composition case recurses on 'reduced' which is not a subterm.
--- We postulate it here; the TERMINATING pragma guarantees termination.
-postulate
+-- We use TERMINATING since normalize itself uses TERMINATING.
+-- The proof follows the same recursive structure.
+
+-- Mutual recursion for normalize-sound
+-- We need the composition case to call normalize-sound recursively
+mutual
+  {-# TERMINATING #-}
   normalize-sound : ∀ {A B} (t : Term A B) → t ⟶* normalize t
+  normalize-sound id = done
+  normalize-sound (f ∘ g) = normalize-sound-∘ f g
+  normalize-sound fst = done
+  normalize-sound snd = done
+  normalize-sound ⟨ f , g ⟩ = cong-pair (normalize-sound f) (normalize-sound g)
+  normalize-sound inl = done
+  normalize-sound inr = done
+  normalize-sound [ f , g ] = cong-case (normalize-sound f) (normalize-sound g)
+  normalize-sound terminal = done
+  normalize-sound In = done
+  normalize-sound (cata F alg) = cong-cata (normalize-sound alg)
+
+  -- Helper for composition case
+  -- Uses the same with-clause structure as normalize to ensure types match.
+  -- We use the inspect idiom to capture the equality proof from the with-match.
+  {-# TERMINATING #-}
+  normalize-sound-∘ : ∀ {A B C} (f : Term B C) (g : Term A B) →
+                      (f ∘ g) ⟶* normalize (f ∘ g)
+  normalize-sound-∘ f g
+    with reduce-comp (normalize f) (normalize g)
+       | inspect (reduce-comp (normalize f)) (normalize g)
+  normalize-sound-∘ f g | inj₂ reduced | ⟪ eq ⟫ =
+    trans⟶* (trans⟶* (cong-∘-left g (normalize-sound f))
+                      (cong-∘-right (normalize f) (normalize-sound g)))
+            (trans⟶* (step (reduce-comp-sound (normalize f) (normalize g) reduced eq) done)
+                     (normalize-sound reduced))
+  normalize-sound-∘ f g | inj₁ _ | _ =
+    trans⟶* (cong-∘-left g (normalize-sound f))
+            (cong-∘-right (normalize f) (normalize-sound g))
 
 ------------------------------------------------------------------------
 -- The Normalizer as a CCC Term
