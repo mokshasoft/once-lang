@@ -315,14 +315,14 @@ normalizer-wf : (N : ConcreteNormalizer) → WellFormed N →
                 WellFormed (apply-norm' N (encode t))
 normalizer-wf N wf-N t = wf-comp wf-N (encode-wf t)
 
--- LEMMA 6: Encoding is ALWAYS in normal form
--- encode t produces In ∘ something at the root, and the only reduction
--- rule involving In is (cata F alg ∘ In ⟶ ...) which has In on the RIGHT.
--- Since encode puts In on the LEFT, no root reduction is possible.
+-- LEMMA 6: Encoding is ALWAYS in beta-normal form
+-- encode t produces In ∘ something at the root. No BETA reduction matches.
+-- (Note: assoc-l CAN match since encode uses right-associative composition,
+--  but assoc-l is structural, not computational, so we use BetaNF.)
 --
--- This is true because none of the reduction rules match (In ∘ t):
+-- This is true because none of the beta reduction rules match (In ∘ t):
 --   id-left: id ∘ f  (In ≠ id)
---   id-right: f ∘ id (checks right operand, not left)
+--   id-right: f ∘ id (checks right operand, not id)
 --   fst-pair: fst ∘ ⟨_,_⟩ (In ≠ fst)
 --   snd-pair: snd ∘ ⟨_,_⟩ (In ≠ snd)
 --   eta-pair: ⟨ fst , snd ⟩ (In ∘ t is not a pair constructor)
@@ -330,30 +330,27 @@ normalizer-wf N wf-N t = wf-comp wf-N (encode-wf t)
 --   case-inr: [ _ , _ ] ∘ inr (In ∘ t is not a case constructor)
 --   eta-case: [ inl , inr ] (In ∘ t is not a case constructor)
 --   cata-β: cata F alg ∘ In (here In is on the RIGHT, not left)
+--   out-in: Out ∘ In (In ≠ Out)
+--   in-out: In ∘ Out (right operand is inl/inr composition, not Out)
 
--- Proof: Each encoding has form In ∘ (inl ∘ ...) or In ∘ (inr ∘ ...).
--- No reduction rule matches:
---   - In on left rules out id-left, fst-pair, snd-pair, case-inl, case-inr, cata-β
---   - The right operand is inl/inr composition, not id, ruling out id-right
---   - The term is a composition, not ⟨_,_⟩ or [_,_], ruling out eta-pair, eta-case
-encode-always-nf : ∀ {A B} (t : Term A B) → NF (encode t)
--- Each case: pattern match on the reduction and show contradiction
-encode-always-nf id ()
-encode-always-nf (f ∘ g) ()
-encode-always-nf fst ()
-encode-always-nf snd ()
-encode-always-nf ⟨ f , g ⟩ ()
-encode-always-nf inl ()
-encode-always-nf inr ()
-encode-always-nf [ f , g ] ()
-encode-always-nf terminal ()
-encode-always-nf In ()
-encode-always-nf Out ()
-encode-always-nf (cata F alg) ()
+encode-always-betanf : ∀ {A B} (t : Term A B) → BetaNF (encode t)
+-- Each case: pattern match on the beta reduction and show contradiction
+encode-always-betanf id ()
+encode-always-betanf (f ∘ g) ()
+encode-always-betanf fst ()
+encode-always-betanf snd ()
+encode-always-betanf ⟨ f , g ⟩ ()
+encode-always-betanf inl ()
+encode-always-betanf inr ()
+encode-always-betanf [ f , g ] ()
+encode-always-betanf terminal ()
+encode-always-betanf In ()
+encode-always-betanf Out ()
+encode-always-betanf (cata F alg) ()
 
--- Corollary: NF t implies NF (encode t) (trivially, since encode is always NF)
-encode-nf-is-nf : ∀ {A B} {t : Term A B} → NF t → NF (encode t)
-encode-nf-is-nf {t = t} _ = encode-always-nf t
+-- Corollary: BetaNF t implies BetaNF (encode t)
+encode-betanf-is-betanf : ∀ {A B} {t : Term A B} → BetaNF t → BetaNF (encode t)
+encode-betanf-is-betanf {t = t} _ = encode-always-betanf t
 
 ------------------------------------------------------------------------
 -- The Core Fixpoint Theorem
