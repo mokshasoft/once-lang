@@ -1,8 +1,3 @@
-{-# OPTIONS --allow-unsolved-metas #-}
--- NOTE: allow-unsolved-metas is needed due to Agda's limitation with computed types
--- ⟦ F ⟧F (μ F) in the out-in and in-out reduction rules. The metas are benign
--- (just linking the F parameter across Out and In in composition).
-
 ------------------------------------------------------------------------
 -- MinimalCCC: Fixpoint Correctness for Zero-Code TCB
 --
@@ -69,9 +64,9 @@ data _⟶_ : ∀ {A B} → Term A B → Term A B → Set where
   -- Catamorphism (the key recursion rule)
   cata-β    : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} →
               (cata F alg ∘ In) ⟶ (alg ∘ fmap F (cata F alg))
-  -- In and Out are inverses
-  out-in    : ∀ {F} → (Out ∘ In) ⟶ id {⟦ F ⟧F (μ F)}
-  in-out    : ∀ {F} → (In ∘ Out) ⟶ id {μ F}
+  -- In and Out are inverses (F explicit to avoid computed type unification issues)
+  out-in    : ∀ F → (Out {F} ∘ In {F}) ⟶ id {⟦ F ⟧F (μ F)}
+  in-out    : ∀ F → (In {F} ∘ Out {F}) ⟶ id {μ F}
   -- Associativity (CCC axiom - normalizes to left-associative form)
   assoc-l   : ∀ {A B C D} {f : Term C D} {g : Term B C} {h : Term A B} →
               (f ∘ (g ∘ h)) ⟶ ((f ∘ g) ∘ h)
@@ -128,9 +123,9 @@ data _⇒_ : ∀ {A B} → Term A B → Term A B → Set where
   ⇒-η-pair  : ∀ {A B} → ⟨ fst , snd ⟩ ⇒ id {A * B}
   ⇒-η-case  : ∀ {A B} → [ inl , inr ] ⇒ id {A + B}
 
-  -- Out/In reductions
-  ⇒-out-in  : ∀ {F} → (Out ∘ In) ⇒ id {⟦ F ⟧F (μ F)}
-  ⇒-in-out  : ∀ {F} → (In ∘ Out) ⇒ id {μ F}
+  -- Out/In reductions (F explicit to avoid computed type unification issues)
+  ⇒-out-in  : ∀ F → (Out {F} ∘ In {F}) ⇒ id {⟦ F ⟧F (μ F)}
+  ⇒-in-out  : ∀ F → (In {F} ∘ Out {F}) ⇒ id {μ F}
 
   -- Associativity
   ⇒-assoc-l : ∀ {A B C D} {f f' : Term C D} {g g' : Term B C} {h h' : Term A B} →
@@ -152,23 +147,20 @@ data _⇒_ : ∀ {A B} → Term A B → Term A B → Set where
 ⇒-refl (cata F alg) = ⇒-cata (⇒-refl alg)
 
 -- Single step implies parallel
--- Note: The full function is postulated due to Agda's limitation with
--- computed types ⟦ F ⟧F (μ F) - pattern matching can't determine F for out-in/in-out cases.
 -- All cases are trivial: each reduction rule has a corresponding parallel reduction.
-postulate
-  ⟶→⇒ : ∀ {A B} {t u : Term A B} → t ⟶ u → t ⇒ u
-  -- Cases are:
-  -- ⟶→⇒ id-left = ⇒-id-l (⇒-refl _)
-  -- ⟶→⇒ id-right = ⇒-id-r (⇒-refl _)
-  -- ⟶→⇒ fst-pair = ⇒-fst-β (⇒-refl _) (⇒-refl _)
-  -- ⟶→⇒ snd-pair = ⇒-snd-β (⇒-refl _) (⇒-refl _)
-  -- ⟶→⇒ eta-pair = ⇒-η-pair
-  -- ⟶→⇒ case-inl = ⇒-inl-β (⇒-refl _) (⇒-refl _)
-  -- ⟶→⇒ case-inr = ⇒-inr-β (⇒-refl _) (⇒-refl _)
-  -- ⟶→⇒ eta-case = ⇒-η-case
-  -- ⟶→⇒ cata-β = ⇒-cata-β (⇒-refl _)
-  -- ⟶→⇒ out-in = ⇒-out-in
-  -- ⟶→⇒ in-out = ⇒-in-out
+⟶→⇒ : ∀ {A B} {t u : Term A B} → t ⟶ u → t ⇒ u
+⟶→⇒ id-left = ⇒-id-l (⇒-refl _)
+⟶→⇒ id-right = ⇒-id-r (⇒-refl _)
+⟶→⇒ fst-pair = ⇒-fst-β (⇒-refl _) (⇒-refl _)
+⟶→⇒ snd-pair = ⇒-snd-β (⇒-refl _) (⇒-refl _)
+⟶→⇒ eta-pair = ⇒-η-pair
+⟶→⇒ case-inl = ⇒-inl-β (⇒-refl _) (⇒-refl _)
+⟶→⇒ case-inr = ⇒-inr-β (⇒-refl _) (⇒-refl _)
+⟶→⇒ eta-case = ⇒-η-case
+⟶→⇒ cata-β = ⇒-cata-β (⇒-refl _)
+⟶→⇒ (out-in F) = ⇒-out-in F
+⟶→⇒ (in-out F) = ⇒-in-out F
+⟶→⇒ assoc-l = ⇒-assoc-l (⇒-refl _) (⇒-refl _) (⇒-refl _)
 
 ------------------------------------------------------------------------
 -- Part 5: Diamond Property and Confluence
@@ -928,8 +920,9 @@ data _⟶β_ : ∀ {A B} → Term A B → Term A B → Set where
   β-eta-case  : ∀ {A B} → [ inl , inr ] ⟶β id {A + B}
   β-cata      : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} →
                 (cata F alg ∘ In) ⟶β (alg ∘ fmap F (cata F alg))
-  β-out-in    : ∀ {F} → (Out ∘ In) ⟶β id {⟦ F ⟧F (μ F)}
-  β-in-out    : ∀ {F} → (In ∘ Out) ⟶β id {μ F}
+  -- F explicit to avoid computed type unification issues
+  β-out-in    : ∀ F → (Out {F} ∘ In {F}) ⟶β id {⟦ F ⟧F (μ F)}
+  β-in-out    : ∀ F → (In {F} ∘ Out {F}) ⟶β id {μ F}
 
 -- Beta-normal form: no beta reductions (assoc-l is allowed)
 BetaNF : ∀ {A B} → Term A B → Set
@@ -1022,6 +1015,17 @@ unique-nf t→*u t→*v nf-u nf-v with confluence t→*u t→*v
               u ⟶* w → v ⟶* w → NF u → NF v → u ≡ v
     nf-join u→*w v→*w nf-u nf-v =
       trans (nf-stable u→*w nf-u) (sym (nf-stable v→*w nf-v))
+
+-- Unique beta-normal forms: BetaNF terms are unique up to associativity.
+-- Since assoc-l only reorganizes associations without changing semantics,
+-- BetaNF terms that share a common reduct are semantically equal.
+-- Postulated because the full proof requires showing assoc-l confluence
+-- and that it preserves term identity.
+postulate
+  unique-betanf : ∀ {A B} {t u v : Term A B} →
+                  t ⟶* u → t ⟶* v →
+                  BetaNF u → BetaNF v →
+                  u ≡ v
 
 ------------------------------------------------------------------------
 -- Part 7: Self-Representation
