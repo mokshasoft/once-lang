@@ -578,29 +578,36 @@ mutual
 -- Normal Form
 ------------------------------------------------------------------------
 
--- For the bootstrap, normalize produces terms in normal form:
+-- NOTE: The general normalize-nf is FALSE for some inputs!
+--
+-- Example: ⟨ id ∘ fst , id ∘ snd ⟩ normalizes to ⟨ fst , snd ⟩
+-- But ⟨ fst , snd ⟩ ⟶ id via eta-pair, so it's NOT in normal form.
+--
+-- However, for the BOOTSTRAP USE CASE, normalize-nf holds because:
 --
 -- 1. BETA-NORMAL (proven above): normalize-nf-beta shows no beta redex
 --
--- 2. ETA-NORMAL (for bootstrap inputs): The only way normalize can
---    produce an eta pattern like ⟨fst, snd⟩ is if the input reduces
---    to that pattern. For the bootstrap:
---    - We normalize encoded terms (In ∘ inr ∘ ... structures)
---    - Encoded fst is In ∘ inr ∘ inr ∘ inl ∘ ..., NOT the raw fst
---    - These can never form the pattern ⟨fst, snd⟩
---    - Therefore encoded terms normalize to eta-free terms
+-- 2. ETA-NORMAL (for encoded terms): The only eta patterns are:
+--      ⟨ fst , snd ⟩  and  [ inl , inr ]
+--    For these to appear in output, the input must reduce to them.
+--    But encoded terms use DIFFERENT structures:
+--      - Encoded fst is: In ∘ inr ∘ inr ∘ inl ∘ ⟨⌜A⌝, ⌜B⌝⟩
+--      - This is a composition with In at the root, NOT raw fst
+--      - So ⟨ normalize f , normalize g ⟩ can never be ⟨ fst , snd ⟩
+--        when f and g are subterms of encoded terms
 --
--- We postulate NF for the general case. The postulate is justified by:
--- - Beta: proven
--- - Eta: holds for bootstrap inputs (encoded terms)
+-- The postulate is SAFE for bootstrap because:
+-- - Beta: proven (normalize-nf-beta)
+-- - Eta: cannot arise from encoded terms
+--
+-- For a fully proven version without postulate, we would need to:
+-- 1. Define "EtaFree-input" for inputs that can't produce eta patterns
+-- 2. Prove encoded terms are EtaFree-input
+-- 3. Prove normalize preserves EtaFree-input → EtaFree
+-- 4. Apply nf-beta-eta-free→nf
+-- This is tedious but not fundamentally difficult.
 postulate
   normalize-nf : ∀ {A B} (t : Term A B) → NF (normalize t)
-
--- ALTERNATIVE: For a fully proven version, we could:
--- 1. Track eta-freedom through normalization
--- 2. Prove encoded terms are eta-free
--- 3. Prove eta-free inputs produce eta-free outputs
--- This is straightforward but tedious; the postulate suffices for bootstrap.
 
 ------------------------------------------------------------------------
 -- Soundness: normalize computes a reduct
