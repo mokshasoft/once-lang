@@ -72,6 +72,9 @@ data _⟶_ : ∀ {A B} → Term A B → Term A B → Set where
   -- In and Out are inverses
   out-in    : ∀ {F} → (Out ∘ In) ⟶ id {⟦ F ⟧F (μ F)}
   in-out    : ∀ {F} → (In ∘ Out) ⟶ id {μ F}
+  -- Associativity (CCC axiom - normalizes to left-associative form)
+  assoc-l   : ∀ {A B C D} {f : Term C D} {g : Term B C} {h : Term A B} →
+              (f ∘ (g ∘ h)) ⟶ ((f ∘ g) ∘ h)
 
 -- Reflexive-transitive closure
 data _⟶*_ : ∀ {A B} → Term A B → Term A B → Set where
@@ -128,6 +131,10 @@ data _⇒_ : ∀ {A B} → Term A B → Term A B → Set where
   -- Out/In reductions
   ⇒-out-in  : ∀ {F} → (Out ∘ In) ⇒ id {⟦ F ⟧F (μ F)}
   ⇒-in-out  : ∀ {F} → (In ∘ Out) ⇒ id {μ F}
+
+  -- Associativity
+  ⇒-assoc-l : ∀ {A B C D} {f f' : Term C D} {g g' : Term B C} {h h' : Term A B} →
+              f ⇒ f' → g ⇒ g' → h ⇒ h' → (f ∘ (g ∘ h)) ⇒ ((f' ∘ g') ∘ h')
 
 -- Parallel reduction is reflexive
 ⇒-refl : ∀ {A B} (t : Term A B) → t ⇒ t
@@ -322,6 +329,12 @@ size terminal = suc zero
 size In = suc zero
 size Out = suc zero
 size (cata F alg) = suc (size alg +ℕ size-Func F)  -- include functor size
+
+-- Right-association depth: counts nested compositions on the right
+-- Used for termination of assoc-l rule
+right-depth : ∀ {A B} → Term A B → ℕ
+right-depth (f ∘ g) = suc (right-depth g)
+right-depth _ = zero
 
 -- Termination argument:
 -- Each reduction rule decreases size:
@@ -645,14 +658,23 @@ wf-fmap (F ⊗ G) wf-f = wf-pair (wf-comp (wf-fmap F wf-f) wf-fst)
 -- Lexicographic Ordering for Termination
 ------------------------------------------------------------------------
 
--- Lexicographic order on (ℕ, ℕ)
-data _<ₗₑₓ_ : (ℕ × ℕ) → (ℕ × ℕ) → Set where
-  <ₗₑₓ-fst : ∀ {a₁ a₂ b₁ b₂} → a₁ < a₂ → (a₁ , b₁) <ₗₑₓ (a₂ , b₂)
-  <ₗₑₓ-snd : ∀ {a b₁ b₂} → b₁ < b₂ → (a , b₁) <ₗₑₓ (a , b₂)
+-- 3-tuple type for measure: (in-count, size, right-depth)
+ℕ³ : Set
+ℕ³ = ℕ × (ℕ × ℕ)
 
--- Combined measure: (in-count, size)
-measure : ∀ {A B} → Term A B → ℕ × ℕ
-measure t = (in-count t , size t)
+-- Lexicographic order on ℕ³
+-- Order: compare first component, then second, then third
+data _<ₗₑₓ_ : ℕ³ → ℕ³ → Set where
+  <ₗₑₓ-fst : ∀ {a₁ a₂ b₁ b₂ c₁ c₂} →
+             a₁ < a₂ → (a₁ , (b₁ , c₁)) <ₗₑₓ (a₂ , (b₂ , c₂))
+  <ₗₑₓ-snd : ∀ {a b₁ b₂ c₁ c₂} →
+             b₁ < b₂ → (a , (b₁ , c₁)) <ₗₑₓ (a , (b₂ , c₂))
+  <ₗₑₓ-thd : ∀ {a b c₁ c₂} →
+             c₁ < c₂ → (a , (b , c₁)) <ₗₑₓ (a , (b , c₂))
+
+-- Combined measure: (in-count, size, right-depth)
+measure : ∀ {A B} → Term A B → ℕ³
+measure t = (in-count t , (size t , right-depth t))
 
 -- For simple rules: in-count stays same, size decreases
 -- For cata-β: in-count decreases (if alg has no In) OR stays same but size...
@@ -730,43 +752,42 @@ cata-β-decreases-simple {F} {A} {alg} p = <ₗₑₓ-fst rhs<lhs
 --
 -- This is the essence of why catamorphisms over initial algebras terminate.
 
--- Accessibility for lexicographic order
-data Acc-lex : ℕ × ℕ → Set where
+-- Accessibility for lexicographic order on ℕ³
+data Acc-lex : ℕ³ → Set where
   acc-lex : ∀ {p} → (∀ q → q <ₗₑₓ p → Acc-lex q) → Acc-lex p
 
--- Well-foundedness of lex order: proved by nested induction
--- We need a helper that takes the accessibility proofs as arguments
--- to satisfy the termination checker
+-- Well-foundedness of lex order on ℕ³: proved by triple nested induction
+-- We need helpers for each level of induction
 
--- Step function for the inner induction
-lex-wf-step : ∀ a → (∀ a' → a' < a → Acc a' → ∀ b' → Acc b' → Acc-lex (a' , b')) →
-              ∀ b → (∀ b' → b' < b → Acc-lex (a , b')) →
-              Acc-lex (a , b)
-lex-wf-step a rec-a b rec-b = acc-lex go
+-- Innermost: induction on c (third component)
+lex-wf-inner-c : ∀ a b → (∀ a' → a' < a → ∀ b' c' → Acc-lex (a' , (b' , c'))) →
+                 (∀ b' → b' < b → ∀ c' → Acc-lex (a , (b' , c'))) →
+                 ∀ c → Acc c → Acc-lex (a , (b , c))
+lex-wf-inner-c a b rec-a rec-b c (acc fc) = acc-lex go
   where
-    go : ∀ q → q <ₗₑₓ (a , b) → Acc-lex q
-    go (a' , b') (<ₗₑₓ-fst a'<a) = rec-a a' a'<a (<-wf a') b' (<-wf b')
-    go (.a , b') (<ₗₑₓ-snd b'<b) = rec-b b' b'<b
+    go : ∀ q → q <ₗₑₓ (a , (b , c)) → Acc-lex q
+    go (a' , (b' , c')) (<ₗₑₓ-fst a'<a) = rec-a a' a'<a b' c'
+    go (.a , (b' , c')) (<ₗₑₓ-snd b'<b) = rec-b b' b'<b c'
+    go (.a , (.b , c')) (<ₗₑₓ-thd c'<c) = lex-wf-inner-c a b rec-a rec-b c' (fc c' c'<c)
 
--- Inner induction: given Acc a, for all b, prove Acc-lex (a, b)
-lex-wf-inner-b : ∀ a → (∀ a' → a' < a → ∀ b' → Acc-lex (a' , b')) →
-                 ∀ b → Acc b → Acc-lex (a , b)
-lex-wf-inner-b a rec-a b (acc fb) = acc-lex go
+-- Middle: induction on b (second component)
+lex-wf-inner-b : ∀ a → (∀ a' → a' < a → ∀ b' c' → Acc-lex (a' , (b' , c'))) →
+                 ∀ b → Acc b → ∀ c → Acc-lex (a , (b , c))
+lex-wf-inner-b a rec-a b (acc fb) c = lex-wf-inner-c a b rec-a rec-b c (<-wf c)
   where
-    go : ∀ q → q <ₗₑₓ (a , b) → Acc-lex q
-    go (a' , b') (<ₗₑₓ-fst a'<a) = rec-a a' a'<a b'
-    go (.a , b') (<ₗₑₓ-snd b'<b) = lex-wf-inner-b a rec-a b' (fb b' b'<b)
+    rec-b : ∀ b' → b' < b → ∀ c' → Acc-lex (a , (b' , c'))
+    rec-b b' b'<b c' = lex-wf-inner-b a rec-a b' (fb b' b'<b) c'
 
--- Outer induction: given Acc a, prove ∀ b → Acc-lex (a, b)
-lex-wf-inner-a : ∀ a → Acc a → ∀ b → Acc-lex (a , b)
-lex-wf-inner-a a (acc fa) b = lex-wf-inner-b a rec-a b (<-wf b)
+-- Outer: induction on a (first component)
+lex-wf-inner-a : ∀ a → Acc a → ∀ b c → Acc-lex (a , (b , c))
+lex-wf-inner-a a (acc fa) b c = lex-wf-inner-b a rec-a b (<-wf b) c
   where
-    rec-a : ∀ a' → a' < a → ∀ b' → Acc-lex (a' , b')
-    rec-a a' a'<a b' = lex-wf-inner-a a' (fa a' a'<a) b'
+    rec-a : ∀ a' → a' < a → ∀ b' c' → Acc-lex (a' , (b' , c'))
+    rec-a a' a'<a b' c' = lex-wf-inner-a a' (fa a' a'<a) b' c'
 
--- Main theorem: lexicographic order is well-founded
-lex-wf : ∀ (p : ℕ × ℕ) → Acc-lex p
-lex-wf (a , b) = lex-wf-inner-a a (<-wf a) b
+-- Main theorem: lexicographic order on ℕ³ is well-founded
+lex-wf : ∀ (p : ℕ³) → Acc-lex p
+lex-wf (a , (b , c)) = lex-wf-inner-a a (<-wf a) b c
 
 -- Helper type: a ≤ b means either a = b or a < b
 EqOrLess : ℕ → ℕ → Set
@@ -789,10 +810,16 @@ EqOrLess a b = (a ≡ b) ⊎ (a < b)
 +ℕ-zero-leq a b (inj₁ eq) = inj₁ (trans eq (sym (+ℕ-zero-r b)))
 +ℕ-zero-leq a b (inj₂ lt) = inj₂ (subst (λ x → a < x) (sym (+ℕ-zero-r b)) lt)
 
--- Helper for lex decrease: if a ≤ b (equal or less) and size decreases
-lex-decrease-helper : (a b s s' : ℕ) → EqOrLess a b → s < s' → (a , s) <ₗₑₓ (b , s')
-lex-decrease-helper a .a s s' (inj₁ refl) s<s' = <ₗₑₓ-snd s<s'
-lex-decrease-helper a b s s' (inj₂ a<b) _ = <ₗₑₓ-fst a<b
+-- Helper for lex decrease: if first component ≤ and second decreases
+lex-decrease-helper : (a b s s' r r' : ℕ) → EqOrLess a b → s < s' →
+                      (a , (s , r)) <ₗₑₓ (b , (s' , r'))
+lex-decrease-helper a .a s s' r r' (inj₁ refl) s<s' = <ₗₑₓ-snd s<s'
+lex-decrease-helper a b s s' r r' (inj₂ a<b) _ = <ₗₑₓ-fst a<b
+
+-- Helper for lex decrease: if first two components equal and third decreases
+lex-decrease-thd-helper : (a s r r' : ℕ) → r < r' →
+                          (a , (s , r)) <ₗₑₓ (a , (s , r'))
+lex-decrease-thd-helper a s r r' r<r' = <ₗₑₓ-thd r<r'
 
 ------------------------------------------------------------------------
 -- Redex Count: A better measure for cata-β termination
@@ -881,10 +908,32 @@ postulate
   -- eta-pair, eta-case: <ₗₑₓ-snd
   -- cata-β: cata-β-decreases-wf
   -- out-in, in-out: <ₗₑₓ-fst <-base (in-count decreases from 1 to 0)
+  -- assoc-l: <ₗₑₓ-thd (right-depth decreases: 2+rd(h) > 1+rd(h))
 
 -- Normal form predicate: no reductions possible
 NF : ∀ {A B} → Term A B → Set
 NF t = ∀ {u} → ¬ (t ⟶ u)
+
+-- Beta reduction: computational reductions (excludes assoc-l which is structural)
+-- This is used for encode-always-nf since encoded terms may have assoc-l redexes
+-- but don't have computational redexes.
+data _⟶β_ : ∀ {A B} → Term A B → Term A B → Set where
+  β-id-left   : ∀ {A B} {f : Term A B} → (id ∘ f) ⟶β f
+  β-id-right  : ∀ {A B} {f : Term A B} → (f ∘ id) ⟶β f
+  β-fst-pair  : ∀ {A B C} {f : Term C A} {g : Term C B} → (fst ∘ ⟨ f , g ⟩) ⟶β f
+  β-snd-pair  : ∀ {A B C} {f : Term C A} {g : Term C B} → (snd ∘ ⟨ f , g ⟩) ⟶β g
+  β-eta-pair  : ∀ {A B} → ⟨ fst , snd ⟩ ⟶β id {A * B}
+  β-case-inl  : ∀ {A B C} {f : Term A C} {g : Term B C} → ([ f , g ] ∘ inl) ⟶β f
+  β-case-inr  : ∀ {A B C} {f : Term A C} {g : Term B C} → ([ f , g ] ∘ inr) ⟶β g
+  β-eta-case  : ∀ {A B} → [ inl , inr ] ⟶β id {A + B}
+  β-cata      : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} →
+                (cata F alg ∘ In) ⟶β (alg ∘ fmap F (cata F alg))
+  β-out-in    : ∀ {F} → (Out ∘ In) ⟶β id {⟦ F ⟧F (μ F)}
+  β-in-out    : ∀ {F} → (In ∘ Out) ⟶β id {μ F}
+
+-- Beta-normal form: no beta reductions (assoc-l is allowed)
+BetaNF : ∀ {A B} → Term A B → Set
+BetaNF t = ∀ {u} → ¬ (t ⟶β u)
 
 ------------------------------------------------------------------------
 -- Reduction Preserves Well-Formedness
@@ -907,6 +956,7 @@ postulate
   -- cata-β: wf-comp (wf-cata-alg-wf wf-c) (wf-fmap F wf-c)
   -- out-in: wf-id from wf-comp wf-Out wf-In
   -- in-out: wf-id from wf-comp wf-In wf-Out
+  -- assoc-l: wf-comp (wf-comp wf-f wf-g) wf-h from wf-comp wf-f (wf-comp wf-g wf-h)
 
 -- Multi-step reduction preserves well-formedness
 wf-preserved* : ∀ {A B} {t u : Term A B} → WellFormed t → t ⟶* u → WellFormed u
