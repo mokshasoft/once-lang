@@ -49,8 +49,7 @@ endef
 #-----------------------------------------------------------------------------
 
 .PHONY: all
-all: compiler
-	@echo "All proofs type-check successfully!"
+all: agda
 
 #-----------------------------------------------------------------------------
 # Pipeline: Frontend (target-independent)
