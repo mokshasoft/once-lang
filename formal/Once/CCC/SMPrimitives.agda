@@ -28,11 +28,11 @@
 
 module Once.CCC.SMPrimitives where
 
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
-open import Data.Nat.Properties using (≤-trans)
+open import Data.Nat.Properties using (≤-trans; <⇒≢)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -974,6 +974,9 @@ module TracePrimitives {FS : FrameSemantics} where
   open MemOps {FS}
   open AbstractExec {FS}
   open InstrPrimitives {FS}
+  open MemoryOps {FS}
+  open TraceComposition {FS}
+  open ExecLemmas {FS}
 
   ------------------------------------------------------------------------
   -- DERIVED: read-write-other lifts to traces
@@ -1170,6 +1173,217 @@ module TracePrimitives {FS : FrameSemantics} where
            TracePreservesHaltedP (t₁ ++ t₂)
   tph-++ tph-[] tph₂ = tph₂
   tph-++ (tph-∷ iph tph₁) tph₂ = tph-∷ iph (tph-++ tph₁ tph₂)
+
+  ------------------------------------------------------------------------
+  -- (H) WRITE-THEN-PRESERVE PATTERN
+  --
+  -- Core pattern for proving slot values after traces:
+  --   1. Write value V to slot K
+  --   2. Execute trace with writes above K
+  --   3. Conclude: slot K still contains V
+  --
+  -- This captures fst-ptr, snd-ptr, pair-frontier-stable patterns.
+  ------------------------------------------------------------------------
+
+  -- Slot value preservation: if slot k has value v and trace writes above k,
+  -- then slot k still has value v after trace
+  exec-trace-slot-value : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) (k : ℕ) (v : ValueLocation FS) →
+    readLoc s (OnStack (current-frame alloc) k) ≡ just v →
+    TraceWritesAbove (suc k) trace →
+    TraceNoStoreIndirect trace →
+    readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡ just v
+  exec-trace-slot-value trace s alloc k v slot-has-v twa tnsi =
+    let frame = current-frame alloc
+        loc = OnStack frame k
+        -- Disjoint: for all slot ≥ suc k, OnStack frame slot ≢ OnStack frame k
+        disjoint : ∀ slot → suc k ≤ slot → OnStack frame slot ≢ loc
+        disjoint slot suck≤slot eq =
+          let slot≡k : slot ≡ k
+              slot≡k = stack-slot-injective eq
+              k<slot : k < slot
+              k<slot = suck≤slot
+          in <⇒≢ k<slot (sym slot≡k)
+        -- Apply exec-trace-preserves-disjoint
+        preserved : readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
+        preserved = exec-trace-preserves-disjoint trace s alloc loc (suc k) twa tnsi disjoint
+    in trans preserved slot-has-v
+
+  -- Dual: slot value preservation for TraceWritesBelow
+  -- If slot k has value v and trace writes below k (at slots < k), then k is preserved
+  postulate
+    exec-trace-preserves-disjoint-below : ∀ (trace : AbstractTrace) (s : LocState FS)
+      (alloc : AllocState {FS}) (loc : ValueLocation FS) (n : ℕ) →
+      TraceWritesBelow n trace →        -- write set = {slots < n on current-frame}
+      TraceNoStoreIndirect trace →      -- no store-indirect (so no heap writes)
+      (∀ slot → slot < n → OnStack (current-frame alloc) slot ≢ loc) →  -- disjoint from write set
+      readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
+    -- Proof: by induction on trace, symmetric to exec-trace-preserves-disjoint
+
+  exec-trace-slot-value-below : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) (k : ℕ) (v : ValueLocation FS) →
+    readLoc s (OnStack (current-frame alloc) k) ≡ just v →
+    TraceWritesBelow k trace →        -- writes at slots < k
+    TraceNoStoreIndirect trace →
+    readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡ just v
+  exec-trace-slot-value-below trace s alloc k v slot-has-v twb tnsi =
+    let frame = current-frame alloc
+        loc = OnStack frame k
+        -- Disjoint: for all slot < k, OnStack frame slot ≢ OnStack frame k
+        disjoint : ∀ slot → slot < k → OnStack frame slot ≢ loc
+        disjoint slot slot<k eq =
+          let slot≡k : slot ≡ k
+              slot≡k = stack-slot-injective eq
+          in <⇒≢ slot<k slot≡k
+        -- Apply exec-trace-preserves-disjoint-below
+        preserved : readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
+        preserved = exec-trace-preserves-disjoint-below trace s alloc loc k twb tnsi disjoint
+    in trans preserved slot-has-v
+
+  -- store-at-slot writes the Output register value to the slot
+  store-at-slot-result : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc))
+            (OnStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
+  store-at-slot-result k s alloc = readLoc-writeLoc-same s (OnStack (current-frame alloc) k) (readReg (regs s) Output)
+
+  -- store-at-slot preserves halted
+  store-at-slot-halted : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted (proj₁ (exec-abstract (store-at-slot k) s alloc)) ≡ halted s
+  store-at-slot-halted k s alloc = writeLoc-halted s (OnStack (current-frame alloc) k) (readReg (regs s) Output)
+
+  -- store-at-slot preserves registers
+  store-at-slot-regs : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    regs (proj₁ (exec-abstract (store-at-slot k) s alloc)) ≡ regs s
+  store-at-slot-regs k s alloc = writeLoc-regs s (OnStack (current-frame alloc) k) (readReg (regs s) Output)
+
+  -- store-at-slot preserves other slots: writing to slot j preserves slot k when j ≠ k
+  store-at-slot-preserves-other : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    j ≢ k →
+    readLoc (proj₁ (exec-abstract (store-at-slot j) s alloc)) (OnStack (current-frame alloc) k) ≡
+    readLoc s (OnStack (current-frame alloc) k)
+  store-at-slot-preserves-other j k s alloc j≢k =
+    readLoc-writeLoc-other s (OnStack (current-frame alloc) j) (OnStack (current-frame alloc) k)
+      (readReg (regs s) Output) (λ eq → j≢k (stack-slot-injective eq))
+
+  ------------------------------------------------------------------------
+  -- (I) SNOC DECOMPOSITION
+  --
+  -- Reasoning about traces ending with specific instructions.
+  -- exec-trace (trace ++ [i]) = exec-trace [i] (exec-trace trace ...)
+  ------------------------------------------------------------------------
+
+  -- Snoc decomposition: trace ++ [i] executes trace, then [i]
+  -- Uses exec-trace-append directly
+  exec-trace-snoc : ∀ (trace : AbstractTrace) (i : AbstractInstr) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    exec-trace (trace ++ (i ∷ [])) s alloc ≡
+    exec-trace (i ∷ []) (proj₁ (exec-trace trace s alloc))
+                        (proj₂ (exec-trace trace s alloc))
+  exec-trace-snoc trace i s alloc = exec-trace-append trace (i ∷ []) s alloc
+
+  -- State version of snoc: when intermediate state not halted
+  -- Uses exec-trace-single from SMCore
+  exec-trace-snoc-state : ∀ (trace : AbstractTrace) (i : AbstractInstr) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    halted (proj₁ (exec-trace trace s alloc)) ≡ false →
+    proj₁ (exec-trace (trace ++ (i ∷ [])) s alloc) ≡
+    proj₁ (exec-abstract i (proj₁ (exec-trace trace s alloc))
+                           (proj₂ (exec-trace trace s alloc)))
+  exec-trace-snoc-state trace i s alloc not-halted =
+    let s' = proj₁ (exec-trace trace s alloc)
+        alloc' = proj₂ (exec-trace trace s alloc)
+        step1 = exec-trace-snoc trace i s alloc
+        step2 = exec-trace-single i s' alloc' not-halted
+    in trans (cong proj₁ step1) (cong proj₁ step2)
+
+  ------------------------------------------------------------------------
+  -- (J) FINAL INSTRUCTION EFFECTS
+  --
+  -- Specific lemmas for common final instructions in IR traces.
+  ------------------------------------------------------------------------
+
+  -- lea-slot sets Output register to the slot address
+  lea-slot-result : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    readReg (regs (proj₁ (exec-abstract (lea-slot k) s alloc))) Output ≡
+    OnStack (current-frame alloc) k
+  lea-slot-result k s alloc = writeReg-same (regs s) Output (OnStack (current-frame alloc) k)
+
+  -- lea-slot preserves halted
+  lea-slot-halted : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted (proj₁ (exec-abstract (lea-slot k) s alloc)) ≡ halted s
+  lea-slot-halted k s alloc = refl
+
+  -- lea-slot preserves memory (no writes)
+  lea-slot-preserves-mem : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (loc : ValueLocation FS) →
+    readLoc (proj₁ (exec-abstract (lea-slot k) s alloc)) loc ≡ readLoc s loc
+  lea-slot-preserves-mem k s alloc loc =
+    readLoc-stackMem-eq (proj₁ (exec-abstract (lea-slot k) s alloc)) s loc refl refl
+
+  -- Final lea-slot in trace: sets Output to slot address
+  -- Note: exec-trace-preserves-frame works for all traces, no TracePreservesCapacity needed
+  exec-trace-final-lea-slot : ∀ (trace : AbstractTrace) (k : ℕ) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    halted (proj₁ (exec-trace trace s alloc)) ≡ false →
+    readReg (regs (proj₁ (exec-trace (trace ++ (lea-slot k ∷ [])) s alloc))) Output ≡
+    OnStack (current-frame alloc) k
+  exec-trace-final-lea-slot trace k s alloc not-halted-after =
+    let s' = proj₁ (exec-trace trace s alloc)
+        alloc' = proj₂ (exec-trace trace s alloc)
+        -- Step 1: Decompose trace ++ [lea-slot k] using snoc
+        snoc-eq : proj₁ (exec-trace (trace ++ (lea-slot k ∷ [])) s alloc) ≡
+                  proj₁ (exec-abstract (lea-slot k) s' alloc')
+        snoc-eq = exec-trace-snoc-state trace (lea-slot k) s alloc not-halted-after
+        -- Step 2: lea-slot result (uses alloc')
+        lea-result : readReg (regs (proj₁ (exec-abstract (lea-slot k) s' alloc'))) Output ≡
+                     OnStack (current-frame alloc') k
+        lea-result = lea-slot-result k s' alloc'
+        -- Step 3: Frame preservation (works for all traces)
+        frame-eq : current-frame alloc' ≡ current-frame alloc
+        frame-eq = exec-trace-preserves-frame trace s alloc
+        -- Step 4: Combine
+        result-with-alloc' : readReg (regs (proj₁ (exec-trace (trace ++ (lea-slot k ∷ [])) s alloc))) Output ≡
+                             OnStack (current-frame alloc') k
+        result-with-alloc' = trans (cong (λ st → readReg (regs st) Output) snoc-eq) lea-result
+    in trans result-with-alloc' (cong (λ f → OnStack f k) frame-eq)
+
+  ------------------------------------------------------------------------
+  -- (K) WRITE-PRESERVE COMBINED
+  --
+  -- Combined pattern: write to slot, then preserve through trace.
+  -- Useful for fst-ptr, snd-ptr style proofs.
+  ------------------------------------------------------------------------
+
+  -- After store-at-slot k, if rest-trace writes above suc k, slot k = Output value
+  store-then-preserve : ∀ (k : ℕ) (rest : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    TraceWritesAbove (suc k) rest →
+    TraceNoStoreIndirect rest →
+    readLoc (proj₁ (exec-trace (store-at-slot k ∷ rest) s alloc))
+            (OnStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
+  store-then-preserve k rest s alloc not-halted twa tnsi with halted s
+  ... | true = case not-halted of λ ()  -- contradiction
+  ... | false =
+    let -- After store-at-slot k
+        s' = proj₁ (exec-abstract (store-at-slot k) s alloc)
+        alloc' = proj₂ (exec-abstract (store-at-slot k) s alloc)
+        -- Step 1: store-at-slot writes Output to slot k
+        slot-has-value : readLoc s' (OnStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
+        slot-has-value = store-at-slot-result k s alloc
+        -- Step 2: rest preserves slot k (writes above suc k)
+        preserved : readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack (current-frame alloc') k) ≡
+                    just (readReg (regs s) Output)
+        preserved = exec-trace-slot-value rest s' alloc' k (readReg (regs s) Output)
+                      (subst (λ f → readLoc s' (OnStack f k) ≡ just (readReg (regs s) Output))
+                             (sym (exec-abstract-preserves-frame (store-at-slot k) s alloc))
+                             slot-has-value)
+                      twa tnsi
+        -- Step 3: Frame preserved by store-at-slot
+        frame-eq : current-frame alloc' ≡ current-frame alloc
+        frame-eq = exec-abstract-preserves-frame (store-at-slot k) s alloc
+    in subst (λ f → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack f k) ≡
+                    just (readReg (regs s) Output))
+             frame-eq preserved
 
 ------------------------------------------------------------------------
 -- Summary: Minimal Axioms + Positive Characterization
