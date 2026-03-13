@@ -92,6 +92,7 @@ data Ty where
   Unit : Ty
   _*_  : Ty → Ty → Ty
   _+_  : Ty → Ty → Ty
+  _⇒_  : Ty → Ty → Ty  -- Exponential (function type)
   μ_   : Func → Ty
 
 data Func where
@@ -102,6 +103,7 @@ data Func where
 
 infixr 7 _*_ _⊗_
 infixr 6 _+_ _⊕_
+infixr 5 _⇒_
 
 -- Functor interpretation: apply functor to a type
 ⟦_⟧F : Func → Ty → Ty
@@ -122,6 +124,7 @@ _≟Func_ : (F G : Func) → Dec (F ≡ G)
 Unit ≟Ty Unit = yes refl
 Unit ≟Ty (_ * _) = no (λ ())
 Unit ≟Ty (_ + _) = no (λ ())
+Unit ≟Ty (_ ⇒ _) = no (λ ())
 Unit ≟Ty (μ _) = no (λ ())
 
 (A * B) ≟Ty Unit = no (λ ())
@@ -130,6 +133,7 @@ Unit ≟Ty (μ _) = no (λ ())
 ... | yes refl | no neq = no (λ { refl → neq refl })
 ... | no neq | _ = no (λ { refl → neq refl })
 (A * B) ≟Ty (_ + _) = no (λ ())
+(A * B) ≟Ty (_ ⇒ _) = no (λ ())
 (A * B) ≟Ty (μ _) = no (λ ())
 
 (A + B) ≟Ty Unit = no (λ ())
@@ -138,11 +142,22 @@ Unit ≟Ty (μ _) = no (λ ())
 ... | yes refl | yes refl = yes refl
 ... | yes refl | no neq = no (λ { refl → neq refl })
 ... | no neq | _ = no (λ { refl → neq refl })
+(A + B) ≟Ty (_ ⇒ _) = no (λ ())
 (A + B) ≟Ty (μ _) = no (λ ())
+
+(A ⇒ B) ≟Ty Unit = no (λ ())
+(A ⇒ B) ≟Ty (_ * _) = no (λ ())
+(A ⇒ B) ≟Ty (_ + _) = no (λ ())
+(A ⇒ B) ≟Ty (C ⇒ D) with A ≟Ty C | B ≟Ty D
+... | yes refl | yes refl = yes refl
+... | yes refl | no neq = no (λ { refl → neq refl })
+... | no neq | _ = no (λ { refl → neq refl })
+(A ⇒ B) ≟Ty (μ _) = no (λ ())
 
 (μ F) ≟Ty Unit = no (λ ())
 (μ F) ≟Ty (_ * _) = no (λ ())
 (μ F) ≟Ty (_ + _) = no (λ ())
+(μ F) ≟Ty (_ ⇒ _) = no (λ ())
 (μ F) ≟Ty (μ G) with F ≟Func G
 ... | yes refl = yes refl
 ... | no neq = no (λ { refl → neq refl })
@@ -185,10 +200,12 @@ data TyView : Ty → Set where
   tv-unit   : TyView Unit
   tv-prod   : ∀ A B → TyView (A * B)
   tv-coprod : ∀ A B → TyView (A + B)
+  tv-exp    : ∀ A B → TyView (A ⇒ B)
   tv-mu     : ∀ F → TyView (μ F)
 
 tyView : (T : Ty) → TyView T
 tyView Unit = tv-unit
 tyView (A * B) = tv-prod A B
 tyView (A + B) = tv-coprod A B
+tyView (A ⇒ B) = tv-exp A B
 tyView (μ F) = tv-mu F

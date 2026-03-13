@@ -268,20 +268,20 @@ N-refold = cata TermF refold-algebra
 -- Proof Using Parallel Reduction
 ------------------------------------------------------------------------
 
--- Parallel reduction ⇒ has congruence rules and ⇒→⟶* converts to ⟶*.
+-- Parallel reduction ⟹has congruence rules and ⟹→⟶* converts to ⟶*.
 -- This makes proofs much cleaner.
 
 -- For N-id = id, we can prove the fixpoint in one parallel step:
---   (id ∘ encode id) ⇒ encode id   by ⇒-id-l
---   Then use ⇒→⟶* to get ⟶*
+--   (id ∘ encode id) ⟹encode id   by ⟹-id-l
+--   Then use ⟹→⟶* to get ⟶*
 
 N-id-fixpoint' : (N-id ∘ encode N-id) ⟶* encode N-id
-N-id-fixpoint' = ⇒→⟶* (⇒-id-l (⇒-refl (encode N-id)))
+N-id-fixpoint' = ⟹→⟶* (⟹-id-l (⟹-refl (encode N-id)))
 
 -- For a cata-based normalizer, we'd need:
 --   (cata TermF In ∘ encode (cata TermF In))
---   ⇒ In ∘ fmap TermF (cata TermF In) ∘ (the encoding tail)
---   by ⇒-cata-β
+--   ⟹In ∘ fmap TermF (cata TermF In) ∘ (the encoding tail)
+--   by ⟹-cata-β
 --
 -- Then we'd need to show the result reduces further to encode(cata TermF In).
 -- This requires understanding how fmap interacts with the injection structure.
@@ -299,106 +299,106 @@ N-id-fixpoint' = ⇒→⟶* (⇒-id-l (⇒-refl (encode N-id)))
 -- - ⊗ case: ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⟶* ⟨ fst , snd ⟩ ⟶ id
 
 ------------------------------------------------------------------------
--- Infrastructure: Congruence lemmas for ⇒*
+-- Infrastructure: Congruence lemmas for ⟹*
 ------------------------------------------------------------------------
 
--- Transitivity of ⇒*
-⇒*-trans : ∀ {A B} {t u v : Term A B} → t ⇒* u → u ⇒* v → t ⇒* v
-⇒*-trans done⇒ q = q
-⇒*-trans (step⇒ p ps) q = step⇒ p (⇒*-trans ps q)
+-- Transitivity of ⟹*
+⟹*-trans : ∀ {A B} {t u v : Term A B} → t ⟹* u → u ⟹* v → t ⟹* v
+⟹*-trans done⟹ q = q
+⟹*-trans (step⟹ p ps) q = step⟹ p (⟹*-trans ps q)
 
 -- Single step to multi-step
-⇒→⇒* : ∀ {A B} {t u : Term A B} → t ⇒ u → t ⇒* u
-⇒→⇒* p = step⇒ p done⇒
+⟹→⟹* : ∀ {A B} {t u : Term A B} → t ⟹ u → t ⟹* u
+⟹→⟹* p = step⟹ p done⟹
 
 -- Congruence: composition on the right
-⇒*-∘-right : ∀ {A B C} {f : Term B C} {g g' : Term A B} →
-             g ⇒* g' → (f ∘ g) ⇒* (f ∘ g')
-⇒*-∘-right done⇒ = done⇒
-⇒*-∘-right (step⇒ p ps) = step⇒ (⇒-∘ (⇒-refl _) p) (⇒*-∘-right ps)
+⟹*-∘-right : ∀ {A B C} {f : Term B C} {g g' : Term A B} →
+             g ⟹* g' → (f ∘ g) ⟹* (f ∘ g')
+⟹*-∘-right done⟹ = done⟹
+⟹*-∘-right (step⟹ p ps) = step⟹ (⟹-∘ (⟹-refl _) p) (⟹*-∘-right ps)
 
 -- Congruence: composition on the left
-⇒*-∘-left : ∀ {A B C} {f f' : Term B C} {g : Term A B} →
-            f ⇒* f' → (f ∘ g) ⇒* (f' ∘ g)
-⇒*-∘-left done⇒ = done⇒
-⇒*-∘-left (step⇒ p ps) = step⇒ (⇒-∘ p (⇒-refl _)) (⇒*-∘-left ps)
+⟹*-∘-left : ∀ {A B C} {f f' : Term B C} {g : Term A B} →
+            f ⟹* f' → (f ∘ g) ⟹* (f' ∘ g)
+⟹*-∘-left done⟹ = done⟹
+⟹*-∘-left (step⟹ p ps) = step⟹ (⟹-∘ p (⟹-refl _)) (⟹*-∘-left ps)
 
 -- Congruence: case/coproduct
-⇒*-case : ∀ {A B C} {f f' : Term A C} {g g' : Term B C} →
-          f ⇒* f' → g ⇒* g' → [ f , g ] ⇒* [ f' , g' ]
-⇒*-case done⇒ done⇒ = done⇒
-⇒*-case done⇒ (step⇒ q qs) = step⇒ (⇒-case (⇒-refl _) q) (⇒*-case done⇒ qs)
-⇒*-case (step⇒ p ps) qs = step⇒ (⇒-case p (⇒-refl _)) (⇒*-case ps qs)
+⟹*-case : ∀ {A B C} {f f' : Term A C} {g g' : Term B C} →
+          f ⟹* f' → g ⟹* g' → [ f , g ] ⟹* [ f' , g' ]
+⟹*-case done⟹ done⟹ = done⟹
+⟹*-case done⟹ (step⟹ q qs) = step⟹ (⟹-case (⟹-refl _) q) (⟹*-case done⟹ qs)
+⟹*-case (step⟹ p ps) qs = step⟹ (⟹-case p (⟹-refl _)) (⟹*-case ps qs)
 
 -- Congruence: pair/product
-⇒*-pair : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
-          f ⇒* f' → g ⇒* g' → ⟨ f , g ⟩ ⇒* ⟨ f' , g' ⟩
-⇒*-pair done⇒ done⇒ = done⇒
-⇒*-pair done⇒ (step⇒ q qs) = step⇒ (⇒-pair (⇒-refl _) q) (⇒*-pair done⇒ qs)
-⇒*-pair (step⇒ p ps) qs = step⇒ (⇒-pair p (⇒-refl _)) (⇒*-pair ps qs)
+⟹*-pair : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
+          f ⟹* f' → g ⟹* g' → ⟨ f , g ⟩ ⟹* ⟨ f' , g' ⟩
+⟹*-pair done⟹ done⟹ = done⟹
+⟹*-pair done⟹ (step⟹ q qs) = step⟹ (⟹-pair (⟹-refl _) q) (⟹*-pair done⟹ qs)
+⟹*-pair (step⟹ p ps) qs = step⟹ (⟹-pair p (⟹-refl _)) (⟹*-pair ps qs)
 
 ------------------------------------------------------------------------
 -- The fmap-id proof
 ------------------------------------------------------------------------
 
--- First in ⇒* form, then convert to ⟶*
+-- First in ⟹* form, then convert to ⟶*
 
-fmap-id⇒* : ∀ F {A} → fmap F (id {A}) ⇒* id
-fmap-id⇒* Id = done⇒  -- fmap Id id = id definitionally
-fmap-id⇒* (K _) = done⇒  -- fmap (K _) _ = id definitionally
-fmap-id⇒* (F ⊕ G) =
+fmap-id⟹* : ∀ F {A} → fmap F (id {A}) ⟹* id
+fmap-id⟹* Id = done⟹  -- fmap Id id = id definitionally
+fmap-id⟹* (K _) = done⟹  -- fmap (K _) _ = id definitionally
+fmap-id⟹* (F ⊕ G) =
   -- fmap (F ⊕ G) id = [ inl ∘ fmap F id , inr ∘ fmap G id ]
-  -- Goal: [ inl ∘ fmap F id , inr ∘ fmap G id ] ⇒* id
+  -- Goal: [ inl ∘ fmap F id , inr ∘ fmap G id ] ⟹* id
   --
-  -- Step 1: By IH, fmap F id ⇒* id and fmap G id ⇒* id
-  -- Step 2: inl ∘ fmap F id ⇒* inl ∘ id  (congruence)
-  -- Step 3: inl ∘ id ⇒ inl               (id-right)
+  -- Step 1: By IH, fmap F id ⟹* id and fmap G id ⟹* id
+  -- Step 2: inl ∘ fmap F id ⟹* inl ∘ id  (congruence)
+  -- Step 3: inl ∘ id ⟹inl               (id-right)
   -- Step 4: Similarly for inr side
-  -- Step 5: [ inl , inr ] ⇒ id           (eta-case)
+  -- Step 5: [ inl , inr ] ⟹id           (eta-case)
   let
-    -- IH: fmap F id ⇒* id, fmap G id ⇒* id
-    ih-F = fmap-id⇒* F
-    ih-G = fmap-id⇒* G
-    -- inl ∘ fmap F id ⇒* inl ∘ id ⇒* inl
-    left-reduces : (inl ∘ fmap F id) ⇒* inl
-    left-reduces = ⇒*-trans (⇒*-∘-right ih-F) (⇒→⇒* (⇒-id-r ⇒-inl))
-    -- inr ∘ fmap G id ⇒* inr ∘ id ⇒* inr
-    right-reduces : (inr ∘ fmap G id) ⇒* inr
-    right-reduces = ⇒*-trans (⇒*-∘-right ih-G) (⇒→⇒* (⇒-id-r ⇒-inr))
-    -- [ inl ∘ fmap F id , inr ∘ fmap G id ] ⇒* [ inl , inr ]
-    case-reduces : [ inl ∘ fmap F id , inr ∘ fmap G id ] ⇒* [ inl , inr ]
-    case-reduces = ⇒*-case left-reduces right-reduces
+    -- IH: fmap F id ⟹* id, fmap G id ⟹* id
+    ih-F = fmap-id⟹* F
+    ih-G = fmap-id⟹* G
+    -- inl ∘ fmap F id ⟹* inl ∘ id ⟹* inl
+    left-reduces : (inl ∘ fmap F id) ⟹* inl
+    left-reduces = ⟹*-trans (⟹*-∘-right ih-F) (⟹→⟹* (⟹-id-r ⟹-inl))
+    -- inr ∘ fmap G id ⟹* inr ∘ id ⟹* inr
+    right-reduces : (inr ∘ fmap G id) ⟹* inr
+    right-reduces = ⟹*-trans (⟹*-∘-right ih-G) (⟹→⟹* (⟹-id-r ⟹-inr))
+    -- [ inl ∘ fmap F id , inr ∘ fmap G id ] ⟹* [ inl , inr ]
+    case-reduces : [ inl ∘ fmap F id , inr ∘ fmap G id ] ⟹* [ inl , inr ]
+    case-reduces = ⟹*-case left-reduces right-reduces
   in
-    -- [ inl , inr ] ⇒ id by eta-case
-    ⇒*-trans case-reduces (⇒→⇒* ⇒-η-case)
+    -- [ inl , inr ] ⟹id by eta-case
+    ⟹*-trans case-reduces (⟹→⟹* ⟹-η-case)
 
-fmap-id⇒* (F ⊗ G) =
+fmap-id⟹* (F ⊗ G) =
   -- fmap (F ⊗ G) id = ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩
-  -- Goal: ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⇒* id
+  -- Goal: ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⟹* id
   --
-  -- Step 1: By IH, fmap F id ⇒* id and fmap G id ⇒* id
-  -- Step 2: fmap F id ∘ fst ⇒* id ∘ fst ⇒* fst  (congruence + id-left)
+  -- Step 1: By IH, fmap F id ⟹* id and fmap G id ⟹* id
+  -- Step 2: fmap F id ∘ fst ⟹* id ∘ fst ⟹* fst  (congruence + id-left)
   -- Step 3: Similarly for snd side
-  -- Step 4: ⟨ fst , snd ⟩ ⇒ id                   (eta-pair)
+  -- Step 4: ⟨ fst , snd ⟩ ⟹id                   (eta-pair)
   let
-    ih-F = fmap-id⇒* F
-    ih-G = fmap-id⇒* G
-    -- fmap F id ∘ fst ⇒* id ∘ fst ⇒ fst
-    left-reduces : (fmap F id ∘ fst) ⇒* fst
-    left-reduces = ⇒*-trans (⇒*-∘-left ih-F) (⇒→⇒* (⇒-id-l ⇒-fst))
-    -- fmap G id ∘ snd ⇒* id ∘ snd ⇒ snd
-    right-reduces : (fmap G id ∘ snd) ⇒* snd
-    right-reduces = ⇒*-trans (⇒*-∘-left ih-G) (⇒→⇒* (⇒-id-l ⇒-snd))
-    -- ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⇒* ⟨ fst , snd ⟩
-    pair-reduces : ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⇒* ⟨ fst , snd ⟩
-    pair-reduces = ⇒*-pair left-reduces right-reduces
+    ih-F = fmap-id⟹* F
+    ih-G = fmap-id⟹* G
+    -- fmap F id ∘ fst ⟹* id ∘ fst ⟹fst
+    left-reduces : (fmap F id ∘ fst) ⟹* fst
+    left-reduces = ⟹*-trans (⟹*-∘-left ih-F) (⟹→⟹* (⟹-id-l ⟹-fst))
+    -- fmap G id ∘ snd ⟹* id ∘ snd ⟹snd
+    right-reduces : (fmap G id ∘ snd) ⟹* snd
+    right-reduces = ⟹*-trans (⟹*-∘-left ih-G) (⟹→⟹* (⟹-id-l ⟹-snd))
+    -- ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⟹* ⟨ fst , snd ⟩
+    pair-reduces : ⟨ fmap F id ∘ fst , fmap G id ∘ snd ⟩ ⟹* ⟨ fst , snd ⟩
+    pair-reduces = ⟹*-pair left-reduces right-reduces
   in
-    -- ⟨ fst , snd ⟩ ⇒ id by eta-pair
-    ⇒*-trans pair-reduces (⇒→⇒* ⇒-η-pair)
+    -- ⟨ fst , snd ⟩ ⟹id by eta-pair
+    ⟹*-trans pair-reduces (⟹→⟹* ⟹-η-pair)
 
 -- Convert to ⟶*
 fmap-id : ∀ F {A} → fmap F (id {A}) ⟶* id
-fmap-id F = ⇒*→⟶* (fmap-id⇒* F)
+fmap-id F = ⟹*→⟶* (fmap-id⟹* F)
 
 ------------------------------------------------------------------------
 -- Fixpoint for cata TermF In (the "refold" normalizer)
@@ -480,7 +480,7 @@ fmap-inr F G f = step case-inr done
 -- Uses parallel reduction which has congruence rules
 ∘-cong-left : ∀ {A B C} {x y : Term B C} (t : Term A B) →
               x ⟶ y → (x ∘ t) ⟶* (y ∘ t)
-∘-cong-left t r = ⇒→⟶* (⇒-∘ (⟶→⇒ r) (⇒-refl t))
+∘-cong-left t r = ⟹→⟶* (⟹-∘ (⟶→⟹ r) (⟹-refl t))
 
 -- Derived cata reduction using assoc-l and congruence
 -- cata F alg ∘ (In ∘ t)
@@ -517,13 +517,13 @@ cata-β-right {F} {A} {B} {alg} {t} =
     -- Single step congruence via parallel reduction
     ⟶-cong-∘-left : ∀ {A B C} {f f' : Term B C} (g : Term A B) →
                     f ⟶ f' → (f ∘ g) ⟶* (f' ∘ g)
-    ⟶-cong-∘-left g r = ⇒→⟶* (⇒-∘ (⟶→⇒ r) (⇒-refl g))
+    ⟶-cong-∘-left g r = ⟹→⟶* (⟹-∘ (⟶→⟹ r) (⟹-refl g))
 
 -- Congruence: if g ⟶* g', then f ∘ g ⟶* f ∘ g'
 ∘-cong-right' : ∀ {A B C} (f : Term B C) {g g' : Term A B} →
                 g ⟶* g' → (f ∘ g) ⟶* (f ∘ g')
 ∘-cong-right' f done = done
-∘-cong-right' f (step r rs) = ⟶*-trans (⇒→⟶* (⇒-∘ (⇒-refl f) (⟶→⇒ r))) (∘-cong-right' f rs)
+∘-cong-right' f (step r rs) = ⟶*-trans (⟹→⟶* (⟹-∘ (⟹-refl f) (⟶→⟹ r))) (∘-cong-right' f rs)
 
 ------------------------------------------------------------------------
 -- Proof of refold-idem-id
@@ -556,6 +556,8 @@ TermF-rest = (Id ⊗ Id)                                   -- 1: f ∘ g
            ⊕ (K TyFuncCode)                              -- 9: In F
            ⊕ (K TyFuncCode)                              -- 10: Out F
            ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata F alg
+           ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+           ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
 -- TermF = K TyFuncCode ⊕ TermF-rest
 TermF-decomp : TermF ≡ (K TyFuncCode ⊕ TermF-rest)
@@ -642,7 +644,7 @@ refold-idem-id {A} = ⟶*-trans step1 (⟶*-trans step2 step3)
 -- For Id-based positions: we get recursive applications
 
 -- Nested functors for each depth level
-TermF-1 : Func  -- After 1 inr (positions 1-11)
+TermF-1 : Func  -- After 1 inr (positions 1-13)
 TermF-1 = (Id ⊗ Id)                                   -- 1: comp
         ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 2: fst
         ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 3: snd
@@ -654,8 +656,10 @@ TermF-1 = (Id ⊗ Id)                                   -- 1: comp
         ⊕ (K TyFuncCode)                              -- 9: In
         ⊕ (K TyFuncCode)                              -- 10: Out
         ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata
+        ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+        ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
-TermF-2 : Func  -- After 2 inrs (positions 2-11)
+TermF-2 : Func  -- After 2 inrs (positions 2-13)
 TermF-2 = (K TyFuncCode ⊗ K TyFuncCode)              -- 2: fst
         ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 3: snd
         ⊕ (Id ⊗ Id)                                   -- 4: pair
@@ -666,8 +670,10 @@ TermF-2 = (K TyFuncCode ⊗ K TyFuncCode)              -- 2: fst
         ⊕ (K TyFuncCode)                              -- 9: In
         ⊕ (K TyFuncCode)                              -- 10: Out
         ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata
+        ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+        ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
-TermF-3 : Func  -- After 3 inrs (positions 3-11)
+TermF-3 : Func  -- After 3 inrs (positions 3-13)
 TermF-3 = (K TyFuncCode ⊗ K TyFuncCode)              -- 3: snd
         ⊕ (Id ⊗ Id)                                   -- 4: pair
         ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 5: inl
@@ -677,8 +683,10 @@ TermF-3 = (K TyFuncCode ⊗ K TyFuncCode)              -- 3: snd
         ⊕ (K TyFuncCode)                              -- 9: In
         ⊕ (K TyFuncCode)                              -- 10: Out
         ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata
+        ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+        ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
-TermF-4 : Func  -- After 4 inrs (positions 4-11)
+TermF-4 : Func  -- After 4 inrs (positions 4-13)
 TermF-4 = (Id ⊗ Id)                                   -- 4: pair
         ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 5: inl
         ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 6: inr
@@ -687,8 +695,10 @@ TermF-4 = (Id ⊗ Id)                                   -- 4: pair
         ⊕ (K TyFuncCode)                              -- 9: In
         ⊕ (K TyFuncCode)                              -- 10: Out
         ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata
+        ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+        ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
-TermF-5 : Func  -- After 5 inrs (positions 5-11)
+TermF-5 : Func  -- After 5 inrs (positions 5-13)
 TermF-5 = (K TyFuncCode ⊗ K TyFuncCode)              -- 5: inl
         ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 6: inr
         ⊕ (Id ⊗ Id)                                   -- 7: case
@@ -696,39 +706,60 @@ TermF-5 = (K TyFuncCode ⊗ K TyFuncCode)              -- 5: inl
         ⊕ (K TyFuncCode)                              -- 9: In
         ⊕ (K TyFuncCode)                              -- 10: Out
         ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata
+        ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+        ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
-TermF-6 : Func  -- After 6 inrs (positions 6-11)
+TermF-6 : Func  -- After 6 inrs (positions 6-13)
 TermF-6 = (K TyFuncCode ⊗ K TyFuncCode)              -- 6: inr
         ⊕ (Id ⊗ Id)                                   -- 7: case
         ⊕ (K TyFuncCode)                              -- 8: terminal
         ⊕ (K TyFuncCode)                              -- 9: In
         ⊕ (K TyFuncCode)                              -- 10: Out
         ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata
+        ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+        ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
-TermF-7 : Func  -- After 7 inrs (positions 7-11)
+TermF-7 : Func  -- After 7 inrs (positions 7-13)
 TermF-7 = (Id ⊗ Id)                                   -- 7: case
         ⊕ (K TyFuncCode)                              -- 8: terminal
         ⊕ (K TyFuncCode)                              -- 9: In
         ⊕ (K TyFuncCode)                              -- 10: Out
         ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata
+        ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+        ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
-TermF-8 : Func  -- After 8 inrs (positions 8-11)
+TermF-8 : Func  -- After 8 inrs (positions 8-13)
 TermF-8 = (K TyFuncCode)                              -- 8: terminal
         ⊕ (K TyFuncCode)                              -- 9: In
         ⊕ (K TyFuncCode)                              -- 10: Out
         ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata
+        ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+        ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
-TermF-9 : Func  -- After 9 inrs (positions 9-11)
+TermF-9 : Func  -- After 9 inrs (positions 9-13)
 TermF-9 = (K TyFuncCode)                              -- 9: In
         ⊕ (K TyFuncCode)                              -- 10: Out
         ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata
+        ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+        ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply
 
-TermF-10 : Func  -- After 10 inrs (positions 10-11)
+TermF-10 : Func  -- After 10 inrs (positions 10-13)
 TermF-10 = (K TyFuncCode)                             -- 10: Out
          ⊕ (K TyFuncCode ⊗ Id)                       -- 11: cata
+         ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+         ⊕ (K TyFuncCode ⊗ K TyFuncCode)             -- 13: apply
 
-TermF-11 : Func  -- After 11 inrs (position 11 only)
+TermF-11 : Func  -- After 11 inrs (positions 11-13)
 TermF-11 = (K TyFuncCode ⊗ Id)                       -- 11: cata
+         ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+         ⊕ (K TyFuncCode ⊗ K TyFuncCode)             -- 13: apply
+
+TermF-12 : Func  -- After 12 inrs (positions 12-13)
+TermF-12 = ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry
+         ⊕ (K TyFuncCode ⊗ K TyFuncCode)             -- 13: apply
+
+TermF-13 : Func  -- After 13 inrs (position 13 only)
+TermF-13 = (K TyFuncCode ⊗ K TyFuncCode)             -- 13: apply
 
 -- fmap distributes through inr: fmap (F ⊕ G) f ∘ inr ⟶ inr ∘ fmap G f
 fmap-through-inr : ∀ {A B} F G (f : Term A B) →
@@ -743,7 +774,7 @@ fmap-KK-id X Y f =
   --                    = ⟨ id ∘ fst , id ∘ snd ⟩
   -- ⟶ ⟨ fst , snd ⟩ by id-left (twice)
   -- ⟶ id by eta-pair
-  ⟶*-trans (⇒→⟶* (⇒-pair (⇒-id-l ⇒-fst) (⇒-id-l ⇒-snd))) (step eta-pair done)
+  ⟶*-trans (⟹→⟶* (⟹-pair (⟹-id-l ⟹-fst) (⟹-id-l ⟹-snd))) (step eta-pair done)
 
 -- Helper: chain multiple inr reductions
 -- For each level, we reduce fmap F f ∘ inr to inr ∘ fmap G f
@@ -790,6 +821,14 @@ fmap-9-inr f = fmap-through-inr (K TyFuncCode) TermF-10 f
 fmap-10-inr : ∀ {A B} (f : Term A B) →
               (fmap TermF-10 f ∘ inr) ⟶* (inr ∘ fmap TermF-11 f)
 fmap-10-inr f = fmap-through-inr (K TyFuncCode) TermF-11 f
+
+fmap-11-inr : ∀ {A B} (f : Term A B) →
+              (fmap TermF-11 f ∘ inr) ⟶* (inr ∘ fmap TermF-12 f)
+fmap-11-inr f = fmap-through-inr (K TyFuncCode ⊗ Id) TermF-12 f
+
+fmap-12-inr : ∀ {A B} (f : Term A B) →
+              (fmap TermF-12 f ∘ inr) ⟶* (inr ∘ fmap TermF-13 f)
+fmap-12-inr f = fmap-through-inr ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)) TermF-13 f
 
 -- fmap distributes through inl: fmap (F ⊕ G) f ∘ inl ⟶ inl ∘ fmap F f
 fmap-sum-inl : ∀ {A B} F G (f : Term A B) →
@@ -859,8 +898,8 @@ fmap-7-inl f = fmap-sum-inl (Id ⊗ Id) TermF-8 f
 ⟨⟩-cong : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
           f ⟶* f' → g ⟶* g' → ⟨ f , g ⟩ ⟶* ⟨ f' , g' ⟩
 ⟨⟩-cong done done = done
-⟨⟩-cong done (step q qs) = ⟶*-trans (⇒→⟶* (⇒-pair (⇒-refl _) (⟶→⇒ q))) (⟨⟩-cong done qs)
-⟨⟩-cong (step p ps) qs = ⟶*-trans (⇒→⟶* (⇒-pair (⟶→⇒ p) (⇒-refl _))) (⟨⟩-cong ps qs)
+⟨⟩-cong done (step q qs) = ⟶*-trans (⟹→⟶* (⟹-pair (⟹-refl _) (⟶→⟹ q))) (⟨⟩-cong done qs)
+⟨⟩-cong (step p ps) qs = ⟶*-trans (⟹→⟶* (⟹-pair (⟶→⟹ p) (⟹-refl _))) (⟨⟩-cong ps qs)
 
 ------------------------------------------------------------------------
 -- The 11 refold-idem proofs
@@ -1283,6 +1322,8 @@ mutual
   refold-idempotent In = refold-idem-In
   refold-idempotent Out = refold-idem-Out
   refold-idempotent (cata F alg) = refold-idem-cata alg
+  refold-idempotent (curry f) = refold-idem-curry f
+  refold-idempotent apply = refold-idem-apply
 
   -- refold-idem-comp: position 1 (1 inr before inl)
   -- encode (f ∘ g) = In ∘ inr ∘ inl ∘ ⟨ encode f , encode g ⟩
@@ -1435,8 +1476,8 @@ mutual
 
       step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
 
-  -- refold-idem-cata: position 11 (11 inrs, no inl - terminal position)
-  -- encode (cata F alg) = In ∘ inr^11 ∘ ⟨ ⌜F⌝Func , encode alg ⟩
+  -- refold-idem-cata: position 11 (11 inrs then inl)
+  -- encode (cata F alg) = In ∘ inr^11 ∘ inl ∘ ⟨ ⌜F⌝Func , encode alg ⟩
   -- Payload functor: K TyFuncCode ⊗ Id
   refold-idem-cata : ∀ {F A} (alg : Term (⟦ F ⟧F A) A) →
                      (cata TermF In ∘ encode (cata F alg)) ⟶* encode (cata F alg)
@@ -1462,16 +1503,15 @@ mutual
       r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr c)) (step assoc-r done))
       r10 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-10-inr c)) (step assoc-r done))
 
+      -- Navigate through inl with TermF-11 = (K TyFuncCode ⊗ Id) ⊕ curry ⊕ apply
+      -- fmap TermF-11 c ∘ inl ⟶* inl ∘ fmap (K TyFuncCode ⊗ Id) c
+      r11-inl : (fmap TermF-11 c ∘ inl) ⟶* (inl ∘ fmap (K TyFuncCode ⊗ Id) c)
+      r11-inl = fmap-sum-inl (K TyFuncCode ⊗ Id) TermF-12 c
+
       -- Final step: fmap (K ⊗ Id) c ∘ payload
       -- fmap (K TyFuncCode ⊗ Id) c = ⟨ id ∘ fst , c ∘ snd ⟩ = ⟨ fst , c ∘ snd ⟩ after id-left
-      -- ⟨ fst , c ∘ snd ⟩ ∘ ⟨ ⌜F⌝Func , encode alg ⟩
-      -- ⟶ ⟨ fst ∘ payload , (c ∘ snd) ∘ payload ⟩ (by pair-comp)
-      -- ⟶ ⟨ ⌜F⌝Func , c ∘ encode alg ⟩ (by fst-pair, assoc+snd-pair)
-      -- ⟶* ⟨ ⌜F⌝Func , encode alg ⟩ (by IH)
-
-      r11 : (fmap TermF-11 c ∘ payload) ⟶* payload
-      r11 =
-        -- fmap TermF-11 c = fmap (K TyFuncCode ⊗ Id) c = ⟨ id ∘ fst , c ∘ snd ⟩
+      r11-payload : (fmap (K TyFuncCode ⊗ Id) c ∘ payload) ⟶* payload
+      r11-payload =
         ⟶*-trans (step pair-comp done)  -- ⟶ ⟨ (id ∘ fst) ∘ payload , (c ∘ snd) ∘ payload ⟩
           (⟨⟩-cong
             (⟶*-trans (step assoc-r done)  -- (id ∘ fst) ∘ payload ⟶ id ∘ (fst ∘ payload)
@@ -1480,6 +1520,13 @@ mutual
             (⟶*-trans (step assoc-r done)  -- (c ∘ snd) ∘ payload ⟶ c ∘ (snd ∘ payload)
               (⟶*-trans (∘-cong-right' c (step snd-pair done))  -- ⟶ c ∘ encode alg
                 (refold-idempotent alg))))  -- IH: ⟶* encode alg
+
+      -- Chain: (fmap TermF-11 c ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+      r11 : (fmap TermF-11 c ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+      r11 = ⟶*-trans (step assoc-l done)
+              (⟶*-trans (∘-cong-left' _ r11-inl)
+                (⟶*-trans (step assoc-r done)
+                  (∘-cong-right' inl r11-payload)))
 
       reduce-chain =
         ⟶*-trans r0 (∘-cong-right' inr
@@ -1493,6 +1540,138 @@ mutual
                         (⟶*-trans r8 (∘-cong-right' inr
                           (⟶*-trans r9 (∘-cong-right' inr
                             (⟶*-trans r10 (∘-cong-right' inr r11)))))))))))))))))))))
+
+      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+  -- refold-idem-curry: position 12 (12 inrs then inl)
+  -- encode (curry f) = In ∘ inr^12 ∘ inl ∘ ⟨ ⟨ ⌜A⌝, ⌜B⌝ ⟩ , ⟨ ⌜C⌝, encode f ⟩ ⟩
+  -- Payload functor: (K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)
+  refold-idem-curry : ∀ {A B C} (f : Term (A * B) C) →
+                      (cata TermF In ∘ encode (curry f)) ⟶* encode (curry f)
+  refold-idem-curry {A} {B} {C} f = ⟶*-trans step1 step2
+    where
+      payload : Term Unit ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode'))
+      payload = ⟨ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ , ⟨ ⌜ C ⌝Ty , encode f ⟩ ⟩
+
+      c : Term TermCode' TermCode'
+      c = cata TermF In
+
+      step1 = cata-β-right
+
+      r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
+      r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
+      r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
+      r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
+      r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr c)) (step assoc-r done))
+      r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr c)) (step assoc-r done))
+      r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr c)) (step assoc-r done))
+      r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr c)) (step assoc-r done))
+      r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr c)) (step assoc-r done))
+      r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr c)) (step assoc-r done))
+      r10 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-10-inr c)) (step assoc-r done))
+      r11 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-11-inr c)) (step assoc-r done))
+
+      -- Navigate through inl with TermF-12 = CurryF ⊕ ApplyF
+      CurryF = (K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)
+      r12-inl : (fmap TermF-12 c ∘ inl) ⟶* (inl ∘ fmap CurryF c)
+      r12-inl = fmap-sum-inl CurryF TermF-13 c
+
+      -- fmap CurryF c ∘ payload
+      -- CurryF = (K ⊗ K) ⊗ (K ⊗ Id)
+      -- fmap CurryF c = ⟨ fmap (K ⊗ K) c ∘ fst , fmap (K ⊗ Id) c ∘ snd ⟩
+      --              = ⟨ id ∘ fst , ⟨ id ∘ fst , c ∘ snd ⟩ ∘ snd ⟩
+      r12-payload : (fmap CurryF c ∘ payload) ⟶* payload
+      r12-payload =
+        ⟶*-trans (step pair-comp done)
+          (⟨⟩-cong
+            -- First component: fmap (K ⊗ K) c ∘ fst ∘ payload ⟶* ⟨ ⌜A⌝, ⌜B⌝ ⟩
+            (⟶*-trans (step assoc-r done)
+              (⟶*-trans (∘-cong-right' (fmap (K TyFuncCode ⊗ K TyFuncCode) c) (step fst-pair done))
+                (⟶*-trans (∘-cong-left' _ (fmap-KK-id TyFuncCode TyFuncCode c))
+                  (step id-left done))))
+            -- Second component: fmap (K ⊗ Id) c ∘ snd ∘ payload ⟶* ⟨ ⌜C⌝, encode f ⟩
+            (⟶*-trans (step assoc-r done)
+              (⟶*-trans (∘-cong-right' (fmap (K TyFuncCode ⊗ Id) c) (step snd-pair done))
+                (⟶*-trans (step pair-comp done)
+                  (⟨⟩-cong
+                    (⟶*-trans (step assoc-r done)
+                      (⟶*-trans (step id-left done)
+                        (step fst-pair done)))
+                    (⟶*-trans (step assoc-r done)
+                      (⟶*-trans (∘-cong-right' c (step snd-pair done))
+                        (refold-idempotent f))))))))
+
+      r12 : (fmap TermF-12 c ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
+      r12 = ⟶*-trans (step assoc-l done)
+              (⟶*-trans (∘-cong-left' _ r12-inl)
+                (⟶*-trans (step assoc-r done)
+                  (∘-cong-right' inl r12-payload)))
+
+      reduce-chain =
+        ⟶*-trans r0 (∘-cong-right' inr
+          (⟶*-trans r1 (∘-cong-right' inr
+            (⟶*-trans r2 (∘-cong-right' inr
+              (⟶*-trans r3 (∘-cong-right' inr
+                (⟶*-trans r4 (∘-cong-right' inr
+                  (⟶*-trans r5 (∘-cong-right' inr
+                    (⟶*-trans r6 (∘-cong-right' inr
+                      (⟶*-trans r7 (∘-cong-right' inr
+                        (⟶*-trans r8 (∘-cong-right' inr
+                          (⟶*-trans r9 (∘-cong-right' inr
+                            (⟶*-trans r10 (∘-cong-right' inr
+                              (⟶*-trans r11 (∘-cong-right' inr r12)))))))))))))))))))))))
+
+      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+
+  -- refold-idem-apply: position 13 (13 inrs, no inl - terminal position)
+  -- encode apply = In ∘ inr^13 ∘ ⟨ ⌜A⌝, ⌜B⌝ ⟩
+  -- Payload functor: K TyFuncCode ⊗ K TyFuncCode
+  refold-idem-apply : ∀ {A B} →
+                      (cata TermF In ∘ encode (apply {A} {B})) ⟶* encode (apply {A} {B})
+  refold-idem-apply {A} {B} = ⟶*-trans step1 step2
+    where
+      payload : Term Unit (TyFuncCode * TyFuncCode)
+      payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+
+      c : Term TermCode' TermCode'
+      c = cata TermF In
+
+      step1 = cata-β-right
+
+      r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
+      r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
+      r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
+      r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
+      r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr c)) (step assoc-r done))
+      r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr c)) (step assoc-r done))
+      r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr c)) (step assoc-r done))
+      r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr c)) (step assoc-r done))
+      r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr c)) (step assoc-r done))
+      r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr c)) (step assoc-r done))
+      r10 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-10-inr c)) (step assoc-r done))
+      r11 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-11-inr c)) (step assoc-r done))
+      r12 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-12-inr c)) (step assoc-r done))
+
+      -- Final step: fmap TermF-13 c ∘ payload
+      -- TermF-13 = K TyFuncCode ⊗ K TyFuncCode
+      -- fmap TermF-13 c = ⟨ id ∘ fst , id ∘ snd ⟩ ⟶* id (by fmap-KK-id)
+      r13 : (fmap TermF-13 c ∘ payload) ⟶* payload
+      r13 = ⟶*-trans (∘-cong-left' payload (fmap-KK-id TyFuncCode TyFuncCode c)) (step id-left done)
+
+      reduce-chain =
+        ⟶*-trans r0 (∘-cong-right' inr
+          (⟶*-trans r1 (∘-cong-right' inr
+            (⟶*-trans r2 (∘-cong-right' inr
+              (⟶*-trans r3 (∘-cong-right' inr
+                (⟶*-trans r4 (∘-cong-right' inr
+                  (⟶*-trans r5 (∘-cong-right' inr
+                    (⟶*-trans r6 (∘-cong-right' inr
+                      (⟶*-trans r7 (∘-cong-right' inr
+                        (⟶*-trans r8 (∘-cong-right' inr
+                          (⟶*-trans r9 (∘-cong-right' inr
+                            (⟶*-trans r10 (∘-cong-right' inr
+                              (⟶*-trans r11 (∘-cong-right' inr
+                                (⟶*-trans r12 (∘-cong-right' inr r13)))))))))))))))))))))))))
 
       step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
 

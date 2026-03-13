@@ -26,25 +26,27 @@ open import normalizer.Foundations.MinimalCCC
 --   - Types: Unit, A * B, A + B, μ F
 --   - Functors: Id, K A, F ⊕ G, F ⊗ G
 --
--- Encoding scheme (8 alternatives):
+-- Encoding scheme (9 type/functor alternatives):
 --   0: Unit type      (K Unit)
 --   1: Product type   (Id ⊗ Id) - two type codes
 --   2: Sum type       (Id ⊗ Id) - two type codes
---   3: Mu type        (Id)      - one functor code
---   4: Id functor     (K Unit)
---   5: K functor      (Id)      - one type code
---   6: Sum functor    (Id ⊗ Id) - two functor codes
---   7: Product functor(Id ⊗ Id) - two functor codes
+--   3: Exponential    (Id ⊗ Id) - two type codes (A ⇒ B)
+--   4: Mu type        (Id)      - one functor code
+--   5: Id functor     (K Unit)
+--   6: K functor      (Id)      - one type code
+--   7: Sum functor    (Id ⊗ Id) - two functor codes
+--   8: Product functor(Id ⊗ Id) - two functor codes
 
 TyFuncF : Func
 TyFuncF = K Unit          -- 0: Unit type
         ⊕ (Id ⊗ Id)       -- 1: A * B
         ⊕ (Id ⊗ Id)       -- 2: A + B
-        ⊕ Id              -- 3: μ F
-        ⊕ K Unit          -- 4: Id functor
-        ⊕ Id              -- 5: K A
-        ⊕ (Id ⊗ Id)       -- 6: F ⊕ G
-        ⊕ (Id ⊗ Id)       -- 7: F ⊗ G
+        ⊕ (Id ⊗ Id)       -- 3: A ⇒ B (exponential)
+        ⊕ Id              -- 4: μ F
+        ⊕ K Unit          -- 5: Id functor
+        ⊕ Id              -- 6: K A
+        ⊕ (Id ⊗ Id)       -- 7: F ⊕ G
+        ⊕ (Id ⊗ Id)       -- 8: F ⊗ G
 
 TyFuncCode : Ty
 TyFuncCode = μ TyFuncF
@@ -74,27 +76,31 @@ inj-prod-ty = inr ∘ inl
 inj-sum-ty : Term (TyFuncCode * TyFuncCode) (⟦ TyFuncF ⟧F TyFuncCode)
 inj-sum-ty = inr ∘ inr ∘ inl
 
--- 3: Mu type μ F
+-- 3: Exponential type A ⇒ B
+inj-exp-ty : Term (TyFuncCode * TyFuncCode) (⟦ TyFuncF ⟧F TyFuncCode)
+inj-exp-ty = inr ∘ inr ∘ inr ∘ inl
+
+-- 4: Mu type μ F
 inj-mu-ty : Term TyFuncCode (⟦ TyFuncF ⟧F TyFuncCode)
-inj-mu-ty = inr ∘ inr ∘ inr ∘ inl
+inj-mu-ty = inr ∘ inr ∘ inr ∘ inr ∘ inl
 
 -- Functor encoding injections:
 
--- 4: Id functor
+-- 5: Id functor
 inj-id-func : Term Unit (⟦ TyFuncF ⟧F TyFuncCode)
-inj-id-func = inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ terminal
+inj-id-func = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ terminal
 
--- 5: K functor
+-- 6: K functor
 inj-k-func : Term TyFuncCode (⟦ TyFuncF ⟧F TyFuncCode)
-inj-k-func = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+inj-k-func = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
 
--- 6: Sum functor F ⊕ G
+-- 7: Sum functor F ⊕ G
 inj-oplus-func : Term (TyFuncCode * TyFuncCode) (⟦ TyFuncF ⟧F TyFuncCode)
-inj-oplus-func = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+inj-oplus-func = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
 
--- 7: Product functor F ⊗ G
+-- 8: Product functor F ⊗ G
 inj-otimes-func : Term (TyFuncCode * TyFuncCode) (⟦ TyFuncF ⟧F TyFuncCode)
-inj-otimes-func = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr
+inj-otimes-func = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr
 
 ------------------------------------------------------------------------
 -- Part 2: Type and Functor Encoding Functions
@@ -115,26 +121,29 @@ inj-otimes-func = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr
 -- Sum: In ∘ inr ∘ inr ∘ inl ∘ ⟨...⟩ (4 compositions before pair)
 ⌜ A + B ⌝Ty = In ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
 
--- Mu: In ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜F⌝ (5 compositions before subterm)
-⌜ μ F ⌝Ty = In ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ F ⌝Func
+-- Exponential: In ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨...⟩ (position 3)
+⌜ A ⇒ B ⌝Ty = In ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
 
--- Id functor: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ terminal (6 compositions)
-⌜ Id ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ terminal
+-- Mu: In ∘ inr^4 ∘ inl ∘ ⌜F⌝ (position 4)
+⌜ μ F ⌝Ty = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ F ⌝Func
 
--- K functor: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜A⌝ (7 compositions)
-⌜ K A ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ A ⌝Ty
+-- Id functor: In ∘ inr^5 ∘ inl ∘ terminal (position 5)
+⌜ Id ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ terminal
 
--- ⊕ functor: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨...⟩ (8 compositions)
-⌜ F ⊕ G ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩
+-- K functor: In ∘ inr^6 ∘ inl ∘ ⌜A⌝ (position 6)
+⌜ K A ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ A ⌝Ty
 
--- ⊗ functor: In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ ⟨...⟩ (8 compositions, no inl)
-⌜ F ⊗ G ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩
+-- ⊕ functor: In ∘ inr^7 ∘ inl ∘ ⟨...⟩ (position 7)
+⌜ F ⊕ G ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩
+
+-- ⊗ functor: In ∘ inr^8 (position 8, no inl - last alternative)
+⌜ F ⊗ G ⌝Func = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩
 
 ------------------------------------------------------------------------
 -- Part 3: Term Code Definition
 ------------------------------------------------------------------------
 
--- Terms have 11 constructors:
+-- Terms have 14 constructors:
 --   0: id         (no subterms, but has type A)
 --   1: f ∘ g      (two subterms)
 --   2: fst        (has types A, B)
@@ -145,7 +154,10 @@ inj-otimes-func = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr
 --   7: [f, g]     (two subterms)
 --   8: terminal   (has type A)
 --   9: In         (has functor F)
---  10: cata F alg (functor F, one subterm)
+--  10: Out        (has functor F)
+--  11: cata F alg (functor F, one subterm)
+--  12: curry f    (types A, B, C, one subterm)
+--  13: apply      (types A, B)
 --
 -- For a faithful encoding, we include type annotations.
 -- This makes the encoding larger but ensures injectivity.
@@ -165,6 +177,8 @@ TermF = (K TyFuncCode)                              -- 0: id A
       ⊕ (K TyFuncCode)                              -- 9: In F (store functor code)
       ⊕ (K TyFuncCode)                              -- 10: Out F (store functor code)
       ⊕ (K TyFuncCode ⊗ Id)                        -- 11: cata F alg (functor + algebra)
+      ⊕ ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))  -- 12: curry f (A, B, C, body)
+      ⊕ (K TyFuncCode ⊗ K TyFuncCode)              -- 13: apply A B
 
 TermCode' : Ty
 TermCode' = μ TermF
@@ -237,7 +251,15 @@ inj-Out = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr �
 
 -- Injection for cata
 inj-cata : Term (TyFuncCode * TermCode') UnfoldedTermCode
-inj-cata = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr
+inj-cata = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+
+-- Injection for curry ((A, B), (C, body))
+inj-curry : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) UnfoldedTermCode
+inj-curry = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl
+
+-- Injection for apply (A, B)
+inj-apply : Term (TyFuncCode * TyFuncCode) UnfoldedTermCode
+inj-apply = inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr
 
 ------------------------------------------------------------------------
 -- Part 5: The Term Encoding Function
@@ -255,16 +277,18 @@ encode : ∀ {A B} → Term A B → Term Unit TermCode'
 -- (using right-associative _∘_ means we count inrs before inl)
 -- 0: id         - inl (0 inrs)
 -- 1: compose    - inr ∘ inl (1 inr)
--- 2: fst        - inr ∘ inr ∘ inl (2 inrs)
--- 3: snd        - inr ∘ inr ∘ inr ∘ inl (3 inrs)
--- 4: pair       - inr ∘ inr ∘ inr ∘ inr ∘ inl (4 inrs)
--- 5: inl        - inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (5 inrs)
--- 6: inr        - inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (6 inrs)
--- 7: case       - inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (7 inrs)
--- 8: terminal   - inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl (8 inrs)
+-- 2: fst        - inr^2 ∘ inl (2 inrs)
+-- 3: snd        - inr^3 ∘ inl (3 inrs)
+-- 4: pair       - inr^4 ∘ inl (4 inrs)
+-- 5: inl        - inr^5 ∘ inl (5 inrs)
+-- 6: inr        - inr^6 ∘ inl (6 inrs)
+-- 7: case       - inr^7 ∘ inl (7 inrs)
+-- 8: terminal   - inr^8 ∘ inl (8 inrs)
 -- 9: In         - inr^9 ∘ inl (9 inrs)
 -- 10: Out       - inr^10 ∘ inl (10 inrs)
--- 11: cata      - inr^11 (11 inrs, no inl)
+-- 11: cata      - inr^11 ∘ inl (11 inrs)
+-- 12: curry     - inr^12 ∘ inl (12 inrs)
+-- 13: apply     - inr^13 (13 inrs, no inl - last alternative)
 
 encode (id {A}) = In ∘ inl ∘ ⌜ A ⌝Ty
 
@@ -288,7 +312,13 @@ encode (In {F}) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘
 
 encode (Out {F}) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ F ⌝Func
 
-encode (cata F alg) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ ⟨ ⌜ F ⌝Func , encode alg ⟩
+encode (cata F alg) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ F ⌝Func , encode alg ⟩
+
+-- curry stores ((A, B), (C, body))
+encode (curry {A} {B} {C} f) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ , ⟨ ⌜ C ⌝Ty , encode f ⟩ ⟩
+
+-- apply stores (A, B)
+encode (apply {A} {B}) = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
 
 
 -- End of minimal Encoding for Level0V2
