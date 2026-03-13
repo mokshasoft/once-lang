@@ -39,6 +39,9 @@ open import normalizer.Level0V2.Normalizer
 open import normalizer.Level0V2.Normalize
   using (normalize; normalize-encoded)
 
+open import normalizer.Level0V2.NormalForm
+  using (fixpoint-property)
+
 -- normalize : Term TermCode' TermCode'
 -- normalize-encoded : Term Unit TermCode'
 
@@ -105,11 +108,11 @@ postulate
 --   normalize-encoded = encode normalize
 
 -- THE KEY PROPERTY: normalizer achieves fixpoint on its own encoding
-postulate
-  fixpoint-property : (normalize ∘ normalize-encoded) ⟶* normalize-encoded
+-- PROVEN via fixpoint-property from NormalForm (depends on normalize-step-like-In postulate)
+-- fixpoint-property is imported from NormalForm.agda
 
 -- Note: For `cata TermF In`, we PROVED this (refold-idempotent).
--- For the real normalizer, we need to prove it too.
+-- The real normalizer's fixpoint depends on normalize-step-like-In.
 
 ------------------------------------------------------------------------
 -- Part 8: The Main Theorem
