@@ -1804,14 +1804,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
 
           -- Memory agreement at slots in [suc backup-slot, reclaim-f) (same frame on both sides)
           -- Since pair doesn't change frames, we use alloc-after-backup for both
-          -- Note: f reads in [suc backup-slot, reclaim-f), so we only need agreement there
-          ftms-mem-agree : ∀ slot → suc backup-slot ≤ slot →
+          -- f reads in [suc backup-slot, reclaim-f), so we only need agreement there
+          ftms-mem-agree : ∀ slot → suc backup-slot ≤ slot → slot < reclaim-f →
             readLoc s (OnStack (current-frame alloc-after-backup) slot) ≡
             readLoc s-after-setup (OnStack (current-frame alloc-after-backup) slot)
-          -- Note: this is passed to exec-trace-mem-deterministic which requires ≥ n,
-          -- but the bound will only be used for slots < reclaim-f in practice
-          ftms-mem-agree slot suc-b≤slot with slot <? reclaim-f
-          ... | yes slot<rf =
+          ftms-mem-agree slot suc-b≤slot slot<rf =
             let -- mem-preserved-setup gives equality with different frames
                 raw : readLoc s (OnStack (current-frame alloc-after-backup) slot) ≡
                       readLoc s-after-setup (OnStack (current-frame alloc-after-setup) slot)
@@ -1826,37 +1823,6 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
             in subst (λ f → readLoc s (OnStack (current-frame alloc-after-backup) slot) ≡
                            readLoc s-after-setup (OnStack f slot))
                      setup-frame raw
-          ... | no slot≮rf =
-            -- slot ≥ reclaim-f: this case only arises if exec-trace-mem-deterministic
-            -- queries a slot outside f's read region. In that case, the value doesn't
-            -- affect the result. We prove it vacuously using setup-trace preservation.
-            -- setup-trace writes only at backup-slot, and suc backup-slot ≤ slot
-            -- (from the suc-b≤slot hypothesis) implies backup-slot < slot
-            let b<slot : backup-slot < slot
-                b<slot = suc-b≤slot  -- suc backup-slot ≤ slot means backup-slot < slot
-                b≢slot : backup-slot ≢ slot
-                b≢slot = <⇒≢ b<slot
-                -- Inline setup-trace preservation proof
-                s₁' = proj₁ (exec-abstract mov-to-output s alloc)
-                alloc₁' = proj₂ (exec-abstract mov-to-output s alloc)
-                halted-s₁' : halted s₁' ≡ false
-                halted-s₁' = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
-                decomp : exec-trace setup-trace s alloc ≡
-                         exec-trace (store-at-slot backup-slot ∷ []) s₁' alloc₁'
-                decomp = exec-trace-cons mov-to-output (store-at-slot backup-slot ∷ []) s alloc not-halted
-                single : exec-trace (store-at-slot backup-slot ∷ []) s₁' alloc₁' ≡
-                         exec-abstract (store-at-slot backup-slot) s₁' alloc₁'
-                single = exec-trace-single (store-at-slot backup-slot) s₁' alloc₁' halted-s₁'
-                s-setup-eq : s-after-setup ≡ proj₁ (exec-abstract (store-at-slot backup-slot) s₁' alloc₁')
-                s-setup-eq = cong proj₁ (trans decomp single)
-                mov-preserves : readLoc s₁' (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
-                mov-preserves = readLoc-stackMem-eq s₁' s (OnStack frame slot) refl refl
-                store-preserves : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s₁' alloc₁'))
-                                    (OnStack (current-frame alloc₁') slot) ≡
-                                  readLoc s₁' (OnStack (current-frame alloc₁') slot)
-                store-preserves = store-at-slot-preserves-other backup-slot slot s₁' alloc₁' b≢slot
-            in sym (trans (cong (λ st → readLoc st (OnStack frame slot)) s-setup-eq)
-                          (trans store-preserves mov-preserves))
 
           -- For slots < suc backup-slot and ≠ backup-slot, setup preserves them
           ftms-setup-preserves-below : ∀ slot → slot < backup-slot →
@@ -1927,7 +1893,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
                                 not-halted not-halted-after-setup
                                 refl  -- same allocator, frame equality is refl
                                 (sym input-preserved-setup)
-                                f-reads-above f-writes-above f-writes-below f-tnsi
+                                f-reads-above f-reads-below f-writes-above f-writes-below f-tnsi
                                 ftms-mem-agree
                                 k suc-b≤k k<rf
                 -- Connect alloc-after-backup execution to alloc-after-setup execution (same frame)
@@ -2130,12 +2096,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
           gtms-s2-eq = sym (IRResultAWF.trace-correct result-g)
 
           -- Memory agreement for exec-trace-mem-deterministic
-          -- exec-trace-mem-deterministic requires ≥ n, but only uses slots in [n, m)
-          gtms-mem-agree : ∀ slot → reclaim-f ≤ slot →
+          -- g reads in [reclaim-f, reclaim-g), so we only need agreement there
+          gtms-mem-agree : ∀ slot → reclaim-f ≤ slot → slot < reclaim-g →
             readLoc s₁' (OnStack (current-frame alloc₁-reclaimed) slot) ≡
             readLoc s-after-middle (OnStack (current-frame alloc₁-reclaimed) slot)
-          gtms-mem-agree slot rf≤slot with slot <? reclaim-g
-          ... | yes slot<rg =
+          gtms-mem-agree slot rf≤slot slot<rg =
             -- mem-preserved-for-g gives: s₁' (alloc₁-reclaimed frame) ≡ s-after-middle (alloc-after-middle frame)
             -- We need: s₁' (alloc₁-reclaimed frame) ≡ s-after-middle (alloc₁-reclaimed frame)
             -- frame-eq-g : alloc₁-reclaimed frame ≡ alloc-after-middle frame
@@ -2143,13 +2108,6 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
             subst (λ f → readLoc s₁' (OnStack (current-frame alloc₁-reclaimed) slot) ≡
                         readLoc s-after-middle (OnStack f slot))
                   (sym frame-eq-g) (mem-preserved-for-g slot rf≤slot slot<rg)
-          ... | no slot≮rg =
-            -- slot ≥ reclaim-g: exec-trace-mem-deterministic won't actually query this slot
-            -- since it only uses slots in [reclaim-f, reclaim-g). This case is unreachable
-            -- in terms of affecting the result, so we use !! as a proof obligation marker.
-            -- The values at slot ≥ reclaim-g may differ between s₁' and s-after-middle
-            -- (middle-trace writes at fst-slot = reclaim-g), but this doesn't affect g's output.
-            SMP.!!
 
           -- g preserves slots < reclaim-f (g writes above reclaim-f)
           gtms-g-preserves-below-rf : ∀ slot → slot < reclaim-f →
@@ -2185,7 +2143,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
                                 not-halted-s1' not-halted-after-middle
                                 refl  -- same allocator
                                 (trans rdi-eq₁ (sym input-after-middle))
-                                g-reads-above g-writes-above g-writes-below g-tnsi
+                                g-reads-above g-reads-below g-writes-above g-writes-below g-tnsi
                                 gtms-mem-agree
                                 k rf≤k k<rg
                 state-eq : proj₁ (exec-trace g-trace s-after-middle alloc₁-reclaimed) ≡ s-after-g
