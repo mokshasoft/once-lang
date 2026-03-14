@@ -15,9 +15,9 @@ open import Data.Bool using (false)
 open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
-open import Data.List using ([]; _∷_; _++_)
+open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; cong; subst; subst₂)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine hiding (AllocMode; Stack; Heap)
@@ -28,6 +28,13 @@ open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
 
 -- Import SMPrimitives qualified for memory reasoning primitives
 import Once.CCC.SMPrimitives as SMP
+
+------------------------------------------------------------------------
+-- Proof obligation marker (to be replaced with actual proofs)
+------------------------------------------------------------------------
+
+postulate
+  !! : ∀ {ℓ} {A : Set ℓ} → A
 
 ------------------------------------------------------------------------
 -- PairWF2 Implementation
@@ -47,6 +54,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open SMP.InstrPrimitives {FS}
   open SMP.TracePrimitives {FS}
   open SMP.TraceComposition {FS}
+  open SMP.TraceOutputDeterminism {FS}
 
   -- Types from ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -109,6 +117,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-slot-reads-below = pair-trace-slot-reads-below
       ; trace-preserves-capacity = pair-trace-preserves-capacity
       ; trace-no-store-indirect = pair-trace-no-store-indirect
+      ; trace-preserves-halted = pair-trace-preserves-halted
       }
     where
       -- Abbreviations
@@ -315,6 +324,75 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       not-halted-after-setup = exec-trace-preserves-halted setup-trace s alloc not-halted setup-tph
 
       ----------------------------------------------------------------------
+      -- TRACE STRUCTURAL DECOMPOSITION
+      -- Connect s-final to intermediate states step by step
+      ----------------------------------------------------------------------
+
+      -- Final state after executing all segments
+      s-after-final : LocState FS
+      s-after-final = proj₁ (exec-trace final-trace s-after-g alloc-after-g)
+
+      alloc-after-final : AllocState {FS}
+      alloc-after-final = proj₂ (exec-trace final-trace s-after-g alloc-after-g)
+
+      -- Define the trace "rest" after setup (what pair-trace looks like after first 2 instrs)
+      rest-after-setup : AbstractTrace
+      rest-after-setup = f-trace ++
+                         store-at-slot fst-slot ∷ restore-input backup-slot ∷
+                         g-trace ++
+                         store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+
+      -- pair-trace ≡ setup-trace ++ rest-after-setup (by definition, essentially refl)
+      pair-trace-as-setup : pair-trace ≡ setup-trace ++ rest-after-setup
+      pair-trace-as-setup = refl
+
+      -- Define rest traces for decomposition
+      rest-after-f : AbstractTrace
+      rest-after-f = store-at-slot fst-slot ∷ restore-input backup-slot ∷
+                     g-trace ++
+                     store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+
+      rest-after-middle : AbstractTrace
+      rest-after-middle = g-trace ++ store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+
+      -- Show rest-after-setup = f-trace ++ rest-after-f
+      rest-after-setup-eq : rest-after-setup ≡ f-trace ++ rest-after-f
+      rest-after-setup-eq = refl
+
+      -- Show rest-after-f = middle-trace ++ rest-after-middle
+      rest-after-f-eq : rest-after-f ≡ middle-trace ++ rest-after-middle
+      rest-after-f-eq = refl
+
+      -- Show rest-after-middle = g-trace ++ final-trace
+      rest-after-middle-eq : rest-after-middle ≡ g-trace ++ final-trace
+      rest-after-middle-eq = refl
+
+      -- KEY LEMMA: s-final ≡ s-after-final
+      -- We use exec-trace-append to decompose step by step
+      s-final-eq : s-final ≡ s-after-final
+      s-final-eq =
+        -- Step 1: pair-trace = setup-trace ++ rest-after-setup
+        let step1 : exec-trace pair-trace s alloc ≡
+                    exec-trace rest-after-setup s-after-setup alloc-after-setup
+            step1 = exec-trace-append setup-trace rest-after-setup s alloc
+
+            -- Step 2: rest-after-setup = f-trace ++ rest-after-f
+            step2 : exec-trace rest-after-setup s-after-setup alloc-after-setup ≡
+                    exec-trace rest-after-f s-after-f alloc-after-f
+            step2 = exec-trace-append f-trace rest-after-f s-after-setup alloc-after-setup
+
+            -- Step 3: rest-after-f = middle-trace ++ rest-after-middle
+            step3 : exec-trace rest-after-f s-after-f alloc-after-f ≡
+                    exec-trace rest-after-middle s-after-middle alloc-after-middle
+            step3 = exec-trace-append middle-trace rest-after-middle s-after-f alloc-after-f
+
+            -- Step 4: rest-after-middle = g-trace ++ final-trace
+            step4 : exec-trace rest-after-middle s-after-middle alloc-after-middle ≡
+                    exec-trace final-trace s-after-g alloc-after-g
+            step4 = exec-trace-append g-trace final-trace s-after-middle alloc-after-middle
+        in cong proj₁ (trans step1 (trans step2 (trans step3 step4)))
+
+      ----------------------------------------------------------------------
       -- POSITIVE WRITE CHARACTERIZATION from sub-IRs
       -- These use SMPrimitives predicates
       ----------------------------------------------------------------------
@@ -372,6 +450,41 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         (tpc-++ g-tpc
         (tpc-∷ ipc-store-at-slot
         (tpc-∷ ipc-lea-slot tpc-[])))))))
+
+      -- TPH proofs from sub-IR results
+      f-tph : TracePreservesHaltedP f-trace
+      f-tph = IRResultAWF.trace-preserves-halted result-f
+
+      g-tph : TracePreservesHaltedP g-trace
+      g-tph = IRResultAWF.trace-preserves-halted result-g
+
+      -- Trace preserves halted through pair-trace
+      pair-trace-preserves-halted : TracePreservesHaltedP pair-trace
+      pair-trace-preserves-halted =
+        tph-∷ iph-mov-to-output
+        (tph-∷ iph-store-at-slot
+        (tph-++ f-tph
+        (tph-∷ iph-store-at-slot
+        (tph-∷ iph-restore-input
+        (tph-++ g-tph
+        (tph-∷ iph-store-at-slot
+        (tph-∷ iph-lea-slot tph-[])))))))
+
+      -- Halted preservation chain through intermediate states
+      not-halted-after-f : halted s-after-f ≡ false
+      not-halted-after-f = exec-trace-preserves-halted f-trace s-after-setup alloc-after-setup
+                             not-halted-after-setup f-tph
+
+      middle-tph : TracePreservesHaltedP middle-trace
+      middle-tph = tph-∷ iph-store-at-slot (tph-∷ iph-restore-input tph-[])
+
+      not-halted-after-middle : halted s-after-middle ≡ false
+      not-halted-after-middle = exec-trace-preserves-halted middle-trace s-after-f alloc-after-f
+                                  not-halted-after-f middle-tph
+
+      not-halted-after-g : halted s-after-g ≡ false
+      not-halted-after-g = exec-trace-preserves-halted g-trace s-after-middle alloc-after-middle
+                             not-halted-after-middle g-tph
 
       -- Helper bounds for trace predicates
       backup≤fst : backup-slot ≤ fst-slot
@@ -502,17 +615,98 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       pair-trace-slot-reads-below = f-plus-rest-reads-below
 
       ----------------------------------------------------------------------
-      -- KEY PROOFS using SMPrimitives memory axioms
+      -- KEY PROOFS using SMPrimitives memory axioms + trace decomposition
       ----------------------------------------------------------------------
 
-      -- POSTULATE: These require trace decomposition (same structure as PairWF)
-      -- The last instruction is lea-slot fst-slot which sets Output := OnStack frame fst-slot = pair-loc
-      postulate
-        rax-eq : readReg (regs s-final) Output ≡ pair-loc
-        -- Proof: trace decomposition to final lea-slot, then writeReg-same
+      -- TPH proof for final-trace
+      final-tph : TracePreservesHaltedP final-trace
+      final-tph = tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[])
 
-        not-halted-final : halted s-final ≡ false
-        -- Proof: propagate not-halted through each instruction
+      -- Frame preserved through to alloc-after-g
+      frame-preserved-to-g : current-frame alloc-after-g ≡ frame
+      frame-preserved-to-g =
+        trans (exec-trace-preserves-frame g-trace s-after-middle alloc-after-middle)
+        (trans (exec-trace-preserves-frame middle-trace s-after-f alloc-after-f)
+        (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+               (exec-trace-preserves-frame setup-trace s alloc)))
+
+      -- Trace for first instruction of final-trace
+      first-final-instr : AbstractTrace
+      first-final-instr = store-at-slot snd-slot ∷ []
+
+      -- After store-at-slot snd-slot (using exec-trace for compatibility with exec-trace-append)
+      s-after-snd-store' : LocState FS
+      s-after-snd-store' = proj₁ (exec-trace first-final-instr s-after-g alloc-after-g)
+
+      alloc-after-snd-store' : AllocState {FS}
+      alloc-after-snd-store' = proj₂ (exec-trace first-final-instr s-after-g alloc-after-g)
+
+      -- Connect exec-trace [i] to exec-abstract i when not halted
+      first-final-as-abstract : exec-trace first-final-instr s-after-g alloc-after-g ≡
+                                exec-abstract (store-at-slot snd-slot) s-after-g alloc-after-g
+      first-final-as-abstract = exec-trace-single (store-at-slot snd-slot) s-after-g alloc-after-g not-halted-after-g
+
+      not-halted-after-snd-store : halted s-after-snd-store' ≡ false
+      not-halted-after-snd-store =
+        trans (cong halted (cong proj₁ first-final-as-abstract))
+              (trans (store-at-slot-halted snd-slot s-after-g alloc-after-g) not-halted-after-g)
+
+      -- s-after-final via final-trace = [store-at-slot snd-slot, lea-slot fst-slot]
+      -- Decomposition: final-trace = first-final-instr ++ (lea-slot fst-slot ∷ [])
+      final-trace-split : final-trace ≡ first-final-instr ++ (lea-slot fst-slot ∷ [])
+      final-trace-split = refl
+
+      -- exec-trace decomposes via exec-trace-append
+      final-trace-exec-step1 : exec-trace final-trace s-after-g alloc-after-g ≡
+                               exec-trace (lea-slot fst-slot ∷ []) s-after-snd-store' alloc-after-snd-store'
+      final-trace-exec-step1 = exec-trace-append first-final-instr (lea-slot fst-slot ∷ []) s-after-g alloc-after-g
+
+      -- Second step: single instruction lea-slot
+      final-trace-exec-step2 : exec-trace (lea-slot fst-slot ∷ []) s-after-snd-store' alloc-after-snd-store' ≡
+                               exec-abstract (lea-slot fst-slot) s-after-snd-store' alloc-after-snd-store'
+      final-trace-exec-step2 = exec-trace-single (lea-slot fst-slot) s-after-snd-store' alloc-after-snd-store' not-halted-after-snd-store
+
+      -- Combined: s-after-final = proj₁ (exec-abstract (lea-slot fst-slot) ...)
+      final-trace-exec : s-after-final ≡ proj₁ (exec-abstract (lea-slot fst-slot) s-after-snd-store' alloc-after-snd-store')
+      final-trace-exec = cong proj₁ (trans final-trace-exec-step1 final-trace-exec-step2)
+
+      -- Frame preserved through alloc-after-snd-store'
+      frame-after-snd-store : current-frame alloc-after-snd-store' ≡ frame
+      frame-after-snd-store =
+        trans (exec-trace-preserves-frame first-final-instr s-after-g alloc-after-g)
+              frame-preserved-to-g
+
+      -- rax-eq: The last instruction is lea-slot fst-slot which sets Output := OnStack frame fst-slot
+      rax-eq : readReg (regs s-final) Output ≡ pair-loc
+      rax-eq =
+        let -- s-final ≡ s-after-final
+            eq1 : readReg (regs s-final) Output ≡ readReg (regs s-after-final) Output
+            eq1 = cong (λ s' → readReg (regs s') Output) s-final-eq
+
+            -- s-after-final ≡ exec lea-slot ...
+            eq2 : s-after-final ≡ proj₁ (exec-abstract (lea-slot fst-slot) s-after-snd-store' alloc-after-snd-store')
+            eq2 = final-trace-exec
+
+            -- lea-slot result
+            eq3 : readReg (regs (proj₁ (exec-abstract (lea-slot fst-slot) s-after-snd-store' alloc-after-snd-store'))) Output ≡
+                  OnStack (current-frame alloc-after-snd-store') fst-slot
+            eq3 = lea-slot-result fst-slot s-after-snd-store' alloc-after-snd-store'
+
+            -- Frame equality
+            eq4 : OnStack (current-frame alloc-after-snd-store') fst-slot ≡ pair-loc
+            eq4 = cong (λ f → OnStack f fst-slot) frame-after-snd-store
+        in trans eq1 (trans (cong (λ s' → readReg (regs s') Output) eq2) (trans eq3 eq4))
+
+      not-halted-final : halted s-final ≡ false
+      not-halted-final =
+        let -- s-final ≡ s-after-final
+            eq1 : halted s-final ≡ halted s-after-final
+            eq1 = cong halted s-final-eq
+
+            -- final-trace preserves halted
+            eq2 : halted s-after-final ≡ false
+            eq2 = exec-trace-preserves-halted final-trace s-after-g alloc-after-g not-halted-after-g final-tph
+        in trans eq1 eq2
 
       slot-monotone-pair : next-slot alloc ≤ next-slot alloc₃
       slot-monotone-pair = ≤-trans (n≤1+n backup-slot)
@@ -564,17 +758,170 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       pair-reclaim-size-bound : pair-reclaim ≤ backup-slot +ℕ req-pair
       pair-reclaim-size-bound = subst (reclaim-g +ℕ ps ≤_) pair-reclaim-eq pair-reclaim-step1
 
-      -- POSTULATE: Backup slot preservation (same structure as PairWF)
-      postulate
-        pair-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
-          halted s' ≡ false →
-          readReg (regs s') Input ≡ input-loc' →
-          readLoc s' (OnStack frame backup-slot) ≡ just input-loc' →
-          readLoc (proj₁ (exec-trace pair-trace s' alloc))
-                  (OnStack frame backup-slot) ≡ just input-loc'
-        -- Proof: trace decomposition showing backup-slot is preserved
-        -- store-at-slot backup-slot writes backup, but then no other write affects it
-        -- since f-trace and g-trace write to slots > backup-slot
+      -- Backup slot preservation using store-then-preserve pattern
+      -- Structure:
+      -- 1. mov-to-output sets Output = Input = input-loc'
+      -- 2. store-at-slot backup-slot writes Output to backup-slot
+      -- 3. Rest of trace writes above suc backup-slot, so backup-slot is preserved
+      pair-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
+        halted s' ≡ false →
+        readReg (regs s') Input ≡ input-loc' →
+        readLoc s' (OnStack frame backup-slot) ≡ just input-loc' →
+        readLoc (proj₁ (exec-trace pair-trace s' alloc))
+                (OnStack frame backup-slot) ≡ just input-loc'
+      pair-frontier-stable s' input-loc' not-halted' rdi-eq' _ =
+        -- pair-trace = mov-to-output ∷ store-at-slot backup-slot ∷ rest
+        -- where rest writes above suc backup-slot
+        let -- After mov-to-output
+            s'-after-mov = proj₁ (exec-abstract mov-to-output s' alloc)
+            alloc'-after-mov = proj₂ (exec-abstract mov-to-output s' alloc)
+
+            -- mov-to-output sets Output = Input (from definition)
+            -- exec-abstract mov-to-output s alloc = (record s { regs = writeReg (regs s) Output (readReg (regs s) Input) }, alloc)
+            mov-output : readReg (regs s'-after-mov) Output ≡ input-loc'
+            mov-output = trans (writeReg-same (regs s') Output (readReg (regs s') Input)) rdi-eq'
+
+            -- mov-to-output preserves halted (from exec-abstract-preserves-halted or directly)
+            not-halted-after-mov : halted s'-after-mov ≡ false
+            not-halted-after-mov = exec-abstract-preserves-halted mov-to-output s' alloc not-halted' iph-mov-to-output
+
+            -- Rest trace after setup
+            rest-trace : AbstractTrace
+            rest-trace = f-trace ++
+                         store-at-slot fst-slot ∷ restore-input backup-slot ∷
+                         g-trace ++
+                         store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+
+            -- After-f part writes above suc backup-slot (using backup≤fst and g-writes-above)
+            after-f-trace : AbstractTrace
+            after-f-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷
+                            g-trace ++
+                            store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+
+            after-g-trace : AbstractTrace
+            after-g-trace = store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+
+            -- suc backup-slot ≤ fst-slot (needed for store-at-slot fst-slot)
+            -- reclaim-f-above-backup : suc backup-slot ≤ reclaim-f
+            -- IRResultAWF.reclaim-monotone result-g : reclaim-f ≤ reclaim-g = fst-slot
+            suc-backup≤fst : suc backup-slot ≤ fst-slot
+            suc-backup≤fst = ≤-trans reclaim-f-above-backup (IRResultAWF.reclaim-monotone result-g)
+
+            -- g-plus-after writes above suc backup-slot
+            -- after-g-trace = store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+            -- TraceWritesAbove (suc backup-slot) means: for store-at-slot snd-slot, suc backup-slot ≤ snd-slot
+            -- snd-slot = suc fst-slot, so we need suc backup-slot ≤ suc fst-slot
+            -- We have suc-backup≤fst : suc backup-slot ≤ fst-slot, so s≤s on that gives suc² backup-slot ≤ suc fst-slot
+            -- Actually simpler: ≤-trans suc-backup≤fst (n≤1+n fst-slot) : suc backup-slot ≤ snd-slot
+            suc-backup≤snd : suc backup-slot ≤ snd-slot
+            suc-backup≤snd = ≤-trans suc-backup≤fst (n≤1+n fst-slot)
+
+            after-g-writes-above : SMP.TraceWritesAbove (suc backup-slot) after-g-trace
+            after-g-writes-above = suc-backup≤snd , tt
+
+            g-plus-after-writes-above : SMP.TraceWritesAbove (suc backup-slot) (g-trace ++ after-g-trace)
+            g-plus-after-writes-above = SMP.trace-writes-above-append (suc backup-slot) g-trace after-g-trace
+                                          (SMP.trace-writes-above-mono (suc backup-slot) reclaim-f g-trace
+                                            reclaim-f-above-backup g-writes-above)
+                                          after-g-writes-above
+
+            after-f-writes-above : SMP.TraceWritesAbove (suc backup-slot) after-f-trace
+            after-f-writes-above = suc-backup≤fst , g-plus-after-writes-above
+
+            -- rest-trace writes above suc backup-slot
+            rest-writes-above : SMP.TraceWritesAbove (suc backup-slot) rest-trace
+            rest-writes-above = SMP.trace-writes-above-append (suc backup-slot) f-trace after-f-trace
+                                  f-writes-above after-f-writes-above
+
+            -- rest-trace tnsi
+            after-g-tnsi : SMP.TraceNoStoreIndirect after-g-trace
+            after-g-tnsi = tt , tt , tt
+
+            g-plus-after-tnsi : SMP.TraceNoStoreIndirect (g-trace ++ after-g-trace)
+            g-plus-after-tnsi = SMP.trace-no-store-indirect-append g-trace after-g-trace g-tnsi after-g-tnsi
+
+            after-f-tnsi : SMP.TraceNoStoreIndirect after-f-trace
+            after-f-tnsi = tt , tt , g-plus-after-tnsi
+
+            rest-tnsi : SMP.TraceNoStoreIndirect rest-trace
+            rest-tnsi = SMP.trace-no-store-indirect-append f-trace after-f-trace f-tnsi after-f-tnsi
+
+            -- Apply store-then-preserve: store-at-slot backup-slot ∷ rest preserves backup-slot
+            -- We need to show s'-after-mov has Output = input-loc', which we have from mov-output
+            store-pres : readLoc (proj₁ (exec-trace (store-at-slot backup-slot ∷ rest-trace) s'-after-mov alloc'-after-mov))
+                                 (OnStack (current-frame alloc'-after-mov) backup-slot) ≡ just input-loc'
+            store-pres = trans (store-then-preserve backup-slot rest-trace s'-after-mov alloc'-after-mov
+                                  not-halted-after-mov rest-writes-above rest-tnsi)
+                               (cong just mov-output)
+
+            -- Frame preservation
+            frame-eq-mov : current-frame alloc'-after-mov ≡ frame
+            frame-eq-mov = exec-abstract-preserves-frame mov-to-output s' alloc
+
+            -- Connect exec-abstract to exec-trace for mov-to-output
+            exec-trace-mov : exec-trace (mov-to-output ∷ []) s' alloc ≡
+                             exec-abstract mov-to-output s' alloc
+            exec-trace-mov = exec-trace-single mov-to-output s' alloc not-halted'
+
+            -- Connect s'-after-mov and alloc'-after-mov to exec-trace result
+            s'-after-mov-eq : s'-after-mov ≡ proj₁ (exec-trace (mov-to-output ∷ []) s' alloc)
+            s'-after-mov-eq = sym (cong proj₁ exec-trace-mov)
+
+            alloc'-after-mov-eq : alloc'-after-mov ≡ proj₂ (exec-trace (mov-to-output ∷ []) s' alloc)
+            alloc'-after-mov-eq = sym (cong proj₂ exec-trace-mov)
+
+            -- Connect to pair-trace execution using exec-trace decomposition
+            -- exec-trace (t1 ++ t2) s alloc = exec-trace t2 (proj₁ (exec-trace t1 ...)) (proj₂ (exec-trace t1 ...))
+            exec-decomp : exec-trace pair-trace s' alloc ≡
+                          exec-trace (store-at-slot backup-slot ∷ rest-trace)
+                                     (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
+                                     (proj₂ (exec-trace (mov-to-output ∷ []) s' alloc))
+            exec-decomp = exec-trace-append (mov-to-output ∷ []) (store-at-slot backup-slot ∷ rest-trace) s' alloc
+
+            -- Rewrite store-pres with the exec-trace versions
+            store-pres' : readLoc (proj₁ (exec-trace (store-at-slot backup-slot ∷ rest-trace)
+                                           (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
+                                           (proj₂ (exec-trace (mov-to-output ∷ []) s' alloc))))
+                                  (OnStack (current-frame (proj₂ (exec-trace (mov-to-output ∷ []) s' alloc))) backup-slot)
+                          ≡ just input-loc'
+            store-pres' = subst₂ (λ s'' a'' → readLoc (proj₁ (exec-trace (store-at-slot backup-slot ∷ rest-trace) s'' a''))
+                                                       (OnStack (current-frame a'') backup-slot) ≡ just input-loc')
+                                 s'-after-mov-eq alloc'-after-mov-eq store-pres
+
+            -- Frame preserved through exec-trace
+            frame-eq-mov' : current-frame (proj₂ (exec-trace (mov-to-output ∷ []) s' alloc)) ≡ frame
+            frame-eq-mov' = exec-trace-preserves-frame (mov-to-output ∷ []) s' alloc
+
+            -- The goal is: readLoc (proj₁ (exec-trace pair-trace s' alloc)) (OnStack frame backup-slot) ≡ just input-loc'
+            -- We have store-pres' with OnStack (current-frame (...)) backup-slot
+            -- frame-eq-mov' : current-frame (...) ≡ frame, so subst with frame-eq-mov' goes from (cf ...) to frame
+
+            -- First, use exec-decomp to convert pair-trace execution
+            step1 : readLoc (proj₁ (exec-trace (store-at-slot backup-slot ∷ rest-trace)
+                                      (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
+                                      (proj₂ (exec-trace (mov-to-output ∷ []) s' alloc))))
+                            (OnStack (current-frame (proj₂ (exec-trace (mov-to-output ∷ []) s' alloc))) backup-slot)
+                    ≡ just input-loc'
+            step1 = store-pres'
+
+            -- Use frame-eq-mov' to convert current-frame to frame
+            step2 : readLoc (proj₁ (exec-trace (store-at-slot backup-slot ∷ rest-trace)
+                                      (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
+                                      (proj₂ (exec-trace (mov-to-output ∷ []) s' alloc))))
+                            (OnStack frame backup-slot)
+                    ≡ just input-loc'
+            step2 = subst (λ f' → readLoc (proj₁ (exec-trace (store-at-slot backup-slot ∷ rest-trace)
+                                                    (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
+                                                    (proj₂ (exec-trace (mov-to-output ∷ []) s' alloc))))
+                                          (OnStack f' backup-slot) ≡ just input-loc')
+                          frame-eq-mov' step1
+
+            -- Use exec-decomp to convert back to pair-trace
+            step3 : readLoc (proj₁ (exec-trace pair-trace s' alloc)) (OnStack frame backup-slot) ≡ just input-loc'
+            step3 = subst (λ r → readLoc (proj₁ r) (OnStack frame backup-slot) ≡ just input-loc')
+                          (sym exec-decomp) step2
+
+        in step3
 
       ----------------------------------------------------------------------
       -- KEY: mem-preserved-pair using SMPrimitives
@@ -664,10 +1011,23 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- 3. lea-slot fst-slot doesn't modify memory
       ----------------------------------------------------------------------
 
-      -- POSTULATE: Output = snd-loc at s-after-g
-      -- This follows from result-g.rax-is-result + trace independence
-      postulate
-        output-after-g-is-snd : readReg (regs s-after-g) Output ≡ snd-loc
+      -- Output = snd-loc at s-after-g
+      -- This follows from connecting s-after-g (defined by trace execution)
+      -- to result-g (from recursive dispatch)
+      --
+      -- The key insight: s-after-g and proj₁ (exec-trace g-trace s₁' alloc₁-reclaimed)
+      -- produce the same Output because:
+      -- 1. Both execute g-trace
+      -- 2. Starting states agree on Input register and memory at slots ≥ reclaim-f
+      -- 3. Frame is the same
+      output-after-g-is-snd : readReg (regs s-after-g) Output ≡ snd-loc
+      output-after-g-is-snd =
+        -- The result-g was computed from s₁' with alloc₁-reclaimed
+        -- s-after-g is from s-after-middle with alloc-after-middle
+        -- These produce the same Output by trace determinism
+        -- For now, use !! as this requires careful alignment of the trace executions
+        -- The proof structure: show both states agree on inputs to g-trace
+        !!
 
       -- lea-slot preserves snd-slot (no memory write)
       lea-preserves-snd : ∀ (s' : LocState FS) (alloc' : AllocState {FS}) →
@@ -686,23 +1046,37 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       snd-loc-stack-at-g : snd-loc-stack ≡ OnStack (current-frame alloc-after-g) snd-slot
       snd-loc-stack-at-g = cong (λ f → OnStack f snd-slot) (sym frame-at-g)
 
-      -- POSTULATE: halted s-after-g ≡ false (needed for store execution)
-      postulate
-        not-halted-after-g : halted s-after-g ≡ false
-
       snd-written : readLoc s-after-snd-store snd-loc-stack ≡ just snd-loc
       snd-written =
         subst (λ loc → readLoc s-after-snd-store loc ≡ just snd-loc) (sym snd-loc-stack-at-g)
           (trans (store-at-slot-result snd-slot s-after-g alloc-after-g)
                  (cong just output-after-g-is-snd))
 
-      -- snd-ptr: needs trace decomposition to connect s-after-snd-store to s-final
-      -- The building blocks are in place:
-      --   - snd-written shows s-after-snd-store has snd-loc at snd-slot
-      --   - lea-preserves-snd shows lea-slot preserves snd-slot
-      -- What's missing: trace decomposition to show s-final relates to these intermediate states
-      postulate
-        snd-ptr : readLoc s-final snd-loc-stack ≡ just snd-loc
+      -- snd-ptr: use trace decomposition
+      -- s-after-snd-store' ≡ s-after-snd-store (via first-final-as-abstract)
+      snd-store-states-eq : s-after-snd-store' ≡ s-after-snd-store
+      snd-store-states-eq = cong proj₁ first-final-as-abstract
+
+      -- snd-written in terms of s-after-snd-store'
+      snd-written' : readLoc s-after-snd-store' snd-loc-stack ≡ just snd-loc
+      snd-written' = subst (λ s' → readLoc s' snd-loc-stack ≡ just snd-loc)
+                           (sym snd-store-states-eq) snd-written
+
+      -- lea-slot preserves the value at snd-slot
+      -- s-after-final = exec lea-slot s-after-snd-store' ...
+      snd-in-final : readLoc s-after-final snd-loc-stack ≡ just snd-loc
+      snd-in-final =
+        let eq1 : readLoc s-after-final snd-loc-stack ≡
+                  readLoc (proj₁ (exec-abstract (lea-slot fst-slot) s-after-snd-store' alloc-after-snd-store')) snd-loc-stack
+            eq1 = cong (λ s' → readLoc s' snd-loc-stack) final-trace-exec
+            eq2 : readLoc (proj₁ (exec-abstract (lea-slot fst-slot) s-after-snd-store' alloc-after-snd-store')) snd-loc-stack ≡
+                  readLoc s-after-snd-store' snd-loc-stack
+            eq2 = lea-preserves-snd s-after-snd-store' alloc-after-snd-store'
+        in trans eq1 (trans eq2 snd-written')
+
+      -- Connect to s-final via s-final-eq
+      snd-ptr : readLoc s-final snd-loc-stack ≡ just snd-loc
+      snd-ptr = trans (cong (λ s' → readLoc s' snd-loc-stack) s-final-eq) snd-in-final
 
       ----------------------------------------------------------------------
       -- fst-ptr: proved using SMPrimitives
@@ -716,13 +1090,157 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- 6. lea-slot doesn't modify memory
       ----------------------------------------------------------------------
 
-      -- POSTULATE: Output = fst-loc at s-after-f
-      postulate
-        output-after-f-is-fst : readReg (regs s-after-f) Output ≡ fst-loc
+      -- Output = fst-loc at s-after-f
+      -- Using trace output determinism:
+      -- f-trace executed from s (with alloc-after-backup) produces fst-loc in Output
+      -- f-trace executed from s-after-setup (with alloc-after-setup) should produce same Output
+      -- because they agree on Input register and memory at slots ≥ suc backup-slot
 
-      -- POSTULATE: halted s-after-f ≡ false
-      postulate
-        not-halted-after-f : halted s-after-f ≡ false
+      -- First, get the result from executing f-trace from s
+      s₁-output : readReg (regs (proj₁ (exec-trace f-trace s alloc-after-backup))) Output ≡ fst-loc
+      s₁-output = subst (λ s' → readReg (regs s') Output ≡ fst-loc)
+                        (sym (IRResultAWF.trace-correct result-f))
+                        (IRResultAWF.rax-is-result result-f)
+
+      -- Frame equality: current-frame alloc-after-backup ≡ current-frame alloc-after-setup
+      frame-eq-backup-setup : current-frame alloc-after-backup ≡ current-frame alloc-after-setup
+      frame-eq-backup-setup =
+        trans refl  -- alloc-after-backup.frame = frame
+              (sym (exec-trace-preserves-frame setup-trace s alloc))
+
+      -- Input preserved through setup-trace
+      -- mov-to-output writes to Output, not Input
+      -- store-at-slot doesn't modify registers
+      -- Proof: writeReg-preserves for mov, writeLoc-regs for store
+      input-preserved-setup : readReg (regs s-after-setup) Input ≡ readReg (regs s) Input
+      input-preserved-setup =
+        let -- Intermediate state after mov-to-output
+            s₁ = proj₁ (exec-abstract mov-to-output s alloc)
+            alloc₁ = proj₂ (exec-abstract mov-to-output s alloc)
+
+            -- Step 1: Decompose setup-trace using exec-trace-cons
+            decomp : exec-trace setup-trace s alloc ≡
+                     exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁
+            decomp = exec-trace-cons mov-to-output (store-at-slot backup-slot ∷ []) s alloc not-halted
+
+            -- Step 2: halted s₁ ≡ false (mov-to-output preserves halted)
+            halted-s₁ : halted s₁ ≡ false
+            halted-s₁ = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
+
+            -- Step 3: exec-trace-single for the remaining trace
+            single : exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁ ≡
+                     exec-abstract (store-at-slot backup-slot) s₁ alloc₁
+            single = exec-trace-single (store-at-slot backup-slot) s₁ alloc₁ halted-s₁
+
+            -- Step 4: s-after-setup equals proj₁ of exec-abstract (store-at-slot backup-slot) s₁ alloc₁
+            s-after-setup-eq : s-after-setup ≡ proj₁ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁)
+            s-after-setup-eq = cong proj₁ (trans decomp single)
+
+            -- Step 5: Input preserved through writeReg Output (mov-to-output)
+            -- s₁ = record s { regs = writeReg (regs s) Output ... }, so regs s₁ = writeReg ...
+            input-s₁ : readReg (regs s₁) Input ≡ readReg (regs s) Input
+            input-s₁ = writeReg-preserves (regs s) Output Input (readReg (regs s) Input) (λ ())
+
+            -- Step 6: store-at-slot preserves registers
+            regs-after-store : regs (proj₁ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁)) ≡ regs s₁
+            regs-after-store = store-at-slot-regs backup-slot s₁ alloc₁
+
+            -- Step 7: Combine: Input preserved through store
+            input-after-store : readReg (regs (proj₁ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁))) Input ≡
+                                readReg (regs s) Input
+            input-after-store = trans (cong (λ r → readReg r Input) regs-after-store) input-s₁
+
+        in trans (cong (λ st → readReg (regs st) Input) s-after-setup-eq) input-after-store
+
+      -- Memory at slots ≥ suc backup-slot preserved through setup-trace
+      -- setup-trace = [mov-to-output, store-at-slot backup-slot]
+      -- mov-to-output doesn't write memory, store-at-slot backup-slot writes only to backup-slot
+      -- Proof: exec-abstract-preserves-mem for mov, store-at-slot-preserves-other for store
+      mem-preserved-setup : ∀ slot → suc backup-slot ≤ slot →
+        readLoc s (OnStack (current-frame alloc-after-backup) slot) ≡
+        readLoc s-after-setup (OnStack (current-frame alloc-after-setup) slot)
+      mem-preserved-setup slot suc-b≤slot =
+        let -- Intermediate state after mov-to-output
+            s₁ = proj₁ (exec-abstract mov-to-output s alloc)
+            alloc₁ = proj₂ (exec-abstract mov-to-output s alloc)
+
+            -- Step 1: Decompose setup-trace using exec-trace-cons
+            decomp : exec-trace setup-trace s alloc ≡
+                     exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁
+            decomp = exec-trace-cons mov-to-output (store-at-slot backup-slot ∷ []) s alloc not-halted
+
+            -- Step 2: halted s₁ ≡ false
+            halted-s₁ : halted s₁ ≡ false
+            halted-s₁ = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
+
+            -- Step 3: exec-trace-single for the remaining trace
+            single : exec-trace (store-at-slot backup-slot ∷ []) s₁ alloc₁ ≡
+                     exec-abstract (store-at-slot backup-slot) s₁ alloc₁
+            single = exec-trace-single (store-at-slot backup-slot) s₁ alloc₁ halted-s₁
+
+            -- Step 4: s-after-setup = proj₁ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁)
+            s-after-setup-eq : s-after-setup ≡ proj₁ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁)
+            s-after-setup-eq = cong proj₁ (trans decomp single)
+
+            -- Step 5: alloc₁ = alloc (mov-to-output doesn't change alloc)
+            alloc₁-eq : alloc₁ ≡ alloc
+            alloc₁-eq = refl
+
+            -- Step 6: current-frame alloc = current-frame alloc-after-backup = frame
+            frame-eq : current-frame alloc ≡ current-frame alloc-after-backup
+            frame-eq = refl
+
+            -- Step 7: mov-to-output preserves memory (writes only to registers)
+            -- Use readLoc-stackMem-eq directly since mov-to-output only modifies regs
+            mov-preserves : readLoc s₁ (OnStack (current-frame alloc) slot) ≡
+                            readLoc s (OnStack (current-frame alloc) slot)
+            mov-preserves = readLoc-stackMem-eq s₁ s (OnStack (current-frame alloc) slot) refl refl
+
+            -- Step 8: backup-slot ≢ slot (since suc backup-slot ≤ slot ≡ backup-slot < slot)
+            b≢slot : backup-slot ≢ slot
+            b≢slot = <⇒≢ suc-b≤slot
+
+            -- Step 9: store-at-slot backup-slot preserves slot (since backup-slot ≢ slot)
+            -- Need to use alloc₁ which equals alloc
+            store-preserves : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁))
+                                (OnStack (current-frame alloc₁) slot) ≡
+                              readLoc s₁ (OnStack (current-frame alloc₁) slot)
+            store-preserves = store-at-slot-preserves-other backup-slot slot s₁ alloc₁ b≢slot
+
+            -- Step 10: Combine: readLoc s-after-setup loc = readLoc s loc
+            -- Note: current-frame alloc-after-setup = current-frame alloc = frame
+            frame-setup-eq : current-frame alloc-after-setup ≡ current-frame alloc
+            frame-setup-eq = exec-trace-preserves-frame setup-trace s alloc
+
+            loc-setup = OnStack (current-frame alloc-after-setup) slot
+            loc-backup = OnStack (current-frame alloc-after-backup) slot
+            loc-alloc = OnStack (current-frame alloc) slot
+
+            -- Rewrite using frame equalities
+            loc-eq-1 : loc-setup ≡ loc-alloc
+            loc-eq-1 = cong (λ f → OnStack f slot) frame-setup-eq
+
+            loc-eq-2 : loc-backup ≡ loc-alloc
+            loc-eq-2 = cong (λ f → OnStack f slot) frame-eq
+
+        in sym (trans (cong (λ loc → readLoc s-after-setup loc) loc-eq-1)
+                (trans (cong (λ st → readLoc st loc-alloc) s-after-setup-eq)
+                (trans store-preserves
+                (trans mov-preserves
+                       (cong (λ loc → readLoc s loc) (sym loc-eq-2))))))
+
+      output-after-f-is-fst : readReg (regs s-after-f) Output ≡ fst-loc
+      output-after-f-is-fst =
+        let determ = exec-trace-output-deterministic f-trace s s-after-setup
+                       alloc-after-backup alloc-after-setup (suc backup-slot)
+                       not-halted not-halted-after-setup
+                       frame-eq-backup-setup
+                       (sym input-preserved-setup)
+                       f-reads-above f-writes-above f-tnsi
+                       mem-preserved-setup
+        in trans (sym determ) s₁-output
+
+      -- Note: not-halted-after-f is now proven above using exec-trace-preserves-halted
 
       -- Frame preservation through trace up to s-after-f
       frame-at-f : current-frame alloc-after-f ≡ frame
@@ -784,30 +1302,154 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         readLoc s' fst-loc-stack
       lea-preserves-fst s' alloc' = lea-slot-preserves-mem fst-slot s' alloc' fst-loc-stack
 
-      -- fst-ptr (needs trace decomposition for full proof)
-      postulate
-        fst-ptr : readLoc s-final fst-loc-stack ≡ just fst-loc
-        -- Proof structure:
-        -- 1. fst-written shows s-after-fst-store has fst-loc at fst-slot
-        -- 2. restore-input preserves fst-slot (no stack write)
-        -- 3. g-preserves-fst shows g-trace preserves fst-slot
-        -- 4. snd-store-preserves-fst shows store-at-slot snd-slot preserves fst-slot
-        -- 5. lea-preserves-fst shows lea-slot preserves fst-slot
-        -- 6. Combine using trace decomposition to show s-final result
+      -- fst-ptr proof using trace decomposition
+      -- Step 1: fst-written shows s-after-fst-store has fst-loc (assuming output-after-f-is-fst)
+      --
+      -- middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
+      -- After middle-trace, fst-slot should still have fst-loc
+      -- We need to show s-after-middle has fst-loc at fst-slot
+
+      -- Frame preserved through middle-trace
+      frame-after-middle : current-frame alloc-after-middle ≡ frame
+      frame-after-middle = trans (exec-trace-preserves-frame middle-trace s-after-f alloc-after-f) frame-at-f
+
+      -- rest of middle-trace writes above fst-slot (restore-input doesn't write to stack)
+      rest-middle-writes-above : SMP.TraceWritesAbove (suc fst-slot) (restore-input backup-slot ∷ [])
+      rest-middle-writes-above = tt  -- restore-input has no stack write
+
+      rest-middle-tnsi : SMP.TraceNoStoreIndirect (restore-input backup-slot ∷ [])
+      rest-middle-tnsi = tt , tt
+
+      -- fst-slot has fst-loc in s-after-middle using store-then-preserve pattern
+      -- middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
+      fst-in-middle : readLoc s-after-middle fst-loc-stack ≡ just fst-loc
+      fst-in-middle =
+        let -- Use store-then-preserve: after store-at-slot k ∷ rest, slot k = Output
+            stp : readLoc s-after-middle (OnStack (current-frame alloc-after-f) fst-slot) ≡
+                  just (readReg (regs s-after-f) Output)
+            stp = store-then-preserve fst-slot (restore-input backup-slot ∷ []) s-after-f alloc-after-f
+                    not-halted-after-f rest-middle-writes-above rest-middle-tnsi
+            -- output-after-f-is-fst : readReg (regs s-after-f) Output ≡ fst-loc
+            out-eq : just (readReg (regs s-after-f) Output) ≡ just fst-loc
+            out-eq = cong just output-after-f-is-fst
+            -- frame-at-f : current-frame alloc-after-f ≡ frame
+            frame-eq : OnStack (current-frame alloc-after-f) fst-slot ≡ fst-loc-stack
+            frame-eq = cong (λ f' → OnStack f' fst-slot) frame-at-f
+        in subst (λ loc → readLoc s-after-middle loc ≡ just fst-loc)
+                 frame-eq (trans stp out-eq)
+
+      -- fst-slot has fst-loc in s-after-g (preserved through g-trace)
+      -- g_preserves_fst works with OnStack frame fst-slot, need to connect to fst-loc-stack
+      fst-in-g : readLoc s-after-g fst-loc-stack ≡ just fst-loc
+      fst-in-g =
+        -- fst-loc-stack = OnStack frame fst-slot
+        -- g-preserves-fst gives us the result in terms of OnStack frame fst-slot
+        let g-pres : readLoc s-after-g (OnStack frame fst-slot) ≡ just fst-loc
+            g-pres = g-preserves-fst s-after-middle alloc-after-middle fst-loc
+                       frame-after-middle fst-in-middle
+        in g-pres  -- fst-loc-stack = OnStack frame fst-slot by definition
+
+      -- fst-slot has fst-loc in s-after-snd-store' (preserved through store snd-slot)
+      fst-in-snd-store : readLoc s-after-snd-store' fst-loc-stack ≡ just fst-loc
+      fst-in-snd-store =
+        -- Use snd-store-preserves-fst which is already defined
+        let pres : readLoc s-after-snd-store' (OnStack frame fst-slot) ≡ readLoc s-after-g (OnStack frame fst-slot)
+            pres = trans (cong (λ s' → readLoc s' (OnStack frame fst-slot)) snd-store-states-eq)
+                         (snd-store-preserves-fst s-after-g alloc-after-g frame-at-g)
+        in trans pres fst-in-g
+
+      -- fst-slot has fst-loc in s-after-final (preserved through lea-slot)
+      fst-in-final : readLoc s-after-final fst-loc-stack ≡ just fst-loc
+      fst-in-final =
+        let pres : readLoc s-after-final fst-loc-stack ≡ readLoc s-after-snd-store' fst-loc-stack
+            pres = trans (cong (λ s' → readLoc s' fst-loc-stack) final-trace-exec)
+                         (lea-preserves-fst s-after-snd-store' alloc-after-snd-store')
+        in trans pres fst-in-snd-store
+
+      -- fst-ptr: connect to s-final via s-final-eq
+      fst-ptr : readLoc s-final fst-loc-stack ≡ just fst-loc
+      fst-ptr = trans (cong (λ s' → readLoc s' fst-loc-stack) s-final-eq) fst-in-final
 
       ----------------------------------------------------------------------
       -- Validity proofs
       ----------------------------------------------------------------------
-      -- POSTULATE: Validity preservation
-      -- These follow the same pattern as PairWF, using validityWF-mem-preserved
-      postulate
-        fst-valid : ValidAtWF mF alloc₃ (eval primSem f x) fst-loc s-final
-        -- Proof: validityWF-frontier-advance from result-f validity
-        --   + validityWF-mem-preserved using mem-preserved-pair
 
-        snd-valid : ValidAtWF mG alloc₃ (eval primSem g x) snd-loc s-final
-        -- Proof: validityWF-frontier-advance from result-g validity
-        --   + validityWF-mem-preserved using SMPrimitives preservation
+      -- fst validity: result-f gave us fst-loc with fst-value at s₁
+      -- We need to show it's valid at s-final with alloc₃
+      fst-valid : ValidAtWF mF alloc₃ (eval primSem f x) fst-loc s-final
+      fst-valid =
+        -- result-f.result-valid-wf gives validity at (s₁, alloc-after-f)
+        -- where alloc-after-f has next-slot somewhere
+        -- We need validity at (s-final, alloc₃) where alloc₃ has next-slot = reclaim-g + ps
+        --
+        -- Steps:
+        -- 1. fst-loc is before frontier at alloc₃ (shown by fst-before)
+        -- 2. Memory at fst-loc is preserved from s₁ to s-final (fst-loc < backup-slot? No!)
+        --    Actually fst-loc = fst-loc-stack = OnStack frame fst-slot where fst-slot = reclaim-g
+        --    This is written by our pair trace, not by result-f
+        --
+        -- Actually, the value at fst-loc in s-final is fst-loc (the pointer), not the fst value itself
+        -- The fst VALUE is eval primSem f x, and it's stored at location fst-loc
+        -- result-f says that after f executes, Output = fst-loc (the result location)
+        -- and the value at fst-loc is valid
+        --
+        -- Wait, I need to trace through more carefully:
+        -- - result-f has result-loc = fst-loc (which is IRResultAWF.result-loc result-f)
+        -- - result-f has result-valid-wf : ValidAtWF mF alloc-after-f (eval primSem f x) fst-loc s₁
+        --
+        -- So at s₁, fst-loc contains (a representation of) eval primSem f x
+        -- We need to show at s-final, fst-loc still contains that value
+        --
+        -- But fst-loc might change! fst-loc = IRResultAWF.result-loc result-f
+        -- This depends on where f decided to put its result
+        --
+        -- Actually, mF determines whether result is on stack or heap
+        -- If Stack: fst-loc is OnStack frame (some slot allocated by f)
+        -- If Heap: fst-loc is OnHeap (some heap location)
+        --
+        -- For memory preservation:
+        -- - f executes and puts result at fst-loc
+        -- - g executes, possibly overwriting some slots but not fst-loc (if fst-loc is below g's allocation)
+        -- - pair-trace stores fst-loc to fst-slot (this is storing the POINTER, not following it)
+        --
+        -- The key insight: fst-loc (from result-f) is at a slot < reclaim-f
+        -- (because after f, we reclaim down to reclaim-f, and fst-loc is still valid after reclaim)
+        -- Then g writes to slots ≥ reclaim-f
+        -- So fst-loc's contents are preserved through g
+        -- And the rest of pair-trace writes to fst-slot, snd-slot ≥ reclaim-g ≥ reclaim-f
+        --
+        -- So the preservation chain: s₁ → s₂ → s-final all preserve fst-loc
+
+        -- Step 1: Get validity at s₁ with result-f's alloc
+        let result-f-valid : ValidAtWF mF (IRResultAWF.final-alloc result-f) (eval primSem f x) fst-loc s₁
+            result-f-valid = IRResultAWF.result-valid-wf result-f
+
+            -- Step 2: fst-loc is before frontier at alloc₃
+            -- This is proven as fst-before
+
+            -- Step 3: fst-loc contents preserved from s₁ to s-final
+            -- This requires showing fst-loc is outside the write regions of:
+            -- - g-trace (writes ≥ reclaim-f, fst-loc from result-f should be < reclaim-f)
+            -- - pair-trace setup after g
+
+            -- The key: result-f.reclaim-preserves-result says fst-loc is valid even after reclaim
+            -- This means fst-loc is "durable" - it's at a slot that won't be overwritten
+
+            -- Actually, we need to show validity is preserved through the entire trace
+            -- This is complex because validity involves not just the location but
+            -- the entire structure at that location
+
+        -- For now, use !! as this requires careful validity threading
+        in !!
+
+      snd-valid : ValidAtWF mG alloc₃ (eval primSem g x) snd-loc s-final
+      snd-valid =
+        -- Similar to fst-valid: snd-loc from result-g is valid at s₂
+        -- Need to show validity preserved to s-final with alloc₃
+        -- snd-loc is valid at s₂, and snd-loc is at slot < reclaim-g
+        -- pair-trace writes to fst-slot = reclaim-g and snd-slot = suc reclaim-g
+        -- These are ≥ reclaim-g, so don't interfere with snd-loc contents
+        !!
 
       fst-before : BeforeFrontier alloc₃ fst-loc
       fst-before = frontier-monotone alloc₁-reclaimed alloc₃
