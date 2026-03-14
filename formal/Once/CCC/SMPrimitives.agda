@@ -1491,3 +1491,38 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
     --   3. Reads from Output (must track that Output stays synchronized)
     -- The key is that if reads are the same, computations are the same,
     -- and since writes are above n, memory at ≥ n stays synchronized.
+
+  ------------------------------------------------------------------------
+  -- Memory Determinism
+  --
+  -- If two states agree on Input and memory at read locations,
+  -- then after trace execution, memory at write locations is the same.
+  --
+  -- This complements exec-trace-output-deterministic for memory locations.
+  ------------------------------------------------------------------------
+
+  postulate
+    -- Memory determinism for slots in the write region [n, m)
+    -- If two states agree on Input and memory at slots ≥ n,
+    -- and trace reads/writes are bounded by [n, m),
+    -- then after execution, memory at slots in [n, m) is the same.
+    exec-trace-mem-deterministic : ∀ (trace : AbstractTrace)
+      (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n m : ℕ) →
+      halted s₁ ≡ false →
+      halted s₂ ≡ false →
+      current-frame alloc₁ ≡ current-frame alloc₂ →
+      readReg (regs s₁) Input ≡ readReg (regs s₂) Input →
+      TraceSlotReadsAbove n trace →
+      TraceWritesAbove n trace →
+      TraceWritesBelow m trace →
+      TraceNoStoreIndirect trace →
+      (∀ slot → n ≤ slot →
+        readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
+        readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
+      ∀ slot → n ≤ slot → slot < m →
+        readLoc (proj₁ (exec-trace trace s₁ alloc₁)) (OnStack (current-frame alloc₁) slot) ≡
+        readLoc (proj₁ (exec-trace trace s₂ alloc₂)) (OnStack (current-frame alloc₂) slot)
+    -- Proof sketch: by induction on trace
+    -- Each store instruction writes a value computed from Input, Output, or memory reads.
+    -- Since all reads come from slots ≥ n (where states agree), the computed values are same.
+    -- Therefore stores to slots in [n, m) write the same values in both executions.
