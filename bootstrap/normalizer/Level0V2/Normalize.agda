@@ -247,9 +247,16 @@ is-id = is-id-dispatch ∘ Out
 -- Each position ≠ 0 returns inr ∘ rebuild, which equals inr ∘ encode
 -- The proof is mechanical: for each NotIdStruct constructor, show is-id-dispatch
 -- returns ret-no-N for position N, which equals inr ∘ rebuild-N = inr ∘ encode.
-postulate
-  is-id-notid : ∀ {A B} {t : Term A B} → NotIdStruct t →
-                (is-id ∘ encode t) ⟶* (inr ∘ encode t)
+--
+-- Proof sketch:
+--   Case on NotIdStruct t:
+--   - nis-comp: encode(f ∘ g) = In ∘ inr ∘ inl ∘ ⟨encode f, encode g⟩
+--               is-id-dispatch at position 1 returns ret-no-1 = inr ∘ rebuild-1
+--   - nis-fst: encode(fst) = In ∘ inr ∘ inr ∘ inl ∘ ⟨ty1, ty2⟩, position 2 → ret-no-2
+--   - ... (similar for each constructor)
+is-id-notid : ∀ {A B} {t : Term A B} → NotIdStruct t →
+              (is-id ∘ encode t) ⟶* (inr ∘ encode t)
+is-id-notid nis = {!!}
 
 -- is-fst: Position 2 returns yes
 is-fst-dispatch : Term (⟦ TermF ⟧F TermCode') (Unit + TermCode')
@@ -689,29 +696,58 @@ caseWithCtx l r = [ l , r ] ∘ distrib
 
 -- Generalized curry-β: apply ∘ ⟨ curry f ∘ h , g ⟩ ⟶* f ∘ ⟨ h , g ⟩
 -- This follows from naturality of the curry adjunction
--- Proof: First factor using pair properties, then apply curry-β
-postulate
-  curry-β-ext : ∀ {X A B C} {f : Term (A * B) C} {h : Term X A} {g : Term X B} →
-                (apply ∘ ⟨ curry f ∘ h , g ⟩) ⟶* (f ∘ ⟨ h , g ⟩)
+--
+-- Proof sketch:
+--   apply ∘ ⟨ curry f ∘ h , g ⟩
+--   = apply ∘ (⟨ curry f ∘ fst , snd ⟩ ∘ ⟨ h , g ⟩)     -- pair factorization
+--   ⟶ (apply ∘ ⟨ curry f ∘ fst , snd ⟩) ∘ ⟨ h , g ⟩    -- assoc-l
+--   Now need: apply ∘ ⟨ curry f ∘ fst , snd ⟩ ⟶* f
+--   This is the exponential counit equation: ε ∘ (curry f × id) = f
+--   Derivation: apply ∘ ⟨ curry f ∘ fst , snd ⟩
+--              = apply ∘ ⟨ curry f , snd ⟩ ∘ ⟨ fst , id ⟩  -- need to restructure
+--              Alternative: use curry-β with g = snd directly on product type
+curry-β-ext : ∀ {X A B C} {f : Term (A * B) C} {h : Term X A} {g : Term X B} →
+              (apply ∘ ⟨ curry f ∘ h , g ⟩) ⟶* (f ∘ ⟨ h , g ⟩)
+curry-β-ext = {!!}
 
 -- Distrib reduction lemmas
 -- distrib ∘ ⟨ p , inl ∘ a ⟩ ⟶* inl ∘ ⟨ p , a ⟩
--- Postulated because the proof requires unfolding distrib and using curry-β-ext
-postulate
-  distrib-inl : ∀ {X P A B} {p : Term X P} {a : Term X A} →
-                (distrib {P} {A} {B} ∘ ⟨ p , inl ∘ a ⟩) ⟶* (inl ∘ ⟨ p , a ⟩)
-  distrib-inr : ∀ {X P A B} {p : Term X P} {b : Term X B} →
-                (distrib {P} {A} {B} ∘ ⟨ p , inr ∘ b ⟩) ⟶* (inr ∘ ⟨ p , b ⟩)
+--
+-- Proof sketch for distrib-inl:
+--   distrib = apply ∘ ⟨ [ curry (inl ∘ swap) , curry (inr ∘ swap) ] ∘ snd , fst ⟩
+--   distrib ∘ ⟨ p , inl ∘ a ⟩
+--   ⟶* apply ∘ ⟨ [ curry (inl ∘ swap) , curry (inr ∘ swap) ] ∘ (inl ∘ a) , p ⟩  -- pair-comp, fst-pair, snd-pair
+--   ⟶ apply ∘ ⟨ curry (inl ∘ swap) ∘ a , p ⟩                                    -- case-inl
+--   ⟶* (inl ∘ swap) ∘ ⟨ a , p ⟩                                                 -- curry-β-ext
+--   ⟶* inl ∘ ⟨ p , a ⟩                                                          -- swap = ⟨snd,fst⟩, pair-comp
+distrib-inl : ∀ {X P A B} {p : Term X P} {a : Term X A} →
+              (distrib {P} {A} {B} ∘ ⟨ p , inl ∘ a ⟩) ⟶* (inl ∘ ⟨ p , a ⟩)
+distrib-inl = {!!}
+
+-- Proof sketch for distrib-inr: symmetric to distrib-inl
+distrib-inr : ∀ {X P A B} {p : Term X P} {b : Term X B} →
+              (distrib {P} {A} {B} ∘ ⟨ p , inr ∘ b ⟩) ⟶* (inr ∘ ⟨ p , b ⟩)
+distrib-inr = {!!}
 
 -- caseWithCtx reduction lemmas
--- Postulated because they require unfolding caseWithCtx = [ l , r ] ∘ distrib
-postulate
-  caseWithCtx-inl : ∀ {X P A B D} {l : Term (P * A) D} {r : Term (P * B) D}
-                    {p : Term X P} {a : Term X A} →
-                    (caseWithCtx l r ∘ ⟨ p , inl ∘ a ⟩) ⟶* (l ∘ ⟨ p , a ⟩)
-  caseWithCtx-inr : ∀ {X P A B D} {l : Term (P * A) D} {r : Term (P * B) D}
-                    {p : Term X P} {b : Term X B} →
-                    (caseWithCtx l r ∘ ⟨ p , inr ∘ b ⟩) ⟶* (r ∘ ⟨ p , b ⟩)
+--
+-- Proof sketch for caseWithCtx-inl:
+--   caseWithCtx l r = [ l , r ] ∘ distrib
+--   caseWithCtx l r ∘ ⟨ p , inl ∘ a ⟩
+--   = [ l , r ] ∘ distrib ∘ ⟨ p , inl ∘ a ⟩
+--   ⟶* [ l , r ] ∘ (inl ∘ ⟨ p , a ⟩)              -- distrib-inl
+--   ⟶ [ l , r ] ∘ inl ∘ ⟨ p , a ⟩                 -- assoc
+--   ⟶ l ∘ ⟨ p , a ⟩                               -- case-inl
+caseWithCtx-inl : ∀ {X P A B D} {l : Term (P * A) D} {r : Term (P * B) D}
+                  {p : Term X P} {a : Term X A} →
+                  (caseWithCtx l r ∘ ⟨ p , inl ∘ a ⟩) ⟶* (l ∘ ⟨ p , a ⟩)
+caseWithCtx-inl = {!!}
+
+-- Proof sketch for caseWithCtx-inr: symmetric, uses distrib-inr and case-inr
+caseWithCtx-inr : ∀ {X P A B D} {l : Term (P * A) D} {r : Term (P * B) D}
+                  {p : Term X P} {b : Term X B} →
+                  (caseWithCtx l r ∘ ⟨ p , inr ∘ b ⟩) ⟶* (r ∘ ⟨ p , b ⟩)
+caseWithCtx-inr = {!!}
 
 ------------------------------------------------------------------------
 -- Simple Handlers (just rebuild)
@@ -816,9 +852,28 @@ handle-comp = caseWithCtx comp-f-is-id check-g-handler ∘ prep-check-f-id
 
 -- Key lemma: handle-comp reduces to rebuild-1 for non-identity NoRedex inputs
 -- Takes payload directly to avoid expensive encode unification
-postulate
-  handle-comp-rebuild : ∀ {X} (payload : Term X (TermCode' * TermCode')) →
-                        (handle-comp ∘ payload) ⟶* ((In ∘ inr ∘ inl) ∘ payload)
+--
+-- Proof sketch (for payload = ⟨ encode f , encode g ⟩ with f,g non-id):
+--   handle-comp = caseWithCtx comp-f-is-id check-g-handler ∘ prep-check-f-id
+--
+--   1. prep-check-f-id ∘ payload = ⟨ snd , is-id ∘ fst ⟩ ∘ ⟨ encode f , encode g ⟩
+--      ⟶* ⟨ encode g , is-id ∘ encode f ⟩
+--      ⟶* ⟨ encode g , inr ∘ encode f ⟩   (by is-id-notid, since f is not id)
+--
+--   2. caseWithCtx comp-f-is-id check-g-handler ∘ ⟨ encode g , inr ∘ encode f ⟩
+--      ⟶* check-g-handler ∘ ⟨ encode g , encode f ⟩   (by caseWithCtx-inr)
+--
+--   3. check-g-handler = caseWithCtx comp-g-is-id comp-fallback ∘ prep-check-g-id
+--      Similarly: prep-check-g-id ∘ ⟨ encode g , encode f ⟩ ⟶* ⟨ encode f , inr ∘ encode g ⟩
+--      Then caseWithCtx takes inr branch → comp-fallback ∘ ⟨ encode f , encode g ⟩
+--
+--   4. comp-fallback = rebuild-1 = In ∘ inr ∘ inl
+--      So result is (In ∘ inr ∘ inl) ∘ ⟨ encode f , encode g ⟩
+--
+-- Note: This proof requires is-id-notid, caseWithCtx-inr, and tracking the pair reductions
+handle-comp-rebuild : ∀ {X} (payload : Term X (TermCode' * TermCode')) →
+                      (handle-comp ∘ payload) ⟶* ((In ∘ inr ∘ inl) ∘ payload)
+handle-comp-rebuild payload = {!!}
 
 ------------------------------------------------------------------------
 -- Pair Handler (position 4) - eta reduction
