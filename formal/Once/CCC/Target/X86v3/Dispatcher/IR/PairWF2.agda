@@ -1576,14 +1576,135 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
 
         in valid-alloc₃
 
+      ----------------------------------------------------------------------
+      -- snd-valid: Validity of g's result at snd-loc in s-final
+      --
+      -- Strategy (similar to fst-valid):
+      -- 1. result-g gives validity at s₂ with final-alloc result-g
+      -- 2. Use reclaim-preserves-validity to get validity at alloc with next-slot = reclaim-g
+      -- 3. Transfer validity from s₂ to s-after-g using validityWF-mem-preserved-excluding
+      --    (memory differs at backup-slot and fst-slot, neither is a sub-location of snd-loc)
+      -- 4. Apply validityWF-trace-preserves for final-trace to reach s-final
+      -- 5. Adjust alloc to alloc₃ (frontier monotone)
+      ----------------------------------------------------------------------
+
+      -- Alloc state after g's reclaim: next-slot = reclaim-g
+      alloc-reclaim-g : AllocState {FS}
+      alloc-reclaim-g = record alloc { next-slot = reclaim-g }
+
+      -- snd-loc is before frontier at alloc-reclaim-g
+      snd-loc-before-reclaim-g : BeforeFrontier alloc-reclaim-g snd-loc
+      snd-loc-before-reclaim-g = IRResultAWF.reclaim-preserves-result result-g reclaim-g-fits
+
+      -- Get validity at s₂ with alloc-reclaim-g
+      valid-s2-reclaimed : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s₂
+      valid-s2-reclaimed = IRResultAWF.reclaim-preserves-validity result-g reclaim-g-fits
+
+      -- Memory at BeforeFrontier locations (except backup-slot and fst-slot) is same in s₂ and s-after-g
+      -- snd-loc's sub-locations are:
+      --   - Input locations from x: at slots < backup-slot
+      --   - Fresh allocations by g: at slots [reclaim-f, reclaim-g)
+      -- Neither backup-slot nor fst-slot (= reclaim-g) are sub-locations.
+      g-trace-mem-same : ∀ (loc' : ValueLocation FS) →
+        BeforeFrontier alloc-reclaim-g loc' →
+        loc' ≢ OnStack frame backup-slot →
+        loc' ≢ OnStack frame fst-slot →
+        readLoc s₂ loc' ≡ readLoc s-after-g loc'
+      g-trace-mem-same loc' bf loc'≢backup loc'≢fst =
+        -- Similar to f-trace-mem-same: g-trace produces same memory writes
+        -- s₂ = exec-trace g-trace s₁' alloc₁-reclaimed
+        -- s-after-g = exec-trace g-trace s-after-middle alloc-after-middle
+        -- Both have same Input (input-loc) and memory at slots g reads
+        !!  -- TODO: prove using g-trace determinism
+
+      -- Helper: BeforeFrontier at alloc-reclaim-g implies loc ≠ OnStack frame fst-slot
+      -- because fst-slot = reclaim-g = next-slot, so it's NOT before frontier
+      bf-implies-not-fst : ∀ (loc' : ValueLocation FS) →
+        BeforeFrontier alloc-reclaim-g loc' →
+        loc' ≢ OnStack frame fst-slot
+      bf-implies-not-fst (OnStack f' k) (stack-before frame-eq k<reclaim-g) eq =
+        let k≡fst : k ≡ fst-slot
+            k≡fst = stack-slot-injective eq
+        in <⇒≢ k<reclaim-g k≡fst
+      bf-implies-not-fst (OnStack f' k) (stack-ancestor cf≺f' _) eq =
+        -- eq : OnStack f' k ≡ OnStack frame fst-slot
+        -- cf≺f' : current-frame alloc-reclaim-g ≺ f'
+        -- From eq: f' ≡ frame
+        -- current-frame alloc-reclaim-g = frame (by definition)
+        -- So we'd have frame ≺ frame, contradiction
+        let f'≡frame : f' ≡ frame
+            f'≡frame = stack-frame-injective eq
+            cf≡frame : current-frame alloc-reclaim-g ≡ frame
+            cf≡frame = refl  -- alloc-reclaim-g has same frame as alloc
+            cf≡f' : current-frame alloc-reclaim-g ≡ f'
+            cf≡f' = trans cf≡frame (sym f'≡frame)
+        in ≺⇒≢ cf≺f' cf≡f'
+      bf-implies-not-fst (OnHeap _) (heap-before _) ()
+
+      -- Memory at BeforeFrontier locations (except backup) is same in s₂ and s-after-g
+      g-trace-mem-same-backup : ∀ (loc' : ValueLocation FS) →
+        BeforeFrontier alloc-reclaim-g loc' →
+        loc' ≢ OnStack frame backup-slot →
+        readLoc s₂ loc' ≡ readLoc s-after-g loc'
+      g-trace-mem-same-backup loc' bf loc'≢backup =
+        g-trace-mem-same loc' bf loc'≢backup (bf-implies-not-fst loc' bf)
+
+      -- Transfer validity from s₂ to s-after-g
+      valid-at-s-after-g : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s-after-g
+      valid-at-s-after-g =
+        -- snd-loc's sub-locations don't include backup-slot or fst-slot
+        -- So we can transfer validity even though memory differs at those slots
+        -- Use validityWF-mem-preserved-excluding with backup-slot
+        -- (fst-slot = reclaim-g is at the frontier, not before it)
+        validityWF-mem-preserved-excluding alloc-reclaim-g
+          (eval primSem g x) snd-loc frame backup-slot s₂ s-after-g
+          snd-loc-before-reclaim-g
+          g-trace-mem-same-backup
+          valid-s2-reclaimed
+
+      -- final-trace writes above reclaim-g
+      final-trace-writes-above : SMP.TraceWritesAbove reclaim-g final-trace
+      final-trace-writes-above = n≤1+n reclaim-g , tt  -- snd-slot = suc reclaim-g ≥ reclaim-g
+
+      -- final-trace has no store-indirect
+      final-trace-tnsi : SMP.TraceNoStoreIndirect final-trace
+      final-trace-tnsi = tt , tt , tt
+
+      -- Apply validityWF-trace-preserves for final-trace
+      valid-at-s-after-final-g : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc
+                                   (proj₁ (exec-trace final-trace s-after-g alloc-reclaim-g))
+      valid-at-s-after-final-g = validityWF-trace-preserves alloc-reclaim-g
+                                   final-trace (eval primSem g x) snd-loc s-after-g
+                                   snd-loc-before-reclaim-g valid-at-s-after-g
+                                   final-trace-writes-above final-trace-tnsi
+
+      -- Connect final-trace execution to s-final via state equalities
+      -- s-after-final = proj₁ (exec-trace final-trace s-after-g alloc-after-g) by definition
+      -- Need: proj₁ (exec-trace final-trace s-after-g alloc-reclaim-g) ≡ s-after-final
+      final-trace-same-frame : proj₁ (exec-trace final-trace s-after-g alloc-reclaim-g) ≡
+                               proj₁ (exec-trace final-trace s-after-g alloc-after-g)
+      final-trace-same-frame = exec-trace-same-frame final-trace s-after-g alloc-reclaim-g alloc-after-g
+                                 (sym (trans (exec-trace-preserves-frame g-trace s-after-middle alloc-after-middle)
+                                   (trans (exec-trace-preserves-frame middle-trace s-after-f alloc-after-f)
+                                     (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+                                       (exec-trace-preserves-frame setup-trace s alloc)))))
+
+      valid-at-s-after-final : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s-after-final
+      valid-at-s-after-final = subst (λ s' → ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s')
+                                 final-trace-same-frame valid-at-s-after-final-g
+
+      valid-snd-s-final : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s-final
+      valid-snd-s-final = subst (λ s' → ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s')
+                            (sym s-final-eq) valid-at-s-after-final
+
       snd-valid : ValidAtWF mG alloc₃ (eval primSem g x) snd-loc s-final
       snd-valid =
-        -- Similar to fst-valid: snd-loc from result-g is valid at s₂
-        -- Need to show validity preserved to s-final with alloc₃
-        -- snd-loc is valid at s₂, and snd-loc is at slot < reclaim-g
-        -- pair-trace writes to fst-slot = reclaim-g and snd-slot = suc reclaim-g
-        -- These are ≥ reclaim-g, so don't interfere with snd-loc contents
-        !!
+        -- Advance frontier from alloc-reclaim-g to alloc₃
+        validityWF-frontier-advance (eval primSem g x) snd-loc s-final
+          refl
+          (m≤m+n reclaim-g ps)
+          ≤-refl
+          valid-snd-s-final
 
       fst-before : BeforeFrontier alloc₃ fst-loc
       fst-before = frontier-monotone alloc₁-reclaimed alloc₃
