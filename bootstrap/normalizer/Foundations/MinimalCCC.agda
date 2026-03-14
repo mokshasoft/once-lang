@@ -70,6 +70,10 @@ data _⟶_ : ∀ {A B} → Term A B → Term A B → Set where
   -- Exponentials (curry/apply)
   curry-β   : ∀ {A B C} {f : Term (A * B) C} {g : Term A B} →
               (apply ∘ ⟨ curry f , g ⟩) ⟶ (f ∘ ⟨ id , g ⟩)
+  -- Generalized curry-β (naturality of the exponential counit)
+  -- This is a standard CCC law: apply ∘ (curry f × id) ∘ ⟨h, g⟩ = f ∘ ⟨h, g⟩
+  curry-β-ext : ∀ {X A B C} {f : Term (A * B) C} {h : Term X A} {g : Term X B} →
+              (apply ∘ ⟨ curry f ∘ h , g ⟩) ⟶ (f ∘ ⟨ h , g ⟩)
   curry-η   : ∀ {A B C} {f : Term A (B ⇒ C)} →
               curry (apply ∘ ⟨ f ∘ fst , snd ⟩) ⟶ f
   -- Catamorphism (the key recursion rule)
@@ -162,6 +166,10 @@ data _⟹_ : ∀ {A B} → Term A B → Term A B → Set where
   ⟹-curry-β : ∀ {A B C} {f f' : Term (A * B) C} {g g' : Term A B} →
               f ⟹ f' → g ⟹ g' → (apply ∘ ⟨ curry f , g ⟩) ⟹ (f' ∘ ⟨ id , g' ⟩)
 
+  -- Generalized curry-apply beta (naturality of exponential counit)
+  ⟹-curry-β-ext : ∀ {X A B C} {f f' : Term (A * B) C} {h h' : Term X A} {g g' : Term X B} →
+              f ⟹ f' → h ⟹ h' → g ⟹ g' → (apply ∘ ⟨ curry f ∘ h , g ⟩) ⟹ (f' ∘ ⟨ h' , g' ⟩)
+
   -- Out/In reductions (F explicit to avoid computed type unification issues)
   ⟹-out-in  : ∀ F → (Out {F} ∘ In {F}) ⟹ id {⟦ F ⟧F (μ F)}
   ⟹-in-out  : ∀ F → (In {F} ∘ Out {F}) ⟹ id {μ F}
@@ -211,6 +219,7 @@ data _⟹_ : ∀ {A B} → Term A B → Term A B → Set where
 ⟶→⟹ assoc-r = ⟹-assoc-r (⟹-refl _) (⟹-refl _) (⟹-refl _)
 ⟶→⟹ pair-comp = ⟹-pair-comp (⟹-refl _) (⟹-refl _) (⟹-refl _)
 ⟶→⟹ curry-β = ⟹-curry-β (⟹-refl _) (⟹-refl _)
+⟶→⟹ curry-β-ext = ⟹-curry-β-ext (⟹-refl _) (⟹-refl _) (⟹-refl _)
 ⟶→⟹ curry-η = ⟹-η-curry (⟹-refl _)
 ⟶→⟹ (⟶-∘-l r) = ⟹-∘ (⟶→⟹ r) (⟹-refl _)
 ⟶→⟹ (⟶-∘-r r) = ⟹-∘ (⟹-refl _) (⟶→⟹ r)
@@ -318,6 +327,13 @@ fmap-⟶* (F ⊗ G) rs = ⟶*-pair (⟶*-∘-l fst (fmap-⟶* F rs)) (⟶*-∘-l
   -- (apply ∘ ⟨ curry f , g ⟩) ⟶* (f' ∘ ⟨ id , g' ⟩)
   ⟶*-trans (⟶*-∘-r apply (⟶*-pair (⟶*-curry (⟹→⟶* pf)) (⟹→⟶* pg)))
     (step curry-β done)
+⟹→⟶* (⟹-curry-β-ext pf ph pg) =
+  -- (apply ∘ ⟨ curry f ∘ h , g ⟩) ⟶* (f' ∘ ⟨ h' , g' ⟩)
+  -- Step 1: apply curry-β-ext primitive
+  -- Step 2: reduce f to f' on left, ⟨h,g⟩ to ⟨h',g'⟩ on right
+  ⟶*-trans (step curry-β-ext done)
+           (⟶*-trans (⟶*-∘-l _ (⟹→⟶* pf))
+                     (⟶*-∘-r _ (⟶*-pair (⟹→⟶* ph) (⟹→⟶* pg))))
 ⟹→⟶* (⟹-out-in F) = step (out-in F) done
 ⟹→⟶* (⟹-in-out F) = step (in-out F) done
 ⟹→⟶* (⟹-assoc-l pf pg ph) =

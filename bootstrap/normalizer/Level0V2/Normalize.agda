@@ -706,9 +706,10 @@ caseWithCtx l r = [ l , r ] ∘ distrib
 --   Derivation: apply ∘ ⟨ curry f ∘ fst , snd ⟩
 --              = apply ∘ ⟨ curry f , snd ⟩ ∘ ⟨ fst , id ⟩  -- need to restructure
 --              Alternative: use curry-β with g = snd directly on product type
-curry-β-ext : ∀ {X A B C} {f : Term (A * B) C} {h : Term X A} {g : Term X B} →
+-- curry-β-ext* lifts the primitive curry-β-ext to multi-step reduction
+curry-β-ext* : ∀ {X A B C} {f : Term (A * B) C} {h : Term X A} {g : Term X B} →
               (apply ∘ ⟨ curry f ∘ h , g ⟩) ⟶* (f ∘ ⟨ h , g ⟩)
-curry-β-ext = {!!}
+curry-β-ext* = step curry-β-ext done
 
 -- Distrib reduction lemmas
 -- distrib ∘ ⟨ p , inl ∘ a ⟩ ⟶* inl ∘ ⟨ p , a ⟩
