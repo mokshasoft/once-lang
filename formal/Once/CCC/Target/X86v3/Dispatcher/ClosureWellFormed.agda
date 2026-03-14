@@ -1324,10 +1324,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
               (sym f≡cf)
               (exec-trace-preserves-slot-below trace s alloc (next-slot alloc) k twa tnsi k<next)
       mem-preserved (OnStack f k) (stack-ancestor cf≺f _) =
-        -- f is an ancestor frame (different from current-frame alloc)
-        let f≢cf : f ≢ current-frame alloc
-            f≢cf = λ eq → ≺⇒≢ cf≺f (sym eq)
-        in exec-trace-preserves-ancestor trace s alloc f k f≢cf tnsi
+        -- f is an ancestor frame (current-frame alloc ≺ f)
+        exec-trace-preserves-ancestor trace s alloc f k cf≺f tnsi
       mem-preserved (OnHeap h) (heap-before _) =
         -- Heap location
         exec-trace-preserves-heap-loc trace s alloc h tnsi

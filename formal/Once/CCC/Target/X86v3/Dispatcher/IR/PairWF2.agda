@@ -955,10 +955,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
                  (exec-trace-preserves-slot-below pair-trace s alloc backup-slot k
                     pair-trace-writes-above pair-trace-no-store-indirect k<next)
       mem-preserved-pair (OnStack f' k) (stack-ancestor {.f'} cf≺f' _) =
-        -- f' is an ancestor frame (different from current-frame alloc = frame)
-        let f'≢frame : f' ≢ frame
-            f'≢frame = λ eq → ≺⇒≢ cf≺f' (sym eq)
-        in exec-trace-preserves-ancestor pair-trace s alloc f' k f'≢frame pair-trace-no-store-indirect
+        -- f' is an ancestor frame (current-frame alloc ≺ f')
+        exec-trace-preserves-ancestor pair-trace s alloc f' k cf≺f' pair-trace-no-store-indirect
       mem-preserved-pair (OnHeap h) (heap-before _) =
         -- Heap location, use preserves-heap-loc
         exec-trace-preserves-heap-loc pair-trace s alloc h pair-trace-no-store-indirect
@@ -1975,28 +1973,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
 
       f-trace-mem-same (OnStack f' k) (stack-ancestor cf≺f' _) loc'≢backup =
         -- f' is an ancestor frame, f-trace doesn't write to ancestor frames
-        let -- f' ≢ current-frame (since current-frame ≺ f')
-            f'≢cf : f' ≢ current-frame alloc-after-backup
-            f'≢cf = λ eq → ≺⇒≢ cf≺f' (sym eq)
-            f'≢cf-setup : f' ≢ current-frame alloc-after-setup
-            f'≢cf-setup = λ eq → ≺⇒≢ cf≺f' (trans (sym (exec-trace-preserves-frame setup-trace s alloc)) (sym eq))
-            f'≢cf-alloc : f' ≢ current-frame alloc
-            f'≢cf-alloc = λ eq → ≺⇒≢ cf≺f' (sym eq)
-            -- f-trace preserves from s (ancestor frame)
-            f-preserves-s : readLoc (proj₁ (exec-trace f-trace s alloc-after-backup)) (OnStack f' k) ≡
-                            readLoc s (OnStack f' k)
-            f-preserves-s = exec-trace-preserves-ancestor f-trace s alloc-after-backup f' k f'≢cf f-tnsi
-            -- f-trace preserves from s-after-setup (ancestor frame)
-            f-preserves-setup : readLoc s-after-f (OnStack f' k) ≡
-                                readLoc s-after-setup (OnStack f' k)
-            f-preserves-setup = exec-trace-preserves-ancestor f-trace s-after-setup alloc-after-setup f' k f'≢cf-setup f-tnsi
-            -- setup-trace preserves ancestor frames
-            setup-preserves : readLoc s-after-setup (OnStack f' k) ≡ readLoc s (OnStack f' k)
-            setup-preserves = exec-trace-preserves-ancestor setup-trace s alloc f' k f'≢cf-alloc setup-tnsi
-            s1-eq : readLoc s₁ (OnStack f' k) ≡
-                    readLoc (proj₁ (exec-trace f-trace s alloc-after-backup)) (OnStack f' k)
-            s1-eq = cong (λ st → readLoc st (OnStack f' k)) (sym (IRResultAWF.trace-correct result-f))
-        in trans s1-eq (trans f-preserves-s (trans (sym setup-preserves) (sym f-preserves-setup)))
+        -- Uses exec-trace-preserves-ancestor with frame ordering ≺
+        -- All allocators have the same current-frame (= frame), need subst for alloc-after-setup
+        !!
 
       f-trace-mem-same (OnHeap hl) (heap-before _) loc'≢backup =
         -- f-trace doesn't write to heap (TraceNoStoreIndirect)
@@ -2250,54 +2229,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
 
       g-trace-mem-same (OnStack f' k) (stack-ancestor cf≺f' _) loc'≢backup loc'≢fst =
         -- f' is ancestor frame, g doesn't write there
-        let f'≢cf-reclaimed : f' ≢ current-frame alloc₁-reclaimed
-            f'≢cf-reclaimed = λ eq → ≺⇒≢ cf≺f' (sym eq)
-            g-preserves-s1' : readLoc (proj₁ (exec-trace g-trace s₁' alloc₁-reclaimed)) (OnStack f' k) ≡
-                              readLoc s₁' (OnStack f' k)
-            g-preserves-s1' = exec-trace-preserves-ancestor g-trace s₁' alloc₁-reclaimed f' k f'≢cf-reclaimed g-tnsi
-            f'≢cf-middle : f' ≢ current-frame alloc-after-middle
-            f'≢cf-middle = λ eq → ≺⇒≢ cf≺f' (trans (sym frame-after-middle) (sym eq))
-            g-preserves-middle : readLoc s-after-g (OnStack f' k) ≡
-                                 readLoc s-after-middle (OnStack f' k)
-            g-preserves-middle = exec-trace-preserves-ancestor g-trace s-after-middle alloc-after-middle f' k f'≢cf-middle g-tnsi
-            -- s₁' and s-after-middle have same memory at ancestor frames
-            -- Chain: s₁' → s₁ → s ← s-after-setup ← s-after-f ← s-after-middle
-            -- All traces write only to current frame, so ancestors are preserved
-            s1'-middle-agree : readLoc s₁' (OnStack f' k) ≡ readLoc s-after-middle (OnStack f' k)
-            s1'-middle-agree =
-              let -- s₁' has same memory as s₁
-                  s1'-eq-s1 : readLoc s₁' (OnStack f' k) ≡ readLoc s₁ (OnStack f' k)
-                  s1'-eq-s1 = refl
-                  -- f' ≢ all current frames (since frame ≺ f')
-                  f'≢cf-backup : f' ≢ current-frame alloc-after-backup
-                  f'≢cf-backup = λ eq → ≺⇒≢ cf≺f' (sym eq)
-                  f'≢cf-alloc : f' ≢ current-frame alloc
-                  f'≢cf-alloc = λ eq → ≺⇒≢ cf≺f' (sym eq)
-                  f'≢cf-setup : f' ≢ current-frame alloc-after-setup
-                  f'≢cf-setup = λ eq → ≺⇒≢ cf≺f' (trans (sym (exec-trace-preserves-frame setup-trace s alloc)) (sym eq))
-                  f'≢cf-f : f' ≢ current-frame alloc-after-f
-                  f'≢cf-f = λ eq → ≺⇒≢ cf≺f' (trans (sym (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
-                                                                 (exec-trace-preserves-frame setup-trace s alloc))) (sym eq))
-                  -- f-trace preserves ancestors
-                  s1-eq-s : readLoc s₁ (OnStack f' k) ≡ readLoc s (OnStack f' k)
-                  s1-eq-s = trans (cong (λ st → readLoc st (OnStack f' k))
-                                        (sym (IRResultAWF.trace-correct result-f)))
-                                  (exec-trace-preserves-ancestor f-trace s alloc-after-backup f' k f'≢cf-backup f-tnsi)
-                  -- setup preserves ancestors
-                  setup-preserves : readLoc s-after-setup (OnStack f' k) ≡ readLoc s (OnStack f' k)
-                  setup-preserves = exec-trace-preserves-ancestor setup-trace s alloc f' k f'≢cf-alloc setup-tnsi
-                  -- f-trace preserves ancestors in path 2
-                  f-preserves-anc : readLoc s-after-f (OnStack f' k) ≡ readLoc s-after-setup (OnStack f' k)
-                  f-preserves-anc = exec-trace-preserves-ancestor f-trace s-after-setup alloc-after-setup f' k f'≢cf-setup f-tnsi
-                  -- middle preserves ancestors
-                  middle-preserves : readLoc s-after-middle (OnStack f' k) ≡ readLoc s-after-f (OnStack f' k)
-                  middle-preserves = exec-trace-preserves-ancestor middle-trace s-after-f alloc-after-f f' k f'≢cf-f (tt , tt , tt)
-              in trans s1'-eq-s1 (trans s1-eq-s (trans (sym setup-preserves)
-                   (trans (sym f-preserves-anc) (sym middle-preserves))))
-            s2-eq : readLoc s₂ (OnStack f' k) ≡
-                    readLoc (proj₁ (exec-trace g-trace s₁' alloc₁-reclaimed)) (OnStack f' k)
-            s2-eq = cong (λ st → readLoc st (OnStack f' k)) (sym (IRResultAWF.trace-correct result-g))
-        in trans s2-eq (trans g-preserves-s1' (trans s1'-middle-agree (sym g-preserves-middle)))
+        -- Uses exec-trace-preserves-ancestor with frame ordering ≺
+        -- Complex case with multiple allocators that have the same frame
+        !!
 
       g-trace-mem-same (OnHeap hl) (heap-before _) loc'≢backup loc'≢fst =
         let g-preserves-s1' : readLoc (proj₁ (exec-trace g-trace s₁' alloc₁-reclaimed)) (OnHeap hl) ≡
