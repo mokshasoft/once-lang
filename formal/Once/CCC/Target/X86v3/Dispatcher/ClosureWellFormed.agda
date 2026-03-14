@@ -47,6 +47,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   open WriteOps {FS}
   open StackAllocation {FS}
   open AbstractExec {FS}
+  open TracePrimitives {FS}
   open FrameSemantics FS
 
   -- Import write operations for validity preservation proofs
@@ -302,6 +303,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- so traces containing it require additional disjointness preconditions.
         -- Our IR traces don't use store-indirect (they use store-at-slot instead).
         trace-no-store-indirect : TraceNoStoreIndirect trace
+        -- Trace preserves halted: all instructions in trace preserve halted status.
+        -- This enables proving halted preservation through composed traces.
+        -- Combined with not-halted precondition, proves intermediate states are not halted.
+        -- Key for pair's fst-ptr/snd-ptr proofs which need not-halted at intermediate states.
+        trace-preserves-halted : TracePreservesHaltedP trace
 
     --------------------------------------------------------------------
     -- BodyCorrect: Pre-computed body execution proof
@@ -1274,5 +1280,72 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     validityWF-frontier-advance v loc s refl mono ≤-refl valid
     where
       open import Data.Nat.Properties using (≤-refl)
+
+  ------------------------------------------------------------------------
+  -- Trace-Based Validity Preservation
+  --
+  -- KEY LEMMA: If a trace writes only at slots ≥ n (TraceWritesAbove n),
+  -- and all sub-locations of a valid value are at slots < n (captured by
+  -- BeforeFrontier with appropriate next-slot), then validity is preserved.
+  --
+  -- This is the core insight for PairWF2 and similar proofs:
+  --   - IR results have sub-locations at slots < reclaimable-slot
+  --   - Subsequent traces write at slots ≥ reclaimable-slot
+  --   - Therefore validity is preserved through those traces
+  --
+  -- The proof combines:
+  --   1. exec-trace-preserves-disjoint: memory at disjoint locations preserved
+  --   2. validityWF-mem-preserved: validity transfers when memory preserved
+  ------------------------------------------------------------------------
+
+  -- Helper: BeforeFrontier locations are disjoint from trace write set
+  -- If loc is BeforeFrontier alloc (meaning slot < next-slot alloc),
+  -- and trace writes at slots ≥ next-slot alloc,
+  -- then loc is not in the write set.
+  private
+    bf-disjoint-from-writes : ∀ (alloc : AllocState {FS}) (loc : ValueLocation FS) →
+      BeforeFrontier alloc loc →
+      ∀ slot → next-slot alloc ≤ slot → OnStack (current-frame alloc) slot ≢ loc
+    bf-disjoint-from-writes alloc (OnStack f k) (stack-before f≡cf k<next) slot next≤slot eq =
+      let slot≡k : slot ≡ k
+          slot≡k = stack-slot-injective eq
+          k<slot : k < slot
+          k<slot = <-≤-trans k<next next≤slot
+      in <⇒≢ k<slot (sym slot≡k)
+      where
+        open import Data.Nat.Properties using (<-≤-trans; <⇒≢)
+    bf-disjoint-from-writes alloc (OnStack f k) (stack-ancestor cf≺f _) slot next≤slot eq =
+      -- If f is an ancestor (cf ≺ f), then OnStack cf slot ≢ OnStack f k
+      -- because cf ≢ f (from ≺-irrefl)
+      -- eq : OnStack (current-frame alloc) slot ≡ OnStack f k
+      -- stack-frame-injective eq : current-frame alloc ≡ f
+      -- cf≺f : current-frame alloc ≺ f
+      -- ≺⇒≢ cf≺f : current-frame alloc ≢ f
+      let cf≡f : current-frame alloc ≡ f
+          cf≡f = stack-frame-injective eq
+      in ≺⇒≢ cf≺f cf≡f
+    bf-disjoint-from-writes alloc (OnHeap hl) (heap-before _) slot next≤slot ()
+
+  -- Main lemma: trace preserves validity when writing above frontier
+  validityWF-trace-preserves : ∀ {m A} (alloc : AllocState {FS})
+    (trace : AbstractTrace) (v : ⟦ A ⟧) (loc : ValueLocation FS)
+    (s : LocState FS) →
+    -- Validity at start
+    BeforeFrontier alloc loc →
+    ValidAtWF m alloc v loc s →
+    -- Trace only writes at slots ≥ next-slot alloc
+    TraceWritesAbove (next-slot alloc) trace →
+    TraceNoStoreIndirect trace →
+    -- Validity preserved after trace
+    ValidAtWF m alloc v loc (proj₁ (exec-trace trace s alloc))
+  validityWF-trace-preserves alloc trace v loc s loc-bf valid twa tnsi =
+    validityWF-mem-preserved v loc s (proj₁ (exec-trace trace s alloc)) loc-bf mem-preserved valid
+    where
+      -- Memory at all BeforeFrontier locations is preserved
+      mem-preserved : ∀ loc' → BeforeFrontier alloc loc' →
+        readLoc (proj₁ (exec-trace trace s alloc)) loc' ≡ readLoc s loc'
+      mem-preserved loc' loc'-bf =
+        exec-trace-preserves-disjoint trace s alloc loc' (next-slot alloc)
+          twa tnsi (bf-disjoint-from-writes alloc loc' loc'-bf)
 
 

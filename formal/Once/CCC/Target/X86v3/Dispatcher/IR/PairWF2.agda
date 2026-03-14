@@ -62,7 +62,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
            valid-pair-wf;
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-frontier-advance;
-           validityWF-mem-preserved-excluding)
+           validityWF-mem-preserved-excluding;
+           validityWF-trace-preserves)
 
   -- Helper lemmas
   open import Once.CCC.Target.X86v3.Dispatcher.DispatcherArithmeticLemma
