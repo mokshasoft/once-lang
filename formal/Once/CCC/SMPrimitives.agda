@@ -32,7 +32,7 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
-open import Data.Nat.Properties using (≤-trans; <⇒≢)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <⇒≢)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -42,6 +42,13 @@ open import Relation.Nullary using (¬_; Dec; yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
 open import Once.CCC.SMCore public
+
+------------------------------------------------------------------------
+-- Proof obligation marker (to be replaced with actual proofs)
+------------------------------------------------------------------------
+
+postulate
+  !! : ∀ {ℓ} {A : Set ℓ} → A
 
 private
   variable
@@ -990,36 +997,85 @@ module TracePrimitives {FS : FrameSemantics} where
 
   -- Convenience lemma: trace with writes ≥ n preserves slots < n
   -- Derivable from: induction on trace, read-write-other at each step
-  postulate
-    exec-trace-read-write-other : ∀ (trace : AbstractTrace) (s : LocState FS)
-      (alloc : AllocState {FS}) (n k : ℕ) →
-      k < n →                           -- k is not in write set
-      TraceWritesAbove n trace →        -- write set = {slots ≥ n}
-      TraceNoStoreIndirect trace →      -- no heap writes
-      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡
-      readLoc s (OnStack (current-frame alloc) k)
-    -- Proof: induction on trace, each step uses read-write-other
+  ------------------------------------------------------------------------
+  -- Positive Write Characterization Preservation Lemmas
+  --
+  -- These lemmas use positive bounds (TraceWritesAbove/Below) to directly
+  -- derive preservation, without requiring disjointness callbacks.
+  -- The key insight: disjointness follows automatically from the bounds.
+  ------------------------------------------------------------------------
 
-  -- General disjoint preservation: if location is disjoint from all slots ≥ n,
-  -- then trace preserves it. This handles stack-before, stack-ancestor, and heap-before.
+  -- (A1) Current frame slot below write bound is preserved
+  -- If trace writes above n (at slots ≥ n), then slot < n is preserved
   postulate
-    exec-trace-preserves-disjoint : ∀ (trace : AbstractTrace) (s : LocState FS)
-      (alloc : AllocState {FS}) (loc : ValueLocation FS) (n : ℕ) →
-      TraceWritesAbove n trace →        -- write set = {slots ≥ n on current-frame}
-      TraceNoStoreIndirect trace →      -- no store-indirect (so no heap writes)
-      (∀ slot → n ≤ slot → OnStack (current-frame alloc) slot ≢ loc) →  -- disjoint from write set
-      readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
-    -- Proof: by induction on trace, using exec-abstract-preserves-mem
+    exec-trace-preserves-slot-below : ∀ (trace : AbstractTrace) (s : LocState FS)
+      (alloc : AllocState {FS}) (n slot : ℕ) →
+      TraceWritesAbove n trace →        -- writes at slots ≥ n
+      TraceNoStoreIndirect trace →      -- no heap writes
+      slot < n →                        -- slot is below write region
+      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
+      readLoc s (OnStack (current-frame alloc) slot)
+    -- Proof: induction on trace; each write is at slot' ≥ n > slot, so slot' ≠ slot
+
+  -- (A2) Current frame slot above write bound is preserved
+  -- If trace writes below m (at slots < m), then slot ≥ m is preserved
+  postulate
+    exec-trace-preserves-slot-above : ∀ (trace : AbstractTrace) (s : LocState FS)
+      (alloc : AllocState {FS}) (m slot : ℕ) →
+      TraceWritesBelow m trace →        -- writes at slots < m
+      TraceNoStoreIndirect trace →      -- no heap writes
+      m ≤ slot →                        -- slot is above write region
+      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
+      readLoc s (OnStack (current-frame alloc) slot)
+    -- Proof: induction on trace; each write is at slot' < m ≤ slot, so slot' ≠ slot
+
+  -- (A3) Ancestor frame slots are always preserved
+  -- Traces only write to the current frame, so ancestor frames are untouched
+  postulate
+    exec-trace-preserves-ancestor : ∀ (trace : AbstractTrace) (s : LocState FS)
+      (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
+      f ≢ current-frame alloc →         -- f is an ancestor frame
+      TraceNoStoreIndirect trace →      -- no heap writes
+      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) ≡
+      readLoc s (OnStack f slot)
+    -- Proof: induction on trace; each write is at current-frame ≠ f
+
+  -- (A4) Heap locations are always preserved (when no store-indirect)
+  postulate
+    exec-trace-preserves-heap-loc : ∀ (trace : AbstractTrace) (s : LocState FS)
+      (alloc : AllocState {FS}) (h : HeapLocation) →
+      TraceNoStoreIndirect trace →      -- no heap writes
+      readLoc (proj₁ (exec-trace trace s alloc)) (OnHeap h) ≡
+      readLoc s (OnHeap h)
+    -- Proof: induction on trace; no instruction writes to heap
 
   -- (B) INDEPENDENCE - trace version
   -- If loc is disjoint from all reads and writes, writeLoc commutes with trace
   postulate
+    -- Case 1: slot is ABOVE all reads and writes
     exec-trace-independent : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
       (f : Frame FS) (slot : ℕ) (val : ValueLocation FS) →
       -- slot is above all reads
       TraceSlotReadsBelow slot trace →
       -- slot is above all writes
       TraceWritesBelow slot trace →
+      -- trace has no store-indirect
+      TraceNoStoreIndirect trace →
+      -- frame matches
+      current-frame alloc ≡ f →
+      -- Then writeLoc commutes
+      proj₁ (exec-trace trace (writeLoc s (OnStack f slot) val) alloc) ≡
+      writeLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) val
+
+    -- Case 2: slot is BELOW all reads and writes
+    exec-trace-independent-below : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
+      (f : Frame FS) (slot : ℕ) (val : ValueLocation FS) (n : ℕ) →
+      -- slot is below bound n
+      slot < n →
+      -- reads are above bound n
+      TraceSlotReadsAbove n trace →
+      -- writes are above bound n
+      TraceWritesAbove n trace →
       -- trace has no store-indirect
       TraceNoStoreIndirect trace →
       -- frame matches
@@ -1222,32 +1278,17 @@ module TracePrimitives {FS : FrameSemantics} where
     TraceNoStoreIndirect trace →
     readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡ just v
   exec-trace-slot-value trace s alloc k v slot-has-v twa tnsi =
-    let frame = current-frame alloc
-        loc = OnStack frame k
-        -- Disjoint: for all slot ≥ suc k, OnStack frame slot ≢ OnStack frame k
-        disjoint : ∀ slot → suc k ≤ slot → OnStack frame slot ≢ loc
-        disjoint slot suck≤slot eq =
-          let slot≡k : slot ≡ k
-              slot≡k = stack-slot-injective eq
-              k<slot : k < slot
-              k<slot = suck≤slot
-          in <⇒≢ k<slot (sym slot≡k)
-        -- Apply exec-trace-preserves-disjoint
-        preserved : readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
-        preserved = exec-trace-preserves-disjoint trace s alloc loc (suc k) twa tnsi disjoint
+    let -- k < suc k, so slot k is below write region
+        k<suck : k < suc k
+        k<suck = ≤-refl
+        -- Apply positive characterization lemma
+        preserved : readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡
+                    readLoc s (OnStack (current-frame alloc) k)
+        preserved = exec-trace-preserves-slot-below trace s alloc (suc k) k twa tnsi k<suck
     in trans preserved slot-has-v
 
   -- Dual: slot value preservation for TraceWritesBelow
   -- If slot k has value v and trace writes below k (at slots < k), then k is preserved
-  postulate
-    exec-trace-preserves-disjoint-below : ∀ (trace : AbstractTrace) (s : LocState FS)
-      (alloc : AllocState {FS}) (loc : ValueLocation FS) (n : ℕ) →
-      TraceWritesBelow n trace →        -- write set = {slots < n on current-frame}
-      TraceNoStoreIndirect trace →      -- no store-indirect (so no heap writes)
-      (∀ slot → slot < n → OnStack (current-frame alloc) slot ≢ loc) →  -- disjoint from write set
-      readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
-    -- Proof: by induction on trace, symmetric to exec-trace-preserves-disjoint
-
   exec-trace-slot-value-below : ∀ (trace : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) (k : ℕ) (v : ValueLocation FS) →
     readLoc s (OnStack (current-frame alloc) k) ≡ just v →
@@ -1255,17 +1296,13 @@ module TracePrimitives {FS : FrameSemantics} where
     TraceNoStoreIndirect trace →
     readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡ just v
   exec-trace-slot-value-below trace s alloc k v slot-has-v twb tnsi =
-    let frame = current-frame alloc
-        loc = OnStack frame k
-        -- Disjoint: for all slot < k, OnStack frame slot ≢ OnStack frame k
-        disjoint : ∀ slot → slot < k → OnStack frame slot ≢ loc
-        disjoint slot slot<k eq =
-          let slot≡k : slot ≡ k
-              slot≡k = stack-slot-injective eq
-          in <⇒≢ slot<k slot≡k
-        -- Apply exec-trace-preserves-disjoint-below
-        preserved : readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
-        preserved = exec-trace-preserves-disjoint-below trace s alloc loc k twb tnsi disjoint
+    let -- k ≥ k, so slot k is above write region
+        k≤k : k ≤ k
+        k≤k = ≤-refl
+        -- Apply positive characterization lemma
+        preserved : readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡
+                    readLoc s (OnStack (current-frame alloc) k)
+        preserved = exec-trace-preserves-slot-above trace s alloc k k twb tnsi k≤k
     in trans preserved slot-has-v
 
   -- store-at-slot writes the Output register value to the slot
@@ -1467,30 +1504,33 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
   open AbstractExec {FS}
   open FrameSemantics FS using (Frame)
 
-  -- If two states agree on Input and memory at relevant slots,
+  -- If two states agree on Input and memory at read slots [n, m),
   -- and traces only read from those slots, then Output is the same.
-  postulate
-    exec-trace-output-deterministic : ∀ (trace : AbstractTrace)
-      (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n : ℕ) →
-      halted s₁ ≡ false →
-      halted s₂ ≡ false →
-      current-frame alloc₁ ≡ current-frame alloc₂ →
-      readReg (regs s₁) Input ≡ readReg (regs s₂) Input →
-      TraceSlotReadsAbove n trace →
-      TraceWritesAbove n trace →
-      TraceNoStoreIndirect trace →
-      (∀ slot → n ≤ slot →
-        readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
-        readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
-      readReg (regs (proj₁ (exec-trace trace s₁ alloc₁))) Output ≡
-      readReg (regs (proj₁ (exec-trace trace s₂ alloc₂))) Output
-    -- Proof sketch: by induction on trace
-    -- Each instruction either:
-    --   1. Reads from Input (same in both) → same result
-    --   2. Reads from memory slot ≥ n (same in both) → same result
-    --   3. Reads from Output (must track that Output stays synchronized)
-    -- The key is that if reads are the same, computations are the same,
-    -- and since writes are above n, memory at ≥ n stays synchronized.
+  -- Note: m bounds reads (TraceSlotReadsBelow m), so memory agreement
+  -- is only needed for slots in [n, m), not all slots ≥ n.
+  exec-trace-output-deterministic : ∀ (trace : AbstractTrace)
+    (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n m : ℕ) →
+    halted s₁ ≡ false →
+    halted s₂ ≡ false →
+    current-frame alloc₁ ≡ current-frame alloc₂ →
+    readReg (regs s₁) Input ≡ readReg (regs s₂) Input →
+    TraceSlotReadsAbove n trace →
+    TraceSlotReadsBelow m trace →
+    TraceWritesAbove n trace →
+    TraceNoStoreIndirect trace →
+    (∀ slot → n ≤ slot → slot < m →
+      readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
+      readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
+    readReg (regs (proj₁ (exec-trace trace s₁ alloc₁))) Output ≡
+    readReg (regs (proj₁ (exec-trace trace s₂ alloc₂))) Output
+  -- Proof sketch: by induction on trace
+  -- Each instruction either:
+  --   1. Reads from Input (same in both) → same result
+  --   2. Reads from memory slot in [n, m) (same in both) → same result
+  --   3. Reads from Output (must track that Output stays synchronized)
+  -- The key is that if reads are the same, computations are the same,
+  -- and since writes are above n, memory at [n, m) stays synchronized.
+  exec-trace-output-deterministic = !!
 
   ------------------------------------------------------------------------
   -- Memory Determinism

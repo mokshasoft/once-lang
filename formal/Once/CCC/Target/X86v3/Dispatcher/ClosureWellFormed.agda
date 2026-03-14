@@ -1298,34 +1298,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   --   2. validityWF-mem-preserved: validity transfers when memory preserved
   ------------------------------------------------------------------------
 
-  -- Helper: BeforeFrontier locations are disjoint from trace write set
-  -- If loc is BeforeFrontier alloc (meaning slot < next-slot alloc),
-  -- and trace writes at slots ≥ next-slot alloc,
-  -- then loc is not in the write set.
-  private
-    bf-disjoint-from-writes : ∀ (alloc : AllocState {FS}) (loc : ValueLocation FS) →
-      BeforeFrontier alloc loc →
-      ∀ slot → next-slot alloc ≤ slot → OnStack (current-frame alloc) slot ≢ loc
-    bf-disjoint-from-writes alloc (OnStack f k) (stack-before f≡cf k<next) slot next≤slot eq =
-      let slot≡k : slot ≡ k
-          slot≡k = stack-slot-injective eq
-          k<slot : k < slot
-          k<slot = <-≤-trans k<next next≤slot
-      in <⇒≢ k<slot (sym slot≡k)
-      where
-        open import Data.Nat.Properties using (<-≤-trans; <⇒≢)
-    bf-disjoint-from-writes alloc (OnStack f k) (stack-ancestor cf≺f _) slot next≤slot eq =
-      -- If f is an ancestor (cf ≺ f), then OnStack cf slot ≢ OnStack f k
-      -- because cf ≢ f (from ≺-irrefl)
-      -- eq : OnStack (current-frame alloc) slot ≡ OnStack f k
-      -- stack-frame-injective eq : current-frame alloc ≡ f
-      -- cf≺f : current-frame alloc ≺ f
-      -- ≺⇒≢ cf≺f : current-frame alloc ≢ f
-      let cf≡f : current-frame alloc ≡ f
-          cf≡f = stack-frame-injective eq
-      in ≺⇒≢ cf≺f cf≡f
-    bf-disjoint-from-writes alloc (OnHeap hl) (heap-before _) slot next≤slot ()
-
   -- Main lemma: trace preserves validity when writing above frontier
   validityWF-trace-preserves : ∀ {m A} (alloc : AllocState {FS})
     (trace : AbstractTrace) (v : ⟦ A ⟧) (loc : ValueLocation FS)
@@ -1342,10 +1314,22 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     validityWF-mem-preserved v loc s (proj₁ (exec-trace trace s alloc)) loc-bf mem-preserved valid
     where
       -- Memory at all BeforeFrontier locations is preserved
+      -- Using positive characterization lemmas based on location type
       mem-preserved : ∀ loc' → BeforeFrontier alloc loc' →
         readLoc (proj₁ (exec-trace trace s alloc)) loc' ≡ readLoc s loc'
-      mem-preserved loc' loc'-bf =
-        exec-trace-preserves-disjoint trace s alloc loc' (next-slot alloc)
-          twa tnsi (bf-disjoint-from-writes alloc loc' loc'-bf)
+      mem-preserved (OnStack f k) (stack-before f≡cf k<next) =
+        -- k < next-slot alloc, so slot k is below write region
+        subst (λ f' → readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f' k) ≡
+                      readLoc s (OnStack f' k))
+              (sym f≡cf)
+              (exec-trace-preserves-slot-below trace s alloc (next-slot alloc) k twa tnsi k<next)
+      mem-preserved (OnStack f k) (stack-ancestor cf≺f _) =
+        -- f is an ancestor frame (different from current-frame alloc)
+        let f≢cf : f ≢ current-frame alloc
+            f≢cf = λ eq → ≺⇒≢ cf≺f (sym eq)
+        in exec-trace-preserves-ancestor trace s alloc f k f≢cf tnsi
+      mem-preserved (OnHeap h) (heap-before _) =
+        -- Heap location
+        exec-trace-preserves-heap-loc trace s alloc h tnsi
 
 
