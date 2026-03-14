@@ -31,6 +31,7 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SlotMachine hiding (AllocMode; Stack; Heap)
+import Once.CCC.SMPrimitives as SMP
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
@@ -105,6 +106,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open ExecLemmas {FS}
   open AbstractExec {FS}
   open FrameSemantics FS
+  open SMP.TracePrimitives {FS}
 
   open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -227,6 +229,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-slot-reads-below = apply-trace-slot-reads-below
       ; trace-preserves-capacity = apply-trace-preserves-capacity
       ; trace-no-store-indirect = apply-trace-no-store-indirect
+      ; trace-preserves-halted = apply-trace-preserves-halted
       }
     where
       open import Data.Nat using (_≥_)
@@ -794,3 +797,15 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         -- Apply uses store-at-slot for pair construction, and body-trace
         -- (from BodyCorrect) also doesn't use store-indirect.
         apply-trace-no-store-indirect : TraceNoStoreIndirect apply-trace
+
+      -- Apply's trace preserves halted:
+      -- - store-at-slot preserves halted
+      -- - instr-push-frame preserves halted
+      -- - body-trace preserves halted (from body-result's trace-preserves-halted)
+      -- - instr-pop-frame preserves halted
+      apply-trace-preserves-halted : TracePreservesHaltedP apply-trace
+      apply-trace-preserves-halted =
+        tph-∷ iph-store-at-slot
+        (tph-∷ iph-push-frame
+        (tph-++ (IRResultAWF.trace-preserves-halted body-result)
+        (tph-∷ iph-pop-frame tph-[])))
