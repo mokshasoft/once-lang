@@ -2,7 +2,8 @@
 -- MainTheorem: The Complete Verification Structure
 --
 -- This module structures the full proof that the normalizer is correct.
--- Implementation is split into submodules to reduce memory usage.
+-- Implementation is split into parameterized submodules.
+-- This module instantiates them with the concrete normalize.
 --
 -- The main theorem: If a normalizer achieves fixpoint on its own
 -- encoding, then it correctly normalizes all terms.
@@ -12,50 +13,91 @@ module normalizer.Level0V2.MainTheorem where
 
 open import normalizer.Foundations.Types
 open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.Encoding
+  using (TermCode')
 
 ------------------------------------------------------------------------
--- Submodule Exports
+-- Foundation Exports
 ------------------------------------------------------------------------
 
--- Part 1: Normal Form (general definitions from Foundations)
+-- Normal Form (general definitions)
 -- Contains: IsNormalForm, nf-no-redex, nf-stable, nf-unique
 open import normalizer.Foundations.NormalForm public
 
--- Part 2: Correctness Proof
--- Contains: CorrectNormalizer record, normalize-produces-nf (postulate),
---           strong-normalization (postulate), normalize-preserves-semantics (postulate),
---           normalize-terminates, normalize-output-is-nf, normalize-preserves,
---           normalizer-correct
-open import normalizer.Level0V2.MainTheorem.Correctness public
-
--- Part 3: Fixpoint Theorem
--- Contains: fixpoint-implies-nf, normalize-encoding-is-nf,
---           normalize-encoded-is-normal
-open import normalizer.Level0V2.MainTheorem.FixpointTheorem public
+-- Confluence
+open import normalizer.Foundations.Confluence
+  using (confluence)
+  public
 
 ------------------------------------------------------------------------
--- Re-exports from dependencies
+-- The Normalizer (heavy import - done once here)
+------------------------------------------------------------------------
+
+open import normalizer.Level0V2.Normalize
+  using (normalize; normalize-encoded)
+  public
+
+------------------------------------------------------------------------
+-- Postulates (proof obligations)
+------------------------------------------------------------------------
+
+-- The normalizer produces normal forms
+postulate
+  normalize-produces-nf : ∀ (t : Term Unit TermCode') →
+                          IsNormalForm (normalize ∘ t)
+
+-- All reduction sequences terminate
+postulate
+  strong-normalization : ∀ {A B} (t : Term A B) →
+                         ∃[ nf ] ((t ⟶* nf) × IsNormalForm nf)
+
+-- The normalizer preserves semantics
+postulate
+  normalize-preserves-semantics : ∀ (t : Term Unit TermCode') →
+                                  ((normalize ∘ t) ⟶* t) ⊎ (t ⟶* (normalize ∘ t))
+
+------------------------------------------------------------------------
+-- Correctness (instantiated with concrete normalize and postulates)
+------------------------------------------------------------------------
+
+-- Instantiate the parameterized correctness proof
+-- (also re-exports CorrectNormalizer record from Record.agda)
+open import normalizer.Level0V2.MainTheorem.Correctness
+  normalize
+  normalize-produces-nf
+  strong-normalization
+  normalize-preserves-semantics
+  confluence
+  public
+
+------------------------------------------------------------------------
+-- Fixpoint Theorem
+------------------------------------------------------------------------
+
+-- Contains: fixpoint-implies-nf, normalize-encoding-is-nf
+open import normalizer.Level0V2.MainTheorem.FixpointTheorem
+  normalize
+  normalize-encoded
+  normalize-produces-nf
+  public
+
+-- Fixpoint property (needed for normalize-encoded-is-normal)
+open import normalizer.Level0V2.NormalForm
+  using (fixpoint-property)
+  public
+
+-- Using our proven fixpoint-property:
+normalize-encoded-is-normal : IsNormalForm normalize-encoded
+normalize-encoded-is-normal = normalize-encoding-is-nf fixpoint-property
+
+------------------------------------------------------------------------
+-- Re-exports from other dependencies
 ------------------------------------------------------------------------
 
 -- The encoding infrastructure
 open import normalizer.Level0V2.Normalizer
   using ( refold-idempotent  -- (cata TermF In ∘ encode t) ⟶* encode t
         )
-  public
-
--- The normalizer
-open import normalizer.Level0V2.Normalize
-  using (normalize; normalize-encoded)
-  public
-
--- Fixpoint property
-open import normalizer.Level0V2.NormalForm
-  using (fixpoint-property)
-  public
-
--- Confluence
-open import normalizer.Foundations.Confluence
-  using (confluence)
   public
 
 ------------------------------------------------------------------------
