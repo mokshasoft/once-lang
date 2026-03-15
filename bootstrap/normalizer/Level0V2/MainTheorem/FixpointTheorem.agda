@@ -1,28 +1,26 @@
 ------------------------------------------------------------------------
 -- FixpointTheorem: Fixpoint implies normal form
 --
+-- Parameterized by normalize and its properties.
+-- No heavy imports - type-checks fast.
+--
 -- The key theorem from OCP-0004: If a normalizer achieves fixpoint
 -- on its own encoding, then it correctly normalizes all terms.
 ------------------------------------------------------------------------
-
-module normalizer.Level0V2.MainTheorem.FixpointTheorem where
 
 open import normalizer.Foundations.Types
 open import normalizer.Foundations.MinimalCCC
 open import normalizer.Foundations.Encoding
   using (TermCode')
-
-open import normalizer.Level0V2.Normalize
-  using (normalize; normalize-encoded)
-
 open import normalizer.Foundations.NormalForm
   using (IsNormalForm; nf-stable)
 
-open import normalizer.Level0V2.NormalForm
-  using (fixpoint-property)
-
-open import normalizer.Level0V2.MainTheorem.Correctness
-  using (normalize-produces-nf)
+module normalizer.Level0V2.MainTheorem.FixpointTheorem
+  (normalize : Term TermCode' TermCode')
+  (normalize-encoded : Term Unit TermCode')
+  (normalize-produces-nf : ∀ (t : Term Unit TermCode') →
+                           IsNormalForm (normalize ∘ t))
+  where
 
 ------------------------------------------------------------------------
 -- The Key Theorem: Fixpoint Implies Normal Form
@@ -53,8 +51,3 @@ abstract
   normalize-encoding-is-nf : (normalize ∘ normalize-encoded) ⟶* normalize-encoded →
                              IsNormalForm normalize-encoded
   normalize-encoding-is-nf = fixpoint-implies-nf normalize-encoded
-
--- Using our proven fixpoint-property from NormalForm:
-abstract
-  normalize-encoded-is-normal : IsNormalForm normalize-encoded
-  normalize-encoded-is-normal = normalize-encoding-is-nf fixpoint-property
