@@ -6,9 +6,9 @@
 -- property empirically.
 --
 -- Key insight: This doesn't add to the TCB because:
---   1. The proofs are already complete (zero postulates)
---   2. This just lets us EXECUTE what we've proven
---   3. The mathematics is trusted, this is just demonstration
+--   1. This just lets us EXECUTE the normalizer
+--   2. Empirical verification complements the formal structure
+--   3. Running the normalizer demonstrates the fixpoint property
 ------------------------------------------------------------------------
 
 module normalizer.Level0V2.Evaluator where

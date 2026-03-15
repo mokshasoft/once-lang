@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- MainTheorem: The Complete Verification Structure
 --
--- This module structures the full proof that the normalizer is correct.
+-- This module structures the proof that the normalizer is correct.
 -- Implementation is split into parameterized submodules.
 -- This module instantiates them with the concrete normalize.
 --
@@ -21,7 +21,6 @@ open import normalizer.Foundations.Encoding
 ------------------------------------------------------------------------
 
 -- Normal Form (general definitions)
--- Contains: IsNormalForm, nf-no-redex, nf-stable, nf-unique
 open import normalizer.Foundations.NormalForm public
 
 -- Confluence
@@ -30,7 +29,7 @@ open import normalizer.Foundations.Confluence
   public
 
 ------------------------------------------------------------------------
--- The Normalizer (heavy import - done once here)
+-- The Normalizer
 ------------------------------------------------------------------------
 
 open import normalizer.Level0V2.Normalize
@@ -38,7 +37,10 @@ open import normalizer.Level0V2.Normalize
   public
 
 ------------------------------------------------------------------------
--- Postulates (proof obligations)
+-- Proof Obligations
+--
+-- These will be filled in as the verification progresses.
+-- Each is a concrete claim that needs to be discharged.
 ------------------------------------------------------------------------
 
 -- The normalizer produces normal forms
@@ -57,11 +59,11 @@ postulate
                                   ((normalize ∘ t) ⟶* t) ⊎ (t ⟶* (normalize ∘ t))
 
 ------------------------------------------------------------------------
--- Correctness (instantiated with concrete normalize and postulates)
+-- Correctness
 ------------------------------------------------------------------------
 
 -- Instantiate the parameterized correctness proof
--- (also re-exports CorrectNormalizer record from Record.agda)
+-- (also re-exports CorrectNormalizer record)
 open import normalizer.Level0V2.MainTheorem.Correctness
   normalize
   normalize-produces-nf
@@ -74,71 +76,61 @@ open import normalizer.Level0V2.MainTheorem.Correctness
 -- Fixpoint Theorem
 ------------------------------------------------------------------------
 
--- Contains: fixpoint-implies-nf, normalize-encoding-is-nf
 open import normalizer.Level0V2.MainTheorem.FixpointTheorem
   normalize
   normalize-encoded
   normalize-produces-nf
   public
 
--- Fixpoint property (needed for normalize-encoded-is-normal)
+-- Fixpoint property (from NormalForm module)
 open import normalizer.Level0V2.NormalForm
   using (fixpoint-property)
   public
 
--- Using our proven fixpoint-property:
+-- The normalizer's encoding is in normal form
 normalize-encoded-is-normal : IsNormalForm normalize-encoded
 normalize-encoded-is-normal = normalize-encoding-is-nf fixpoint-property
 
 ------------------------------------------------------------------------
--- Re-exports from other dependencies
+-- Re-exports
 ------------------------------------------------------------------------
 
--- The encoding infrastructure
 open import normalizer.Level0V2.Normalizer
   using ( refold-idempotent  -- (cata TermF In ∘ encode t) ⟶* encode t
         )
   public
 
 ------------------------------------------------------------------------
--- Summary: The Verification Path
+-- Verification Status
 ------------------------------------------------------------------------
 
 {-
-STATUS OF EACH COMPONENT:
+STRUCTURE:
 
-✓ PROVEN (in submodules):
-  - nf-stable : normal forms don't reduce
-  - nf-unique : normal forms are unique (via confluence)
+Definitions (see code):
+  - IsNormalForm, nf-no-redex, nf-stable, nf-unique
+  - CorrectNormalizer record
   - fixpoint-implies-nf : N(t) ⟶* t → IsNormalForm t  ← KEY THEOREM
-  - normalize-terminates : from strong-normalization
-  - normalize-output-is-nf : from normalize-produces-nf + nf-stable
-  - normalize-preserves : from normalize-preserves-semantics + confluence
+  - normalize-terminates, normalize-output-is-nf, normalize-preserves
   - normalizer-correct : CorrectNormalizer normalize
   - normalize-encoded-is-normal : ⟦normalize⟧ is in normal form
 
-✓ PROVEN (in other modules, zero postulates):
-  - refold-idempotent (encoding infrastructure)
-  - ⇒→⟶* (parallel → multi-step reduction)
-  - All CCC reduction rules
-  - confluence (from complete, ⇒-to-complete)
+Proof obligations (to be filled):
+  Core:
+    - strong-normalization : termination of reduction
+    - normalize-produces-nf : normalizer outputs normal forms
+    - normalize-preserves-semantics : normalizer preserves meaning
+    - fixpoint-property : N(⟦N⟧) ⟶* ⟦N⟧
 
-○ POSTULATED (4 core assumptions):
-  - strong-normalization : termination of reduction
-  - normalize-produces-nf : normalizer outputs normal forms
-  - normalize-preserves-semantics : normalizer preserves meaning
-  - fixpoint-property : N(⟦N⟧) ⟶* ⟦N⟧
+  For confluence:
+    - complete : complete development function
+    - ⇒-to-complete : parallel reduction extends to complete
 
-○ POSTULATED (2 for confluence):
-  - complete : complete development function
-  - ⇒-to-complete : parallel reduction extends to complete
+  Mechanical (12-way case dispatches):
+    - normalize-step, is-id-dispatch, is-fst, is-snd, is-pair,
+      is-inl, is-inr, is-case, is-In, is-Out, is-cata
 
-○ POSTULATED (11 mechanical, in Normalize.agda):
-  - normalize-step, is-id-dispatch, is-fst, is-snd, is-pair,
-    is-inl, is-inr, is-case, is-In, is-Out, is-cata
-  - These are tedious 12-way case dispatches, not mathematical gaps
-
-THE KEY THEOREM (proven):
+KEY INSIGHT:
   fixpoint-implies-nf : N(t) ⟶* t → IsNormalForm t
 
   In a simple system (confluent + terminating):
@@ -153,5 +145,5 @@ TCB0 CLAIM:
     2. Math (CCC rules, confluence, termination)
     3. Mechanical construction (encoding + normalize-step)
 
-  No proof assistant in the trusted path. Agda is scaffolding.
+  Agda is scaffolding, not in the trusted path.
 -}
