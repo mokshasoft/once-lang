@@ -43,7 +43,29 @@ open import normalizer.Level0V2.Normalize
 -- Each is a concrete claim that needs to be discharged.
 ------------------------------------------------------------------------
 
--- The normalizer produces normal forms
+-- NOTE: normalize-produces-nf as stated below is PROBLEMATIC.
+--
+-- Issue: The claim IsNormalForm (normalize ∘ t) says that the COMPOSITION
+-- normalize ∘ t cannot reduce. But normalize = cata TermF normalize-step,
+-- and (cata ∘ (In ∘ x)) CAN reduce via cata-β and associativity.
+--
+-- The fixpoint proofs in Normalize/Fixpoint.agda show actual reduction
+-- sequences, proving that normalize ∘ (encode t) DOES reduce.
+--
+-- Proposed fix: Use IsBetaNormalForm (from Foundations.BetaNormalForm)
+-- which ignores structural rewrites. The key insight is:
+--   1. Encoded terms (encode t) have no beta-redexes
+--   2. The normalizer produces encoded terms
+--   3. Therefore, the OUTPUT is in beta-normal form
+--
+-- The claim should be reformulated to either:
+--   (a) IsBetaNormalForm (result after reduction completes)
+--   (b) Show encode t is beta-normal directly
+--
+-- For now, this postulate is used to make the proof structure compile.
+-- See Foundations/BetaNormalForm.agda for the correct formulation.
+
+-- The normalizer produces normal forms (NEEDS REFORMULATION)
 postulate
   normalize-produces-nf : ∀ (t : Term Unit TermCode') →
                           IsNormalForm (normalize ∘ t)
