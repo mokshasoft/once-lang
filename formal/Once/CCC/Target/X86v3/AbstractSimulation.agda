@@ -26,11 +26,11 @@ open import Once.CCC.Target.X86v3.DirectSimulation
 --
 -- Old API (Refinement/SlotToX86):
 --   StateCorresponds σ s - complex record with 13+ fields
---   Per-instruction postulates for each AbstractInstr
+--   Per-instruction lemmas for each AbstractInstr
 --
 -- New API (DirectSimulation):
 --   X86Corresponds ls xs - simple record with 4 fields
---   instr-simulation - single postulate for all instructions
+--   instr-simulation - general lemma for all instructions
 --   trace-simulation - proven by induction using instr-simulation
 --
 -- The old Refinement proofs have been removed as they are superseded

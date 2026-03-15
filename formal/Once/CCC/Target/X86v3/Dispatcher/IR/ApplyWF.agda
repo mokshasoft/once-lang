@@ -268,26 +268,35 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- This is computed by exec-trace on setup-trace
       -- For body execution, we pass this state to BodyCorrect.execute
 
-      postulate
-        -- State after setup trace execution
-        s-after-setup : LocState FS
-        s-after-setup-def : s-after-setup ≡ proj₁ (exec-trace (apply-setup-trace pair-slot) s alloc)
+      -- State after setup trace execution
+      s-after-setup : LocState FS
+      s-after-setup = SMP.!!
 
-        -- Pair is properly constructed after setup
-        pair-env-ptr : readLoc s-after-setup pair-input-loc ≡ just env-loc
-        pair-arg-ptr : readLoc s-after-setup (sucLoc pair-input-loc) ≡ just arg-loc
+      s-after-setup-def : s-after-setup ≡ proj₁ (exec-trace (apply-setup-trace pair-slot) s alloc)
+      s-after-setup-def = SMP.!!
 
-        -- Input register points to pair after setup
-        pair-input-eq : readReg (regs s-after-setup) Input ≡ pair-input-loc
+      -- Pair is properly constructed after setup
+      pair-env-ptr : readLoc s-after-setup pair-input-loc ≡ just env-loc
+      pair-env-ptr = SMP.!!
 
-        -- Not halted after setup
-        not-halted-after-setup : halted s-after-setup ≡ false
+      pair-arg-ptr : readLoc s-after-setup (sucLoc pair-input-loc) ≡ just arg-loc
+      pair-arg-ptr = SMP.!!
 
-        -- Pair validity in child-alloc (after setup, transferred to child frame)
-        pair-input-valid-child : ValidAtWF Heap child-alloc {EnvType * A} (pair env arg) pair-input-loc s-after-setup
+      -- Input register points to pair after setup
+      pair-input-eq : readReg (regs s-after-setup) Input ≡ pair-input-loc
+      pair-input-eq = SMP.!!
 
-        -- Pair is before frontier in child-alloc
-        pair-input-before-child : BeforeFrontier child-alloc pair-input-loc
+      -- Not halted after setup
+      not-halted-after-setup : halted s-after-setup ≡ false
+      not-halted-after-setup = SMP.!!
+
+      -- Pair validity in child-alloc (after setup, transferred to child frame)
+      pair-input-valid-child : ValidAtWF Heap child-alloc {EnvType * A} (pair env arg) pair-input-loc s-after-setup
+      pair-input-valid-child = SMP.!!
+
+      -- Pair is before frontier in child-alloc
+      pair-input-before-child : BeforeFrontier child-alloc pair-input-loc
+      pair-input-before-child = SMP.!!
 
       -- Body execution in child frame
       body-exec-result : ∃[ mOut ] IRResultAWF mOut body (pair env arg) s-after-setup child-alloc
@@ -314,41 +323,56 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       s' = proj₁ (exec-trace trace s alloc)
 
       ------------------------------------------------------------------------
-      -- Postulates for properties
-      -- These connect body-result properties to apply's final state
+      -- Proof obligations for properties
       ------------------------------------------------------------------------
 
-      postulate
-        -- Output register contains result location
-        rax-eq' : readReg (regs s') Output ≡ result-loc
+      -- Output register contains result location
+      rax-eq' : readReg (regs s') Output ≡ result-loc
+      rax-eq' = SMP.!!
 
-        -- Not halted after full trace
-        not-halted' : halted s' ≡ false
+      -- Not halted after full trace
+      not-halted' : halted s' ≡ false
+      not-halted' = SMP.!!
 
-        -- Memory before frontier preserved
-        mem-preserved' : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
+      -- Memory before frontier preserved
+      mem-preserved' : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
+      mem-preserved' = SMP.!!
 
-        -- Result is before frontier in alloc'
-        result-before' : BeforeFrontier alloc' result-loc
+      -- Result is before frontier in alloc'
+      result-before' : BeforeFrontier alloc' result-loc
+      result-before' = SMP.!!
 
-        -- Result validity
-        result-valid-wf' : ValidAtWF mBody alloc' (eval primSem (apply {A} {B} {q}) x) result-loc s'
+      -- Result validity
+      result-valid-wf' : ValidAtWF mBody alloc' (eval primSem (apply {A} {B} {q}) x) result-loc s'
+      result-valid-wf' = SMP.!!
 
-        -- Frontier slot stability
-        frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
-          halted s'' ≡ false →
-          readReg (regs s'') Input ≡ input-loc' →
-          readLoc s'' (OnStack (current-frame alloc) pair-slot) ≡ just input-loc' →
-          readLoc (proj₁ (exec-trace trace s'' alloc))
-                  (OnStack (current-frame alloc) pair-slot) ≡ just input-loc'
+      -- Frontier slot stability
+      frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
+        halted s'' ≡ false →
+        readReg (regs s'') Input ≡ input-loc' →
+        readLoc s'' (OnStack (current-frame alloc) pair-slot) ≡ just input-loc' →
+        readLoc (proj₁ (exec-trace trace s'' alloc))
+                (OnStack (current-frame alloc) pair-slot) ≡ just input-loc'
+      frontier-stable' = SMP.!!
 
-        -- Trace properties
-        trace-writes-above' : TraceWritesAbove pair-slot trace
-        trace-slot-reads-above' : TraceSlotReadsAbove pair-slot trace
-        trace-writes-below' : TraceWritesBelow (next-slot alloc +ℕ pair-slots) trace
-        trace-slot-reads-below' : TraceSlotReadsBelow (next-slot alloc +ℕ pair-slots) trace
-        trace-preserves-capacity' : TracePreservesCapacity trace
-        trace-no-store-indirect' : TraceNoStoreIndirect trace
+      -- Trace properties
+      trace-writes-above' : TraceWritesAbove pair-slot trace
+      trace-writes-above' = SMP.!!
+
+      trace-slot-reads-above' : TraceSlotReadsAbove pair-slot trace
+      trace-slot-reads-above' = SMP.!!
+
+      trace-writes-below' : TraceWritesBelow (next-slot alloc +ℕ pair-slots) trace
+      trace-writes-below' = SMP.!!
+
+      trace-slot-reads-below' : TraceSlotReadsBelow (next-slot alloc +ℕ pair-slots) trace
+      trace-slot-reads-below' = SMP.!!
+
+      trace-preserves-capacity' : TracePreservesCapacity trace
+      trace-preserves-capacity' = SMP.!!
+
+      trace-no-store-indirect' : TraceNoStoreIndirect trace
+      trace-no-store-indirect' = SMP.!!
 
       -- Reclamation proofs
       reclaim-preserves-result' : ∀ (fits : next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc) →

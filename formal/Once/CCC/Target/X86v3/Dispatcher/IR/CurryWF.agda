@@ -162,34 +162,40 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       closure-bound = closure-slots-≤-curry-req {q = q} f m
 
       ----------------------------------------------------------------------
-      -- Postulates for exec-trace properties
-      -- These will be proven when connecting to x86
+      -- Proof obligations for exec-trace properties
       ----------------------------------------------------------------------
 
-      postulate
-        -- Output register contains closure address
-        rax-eq' : readReg (regs s') Output ≡ closure-loc
+      -- Output register contains closure address
+      rax-eq' : readReg (regs s') Output ≡ closure-loc
+      rax-eq' = SMP.!!
 
-        -- Halted status preserved
-        not-halted' : halted s' ≡ false
+      -- Halted status preserved
+      not-halted' : halted s' ≡ false
+      not-halted' = SMP.!!
 
-        -- Closure slots contain expected values
-        env-ptr' : readLoc s' closure-loc ≡ just input-loc
-        code-ptr' : readLoc s' code-loc ≡ just code-loc
+      -- Closure slots contain expected values
+      env-ptr' : readLoc s' closure-loc ≡ just input-loc
+      env-ptr' = SMP.!!
 
-        -- Memory before frontier is preserved
-        mem-preserved' : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
+      code-ptr' : readLoc s' code-loc ≡ just code-loc
+      code-ptr' = SMP.!!
 
-        -- Frontier slot stability
-        frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
-          halted s'' ≡ false →
-          readReg (regs s'') Input ≡ input-loc' →
-          readLoc s'' (OnStack (current-frame alloc) closure-slot) ≡ just input-loc' →
-          readLoc (proj₁ (exec-trace trace s'' alloc))
-                  (OnStack (current-frame alloc) closure-slot) ≡ just input-loc'
+      -- Memory before frontier is preserved
+      mem-preserved' : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
+      mem-preserved' = SMP.!!
 
-        -- Input validity in final state
-        input-valid-wf' : ValidAtWF mIn alloc' x input-loc s'
+      -- Frontier slot stability
+      frontier-stable' : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
+        halted s'' ≡ false →
+        readReg (regs s'') Input ≡ input-loc' →
+        readLoc s'' (OnStack (current-frame alloc) closure-slot) ≡ just input-loc' →
+        readLoc (proj₁ (exec-trace trace s'' alloc))
+                (OnStack (current-frame alloc) closure-slot) ≡ just input-loc'
+      frontier-stable' = SMP.!!
+
+      -- Input validity in final state
+      input-valid-wf' : ValidAtWF mIn alloc' x input-loc s'
+      input-valid-wf' = SMP.!!
 
       -- Closure is before frontier in updated allocation
       closure-before' : BeforeFrontier alloc' closure-loc

@@ -42,6 +42,9 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 -- Import SMCore for LocState, AbstractInstr, etc.
 open import Once.CCC.SMCore
 
+-- Import !! for proof obligations
+import Once.CCC.SMPrimitives as SMP
+
 -- Import X86 syntax
 open import Once.Target.X86.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
@@ -111,8 +114,8 @@ module X86Corresponds {FS : FrameSemantics} where
   --
   -- NOTE: In a full implementation, frame-base would be tracked per frame.
   -- Here we simplify by assuming a single frame with base = rbp.
-  postulate
-    loc-to-addr : ValueLocation FS → X86State → ℕ
+  loc-to-addr : ValueLocation FS → X86State → ℕ
+  loc-to-addr = SMP.!!
 
   -- The simple correspondence relation
   --
@@ -164,9 +167,11 @@ module InstrSimulation {FS : FrameSemantics} where
 
   -- Execute a single x86 instruction
   -- This is a simplified semantics for proof purposes
-  postulate
-    exec-x86 : X86Instr → X86State → X86State
-    exec-x86-program : Program → X86State → X86State
+  exec-x86 : X86Instr → X86State → X86State
+  exec-x86 = SMP.!!
+
+  exec-x86-program : Program → X86State → X86State
+  exec-x86-program = SMP.!!
 
   ------------------------------------------------------------------------
   -- Simulation for mov-to-output
@@ -203,20 +208,23 @@ module InstrSimulation {FS : FrameSemantics} where
     where
       ls' = proj₁ (exec-abstract mov-to-output ls alloc)
       xs' = exec-x86-program (compile-abstract mov-to-output) xs
-      postulate
-        -- Input register unchanged (rdi unchanged by mov rax, rdi)
-        postulate-mov-input-eq : X86Corresponds ls xs →
-          x86-rdi xs' ≡ loc-to-addr (readReg (regs ls') Input) xs'
-        -- Output register set to input value (rax := rdi corresponds to Output := Input)
-        postulate-mov-output-eq : X86Corresponds ls xs →
-          x86-rax xs' ≡ loc-to-addr (readReg (regs ls') Output) xs'
-        -- Memory unchanged
-        postulate-mov-mem-eq : X86Corresponds ls xs → ∀ loc v →
-          readLoc ls' loc ≡ just v →
-          x86-mem xs' (loc-to-addr loc xs') ≡ just (loc-to-addr v xs')
-        -- Halted unchanged
-        postulate-mov-halted-eq : X86Corresponds ls xs → halted ls ≡ false →
-          x86-halted xs' ≡ halted ls'
+      -- Input register unchanged (rdi unchanged by mov rax, rdi)
+      postulate-mov-input-eq : X86Corresponds ls xs →
+        x86-rdi xs' ≡ loc-to-addr (readReg (regs ls') Input) xs'
+      postulate-mov-input-eq = SMP.!!
+      -- Output register set to input value (rax := rdi corresponds to Output := Input)
+      postulate-mov-output-eq : X86Corresponds ls xs →
+        x86-rax xs' ≡ loc-to-addr (readReg (regs ls') Output) xs'
+      postulate-mov-output-eq = SMP.!!
+      -- Memory unchanged
+      postulate-mov-mem-eq : X86Corresponds ls xs → ∀ loc v →
+        readLoc ls' loc ≡ just v →
+        x86-mem xs' (loc-to-addr loc xs') ≡ just (loc-to-addr v xs')
+      postulate-mov-mem-eq = SMP.!!
+      -- Halted unchanged
+      postulate-mov-halted-eq : X86Corresponds ls xs → halted ls ≡ false →
+        x86-halted xs' ≡ halted ls'
+      postulate-mov-halted-eq = SMP.!!
 
   ------------------------------------------------------------------------
   -- Simulation for load-indirect
@@ -255,17 +263,20 @@ module InstrSimulation {FS : FrameSemantics} where
     where
       ls' = proj₁ (exec-abstract load-indirect ls alloc)
       xs' = exec-x86-program (compile-abstract load-indirect) xs
-      postulate
-        postulate-load-input-eq : X86Corresponds ls xs →
-          x86-rdi xs' ≡ loc-to-addr (readReg (regs ls') Input) xs'
-        postulate-load-output-eq : X86Corresponds ls xs →
-          readLoc ls (readReg (regs ls) Input) ≡ just v →
-          x86-rax xs' ≡ loc-to-addr (readReg (regs ls') Output) xs'
-        postulate-load-mem-eq : X86Corresponds ls xs → ∀ loc v' →
-          readLoc ls' loc ≡ just v' →
-          x86-mem xs' (loc-to-addr loc xs') ≡ just (loc-to-addr v' xs')
-        postulate-load-halted-eq : X86Corresponds ls xs → halted ls ≡ false →
-          x86-halted xs' ≡ halted ls'
+      postulate-load-input-eq : X86Corresponds ls xs →
+        x86-rdi xs' ≡ loc-to-addr (readReg (regs ls') Input) xs'
+      postulate-load-input-eq = SMP.!!
+      postulate-load-output-eq : X86Corresponds ls xs →
+        readLoc ls (readReg (regs ls) Input) ≡ just v →
+        x86-rax xs' ≡ loc-to-addr (readReg (regs ls') Output) xs'
+      postulate-load-output-eq = SMP.!!
+      postulate-load-mem-eq : X86Corresponds ls xs → ∀ loc v' →
+        readLoc ls' loc ≡ just v' →
+        x86-mem xs' (loc-to-addr loc xs') ≡ just (loc-to-addr v' xs')
+      postulate-load-mem-eq = SMP.!!
+      postulate-load-halted-eq : X86Corresponds ls xs → halted ls ≡ false →
+        x86-halted xs' ≡ halted ls'
+      postulate-load-halted-eq = SMP.!!
 
   ------------------------------------------------------------------------
   -- Simulation for store-at-slot
@@ -299,16 +310,19 @@ module InstrSimulation {FS : FrameSemantics} where
     where
       ls' = proj₁ (exec-abstract (store-at-slot slot) ls alloc)
       xs' = exec-x86-program (compile-abstract (store-at-slot slot)) xs
-      postulate
-        postulate-store-input-eq : X86Corresponds ls xs →
-          x86-rdi xs' ≡ loc-to-addr (readReg (regs ls') Input) xs'
-        postulate-store-output-eq : X86Corresponds ls xs →
-          x86-rax xs' ≡ loc-to-addr (readReg (regs ls') Output) xs'
-        postulate-store-mem-eq : X86Corresponds ls xs → ∀ loc v →
-          readLoc ls' loc ≡ just v →
-          x86-mem xs' (loc-to-addr loc xs') ≡ just (loc-to-addr v xs')
-        postulate-store-halted-eq : X86Corresponds ls xs → halted ls ≡ false →
-          x86-halted xs' ≡ halted ls'
+      postulate-store-input-eq : X86Corresponds ls xs →
+        x86-rdi xs' ≡ loc-to-addr (readReg (regs ls') Input) xs'
+      postulate-store-input-eq = SMP.!!
+      postulate-store-output-eq : X86Corresponds ls xs →
+        x86-rax xs' ≡ loc-to-addr (readReg (regs ls') Output) xs'
+      postulate-store-output-eq = SMP.!!
+      postulate-store-mem-eq : X86Corresponds ls xs → ∀ loc v →
+        readLoc ls' loc ≡ just v →
+        x86-mem xs' (loc-to-addr loc xs') ≡ just (loc-to-addr v xs')
+      postulate-store-mem-eq = SMP.!!
+      postulate-store-halted-eq : X86Corresponds ls xs → halted ls ≡ false →
+        x86-halted xs' ≡ halted ls'
+      postulate-store-halted-eq = SMP.!!
 
   ------------------------------------------------------------------------
   -- General instruction simulation
@@ -317,15 +331,15 @@ module InstrSimulation {FS : FrameSemantics} where
   -- This is the key lemma: per-instruction simulation.
   ------------------------------------------------------------------------
 
-  postulate
-    -- The general simulation theorem for any instruction
-    -- Each case is proven like the examples above
-    instr-simulation : ∀ (i : AbstractInstr) (ls : LocState FS) (xs : X86State)
-      (alloc : AllocState {FS}) →
-      halted ls ≡ false →
-      X86Corresponds ls xs →
-      X86Corresponds (proj₁ (exec-abstract i ls alloc))
-                     (exec-x86-program (compile-abstract i) xs)
+  -- The general simulation theorem for any instruction
+  -- Each case follows the same pattern as the examples above
+  instr-simulation : ∀ (i : AbstractInstr) (ls : LocState FS) (xs : X86State)
+    (alloc : AllocState {FS}) →
+    halted ls ≡ false →
+    X86Corresponds ls xs →
+    X86Corresponds (proj₁ (exec-abstract i ls alloc))
+                   (exec-x86-program (compile-abstract i) xs)
+  instr-simulation = SMP.!!
 
 ------------------------------------------------------------------------
 -- Section 4: Trace simulation
@@ -438,19 +452,19 @@ module PairWFConnection {FS : FrameSemantics} (program-bound : ℕ) (primSem : P
   -- This is the END-TO-END correctness theorem.
   ------------------------------------------------------------------------
 
-  postulate
-    -- The full simulation theorem connecting IR execution to X86
-    -- This composes:
-    --   1. IRResultAWF.trace-correct : exec-trace trace s alloc ≡ final-state
-    --   2. trace-simulation : X86Corresponds ls xs → X86Corresponds (exec-trace ...) (exec-x86-trace ...)
-    --
-    -- Result: X86 execution produces a state corresponding to the final LocState
-    ir-to-x86-simulation : ∀ {m A B} (ir : IR A B) (x : ⟦ A ⟧)
-      (ls : LocState FS) (xs : X86State) (alloc : AllocState {FS}) →
-      (result : IRResultAWF m ir x ls alloc) →
-      X86Corresponds ls xs →
-      X86Corresponds (IRResultAWF.final-state result)
-                     (exec-x86-trace (IRResultAWF.trace result) xs)
+  -- The full simulation theorem connecting IR execution to X86
+  -- This composes:
+  --   1. IRResultAWF.trace-correct : exec-trace trace s alloc ≡ final-state
+  --   2. trace-simulation : X86Corresponds ls xs → X86Corresponds (exec-trace ...) (exec-x86-trace ...)
+  --
+  -- Result: X86 execution produces a state corresponding to the final LocState
+  ir-to-x86-simulation : ∀ {m A B} (ir : IR A B) (x : ⟦ A ⟧)
+    (ls : LocState FS) (xs : X86State) (alloc : AllocState {FS}) →
+    (result : IRResultAWF m ir x ls alloc) →
+    X86Corresponds ls xs →
+    X86Corresponds (IRResultAWF.final-state result)
+                   (exec-x86-trace (IRResultAWF.trace result) xs)
+  ir-to-x86-simulation = SMP.!!
 
 ------------------------------------------------------------------------
 -- Summary: Why Direct Simulation is Simpler

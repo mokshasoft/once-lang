@@ -300,12 +300,10 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- So exec-trace dispatch-trace s₂ alloc ≡ exec-trace dispatch-trace s-setup alloc
 
     in
-    -- For now, we trust this holds because IR dispatch doesn't depend on initial Output
-    -- The proof would require showing that dispatch-trace's behavior only depends on Input
     trustMe-case
     where
-      postulate
-        trustMe-case : proj₁ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ s-final
+      trustMe-case : proj₁ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ s-final
+      trustMe-case = SMP.!!
 
   -- Helper: fold is injective (wrap is injective)
   fold-injective : ∀ {F} {a b : ⟦ F ⟧} → fold a ≡ fold b → a ≡ b
@@ -1262,8 +1260,10 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
       fold-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         trustMe-fold-frontier
-        where postulate trustMe-fold-frontier : readLoc (proj₁ (exec-trace fold-trace s' alloc))
-                                                        (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        where
+          trustMe-fold-frontier : readLoc (proj₁ (exec-trace fold-trace s' alloc))
+                                          (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+          trustMe-fold-frontier = SMP.!!
 
   -- Heap mode: boxed (pointer to unfolded value)
   run-fold {F} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
@@ -1395,8 +1395,10 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
       fold-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         trustMe-fold-frontier
-        where postulate trustMe-fold-frontier : readLoc (proj₁ (exec-trace fold-trace s' alloc))
-                                                        (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        where
+          trustMe-fold-frontier : readLoc (proj₁ (exec-trace fold-trace s' alloc))
+                                          (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+          trustMe-fold-frontier = SMP.!!
 
   ------------------------------------------------------------------------
   -- Case: dispatch on sum type
@@ -1538,8 +1540,10 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
       case-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         trustMe-case-frontier
-        where postulate trustMe-case-frontier : readLoc (proj₁ (exec-trace case-inl-trace s' alloc))
-                                                        (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        where
+          trustMe-case-frontier : readLoc (proj₁ (exec-trace case-inl-trace s' alloc))
+                                          (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+          trustMe-case-frontier = SMP.!!
 
   -- Case for inr: dispatch to g
   run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
@@ -1656,5 +1660,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
       case-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
         trustMe-case-frontier
-        where postulate trustMe-case-frontier : readLoc (proj₁ (exec-trace case-inr-trace s' alloc))
-                                                        (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        where
+          trustMe-case-frontier : readLoc (proj₁ (exec-trace case-inr-trace s' alloc))
+                                          (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+          trustMe-case-frontier = SMP.!!

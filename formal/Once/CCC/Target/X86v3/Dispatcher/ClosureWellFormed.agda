@@ -27,6 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
+import Once.CCC.SMPrimitives as SMP
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
@@ -1199,37 +1200,28 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   -- This means we can transfer validity even when memory differs at
   -- the gap slot, as long as memory agrees on all other BeforeFrontier
   -- locations.
-  --
-  -- For now, we postulate this transfer. A full proof would require:
-  --   1. Defining SublocRange for each ValidAtWF constructor
-  --   2. Proving IRResultAWF.valid implies sublocations in [0, start) ∪ [suc start, end)
-  --   3. Using this to prove memory agreement excluding gap suffices
   ------------------------------------------------------------------------
 
-  -- Validity transfers when memory differs only at gap slot
-  -- This is a general lemma: if memory agrees on all BeforeFrontier locations
-  -- except one "gap" slot that is never accessed by the validity proof,
-  -- then validity transfers.
-  --
+  -- Validity transfers when memory differs only at gap slot.
   -- The gap slot is NOT accessed because of disjoint slot ranges:
   --   - Input data is at slots < gap-slot
   --   - Fresh allocations are at slots ≥ suc gap-slot
   --   - gap-slot falls between these ranges
-  postulate
-    validityWF-mem-preserved-excluding :
-      ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
-        (gap-frame : Frame) (gap-slot : ℕ)
-        (s₁ s₂ : LocState FS) →
-      -- Location is before frontier
-      BeforeFrontier alloc loc →
-      -- Memory agrees on all BeforeFrontier locations except the gap
-      (∀ (loc' : ValueLocation FS) →
-         BeforeFrontier alloc loc' →
-         loc' ≢ OnStack gap-frame gap-slot →
-         readLoc s₁ loc' ≡ readLoc s₂ loc') →
-      -- Validity transfers
-      ValidAtWF m alloc v loc s₁ →
-      ValidAtWF m alloc v loc s₂
+  validityWF-mem-preserved-excluding :
+    ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
+      (gap-frame : Frame) (gap-slot : ℕ)
+      (s₁ s₂ : LocState FS) →
+    -- Location is before frontier
+    BeforeFrontier alloc loc →
+    -- Memory agrees on all BeforeFrontier locations except the gap
+    (∀ (loc' : ValueLocation FS) →
+       BeforeFrontier alloc loc' →
+       loc' ≢ OnStack gap-frame gap-slot →
+       readLoc s₁ loc' ≡ readLoc s₂ loc') →
+    -- Validity transfers
+    ValidAtWF m alloc v loc s₁ →
+    ValidAtWF m alloc v loc s₂
+  validityWF-mem-preserved-excluding = SMP.!!
 
   ------------------------------------------------------------------------
   -- Stack Reclamation

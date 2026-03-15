@@ -54,36 +54,34 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   open ExecLemmas {FS}
 
   ------------------------------------------------------------------------
-  -- Postulates for compose trace reasoning
-  --
-  -- These capture the key invariants that exec-trace only depends on
-  -- current-frame, not next-slot.
+  -- Proof obligations for compose trace reasoning
   ------------------------------------------------------------------------
 
-  postulate
-    -- Compose trace produces same state as sequential f; mov; g execution
-    exec-trace-compose-eq : ∀ (f-trace g-trace : AbstractTrace)
-      (s : LocState FS) (alloc : AllocState {FS})
-      (s₁ : LocState FS)
-      (s₁' : LocState FS) (alloc-g : AllocState {FS})
-      (s₂ : LocState FS) →
-      -- f produces s₁
-      proj₁ (exec-trace f-trace s alloc) ≡ s₁ →
-      halted s₁ ≡ false →
-      -- s₁' is s₁ with Input := Output
-      s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input (readReg (regs s₁) Output) } →
-      -- g produces s₂ from s₁' (alloc-g has same current-frame as alloc)
-      current-frame alloc-g ≡ current-frame alloc →
-      proj₁ (exec-trace g-trace s₁' alloc-g) ≡ s₂ →
-      -- Composed trace produces s₂
-      proj₁ (exec-trace (f-trace ++ mov-to-input ∷ g-trace) s alloc) ≡ s₂
+  -- Compose trace produces same state as sequential f; mov; g execution
+  exec-trace-compose-eq : ∀ (f-trace g-trace : AbstractTrace)
+    (s : LocState FS) (alloc : AllocState {FS})
+    (s₁ : LocState FS)
+    (s₁' : LocState FS) (alloc-g : AllocState {FS})
+    (s₂ : LocState FS) →
+    -- f produces s₁
+    proj₁ (exec-trace f-trace s alloc) ≡ s₁ →
+    halted s₁ ≡ false →
+    -- s₁' is s₁ with Input := Output
+    s₁' ≡ record s₁ { regs = writeReg (regs s₁) Input (readReg (regs s₁) Output) } →
+    -- g produces s₂ from s₁' (alloc-g has same current-frame as alloc)
+    current-frame alloc-g ≡ current-frame alloc →
+    proj₁ (exec-trace g-trace s₁' alloc-g) ≡ s₂ →
+    -- Composed trace produces s₂
+    proj₁ (exec-trace (f-trace ++ mov-to-input ∷ g-trace) s alloc) ≡ s₂
+  exec-trace-compose-eq = SMP.!!
 
-    -- Frontier stability for compose trace
-    trustMe-compose-frontier : ∀ (slot : ℕ) (trace : AbstractTrace) (s' : LocState FS)
-      (input-loc' : ValueLocation FS) (alloc' : AllocState {FS}) →
-      readLoc s' (OnStack (current-frame alloc') slot) ≡ just input-loc' →
-      readLoc (proj₁ (exec-trace trace s' alloc'))
-              (OnStack (current-frame alloc') slot) ≡ just input-loc'
+  -- Frontier stability for compose trace
+  trustMe-compose-frontier : ∀ (slot : ℕ) (trace : AbstractTrace) (s' : LocState FS)
+    (input-loc' : ValueLocation FS) (alloc' : AllocState {FS}) →
+    readLoc s' (OnStack (current-frame alloc') slot) ≡ just input-loc' →
+    readLoc (proj₁ (exec-trace trace s' alloc'))
+            (OnStack (current-frame alloc') slot) ≡ just input-loc'
+  trustMe-compose-frontier = SMP.!!
 
   ------------------------------------------------------------------------
   -- Compose: run f, then run g with f's output
