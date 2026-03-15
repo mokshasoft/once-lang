@@ -21,7 +21,7 @@ open import normalizer.Foundations.NormalForm
 open import normalizer.Level0V2.NormalForm
   using (fixpoint-property)
 
-open import normalizer.Level0V2.Normalize.Properties
+open import normalizer.Level0V2.MainTheorem.Correctness
   using (normalize-produces-nf)
 
 ------------------------------------------------------------------------
