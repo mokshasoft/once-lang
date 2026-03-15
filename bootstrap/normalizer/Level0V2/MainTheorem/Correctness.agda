@@ -17,7 +17,7 @@ open import normalizer.Foundations.Confluence
 open import normalizer.Level0V2.Normalize
   using (normalize)
 
-open import normalizer.Level0V2.NormalizeLemmas
+open import normalizer.Foundations.ReductionCombinators
   using (_>>_)
 
 open import normalizer.Level0V2.MainTheorem.NormalFormLemmas
