@@ -40,154 +40,156 @@ CurryPayloadF = (K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)
 
 ------------------------------------------------------------------------
 -- Position dispatch lemmas (left-associated versions)
+-- Wrapped in abstract to prevent term expansion during type-checking
 ------------------------------------------------------------------------
 
-nstep-at-1' : (((normalize-step ∘ inr) ∘ inl)) ⟶* handle-comp
-nstep-at-1' = ⟶1 (⟶-∘-l nstep-inr) >> ⟶1 tail-1-inl
+abstract
+  nstep-at-1' : (((normalize-step ∘ inr) ∘ inl)) ⟶* handle-comp
+  nstep-at-1' = ⟶1 (⟶-∘-l nstep-inr) >> ⟶1 tail-1-inl
 
-nstep-at-2' : (((normalize-step ∘ inr) ∘ inr) ∘ inl) ⟶* handle-fst
-nstep-at-2' =
-  ⟶1 (⟶-∘-l (⟶-∘-l nstep-inr)) >>
-  ⟶1 (⟶-∘-l tail-1-inr) >>
-  ⟶1 tail-2-inl
+  nstep-at-2' : (((normalize-step ∘ inr) ∘ inr) ∘ inl) ⟶* handle-fst
+  nstep-at-2' =
+    ⟶1 (⟶-∘-l (⟶-∘-l nstep-inr)) >>
+    ⟶1 (⟶-∘-l tail-1-inr) >>
+    ⟶1 tail-2-inl
 
-nstep-at-3' : ((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-snd
-nstep-at-3' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-1-inr)) >>
-  ⟶1 (⟶-∘-l tail-2-inr) >>
-  ⟶1 tail-3-inl
+  nstep-at-3' : ((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-snd
+  nstep-at-3' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-1-inr)) >>
+    ⟶1 (⟶-∘-l tail-2-inr) >>
+    ⟶1 tail-3-inl
 
-nstep-at-4' : (((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-pair
-nstep-at-4' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-2-inr)) >>
-  ⟶1 (⟶-∘-l tail-3-inr) >>
-  ⟶1 tail-4-inl
+  nstep-at-4' : (((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-pair
+  nstep-at-4' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-2-inr)) >>
+    ⟶1 (⟶-∘-l tail-3-inr) >>
+    ⟶1 tail-4-inl
 
-nstep-at-5' : ((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-inl
-nstep-at-5' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-3-inr)) >>
-  ⟶1 (⟶-∘-l tail-4-inr) >>
-  ⟶1 tail-5-inl
+  nstep-at-5' : ((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-inl
+  nstep-at-5' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-3-inr)) >>
+    ⟶1 (⟶-∘-l tail-4-inr) >>
+    ⟶1 tail-5-inl
 
-nstep-at-6' : (((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-inr
-nstep-at-6' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-4-inr)) >>
-  ⟶1 (⟶-∘-l tail-5-inr) >>
-  ⟶1 tail-6-inl
+  nstep-at-6' : (((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-inr
+  nstep-at-6' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-4-inr)) >>
+    ⟶1 (⟶-∘-l tail-5-inr) >>
+    ⟶1 tail-6-inl
 
-nstep-at-7' : ((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-case
-nstep-at-7' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-5-inr)) >>
-  ⟶1 (⟶-∘-l tail-6-inr) >>
-  ⟶1 tail-7-inl
+  nstep-at-7' : ((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-case
+  nstep-at-7' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-5-inr)) >>
+    ⟶1 (⟶-∘-l tail-6-inr) >>
+    ⟶1 tail-7-inl
 
-nstep-at-8' : (((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-terminal
-nstep-at-8' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-6-inr)) >>
-  ⟶1 (⟶-∘-l tail-7-inr) >>
-  ⟶1 tail-8-inl
+  nstep-at-8' : (((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-terminal
+  nstep-at-8' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-6-inr)) >>
+    ⟶1 (⟶-∘-l tail-7-inr) >>
+    ⟶1 tail-8-inl
 
-nstep-at-9' : ((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-In
-nstep-at-9' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr)))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-7-inr)) >>
-  ⟶1 (⟶-∘-l tail-8-inr) >>
-  ⟶1 tail-9-inl
+  nstep-at-9' : ((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-In
+  nstep-at-9' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-7-inr)) >>
+    ⟶1 (⟶-∘-l tail-8-inr) >>
+    ⟶1 tail-9-inl
 
-nstep-at-10' : (((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-Out
-nstep-at-10' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr)))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-8-inr)) >>
-  ⟶1 (⟶-∘-l tail-9-inr) >>
-  ⟶1 tail-10-inl
+  nstep-at-10' : (((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-Out
+  nstep-at-10' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-8-inr)) >>
+    ⟶1 (⟶-∘-l tail-9-inr) >>
+    ⟶1 tail-10-inl
 
-nstep-at-11' : ((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-cata
-nstep-at-11' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr)))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr)))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-8-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-9-inr)) >>
-  ⟶1 (⟶-∘-l tail-10-inr) >>
-  ⟶1 tail-11-inl
+  nstep-at-11' : ((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-cata
+  nstep-at-11' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr)))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-8-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-9-inr)) >>
+    ⟶1 (⟶-∘-l tail-10-inr) >>
+    ⟶1 tail-11-inl
 
-nstep-at-12' : (((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-curry
-nstep-at-12' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr)))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr)))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-8-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-9-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-10-inr)) >>
-  ⟶1 (⟶-∘-l tail-11-inr) >>
-  ⟶1 tail-12-inl
+  nstep-at-12' : (((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-curry
+  nstep-at-12' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr)))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-8-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-9-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-10-inr)) >>
+    ⟶1 (⟶-∘-l tail-11-inr) >>
+    ⟶1 tail-12-inl
 
-nstep-at-13' : (((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ⟶* handle-apply
-nstep-at-13' =
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr)))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr))))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr)))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr))))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-8-inr)))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-9-inr))) >>
-  ⟶1 (⟶-∘-l (⟶-∘-l tail-10-inr)) >>
-  ⟶1 (⟶-∘-l tail-11-inr) >>
-  ⟶1 tail-12-inr
+  nstep-at-13' : (((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ⟶* handle-apply
+  nstep-at-13' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr)))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-8-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-9-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-10-inr)) >>
+    ⟶1 (⟶-∘-l tail-11-inr) >>
+    ⟶1 tail-12-inr
 
-------------------------------------------------------------------------
--- Key lemma: normalize-step ∘ inl ⟶ handle-id = In ∘ inl
-------------------------------------------------------------------------
+  ------------------------------------------------------------------------
+  -- Key lemma: normalize-step ∘ inl ⟶ handle-id = In ∘ inl
+  ------------------------------------------------------------------------
 
-nstep-inl : (normalize-step ∘ inl) ⟶ handle-id
-nstep-inl = case-inl
+  nstep-inl : (normalize-step ∘ inl) ⟶ handle-id
+  nstep-inl = case-inl
 
 ------------------------------------------------------------------------
 -- Base case: noredex-fixpoint-id
@@ -667,26 +669,28 @@ abstract
 
 ------------------------------------------------------------------------
 -- Main fixpoint theorem (by structural induction on NoRedex)
+-- Wrapped in abstract to prevent term expansion during type-checking
 ------------------------------------------------------------------------
 
-noredex-fixpoint : ∀ {A B} (t : Term A B) →
-                   NoRedex t →
-                   (normalize ∘ encode t) ⟶* encode t
+abstract
+  noredex-fixpoint : ∀ {A B} (t : Term A B) →
+                     NoRedex t →
+                     (normalize ∘ encode t) ⟶* encode t
 
--- Base cases: delegate to individual proofs
-noredex-fixpoint id nr-id = noredex-fixpoint-id
-noredex-fixpoint fst nr-fst = noredex-fixpoint-fst
-noredex-fixpoint snd nr-snd = noredex-fixpoint-snd
-noredex-fixpoint inl nr-inl = noredex-fixpoint-inl
-noredex-fixpoint inr nr-inr = noredex-fixpoint-inr
-noredex-fixpoint terminal nr-terminal = noredex-fixpoint-terminal
-noredex-fixpoint In nr-In = noredex-fixpoint-In'
-noredex-fixpoint Out nr-Out = noredex-fixpoint-Out
-noredex-fixpoint apply nr-apply = noredex-fixpoint-apply
+  -- Base cases: delegate to individual proofs
+  noredex-fixpoint id nr-id = noredex-fixpoint-id
+  noredex-fixpoint fst nr-fst = noredex-fixpoint-fst
+  noredex-fixpoint snd nr-snd = noredex-fixpoint-snd
+  noredex-fixpoint inl nr-inl = noredex-fixpoint-inl
+  noredex-fixpoint inr nr-inr = noredex-fixpoint-inr
+  noredex-fixpoint terminal nr-terminal = noredex-fixpoint-terminal
+  noredex-fixpoint In nr-In = noredex-fixpoint-In'
+  noredex-fixpoint Out nr-Out = noredex-fixpoint-Out
+  noredex-fixpoint apply nr-apply = noredex-fixpoint-apply
 
--- Position 4 (pair): encode ⟨f,g⟩ = In ∘ inr^4 ∘ inl ∘ ⟨encode f, encode g⟩
-noredex-fixpoint ⟨ f , g ⟩ (nr-pair nrf nrg) = step1 >> step2 >> step3 >> step4
-  where
+  -- Position 4 (pair): encode ⟨f,g⟩ = In ∘ inr^4 ∘ inl ∘ ⟨encode f, encode g⟩
+  noredex-fixpoint ⟨ f , g ⟩ (nr-pair nrf nrg) = step1 >> step2 >> step3 >> step4
+    where
     N : Term TermCode' TermCode'
     N = cata TermF normalize-step
 
@@ -752,9 +756,9 @@ noredex-fixpoint ⟨ f , g ⟩ (nr-pair nrf nrg) = step1 >> step2 >> step3 >> st
             (⟶1 assoc-r >> ∘-cong-right' inr
             (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))
 
--- Position 7 (case): encode [f,g] = In ∘ inr^7 ∘ inl ∘ ⟨encode f, encode g⟩
-noredex-fixpoint [ f , g ] (nr-case nrf nrg) = step1 >> step2 >> step3 >> step4
-  where
+  -- Position 7 (case): encode [f,g] = In ∘ inr^7 ∘ inl ∘ ⟨encode f, encode g⟩
+  noredex-fixpoint [ f , g ] (nr-case nrf nrg) = step1 >> step2 >> step3 >> step4
+    where
     N : Term TermCode' TermCode'
     N = cata TermF normalize-step
 
@@ -838,9 +842,9 @@ noredex-fixpoint [ f , g ] (nr-case nrf nrg) = step1 >> step2 >> step3 >> step4
             (⟶1 assoc-r >> ∘-cong-right' inr
             (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))
 
--- Position 12 (curry): encode (curry f) = In ∘ inr^12 ∘ inl ∘ ⟨⟨⌜A⌝,⌜B⌝⟩, ⟨⌜C⌝, encode f⟩⟩
-noredex-fixpoint (curry {A} {B} {C} f) (nr-curry nrf) = step1 >> step2 >> step3 >> step4
-  where
+  -- Position 12 (curry): encode (curry f) = In ∘ inr^12 ∘ inl ∘ ⟨⟨⌜A⌝,⌜B⌝⟩, ⟨⌜C⌝, encode f⟩⟩
+  noredex-fixpoint (curry {A} {B} {C} f) (nr-curry nrf) = step1 >> step2 >> step3 >> step4
+    where
     N : Term TermCode' TermCode'
     N = cata TermF normalize-step
 
@@ -915,9 +919,9 @@ noredex-fixpoint (curry {A} {B} {C} f) (nr-curry nrf) = step1 >> step2 >> step3 
             (⟶1 assoc-r >> ∘-cong-right' inr
             (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))))))
 
--- Position 11 (cata): encode (cata F alg) = In ∘ inr^11 ∘ inl ∘ ⟨⌜F⌝, encode alg⟩
-noredex-fixpoint (cata F alg) (nr-cata nralg) = step1 >> step2 >> step3 >> step4
-  where
+  -- Position 11 (cata): encode (cata F alg) = In ∘ inr^11 ∘ inl ∘ ⟨⌜F⌝, encode alg⟩
+  noredex-fixpoint (cata F alg) (nr-cata nralg) = step1 >> step2 >> step3 >> step4
+    where
     N : Term TermCode' TermCode'
     N = cata TermF normalize-step
 
@@ -983,9 +987,9 @@ noredex-fixpoint (cata F alg) (nr-cata nralg) = step1 >> step2 >> step3 >> step4
             (⟶1 assoc-r >> ∘-cong-right' inr
             (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))))))
 
--- Position 1 (comp): encode (f ∘ g) = In ∘ inr ∘ inl ∘ ⟨encode f, encode g⟩
-noredex-fixpoint (f ∘ g) (nr-comp nrf nrg nisf nisg) = step1 >> step2 >> step3 >> step4
-  where
+  -- Position 1 (comp): encode (f ∘ g) = In ∘ inr ∘ inl ∘ ⟨encode f, encode g⟩
+  noredex-fixpoint (f ∘ g) (nr-comp nrf nrg nisf nisg) = step1 >> step2 >> step3 >> step4
+    where
     N : Term TermCode' TermCode'
     N = cata TermF normalize-step
 
