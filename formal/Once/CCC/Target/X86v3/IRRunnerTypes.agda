@@ -4,7 +4,7 @@
 -- DEPRECATED: This module used the old StateCorresponds from Refinement.
 --
 -- The new approach uses DirectSimulation with X86Corresponds which is
--- much simpler. The trace-based proof in PairWF2/Dispatcher produces
+-- much simpler. The trace-based proof in PairWF/Dispatcher produces
 -- IRResultAWF with traces that directly simulate to x86.
 --
 -- This file is kept as a stub for backward compatibility.

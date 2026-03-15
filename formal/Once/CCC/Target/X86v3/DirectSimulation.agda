@@ -22,7 +22,7 @@
 --   1. X86Corresponds: simple LocState ↔ X86State relation
 --   2. Per-instruction simulation lemmas
 --   3. Trace simulation theorem
---   4. Connection to PairWF2's trace-correct
+--   4. Connection to PairWF's trace-correct
 ------------------------------------------------------------------------
 
 module Once.CCC.Target.X86v3.DirectSimulation where
@@ -55,7 +55,7 @@ open import Once.Target.X86.Syntax
 open import Once.CCC.Target.X86v3.AbstractToX86
   using (compile-abstract; compile-trace; slot-to-disp)
 
--- Import IR types (needed for PairWF2Connection)
+-- Import IR types (needed for PairWFConnection)
 open import Once.CCC.IR using (PrimSem; IR; eval; ir-size)
 
 -- Import type interpretation (needed for ir-to-x86-simulation signature)
@@ -382,9 +382,9 @@ module TraceSimulation {FS : FrameSemantics} where
     in trace-simulation is ls' xs' alloc' corr'
 
 ------------------------------------------------------------------------
--- Section 5: Connection to PairWF2
+-- Section 5: Connection to PairWF
 --
--- PairWF2 provides:
+-- PairWF provides:
 --   - IRResultAWF with trace and trace-correct : exec-trace trace s alloc ≡ final-state
 --
 -- Our trace-simulation theorem shows:
@@ -406,7 +406,7 @@ module TraceSimulation {FS : FrameSemantics} where
 --   - Total proof is <100 lines
 ------------------------------------------------------------------------
 
-module PairWF2Connection {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module PairWFConnection {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrameSemantics FS
   open MemOps {FS}
   open AbstractExec {FS}
@@ -483,7 +483,7 @@ module PairWF2Connection {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
 -- Each instruction has a clear semantics and a direct x86 translation.
 -- Simulation is "almost trivial" by construction.
 --
--- The complexity in PairWF2 (memory reasoning, trace composition) is
+-- The complexity in PairWF (memory reasoning, trace composition) is
 -- ORTHOGONAL to x86 simulation. It's about proving IR correctness at
 -- the abstract level, not about x86 specifics.
 ------------------------------------------------------------------------

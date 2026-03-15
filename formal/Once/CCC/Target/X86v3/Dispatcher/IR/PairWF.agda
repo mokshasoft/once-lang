@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.CCC.Target.X86v3.IR.PairWF2
+-- Once.CCC.Target.X86v3.IR.PairWF
 --
 -- PairWF proof using SMPrimitives for memory reasoning.
 --
@@ -7,7 +7,7 @@
 -- we import SMPrimitives qualified and use it for the memory primitives.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.Dispatcher.IR.PairWF2 where
+module Once.CCC.Target.X86v3.Dispatcher.IR.PairWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-antisym; m≤m+n; n≤1+n; +-comm; +-assoc; +-monoˡ-≤; +-monoʳ-≤; m<m+n; <-≤-trans; ≤-<-trans; <⇒≤; <⇒≢; ≮⇒≥; ≰⇒>; ≤∧≢⇒<; _<?_; _≤?_; m<1+n⇒m≤n)
@@ -36,10 +36,10 @@ just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
 just-injective refl = refl
 
 ------------------------------------------------------------------------
--- PairWF2 Implementation
+-- PairWF Implementation
 ------------------------------------------------------------------------
 
-module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrameSemantics FS
   open FrontierInvariant {FS}
   open MemOps {FS}

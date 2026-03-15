@@ -54,11 +54,11 @@ open import Once.CCC.Target.X86v3.Dispatcher.SizeBoundLemma public
 -- Import helper modules
 ------------------------------------------------------------------------
 
-import Once.CCC.Target.X86v3.Dispatcher.IR.SimpleWF2 as SimpleWFModule
-import Once.CCC.Target.X86v3.Dispatcher.IR.ComposeWF2 as ComposeWFModule
-import Once.CCC.Target.X86v3.Dispatcher.IR.PairWF2 as PairWF2Module
-import Once.CCC.Target.X86v3.Dispatcher.IR.CurryWF2 as CurryWFModule
-import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF2 as ApplyWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.SimpleWF as SimpleWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.ComposeWF as ComposeWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.PairWF as PairWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.CurryWF as CurryWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF as ApplyWFModule
 
 -- Import write operations from separate module
 open import Once.CCC.Target.X86v3.Dispatcher.WriteOps public using (module WriteWithDisjoint)
@@ -199,20 +199,20 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open FrontierLemmas {FS}
 
   -- Import simple IR implementations (id, fst, snd, terminal)
-  open SimpleWFModule.SimpleWF2Impl {FS} program-bound primSem
+  open SimpleWFModule.SimpleWFImpl {FS} program-bound primSem
 
   -- Import compose IR implementation
-  open ComposeWFModule.ComposeWF2Impl {FS} program-bound primSem
+  open ComposeWFModule.ComposeWFImpl {FS} program-bound primSem
 
-  -- Import pair IR implementation (using PairWF2 - the new trace-based proof)
-  open PairWF2Module.PairWF2Impl {FS} program-bound primSem
+  -- Import pair IR implementation (using PairWF - the new trace-based proof)
+  open PairWFModule.PairWFImpl {FS} program-bound primSem
 
   -- Import curry IR implementation
-  open CurryWFModule.CurryWF2Impl {FS} program-bound primSem
+  open CurryWFModule.CurryWFImpl {FS} program-bound primSem
 
   -- Import apply IR implementation (pass child-frame and escape analysis parameters)
   -- DYNAMIC CAPACITY: child-capacity and parent-bound-eq removed
-  open ApplyWFModule.ApplyWF2Impl {FS} program-bound primSem
+  open ApplyWFModule.ApplyWFImpl {FS} program-bound primSem
     get-child-frame child-frame-ordered child-frame-adjacent
     escape-result-survives
 

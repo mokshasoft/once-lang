@@ -1,11 +1,11 @@
 ------------------------------------------------------------------------
--- Once.CCC.Target.X86v3.IR.SimpleWF2
+-- Once.CCC.Target.X86v3.IR.SimpleWF
 --
 -- Simple IR cases using the clean trace-based structure.
 -- Final states defined by exec-trace, making trace-correct = refl.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.Dispatcher.IR.SimpleWF2 where
+module Once.CCC.Target.X86v3.Dispatcher.IR.SimpleWF where
 
 open import Data.Nat using (ℕ; _<_; _≤_) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl; m≤m+n)
@@ -29,7 +29,7 @@ import Once.CCC.SMPrimitives as SMP
 -- Simple IR implementations
 ------------------------------------------------------------------------
 
-module SimpleWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}

@@ -12,7 +12,7 @@
 --
 -- This decomposes into two layers:
 --
---   Layer 1: IR → AbstractTrace (via Dispatcher/PairWF2)
+--   Layer 1: IR → AbstractTrace (via Dispatcher/PairWF)
 --   Layer 2: AbstractTrace → x86 (via DirectSimulation)
 --
 -- Current status:
@@ -202,7 +202,7 @@ open import Once.CCC.Target.X86v3.DirectSimulation
 --   │            ▼                             ▼                      │
 --   │     ┌────────────┐               ┌──────────────┐               │
 --   │     │  Dispatcher │               │ compile-trace│               │
---   │     │  (PairWF2)  │               │ (AbstractToX86)              │
+--   │     │  (PairWF)  │               │ (AbstractToX86)              │
 --   │     └─────┬──────┘               └──────┬───────┘               │
 --   │           │                             │                       │
 --   │           │ IRResultAWF.trace           │                       │
@@ -231,7 +231,7 @@ open import Once.CCC.Target.X86v3.DirectSimulation
 --
 -- For ⟨ f , g ⟩:
 --
---   1. PairWF2.run-pair produces IRResultAWF with:
+--   1. PairWF.run-pair produces IRResultAWF with:
 --      - trace: sequence of abstract instructions
 --      - trace-correct: exec-trace trace s alloc ≡ final-state
 --      - result-valid-wf: pair value valid at result-loc

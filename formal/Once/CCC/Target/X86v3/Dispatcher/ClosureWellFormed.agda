@@ -1288,7 +1288,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   -- and all sub-locations of a valid value are at slots < n (captured by
   -- BeforeFrontier with appropriate next-slot), then validity is preserved.
   --
-  -- This is the core insight for PairWF2 and similar proofs:
+  -- This is the core insight for PairWF and similar proofs:
   --   - IR results have sub-locations at slots < reclaimable-slot
   --   - Subsequent traces write at slots ≥ reclaimable-slot
   --   - Therefore validity is preserved through those traces

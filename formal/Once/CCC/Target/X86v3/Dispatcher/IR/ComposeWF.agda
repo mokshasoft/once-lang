@@ -1,11 +1,11 @@
 ------------------------------------------------------------------------
--- Once.CCC.Target.X86v3.IR.ComposeWF2
+-- Once.CCC.Target.X86v3.IR.ComposeWF
 --
 -- Compose IR implementation with clean trace-based structure.
 -- Final state defined by exec-trace, making trace-correct = refl.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86v3.Dispatcher.IR.ComposeWF2 where
+module Once.CCC.Target.X86v3.Dispatcher.IR.ComposeWF where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; m≤m+n)
@@ -29,7 +29,7 @@ import Once.CCC.SMPrimitives as SMP
 -- Compose implementation
 ------------------------------------------------------------------------
 
-module ComposeWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
