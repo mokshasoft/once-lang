@@ -31,47 +31,55 @@ postulate
 
 ------------------------------------------------------------------------
 -- Diamond Property (proven from ⟹-to-complete)
+-- Wrapped in abstract to prevent term expansion
 ------------------------------------------------------------------------
 
-diamond : ∀ {A B} {t u v : Term A B} →
-          t ⟹ u → t ⟹ v →
-          ∃[ w ] ((u ⟹ w) × (v ⟹ w))
-diamond {t = t} p q = complete t , (⟹-to-complete p , ⟹-to-complete q)
+abstract
+  diamond : ∀ {A B} {t u v : Term A B} →
+            t ⟹ u → t ⟹ v →
+            ∃[ w ] ((u ⟹ w) × (v ⟹ w))
+  diamond {t = t} p q = complete t , (⟹-to-complete p , ⟹-to-complete q)
 
 ------------------------------------------------------------------------
 -- Strip Lemma (proven)
+-- Wrapped in abstract to prevent term expansion
 ------------------------------------------------------------------------
 
-strip : ∀ {A B} {t u v : Term A B} →
-        t ⟹ u → t ⟹* v →
-        ∃[ w ] ((u ⟹* w) × (v ⟹ w))
-strip {t = t} p done⟹ with diamond p (⟹-refl t)
-... | w , (uw , tw) = w , (step⟹ uw done⟹ , tw)
-strip p (step⟹ q qs) with diamond p q
-... | w , (pw , qw) with strip qw qs
-... | w' , (qws , rw) = w' , (step⟹ pw qws , rw)
+abstract
+  strip : ∀ {A B} {t u v : Term A B} →
+          t ⟹ u → t ⟹* v →
+          ∃[ w ] ((u ⟹* w) × (v ⟹ w))
+  strip {t = t} p done⟹ with diamond p (⟹-refl t)
+  ... | w , (uw , tw) = w , (step⟹ uw done⟹ , tw)
+  strip p (step⟹ q qs) with diamond p q
+  ... | w , (pw , qw) with strip qw qs
+  ... | w' , (qws , rw) = w' , (step⟹ pw qws , rw)
 
 ------------------------------------------------------------------------
 -- Confluence for Parallel Reduction (proven)
+-- Wrapped in abstract to prevent term expansion
 ------------------------------------------------------------------------
 
-confluence⟹ : ∀ {A B} {t u v : Term A B} →
-              t ⟹* u → t ⟹* v →
-              ∃[ w ] ((u ⟹* w) × (v ⟹* w))
-confluence⟹ done⟹ qs = _ , (qs , done⟹)
-confluence⟹ (step⟹ p ps) qs with strip p qs
-... | w , (pw , qw) with confluence⟹ ps pw
-... | w' , (pws , qws) = w' , (pws , step⟹ qw qws)
+abstract
+  confluence⟹ : ∀ {A B} {t u v : Term A B} →
+                t ⟹* u → t ⟹* v →
+                ∃[ w ] ((u ⟹* w) × (v ⟹* w))
+  confluence⟹ done⟹ qs = _ , (qs , done⟹)
+  confluence⟹ (step⟹ p ps) qs with strip p qs
+  ... | w , (pw , qw) with confluence⟹ ps pw
+  ... | w' , (pws , qws) = w' , (pws , step⟹ qw qws)
 
 ------------------------------------------------------------------------
 -- Confluence for Single-Step Reduction (proven)
+-- Wrapped in abstract to prevent term expansion
 ------------------------------------------------------------------------
 
-confluence : ∀ {A B} {t u v : Term A B} →
-             t ⟶* u → t ⟶* v →
-             ∃[ w ] ((u ⟶* w) × (v ⟶* w))
-confluence p q with confluence⟹ (⟶*→⟹* p) (⟶*→⟹* q)
-... | w , (pw , qw) = w , (⟹*→⟶* pw , ⟹*→⟶* qw)
+abstract
+  confluence : ∀ {A B} {t u v : Term A B} →
+               t ⟶* u → t ⟶* v →
+               ∃[ w ] ((u ⟶* w) × (v ⟶* w))
+  confluence p q with confluence⟹ (⟶*→⟹* p) (⟶*→⟹* q)
+  ... | w , (pw , qw) = w , (⟹*→⟶* pw , ⟹*→⟶* qw)
 
 ------------------------------------------------------------------------
 -- Summary
