@@ -26,6 +26,9 @@ open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
+-- Import SMPrimitives qualified for trace predicates
+import Once.CCC.SMPrimitives as SMP
+
 ------------------------------------------------------------------------
 -- Compose implementation
 ------------------------------------------------------------------------
@@ -35,7 +38,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   open MemOps {FS}
   open WriteOps {FS}
   open AbstractExec {FS}
+  open TraceComposition {FS}
   open FrameSemantics FS
+
+  -- Open SMPrimitives modules for trace predicates
+  open SMP.TracePrimitives {FS}
 
   open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -344,6 +351,24 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
         compose-trace-preserves-capacity : TracePreservesCapacity compose-trace
         compose-trace-preserves-capacity = tpc-++ f-tpc (tpc-∷ ipc-mov-to-input g-tpc)
 
+        -- Trace has no store-indirect instructions
+        f-nsi : SMP.TraceNoStoreIndirect f-trace
+        f-nsi = IRResultAWF.trace-no-store-indirect result-f
+        g-nsi : SMP.TraceNoStoreIndirect g-trace
+        g-nsi = IRResultAWF.trace-no-store-indirect result-g
+        compose-trace-no-store-indirect : SMP.TraceNoStoreIndirect compose-trace
+        compose-trace-no-store-indirect =
+          SMP.trace-no-store-indirect-append f-trace (mov-to-input ∷ g-trace)
+            f-nsi (tt , g-nsi)
+
+        -- Trace preserves halted
+        f-tph : TracePreservesHaltedP f-trace
+        f-tph = IRResultAWF.trace-preserves-halted result-f
+        g-tph : TracePreservesHaltedP g-trace
+        g-tph = IRResultAWF.trace-preserves-halted result-g
+        compose-trace-preserves-halted : TracePreservesHaltedP compose-trace
+        compose-trace-preserves-halted = tph-++ f-tph (tph-∷ iph-mov-to-input g-tph)
+
         -- Frontier slot stability for compose uses a postulate (proof outline above)
         compose-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
           halted s' ≡ false →
@@ -389,12 +414,12 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
             g-ra-at-reclaim : TraceSlotReadsAbove reclaim-f g-trace
             g-ra-at-reclaim = IRResultAWF.trace-slot-reads-above result-g
             g-ra : TraceSlotReadsAbove n g-trace
-            g-ra = trace-reads-above-mono n reclaim-f g-trace
+            g-ra = trace-slot-reads-above-mono n reclaim-f g-trace
                      (IRResultAWF.reclaim-monotone result-f) g-ra-at-reclaim
             mov-g-ra : TraceSlotReadsAbove n (mov-to-input ∷ g-trace)
             mov-g-ra = g-ra  -- mov-to-input has no slot read
           in
-          trace-reads-above-append n f-trace (mov-to-input ∷ g-trace) f-ra mov-g-ra
+          trace-slot-reads-above-append n f-trace (mov-to-input ∷ g-trace) f-ra mov-g-ra
 
         -- Trace writes below: compose-trace = f-trace ++ mov-to-input ∷ g-trace
         -- compose-reclaim = reclaim-g
@@ -408,7 +433,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
             f-wb-at-reclaim-f : TraceWritesBelow reclaim-f f-trace
             f-wb-at-reclaim-f = IRResultAWF.trace-writes-below result-f
             f-wb : TraceWritesBelow reclaim-g f-trace
-            f-wb = trace-writes-below-mono reclaim-g reclaim-f f-trace
+            f-wb = trace-writes-below-mono reclaim-f reclaim-g f-trace
                      (IRResultAWF.reclaim-monotone result-g) f-wb-at-reclaim-f
             -- g-trace writes below reclaim-g
             g-wb : TraceWritesBelow reclaim-g g-trace
@@ -427,7 +452,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
             f-rb-at-reclaim-f : TraceSlotReadsBelow reclaim-f f-trace
             f-rb-at-reclaim-f = IRResultAWF.trace-slot-reads-below result-f
             f-rb : TraceSlotReadsBelow reclaim-g f-trace
-            f-rb = trace-reads-below-mono reclaim-g reclaim-f f-trace
+            f-rb = trace-slot-reads-below-mono reclaim-f reclaim-g f-trace
                      (IRResultAWF.reclaim-monotone result-g) f-rb-at-reclaim-f
             -- g-trace reads below reclaim-g
             g-rb : TraceSlotReadsBelow reclaim-g g-trace
@@ -436,7 +461,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
             mov-g-rb : TraceSlotReadsBelow reclaim-g (mov-to-input ∷ g-trace)
             mov-g-rb = g-rb  -- mov-to-input has no slot read
           in
-          trace-reads-below-append reclaim-g f-trace (mov-to-input ∷ g-trace) f-rb mov-g-rb
+          trace-slot-reads-below-append reclaim-g f-trace (mov-to-input ∷ g-trace) f-rb mov-g-rb
 
     in mOut , record
       { result-loc = IRResultAWF.result-loc result-g
@@ -477,4 +502,6 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; trace-writes-below = compose-trace-writes-below
       ; trace-slot-reads-below = compose-trace-slot-reads-below
       ; trace-preserves-capacity = compose-trace-preserves-capacity
+      ; trace-no-store-indirect = compose-trace-no-store-indirect
+      ; trace-preserves-halted = compose-trace-preserves-halted
       }

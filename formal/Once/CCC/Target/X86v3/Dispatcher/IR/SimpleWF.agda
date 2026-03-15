@@ -22,6 +22,9 @@ open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
+-- Import SMPrimitives qualified for trace predicates
+import Once.CCC.SMPrimitives as SMP
+
 ------------------------------------------------------------------------
 -- Simple IR implementations
 ------------------------------------------------------------------------
@@ -34,6 +37,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   open ExecLemmas {FS}
   open AbstractExec {FS}
   open FrameSemantics FS
+
+  -- Open SMPrimitives modules for trace predicates
+  open SMP.TracePrimitives {FS}
 
   open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -67,6 +73,12 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡ exec (mov Output Input) s
   mov-to-output-trace-state s alloc not-halted =
     cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
+
+  -- Alias for frontier-slot-stable proofs
+  mov-to-output-state-eq : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡ exec (mov Output Input) s
+  mov-to-output-state-eq = mov-to-output-trace-state
 
   -- load-indirect state correctness (PROVEN)
   load-indirect-trace-state : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
@@ -134,6 +146,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      ; trace-no-store-indirect = tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }
 
   ------------------------------------------------------------------------
@@ -205,6 +219,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect tpc-[]
+      ; trace-no-store-indirect = tt , tt
+      ; trace-preserves-halted = tph-∷ iph-load-indirect tph-[]
       }
 
   ------------------------------------------------------------------------
@@ -276,6 +292,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc tpc-[]
+      ; trace-no-store-indirect = tt , tt
+      ; trace-preserves-halted = tph-∷ iph-load-indirect-suc tph-[]
       }
 
   ------------------------------------------------------------------------
@@ -328,6 +346,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      ; trace-no-store-indirect = tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }
 
   ------------------------------------------------------------------------
@@ -385,6 +405,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      ; trace-no-store-indirect = tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }
 
   ------------------------------------------------------------------------
@@ -448,4 +470,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt  -- no slot writes
       ; trace-slot-reads-below = tt  -- no slot reads
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      ; trace-no-store-indirect = tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }

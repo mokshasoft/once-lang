@@ -24,6 +24,9 @@ open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
+-- Import SMPrimitives qualified for trace predicates
+import Once.CCC.SMPrimitives as SMP
+
 ------------------------------------------------------------------------
 -- Curry implementation
 ------------------------------------------------------------------------
@@ -36,6 +39,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open ExecLemmas {FS}
   open AbstractExec {FS}
   open FrameSemantics FS
+
+  -- Open SMPrimitives modules for trace predicates
+  open SMP.TracePrimitives {FS}
 
   open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -135,6 +141,13 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-writes-below = curry-trace-writes-below
       ; trace-slot-reads-below = curry-trace-slot-reads-below
       ; trace-preserves-capacity = curry-trace-preserves-capacity
+      ; trace-no-store-indirect = tt , tt , tt , tt , tt , tt
+      ; trace-preserves-halted =
+          tph-∷ iph-mov-to-output
+          (tph-∷ iph-store-at-slot
+          (tph-∷ iph-lea-slot
+          (tph-∷ iph-store-at-slot
+          (tph-∷ iph-lea-slot tph-[]))))
       }
     where
       -- Size bound for body

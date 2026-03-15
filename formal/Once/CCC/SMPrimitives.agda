@@ -1272,6 +1272,7 @@ module TracePrimitives {FS : FrameSemantics} where
     -- We include them in InstrPreservesHalted for compositional proofs.
     iph-load-from-slot     : ∀ {slot} → InstrPreservesHalted (load-from-slot slot)
     iph-load-indirect      : InstrPreservesHalted load-indirect
+    iph-load-indirect-suc  : InstrPreservesHalted load-indirect-suc
     iph-restore-input      : ∀ {slot} → InstrPreservesHalted (restore-input slot)
 
   -- Load instructions: these cases require the read to succeed.
@@ -1286,6 +1287,9 @@ module TracePrimitives {FS : FrameSemantics} where
     load-indirect-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
       halted s ≡ false →
       halted (proj₁ (exec-abstract load-indirect s alloc)) ≡ false
+    load-indirect-suc-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+      halted s ≡ false →
+      halted (proj₁ (exec-abstract load-indirect-suc s alloc)) ≡ false
     restore-input-preserves-halted : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
       halted s ≡ false →
       halted (proj₁ (exec-abstract (restore-input slot) s alloc)) ≡ false
@@ -1313,6 +1317,8 @@ module TracePrimitives {FS : FrameSemantics} where
     load-from-slot-preserves-halted slot s alloc h-eq
   exec-abstract-preserves-halted load-indirect s alloc h-eq iph-load-indirect =
     load-indirect-preserves-halted s alloc h-eq
+  exec-abstract-preserves-halted load-indirect-suc s alloc h-eq iph-load-indirect-suc =
+    load-indirect-suc-preserves-halted s alloc h-eq
   exec-abstract-preserves-halted (restore-input slot) s alloc h-eq iph-restore-input =
     restore-input-preserves-halted slot s alloc h-eq
 

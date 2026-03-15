@@ -24,6 +24,9 @@ open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
+-- Import SMPrimitives qualified for trace predicates
+import Once.CCC.SMPrimitives as SMP
+
 ------------------------------------------------------------------------
 -- Sum and Fix IR implementations
 ------------------------------------------------------------------------
@@ -37,6 +40,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   open ExecLemmas {FS}
   open AbstractExec {FS}
   open FrameSemantics FS
+
+  -- Open SMPrimitives modules for trace predicates
+  open SMP.TracePrimitives {FS}
 
   open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -81,6 +87,21 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   -- These prove that specific instruction sequences produce the expected
   -- final state by unfolding exec-trace and exec-abstract definitions.
   ------------------------------------------------------------------------
+
+  -- lea-slot state equality: executing lea-slot sets Output to the slot address
+  lea-slot-state-eq : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₁ (exec-trace (lea-slot slot ∷ []) s alloc) ≡
+    record s { regs = writeReg (regs s) Output (OnStack (current-frame alloc) slot) }
+  lea-slot-state-eq slot s alloc not-halted =
+    cong proj₁ (exec-trace-single (lea-slot slot) s alloc not-halted)
+
+  -- load-indirect state equality: executing load-indirect dereferences Input
+  load-indirect-state-eq : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₁ (exec-trace (load-indirect ∷ []) s alloc) ≡ exec (load Output (IndReg Input)) s
+  load-indirect-state-eq s alloc not-halted =
+    cong proj₁ (exec-trace-single load-indirect s alloc not-halted)
 
   -- Postulate: trace correctness for inl/inr/fold (complex record equality)
   -- The proof structure is correct but Agda has trouble with record equality.
@@ -410,6 +431,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in unfold-trace
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect tpc-[]
+      ; trace-no-store-indirect = tt , tt
+      ; trace-preserves-halted = tph-∷ iph-load-indirect tph-[]
       }
 
   ------------------------------------------------------------------------
@@ -482,6 +505,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inl-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      ; trace-no-store-indirect = tt , tt , tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
@@ -589,14 +614,17 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           n = next-slot alloc
           frontier-loc = OnStack (current-frame alloc) n
           -- TraceWritesAbove (suc n) inl-trace: the only store is at suc sum-slot = suc n
-          tw : TraceWritesAbove (suc n) inl-trace
+          tw : SMP.TraceWritesAbove (suc n) inl-trace
           tw = ≤-refl , tt
-          -- Disjoint: all writes are at slots ≥ suc n, frontier is at n < suc n
-          disjoint : ∀ slot → suc n ≤ slot → OnStack (current-frame alloc) slot ≢ frontier-loc
-          disjoint slot suc-n≤slot refl = <⇒≢ suc-n≤slot refl
-          -- Apply exec-trace-preserves-disjoint
+          -- TraceNoStoreIndirect: inl-trace has no store-indirect
+          tnsi : SMP.TraceNoStoreIndirect inl-trace
+          tnsi = tt , tt , tt , tt
+          -- n < suc n (i.e., suc n ≤ suc n)
+          n<suc-n : n < suc n
+          n<suc-n = ≤-refl
+          -- Apply exec-trace-preserves-slot-below
           preserved : readLoc (proj₁ (exec-trace inl-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
-          preserved = exec-trace-preserves-disjoint inl-trace s' alloc frontier-loc (suc n) tw disjoint
+          preserved = exec-trace-preserves-slot-below inl-trace s' alloc (suc n) n tw tnsi n<suc-n
 
   -- Heap mode: boxed representation (tag + pointer)
   run-inl {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
@@ -634,6 +662,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inl-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      ; trace-no-store-indirect = tt , tt , tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
@@ -742,12 +772,14 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         where
           n = next-slot alloc
           frontier-loc = OnStack (current-frame alloc) n
-          tw : TraceWritesAbove (suc n) inl-trace
+          tw : SMP.TraceWritesAbove (suc n) inl-trace
           tw = ≤-refl , tt
-          disjoint : ∀ slot → suc n ≤ slot → OnStack (current-frame alloc) slot ≢ frontier-loc
-          disjoint slot suc-n≤slot refl = <⇒≢ suc-n≤slot refl
+          tnsi : SMP.TraceNoStoreIndirect inl-trace
+          tnsi = tt , tt , tt , tt
+          n<suc-n : n < suc n
+          n<suc-n = ≤-refl
           preserved : readLoc (proj₁ (exec-trace inl-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
-          preserved = exec-trace-preserves-disjoint inl-trace s' alloc frontier-loc (suc n) tw disjoint
+          preserved = exec-trace-preserves-slot-below inl-trace s' alloc (suc n) n tw tnsi n<suc-n
 
   ------------------------------------------------------------------------
   -- Inr: inject right into sum type
@@ -807,6 +839,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inr-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      ; trace-no-store-indirect = tt , tt , tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
@@ -909,12 +943,14 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         where
           n = next-slot alloc
           frontier-loc = OnStack (current-frame alloc) n
-          tw : TraceWritesAbove (suc n) inr-trace
+          tw : SMP.TraceWritesAbove (suc n) inr-trace
           tw = ≤-refl , tt
-          disjoint : ∀ slot → suc n ≤ slot → OnStack (current-frame alloc) slot ≢ frontier-loc
-          disjoint slot suc-n≤slot refl = <⇒≢ suc-n≤slot refl
+          tnsi : SMP.TraceNoStoreIndirect inr-trace
+          tnsi = tt , tt , tt , tt
+          n<suc-n : n < suc n
+          n<suc-n = ≤-refl
           preserved : readLoc (proj₁ (exec-trace inr-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
-          preserved = exec-trace-preserves-disjoint inr-trace s' alloc frontier-loc (suc n) tw disjoint
+          preserved = exec-trace-preserves-slot-below inr-trace s' alloc (suc n) n tw tnsi n<suc-n
 
   -- Heap mode: boxed representation (tag + pointer)
   run-inr {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
@@ -952,6 +988,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inr-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      ; trace-no-store-indirect = tt , tt , tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
@@ -1057,12 +1095,14 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         where
           n = next-slot alloc
           frontier-loc = OnStack (current-frame alloc) n
-          tw : TraceWritesAbove (suc n) inr-trace
+          tw : SMP.TraceWritesAbove (suc n) inr-trace
           tw = ≤-refl , tt
-          disjoint : ∀ slot → suc n ≤ slot → OnStack (current-frame alloc) slot ≢ frontier-loc
-          disjoint slot suc-n≤slot refl = <⇒≢ suc-n≤slot refl
+          tnsi : SMP.TraceNoStoreIndirect inr-trace
+          tnsi = tt , tt , tt , tt
+          n<suc-n : n < suc n
+          n<suc-n = ≤-refl
           preserved : readLoc (proj₁ (exec-trace inr-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
-          preserved = exec-trace-preserves-disjoint inr-trace s' alloc frontier-loc (suc n) tw disjoint
+          preserved = exec-trace-preserves-slot-below inr-trace s' alloc (suc n) n tw tnsi n<suc-n
 
   ------------------------------------------------------------------------
   -- Fold: wrap value in recursive type
@@ -1129,6 +1169,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in fold-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      ; trace-no-store-indirect = tt , tt , tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       fix-slots = stack-type-slots (Fix F)  -- Stack mode: 1 slot for pointer
@@ -1259,6 +1301,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in fold-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      ; trace-no-store-indirect = tt , tt , tt , tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       fix-slots = heap-type-slots (Fix F)  -- Heap mode: 1 slot for pointer
@@ -1417,6 +1461,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-f
       -- Trace preserves capacity: setup + f-trace preserves capacity
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity result-f))
+      ; trace-no-store-indirect = tt , tt , IRResultAWF.trace-no-store-indirect result-f
+      ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-f))
       }
     where
       rf = ir-stack-requirement f
@@ -1535,6 +1581,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-g
       -- Trace preserves capacity: setup + g-trace preserves capacity
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity result-g))
+      ; trace-no-store-indirect = tt , tt , IRResultAWF.trace-no-store-indirect result-g
+      ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-g))
       }
     where
       rf = ir-stack-requirement f
