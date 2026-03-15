@@ -15,11 +15,14 @@ open import normalizer.Foundations.Encoding
 open import normalizer.Level0V2.Normalize
   using (normalize; normalize-encoded)
 
+open import normalizer.Foundations.NormalForm
+  using (IsNormalForm; nf-stable)
+
 open import normalizer.Level0V2.NormalForm
   using (fixpoint-property)
 
-open import normalizer.Level0V2.MainTheorem.NormalFormLemmas
-  using (IsNormalForm; nf-stable; normalize-produces-nf)
+open import normalizer.Level0V2.Normalize.Properties
+  using (normalize-produces-nf)
 
 ------------------------------------------------------------------------
 -- The Key Theorem: Fixpoint Implies Normal Form
