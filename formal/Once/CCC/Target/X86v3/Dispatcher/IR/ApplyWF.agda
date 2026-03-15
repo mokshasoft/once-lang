@@ -21,6 +21,7 @@ open import Data.Nat.Properties using (≤-refl; ≤-trans; <-trans; <-≤-trans
 open import Data.Nat using (_≤?_)
 open import Relation.Nullary using (yes; no; Dec)
 open import Data.Bool using (false)
+open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
@@ -130,20 +131,28 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   ------------------------------------------------------------------------
 
   -- Setup trace: prepare pair input for body
-  -- 1. load-indirect: Output := *Input (env-loc from closure)
-  -- 2. store-at-slot pair-slot: pair[0] := Output (env)
-  -- 3. load-indirect-suc: Output := *(Input+1) (arg-loc from input pair)
-  -- 4. store-at-slot (suc pair-slot): pair[1] := Output (arg)
-  -- 5. lea-slot pair-slot: Output := &pair
-  -- 6. mov-to-input: Input := Output (pair address)
+  --
+  -- Input structure: (closure, arg) pair where closure = (env, code)
+  -- We need to build a new pair (env, arg) for the body.
+  --
+  -- Step 1: Get arg-loc from *(Input+1) while Input still points to original pair
+  -- Step 2: Store arg at pair[1]
+  -- Step 3: Get closure-loc from *Input
+  -- Step 4: Set Input := closure-loc
+  -- Step 5: Get env-loc from *Input (now pointing to closure)
+  -- Step 6: Store env at pair[0]
+  -- Step 7: Set Output := &pair
+  -- Step 8: Set Input := &pair
   apply-setup-trace : (pair-slot : ℕ) → AbstractTrace
   apply-setup-trace pair-slot =
-    load-indirect ∷                    -- Output := *Input (env from closure)
-    store-at-slot pair-slot ∷          -- pair[0] := env
-    load-indirect-suc ∷                -- Output := *(Input+1) (arg)
-    store-at-slot (suc pair-slot) ∷    -- pair[1] := arg
+    load-indirect-suc ∷                -- Output := *(Input+1) = arg-loc
+    store-at-slot (suc pair-slot) ∷    -- pair[1] := arg-loc
+    load-indirect ∷                    -- Output := *Input = closure-loc
+    mov-to-input ∷                     -- Input := closure-loc
+    load-indirect ∷                    -- Output := *Input = env-loc
+    store-at-slot pair-slot ∷          -- pair[0] := env-loc
     lea-slot pair-slot ∷               -- Output := &pair
-    mov-to-input ∷ []                  -- Input := pair address
+    mov-to-input ∷ []                  -- Input := &pair
 
   -- Full apply trace: setup + push + body + pop
   apply-full-trace : (pair-slot : ℕ) (body-cap : ℕ) (body-trace : AbstractTrace) → AbstractTrace
@@ -268,12 +277,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- This is computed by exec-trace on setup-trace
       -- For body execution, we pass this state to BodyCorrect.execute
 
-      -- State after setup trace execution
+      -- State after setup trace execution (DEFINED directly)
       s-after-setup : LocState FS
-      s-after-setup = SMP.!!
+      s-after-setup = proj₁ (exec-trace (apply-setup-trace pair-slot) s alloc)
 
       s-after-setup-def : s-after-setup ≡ proj₁ (exec-trace (apply-setup-trace pair-slot) s alloc)
-      s-after-setup-def = SMP.!!
+      s-after-setup-def = refl
 
       -- Pair is properly constructed after setup
       pair-env-ptr : readLoc s-after-setup pair-input-loc ≡ just env-loc
@@ -283,20 +292,70 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       pair-arg-ptr = SMP.!!
 
       -- Input register points to pair after setup
+      -- Decompose setup-trace as prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
+      setup-prefix : AbstractTrace
+      setup-prefix = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷
+                     load-indirect ∷ mov-to-input ∷
+                     load-indirect ∷ store-at-slot pair-slot ∷ []
+
+      setup-decomp : apply-setup-trace pair-slot ≡
+                     setup-prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
+      setup-decomp = refl
+
+      -- TracePreservesHalted for the prefix
+      setup-prefix-tph : TracePreservesHaltedP setup-prefix
+      setup-prefix-tph =
+        tph-∷ iph-load-indirect-suc
+        (tph-∷ iph-store-at-slot
+        (tph-∷ iph-load-indirect
+        (tph-∷ iph-mov-to-input
+        (tph-∷ iph-load-indirect
+        (tph-∷ iph-store-at-slot tph-[])))))
+
+      not-halted-after-prefix : halted (proj₁ (exec-trace setup-prefix s alloc)) ≡ false
+      not-halted-after-prefix = exec-trace-preserves-halted setup-prefix s alloc not-halted setup-prefix-tph
+
       pair-input-eq : readReg (regs s-after-setup) Input ≡ pair-input-loc
-      pair-input-eq = SMP.!!
+      pair-input-eq =
+        let eq1 : apply-setup-trace pair-slot ≡
+                  setup-prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
+            eq1 = setup-decomp
+            eq2 : readReg (regs (proj₁ (exec-trace (setup-prefix ++
+                           (lea-slot pair-slot ∷ mov-to-input ∷ [])) s alloc))) Input ≡
+                  OnStack (current-frame alloc) pair-slot
+            eq2 = exec-trace-final-lea-mov-input setup-prefix pair-slot s alloc not-halted-after-prefix
+        in subst (λ t → readReg (regs (proj₁ (exec-trace t s alloc))) Input ≡
+                        OnStack (current-frame alloc) pair-slot)
+                 (sym eq1) eq2
+
+      -- Setup trace preserves halted (used in multiple places)
+      setup-tph : TracePreservesHaltedP (apply-setup-trace pair-slot)
+      setup-tph =
+        tph-∷ iph-load-indirect-suc
+        (tph-∷ iph-store-at-slot
+        (tph-∷ iph-load-indirect
+        (tph-∷ iph-mov-to-input
+        (tph-∷ iph-load-indirect
+        (tph-∷ iph-store-at-slot
+        (tph-∷ iph-lea-slot
+        (tph-∷ iph-mov-to-input tph-[])))))))
 
       -- Not halted after setup
       not-halted-after-setup : halted s-after-setup ≡ false
-      not-halted-after-setup = SMP.!!
+      not-halted-after-setup = exec-trace-preserves-halted (apply-setup-trace pair-slot) s alloc not-halted setup-tph
 
       -- Pair validity in child-alloc (after setup, transferred to child frame)
       pair-input-valid-child : ValidAtWF Heap child-alloc {EnvType * A} (pair env arg) pair-input-loc s-after-setup
       pair-input-valid-child = SMP.!!
 
       -- Pair is before frontier in child-alloc
+      -- pair-input-loc = OnStack (current-frame alloc) pair-slot
+      -- child-alloc has current-frame = child-frame, which is ≺ current-frame alloc
+      -- So pair-input-loc is in an ancestor frame
+      -- Use pair-slot + pair-slots as bound (the updated parent frontier)
       pair-input-before-child : BeforeFrontier child-alloc pair-input-loc
-      pair-input-before-child = SMP.!!
+      pair-input-before-child = stack-ancestor child-frame-below-parent
+        (src-origin (next-slot alloc +ℕ pair-slots) (m<m+n pair-slot {pair-slots} (s≤s z≤n)))
 
       -- Body execution in child frame
       body-exec-result : ∃[ mOut ] IRResultAWF mOut body (pair env arg) s-after-setup child-alloc
@@ -326,13 +385,21 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- Proof obligations for properties
       ------------------------------------------------------------------------
 
+      -- Trace preserves halted (structural proof - defined first for use in not-halted')
+      trace-preserves-halted' : TracePreservesHaltedP trace
+      trace-preserves-halted' =
+        tph-++ setup-tph
+        (tph-∷ iph-push-frame
+        (tph-++ (IRResultAWF.trace-preserves-halted body-result)
+        (tph-∷ iph-pop-frame tph-[])))
+
       -- Output register contains result location
       rax-eq' : readReg (regs s') Output ≡ result-loc
       rax-eq' = SMP.!!
 
       -- Not halted after full trace
       not-halted' : halted s' ≡ false
-      not-halted' = SMP.!!
+      not-halted' = exec-trace-preserves-halted trace s alloc not-halted trace-preserves-halted'
 
       -- Memory before frontier preserved
       mem-preserved' : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
@@ -371,8 +438,18 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       trace-preserves-capacity' : TracePreservesCapacity trace
       trace-preserves-capacity' = SMP.!!
 
+      -- Setup trace has no store-indirect
+      setup-no-store-indirect : TraceNoStoreIndirect (apply-setup-trace pair-slot)
+      setup-no-store-indirect = tt , tt , tt , tt , tt , tt , tt , tt , tt
+
       trace-no-store-indirect' : TraceNoStoreIndirect trace
-      trace-no-store-indirect' = SMP.!!
+      trace-no-store-indirect' =
+        trace-no-store-indirect-append (apply-setup-trace pair-slot)
+          (instr-push-frame body-cap ∷ body-trace ++ instr-pop-frame ∷ [])
+          setup-no-store-indirect
+          (tt , trace-no-store-indirect-append body-trace (instr-pop-frame ∷ [])
+                  (IRResultAWF.trace-no-store-indirect body-result)
+                  (tt , tt))
 
       -- Reclamation proofs
       reclaim-preserves-result' : ∀ (fits : next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc) →
@@ -391,20 +468,3 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
           (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
           refl refl refl loc bf)
         result-valid-wf'
-
-      -- Trace preserves halted (structural proof)
-      trace-preserves-halted' : TracePreservesHaltedP trace
-      trace-preserves-halted' =
-        tph-++ (setup-trace-preserves-halted pair-slot)
-        (tph-∷ iph-push-frame
-        (tph-++ (IRResultAWF.trace-preserves-halted body-result)
-        (tph-∷ iph-pop-frame tph-[])))
-        where
-          setup-trace-preserves-halted : (ps : ℕ) → TracePreservesHaltedP (apply-setup-trace ps)
-          setup-trace-preserves-halted ps =
-            tph-∷ iph-load-indirect
-            (tph-∷ iph-store-at-slot
-            (tph-∷ iph-load-indirect-suc
-            (tph-∷ iph-store-at-slot
-            (tph-∷ iph-lea-slot
-            (tph-∷ iph-mov-to-input tph-[])))))

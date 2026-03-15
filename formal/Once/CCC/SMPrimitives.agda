@@ -1499,6 +1499,61 @@ module TracePrimitives {FS : FrameSemantics} where
         result-with-alloc' = trans (cong (λ st → readReg (regs st) Output) snoc-eq) lea-result
     in trans result-with-alloc' (cong (λ f → OnStack f k) frame-eq)
 
+  -- Final lea-slot k followed by mov-to-input: sets Input to slot address
+  -- Common pattern in Apply setup traces
+  exec-trace-final-lea-mov-input : ∀ (trace : AbstractTrace) (k : ℕ) (s : LocState FS)
+    (alloc : AllocState {FS}) →
+    halted (proj₁ (exec-trace trace s alloc)) ≡ false →
+    readReg (regs (proj₁ (exec-trace (trace ++ (lea-slot k ∷ mov-to-input ∷ [])) s alloc))) Input ≡
+    OnStack (current-frame alloc) k
+  exec-trace-final-lea-mov-input trace k s alloc not-halted-after =
+    let s' = proj₁ (exec-trace trace s alloc)
+        alloc' = proj₂ (exec-trace trace s alloc)
+        -- Step 1: Decompose using append
+        append-eq : exec-trace (trace ++ (lea-slot k ∷ mov-to-input ∷ [])) s alloc ≡
+                    exec-trace (lea-slot k ∷ mov-to-input ∷ []) s' alloc'
+        append-eq = exec-trace-append trace (lea-slot k ∷ mov-to-input ∷ []) s alloc
+        -- Step 2: Execute lea-slot (not halted)
+        s-after-lea = proj₁ (exec-abstract (lea-slot k) s' alloc')
+        alloc-after-lea = proj₂ (exec-abstract (lea-slot k) s' alloc')
+        lea-step : exec-trace (lea-slot k ∷ mov-to-input ∷ []) s' alloc' ≡
+                   exec-trace (mov-to-input ∷ []) s-after-lea alloc-after-lea
+        lea-step = exec-trace-cons (lea-slot k) (mov-to-input ∷ []) s' alloc' not-halted-after
+        -- Step 3: lea-slot sets Output = OnStack (current-frame alloc') k
+        output-after-lea : readReg (regs s-after-lea) Output ≡ OnStack (current-frame alloc') k
+        output-after-lea = lea-slot-result k s' alloc'
+        -- Step 4: lea-slot preserves halted
+        not-halted-after-lea : halted s-after-lea ≡ false
+        not-halted-after-lea = trans (lea-slot-halted k s' alloc') not-halted-after
+        -- Step 5: Execute mov-to-input
+        s-after-mov = proj₁ (exec-abstract mov-to-input s-after-lea alloc-after-lea)
+        mov-step : exec-trace (mov-to-input ∷ []) s-after-lea alloc-after-lea ≡
+                   exec-abstract mov-to-input s-after-lea alloc-after-lea
+        mov-step = exec-trace-single mov-to-input s-after-lea alloc-after-lea not-halted-after-lea
+        -- Step 6: mov-to-input sets Input = Output
+        input-after-mov : readReg (regs s-after-mov) Input ≡ readReg (regs s-after-lea) Output
+        input-after-mov = writeReg-same (regs s-after-lea) Input (readReg (regs s-after-lea) Output)
+        -- Step 7: Frame preserved through trace
+        frame-eq : current-frame alloc' ≡ current-frame alloc
+        frame-eq = exec-trace-preserves-frame trace s alloc
+        -- Step 8: Combine step by step
+        -- First show that the final state equals s-after-mov
+        final-state = proj₁ (exec-trace (trace ++ (lea-slot k ∷ mov-to-input ∷ [])) s alloc)
+        eq1 : proj₁ (exec-trace (lea-slot k ∷ mov-to-input ∷ []) s' alloc') ≡ s-after-mov
+        eq1 = trans (cong proj₁ lea-step) (cong proj₁ mov-step)
+        eq2 : final-state ≡ proj₁ (exec-trace (lea-slot k ∷ mov-to-input ∷ []) s' alloc')
+        eq2 = cong proj₁ append-eq
+        eq3 : final-state ≡ s-after-mov
+        eq3 = trans eq2 eq1
+        -- Now transport the Input register result
+        eq4 : readReg (regs final-state) Input ≡ readReg (regs s-after-mov) Input
+        eq4 = cong (λ st → readReg (regs st) Input) eq3
+        eq5 : readReg (regs s-after-mov) Input ≡ OnStack (current-frame alloc') k
+        eq5 = trans input-after-mov output-after-lea
+        eq6 : OnStack (current-frame alloc') k ≡ OnStack (current-frame alloc) k
+        eq6 = cong (λ f → OnStack f k) frame-eq
+    in trans eq4 (trans eq5 eq6)
+
   ------------------------------------------------------------------------
   -- (K) WRITE-PRESERVE COMBINED
   --
