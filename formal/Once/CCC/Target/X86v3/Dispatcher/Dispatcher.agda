@@ -54,7 +54,7 @@ open import Once.CCC.Target.X86v3.Dispatcher.SizeBoundLemma public
 -- Import helper modules
 ------------------------------------------------------------------------
 
-import Once.CCC.Target.X86v3.Dispatcher.IR.SimpleWF as SimpleWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.SimpleWF2 as SimpleWFModule
 import Once.CCC.Target.X86v3.Dispatcher.IR.ComposeWF as ComposeWFModule
 import Once.CCC.Target.X86v3.Dispatcher.IR.PairWF2 as PairWF2Module
 import Once.CCC.Target.X86v3.Dispatcher.IR.CurryWF as CurryWFModule
@@ -199,7 +199,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open FrontierLemmas {FS}
 
   -- Import simple IR implementations (id, fst, snd, terminal)
-  open SimpleWFModule.SimpleWFImpl {FS} program-bound primSem
+  open SimpleWFModule.SimpleWF2Impl {FS} program-bound primSem
 
   -- Import compose IR implementation
   open ComposeWFModule.ComposeWFImpl {FS} program-bound primSem
