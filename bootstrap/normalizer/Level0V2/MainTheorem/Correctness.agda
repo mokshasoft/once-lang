@@ -19,9 +19,11 @@ open import normalizer.Level0V2.Normalize
 
 open import normalizer.Foundations.ReductionCombinators
   using (_>>_)
+open import normalizer.Foundations.NormalForm
+  using (IsNormalForm; nf-stable)
 
-open import normalizer.Level0V2.MainTheorem.NormalFormLemmas
-  using (IsNormalForm; nf-stable; normalize-produces-nf)
+open import normalizer.Level0V2.Normalize.Properties
+  using (normalize-produces-nf)
 
 ------------------------------------------------------------------------
 -- Postulates

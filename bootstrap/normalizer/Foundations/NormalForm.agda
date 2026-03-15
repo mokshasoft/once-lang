@@ -1,21 +1,17 @@
 ------------------------------------------------------------------------
--- NormalFormLemmas: Basic normal form definitions and lemmas
+-- NormalForm: General definitions and lemmas about normal forms
 --
--- This module contains fundamental normal form reasoning.
--- All proofs are wrapped in abstract to prevent term expansion.
+-- A term is in normal form if no reduction rules apply.
+-- This module contains general reasoning that doesn't depend on
+-- any specific normalizer.
 ------------------------------------------------------------------------
 
-module normalizer.Level0V2.MainTheorem.NormalFormLemmas where
+module normalizer.Foundations.NormalForm where
 
 open import normalizer.Foundations.Types
 open import normalizer.Foundations.MinimalCCC
-open import normalizer.Foundations.Encoding
-  using (TermCode')
 open import normalizer.Foundations.Confluence
   using (confluence)
-
-open import normalizer.Level0V2.Normalize
-  using (normalize)
 
 ------------------------------------------------------------------------
 -- Normal Form Definition
@@ -28,14 +24,6 @@ IsNormalForm t = ∀ {u} → ¬ (t ⟶ u)
 -- Normal forms have no redexes (this IS the definition)
 nf-no-redex : ∀ {A B} {t : Term A B} → IsNormalForm t → ∀ {u} → ¬ (t ⟶ u)
 nf-no-redex nf = nf
-
-------------------------------------------------------------------------
--- Postulate: The normalizer produces normal forms
-------------------------------------------------------------------------
-
-postulate
-  normalize-produces-nf : ∀ (t : Term Unit TermCode') →
-                          IsNormalForm (normalize ∘ t)
 
 ------------------------------------------------------------------------
 -- Core Lemmas (abstract to prevent expansion)

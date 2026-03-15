@@ -17,19 +17,22 @@ open import normalizer.Foundations.MinimalCCC
 -- Submodule Exports
 ------------------------------------------------------------------------
 
--- Part 1: Normal Form Lemmas
--- Contains: IsNormalForm, nf-no-redex, nf-stable, nf-unique,
---           normalize-produces-nf (postulate)
-open import normalizer.Level0V2.MainTheorem.NormalFormLemmas public
+-- Part 1: Normal Form (general definitions from Foundations)
+-- Contains: IsNormalForm, nf-no-redex, nf-stable, nf-unique
+open import normalizer.Foundations.NormalForm public
 
--- Part 2: Correctness Proof
+-- Part 2: Normalizer Properties
+-- Contains: normalize-produces-nf (postulate)
+open import normalizer.Level0V2.Normalize.Properties public
+
+-- Part 4: Correctness Proof
 -- Contains: CorrectNormalizer record, strong-normalization (postulate),
 --           normalize-preserves-semantics (postulate),
 --           normalize-terminates, normalize-output-is-nf, normalize-preserves,
 --           normalizer-correct
 open import normalizer.Level0V2.MainTheorem.Correctness public
 
--- Part 3: Fixpoint Theorem
+-- Part 5: Fixpoint Theorem
 -- Contains: fixpoint-implies-nf, normalize-encoding-is-nf,
 --           normalize-encoded-is-normal
 open import normalizer.Level0V2.MainTheorem.FixpointTheorem public
