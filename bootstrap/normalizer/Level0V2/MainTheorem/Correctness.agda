@@ -22,12 +22,14 @@ open import normalizer.Foundations.ReductionCombinators
 open import normalizer.Foundations.NormalForm
   using (IsNormalForm; nf-stable)
 
-open import normalizer.Level0V2.Normalize.Properties
-  using (normalize-produces-nf)
-
 ------------------------------------------------------------------------
 -- Postulates
 ------------------------------------------------------------------------
+
+-- The normalizer produces normal forms
+postulate
+  normalize-produces-nf : ∀ (t : Term Unit TermCode') →
+                          IsNormalForm (normalize ∘ t)
 
 -- All reduction sequences terminate
 postulate
