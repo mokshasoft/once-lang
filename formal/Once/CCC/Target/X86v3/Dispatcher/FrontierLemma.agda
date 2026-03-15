@@ -12,7 +12,8 @@ open import Data.Nat.Properties using (≤-refl; m<m+n; <-trans; n<1+n)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine
+open import Once.CCC.SMCore
+open import Once.CCC.SMPrimitives
 
 ------------------------------------------------------------------------
 -- Frontier lemmas parameterized by frame semantics

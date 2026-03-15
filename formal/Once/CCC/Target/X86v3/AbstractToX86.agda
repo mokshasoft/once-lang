@@ -21,8 +21,8 @@ open import Once.Target.X86.Syntax
          Instr; mov; lea; add; sub; cmp; push; pop; call; ret; jmp; jne; label; ud2;
          Program; slot-size; slots)
 
--- Import AbstractInstr from SlotMachine
-open import Once.CCC.SlotMachine
+-- Import AbstractInstr from SMCore
+open import Once.CCC.SMCore
   using (AbstractInstr; AbstractTrace; Slot;
          mov-to-output; load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;

@@ -22,7 +22,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 open import Induction.WellFounded using (Acc; acc)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine hiding (AllocMode; Stack; Heap)
+open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation
 open import Once.CCC.Target.X86v3.Types public
 open import Once.CCC.IR

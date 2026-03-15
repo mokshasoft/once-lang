@@ -22,7 +22,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; trans; subst)
 open import Relation.Nullary using (¬_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine using (HeapRef; HeapLocation; heap-ref; ref-id; LocState)
+open import Once.CCC.SMCore using (HeapRef; HeapLocation; heap-ref; ref-id; LocState)
 
 ------------------------------------------------------------------------
 -- Escape Interface parameterized by FrameSemantics
@@ -30,7 +30,7 @@ open import Once.CCC.SlotMachine using (HeapRef; HeapLocation; heap-ref; ref-id;
 
 module EscapeInterfaceDef {FS : FrameSemantics} where
   open FrameSemantics FS
-  open import Once.CCC.SlotMachine using (ValueLocation; OnStack; OnHeap)
+  open import Once.CCC.SMCore using (ValueLocation; OnStack; OnHeap)
   open import Once.CCC.Target.X86v3.Dispatcher.Allocation using (AllocState; next-heap-ref; current-frame; next-slot)
   open import Once.CCC.Target.X86v3.Dispatcher.Allocation using (module FrontierInvariant)
   open FrontierInvariant {FS}

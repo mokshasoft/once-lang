@@ -14,7 +14,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine
+open import Once.CCC.SMCore
+open import Once.CCC.SMPrimitives
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation
 
 ------------------------------------------------------------------------

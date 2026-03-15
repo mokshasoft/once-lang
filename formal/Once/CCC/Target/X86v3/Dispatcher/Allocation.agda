@@ -24,7 +24,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; con
 open import Relation.Nullary using (Dec; yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine public
+open import Once.CCC.SMCore public
+open import Once.CCC.SMPrimitives public
 
 ------------------------------------------------------------------------
 -- Stack Allocation

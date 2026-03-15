@@ -33,7 +33,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open FrameSemantics using (Frame; _≺_)
-open import Once.CCC.SlotMachine using (LocState; ValueLocation; halted; regs; readReg; Input)
+open import Once.CCC.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input)
 
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧)
 open import Once.CCC.IR using (IR; eval; ir-size; ir-stack-requirement; AllocMode; PrimSem)

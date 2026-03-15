@@ -28,7 +28,7 @@ open import Relation.Nullary using (Dec; yes; no)
 open import Induction.WellFounded using (Acc; acc)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine hiding (AllocMode; Stack; Heap)
+open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
@@ -57,8 +57,8 @@ open import Once.CCC.Target.X86v3.Dispatcher.SizeBoundLemma public
 import Once.CCC.Target.X86v3.Dispatcher.IR.SimpleWF2 as SimpleWFModule
 import Once.CCC.Target.X86v3.Dispatcher.IR.ComposeWF2 as ComposeWFModule
 import Once.CCC.Target.X86v3.Dispatcher.IR.PairWF2 as PairWF2Module
-import Once.CCC.Target.X86v3.Dispatcher.IR.CurryWF as CurryWFModule
-import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF as ApplyWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.CurryWF2 as CurryWFModule
+import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF2 as ApplyWFModule
 
 -- Import write operations from separate module
 open import Once.CCC.Target.X86v3.Dispatcher.WriteOps public using (module WriteWithDisjoint)
@@ -208,11 +208,11 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open PairWF2Module.PairWF2Impl {FS} program-bound primSem
 
   -- Import curry IR implementation
-  open CurryWFModule.CurryWFImpl {FS} program-bound primSem
+  open CurryWFModule.CurryWF2Impl {FS} program-bound primSem
 
   -- Import apply IR implementation (pass child-frame and escape analysis parameters)
   -- DYNAMIC CAPACITY: child-capacity and parent-bound-eq removed
-  open ApplyWFModule.ApplyWFImpl {FS} program-bound primSem
+  open ApplyWFModule.ApplyWF2Impl {FS} program-bound primSem
     get-child-frame child-frame-ordered child-frame-adjacent
     escape-result-survives
 

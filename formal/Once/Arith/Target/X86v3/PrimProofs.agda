@@ -26,7 +26,7 @@ open import Data.Product using (_×_; _,_; proj₁)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine
+open import Once.CCC.SMCore
   using (LocState; mkLocState; ValueLocation; OnStack; OnHeap;
          halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-same;

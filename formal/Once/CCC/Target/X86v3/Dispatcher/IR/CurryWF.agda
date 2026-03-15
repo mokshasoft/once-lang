@@ -19,7 +19,7 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; cong; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.SlotMachine hiding (AllocMode; Stack; Heap)
+open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)

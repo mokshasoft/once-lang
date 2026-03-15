@@ -29,7 +29,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 open import Once.CCC.Target.X86v3.Types public
 
 -- HeapRef for free-heap
-open import Once.CCC.SlotMachine using (HeapRef)
+open import Once.CCC.SMCore using (HeapRef)
 
 ------------------------------------------------------------------------
 -- Allocation Mode
