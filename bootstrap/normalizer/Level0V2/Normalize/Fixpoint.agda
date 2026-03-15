@@ -25,8 +25,8 @@ open import normalizer.Level0V2.Normalizer
          fmap-6-inl; fmap-7-inl; fmap-8-inl; fmap-9-inl; fmap-10-inl;
          fmap-KK-id; TermF-13; fmap-sum-inl)
 
--- Postulate for handle-comp reducing to rebuild
--- (Same as in Normalize.agda - this reduces when inputs are non-id NoRedex terms)
+-- Proof obligation: handle-comp reduces to rebuild
+-- (When inputs are non-id NoRedex terms)
 postulate
   handle-comp-rebuild : ∀ {X} (payload : Term X (TermCode' * TermCode')) →
                         (handle-comp ∘ payload) ⟶* ((In ∘ inr ∘ inl) ∘ payload)

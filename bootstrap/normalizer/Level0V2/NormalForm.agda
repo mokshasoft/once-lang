@@ -81,13 +81,13 @@ open import normalizer.Level0V2.Normalizer
 ------------------------------------------------------------------------
 -- The Fixpoint Property
 --
--- The main theorem noredex-fixpoint is proven in Normalize.agda
--- since it needs access to the abstract definition of normalize.
+-- The main theorem noredex-fixpoint is in Normalize.agda since it
+-- needs access to the abstract definition of normalize.
 -- This module uses it to derive the fixpoint property for the
 -- normalizer's own encoding.
 ------------------------------------------------------------------------
 
--- The normalizer itself has no redexes (proven in Normalize.agda)
+-- The normalizer itself has no redexes (see Normalize.agda).
 -- Therefore it is a fixpoint when encoded.
 
 fixpoint-from-noredex : (normalize ∘ encode normalize) ⟶* encode normalize
@@ -100,22 +100,22 @@ fixpoint-property = subst (λ x → (normalize ∘ x) ⟶* x) (sym normalize-enc
 ------------------------------------------------------------------------
 -- Summary
 --
--- The proof structure is clean and compositional:
+-- The structure is clean and compositional:
 --
 -- 1. normalize-equiv-refold: The two algebras (normalize-step and In)
 --    produce equivalent results on NoRedex encoded data.
---    (Postulated - mechanically verifiable)
+--    (Proof obligation - mechanically verifiable)
 --
--- 2. noredex-fixpoint: Combines normalize-equiv-refold with refold-idempotent
---    via ⟶*-trans. (Proven)
+-- 2. noredex-fixpoint: Combines normalize-equiv-refold with
+--    refold-idempotent via ⟶*-trans.
 --
--- 3. fixpoint-property: The normalizer's encoding is a fixpoint. (Proven)
+-- 3. fixpoint-property: The normalizer's encoding is a fixpoint.
 --
--- The key insight is that we leverage the existing refold-idempotent proof
+-- The key insight is that we leverage the existing refold-idempotent
 -- by showing that normalize behaves like refold on NoRedex data.
 --
--- Remaining work to discharge normalize-equiv-refold:
--- - Prove that handle-comp falls through for NoRedex compositions
--- - This requires tracking through detect-id's case dispatch
--- - The proof is mechanical but involves the nested structure of handle-comp
+-- Remaining work for normalize-equiv-refold:
+-- - Show handle-comp falls through for NoRedex compositions
+-- - Track through detect-id's case dispatch
+-- - Mechanical but involves the nested structure of handle-comp
 ------------------------------------------------------------------------

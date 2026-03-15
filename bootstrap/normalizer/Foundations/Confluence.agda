@@ -1,9 +1,9 @@
 ------------------------------------------------------------------------
 -- Confluence: Diamond Property for Parallel Reduction
 --
--- We prove that our CCC reduction system is confluent using the
--- Tait-Martin-Löf technique:
---   1. Define parallel reduction ⟹ (already done in MinimalCCC)
+-- The CCC reduction system is confluent using the Tait-Martin-Löf
+-- technique:
+--   1. Define parallel reduction ⟹ (in MinimalCCC)
 --   2. Define "complete development" that reduces ALL redexes
 --   3. Show: t ⟹ u implies u ⟹ (complete t)
 --   4. Diamond follows: t ⟹ u and t ⟹ v implies both ⟹ (complete t)
@@ -15,10 +15,10 @@ open import normalizer.Foundations.Types
 open import normalizer.Foundations.MinimalCCC
 
 ------------------------------------------------------------------------
--- Complete Development
+-- Complete Development (proof obligation)
 --
 -- For any term t, the complete development reduces ALL redexes.
--- This is postulated here; proving it requires careful case analysis.
+-- Filling this in requires careful case analysis on term structure.
 ------------------------------------------------------------------------
 
 postulate
@@ -30,8 +30,7 @@ postulate
                   t ⟹ u → u ⟹ complete t
 
 ------------------------------------------------------------------------
--- Diamond Property (proven from ⟹-to-complete)
--- Wrapped in abstract to prevent term expansion
+-- Diamond Property
 ------------------------------------------------------------------------
 
 abstract
@@ -41,8 +40,7 @@ abstract
   diamond {t = t} p q = complete t , (⟹-to-complete p , ⟹-to-complete q)
 
 ------------------------------------------------------------------------
--- Strip Lemma (proven)
--- Wrapped in abstract to prevent term expansion
+-- Strip Lemma
 ------------------------------------------------------------------------
 
 abstract
@@ -56,8 +54,7 @@ abstract
   ... | w' , (qws , rw) = w' , (step⟹ pw qws , rw)
 
 ------------------------------------------------------------------------
--- Confluence for Parallel Reduction (proven)
--- Wrapped in abstract to prevent term expansion
+-- Confluence for Parallel Reduction
 ------------------------------------------------------------------------
 
 abstract
@@ -70,8 +67,7 @@ abstract
   ... | w' , (pws , qws) = w' , (pws , step⟹ qw qws)
 
 ------------------------------------------------------------------------
--- Confluence for Single-Step Reduction (proven)
--- Wrapped in abstract to prevent term expansion
+-- Confluence for Single-Step Reduction
 ------------------------------------------------------------------------
 
 abstract
@@ -84,22 +80,22 @@ abstract
 ------------------------------------------------------------------------
 -- Summary
 --
--- PROVEN (from the two postulates):
+-- Definitions (see code):
 --   diamond     : t ⟹ u → t ⟹ v → ∃[ w ] (u ⟹ w × v ⟹ w)
 --   strip       : t ⟹ u → t ⟹* v → ∃[ w ] (u ⟹* w × v ⟹ w)
 --   confluence⟹ : t ⟹* u → t ⟹* v → ∃[ w ] (u ⟹* w × v ⟹* w)
 --   confluence  : t ⟶* u → t ⟶* v → ∃[ w ] (u ⟶* w × v ⟶* w)
 --
--- POSTULATED (2):
+-- Proof obligations:
 --   complete      : Term A B → Term A B
 --   ⟹-to-complete : t ⟹ u → u ⟹ complete t
 --
 -- The complete development function reduces ALL redexes maximally.
--- Once we define it and prove ⟹-to-complete, confluence follows.
+-- Once defined and ⟹-to-complete is filled in, confluence follows.
 --
--- Proving ⟹-to-complete is a straightforward (but tedious) induction
--- on the parallel reduction derivation. Each case either:
+-- Filling ⟹-to-complete is straightforward induction on the parallel
+-- reduction derivation. Each case either:
 --   - Is an atom (trivial)
---   - Uses congruence and IH
---   - Is a beta rule where we show the contractum ⟹ complete t
+--   - Uses congruence and induction hypothesis
+--   - Is a beta rule where the contractum ⟹ complete t
 ------------------------------------------------------------------------

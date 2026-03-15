@@ -448,7 +448,7 @@ fmap-inr F G f = step case-inr done
 -- = encode(id)  ✓
 
 -- The full proof requires handling all 12 term constructors.
--- For now, let's prove it for the simpler cases and postulate the rest.
+-- The simpler cases are done; the rest are proof obligations.
 
 -- Note: ⟶*-trans is now provided by MinimalCCC
 
@@ -501,8 +501,8 @@ cata-β-right {F} {A} {B} {alg} {t} =
 -- 3. Use fmap-id (for K functors) and eta rules to collapse to identity
 -- 4. For recursive cases, apply IH and congruence
 --
--- The proofs are tedious but mechanical. We prove the id case fully
--- as a template and postulate the rest.
+-- The proofs are tedious but mechanical. The id case is done fully
+-- as a template; the rest are proof obligations.
 
 ------------------------------------------------------------------------
 -- Additional congruence lemmas
@@ -911,9 +911,9 @@ fmap-7-inl f = fmap-sum-inl (Id ⊗ Id) TermF-8 f
 -- 3. For K-based positions: fmap reduces to id, payload passes through
 -- 4. For Id-based positions: need mutual recursion with refold-idempotent
 --
--- The refold-idem-id case is fully proven above as a template.
--- The remaining 11 cases are postulated - they follow the same mechanical
--- pattern but with varying injection depths.
+-- The refold-idem-id case is done above as a template.
+-- The remaining 11 cases are proof obligations - they follow the same
+-- mechanical pattern but with varying injection depths.
 
 -- K-based positions (non-recursive):
 -- - fst (pos 2): K ⊗ K
@@ -964,7 +964,7 @@ fmap-7-inl f = fmap-sum-inl (Id ⊗ Id) TermF-8 f
 -- 4. Reassemble
 --
 -- Each case just has more inrs to navigate. The proofs are mechanical but long.
--- We postulate them - the fst proof above demonstrates the complete pattern.
+-- These are proof obligations - the fst case above demonstrates the pattern.
 
 -- refold-idem-fst: position 2 (2 inrs before inl)
 -- encode fst = In ∘ inr^2 ∘ inl ∘ ⟨ ⌜A⌝Ty, ⌜B⌝Ty ⟩
