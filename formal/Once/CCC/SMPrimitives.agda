@@ -141,27 +141,6 @@ module MemoryOps {FS : FrameSemantics} where
   readLoc-writeLoc-heap-stack s h f k (OnHeap _) = refl
   readLoc-writeLoc-heap-stack s h f k (OnStack _ _) = refl
 
-  -- Same frame, different slot: use slot inequality
-  readLoc-writeLoc-diff-slot : ∀ (s : LocState FS) (f : Frame FS) (k₁ k₂ : ℕ)
-    (v : ValueLocation FS) →
-    k₁ < k₂ ⊎ k₂ < k₁ →  -- positive: one is less than the other
-    readLoc (writeLoc s (OnStack f k₁) v) (OnStack f k₂) ≡ readLoc s (OnStack f k₂)
-  readLoc-writeLoc-diff-slot s f k₁ k₂ v k₁≢k₂ = !!
-
-  -- Different frames: always disjoint
-  readLoc-writeLoc-diff-frame : ∀ (s : LocState FS) (f₁ f₂ : Frame FS) (k₁ k₂ : ℕ)
-    (v : ValueLocation FS) →
-    f₁ ≢ f₂ →  -- frames are different (structural, not semantic)
-    readLoc (writeLoc s (OnStack f₁ k₁) v) (OnStack f₂ k₂) ≡ readLoc s (OnStack f₂ k₂)
-  readLoc-writeLoc-diff-frame s f₁ f₂ k₁ k₂ v f₁≢f₂ = !!
-
-  -- Heap write, different heap location
-  readLoc-writeLoc-diff-heap : ∀ (s : LocState FS) (h₁ h₂ : HeapLocation)
-    (v : ValueLocation FS) →
-    h₁ ≢ h₂ →  -- heap locations are different
-    readLoc (writeLoc s (OnHeap h₁) v) (OnHeap h₂) ≡ readLoc s (OnHeap h₂)
-  readLoc-writeLoc-diff-heap s h₁ h₂ v h₁≢h₂ = !!
-
   -- writeLoc commutes with register updates for OnHeap locations
   writeLoc-regs-commute-heap : ∀ (s : LocState FS) (hl : HeapLocation) (v : ValueLocation FS)
     (r : Registers FS) →
@@ -469,15 +448,7 @@ module InstrPrimitives {FS : FrameSemantics} where
     writeLoc (proj₁ (exec-abstract (load-from-slot slot) s alloc)) (OnHeap h) val
   exec-load-from-slot-indep-heap _ _ _ _ _ = !!
 
-  -- Case 2: loc is on different frame (always independent)
-  exec-load-from-slot-indep-diff-frame : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
-    (f : Frame FS) (k : ℕ) (val : ValueLocation FS) →
-    f ≢ current-frame alloc →
-    proj₁ (exec-abstract (load-from-slot slot) (writeLoc s (OnStack f k) val) alloc) ≡
-    writeLoc (proj₁ (exec-abstract (load-from-slot slot) s alloc)) (OnStack f k) val
-  exec-load-from-slot-indep-diff-frame _ _ _ _ _ _ _ = !!
-
-  -- Case 3: loc is on same frame but different slot (positive: k < slot or slot < k)
+  -- Case 2: loc is on same frame but different slot (positive: k < slot or slot < k)
   exec-load-from-slot-indep-diff-slot : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (k : ℕ) (val : ValueLocation FS) →
     k < slot ⊎ slot < k →
@@ -493,52 +464,13 @@ module InstrPrimitives {FS : FrameSemantics} where
     writeLoc (proj₁ (exec-abstract (restore-input slot) s alloc)) (OnHeap h) val
   exec-restore-input-indep-heap _ _ _ _ _ = !!
 
-  -- Case 2: loc is on different frame (always independent)
-  exec-restore-input-indep-diff-frame : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
-    (f : Frame FS) (k : ℕ) (val : ValueLocation FS) →
-    f ≢ current-frame alloc →
-    proj₁ (exec-abstract (restore-input slot) (writeLoc s (OnStack f k) val) alloc) ≡
-    writeLoc (proj₁ (exec-abstract (restore-input slot) s alloc)) (OnStack f k) val
-  exec-restore-input-indep-diff-frame _ _ _ _ _ _ _ = !!
-
-  -- Case 3: loc is on same frame but different slot (positive: k < slot or slot < k)
+  -- Case 2: loc is on same frame but different slot (positive: k < slot or slot < k)
   exec-restore-input-indep-diff-slot : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
     (k : ℕ) (val : ValueLocation FS) →
     k < slot ⊎ slot < k →
     proj₁ (exec-abstract (restore-input slot) (writeLoc s (OnStack (current-frame alloc) k) val) alloc) ≡
     writeLoc (proj₁ (exec-abstract (restore-input slot) s alloc)) (OnStack (current-frame alloc) k) val
   exec-restore-input-indep-diff-slot _ _ _ _ _ _ = !!
-
-  -- load-indirect reads from resolveSourceExt (regs s) (IndReg Input)
-  -- This is runtime-dependent, so we keep the general form but mark as !!
-  -- The read location is determined by the Input register value
-  exec-load-indirect-indep-heap : ∀ (s : LocState FS) (alloc : AllocState {FS})
-    (h : HeapLocation) (val : ValueLocation FS) →
-    OnHeap h ≢ resolveSourceExt (regs s) (IndReg Input) →
-    proj₁ (exec-abstract load-indirect (writeLoc s (OnHeap h) val) alloc) ≡
-    writeLoc (proj₁ (exec-abstract load-indirect s alloc)) (OnHeap h) val
-  exec-load-indirect-indep-heap _ _ _ _ _ = !!
-
-  exec-load-indirect-indep-stack : ∀ (s : LocState FS) (alloc : AllocState {FS})
-    (f : Frame FS) (k : ℕ) (val : ValueLocation FS) →
-    OnStack f k ≢ resolveSourceExt (regs s) (IndReg Input) →
-    proj₁ (exec-abstract load-indirect (writeLoc s (OnStack f k) val) alloc) ≡
-    writeLoc (proj₁ (exec-abstract load-indirect s alloc)) (OnStack f k) val
-  exec-load-indirect-indep-stack _ _ _ _ _ _ = !!
-
-  exec-load-indirect-suc-indep-heap : ∀ (s : LocState FS) (alloc : AllocState {FS})
-    (h : HeapLocation) (val : ValueLocation FS) →
-    OnHeap h ≢ sucLoc (resolveSourceExt (regs s) (IndReg Input)) →
-    proj₁ (exec-abstract load-indirect-suc (writeLoc s (OnHeap h) val) alloc) ≡
-    writeLoc (proj₁ (exec-abstract load-indirect-suc s alloc)) (OnHeap h) val
-  exec-load-indirect-suc-indep-heap _ _ _ _ _ = !!
-
-  exec-load-indirect-suc-indep-stack : ∀ (s : LocState FS) (alloc : AllocState {FS})
-    (f : Frame FS) (k : ℕ) (val : ValueLocation FS) →
-    OnStack f k ≢ sucLoc (resolveSourceExt (regs s) (IndReg Input)) →
-    proj₁ (exec-abstract load-indirect-suc (writeLoc s (OnStack f k) val) alloc) ≡
-    writeLoc (proj₁ (exec-abstract load-indirect-suc s alloc)) (OnStack f k) val
-  exec-load-indirect-suc-indep-stack _ _ _ _ _ _ = !!
 
   -- (B) INDEPENDENCE
   -- If a location is disjoint from both reads and writes of an instruction,
@@ -1423,7 +1355,6 @@ module TracePrimitives {FS : FrameSemantics} where
     readLoc (proj₁ (exec-abstract (store-at-slot j) s alloc)) (OnStack (current-frame alloc) k) ≡
     readLoc s (OnStack (current-frame alloc) k)
   store-at-slot-preserves-other j k s alloc j≢k = !!
-  -- Uses readLoc-writeLoc-diff-slot with j < k or k < j derived from j ≢ k
 
   ------------------------------------------------------------------------
   -- (I) SNOC DECOMPOSITION
