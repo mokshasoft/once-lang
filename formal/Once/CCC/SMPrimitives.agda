@@ -32,7 +32,7 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Nat using (ℕ; zero; suc; _≤_; _<_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <⇒≢)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-≤-trans; <⇒≢)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
@@ -128,6 +128,14 @@ module MemoryOps {FS : FrameSemantics} where
     readLoc (writeLoc s (OnHeap h) v) (OnStack f k) ≡ readLoc s (OnStack f k)
   readLoc-writeLoc-heap-stack s h f k (OnHeap _) = refl
   readLoc-writeLoc-heap-stack s h f k (OnStack _ _) = refl
+
+  -- heapMem equality implies readLoc equality for heap locations
+  readLoc-heapMem-eq : ∀ (s₁ s₂ : LocState FS) (h : HeapLocation) →
+    heapMem s₁ ≡ heapMem s₂ →
+    readLoc s₁ (OnHeap h) ≡ readLoc s₂ (OnHeap h)
+  readLoc-heapMem-eq s₁ s₂ h heq with heapMem s₁ h | heapMem s₂ h | cong (λ m → m h) heq
+  ... | just h₁ | just .h₁ | refl = refl
+  ... | nothing | nothing  | refl = refl
 
   -- writeLoc commutes with register updates for OnHeap locations
   writeLoc-regs-commute-heap : ∀ (s : LocState FS) (hl : HeapLocation) (v : ValueLocation FS)
@@ -576,6 +584,24 @@ TraceWritesBelow n (i ∷ t) with instr-writes-slot i
 ... | nothing = TraceWritesBelow n t
 ... | just k = (k < n) × TraceWritesBelow n t
 
+-- Extract tail of TraceWritesAbove for non-writing instruction
+twa-tail : ∀ (n : ℕ) (i : AbstractInstr) (rest : AbstractTrace) →
+  instr-writes-slot i ≡ nothing →
+  TraceWritesAbove n (i ∷ rest) →
+  TraceWritesAbove n rest
+twa-tail n i rest eq twa with instr-writes-slot i | eq
+... | nothing | refl = twa
+... | just _ | ()
+
+-- Extract tail of TraceWritesBelow for non-writing instruction
+twb-tail : ∀ (n : ℕ) (i : AbstractInstr) (rest : AbstractTrace) →
+  instr-writes-slot i ≡ nothing →
+  TraceWritesBelow n (i ∷ rest) →
+  TraceWritesBelow n rest
+twb-tail n i rest eq twb with instr-writes-slot i | eq
+... | nothing | refl = twb
+... | just _ | ()
+
 -- All slot reads in trace are from slots ≥ n
 TraceSlotReadsAbove : ℕ → AbstractTrace → Set
 TraceSlotReadsAbove n [] = ⊤
@@ -910,40 +936,255 @@ module TracePrimitives {FS : FrameSemantics} where
 
   -- (A1) Current frame slot below write bound is preserved
   -- If trace writes above n (at slots ≥ n), then slot < n is preserved
-  exec-trace-preserves-slot-below : ∀ (trace : AbstractTrace) (s : LocState FS)
-    (alloc : AllocState {FS}) (n slot : ℕ) →
-    TraceWritesAbove n trace →        -- writes at slots ≥ n
-    TraceNoHeapWrites trace →         -- no heap writes
-    slot < n →                        -- slot is below write region
-    readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
-    readLoc s (OnStack (current-frame alloc) slot)
-  -- Proof: induction on trace using positive instruction lemmas
-  -- Key lemmas: store-at-slot-preserves-below, exec-abstract-preserves-stack-slot
-  exec-trace-preserves-slot-below = !!
+  mutual
+    exec-trace-preserves-slot-below : ∀ (trace : AbstractTrace) (s : LocState FS)
+      (alloc : AllocState {FS}) (n slot : ℕ) →
+      TraceWritesAbove n trace →        -- writes at slots ≥ n
+      TraceNoHeapWrites trace →         -- no heap writes
+      slot < n →                        -- slot is below write region
+      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
+      readLoc s (OnStack (current-frame alloc) slot)
+    -- Proof: induction on trace using positive instruction lemmas
+    -- Key lemmas: store-at-slot-preserves-below, exec-abstract-preserves-stack-slot
+    exec-trace-preserves-slot-below [] s alloc n slot _ _ _ = refl
+    exec-trace-preserves-slot-below (store-at-slot k ∷ rest) s alloc n slot (n≤k , twa-rest) tnhw slot<n
+      with halted s
+    ... | true = refl
+    ... | false =
+      let s' = proj₁ (exec-abstract (store-at-slot k) s alloc)
+          alloc' = proj₂ (exec-abstract (store-at-slot k) s alloc)
+          -- slot < n ≤ k, so slot < k
+          slot<k : slot < k
+          slot<k = ≤-trans slot<n n≤k
+          -- store-at-slot k preserves slot since slot < k
+          step-pres = store-at-slot-preserves-below slot k s alloc slot<k
+          -- Frame preserved
+          frame-pres = exec-abstract-preserves-frame (store-at-slot k) s alloc
+          ih = exec-trace-preserves-slot-below rest s' alloc' n slot twa-rest tnhw slot<n
+          -- Need to transport result across frame equality
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
+                             readLoc s' (OnStack cf slot))
+                     frame-pres ih)
+               step-pres
+    -- Non-writing instructions (instr-writes-slot = nothing)
+    exec-trace-preserves-slot-below (mov-to-output ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite mov-to-output rest s alloc n slot twa tnhw slot<n nhw-mov-to-output refl
+    exec-trace-preserves-slot-below (mov-to-input ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite mov-to-input rest s alloc n slot twa tnhw slot<n nhw-mov-to-input refl
+    exec-trace-preserves-slot-below (load-indirect ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite load-indirect rest s alloc n slot twa tnhw slot<n nhw-load-indirect refl
+    exec-trace-preserves-slot-below (load-indirect-suc ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite load-indirect-suc rest s alloc n slot twa tnhw slot<n nhw-load-indirect-suc refl
+    exec-trace-preserves-slot-below (load-from-slot k ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (load-from-slot k) rest s alloc n slot twa tnhw slot<n nhw-load-from-slot refl
+    exec-trace-preserves-slot-below (store-indirect ∷ rest) s alloc n slot twa () slot<n
+    exec-trace-preserves-slot-below (store-indirect-suc ∷ rest) s alloc n slot twa () slot<n
+    exec-trace-preserves-slot-below (lea-slot k ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (lea-slot k) rest s alloc n slot twa tnhw slot<n nhw-lea-slot refl
+    exec-trace-preserves-slot-below (restore-input k ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (restore-input k) rest s alloc n slot twa tnhw slot<n nhw-restore-input refl
+    exec-trace-preserves-slot-below (instr-alloc-stack m ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (instr-alloc-stack m) rest s alloc n slot twa tnhw slot<n nhw-instr-alloc-stack refl
+    exec-trace-preserves-slot-below (instr-dealloc-stack m ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (instr-dealloc-stack m) rest s alloc n slot twa tnhw slot<n nhw-instr-dealloc-stack refl
+    exec-trace-preserves-slot-below (instr-push-frame cap ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (instr-push-frame cap) rest s alloc n slot twa tnhw slot<n nhw-instr-push-frame refl
+    exec-trace-preserves-slot-below (instr-pop-frame ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite instr-pop-frame rest s alloc n slot twa tnhw slot<n nhw-instr-pop-frame refl
+    exec-trace-preserves-slot-below (instr-call-closure ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite instr-call-closure rest s alloc n slot twa tnhw slot<n nhw-instr-call-closure refl
+
+    -- Helper for non-writing instructions
+    exec-trace-preserves-slot-below-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
+      (s : LocState FS) (alloc : AllocState {FS}) (n slot : ℕ) →
+      TraceWritesAbove n (i ∷ rest) →
+      TraceNoHeapWrites (i ∷ rest) →
+      slot < n →
+      InstrNoHeapWrite i →
+      instr-writes-slot i ≡ nothing →
+      readLoc (proj₁ (exec-trace (i ∷ rest) s alloc)) (OnStack (current-frame alloc) slot) ≡
+      readLoc s (OnStack (current-frame alloc) slot)
+    exec-trace-preserves-slot-below-nonwrite i rest s alloc n slot twa tnhw slot<n inhw iws-eq with halted s
+    ... | true = refl
+    ... | false =
+      let s' = proj₁ (exec-abstract i s alloc)
+          alloc' = proj₂ (exec-abstract i s alloc)
+          -- Non-writing instruction preserves ALL stack slots
+          step-pres = exec-abstract-preserves-stack-slot i s alloc (current-frame alloc) slot inhw iws-eq
+          -- Frame preserved
+          frame-pres = exec-abstract-preserves-frame i s alloc
+          -- TraceWritesAbove for rest
+          twa-rest = twa-tail n i rest iws-eq twa
+          tnhw-rest = tnhw-tail i rest tnhw
+          ih = exec-trace-preserves-slot-below rest s' alloc' n slot twa-rest tnhw-rest slot<n
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
+                             readLoc s' (OnStack cf slot))
+                     frame-pres ih)
+               step-pres
 
   -- (A2) Current frame slot above write bound is preserved
   -- If trace writes below m (at slots < m), then slot ≥ m is preserved
-  exec-trace-preserves-slot-above : ∀ (trace : AbstractTrace) (s : LocState FS)
-    (alloc : AllocState {FS}) (m slot : ℕ) →
-    TraceWritesBelow m trace →        -- writes at slots < m
-    TraceNoHeapWrites trace →         -- no heap writes
-    m ≤ slot →                        -- slot is above write region
-    readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
-    readLoc s (OnStack (current-frame alloc) slot)
-  -- Proof: induction on trace; each write is at slot' < m ≤ slot, so slot' ≠ slot
-  exec-trace-preserves-slot-above = !!
+  mutual
+    exec-trace-preserves-slot-above : ∀ (trace : AbstractTrace) (s : LocState FS)
+      (alloc : AllocState {FS}) (m slot : ℕ) →
+      TraceWritesBelow m trace →        -- writes at slots < m
+      TraceNoHeapWrites trace →         -- no heap writes
+      m ≤ slot →                        -- slot is above write region
+      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
+      readLoc s (OnStack (current-frame alloc) slot)
+    -- Proof: induction on trace; each write is at slot' < m ≤ slot, so slot' < slot
+    exec-trace-preserves-slot-above [] s alloc m slot _ _ _ = refl
+    exec-trace-preserves-slot-above (store-at-slot k ∷ rest) s alloc m slot (k<m , twb-rest) tnhw m≤slot
+      with halted s
+    ... | true = refl
+    ... | false =
+      let s' = proj₁ (exec-abstract (store-at-slot k) s alloc)
+          alloc' = proj₂ (exec-abstract (store-at-slot k) s alloc)
+          -- k < m ≤ slot, so k < slot
+          k<slot : k < slot
+          k<slot = <-≤-trans k<m m≤slot
+          -- store-at-slot k preserves slot since k < slot
+          step-pres = store-at-slot-preserves-above k slot s alloc k<slot
+          -- Frame preserved
+          frame-pres = exec-abstract-preserves-frame (store-at-slot k) s alloc
+          ih = exec-trace-preserves-slot-above rest s' alloc' m slot twb-rest tnhw m≤slot
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
+                             readLoc s' (OnStack cf slot))
+                     frame-pres ih)
+               step-pres
+    -- Non-writing instructions (instr-writes-slot = nothing)
+    exec-trace-preserves-slot-above (mov-to-output ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite mov-to-output rest s alloc m slot twb tnhw m≤slot nhw-mov-to-output refl
+    exec-trace-preserves-slot-above (mov-to-input ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite mov-to-input rest s alloc m slot twb tnhw m≤slot nhw-mov-to-input refl
+    exec-trace-preserves-slot-above (load-indirect ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite load-indirect rest s alloc m slot twb tnhw m≤slot nhw-load-indirect refl
+    exec-trace-preserves-slot-above (load-indirect-suc ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite load-indirect-suc rest s alloc m slot twb tnhw m≤slot nhw-load-indirect-suc refl
+    exec-trace-preserves-slot-above (load-from-slot k ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (load-from-slot k) rest s alloc m slot twb tnhw m≤slot nhw-load-from-slot refl
+    exec-trace-preserves-slot-above (store-indirect ∷ rest) s alloc m slot twb () m≤slot
+    exec-trace-preserves-slot-above (store-indirect-suc ∷ rest) s alloc m slot twb () m≤slot
+    exec-trace-preserves-slot-above (lea-slot k ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (lea-slot k) rest s alloc m slot twb tnhw m≤slot nhw-lea-slot refl
+    exec-trace-preserves-slot-above (restore-input k ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (restore-input k) rest s alloc m slot twb tnhw m≤slot nhw-restore-input refl
+    exec-trace-preserves-slot-above (instr-alloc-stack n ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (instr-alloc-stack n) rest s alloc m slot twb tnhw m≤slot nhw-instr-alloc-stack refl
+    exec-trace-preserves-slot-above (instr-dealloc-stack n ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (instr-dealloc-stack n) rest s alloc m slot twb tnhw m≤slot nhw-instr-dealloc-stack refl
+    exec-trace-preserves-slot-above (instr-push-frame cap ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (instr-push-frame cap) rest s alloc m slot twb tnhw m≤slot nhw-instr-push-frame refl
+    exec-trace-preserves-slot-above (instr-pop-frame ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite instr-pop-frame rest s alloc m slot twb tnhw m≤slot nhw-instr-pop-frame refl
+    exec-trace-preserves-slot-above (instr-call-closure ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite instr-call-closure rest s alloc m slot twb tnhw m≤slot nhw-instr-call-closure refl
+
+    -- Helper for non-writing instructions
+    exec-trace-preserves-slot-above-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
+      (s : LocState FS) (alloc : AllocState {FS}) (m slot : ℕ) →
+      TraceWritesBelow m (i ∷ rest) →
+      TraceNoHeapWrites (i ∷ rest) →
+      m ≤ slot →
+      InstrNoHeapWrite i →
+      instr-writes-slot i ≡ nothing →
+      readLoc (proj₁ (exec-trace (i ∷ rest) s alloc)) (OnStack (current-frame alloc) slot) ≡
+      readLoc s (OnStack (current-frame alloc) slot)
+    exec-trace-preserves-slot-above-nonwrite i rest s alloc m slot twb tnhw m≤slot inhw iws-eq with halted s
+    ... | true = refl
+    ... | false =
+      let s' = proj₁ (exec-abstract i s alloc)
+          alloc' = proj₂ (exec-abstract i s alloc)
+          -- Non-writing instruction preserves ALL stack slots
+          step-pres = exec-abstract-preserves-stack-slot i s alloc (current-frame alloc) slot inhw iws-eq
+          -- Frame preserved
+          frame-pres = exec-abstract-preserves-frame i s alloc
+          -- TraceWritesBelow for rest
+          twb-rest = twb-tail m i rest iws-eq twb
+          tnhw-rest = tnhw-tail i rest tnhw
+          ih = exec-trace-preserves-slot-above rest s' alloc' m slot twb-rest tnhw-rest m≤slot
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
+                             readLoc s' (OnStack cf slot))
+                     frame-pres ih)
+               step-pres
 
   -- (A3) Ancestor frame slots are always preserved
   -- Traces only write to the current frame, so ancestor frames are untouched
   -- POSITIVE: uses frame ordering ≺ instead of ≢
-  exec-trace-preserves-ancestor : ∀ (trace : AbstractTrace) (s : LocState FS)
-    (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
-    current-frame alloc ≺ f →         -- f is an ancestor (current ≺ f means f is "above" current)
-    TraceNoHeapWrites trace →         -- no heap writes
-    readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) ≡
-    readLoc s (OnStack f slot)
-  exec-trace-preserves-ancestor _ _ _ _ _ _ _ = !!
-  -- Proof: induction on trace; each write is at current-frame which is ≺ f
+  mutual
+    exec-trace-preserves-ancestor : ∀ (trace : AbstractTrace) (s : LocState FS)
+      (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
+      current-frame alloc ≺ f →         -- f is an ancestor (current ≺ f means f is "above" current)
+      TraceNoHeapWrites trace →         -- no heap writes
+      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) ≡
+      readLoc s (OnStack f slot)
+    -- Proof: induction on trace; each write is at current-frame which is ≺ f
+    exec-trace-preserves-ancestor [] s alloc f slot _ _ = refl
+    exec-trace-preserves-ancestor (store-at-slot k ∷ rest) s alloc f slot cf≺f tnhw with halted s
+    ... | true = refl
+    ... | false =
+      let s' = proj₁ (exec-abstract (store-at-slot k) s alloc)
+          alloc' = proj₂ (exec-abstract (store-at-slot k) s alloc)
+          -- store-at-slot writes to current-frame, preserves ancestor f
+          step-pres = store-at-slot-preserves-ancestor k s alloc f slot cf≺f
+          -- Frame preserved by instruction
+          cf≺f' : current-frame alloc' ≺ f
+          cf≺f' = subst (λ cf → cf ≺ f) (sym (exec-abstract-preserves-frame (store-at-slot k) s alloc)) cf≺f
+          -- IH
+          ih = exec-trace-preserves-ancestor rest s' alloc' f slot cf≺f' tnhw
+      in trans ih step-pres
+    -- Non-writing instructions: use exec-abstract-preserves-stack-slot
+    exec-trace-preserves-ancestor (mov-to-output ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite mov-to-output rest s alloc f slot cf≺f tnhw nhw-mov-to-output refl
+    exec-trace-preserves-ancestor (mov-to-input ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite mov-to-input rest s alloc f slot cf≺f tnhw nhw-mov-to-input refl
+    exec-trace-preserves-ancestor (load-indirect ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite load-indirect rest s alloc f slot cf≺f tnhw nhw-load-indirect refl
+    exec-trace-preserves-ancestor (load-indirect-suc ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite load-indirect-suc rest s alloc f slot cf≺f tnhw nhw-load-indirect-suc refl
+    exec-trace-preserves-ancestor (load-from-slot k ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (load-from-slot k) rest s alloc f slot cf≺f tnhw nhw-load-from-slot refl
+    exec-trace-preserves-ancestor (store-indirect ∷ rest) s alloc f slot cf≺f () -- impossible: tnhw rules out store-indirect
+    exec-trace-preserves-ancestor (store-indirect-suc ∷ rest) s alloc f slot cf≺f () -- impossible
+    exec-trace-preserves-ancestor (lea-slot k ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (lea-slot k) rest s alloc f slot cf≺f tnhw nhw-lea-slot refl
+    exec-trace-preserves-ancestor (restore-input k ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (restore-input k) rest s alloc f slot cf≺f tnhw nhw-restore-input refl
+    exec-trace-preserves-ancestor (instr-alloc-stack m ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (instr-alloc-stack m) rest s alloc f slot cf≺f tnhw nhw-instr-alloc-stack refl
+    exec-trace-preserves-ancestor (instr-dealloc-stack m ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (instr-dealloc-stack m) rest s alloc f slot cf≺f tnhw nhw-instr-dealloc-stack refl
+    exec-trace-preserves-ancestor (instr-push-frame cap ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (instr-push-frame cap) rest s alloc f slot cf≺f tnhw nhw-instr-push-frame refl
+    exec-trace-preserves-ancestor (instr-pop-frame ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite instr-pop-frame rest s alloc f slot cf≺f tnhw nhw-instr-pop-frame refl
+    exec-trace-preserves-ancestor (instr-call-closure ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite instr-call-closure rest s alloc f slot cf≺f tnhw nhw-instr-call-closure refl
+
+    -- Helper for non-writing instructions in ancestor preservation
+    exec-trace-preserves-ancestor-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
+      (s : LocState FS) (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
+      current-frame alloc ≺ f →
+      TraceNoHeapWrites (i ∷ rest) →
+      InstrNoHeapWrite i →
+      instr-writes-slot i ≡ nothing →
+      readLoc (proj₁ (exec-trace (i ∷ rest) s alloc)) (OnStack f slot) ≡
+      readLoc s (OnStack f slot)
+    exec-trace-preserves-ancestor-nonwrite i rest s alloc f slot cf≺f tnhw inhw iws-eq with halted s
+    ... | true = refl
+    ... | false =
+      let s' = proj₁ (exec-abstract i s alloc)
+          alloc' = proj₂ (exec-abstract i s alloc)
+          -- Non-writing instruction preserves ALL stack slots
+          step-pres = exec-abstract-preserves-stack-slot i s alloc f slot inhw iws-eq
+          -- Frame preserved
+          cf≺f' : current-frame alloc' ≺ f
+          cf≺f' = subst (λ cf → cf ≺ f) (sym (exec-abstract-preserves-frame i s alloc)) cf≺f
+          -- Extract tnhw for rest
+          tnhw-rest = tnhw-tail i rest tnhw
+          -- IH
+          ih = exec-trace-preserves-ancestor rest s' alloc' f slot cf≺f' tnhw-rest
+      in trans ih step-pres
 
   -- (A4) Heap locations are always preserved (when no heap writes)
   exec-trace-preserves-heap-loc : ∀ (trace : AbstractTrace) (s : LocState FS)
@@ -952,7 +1193,23 @@ module TracePrimitives {FS : FrameSemantics} where
     readLoc (proj₁ (exec-trace trace s alloc)) (OnHeap h) ≡
     readLoc s (OnHeap h)
   -- Proof: induction on trace; no instruction writes to heap
-  exec-trace-preserves-heap-loc = !!
+  exec-trace-preserves-heap-loc [] s alloc h _ = refl
+  exec-trace-preserves-heap-loc (i ∷ rest) s alloc h tnhw with halted s
+  ... | true = refl
+  ... | false =
+    let s' = proj₁ (exec-abstract i s alloc)
+        alloc' = proj₂ (exec-abstract i s alloc)
+        -- Extract InstrNoHeapWrite for i
+        inhw = tnhw-head i rest tnhw
+        -- Instruction preserves heapMem
+        heapMem-pres = exec-abstract-preserves-heapMem i s alloc inhw
+        -- Convert to readLoc preservation for heap location
+        step-pres = readLoc-heapMem-eq s' s h heapMem-pres
+        -- Extract tnhw for rest
+        tnhw-rest = tnhw-tail i rest tnhw
+        -- IH
+        ih = exec-trace-preserves-heap-loc rest s' alloc' h tnhw-rest
+    in trans ih step-pres
 
   -- (B) INDEPENDENCE - trace version
   -- If loc is disjoint from all reads and writes, writeLoc commutes with trace

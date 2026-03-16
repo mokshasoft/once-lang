@@ -137,7 +137,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-writes-below = trace-writes-below'
       ; trace-slot-reads-below = tt
       ; trace-preserves-capacity = trace-preserves-capacity'
-      ; trace-no-heap-writes = tt , tt , tt , tt , tt , tt
+      ; trace-no-heap-writes = tt
       ; trace-preserves-halted = trace-preserves-halted'
       }
     where

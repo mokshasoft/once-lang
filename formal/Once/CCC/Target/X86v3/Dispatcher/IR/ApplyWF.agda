@@ -437,18 +437,18 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       trace-preserves-capacity' : TracePreservesCapacity trace
       trace-preserves-capacity' = SMP.!!
 
-      -- Setup trace has no heap writes
+      -- Setup trace has no heap writes (simplified: just tt since no heap-writing instrs)
       setup-no-heap-writes : TraceNoHeapWrites (apply-setup-trace pair-slot)
-      setup-no-heap-writes = tt , tt , tt , tt , tt , tt , tt , tt , tt
+      setup-no-heap-writes = tt
 
       trace-no-heap-writes' : TraceNoHeapWrites trace
       trace-no-heap-writes' =
         trace-no-heap-writes-append (apply-setup-trace pair-slot)
           (instr-push-frame body-cap ∷ body-trace ++ instr-pop-frame ∷ [])
           setup-no-heap-writes
-          (tt , trace-no-heap-writes-append body-trace (instr-pop-frame ∷ [])
+          (trace-no-heap-writes-append body-trace (instr-pop-frame ∷ [])
                   (IRResultAWF.trace-no-heap-writes body-result)
-                  (tt , tt))
+                  tt)
 
       -- Reclamation proofs
       reclaim-preserves-result' : ∀ (fits : next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc) →

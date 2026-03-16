@@ -53,8 +53,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
            decomposePairWF; PairValidWF;
            valid-inl-wf; valid-inr-wf; valid-fold-wf;
            decomposeInlWF; decomposeInrWF; decomposeFoldWF;
-           InlValidWF; InrValidWF; FoldValidWF;
-)
+           InlValidWF; InrValidWF; FoldValidWF)
 
   -- Import frontier lemmas
   open import Once.CCC.Target.X86v3.Dispatcher.FrontierLemma using (module FrontierLemmas)
@@ -429,7 +428,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in unfold-trace
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect tpc-[]
-      ; trace-no-heap-writes = tt , tt
+      ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-load-indirect tph-[]
       }
 
@@ -503,7 +502,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inl-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-      ; trace-no-heap-writes = tt , tt , tt , tt
+      ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
@@ -615,7 +614,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           tw = ≤-refl , tt
           -- TraceNoHeapWrites: inl-trace has no heap writes
           tnhw : SMP.TraceNoHeapWrites inl-trace
-          tnhw = tt , tt , tt , tt
+          tnhw = tt
           -- n < suc n (i.e., suc n ≤ suc n)
           n<suc-n : n < suc n
           n<suc-n = ≤-refl
@@ -659,7 +658,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inl-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-      ; trace-no-heap-writes = tt , tt , tt , tt
+      ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
@@ -771,7 +770,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           tw : SMP.TraceWritesAbove (suc n) inl-trace
           tw = ≤-refl , tt
           tnhw : SMP.TraceNoHeapWrites inl-trace
-          tnhw = tt , tt , tt , tt
+          tnhw = tt
           n<suc-n : n < suc n
           n<suc-n = ≤-refl
           preserved : readLoc (proj₁ (exec-trace inl-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
@@ -835,7 +834,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inr-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-      ; trace-no-heap-writes = tt , tt , tt , tt
+      ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
@@ -941,7 +940,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           tw : SMP.TraceWritesAbove (suc n) inr-trace
           tw = ≤-refl , tt
           tnhw : SMP.TraceNoHeapWrites inr-trace
-          tnhw = tt , tt , tt , tt
+          tnhw = tt
           n<suc-n : n < suc n
           n<suc-n = ≤-refl
           preserved : readLoc (proj₁ (exec-trace inr-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
@@ -983,7 +982,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inr-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-      ; trace-no-heap-writes = tt , tt , tt , tt
+      ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
@@ -1092,7 +1091,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           tw : SMP.TraceWritesAbove (suc n) inr-trace
           tw = ≤-refl , tt
           tnhw : SMP.TraceNoHeapWrites inr-trace
-          tnhw = tt , tt , tt , tt
+          tnhw = tt
           n<suc-n : n < suc n
           n<suc-n = ≤-refl
           preserved : readLoc (proj₁ (exec-trace inr-trace s' alloc)) frontier-loc ≡ readLoc s' frontier-loc
@@ -1163,7 +1162,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in fold-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-      ; trace-no-heap-writes = tt , tt , tt , tt
+      ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
@@ -1296,7 +1295,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in fold-trace
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-      ; trace-no-heap-writes = tt , tt , tt , tt
+      ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
@@ -1457,7 +1456,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-f
       -- Trace preserves capacity: setup + f-trace preserves capacity
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity result-f))
-      ; trace-no-heap-writes = tt , tt , IRResultAWF.trace-no-heap-writes result-f
+      ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-f
       ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-f))
       }
     where
@@ -1579,7 +1578,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-g
       -- Trace preserves capacity: setup + g-trace preserves capacity
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity result-g))
-      ; trace-no-heap-writes = tt , tt , IRResultAWF.trace-no-heap-writes result-g
+      ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-g
       ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-g))
       }
     where

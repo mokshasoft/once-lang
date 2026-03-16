@@ -332,7 +332,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       g-nhw = IRResultAWF.trace-no-heap-writes result-g
       compose-trace-no-heap-writes : SMP.TraceNoHeapWrites compose-trace
       compose-trace-no-heap-writes =
-        SMP.trace-no-heap-writes-append f-trace (mov-to-input ∷ g-trace) f-nhw (tt , g-nhw)
+        SMP.trace-no-heap-writes-append f-trace (mov-to-input ∷ g-trace) f-nhw g-nhw
 
       f-tph : TracePreservesHaltedP f-trace
       f-tph = IRResultAWF.trace-preserves-halted result-f

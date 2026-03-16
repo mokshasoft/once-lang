@@ -16,6 +16,7 @@ open import Data.Bool using (false)
 open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; ∃; ∃-syntax; proj₁; proj₂)
+open import Data.Sum using (inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.List.Properties using (++-assoc)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; cong; cong₂; subst; subst₂)
@@ -322,7 +323,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
       -- setup-trace has no store-indirect instructions
       setup-tnhw : SMP.TraceNoHeapWrites setup-trace
-      setup-tnhw = tt , tt , tt
+      setup-tnhw = tt
 
       not-halted-after-setup : halted s-after-setup ≡ false
       not-halted-after-setup = exec-trace-preserves-halted setup-trace s alloc not-halted setup-tph
@@ -439,10 +440,24 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ----------------------------------------------------------------------
       -- Trace characterization using SMPrimitives
       ----------------------------------------------------------------------
+      -- TraceNoHeapWrites for rest segments
+      final-tnhw : SMP.TraceNoHeapWrites final-trace
+      final-tnhw = tt
+
+      rest-after-middle-tnhw : SMP.TraceNoHeapWrites rest-after-middle
+      rest-after-middle-tnhw = SMP.trace-no-heap-writes-append g-trace final-trace g-tnhw final-tnhw
+
+      middle-tnhw : SMP.TraceNoHeapWrites middle-trace
+      middle-tnhw = tt
+
+      rest-after-f-tnhw : SMP.TraceNoHeapWrites rest-after-f
+      rest-after-f-tnhw = SMP.trace-no-heap-writes-append middle-trace rest-after-middle middle-tnhw rest-after-middle-tnhw
+
+      rest-after-setup-tnhw : SMP.TraceNoHeapWrites rest-after-setup
+      rest-after-setup-tnhw = SMP.trace-no-heap-writes-append f-trace rest-after-f f-tnhw rest-after-f-tnhw
+
       pair-trace-no-heap-writes : SMP.TraceNoHeapWrites pair-trace
-      pair-trace-no-heap-writes =
-        tt , tt , SMP.trace-no-heap-writes-append f-trace _
-          f-tnhw (tt , tt , SMP.trace-no-heap-writes-append g-trace _ g-tnhw (tt , tt , tt))
+      pair-trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace rest-after-setup setup-tnhw rest-after-setup-tnhw
 
       pair-trace-preserves-capacity : TracePreservesCapacity pair-trace
       pair-trace-preserves-capacity =
@@ -839,13 +854,13 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
             -- rest-trace no heap writes
             after-g-tnhw : SMP.TraceNoHeapWrites after-g-trace
-            after-g-tnhw = tt , tt , tt
+            after-g-tnhw = tt
 
             g-plus-after-tnhw : SMP.TraceNoHeapWrites (g-trace ++ after-g-trace)
             g-plus-after-tnhw = SMP.trace-no-heap-writes-append g-trace after-g-trace g-tnhw after-g-tnhw
 
             after-f-tnhw : SMP.TraceNoHeapWrites after-f-trace
-            after-f-tnhw = tt , tt , g-plus-after-tnhw
+            after-f-tnhw = g-plus-after-tnhw
 
             rest-tnhw : SMP.TraceNoHeapWrites rest-trace
             rest-tnhw = SMP.trace-no-heap-writes-append f-trace after-f-trace f-tnhw after-f-tnhw
@@ -984,7 +999,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       -- TraceNoHeapWrites for after-fst-store
       -- after-fst-store = restore-input backup-slot ∷ g-trace ++ final-seg
       after-fst-tnhw : SMP.TraceNoHeapWrites after-fst-store
-      after-fst-tnhw = tt , SMP.trace-no-heap-writes-append g-trace final-seg g-tnhw (tt , tt , tt)
+      after-fst-tnhw = SMP.trace-no-heap-writes-append g-trace final-seg g-tnhw tt
 
       -- Intermediate states for snd-ptr proof
       -- Use exec-abstract directly (easier to reason about)
@@ -1303,7 +1318,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
           -- For slot < reclaim-g, middle-trace preserves the slot
           -- middle-trace writes above reclaim-g, slot < reclaim-g, so slot not in write set
           mpg-middle-tnhw : SMP.TraceNoHeapWrites middle-trace
-          mpg-middle-tnhw = tt , tt , tt
+          mpg-middle-tnhw = tt
 
           mpg-middle-preserves : slot < reclaim-g →
             readLoc s-after-middle (OnStack frame slot) ≡ readLoc s-after-f (OnStack frame slot)
@@ -1639,7 +1654,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       rest-middle-writes-above = tt  -- restore-input has no stack write
 
       rest-middle-tnhw : SMP.TraceNoHeapWrites (restore-input backup-slot ∷ [])
-      rest-middle-tnhw = tt , tt
+      rest-middle-tnhw = tt
 
       -- fst-slot has fst-loc in s-after-middle using store-then-preserve pattern
       -- middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
@@ -1740,9 +1755,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       rest-trace-tnhw : SMP.TraceNoHeapWrites rest-trace-after-f
       rest-trace-tnhw =
         let middle-tnhw : SMP.TraceNoHeapWrites middle-trace
-            middle-tnhw = tt , tt , tt
+            middle-tnhw = tt
             final-tnhw : SMP.TraceNoHeapWrites final-trace
-            final-tnhw = tt , tt , tt
+            final-tnhw = tt
         in SMP.trace-no-heap-writes-append middle-trace (g-trace ++ final-trace)
              middle-tnhw
              (SMP.trace-no-heap-writes-append g-trace final-trace g-tnhw final-tnhw)
@@ -2169,7 +2184,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                       middle-writes-above : SMP.TraceWritesAbove reclaim-g middle-trace
                       middle-writes-above = ≤-refl , tt
                       middle-tnhw : SMP.TraceNoHeapWrites middle-trace
-                      middle-tnhw = tt , tt , tt
+                      middle-tnhw = tt
                       k<rg : k < reclaim-g
                       k<rg = <-≤-trans k<rf reclaim-f≤reclaim-g
                       middle-preserves : readLoc s-after-middle (OnStack frame k) ≡
@@ -2235,7 +2250,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
             cf-after-f≺f' : current-frame alloc-after-f ≺ f'
             cf-after-f≺f' = subst (λ f → f ≺ f') (sym frame-eq-f) cf≺f'
             middle-tnhw : SMP.TraceNoHeapWrites middle-trace
-            middle-tnhw = tt , tt , tt
+            middle-tnhw = tt
             middle-preserves : readLoc s-after-middle (OnStack f' k) ≡ readLoc s-after-f (OnStack f' k)
             middle-preserves = exec-trace-preserves-ancestor middle-trace s-after-f alloc-after-f f' k
                                  cf-after-f≺f' middle-tnhw
@@ -2276,7 +2291,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                   f-preserves-heap = exec-trace-preserves-heap-loc f-trace s-after-setup alloc-after-setup hl f-tnhw
                   -- middle preserves heap
                   middle-preserves : readLoc s-after-middle (OnHeap hl) ≡ readLoc s-after-f (OnHeap hl)
-                  middle-preserves = exec-trace-preserves-heap-loc middle-trace s-after-f alloc-after-f hl (tt , tt , tt)
+                  middle-preserves = exec-trace-preserves-heap-loc middle-trace s-after-f alloc-after-f hl (tt)
               in trans s1'-eq-s1 (trans s1-eq-s (trans (sym setup-preserves)
                    (trans (sym f-preserves-heap) (sym middle-preserves))))
             s2-eq : readLoc s₂ (OnHeap hl) ≡
@@ -2335,7 +2350,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
       -- final-trace has no store-indirect
       final-trace-tnhw : SMP.TraceNoHeapWrites final-trace
-      final-trace-tnhw = tt , tt , tt
+      final-trace-tnhw = tt
 
       -- Apply validityWF-trace-preserves for final-trace
       valid-at-s-after-final-g : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc
