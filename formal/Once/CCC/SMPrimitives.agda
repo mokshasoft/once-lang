@@ -106,12 +106,6 @@ module MemoryOps {FS : FrameSemantics} where
   open import Data.Nat using () renaming (_≟_ to _≟ℕ_)
   open import Data.Empty using (⊥-elim)
 
-  -- Fundamental read-write axioms
-  -- Read after write to same location returns the written value
-  readLoc-writeLoc-same : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
-    readLoc (writeLoc s loc v) loc ≡ just v
-  readLoc-writeLoc-same = !!
-
   ------------------------------------------------------------------------
   -- Positive read-write-other lemmas (split by location structure)
   ------------------------------------------------------------------------
