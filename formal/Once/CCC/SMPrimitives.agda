@@ -36,6 +36,7 @@ open import Data.Nat.Properties using (≤-refl; ≤-trans; <⇒≢)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
 open import Function using (_∘_; case_of_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; inspect; [_]; ≢-sym)
 open import Relation.Nullary using (¬_; Dec; yes; no)
@@ -101,7 +102,9 @@ stack-slot-injective refl = refl
 
 module MemoryOps {FS : FrameSemantics} where
   open MemOps {FS}
-  open FrameSemantics FS using (_≟F_)
+  open FrameSemantics FS using (_≟F_; _≺_; ≺-irrefl)
+  open import Data.Nat using () renaming (_≟_ to _≟ℕ_)
+  open import Data.Empty using (⊥-elim)
 
   -- Fundamental read-write axioms
   -- Read after write to same location returns the written value
@@ -142,6 +145,42 @@ module MemoryOps {FS : FrameSemantics} where
     record (writeLoc s loc v) { regs = r }
   writeLoc-regs-commute-general s (OnStack f k) v r = writeLoc-regs-commute s f k v r
   writeLoc-regs-commute-general s (OnHeap hl) v r = writeLoc-regs-commute-heap s hl v r
+
+  ------------------------------------------------------------------------
+  -- Positive stack slot preservation lemmas
+  --
+  -- These use ordering (<, ≺) instead of disjointness (≢) for positive reasoning.
+  -- Key insight: ordering implies disjointness, so we derive ≢ internally.
+  ------------------------------------------------------------------------
+
+  -- Write to slot k, read from slot j where j < k: preserved (same frame)
+  readLoc-writeLoc-stack-slot-lt : ∀ (s : LocState FS) (f : Frame FS) (j k : ℕ)
+    (v : ValueLocation FS) →
+    j < k →
+    readLoc (writeLoc s (OnStack f k) v) (OnStack f j) ≡ readLoc s (OnStack f j)
+  readLoc-writeLoc-stack-slot-lt s f j k v j<k with f ≟F f | k ≟ℕ j
+  ... | yes _ | yes k≡j = ⊥-elim (<⇒≢ j<k (sym k≡j))
+  ... | yes _ | no _ = refl
+  ... | no f≢f | _ = ⊥-elim (f≢f refl)
+
+  -- Write to slot j, read from slot k where j < k: preserved (same frame)
+  readLoc-writeLoc-stack-slot-gt : ∀ (s : LocState FS) (f : Frame FS) (j k : ℕ)
+    (v : ValueLocation FS) →
+    j < k →
+    readLoc (writeLoc s (OnStack f j) v) (OnStack f k) ≡ readLoc s (OnStack f k)
+  readLoc-writeLoc-stack-slot-gt s f j k v j<k with f ≟F f | j ≟ℕ k
+  ... | yes _ | yes j≡k = ⊥-elim (<⇒≢ j<k j≡k)
+  ... | yes _ | no _ = refl
+  ... | no f≢f | _ = ⊥-elim (f≢f refl)
+
+  -- Write to frame f₁, read from frame f₂ where f₁ ≺ f₂: preserved (ancestor frame)
+  readLoc-writeLoc-stack-ancestor : ∀ (s : LocState FS) (f₁ f₂ : Frame FS) (k₁ k₂ : ℕ)
+    (v : ValueLocation FS) →
+    f₁ ≺ f₂ →
+    readLoc (writeLoc s (OnStack f₁ k₁) v) (OnStack f₂ k₂) ≡ readLoc s (OnStack f₂ k₂)
+  readLoc-writeLoc-stack-ancestor s f₁ f₂ k₁ k₂ v f₁≺f₂ with f₁ ≟F f₂
+  ... | yes f₁≡f₂ = ⊥-elim (≺-irrefl (subst (λ f → f ≺ f₂) f₁≡f₂ f₁≺f₂))
+  ... | no _ = refl
 
 ------------------------------------------------------------------------
 -- Level 3: Instruction Characterization (POSITIVE)
@@ -299,7 +338,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   open ExecLemmas {FS}
   open AbstractExec {FS}
   open MemoryOps {FS}
-  open FrameSemantics FS using (_≟F_)
+  open FrameSemantics FS using (_≟F_; _≺_)
   -- (A) DETERMINISM
   -- If two states agree on what an instruction reads (memory and registers),
   -- executing the instruction produces the same result.
@@ -393,6 +432,73 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (instr-push-frame cap) s alloc nhw-instr-push-frame = refl
   exec-abstract-preserves-heapMem instr-pop-frame s alloc nhw-instr-pop-frame = refl
   exec-abstract-preserves-heapMem instr-call-closure s alloc nhw-instr-call-closure = refl
+
+  ------------------------------------------------------------------------
+  -- (E2) STACK SLOT PRESERVATION - instruction level
+  --
+  -- Each instruction preserves stack slots it doesn't write to.
+  -- Uses positive bounds: j < k means writing to k preserves j.
+  ------------------------------------------------------------------------
+
+  -- Instructions that don't write to stack preserve all stack slots
+  -- These instructions only modify registers, heap, or nothing
+  exec-abstract-preserves-stack-slot : ∀ (i : AbstractInstr) (s : LocState FS)
+    (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
+    InstrNoHeapWrite i →
+    instr-writes-slot i ≡ nothing →
+    readLoc (proj₁ (exec-abstract i s alloc)) (OnStack f slot) ≡ readLoc s (OnStack f slot)
+  -- Register-only instructions
+  exec-abstract-preserves-stack-slot mov-to-output s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot mov-to-input s alloc f slot _ _ = refl
+  -- Load instructions: only modify registers, preserve all memory
+  exec-abstract-preserves-stack-slot load-indirect s alloc f slot _ _ =
+    readLoc-stackMem-eq (proj₁ (exec-abstract load-indirect s alloc)) s (OnStack f slot)
+      (load-preserves-stackMem Output (IndReg Input) s)
+      (load-preserves-heapMem Output (IndReg Input) s)
+  exec-abstract-preserves-stack-slot load-indirect-suc s alloc f slot _ _ =
+    readLoc-stackMem-eq (proj₁ (exec-abstract load-indirect-suc s alloc)) s (OnStack f slot)
+      (load-preserves-stackMem Output (IndRegSuc Input) s)
+      (load-preserves-heapMem Output (IndRegSuc Input) s)
+  exec-abstract-preserves-stack-slot (load-from-slot k) s alloc f slot _ _
+    with readLoc s (OnStack (current-frame alloc) k)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-stack-slot (lea-slot k) s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot (restore-input k) s alloc f slot _ _
+    with readLoc s (OnStack (current-frame alloc) k)
+  ... | just _  = refl
+  ... | nothing = refl
+  -- Stack management instructions: preserve all memory
+  exec-abstract-preserves-stack-slot (instr-alloc-stack _) s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot (instr-dealloc-stack _) s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot (instr-push-frame _) s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot instr-pop-frame s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot instr-call-closure s alloc f slot _ _ = refl
+
+  -- store-at-slot k preserves slot j when j < k (positive ordering)
+  store-at-slot-preserves-below : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    j < k →
+    readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc)) (OnStack (current-frame alloc) j) ≡
+    readLoc s (OnStack (current-frame alloc) j)
+  store-at-slot-preserves-below j k s alloc j<k =
+    readLoc-writeLoc-stack-slot-lt s (current-frame alloc) j k (readReg (regs s) Output) j<k
+
+  -- store-at-slot j preserves slot k when j < k (positive ordering)
+  store-at-slot-preserves-above : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    j < k →
+    readLoc (proj₁ (exec-abstract (store-at-slot j) s alloc)) (OnStack (current-frame alloc) k) ≡
+    readLoc s (OnStack (current-frame alloc) k)
+  store-at-slot-preserves-above j k s alloc j<k =
+    readLoc-writeLoc-stack-slot-gt s (current-frame alloc) j k (readReg (regs s) Output) j<k
+
+  -- store-at-slot preserves ancestor frame slots (positive frame ordering)
+  store-at-slot-preserves-ancestor : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (f : Frame FS) (slot : ℕ) →
+    current-frame alloc ≺ f →
+    readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc)) (OnStack f slot) ≡
+    readLoc s (OnStack f slot)
+  store-at-slot-preserves-ancestor k s alloc f slot cf≺f =
+    readLoc-writeLoc-stack-ancestor s (current-frame alloc) f k slot (readReg (regs s) Output) cf≺f
 
   -- (F) FRAME EQUIVALENCE
   -- If two alloc states have the same current-frame, instruction produces same LocState
@@ -524,6 +630,11 @@ TracePreservesFrame : AbstractTrace → Set
 TracePreservesFrame [] = ⊤
 TracePreservesFrame (i ∷ t) = InstrPreservesFrame i × TracePreservesFrame t
 
+-- All instructions in trace preserve heapMem (no heap writes)
+TracePreservesHeapMem : AbstractTrace → Set
+TracePreservesHeapMem [] = ⊤
+TracePreservesHeapMem (i ∷ t) = InstrNoHeapWrite i × TracePreservesHeapMem t
+
 ------------------------------------------------------------------------
 -- Capacity Preservation
 --
@@ -578,11 +689,9 @@ trace-no-heap-writes-append (lea-slot _ ∷ t1) t2 tn1 tn2 = trace-no-heap-write
 trace-no-heap-writes-append (restore-input _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-alloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-dealloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (instr-push-frame ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-push-frame _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-pop-frame ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-call-closure ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (instr-halt ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (instr-alloc-heap ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 
 -- Append preserves TraceWritesAbove
 trace-writes-above-append : ∀ n t1 t2 →
@@ -764,6 +873,41 @@ module TracePrimitives {FS : FrameSemantics} where
   -- The key insight: disjointness follows automatically from the bounds.
   ------------------------------------------------------------------------
 
+  -- Helper: extract InstrNoHeapWrite from trace head
+  private
+    tnhw-head : ∀ (i : AbstractInstr) (rest : AbstractTrace) →
+      TraceNoHeapWrites (i ∷ rest) → InstrNoHeapWrite i
+    tnhw-head mov-to-output _ _ = nhw-mov-to-output
+    tnhw-head mov-to-input _ _ = nhw-mov-to-input
+    tnhw-head load-indirect _ _ = nhw-load-indirect
+    tnhw-head load-indirect-suc _ _ = nhw-load-indirect-suc
+    tnhw-head (load-from-slot _) _ _ = nhw-load-from-slot
+    tnhw-head (store-at-slot _) _ _ = nhw-store-at-slot
+    tnhw-head (lea-slot _) _ _ = nhw-lea-slot
+    tnhw-head (restore-input _) _ _ = nhw-restore-input
+    tnhw-head (instr-alloc-stack _) _ _ = nhw-instr-alloc-stack
+    tnhw-head (instr-dealloc-stack _) _ _ = nhw-instr-dealloc-stack
+    tnhw-head (instr-push-frame _) _ _ = nhw-instr-push-frame
+    tnhw-head instr-pop-frame _ _ = nhw-instr-pop-frame
+    tnhw-head instr-call-closure _ _ = nhw-instr-call-closure
+
+    -- Helper: extract TraceNoHeapWrites for tail
+    tnhw-tail : ∀ (i : AbstractInstr) (rest : AbstractTrace) →
+      TraceNoHeapWrites (i ∷ rest) → TraceNoHeapWrites rest
+    tnhw-tail mov-to-output rest tnhw = tnhw
+    tnhw-tail mov-to-input rest tnhw = tnhw
+    tnhw-tail load-indirect rest tnhw = tnhw
+    tnhw-tail load-indirect-suc rest tnhw = tnhw
+    tnhw-tail (load-from-slot _) rest tnhw = tnhw
+    tnhw-tail (store-at-slot _) rest tnhw = tnhw
+    tnhw-tail (lea-slot _) rest tnhw = tnhw
+    tnhw-tail (restore-input _) rest tnhw = tnhw
+    tnhw-tail (instr-alloc-stack _) rest tnhw = tnhw
+    tnhw-tail (instr-dealloc-stack _) rest tnhw = tnhw
+    tnhw-tail (instr-push-frame _) rest tnhw = tnhw
+    tnhw-tail instr-pop-frame rest tnhw = tnhw
+    tnhw-tail instr-call-closure rest tnhw = tnhw
+
   -- (A1) Current frame slot below write bound is preserved
   -- If trace writes above n (at slots ≥ n), then slot < n is preserved
   exec-trace-preserves-slot-below : ∀ (trace : AbstractTrace) (s : LocState FS)
@@ -773,7 +917,8 @@ module TracePrimitives {FS : FrameSemantics} where
     slot < n →                        -- slot is below write region
     readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
     readLoc s (OnStack (current-frame alloc) slot)
-  -- Proof: induction on trace; each write is at slot' ≥ n > slot, so slot' ≠ slot
+  -- Proof: induction on trace using positive instruction lemmas
+  -- Key lemmas: store-at-slot-preserves-below, exec-abstract-preserves-stack-slot
   exec-trace-preserves-slot-below = !!
 
   -- (A2) Current frame slot above write bound is preserved
