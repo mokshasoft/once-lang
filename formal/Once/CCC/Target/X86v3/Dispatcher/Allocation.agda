@@ -95,24 +95,6 @@ module HeapAllocation {FS : FrameSemantics} where
   heap-alloc-state : (as : AllocState {FS}) (n : ℕ) → AllocState {FS}
   heap-alloc-state as n = proj₂ (heap-alloc as n)
 
-  -- Key property: new HeapRef is fresh (different from all previous)
-  heap-alloc-fresh : (as : AllocState {FS}) (n : ℕ) →
-    (old-ref : HeapRef) →
-    ref-id old-ref < next-heap-ref as →
-    mkHeapRef (next-heap-ref as) ≢ old-ref
-  heap-alloc-fresh as n old-ref old<next eq =
-    <⇒≢ old<next (cong ref-id (sym eq))
-    where
-      open import Data.Nat.Properties using (<⇒≢)
-
-  -- Key property: new HeapLocation is fresh
-  heap-alloc-hl-fresh : (as : AllocState {FS}) (n : ℕ) →
-    (old-hl : HeapLocation) →
-    ref-id (heap-ref old-hl) < next-heap-ref as →
-    heap-alloc-hl as n ≢ old-hl
-  heap-alloc-hl-fresh as n old-hl old<next eq =
-    heap-alloc-fresh as n (heap-ref old-hl) old<next (cong heap-ref eq)
-
 ------------------------------------------------------------------------
 -- Unified Allocation Interface
 ------------------------------------------------------------------------
@@ -308,14 +290,6 @@ module FrontierInvariant {FS : FrameSemantics} where
   ... | refl = ≺⇒≢ cf≺f refl
   fresh-stack-after alloc (OnHeap hl) (heap-before _) ()
 
-  fresh-heap-after : ∀ (alloc : AllocState {FS}) (loc : ValueLocation FS) →
-    BeforeFrontier alloc loc →
-    loc ≢ OnHeap (heap-loc (mkHeapRef (next-heap-ref alloc)) 0)
-  fresh-heap-after alloc (OnStack f k) _ ()
-  fresh-heap-after alloc (OnHeap hl) (heap-before r<next) eq
-    with eq
-  ... | refl = (<⇒≢ r<next) refl
-
   -- Allocation advances frontier
   stack-alloc-advances : ∀ (alloc : AllocState {FS}) n →
     ∀ loc → BeforeFrontier alloc loc →
@@ -506,7 +480,6 @@ module FrameOps {FS : FrameSemantics} where
 --
 --   HeapAllocation:
 --     heap-alloc       : allocate n heap slots
---     heap-alloc-fresh : new ref differs from old refs
 --
 --   WriteOps:
 --     write-loc              : write pointer to location
@@ -516,7 +489,6 @@ module FrameOps {FS : FrameSemantics} where
 --   FrontierInvariant:
 --     BeforeFrontier      : location is before allocation frontier
 --     fresh-stack-after   : new stack slot ≠ old locations
---     fresh-heap-after    : new HeapRef ≠ old locations
 --     stack-alloc-advances: old locations stay before new frontier
 --     heap-alloc-advances : same for heap
 --

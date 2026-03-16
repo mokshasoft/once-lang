@@ -47,19 +47,6 @@ module WriteWithDisjoint {FS : FrameSemantics} where
   ... | yes refl = ⊥-elim (neq refl)
   ... | no _ = refl
 
-  -- Helper: OnHeap is injective
-  OnHeap-injective : ∀ {hl₁ hl₂ : HeapLocation} → OnHeap {FS} hl₁ ≡ OnHeap hl₂ → hl₁ ≡ hl₂
-  OnHeap-injective refl = refl
-
-  -- sucHL increases offset
-  sucHL-neq : ∀ (hl : HeapLocation) → sucHL hl ≢ hl
-  sucHL-neq (heap-loc r o) ()
-
-  -- sucLoc is different from loc
-  sucLoc-neq : ∀ (loc : ValueLocation FS) → sucLoc loc ≢ loc
-  sucLoc-neq (OnStack f k) ()
-  sucLoc-neq (OnHeap hl) eq = sucHL-neq hl (OnHeap-injective eq)
-
   -- Reading from the location we just wrote to (stack case)
   write-read-same-stack : ∀ (s : LocState FS) (f : Frame) (k : ℕ) (val : ValueLocation FS) →
     readLoc (write-loc s (OnStack f k) val) (OnStack f k) ≡ just val
@@ -91,35 +78,3 @@ module WriteWithDisjoint {FS : FrameSemantics} where
     readLoc (write-loc s loc val) loc ≡ just val
   write-read-same s (OnStack f k) val stack-valid = write-stack-read-same s f k val
   write-read-same s (OnHeap hl) (OnHeap v) heap-valid = write-read-same-heap s hl v
-
-  -- Helper: hl ≢ sucHL hl (inverse direction of sucHL-neq)
-  hl-neq-sucHL : ∀ (hl : HeapLocation) → hl ≢ sucHL hl
-  hl-neq-sucHL (heap-loc r o) ()
-
-  -- loc ≢ sucLoc loc (inverse direction of sucLoc-neq)
-  loc-neq-sucLoc : ∀ (loc : ValueLocation FS) → loc ≢ sucLoc loc
-  loc-neq-sucLoc (OnStack f k) ()
-  loc-neq-sucLoc (OnHeap hl) eq = hl-neq-sucHL hl (OnHeap-injective eq)
-
-  -- Write preserves stackMem equality at all but written location
-  write-loc-stackMem : ∀ (s : LocState FS) (loc : ValueLocation FS) (val : ValueLocation FS) →
-    ∀ f k → (OnStack f k ≢ loc) →
-    stackMem (write-loc s loc val) f k ≡ stackMem s f k
-  write-loc-stackMem s (OnStack f' k') val f k neq
-    with _≟F_ f' f | Data.Nat._≟_ k' k
-  ... | yes refl | yes refl = ⊥-elim (neq refl)
-  ... | yes _ | no _ = refl
-  ... | no _ | _ = refl
-  write-loc-stackMem s (OnHeap _) (OnHeap _) f k neq = refl  -- Heap write doesn't affect stack
-  write-loc-stackMem s (OnHeap _) (OnStack _ _) f k neq = refl  -- Invalid write (no-op)
-
-  -- Write to stack preserves heap
-  write-loc-heapMem : ∀ (s : LocState FS) (loc : ValueLocation FS) (val : ValueLocation FS) →
-    ∀ (hl : HeapLocation) → (OnHeap hl ≢ loc) →
-    heapMem (write-loc s loc val) hl ≡ heapMem s hl
-  write-loc-heapMem s (OnStack _ _) val hl neq = refl
-  write-loc-heapMem s (OnHeap hl') (OnStack _ _) hl neq = refl  -- Invalid write (no-op)
-  write-loc-heapMem s (OnHeap hl') (OnHeap v) hl neq
-    with hl' ≟HL hl
-  ... | yes refl = ⊥-elim (neq refl)
-  ... | no _ = refl
