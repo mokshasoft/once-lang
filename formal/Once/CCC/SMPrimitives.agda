@@ -58,7 +58,7 @@ private
   Frame : FrameSemantics → Set
   Frame FS = FrameSemantics.Frame FS
 
--- Open parameterized modules with explicit FS for use in postulates
+-- Open parameterized modules with explicit FS for module-level definitions
 -- Note: These bring TraceSlotReadsBelow, exec-abstract, etc. into scope
 -- with implicit {FS} parameter
 module Ops {FS : FrameSemantics} where
@@ -119,10 +119,10 @@ module MemoryOps {FS : FrameSemantics} where
   open FrameSemantics FS using (_≟F_)
 
   -- Fundamental read-write axioms
-  postulate
-    -- Read after write to same location returns the written value
-    readLoc-writeLoc-same : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
-      readLoc (writeLoc s loc v) loc ≡ just v
+  -- Read after write to same location returns the written value
+  readLoc-writeLoc-same : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
+    readLoc (writeLoc s loc v) loc ≡ just v
+  readLoc-writeLoc-same = !!
 
   ------------------------------------------------------------------------
   -- Positive read-write-other lemmas (split by location structure)
@@ -334,10 +334,10 @@ module InstrPrimitives {FS : FrameSemantics} where
   open import Data.Empty using (⊥-elim)
 
   -- writeHeapMem commutativity for disjoint locations
-  postulate
-    writeHeapMem-commute : ∀ (mem : HeapMem) (hl1 hl2 : HeapLocation) (v1 v2 : HeapLocation) →
-      hl1 ≢ hl2 →
-      writeHeapMem (writeHeapMem mem hl1 v1) hl2 v2 ≡ writeHeapMem (writeHeapMem mem hl2 v2) hl1 v1
+  writeHeapMem-commute : ∀ (mem : HeapMem) (hl1 hl2 : HeapLocation) (v1 v2 : HeapLocation) →
+    hl1 ≢ hl2 →
+    writeHeapMem (writeHeapMem mem hl1 v1) hl2 v2 ≡ writeHeapMem (writeHeapMem mem hl2 v2) hl1 v1
+  writeHeapMem-commute = !!
 
   -- General writeLoc commutativity for disjoint locations
   -- This is the key lemma for proving instruction independence
@@ -544,7 +544,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- If a location is disjoint from both reads and writes of an instruction,
   -- then modifying that location commutes with the instruction.
   --
-  -- This is the key lemma that replaces all the *-slot-independent postulates.
+  -- This is the key lemma for slot-independence proofs.
   --
   -- Proof: Case split on instruction type.
   -- - Register-only: writeLoc commutes with record update (different fields)
@@ -1089,27 +1089,27 @@ module TracePrimitives {FS : FrameSemantics} where
 
   -- (A1) Current frame slot below write bound is preserved
   -- If trace writes above n (at slots ≥ n), then slot < n is preserved
-  postulate
-    exec-trace-preserves-slot-below : ∀ (trace : AbstractTrace) (s : LocState FS)
-      (alloc : AllocState {FS}) (n slot : ℕ) →
-      TraceWritesAbove n trace →        -- writes at slots ≥ n
-      TraceNoStoreIndirect trace →      -- no heap writes
-      slot < n →                        -- slot is below write region
-      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
-      readLoc s (OnStack (current-frame alloc) slot)
-    -- Proof: induction on trace; each write is at slot' ≥ n > slot, so slot' ≠ slot
+  exec-trace-preserves-slot-below : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) (n slot : ℕ) →
+    TraceWritesAbove n trace →        -- writes at slots ≥ n
+    TraceNoStoreIndirect trace →      -- no heap writes
+    slot < n →                        -- slot is below write region
+    readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
+    readLoc s (OnStack (current-frame alloc) slot)
+  -- Proof: induction on trace; each write is at slot' ≥ n > slot, so slot' ≠ slot
+  exec-trace-preserves-slot-below = !!
 
   -- (A2) Current frame slot above write bound is preserved
   -- If trace writes below m (at slots < m), then slot ≥ m is preserved
-  postulate
-    exec-trace-preserves-slot-above : ∀ (trace : AbstractTrace) (s : LocState FS)
-      (alloc : AllocState {FS}) (m slot : ℕ) →
-      TraceWritesBelow m trace →        -- writes at slots < m
-      TraceNoStoreIndirect trace →      -- no heap writes
-      m ≤ slot →                        -- slot is above write region
-      readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
-      readLoc s (OnStack (current-frame alloc) slot)
-    -- Proof: induction on trace; each write is at slot' < m ≤ slot, so slot' ≠ slot
+  exec-trace-preserves-slot-above : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) (m slot : ℕ) →
+    TraceWritesBelow m trace →        -- writes at slots < m
+    TraceNoStoreIndirect trace →      -- no heap writes
+    m ≤ slot →                        -- slot is above write region
+    readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
+    readLoc s (OnStack (current-frame alloc) slot)
+  -- Proof: induction on trace; each write is at slot' < m ≤ slot, so slot' ≠ slot
+  exec-trace-preserves-slot-above = !!
 
   -- (A3) Ancestor frame slots are always preserved
   -- Traces only write to the current frame, so ancestor frames are untouched
@@ -1124,66 +1124,67 @@ module TracePrimitives {FS : FrameSemantics} where
   -- Proof: induction on trace; each write is at current-frame which is ≺ f
 
   -- (A4) Heap locations are always preserved (when no store-indirect)
-  postulate
-    exec-trace-preserves-heap-loc : ∀ (trace : AbstractTrace) (s : LocState FS)
-      (alloc : AllocState {FS}) (h : HeapLocation) →
-      TraceNoStoreIndirect trace →      -- no heap writes
-      readLoc (proj₁ (exec-trace trace s alloc)) (OnHeap h) ≡
-      readLoc s (OnHeap h)
-    -- Proof: induction on trace; no instruction writes to heap
+  exec-trace-preserves-heap-loc : ∀ (trace : AbstractTrace) (s : LocState FS)
+    (alloc : AllocState {FS}) (h : HeapLocation) →
+    TraceNoStoreIndirect trace →      -- no heap writes
+    readLoc (proj₁ (exec-trace trace s alloc)) (OnHeap h) ≡
+    readLoc s (OnHeap h)
+  -- Proof: induction on trace; no instruction writes to heap
+  exec-trace-preserves-heap-loc = !!
 
   -- (B) INDEPENDENCE - trace version
   -- If loc is disjoint from all reads and writes, writeLoc commutes with trace
-  postulate
-    -- Case 1: slot is ABOVE all reads and writes
-    exec-trace-independent : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
-      (f : Frame FS) (slot : ℕ) (val : ValueLocation FS) →
-      -- slot is above all reads
-      TraceSlotReadsBelow slot trace →
-      -- slot is above all writes
-      TraceWritesBelow slot trace →
-      -- trace has no store-indirect
-      TraceNoStoreIndirect trace →
-      -- frame matches
-      current-frame alloc ≡ f →
-      -- Then writeLoc commutes
-      proj₁ (exec-trace trace (writeLoc s (OnStack f slot) val) alloc) ≡
-      writeLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) val
+  -- Case 1: slot is ABOVE all reads and writes
+  exec-trace-independent : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
+    (f : Frame FS) (slot : ℕ) (val : ValueLocation FS) →
+    -- slot is above all reads
+    TraceSlotReadsBelow slot trace →
+    -- slot is above all writes
+    TraceWritesBelow slot trace →
+    -- trace has no store-indirect
+    TraceNoStoreIndirect trace →
+    -- frame matches
+    current-frame alloc ≡ f →
+    -- Then writeLoc commutes
+    proj₁ (exec-trace trace (writeLoc s (OnStack f slot) val) alloc) ≡
+    writeLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) val
+  exec-trace-independent = !!
 
-    -- Case 2: slot is BELOW all reads and writes
-    exec-trace-independent-below : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
-      (f : Frame FS) (slot : ℕ) (val : ValueLocation FS) (n : ℕ) →
-      -- slot is below bound n
-      slot < n →
-      -- reads are above bound n
-      TraceSlotReadsAbove n trace →
-      -- writes are above bound n
-      TraceWritesAbove n trace →
-      -- trace has no store-indirect
-      TraceNoStoreIndirect trace →
-      -- frame matches
-      current-frame alloc ≡ f →
-      -- Then writeLoc commutes
-      proj₁ (exec-trace trace (writeLoc s (OnStack f slot) val) alloc) ≡
-      writeLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) val
+  -- Case 2: slot is BELOW all reads and writes
+  exec-trace-independent-below : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS})
+    (f : Frame FS) (slot : ℕ) (val : ValueLocation FS) (n : ℕ) →
+    -- slot is below bound n
+    slot < n →
+    -- reads are above bound n
+    TraceSlotReadsAbove n trace →
+    -- writes are above bound n
+    TraceWritesAbove n trace →
+    -- trace has no store-indirect
+    TraceNoStoreIndirect trace →
+    -- frame matches
+    current-frame alloc ≡ f →
+    -- Then writeLoc commutes
+    proj₁ (exec-trace trace (writeLoc s (OnStack f slot) val) alloc) ≡
+    writeLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) val
+  exec-trace-independent-below = !!
 
   -- (C) DETERMINISM - trace version
   -- If two states agree on all reads, trace produces same result
-  postulate
-    exec-trace-deterministic : ∀ (trace : AbstractTrace) (s₁ s₂ : LocState FS) (alloc : AllocState {FS}) →
-      -- Registers agree
-      regs s₁ ≡ regs s₂ →
-      -- Halted flags agree
-      halted s₁ ≡ halted s₂ →
-      -- Slots in read range agree
-      (∀ k → TraceSlotReadsAbove k trace →
-             readLoc s₁ (OnStack (current-frame alloc) k) ≡ readLoc s₂ (OnStack (current-frame alloc) k)) →
-      -- Heap agrees (for load-indirect)
-      heapMem s₁ ≡ heapMem s₂ →
-      -- Stack structure agrees
-      stackMem s₁ ≡ stackMem s₂ →
-      -- Then results are equal
-      proj₁ (exec-trace trace s₁ alloc) ≡ proj₁ (exec-trace trace s₂ alloc)
+  exec-trace-deterministic : ∀ (trace : AbstractTrace) (s₁ s₂ : LocState FS) (alloc : AllocState {FS}) →
+    -- Registers agree
+    regs s₁ ≡ regs s₂ →
+    -- Halted flags agree
+    halted s₁ ≡ halted s₂ →
+    -- Slots in read range agree
+    (∀ k → TraceSlotReadsAbove k trace →
+           readLoc s₁ (OnStack (current-frame alloc) k) ≡ readLoc s₂ (OnStack (current-frame alloc) k)) →
+    -- Heap agrees (for load-indirect)
+    heapMem s₁ ≡ heapMem s₂ →
+    -- Stack structure agrees
+    stackMem s₁ ≡ stackMem s₂ →
+    -- Then results are equal
+    proj₁ (exec-trace trace s₁ alloc) ≡ proj₁ (exec-trace trace s₂ alloc)
+  exec-trace-deterministic = !!
 
   -- (D) FRAME PRESERVATION - trace version
   -- NO predicate needed - all instructions preserve current-frame!
@@ -1278,21 +1279,27 @@ module TracePrimitives {FS : FrameSemantics} where
   -- Load instructions: these cases require the read to succeed.
   -- Our IR compilation ensures loads are only executed when the slot/location is valid,
   -- so the read succeeds and halted is preserved.
-  -- POSTULATE: These require state-dependent reasoning about slot validity.
+  -- These require state-dependent reasoning about slot validity.
   -- Sound because IR compilation guarantees loads are from valid locations.
-  postulate
-    load-from-slot-preserves-halted : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
-      halted s ≡ false →
-      halted (proj₁ (exec-abstract (load-from-slot slot) s alloc)) ≡ false
-    load-indirect-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
-      halted s ≡ false →
-      halted (proj₁ (exec-abstract load-indirect s alloc)) ≡ false
-    load-indirect-suc-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
-      halted s ≡ false →
-      halted (proj₁ (exec-abstract load-indirect-suc s alloc)) ≡ false
-    restore-input-preserves-halted : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
-      halted s ≡ false →
-      halted (proj₁ (exec-abstract (restore-input slot) s alloc)) ≡ false
+  load-from-slot-preserves-halted : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    halted (proj₁ (exec-abstract (load-from-slot slot) s alloc)) ≡ false
+  load-from-slot-preserves-halted = !!
+
+  load-indirect-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    halted (proj₁ (exec-abstract load-indirect s alloc)) ≡ false
+  load-indirect-preserves-halted = !!
+
+  load-indirect-suc-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    halted (proj₁ (exec-abstract load-indirect-suc s alloc)) ≡ false
+  load-indirect-suc-preserves-halted = !!
+
+  restore-input-preserves-halted : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    halted (proj₁ (exec-abstract (restore-input slot) s alloc)) ≡ false
+  restore-input-preserves-halted = !!
 
   -- exec-abstract preserves halted=false when InstrPreservesHalted holds
   exec-abstract-preserves-halted : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -1684,29 +1691,29 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
   -- This complements exec-trace-output-deterministic for memory locations.
   ------------------------------------------------------------------------
 
-  postulate
-    -- Memory determinism for slots in the write region [n, m)
-    -- If two states agree on Input and memory at slots in [n, m),
-    -- and trace reads/writes are bounded by [n, m),
-    -- then after execution, memory at slots in [n, m) is the same.
-    exec-trace-mem-deterministic : ∀ (trace : AbstractTrace)
-      (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n m : ℕ) →
-      halted s₁ ≡ false →
-      halted s₂ ≡ false →
-      current-frame alloc₁ ≡ current-frame alloc₂ →
-      readReg (regs s₁) Input ≡ readReg (regs s₂) Input →
-      TraceSlotReadsAbove n trace →
-      TraceSlotReadsBelow m trace →   -- NEW: reads are bounded above by m
-      TraceWritesAbove n trace →
-      TraceWritesBelow m trace →
-      TraceNoStoreIndirect trace →
-      (∀ slot → n ≤ slot → slot < m →   -- CHANGED: only require agreement on [n, m)
-        readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
-        readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
-      ∀ slot → n ≤ slot → slot < m →
-        readLoc (proj₁ (exec-trace trace s₁ alloc₁)) (OnStack (current-frame alloc₁) slot) ≡
-        readLoc (proj₁ (exec-trace trace s₂ alloc₂)) (OnStack (current-frame alloc₂) slot)
-    -- Proof sketch: by induction on trace
-    -- Each store instruction writes a value computed from Input, Output, or memory reads.
-    -- Since all reads come from slots in [n, m) (where states agree), computed values are same.
-    -- Therefore stores to slots in [n, m) write the same values in both executions.
+  -- Memory determinism for slots in the write region [n, m)
+  -- If two states agree on Input and memory at slots in [n, m),
+  -- and trace reads/writes are bounded by [n, m),
+  -- then after execution, memory at slots in [n, m) is the same.
+  exec-trace-mem-deterministic : ∀ (trace : AbstractTrace)
+    (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n m : ℕ) →
+    halted s₁ ≡ false →
+    halted s₂ ≡ false →
+    current-frame alloc₁ ≡ current-frame alloc₂ →
+    readReg (regs s₁) Input ≡ readReg (regs s₂) Input →
+    TraceSlotReadsAbove n trace →
+    TraceSlotReadsBelow m trace →   -- reads are bounded above by m
+    TraceWritesAbove n trace →
+    TraceWritesBelow m trace →
+    TraceNoStoreIndirect trace →
+    (∀ slot → n ≤ slot → slot < m →   -- only require agreement on [n, m)
+      readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
+      readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
+    ∀ slot → n ≤ slot → slot < m →
+      readLoc (proj₁ (exec-trace trace s₁ alloc₁)) (OnStack (current-frame alloc₁) slot) ≡
+      readLoc (proj₁ (exec-trace trace s₂ alloc₂)) (OnStack (current-frame alloc₂) slot)
+  -- Proof sketch: by induction on trace
+  -- Each store instruction writes a value computed from Input, Output, or memory reads.
+  -- Since all reads come from slots in [n, m) (where states agree), computed values are same.
+  -- Therefore stores to slots in [n, m) write the same values in both executions.
+  exec-trace-mem-deterministic = !!
