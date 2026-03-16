@@ -107,8 +107,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
            validityWF-with-bf-transfer;
            decomposePairWF; PairValidWF;
            decomposeClosureWF; ClosureValidWF;
-           closure-mode-is-heap-proof;
-           at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
+           closure-mode-is-heap-proof)
 
   open import Once.CCC.Target.X86v3.Dispatcher.DispatcherArithmeticLemma
     using (suc<+2)
@@ -204,7 +203,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-writes-below = trace-writes-below'
       ; trace-slot-reads-below = trace-slot-reads-below'
       ; trace-preserves-capacity = trace-preserves-capacity'
-      ; trace-no-store-indirect = trace-no-store-indirect'
+      ; trace-no-heap-writes = trace-no-heap-writes'
       ; trace-preserves-halted = trace-preserves-halted'
       }
     where
@@ -438,17 +437,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       trace-preserves-capacity' : TracePreservesCapacity trace
       trace-preserves-capacity' = SMP.!!
 
-      -- Setup trace has no store-indirect
-      setup-no-store-indirect : TraceNoStoreIndirect (apply-setup-trace pair-slot)
-      setup-no-store-indirect = tt , tt , tt , tt , tt , tt , tt , tt , tt
+      -- Setup trace has no heap writes
+      setup-no-heap-writes : TraceNoHeapWrites (apply-setup-trace pair-slot)
+      setup-no-heap-writes = tt , tt , tt , tt , tt , tt , tt , tt , tt
 
-      trace-no-store-indirect' : TraceNoStoreIndirect trace
-      trace-no-store-indirect' =
-        trace-no-store-indirect-append (apply-setup-trace pair-slot)
+      trace-no-heap-writes' : TraceNoHeapWrites trace
+      trace-no-heap-writes' =
+        trace-no-heap-writes-append (apply-setup-trace pair-slot)
           (instr-push-frame body-cap ∷ body-trace ++ instr-pop-frame ∷ [])
-          setup-no-store-indirect
-          (tt , trace-no-store-indirect-append body-trace (instr-pop-frame ∷ [])
-                  (IRResultAWF.trace-no-store-indirect body-result)
+          setup-no-heap-writes
+          (tt , trace-no-heap-writes-append body-trace (instr-pop-frame ∷ [])
+                  (IRResultAWF.trace-no-heap-writes body-result)
                   (tt , tt))
 
       -- Reclamation proofs

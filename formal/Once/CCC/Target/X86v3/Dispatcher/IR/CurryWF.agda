@@ -49,8 +49,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
            valid-closure-wf; validityWF-mem-only;
            validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
-           validityWF-with-bf-transfer;
-           at-frontier-neq-before-wf; suc-frontier-neq-before-wf)
+           validityWF-with-bf-transfer)
 
   -- Import bf-same-frame-slot from BFTransfer module
   open import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF
@@ -138,7 +137,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-writes-below = trace-writes-below'
       ; trace-slot-reads-below = tt
       ; trace-preserves-capacity = trace-preserves-capacity'
-      ; trace-no-store-indirect = tt , tt , tt , tt , tt , tt
+      ; trace-no-heap-writes = tt , tt , tt , tt , tt , tt
       ; trace-preserves-halted = trace-preserves-halted'
       }
     where

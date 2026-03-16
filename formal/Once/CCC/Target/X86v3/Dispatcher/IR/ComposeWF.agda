@@ -128,7 +128,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; trace-writes-below = compose-trace-writes-below
       ; trace-slot-reads-below = compose-trace-slot-reads-below
       ; trace-preserves-capacity = compose-trace-preserves-capacity
-      ; trace-no-store-indirect = compose-trace-no-store-indirect
+      ; trace-no-heap-writes = compose-trace-no-heap-writes
       ; trace-preserves-halted = compose-trace-preserves-halted
       }
     where
@@ -326,13 +326,13 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       compose-trace-preserves-capacity : TracePreservesCapacity compose-trace
       compose-trace-preserves-capacity = tpc-++ f-tpc (tpc-∷ ipc-mov-to-input g-tpc)
 
-      f-nsi : SMP.TraceNoStoreIndirect f-trace
-      f-nsi = IRResultAWF.trace-no-store-indirect result-f
-      g-nsi : SMP.TraceNoStoreIndirect g-trace
-      g-nsi = IRResultAWF.trace-no-store-indirect result-g
-      compose-trace-no-store-indirect : SMP.TraceNoStoreIndirect compose-trace
-      compose-trace-no-store-indirect =
-        SMP.trace-no-store-indirect-append f-trace (mov-to-input ∷ g-trace) f-nsi (tt , g-nsi)
+      f-nhw : SMP.TraceNoHeapWrites f-trace
+      f-nhw = IRResultAWF.trace-no-heap-writes result-f
+      g-nhw : SMP.TraceNoHeapWrites g-trace
+      g-nhw = IRResultAWF.trace-no-heap-writes result-g
+      compose-trace-no-heap-writes : SMP.TraceNoHeapWrites compose-trace
+      compose-trace-no-heap-writes =
+        SMP.trace-no-heap-writes-append f-trace (mov-to-input ∷ g-trace) f-nhw (tt , g-nhw)
 
       f-tph : TracePreservesHaltedP f-trace
       f-tph = IRResultAWF.trace-preserves-halted result-f

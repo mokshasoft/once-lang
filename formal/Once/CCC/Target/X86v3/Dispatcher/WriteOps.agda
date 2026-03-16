@@ -7,7 +7,8 @@
 
 module Once.CCC.Target.X86v3.Dispatcher.WriteOps where
 
-open import Data.Nat using (ℕ; suc)
+open import Data.Nat using (ℕ; suc; _<_)
+open import Data.Nat.Properties using (<⇒≢; m<n⇒m<1+n)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Empty using (⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; trans; sym)
@@ -78,3 +79,56 @@ module WriteWithDisjoint {FS : FrameSemantics} where
     readLoc (write-loc s loc val) loc ≡ just val
   write-read-same s (OnStack f k) val stack-valid = write-stack-read-same s f k val
   write-read-same s (OnHeap hl) (OnHeap v) heap-valid = write-read-same-heap s hl v
+
+  ------------------------------------------------------------------------
+  -- Positive write preservation lemmas (using BeforeFrontier)
+  --
+  -- These lemmas take BeforeFrontier directly, avoiding the intermediate
+  -- ≢ step. This is the positive interface for IR proofs.
+  ------------------------------------------------------------------------
+
+  -- Writing at frontier preserves all BeforeFrontier locations
+  write-at-frontier-preserves-before : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) (val : ValueLocation FS) →
+    BeforeFrontier alloc loc →
+    readLoc (write-loc s (OnStack (current-frame alloc) (next-slot alloc)) val) loc ≡
+    readLoc s loc
+
+  -- Case 1: Same frame, slot < next-slot
+  write-at-frontier-preserves-before s alloc (OnStack f k) val (stack-before f≡cf k<next)
+    with _≟F_ (current-frame alloc) f | Data.Nat._≟_ (next-slot alloc) k
+  ... | yes _ | yes ns≡k = ⊥-elim (<⇒≢ k<next (sym ns≡k))
+  ... | yes _ | no _ = refl
+  ... | no cf≢f | _ = ⊥-elim (cf≢f (sym f≡cf))
+
+  -- Case 2: Ancestor frame (current-frame ≺ f)
+  write-at-frontier-preserves-before s alloc (OnStack f k) val (stack-ancestor cf≺f _)
+    with _≟F_ (current-frame alloc) f
+  ... | yes cf≡f = ⊥-elim (≺⇒≢ cf≺f cf≡f)
+  ... | no _ = refl
+
+  -- Case 3: Heap location (stack write doesn't affect heap)
+  write-at-frontier-preserves-before s alloc (OnHeap hl) val (heap-before _) = refl
+
+  -- Writing at suc frontier preserves all BeforeFrontier locations
+  write-at-suc-frontier-preserves-before : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) (val : ValueLocation FS) →
+    BeforeFrontier alloc loc →
+    readLoc (write-loc s (OnStack (current-frame alloc) (suc (next-slot alloc))) val) loc ≡
+    readLoc s loc
+
+  -- Case 1: Same frame, slot < next-slot (so slot < suc next-slot too)
+  write-at-suc-frontier-preserves-before s alloc (OnStack f k) val (stack-before f≡cf k<next)
+    with _≟F_ (current-frame alloc) f | Data.Nat._≟_ (suc (next-slot alloc)) k
+  ... | yes _ | yes sns≡k = ⊥-elim (<⇒≢ (m<n⇒m<1+n k<next) (sym sns≡k))
+  ... | yes _ | no _ = refl
+  ... | no cf≢f | _ = ⊥-elim (cf≢f (sym f≡cf))
+
+  -- Case 2: Ancestor frame
+  write-at-suc-frontier-preserves-before s alloc (OnStack f k) val (stack-ancestor cf≺f _)
+    with _≟F_ (current-frame alloc) f
+  ... | yes cf≡f = ⊥-elim (≺⇒≢ cf≺f cf≡f)
+  ... | no _ = refl
+
+  -- Case 3: Heap location
+  write-at-suc-frontier-preserves-before s alloc (OnHeap hl) val (heap-before _) = refl

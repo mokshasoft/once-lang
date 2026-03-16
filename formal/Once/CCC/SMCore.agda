@@ -19,7 +19,7 @@
 
 module Once.CCC.SMCore where
 
-open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; s≤s)
+open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; _>_; _≥_; s≤s)
 open import Data.Nat.Properties using (_≟_; <⇒≢; ≤-trans)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Bool using (Bool; true; false)
@@ -93,6 +93,44 @@ heap-loc r₁ o₁ ≟HL heap-loc r₂ o₂ with r₁ ≟H r₂ | o₁ ≟ o₂
 -- Convert HeapLocation to HeapRef (for frontier checks)
 hl-ref : HeapLocation → HeapRef
 hl-ref = heap-ref
+
+------------------------------------------------------------------------
+-- HeapRegion: A contiguous block of heap memory
+--
+-- Used for tracking ownership of heap-allocated objects.
+-- A region starts at a HeapRef and has a fixed size.
+------------------------------------------------------------------------
+
+record HeapRegion : Set where
+  constructor heap-region
+  field
+    region-ref : HeapRef
+    region-size : ℕ
+
+open HeapRegion public
+
+-- Positive predicate: HeapLocation is within a HeapRegion
+-- Uses ordering: same ref AND offset < size
+data InRegion : HeapLocation → HeapRegion → Set where
+  in-region : ∀ {r o size} →
+    o < size →
+    InRegion (heap-loc r o) (heap-region r size)
+
+-- HeapOwnership: set of owned heap regions
+-- Empty list means no heap writes allowed (current behavior)
+HeapOwnership : Set
+HeapOwnership = List HeapRegion
+
+-- Positive predicate: HeapLocation is outside all owned regions
+-- Either different ref (by ordering) or offset ≥ size
+data OutsideOwned : HeapLocation → HeapOwnership → Set where
+  outside-nil : ∀ {hl} → OutsideOwned hl []
+  outside-cons : ∀ {hl region regions} →
+    (ref-id (heap-ref hl) < ref-id (region-ref region) ⊎
+     ref-id (heap-ref hl) > ref-id (region-ref region) ⊎
+     heap-offset hl ≥ region-size region) →
+    OutsideOwned hl regions →
+    OutsideOwned hl (region ∷ regions)
 
 ------------------------------------------------------------------------
 -- ValueLocation: Where a value lives

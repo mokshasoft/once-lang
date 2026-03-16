@@ -299,11 +299,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- is preserved through trace execution. Apply is the only IR that uses
         -- push-frame, and it handles capacity specially via frame push/pop.
         trace-preserves-capacity : TracePreservesCapacity trace
-        -- Trace contains no store-indirect instructions.
-        -- store-indirect writes to arbitrary memory (wherever Input points),
-        -- so traces containing it require additional disjointness preconditions.
-        -- Our IR traces don't use store-indirect (they use store-at-slot instead).
-        trace-no-store-indirect : TraceNoStoreIndirect trace
+        -- Trace contains no heap-writing instructions.
+        -- Heap writes (store-indirect) write to arbitrary memory (wherever Input points),
+        -- so traces containing them require additional disjointness preconditions.
+        -- Our IR traces don't write to heap (they use store-at-slot instead).
+        trace-no-heap-writes : TraceNoHeapWrites trace
         -- Trace preserves halted: all instructions in trace preserve halted status.
         -- This enables proving halted preservation through composed traces.
         -- Combined with not-halted precondition, proves intermediate states are not halted.
@@ -690,28 +690,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   ------------------------------------------------------------------------
 
   -- Import helpers for frontier inequality
-  open import Data.Empty using (⊥-elim)
-  open import Data.Nat.Properties using (1+n≰n; <⇒≤)
-  open import Data.Nat using (suc)
-
-  -- Helper: slot at next-slot is different from any slot before frontier
-  at-frontier-neq-before-wf : ∀ (alloc : AllocState {FS}) (loc : ValueLocation FS) →
-    BeforeFrontier alloc loc →
-    OnStack (current-frame alloc) (next-slot alloc) ≢ loc
-  at-frontier-neq-before-wf alloc loc bf eq = fresh-stack-after alloc loc bf (sym eq)
-
-  -- Helper: slot at suc next-slot is different from any slot before frontier
-  suc-frontier-neq-before-wf : ∀ (alloc : AllocState {FS}) (loc : ValueLocation FS) →
-    BeforeFrontier alloc loc →
-    OnStack (current-frame alloc) (suc (next-slot alloc)) ≢ loc
-  suc-frontier-neq-before-wf alloc (OnStack .(current-frame alloc) .(suc (next-slot alloc)))
-    (stack-before refl k<next) refl =
-    ⊥-elim (1+n≰n (<⇒≤ k<next))
-  suc-frontier-neq-before-wf alloc (OnStack f k) (stack-ancestor cf≺f _) eq
-    with eq
-  ... | refl = ≺⇒≢ cf≺f refl
-  suc-frontier-neq-before-wf alloc (OnHeap hl) _ ()
-
   -- ValidAtWF is preserved when writing to at-frontier location
   validityWF-write-at-frontier : ∀ {m alloc A} (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) (val : ValueLocation FS) →
@@ -727,11 +705,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
     valid-pair-wf fp' sp' fb sb slb fv' sv'
     where
-      fresh = OnStack (current-frame alloc) (next-slot alloc)
-      fp' = trans (write-preserves-disjoint s fresh val loc
-                    (at-frontier-neq-before-wf alloc loc loc-before)) fp
-      sp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
-                    (at-frontier-neq-before-wf alloc (sucLoc loc) slb)) sp
+      fp' = trans (write-at-frontier-preserves-before s alloc loc val loc-before) fp
+      sp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) sp
       fv' = validityWF-write-at-frontier a fl s val fb fv
       sv' = validityWF-write-at-frontier b sl s val sb sv
 
@@ -739,11 +714,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep' cp' eb cb slb ev' bc
     where
-      fresh = OnStack (current-frame alloc) (next-slot alloc)
-      ep' = trans (write-preserves-disjoint s fresh val loc
-                    (at-frontier-neq-before-wf alloc loc loc-before)) ep
-      cp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
-                    (at-frontier-neq-before-wf alloc (sucLoc loc) slb)) cp
+      ep' = trans (write-at-frontier-preserves-before s alloc loc val loc-before) ep
+      cp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) cp
       ev' = validityWF-write-at-frontier env el s val eb ev
 
   -- Eff (effectful morphism): recurse on underlying closure validity
@@ -755,9 +727,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp' pb slb pv'
     where
-      fresh = OnStack (current-frame alloc) (next-slot alloc)
-      pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
-                    (at-frontier-neq-before-wf alloc (sucLoc loc) slb)) pp
+      pp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-frontier a pl s val pb pv
 
   -- inr (any mode)
@@ -765,9 +735,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp' pb slb pv'
     where
-      fresh = OnStack (current-frame alloc) (next-slot alloc)
-      pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
-                    (at-frontier-neq-before-wf alloc (sucLoc loc) slb)) pp
+      pp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-frontier b pl s val pb pv
 
   -- fold (any mode)
@@ -775,9 +743,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up' ub uv'
     where
-      fresh = OnStack (current-frame alloc) (next-slot alloc)
-      up' = trans (write-preserves-disjoint s fresh val loc
-                    (at-frontier-neq-before-wf alloc loc loc-before)) up
+      up' = trans (write-at-frontier-preserves-before s alloc loc val loc-before) up
       uv' = validityWF-write-at-frontier v ul s val ub uv
 
   -- Primitives: BeforeFrontier unchanged
@@ -805,11 +771,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-pair-wf {fst-loc = fl} {snd-loc = sl} fp sp fb sb slb fv sv) =
     valid-pair-wf fp' sp' fb sb slb fv' sv'
     where
-      fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-      fp' = trans (write-preserves-disjoint s fresh val loc
-                    (suc-frontier-neq-before-wf alloc loc loc-before)) fp
-      sp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
-                    (suc-frontier-neq-before-wf alloc (sucLoc loc) slb)) sp
+      fp' = trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) fp
+      sp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) sp
       fv' = validityWF-write-at-suc-frontier a fl s val fb fv
       sv' = validityWF-write-at-suc-frontier b sl s val sb sv
 
@@ -817,11 +780,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-closure-wf {body = body} {env = env} bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev bc) =
     valid-closure-wf bb ep' cp' eb cb slb ev' bc
     where
-      fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-      ep' = trans (write-preserves-disjoint s fresh val loc
-                    (suc-frontier-neq-before-wf alloc loc loc-before)) ep
-      cp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
-                    (suc-frontier-neq-before-wf alloc (sucLoc loc) slb)) cp
+      ep' = trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) ep
+      cp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) cp
       ev' = validityWF-write-at-suc-frontier env el s val eb ev
 
   -- Eff (effectful morphism): recurse on underlying closure validity
@@ -833,9 +793,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-inl-wf {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl-wf pp' pb slb pv'
     where
-      fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-      pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
-                    (suc-frontier-neq-before-wf alloc (sucLoc loc) slb)) pp
+      pp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-suc-frontier a pl s val pb pv
 
   -- inr (any mode)
@@ -843,9 +801,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-inr-wf {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr-wf pp' pb slb pv'
     where
-      fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-      pp' = trans (write-preserves-disjoint s fresh val (sucLoc loc)
-                    (suc-frontier-neq-before-wf alloc (sucLoc loc) slb)) pp
+      pp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-suc-frontier b pl s val pb pv
 
   -- fold (any mode)
@@ -853,9 +809,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold-wf up' ub uv'
     where
-      fresh = OnStack (current-frame alloc) (suc (next-slot alloc))
-      up' = trans (write-preserves-disjoint s fresh val loc
-                    (suc-frontier-neq-before-wf alloc loc loc-before)) up
+      up' = trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) up
       uv' = validityWF-write-at-suc-frontier v ul s val ub uv
 
   -- Primitives: BeforeFrontier unchanged
@@ -1299,10 +1253,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     ValidAtWF m alloc v loc s →
     -- Trace only writes at slots ≥ next-slot alloc
     TraceWritesAbove (next-slot alloc) trace →
-    TraceNoStoreIndirect trace →
+    TraceNoHeapWrites trace →
     -- Validity preserved after trace
     ValidAtWF m alloc v loc (proj₁ (exec-trace trace s alloc))
-  validityWF-trace-preserves alloc trace v loc s loc-bf valid twa tnsi =
+  validityWF-trace-preserves alloc trace v loc s loc-bf valid twa tnhw =
     validityWF-mem-preserved v loc s (proj₁ (exec-trace trace s alloc)) loc-bf mem-preserved valid
     where
       -- Memory at all BeforeFrontier locations is preserved
@@ -1314,12 +1268,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         subst (λ f' → readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f' k) ≡
                       readLoc s (OnStack f' k))
               (sym f≡cf)
-              (exec-trace-preserves-slot-below trace s alloc (next-slot alloc) k twa tnsi k<next)
+              (exec-trace-preserves-slot-below trace s alloc (next-slot alloc) k twa tnhw k<next)
       mem-preserved (OnStack f k) (stack-ancestor cf≺f _) =
         -- f is an ancestor frame (current-frame alloc ≺ f)
-        exec-trace-preserves-ancestor trace s alloc f k cf≺f tnsi
+        exec-trace-preserves-ancestor trace s alloc f k cf≺f tnhw
       mem-preserved (OnHeap h) (heap-before _) =
         -- Heap location
-        exec-trace-preserves-heap-loc trace s alloc h tnsi
+        exec-trace-preserves-heap-loc trace s alloc h tnhw
 
 

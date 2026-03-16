@@ -94,7 +94,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
-      ; trace-no-store-indirect = tt , tt
+      ; trace-no-heap-writes = tt , tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }
     where
@@ -182,7 +182,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect tpc-[]
-      ; trace-no-store-indirect = tt , tt
+      ; trace-no-heap-writes = tt , tt
       ; trace-preserves-halted = tph-∷ iph-load-indirect tph-[]
       }
     where
@@ -284,7 +284,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc tpc-[]
-      ; trace-no-store-indirect = tt , tt
+      ; trace-no-heap-writes = tt , tt
       ; trace-preserves-halted = tph-∷ iph-load-indirect-suc tph-[]
       }
     where
@@ -386,7 +386,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
-      ; trace-no-store-indirect = tt , tt
+      ; trace-no-heap-writes = tt , tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }
     where
@@ -470,7 +470,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
-      ; trace-no-store-indirect = tt , tt
+      ; trace-no-heap-writes = tt , tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }
     where
@@ -557,7 +557,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
       ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
-      ; trace-no-store-indirect = tt , tt
+      ; trace-no-heap-writes = tt , tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }
     where

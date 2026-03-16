@@ -182,21 +182,61 @@ instr-reads-slot (load-from-slot k) = just k
 instr-reads-slot (restore-input k) = just k
 instr-reads-slot _ = nothing
 
--- Instruction doesn't use store-indirect (writes to known locations only)
-InstrNotStoreIndirect : AbstractInstr → Set
-InstrNotStoreIndirect store-indirect = ⊥
-  where open import Data.Empty using (⊥)
-InstrNotStoreIndirect store-indirect-suc = ⊥
-  where open import Data.Empty using (⊥)
-InstrNotStoreIndirect _ = ⊤
+------------------------------------------------------------------------
+-- Positive Heap Write Characterization
+--
+-- Instead of negative "doesn't write to heap", we positively characterize
+-- which heap location (if any) an instruction writes to, and whether
+-- that write is within owned regions.
+------------------------------------------------------------------------
 
--- Instruction preserves heap memory (doesn't write to heap)
-InstrPreservesHeapMem : AbstractInstr → Set
-InstrPreservesHeapMem store-indirect = ⊥
-  where open import Data.Empty using (⊥)
-InstrPreservesHeapMem store-indirect-suc = ⊥
-  where open import Data.Empty using (⊥)
-InstrPreservesHeapMem _ = ⊤
+-- What heap location does this instruction write to?
+-- Returns nothing if instruction doesn't write to heap.
+-- Returns nothing if writing to stack (not a heap write).
+instr-writes-heap : AbstractInstr → LocState FS → Maybe HeapLocation
+instr-writes-heap store-indirect s with readReg (regs s) Input
+... | OnHeap hl = just hl
+... | OnStack _ _ = nothing  -- writing to stack, not heap
+instr-writes-heap store-indirect-suc s with readReg (regs s) Input
+... | OnHeap hl = just (sucHL hl)
+... | OnStack _ _ = nothing  -- writing to stack, not heap
+instr-writes-heap _ s = nothing  -- all other instructions don't write to heap
+
+-- Positive predicate: HeapLocation is in some region of the ownership set
+data InSomeRegion : HeapLocation → HeapOwnership → Set where
+  in-head : ∀ {hl region regions} →
+    InRegion hl region →
+    InSomeRegion hl (region ∷ regions)
+  in-tail : ∀ {hl region regions} →
+    InSomeRegion hl regions →
+    InSomeRegion hl (region ∷ regions)
+
+-- POSITIVE: Instruction writes within owned heap regions
+-- If instruction writes to heap, the location must be in some owned region.
+-- If instruction doesn't write to heap, trivially satisfied.
+data InstrWritesWithinOwned (i : AbstractInstr) (s : LocState FS) (owned : HeapOwnership) : Set where
+  no-heap-write : instr-writes-heap i s ≡ nothing → InstrWritesWithinOwned i s owned
+  heap-write-owned : ∀ {hl} →
+    instr-writes-heap i s ≡ just hl →
+    InSomeRegion hl owned →
+    InstrWritesWithinOwned i s owned
+
+-- Instruction doesn't write to heap (POSITIVE syntactic check)
+-- This is the syntactic version - instruction is not store-indirect or store-indirect-suc
+data InstrNoHeapWrite : AbstractInstr → Set where
+  nhw-mov-to-output      : InstrNoHeapWrite mov-to-output
+  nhw-mov-to-input       : InstrNoHeapWrite mov-to-input
+  nhw-load-indirect      : InstrNoHeapWrite load-indirect
+  nhw-load-indirect-suc  : InstrNoHeapWrite load-indirect-suc
+  nhw-load-from-slot     : ∀ {slot} → InstrNoHeapWrite (load-from-slot slot)
+  nhw-store-at-slot      : ∀ {slot} → InstrNoHeapWrite (store-at-slot slot)
+  nhw-lea-slot           : ∀ {slot} → InstrNoHeapWrite (lea-slot slot)
+  nhw-restore-input      : ∀ {slot} → InstrNoHeapWrite (restore-input slot)
+  nhw-instr-alloc-stack  : ∀ {n} → InstrNoHeapWrite (instr-alloc-stack n)
+  nhw-instr-dealloc-stack : ∀ {n} → InstrNoHeapWrite (instr-dealloc-stack n)
+  nhw-instr-push-frame   : ∀ {cap} → InstrNoHeapWrite (instr-push-frame cap)
+  nhw-instr-pop-frame    : InstrNoHeapWrite instr-pop-frame
+  nhw-instr-call-closure : InstrNoHeapWrite instr-call-closure
 
 -- Instruction preserves frame (doesn't push/pop frame)
 InstrPreservesFrame : AbstractInstr → Set
@@ -322,37 +362,37 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame instr-call-closure s alloc = refl
 
   -- (E) HEAP PRESERVATION
-  -- Instructions that don't store-indirect preserve heapMem
+  -- Instructions that don't write to heap preserve heapMem
   exec-abstract-preserves-heapMem : ∀ (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) →
-    InstrPreservesHeapMem i →
+    InstrNoHeapWrite i →
     heapMem (proj₁ (exec-abstract i s alloc)) ≡ heapMem s
-  exec-abstract-preserves-heapMem mov-to-output s alloc _ = refl
-  exec-abstract-preserves-heapMem mov-to-input s alloc _ = refl
-  exec-abstract-preserves-heapMem load-indirect s alloc _
+  exec-abstract-preserves-heapMem mov-to-output s alloc nhw-mov-to-output = refl
+  exec-abstract-preserves-heapMem mov-to-input s alloc nhw-mov-to-input = refl
+  exec-abstract-preserves-heapMem load-indirect s alloc nhw-load-indirect
     with readLoc s (readReg (regs s) Input)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-preserves-heapMem load-indirect-suc s alloc _
+  exec-abstract-preserves-heapMem load-indirect-suc s alloc nhw-load-indirect-suc
     with readLoc s (sucLoc (readReg (regs s) Input))
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-preserves-heapMem (load-from-slot slot) s alloc _
+  exec-abstract-preserves-heapMem (load-from-slot slot) s alloc nhw-load-from-slot
     with readLoc s (OnStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-preserves-heapMem (store-at-slot slot) s alloc _ =
+  exec-abstract-preserves-heapMem (store-at-slot slot) s alloc nhw-store-at-slot =
     writeLoc-heapMem-stack s (current-frame alloc) slot (readReg (regs s) Output)
-  exec-abstract-preserves-heapMem (lea-slot slot) s alloc _ = refl
-  exec-abstract-preserves-heapMem (restore-input slot) s alloc _
+  exec-abstract-preserves-heapMem (lea-slot slot) s alloc nhw-lea-slot = refl
+  exec-abstract-preserves-heapMem (restore-input slot) s alloc nhw-restore-input
     with readLoc s (OnStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
-  exec-abstract-preserves-heapMem (instr-alloc-stack n) s alloc _ = refl
-  exec-abstract-preserves-heapMem (instr-dealloc-stack n) s alloc _ = refl
-  exec-abstract-preserves-heapMem (instr-push-frame cap) s alloc _ = refl
-  exec-abstract-preserves-heapMem instr-pop-frame s alloc _ = refl
-  exec-abstract-preserves-heapMem instr-call-closure s alloc _ = refl
+  exec-abstract-preserves-heapMem (instr-alloc-stack n) s alloc nhw-instr-alloc-stack = refl
+  exec-abstract-preserves-heapMem (instr-dealloc-stack n) s alloc nhw-instr-dealloc-stack = refl
+  exec-abstract-preserves-heapMem (instr-push-frame cap) s alloc nhw-instr-push-frame = refl
+  exec-abstract-preserves-heapMem instr-pop-frame s alloc nhw-instr-pop-frame = refl
+  exec-abstract-preserves-heapMem instr-call-closure s alloc nhw-instr-call-closure = refl
 
   -- (F) FRAME EQUIVALENCE
   -- If two alloc states have the same current-frame, instruction produces same LocState
@@ -404,7 +444,7 @@ module InstrPrimitives {FS : FrameSemantics} where
 --
 -- POSITIVE trace characterization:
 --   TraceWritesBelow n trace : "writes to slots in {0, ..., n-1}"
---   TraceNoStoreIndirect trace : "writes only to stack (no heap writes)"
+--   TraceNoHeapWrites trace : "writes only to stack (no heap writes)"
 --
 -- Together these POSITIVELY characterize the write set:
 --   "trace writes to {OnStack frame k | k < n}"
@@ -444,15 +484,40 @@ TraceSlotReadsBelow n (i ∷ t) with instr-reads-slot i
 ... | nothing = TraceSlotReadsBelow n t
 ... | just k = (k < n) × TraceSlotReadsBelow n t
 
--- All instructions in trace satisfy InstrNotStoreIndirect
-TraceNoStoreIndirect : AbstractTrace → Set
-TraceNoStoreIndirect [] = ⊤
-TraceNoStoreIndirect (i ∷ t) = InstrNotStoreIndirect i × TraceNoStoreIndirect t
+------------------------------------------------------------------------
+-- Trace Heap Write Characterization (POSITIVE)
+--
+-- TraceWritesWithinOwned threads state through the trace and checks that
+-- each heap write is within owned regions. For empty ownership [], this
+-- is equivalent to "no heap writes" (i.e., TraceNoHeapWrites).
+------------------------------------------------------------------------
 
--- All instructions in trace preserve heap memory
-TracePreservesHeapMem : AbstractTrace → Set
-TracePreservesHeapMem [] = ⊤
-TracePreservesHeapMem (i ∷ t) = InstrPreservesHeapMem i × TracePreservesHeapMem t
+-- State-threading version for full generality (supports freeing)
+-- Note: Uses exec-abstract from AbstractExec module
+module TraceHeapOwnership {FS : FrameSemantics} where
+  open AbstractExec {FS}
+
+  TraceWritesWithinOwned : AbstractTrace → LocState FS → AllocState {FS} → HeapOwnership → Set
+  TraceWritesWithinOwned [] s alloc owned = ⊤
+  TraceWritesWithinOwned (i ∷ t) s alloc owned with halted s
+  ... | true = ⊤  -- halted, no more execution
+  ... | false = InstrWritesWithinOwned i s owned ×
+                TraceWritesWithinOwned t (proj₁ (exec-abstract i s alloc))
+                                         (proj₂ (exec-abstract i s alloc)) owned
+
+-- Helper: check if instruction writes to heap (syntactic)
+InstrWritesToHeap : AbstractInstr → Set
+InstrWritesToHeap store-indirect = ⊤
+InstrWritesToHeap store-indirect-suc = ⊤
+InstrWritesToHeap _ = ⊥
+
+-- Helper: trace contains no heap-writing instructions (syntactic)
+-- This is useful for constructing TraceWritesWithinOwned [] proofs
+TraceNoHeapWrites : AbstractTrace → Set
+TraceNoHeapWrites [] = ⊤
+TraceNoHeapWrites (store-indirect ∷ t) = ⊥
+TraceNoHeapWrites (store-indirect-suc ∷ t) = ⊥
+TraceNoHeapWrites (_ ∷ t) = TraceNoHeapWrites t
 
 -- All instructions in trace preserve frame
 TracePreservesFrame : AbstractTrace → Set
@@ -496,13 +561,28 @@ tpc-++ : ∀ {t₁ t₂} → TracePreservesCapacity t₁ → TracePreservesCapac
 tpc-++ tpc-[] tpc₂ = tpc₂
 tpc-++ (tpc-∷ ipc tpc₁) tpc₂ = tpc-∷ ipc (tpc-++ tpc₁ tpc₂)
 
--- Append preserves TraceNoStoreIndirect
-trace-no-store-indirect-append : ∀ t1 t2 →
-  TraceNoStoreIndirect t1 → TraceNoStoreIndirect t2 →
-  TraceNoStoreIndirect (t1 ++ t2)
-trace-no-store-indirect-append [] t2 _ tn2 = tn2
-trace-no-store-indirect-append (i ∷ t1) t2 (nsi , tn1) tn2 =
-  nsi , trace-no-store-indirect-append t1 t2 tn1 tn2
+-- Append preserves TraceNoHeapWrites
+trace-no-heap-writes-append : ∀ t1 t2 →
+  TraceNoHeapWrites t1 → TraceNoHeapWrites t2 →
+  TraceNoHeapWrites (t1 ++ t2)
+trace-no-heap-writes-append [] t2 _ tn2 = tn2
+trace-no-heap-writes-append (mov-to-output ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (mov-to-input ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (load-indirect ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (load-indirect-suc ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (load-from-slot _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (store-at-slot _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (store-indirect ∷ _) _ () _
+trace-no-heap-writes-append (store-indirect-suc ∷ _) _ () _
+trace-no-heap-writes-append (lea-slot _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (restore-input _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-alloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-dealloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-push-frame ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-pop-frame ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-call-closure ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-halt ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-alloc-heap ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 
 -- Append preserves TraceWritesAbove
 trace-writes-above-append : ∀ n t1 t2 →
@@ -689,7 +769,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-trace-preserves-slot-below : ∀ (trace : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) (n slot : ℕ) →
     TraceWritesAbove n trace →        -- writes at slots ≥ n
-    TraceNoStoreIndirect trace →      -- no heap writes
+    TraceNoHeapWrites trace →         -- no heap writes
     slot < n →                        -- slot is below write region
     readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
     readLoc s (OnStack (current-frame alloc) slot)
@@ -701,7 +781,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-trace-preserves-slot-above : ∀ (trace : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) (m slot : ℕ) →
     TraceWritesBelow m trace →        -- writes at slots < m
-    TraceNoStoreIndirect trace →      -- no heap writes
+    TraceNoHeapWrites trace →         -- no heap writes
     m ≤ slot →                        -- slot is above write region
     readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) slot) ≡
     readLoc s (OnStack (current-frame alloc) slot)
@@ -714,16 +794,16 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-trace-preserves-ancestor : ∀ (trace : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) (f : Frame FS) (slot : ℕ) →
     current-frame alloc ≺ f →         -- f is an ancestor (current ≺ f means f is "above" current)
-    TraceNoStoreIndirect trace →      -- no heap writes
+    TraceNoHeapWrites trace →         -- no heap writes
     readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f slot) ≡
     readLoc s (OnStack f slot)
   exec-trace-preserves-ancestor _ _ _ _ _ _ _ = !!
   -- Proof: induction on trace; each write is at current-frame which is ≺ f
 
-  -- (A4) Heap locations are always preserved (when no store-indirect)
+  -- (A4) Heap locations are always preserved (when no heap writes)
   exec-trace-preserves-heap-loc : ∀ (trace : AbstractTrace) (s : LocState FS)
     (alloc : AllocState {FS}) (h : HeapLocation) →
-    TraceNoStoreIndirect trace →      -- no heap writes
+    TraceNoHeapWrites trace →         -- no heap writes
     readLoc (proj₁ (exec-trace trace s alloc)) (OnHeap h) ≡
     readLoc s (OnHeap h)
   -- Proof: induction on trace; no instruction writes to heap
@@ -738,8 +818,8 @@ module TracePrimitives {FS : FrameSemantics} where
     TraceSlotReadsBelow slot trace →
     -- slot is above all writes
     TraceWritesBelow slot trace →
-    -- trace has no store-indirect
-    TraceNoStoreIndirect trace →
+    -- trace has no heap writes
+    TraceNoHeapWrites trace →
     -- frame matches
     current-frame alloc ≡ f →
     -- Then writeLoc commutes
@@ -756,8 +836,8 @@ module TracePrimitives {FS : FrameSemantics} where
     TraceSlotReadsAbove n trace →
     -- writes are above bound n
     TraceWritesAbove n trace →
-    -- trace has no store-indirect
-    TraceNoStoreIndirect trace →
+    -- trace has no heap writes
+    TraceNoHeapWrites trace →
     -- frame matches
     current-frame alloc ≡ f →
     -- Then writeLoc commutes
@@ -968,16 +1048,16 @@ module TracePrimitives {FS : FrameSemantics} where
     (alloc : AllocState {FS}) (k : ℕ) (v : ValueLocation FS) →
     readLoc s (OnStack (current-frame alloc) k) ≡ just v →
     TraceWritesAbove (suc k) trace →
-    TraceNoStoreIndirect trace →
+    TraceNoHeapWrites trace →
     readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡ just v
-  exec-trace-slot-value trace s alloc k v slot-has-v twa tnsi =
+  exec-trace-slot-value trace s alloc k v slot-has-v twa tnhw =
     let -- k < suc k, so slot k is below write region
         k<suck : k < suc k
         k<suck = ≤-refl
         -- Apply positive characterization lemma
         preserved : readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡
                     readLoc s (OnStack (current-frame alloc) k)
-        preserved = exec-trace-preserves-slot-below trace s alloc (suc k) k twa tnsi k<suck
+        preserved = exec-trace-preserves-slot-below trace s alloc (suc k) k twa tnhw k<suck
     in trans preserved slot-has-v
 
   -- Dual: slot value preservation for TraceWritesBelow
@@ -986,16 +1066,16 @@ module TracePrimitives {FS : FrameSemantics} where
     (alloc : AllocState {FS}) (k : ℕ) (v : ValueLocation FS) →
     readLoc s (OnStack (current-frame alloc) k) ≡ just v →
     TraceWritesBelow k trace →        -- writes at slots < k
-    TraceNoStoreIndirect trace →
+    TraceNoHeapWrites trace →
     readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡ just v
-  exec-trace-slot-value-below trace s alloc k v slot-has-v twb tnsi =
+  exec-trace-slot-value-below trace s alloc k v slot-has-v twb tnhw =
     let -- k ≥ k, so slot k is above write region
         k≤k : k ≤ k
         k≤k = ≤-refl
         -- Apply positive characterization lemma
         preserved : readLoc (proj₁ (exec-trace trace s alloc)) (OnStack (current-frame alloc) k) ≡
                     readLoc s (OnStack (current-frame alloc) k)
-        preserved = exec-trace-preserves-slot-above trace s alloc k k twb tnsi k≤k
+        preserved = exec-trace-preserves-slot-above trace s alloc k k twb tnhw k≤k
     in trans preserved slot-has-v
 
   -- store-at-slot writes the Output register value to the slot
@@ -1174,10 +1254,10 @@ module TracePrimitives {FS : FrameSemantics} where
     (alloc : AllocState {FS}) →
     halted s ≡ false →
     TraceWritesAbove (suc k) rest →
-    TraceNoStoreIndirect rest →
+    TraceNoHeapWrites rest →
     readLoc (proj₁ (exec-trace (store-at-slot k ∷ rest) s alloc))
             (OnStack (current-frame alloc) k) ≡ just (readReg (regs s) Output)
-  store-then-preserve k rest s alloc not-halted twa tnsi with halted s
+  store-then-preserve k rest s alloc not-halted twa tnhw with halted s
   ... | true = case not-halted of λ ()  -- contradiction
   ... | false =
     let -- After store-at-slot k
@@ -1193,7 +1273,7 @@ module TracePrimitives {FS : FrameSemantics} where
                       (subst (λ f → readLoc s' (OnStack f k) ≡ just (readReg (regs s) Output))
                              (sym (exec-abstract-preserves-frame (store-at-slot k) s alloc))
                              slot-has-value)
-                      twa tnsi
+                      twa tnhw
         -- Step 3: Frame preserved by store-at-slot
         frame-eq : current-frame alloc' ≡ current-frame alloc
         frame-eq = exec-abstract-preserves-frame (store-at-slot k) s alloc
@@ -1268,7 +1348,7 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
     TraceSlotReadsAbove n trace →
     TraceSlotReadsBelow m trace →
     TraceWritesAbove n trace →
-    TraceNoStoreIndirect trace →
+    TraceNoHeapWrites trace →
     (∀ slot → n ≤ slot → slot < m →
       readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
       readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
@@ -1306,7 +1386,7 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
     TraceSlotReadsBelow m trace →   -- reads are bounded above by m
     TraceWritesAbove n trace →
     TraceWritesBelow m trace →
-    TraceNoStoreIndirect trace →
+    TraceNoHeapWrites trace →
     (∀ slot → n ≤ slot → slot < m →   -- only require agreement on [n, m)
       readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
       readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
