@@ -37,7 +37,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Function using (_∘_; case_of_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; inspect; [_])
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; inspect; [_]; ≢-sym)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
@@ -66,31 +66,16 @@ module Ops {FS : FrameSemantics} where
   open AbstractExec {FS} public
 
 ------------------------------------------------------------------------
--- Level 1: Disjointness
+-- Level 1: Internal Helpers
 --
--- Structural facts about ValueLocation disjointness.
--- These follow directly from the constructor structure.
+-- Structural facts about ValueLocation used internally for proofs.
 ------------------------------------------------------------------------
 
--- Stack and heap locations are always disjoint (different constructors)
-stack≢heap : ∀ {FS : FrameSemantics} (f : Frame FS) (s : ℕ) (h : HeapLocation) →
-  OnStack {FS} f s ≢ OnHeap h
-stack≢heap f s h ()
-
--- Heap and stack locations are always disjoint (flip of above)
-heap≢stack : ∀ {FS : FrameSemantics} (h : HeapLocation) (f : Frame FS) (s : ℕ) →
-  OnHeap {FS} h ≢ OnStack f s
-heap≢stack h f s ()
-
 -- Stack locations with different slots are disjoint (same frame)
+-- Internal helper for converting slot ordering to location disjointness
 stack-slot-disjoint : ∀ {FS : FrameSemantics} (f : Frame FS) (s₁ s₂ : ℕ) →
   s₁ ≢ s₂ → OnStack {FS} f s₁ ≢ OnStack f s₂
 stack-slot-disjoint f s₁ s₂ s₁≢s₂ refl = s₁≢s₂ refl
-
--- Stack locations with different frames are disjoint
-stack-frame-disjoint : ∀ {FS : FrameSemantics} (f₁ f₂ : Frame FS) (s₁ s₂ : ℕ) →
-  f₁ ≢ f₂ → OnStack {FS} f₁ s₁ ≢ OnStack f₂ s₂
-stack-frame-disjoint f₁ f₂ s₁ s₂ f₁≢f₂ refl = f₁≢f₂ refl
 
 -- Extract frame from stack location equality
 stack-frame-injective : ∀ {FS : FrameSemantics} {f₁ f₂ : Frame FS} {s₁ s₂ : ℕ} →
@@ -1351,10 +1336,15 @@ module TracePrimitives {FS : FrameSemantics} where
 
   -- store-at-slot preserves other slots: writing to slot j preserves slot k when j < k or k < j
   store-at-slot-preserves-other : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
-    j ≢ k →
+    j < k ⊎ k < j →
     readLoc (proj₁ (exec-abstract (store-at-slot j) s alloc)) (OnStack (current-frame alloc) k) ≡
     readLoc s (OnStack (current-frame alloc) k)
-  store-at-slot-preserves-other j k s alloc j≢k = !!
+  store-at-slot-preserves-other j k s alloc (inj₁ j<k) =
+    writeLoc-preserves-other s (OnStack (current-frame alloc) j) (OnStack (current-frame alloc) k)
+      (readReg (regs s) Output) (stack-slot-disjoint (current-frame alloc) j k (<⇒≢ j<k))
+  store-at-slot-preserves-other j k s alloc (inj₂ k<j) =
+    writeLoc-preserves-other s (OnStack (current-frame alloc) j) (OnStack (current-frame alloc) k)
+      (readReg (regs s) Output) (stack-slot-disjoint (current-frame alloc) j k (≢-sym (<⇒≢ k<j)))
 
   ------------------------------------------------------------------------
   -- (I) SNOC DECOMPOSITION

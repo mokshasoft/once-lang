@@ -977,12 +977,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       -- store-at-slot snd-slot writes at suc fst-slot ≠ fst-slot
       -- lea-slot doesn't write
 
-      -- snd-slot ≠ fst-slot
-      snd≢fst : snd-slot ≢ fst-slot
-      snd≢fst eq = <⇒≢ ≤-refl (sym eq)  -- suc fst-slot ≢ fst-slot
-
-      fst≢snd : fst-slot ≢ snd-slot
-      fst≢snd eq = snd≢fst (sym eq)
+      -- fst-slot < snd-slot (since snd-slot = suc fst-slot)
+      fst<snd : fst-slot < snd-slot
+      fst<snd = ≤-refl  -- snd-slot = suc fst-slot, so fst-slot < suc fst-slot = snd-slot
 
       -- TraceNoStoreIndirect for after-fst-store
       -- after-fst-store = restore-input backup-slot ∷ g-trace ++ final-seg
@@ -1133,12 +1130,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
           iam-backup<fst : backup-slot < fst-slot
           iam-backup<fst = ≤-trans reclaim-f-above-backup (IRResultAWF.reclaim-monotone result-g)
 
-          iam-fst≢backup : fst-slot ≢ backup-slot
-          iam-fst≢backup eq = <⇒≢ iam-backup<fst (sym eq)
-
           iam-store-fst-preserves : readLoc iam-s-after-store-fst (OnStack (current-frame alloc-after-f) backup-slot) ≡
                                     readLoc s-after-f (OnStack (current-frame alloc-after-f) backup-slot)
-          iam-store-fst-preserves = store-at-slot-preserves-other fst-slot backup-slot s-after-f alloc-after-f iam-fst≢backup
+          iam-store-fst-preserves = store-at-slot-preserves-other fst-slot backup-slot s-after-f alloc-after-f (inj₂ iam-backup<fst)
 
           -- Convert iam-backup-at-f from (current-frame alloc-after-f) to frame
           iam-backup-at-f-frame : readLoc s-after-f (OnStack frame backup-slot) ≡ just input-loc
@@ -1250,11 +1244,8 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
           -- setup-trace preserves slot (setup writes at backup-slot, slot ≥ reclaim-f > backup-slot)
           -- setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
           -- Inline the proof since mem-preserved-setup is defined later in the file
-          mpg-suc-backup≤slot : suc backup-slot ≤ slot
-          mpg-suc-backup≤slot = ≤-trans reclaim-f-above-backup reclaim-f≤slot
-
-          mpg-b≢slot : backup-slot ≢ slot
-          mpg-b≢slot = <⇒≢ mpg-suc-backup≤slot
+          mpg-backup<slot : backup-slot < slot
+          mpg-backup<slot = ≤-trans reclaim-f-above-backup reclaim-f≤slot
 
           mpg-setup-preserves : readLoc s-after-setup (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
           mpg-setup-preserves =
@@ -1283,7 +1274,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                 store-preserves : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s₁' alloc₁'))
                                     (OnStack (current-frame alloc₁') slot) ≡
                                   readLoc s₁' (OnStack (current-frame alloc₁') slot)
-                store-preserves = store-at-slot-preserves-other backup-slot slot s₁' alloc₁' mpg-b≢slot
+                store-preserves = store-at-slot-preserves-other backup-slot slot s₁' alloc₁' (inj₁ mpg-backup<slot)
                 -- Combine
                 result : readLoc s-after-setup (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
                 result = trans (cong (λ st → readLoc st (OnStack frame slot)) s-after-setup-eq)
@@ -1530,16 +1521,12 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                             readLoc s (OnStack (current-frame alloc) slot)
             mov-preserves = readLoc-stackMem-eq s₁ s (OnStack (current-frame alloc) slot) refl refl
 
-            -- Step 8: backup-slot ≢ slot (since suc backup-slot ≤ slot ≡ backup-slot < slot)
-            b≢slot : backup-slot ≢ slot
-            b≢slot = <⇒≢ suc-b≤slot
-
-            -- Step 9: store-at-slot backup-slot preserves slot (since backup-slot ≢ slot)
-            -- Need to use alloc₁ which equals alloc
+            -- Step 8-9: store-at-slot backup-slot preserves slot (since backup-slot < slot)
+            -- suc-b≤slot : suc backup-slot ≤ slot, which is backup-slot < slot
             store-preserves : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s₁ alloc₁))
                                 (OnStack (current-frame alloc₁) slot) ≡
                               readLoc s₁ (OnStack (current-frame alloc₁) slot)
-            store-preserves = store-at-slot-preserves-other backup-slot slot s₁ alloc₁ b≢slot
+            store-preserves = store-at-slot-preserves-other backup-slot slot s₁ alloc₁ (inj₁ suc-b≤slot)
 
             -- Step 10: Combine: readLoc s-after-setup loc = readLoc s loc
             -- Note: current-frame alloc-after-setup = current-frame alloc = frame
@@ -1623,7 +1610,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
         let inner : readLoc (proj₁ (exec-abstract (store-at-slot snd-slot) s' alloc'))
                            (OnStack (current-frame alloc') fst-slot) ≡
                     readLoc s' (OnStack (current-frame alloc') fst-slot)
-            inner = store-at-slot-preserves-other snd-slot fst-slot s' alloc' snd≢fst
+            inner = store-at-slot-preserves-other snd-slot fst-slot s' alloc' (inj₂ fst<snd)
         in subst₂ (λ f₁ f₂ → readLoc (proj₁ (exec-abstract (store-at-slot snd-slot) s' alloc'))
                                     (OnStack f₁ fst-slot) ≡ readLoc s' (OnStack f₂ fst-slot))
              frame-eq frame-eq inner
@@ -1828,14 +1815,10 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
           ftms-setup-preserves-below : ∀ slot → slot < backup-slot →
             readLoc s-after-setup (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
           ftms-setup-preserves-below slot slot<backup =
-            let b≢slot : backup-slot ≢ slot
-                b≢slot = λ eq → <⇒≢ slot<backup (sym eq)
-                -- Use mem-preserved-setup after showing suc backup-slot ≤ slot is false
-                -- Actually, we need a different approach: show setup preserves slot < backup-slot
-                -- setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
-                -- mov-to-output doesn't write memory
-                -- store-at-slot backup-slot writes only at backup-slot ≠ slot
-                s₁' = proj₁ (exec-abstract mov-to-output s alloc)
+            -- setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
+            -- mov-to-output doesn't write memory
+            -- store-at-slot backup-slot writes only at backup-slot, slot < backup-slot
+            let s₁' = proj₁ (exec-abstract mov-to-output s alloc)
                 alloc₁' = proj₂ (exec-abstract mov-to-output s alloc)
                 halted-s₁' : halted s₁' ≡ false
                 halted-s₁' = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
@@ -1852,7 +1835,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
                 store-preserves : readLoc (proj₁ (exec-abstract (store-at-slot backup-slot) s₁' alloc₁'))
                                     (OnStack (current-frame alloc₁') slot) ≡
                                   readLoc s₁' (OnStack (current-frame alloc₁') slot)
-                store-preserves = store-at-slot-preserves-other backup-slot slot s₁' alloc₁' b≢slot
+                store-preserves = store-at-slot-preserves-other backup-slot slot s₁' alloc₁' (inj₂ slot<backup)
             in trans (cong (λ st → readLoc st (OnStack frame slot)) s-setup-eq)
                      (trans store-preserves mov-preserves)
 
