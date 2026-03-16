@@ -199,7 +199,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     --
     -- For primitive types, ValidAtWF only needs BeforeFrontier.
     -- This function dispatches based on IsPrimitive evidence,
-    -- eliminating the need for postulates in Prim proofs.
+    -- providing exhaustive type-indexed coverage of all primitive types.
     --------------------------------------------------------------------
 
     valid-primitive-wf : ∀ {m} {B : Type} {v : ⟦ B ⟧}

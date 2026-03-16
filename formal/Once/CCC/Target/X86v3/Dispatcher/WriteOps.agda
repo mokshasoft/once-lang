@@ -85,7 +85,7 @@ module WriteWithDisjoint {FS : FrameSemantics} where
     heap-valid : ∀ {hl v} → ValidWrite (OnHeap hl) (OnHeap v)
 
   -- General write-read-same: requires ValidWrite proof to ensure semantic validity
-  -- This eliminates the need for postulates - invalid cases can't be constructed
+  -- ValidWrite evidence provides type-level proof that only well-typed cases are constructed
   write-read-same : ∀ (s : LocState FS) (loc val : ValueLocation FS) →
     ValidWrite loc val →
     readLoc (write-loc s loc val) loc ≡ just val
