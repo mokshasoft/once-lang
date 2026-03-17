@@ -5,7 +5,7 @@
 AGDA := agda
 AGDA_FILES := $(shell find . -name "*.agda")
 
-.PHONY: all check postulates postulates-summary clean help
+.PHONY: all check check-level0v2-full postulates postulates-summary clean help
 
 # Default: type-check all files
 all: check
@@ -32,6 +32,9 @@ check-level0:
 
 check-level0v2:
 	$(AGDA) Level0V2/Normalizer.agda
+
+check-level0v2-full:
+	$(AGDA) Level0V2/MainTheorem.agda
 
 # Quick grep for postulate blocks
 postulates-quick:
@@ -100,6 +103,7 @@ help:
 	@echo "  check-foundations - Check only Foundations modules"
 	@echo "  check-level0     - Check Level0/Normalizer.agda"
 	@echo "  check-level0v2   - Check Level0V2/Normalizer.agda"
+	@echo "  check-level0v2-full - Check Level0V2/MainTheorem.agda (full stack)"
 	@echo "  postulates-quick - Quick grep for postulate blocks"
 	@echo "  postulates       - List all postulates with their types"
 	@echo "  postulates-summary - Summary count of postulates per file"
