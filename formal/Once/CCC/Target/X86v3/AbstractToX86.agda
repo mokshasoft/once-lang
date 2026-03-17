@@ -24,7 +24,7 @@ open import Once.CCC.Target.X86v3.Syntax
 -- Import AbstractInstr from SMCore
 open import Once.CCC.SMCore
   using (AbstractInstr; AbstractTrace; Slot;
-         mov-to-output; load-indirect; load-indirect-suc;
+         mov-to-output; mov-to-input; load-indirect; load-indirect-suc;
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack;
