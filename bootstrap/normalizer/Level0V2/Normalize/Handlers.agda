@@ -34,20 +34,23 @@ handle-inr = rebuild-6
 handle-terminal : Term TyFuncCode TermCode'
 handle-terminal = rebuild-8
 
+handle-initial : Term TyFuncCode TermCode'
+handle-initial = rebuild-9
+
 handle-In : Term TyFuncCode TermCode'
-handle-In = rebuild-9
+handle-In = rebuild-10
 
 handle-Out : Term TyFuncCode TermCode'
-handle-Out = rebuild-10
+handle-Out = rebuild-11
 
 handle-cata : Term (TyFuncCode * TermCode') TermCode'
-handle-cata = rebuild-11
+handle-cata = rebuild-12
 
 handle-curry : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) TermCode'
-handle-curry = rebuild-12
+handle-curry = rebuild-13
 
 handle-apply : Term (TyFuncCode * TyFuncCode) TermCode'
-handle-apply = rebuild-13
+handle-apply = rebuild-14
 
 ------------------------------------------------------------------------
 -- Composition Handler (position 1)
@@ -159,11 +162,13 @@ normalize-step =
             , [ handle-inr
               , [ handle-case
                 , [ handle-terminal
-                  , [ handle-In
-                    , [ handle-Out
-                      , [ handle-cata
-                        , [ handle-curry
-                          , handle-apply
+                  , [ handle-initial
+                    , [ handle-In
+                      , [ handle-Out
+                        , [ handle-cata
+                          , [ handle-curry
+                            , handle-apply
+                            ]
                           ]
                         ]
                       ]

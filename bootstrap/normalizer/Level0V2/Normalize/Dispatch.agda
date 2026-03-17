@@ -7,9 +7,14 @@
 -- Pattern:
 --   is-X = dispatch-X ∘ Out
 --
--- where dispatch-X is a 14-way nested case returning:
+-- where dispatch-X is a 15-way nested case returning:
 --   - inl (yes/match) at position X
 --   - inr ∘ rebuild-N (no/rebuild) at other positions
+--
+-- Positions (15 constructors):
+--   0: id, 1: compose, 2: fst, 3: snd, 4: pair, 5: inl, 6: inr,
+--   7: case, 8: terminal, 9: initial, 10: In, 11: Out, 12: cata,
+--   13: curry, 14: apply
 ------------------------------------------------------------------------
 
 module normalizer.Level0V2.Normalize.Dispatch where
@@ -35,7 +40,9 @@ is-id-dispatch =
                     , [ ret-no-10
                       , [ ret-no-11
                         , [ ret-no-12
-                          , ret-no-13
+                          , [ ret-no-13
+                            , ret-no-14
+                            ]
                           ]
                         ]
                       ]
@@ -72,7 +79,9 @@ is-fst-dispatch =
                     , [ ret-no-10
                       , [ ret-no-11
                         , [ ret-no-12
-                          , ret-no-13
+                          , [ ret-no-13
+                            , ret-no-14
+                            ]
                           ]
                         ]
                       ]
@@ -109,7 +118,9 @@ is-snd-dispatch =
                     , [ ret-no-10
                       , [ ret-no-11
                         , [ ret-no-12
-                          , ret-no-13
+                          , [ ret-no-13
+                            , ret-no-14
+                            ]
                           ]
                         ]
                       ]
@@ -147,7 +158,9 @@ is-pair-dispatch =
                     , [ ret-no-pair-10
                       , [ ret-no-pair-11
                         , [ ret-no-pair-12
-                          , ret-no-pair-13
+                          , [ ret-no-pair-13
+                            , ret-no-pair-14
+                            ]
                           ]
                         ]
                       ]
@@ -184,7 +197,9 @@ is-inl-dispatch =
                     , [ ret-no-10
                       , [ ret-no-11
                         , [ ret-no-12
-                          , ret-no-13
+                          , [ ret-no-13
+                            , ret-no-14
+                            ]
                           ]
                         ]
                       ]
@@ -221,7 +236,9 @@ is-inr-dispatch =
                     , [ ret-no-10
                       , [ ret-no-11
                         , [ ret-no-12
-                          , ret-no-13
+                          , [ ret-no-13
+                            , ret-no-14
+                            ]
                           ]
                         ]
                       ]
@@ -250,7 +267,7 @@ is-case-dispatch =
   , [ ret-no-pair-1
     , [ ret-no-pair-2
       , [ ret-no-pair-3
-        , [ ret-no-pair-4  -- 4: pair → no (rebuild at position 4)
+        , [ ret-no-pair-4
           , [ ret-no-pair-5
             , [ ret-no-pair-6
               , [ inl  -- 7: case → yes, return the branches
@@ -259,7 +276,9 @@ is-case-dispatch =
                     , [ ret-no-pair-10
                       , [ ret-no-pair-11
                         , [ ret-no-pair-12
-                          , ret-no-pair-13
+                          , [ ret-no-pair-13
+                            , ret-no-pair-14
+                            ]
                           ]
                         ]
                       ]
@@ -278,7 +297,7 @@ is-case : Term TermCode' ((TermCode' * TermCode') + TermCode')
 is-case = is-case-dispatch ∘ Out
 
 ------------------------------------------------------------------------
--- is-In: Position 9 returns yes
+-- is-In: Position 10 returns yes
 ------------------------------------------------------------------------
 
 is-In-dispatch : Term (⟦ TermF ⟧F TermCode') (Unit + TermCode')
@@ -292,11 +311,13 @@ is-In-dispatch =
             , [ ret-no-6
               , [ ret-no-7
                 , [ ret-no-8
-                  , [ ret-yes  -- 9: In → yes
-                    , [ ret-no-10
+                  , [ ret-no-9
+                    , [ ret-yes  -- 10: In → yes
                       , [ ret-no-11
                         , [ ret-no-12
-                          , ret-no-13
+                          , [ ret-no-13
+                            , ret-no-14
+                            ]
                           ]
                         ]
                       ]
@@ -315,7 +336,7 @@ is-In : Term TermCode' (Unit + TermCode')
 is-In = is-In-dispatch ∘ Out
 
 ------------------------------------------------------------------------
--- is-Out: Position 10 returns yes
+-- is-Out: Position 11 returns yes
 ------------------------------------------------------------------------
 
 is-Out-dispatch : Term (⟦ TermF ⟧F TermCode') (Unit + TermCode')
@@ -330,10 +351,12 @@ is-Out-dispatch =
               , [ ret-no-7
                 , [ ret-no-8
                   , [ ret-no-9
-                    , [ ret-yes  -- 10: Out → yes
-                      , [ ret-no-11
+                    , [ ret-no-10
+                      , [ ret-yes  -- 11: Out → yes
                         , [ ret-no-12
-                          , ret-no-13
+                          , [ ret-no-13
+                            , ret-no-14
+                            ]
                           ]
                         ]
                       ]
@@ -352,7 +375,7 @@ is-Out : Term TermCode' (Unit + TermCode')
 is-Out = is-Out-dispatch ∘ Out
 
 ------------------------------------------------------------------------
--- is-cata: Position 11 returns inl (with functor and algebra), others return inr
+-- is-cata: Position 12 returns inl (with functor and algebra), others return inr
 -- Return type: (TyFuncCode * TermCode') + TermCode'
 ------------------------------------------------------------------------
 
@@ -369,9 +392,11 @@ is-cata-dispatch =
                 , [ ret-no-cata-8
                   , [ ret-no-cata-9
                     , [ ret-no-cata-10
-                      , [ inl  -- 11: cata → yes, return functor and algebra
-                        , [ ret-no-cata-12
-                          , ret-no-cata-13
+                      , [ ret-no-cata-11
+                        , [ inl  -- 12: cata → yes, return functor and algebra
+                          , [ ret-no-cata-13
+                            , ret-no-cata-14
+                            ]
                           ]
                         ]
                       ]

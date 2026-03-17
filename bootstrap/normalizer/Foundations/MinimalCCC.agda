@@ -31,6 +31,8 @@ data Term : Ty → Ty → Set where
   [_,_]    : ∀ {A B C} → Term A C → Term B C → Term (A + B) C
   -- Terminal
   terminal : ∀ {A} → Term A Unit
+  -- Initial (Void is the initial object)
+  initial  : ∀ {A} → Term Void A
   -- Exponentials
   curry    : ∀ {A B C} → Term (A * B) C → Term A (B ⇒ C)
   apply    : ∀ {A B} → Term ((A ⇒ B) * A) B
@@ -124,6 +126,7 @@ data _⟹_ : ∀ {A B} → Term A B → Term A B → Set where
   ⟹-inl      : ∀ {A B} → inl {A} {B} ⟹ inl
   ⟹-inr      : ∀ {A B} → inr {A} {B} ⟹ inr
   ⟹-terminal : ∀ {A} → terminal {A} ⟹ terminal
+  ⟹-initial  : ∀ {A} → initial {A} ⟹ initial
   ⟹-apply    : ∀ {A B} → apply {A} {B} ⟹ apply
   ⟹-In       : ∀ {F} → In {F} ⟹ In
   ⟹-Out      : ∀ {F} → Out {F} ⟹ Out
@@ -195,6 +198,7 @@ data _⟹_ : ∀ {A B} → Term A B → Term A B → Set where
 ⟹-refl inr = ⟹-inr
 ⟹-refl [ f , g ] = ⟹-case (⟹-refl f) (⟹-refl g)
 ⟹-refl terminal = ⟹-terminal
+⟹-refl initial = ⟹-initial
 ⟹-refl (curry f) = ⟹-curry (⟹-refl f)
 ⟹-refl apply = ⟹-apply
 ⟹-refl In = ⟹-In
@@ -303,6 +307,7 @@ fmap-⟶* (F ⊗ G) rs = ⟶*-pair (⟶*-∘-l fst (fmap-⟶* F rs)) (⟶*-∘-l
 ⟹→⟶* ⟹-inl = done
 ⟹→⟶* ⟹-inr = done
 ⟹→⟶* ⟹-terminal = done
+⟹→⟶* ⟹-initial = done
 ⟹→⟶* ⟹-apply = done
 ⟹→⟶* (⟹-curry pf) = ⟶*-curry (⟹→⟶* pf)
 ⟹→⟶* ⟹-In = done

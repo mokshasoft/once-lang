@@ -52,7 +52,10 @@ nr-inr-chain-11 = nr-comp nr-inr nr-inr-chain-10 nis-inr nis-comp
 nr-inr-chain-12 : ∀ {A B C D E F G H I J K L M N} → NoRedex (inr {N} ∘ inr {M} ∘ inr {L} ∘ inr {K} ∘ inr {J} ∘ inr {I} ∘ inr {H} ∘ inr {G} ∘ inr {F} ∘ inr {E} ∘ inr {D} ∘ inr {C} ∘ inl {A} {B})
 nr-inr-chain-12 = nr-comp nr-inr nr-inr-chain-11 nis-inr nis-comp
 
--- Rightmost chain (no inl at end) for position 13
+nr-inr-chain-13 : ∀ {A B C D E F G H I J K L M N O} → NoRedex (inr {O} ∘ inr {N} ∘ inr {M} ∘ inr {L} ∘ inr {K} ∘ inr {J} ∘ inr {I} ∘ inr {H} ∘ inr {G} ∘ inr {F} ∘ inr {E} ∘ inr {D} ∘ inr {C} ∘ inl {A} {B})
+nr-inr-chain-13 = nr-comp nr-inr nr-inr-chain-12 nis-inr nis-comp
+
+-- Rightmost chain (no inl at end) for position 14
 nr-inr-end-1 : ∀ {A B} → NoRedex (inr {A} {B})
 nr-inr-end-1 = nr-inr
 
@@ -91,6 +94,9 @@ nr-inr-end-12 = nr-comp nr-inr nr-inr-end-11 nis-inr nis-comp
 
 nr-inr-end-13 : ∀ {A B C D E F G H I J K L M N} → NoRedex (inr {A} ∘ inr {B} ∘ inr {C} ∘ inr {D} ∘ inr {E} ∘ inr {F} ∘ inr {G} ∘ inr {H} ∘ inr {I} ∘ inr {J} ∘ inr {K} ∘ inr {L} ∘ inr {M} {N})
 nr-inr-end-13 = nr-comp nr-inr nr-inr-end-12 nis-inr nis-comp
+
+nr-inr-end-14 : ∀ {A B C D E F G H I J K L M N O} → NoRedex (inr {A} ∘ inr {B} ∘ inr {C} ∘ inr {D} ∘ inr {E} ∘ inr {F} ∘ inr {G} ∘ inr {H} ∘ inr {I} ∘ inr {J} ∘ inr {K} ∘ inr {L} ∘ inr {M} ∘ inr {N} {O})
+nr-inr-end-14 = nr-comp nr-inr nr-inr-end-13 nis-inr nis-comp
 
 ------------------------------------------------------------------------
 -- NoRedex proofs for rebuild functions
@@ -136,7 +142,10 @@ nr-rebuild-12 : NoRedex rebuild-12
 nr-rebuild-12 = nr-comp nr-In nr-inr-chain-12 nis-In nis-comp
 
 nr-rebuild-13 : NoRedex rebuild-13
-nr-rebuild-13 = nr-comp nr-In nr-inr-end-13 nis-In nis-comp
+nr-rebuild-13 = nr-comp nr-In nr-inr-chain-13 nis-In nis-comp
+
+nr-rebuild-14 : NoRedex rebuild-14
+nr-rebuild-14 = nr-comp nr-In nr-inr-end-14 nis-In nis-comp
 
 ------------------------------------------------------------------------
 -- NoRedex proofs for ret-yes and ret-no functions
@@ -186,3 +195,6 @@ nr-ret-no-12 = nr-comp nr-inr nr-rebuild-12 nis-inr nis-comp
 
 nr-ret-no-13 : NoRedex ret-no-13
 nr-ret-no-13 = nr-comp nr-inr nr-rebuild-13 nis-inr nis-comp
+
+nr-ret-no-14 : NoRedex ret-no-14
+nr-ret-no-14 = nr-comp nr-inr nr-rebuild-14 nis-inr nis-comp

@@ -13,7 +13,7 @@ module normalizer.Level0V2.Normalize.NstepDispatch where
 open import normalizer.Level0V2.Normalize.NoRedexHandlers public
 open import normalizer.Level0V2.Normalizer
   using (TermF-1; TermF-2; TermF-3; TermF-4; TermF-5; TermF-6;
-         TermF-7; TermF-8; TermF-9; TermF-10; TermF-11; TermF-12) public
+         TermF-7; TermF-8; TermF-9; TermF-10; TermF-11; TermF-12; TermF-13) public
 
 ------------------------------------------------------------------------
 -- Tails of normalize-step (nested cases without outer handlers)
@@ -29,11 +29,13 @@ nstep-tail-1 =
             , [ handle-inr
               , [ handle-case
                 , [ handle-terminal
-                  , [ handle-In
-                    , [ handle-Out
-                      , [ handle-cata
-                        , [ handle-curry
-                          , handle-apply
+                  , [ handle-initial
+                    , [ handle-In
+                      , [ handle-Out
+                        , [ handle-cata
+                          , [ handle-curry
+                            , handle-apply
+                            ]
                           ]
                         ]
                       ]
@@ -56,11 +58,13 @@ nstep-tail-2 =
           , [ handle-inr
             , [ handle-case
               , [ handle-terminal
-                , [ handle-In
-                  , [ handle-Out
-                    , [ handle-cata
-                      , [ handle-curry
-                        , handle-apply
+                , [ handle-initial
+                  , [ handle-In
+                    , [ handle-Out
+                      , [ handle-cata
+                        , [ handle-curry
+                          , handle-apply
+                          ]
                         ]
                       ]
                     ]
@@ -81,11 +85,13 @@ nstep-tail-3 =
         , [ handle-inr
           , [ handle-case
             , [ handle-terminal
-              , [ handle-In
-                , [ handle-Out
-                  , [ handle-cata
-                    , [ handle-curry
-                      , handle-apply
+              , [ handle-initial
+                , [ handle-In
+                  , [ handle-Out
+                    , [ handle-cata
+                      , [ handle-curry
+                        , handle-apply
+                        ]
                       ]
                     ]
                   ]
@@ -104,11 +110,13 @@ nstep-tail-4 =
       , [ handle-inr
         , [ handle-case
           , [ handle-terminal
-            , [ handle-In
-              , [ handle-Out
-                , [ handle-cata
-                  , [ handle-curry
-                    , handle-apply
+            , [ handle-initial
+              , [ handle-In
+                , [ handle-Out
+                  , [ handle-cata
+                    , [ handle-curry
+                      , handle-apply
+                      ]
                     ]
                   ]
                 ]
@@ -125,11 +133,13 @@ nstep-tail-5 =
     , [ handle-inr
       , [ handle-case
         , [ handle-terminal
-          , [ handle-In
-            , [ handle-Out
-              , [ handle-cata
-                , [ handle-curry
-                  , handle-apply
+          , [ handle-initial
+            , [ handle-In
+              , [ handle-Out
+                , [ handle-cata
+                  , [ handle-curry
+                    , handle-apply
+                    ]
                   ]
                 ]
               ]
@@ -144,6 +154,26 @@ nstep-tail-6 =
     [ handle-inr
     , [ handle-case
       , [ handle-terminal
+        , [ handle-initial
+          , [ handle-In
+            , [ handle-Out
+              , [ handle-cata
+                , [ handle-curry
+                  , handle-apply
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+
+nstep-tail-7 : Term (⟦ TermF-7 ⟧F TermCode') TermCode'
+nstep-tail-7 =
+    [ handle-case
+    , [ handle-terminal
+      , [ handle-initial
         , [ handle-In
           , [ handle-Out
             , [ handle-cata
@@ -157,10 +187,10 @@ nstep-tail-6 =
       ]
     ]
 
-nstep-tail-7 : Term (⟦ TermF-7 ⟧F TermCode') TermCode'
-nstep-tail-7 =
-    [ handle-case
-    , [ handle-terminal
+nstep-tail-8 : Term (⟦ TermF-8 ⟧F TermCode') TermCode'
+nstep-tail-8 =
+    [ handle-terminal
+    , [ handle-initial
       , [ handle-In
         , [ handle-Out
           , [ handle-cata
@@ -173,9 +203,9 @@ nstep-tail-7 =
       ]
     ]
 
-nstep-tail-8 : Term (⟦ TermF-8 ⟧F TermCode') TermCode'
-nstep-tail-8 =
-    [ handle-terminal
+nstep-tail-9 : Term (⟦ TermF-9 ⟧F TermCode') TermCode'
+nstep-tail-9 =
+    [ handle-initial
     , [ handle-In
       , [ handle-Out
         , [ handle-cata
@@ -187,8 +217,8 @@ nstep-tail-8 =
       ]
     ]
 
-nstep-tail-9 : Term (⟦ TermF-9 ⟧F TermCode') TermCode'
-nstep-tail-9 =
+nstep-tail-10 : Term (⟦ TermF-10 ⟧F TermCode') TermCode'
+nstep-tail-10 =
     [ handle-In
     , [ handle-Out
       , [ handle-cata
@@ -199,8 +229,8 @@ nstep-tail-9 =
       ]
     ]
 
-nstep-tail-10 : Term (⟦ TermF-10 ⟧F TermCode') TermCode'
-nstep-tail-10 =
+nstep-tail-11 : Term (⟦ TermF-11 ⟧F TermCode') TermCode'
+nstep-tail-11 =
     [ handle-Out
     , [ handle-cata
       , [ handle-curry
@@ -209,16 +239,16 @@ nstep-tail-10 =
       ]
     ]
 
-nstep-tail-11 : Term (⟦ TermF-11 ⟧F TermCode') TermCode'
-nstep-tail-11 =
+nstep-tail-12 : Term (⟦ TermF-12 ⟧F TermCode') TermCode'
+nstep-tail-12 =
     [ handle-cata
     , [ handle-curry
       , handle-apply
       ]
     ]
 
-nstep-tail-12 : Term (⟦ TermF-12 ⟧F TermCode') TermCode'
-nstep-tail-12 =
+nstep-tail-13 : Term (⟦ TermF-13 ⟧F TermCode') TermCode'
+nstep-tail-13 =
     [ handle-curry
     , handle-apply
     ]
@@ -267,6 +297,9 @@ tail-10-inr = case-inr
 tail-11-inr : (nstep-tail-11 ∘ inr) ⟶ nstep-tail-12
 tail-11-inr = case-inr
 
+tail-12-inr : (nstep-tail-12 ∘ inr) ⟶ nstep-tail-13
+tail-12-inr = case-inr
+
 ------------------------------------------------------------------------
 -- Dispatch lemmas for inl at each position
 ------------------------------------------------------------------------
@@ -295,20 +328,23 @@ tail-7-inl = case-inl
 tail-8-inl : (nstep-tail-8 ∘ inl) ⟶ handle-terminal
 tail-8-inl = case-inl
 
-tail-9-inl : (nstep-tail-9 ∘ inl) ⟶ handle-In
+tail-9-inl : (nstep-tail-9 ∘ inl) ⟶ handle-initial
 tail-9-inl = case-inl
 
-tail-10-inl : (nstep-tail-10 ∘ inl) ⟶ handle-Out
+tail-10-inl : (nstep-tail-10 ∘ inl) ⟶ handle-In
 tail-10-inl = case-inl
 
-tail-11-inl : (nstep-tail-11 ∘ inl) ⟶ handle-cata
+tail-11-inl : (nstep-tail-11 ∘ inl) ⟶ handle-Out
 tail-11-inl = case-inl
 
-tail-12-inl : (nstep-tail-12 ∘ inl) ⟶ handle-curry
+tail-12-inl : (nstep-tail-12 ∘ inl) ⟶ handle-cata
 tail-12-inl = case-inl
 
-tail-12-inr : (nstep-tail-12 ∘ inr) ⟶ handle-apply
-tail-12-inr = case-inr
+tail-13-inl : (nstep-tail-13 ∘ inl) ⟶ handle-curry
+tail-13-inl = case-inl
+
+tail-13-inr : (nstep-tail-13 ∘ inr) ⟶ handle-apply
+tail-13-inr = case-inr
 
 ------------------------------------------------------------------------
 -- The complete NoRedex proof for normalize-step
@@ -325,7 +361,8 @@ nr-normalize-step =
               (nr-case nr-handle-inr
                 (nr-case nr-handle-case
                   (nr-case nr-handle-terminal
-                    (nr-case nr-handle-In
-                      (nr-case nr-handle-Out
-                        (nr-case nr-handle-cata
-                          (nr-case nr-handle-curry nr-handle-apply))))))))))))
+                    (nr-case nr-handle-initial
+                      (nr-case nr-handle-In
+                        (nr-case nr-handle-Out
+                          (nr-case nr-handle-cata
+                            (nr-case nr-handle-curry nr-handle-apply)))))))))))))

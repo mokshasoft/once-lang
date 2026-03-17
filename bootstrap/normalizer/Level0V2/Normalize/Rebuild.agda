@@ -48,19 +48,22 @@ rebuild-8 : Term TyFuncCode TermCode'
 rebuild-8 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 8: terminal
 
 rebuild-9 : Term TyFuncCode TermCode'
-rebuild-9 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 9: In
+rebuild-9 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 9: initial
 
 rebuild-10 : Term TyFuncCode TermCode'
-rebuild-10 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 10: Out
+rebuild-10 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 10: In
 
-rebuild-11 : Term (TyFuncCode * TermCode') TermCode'
-rebuild-11 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 11: cata
+rebuild-11 : Term TyFuncCode TermCode'
+rebuild-11 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 11: Out
 
-rebuild-12 : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) TermCode'
-rebuild-12 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 12: curry
+rebuild-12 : Term (TyFuncCode * TermCode') TermCode'
+rebuild-12 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 12: cata
 
-rebuild-13 : Term (TyFuncCode * TyFuncCode) TermCode'
-rebuild-13 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr  -- position 13: apply
+rebuild-13 : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) TermCode'
+rebuild-13 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl  -- position 13: curry
+
+rebuild-14 : Term (TyFuncCode * TyFuncCode) TermCode'
+rebuild-14 = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr  -- position 14: apply (last position, no inl)
 
 ------------------------------------------------------------------------
 -- "Return yes" helper: signals match with inl ∘ terminal
@@ -108,14 +111,17 @@ ret-no-9 = inr ∘ rebuild-9
 ret-no-10 : Term TyFuncCode (Unit + TermCode')
 ret-no-10 = inr ∘ rebuild-10
 
-ret-no-11 : Term (TyFuncCode * TermCode') (Unit + TermCode')
+ret-no-11 : Term TyFuncCode (Unit + TermCode')
 ret-no-11 = inr ∘ rebuild-11
 
-ret-no-12 : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) (Unit + TermCode')
+ret-no-12 : Term (TyFuncCode * TermCode') (Unit + TermCode')
 ret-no-12 = inr ∘ rebuild-12
 
-ret-no-13 : Term (TyFuncCode * TyFuncCode) (Unit + TermCode')
+ret-no-13 : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) (Unit + TermCode')
 ret-no-13 = inr ∘ rebuild-13
+
+ret-no-14 : Term (TyFuncCode * TyFuncCode) (Unit + TermCode')
+ret-no-14 = inr ∘ rebuild-14
 
 ------------------------------------------------------------------------
 -- Specialized "return no" variants for is-pair and is-case dispatchers
@@ -156,14 +162,17 @@ ret-no-pair-9 = inr ∘ rebuild-9
 ret-no-pair-10 : Term TyFuncCode ((TermCode' * TermCode') + TermCode')
 ret-no-pair-10 = inr ∘ rebuild-10
 
-ret-no-pair-11 : Term (TyFuncCode * TermCode') ((TermCode' * TermCode') + TermCode')
+ret-no-pair-11 : Term TyFuncCode ((TermCode' * TermCode') + TermCode')
 ret-no-pair-11 = inr ∘ rebuild-11
 
-ret-no-pair-12 : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) ((TermCode' * TermCode') + TermCode')
+ret-no-pair-12 : Term (TyFuncCode * TermCode') ((TermCode' * TermCode') + TermCode')
 ret-no-pair-12 = inr ∘ rebuild-12
 
-ret-no-pair-13 : Term (TyFuncCode * TyFuncCode) ((TermCode' * TermCode') + TermCode')
+ret-no-pair-13 : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) ((TermCode' * TermCode') + TermCode')
 ret-no-pair-13 = inr ∘ rebuild-13
+
+ret-no-pair-14 : Term (TyFuncCode * TyFuncCode) ((TermCode' * TermCode') + TermCode')
+ret-no-pair-14 = inr ∘ rebuild-14
 
 ------------------------------------------------------------------------
 -- Specialized "return no" variants for is-cata dispatcher
@@ -204,11 +213,16 @@ ret-no-cata-9 = inr ∘ rebuild-9
 ret-no-cata-10 : Term TyFuncCode ((TyFuncCode * TermCode') + TermCode')
 ret-no-cata-10 = inr ∘ rebuild-10
 
-ret-no-cata-12 : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) ((TyFuncCode * TermCode') + TermCode')
-ret-no-cata-12 = inr ∘ rebuild-12
+ret-no-cata-11 : Term TyFuncCode ((TyFuncCode * TermCode') + TermCode')
+ret-no-cata-11 = inr ∘ rebuild-11
 
-ret-no-cata-13 : Term (TyFuncCode * TyFuncCode) ((TyFuncCode * TermCode') + TermCode')
+-- Skip ret-no-cata-12 since position 12 is cata itself (the dispatcher's target position)
+
+ret-no-cata-13 : Term ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode')) ((TyFuncCode * TermCode') + TermCode')
 ret-no-cata-13 = inr ∘ rebuild-13
+
+ret-no-cata-14 : Term (TyFuncCode * TyFuncCode) ((TyFuncCode * TermCode') + TermCode')
+ret-no-cata-14 = inr ∘ rebuild-14
 
 ------------------------------------------------------------------------
 -- Encoded id term (for eta reductions)
