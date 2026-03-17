@@ -14,7 +14,7 @@ open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.List using (List; []; _∷_; _++_)
 
 -- Import X86 syntax
-open import Once.Target.X86.Syntax
+open import Once.CCC.Target.X86v3.Syntax
   using (Reg; rax; rbx; rcx; rdx; rdi; rsi; rbp; rsp; r8; r9; r10; r11; r12; r13; r14; r15;
          Mem; base; base+disp; rip+disp;
          Operand; reg; mem; imm;

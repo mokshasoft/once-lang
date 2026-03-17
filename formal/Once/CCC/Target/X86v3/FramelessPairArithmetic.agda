@@ -23,7 +23,7 @@ open import Data.Nat.Properties
 open import Data.Empty using (⊥)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong)
 
-open import Once.Target.X86.Syntax using (slot-size; slots)
+open import Once.CCC.Target.X86v3.Syntax using (slot-size; slots)
 
 ------------------------------------------------------------------------
 -- Private helpers (typechecked once at module level)

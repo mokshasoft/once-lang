@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.Target.X86.Syntax
+-- Once.CCC.Target.X86v3.Syntax
 --
 -- x86-64 instruction subset used by Once.
 -- This is a minimal subset sufficient for the 12 categorical generators.
@@ -7,7 +7,7 @@
 -- Based on the Sail x86-64 formal specification from REMS project.
 ------------------------------------------------------------------------
 
-module Once.Target.X86.Syntax where
+module Once.CCC.Target.X86v3.Syntax where
 
 open import Data.Nat using (ℕ; zero; suc) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Fin using (Fin)

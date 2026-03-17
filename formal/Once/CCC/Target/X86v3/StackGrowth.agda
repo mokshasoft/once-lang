@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.CCC.Target.X86.StackGrowth
+-- Once.CCC.Target.X86v3.StackGrowth
 --
 -- X86-64 stack growth implementation.
 -- Provides the StackGrowth instance for x86-64 architecture.
@@ -9,7 +9,7 @@
 --   - Slot k is at: base + k * 8 (grows upward from base)
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86.StackGrowth where
+module Once.CCC.Target.X86v3.StackGrowth where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _≤_; _≥_)
 open import Data.Nat.Properties using (+-identityʳ; +-comm; *-comm; m≤m+n; +-cancelˡ-≡; *-cancelˡ-≡; ≤-trans)

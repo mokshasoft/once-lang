@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.CCC.Target.X86.Layout
+-- Once.CCC.Target.X86v3.Layout
 --
 -- Concrete X86-64 memory layout.
 --
@@ -10,10 +10,10 @@
 --
 -- IR proofs should NOT import this directly - they should use
 -- Common.Regions, Common.StackSlots, etc. Only the top-level
--- (WholeProgram) imports X86.Layout for concrete wiring.
+-- (WholeProgram) imports X86v3.Layout for concrete wiring.
 ------------------------------------------------------------------------
 
-module Once.CCC.Target.X86.Layout where
+module Once.CCC.Target.X86v3.Layout where
 
 open import Data.Nat using (ℕ; zero; suc; _+_; _∸_; _*_; _<_; _≤_; _>_; _≥_; s≤s; z≤n)
 open import Data.Nat.Properties using (m≤m+n; ≤-trans; <-≤-trans; m<m+n; m∸n≤m)
@@ -26,8 +26,8 @@ open import Once.CCC.MemoryLayoutSemantics as MLS
   using (MemoryLayout; RegionBounds; lower; upper; InRegion)
 open MLS using (Addr; lower; upper) public
 
--- Import and re-export X86 stack growth
-open import Once.CCC.Target.X86.StackGrowth public
+-- Import and re-export X86v3 stack growth
+open import Once.CCC.Target.X86v3.StackGrowth public
   using (word-size; x86-stack-growth)
 
 ------------------------------------------------------------------------

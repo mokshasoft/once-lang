@@ -32,15 +32,13 @@ open import Relation.Binary.Definitions using (tri<; tri≈; tri>)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.MemoryLayoutSemantics using (Addr)
 
--- Import X86 Layout for StackPointer and slot operations
--- NOTE: X86v3 currently shares Layout with X86. If divergence is needed,
--- create Once.CCC.Target.X86v3.Layout and update this import.
-open import Once.CCC.Target.X86.Layout
+-- Import X86v3 Layout for StackPointer and slot operations
+open import Once.CCC.Target.X86v3.Layout
   using (StackPointer; slot-addr; word-size;
          grow-identity; sp-distinct; offset-distinct;
          frame-below-slot0-disjoint; slot-addr-≥-base;
          InStack; in-stack)
-open import Once.CCC.Target.X86.Layout using () renaming (addr to sp-addr)
+open import Once.CCC.Target.X86v3.Layout using () renaming (addr to sp-addr)
 
 ------------------------------------------------------------------------
 -- X86-64 Frame Type
