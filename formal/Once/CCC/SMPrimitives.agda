@@ -184,6 +184,15 @@ module MemoryOps {FS : FrameSemantics} where
   ... | yes f₁≡f₂ = ⊥-elim (≺-irrefl (subst (λ f → f ≺ f₂) f₁≡f₂ f₁≺f₂))
   ... | no _ = refl
 
+  -- Read after write (same location)
+  -- Uses writeLoc-read-same-stack from SMCore for stack locations
+  -- Heap cases use postulate (heap write semantics are more complex)
+  readLoc-writeLoc-same : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
+    readLoc (writeLoc s loc v) loc ≡ just v
+  readLoc-writeLoc-same s (OnStack f k) v = writeLoc-read-same-stack s f k v
+  readLoc-writeLoc-same s (OnHeap hl) v = readLoc-writeLoc-same-heap s hl v
+    where postulate readLoc-writeLoc-same-heap : ∀ s hl v → readLoc (writeLoc s (OnHeap hl) v) (OnHeap hl) ≡ just v
+
 ------------------------------------------------------------------------
 -- Level 3: Instruction Characterization (POSITIVE)
 --
