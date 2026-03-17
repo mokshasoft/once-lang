@@ -41,20 +41,23 @@ nr-handle-case = nr-rebuild-7
 nr-handle-terminal : NoRedex handle-terminal
 nr-handle-terminal = nr-rebuild-8
 
+nr-handle-initial : NoRedex handle-initial
+nr-handle-initial = nr-rebuild-9
+
 nr-handle-In : NoRedex handle-In
-nr-handle-In = nr-rebuild-9
+nr-handle-In = nr-rebuild-10
 
 nr-handle-Out : NoRedex handle-Out
-nr-handle-Out = nr-rebuild-10
+nr-handle-Out = nr-rebuild-11
 
 nr-handle-cata : NoRedex handle-cata
-nr-handle-cata = nr-rebuild-11
+nr-handle-cata = nr-rebuild-12
 
 nr-handle-curry : NoRedex handle-curry
-nr-handle-curry = nr-rebuild-12
+nr-handle-curry = nr-rebuild-13
 
 nr-handle-apply : NoRedex handle-apply
-nr-handle-apply = nr-rebuild-13
+nr-handle-apply = nr-rebuild-14
 
 ------------------------------------------------------------------------
 -- NoRedex proofs for distrib infrastructure
@@ -105,7 +108,7 @@ nr-caseWithCtx nrl nrr = nr-comp (nr-case nrl nrr) nr-distrib nis-case nis-comp
 ------------------------------------------------------------------------
 
 private
-  -- is-id-dispatch is a 14-way nested case
+  -- is-id-dispatch is a 15-way nested case (positions 0-14)
   nr-is-id-dispatch : NoRedex is-id-dispatch
   nr-is-id-dispatch =
     nr-case nr-ret-yes
@@ -120,7 +123,8 @@ private
                       (nr-case nr-ret-no-9
                         (nr-case nr-ret-no-10
                           (nr-case nr-ret-no-11
-                            (nr-case nr-ret-no-12 nr-ret-no-13))))))))))))
+                            (nr-case nr-ret-no-12
+                              (nr-case nr-ret-no-13 nr-ret-no-14)))))))))))))
 
 -- is-id = is-id-dispatch ∘ Out
 nr-is-id' : NoRedex is-id

@@ -20,10 +20,11 @@ open import normalizer.Level0V2.Normalizer
   using (∘-cong-left'; ∘-cong-right'; cata-β-right; fmap-TermF-inl;
          fmap-TermF-inr; fmap-1-inr; fmap-2-inr; fmap-3-inr; fmap-4-inr;
          fmap-5-inr; fmap-6-inr; fmap-7-inr; fmap-8-inr; fmap-9-inr;
-         fmap-10-inr; fmap-11-inr; fmap-12-inr;
+         fmap-10-inr; fmap-11-inr; fmap-12-inr; fmap-13-inr;
          fmap-1-inl; fmap-2-inl; fmap-3-inl; fmap-4-inl; fmap-5-inl;
          fmap-6-inl; fmap-7-inl; fmap-8-inl; fmap-9-inl; fmap-10-inl;
-         fmap-KK-id; TermF-13; fmap-sum-inl)
+         fmap-11-inl; fmap-12-inl; fmap-13-inl;
+         fmap-KK-id; TermF-13; TermF-14; fmap-sum-inl)
 
 -- Proof obligation: handle-comp reduces to rebuild
 -- (When inputs are non-id NoRedex terms)
@@ -110,7 +111,7 @@ abstract
     ⟶1 (⟶-∘-l tail-7-inr) >>
     ⟶1 tail-8-inl
 
-  nstep-at-9' : ((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-In
+  nstep-at-9' : ((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-initial
   nstep-at-9' =
     ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))))) >>
     ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))))) >>
@@ -123,7 +124,7 @@ abstract
     ⟶1 (⟶-∘-l tail-8-inr) >>
     ⟶1 tail-9-inl
 
-  nstep-at-10' : (((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-Out
+  nstep-at-10' : (((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-In
   nstep-at-10' =
     ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))))) >>
     ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))))) >>
@@ -137,7 +138,7 @@ abstract
     ⟶1 (⟶-∘-l tail-9-inr) >>
     ⟶1 tail-10-inl
 
-  nstep-at-11' : ((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-cata
+  nstep-at-11' : ((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-Out
   nstep-at-11' =
     ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))))))) >>
     ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))))))) >>
@@ -152,7 +153,7 @@ abstract
     ⟶1 (⟶-∘-l tail-10-inr) >>
     ⟶1 tail-11-inl
 
-  nstep-at-12' : (((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-curry
+  nstep-at-12' : (((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-cata
   nstep-at-12' =
     ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))))))) >>
     ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))))))) >>
@@ -168,21 +169,39 @@ abstract
     ⟶1 (⟶-∘-l tail-11-inr) >>
     ⟶1 tail-12-inl
 
-  nstep-at-13' : (((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ⟶* handle-apply
+  nstep-at-13' : ((((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inl) ⟶* handle-curry
   nstep-at-13' =
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr)))))))))))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr))))))))))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr)))))))))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr))))))))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr)))))))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr))))))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr)))))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr))))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-8-inr)))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-9-inr))) >>
-    ⟶1 (⟶-∘-l (⟶-∘-l tail-10-inr)) >>
-    ⟶1 (⟶-∘-l tail-11-inr) >>
-    ⟶1 tail-12-inr
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr)))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr)))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-8-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-9-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-10-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-11-inr)) >>
+    ⟶1 (⟶-∘-l tail-12-inr) >>
+    ⟶1 tail-13-inl
+
+  nstep-at-14' : ((((((((((((((normalize-step ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ∘ inr) ⟶* handle-apply
+  nstep-at-14' =
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l nstep-inr))))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-1-inr)))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-2-inr))))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-3-inr)))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-4-inr))))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-5-inr)))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-6-inr))))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-7-inr)))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-8-inr))))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-9-inr)))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l (⟶-∘-l tail-10-inr))) >>
+    ⟶1 (⟶-∘-l (⟶-∘-l tail-11-inr)) >>
+    ⟶1 (⟶-∘-l tail-12-inr) >>
+    ⟶1 tail-13-inr
 
   ------------------------------------------------------------------------
   -- Key lemma: normalize-step ∘ inl ⟶ handle-id = In ∘ inl
@@ -501,18 +520,18 @@ abstract
               (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))
 
 ------------------------------------------------------------------------
--- Base case: noredex-fixpoint-In (position 9)
+-- Base case: noredex-fixpoint-initial (position 9)
 ------------------------------------------------------------------------
 
 abstract
-  noredex-fixpoint-In' : ∀ {F} → (normalize ∘ encode (In {F})) ⟶* encode (In {F})
-  noredex-fixpoint-In' {F} = step1 >> step2 >> step3 >> step4
+  noredex-fixpoint-initial : ∀ {A} → (normalize ∘ encode (initial {A})) ⟶* encode (initial {A})
+  noredex-fixpoint-initial {A} = step1 >> step2 >> step3 >> step4
     where
       N : Term TermCode' TermCode'
       N = cata TermF normalize-step
 
       payload : Term Unit TyFuncCode
-      payload = ⌜ F ⌝Func
+      payload = ⌜ A ⌝Ty
 
       step1 : (N ∘ (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))) ⟶*
               ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
@@ -533,13 +552,13 @@ abstract
         (⟶1 assoc-l >> ∘-cong-left' payload (fmap-9-inl N) >>
          ∘-cong-left' payload (⟶1 id-right))))))))))
 
-      inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-In ∘ payload)
+      inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-initial ∘ payload)
       inner-step = ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ∘-cong-left' payload nstep-at-9'
 
-      step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-In ∘ payload)
+      step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-initial ∘ payload)
       step2 = ⟶1 assoc-r >> ∘-cong-right' normalize-step reduce-chain >> inner-step
 
-      step3 : (handle-In ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload)
+      step3 : (handle-initial ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload)
       step3 = done
 
       step4 : ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload) ⟶* (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
@@ -554,12 +573,12 @@ abstract
               (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))))
 
 ------------------------------------------------------------------------
--- Base case: noredex-fixpoint-Out (position 10)
+-- Base case: noredex-fixpoint-In (position 10)
 ------------------------------------------------------------------------
 
 abstract
-  noredex-fixpoint-Out : ∀ {F} → (normalize ∘ encode (Out {F})) ⟶* encode (Out {F})
-  noredex-fixpoint-Out {F} = step1 >> step2 >> step3 >> step4
+  noredex-fixpoint-In' : ∀ {F} → (normalize ∘ encode (In {F})) ⟶* encode (In {F})
+  noredex-fixpoint-In' {F} = step1 >> step2 >> step3 >> step4
     where
       N : Term TermCode' TermCode'
       N = cata TermF normalize-step
@@ -587,13 +606,13 @@ abstract
         (⟶1 assoc-l >> ∘-cong-left' payload (fmap-10-inl N) >>
          ∘-cong-left' payload (⟶1 id-right)))))))))))
 
-      inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-Out ∘ payload)
+      inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-In ∘ payload)
       inner-step = ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ∘-cong-left' payload nstep-at-10'
 
-      step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-Out ∘ payload)
+      step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-In ∘ payload)
       step2 = ⟶1 assoc-r >> ∘-cong-right' normalize-step reduce-chain >> inner-step
 
-      step3 : (handle-Out ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload)
+      step3 : (handle-In ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload)
       step3 = done
 
       step4 : ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload) ⟶* (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
@@ -609,6 +628,63 @@ abstract
               (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))))
 
 ------------------------------------------------------------------------
+-- Base case: noredex-fixpoint-Out (position 11)
+------------------------------------------------------------------------
+
+abstract
+  noredex-fixpoint-Out : ∀ {F} → (normalize ∘ encode (Out {F})) ⟶* encode (Out {F})
+  noredex-fixpoint-Out {F} = step1 >> step2 >> step3 >> step4
+    where
+      N : Term TermCode' TermCode'
+      N = cata TermF normalize-step
+
+      payload : Term Unit TyFuncCode
+      payload = ⌜ F ⌝Func
+
+      step1 : (N ∘ (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))) ⟶*
+              ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
+      step1 = cata-β-right {TermF} {TermCode'} {Unit} {normalize-step} {inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload}
+
+      reduce-chain : (fmap TermF N ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶*
+                     (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)
+      reduce-chain =
+        ⟶1 assoc-l >> ∘-cong-left' _ (fmap-TermF-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-1-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-2-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-3-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-4-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-5-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-6-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-7-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-8-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-9-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-10-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (⟶1 assoc-l >> ∘-cong-left' payload (fmap-11-inl N) >>
+         ∘-cong-left' payload (⟶1 id-right))))))))))))
+
+      inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-Out ∘ payload)
+      inner-step = ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ∘-cong-left' payload nstep-at-11'
+
+      step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-Out ∘ payload)
+      step2 = ⟶1 assoc-r >> ∘-cong-right' normalize-step reduce-chain >> inner-step
+
+      step3 : (handle-Out ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload)
+      step3 = done
+
+      step4 : ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload) ⟶* (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
+      step4 = ⟶1 assoc-r >> ∘-cong-right' In
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))))))
+
+------------------------------------------------------------------------
 -- Base case: noredex-fixpoint-apply (position 13)
 ------------------------------------------------------------------------
 
@@ -622,12 +698,12 @@ abstract
       payload : Term Unit (TyFuncCode * TyFuncCode)
       payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
 
-      step1 : (N ∘ (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload))) ⟶*
-              ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload))
-      step1 = cata-β-right {TermF} {TermCode'} {Unit} {normalize-step} {inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload}
+      step1 : (N ∘ (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload))) ⟶*
+              ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload))
+      step1 = cata-β-right {TermF} {TermCode'} {Unit} {normalize-step} {inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload}
 
-      reduce-chain : (fmap TermF N ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload)) ⟶*
-                     (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload)
+      reduce-chain : (fmap TermF N ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload)) ⟶*
+                     (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload)
       reduce-chain =
         ⟶1 assoc-l >> ∘-cong-left' _ (fmap-TermF-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
         (⟶1 assoc-l >> ∘-cong-left' _ (fmap-1-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
@@ -642,18 +718,19 @@ abstract
         (⟶1 assoc-l >> ∘-cong-left' _ (fmap-10-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
         (⟶1 assoc-l >> ∘-cong-left' _ (fmap-11-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
         (⟶1 assoc-l >> ∘-cong-left' _ (fmap-12-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-        (∘-cong-left' payload (fmap-KK-id TyFuncCode TyFuncCode N) >> ⟶1 id-left)))))))))))))
+        (⟶1 assoc-l >> ∘-cong-left' _ (fmap-13-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+        (∘-cong-left' payload (fmap-KK-id TyFuncCode TyFuncCode N) >> ⟶1 id-left))))))))))))))
 
-      inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload)) ⟶* (handle-apply ∘ payload)
-      inner-step = ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ∘-cong-left' payload nstep-at-13'
+      inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload)) ⟶* (handle-apply ∘ payload)
+      inner-step = ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ∘-cong-left' payload nstep-at-14'
 
-      step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload)) ⟶* (handle-apply ∘ payload)
+      step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload)) ⟶* (handle-apply ∘ payload)
       step2 = ⟶1 assoc-r >> ∘-cong-right' normalize-step reduce-chain >> inner-step
 
-      step3 : (handle-apply ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr) ∘ payload)
+      step3 : (handle-apply ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr) ∘ payload)
       step3 = done
 
-      step4 : ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr) ∘ payload) ⟶* (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload))
+      step4 : ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr) ∘ payload) ⟶* (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ payload))
       step4 = ⟶1 assoc-r >> ∘-cong-right' In
               (⟶1 assoc-r >> ∘-cong-right' inr
               (⟶1 assoc-r >> ∘-cong-right' inr
@@ -665,7 +742,8 @@ abstract
               (⟶1 assoc-r >> ∘-cong-right' inr
               (⟶1 assoc-r >> ∘-cong-right' inr
               (⟶1 assoc-r >> ∘-cong-right' inr
-              (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))))))
+              (⟶1 assoc-r >> ∘-cong-right' inr
+              (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))))))))
 
 ------------------------------------------------------------------------
 -- Main fixpoint theorem (by structural induction on NoRedex)
@@ -684,6 +762,7 @@ abstract
   noredex-fixpoint inl nr-inl = noredex-fixpoint-inl
   noredex-fixpoint inr nr-inr = noredex-fixpoint-inr
   noredex-fixpoint terminal nr-terminal = noredex-fixpoint-terminal
+  noredex-fixpoint initial nr-initial = noredex-fixpoint-initial
   noredex-fixpoint In nr-In = noredex-fixpoint-In'
   noredex-fixpoint Out nr-Out = noredex-fixpoint-Out
   noredex-fixpoint apply nr-apply = noredex-fixpoint-apply
@@ -842,7 +921,7 @@ abstract
             (⟶1 assoc-r >> ∘-cong-right' inr
             (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))
 
-  -- Position 12 (curry): encode (curry f) = In ∘ inr^12 ∘ inl ∘ ⟨⟨⌜A⌝,⌜B⌝⟩, ⟨⌜C⌝, encode f⟩⟩
+  -- Position 13 (curry): encode (curry f) = In ∘ inr^13 ∘ inl ∘ ⟨⟨⌜A⌝,⌜B⌝⟩, ⟨⌜C⌝, encode f⟩⟩
   noredex-fixpoint (curry {A} {B} {C} f) (nr-curry nrf) = step1 >> step2 >> step3 >> step4
     where
     N : Term TermCode' TermCode'
@@ -850,6 +929,85 @@ abstract
 
     payload : Term Unit ((TyFuncCode * TyFuncCode) * (TyFuncCode * TermCode'))
     payload = ⟨ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ , ⟨ ⌜ C ⌝Ty , encode f ⟩ ⟩
+
+    step1 : (N ∘ (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))) ⟶*
+            ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
+    step1 = cata-β-right {TermF} {TermCode'} {Unit} {normalize-step} {inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload}
+
+    -- 13 inr navigations
+    reduce-chain : (fmap TermF N ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶*
+                   (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)
+    reduce-chain =
+      ⟶1 assoc-l >> ∘-cong-left' _ (fmap-TermF-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-1-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-2-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-3-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-4-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-5-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-6-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-7-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-8-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-9-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-10-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-11-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-12-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
+      (⟶1 assoc-l >> ∘-cong-left' payload curry-fmap-13-inl >> ⟶1 assoc-r >> ∘-cong-right' inl curry-ih-step)))))))))))))
+      where
+        curry-ih-step : (fmap CurryPayloadF N ∘ payload) ⟶* payload
+        curry-ih-step =
+          ⟶1 pair-comp >>
+          ⟨⟩-cong
+            -- First component: fmap (K⊗K) N ∘ fst ∘ payload ⟶* ⟨⌜A⌝,⌜B⌝⟩
+            (⟶1 assoc-r >> ∘-cong-right' (fmap (K TyFuncCode ⊗ K TyFuncCode) N) (⟶1 fst-pair) >>
+             ∘-cong-left' _ (fmap-KK-id TyFuncCode TyFuncCode N) >> ⟶1 id-left)
+            -- Second component: fmap (K⊗Id) N ∘ snd ∘ payload ⟶* ⟨⌜C⌝, encode f⟩
+            (⟶1 assoc-r >> ∘-cong-right' (fmap (K TyFuncCode ⊗ Id) N) (⟶1 snd-pair) >>
+             ⟶1 pair-comp >>
+             ⟨⟩-cong
+               (⟶1 assoc-r >> ⟶1 id-left >> ⟶1 fst-pair)
+               (⟶1 assoc-r >> ∘-cong-right' N (⟶1 snd-pair) >> noredex-fixpoint f nrf))
+
+        curry-fmap-13-inl : (fmap TermF-13 N ∘ inl) ⟶* (inl ∘ fmap CurryPayloadF N)
+        curry-fmap-13-inl = fmap-sum-inl CurryPayloadF TermF-14 N
+
+    inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-curry ∘ payload)
+    inner-step =
+      ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >>
+      ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >>
+      ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >>
+      ∘-cong-left' payload nstep-at-13'
+
+    step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶*
+            (handle-curry ∘ payload)
+    step2 = ⟶1 assoc-r >> ∘-cong-right' normalize-step reduce-chain >> inner-step
+
+    step3 : (handle-curry ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload)
+    step3 = done
+
+    step4 : ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload) ⟶*
+            (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
+    step4 = ⟶1 assoc-r >> ∘-cong-right' In
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr
+            (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))))))))
+
+  -- Position 12 (cata): encode (cata F alg) = In ∘ inr^12 ∘ inl ∘ ⟨⌜F⌝, encode alg⟩
+  noredex-fixpoint (cata F alg) (nr-cata nralg) = step1 >> step2 >> step3 >> step4
+    where
+    N : Term TermCode' TermCode'
+    N = cata TermF normalize-step
+
+    payload : Term Unit (TyFuncCode * TermCode')
+    payload = ⟨ ⌜ F ⌝Func , encode alg ⟩
 
     step1 : (N ∘ (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))) ⟶*
             ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
@@ -871,26 +1029,19 @@ abstract
       (⟶1 assoc-l >> ∘-cong-left' _ (fmap-9-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
       (⟶1 assoc-l >> ∘-cong-left' _ (fmap-10-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
       (⟶1 assoc-l >> ∘-cong-left' _ (fmap-11-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' payload curry-fmap-12-inl >> ⟶1 assoc-r >> ∘-cong-right' inl curry-ih-step))))))))))))
+      (⟶1 assoc-l >> ∘-cong-left' payload cata-fmap-12-inl >> ⟶1 assoc-r >> ∘-cong-right' inl cata-ih-step))))))))))))
       where
-        curry-ih-step : (fmap CurryPayloadF N ∘ payload) ⟶* payload
-        curry-ih-step =
+        cata-ih-step : (fmap (K TyFuncCode ⊗ Id) N ∘ payload) ⟶* payload
+        cata-ih-step =
           ⟶1 pair-comp >>
           ⟨⟩-cong
-            -- First component: fmap (K⊗K) N ∘ fst ∘ payload ⟶* ⟨⌜A⌝,⌜B⌝⟩
-            (⟶1 assoc-r >> ∘-cong-right' (fmap (K TyFuncCode ⊗ K TyFuncCode) N) (⟶1 fst-pair) >>
-             ∘-cong-left' _ (fmap-KK-id TyFuncCode TyFuncCode N) >> ⟶1 id-left)
-            -- Second component: fmap (K⊗Id) N ∘ snd ∘ payload ⟶* ⟨⌜C⌝, encode f⟩
-            (⟶1 assoc-r >> ∘-cong-right' (fmap (K TyFuncCode ⊗ Id) N) (⟶1 snd-pair) >>
-             ⟶1 pair-comp >>
-             ⟨⟩-cong
-               (⟶1 assoc-r >> ⟶1 id-left >> ⟶1 fst-pair)
-               (⟶1 assoc-r >> ∘-cong-right' N (⟶1 snd-pair) >> noredex-fixpoint f nrf))
+            (⟶1 assoc-r >> ⟶1 id-left >> ⟶1 fst-pair)
+            (⟶1 assoc-r >> ∘-cong-right' N (⟶1 snd-pair) >> noredex-fixpoint alg nralg)
 
-        curry-fmap-12-inl : (fmap TermF-12 N ∘ inl) ⟶* (inl ∘ fmap CurryPayloadF N)
-        curry-fmap-12-inl = fmap-sum-inl CurryPayloadF TermF-13 N
+        cata-fmap-12-inl : (fmap TermF-12 N ∘ inl) ⟶* (inl ∘ fmap (K TyFuncCode ⊗ Id) N)
+        cata-fmap-12-inl = fmap-sum-inl (K TyFuncCode ⊗ Id) TermF-13 N
 
-    inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-curry ∘ payload)
+    inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-cata ∘ payload)
     inner-step =
       ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >>
       ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >>
@@ -898,10 +1049,10 @@ abstract
       ∘-cong-left' payload nstep-at-12'
 
     step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶*
-            (handle-curry ∘ payload)
+            (handle-cata ∘ payload)
     step2 = ⟶1 assoc-r >> ∘-cong-right' normalize-step reduce-chain >> inner-step
 
-    step3 : (handle-curry ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload)
+    step3 : (handle-cata ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload)
     step3 = done
 
     step4 : ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload) ⟶*
@@ -918,74 +1069,6 @@ abstract
             (⟶1 assoc-r >> ∘-cong-right' inr
             (⟶1 assoc-r >> ∘-cong-right' inr
             (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))))))
-
-  -- Position 11 (cata): encode (cata F alg) = In ∘ inr^11 ∘ inl ∘ ⟨⌜F⌝, encode alg⟩
-  noredex-fixpoint (cata F alg) (nr-cata nralg) = step1 >> step2 >> step3 >> step4
-    where
-    N : Term TermCode' TermCode'
-    N = cata TermF normalize-step
-
-    payload : Term Unit (TyFuncCode * TermCode')
-    payload = ⟨ ⌜ F ⌝Func , encode alg ⟩
-
-    step1 : (N ∘ (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))) ⟶*
-            ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
-    step1 = cata-β-right {TermF} {TermCode'} {Unit} {normalize-step} {inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload}
-
-    -- 11 inr navigations
-    reduce-chain : (fmap TermF N ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶*
-                   (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)
-    reduce-chain =
-      ⟶1 assoc-l >> ∘-cong-left' _ (fmap-TermF-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-1-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-2-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-3-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-4-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-5-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-6-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-7-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-8-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-9-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' _ (fmap-10-inr N) >> ⟶1 assoc-r >> ∘-cong-right' inr
-      (⟶1 assoc-l >> ∘-cong-left' payload cata-fmap-11-inl >> ⟶1 assoc-r >> ∘-cong-right' inl cata-ih-step)))))))))))
-      where
-        cata-ih-step : (fmap (K TyFuncCode ⊗ Id) N ∘ payload) ⟶* payload
-        cata-ih-step =
-          ⟶1 pair-comp >>
-          ⟨⟩-cong
-            (⟶1 assoc-r >> ⟶1 id-left >> ⟶1 fst-pair)
-            (⟶1 assoc-r >> ∘-cong-right' N (⟶1 snd-pair) >> noredex-fixpoint alg nralg)
-
-        cata-fmap-11-inl : (fmap TermF-11 N ∘ inl) ⟶* (inl ∘ fmap (K TyFuncCode ⊗ Id) N)
-        cata-fmap-11-inl = fmap-sum-inl (K TyFuncCode ⊗ Id) TermF-12 N
-
-    inner-step : (normalize-step ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶* (handle-cata ∘ payload)
-    inner-step =
-      ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >>
-      ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >>
-      ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >> ⟶1 assoc-l >>
-      ∘-cong-left' payload nstep-at-11'
-
-    step2 : ((normalize-step ∘ fmap TermF N) ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload)) ⟶*
-            (handle-cata ∘ payload)
-    step2 = ⟶1 assoc-r >> ∘-cong-right' normalize-step reduce-chain >> inner-step
-
-    step3 : (handle-cata ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload)
-    step3 = done
-
-    step4 : ((In {TermF} ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl) ∘ payload) ⟶*
-            (In {TermF} ∘ (inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ payload))
-    step4 = ⟶1 assoc-r >> ∘-cong-right' In
-            (⟶1 assoc-r >> ∘-cong-right' inr
-            (⟶1 assoc-r >> ∘-cong-right' inr
-            (⟶1 assoc-r >> ∘-cong-right' inr
-            (⟶1 assoc-r >> ∘-cong-right' inr
-            (⟶1 assoc-r >> ∘-cong-right' inr
-            (⟶1 assoc-r >> ∘-cong-right' inr
-            (⟶1 assoc-r >> ∘-cong-right' inr
-            (⟶1 assoc-r >> ∘-cong-right' inr
-            (⟶1 assoc-r >> ∘-cong-right' inr
-            (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))))))
 
   -- Position 1 (comp): encode (f ∘ g) = In ∘ inr ∘ inl ∘ ⟨encode f, encode g⟩
   noredex-fixpoint (f ∘ g) (nr-comp nrf nrg nisf nisg) = step1 >> step2 >> step3 >> step4

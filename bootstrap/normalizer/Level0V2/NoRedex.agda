@@ -130,6 +130,7 @@ data NoRedex : ∀ {A B} → Term A B → Set where
   nr-In       : ∀ {F} → NoRedex (In {F})
   nr-Out      : ∀ {F} → NoRedex (Out {F})
   nr-apply    : ∀ {A B} → NoRedex (apply {A} {B})
+  nr-initial  : ∀ {A} → NoRedex (initial {A})
 
   -- Composition: not a redex pattern, and subterms are normal
   -- For fixpoint property, we need: f ≠ id AND g ≠ id

@@ -89,6 +89,7 @@ data Ty : Set
 data Func : Set
 
 data Ty where
+  Void : Ty              -- Initial object (empty type)
   Unit : Ty
   _*_  : Ty → Ty → Ty
   _+_  : Ty → Ty → Ty
@@ -121,12 +122,21 @@ _≟Ty_ : (A B : Ty) → Dec (A ≡ B)
 _≟Func_ : (F G : Func) → Dec (F ≡ G)
 
 -- Decidable equality for Ty
+Void ≟Ty Void = yes refl
+Void ≟Ty Unit = no (λ ())
+Void ≟Ty (_ * _) = no (λ ())
+Void ≟Ty (_ + _) = no (λ ())
+Void ≟Ty (_ ⇒ _) = no (λ ())
+Void ≟Ty (μ _) = no (λ ())
+
+Unit ≟Ty Void = no (λ ())
 Unit ≟Ty Unit = yes refl
 Unit ≟Ty (_ * _) = no (λ ())
 Unit ≟Ty (_ + _) = no (λ ())
 Unit ≟Ty (_ ⇒ _) = no (λ ())
 Unit ≟Ty (μ _) = no (λ ())
 
+(A * B) ≟Ty Void = no (λ ())
 (A * B) ≟Ty Unit = no (λ ())
 (A * B) ≟Ty (C * D) with A ≟Ty C | B ≟Ty D
 ... | yes refl | yes refl = yes refl
@@ -136,6 +146,7 @@ Unit ≟Ty (μ _) = no (λ ())
 (A * B) ≟Ty (_ ⇒ _) = no (λ ())
 (A * B) ≟Ty (μ _) = no (λ ())
 
+(A + B) ≟Ty Void = no (λ ())
 (A + B) ≟Ty Unit = no (λ ())
 (A + B) ≟Ty (_ * _) = no (λ ())
 (A + B) ≟Ty (C + D) with A ≟Ty C | B ≟Ty D
@@ -145,6 +156,7 @@ Unit ≟Ty (μ _) = no (λ ())
 (A + B) ≟Ty (_ ⇒ _) = no (λ ())
 (A + B) ≟Ty (μ _) = no (λ ())
 
+(A ⇒ B) ≟Ty Void = no (λ ())
 (A ⇒ B) ≟Ty Unit = no (λ ())
 (A ⇒ B) ≟Ty (_ * _) = no (λ ())
 (A ⇒ B) ≟Ty (_ + _) = no (λ ())
@@ -154,6 +166,7 @@ Unit ≟Ty (μ _) = no (λ ())
 ... | no neq | _ = no (λ { refl → neq refl })
 (A ⇒ B) ≟Ty (μ _) = no (λ ())
 
+(μ F) ≟Ty Void = no (λ ())
 (μ F) ≟Ty Unit = no (λ ())
 (μ F) ≟Ty (_ * _) = no (λ ())
 (μ F) ≟Ty (_ + _) = no (λ ())
@@ -197,6 +210,7 @@ Id ≟Func (_ ⊗ _) = no (λ ())
 
 -- View for classifying types by structure
 data TyView : Ty → Set where
+  tv-void   : TyView Void
   tv-unit   : TyView Unit
   tv-prod   : ∀ A B → TyView (A * B)
   tv-coprod : ∀ A B → TyView (A + B)
@@ -204,6 +218,7 @@ data TyView : Ty → Set where
   tv-mu     : ∀ F → TyView (μ F)
 
 tyView : (T : Ty) → TyView T
+tyView Void = tv-void
 tyView Unit = tv-unit
 tyView (A * B) = tv-prod A B
 tyView (A + B) = tv-coprod A B
