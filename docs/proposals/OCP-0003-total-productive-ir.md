@@ -3,12 +3,20 @@
 **Author:** [TBD]
 **Status:** Draft
 **Created:** 2026-03-10
+**Updated:** 2026-03-17
 
 ---
 
 ## Summary
 
-Restructure the IR into two distinct layers: a non-recursive CCC IR (the existing 12 generators) and a new RecursionIR that provides structured recursion schemes (`cata`, `ana`, `hylo`, `para`). Remove general `Fold`/`Unfold` operations. This makes Once **total** (all functions terminate) and **productive** (all codata makes progress) by construction, while preserving all practically useful programs and enabling future dependent type extensions.
+Restructure the IR into two distinct layers within `Once.CCC.IR`:
+
+- **`Prim`** — The 12 CCC generators plus `Opaque` for primitive arrows (both pure `A → B` and effectful `Eff A B`)
+- **`Poly`** — Polynomial functor operations: `μ`, `ν`, `In`, `Out`, `Cata`, `Ana`
+
+Effects are **arrow-based**: the CCC structure provides arrow combinators (composition, products), and the type system distinguishes pure arrows (`A → B`) from effect arrows (`Eff A B`). The IR is about structure; types track semantics.
+
+Remove general `Fold`/`Unfold` operations. This makes Once **total** (all functions terminate) and **productive** (all codata makes progress) by construction, while preserving all practically useful programs and enabling future dependent type extensions.
 
 ---
 
@@ -102,15 +110,19 @@ By enforcing totality through structured recursion schemes, this proposal enable
 └─────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────┐
-│            RecursionIR                      │
-│   μ, ν, cata, ana + guardedness checking   │
-│   (total + productive)                      │
-└─────────────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────────┐
-│              CCC IR                         │
-│   12 generators (unchanged, no recursion)   │
-│   (trivially terminating)                   │
+│           Once.CCC.IR                       │
+│  ┌───────────────────────────────────────┐  │
+│  │  Poly                                 │  │
+│  │  μ, ν, In, Out, Cata, Ana            │  │
+│  │  (total + productive)                 │  │
+│  └───────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────┐  │
+│  │  Prim                                 │  │
+│  │  12 generators + Opaque               │  │
+│  │  (trivially terminating)              │  │
+│  └───────────────────────────────────────┘  │
+│                                             │
+│  Combined: IR = prim Prim.IR | poly Poly.IR │
 └─────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────┐
@@ -119,103 +131,136 @@ By enforcing totality through structured recursion schemes, this proposal enable
 └─────────────────────────────────────────────┘
 ```
 
-### Layer 1: CCC IR (Unchanged Core)
+### Module Structure
 
-The existing 12 categorical generators remain exactly as they are:
+```agda
+module Once.CCC.IR where
 
-```haskell
-data CCC_IR
-  -- Category
-  = Id Type
-  | Compose CCC_IR CCC_IR
+  -- Layer 1: Primitives (trivially terminating)
+  module Prim where
+    data IR : Set where
+      -- Category
+      Id      : Type → IR
+      Compose : IR → IR → IR
 
-  -- Products
-  | Fst Type Type
-  | Snd Type Type
-  | Pair CCC_IR CCC_IR
-  | Terminal Type
+      -- Products
+      Fst      : Type → Type → IR
+      Snd      : Type → Type → IR
+      Pair     : IR → IR → IR
+      Terminal : Type → IR
 
-  -- Coproducts
-  | Inl Type Type
-  | Inr Type Type
-  | Case CCC_IR CCC_IR
-  | Initial Type
+      -- Coproducts
+      Inl     : Type → Type → IR
+      Inr     : Type → Type → IR
+      Case    : IR → IR → IR
+      Initial : Type → IR
 
-  -- Exponentials
-  | Curry Name CCC_IR
-  | Apply Type Type
+      -- Exponentials
+      Curry : Name → IR → IR
+      Apply : Type → Type → IR
 
-  -- Variables, primitives, literals (unchanged)
-  | Var Name
-  | LocalVar Name
-  | FunRef Name
-  | Prim Name Type Type
-  | StringLit Text
-  | Let Name CCC_IR CCC_IR
+      -- Primitive arrows (pure A → B and effectful Eff A B)
+      -- Effect distinction is in the TYPE, not the IR
+      -- CCC combinators work uniformly on both arrow types
+      Opaque : Name → IR
 
-  -- Arithmetic (OCP-0001, unchanged)
-  | Arith NumType ArithIR
+  -- Layer 2: Polynomial functors (total by construction)
+  module Poly where
+    -- Functor representation (polynomial functors per D039)
+    data Functor : Set where
+      FId    : Functor                    -- Identity: X (recursive position)
+      FConst : Type → Functor             -- Constant: A
+      FSum   : Functor → Functor → Functor -- Sum: F + G
+      FProd  : Functor → Functor → Functor -- Product: F × G
+
+    data IR : Set where
+      -- Inductive (finite) data
+      In   : Functor → IR                 -- In : F (μF) → μF
+      Cata : Functor → Prim.IR → IR       -- cata alg : μF → A
+                                          --   where alg : F A → A
+
+      -- Coinductive (infinite) codata
+      Out  : Functor → IR                 -- Out : νF → F (νF)
+      Ana  : Functor → Prim.IR → IR       -- ana coalg : A → νF
+                                          --   where coalg : A → F A
+
+      -- Derived schemes (useful as primitives for optimization)
+      Hylo : Functor → Prim.IR → Prim.IR → IR  -- hylo alg coalg : A → B
+      Para : Functor → Prim.IR → IR            -- para alg : μF → A
+      Apo  : Functor → Prim.IR → IR            -- apo coalg : A → νF
+
+  -- Combined IR type (Option B: separate combined type for cleaner proofs)
+  data IR : Set where
+    prim : Prim.IR → IR
+    poly : Poly.IR → IR
 ```
 
-**Key change:** `Fold` and `Unfold` are **removed** from this layer.
+### Why This Structure
 
-This layer is trivially total — no recursion is possible. Every program is a finite composition of generators.
+**Separate modules (`Prim` and `Poly`):**
+- Each layer is independently verifiable
+- `Prim` proofs don't mention `Poly`
+- `Poly` proofs don't mention `Prim`
+- Cleaner induction principles
 
-### Layer 2: RecursionIR (New)
+**Combined `IR` type (not `lift`):**
+- Cleaner proof structure — no `lift` case in every `Poly` proof
+- True modularity — layers are isolated
+- Combination happens at top level only
 
-#### Type-Level Fixed Points
+**`Opaque` for primitive arrows:**
+- Single constructor for all external operations (arithmetic, strings, IO)
+- Represents **primitive arrows** — external operations the IR doesn't look inside
+- Pure vs effectful is a **typing** concern, not IR structure
+- See "Arrow-Based Effects" section below
 
-```haskell
--- Functor representation (polynomial functors per D039)
-data Functor
-  = FId                        -- Identity: X (recursive position)
-  | FConst Type                -- Constant: A
-  | FSum Functor Functor       -- Sum: F + G
-  | FProd Functor Functor      -- Product: F × G
+### Arrow-Based Effects
 
--- Recursive types
-data RecType
-  = Mu Functor        -- μF: least fixed point (inductive/finite)
-  | Nu Functor        -- νF: greatest fixed point (coinductive/infinite)
+Once uses **arrows** for effects, which are more general than monads. The type system has two arrow types:
+
+```
+Pure arrow:     A → B        (function type)
+Effect arrow:   Eff A B      (effectful computation from A to B)
 ```
 
-#### Functor Interpretation
+**Key insight:** The CCC structure provides all arrow combinators:
 
-```haskell
+| Arrow Combinator | CCC Derivation |
+|------------------|----------------|
+| `f >>> g` (sequence) | `Compose g f` |
+| `f &&& g` (fanout) | `Pair f g` |
+| `first f` | `Pair (Compose f Fst) Snd` |
+| `f *** g` (parallel) | `Pair (Compose f Fst) (Compose g Snd)` |
+
+This means **no separate arrow IR is needed** — the CCC generators work for both pure and effectful arrows. The IR is about structure (how arrows compose); the type system tracks semantics (pure vs effectful).
+
+**`Opaque` is the primitive arrow:**
+
+```agda
+Opaque "add"      -- type: Nat → Nat → Nat      (pure arrow)
+Opaque "readFile" -- type: Eff FilePath String   (effect arrow)
+```
+
+Both are "opaque arrows" — external operations the IR doesn't analyze. The type tells you which kind of arrow it is. All CCC combinators work uniformly on both.
+
+### Type-Level Fixed Points
+
+```agda
+-- Recursive types (defined in the type system, not IR)
+data RecType : Set where
+  μ : Poly.Functor → RecType    -- Least fixed point (inductive/finite)
+  ν : Poly.Functor → RecType    -- Greatest fixed point (coinductive/infinite)
+```
+
+### Functor Interpretation
+
+```agda
 -- ⟦F⟧ interprets a functor code as an actual type function
-⟦_⟧ : Functor → Type → Type
-⟦ FId ⟧ X      = X
-⟦ FConst A ⟧ X = A
-⟦ FSum F G ⟧ X = ⟦ F ⟧ X + ⟦ G ⟧ X
+⟦_⟧ : Poly.Functor → Type → Type
+⟦ FId ⟧ X       = X
+⟦ FConst A ⟧ X  = A
+⟦ FSum F G ⟧ X  = ⟦ F ⟧ X + ⟦ G ⟧ X
 ⟦ FProd F G ⟧ X = ⟦ F ⟧ X × ⟦ G ⟧ X
-```
-
-#### Recursion Schemes
-
-```haskell
-data RecursionIR
-  -- Inductive (finite) data introduction and elimination
-  = In Functor CCC_IR                    -- In : F (μF) → μF
-  | Cata Functor CCC_IR CCC_IR           -- cata alg x : A
-                                         --   where alg : F A → A, x : μF
-
-  -- Coinductive (infinite) codata introduction and elimination
-  | Out Functor CCC_IR                   -- Out : νF → F (νF)
-  | Ana Functor CCC_IR CCC_IR            -- ana coalg seed : νF
-                                         --   where coalg : A → F A, seed : A
-
-  -- Derived schemes (expressible via cata/ana, but useful as primitives)
-  | Hylo Functor CCC_IR CCC_IR CCC_IR    -- hylo alg coalg seed : B
-  | Para Functor CCC_IR CCC_IR           -- para alg x : A (fold with context)
-  | Apo Functor CCC_IR CCC_IR            -- apo coalg seed : νF (unfold with shortcuts)
-```
-
-#### Combined IR
-
-```haskell
-data IR
-  = CCC CCC_IR
-  | Rec RecursionIR
 ```
 
 ### Standard Data Types
@@ -321,27 +366,29 @@ The strata structure (from `libraries.md`) is preserved and clarified:
 
 ```
 ┌─────────────────────────────────────────────┐
-│         Interpretations                     │  IO primitives (platform-specific)
+│         Interpretations                     │  Effect arrows (Opaque with Eff A B types)
 ├─────────────────────────────────────────────┤
-│         Initial                             │  Data types + operations (uses cata/ana)
+│         Initial                             │  Data types + operations (uses Poly)
 ├─────────────────────────────────────────────┤
-│         Canonical                           │  Non-recursive combinators (pure CCC)
+│         Canonical                           │  Non-recursive combinators (pure Prim)
 ├─────────────────────────────────────────────┤
-│         RecursionIR                         │  μ, ν, cata, ana (NEW)
+│         Once.CCC.IR.Poly                    │  μ, ν, cata, ana
 ├─────────────────────────────────────────────┤
-│         Generators (CCC IR)                 │  12 categorical primitives
+│         Once.CCC.IR.Prim                    │  12 generators + Opaque (primitive arrows)
 └─────────────────────────────────────────────┘
 ```
 
+Note: The same `Opaque` constructor is used for both pure primitives (typed `A → B`) and effectful primitives (typed `Eff A B`). The stratum difference is in the types, not the IR structure.
+
 ### Canonical Library (Unchanged)
 
-All morphisms in Canonical are non-recursive and remain in pure CCC IR:
+All morphisms in Canonical are non-recursive and remain in pure `Prim.IR`:
 
 ```
-swap     : A × B → B × A           -- pair snd fst
-diagonal : A → A × A               -- pair id id
+swap     : A × B → B × A           -- Pair Snd Fst
+diagonal : A → A × A               -- Pair Id Id
 assocL   : A × (B × C) → (A × B) × C
-mirror   : A + B → B + A           -- case inr inl
+mirror   : A + B → B + A           -- Case Inr Inl
 const    : A → B → A
 flip     : (A → B → C) → B → A → C
 ```
@@ -350,25 +397,107 @@ No changes needed.
 
 ### Initial Library (Explicit Recursion)
 
-Operations in Initial become explicit uses of recursion schemes:
+Operations in Initial become explicit uses of `Poly.IR` recursion schemes:
 
 | Current (Implicit) | Proposed (Explicit) |
 |--------------------|---------------------|
-| `foldr f z xs` | `cata (case (const z) (uncurry f)) xs` |
-| `map f xs` | `cata (case (const nil) (\(a,as) → cons (f a) as)) xs` |
-| `filter p xs` | `cata (case (const nil) (\(a,as) → if p a then cons a as else as)) xs` |
-| `length xs` | `cata (case (const 0) (\(_,n) → n+1)) xs` |
-| `range lo hi` | `ana (\(l,h) → if l >= h then inl () else inr (l, (l+1, h))) (lo, hi)` |
+| `foldr f z xs` | `Cata F (Case (const z) (uncurry f))` applied to `xs` |
+| `map f xs` | `Cata F (Case (const nil) (λ(a,as) → cons (f a) as))` applied to `xs` |
+| `filter p xs` | `Cata F (Case (const nil) (λ(a,as) → if p a then cons a as else as))` applied to `xs` |
+| `length xs` | `Cata F (Case (const 0) (λ(_,n) → n+1))` applied to `xs` |
+| `range lo hi` | `Ana F (λ(l,h) → if l >= h then inl () else inr (l, (l+1, h)))` applied to `(lo, hi)` |
 
 The operations are the same; the recursion is now explicit and structured.
 
-### Recursion Schemes Document
+---
 
-The existing `recursion-schemes.md` says:
+## Proof Engineering Benefits
 
-> "They're pure derived code - no new generators needed."
+### Why Option B (Separate Combined Type)
 
-This is true when you have general `fix`. Without general `fix`, the schemes become primitives — but this is exactly what D039's polynomial functor approach requires anyway.
+The combined `IR` type with `prim` and `poly` constructors (rather than `lift` inside `Poly`) provides cleaner proofs:
+
+**With lift (Option A):**
+```agda
+poly-simulation : ∀ (p : Poly.IR) → Simulates p
+poly-simulation (In ...)   = ...
+poly-simulation (Cata ...) = ...
+poly-simulation (lift p)   = prim-simulation p  -- appears in EVERY Poly proof
+```
+
+**With separate combined type (Option B):**
+```agda
+prim-simulation : ∀ (p : Prim.IR) → Simulates p  -- isolated
+poly-simulation : ∀ (p : Poly.IR) → Simulates p  -- isolated
+
+ir-simulation : ∀ (i : IR) → Simulates i
+ir-simulation (prim p) = prim-simulation p
+ir-simulation (poly p) = poly-simulation p
+```
+
+**Benefits:**
+1. **True modularity** — `Poly` proofs don't mention `Prim` at all
+2. **Cleaner induction** — each module's induction is self-contained
+3. **Easier maintenance** — change `Prim` without touching `Poly` proofs
+4. **Aligns with OCP-0004** — clear trust boundaries for minimal-trust verification
+
+---
+
+## Alignment with OCP-0004 (Minimal-Trust Verification)
+
+The layered architecture directly supports OCP-0004's minimal TCB goal:
+
+### Trust Boundaries
+
+| Layer | TCB Addition | Verification |
+|-------|--------------|--------------|
+| `Prim.IR` | ~50 lines | CCC categorical laws (since 1960s) |
+| `Poly.IR` | ~20 lines | Lambek's Lemma + coalgebra theorems (1968) |
+
+### The IR IS Category Theory
+
+From OCP-0004:
+
+```
+┌──────────────────────────┬──────────────────────────────────┐
+│     Once Prim.IR         │     Category Theory              │
+├──────────────────────────┼──────────────────────────────────┤
+│ Id A                     │ id_A : A → A                    │
+│ Compose g f              │ g ∘ f                           │
+│ Pair f g                 │ ⟨f, g⟩ : C → A × B             │
+│ Fst A B                  │ π₁ : A × B → A                  │
+│ ...                      │ ...                              │
+└──────────────────────────┴──────────────────────────────────┘
+
+┌──────────────────────────┬──────────────────────────────────┐
+│     Once Poly.IR         │     Category Theory              │
+├──────────────────────────┼──────────────────────────────────┤
+│ μF                       │ Initial F-algebra                │
+│ In : F(μF) → μF          │ Algebra structure map            │
+│ Cata alg                 │ Unique F-algebra morphism        │
+│ νF                       │ Final F-coalgebra                │
+│ Out : νF → F(νF)         │ Coalgebra structure map          │
+│ Ana coalg                │ Unique F-coalgebra morphism      │
+└──────────────────────────┴──────────────────────────────────┘
+```
+
+### Totality and Productivity ARE Definitional
+
+```
+Lambek's Lemma (1968):
+    The structure map In : F(μF) → μF is an isomorphism.
+    This means μF ≅ F(μF).
+    Consequence: μF is well-founded (no infinite descent).
+    Therefore: cata always terminates.
+
+Dual (Final Coalgebras):
+    The structure map Out : νF → F(νF) is an isomorphism.
+    This means νF ≅ F(νF).
+    Consequence: νF is productive (always has next element).
+    Therefore: ana always makes progress (with guardedness).
+```
+
+These are mathematical facts, not implementation details.
 
 ---
 
@@ -376,14 +505,14 @@ This is true when you have general `fix`. Without general `fix`, the schemes bec
 
 ### Why Totality Enables Dependent Types
 
-Dependent type systems require termination for logical consistency. The relationship:
+Dependent type systems require termination for logical consistency:
 
 | System | Termination | Consistency |
 |--------|-------------|-------------|
 | Agda | Enforced by termination checker | Sound |
 | Coq | Enforced by guard condition | Sound |
 | Idris | Enforced by totality checker | Sound (in total mode) |
-| Once + RecursionIR | Enforced by construction | Sound |
+| Once + Poly | Enforced by construction | Sound |
 
 All achieve the same result; Once achieves it structurally rather than via analysis.
 
@@ -397,49 +526,6 @@ All achieve the same result; Once achieves it structurally rather than via analy
 | **OTT** | ✓ Good | Quotients as setoids, funext orthogonal |
 | **Cubical** | ◐ Mostly | Standard HITs work, exotic ones need care |
 | **Directed HoTT** | ✓ Best | Aligns with linearity beautifully |
-
-### Indexed Types Example
-
-```
-type Vec : Nat → Type → Type
-Vec zero    A = Unit
-Vec (suc n) A = A × Vec n A
-
--- This is a family of polynomial functors indexed by n
--- VecF n A X = case n of
---   zero  → FConst Unit
---   suc m → FProd (FConst A) (VecF m A)
-
--- Safe head via dependent cata
-head : Vec (suc n) A → A
-head = cata headAlg
-  where headAlg (a, _) = a
-```
-
-### Type-Level Computation
-
-Type-level functions must terminate. With cata/ana, they terminate by construction:
-
-```
--- Type-level append length
-appendLen : Nat → Nat → Nat
-appendLen = cata alg
-  where alg (Inl unit) m = m           -- zero + m = m
-        alg (Inr n')   m = suc (n' m)  -- suc n + m = suc (n + m)
-
--- The termination is STRUCTURAL via cata
--- No termination checker needed
-```
-
-### What This Enables
-
-From `dependent-types-options.md`, Once's planned trajectory:
-
-1. **Phase 1: Indexed Types** — `Vec n A`, `Fin n`, bounded integers
-2. **Phase 2: Simple Π/Σ** — dependent functions, dependent pairs, Prop universe
-3. **Phase 3: OTT or Directed** — quotients, function extensionality
-
-All phases are compatible with polynomial functors + cata/ana. The proposal doesn't close any doors; it opens the right ones.
 
 ---
 
@@ -469,16 +555,6 @@ This is an **intentional reduction** in raw expressivity. The removed programs a
 
 None of these are useful programs.
 
-### What You Cannot Express
-
-| Pattern | Status | Workaround |
-|---------|--------|------------|
-| Infinite loop | Removed | None (it's a bug) |
-| Arbitrary recursion | Removed | Use appropriate scheme |
-| Self-interpreter | Limited | Requires fuel parameter |
-| Ackermann function | Expressible | Nested hylo |
-| Non-structural recursion | Restructure | Convert to cata/ana |
-
 ### Formal Verification
 
 | Aspect | Before | After |
@@ -500,7 +576,9 @@ None of these are useful programs.
 - **Clearer program structure** — recursion patterns are explicit
 - **Dependent types enabled** — consistent logic without extra checking
 - **Deadlock-free corecursion** — unguarded mutual recursion impossible
+- **Uniform arrow structure** — CCC combinators work for both pure and effectful arrows
 - **Alignment with D039** — IR matches verification requirements
+- **Minimal TCB** — supports OCP-0004 trust boundaries
 
 ### Lost
 
@@ -513,7 +591,7 @@ None of these are useful programs.
 
 ## Compilation Strategy
 
-### RecursionIR → Target Code
+### Poly.IR → Target Code
 
 Recursion schemes compile to efficient target-language patterns:
 
@@ -594,7 +672,7 @@ The layered IR naturally leads to a layered optimizer architecture.
 User Code
     ↓
 ┌─────────────────────────────┐
-│ 1. RecursionIR Optimizer    │  High-level: fusion, deforestation
+│ 1. Poly Optimizer           │  High-level: fusion, deforestation
 └─────────────┬───────────────┘
               ↓
 ┌─────────────────────────────┐
@@ -602,13 +680,13 @@ User Code
 └─────────────┬───────────────┘
               ↓
 ┌─────────────────────────────┐
-│ 3. CCC IR Optimizer         │  Low-level: categorical laws
+│ 3. Prim Optimizer           │  Low-level: categorical laws
 └─────────────┬───────────────┘
               ↓
           Code Gen
 ```
 
-### Phase 1: RecursionIR Optimizer
+### Phase 1: Poly Optimizer
 
 Handles structural transformations that change the shape of recursion:
 
@@ -619,35 +697,28 @@ cata alg ∘ ana coalg           →  hylo alg coalg
 -- Functor fusion
 map f ∘ map g                  →  map (f ∘ g)
 filter p ∘ filter q            →  filter (λx → p x ∧ q x)
-map f ∘ filter p               →  cata (case nil (λ(a,as) → if p a then cons (f a) as else as))
 
 -- Cata computation
 cata alg ∘ In                  →  alg ∘ fmap (cata alg)
 
 -- Ana computation
 Out ∘ ana coalg                →  fmap (ana coalg) ∘ coalg
-
--- Coalgebra composition
-ana coalg ∘ f                  →  ana (coalg ∘ f)
 ```
 
 ### Phase 2: Cross-Layer Rules
 
-Optimizations that span RecursionIR and CCC IR, working on the algebras and coalgebras:
+Optimizations that span Poly and Prim, working on the algebras and coalgebras:
 
 ```
 -- Push post-processing into algebra
 f ∘ cata alg                   →  cata (f ∘ alg)  -- when f is cheap
 
--- Pull pre-processing out of coalgebra
-ana coalg ∘ f                  →  ana (coalg ∘ f)
-
--- Simplify algebra using CCC laws
+-- Simplify algebra using Prim laws
 cata (case (const z) (compose f (pair fst snd)))
     →  cata (case (const z) f)  -- pair fst snd = id
 ```
 
-### Phase 3: CCC IR Optimizer
+### Phase 3: Prim Optimizer
 
 Handles local simplifications using categorical laws:
 
@@ -668,39 +739,6 @@ case inl inr                   →  id  -- eta for coproducts
 
 -- Exponential laws
 apply (pair (curry f) g)       →  compose f (pair id g)
-curry (compose apply (pair (compose f fst) snd))  →  f  -- eta
-```
-
-### Why This Order
-
-1. **RecursionIR first** — Biggest wins. Deforestation eliminates entire intermediate data structures before we worry about small optimizations.
-
-2. **Cross-layer second** — Once high-level structure is optimized, simplify the algebras/coalgebras that remain.
-
-3. **CCC last** — Clean up low-level categorical compositions. These are cheap to apply and polish the final result.
-
-### Example Optimization Trace
-
-```
--- Original: three separate traversals
-result = length (filter even (map (+1) xs))
-
--- Elaborate to IR
-result = cata lenAlg (cata filterAlg (cata mapAlg xs))
-
--- Phase 1: Fuse catas (deforestation)
-result = cata (lenAlg ∘ filterStep ∘ mapStep) xs
-       = cata fusedAlg xs
-
--- Phase 2: Simplify fused algebra
-fusedAlg = case (const 0) (λ(a, n) →
-             let a' = a + 1
-             in if even a' then n + 1 else n)
-
--- Phase 3: CCC cleanup (minor simplifications)
--- (algebra is already simple)
-
--- Result: Single traversal, no intermediate lists
 ```
 
 ### Verification Strategy
@@ -709,32 +747,11 @@ Each optimizer phase has independent correctness proofs:
 
 | Phase | Proof Obligation |
 |-------|------------------|
-| RecursionIR | Each rule preserves denotational semantics via recursion scheme laws |
+| Poly | Each rule preserves denotational semantics via recursion scheme laws |
 | Cross-layer | Rules preserve semantics by compositionality |
-| CCC IR | Each rule is a categorical law (proven since 1940s) |
+| Prim | Each rule is a categorical law (proven since 1940s) |
 
 The composition of correct phases is correct.
-
-### Implementation Notes
-
-```haskell
--- Optimizer pipeline
-optimize :: IR -> IR
-optimize = cccOptimize . crossLayerOptimize . recursionOptimize
-
--- Each phase is a fixpoint of rule application
-recursionOptimize :: IR -> IR
-recursionOptimize = fixpoint applyRecursionRules
-
-cccOptimize :: IR -> IR
-cccOptimize = fixpoint applyCCCRules
-
--- Rules are pattern-matching rewrites
-applyRecursionRules :: IR -> Maybe IR
-applyRecursionRules (Compose (Cata alg) (Ana coalg seed)) =
-    Just (Hylo alg coalg seed)  -- deforestation
-applyRecursionRules _ = Nothing
-```
 
 ---
 
@@ -744,24 +761,6 @@ applyRecursionRules _ = Nothing
 
 The same philosophy applies to communication: deadlocks are bugs, not features.
 
-Session types ensure communication protocols are followed correctly:
-
-```
--- Protocol definition
-type ServerProtocol = Recv Request (Send Response End)
-type ClientProtocol = Send Request (Recv Response End)
-
--- Duality constraint (compile-time)
-dual (Send A S) = Recv A (dual S)
-dual (Recv A S) = Send A (dual S)
-dual End        = End
-
--- Well-typed channels cannot deadlock
-newChannel : (Channel S → IO A) → (Channel (dual S) → IO B) → IO (A × B)
-```
-
-This would add a **SessionIR** layer:
-
 ```
 ┌─────────────────────────────────────────────┐
 │           SessionIR (future)                │
@@ -770,12 +769,12 @@ This would add a **SessionIR** layer:
 └─────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────┐
-│            RecursionIR                      │
+│           Once.CCC.IR.Poly                  │
 │  (total + productive)                       │
 └─────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────┐
-│              CCC IR                         │
+│           Once.CCC.IR.Prim                  │
 │  (non-recursive base)                       │
 └─────────────────────────────────────────────┘
 ```
@@ -784,8 +783,8 @@ Each layer removes a class of bugs:
 
 | Layer | Removes | Keeps |
 |-------|---------|-------|
-| CCC IR | (base) | All pure computation |
-| RecursionIR | Infinite loops, unproductive codata | All useful recursive patterns |
+| Prim | (base) | All arrows (pure `A → B` and effectful `Eff A B`) |
+| Poly | Infinite loops, unproductive codata | All useful recursive patterns |
 | SessionIR | Communication deadlocks | All useful protocols |
 
 The principle is consistent: **restrict expressivity to eliminate junk programs while preserving all useful ones**.
@@ -794,7 +793,7 @@ The principle is consistent: **restrict expressivity to eliminate junk programs 
 
 ## Alternatives Considered
 
-### A: Add Schemes to CCC IR Directly
+### A: Add Schemes to Prim Directly (Flat IR)
 
 Rejected: Muddies the clean separation between non-recursive base and recursion handling. The layered approach makes the design clearer and each layer independently verifiable.
 
@@ -806,7 +805,14 @@ Rejected:
 - Duplicates what D039 already requires
 - More implementation effort, less guarantee
 
-### C: Layered IR with Polynomial Functors (This Proposal)
+### C: Use `lift` Inside Poly (Option A)
+
+Rejected:
+- Every Poly proof must handle `lift` case
+- Less modular proof structure
+- Layers not truly independent
+
+### D: Layered IR with Polynomial Functors and Separate Combined Type (This Proposal)
 
 Accepted:
 - Clean separation of concerns
@@ -814,16 +820,19 @@ Accepted:
 - Each layer independently verifiable
 - Aligns with D039 verification strategy
 - Enables dependent types naturally
+- Best proof engineering
 
 ---
 
 ## Migration Path
 
-### Phase 1: Add RecursionIR
+### Phase 1: Define New Module Structure
 
-- Define `Functor`, `RecType`, `RecursionIR` data types
-- Add to IR alongside current `Fold`/`Unfold`
-- Both systems coexist temporarily
+- Create `Once.CCC.IR.Prim` with 12 generators + `Opaque` (primitive arrows)
+- Create `Once.CCC.IR.Poly` with `Functor`, `In`, `Out`, `Cata`, `Ana`
+- Define combined `IR` type
+- Establish arrow-based effect typing (`A → B` vs `Eff A B`)
+- Both old and new coexist temporarily
 
 ### Phase 2: Implement Guardedness Checker
 
@@ -835,21 +844,18 @@ Accepted:
 
 Automatically recognize existing patterns:
 
-```haskell
+```agda
 -- Recognize: Fold used as cata
-recognizeCata :: IR -> Maybe RecursionIR
-recognizeCata (Compose (Fold f) ...) = ...
+recognizeCata : Old.IR → Maybe Poly.IR
 
 -- Recognize: Unfold used as ana
-recognizeAna :: IR -> Maybe RecursionIR
-recognizeAna (Compose ... (Unfold f)) = ...
+recognizeAna : Old.IR → Maybe Poly.IR
 ```
 
 ### Phase 4: Code Generation
 
-- Extend C backend for `cata`/`ana`
+- Extend backends for `Poly.IR` constructs
 - Implement hylo fusion in optimizer
-- Extend other backends (Rust, JS, WASM)
 
 ### Phase 5: Deprecation
 
@@ -864,7 +870,7 @@ recognizeAna (Compose ... (Unfold f)) = ...
 
 ### Phase 7: Formal Verification
 
-- Agda proofs for RecursionIR
+- Agda proofs for `Poly.IR`
 - Verify schemes preserve semantics
 - Verify guardedness implies productivity
 - Integrate with existing D039 polynomial functor proofs
@@ -919,50 +925,55 @@ How to explain "this recursion isn't a valid scheme" clearly?
 - Suggest restructuring to valid scheme
 - Provide examples of correct patterns
 
-### 5. Escape Hatch (If Needed)
+### 5. Arrow Laws in Type System
 
-For migration, should we provide a fuel-based escape hatch?
+How to ensure `Eff A B` satisfies arrow laws?
 
-```haskell
--- Run up to n steps, return Nothing if exhausted
-withFuel : Nat → (Unit → A) → Maybe A
-```
+**Arrow laws (must hold):**
+- `arr id >>> f = f` (left identity)
+- `f >>> arr id = f` (right identity)
+- `(f >>> g) >>> h = f >>> (g >>> h)` (associativity)
+- `first (arr f) = arr (f × id)` (first preserves arr)
 
-**Recommendation:** Provide but mark as deprecated/unsafe. Remove after migration complete.
+**Likely approach:** These follow from CCC laws since arrow combinators are derived from CCC structure. The type system enforces `Eff` is used consistently; the laws are theorems, not axioms.
 
 ---
 
 ## Implementation Plan
 
-| Phase | Deliverable | Effort |
-|-------|-------------|--------|
-| 1. Data types | `Functor`, `RecType`, `RecursionIR` in `Once/IR.hs` | 1 week |
-| 2. Guardedness | Checker in `Once/Guardedness.hs` | 1-2 weeks |
-| 3. Recognition | `Fold`/`Unfold` → scheme patterns | 1 week |
-| 4. C backend | Code generation for schemes | 1-2 weeks |
-| 5. Optimizer | Hylo fusion rule | 1 week |
-| 6. Migration | Warnings, guide, auto-rewrite | 1-2 weeks |
-| 7. Removal | Delete `Fold`/`Unfold` | 1 day |
-| 8. Verification | Agda proofs | 2-4 weeks |
-
-**Total estimated effort:** 8-14 weeks
+| Phase | Deliverable |
+|-------|-------------|
+| 1. Module structure | `Once.CCC.IR.Prim`, `Once.CCC.IR.Poly`, combined `IR` |
+| 2. Guardedness | Checker in `Once.CCC.IR.Guardedness` |
+| 3. Recognition | `Fold`/`Unfold` → scheme patterns |
+| 4. Backends | Code generation for `Poly.IR` |
+| 5. Optimizer | Hylo fusion rule |
+| 6. Migration | Warnings, guide, auto-rewrite |
+| 7. Removal | Delete `Fold`/`Unfold` |
+| 8. Verification | Agda proofs |
 
 ---
 
 ## Summary
 
-This proposal restructures Once's IR to enforce totality and productivity by construction:
+This proposal restructures Once's IR into `Once.CCC.IR.Prim` and `Once.CCC.IR.Poly` to enforce totality and productivity by construction:
 
 | Property | Mechanism |
 |----------|-----------|
-| **Totality** | Recursion only via `cata` (structural) |
-| **Productivity** | Corecursion only via guarded `ana` |
+| **Totality** | Recursion only via `Cata` (structural) |
+| **Productivity** | Corecursion only via guarded `Ana` |
 | **No infinite loops** | No general `fix` |
 | **No deadlocks** | Guardedness prevents unproductive mutual corecursion |
+| **Arrow-based effects** | CCC provides structure, types distinguish `A → B` from `Eff A B` |
 | **Dependent types ready** | Consistent logic without termination checker |
 | **Verification simplified** | Proofs focus on algebras, not termination |
+| **Minimal TCB** | Supports OCP-0004 trust boundaries |
 
 The design:
+- Uses `Prim` for 12 CCC generators + `Opaque` (primitive arrows, both pure and effectful)
+- Uses `Poly` for polynomial functor operations
+- Combines via `IR = prim Prim.IR | poly Poly.IR` for clean proofs
+- Arrow-based effects: CCC structure provides arrow combinators, types distinguish `A → B` from `Eff A B`
 - Aligns with D039 (polynomial functors)
 - Preserves the three strata (Generators/Canonical/Initial)
 - Enables planned dependent type extensions
@@ -975,6 +986,7 @@ The design:
 ## References
 
 - D039: Polynomial Functors decision (`docs/compiler/decision-log.md`)
+- OCP-0004: Minimal-Trust Verification via Categorical Foundations
 - `docs/formal/historical/fix-semantics-options.md`: Analysis of Fix semantics
 - `docs/design/recursion-schemes.md`: Current recursion scheme documentation
 - `docs/design/libraries.md`: Three strata architecture
