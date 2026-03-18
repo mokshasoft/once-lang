@@ -24,7 +24,7 @@
 module Once.Arith.Boundary where
 
 open import Once.Type as T using (Type; Int; Float; Unit; _*_)
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Semantics as S using (⟦_⟧; eval; encode; evalPrim)
 
 open import Once.Arith.Type as N using (NumType; I8; I16; I32; I64; F32; F64)

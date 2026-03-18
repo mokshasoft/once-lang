@@ -24,8 +24,12 @@ open import Induction.WellFounded using (Acc; acc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation
-open import Once.CCC.Target.X86v3.Types public
+import Once.CCC.Target.X86v3.Types as Types
+open Types public using (Type; Unit; Void; _*_; _+_; Fix; Int; Float; Str; Buffer; Eff; _⇒[_]_; _⇒_; Quantity; ⟦_⟧; pair; wrap;
+                         sem-fst; sem-snd; sem-inl; sem-inr; sem-fold)
 open import Once.CCC.IR
+open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.IR.Size
 
 ------------------------------------------------------------------------
 -- ValidAt: Inductive Validity Predicate with Frontier Tracking
@@ -85,7 +89,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       BeforeFrontier alloc payload-loc →
       BeforeFrontier alloc (sucLoc sum-loc) →
       ValidAt alloc a payload-loc s →
-      ValidAt alloc {A + B} (inl a) sum-loc s
+      ValidAt alloc {A + B} (sem-inl a) sum-loc s
 
     valid-inr : ∀ {A B} {b : ⟦ B ⟧}
       {sum-loc payload-loc : ValueLocation FS} {s : LocState FS} →
@@ -93,7 +97,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       BeforeFrontier alloc payload-loc →
       BeforeFrontier alloc (sucLoc sum-loc) →
       ValidAt alloc b payload-loc s →
-      ValidAt alloc {A + B} (inr b) sum-loc s
+      ValidAt alloc {A + B} (sem-inr b) sum-loc s
 
     -- Recursive type validity: pointer to heap-allocated unfolded value
     -- Memory layout: fix-loc stores pointer to unfolded-loc on heap
@@ -102,7 +106,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       readLoc s fix-loc ≡ just unfolded-loc →
       BeforeFrontier alloc unfolded-loc →
       ValidAt alloc v unfolded-loc s →
-      ValidAt alloc {Fix F} (fold v) fix-loc s
+      ValidAt alloc {Fix F} (sem-fold v) fix-loc s
 
     -- Closure validity: tracks the body IR that created this closure!
     --
@@ -146,8 +150,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       fst-before : BeforeFrontier alloc fst-loc
       snd-before : BeforeFrontier alloc snd-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc pair-loc)  -- NEW
-      fst-valid : ValidAt alloc (fst p) fst-loc s
-      snd-valid : ValidAt alloc (snd p) snd-loc s
+      fst-valid : ValidAt alloc (sem-fst p) fst-loc s
+      snd-valid : ValidAt alloc (sem-snd p) snd-loc s
 
   ------------------------------------------------------------------------
   -- ClosureValid record (extracted structure from valid-closure)
@@ -189,7 +193,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
       payload-valid : ValidAt alloc a payload-loc s
-      v-is-inl : v ≡ inl a
+      v-is-inl : v ≡ sem-inl a
 
   record InrValid (alloc : AllocState {FS}) {A B : Type}
                   (v : ⟦ A + B ⟧)
@@ -202,7 +206,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       payload-before : BeforeFrontier alloc payload-loc
       sucLoc-before : BeforeFrontier alloc (sucLoc sum-loc)
       payload-valid : ValidAt alloc b payload-loc s
-      v-is-inr : v ≡ inr b
+      v-is-inr : v ≡ sem-inr b
 
   ------------------------------------------------------------------------
   -- FoldValid record (extracted structure from valid-fold)
@@ -218,7 +222,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       unfolded-ptr : readLoc s fix-loc ≡ just unfolded-loc
       unfolded-before : BeforeFrontier alloc unfolded-loc
       unfolded-valid : ValidAt alloc unfolded unfolded-loc s
-      v-is-fold : v ≡ fold unfolded
+      v-is-fold : v ≡ sem-fold unfolded
 
   ------------------------------------------------------------------------
   -- Decomposition lemmas
@@ -258,7 +262,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     }
 
   decomposeInl : ∀ {alloc A B} {a : ⟦ A ⟧} {loc s} →
-    ValidAt alloc {A + B} (inl {A} {B} a) loc s → InlValid alloc {A} {B} (inl a) loc s
+    ValidAt alloc {A + B} (sem-inl {A} {B} a) loc s → InlValid alloc {A} {B} (sem-inl a) loc s
   decomposeInl {A = A} {B = B} {a = a} (valid-inl {payload-loc = pl} pp pb slb pv) = record
     { a = a
     ; payload-loc = pl
@@ -270,7 +274,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     }
 
   decomposeInr : ∀ {alloc A B} {b : ⟦ B ⟧} {loc s} →
-    ValidAt alloc {A + B} (inr {A} {B} b) loc s → InrValid alloc {A} {B} (inr b) loc s
+    ValidAt alloc {A + B} (sem-inr {A} {B} b) loc s → InrValid alloc {A} {B} (sem-inr b) loc s
   decomposeInr {A = A} {B = B} {b = b} (valid-inr {payload-loc = pl} pp pb slb pv) = record
     { b = b
     ; payload-loc = pl
@@ -282,7 +286,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     }
 
   decomposeFold : ∀ {alloc F} {v : ⟦ F ⟧} {loc s} →
-    ValidAt alloc {Fix F} (fold v) loc s → FoldValid alloc (fold v) loc s
+    ValidAt alloc {Fix F} (sem-fold v) loc s → FoldValid alloc (sem-fold v) loc s
   decomposeFold {v = v} (valid-fold {unfolded-loc = ul} up ub uv) = record
     { unfolded = v
     ; unfolded-loc = ul
@@ -331,7 +335,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     BeforeFrontier alloc payload-loc →
     BeforeFrontier alloc (sucLoc sum-loc) →
     ValidAt alloc a payload-loc s →
-    ValidAt alloc {A + B} (inl a) sum-loc s
+    ValidAt alloc {A + B} (sem-inl a) sum-loc s
   composeInl a sum-loc payload-loc s pp pb slb pv = valid-inl pp pb slb pv
 
   -- Compose sum validity (inr)
@@ -341,7 +345,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     BeforeFrontier alloc payload-loc →
     BeforeFrontier alloc (sucLoc sum-loc) →
     ValidAt alloc b payload-loc s →
-    ValidAt alloc {A + B} (inr b) sum-loc s
+    ValidAt alloc {A + B} (sem-inr b) sum-loc s
   composeInr b sum-loc payload-loc s pp pb slb pv = valid-inr pp pb slb pv
 
   -- Compose fold validity
@@ -350,7 +354,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     readLoc s fix-loc ≡ just unfolded-loc →
     BeforeFrontier alloc unfolded-loc →
     ValidAt alloc v unfolded-loc s →
-    ValidAt alloc {Fix F} (fold v) fix-loc s
+    ValidAt alloc {Fix F} (sem-fold v) fix-loc s
   composeFold v fix-loc unfolded-loc s up ub uv = valid-fold up ub uv
 
   ------------------------------------------------------------------------
@@ -409,7 +413,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ev' : ValidAt alloc env el s₂
       ev' = validity-mem-only env el s₁ s₂ stack-eq heap-eq ev
 
-  validity-mem-only {alloc} {A + B} .(inl a) loc s₁ s₂ stack-eq heap-eq
+  validity-mem-only {alloc} {A + B} .(sem-inl a) loc s₁ s₂ stack-eq heap-eq
     (valid-inl {a = a} {payload-loc = pl} pp pb slb pv) =
     valid-inl pp' pb slb pv'
     where
@@ -419,7 +423,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       pv' : ValidAt alloc a pl s₂
       pv' = validity-mem-only a pl s₁ s₂ stack-eq heap-eq pv
 
-  validity-mem-only {alloc} {A + B} .(inr b) loc s₁ s₂ stack-eq heap-eq
+  validity-mem-only {alloc} {A + B} .(sem-inr b) loc s₁ s₂ stack-eq heap-eq
     (valid-inr {b = b} {payload-loc = pl} pp pb slb pv) =
     valid-inr pp' pb slb pv'
     where
@@ -429,7 +433,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       pv' : ValidAt alloc b pl s₂
       pv' = validity-mem-only b pl s₁ s₂ stack-eq heap-eq pv
 
-  validity-mem-only {alloc} {Fix F} .(fold v) loc s₁ s₂ stack-eq heap-eq
+  validity-mem-only {alloc} {Fix F} .(sem-fold v) loc s₁ s₂ stack-eq heap-eq
     (valid-fold {v = v} {unfolded-loc = ul} up ub uv) =
     valid-fold up' ub uv'
     where

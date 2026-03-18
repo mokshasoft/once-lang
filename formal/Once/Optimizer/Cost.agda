@@ -10,7 +10,7 @@
 module Once.Optimizer.Cost where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_; _≤_; _<_; z≤n)
 open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
@@ -39,12 +39,12 @@ cost snd           = 0
 cost (⟨ f , g ⟩ _) = 1 ℕ+ cost f ℕ+ cost g   -- pair allocation
 cost (inl _)       = 1                        -- sum allocation
 cost (inr _)       = 1                        -- sum allocation
-cost [ f , g ]     = cost f ℕ+ cost g
+cost (case f g)     = cost f ℕ+ cost g
 cost terminal      = 0
 cost initial       = 0
 cost (curry f _)   = 1 ℕ+ cost f              -- closure allocation
 cost apply         = 0
-cost fold          = 1                        -- Fix wrapper allocation
+cost (fold _)          = 1                        -- Fix wrapper allocation
 cost unfold        = 0                        -- unwrapping is free
 cost arr           = 0
 cost (Prim _)      = 0                        -- primitives are opaque

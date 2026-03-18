@@ -65,8 +65,8 @@ eval ⟨ f , g ⟩ x       = (eval f x , eval g x)
 -- Coproducts
 eval inl a             = inj₁ a
 eval inr b             = inj₂ b
-eval [ f , g ] (inj₁ a) = eval f a
-eval [ f , g ] (inj₂ b) = eval g b
+eval (case f g) (inj₁ a) = eval f a
+eval (case f g) (inj₂ b) = eval g b
 
 -- Terminal
 eval terminal _        = tt
@@ -86,7 +86,7 @@ eval (curry f) a       = record
 eval apply (cl , a)    = semantics cl a
 
 -- Recursive types (Fixed point isomorphism)
-eval fold x            = wrap x
+eval (fold _) x            = wrap x
 eval unfold x          = unwrap x
 
 -- Effect lifting (D032)

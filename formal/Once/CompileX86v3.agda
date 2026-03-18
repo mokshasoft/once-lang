@@ -49,7 +49,7 @@ open import Once.Surface.Elaborate using (elaborate)
 open import Once.Surface.Syntax as SS using (Ctx; ∅)
 
 -- IR and optimization
-open import Once.IR as OnceIR using (IR)
+open import Once.CCC.IR as OnceIR using (IR)
 open import Once.Optimize using (optimize)
 
 -- CCC.IR (backend IR with free-heap)

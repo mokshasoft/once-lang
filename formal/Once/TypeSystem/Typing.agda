@@ -13,7 +13,7 @@
 module Once.TypeSystem.Typing where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Semantics
 open import Once.Postulates using (closure-semantics-eq; extensionality)
 
@@ -202,12 +202,12 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-pair f g ⌋ = ⟨ ⌊ f ⌋ , ⌊ g ⌋ ⟩ Heap
 ⌊ ty-inl ⌋ = inl Heap
 ⌊ ty-inr ⌋ = inr Heap
-⌊ ty-case f g ⌋ = [ ⌊ f ⌋ , ⌊ g ⌋ ]
+⌊ ty-case f g ⌋ = (case ⌊ f ⌋ ⌊ g ⌋)
 ⌊ ty-terminal ⌋ = terminal
 ⌊ ty-initial ⌋ = initial
 ⌊ ty-curry f ⌋ = curry ⌊ f ⌋ Heap
 ⌊ ty-apply ⌋ = apply
-⌊ ty-fold ⌋ = fold
+⌊ ty-fold ⌋ = fold Heap
 ⌊ ty-unfold ⌋ = unfold
 ⌊ ty-arr ⌋ = arr
 ⌊ ty-prim name ⌋ = Prim name
@@ -225,12 +225,12 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ (⟨ f , g ⟩ _) ⌉ = ty-pair ⌈ f ⌉ ⌈ g ⌉
 ⌈ (inl _) ⌉ = ty-inl
 ⌈ (inr _) ⌉ = ty-inr
-⌈ [ f , g ] ⌉ = ty-case ⌈ f ⌉ ⌈ g ⌉
+⌈ (case f g) ⌉ = ty-case ⌈ f ⌉ ⌈ g ⌉
 ⌈ terminal ⌉ = ty-terminal
 ⌈ initial ⌉ = ty-initial
 ⌈ (curry f _) ⌉ = ty-curry ⌈ f ⌉
 ⌈ apply ⌉ = ty-apply
-⌈ fold ⌉ = ty-fold
+⌈ fold _ ⌉ = ty-fold
 ⌈ unfold ⌉ = ty-unfold
 ⌈ arr ⌉ = ty-arr
 ⌈ Prim name ⌉ = ty-prim name
@@ -250,8 +250,8 @@ round-trip-ir snd x = refl
 round-trip-ir (⟨ f , g ⟩ _) x = cong₂ _,_ (round-trip-ir f x) (round-trip-ir g x)
 round-trip-ir (inl _) x = refl
 round-trip-ir (inr _) x = refl
-round-trip-ir [ f , g ] (inj₁ a) = round-trip-ir f a
-round-trip-ir [ f , g ] (inj₂ b) = round-trip-ir g b
+round-trip-ir (case f g) (inj₁ a) = round-trip-ir f a
+round-trip-ir (case f g) (inj₂ b) = round-trip-ir g b
 round-trip-ir terminal x = refl
 round-trip-ir initial ()
 round-trip-ir (curry {q = q} f _) x = closure-semantics-eq
@@ -259,7 +259,7 @@ round-trip-ir (curry {q = q} f _) x = closure-semantics-eq
   (eval (curry {q = q} f Heap) x)
   (extensionality (λ b → round-trip-ir f (x , b)))
 round-trip-ir apply x = refl
-round-trip-ir fold x = refl
+round-trip-ir (fold _) x = refl
 round-trip-ir unfold x = refl
 round-trip-ir arr x = refl
 round-trip-ir (Prim name) x = refl

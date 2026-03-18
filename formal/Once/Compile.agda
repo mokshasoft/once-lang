@@ -14,7 +14,7 @@ module Once.Compile where
 open import Once.Type public
 
 -- Re-export Core IR
-open import Once.IR public
+open import Once.CCC.IR public
 
 -- Re-export Surface IR
 open import Once.Surface.IR public
@@ -32,7 +32,7 @@ open import Once.Surface.IR public
     ; initial to S-initial
     ; curry to S-curry
     ; apply to S-apply
-    ; fold to S-fold
+    ; fold _ to S-fold
     ; unfold to S-unfold
     ; arr to S-arr
     )

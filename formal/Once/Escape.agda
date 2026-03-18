@@ -35,7 +35,7 @@
 module Once.Escape where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 
 open import Data.Nat using (ℕ; zero; suc)
 
@@ -63,11 +63,11 @@ escape-compose snd (⟨ f , g ⟩ _) = snd ∘ ⟨ f , g ⟩ Stack
 -- Rule 3: [ f , g ] ∘ inl m → [ f , g ] ∘ inl Stack
 -- The left injection is immediately consumed by case analysis.
 -- The sum value never escapes - it's pattern matched right away.
-escape-compose [ f , g ] (inl _) = [ f , g ] ∘ inl Stack
+escape-compose (case f g) (inl _) = (case f g) ∘ inl Stack
 
 -- Rule 4: [ f , g ] ∘ inr m → [ f , g ] ∘ inr Stack
 -- The right injection is immediately consumed by case analysis.
-escape-compose [ f , g ] (inr _) = [ f , g ] ∘ inr Stack
+escape-compose (case f g) (inr _) = (case f g) ∘ inr Stack
 
 -- Rule 5: apply ∘ ⟨ curry f m₁ , x ⟩ m₂ → apply ∘ ⟨ curry f Stack , x ⟩ Stack
 -- The closure is immediately applied, and the argument pair is immediately
@@ -81,22 +81,22 @@ escape-compose apply (⟨ id , x ⟩ _) = apply ∘ ⟨ id , x ⟩ Stack
 escape-compose apply (⟨ g ∘ h , x ⟩ _) = apply ∘ ⟨ g ∘ h , x ⟩ Stack
 escape-compose apply (⟨ fst , x ⟩ _) = apply ∘ ⟨ fst , x ⟩ Stack
 escape-compose apply (⟨ snd , x ⟩ _) = apply ∘ ⟨ snd , x ⟩ Stack
-escape-compose apply (⟨ [ f , g ] , x ⟩ _) = apply ∘ ⟨ [ f , g ] , x ⟩ Stack
+escape-compose apply (⟨ (case f g) , x ⟩ _) = apply ∘ ⟨ (case f g) , x ⟩ Stack
 escape-compose (apply {q = q}) (⟨ initial , x ⟩ _) = apply {q = q} ∘ ⟨ initial , x ⟩ Stack
 escape-compose (apply {q = q₁}) (⟨ apply {q = q₂} , x ⟩ _) = apply {q = q₁} ∘ ⟨ apply {q = q₂} , x ⟩ Stack
 escape-compose (apply {q = q}) (⟨ Prim name , x ⟩ _) = apply {q = q} ∘ ⟨ Prim name , x ⟩ Stack
 
 -- Rule 7: fold ∘ inl m → fold ∘ inl Stack
 -- The left injection is immediately consumed by fold to construct a Fix value.
--- Common pattern: nil = fold ∘ inl (for list-like structures)
+-- Common pattern: nil = (fold Heap) ∘ inl (for list-like structures)
 -- With linear types, the injection is guaranteed to be used exactly once.
-escape-compose fold (inl _) = fold ∘ inl Stack
+escape-compose (fold _) (inl _) = (fold Heap) ∘ inl Stack
 
 -- Rule 8: fold ∘ inr m → fold ∘ inr Stack
 -- The right injection is immediately consumed by fold to construct a Fix value.
--- Common pattern: cons = fold ∘ inr (for list-like structures)
+-- Common pattern: cons = (fold Heap) ∘ inr (for list-like structures)
 -- With linear types, the injection is guaranteed to be used exactly once.
-escape-compose fold (inr _) = fold ∘ inr Stack
+escape-compose (fold _) (inr _) = (fold Heap) ∘ inr Stack
 
 -- Rules 9-10: terminal discards values (edge cases for dead code)
 escape-compose terminal (⟨ f , g ⟩ _) = terminal ∘ ⟨ f , g ⟩ Stack
@@ -142,7 +142,7 @@ escape-once (inl m) = inl m
 escape-once (inr m) = inr m
 
 -- Case: recurse into branches
-escape-once [ f , g ] = [ escape-once f , escape-once g ]
+escape-once (case f g) = case (escape-once f) (escape-once g)
 
 -- Terminal/Initial: no allocation
 escape-once terminal = terminal
@@ -156,7 +156,7 @@ escape-once (curry {q = q} f m) = curry {q = q} (escape-once f) m
 escape-once apply = apply
 
 -- Fixed points: no allocation
-escape-once fold = fold
+escape-once (fold _) = fold Heap
 escape-once unfold = unfold
 
 -- Effects: no allocation
@@ -164,6 +164,9 @@ escape-once arr = arr
 
 -- Primitives: opaque, pass through
 escape-once (Prim name) = Prim name
+
+-- free-heap: opaque, pass through
+escape-once (free-heap h) = free-heap h
 
 ------------------------------------------------------------------------
 -- Escape Analysis: Bounded Iteration

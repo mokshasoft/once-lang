@@ -4,7 +4,7 @@
 -- Arithmetic PrimProofProviderV3 for X86v3 CCC.
 --
 -- Architecture:
---   - CCC defines generic contract (PrimContractV3)
+--   - CCC defines generic contract (PrimContract)
 --   - Arith defines CONCRETE primitives with IsPrimitive evidence
 --   - Arith provides proofs using the concrete evidence
 --
@@ -17,13 +17,14 @@
 module Once.Arith.Target.X86v3.PrimProofs where
 
 open import Data.Nat using (ℕ; _≤_; _<_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; <-≤-trans)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; <-≤-trans; +-identityʳ)
 open import Data.Bool using (Bool; false)
+open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Data.List using ([]; _∷_)
 open import Data.String using (String)
 open import Data.Product using (_×_; _,_; proj₁)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst; cong)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SMCore
@@ -33,10 +34,12 @@ open import Once.CCC.SMCore
          Input; Output; AbstractTrace; AbstractInstr; mov-to-output;
          module MemOps; module ExecLemmas; module AbstractExec)
 open import Once.CCC.Target.X86v3.Types using (Type; Int; Float; Str; Buffer; _*_; ⟦_⟧)
-open import Once.CCC.IR
-  using (IR; Prim; eval; PrimContractV3; AllocMode; Stack;
-         stack-requirement; output-mode; IsPrimitive; is-int; is-float;
-         PrimSem; evalPrim; ir-stack-requirement; pair-slots)
+open import Once.Type using (IsPrimitive; is-int; is-float)
+open import Once.CCC.IR using (IR; Prim; AllocMode; Stack)
+open import Once.CCC.Eval using (PrimSem; evalPrim; eval)
+open import Once.CCC.PrimContract using (PrimContract; output-mode)
+open import Once.CCC.Target.X86v3.Layout using (pair-slots)
+open import Once.CCC.IR.Stack using (ir-stack-requirement; prim-stack-req)
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation
   using (AllocState; next-slot; next-heap-ref; frame-capacity; current-frame; module FrontierInvariant)
 
@@ -46,7 +49,7 @@ open import Once.CCC.Target.X86v3.Dispatcher.Allocation
 -- Each arithmetic primitive is defined with:
 --   - name: String identifier
 --   - sem: Semantic function (the specification)
---   - contract: Generic PrimContractV3
+--   - contract: Generic PrimContract
 --   - is-prim: IsPrimitive evidence for the output type
 --
 -- This evidence is used to construct ValidAtWF without postulates.
@@ -56,18 +59,14 @@ record ArithPrimitive (A B : Type) : Set where
   field
     name : String
     sem : ⟦ A ⟧ → ⟦ B ⟧
-    contract : PrimContractV3 A B
+    contract : PrimContract A B
     is-prim : IsPrimitive B
 
 open ArithPrimitive public
 
--- Helper to construct contracts for arithmetic (no stack needed, stack output)
-arith-contract : PrimContractV3 (Int * Int) Int
-arith-contract = record
-  { stack-requirement = 0
-  ; output-mode = Stack
-  ; stack-req-bounded = z≤n
-  }
+-- Helper to construct contracts for arithmetic (result in-place)
+arith-contract : PrimContract (Int * Int) Int
+arith-contract = record { output-mode = Stack }
 
 -- Concrete arithmetic primitives
 add-int-prim : ArithPrimitive (Int * Int) Int
@@ -82,11 +81,19 @@ add-int-prim = record
 -- Arithmetic PrimProofProviderV3
 ------------------------------------------------------------------------
 
+-- Import SMPrimitives qualified for trace predicates
+import Once.CCC.SMPrimitives as SMP
+
 module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
     using (BeforeFrontier; stack-before; stack-ancestor; heap-before)
   open MemOps {FS} using (readLoc)
   open AbstractExec {FS} using (exec-trace)
+
+  -- Open SMPrimitives modules for trace predicates
+  open SMP.TracePrimitives {FS}
+  open SMP using (TracePreservesCapacity; tpc-[]; tpc-∷;
+                  InstrPreservesCapacity; ipc-mov-to-output)
 
   open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -205,10 +212,10 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
   arith-prim-proof-with-evidence : ∀ {A B}
     (is-prim : IsPrimitive B)
     (name : String)
-    (c : PrimContractV3 A B) →
+    (c : PrimContract A B) →
     PrimProofV3 c (Prim name)
   arith-prim-proof-with-evidence {A} {B} is-prim name c mIn x input-loc s alloc
-    input-valid-wf input-before not-halted rdi-eq cap-ok =
+    input-valid-wf input-before not-halted rdi-eq =
     let
       -- Semantics comes from primSem
       sem = evalPrim primSem {A} {B} name
@@ -247,10 +254,23 @@ module ArithPrimProvider {FS : FrameSemantics} (program-bound : ℕ) (primSem : 
       ; reclaim-preserves-validity = λ fits →
           let reclaim-before = before-frontier-slots-irrel alloc fits result-before
           in valid-primitive-wf is-prim reclaim-before
-      ; reclaim-size-bound = m≤m+n (next-slot alloc) pair-slots  -- ir-stack-requirement (Prim _) = pair-slots
+      -- ir-stack-requirement (Prim name) = 0, so next-slot alloc +ℕ 0 = next-slot alloc
+      ; reclaim-size-bound =
+          let n = next-slot alloc
+              eq : n +ℕ ir-stack-requirement (Prim {A} {B} name) ≡ n
+              eq = trans (cong (n +ℕ_) (prim-stack-req {A} {B} name)) (+-identityʳ n)
+          in subst (n ≤_) (sym eq) ≤-refl
       -- Frontier slot stability: arithmetic trace doesn't modify stack
       ; frontier-slot-stable = λ s' input-loc' s'-not-halted input-eq' slot-eq' →
           arith-frontier-stable sem x s' input-loc' alloc s'-not-halted input-eq' slot-eq'
+      -- Trace predicates: mov-to-output doesn't write/read stack slots or heap
+      ; trace-writes-above = tt
+      ; trace-slot-reads-above = tt
+      ; trace-writes-below = tt
+      ; trace-slot-reads-below = tt
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      ; trace-no-heap-writes = tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }
 
   -- Proof for a concrete ArithPrimitive (uses embedded evidence)

@@ -33,7 +33,7 @@ open import Data.Nat.Induction using (<-wellFounded)
 
 open import Once.Type
 open Once.Type using (showQuantity) public
-open import Once.IR as IR
+open import Once.CCC.IR as IR
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Context using (Ctx; ∅; Binding; mkBinding; name; type)

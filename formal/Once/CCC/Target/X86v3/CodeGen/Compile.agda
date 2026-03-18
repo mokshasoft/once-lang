@@ -31,8 +31,8 @@ open import Once.CCC.Target.X86v3.Syntax
          Program; slot-size; slots)
 
 -- Import CCC IR (via X86v3.IR re-export)
-open import Once.CCC.IR using (IR; id; _∘_; ⟨_,_⟩_; fst-ir; snd-ir; curry; apply; terminal;
-                                          inl-ir; inr-ir; case-ir; initial; fold-ir; unfold-ir; arr; free-heap; Prim;
+open import Once.CCC.IR using (IR; id; _∘_; ⟨_,_⟩_; fst; snd; curry; apply; terminal;
+                                          inl; inr; case; initial; fold; unfold; arr; free-heap; Prim;
                                           Type; _*_; AllocMode; Quantity)
 
 ------------------------------------------------------------------------
@@ -172,8 +172,8 @@ apply-instrs =
 compile-length : ∀ {A B} → IR A B → ℕ
 compile-length id = length id-instrs
 compile-length (g ∘ f) = compile-length f +ℕ length compose-bridge +ℕ compile-length g
-compile-length fst-ir = length fst-instrs
-compile-length snd-ir = length snd-instrs
+compile-length fst = length fst-instrs
+compile-length snd = length snd-instrs
 compile-length (⟨ f , g ⟩ _) = length pair-setup +ℕ compile-length f +ℕ
                                length pair-middle +ℕ compile-length g +ℕ
                                length pair-cleanup
@@ -181,12 +181,12 @@ compile-length terminal = length terminal-instrs
 compile-length (curry f _) = 6 +ℕ length curry-thunk-setup +ℕ compile-length f +ℕ 5  -- closure + thunk + cleanup
 compile-length apply = length apply-instrs
 -- Sum/fix type operations (placeholder lengths)
-compile-length (inl-ir _) = 1  -- placeholder
-compile-length (inr-ir _) = 1  -- placeholder
-compile-length (case-ir f g) = compile-length f +ℕ compile-length g  -- placeholder: no dispatch yet
+compile-length (inl _) = 1  -- placeholder
+compile-length (inr _) = 1  -- placeholder
+compile-length (case f g) = compile-length f +ℕ compile-length g  -- placeholder: no dispatch yet
 compile-length initial = 1      -- absurd elimination
-compile-length (fold-ir _) = 1      -- wrap
-compile-length unfold-ir = 1    -- unwrap
+compile-length (fold _) = 1      -- wrap
+compile-length unfold = 1    -- unwrap
 compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles actual free)
 compile-length (Prim _) = 1       -- primitive
 compile-length arr = length id-instrs  -- arr is identity at runtime (Eff = Arrow)
@@ -201,9 +201,9 @@ compile-ir (g ∘ f) =
   compose-bridge ++
   compile-ir g
 
-compile-ir fst-ir = fst-instrs
+compile-ir fst = fst-instrs
 
-compile-ir snd-ir = snd-instrs
+compile-ir snd = snd-instrs
 
 compile-ir (⟨ f , g ⟩ _) =
   pair-setup ++
@@ -225,12 +225,12 @@ compile-ir (curry f _) =
 compile-ir apply = apply-instrs
 
 -- Sum/fix type operations (TODO: implement)
-compile-ir (inl-ir _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
-compile-ir (inr-ir _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
-compile-ir (case-ir f g) = compile-ir f ++ compile-ir g  -- placeholder
+compile-ir (inl _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
+compile-ir (inr _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
+compile-ir (case f g) = compile-ir f ++ compile-ir g  -- placeholder
 compile-ir initial = ud2 ∷ []     -- absurd elimination (should never execute)
-compile-ir (fold-ir _) = id-instrs     -- wrap: just transfer rdi → rax (same representation)
-compile-ir unfold-ir = id-instrs       -- unwrap: just transfer rdi → rax (same representation)
+compile-ir (fold _) = id-instrs     -- wrap: just transfer rdi → rax (same representation)
+compile-ir unfold = id-instrs       -- unwrap: just transfer rdi → rax (same representation)
 compile-ir (free-heap _) = []     -- no-op: actual deallocation handled by runtime
 compile-ir (Prim _) = ud2 ∷ []    -- primitives need FFI (placeholder)
 compile-ir arr = id-instrs        -- arr is identity at runtime (Eff = Arrow)
@@ -246,8 +246,8 @@ compile-ir arr = id-instrs        -- arr is identity at runtime (Eff = Arrow)
 --
 -- Correspondence to SlotMachine:
 --   compile-ir id        → mov rax, rdi           (no SlotMachine op)
---   compile-ir fst-ir    → mov rax, [rdi]         (load RAX (IndReg RDI))
---   compile-ir snd-ir    → mov rax, [rdi+8]       (load RAX (IndRegSuc RDI))
+--   compile-ir fst    → mov rax, [rdi]         (load RAX (IndReg RDI))
+--   compile-ir snd    → mov rax, [rdi+8]       (load RAX (IndRegSuc RDI))
 --   compile-ir terminal  → mov rax, 0             (no SlotMachine op)
 --   compile-ir (g ∘ f)   → f; mov rdi,rax; g      (mov RDI RAX)
 --   compile-ir ⟨f,g⟩     → alloc; f; store; g; store  (write-loc × 2)
@@ -281,8 +281,8 @@ compile-ir-length (g ∘ f) =
                     (trans (cong (λ x → compile-length f +ℕ (length compose-bridge +ℕ x)) lg)
                            (sym (+-assoc (compile-length f) (length compose-bridge) (compile-length g))))
   in trans step1 (trans (cong (length (compile-ir f) +ℕ_) step2) step3)
-compile-ir-length fst-ir = refl
-compile-ir-length snd-ir = refl
+compile-ir-length fst = refl
+compile-ir-length snd = refl
 compile-ir-length (⟨ f , g ⟩ m) = pair-length-proof f g
   where
     open import Data.Nat.Properties using (+-identityʳ)
@@ -419,17 +419,17 @@ compile-ir-length (curry {q = q} f m) = curry-length-eq q f m
       in trans step1 (trans (cong (length ccs +ℕ_) (trans step2 (trans (cong (length cts +ℕ_) step3) inner)))
                             (trans outer (trans assoc1 assoc2)))
 compile-ir-length apply = refl
-compile-ir-length (inl-ir _) = refl
-compile-ir-length (inr-ir _) = refl
-compile-ir-length (case-ir f g) =
+compile-ir-length (inl _) = refl
+compile-ir-length (inr _) = refl
+compile-ir-length (case f g) =
   trans (length-++ (compile-ir f))
         (cong (_+ℕ length (compile-ir g)) (compile-ir-length f)
         `trans` cong (compile-length f +ℕ_) (compile-ir-length g))
   where
     _`trans`_ = trans
 compile-ir-length initial = refl
-compile-ir-length (fold-ir _) = refl
-compile-ir-length unfold-ir = refl
+compile-ir-length (fold _) = refl
+compile-ir-length unfold = refl
 compile-ir-length (free-heap _) = refl
 compile-ir-length (Prim _) = refl
 compile-ir-length arr = refl

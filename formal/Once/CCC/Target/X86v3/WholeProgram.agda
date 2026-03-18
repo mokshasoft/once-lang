@@ -36,7 +36,10 @@ open FrameSemantics using (Frame; _≺_)
 open import Once.CCC.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input)
 
 open import Once.CCC.Target.X86v3.Types using (Type; ⟦_⟧)
-open import Once.CCC.IR using (IR; eval; ir-size; ir-stack-requirement; AllocMode; PrimSem)
+open import Once.CCC.IR using (IR; AllocMode)
+open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.IR.Size using (ir-size)
+open import Once.CCC.IR.Stack using (ir-stack-requirement)
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation using (AllocState; next-slot; current-frame; frame-capacity; module FrontierInvariant)
 
 -- Import the new RuntimeContract

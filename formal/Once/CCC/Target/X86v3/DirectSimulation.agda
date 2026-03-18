@@ -59,7 +59,9 @@ open import Once.CCC.Target.X86v3.AbstractToX86
   using (compile-abstract; compile-trace; slot-to-disp)
 
 -- Import IR types (needed for PairWFConnection)
-open import Once.CCC.IR using (PrimSem; IR; eval; ir-size)
+open import Once.CCC.IR using (IR)
+open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.IR.Size using (ir-size)
 
 -- Import type interpretation (needed for ir-to-x86-simulation signature)
 open import Once.CCC.Target.X86v3.Types using (⟦_⟧)

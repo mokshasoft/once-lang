@@ -13,7 +13,7 @@ module Once.Surface.Desugar.Correct where
 open import Once.Type
 open import Once.Surface.IR as S
 open import Once.Surface.Desugar
-open import Once.IR as C
+open import Once.CCC.IR as C
 open import Once.Semantics using (⟦_⟧; eval; ⟦Fix⟧; wrap; Closure; encode; evalPrim)
 open import Once.Postulates using (extensionality; closure-semantics-eq)
 open ⟦Fix⟧ using (unwrap)

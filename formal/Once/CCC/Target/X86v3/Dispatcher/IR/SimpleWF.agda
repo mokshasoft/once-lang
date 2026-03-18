@@ -20,6 +20,8 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
+open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.IR.Stack
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 -- Import SMPrimitives for memory reasoning
@@ -152,7 +154,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    ∃[ mA ] IRResultAWF mA (fst-ir {A} {B}) x s alloc
+    ∃[ mA ] IRResultAWF mA (fst {A} {B}) x s alloc
   run-fst {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mA , record
       { result-loc = fst-loc
@@ -254,7 +256,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    ∃[ mB ] IRResultAWF mB (snd-ir {A} {B}) x s alloc
+    ∃[ mB ] IRResultAWF mB (snd {A} {B}) x s alloc
   run-snd {m} {A} {B} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mB , record
       { result-loc = snd-loc

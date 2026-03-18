@@ -10,7 +10,7 @@
 module Once.CCC.Target.C.CodeGen where
 
 open import Data.String using (String; _++_)
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Type
 open import Once.CCC.Target.C.Emit
 
@@ -55,7 +55,7 @@ compile-c-expr (inl _) var =
 compile-c-expr (inr _) var =
   "(OnceSum){ .tag = 1, .value = " ++ var ++ " }"
 
-compile-c-expr [ l , r ] var =
+compile-c-expr (case l r) var =
   "(" ++ var ++ ".tag == 0 ? " ++
   compile-c-expr l (var ++ ".value") ++ " : " ++
   compile-c-expr r (var ++ ".value") ++ ")"
@@ -69,7 +69,7 @@ compile-c-expr (curry f _) var =
 compile-c-expr apply var =
   "/* apply not yet implemented */ ((void*)0)"
 
-compile-c-expr fold var = var
+compile-c-expr (fold _) var = var
 compile-c-expr unfold var = var
 compile-c-expr arr var = var
 

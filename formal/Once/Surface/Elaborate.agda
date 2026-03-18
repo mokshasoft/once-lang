@@ -8,7 +8,7 @@
 module Once.Surface.Elaborate where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Surface.Syntax
 -- coerceIRArrow eliminated: curry/apply are now quantity-polymorphic
 
@@ -117,7 +117,7 @@ distribute {Γ} {A} {B} = distrib' ∘ swap'
     curryInrSwap = curry (inr Heap ∘ swap') Heap
 
     curryDistrib : IR (A + B) (Γ ⇒ ((Γ * A) + (Γ * B)))
-    curryDistrib = [ curryInlSwap , curryInrSwap ]
+    curryDistrib = case curryInlSwap curryInrSwap
 
     distrib' : IR ((A + B) * Γ) ((Γ * A) + (Γ * B))
     distrib' = apply ∘ ⟨ curryDistrib ∘ fst , snd ⟩ Heap
@@ -167,9 +167,9 @@ elaborate (inr' b) = inr Heap ∘ elaborate b
 
 -- Case: distribute environment over sum, then case on result
 -- s : Expr Γ (A + B), l : Expr (Γ,A) C, r : Expr (Γ,B) C
--- Result: [ el , er ] ∘ distribute ∘ ⟨ id , es ⟩
+-- Result: (case el er) ∘ distribute ∘ ⟨ id , es ⟩
 elaborate (case' s l r) =
-  [ elaborate l , elaborate r ] ∘ distribute ∘ ⟨ id , elaborate s ⟩ Heap
+  case (elaborate l) (elaborate r) ∘ distribute ∘ ⟨ id , elaborate s ⟩ Heap
 
 -- Unit
 elaborate unit = terminal
@@ -213,7 +213,7 @@ elaborate (arr' f) = arr ∘ elaborate f
 
 -- Fixed point constructors
 -- roll wraps one layer: F → Fix F
-elaborate (roll' e) = fold ∘ elaborate e
+elaborate (roll' e) = (fold Heap) ∘ elaborate e
 
 -- unroll unwraps one layer: Fix F → F
 elaborate (unroll' e) = unfold ∘ elaborate e

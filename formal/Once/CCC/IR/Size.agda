@@ -1,0 +1,62 @@
+------------------------------------------------------------------------
+-- Once.CCC.IR.Size
+--
+-- Size measure for IR and termination lemmas.
+--
+-- Used by the Dispatcher to prove recursive calls decrease in size.
+------------------------------------------------------------------------
+
+module Once.CCC.IR.Size where
+
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (m<m+n; m<n+m; n<1+n; m≤m+n; m≤n+m; m≤n⇒m≤1+n)
+
+open import Once.CCC.IR
+
+------------------------------------------------------------------------
+-- Size Measure for Termination
+------------------------------------------------------------------------
+
+ir-size : ∀ {A B} → IR A B → ℕ
+ir-size id = 1
+ir-size (g ∘ f) = 1 +ℕ ir-size g +ℕ ir-size f
+ir-size (⟨ f , g ⟩ _) = 1 +ℕ ir-size f +ℕ ir-size g
+ir-size fst = 1
+ir-size snd = 1
+ir-size (inl _) = 1
+ir-size (inr _) = 1
+ir-size (case f g) = 1 +ℕ ir-size f +ℕ ir-size g
+ir-size terminal = 1
+ir-size initial = 1
+ir-size (curry f _) = 2 +ℕ ir-size f
+ir-size apply = 1
+ir-size arr = 1
+ir-size (fold _) = 1
+ir-size unfold = 1
+ir-size (free-heap _) = 1
+ir-size (Prim _) = 1
+
+------------------------------------------------------------------------
+-- Size Bound Lemmas
+------------------------------------------------------------------------
+
+∘-f-smaller : ∀ {A B C} (f : IR A B) (g : IR B C) → ir-size f < ir-size (g ∘ f)
+∘-f-smaller f g = m<n+m (ir-size f) {suc (ir-size g)} (s≤s z≤n)
+
+∘-g-smaller : ∀ {A B C} (f : IR A B) (g : IR B C) → ir-size g < ir-size (g ∘ f)
+∘-g-smaller f g = s≤s (m≤m+n (ir-size g) (ir-size f))
+
+⟨,⟩-f-smaller : ∀ {A B C} (f : IR A B) (g : IR A C) {m : AllocMode} → ir-size f < ir-size (⟨ f , g ⟩ m)
+⟨,⟩-f-smaller f g {m} = s≤s (m≤m+n (ir-size f) (ir-size g))
+
+⟨,⟩-g-smaller : ∀ {A B C} (f : IR A B) (g : IR A C) {m : AllocMode} → ir-size g < ir-size (⟨ f , g ⟩ m)
+⟨,⟩-g-smaller f g {m} = s≤s (m≤n+m (ir-size g) (ir-size f))
+
+curry-smaller : ∀ {A B C q} (f : IR (A * B) C) {m : AllocMode} → ir-size f < ir-size (curry {q = q} f m)
+curry-smaller f {m} = m≤n⇒m≤1+n (n<1+n (ir-size f))
+
+case-f-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) → ir-size f < ir-size (case f g)
+case-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
+
+case-g-smaller : ∀ {A B C} (f : IR A C) (g : IR B C) → ir-size g < ir-size (case f g)
+case-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))

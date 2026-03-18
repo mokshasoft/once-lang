@@ -22,6 +22,10 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
+open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.IR.Size
+open import Once.CCC.IR.Stack
+open import Once.CCC.Target.X86v3.Layout using (closure-slots)
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 -- Import SMPrimitives qualified for trace predicates

@@ -12,7 +12,7 @@
 
 module Once.CCC.Emit where
 
-open import Once.IR using (IR)
+open import Once.CCC.IR using (IR)
 
 -- Import code generation from each backend
 open import Once.CCC.Target.AArch64.CodeGen

@@ -10,7 +10,7 @@ module Once.Category.Laws where
 
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Semantics
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
@@ -96,32 +96,32 @@ eval-pair-unique h m x with eval h x
 -- Coproduct Laws (Beta)
 ------------------------------------------------------------------------
 
--- | [ f , g ] ∘ inl ≡ f
+-- | (case f g) ∘ inl ≡ f
 --
 -- Case analysis on a left injection gives the left branch.
 --
 eval-case-inl : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) (x : ⟦ A ⟧)
-              → eval ([ f , g ] ∘ inl m) x ≡ eval f x
+              → eval ((case f g) ∘ inl m) x ≡ eval f x
 eval-case-inl f g m x = refl
 
--- | [ f , g ] ∘ inr ≡ g
+-- | (case f g) ∘ inr ≡ g
 --
 -- Case analysis on a right injection gives the right branch.
 --
 eval-case-inr : ∀ {A B C} (f : IR A C) (g : IR B C) (m : AllocMode) (x : ⟦ B ⟧)
-              → eval ([ f , g ] ∘ inr m) x ≡ eval g x
+              → eval ((case f g) ∘ inr m) x ≡ eval g x
 eval-case-inr f g m x = refl
 
 ------------------------------------------------------------------------
 -- Coproduct Laws (Eta/Uniqueness)
 ------------------------------------------------------------------------
 
--- | [ inl , inr ] ≡ id (semantically)
+-- | (case inl inr) ≡ id (semantically)
 --
 -- Case analysis that re-injects gives back identity on coproducts.
 --
 eval-case-eta : ∀ {A B} (m : AllocMode) (x : ⟦ A + B ⟧)
-              → eval [ inl m , inr m ] x ≡ x
+              → eval (case (inl m) (inr m)) x ≡ x
 eval-case-eta m (inj₁ a) = refl
 eval-case-eta m (inj₂ b) = refl
 
@@ -131,7 +131,7 @@ eval-case-eta m (inj₂ b) = refl
 -- This is the universal property of coproducts.
 --
 eval-case-unique : ∀ {A B C} (h : IR (A + B) C) (m : AllocMode) (x : ⟦ A + B ⟧)
-                 → eval [ h ∘ inl m , h ∘ inr m ] x ≡ eval h x
+                 → eval (case (h ∘ inl m) (h ∘ inr m)) x ≡ eval h x
 eval-case-unique h m (inj₁ a) = refl
 eval-case-unique h m (inj₂ b) = refl
 
@@ -215,7 +215,7 @@ eval-bimap-compose f g h i m₁ m₂ (a , d) = refl
 -- | bicase f g = [ inl ∘ f , inr ∘ g ] preserves identity
 --
 eval-bicase-id : ∀ {A B} (m : AllocMode) (x : ⟦ A + B ⟧)
-               → eval [ inl m ∘ id , inr m ∘ id ] x ≡ x
+               → eval (case (inl m ∘ id) (inr m ∘ id)) x ≡ x
 eval-bicase-id m (inj₁ a) = refl
 eval-bicase-id m (inj₂ b) = refl
 
@@ -236,17 +236,17 @@ eval-bicase-id m (inj₂ b) = refl
 -- A proper proof would require functor semantics with substitution.
 --
 eval-fold-unfold : ∀ {F} (x : ⟦ Fix F ⟧)
-                 → eval (fold ∘ unfold) x ≡ x
+                 → eval ((fold Heap) ∘ unfold) x ≡ x
 eval-fold-unfold x = refl
 
--- | unfold ∘ fold ≡ id (semantically)
+-- | unfold ∘ (fold Heap) ≡ id (semantically)
 --
 -- Unfolding after folding gives back the original value.
 -- NOTE: This is trivial because ⟦Fix⟧ is just a newtype wrapper.
 -- A proper proof would require functor semantics with substitution.
 --
 eval-unfold-fold : ∀ {F} (x : ⟦ F ⟧)
-                 → eval (unfold ∘ fold) x ≡ x
+                 → eval (unfold ∘ (fold Heap)) x ≡ x
 eval-unfold-fold x = refl
 
 ------------------------------------------------------------------------
@@ -296,7 +296,7 @@ eval-unfold-fold x = refl
 -- is semantically the same as A ⇒ B.
 --
 eval-arr-identity : ∀ {A B} (f : ⟦ A ⇒ B ⟧)
-                  → eval arr f ≡ f
+                  → eval (arr {q = Many}) f ≡ f
 eval-arr-identity f = refl
 
 -- | arr ∘ curry ≡ curry with effectful codomain (conceptually)

@@ -153,3 +153,16 @@ infixr 30 _⇒₀_
 -- IO A is sugar for Eff Unit A (effectful computation producing A)
 IO : Type → Type
 IO A = Eff Unit A
+
+------------------------------------------------------------------------
+-- Primitive Type Evidence
+------------------------------------------------------------------------
+
+-- | Evidence that a type is a primitive (non-compound) type.
+-- Used by backends to dispatch on primitive types.
+data IsPrimitive : Type → Set where
+  is-unit   : IsPrimitive Unit
+  is-int    : IsPrimitive Int
+  is-float  : IsPrimitive Float
+  is-str    : IsPrimitive Str
+  is-buffer : IsPrimitive Buffer

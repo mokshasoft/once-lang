@@ -41,14 +41,14 @@ ir-size terminal = 1
 ir-size initial = 1
 ir-size (g ∘ f) = suc (ir-size f + ir-size g)
 ir-size ⟨ f , g ⟩ = suc (ir-size f + ir-size g)
-ir-size ([ f , g ]) = suc (ir-size f + ir-size g)
+ir-size ((case f g)) = suc (ir-size f + ir-size g)
 ir-size (curry f) = suc (ir-size f)
 ir-size apply = 1
 ir-size fst = 1
 ir-size snd = 1
 ir-size inl = 1
 ir-size inr = 1
-ir-size fold = 1
+ir-size (fold _) = 1
 ir-size unfold = 1
 ir-size arr = 1
 ir-size (Prim _) = 1
@@ -80,14 +80,14 @@ ir-size (Prim _) = 1
   ir-size g < ir-size ⟨ f , g ⟩
 ⟨,⟩-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
--- Case: Both f and g are smaller than [ f , g ]
-[,]-f-smaller : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
-  ir-size f < ir-size [ f , g ]
-[,]-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
+-- Case: Both f and g are smaller than (case f g)
+case-f-smaller : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
+  ir-size f < ir-size (case f g)
+case-f-smaller f g = s≤s (m≤m+n (ir-size f) (ir-size g))
 
-[,]-g-smaller : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
-  ir-size g < ir-size [ f , g ]
-[,]-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
+case-g-smaller : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
+  ir-size g < ir-size (case f g)
+case-g-smaller f g = s≤s (m≤n+m (ir-size g) (ir-size f))
 
 -- Curry: f is smaller than (curry f)
 curry-smaller : ∀ {A B C} (f : IR ∞ (A * B) C) →
@@ -119,7 +119,7 @@ module IRProcessor
   (process-snd : ∀ {A B} → Process (snd {A = A} {B}))
   (process-inl : ∀ {A B} → Process (inl {A = A} {B}))
   (process-inr : ∀ {A B} → Process (inr {A = A} {B}))
-  (process-fold : ∀ {F} → Process (fold {F = F}))
+  (process-fold : ∀ {F} → Process ((fold _) {F = F}))
   (process-unfold : ∀ {F} → Process (unfold {F = F}))
   (process-arr : ∀ {A B} → Process (arr {A = A} {B}))
   (process-prim : ∀ {A B} (name : String) → Process (Prim {A = A} {B} name))
@@ -130,7 +130,7 @@ module IRProcessor
   (process-pair : ∀ {A B C} (f : IR ∞ C A) (g : IR ∞ C B) →
                   Process f → Process g → Process ⟨ f , g ⟩)
   (process-case : ∀ {A B C} (f : IR ∞ A C) (g : IR ∞ B C) →
-                  Process f → Process g → Process [ f , g ])
+                  Process f → Process g → Process (case f g))
   (process-curry : ∀ {A B C} (f : IR ∞ (A * B) C) →
                    Process f → Process (curry f))
   where
@@ -166,9 +166,9 @@ module IRProcessor
         (helper f (rec (⟨,⟩-f-smaller f g)))
         (helper g (rec (⟨,⟩-g-smaller f g)))
 
-      helper [ f , g ] (acc rec) = process-case f g
-        (helper f (rec ([,]-f-smaller f g)))
-        (helper g (rec ([,]-g-smaller f g)))
+      helper (case f g) (acc rec) = process-case f g
+        (helper f (rec (case-f-smaller f g)))
+        (helper g (rec (case-g-smaller f g)))
 
       helper (curry f) (acc rec) = process-curry f
         (helper f (rec (curry-smaller f)))

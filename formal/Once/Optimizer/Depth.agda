@@ -9,7 +9,7 @@
 module Once.Optimizer.Depth where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 
 open import Data.Nat using (ℕ; zero; suc; _⊔_; _≤_; _<_; _≤?_)
 open import Data.Nat as ℕ using () renaming (_+_ to _ℕ+_)
@@ -35,12 +35,12 @@ depth snd           = 0
 depth (⟨ f , g ⟩ _) = suc (depth f ⊔ depth g)
 depth (inl _)       = 0
 depth (inr _)       = 0
-depth [ f , g ]     = suc (depth f ⊔ depth g)
+depth (case f g)     = suc (depth f ⊔ depth g)
 depth terminal      = 0
 depth initial       = 0
 depth (curry f _)   = suc (depth f)
 depth apply         = 0
-depth fold          = 0
+depth (fold _)          = 0
 depth unfold        = 0
 depth arr           = 0
 depth (Prim _)      = 0
@@ -89,11 +89,11 @@ depth-pair-right : ∀ {A B C} (f : IR C A) (g : IR C B) (m : AllocMode) →
 depth-pair-right f g m = ≤-trans (m≤n⊔m (depth f) (depth g)) (n≤1+n _)
 
 depth-case-left : ∀ {A B C} (f : IR A C) (g : IR B C) →
-  depth f ≤ depth [ f , g ]
+  depth f ≤ depth (case f g)
 depth-case-left f g = ≤-trans (m≤m⊔n (depth f) (depth g)) (n≤1+n _)
 
 depth-case-right : ∀ {A B C} (f : IR A C) (g : IR B C) →
-  depth g ≤ depth [ f , g ]
+  depth g ≤ depth (case f g)
 depth-case-right f g = ≤-trans (m≤n⊔m (depth f) (depth g)) (n≤1+n _)
 
 depth-curry : ∀ {A B C q} (f : IR (A * B) C) (m : AllocMode) →

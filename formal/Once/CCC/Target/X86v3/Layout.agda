@@ -30,6 +30,10 @@ open MLS using (Addr; lower; upper) public
 open import Once.CCC.Target.X86v3.StackGrowth public
   using (word-size; x86-stack-growth)
 
+-- Re-export stack layout constants from IR.Stack
+open import Once.CCC.IR.Stack public
+  using (pair-slots; closure-slots)
+
 ------------------------------------------------------------------------
 -- X86 Concrete Memory Layout
 --

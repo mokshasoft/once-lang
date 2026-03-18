@@ -16,6 +16,7 @@ module Once.IRS where
 
 open import Size
 open import Once.Type
+open import Once.CCC.IR using (AllocMode; Stack; Heap)
 open import Data.String using (String)
 
 -- | IR: Morphisms in a Cartesian Closed Category (sized)
@@ -31,7 +32,7 @@ open import Data.String using (String)
 -- The generators are:
 --   Category structure:     id, _∘_
 --   Products:              fst, snd, ⟨_,_⟩
---   Coproducts:            inl, inr, [_,_]
+--   Coproducts:            inl, inr, case
 --   Terminal/Initial:      terminal, initial
 --   Exponential:           curry, apply
 --   Recursive types:       fold, unfold
@@ -49,7 +50,7 @@ data IR : Size → Type → Type → Set where
   -- Coproduct (A + B)
   inl     : ∀ {i A B} → IR (↑ i) A (A + B)
   inr     : ∀ {i A B} → IR (↑ i) B (A + B)
-  [_,_]   : ∀ {i A B C} → IR i A C → IR i B C → IR (↑ i) (A + B) C
+  case    : ∀ {i A B C} → IR i A C → IR i B C → IR (↑ i) (A + B) C
 
   -- Terminal object (Unit)
   terminal : ∀ {i A} → IR (↑ i) A Unit
@@ -84,4 +85,3 @@ IR∞ A B = ∀ {i} → IR i A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩
-infixr 3 [_,_]

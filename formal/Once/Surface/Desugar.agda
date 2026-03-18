@@ -11,7 +11,7 @@ module Once.Surface.Desugar where
 
 open import Once.Type
 open import Once.Surface.IR as S using (SurfaceIR; Let; Prim)
-open import Once.IR as C
+open import Once.CCC.IR as C
 
 open import Data.String using (String)
 
@@ -59,7 +59,7 @@ desugar S.⟨ f , g ⟩ = C.⟨ desugar f , desugar g ⟩ C.Heap
 -- Coproducts
 desugar S.inl = C.inl C.Heap
 desugar S.inr = C.inr C.Heap
-desugar S.[ f , g ] = C.[ desugar f , desugar g ]
+desugar S.[ f , g ] = C.case (desugar f) (desugar g)
 
 -- Terminal/Initial
 desugar S.terminal = C.terminal
@@ -70,7 +70,7 @@ desugar (S.curry f) = C.curry (desugar f) C.Heap
 desugar S.apply = C.apply
 
 -- Recursive types
-desugar S.fold = C.fold
+desugar S.fold = C.fold Heap
 desugar S.unfold = C.unfold
 
 -- Effects

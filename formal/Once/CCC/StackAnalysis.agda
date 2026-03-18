@@ -35,7 +35,7 @@
 open import Data.Nat using (ℕ; _⊔_) renaming (_+_ to _+ℕ_)
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 
 module Once.CCC.StackAnalysis
   (pair-frame : ℕ)    -- Bytes allocated for pair ⟨ f , g ⟩
@@ -71,12 +71,12 @@ StackDelta snd = 0
 StackDelta (⟨_,_⟩ f g _) = pair-frame +ℕ StackDelta f +ℕ StackDelta g
 StackDelta (inl _) = inl-frame
 StackDelta (inr _) = inr-frame
-StackDelta [ f , g ] = StackDelta f ⊔ StackDelta g  -- only one branch runs
+StackDelta (case f g) = StackDelta f ⊔ StackDelta g  -- only one branch runs
 StackDelta terminal = 0
 StackDelta initial = 0
 StackDelta (curry f _) = curry-frame  -- closure allocation; thunk cleans up
 StackDelta apply = 0                -- thunk deallocates its frame
-StackDelta fold = 0
+StackDelta (fold _) = 0
 StackDelta unfold = 0
 StackDelta arr = 0
 StackDelta (Prim _) = 0  -- Primitives don't allocate stack
@@ -112,12 +112,12 @@ StackDepth snd = 0
 StackDepth (⟨_,_⟩ f g _) = pair-frame +ℕ (StackDepth f ⊔ (StackDelta f +ℕ StackDepth g))
 StackDepth (inl _) = inl-frame
 StackDepth (inr _) = inr-frame
-StackDepth [ f , g ] = StackDepth f ⊔ StackDepth g
+StackDepth (case f g) = StackDepth f ⊔ StackDepth g
 StackDepth terminal = 0
 StackDepth initial = 0
 StackDepth (curry f _) = curry-frame +ℕ StackDepth f  -- curry + thunk needs f's depth
 StackDepth apply = apply-frame  -- thunk frame; actual f depth unknown statically
-StackDepth fold = 0
+StackDepth (fold _) = 0
 StackDepth unfold = 0
 StackDepth arr = 0
 StackDepth (Prim _) = 0  -- Primitives don't need stack depth

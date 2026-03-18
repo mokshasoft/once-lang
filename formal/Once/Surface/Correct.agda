@@ -8,7 +8,7 @@
 module Once.Surface.Correct where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Semantics as IR using (⟦_⟧; eval; Closure; ⟦Fix⟧; wrap)
 open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; roll'; unroll'; prim) renaming (_,_ to _▸_; eq to eq')
 import Once.Surface.Syntax as S
@@ -273,10 +273,10 @@ mutual
   -- Proof outline:
   --   LHS: evalSurface ρ (case' s l r)
   --      = evalSurface (a ∷ ρ) l                           [by eq-s and evalSurface definition]
-  --   RHS: eval ([ el , er ] ∘ distribute ∘ ⟨ id , es ⟩) γ
-  --      = eval [ el , er ] (eval distribute (γ , eval es γ))
-  --      = eval [ el , er ] (eval distribute (γ , inj₁ a)) [by IH for s]
-  --      = eval [ el , er ] (inj₁ (γ , a))                 [by distribute-inl]
+  --   RHS: eval ((case el er) ∘ distribute ∘ ⟨ id , es ⟩) γ
+  --      = eval (case el er) (eval distribute (γ , eval es γ))
+  --      = eval (case el er) (eval distribute (γ , inj₁ a)) [by IH for s]
+  --      = eval (case el er) (inj₁ (γ , a))                 [by distribute-inl]
   --      = eval el (γ , a)                                 [by case rule]
   --      = evalSurface (a ∷ ρ) l                           [by IH for l]
   --
@@ -305,13 +305,13 @@ mutual
       ih-s = trans (sym (elaborate-correct ρ s)) eq-s
 
       -- RHS chain: eval (elaborate (case' s l r)) γ ≡ eval el (γ , a)
-      rhs-step1 : eval [ el , er ] (eval distribute (γ , eval es γ)) ≡
-                  eval [ el , er ] (eval distribute (γ , inj₁ a))
-      rhs-step1 = cong (λ v → eval [ el , er ] (eval distribute (γ , v))) ih-s
+      rhs-step1 : eval (case el er) (eval distribute (γ , eval es γ)) ≡
+                  eval (case el er) (eval distribute (γ , inj₁ a))
+      rhs-step1 = cong (λ v → eval (case el er) (eval distribute (γ , v))) ih-s
 
-      rhs-step2 : eval [ el , er ] (eval distribute (γ , inj₁ a)) ≡
-                  eval [ el , er ] (inj₁ (γ , a))
-      rhs-step2 = cong (eval [ el , er ]) (distribute-inl {⟦ Γ ⟧ᶜ} {A} {B} γ a)
+      rhs-step2 : eval (case el er) (eval distribute (γ , inj₁ a)) ≡
+                  eval (case el er) (inj₁ (γ , a))
+      rhs-step2 = cong (eval (case el er)) (distribute-inl {⟦ Γ ⟧ᶜ} {A} {B} γ a)
 
       rhs-eq : eval (elaborate (case' s l r)) γ ≡ eval el (γ , a)
       rhs-eq = trans rhs-step1 rhs-step2
@@ -342,13 +342,13 @@ mutual
       ih-s = trans (sym (elaborate-correct ρ s)) eq-s
 
       -- RHS chain: eval (elaborate (case' s l r)) γ ≡ eval er (γ , b)
-      rhs-step1 : eval [ el , er ] (eval distribute (γ , eval es γ)) ≡
-                  eval [ el , er ] (eval distribute (γ , inj₂ b))
-      rhs-step1 = cong (λ v → eval [ el , er ] (eval distribute (γ , v))) ih-s
+      rhs-step1 : eval (case el er) (eval distribute (γ , eval es γ)) ≡
+                  eval (case el er) (eval distribute (γ , inj₂ b))
+      rhs-step1 = cong (λ v → eval (case el er) (eval distribute (γ , v))) ih-s
 
-      rhs-step2 : eval [ el , er ] (eval distribute (γ , inj₂ b)) ≡
-                  eval [ el , er ] (inj₂ (γ , b))
-      rhs-step2 = cong (eval [ el , er ]) (distribute-inr {⟦ Γ ⟧ᶜ} {A} {B} γ b)
+      rhs-step2 : eval (case el er) (eval distribute (γ , inj₂ b)) ≡
+                  eval (case el er) (inj₂ (γ , b))
+      rhs-step2 = cong (eval (case el er)) (distribute-inr {⟦ Γ ⟧ᶜ} {A} {B} γ b)
 
       rhs-eq : eval (elaborate (case' s l r)) γ ≡ eval er (γ , b)
       rhs-eq = trans rhs-step1 rhs-step2

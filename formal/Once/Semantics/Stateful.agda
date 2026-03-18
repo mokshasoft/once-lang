@@ -29,7 +29,7 @@ open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Semantics using (⟦_⟧; Closure; ⟦Fix⟧)
 import Once.Semantics as Pure
 

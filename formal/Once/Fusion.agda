@@ -13,16 +13,16 @@
 -- Optimize.agda, provide stream fusion semantics for recursive types.
 --
 -- In Once, a list type is: List A = Fix (Unit + (A × List A))
--- A list map operation is: map f = fold ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ unfold
+-- A list map operation is: map f = (fold Heap) ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ unfold
 --
 -- For map f ∘ map g:
---   = fold ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ unfold ∘ fold ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
---   = fold ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ id ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
---     (by unfold ∘ fold = id from Optimize.agda)
---   = fold ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
---   = fold ∘ [inl, inr ∘ (⟨f ∘ fst, snd⟩ ∘ ⟨g ∘ fst, snd⟩)] ∘ unfold
+--   = (fold Heap) ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ unfold ∘ (fold Heap) ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
+--   = (fold Heap) ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ id ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
+--     (by unfold ∘ (fold Heap) = id from Optimize.agda)
+--   = (fold Heap) ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
+--   = (fold Heap) ∘ [inl, inr ∘ (⟨f ∘ fst, snd⟩ ∘ ⟨g ∘ fst, snd⟩)] ∘ unfold
 --     (by coproduct functor fusion, Rule 1 below)
---   = fold ∘ [inl, inr ∘ ⟨(f ∘ g) ∘ fst, snd⟩] ∘ unfold
+--   = (fold Heap) ∘ [inl, inr ∘ ⟨(f ∘ g) ∘ fst, snd⟩] ∘ unfold
 --   = map (f ∘ g)  -- single traversal!
 --
 -- Rules implemented:
@@ -50,7 +50,7 @@
 module Once.Fusion where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 
 open import Data.Nat using (ℕ; zero; suc)
 
@@ -72,7 +72,7 @@ fusion-compose : ∀ {A B C} → IR B C → IR A B → IR A C
 -- The pattern preserves sum structure: inl stays inl, inr applies composition.
 --
 -- For lists (Fix (Unit + (A × _))):
---   map f = fold ∘ [ inl, inr ∘ ⟨ f ∘ fst, snd ⟩ ] ∘ unfold
+--   map f = (fold Heap) ∘ [ inl, inr ∘ ⟨ f ∘ fst, snd ⟩ ] ∘ unfold
 --   map f ∘ map g fuses the middle [ _, _ ] ∘ [ _, _ ] part
 --
 -- Semantics:
@@ -82,8 +82,8 @@ fusion-compose : ∀ {A B C} → IR B C → IR A B → IR A C
 --   Composed: inl a → inl a, inr b → inr (h (k b))
 --   Which equals: [ inl, inr ∘ (h ∘ k) ]
 --
-fusion-compose [ inl m1 , (inr m2) ∘ h ] [ inl m3 , (inr m4) ∘ k ] =
-  [ inl m1 , (inr m2) ∘ (h ∘ k) ]
+fusion-compose (case (inl m1) ((inr m2) ∘ h)) (case (inl m3) ((inr m4) ∘ k)) =
+  case (inl m1) ((inr m2) ∘ (h ∘ k))
 
 -- Rule 2: Bimap fusion
 -- [ inl ∘ f, inr ∘ g ] ∘ [ inl ∘ h, inr ∘ k ] = [ inl ∘ (f ∘ h), inr ∘ (g ∘ k) ]
@@ -91,16 +91,16 @@ fusion-compose [ inl m1 , (inr m2) ∘ h ] [ inl m3 , (inr m4) ∘ k ] =
 -- Both branches transform their values. Composing two such bimaps
 -- fuses the transformations on each branch.
 --
-fusion-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ (inl m3) ∘ h , (inr m4) ∘ k ] =
-  [ (inl m1) ∘ (f ∘ h) , (inr m2) ∘ (g ∘ k) ]
+fusion-compose (case ((inl m1) ∘ f) ((inr m2) ∘ g)) (case ((inl m3) ∘ h) ((inr m4) ∘ k)) =
+  case ((inl m1) ∘ (f ∘ h)) ((inr m2) ∘ (g ∘ k))
 
 -- Rule 3: Left functor fusion
 -- [ inl ∘ f, inr ] ∘ [ inl ∘ g, inr ] = [ inl ∘ (f ∘ g), inr ]
 --
 -- Only the left branch transforms values; right branch is identity.
 --
-fusion-compose [ (inl m1) ∘ f , inr m2 ] [ (inl m3) ∘ g , inr m4 ] =
-  [ (inl m1) ∘ (f ∘ g) , inr m2 ]
+fusion-compose (case ((inl m1) ∘ f) (inr m2)) (case ((inl m3) ∘ g) (inr m4)) =
+  case ((inl m1) ∘ (f ∘ g)) (inr m2)
 
 -- Rule 4a: Mixed fusion (bimap after right fmap)
 -- [ inl ∘ f, inr ∘ g ] ∘ [ inl, inr ∘ k ] = [ inl ∘ f, inr ∘ (g ∘ k) ]
@@ -109,8 +109,8 @@ fusion-compose [ (inl m1) ∘ f , inr m2 ] [ (inl m3) ∘ g , inr m4 ] =
 -- Left: inl → inl → inl ∘ f (= inl ∘ f)
 -- Right: inr ∘ k → inr ∘ g ∘ k (= inr ∘ (g ∘ k))
 --
-fusion-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ inl m3 , (inr m4) ∘ k ] =
-  [ (inl m1) ∘ f , (inr m2) ∘ (g ∘ k) ]
+fusion-compose (case ((inl m1) ∘ f) ((inr m2) ∘ g)) (case (inl m3) ((inr m4) ∘ k)) =
+  case ((inl m1) ∘ f) ((inr m2) ∘ (g ∘ k))
 
 -- Rule 4b: Mixed fusion (right fmap after bimap)
 -- [ inl, inr ∘ h ] ∘ [ inl ∘ f, inr ∘ g ] = [ inl ∘ f, inr ∘ (h ∘ g) ]
@@ -119,8 +119,8 @@ fusion-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ inl m3 , (inr m4) ∘ k ] =
 -- Left: inl ∘ f → inl ∘ f (preserved)
 -- Right: inr ∘ g → inr ∘ h ∘ g (= inr ∘ (h ∘ g))
 --
-fusion-compose [ inl m1 , (inr m2) ∘ h ] [ (inl m3) ∘ f , (inr m4) ∘ g ] =
-  [ (inl m1) ∘ f , (inr m2) ∘ (h ∘ g) ]
+fusion-compose (case (inl m1) ((inr m2) ∘ h)) (case ((inl m3) ∘ f) ((inr m4) ∘ g)) =
+  case ((inl m1) ∘ f) ((inr m2) ∘ (h ∘ g))
 
 -- Rule 5a: Mixed fusion (bimap after left fmap)
 -- [ inl ∘ f, inr ∘ g ] ∘ [ inl ∘ h, inr ] = [ inl ∘ (f ∘ h), inr ∘ g ]
@@ -129,8 +129,8 @@ fusion-compose [ inl m1 , (inr m2) ∘ h ] [ (inl m3) ∘ f , (inr m4) ∘ g ] =
 -- Left: inl ∘ h → inl ∘ f ∘ h (= inl ∘ (f ∘ h))
 -- Right: inr → inr ∘ g (= inr ∘ g)
 --
-fusion-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ (inl m3) ∘ h , inr m4 ] =
-  [ (inl m1) ∘ (f ∘ h) , (inr m2) ∘ g ]
+fusion-compose (case ((inl m1) ∘ f) ((inr m2) ∘ g)) (case ((inl m3) ∘ h) (inr m4)) =
+  case ((inl m1) ∘ (f ∘ h)) ((inr m2) ∘ g)
 
 -- Rule 5b: Mixed fusion (left fmap after bimap)
 -- [ inl ∘ f, inr ] ∘ [ inl ∘ h, inr ∘ k ] = [ inl ∘ (f ∘ h), inr ∘ k ]
@@ -139,8 +139,8 @@ fusion-compose [ (inl m1) ∘ f , (inr m2) ∘ g ] [ (inl m3) ∘ h , inr m4 ] =
 -- Left: inl ∘ h → inl ∘ f ∘ h (= inl ∘ (f ∘ h))
 -- Right: inr ∘ k → inr ∘ k (preserved)
 --
-fusion-compose [ (inl m1) ∘ f , inr m2 ] [ (inl m3) ∘ h , (inr m4) ∘ k ] =
-  [ (inl m1) ∘ (f ∘ h) , (inr m2) ∘ k ]
+fusion-compose (case ((inl m1) ∘ f) (inr m2)) (case ((inl m3) ∘ h) ((inr m4) ∘ k)) =
+  case ((inl m1) ∘ (f ∘ h)) ((inr m2) ∘ k)
 
 -- Default: no fusion, preserve original composition
 fusion-compose g f = g ∘ f
@@ -173,7 +173,7 @@ fusion-once (inl m) = inl m
 fusion-once (inr m) = inr m
 
 -- Case: recurse into branches
-fusion-once [ f , g ] = [ fusion-once f , fusion-once g ]
+fusion-once (case f g) = case (fusion-once f) (fusion-once g)
 
 -- Terminal/Initial: nothing to fuse
 fusion-once terminal = terminal
@@ -186,7 +186,7 @@ fusion-once (curry f m) = curry (fusion-once f) m
 fusion-once apply = apply
 
 -- Fixed points: nothing to fuse
-fusion-once fold = fold
+fusion-once (fold _) = fold Heap
 fusion-once unfold = unfold
 
 -- Effects: nothing to fuse
@@ -194,6 +194,9 @@ fusion-once arr = arr
 
 -- Primitives: opaque, pass through
 fusion-once (Prim name) = Prim name
+
+-- free-heap: opaque, pass through
+fusion-once (free-heap h) = free-heap h
 
 ------------------------------------------------------------------------
 -- Fusion: Bounded Iteration

@@ -11,7 +11,7 @@
 module Once.Compile.Correct where
 
 open import Once.Type
-open import Once.IR as Core
+open import Once.CCC.IR as Core
 open import Once.Semantics using (⟦_⟧; eval)
 open import Once.Surface.IR using (SurfaceIR)
 open import Once.Surface.Desugar using (desugar)

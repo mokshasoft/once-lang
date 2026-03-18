@@ -35,6 +35,9 @@ open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 import Once.CCC.SMPrimitives as SMP
 open import Once.CCC.Target.X86v3.Types
 open import Once.CCC.IR
+open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.IR.Size
+open import Once.CCC.IR.Stack
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 
 -- Import escape interface for SurvivesFramePop
@@ -220,10 +223,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       arg-before = PairValidWF.snd-before pair-decomp
 
       closure : ⟦ A ⇒[ q ] B ⟧
-      closure = fst {A ⇒[ q ] B} {A} x
+      closure = sem-fst {A ⇒[ q ] B} {A} x
 
       arg : ⟦ A ⟧
-      arg = snd {A ⇒[ q ] B} {A} x
+      arg = sem-snd {A ⇒[ q ] B} {A} x
 
       -- Decompose closure
       mClosure = PairValidWF.mA pair-decomp

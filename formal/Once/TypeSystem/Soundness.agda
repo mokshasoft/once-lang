@@ -21,7 +21,7 @@
 module Once.TypeSystem.Soundness where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Semantics
 open import Once.TypeSystem.Typing
 

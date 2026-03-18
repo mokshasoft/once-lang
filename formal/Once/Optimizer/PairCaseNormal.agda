@@ -9,7 +9,7 @@
 module Once.Optimizer.PairCaseNormal where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Optimize using (_≟Type_; _≟IR_; optimize-pair; optimize-case)
 open import Once.Optimizer.IRReducible
 
@@ -32,7 +32,7 @@ data IsNormal : ∀ {A B} → IR A B → Set where
   normal-initial  : ∀ {A} → IsNormal (initial {A})
   normal-apply    : ∀ {A B q} → IsNormal (apply {A} {B} {q})
   normal-arr      : ∀ {A B} → IsNormal (arr {A} {B})
-  normal-fold     : ∀ {F} → ¬ (F ≡ Void) → IsNormal (fold {F})
+  normal-fold     : ∀ {F} → ¬ (F ≡ Void) → IsNormal ((fold _) {F})
   normal-unfold   : ∀ {F} → IsNormal (unfold {F})
   normal-prim     : ∀ {A B} {n} → ¬ (A ≡ Void) → IsNormal (Prim {A} {B} n)
 
@@ -52,7 +52,7 @@ data IsNormal : ∀ {A B} → IR A B → Set where
   normal-case : ∀ {A B C} {f : IR A C} {g : IR B C} →
                 IsNormal f → IsNormal g →
                 ¬ CaseReducible f g →
-                IsNormal [ f , g ]
+                IsNormal (case f g)
 
   -- Curry is normal if body is normal
   normal-curry : ∀ {A B C q} {f : IR (A * B) C} {m} →
@@ -127,7 +127,7 @@ optimize-pair-normal fst (inr _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal fst terminal nf ng = normal-pair nf ng λ ()
 optimize-pair-normal fst (curry _ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal fst apply nf ng = normal-pair nf ng λ ()
-optimize-pair-normal fst fold nf ng = normal-pair nf ng λ ()
+optimize-pair-normal fst (fold _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal fst (Prim _) nf ng = normal-pair nf ng λ ()
 -- f = fst, g = _ ∘ _ (all composition cases)
 optimize-pair-normal fst (_ ∘ _) nf ng = normal-pair nf ng λ ()
@@ -147,8 +147,8 @@ optimize-pair-normal (inl _) _ nf ng = normal-pair nf ng λ ()
 -- f = inr _
 optimize-pair-normal (inr _) _ nf ng = normal-pair nf ng λ ()
 
--- f = [ _ , _ ]
-optimize-pair-normal [ _ , _ ] _ nf ng = normal-pair nf ng λ ()
+-- f = (case _ _)
+optimize-pair-normal (case _ _) _ nf ng = normal-pair nf ng λ ()
 
 -- f = terminal
 optimize-pair-normal terminal _ nf ng = normal-pair nf ng λ ()
@@ -162,7 +162,7 @@ optimize-pair-normal (curry _ _) _ nf ng = normal-pair nf ng λ ()
 -- f = apply
 optimize-pair-normal apply _ nf ng = normal-pair nf ng λ ()
 
--- f = fold
+-- f = fold Heap
 optimize-pair-normal fold _ nf ng = normal-pair nf ng λ ()
 
 -- f = unfold
@@ -180,12 +180,12 @@ optimize-pair-normal (id ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal ((⟨ _ , _ ⟩ _) ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal ((inl _) ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal ((inr _) ∘ _) _ nf ng = normal-pair nf ng λ ()
-optimize-pair-normal ([ _ , _ ] ∘ _) _ nf ng = normal-pair nf ng λ ()
+optimize-pair-normal ((case _ _) ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (terminal ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (initial ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal ((curry _ _) ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (apply ∘ _) _ nf ng = normal-pair nf ng λ ()
-optimize-pair-normal (fold ∘ _) _ nf ng = normal-pair nf ng λ ()
+optimize-pair-normal ((fold Heap) ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (unfold ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (arr ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal ((Prim _) ∘ _) _ nf ng = normal-pair nf ng λ ()
@@ -200,12 +200,12 @@ optimize-pair-normal (fst ∘ _) snd nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (⟨ _ , _ ⟩ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (inl _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (inr _) nf ng = normal-pair nf ng λ ()
-optimize-pair-normal (fst ∘ _) [ _ , _ ] nf ng = normal-pair nf ng λ ()
+optimize-pair-normal (fst ∘ _) (case _ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) terminal nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) initial nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (curry _ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) apply nf ng = normal-pair nf ng λ ()
-optimize-pair-normal (fst ∘ _) fold nf ng = normal-pair nf ng λ ()
+optimize-pair-normal (fst ∘ _) (fold _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) unfold nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) arr nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (Prim _) nf ng = normal-pair nf ng λ ()
@@ -216,12 +216,12 @@ optimize-pair-normal (fst ∘ _) (fst ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) ((⟨ _ , _ ⟩ _) ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) ((inl _) ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) ((inr _) ∘ _) nf ng = normal-pair nf ng λ ()
-optimize-pair-normal (fst ∘ _) ([ _ , _ ] ∘ _) nf ng = normal-pair nf ng λ ()
+optimize-pair-normal (fst ∘ _) ((case _ _) ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (terminal ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (initial ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) ((curry _ _) ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (apply ∘ _) nf ng = normal-pair nf ng λ ()
-optimize-pair-normal (fst ∘ _) (fold ∘ _) nf ng = normal-pair nf ng λ ()
+optimize-pair-normal (fst ∘ _) ((fold Heap) ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (unfold ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (arr ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) ((Prim _) ∘ _) nf ng = normal-pair nf ng λ ()
@@ -268,7 +268,7 @@ optimize-case-normal (_∘_ h (inl m₁)) (_∘_ h' (inr m₂)) nf ng
   | yes refl | yes refl | no D≢D' = normal-case nf ng λ { red-case-uniq → D≢D' refl }
 
 -- Default case: f and g don't match the special patterns
--- Returns [ f , g ]
+-- Returns (case f g)
 -- We need to show this is not case-reducible.
 -- Since f is not inl and not (_ ∘ inl _), it can't be red-case-eta or red-case-uniq.
 
@@ -277,7 +277,7 @@ optimize-case-normal (inl _) (inl _) nf ng = normal-case nf ng λ ()
 optimize-case-normal (inl _) id nf ng = normal-case nf ng λ ()
 optimize-case-normal (inl _) fst nf ng = normal-case nf ng λ ()
 optimize-case-normal (inl _) snd nf ng = normal-case nf ng λ ()
-optimize-case-normal (inl _) [ _ , _ ] nf ng = normal-case nf ng λ ()
+optimize-case-normal (inl _) (case _ _) nf ng = normal-case nf ng λ ()
 optimize-case-normal (inl _) initial nf ng = normal-case nf ng λ ()
 optimize-case-normal (inl _) apply nf ng = normal-case nf ng λ ()
 optimize-case-normal (inl _) unfold nf ng = normal-case nf ng λ ()
@@ -300,8 +300,8 @@ optimize-case-normal snd _ nf ng = normal-case nf ng λ ()
 -- f = ⟨ _ , _ ⟩ _
 optimize-case-normal (⟨ _ , _ ⟩ _) _ nf ng = normal-case nf ng λ ()
 
--- f = [ _ , _ ]
-optimize-case-normal [ _ , _ ] _ nf ng = normal-case nf ng λ ()
+-- f = (case _ _)
+optimize-case-normal (case _ _) _ nf ng = normal-case nf ng λ ()
 
 -- f = terminal
 optimize-case-normal terminal _ nf ng = normal-case nf ng λ ()
@@ -315,7 +315,7 @@ optimize-case-normal (curry _ _) _ nf ng = normal-case nf ng λ ()
 -- f = apply
 optimize-case-normal apply _ nf ng = normal-case nf ng λ ()
 
--- f = fold
+-- f = fold Heap
 optimize-case-normal fold _ nf ng = normal-case nf ng λ ()
 
 -- f = unfold
@@ -333,12 +333,12 @@ optimize-case-normal (_ ∘ fst) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ snd) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (⟨ _ , _ ⟩ _)) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inr _)) _ nf ng = normal-case nf ng λ ()
-optimize-case-normal (_ ∘ [ _ , _ ]) _ nf ng = normal-case nf ng λ ()
+optimize-case-normal (_ ∘ (case _ _)) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ terminal) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ initial) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (curry _ _)) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ apply) _ nf ng = normal-case nf ng λ ()
-optimize-case-normal (_ ∘ fold) _ nf ng = normal-case nf ng λ ()
+optimize-case-normal (_ ∘ fold Heap) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ unfold) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ arr) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (Prim _)) _ nf ng = normal-case nf ng λ ()
@@ -351,12 +351,12 @@ optimize-case-normal (_ ∘ (inl _)) snd nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (⟨ _ , _ ⟩ _) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (inl _) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (inr _) nf ng = normal-case nf ng λ ()
-optimize-case-normal (_ ∘ (inl _)) [ _ , _ ] nf ng = normal-case nf ng λ ()
+optimize-case-normal (_ ∘ (inl _)) (case _ _) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) terminal nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) initial nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (curry _ _) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) apply nf ng = normal-case nf ng λ ()
-optimize-case-normal (_ ∘ (inl _)) fold nf ng = normal-case nf ng λ ()
+optimize-case-normal (_ ∘ (inl _)) (fold _) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) unfold nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) arr nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (Prim _) nf ng = normal-case nf ng λ ()
@@ -367,12 +367,12 @@ optimize-case-normal (_ ∘ (inl _)) (_ ∘ fst) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ snd) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ (⟨ _ , _ ⟩ _)) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ (inl _)) nf ng = normal-case nf ng λ ()
-optimize-case-normal (_ ∘ (inl _)) (_ ∘ [ _ , _ ]) nf ng = normal-case nf ng λ ()
+optimize-case-normal (_ ∘ (inl _)) (_ ∘ (case _ _)) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ terminal) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ initial) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ (curry _ _)) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ apply) nf ng = normal-case nf ng λ ()
-optimize-case-normal (_ ∘ (inl _)) (_ ∘ fold) nf ng = normal-case nf ng λ ()
+optimize-case-normal (_ ∘ (inl _)) (_ ∘ fold Heap) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ unfold) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ arr) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ (Prim _)) nf ng = normal-case nf ng λ ()

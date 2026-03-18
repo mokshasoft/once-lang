@@ -30,6 +30,11 @@ open import Induction.WellFounded using (Acc; acc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.IR
+open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.Sem using (⟦_⟧)
+open import Once.CCC.PrimContract using (PrimContract; output-mode)
+open import Once.CCC.IR.Size
+open import Once.CCC.IR.Stack
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
 open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
 
@@ -85,9 +90,10 @@ module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) (primSem :
   -- NOTE: For opaque Prim, eval primSem (Prim name) x = evalPrim primSem name x
   -- The proof shows that execution of Prim produces eval primSem (Prim name) x
   PrimProofV3 : ∀ {A B : Type}
-    (c : PrimContractV3 A B)
+    (c : PrimContract A B)
     (ir : IR A B) →  -- The actual Prim IR
     Set
+  -- Primitives manage their own stack - no capacity precondition needed
   PrimProofV3 {A} {B} c ir =
     ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
@@ -95,7 +101,6 @@ module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) (primSem :
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ stack-requirement c ≤ frame-capacity alloc →
       IRResultAWF (output-mode c) ir x s alloc
 
   -- Interface for domain compilers
@@ -242,6 +247,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   --   1. Get (contract, proof) from prim-proof
   --   2. Use proof to execute
   ------------------------------------------------------------------------
+  -- Primitives manage their own stack - no capacity precondition
   run-prim : ∀ {A B} (mIn : AllocMode) (name : String)
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
@@ -249,15 +255,10 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    -- NOTE: Capacity check needs contract from proof provider
-    -- We check against pair-slots as upper bound (contract.stack-requirement ≤ 2)
-    next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc →
     ∃[ c ] IRResultAWF (output-mode c) (Prim {A} {B} name) x s alloc
-  run-prim {A} {B} mIn name x input-loc s alloc valid bf nh rdi cap =
+  run-prim {A} {B} mIn name x input-loc s alloc valid bf nh rdi =
     let (c , proof) = prim-proof {A} {B} name
-        -- Contract guarantees stack-requirement c ≤ pair-slots
-        cap' = ≤-trans (+-monoʳ-≤ (next-slot alloc) (stack-req-bounded c)) cap
-    in c , proof mIn x input-loc s alloc valid bf nh rdi cap'
+    in c , proof mIn x input-loc s alloc valid bf nh rdi
 
   ------------------------------------------------------------------------
   -- Main dispatcher (recursive cases use Acc)
@@ -306,17 +307,17 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
     -- fst/snd extract component modes from pair (input must be Heap for boxed pair)
     -- Stack case is impossible (fst/snd operate on boxed pairs)
-    run-ir-wf Heap fst-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Heap fst _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack fst-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Stack fst _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       -- Reference-based model: Stack and Heap use same pointer representation
       run-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Heap snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Heap snd _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack snd-ir _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Stack snd _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       -- Reference-based model: Stack and Heap use same pointer representation
       run-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
@@ -330,27 +331,27 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
     -- Prim: primitive operations (uses proof provider)
     -- With opaque Prim (just name), contract comes from proof provider
-    run-ir-wf mIn (Prim name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      let (c , result) = run-prim mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf mIn (Prim name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      let (c , result) = run-prim mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
       in output-mode c , result
 
     -- Sum type: inject left (delegated to SumFixWF module)
-    -- Output mode is m (from inl-ir m)
-    run-ir-wf mIn (inl-ir {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+    -- Output mode is m (from inl m)
+    run-ir-wf mIn (inl {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       m , run-inl {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Sum type: inject right (delegated to SumFixWF module)
-    -- Output mode is m (from inr-ir m)
-    run-ir-wf mIn (inr-ir {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+    -- Output mode is m (from inr m)
+    run-ir-wf mIn (inr {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       m , run-inr {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Sum type: case analysis (delegated to SumFixWF module)
     -- Reference-based model: any mode works since sums use pointer representation
-    run-ir-wf Heap (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf Heap (case f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       run-case {Heap} f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    run-ir-wf Stack (case-ir f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf Stack (case f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       -- Reference-based model: Stack and Heap use same pointer representation for sums
       run-case {Stack} f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
@@ -360,16 +361,16 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       run-initial x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Recursive types: fold (delegated to SumFixWF module)
-    -- Output mode is m (from fold-ir m): Stack = unboxed, Heap = pointer
-    run-ir-wf mIn (fold-ir {F} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+    -- Output mode is m (from fold m): Stack = unboxed, Heap = pointer
+    run-ir-wf mIn (fold {F} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       m , run-fold {F} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Recursive types: unfold (delegated to SumFixWF module)
     -- Reference-based model: any mode works since folds use pointer representation
-    run-ir-wf Heap (unfold-ir {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Heap (unfold {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-unfold {Heap} {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack (unfold-ir {F}) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
+    run-ir-wf Stack (unfold {F}) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
       -- Reference-based model: Stack and Heap use same pointer representation for folds
       run-unfold {Stack} {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
@@ -476,14 +477,14 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 --       c) Accept that apply's slot-bounded uses reclamation semantics
 --
 --   Sum type capacity (3 - SumFixWF.agda):
---     - sum-slots-bound: type-slots (A ⊕ B) ≤ pair-slots * ir-size inl-ir
---     - sucLoc-sum-in-range: suc n < n + type-slots (A ⊕ B)
+--     - sum-slots-bound: type-slots (A + B) ≤ pair-slots * ir-size inl
+--     - sucLoc-sum-in-range: suc n < n + type-slots (A + B)
 --     - alloc-slots-eq: proof irrelevance for allocation state equality
 --     These highlight the tension between fixed pair-slots capacity formula
 --     and type-dependent slot allocation. Will be resolved with unboxed stack.
 --
 --   Fix type capacity (1 - SumFixWF.agda):
---     - fix-slots-bound: type-slots (Fix F) ≤ pair-slots * ir-size fold-ir
+--     - fix-slots-bound: type-slots (Fix F) ≤ pair-slots * ir-size fold
 --     Similar issue to sum types.
 --
 -- CAPACITY ARCHITECTURE (DYNAMIC):

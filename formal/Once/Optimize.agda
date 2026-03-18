@@ -21,7 +21,8 @@
 module Once.Optimize where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
+open import Once.CCC.SMCore using (_≟H_)
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Nat using (ℕ; zero; suc)
@@ -223,7 +224,9 @@ mutual
   terminal ≟IR terminal = yes refl
   initial ≟IR initial = yes refl
   apply ≟IR apply = yes refl
-  fold ≟IR fold = yes refl
+  (fold m) ≟IR (fold m') with m ≟AllocMode m'
+  ... | yes refl = yes refl
+  ... | no neq   = no (λ { refl → neq refl })
   unfold ≟IR unfold = yes refl
   arr ≟IR arr = yes refl
 
@@ -242,7 +245,7 @@ mutual
   ... | _        | no neq   | _        = no (λ { refl → neq refl })
   ... | _        | _        | no neq   = no (λ { refl → neq refl })
 
-  [ f , g ] ≟IR [ f' , g' ] with f ≟IR f' | g ≟IR g'
+  (case f g) ≟IR (case f' g') with f ≟IR f' | g ≟IR g'
   ... | yes refl | yes refl = yes refl
   ... | no neq   | _        = no (λ { refl → neq refl })
   ... | _        | no neq   = no (λ { refl → neq refl })
@@ -259,8 +262,8 @@ mutual
   (_ ∘ _) ≟IR id = no (λ ())
   (⟨ _ , _ ⟩ _) ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
-  [ _ , _ ] ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR [ _ , _ ] = no (λ ())
+  (case _ _) ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR (case _ _) = no (λ ())
   (curry _ _) ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR (curry _ _) = no (λ ())
   terminal ≟IR (_ ∘ _) = no (λ ())
@@ -277,8 +280,8 @@ mutual
   (_ ∘ _) ≟IR (inr _) = no (λ ())
   apply ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR apply = no (λ ())
-  fold ≟IR (_ ∘ _) = no (λ ())
-  (_ ∘ _) ≟IR fold = no (λ ())
+  (fold _) ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR (fold _) = no (λ ())
   unfold ≟IR (_ ∘ _) = no (λ ())
   (_ ∘ _) ≟IR unfold = no (λ ())
   arr ≟IR (_ ∘ _) = no (λ ())
@@ -297,8 +300,8 @@ mutual
   (inl _) ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR (inr _) = no (λ ())
   (inr _) ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR [ _ , _ ] = no (λ ())
-  [ _ , _ ] ≟IR (Prim _) = no (λ ())
+  (Prim _) ≟IR (case _ _) = no (λ ())
+  (case _ _) ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR terminal = no (λ ())
   terminal ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR initial = no (λ ())
@@ -307,14 +310,14 @@ mutual
   (curry _ _) ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR apply = no (λ ())
   apply ≟IR (Prim _) = no (λ ())
-  (Prim _) ≟IR fold = no (λ ())
-  fold ≟IR (Prim _) = no (λ ())
+  (Prim _) ≟IR (fold _) = no (λ ())
+  (fold _) ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR unfold = no (λ ())
   unfold ≟IR (Prim _) = no (λ ())
   (Prim _) ≟IR arr = no (λ ())
   arr ≟IR (Prim _) = no (λ ())
   id ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
-  id ≟IR [ _ , _ ] = no (λ ())
+  id ≟IR (case _ _) = no (λ ())
   id ≟IR terminal = no (λ ())
   id ≟IR initial = no (λ ())
   id ≟IR (curry _ _) = no (λ ())
@@ -330,27 +333,27 @@ mutual
   (⟨ _ , _ ⟩ _) ≟IR id = no (λ ())
   (⟨ _ , _ ⟩ _) ≟IR fst = no (λ ())
   (⟨ _ , _ ⟩ _) ≟IR snd = no (λ ())
-  (⟨ _ , _ ⟩ _) ≟IR [ _ , _ ] = no (λ ())
+  (⟨ _ , _ ⟩ _) ≟IR (case _ _) = no (λ ())
   (⟨ _ , _ ⟩ _) ≟IR initial = no (λ ())
   (⟨ _ , _ ⟩ _) ≟IR apply = no (λ ())
   (⟨ _ , _ ⟩ _) ≟IR unfold = no (λ ())
   (inl _) ≟IR (inr _) = no (λ ())
-  (inl _) ≟IR [ _ , _ ] = no (λ ())
+  (inl _) ≟IR (case _ _) = no (λ ())
   (inl _) ≟IR initial = no (λ ())
   (inr _) ≟IR (inl _) = no (λ ())
-  (inr _) ≟IR [ _ , _ ] = no (λ ())
+  (inr _) ≟IR (case _ _) = no (λ ())
   (inr _) ≟IR initial = no (λ ())
-  [ _ , _ ] ≟IR id = no (λ ())
-  [ _ , _ ] ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
-  [ _ , _ ] ≟IR (inl _) = no (λ ())
-  [ _ , _ ] ≟IR (inr _) = no (λ ())
-  [ _ , _ ] ≟IR terminal = no (λ ())
-  [ _ , _ ] ≟IR (curry _ _) = no (λ ())
-  [ _ , _ ] ≟IR fold = no (λ ())
+  (case _ _) ≟IR id = no (λ ())
+  (case _ _) ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
+  (case _ _) ≟IR (inl _) = no (λ ())
+  (case _ _) ≟IR (inr _) = no (λ ())
+  (case _ _) ≟IR terminal = no (λ ())
+  (case _ _) ≟IR (curry _ _) = no (λ ())
+  (case _ _) ≟IR (fold _) = no (λ ())
   terminal ≟IR id = no (λ ())
   terminal ≟IR fst = no (λ ())
   terminal ≟IR snd = no (λ ())
-  terminal ≟IR [ _ , _ ] = no (λ ())
+  terminal ≟IR (case _ _) = no (λ ())
   terminal ≟IR initial = no (λ ())
   terminal ≟IR apply = no (λ ())
   terminal ≟IR unfold = no (λ ())
@@ -360,11 +363,11 @@ mutual
   initial ≟IR (inr _) = no (λ ())
   initial ≟IR terminal = no (λ ())
   initial ≟IR (curry _ _) = no (λ ())
-  initial ≟IR fold = no (λ ())
+  initial ≟IR (fold _) = no (λ ())
   (curry _ _) ≟IR id = no (λ ())
   (curry _ _) ≟IR fst = no (λ ())
   (curry _ _) ≟IR snd = no (λ ())
-  (curry _ _) ≟IR [ _ , _ ] = no (λ ())
+  (curry _ _) ≟IR (case _ _) = no (λ ())
   (curry _ _) ≟IR initial = no (λ ())
   (curry _ _) ≟IR apply = no (λ ())
   (curry _ _) ≟IR unfold = no (λ ())
@@ -372,11 +375,25 @@ mutual
   apply ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
   apply ≟IR terminal = no (λ ())
   apply ≟IR (curry _ _) = no (λ ())
-  fold ≟IR [ _ , _ ] = no (λ ())
-  fold ≟IR initial = no (λ ())
+  (fold _) ≟IR (case _ _) = no (λ ())
+  (fold _) ≟IR initial = no (λ ())
   unfold ≟IR (⟨ _ , _ ⟩ _) = no (λ ())
   unfold ≟IR terminal = no (λ ())
   unfold ≟IR (curry _ _) = no (λ ())
+  -- free-heap cases
+  (free-heap h) ≟IR (free-heap h') with h ≟H h'
+  ... | yes refl = yes refl
+  ... | no neq   = no (λ { refl → neq refl })
+  -- free-heap : IR Unit Unit can only match id, ∘, terminal, Prim at Unit Unit
+  -- Other constructors have incompatible types (Agda knows they're impossible)
+  (free-heap _) ≟IR id = no (λ ())
+  id ≟IR (free-heap _) = no (λ ())
+  (free-heap _) ≟IR (_ ∘ _) = no (λ ())
+  (_ ∘ _) ≟IR (free-heap _) = no (λ ())
+  (free-heap _) ≟IR terminal = no (λ ())
+  terminal ≟IR (free-heap _) = no (λ ())
+  (free-heap _) ≟IR (Prim _) = no (λ ())
+  (Prim _) ≟IR (free-heap _) = no (λ ())
 
 ------------------------------------------------------------------------
 -- Helper: Check for Void types (enables dead code elimination)
@@ -439,13 +456,13 @@ safe-pair-distrib f g =
 
 -- | Does f "want" a coproduct on its right? (i.e., can f ∘ inl/inr reduce?)
 wants-coprod : ∀ {A B} → IR A B → Bool
-wants-coprod [ _ , _ ] = true
+wants-coprod (case _ _) = true
 wants-coprod terminal = true
 wants-coprod _ = false
 
 -- | Does f "want" an unfold on its right?
 wants-unfold : ∀ {A B} → IR A B → Bool
-wants-unfold fold = true
+wants-unfold (fold _) = true
 wants-unfold terminal = true
 wants-unfold _ = false
 
@@ -495,11 +512,11 @@ mutual
   optimize-compose-structural (⟨ f , g ⟩ m) id = ⟨ f , g ⟩ m
   optimize-compose-structural (inl m) id = inl m
   optimize-compose-structural (inr m) id = inr m
-  optimize-compose-structural [ f , g ] id = [ f , g ]
+  optimize-compose-structural (case f g) id = (case f g)
   optimize-compose-structural terminal id = terminal
   optimize-compose-structural (curry f m) id = curry f m
   optimize-compose-structural apply id = apply
-  optimize-compose-structural fold id = fold
+  optimize-compose-structural (fold _) id = fold Heap
   optimize-compose-structural unfold id = unfold
   optimize-compose-structural arr id = arr
   optimize-compose-structural (Prim n) id = Prim n
@@ -520,10 +537,10 @@ mutual
   ------------------------------------------------------------------------
 
   -- [ f , g ] ∘ inl = f
-  optimize-compose-structural [ f , g ] (inl _) = f
+  optimize-compose-structural (case f g) (inl _) = f
 
   -- [ f , g ] ∘ inr = g
-  optimize-compose-structural [ f , g ] (inr _) = g
+  optimize-compose-structural (case f g) (inr _) = g
 
   ------------------------------------------------------------------------
   -- Beta Laws (Exponentials)
@@ -572,16 +589,16 @@ mutual
   ------------------------------------------------------------------------
 
   -- fold ∘ unfold = id
-  optimize-compose-structural fold unfold = id
+  optimize-compose-structural (fold _) unfold = id
 
-  -- unfold ∘ fold = id
-  optimize-compose-structural unfold fold = id
+  -- unfold ∘ (fold _) = id
+  optimize-compose-structural unfold (fold _) = id
 
   -- fold ∘ (unfold ∘ f) = f (associativity + identity)
-  optimize-compose-structural fold (unfold ∘ f) = f
+  optimize-compose-structural (fold _) (unfold ∘ f) = f
 
   -- unfold ∘ (fold ∘ f) = f (associativity + identity)
-  optimize-compose-structural unfold (fold ∘ f) = f
+  optimize-compose-structural unfold ((fold _) ∘ f) = f
 
   ------------------------------------------------------------------------
   -- Dead Code Elimination
@@ -594,11 +611,11 @@ mutual
   optimize-compose-structural terminal (⟨ _ , _ ⟩ _) = terminal
   optimize-compose-structural terminal (inl _) = terminal
   optimize-compose-structural terminal (inr _) = terminal
-  optimize-compose-structural terminal [ _ , _ ] = terminal
+  optimize-compose-structural terminal (case _ _) = terminal
   optimize-compose-structural terminal terminal = terminal
   optimize-compose-structural terminal (curry _ _) = terminal
   optimize-compose-structural terminal apply = terminal
-  optimize-compose-structural terminal fold = terminal
+  optimize-compose-structural terminal (fold _) = terminal
   optimize-compose-structural terminal unfold = terminal
   optimize-compose-structural terminal arr = terminal
   optimize-compose-structural terminal (Prim _) = terminal
@@ -609,11 +626,11 @@ mutual
   optimize-compose-structural (⟨ _ , _ ⟩ _) initial = initial
   optimize-compose-structural (inl _) initial = initial
   optimize-compose-structural (inr _) initial = initial
-  optimize-compose-structural [ _ , _ ] initial = initial
+  optimize-compose-structural (case _ _) initial = initial
   optimize-compose-structural terminal initial = initial
   optimize-compose-structural (curry _ _) initial = initial
   optimize-compose-structural apply initial = initial
-  optimize-compose-structural fold initial = initial
+  optimize-compose-structural (fold _) initial = initial
   optimize-compose-structural unfold initial = initial
   optimize-compose-structural arr initial = initial
   optimize-compose-structural (Prim _) initial = initial
@@ -650,7 +667,7 @@ mutual
   optimize-compose-structural (⟨ f , g ⟩ m) unfold = pair-distrib-opt f g m unfold (safe-pair-distrib f g)
 
   -- Pairing distribution when h is fold: safe when at least one is terminal
-  optimize-compose-structural (⟨ f , g ⟩ m) fold = pair-distrib-opt f g m fold (safe-pair-distrib f g)
+  optimize-compose-structural (⟨ f , g ⟩ m) (fold m') = pair-distrib-opt f g m (fold m') (safe-pair-distrib f g)
 
   -- Default: don't distribute pairs (would increase cost without benefit)
   optimize-compose-structural (⟨ f , g ⟩ m) h = (⟨ f , g ⟩ m) ∘ h
@@ -661,7 +678,7 @@ mutual
   --       This doubles the cost of [ h₁ , h₂ ] without benefit.
   --       For now, we just compose without distribution (fall through to default).
   -- Default: don't distribute into cases
-  optimize-compose-structural h [ f , g ] = h ∘ [ f , g ]
+  optimize-compose-structural h (case f g) = h ∘ (case f g)
 
   ------------------------------------------------------------------------
   -- Associativity (enables more optimizations)
@@ -701,14 +718,14 @@ optimize-pair f g = ⟨ f , g ⟩ Heap
 optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
 optimize-case (inl {A} {B} m) (inr {A'} {B'} m') with A ≟Type A' | B ≟Type B'
 ... | yes refl | yes refl = id
-... | _        | _        = [ inl m , inr m' ]
+... | _        | _        = case (inl m) (inr m')
 optimize-case (_∘_ {_} {D} {_} h (inl {A} {B} m)) (_∘_ {_} {D'} {_} h' (inr {A'} {B'} m'))
   with A ≟Type A' | B ≟Type B' | D ≟Type D'
 ... | yes refl | yes refl | yes refl with h ≟IR h'
 ...   | yes refl = h
-...   | no _     = [ h ∘ inl m , h' ∘ inr m' ]
-optimize-case (_∘_ h (inl {A} {B} m)) (_∘_ h' (inr {A'} {B'} m')) | _ | _ | _ = [ h ∘ inl m , h' ∘ inr m' ]
-optimize-case f g = [ f , g ]
+...   | no _     = case (h ∘ inl m) (h' ∘ inr m')
+optimize-case (_∘_ h (inl {A} {B} m)) (_∘_ h' (inr {A'} {B'} m')) | _ | _ | _ = case (h ∘ inl m) (h' ∘ inr m')
+optimize-case f g = case f g
 
 ------------------------------------------------------------------------
 -- Full Recursive Optimization
@@ -742,21 +759,23 @@ mutual
   optimize-once-structural (inr {A} {B} m) with B ≟Type Void
   ... | yes refl = initial
   ... | no _     = inr m
-  optimize-once-structural [ f , g ] = optimize-case (optimize-once f) (optimize-once g)
+  optimize-once-structural (case f g) = optimize-case (optimize-once f) (optimize-once g)
   optimize-once-structural terminal = terminal
   optimize-once-structural initial = initial
   optimize-once-structural (curry f m) = curry (optimize-once f) m
   optimize-once-structural apply = apply
   -- | fold with Void source is equivalent to initial (no inhabitants)
-  optimize-once-structural (fold {F}) with F ≟Type Void
+  optimize-once-structural (fold {F} _) with F ≟Type Void
   ... | yes refl = initial
-  ... | no _     = fold
+  ... | no _     = fold Heap
   optimize-once-structural unfold = unfold
   optimize-once-structural arr = arr
   -- | Prim with Void source is equivalent to initial (no inhabitants)
   optimize-once-structural (Prim {A} n) with A ≟Type Void
   ... | yes refl = initial
   ... | no _     = Prim n
+  -- | free-heap is opaque (no optimization)
+  optimize-once-structural (free-heap h) = free-heap h
 
   -- | Type-directed optimization
   optimize-once : ∀ {A B} → IR A B → IR A B

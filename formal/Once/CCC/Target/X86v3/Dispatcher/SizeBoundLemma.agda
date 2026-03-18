@@ -11,6 +11,7 @@ open import Data.Nat using (ℕ; _<_)
 open import Data.Nat.Properties using (<-trans)
 
 open import Once.CCC.IR
+open import Once.CCC.IR.Size
 
 ------------------------------------------------------------------------
 -- Size bound lemmas

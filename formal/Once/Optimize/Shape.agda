@@ -8,7 +8,7 @@
 module Once.Optimize.Shape where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Optimize using (optimize-pair; optimize-case; _≟Type_; _≟IR_)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; inspect; [_])
@@ -79,8 +79,8 @@ optimize-pair-shape (inl _) g = ops-pair _ g
 -- f = inr
 optimize-pair-shape (inr _) g = ops-pair _ g
 
--- f = [ _ , _ ]
-optimize-pair-shape [ _ , _ ] g = ops-pair _ g
+-- f = (case _ _)
+optimize-pair-shape (case _ _) g = ops-pair _ g
 
 -- f = terminal
 optimize-pair-shape terminal g = ops-pair terminal g
@@ -94,8 +94,8 @@ optimize-pair-shape (curry _ _) g = ops-pair _ g
 -- f = apply
 optimize-pair-shape apply g = ops-pair apply g
 
--- f = fold
-optimize-pair-shape fold g = ops-pair fold g
+-- f = fold Heap
+optimize-pair-shape (fold _) g = ops-pair (fold _) g
 
 -- f = unfold
 optimize-pair-shape unfold g = ops-pair unfold g
@@ -116,7 +116,7 @@ optimize-pair-shape fst (inr _) = ops-pair fst _
 optimize-pair-shape fst terminal = ops-pair fst terminal
 optimize-pair-shape fst (curry _ _) = ops-pair fst _
 optimize-pair-shape fst apply = ops-pair fst apply
-optimize-pair-shape fst fold = ops-pair fst fold
+optimize-pair-shape fst (fold _) = ops-pair fst (fold _)
 optimize-pair-shape fst (Prim _) = ops-pair fst _
 optimize-pair-shape fst (_ ∘ _) = ops-pair fst _
 
@@ -127,12 +127,12 @@ optimize-pair-shape (fst ∘ _) snd = ops-pair _ snd
 optimize-pair-shape (fst ∘ _) (⟨ _ , _ ⟩ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (inl _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (inr _) = ops-pair _ _
-optimize-pair-shape (fst ∘ _) [ _ , _ ] = ops-pair _ _
+optimize-pair-shape (fst ∘ _) (case _ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) terminal = ops-pair _ terminal
 optimize-pair-shape (fst ∘ _) initial = ops-pair _ initial
 optimize-pair-shape (fst ∘ _) (curry _ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) apply = ops-pair _ apply
-optimize-pair-shape (fst ∘ _) fold = ops-pair _ fold
+optimize-pair-shape (fst ∘ _) fold = ops-pair _ (fold _)
 optimize-pair-shape (fst ∘ _) unfold = ops-pair _ unfold
 optimize-pair-shape (fst ∘ _) arr = ops-pair _ arr
 optimize-pair-shape (fst ∘ _) (Prim _) = ops-pair _ _
@@ -142,7 +142,7 @@ optimize-pair-shape (fst ∘ _) (fst ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) ((⟨ _ , _ ⟩ _) ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) ((inl _) ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) ((inr _) ∘ _) = ops-pair _ _
-optimize-pair-shape (fst ∘ _) ([ _ , _ ] ∘ _) = ops-pair _ _
+optimize-pair-shape (fst ∘ _) ((case _ _) ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (terminal ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (initial ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) ((curry _ _) ∘ _) = ops-pair _ _
@@ -159,7 +159,7 @@ optimize-pair-shape (snd ∘ _) g = ops-pair _ g
 optimize-pair-shape ((⟨ _ , _ ⟩ _) ∘ _) g = ops-pair _ g
 optimize-pair-shape ((inl _) ∘ _) g = ops-pair _ g
 optimize-pair-shape ((inr _) ∘ _) g = ops-pair _ g
-optimize-pair-shape ([ _ , _ ] ∘ _) g = ops-pair _ g
+optimize-pair-shape ((case _ _) ∘ _) g = ops-pair _ g
 optimize-pair-shape (terminal ∘ _) g = ops-pair _ g
 optimize-pair-shape (initial ∘ _) g = ops-pair _ g
 optimize-pair-shape ((curry _ _) ∘ _) g = ops-pair _ g
@@ -177,7 +177,7 @@ optimize-pair-shape ((_ ∘ _) ∘ _) g = ops-pair _ g
 data OptCaseShape {A B : Type} : {C : Type} → IR A C → IR B C → IR (A + B) C → Set where
   ocs-id   : ∀ {m₁ m₂} → OptCaseShape (inl {A} {B} m₁) (inr m₂) id
   ocs-h    : ∀ {C} (h : IR (A + B) C) {m₁ m₂} → OptCaseShape (h ∘ inl m₁) (h ∘ inr m₂) h
-  ocs-case : ∀ {C} (f : IR A C) (g : IR B C) → OptCaseShape f g [ f , g ]
+  ocs-case : ∀ {C} (f : IR A C) (g : IR B C) → OptCaseShape f g (case f g)
 
 ------------------------------------------------------------------------
 -- Direct proof: optimize-case-shape
@@ -231,8 +231,8 @@ optimize-case-shape (⟨ _ , _ ⟩ _) g = ocs-case _ g
 -- f = inr
 optimize-case-shape (inr _) g = ocs-case _ g
 
--- f = [ _ , _ ]
-optimize-case-shape [ _ , _ ] g = ocs-case _ g
+-- f = (case _ _)
+optimize-case-shape (case _ _) g = ocs-case _ g
 
 -- f = terminal
 optimize-case-shape terminal g = ocs-case terminal g
@@ -246,8 +246,8 @@ optimize-case-shape (curry _ _) g = ocs-case _ g
 -- f = apply
 optimize-case-shape apply g = ocs-case apply g
 
--- f = fold
-optimize-case-shape fold g = ocs-case fold g
+-- f = fold Heap
+optimize-case-shape (fold _) g = ocs-case (fold _) g
 
 -- f = unfold
 optimize-case-shape unfold g = ocs-case unfold g
@@ -266,7 +266,7 @@ optimize-case-shape (inl _) id = ocs-case _ id
 optimize-case-shape (inl _) fst = ocs-case _ fst
 optimize-case-shape (inl _) snd = ocs-case _ snd
 optimize-case-shape (inl _) (inl _) = ocs-case _ _
-optimize-case-shape (inl _) [ _ , _ ] = ocs-case _ _
+optimize-case-shape (inl _) (case _ _) = ocs-case _ _
 optimize-case-shape (inl _) initial = ocs-case _ initial
 optimize-case-shape (inl _) apply = ocs-case _ apply
 optimize-case-shape (inl _) unfold = ocs-case _ unfold
@@ -280,12 +280,12 @@ optimize-case-shape (_ ∘ (inl _)) snd = ocs-case _ snd
 optimize-case-shape (_ ∘ (inl _)) (⟨ _ , _ ⟩ _) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (inl _) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (inr _) = ocs-case _ _
-optimize-case-shape (_ ∘ (inl _)) [ _ , _ ] = ocs-case _ _
+optimize-case-shape (_ ∘ (inl _)) (case _ _) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) terminal = ocs-case _ terminal
 optimize-case-shape (_ ∘ (inl _)) initial = ocs-case _ initial
 optimize-case-shape (_ ∘ (inl _)) (curry _ _) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) apply = ocs-case _ apply
-optimize-case-shape (_ ∘ (inl _)) fold = ocs-case _ fold
+optimize-case-shape (_ ∘ (inl _)) fold = ocs-case _ (fold _)
 optimize-case-shape (_ ∘ (inl _)) unfold = ocs-case _ unfold
 optimize-case-shape (_ ∘ (inl _)) arr = ocs-case _ arr
 optimize-case-shape (_ ∘ (inl _)) (Prim _) = ocs-case _ _
@@ -295,12 +295,12 @@ optimize-case-shape (_ ∘ (inl _)) (_ ∘ fst) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ snd) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ (⟨ _ , _ ⟩ _)) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ (inl _)) = ocs-case _ _
-optimize-case-shape (_ ∘ (inl _)) (_ ∘ [ _ , _ ]) = ocs-case _ _
+optimize-case-shape (_ ∘ (inl _)) (_ ∘ (case _ _)) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ terminal) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ initial) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ (curry _ _)) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ apply) = ocs-case _ _
-optimize-case-shape (_ ∘ (inl _)) (_ ∘ fold) = ocs-case _ _
+optimize-case-shape (_ ∘ (inl _)) (_ ∘ (fold Heap)) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ unfold) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ arr) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ (Prim _)) = ocs-case _ _
@@ -312,12 +312,12 @@ optimize-case-shape (_ ∘ fst) g = ocs-case _ g
 optimize-case-shape (_ ∘ snd) g = ocs-case _ g
 optimize-case-shape (_ ∘ (⟨ _ , _ ⟩ _)) g = ocs-case _ g
 optimize-case-shape (_ ∘ (inr _)) g = ocs-case _ g
-optimize-case-shape (_ ∘ [ _ , _ ]) g = ocs-case _ g
+optimize-case-shape (_ ∘ (case _ _)) g = ocs-case _ g
 optimize-case-shape (_ ∘ terminal) g = ocs-case _ g
 optimize-case-shape (_ ∘ initial) g = ocs-case _ g
 optimize-case-shape (_ ∘ (curry _ _)) g = ocs-case _ g
 optimize-case-shape (_ ∘ apply) g = ocs-case _ g
-optimize-case-shape (_ ∘ fold) g = ocs-case _ g
+optimize-case-shape (_ ∘ (fold Heap)) g = ocs-case _ g
 optimize-case-shape (_ ∘ unfold) g = ocs-case _ g
 optimize-case-shape (_ ∘ arr) g = ocs-case _ g
 optimize-case-shape (_ ∘ (Prim _)) g = ocs-case _ g

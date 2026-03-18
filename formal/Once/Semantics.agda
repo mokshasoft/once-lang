@@ -8,14 +8,14 @@
 module Once.Semantics where
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Memory using (Word; AllocState; alloc-state; mem; heap-ptr)
   renaming (alloc-two-words to alloc-pair-mem)
 
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Integer using (ℤ)
 import Data.Integer as Int
 open import Data.Float using () renaming (Float to AgdaFloat)
@@ -117,8 +117,8 @@ eval (⟨ f , g ⟩ _) x   = (eval f x , eval g x)
 -- Coproducts (AllocMode ignored in semantics)
 eval (inl _) a         = inj₁ a
 eval (inr _) b         = inj₂ b
-eval [ f , g ] (inj₁ a) = eval f a
-eval [ f , g ] (inj₂ b) = eval g b
+eval (case f g) (inj₁ a) = eval f a
+eval (case f g) (inj₂ b) = eval g b
 
 -- Terminal
 eval terminal _        = tt
@@ -138,7 +138,7 @@ eval (curry f _) a     = record
 eval apply (cl , a)    = semantics cl a
 
 -- Recursive types (Fixed point isomorphism)
-eval fold x            = wrap x
+eval (fold _) x            = wrap x
 eval unfold x          = unwrap x
 
 -- Effect lifting (D032)
@@ -146,6 +146,9 @@ eval unfold x          = unwrap x
 -- Takes a pure closure and returns it as an effectful closure
 -- Both have the same Closure representation
 eval arr cl            = cl
+
+-- Memory management (no-op in semantics)
+eval (free-heap _) x   = x
 
 -- Primitives (opaque operations)
 eval (Prim name) x     = evalPrim name x

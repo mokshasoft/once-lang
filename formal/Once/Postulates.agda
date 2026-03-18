@@ -29,7 +29,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (Maybe; just; nothing)
 
 open import Once.Type
-open import Once.IR
+open import Once.CCC.IR
 open import Once.Memory using (Word)
 open import Once.Semantics
 
