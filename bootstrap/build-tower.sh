@@ -10,75 +10,88 @@ AGDA="agda --no-main"
 
 echo "=== Building Foundations ==="
 
-echo "[1/20] Foundations/Types"
+echo "[1/23] Foundations/Types"
 time $AGDA normalizer/Foundations/Types.agda
 
-echo "[2/20] Foundations/MinimalCCC"
+echo "[2/23] Foundations/MinimalCCC"
 time $AGDA normalizer/Foundations/MinimalCCC.agda
 
-echo "[3/20] Foundations/Encoding"
+echo "[3/23] Foundations/Encoding"
 time $AGDA normalizer/Foundations/Encoding.agda
 
-echo "[4/20] Foundations/Confluence"
+echo "[4/23] Foundations/Confluence"
 time $AGDA normalizer/Foundations/Confluence.agda
 
 echo "=== Building Level0V2 Base ==="
 
-echo "[5/20] Level0V2/Normalizer"
+echo "[5/23] Level0V2/Normalizer"
 time $AGDA normalizer/Level0V2/Normalizer.agda
 
-echo "[6/20] Level0V2/NoRedex"
+echo "[6/23] Level0V2/NoRedex"
 time $AGDA normalizer/Level0V2/NoRedex.agda
 
 echo "=== Building Level0V2/Normalize Submodules ==="
 
 # Base modules (depend only on Foundations/NoRedex/Normalizer)
-echo "[7/20] Level0V2/Normalize/Rebuild"
+echo "[7/23] Level0V2/Normalize/Rebuild"
 time $AGDA normalizer/Level0V2/Normalize/Rebuild.agda
 
-echo "[8/20] Level0V2/Normalize/Chain"
+echo "[8/23] Level0V2/Normalize/Chain"
 time $AGDA normalizer/Level0V2/Normalize/Chain.agda
 
 # Dispatch depends on Rebuild
-echo "[9/20] Level0V2/Normalize/Dispatch"
+echo "[9/23] Level0V2/Normalize/Dispatch"
 time $AGDA normalizer/Level0V2/Normalize/Dispatch.agda
 
 # NoRedexRebuild depends on Rebuild
-echo "[10/20] Level0V2/Normalize/NoRedexRebuild"
+echo "[10/23] Level0V2/Normalize/NoRedexRebuild"
 time $AGDA normalizer/Level0V2/Normalize/NoRedexRebuild.agda
 
 # Handlers depends on Chain, Dispatch
-echo "[11/20] Level0V2/Normalize/Handlers"
+echo "[11/23] Level0V2/Normalize/Handlers"
 time $AGDA normalizer/Level0V2/Normalize/Handlers.agda
 
 # NoRedexHandlers depends on Handlers, NoRedexRebuild
-echo "[12/20] Level0V2/Normalize/NoRedexHandlers"
+echo "[12/23] Level0V2/Normalize/NoRedexHandlers"
 time $AGDA normalizer/Level0V2/Normalize/NoRedexHandlers.agda
 
 # NstepDispatch depends on NoRedexHandlers
-echo "[13/20] Level0V2/Normalize/NstepDispatch"
+echo "[13/23] Level0V2/Normalize/NstepDispatch"
 time $AGDA normalizer/Level0V2/Normalize/NstepDispatch.agda
 
-# Fixpoint depends on NstepDispatch
-echo "[14/20] Level0V2/Normalize/Fixpoint"
+# Fixpoint submodules (split for memory efficiency)
+echo "[14/23] Level0V2/Normalize/Fixpoint/DispatchLemmas"
+time $AGDA normalizer/Level0V2/Normalize/Fixpoint/DispatchLemmas.agda
+
+echo "[15/23] Level0V2/Normalize/Fixpoint/BaseSimple"
+time $AGDA normalizer/Level0V2/Normalize/Fixpoint/BaseSimple.agda
+
+echo "[16/23] Level0V2/Normalize/Fixpoint/BaseRecursive"
+time $AGDA normalizer/Level0V2/Normalize/Fixpoint/BaseRecursive.agda
+
+echo "[17/23] Level0V2/Normalize/Fixpoint/MainTheorem"
+time $AGDA normalizer/Level0V2/Normalize/Fixpoint/MainTheorem.agda
+
+# Fixpoint facade
+echo "[18/23] Level0V2/Normalize/Fixpoint (facade)"
 time $AGDA normalizer/Level0V2/Normalize/Fixpoint.agda
 
 # Facade depends on Fixpoint
-echo "[15/20] Level0V2/Normalize (facade)"
+echo "[19/23] Level0V2/Normalize (facade)"
 time $AGDA normalizer/Level0V2/Normalize.agda
 
-echo "[16/20] Level0V2/NormalizeLemmas"
+echo "[20/23] Level0V2/NormalizeLemmas"
 time $AGDA normalizer/Level0V2/NormalizeLemmas.agda
 
 echo "=== Building MainTheorem Submodules ==="
 
-echo "[17/19] MainTheorem/Correctness"
+echo "[21/23] MainTheorem/Correctness"
 time $AGDA normalizer/Level0V2/MainTheorem/Correctness.agda
 
-echo "[18/19] MainTheorem/FixpointTheorem"
+echo "[22/23] MainTheorem/FixpointTheorem"
 time $AGDA normalizer/Level0V2/MainTheorem/FixpointTheorem.agda
 
-echo "[19/19] MainTheorem (facade)"
+echo "[23/23] MainTheorem (facade)"
 time $AGDA normalizer/Level0V2/MainTheorem.agda
 
 echo "=== BUILD COMPLETE ==="
