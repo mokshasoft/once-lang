@@ -94,6 +94,7 @@ loc:
 clean:
 	find . -name "*.agdai" -delete
 	find . -name "MAlonzo" -type d -exec rm -rf {} + 2>/dev/null || true
+	rm -rf ../_build
 
 # Help
 help:
