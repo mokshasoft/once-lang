@@ -11,11 +11,17 @@ open import normalizer.Foundations.Types
 open import normalizer.Foundations.MinimalCCC
 open import normalizer.Foundations.Encoding
   using (TermCode')
-open import normalizer.Foundations.NormalForm
-  using (IsNormalForm)
+open import normalizer.Foundations.BetaNormalForm
+  using (IsBetaNormalForm)
 
 ------------------------------------------------------------------------
 -- What "correctly normalizes" means
+--
+-- Note: We use IsBetaNormalForm rather than IsNormalForm because:
+--   - IsNormalForm means "no reduction applies" (including structural)
+--   - IsBetaNormalForm means "no computational reduction applies"
+--   - Encodings are beta-normal but NOT structurally normal (assoc applies)
+--   - For the bootstrap, beta-normality is what matters for correctness
 ------------------------------------------------------------------------
 
 record CorrectNormalizer (N : Term TermCode' TermCode') : Set where
@@ -24,9 +30,10 @@ record CorrectNormalizer (N : Term TermCode' TermCode') : Set where
     terminates : ∀ (t : Term Unit TermCode') →
                  ∃[ result ] ((N ∘ t) ⟶* result)
 
-    -- N produces normal forms
-    produces-nf : ∀ (t : Term Unit TermCode') →
-                  ∀ {result} → (N ∘ t) ⟶* result → IsNormalForm result
+    -- N produces beta-normal forms
+    -- (The result has no computational redexes, though structural rewrites may apply)
+    produces-betanf : ∀ (t : Term Unit TermCode') →
+                      ∀ {result} → (N ∘ t) ⟶* result → IsBetaNormalForm result
 
     -- N preserves semantics (result equivalent to input)
     preserves : ∀ (t : Term Unit TermCode') →
