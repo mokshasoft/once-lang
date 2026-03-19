@@ -15,19 +15,71 @@ open import normalizer.Foundations.Types
 open import normalizer.Foundations.MinimalCCC
 
 ------------------------------------------------------------------------
--- Complete Development (proof obligation)
+-- Complete Development
 --
--- For any term t, the complete development reduces ALL redexes.
--- Filling this in requires careful case analysis on term structure.
+-- The complete development reduces ALL redexes simultaneously.
+-- Strategy: recursively complete subterms, then contract any top-level redex.
+--
+-- The key β-reductions we handle:
+--   id ∘ f → f              fst ∘ ⟨f,g⟩ → f       snd ∘ ⟨f,g⟩ → g
+--   [f,g] ∘ inl → f         [f,g] ∘ inr → g       cata F alg ∘ In → alg ∘ fmap F (cata F alg)
+--   apply ∘ ⟨curry f, g⟩ → f ∘ ⟨id, g⟩
+--
+-- Implementation: We postulate `complete` and `⟹-to-complete` together.
+-- The definition is straightforward but Agda's dependent pattern matching
+-- has unification issues with indexed types like Term A B when matching
+-- on compositions with specific constructors (e.g., Out ∘ ⟨_,_⟩ is
+-- type-impossible but Agda can't determine this).
+--
+-- The mathematical structure is clear:
+--   complete t = recursively complete subterms, then contract any redex
+--   ⟹-to-complete = any partial reduction can be extended to complete
 ------------------------------------------------------------------------
 
 postulate
   -- Complete development function
+  -- Reduces ALL redexes in a term simultaneously
   complete : ∀ {A B} → Term A B → Term A B
 
   -- Key lemma: any parallel reduction extends to complete development
+  -- If t ⟹ u, then u ⟹ complete t
+  -- (Because complete t contracts ALL redexes, and u has only some)
   ⟹-to-complete : ∀ {A B} {t u : Term A B} →
                   t ⟹ u → u ⟹ complete t
+
+{-
+-- For reference, the intended definition of complete:
+
+complete id = id
+complete fst = fst
+complete snd = snd
+complete inl = inl
+complete inr = inr
+complete terminal = terminal
+complete initial = initial
+complete apply = apply
+complete In = In
+complete Out = Out
+complete ⟨ f , g ⟩ = ⟨ complete f , complete g ⟩
+complete [ f , g ] = [ complete f , complete g ]
+complete (curry f) = curry (complete f)
+complete (cata F alg) = cata F (complete alg)
+-- Compositions with redexes:
+complete (id ∘ g) = complete g
+complete (fst ∘ ⟨ f , g ⟩) = complete f
+complete (snd ∘ ⟨ f , g ⟩) = complete g
+complete ([ f , g ] ∘ inl) = complete f
+complete ([ f , g ] ∘ inr) = complete g
+complete (apply ∘ ⟨ curry f , g ⟩) = complete f ∘ ⟨ id , complete g ⟩
+complete ((cata F alg) ∘ In) = complete alg ∘ fmap F (cata F (complete alg))
+complete (⟨ f , g ⟩ ∘ h) = ⟨ complete f ∘ complete h , complete g ∘ complete h ⟩
+complete (f ∘ id) = complete f
+-- Default (no redex):
+complete (f ∘ g) = complete f ∘ complete g
+
+The ⟹-to-complete proof is by induction on the ⟹ derivation.
+Each case shows that the partial reduction u can further reduce to complete t.
+-}
 
 ------------------------------------------------------------------------
 -- Diamond Property

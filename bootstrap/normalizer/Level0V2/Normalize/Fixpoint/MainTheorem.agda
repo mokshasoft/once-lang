@@ -377,7 +377,7 @@ abstract
     step2 = ⟶1 assoc-r >> ∘-cong-right' normalize-step reduce-chain >> inner-step
 
     step3 : (handle-comp ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inl) ∘ payload)
-    step3 = handle-comp-rebuild payload
+    step3 = handle-comp-rebuild nrf nrg nisf nisg
 
     step4 : ((In {TermF} ∘ inr ∘ inl) ∘ payload) ⟶* (In {TermF} ∘ (inr ∘ inl ∘ payload))
     step4 = ⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r)
