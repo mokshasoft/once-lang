@@ -63,9 +63,9 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF)
 
-  open import Once.CCC.Target.X86v3.Dispatcher.Dispatcher
-  open PrimProofInterface {FS} program-bound primSem
-    using (PrimProofV3)
+  open import Once.CCC.Prim.Contract using (module PrimProofDef)
+  open PrimProofDef {FS} program-bound primSem
+    using (PrimProof)
 
   open AbstractExec {FS} using (exec-trace; exec-trace-single; exec-abstract)
   open MemOps {FS} using (readLoc)
@@ -142,7 +142,7 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- THE PROOF: Clean and simple
   ------------------------------------------------------------------------
 
-  add-int-proof : PrimProofV3 arith-contract (Prim "add-int")
+  add-int-proof : PrimProof arith-contract (Prim "add-int")
   add-int-proof mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mkPurePrimResult
       "add-int"
@@ -162,5 +162,5 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- Provider: Maps "add-int" to its proof
   ------------------------------------------------------------------------
 
-  add-int-contract-proof : ∃[ c ] PrimProofV3 {Int * Int} {Int} c (Prim "add-int")
+  add-int-contract-proof : ∃[ c ] PrimProof {Int * Int} {Int} c (Prim "add-int")
   add-int-contract-proof = arith-contract , add-int-proof

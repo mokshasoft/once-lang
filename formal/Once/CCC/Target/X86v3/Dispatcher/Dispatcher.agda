@@ -69,48 +69,12 @@ import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF as ApplyWFModule
 open import Once.CCC.Target.X86v3.Dispatcher.WriteOps public using (module WriteWithDisjoint)
 
 ------------------------------------------------------------------------
--- Prim Proof Interface
---
--- PrimProofV3: what a proof for a primitive must provide
--- PrimProofProviderV3: interface for domain compilers
---
--- With opaque Prim (just a name), the provider gives:
---   - Contract c: stack requirements and output mode
---   - Proof: that execution produces correct result
---
--- The semantics comes from PrimSem (module parameter).
+-- Prim Proof Interface (imported from Once.CCC.Prim.Contract)
 ------------------------------------------------------------------------
 
-module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
-  open FrontierInvariant {FS} using (BeforeFrontier)
-  open ClosureWellFormedDef {FS} program-bound primSem
-    using (ValidAtWF; IRResultAWF)
-
-  -- What a proof for a primitive must provide
-  -- NOTE: For opaque Prim, eval primSem (Prim name) x = evalPrim primSem name x
-  -- The proof shows that execution of Prim produces eval primSem (Prim name) x
-  PrimProofV3 : ∀ {A B : Type}
-    (c : PrimContract A B)
-    (ir : IR A B) →  -- The actual Prim IR
-    Set
-  -- Primitives manage their own stack - no capacity precondition needed
-  PrimProofV3 {A} {B} c ir =
-    ∀ (mIn : AllocMode) (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF mIn alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
-      IRResultAWF (output-mode c) ir x s alloc
-
-  -- Interface for domain compilers
-  -- For each primitive name, provide:
-  --   - A contract (stack requirements, output mode)
-  --   - A proof that execution is correct
-  PrimProofProviderV3 : Set
-  PrimProofProviderV3 =
-    ∀ {A B : Type} (name : String) →
-    ∃[ c ] PrimProofV3 {A} {B} c (Prim name)
+import Once.CCC.Prim.Contract as PrimContract
+module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) =
+  PrimContract.PrimProofDef {FS} program-bound primSem
 
 ------------------------------------------------------------------------
 -- Closure IR Tracking
@@ -174,7 +138,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     ApplyWFModule.SurvivesFramePop (get-child-frame alloc) result-loc)
   -- REMOVED: parent-bound-eq (handled locally in ApplyWF)
   -- Prim proof provider (from domain compilers)
-  (prim-proof : PrimProofInterface.PrimProofProviderV3 {FS} program-bound primSem)
+  (prim-proof : PrimProofInterface.PrimProofProvider {FS} program-bound primSem)
   where
   open FrontierInvariant {FS}
   open WriteWithDisjoint {FS}
@@ -241,7 +205,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   get-acc-from-pb n n<pb = acc-extract acc-pb n<pb
 
   ------------------------------------------------------------------------
-  -- Prim handler: uses PrimProofProviderV3 from module parameter
+  -- Prim handler: uses PrimProofProvider from module parameter
   --
   -- With opaque Prim (just a name), we:
   --   1. Get (contract, proof) from prim-proof
