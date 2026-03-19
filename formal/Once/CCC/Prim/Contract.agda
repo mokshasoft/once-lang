@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.CCC.PrimContract
+-- Once.CCC.Prim.Contract
 --
 -- Minimal contract for primitive operations.
 --
@@ -7,7 +7,7 @@
 -- The proof obligation is abstract: "preserves CCC state".
 ------------------------------------------------------------------------
 
-module Once.CCC.PrimContract where
+module Once.CCC.Prim.Contract where
 
 open import Once.Type using (Type)
 open import Once.CCC.IR using (AllocMode)

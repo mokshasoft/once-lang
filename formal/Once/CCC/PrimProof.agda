@@ -14,7 +14,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Type)
 open import Once.CCC.IR using (AllocMode)
-open import Once.CCC.PrimContract using (PrimContract; output-mode)
+open import Once.CCC.Prim.Contract using (PrimContract; output-mode)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.Sem using (⟦_⟧)
 

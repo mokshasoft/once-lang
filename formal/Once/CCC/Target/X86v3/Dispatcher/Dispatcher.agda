@@ -32,7 +32,7 @@ open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.IR
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.Sem using (⟦_⟧)
-open import Once.CCC.PrimContract using (PrimContract; output-mode)
+open import Once.CCC.Prim.Contract using (PrimContract; output-mode)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)

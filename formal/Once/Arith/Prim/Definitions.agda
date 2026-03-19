@@ -1,27 +1,15 @@
 ------------------------------------------------------------------------
--- Once.Arith.Boundary
+-- Once.Arith.Prim.Definitions
 --
--- Natural transformation boundary between arithmetic and control flow.
--- This module proves that arithmetic expressions can be embedded in
--- the main IR while preserving semantics.
+-- Primitive definitions for arithmetic operations.
+--
+-- This module defines the IR primitives for arithmetic (add, sub, mul, etc.)
+-- using the Prim constructor. These are target-agnostic definitions.
 --
 -- Part of OCP-0001: Orthogonal Arithmetic Compiler
---
--- UPDATED: Now uses Prim constructor instead of postulates!
--- The embedArith function is now concrete, not postulated.
---
--- Key insight: The arithmetic compiler is orthogonal to the categorical
--- generators. This boundary defines the natural transformation interface:
---
---   arith : ArithIR Γ τ → IR (EnvType Γ) (NumToType τ)
---
--- Where:
---   - EnvType Γ maps arithmetic context to a product of Once types
---   - NumToType τ maps NumType to Once Type
---   - The embedding preserves semantics (eval ∘ embed = eval-arith)
 ------------------------------------------------------------------------
 
-module Once.Arith.Boundary where
+module Once.Arith.Prim.Definitions where
 
 open import Once.Type as T using (Type; Int; Float; Unit; _*_)
 open import Once.CCC.IR
