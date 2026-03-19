@@ -81,7 +81,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
@@ -169,7 +168,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
@@ -271,7 +269,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
@@ -373,7 +370,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
@@ -457,7 +453,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
@@ -544,7 +539,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc

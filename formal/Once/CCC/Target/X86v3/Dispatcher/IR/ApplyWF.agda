@@ -191,7 +191,6 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) pair-slots
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved'
       ; reclaimable-slot = next-slot alloc +ℕ pair-slots

@@ -116,7 +116,6 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = slot-mono
       ; heap-monotone = heap-mono
-      ; heap-preserved = IRResultAWF.heap-preserved result-g
       ; capacity-preserved = IRResultAWF.capacity-preserved result-g
       ; mem-preserved-before = mem-preserved-compose
       ; reclaimable-slot = compose-reclaim

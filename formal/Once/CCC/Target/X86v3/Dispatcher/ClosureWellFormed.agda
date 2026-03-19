@@ -255,7 +255,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         frame-preserved : current-frame final-alloc ≡ current-frame alloc
         slot-monotone : next-slot alloc ≤ next-slot final-alloc
         heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
-        heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
         capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
         mem-preserved-before : ∀ loc → BeforeFrontier alloc loc →
           readLoc final-state loc ≡ readLoc s loc

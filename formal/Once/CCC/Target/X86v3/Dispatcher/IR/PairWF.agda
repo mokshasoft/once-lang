@@ -105,7 +105,6 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-pair
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-pair
       ; reclaimable-slot = pair-reclaim

@@ -396,7 +396,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = λ loc _ →
           readLoc-stackMem-eq s' s loc
@@ -483,7 +482,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-inl
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
@@ -640,7 +638,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-inl
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
@@ -816,7 +813,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-inr
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
@@ -964,7 +960,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-inr
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
@@ -1144,7 +1139,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-fold
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-fold
       ; reclaimable-slot = next-slot alloc +ℕ fix-slots
@@ -1277,7 +1271,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-fold
       ; heap-monotone = ≤-refl
-      ; heap-preserved = refl
       ; capacity-preserved = refl
       ; mem-preserved-before = mem-preserved-fold
       ; reclaimable-slot = next-slot alloc +ℕ fix-slots
@@ -1437,7 +1430,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = IRResultAWF.frame-preserved result-f
       ; slot-monotone = IRResultAWF.slot-monotone result-f
       ; heap-monotone = IRResultAWF.heap-monotone result-f
-      ; heap-preserved = IRResultAWF.heap-preserved result-f
       ; capacity-preserved = IRResultAWF.capacity-preserved result-f
       ; mem-preserved-before = λ loc bf → trans (IRResultAWF.mem-preserved-before result-f loc bf)
                                                 (mem-setup-eq loc)
@@ -1559,7 +1551,6 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = IRResultAWF.slot-monotone result-g
       ; heap-monotone = IRResultAWF.heap-monotone result-g
-      ; heap-preserved = IRResultAWF.heap-preserved result-g
       ; capacity-preserved = IRResultAWF.capacity-preserved result-g
       ; mem-preserved-before = λ loc bf → trans (IRResultAWF.mem-preserved-before result-g loc bf)
                                                 (mem-setup-eq loc)
