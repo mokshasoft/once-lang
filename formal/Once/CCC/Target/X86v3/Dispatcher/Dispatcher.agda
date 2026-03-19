@@ -32,7 +32,6 @@ open import Once.CCC.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.IR
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.Sem using (⟦_⟧)
-open import Once.CCC.Prim.Contract using (PrimContract; output-mode)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Target.X86v3.Dispatcher.Allocation hiding (AllocMode)
@@ -69,12 +68,12 @@ import Once.CCC.Target.X86v3.Dispatcher.IR.ApplyWF as ApplyWFModule
 open import Once.CCC.Target.X86v3.Dispatcher.WriteOps public using (module WriteWithDisjoint)
 
 ------------------------------------------------------------------------
--- Prim Proof Interface (imported from Once.CCC.Prim.Contract)
+-- Prim Contract (imported from Once.CCC.Prim.Contract)
 ------------------------------------------------------------------------
 
-import Once.CCC.Prim.Contract as PrimContract
-module PrimProofInterface {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) =
-  PrimContract.PrimProofDef {FS} program-bound primSem
+import Once.CCC.Prim.Contract as PrimContractModule
+module PrimContract {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) =
+  PrimContractModule.Def {FS} program-bound primSem
 
 ------------------------------------------------------------------------
 -- Closure IR Tracking
@@ -137,8 +136,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     ApplyWFModule.BeforeFrontier' body-final result-loc →
     ApplyWFModule.SurvivesFramePop (get-child-frame alloc) result-loc)
   -- REMOVED: parent-bound-eq (handled locally in ApplyWF)
-  -- Prim proof provider (from domain compilers)
-  (prim-proof : PrimProofInterface.PrimProofProvider {FS} program-bound primSem)
+  -- Prim contract provider (from domain compilers)
+  (prim-proof : PrimContract.Provider {FS} program-bound primSem)
   where
   open FrontierInvariant {FS}
   open WriteWithDisjoint {FS}
@@ -205,7 +204,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   get-acc-from-pb n n<pb = acc-extract acc-pb n<pb
 
   ------------------------------------------------------------------------
-  -- Prim handler: uses PrimProofProvider from module parameter
+  -- Prim handler: uses Provider from module parameter
   --
   -- With opaque Prim (just a name), we:
   --   1. Get (contract, proof) from prim-proof
@@ -219,10 +218,10 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    ∃[ c ] IRResultAWF (output-mode c) (Prim {A} {B} name) x s alloc
+    ∃[ m ] IRResultAWF m (Prim {A} {B} name) x s alloc
   run-prim {A} {B} mIn name x input-loc s alloc valid bf nh rdi =
-    let (c , proof) = prim-proof {A} {B} name
-    in c , proof mIn x input-loc s alloc valid bf nh rdi
+    let (m , proof) = prim-proof {A} {B} name
+    in m , proof mIn x input-loc s alloc valid bf nh rdi
 
   ------------------------------------------------------------------------
   -- Main dispatcher (recursive cases use Acc)
@@ -296,8 +295,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- Prim: primitive operations (uses proof provider)
     -- With opaque Prim (just name), contract comes from proof provider
     run-ir-wf mIn (Prim name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      let (c , result) = run-prim mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
-      in output-mode c , result
+      let (m , result) = run-prim mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+      in m , result
 
     -- Sum type: inject left (delegated to SumFixWF module)
     -- Output mode is m (from inl m)

@@ -71,8 +71,8 @@ module Correctness
     current-frame body-final ≡ FrameOps.get-child-frame frame-ops (current-frame alloc) →
     ApplyWFModule.BeforeFrontier' body-final result-loc →
     ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc)
-  -- Prim proof provider (from domain compilers)
-  (prim-proof : DispatcherModule.PrimProofInterface.PrimProofProviderV3 {FS} (RuntimeContract.program-bound runtime) primSem)
+  -- Prim contract provider (from domain compilers)
+  (prim-proof : DispatcherModule.PrimContract.Provider {FS} (RuntimeContract.program-bound runtime) primSem)
   where
 
   -- Extract fields from RuntimeContract

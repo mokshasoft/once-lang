@@ -163,7 +163,7 @@ ccc-x86v3:
 .PHONY: arith-x86v3
 arith-x86v3:
 	@echo "Type-checking X86v3 arithmetic primitives..."
-	@sh -c '$(AGDA_CMD) Once/Arith/Target/X86v3/PrimProofs.agda'
+	@sh -c '$(AGDA_CMD) Once/Arith/Prim/Proofs.agda'
 
 #-----------------------------------------------------------------------------
 # Full Compiler (frontend + target)
@@ -238,7 +238,7 @@ postulates-ccc-x86v3:
 .PHONY: postulates-arith-x86v3
 postulates-arith-x86v3:
 	@echo "Checking postulates in X86v3 Arith (precise)..."
-	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/Arith/Target/X86v3/PrimProofs.agda'
+	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/Arith/Prim/Proofs.agda'
 
 # Precise postulate detection for full X86v3 compiler
 .PHONY: postulates-x86v3

@@ -27,7 +27,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Type using (Type; IsPrimitive)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; Prim; AllocMode; Stack; Heap)
-open import Once.CCC.Prim.Contract using (PrimContract; output-mode)
 open import Once.CCC.SMCore
   using (LocState; mkLocState; ValueLocation; OnStack;
          halted; regs; stackMem; heapMem;
@@ -170,7 +169,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   -- Pure = result at input location, only Output register changes
   mkPurePrimResult : ∀ {A B : Type}
     (name : String)
-    (c : PrimContract A B)
+    (output-mode : AllocMode)
     (is-prim : IsPrimitive B)
     (x : ⟦ A ⟧)
     (input-loc : ValueLocation FS)
@@ -189,9 +188,9 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
       readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
               (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') →
-    IRResultAWF (output-mode c) (Prim {A} {B} name) x s alloc
+    IRResultAWF output-mode (Prim {A} {B} name) x s alloc
 
-  mkPurePrimResult {A} {B} name c is-prim x input-loc s alloc
+  mkPurePrimResult {A} {B} name output-mode is-prim x input-loc s alloc
     input-before not-halted rdi-eq trace-correct-pf frontier-stable-pf =
     let
       final-state = mkLocState

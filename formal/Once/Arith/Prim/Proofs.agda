@@ -22,7 +22,6 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Type using (Type; Int; IsPrimitive; is-int; _*_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; Prim; AllocMode; Stack)
-open import Once.CCC.Prim.Contract using (PrimContract; output-mode)
 open import Once.CCC.SMCore
   using (LocState; ValueLocation; OnStack; halted; regs;
          readReg; Input; Output; AbstractTrace; mov-to-output;
@@ -30,13 +29,6 @@ open import Once.CCC.SMCore
          module AbstractExec; module ExecLemmas)
 open import Once.CCC.Eval using (PrimSem; evalPrim)
 open import Once.Sem using (⟦_⟧)
-
-------------------------------------------------------------------------
--- Arithmetic Contract: Just says result is on Stack (in-place)
-------------------------------------------------------------------------
-
-arith-contract : PrimContract (Int * Int) Int
-arith-contract = record { output-mode = Stack }
 
 ------------------------------------------------------------------------
 -- Arithmetic Semantics
@@ -63,9 +55,9 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF)
 
-  open import Once.CCC.Prim.Contract using (module PrimProofDef)
-  open PrimProofDef {FS} program-bound primSem
-    using (PrimProof)
+  open import Once.CCC.Prim.Contract using (module Def)
+  open Def {FS} program-bound primSem
+    using (Contract)
 
   open AbstractExec {FS} using (exec-trace; exec-trace-single; exec-abstract)
   open MemOps {FS} using (readLoc)
@@ -142,11 +134,11 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- THE PROOF: Clean and simple
   ------------------------------------------------------------------------
 
-  add-int-proof : PrimProof arith-contract (Prim "add-int")
+  add-int-proof : Contract {Int * Int} {Int} Stack (Prim "add-int")
   add-int-proof mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mkPurePrimResult
       "add-int"
-      arith-contract
+      Stack
       is-int
       x
       input-loc
@@ -162,5 +154,5 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- Provider: Maps "add-int" to its proof
   ------------------------------------------------------------------------
 
-  add-int-contract-proof : ∃[ c ] PrimProof {Int * Int} {Int} c (Prim "add-int")
-  add-int-contract-proof = arith-contract , add-int-proof
+  add-int-contract-proof : ∃[ m ] Contract {Int * Int} {Int} m (Prim "add-int")
+  add-int-contract-proof = Stack , add-int-proof
