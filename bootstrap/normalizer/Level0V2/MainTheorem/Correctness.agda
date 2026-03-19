@@ -4,19 +4,24 @@
 -- Parameterized by the normalizer and its assumed properties.
 -- No heavy imports - type-checks fast.
 -- Instantiated with concrete normalize in MainTheorem.
+--
+-- Key change from original: Uses IsBetaNormalForm instead of IsNormalForm.
+-- For the bootstrap case, produces-betanf follows from:
+--   1. noredex-fixpoint: (normalize ∘ encode t) ⟶* encode t
+--   2. encode-is-betanf: IsBetaNormalForm (encode t)
 ------------------------------------------------------------------------
 
 open import normalizer.Foundations.Types
 open import normalizer.Foundations.MinimalCCC
 open import normalizer.Foundations.Encoding
-  using (TermCode')
+  using (TermCode'; encode)
+open import normalizer.Foundations.BetaNormalForm
+  using (IsBetaNormalForm; encode-is-betanf)
 open import normalizer.Foundations.NormalForm
   using (IsNormalForm)
 
 module normalizer.Level0V2.MainTheorem.Correctness
   (normalize : Term TermCode' TermCode')
-  (normalize-produces-nf : ∀ (t : Term Unit TermCode') →
-                           IsNormalForm (normalize ∘ t))
   (strong-normalization : ∀ {A B} (t : Term A B) →
                           ∃[ nf ] ((t ⟶* nf) × IsNormalForm nf))
   (normalize-preserves-semantics : ∀ (t : Term Unit TermCode') →
@@ -41,7 +46,7 @@ open import normalizer.Level0V2.MainTheorem.Correctness.Terminates
   public
 
 open import normalizer.Level0V2.MainTheorem.Correctness.ProducesNF
-  normalize normalize-produces-nf
+  normalize
   public
 
 open import normalizer.Level0V2.MainTheorem.Correctness.Preserves
@@ -49,12 +54,15 @@ open import normalizer.Level0V2.MainTheorem.Correctness.Preserves
   public
 
 ------------------------------------------------------------------------
--- The Concrete Theorem: The normalizer is correct
+-- Bootstrap-Specific Correctness
+--
+-- For the bootstrap, we don't need the general CorrectNormalizer record.
+-- We need the specific facts:
+--   1. (normalize ∘ encode normalize) ⟶* encode normalize  [fixpoint]
+--   2. IsBetaNormalForm (encode normalize)                  [beta-stability]
+--
+-- The first is noredex-fixpoint (from NormalForm.agda).
+-- The second is encode-is-betanf (from BetaNormalForm.agda).
+--
+-- Together, these prove the normalizer achieves a stable fixpoint.
 ------------------------------------------------------------------------
-
-normalizer-correct : CorrectNormalizer normalize
-normalizer-correct = record
-  { terminates  = normalize-terminates
-  ; produces-nf = normalize-output-is-nf
-  ; preserves   = normalize-preserves
-  }
