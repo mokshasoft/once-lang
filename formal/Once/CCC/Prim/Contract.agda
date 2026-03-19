@@ -28,10 +28,10 @@ open import Once.Sem using (⟦_⟧)
 ------------------------------------------------------------------------
 
 module Def {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
-  open import Once.CCC.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input)
-  open import Once.CCC.Target.X86v3.Dispatcher.Allocation using (AllocState; module FrontierInvariant)
+  open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input)
+  open import Once.CCC.Machine.Allocation using (AllocState; module FrontierInvariant)
   open FrontierInvariant {FS} using (BeforeFrontier)
-  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem using (ValidAtWF; IRResultAWF)
 
   -- The contract: what implementors must prove for a primitive

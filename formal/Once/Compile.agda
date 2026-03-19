@@ -32,7 +32,7 @@ open import Once.Surface.IR public
     ; initial to S-initial
     ; curry to S-curry
     ; apply to S-apply
-    ; fold _ to S-fold
+    ; fold to S-fold
     ; unfold to S-unfold
     ; arr to S-arr
     )
@@ -57,10 +57,10 @@ open import Once.Arith.IR public
 open import Once.Parser public
 open import Once.Parser.Module public
 
--- Re-export X86v3 compilation entry point
+-- Re-export X86-64 compilation entry point
 -- This is the single entry point for x86v3 compilation: source → assembly
-open import Once.CompileX86v3 public
-  using (compileX86v3)
+open import Once.CompileX86-64 public
+  using (compileX86-64)
 
 ------------------------------------------------------------------------
 -- Pipeline composition

@@ -26,7 +26,7 @@ open import Data.String using (String)
 open import Once.Type public
 
 -- HeapRef for free-heap
-open import Once.CCC.SMCore using (HeapRef)
+open import Once.CCC.Machine.SMCore using (HeapRef)
 
 ------------------------------------------------------------------------
 -- Allocation Mode

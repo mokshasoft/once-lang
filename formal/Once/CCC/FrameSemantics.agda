@@ -37,7 +37,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 open import Relation.Nullary using (Dec)
 
 -- Import Addr from MemoryLayoutSemantics
-open import Once.CCC.MemoryLayoutSemantics using (Addr)
+open import Once.CCC.Memory.MemoryLayoutSemantics using (Addr)
 
 ------------------------------------------------------------------------
 -- FrameSemantics Interface (Adjacency-Based)

@@ -21,7 +21,7 @@
 --   - free-returns: freed block can be reallocated
 ------------------------------------------------------------------------
 
-open import Once.CCC.MemoryLayoutSemantics
+open import Once.CCC.Memory.MemoryLayoutSemantics
   using (MemoryLayout; Addr; RegionBounds; lower; upper)
 
 module Once.Allocator.Mempool (layout : MemoryLayout) where
@@ -39,8 +39,8 @@ open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 
 -- Import heap region definition
-open import Once.CCC.Regions layout using (InHeap)
-open import Once.CCC.Regions layout as Regions using (heap-bounds)
+open import Once.CCC.Memory.Regions layout using (InHeap)
+open import Once.CCC.Memory.Regions layout as Regions using (heap-bounds)
 
 ------------------------------------------------------------------------
 -- Configuration

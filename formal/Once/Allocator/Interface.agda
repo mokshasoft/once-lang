@@ -15,7 +15,7 @@
 -- be derived from this interface.
 ------------------------------------------------------------------------
 
-open import Once.CCC.MemoryLayoutSemantics
+open import Once.CCC.Memory.MemoryLayoutSemantics
   using (MemoryLayout; Addr)
 
 module Once.Allocator.Interface (layout : MemoryLayout) where
@@ -25,7 +25,7 @@ open import Data.Product using (_×_; _,_; ∃; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_)
 
 -- Import heap region definition
-open import Once.CCC.Regions layout using (InHeap)
+open import Once.CCC.Memory.Regions layout using (InHeap)
 
 ------------------------------------------------------------------------
 -- Allocator Interface

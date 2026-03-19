@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Type using (Type; IsPrimitive)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; Prim; AllocMode; Stack; Heap)
-open import Once.CCC.SMCore
+open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; ValueLocation; OnStack;
          halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-same;
@@ -40,13 +40,13 @@ open import Once.CCC.Eval using (PrimSem; evalPrim)
 ------------------------------------------------------------------------
 
 module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
-  open import Once.CCC.Target.X86v3.Dispatcher.Allocation
+  open import Once.CCC.Machine.Allocation
     using (AllocState; current-frame; next-slot; next-heap-ref; frame-capacity)
-  open import Once.CCC.Target.X86v3.Dispatcher.Allocation
+  open import Once.CCC.Machine.Allocation
     using (module FrontierInvariant)
   open FrontierInvariant {FS}
     using (BeforeFrontier)
-  open import Once.CCC.SMCore using (module MemOps; module ExecLemmas)
+  open import Once.CCC.Machine.SMCore using (module MemOps; module ExecLemmas)
   open MemOps {FS} using (readLoc)
   open ExecLemmas {FS} using (readLoc-stackMem-eq)
 
@@ -153,16 +153,16 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   -- This bridges the simple interface to what Dispatcher expects.
   ------------------------------------------------------------------------
 
-  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; valid-primitive-wf)
   open import Once.CCC.IR.Stack using (ir-stack-requirement; prim-stack-req)
 
-  import Once.CCC.SMPrimitives as SMP
+  import Once.CCC.Machine.SMPrimitives as SMP
   open SMP.TracePrimitives {FS}
   open SMP using (TracePreservesCapacity; tpc-[]; tpc-∷;
                   InstrPreservesCapacity; ipc-mov-to-output)
-  open import Once.CCC.SMCore using (module AbstractExec)
+  open import Once.CCC.Machine.SMCore using (module AbstractExec)
   open AbstractExec {FS} using (exec-trace)
 
   -- Build IRResultAWF for a pure primitive

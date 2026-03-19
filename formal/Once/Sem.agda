@@ -40,7 +40,7 @@ open ⟦Fix⟧ public
 --
 -- Functions are plain Agda functions (not Closure records).
 -- This is the preferred interpretation for SlotMachine proofs
--- and the X86v3 dispatcher.
+-- and the X86-64 dispatcher.
 ------------------------------------------------------------------------
 
 ⟦_⟧ : Type → Set

@@ -22,7 +22,7 @@ module Once.Optimize where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.CCC.SMCore using (_≟H_)
+open import Once.CCC.Machine.SMCore using (_≟H_)
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Nat using (ℕ; zero; suc)

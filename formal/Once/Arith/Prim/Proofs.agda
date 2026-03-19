@@ -22,7 +22,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 open import Once.Type using (Type; Int; IsPrimitive; is-int; _*_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.IR using (IR; Prim; AllocMode; Stack)
-open import Once.CCC.SMCore
+open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; OnStack; halted; regs;
          readReg; Input; Output; AbstractTrace; mov-to-output;
          mkLocState; stackMem; heapMem; writeReg; module MemOps;
@@ -45,13 +45,13 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open import Once.CCC.Prim.Helper
   open PrimHelper {FS} program-bound primSem
 
-  open import Once.CCC.Target.X86v3.Dispatcher.Allocation
+  open import Once.CCC.Machine.Allocation
     using (AllocState; current-frame; next-slot; frame-capacity)
-  open import Once.CCC.Target.X86v3.Dispatcher.Allocation
+  open import Once.CCC.Machine.Allocation
     using (module FrontierInvariant)
   open FrontierInvariant {FS} using (BeforeFrontier)
 
-  open import Once.CCC.Target.X86v3.Dispatcher.ClosureWellFormed
+  open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF)
 

@@ -19,7 +19,7 @@
 -- CCC.AllocatorSemantics interface can be derived from this.
 ------------------------------------------------------------------------
 
-open import Once.CCC.MemoryLayoutSemantics
+open import Once.CCC.Memory.MemoryLayoutSemantics
   using (MemoryLayout; Addr; RegionBounds; lower; upper)
 
 module Once.Allocator.BumpAllocator (layout : MemoryLayout) where
@@ -38,8 +38,8 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Nullary.Decidable using (⌊_⌋)
 
 -- Import heap region definition
-open import Once.CCC.Regions layout using (InHeap)
-open import Once.CCC.Regions layout as Regions using (heap-bounds)
+open import Once.CCC.Memory.Regions layout using (InHeap)
+open import Once.CCC.Memory.Regions layout as Regions using (heap-bounds)
 
 ------------------------------------------------------------------------
 -- Configuration

@@ -22,12 +22,12 @@
 #   make spf          - Strictly positive functors
 #
 # Target-specific steps (step-target):
-#   make ccc-x86v3    - CCC code gen for X86v3
-#   make arith-x86v3  - Arithmetic primitives for X86v3
-#   make compiler-x86v3 - Full X86v3 compiler
+#   make ccc-x86-64    - CCC code gen for X86-64
+#   make arith-x86-64  - Arithmetic primitives for X86-64
+#   make compiler-x86-64 - Full X86-64 compiler
 #
 # Dead code analysis (requires patched Agda):
-#   make dead-code-ccc-x86v3 - Dead code analysis for X86v3 CCC
+#   make dead-code-ccc-x86-64 - Dead code analysis for X86-64 CCC
 #
 # Utilities:
 #   make agda MODULE=path  - Type-check single module
@@ -151,30 +151,30 @@ optimizer: optimizer-cost optimizer-depth optimizer-rewrite optimizer-complete o
 # Pipeline: CCC Backend (target-specific)
 #-----------------------------------------------------------------------------
 
-.PHONY: ccc-x86v3
-ccc-x86v3:
-	@echo "Type-checking X86v3 CCC backend (Dispatcher + Refinement + CodeGen)..."
-	@sh -c '$(AGDA_CMD) Once/CCC/Target/X86v3/WholeProgram.agda'
+.PHONY: ccc-x86-64
+ccc-x86-64:
+	@echo "Type-checking X86-64 CCC backend (Dispatcher + Refinement + CodeGen)..."
+	@sh -c '$(AGDA_CMD) Once/CCC/Target/X86-64/Correct.agda'
 
 #-----------------------------------------------------------------------------
 # Pipeline: Arithmetic Primitives (target-specific)
 #-----------------------------------------------------------------------------
 
-.PHONY: arith-x86v3
-arith-x86v3:
-	@echo "Type-checking X86v3 arithmetic primitives..."
+.PHONY: arith-x86-64
+arith-x86-64:
+	@echo "Type-checking X86-64 arithmetic primitives..."
 	@sh -c '$(AGDA_CMD) Once/Arith/Prim/Proofs.agda'
 
 #-----------------------------------------------------------------------------
 # Full Compiler (frontend + target)
 #-----------------------------------------------------------------------------
 
-.PHONY: compiler-x86v3
-compiler-x86v3: frontend ccc-x86v3 arith-x86v3
-	@echo "X86v3 compiler proofs type-check successfully!"
+.PHONY: compiler-x86-64
+compiler-x86-64: frontend ccc-x86-64 arith-x86-64
+	@echo "X86-64 compiler proofs type-check successfully!"
 
 .PHONY: compiler
-compiler: compiler-x86v3
+compiler: compiler-x86-64
 	@echo "All compiler proofs type-check successfully!"
 
 #-----------------------------------------------------------------------------
@@ -196,10 +196,10 @@ malonzo:
 # Dead Code Analysis (requires patched Agda with --dead-code)
 #-----------------------------------------------------------------------------
 
-.PHONY: dead-code-ccc-x86v3
-dead-code-ccc-x86v3:
-	@echo "Running dead code analysis on X86v3 (Dispatcher + Refinement + CodeGen)..."
-	@./run-dead-code.sh Once.CCC.Target.X86v3.WholeProgram.Correctness.compile-correct Once/CCC/Target/X86v3/WholeProgram.agda
+.PHONY: dead-code-ccc-x86-64
+dead-code-ccc-x86-64:
+	@echo "Running dead code analysis on X86-64 (Dispatcher + Refinement + CodeGen)..."
+	@./run-dead-code.sh Once.CCC.Target.X86-64.WholeProgram.Correctness.compile-correct Once/CCC/Target/X86-64/Correct.agda
 
 #-----------------------------------------------------------------------------
 # Postulate Detection
@@ -207,7 +207,7 @@ dead-code-ccc-x86v3:
 
 # Patched Agda command (for --warn-postulates)
 # Uses local writable stdlib cache for interface files
-PATCHED_AGDA := $(shell ls -t /home/whatever/Repo/OpenSource/agda/dist-newstyle/build/x86_64-linux/ghc-*/Agda-2.8.0/x/agda/build/agda/agda 2>/dev/null | head -1)
+PATCHED_AGDA := $(shell ls -t /home/whatever/Repo/OpenSource/agda/dist-newstyle/build/x86-64-linux/ghc-*/Agda-2.8.0/x/agda/build/agda/agda 2>/dev/null | head -1)
 LOCAL_STD_LIB_DIR := $(HOME)/_stdlib-cache
 
 define PATCHED_AGDA_CMD
@@ -228,22 +228,22 @@ postulates-grep:
 	@grep -rn "^postulate$$\|^postulate $$" --include="*.agda" Once/ || echo "No postulates found."
 	@grep -rn "^ *postulate$$\|^ *postulate " --include="*.agda" Once/ || true
 
-# Precise postulate detection using patched Agda (X86v3 CCC: Dispatcher + Refinement + CodeGen)
-.PHONY: postulates-ccc-x86v3
-postulates-ccc-x86v3:
-	@echo "Checking postulates in X86v3 CCC (Dispatcher + Refinement + CodeGen)..."
-	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/CCC/Target/X86v3/WholeProgram.agda'
+# Precise postulate detection using patched Agda (X86-64 CCC: Dispatcher + Refinement + CodeGen)
+.PHONY: postulates-ccc-x86-64
+postulates-ccc-x86-64:
+	@echo "Checking postulates in X86-64 CCC (Dispatcher + Refinement + CodeGen)..."
+	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/CCC/Target/X86-64/Correct.agda'
 
-# Precise postulate detection using patched Agda (X86v3 Arith)
-.PHONY: postulates-arith-x86v3
-postulates-arith-x86v3:
-	@echo "Checking postulates in X86v3 Arith (precise)..."
+# Precise postulate detection using patched Agda (X86-64 Arith)
+.PHONY: postulates-arith-x86-64
+postulates-arith-x86-64:
+	@echo "Checking postulates in X86-64 Arith (precise)..."
 	@sh -c '$(PATCHED_AGDA_CMD) --warn-postulates Once/Arith/Prim/Proofs.agda'
 
-# Precise postulate detection for full X86v3 compiler
-.PHONY: postulates-x86v3
-postulates-x86v3: postulates-ccc-x86v3 postulates-arith-x86v3
-	@echo "Postulate check complete for X86v3."
+# Precise postulate detection for full X86-64 compiler
+.PHONY: postulates-x86-64
+postulates-x86-64: postulates-ccc-x86-64 postulates-arith-x86-64
+	@echo "Postulate check complete for X86-64."
 
 #-----------------------------------------------------------------------------
 # Utilities
