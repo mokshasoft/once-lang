@@ -465,11 +465,17 @@ data Instr (FS : FrameSemantics) : Set where
 module ExecFinal {FS : FrameSemantics} where
   open MemOps {FS}
 
+  -- Helper: Apply the result of a memory read to produce new state
+  -- This exposes the decision point for external proofs
+  exec-load-with-value : AbstractReg → Maybe (ValueLocation FS) →
+                         LocState FS → LocState FS
+  exec-load-with-value dst (just v) s = record s { regs = writeReg (regs s) dst v }
+  exec-load-with-value dst nothing s = record s { halted = true }
+
   exec : Instr FS → LocState FS → LocState FS
 
-  exec (load dst src) s with readLoc s (resolveSourceExt (regs s) src)
-  ... | just v  = record s { regs = writeReg (regs s) dst v }
-  ... | nothing = record s { halted = true }
+  exec (load dst src) s =
+    exec-load-with-value dst (readLoc s (resolveSourceExt (regs s) src)) s
 
   exec (store dst src) s =
     let dstLoc = resolveSourceExt (regs s) dst
@@ -478,6 +484,15 @@ module ExecFinal {FS : FrameSemantics} where
 
   exec (mov dst src) s =
     record s { regs = writeReg (regs s) dst (readReg (regs s) src) }
+
+  -- Lemmas for exec-load behavior (definitionally equal, but named for clarity)
+  exec-load-just : ∀ dst v s →
+    exec-load-with-value dst (just v) s ≡ record s { regs = writeReg (regs s) dst v }
+  exec-load-just _ _ _ = refl
+
+  exec-load-nothing : ∀ dst s →
+    exec-load-with-value dst nothing s ≡ record s { halted = true }
+  exec-load-nothing _ _ = refl
 
   execList : List (Instr FS) → LocState FS → LocState FS
   execList [] s = s
@@ -642,6 +657,56 @@ module AbstractExec {FS : FrameSemantics} where
   open ExecFinal {FS}
   open ExecLemmas {FS}
 
+  ------------------------------------------------------------------------
+  -- Helper functions for instructions that read from memory
+  --
+  -- These expose the decision point (Maybe result) for external proofs.
+  -- Using these helpers, external code can prove properties by cases on
+  -- the Maybe value rather than needing with-pattern alignment.
+  ------------------------------------------------------------------------
+
+  -- Helper for load-from-slot: applies memory read result
+  exec-load-from-slot-with-value : Maybe (ValueLocation FS) → LocState FS →
+                                   AllocState {FS} → LocState FS × AllocState {FS}
+  exec-load-from-slot-with-value (just v) s alloc =
+    record s { regs = writeReg (regs s) Output v } , alloc
+  exec-load-from-slot-with-value nothing s alloc =
+    record s { halted = true } , alloc
+
+  -- Helper for restore-input: applies memory read result
+  exec-restore-input-with-value : Maybe (ValueLocation FS) → LocState FS →
+                                  AllocState {FS} → LocState FS × AllocState {FS}
+  exec-restore-input-with-value (just v) s alloc =
+    record s { regs = writeReg (regs s) Input v } , alloc
+  exec-restore-input-with-value nothing s alloc =
+    record s { halted = true } , alloc
+
+  -- Lemmas for load-from-slot helper
+  exec-load-from-slot-just : ∀ v s alloc →
+    exec-load-from-slot-with-value (just v) s alloc ≡
+    (record s { regs = writeReg (regs s) Output v } , alloc)
+  exec-load-from-slot-just _ _ _ = refl
+
+  exec-load-from-slot-nothing : ∀ s alloc →
+    exec-load-from-slot-with-value nothing s alloc ≡
+    (record s { halted = true } , alloc)
+  exec-load-from-slot-nothing _ _ = refl
+
+  -- Lemmas for restore-input helper
+  exec-restore-input-just : ∀ v s alloc →
+    exec-restore-input-with-value (just v) s alloc ≡
+    (record s { regs = writeReg (regs s) Input v } , alloc)
+  exec-restore-input-just _ _ _ = refl
+
+  exec-restore-input-nothing : ∀ s alloc →
+    exec-restore-input-with-value nothing s alloc ≡
+    (record s { halted = true } , alloc)
+  exec-restore-input-nothing _ _ = refl
+
+  ------------------------------------------------------------------------
+  -- Main exec-abstract definition
+  ------------------------------------------------------------------------
+
   -- | Execute one abstract instruction
   exec-abstract : AbstractInstr → LocState FS → AllocState {FS} →
                   LocState FS × AllocState {FS}
@@ -655,19 +720,18 @@ module AbstractExec {FS : FrameSemantics} where
     record s { regs = writeReg (regs s) Input (readReg (regs s) Output) } , alloc
 
   -- load-indirect: Output := *Input
-  -- Defined via exec to enable trivial trace-correct proofs
+  -- Uses exec-load-with-value for easier external proofs
   exec-abstract load-indirect s alloc =
-    exec (load Output (IndReg Input)) s , alloc
+    exec-load-with-value Output (readLoc s (readReg (regs s) Input)) s , alloc
 
   -- load-indirect-suc: Output := *(sucLoc Input)
-  -- Defined via exec to enable trivial trace-correct proofs
+  -- Uses exec-load-with-value for easier external proofs
   exec-abstract load-indirect-suc s alloc =
-    exec (load Output (IndRegSuc Input)) s , alloc
+    exec-load-with-value Output (readLoc s (sucLoc (readReg (regs s) Input))) s , alloc
 
   -- load-from-slot: Output := stack[frame, slot]
-  exec-abstract (load-from-slot slot) s alloc with readLoc s (OnStack (current-frame alloc) slot)
-  ... | just v  = record s { regs = writeReg (regs s) Output v } , alloc
-  ... | nothing = record s { halted = true } , alloc
+  exec-abstract (load-from-slot slot) s alloc =
+    exec-load-from-slot-with-value (readLoc s (OnStack (current-frame alloc) slot)) s alloc
 
   -- store-at-slot: stack[frame, slot] := Output
   exec-abstract (store-at-slot slot) s alloc =
@@ -686,9 +750,8 @@ module AbstractExec {FS : FrameSemantics} where
     record s { regs = writeReg (regs s) Output (OnStack (current-frame alloc) slot) } , alloc
 
   -- restore-input: Input := stack[frame, slot]
-  exec-abstract (restore-input slot) s alloc with readLoc s (OnStack (current-frame alloc) slot)
-  ... | just v  = record s { regs = writeReg (regs s) Input v } , alloc
-  ... | nothing = record s { halted = true } , alloc
+  exec-abstract (restore-input slot) s alloc =
+    exec-restore-input-with-value (readLoc s (OnStack (current-frame alloc) slot)) s alloc
 
   -- instr-alloc-stack: advance stackSlot by n
   -- Capacity was verified by Dispatcher when constructing the trace

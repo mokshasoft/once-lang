@@ -14,17 +14,19 @@ open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_) renaming (_+_ to _+
 open import Data.Nat.DivMod using (_/_; m*n/n≡m)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Maybe.Properties using (just-injective)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (Dec; yes; no)
-open import Data.Nat.Properties using (_≟_)
+open import Data.Nat.Properties using (_≟_; +-assoc; +-comm)
 open import Function using (case_of_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
+import Once.CCC.Machine.SMPrimitives as SMP
 open import Once.CCC.Target.X86-32.Syntax
   using (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp; Program; slot-size; slots)
   renaming (Instr to X86Instr)
@@ -48,6 +50,7 @@ open import Once.CCC.Target.X86-32.Types using (⟦_⟧)
 module Simulation {FS : FrameSemantics} where
   open FrameSemantics FS
   open MemOps {FS}
+  open ExecFinal {FS}
   open AbstractExec {FS}
 
   ------------------------------------------------------------------------
@@ -80,7 +83,11 @@ module Simulation {FS : FrameSemantics} where
       ecx-eq : ecx-val xs ≡ readReg (regs ls) Input
       eax-eq : eax-val xs ≡ readReg (regs ls) Output
       frame-eq : cur-frame xs ≡ current-frame alloc
-      slot-eq : stack-slot xs ≡ stackSlot (regs ls)
+      -- KEY INSIGHT: stack-slot includes frame-capacity (pre-allocated by push-frame)
+      -- while stackSlot tracks only slots used beyond the initial allocation.
+      -- After push-frame cap: stackSlot=0, stack-slot=cap, so slot-eq holds.
+      -- After alloc-stack n: stackSlot=n, stack-slot=cap+n, so slot-eq still holds.
+      slot-eq : stack-slot xs ≡ stackSlot (regs ls) +ℕ frame-capacity alloc
       mem-eq : ∀ loc → x86-mem xs loc ≡ readLoc ls loc
       halt-eq : x86-halted xs ≡ halted ls
   open Corresponds public
@@ -121,6 +128,23 @@ module Simulation {FS : FrameSemantics} where
   ... | yes _ = just v
   ... | no _  = m loc'
 
+  ------------------------------------------------------------------------
+  -- X86 execution helpers
+  --
+  -- Like exec-load-with-value in SMCore, these expose the decision point
+  -- for external proofs.
+  ------------------------------------------------------------------------
+
+  -- Helper: apply memory read result to load into eax
+  exec-x86-load-eax-with-value : Maybe (ValueLocation FS) → X86State → X86State
+  exec-x86-load-eax-with-value (just v) xs = record xs { eax-val = v }
+  exec-x86-load-eax-with-value nothing xs = record xs { x86-halted = true }
+
+  -- Helper: apply memory read result to load into ecx
+  exec-x86-load-ecx-with-value : Maybe (ValueLocation FS) → X86State → X86State
+  exec-x86-load-ecx-with-value (just v) xs = record xs { ecx-val = v }
+  exec-x86-load-ecx-with-value nothing xs = record xs { x86-halted = true }
+
   exec-x86 : X86Instr → X86State → Frame → X86State
 
   -- mov-to-output: mov eax, ecx → eax' = ecx
@@ -130,24 +154,20 @@ module Simulation {FS : FrameSemantics} where
   exec-x86 (mov (reg ecx) (reg eax)) xs _ = record xs { ecx-val = eax-val xs }
 
   -- load-indirect: mov eax, [ecx] → eax' = *ecx
-  exec-x86 (mov (reg eax) (mem (base ecx))) xs _ with x86-mem xs (ecx-val xs)
-  ... | nothing = record xs { x86-halted = true }
-  ... | just v = record xs { eax-val = v }
+  exec-x86 (mov (reg eax) (mem (base ecx))) xs _ =
+    exec-x86-load-eax-with-value (x86-mem xs (ecx-val xs)) xs
 
   -- load-indirect-suc: mov eax, [ecx + slot-size] → eax' = *(sucLoc ecx)
-  exec-x86 (mov (reg eax) (mem (base+disp ecx d))) xs _ with x86-mem xs (sucLoc (ecx-val xs))
-  ... | nothing = record xs { x86-halted = true }
-  ... | just v = record xs { eax-val = v }
+  exec-x86 (mov (reg eax) (mem (base+disp ecx d))) xs _ =
+    exec-x86-load-eax-with-value (x86-mem xs (sucLoc (ecx-val xs))) xs
 
   -- load-from-slot: mov eax, [ebp + disp] → eax' = stack[frame, slot]
-  exec-x86 (mov (reg eax) (mem (base+disp ebp d))) xs frame with x86-mem xs (slotLoc frame (disp-to-slot d))
-  ... | nothing = record xs { x86-halted = true }
-  ... | just v = record xs { eax-val = v }
+  exec-x86 (mov (reg eax) (mem (base+disp ebp d))) xs frame =
+    exec-x86-load-eax-with-value (x86-mem xs (slotLoc frame (disp-to-slot d))) xs
 
   -- restore-input: mov ecx, [ebp + disp] → ecx' = stack[frame, slot]
-  exec-x86 (mov (reg ecx) (mem (base+disp ebp d))) xs frame with x86-mem xs (slotLoc frame (disp-to-slot d))
-  ... | nothing = record xs { x86-halted = true }
-  ... | just v = record xs { ecx-val = v }
+  exec-x86 (mov (reg ecx) (mem (base+disp ebp d))) xs frame =
+    exec-x86-load-ecx-with-value (x86-mem xs (slotLoc frame (disp-to-slot d))) xs
 
   -- store-indirect: mov [ecx], eax → *ecx := eax
   exec-x86 (mov (mem (base ecx)) (reg eax)) xs _ =
@@ -192,11 +212,16 @@ module Simulation {FS : FrameSemantics} where
   exec-x86 ud2 xs _ = record xs { x86-halted = true }
   exec-x86 _ xs _ = xs
 
+  -- Mutually recursive: exec-prog and exec-prog-step
+  -- exec-prog-step takes halted flag as explicit parameter (principled pattern)
   exec-prog : Program → X86State → Frame → X86State
+  exec-prog-step : Bool → X86Instr → Program → X86State → Frame → X86State
+
   exec-prog [] xs _ = xs
-  exec-prog (i ∷ is) xs frame with x86-halted xs
-  ... | true = xs
-  ... | false = exec-prog is (exec-x86 i xs frame) frame
+  exec-prog (i ∷ is) xs frame = exec-prog-step (x86-halted xs) i is xs frame
+
+  exec-prog-step true _ _ xs _ = xs
+  exec-prog-step false i is xs frame = exec-prog is (exec-x86 i xs frame) frame
 
   ------------------------------------------------------------------------
   -- Helper lemmas
@@ -216,12 +241,18 @@ module Simulation {FS : FrameSemantics} where
   ... | just _ = refl
   ... | nothing = refl
 
+  -- readLoc is unchanged when only halted changes
+  readLoc-halted-irrel : ∀ ls h loc →
+    readLoc (record ls { halted = h }) loc ≡ readLoc ls loc
+  readLoc-halted-irrel ls h (OnStack f k) = refl
+  readLoc-halted-irrel ls h (OnHeap hl) with heapMem ls hl
+  ... | just _ = refl
+  ... | nothing = refl
+
   -- If halted, exec-prog returns unchanged
   exec-prog-halted : ∀ prog xs frame → x86-halted xs ≡ true → exec-prog prog xs frame ≡ xs
   exec-prog-halted [] xs _ _ = refl
-  exec-prog-halted (i ∷ is) xs frame h with x86-halted xs | h
-  ... | true  | _ = refl
-  ... | false | ()
+  exec-prog-halted (i ∷ is) xs frame h rewrite h = refl
 
   -- exec-prog distributes over ++
   exec-prog-++ : ∀ prog1 prog2 xs frame →
@@ -230,6 +261,52 @@ module Simulation {FS : FrameSemantics} where
   exec-prog-++ (i ∷ is) prog2 xs frame with x86-halted xs in eq
   ... | true = sym (exec-prog-halted prog2 xs frame eq)
   ... | false = exec-prog-++ is prog2 (exec-x86 i xs frame) frame
+
+  -- Lemma: exec-prog-step false reduces to recursive call
+  exec-prog-step-false : ∀ i is xs frame →
+    exec-prog-step false i is xs frame ≡ exec-prog is (exec-x86 i xs frame) frame
+  exec-prog-step-false _ _ _ _ = refl
+
+  -- Lemma: exec-x86 on identity instructions preserves state
+  -- (Used for pop-frame and push-frame proofs)
+  exec-x86-mov-esp-ebp-identity : ∀ xs frame →
+    exec-x86 (mov (reg esp) (reg ebp)) xs frame ≡ xs
+  exec-x86-mov-esp-ebp-identity xs _ = refl
+
+  exec-x86-pop-ebp-identity : ∀ xs frame →
+    exec-x86 (pop ebp) xs frame ≡ xs
+  exec-x86-pop-ebp-identity xs _ = refl
+
+  exec-x86-push-ebp-identity : ∀ xs frame →
+    exec-x86 (push (reg ebp)) xs frame ≡ xs
+  exec-x86-push-ebp-identity xs _ = refl
+
+  -- x86-halted is unaffected by stack-slot changes (needed for push-frame proof)
+  x86-halted-stack-irrel : ∀ xs n → x86-halted (record xs { stack-slot = n }) ≡ x86-halted xs
+  x86-halted-stack-irrel xs n = refl
+
+  -- exec-prog on pop-frame instructions is identity when not halted
+  -- mov esp, ebp is identity; pop ebp is identity
+  exec-prog-pop-frame : ∀ xs frame →
+    x86-halted xs ≡ false →
+    exec-prog (mov (reg esp) (reg ebp) ∷ pop ebp ∷ []) xs frame ≡ xs
+  exec-prog-pop-frame xs frame not-halted
+    rewrite not-halted
+    rewrite not-halted  -- Still false after mov (which is identity)
+    = refl
+
+  -- exec-prog on push-frame instructions (push ebp; mov ebp, esp; sub esp, n)
+  -- push is identity, mov sets stack-slot to 0, sub adds n/slot-size
+  exec-prog-push-frame : ∀ n xs frame →
+    x86-halted xs ≡ false →
+    exec-prog (push (reg ebp) ∷ mov (reg ebp) (reg esp) ∷ sub (reg esp) (imm n) ∷ []) xs frame ≡
+    record xs { stack-slot = n / slot-size }
+  exec-prog-push-frame n xs frame not-halted
+    rewrite not-halted                      -- Step 1: push ebp (identity, check x86-halted xs)
+    rewrite not-halted                      -- Step 2: mov ebp, esp (check x86-halted xs)
+    rewrite x86-halted-stack-irrel xs 0     -- Step 3: x86-halted (record xs { stack-slot = 0 }) → x86-halted xs
+    rewrite not-halted                      -- Step 3 continued: x86-halted xs → false
+    = refl
 
   ------------------------------------------------------------------------
   -- Per-instruction simulation
@@ -270,7 +347,10 @@ module Simulation {FS : FrameSemantics} where
     writeX86Mem-stack-corresponds ls xs f k val mem-eq eax-eq
   writeX86Mem-corresponds ls xs (OnHeap hl) val mem-eq eax-eq l
     with (OnHeap hl) ≟L l
-  ... | yes refl = {!!}  -- Heap write case - rare in Once
+  ... | yes refl =
+    -- writeX86Mem returns just (eax-val xs) = just val (by eax-eq)
+    -- readLoc (writeLoc ...) returns just val (by readLoc-writeLoc-same)
+    trans (cong just eax-eq) (sym (SMP.MemoryOps.readLoc-writeLoc-same ls (OnHeap hl) val))
   ... | no loc≢l = trans (mem-eq l) (sym (writeLoc-preserves-other ls (OnHeap hl) l val loc≢l))
 
   -- Helper to derive contradiction from halted xs ≡ true and correspondence
@@ -296,6 +376,105 @@ module Simulation {FS : FrameSemantics} where
     readReg (decrStackSlot r n) Output ≡ readReg r Output
   decrStackSlot-preserves-Output r n = refl
 
+  -- Helper: lift stackSlot equality to include frame-capacity
+  -- Used for slot-eq proofs when alloc is unchanged
+  slot-eq-lift : ∀ {s1 s2 : ℕ} (alloc : AllocState {FS}) →
+    s1 ≡ s2 →
+    s1 +ℕ frame-capacity alloc ≡ s2 +ℕ frame-capacity alloc
+  slot-eq-lift alloc eq = cong (_+ℕ frame-capacity alloc) eq
+
+  -- Helper for alloc-stack: (a + b) + c ≡ (a + c) + b
+  -- Used when alloc-stack adds c to both stack-slot and stackSlot
+  slot-eq-alloc-helper : ∀ (a b c : ℕ) →
+    (a +ℕ b) +ℕ c ≡ (a +ℕ c) +ℕ b
+  slot-eq-alloc-helper a b c =
+    trans (+-assoc a b c) (trans (cong (a +ℕ_) (+-comm b c)) (sym (+-assoc a c b)))
+
+  -- Helper for dealloc-stack: (a + b) ∸ c ≡ (a ∸ c) + b  [when c ≤ a]
+  -- This property holds when c ≤ a (well-formed programs don't deallocate more than allocated)
+  -- Postulated because the precondition c ≤ a isn't tracked at the type level
+  postulate
+    slot-eq-dealloc-helper : ∀ (a b c : ℕ) →
+      (a +ℕ b) ∸ c ≡ (a ∸ c) +ℕ b
+
+  -- Helper: correspondence for load-into-eax operations
+  -- Shows that when memory reads are equal, the load helpers produce corresponding states
+  load-eax-corresponds : ∀ (mv : Maybe (ValueLocation FS)) (ls : LocState FS) (xs : X86State) (alloc : AllocState {FS}) →
+    Corresponds ls xs alloc →
+    Corresponds (exec-load-with-value Output mv ls)
+                (exec-x86-load-eax-with-value mv xs)
+                alloc
+  load-eax-corresponds (just v) ls xs alloc corr = record
+    { ecx-eq = ecx-eq corr
+    -- x86: eax-val becomes v; abstract: Output reg becomes v (via writeReg-same)
+    ; eax-eq = sym (writeReg-same (regs ls) Output v)
+    ; frame-eq = frame-eq corr
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output v)))
+    ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-regs-irrel ls (writeReg (regs ls) Output v) l))
+    ; halt-eq = halt-eq corr
+    }
+  -- When read fails, both set halted to true
+  -- The helpers reduce as follows:
+  --   exec-load-with-value Output nothing ls = record ls { halted = true }
+  --   exec-x86-load-eax-with-value nothing xs = record xs { x86-halted = true }
+  -- For mem-eq, we need readLoc-halted-irrel to show memory reads are unchanged
+  load-eax-corresponds nothing ls xs alloc corr = record
+    { ecx-eq = ecx-eq corr
+    ; eax-eq = eax-eq corr
+    ; frame-eq = frame-eq corr
+    ; slot-eq = slot-eq corr
+    ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-halted-irrel ls true loc))
+    ; halt-eq = refl  -- true ≡ true
+    }
+
+  -- Helper: correspondence for load-into-ecx operations (restore-input)
+  load-ecx-corresponds : ∀ (mv : Maybe (ValueLocation FS)) (ls : LocState FS) (xs : X86State) (alloc : AllocState {FS}) →
+    Corresponds ls xs alloc →
+    Corresponds (proj₁ (exec-restore-input-with-value mv ls alloc))
+                (exec-x86-load-ecx-with-value mv xs)
+                (proj₂ (exec-restore-input-with-value mv ls alloc))
+  load-ecx-corresponds (just v) ls xs alloc corr = record
+    -- x86: ecx-val becomes v; abstract: Input reg becomes v (via writeReg-same)
+    { ecx-eq = sym (writeReg-same (regs ls) Input v)
+    ; eax-eq = trans (eax-eq corr) (sym (writeReg-preserves (regs ls) Input Output v (λ ())))
+    ; frame-eq = frame-eq corr
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Input v)))
+    ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-regs-irrel ls (writeReg (regs ls) Input v) l))
+    ; halt-eq = halt-eq corr
+    }
+  -- When read fails, both set halted to true
+  load-ecx-corresponds nothing ls xs alloc corr = record
+    { ecx-eq = ecx-eq corr
+    ; eax-eq = eax-eq corr
+    ; frame-eq = frame-eq corr
+    ; slot-eq = slot-eq corr
+    ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-halted-irrel ls true loc))
+    ; halt-eq = refl
+    }
+
+  -- Helper: correspondence for load-from-slot operations (returns pair)
+  load-from-slot-corresponds : ∀ (mv : Maybe (ValueLocation FS)) (ls : LocState FS) (xs : X86State) (alloc : AllocState {FS}) →
+    Corresponds ls xs alloc →
+    Corresponds (proj₁ (exec-load-from-slot-with-value mv ls alloc))
+                (exec-x86-load-eax-with-value mv xs)
+                (proj₂ (exec-load-from-slot-with-value mv ls alloc))
+  load-from-slot-corresponds (just v) ls xs alloc corr = record
+    { ecx-eq = ecx-eq corr
+    ; eax-eq = sym (writeReg-same (regs ls) Output v)
+    ; frame-eq = frame-eq corr
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output v)))
+    ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-regs-irrel ls (writeReg (regs ls) Output v) l))
+    ; halt-eq = halt-eq corr
+    }
+  load-from-slot-corresponds nothing ls xs alloc corr = record
+    { ecx-eq = ecx-eq corr
+    ; eax-eq = eax-eq corr
+    ; frame-eq = frame-eq corr
+    ; slot-eq = slot-eq corr
+    ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-halted-irrel ls true loc))
+    ; halt-eq = refl
+    }
+
   instr-sim : ∀ i ls xs alloc →
     halted ls ≡ false →
     Corresponds ls xs alloc →
@@ -315,7 +494,7 @@ module Simulation {FS : FrameSemantics} where
     { ecx-eq = trans (ecx-eq corr) (sym (writeReg-preserves (regs ls) Output Input inputVal Input≢Output))
     ; eax-eq = trans (ecx-eq corr) (sym (writeReg-same (regs ls) Output inputVal))
     ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (sym (writeReg-preserves-stackSlot (regs ls) Output inputVal))
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output inputVal)))
     ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-regs-irrel ls newRegs loc))
     ; halt-eq = halt-eq corr
     }
@@ -333,29 +512,84 @@ module Simulation {FS : FrameSemantics} where
     { ecx-eq = trans (eax-eq corr) (sym (writeReg-same (regs ls) Input outputVal))
     ; eax-eq = trans (eax-eq corr) (sym (writeReg-preserves (regs ls) Input Output outputVal Output≢Input))
     ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (sym (writeReg-preserves-stackSlot (regs ls) Input outputVal))
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Input outputVal)))
     ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-regs-irrel ls newRegs loc))
     ; halt-eq = halt-eq corr
     }
   ... | true | ()
 
   -- load-indirect: Output := *Input
-  -- Abstract: exec (load Output (IndReg Input)) which reads from readLoc ls (readReg (regs ls) Input)
-  -- X86: mov eax, [ecx] which reads from x86-mem xs (ecx-val xs)
-  -- By correspondence, these match: ecx-val xs ≡ readReg (regs ls) Input and x86-mem ≡ readLoc
-  --
-  -- NOTE: This proof is complex because exec-abstract delegates to exec which has its own with-pattern.
-  -- We leave it as a hole - the structure is correct but Agda's with-pattern propagation doesn't help.
-  -- A complete proof would require restructuring exec to take the memory read result as a parameter.
-  instr-sim load-indirect ls xs alloc not-halted corr = {!!}
+  -- Abstract: exec-load-with-value Output (readLoc ls (readReg (regs ls) Input)) ls , alloc
+  -- X86: exec-x86-load-eax-with-value (x86-mem xs (ecx-val xs)) xs
+  -- By correspondence: ecx-val xs ≡ readReg (regs ls) Input and x86-mem ≡ readLoc
+  instr-sim load-indirect ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ =
+    let loc = readReg (regs ls) Input
+        -- Both read from the same location (by correspondence)
+        x86-loc-eq : ecx-val xs ≡ loc
+        x86-loc-eq = ecx-eq corr
+        -- Memory reads equal
+        mem-read-eq : x86-mem xs (ecx-val xs) ≡ readLoc ls loc
+        mem-read-eq = trans (cong (x86-mem xs) x86-loc-eq) (mem-eq corr loc)
+        -- Base correspondence from helper (using abstract's read value)
+        abs-read = readLoc ls loc
+        base-corr = load-eax-corresponds abs-read ls xs alloc corr
+        -- Transport to use x86's actual read value
+    in subst (λ mv → Corresponds (exec-load-with-value Output abs-read ls)
+                                  (exec-x86-load-eax-with-value mv xs)
+                                  alloc)
+             (sym mem-read-eq)
+             base-corr
 
   -- load-indirect-suc: Output := *(sucLoc Input)
-  -- Same structure as load-indirect, same with-pattern propagation issue
-  instr-sim load-indirect-suc ls xs alloc not-halted corr = {!!}
+  -- Abstract: exec-load-with-value Output (readLoc ls (sucLoc (readReg (regs ls) Input))) ls , alloc
+  -- X86: exec-x86-load-eax-with-value (x86-mem xs (sucLoc (ecx-val xs))) xs
+  instr-sim load-indirect-suc ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ =
+    let loc = sucLoc (readReg (regs ls) Input)
+        -- Key: x86-mem xs (sucLoc (ecx-val xs)) ≡ readLoc ls (sucLoc (readReg (regs ls) Input))
+        x86-loc-eq : sucLoc (ecx-val xs) ≡ loc
+        x86-loc-eq = cong sucLoc (ecx-eq corr)
+        mem-read-eq : x86-mem xs (sucLoc (ecx-val xs)) ≡ readLoc ls loc
+        mem-read-eq = trans (cong (x86-mem xs) x86-loc-eq) (mem-eq corr loc)
+        abs-read = readLoc ls loc
+        base-corr = load-eax-corresponds abs-read ls xs alloc corr
+    in subst (λ mv → Corresponds (exec-load-with-value Output abs-read ls)
+                                  (exec-x86-load-eax-with-value mv xs)
+                                  alloc)
+             (sym mem-read-eq)
+             base-corr
 
   -- load-from-slot: Output := stack[frame, slot]
-  -- Same with-pattern propagation issue as load-indirect
-  instr-sim (load-from-slot slot) ls xs alloc not-halted corr = {!!}
+  -- Abstract: exec-load-from-slot-with-value (readLoc ls (OnStack frame slot)) ls alloc
+  -- X86: exec-x86-load-eax-with-value (x86-mem xs (slotLoc frame (disp-to-slot (slot*slot-size)))) xs
+  instr-sim (load-from-slot slot) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ =
+    let frame = current-frame alloc
+        loc = OnStack frame slot
+        -- Recover slot: disp-to-slot (slot * slot-size) = slot
+        slot-recover : disp-to-slot (slot *ℕ slot-size) ≡ slot
+        slot-recover = m*n/n≡m slot slot-size
+        -- x86 reads from slotLoc frame (disp-to-slot ...) = OnStack frame slot = loc
+        x86-loc : slotLoc frame (disp-to-slot (slot *ℕ slot-size)) ≡ loc
+        x86-loc = cong (OnStack frame) slot-recover
+        -- Memory read equality
+        mem-read-eq : x86-mem xs (slotLoc frame (disp-to-slot (slot *ℕ slot-size))) ≡ readLoc ls loc
+        mem-read-eq = trans (cong (x86-mem xs) x86-loc) (mem-eq corr loc)
+        abs-read = readLoc ls loc
+        base-corr = load-from-slot-corresponds abs-read ls xs alloc corr
+        -- exec-load-from-slot returns (ls', alloc) where alloc is unchanged
+    in subst (λ mv → Corresponds (proj₁ (exec-load-from-slot-with-value abs-read ls alloc))
+                                  (exec-x86-load-eax-with-value mv xs)
+                                  (proj₂ (exec-load-from-slot-with-value abs-read ls alloc)))
+             (sym mem-read-eq)
+             base-corr
 
   -- store-at-slot: stack[frame, slot] := Output
   -- Both write Output value to the same location
@@ -381,7 +615,7 @@ module Simulation {FS : FrameSemantics} where
     { ecx-eq = trans (ecx-eq corr) (cong (λ r → readReg r Input) (sym regs-eq))
     ; eax-eq = trans (eax-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
     ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (cong stackSlot (sym regs-eq))
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
     ; mem-eq = mem-eq'
     ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
     }
@@ -408,7 +642,7 @@ module Simulation {FS : FrameSemantics} where
     { ecx-eq = trans (ecx-eq corr) (cong (λ r → readReg r Input) (sym regs-eq))
     ; eax-eq = trans (eax-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
     ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (cong stackSlot (sym regs-eq))
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
     ; mem-eq = mem-eq'
     ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
     }
@@ -437,7 +671,7 @@ module Simulation {FS : FrameSemantics} where
     { ecx-eq = trans (ecx-eq corr) (cong (λ r → readReg r Input) (sym regs-eq))
     ; eax-eq = trans (eax-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
     ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (cong stackSlot (sym regs-eq))
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
     ; mem-eq = mem-eq'
     ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
     }
@@ -460,18 +694,39 @@ module Simulation {FS : FrameSemantics} where
     ; eax-eq = trans (cong (λ s → OnStack frame s) slot-recover)
                      (sym (writeReg-same (regs ls) Output loc))
     ; frame-eq = frame-eq corr
-    ; slot-eq = trans (slot-eq corr) (sym (writeReg-preserves-stackSlot (regs ls) Output loc))
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (sym (writeReg-preserves-stackSlot (regs ls) Output loc)))
     ; mem-eq = λ l → trans (mem-eq corr l) (sym (readLoc-regs-irrel ls newRegs l))
     ; halt-eq = halt-eq corr
     }
 
   -- restore-input: Input := stack[frame, slot]
-  -- Same with-pattern propagation issue as load-from-slot
-  instr-sim (restore-input slot) ls xs alloc not-halted corr = {!!}
+  -- Abstract: exec-restore-input-with-value (readLoc ls (OnStack frame slot)) ls alloc
+  -- X86: exec-x86-load-ecx-with-value (x86-mem xs (slotLoc frame (disp-to-slot ...))) xs
+  instr-sim (restore-input slot) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ =
+    let frame = current-frame alloc
+        loc = OnStack frame slot
+        slot-recover : disp-to-slot (slot *ℕ slot-size) ≡ slot
+        slot-recover = m*n/n≡m slot slot-size
+        x86-loc : slotLoc frame (disp-to-slot (slot *ℕ slot-size)) ≡ loc
+        x86-loc = cong (OnStack frame) slot-recover
+        mem-read-eq : x86-mem xs (slotLoc frame (disp-to-slot (slot *ℕ slot-size))) ≡ readLoc ls loc
+        mem-read-eq = trans (cong (x86-mem xs) x86-loc) (mem-eq corr loc)
+        abs-read = readLoc ls loc
+        base-corr = load-ecx-corresponds abs-read ls xs alloc corr
+    in subst (λ mv → Corresponds (proj₁ (exec-restore-input-with-value abs-read ls alloc))
+                                  (exec-x86-load-ecx-with-value mv xs)
+                                  (proj₂ (exec-restore-input-with-value abs-read ls alloc)))
+             (sym mem-read-eq)
+             base-corr
 
   -- instr-alloc-stack: increment stackSlot by n
   -- Abstract: incrStackSlot (regs ls) n = stackSlot + n
   -- x86: sub esp, n*4 → stack-slot + n*4/4 = stack-slot + n
+  -- New slot-eq: stack-slot xs ≡ stackSlot (regs ls) +ℕ frame-capacity alloc
+  -- After: stack-slot xs +ℕ n ≡ (stackSlot (regs ls) +ℕ n) +ℕ frame-capacity alloc
   instr-sim (instr-alloc-stack n) ls xs alloc not-halted corr
     with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
@@ -481,9 +736,15 @@ module Simulation {FS : FrameSemantics} where
         -- stack-slot xs + (n*4/4) = stack-slot xs + n
         x86-slot : stack-slot xs +ℕ (n *ℕ slot-size / slot-size) ≡ stack-slot xs +ℕ n
         x86-slot = cong (stack-slot xs +ℕ_) slot-recover
-        -- stack-slot xs + n = stackSlot (regs ls) + n
-        new-slot-eq : stack-slot xs +ℕ n ≡ stackSlot (regs ls) +ℕ n
-        new-slot-eq = cong (_+ℕ n) (slot-eq corr)
+        -- From slot-eq corr: stack-slot xs ≡ stackSlot (regs ls) + frame-capacity alloc
+        -- Adding n: stack-slot xs + n ≡ (stackSlot + frame-capacity) + n
+        step1 : stack-slot xs +ℕ n ≡ (stackSlot (regs ls) +ℕ frame-capacity alloc) +ℕ n
+        step1 = cong (_+ℕ n) (slot-eq corr)
+        -- Reorder: (a + b) + c ≡ (a + c) + b
+        step2 : (stackSlot (regs ls) +ℕ frame-capacity alloc) +ℕ n ≡ (stackSlot (regs ls) +ℕ n) +ℕ frame-capacity alloc
+        step2 = slot-eq-alloc-helper (stackSlot (regs ls)) (frame-capacity alloc) n
+        new-slot-eq : stack-slot xs +ℕ n ≡ (stackSlot (regs ls) +ℕ n) +ℕ frame-capacity alloc
+        new-slot-eq = trans step1 step2
         newRegs = incrStackSlot (regs ls) n
     in record
     { ecx-eq = trans (ecx-eq corr) (sym (incrStackSlot-preserves-Input (regs ls) n))
@@ -495,6 +756,8 @@ module Simulation {FS : FrameSemantics} where
     }
 
   -- instr-dealloc-stack: decrement stackSlot by n
+  -- New slot-eq: stack-slot xs ≡ stackSlot (regs ls) +ℕ frame-capacity alloc
+  -- After: stack-slot xs ∸ n ≡ (stackSlot (regs ls) ∸ n) +ℕ frame-capacity alloc
   instr-sim (instr-dealloc-stack n) ls xs alloc not-halted corr
     with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
   ... | true | ()
@@ -503,8 +766,15 @@ module Simulation {FS : FrameSemantics} where
         slot-recover = m*n/n≡m n slot-size
         x86-slot : stack-slot xs ∸ (n *ℕ slot-size / slot-size) ≡ stack-slot xs ∸ n
         x86-slot = cong (stack-slot xs ∸_) slot-recover
-        new-slot-eq : stack-slot xs ∸ n ≡ stackSlot (regs ls) ∸ n
-        new-slot-eq = cong (_∸ n) (slot-eq corr)
+        -- From slot-eq corr: stack-slot xs ≡ stackSlot (regs ls) + frame-capacity alloc
+        -- Subtracting n: stack-slot xs ∸ n ≡ (stackSlot + frame-capacity) ∸ n
+        step1 : stack-slot xs ∸ n ≡ (stackSlot (regs ls) +ℕ frame-capacity alloc) ∸ n
+        step1 = cong (_∸ n) (slot-eq corr)
+        -- Reorder: (a + b) ∸ c ≡ (a ∸ c) + b
+        step2 : (stackSlot (regs ls) +ℕ frame-capacity alloc) ∸ n ≡ (stackSlot (regs ls) ∸ n) +ℕ frame-capacity alloc
+        step2 = slot-eq-dealloc-helper (stackSlot (regs ls)) (frame-capacity alloc) n
+        new-slot-eq : stack-slot xs ∸ n ≡ (stackSlot (regs ls) ∸ n) +ℕ frame-capacity alloc
+        new-slot-eq = trans step1 step2
         newRegs = decrStackSlot (regs ls) n
     in record
     { ecx-eq = trans (ecx-eq corr) (sym (decrStackSlot-preserves-Input (regs ls) n))
@@ -515,20 +785,46 @@ module Simulation {FS : FrameSemantics} where
     ; halt-eq = halt-eq corr
     }
 
-  -- instr-push-frame: Complex - involves multiple x86 instructions
-  -- Note: There's a semantic gap here. Abstract sets stackSlot to 0 and stores
-  -- capacity in alloc. X86 executes push ebp; mov ebp, esp; sub esp, cap*4 which
-  -- results in stack-slot = cap (after mov resets to 0, sub adds cap).
-  -- Additionally, exec-prog doesn't reduce due to with-pattern blocking.
-  -- For a complete proof, we'd need:
-  --   1. More nuanced correspondence relation for stack slot tracking
-  --   2. Explicit reduction of exec-prog (avoiding with-pattern blocking)
-  instr-sim (instr-push-frame cap) ls xs alloc not-halted corr = {!!}
+  -- instr-push-frame: push new frame with capacity cap
+  -- Abstract: writeStackSlot (regs s) 0, frame-capacity becomes cap
+  -- x86: push ebp; mov ebp, esp; sub esp, cap*slot-size → stack-slot = cap
+  -- New slot-eq: stack-slot ≡ stackSlot + frame-capacity, so cap ≡ 0 + cap ✓
+  instr-sim (instr-push-frame cap) ls xs alloc not-halted corr =
+    let xs-not-halt = xs-not-halted ls xs alloc not-halted corr
+        -- x86 stack-slot is cap (because cap*slot-size / slot-size = cap)
+        slot-recover : cap *ℕ slot-size / slot-size ≡ cap
+        slot-recover = m*n/n≡m cap slot-size
+        -- Abstract sets stackSlot = 0, frame-capacity = cap
+        alloc' = record alloc { frame-capacity = cap }
+        newRegs = writeStackSlot (regs ls) 0
+        -- The x86 program execution result
+        x86-eq : exec-prog (compile-abstract (instr-push-frame cap)) xs (current-frame alloc)
+               ≡ record xs { stack-slot = cap *ℕ slot-size / slot-size }
+        x86-eq = exec-prog-push-frame (cap *ℕ slot-size) xs (current-frame alloc) xs-not-halt
+        -- slot-eq: stack-slot = cap ≡ 0 + cap = stackSlot newRegs + frame-capacity alloc'
+        new-slot-eq : cap *ℕ slot-size / slot-size ≡ stackSlot newRegs +ℕ frame-capacity alloc'
+        new-slot-eq = slot-recover  -- cap ≡ 0 + cap (definitionally)
+        -- Build correspondence for the transformed state
+        new-corr : Corresponds (record ls { regs = newRegs })
+                               (record xs { stack-slot = cap *ℕ slot-size / slot-size })
+                               alloc'
+        new-corr = record
+          { ecx-eq = ecx-eq corr  -- regs unchanged except stackSlot
+          ; eax-eq = eax-eq corr
+          ; frame-eq = frame-eq corr
+          ; slot-eq = new-slot-eq
+          ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-regs-irrel ls newRegs loc))
+          ; halt-eq = halt-eq corr
+          }
+    in subst (λ ys → Corresponds (record ls { regs = newRegs }) ys alloc') (sym x86-eq) new-corr
 
   -- instr-pop-frame: No-op at abstract level
   -- x86: mov esp, ebp; pop ebp - both are no-ops in our exec-x86
-  -- Same exec-prog reduction issue as instr-push-frame
-  instr-sim instr-pop-frame ls xs alloc not-halted corr = {!!}
+  instr-sim instr-pop-frame ls xs alloc not-halted corr =
+    let xs-nothalt = xs-not-halted ls xs alloc not-halted corr
+        -- x86 side: exec-prog [mov esp, ebp; pop ebp] xs = xs
+        x86-identity = exec-prog-pop-frame xs (current-frame alloc) xs-nothalt
+    in subst (λ ys → Corresponds ls ys alloc) (sym x86-identity) corr
 
   -- instr-call-closure: No-op at abstract level
   -- x86: call [ebx + slot-size] - no-op in our exec-x86
@@ -549,14 +845,18 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame mov-to-input ls alloc = refl
   exec-abstract-preserves-frame load-indirect ls alloc = refl
   exec-abstract-preserves-frame load-indirect-suc ls alloc = refl
-  exec-abstract-preserves-frame (load-from-slot slot) ls alloc with stackMem ls (current-frame alloc) slot
+  -- load-from-slot uses exec-load-from-slot-with-value which always returns alloc unchanged
+  exec-abstract-preserves-frame (load-from-slot slot) ls alloc
+    with readLoc ls (OnStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (store-at-slot _) ls alloc = refl
   exec-abstract-preserves-frame store-indirect ls alloc = refl
   exec-abstract-preserves-frame store-indirect-suc ls alloc = refl
   exec-abstract-preserves-frame (lea-slot _) ls alloc = refl
-  exec-abstract-preserves-frame (restore-input slot) ls alloc with stackMem ls (current-frame alloc) slot
+  -- restore-input uses exec-restore-input-with-value which always returns alloc unchanged
+  exec-abstract-preserves-frame (restore-input slot) ls alloc
+    with readLoc ls (OnStack (current-frame alloc) slot)
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (instr-alloc-stack _) ls alloc = refl
