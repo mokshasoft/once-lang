@@ -1,13 +1,14 @@
 ------------------------------------------------------------------------
--- Once.Arith.Prim.X86v3
+-- Once.Arith.Prim.Proofs
 --
--- Arithmetic primitive proofs for X86v3 target.
+-- Arithmetic primitive proofs (arch-portable).
 --
+-- Parameterized by FrameSemantics, not tied to any specific target.
 -- Uses the simplified Once.CCC.Prim.Helper interface.
 -- NO POSTULATES - fully proven from first principles.
 ------------------------------------------------------------------------
 
-module Once.Arith.Prim.X86v3 where
+module Once.Arith.Prim.Proofs where
 
 open import Data.Nat using (ℕ; _≤_; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl)
