@@ -98,6 +98,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open FrameSemantics FS
   open SMP.TracePrimitives {FS}
   open SMP.InstrPrimitives {FS}
+  open SMP.TraceComposition {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -285,12 +286,294 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       s-after-setup-def : s-after-setup ≡ proj₁ (exec-trace (apply-setup-trace pair-slot) s alloc)
       s-after-setup-def = refl
 
-      -- Pair is properly constructed after setup
-      pair-env-ptr : readLoc s-after-setup pair-input-loc ≡ just env-loc
-      pair-env-ptr = SMP.!!
+      -- Memory facts from validity witnesses
+      closure-ptr : readLoc s input-loc ≡ just closure-loc
+      closure-ptr = PairValidWF.fst-ptr pair-decomp
 
+      arg-ptr : readLoc s (sucLoc input-loc) ≡ just arg-loc
+      arg-ptr = PairValidWF.snd-ptr pair-decomp
+
+      env-ptr : readLoc s closure-loc ≡ just env-loc
+      env-ptr = ClosureValidWF.env-ptr closure-decomp
+
+      ------------------------------------------------------------------------
+      -- Step-by-step execution of setup trace
+      --
+      -- Setup trace structure:
+      --   1. load-indirect-suc    -- Output := *(sucLoc Input) = arg-loc
+      --   2. store-at-slot (suc pair-slot)  -- slot (suc pair-slot) := arg-loc
+      --   3. load-indirect        -- Output := *Input = closure-loc
+      --   4. mov-to-input         -- Input := closure-loc
+      --   5. load-indirect        -- Output := *closure-loc = env-loc
+      --   6. store-at-slot pair-slot  -- slot pair-slot := env-loc
+      --   7. lea-slot pair-slot   -- Output := &pair
+      --   8. mov-to-input         -- Input := &pair
+      ------------------------------------------------------------------------
+
+      -- Frame shorthand
+      frame = current-frame alloc
+
+      -- Step 1: load-indirect-suc
+      -- Before: Input = input-loc
+      -- After: Output = arg-loc (from *(sucLoc input-loc))
+      step1-trace : AbstractTrace
+      step1-trace = load-indirect-suc ∷ []
+
+      s1 : LocState FS
+      s1 = proj₁ (exec-trace step1-trace s alloc)
+
+      -- load-indirect-suc reads from sucLoc Input = sucLoc input-loc
+      step1-mem-read : readLoc s (sucLoc (readReg (regs s) Input)) ≡ just arg-loc
+      step1-mem-read = subst (λ loc → readLoc s (sucLoc loc) ≡ just arg-loc) (sym rdi-eq) arg-ptr
+
+      -- After load-indirect-suc, Output = arg-loc
+      step1-output : readReg (regs s1) Output ≡ arg-loc
+      step1-output =
+        let s1-as-abstract : s1 ≡ proj₁ (exec-abstract load-indirect-suc s alloc)
+            s1-as-abstract = cong proj₁ (exec-trace-single load-indirect-suc s alloc not-halted)
+            -- exec-abstract load-indirect-suc = exec-load-with-value Output (readLoc s (sucLoc (input (regs s)))) s
+            -- When readLoc returns just v, this becomes record s { regs = writeReg (regs s) Output v }
+            -- Need to pattern match on the readLoc result
+        in step1-output-helper s alloc s1-as-abstract step1-mem-read
+        where
+          step1-output-helper : (s₀ : LocState FS) (a₀ : AllocState {FS}) →
+            s1 ≡ proj₁ (exec-abstract load-indirect-suc s₀ a₀) →
+            readLoc s₀ (sucLoc (readReg (regs s₀) Input)) ≡ just arg-loc →
+            readReg (regs s1) Output ≡ arg-loc
+          step1-output-helper s₀ a₀ s1-eq mem-eq with readLoc s₀ (sucLoc (readReg (regs s₀) Input)) | mem-eq
+          ... | just v | refl = trans (cong (λ s' → readReg (regs s') Output) s1-eq)
+                                      (writeReg-same (regs s₀) Output v)
+
+      -- Step 2: store-at-slot (suc pair-slot)
+      -- Writes Output (= arg-loc) to slot (suc pair-slot)
+      step2-trace : AbstractTrace
+      step2-trace = store-at-slot (suc pair-slot) ∷ []
+
+      -- State after steps 1-2
+      s2 : LocState FS
+      s2 = proj₁ (exec-trace (step1-trace ++ step2-trace) s alloc)
+
+      -- Not halted after step 1
+      not-halted-s1 : halted s1 ≡ false
+      not-halted-s1 = exec-trace-preserves-halted step1-trace s alloc not-halted
+                        (tph-∷ iph-load-indirect-suc tph-[])
+
+      -- Step 2 writes arg-loc to slot (suc pair-slot)
+      step2-written : readLoc s2 (OnStack frame (suc pair-slot)) ≡ just arg-loc
+      step2-written =
+        let alloc1 = proj₂ (exec-trace step1-trace s alloc)
+            frame-eq : current-frame alloc1 ≡ frame
+            frame-eq = exec-trace-preserves-frame step1-trace s alloc
+            s2-decomp : s2 ≡ proj₁ (exec-trace step2-trace s1 alloc1)
+            s2-decomp = cong proj₁ (exec-trace-append step1-trace step2-trace s alloc)
+            s2-as-abstract : proj₁ (exec-trace step2-trace s1 alloc1) ≡
+                             proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s1 alloc1)
+            s2-as-abstract = cong proj₁ (exec-trace-single (store-at-slot (suc pair-slot)) s1 alloc1 not-halted-s1)
+            store-result : readLoc (proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s1 alloc1))
+                                   (OnStack (current-frame alloc1) (suc pair-slot)) ≡
+                           just (readReg (regs s1) Output)
+            store-result = store-at-slot-result (suc pair-slot) s1 alloc1
+        in subst (λ s' → readLoc s' (OnStack frame (suc pair-slot)) ≡ just arg-loc)
+                 (sym (trans s2-decomp s2-as-abstract))
+                 (subst (λ f → readLoc (proj₁ (exec-abstract (store-at-slot (suc pair-slot)) s1 alloc1))
+                                       (OnStack f (suc pair-slot)) ≡ just arg-loc)
+                        frame-eq
+                        (trans store-result (cong just step1-output)))
+
+      -- Remaining setup preserves slot (suc pair-slot)
+      -- Steps 3-8 don't write to slot (suc pair-slot):
+      --   3. load-indirect (no mem write)
+      --   4. mov-to-input (no mem write)
+      --   5. load-indirect (no mem write)
+      --   6. store-at-slot pair-slot (writes to pair-slot ≠ suc pair-slot)
+      --   7. lea-slot pair-slot (no mem write)
+      --   8. mov-to-input (no mem write)
+      rest-after-step2 : AbstractTrace
+      rest-after-step2 = load-indirect ∷ mov-to-input ∷
+                         load-indirect ∷ store-at-slot pair-slot ∷
+                         lea-slot pair-slot ∷ mov-to-input ∷ []
+
+      -- setup-trace = step1-trace ++ step2-trace ++ rest-after-step2
+      setup-trace-decomp2 : apply-setup-trace pair-slot ≡
+                            step1-trace ++ step2-trace ++ rest-after-step2
+      setup-trace-decomp2 = refl
+
+      -- rest-after-step2 writes only at pair-slot, which is < suc pair-slot
+      rest-writes-below-suc : SMP.TraceWritesBelow (suc pair-slot) rest-after-step2
+      rest-writes-below-suc = ≤-refl , tt  -- store-at-slot pair-slot has pair-slot < suc pair-slot, rest are nothing
+
+      rest-no-heap-writes : SMP.TraceNoHeapWrites rest-after-step2
+      rest-no-heap-writes = tt
+
+      -- Pair is properly constructed after setup
       pair-arg-ptr : readLoc s-after-setup (sucLoc pair-input-loc) ≡ just arg-loc
-      pair-arg-ptr = SMP.!!
+      pair-arg-ptr =
+        let alloc2 = proj₂ (exec-trace (step1-trace ++ step2-trace) s alloc)
+            s-after-setup-decomp : s-after-setup ≡ proj₁ (exec-trace rest-after-step2 s2 alloc2)
+            s-after-setup-decomp = cong proj₁ (exec-trace-append (step1-trace ++ step2-trace) rest-after-step2 s alloc)
+            frame-eq2 : current-frame alloc2 ≡ frame
+            frame-eq2 = exec-trace-preserves-frame (step1-trace ++ step2-trace) s alloc
+            -- Use exec-trace-slot-value-below to show slot (suc pair-slot) is preserved
+            -- rest writes below suc pair-slot, so slot suc pair-slot is preserved
+            preserved : readLoc (proj₁ (exec-trace rest-after-step2 s2 alloc2))
+                               (OnStack (current-frame alloc2) (suc pair-slot)) ≡ just arg-loc
+            preserved = exec-trace-slot-value-below rest-after-step2 s2 alloc2 (suc pair-slot) arg-loc
+                          (subst (λ f → readLoc s2 (OnStack f (suc pair-slot)) ≡ just arg-loc)
+                                 (sym frame-eq2) step2-written)
+                          rest-writes-below-suc rest-no-heap-writes
+        in subst (λ s' → readLoc s' (OnStack frame (suc pair-slot)) ≡ just arg-loc)
+                 (sym s-after-setup-decomp)
+                 (subst (λ f → readLoc (proj₁ (exec-trace rest-after-step2 s2 alloc2))
+                                       (OnStack f (suc pair-slot)) ≡ just arg-loc)
+                        frame-eq2 preserved)
+
+      -- For pair-env-ptr, we need to trace through to step 6
+      -- Steps 1-5 are prefix, step 6 stores env-loc, steps 7-8 preserve
+
+      -- State after steps 1-5 (before store-at-slot pair-slot)
+      prefix-for-env : AbstractTrace
+      prefix-for-env = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷
+                       load-indirect ∷ mov-to-input ∷ load-indirect ∷ []
+
+      suffix-after-env-store : AbstractTrace
+      suffix-after-env-store = lea-slot pair-slot ∷ mov-to-input ∷ []
+
+      setup-decomp-for-env : apply-setup-trace pair-slot ≡
+                             prefix-for-env ++ store-at-slot pair-slot ∷ suffix-after-env-store
+      setup-decomp-for-env = refl
+
+      -- TracePreservesHalted for prefix-for-env
+      prefix-for-env-tph : TracePreservesHaltedP prefix-for-env
+      prefix-for-env-tph =
+        tph-∷ iph-load-indirect-suc
+        (tph-∷ iph-store-at-slot
+        (tph-∷ iph-load-indirect
+        (tph-∷ iph-mov-to-input
+        (tph-∷ iph-load-indirect tph-[]))))
+
+      not-halted-after-prefix-for-env : halted (proj₁ (exec-trace prefix-for-env s alloc)) ≡ false
+      not-halted-after-prefix-for-env = exec-trace-preserves-halted prefix-for-env s alloc not-halted prefix-for-env-tph
+
+      -- suffix writes above suc pair-slot (lea-slot and mov-to-input don't write to slots)
+      suffix-writes-above : SMP.TraceWritesAbove (suc pair-slot) suffix-after-env-store
+      suffix-writes-above = tt  -- both instructions have instr-writes-slot = nothing
+
+      suffix-no-heap-writes : SMP.TraceNoHeapWrites suffix-after-env-store
+      suffix-no-heap-writes = tt
+
+      ------------------------------------------------------------------------
+      -- Prove output-after-prefix: Output = env-loc after steps 1-5
+      --
+      -- Step by step:
+      --   1. load-indirect-suc: Output := *(sucLoc Input) = arg-loc
+      --   2. store-at-slot: Output unchanged
+      --   3. load-indirect: Output := *Input = closure-loc
+      --   4. mov-to-input: Input := Output = closure-loc, Output unchanged
+      --   5. load-indirect: Output := *Input = *closure-loc = env-loc
+      ------------------------------------------------------------------------
+
+      -- Decompose prefix-for-env into sub-traces
+      prefix12 : AbstractTrace
+      prefix12 = load-indirect-suc ∷ store-at-slot (suc pair-slot) ∷ []
+
+      prefix345 : AbstractTrace
+      prefix345 = load-indirect ∷ mov-to-input ∷ load-indirect ∷ []
+
+      prefix-decomp-12-345 : prefix-for-env ≡ prefix12 ++ prefix345
+      prefix-decomp-12-345 = refl
+
+      -- State after steps 1-2
+      s12 : LocState FS
+      s12 = proj₁ (exec-trace prefix12 s alloc)
+
+      alloc12 : AllocState {FS}
+      alloc12 = proj₂ (exec-trace prefix12 s alloc)
+
+      -- Steps 1-2 preserve halted
+      prefix12-tph : TracePreservesHaltedP prefix12
+      prefix12-tph = tph-∷ iph-load-indirect-suc (tph-∷ iph-store-at-slot tph-[])
+
+      not-halted-s12 : halted s12 ≡ false
+      not-halted-s12 = exec-trace-preserves-halted prefix12 s alloc not-halted prefix12-tph
+
+      -- Input is still input-loc after steps 1-2 (neither instruction modifies Input)
+      -- Step 1 modifies Output only, Step 2 writes to memory only
+      -- Both preserve Input register
+      input-after-s12 : readReg (regs s12) Input ≡ input-loc
+      input-after-s12 = SMP.!!  -- Needs trace infrastructure for register preservation
+
+      -- Memory is preserved for closure-loc: steps 1-2 only write to slot (suc pair-slot)
+      -- which is on stack, not at closure-loc (which is on heap since closure is Heap mode)
+      closure-readable-after-s12 : readLoc s12 closure-loc ≡ just env-loc
+      closure-readable-after-s12 = SMP.!!  -- Needs frame/heap preservation proof
+
+      -- Step 3: load-indirect reads closure-loc, gets env-loc (after step 3)
+      prefix3 : AbstractTrace
+      prefix3 = load-indirect ∷ []
+
+      s3-partial : LocState FS
+      s3-partial = proj₁ (exec-trace prefix3 s12 alloc12)
+
+      -- After step 3, Output = *Input = *input-loc = closure-loc
+      step3-output : readReg (regs s3-partial) Output ≡ closure-loc
+      step3-output = SMP.!!  -- Needs load-indirect result lemma
+
+      -- Step 4: mov-to-input sets Input := Output = closure-loc, preserves Output
+      prefix34 : AbstractTrace
+      prefix34 = load-indirect ∷ mov-to-input ∷ []
+
+      s34-partial : LocState FS
+      s34-partial = proj₁ (exec-trace prefix34 s12 alloc12)
+
+      prefix3-tph : TracePreservesHaltedP prefix3
+      prefix3-tph = tph-∷ iph-load-indirect tph-[]
+
+      not-halted-s3 : halted s3-partial ≡ false
+      not-halted-s3 = exec-trace-preserves-halted prefix3 s12 alloc12 not-halted-s12 prefix3-tph
+
+      -- After step 4, Input = closure-loc
+      step4-input : readReg (regs s34-partial) Input ≡ closure-loc
+      step4-input =
+        let alloc3 = proj₂ (exec-trace prefix3 s12 alloc12)
+            s34-decomp : s34-partial ≡ proj₁ (exec-abstract mov-to-input s3-partial alloc3)
+            s34-decomp = cong proj₁ (trans (exec-trace-append prefix3 (mov-to-input ∷ []) s12 alloc12)
+                                           (exec-trace-single mov-to-input s3-partial alloc3 not-halted-s3))
+        in trans (cong (λ s' → readReg (regs s') Input) s34-decomp)
+                 (trans (writeReg-same (regs s3-partial) Input (readReg (regs s3-partial) Output))
+                        step3-output)
+
+      -- Step 5: load-indirect reads *Input = *closure-loc = env-loc
+      prefix345-tph : TracePreservesHaltedP prefix345
+      prefix345-tph = tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input (tph-∷ iph-load-indirect tph-[]))
+
+      not-halted-s345 : halted (proj₁ (exec-trace prefix345 s12 alloc12)) ≡ false
+      not-halted-s345 = exec-trace-preserves-halted prefix345 s12 alloc12 not-halted-s12 prefix345-tph
+
+      -- After step 5, Output = *closure-loc = env-loc
+      output-after-prefix : readReg (regs (proj₁ (exec-trace prefix-for-env s alloc))) Output ≡ env-loc
+      output-after-prefix =
+        let -- Decompose prefix execution
+            prefix-decomp : proj₁ (exec-trace prefix-for-env s alloc) ≡
+                           proj₁ (exec-trace prefix345 s12 alloc12)
+            prefix-decomp = cong proj₁ (exec-trace-append prefix12 prefix345 s alloc)
+        in trans (cong (λ s' → readReg (regs s') Output) prefix-decomp)
+                 (step5-output-final s12 alloc12 not-halted-s12)
+        where
+          step5-output-final : (s₀ : LocState FS) (a₀ : AllocState {FS}) →
+            halted s₀ ≡ false →
+            readReg (regs (proj₁ (exec-trace prefix345 s₀ a₀))) Output ≡ env-loc
+          step5-output-final s₀ a₀ nh = SMP.!!  -- Final step needs closure memory read
+
+      -- Use prefix-store-preserve to prove pair-env-ptr
+      -- After prefix-for-env, Output = env-loc, then store-at-slot pair-slot writes it
+      pair-env-ptr : readLoc s-after-setup pair-input-loc ≡ just env-loc
+      pair-env-ptr =
+        let result = prefix-store-preserve prefix-for-env pair-slot suffix-after-env-store
+                       s alloc prefix-for-env-tph not-halted suffix-writes-above suffix-no-heap-writes
+            -- result : readLoc (proj₁ (exec-trace (prefix ++ store ∷ suffix) s alloc))
+            --                  (OnStack frame pair-slot) ≡
+            --          just (readReg (regs (proj₁ (exec-trace prefix s alloc))) Output)
+        in trans result (cong just output-after-prefix)
 
       -- Input register points to pair after setup
       -- Decompose setup-trace as prefix ++ (lea-slot pair-slot ∷ mov-to-input ∷ [])
@@ -419,9 +702,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         halted s'' ≡ false →
         readReg (regs s'') Input ≡ input-loc' →
         readLoc s'' (OnStack (current-frame alloc) pair-slot) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace trace s'' alloc))
-                (OnStack (current-frame alloc) pair-slot) ≡ just input-loc'
-      frontier-stable' = SMP.!!
+        _
+      frontier-stable' s'' input-loc' _ _ _ = inj₂ (inj₁ SMP.!!)
 
       -- Trace properties
       trace-writes-above' : TraceWritesAbove pair-slot trace

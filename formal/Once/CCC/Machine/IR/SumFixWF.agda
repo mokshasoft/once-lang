@@ -416,13 +416,13 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-size-bound = m≤m+n (next-slot alloc) (ir-stack-requirement (unfold {F}))
       -- Frontier slot stability: load only modifies regs, not stackMem
       ; frontier-slot-stable = λ s'' input-loc'' s''-not-halted input-eq'' slot-eq'' →
-          trans (cong (λ st → readLoc st (OnStack (current-frame alloc) (next-slot alloc)))
+          inj₂ (inj₁ (trans (cong (λ st → readLoc st (OnStack (current-frame alloc) (next-slot alloc)))
                       (load-indirect-state-eq s'' alloc s''-not-halted))
                 (trans (readLoc-stackMem-eq (exec (load Output (IndReg Input)) s'') s''
                          (OnStack (current-frame alloc) (next-slot alloc))
                          (load-preserves-stackMem Output (IndReg Input) s'')
                          (load-preserves-heapMem Output (IndReg Input) s''))
-                       slot-eq'')
+                       slot-eq'')))
       -- Trace bounds: unfold only has load-indirect which doesn't write to stack
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -603,10 +603,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace inl-trace s' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        _
       inl-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        trans preserved slot-eq'
+        inj₂ (inj₁ (trans preserved slot-eq'))
         where
           n = next-slot alloc
           frontier-loc = OnStack (current-frame alloc) n
@@ -760,10 +759,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace inl-trace s' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        _
       inl-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        trans preserved slot-eq'
+        inj₂ (inj₁ (trans preserved slot-eq'))
         where
           n = next-slot alloc
           frontier-loc = OnStack (current-frame alloc) n
@@ -929,10 +927,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace inr-trace s' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        _
       inr-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        trans preserved slot-eq'
+        inj₂ (inj₁ (trans preserved slot-eq'))
         where
           n = next-slot alloc
           frontier-loc = OnStack (current-frame alloc) n
@@ -1079,10 +1076,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace inr-trace s' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        _
       inr-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        trans preserved slot-eq'
+        inj₂ (inj₁ (trans preserved slot-eq'))
         where
           n = next-slot alloc
           frontier-loc = OnStack (current-frame alloc) n
@@ -1247,10 +1243,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace fold-trace s' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        _
       fold-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        trustMe-fold-frontier
+        inj₂ (inj₁ trustMe-fold-frontier)
         where
           trustMe-fold-frontier : readLoc (proj₁ (exec-trace fold-trace s' alloc))
                                           (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
@@ -1380,10 +1375,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace fold-trace s' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        _
       fold-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        trustMe-fold-frontier
+        inj₂ (inj₁ trustMe-fold-frontier)
         where
           trustMe-fold-frontier : readLoc (proj₁ (exec-trace fold-trace s' alloc))
                                           (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
@@ -1524,10 +1518,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace case-inl-trace s' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        _
       case-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        trustMe-case-frontier
+        inj₂ (inj₁ trustMe-case-frontier)
         where
           trustMe-case-frontier : readLoc (proj₁ (exec-trace case-inl-trace s' alloc))
                                           (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
@@ -1643,10 +1636,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace case-inr-trace s' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
+        _
       case-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        trustMe-case-frontier
+        inj₂ (inj₁ trustMe-case-frontier)
         where
           trustMe-case-frontier : readLoc (proj₁ (exec-trace case-inr-trace s' alloc))
                                           (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'

@@ -788,8 +788,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack frame backup-slot) ≡ just input-loc' →
-        readLoc (proj₁ (exec-trace pair-trace s' alloc))
-                (OnStack frame backup-slot) ≡ just input-loc'
+        _
       pair-frontier-stable s' input-loc' not-halted' rdi-eq' _ =
         -- pair-trace = mov-to-output ∷ store-at-slot backup-slot ∷ rest
         -- where rest writes above suc backup-slot
@@ -942,7 +941,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
             step3 = subst (λ r → readLoc (proj₁ r) (OnStack frame backup-slot) ≡ just input-loc')
                           (sym exec-decomp) step2
 
-        in step3
+        in inj₂ (inj₁ step3)
 
       ----------------------------------------------------------------------
       -- KEY: mem-preserved-pair using SMPrimitives

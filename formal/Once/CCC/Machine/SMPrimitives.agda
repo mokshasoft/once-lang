@@ -1686,6 +1686,72 @@ module TracePrimitives {FS : FrameSemantics} where
                     just (readReg (regs s) Output))
              frame-eq preserved
 
+  -- Generalized pattern: execute prefix, store to slot k, execute suffix that preserves k.
+  -- Result: slot k contains what Output was after prefix.
+  --
+  -- This is the principled approach for env-ptr/code-ptr proofs:
+  --   1. prefix sets up Output register (e.g., mov-to-output or lea-slot)
+  --   2. store-at-slot k writes Output to slot k
+  --   3. suffix writes only at slots > k, so slot k is preserved
+  prefix-store-preserve : ∀ (prefix : AbstractTrace) (k : ℕ) (suffix : AbstractTrace)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    -- prefix preserves halted-false
+    TracePreservesHaltedP prefix →
+    halted s ≡ false →
+    -- suffix writes only above suc k (so k is preserved after store)
+    TraceWritesAbove (suc k) suffix →
+    TraceNoHeapWrites suffix →
+    -- Result: slot k contains what Output had after prefix
+    let s-after-prefix = proj₁ (exec-trace prefix s alloc)
+    in
+    readLoc (proj₁ (exec-trace (prefix ++ store-at-slot k ∷ suffix) s alloc))
+            (OnStack (current-frame alloc) k) ≡
+    just (readReg (regs s-after-prefix) Output)
+  prefix-store-preserve [] k suffix s alloc tph-prefix not-halted twa tnhw =
+    -- Empty prefix: just apply store-then-preserve
+    store-then-preserve k suffix s alloc not-halted twa tnhw
+  prefix-store-preserve (i ∷ prefix) k suffix s alloc (tph-∷ iph tph-rest) not-halted twa tnhw =
+    psp-cons i prefix k suffix s alloc iph tph-rest not-halted twa tnhw not-halted
+    where
+      -- Helper that takes halted s ≡ false as an explicit equality for pattern matching
+      psp-cons : ∀ (i : AbstractInstr) (prefix : AbstractTrace) (k : ℕ)
+        (suffix : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+        InstrPreservesHalted i →
+        TracePreservesHaltedP prefix →
+        halted s ≡ false →
+        TraceWritesAbove (suc k) suffix →
+        TraceNoHeapWrites suffix →
+        halted s ≡ false →  -- duplicate for pattern matching
+        readLoc (proj₁ (exec-trace ((i ∷ prefix) ++ store-at-slot k ∷ suffix) s alloc))
+                (OnStack (current-frame alloc) k) ≡
+        just (readReg (regs (proj₁ (exec-trace (i ∷ prefix) s alloc))) Output)
+      psp-cons i prefix k suffix s alloc iph tph-rest not-halted twa tnhw refl =
+        let -- Execute first instruction
+            s₁ = proj₁ (exec-abstract i s alloc)
+            alloc₁ = proj₂ (exec-abstract i s alloc)
+
+            -- halted preserved after first instruction
+            not-halted₁ : halted s₁ ≡ false
+            not-halted₁ = exec-abstract-preserves-halted i s alloc refl iph
+
+            -- Recursive call for rest of prefix
+            rest-trace = prefix ++ store-at-slot k ∷ suffix
+            ih : readLoc (proj₁ (exec-trace rest-trace s₁ alloc₁))
+                         (OnStack (current-frame alloc₁) k) ≡
+                 just (readReg (regs (proj₁ (exec-trace prefix s₁ alloc₁))) Output)
+            ih = prefix-store-preserve prefix k suffix s₁ alloc₁ tph-rest not-halted₁ twa tnhw
+
+            -- Frame preserved by first instruction
+            frame-eq : current-frame alloc₁ ≡ current-frame alloc
+            frame-eq = exec-abstract-preserves-frame i s alloc
+
+            -- After prefix in original state = after prefix in s₁
+            s-after-prefix = proj₁ (exec-trace prefix s₁ alloc₁)
+
+        in subst (λ f → readLoc (proj₁ (exec-trace rest-trace s₁ alloc₁)) (OnStack f k) ≡
+                        just (readReg (regs s-after-prefix) Output))
+                 frame-eq ih
+
 ------------------------------------------------------------------------
 -- Summary: Minimal Axioms + Positive Characterization
 --

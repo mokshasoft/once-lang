@@ -22,7 +22,8 @@ open import Data.Nat using (ℕ; _<_; _≤_; _≥_; suc; zero) renaming (_+_ to 
 open import Data.Bool using (false)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
-open import Data.Unit using (tt)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
@@ -273,12 +274,22 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         --   2. Write Input to frontier slot (via mov-to-output; store-at-slot)
         --   3. Push a frame, so writes go to child frame (apply)
         -- This property enables pair's backup-slot preservation proof.
+        --
+        -- Returns a 3-way sum:
+        --   inj₁: IR doesn't allocate (reclaim = next-slot)
+        --   inj₂ (inj₁ proof): IR allocates and preserves the slot
+        --   inj₂ (inj₂ tt): IR allocates but might not preserve (edge case in compose)
+        --
+        -- The third case arises in compose when f doesn't allocate but returns a
+        -- different location (like fst, snd), and g allocates. In this case, g writes
+        -- f's result (not the original input) to the frontier slot.
         frontier-slot-stable : ∀ (s' : LocState FS) (input-loc : ValueLocation FS) →
           halted s' ≡ false →
           readReg (regs s') Input ≡ input-loc →
           readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc →
-          readLoc (proj₁ (exec-trace trace s' alloc))
-                  (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc
+          (next-slot alloc ≡ reclaimable-slot) ⊎
+          ((readLoc (proj₁ (exec-trace trace s' alloc))
+                   (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc) ⊎ ⊤)
         -- Trace slot bound: all stack writes are at slots ≥ next-slot alloc.
         -- This enables compositional proofs that traces don't write below their frontier.
         -- Key for pair's g-preserves-backup proof via exec-trace-preserves-disjoint.

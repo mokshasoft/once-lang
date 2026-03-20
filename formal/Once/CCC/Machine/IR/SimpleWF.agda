@@ -13,6 +13,7 @@ open import Data.Bool using (false)
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
+open import Data.Sum using (inj₁)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym; subst; cong)
 
@@ -125,22 +126,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                  (mov-preserves-stackMem Output Input s)
                                  (mov-preserves-heapMem Output Input s))
 
+      -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
-        readLoc (proj₁ (exec-trace trace s'' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc''
-      frontier-stable s'' _ not-halted'' _ slot-eq =
-        let s''-final = proj₁ (exec-trace trace s'' alloc)
-            s''-final-eq : s''-final ≡ exec (mov Output Input) s''
-            s''-final-eq = cong proj₁ (exec-trace-single mov-to-output s'' alloc not-halted'')
-        in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) (next-slot alloc))) s''-final-eq)
-                 (trans (readLoc-stackMem-eq (exec (mov Output Input) s'') s''
-                          (OnStack (current-frame alloc) (next-slot alloc))
-                          (mov-preserves-stackMem Output Input s'')
-                          (mov-preserves-heapMem Output Input s''))
-                        slot-eq)
+        _
+      frontier-stable _ _ _ _ _ = inj₁ refl
 
   ------------------------------------------------------------------------
   -- Fst: extract first component from pair
@@ -226,22 +218,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                  (load-preserves-stackMem Output (IndReg Input) s)
                                  (load-preserves-heapMem Output (IndReg Input) s))
 
+      -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
-        readLoc (proj₁ (exec-trace trace s'' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc''
-      frontier-stable s'' _ not-halted'' _ slot-eq =
-        let s''-final = proj₁ (exec-trace trace s'' alloc)
-            s''-final-eq : s''-final ≡ exec (load Output (IndReg Input)) s''
-            s''-final-eq = cong proj₁ (exec-trace-single load-indirect s'' alloc not-halted'')
-        in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) (next-slot alloc))) s''-final-eq)
-                 (trans (readLoc-stackMem-eq (exec (load Output (IndReg Input)) s'') s''
-                          (OnStack (current-frame alloc) (next-slot alloc))
-                          (load-preserves-stackMem Output (IndReg Input) s'')
-                          (load-preserves-heapMem Output (IndReg Input) s''))
-                        slot-eq)
+        _
+      frontier-stable _ _ _ _ _ = inj₁ refl
 
   ------------------------------------------------------------------------
   -- Snd: extract second component from pair
@@ -327,22 +310,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                  (load-preserves-stackMem Output (IndRegSuc Input) s)
                                  (load-preserves-heapMem Output (IndRegSuc Input) s))
 
+      -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
-        readLoc (proj₁ (exec-trace trace s'' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc''
-      frontier-stable s'' _ not-halted'' _ slot-eq =
-        let s''-final = proj₁ (exec-trace trace s'' alloc)
-            s''-final-eq : s''-final ≡ exec (load Output (IndRegSuc Input)) s''
-            s''-final-eq = cong proj₁ (exec-trace-single load-indirect-suc s'' alloc not-halted'')
-        in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) (next-slot alloc))) s''-final-eq)
-                 (trans (readLoc-stackMem-eq (exec (load Output (IndRegSuc Input)) s'') s''
-                          (OnStack (current-frame alloc) (next-slot alloc))
-                          (load-preserves-stackMem Output (IndRegSuc Input) s'')
-                          (load-preserves-heapMem Output (IndRegSuc Input) s''))
-                        slot-eq)
+        _
+      frontier-stable _ _ _ _ _ = inj₁ refl
 
   ------------------------------------------------------------------------
   -- Terminal: output unit
@@ -410,22 +384,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                  (mov-preserves-stackMem Output Input s)
                                  (mov-preserves-heapMem Output Input s))
 
+      -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
-        readLoc (proj₁ (exec-trace trace s'' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc''
-      frontier-stable s'' _ not-halted'' _ slot-eq =
-        let s''-final = proj₁ (exec-trace trace s'' alloc)
-            s''-final-eq : s''-final ≡ exec (mov Output Input) s''
-            s''-final-eq = cong proj₁ (exec-trace-single mov-to-output s'' alloc not-halted'')
-        in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) (next-slot alloc))) s''-final-eq)
-                 (trans (readLoc-stackMem-eq (exec (mov Output Input) s'') s''
-                          (OnStack (current-frame alloc) (next-slot alloc))
-                          (mov-preserves-stackMem Output Input s'')
-                          (mov-preserves-heapMem Output Input s''))
-                        slot-eq)
+        _
+      frontier-stable _ _ _ _ _ = inj₁ refl
 
   ------------------------------------------------------------------------
   -- Free-heap: explicit heap deallocation (semantically a no-op)
@@ -496,22 +461,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                  (mov-preserves-stackMem Output Input s)
                                  (mov-preserves-heapMem Output Input s))
 
+      -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
-        readLoc (proj₁ (exec-trace trace s'' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc''
-      frontier-stable s'' _ not-halted'' _ slot-eq =
-        let s''-final = proj₁ (exec-trace trace s'' alloc)
-            s''-final-eq : s''-final ≡ exec (mov Output Input) s''
-            s''-final-eq = cong proj₁ (exec-trace-single mov-to-output s'' alloc not-halted'')
-        in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) (next-slot alloc))) s''-final-eq)
-                 (trans (readLoc-stackMem-eq (exec (mov Output Input) s'') s''
-                          (OnStack (current-frame alloc) (next-slot alloc))
-                          (mov-preserves-stackMem Output Input s'')
-                          (mov-preserves-heapMem Output Input s''))
-                        slot-eq)
+        _
+      frontier-stable _ _ _ _ _ = inj₁ refl
 
   ------------------------------------------------------------------------
   -- Arr: effectful morphism coercion (A ⇒[ q ] B) to (Eff A B)
@@ -585,19 +541,10 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                  (mov-preserves-stackMem Output Input s)
                                  (mov-preserves-heapMem Output Input s))
 
+      -- IR doesn't allocate, so return inj₁ refl
       frontier-stable : ∀ s'' input-loc'' →
         halted s'' ≡ false →
         readReg (regs s'') Input ≡ input-loc'' →
         readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'' →
-        readLoc (proj₁ (exec-trace trace s'' alloc))
-                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc''
-      frontier-stable s'' _ not-halted'' _ slot-eq =
-        let s''-final = proj₁ (exec-trace trace s'' alloc)
-            s''-final-eq : s''-final ≡ exec (mov Output Input) s''
-            s''-final-eq = cong proj₁ (exec-trace-single mov-to-output s'' alloc not-halted'')
-        in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) (next-slot alloc))) s''-final-eq)
-                 (trans (readLoc-stackMem-eq (exec (mov Output Input) s'') s''
-                          (OnStack (current-frame alloc) (next-slot alloc))
-                          (mov-preserves-stackMem Output Input s'')
-                          (mov-preserves-heapMem Output Input s''))
-                        slot-eq)
+        _
+      frontier-stable _ _ _ _ _ = inj₁ refl
