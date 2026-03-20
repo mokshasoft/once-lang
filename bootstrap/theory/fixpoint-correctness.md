@@ -278,6 +278,39 @@ From a categorical viewpoint, the fixpoint property says:
 
 The unique normal forms of CCC make this retraction unique (up to equivalence).
 
+### 6.4 Scope: Normalizers vs. Compilers
+
+The theorem as stated applies to a *normalizer* for CCC terms. A natural question: does it extend to a *compiler* for a language built on CCC?
+
+**Generalization to Compilers.** Let L be a source language and C : L → CCC be a compiler. The fixpoint argument generalizes if:
+
+1. **C is expressible in CCC** — the compiler itself is a CCC term
+2. **L compiles to pure CCC** — the target has unique normal forms
+3. **L is a conservative extension** — L adds syntax but no new reduction behavior that breaks confluence or termination
+
+Under these conditions, if C ∘ ⌜C⌝ →* ⌜C⌝, then C is correct. The argument is identical:
+- ⌜C⌝ encodes C's complete compilation logic
+- CCC semantics is transparent
+- Fixpoint means C correctly compiles its own structure
+- By uniformity, C correctly compiles all L programs
+
+**Application to Once.** If Once is designed as a conservative extension of CCC—adding syntactic conveniences (pattern matching, type inference, modules) that desugar to pure CCC—then a Once compiler achieving fixpoint is correct by this theorem.
+
+**When the theorem does not apply.** If the source language adds features that break key properties:
+
+| Feature | Breaks | Consequence |
+|---------|--------|-------------|
+| General recursion | Termination | Non-terminating programs have no normal form |
+| Effects (IO, state) | Confluence | Reduction is non-deterministic |
+| Unbounded polymorphism | Normalization | System F normalization is undecidable |
+
+For such extensions, a *stratified* approach is needed:
+1. Verify the core CCC normalizer via fixpoint
+2. Use the verified normalizer to check extensions
+3. Each layer trusts only the layer below
+
+**The deeper principle.** The fixpoint property captures *self-consistency*: a correct compiler must be consistent with its own definition. In CCC, self-consistency plus unique normal forms implies correctness. This is why CCC is the right foundation—it is the largest practical language class where this elegant argument holds.
+
 ---
 
 ## References
