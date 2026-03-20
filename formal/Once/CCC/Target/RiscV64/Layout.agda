@@ -4,9 +4,10 @@
 -- Concrete RISC-V 64-bit memory layout.
 --
 -- This module provides:
---   - rv64-layout : MemoryLayout (with lower = 0 for stack/code)
---   - Runtime postulates (bounds, disjointness, prog-fits)
+--   - rv64-layout : MemoryLayout (constructed from RuntimeContract)
 --   - Re-exports Common modules instantiated with RiscV64 values
+--
+-- Runtime assumptions are provided via RuntimeParams.agda
 --
 -- IR proofs should NOT import this directly - they should use
 -- Common.Regions, Common.StackSlots, etc. Only the top-level
@@ -26,6 +27,10 @@ open import Once.CCC.Memory.MemoryLayoutSemantics as MLS
   using (MemoryLayout; RegionBounds; lower; upper; InRegion)
 open MLS using (Addr; lower; upper) public
 
+-- Import RuntimeContract and the RISC-V64 instance
+open import Once.Memory.RuntimeContract as RC using (RuntimeContract)
+import Once.CCC.Target.RiscV64.RuntimeParams as RP
+
 -- Import and re-export RISC-V 64 stack growth
 open import Once.CCC.Target.RiscV64.StackGrowth public
   using (word-size; rv64-stack-growth)
@@ -37,54 +42,29 @@ open import Once.CCC.IR.Stack public
 ------------------------------------------------------------------------
 -- RISC-V 64 Concrete Memory Layout
 --
+-- Constructed from RuntimeContract (memory bounds + region guarantees)
+--
 -- KEY INSIGHT: By defining bounds with lower = 0, properties become
--- definitional (refl) instead of postulates!
+-- definitional (refl) instead of requiring proofs.
 ------------------------------------------------------------------------
 
--- Runtime provides upper bounds (postulates - these are inputs)
-postulate
-  rv64-stack-upper : ℕ  -- Stack region upper bound
-  rv64-heap-lower  : ℕ  -- Heap region lower bound
-  rv64-heap-upper  : ℕ  -- Heap region upper bound
-  rv64-code-upper  : ℕ  -- Code region upper bound
-
--- Concrete RISC-V 64 bounds with lower = 0 where applicable
+-- Region bounds from RuntimeContract
 rv64-stack-bounds : RegionBounds
-rv64-stack-bounds = record
-  { lower = 0              -- KEY: lower = 0 by definition!
-  ; upper = rv64-stack-upper
-  ; bounds-valid = z≤n
-  }
+rv64-stack-bounds = RC.stack-bounds RP.rv64-runtime
 
 rv64-heap-bounds : RegionBounds
-rv64-heap-bounds = record
-  { lower = rv64-heap-lower
-  ; upper = rv64-heap-upper
-  ; bounds-valid = heap-valid
-  }
-  where postulate heap-valid : rv64-heap-lower ≤ rv64-heap-upper
+rv64-heap-bounds = RC.heap-bounds RP.rv64-runtime
 
 rv64-code-bounds : RegionBounds
-rv64-code-bounds = record
-  { lower = 0              -- KEY: lower = 0 by definition!
-  ; upper = rv64-code-upper
-  ; bounds-valid = z≤n
-  }
+rv64-code-bounds = RC.code-bounds RP.rv64-runtime
 
--- Disjointness (runtime guarantee)
-postulate
-  rv64-intervals-disjoint : ∀ a →
-    ¬ (InRegion rv64-stack-bounds a × InRegion rv64-heap-bounds a) ×
-    ¬ (InRegion rv64-stack-bounds a × InRegion rv64-code-bounds a) ×
-    ¬ (InRegion rv64-heap-bounds a × InRegion rv64-code-bounds a)
-
--- RISC-V 64 Memory Layout instance
+-- RISC-V 64 Memory Layout instance (constructed from RuntimeContract)
 rv64-layout : MemoryLayout
 rv64-layout = record
   { stack-bounds = rv64-stack-bounds
   ; heap-bounds = rv64-heap-bounds
   ; code-bounds = rv64-code-bounds
-  ; intervals-disjoint = rv64-intervals-disjoint
+  ; intervals-disjoint = RC.intervals-disjoint RP.rv64-runtime
   }
 
 ------------------------------------------------------------------------
@@ -115,18 +95,18 @@ open import Once.CCC.Memory.Memory using (Memory; Word; readMem; writeMem) publi
 ------------------------------------------------------------------------
 
 -- | RISC-V 64 stack region has lower bound 0
--- PROVEN: definitional from rv64-stack-bounds!
+-- PROVEN: definitional from RuntimeContract's stack-bounds!
 rv64-stack-lower-zero : lower stack-bounds ≡ 0
 rv64-stack-lower-zero = refl
 
 -- | RISC-V 64 code region has lower bound 0
--- PROVEN: definitional from rv64-code-bounds!
+-- PROVEN: definitional from RuntimeContract's code-bounds!
 rv64-code-lower-zero : lower code-bounds ≡ 0
 rv64-code-lower-zero = refl
 
--- | Program fits in code region (RUNTIME GUARANTEE)
-postulate
-  prog-fits-in-code : ∀ (prog-len : ℕ) → prog-len ≤ upper code-bounds
+-- | Program fits in code region (from RuntimeContract)
+prog-fits-in-code : ∀ (prog-len : ℕ) → prog-len ≤ upper code-bounds
+prog-fits-in-code = RC.prog-fits RP.rv64-runtime
 
 -- | Valid program counter is in code region
 pc-in-code : ∀ (pc : Addr) (prog-len : ℕ) →

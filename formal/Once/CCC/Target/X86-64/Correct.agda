@@ -189,8 +189,9 @@ module Correctness
 --   4. Therefore: final x86 state corresponds to final LocState
 ------------------------------------------------------------------------
 
-open import Once.CCC.Target.X86-64.DirectSimulation
-  using (X86State; module X86Corresponds; module TraceSimulation)
+-- Import DirectSimulation module (Simulation submodule contains X86State, Corresponds)
+-- Currently imported for documentation; actual use pending Layer 2 integration
+import Once.CCC.Target.X86-64.DirectSimulation as DS
 
 ------------------------------------------------------------------------
 -- FULL CHAIN: IR → eval semantics → x86 execution

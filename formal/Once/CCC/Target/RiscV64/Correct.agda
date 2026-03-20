@@ -169,8 +169,9 @@ module Correctness
 --   RV64Corresponds (exec-trace trace ls alloc) (exec-rv64-trace trace rs)
 ------------------------------------------------------------------------
 
-open import Once.CCC.Target.RiscV64.DirectSimulation
-  using (RV64State; module RV64Corresponds; module TraceSimulation)
+-- Import DirectSimulation module (Simulation submodule contains RV64State, Corresponds)
+-- Currently imported for documentation; actual use pending Layer 2 integration
+import Once.CCC.Target.RiscV64.DirectSimulation as DS
 
 ------------------------------------------------------------------------
 -- FULL CHAIN: IR → eval semantics → RISC-V execution

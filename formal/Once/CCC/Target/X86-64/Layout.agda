@@ -4,9 +4,10 @@
 -- Concrete X86-64 memory layout.
 --
 -- This module provides:
---   - x86-layout : MemoryLayout (with lower = 0 for stack/code)
---   - Runtime postulates (bounds, disjointness, prog-fits)
+--   - x86-layout : MemoryLayout (constructed from RuntimeContract)
 --   - Re-exports Common modules instantiated with X86 values
+--
+-- Runtime assumptions are provided via RuntimeParams.agda
 --
 -- IR proofs should NOT import this directly - they should use
 -- Common.Regions, Common.StackSlots, etc. Only the top-level
@@ -26,6 +27,10 @@ open import Once.CCC.Memory.MemoryLayoutSemantics as MLS
   using (MemoryLayout; RegionBounds; lower; upper; InRegion)
 open MLS using (Addr; lower; upper) public
 
+-- Import RuntimeContract and the X86-64 instance
+open import Once.Memory.RuntimeContract as RC using (RuntimeContract)
+import Once.CCC.Target.X86-64.RuntimeParams as RP
+
 -- Import and re-export X86-64 stack growth
 open import Once.CCC.Target.X86-64.StackGrowth public
   using (word-size; x86-stack-growth)
@@ -37,54 +42,29 @@ open import Once.CCC.IR.Stack public
 ------------------------------------------------------------------------
 -- X86 Concrete Memory Layout
 --
+-- Constructed from RuntimeContract (memory bounds + region guarantees)
+--
 -- KEY INSIGHT: By defining bounds with lower = 0, properties become
--- definitional (refl) instead of postulates!
+-- definitional (refl) instead of requiring proofs.
 ------------------------------------------------------------------------
 
--- Runtime provides upper bounds (postulates - these are inputs)
-postulate
-  x86-stack-upper : ℕ  -- Stack region upper bound
-  x86-heap-lower  : ℕ  -- Heap region lower bound
-  x86-heap-upper  : ℕ  -- Heap region upper bound
-  x86-code-upper  : ℕ  -- Code region upper bound
-
--- Concrete X86 bounds with lower = 0 where applicable
+-- Region bounds from RuntimeContract
 x86-stack-bounds : RegionBounds
-x86-stack-bounds = record
-  { lower = 0              -- KEY: lower = 0 by definition!
-  ; upper = x86-stack-upper
-  ; bounds-valid = z≤n
-  }
+x86-stack-bounds = RC.stack-bounds RP.x86-64-runtime
 
 x86-heap-bounds : RegionBounds
-x86-heap-bounds = record
-  { lower = x86-heap-lower
-  ; upper = x86-heap-upper
-  ; bounds-valid = heap-valid
-  }
-  where postulate heap-valid : x86-heap-lower ≤ x86-heap-upper
+x86-heap-bounds = RC.heap-bounds RP.x86-64-runtime
 
 x86-code-bounds : RegionBounds
-x86-code-bounds = record
-  { lower = 0              -- KEY: lower = 0 by definition!
-  ; upper = x86-code-upper
-  ; bounds-valid = z≤n
-  }
+x86-code-bounds = RC.code-bounds RP.x86-64-runtime
 
--- Disjointness (runtime guarantee)
-postulate
-  x86-intervals-disjoint : ∀ a →
-    ¬ (InRegion x86-stack-bounds a × InRegion x86-heap-bounds a) ×
-    ¬ (InRegion x86-stack-bounds a × InRegion x86-code-bounds a) ×
-    ¬ (InRegion x86-heap-bounds a × InRegion x86-code-bounds a)
-
--- X86 Memory Layout instance
+-- X86 Memory Layout instance (constructed from RuntimeContract)
 x86-layout : MemoryLayout
 x86-layout = record
   { stack-bounds = x86-stack-bounds
   ; heap-bounds = x86-heap-bounds
   ; code-bounds = x86-code-bounds
-  ; intervals-disjoint = x86-intervals-disjoint
+  ; intervals-disjoint = RC.intervals-disjoint RP.x86-64-runtime
   }
 
 ------------------------------------------------------------------------
@@ -115,18 +95,18 @@ open import Once.CCC.Memory.Memory using (Memory; Word; readMem; writeMem) publi
 ------------------------------------------------------------------------
 
 -- | X86 stack region has lower bound 0
--- PROVEN: definitional from x86-stack-bounds!
+-- PROVEN: definitional from RuntimeContract's stack-bounds!
 x86-stack-lower-zero : lower stack-bounds ≡ 0
 x86-stack-lower-zero = refl
 
 -- | X86 code region has lower bound 0
--- PROVEN: definitional from x86-code-bounds!
+-- PROVEN: definitional from RuntimeContract's code-bounds!
 x86-code-lower-zero : lower code-bounds ≡ 0
 x86-code-lower-zero = refl
 
--- | Program fits in code region (RUNTIME GUARANTEE)
-postulate
-  prog-fits-in-code : ∀ (prog-len : ℕ) → prog-len ≤ upper code-bounds
+-- | Program fits in code region (from RuntimeContract)
+prog-fits-in-code : ∀ (prog-len : ℕ) → prog-len ≤ upper code-bounds
+prog-fits-in-code = RC.prog-fits RP.x86-64-runtime
 
 -- | Valid program counter is in code region
 pc-in-code : ∀ (pc : Addr) (prog-len : ℕ) →

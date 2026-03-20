@@ -78,23 +78,25 @@ slot-to-disp n = n *ℕ slot-size
 compile-abstract : AbstractInstr → Program
 
 -- mov-to-output: Output := Input
--- With a0 = both Input and Output: NO-OP!
-compile-abstract mov-to-output = []
+-- Copy t0 (Input) to a0 (Output)
+compile-abstract mov-to-output =
+  mv a0 t0 ∷ []
 
 -- mov-to-input: Input := Output
--- With a0 = both: NO-OP!
-compile-abstract mov-to-input = []
+-- Copy a0 (Output) to t0 (Input)
+compile-abstract mov-to-input =
+  mv t0 a0 ∷ []
 
 -- load-indirect: Output := *Input
--- a0 holds address, load value into a0
--- RV64: ld a0, 0(a0)
+-- t0 holds address (Input), load value into a0 (Output)
+-- RV64: ld a0, 0(t0)
 compile-abstract load-indirect =
-  ld a0 a0 0 ∷ []
+  ld a0 t0 0 ∷ []
 
 -- load-indirect-suc: Output := *(sucLoc Input)
--- RV64: ld a0, 8(a0)
+-- RV64: ld a0, 8(t0)
 compile-abstract load-indirect-suc =
-  ld a0 a0 slot-size ∷ []
+  ld a0 t0 slot-size ∷ []
 
 -- load-from-slot: Output := stack[slot]
 -- RV64: ld a0, slot*8(fp)
@@ -156,11 +158,12 @@ compile-abstract (instr-push-frame n) =
 -- instr-pop-frame: restore caller frame
 -- RV64: mv sp, fp         (restore sp to frame pointer)
 --       ld fp, 0(sp)      (restore old fp)
---       addi sp, sp, 8    (pop old fp from stack)
+--       addi sp, fp, 8    (set sp to fp+8, popping saved fp)
+-- Note: we use fp as base (not sp) to distinguish from dealloc-stack
 compile-abstract instr-pop-frame =
   mv sp fp ∷
   ld fp sp 0 ∷
-  addi sp sp (+ slot-size) ∷ []
+  addi sp fp (+ slot-size) ∷ []
 
 -- instr-call-closure: jump to closure code (via indirect call)
 -- Closure in s1, code-ptr at [s1 + 8]

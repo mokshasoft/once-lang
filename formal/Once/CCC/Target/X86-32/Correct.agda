@@ -169,8 +169,9 @@ module Correctness
 --   X86-32Corresponds (exec-trace trace ls alloc) (exec-x86-32-trace trace xs)
 ------------------------------------------------------------------------
 
-open import Once.CCC.Target.X86-32.DirectSimulation
-  using (X86-32State; module X86-32Corresponds; module TraceSimulation)
+-- Import DirectSimulation module (Simulation submodule contains X86-32State, Corresponds)
+-- Currently imported for documentation; actual use pending Layer 2 integration
+import Once.CCC.Target.X86-32.DirectSimulation as DS
 
 ------------------------------------------------------------------------
 -- FULL CHAIN: IR → eval semantics → x86-32 execution

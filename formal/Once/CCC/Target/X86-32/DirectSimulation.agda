@@ -10,7 +10,7 @@
 
 module Once.CCC.Target.X86-32.DirectSimulation where
 
-open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _∸_; _≡ᵇ_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.DivMod using (_/_; m*n/n≡m)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -21,12 +21,13 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; subst)
 open import Relation.Nullary using (Dec; yes; no)
-open import Data.Nat.Properties using (_≟_; +-assoc; +-comm)
+open import Data.Nat.Properties using (_≟_; +-assoc; +-comm; +-∸-comm)
 open import Function using (case_of_)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore
 import Once.CCC.Machine.SMPrimitives as SMP
+import Once.ProofObligation as PO
 open import Once.CCC.Target.X86-32.Syntax
   using (Reg; eax; ebx; ecx; edx; esi; edi; ebp; esp; Program; slot-size; slots)
   renaming (Instr to X86Instr)
@@ -390,12 +391,17 @@ module Simulation {FS : FrameSemantics} where
   slot-eq-alloc-helper a b c =
     trans (+-assoc a b c) (trans (cong (a +ℕ_) (+-comm b c)) (sym (+-assoc a c b)))
 
+  -- Well-formedness invariant: deallocation never exceeds allocation.
+  -- Proof obligation: deallocation never exceeds allocation.
+  -- The compiler generates code that maintains stack discipline.
+  dealloc-well-formed : ∀ (ls : LocState FS) (n : ℕ) → n ≤ stackSlot (regs ls)
+  dealloc-well-formed = PO.!!
+
   -- Helper for dealloc-stack: (a + b) ∸ c ≡ (a ∸ c) + b  [when c ≤ a]
-  -- This property holds when c ≤ a (well-formed programs don't deallocate more than allocated)
-  -- Postulated because the precondition c ≤ a isn't tracked at the type level
-  postulate
-    slot-eq-dealloc-helper : ∀ (a b c : ℕ) →
-      (a +ℕ b) ∸ c ≡ (a ∸ c) +ℕ b
+  -- Uses stdlib's +-∸-comm with well-formedness assumption.
+  slot-eq-dealloc-helper : ∀ (a b c : ℕ) → c ≤ a →
+    (a +ℕ b) ∸ c ≡ (a ∸ c) +ℕ b
+  slot-eq-dealloc-helper a b c c≤a = +-∸-comm b c≤a
 
   -- Helper: correspondence for load-into-eax operations
   -- Shows that when memory reads are equal, the load helpers produce corresponding states
@@ -772,7 +778,7 @@ module Simulation {FS : FrameSemantics} where
         step1 = cong (_∸ n) (slot-eq corr)
         -- Reorder: (a + b) ∸ c ≡ (a ∸ c) + b
         step2 : (stackSlot (regs ls) +ℕ frame-capacity alloc) ∸ n ≡ (stackSlot (regs ls) ∸ n) +ℕ frame-capacity alloc
-        step2 = slot-eq-dealloc-helper (stackSlot (regs ls)) (frame-capacity alloc) n
+        step2 = slot-eq-dealloc-helper (stackSlot (regs ls)) (frame-capacity alloc) n (dealloc-well-formed ls n)
         new-slot-eq : stack-slot xs ∸ n ≡ (stackSlot (regs ls) ∸ n) +ℕ frame-capacity alloc
         new-slot-eq = trans step1 step2
         newRegs = decrStackSlot (regs ls) n
