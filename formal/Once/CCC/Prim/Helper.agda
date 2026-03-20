@@ -32,7 +32,7 @@ open import Once.CCC.Machine.SMCore
          halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-same;
          Input; Output; AbstractTrace; mov-to-output)
-open import Once.Sem using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.Eval using (PrimSem; evalPrim)
 
 ------------------------------------------------------------------------

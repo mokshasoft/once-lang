@@ -14,9 +14,9 @@ module Once.Fusion.Correct where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.Semantics
+open import Once.Semantics.IR using (⟦_⟧; eval′)
 open import Once.Fusion
-open import Once.Postulates using (closure-semantics-eq; extensionality)
+open import Once.Postulates using (extensionality)
 
 open import Data.Nat using (ℕ; zero; suc)
 open import Data.Product using (_,_)
@@ -32,7 +32,7 @@ open import Relation.Binary.PropositionalEquality
 ------------------------------------------------------------------------
 
 fusion-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
-                       → eval (fusion-compose g f) x ≡ eval (g ∘ f) x
+                       → eval′ (fusion-compose g f) x ≡ eval′ (g ∘ f) x
 
 ------------------------------------------------------------------------
 -- FUSION RULE 1: Right functor fusion
@@ -540,14 +540,14 @@ fusion-compose-correct (case (free-heap _) _) _ x = refl
 ------------------------------------------------------------------------
 
 fusion-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-                    → eval (fusion-once f) x ≡ eval f x
+                    → eval′ (fusion-once f) x ≡ eval′ f x
 
 fusion-once-correct id x = refl
 
 fusion-once-correct (g ∘ f) x =
   trans (fusion-compose-correct (fusion-once g) (fusion-once f) x)
-        (trans (cong (eval (fusion-once g)) (fusion-once-correct f x))
-               (fusion-once-correct g (eval f x)))
+        (trans (cong (eval′ (fusion-once g)) (fusion-once-correct f x))
+               (fusion-once-correct g (eval′ f x)))
 
 fusion-once-correct fst x = refl
 fusion-once-correct snd x = refl
@@ -565,10 +565,7 @@ fusion-once-correct terminal x = refl
 fusion-once-correct initial ()
 
 fusion-once-correct (curry {q = q} f _) x =
-  closure-semantics-eq
-    (eval (curry {q = q} (fusion-once f) Heap) x)
-    (eval (curry {q = q} f Heap) x)
-    (extensionality (λ b → fusion-once-correct f (x , b)))
+  extensionality (λ b → fusion-once-correct f (x , b))
 
 fusion-once-correct apply x = refl
 fusion-once-correct (fold _) x = refl
@@ -582,7 +579,7 @@ fusion-once-correct (free-heap h) x = refl
 ------------------------------------------------------------------------
 
 fusion-n-correct : ∀ {A B} (n : ℕ) (f : IR A B) (x : ⟦ A ⟧)
-                 → eval (fusion-n n f) x ≡ eval f x
+                 → eval′ (fusion-n n f) x ≡ eval′ f x
 fusion-n-correct zero f x = refl
 fusion-n-correct (suc n) f x =
   trans (fusion-n-correct n (fusion-once f) x)
@@ -593,5 +590,5 @@ fusion-n-correct (suc n) f x =
 ------------------------------------------------------------------------
 
 fusion-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-               → eval (fusion f) x ≡ eval f x
+               → eval′ (fusion f) x ≡ eval′ f x
 fusion-correct f x = fusion-n-correct 10 f x

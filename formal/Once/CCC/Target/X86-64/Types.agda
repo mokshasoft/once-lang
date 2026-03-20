@@ -32,7 +32,7 @@ open import Once.Type public
 -- this module. New code should import directly from Once.Sem.
 ------------------------------------------------------------------------
 
-open import Once.Sem public
+open import Once.Semantics.Machine public
   using (⟦_⟧; ⟦Fix⟧; wrap; unwrap;
          sem-fst; sem-snd; sem-pair;
          sem-inl; sem-inr; sem-case;

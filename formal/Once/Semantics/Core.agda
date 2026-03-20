@@ -1,24 +1,23 @@
 ------------------------------------------------------------------------
--- Once.Sem
+-- Once.Semantics.Core
 --
--- Generic semantic interpretation of Once types.
+-- Core semantic interpretation, parameterized by integer representation.
 --
--- Provides:
+-- This module provides:
 --   - ⟦_⟧: Type → Set (semantic interpretation)
 --   - ⟦Fix⟧: Fixed point wrapper
 --   - sem-*: Semantic operations (products, sums, fixed points)
+--   - Semantic laws
 --
--- This module is TARGET-INDEPENDENT. Backends may provide additional
--- type representations (e.g., stack-type-slots for X86).
+-- Instantiate with ℕ for machine semantics, ℤ for proof semantics.
 ------------------------------------------------------------------------
 
-module Once.Sem where
+module Once.Semantics.Core (IntRep : Set) where
 
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Data.Nat using (ℕ)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -39,8 +38,7 @@ open ⟦Fix⟧ public
 -- Semantic Interpretation
 --
 -- Functions are plain Agda functions (not Closure records).
--- This is the preferred interpretation for SlotMachine proofs
--- and the X86-64 dispatcher.
+-- Int is parameterized (ℕ for machine, ℤ for proofs).
 ------------------------------------------------------------------------
 
 ⟦_⟧ : Type → Set
@@ -51,7 +49,7 @@ open ⟦Fix⟧ public
 ⟦ A ⇒[ _ ] B ⟧   = ⟦ A ⟧ → ⟦ B ⟧
 ⟦ Eff A B ⟧      = ⟦ A ⟧ → ⟦ B ⟧
 ⟦ Fix F ⟧        = ⟦Fix⟧ ⟦ F ⟧
-⟦ Int ⟧          = ℕ
+⟦ Int ⟧          = IntRep
 ⟦ Float ⟧        = AgdaFloat
 ⟦ Str ⟧          = String
 ⟦ Buffer ⟧       = String
@@ -93,7 +91,7 @@ sem-unfold : ∀ {F} → ⟦ Fix F ⟧ → ⟦ F ⟧
 sem-unfold (wrap x) = x
 
 ------------------------------------------------------------------------
--- Laws
+-- Semantic Laws
 ------------------------------------------------------------------------
 
 sem-fst-pair : ∀ {A B} (a : ⟦ A ⟧) (b : ⟦ B ⟧) → sem-fst (sem-pair a b) ≡ a

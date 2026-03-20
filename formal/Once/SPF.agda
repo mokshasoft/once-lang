@@ -24,7 +24,7 @@
 module Once.SPF where
 
 open import Once.Type using (Type)
-open import Once.Semantics using (⟦_⟧)
+open import Once.Semantics.IR using (⟦_⟧)
 
 open import Level using (Level; 0ℓ)
 open import Data.Unit using (⊤; tt)

@@ -18,11 +18,11 @@ open import Once.Type
 open import Once.CCC.IR
 
 -- Import semantic interpretation of types from Once.Sem
-open import Once.Sem
+open import Once.Semantics.Machine
   using (⟦_⟧; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case; sem-fold; sem-unfold)
 
 -- Re-export ⟦_⟧ for convenience
-open import Once.Sem public using (⟦_⟧)
+open import Once.Semantics.Machine public using (⟦_⟧)
 
 ------------------------------------------------------------------------
 -- Primitive Semantics Provider

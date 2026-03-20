@@ -12,10 +12,10 @@ module Once.Optimize.Correct where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.Semantics
+open import Once.Semantics.IR using (⟦_⟧; eval′)
 open import Once.Optimize
 open import Once.Category.Laws
-open import Once.Postulates using (closure-semantics-eq; extensionality)
+open import Once.Postulates using (extensionality)
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Empty using (⊥-elim)
@@ -49,16 +49,16 @@ funext = extensionality
 mutual
   -- | Correctness of type-directed optimize-compose
   optimize-compose-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
-                           → eval (optimize-compose g f) x ≡ eval (g ∘ f) x
+                           → eval′ (optimize-compose g f) x ≡ eval′ (g ∘ f) x
   optimize-compose-correct {A} {B} {C} g f x with C ≟Type Unit
-  ... | yes refl = refl  -- eval terminal x = tt = eval (g ∘ f) x
+  ... | yes refl = refl  -- eval terminal x = tt = eval′ (g ∘ f) x
   ... | no _ with A ≟Type Void
   ...   | yes refl = ⊥-elim x  -- x : ⟦ Void ⟧ = ⊥, vacuously true
   ...   | no _ = optimize-compose-structural-correct g f x
 
   -- | Correctness of structural optimize-compose
   optimize-compose-structural-correct : ∀ {A B C} (g : IR B C) (f : IR A B) (x : ⟦ A ⟧)
-                                      → eval (optimize-compose-structural g f) x ≡ eval (g ∘ f) x
+                                      → eval′ (optimize-compose-structural g f) x ≡ eval′ (g ∘ f) x
 
   -- Left identity: id ∘ f = f
   optimize-compose-structural-correct id f x = refl
@@ -249,43 +249,43 @@ mutual
   optimize-compose-structural-correct apply (⟨ curry (h ∘ id) _ , g' ⟩ _) x =
     let inner = optimize-compose id (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct id (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct id (⟨ id , g' ⟩ _) x))
   optimize-compose-structural-correct apply (⟨ curry (h ∘ (k₁ ∘ k₂)) _ , g' ⟩ _) x =
     let inner = optimize-compose (k₁ ∘ k₂) (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct (k₁ ∘ k₂) (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct (k₁ ∘ k₂) (⟨ id , g' ⟩ _) x))
   optimize-compose-structural-correct apply (⟨ curry (h ∘ (⟨ f₁ , f₂ ⟩ m)) _ , g' ⟩ _) x =
     let inner = optimize-compose (⟨ f₁ , f₂ ⟩ m) (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct (⟨ f₁ , f₂ ⟩ m) (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct (⟨ f₁ , f₂ ⟩ m) (⟨ id , g' ⟩ _) x))
   optimize-compose-structural-correct apply (⟨ curry (h ∘ (inl m)) _ , g' ⟩ _) x =
     let inner = optimize-compose (inl m) (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct (inl m) (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct (inl m) (⟨ id , g' ⟩ _) x))
   optimize-compose-structural-correct apply (⟨ curry (h ∘ (inr m)) _ , g' ⟩ _) x =
     let inner = optimize-compose (inr m) (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct (inr m) (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct (inr m) (⟨ id , g' ⟩ _) x))
   optimize-compose-structural-correct apply (⟨ curry (h ∘ (curry f m)) _ , g' ⟩ _) x =
     let inner = optimize-compose (curry f m) (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct (curry f m) (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct (curry f m) (⟨ id , g' ⟩ _) x))
   optimize-compose-structural-correct apply (⟨ curry (h ∘ apply) _ , g' ⟩ _) x =
     let inner = optimize-compose apply (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct apply (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct apply (⟨ id , g' ⟩ _) x))
   optimize-compose-structural-correct apply (⟨ curry (h ∘ (fold Heap)) _ , g' ⟩ _) x =
     let inner = optimize-compose (fold Heap) (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct (fold _) (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct (fold _) (⟨ id , g' ⟩ _) x))
   optimize-compose-structural-correct apply (⟨ curry (h ∘ (fold Stack)) _ , g' ⟩ _) x =
     let inner = optimize-compose (fold Stack) (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct (fold _) (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct (fold _) (⟨ id , g' ⟩ _) x))
   optimize-compose-structural-correct apply (⟨ curry (h ∘ (Prim n)) _ , g' ⟩ _) x =
     let inner = optimize-compose (Prim n) (⟨ id , g' ⟩ _)
     in trans (optimize-compose-correct h inner x)
-             (cong (eval h) (optimize-compose-correct (Prim n) (⟨ id , g' ⟩ _) x))
+             (cong (eval′ h) (optimize-compose-correct (Prim n) (⟨ id , g' ⟩ _) x))
 -- Dead code: terminal ∘ ⟨ id , g ⟩ = terminal
   optimize-compose-structural-correct apply (⟨ curry terminal _ , g' ⟩ _) x = refl
 -- Identity: id ∘ ⟨ id , g ⟩ = ⟨ id , g ⟩
@@ -400,43 +400,43 @@ mutual
   optimize-compose-structural-correct (h ∘ g) initial ()  -- Initial absorption (Void is empty)
   optimize-compose-structural-correct (h ∘ g) (f' ∘ f'') x =
     trans (optimize-compose-correct h (optimize-compose g (f' ∘ f'')) x)
-          (cong (eval h) (optimize-compose-correct g (f' ∘ f'') x))
+          (cong (eval′ h) (optimize-compose-correct g (f' ∘ f'') x))
   optimize-compose-structural-correct (h ∘ g) fst x =
     trans (optimize-compose-correct h (optimize-compose g fst) x)
-          (cong (eval h) (optimize-compose-correct g fst x))
+          (cong (eval′ h) (optimize-compose-correct g fst x))
   optimize-compose-structural-correct (h ∘ g) snd x =
     trans (optimize-compose-correct h (optimize-compose g snd) x)
-          (cong (eval h) (optimize-compose-correct g snd x))
+          (cong (eval′ h) (optimize-compose-correct g snd x))
   optimize-compose-structural-correct (h ∘ g) (⟨ f' , f'' ⟩ m) x =
     trans (optimize-compose-correct h (optimize-compose g (⟨ f' , f'' ⟩ m)) x)
-          (cong (eval h) (optimize-compose-correct g (⟨ f' , f'' ⟩ m) x))
+          (cong (eval′ h) (optimize-compose-correct g (⟨ f' , f'' ⟩ m) x))
   optimize-compose-structural-correct (h ∘ g) (inl m) x =
     trans (optimize-compose-correct h (optimize-compose g (inl m)) x)
-          (cong (eval h) (optimize-compose-correct g (inl m) x))
+          (cong (eval′ h) (optimize-compose-correct g (inl m) x))
   optimize-compose-structural-correct (h ∘ g) (inr m) x =
     trans (optimize-compose-correct h (optimize-compose g (inr m)) x)
-          (cong (eval h) (optimize-compose-correct g (inr m) x))
+          (cong (eval′ h) (optimize-compose-correct g (inr m) x))
   optimize-compose-structural-correct (h ∘ g) terminal x =
     trans (optimize-compose-correct h (optimize-compose g terminal) x)
-          (cong (eval h) (optimize-compose-correct g terminal x))
+          (cong (eval′ h) (optimize-compose-correct g terminal x))
   optimize-compose-structural-correct (h ∘ g) (curry f' m) x =
     trans (optimize-compose-correct h (optimize-compose g (curry f' m)) x)
-          (cong (eval h) (optimize-compose-correct g (curry f' m) x))
+          (cong (eval′ h) (optimize-compose-correct g (curry f' m) x))
   optimize-compose-structural-correct (h ∘ g) apply x =
     trans (optimize-compose-correct h (optimize-compose g apply) x)
-          (cong (eval h) (optimize-compose-correct g apply x))
+          (cong (eval′ h) (optimize-compose-correct g apply x))
   optimize-compose-structural-correct (h ∘ g) (fold m) x =
     trans (optimize-compose-correct h (optimize-compose g (fold m)) x)
-          (cong (eval h) (optimize-compose-correct g (fold m) x))
+          (cong (eval′ h) (optimize-compose-correct g (fold m) x))
   optimize-compose-structural-correct (h ∘ g) unfold x =
     trans (optimize-compose-correct h (optimize-compose g unfold) x)
-          (cong (eval h) (optimize-compose-correct g unfold x))
+          (cong (eval′ h) (optimize-compose-correct g unfold x))
   optimize-compose-structural-correct (h ∘ g) arr x =
     trans (optimize-compose-correct h (optimize-compose g arr) x)
-          (cong (eval h) (optimize-compose-correct g arr x))
+          (cong (eval′ h) (optimize-compose-correct g arr x))
   optimize-compose-structural-correct (h ∘ g) (Prim name) x =
     trans (optimize-compose-correct h (optimize-compose g (Prim name)) x)
-          (cong (eval h) (optimize-compose-correct g (Prim name) x))
+          (cong (eval′ h) (optimize-compose-correct g (Prim name) x))
 
 -- Prim cases (primitives are opaque)
   optimize-compose-structural-correct (Prim name) id x = refl
@@ -473,7 +473,7 @@ mutual
 -- free-heap as right operand with composition on left (recursive proof needed)
   optimize-compose-structural-correct (h ∘ g) (free-heap hr) x =
     trans (optimize-compose-correct h (optimize-compose g (free-heap hr)) x)
-          (cong (eval h) (optimize-compose-correct g (free-heap hr) x))
+          (cong (eval′ h) (optimize-compose-correct g (free-heap hr) x))
 -- free-heap as right operand with non-composition on left
   optimize-compose-structural-correct terminal (free-heap _) x = refl
   optimize-compose-structural-correct (⟨ _ , _ ⟩ _) (free-heap _) x = refl
@@ -488,7 +488,7 @@ mutual
 ------------------------------------------------------------------------
 
 optimize-pair-correct : ∀ {A B C} (f : IR C A) (g : IR C B) (x : ⟦ C ⟧)
-                      → eval (optimize-pair f g) x ≡ eval (⟨ f , g ⟩ Heap) x
+                      → eval′ (optimize-pair f g) x ≡ eval′ (⟨ f , g ⟩ Heap) x
 
 -- Eta law: ⟨ fst , snd ⟩ = id
 optimize-pair-correct (fst {A} {B}) (snd {A'} {B'}) x with A ≟Type A' | B ≟Type B'
@@ -600,7 +600,7 @@ optimize-pair-correct ((free-heap _) ∘ _) _ x = refl
 ------------------------------------------------------------------------
 
 optimize-case-correct : ∀ {A B C} (f : IR A C) (g : IR B C) (x : ⟦ A + B ⟧)
-                      → eval (optimize-case f g) x ≡ eval (case f g) x
+                      → eval′ (optimize-case f g) x ≡ eval′ (case f g) x
 
 -- Eta law: (case inl inr) = id
 -- Note: AllocModes m and m' may differ but semantics are the same (mode is transparent)
@@ -608,7 +608,7 @@ optimize-case-correct (inl {A} {B} m) (inr {A'} {B'} m') x with A ≟Type A' | B
 ... | yes refl | yes refl = sym (lemma x)
   where
     -- AllocMode doesn't affect semantics of inl/inr
-    lemma : (y : ⟦ A + B ⟧) → eval (case (inl m) (inr m')) y ≡ y
+    lemma : (y : ⟦ A + B ⟧) → eval′ (case (inl m) (inr m')) y ≡ y
     lemma (inj₁ a) = refl
     lemma (inj₂ b) = refl
 ... | yes refl | no _     = refl
@@ -636,7 +636,7 @@ optimize-case-correct (_∘_ h (inl {A} {B} m)) (_∘_ h' (inr {.A} {.B} m')) x
 ...   | yes refl = sym (lemma x)  -- Use uniqueness with mode-transparent proof
   where
     -- AllocMode doesn't affect semantics, so uniqueness holds regardless of modes
-    lemma : (y : ⟦ A + B ⟧) → eval (case (h ∘ inl m) (h ∘ inr m')) y ≡ eval h y
+    lemma : (y : ⟦ A + B ⟧) → eval′ (case (h ∘ inl m) (h ∘ inr m')) y ≡ eval′ h y
     lemma (inj₁ a) = refl
     lemma (inj₂ b) = refl
 ...   | no _     = refl
@@ -730,12 +730,12 @@ optimize-case-correct (_ ∘ (inl _)) (_ ∘ (fold Stack)) x = refl
 mutual
   -- | Structural optimization preserves semantics
   optimize-once-structural-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-                                   → eval (optimize-once-structural f) x ≡ eval f x
+                                   → eval′ (optimize-once-structural f) x ≡ eval′ f x
   optimize-once-structural-correct id x = refl
   optimize-once-structural-correct (g ∘ f) x =
     trans (optimize-compose-correct (optimize-once g) (optimize-once f) x)
-          (trans (cong (eval (optimize-once g)) (optimize-once-correct f x))
-                 (optimize-once-correct g (eval f x)))
+          (trans (cong (eval′ (optimize-once g)) (optimize-once-correct f x))
+                 (optimize-once-correct g (eval′ f x)))
   optimize-once-structural-correct fst x = refl
   optimize-once-structural-correct snd x = refl
   optimize-once-structural-correct (⟨ f , g ⟩ _) x =
@@ -753,16 +753,13 @@ mutual
     trans (optimize-case-correct (optimize-once f) (optimize-once g) x)
           (lemma x)
     where
-      lemma : (y : ⟦ _ + _ ⟧) → eval (case (optimize-once f) (optimize-once g)) y ≡ eval (case f g) y
+      lemma : (y : ⟦ _ + _ ⟧) → eval′ (case (optimize-once f) (optimize-once g)) y ≡ eval′ (case f g) y
       lemma (inj₁ a) = optimize-once-correct f a
       lemma (inj₂ b) = optimize-once-correct g b
   optimize-once-structural-correct terminal x = refl
   optimize-once-structural-correct initial ()
   optimize-once-structural-correct (curry {q = q} f _) x =
-    closure-semantics-eq
-      (eval (curry {q = q} (optimize-once f) Heap) x)
-      (eval (curry {q = q} f Heap) x)
-      (funext (λ b → optimize-once-correct f (x , b)))
+    funext (λ b → optimize-once-correct f (x , b))
   optimize-once-structural-correct apply x = refl
   -- fold with Void source: returns initial (vacuously correct)
   optimize-once-structural-correct (fold {F} _) x with F ≟Type Void
@@ -784,7 +781,7 @@ mutual
   --   2. A = Void: initial is correct (vacuously, no inputs)
   --   3. Otherwise: structural rules preserve semantics
   optimize-once-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-                        → eval (optimize-once f) x ≡ eval f x
+                        → eval′ (optimize-once f) x ≡ eval′ f x
   optimize-once-correct {A} {B} f x with B ≟Type Unit
   ... | yes refl = refl  -- eval terminal x = tt = eval f x (both produce tt)
   ... | no _ with A ≟Type Void
@@ -796,7 +793,7 @@ mutual
 ------------------------------------------------------------------------
 
 optimize-n-correct : ∀ {A B} (n : ℕ) (f : IR A B) (x : ⟦ A ⟧)
-                   → eval (optimize-n n f) x ≡ eval f x
+                   → eval′ (optimize-n n f) x ≡ eval′ f x
 optimize-n-correct zero f x = refl
 optimize-n-correct (suc n) f x =
   trans (optimize-n-correct n (optimize-once f) x)
@@ -807,5 +804,5 @@ optimize-n-correct (suc n) f x =
 ------------------------------------------------------------------------
 
 optimize-correct : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧)
-                 → eval (optimize f) x ≡ eval f x
+                 → eval′ (optimize f) x ≡ eval′ f x
 optimize-correct f x = optimize-n-correct 10 f x

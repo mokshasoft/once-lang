@@ -13,7 +13,7 @@
 --
 -- The full correctness chain:
 --   evalSurface ir x
---     ≡ eval (compile ir) x           [compile-preserves-semantics]
+--     ≡ eval′ (compile ir) x           [compile-preserves-semantics]
 --     ≡ result in machine state       [backend compile-correct]
 --
 -- NOTE: Full connection requires semantics consolidation.
@@ -26,7 +26,7 @@ module Once.Compile.Correct where
 
 open import Once.Type
 open import Once.CCC.IR as Core
-open import Once.Semantics using (⟦_⟧; eval)
+open import Once.Semantics.IR using (⟦_⟧; eval′)
 open import Once.Surface.IR using (SurfaceIR)
 open import Once.Surface.Desugar using (desugar)
 open import Once.Surface.Desugar.Correct using (evalSurface; desugar-correct)
@@ -51,17 +51,17 @@ compile ir = escape (optimize (desugar ir))
 -- The frontend pipeline:
 --   SurfaceIR → desugar → IR → optimize → IR → escape → IR
 --
--- This theorem shows: eval (compile ir) x ≡ evalSurface ir x
+-- This theorem shows: eval′ (compile ir) x ≡ evalSurface ir x
 -- In other words: the compiled IR has the same semantics as the source.
 ------------------------------------------------------------------------
 
 compile-preserves-semantics : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧)
-                            → eval (compile ir) x ≡ evalSurface ir x
+                            → eval′ (compile ir) x ≡ evalSurface ir x
 compile-preserves-semantics ir x =
   -- compile = escape ∘ optimize ∘ desugar
-  -- eval (escape (optimize (desugar ir))) x
-  --   ≡ eval (optimize (desugar ir)) x     [escape-correct]
-  --   ≡ eval (desugar ir) x                [optimize-correct]
+  -- eval′ (escape (optimize (desugar ir))) x
+  --   ≡ eval′ (optimize (desugar ir)) x     [escape-correct]
+  --   ≡ eval′ (desugar ir) x                [optimize-correct]
   --   ≡ evalSurface ir x                   [desugar-correct]
   trans (escape-correct (optimize (desugar ir)) x)
         (trans (optimize-correct (desugar ir) x)

@@ -48,6 +48,7 @@ cost (fold _)          = 1                        -- Fix wrapper allocation
 cost unfold        = 0                        -- unwrapping is free
 cost arr           = 0
 cost (Prim _)      = 0                        -- primitives are opaque
+cost (free-heap _) = 0                        -- deallocation doesn't allocate
 
 ------------------------------------------------------------------------
 -- Basic properties

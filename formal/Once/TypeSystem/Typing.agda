@@ -14,8 +14,9 @@ module Once.TypeSystem.Typing where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.Semantics
-open import Once.Postulates using (closure-semantics-eq; extensionality)
+open import Once.CCC.Machine.SMCore using (HeapRef)
+open import Once.Semantics.IR using (⟦_⟧; eval′)
+open import Once.Postulates using (extensionality)
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -173,7 +174,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- At runtime, Eff A B is represented identically to A ⇒ B.
   -- The distinction is purely for effect tracking.
   --
-  ty-arr : ∀ {Γ A B} → Γ ⊢ (A ⇒ B) ⟶ Eff A B
+  ty-arr : ∀ {Γ A B q} → Γ ⊢ (A ⇒[ q ] B) ⟶ Eff A B
 
   -- Primitive operations (opaque to optimizer)
   --
@@ -185,6 +186,9 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- The String names the primitive (e.g., "arith.add.int").
   --
   ty-prim : ∀ {Γ A B} → String → Γ ⊢ A ⟶ B
+
+  -- Memory management (explicit heap deallocation)
+  ty-free-heap : ∀ {Γ} → HeapRef → Γ ⊢ Unit ⟶ Unit
 
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
@@ -211,6 +215,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-unfold ⌋ = unfold
 ⌊ ty-arr ⌋ = arr
 ⌊ ty-prim name ⌋ = Prim name
+⌊ ty-free-heap h ⌋ = free-heap h
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -234,6 +239,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ unfold ⌉ = ty-unfold
 ⌈ arr ⌉ = ty-arr
 ⌈ Prim name ⌉ = ty-prim name
+⌈ free-heap h ⌉ = ty-free-heap h
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f (semantically)
 --
@@ -241,9 +247,9 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 -- track AllocMode, so the round-trip normalizes to Heap allocation.
 -- However, since AllocMode is semantically transparent, we have semantic equality.
 --
-round-trip-ir : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧) → eval ⌊ ⌈ f ⌉ ⌋ x ≡ eval f x
+round-trip-ir : ∀ {A B} (f : IR A B) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ f ⌉ ⌋ x ≡ eval′ f x
 round-trip-ir id x = refl
-round-trip-ir (g ∘ f) x = cong (eval ⌊ ⌈ g ⌉ ⌋) (round-trip-ir f x) `trans` round-trip-ir g (eval f x)
+round-trip-ir (g ∘ f) x = cong (eval′ ⌊ ⌈ g ⌉ ⌋) (round-trip-ir f x) `trans` round-trip-ir g (eval′ f x)
   where _`trans`_ = trans
 round-trip-ir fst x = refl
 round-trip-ir snd x = refl
@@ -254,12 +260,11 @@ round-trip-ir (case f g) (inj₁ a) = round-trip-ir f a
 round-trip-ir (case f g) (inj₂ b) = round-trip-ir g b
 round-trip-ir terminal x = refl
 round-trip-ir initial ()
-round-trip-ir (curry {q = q} f _) x = closure-semantics-eq
-  (eval (curry {q = q} ⌊ ⌈ f ⌉ ⌋ Heap) x)
-  (eval (curry {q = q} f Heap) x)
-  (extensionality (λ b → round-trip-ir f (x , b)))
+round-trip-ir (curry {q = q} f _) x =
+  extensionality (λ b → round-trip-ir f (x , b))
 round-trip-ir apply x = refl
 round-trip-ir (fold _) x = refl
 round-trip-ir unfold x = refl
 round-trip-ir arr x = refl
 round-trip-ir (Prim name) x = refl
+round-trip-ir (free-heap h) x = refl

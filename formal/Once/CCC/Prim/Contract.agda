@@ -19,7 +19,7 @@ open import Once.Type using (Type)
 open import Once.CCC.IR using (IR; Prim; AllocMode)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Eval using (PrimSem)
-open import Once.Sem using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧)
 
 ------------------------------------------------------------------------
 -- Contract and Provider (arch-portable)

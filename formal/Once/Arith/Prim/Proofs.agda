@@ -28,7 +28,7 @@ open import Once.CCC.Machine.SMCore
          mkLocState; stackMem; heapMem; writeReg; module MemOps;
          module AbstractExec; module ExecLemmas)
 open import Once.CCC.Eval using (PrimSem; evalPrim)
-open import Once.Sem using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧)
 
 ------------------------------------------------------------------------
 -- Arithmetic Semantics
