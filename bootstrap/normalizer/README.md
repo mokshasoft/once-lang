@@ -6,28 +6,31 @@ This directory contains the normalizer implementations for each level of the boo
 
 ```
 normalizer/
-├── Foundations/      # Mathematical foundations
-│   ├── Types.agda
-│   ├── MinimalCCC.agda
-│   ├── Encoding.agda
-│   └── Fixpoint.agda
-├── Level0/           # Minimal CCC normalizer
-│   └── Normalizer.agda
-├── Level1/           # + Exponentials (curry/apply)
-│   └── Normalizer.agda
-└── Level2/           # + Recursion schemes (ana/Out) = OCP-0003 IR
-    └── Normalizer.agda
+├── Agda/                 # Agda proofs (reference implementation)
+│   ├── Foundations/      # Mathematical foundations
+│   │   ├── Types.agda
+│   │   ├── MinimalCCC.agda
+│   │   ├── Encoding.agda
+│   │   └── ...
+│   └── Level0/           # Full CCC normalizer (products, coproducts, exponentials, μ)
+│       └── Normalizer.agda
+│
+└── Once/                 # Once proofs (self-hosted verification)
+    ├── Foundations/
+    └── Level0/
 ```
 
-## The Bootstrap Tower
+## Level 0 IR
 
-Each level builds on the previous:
+The complete CCC with:
+- Identity and composition: `id`, `∘`
+- Products: `fst`, `snd`, `⟨,⟩`
+- Coproducts: `inl`, `inr`, `[,]`
+- Exponentials: `curry`, `apply`
+- Initial/terminal: `initial`, `terminal`
+- Inductive types: `In`, `Out`, `cata`
 
-| Level | IR | Verified By |
-|-------|-----|-------------|
-| **Level 0** | id, ∘, fst, snd, ⟨,⟩, inl, inr, [,], terminal, In, cata | Fixpoint + Math |
-| **Level 1** | Level 0 + curry, apply | Level 0 normalizer + fixpoint |
-| **Level 2** | Level 1 + ana, Out, guardedness | Level 1 normalizer + fixpoint |
+Verified by fixpoint + mathematical foundations (confluence, termination, unique normal forms).
 
 ## Foundations
 
