@@ -1,13 +1,8 @@
-{-# OPTIONS --allow-unsolved-metas #-}
 ------------------------------------------------------------------------
 -- BetaNormalForm: Computational normal forms (no beta-redexes)
 --
 -- A term is in beta-normal form if no computation rules apply.
 -- This ignores structural rewrites like associativity.
---
--- Key insight: For the bootstrap, we care that normalized terms have
--- no COMPUTATIONAL redexes. Structural rewrites (assoc, pair-comp)
--- don't affect correctness.
 ------------------------------------------------------------------------
 
 module normalizer.Foundations.BetaNormalForm where
@@ -15,57 +10,27 @@ module normalizer.Foundations.BetaNormalForm where
 open import normalizer.Foundations.Types
 open import normalizer.Foundations.CCC
 open import normalizer.Foundations.Encoding
-  using (encode)
+  using (encode; ⌜_⌝Ty; ⌜_⌝Func; TyFuncCode; TyFuncF; TermCode'; TermF)
 
 ------------------------------------------------------------------------
 -- Beta-Redex Patterns
---
--- These are the computational reduction rules. A term is in beta-normal
--- form if none of these patterns appear (at any depth).
---
--- Excluded patterns:
---   id ∘ g           (id-left)
---   f ∘ id           (id-right)
---   fst ∘ ⟨f, g⟩     (fst-pair)
---   snd ∘ ⟨f, g⟩     (snd-pair)
---   [f, g] ∘ inl     (case-inl)
---   [f, g] ∘ inr     (case-inr)
---   ⟨fst, snd⟩       (eta-pair)
---   [inl, inr]       (eta-case)
---   apply ∘ ⟨curry f, g⟩  (curry-β)
---   cata F alg ∘ In  (cata-β)
---   Out ∘ In         (out-in)
---   In ∘ Out         (in-out)
---
--- NOT excluded (these are structural, not computational):
---   assoc-l, assoc-r
---   pair-comp
---   curry-η
 ------------------------------------------------------------------------
 
--- Beta reduction relation (subset of _⟶_)
--- Only includes computational steps
 data _⟶β_ : ∀ {A B} → Term A B → Term A B → Set where
-  -- Identity
   β-id-left   : ∀ {A B} {f : Term A B} → (id ∘ f) ⟶β f
   β-id-right  : ∀ {A B} {f : Term A B} → (f ∘ id) ⟶β f
-  -- Products
   β-fst-pair  : ∀ {A B C} {f : Term C A} {g : Term C B} → (fst ∘ ⟨ f , g ⟩) ⟶β f
   β-snd-pair  : ∀ {A B C} {f : Term C A} {g : Term C B} → (snd ∘ ⟨ f , g ⟩) ⟶β g
   β-eta-pair  : ∀ {A B} → ⟨ fst , snd ⟩ ⟶β id {A * B}
-  -- Coproducts
   β-case-inl  : ∀ {A B C} {f : Term A C} {g : Term B C} → ([ f , g ] ∘ inl) ⟶β f
   β-case-inr  : ∀ {A B C} {f : Term A C} {g : Term B C} → ([ f , g ] ∘ inr) ⟶β g
   β-eta-case  : ∀ {A B} → [ inl , inr ] ⟶β id {A + B}
-  -- Exponentials
   β-curry-β   : ∀ {A B C} {f : Term (A * B) C} {g : Term A B} →
                 (apply ∘ ⟨ curry f , g ⟩) ⟶β (f ∘ ⟨ id , g ⟩)
-  -- Fixed points
   β-cata      : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} →
                 (cata F alg ∘ In) ⟶β (alg ∘ fmap F (cata F alg))
   β-out-in    : ∀ F → (Out {F} ∘ In {F}) ⟶β id {⟦ F ⟧F (μ F)}
   β-in-out    : ∀ F → (In {F} ∘ Out {F}) ⟶β id {μ F}
-  -- Congruence rules (propagate through structure)
   β-∘-l    : ∀ {A B C} {f f' : Term B C} {g : Term A B} →
               f ⟶β f' → (f ∘ g) ⟶β (f' ∘ g)
   β-∘-r    : ∀ {A B C} {f : Term B C} {g g' : Term A B} →
@@ -87,91 +52,123 @@ data _⟶β_ : ∀ {A B} → Term A B → Term A B → Set where
 -- Beta-Normal Form
 ------------------------------------------------------------------------
 
--- A term is in beta-normal form if no beta-reduction applies
 IsBetaNormalForm : ∀ {A B} → Term A B → Set
 IsBetaNormalForm t = ∀ {u} → ¬ (t ⟶β u)
 
 ------------------------------------------------------------------------
--- Proof: Encoded terms are in beta-normal form
+-- Proof that encoded terms are in beta-normal form
 --
--- The encoding produces terms with structure:
---   In ∘ inr ∘ ... ∘ inl ∘ payload
--- or
---   In ∘ inr ∘ ... ∘ inr ∘ payload  (for last position)
+-- Key insight: All encodings have the form In ∘ inr^n ∘ [inl ∘] payload
+-- where payload is terminal, ⟨encoded, encoded⟩, or recursive encoding.
 --
--- None of the beta-redex patterns match this structure:
--- - id ∘ f : outer term is id, but In ≠ id
--- - fst ∘ ⟨_,_⟩ : outer term is fst, but In ≠ fst
--- - [f,g] ∘ inl : outer term is case, but In ≠ case
--- - cata ∘ In : outer term is cata, but In ≠ cata
--- - etc.
---
--- Therefore, encoded terms are in beta-normal form.
--- This is what makes the fixpoint theorem work: after the normalizer
--- finishes reducing (via cata-β etc.), it produces an encoded term
--- which is stable under further beta-reduction.
---
--- Mathematical Argument:
---
--- Theorem: All encoded terms are in β-normal form.
---
--- Proof: By structural induction. Every encoding has the form
---   In ∘ body
--- where `body` is built from {inl, inr, terminal, ⟨_,_⟩} and nested
--- encodings. The head constructor `In` doesn't match any β-redex
--- pattern—it's not `id`, `fst`, `snd`, `[_,_]`, `apply`, `cata`,
--- or `Out`. The body contains no redex patterns since it's pure
--- data injection. Recursively, all subterms are also encodings. ∎
---
--- This argument doesn't care about how many `inr`s there are—it's
--- uniform. A mathematician's proof doesn't count `inr`s—it reasons
--- about the *structure*.
---
--- Per OCP-0004's philosophy: The fixpoint property is the primary
--- verification mechanism. This proof explains *why* the fixpoint
--- works, but the empirical fixpoint test (running N on ⌜N⌝) is
--- the actual verification.
+-- The critical observation: ALL encoding bodies have target type that
+-- is NOT Unit. This means id : Term Unit Unit can never appear as a body,
+-- ruling out β-id-right. Similarly, Out : Term (μ F) _ can never appear
+-- since our sources are all Unit, ruling out β-in-out.
 ------------------------------------------------------------------------
 
--- Proof obligation: Encoded terms are in beta-normal form
--- Case analysis on each beta-rule showing it doesn't match the
--- In ∘ inr^n ∘ ... structure of encodings.
-encode-is-betanf : ∀ {A B} (t : Term A B) → IsBetaNormalForm (encode t)
-encode-is-betanf t = {!!}
+private
+  -- Unit is not equal to any complex type (both directions for convenience)
+  Unit≢TyFuncCode : Unit ≡ TyFuncCode → ⊥
+  Unit≢TyFuncCode ()
+
+  TyFuncCode≢Unit : TyFuncCode ≡ Unit → ⊥
+  TyFuncCode≢Unit ()
+
+  Unit≢TermCode : Unit ≡ TermCode' → ⊥
+  Unit≢TermCode ()
+
+  TermCode≢Unit : TermCode' ≡ Unit → ⊥
+  TermCode≢Unit ()
+
+  Unit≢Sum : ∀ {A B} → Unit ≡ (A + B) → ⊥
+  Unit≢Sum ()
+
+  Sum≢Unit : ∀ {A B} → (A + B) ≡ Unit → ⊥
+  Sum≢Unit ()
+
+  Unit≢Prod : ∀ {A B} → Unit ≡ (A * B) → ⊥
+  Unit≢Prod ()
+
+  Prod≢Unit : ∀ {A B} → (A * B) ≡ Unit → ⊥
+  Prod≢Unit ()
+
+  abstract
+    terminal-nf : ∀ {A} → IsBetaNormalForm (terminal {A})
+    terminal-nf ()
+
+    -- Pair of encodings from Unit is β-nf
+    -- β-eta-pair needs ⟨fst, snd⟩ but fst : Term (A * B) A has non-Unit source
+    pair-nf : ∀ {A B} {f : Term Unit A} {g : Term Unit B} →
+              IsBetaNormalForm f → IsBetaNormalForm g →
+              IsBetaNormalForm ⟨ f , g ⟩
+    pair-nf f-nf g-nf (β-pair-l r) = f-nf r
+    pair-nf f-nf g-nf (β-pair-r r) = g-nf r
+
+    -- inl ∘ body where body : Term Unit A and A ≢ Unit.
+    -- β-id-right requires body = id : Term Unit Unit, but if A ≢ Unit then id can't type-check.
+    inl-comp-nf : ∀ {A B} {body : Term Unit A} →
+                  (A ≡ Unit → ⊥) →
+                  IsBetaNormalForm body →
+                  IsBetaNormalForm (inl {A} {B} ∘ body)
+    inl-comp-nf _ body-nf (β-∘-l ())
+    inl-comp-nf A≢Unit _ β-id-right = A≢Unit refl
+    inl-comp-nf _ body-nf (β-∘-r r) = body-nf r
+
+    -- inr ∘ body where body : Term Unit B and B ≢ Unit.
+    inr-comp-nf : ∀ {A B} {body : Term Unit B} →
+                  (B ≡ Unit → ⊥) →
+                  IsBetaNormalForm body →
+                  IsBetaNormalForm (inr {A} {B} ∘ body)
+    inr-comp-nf _ body-nf (β-∘-l ())
+    inr-comp-nf B≢Unit _ β-id-right = B≢Unit refl
+    inr-comp-nf _ body-nf (β-∘-r r) = body-nf r
+
+    -- In ∘ body where body : Term Unit (⟦ F ⟧F (μ F)) is β-nf
+    -- Note: For K Unit, ⟦ K Unit ⟧F X = Unit, so body = id would type-check!
+    -- But in that case, (In ∘ id) ⟶β In via β-id-right is a valid reduction.
+    -- Our encodings never use In {K Unit} though - they use In {TyFuncF} or In {TermF}.
+    -- So we need to take the functor F as explicit and require F ≠ K Unit.
+    -- Actually, simpler: just require ⟦ F ⟧F (μ F) ≠ Unit.
+
+    -- For In ∘ body, β-id-right requires body = id : Term A A (source = target).
+    -- Since body : Term Unit B and id : Term A A requires A = Unit ∧ A = B,
+    -- we need B = Unit. But we require B ≢ Unit, so this case is impossible.
+    --
+    -- Strategy: For functors where ⟦ F ⟧F (μ F) is definitionally ≠ Unit,
+    -- Agda can see β-id-right is impossible. We inline the proof for our specific functors.
+    In-comp-nf-TyFuncF : ∀ {body : Term Unit (⟦ TyFuncF ⟧F (μ TyFuncF))} →
+                          IsBetaNormalForm body →
+                          IsBetaNormalForm (In {TyFuncF} ∘ body)
+    In-comp-nf-TyFuncF body-nf (β-∘-l ())
+    In-comp-nf-TyFuncF body-nf (β-∘-r r) = body-nf r
+    -- β-id-right is impossible: would need id : Term Unit (⟦ TyFuncF ⟧F (μ TyFuncF))
+    -- but ⟦ TyFuncF ⟧F (μ TyFuncF) = (Unit + ...) ≠ Unit
+
+    In-comp-nf-TermF : ∀ {body : Term Unit (⟦ TermF ⟧F (μ TermF))} →
+                        IsBetaNormalForm body →
+                        IsBetaNormalForm (In {TermF} ∘ body)
+    In-comp-nf-TermF body-nf (β-∘-l ())
+    In-comp-nf-TermF body-nf (β-∘-r r) = body-nf r
+    -- β-id-right is impossible: ⟦ TermF ⟧F (μ TermF) = (TyFuncCode + ...) ≠ Unit
 
 ------------------------------------------------------------------------
--- Reformulated Proof Structure
+-- Main Theorem: Encoded terms are in beta-normal form
 --
--- Instead of the problematic:
---   normalize-produces-nf : IsNormalForm (normalize ∘ t)
+-- PROOF OBLIGATION: The key insight is that all encoded terms have
+-- the form `In ∘ inr^n ∘ [inl ∘] payload` where payload is built from
+-- terminal, pairs, and recursive encodings. None of these match the
+-- beta-redex patterns because:
+--   1. In ∘ Out is impossible (sources don't match: Unit vs μ F)
+--   2. id ∘ _ is impossible (head is In, not id)
+--   3. All subterms are recursively beta-normal
 --
--- We should have:
---   1. noredex-fixpoint : NoRedex t → (normalize ∘ encode t) ⟶* encode t
---   2. encode-is-betanf : IsBetaNormalForm (encode t)
---   3. Therefore: The fixpoint target (encode t) is beta-stable
---
--- For the normalizer's own encoding:
---   1. normalize-noredex : NoRedex normalize
---   2. noredex-fixpoint normalize normalize-noredex gives fixpoint property
---   3. encode-is-betanf normalize gives beta-stability of the encoding
---
--- This avoids the incorrect claim that (normalize ∘ t) is normal,
--- while still establishing that the fixpoint target is correct.
+-- The proof requires careful handling of type inference for deeply
+-- nested sum types. This is marked as a postulate pending a complete
+-- implementation that properly handles the type unification issues.
 ------------------------------------------------------------------------
 
-------------------------------------------------------------------------
--- Summary
---
--- The distinction between _⟶_ and _⟶β_ is crucial:
---
--- _⟶_  includes: beta rules + structural rules (assoc, pair-comp, etc.)
--- _⟶β_ includes: only beta rules (computational reductions)
---
--- For the bootstrap:
--- - We need normalized terms to have no beta-redexes
--- - Structural rewrites don't affect correctness
--- - IsBetaNormalForm is the right notion for correctness proofs
---
--- encode-is-betanf captures the key insight that encoded terms
--- (being pure data) have no computational redexes.
-------------------------------------------------------------------------
+postulate
+  ⌜⌝Ty-betanf : ∀ A → IsBetaNormalForm (⌜ A ⌝Ty)
+  ⌜⌝Func-betanf : ∀ F → IsBetaNormalForm (⌜ F ⌝Func)
+  encode-is-betanf : ∀ {A B} (t : Term A B) → IsBetaNormalForm (encode t)
