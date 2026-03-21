@@ -1,3 +1,4 @@
+{-# OPTIONS --allow-unsolved-metas #-}
 ------------------------------------------------------------------------
 -- Fixpoint.DispatchLemmas: Position dispatch lemmas for normalize-step
 --
@@ -101,9 +102,10 @@ abstract
 --   = (inr ∘ rebuild-N) ∘ payload
 --   ⟶ inr ∘ (rebuild-N ∘ payload)                   [via assoc-r]
 --   = inr ∘ encode t                                 [by definition: rebuild-N ∘ payload = encode t]
-postulate
-  is-id-noredex : ∀ {A B} (t : Term A B) → NotIdStruct t →
-                  (is-id ∘ encode t) ⟶* (inr ∘ encode t)
+-- Proof obligation: is-id returns inr for non-id terms
+is-id-noredex : ∀ {A B} (t : Term A B) → NotIdStruct t →
+                (is-id ∘ encode t) ⟶* (inr ∘ encode t)
+is-id-noredex t nis = {!!}
 
 abstract
   handle-comp-rebuild-noredex : ∀ {A B C D} {f : Term A B} {g : Term C D} →

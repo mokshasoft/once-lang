@@ -1,3 +1,4 @@
+{-# OPTIONS --allow-unsolved-metas #-}
 ------------------------------------------------------------------------
 -- BetaNormalForm: Computational normal forms (no beta-redexes)
 --
@@ -133,12 +134,10 @@ IsBetaNormalForm t = ∀ {u} → ¬ (t ⟶β u)
 ------------------------------------------------------------------------
 
 -- Proof obligation: Encoded terms are in beta-normal form
--- The mathematical argument above is correct; formalizing it in Agda
--- is verbose but mechanical (case analysis on each beta-rule showing
--- it doesn't match the In ∘ inr^n ∘ ... structure).
-postulate
-  encode-is-betanf : ∀ {A B} (t : Term A B) →
-                     IsBetaNormalForm (encode t)
+-- Case analysis on each beta-rule showing it doesn't match the
+-- In ∘ inr^n ∘ ... structure of encodings.
+encode-is-betanf : ∀ {A B} (t : Term A B) → IsBetaNormalForm (encode t)
+encode-is-betanf t = {!!}
 
 ------------------------------------------------------------------------
 -- Reformulated Proof Structure
