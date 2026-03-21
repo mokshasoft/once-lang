@@ -7,7 +7,7 @@
 
 module normalizer.Foundations.ReductionCombinators where
 
-open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.CCC
   using (Ty; Term; _⟶_; _⟶*_; step; done; ⟶*-trans)
   public
 

@@ -21,7 +21,7 @@ check:
 
 # Check specific modules
 check-foundations:
-	$(AGDA) Foundations/MinimalCCC.agda
+	$(AGDA) Foundations/CCC.agda
 	$(AGDA) Foundations/Encoding.agda
 	$(AGDA) Foundations/Fixpoint.agda
 	$(AGDA) Foundations/Progress.agda

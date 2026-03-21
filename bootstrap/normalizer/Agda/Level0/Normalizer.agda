@@ -12,7 +12,7 @@
 module normalizer.Level0.Normalizer where
 
 open import normalizer.Foundations.Types
-open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.CCC
 open import normalizer.Foundations.Encoding
 -- Fixpoint.agda not needed - removed
 
@@ -450,7 +450,7 @@ fmap-inr F G f = step case-inr done
 -- The full proof requires handling all 12 term constructors.
 -- The simpler cases are done; the rest are proof obligations.
 
--- Note: ⟶*-trans is now provided by MinimalCCC
+-- Note: ⟶*-trans is now provided by CCC
 
 ------------------------------------------------------------------------
 -- Associativity

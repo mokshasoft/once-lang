@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Types: Foundation for MinimalCCC
+-- Types: Foundation for CCC
 --
 -- This module defines:
 --   1. Minimal prelude (no external dependencies)

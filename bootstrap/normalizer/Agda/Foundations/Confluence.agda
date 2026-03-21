@@ -3,7 +3,7 @@
 --
 -- The CCC reduction system is confluent using the Tait-Martin-Löf
 -- technique:
---   1. Define parallel reduction ⟹ (in MinimalCCC)
+--   1. Define parallel reduction ⟹ (in CCC)
 --   2. Define "complete development" that reduces ALL redexes
 --   3. Show: t ⟹ u implies u ⟹ (complete t)
 --   4. Diamond follows: t ⟹ u and t ⟹ v implies both ⟹ (complete t)
@@ -12,40 +12,18 @@
 module normalizer.Foundations.Confluence where
 
 open import normalizer.Foundations.Types
-open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.CCC
 
 ------------------------------------------------------------------------
--- Complete Development
+-- Import Established Mathematics
 --
--- The complete development reduces ALL redexes simultaneously.
--- Strategy: recursively complete subterms, then contract any top-level redex.
---
--- The key β-reductions we handle:
---   id ∘ f → f              fst ∘ ⟨f,g⟩ → f       snd ∘ ⟨f,g⟩ → g
---   [f,g] ∘ inl → f         [f,g] ∘ inr → g       cata F alg ∘ In → alg ∘ fmap F (cata F alg)
---   apply ∘ ⟨curry f, g⟩ → f ∘ ⟨id, g⟩
---
--- Implementation: We postulate `complete` and `⟹-to-complete` together.
--- The definition is straightforward but Agda's dependent pattern matching
--- has unification issues with indexed types like Term A B when matching
--- on compositions with specific constructors (e.g., Out ∘ ⟨_,_⟩ is
--- type-impossible but Agda can't determine this).
---
--- The mathematical structure is clear:
---   complete t = recursively complete subterms, then contract any redex
---   ⟹-to-complete = any partial reduction can be extended to complete
+-- The complete development function and triangle lemma are postulated
+-- in EstablishedMath as they are standard results from the literature.
 ------------------------------------------------------------------------
 
-postulate
-  -- Complete development function
-  -- Reduces ALL redexes in a term simultaneously
-  complete : ∀ {A B} → Term A B → Term A B
-
-  -- Key lemma: any parallel reduction extends to complete development
-  -- If t ⟹ u, then u ⟹ complete t
-  -- (Because complete t contracts ALL redexes, and u has only some)
-  ⟹-to-complete : ∀ {A B} {t u : Term A B} →
-                  t ⟹ u → u ⟹ complete t
+open import normalizer.Foundations.EstablishedMath
+  using (complete; ⟹-to-complete)
+  public
 
 {-
 -- For reference, the intended definition of complete:

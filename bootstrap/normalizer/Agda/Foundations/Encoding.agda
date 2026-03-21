@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Encoding: Concrete Self-Representation for MinimalCCC
+-- Encoding: Concrete Self-Representation for CCC
 --
 -- This module defines the encoding ⌜_⌝ that represents terms as data.
 -- The encoding is the foundation for the fixpoint correctness theorem:
@@ -15,7 +15,7 @@
 module normalizer.Foundations.Encoding where
 
 open import normalizer.Foundations.Types
-open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.CCC
 
 ------------------------------------------------------------------------
 -- Part 1: Encoding Types and Functors

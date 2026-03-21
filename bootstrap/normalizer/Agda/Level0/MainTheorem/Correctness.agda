@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------
 
 open import normalizer.Foundations.Types
-open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.CCC
 open import normalizer.Foundations.Encoding
   using (TermCode'; encode)
 open import normalizer.Foundations.BetaNormalForm

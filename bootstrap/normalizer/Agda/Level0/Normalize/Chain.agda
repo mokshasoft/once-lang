@@ -8,7 +8,7 @@
 module normalizer.Level0.Normalize.Chain where
 
 open import normalizer.Foundations.Types public
-open import normalizer.Foundations.MinimalCCC public
+open import normalizer.Foundations.CCC public
 open import normalizer.Foundations.Encoding public
 open import normalizer.Foundations.ReductionCombinators public
 open import normalizer.Level0.NoRedex hiding (is-id) public

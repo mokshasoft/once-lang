@@ -7,7 +7,7 @@ Mathematical foundations for the bootstrap normalizer verification.
 | Module | Purpose |
 |--------|---------|
 | `Types.agda` | Minimal prelude, Ty, Func, decidable equality |
-| `MinimalCCC.agda` | Term syntax, reduction rules, confluence, termination, WellFormed |
+| `CCC.agda` | Term syntax, reduction rules, confluence, termination, WellFormed |
 | `Encoding.agda` | Term encoding ⌜_⌝, injectivity proofs, Maybe as ⊤ ⊎ A |
 | `Fixpoint.agda` | NormalizerSpec record, fixpoint theorems |
 | `Progress.agda` | Progress lemmas for reduction |

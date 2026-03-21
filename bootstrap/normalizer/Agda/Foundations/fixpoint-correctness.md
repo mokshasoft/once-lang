@@ -221,7 +221,7 @@ All modules compile with Agda. The mathematical foundations are proven.
 | Module | Purpose |
 |--------|---------|
 | `Types.agda` | Foundation: prelude, Ty, Func, decidable equality |
-| `MinimalCCC.agda` | Terms, reduction, confluence, termination, fixpoint theorems |
+| `CCC.agda` | Terms, reduction, confluence, termination, fixpoint theorems |
 | `Encoding.agda` | Self-representation: TyFuncCode, TermCode', encoding functions, injectivity |
 | `Fixpoint.agda` | Zero-code TCB argument, documentation |
 | `Progress.agda` | Progress lemma infrastructure |

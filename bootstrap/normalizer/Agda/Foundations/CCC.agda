@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- MinimalCCC: Fixpoint Correctness for Zero-Code TCB
+-- CCC: Cartesian Closed Category with Recursion
 --
 -- This module defines the structure for proving:
 --   1. CCC with cata has confluence and termination
@@ -9,7 +9,7 @@
 -- Imports Types module for the foundation (prelude, types, functors).
 ------------------------------------------------------------------------
 
-module normalizer.Foundations.MinimalCCC where
+module normalizer.Foundations.CCC where
 
 open import normalizer.Foundations.Types public
 
@@ -364,4 +364,14 @@ fmap-⟶* (F ⊗ G) rs = ⟶*-pair (⟶*-∘-l fst (fmap-⟶* F rs)) (⟶*-∘-l
 ⟹*→⟶* done⟹ = done
 ⟹*→⟶* (step⟹ p ps) = ⟶*-trans (⟹→⟶* p) (⟹*→⟶* ps)
 
--- End of minimal MinimalCCC for Level0
+------------------------------------------------------------------------
+-- Normal Form Definition
+--
+-- A term is in normal form if no reduction applies.
+-- Defined here (in CCC) because it only depends on Term and ⟶.
+------------------------------------------------------------------------
+
+IsNormalForm : ∀ {A B} → Term A B → Set
+IsNormalForm t = ∀ {u} → ¬ (t ⟶ u)
+
+-- End of minimal CCC for Level0

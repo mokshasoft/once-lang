@@ -9,7 +9,7 @@
 module normalizer.Foundations.NormalForm where
 
 open import normalizer.Foundations.Types
-open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.CCC
 open import normalizer.Foundations.Confluence
   using (confluence)
 
@@ -17,9 +17,10 @@ open import normalizer.Foundations.Confluence
 -- Normal Form Definition
 ------------------------------------------------------------------------
 
--- A term is in normal form if no reduction rules apply
-IsNormalForm : ∀ {A B} → Term A B → Set
-IsNormalForm t = ∀ {u} → ¬ (t ⟶ u)
+-- Imported from CCC to avoid circular dependencies
+-- IsNormalForm : ∀ {A B} → Term A B → Set
+-- IsNormalForm t = ∀ {u} → ¬ (t ⟶ u)
+open import normalizer.Foundations.CCC using (IsNormalForm) public
 
 -- Normal forms have no redexes (this IS the definition)
 nf-no-redex : ∀ {A B} {t : Term A B} → IsNormalForm t → ∀ {u} → ¬ (t ⟶ u)

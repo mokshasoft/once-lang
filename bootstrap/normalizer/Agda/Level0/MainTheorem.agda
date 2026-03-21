@@ -12,7 +12,7 @@
 module normalizer.Level0.MainTheorem where
 
 open import normalizer.Foundations.Types
-open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.CCC
 open import normalizer.Foundations.Encoding
   using (TermCode'; encode)
 
@@ -42,23 +42,21 @@ open import normalizer.Level0.Normalize
   public
 
 ------------------------------------------------------------------------
--- Proof Obligations
+-- Import Established Mathematics
 --
--- These are mathematical facts we rely on. They are well-established
--- results from type theory / category theory.
+-- These are well-established results from type theory / category theory.
+-- See EstablishedMath.agda for references.
 ------------------------------------------------------------------------
 
--- All reduction sequences terminate (Martin-Löf, Tait)
--- For simply-typed systems, this is a classical result.
-postulate
-  strong-normalization : ∀ {A B} (t : Term A B) →
-                         ∃[ nf ] ((t ⟶* nf) × IsNormalForm nf)
+open import normalizer.Foundations.EstablishedMath
+  using (strong-normalization; IsNormalForm)
+  public
 
--- The normalizer preserves semantics (CCC laws)
--- Reduction rules are sound wrt categorical semantics.
-postulate
-  normalize-preserves-semantics : ∀ (t : Term Unit TermCode') →
-                                  ((normalize ∘ t) ⟶* t) ⊎ (t ⟶* (normalize ∘ t))
+-- Specialize normalize-semantics-equiv for our normalizer
+normalize-preserves-semantics : ∀ (t : Term Unit TermCode') →
+                                ((normalize ∘ t) ⟶* t) ⊎ (t ⟶* (normalize ∘ t))
+normalize-preserves-semantics t = normalize-semantics-equiv normalize t
+  where open import normalizer.Foundations.EstablishedMath using (normalize-semantics-equiv)
 
 ------------------------------------------------------------------------
 -- Correctness Structure

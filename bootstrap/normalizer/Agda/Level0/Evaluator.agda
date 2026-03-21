@@ -14,7 +14,7 @@
 module normalizer.Level0.Evaluator where
 
 open import normalizer.Foundations.Types
-open import normalizer.Foundations.MinimalCCC
+open import normalizer.Foundations.CCC
 open import normalizer.Foundations.Encoding
 
 -- Re-export useful things from Types
