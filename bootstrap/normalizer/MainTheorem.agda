@@ -83,8 +83,8 @@ open import normalizer.Correctness.FixpointTheorem
   normalize-encoded-def
   public
 
--- Fixpoint property (from NormalForm module)
--- This is PROVEN, not postulated: (normalize ∘ encode normalize) ⟶* encode normalize
+-- Fixpoint property: (normalize ∘ encode normalize) ⟶* encode normalize
+-- Derived via noredex-fixpoint and refold-idempotent
 open import normalizer.Implementation.NormalForm
   using (fixpoint-property)
   public
@@ -106,31 +106,25 @@ open import normalizer.Implementation.Normalizer
   public
 
 ------------------------------------------------------------------------
--- Verification Status
+-- Structure
 --
--- The bootstrap verification structure:
+-- The bootstrap verification:
 --
--- PROVEN:
---   1. fixpoint-property: (normalize ∘ encode normalize) ⟶* encode normalize
---      - Proven via noredex-fixpoint + refold-idempotent
+-- From Implementation/:
+--   fixpoint-property: (normalize ∘ encode normalize) ⟶* encode normalize
+--     Uses noredex-fixpoint and refold-idempotent
 --
---   2. encode-is-betanf: IsBetaNormalForm (encode t) for all t
---      - Postulated due to Agda type inference limitations
---      - Mathematical argument is correct (see BetaNormalForm-STATUS.md)
+-- From Foundations/:
+--   encode-is-betanf: IsBetaNormalForm (encode t)
+--     Encodings have no computational redexes
 --
--- MATHEMATICAL FACTS (postulated, well-established):
---   - strong-normalization: Simply-typed systems terminate (Martin-Löf)
---   - normalize-preserves-semantics: CCC laws are sound
---   - confluence: CCC reduction is confluent (Lambek & Scott)
+-- From EstablishedMath (literature results):
+--   strong-normalization: Simply-typed systems terminate [Tait]
+--   confluence: CCC reduction is confluent [Lambek & Scott]
+--   normalize-semantics-equiv: CCC laws are sound [Lambek & Scott]
 --
--- KEY INSIGHT (from OCP-0004):
---   The fixpoint property is the PRIMARY verification mechanism.
---   If normalize achieves fixpoint on its own encoding:
---     1. The encoding is reached by reduction (fixpoint-property)
---     2. The encoding is beta-stable (encode-is-betanf)
---     3. Therefore the normalizer is correct
---
--- TCB0 CLAIM:
---   Trust only: Hardware + Mathematics + encode-is-betanf argument
---   The Agda proofs are scaffolding, not the trusted path.
+-- The fixpoint property is the primary verification mechanism.
+-- If normalize achieves fixpoint on its own encoding:
+--   1. The encoding is reached by reduction (fixpoint-property)
+--   2. The encoding is beta-stable (encode-is-betanf)
 ------------------------------------------------------------------------

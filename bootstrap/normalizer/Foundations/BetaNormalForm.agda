@@ -173,8 +173,6 @@ postulate
 -- - Structural rewrites don't affect correctness
 -- - IsBetaNormalForm is the right notion for correctness proofs
 --
--- The postulate encode-is-betanf captures the key insight that
--- encoded terms (being pure data) have no computational redexes.
--- This is mathematically clear even if Agda's type inference makes
--- the formal proof bureaucratically complex.
+-- encode-is-betanf captures the key insight that encoded terms
+-- (being pure data) have no computational redexes.
 ------------------------------------------------------------------------

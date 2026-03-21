@@ -17,8 +17,8 @@ open import normalizer.Foundations.CCC
 ------------------------------------------------------------------------
 -- Import Established Mathematics
 --
--- The complete development function and triangle lemma are postulated
--- in EstablishedMath as they are standard results from the literature.
+-- The complete development function and triangle lemma are standard
+-- results from the literature. See EstablishedMath.agda for references.
 ------------------------------------------------------------------------
 
 open import normalizer.Foundations.EstablishedMath

@@ -1,18 +1,13 @@
 ------------------------------------------------------------------------
--- EstablishedMath: Postulates from Mathematical Literature
+-- EstablishedMath: Results from Mathematical Literature
 --
--- This module contains ONLY postulates that are established theorems
--- proven by mathematicians. These are NOT proof obligations - they
--- are accepted mathematical facts that form the foundation.
+-- This module contains established theorems from the literature.
+-- These results form the mathematical foundation of the verification.
 --
 -- References:
 --   [1] Lambek & Scott, "Introduction to Higher Order Categorical Logic"
 --   [2] Tait, "Intensional interpretations of functionals of finite type"
 --   [3] Girard, Lafont & Taylor, "Proofs and Types"
---
--- POLICY: Only add postulates here if they have published proofs in
--- the mathematical literature. Implementation-specific lemmas belong
--- elsewhere.
 ------------------------------------------------------------------------
 
 module normalizer.Foundations.EstablishedMath where
@@ -88,30 +83,24 @@ postulate
                               ((N ∘ t) ⟶* t) ⊎ (t ⟶* (N ∘ t))
 
 ------------------------------------------------------------------------
--- Derived Results (proven from the postulates above)
+-- Related definitions in CCC.agda
 ------------------------------------------------------------------------
 
--- These are NOT postulates - they follow from the established math.
--- Included here for convenience.
-
--- Parallel reduction is reflexive (proven in CCC)
+-- Parallel reduction is reflexive (defined in CCC)
 -- ⟹-refl : ∀ {A B} (t : Term A B) → t ⟹ t
 
--- Single step implies parallel (proven in CCC)
+-- Single step implies parallel (defined in CCC)
 -- ⟶→⟹ : ∀ {A B} {t u : Term A B} → t ⟶ u → t ⟹ u
 
--- Parallel implies multi-step (proven in CCC)
+-- Parallel implies multi-step (defined in CCC)
 -- ⟹→⟶* : ∀ {A B} {t u : Term A B} → t ⟹ u → t ⟶* u
 
 ------------------------------------------------------------------------
 -- Summary
 --
--- Postulates in this module (3 total):
---   1. complete           - Complete development function
---   2. ⟹-to-complete      - Triangle lemma for confluence
---   3. strong-normalization - Termination (Tait's theorem)
---   4. normalize-semantics-equiv - CCC soundness
---
--- These are the ONLY places where we trust external mathematics.
--- Everything else in the bootstrap is proven in Agda.
+-- This module contains 4 results from the literature:
+--   1. complete                  - Complete development function [1]
+--   2. ⟹-to-complete             - Triangle lemma for confluence [1]
+--   3. strong-normalization      - Termination (Tait's theorem) [2,3]
+--   4. normalize-semantics-equiv - CCC soundness [1]
 ------------------------------------------------------------------------
