@@ -97,6 +97,29 @@ private
     terminal-nf : ∀ {A} → IsBetaNormalForm (terminal {A})
     terminal-nf ()
 
+    -- Helper: inl has no direct β-reductions
+    inl-no-β : ∀ {A B} {u : Term A (A + B)} → inl {A} {B} ⟶β u → ⊥
+    inl-no-β ()
+
+    -- Helper: inr has no direct β-reductions
+    inr-no-β : ∀ {A B} {u : Term B (A + B)} → inr {A} {B} ⟶β u → ⊥
+    inr-no-β ()
+
+  abstract
+    -- inl ∘ terminal is β-nf: inl ≠ id, terminal ≠ id
+    -- Cases: β-id-left needs head=id (but inl≠id), β-id-right needs tail=id (but terminal≠id)
+    --        β-∘-l needs inl to reduce (impossible), β-∘-r needs terminal to reduce (impossible)
+    inl-terminal-nf : ∀ {B} → IsBetaNormalForm (inl {Unit} {B} ∘ terminal {Unit})
+    inl-terminal-nf (β-∘-l r) = inl-no-β r
+    inl-terminal-nf (β-∘-r r) = terminal-nf r
+    -- β-id-left, β-id-right ruled out by constructor mismatch (inl≠id, terminal≠id)
+
+    -- inr ∘ terminal is β-nf: inr ≠ id, terminal ≠ id
+    inr-terminal-nf : ∀ {A} → IsBetaNormalForm (inr {A} {Unit} ∘ terminal {Unit})
+    inr-terminal-nf (β-∘-l r) = inr-no-β r
+    inr-terminal-nf (β-∘-r r) = terminal-nf r
+    -- β-id-left, β-id-right ruled out by constructor mismatch (inr≠id, terminal≠id)
+
     -- Pair of encodings from Unit is β-nf
     -- β-eta-pair needs ⟨fst, snd⟩ but fst : Term (A * B) A has non-Unit source
     pair-nf : ∀ {A B} {f : Term Unit A} {g : Term Unit B} →
@@ -155,20 +178,348 @@ private
 ------------------------------------------------------------------------
 -- Main Theorem: Encoded terms are in beta-normal form
 --
--- PROOF OBLIGATION: The key insight is that all encoded terms have
--- the form `In ∘ inr^n ∘ [inl ∘] payload` where payload is built from
--- terminal, pairs, and recursive encodings. None of these match the
--- beta-redex patterns because:
---   1. In ∘ Out is impossible (sources don't match: Unit vs μ F)
---   2. id ∘ _ is impossible (head is In, not id)
---   3. All subterms are recursively beta-normal
+-- Key insight: All encoded terms have the form
+--   In ∘ inr^n ∘ [inl ∘] payload
+-- where payload is terminal, pairs, or recursive encodings.
 --
--- The proof requires careful handling of type inference for deeply
--- nested sum types. This is marked as a postulate pending a complete
--- implementation that properly handles the type unification issues.
+-- None match beta-redex patterns because:
+--   1. In ∘ Out is impossible (Out not in encoding bodies)
+--   2. id ∘ _ is impossible (head is In/inl/inr, not id)
+--   3. All subterms are recursively beta-normal
 ------------------------------------------------------------------------
 
-postulate
-  ⌜⌝Ty-betanf : ∀ A → IsBetaNormalForm (⌜ A ⌝Ty)
-  ⌜⌝Func-betanf : ∀ F → IsBetaNormalForm (⌜ F ⌝Func)
+-- Proving type/func encoding cases with mutual recursion
+mutual
+  abstract
+    -- ⌜ Void ⌝Ty = In ∘ inl ∘ terminal
+    ⌜Void⌝-betanf : IsBetaNormalForm (⌜ Void ⌝Ty)
+    ⌜Void⌝-betanf = In-comp-nf-TyFuncF inl-terminal-nf
+
+    -- ⌜ Unit ⌝Ty = In ∘ inr ∘ inl ∘ terminal
+    ⌜Unit⌝-betanf : IsBetaNormalForm (⌜ Unit ⌝Ty)
+    ⌜Unit⌝-betanf = In-comp-nf-TyFuncF (inr-comp-nf Sum≢Unit inl-terminal-nf)
+
+    -- ⌜ A * B ⌝Ty = In ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+    ⌜*⌝-betanf : ∀ A B → IsBetaNormalForm (⌜ A * B ⌝Ty)
+    ⌜*⌝-betanf A B = In-comp-nf-TyFuncF
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inl-comp-nf Prod≢Unit
+            (pair-nf (⌜⌝Ty-betanf A) (⌜⌝Ty-betanf B)))))
+
+    -- ⌜ A + B ⌝Ty = In ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+    ⌜+⌝-betanf : ∀ A B → IsBetaNormalForm (⌜ A + B ⌝Ty)
+    ⌜+⌝-betanf A B = In-comp-nf-TyFuncF
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inl-comp-nf Prod≢Unit
+              (pair-nf (⌜⌝Ty-betanf A) (⌜⌝Ty-betanf B))))))
+
+    -- ⌜ A ⇒ B ⌝Ty = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+    ⌜⇒⌝-betanf : ∀ A B → IsBetaNormalForm (⌜ A ⇒ B ⌝Ty)
+    ⌜⇒⌝-betanf A B = In-comp-nf-TyFuncF
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inl-comp-nf Prod≢Unit
+                (pair-nf (⌜⌝Ty-betanf A) (⌜⌝Ty-betanf B)))))))
+
+    -- ⌜ μ F ⌝Ty = In ∘ inr ∘ inr ∘ inr ∘ inr ∘ inr ∘ inl ∘ ⌜ F ⌝Func
+    ⌜μ⌝-betanf : ∀ F → IsBetaNormalForm (⌜ μ F ⌝Ty)
+    ⌜μ⌝-betanf F = In-comp-nf-TyFuncF
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inl-comp-nf TyFuncCode≢Unit (⌜⌝Func-betanf F)))))))
+
+    -- Main type encoding theorem
+    ⌜⌝Ty-betanf : ∀ A → IsBetaNormalForm (⌜ A ⌝Ty)
+    ⌜⌝Ty-betanf Void = ⌜Void⌝-betanf
+    ⌜⌝Ty-betanf Unit = ⌜Unit⌝-betanf
+    ⌜⌝Ty-betanf (A * B) = ⌜*⌝-betanf A B
+    ⌜⌝Ty-betanf (A + B) = ⌜+⌝-betanf A B
+    ⌜⌝Ty-betanf (A ⇒ B) = ⌜⇒⌝-betanf A B
+    ⌜⌝Ty-betanf (μ F) = ⌜μ⌝-betanf F
+
+    -- ⌜ Id ⌝Func = In ∘ inr^6 ∘ inl ∘ terminal
+    ⌜Id⌝-betanf : IsBetaNormalForm (⌜ Id ⌝Func)
+    ⌜Id⌝-betanf = In-comp-nf-TyFuncF
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  inl-terminal-nf))))))
+
+    -- ⌜ K A ⌝Func = In ∘ inr^7 ∘ inl ∘ ⌜ A ⌝Ty
+    ⌜K⌝-betanf : ∀ A → IsBetaNormalForm (⌜ K A ⌝Func)
+    ⌜K⌝-betanf A = In-comp-nf-TyFuncF
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inl-comp-nf TyFuncCode≢Unit (⌜⌝Ty-betanf A)))))))))
+
+    -- ⌜ F ⊕ G ⌝Func = In ∘ inr^8 ∘ inl ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩
+    ⌜⊕⌝-betanf : ∀ F G → IsBetaNormalForm (⌜ F ⊕ G ⌝Func)
+    ⌜⊕⌝-betanf F G = In-comp-nf-TyFuncF
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inr-comp-nf Sum≢Unit
+                      (inl-comp-nf Prod≢Unit
+                        (pair-nf (⌜⌝Func-betanf F) (⌜⌝Func-betanf G)))))))))))
+
+    -- ⌜ F ⊗ G ⌝Func = In ∘ inr^9 ∘ ⟨ ⌜ F ⌝Func , ⌜ G ⌝Func ⟩ (no inl - last alternative)
+    ⌜⊗⌝-betanf : ∀ F G → IsBetaNormalForm (⌜ F ⊗ G ⌝Func)
+    ⌜⊗⌝-betanf F G = In-comp-nf-TyFuncF
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inr-comp-nf Sum≢Unit
+                      (inr-comp-nf Prod≢Unit
+                        (pair-nf (⌜⌝Func-betanf F) (⌜⌝Func-betanf G)))))))))))
+
+    -- Main functor encoding theorem
+    ⌜⌝Func-betanf : ∀ F → IsBetaNormalForm (⌜ F ⌝Func)
+    ⌜⌝Func-betanf Id = ⌜Id⌝-betanf
+    ⌜⌝Func-betanf (K A) = ⌜K⌝-betanf A
+    ⌜⌝Func-betanf (F ⊕ G) = ⌜⊕⌝-betanf F G
+    ⌜⌝Func-betanf (F ⊗ G) = ⌜⊗⌝-betanf F G
+
+-- Term encoding proofs (mutual recursion for recursive cases)
+-- encode produces: In ∘ inr^n ∘ [inl ∘] payload
+-- where payload is ⌜_⌝Ty, ⟨encode, encode⟩, etc.
+mutual
+ abstract
+  -- Main theorem: All encoded terms are beta-normal (forward declaration for mutual)
   encode-is-betanf : ∀ {A B} (t : Term A B) → IsBetaNormalForm (encode t)
+
+  -- Helper for chains in term encoding
+  -- 0: encode id = In ∘ inl ∘ ⌜ A ⌝Ty
+  encode-id-nf : ∀ A → IsBetaNormalForm (encode (id {A}))
+  encode-id-nf A = In-comp-nf-TermF (inl-comp-nf TyFuncCode≢Unit (⌜⌝Ty-betanf A))
+
+  -- 1: encode (f ∘ g) = In ∘ inr ∘ inl ∘ ⟨ encode f , encode g ⟩
+  encode-comp-nf : ∀ {A B C} (f : Term B C) (g : Term A B) →
+                   IsBetaNormalForm (encode (f ∘ g))
+  encode-comp-nf f g = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inl-comp-nf Prod≢Unit
+        (pair-nf (encode-is-betanf f) (encode-is-betanf g))))
+
+  -- 2: encode fst = In ∘ inr^2 ∘ inl ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+  encode-fst-nf : ∀ A B → IsBetaNormalForm (encode (fst {A} {B}))
+  encode-fst-nf A B = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inl-comp-nf Prod≢Unit
+          (pair-nf (⌜⌝Ty-betanf A) (⌜⌝Ty-betanf B)))))
+
+  -- 3: encode snd = In ∘ inr^3 ∘ inl ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+  encode-snd-nf : ∀ A B → IsBetaNormalForm (encode (snd {A} {B}))
+  encode-snd-nf A B = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inl-comp-nf Prod≢Unit
+            (pair-nf (⌜⌝Ty-betanf A) (⌜⌝Ty-betanf B))))))
+
+  -- 4: encode ⟨ f , g ⟩ = In ∘ inr^4 ∘ inl ∘ ⟨ encode f , encode g ⟩
+  encode-pair-nf : ∀ {A B C} (f : Term C A) (g : Term C B) →
+                   IsBetaNormalForm (encode ⟨ f , g ⟩)
+  encode-pair-nf f g = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inl-comp-nf Prod≢Unit
+              (pair-nf (encode-is-betanf f) (encode-is-betanf g)))))))
+
+  -- 5: encode inl = In ∘ inr^5 ∘ inl ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+  encode-inl-nf : ∀ A B → IsBetaNormalForm (encode (inl {A} {B}))
+  encode-inl-nf A B = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inl-comp-nf Prod≢Unit
+                (pair-nf (⌜⌝Ty-betanf A) (⌜⌝Ty-betanf B))))))))
+
+  -- 6: encode inr = In ∘ inr^6 ∘ inl ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩
+  encode-inr-nf : ∀ A B → IsBetaNormalForm (encode (inr {A} {B}))
+  encode-inr-nf A B = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inl-comp-nf Prod≢Unit
+                  (pair-nf (⌜⌝Ty-betanf A) (⌜⌝Ty-betanf B)))))))))
+
+  -- 7: encode [ f , g ] = In ∘ inr^7 ∘ inl ∘ ⟨ encode f , encode g ⟩
+  encode-case-nf : ∀ {A B C} (f : Term A C) (g : Term B C) →
+                   IsBetaNormalForm (encode [ f , g ])
+  encode-case-nf f g = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inl-comp-nf Prod≢Unit
+                    (pair-nf (encode-is-betanf f) (encode-is-betanf g))))))))))
+
+  -- 8: encode terminal = In ∘ inr^8 ∘ inl ∘ ⌜ A ⌝Ty
+  encode-terminal-nf : ∀ A → IsBetaNormalForm (encode (terminal {A}))
+  encode-terminal-nf A = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inl-comp-nf TyFuncCode≢Unit (⌜⌝Ty-betanf A))))))))))
+
+  -- 9: encode initial = In ∘ inr^9 ∘ inl ∘ ⌜ A ⌝Ty
+  encode-initial-nf : ∀ A → IsBetaNormalForm (encode (initial {A}))
+  encode-initial-nf A = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inr-comp-nf Sum≢Unit
+                      (inl-comp-nf TyFuncCode≢Unit (⌜⌝Ty-betanf A)))))))))))
+
+  -- 10: encode In = In ∘ inr^10 ∘ inl ∘ ⌜ F ⌝Func
+  encode-In-nf : ∀ F → IsBetaNormalForm (encode (In {F}))
+  encode-In-nf F = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inr-comp-nf Sum≢Unit
+                      (inr-comp-nf Sum≢Unit
+                        (inl-comp-nf TyFuncCode≢Unit (⌜⌝Func-betanf F))))))))))))
+
+  -- 11: encode Out = In ∘ inr^11 ∘ inl ∘ ⌜ F ⌝Func
+  encode-Out-nf : ∀ F → IsBetaNormalForm (encode (Out {F}))
+  encode-Out-nf F = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inr-comp-nf Sum≢Unit
+                      (inr-comp-nf Sum≢Unit
+                        (inr-comp-nf Sum≢Unit
+                          (inl-comp-nf TyFuncCode≢Unit (⌜⌝Func-betanf F)))))))))))))
+
+  -- 12: encode (cata F alg) = In ∘ inr^12 ∘ inl ∘ ⟨ ⌜ F ⌝Func , encode alg ⟩
+  encode-cata-nf : ∀ F {A} (alg : Term (⟦ F ⟧F A) A) →
+                   IsBetaNormalForm (encode (cata F alg))
+  encode-cata-nf F alg = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inr-comp-nf Sum≢Unit
+                      (inr-comp-nf Sum≢Unit
+                        (inr-comp-nf Sum≢Unit
+                          (inr-comp-nf Sum≢Unit
+                            (inl-comp-nf Prod≢Unit
+                              (pair-nf (⌜⌝Func-betanf F) (encode-is-betanf alg)))))))))))))))
+
+  -- 13: encode (curry f) = In ∘ inr^13 ∘ inl ∘ ⟨ ⟨ ⌜A⌝, ⌜B⌝ ⟩ , ⟨ ⌜C⌝, encode f ⟩ ⟩
+  encode-curry-nf : ∀ A B C (f : Term (A * B) C) →
+                    IsBetaNormalForm (encode (curry f))
+  encode-curry-nf A B C f = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inr-comp-nf Sum≢Unit
+                      (inr-comp-nf Sum≢Unit
+                        (inr-comp-nf Sum≢Unit
+                          (inr-comp-nf Sum≢Unit
+                            (inr-comp-nf Sum≢Unit
+                              (inl-comp-nf Prod≢Unit
+                                (pair-nf
+                                  (pair-nf (⌜⌝Ty-betanf A) (⌜⌝Ty-betanf B))
+                                  (pair-nf (⌜⌝Ty-betanf C) (encode-is-betanf f)))))))))))))))))
+
+  -- 14: encode apply = In ∘ inr^14 ∘ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ (no inl - last alternative)
+  encode-apply-nf : ∀ A B → IsBetaNormalForm (encode (apply {A} {B}))
+  encode-apply-nf A B = In-comp-nf-TermF
+    (inr-comp-nf Sum≢Unit
+      (inr-comp-nf Sum≢Unit
+        (inr-comp-nf Sum≢Unit
+          (inr-comp-nf Sum≢Unit
+            (inr-comp-nf Sum≢Unit
+              (inr-comp-nf Sum≢Unit
+                (inr-comp-nf Sum≢Unit
+                  (inr-comp-nf Sum≢Unit
+                    (inr-comp-nf Sum≢Unit
+                      (inr-comp-nf Sum≢Unit
+                        (inr-comp-nf Sum≢Unit
+                          (inr-comp-nf Sum≢Unit
+                            (inr-comp-nf Sum≢Unit
+                              (inr-comp-nf Prod≢Unit
+                                (pair-nf (⌜⌝Ty-betanf A) (⌜⌝Ty-betanf B))))))))))))))))
+
+  -- Main theorem implementation (type declared above)
+  encode-is-betanf (id {A}) = encode-id-nf A
+  encode-is-betanf (f ∘ g) = encode-comp-nf f g
+  encode-is-betanf (fst {A} {B}) = encode-fst-nf A B
+  encode-is-betanf (snd {A} {B}) = encode-snd-nf A B
+  encode-is-betanf ⟨ f , g ⟩ = encode-pair-nf f g
+  encode-is-betanf (inl {A} {B}) = encode-inl-nf A B
+  encode-is-betanf (inr {A} {B}) = encode-inr-nf A B
+  encode-is-betanf [ f , g ] = encode-case-nf f g
+  encode-is-betanf (terminal {A}) = encode-terminal-nf A
+  encode-is-betanf (initial {A}) = encode-initial-nf A
+  encode-is-betanf (In {F}) = encode-In-nf F
+  encode-is-betanf (Out {F}) = encode-Out-nf F
+  encode-is-betanf (cata F alg) = encode-cata-nf F alg
+  encode-is-betanf (curry {A} {B} {C} f) = encode-curry-nf A B C f
+  encode-is-betanf (apply {A} {B}) = encode-apply-nf A B
