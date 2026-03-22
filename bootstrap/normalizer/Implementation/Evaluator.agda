@@ -33,12 +33,18 @@ case-⊎ f g (inj₂ b) = g b
 ------------------------------------------------------------------------
 
 -- Mutual definition: types, functor action, and fixpoints
+--
+-- Note: We need NO_POSITIVITY_CHECK because ⟦ A ⇒ B ⟧T = ⟦ A ⟧T → ⟦ B ⟧T
+-- causes Fix F to appear to the left of an arrow when A or B involves μ.
+-- This is safe for our use case (empirical testing), not formal proofs.
 mutual
   -- Interpret CCC types as Agda types
   ⟦_⟧T : Ty → Set
+  ⟦ Void ⟧T = ⊥
   ⟦ Unit ⟧T = ⊤
   ⟦ A * B ⟧T = ⟦ A ⟧T × ⟦ B ⟧T
   ⟦ A + B ⟧T = ⟦ A ⟧T ⊎ ⟦ B ⟧T
+  ⟦ A ⇒ B ⟧T = ⟦ A ⟧T → ⟦ B ⟧T
   ⟦ μ F ⟧T = Fix F
 
   -- Interpret functors acting on Agda types
@@ -49,6 +55,7 @@ mutual
   ⟦ F ⊗ G ⟧FS X = ⟦ F ⟧FS X × ⟦ G ⟧FS X
 
   -- Fixpoint of a functor (initial algebra as Agda data)
+  {-# NO_POSITIVITY_CHECK #-}
   data Fix (F : Func) : Set where
     fix : ⟦ F ⟧FS (Fix F) → Fix F
 
@@ -132,7 +139,14 @@ eval [ f , g ] (inj₂ b) = eval g b
 -- Terminal object
 eval terminal x = tt
 
--- Initial algebra operations
+-- Initial object (absurd/ex falso)
+eval initial x = ⊥-elim x
+
+-- Exponential operations (curry/apply)
+eval (curry f) x = λ a → eval f (x , a)
+eval apply (f , a) = f a
+
+-- Recursive type operations
 eval (In {F}) x = fix (coherence F (μ F) x)
 eval (Out {F}) (fix x) = coherence⁻¹ F (μ F) x
 eval (cata F alg) x = cata-Set F (λ y → eval alg (coherence⁻¹ F _ y)) x
@@ -184,55 +198,80 @@ mutual
   eq-Term : Fix TermF → Fix TermF → Bool
   eq-Term (fix x) (fix y) = eq-TermFS x y
 
-  -- Equality on the unfolded TermF structure
+  -- Equality on the unfolded TermF structure (15 positions: 0-14)
   eq-TermFS : ⟦ TermF ⟧FS (Fix TermF) → ⟦ TermF ⟧FS (Fix TermF) → Bool
-  eq-TermFS (inj₁ x) (inj₁ y) = eq-TyFuncCode x y  -- id
-  eq-TermFS (inj₂ (inj₁ (t1 , t2))) (inj₂ (inj₁ (u1 , u2))) =  -- comp
+  -- Position 0: id (K TyFuncCode)
+  eq-TermFS (inj₁ x) (inj₁ y) = eq-TyFuncCode x y
+  -- Position 1: comp (Id ⊗ Id)
+  eq-TermFS (inj₂ (inj₁ (t1 , t2))) (inj₂ (inj₁ (u1 , u2))) =
     eq-Term t1 u1 ∧ eq-Term t2 u2
-  eq-TermFS (inj₂ (inj₂ (inj₁ x))) (inj₂ (inj₂ (inj₁ y))) = eq-TyPair x y  -- fst
-  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₁ x)))) (inj₂ (inj₂ (inj₂ (inj₁ y)))) = eq-TyPair x y  -- snd
-  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (t1 , t2)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (u1 , u2)))))) =  -- pair
+  -- Position 2: fst (K TyFuncCode ⊗ K TyFuncCode)
+  eq-TermFS (inj₂ (inj₂ (inj₁ x))) (inj₂ (inj₂ (inj₁ y))) = eq-TyPair x y
+  -- Position 3: snd (K TyFuncCode ⊗ K TyFuncCode)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₁ x)))) (inj₂ (inj₂ (inj₂ (inj₁ y)))) = eq-TyPair x y
+  -- Position 4: pair (Id ⊗ Id)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (t1 , t2)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (u1 , u2)))))) =
     eq-Term t1 u1 ∧ eq-Term t2 u2
-  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))) = eq-TyPair x y  -- inl
-  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y))))))) = eq-TyPair x y  -- inr
-  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (t1 , t2))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (u1 , u2))))))))) =  -- case
+  -- Position 5: inl (K TyFuncCode ⊗ K TyFuncCode)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))) = eq-TyPair x y
+  -- Position 6: inr (K TyFuncCode ⊗ K TyFuncCode)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y))))))) = eq-TyPair x y
+  -- Position 7: case (Id ⊗ Id)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (t1 , t2))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (u1 , u2))))))))) =
     eq-Term t1 u1 ∧ eq-Term t2 u2
-  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y))))))))) = eq-TyFuncCode x y  -- terminal
-  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))))))) = eq-TyFuncCode x y  -- In
-  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x))))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y))))))))))) = eq-TyFuncCode x y  -- Out
-  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (x , t)))))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (y , u)))))))))))) =  -- cata
+  -- Position 8: terminal (K TyFuncCode)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y))))))))) = eq-TyFuncCode x y
+  -- Position 9: initial (K TyFuncCode)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))))))) = eq-TyFuncCode x y
+  -- Position 10: In (K TyFuncCode)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x))))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y))))))))))) = eq-TyFuncCode x y
+  -- Position 11: Out (K TyFuncCode)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))))))))) = eq-TyFuncCode x y
+  -- Position 12: cata (K TyFuncCode ⊗ Id)
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (x , t)))))))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (y , u)))))))))))))) =
     eq-TyFuncCode x y ∧ eq-Term t u
+  -- Position 13: curry ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id))
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ ((a1 , b1) , (c1 , t1)))))))))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ ((a2 , b2) , (c2 , t2)))))))))))))))) =
+    (eq-TyFuncCode a1 a2 ∧ eq-TyFuncCode b1 b2) ∧ (eq-TyFuncCode c1 c2 ∧ eq-Term t1 t2)
+  -- Position 14: apply (K TyFuncCode ⊗ K TyFuncCode) - last element, no inj₁
+  eq-TermFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ x)))))))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ y)))))))))))))) = eq-TyPair x y
+  -- Different constructors
   eq-TermFS _ _ = false
 
-  -- Equality on TyFuncCode (which is Fix TyFuncF, an 8-way sum)
+  -- Equality on TyFuncCode (which is Fix TyFuncF, a 10-way sum)
   eq-TyFuncCode : ⟦ TyFuncCode ⟧T → ⟦ TyFuncCode ⟧T → Bool
   eq-TyFuncCode (fix x) (fix y) = eq-TyFuncCodeFS x y
 
-  -- TyFuncF has 8 positions:
-  -- 0: Unit (K Unit), 1: * (Id⊗Id), 2: + (Id⊗Id), 3: μ (Id)
-  -- 4: Id func (K Unit), 5: K func (Id), 6: ⊕ func (Id⊗Id), 7: ⊗ func (Id⊗Id)
+  -- TyFuncF has 10 positions:
+  -- 0: Void (K Unit), 1: Unit (K Unit), 2: * (Id⊗Id), 3: + (Id⊗Id), 4: ⇒ (Id⊗Id)
+  -- 5: μ (Id), 6: Id func (K Unit), 7: K func (Id), 8: ⊕ func (Id⊗Id), 9: ⊗ func (Id⊗Id)
   eq-TyFuncCodeFS : ⟦ TyFuncF ⟧FS (Fix TyFuncF) → ⟦ TyFuncF ⟧FS (Fix TyFuncF) → Bool
-  -- Position 0: Unit type
+  -- Position 0: Void type
   eq-TyFuncCodeFS (inj₁ tt) (inj₁ tt) = true
-  -- Position 1: * type
-  eq-TyFuncCodeFS (inj₂ (inj₁ (a , b))) (inj₂ (inj₁ (c , d))) =
-    eq-TyFuncCode a c ∧ eq-TyFuncCode b d
-  -- Position 2: + type
+  -- Position 1: Unit type
+  eq-TyFuncCodeFS (inj₂ (inj₁ tt)) (inj₂ (inj₁ tt)) = true
+  -- Position 2: * type
   eq-TyFuncCodeFS (inj₂ (inj₂ (inj₁ (a , b)))) (inj₂ (inj₂ (inj₁ (c , d)))) =
     eq-TyFuncCode a c ∧ eq-TyFuncCode b d
-  -- Position 3: μ type
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₁ x)))) (inj₂ (inj₂ (inj₂ (inj₁ y)))) =
-    eq-TyFuncCode x y
-  -- Position 4: Id functor
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ tt))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ tt))))) = true
-  -- Position 5: K functor
+  -- Position 3: + type
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₁ (a , b))))) (inj₂ (inj₂ (inj₂ (inj₁ (c , d))))) =
+    eq-TyFuncCode a c ∧ eq-TyFuncCode b d
+  -- Position 4: ⇒ type
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (a , b)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (c , d)))))) =
+    eq-TyFuncCode a c ∧ eq-TyFuncCode b d
+  -- Position 5: μ type
   eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))) =
     eq-TyFuncCode x y
-  -- Position 6: ⊕ functor
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (a , b)))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (c , d)))))))) =
+  -- Position 6: Id functor
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ tt))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ tt))))))) = true
+  -- Position 7: K functor
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ x)))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ y)))))))) =
+    eq-TyFuncCode x y
+  -- Position 8: ⊕ functor
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (a , b)))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₁ (c , d)))))))))) =
     eq-TyFuncCode a c ∧ eq-TyFuncCode b d
-  -- Position 7: ⊗ functor
-  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (a , b)))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (c , d)))))))) =
+  -- Position 9: ⊗ functor (last element, no inj₁)
+  eq-TyFuncCodeFS (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (a , b)))))))))) (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (inj₂ (c , d)))))))))) =
     eq-TyFuncCode a c ∧ eq-TyFuncCode b d
   -- Different constructors
   eq-TyFuncCodeFS _ _ = false
