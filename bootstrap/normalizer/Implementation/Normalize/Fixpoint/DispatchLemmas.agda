@@ -14,6 +14,8 @@ open import normalizer.Foundations.Catamorphisms public
   using (∘-cong-left'; ∘-cong-right'; cata-β-right; fmap-KK-id; fmap-sum-inl)
 open import normalizer.Foundations.OutIn public
   using (out-in-compose; assoc-r3; assoc-r4)
+open import normalizer.Foundations.DispatchCombinators public
+  using (assoc-l-under; step-case-inr; step-case-inl)
 open import normalizer.Foundations.TermFunctor public
   using (fmap-TermF-inl; fmap-TermF-inr;
          fmap-1-inr; fmap-2-inr; fmap-3-inr; fmap-4-inr;
@@ -439,17 +441,10 @@ abstract
                 (is-id ∘ encode (f ∘ g)) ⟶* (inr ∘ encode (f ∘ g))
   is-id-pos-1 f g =
     let payload = ⟨ encode f , encode g ⟩ in
-    -- is-id ∘ encode (f ∘ g)
-    -- = (is-id-dispatch ∘ Out) ∘ (In ∘ (inr ∘ (inl ∘ payload)))
     out-in-compose is-id-dispatch (inr ∘ (inl ∘ payload)) >>
-    -- ⟶* is-id-dispatch ∘ (inr ∘ (inl ∘ payload))
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    -- ⟶ is-id-tail-1 ∘ (inl ∘ payload)
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inl) >>
-    -- ⟶ ret-no-1 ∘ payload = (inr ∘ (In ∘ (inr ∘ inl))) ∘ payload
+    step-case-inr >>                    -- is-id-dispatch ∘ (inr ∘ ...) ⟶* is-id-tail-1 ∘ ...
+    step-case-inl >>                    -- is-id-tail-1 ∘ (inl ∘ ...) ⟶* ret-no-1 ∘ payload
     ⟶1 assoc-r >>
-    -- ⟶ inr ∘ ((In ∘ (inr ∘ inl)) ∘ payload)
-    -- Need: inr ∘ (In ∘ (inr ∘ (inl ∘ payload))) = inr ∘ encode (f ∘ g)
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r))
 
 ------------------------------------------------------------------------
@@ -462,14 +457,8 @@ abstract
   is-id-pos-2 {A} {B} =
     let payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inl ∘ payload))) >>
-    -- Navigate: 1 inr to is-id-tail-1, 1 more inr to is-id-tail-2, then inl
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inl) >>
-    -- ret-no-2 ∘ payload = (inr ∘ (In ∘ (inr ∘ (inr ∘ inl)))) ∘ payload
+    step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
-    -- ⟶ inr ∘ ((In ∘ (inr ∘ (inr ∘ inl))) ∘ payload)
-    -- Need: inr ∘ (In ∘ (inr ∘ (inr ∘ (inl ∘ payload))))
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))
 
 ------------------------------------------------------------------------
@@ -482,10 +471,7 @@ abstract
   is-id-pos-3 {A} {B} =
     let payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))
 
@@ -499,11 +485,7 @@ abstract
   is-id-pos-4 f g =
     let payload = ⟨ encode f , encode g ⟩ in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))
 
@@ -516,12 +498,7 @@ abstract
   is-id-pos-5 {A} {B} =
     let payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-5-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))
 
@@ -534,13 +511,7 @@ abstract
   is-id-pos-6 {A} {B} =
     let payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-5-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-6-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))
 
@@ -554,14 +525,7 @@ abstract
   is-id-pos-7 f g =
     let payload = ⟨ encode f , encode g ⟩ in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-5-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-6-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-7-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))
 
@@ -574,15 +538,7 @@ abstract
   is-id-pos-8 {A} =
     let payload = ⌜ A ⌝Ty in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-5-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-6-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-7-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-8-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))))
 
@@ -595,17 +551,8 @@ abstract
   is-id-pos-10 {F} =
     let payload = ⌜ F ⌝Func in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-5-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-6-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-7-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-8-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-9-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-10-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))))))
 
@@ -618,18 +565,8 @@ abstract
   is-id-pos-11 {F} =
     let payload = ⌜ F ⌝Func in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-5-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-6-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-7-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-8-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-9-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-10-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-11-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))))))
 
@@ -643,19 +580,8 @@ abstract
   is-id-pos-12 {F} alg =
     let payload = ⟨ ⌜ F ⌝Func , encode alg ⟩ in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload))))))))))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-5-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-6-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-7-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-8-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-9-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-10-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-11-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-12-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r)))))))))))))
 
@@ -669,20 +595,8 @@ abstract
   is-id-pos-13 {A} {B} {C} f =
     let payload = ⟨ ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ , ⟨ ⌜ C ⌝Ty , encode f ⟩ ⟩ in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inl ∘ payload)))))))))))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-5-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-6-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-7-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-8-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-9-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-10-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-11-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-12-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-13-inl) >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inl >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))))))))
 
@@ -696,21 +610,8 @@ abstract
   is-id-pos-14 {A} {B} =
     let payload = ⟨ ⌜ A ⌝Ty , ⌜ B ⌝Ty ⟩ in
     out-in-compose is-id-dispatch (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ (inr ∘ payload)))))))))))))) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-dispatch-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-1-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-2-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-3-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-4-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-5-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-6-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-7-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-8-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-9-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-10-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-11-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-12-inr) >>
-    ⟶1 assoc-l >> ⟶1 (⟶-∘-l is-id-tail-13-inr) >>
-    -- is-id-tail-13 ∘ inr ⟶ ret-no-14 = inr ∘ (In ∘ inr^14)
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >>
+    step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >> step-case-inr >>
     ⟶1 assoc-r >>
     ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))))))))
 
