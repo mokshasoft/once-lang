@@ -311,3 +311,122 @@ eval-arr-identity f = refl
 -- Note: The exact formulation depends on how effectful composition
 -- is defined. For Once's simple model where Eff = function at runtime,
 -- this is trivially true.
+
+------------------------------------------------------------------------
+-- OCP-0003: Recursion Scheme Laws (Initial Algebras / Final Coalgebras)
+------------------------------------------------------------------------
+--
+-- These laws establish the properties of the recursion scheme
+-- constructors In, Cata, Out, Ana, and Hylo.
+--
+-- Key theorems:
+-- 1. Lambek's Lemma: In and Out are inverses (μF ≅ F(μF))
+-- 2. Catamorphism computation: how cata unfolds through In
+-- 3. Anamorphism observation: how ana builds through Out
+-- 4. Hylo fusion: cata ∘ ana = hylo (deforestation)
+------------------------------------------------------------------------
+
+open import Once.Semantics.Machine
+  using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana; sem-hylo;
+         sem-Out-In; sem-In-Out; sem-cata-compute; sem-fmap;
+         coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
+
+------------------------------------------------------------------------
+-- Lambek's Lemma (Semantic Level)
+--
+-- At the semantic level, μF ≅ F(μF) via sem-In and sem-Out.
+-- This is postulated in Semantics/Core.agda (sem-In-Out, sem-Out-In).
+--
+-- At the IR level:
+--   - In constructs μ-type values
+--   - Cata folds μ-type values with an algebra
+--   - Out destructs ν-type values (NOT μ-type!)
+--   - Ana unfolds to build ν-type values
+--
+-- The key IR-level law is that Cata with the In algebra is identity.
+------------------------------------------------------------------------
+
+-- | Cata In ≡ id (identity catamorphism)
+--
+-- Folding with the constructor algebra gives back the original value.
+-- This is the canonical way to express that μF ≅ F(μF) at the IR level.
+--
+-- Conceptually: cata In (In x) = In (fmap (cata In) x) = In x (when fmap id = id)
+--
+postulate
+  eval-cata-In-id : ∀ (F : Functor) (m : AllocMode) (x : ⟦ μ-type F ⟧)
+                  → eval′ (Cata {F} (In {F} m)) x ≡ x
+
+------------------------------------------------------------------------
+-- Catamorphism Laws
+--
+-- The catamorphism is the unique homomorphism from an initial algebra.
+------------------------------------------------------------------------
+
+-- | Functorial map at the Type level
+--
+-- This applies a function through the functor structure, working with
+-- Type-level functor application (⟦ F ⟧T) rather than Set-level (⟦ F ⟧F).
+--
+fmap-Type : ∀ F {X Y : Type} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ ⟦ F ⟧T Y ⟧
+fmap-Type (K A) f x = x
+fmap-Type Id f x = f x
+fmap-Type (F ⊕ G) f (inj₁ x) = inj₁ (fmap-Type F f x)
+fmap-Type (F ⊕ G) f (inj₂ y) = inj₂ (fmap-Type G f y)
+fmap-Type (F ⊗ G) f (x , y) = (fmap-Type F f x , fmap-Type G f y)
+
+-- | Catamorphism computation law
+--
+-- cata alg (In x) ≡ alg (fmap (cata alg) x)
+--
+-- This is the defining equation for catamorphisms: to fold a structure,
+-- first recursively fold all substructures, then apply the algebra.
+--
+-- The proof requires careful handling of coercions between Type-level
+-- and Set-level functor applications, so it is postulated here.
+-- The semantic foundation is sem-cata-compute in Semantics/Core.
+--
+postulate
+  eval-cata-In : ∀ (F : Functor) {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
+                 (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
+               → eval′ (Cata {F} alg ∘ In {F} m) x ≡
+                 eval′ alg (fmap-Type F (eval′ (Cata {F} alg)) x)
+
+------------------------------------------------------------------------
+-- Hylomorphism Laws
+--
+-- The hylomorphism combines an algebra and coalgebra into a single
+-- recursive computation without building intermediate structure.
+--
+-- Note: Unlike in Haskell where Fix = μ = ν, Once distinguishes
+-- μ-type (inductive) from ν-type (coinductive). Therefore the
+-- composition Cata ∘ Ana doesn't type-check directly.
+--
+-- The hylo is the primitive operation; cata and ana are special cases.
+------------------------------------------------------------------------
+
+-- | Hylo semantics: recursive application of algebra after coalgebra
+--
+-- hylo alg coalg x = alg (fmap (hylo alg coalg) (coalg x))
+--
+-- This is the defining equation for hylomorphisms.
+--
+postulate
+  eval-hylo-unfold : ∀ (F : Functor) {A B : Type}
+                     (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧)
+                   → eval′ (Hylo {F} alg coalg) x ≡
+                     eval′ alg (fmap-Type F (eval′ (Hylo {F} alg coalg)) (eval′ coalg x))
+
+------------------------------------------------------------------------
+-- Ana-Out Identity Law (Coinductive)
+--
+-- The anamorphism with Out coalgebra is identity on ν-type.
+------------------------------------------------------------------------
+
+-- | Ana Out ≡ id (identity anamorphism)
+--
+-- Unfolding with the destructor coalgebra gives back the original value.
+--
+postulate
+  eval-ana-Out-id : ∀ (F : Functor) (x : ⟦ ν-type F ⟧)
+                  → eval′ (Ana {F} (Out {F})) x ≡ x

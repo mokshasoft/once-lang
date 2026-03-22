@@ -59,3 +59,45 @@ alloc-mode-independent-inr ps m₁ m₂ x = refl
 alloc-mode-independent-curry : ∀ (ps : PrimSem) {A B C q} (f : IR (A * B) C) (m₁ m₂ : AllocMode) (x : ⟦ A ⟧) →
   eval ps (curry {q = q} f m₁) x ≡ eval ps (curry {q = q} f m₂) x
 alloc-mode-independent-curry ps f m₁ m₂ x = refl
+
+------------------------------------------------------------------------
+-- OCP-0003: Recursion Scheme Evaluation Laws
+------------------------------------------------------------------------
+
+-- Import recursion scheme semantic operations
+open import Once.Semantics.Machine
+  using (sem-In; sem-cata; sem-CoOut; sem-ana; sem-hylo;
+         coerce-functor; coerce-functor⁻¹)
+open import Once.Type using (Functor; μ-type; ν-type; ⟦_⟧T)
+
+-- | In evaluation: wraps into μ-type
+eval-In : ∀ (ps : PrimSem) {F} (m : AllocMode) (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) →
+  eval ps (In {F} m) x ≡ sem-In F (coerce-functor F (μ-type F) x)
+eval-In ps m x = refl
+
+-- | Cata evaluation: folds with algebra
+eval-Cata : ∀ (ps : PrimSem) {F A} (alg : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧) →
+  eval ps (Cata {F} {A} alg) x ≡ sem-cata F (λ fa → eval ps alg (coerce-functor⁻¹ F A fa)) x
+eval-Cata ps alg x = refl
+
+-- | Out evaluation: observes ν-type
+eval-Out : ∀ (ps : PrimSem) {F} (x : ⟦ ν-type F ⟧) →
+  eval ps (Out {F}) x ≡ coerce-functor⁻¹ F (ν-type F) (sem-CoOut F x)
+eval-Out ps x = refl
+
+-- | Ana evaluation: unfolds with coalgebra
+eval-Ana : ∀ (ps : PrimSem) {F A} (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) →
+  eval ps (Ana {F} {A} coalg) x ≡ sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
+eval-Ana ps coalg x = refl
+
+-- | Hylo evaluation: fused cata ∘ ana
+eval-Hylo : ∀ (ps : PrimSem) {F A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) →
+  eval ps (Hylo {F} {A} {B} alg coalg) x ≡
+    sem-hylo F (λ fb → eval ps alg (coerce-functor⁻¹ F B fb))
+              (λ a → coerce-functor F A (eval ps coalg a)) x
+eval-Hylo ps alg coalg x = refl
+
+-- | AllocMode independence for In
+alloc-mode-independent-In : ∀ (ps : PrimSem) {F} (m₁ m₂ : AllocMode) (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) →
+  eval ps (In {F} m₁) x ≡ eval ps (In {F} m₂) x
+alloc-mode-independent-In ps m₁ m₂ x = refl
