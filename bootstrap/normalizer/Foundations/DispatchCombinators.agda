@@ -188,3 +188,35 @@ _>>inr_ : ∀ {X A B} {t0 : Term X (A + B)} {t1 t2 : Term X B} →
           (t1 ⟶* t2) →
           t0 ⟶* (inr ∘ t2)
 r0 >>inr r1 = ⟶*-trans r0 (∘-cong-right' inr r1)
+
+------------------------------------------------------------------------
+-- Right-associativity under In
+--
+-- Common pattern in step2 definitions:
+--   ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+--
+-- Given: (In ∘ x) ∘ y  and  x ∘ y ⟶* result
+-- Returns: (In ∘ x) ∘ y ⟶* In ∘ result
+------------------------------------------------------------------------
+
+assoc-r-In : ∀ {F X Y} {x : Term Y (⟦ F ⟧F (μ_ F))} {y : Term X Y} {result : Term X (⟦ F ⟧F (μ_ F))} →
+             ((x ∘ y) ⟶* result) →
+             ((In {F} ∘ x) ∘ y) ⟶* (In ∘ result)
+assoc-r-In inner = ⟶*-trans (step assoc-r done) (∘-cong-right' In inner)
+
+------------------------------------------------------------------------
+-- fmap (K X ⊗ K Y) elimination
+--
+-- Common pattern in terminal position proofs (6 instances):
+--   ∘-cong-left' payload (fmap-KK-id X Y f) >> ⟶1 id-left
+--
+-- Reduces: (fmap (K X ⊗ K Y) f) ∘ payload ⟶* payload
+------------------------------------------------------------------------
+
+open import normalizer.Foundations.Catamorphisms using (fmap-KK-id)
+open import normalizer.Foundations.CCC using (id; id-left; K; _⊗_; fmap; _*_)
+
+fmap-KK-elim : ∀ {A B X Y} {payload : Term A (X * Y)} {f : Term B B} →
+               ((fmap (K X ⊗ K Y) f) ∘ payload) ⟶* payload
+fmap-KK-elim {X = X} {Y = Y} {payload = payload} {f = f} =
+  ⟶*-trans (∘-cong-left' payload (fmap-KK-id X Y f)) (step id-left done)
