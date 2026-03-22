@@ -57,41 +57,6 @@ postulate
                    (∀ x → f x ≡ g x) → f ≡ g
 
 ------------------------------------------------------------------------
--- Postulate P1b: Closure Equality (ELIMINATED)
-------------------------------------------------------------------------
---
--- STATUS: ELIMINATED
---
--- This postulate was eliminated by switching to plain functions for
--- function semantics. With plain Agda functions instead of Closure
--- records, function equality follows from function extensionality (P1).
---
--- Previously needed because Closure records contained env-addr which
--- made equality non-trivial. Now ⟦ A ⇒ B ⟧ = ⟦ A ⟧ → ⟦ B ⟧ (plain function).
---
-------------------------------------------------------------------------
-
-------------------------------------------------------------------------
--- Postulate P1c: Arrow Quantity Coercion for IR
-------------------------------------------------------------------------
---
--- STATUS: ELIMINATED
---
--- This postulate was eliminated by making curry and apply quantity-
--- polymorphic in Once.IR:
---
---   curry : ∀ {A B C q} → IR (A * B) C → AllocMode → IR A (B ⇒[ q ] C)
---   apply : ∀ {A B q} → IR ((A ⇒[ q ] B) * A) B
---
--- Now Once.Surface.Elaborate can directly produce the correct type:
---   elaborate (lam q e) = curry (elaborate e) Heap
---   elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩ Heap
---
--- No coercion needed since quantities are phantom type parameters.
---
-------------------------------------------------------------------------
-
-------------------------------------------------------------------------
 -- Semantic Gap S1: Fixed Point Semantics
 ------------------------------------------------------------------------
 --
@@ -151,15 +116,13 @@ postulate
 -- Semantic Gaps (S): Limitations in the semantic model itself
 --
 -- The goal is that anyone reading the formalization can quickly
--- understand exactly what is assumed vs. fully proven.
+-- understand what is assumed.
 --
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- Postulate P2: QTT Quantity Erasure (Coercion)
 ------------------------------------------------------------------------
---
--- STATUS: SHOULD BE ELIMINATED alongside coerceIRArrow
 --
 -- Expressions can be coerced between contexts that differ only in
 -- quantity annotations (0/1/ω). This reflects the QTT erasure property:
@@ -169,50 +132,15 @@ postulate
 -- NEEDED BY: Once.TypeCheck.Elaborate (weakening and context manipulation)
 --
 -- JUSTIFICATION:
---   Quantitative Type Theory (QTT) is designed with an erasure property:
---   quantities track compile-time resource usage but are erased before
---   execution. Two expressions that differ only in their context's
---   quantity annotations have identical runtime behavior.
---
---   Example: λx.x has the same semantics whether x is:
---     - Linear (used exactly once)
---     - Unrestricted (used 0+ times)
---     - Erased (compile-time only)
---
---   The actual usage checking happens during type checking.
---   This postulate allows infrastructure code to adjust quantities
---   without affecting semantics.
---
---   DESIGN NOTE (Inference-Based QTT):
---   Once uses QTT for optimization inference rather than enforcement.
---   The compiler infers actual usage patterns and optimizes accordingly,
---   without requiring programmers to write explicit linearity annotations.
---   This postulate enables that flexibility: we can adjust quantity
---   annotations during analysis without changing program semantics.
+--   Quantitative Type Theory (QTT) erases quantities before execution.
+--   Two expressions differing only in context quantity annotations have
+--   identical runtime behavior.
 --
 -- IMPACT:
---   If quantity erasure were false, then QTT would affect runtime
---   semantics, which violates the design. Programs would behave
---   differently based on linearity annotations, breaking parametricity.
+--   If quantity erasure were false, programs would behave differently
+--   based on linearity annotations, breaking parametricity.
 --
 -- RUNTIME EFFECT: None (quantities are erased)
---
--- ELIMINATION STRATEGY:
---   This postulate is eliminated together with coerceIRArrow (see P1c above).
---   When curry/apply become quantity-polymorphic, the Surface.Syntax
---   context quantities flow through naturally:
---
---   1. Surface.Syntax Ctx tracks quantities: Γ , A ^ q
---   2. elaborate preserves quantities via polymorphic curry
---   3. No coercion needed between contexts with different quantities
---
---   The key insight: quantities should be parameters that flow through,
---   not constraints that require coercion. Once IR and Surface.Syntax
---   are quantity-polymorphic, this postulate becomes unnecessary.
---
---   BACKEND IMPACT: None. This is purely a Surface/TypeCheck concern.
---   Backend proofs work with IR which already erases quantities in
---   its semantics (⟦ A ⇒[q] B ⟧ = Closure A B for all q).
 --
 ------------------------------------------------------------------------
 
