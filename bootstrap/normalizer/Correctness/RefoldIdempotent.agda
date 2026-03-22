@@ -141,11 +141,11 @@ refold-idem-inl {A} {B} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
-    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
-    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
-    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
-    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
+    r0 = assoc-sandwich _ (fmap-TermF-inr f)
+    r1 = assoc-sandwich _ (fmap-1-inr f)
+    r2 = assoc-sandwich _ (fmap-2-inr f)
+    r3 = assoc-sandwich _ (fmap-3-inr f)
+    r4 = assoc-sandwich _ (fmap-4-inr f)
 
     r5 : (fmap TermF-5 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r5 = ⟶*-trans (step assoc-l done)
@@ -177,12 +177,12 @@ refold-idem-inr {A} {B} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
-    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
-    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
-    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
-    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
-    r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr f)) (step assoc-r done))
+    r0 = assoc-sandwich _ (fmap-TermF-inr f)
+    r1 = assoc-sandwich _ (fmap-1-inr f)
+    r2 = assoc-sandwich _ (fmap-2-inr f)
+    r3 = assoc-sandwich _ (fmap-3-inr f)
+    r4 = assoc-sandwich _ (fmap-4-inr f)
+    r5 = assoc-sandwich _ (fmap-5-inr f)
 
     r6 : (fmap TermF-6 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r6 = ⟶*-trans (step assoc-l done)
@@ -215,14 +215,14 @@ refold-idem-terminal {A} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
-    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
-    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
-    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
-    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
-    r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr f)) (step assoc-r done))
-    r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr f)) (step assoc-r done))
-    r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr f)) (step assoc-r done))
+    r0 = assoc-sandwich _ (fmap-TermF-inr f)
+    r1 = assoc-sandwich _ (fmap-1-inr f)
+    r2 = assoc-sandwich _ (fmap-2-inr f)
+    r3 = assoc-sandwich _ (fmap-3-inr f)
+    r4 = assoc-sandwich _ (fmap-4-inr f)
+    r5 = assoc-sandwich _ (fmap-5-inr f)
+    r6 = assoc-sandwich _ (fmap-6-inr f)
+    r7 = assoc-sandwich _ (fmap-7-inr f)
 
     r8 : (fmap TermF-8 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r8 = ⟶*-trans (step assoc-l done)
@@ -254,15 +254,15 @@ refold-idem-initial {A} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
-    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
-    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
-    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
-    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
-    r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr f)) (step assoc-r done))
-    r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr f)) (step assoc-r done))
-    r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr f)) (step assoc-r done))
-    r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr f)) (step assoc-r done))
+    r0 = assoc-sandwich _ (fmap-TermF-inr f)
+    r1 = assoc-sandwich _ (fmap-1-inr f)
+    r2 = assoc-sandwich _ (fmap-2-inr f)
+    r3 = assoc-sandwich _ (fmap-3-inr f)
+    r4 = assoc-sandwich _ (fmap-4-inr f)
+    r5 = assoc-sandwich _ (fmap-5-inr f)
+    r6 = assoc-sandwich _ (fmap-6-inr f)
+    r7 = assoc-sandwich _ (fmap-7-inr f)
+    r8 = assoc-sandwich _ (fmap-8-inr f)
 
     r9 : (fmap TermF-9 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r9 = ⟶*-trans (step assoc-l done)
@@ -295,16 +295,16 @@ refold-idem-In {F} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
-    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
-    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
-    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
-    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
-    r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr f)) (step assoc-r done))
-    r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr f)) (step assoc-r done))
-    r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr f)) (step assoc-r done))
-    r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr f)) (step assoc-r done))
-    r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr f)) (step assoc-r done))
+    r0 = assoc-sandwich _ (fmap-TermF-inr f)
+    r1 = assoc-sandwich _ (fmap-1-inr f)
+    r2 = assoc-sandwich _ (fmap-2-inr f)
+    r3 = assoc-sandwich _ (fmap-3-inr f)
+    r4 = assoc-sandwich _ (fmap-4-inr f)
+    r5 = assoc-sandwich _ (fmap-5-inr f)
+    r6 = assoc-sandwich _ (fmap-6-inr f)
+    r7 = assoc-sandwich _ (fmap-7-inr f)
+    r8 = assoc-sandwich _ (fmap-8-inr f)
+    r9 = assoc-sandwich _ (fmap-9-inr f)
 
     r10 : (fmap TermF-10 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r10 = ⟶*-trans (step assoc-l done)
@@ -338,17 +338,17 @@ refold-idem-Out {F} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
-    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
-    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
-    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr f)) (step assoc-r done))
-    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr f)) (step assoc-r done))
-    r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr f)) (step assoc-r done))
-    r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr f)) (step assoc-r done))
-    r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr f)) (step assoc-r done))
-    r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr f)) (step assoc-r done))
-    r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr f)) (step assoc-r done))
-    r10 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-10-inr f)) (step assoc-r done))
+    r0 = assoc-sandwich _ (fmap-TermF-inr f)
+    r1 = assoc-sandwich _ (fmap-1-inr f)
+    r2 = assoc-sandwich _ (fmap-2-inr f)
+    r3 = assoc-sandwich _ (fmap-3-inr f)
+    r4 = assoc-sandwich _ (fmap-4-inr f)
+    r5 = assoc-sandwich _ (fmap-5-inr f)
+    r6 = assoc-sandwich _ (fmap-6-inr f)
+    r7 = assoc-sandwich _ (fmap-7-inr f)
+    r8 = assoc-sandwich _ (fmap-8-inr f)
+    r9 = assoc-sandwich _ (fmap-9-inr f)
+    r10 = assoc-sandwich _ (fmap-10-inr f)
 
     r11 : (fmap TermF-11 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r11 = ⟶*-trans (step assoc-l done)
@@ -383,20 +383,20 @@ refold-idem-apply {A} {B} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
-    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
-    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
-    r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
-    r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr c)) (step assoc-r done))
-    r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr c)) (step assoc-r done))
-    r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr c)) (step assoc-r done))
-    r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr c)) (step assoc-r done))
-    r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr c)) (step assoc-r done))
-    r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr c)) (step assoc-r done))
-    r10 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-10-inr c)) (step assoc-r done))
-    r11 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-11-inr c)) (step assoc-r done))
-    r12 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-12-inr c)) (step assoc-r done))
-    r13 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-13-inr c)) (step assoc-r done))
+    r0 = assoc-sandwich _ (fmap-TermF-inr c)
+    r1 = assoc-sandwich _ (fmap-1-inr c)
+    r2 = assoc-sandwich _ (fmap-2-inr c)
+    r3 = assoc-sandwich _ (fmap-3-inr c)
+    r4 = assoc-sandwich _ (fmap-4-inr c)
+    r5 = assoc-sandwich _ (fmap-5-inr c)
+    r6 = assoc-sandwich _ (fmap-6-inr c)
+    r7 = assoc-sandwich _ (fmap-7-inr c)
+    r8 = assoc-sandwich _ (fmap-8-inr c)
+    r9 = assoc-sandwich _ (fmap-9-inr c)
+    r10 = assoc-sandwich _ (fmap-10-inr c)
+    r11 = assoc-sandwich _ (fmap-11-inr c)
+    r12 = assoc-sandwich _ (fmap-12-inr c)
+    r13 = assoc-sandwich _ (fmap-13-inr c)
 
     r14 : (fmap TermF-14 c ∘ payload) ⟶* payload
     r14 = ⟶*-trans (∘-cong-left' payload (fmap-KK-id TyFuncCode TyFuncCode c)) (step id-left done)
@@ -459,9 +459,7 @@ mutual
 
       r0 : (fmap TermF c ∘ (inr ∘ (inl ∘ payload))) ⟶*
            (inr ∘ (fmap TermF-1 c ∘ (inl ∘ payload)))
-      r0 = ⟶*-trans (step assoc-l done)
-             (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c))
-               (step assoc-r done))
+      r0 = assoc-sandwich _ (fmap-TermF-inr c)
 
       ih-step : (fmap (Id ⊗ Id) c ∘ payload) ⟶* payload
       ih-step =
@@ -499,10 +497,10 @@ mutual
 
       step1 = cata-β-right
 
-      r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
-      r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
-      r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
-      r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
+      r0 = assoc-sandwich _ (fmap-TermF-inr c)
+      r1 = assoc-sandwich _ (fmap-1-inr c)
+      r2 = assoc-sandwich _ (fmap-2-inr c)
+      r3 = assoc-sandwich _ (fmap-3-inr c)
 
       ih-step : (fmap (Id ⊗ Id) c ∘ payload) ⟶* payload
       ih-step =
@@ -542,13 +540,13 @@ mutual
 
       step1 = cata-β-right
 
-      r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
-      r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
-      r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
-      r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
-      r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr c)) (step assoc-r done))
-      r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr c)) (step assoc-r done))
-      r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr c)) (step assoc-r done))
+      r0 = assoc-sandwich _ (fmap-TermF-inr c)
+      r1 = assoc-sandwich _ (fmap-1-inr c)
+      r2 = assoc-sandwich _ (fmap-2-inr c)
+      r3 = assoc-sandwich _ (fmap-3-inr c)
+      r4 = assoc-sandwich _ (fmap-4-inr c)
+      r5 = assoc-sandwich _ (fmap-5-inr c)
+      r6 = assoc-sandwich _ (fmap-6-inr c)
 
       ih-step : (fmap (Id ⊗ Id) c ∘ payload) ⟶* payload
       ih-step =
@@ -591,18 +589,18 @@ mutual
 
       step1 = cata-β-right
 
-      r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
-      r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
-      r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
-      r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
-      r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr c)) (step assoc-r done))
-      r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr c)) (step assoc-r done))
-      r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr c)) (step assoc-r done))
-      r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr c)) (step assoc-r done))
-      r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr c)) (step assoc-r done))
-      r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr c)) (step assoc-r done))
-      r10 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-10-inr c)) (step assoc-r done))
-      r11 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-11-inr c)) (step assoc-r done))
+      r0 = assoc-sandwich _ (fmap-TermF-inr c)
+      r1 = assoc-sandwich _ (fmap-1-inr c)
+      r2 = assoc-sandwich _ (fmap-2-inr c)
+      r3 = assoc-sandwich _ (fmap-3-inr c)
+      r4 = assoc-sandwich _ (fmap-4-inr c)
+      r5 = assoc-sandwich _ (fmap-5-inr c)
+      r6 = assoc-sandwich _ (fmap-6-inr c)
+      r7 = assoc-sandwich _ (fmap-7-inr c)
+      r8 = assoc-sandwich _ (fmap-8-inr c)
+      r9 = assoc-sandwich _ (fmap-9-inr c)
+      r10 = assoc-sandwich _ (fmap-10-inr c)
+      r11 = assoc-sandwich _ (fmap-11-inr c)
 
       r12-inl : (fmap TermF-12 c ∘ inl) ⟶* (inl ∘ fmap (K TyFuncCode ⊗ Id) c)
       r12-inl = fmap-sum-inl (K TyFuncCode ⊗ Id) TermF-13 c
@@ -653,19 +651,19 @@ mutual
 
       step1 = cata-β-right
 
-      r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr c)) (step assoc-r done))
-      r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr c)) (step assoc-r done))
-      r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr c)) (step assoc-r done))
-      r3 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-3-inr c)) (step assoc-r done))
-      r4 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-4-inr c)) (step assoc-r done))
-      r5 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-5-inr c)) (step assoc-r done))
-      r6 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-6-inr c)) (step assoc-r done))
-      r7 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-7-inr c)) (step assoc-r done))
-      r8 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-8-inr c)) (step assoc-r done))
-      r9 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-9-inr c)) (step assoc-r done))
-      r10 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-10-inr c)) (step assoc-r done))
-      r11 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-11-inr c)) (step assoc-r done))
-      r12 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-12-inr c)) (step assoc-r done))
+      r0 = assoc-sandwich _ (fmap-TermF-inr c)
+      r1 = assoc-sandwich _ (fmap-1-inr c)
+      r2 = assoc-sandwich _ (fmap-2-inr c)
+      r3 = assoc-sandwich _ (fmap-3-inr c)
+      r4 = assoc-sandwich _ (fmap-4-inr c)
+      r5 = assoc-sandwich _ (fmap-5-inr c)
+      r6 = assoc-sandwich _ (fmap-6-inr c)
+      r7 = assoc-sandwich _ (fmap-7-inr c)
+      r8 = assoc-sandwich _ (fmap-8-inr c)
+      r9 = assoc-sandwich _ (fmap-9-inr c)
+      r10 = assoc-sandwich _ (fmap-10-inr c)
+      r11 = assoc-sandwich _ (fmap-11-inr c)
+      r12 = assoc-sandwich _ (fmap-12-inr c)
 
       CurryF = (K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)
       r13-inl : (fmap TermF-13 c ∘ inl) ⟶* (inl ∘ fmap CurryF c)
