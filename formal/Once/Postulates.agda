@@ -4,21 +4,23 @@
 ------------------------------------------------------------------------
 -- Once.Postulates
 --
--- CENTRAL REGISTRY OF ALL ASSUMPTIONS AND POSTULATES
+-- CENTRAL REGISTRY OF ALL ASSUMPTIONS
 --
--- This module collects all postulates, axioms, and known semantic gaps
--- in the Once formalization. Any proof that depends on unproven
--- assumptions should import from here, making dependencies explicit.
+-- This module collects all postulates and known semantic gaps in the
+-- Once formalization. Import from here to make dependencies explicit.
 --
--- When adding new assumptions, document:
---   1. What is assumed (the postulate or limitation)
---   2. Why it's needed (which proofs depend on it)
---   3. Justification (why we believe it's sound)
---   4. Impact (what would break if it's wrong)
+-- Categories:
+--   P (Postulate): Explicit axiom assumed without proof
+--   S (Semantic Gap): Limitation in the semantic model itself
 --
--- To detect all postulates in the codebase:
---   agda --safe <file>        # fails if file uses postulates
---   grep -r "postulate" .     # find all postulate declarations
+-- When adding new assumptions (P2, P3, ... or S2, S3, ...):
+--   1. NEEDED BY: Which modules depend on it
+--   2. JUSTIFICATION: Why it's believed sound
+--   3. IMPACT: What would break if it's wrong
+--   4. RUNTIME EFFECT: Whether it affects execution
+--   5. Update docs/formal/what-is-proven.md
+--
+-- To detect postulates: agda --safe <file> or grep -r "postulate" .
 --
 ------------------------------------------------------------------------
 
@@ -98,27 +100,6 @@ postulate
 
 -- No postulate needed; this is a documentation marker
 -- The limitation is intrinsic to how ⟦_⟧ is defined for Fix.
-
-------------------------------------------------------------------------
--- CHECKLIST FOR ADDING NEW ASSUMPTIONS
-------------------------------------------------------------------------
---
--- When you need to add a postulate or discover a semantic gap:
---
--- 1. ADD IT HERE with full documentation (P2, P3, ... or S2, S3, ...)
--- 2. Document which modules depend on it (NEEDED BY)
--- 3. Explain why it's believed sound (JUSTIFICATION)
--- 4. Describe what would fail if it's wrong (IMPACT)
--- 5. Note if it affects runtime (RUNTIME EFFECT)
--- 6. Update docs/formal/what-is-proven.md
---
--- Postulates (P): Explicit axioms assumed without proof
--- Semantic Gaps (S): Limitations in the semantic model itself
---
--- The goal is that anyone reading the formalization can quickly
--- understand what is assumed.
---
-------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 -- Postulate P2: QTT Quantity Erasure (Coercion)
