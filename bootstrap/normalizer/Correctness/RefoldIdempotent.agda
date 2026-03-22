@@ -18,6 +18,8 @@ module normalizer.Correctness.RefoldIdempotent where
 
 open import normalizer.Foundations.TermFunctor public
 open import normalizer.Foundations.Encoding public
+open import normalizer.Foundations.DispatchCombinators
+  using (assoc-sandwich)
 
 ------------------------------------------------------------------------
 -- The identity algebra
@@ -75,8 +77,9 @@ refold-idem-fst {A} {B} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
-    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
+    -- Using assoc-sandwich instead of verbose ⟶*-trans chains
+    r0 = assoc-sandwich _ (fmap-TermF-inr f)
+    r1 = assoc-sandwich _ (fmap-1-inr f)
 
     r2 : (fmap TermF-2 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r2 = ⟶*-trans (step assoc-l done)
@@ -105,9 +108,10 @@ refold-idem-snd {A} {B} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    r0 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-TermF-inr f)) (step assoc-r done))
-    r1 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-1-inr f)) (step assoc-r done))
-    r2 = ⟶*-trans (step assoc-l done) (⟶*-trans (∘-cong-left' _ (fmap-2-inr f)) (step assoc-r done))
+    -- Using assoc-sandwich for cleaner proofs
+    r0 = assoc-sandwich _ (fmap-TermF-inr f)
+    r1 = assoc-sandwich _ (fmap-1-inr f)
+    r2 = assoc-sandwich _ (fmap-2-inr f)
 
     r3 : (fmap TermF-3 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r3 = ⟶*-trans (step assoc-l done)
