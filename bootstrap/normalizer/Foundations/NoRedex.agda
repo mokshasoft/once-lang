@@ -95,6 +95,114 @@ data NotIdStruct : ∀ {A B} → Term A B → Set where
   nis-apply    : ∀ {A B} → NotIdStruct (apply {A} {B})
 
 ------------------------------------------------------------------------
+-- NotCurryStruct: Evidence that a term is NOT curry
+------------------------------------------------------------------------
+
+data NotCurryStruct : ∀ {A B} → Term A B → Set where
+  ncs-id       : ∀ {A} → NotCurryStruct (id {A})
+  ncs-comp     : ∀ {A B C} {f : Term B C} {g : Term A B} → NotCurryStruct (f ∘ g)
+  ncs-fst      : ∀ {A B} → NotCurryStruct (fst {A} {B})
+  ncs-snd      : ∀ {A B} → NotCurryStruct (snd {A} {B})
+  ncs-pair     : ∀ {A B C} {f : Term C A} {g : Term C B} → NotCurryStruct ⟨ f , g ⟩
+  ncs-inl      : ∀ {A B} → NotCurryStruct (inl {A} {B})
+  ncs-inr      : ∀ {A B} → NotCurryStruct (inr {A} {B})
+  ncs-case     : ∀ {A B C} {f : Term A C} {g : Term B C} → NotCurryStruct [ f , g ]
+  ncs-terminal : ∀ {A} → NotCurryStruct (terminal {A})
+  ncs-initial  : ∀ {A} → NotCurryStruct (initial {A})
+  ncs-In       : ∀ {F} → NotCurryStruct (In {F})
+  ncs-Out      : ∀ {F} → NotCurryStruct (Out {F})
+  ncs-cata     : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} → NotCurryStruct (cata F alg)
+  -- curry is NOT included (that's the point)
+  ncs-apply    : ∀ {A B} → NotCurryStruct (apply {A} {B})
+
+------------------------------------------------------------------------
+-- NotApplyStruct: Evidence that a term is NOT apply
+------------------------------------------------------------------------
+
+data NotApplyStruct : ∀ {A B} → Term A B → Set where
+  nas-id       : ∀ {A} → NotApplyStruct (id {A})
+  nas-comp     : ∀ {A B C} {f : Term B C} {g : Term A B} → NotApplyStruct (f ∘ g)
+  nas-fst      : ∀ {A B} → NotApplyStruct (fst {A} {B})
+  nas-snd      : ∀ {A B} → NotApplyStruct (snd {A} {B})
+  nas-pair     : ∀ {A B C} {f : Term C A} {g : Term C B} → NotApplyStruct ⟨ f , g ⟩
+  nas-inl      : ∀ {A B} → NotApplyStruct (inl {A} {B})
+  nas-inr      : ∀ {A B} → NotApplyStruct (inr {A} {B})
+  nas-case     : ∀ {A B C} {f : Term A C} {g : Term B C} → NotApplyStruct [ f , g ]
+  nas-terminal : ∀ {A} → NotApplyStruct (terminal {A})
+  nas-initial  : ∀ {A} → NotApplyStruct (initial {A})
+  nas-In       : ∀ {F} → NotApplyStruct (In {F})
+  nas-Out      : ∀ {F} → NotApplyStruct (Out {F})
+  nas-cata     : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} → NotApplyStruct (cata F alg)
+  nas-curry    : ∀ {A B C} {f : Term (A * B) C} → NotApplyStruct (curry f)
+  -- apply is NOT included (that's the point)
+
+------------------------------------------------------------------------
+-- NotCurryPairLeft: Evidence that a term is NOT ⟨curry _, _⟩
+-- (i.e., not a pair with curry as first component)
+------------------------------------------------------------------------
+
+data NotCurryPairLeft : ∀ {A B} → Term A B → Set where
+  -- Non-pair constructors
+  ncpl-id       : ∀ {A} → NotCurryPairLeft (id {A})
+  ncpl-comp     : ∀ {A B C} {f : Term B C} {g : Term A B} → NotCurryPairLeft (f ∘ g)
+  ncpl-fst      : ∀ {A B} → NotCurryPairLeft (fst {A} {B})
+  ncpl-snd      : ∀ {A B} → NotCurryPairLeft (snd {A} {B})
+  ncpl-inl      : ∀ {A B} → NotCurryPairLeft (inl {A} {B})
+  ncpl-inr      : ∀ {A B} → NotCurryPairLeft (inr {A} {B})
+  ncpl-case     : ∀ {A B C} {f : Term A C} {g : Term B C} → NotCurryPairLeft [ f , g ]
+  ncpl-terminal : ∀ {A} → NotCurryPairLeft (terminal {A})
+  ncpl-initial  : ∀ {A} → NotCurryPairLeft (initial {A})
+  ncpl-In       : ∀ {F} → NotCurryPairLeft (In {F})
+  ncpl-Out      : ∀ {F} → NotCurryPairLeft (Out {F})
+  ncpl-cata     : ∀ {F A} {alg : Term (⟦ F ⟧F A) A} → NotCurryPairLeft (cata F alg)
+  ncpl-curry    : ∀ {A B C} {f : Term (A * B) C} → NotCurryPairLeft (curry f)
+  ncpl-apply    : ∀ {A B} → NotCurryPairLeft (apply {A} {B})
+  -- Pair where first component is not curry
+  ncpl-pair     : ∀ {A B C} {f : Term C A} {g : Term C B} →
+                  NotCurryStruct f →
+                  NotCurryPairLeft ⟨ f , g ⟩
+
+------------------------------------------------------------------------
+-- SafeComp: Evidence that f ∘ g is NOT a composition redex
+--
+-- A composition f ∘ g is a redex if it matches one of:
+--   - id ∘ g           (id-left)
+--   - f ∘ id           (id-right)
+--   - apply ∘ ⟨curry _, _⟩  (curry-β)
+--
+-- Note: We only check these three patterns here. The other composition
+-- redexes (fst ∘ pair, snd ∘ pair, case ∘ inl/inr, Out ∘ In, In ∘ Out,
+-- cata ∘ In) are handled by the normalizer but not checked in NoRedex
+-- because they don't arise in encoded terms (encode never produces
+-- fst ∘ pair, etc.).
+--
+-- SafeComp f g holds when f ∘ g is safe (not any of the above patterns).
+------------------------------------------------------------------------
+
+data SafeComp : ∀ {A B C} → Term B C → Term A B → Set where
+  -- If f is not id and not apply, any g is safe (for id-left and curry-β)
+  -- Still need g not id (for id-right)
+  sc-neither : ∀ {A B C} {f : Term B C} {g : Term A B} →
+               NotIdStruct f → NotIdStruct g →
+               NotApplyStruct f →
+               SafeComp f g
+  -- If f is apply, g must not be ⟨curry _, _⟩
+  sc-apply : ∀ {A B X} {g : Term X ((A ⇒ B) * A)} →
+             NotIdStruct g →
+             NotCurryPairLeft g →
+             SafeComp (apply {A} {B}) g
+
+-- Extract NotIdStruct f from SafeComp f g
+safecomp-notid-f : ∀ {A B C} {f : Term B C} {g : Term A B} → SafeComp f g → NotIdStruct f
+safecomp-notid-f (sc-neither nisf _ _) = nisf
+safecomp-notid-f (sc-apply _ _) = nis-apply
+
+-- Extract NotIdStruct g from SafeComp f g
+safecomp-notid-g : ∀ {A B C} {f : Term B C} {g : Term A B} → SafeComp f g → NotIdStruct g
+safecomp-notid-g (sc-neither _ nisg _) = nisg
+safecomp-notid-g (sc-apply nisg _) = nisg
+
+------------------------------------------------------------------------
 -- NoRedex: A term with no redex patterns
 --
 -- This is defined inductively - a term has no redexes if:
@@ -133,11 +241,13 @@ data NoRedex : ∀ {A B} → Term A B → Set where
   nr-initial  : ∀ {A} → NoRedex (initial {A})
 
   -- Composition: not a redex pattern, and subterms are normal
-  -- For fixpoint property, we need: f ≠ id AND g ≠ id
+  -- SafeComp f g ensures:
+  --   - f ≠ id (no id-left redex)
+  --   - g ≠ id (no id-right redex)
+  --   - Not apply ∘ ⟨curry _, _⟩ (no curry-β redex)
   nr-comp     : ∀ {A B C} {f : Term B C} {g : Term A B} →
                 NoRedex f → NoRedex g →
-                NotIdStruct f →  -- f is not id (structurally)
-                NotIdStruct g →  -- g is not id (structurally)
+                SafeComp f g →
                 NoRedex (f ∘ g)
 
   -- Pair: not eta (⟨fst, snd⟩), and subterms are normal
@@ -170,47 +280,47 @@ data NoRedex : ∀ {A B} → Term A B → Set where
 nr-In-comp : ∀ {A F} {f : Term A (⟦ F ⟧F (μ F))} →
              NoRedex f → NotIdStruct f →
              NoRedex (In {F} ∘ f)
-nr-In-comp {A} {F} {f} nrf nisf = nr-comp {A} {⟦ F ⟧F (μ F)} {μ F} (nr-In {F}) nrf nis-In nisf
+nr-In-comp {A} {F} {f} nrf nisf = nr-comp {A} {⟦ F ⟧F (μ F)} {μ F} (nr-In {F}) nrf (sc-neither nis-In nisf nas-In)
 
--- Helper: f ∘ inl is NoRedex if f is NoRedex and f is not id
+-- Helper: f ∘ inl is NoRedex if f is NoRedex and f is not id and f is not apply
 nr-comp-inl : ∀ {A B C} {f : Term (A + B) C} →
-              NoRedex f → NotIdStruct f →
+              NoRedex f → NotIdStruct f → NotApplyStruct f →
               NoRedex (f ∘ inl)
-nr-comp-inl nrf nisf = nr-comp nrf nr-inl nisf nis-inl
+nr-comp-inl nrf nisf nasf = nr-comp nrf nr-inl (sc-neither nisf nis-inl nasf)
 
--- Helper: f ∘ inr is NoRedex if f is NoRedex and f is not id
+-- Helper: f ∘ inr is NoRedex if f is NoRedex and f is not id and f is not apply
 nr-comp-inr : ∀ {A B C} {f : Term (A + B) C} →
-              NoRedex f → NotIdStruct f →
+              NoRedex f → NotIdStruct f → NotApplyStruct f →
               NoRedex (f ∘ inr)
-nr-comp-inr nrf nisf = nr-comp nrf nr-inr nisf nis-inr
+nr-comp-inr nrf nisf nasf = nr-comp nrf nr-inr (sc-neither nisf nis-inr nasf)
 
 -- Helper: inr ∘ f is NoRedex if f is NoRedex and f is not id
 -- inr {D} {B} : Term B (D + B), so if f : Term A B, then inr ∘ f : Term A (D + B)
 nr-inr-comp : ∀ {A B D} {f : Term A B} →
               NoRedex f → NotIdStruct f →
               NoRedex (inr {D} {B} ∘ f)
-nr-inr-comp {A} {B} {D} {f} nrf nisf = nr-comp {A} {B} {D + B} nr-inr nrf nis-inr nisf
+nr-inr-comp {A} {B} {D} {f} nrf nisf = nr-comp {A} {B} {D + B} nr-inr nrf (sc-neither nis-inr nisf nas-inr)
 
 -- Helper: inl ∘ f is NoRedex if f is NoRedex and f is not id
 -- inl {B} {D} : Term B (B + D), so if f : Term A B, then inl ∘ f : Term A (B + D)
 nr-inl-comp : ∀ {A B D} {f : Term A B} →
               NoRedex f → NotIdStruct f →
               NoRedex (inl {B} {D} ∘ f)
-nr-inl-comp {A} {B} {D} {f} nrf nisf = nr-comp {A} {B} {B + D} nr-inl nrf nis-inl nisf
+nr-inl-comp {A} {B} {D} {f} nrf nisf = nr-comp {A} {B} {B + D} nr-inl nrf (sc-neither nis-inl nisf nas-inl)
 
 -- Chain of inrs is NoRedex
 -- inr {C} {A + B} ∘ inl {A} {B} : Term A (C + (A + B))
 nr-inr-inl : ∀ {A B C} →
              NoRedex (inr {C} {A + B} ∘ inl {A} {B})
-nr-inr-inl = nr-comp nr-inr nr-inl nis-inr nis-inl
+nr-inr-inl = nr-comp nr-inr nr-inl (sc-neither nis-inr nis-inl nas-inr)
 
 -- inr ∘ inl for building nested sums
 nr-inr∘inl : ∀ {A B C} → NoRedex (inr {C} ∘ inl {A} {B})
-nr-inr∘inl = nr-comp nr-inr nr-inl nis-inr nis-inl
+nr-inr∘inl = nr-comp nr-inr nr-inl (sc-neither nis-inr nis-inl nas-inr)
 
 -- inr ∘ inr for building nested sums
 nr-inr∘inr : ∀ {A B C} → NoRedex (inr {C} ∘ inr {A} {B})
-nr-inr∘inr = nr-comp nr-inr nr-inr nis-inr nis-inr
+nr-inr∘inr = nr-comp nr-inr nr-inr (sc-neither nis-inr nis-inr nas-inr)
 
 ------------------------------------------------------------------------
 -- Chain builders for nested compositions
@@ -223,7 +333,7 @@ nr-inr∘inr = nr-comp nr-inr nr-inr nis-inr nis-inr
 nr-In∘ : ∀ {A F} {f : Term A (⟦ F ⟧F (μ F))} →
          NoRedex f → NotIdStruct f →
          NoRedex (In {F} ∘ f)
-nr-In∘ nrf nisf = nr-comp nr-In nrf nis-In nisf
+nr-In∘ nrf nisf = nr-comp nr-In nrf (sc-neither nis-In nisf nas-In)
 
 ------------------------------------------------------------------------
 -- Helper: Compose inr on the left of a NoRedex term
@@ -232,4 +342,4 @@ nr-In∘ nrf nisf = nr-comp nr-In nrf nis-In nisf
 nr-inr∘_ : ∀ {A B C} {f : Term A B} →
            NoRedex f → NotIdStruct f →
            NoRedex (inr {C} ∘ f)
-nr-inr∘_ nrf nisf = nr-comp nr-inr nrf nis-inr nisf
+nr-inr∘_ nrf nisf = nr-comp nr-inr nrf (sc-neither nis-inr nisf nas-inr)
