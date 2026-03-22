@@ -1,4 +1,3 @@
-{-# OPTIONS --allow-unsolved-metas #-}
 ------------------------------------------------------------------------
 -- Fixpoint.DispatchLemmas: Position dispatch lemmas for normalize-step
 --
