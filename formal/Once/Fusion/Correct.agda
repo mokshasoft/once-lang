@@ -8,6 +8,28 @@
 --
 -- NOTE: Due to OCP-0003, fusion-compose is currently just plain
 -- composition (g ∘ f), so correctness is trivial (refl).
+--
+-- OCP-0003 Recursion Scheme Fusion Correctness:
+-- ============================================
+--
+-- The recursion scheme fusion rules preserve semantics by the laws in
+-- Category/Laws.agda:
+--
+-- 1. Cata identity: eval-cata-In-id
+--    Cata (In m) ≡ id
+--
+-- 2. Ana identity: eval-ana-Out-id
+--    Ana Out ≡ id
+--
+-- 3. Hylo unfold: eval-hylo-unfold
+--    Hylo alg coalg x ≡ alg (fmap (Hylo alg coalg) (coalg x))
+--
+-- 4. Cata computation: eval-cata-In
+--    Cata alg (In x) ≡ alg (fmap (Cata alg) x)
+--
+-- These laws justify the deforestation optimizations: instead of building
+-- intermediate structures with Ana and consuming with Cata, we can use
+-- Hylo directly which computes the result in a single pass.
 ------------------------------------------------------------------------
 
 module Once.Fusion.Correct where

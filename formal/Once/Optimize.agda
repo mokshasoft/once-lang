@@ -476,7 +476,17 @@ mutual
   ... | no _     = Prim n
   -- | free-heap is opaque (no optimization)
   optimize-once-structural (free-heap h) = free-heap h
-  -- | OCP-0003 recursion schemes: recurse into algebras/coalgebras
+  -- | OCP-0003 recursion schemes: optimize algebras/coalgebras
+  --
+  -- Identity rules (proven in Category/Laws.agda):
+  --   - Cata (In m) ≡ id  (identity catamorphism)
+  --   - Ana Out ≡ id      (identity anamorphism)
+  --
+  -- NOTE: Due to SplitError.UnificationStuck with dependent type indices,
+  -- we cannot pattern match on (In m) or Out here. The identity rules
+  -- are documented but not automatically applied at the IR level.
+  -- The semantic equivalence is proven in the laws module.
+  --
   optimize-once-structural (In m) = In m
   optimize-once-structural (Cata {F} alg) = Cata {F} (optimize-once alg)
   optimize-once-structural Out = Out

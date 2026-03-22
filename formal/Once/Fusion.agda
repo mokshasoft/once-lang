@@ -10,8 +10,42 @@
 -- Key insight: These rules preserve semantics because they follow from
 -- the categorical laws (coproduct beta, functor laws).
 --
+-- =======================================================================
+-- OCP-0003: Recursion Scheme Fusion (Hylomorphism Deforestation)
+-- =======================================================================
+--
+-- The hylomorphism (Hylo) IS the fused form of building and consuming
+-- a recursive structure. It computes cata ∘ ana without materializing
+-- the intermediate structure.
+--
+-- Key insight: In Once, μ-type ≠ ν-type, so Cata ∘ Ana doesn't type-check
+-- directly. Instead, Hylo takes an algebra and coalgebra separately:
+--
+--   Hylo : IR (⟦ F ⟧T B) B → IR A (⟦ F ⟧T A) → IR A B
+--
+-- Conceptually: hylo alg coalg x = alg (fmap (hylo alg coalg) (coalg x))
+--
+-- Hylo Fusion Rules:
+--   1. Identity hylo: Hylo (In m) Out ≡ id (on appropriate types)
+--   2. Nested hylo: hylo alg (fmap g ∘ coalg) ≡ hylo (alg ∘ fmap g) coalg
+--      (requires fmap representation at IR level)
+--
+-- Cata Fusion Rules:
+--   1. Identity: Cata (In m) ≡ id (proven in Category/Laws.agda)
+--   2. Algebra fusion: h ∘ Cata alg ≡ Cata (h ∘ alg) when h is natural
+--
+-- Ana Fusion Rules:
+--   1. Identity: Ana Out ≡ id (proven in Category/Laws.agda)
+--   2. Coalgebra fusion: Ana coalg ∘ h ≡ Ana (coalg ∘ h)
+--
+-- NOTE: Full implementation of these rules requires pattern matching on
+-- the dependent type indices (⟦ F ⟧T), which causes SplitError.UnificationStuck.
+-- The rules are documented here and proven semantically in Category/Laws.agda.
+--
+-- =======================================================================
 -- Stream Fusion in Once
--- =====================
+-- =======================================================================
+--
 -- These coproduct fusion rules, combined with the fold/unfold rules in
 -- Optimize.agda, provide stream fusion semantics for recursive types.
 --
@@ -27,6 +61,10 @@
 --     (by coproduct functor fusion, Rule 1 below)
 --   = (fold Heap) ∘ [inl, inr ∘ ⟨(f ∘ g) ∘ fst, snd⟩] ∘ unfold
 --   = map (f ∘ g)  -- single traversal!
+--
+-- =======================================================================
+-- Coproduct Fusion Rules
+-- =======================================================================
 --
 -- Rules implemented:
 --   1. Right functor fusion (fmap on right component):
@@ -119,6 +157,16 @@ fusion-once (fold _) = fold Heap
 fusion-once unfold = unfold
 
 -- Recursion schemes (OCP-0003): recurse into algebras/coalgebras
+--
+-- Fusion opportunities:
+--   - Cata alg ∘ In m  →  apply algebra computation law
+--   - Out ∘ Ana coalg  →  apply coalgebra computation law
+--   - Hylo (In m) Out  →  id (on appropriate types)
+--
+-- These optimizations require pattern matching on dependent type indices
+-- which causes SplitError.UnificationStuck. The rules are proven semantically
+-- in Category/Laws.agda (eval-cata-In, eval-hylo-unfold, eval-ana-Out-id).
+--
 fusion-once (In m) = In m
 fusion-once (Cata {F} alg) = Cata {F} (fusion-once alg)
 fusion-once Out = Out
