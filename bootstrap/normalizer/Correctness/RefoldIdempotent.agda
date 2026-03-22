@@ -19,7 +19,7 @@ module normalizer.Correctness.RefoldIdempotent where
 open import normalizer.Foundations.TermFunctor public
 open import normalizer.Foundations.Encoding public
 open import normalizer.Foundations.DispatchCombinators
-  using (assoc-sandwich; pair-ih-step; _>>inr_)
+  using (assoc-sandwich; pair-ih-step; _>>inr_; assoc-r-In; _>>_)
 
 ------------------------------------------------------------------------
 -- The identity algebra
@@ -77,7 +77,6 @@ refold-idem-fst {A} {B} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    -- Using assoc-sandwich instead of verbose ⟶*-trans chains
     r0 = assoc-sandwich _ (fmap-TermF-inr f)
     r1 = assoc-sandwich _ (fmap-1-inr f)
 
@@ -90,11 +89,9 @@ refold-idem-fst {A} {B} = ⟶*-trans step1 step2
                    (step id-left done)))
                  done)))
 
-    reduce-chain =
-      ⟶*-trans r0 (∘-cong-right' inr
-        (⟶*-trans r1 (∘-cong-right' inr r2)))
+    reduce-chain = r0 >>inr r1 >>inr r2
 
-    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+    step2 = assoc-r-In reduce-chain
 
 -- refold-idem-snd: position 3
 refold-idem-snd : ∀ {A B} → (cata TermF In ∘ encode (snd {A} {B})) ⟶* encode (snd {A} {B})
@@ -108,7 +105,6 @@ refold-idem-snd {A} {B} = ⟶*-trans step1 step2
 
     step1 = cata-β-right
 
-    -- Using assoc-sandwich for cleaner proofs
     r0 = assoc-sandwich _ (fmap-TermF-inr f)
     r1 = assoc-sandwich _ (fmap-1-inr f)
     r2 = assoc-sandwich _ (fmap-2-inr f)
@@ -122,12 +118,9 @@ refold-idem-snd {A} {B} = ⟶*-trans step1 step2
                    (step id-left done)))
                  done)))
 
-    reduce-chain =
-      ⟶*-trans r0 (∘-cong-right' inr
-        (⟶*-trans r1 (∘-cong-right' inr
-          (⟶*-trans r2 (∘-cong-right' inr r3)))))
+    reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3
 
-    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+    step2 = assoc-r-In reduce-chain
 
 -- refold-idem-inl: position 5
 refold-idem-inl : ∀ {A B} → (cata TermF In ∘ encode (inl {A} {B})) ⟶* encode (inl {A} {B})
@@ -146,7 +139,6 @@ refold-idem-inl {A} {B} = ⟶*-trans step1 step2
     r2 = assoc-sandwich _ (fmap-2-inr f)
     r3 = assoc-sandwich _ (fmap-3-inr f)
     r4 = assoc-sandwich _ (fmap-4-inr f)
-
     r5 : (fmap TermF-5 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r5 = ⟶*-trans (step assoc-l done)
            (⟶*-trans (∘-cong-left' payload (fmap-5-inl f))
@@ -156,14 +148,9 @@ refold-idem-inl {A} {B} = ⟶*-trans step1 step2
                    (step id-left done)))
                  done)))
 
-    reduce-chain =
-      ⟶*-trans r0 (∘-cong-right' inr
-        (⟶*-trans r1 (∘-cong-right' inr
-          (⟶*-trans r2 (∘-cong-right' inr
-            (⟶*-trans r3 (∘-cong-right' inr
-              (⟶*-trans r4 (∘-cong-right' inr r5)))))))))
+    reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5
 
-    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+    step2 = assoc-r-In reduce-chain
 
 -- refold-idem-inr: position 6
 refold-idem-inr : ∀ {A B} → (cata TermF In ∘ encode (inr {A} {B})) ⟶* encode (inr {A} {B})
@@ -183,7 +170,6 @@ refold-idem-inr {A} {B} = ⟶*-trans step1 step2
     r3 = assoc-sandwich _ (fmap-3-inr f)
     r4 = assoc-sandwich _ (fmap-4-inr f)
     r5 = assoc-sandwich _ (fmap-5-inr f)
-
     r6 : (fmap TermF-6 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
     r6 = ⟶*-trans (step assoc-l done)
            (⟶*-trans (∘-cong-left' payload (fmap-6-inl f))
@@ -193,15 +179,9 @@ refold-idem-inr {A} {B} = ⟶*-trans step1 step2
                    (step id-left done)))
                  done)))
 
-    reduce-chain =
-      ⟶*-trans r0 (∘-cong-right' inr
-        (⟶*-trans r1 (∘-cong-right' inr
-          (⟶*-trans r2 (∘-cong-right' inr
-            (⟶*-trans r3 (∘-cong-right' inr
-              (⟶*-trans r4 (∘-cong-right' inr
-                (⟶*-trans r5 (∘-cong-right' inr r6)))))))))))
+    reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6
 
-    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+    step2 = assoc-r-In reduce-chain
 
 -- refold-idem-terminal: position 8
 refold-idem-terminal : ∀ {A} → (cata TermF In ∘ encode (terminal {A})) ⟶* encode (terminal {A})
@@ -223,24 +203,13 @@ refold-idem-terminal {A} = ⟶*-trans step1 step2
     r5 = assoc-sandwich _ (fmap-5-inr f)
     r6 = assoc-sandwich _ (fmap-6-inr f)
     r7 = assoc-sandwich _ (fmap-7-inr f)
+    r8 = step assoc-l done >>
+         ∘-cong-left' payload (fmap-8-inl f) >>
+         ∘-cong-left' payload (step id-right done)
 
-    r8 : (fmap TermF-8 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
-    r8 = ⟶*-trans (step assoc-l done)
-           (⟶*-trans (∘-cong-left' payload (fmap-8-inl f))
-             (⟶*-trans (∘-cong-left' payload (step id-right done))
-               done))
+    reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7 >>inr r8
 
-    reduce-chain =
-      ⟶*-trans r0 (∘-cong-right' inr
-        (⟶*-trans r1 (∘-cong-right' inr
-          (⟶*-trans r2 (∘-cong-right' inr
-            (⟶*-trans r3 (∘-cong-right' inr
-              (⟶*-trans r4 (∘-cong-right' inr
-                (⟶*-trans r5 (∘-cong-right' inr
-                  (⟶*-trans r6 (∘-cong-right' inr
-                    (⟶*-trans r7 (∘-cong-right' inr r8)))))))))))))))
-
-    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+    step2 = assoc-r-In reduce-chain
 
 -- refold-idem-initial: position 9
 refold-idem-initial : ∀ {A} → (cata TermF In ∘ encode (initial {A})) ⟶* encode (initial {A})
@@ -263,25 +232,13 @@ refold-idem-initial {A} = ⟶*-trans step1 step2
     r6 = assoc-sandwich _ (fmap-6-inr f)
     r7 = assoc-sandwich _ (fmap-7-inr f)
     r8 = assoc-sandwich _ (fmap-8-inr f)
+    r9 = step assoc-l done >>
+         ∘-cong-left' payload (fmap-9-inl f) >>
+         ∘-cong-left' payload (step id-right done)
 
-    r9 : (fmap TermF-9 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
-    r9 = ⟶*-trans (step assoc-l done)
-           (⟶*-trans (∘-cong-left' payload (fmap-9-inl f))
-             (⟶*-trans (∘-cong-left' payload (step id-right done))
-               done))
+    reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7 >>inr r8 >>inr r9
 
-    reduce-chain =
-      ⟶*-trans r0 (∘-cong-right' inr
-        (⟶*-trans r1 (∘-cong-right' inr
-          (⟶*-trans r2 (∘-cong-right' inr
-            (⟶*-trans r3 (∘-cong-right' inr
-              (⟶*-trans r4 (∘-cong-right' inr
-                (⟶*-trans r5 (∘-cong-right' inr
-                  (⟶*-trans r6 (∘-cong-right' inr
-                    (⟶*-trans r7 (∘-cong-right' inr
-                      (⟶*-trans r8 (∘-cong-right' inr r9)))))))))))))))))
-
-    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+    step2 = assoc-r-In reduce-chain
 
 -- refold-idem-In: position 10
 refold-idem-In : ∀ {F} → (cata TermF In ∘ encode (In {F})) ⟶* encode (In {F})
@@ -305,26 +262,13 @@ refold-idem-In {F} = ⟶*-trans step1 step2
     r7 = assoc-sandwich _ (fmap-7-inr f)
     r8 = assoc-sandwich _ (fmap-8-inr f)
     r9 = assoc-sandwich _ (fmap-9-inr f)
+    r10 = step assoc-l done >>
+          ∘-cong-left' payload (fmap-10-inl f) >>
+          ∘-cong-left' payload (step id-right done)
 
-    r10 : (fmap TermF-10 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
-    r10 = ⟶*-trans (step assoc-l done)
-            (⟶*-trans (∘-cong-left' payload (fmap-10-inl f))
-              (⟶*-trans (∘-cong-left' payload (step id-right done))
-                done))
+    reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7 >>inr r8 >>inr r9 >>inr r10
 
-    reduce-chain =
-      ⟶*-trans r0 (∘-cong-right' inr
-        (⟶*-trans r1 (∘-cong-right' inr
-          (⟶*-trans r2 (∘-cong-right' inr
-            (⟶*-trans r3 (∘-cong-right' inr
-              (⟶*-trans r4 (∘-cong-right' inr
-                (⟶*-trans r5 (∘-cong-right' inr
-                  (⟶*-trans r6 (∘-cong-right' inr
-                    (⟶*-trans r7 (∘-cong-right' inr
-                      (⟶*-trans r8 (∘-cong-right' inr
-                        (⟶*-trans r9 (∘-cong-right' inr r10)))))))))))))))))))
-
-    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+    step2 = assoc-r-In reduce-chain
 
 -- refold-idem-Out: position 11
 refold-idem-Out : ∀ {F} → (cata TermF In ∘ encode (Out {F})) ⟶* encode (Out {F})
@@ -349,27 +293,13 @@ refold-idem-Out {F} = ⟶*-trans step1 step2
     r8 = assoc-sandwich _ (fmap-8-inr f)
     r9 = assoc-sandwich _ (fmap-9-inr f)
     r10 = assoc-sandwich _ (fmap-10-inr f)
+    r11 = step assoc-l done >>
+          ∘-cong-left' payload (fmap-11-inl f) >>
+          ∘-cong-left' payload (step id-right done)
 
-    r11 : (fmap TermF-11 f ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
-    r11 = ⟶*-trans (step assoc-l done)
-            (⟶*-trans (∘-cong-left' payload (fmap-11-inl f))
-              (⟶*-trans (∘-cong-left' payload (step id-right done))
-                done))
+    reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7 >>inr r8 >>inr r9 >>inr r10 >>inr r11
 
-    reduce-chain =
-      ⟶*-trans r0 (∘-cong-right' inr
-        (⟶*-trans r1 (∘-cong-right' inr
-          (⟶*-trans r2 (∘-cong-right' inr
-            (⟶*-trans r3 (∘-cong-right' inr
-              (⟶*-trans r4 (∘-cong-right' inr
-                (⟶*-trans r5 (∘-cong-right' inr
-                  (⟶*-trans r6 (∘-cong-right' inr
-                    (⟶*-trans r7 (∘-cong-right' inr
-                      (⟶*-trans r8 (∘-cong-right' inr
-                        (⟶*-trans r9 (∘-cong-right' inr
-                          (⟶*-trans r10 (∘-cong-right' inr r11)))))))))))))))))))))
-
-    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+    step2 = assoc-r-In reduce-chain
 
 -- refold-idem-apply: position 14
 refold-idem-apply : ∀ {A B} → (cata TermF In ∘ encode (apply {A} {B})) ⟶* encode (apply {A} {B})
@@ -401,23 +331,9 @@ refold-idem-apply {A} {B} = ⟶*-trans step1 step2
     r14 : (fmap TermF-14 c ∘ payload) ⟶* payload
     r14 = ⟶*-trans (∘-cong-left' payload (fmap-KK-id TyFuncCode TyFuncCode c)) (step id-left done)
 
-    reduce-chain =
-      ⟶*-trans r0 (∘-cong-right' inr
-        (⟶*-trans r1 (∘-cong-right' inr
-          (⟶*-trans r2 (∘-cong-right' inr
-            (⟶*-trans r3 (∘-cong-right' inr
-              (⟶*-trans r4 (∘-cong-right' inr
-                (⟶*-trans r5 (∘-cong-right' inr
-                  (⟶*-trans r6 (∘-cong-right' inr
-                    (⟶*-trans r7 (∘-cong-right' inr
-                      (⟶*-trans r8 (∘-cong-right' inr
-                        (⟶*-trans r9 (∘-cong-right' inr
-                          (⟶*-trans r10 (∘-cong-right' inr
-                            (⟶*-trans r11 (∘-cong-right' inr
-                              (⟶*-trans r12 (∘-cong-right' inr
-                                (⟶*-trans r13 (∘-cong-right' inr r14)))))))))))))))))))))))))))
+    reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7 >>inr r8 >>inr r9 >>inr r10 >>inr r11 >>inr r12 >>inr r13 >>inr r14
 
-    step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+    step2 = assoc-r-In reduce-chain
 
 ------------------------------------------------------------------------
 -- Id-based refold-idem proofs (recursive)
@@ -474,7 +390,7 @@ mutual
                      (inr ∘ (inl ∘ payload))
       reduce-chain = r0 >>inr r1
 
-      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+      step2 = assoc-r-In reduce-chain
 
   -- refold-idem-pair: position 4
   refold-idem-pair : ∀ {A B C} (f : Term C A) (g : Term C B) →
@@ -505,7 +421,7 @@ mutual
 
       reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4
 
-      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+      step2 = assoc-r-In reduce-chain
 
   -- refold-idem-case: position 7
   refold-idem-case : ∀ {A B C} (f : Term A C) (g : Term B C) →
@@ -539,7 +455,7 @@ mutual
 
       reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7
 
-      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+      step2 = assoc-r-In reduce-chain
 
   -- refold-idem-cata: position 12
   refold-idem-cata : ∀ {F A} (alg : Term (⟦ F ⟧F A) A) →
@@ -589,7 +505,7 @@ mutual
 
       reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7 >>inr r8 >>inr r9 >>inr r10 >>inr r11 >>inr r12
 
-      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+      step2 = assoc-r-In reduce-chain
 
   -- refold-idem-curry: position 13
   refold-idem-curry : ∀ {A B C} (f : Term (A * B) C) →
@@ -649,7 +565,7 @@ mutual
 
       reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7 >>inr r8 >>inr r9 >>inr r10 >>inr r11 >>inr r12 >>inr r13
 
-      step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
+      step2 = assoc-r-In reduce-chain
 
 ------------------------------------------------------------------------
 -- The N-refold fixpoint theorem
