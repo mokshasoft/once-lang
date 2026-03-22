@@ -19,7 +19,7 @@ module normalizer.Correctness.RefoldIdempotent where
 open import normalizer.Foundations.TermFunctor public
 open import normalizer.Foundations.Encoding public
 open import normalizer.Foundations.DispatchCombinators
-  using (assoc-sandwich)
+  using (assoc-sandwich; pair-ih-step; _>>inr_)
 
 ------------------------------------------------------------------------
 -- The identity algebra
@@ -462,15 +462,7 @@ mutual
       r0 = assoc-sandwich _ (fmap-TermF-inr c)
 
       ih-step : (fmap (Id ⊗ Id) c ∘ payload) ⟶* payload
-      ih-step =
-        ⟶*-trans (step pair-comp done)
-          (⟨⟩-cong
-            (⟶*-trans (step assoc-r done)
-              (⟶*-trans (∘-cong-right' c (step fst-pair done))
-                (refold-idempotent f)))
-            (⟶*-trans (step assoc-r done)
-              (⟶*-trans (∘-cong-right' c (step snd-pair done))
-                (refold-idempotent g))))
+      ih-step = pair-ih-step (refold-idempotent f) (refold-idempotent g)
 
       r1 : (fmap TermF-1 c ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
       r1 = ⟶*-trans (step assoc-l done)
@@ -480,7 +472,7 @@ mutual
 
       reduce-chain : (fmap TermF c ∘ (inr ∘ (inl ∘ payload))) ⟶*
                      (inr ∘ (inl ∘ payload))
-      reduce-chain = ⟶*-trans r0 (∘-cong-right' inr r1)
+      reduce-chain = r0 >>inr r1
 
       step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
 
@@ -503,15 +495,7 @@ mutual
       r3 = assoc-sandwich _ (fmap-3-inr c)
 
       ih-step : (fmap (Id ⊗ Id) c ∘ payload) ⟶* payload
-      ih-step =
-        ⟶*-trans (step pair-comp done)
-          (⟨⟩-cong
-            (⟶*-trans (step assoc-r done)
-              (⟶*-trans (∘-cong-right' c (step fst-pair done))
-                (refold-idempotent f)))
-            (⟶*-trans (step assoc-r done)
-              (⟶*-trans (∘-cong-right' c (step snd-pair done))
-                (refold-idempotent g))))
+      ih-step = pair-ih-step (refold-idempotent f) (refold-idempotent g)
 
       r4 : (fmap TermF-4 c ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
       r4 = ⟶*-trans (step assoc-l done)
@@ -519,11 +503,7 @@ mutual
                (⟶*-trans (step assoc-r done)
                  (∘-cong-right' inl ih-step)))
 
-      reduce-chain =
-        ⟶*-trans r0 (∘-cong-right' inr
-          (⟶*-trans r1 (∘-cong-right' inr
-            (⟶*-trans r2 (∘-cong-right' inr
-              (⟶*-trans r3 (∘-cong-right' inr r4)))))))
+      reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4
 
       step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
 
@@ -549,15 +529,7 @@ mutual
       r6 = assoc-sandwich _ (fmap-6-inr c)
 
       ih-step : (fmap (Id ⊗ Id) c ∘ payload) ⟶* payload
-      ih-step =
-        ⟶*-trans (step pair-comp done)
-          (⟨⟩-cong
-            (⟶*-trans (step assoc-r done)
-              (⟶*-trans (∘-cong-right' c (step fst-pair done))
-                (refold-idempotent f)))
-            (⟶*-trans (step assoc-r done)
-              (⟶*-trans (∘-cong-right' c (step snd-pair done))
-                (refold-idempotent g))))
+      ih-step = pair-ih-step (refold-idempotent f) (refold-idempotent g)
 
       r7 : (fmap TermF-7 c ∘ (inl ∘ payload)) ⟶* (inl ∘ payload)
       r7 = ⟶*-trans (step assoc-l done)
@@ -565,14 +537,7 @@ mutual
                (⟶*-trans (step assoc-r done)
                  (∘-cong-right' inl ih-step)))
 
-      reduce-chain =
-        ⟶*-trans r0 (∘-cong-right' inr
-          (⟶*-trans r1 (∘-cong-right' inr
-            (⟶*-trans r2 (∘-cong-right' inr
-              (⟶*-trans r3 (∘-cong-right' inr
-                (⟶*-trans r4 (∘-cong-right' inr
-                  (⟶*-trans r5 (∘-cong-right' inr
-                    (⟶*-trans r6 (∘-cong-right' inr r7)))))))))))))
+      reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7
 
       step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
 
@@ -622,19 +587,7 @@ mutual
                 (⟶*-trans (step assoc-r done)
                   (∘-cong-right' inl r12-payload)))
 
-      reduce-chain =
-        ⟶*-trans r0 (∘-cong-right' inr
-          (⟶*-trans r1 (∘-cong-right' inr
-            (⟶*-trans r2 (∘-cong-right' inr
-              (⟶*-trans r3 (∘-cong-right' inr
-                (⟶*-trans r4 (∘-cong-right' inr
-                  (⟶*-trans r5 (∘-cong-right' inr
-                    (⟶*-trans r6 (∘-cong-right' inr
-                      (⟶*-trans r7 (∘-cong-right' inr
-                        (⟶*-trans r8 (∘-cong-right' inr
-                          (⟶*-trans r9 (∘-cong-right' inr
-                            (⟶*-trans r10 (∘-cong-right' inr
-                              (⟶*-trans r11 (∘-cong-right' inr r12)))))))))))))))))))))))
+      reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7 >>inr r8 >>inr r9 >>inr r10 >>inr r11 >>inr r12
 
       step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
 
@@ -694,20 +647,7 @@ mutual
                 (⟶*-trans (step assoc-r done)
                   (∘-cong-right' inl r13-payload)))
 
-      reduce-chain =
-        ⟶*-trans r0 (∘-cong-right' inr
-          (⟶*-trans r1 (∘-cong-right' inr
-            (⟶*-trans r2 (∘-cong-right' inr
-              (⟶*-trans r3 (∘-cong-right' inr
-                (⟶*-trans r4 (∘-cong-right' inr
-                  (⟶*-trans r5 (∘-cong-right' inr
-                    (⟶*-trans r6 (∘-cong-right' inr
-                      (⟶*-trans r7 (∘-cong-right' inr
-                        (⟶*-trans r8 (∘-cong-right' inr
-                          (⟶*-trans r9 (∘-cong-right' inr
-                            (⟶*-trans r10 (∘-cong-right' inr
-                              (⟶*-trans r11 (∘-cong-right' inr
-                                (⟶*-trans r12 (∘-cong-right' inr r13)))))))))))))))))))))))))
+      reduce-chain = r0 >>inr r1 >>inr r2 >>inr r3 >>inr r4 >>inr r5 >>inr r6 >>inr r7 >>inr r8 >>inr r9 >>inr r10 >>inr r11 >>inr r12 >>inr r13
 
       step2 = ⟶*-trans (step assoc-r done) (∘-cong-right' In reduce-chain)
 
