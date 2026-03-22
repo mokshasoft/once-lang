@@ -194,7 +194,7 @@ eval-curry-eta g m₁ m₂ a b = refl
 ------------------------------------------------------------------------
 
 -- Distributivity of products over coproducts (C × (A + B) ≅ (C × A) + (C × B))
--- is proven in Once.Surface.Correct as distribute-inl and distribute-inr.
+-- See Once.Surface.Correct (distribute-inl and distribute-inr).
 
 ------------------------------------------------------------------------
 -- Functoriality of Product and Coproduct

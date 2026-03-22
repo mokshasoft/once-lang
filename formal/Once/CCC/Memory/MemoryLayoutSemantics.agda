@@ -6,7 +6,7 @@
 --
 -- Memory layout interfaces and core types.
 --
--- This module provides ONLY interface definitions (no postulates):
+-- This module provides interface definitions:
 --   1. Core types: Addr, RegionBounds
 --   2. MemoryLayout record: what architectures must provide
 --   3. StackGrowth record: stack slot addressing interface

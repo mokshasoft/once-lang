@@ -6,20 +6,15 @@
 --
 -- Heap allocator semantics derived from concrete implementation.
 --
--- ARCHITECTURE:
+-- Architecture:
 --   1. Once.Allocator.Interface defines what allocators must provide
---   2. Once.Allocator.BumpAllocator is a PROVEN implementation
+--   2. Once.Allocator.BumpAllocator is a concrete implementation
 --   3. This module provides the legacy interface (encode-in-heap, heap-offset)
 --
 -- The legacy postulates are derived from a single structural postulate:
 --   "We're using an allocator that satisfies AllocatorInterface"
 --
--- This is cleaner than the previous approach because:
---   - BumpAllocator PROVES all properties (no internal postulates)
---   - The only postulate is "we use BumpAllocator" (structural, not semantic)
---   - Legacy code continues to work unchanged
---
--- See: Once.Allocator.BumpAllocator for the proven implementation
+-- See: Once.Allocator.BumpAllocator for the concrete implementation
 ------------------------------------------------------------------------
 
 open import Once.CCC.Memory.MemoryLayoutSemantics
@@ -65,7 +60,7 @@ open AllocatorInterface allocator
 -- Callers can use: alloc n s to get (addr, s', Allocated s' addr n)
 
 ------------------------------------------------------------------------
--- Block Properties (PROVEN from interface, not postulated)
+-- Block Properties (derived from interface)
 ------------------------------------------------------------------------
 
 -- All slots of an allocated block are in heap
@@ -99,7 +94,7 @@ alloc-second-in-heap {_} {addr} alloc 1<n =
 -- Legacy Interface (backward compatible)
 --
 -- These match the old postulate signatures so existing proofs work.
--- They are DERIVED from the allocator assumption, not directly postulated.
+-- They are derived from the allocator assumption.
 ------------------------------------------------------------------------
 
 -- | Encoding function produces heap addresses
@@ -114,7 +109,7 @@ postulate
 
 -- | Field access stays within heap region (BOUNDED version)
 --
--- IMPORTANT: The old postulate allowed arbitrary offset n.
+-- IMPORTANT: The old version allowed arbitrary offset n.
 -- This was UNSOUND for n larger than the allocated block!
 --
 -- The correct version requires an Allocated witness and bounds the offset.
@@ -133,7 +128,7 @@ postulate
 ------------------------------------------------------------------------
 
 module Proper where
-  -- Access slot i of an n-slot allocation (proven safe)
+  -- Access slot i of an n-slot allocation (bounded)
   access-slot : ∀ {s addr n} →
                 Allocated s addr n →
                 (i : ℕ) → i < n →
@@ -157,7 +152,7 @@ module Proper where
 --   encode-in-heap : legacy interface  -- "encode calls alloc correctly"
 --   heap-offset    : legacy interface  -- "offsets within blocks are safe"
 --
--- PROVEN (from allocator):
+-- Derived from allocator:
 --   alloc-slot-in-heap  : slot i < n → InHeap (addr + i * slot-size)
 --   alloc-base-in-heap  : 0 < n → InHeap addr
 --   alloc-second-in-heap: 1 < n → InHeap (addr + slot-size)

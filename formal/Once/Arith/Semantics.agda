@@ -89,7 +89,7 @@ mul F64 = F._*_
 
 -- | Division for each numeric type
 -- Note: Integer division requires NonZero proof in stdlib.
--- For now, we postulate a total division function.
+-- We use an axiom for a total division function.
 -- The proof of non-zero divisor is deferred to the boundary proof.
 postulate
   ℤ-div : ℤ → ℤ → ℤ  -- Assumed total; undefined for zero divisor

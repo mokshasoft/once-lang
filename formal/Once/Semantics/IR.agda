@@ -35,7 +35,7 @@ open import Once.Semantics.Core ℤ public
 -- | Primitive semantics provider
 --
 -- Provides semantics for primitive operations (e.g., arithmetic).
--- This is a parameter rather than a postulate, making proofs cleaner.
+-- This is a module parameter, making proofs cleaner.
 --
 record PrimSem : Set₁ where
   field
@@ -98,7 +98,7 @@ eval ps (free-heap _) x   = x
 eval ps (Prim name) x     = evalPrim ps name x
 
 ------------------------------------------------------------------------
--- Backward-compatible eval (using postulated primitive semantics)
+-- Backward-compatible eval (using default primitive semantics)
 ------------------------------------------------------------------------
 
 -- | Postulated primitive semantics for backward compatibility
@@ -114,7 +114,7 @@ defaultPrimSem = record { evalPrim = defaultEvalPrim }
 
 -- | Non-parameterized eval (backward compatible)
 --
--- Uses postulated primitive semantics.
+-- Uses default primitive semantics.
 -- Prefer the parameterized version for new code.
 --
 eval′ : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧

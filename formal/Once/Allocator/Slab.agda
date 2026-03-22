@@ -16,7 +16,7 @@
 --   - alloc n: O(1) - find size class ≥ n, pop from its free list
 --   - free n addr: O(1) - push to size class n's free list
 --
--- Key properties (all proven):
+-- Key properties:
 --   - alloc-in-heap: allocated blocks are in heap region
 --   - size-class-correct: allocated block has at least n slots
 ------------------------------------------------------------------------
@@ -245,7 +245,7 @@ free c addr s start-ok end-ok = mkSlabState new-pools new-pools-sized
                          (pools-sized s i)
 
 ------------------------------------------------------------------------
--- PROVEN PROPERTY: Block slots are in heap
+-- Block slots are in heap
 ------------------------------------------------------------------------
 
 -- All slots of an allocated block are in heap
@@ -409,7 +409,7 @@ asMalloc = record
 --   2 → 3 slots (24 bytes) - tagged pairs (sum types)
 --   3 → 4 slots (32 bytes) - larger structures
 --
--- Proven properties:
+-- Properties:
 --   alloc returns InHeap address
 --   class-has-slots ensures enough space
 --

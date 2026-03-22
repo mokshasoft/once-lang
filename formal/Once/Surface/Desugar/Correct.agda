@@ -43,7 +43,7 @@ open import Data.String using (String)
 --
 -- Same as Core IR semantics, plus:
 -- - Let: evaluate binding, pair with input, evaluate body
--- - Prim: use postulated primitive evaluation
+-- - Prim: use default primitive evaluation
 --
 evalSurface : ∀ {A B} → SurfaceIR A B → ⟦ A ⟧ → ⟦ B ⟧
 
@@ -90,7 +90,7 @@ evalSurface (S.Prim name) x = defaultEvalPrim name x
 -- Correctness theorem
 ------------------------------------------------------------------------
 
--- | Primitive correctness (now proven)
+-- | Primitive correctness (definitional)
 --
 -- Since prim-desugar = C.Prim and eval′ (C.Prim name) = defaultEvalPrim name,
 -- this is just refl.
@@ -188,5 +188,5 @@ desugar-correct (S.Let e1 e2) x =
       ∎
   where open Relation.Binary.PropositionalEquality.≡-Reasoning
 
--- | Primitive correctness (uses postulate from above)
+-- | Primitive correctness (uses desugar-correct-prim)
 desugar-correct (S.Prim name) x = desugar-correct-prim name x

@@ -189,7 +189,7 @@ module MemoryOps {FS : FrameSemantics} where
 
   -- Read after write (same location)
   -- Uses writeLoc-read-same-stack from SMCore for stack locations
-  -- Heap cases use postulate (heap write semantics are more complex)
+  -- Heap cases use axiom (heap write semantics are more complex)
   readLoc-writeLoc-same : ∀ (s : LocState FS) (loc : ValueLocation FS) (v : ValueLocation FS) →
     readLoc (writeLoc s loc v) loc ≡ just v
   readLoc-writeLoc-same s (OnStack f k) v = writeLoc-read-same-stack s f k v

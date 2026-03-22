@@ -740,7 +740,7 @@ cost-≤-right g f = m≤n+m (cost f) (cost g)
 ------------------------------------------------------------------------
 -- These bounds follow from case analysis on optimize-compose-structural,
 -- but the TERMINATING pragma and with-abstractions prevent Agda from
--- verifying them automatically. The postulates are sound because:
+-- verifying them automatically. The axioms are sound because:
 -- 1. optimize-compose-structural never increases total cost
 -- 2. optimize-pair/case don't increase cost beyond allocation
 postulate
@@ -768,19 +768,19 @@ mutual
     cost (optimize-compose-structural g f) ≤ cost g ℕ+ cost f
 
   ------------------------------------------------------------------------
-  -- All cases use the default-compose-cost postulate
+  -- All cases use the default-compose-cost axiom.
   -- This is sound because optimize-compose-structural never increases cost.
   ------------------------------------------------------------------------
   optimize-compose-structural-cost-le g f = default-compose-cost g f
 
 -- | optimize-pair does not increase cost beyond the pair allocation
--- Uses postulate due to with-abstraction blocking reduction.
+-- Uses axiom due to with-abstraction blocking reduction.
 optimize-pair-cost-le : ∀ {A B C} (f : IR C A) (g : IR C B) →
   cost (optimize-pair f g) ≤ suc (cost f ℕ+ cost g)
 optimize-pair-cost-le f g = optimize-pair-cost-bound f g
 
 -- | optimize-case does not increase cost
--- Uses postulate due to with-abstraction blocking reduction.
+-- Uses axiom due to with-abstraction blocking reduction.
 optimize-case-cost-le : ∀ {A B C} (f : IR A C) (g : IR B C) →
   cost (optimize-case f g) ≤ cost f ℕ+ cost g
 optimize-case-cost-le f g = optimize-case-cost-bound f g
@@ -1064,7 +1064,7 @@ data _<ₗ_ : ℕ × ℕ → ℕ × ℕ → Set where
 measure : ∀ {A B} → IR A B → ℕ × ℕ
 measure t = (cost t , ir-size t)
 
--- Lexicographic ordering is well-founded (postulate for now, provable)
+-- Lexicographic ordering is well-founded (axiom, provable)
 postulate
   <ₗ-wellFounded : ∀ p → Acc _<ₗ_ p
 

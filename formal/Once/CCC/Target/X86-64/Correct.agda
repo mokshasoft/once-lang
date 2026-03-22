@@ -19,7 +19,7 @@
 --   Layer 2: AbstractTrace → x86 (via DirectSimulation)
 --
 -- Current status:
---   ✓ Layer 1: PROVEN (compile-correct via IRResultAWF.trace-correct)
+--   ✓ Layer 1: Complete (compile-correct via IRResultAWF.trace-correct)
 --   ✓ Layer 2: STRUCTURE COMPLETE (DirectSimulation.trace-simulation)
 --   ⊕ Full theorem: CONNECTED via ir-to-x86-correctness
 --
@@ -160,9 +160,9 @@ module Correctness
      , CWF.IRResultAWF.result-valid-wf result
 
 ------------------------------------------------------------------------
--- LAYER 1: PROVEN
+-- LAYER 1: Complete
 --
--- compile-correct proves:
+-- compile-correct shows:
 --   Represents x input-loc s
 --   ∧ halted s ≡ false           (CPU running)
 --   ∧ Input = input-loc            (calling convention)

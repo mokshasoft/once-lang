@@ -98,12 +98,12 @@ open import Once.CCC.Memory.Memory using (Memory; Word; readMem; writeMem) publi
 ------------------------------------------------------------------------
 
 -- | X86 stack region has lower bound 0
--- PROVEN: definitional from RuntimeContract's stack-bounds!
+-- Definitional from RuntimeContract's stack-bounds
 x86-stack-lower-zero : lower stack-bounds ≡ 0
 x86-stack-lower-zero = refl
 
 -- | X86 code region has lower bound 0
--- PROVEN: definitional from RuntimeContract's code-bounds!
+-- Definitional from RuntimeContract's code-bounds
 x86-code-lower-zero : lower code-bounds ≡ 0
 x86-code-lower-zero = refl
 
@@ -150,7 +150,7 @@ slot-addr-next-is-base-plus-word : ∀ sp → slot-addr sp 1 ≡ addr sp + word-
 slot-addr-next-is-base-plus-word sp = refl
 
 ------------------------------------------------------------------------
--- Frame Ordering Implies Slot Disjointness (PROVEN)
+-- Frame Ordering Implies Slot Disjointness
 ------------------------------------------------------------------------
 
 -- | When frame1 < frame2, slot 0 of frame1 is below any slot of frame2
@@ -194,7 +194,7 @@ frame-preserved-slot0-disjoint frame1 frame2 k frame1+8≤frame2 =
 -- X86-Specific Calling Convention Lemmas
 ------------------------------------------------------------------------
 
--- | Slot address is above thunk's rbp (PROVEN)
+-- | Slot address is above thunk's rbp
 slot-addr-above-thunk-rbp : ∀ sp k rsp thunk-rbp →
   addr sp ≡ rsp + 8 →
   thunk-rbp ≡ rsp ∸ 16 →

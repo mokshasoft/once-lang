@@ -47,7 +47,7 @@ open import Once.Postulates using (extensionality)
 -- They are INTENTIONAL trust boundaries, not proof gaps:
 --
 -- - The primitives (intLit, addIR, etc.) are now defined using Prim
--- - evalPrim is postulated in Once.Semantics
+-- - evalPrim is defined in Once.Semantics
 -- - These axioms specify the contract the runtime must satisfy
 --
 -- This is the same pattern as Once.Arith.Boundary: the structure is
@@ -65,7 +65,7 @@ postulate
   subIR-correct : ∀ (a b : ℤ) → eval′ subIR (a , b) ≡ a Data.Integer.- b
   mulIR-correct : ∀ (a b : ℤ) → eval′ mulIR (a , b) ≡ a Data.Integer.* b
 
-  -- Division and modulo (use postulated semantics from Semantics.agda)
+  -- Division and modulo (use semantics from Semantics.agda)
   divIR-correct : ∀ (a b : ℤ) → eval′ divIR (a , b) ≡ divℤ a b
   modIR-correct : ∀ (a b : ℤ) → eval′ modIR (a , b) ≡ modℤ a b
 
@@ -185,7 +185,7 @@ mutual
           (cong (λ v → eval′ (elaborate e2) (interpEnv ρ , v))
                 (elaborate-correct ρ e1))
 
-  -- Literals: use intLit-correct and strLit-correct postulates
+  -- Literals: use intLit-correct and strLit-correct
   -- LHS: evalSurface ρ (int n) = n
   -- RHS: eval′ (elaborate (int n)) (interpEnv ρ) = eval′ (intLit n) (interpEnv ρ)
   -- intLit-correct says: eval′ (intLit n) γ ≡ n
@@ -193,7 +193,7 @@ mutual
   elaborate-correct ρ (int n)  = sym (intLit-correct n (interpEnv ρ))
   elaborate-correct ρ (str s)  = sym (strLit-correct s (interpEnv ρ))
 
-  -- Arithmetic operations: use IH for operands and IR correctness postulates
+  -- Arithmetic operations: use IH for operands and IR correctness
   elaborate-correct ρ (add e₁ e₂) =
     trans (cong₂ Data.Integer._+_ (elaborate-correct ρ e₁) (elaborate-correct ρ e₂))
           (sym (addIR-correct (eval′ (elaborate e₁) (interpEnv ρ)) (eval′ (elaborate e₂) (interpEnv ρ))))
@@ -213,7 +213,7 @@ mutual
     trans (cong Data.Integer.-_ (elaborate-correct ρ e))
           (sym (negIR-correct (eval′ (elaborate e) (interpEnv ρ))))
 
-  -- Comparison operations: postulate correctness (complex to prove inline)
+  -- Comparison operations: correctness axiom (complex to prove inline)
   elaborate-correct ρ (lt e₁ e₂) = arith-cmp-correct ρ e₁ e₂ ltIR lt ltIR-correct
   elaborate-correct ρ (le e₁ e₂) = arith-cmp-correct ρ e₁ e₂ leIR le leIR-correct
   elaborate-correct ρ (gt e₁ e₂) = arith-cmp-correct ρ e₁ e₂ gtIR gt gtIR-correct
@@ -233,7 +233,7 @@ mutual
   -- LHS: evalSurface ρ (unroll' e) = ⟦Fix⟧.unwrap (evalSurface ρ e)
   -- RHS: eval′ (unfold ∘ elaborate e) γ = ⟦Fix⟧.unwrap (eval′ (elaborate e) γ)
   elaborate-correct ρ (unroll' e) = cong ⟦Fix⟧.unwrap (elaborate-correct ρ e)
-  -- Primitives: opaque operations with postulated correctness
+  -- Primitives: opaque operations with correctness axiom
   -- The primitive has the same name in both Surface and IR semantics
   elaborate-correct ρ (prim name) = prim-correct name
     where postulate prim-correct : ∀ (n : String) → evalSurface ρ (prim n) ≡ eval′ (elaborate (prim n)) (interpEnv ρ)

@@ -366,7 +366,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- from the closure's BodyCorrect. No program-bound-based derivation needed.
     -- Apply: CHILD FRAME EXECUTION
     -- Body executes in child frame with child-capacity (from module params).
-    -- Body capacity proven via child-cap-sufficient - NO POSTULATES NEEDED!
+    -- Body capacity follows from child-cap-sufficient
     run-ir-wf Heap (apply {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
         run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 

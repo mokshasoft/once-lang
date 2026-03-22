@@ -5,7 +5,7 @@
 -- Once.Optimize
 --
 -- Optimizer for Once IR using categorical laws as rewrite rules.
--- Each rewrite preserves semantics (proven in Once.Optimize.Correct).
+-- Each rewrite preserves semantics (see Once.Optimize.Correct).
 --
 -- Architecture: Clean rule-based structure where each optimization
 -- is a single pattern match clause. Easy to add new rules.

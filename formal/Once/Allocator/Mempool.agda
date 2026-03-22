@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 -- Once.Allocator.Mempool
 --
--- A mempool (pool/slab) allocator with proven correctness properties.
+-- A mempool (pool/slab) allocator with correctness properties.
 --
 -- Unlike BumpAllocator which handles variable-size blocks without free,
 -- Mempool handles fixed-size blocks WITH free support:
@@ -18,7 +18,7 @@
 --   - Linear values are freed exactly once (guaranteed by type system)
 --   - Many allocations are same-size (pairs, closures = 2 slots)
 --
--- Key properties (all proven):
+-- Key properties:
 --   - alloc-in-heap: allocated blocks are in heap region
 --   - alloc-disjoint: different allocations don't overlap
 --   - free-returns: freed block can be reallocated
@@ -181,7 +181,7 @@ free addr s start≤addr end-ok = record s
     ... | inj₂ a∈old = free-list-valid s a∈old
 
 ------------------------------------------------------------------------
--- PROVEN PROPERTY: Allocated blocks are in heap
+-- Allocated blocks are in heap
 ------------------------------------------------------------------------
 
 -- Any address from the free list is in the pool region
@@ -218,7 +218,7 @@ alloc-in-heap s result = pool-addr-in-heap
                           (≤-trans (proj₂ in-pool) (proj₂ pool-heap))
 
 ------------------------------------------------------------------------
--- PROVEN PROPERTY: Block slots are in heap
+-- Block slots are in heap
 ------------------------------------------------------------------------
 
 -- All slots within an allocated block are in heap
@@ -262,7 +262,7 @@ block-slot-in-heap s result i i<block-slots = slot-in-heap
 --   alloc         : pop from free list, O(1)
 --   free          : push to free list, O(1)
 --
--- Proven properties:
+-- Properties:
 --   alloc-in-heap      : allocated address is in heap
 --   block-slot-in-heap : all slots of block are in heap
 --

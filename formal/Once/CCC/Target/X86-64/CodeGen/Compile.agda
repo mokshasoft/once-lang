@@ -289,7 +289,7 @@ compile-ir-length (⟨ f , g ⟩ m) = pair-length-proof f g
     open import Data.Nat.Properties using (+-identityʳ)
     -- compile-ir (⟨ f , g ⟩ m) = pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup
     -- compile-length (⟨ f , g ⟩ m) = length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup
-    -- PROVEN using length-++ and IH
+    -- using length-++ and IH
     pair-length-proof : ∀ {A B C} (f : IR A B) (g : IR A C) →
       length (compile-ir (⟨ f , g ⟩ m)) ≡ compile-length (⟨ f , g ⟩ m)
     pair-length-proof f g =
@@ -363,7 +363,7 @@ compile-ir-length (curry {q = q} f m) = curry-length-eq q f m
     thunk-cleanup-length : ∀ n → length (curry-thunk-cleanup n) ≡ 5
     thunk-cleanup-length _ = refl
 
-    -- PROVEN using length-++ and IH
+    -- using length-++ and IH
     curry-length-eq : ∀ {A B C} (q : Quantity) (f : IR (A * B) C) (m : AllocMode) →
       length (compile-ir (curry {q = q} f m)) ≡ compile-length (curry {q = q} f m)
     curry-length-eq _ f _ =

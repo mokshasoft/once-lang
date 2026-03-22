@@ -210,7 +210,7 @@ open ν public
 -- The dual of cata: builds a ν F from a coalgebra.
 ------------------------------------------------------------------------
 
--- | Anamorphism (unfold) - PROVEN via coinduction
+-- | Anamorphism (unfold) - via coinduction
 --
 -- Given an F-coalgebra (A, coalg : A → F A), builds a ν F.
 -- Uses copatterns for productivity checking.

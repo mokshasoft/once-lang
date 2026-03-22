@@ -73,7 +73,7 @@ record AllocatorInterface : Set₁ where
 -- Derived Properties
 --
 -- These are the properties needed by the legacy AllocatorSemantics.
--- They are PROVEN from the interface, not postulated.
+-- They are derived from the interface.
 ------------------------------------------------------------------------
 
 module Derived (AI : AllocatorInterface) where

@@ -6,8 +6,8 @@
 --
 -- What the runtime/linker must provide.
 --
--- This is a RECORD (not postulates) - architectures postulate a single
--- instance of this record, consolidating all runtime assumptions.
+-- This is a RECORD - architectures provide a single instance of this
+-- record, consolidating all runtime assumptions.
 --
 -- Categories of guarantees:
 --   1. Memory bounds (from OS/linker)

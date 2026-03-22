@@ -619,7 +619,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
 
   -- ValidAtWF only depends on memory, not registers
   -- When memory is preserved (stackMem and heapMem equal), validity transfers
-  -- PROVEN by structural induction on ValidAtWF
+  -- By structural induction on ValidAtWF
   validityWF-mem-only : ∀ {m alloc A} (v : ⟦ A ⟧) loc (s₁ s₂ : LocState FS) →
     stackMem s₂ ≡ stackMem s₁ →
     heapMem s₂ ≡ heapMem s₁ →

@@ -8,7 +8,6 @@
 --
 -- Parameterized by FrameSemantics, not tied to any specific target.
 -- Uses the simplified Once.CCC.Prim.Helper interface.
--- NO POSTULATES - fully proven from first principles.
 ------------------------------------------------------------------------
 
 module Once.Arith.Prim.Proofs where
@@ -68,7 +67,7 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open import Data.List using ([]; _∷_)
 
   ------------------------------------------------------------------------
-  -- Proven Lemmas (no postulates!)
+  -- Lemmas
   ------------------------------------------------------------------------
 
   -- Trace execution: mov-to-output writes Input to Output

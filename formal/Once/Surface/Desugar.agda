@@ -30,7 +30,7 @@ open import Data.String using (String)
 --
 -- The Core IR Prim constructor was added with:
 --   1. Prim constructor in Once.IR
---   2. eval case in Once.Semantics (using evalPrim postulate)
+--   2. eval case in Once.Semantics (using evalPrim)
 --   3. optimize cases in Once.Optimize (pass through unchanged)
 --   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --

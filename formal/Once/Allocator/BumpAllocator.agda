@@ -4,16 +4,16 @@
 ------------------------------------------------------------------------
 -- Once.Allocator.BumpAllocator
 --
--- A simple bump allocator with proven correctness properties.
+-- A simple bump allocator with correctness properties.
 --
--- This module provides a CONCRETE allocator implementation where all
--- properties are PROVEN from the implementation, not postulated.
+-- This module provides a concrete allocator implementation where all
+-- properties are derived from the implementation.
 --
 -- The bump allocator maintains:
 --   - heap-ptr: current allocation pointer
 --   - Invariants ensuring all allocations are in heap region
 --
--- Key properties (all proven):
+-- Key properties:
 --   - alloc-in-heap: allocated addresses are in heap region
 --   - alloc-disjoint: distinct allocations don't overlap
 --   - alloc-contiguous: slots within a block are contiguous
@@ -73,7 +73,7 @@ record AllocatorState : Set where
     heap-start : Addr
     heap-end : Addr
 
-    -- Invariants (proven, not postulated)
+    -- Invariants
     start-valid : heap-start ≡ lower Regions.heap-bounds
     end-valid : heap-end ≡ upper Regions.heap-bounds
     ptr-in-range : heap-start ≤ heap-ptr × heap-ptr ≤ heap-end
@@ -101,8 +101,8 @@ init-allocator = mkAllocState
 -- Allocation Witness
 --
 -- A proof that a block of n slots was allocated at addr.
--- Unlike postulated versions, this is a CONCRETE record with
--- all the information needed to derive properties.
+-- This is a concrete record with all the information needed
+-- to derive properties.
 ------------------------------------------------------------------------
 
 record Allocated (s : AllocatorState) (addr : Addr) (n : ℕ) : Set where
@@ -170,7 +170,7 @@ alloc n s fits = mkAllocResult
     addr-ok = proj₁ (ptr-in-range s)  -- heap-start unchanged
 
 ------------------------------------------------------------------------
--- PROVEN PROPERTY: All slots of an allocated block are in heap
+-- All slots of an allocated block are in heap
 ------------------------------------------------------------------------
 
 -- Helper: addr is in heap if heap-start ≤ addr ≤ heap-end
@@ -208,7 +208,7 @@ block-in-heap {s} {addr} {n} alloc i i<n =
     slot-before-end = ≤-trans (+-monoʳ-≤ addr i*slot≤n*slot) (block-end-ok alloc)
 
 ------------------------------------------------------------------------
--- PROVEN PROPERTY: Distinct allocations don't overlap
+-- Distinct allocations don't overlap
 ------------------------------------------------------------------------
 
 -- Two allocations from sequential states have disjoint address ranges
@@ -323,10 +323,8 @@ asMalloc = record
 --
 --   1. AllocatorState tracks the heap pointer and bounds
 --   2. alloc advances the pointer and returns a witness
---   3. block-in-heap is PROVEN from the state invariants
+--   3. block-in-heap follows from the state invariants
 --   4. blocks-disjoint follows from monotonic pointer advancement
---
--- No postulates! All properties derived from implementation.
 --
 -- asMalloc provides the standard Malloc interface.
 -- The DerivedSemantics module provides the legacy interface for

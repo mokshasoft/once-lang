@@ -251,6 +251,5 @@ alloc-gives-inheap n abs fits i i<n =
 --   3. State correspondence is preserved
 --   4. InHeap properties follow from BumpAllocator proofs
 --
--- No additional postulates needed - everything follows from
--- the proven BumpAllocator and X86 instruction semantics.
+-- Everything follows from BumpAllocator and X86 instruction semantics.
 ------------------------------------------------------------------------

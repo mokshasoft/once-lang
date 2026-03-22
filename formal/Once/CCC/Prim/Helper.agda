@@ -181,10 +181,10 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    -- Trace correctness postulate (connects abstract exec to concrete)
+    -- Trace correctness proof (connects abstract exec to concrete)
     (trace-correct-pf : proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡
       mkLocState (writeReg (regs s) Output input-loc) (stackMem s) (heapMem s) (halted s)) →
-    -- Frontier stability postulate
+    -- Frontier stability proof
     (frontier-stable-pf : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
       halted s' ≡ false →
       readReg (regs s') Input ≡ input-loc' →

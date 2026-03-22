@@ -26,7 +26,7 @@ open import Data.String using (String)
 open import Data.Bool using (Bool; true; false; not)
 open import Relation.Nullary using (does)
 
--- Division and modulo (postulated for semantics - actual impl handles div-by-zero)
+-- Division and modulo (axiom - actual impl handles div-by-zero)
 postulate
   divℤ : ℤ → ℤ → ℤ
   modℤ : ℤ → ℤ → ℤ

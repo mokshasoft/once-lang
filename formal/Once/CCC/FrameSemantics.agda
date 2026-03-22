@@ -22,7 +22,7 @@
 --   for any architecture because:
 --     - Slots grow in a known direction from frame base
 --     - Capacity bounds ensure slots stay within the gap to next frame
---     - No postulates needed - pure arithmetic
+--     - Pure arithmetic
 --
 -- Architecture instantiation:
 --   - X86-64: slots grow upward from frame base (frame base is at lower addr)
@@ -135,7 +135,7 @@ record FrameSemantics : Set₁ where
     --   - slot-addr f₁ k₁ < frame-base f₂ (given)
     --   - Therefore slot-addr f₁ k₁ < slot-addr f₂ k₂ (disjoint)
     --
-    -- No postulates needed - architectures provide proven implementations.
+    -- Architectures provide concrete implementations.
     --------------------------------------------------------------------
 
     -- | Bounded slots in ordered frames are disjoint

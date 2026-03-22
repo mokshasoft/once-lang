@@ -11,7 +11,7 @@
 -- - Memory type (word → maybe word)
 -- - Concrete readMem and writeMem operations
 -- - AllocState for allocation tracking
--- - Proven memory theorems (mem-read-write, mem-read-other)
+-- - Memory theorems (mem-read-write, mem-read-other)
 --
 -- By centralizing the memory model here, both Once.Semantics and
 -- Once.Target.X86.Encoding can share the same definitions and proofs.

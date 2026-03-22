@@ -168,7 +168,7 @@ rv64-slot-addr-mono-< frame k₁ k₂ k₁<k₂ =
 -- | Bounded frame disjointness: slot of f₁ ≠ slot of f₂
 -- when the slot stays within the frame's bounds.
 --
--- PROVEN: If slot-addr f₁ k₁ < addr f₂, and f₂'s slots are ≥ addr f₂,
+-- If slot-addr f₁ k₁ < addr f₂, and f₂'s slots are ≥ addr f₂,
 -- then the addresses can't be equal.
 rv64-frame-disjoint-bounded : ∀ f₁ f₂ k₁ k₂ →
   f₁ rv64-≺ f₂ →

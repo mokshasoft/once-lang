@@ -77,7 +77,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   -- Trace state correctness
   --
   -- Each sum/fix operation has a specific trace:
-  -- - unfold: load-indirect (Output := *Input, dereference fold pointer) - PROVEN
+  -- - unfold: load-indirect (Output := *Input, dereference fold pointer)
   -- - inl/inr: mov-to-output, store-at-slot, lea-slot (write payload, return sum addr)
   -- - fold: mov-to-output, store-at-slot, lea-slot (write pointer, return fold addr)
   -- - case: dispatch trace (f-trace or g-trace depending on inl/inr)
@@ -87,9 +87,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   ------------------------------------------------------------------------
 
   ------------------------------------------------------------------------
-  -- Proven trace correctness lemmas
+  -- Trace correctness lemmas
   --
-  -- These prove that specific instruction sequences produce the expected
+  -- These show that specific instruction sequences produce the expected
   -- final state by unfolding exec-trace and exec-abstract definitions.
   ------------------------------------------------------------------------
 
@@ -110,8 +110,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
   -- Postulate: trace correctness for inl/inr/fold (complex record equality)
   -- The proof structure is correct but Agda has trouble with record equality.
-  -- These will be proven when we have proper extensionality support.
-  -- PROVEN: inl/inr trace correctness
+  -- These will be completed when we have proper extensionality support.
+  -- inl/inr trace correctness
   -- The trace is: mov-to-output ∷ store-at-slot payload-slot ∷ lea-slot result-slot ∷ []
   -- Execution:
   --   1. mov-to-output: Output := Input = input-loc
@@ -218,7 +218,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     ∎
     where open ≡-Reasoning
 
-  -- PROVEN: fold trace correctness
+  -- fold trace correctness
   -- The fold trace is identical to inl-inr trace with payload-slot = result-slot = fold-slot
   -- We can directly reuse inl-inr-trace-state-correct!
   fold-trace-state-correct : ∀ (fold-slot : ℕ)
@@ -255,7 +255,7 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     inl-inr-trace-state-correct fold-slot fold-slot s alloc input-loc (OnStack frame fold-slot) s-final
       rdi-eq refl s-final-eq' not-halted
 
-  -- PROVEN: case trace correctness
+  -- case trace correctness
   -- The trace is: load-indirect-suc ∷ mov-to-input ∷ dispatch-trace
   -- Execution:
   --   1. load-indirect-suc: Output := *(sucLoc Input) = payload-loc
