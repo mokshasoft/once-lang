@@ -17,6 +17,9 @@
 --   Normalize.NoRedexHandlers - NoRedex proofs for handlers
 --   Normalize.NstepDispatch - tail dispatchers and dispatch lemmas
 --   Normalize.Fixpoint      - fixpoint proofs for NoRedex terms
+--
+-- After the spec refactoring, also exports:
+--   SatisfiesSpec           - proof that normalize-step satisfies NormalizerSpec
 ------------------------------------------------------------------------
 
 module normalizer.Implementation.Normalize where
@@ -26,6 +29,10 @@ module normalizer.Implementation.Normalize where
 open import normalizer.Implementation.Normalize.Fixpoint public
 
 -- Note: distrib, caseWithCtx, _>>_, ⟶1, etc. are all exported via Normalize.Chain
+
+-- Re-export the spec instance
+open import normalizer.Implementation.SatisfiesSpec public
+  using (normalize-spec; spec-implies-fixpoint)
 
 ------------------------------------------------------------------------
 -- Additional definitions not in submodules
