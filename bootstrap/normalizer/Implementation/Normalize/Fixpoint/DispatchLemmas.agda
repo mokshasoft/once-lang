@@ -24,7 +24,8 @@ open import normalizer.Foundations.TermFunctor public
          fmap-6-inl; fmap-7-inl; fmap-8-inl; fmap-9-inl; fmap-10-inl;
          fmap-11-inl; fmap-12-inl; fmap-13-inl;
          TermF-1; TermF-2; TermF-3; TermF-4; TermF-5; TermF-6; TermF-7;
-         TermF-8; TermF-9; TermF-10; TermF-11; TermF-12; TermF-13; TermF-14)
+         TermF-8; TermF-9; TermF-10; TermF-11; TermF-12; TermF-13; TermF-14;
+         CurryPayloadF)
 
 ------------------------------------------------------------------------
 -- is-id behavior on non-id encoded terms
@@ -797,9 +798,6 @@ abstract
 ------------------------------------------------------------------------
 -- Payload functor for curry (position 13): (K⊗K) ⊗ (K⊗Id)
 ------------------------------------------------------------------------
-
-CurryPayloadF : Func
-CurryPayloadF = (K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)
 
 ------------------------------------------------------------------------
 -- Position dispatch lemmas (left-associated versions)

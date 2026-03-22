@@ -330,7 +330,12 @@ fmap-12-inl : ∀ {A B} (f : Term A B) →
               (fmap TermF-12 f ∘ inl) ⟶* (inl ∘ fmap (K TyFuncCode ⊗ Id) f)
 fmap-12-inl f = fmap-sum-inl (K TyFuncCode ⊗ Id) TermF-13 f
 
+-- Curry payload functor: (K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)
+-- Used at position 13 for the curry constructor
+CurryPayloadF : Func
+CurryPayloadF = (K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)
+
 -- Position 13 (curry): after 13 inrs, inl into curry's type
 fmap-13-inl : ∀ {A B} (f : Term A B) →
-              (fmap TermF-13 f ∘ inl) ⟶* (inl ∘ fmap ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)) f)
-fmap-13-inl f = fmap-sum-inl ((K TyFuncCode ⊗ K TyFuncCode) ⊗ (K TyFuncCode ⊗ Id)) TermF-14 f
+              (fmap TermF-13 f ∘ inl) ⟶* (inl ∘ fmap CurryPayloadF f)
+fmap-13-inl f = fmap-sum-inl CurryPayloadF TermF-14 f
