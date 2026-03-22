@@ -16,10 +16,11 @@ module normalizer.Foundations.DispatchCombinators where
 
 open import normalizer.Foundations.ReductionCombinators public
 open import normalizer.Foundations.Catamorphisms
-  using (∘-cong-right'; ∘-cong-left')
+  using (∘-cong-right'; ∘-cong-left'; ⟨⟩-cong)
 
 open import normalizer.Foundations.CCC
-  using (_∘_; inl; inr; In; assoc-l; assoc-r; ⟶-∘-l; [_,_]; ⟦_⟧F; μ_)
+  using (_∘_; inl; inr; In; assoc-l; assoc-r; ⟶-∘-l; [_,_]; ⟦_⟧F; μ_;
+         ⟨_,_⟩; fst; snd; pair-comp; fst-pair; snd-pair; _+_)
 
 ------------------------------------------------------------------------
 -- Left-association combinator
@@ -133,3 +134,57 @@ reassoc-under-In : ∀ {F X} {g : Term X (⟦ F ⟧F (μ_ F))} {result : Term X 
                    (g ⟶* result) →
                    (In {F} ∘ g) ⟶* (In ∘ result)
 reassoc-under-In inner = ∘-cong-right' In inner
+
+------------------------------------------------------------------------
+-- Pair induction step combinator
+--
+-- Common pattern in RefoldIdempotent recursive cases (5 instances):
+-- Reduces (fmap (Id ⊗ Id) c ∘ ⟨a, b⟩) to ⟨a, b⟩ using two IH proofs.
+--
+-- Given: c ∘ a ⟶* a  and  c ∘ b ⟶* b
+-- Returns: ⟨ c ∘ fst , c ∘ snd ⟩ ∘ ⟨ a , b ⟩ ⟶* ⟨ a , b ⟩
+--
+-- Steps:
+--   ⟨ c ∘ fst , c ∘ snd ⟩ ∘ ⟨ a , b ⟩
+--   ⟶ ⟨ (c ∘ fst) ∘ ⟨a,b⟩ , (c ∘ snd) ∘ ⟨a,b⟩ ⟩   [pair-comp]
+--   ⟶* ⟨ c ∘ a , c ∘ b ⟩                          [assoc-r, fst-pair, snd-pair]
+--   ⟶* ⟨ a , b ⟩                                  [ih-a, ih-b]
+------------------------------------------------------------------------
+
+-- Note: Both pair components must have the same type A (e.g., TermCode')
+pair-ih-step : ∀ {X A} {c : Term A A}
+               {a : Term X A} {b : Term X A}
+               (ih-a : (c ∘ a) ⟶* a)
+               (ih-b : (c ∘ b) ⟶* b) →
+               (⟨ c ∘ fst , c ∘ snd ⟩ ∘ ⟨ a , b ⟩) ⟶* ⟨ a , b ⟩
+pair-ih-step {c = c} ih-a ih-b =
+  ⟶*-trans (step pair-comp done)
+    (⟨⟩-cong
+      (⟶*-trans (step assoc-r done)
+        (⟶*-trans (∘-cong-right' c (step fst-pair done))
+          ih-a))
+      (⟶*-trans (step assoc-r done)
+        (⟶*-trans (∘-cong-right' c (step snd-pair done))
+          ih-b)))
+
+------------------------------------------------------------------------
+-- Chained inr congruence combinators
+--
+-- Common pattern in RefoldIdempotent reduce-chain definitions:
+--   ⟶*-trans r0 (∘-cong-right' inr
+--     (⟶*-trans r1 (∘-cong-right' inr
+--       (⟶*-trans r2 (∘-cong-right' inr r3)))))
+--
+-- These combinators compose a reduction with pushing it under inr.
+------------------------------------------------------------------------
+
+-- Compose reduction r0 with r1 pushed under inr
+-- Given: t0 ⟶* inr ∘ t1 and t1 ⟶* t2
+-- Returns: t0 ⟶* inr ∘ t2
+-- Note: inr {A} {B} : Term B (A + B)
+infixr 5 _>>inr_
+_>>inr_ : ∀ {X A B} {t0 : Term X (A + B)} {t1 t2 : Term X B} →
+          (t0 ⟶* (inr {A} {B} ∘ t1)) →
+          (t1 ⟶* t2) →
+          t0 ⟶* (inr ∘ t2)
+r0 >>inr r1 = ⟶*-trans r0 (∘-cong-right' inr r1)
