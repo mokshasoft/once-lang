@@ -19,6 +19,7 @@ open import Data.Product using (_×_; _,_; ∃-syntax; proj₁)
 open import Data.Unit using (tt)
 open import Data.Maybe using (just)
 open import Data.String using (String)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Type using (Type; Int; IsPrimitive; is-int; _*_)
@@ -150,7 +151,7 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       not-halted
       rdi-eq
       (arith-trace-correct input-loc s alloc not-halted rdi-eq)
-      (λ s' loc' nh' rdi' slot-eq' → arith-frontier-stable s' loc' alloc nh' rdi' slot-eq')
+      (λ s' loc' nh' rdi' slot-eq' → inj₂ (inj₁ (arith-frontier-stable s' loc' alloc nh' rdi' slot-eq')))
 
   ------------------------------------------------------------------------
   -- Provider: Maps "add-int" to its proof

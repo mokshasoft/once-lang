@@ -81,9 +81,36 @@ eval ps (curry f _) a     = λ b → eval ps f (a , b)
 -- apply : IR ((A ⇒ B) * A) B extracts and applies the function
 eval ps apply (f , a)     = f a
 
--- Recursive types (Fixed point isomorphism)
+-- Recursive types (Fixed point isomorphism) - general
 eval ps (fold _) x        = wrap x
 eval ps unfold x          = unwrap x
+
+-- Recursion schemes (OCP-0003: total/productive)
+--
+-- These use coercions between Type-level functor (⟦_⟧T) and Set-level
+-- functor (⟦_⟧F) applications. The coherence is proven in Core.agda.
+--
+-- In: ⟦ F ⟧T (μ-type F) → μ-type F
+eval ps (In {F} _) x = sem-In F (coerce-functor F (μ-type F) x)
+--
+-- Cata: given alg : ⟦ F ⟧T A → A, produce μ-type F → A
+-- Build Set-level algebra from Type-level, then apply sem-cata
+eval ps (Cata {F} {A} alg) x =
+  sem-cata F (λ fa → eval ps alg (coerce-functor⁻¹ F A fa)) x
+--
+-- Out: ν-type F → ⟦ F ⟧T (ν-type F)
+eval ps (Out {F}) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut F x)
+--
+-- Ana: given coalg : A → ⟦ F ⟧T A, produce A → ν-type F
+eval ps (Ana {F} {A} coalg) x =
+  sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
+--
+-- Hylo: Cata alg ∘ Ana coalg, computed directly without intermediate
+-- Uses fused sem-hylo that doesn't build intermediate μ/ν structure
+eval ps (Hylo {F} {A} {B} alg coalg) x =
+  let coalg-set = λ a → coerce-functor F A (eval ps coalg a)
+      alg-set   = λ fb → eval ps alg (coerce-functor⁻¹ F B fb)
+  in sem-hylo F alg-set coalg-set x
 
 -- Effect lifting (D032)
 -- arr : (A ⇒ B) → Eff A B

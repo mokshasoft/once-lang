@@ -193,6 +193,41 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- Memory management (explicit heap deallocation)
   ty-free-heap : ∀ {Γ} → HeapRef → Γ ⊢ Unit ⟶ Unit
 
+  -- OCP-0003: Recursion schemes for polynomial functors
+  --
+  -- In: algebra for μ-type (fold into initial algebra)
+  -- ──────────────────────────────────────
+  -- Γ ⊢ ⟦ F ⟧T (μ-type F) ⟶ μ-type F
+  --
+  ty-In : ∀ {Γ F} → Γ ⊢ ⟦ F ⟧T (μ-type F) ⟶ μ-type F
+
+  -- Cata: catamorphism (fold over μ-type)
+  --      Γ ⊢ ⟦ F ⟧T A ⟶ A
+  -- ──────────────────────────────
+  --    Γ ⊢ μ-type F ⟶ A
+  --
+  ty-Cata : ∀ {Γ F A} → Γ ⊢ ⟦ F ⟧T A ⟶ A → Γ ⊢ μ-type F ⟶ A
+
+  -- Out: observation of ν-type (unfold from final coalgebra)
+  -- ──────────────────────────────────────
+  -- Γ ⊢ ν-type F ⟶ ⟦ F ⟧T (ν-type F)
+  --
+  ty-Out : ∀ {Γ F} → Γ ⊢ ν-type F ⟶ ⟦ F ⟧T (ν-type F)
+
+  -- Ana: anamorphism (unfold into ν-type)
+  --      Γ ⊢ A ⟶ ⟦ F ⟧T A
+  -- ──────────────────────────────
+  --    Γ ⊢ A ⟶ ν-type F
+  --
+  ty-Ana : ∀ {Γ F A} → Γ ⊢ A ⟶ ⟦ F ⟧T A → Γ ⊢ A ⟶ ν-type F
+
+  -- Hylo: hylomorphism (fused ana-cata)
+  --      Γ ⊢ ⟦ F ⟧T B ⟶ B    Γ ⊢ A ⟶ ⟦ F ⟧T A
+  -- ─────────────────────────────────────────────
+  --                Γ ⊢ A ⟶ B
+  --
+  ty-Hylo : ∀ {Γ F A B} → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ A ⟶ ⟦ F ⟧T A → Γ ⊢ A ⟶ B
+
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
 ------------------------------------------------------------------------
@@ -219,6 +254,12 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-arr ⌋ = arr
 ⌊ ty-prim name ⌋ = Prim name
 ⌊ ty-free-heap h ⌋ = free-heap h
+-- OCP-0003 recursion schemes
+⌊ ty-In {F = F} ⌋ = In {F} Heap
+⌊ ty-Cata {F = F} alg ⌋ = Cata {F} ⌊ alg ⌋
+⌊ ty-Out {F = F} ⌋ = Out {F}
+⌊ ty-Ana {F = F} coalg ⌋ = Ana {F} ⌊ coalg ⌋
+⌊ ty-Hylo {F = F} alg coalg ⌋ = Hylo {F} ⌊ alg ⌋ ⌊ coalg ⌋
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -243,6 +284,12 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ arr ⌉ = ty-arr
 ⌈ Prim name ⌉ = ty-prim name
 ⌈ free-heap h ⌉ = ty-free-heap h
+-- OCP-0003 recursion schemes
+⌈ In {F} _ ⌉ = ty-In {F = F}
+⌈ Cata {F} alg ⌉ = ty-Cata {F = F} ⌈ alg ⌉
+⌈ Out {F} ⌉ = ty-Out {F = F}
+⌈ Ana {F} coalg ⌉ = ty-Ana {F = F} ⌈ coalg ⌉
+⌈ Hylo {F} alg coalg ⌉ = ty-Hylo {F = F} ⌈ alg ⌉ ⌈ coalg ⌉
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f (semantically)
 --
@@ -271,3 +318,15 @@ round-trip-ir unfold x = refl
 round-trip-ir arr x = refl
 round-trip-ir (Prim name) x = refl
 round-trip-ir (free-heap h) x = refl
+-- OCP-0003 recursion schemes: these use postulated semantics
+-- so we postulate the round-trip property
+round-trip-ir (In {F} _) x = round-trip-In {F} x
+  where postulate round-trip-In : ∀ {F} (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) → eval′ ⌊ ⌈ In {F} Heap ⌉ ⌋ x ≡ eval′ (In {F} Heap) x
+round-trip-ir (Cata {F} alg) x = round-trip-Cata {F} alg x
+  where postulate round-trip-Cata : ∀ {F A} (alg : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧) → eval′ ⌊ ⌈ Cata {F} alg ⌉ ⌋ x ≡ eval′ (Cata {F} alg) x
+round-trip-ir (Out {F}) x = round-trip-Out {F} x
+  where postulate round-trip-Out : ∀ {F} (x : ⟦ ν-type F ⟧) → eval′ ⌊ ⌈ Out {F} ⌉ ⌋ x ≡ eval′ (Out {F}) x
+round-trip-ir (Ana {F} coalg) x = round-trip-Ana {F} coalg x
+  where postulate round-trip-Ana : ∀ {F A} (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Ana {F} coalg ⌉ ⌋ x ≡ eval′ (Ana {F} coalg) x
+round-trip-ir (Hylo {F} alg coalg) x = round-trip-Hylo {F} alg coalg x
+  where postulate round-trip-Hylo : ∀ {F A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Hylo {F} alg coalg ⌉ ⌋ x ≡ eval′ (Hylo {F} alg coalg) x

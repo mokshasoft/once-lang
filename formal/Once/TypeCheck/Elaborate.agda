@@ -69,6 +69,9 @@ weakenFromEmpty {Γ = Γ S, B ^ q} e = coerceQuantity (weaken {A = B} {q = q} (w
 -- Type Equality (Decidable with proof)
 ------------------------------------------------------------------------
 
+-- | Functor equality (postulated for OCP-0003)
+postulate _≟F_ : (F G : Functor) → Dec (F ≡ G)
+
 -- | Decidable type equality
 _≟T_ : (A B : Type) → Dec (A ≡ B)
 Unit ≟T Unit = yes refl
@@ -233,6 +236,63 @@ TVar _ ≟T (_ Once.Type.+ _) = no λ ()
 TVar _ ≟T (_ ⇒[ _ ] _) = no λ ()
 TVar _ ≟T Eff _ _ = no λ ()
 TVar _ ≟T Fix _ = no λ ()
+-- OCP-0003: μ-type and ν-type cases
+(μ-type F₁) ≟T (μ-type F₂) with F₁ ≟F F₂
+... | yes refl = yes refl
+... | no ¬p = no λ { refl → ¬p refl }
+(ν-type F₁) ≟T (ν-type F₂) with F₁ ≟F F₂
+... | yes refl = yes refl
+... | no ¬p = no λ { refl → ¬p refl }
+μ-type _ ≟T Unit = no λ ()
+μ-type _ ≟T Void = no λ ()
+μ-type _ ≟T Int = no λ ()
+μ-type _ ≟T Float = no λ ()
+μ-type _ ≟T Str = no λ ()
+μ-type _ ≟T Buffer = no λ ()
+μ-type _ ≟T (_ Once.Type.* _) = no λ ()
+μ-type _ ≟T (_ Once.Type.+ _) = no λ ()
+μ-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
+μ-type _ ≟T Eff _ _ = no λ ()
+μ-type _ ≟T Fix _ = no λ ()
+μ-type _ ≟T TVar _ = no λ ()
+μ-type _ ≟T ν-type _ = no λ ()
+ν-type _ ≟T Unit = no λ ()
+ν-type _ ≟T Void = no λ ()
+ν-type _ ≟T Int = no λ ()
+ν-type _ ≟T Float = no λ ()
+ν-type _ ≟T Str = no λ ()
+ν-type _ ≟T Buffer = no λ ()
+ν-type _ ≟T (_ Once.Type.* _) = no λ ()
+ν-type _ ≟T (_ Once.Type.+ _) = no λ ()
+ν-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
+ν-type _ ≟T Eff _ _ = no λ ()
+ν-type _ ≟T Fix _ = no λ ()
+ν-type _ ≟T TVar _ = no λ ()
+ν-type _ ≟T μ-type _ = no λ ()
+Unit ≟T μ-type _ = no λ ()
+Unit ≟T ν-type _ = no λ ()
+Void ≟T μ-type _ = no λ ()
+Void ≟T ν-type _ = no λ ()
+Int ≟T μ-type _ = no λ ()
+Int ≟T ν-type _ = no λ ()
+Float ≟T μ-type _ = no λ ()
+Float ≟T ν-type _ = no λ ()
+Str ≟T μ-type _ = no λ ()
+Str ≟T ν-type _ = no λ ()
+Buffer ≟T μ-type _ = no λ ()
+Buffer ≟T ν-type _ = no λ ()
+(_ Once.Type.* _) ≟T μ-type _ = no λ ()
+(_ Once.Type.* _) ≟T ν-type _ = no λ ()
+(_ Once.Type.+ _) ≟T μ-type _ = no λ ()
+(_ Once.Type.+ _) ≟T ν-type _ = no λ ()
+(_ ⇒[ _ ] _) ≟T μ-type _ = no λ ()
+(_ ⇒[ _ ] _) ≟T ν-type _ = no λ ()
+Eff _ _ ≟T μ-type _ = no λ ()
+Eff _ _ ≟T ν-type _ = no λ ()
+Fix _ ≟T μ-type _ = no λ ()
+Fix _ ≟T ν-type _ = no λ ()
+TVar _ ≟T μ-type _ = no λ ()
+TVar _ ≟T ν-type _ = no λ ()
 
 ------------------------------------------------------------------------
 -- Bidirectional Type Checking Results
@@ -361,21 +421,30 @@ lookupSubst ((x , A) ∷ σ) y with x Data.String.≟ y
 ... | no  _ = lookupSubst σ y
 
 -- | Apply substitution to a type
-applySubst : Subst → Type → Type
-applySubst σ Unit = Unit
-applySubst σ Void = Void
-applySubst σ Int = Int
-applySubst σ Float = Float
-applySubst σ Str = Str
-applySubst σ Buffer = Buffer
-applySubst σ (A Once.Type.* B) = applySubst σ A Once.Type.* applySubst σ B
-applySubst σ (A Once.Type.+ B) = applySubst σ A Once.Type.+ applySubst σ B
-applySubst σ (A ⇒[ q ] B) = applySubst σ A ⇒[ q ] applySubst σ B
-applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
-applySubst σ (Fix A) = Fix (applySubst σ A)
-applySubst σ (TVar x) with lookupSubst σ x
-... | just A = A
-... | nothing = TVar x  -- Unbound type variable remains
+mutual
+  applySubstF' : Subst → Functor → Functor
+  applySubstF' σ (K A) = K (applySubst σ A)
+  applySubstF' _ Id = Id
+  applySubstF' σ (F ⊕ G) = applySubstF' σ F ⊕ applySubstF' σ G
+  applySubstF' σ (F ⊗ G) = applySubstF' σ F ⊗ applySubstF' σ G
+
+  applySubst : Subst → Type → Type
+  applySubst σ Unit = Unit
+  applySubst σ Void = Void
+  applySubst σ Int = Int
+  applySubst σ Float = Float
+  applySubst σ Str = Str
+  applySubst σ Buffer = Buffer
+  applySubst σ (A Once.Type.* B) = applySubst σ A Once.Type.* applySubst σ B
+  applySubst σ (A Once.Type.+ B) = applySubst σ A Once.Type.+ applySubst σ B
+  applySubst σ (A ⇒[ q ] B) = applySubst σ A ⇒[ q ] applySubst σ B
+  applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
+  applySubst σ (Fix A) = Fix (applySubst σ A)
+  applySubst σ (μ-type F) = μ-type (applySubstF' σ F)
+  applySubst σ (ν-type F) = ν-type (applySubstF' σ F)
+  applySubst σ (TVar x) with lookupSubst σ x
+  ... | just A = A
+  ... | nothing = TVar x  -- Unbound type variable remains
 
 -- | Instantiate a polymorphic type with fresh type variables
 -- Collects all distinct TVar names and substitutes them with fresh variables
@@ -408,6 +477,9 @@ instantiate ty counter = go ty counter emptySubst
     go (Fix A) n σ =
       let (A' , n') = go A n σ
       in Fix A' , n'
+    -- OCP-0003: μ-type and ν-type pass through (functors don't contain TVars)
+    go (μ-type F) n σ = μ-type F , n
+    go (ν-type F) n σ = ν-type F , n
     go (TVar x) n σ with lookupSubst σ x
     ... | just A = A , n  -- Already instantiated
     ... | nothing =
@@ -698,6 +770,9 @@ mutual
           ... | no _ = failure "Type mismatch in effect application"
       inferApp (success (Fix _) _ _ _ _) = failure "Expected function type in application"
       inferApp (success (TVar _) _ _ _ _) = failure "Expected function type in application"
+      -- OCP-0003: μ-type and ν-type are not function types
+      inferApp (success (μ-type _) _ _ _ _) = failure "Expected function type in application"
+      inferApp (success (ν-type _) _ _ _ _) = failure "Expected function type in application"
 
   -- Pair (depth = max of both elements, thread fresh counter)
   -- QTT: Both components contribute to usage, so combine with +ᵘ
@@ -762,6 +837,9 @@ mutual
       inferCase (success (Eff _ _) _ _ _ _) = failure "Expected sum type in case"
       inferCase (success (Fix _) _ _ _ _) = failure "Expected sum type in case"
       inferCase (success (TVar _) _ _ _ _) = failure "Expected sum type in case"
+      -- OCP-0003: μ-type and ν-type are not sum types
+      inferCase (success (μ-type _) _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success (ν-type _) _ _ _ _) = failure "Expected sum type in case"
 
   -- Integer literal: produce int n
   -- Depth 0 (no nesting), no usage (literals don't use variables)

@@ -97,12 +97,10 @@ showQuantity One  = "1"
 showQuantity Many = "ω"
 
 ------------------------------------------------------------------------
--- Types
+-- Types and Functors (Mutually Recursive)
 ------------------------------------------------------------------------
-
--- | Types in Once
 --
--- These correspond to objects in a Cartesian Closed Category:
+-- Types correspond to objects in a Cartesian Closed Category:
 -- - Unit is the terminal object (1)
 -- - Void is the initial object (0)
 -- - _*_ is the categorical product (×)
@@ -111,6 +109,9 @@ showQuantity Many = "ω"
 -- - Eff is the effectful morphism (D032: arrow-based effects)
 -- - Fix is the fixed point (for recursive types)
 --
+-- Functors are polynomial type expressions with an explicit recursive
+-- position, used by the structured recursion scheme IR constructors.
+--
 -- Additional base types for practical programming:
 -- - Int is machine integers
 -- - Float is IEEE 754 double-precision floats
@@ -118,21 +119,42 @@ showQuantity Many = "ω"
 -- - Buffer is raw byte buffers
 -- - TVar is a type variable (for polymorphism)
 --
-data Type : Set where
-  -- Categorical structure
-  Unit   : Type                    -- Terminal object
-  Void   : Type                    -- Initial object
-  _*_    : Type → Type → Type      -- Product
-  _+_    : Type → Type → Type      -- Coproduct (sum)
-  _⇒[_]_ : Type → Quantity → Type → Type  -- Graded function arrow (QTT)
-  Eff    : Type → Type → Type      -- Effectful morphism (D032)
-  Fix    : Type → Type             -- Fixed point: Fix F ≅ F (Fix F)
-  -- Base types for practical programming
-  Int    : Type                    -- Machine integers
-  Float  : Type                    -- IEEE 754 double-precision floats
-  Str    : Type                    -- UTF-8 strings
-  Buffer : Type                    -- Raw byte buffers
-  TVar   : String → Type           -- Type variable (polymorphism)
+
+mutual
+  -- | Functor codes (strictly positive type expressions)
+  --
+  -- K A    - Constant type (no recursion)
+  -- Id     - Recursive position
+  -- F ⊕ G  - Sum (coproduct)
+  -- F ⊗ G  - Product
+  --
+  data Functor : Set where
+    K    : Type → Functor           -- Constant
+    Id   : Functor                  -- Recursive position
+    _⊕_  : Functor → Functor → Functor  -- Sum
+    _⊗_  : Functor → Functor → Functor  -- Product
+
+  data Type : Set where
+    -- Categorical structure
+    Unit   : Type                    -- Terminal object
+    Void   : Type                    -- Initial object
+    _*_    : Type → Type → Type      -- Product
+    _+_    : Type → Type → Type      -- Coproduct (sum)
+    _⇒[_]_ : Type → Quantity → Type → Type  -- Graded function arrow (QTT)
+    Eff    : Type → Type → Type      -- Effectful morphism (D032)
+    Fix    : Type → Type             -- Fixed point: Fix F ≅ F (Fix F)
+    -- Polynomial functor fixed points (OCP-0003: total/productive)
+    μ-type : Functor → Type          -- Initial algebra (inductive, total)
+    ν-type : Functor → Type          -- Final coalgebra (coinductive, productive)
+    -- Base types for practical programming
+    Int    : Type                    -- Machine integers
+    Float  : Type                    -- IEEE 754 double-precision floats
+    Str    : Type                    -- UTF-8 strings
+    Buffer : Type                    -- Raw byte buffers
+    TVar   : String → Type           -- Type variable (polymorphism)
+
+infixr 40 _⊕_
+infixr 50 _⊗_
 
 infixr 30 _⇒[_]_
 infixr 40 _+_
@@ -156,6 +178,42 @@ infixr 30 _⇒₀_
 -- IO A is sugar for Eff Unit A (effectful computation producing A)
 IO : Type → Type
 IO A = Eff Unit A
+
+------------------------------------------------------------------------
+-- Type-Level Functor Interpretation
+--
+-- Interprets a Functor code as a Type → Type function.
+-- Used by IR constructors for recursion schemes.
+------------------------------------------------------------------------
+
+-- | Interpret functor code at a carrier Type
+--
+-- ⟦ K A ⟧T X = A         (constant, ignores X)
+-- ⟦ Id ⟧T X = X          (recursive position)
+-- ⟦ F ⊕ G ⟧T X = ⟦ F ⟧T X + ⟦ G ⟧T X
+-- ⟦ F ⊗ G ⟧T X = ⟦ F ⟧T X * ⟦ G ⟧T X
+--
+⟦_⟧T : Functor → Type → Type
+⟦ K A ⟧T X = A
+⟦ Id ⟧T X = X
+⟦ F ⊕ G ⟧T X = ⟦ F ⟧T X + ⟦ G ⟧T X
+⟦ F ⊗ G ⟧T X = ⟦ F ⟧T X * ⟦ G ⟧T X
+
+------------------------------------------------------------------------
+-- Common Functor Patterns
+------------------------------------------------------------------------
+
+-- | Natural numbers: Nat = μ (K Unit ⊕ Id)
+NatF : Functor
+NatF = K Unit ⊕ Id
+
+-- | List A = μ (K Unit ⊕ K A ⊗ Id)
+ListF : Type → Functor
+ListF A = K Unit ⊕ (K A ⊗ Id)
+
+-- | Binary tree: Tree A = μ (K A ⊕ Id ⊗ Id)
+TreeF : Type → Functor
+TreeF A = K A ⊕ (Id ⊗ Id)
 
 ------------------------------------------------------------------------
 -- Primitive Type Evidence

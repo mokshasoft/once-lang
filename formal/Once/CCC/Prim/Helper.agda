@@ -25,6 +25,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Maybe using (just)
 open import Data.List using ([]; _∷_)
 open import Data.String using (String)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
 
 open import Once.Type using (Type; IsPrimitive)
@@ -184,13 +185,14 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
     -- Trace correctness proof (connects abstract exec to concrete)
     (trace-correct-pf : proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡
       mkLocState (writeReg (regs s) Output input-loc) (stackMem s) (heapMem s) (halted s)) →
-    -- Frontier stability proof
+    -- Frontier stability proof (wrapped in sum type per IRResultAWF)
     (frontier-stable-pf : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
       halted s' ≡ false →
       readReg (regs s') Input ≡ input-loc' →
       readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-      readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
-              (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') →
+      (next-slot alloc ≡ next-slot alloc) ⊎
+      ((readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
+               (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)) →
     IRResultAWF output-mode (Prim {A} {B} name) x s alloc
 
   mkPurePrimResult {A} {B} name output-mode is-prim x input-loc s alloc

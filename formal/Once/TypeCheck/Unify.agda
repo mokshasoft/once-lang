@@ -21,7 +21,8 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; _⇒_; Eff; Fix; TVar; Quantity)
+open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; _⇒_; Eff; Fix; TVar; Quantity;
+                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 open import Once.TypeCheck.Error using (TypeError; OccursCheck; UnificationError; Result; ok; fail)
 
 ------------------------------------------------------------------------
@@ -52,21 +53,30 @@ lookupSubst x ((y , T) ∷ σ) with x ≟ y
 ------------------------------------------------------------------------
 
 -- | Apply a substitution to a type
-applySubst : Subst → Type → Type
-applySubst σ Unit = Unit
-applySubst σ Void = Void
-applySubst σ Int = Int
-applySubst σ Float = Float
-applySubst σ Str = Str
-applySubst σ Buffer = Buffer
-applySubst σ (A * B) = applySubst σ A * applySubst σ B
-applySubst σ (A + B) = applySubst σ A + applySubst σ B
-applySubst σ (A ⇒[ q ] B) = applySubst σ A ⇒[ q ] applySubst σ B
-applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
-applySubst σ (Fix F) = Fix (applySubst σ F)
-applySubst σ (TVar x) with lookupSubst x σ
-... | just T  = T
-... | nothing = TVar x
+mutual
+  applySubstF : Subst → Functor → Functor
+  applySubstF σ (K A) = K (applySubst σ A)
+  applySubstF _ Id = Id
+  applySubstF σ (F ⊕ G) = applySubstF σ F ⊕ applySubstF σ G
+  applySubstF σ (F ⊗ G) = applySubstF σ F ⊗ applySubstF σ G
+
+  applySubst : Subst → Type → Type
+  applySubst σ Unit = Unit
+  applySubst σ Void = Void
+  applySubst σ Int = Int
+  applySubst σ Float = Float
+  applySubst σ Str = Str
+  applySubst σ Buffer = Buffer
+  applySubst σ (A * B) = applySubst σ A * applySubst σ B
+  applySubst σ (A + B) = applySubst σ A + applySubst σ B
+  applySubst σ (A ⇒[ q ] B) = applySubst σ A ⇒[ q ] applySubst σ B
+  applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
+  applySubst σ (Fix F) = Fix (applySubst σ F)
+  applySubst σ (μ-type F) = μ-type (applySubstF σ F)
+  applySubst σ (ν-type F) = ν-type (applySubstF σ F)
+  applySubst σ (TVar x) with lookupSubst x σ
+  ... | just T  = T
+  ... | nothing = TVar x
 
 -- | Compose two substitutions: (σ₂ ∘ σ₁)(T) = σ₂(σ₁(T))
 composeSubst : Subst → Subst → Subst
@@ -78,21 +88,30 @@ composeSubst σ₂ σ₁ =
 ------------------------------------------------------------------------
 
 -- | Check if a type variable occurs in a type
-occurs : String → Type → Bool
-occurs x Unit = false
-occurs x Void = false
-occurs x Int = false
-occurs x Float = false
-occurs x Str = false
-occurs x Buffer = false
-occurs x (A * B) = occurs x A ∨ occurs x B
-occurs x (A + B) = occurs x A ∨ occurs x B
-occurs x (A ⇒[ q ] B) = occurs x A ∨ occurs x B
-occurs x (Eff A B) = occurs x A ∨ occurs x B
-occurs x (Fix F) = occurs x F
-occurs x (TVar y) with x ≟ y
-... | yes _ = true
-... | no  _ = false
+mutual
+  occursF : String → Functor → Bool
+  occursF x (K A) = occurs x A
+  occursF _ Id = false
+  occursF x (F ⊕ G) = occursF x F ∨ occursF x G
+  occursF x (F ⊗ G) = occursF x F ∨ occursF x G
+
+  occurs : String → Type → Bool
+  occurs x Unit = false
+  occurs x Void = false
+  occurs x Int = false
+  occurs x Float = false
+  occurs x Str = false
+  occurs x Buffer = false
+  occurs x (A * B) = occurs x A ∨ occurs x B
+  occurs x (A + B) = occurs x A ∨ occurs x B
+  occurs x (A ⇒[ q ] B) = occurs x A ∨ occurs x B
+  occurs x (Eff A B) = occurs x A ∨ occurs x B
+  occurs x (Fix F) = occurs x F
+  occurs x (μ-type F) = occursF x F
+  occurs x (ν-type F) = occursF x F
+  occurs x (TVar y) with x ≟ y
+  ... | yes _ = true
+  ... | no  _ = false
 
 ------------------------------------------------------------------------
 -- Unification

@@ -49,8 +49,22 @@ ir-stack-requirement initial = 0
 ir-stack-requirement (curry _ _) = pair-slots
 ir-stack-requirement apply = pair-slots
 ir-stack-requirement arr = 0
+-- DEPRECATED fixed points
 ir-stack-requirement (fold _) = 1
 ir-stack-requirement unfold = 0
+-- Recursion schemes (OCP-0003)
+-- In: constructs μ-value, similar to fold
+ir-stack-requirement (In _) = 1
+-- Cata: tail-recursive consumption, needs stack for intermediate results
+-- Uses a while-loop pattern at runtime
+ir-stack-requirement (Cata alg) = ir-stack-requirement alg +ℕ pair-slots
+-- Out: extracts from ν-value, constant
+ir-stack-requirement Out = 0
+-- Ana: produces ν-value lazily, needs stack for coalgebra
+ir-stack-requirement (Ana coalg) = ir-stack-requirement coalg +ℕ pair-slots
+-- Hylo: fused cata ∘ ana, combines both requirements
+ir-stack-requirement (Hylo alg coalg) = ir-stack-requirement alg +ℕ ir-stack-requirement coalg +ℕ pair-slots
+-- Other
 ir-stack-requirement (free-heap _) = 0
 ir-stack-requirement (Prim _) = 0  -- Primitives manage own stack
 

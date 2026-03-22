@@ -26,7 +26,8 @@ open import Data.Nat using (ℕ)
 open import Once.Type public
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Eff; Fix; Int; Float; Str; Buffer; TVar;
          Quantity; Zero; One; Many;
-         _⊸_; _⇒_; _⇒₀_; IO)
+         _⊸_; _⇒_; _⇒₀_; IO;
+         Functor; μ-type; ν-type)
 
 ------------------------------------------------------------------------
 -- Re-export generic semantics from Once.Sem
@@ -80,6 +81,8 @@ stack-type-slots (A + B) = 2      -- tag + ptr to payload
 stack-type-slots (_ ⇒[ _ ] _) = 2 -- closure: env-ptr + code-ptr
 stack-type-slots (Eff _ B) = stack-type-slots B
 stack-type-slots (Fix _) = 1      -- pointer to recursive structure
+stack-type-slots (μ-type _) = 1   -- OCP-0003: pointer to inductive structure
+stack-type-slots (ν-type _) = 1   -- OCP-0003: pointer to coinductive structure
 stack-type-slots (TVar _) = 1     -- polymorphic = pointer
 
 -- Heap representation: identical to stack (reference-based model)
@@ -96,6 +99,8 @@ heap-type-slots (A + B) = 2        -- tag + ptr to payload
 heap-type-slots (_ ⇒[ _ ] _) = 2   -- closure: env-ptr + code-ptr
 heap-type-slots (Eff _ B) = heap-type-slots B
 heap-type-slots (Fix _) = 1        -- pointer to recursive structure
+heap-type-slots (μ-type _) = 1     -- OCP-0003: pointer to inductive structure
+heap-type-slots (ν-type _) = 1     -- OCP-0003: pointer to coinductive structure
 heap-type-slots (TVar _) = 1       -- polymorphic = pointer
 
 -- Legacy alias (all representations now use reference-based model)

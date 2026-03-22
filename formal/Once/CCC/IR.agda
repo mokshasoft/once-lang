@@ -76,9 +76,37 @@ data IR : Type → Type → Set where
   -- Effect lifting
   arr : ∀ {A B q} → IR (A ⇒[ q ] B) (Eff A B)
 
-  -- Recursive types (Fix F)
+  -- Recursive types (Fix F) - general (Turing complete)
   fold : ∀ {F} → AllocMode → IR F (Fix F)
   unfold : ∀ {F} → IR (Fix F) F
+
+  --------------------------------------------------------------------------
+  -- Recursion Schemes (OCP-0003: Total/Productive)
+  --
+  -- These replace general fold/unfold with structured recursion that
+  -- guarantees termination (cata) or productivity (ana).
+  --------------------------------------------------------------------------
+
+  -- Initial algebra operations (inductive types, total recursion)
+  -- In: F(μF) → μF (constructor)
+  In : ∀ {F} → AllocMode → IR (⟦ F ⟧T (μ-type F)) (μ-type F)
+
+  -- Cata: given IR morphism (F(A) → A), produce μF → A
+  -- This is the universal property of initial algebras.
+  -- Total by Lambek's Lemma: μF is well-founded.
+  Cata : ∀ {F A} → IR (⟦ F ⟧T A) A → IR (μ-type F) A
+
+  -- Final coalgebra operations (coinductive types, productive corecursion)
+  -- Out: νF → F(νF) (observation/destructor)
+  Out : ∀ {F} → IR (ν-type F) (⟦ F ⟧T (ν-type F))
+
+  -- Ana: given IR morphism (A → F(A)), produce A → νF
+  -- Productivity ensured by guardedness (each step produces one F-layer)
+  Ana : ∀ {F A} → IR A (⟦ F ⟧T A) → IR A (ν-type F)
+
+  -- Hylo: fusion of cata and ana (deforestation)
+  -- cata alg ∘ ana coalg, computed directly without intermediate structure
+  Hylo : ∀ {F A B} → IR (⟦ F ⟧T B) B → IR A (⟦ F ⟧T A) → IR A B
 
   -- Explicit heap deallocation
   -- Added by escape analysis when heap values can be freed.

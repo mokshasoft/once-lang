@@ -22,7 +22,10 @@ open import Once.CCC.IR
 
 -- Import semantic interpretation of types from Once.Sem
 open import Once.Semantics.Machine
-  using (⟦_⟧; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case; sem-fold; sem-unfold)
+  using (⟦_⟧; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case; sem-fold; sem-unfold;
+         -- OCP-0003: Recursion scheme semantics
+         sem-In; sem-cata; sem-CoOut; sem-ana; sem-hylo;
+         coerce-functor; coerce-functor⁻¹)
 
 -- Re-export ⟦_⟧ for convenience
 open import Once.Semantics.Machine public using (⟦_⟧)
@@ -65,3 +68,18 @@ eval ps (fold _) x = sem-fold x
 eval ps unfold x = sem-unfold x
 eval ps (free-heap _) x = x
 eval ps (Prim name) x = evalPrim ps name x
+-- OCP-0003: Recursion scheme evaluation
+-- In: wrap value into μ-type (initial algebra constructor)
+eval ps (In {F} _) x = sem-In F (coerce-functor F (μ-type F) x)
+-- Cata: fold with algebra over μ-type
+eval ps (Cata {F} {A} alg) x = sem-cata F (λ fa → eval ps alg (coerce-functor⁻¹ F A fa)) x
+-- Out: observe ν-type (final coalgebra destructor)
+eval ps (Out {F}) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut F x)
+-- Ana: unfold with coalgebra to build ν-type
+eval ps (Ana {F} {A} coalg) x = sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
+-- Hylo: fused cata ∘ ana (no intermediate structure)
+eval ps (Hylo {F} {A} {B} alg coalg) x =
+  sem-hylo F
+    (λ fb → eval ps alg (coerce-functor⁻¹ F B fb))
+    (λ a → coerce-functor F A (eval ps coalg a))
+    x

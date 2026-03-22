@@ -34,8 +34,16 @@ ir-size initial = 1
 ir-size (curry f _) = 2 +ℕ ir-size f
 ir-size apply = 1
 ir-size arr = 1
+-- DEPRECATED fixed points
 ir-size (fold _) = 1
 ir-size unfold = 1
+-- Recursion schemes (OCP-0003)
+ir-size (In _) = 1
+ir-size (Cata alg) = 2 +ℕ ir-size alg  -- Similar to curry: contains body
+ir-size Out = 1
+ir-size (Ana coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
+ir-size (Hylo alg coalg) = 2 +ℕ ir-size alg +ℕ ir-size coalg
+-- Other
 ir-size (free-heap _) = 1
 ir-size (Prim _) = 1
 
