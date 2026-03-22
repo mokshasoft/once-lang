@@ -70,10 +70,10 @@ private
 
   -- inl/inr ∘ swap
   nr-inl-swap : ∀ {A B C} → NoRedex (inl {A * B} {C} ∘ ⟨ snd , fst ⟩)
-  nr-inl-swap = nr-comp nr-inl nr-swap nis-inl nis-pair
+  nr-inl-swap = nr-comp nr-inl nr-swap (sc-neither nis-inl nis-pair nas-inl)
 
   nr-inr-swap : ∀ {A B C} → NoRedex (inr {C} {A * B} ∘ ⟨ snd , fst ⟩)
-  nr-inr-swap = nr-comp nr-inr nr-swap nis-inr nis-pair
+  nr-inr-swap = nr-comp nr-inr nr-swap (sc-neither nis-inr nis-pair nas-inr)
 
   -- curry of the above
   nr-curry-inl-swap : ∀ {A B C} → NoRedex (curry (inl {A * B} {C} ∘ ⟨ snd , fst ⟩))
@@ -88,20 +88,22 @@ private
 
   -- case ∘ snd
   nr-distrib-case-snd : ∀ {P A B} → NoRedex ([ curry (inl {P * A} {P * B} ∘ ⟨ snd , fst ⟩) , curry (inr ∘ ⟨ snd , fst ⟩) ] ∘ snd {P} {A + B})
-  nr-distrib-case-snd = nr-comp nr-distrib-case nr-snd nis-case nis-snd
+  nr-distrib-case-snd = nr-comp nr-distrib-case nr-snd (sc-neither nis-case nis-snd nas-case)
 
   -- The pair in distrib: ⟨ case ∘ snd, fst ⟩
   nr-distrib-pair : ∀ {P A B} → NoRedex (⟨ [ curry (inl {P * A} {P * B} ∘ ⟨ snd , fst ⟩) , curry (inr ∘ ⟨ snd , fst ⟩) ] ∘ snd , fst ⟩)
   nr-distrib-pair = nr-pair nr-distrib-case-snd nr-fst
 
 -- distrib = apply ∘ pair
+-- For apply ∘ pair, we need sc-apply since f=apply
+-- The pair is not ⟨curry _, _⟩ since fst component is a composition (case ∘ snd)
 nr-distrib : ∀ {P A B} → NoRedex (distrib {P} {A} {B})
-nr-distrib = nr-comp nr-apply nr-distrib-pair nis-apply nis-pair
+nr-distrib {P} {A} {B} = nr-comp nr-apply nr-distrib-pair (sc-apply nis-pair (ncpl-pair ncs-comp))
 
 -- caseWithCtx l r = [ l, r ] ∘ distrib
 nr-caseWithCtx : ∀ {P A B D} {l : Term (P * A) D} {r : Term (P * B) D} →
                  NoRedex l → NoRedex r → NoRedex (caseWithCtx l r)
-nr-caseWithCtx nrl nrr = nr-comp (nr-case nrl nrr) nr-distrib nis-case nis-comp
+nr-caseWithCtx nrl nrr = nr-comp (nr-case nrl nrr) nr-distrib (sc-neither nis-case nis-comp nas-case)
 
 ------------------------------------------------------------------------
 -- NoRedex proofs for is-id-dispatch
@@ -128,7 +130,7 @@ private
 
 -- is-id = is-id-dispatch ∘ Out
 nr-is-id' : NoRedex is-id
-nr-is-id' = nr-comp nr-is-id-dispatch nr-Out nis-case nis-Out
+nr-is-id' = nr-comp nr-is-id-dispatch nr-Out (sc-neither nis-case nis-Out nas-case)
 
 ------------------------------------------------------------------------
 -- NoRedex proofs for handle-comp infrastructure
@@ -137,7 +139,7 @@ nr-is-id' = nr-comp nr-is-id-dispatch nr-Out nis-case nis-Out
 private
   -- prep-check-f-id = ⟨ snd, is-id ∘ fst ⟩
   nr-is-id-fst : NoRedex (is-id ∘ fst {TermCode'} {TermCode'})
-  nr-is-id-fst = nr-comp nr-is-id' nr-fst nis-comp nis-fst
+  nr-is-id-fst = nr-comp nr-is-id' nr-fst (sc-neither nis-comp nis-fst nas-comp)
 
   nr-prep-check-f-id : NoRedex prep-check-f-id
   nr-prep-check-f-id = nr-pair nr-snd nr-is-id-fst
@@ -160,8 +162,8 @@ private
 
   -- check-g-handler = caseWithCtx comp-g-is-id comp-fallback ∘ prep-check-g-id
   nr-check-g-handler : NoRedex check-g-handler
-  nr-check-g-handler = nr-comp (nr-caseWithCtx nr-comp-g-is-id nr-comp-fallback) nr-prep-check-g-id nis-comp nis-pair
+  nr-check-g-handler = nr-comp (nr-caseWithCtx nr-comp-g-is-id nr-comp-fallback) nr-prep-check-g-id (sc-neither nis-comp nis-pair nas-comp)
 
 -- handle-comp = caseWithCtx comp-f-is-id check-g-handler ∘ prep-check-f-id
 nr-handle-comp : NoRedex handle-comp
-nr-handle-comp = nr-comp (nr-caseWithCtx nr-comp-f-is-id nr-check-g-handler) nr-prep-check-f-id nis-comp nis-pair
+nr-handle-comp = nr-comp (nr-caseWithCtx nr-comp-f-is-id nr-check-g-handler) nr-prep-check-f-id (sc-neither nis-comp nis-pair nas-comp)

@@ -335,7 +335,7 @@ abstract
             (⟶1 assoc-r >> ∘-cong-right' inr (⟶1 assoc-r))))))))))))
 
   -- Position 1 (comp): encode (f ∘ g) = In ∘ inr ∘ inl ∘ ⟨encode f, encode g⟩
-  noredex-fixpoint (f ∘ g) (nr-comp nrf nrg nisf nisg) = step1 >> step2 >> step3 >> step4
+  noredex-fixpoint (f ∘ g) (nr-comp nrf nrg sc) = step1 >> step2 >> step3 >> step4
     where
     N : Term TermCode' TermCode'
     N = cata TermF normalize-step
@@ -377,7 +377,7 @@ abstract
     step2 = ⟶1 assoc-r >> ∘-cong-right' normalize-step reduce-chain >> inner-step
 
     step3 : (handle-comp ∘ payload) ⟶* ((In {TermF} ∘ inr ∘ inl) ∘ payload)
-    step3 = handle-comp-rebuild nrf nrg nisf nisg
+    step3 = handle-comp-rebuild nrf nrg (safecomp-notid-f sc) (safecomp-notid-g sc)
 
     step4 : ((In {TermF} ∘ inr ∘ inl) ∘ payload) ⟶* (In {TermF} ∘ (inr ∘ inl ∘ payload))
     step4 = ⟶1 assoc-r >> ∘-cong-right' In (⟶1 assoc-r)
