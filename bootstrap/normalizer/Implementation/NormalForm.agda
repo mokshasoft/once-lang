@@ -20,7 +20,7 @@ open import normalizer.Implementation.NoRedex public
 -- Import normalize, its NoRedex proof, and the fixpoint theorem
 open import normalizer.Implementation.Normalize
   using (normalize; normalize-noredex; normalize-encoded; normalize-encoded-def;
-         noredex-fixpoint)
+         noredex-fixpoint; normalize-spec; spec-implies-fixpoint)
 
 ------------------------------------------------------------------------
 -- The Key Insight: normalize ≈ refold on NoRedex data
@@ -100,22 +100,21 @@ fixpoint-property = subst (λ x → (normalize ∘ x) ⟶* x) (sym normalize-enc
 ------------------------------------------------------------------------
 -- Summary
 --
--- The structure is clean and compositional:
+-- After the spec refactoring, the structure is:
 --
--- 1. normalize-equiv-refold: The two algebras (normalize-step and In)
---    produce equivalent results on NoRedex encoded data.
---    (Proof obligation - mechanically verifiable)
+-- 1. NormalizerSpecSimple: The specification record that captures what
+--    a correct normalizer algebra must satisfy (alg-comp-noredex).
 --
--- 2. noredex-fixpoint: Combines normalize-equiv-refold with
---    refold-idempotent via ⟶*-trans.
+-- 2. normalize-spec: Proof that normalize-step satisfies the spec.
+--    Uses handle-comp-rebuild to show composition handler is correct.
 --
--- 3. fixpoint-property: The normalizer's encoding is a fixpoint.
+-- 3. spec-implies-fixpoint: The generic theorem that spec satisfaction
+--    implies the fixpoint property. Same as noredex-fixpoint.
 --
--- The key insight is that we leverage the existing refold-idempotent
--- by showing that normalize behaves like refold on NoRedex data.
+-- 4. fixpoint-property: The normalizer's encoding is a fixpoint.
 --
--- Remaining work for normalize-equiv-refold:
--- - Show handle-comp falls through for NoRedex compositions
--- - Track through detect-id's case dispatch
--- - Mechanical but involves the nested structure of handle-comp
+-- The key insight: the spec separates:
+--   - WHAT any correct algebra must satisfy (spec definition)
+--   - WHY spec implies fixpoint (generic induction)
+--   - THAT our algebra satisfies spec (14 trivial + 1 real proof)
 ------------------------------------------------------------------------

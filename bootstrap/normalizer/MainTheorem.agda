@@ -34,11 +34,17 @@ open import normalizer.Foundations.Confluence
   public
 
 ------------------------------------------------------------------------
--- The Normalizer
+-- The Normalizer and Spec
 ------------------------------------------------------------------------
 
 open import normalizer.Implementation.Normalize
-  using (normalize; normalize-encoded; normalize-encoded-def)
+  using (normalize; normalize-encoded; normalize-encoded-def;
+         normalize-spec; spec-implies-fixpoint)
+  public
+
+-- Re-export the spec record type
+open import normalizer.Correctness.NormalizerSpec
+  using (NormalizerSpecSimple)
   public
 
 ------------------------------------------------------------------------
@@ -113,6 +119,9 @@ open import normalizer.Implementation.Normalizer
 -- From Implementation/:
 --   fixpoint-property: (normalize ∘ encode normalize) ⟶* encode normalize
 --     Uses noredex-fixpoint and refold-idempotent
+--   normalize-spec : NormalizerSpecSimple normalize-step
+--     Proof that our algebra satisfies the spec
+--   spec-implies-fixpoint : noredex-fixpoint via the spec
 --
 -- From Foundations/:
 --   encode-is-betanf: IsBetaNormalForm (encode t)
