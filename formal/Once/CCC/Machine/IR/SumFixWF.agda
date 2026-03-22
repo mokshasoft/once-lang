@@ -1646,3 +1646,78 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           trustMe-case-frontier : readLoc (proj₁ (exec-trace case-inr-trace s' alloc))
                                           (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
           trustMe-case-frontier = SMP.!!
+
+  ------------------------------------------------------------------------
+  -- OCP-0003: Recursion Scheme Handlers (Postulated)
+  --
+  -- These handlers implement machine-level code generation for the
+  -- recursion scheme constructors: In, Cata, Out, Ana, Hylo.
+  --
+  -- The semantic correctness is established in:
+  --   - Once/CCC/IR/Laws.agda (evaluation laws)
+  --   - Once/Category/Laws.agda (categorical laws)
+  --
+  -- Implementation strategy:
+  --   - In: allocates μ-type constructor (like fold)
+  --   - Out: projects ν-type (like unfold)
+  --   - Cata: iterative consumption of μ-type (while loop)
+  --   - Ana: lazy/demand-driven production of ν-type
+  --   - Hylo: fused cata ∘ ana without intermediate allocation
+  ------------------------------------------------------------------------
+
+  postulate
+    -- | In handler: wraps functor layer into μ-type
+    run-In : ∀ {F} (mIn : AllocMode) (m : AllocMode)
+      (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF mIn alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) Input ≡ input-loc →
+      next-slot alloc +ℕ ir-stack-requirement (In {F} m) ≤ frame-capacity alloc →
+      IRResultAWF m (In {F} m) x s alloc
+
+    -- | Out handler: observes ν-type to extract functor layer
+    run-Out : ∀ {F} (mIn : AllocMode)
+      (x : ⟦ ν-type F ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF mIn alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) Input ≡ input-loc →
+      next-slot alloc +ℕ ir-stack-requirement (Out {F}) ≤ frame-capacity alloc →
+      IRResultAWF Heap (Out {F}) x s alloc
+
+    -- | Cata handler: folds over μ-type with algebra
+    run-Cata : ∀ {F A} (mIn : AllocMode) (alg : IR (⟦ F ⟧T A) A)
+      (x : ⟦ μ-type F ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF mIn alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) Input ≡ input-loc →
+      next-slot alloc +ℕ ir-stack-requirement (Cata {F} alg) ≤ frame-capacity alloc →
+      ∃[ mOut ] IRResultAWF mOut (Cata {F} alg) x s alloc
+
+    -- | Ana handler: unfolds coalgebra into ν-type
+    run-Ana : ∀ {F A} (mIn : AllocMode) (coalg : IR A (⟦ F ⟧T A))
+      (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF mIn alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) Input ≡ input-loc →
+      next-slot alloc +ℕ ir-stack-requirement (Ana {F} coalg) ≤ frame-capacity alloc →
+      IRResultAWF Heap (Ana {F} coalg) x s alloc
+
+    -- | Hylo handler: fused cata ∘ ana (deforestation)
+    run-Hylo : ∀ {F A B} (mIn : AllocMode)
+      (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A))
+      (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS}) →
+      ValidAtWF mIn alloc x input-loc s →
+      BeforeFrontier alloc input-loc →
+      halted s ≡ false →
+      readReg (regs s) Input ≡ input-loc →
+      next-slot alloc +ℕ ir-stack-requirement (Hylo {F} alg coalg) ≤ frame-capacity alloc →
+      ∃[ mOut ] IRResultAWF mOut (Hylo {F} alg coalg) x s alloc
