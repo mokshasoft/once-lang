@@ -11,7 +11,7 @@
 module normalizer.Implementation.Normalize.NstepDispatch where
 
 open import normalizer.Implementation.Normalize.NoRedexHandlers public
-open import normalizer.Implementation.Normalizer
+open import normalizer.Foundations.TermFunctor
   using (TermF-1; TermF-2; TermF-3; TermF-4; TermF-5; TermF-6;
          TermF-7; TermF-8; TermF-9; TermF-10; TermF-11; TermF-12; TermF-13) public
 

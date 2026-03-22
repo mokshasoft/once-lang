@@ -13,7 +13,7 @@ open import normalizer.Foundations.CCC
 open import normalizer.Foundations.Encoding
 open import normalizer.Foundations.ReductionCombinators public
 open import normalizer.Implementation.NoRedex hiding (is-id)
-open import normalizer.Implementation.Normalizer
+open import normalizer.Foundations.Catamorphisms
   using (∘-cong-left'; ∘-cong-right'; ⟨⟩-cong)
 
 ------------------------------------------------------------------------

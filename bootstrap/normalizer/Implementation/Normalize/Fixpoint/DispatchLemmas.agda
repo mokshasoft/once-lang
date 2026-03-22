@@ -9,15 +9,22 @@
 module normalizer.Implementation.Normalize.Fixpoint.DispatchLemmas where
 
 open import normalizer.Implementation.Normalize.NstepDispatch public
-open import normalizer.Implementation.Normalizer public
-  using (∘-cong-left'; ∘-cong-right'; cata-β-right; fmap-TermF-inl;
-         fmap-TermF-inr; fmap-1-inr; fmap-2-inr; fmap-3-inr; fmap-4-inr;
+
+-- Import from the refactored Foundations modules
+open import normalizer.Foundations.Catamorphisms public
+  using (∘-cong-left'; ∘-cong-right'; cata-β-right; fmap-KK-id; fmap-sum-inl)
+open import normalizer.Foundations.OutIn public
+  using (out-in-compose; assoc-r3; assoc-r4)
+open import normalizer.Foundations.TermFunctor public
+  using (fmap-TermF-inl; fmap-TermF-inr;
+         fmap-1-inr; fmap-2-inr; fmap-3-inr; fmap-4-inr;
          fmap-5-inr; fmap-6-inr; fmap-7-inr; fmap-8-inr; fmap-9-inr;
          fmap-10-inr; fmap-11-inr; fmap-12-inr; fmap-13-inr;
          fmap-1-inl; fmap-2-inl; fmap-3-inl; fmap-4-inl; fmap-5-inl;
          fmap-6-inl; fmap-7-inl; fmap-8-inl; fmap-9-inl; fmap-10-inl;
          fmap-11-inl; fmap-12-inl; fmap-13-inl;
-         fmap-KK-id; TermF-13; TermF-14; fmap-sum-inl)
+         TermF-1; TermF-2; TermF-3; TermF-4; TermF-5; TermF-6; TermF-7;
+         TermF-8; TermF-9; TermF-10; TermF-11; TermF-12; TermF-13; TermF-14)
 
 ------------------------------------------------------------------------
 -- is-id behavior on non-id encoded terms
@@ -411,17 +418,6 @@ abstract
 -- which implies is-id behaves correctly on all encoded subterms.
 ------------------------------------------------------------------------
 
--- Helper: reduce (f ∘ Out) ∘ (In ∘ body) to f ∘ body
--- This uses: assoc-r, out-in, id-left
-abstract
-  out-in-compose : ∀ {F A B} (f : Term (⟦ F ⟧F (μ F)) B) (body : Term A (⟦ F ⟧F (μ F))) →
-                   ((f ∘ Out) ∘ (In ∘ body)) ⟶* (f ∘ body)
-  out-in-compose {F} f body =
-    ⟶*-trans (step assoc-r done)     -- f ∘ (Out ∘ (In ∘ body))
-    (⟶*-trans (step (⟶-∘-r assoc-l) done)  -- f ∘ ((Out ∘ In) ∘ body)
-    (⟶*-trans (step (⟶-∘-r (⟶-∘-l (out-in F))) done)  -- f ∘ (id ∘ body)
-    (step (⟶-∘-r id-left) done)))  -- f ∘ body
-
 ------------------------------------------------------------------------
 -- Per-position proofs: show that is-id at position N reduces to inr ∘ encode t
 --
@@ -432,22 +428,6 @@ abstract
 --   4. Reach ret-no-N ∘ payload = (inr ∘ rebuild-N) ∘ payload
 --   5. Use assoc-r to get inr ∘ (rebuild-N ∘ payload) = inr ∘ encode t
 ------------------------------------------------------------------------
-
--- Helper: reassociate 3-term composition right
--- ((a ∘ b) ∘ c) ⟶* (a ∘ (b ∘ c))
-abstract
-  assoc-r3 : ∀ {A B C D} (a : Term C D) (b : Term B C) (c : Term A B) →
-             ((a ∘ b) ∘ c) ⟶* (a ∘ (b ∘ c))
-  assoc-r3 a b c = ⟶1 assoc-r
-
--- Helper: reassociate 4-term composition right
--- (((a ∘ b) ∘ c) ∘ d) ⟶* (a ∘ (b ∘ (c ∘ d)))
-abstract
-  assoc-r4 : ∀ {A B C D E} (a : Term D E) (b : Term C D) (c : Term B C) (d : Term A B) →
-             (((a ∘ b) ∘ c) ∘ d) ⟶* (a ∘ (b ∘ (c ∘ d)))
-  assoc-r4 a b c d =
-    ⟶1 assoc-r >>  -- ((a ∘ b) ∘ c) ∘ d ⟶ (a ∘ b) ∘ (c ∘ d)
-    ⟶1 assoc-r     -- (a ∘ b) ∘ (c ∘ d) ⟶ a ∘ (b ∘ (c ∘ d))
 
 ------------------------------------------------------------------------
 -- Position 1: f ∘ g (composition)
