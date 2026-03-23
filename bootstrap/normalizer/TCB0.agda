@@ -79,3 +79,21 @@ open import normalizer.TCB0.Compiler.SatisfiesSpec
 --
 -- TCB0 proves the bootstrap works without these general theorems.
 ------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Extended Theory: MinimalTheory
+--
+-- For UNIQUENESS of normal forms (not just existence), see:
+--   normalizer.MinimalTheory
+--
+-- MinimalTheory uses only standard CCC confluence (Lambek & Scott),
+-- which is a well-established result that predates μ-types, to prove:
+--
+--   - normalizer-unique : NoRedex t → unique normal form
+--   - fixpoint-unique   : The fixpoint has a unique normal form
+--
+-- Trust hierarchy:
+--   TCB0          : Postulate-free, proves existence
+--   MinimalTheory : Standard CCC postulate, proves uniqueness
+--   Main          : All postulates, proves general correctness
+------------------------------------------------------------------------
