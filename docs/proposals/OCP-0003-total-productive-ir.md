@@ -950,7 +950,7 @@ These proofs enable `sem-cata-compute-valid` in the Coherence layer.
 Proven/documented laws in `Once.SPF`:
 
 - `ana-unfold`: `unfold (ana coalg a) ≡ fmap F (ana coalg) (coalg a)` (trivial by definition)
-- `ana-Out-id`: `ana unfold x ≡ x` (postulated - requires coinductive bisimulation)
+- `ana-Out-id`: `ana unfold x ≡ x` (proven via bisimulation, with `bisim-to-eq` postulate)
 
 Note: `ana-Out-id` is semantically valid but requires either sized types or an explicit
 bisimulation relation to prove in Agda. Postulated with clear justification.
@@ -1008,15 +1008,17 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Integrate with D037 polynomial functor proofs (Coherence.agda)
 - [x] Prove SPF cata laws: `cata-computation`, `cata-In-id`
 - [x] Prove `sem-cata-compute-valid` via SPF.cata-computation
-- [x] Add SPF ana laws: `ana-unfold` (trivial), `ana-Out-id` (postulated - requires bisimulation)
+- [x] Add SPF ana laws: `ana-unfold` (trivial), `ana-Out-id` (proven via bisimulation)
 - [x] Add `sem-ana-Out-id-valid` postulate to Coherence.agda
 - [x] Prove `transport-μ-is-fmap` via path induction (subst-fmap-natural lemma)
 - [x] Define ⟦μ⟧/⟦ν⟧ via translation (no longer postulated in Core)
 - [x] Create Once.Functor.Base (semantic functors with Set in K)
 - [x] Create Once.Functor.Translate (translation from Functor to SFunctor)
+- [x] Prove `ana-Out-id` via coinductive bisimulation (with `bisim-to-eq` postulate)
+- [x] Add isolated sized-types proof in Once.SPF.SizedProof (justifies TERMINATING)
+- [x] Prove `base-interp-coherence` and `functor-interp-coherence` (justifies μ-coherence)
+- [x] Rename SumFixWF to SumRecWF (fold/unfold removed)
 - [ ] Align with OCP-0004 bootstrap verification
-- [ ] Prove μ-coherence for well-formed functors (currently postulated)
-- [ ] Prove ana-Out-id properly (requires sized types or bisimulation)
 - [ ] Full IR law proofs (requires function extensionality)
 
 ---
