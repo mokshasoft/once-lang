@@ -2,14 +2,17 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Target.X86-64.IR.SumFixWF
+-- Once.CCC.Machine.IR.SumRecWF
 --
 -- IR handlers for sum types (inl, inr, case, initial) and
 -- recursion schemes (In, Cata, Out, Ana, Hylo).
--- OCP-0003: fold/unfold removed in favor of structured recursion.
+--
+-- OCP-0003: Renamed from SumFixWF. Old fold/unfold handlers removed
+-- in favor of structured recursion schemes that guarantee totality
+-- (Cata) and productivity (Ana via GuardedT).
 ------------------------------------------------------------------------
 
-module Once.CCC.Machine.IR.SumFixWF where
+module Once.CCC.Machine.IR.SumRecWF where
 
 open import Data.Nat using (ℕ; _<_; _≤_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; n≤1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤; ≤-irrelevant; <⇒≢)
@@ -38,7 +41,7 @@ import Once.CCC.Machine.SMPrimitives as SMP
 -- Sum and Fix IR implementations
 ------------------------------------------------------------------------
 
-module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}

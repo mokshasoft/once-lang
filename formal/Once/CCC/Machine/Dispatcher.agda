@@ -189,8 +189,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
   -- Import sum IR implementations (inl, inr, case, initial)
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana handlers instead.
-  open import Once.CCC.Machine.IR.SumFixWF as SumFixWFModule
-  open SumFixWFModule.SumFixWFImpl {FS} program-bound primSem
+  open import Once.CCC.Machine.IR.SumRecWF as SumRecWFModule
+  open SumRecWFModule.SumRecWFImpl {FS} program-bound primSem
 
   ------------------------------------------------------------------------
   -- Helper: get Acc for any IR size < program-bound
@@ -302,17 +302,17 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       let (m , result) = run-prim mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
       in m , result
 
-    -- Sum type: inject left (delegated to SumFixWF module)
+    -- Sum type: inject left (delegated to SumRecWF module)
     -- Output mode is m (from inl m)
     run-ir-wf mIn (inl {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       m , run-inl {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Sum type: inject right (delegated to SumFixWF module)
+    -- Sum type: inject right (delegated to SumRecWF module)
     -- Output mode is m (from inr m)
     run-ir-wf mIn (inr {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       m , run-inr {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Sum type: case analysis (delegated to SumFixWF module)
+    -- Sum type: case analysis (delegated to SumRecWF module)
     -- Reference-based model: any mode works since sums use pointer representation
     run-ir-wf Heap (case f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       run-case {Heap} f g (make-rec-wf ir<bound rs) x input-loc s alloc
@@ -323,7 +323,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       run-case {Stack} f g (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq combined-cap
 
-    -- Initial: absurd elimination (delegated to SumFixWF module)
+    -- Initial: absurd elimination (delegated to SumRecWF module)
     run-ir-wf mIn initial _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-initial x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
@@ -468,14 +468,14 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 --       b) Change ir-stack-requirement to be dynamic (not feasible statically)
 --       c) Accept that apply's slot-bounded uses reclamation semantics
 --
---   Sum type capacity (3 - SumFixWF.agda):
+--   Sum type capacity (3 - SumRecWF.agda):
 --     - sum-slots-bound: type-slots (A + B) ≤ pair-slots * ir-size inl
 --     - sucLoc-sum-in-range: suc n < n + type-slots (A + B)
 --     - alloc-slots-eq: proof irrelevance for allocation state equality
 --     These highlight the tension between fixed pair-slots capacity formula
 --     and type-dependent slot allocation. Will be resolved with unboxed stack.
 --
---   Fix type capacity (1 - SumFixWF.agda):
+--   Fix type capacity (1 - SumRecWF.agda):
 --     - fix-slots-bound: type-slots (Fix F) ≤ pair-slots * ir-size fold
 --     Similar issue to sum types.
 --
