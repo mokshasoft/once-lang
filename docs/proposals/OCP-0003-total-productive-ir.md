@@ -930,8 +930,19 @@ to the concrete implementations in `Once.SPF`:
   - Type coherence: `⟦μ⟧ F ≡ SPF.μ F` and `⟦ν⟧ F ≡ SPF.ν F`
   - Functor map coherence: `sem-fmap ≡ SPF.fmap` (proven)
   - Operation implementations via SPF: `sem-In`, `sem-Out`, `sem-cata`, etc.
-  - Law validation: Lambek's Lemma and cata computation law
+  - Lambek's Lemma: `sem-Out-In-valid`, `sem-In-Out-valid` (proven via SPF)
+  - Cata computation: `sem-cata-compute-valid` (proven via SPF.cata-computation)
   - Functor law inheritance: `sem-fmap-id`, `sem-fmap-comp` (proven)
+
+**SPF Catamorphism Laws** ✓ COMPLETE (2026-03-23)
+
+Proven laws in `Once.SPF`:
+
+- `fmapCata-is-fmap`: `fmapCata F alg x ≡ fmap F (cata alg) x`
+- `cata-computation`: `cata alg ⟨ x ⟩ ≡ alg (fmap F (cata alg) x)`
+- `cata-In-id`: `cata ⟨_⟩ x ≡ x` (identity catamorphism)
+
+These proofs enable `sem-cata-compute-valid` in the Coherence layer.
 
 **Recursion Scheme Laws** ✓ COMPLETE (2026-03-23)
 
@@ -984,8 +995,11 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 **Remaining Work**:
 
 - [x] Integrate with D037 polynomial functor proofs (Coherence.agda)
+- [x] Prove SPF cata laws: `cata-computation`, `cata-In-id`
+- [x] Prove `sem-cata-compute-valid` via SPF.cata-computation
 - [ ] Align with OCP-0004 bootstrap verification
-- [ ] Replace transport postulates with explicit proofs
+- [ ] Replace transport-μ-is-fmap postulate with explicit proof
+- [ ] Prove SPF ana laws (for sem-ana validation)
 - [ ] Full IR law proofs (requires function extensionality)
 
 ---
