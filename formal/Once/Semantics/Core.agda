@@ -22,7 +22,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 open import Once.Type
 
@@ -176,6 +176,49 @@ coerce⁻¹-round-trip : ∀ F X (x : ⟦ F ⟧F ⟦ X ⟧)
 coerce⁻¹-round-trip F X x = subst-sym-subst (sem-functor-coherence F X) x
 
 ------------------------------------------------------------------------
+-- Structural Coercions
+--
+-- Alternative coercion definitions that work by structural recursion
+-- on F. These are easier to work with in proofs because they don't
+-- involve complex subst terms.
+------------------------------------------------------------------------
+
+-- | Structural coercion: Type-level to Set-level (by recursion on F)
+coerce-struct : ∀ F X → ⟦ ⟦ F ⟧T X ⟧ → ⟦ F ⟧F ⟦ X ⟧
+coerce-struct (K A) X x = x
+coerce-struct Id X x = x
+coerce-struct (F ⊕ G) X (inj₁ x) = inj₁ (coerce-struct F X x)
+coerce-struct (F ⊕ G) X (inj₂ y) = inj₂ (coerce-struct G X y)
+coerce-struct (F ⊗ G) X (x , y) = (coerce-struct F X x , coerce-struct G X y)
+
+-- | Structural coercion: Set-level to Type-level (inverse)
+coerce-struct⁻¹ : ∀ F X → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ⟦ F ⟧T X ⟧
+coerce-struct⁻¹ (K A) X x = x
+coerce-struct⁻¹ Id X x = x
+coerce-struct⁻¹ (F ⊕ G) X (inj₁ x) = inj₁ (coerce-struct⁻¹ F X x)
+coerce-struct⁻¹ (F ⊕ G) X (inj₂ y) = inj₂ (coerce-struct⁻¹ G X y)
+coerce-struct⁻¹ (F ⊗ G) X (x , y) = (coerce-struct⁻¹ F X x , coerce-struct⁻¹ G X y)
+
+-- | Structural coercions are inverses
+coerce-struct-round-trip : ∀ F X (x : ⟦ ⟦ F ⟧T X ⟧)
+                         → coerce-struct⁻¹ F X (coerce-struct F X x) ≡ x
+coerce-struct-round-trip (K A) X x = refl
+coerce-struct-round-trip Id X x = refl
+coerce-struct-round-trip (F ⊕ G) X (inj₁ x) = cong inj₁ (coerce-struct-round-trip F X x)
+coerce-struct-round-trip (F ⊕ G) X (inj₂ y) = cong inj₂ (coerce-struct-round-trip G X y)
+coerce-struct-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce-struct-round-trip F X x) (coerce-struct-round-trip G X y)
+
+coerce-struct⁻¹-round-trip : ∀ F X (x : ⟦ F ⟧F ⟦ X ⟧)
+                           → coerce-struct F X (coerce-struct⁻¹ F X x) ≡ x
+coerce-struct⁻¹-round-trip (K A) X x = refl
+coerce-struct⁻¹-round-trip Id X x = refl
+coerce-struct⁻¹-round-trip (F ⊕ G) X (inj₁ x) = cong inj₁ (coerce-struct⁻¹-round-trip F X x)
+coerce-struct⁻¹-round-trip (F ⊕ G) X (inj₂ y) = cong inj₂ (coerce-struct⁻¹-round-trip G X y)
+coerce-struct⁻¹-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce-struct⁻¹-round-trip F X x) (coerce-struct⁻¹-round-trip G X y)
+
+-- Fmap coherence lemmas are defined after sem-fmap (see below)
+
+------------------------------------------------------------------------
 -- Semantic Operations
 --
 -- These mirror IR constructors but operate on semantic values.
@@ -241,6 +284,40 @@ sem-fmap Id f x = f x
 sem-fmap (F ⊕ G) f (inj₁ x) = inj₁ (sem-fmap F f x)
 sem-fmap (F ⊕ G) f (inj₂ y) = inj₂ (sem-fmap G f y)
 sem-fmap (F ⊗ G) f (x , y) = (sem-fmap F f x , sem-fmap G f y)
+
+------------------------------------------------------------------------
+-- Fmap-Coercion Coherence (using structural coercions)
+--
+-- These lemmas show that structural coercions commute with sem-fmap.
+-- They're used to prove the IR-level recursion scheme laws.
+------------------------------------------------------------------------
+
+-- | Type-level functorial map (works on ⟦ ⟦ F ⟧T X ⟧)
+-- This mirrors sem-fmap but at the Type level
+sem-fmap-Type : ∀ F {X Y : Type} → (⟦ X ⟧ → ⟦ Y ⟧) → ⟦ ⟦ F ⟧T X ⟧ → ⟦ ⟦ F ⟧T Y ⟧
+sem-fmap-Type (K A) f x = x
+sem-fmap-Type Id f x = f x
+sem-fmap-Type (F ⊕ G) f (inj₁ x) = inj₁ (sem-fmap-Type F f x)
+sem-fmap-Type (F ⊕ G) f (inj₂ y) = inj₂ (sem-fmap-Type G f y)
+sem-fmap-Type (F ⊗ G) f (x , y) = (sem-fmap-Type F f x , sem-fmap-Type G f y)
+
+-- | coerce-struct⁻¹ ∘ sem-fmap ∘ coerce-struct ≡ sem-fmap-Type
+fmap-struct-coherence : ∀ F {X Y : Type} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
+                      → coerce-struct⁻¹ F Y (sem-fmap F f (coerce-struct F X x)) ≡ sem-fmap-Type F f x
+fmap-struct-coherence (K A) f x = refl
+fmap-struct-coherence Id f x = refl
+fmap-struct-coherence (F ⊕ G) f (inj₁ x) = cong inj₁ (fmap-struct-coherence F f x)
+fmap-struct-coherence (F ⊕ G) f (inj₂ y) = cong inj₂ (fmap-struct-coherence G f y)
+fmap-struct-coherence (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-struct-coherence F f x) (fmap-struct-coherence G f y)
+
+-- | coerce-struct⁻¹ ∘ sem-fmap ≡ sem-fmap-Type ∘ coerce-struct⁻¹
+fmap-struct-coherence′ : ∀ F {X Y : Type} (f : ⟦ X ⟧ → ⟦ Y ⟧) (y : ⟦ F ⟧F ⟦ X ⟧)
+                       → coerce-struct⁻¹ F Y (sem-fmap F f y) ≡ sem-fmap-Type F f (coerce-struct⁻¹ F X y)
+fmap-struct-coherence′ (K A) f y = refl
+fmap-struct-coherence′ Id f y = refl
+fmap-struct-coherence′ (F ⊕ G) f (inj₁ x) = cong inj₁ (fmap-struct-coherence′ F f x)
+fmap-struct-coherence′ (F ⊕ G) f (inj₂ y) = cong inj₂ (fmap-struct-coherence′ G f y)
+fmap-struct-coherence′ (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-struct-coherence′ F f x) (fmap-struct-coherence′ G f y)
 
 -- | In: F(μF) → μF (algebra)
 postulate
