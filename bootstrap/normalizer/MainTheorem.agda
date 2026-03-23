@@ -106,7 +106,7 @@ normalize-encoded-is-betanf = subst IsBetaNormalForm (sym normalize-encoded-def)
 -- Re-exports
 ------------------------------------------------------------------------
 
-open import normalizer.Implementation.Normalizer
+open import normalizer.Correctness.RefoldIdempotent
   using ( refold-idempotent  -- (cata TermF In ∘ encode t) ⟶* encode t
         )
   public

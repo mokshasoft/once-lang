@@ -307,13 +307,13 @@ open import normalizer.Implementation.Normalize.Fixpoint.MainTheorem
   using (noredex-fixpoint)
   public
 
--- Backwards compatibility: alias for existing imports
+-- Alias: spec-implies-fixpoint is the same as noredex-fixpoint
 spec-implies-fixpoint : ∀ {A B} (t : Term A B) → NoRedex t →
                         (normalize ∘ encode t) ⟶* encode t
 spec-implies-fixpoint = noredex-fixpoint
 
 ------------------------------------------------------------------------
--- Also maintain compatibility with old NormalizerSpecSimple
+-- NormalizerSpecSimple instance
 ------------------------------------------------------------------------
 
 open import normalizer.Correctness.NormalizerSpec
@@ -327,9 +327,9 @@ normalize-spec = record
 -- Summary of what we export:
 --
 --   normalize-algebra-spec : AlgebraSpec normalize-step
---   normalize-spec : NormalizerSpecSimple normalize-step  (backwards compat)
+--   normalize-spec : NormalizerSpecSimple normalize-step
 --   noredex-fixpoint : ∀ t → NoRedex t → (normalize ∘ encode t) ⟶* encode t
---   spec-implies-fixpoint : same as above (backwards compat)
+--   spec-implies-fixpoint : alias for noredex-fixpoint
 --
 -- The architecture is:
 --   1. AlgebraSpec defines per-position conditions for fixpoint

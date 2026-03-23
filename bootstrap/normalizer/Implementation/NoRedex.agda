@@ -13,8 +13,3 @@ module normalizer.Implementation.NoRedex where
 
 -- Re-export everything from Foundations.NoRedex
 open import normalizer.Foundations.NoRedex public
-
--- Also bring in the Normalizer to maintain backwards compatibility
--- for modules that import this and expect Normalizer definitions
-open import normalizer.Implementation.Normalizer
-  using ()  -- No specific exports needed, just establish import structure
