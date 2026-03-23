@@ -14,7 +14,7 @@
 --   - Identity laws (id ∘ f = f, f ∘ id = f)
 --   - Beta laws (fst ∘ ⟨f,g⟩ = f, [f,g] ∘ inl = f, etc.)
 --   - Eta laws (⟨fst,snd⟩ = id, [inl,inr] = id)
---   - Fixed point fusion (fold ∘ unfold = id)
+--   - Recursion scheme laws (Cata (In m) = id, Ana Out = id)
 --   - Coproduct fusion (map f ∘ map g = map (f ∘ g))
 --   - Product fusion (bimap f g ∘ bimap h k = bimap (f∘h) (g∘k))
 --   - Distribution (⟨f,g⟩ ∘ h = ⟨f∘h,g∘h⟩, h ∘ [f,g] = [h∘f,h∘g])
@@ -55,7 +55,6 @@ Unit ≟Type (_ * _) = no (λ ())
 Unit ≟Type (_ + _) = no (λ ())
 Unit ≟Type (_ ⇒[ _ ] _) = no (λ ())
 Unit ≟Type (Eff _ _) = no (λ ())
-Unit ≟Type (Fix _) = no (λ ())
 Unit ≟Type Int = no (λ ())
 Unit ≟Type Float = no (λ ())
 Unit ≟Type Str = no (λ ())
@@ -67,7 +66,6 @@ Void ≟Type (_ * _) = no (λ ())
 Void ≟Type (_ + _) = no (λ ())
 Void ≟Type (_ ⇒[ _ ] _) = no (λ ())
 Void ≟Type (Eff _ _) = no (λ ())
-Void ≟Type (Fix _) = no (λ ())
 Void ≟Type Int = no (λ ())
 Void ≟Type Float = no (λ ())
 Void ≟Type Str = no (λ ())
@@ -82,7 +80,6 @@ Void ≟Type (TVar _) = no (λ ())
 (A * B) ≟Type (_ + _) = no (λ ())
 (A * B) ≟Type (_ ⇒[ _ ] _) = no (λ ())
 (A * B) ≟Type (Eff _ _) = no (λ ())
-(A * B) ≟Type (Fix _) = no (λ ())
 (A * B) ≟Type Int = no (λ ())
 (A * B) ≟Type Float = no (λ ())
 (A * B) ≟Type Str = no (λ ())
@@ -97,7 +94,6 @@ Void ≟Type (TVar _) = no (λ ())
 ... | _       | no neq   = no (λ { refl → neq refl })
 (A + B) ≟Type (_ ⇒[ _ ] _) = no (λ ())
 (A + B) ≟Type (Eff _ _) = no (λ ())
-(A + B) ≟Type (Fix _) = no (λ ())
 (A + B) ≟Type Int = no (λ ())
 (A + B) ≟Type Float = no (λ ())
 (A + B) ≟Type Str = no (λ ())
@@ -113,7 +109,6 @@ Void ≟Type (TVar _) = no (λ ())
 ... | _       | no neq   | _         = no (λ { refl → neq refl })
 ... | _       | _        | no neq    = no (λ { refl → neq refl })
 (A ⇒[ q ] B) ≟Type (Eff _ _) = no (λ ())
-(A ⇒[ q ] B) ≟Type (Fix _) = no (λ ())
 (A ⇒[ q ] B) ≟Type Int = no (λ ())
 (A ⇒[ q ] B) ≟Type Float = no (λ ())
 (A ⇒[ q ] B) ≟Type Str = no (λ ())
@@ -128,33 +123,18 @@ Void ≟Type (TVar _) = no (λ ())
 ... | yes refl | yes refl = yes refl
 ... | no neq  | _        = no (λ { refl → neq refl })
 ... | _       | no neq   = no (λ { refl → neq refl })
-(Eff A B) ≟Type (Fix _) = no (λ ())
 (Eff A B) ≟Type Int = no (λ ())
 (Eff A B) ≟Type Float = no (λ ())
 (Eff A B) ≟Type Str = no (λ ())
 (Eff A B) ≟Type Buffer = no (λ ())
 (Eff A B) ≟Type (TVar _) = no (λ ())
-(Fix F) ≟Type Unit = no (λ ())
-(Fix F) ≟Type Void = no (λ ())
-(Fix F) ≟Type (_ * _) = no (λ ())
-(Fix F) ≟Type (_ + _) = no (λ ())
-(Fix F) ≟Type (_ ⇒[ _ ] _) = no (λ ())
-(Fix F) ≟Type (Eff _ _) = no (λ ())
-(Fix F) ≟Type (Fix G) with F ≟Type G
-... | yes refl = yes refl
-... | no neq   = no (λ { refl → neq refl })
-(Fix F) ≟Type Int = no (λ ())
-(Fix F) ≟Type Float = no (λ ())
-(Fix F) ≟Type Str = no (λ ())
-(Fix F) ≟Type Buffer = no (λ ())
-(Fix F) ≟Type (TVar _) = no (λ ())
+-- OCP-0003: Fix removed. Use μ-type/ν-type instead.
 Int ≟Type Unit = no (λ ())
 Int ≟Type Void = no (λ ())
 Int ≟Type (_ * _) = no (λ ())
 Int ≟Type (_ + _) = no (λ ())
 Int ≟Type (_ ⇒[ _ ] _) = no (λ ())
 Int ≟Type (Eff _ _) = no (λ ())
-Int ≟Type (Fix _) = no (λ ())
 Int ≟Type Int = yes refl
 Int ≟Type Float = no (λ ())
 Int ≟Type Str = no (λ ())
@@ -166,7 +146,6 @@ Float ≟Type (_ * _) = no (λ ())
 Float ≟Type (_ + _) = no (λ ())
 Float ≟Type (_ ⇒[ _ ] _) = no (λ ())
 Float ≟Type (Eff _ _) = no (λ ())
-Float ≟Type (Fix _) = no (λ ())
 Float ≟Type Int = no (λ ())
 Float ≟Type Float = yes refl
 Float ≟Type Str = no (λ ())
@@ -178,7 +157,6 @@ Str ≟Type (_ * _) = no (λ ())
 Str ≟Type (_ + _) = no (λ ())
 Str ≟Type (_ ⇒[ _ ] _) = no (λ ())
 Str ≟Type (Eff _ _) = no (λ ())
-Str ≟Type (Fix _) = no (λ ())
 Str ≟Type Int = no (λ ())
 Str ≟Type Float = no (λ ())
 Str ≟Type Str = yes refl
@@ -190,7 +168,6 @@ Buffer ≟Type (_ * _) = no (λ ())
 Buffer ≟Type (_ + _) = no (λ ())
 Buffer ≟Type (_ ⇒[ _ ] _) = no (λ ())
 Buffer ≟Type (Eff _ _) = no (λ ())
-Buffer ≟Type (Fix _) = no (λ ())
 Buffer ≟Type Int = no (λ ())
 Buffer ≟Type Float = no (λ ())
 Buffer ≟Type Str = no (λ ())
@@ -202,7 +179,6 @@ Buffer ≟Type (TVar _) = no (λ ())
 (TVar x) ≟Type (_ + _) = no (λ ())
 (TVar x) ≟Type (_ ⇒[ _ ] _) = no (λ ())
 (TVar x) ≟Type (Eff _ _) = no (λ ())
-(TVar x) ≟Type (Fix _) = no (λ ())
 (TVar x) ≟Type Int = no (λ ())
 (TVar x) ≟Type Float = no (λ ())
 (TVar x) ≟Type Str = no (λ ())
@@ -217,7 +193,6 @@ Buffer ≟Type (TVar _) = no (λ ())
 (μ-type F) ≟Type (_ + _) = no (λ ())
 (μ-type F) ≟Type (_ ⇒[ _ ] _) = no (λ ())
 (μ-type F) ≟Type (Eff _ _) = no (λ ())
-(μ-type F) ≟Type (Fix _) = no (λ ())
 (μ-type F) ≟Type (μ-type G) with F ≟Functor G
 ... | yes refl = yes refl
 ... | no neq   = no (λ { refl → neq refl })
@@ -234,7 +209,6 @@ Buffer ≟Type (TVar _) = no (λ ())
 (ν-type F) ≟Type (_ + _) = no (λ ())
 (ν-type F) ≟Type (_ ⇒[ _ ] _) = no (λ ())
 (ν-type F) ≟Type (Eff _ _) = no (λ ())
-(ν-type F) ≟Type (Fix _) = no (λ ())
 (ν-type F) ≟Type (μ-type _) = no (λ ())
 (ν-type F) ≟Type (ν-type G) with F ≟Functor G
 ... | yes refl = yes refl
@@ -257,8 +231,6 @@ Void ≟Type (ν-type _) = no (λ ())
 (_ ⇒[ _ ] _) ≟Type (ν-type _) = no (λ ())
 (Eff _ _) ≟Type (μ-type _) = no (λ ())
 (Eff _ _) ≟Type (ν-type _) = no (λ ())
-(Fix _) ≟Type (μ-type _) = no (λ ())
-(Fix _) ≟Type (ν-type _) = no (λ ())
 Int ≟Type (μ-type _) = no (λ ())
 Int ≟Type (ν-type _) = no (λ ())
 Float ≟Type (μ-type _) = no (λ ())
@@ -377,17 +349,7 @@ wants-coprod (case _ _) = true
 wants-coprod terminal = true
 wants-coprod _ = false
 
--- | Does f "want" an unfold on its right?
-wants-unfold : ∀ {A B} → IR A B → Bool
-wants-unfold (fold _) = true
-wants-unfold terminal = true
-wants-unfold _ = false
-
--- | Does f "want" a fold on its right?
-wants-fold : ∀ {A B} → IR A B → Bool
-wants-fold unfold = true
-wants-fold terminal = true
-wants-fold _ = false
+-- OCP-0003: wants-unfold/wants-fold removed. Use Cata/Ana instead.
 
 ------------------------------------------------------------------------
 -- | Composition optimization (postulated)
@@ -464,11 +426,7 @@ mutual
   optimize-once-structural initial = initial
   optimize-once-structural (curry f m) = curry (optimize-once f) m
   optimize-once-structural apply = apply
-  -- | fold with Void source is equivalent to initial (no inhabitants)
-  optimize-once-structural (fold {F} _) with F ≟Type Void
-  ... | yes refl = initial
-  ... | no _     = fold Heap
-  optimize-once-structural unfold = unfold
+  -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
   optimize-once-structural arr = arr
   -- | Prim with Void source is equivalent to initial (no inhabitants)
   optimize-once-structural (Prim {A} n) with A ≟Type Void

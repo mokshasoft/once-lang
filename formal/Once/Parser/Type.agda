@@ -12,9 +12,10 @@
 --   TypeSum  ::= TypeProd ('+' TypeProd)*         (left-assoc sum)
 --   TypeProd ::= TypeAtom ('*' TypeAtom)*         (left-assoc product)
 --   TypeAtom ::= 'Unit' | 'Void' | 'Int' | 'Float' | 'Buffer' | 'String'
---              | 'Eff' TypeAtom TypeAtom | 'Fix' TypeAtom
+--              | 'Eff' TypeAtom TypeAtom | 'IO' TypeAtom
 --              | UpperIdent                       (type variable)
 --              | '(' Type ')'
+-- Note: Fix removed by OCP-0003. Use μ-type/ν-type for recursive types.
 ------------------------------------------------------------------------
 
 module Once.Parser.Type where
@@ -27,7 +28,7 @@ open import Data.Bool using (Bool; true; false; _∧_; not)
 open import Data.Char using (isAlpha; isLower)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; Fix; TVar; Quantity; Many)
+                             _*_; _+_; _⇒[_]_; Eff; TVar; Quantity; Many)
 open import Once.Parser.Token
 open import Once.Parser.Core
 
@@ -74,9 +75,7 @@ parseTypeAtom (TWord "Eff" ∷ rest) =
 parseTypeAtom (TWord "IO" ∷ rest) =
   (parseTypeAtom >>= λ a →
    return (Eff Unit a)) rest
-parseTypeAtom (TWord "Fix" ∷ rest) =
-  (parseTypeAtom >>= λ f →
-   return (Fix f)) rest
+-- Fix removed by OCP-0003: use μ-type/ν-type with structured recursion schemes
 parseTypeAtom (TLParen ∷ rest) =
   (parseType >>= λ t →
    expect TRParen >>

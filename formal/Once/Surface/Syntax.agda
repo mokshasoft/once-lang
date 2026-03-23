@@ -190,11 +190,8 @@ data Expr : ∀ {n} → Ctx n → Type → Set where
   -- Lifts a pure function to an effectful morphism
   arr'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (A ⇒ B) → Expr Γ (Eff A B)
 
-  -- Fixed point constructors (for recursive types)
-  -- roll wraps one layer: F → Fix F
-  roll'   : ∀ {n} {Γ : Ctx n} {F} → Expr Γ F → Expr Γ (Fix F)
-  -- unroll unwraps one layer: Fix F → F
-  unroll' : ∀ {n} {Γ : Ctx n} {F} → Expr Γ (Fix F) → Expr Γ F
+  -- OCP-0003: roll'/unroll' removed. Use In/Cata/Out/Ana for recursive types.
+  -- See Once.CCC.IR for structured recursion schemes.
 
   -- Primitive reference (imported functions)
   -- Used for qualified imports like exit0@S → prim "S.exit0"

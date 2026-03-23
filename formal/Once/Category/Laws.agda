@@ -223,60 +223,26 @@ eval-bicase-id m (inj₁ a) = refl
 eval-bicase-id m (inj₂ b) = refl
 
 ------------------------------------------------------------------------
--- Fixed Point Laws (Recursive Types)
+-- Recursion Scheme Laws (OCP-0003)
 ------------------------------------------------------------------------
 --
--- KNOWN LIMITATION: These proofs are trivially refl because the
--- semantics use a simple newtype wrapper, not true fixed points.
--- See Once/Semantics.agda and docs/formal/what-is-proven.md for details.
+-- The old fold/unfold laws have been replaced by structured recursion
+-- schemes: In/Cata for initial algebras, Out/Ana for final coalgebras.
 --
+-- Identity laws (semantic):
+--   Cata (In m) ≡ id   -- Identity catamorphism
+--   Ana Out ≡ id       -- Identity anamorphism
+--
+-- Fusion laws (conceptual):
+--   h ∘ cata alg = cata alg'   (if h ∘ alg = alg' ∘ fmap h)
+--   ana coalg ∘ h = ana coalg' (if coalg ∘ h = fmap h ∘ coalg')
+--
+-- Hylomorphism deforestation:
+--   cata alg ∘ ana coalg = hylo alg coalg
+--
+-- Full proofs require functor fmap operations and universal properties.
+-- See SPF.agda for the semantic foundations.
 ------------------------------------------------------------------------
-
--- | fold ∘ unfold ≡ id (semantically)
---
--- Folding after unfolding gives back the original fixed point value.
--- NOTE: This is trivial because ⟦Fix⟧ is just a newtype wrapper.
--- A proper proof would require functor semantics with substitution.
---
-eval-fold-unfold : ∀ {F} (x : ⟦ Fix F ⟧)
-                 → eval′ ((fold Heap) ∘ unfold) x ≡ x
-eval-fold-unfold x = refl
-
--- | unfold ∘ (fold Heap) ≡ id (semantically)
---
--- Unfolding after folding gives back the original value.
--- NOTE: This is trivial because ⟦Fix⟧ is just a newtype wrapper.
--- A proper proof would require functor semantics with substitution.
---
-eval-unfold-fold : ∀ {F} (x : ⟦ F ⟧)
-                 → eval′ (unfold ∘ (fold Heap)) x ≡ x
-eval-unfold-fold x = refl
-
-------------------------------------------------------------------------
--- Recursion Scheme Laws
-------------------------------------------------------------------------
-
--- | Catamorphism fusion law (conceptual)
---
--- For any algebra alg : F A → A and morphism h : A → B,
--- if h ∘ alg = alg' ∘ fmap h, then h ∘ cata alg = cata alg'
---
--- This is the key optimization principle for recursion schemes:
--- composing with a catamorphism can be fused into a single catamorphism.
-
--- | Hylomorphism deforestation (conceptual)
---
--- cata alg ∘ ana coalg = hylo alg coalg
---
--- A catamorphism after an anamorphism can be computed directly
--- without building the intermediate structure. This is the
--- "banana split" or "hylo fusion" theorem.
-
--- Note: Full proofs of recursion scheme laws require:
--- 1. A formalization of functors and their fmap operations
--- 2. The universal properties of initial algebras / final coalgebras
--- 3. These are beyond the scope of the basic categorical laws
---    but the fold/unfold isomorphism is the foundation
 
 ------------------------------------------------------------------------
 -- Arrow Laws (D032: Effect System)

@@ -22,8 +22,8 @@ open import Once.CCC.IR
 
 -- Import semantic interpretation of types from Once.Sem
 open import Once.Semantics.Machine
-  using (⟦_⟧; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case; sem-fold; sem-unfold;
-         -- OCP-0003: Recursion scheme semantics
+  using (⟦_⟧; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case;
+         -- OCP-0003: fold/unfold removed. Use recursion scheme semantics:
          sem-In; sem-cata; sem-CoOut; sem-ana; sem-hylo;
          coerce-functor; coerce-functor⁻¹)
 
@@ -64,8 +64,7 @@ eval ps initial ()
 eval ps (curry f _) x = λ y → eval ps f (sem-pair x y)
 eval ps apply (closure , arg) = closure arg
 eval ps arr f = f
-eval ps (fold _) x = sem-fold x
-eval ps unfold x = sem-unfold x
+-- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 eval ps (free-heap _) x = x
 eval ps (Prim name) x = evalPrim ps name x
 -- OCP-0003: Recursion scheme evaluation

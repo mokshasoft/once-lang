@@ -76,9 +76,8 @@ data IR : Type → Type → Set where
   -- Effect lifting
   arr : ∀ {A B q} → IR (A ⇒[ q ] B) (Eff A B)
 
-  -- Recursive types (Fix F) - general (Turing complete)
-  fold : ∀ {F} → AllocMode → IR F (Fix F)
-  unfold : ∀ {F} → IR (Fix F) F
+  -- fold/unfold removed by OCP-0003: use In/Cata/Out/Ana instead
+  -- (Total and productive by construction)
 
   --------------------------------------------------------------------------
   -- Recursion Schemes (OCP-0003: Total/Productive)

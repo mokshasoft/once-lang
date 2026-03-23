@@ -187,7 +187,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     get-child-frame child-frame-ordered child-frame-adjacent
     escape-result-survives
 
-  -- Import sum/fix IR implementations (inl, inr, case, initial, fold, unfold)
+  -- Import sum IR implementations (inl, inr, case, initial)
+  -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana handlers instead.
   open import Once.CCC.Machine.IR.SumFixWF as SumFixWFModule
   open SumFixWFModule.SumFixWFImpl {FS} program-bound primSem
 
@@ -326,19 +327,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf mIn initial _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       run-initial x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    -- Recursive types: fold (delegated to SumFixWF module)
-    -- Output mode is m (from fold m): Stack = unboxed, Heap = pointer
-    run-ir-wf mIn (fold {F} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      m , run-fold {F} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
-
-    -- Recursive types: unfold (delegated to SumFixWF module)
-    -- Reference-based model: any mode works since folds use pointer representation
-    run-ir-wf Heap (unfold {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      run-unfold {Heap} {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
-
-    run-ir-wf Stack (unfold {F}) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
-      -- Reference-based model: Stack and Heap use same pointer representation for folds
-      run-unfold {Stack} {F} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    -- OCP-0003: fold/unfold cases removed. Use In/Cata/Out/Ana instead.
 
     -- Compose: delegated to ComposeWF module
     run-ir-wf mIn (g ∘ f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =

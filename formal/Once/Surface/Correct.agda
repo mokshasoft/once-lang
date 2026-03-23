@@ -12,9 +12,9 @@ module Once.Surface.Correct where
 
 open import Once.Type
 open import Once.CCC.IR
-open import Once.Semantics.IR as IR using (⟦_⟧; eval′; ⟦Fix⟧; wrap)
+open import Once.Semantics.IR as IR using (⟦_⟧; eval′)
 -- Using eval′ (backward-compatible non-parameterized eval)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; roll'; unroll'; prim) renaming (_,_ to _▸_; eq to eq')
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; prim) renaming (_,_ to _▸_; eq to eq')
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR)
@@ -225,14 +225,7 @@ mutual
   -- LHS: evalSurface ρ (arr' f) = evalSurface ρ f
   -- RHS: eval′ (arr ∘ elaborate f) γ = eval′ (elaborate f) γ  [arr is identity]
   elaborate-correct ρ (arr' f) = elaborate-correct ρ f
-  -- Fixed point roll: wrap one layer
-  -- LHS: evalSurface ρ (roll' e) = wrap (evalSurface ρ e)
-  -- RHS: eval′ (fold ∘ elaborate e) γ = wrap (eval′ (elaborate e) γ)
-  elaborate-correct ρ (roll' e) = cong wrap (elaborate-correct ρ e)
-  -- Fixed point unroll: unwrap one layer
-  -- LHS: evalSurface ρ (unroll' e) = ⟦Fix⟧.unwrap (evalSurface ρ e)
-  -- RHS: eval′ (unfold ∘ elaborate e) γ = ⟦Fix⟧.unwrap (eval′ (elaborate e) γ)
-  elaborate-correct ρ (unroll' e) = cong ⟦Fix⟧.unwrap (elaborate-correct ρ e)
+  -- OCP-0003: roll'/unroll' removed
   -- Primitives: opaque operations with correctness axiom
   -- The primitive has the same name in both Surface and IR semantics
   elaborate-correct ρ (prim name) = prim-correct name

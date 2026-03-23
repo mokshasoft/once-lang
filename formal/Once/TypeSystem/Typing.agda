@@ -154,19 +154,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   ty-apply : ∀ {Γ A B q} → Γ ⊢ ((A ⇒[ q ] B) * A) ⟶ B
 
-  -- Fold (constructor for recursive types)
-  --
-  -- ─────────────────────────
-  -- Γ ⊢ F ⟶ Fix F
-  --
-  ty-fold : ∀ {Γ F} → Γ ⊢ F ⟶ Fix F
-
-  -- Unfold (destructor for recursive types)
-  --
-  -- ─────────────────────────
-  -- Γ ⊢ Fix F ⟶ F
-  --
-  ty-unfold : ∀ {Γ F} → Γ ⊢ Fix F ⟶ F
+  -- OCP-0003: ty-fold/ty-unfold removed. Use ty-In/ty-Cata/ty-Out/ty-Ana instead.
 
   -- Arrow lift (D032: lift pure to effectful)
   --
@@ -249,8 +237,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-initial ⌋ = initial
 ⌊ ty-curry f ⌋ = curry ⌊ f ⌋ Heap
 ⌊ ty-apply ⌋ = apply
-⌊ ty-fold ⌋ = fold Heap
-⌊ ty-unfold ⌋ = unfold
+-- OCP-0003: ty-fold/ty-unfold removed
 ⌊ ty-arr ⌋ = arr
 ⌊ ty-prim name ⌋ = Prim name
 ⌊ ty-free-heap h ⌋ = free-heap h
@@ -279,8 +266,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ initial ⌉ = ty-initial
 ⌈ (curry f _) ⌉ = ty-curry ⌈ f ⌉
 ⌈ apply ⌉ = ty-apply
-⌈ fold _ ⌉ = ty-fold
-⌈ unfold ⌉ = ty-unfold
+-- OCP-0003: fold/unfold removed
 ⌈ arr ⌉ = ty-arr
 ⌈ Prim name ⌉ = ty-prim name
 ⌈ free-heap h ⌉ = ty-free-heap h
@@ -313,8 +299,7 @@ round-trip-ir initial ()
 round-trip-ir (curry {q = q} f _) x =
   extensionality (λ b → round-trip-ir f (x , b))
 round-trip-ir apply x = refl
-round-trip-ir (fold _) x = refl
-round-trip-ir unfold x = refl
+-- OCP-0003: fold/unfold removed
 round-trip-ir arr x = refl
 round-trip-ir (Prim name) x = refl
 round-trip-ir (free-heap h) x = refl

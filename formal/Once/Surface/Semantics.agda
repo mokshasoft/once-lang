@@ -11,8 +11,8 @@
 module Once.Surface.Semantics where
 
 open import Once.Type
-open import Once.Semantics.IR using (⟦_⟧; ⟦Fix⟧; wrap)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; roll'; unroll'; prim) renaming (_,_ to _▸_)
+open import Once.Semantics.IR using (⟦_⟧)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; prim) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -127,8 +127,6 @@ evalSurface ρ (ne e₁ e₂)     = toSum (not (does (evalSurface ρ e₁ ≟ ev
 
 -- Effect lifting: arr is identity (Eff A B has same semantics as A ⇒ B)
 evalSurface ρ (arr' f)       = evalSurface ρ f
--- Fixed point constructors: wrap/unwrap isomorphism
-evalSurface ρ (roll' e)      = wrap (evalSurface ρ e)
-evalSurface ρ (unroll' e)    = ⟦Fix⟧.unwrap (evalSurface ρ e)
+-- OCP-0003: roll'/unroll' removed
 -- Primitives: opaque external operations (semantics defined by runtime)
 evalSurface ρ (prim name)    = evalSurfacePrim name

@@ -16,9 +16,8 @@ open import Once.Type
 open import Once.Surface.IR as S
 open import Once.Surface.Desugar
 open import Once.CCC.IR as C
-open import Once.Semantics.IR using (⟦_⟧; eval′; ⟦Fix⟧; wrap; defaultEvalPrim)
+open import Once.Semantics.IR using (⟦_⟧; eval′; defaultEvalPrim)
 open import Once.Postulates using (extensionality)
-open ⟦Fix⟧ using (unwrap)
 
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥; ⊥-elim)
@@ -72,9 +71,7 @@ evalSurface S.initial ()
 evalSurface (S.curry f) a = λ b → evalSurface f (a , b)
 evalSurface S.apply (f , a) = f a
 
--- Recursive types
-evalSurface S.fold x = wrap x
-evalSurface S.unfold x = unwrap x
+-- OCP-0003: fold/unfold removed
 
 -- Effects
 evalSurface S.arr f = f
@@ -153,9 +150,7 @@ desugar-correct S.initial ()
 desugar-correct (S.curry f) a = extensionality (λ b → desugar-correct f (a , b))
 desugar-correct S.apply (f , a) = refl
 
--- Recursive types
-desugar-correct S.fold x = refl
-desugar-correct S.unfold x = refl
+-- OCP-0003: fold/unfold removed
 
 -- Effects
 desugar-correct S.arr f = refl

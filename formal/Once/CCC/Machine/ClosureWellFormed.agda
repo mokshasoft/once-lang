@@ -154,16 +154,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         ValidAtWF mB alloc b payload-loc s →
         ValidAtWF m alloc {A + B} (sem-inr b) sum-loc s
 
-      -- Recursive type fold (any mode): pointer to unfolded value
-      -- Reference-based model: Stack and Heap use identical representation
-      valid-fold-wf : ∀ {m F} {v : ⟦ F ⟧}
-        {alloc : AllocState {FS}}
-        {fix-loc unfolded-loc : ValueLocation FS} {s : LocState FS}
-        {mV : AllocMode} →
-        readLoc s fix-loc ≡ just unfolded-loc →
-        BeforeFrontier alloc unfolded-loc →
-        ValidAtWF mV alloc v unfolded-loc s →
-        ValidAtWF m alloc {Fix F} (sem-fold v) fix-loc s
+      -- OCP-0003: valid-fold-wf removed. Use μ-type/ν-type validity instead.
 
       -- Primitive types: valid at any mode if location is before frontier
       -- Primitives are single-slot values (Int, Float, Str, Buffer).
@@ -569,35 +560,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     }
 
   ------------------------------------------------------------------------
-  -- Decomposition for ValidAtWF recursive types (fold) - any mode
-  --
-  -- Reference-based model: pointer to unfolded value (identical for all modes)
-  ------------------------------------------------------------------------
-
-  record FoldValidWF (alloc : AllocState {FS}) {F : Type}
-                     (v : ⟦ Fix F ⟧)
-                     (fix-loc : ValueLocation FS)
-                     (s : LocState FS) : Set where
-    field
-      unfolded : ⟦ F ⟧
-      mV : AllocMode  -- Mode of unfolded value
-      unfolded-loc : ValueLocation FS
-      unfolded-ptr : readLoc s fix-loc ≡ just unfolded-loc
-      unfolded-before : BeforeFrontier alloc unfolded-loc
-      unfolded-valid : ValidAtWF mV alloc unfolded unfolded-loc s
-      v-is-fold : v ≡ sem-fold unfolded
-
-  decomposeFoldWF : ∀ {m alloc F} {v : ⟦ F ⟧} {loc s} →
-    ValidAtWF m alloc {Fix F} (sem-fold v) loc s → FoldValidWF alloc (sem-fold v) loc s
-  decomposeFoldWF (valid-fold-wf {_} {_} {v} {_} {_} {ul} {_} {mV} up ub uv) = record
-    { unfolded = v
-    ; mV = mV
-    ; unfolded-loc = ul
-    ; unfolded-ptr = up
-    ; unfolded-before = ub
-    ; unfolded-valid = uv
-    ; v-is-fold = refl
-    }
+  -- OCP-0003: FoldValidWF record and decomposeFoldWF removed.
+  -- Use μ-type/ν-type validity instead.
 
   ------------------------------------------------------------------------
   -- Lift ValidAt to ValidAtWF for non-closure types
@@ -678,15 +642,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
 
       pv' = validityWF-mem-only b pl s₁ s₂ stack-eq heap-eq pv
 
-  -- fold (any mode)
-  validityWF-mem-only {m} {alloc} {Fix F} .(sem-fold v) loc s₁ s₂ stack-eq heap-eq
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up' ub uv'
-    where
-      up' : readLoc s₂ loc ≡ just ul
-      up' = trans (readLoc-stack-heap-eq s₂ s₁ loc stack-eq heap-eq) up
-
-      uv' = validityWF-mem-only v ul s₁ s₂ stack-eq heap-eq uv
+  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
 
   -- Primitives: memory-independent (BeforeFrontier doesn't depend on state)
   validityWF-mem-only {m} {alloc} {Int} _ loc s₁ s₂ stack-eq heap-eq (valid-int-wf bf) =
@@ -754,13 +710,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       pp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-frontier b pl s val pb pv
 
-  -- fold (any mode)
-  validityWF-write-at-frontier {m} {alloc} {Fix F} .(sem-fold v) loc s val loc-before
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up' ub uv'
-    where
-      up' = trans (write-at-frontier-preserves-before s alloc loc val loc-before) up
-      uv' = validityWF-write-at-frontier v ul s val ub uv
+  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
 
   -- Primitives: BeforeFrontier unchanged
   validityWF-write-at-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf) =
@@ -820,13 +770,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       pp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-suc-frontier b pl s val pb pv
 
-  -- fold (any mode)
-  validityWF-write-at-suc-frontier {m} {alloc} {Fix F} .(sem-fold v) loc s val loc-before
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up' ub uv'
-    where
-      up' = trans (write-at-suc-frontier-preserves-before s alloc loc val loc-before) up
-      uv' = validityWF-write-at-suc-frontier v ul s val ub uv
+  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
 
   -- Primitives: BeforeFrontier unchanged
   validityWF-write-at-suc-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf) =
@@ -899,13 +843,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       slb' = stack-alloc-advances alloc n (sucLoc loc) slb
       pv' = validityWF-alloc-advance b pl s n pv
 
-  -- fold (any mode)
-  validityWF-alloc-advance {m} {alloc} {Fix F} .(sem-fold v) loc s n
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up ub' uv'
-    where
-      ub' = stack-alloc-advances alloc n ul ub
-      uv' = validityWF-alloc-advance v ul s n uv
+  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
 
   -- Primitives: advance BeforeFrontier
   validityWF-alloc-advance {m} {alloc} {Int} _ loc s n (valid-int-wf bf) =
@@ -977,13 +915,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       pv' = validityWF-frontier-advance b pl s cf-eq slot-≤ heap-≤ pv
 
-  -- fold (any mode)
-  validityWF-frontier-advance {m} {alloc} {alloc'} {Fix F} .(sem-fold v) loc s cf-eq slot-≤ heap-≤
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up ub' uv'
-    where
-      ub' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ ul ub
-      uv' = validityWF-frontier-advance v ul s cf-eq slot-≤ heap-≤ uv
+  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
 
   -- Primitives: advance BeforeFrontier
   validityWF-frontier-advance {m} {alloc} {alloc'} {Int} _ loc s cf-eq slot-≤ heap-≤ (valid-int-wf bf) =
@@ -1042,11 +974,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     valid-inr-wf pp (bf pl pb) (bf (sucLoc loc) slb)
       (validityWF-with-bf-transfer b pl s a₁ a₂ bf pv)
 
-  -- fold (any mode)
-  validityWF-with-bf-transfer {m} {Fix F} .(sem-fold v) loc s a₁ a₂ bf
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up (bf ul ub)
-      (validityWF-with-bf-transfer v ul s a₁ a₂ bf uv)
+  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
 
   -- Primitives: transfer BeforeFrontier
   validityWF-with-bf-transfer {m} {Int} _ loc s a₁ a₂ bf (valid-int-wf bfr) =
@@ -1116,13 +1044,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       pp' = trans (mem-eq (sucLoc loc) slb) pp
       pv' = validityWF-mem-preserved b pl s₁ s₂ pb mem-eq pv
 
-  -- fold (any mode)
-  validityWF-mem-preserved {m} {alloc} {Fix F} .(sem-fold v) loc s₁ s₂ loc-before mem-eq
-    (valid-fold-wf {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold-wf up' ub uv'
-    where
-      up' = trans (mem-eq loc loc-before) up
-      uv' = validityWF-mem-preserved v ul s₁ s₂ ub mem-eq uv
+  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
 
   -- Primitives: BeforeFrontier unchanged
   validityWF-mem-preserved {m} {alloc} {Int} _ loc s₁ s₂ loc-before mem-eq (valid-int-wf bf) =

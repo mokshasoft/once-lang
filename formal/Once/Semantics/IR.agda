@@ -81,9 +81,7 @@ eval ps (curry f _) a     = λ b → eval ps f (a , b)
 -- apply : IR ((A ⇒ B) * A) B extracts and applies the function
 eval ps apply (f , a)     = f a
 
--- Recursive types (Fixed point isomorphism) - general
-eval ps (fold _) x        = wrap x
-eval ps unfold x          = unwrap x
+-- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana.
 
 -- Recursion schemes (OCP-0003: total/productive)
 --
@@ -148,25 +146,18 @@ eval′ : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
 eval′ = eval defaultPrimSem
 
 ------------------------------------------------------------------------
--- KNOWN LIMITATION: Fixed Point Semantics
+-- OCP-0003: Recursion Scheme Semantics
 ------------------------------------------------------------------------
 --
--- The interpretation of Fix F uses a simple newtype wrapper:
+-- With OCP-0003, recursive types use polynomial functors:
 --
---   ⟦ Fix F ⟧ = ⟦Fix⟧ ⟦ F ⟧
+--   μ-type F : inductive/finite data (consumed via Cata)
+--   ν-type F : coinductive/infinite codata (produced via Ana)
 --
--- This models Fix F ≅ F, but the correct equation should be:
+-- where F : Functor is a strictly positive polynomial functor.
+-- This provides proper fixed point semantics via SPF.agda.
 --
---   Fix F ≅ F[Fix F / X]   (F with recursive occurrences substituted)
---
--- For example, Nat = Fix (Unit + X) should satisfy:
---   ⟦ Nat ⟧ ≅ ⊤ ⊎ ⟦ Nat ⟧
---
--- But this model gives:
---   ⟦ Nat ⟧ = ⟦Fix⟧ (⊤ ⊎ ⟦ X ⟧)   where X is uninterpreted
---
--- A proper treatment requires modeling F as a functor with an explicit
--- recursive position (e.g., a universe of strictly positive functors).
--- See docs/formal/what-is-proven.md for options to address this.
+-- Example: Nat = μ-type (K Unit ⊕ Id) satisfies:
+--   ⟦ Nat ⟧ = ⟦μ⟧ (K Unit ⊕ Id) ≅ ⊤ ⊎ ⟦ Nat ⟧
 --
 ------------------------------------------------------------------------

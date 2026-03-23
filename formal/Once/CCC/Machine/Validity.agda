@@ -28,8 +28,9 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.Allocation
 import Once.CCC.Target.X86-64.Types as Types
-open Types public using (Type; Unit; Void; _*_; _+_; Fix; Int; Float; Str; Buffer; Eff; _⇒[_]_; _⇒_; Quantity; ⟦_⟧; pair; wrap;
-                         sem-fst; sem-snd; sem-inl; sem-inr; sem-fold)
+open Types public using (Type; Unit; Void; _*_; _+_; Int; Float; Str; Buffer; Eff; _⇒[_]_; _⇒_; Quantity; ⟦_⟧; pair;
+                         sem-fst; sem-snd; sem-inl; sem-inr)
+-- OCP-0003: Fix, wrap, sem-fold removed. Use μ-type/ν-type instead.
 open import Once.CCC.IR
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size
@@ -102,14 +103,9 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ValidAt alloc b payload-loc s →
       ValidAt alloc {A + B} (sem-inr b) sum-loc s
 
-    -- Recursive type validity: pointer to heap-allocated unfolded value
-    -- Memory layout: fix-loc stores pointer to unfolded-loc on heap
-    valid-fold : ∀ {F} {v : ⟦ F ⟧}
-      {fix-loc unfolded-loc : ValueLocation FS} {s : LocState FS} →
-      readLoc s fix-loc ≡ just unfolded-loc →
-      BeforeFrontier alloc unfolded-loc →
-      ValidAt alloc v unfolded-loc s →
-      ValidAt alloc {Fix F} (sem-fold v) fix-loc s
+    -- OCP-0003: valid-fold removed. Use valid-μ/valid-ν (postulated) instead.
+    -- The validity for μ-type and ν-type values is postulated because their
+    -- semantics (sem-In, sem-cata, sem-CoOut, sem-ana) are postulated.
 
     -- Closure validity: tracks the body IR that created this closure!
     --
@@ -211,21 +207,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       payload-valid : ValidAt alloc b payload-loc s
       v-is-inr : v ≡ sem-inr b
 
-  ------------------------------------------------------------------------
-  -- FoldValid record (extracted structure from valid-fold)
-  ------------------------------------------------------------------------
-
-  record FoldValid (alloc : AllocState {FS}) {F : Type}
-                   (v : ⟦ Fix F ⟧)
-                   (fix-loc : ValueLocation FS)
-                   (s : LocState FS) : Set where
-    field
-      unfolded : ⟦ F ⟧
-      unfolded-loc : ValueLocation FS
-      unfolded-ptr : readLoc s fix-loc ≡ just unfolded-loc
-      unfolded-before : BeforeFrontier alloc unfolded-loc
-      unfolded-valid : ValidAt alloc unfolded unfolded-loc s
-      v-is-fold : v ≡ sem-fold unfolded
+  -- OCP-0003: FoldValid record removed. Use μ-type/ν-type validity instead.
 
   ------------------------------------------------------------------------
   -- Decomposition lemmas
@@ -288,16 +270,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     ; v-is-inr = refl
     }
 
-  decomposeFold : ∀ {alloc F} {v : ⟦ F ⟧} {loc s} →
-    ValidAt alloc {Fix F} (sem-fold v) loc s → FoldValid alloc (sem-fold v) loc s
-  decomposeFold {v = v} (valid-fold {unfolded-loc = ul} up ub uv) = record
-    { unfolded = v
-    ; unfolded-loc = ul
-    ; unfolded-ptr = up
-    ; unfolded-before = ub
-    ; unfolded-valid = uv
-    ; v-is-fold = refl
-    }
+  -- OCP-0003: decomposeFold removed. Use μ-type/ν-type validity instead.
 
   ------------------------------------------------------------------------
   -- Composition lemmas
@@ -352,13 +325,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   composeInr b sum-loc payload-loc s pp pb slb pv = valid-inr pp pb slb pv
 
   -- Compose fold validity
-  composeFold : ∀ {alloc F} (v : ⟦ F ⟧)
-    (fix-loc unfolded-loc : ValueLocation FS) (s : LocState FS) →
-    readLoc s fix-loc ≡ just unfolded-loc →
-    BeforeFrontier alloc unfolded-loc →
-    ValidAt alloc v unfolded-loc s →
-    ValidAt alloc {Fix F} (sem-fold v) fix-loc s
-  composeFold v fix-loc unfolded-loc s up ub uv = valid-fold up ub uv
+  -- OCP-0003: composeFold removed. Use μ-type/ν-type validity instead.
 
   ------------------------------------------------------------------------
   -- Validity depends only on memory
@@ -436,15 +403,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       pv' : ValidAt alloc b pl s₂
       pv' = validity-mem-only b pl s₁ s₂ stack-eq heap-eq pv
 
-  validity-mem-only {alloc} {Fix F} .(sem-fold v) loc s₁ s₂ stack-eq heap-eq
-    (valid-fold {v = v} {unfolded-loc = ul} up ub uv) =
-    valid-fold up' ub uv'
-    where
-      up' : readLoc s₂ loc ≡ just ul
-      up' = trans (sym (readLoc-stack-heap-eq s₁ s₂ loc stack-eq heap-eq)) up
-
-      uv' : ValidAt alloc v ul s₂
-      uv' = validity-mem-only v ul s₁ s₂ stack-eq heap-eq uv
+  -- OCP-0003: validity-mem-only case for Fix removed.
+  -- Use μ-type/ν-type validity instead.
 
 ------------------------------------------------------------------------
 -- Summary

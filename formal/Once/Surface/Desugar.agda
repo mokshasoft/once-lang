@@ -72,9 +72,7 @@ desugar S.initial = C.initial
 desugar (S.curry f) = C.curry (desugar f) C.Heap
 desugar S.apply = C.apply
 
--- Recursive types
-desugar S.fold = C.fold Heap
-desugar S.unfold = C.unfold
+-- OCP-0003: fold/unfold removed
 
 -- Effects
 desugar S.arr = C.arr

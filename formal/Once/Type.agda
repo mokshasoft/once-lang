@@ -142,7 +142,7 @@ mutual
     _+_    : Type → Type → Type      -- Coproduct (sum)
     _⇒[_]_ : Type → Quantity → Type → Type  -- Graded function arrow (QTT)
     Eff    : Type → Type → Type      -- Effectful morphism (D032)
-    Fix    : Type → Type             -- Fixed point: Fix F ≅ F (Fix F)
+    -- Fix removed by OCP-0003: use μ-type/ν-type instead
     -- Polynomial functor fixed points (OCP-0003: total/productive)
     μ-type : Functor → Type          -- Initial algebra (inductive, total)
     ν-type : Functor → Type          -- Final coalgebra (coinductive, productive)

@@ -107,7 +107,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
-           valid-inl-wf; valid-inr-wf; valid-fold-wf;
+           valid-inl-wf; valid-inr-wf;
+           -- OCP-0003: valid-fold-wf removed
            validityWF-mem-only; validityWF-alloc-advance;
            validityWF-write-at-frontier; validityWF-write-at-suc-frontier;
            validityWF-frontier-advance;

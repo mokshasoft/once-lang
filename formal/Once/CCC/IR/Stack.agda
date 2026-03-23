@@ -49,9 +49,7 @@ ir-stack-requirement initial = 0
 ir-stack-requirement (curry _ _) = pair-slots
 ir-stack-requirement apply = pair-slots
 ir-stack-requirement arr = 0
--- DEPRECATED fixed points
-ir-stack-requirement (fold _) = 1
-ir-stack-requirement unfold = 0
+-- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 -- Recursion schemes (OCP-0003)
 -- In: constructs μ-value, similar to fold
 ir-stack-requirement (In _) = 1

@@ -8,8 +8,7 @@
 --
 -- This module provides:
 --   - ⟦_⟧: Type → Set (semantic interpretation)
---   - ⟦Fix⟧: Fixed point wrapper
---   - sem-*: Semantic operations (products, sums, fixed points)
+--   - sem-*: Semantic operations (products, sums, recursion schemes)
 --   - Semantic laws
 --
 -- Instantiate with ℕ for machine semantics, ℤ for proof semantics.
@@ -27,15 +26,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type
 
-------------------------------------------------------------------------
--- Fixed Point Wrapper
-------------------------------------------------------------------------
-
-record ⟦Fix⟧ (A : Set) : Set where
-  constructor wrap
-  field unwrap : A
-
-open ⟦Fix⟧ public
+-- OCP-0003: ⟦Fix⟧ wrapper removed. Use μ/ν from SPF.agda.
 
 ------------------------------------------------------------------------
 -- Semantic Interpretation
@@ -69,7 +60,7 @@ postulate
 ⟦ A + B ⟧        = ⟦ A ⟧ ⊎ ⟦ B ⟧
 ⟦ A ⇒[ _ ] B ⟧   = ⟦ A ⟧ → ⟦ B ⟧
 ⟦ Eff A B ⟧      = ⟦ A ⟧ → ⟦ B ⟧
-⟦ Fix F ⟧        = ⟦Fix⟧ ⟦ F ⟧
+-- OCP-0003: Fix removed, use μ-type/ν-type
 ⟦ μ-type F ⟧     = ⟦μ⟧ F
 ⟦ ν-type F ⟧     = ⟦ν⟧ F
 ⟦ Int ⟧          = IntRep
@@ -154,12 +145,7 @@ sem-case : ∀ {A B C} → (⟦ A ⟧ → ⟦ C ⟧) → (⟦ B ⟧ → ⟦ C �
 sem-case f g (inj₁ a) = f a
 sem-case f g (inj₂ b) = g b
 
--- Fixed point operations
-sem-fold : ∀ {F} → ⟦ F ⟧ → ⟦ Fix F ⟧
-sem-fold x = wrap x
-
-sem-unfold : ∀ {F} → ⟦ Fix F ⟧ → ⟦ F ⟧
-sem-unfold (wrap x) = x
+-- OCP-0003: sem-fold/sem-unfold removed. Use sem-In/sem-cata/sem-CoOut/sem-ana.
 
 ------------------------------------------------------------------------
 -- Semantic Laws
@@ -179,11 +165,7 @@ sem-case-inr : ∀ {A B C} (f : ⟦ A ⟧ → ⟦ C ⟧) (g : ⟦ B ⟧ → ⟦ 
   sem-case f g (sem-inr b) ≡ g b
 sem-case-inr f g b = refl
 
-sem-unfold-fold : ∀ {F} (x : ⟦ F ⟧) → sem-unfold (sem-fold x) ≡ x
-sem-unfold-fold x = refl
-
-sem-fold-unfold : ∀ {F} (x : ⟦ Fix F ⟧) → sem-fold (sem-unfold x) ≡ x
-sem-fold-unfold (wrap x) = refl
+-- OCP-0003: sem-fold-unfold and sem-unfold-fold laws removed
 
 ------------------------------------------------------------------------
 -- Recursion Scheme Semantic Operations (Postulated)

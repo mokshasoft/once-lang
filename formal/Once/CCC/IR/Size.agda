@@ -34,9 +34,7 @@ ir-size initial = 1
 ir-size (curry f _) = 2 +ℕ ir-size f
 ir-size apply = 1
 ir-size arr = 1
--- DEPRECATED fixed points
-ir-size (fold _) = 1
-ir-size unfold = 1
+-- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 -- Recursion schemes (OCP-0003)
 ir-size (In _) = 1
 ir-size (Cata alg) = 2 +ℕ ir-size alg  -- Similar to curry: contains body

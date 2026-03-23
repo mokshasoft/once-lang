@@ -97,9 +97,7 @@ Buffer ≟T Buffer = yes refl
 ... | yes refl | yes refl = yes refl
 ... | no ¬p | _ = no λ { refl → ¬p refl }
 ... | _ | no ¬q = no λ { refl → ¬q refl }
-(Fix F₁) ≟T (Fix F₂) with F₁ ≟T F₂
-... | yes refl = yes refl
-... | no ¬p = no λ { refl → ¬p refl }
+-- OCP-0003: Fix removed
 (TVar x) ≟T (TVar y) with Data.String._≟_ x y
 ... | yes refl = yes refl
 ... | no ¬p = no λ { refl → ¬p refl }
@@ -113,7 +111,6 @@ Unit ≟T (_ Once.Type.* _) = no λ ()
 Unit ≟T (_ Once.Type.+ _) = no λ ()
 Unit ≟T (_ ⇒[ _ ] _) = no λ ()
 Unit ≟T Eff _ _ = no λ ()
-Unit ≟T Fix _ = no λ ()
 Unit ≟T TVar _ = no λ ()
 Void ≟T Unit = no λ ()
 Void ≟T Int = no λ ()
@@ -124,7 +121,6 @@ Void ≟T (_ Once.Type.* _) = no λ ()
 Void ≟T (_ Once.Type.+ _) = no λ ()
 Void ≟T (_ ⇒[ _ ] _) = no λ ()
 Void ≟T Eff _ _ = no λ ()
-Void ≟T Fix _ = no λ ()
 Void ≟T TVar _ = no λ ()
 Int ≟T Unit = no λ ()
 Int ≟T Void = no λ ()
@@ -135,7 +131,6 @@ Int ≟T (_ Once.Type.* _) = no λ ()
 Int ≟T (_ Once.Type.+ _) = no λ ()
 Int ≟T (_ ⇒[ _ ] _) = no λ ()
 Int ≟T Eff _ _ = no λ ()
-Int ≟T Fix _ = no λ ()
 Int ≟T TVar _ = no λ ()
 Float ≟T Unit = no λ ()
 Float ≟T Void = no λ ()
@@ -146,7 +141,6 @@ Float ≟T (_ Once.Type.* _) = no λ ()
 Float ≟T (_ Once.Type.+ _) = no λ ()
 Float ≟T (_ ⇒[ _ ] _) = no λ ()
 Float ≟T Eff _ _ = no λ ()
-Float ≟T Fix _ = no λ ()
 Float ≟T TVar _ = no λ ()
 Str ≟T Unit = no λ ()
 Str ≟T Void = no λ ()
@@ -157,7 +151,6 @@ Str ≟T (_ Once.Type.* _) = no λ ()
 Str ≟T (_ Once.Type.+ _) = no λ ()
 Str ≟T (_ ⇒[ _ ] _) = no λ ()
 Str ≟T Eff _ _ = no λ ()
-Str ≟T Fix _ = no λ ()
 Str ≟T TVar _ = no λ ()
 Buffer ≟T Unit = no λ ()
 Buffer ≟T Void = no λ ()
@@ -168,7 +161,6 @@ Buffer ≟T (_ Once.Type.* _) = no λ ()
 Buffer ≟T (_ Once.Type.+ _) = no λ ()
 Buffer ≟T (_ ⇒[ _ ] _) = no λ ()
 Buffer ≟T Eff _ _ = no λ ()
-Buffer ≟T Fix _ = no λ ()
 Buffer ≟T TVar _ = no λ ()
 (_ Once.Type.* _) ≟T Unit = no λ ()
 (_ Once.Type.* _) ≟T Void = no λ ()
@@ -179,7 +171,6 @@ Buffer ≟T TVar _ = no λ ()
 (_ Once.Type.* _) ≟T (_ Once.Type.+ _) = no λ ()
 (_ Once.Type.* _) ≟T (_ ⇒[ _ ] _) = no λ ()
 (_ Once.Type.* _) ≟T Eff _ _ = no λ ()
-(_ Once.Type.* _) ≟T Fix _ = no λ ()
 (_ Once.Type.* _) ≟T TVar _ = no λ ()
 (_ Once.Type.+ _) ≟T Unit = no λ ()
 (_ Once.Type.+ _) ≟T Void = no λ ()
@@ -190,7 +181,6 @@ Buffer ≟T TVar _ = no λ ()
 (_ Once.Type.+ _) ≟T (_ Once.Type.* _) = no λ ()
 (_ Once.Type.+ _) ≟T (_ ⇒[ _ ] _) = no λ ()
 (_ Once.Type.+ _) ≟T Eff _ _ = no λ ()
-(_ Once.Type.+ _) ≟T Fix _ = no λ ()
 (_ Once.Type.+ _) ≟T TVar _ = no λ ()
 (_ ⇒[ _ ] _) ≟T Unit = no λ ()
 (_ ⇒[ _ ] _) ≟T Void = no λ ()
@@ -201,7 +191,6 @@ Buffer ≟T TVar _ = no λ ()
 (_ ⇒[ _ ] _) ≟T (_ Once.Type.* _) = no λ ()
 (_ ⇒[ _ ] _) ≟T (_ Once.Type.+ _) = no λ ()
 (_ ⇒[ _ ] _) ≟T Eff _ _ = no λ ()
-(_ ⇒[ _ ] _) ≟T Fix _ = no λ ()
 (_ ⇒[ _ ] _) ≟T TVar _ = no λ ()
 Eff _ _ ≟T Unit = no λ ()
 Eff _ _ ≟T Void = no λ ()
@@ -212,19 +201,7 @@ Eff _ _ ≟T Buffer = no λ ()
 Eff _ _ ≟T (_ Once.Type.* _) = no λ ()
 Eff _ _ ≟T (_ Once.Type.+ _) = no λ ()
 Eff _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
-Eff _ _ ≟T Fix _ = no λ ()
 Eff _ _ ≟T TVar _ = no λ ()
-Fix _ ≟T Unit = no λ ()
-Fix _ ≟T Void = no λ ()
-Fix _ ≟T Int = no λ ()
-Fix _ ≟T Float = no λ ()
-Fix _ ≟T Str = no λ ()
-Fix _ ≟T Buffer = no λ ()
-Fix _ ≟T (_ Once.Type.* _) = no λ ()
-Fix _ ≟T (_ Once.Type.+ _) = no λ ()
-Fix _ ≟T (_ ⇒[ _ ] _) = no λ ()
-Fix _ ≟T Eff _ _ = no λ ()
-Fix _ ≟T TVar _ = no λ ()
 TVar _ ≟T Unit = no λ ()
 TVar _ ≟T Void = no λ ()
 TVar _ ≟T Int = no λ ()
@@ -235,7 +212,6 @@ TVar _ ≟T (_ Once.Type.* _) = no λ ()
 TVar _ ≟T (_ Once.Type.+ _) = no λ ()
 TVar _ ≟T (_ ⇒[ _ ] _) = no λ ()
 TVar _ ≟T Eff _ _ = no λ ()
-TVar _ ≟T Fix _ = no λ ()
 -- OCP-0003: μ-type and ν-type cases
 (μ-type F₁) ≟T (μ-type F₂) with F₁ ≟F F₂
 ... | yes refl = yes refl
@@ -253,7 +229,6 @@ TVar _ ≟T Fix _ = no λ ()
 μ-type _ ≟T (_ Once.Type.+ _) = no λ ()
 μ-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
 μ-type _ ≟T Eff _ _ = no λ ()
-μ-type _ ≟T Fix _ = no λ ()
 μ-type _ ≟T TVar _ = no λ ()
 μ-type _ ≟T ν-type _ = no λ ()
 ν-type _ ≟T Unit = no λ ()
@@ -266,7 +241,6 @@ TVar _ ≟T Fix _ = no λ ()
 ν-type _ ≟T (_ Once.Type.+ _) = no λ ()
 ν-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
 ν-type _ ≟T Eff _ _ = no λ ()
-ν-type _ ≟T Fix _ = no λ ()
 ν-type _ ≟T TVar _ = no λ ()
 ν-type _ ≟T μ-type _ = no λ ()
 Unit ≟T μ-type _ = no λ ()
@@ -289,8 +263,6 @@ Buffer ≟T ν-type _ = no λ ()
 (_ ⇒[ _ ] _) ≟T ν-type _ = no λ ()
 Eff _ _ ≟T μ-type _ = no λ ()
 Eff _ _ ≟T ν-type _ = no λ ()
-Fix _ ≟T μ-type _ = no λ ()
-Fix _ ≟T ν-type _ = no λ ()
 TVar _ ≟T μ-type _ = no λ ()
 TVar _ ≟T ν-type _ = no λ ()
 
@@ -439,7 +411,6 @@ mutual
   applySubst σ (A Once.Type.+ B) = applySubst σ A Once.Type.+ applySubst σ B
   applySubst σ (A ⇒[ q ] B) = applySubst σ A ⇒[ q ] applySubst σ B
   applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
-  applySubst σ (Fix A) = Fix (applySubst σ A)
   applySubst σ (μ-type F) = μ-type (applySubstF' σ F)
   applySubst σ (ν-type F) = ν-type (applySubstF' σ F)
   applySubst σ (TVar x) with lookupSubst σ x
@@ -474,9 +445,6 @@ instantiate ty counter = go ty counter emptySubst
       let (A' , n') = go A n σ
           (B' , n'') = go B n' σ
       in Eff A' B' , n''
-    go (Fix A) n σ =
-      let (A' , n') = go A n σ
-      in Fix A' , n'
     -- OCP-0003: μ-type and ν-type pass through (functors don't contain TVars)
     go (μ-type F) n σ = μ-type F , n
     go (ν-type F) n σ = ν-type F , n
@@ -582,20 +550,7 @@ builtinType "arr" n =
   in just ((a ⇒ b) ⇒ Eff a b ,
           Surface.lam Many (Surface.arr' (Surface.var zero)) ,
           suc (suc n))
--- fold: F → Fix F
--- fold = λx. roll' x (where roll' is the Surface constructor)
-builtinType "fold" n =
-  let f = TVar (freshTVar n)
-  in just (f ⇒ Fix f ,
-          Surface.lam Many (Surface.roll' (Surface.var zero)) ,
-          suc n)
--- unfold: Fix F → F
--- unfold = λx. unroll' x (where unroll' is the Surface constructor)
-builtinType "unfold" n =
-  let f = TVar (freshTVar n)
-  in just (Fix f ⇒ f ,
-          Surface.lam Many (Surface.unroll' (Surface.var zero)) ,
-          suc n)
+-- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana for recursive types.
 -- case: (A → C) → (B → C) → (A + B) → C
 -- case = λf. λg. λx. case' x (f a) (g b)
 -- This is the copairing (coproduct eliminator) as a curried function.
@@ -768,7 +723,6 @@ mutual
           inferArgEff (success A' argExpr argDepth argFresh usageArg) with A ≟T A'
           ... | yes refl = success B (Surface.effApp funExpr argExpr) (funDepth ⊔ argDepth) argFresh (usageFun +ᵘ usageArg)
           ... | no _ = failure "Type mismatch in effect application"
-      inferApp (success (Fix _) _ _ _ _) = failure "Expected function type in application"
       inferApp (success (TVar _) _ _ _ _) = failure "Expected function type in application"
       -- OCP-0003: μ-type and ν-type are not function types
       inferApp (success (μ-type _) _ _ _ _) = failure "Expected function type in application"
@@ -835,7 +789,6 @@ mutual
       inferCase (success (_ Once.Type.* _) _ _ _ _) = failure "Expected sum type in case"
       inferCase (success (_ ⇒[ _ ] _) _ _ _ _) = failure "Expected sum type in case"
       inferCase (success (Eff _ _) _ _ _ _) = failure "Expected sum type in case"
-      inferCase (success (Fix _) _ _ _ _) = failure "Expected sum type in case"
       inferCase (success (TVar _) _ _ _ _) = failure "Expected sum type in case"
       -- OCP-0003: μ-type and ν-type are not sum types
       inferCase (success (μ-type _) _ _ _ _) = failure "Expected sum type in case"

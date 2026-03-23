@@ -43,24 +43,22 @@
 -- The rules are documented here and proven semantically in Category/Laws.agda.
 --
 -- =======================================================================
--- Stream Fusion in Once
+-- Stream Fusion in Once (OCP-0003)
 -- =======================================================================
 --
--- These coproduct fusion rules, combined with the fold/unfold rules in
--- Optimize.agda, provide stream fusion semantics for recursive types.
+-- These coproduct fusion rules, combined with the recursion scheme laws,
+-- provide stream fusion semantics for recursive types.
 --
--- In Once, a list type is: List A = Fix (Unit + (A × List A))
--- A list map operation is: map f = (fold Heap) ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ unfold
+-- With OCP-0003, list map is expressed as a hylomorphism:
+--   List A = μ (K Unit ⊕ (K A ⊗ Id))
+--   map f = Hylo (In m ∘ bimap id (bimap f id)) Out
 --
--- For map f ∘ map g:
---   = (fold Heap) ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ unfold ∘ (fold Heap) ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
---   = (fold Heap) ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ id ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
---     (by unfold ∘ (fold Heap) = id from Optimize.agda)
---   = (fold Heap) ∘ [inl, inr ∘ ⟨f ∘ fst, snd⟩] ∘ [inl, inr ∘ ⟨g ∘ fst, snd⟩] ∘ unfold
---   = (fold Heap) ∘ [inl, inr ∘ (⟨f ∘ fst, snd⟩ ∘ ⟨g ∘ fst, snd⟩)] ∘ unfold
---     (by coproduct functor fusion, Rule 1 below)
---   = (fold Heap) ∘ [inl, inr ∘ ⟨(f ∘ g) ∘ fst, snd⟩] ∘ unfold
---   = map (f ∘ g)  -- single traversal!
+-- For map f ∘ map g, hylomorphism fusion gives:
+--   map f ∘ map g = Hylo alg₁ Out ∘ Hylo alg₂ Out
+--                 = Hylo (alg₁ ∘ fmap alg₂) Out   (by hylo fusion)
+--                 = map (f ∘ g)                   -- single traversal!
+--
+-- The key is that Hylo IS the fused form - no intermediate structure built.
 --
 -- =======================================================================
 -- Coproduct Fusion Rules
@@ -152,9 +150,7 @@ fusion-once (curry f m) = curry (fusion-once f) m
 -- Apply: nothing to fuse
 fusion-once apply = apply
 
--- Fixed points (general): nothing to fuse
-fusion-once (fold _) = fold Heap
-fusion-once unfold = unfold
+-- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 
 -- Recursion schemes (OCP-0003): recurse into algebras/coalgebras
 --

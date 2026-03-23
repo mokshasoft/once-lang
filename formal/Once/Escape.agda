@@ -21,18 +21,16 @@
 --      (closure immediately applied, pair immediately consumed)
 --   6. apply ∘ ⟨ f , x ⟩ m → apply ∘ ⟨ f , x ⟩ Stack  (pair consumed by apply)
 --      (generalizes rule 5 for non-curry functions)
---   7. fold ∘ inl m → fold ∘ inl Stack  (injection consumed by fold)
---   8. fold ∘ inr m → fold ∘ inr Stack  (injection consumed by fold)
---   9. terminal ∘ ⟨ f , g ⟩ m → terminal ∘ ⟨ f , g ⟩ Stack  (pair discarded)
---  10. terminal ∘ curry f m → terminal ∘ curry f Stack  (closure discarded)
---  11. (f ∘ fst) ∘ ⟨ g , h ⟩ m → (f ∘ fst) ∘ ⟨ g , h ⟩ Stack  (pair consumed by fst)
---  12. (f ∘ snd) ∘ ⟨ g , h ⟩ m → (f ∘ snd) ∘ ⟨ g , h ⟩ Stack  (pair consumed by snd)
+--   7. terminal ∘ ⟨ f , g ⟩ m → terminal ∘ ⟨ f , g ⟩ Stack  (pair discarded)
+--   8. terminal ∘ curry f m → terminal ∘ curry f Stack  (closure discarded)
+--   9. (f ∘ fst) ∘ ⟨ g , h ⟩ m → (f ∘ fst) ∘ ⟨ g , h ⟩ Stack  (pair consumed by fst)
+--  10. (f ∘ snd) ∘ ⟨ g , h ⟩ m → (f ∘ snd) ∘ ⟨ g , h ⟩ Stack  (pair consumed by snd)
 --
--- Rules 7-8 are especially powerful with linear types: linearity guarantees
--- the injection is used exactly once, so stack allocation is provably safe.
--- Rules 9-10 are edge cases for dead code that wasn't eliminated.
--- Rules 11-12 are high-impact for let bindings: `let x = e1 in f x` desugars to
+-- Rules 7-8 are edge cases for dead code that wasn't eliminated.
+-- Rules 9-10 are high-impact for let bindings: `let x = e1 in f x` desugars to
 -- `(f ∘ snd) ∘ ⟨id, e1⟩` which is now optimized.
+--
+-- OCP-0003: fold/unfold rules removed. Use In/Cata/Out/Ana for recursive types.
 ------------------------------------------------------------------------
 
 module Once.Escape where
@@ -97,9 +95,7 @@ escape-once (curry {q = q} f m) = curry {q = q} (escape-once f) m
 -- Apply: no allocation in apply itself
 escape-once apply = apply
 
--- Fixed points: no allocation
-escape-once (fold _) = fold Heap
-escape-once unfold = unfold
+-- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 
 -- Effects: no allocation
 escape-once arr = arr

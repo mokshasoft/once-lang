@@ -19,7 +19,7 @@ open import Data.Bool using (if_then_else_)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; Fix; TVar;
+                             _*_; _+_; _⇒[_]_; Eff; TVar;
                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 
 ------------------------------------------------------------------------
@@ -68,7 +68,6 @@ mutual
   substTVar name rep (a + b) = substTVar name rep a + substTVar name rep b
   substTVar name rep (a ⇒[ q ] b) = substTVar name rep a ⇒[ q ] substTVar name rep b
   substTVar name rep (Eff a b) = Eff (substTVar name rep a) (substTVar name rep b)
-  substTVar name rep (Fix f) = Fix (substTVar name rep f)
   substTVar name rep (μ-type F) = μ-type (substTVarF name rep F)
   substTVar name rep (ν-type F) = ν-type (substTVarF name rep F)
 
@@ -104,6 +103,5 @@ mutual
   expandAliases env (a + b) = expandAliases env a + expandAliases env b
   expandAliases env (a ⇒[ q ] b) = expandAliases env a ⇒[ q ] expandAliases env b
   expandAliases env (Eff a b) = Eff (expandAliases env a) (expandAliases env b)
-  expandAliases env (Fix f) = Fix (expandAliases env f)
   expandAliases env (μ-type F) = μ-type (expandAliasesF env F)
   expandAliases env (ν-type F) = ν-type (expandAliasesF env F)

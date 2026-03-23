@@ -51,9 +51,7 @@ data SurfaceIR : Type → Type → Set where
   curry   : ∀ {A B C} → SurfaceIR (A * B) C → SurfaceIR A (B ⇒ C)
   apply   : ∀ {A B} → SurfaceIR ((A ⇒ B) * A) B
 
-  -- Recursive types (Fixed point isomorphism)
-  fold    : ∀ {F} → SurfaceIR F (Fix F)
-  unfold  : ∀ {F} → SurfaceIR (Fix F) F
+  -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana.
 
   -- Effect lifting (D032)
   arr     : ∀ {A B} → SurfaceIR (A ⇒ B) (Eff A B)

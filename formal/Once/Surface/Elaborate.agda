@@ -214,12 +214,7 @@ elaborate (ne e₁ e₂) = neIR ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap
 -- IR arr : (A ⇒ B) → Eff A B
 elaborate (arr' f) = arr ∘ elaborate f
 
--- Fixed point constructors
--- roll wraps one layer: F → Fix F
-elaborate (roll' e) = (fold Heap) ∘ elaborate e
-
--- unroll unwraps one layer: Fix F → F
-elaborate (unroll' e) = unfold ∘ elaborate e
+-- OCP-0003: roll'/unroll' removed. Use In/Cata/Out/Ana directly.
 
 -- Imported primitive: call external function by name
 -- Like intLit/strLit, ignores environment and produces the result
