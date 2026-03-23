@@ -1,19 +1,29 @@
 # Makefile for the Once bootstrap normalizer verification
 #
 # Run from bootstrap/ directory: make -C normalizer
-# Or from normalizer/ directory with: cd .. && agda normalizer/MainTheorem.agda
+# Or from normalizer/ directory with: cd .. && agda normalizer/Main.agda
 
 AGDA := cd .. && agda
 AGDA_FILES := $(shell find . -name "*.agda")
 
-.PHONY: all check check-main postulates postulates-summary clean help
+.PHONY: all tcb0 main check postulates postulates-summary clean help
 
-# Default: type-check the main theorem
-all: check-main
+# Default: type-check both TCB0 (postulate-free) and Main
+all: tcb0 main
 
-# Type-check the main theorem (pulls in all dependencies)
-check-main:
-	$(AGDA) normalizer/MainTheorem.agda
+# Type-check TCB0 with --safe flag (postulate-free verification)
+# This is the trusted computing base - no axioms required
+tcb0:
+	@echo "=== Verifying TCB0 (postulate-free, --safe) ==="
+	$(AGDA) --safe normalizer/TCB0.agda
+	@echo "=== TCB0 verification complete ==="
+
+# Type-check Main (full theory with postulates)
+# Uses established mathematical results (strong normalization, confluence)
+main:
+	@echo "=== Verifying Main (with postulates) ==="
+	$(AGDA) normalizer/Main.agda
+	@echo "=== Main verification complete ==="
 
 # Type-check all Agda files individually
 check:
@@ -24,17 +34,29 @@ check:
 	done
 	@echo "All files type-check successfully."
 
-# Check specific modules
-check-foundations:
-	$(AGDA) normalizer/Foundations/CCC.agda
-	$(AGDA) normalizer/Foundations/Encoding.agda
-	$(AGDA) normalizer/Foundations/Confluence.agda
+# Check specific module groups
+check-syntax:
+	$(AGDA) normalizer/Syntax/Types.agda
+	$(AGDA) normalizer/Syntax/CCC.agda
+	$(AGDA) normalizer/Syntax/NoRedex.agda
+	$(AGDA) normalizer/Syntax/NormalForm.agda
+	$(AGDA) normalizer/Syntax/BetaNormalForm.agda
 
-check-correctness:
-	$(AGDA) normalizer/Correctness/Correctness.agda
+check-encoding:
+	$(AGDA) normalizer/Encoding/Encoding.agda
+	$(AGDA) normalizer/Encoding/TermFunctor.agda
+	$(AGDA) normalizer/Encoding/Catamorphisms.agda
 
-check-implementation:
-	$(AGDA) normalizer/Implementation/Normalizer.agda
+check-combinators:
+	$(AGDA) normalizer/Combinators/Chain.agda
+	$(AGDA) normalizer/Combinators/ReductionCombinators.agda
+	$(AGDA) normalizer/Combinators/DispatchCombinators.agda
+	$(AGDA) normalizer/Combinators/OutIn.agda
+
+check-theory:
+	$(AGDA) normalizer/Theory/Spec/AlgebraSpec.agda
+	$(AGDA) normalizer/Theory/Spec/NormalizerSpec.agda
+	$(AGDA) normalizer/Theory/GeneralCorrectness/Correctness.agda
 
 # Quick grep for postulate blocks
 postulates-quick:
@@ -98,18 +120,28 @@ clean:
 # Help
 help:
 	@echo "Available targets:"
-	@echo "  all                - Type-check main theorem (default)"
-	@echo "  check-main         - Type-check MainTheorem.agda (full verification)"
-	@echo "  check              - Type-check all Agda files individually"
-	@echo "  check-foundations  - Check only Foundations modules"
-	@echo "  check-correctness  - Check Correctness module"
-	@echo "  check-implementation - Check Implementation/Normalizer"
-	@echo "  postulates-quick   - Quick grep for postulate blocks"
-	@echo "  postulates         - List all postulates with their types"
-	@echo "  postulates-summary - Summary count of postulates per file"
-	@echo "  theorems           - List key proven theorems"
-	@echo "  holes              - Find unfinished proofs ({!!})"
-	@echo "  search PATTERN=x   - Search for pattern in all files"
-	@echo "  loc                - Count lines of code"
-	@echo "  clean              - Remove generated .agdai files"
-	@echo "  help               - Show this help"
+	@echo ""
+	@echo "  Primary verification:"
+	@echo "    all              - Verify both TCB0 and Main (default)"
+	@echo "    tcb0             - Verify postulate-free core (--safe flag)"
+	@echo "    main             - Verify full theorem (uses postulates)"
+	@echo ""
+	@echo "  Module checks:"
+	@echo "    check            - Type-check all Agda files individually"
+	@echo "    check-syntax     - Check Syntax/ modules"
+	@echo "    check-encoding   - Check Encoding/ modules"
+	@echo "    check-combinators - Check Combinators/ modules"
+	@echo "    check-theory     - Check Theory/ modules"
+	@echo ""
+	@echo "  Analysis:"
+	@echo "    postulates-quick   - Quick grep for postulate blocks"
+	@echo "    postulates         - List all postulates with their types"
+	@echo "    postulates-summary - Summary count of postulates per file"
+	@echo "    theorems           - List key proven theorems"
+	@echo "    holes              - Find unfinished proofs ({!!})"
+	@echo "    search PATTERN=x   - Search for pattern in all files"
+	@echo "    loc                - Count lines of code"
+	@echo ""
+	@echo "  Maintenance:"
+	@echo "    clean              - Remove generated .agdai files"
+	@echo "    help               - Show this help"
