@@ -45,20 +45,11 @@ open import normalizer.Theory.StandardCCCExtension.ParallelCata
   public
 
 ------------------------------------------------------------------------
--- Cata Complete Development and Triangle Lemma
+-- Cata Complete Development and Triangle Lemma (from CataAxioms)
 ------------------------------------------------------------------------
 
-postulate
-  cata-complete : ∀ {A B} → Term A B → Term A B
-
-postulate
-  cata-triangle : ∀ {A B} {t u : Term A B} →
-                  t ⟹cata u → u ⟹cata cata-complete t
-
-postulate
-  ccc-preserves-cata-structure : ∀ {A B} {t u : Term A B} →
-                                 t ⟶ccc u →
-                                 cata-complete t ⟹cata cata-complete u
+open import normalizer.Axioms.CataAxioms
+  using (cata-complete; cata-triangle; ccc-preserves-cata-structure)
 
 open _⟶_
 open _⟶cata_
@@ -135,7 +126,7 @@ cata-local-confluence p q with cata-diamond (⟶cata→⟹cata p) (⟶cata→⟹
 --   _⟹cata_, ⟹cata-refl, ⟶cata→⟹cata, ⟹cata→⟶*cata
 --   _⟹*cata_, ⟶*cata→⟹*cata, ⟹*cata→⟶*cata
 --
--- Postulates (kept here to avoid circular imports):
+-- From Axioms/CataAxioms:
 --   cata-complete, cata-triangle, ccc-preserves-cata-structure
 --
 -- Derived here (by standard parallel reduction technique):

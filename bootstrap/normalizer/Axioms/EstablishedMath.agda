@@ -114,14 +114,11 @@ postulate
 --   Part 4: Encoding Properties
 --     encode-is-nf                [structural]
 --
--- Additional axioms (kept in their modules to avoid circular imports):
+-- Additional axioms in other Axioms/ files:
 --   Axioms/StandardCCC.agda:
 --     ccc-complete, ccc-triangle
---   Theory/StandardCCCExtension/CataElimination.agda:
---     cata-terminates
---   Theory/StandardCCCExtension/CataCommutation.agda:
---     cata-complete, cata-triangle, ccc-preserves-cata-structure
---   Theory/StandardCCCExtension/RestrictedConfluence.agda:
---     ccc*-confluence, factorize-reduction
+--   Axioms/CataAxioms.agda:
+--     cata-terminates, cata-complete, cata-triangle,
+--     ccc-preserves-cata-structure, ccc*-confluence, factorize-reduction
 ------------------------------------------------------------------------
 
