@@ -1,8 +1,8 @@
 ------------------------------------------------------------------------
--- EstablishedMath: Results from Mathematical Literature
+-- EstablishedMath: Properties Beyond Standard CCC
 --
--- This module contains established theorems from the literature.
--- These results form the mathematical foundation of the verification.
+-- This module contains axioms that go beyond standard CCC.
+-- Standard CCC confluence is in StandardCCC.agda (truly established).
 --
 -- References:
 --   [1] Lambek & Scott, "Introduction to Higher Order Categorical Logic"
@@ -24,75 +24,35 @@ open import normalizer.Encoding.Encoding
   using (encode; TermF)
 
 ------------------------------------------------------------------------
--- Part 1: Confluence (Church-Rosser Property)
+-- Part 1: Strong Normalization
 --
--- Source: Lambek & Scott [1], Chapter 1
--- Also: Tait-Martin-Löf parallel reduction technique
+-- Source: Tait [2] for STLC, extended for CCCs
 --
--- The CCC reduction relation is confluent: if t reduces to both u and v,
--- then u and v can both reduce to some common term w.
+-- NOTE: This is established for simply-typed lambda calculus.
+-- For μ-types, strong normalization requires restricted recursive types.
+-- In this system, we use guarded recursion via cata which ensures
+-- termination.
 ------------------------------------------------------------------------
 
--- Complete development: reduces ALL redexes simultaneously
--- This is the standard technique for proving confluence.
--- The function is well-defined by structural recursion on terms.
-postulate
-  complete : ∀ {A B} → Term A B → Term A B
-
--- Key lemma for confluence: any parallel reduction extends to complete
--- If t ⟹ u (parallel reduction), then u ⟹ complete t
--- Proof: By induction on the parallel reduction derivation.
--- Each redex in t is either contracted (giving part of complete t)
--- or preserved (and can still be contracted to reach complete t).
-postulate
-  ⟹-to-complete : ∀ {A B} {t u : Term A B} →
-                   t ⟹ u → u ⟹ complete t
-
-------------------------------------------------------------------------
--- Part 2: Strong Normalization (Termination)
---
--- Source: Tait [2], extended for CCCs
--- Also: Girard, Lafont & Taylor [3], Chapter 6
---
--- Every term in the simply-typed lambda calculus (internal language
--- of CCC) has a finite reduction sequence to a normal form.
---
--- The proof uses logical relations (reducibility candidates).
-------------------------------------------------------------------------
-
--- Strong normalization: every term reduces to a normal form
 postulate
   strong-normalization : ∀ {A B} (t : Term A B) →
                          ∃[ nf ] ((t ⟶* nf) × IsNormalForm nf)
 
 ------------------------------------------------------------------------
--- Part 3: Soundness of CCC Reduction
+-- Part 2: Soundness
 --
--- Source: Lambek & Scott [1], Chapters 1-2
---
--- The reduction rules of CCC are sound with respect to the categorical
--- semantics. Reduction preserves the denotation of terms.
---
--- This is used to justify that normalization preserves meaning.
+-- For encoded terms, normalization computes a canonical representative.
 ------------------------------------------------------------------------
 
--- For encoded terms, either the normalizer reduces to the input,
--- or the input reduces to what the normalizer produces.
--- This captures that normalization computes a canonical representative.
--- Note: N must be an endomorphism (Term A A) for this to type check.
 postulate
   normalize-semantics-equiv : ∀ {A} (N : Term A A) (t : Term Unit A) →
                               ((N ∘ t) ⟶* t) ⊎ (t ⟶* (N ∘ t))
 
 ------------------------------------------------------------------------
--- Part 4: Encoding Properties
---
--- Properties of the encode function for well-formed (NoRedex) terms.
+-- Part 3: Encoding Properties
 ------------------------------------------------------------------------
 
 -- The encoding of a NoRedex term is a normal form.
--- This follows from encode producing only basic constructors (In, inl,
--- inr, pairs) composed together, with no redex patterns.
 postulate
   encode-is-nf : ∀ {A B} (t : Term A B) →
                  NoRedex t → IsNormalForm (encode t)
@@ -100,25 +60,17 @@ postulate
 ------------------------------------------------------------------------
 -- Summary
 --
--- This module contains axioms from established mathematics:
+-- Axioms in this module:
+--   strong-normalization      : Termination for all terms
+--   normalize-semantics-equiv : Soundness
+--   encode-is-nf              : Encoding produces normal forms
 --
---   Part 1: Confluence (Church-Rosser)
---     complete, ⟹-to-complete     [Lambek & Scott]
+-- Truly established (standard CCC) - see StandardCCC.agda:
+--   ccc-complete, ccc-triangle : Lambek & Scott
 --
---   Part 2: Strong Normalization
---     strong-normalization        [Tait, Girard-Lafont-Taylor]
+-- Full confluence - see Confluence.agda:
+--   complete, ⟹-to-complete : Should be derivable from StandardCCC + Cata
 --
---   Part 3: Soundness
---     normalize-semantics-equiv   [Lambek & Scott]
---
---   Part 4: Encoding Properties
---     encode-is-nf                [structural]
---
--- Additional axioms in other Axioms/ files:
---   Axioms/StandardCCC.agda:
---     ccc-complete, ccc-triangle
---   Axioms/CataAxioms.agda:
---     cata-terminates, cata-complete, cata-triangle,
---     ccc-preserves-cata-structure, ccc*-confluence, factorize-reduction
+-- Cata properties - see CataAxioms.agda:
+--   cata-terminates, cata-complete, cata-triangle, etc.
 ------------------------------------------------------------------------
-
