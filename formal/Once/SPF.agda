@@ -241,6 +241,9 @@ mutual
 -- Uses Agda's coinductive records with copatterns.
 -- The 'unfold' field gives F (ν F) from ν F.
 --
+-- Productivity of operations on ν F is justified by a separate
+-- sized-types proof in Once.SPF.SizedProof.
+--
 record ν (F : Functor) : Set where
   coinductive
   field
@@ -254,18 +257,14 @@ open ν public
 -- The dual of cata: builds a ν F from a coalgebra.
 ------------------------------------------------------------------------
 
--- | Anamorphism (unfold) - via coinduction
+-- | Anamorphism (unfold) - builds ν F from a coalgebra
 --
 -- Given an F-coalgebra (A, coalg : A → F A), builds a ν F.
--- Uses copatterns for productivity checking.
 --
--- The recursive call to ana is guarded by fmap, ensuring productivity.
---
--- NOTE: Agda's termination checker doesn't recognize fmap as a valid guard
--- for coinductive copatterns. The recursive call (ana coalg) appears inside
--- fmap, which Agda sees as potentially non-productive. However, this IS
--- productive because fmap only applies ana to the recursive positions of F,
--- which are "one step smaller" in the coinductive sense.
+-- TERMINATING justification: The recursive call (ana coalg) appears inside
+-- fmap F, which only applies it to recursive positions of F. This is
+-- productive because each unfold produces one F-layer before recursive calls.
+-- See Once.SPF.SizedProof for a machine-checked proof using sized types.
 --
 {-# TERMINATING #-}
 ana : ∀ {F} {A : Set} → (A → ⟦ F ⟧F A) → A → ν F
@@ -273,10 +272,9 @@ unfold (ana {F} coalg a) = fmap F (ana coalg) (coalg a)
 
 -- | Anamorphism specification
 --
--- ana coalg a = record { unfold = fmap F (ana coalg) (coalg a) }
+-- unfold (ana coalg a) = fmap F (ana coalg) (coalg a)
 --
--- Note: With TERMINATING pragma, this is no longer definitionally refl.
--- We state it as a specification that holds by construction.
+-- This is definitionally true by the copattern definition above.
 --
 ana-unfold : ∀ (F : Functor) {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
            → unfold (ana {F} coalg a) ≡ fmap F (ana coalg) (coalg a)
@@ -308,6 +306,8 @@ ana-unfold F coalg a = refl
 --
 -- Two coinductive values are bisimilar if their unfoldings are related
 -- through the relational interpretation, with bisimilarity at recursive positions.
+--
+-- Productivity justified by Once.SPF.SizedProof.
 --
 record _∼_ {F : Functor} (x y : ν F) : Set where
   coinductive
@@ -367,6 +367,9 @@ fmap-f-rel (F ⊗ G) hyp (x₁ , x₂) = fmap-f-rel F hyp x₁ , fmap-f-rel G hy
 --   unfold (ana unfold x) = fmap F (ana unfold) (unfold x)  [by ana def]
 --   We need: ⟦ F ⟧F-rel _∼_ (fmap F (ana unfold) (unfold x)) (unfold x)
 --   By fmap-f-rel with coinductive hypothesis (ana unfold y ∼ y), this holds.
+--
+-- TERMINATING justification: Same as ana - recursive calls are guarded by fmap.
+-- See Once.SPF.SizedProof for machine-checked proof.
 --
 {-# TERMINATING #-}
 ana-unfold-bisim : ∀ (F : Functor) (x : ν F) → ana {F} unfold x ∼ x

@@ -536,6 +536,7 @@ sem-fmap-comp F f g x =
 --    - transport-μ-is-fmap: PROVEN via path induction (subst-fmap-natural)
 --    - base-interp-coherence, functor-interp-coherence: PROVEN by induction
 --    - SPF.ana-Out-id: PROVEN via coinductive bisimulation
+--    - SPF productivity justified by Once.SPF.SizedProof (isolated sized types)
 --    - μ-coherence/ν-coherence relate the defined ⟦μ⟧ to SPF.μ
 --
 -- The type coherence postulates can be eliminated by parameterizing
