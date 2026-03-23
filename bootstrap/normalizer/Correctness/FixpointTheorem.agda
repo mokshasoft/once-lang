@@ -54,10 +54,3 @@ abstract
   --        Transport along the equality.
   normalize-encoding-is-betanf : IsBetaNormalForm normalize-encoded
   normalize-encoding-is-betanf = subst IsBetaNormalForm (sym normalize-encoded-def) (encode-is-betanf normalize)
-
--- For compatibility: given a fixpoint proof, conclude beta-normality
--- (The fixpoint isn't actually needed - encodings are always beta-normal)
-abstract
-  fixpoint-implies-betanf : (normalize ∘ normalize-encoded) ⟶* normalize-encoded →
-                            IsBetaNormalForm normalize-encoded
-  fixpoint-implies-betanf _ = normalize-encoding-is-betanf

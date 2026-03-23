@@ -12,7 +12,6 @@ module normalizer.Implementation.NormalForm where
 open import normalizer.Foundations.Types
 open import normalizer.Foundations.CCC
 open import normalizer.Foundations.Encoding
-open import normalizer.Implementation.Normalizer
 
 -- Import NoRedex definitions
 open import normalizer.Implementation.NoRedex public
@@ -47,7 +46,7 @@ open import normalizer.Implementation.Normalize
 -- We get: normalize ∘ encode t ⟶* encode t
 ------------------------------------------------------------------------
 
-open import normalizer.Implementation.Normalizer
+open import normalizer.Correctness.RefoldIdempotent
   using (refold-idempotent)
 
 ------------------------------------------------------------------------

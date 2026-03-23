@@ -9,7 +9,7 @@
 
 module normalizer.Implementation.Normalize.Handlers where
 
-open import normalizer.Implementation.Normalize.Chain public
+open import normalizer.Foundations.Chain public
 open import normalizer.Implementation.Normalize.Dispatch public
 
 ------------------------------------------------------------------------
