@@ -279,6 +279,34 @@ ana-unfold : ∀ (F : Functor) {A : Set} (coalg : A → ⟦ F ⟧F A) (a : A)
 ana-unfold F coalg a = refl
 
 ------------------------------------------------------------------------
+-- Anamorphism Laws
+--
+-- These laws establish key properties of ana, dual to cata laws.
+------------------------------------------------------------------------
+
+-- | Identity anamorphism: ana unfold ≡ id
+--
+-- When the coalgebra is the destructor (unfold), ana gives back the original value.
+--
+-- Proof sketch (by coinduction/bisimulation):
+--   unfold (ana unfold x)
+--   = fmap F (ana unfold) (unfold x)   [by ana definition]
+--   = fmap F id (unfold x)             [by coinductive hypothesis: ana unfold ≡ id]
+--   = unfold x                         [by fmap-id]
+--
+-- Note: This is postulated because Agda's propositional equality is inductive,
+-- while coinductive types require coinductive proofs (bisimulation). The property
+-- is semantically valid: ana with unfold as coalgebra produces the same observations
+-- at every level as the original value.
+--
+-- A full proof would require either:
+--   1. Sized types for coinductive reasoning
+--   2. An explicit bisimulation relation
+--
+postulate
+  ana-Out-id : ∀ (F : Functor) (x : ν F) → ana {F} unfold x ≡ x
+
+------------------------------------------------------------------------
 -- Embedding μ into ν (finite data is also coinductive)
 --
 -- For finite data, the least and greatest fixed points coincide.

@@ -349,6 +349,24 @@ sem-cata-compute-valid F {A} alg x =
             alg (sem-fmap F (sem-cata-impl F alg) x)
     step5 = cong alg (sym (fmap-coherence F (sem-cata-impl F alg) x))
 
+-- | Identity anamorphism law (via SPF.ana-Out-id)
+--
+-- Core postulates: sem-ana-Out-id : ∀ F x → sem-ana F sem-CoOut x ≡ x
+--
+-- Proof:
+--   sem-ana-impl F sem-CoOut-impl x
+--   = ν-to-sem F (SPF.ana sem-CoOut-impl x)
+--   Since sem-CoOut-impl involves transport, this doesn't directly reduce.
+--   We use the identity ana property from SPF.
+--
+-- Note: This proof requires showing that sem-ana with sem-CoOut as coalgebra
+-- behaves like identity. Due to transport complexity, we postulate this
+-- coherence property.
+--
+postulate
+  sem-ana-Out-id-valid : ∀ F (x : ⟦ν⟧ F)
+                       → sem-ana-impl F (sem-CoOut-impl F) x ≡ x
+
 ------------------------------------------------------------------------
 -- Part 7: Functor Law Inheritance
 --
@@ -413,12 +431,18 @@ sem-fmap-comp F f g x =
 -- 4. Law Validation:
 --    - Lambek's Lemma direction 1 (PROVEN via SPF.fold-unfold)
 --    - Lambek's Lemma direction 2 (PROVEN via SPF.unfold-fold)
---    - Catamorphism computation law (postulated - requires fmapCata proof)
+--    - Catamorphism computation law (PROVEN via SPF.cata-computation)
+--    - Identity anamorphism law (postulated - requires coinductive bisimulation)
 --
 -- 5. Functor Law Inheritance (PROVEN):
 --    - sem-fmap-id, sem-fmap-comp
 --
--- The type coherence postulates (Part 1) can be eliminated by
--- parameterizing Core by the μ/ν implementations.
+-- Remaining postulates:
+--    - μ-coherence, ν-coherence: Type coherence axioms
+--    - transport-μ-is-fmap: Transport equals fmap for polynomial functors
+--    - sem-ana-Out-id-valid: Identity anamorphism (requires bisimulation proof)
+--
+-- The type coherence postulates can be eliminated by parameterizing
+-- Core by the μ/ν implementations.
 --
 -- This completes the semantic coherence layer for OCP-0003 Phase 6.

@@ -944,6 +944,16 @@ Proven laws in `Once.SPF`:
 
 These proofs enable `sem-cata-compute-valid` in the Coherence layer.
 
+**SPF Anamorphism Laws** ✓ COMPLETE (2026-03-23)
+
+Proven/documented laws in `Once.SPF`:
+
+- `ana-unfold`: `unfold (ana coalg a) ≡ fmap F (ana coalg) (coalg a)` (trivial by definition)
+- `ana-Out-id`: `ana unfold x ≡ x` (postulated - requires coinductive bisimulation)
+
+Note: `ana-Out-id` is semantically valid but requires either sized types or an explicit
+bisimulation relation to prove in Agda. Postulated with clear justification.
+
 **Recursion Scheme Laws** ✓ COMPLETE (2026-03-23)
 
 Semantic and IR-level laws for recursion schemes:
@@ -997,9 +1007,11 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Integrate with D037 polynomial functor proofs (Coherence.agda)
 - [x] Prove SPF cata laws: `cata-computation`, `cata-In-id`
 - [x] Prove `sem-cata-compute-valid` via SPF.cata-computation
+- [x] Add SPF ana laws: `ana-unfold` (trivial), `ana-Out-id` (postulated - requires bisimulation)
+- [x] Add `sem-ana-Out-id-valid` postulate to Coherence.agda
 - [ ] Align with OCP-0004 bootstrap verification
 - [ ] Replace transport-μ-is-fmap postulate with explicit proof
-- [ ] Prove SPF ana laws (for sem-ana validation)
+- [ ] Prove ana-Out-id properly (requires sized types or bisimulation)
 - [ ] Full IR law proofs (requires function extensionality)
 
 ---
