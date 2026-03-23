@@ -92,9 +92,11 @@ open import normalizer.Theory.StandardCCCExtension.RestrictedConfluence
 
 -- Uniqueness of normal forms
 open import normalizer.Theory.Uniqueness
-  using ( normalizer-unique    -- NoRedex t → unique normal form
-        ; fixpoint-unique      -- Fixpoint has unique normal form
+  using ( normalizer-unique     -- NoRedex t → unique normal form
+        ; fixpoint-unique       -- Fixpoint has unique normal form
         ; fixpoint-is-unique-nf -- Any nf equals encode normalize
+        ; canonical-normal-form -- NoRedex t → any nf is encode t (KEY)
+        ; encode-is-nf          -- encode of NoRedex is normal form
         )
   public
 
