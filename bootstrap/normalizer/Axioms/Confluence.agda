@@ -3,14 +3,11 @@
 --
 -- Full confluence for _⟹_ (which includes both CCC and cata rules).
 --
--- STATUS: The complete and ⟹-to-complete are still axioms here,
--- but they SHOULD be derivable from:
+-- The combined complete development and triangle lemma are in
+-- CataAxioms, which combines:
 --   - StandardCCC.ccc-complete, ccc-triangle (established)
 --   - CataAxioms.cata-complete, cata-triangle
 --   - CCC/cata commutation properties
---
--- The derivation requires proving that CCC and cata reductions
--- commute, allowing the combined complete development to work.
 ------------------------------------------------------------------------
 
 module normalizer.Axioms.Confluence where
@@ -19,39 +16,23 @@ open import normalizer.Syntax.Types
 open import normalizer.Syntax.CCC
 
 ------------------------------------------------------------------------
--- Combined Complete Development
+-- Import Combined Complete Development from CataAxioms
 --
--- The full _⟹_ relation includes both CCC and cata-beta rules.
--- The complete development handles both:
+-- The full _⟹_ relation includes CCC, cata-beta, and Out/In rules.
+-- The combined complete development handles all of these:
 --
 --   complete (cata F alg ∘ In) = alg' ∘ fmap F (cata F alg')
 --     where alg' = complete alg
 --   complete (fst ∘ ⟨ f , g ⟩) = complete f
---   ... (other CCC rules from ccc-complete)
---   ... (structural cases)
---
--- This combines ccc-complete and cata-complete into one function.
--- The definition is straightforward by structural recursion.
+--   complete (Out ∘ In) = id
+--   complete (In ∘ Out) = id
+--   ... (other CCC rules)
+--   ... (structural recursion)
 ------------------------------------------------------------------------
 
-postulate
-  complete : ∀ {A B} → Term A B → Term A B
-
-------------------------------------------------------------------------
--- Triangle Lemma for Full Reduction
---
--- To derive from StandardCCC + Cata:
---   1. If t ⟹ u via CCC rules only: use ccc-triangle
---   2. If t ⟹ u via cata rules only: use cata-triangle
---   3. If mixed: use commutation (CCC and cata don't interfere)
---
--- The key property: ccc-preserves-cata-structure shows CCC
--- reductions preserve the cata reduction structure, and vice versa.
-------------------------------------------------------------------------
-
-postulate
-  ⟹-to-complete : ∀ {A B} {t u : Term A B} →
-                   t ⟹ u → u ⟹ complete t
+open import normalizer.Axioms.CataAxioms
+  using (complete; ⟹-to-complete)
+  public
 
 ------------------------------------------------------------------------
 -- Diamond Property
