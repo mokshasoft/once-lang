@@ -112,6 +112,7 @@ escape-once (Cata {F} alg) = Cata {F} (escape-once alg)
 escape-once Out = Out
 escape-once (Ana {F} coalg) = Ana {F} (escape-once coalg)
 escape-once (Hylo {F} alg coalg) = Hylo {F} (escape-once alg) (escape-once coalg)
+escape-once Unguard = Unguard
 
 ------------------------------------------------------------------------
 -- Escape Analysis: Bounded Iteration

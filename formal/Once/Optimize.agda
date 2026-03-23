@@ -241,6 +241,37 @@ Buffer ≟Type (μ-type _) = no (λ ())
 Buffer ≟Type (ν-type _) = no (λ ())
 (TVar _) ≟Type (μ-type _) = no (λ ())
 (TVar _) ≟Type (ν-type _) = no (λ ())
+-- GuardedT cases (OCP-0003)
+(GuardedT F A) ≟Type (GuardedT G B) with F ≟Functor G | A ≟Type B
+... | yes refl | yes refl = yes refl
+... | no neq   | _        = no (λ { refl → neq refl })
+... | _        | no neq   = no (λ { refl → neq refl })
+(GuardedT _ _) ≟Type Unit = no (λ ())
+(GuardedT _ _) ≟Type Void = no (λ ())
+(GuardedT _ _) ≟Type (_ * _) = no (λ ())
+(GuardedT _ _) ≟Type (_ + _) = no (λ ())
+(GuardedT _ _) ≟Type (_ ⇒[ _ ] _) = no (λ ())
+(GuardedT _ _) ≟Type (Eff _ _) = no (λ ())
+(GuardedT _ _) ≟Type (μ-type _) = no (λ ())
+(GuardedT _ _) ≟Type (ν-type _) = no (λ ())
+(GuardedT _ _) ≟Type Int = no (λ ())
+(GuardedT _ _) ≟Type Float = no (λ ())
+(GuardedT _ _) ≟Type Str = no (λ ())
+(GuardedT _ _) ≟Type Buffer = no (λ ())
+(GuardedT _ _) ≟Type (TVar _) = no (λ ())
+Unit ≟Type (GuardedT _ _) = no (λ ())
+Void ≟Type (GuardedT _ _) = no (λ ())
+(_ * _) ≟Type (GuardedT _ _) = no (λ ())
+(_ + _) ≟Type (GuardedT _ _) = no (λ ())
+(_ ⇒[ _ ] _) ≟Type (GuardedT _ _) = no (λ ())
+(Eff _ _) ≟Type (GuardedT _ _) = no (λ ())
+(μ-type _) ≟Type (GuardedT _ _) = no (λ ())
+(ν-type _) ≟Type (GuardedT _ _) = no (λ ())
+Int ≟Type (GuardedT _ _) = no (λ ())
+Float ≟Type (GuardedT _ _) = no (λ ())
+Str ≟Type (GuardedT _ _) = no (λ ())
+Buffer ≟Type (GuardedT _ _) = no (λ ())
+(TVar _) ≟Type (GuardedT _ _) = no (λ ())
 
 ------------------------------------------------------------------------
 -- Functor equality implementation
@@ -450,6 +481,7 @@ mutual
   optimize-once-structural Out = Out
   optimize-once-structural (Ana {F} coalg) = Ana {F} (optimize-once coalg)
   optimize-once-structural (Hylo {F} alg coalg) = Hylo {F} (optimize-once alg) (optimize-once coalg)
+  optimize-once-structural Unguard = Unguard
 
   -- | Type-directed optimization
   optimize-once : ∀ {A B} → IR A B → IR A B

@@ -99,13 +99,22 @@ data IR : Type → Type → Set where
   -- Out: νF → F(νF) (observation/destructor)
   Out : ∀ {F} → IR (ν-type F) (⟦ F ⟧T (ν-type F))
 
-  -- Ana: given IR morphism (A → F(A)), produce A → νF
-  -- Productivity ensured by guardedness (each step produces one F-layer)
-  Ana : ∀ {F A} → IR A (⟦ F ⟧T A) → IR A (ν-type F)
+  -- Ana: given IR morphism (A → GuardedT F A), produce A → νF
+  -- OCP-0003: Productivity enforced by requiring GuardedT output.
+  -- The coalgebra must produce guarded values, guaranteeing that each
+  -- unfolding step produces one F-layer before any recursive call.
+  -- This makes productivity DEFINITIONAL - unguarded coalgebras cannot type-check.
+  Ana : ∀ {F A} → IR A (GuardedT F A) → IR A (ν-type F)
+
+  -- Unguard: extract underlying functor value from guarded value
+  -- GuardedT F A → ⟦ F ⟧T A
+  -- This "consumes" the guardedness guarantee - use after Ana has processed.
+  Unguard : ∀ {F A} → IR (GuardedT F A) (⟦ F ⟧T A)
 
   -- Hylo: fusion of cata and ana (deforestation)
+  -- OCP-0003: coalg must produce GuardedT for productivity
   -- cata alg ∘ ana coalg, computed directly without intermediate structure
-  Hylo : ∀ {F A B} → IR (⟦ F ⟧T B) B → IR A (⟦ F ⟧T A) → IR A B
+  Hylo : ∀ {F A B} → IR (⟦ F ⟧T B) B → IR A (GuardedT F A) → IR A B
 
   -- Explicit heap deallocation
   -- Added by escape analysis when heap values can be freed.

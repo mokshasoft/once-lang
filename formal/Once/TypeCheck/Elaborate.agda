@@ -265,6 +265,37 @@ Eff _ _ ≟T μ-type _ = no λ ()
 Eff _ _ ≟T ν-type _ = no λ ()
 TVar _ ≟T μ-type _ = no λ ()
 TVar _ ≟T ν-type _ = no λ ()
+-- OCP-0003: GuardedT cases
+(GuardedT F₁ A₁) ≟T (GuardedT F₂ A₂) with F₁ ≟F F₂ | A₁ ≟T A₂
+... | yes refl | yes refl = yes refl
+... | no ¬p | _ = no λ { refl → ¬p refl }
+... | _ | no ¬q = no λ { refl → ¬q refl }
+GuardedT _ _ ≟T Unit = no λ ()
+GuardedT _ _ ≟T Void = no λ ()
+GuardedT _ _ ≟T Int = no λ ()
+GuardedT _ _ ≟T Float = no λ ()
+GuardedT _ _ ≟T Str = no λ ()
+GuardedT _ _ ≟T Buffer = no λ ()
+GuardedT _ _ ≟T (_ Once.Type.* _) = no λ ()
+GuardedT _ _ ≟T (_ Once.Type.+ _) = no λ ()
+GuardedT _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
+GuardedT _ _ ≟T Eff _ _ = no λ ()
+GuardedT _ _ ≟T TVar _ = no λ ()
+GuardedT _ _ ≟T μ-type _ = no λ ()
+GuardedT _ _ ≟T ν-type _ = no λ ()
+Unit ≟T GuardedT _ _ = no λ ()
+Void ≟T GuardedT _ _ = no λ ()
+Int ≟T GuardedT _ _ = no λ ()
+Float ≟T GuardedT _ _ = no λ ()
+Str ≟T GuardedT _ _ = no λ ()
+Buffer ≟T GuardedT _ _ = no λ ()
+(_ Once.Type.* _) ≟T GuardedT _ _ = no λ ()
+(_ Once.Type.+ _) ≟T GuardedT _ _ = no λ ()
+(_ ⇒[ _ ] _) ≟T GuardedT _ _ = no λ ()
+Eff _ _ ≟T GuardedT _ _ = no λ ()
+TVar _ ≟T GuardedT _ _ = no λ ()
+μ-type _ ≟T GuardedT _ _ = no λ ()
+ν-type _ ≟T GuardedT _ _ = no λ ()
 
 ------------------------------------------------------------------------
 -- Bidirectional Type Checking Results
@@ -413,6 +444,7 @@ mutual
   applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
   applySubst σ (μ-type F) = μ-type (applySubstF' σ F)
   applySubst σ (ν-type F) = ν-type (applySubstF' σ F)
+  applySubst σ (GuardedT F A) = GuardedT (applySubstF' σ F) (applySubst σ A)
   applySubst σ (TVar x) with lookupSubst σ x
   ... | just A = A
   ... | nothing = TVar x  -- Unbound type variable remains
@@ -445,9 +477,12 @@ instantiate ty counter = go ty counter emptySubst
       let (A' , n') = go A n σ
           (B' , n'') = go B n' σ
       in Eff A' B' , n''
-    -- OCP-0003: μ-type and ν-type pass through (functors don't contain TVars)
+    -- OCP-0003: μ-type, ν-type, and GuardedT pass through (functors don't contain TVars)
     go (μ-type F) n σ = μ-type F , n
     go (ν-type F) n σ = ν-type F , n
+    go (GuardedT F A) n σ =
+      let (A' , n') = go A n σ
+      in GuardedT F A' , n'
     go (TVar x) n σ with lookupSubst σ x
     ... | just A = A , n  -- Already instantiated
     ... | nothing =
@@ -724,9 +759,10 @@ mutual
           ... | yes refl = success B (Surface.effApp funExpr argExpr) (funDepth ⊔ argDepth) argFresh (usageFun +ᵘ usageArg)
           ... | no _ = failure "Type mismatch in effect application"
       inferApp (success (TVar _) _ _ _ _) = failure "Expected function type in application"
-      -- OCP-0003: μ-type and ν-type are not function types
+      -- OCP-0003: μ-type, ν-type, and GuardedT are not function types
       inferApp (success (μ-type _) _ _ _ _) = failure "Expected function type in application"
       inferApp (success (ν-type _) _ _ _ _) = failure "Expected function type in application"
+      inferApp (success (GuardedT _ _) _ _ _ _) = failure "Expected function type in application"
 
   -- Pair (depth = max of both elements, thread fresh counter)
   -- QTT: Both components contribute to usage, so combine with +ᵘ
@@ -790,9 +826,10 @@ mutual
       inferCase (success (_ ⇒[ _ ] _) _ _ _ _) = failure "Expected sum type in case"
       inferCase (success (Eff _ _) _ _ _ _) = failure "Expected sum type in case"
       inferCase (success (TVar _) _ _ _ _) = failure "Expected sum type in case"
-      -- OCP-0003: μ-type and ν-type are not sum types
+      -- OCP-0003: μ-type, ν-type, and GuardedT are not sum types
       inferCase (success (μ-type _) _ _ _ _) = failure "Expected sum type in case"
       inferCase (success (ν-type _) _ _ _ _) = failure "Expected sum type in case"
+      inferCase (success (GuardedT _ _) _ _ _ _) = failure "Expected sum type in case"
 
   -- Integer literal: produce int n
   -- Depth 0 (no nesting), no usage (literals don't use variables)

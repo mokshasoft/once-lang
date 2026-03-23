@@ -389,46 +389,49 @@ postulate
 
 -- | Hylo semantics: recursive application of algebra after coalgebra
 --
--- hylo alg coalg x = alg (fmap (hylo alg coalg) (coalg x))
+-- hylo alg coalg x = alg (fmap (hylo alg coalg) (unguard (coalg x)))
 --
 -- This is the defining equation for hylomorphisms.
+-- OCP-0003: coalg now produces GuardedT F A for productivity enforcement.
 --
 -- Derivation from semantic laws:
 --   eval′ (Hylo alg coalg) x
---   = sem-hylo F alg′ coalg′ x                    (by eval Hylo)
---   = alg′ (fmap (sem-hylo F alg′ coalg′) (coalg′ x))  (by sem-hylo-compute)
---   = eval′ alg (fmap-Type (eval′ (Hylo alg coalg)) (eval′ coalg x))
+--   = sem-hylo-guarded F alg′ coalg′ x            (by eval Hylo)
+--   = alg′ (fmap (sem-hylo-guarded F alg′ coalg′) (unguard (coalg′ x)))
+--                                                  (by sem-hylo-guarded-compute)
+--   = eval′ alg (fmap-Type (eval′ (Hylo alg coalg)) (eval′ (Unguard ∘ coalg) x))
 --                                                  (by coercion coherence)
 --
--- The semantic foundation is sem-hylo-compute in Once.Semantics.Core.
+-- The semantic foundation is sem-hylo-guarded in Once.Semantics.Core.
 --
 postulate
   eval-hylo-unfold : ∀ (F : Functor) {A B : Type}
-                     (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧)
+                     (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧)
                    → eval′ (Hylo {F} alg coalg) x ≡
-                     eval′ alg (fmap-Type F (eval′ (Hylo {F} alg coalg)) (eval′ coalg x))
+                     eval′ alg (fmap-Type F (eval′ (Hylo {F} alg coalg)) (eval′ (Unguard ∘ coalg) x))
 
 ------------------------------------------------------------------------
 -- Ana-Out Identity Law (Coinductive)
 --
--- The anamorphism with Out coalgebra is identity on ν-type.
+-- OCP-0003: With guarded corecursion, this law requires reformulation.
+--
+-- Out : IR (ν-type F) (⟦ F ⟧T (ν-type F)) produces unguarded output.
+-- Ana : IR A (GuardedT F A) → IR A (ν-type F) requires guarded coalgebras.
+--
+-- The direct composition Ana Out doesn't type-check because Out produces
+-- ⟦ F ⟧T (ν-type F), not GuardedT F (ν-type F).
+--
+-- The semantic law still holds at the level of sem-ana-Out-id in Core.agda:
+-- if we had a way to "guard" Out's output, Ana (guard ∘ Out) = id.
+--
+-- This is intentional: the guardedness requirement prevents non-productive
+-- coalgebras from being passed to Ana. For observations of existing ν-type
+-- values (like Out), the value is inherently productive, but this must be
+-- made explicit in the type system.
+--
+-- Future work: Add GuardObs : IR (⟦ F ⟧T A) (GuardedT F A) for cases where
+-- guardedness is guaranteed by observation rather than construction.
 ------------------------------------------------------------------------
 
--- | Ana Out ≡ id (identity anamorphism)
---
--- Unfolding with the destructor coalgebra gives back the original value.
---
--- Derivation from semantic laws:
---   eval′ (Ana Out) x
---   = sem-ana F (λ a → coerce (eval′ Out a)) x    (by eval Ana)
---   = sem-ana F (λ a → coerce (coerce⁻¹ (sem-CoOut F a))) x  (by eval Out)
---   = sem-ana F (λ a → sem-CoOut F a) x           (by coerce⁻¹-round-trip)
---   = sem-ana F sem-CoOut x                       (by funext)
---   = x                                           (by sem-ana-Out-id)
---
--- Postulated here because full proof requires function extensionality.
--- The semantic foundation is sem-ana-Out-id in Once.Semantics.Core.
---
-postulate
-  eval-ana-Out-id : ∀ (F : Functor) (x : ⟦ ν-type F ⟧)
-                  → eval′ (Ana {F} (Out {F})) x ≡ x
+-- Note: eval-ana-Out-id removed - doesn't type-check with GuardedT enforcement.
+-- The semantic foundation (sem-ana-Out-id) still holds in Once.Semantics.Core.

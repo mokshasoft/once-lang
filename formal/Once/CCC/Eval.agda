@@ -24,7 +24,9 @@ open import Once.CCC.IR
 open import Once.Semantics.Machine
   using (⟦_⟧; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case;
          -- OCP-0003: fold/unfold removed. Use recursion scheme semantics:
-         sem-In; sem-cata; sem-CoOut; sem-ana; sem-hylo;
+         sem-In; sem-cata; sem-CoOut;
+         -- OCP-0003: Guarded anamorphism for productive corecursion:
+         sem-unguard; sem-ana-guarded; sem-hylo-guarded;
          coerce-functor; coerce-functor⁻¹)
 
 -- Re-export ⟦_⟧ for convenience
@@ -74,11 +76,14 @@ eval ps (In {F} _) x = sem-In F (coerce-functor F (μ-type F) x)
 eval ps (Cata {F} {A} alg) x = sem-cata F (λ fa → eval ps alg (coerce-functor⁻¹ F A fa)) x
 -- Out: observe ν-type (final coalgebra destructor)
 eval ps (Out {F}) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut F x)
--- Ana: unfold with coalgebra to build ν-type
-eval ps (Ana {F} {A} coalg) x = sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
--- Hylo: fused cata ∘ ana (no intermediate structure)
+-- Ana: unfold with GUARDED coalgebra to build ν-type (OCP-0003 productivity)
+-- The coalgebra produces GuardedT F A, ensuring productivity by construction.
+eval ps (Ana {F} {A} coalg) x = sem-ana-guarded F (λ a → eval ps coalg a) x
+-- Unguard: extract functor value from guarded value
+eval ps (Unguard {F} {A}) x = coerce-functor⁻¹ F A (sem-unguard F x)
+-- Hylo: fused cata ∘ ana with GUARDED coalgebra (OCP-0003 productivity)
 eval ps (Hylo {F} {A} {B} alg coalg) x =
-  sem-hylo F
+  sem-hylo-guarded F
     (λ fb → eval ps alg (coerce-functor⁻¹ F B fb))
-    (λ a → coerce-functor F A (eval ps coalg a))
+    (λ a → eval ps coalg a)
     x

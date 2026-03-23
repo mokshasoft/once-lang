@@ -22,7 +22,7 @@ open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; _⇒_; Eff; TVar; Quantity;
-                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type; GuardedT)
 open import Once.TypeCheck.Error using (TypeError; OccursCheck; UnificationError; Result; ok; fail)
 
 ------------------------------------------------------------------------
@@ -73,6 +73,7 @@ mutual
   applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
   applySubst σ (μ-type F) = μ-type (applySubstF σ F)
   applySubst σ (ν-type F) = ν-type (applySubstF σ F)
+  applySubst σ (GuardedT F A) = GuardedT (applySubstF σ F) (applySubst σ A)
   applySubst σ (TVar x) with lookupSubst x σ
   ... | just T  = T
   ... | nothing = TVar x
@@ -107,6 +108,7 @@ mutual
   occurs x (Eff A B) = occurs x A ∨ occurs x B
   occurs x (μ-type F) = occursF x F
   occurs x (ν-type F) = occursF x F
+  occurs x (GuardedT F A) = occursF x F ∨ occurs x A
   occurs x (TVar y) with x ≟ y
   ... | yes _ = true
   ... | no  _ = false

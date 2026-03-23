@@ -53,6 +53,17 @@ postulate
 postulate
   ⟦ν⟧ : Functor → Set
 
+-- | Semantic interpretation of GuardedT (guarded functor values)
+--
+-- ⟦Guarded⟧ F A represents guarded F-shaped values with A at recursive positions.
+-- This is postulated here but instantiated properly via Once.CCC.IR.Guarded.
+--
+-- The actual type would be: Guarded ⟦_⟧ F A from Guarded.agda, but that's at
+-- Set₁ due to universe polymorphism. We postulate at Set for simplicity.
+--
+postulate
+  ⟦Guarded⟧ : Functor → Set → Set
+
 ⟦_⟧ : Type → Set
 ⟦ Unit ⟧         = ⊤
 ⟦ Void ⟧         = ⊥
@@ -63,6 +74,8 @@ postulate
 -- OCP-0003: Fix removed, use μ-type/ν-type
 ⟦ μ-type F ⟧     = ⟦μ⟧ F
 ⟦ ν-type F ⟧     = ⟦ν⟧ F
+-- OCP-0003: GuardedT for productive corecursion
+⟦ GuardedT F A ⟧ = ⟦Guarded⟧ F ⟦ A ⟧
 ⟦ Int ⟧          = IntRep
 ⟦ Float ⟧        = AgdaFloat
 ⟦ Str ⟧          = String
@@ -237,6 +250,30 @@ postulate
 -- | Anamorphism: given coalgebra A → F(A), unfold A → νF
 postulate
   sem-ana : ∀ (F : Functor) {A : Set} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
+
+------------------------------------------------------------------------
+-- Guarded Operations (OCP-0003)
+--
+-- These operations support the GuardedT type for productive corecursion.
+------------------------------------------------------------------------
+
+-- | Unguard: extract functor value from guarded value
+-- This "consumes" the guardedness - the F-layer has been observed.
+postulate
+  sem-unguard : ∀ (F : Functor) {A : Set} → ⟦Guarded⟧ F A → ⟦ F ⟧F A
+
+-- | Guarded anamorphism: given guarded coalgebra A → Guarded F A, unfold A → νF
+-- This is the productive version of sem-ana.
+-- Semantically: sem-ana-guarded F coalg = sem-ana F (sem-unguard F ∘ coalg)
+postulate
+  sem-ana-guarded : ∀ (F : Functor) {A : Set} → (A → ⟦Guarded⟧ F A) → A → ⟦ν⟧ F
+
+-- | Guarded hylomorphism: fused cata with guarded coalgebra
+postulate
+  sem-hylo-guarded : ∀ (F : Functor) {A B : Set}
+                   → (⟦ F ⟧F B → B)           -- algebra
+                   → (A → ⟦Guarded⟧ F A)      -- guarded coalgebra
+                   → A → B
 
 -- | Hylomorphism: fused cata ∘ ana, computed directly
 -- Semantically: hylo alg coalg = cata alg ∘ ana coalg

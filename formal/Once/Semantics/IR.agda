@@ -99,16 +99,19 @@ eval ps (Cata {F} {A} alg) x =
 -- Out: ν-type F → ⟦ F ⟧T (ν-type F)
 eval ps (Out {F}) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut F x)
 --
--- Ana: given coalg : A → ⟦ F ⟧T A, produce A → ν-type F
+-- Ana: given GUARDED coalg : A → GuardedT F A, produce A → ν-type F
+-- OCP-0003: Productivity enforced by requiring GuardedT output.
 eval ps (Ana {F} {A} coalg) x =
-  sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
+  sem-ana-guarded F (λ a → eval ps coalg a) x
+--
+-- Unguard: extract functor value from guarded value
+eval ps (Unguard {F} {A}) x = coerce-functor⁻¹ F A (sem-unguard F x)
 --
 -- Hylo: Cata alg ∘ Ana coalg, computed directly without intermediate
--- Uses fused sem-hylo that doesn't build intermediate μ/ν structure
+-- OCP-0003: Uses GUARDED coalgebra for productivity
 eval ps (Hylo {F} {A} {B} alg coalg) x =
-  let coalg-set = λ a → coerce-functor F A (eval ps coalg a)
-      alg-set   = λ fb → eval ps alg (coerce-functor⁻¹ F B fb)
-  in sem-hylo F alg-set coalg-set x
+  let alg-set = λ fb → eval ps alg (coerce-functor⁻¹ F B fb)
+  in sem-hylo-guarded F alg-set (λ a → eval ps coalg a) x
 
 -- Effect lifting (D032)
 -- arr : (A ⇒ B) → Eff A B

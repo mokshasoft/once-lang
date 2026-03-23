@@ -146,6 +146,11 @@ mutual
     -- Polynomial functor fixed points (OCP-0003: total/productive)
     μ-type : Functor → Type          -- Initial algebra (inductive, total)
     ν-type : Functor → Type          -- Final coalgebra (coinductive, productive)
+    -- Guarded functor values (OCP-0003: productive corecursion)
+    -- GuardedT F A represents F-shaped values where recursive positions
+    -- are "guarded" - each observation produces one F-layer before recursion.
+    -- Used by Ana to enforce productivity at the type level.
+    GuardedT : Functor → Type → Type
     -- Base types for practical programming
     Int    : Type                    -- Machine integers
     Float  : Type                    -- IEEE 754 double-precision floats

@@ -1277,7 +1277,8 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ∃[ mOut ] IRResultAWF mOut (Cata {F} alg) x s alloc
 
     -- | Ana handler: unfolds coalgebra into ν-type
-    run-Ana : ∀ {F A} (mIn : AllocMode) (coalg : IR A (⟦ F ⟧T A))
+    -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
+    run-Ana : ∀ {F A} (mIn : AllocMode) (coalg : IR A (GuardedT F A))
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →
@@ -1288,8 +1289,9 @@ module SumFixWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       IRResultAWF Heap (Ana {F} coalg) x s alloc
 
     -- | Hylo handler: fused cata ∘ ana (deforestation)
+    -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
     run-Hylo : ∀ {F A B} (mIn : AllocMode)
-      (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A))
+      (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A))
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →

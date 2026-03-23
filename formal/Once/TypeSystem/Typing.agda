@@ -203,18 +203,27 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   ty-Out : ∀ {Γ F} → Γ ⊢ ν-type F ⟶ ⟦ F ⟧T (ν-type F)
 
   -- Ana: anamorphism (unfold into ν-type)
-  --      Γ ⊢ A ⟶ ⟦ F ⟧T A
-  -- ──────────────────────────────
-  --    Γ ⊢ A ⟶ ν-type F
+  -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
+  --      Γ ⊢ A ⟶ GuardedT F A
+  -- ───────────────────────────────
+  --      Γ ⊢ A ⟶ ν-type F
   --
-  ty-Ana : ∀ {Γ F A} → Γ ⊢ A ⟶ ⟦ F ⟧T A → Γ ⊢ A ⟶ ν-type F
+  ty-Ana : ∀ {Γ F A} → Γ ⊢ A ⟶ GuardedT F A → Γ ⊢ A ⟶ ν-type F
+
+  -- Unguard: extract functor value from guarded value
+  -- OCP-0003: used after Ana processing
+  -- ──────────────────────────────────────
+  -- Γ ⊢ GuardedT F A ⟶ ⟦ F ⟧T A
+  --
+  ty-Unguard : ∀ {Γ F A} → Γ ⊢ GuardedT F A ⟶ ⟦ F ⟧T A
 
   -- Hylo: hylomorphism (fused ana-cata)
-  --      Γ ⊢ ⟦ F ⟧T B ⟶ B    Γ ⊢ A ⟶ ⟦ F ⟧T A
-  -- ─────────────────────────────────────────────
+  -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
+  --      Γ ⊢ ⟦ F ⟧T B ⟶ B    Γ ⊢ A ⟶ GuardedT F A
+  -- ───────────────────────────────────────────────
   --                Γ ⊢ A ⟶ B
   --
-  ty-Hylo : ∀ {Γ F A B} → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ A ⟶ ⟦ F ⟧T A → Γ ⊢ A ⟶ B
+  ty-Hylo : ∀ {Γ F A B} → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ A ⟶ GuardedT F A → Γ ⊢ A ⟶ B
 
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
@@ -246,6 +255,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-Cata {F = F} alg ⌋ = Cata {F} ⌊ alg ⌋
 ⌊ ty-Out {F = F} ⌋ = Out {F}
 ⌊ ty-Ana {F = F} coalg ⌋ = Ana {F} ⌊ coalg ⌋
+⌊ ty-Unguard {F = F} ⌋ = Unguard {F}
 ⌊ ty-Hylo {F = F} alg coalg ⌋ = Hylo {F} ⌊ alg ⌋ ⌊ coalg ⌋
 
 -- | Convert IR term to explicit typing derivation
@@ -275,6 +285,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ Cata {F} alg ⌉ = ty-Cata {F = F} ⌈ alg ⌉
 ⌈ Out {F} ⌉ = ty-Out {F = F}
 ⌈ Ana {F} coalg ⌉ = ty-Ana {F = F} ⌈ coalg ⌉
+⌈ Unguard {F} ⌉ = ty-Unguard {F = F}
 ⌈ Hylo {F} alg coalg ⌉ = ty-Hylo {F = F} ⌈ alg ⌉ ⌈ coalg ⌉
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f (semantically)
@@ -312,6 +323,8 @@ round-trip-ir (Cata {F} alg) x = round-trip-Cata {F} alg x
 round-trip-ir (Out {F}) x = round-trip-Out {F} x
   where postulate round-trip-Out : ∀ {F} (x : ⟦ ν-type F ⟧) → eval′ ⌊ ⌈ Out {F} ⌉ ⌋ x ≡ eval′ (Out {F}) x
 round-trip-ir (Ana {F} coalg) x = round-trip-Ana {F} coalg x
-  where postulate round-trip-Ana : ∀ {F A} (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Ana {F} coalg ⌉ ⌋ x ≡ eval′ (Ana {F} coalg) x
+  where postulate round-trip-Ana : ∀ {F A} (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Ana {F} coalg ⌉ ⌋ x ≡ eval′ (Ana {F} coalg) x
+round-trip-ir (Unguard {F} {A}) x = round-trip-Unguard {F} {A} x
+  where postulate round-trip-Unguard : ∀ {F A} (x : ⟦ GuardedT F A ⟧) → eval′ ⌊ ⌈ Unguard {F} {A} ⌉ ⌋ x ≡ eval′ (Unguard {F} {A}) x
 round-trip-ir (Hylo {F} alg coalg) x = round-trip-Hylo {F} alg coalg x
-  where postulate round-trip-Hylo : ∀ {F A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Hylo {F} alg coalg ⌉ ⌋ x ≡ eval′ (Hylo {F} alg coalg) x
+  where postulate round-trip-Hylo : ∀ {F A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Hylo {F} alg coalg ⌉ ⌋ x ≡ eval′ (Hylo {F} alg coalg) x
