@@ -295,7 +295,9 @@ eval-arr-identity f = refl
 open import Once.Semantics.Machine
   using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana; sem-hylo;
          sem-Out-In; sem-In-Out; sem-cata-compute; sem-fmap;
-         coerce-functor; coerce-functor⁻¹; ⟦_⟧F)
+         sem-cata-In-id; sem-ana-Out-id; sem-hylo-compute;
+         coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
+         ⟦_⟧F)
 
 ------------------------------------------------------------------------
 -- Lambek's Lemma (Semantic Level)
@@ -317,7 +319,16 @@ open import Once.Semantics.Machine
 -- Folding with the constructor algebra gives back the original value.
 -- This is the canonical way to express that μF ≅ F(μF) at the IR level.
 --
--- Conceptually: cata In (In x) = In (fmap (cata In) x) = In x (when fmap id = id)
+-- Derivation from semantic laws:
+--   eval′ (Cata (In m)) x
+--   = sem-cata F (λ fa → eval′ (In m) (coerce⁻¹ fa)) x
+--   = sem-cata F (λ fa → sem-In F (coerce (coerce⁻¹ fa))) x
+--   = sem-cata F (λ fa → sem-In F fa) x           (by coerce⁻¹-round-trip)
+--   = sem-cata F sem-In x                          (by funext)
+--   = x                                            (by sem-cata-In-id)
+--
+-- Postulated here because full proof requires function extensionality.
+-- The semantic foundation is sem-cata-In-id in Once.Semantics.Core.
 --
 postulate
   eval-cata-In-id : ∀ (F : Functor) (m : AllocMode) (x : ⟦ μ-type F ⟧)
@@ -348,9 +359,14 @@ fmap-Type (F ⊗ G) f (x , y) = (fmap-Type F f x , fmap-Type G f y)
 -- This is the defining equation for catamorphisms: to fold a structure,
 -- first recursively fold all substructures, then apply the algebra.
 --
--- The proof requires careful handling of coercions between Type-level
--- and Set-level functor applications, so it is postulated here.
--- The semantic foundation is sem-cata-compute in Semantics/Core.
+-- Derivation from semantic laws:
+--   eval′ (Cata alg ∘ In m) x
+--   = eval′ (Cata alg) (sem-In F (coerce x))      (by eval In)
+--   = sem-cata F (alg′) (sem-In F (coerce x))     (by eval Cata)
+--   = alg′ (fmap (sem-cata F alg′) (coerce x))    (by sem-cata-compute)
+--   = eval′ alg (fmap-Type (eval′ (Cata alg)) x)  (by coercion coherence)
+--
+-- The semantic foundation is sem-cata-compute in Once.Semantics.Core.
 --
 postulate
   eval-cata-In : ∀ (F : Functor) {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
@@ -377,6 +393,15 @@ postulate
 --
 -- This is the defining equation for hylomorphisms.
 --
+-- Derivation from semantic laws:
+--   eval′ (Hylo alg coalg) x
+--   = sem-hylo F alg′ coalg′ x                    (by eval Hylo)
+--   = alg′ (fmap (sem-hylo F alg′ coalg′) (coalg′ x))  (by sem-hylo-compute)
+--   = eval′ alg (fmap-Type (eval′ (Hylo alg coalg)) (eval′ coalg x))
+--                                                  (by coercion coherence)
+--
+-- The semantic foundation is sem-hylo-compute in Once.Semantics.Core.
+--
 postulate
   eval-hylo-unfold : ∀ (F : Functor) {A B : Type}
                      (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧)
@@ -392,6 +417,17 @@ postulate
 -- | Ana Out ≡ id (identity anamorphism)
 --
 -- Unfolding with the destructor coalgebra gives back the original value.
+--
+-- Derivation from semantic laws:
+--   eval′ (Ana Out) x
+--   = sem-ana F (λ a → coerce (eval′ Out a)) x    (by eval Ana)
+--   = sem-ana F (λ a → coerce (coerce⁻¹ (sem-CoOut F a))) x  (by eval Out)
+--   = sem-ana F (λ a → sem-CoOut F a) x           (by coerce⁻¹-round-trip)
+--   = sem-ana F sem-CoOut x                       (by funext)
+--   = x                                           (by sem-ana-Out-id)
+--
+-- Postulated here because full proof requires function extensionality.
+-- The semantic foundation is sem-ana-Out-id in Once.Semantics.Core.
 --
 postulate
   eval-ana-Out-id : ∀ (F : Functor) (x : ⟦ ν-type F ⟧)

@@ -118,6 +118,36 @@ coerce-functor⁻¹ F X = subst (λ z → z) (sym (sem-functor-coherence F X))
     open import Relation.Binary.PropositionalEquality using (subst; sym)
 
 ------------------------------------------------------------------------
+-- Coercion Round-Trip Lemmas
+--
+-- These lemmas establish that coerce-functor and coerce-functor⁻¹ are
+-- inverses. This is essential for proving recursion scheme laws.
+------------------------------------------------------------------------
+
+private
+  open import Relation.Binary.PropositionalEquality using (subst; sym)
+
+  -- Standard lemma: subst followed by subst with sym cancels
+  subst-sym-subst : ∀ {A B : Set} (p : A ≡ B) (v : B)
+                  → subst (λ z → z) p (subst (λ z → z) (sym p) v) ≡ v
+  subst-sym-subst refl v = refl
+
+  -- Dual: subst with sym followed by subst cancels
+  subst-subst-sym : ∀ {A B : Set} (p : A ≡ B) (v : A)
+                  → subst (λ z → z) (sym p) (subst (λ z → z) p v) ≡ v
+  subst-subst-sym refl v = refl
+
+-- | Round-trip: coerce then coerce⁻¹ is identity
+coerce-round-trip : ∀ F X (x : ⟦ ⟦ F ⟧T X ⟧)
+                  → coerce-functor⁻¹ F X (coerce-functor F X x) ≡ x
+coerce-round-trip F X x = subst-subst-sym (sem-functor-coherence F X) x
+
+-- | Round-trip: coerce⁻¹ then coerce is identity
+coerce⁻¹-round-trip : ∀ F X (x : ⟦ F ⟧F ⟦ X ⟧)
+                    → coerce-functor F X (coerce-functor⁻¹ F X x) ≡ x
+coerce⁻¹-round-trip F X x = subst-sym-subst (sem-functor-coherence F X) x
+
+------------------------------------------------------------------------
 -- Semantic Operations
 --
 -- These mirror IR constructors but operate on semantic values.
@@ -236,3 +266,29 @@ postulate
 postulate
   sem-cata-compute : ∀ (F : Functor) {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
                    → sem-cata F alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata F alg) x)
+
+-- | Identity catamorphism: cata with In algebra is identity
+--
+-- This is the canonical expression of μF ≅ F(μF) at the semantic level.
+-- Proof sketch: By induction, cata In ⟨x⟩ = In (fmap (cata In) x) = In x = ⟨x⟩
+-- when fmap id = id (functor law).
+--
+postulate
+  sem-cata-In-id : ∀ (F : Functor) (x : ⟦μ⟧ F) → sem-cata F (sem-In F) x ≡ x
+
+-- | Identity anamorphism: ana with Out coalgebra is identity
+--
+-- Dual to sem-cata-In-id for final coalgebras.
+-- Proof sketch: By coinduction, ana Out x = record { unfold = fmap (ana Out) (Out x) }
+--             = record { unfold = Out x } = x  (when fmap id = id)
+--
+postulate
+  sem-ana-Out-id : ∀ (F : Functor) (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut F) x ≡ x
+
+-- | Hylomorphism computation law
+--
+-- hylo alg coalg x = alg (fmap (hylo alg coalg) (coalg x))
+--
+postulate
+  sem-hylo-compute : ∀ (F : Functor) {A B : Set} (alg : ⟦ F ⟧F B → B) (coalg : A → ⟦ F ⟧F A) (x : A)
+                   → sem-hylo F alg coalg x ≡ alg (sem-fmap F (sem-hylo F alg coalg) (coalg x))
