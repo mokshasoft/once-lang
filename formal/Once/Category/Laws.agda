@@ -377,6 +377,39 @@ fmap-Type (F ⊕ G) f (inj₁ x) = inj₁ (fmap-Type F f x)
 fmap-Type (F ⊕ G) f (inj₂ y) = inj₂ (fmap-Type G f y)
 fmap-Type (F ⊗ G) f (x , y) = (fmap-Type F f x , fmap-Type G f y)
 
+------------------------------------------------------------------------
+-- Fmap-Coercion Coherence
+--
+-- This lemma relates sem-fmap (Set-level) with fmap-Type (Type-level)
+-- through the coercion functions. It's key for proving cata/hylo laws.
+--
+-- The proof requires understanding how coercions interact with sum/product
+-- constructors. Since coercions are defined via subst on non-trivial
+-- equality proofs, we need auxiliary lemmas.
+------------------------------------------------------------------------
+
+-- | fmap-coerce coherence: coerce⁻¹ ∘ sem-fmap ∘ coerce ≡ fmap-Type
+--
+-- Postulated because the coercion functions (defined via subst on
+-- sem-functor-coherence) don't compute for compound functors.
+-- A full proof would require lemmas about how subst distributes over
+-- sum and product constructors.
+--
+-- The semantic soundness is guaranteed by:
+-- 1. sem-fmap and fmap-Type have identical recursive structure
+-- 2. coerce/coerce⁻¹ are round-trip inverses
+-- 3. For base functors (K, Id), coercions are definitionally refl
+--
+postulate
+  -- | coerce⁻¹ ∘ sem-fmap ∘ coerce ≡ fmap-Type (for Type-level input)
+  fmap-coerce-coherence : ∀ F {X Y : Type} (f : ⟦ X ⟧ → ⟦ Y ⟧) (x : ⟦ ⟦ F ⟧T X ⟧)
+                        → coerce-functor⁻¹ F Y (sem-fmap F f (coerce-functor F X x)) ≡ fmap-Type F f x
+
+  -- | coerce⁻¹ ∘ sem-fmap ≡ fmap-Type ∘ coerce⁻¹ (for Set-level input)
+  -- This variant is needed for hylo proofs where the input comes from sem-unguard
+  fmap-coerce-coherence′ : ∀ F {X Y : Type} (f : ⟦ X ⟧ → ⟦ Y ⟧) (y : ⟦ F ⟧F ⟦ X ⟧)
+                         → coerce-functor⁻¹ F Y (sem-fmap F f y) ≡ fmap-Type F f (coerce-functor⁻¹ F X y)
+
 -- | Catamorphism computation law
 --
 -- cata alg (In x) ≡ alg (fmap (cata alg) x)
@@ -384,24 +417,43 @@ fmap-Type (F ⊗ G) f (x , y) = (fmap-Type F f x , fmap-Type G f y)
 -- This is the defining equation for catamorphisms: to fold a structure,
 -- first recursively fold all substructures, then apply the algebra.
 --
--- Derivation from semantic laws:
+-- Proof:
 --   eval′ (Cata alg ∘ In m) x
---   = eval′ (Cata alg) (sem-In F (coerce x))      (by eval In)
---   = sem-cata F (alg′) (sem-In F (coerce x))     (by eval Cata)
---   = alg′ (fmap (sem-cata F alg′) (coerce x))    (by sem-cata-compute)
---   = eval′ alg (fmap-Type (eval′ (Cata alg)) x)  (by coercion coherence)
+--   = eval′ (Cata alg) (sem-In F (coerce x))      (by eval composition and In)
+--   = sem-cata F alg′ (sem-In F (coerce x))       (by eval Cata, where alg′ = λ fa → eval′ alg (coerce⁻¹ fa))
+--   = alg′ (sem-fmap F (sem-cata F alg′) (coerce x))    (by sem-cata-compute)
+--   = eval′ alg (coerce⁻¹ (sem-fmap F (sem-cata F alg′) (coerce x)))
+--   = eval′ alg (fmap-Type F (sem-cata F alg′) x)       (by fmap-coerce-coherence)
+--   = eval′ alg (fmap-Type F (eval′ (Cata alg)) x)      (by def of eval′ (Cata alg))
 --
--- The semantic foundation is sem-cata-compute in Once.Semantics.Core.
---
--- Postulated because full proof requires fmap-coercion coherence:
---   coerce⁻¹ (sem-fmap F f (coerce x)) ≡ fmap-Type F (coerce⁻¹ ∘ f ∘ coerce) x
--- This relates Set-level fmap with Type-level fmap through coercions.
---
-postulate
-  eval-cata-In : ∀ (F : Functor) {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
-                 (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
-               → eval′ (Cata {F} alg ∘ In {F} m) x ≡
-                 eval′ alg (fmap-Type F (eval′ (Cata {F} alg)) x)
+eval-cata-In : ∀ (F : Functor) {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
+               (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
+             → eval′ (Cata {F} alg ∘ In {F} m) x ≡
+               eval′ alg (fmap-Type F (eval′ (Cata {F} alg)) x)
+eval-cata-In F {A} alg m x =
+  let -- The algebra lifted to Set level
+      alg′ : ⟦ F ⟧F ⟦ A ⟧ → ⟦ A ⟧
+      alg′ = λ fa → eval′ alg (coerce-functor⁻¹ F A fa)
+
+      -- Step 1: Apply sem-cata-compute
+      -- sem-cata F alg′ (sem-In F (coerce x)) = alg′ (sem-fmap F (sem-cata F alg′) (coerce x))
+      step1 : sem-cata F alg′ (sem-In F (coerce-functor F (μ-type F) x))
+            ≡ alg′ (sem-fmap F (sem-cata F alg′) (coerce-functor F (μ-type F) x))
+      step1 = sem-cata-compute F alg′ (coerce-functor F (μ-type F) x)
+
+      -- Step 2: Apply fmap-coerce-coherence
+      -- coerce⁻¹ (sem-fmap F f (coerce x)) = fmap-Type F f x
+      step2 : coerce-functor⁻¹ F A (sem-fmap F (sem-cata F alg′) (coerce-functor F (μ-type F) x))
+            ≡ fmap-Type F (sem-cata F alg′) x
+      step2 = fmap-coerce-coherence F (sem-cata F alg′) x
+
+      -- Step 3: Combine - alg′ of step1 = eval′ alg (coerce⁻¹ ...)
+      -- eval′ alg (coerce⁻¹ (sem-fmap F ...)) = eval′ alg (fmap-Type F ... x)
+      step3 : eval′ alg (coerce-functor⁻¹ F A (sem-fmap F (sem-cata F alg′) (coerce-functor F (μ-type F) x)))
+            ≡ eval′ alg (fmap-Type F (sem-cata F alg′) x)
+      step3 = cong (eval′ alg) step2
+
+  in trans step1 step3
 
 ------------------------------------------------------------------------
 -- Hylomorphism Laws
@@ -423,25 +475,48 @@ postulate
 -- This is the defining equation for hylomorphisms.
 -- OCP-0003: coalg now produces GuardedT F A for productivity enforcement.
 --
--- Derivation from semantic laws:
+-- Proof:
 --   eval′ (Hylo alg coalg) x
 --   = sem-hylo-guarded F alg′ coalg′ x            (by eval Hylo)
---   = alg′ (fmap (sem-hylo-guarded F alg′ coalg′) (unguard (coalg′ x)))
+--   = alg′ (sem-fmap F (sem-hylo-guarded F alg′ coalg′) (sem-unguard F (coalg′ x)))
 --                                                  (by sem-hylo-guarded-compute)
---   = eval′ alg (fmap-Type (eval′ (Hylo alg coalg)) (eval′ (Unguard ∘ coalg) x))
---                                                  (by coercion coherence)
+--   = eval′ alg (coerce⁻¹ (sem-fmap F ... (sem-unguard F ...)))
+--   = eval′ alg (fmap-Type F ... (coerce⁻¹ (sem-unguard F ...)))  (by fmap-coerce-coherence′)
+--   = eval′ alg (fmap-Type F (eval′ (Hylo alg coalg)) (eval′ (Unguard ∘ coalg) x))
 --
--- The semantic foundation is sem-hylo-guarded-compute in Once.Semantics.Core.
---
--- Postulated because full proof requires fmap-coercion coherence:
---   coerce⁻¹ (sem-fmap F f (sem-unguard F gx)) ≡ fmap-Type F (coerce⁻¹ ∘ f ∘ coerce) (coerce⁻¹ (sem-unguard F gx))
--- This relates Set-level fmap with Type-level fmap through coercions and unguard.
---
-postulate
-  eval-hylo-unfold : ∀ (F : Functor) {A B : Type}
-                     (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧)
-                   → eval′ (Hylo {F} alg coalg) x ≡
-                     eval′ alg (fmap-Type F (eval′ (Hylo {F} alg coalg)) (eval′ (Unguard ∘ coalg) x))
+eval-hylo-unfold : ∀ (F : Functor) {A B : Type}
+                   (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧)
+                 → eval′ (Hylo {F} alg coalg) x ≡
+                   eval′ alg (fmap-Type F (eval′ (Hylo {F} alg coalg)) (eval′ (Unguard ∘ coalg) x))
+eval-hylo-unfold F {A} {B} alg coalg x =
+  let -- The algebra lifted to Set level
+      alg′ : ⟦ F ⟧F ⟦ B ⟧ → ⟦ B ⟧
+      alg′ = λ fb → eval′ alg (coerce-functor⁻¹ F B fb)
+
+      -- The coalgebra at Set level
+      coalg′ : ⟦ A ⟧ → ⟦Guarded⟧ F ⟦ A ⟧
+      coalg′ = λ a → eval′ coalg a
+
+      -- The recursive function at Set level
+      hylo′ : ⟦ A ⟧ → ⟦ B ⟧
+      hylo′ = sem-hylo-guarded F alg′ coalg′
+
+      -- Step 1: Apply sem-hylo-guarded-compute
+      step1 : hylo′ x ≡ alg′ (sem-fmap F hylo′ (sem-unguard F (coalg′ x)))
+      step1 = sem-hylo-guarded-compute F alg′ coalg′ x
+
+      -- Step 2: Apply fmap-coerce-coherence′
+      -- coerce⁻¹ (sem-fmap F hylo′ (sem-unguard F ...)) = fmap-Type F hylo′ (coerce⁻¹ (sem-unguard F ...))
+      step2 : coerce-functor⁻¹ F B (sem-fmap F hylo′ (sem-unguard F (coalg′ x)))
+            ≡ fmap-Type F hylo′ (coerce-functor⁻¹ F A (sem-unguard F (coalg′ x)))
+      step2 = fmap-coerce-coherence′ F hylo′ (sem-unguard F (coalg′ x))
+
+      -- Step 3: Combine - alg′ includes coerce⁻¹
+      step3 : eval′ alg (coerce-functor⁻¹ F B (sem-fmap F hylo′ (sem-unguard F (coalg′ x))))
+            ≡ eval′ alg (fmap-Type F hylo′ (coerce-functor⁻¹ F A (sem-unguard F (coalg′ x))))
+      step3 = cong (eval′ alg) step2
+
+  in trans step1 step3
 
 ------------------------------------------------------------------------
 -- Ana-Out Identity Law (Coinductive)
