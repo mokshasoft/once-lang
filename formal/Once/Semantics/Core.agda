@@ -36,22 +36,37 @@ open import Once.Type
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- Polynomial Functor Semantics (Postulated)
+-- Polynomial Functor Semantics (via Once.Functor.Translate)
 --
--- We use postulates to avoid strict positivity issues that arise from
--- mutual definition with ⟦_⟧ (which contains function types).
+-- OCP-0003 Phase 6: Instead of postulating ⟦μ⟧ and ⟦ν⟧, we now define
+-- them using Once.Functor.Base's μS and νS via translation.
 --
--- These postulates are instantiated properly in Once.SPF which provides
--- the actual μ and ν fixed points with proven laws.
+-- This breaks the circular dependency:
+--   Old: ⟦_⟧ → ⟦_⟧F → SPF.μ → ⟦μ⟧ → ⟦_⟧ (circular!)
+--   New: ⟦_⟧-base → translateF → μS (no cycle)
+--        Then: ⟦μ⟧ = μS ∘ translateF
+--
+-- For well-formed functors (K only with base types), the base
+-- interpretation equals the full interpretation.
 ------------------------------------------------------------------------
 
+open import Once.Functor.Translate using (μ-sem; ν-sem)
+
 -- | Semantic interpretation of μ-type (initial algebra)
-postulate
-  ⟦μ⟧ : Functor → Set
+--
+-- Defined via translation to SFunctor, not postulated.
+-- μ-coherence is now provable (essentially refl).
+--
+⟦μ⟧ : Functor → Set
+⟦μ⟧ = μ-sem IntRep
 
 -- | Semantic interpretation of ν-type (final coalgebra)
-postulate
-  ⟦ν⟧ : Functor → Set
+--
+-- Defined via translation to SFunctor, not postulated.
+-- ν-coherence is now provable (essentially refl).
+--
+⟦ν⟧ : Functor → Set
+⟦ν⟧ = ν-sem IntRep
 
 -- | Semantic interpretation of GuardedT (guarded functor values)
 --

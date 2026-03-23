@@ -43,16 +43,28 @@ import Once.SPF as SPF
 
 -- | Coherence axiom: ⟦μ⟧ F ≡ SPF.μ F
 --
--- This states that the postulated semantic interpretation of μ-type
--- equals SPF's concrete least fixed point.
+-- OCP-0003 Phase 6: ⟦μ⟧ is now DEFINED (not postulated) as:
+--   ⟦μ⟧ F = μS (translateF ℤ F)
+-- where μS is from Once.Functor.Base and translateF is from Once.Functor.Translate.
+--
+-- The coherence states this equals SPF.μ F (which uses ⟦_⟧F from Core).
+--
+-- For well-formed functors (K only with base types like Unit, Int, etc.):
+--   ⟦ translateF ℤ F ⟧SF X ≡ ⟦ F ⟧F X
+-- because the base interpretation equals the full interpretation for base types.
+--
+-- This makes μS (translateF ℤ F) ≅ SPF.μ F structurally isomorphic.
+-- The postulate captures this isomorphism.
 --
 postulate
   μ-coherence : ∀ F → ⟦μ⟧ F ≡ SPF.μ F
 
 -- | Coherence axiom: ⟦ν⟧ F ≡ SPF.ν F
 --
--- This states that the postulated semantic interpretation of ν-type
--- equals SPF's concrete greatest fixed point.
+-- Similar to μ-coherence: ⟦ν⟧ is now DEFINED as:
+--   ⟦ν⟧ F = νS (translateF ℤ F)
+--
+-- For well-formed functors, this equals SPF.ν F.
 --
 postulate
   ν-coherence : ∀ F → ⟦ν⟧ F ≡ SPF.ν F
@@ -448,11 +460,13 @@ sem-fmap-comp F f g x =
 --    - sem-fmap-id, sem-fmap-comp
 --
 -- Remaining postulates:
---    - μ-coherence, ν-coherence: Type coherence axioms (fundamental bridge)
+--    - μ-coherence, ν-coherence: Type coherence (⟦μ⟧ ≡ SPF.μ for well-formed functors)
 --    - sem-ana-Out-id-valid: Identity anamorphism (requires bisimulation proof)
 --
--- Newly proven (was postulated):
+-- Key architectural changes (OCP-0003 Phase 6):
+--    - ⟦μ⟧, ⟦ν⟧ are now DEFINED (not postulated) via Once.Functor.Translate
 --    - transport-μ-is-fmap: PROVEN via path induction (subst-fmap-natural)
+--    - μ-coherence/ν-coherence relate the defined ⟦μ⟧ to SPF.μ
 --
 -- The type coherence postulates can be eliminated by parameterizing
 -- Core by the μ/ν implementations.

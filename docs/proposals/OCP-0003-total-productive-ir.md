@@ -1011,7 +1011,11 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Add SPF ana laws: `ana-unfold` (trivial), `ana-Out-id` (postulated - requires bisimulation)
 - [x] Add `sem-ana-Out-id-valid` postulate to Coherence.agda
 - [x] Prove `transport-μ-is-fmap` via path induction (subst-fmap-natural lemma)
+- [x] Define ⟦μ⟧/⟦ν⟧ via translation (no longer postulated in Core)
+- [x] Create Once.Functor.Base (semantic functors with Set in K)
+- [x] Create Once.Functor.Translate (translation from Functor to SFunctor)
 - [ ] Align with OCP-0004 bootstrap verification
+- [ ] Prove μ-coherence for well-formed functors (currently postulated)
 - [ ] Prove ana-Out-id properly (requires sized types or bisimulation)
 - [ ] Full IR law proofs (requires function extensionality)
 
