@@ -199,28 +199,95 @@ sem-ana-impl F coalg x = ν-to-sem F (SPF.ana coalg x)
 -- These use SPF's proven properties (fold-unfold, unfold-fold).
 ------------------------------------------------------------------------
 
--- | Lambek's Lemma (one direction): Out ∘ In ≡ id
+-- Transport round-trip lemmas (standard)
+private
+  subst-sym-subst : ∀ {ℓ} {A B : Set ℓ} (p : A ≡ B) (v : B)
+                  → subst (λ z → z) p (subst (λ z → z) (sym p) v) ≡ v
+  subst-sym-subst refl v = refl
+
+  subst-subst-sym : ∀ {ℓ} {A B : Set ℓ} (p : A ≡ B) (v : A)
+                  → subst (λ z → z) (sym p) (subst (λ z → z) p v) ≡ v
+  subst-subst-sym refl v = refl
+
+  -- Transport round-trip for functor-applied types
+  transport-round-trip : ∀ F G (x : ⟦ F ⟧F (⟦μ⟧ G))
+                       → transport-μ⁻¹ F G (transport-μ F G x) ≡ x
+  transport-round-trip F G x = subst-subst-sym (μ-coherence G) x
+
+  transport⁻¹-round-trip : ∀ F G (x : ⟦ F ⟧F (SPF.μ G))
+                         → transport-μ F G (transport-μ⁻¹ F G x) ≡ x
+  transport⁻¹-round-trip F G x = subst-sym-subst (μ-coherence G) x
+
+  -- μ transport round-trips
+  μ-round-trip : ∀ F (x : SPF.μ F) → μ-from-sem F (μ-to-sem F x) ≡ x
+  μ-round-trip F x = subst-sym-subst (μ-coherence F) x
+
+  μ⁻¹-round-trip : ∀ F (x : ⟦μ⟧ F) → μ-to-sem F (μ-from-sem F x) ≡ x
+  μ⁻¹-round-trip F x = subst-subst-sym (μ-coherence F) x
+
+-- | Lambek's Lemma (one direction): Out ∘ In ≡ id (PROVEN)
 --
 -- Core postulates: sem-Out-In : ∀ F x → sem-Out F (sem-In F x) ≡ x
 -- SPF proves:      fold-unfold : ∀ F x → out F ⟨ x ⟩ ≡ x
 --
--- We validate that sem-Out-impl and sem-In-impl satisfy this law.
+-- Proof:
+--   sem-Out-impl F (sem-In-impl F x)
+--   = transport-μ⁻¹ F F (SPF.out F (μ-from-sem F (μ-to-sem F (SPF.⟨ transport-μ F F x ⟩))))
+--   = transport-μ⁻¹ F F (SPF.out F (SPF.⟨ transport-μ F F x ⟩))   [by μ-round-trip]
+--   = transport-μ⁻¹ F F (transport-μ F F x)                       [by SPF.fold-unfold]
+--   = x                                                           [by transport-round-trip]
 --
--- Note: Full proof requires reasoning about transport round-trips.
--- Here we state the coherence as a postulate derived from SPF.fold-unfold.
---
-postulate
-  sem-Out-In-valid : ∀ F (x : ⟦ F ⟧F (⟦μ⟧ F))
-                   → sem-Out-impl F (sem-In-impl F x) ≡ x
+sem-Out-In-valid : ∀ F (x : ⟦ F ⟧F (⟦μ⟧ F))
+                 → sem-Out-impl F (sem-In-impl F x) ≡ x
+sem-Out-In-valid F x =
+  trans step1 (trans step2 step3)
+  where
+    -- Step 1: Apply μ-round-trip to remove μ-to-sem/μ-from-sem pair
+    step1 : sem-Out-impl F (sem-In-impl F x) ≡
+            transport-μ⁻¹ F F (SPF.out F SPF.⟨ transport-μ F F x ⟩)
+    step1 = cong (λ z → transport-μ⁻¹ F F (SPF.out F z))
+                 (μ-round-trip F SPF.⟨ transport-μ F F x ⟩)
 
--- | Lambek's Lemma (other direction): In ∘ Out ≡ id
+    -- Step 2: Apply SPF.fold-unfold
+    step2 : transport-μ⁻¹ F F (SPF.out F SPF.⟨ transport-μ F F x ⟩) ≡
+            transport-μ⁻¹ F F (transport-μ F F x)
+    step2 = cong (transport-μ⁻¹ F F) (SPF.fold-unfold F (transport-μ F F x))
+
+    -- Step 3: Apply transport round-trip
+    step3 : transport-μ⁻¹ F F (transport-μ F F x) ≡ x
+    step3 = transport-round-trip F F x
+
+-- | Lambek's Lemma (other direction): In ∘ Out ≡ id (PROVEN)
 --
 -- Core postulates: sem-In-Out : ∀ F x → sem-In F (sem-Out F x) ≡ x
 -- SPF proves:      unfold-fold : ∀ F x → ⟨ out F x ⟩ ≡ x
 --
-postulate
-  sem-In-Out-valid : ∀ F (x : ⟦μ⟧ F)
-                   → sem-In-impl F (sem-Out-impl F x) ≡ x
+-- Proof:
+--   sem-In-impl F (sem-Out-impl F x)
+--   = μ-to-sem F (SPF.⟨ transport-μ F F (transport-μ⁻¹ F F (SPF.out F (μ-from-sem F x))) ⟩)
+--   = μ-to-sem F (SPF.⟨ SPF.out F (μ-from-sem F x) ⟩)   [by transport⁻¹-round-trip]
+--   = μ-to-sem F (μ-from-sem F x)                        [by SPF.unfold-fold]
+--   = x                                                  [by μ⁻¹-round-trip]
+--
+sem-In-Out-valid : ∀ F (x : ⟦μ⟧ F)
+                 → sem-In-impl F (sem-Out-impl F x) ≡ x
+sem-In-Out-valid F x =
+  trans step1 (trans step2 step3)
+  where
+    -- Step 1: Apply transport⁻¹-round-trip
+    step1 : sem-In-impl F (sem-Out-impl F x) ≡
+            μ-to-sem F SPF.⟨ SPF.out F (μ-from-sem F x) ⟩
+    step1 = cong (λ z → μ-to-sem F SPF.⟨ z ⟩)
+                 (transport⁻¹-round-trip F F (SPF.out F (μ-from-sem F x)))
+
+    -- Step 2: Apply SPF.unfold-fold
+    step2 : μ-to-sem F SPF.⟨ SPF.out F (μ-from-sem F x) ⟩ ≡
+            μ-to-sem F (μ-from-sem F x)
+    step2 = cong (μ-to-sem F) (SPF.unfold-fold F (μ-from-sem F x))
+
+    -- Step 3: Apply μ⁻¹-round-trip
+    step3 : μ-to-sem F (μ-from-sem F x) ≡ x
+    step3 = μ⁻¹-round-trip F x
 
 -- | Catamorphism computation law
 --
@@ -228,6 +295,9 @@ postulate
 --                    sem-cata F alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata F alg) x)
 --
 -- SPF: cata alg ⟨ x ⟩ = alg (fmapCata F alg x) by definition
+--
+-- Note: This requires showing fmapCata ≡ fmap ∘ cata, which involves
+-- mutual recursion. Postulated for now - can be proven with more work.
 --
 postulate
   sem-cata-compute-valid : ∀ F {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
@@ -288,22 +358,22 @@ sem-fmap-comp F f g x =
 --    - ⟦μ⟧ F ≡ SPF.μ F
 --    - ⟦ν⟧ F ≡ SPF.ν F
 --
--- 2. Functor Map Coherence (proven):
+-- 2. Functor Map Coherence (PROVEN):
 --    - sem-fmap F f x ≡ SPF.fmap F f x
 --
 -- 3. Operation Implementations:
 --    - sem-In-impl, sem-Out-impl, sem-cata-impl
 --    - sem-CoOut-impl, sem-CoIn-impl, sem-ana-impl
 --
--- 4. Law Validation (postulated, derivable from SPF):
---    - Lambek's Lemma (both directions)
---    - Catamorphism computation law
+-- 4. Law Validation:
+--    - Lambek's Lemma direction 1 (PROVEN via SPF.fold-unfold)
+--    - Lambek's Lemma direction 2 (PROVEN via SPF.unfold-fold)
+--    - Catamorphism computation law (postulated - requires fmapCata proof)
 --
--- 5. Functor Law Inheritance (proven):
+-- 5. Functor Law Inheritance (PROVEN):
 --    - sem-fmap-id, sem-fmap-comp
 --
--- The postulates in Part 1 and Part 6 can be eliminated by:
--- 1. Parameterizing Core by the μ/ν implementations
--- 2. Proving transport round-trip lemmas
+-- The type coherence postulates (Part 1) can be eliminated by
+-- parameterizing Core by the μ/ν implementations.
 --
 -- This completes the semantic coherence layer for OCP-0003 Phase 6.

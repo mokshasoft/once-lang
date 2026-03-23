@@ -77,9 +77,9 @@ This is:
 - Total (each handler terminates)
 - NOT Turing complete (no unbounded computation)
 
-### Alignment with D039 (Polynomial Functors)
+### Alignment with D037 (Polynomial Functors)
 
-Decision D039 chose **polynomial functors** for formal verification, which already requires:
+Decision D037 chose **polynomial functors** for formal verification, which already requires:
 
 - Strictly positive types only (no functions in recursive positions)
 - Recursion via `cata` for termination
@@ -89,7 +89,7 @@ From `fix-semantics-options.md`:
 
 > "Non-structural recursion: **Must use cata**" (for polynomial functors)
 
-This proposal makes explicit in the IR what D039 already requires for verification.
+This proposal makes explicit in the IR what D037 already requires for verification.
 
 ### Enabling Dependent Types
 
@@ -145,7 +145,7 @@ This unified structure matches OCP-0004's bootstrap tower, where the verifier ch
 ```agda
 module Once.CCC.IR where
 
--- Functor representation (polynomial functors per D039)
+-- Functor representation (polynomial functors per D037)
 data Functor : Set where
   FId    : Functor                      -- Identity: X (recursive position)
   FConst : Type → Functor               -- Constant: A
@@ -643,7 +643,7 @@ None of these are useful programs.
 - **Dependent types enabled** — consistent logic without extra checking
 - **Deadlock-free corecursion** — unguarded mutual recursion impossible
 - **Uniform arrow structure** — CCC combinators work for both pure and effectful arrows
-- **Alignment with D039** — IR matches verification requirements
+- **Alignment with D037** — IR matches verification requirements
 - **Minimal TCB** — supports OCP-0004 trust boundaries
 
 ### Lost
@@ -851,7 +851,7 @@ Rejected:
 Rejected:
 - Complex analysis with false negatives
 - Doesn't prevent bugs by construction
-- Duplicates what D039 already requires
+- Duplicates what D037 already requires
 - More implementation effort, less guarantee
 - Adds to TCB (must trust the checker)
 
@@ -870,7 +870,7 @@ Accepted:
 - Totality and productivity by construction (definitional)
 - Type-indexed IR enables typed rewrites
 - Guardedness enforced at type level — unguarded terms unconstructable
-- Aligns with D039 verification strategy
+- Aligns with D037 verification strategy
 - Enables dependent types naturally
 - Minimal TCB — no guardedness checker to trust
 
@@ -968,10 +968,22 @@ Established semantic foundation for guardedness enforcement:
   - `gmapA` = functorial map over guarded values
   - Smart constructors: guardConst, guardRec, guardPair, etc.
 
+**Type-Level GuardedT Integration** ✓ COMPLETE (2026-03-23)
+
+Enforced productive corecursion at the type level:
+
+- **Once/Type.agda**: Added `GuardedT : Functor → Type → Type` constructor
+- **Once/CCC/IR.agda**: Changed Ana signature to `IR A (GuardedT F A) → IR A (ν-type F)`
+- **Once/CCC/IR.agda**: Changed Hylo coalgebra to require `GuardedT F A`
+- **Once/CCC/IR.agda**: Added `Unguard : IR (GuardedT F A) (⟦ F ⟧T A)` for extraction
+- **Once/Semantics/Core.agda**: Added `sem-unguard`, `sem-ana-guarded`, `sem-hylo-guarded`
+- **17 files updated**: Propagated GuardedT through all Type pattern matches and Unguard through IR traversals
+
+This makes productivity **definitional** - non-productive coalgebras cannot type-check.
+
 **Remaining Work**:
 
-- [ ] Type-level GuardedT integration into IR.agda (Ana signature change)
-- [ ] Integrate with existing D039 polynomial functor proofs
+- [x] Integrate with D037 polynomial functor proofs (Coherence.agda)
 - [ ] Align with OCP-0004 bootstrap verification
 - [ ] Replace transport postulates with explicit proofs
 - [ ] Full IR law proofs (requires function extensionality)
@@ -1071,11 +1083,11 @@ This proposal defines a **unified IR** in `Once.CCC.IR` that enforces totality a
 
 The design:
 - Single unified `IR : Type → Type → Set` with all CCC operations
-- `Functor` type for polynomial functors (per D039)
+- `Functor` type for polynomial functors (per D037)
 - `Guarded` type enforces guardedness at type level — unguarded coalgebras are unconstructable
 - Primitive constructors for derived schemes (`Hylo`, `Para`, `Apo`) enable direct optimization
 - Arrow-based effects: CCC structure provides arrow combinators, types distinguish `A → B` from `Eff A B`
-- Aligns with D039 (polynomial functors)
+- Aligns with D037 (polynomial functors)
 - Matches OCP-0004 bootstrap architecture (single IR for verifier)
 - Preserves the three strata (Generators/Canonical/Initial)
 - Enables planned dependent type extensions
@@ -1089,7 +1101,7 @@ The design:
 
 ## References
 
-- D039: Polynomial Functors decision (`docs/compiler/decision-log.md`)
+- D037: Polynomial Functors decision (`docs/compiler/decision-log.md`)
 - OCP-0004: Minimal-Trust Verification via Categorical Foundations
 - `docs/formal/historical/fix-semantics-options.md`: Analysis of Fix semantics
 - `docs/design/recursion-schemes.md`: Current recursion scheme documentation
