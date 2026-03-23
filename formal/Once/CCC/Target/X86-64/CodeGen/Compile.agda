@@ -181,13 +181,17 @@ compile-length (⟨ f , g ⟩ _) = length pair-setup +ℕ compile-length f +ℕ
 compile-length terminal = length terminal-instrs
 compile-length (curry f _) = 6 +ℕ length curry-thunk-setup +ℕ compile-length f +ℕ 5  -- closure + thunk + cleanup
 compile-length apply = length apply-instrs
--- Sum/fix type operations (placeholder lengths)
+-- Sum type operations (placeholder lengths)
 compile-length (inl _) = 1  -- placeholder
 compile-length (inr _) = 1  -- placeholder
 compile-length (case f g) = compile-length f +ℕ compile-length g  -- placeholder: no dispatch yet
 compile-length initial = 1      -- absurd elimination
-compile-length (fold _) = 1      -- wrap
-compile-length unfold = 1    -- unwrap
+-- OCP-0003: Recursion scheme operations (placeholder lengths)
+compile-length (In _) = 1       -- wrap μ-type constructor
+compile-length (Cata alg) = compile-length alg  -- placeholder: iterative loop
+compile-length Out = 1          -- observe ν-type
+compile-length (Ana coalg) = compile-length coalg  -- placeholder: demand-driven
+compile-length (Hylo alg coalg) = compile-length alg +ℕ compile-length coalg  -- placeholder: fused
 compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles actual free)
 compile-length (Prim _) = 1       -- primitive
 compile-length arr = length id-instrs  -- arr is identity at runtime (Eff = Arrow)
@@ -225,13 +229,17 @@ compile-ir (curry f _) =
 
 compile-ir apply = apply-instrs
 
--- Sum/fix type operations (TODO: implement)
+-- Sum type operations (TODO: implement)
 compile-ir (inl _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
 compile-ir (inr _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
 compile-ir (case f g) = compile-ir f ++ compile-ir g  -- placeholder
 compile-ir initial = ud2 ∷ []     -- absurd elimination (should never execute)
-compile-ir (fold _) = id-instrs     -- wrap: just transfer rdi → rax (same representation)
-compile-ir unfold = id-instrs       -- unwrap: just transfer rdi → rax (same representation)
+-- OCP-0003: Recursion scheme operations (placeholders)
+compile-ir (In _) = id-instrs     -- wrap μ-type: transfer rdi → rax (same representation)
+compile-ir (Cata alg) = ud2 ∷ []  -- placeholder: needs iterative loop implementation
+compile-ir Out = id-instrs        -- observe ν-type: transfer rdi → rax
+compile-ir (Ana coalg) = ud2 ∷ []  -- placeholder: needs demand-driven implementation
+compile-ir (Hylo alg coalg) = ud2 ∷ []  -- placeholder: needs fused loop
 compile-ir (free-heap _) = []     -- no-op: actual deallocation handled by runtime
 compile-ir (Prim _) = ud2 ∷ []    -- primitives need FFI (placeholder)
 compile-ir arr = id-instrs        -- arr is identity at runtime (Eff = Arrow)
@@ -429,8 +437,12 @@ compile-ir-length (case f g) =
   where
     _`trans`_ = trans
 compile-ir-length initial = refl
-compile-ir-length (fold _) = refl
-compile-ir-length unfold = refl
+-- OCP-0003: Recursion scheme proofs (placeholders)
+compile-ir-length (In _) = refl
+compile-ir-length (Cata alg) = refl
+compile-ir-length Out = refl
+compile-ir-length (Ana coalg) = refl
+compile-ir-length (Hylo alg coalg) = refl
 compile-ir-length (free-heap _) = refl
 compile-ir-length (Prim _) = refl
 compile-ir-length arr = refl
