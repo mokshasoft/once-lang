@@ -951,10 +951,26 @@ Semantic and IR-level laws for recursion schemes:
 
 IR-level laws remain postulated (require funext), but derivations are documented.
 
+**Productivity Infrastructure** ✓ COMPLETE (2026-03-23)
+
+Established semantic foundation for guardedness enforcement:
+
+- **Productivity.agda** (`Once/CCC/IR/Productivity.agda`):
+  - `GuardedCoalg F A` = coalgebras producing guarded output
+  - `fromGuarded` = extract unguarded coalgebra from guarded
+  - `guarded-ana-productive` = semantic productivity property
+  - `guarded-map-preserves` = guardedness compositional
+  - `⟦⟧F-coherence` = bridges Guarded and Machine functor interpretations
+
+- **Existing Infrastructure** (Guarded.agda):
+  - `Guarded Sem F A` type with GConst, GRec, GProd, GInl, GInr
+  - `unguard` = extract underlying functor value
+  - `gmapA` = functorial map over guarded values
+  - Smart constructors: guardConst, guardRec, guardPair, etc.
+
 **Remaining Work**:
 
-- [ ] Agda proofs for guardedness enforcement
-- [ ] Verify Guarded type ensures productivity
+- [ ] Type-level GuardedT integration into IR.agda (Ana signature change)
 - [ ] Integrate with existing D039 polynomial functor proofs
 - [ ] Align with OCP-0004 bootstrap verification
 - [ ] Replace transport postulates with explicit proofs
