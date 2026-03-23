@@ -67,7 +67,11 @@ open import normalizer.Theory.StandardCCCExtension.CataFree
 open import normalizer.Theory.StandardCCCExtension.CataElimination
   using ( _⟶cata_         -- Cata-only reduction
         ; _⟶*cata_        -- Multi-step cata reduction
-        ; cata-terminates -- Termination (finite depth argument)
+        )
+  public
+
+open import normalizer.Axioms.CataAxioms
+  using ( cata-terminates -- Termination (finite depth argument)
         )
   public
 

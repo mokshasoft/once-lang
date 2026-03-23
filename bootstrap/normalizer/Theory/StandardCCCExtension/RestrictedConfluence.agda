@@ -30,7 +30,7 @@ open import normalizer.Theory.StandardCCCExtension.CataFree
 open import normalizer.Theory.StandardCCCExtension.CataElimination
   using (_⟶cata_; _⟶*cata_; done-cata; step-cata;
          ⟶*cata-trans; ⟶cata→⟶; ⟶*cata→⟶*;
-         cata-terminates; catafree-no-cata-reduction)
+         catafree-no-cata-reduction)
 open import normalizer.Theory.StandardCCCExtension.CataCommutation
   using (_⟹cata_; ⟹cata-refl; cata-confluence⟹; cata-local-confluence;
          _⟹*cata_; done⟹cata; step⟹cata; ⟶cata→⟹cata; ⟹cata→⟶*cata)
@@ -111,18 +111,11 @@ cata-confluence p q with cata-confluence⟹ (⟶*cata→⟹*cata p) (⟶*cata→
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- CCC Confluence and Factorization
+-- CCC Confluence and Factorization (from CataAxioms)
 ------------------------------------------------------------------------
 
-postulate
-  ccc*-confluence : ∀ {A B} {t u v : Term A B} →
-                    t ⟶*ccc u → t ⟶*ccc v →
-                    ∃[ w ] ((u ⟶*ccc w) × (v ⟶*ccc w))
-
-postulate
-  factorize-reduction : ∀ {A B} {t u : Term A B} →
-                        t ⟶* u →
-                        ∃[ mid ] ((t ⟶*cata mid) × (mid ⟶*ccc u))
+open import normalizer.Axioms.CataAxioms
+  using (ccc*-confluence; factorize-reduction)
 
 ------------------------------------------------------------------------
 -- Main Theorem: Restricted Confluence
@@ -183,7 +176,7 @@ restricted-confluence-noredex t _ = restricted-confluence t
 --   restricted-confluence : For any term t and algebra alg,
 --     (cata TermF alg ∘ encode t) is confluent
 --
--- Imported from EstablishedMath:
+-- From Axioms/CataAxioms:
 --   ccc*-confluence      : Multi-step CCC confluence
 --   factorize-reduction  : Factor reductions into cata + CCC phases
 --
