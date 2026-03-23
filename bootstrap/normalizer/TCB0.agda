@@ -35,7 +35,12 @@ open import normalizer.TCB0.Normalizer.Definition
 -- produces that same encoding.
 open import normalizer.TCB0.Normalizer.NoRedexFixpoint
   using ( fixpoint-property   -- (normalize ∘ encode normalize) ⟶* encode normalize
-        ; noredex-fixpoint    -- For any NoRedex t: (normalize ∘ encode t) ⟶* encode t
+        )
+  public
+
+-- For any NoRedex t: (normalize ∘ encode t) ⟶* encode t
+open import normalizer.TCB0.Normalizer.SelfFixpoint
+  using ( noredex-fixpoint
         )
   public
 
