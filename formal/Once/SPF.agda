@@ -160,6 +160,66 @@ mutual
   fmapCata (F ⊗ G) alg (x , y) = (fmapCata F alg x , fmapCata G alg y)
 
 ------------------------------------------------------------------------
+-- Catamorphism Laws (OCP-0003 Phase 6)
+--
+-- These laws establish key properties of cata:
+-- 1. fmapCata ≡ fmap ∘ cata (fmapCata is fmap with cata)
+-- 2. Computation law: cata alg ⟨ x ⟩ ≡ alg (fmap (cata alg) x)
+-- 3. Identity: cata ⟨_⟩ ≡ id
+------------------------------------------------------------------------
+
+-- | fmapCata is equivalent to fmap composed with cata
+--
+-- This is the key lemma relating the mutual recursion helper
+-- to the standard fmap operation.
+--
+mutual
+  fmapCata-is-fmap : ∀ F {G} {A : Set} (alg : ⟦ G ⟧F A → A) (x : ⟦ F ⟧F (μ G))
+                   → fmapCata F alg x ≡ fmap F (cata alg) x
+  fmapCata-is-fmap (K B) alg x = refl
+  fmapCata-is-fmap Id alg x = refl
+  fmapCata-is-fmap (F ⊕ G) alg (inj₁ x) = cong inj₁ (fmapCata-is-fmap F alg x)
+  fmapCata-is-fmap (F ⊕ G) alg (inj₂ y) = cong inj₂ (fmapCata-is-fmap G alg y)
+  fmapCata-is-fmap (F ⊗ G) alg (x , y) =
+    cong₂ _,_ (fmapCata-is-fmap F alg x) (fmapCata-is-fmap G alg y)
+    where
+      cong₂ : ∀ {A B C : Set} (f : A → B → C) {x x' : A} {y y' : B}
+            → x ≡ x' → y ≡ y' → f x y ≡ f x' y'
+      cong₂ f refl refl = refl
+
+-- | Catamorphism computation law
+--
+-- cata alg ⟨ x ⟩ ≡ alg (fmap F (cata alg) x)
+--
+-- This follows directly from the definition and fmapCata-is-fmap.
+--
+cata-computation : ∀ (F : Functor) {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (μ F))
+                 → cata {F} alg ⟨ x ⟩ ≡ alg (fmap F (cata {F} alg) x)
+cata-computation F {A} alg x = cong alg (fmapCata-is-fmap F {F} {A} alg x)
+
+-- | Identity catamorphism: cata ⟨_⟩ ≡ id
+--
+-- When the algebra is the constructor ⟨_⟩, cata gives back the original value.
+-- Proof by induction on μ F.
+--
+mutual
+  cata-In-id : ∀ {F} (x : μ F) → cata ⟨_⟩ x ≡ x
+  cata-In-id {F} ⟨ x ⟩ = cong ⟨_⟩ (fmapCata-In-id F x)
+
+  -- Helper: fmapCata with ⟨_⟩ is identity on the functor structure
+  fmapCata-In-id : ∀ F {G} (x : ⟦ F ⟧F (μ G)) → fmapCata F ⟨_⟩ x ≡ x
+  fmapCata-In-id (K B) x = refl
+  fmapCata-In-id Id x = cata-In-id x
+  fmapCata-In-id (F ⊕ G) (inj₁ x) = cong inj₁ (fmapCata-In-id F x)
+  fmapCata-In-id (F ⊕ G) (inj₂ y) = cong inj₂ (fmapCata-In-id G y)
+  fmapCata-In-id (F ⊗ G) (x , y) =
+    cong₂ _,_ (fmapCata-In-id F x) (fmapCata-In-id G y)
+    where
+      cong₂ : ∀ {A B C : Set} (f : A → B → C) {x x' : A} {y y' : B}
+            → x ≡ x' → y ≡ y' → f x y ≡ f x' y'
+      cong₂ f refl refl = refl
+
+------------------------------------------------------------------------
 -- Greatest Fixed Point (Final Coalgebra)
 --
 -- ν F is the greatest fixed point of functor F.

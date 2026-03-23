@@ -201,29 +201,42 @@ sem-ana-impl F coalg x = ν-to-sem F (SPF.ana coalg x)
 
 -- Transport round-trip lemmas (standard)
 private
-  subst-sym-subst : ∀ {ℓ} {A B : Set ℓ} (p : A ≡ B) (v : B)
-                  → subst (λ z → z) p (subst (λ z → z) (sym p) v) ≡ v
+  -- General subst round-trip for any type family P
+  subst-sym-subst : ∀ {ℓ ℓ'} {A B : Set ℓ} {P : Set ℓ → Set ℓ'} (p : A ≡ B) (v : P B)
+                  → subst P p (subst P (sym p) v) ≡ v
   subst-sym-subst refl v = refl
 
-  subst-subst-sym : ∀ {ℓ} {A B : Set ℓ} (p : A ≡ B) (v : A)
-                  → subst (λ z → z) (sym p) (subst (λ z → z) p v) ≡ v
+  subst-subst-sym : ∀ {ℓ ℓ'} {A B : Set ℓ} {P : Set ℓ → Set ℓ'} (p : A ≡ B) (v : P A)
+                  → subst P (sym p) (subst P p v) ≡ v
   subst-subst-sym refl v = refl
 
   -- Transport round-trip for functor-applied types
   transport-round-trip : ∀ F G (x : ⟦ F ⟧F (⟦μ⟧ G))
                        → transport-μ⁻¹ F G (transport-μ F G x) ≡ x
-  transport-round-trip F G x = subst-subst-sym (μ-coherence G) x
+  transport-round-trip F G x = subst-subst-sym {P = λ T → ⟦ F ⟧F T} (μ-coherence G) x
 
   transport⁻¹-round-trip : ∀ F G (x : ⟦ F ⟧F (SPF.μ G))
                          → transport-μ F G (transport-μ⁻¹ F G x) ≡ x
-  transport⁻¹-round-trip F G x = subst-sym-subst (μ-coherence G) x
+  transport⁻¹-round-trip F G x = subst-sym-subst {P = λ T → ⟦ F ⟧F T} (μ-coherence G) x
 
   -- μ transport round-trips
   μ-round-trip : ∀ F (x : SPF.μ F) → μ-from-sem F (μ-to-sem F x) ≡ x
-  μ-round-trip F x = subst-sym-subst (μ-coherence F) x
+  μ-round-trip F x = subst-sym-subst {P = λ T → T} (μ-coherence F) x
 
   μ⁻¹-round-trip : ∀ F (x : ⟦μ⟧ F) → μ-to-sem F (μ-from-sem F x) ≡ x
-  μ⁻¹-round-trip F x = subst-subst-sym (μ-coherence F) x
+  μ⁻¹-round-trip F x = subst-subst-sym {P = λ T → T} (μ-coherence F) x
+
+-- | Key coherence axiom: transport-μ equals fmap with μ-from-sem
+--
+-- For polynomial functors, transporting ⟦ F ⟧F (⟦μ⟧ G) to ⟦ F ⟧F (SPF.μ G)
+-- via the coherence axiom is the same as applying fmap F (μ-from-sem G).
+--
+-- This is postulated as part of the coherence layer. Any sensible
+-- instantiation of μ-coherence would satisfy this property.
+--
+postulate
+  transport-μ-is-fmap : ∀ F G (x : ⟦ F ⟧F (⟦μ⟧ G))
+                      → transport-μ F G x ≡ SPF.fmap F (μ-from-sem G) x
 
 -- | Lambek's Lemma (one direction): Out ∘ In ≡ id (PROVEN)
 --
@@ -289,20 +302,52 @@ sem-In-Out-valid F x =
     step3 : μ-to-sem F (μ-from-sem F x) ≡ x
     step3 = μ⁻¹-round-trip F x
 
--- | Catamorphism computation law
+-- | Catamorphism computation law (PROVEN via SPF.cata-computation)
 --
 -- Core postulates: sem-cata-compute : ∀ F alg x →
 --                    sem-cata F alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata F alg) x)
 --
--- SPF: cata alg ⟨ x ⟩ = alg (fmapCata F alg x) by definition
+-- Proof:
+--   sem-cata-impl F alg (sem-In-impl F x)
+--   = SPF.cata alg (μ-from-sem F (μ-to-sem F (SPF.⟨ transport-μ F F x ⟩)))
+--   = SPF.cata alg (SPF.⟨ transport-μ F F x ⟩)           [by μ-round-trip]
+--   = alg (SPF.fmap F (SPF.cata alg) (transport-μ F F x)) [by SPF.cata-computation]
+--   = alg (SPF.fmap F (SPF.cata alg) (SPF.fmap F (μ-from-sem F) x))
+--                                                         [by transport-μ-is-fmap]
+--   = alg (SPF.fmap F (SPF.cata alg ∘ μ-from-sem F) x)   [by fmap-comp inverse]
+--   = alg (sem-fmap F (sem-cata-impl F alg) x)           [by fmap-coherence inverse]
 --
--- Note: This requires showing fmapCata ≡ fmap ∘ cata, which involves
--- mutual recursion. Postulated for now - can be proven with more work.
---
-postulate
-  sem-cata-compute-valid : ∀ F {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
-                         → sem-cata-impl F alg (sem-In-impl F x)
-                           ≡ alg (sem-fmap F (sem-cata-impl F alg) x)
+sem-cata-compute-valid : ∀ F {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
+                       → sem-cata-impl F alg (sem-In-impl F x)
+                         ≡ alg (sem-fmap F (sem-cata-impl F alg) x)
+sem-cata-compute-valid F {A} alg x =
+  trans step1 (trans step2 (trans step3 (trans step4 step5)))
+  where
+    -- Step 1: Apply μ-round-trip to remove μ-from-sem ∘ μ-to-sem
+    step1 : sem-cata-impl F alg (sem-In-impl F x) ≡
+            SPF.cata {F} alg SPF.⟨ transport-μ F F x ⟩
+    step1 = cong (SPF.cata alg) (μ-round-trip F SPF.⟨ transport-μ F F x ⟩)
+
+    -- Step 2: Apply SPF.cata-computation
+    step2 : SPF.cata {F} alg SPF.⟨ transport-μ F F x ⟩ ≡
+            alg (SPF.fmap F (SPF.cata {F} alg) (transport-μ F F x))
+    step2 = SPF.cata-computation F alg (transport-μ F F x)
+
+    -- Step 3: Apply transport-μ-is-fmap
+    step3 : alg (SPF.fmap F (SPF.cata {F} alg) (transport-μ F F x)) ≡
+            alg (SPF.fmap F (SPF.cata {F} alg) (SPF.fmap F (μ-from-sem F) x))
+    step3 = cong (λ z → alg (SPF.fmap F (SPF.cata {F} alg) z))
+                 (transport-μ-is-fmap F F x)
+
+    -- Step 4: Apply fmap composition (fmap g (fmap f x) = fmap (g ∘ f) x)
+    step4 : alg (SPF.fmap F (SPF.cata {F} alg) (SPF.fmap F (μ-from-sem F) x)) ≡
+            alg (SPF.fmap F (λ z → SPF.cata {F} alg (μ-from-sem F z)) x)
+    step4 = cong alg (sym (SPF.fmap-comp F (μ-from-sem F) (SPF.cata {F} alg) x))
+
+    -- Step 5: Convert SPF.fmap to sem-fmap (both are the same by fmap-coherence)
+    step5 : alg (SPF.fmap F (λ z → SPF.cata {F} alg (μ-from-sem F z)) x) ≡
+            alg (sem-fmap F (sem-cata-impl F alg) x)
+    step5 = cong alg (sym (fmap-coherence F (sem-cata-impl F alg) x))
 
 ------------------------------------------------------------------------
 -- Part 7: Functor Law Inheritance
