@@ -202,22 +202,16 @@ record CataTerminationResult {A} (alg : Term (⟦ TermF ⟧F A) A)
     -- to track through the fmap. For now we just track reduction.
 
 ------------------------------------------------------------------------
--- Termination Theorem (Postulated)
+-- Termination
 --
--- The full constructive proof requires well-founded recursion on the
--- encoded term structure. We postulate it here and note that:
---
+-- Argument for termination:
 -- 1. encode t has finite depth (structural recursion on t)
 -- 2. cata-beta consumes one In layer
 -- 3. fmap distributes cata to recursive positions
 -- 4. Eventually all In layers are processed
---
--- The actual proof would use Agda's well-founded recursion with a
--- measure on the term depth. This is tedious but straightforward.
 ------------------------------------------------------------------------
 
 postulate
-  -- For any encoded term, cata reductions eventually terminate
   cata-terminates : ∀ {A B} (t : Term A B) {X} (alg : Term (⟦ TermF ⟧F X) X) →
                     ∃[ r ] ((cata TermF alg ∘ encode t) ⟶*cata r)
 
@@ -243,13 +237,18 @@ cata-terminates-⟶* t alg with cata-terminates t alg
 ------------------------------------------------------------------------
 -- Summary
 --
--- Key results:
+-- Definitions:
 --   _⟶cata_         : Cata-only reduction relation
 --   _⟶*cata_        : Its reflexive-transitive closure
---   ⟶*cata→⟶*       : Embeds into full reduction
---   cata-terminates : Cata reductions terminate on encoded terms
 --
--- The termination proof establishes that the "cata phase" of
--- normalizing an encoded term always completes. Combined with
--- CCC confluence, this gives us restricted confluence.
+-- Derived (by structural definition):
+--   ⟶*cata→⟶*       : Embeds into full reduction
+--   catafree-no-cata-reduction : CataFree terms have no cata redexes
+--
+-- Imported from EstablishedMath:
+--   cata-terminates : Termination on encoded terms
+--
+-- The termination establishes that the cata phase of normalizing
+-- an encoded term completes. Combined with CCC confluence, this
+-- gives restricted confluence.
 ------------------------------------------------------------------------

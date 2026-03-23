@@ -1,13 +1,12 @@
 ------------------------------------------------------------------------
--- StandardCCC: Minimal Postulate for Standard CCC Confluence
+-- StandardCCC: Standard CCC Reduction and Confluence
 --
 -- This module defines CCC reduction WITHOUT cata-beta, out-in, in-out
--- rules. The confluence of this standard CCC fragment is a well-known
--- result from Lambek & Scott's "Introduction to Higher Order Categorical
--- Logic".
+-- rules. This is the standard CCC fragment from Lambek & Scott's
+-- "Introduction to Higher Order Categorical Logic".
 --
--- We postulate only standard CCC confluence, then prove cata confluence
--- separately for the restricted class of encoded terms.
+-- The confluence of this fragment is asserted here. Cata confluence
+-- is handled separately in CataCommutation.agda.
 ------------------------------------------------------------------------
 
 module normalizer.Axioms.StandardCCC where
@@ -284,15 +283,15 @@ ccc-confluence⟹ (step⟹ccc p ps) qs with ccc-strip p qs
 ------------------------------------------------------------------------
 -- Summary
 --
--- Postulates (MINIMAL):
+-- Postulates:
 --   ccc-complete : Term A B → Term A B
 --   ccc-triangle : t ⟹ccc u → u ⟹ccc ccc-complete t
 --
--- Derived:
---   ccc-diamond     : t ⟹ccc u → t ⟹ccc v → ∃ w. u ⟹ccc w × v ⟹ccc w
---   ccc-strip       : t ⟹ccc u → t ⟹*ccc v → ∃ w. u ⟹*ccc w × v ⟹ccc w
---   ccc-confluence⟹ : t ⟹*ccc u → t ⟹*ccc v → ∃ w. u ⟹*ccc w × v ⟹*ccc w
+-- Derived (by standard parallel reduction technique):
+--   ccc-diamond     : From triangle
+--   ccc-strip       : By induction on ⟹*ccc
+--   ccc-confluence⟹ : By induction using strip
 --
--- These postulates exclude cata-beta, out-in, in-out - exactly what
--- Lambek & Scott proved for standard CCCs without μ-types.
+-- This covers standard CCC reduction (Lambek & Scott) excluding
+-- cata-beta, out-in, in-out which are μ-type specific.
 ------------------------------------------------------------------------

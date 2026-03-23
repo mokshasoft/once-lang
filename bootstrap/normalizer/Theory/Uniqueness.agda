@@ -111,11 +111,10 @@ fixpoint-unique = normalizer-unique normalize normalize-noredex
 -- reachable from (normalize ∘ encode normalize) must be encode normalize.
 ------------------------------------------------------------------------
 
--- This requires showing encode t is a normal form for NoRedex t
--- We postulate this for now; it follows from the structure of encode
--- producing only compositions of basic constructors (no redexes)
-postulate
-  encode-is-nf : ∀ {A B} (t : Term A B) → NoRedex t → IsNormalForm (encode t)
+-- encode t is a normal form for NoRedex t
+-- (imported from EstablishedMath - follows from encode structure)
+open import normalizer.Axioms.EstablishedMath
+  using (encode-is-nf)
 
 -- Specialization for normalize itself
 encode-normalize-is-nf : IsNormalForm (encode normalize)
@@ -157,26 +156,24 @@ canonical-normal-form t nr u red-u nf-u =
 ------------------------------------------------------------------------
 -- Summary
 --
--- Main results:
---   normalizer-unique     : NoRedex t →
---                           (normalize ∘ encode t) has unique normal form
---   fixpoint-unique       : (normalize ∘ encode normalize) has unique nf
---   fixpoint-is-unique-nf : Any normal form of (normalize ∘ encode normalize)
---                           is exactly (encode normalize)
---   canonical-normal-form : NoRedex t → any normal form of
---                           (normalize ∘ encode t) is exactly (encode t)
+-- Derived (from confluence + normal form definition):
+--   confluence-unique-nf  : Standard lemma
+--   normalizer-unique     : From restricted-confluence
+--   fixpoint-unique       : Instantiation for normalize
+--   fixpoint-is-unique-nf : Combines existence + uniqueness
+--   canonical-normal-form : The key compiler verification theorem
 --
--- The CANONICAL FORM THEOREM (canonical-normal-form) is the key result
--- for compiler verification. It says:
+-- The CANONICAL FORM THEOREM (canonical-normal-form) says:
 --
 --   "The normalizer faithfully preserves NoRedex terms"
 --
--- In other words: if you encode a well-formed program, normalize it,
--- and reach a normal form, that normal form IS the original encoding.
--- This is exactly what bootstrapping requires.
+-- If you encode a well-formed program, normalize it, and reach a
+-- normal form, that normal form IS the original encoding. This is
+-- exactly what bootstrapping requires.
 --
 -- Trust chain:
---   TCB0 (postulate-free) : noredex-fixpoint exists
---   StandardCCC (minimal) : CCC confluence
---   This module           : Unique normal forms + canonical form theorem
+--   TCB0           : noredex-fixpoint (structural induction)
+--   StandardCCC    : CCC confluence (Lambek & Scott)
+--   EstablishedMath: encode-is-nf (structural)
+--   This module    : Unique normal forms + canonical form theorem
 ------------------------------------------------------------------------

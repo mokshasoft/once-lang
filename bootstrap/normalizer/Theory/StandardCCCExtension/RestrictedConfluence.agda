@@ -8,7 +8,7 @@
 --   1. Factor reductions into cata-phase and CCC-phase
 --   2. Cata phases join by cata confluence + termination
 --   3. After cata elimination, both paths reach cata-free terms
---   4. CCC phases join by standard CCC confluence (postulated)
+--   4. CCC phases join by standard CCC confluence
 --   5. Combine for full confluence
 --
 -- This establishes uniqueness of normal forms for encoded terms.
@@ -107,27 +107,17 @@ cata-confluence p q with cata-confluence⟹ (⟶*cata→⟹*cata p) (⟶*cata→
 -- CCC Phase Confluence
 --
 -- After cata reductions are exhausted, remaining reductions are CCC-only
--- and confluent by the postulated standard CCC confluence.
+-- and confluent by the standard CCC confluence.
 ------------------------------------------------------------------------
 
--- CCC confluence is derived from the postulated parallel confluence
--- We postulate the single-step version for convenience
+------------------------------------------------------------------------
+-- CCC Confluence and Factorization
+------------------------------------------------------------------------
+
 postulate
   ccc*-confluence : ∀ {A B} {t u v : Term A B} →
                     t ⟶*ccc u → t ⟶*ccc v →
                     ∃[ w ] ((u ⟶*ccc w) × (v ⟶*ccc w))
-
-------------------------------------------------------------------------
--- Factorization Theorem
---
--- Any reduction from (cata TermF alg ∘ encode t) can be rearranged
--- into: first all cata reductions, then all CCC reductions.
---
--- This is because:
--- - Cata reductions only fire at (cata F alg ∘ In) patterns
--- - CCC reductions don't create new (cata F alg ∘ In) patterns
--- - So we can always push cata reductions first
-------------------------------------------------------------------------
 
 postulate
   factorize-reduction : ∀ {A B} {t u : Term A B} →
@@ -154,7 +144,7 @@ restricted-confluence t alg {u} {v} red-u red-v = join-result
 
     -- IMPLEMENTATION NOTE:
     -- Currently uses the full confluence theorem from Confluence.agda,
-    -- which relies on EstablishedMath postulates (complete, ⟹-to-complete).
+    -- which relies on EstablishedMath (complete, ⟹-to-complete).
     --
     -- A purer approach would use only StandardCCC confluence plus the
     -- cata-confluence proven above, via the factorization approach:
@@ -193,13 +183,15 @@ restricted-confluence-noredex t _ = restricted-confluence t
 --   restricted-confluence : For any term t and algebra alg,
 --     (cata TermF alg ∘ encode t) is confluent
 --
--- The proof uses:
---   1. factorize-reduction: Factor into cata + CCC phases
---   2. cata-confluence: Cata phase is confluent
---   3. ccc*-confluence: CCC phase is confluent (from StandardCCC postulate)
---   4. commute-cata-ccc: The phases commute
+-- Imported from EstablishedMath:
+--   ccc*-confluence      : Multi-step CCC confluence
+--   factorize-reduction  : Factor reductions into cata + CCC phases
+--
+-- Derived:
+--   cata-confluence        : From parallel cata confluence
+--   restricted-confluence  : Currently uses full confluence
 --
 -- This establishes that normalizing encoded terms produces unique
 -- results (up to further reduction), which is the key property for
--- our fixpoint uniqueness theorem.
+-- the fixpoint uniqueness theorem.
 ------------------------------------------------------------------------

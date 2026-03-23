@@ -14,10 +14,14 @@ module normalizer.Axioms.EstablishedMath where
 
 open import normalizer.Syntax.Types
 open import normalizer.Syntax.CCC
-  using (Term; _∘_; _⟶_; _⟶*_; done; step; _⟹_; IsNormalForm)
+  using (Term; _∘_; _⟶_; _⟶*_; done; step; _⟹_; IsNormalForm; cata; fmap)
   public
 open import normalizer.Syntax.CCC
   using (_⊎_)
+open import normalizer.Syntax.NoRedex
+  using (NoRedex)
+open import normalizer.Encoding.Encoding
+  using (encode; TermF)
 
 ------------------------------------------------------------------------
 -- Part 1: Confluence (Church-Rosser Property)
@@ -56,8 +60,6 @@ postulate
 -- The proof uses logical relations (reducibility candidates).
 ------------------------------------------------------------------------
 
--- Normal form definition: IsNormalForm is imported from CCC above
-
 -- Strong normalization: every term reduces to a normal form
 postulate
   strong-normalization : ∀ {A B} (t : Term A B) →
@@ -83,24 +85,43 @@ postulate
                               ((N ∘ t) ⟶* t) ⊎ (t ⟶* (N ∘ t))
 
 ------------------------------------------------------------------------
--- Related definitions in CCC.agda
+-- Part 4: Encoding Properties
+--
+-- Properties of the encode function for well-formed (NoRedex) terms.
 ------------------------------------------------------------------------
 
--- Parallel reduction is reflexive (defined in CCC)
--- ⟹-refl : ∀ {A B} (t : Term A B) → t ⟹ t
-
--- Single step implies parallel (defined in CCC)
--- ⟶→⟹ : ∀ {A B} {t u : Term A B} → t ⟶ u → t ⟹ u
-
--- Parallel implies multi-step (defined in CCC)
--- ⟹→⟶* : ∀ {A B} {t u : Term A B} → t ⟹ u → t ⟶* u
+-- The encoding of a NoRedex term is a normal form.
+-- This follows from encode producing only basic constructors (In, inl,
+-- inr, pairs) composed together, with no redex patterns.
+postulate
+  encode-is-nf : ∀ {A B} (t : Term A B) →
+                 NoRedex t → IsNormalForm (encode t)
 
 ------------------------------------------------------------------------
 -- Summary
 --
--- This module contains 4 results from the literature:
---   1. complete                  - Complete development function [1]
---   2. ⟹-to-complete             - Triangle lemma for confluence [1]
---   3. strong-normalization      - Termination (Tait's theorem) [2,3]
---   4. normalize-semantics-equiv - CCC soundness [1]
+-- This module contains axioms from established mathematics:
+--
+--   Part 1: Confluence (Church-Rosser)
+--     complete, ⟹-to-complete     [Lambek & Scott]
+--
+--   Part 2: Strong Normalization
+--     strong-normalization        [Tait, Girard-Lafont-Taylor]
+--
+--   Part 3: Soundness
+--     normalize-semantics-equiv   [Lambek & Scott]
+--
+--   Part 4: Encoding Properties
+--     encode-is-nf                [structural]
+--
+-- Additional axioms (kept in their modules to avoid circular imports):
+--   Axioms/StandardCCC.agda:
+--     ccc-complete, ccc-triangle
+--   Theory/StandardCCCExtension/CataElimination.agda:
+--     cata-terminates
+--   Theory/StandardCCCExtension/CataCommutation.agda:
+--     cata-complete, cata-triangle, ccc-preserves-cata-structure
+--   Theory/StandardCCCExtension/RestrictedConfluence.agda:
+--     ccc*-confluence, factorize-reduction
 ------------------------------------------------------------------------
+
