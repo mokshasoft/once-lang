@@ -933,14 +933,32 @@ to the concrete implementations in `Once.SPF`:
   - Law validation: Lambek's Lemma and cata computation law
   - Functor law inheritance: `sem-fmap-id`, `sem-fmap-comp` (proven)
 
+**Recursion Scheme Laws** ✓ COMPLETE (2026-03-23)
+
+Semantic and IR-level laws for recursion schemes:
+
+- **Core.agda** additions:
+  - Coercion round-trip lemmas: `coerce-round-trip`, `coerce⁻¹-round-trip`
+  - Identity catamorphism: `sem-cata-In-id : sem-cata F sem-In x ≡ x`
+  - Identity anamorphism: `sem-ana-Out-id : sem-ana F sem-CoOut x ≡ x`
+  - Hylo computation: `sem-hylo-compute` (recursive application)
+
+- **Category/Laws.agda** documentation:
+  - `eval-cata-In-id`: derivation from sem-cata-In-id
+  - `eval-cata-In`: derivation from sem-cata-compute
+  - `eval-hylo-unfold`: derivation from sem-hylo-compute
+  - `eval-ana-Out-id`: derivation from sem-ana-Out-id
+
+IR-level laws remain postulated (require funext), but derivations are documented.
+
 **Remaining Work**:
 
 - [ ] Agda proofs for guardedness enforcement
-- [ ] Verify schemes preserve semantics
 - [ ] Verify Guarded type ensures productivity
 - [ ] Integrate with existing D039 polynomial functor proofs
 - [ ] Align with OCP-0004 bootstrap verification
 - [ ] Replace transport postulates with explicit proofs
+- [ ] Full IR law proofs (requires function extensionality)
 
 ---
 
