@@ -344,3 +344,13 @@ postulate
 postulate
   sem-hylo-compute : ∀ (F : Functor) {A B : Set} (alg : ⟦ F ⟧F B → B) (coalg : A → ⟦ F ⟧F A) (x : A)
                    → sem-hylo F alg coalg x ≡ alg (sem-fmap F (sem-hylo F alg coalg) (coalg x))
+
+-- | Guarded hylomorphism computation law
+--
+-- hylo-guarded alg coalg x = alg (fmap (hylo-guarded alg coalg) (unguard (coalg x)))
+--
+postulate
+  sem-hylo-guarded-compute : ∀ (F : Functor) {A B : Set}
+                             (alg : ⟦ F ⟧F B → B) (coalg : A → ⟦Guarded⟧ F A) (x : A)
+                           → sem-hylo-guarded F alg coalg x ≡
+                             alg (sem-fmap F (sem-hylo-guarded F alg coalg) (sem-unguard F (coalg x)))

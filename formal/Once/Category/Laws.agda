@@ -292,12 +292,17 @@ eval-arr-identity f = refl
 -- 4. Hylo fusion: cata ∘ ana = hylo (deforestation)
 ------------------------------------------------------------------------
 
-open import Once.Semantics.Machine
+-- Note: We import from IR (not Machine) to match the ℤ interpretation
+-- used by eval′. Machine uses ℕ which would cause type mismatches.
+open import Once.Semantics.IR
   using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana; sem-hylo;
          sem-Out-In; sem-In-Out; sem-cata-compute; sem-fmap;
          sem-cata-In-id; sem-ana-Out-id; sem-hylo-compute;
+         sem-hylo-guarded; sem-hylo-guarded-compute; sem-unguard;
          coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
-         ⟦_⟧F)
+         ⟦_⟧F; ⟦Guarded⟧)
+
+open import Once.Postulates using (extensionality)
 
 ------------------------------------------------------------------------
 -- Lambek's Lemma (Semantic Level)
@@ -327,12 +332,32 @@ open import Once.Semantics.Machine
 --   = sem-cata F sem-In x                          (by funext)
 --   = x                                            (by sem-cata-In-id)
 --
--- Postulated here because full proof requires function extensionality.
+-- Proven using function extensionality.
 -- The semantic foundation is sem-cata-In-id in Once.Semantics.Core.
 --
-postulate
-  eval-cata-In-id : ∀ (F : Functor) (m : AllocMode) (x : ⟦ μ-type F ⟧)
-                  → eval′ (Cata {F} (In {F} m)) x ≡ x
+eval-cata-In-id : ∀ (F : Functor) (m : AllocMode) (x : ⟦ μ-type F ⟧)
+                → eval′ (Cata {F} (In {F} m)) x ≡ x
+eval-cata-In-id F m x =
+  let -- The algebra used by Cata evaluation: λ fa → eval′ (In m) (coerce⁻¹ fa)
+      -- which equals λ fa → sem-In F (coerce (coerce⁻¹ fa))
+      -- By round-trip, coerce (coerce⁻¹ fa) = fa
+      alg-pointwise : ∀ fa → sem-In F (coerce-functor F (μ-type F) (coerce-functor⁻¹ F (μ-type F) fa)) ≡ sem-In F fa
+      alg-pointwise fa = cong (sem-In F) (coerce⁻¹-round-trip F (μ-type F) fa)
+
+      -- By function extensionality, the algebras are equal
+      alg-eq : (λ fa → sem-In F (coerce-functor F (μ-type F) (coerce-functor⁻¹ F (μ-type F) fa))) ≡ sem-In F
+      alg-eq = extensionality alg-pointwise
+
+      -- Step 1: Substitute equal algebras in sem-cata
+      step1 : sem-cata F (λ fa → sem-In F (coerce-functor F (μ-type F) (coerce-functor⁻¹ F (μ-type F) fa))) x
+            ≡ sem-cata F (sem-In F) x
+      step1 = cong (λ alg → sem-cata F alg x) alg-eq
+
+      -- Step 2: Apply sem-cata-In-id
+      step2 : sem-cata F (sem-In F) x ≡ x
+      step2 = sem-cata-In-id F x
+
+  in trans step1 step2
 
 ------------------------------------------------------------------------
 -- Catamorphism Laws
@@ -368,6 +393,10 @@ fmap-Type (F ⊗ G) f (x , y) = (fmap-Type F f x , fmap-Type G f y)
 --
 -- The semantic foundation is sem-cata-compute in Once.Semantics.Core.
 --
+-- Postulated because full proof requires fmap-coercion coherence:
+--   coerce⁻¹ (sem-fmap F f (coerce x)) ≡ fmap-Type F (coerce⁻¹ ∘ f ∘ coerce) x
+-- This relates Set-level fmap with Type-level fmap through coercions.
+--
 postulate
   eval-cata-In : ∀ (F : Functor) {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
                  (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
@@ -402,7 +431,11 @@ postulate
 --   = eval′ alg (fmap-Type (eval′ (Hylo alg coalg)) (eval′ (Unguard ∘ coalg) x))
 --                                                  (by coercion coherence)
 --
--- The semantic foundation is sem-hylo-guarded in Once.Semantics.Core.
+-- The semantic foundation is sem-hylo-guarded-compute in Once.Semantics.Core.
+--
+-- Postulated because full proof requires fmap-coercion coherence:
+--   coerce⁻¹ (sem-fmap F f (sem-unguard F gx)) ≡ fmap-Type F (coerce⁻¹ ∘ f ∘ coerce) (coerce⁻¹ (sem-unguard F gx))
+-- This relates Set-level fmap with Type-level fmap through coercions and unguard.
 --
 postulate
   eval-hylo-unfold : ∀ (F : Functor) {A B : Type}
