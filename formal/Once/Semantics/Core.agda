@@ -121,6 +121,7 @@ postulate
 -- | Coherence: ⟦ ⟦ F ⟧T X ⟧ ≡ ⟦ F ⟧F ⟦ X ⟧
 --
 -- This allows converting between Type-level and Set-level functor apps.
+-- Proven by structural induction on F.
 --
 sem-functor-coherence : ∀ F X → ⟦ ⟦ F ⟧T X ⟧ ≡ ⟦ F ⟧F ⟦ X ⟧
 sem-functor-coherence (K A) X = refl
@@ -130,93 +131,78 @@ sem-functor-coherence (F ⊕ G) X rewrite sem-functor-coherence F X
 sem-functor-coherence (F ⊗ G) X rewrite sem-functor-coherence F X
                                       | sem-functor-coherence G X = refl
 
+------------------------------------------------------------------------
+-- Coercions (Structural Definition)
+--
+-- Key insight: Define coercions by structural recursion on F, NOT via
+-- subst on the coherence proof. This makes them compute properly and
+-- allows definitional equality with structural operations.
+------------------------------------------------------------------------
+
 -- | Coercion from Type-level to Set-level functor application
---
--- Uses the coherence proof via subst.
---
 coerce-functor : ∀ F X → ⟦ ⟦ F ⟧T X ⟧ → ⟦ F ⟧F ⟦ X ⟧
-coerce-functor F X = subst (λ z → z) (sem-functor-coherence F X)
-  where
-    open import Relation.Binary.PropositionalEquality using (subst)
+coerce-functor (K A) X x = x
+coerce-functor Id X x = x
+coerce-functor (F ⊕ G) X (inj₁ x) = inj₁ (coerce-functor F X x)
+coerce-functor (F ⊕ G) X (inj₂ y) = inj₂ (coerce-functor G X y)
+coerce-functor (F ⊗ G) X (x , y) = (coerce-functor F X x , coerce-functor G X y)
 
 -- | Inverse coercion
 coerce-functor⁻¹ : ∀ F X → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ⟦ F ⟧T X ⟧
-coerce-functor⁻¹ F X = subst (λ z → z) (sym (sem-functor-coherence F X))
-  where
-    open import Relation.Binary.PropositionalEquality using (subst; sym)
+coerce-functor⁻¹ (K A) X x = x
+coerce-functor⁻¹ Id X x = x
+coerce-functor⁻¹ (F ⊕ G) X (inj₁ x) = inj₁ (coerce-functor⁻¹ F X x)
+coerce-functor⁻¹ (F ⊕ G) X (inj₂ y) = inj₂ (coerce-functor⁻¹ G X y)
+coerce-functor⁻¹ (F ⊗ G) X (x , y) = (coerce-functor⁻¹ F X x , coerce-functor⁻¹ G X y)
 
 ------------------------------------------------------------------------
 -- Coercion Round-Trip Lemmas
 --
--- These lemmas establish that coerce-functor and coerce-functor⁻¹ are
--- inverses. This is essential for proving recursion scheme laws.
+-- Now that coercions are defined structurally, the round-trip proofs
+-- are simple structural induction (no subst manipulation needed).
 ------------------------------------------------------------------------
-
-private
-  open import Relation.Binary.PropositionalEquality using (subst; sym)
-
-  -- Standard lemma: subst followed by subst with sym cancels
-  subst-sym-subst : ∀ {A B : Set} (p : A ≡ B) (v : B)
-                  → subst (λ z → z) p (subst (λ z → z) (sym p) v) ≡ v
-  subst-sym-subst refl v = refl
-
-  -- Dual: subst with sym followed by subst cancels
-  subst-subst-sym : ∀ {A B : Set} (p : A ≡ B) (v : A)
-                  → subst (λ z → z) (sym p) (subst (λ z → z) p v) ≡ v
-  subst-subst-sym refl v = refl
 
 -- | Round-trip: coerce then coerce⁻¹ is identity
 coerce-round-trip : ∀ F X (x : ⟦ ⟦ F ⟧T X ⟧)
                   → coerce-functor⁻¹ F X (coerce-functor F X x) ≡ x
-coerce-round-trip F X x = subst-subst-sym (sem-functor-coherence F X) x
+coerce-round-trip (K A) X x = refl
+coerce-round-trip Id X x = refl
+coerce-round-trip (F ⊕ G) X (inj₁ x) = cong inj₁ (coerce-round-trip F X x)
+coerce-round-trip (F ⊕ G) X (inj₂ y) = cong inj₂ (coerce-round-trip G X y)
+coerce-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce-round-trip F X x) (coerce-round-trip G X y)
 
 -- | Round-trip: coerce⁻¹ then coerce is identity
 coerce⁻¹-round-trip : ∀ F X (x : ⟦ F ⟧F ⟦ X ⟧)
                     → coerce-functor F X (coerce-functor⁻¹ F X x) ≡ x
-coerce⁻¹-round-trip F X x = subst-sym-subst (sem-functor-coherence F X) x
+coerce⁻¹-round-trip (K A) X x = refl
+coerce⁻¹-round-trip Id X x = refl
+coerce⁻¹-round-trip (F ⊕ G) X (inj₁ x) = cong inj₁ (coerce⁻¹-round-trip F X x)
+coerce⁻¹-round-trip (F ⊕ G) X (inj₂ y) = cong inj₂ (coerce⁻¹-round-trip G X y)
+coerce⁻¹-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce⁻¹-round-trip F X x) (coerce⁻¹-round-trip G X y)
 
 ------------------------------------------------------------------------
--- Structural Coercions
+-- Structural Coercion Aliases (for backwards compatibility)
 --
--- Alternative coercion definitions that work by structural recursion
--- on F. These are easier to work with in proofs because they don't
--- involve complex subst terms.
+-- Now that coerce-functor is defined structurally, these are just aliases.
 ------------------------------------------------------------------------
 
--- | Structural coercion: Type-level to Set-level (by recursion on F)
+-- | Alias for coerce-functor (backwards compatibility)
 coerce-struct : ∀ F X → ⟦ ⟦ F ⟧T X ⟧ → ⟦ F ⟧F ⟦ X ⟧
-coerce-struct (K A) X x = x
-coerce-struct Id X x = x
-coerce-struct (F ⊕ G) X (inj₁ x) = inj₁ (coerce-struct F X x)
-coerce-struct (F ⊕ G) X (inj₂ y) = inj₂ (coerce-struct G X y)
-coerce-struct (F ⊗ G) X (x , y) = (coerce-struct F X x , coerce-struct G X y)
+coerce-struct = coerce-functor
 
--- | Structural coercion: Set-level to Type-level (inverse)
+-- | Alias for coerce-functor⁻¹ (backwards compatibility)
 coerce-struct⁻¹ : ∀ F X → ⟦ F ⟧F ⟦ X ⟧ → ⟦ ⟦ F ⟧T X ⟧
-coerce-struct⁻¹ (K A) X x = x
-coerce-struct⁻¹ Id X x = x
-coerce-struct⁻¹ (F ⊕ G) X (inj₁ x) = inj₁ (coerce-struct⁻¹ F X x)
-coerce-struct⁻¹ (F ⊕ G) X (inj₂ y) = inj₂ (coerce-struct⁻¹ G X y)
-coerce-struct⁻¹ (F ⊗ G) X (x , y) = (coerce-struct⁻¹ F X x , coerce-struct⁻¹ G X y)
+coerce-struct⁻¹ = coerce-functor⁻¹
 
--- | Structural coercions are inverses
+-- | Alias for coerce-round-trip
 coerce-struct-round-trip : ∀ F X (x : ⟦ ⟦ F ⟧T X ⟧)
                          → coerce-struct⁻¹ F X (coerce-struct F X x) ≡ x
-coerce-struct-round-trip (K A) X x = refl
-coerce-struct-round-trip Id X x = refl
-coerce-struct-round-trip (F ⊕ G) X (inj₁ x) = cong inj₁ (coerce-struct-round-trip F X x)
-coerce-struct-round-trip (F ⊕ G) X (inj₂ y) = cong inj₂ (coerce-struct-round-trip G X y)
-coerce-struct-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce-struct-round-trip F X x) (coerce-struct-round-trip G X y)
+coerce-struct-round-trip = coerce-round-trip
 
+-- | Alias for coerce⁻¹-round-trip
 coerce-struct⁻¹-round-trip : ∀ F X (x : ⟦ F ⟧F ⟦ X ⟧)
                            → coerce-struct F X (coerce-struct⁻¹ F X x) ≡ x
-coerce-struct⁻¹-round-trip (K A) X x = refl
-coerce-struct⁻¹-round-trip Id X x = refl
-coerce-struct⁻¹-round-trip (F ⊕ G) X (inj₁ x) = cong inj₁ (coerce-struct⁻¹-round-trip F X x)
-coerce-struct⁻¹-round-trip (F ⊕ G) X (inj₂ y) = cong inj₂ (coerce-struct⁻¹-round-trip G X y)
-coerce-struct⁻¹-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce-struct⁻¹-round-trip F X x) (coerce-struct⁻¹-round-trip G X y)
-
--- Fmap coherence lemmas are defined after sem-fmap (see below)
+coerce-struct⁻¹-round-trip = coerce⁻¹-round-trip
 
 ------------------------------------------------------------------------
 -- Semantic Operations
