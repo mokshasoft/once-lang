@@ -1,12 +1,16 @@
 ------------------------------------------------------------------------
--- Confluence: Diamond Property for Parallel Reduction
+-- Confluence: Diamond Property for Full Reduction
 --
--- The CCC reduction system is confluent using the Tait-Martin-Löf
--- technique:
---   1. Define parallel reduction ⟹ (in CCC)
---   2. Define "complete development" that reduces ALL redexes
---   3. Show: t ⟹ u implies u ⟹ (complete t)
---   4. Diamond follows: t ⟹ u and t ⟹ v implies both ⟹ (complete t)
+-- Full confluence for _⟹_ (which includes both CCC and cata rules).
+--
+-- STATUS: The complete and ⟹-to-complete are still axioms here,
+-- but they SHOULD be derivable from:
+--   - StandardCCC.ccc-complete, ccc-triangle (established)
+--   - CataAxioms.cata-complete, cata-triangle
+--   - CCC/cata commutation properties
+--
+-- The derivation requires proving that CCC and cata reductions
+-- commute, allowing the combined complete development to work.
 ------------------------------------------------------------------------
 
 module normalizer.Axioms.Confluence where
@@ -15,49 +19,39 @@ open import normalizer.Syntax.Types
 open import normalizer.Syntax.CCC
 
 ------------------------------------------------------------------------
--- Import Established Mathematics
+-- Combined Complete Development
 --
--- The complete development function and triangle lemma are standard
--- results from the literature. See EstablishedMath.agda for references.
+-- The full _⟹_ relation includes both CCC and cata-beta rules.
+-- The complete development handles both:
+--
+--   complete (cata F alg ∘ In) = alg' ∘ fmap F (cata F alg')
+--     where alg' = complete alg
+--   complete (fst ∘ ⟨ f , g ⟩) = complete f
+--   ... (other CCC rules from ccc-complete)
+--   ... (structural cases)
+--
+-- This combines ccc-complete and cata-complete into one function.
+-- The definition is straightforward by structural recursion.
 ------------------------------------------------------------------------
 
-open import normalizer.Axioms.EstablishedMath
-  using (complete; ⟹-to-complete)
-  public
+postulate
+  complete : ∀ {A B} → Term A B → Term A B
 
-{-
--- For reference, the intended definition of complete:
+------------------------------------------------------------------------
+-- Triangle Lemma for Full Reduction
+--
+-- To derive from StandardCCC + Cata:
+--   1. If t ⟹ u via CCC rules only: use ccc-triangle
+--   2. If t ⟹ u via cata rules only: use cata-triangle
+--   3. If mixed: use commutation (CCC and cata don't interfere)
+--
+-- The key property: ccc-preserves-cata-structure shows CCC
+-- reductions preserve the cata reduction structure, and vice versa.
+------------------------------------------------------------------------
 
-complete id = id
-complete fst = fst
-complete snd = snd
-complete inl = inl
-complete inr = inr
-complete terminal = terminal
-complete initial = initial
-complete apply = apply
-complete In = In
-complete Out = Out
-complete ⟨ f , g ⟩ = ⟨ complete f , complete g ⟩
-complete [ f , g ] = [ complete f , complete g ]
-complete (curry f) = curry (complete f)
-complete (cata F alg) = cata F (complete alg)
--- Compositions with redexes:
-complete (id ∘ g) = complete g
-complete (fst ∘ ⟨ f , g ⟩) = complete f
-complete (snd ∘ ⟨ f , g ⟩) = complete g
-complete ([ f , g ] ∘ inl) = complete f
-complete ([ f , g ] ∘ inr) = complete g
-complete (apply ∘ ⟨ curry f , g ⟩) = complete f ∘ ⟨ id , complete g ⟩
-complete ((cata F alg) ∘ In) = complete alg ∘ fmap F (cata F (complete alg))
-complete (⟨ f , g ⟩ ∘ h) = ⟨ complete f ∘ complete h , complete g ∘ complete h ⟩
-complete (f ∘ id) = complete f
--- Default (no redex):
-complete (f ∘ g) = complete f ∘ complete g
-
-The ⟹-to-complete proof is by induction on the ⟹ derivation.
-Each case shows that the partial reduction u can further reduce to complete t.
--}
+postulate
+  ⟹-to-complete : ∀ {A B} {t u : Term A B} →
+                   t ⟹ u → u ⟹ complete t
 
 ------------------------------------------------------------------------
 -- Diamond Property
@@ -108,24 +102,22 @@ abstract
   ... | w , (pw , qw) = w , (⟹*→⟶* pw , ⟹*→⟶* qw)
 
 ------------------------------------------------------------------------
--- Summary
+-- Derivation Path (TODO)
 --
--- Definitions (see code):
---   diamond     : t ⟹ u → t ⟹ v → ∃[ w ] (u ⟹ w × v ⟹ w)
---   strip       : t ⟹ u → t ⟹* v → ∃[ w ] (u ⟹* w × v ⟹ w)
---   confluence⟹ : t ⟹* u → t ⟹* v → ∃[ w ] (u ⟹* w × v ⟹* w)
---   confluence  : t ⟶* u → t ⟶* v → ∃[ w ] (u ⟶* w × v ⟶* w)
+-- To eliminate the postulates above, prove:
 --
--- Proof obligations:
---   complete      : Term A B → Term A B
---   ⟹-to-complete : t ⟹ u → u ⟹ complete t
+-- 1. Define: complete = ccc-part ∘ cata-part
+--    where ccc-part handles CCC redexes, cata-part handles cata redexes
 --
--- The complete development function reduces ALL redexes maximally.
--- Once defined and ⟹-to-complete is filled in, confluence follows.
+-- 2. Prove: ⟹-to-complete by cases on the ⟹ derivation
+--    - For ⟹-cata-β: use cata-triangle
+--    - For ⟹-fst-pair, etc.: use ccc-triangle
+--    - For congruence: use IH
+--    - Key: ccc and cata parts don't interfere (commutation)
 --
--- Filling ⟹-to-complete is straightforward induction on the parallel
--- reduction derivation. Each case either:
---   - Is an atom (trivial)
---   - Uses congruence and induction hypothesis
---   - Is a beta rule where the contractum ⟹ complete t
+-- 3. The commutation lemmas needed:
+--    - cata-then-ccc ⟹ ccc-then-cata (reordering)
+--    - Or: complete handles interleaved reductions correctly
+--
+-- This is straightforward but tedious case analysis.
 ------------------------------------------------------------------------
