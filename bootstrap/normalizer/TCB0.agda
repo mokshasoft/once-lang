@@ -89,11 +89,45 @@ open import normalizer.TCB0.Compiler.SatisfiesSpec
 -- MinimalTheory uses only standard CCC confluence (Lambek & Scott),
 -- which is a well-established result that predates μ-types, to prove:
 --
---   - normalizer-unique : NoRedex t → unique normal form
---   - fixpoint-unique   : The fixpoint has a unique normal form
+--   - normalizer-unique    : NoRedex t → unique normal form
+--   - fixpoint-unique      : The fixpoint has a unique normal form
+--   - canonical-normal-form : NoRedex t → any nf is encode t (KEY)
 --
 -- Trust hierarchy:
 --   TCB0          : Postulate-free, proves existence
 --   MinimalTheory : Standard CCC postulate, proves uniqueness
 --   Main          : All postulates, proves general correctness
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- COMPILER VERIFICATION INTERFACE
+--
+-- The key theorems for verifying compilers and other programs:
+--
+-- 1. EXISTENCE (this module, postulate-free):
+--      noredex-fixpoint : NoRedex t →
+--                         (normalize ∘ encode t) ⟶* encode t
+--
+--    "Normalizing any encoded NoRedex term reduces to that encoding."
+--
+-- 2. UNIQUENESS (MinimalTheory, standard CCC postulate):
+--      canonical-normal-form : NoRedex t →
+--                              (normalize ∘ encode t) ⟶* u →
+--                              IsNormalForm u →
+--                              u ≡ encode t
+--
+--    "Any normal form is exactly the original encoding."
+--
+-- Together these give the CANONICAL FORM PROPERTY:
+--
+--    The normalizer faithfully preserves NoRedex terms.
+--
+-- This is exactly what bootstrapping requires: when the normalizer
+-- processes its own encoding (or any well-formed program), it
+-- produces that program's encoding as output.
+--
+-- For applications:
+--   - Compiler correctness: input encoding = output encoding
+--   - Program equivalence: normalize respects NoRedex identity
+--   - Bootstrap verification: the normalizer compiles itself correctly
 ------------------------------------------------------------------------

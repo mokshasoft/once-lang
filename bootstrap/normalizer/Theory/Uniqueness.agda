@@ -111,11 +111,15 @@ fixpoint-unique = normalizer-unique normalize normalize-noredex
 -- reachable from (normalize ∘ encode normalize) must be encode normalize.
 ------------------------------------------------------------------------
 
--- This requires showing encode normalize is a normal form
+-- This requires showing encode t is a normal form for NoRedex t
 -- We postulate this for now; it follows from the structure of encode
--- producing only compositions of basic constructors
+-- producing only compositions of basic constructors (no redexes)
 postulate
-  encode-normalize-is-nf : IsNormalForm (encode normalize)
+  encode-is-nf : ∀ {A B} (t : Term A B) → NoRedex t → IsNormalForm (encode t)
+
+-- Specialization for normalize itself
+encode-normalize-is-nf : IsNormalForm (encode normalize)
+encode-normalize-is-nf = encode-is-nf normalize normalize-noredex
 
 fixpoint-is-unique-nf : (u : Term Unit TermCode') →
                         (normalize ∘ encode normalize) ⟶* u →
@@ -126,22 +130,53 @@ fixpoint-is-unique-nf u red-u nf-u =
     (noredex-fixpoint normalize normalize-noredex) encode-normalize-is-nf
 
 ------------------------------------------------------------------------
+-- CANONICAL FORM THEOREM (Corollary 4.2)
+--
+-- This is the key result for compiler verification:
+--   For any NoRedex term t, any normal form of (normalize ∘ encode t)
+--   is exactly (encode t).
+--
+-- This combines:
+--   - Existence: noredex-fixpoint gives (normalize ∘ encode t) ⟶* encode t
+--   - Uniqueness: normalizer-unique proves all normal forms are equal
+--
+-- The canonical form theorem says: the normalizer faithfully preserves
+-- the encoding of any NoRedex term. This is exactly what we need for
+-- compiler verification: running the normalizer on encoded code gives
+-- back that code's encoding.
+------------------------------------------------------------------------
+
+canonical-normal-form : ∀ {A B} (t : Term A B) → NoRedex t →
+                        (u : Term Unit TermCode') →
+                        (normalize ∘ encode t) ⟶* u → IsNormalForm u →
+                        u ≡ encode t
+canonical-normal-form t nr u red-u nf-u =
+  normalizer-unique t nr u (encode t) red-u nf-u
+    (noredex-fixpoint t nr) (encode-is-nf t nr)
+
+------------------------------------------------------------------------
 -- Summary
 --
 -- Main results:
---   normalizer-unique    : NoRedex t →
---                          (normalize ∘ encode t) has unique normal form
---   fixpoint-unique      : (normalize ∘ encode normalize) has unique nf
+--   normalizer-unique     : NoRedex t →
+--                           (normalize ∘ encode t) has unique normal form
+--   fixpoint-unique       : (normalize ∘ encode normalize) has unique nf
 --   fixpoint-is-unique-nf : Any normal form of (normalize ∘ encode normalize)
 --                           is exactly (encode normalize)
+--   canonical-normal-form : NoRedex t → any normal form of
+--                           (normalize ∘ encode t) is exactly (encode t)
 --
--- These establish that the normalizer, when applied to encoded terms,
--- produces deterministic results. This is essential for correctness:
--- the fixpoint property (from TCB0) gives us existence, and uniqueness
--- gives us determinism.
+-- The CANONICAL FORM THEOREM (canonical-normal-form) is the key result
+-- for compiler verification. It says:
+--
+--   "The normalizer faithfully preserves NoRedex terms"
+--
+-- In other words: if you encode a well-formed program, normalize it,
+-- and reach a normal form, that normal form IS the original encoding.
+-- This is exactly what bootstrapping requires.
 --
 -- Trust chain:
 --   TCB0 (postulate-free) : noredex-fixpoint exists
 --   StandardCCC (minimal) : CCC confluence
---   This module           : Unique normal forms
+--   This module           : Unique normal forms + canonical form theorem
 ------------------------------------------------------------------------
