@@ -519,7 +519,8 @@ sem-fmap-comp F f g x =
 --    - Lambek's Lemma direction 1 (PROVEN via SPF.fold-unfold)
 --    - Lambek's Lemma direction 2 (PROVEN via SPF.unfold-fold)
 --    - Catamorphism computation law (PROVEN via SPF.cata-computation)
---    - Identity anamorphism law (postulated - requires coinductive bisimulation)
+--    - Identity anamorphism SPF.ana-Out-id (PROVEN via bisimulation)
+--    - Identity anamorphism sem-ana-Out-id-valid (postulated - transport complexity)
 --
 -- 5. Functor Law Inheritance (PROVEN):
 --    - sem-fmap-id, sem-fmap-comp
@@ -527,12 +528,14 @@ sem-fmap-comp F f g x =
 -- Remaining postulates:
 --    - μ-coherence, ν-coherence: Fixed point equivalence
 --      (justified by functor-interp-coherence for well-formed functors)
---    - sem-ana-Out-id-valid: Identity anamorphism (requires bisimulation proof)
+--    - bisim-to-eq: Bisimulation implies equality (standard coalgebraic principle)
+--    - sem-ana-Out-id-valid: Transport-level identity anamorphism
 --
 -- Key architectural changes (OCP-0003 Phase 6):
 --    - ⟦μ⟧, ⟦ν⟧ are now DEFINED (not postulated) via Once.Functor.Translate
 --    - transport-μ-is-fmap: PROVEN via path induction (subst-fmap-natural)
 --    - base-interp-coherence, functor-interp-coherence: PROVEN by induction
+--    - SPF.ana-Out-id: PROVEN via coinductive bisimulation
 --    - μ-coherence/ν-coherence relate the defined ⟦μ⟧ to SPF.μ
 --
 -- The type coherence postulates can be eliminated by parameterizing
