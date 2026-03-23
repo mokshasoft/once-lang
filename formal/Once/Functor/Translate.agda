@@ -123,6 +123,40 @@ translate-coherence IntRep (F ⊗ G) X
         | translate-coherence IntRep G X = refl
 
 ------------------------------------------------------------------------
+-- Well-Formed Functors
+--
+-- A functor is well-formed if K positions only contain base types.
+-- For well-formed functors, ⟦_⟧-base equals ⟦_⟧.
+--
+-- Note: Coherence proofs are in Once.Semantics.Coherence to avoid
+-- circular imports (Core imports Translate, so Translate can't import Core).
+------------------------------------------------------------------------
+
+-- | Base type predicate
+--
+-- A type is a base type if it doesn't contain functions, μ-types, or ν-types.
+--
+data IsBaseType : Type → Set where
+  base-Unit   : IsBaseType Unit
+  base-Void   : IsBaseType Void
+  base-Int    : IsBaseType Int
+  base-Float  : IsBaseType Float
+  base-Str    : IsBaseType Str
+  base-Buffer : IsBaseType Buffer
+  base-Prod   : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A * B)
+  base-Sum    : ∀ {A B} → IsBaseType A → IsBaseType B → IsBaseType (A + B)
+
+-- | Well-formed functor predicate
+--
+-- K positions only contain base types.
+--
+data WellFormedF : Functor → Set where
+  wf-K   : ∀ {A} → IsBaseType A → WellFormedF (K A)
+  wf-Id  : WellFormedF Id
+  wf-Sum : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊕ G)
+  wf-Prod : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊗ G)
+
+------------------------------------------------------------------------
 -- Standard Functor Codes
 --
 -- These show how common data types translate.
@@ -134,3 +168,7 @@ translate-coherence IntRep (F ⊗ G) X
 
 -- | List A = μ (K Unit ⊕ (K A ⊗ Id))
 -- For base type A, translateF (ListF A) = SK ⊤ S⊕ (SK (⟦A⟧-base) S⊗ SId)
+
+-- | Well-formedness of standard functors
+wf-NatF : WellFormedF NatF
+wf-NatF = wf-Sum (wf-K base-Unit) wf-Id

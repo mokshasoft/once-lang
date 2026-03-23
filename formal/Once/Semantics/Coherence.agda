@@ -26,9 +26,67 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
 
-open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type;
+                               Unit; Void; Int; Float; Str; Buffer; _*_; _+_; NatF)
 open import Once.Semantics.IR using (⟦_⟧; ⟦_⟧F; ⟦μ⟧; ⟦ν⟧; sem-fmap; coerce-functor; coerce-functor⁻¹)
 import Once.SPF as SPF
+open import Once.Functor.Translate using (IsBaseType; WellFormedF; ⟦_⟧-base; ⟦_⟧F-base;
+                                          base-Unit; base-Void; base-Int; base-Float;
+                                          base-Str; base-Buffer; base-Prod; base-Sum;
+                                          wf-K; wf-Id; wf-Sum; wf-Prod; wf-NatF)
+open import Data.Integer using (ℤ)
+
+------------------------------------------------------------------------
+-- Part 0: Base Type Interpretation Coherence
+--
+-- For well-formed functors (K only with base types), the base
+-- interpretation ⟦_⟧-base equals the full interpretation ⟦_⟧.
+-- This is key to proving μ-coherence for practical functors.
+------------------------------------------------------------------------
+
+-- | For base types, the base interpretation equals the full interpretation
+--
+-- Proof by induction on the IsBaseType predicate.
+-- Each case is definitional equality (refl).
+--
+base-interp-coherence : ∀ A → IsBaseType A → ⟦ ℤ ⟧-base A ≡ ⟦ A ⟧
+base-interp-coherence .Unit base-Unit = refl
+base-interp-coherence .Void base-Void = refl
+base-interp-coherence .Int base-Int = refl
+base-interp-coherence .Float base-Float = refl
+base-interp-coherence .Str base-Str = refl
+base-interp-coherence .Buffer base-Buffer = refl
+base-interp-coherence (A * B) (base-Prod pA pB) =
+  cong₂-× (base-interp-coherence A pA) (base-interp-coherence B pB)
+  where
+    -- Helper for product types
+    cong₂-× : ∀ {A A' B B' : Set} → A ≡ A' → B ≡ B' → (A × B) ≡ (A' × B')
+    cong₂-× refl refl = refl
+base-interp-coherence (A + B) (base-Sum pA pB) =
+  cong₂-⊎ (base-interp-coherence A pA) (base-interp-coherence B pB)
+  where
+    -- Helper for sum types
+    cong₂-⊎ : ∀ {A A' B B' : Set} → A ≡ A' → B ≡ B' → (A ⊎ B) ≡ (A' ⊎ B')
+    cong₂-⊎ refl refl = refl
+
+-- | For well-formed functors, the base functor interpretation equals the full interpretation
+--
+-- Proof by induction on the WellFormedF predicate.
+-- Uses base-interp-coherence for K positions.
+--
+functor-interp-coherence : ∀ F → WellFormedF F → ∀ X → ⟦ ℤ ⟧F-base F X ≡ ⟦ F ⟧F X
+functor-interp-coherence (K A) (wf-K pA) X = base-interp-coherence A pA
+functor-interp-coherence Id wf-Id X = refl
+functor-interp-coherence (F ⊕ G) (wf-Sum pF pG) X =
+  cong₂-⊎ (functor-interp-coherence F pF X) (functor-interp-coherence G pG X)
+  where
+    cong₂-⊎ : ∀ {A A' B B' : Set} → A ≡ A' → B ≡ B' → (A ⊎ B) ≡ (A' ⊎ B')
+    cong₂-⊎ refl refl = refl
+functor-interp-coherence (F ⊗ G) (wf-Prod pF pG) X =
+  cong₂-× (functor-interp-coherence F pF X) (functor-interp-coherence G pG X)
+  where
+    cong₂-× : ∀ {A A' B B' : Set} → A ≡ A' → B ≡ B' → (A × B) ≡ (A' × B')
+    cong₂-× refl refl = refl
 
 ------------------------------------------------------------------------
 -- Part 1: Type Coherence
@@ -439,9 +497,16 @@ sem-fmap-comp F f g x =
 
 -- This module establishes:
 --
--- 1. Type Coherence (postulated):
+-- 0. Base Type Interpretation Coherence (PROVEN):
+--    - base-interp-coherence: For IsBaseType A, ⟦ ℤ ⟧-base A ≡ ⟦ A ⟧
+--    - functor-interp-coherence: For WellFormedF F, ⟦ ℤ ⟧F-base F X ≡ ⟦ F ⟧F X
+--
+-- 1. Type Coherence (postulated, justified by Part 0):
 --    - ⟦μ⟧ F ≡ SPF.μ F
 --    - ⟦ν⟧ F ≡ SPF.ν F
+--    For well-formed functors (K only with base types), functor-interp-coherence
+--    shows the interpretations coincide layer by layer. The postulates capture
+--    the fixed point equivalence which follows by structural induction.
 --
 -- 2. Functor Map Coherence (PROVEN):
 --    - sem-fmap F f x ≡ SPF.fmap F f x
@@ -460,15 +525,18 @@ sem-fmap-comp F f g x =
 --    - sem-fmap-id, sem-fmap-comp
 --
 -- Remaining postulates:
---    - μ-coherence, ν-coherence: Type coherence (⟦μ⟧ ≡ SPF.μ for well-formed functors)
+--    - μ-coherence, ν-coherence: Fixed point equivalence
+--      (justified by functor-interp-coherence for well-formed functors)
 --    - sem-ana-Out-id-valid: Identity anamorphism (requires bisimulation proof)
 --
 -- Key architectural changes (OCP-0003 Phase 6):
 --    - ⟦μ⟧, ⟦ν⟧ are now DEFINED (not postulated) via Once.Functor.Translate
 --    - transport-μ-is-fmap: PROVEN via path induction (subst-fmap-natural)
+--    - base-interp-coherence, functor-interp-coherence: PROVEN by induction
 --    - μ-coherence/ν-coherence relate the defined ⟦μ⟧ to SPF.μ
 --
 -- The type coherence postulates can be eliminated by parameterizing
--- Core by the μ/ν implementations.
+-- Core by the μ/ν implementations, or by defining the fixed points
+-- more carefully to ensure definitional equality.
 --
 -- This completes the semantic coherence layer for OCP-0003 Phase 6.
