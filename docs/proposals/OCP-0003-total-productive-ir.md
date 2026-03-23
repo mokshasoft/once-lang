@@ -932,6 +932,7 @@ to the concrete implementations in `Once.SPF`:
   - Operation implementations via SPF: `sem-In`, `sem-Out`, `sem-cata`, etc.
   - Lambek's Lemma: `sem-Out-In-valid`, `sem-In-Out-valid` (proven via SPF)
   - Cata computation: `sem-cata-compute-valid` (proven via SPF.cata-computation)
+  - Transport naturality: `transport-μ-is-fmap` (proven via path induction)
   - Functor law inheritance: `sem-fmap-id`, `sem-fmap-comp` (proven)
 
 **SPF Catamorphism Laws** ✓ COMPLETE (2026-03-23)
@@ -1009,8 +1010,8 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Prove `sem-cata-compute-valid` via SPF.cata-computation
 - [x] Add SPF ana laws: `ana-unfold` (trivial), `ana-Out-id` (postulated - requires bisimulation)
 - [x] Add `sem-ana-Out-id-valid` postulate to Coherence.agda
+- [x] Prove `transport-μ-is-fmap` via path induction (subst-fmap-natural lemma)
 - [ ] Align with OCP-0004 bootstrap verification
-- [ ] Replace transport-μ-is-fmap postulate with explicit proof
 - [ ] Prove ana-Out-id properly (requires sized types or bisimulation)
 - [ ] Full IR law proofs (requires function extensionality)
 

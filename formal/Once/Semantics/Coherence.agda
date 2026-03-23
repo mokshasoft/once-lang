@@ -226,17 +226,27 @@ private
   μ⁻¹-round-trip : ∀ F (x : ⟦μ⟧ F) → μ-to-sem F (μ-from-sem F x) ≡ x
   μ⁻¹-round-trip F x = subst-subst-sym {P = λ T → T} (μ-coherence F) x
 
--- | Key coherence axiom: transport-μ equals fmap with μ-from-sem
+-- | Key lemma: subst over functor type equals fmap with subst (PROVEN)
 --
--- For polynomial functors, transporting ⟦ F ⟧F (⟦μ⟧ G) to ⟦ F ⟧F (SPF.μ G)
--- via the coherence axiom is the same as applying fmap F (μ-from-sem G).
+-- For polynomial functors, transporting ⟦ F ⟧F A to ⟦ F ⟧F B via an equality
+-- p : A ≡ B is the same as applying fmap F (subst id p).
 --
--- This is postulated as part of the coherence layer. Any sensible
--- instantiation of μ-coherence would satisfy this property.
+-- Proof: By path induction (J), it suffices to prove for p = refl.
+-- When p = refl:
+--   LHS: subst (λ T → ⟦ F ⟧F T) refl x = x
+--   RHS: fmap F (subst id refl) x = fmap F id x = x  (by fmap-id)
 --
-postulate
-  transport-μ-is-fmap : ∀ F G (x : ⟦ F ⟧F (⟦μ⟧ G))
-                      → transport-μ F G x ≡ SPF.fmap F (μ-from-sem G) x
+subst-fmap-natural : ∀ F {A B : Set} (p : A ≡ B) (x : ⟦ F ⟧F A)
+                   → subst (λ T → ⟦ F ⟧F T) p x ≡ SPF.fmap F (subst (λ T → T) p) x
+subst-fmap-natural F refl x = sym (SPF.fmap-id F x)
+
+-- | transport-μ equals fmap with μ-from-sem (PROVEN via subst-fmap-natural)
+--
+-- This follows directly from subst-fmap-natural instantiated with μ-coherence.
+--
+transport-μ-is-fmap : ∀ F G (x : ⟦ F ⟧F (⟦μ⟧ G))
+                    → transport-μ F G x ≡ SPF.fmap F (μ-from-sem G) x
+transport-μ-is-fmap F G x = subst-fmap-natural F (μ-coherence G) x
 
 -- | Lambek's Lemma (one direction): Out ∘ In ≡ id (PROVEN)
 --
@@ -438,9 +448,11 @@ sem-fmap-comp F f g x =
 --    - sem-fmap-id, sem-fmap-comp
 --
 -- Remaining postulates:
---    - μ-coherence, ν-coherence: Type coherence axioms
---    - transport-μ-is-fmap: Transport equals fmap for polynomial functors
+--    - μ-coherence, ν-coherence: Type coherence axioms (fundamental bridge)
 --    - sem-ana-Out-id-valid: Identity anamorphism (requires bisimulation proof)
+--
+-- Newly proven (was postulated):
+--    - transport-μ-is-fmap: PROVEN via path induction (subst-fmap-natural)
 --
 -- The type coherence postulates can be eliminated by parameterizing
 -- Core by the μ/ν implementations.
