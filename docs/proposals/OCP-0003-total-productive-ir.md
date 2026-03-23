@@ -911,18 +911,36 @@ recognizeAna : Old.IR → Maybe (IR A (ν F))
 - Provide migration guide
 - Automatic rewriting where possible
 
-### Phase 5: Remove Fold/Unfold
+### Phase 5: Remove Fold/Unfold ✓ COMPLETE
 
 - Remove `Fold`/`Unfold` from IR
 - Once is now total + productive by construction
+- Completed: 2026-03-22 (34 files updated)
 
-### Phase 6: Formal Verification
+### Phase 6: Formal Verification (IN PROGRESS)
 
-- Agda proofs for unified IR
-- Verify schemes preserve semantics
-- Verify Guarded type ensures productivity
-- Integrate with existing D039 polynomial functor proofs
-- Align with OCP-0004 bootstrap verification
+**Semantic Coherence Layer** ✓ COMPLETE (2026-03-23)
+
+The semantic coherence layer connects the postulated semantics in `Once.Semantics.Core`
+to the concrete implementations in `Once.SPF`:
+
+- **Type Unification**: `Once.SPF` now uses `Once.Type.Functor` instead of a duplicate definition
+- **Functor Interpretation**: `Once.SPF` imports `⟦_⟧F` from `Once.Semantics.IR`
+- **Coherence Module**: `Once.Semantics.Coherence` establishes:
+  - Type coherence: `⟦μ⟧ F ≡ SPF.μ F` and `⟦ν⟧ F ≡ SPF.ν F`
+  - Functor map coherence: `sem-fmap ≡ SPF.fmap` (proven)
+  - Operation implementations via SPF: `sem-In`, `sem-Out`, `sem-cata`, etc.
+  - Law validation: Lambek's Lemma and cata computation law
+  - Functor law inheritance: `sem-fmap-id`, `sem-fmap-comp` (proven)
+
+**Remaining Work**:
+
+- [ ] Agda proofs for guardedness enforcement
+- [ ] Verify schemes preserve semantics
+- [ ] Verify Guarded type ensures productivity
+- [ ] Integrate with existing D039 polynomial functor proofs
+- [ ] Align with OCP-0004 bootstrap verification
+- [ ] Replace transport postulates with explicit proofs
 
 ---
 

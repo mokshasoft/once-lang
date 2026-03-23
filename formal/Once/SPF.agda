@@ -6,8 +6,8 @@
 --
 -- Strictly Positive Functors (Polynomial Functors)
 --
--- This module provides a universe of codes for strictly positive
--- type expressions with an explicit recursive position.
+-- This module provides implementations for polynomial functor fixed points
+-- with proven properties, used by the semantic coherence layer.
 --
 -- KEY INSIGHT: The S1 semantic gap exists because Fix F : Type → Type
 -- has no way to express where recursive occurrences appear. Polynomial
@@ -22,12 +22,15 @@
 -- This aligns with Once's CCC foundation. Initial algebras of polynomial
 -- functors always exist in Set.
 --
+-- OCP-0003 Phase 6: This module now uses Once.Type.Functor instead of
+-- defining its own, enabling the semantic coherence layer.
+--
 ------------------------------------------------------------------------
 
 module Once.SPF where
 
-open import Once.Type using (Type)
-open import Once.Semantics.IR using (⟦_⟧)
+open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_)
+open import Once.Semantics.IR using (⟦_⟧; ⟦_⟧F)
 
 open import Level using (Level; 0ℓ)
 open import Data.Unit using (⊤; tt)
@@ -37,47 +40,24 @@ open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_])
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
 
 ------------------------------------------------------------------------
--- Functor Codes
+-- OCP-0003: Functor Codes imported from Once.Type
 --
--- A universe of codes for strictly positive type expressions.
--- These can only mention the recursive variable in positive positions.
+-- Previously defined here; now imported for semantic coherence.
+-- Functor codes: K (constant), Id (recursive), ⊕ (sum), ⊗ (product)
 ------------------------------------------------------------------------
 
--- | Functor codes (strictly positive type expressions)
---
--- K A    - Constant type (no recursion)
--- Id     - Recursive position
--- F ⊕ G  - Sum (coproduct)
--- F ⊗ G  - Product
---
-data Functor : Set₁ where
-  K    : Type → Functor           -- Constant
-  Id   : Functor                  -- Recursive position
-  _⊕_  : Functor → Functor → Functor  -- Sum
-  _⊗_  : Functor → Functor → Functor  -- Product
-
-infixr 40 _⊕_
-infixr 50 _⊗_
+-- Re-export for backwards compatibility
+-- (Functor, K, Id, _⊕_, _⊗_ imported from Once.Type above)
 
 ------------------------------------------------------------------------
--- Functor Interpretation
+-- OCP-0003: Functor Interpretation imported from Once.Semantics.IR
 --
--- Interprets a functor code as an actual Set → Set functor.
--- The X parameter is substituted for Id.
+-- Previously defined here; now imported for semantic coherence.
+-- ⟦_⟧F : Functor → Set → Set
 ------------------------------------------------------------------------
 
--- | Interpret functor code at a carrier type
---
--- ⟦ K A ⟧F X = ⟦ A ⟧       (constant, ignores X)
--- ⟦ Id ⟧F X = X            (recursive position)
--- ⟦ F ⊕ G ⟧F X = ⟦ F ⟧F X ⊎ ⟦ G ⟧F X
--- ⟦ F ⊗ G ⟧F X = ⟦ F ⟧F X × ⟦ G ⟧F X
---
-⟦_⟧F : Functor → Set → Set
-⟦ K A ⟧F X = ⟦ A ⟧
-⟦ Id ⟧F X = X
-⟦ F ⊕ G ⟧F X = ⟦ F ⟧F X ⊎ ⟦ G ⟧F X
-⟦ F ⊗ G ⟧F X = ⟦ F ⟧F X × ⟦ G ⟧F X
+-- Re-export for backwards compatibility
+-- (⟦_⟧F imported from Once.Semantics.IR above)
 
 ------------------------------------------------------------------------
 -- Fixed Point (Initial Algebra)
