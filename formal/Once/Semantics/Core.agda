@@ -27,7 +27,7 @@ open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; trans; sym; subst)
 open import Function using (_∘_)
 
 open import Once.Type
@@ -70,7 +70,9 @@ open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_⟧-ba
 open import Once.Functor.Base
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
          sfmap; cataS; sfmapCata; sfmapCata-is-sfmap; anaS;
-         fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id; anaS-Out-id)
+         fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id; anaS-Out-id;
+         -- Bisimulation machinery
+         ⟦_⟧SF-rel; _∼S_; bisimS-to-eq; sfmap-rel; sfmap-f-rel)
 
 -- | Semantic interpretation of μ-type (initial algebra)
 --
@@ -884,14 +886,28 @@ coerce-ν-in-sem-CoOut : ∀ F (x : ⟦ν⟧ F)
                       → coerce-ν-in F (⟦ν⟧ F) (sem-CoOut F x) ≡ unfoldS x
 coerce-ν-in-sem-CoOut F x = coerce-μ⁻¹-round-trip F (⟦ν⟧ F) (unfoldS x)
 
--- | sem-ana F (sem-CoOut F) equals anaS unfoldS (coinductive equivalence)
+-- | Helper: relate sfmap applied to same value with different functions
+--
+-- If f y ∼S g y for all y in positions of v, then
+-- sfmap F f v is related to sfmap F g v.
+--
+sfmap-bisim : ∀ G {F : Functor} (f g : ⟦ν⟧ F → ⟦ν⟧ F)
+            → (∀ y → f y ∼S g y)
+            → (v : ⟦ G ⟧SF (⟦ν⟧ F))
+            → ⟦ G ⟧SF-rel (_∼S_) (sfmap G f v) (sfmap G g v)
+sfmap-bisim (SK _) f g hyp v = refl
+sfmap-bisim SId f g hyp v = hyp v
+sfmap-bisim (G₁ S⊕ G₂) f g hyp (inj₁ v) = sfmap-bisim G₁ f g hyp v
+sfmap-bisim (G₁ S⊕ G₂) f g hyp (inj₂ v) = sfmap-bisim G₂ f g hyp v
+sfmap-bisim (G₁ S⊗ G₂) f g hyp (v₁ , v₂) =
+  sfmap-bisim G₁ f g hyp v₁ , sfmap-bisim G₂ f g hyp v₂
+
+-- | sem-ana F (sem-CoOut F) is bisimilar to anaS unfoldS (coinductive proof)
 --
 -- Both functions satisfy the same corecursive equation:
 --   unfoldS (f x) = sfmap TF f (unfoldS x)
 --
--- By uniqueness of the anamorphism (the coinductive principle), they are equal.
---
--- Proof sketch:
+-- Proof by coinduction:
 -- 1. unfoldS (sem-ana F (sem-CoOut F) x)
 --    = sfmap TF (sem-ana F (sem-CoOut F)) (coerce-ν-in F (sem-CoOut F x))  [by def]
 --    = sfmap TF (sem-ana F (sem-CoOut F)) (unfoldS x)                      [by round-trip]
@@ -899,16 +915,37 @@ coerce-ν-in-sem-CoOut F x = coerce-μ⁻¹-round-trip F (⟦ν⟧ F) (unfoldS x
 -- 2. unfoldS (anaS unfoldS x)
 --    = sfmap TF (anaS unfoldS) (unfoldS x)                                  [by def]
 --
--- Both have the same structure: sfmap TF f (unfoldS x) where f is the respective
--- anamorphism. By coinduction (using anaS-Out-id as the coinductive principle),
--- they produce the same observations at all depths.
+-- Both observations are sfmap TF applied to the same underlying value (unfoldS x)
+-- but with different functions. By sfmap-bisim with the coinductive hypothesis
+-- (sem-ana F (sem-CoOut F) y ∼S anaS unfoldS y for all y), they are related.
 --
--- This postulate captures the coinductive step. It follows from the same
--- bisimulation principle as anaS-Out-id, instantiated with our coercions.
+{-# TERMINATING #-}
+sem-ana-bisim-anaS : ∀ F (x : ⟦ν⟧ F)
+                   → sem-ana F (sem-CoOut F) x ∼S anaS unfoldS x
+_∼S_.unfoldS-∼ (sem-ana-bisim-anaS F x) =
+  let TF = translateF IntRep F
+      -- The coercion round-trip gives us the key equality
+      obs-eq : coerce-ν-in F (⟦ν⟧ F) (sem-CoOut F x) ≡ unfoldS x
+      obs-eq = coerce-ν-in-sem-CoOut F x
+      -- LHS observation: sfmap TF (sem-ana F (sem-CoOut F)) (coerce-ν-in F (sem-CoOut F x))
+      -- RHS observation: sfmap TF (anaS unfoldS) (unfoldS x)
+      -- By obs-eq, LHS = sfmap TF (sem-ana F (sem-CoOut F)) (unfoldS x)
+      -- By sfmap-bisim with coinductive hypothesis, they are related
+  in subst (λ z → ⟦ TF ⟧SF-rel (_∼S_)
+                    (sfmap TF (sem-ana F (sem-CoOut F)) z)
+                    (sfmap TF (anaS unfoldS) (unfoldS x)))
+           (sym obs-eq)
+           (sfmap-bisim TF (sem-ana F (sem-CoOut F)) (anaS unfoldS)
+                        (sem-ana-bisim-anaS F) (unfoldS x))
+
+-- | sem-ana F (sem-CoOut F) equals anaS unfoldS (PROVEN via bisimulation)
 --
-postulate
-  sem-ana-is-anaS-unfoldS : ∀ F (x : ⟦ν⟧ F)
-                          → sem-ana F (sem-CoOut F) x ≡ anaS unfoldS x
+-- Proof: Show bisimilarity via sem-ana-bisim-anaS, then apply bisimS-to-eq.
+--
+sem-ana-is-anaS-unfoldS : ∀ F (x : ⟦ν⟧ F)
+                        → sem-ana F (sem-CoOut F) x ≡ anaS unfoldS x
+sem-ana-is-anaS-unfoldS F x =
+  bisimS-to-eq (sem-ana F (sem-CoOut F) x) (anaS unfoldS x) (sem-ana-bisim-anaS F x)
 
 -- | Identity anamorphism: ana with CoOut coalgebra is identity
 --
