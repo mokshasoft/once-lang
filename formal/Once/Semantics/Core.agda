@@ -742,6 +742,16 @@ sem-unguard-guard (F ⊗ G) (xf , xg) = cong₂ _,_ (sem-unguard-guard F xf) (se
 sem-unguard-guard (F ⊕ G) (inj₁ xf) = cong inj₁ (sem-unguard-guard F xf)
 sem-unguard-guard (F ⊕ G) (inj₂ xg) = cong inj₂ (sem-unguard-guard G xg)
 
+-- | Well-formed version: sem-unguard-guard without postulates (PROVEN)
+sem-wf-unguard-guard : ∀ {F : Functor} → WellFormedF F → ∀ {A : Set} (x : ⟦ F ⟧F A)
+                     → sem-unguard F (sem-guard F x) ≡ x
+sem-wf-unguard-guard (wf-K pB) x = coerce-base-type-round-trip pB x
+sem-wf-unguard-guard wf-Id a = refl
+sem-wf-unguard-guard (wf-Prod wfF wfG) (xf , xg) =
+  cong₂ _,_ (sem-wf-unguard-guard wfF xf) (sem-wf-unguard-guard wfG xg)
+sem-wf-unguard-guard (wf-Sum wfF wfG) (inj₁ xf) = cong inj₁ (sem-wf-unguard-guard wfF xf)
+sem-wf-unguard-guard (wf-Sum wfF wfG) (inj₂ xg) = cong inj₂ (sem-wf-unguard-guard wfG xg)
+
 -- | Guard-Unguard round-trip: guard ∘ unguard = id
 --
 -- Proven by structural induction on the guarded value.
@@ -754,6 +764,16 @@ sem-guard-unguard Id (GRec a) = refl
 sem-guard-unguard (F ⊗ G) (GProd gf gg) = cong₂ GProd (sem-guard-unguard F gf) (sem-guard-unguard G gg)
 sem-guard-unguard (F ⊕ G) (GInl gf) = cong GInl (sem-guard-unguard F gf)
 sem-guard-unguard (F ⊕ G) (GInr gg) = cong GInr (sem-guard-unguard G gg)
+
+-- | Well-formed version: sem-guard-unguard without postulates (PROVEN)
+sem-wf-guard-unguard : ∀ {F : Functor} → WellFormedF F → ∀ {A : Set} (x : ⟦Guarded⟧ F A)
+                     → sem-guard F (sem-unguard F x) ≡ x
+sem-wf-guard-unguard (wf-K pB) (GConst x) = cong GConst (coerce-base-type⁻¹-round-trip pB x)
+sem-wf-guard-unguard wf-Id (GRec a) = refl
+sem-wf-guard-unguard (wf-Prod wfF wfG) (GProd gf gg) =
+  cong₂ GProd (sem-wf-guard-unguard wfF gf) (sem-wf-guard-unguard wfG gg)
+sem-wf-guard-unguard (wf-Sum wfF wfG) (GInl gf) = cong GInl (sem-wf-guard-unguard wfF gf)
+sem-wf-guard-unguard (wf-Sum wfF wfG) (GInr gg) = cong GInr (sem-wf-guard-unguard wfG gg)
 
 -- | Guarded anamorphism: given guarded coalgebra A → Guarded F A, unfold A → νF
 -- This is the productive version of sem-ana.
@@ -834,6 +854,10 @@ coerce-μ⁻¹-round-trip (F ⊗ G) X (x , y) = cong₂ _,_ (coerce-μ⁻¹-roun
 sem-Out-In : ∀ (F : Functor) (x : ⟦ F ⟧F (⟦μ⟧ F)) → sem-Out F (sem-In F x) ≡ x
 sem-Out-In F x = coerce-μ-round-trip F (⟦μ⟧ F) x
 
+-- | Well-formed version: sem-Out-In without postulates (PROVEN)
+sem-wf-Out-In : ∀ {F : Functor} → WellFormedF F → (x : ⟦ F ⟧F (⟦μ⟧ F)) → sem-Out F (sem-In F x) ≡ x
+sem-wf-Out-In wf x = coerce-wf-μ-round-trip wf _ x
+
 -- | In and Out are inverses (Lambek's Lemma, other direction)
 --
 -- OCP-0003: Proven using SPF's unfold-foldS and coercion round-trip.
@@ -845,6 +869,10 @@ sem-Out-In F x = coerce-μ-round-trip F (⟦μ⟧ F) x
 --
 sem-In-Out : ∀ (F : Functor) (x : ⟦μ⟧ F) → sem-In F (sem-Out F x) ≡ x
 sem-In-Out F ⟨ y ⟩ = cong ⟨_⟩ (coerce-μ⁻¹-round-trip F (⟦μ⟧ F) y)
+
+-- | Well-formed version: sem-In-Out without postulates (PROVEN)
+sem-wf-In-Out : ∀ {F : Functor} → WellFormedF F → (x : ⟦μ⟧ F) → sem-In F (sem-Out F x) ≡ x
+sem-wf-In-Out wf ⟨ y ⟩ = cong ⟨_⟩ (coerce-wf-μ⁻¹-round-trip wf _ y)
 
 ------------------------------------------------------------------------
 -- Fmap-Coercion Coherence for μ (OCP-0003)
@@ -920,6 +948,27 @@ sem-cata-compute F {A} alg x =
       step5 = refl  -- by definition of sem-cata
   in trans step1 (trans step2 (cong alg (trans step3 (cong (sem-fmap F (sem-cata F alg)) step4))))
 
+-- | Well-formed version: sem-cata-compute without postulates (PROVEN)
+sem-wf-cata-compute : ∀ {F : Functor} → WellFormedF F → ∀ {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
+                    → sem-cata F alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata F alg) x)
+sem-wf-cata-compute {F} wf {A} alg x =
+  let TF = translateF IntRep F
+      alg′ = λ y → alg (coerce-μ-out F A y)
+      step1 : cataS {TF} alg′ ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩ ≡ alg′ (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
+      step1 = cataS-computation TF alg′ (coerce-μ-in F (⟦μ⟧ F) x)
+      step2 : alg′ (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
+            ≡ alg (coerce-μ-out F A (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x)))
+      step2 = refl
+      step3 : coerce-μ-out F A (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
+            ≡ sem-fmap F (cataS alg′) (coerce-μ-out F (⟦μ⟧ F) (coerce-μ-in F (⟦μ⟧ F) x))
+      step3 = fmap-coerce-μ-coherence′ F (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x)
+      -- Use well-formed round-trip instead of postulate-based
+      step4 : coerce-μ-out F (⟦μ⟧ F) (coerce-μ-in F (⟦μ⟧ F) x) ≡ x
+      step4 = coerce-wf-μ-round-trip wf (⟦μ⟧ F) x
+      step5 : sem-fmap F (cataS alg′) x ≡ sem-fmap F (sem-cata F alg) x
+      step5 = refl
+  in trans step1 (trans step2 (cong alg (trans step3 (cong (sem-fmap F (sem-cata F alg)) step4))))
+
 -- | Identity catamorphism: cata with In algebra is identity
 --
 -- OCP-0003: Proven using SPF's cataS-In-id and coercion coherence.
@@ -950,6 +999,23 @@ sem-cata-In-id F x =
       step2 : cataS {TF} ⟨_⟩ x ≡ x
       step2 = cataS-In-id x
 
+  in trans step1 step2
+
+-- | Well-formed version: sem-cata-In-id without postulates (PROVEN)
+sem-wf-cata-In-id : ∀ {F : Functor} → WellFormedF F → (x : ⟦μ⟧ F) → sem-cata F (sem-In F) x ≡ x
+sem-wf-cata-In-id {F} wf x =
+  let TF = translateF IntRep F
+      alg′ : ⟦ TF ⟧SF (μS TF) → μS TF
+      alg′ y = ⟨ coerce-μ-in F (⟦μ⟧ F) (coerce-μ-out F (⟦μ⟧ F) y) ⟩
+      -- Use well-formed round-trip
+      alg′-eq : ∀ y → alg′ y ≡ ⟨ y ⟩
+      alg′-eq y = cong ⟨_⟩ (coerce-wf-μ⁻¹-round-trip wf (⟦μ⟧ F) y)
+      alg′≡In : alg′ ≡ ⟨_⟩
+      alg′≡In = funext alg′-eq
+      step1 : cataS {TF} alg′ x ≡ cataS ⟨_⟩ x
+      step1 = cong (λ f → cataS f x) alg′≡In
+      step2 : cataS {TF} ⟨_⟩ x ≡ x
+      step2 = cataS-In-id x
   in trans step1 step2
 
 ------------------------------------------------------------------------
