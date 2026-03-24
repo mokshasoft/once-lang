@@ -296,11 +296,13 @@ eval-arr-identity f = refl
 -- used by eval′. Machine uses ℕ which would cause type mismatches.
 open import Once.Semantics.IR
   using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana; sem-hylo;
-         sem-Out-In; sem-In-Out; sem-cata-compute; sem-fmap;
-         sem-cata-In-id; sem-ana-Out-id; sem-hylo-compute;
+         sem-fmap; sem-ana-Out-id; sem-hylo-compute;
          sem-hylo-guarded; sem-hylo-guarded-compute; sem-unguard;
          coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
-         ⟦_⟧F; ⟦Guarded⟧)
+         ⟦_⟧F; ⟦Guarded⟧;
+         -- Well-formed versions (no postulates)
+         sem-wf-cata-compute; sem-wf-cata-In-id)
+open import Once.Functor.Translate using (WellFormedF)
 
 open import Once.Postulates using (extensionality)
 
@@ -308,7 +310,7 @@ open import Once.Postulates using (extensionality)
 -- Lambek's Lemma (Semantic Level)
 --
 -- At the semantic level, μF ≅ F(μF) via sem-In and sem-Out.
--- This is postulated in Semantics/Core.agda (sem-In-Out, sem-Out-In).
+-- This is proven via sem-wf-In-Out and sem-wf-Out-In for well-formed functors.
 --
 -- At the IR level:
 --   - In constructs μ-type values
@@ -330,14 +332,16 @@ open import Once.Postulates using (extensionality)
 --   = sem-cata F (λ fa → sem-In F (coerce (coerce⁻¹ fa))) x
 --   = sem-cata F (λ fa → sem-In F fa) x           (by coerce⁻¹-round-trip)
 --   = sem-cata F sem-In x                          (by funext)
---   = x                                            (by sem-cata-In-id)
+--   = x                                            (by sem-wf-cata-In-id)
 --
 -- Proven using function extensionality.
--- The semantic foundation is sem-cata-In-id in Once.Semantics.Core.
+-- The semantic foundation is sem-wf-cata-In-id in Once.Semantics.Core (postulate-free).
 --
-eval-cata-In-id : ∀ (F : Functor) (m : AllocMode) (x : ⟦ μ-type F ⟧)
+-- Note: Requires WellFormedF proof for postulate-free verification.
+--
+eval-cata-In-id : ∀ {F : Functor} → WellFormedF F → (m : AllocMode) (x : ⟦ μ-type F ⟧)
                 → eval′ (Cata {F} (In {F} m)) x ≡ x
-eval-cata-In-id F m x =
+eval-cata-In-id {F} wf m x =
   let -- The algebra used by Cata evaluation: λ fa → eval′ (In m) (coerce⁻¹ fa)
       -- which equals λ fa → sem-In F (coerce (coerce⁻¹ fa))
       -- By round-trip, coerce (coerce⁻¹ fa) = fa
@@ -353,9 +357,9 @@ eval-cata-In-id F m x =
             ≡ sem-cata F (sem-In F) x
       step1 = cong (λ alg → sem-cata F alg x) alg-eq
 
-      -- Step 2: Apply sem-cata-In-id
+      -- Step 2: Apply sem-wf-cata-In-id (well-formed, no postulates)
       step2 : sem-cata F (sem-In F) x ≡ x
-      step2 = sem-cata-In-id F x
+      step2 = sem-wf-cata-In-id wf x
 
   in trans step1 step2
 
@@ -439,25 +443,25 @@ fmap-coerce-coherence′ F f y = trans (fmap-struct-coherence′ F f y) (sym (fm
 --   eval′ (Cata alg ∘ In m) x
 --   = eval′ (Cata alg) (sem-In F (coerce x))      (by eval composition and In)
 --   = sem-cata F alg′ (sem-In F (coerce x))       (by eval Cata, where alg′ = λ fa → eval′ alg (coerce⁻¹ fa))
---   = alg′ (sem-fmap F (sem-cata F alg′) (coerce x))    (by sem-cata-compute)
+--   = alg′ (sem-fmap F (sem-cata F alg′) (coerce x))    (by sem-wf-cata-compute)
 --   = eval′ alg (coerce⁻¹ (sem-fmap F (sem-cata F alg′) (coerce x)))
 --   = eval′ alg (fmap-Type F (sem-cata F alg′) x)       (by fmap-coerce-coherence)
 --   = eval′ alg (fmap-Type F (eval′ (Cata alg)) x)      (by def of eval′ (Cata alg))
 --
-eval-cata-In : ∀ (F : Functor) {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
+eval-cata-In : ∀ {F : Functor} → WellFormedF F → ∀ {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
                (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
              → eval′ (Cata {F} alg ∘ In {F} m) x ≡
                eval′ alg (fmap-Type F (eval′ (Cata {F} alg)) x)
-eval-cata-In F {A} alg m x =
+eval-cata-In {F} wf {A} alg m x =
   let -- The algebra lifted to Set level
       alg′ : ⟦ F ⟧F ⟦ A ⟧ → ⟦ A ⟧
       alg′ = λ fa → eval′ alg (coerce-functor⁻¹ F A fa)
 
-      -- Step 1: Apply sem-cata-compute
+      -- Step 1: Apply sem-wf-cata-compute (well-formed, no postulates)
       -- sem-cata F alg′ (sem-In F (coerce x)) = alg′ (sem-fmap F (sem-cata F alg′) (coerce x))
       step1 : sem-cata F alg′ (sem-In F (coerce-functor F (μ-type F) x))
             ≡ alg′ (sem-fmap F (sem-cata F alg′) (coerce-functor F (μ-type F) x))
-      step1 = sem-cata-compute F alg′ (coerce-functor F (μ-type F) x)
+      step1 = sem-wf-cata-compute wf alg′ (coerce-functor F (μ-type F) x)
 
       -- Step 2: Apply fmap-coerce-coherence
       -- coerce⁻¹ (sem-fmap F f (coerce x)) = fmap-Type F f x
