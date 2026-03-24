@@ -87,34 +87,35 @@ eval ps apply (f , a)     = f a
 --
 -- These use coercions between Type-level functor (⟦_⟧T) and Set-level
 -- functor (⟦_⟧F) applications. The coherence is proven in Core.agda.
+-- WellFormedF proofs from IR constructors enable postulate-free evaluation.
 --
 -- In: ⟦ F ⟧T (μ-type F) → μ-type F
-eval ps (In {F} _) x = sem-In F (coerce-functor F (μ-type F) x)
+eval ps (In {F} _ _) x = sem-In F (coerce-functor F (μ-type F) x)
 --
 -- Cata: given alg : ⟦ F ⟧T A → A, produce μ-type F → A
 -- Build Set-level algebra from Type-level, then apply sem-cata
-eval ps (Cata {F} {A} alg) x =
-  sem-cata F (λ fa → eval ps alg (coerce-functor⁻¹ F A fa)) x
+eval ps (Cata {F} wf alg) x =
+  sem-cata wf (λ fa → eval ps alg (coerce-functor⁻¹ F _ fa)) x
 --
 -- Out: ν-type F → ⟦ F ⟧T (ν-type F)
-eval ps (Out {F}) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut F x)
+eval ps (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
 --
 -- Ana: given GUARDED coalg : A → GuardedT F A, produce A → ν-type F
 -- OCP-0003: Productivity enforced by requiring GuardedT output.
-eval ps (Ana {F} {A} coalg) x =
-  sem-ana-guarded F (λ a → eval ps coalg a) x
+eval ps (Ana {F} wf coalg) x =
+  sem-ana-guarded wf (λ a → eval ps coalg a) x
 --
 -- Unguard: extract functor value from guarded value
-eval ps (Unguard {F} {A}) x = coerce-functor⁻¹ F A (sem-unguard F x)
+eval ps (Unguard {F} wf) x = coerce-functor⁻¹ F _ (sem-unguard wf x)
 --
 -- Guard: wrap functor value as guarded (establishes GuardedT ≅ ⟦ F ⟧T isomorphism)
-eval ps (Guard {F} {A}) x = sem-guard F (coerce-functor F A x)
+eval ps (Guard {F} _ {A}) x = sem-guard F (coerce-functor F A x)
 --
 -- Hylo: Cata alg ∘ Ana coalg, computed directly without intermediate
 -- OCP-0003: Uses GUARDED coalgebra for productivity
-eval ps (Hylo {F} {A} {B} alg coalg) x =
-  let alg-set = λ fb → eval ps alg (coerce-functor⁻¹ F B fb)
-  in sem-hylo-guarded F alg-set (λ a → eval ps coalg a) x
+eval ps (Hylo {F} wf alg coalg) x =
+  let alg-set = λ fb → eval ps alg (coerce-functor⁻¹ F _ fb)
+  in sem-hylo-guarded wf alg-set (λ a → eval ps coalg a) x
 
 -- Effect lifting (D032)
 -- arr : (A ⇒ B) → Eff A B

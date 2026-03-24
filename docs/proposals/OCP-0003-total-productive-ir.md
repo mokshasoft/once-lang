@@ -1052,17 +1052,16 @@ only contain base types (Unit, Int, Float, Str, Buffer, and their products/sums)
 |-----------|----------|----------|-------|
 | `funext` | Core.agda | Standard axiom | Function extensionality, provable in Cubical Agda |
 | `bisimS-to-eq` | Functor/Base.agda | Standard axiom | Coalgebraic extensionality, provable in Cubical Agda |
-| `ill-formed-K-value` | Core.agda | Backward compat | Only for ill-formed functors; well-formed use proven lemmas |
-| `coerce-type-round-trip-*` | Core.agda | Backward compat | Only for ill-formed functors; well-formed use proven lemmas |
-| `coerce-type⁻¹-round-trip-*` | Core.agda | Backward compat | Same as above |
+| `defaultEvalPrim` | IR.agda | External | Primitive operations are inherently external |
 
 **Standard axioms** (funext, bisimS-to-eq) are well-established mathematical principles that:
 - Are provable in Cubical Agda
 - Are consistent with standard type theory
 - Do not affect computational behavior
 
-**Backward compatibility postulates** remain for code that doesn't use well-formedness
-predicates. For code using `WellFormedF`, the proven lemmas provide a postulate-free path.
+**Coercion postulates eliminated:** The previous `ill-formed-K-value` and `coerce-type-round-trip-*`
+postulates have been removed. All IR recursion scheme constructors now require `WellFormedF` proofs,
+making the postulate-free path mandatory rather than optional.
 
 ---
 

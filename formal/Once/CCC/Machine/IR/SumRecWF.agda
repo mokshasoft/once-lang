@@ -29,6 +29,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Target.X86-64.Types
 open import Once.CCC.IR
+open import Once.Functor.Translate using (WellFormedF)
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
@@ -1247,53 +1248,53 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
   postulate
     -- | In handler: wraps functor layer into μ-type
-    run-In : ∀ {F} (mIn : AllocMode) (m : AllocMode)
+    run-In : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode) (m : AllocMode)
       (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (In {F} m) ≤ frame-capacity alloc →
-      IRResultAWF m (In {F} m) x s alloc
+      next-slot alloc +ℕ ir-stack-requirement (In {F} wf m) ≤ frame-capacity alloc →
+      IRResultAWF m (In {F} wf m) x s alloc
 
     -- | Out handler: observes ν-type to extract functor layer
-    run-Out : ∀ {F} (mIn : AllocMode)
+    run-Out : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode)
       (x : ⟦ ν-type F ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (Out {F}) ≤ frame-capacity alloc →
-      IRResultAWF Heap (Out {F}) x s alloc
+      next-slot alloc +ℕ ir-stack-requirement (Out {F} wf) ≤ frame-capacity alloc →
+      IRResultAWF Heap (Out {F} wf) x s alloc
 
     -- | Cata handler: folds over μ-type with algebra
-    run-Cata : ∀ {F A} (mIn : AllocMode) (alg : IR (⟦ F ⟧T A) A)
+    run-Cata : ∀ {F} (wf : WellFormedF F) {A} (mIn : AllocMode) (alg : IR (⟦ F ⟧T A) A)
       (x : ⟦ μ-type F ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (Cata {F} alg) ≤ frame-capacity alloc →
-      ∃[ mOut ] IRResultAWF mOut (Cata {F} alg) x s alloc
+      next-slot alloc +ℕ ir-stack-requirement (Cata {F} wf alg) ≤ frame-capacity alloc →
+      ∃[ mOut ] IRResultAWF mOut (Cata {F} wf alg) x s alloc
 
     -- | Ana handler: unfolds coalgebra into ν-type
     -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
-    run-Ana : ∀ {F A} (mIn : AllocMode) (coalg : IR A (GuardedT F A))
+    run-Ana : ∀ {F} (wf : WellFormedF F) {A} (mIn : AllocMode) (coalg : IR A (GuardedT F A))
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (Ana {F} coalg) ≤ frame-capacity alloc →
-      IRResultAWF Heap (Ana {F} coalg) x s alloc
+      next-slot alloc +ℕ ir-stack-requirement (Ana {F} wf coalg) ≤ frame-capacity alloc →
+      IRResultAWF Heap (Ana {F} wf coalg) x s alloc
 
     -- | Hylo handler: fused cata ∘ ana (deforestation)
     -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
-    run-Hylo : ∀ {F A B} (mIn : AllocMode)
+    run-Hylo : ∀ {F} (wf : WellFormedF F) {A B} (mIn : AllocMode)
       (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A))
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
@@ -1301,5 +1302,5 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (Hylo {F} alg coalg) ≤ frame-capacity alloc →
-      ∃[ mOut ] IRResultAWF mOut (Hylo {F} alg coalg) x s alloc
+      next-slot alloc +ℕ ir-stack-requirement (Hylo {F} wf alg coalg) ≤ frame-capacity alloc →
+      ∃[ mOut ] IRResultAWF mOut (Hylo {F} wf alg coalg) x s alloc

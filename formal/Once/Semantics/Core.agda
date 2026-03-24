@@ -400,35 +400,33 @@ coerce-full-to-base (TVar _) x = x
 
 -- | Coerce from base to full interpretation
 --
--- This direction works for base types (identity). For complex types,
--- the base interpretation is ⊤, and we can't produce a complex value
--- from tt. However, for well-formed functors, these cases never occur.
+------------------------------------------------------------------------
+-- Well-Formed Type Coercion (No Postulates)
 --
--- NOTE: ill-formed-K-value is needed for totality of this function.
--- For well-formed functors, use coerce-wf-μ-round-trip which avoids
--- needing round-trip proofs for complex types entirely.
+-- OCP-0003: Coercion from base to full interpretation requires an
+-- IsBaseType proof, ensuring totality without postulates.
 --
-postulate
-  -- Value for unreachable cases (ill-formed functor usage)
-  -- This is safe because well-formed functors never use K with complex types
-  ill-formed-K-value : ∀ {A : Set} → A
+-- For base types, the coercion is an identity (structurally).
+-- Complex types (functions, μ-type, ν-type, GuardedT) are excluded
+-- by the IsBaseType predicate, so we never need to produce values
+-- we can't construct.
+------------------------------------------------------------------------
 
-coerce-base-to-full : ∀ A → ⟦ IntRep ⟧-base A → ⟦ A ⟧
-coerce-base-to-full Unit x = x
-coerce-base-to-full Void x = x
-coerce-base-to-full (A * B) (a , b) = (coerce-base-to-full A a , coerce-base-to-full B b)
-coerce-base-to-full (A + B) (inj₁ a) = inj₁ (coerce-base-to-full A a)
-coerce-base-to-full (A + B) (inj₂ b) = inj₂ (coerce-base-to-full B b)
-coerce-base-to-full (_ ⇒[ _ ] _) _ = ill-formed-K-value  -- Unreachable for well-formed
-coerce-base-to-full (Eff _ _) _ = ill-formed-K-value
-coerce-base-to-full (μ-type _) _ = ill-formed-K-value
-coerce-base-to-full (ν-type _) _ = ill-formed-K-value
-coerce-base-to-full (GuardedT _ _) _ = ill-formed-K-value
-coerce-base-to-full Int x = x
-coerce-base-to-full Float x = x
-coerce-base-to-full Str x = x
-coerce-base-to-full Buffer x = x
-coerce-base-to-full (TVar _) x = x
+-- | Coerce from base to full interpretation
+--
+-- Requires an IsBaseType proof, making it total without postulates.
+--
+coerce-base-to-full : ∀ {A} → IsBaseType A → ⟦ IntRep ⟧-base A → ⟦ A ⟧
+coerce-base-to-full base-Unit x = x
+coerce-base-to-full base-Void ()
+coerce-base-to-full base-Int x = x
+coerce-base-to-full base-Float x = x
+coerce-base-to-full base-Str x = x
+coerce-base-to-full base-Buffer x = x
+coerce-base-to-full (base-Prod pA pB) (a , b) =
+  (coerce-base-to-full pA a , coerce-base-to-full pB b)
+coerce-base-to-full (base-Sum pA pB) (inj₁ a) = inj₁ (coerce-base-to-full pA a)
+coerce-base-to-full (base-Sum pA pB) (inj₂ b) = inj₂ (coerce-base-to-full pB b)
 
 ------------------------------------------------------------------------
 -- Type Coercion Round-Trip Properties (Well-Formed Only)
@@ -439,11 +437,10 @@ coerce-base-to-full (TVar _) x = x
 
 -- | For base types, coerce-base-to-full ∘ coerce-full-to-base = id (PROVEN)
 --
--- This is the key lemma that eliminates the need for postulates
--- when working with well-formed functors.
+-- This is the key lemma for well-formed functors.
 --
-coerce-base-type-round-trip : ∀ {A} → IsBaseType A → (x : ⟦ A ⟧)
-                            → coerce-base-to-full A (coerce-full-to-base A x) ≡ x
+coerce-base-type-round-trip : ∀ {A} → (pA : IsBaseType A) → (x : ⟦ A ⟧)
+                            → coerce-base-to-full pA (coerce-full-to-base A x) ≡ x
 coerce-base-type-round-trip base-Unit x = refl
 coerce-base-type-round-trip base-Void ()
 coerce-base-type-round-trip base-Int x = refl
@@ -459,8 +456,8 @@ coerce-base-type-round-trip (base-Sum pA pB) (inj₂ b) =
 
 -- | For base types, coerce-full-to-base ∘ coerce-base-to-full = id (PROVEN)
 --
-coerce-base-type⁻¹-round-trip : ∀ {A} → IsBaseType A → (x : ⟦ IntRep ⟧-base A)
-                              → coerce-full-to-base A (coerce-base-to-full A x) ≡ x
+coerce-base-type⁻¹-round-trip : ∀ {A} → (pA : IsBaseType A) → (x : ⟦ IntRep ⟧-base A)
+                              → coerce-full-to-base A (coerce-base-to-full pA x) ≡ x
 coerce-base-type⁻¹-round-trip base-Unit x = refl
 coerce-base-type⁻¹-round-trip base-Void ()
 coerce-base-type⁻¹-round-trip base-Int x = refl
@@ -492,12 +489,14 @@ coerce-μ-in (F ⊗ G) X (x , y) = (coerce-μ-in F X x , coerce-μ-in G X y)
 
 -- | Coerce from ⟦ translateF F ⟧SF to ⟦ F ⟧F (for μ-type operations)
 --
-coerce-μ-out : ∀ F (X : Set) → ⟦ translateF IntRep F ⟧SF X → ⟦ F ⟧F X
-coerce-μ-out (K A) X x = coerce-base-to-full A x
-coerce-μ-out Id X x = x
-coerce-μ-out (F ⊕ G) X (inj₁ x) = inj₁ (coerce-μ-out F X x)
-coerce-μ-out (F ⊕ G) X (inj₂ y) = inj₂ (coerce-μ-out G X y)
-coerce-μ-out (F ⊗ G) X (x , y) = (coerce-μ-out F X x , coerce-μ-out G X y)
+-- Requires a WellFormedF proof to ensure K positions only use base types.
+--
+coerce-μ-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRep F ⟧SF X → ⟦ F ⟧F X
+coerce-μ-out (wf-K pA) X x = coerce-base-to-full pA x
+coerce-μ-out wf-Id X x = x
+coerce-μ-out (wf-Sum wfF wfG) X (inj₁ x) = inj₁ (coerce-μ-out wfF X x)
+coerce-μ-out (wf-Sum wfF wfG) X (inj₂ y) = inj₂ (coerce-μ-out wfG X y)
+coerce-μ-out (wf-Prod wfF wfG) X (x , y) = (coerce-μ-out wfF X x , coerce-μ-out wfG X y)
 
 ------------------------------------------------------------------------
 -- Well-Formed μ-Coercion Round-Trip (PROVEN, No Postulates)
@@ -506,31 +505,31 @@ coerce-μ-out (F ⊗ G) X (x , y) = (coerce-μ-out F X x , coerce-μ-out G X y)
 -- using the base-type round-trip lemmas.
 ------------------------------------------------------------------------
 
--- | For well-formed functors: coerce-μ-out ∘ coerce-μ-in = id (PROVEN)
+-- | coerce-μ-out ∘ coerce-μ-in = id (PROVEN)
 --
-coerce-wf-μ-round-trip : ∀ {F} → WellFormedF F → ∀ (X : Set) (x : ⟦ F ⟧F X)
-                       → coerce-μ-out F X (coerce-μ-in F X x) ≡ x
-coerce-wf-μ-round-trip (wf-K pA) X x = coerce-base-type-round-trip pA x
-coerce-wf-μ-round-trip wf-Id X x = refl
-coerce-wf-μ-round-trip (wf-Sum wfF wfG) X (inj₁ x) =
-  cong inj₁ (coerce-wf-μ-round-trip wfF X x)
-coerce-wf-μ-round-trip (wf-Sum wfF wfG) X (inj₂ y) =
-  cong inj₂ (coerce-wf-μ-round-trip wfG X y)
-coerce-wf-μ-round-trip (wf-Prod wfF wfG) X (x , y) =
-  cong₂ _,_ (coerce-wf-μ-round-trip wfF X x) (coerce-wf-μ-round-trip wfG X y)
+coerce-μ-round-trip : ∀ {F} → (wf : WellFormedF F) → ∀ (X : Set) (x : ⟦ F ⟧F X)
+                    → coerce-μ-out wf X (coerce-μ-in F X x) ≡ x
+coerce-μ-round-trip (wf-K pA) X x = coerce-base-type-round-trip pA x
+coerce-μ-round-trip wf-Id X x = refl
+coerce-μ-round-trip (wf-Sum wfF wfG) X (inj₁ x) =
+  cong inj₁ (coerce-μ-round-trip wfF X x)
+coerce-μ-round-trip (wf-Sum wfF wfG) X (inj₂ y) =
+  cong inj₂ (coerce-μ-round-trip wfG X y)
+coerce-μ-round-trip (wf-Prod wfF wfG) X (x , y) =
+  cong₂ _,_ (coerce-μ-round-trip wfF X x) (coerce-μ-round-trip wfG X y)
 
--- | For well-formed functors: coerce-μ-in ∘ coerce-μ-out = id (PROVEN)
+-- | coerce-μ-in ∘ coerce-μ-out = id (PROVEN)
 --
-coerce-wf-μ⁻¹-round-trip : ∀ {F} → WellFormedF F → ∀ (X : Set) (x : ⟦ translateF IntRep F ⟧SF X)
-                         → coerce-μ-in F X (coerce-μ-out F X x) ≡ x
-coerce-wf-μ⁻¹-round-trip (wf-K pA) X x = coerce-base-type⁻¹-round-trip pA x
-coerce-wf-μ⁻¹-round-trip wf-Id X x = refl
-coerce-wf-μ⁻¹-round-trip (wf-Sum wfF wfG) X (inj₁ x) =
-  cong inj₁ (coerce-wf-μ⁻¹-round-trip wfF X x)
-coerce-wf-μ⁻¹-round-trip (wf-Sum wfF wfG) X (inj₂ y) =
-  cong inj₂ (coerce-wf-μ⁻¹-round-trip wfG X y)
-coerce-wf-μ⁻¹-round-trip (wf-Prod wfF wfG) X (x , y) =
-  cong₂ _,_ (coerce-wf-μ⁻¹-round-trip wfF X x) (coerce-wf-μ⁻¹-round-trip wfG X y)
+coerce-μ⁻¹-round-trip : ∀ {F} → (wf : WellFormedF F) → ∀ (X : Set) (x : ⟦ translateF IntRep F ⟧SF X)
+                      → coerce-μ-in F X (coerce-μ-out wf X x) ≡ x
+coerce-μ⁻¹-round-trip (wf-K pA) X x = coerce-base-type⁻¹-round-trip pA x
+coerce-μ⁻¹-round-trip wf-Id X x = refl
+coerce-μ⁻¹-round-trip (wf-Sum wfF wfG) X (inj₁ x) =
+  cong inj₁ (coerce-μ⁻¹-round-trip wfF X x)
+coerce-μ⁻¹-round-trip (wf-Sum wfF wfG) X (inj₂ y) =
+  cong inj₂ (coerce-μ⁻¹-round-trip wfG X y)
+coerce-μ⁻¹-round-trip (wf-Prod wfF wfG) X (x , y) =
+  cong₂ _,_ (coerce-μ⁻¹-round-trip wfF X x) (coerce-μ⁻¹-round-trip wfG X y)
 
 ------------------------------------------------------------------------
 -- μ-type Operations (OCP-0003: Defined via SPF)
@@ -549,17 +548,18 @@ sem-In F x = ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩
 -- | Out: μF → F(μF) (destructor, inverse of In)
 --
 -- OCP-0003: Defined via SPF's outS with coercion.
+-- Requires WellFormedF proof for postulate-free coercion.
 --
-sem-Out : ∀ (F : Functor) → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
-sem-Out F x = coerce-μ-out F (⟦μ⟧ F) (outS (translateF IntRep F) x)
+sem-Out : ∀ {F : Functor} → WellFormedF F → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
+sem-Out {F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep F) x)
 
 -- | Catamorphism: given algebra F(A) → A, fold μF → A
 --
 -- OCP-0003: Defined via SPF's cataS with coercions.
--- The algebra is lifted through coercions.
+-- Requires WellFormedF proof for postulate-free coercion.
 --
-sem-cata : ∀ (F : Functor) {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
-sem-cata F {A} alg = cataS {translateF IntRep F} (λ x → alg (coerce-μ-out F A x))
+sem-cata : ∀ {F : Functor} → WellFormedF F → {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
+sem-cata {F} wf {A} alg = cataS {translateF IntRep F} (λ x → alg (coerce-μ-out wf A x))
 
 ------------------------------------------------------------------------
 -- ν-type Coercions (OCP-0003)
@@ -572,7 +572,8 @@ coerce-ν-in : ∀ F (X : Set) → ⟦ F ⟧F X → ⟦ translateF IntRep F ⟧S
 coerce-ν-in = coerce-μ-in  -- Same structure
 
 -- | Coerce from ⟦ translateF F ⟧SF to ⟦ F ⟧F (for ν-type operations)
-coerce-ν-out : ∀ F (X : Set) → ⟦ translateF IntRep F ⟧SF X → ⟦ F ⟧F X
+-- Requires WellFormedF proof for postulate-free coercion.
+coerce-ν-out : ∀ {F} → WellFormedF F → (X : Set) → ⟦ translateF IntRep F ⟧SF X → ⟦ F ⟧F X
 coerce-ν-out = coerce-μ-out  -- Same structure
 
 ------------------------------------------------------------------------
@@ -582,9 +583,10 @@ coerce-ν-out = coerce-μ-out  -- Same structure
 -- | CoOut: νF → F(νF) (observation)
 --
 -- OCP-0003: Defined via SPF's unfoldS with coercion.
+-- Requires WellFormedF proof for postulate-free coercion.
 --
-sem-CoOut : ∀ (F : Functor) → ⟦ν⟧ F → ⟦ F ⟧F (⟦ν⟧ F)
-sem-CoOut F x = coerce-ν-out F (⟦ν⟧ F) (unfoldS x)
+sem-CoOut : ∀ {F : Functor} → WellFormedF F → ⟦ν⟧ F → ⟦ F ⟧F (⟦ν⟧ F)
+sem-CoOut {F} wf x = coerce-ν-out wf (⟦ν⟧ F) (unfoldS x)
 
 -- | CoIn: F(νF) → νF (coalgebra)
 --
@@ -613,17 +615,18 @@ unfoldS (sem-ana F {A} coalg a) = sfmap (translateF IntRep F) (sem-ana F coalg) 
 -- | Unguard: extract functor value from guarded value
 --
 -- This "consumes" the guardedness - the F-layer has been observed.
--- Defined by pattern matching on the guarded value.
+-- Requires WellFormedF proof for postulate-free coercion at K positions.
 --
 -- Note: For K positions, we coerce from ⟦_⟧-base to ⟦_⟧ since GConst
 -- stores base interpretation values but ⟦ F ⟧F uses full interpretation.
 --
-sem-unguard : ∀ (F : Functor) {A : Set} → ⟦Guarded⟧ F A → ⟦ F ⟧F A
-sem-unguard (K B) (GConst x) = coerce-base-to-full B x
-sem-unguard Id (GRec a) = a
-sem-unguard (F ⊗ G) (GProd gf gg) = (sem-unguard F gf , sem-unguard G gg)
-sem-unguard (F ⊕ G) (GInl gf) = inj₁ (sem-unguard F gf)
-sem-unguard (F ⊕ G) (GInr gg) = inj₂ (sem-unguard G gg)
+sem-unguard : ∀ {F : Functor} → WellFormedF F → ∀ {A : Set} → ⟦Guarded⟧ F A → ⟦ F ⟧F A
+sem-unguard (wf-K pB) (GConst x) = coerce-base-to-full pB x
+sem-unguard wf-Id (GRec a) = a
+sem-unguard (wf-Prod wfF wfG) (GProd gf gg) =
+  (sem-unguard wfF gf , sem-unguard wfG gg)
+sem-unguard (wf-Sum wfF wfG) (GInl gf) = inj₁ (sem-unguard wfF gf)
+sem-unguard (wf-Sum wfF wfG) (GInr gg) = inj₂ (sem-unguard wfG gg)
 
 -- | Guard: wrap functor value as guarded
 --
@@ -652,12 +655,10 @@ sem-guard (F ⊗ G) (xf , xg) = GProd (sem-guard F xf) (sem-guard G xg)
 sem-guard (F ⊕ G) (inj₁ xf) = GInl (sem-guard F xf)
 sem-guard (F ⊕ G) (inj₂ xg) = GInr (sem-guard G xg)
 
--- | Guard-Unguard round-trip: unguard ∘ guard = id (PROVEN for well-formed)
+-- | Guard-Unguard round-trip: unguard ∘ guard = id (PROVEN)
 --
--- Requires WellFormedF proof for postulate-free verification.
---
-sem-unguard-guard : ∀ {F : Functor} → WellFormedF F → ∀ {A : Set} (x : ⟦ F ⟧F A)
-                  → sem-unguard F (sem-guard F x) ≡ x
+sem-unguard-guard : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Set} (x : ⟦ F ⟧F A)
+                  → sem-unguard wf (sem-guard F x) ≡ x
 sem-unguard-guard (wf-K pB) x = coerce-base-type-round-trip pB x
 sem-unguard-guard wf-Id a = refl
 sem-unguard-guard (wf-Prod wfF wfG) (xf , xg) =
@@ -665,12 +666,10 @@ sem-unguard-guard (wf-Prod wfF wfG) (xf , xg) =
 sem-unguard-guard (wf-Sum wfF wfG) (inj₁ xf) = cong inj₁ (sem-unguard-guard wfF xf)
 sem-unguard-guard (wf-Sum wfF wfG) (inj₂ xg) = cong inj₂ (sem-unguard-guard wfG xg)
 
--- | Guard-Unguard round-trip: guard ∘ unguard = id (PROVEN for well-formed)
+-- | Guard-Unguard round-trip: guard ∘ unguard = id (PROVEN)
 --
--- Requires WellFormedF proof for postulate-free verification.
---
-sem-guard-unguard : ∀ {F : Functor} → WellFormedF F → ∀ {A : Set} (x : ⟦Guarded⟧ F A)
-                  → sem-guard F (sem-unguard F x) ≡ x
+sem-guard-unguard : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Set} (x : ⟦Guarded⟧ F A)
+                  → sem-guard F (sem-unguard wf x) ≡ x
 sem-guard-unguard (wf-K pB) (GConst x) = cong GConst (coerce-base-type⁻¹-round-trip pB x)
 sem-guard-unguard wf-Id (GRec a) = refl
 sem-guard-unguard (wf-Prod wfF wfG) (GProd gf gg) =
@@ -682,10 +681,10 @@ sem-guard-unguard (wf-Sum wfF wfG) (GInr gg) = cong GInr (sem-guard-unguard wfG 
 -- This is the productive version of sem-ana.
 --
 -- OCP-0003: Defined as sem-ana composed with sem-unguard.
--- The guardedness ensures productivity.
+-- Requires WellFormedF proof for postulate-free coercion.
 --
-sem-ana-guarded : ∀ (F : Functor) {A : Set} → (A → ⟦Guarded⟧ F A) → A → ⟦ν⟧ F
-sem-ana-guarded F coalg = sem-ana F (sem-unguard F ∘ coalg)
+sem-ana-guarded : ∀ {F : Functor} → WellFormedF F → {A : Set} → (A → ⟦Guarded⟧ F A) → A → ⟦ν⟧ F
+sem-ana-guarded {F} wf coalg = sem-ana F (sem-unguard wf ∘ coalg)
 
 -- | Hylomorphism: fused cata ∘ ana, computed directly
 -- Semantically: hylo alg coalg = cata alg ∘ ana coalg
@@ -703,13 +702,13 @@ sem-hylo F alg coalg x = alg (sem-fmap F (sem-hylo F alg coalg) (coalg x))
 -- | Guarded hylomorphism: fused cata with guarded coalgebra
 --
 -- OCP-0003: Defined as sem-hylo composed with sem-unguard.
--- The guardedness ensures productivity/termination.
+-- Requires WellFormedF proof for postulate-free coercion.
 --
-sem-hylo-guarded : ∀ (F : Functor) {A B : Set}
+sem-hylo-guarded : ∀ {F : Functor} → WellFormedF F → {A B : Set}
                  → (⟦ F ⟧F B → B)           -- algebra
                  → (A → ⟦Guarded⟧ F A)      -- guarded coalgebra
                  → A → B
-sem-hylo-guarded F alg coalg = sem-hylo F alg (sem-unguard F ∘ coalg)
+sem-hylo-guarded {F} wf alg coalg = sem-hylo F alg (sem-unguard wf ∘ coalg)
 
 ------------------------------------------------------------------------
 -- μ-Coercion Round-Trip Properties (OCP-0003)
@@ -732,19 +731,17 @@ sem-hylo-guarded F alg coalg = sem-hylo F alg (sem-unguard F ∘ coalg)
 
 -- | In and Out are inverses (Lambek's Lemma, one direction)
 --
--- OCP-0003: Proven using coerce-wf-μ-round-trip.
--- Requires WellFormedF proof for postulate-free verification.
+-- OCP-0003: Proven using coerce-μ-round-trip.
 --
-sem-Out-In : ∀ {F : Functor} → WellFormedF F → (x : ⟦ F ⟧F (⟦μ⟧ F)) → sem-Out F (sem-In F x) ≡ x
-sem-Out-In wf x = coerce-wf-μ-round-trip wf _ x
+sem-Out-In : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ F ⟧F (⟦μ⟧ F)) → sem-Out wf (sem-In F x) ≡ x
+sem-Out-In wf x = coerce-μ-round-trip wf _ x
 
 -- | In and Out are inverses (Lambek's Lemma, other direction)
 --
--- OCP-0003: Proven using coerce-wf-μ⁻¹-round-trip.
--- Requires WellFormedF proof for postulate-free verification.
+-- OCP-0003: Proven using coerce-μ⁻¹-round-trip.
 --
-sem-In-Out : ∀ {F : Functor} → WellFormedF F → (x : ⟦μ⟧ F) → sem-In F (sem-Out F x) ≡ x
-sem-In-Out wf ⟨ y ⟩ = cong ⟨_⟩ (coerce-wf-μ⁻¹-round-trip wf _ y)
+sem-In-Out : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦μ⟧ F) → sem-In F (sem-Out wf x) ≡ x
+sem-In-Out wf ⟨ y ⟩ = cong ⟨_⟩ (coerce-μ⁻¹-round-trip wf _ y)
 
 ------------------------------------------------------------------------
 -- Fmap-Coercion Coherence for μ (OCP-0003)
@@ -767,66 +764,64 @@ fmap-coerce-μ-coherence (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-coerce-μ-coher
 
 -- | The inverse direction: sfmap through coercions equals sem-fmap
 --
--- coerce-μ-out F ∘ sfmap (translateF F) f ≡ sem-fmap F f ∘ coerce-μ-out F
+-- coerce-μ-out wf ∘ sfmap (translateF F) f ≡ sem-fmap F f ∘ coerce-μ-out wf
 --
-fmap-coerce-μ-coherence′ : ∀ F {X Y : Set} (f : X → Y) (x : ⟦ translateF IntRep F ⟧SF X)
-                         → coerce-μ-out F Y (sfmap (translateF IntRep F) f x) ≡ sem-fmap F f (coerce-μ-out F X x)
-fmap-coerce-μ-coherence′ (K A) f x = refl
-fmap-coerce-μ-coherence′ Id f x = refl
-fmap-coerce-μ-coherence′ (F ⊕ G) f (inj₁ x) = cong inj₁ (fmap-coerce-μ-coherence′ F f x)
-fmap-coerce-μ-coherence′ (F ⊕ G) f (inj₂ y) = cong inj₂ (fmap-coerce-μ-coherence′ G f y)
-fmap-coerce-μ-coherence′ (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-coerce-μ-coherence′ F f x) (fmap-coerce-μ-coherence′ G f y)
+fmap-coerce-μ-coherence′ : ∀ {F} (wf : WellFormedF F) {X Y : Set} (f : X → Y) (x : ⟦ translateF IntRep F ⟧SF X)
+                         → coerce-μ-out wf Y (sfmap (translateF IntRep F) f x) ≡ sem-fmap F f (coerce-μ-out wf X x)
+fmap-coerce-μ-coherence′ (wf-K pA) f x = refl
+fmap-coerce-μ-coherence′ wf-Id f x = refl
+fmap-coerce-μ-coherence′ (wf-Sum wfF wfG) f (inj₁ x) = cong inj₁ (fmap-coerce-μ-coherence′ wfF f x)
+fmap-coerce-μ-coherence′ (wf-Sum wfF wfG) f (inj₂ y) = cong inj₂ (fmap-coerce-μ-coherence′ wfG f y)
+fmap-coerce-μ-coherence′ (wf-Prod wfF wfG) f (x , y) = cong₂ _,_ (fmap-coerce-μ-coherence′ wfF f x) (fmap-coerce-μ-coherence′ wfG f y)
 
 ------------------------------------------------------------------------
 -- Catamorphism Laws (OCP-0003: Proven)
 ------------------------------------------------------------------------
 
--- | Catamorphism computation law (PROVEN for well-formed functors)
+-- | Catamorphism computation law (PROVEN)
 --
 -- OCP-0003: Proven using SPF's cataS-computation and coercion coherence.
--- Requires WellFormedF for postulate-free verification.
 --
 -- Proof:
---   sem-cata F alg (sem-In F x)
---   = cataS (alg ∘ coerce-μ-out F) ⟨ coerce-μ-in F x ⟩
---   = (alg ∘ coerce-μ-out F) (sfmapCata (translateF F) ... (coerce-μ-in F x))
+--   sem-cata wf alg (sem-In F x)
+--   = cataS (alg ∘ coerce-μ-out wf) ⟨ coerce-μ-in F x ⟩
+--   = (alg ∘ coerce-μ-out wf) (sfmapCata (translateF F) ... (coerce-μ-in F x))
 --   By cataS-computation and coherence properties.
 --
-sem-cata-compute : ∀ {F : Functor} → WellFormedF F → ∀ {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
-                 → sem-cata F alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata F alg) x)
+sem-cata-compute : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
+                 → sem-cata wf alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata wf alg) x)
 sem-cata-compute {F} wf {A} alg x =
   let TF = translateF IntRep F
-      alg′ = λ y → alg (coerce-μ-out F A y)
+      alg′ = λ y → alg (coerce-μ-out wf A y)
       step1 : cataS {TF} alg′ ⟨ coerce-μ-in F (⟦μ⟧ F) x ⟩ ≡ alg′ (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
       step1 = cataS-computation TF alg′ (coerce-μ-in F (⟦μ⟧ F) x)
       step2 : alg′ (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
-            ≡ alg (coerce-μ-out F A (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x)))
+            ≡ alg (coerce-μ-out wf A (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x)))
       step2 = refl
-      step3 : coerce-μ-out F A (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
-            ≡ sem-fmap F (cataS alg′) (coerce-μ-out F (⟦μ⟧ F) (coerce-μ-in F (⟦μ⟧ F) x))
-      step3 = fmap-coerce-μ-coherence′ F (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x)
-      step4 : coerce-μ-out F (⟦μ⟧ F) (coerce-μ-in F (⟦μ⟧ F) x) ≡ x
-      step4 = coerce-wf-μ-round-trip wf (⟦μ⟧ F) x
-      step5 : sem-fmap F (cataS alg′) x ≡ sem-fmap F (sem-cata F alg) x
+      step3 : coerce-μ-out wf A (sfmap TF (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x))
+            ≡ sem-fmap F (cataS alg′) (coerce-μ-out wf (⟦μ⟧ F) (coerce-μ-in F (⟦μ⟧ F) x))
+      step3 = fmap-coerce-μ-coherence′ wf (cataS alg′) (coerce-μ-in F (⟦μ⟧ F) x)
+      step4 : coerce-μ-out wf (⟦μ⟧ F) (coerce-μ-in F (⟦μ⟧ F) x) ≡ x
+      step4 = coerce-μ-round-trip wf (⟦μ⟧ F) x
+      step5 : sem-fmap F (cataS alg′) x ≡ sem-fmap F (sem-cata wf alg) x
       step5 = refl
-  in trans step1 (trans step2 (cong alg (trans step3 (cong (sem-fmap F (sem-cata F alg)) step4))))
+  in trans step1 (trans step2 (cong alg (trans step3 (cong (sem-fmap F (sem-cata wf alg)) step4))))
 
--- | Identity catamorphism: cata with In algebra is identity (PROVEN for well-formed functors)
+-- | Identity catamorphism: cata with In algebra is identity (PROVEN)
 --
 -- OCP-0003: Proven using SPF's cataS-In-id and coercion coherence.
--- Requires WellFormedF for postulate-free verification.
 --
--- The key insight is that sem-cata F sem-In = cataS (⟨_⟩ ∘ coerce-μ-in F ∘ coerce-μ-out F)
---                                            = cataS ⟨_⟩ (by round-trip being id)
---                                            = id       (by cataS-In-id)
+-- The key insight is that sem-cata wf sem-In = cataS (⟨_⟩ ∘ coerce-μ-in F ∘ coerce-μ-out wf)
+--                                             = cataS ⟨_⟩ (by round-trip being id)
+--                                             = id       (by cataS-In-id)
 --
-sem-cata-In-id : ∀ {F : Functor} → WellFormedF F → (x : ⟦μ⟧ F) → sem-cata F (sem-In F) x ≡ x
+sem-cata-In-id : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦μ⟧ F) → sem-cata wf (sem-In F) x ≡ x
 sem-cata-In-id {F} wf x =
   let TF = translateF IntRep F
       alg′ : ⟦ TF ⟧SF (μS TF) → μS TF
-      alg′ y = ⟨ coerce-μ-in F (⟦μ⟧ F) (coerce-μ-out F (⟦μ⟧ F) y) ⟩
+      alg′ y = ⟨ coerce-μ-in F (⟦μ⟧ F) (coerce-μ-out wf (⟦μ⟧ F) y) ⟩
       alg′-eq : ∀ y → alg′ y ≡ ⟨ y ⟩
-      alg′-eq y = cong ⟨_⟩ (coerce-wf-μ⁻¹-round-trip wf (⟦μ⟧ F) y)
+      alg′-eq y = cong ⟨_⟩ (coerce-μ⁻¹-round-trip wf (⟦μ⟧ F) y)
       alg′≡In : alg′ ≡ ⟨_⟩
       alg′≡In = funext alg′-eq
       step1 : cataS {TF} alg′ x ≡ cataS ⟨_⟩ x
@@ -842,14 +837,12 @@ sem-cata-In-id {F} wf x =
 -- | Key lemma: coerce-ν-in after sem-CoOut equals unfoldS (PROVEN)
 --
 -- This follows from the coercion round-trip: coerce-ν-in ∘ coerce-ν-out = id.
--- Since sem-CoOut F x = coerce-ν-out F (unfoldS x), we have:
---   coerce-ν-in F (sem-CoOut F x) = coerce-ν-in F (coerce-ν-out F (unfoldS x)) = unfoldS x
+-- Since sem-CoOut wf x = coerce-ν-out wf (unfoldS x), we have:
+--   coerce-ν-in F (sem-CoOut wf x) = coerce-ν-in F (coerce-ν-out wf (unfoldS x)) = unfoldS x
 --
--- Requires WellFormedF for postulate-free verification.
---
-coerce-ν-in-sem-CoOut : ∀ {F} → WellFormedF F → (x : ⟦ν⟧ F)
-                      → coerce-ν-in F (⟦ν⟧ F) (sem-CoOut F x) ≡ unfoldS x
-coerce-ν-in-sem-CoOut wf x = coerce-wf-μ⁻¹-round-trip wf _ (unfoldS x)
+coerce-ν-in-sem-CoOut : ∀ {F} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
+                      → coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x) ≡ unfoldS x
+coerce-ν-in-sem-CoOut wf x = coerce-μ⁻¹-round-trip wf _ (unfoldS x)
 
 -- | Helper: relate sfmap applied to same value with different functions
 --
@@ -867,60 +860,56 @@ sfmap-bisim (G₁ S⊕ G₂) f g hyp (inj₂ v) = sfmap-bisim G₂ f g hyp v
 sfmap-bisim (G₁ S⊗ G₂) f g hyp (v₁ , v₂) =
   sfmap-bisim G₁ f g hyp v₁ , sfmap-bisim G₂ f g hyp v₂
 
--- | sem-ana F (sem-CoOut F) is bisimilar to anaS unfoldS (coinductive proof)
+-- | sem-ana F (sem-CoOut wf) is bisimilar to anaS unfoldS (coinductive proof)
 --
 -- Both functions satisfy the same corecursive equation:
 --   unfoldS (f x) = sfmap TF f (unfoldS x)
 --
 -- Proof by coinduction:
--- 1. unfoldS (sem-ana F (sem-CoOut F) x)
---    = sfmap TF (sem-ana F (sem-CoOut F)) (coerce-ν-in F (sem-CoOut F x))  [by def]
---    = sfmap TF (sem-ana F (sem-CoOut F)) (unfoldS x)                      [by round-trip]
+-- 1. unfoldS (sem-ana F (sem-CoOut wf) x)
+--    = sfmap TF (sem-ana F (sem-CoOut wf)) (coerce-ν-in F (sem-CoOut wf x))  [by def]
+--    = sfmap TF (sem-ana F (sem-CoOut wf)) (unfoldS x)                       [by round-trip]
 --
 -- 2. unfoldS (anaS unfoldS x)
---    = sfmap TF (anaS unfoldS) (unfoldS x)                                  [by def]
+--    = sfmap TF (anaS unfoldS) (unfoldS x)                                   [by def]
 --
 -- Both observations are sfmap TF applied to the same underlying value (unfoldS x)
 -- but with different functions. By sfmap-bisim with the coinductive hypothesis
--- (sem-ana F (sem-CoOut F) y ∼S anaS unfoldS y for all y), they are related.
---
--- Requires WellFormedF for postulate-free verification.
+-- (sem-ana F (sem-CoOut wf) y ∼S anaS unfoldS y for all y), they are related.
 --
 {-# TERMINATING #-}
-sem-ana-bisim-anaS : ∀ {F} → WellFormedF F → (x : ⟦ν⟧ F)
-                   → sem-ana F (sem-CoOut F) x ∼S anaS unfoldS x
+sem-ana-bisim-anaS : ∀ {F} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
+                   → sem-ana F (sem-CoOut wf) x ∼S anaS unfoldS x
 _∼S_.unfoldS-∼ (sem-ana-bisim-anaS {F} wf x) =
   let TF = translateF IntRep F
       -- The coercion round-trip gives us the key equality
-      obs-eq : coerce-ν-in F (⟦ν⟧ F) (sem-CoOut F x) ≡ unfoldS x
+      obs-eq : coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf x) ≡ unfoldS x
       obs-eq = coerce-ν-in-sem-CoOut wf x
-      -- LHS observation: sfmap TF (sem-ana F (sem-CoOut F)) (coerce-ν-in F (sem-CoOut F x))
+      -- LHS observation: sfmap TF (sem-ana F (sem-CoOut wf)) (coerce-ν-in F (sem-CoOut wf x))
       -- RHS observation: sfmap TF (anaS unfoldS) (unfoldS x)
-      -- By obs-eq, LHS = sfmap TF (sem-ana F (sem-CoOut F)) (unfoldS x)
+      -- By obs-eq, LHS = sfmap TF (sem-ana F (sem-CoOut wf)) (unfoldS x)
       -- By sfmap-bisim with coinductive hypothesis, they are related
   in subst (λ z → ⟦ TF ⟧SF-rel (_∼S_)
-                    (sfmap TF (sem-ana F (sem-CoOut F)) z)
+                    (sfmap TF (sem-ana F (sem-CoOut wf)) z)
                     (sfmap TF (anaS unfoldS) (unfoldS x)))
            (sym obs-eq)
-           (sfmap-bisim TF (sem-ana F (sem-CoOut F)) (anaS unfoldS)
+           (sfmap-bisim TF (sem-ana F (sem-CoOut wf)) (anaS unfoldS)
                         (sem-ana-bisim-anaS wf) (unfoldS x))
 
--- | sem-ana F (sem-CoOut F) equals anaS unfoldS (PROVEN via bisimulation)
+-- | sem-ana F (sem-CoOut wf) equals anaS unfoldS (PROVEN via bisimulation)
 --
 -- Proof: Show bisimilarity via sem-ana-bisim-anaS, then apply bisimS-to-eq.
--- Requires WellFormedF for postulate-free verification.
 --
-sem-ana-is-anaS-unfoldS : ∀ {F} → WellFormedF F → (x : ⟦ν⟧ F)
-                        → sem-ana F (sem-CoOut F) x ≡ anaS unfoldS x
+sem-ana-is-anaS-unfoldS : ∀ {F} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
+                        → sem-ana F (sem-CoOut wf) x ≡ anaS unfoldS x
 sem-ana-is-anaS-unfoldS wf x =
-  bisimS-to-eq (sem-ana _ (sem-CoOut _) x) (anaS unfoldS x) (sem-ana-bisim-anaS wf x)
+  bisimS-to-eq (sem-ana _ (sem-CoOut wf) x) (anaS unfoldS x) (sem-ana-bisim-anaS wf x)
 
 -- | Identity anamorphism: ana with CoOut coalgebra is identity (PROVEN)
 --
 -- Proof: Combine sem-ana-is-anaS-unfoldS with anaS-Out-id.
--- Requires WellFormedF for postulate-free verification.
 --
-sem-ana-Out-id : ∀ {F : Functor} → WellFormedF F → (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut F) x ≡ x
+sem-ana-Out-id : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut wf) x ≡ x
 sem-ana-Out-id {F} wf x = trans (sem-ana-is-anaS-unfoldS wf x) (anaS-Out-id (translateF IntRep F) x)
 
 ------------------------------------------------------------------------
@@ -943,13 +932,13 @@ sem-hylo-compute F alg coalg x = refl
 --
 -- OCP-0003: Definitionally true from the definition of sem-hylo-guarded.
 --
--- sem-hylo-guarded F alg coalg = sem-hylo F alg (sem-unguard F ∘ coalg)
--- So sem-hylo-guarded F alg coalg x
---    = alg (fmap (sem-hylo F alg (sem-unguard F ∘ coalg)) (sem-unguard F (coalg x)))
---    = alg (fmap (sem-hylo-guarded F alg coalg) (sem-unguard F (coalg x)))
+-- sem-hylo-guarded wf alg coalg = sem-hylo F alg (sem-unguard wf ∘ coalg)
+-- So sem-hylo-guarded wf alg coalg x
+--    = alg (fmap (sem-hylo F alg (sem-unguard wf ∘ coalg)) (sem-unguard wf (coalg x)))
+--    = alg (fmap (sem-hylo-guarded wf alg coalg) (sem-unguard wf (coalg x)))
 --
-sem-hylo-guarded-compute : ∀ (F : Functor) {A B : Set}
+sem-hylo-guarded-compute : ∀ {F : Functor} (wf : WellFormedF F) {A B : Set}
                            (alg : ⟦ F ⟧F B → B) (coalg : A → ⟦Guarded⟧ F A) (x : A)
-                         → sem-hylo-guarded F alg coalg x ≡
-                           alg (sem-fmap F (sem-hylo-guarded F alg coalg) (sem-unguard F (coalg x)))
-sem-hylo-guarded-compute F alg coalg x = refl
+                         → sem-hylo-guarded wf alg coalg x ≡
+                           alg (sem-fmap F (sem-hylo-guarded wf alg coalg) (sem-unguard wf (coalg x)))
+sem-hylo-guarded-compute wf alg coalg x = refl

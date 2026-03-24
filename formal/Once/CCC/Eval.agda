@@ -69,23 +69,23 @@ eval ps arr f = f
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 eval ps (free-heap _) x = x
 eval ps (Prim name) x = evalPrim ps name x
--- OCP-0003: Recursion scheme evaluation
+-- OCP-0003: Recursion scheme evaluation (WellFormedF proofs from IR constructors)
 -- In: wrap value into μ-type (initial algebra constructor)
-eval ps (In {F} _) x = sem-In F (coerce-functor F (μ-type F) x)
+eval ps (In {F} _ _) x = sem-In F (coerce-functor F (μ-type F) x)
 -- Cata: fold with algebra over μ-type
-eval ps (Cata {F} {A} alg) x = sem-cata F (λ fa → eval ps alg (coerce-functor⁻¹ F A fa)) x
+eval ps (Cata {F} wf alg) x = sem-cata wf (λ fa → eval ps alg (coerce-functor⁻¹ F _ fa)) x
 -- Out: observe ν-type (final coalgebra destructor)
-eval ps (Out {F}) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut F x)
+eval ps (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
 -- Ana: unfold with GUARDED coalgebra to build ν-type (OCP-0003 productivity)
 -- The coalgebra produces GuardedT F A, ensuring productivity by construction.
-eval ps (Ana {F} {A} coalg) x = sem-ana-guarded F (λ a → eval ps coalg a) x
+eval ps (Ana {F} wf coalg) x = sem-ana-guarded wf (λ a → eval ps coalg a) x
 -- Unguard: extract functor value from guarded value
-eval ps (Unguard {F} {A}) x = coerce-functor⁻¹ F A (sem-unguard F x)
+eval ps (Unguard {F} wf) x = coerce-functor⁻¹ F _ (sem-unguard wf x)
 -- Guard: wrap functor value as guarded value
-eval ps (Guard {F} {A}) x = sem-guard F (coerce-functor F A x)
+eval ps (Guard {F} _ {A}) x = sem-guard F (coerce-functor F A x)
 -- Hylo: fused cata ∘ ana with GUARDED coalgebra (OCP-0003 productivity)
-eval ps (Hylo {F} {A} {B} alg coalg) x =
-  sem-hylo-guarded F
-    (λ fb → eval ps alg (coerce-functor⁻¹ F B fb))
+eval ps (Hylo {F} wf alg coalg) x =
+  sem-hylo-guarded wf
+    (λ fb → eval ps alg (coerce-functor⁻¹ F _ fb))
     (λ a → eval ps coalg a)
     x

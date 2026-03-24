@@ -20,6 +20,7 @@ open import Once.CCC.IR
 open import Once.CCC.Machine.SMCore using (HeapRef)
 open import Once.Semantics.IR using (⟦_⟧; eval′)
 open import Once.Postulates using (extensionality)
+open import Once.Functor.Translate using (WellFormedF)
 
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
@@ -182,25 +183,27 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   ty-free-heap : ∀ {Γ} → HeapRef → Γ ⊢ Unit ⟶ Unit
 
   -- OCP-0003: Recursion schemes for polynomial functors
+  -- All recursion scheme typing rules require WellFormedF proofs
+  -- to ensure functors only use K with base types.
   --
   -- In: algebra for μ-type (fold into initial algebra)
   -- ──────────────────────────────────────
   -- Γ ⊢ ⟦ F ⟧T (μ-type F) ⟶ μ-type F
   --
-  ty-In : ∀ {Γ F} → Γ ⊢ ⟦ F ⟧T (μ-type F) ⟶ μ-type F
+  ty-In : ∀ {Γ F} → WellFormedF F → Γ ⊢ ⟦ F ⟧T (μ-type F) ⟶ μ-type F
 
   -- Cata: catamorphism (fold over μ-type)
   --      Γ ⊢ ⟦ F ⟧T A ⟶ A
   -- ──────────────────────────────
   --    Γ ⊢ μ-type F ⟶ A
   --
-  ty-Cata : ∀ {Γ F A} → Γ ⊢ ⟦ F ⟧T A ⟶ A → Γ ⊢ μ-type F ⟶ A
+  ty-Cata : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ ⟦ F ⟧T A ⟶ A → Γ ⊢ μ-type F ⟶ A
 
   -- Out: observation of ν-type (unfold from final coalgebra)
   -- ──────────────────────────────────────
   -- Γ ⊢ ν-type F ⟶ ⟦ F ⟧T (ν-type F)
   --
-  ty-Out : ∀ {Γ F} → Γ ⊢ ν-type F ⟶ ⟦ F ⟧T (ν-type F)
+  ty-Out : ∀ {Γ F} → WellFormedF F → Γ ⊢ ν-type F ⟶ ⟦ F ⟧T (ν-type F)
 
   -- Ana: anamorphism (unfold into ν-type)
   -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
@@ -208,21 +211,21 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- ───────────────────────────────
   --      Γ ⊢ A ⟶ ν-type F
   --
-  ty-Ana : ∀ {Γ F A} → Γ ⊢ A ⟶ GuardedT F A → Γ ⊢ A ⟶ ν-type F
+  ty-Ana : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ A ⟶ GuardedT F A → Γ ⊢ A ⟶ ν-type F
 
   -- Unguard: extract functor value from guarded value
   -- OCP-0003: used after Ana processing
   -- ──────────────────────────────────────
   -- Γ ⊢ GuardedT F A ⟶ ⟦ F ⟧T A
   --
-  ty-Unguard : ∀ {Γ F A} → Γ ⊢ GuardedT F A ⟶ ⟦ F ⟧T A
+  ty-Unguard : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ GuardedT F A ⟶ ⟦ F ⟧T A
 
   -- Guard: wrap functor value as guarded value
   -- OCP-0003: inverse of Unguard, establishes GuardedT ≅ ⟦ F ⟧T isomorphism
   -- ──────────────────────────────────────
   -- Γ ⊢ ⟦ F ⟧T A ⟶ GuardedT F A
   --
-  ty-Guard : ∀ {Γ F A} → Γ ⊢ ⟦ F ⟧T A ⟶ GuardedT F A
+  ty-Guard : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ ⟦ F ⟧T A ⟶ GuardedT F A
 
   -- Hylo: hylomorphism (fused ana-cata)
   -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
@@ -230,7 +233,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- ───────────────────────────────────────────────
   --                Γ ⊢ A ⟶ B
   --
-  ty-Hylo : ∀ {Γ F A B} → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ A ⟶ GuardedT F A → Γ ⊢ A ⟶ B
+  ty-Hylo : ∀ {Γ F} → WellFormedF F → ∀ {A B} → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ A ⟶ GuardedT F A → Γ ⊢ A ⟶ B
 
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
@@ -257,14 +260,14 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-arr ⌋ = arr
 ⌊ ty-prim name ⌋ = Prim name
 ⌊ ty-free-heap h ⌋ = free-heap h
--- OCP-0003 recursion schemes
-⌊ ty-In {F = F} ⌋ = In {F} Heap
-⌊ ty-Cata {F = F} alg ⌋ = Cata {F} ⌊ alg ⌋
-⌊ ty-Out {F = F} ⌋ = Out {F}
-⌊ ty-Ana {F = F} coalg ⌋ = Ana {F} ⌊ coalg ⌋
-⌊ ty-Unguard {F = F} ⌋ = Unguard {F}
-⌊ ty-Guard {F = F} ⌋ = Guard {F}
-⌊ ty-Hylo {F = F} alg coalg ⌋ = Hylo {F} ⌊ alg ⌋ ⌊ coalg ⌋
+-- OCP-0003 recursion schemes (WellFormedF proofs preserved)
+⌊ ty-In {F = F} wf ⌋ = In {F} wf Heap
+⌊ ty-Cata {F = F} wf alg ⌋ = Cata {F} wf ⌊ alg ⌋
+⌊ ty-Out {F = F} wf ⌋ = Out {F} wf
+⌊ ty-Ana {F = F} wf coalg ⌋ = Ana {F} wf ⌊ coalg ⌋
+⌊ ty-Unguard {F = F} wf ⌋ = Unguard {F} wf
+⌊ ty-Guard {F = F} wf ⌋ = Guard {F} wf
+⌊ ty-Hylo {F = F} wf alg coalg ⌋ = Hylo {F} wf ⌊ alg ⌋ ⌊ coalg ⌋
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -288,14 +291,14 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ arr ⌉ = ty-arr
 ⌈ Prim name ⌉ = ty-prim name
 ⌈ free-heap h ⌉ = ty-free-heap h
--- OCP-0003 recursion schemes
-⌈ In {F} _ ⌉ = ty-In {F = F}
-⌈ Cata {F} alg ⌉ = ty-Cata {F = F} ⌈ alg ⌉
-⌈ Out {F} ⌉ = ty-Out {F = F}
-⌈ Ana {F} coalg ⌉ = ty-Ana {F = F} ⌈ coalg ⌉
-⌈ Unguard {F} ⌉ = ty-Unguard {F = F}
-⌈ Guard {F} ⌉ = ty-Guard {F = F}
-⌈ Hylo {F} alg coalg ⌉ = ty-Hylo {F = F} ⌈ alg ⌉ ⌈ coalg ⌉
+-- OCP-0003 recursion schemes (WellFormedF proofs preserved)
+⌈ In {F} wf _ ⌉ = ty-In {F = F} wf
+⌈ Cata {F} wf alg ⌉ = ty-Cata {F = F} wf ⌈ alg ⌉
+⌈ Out {F} wf ⌉ = ty-Out {F = F} wf
+⌈ Ana {F} wf coalg ⌉ = ty-Ana {F = F} wf ⌈ coalg ⌉
+⌈ Unguard {F} wf ⌉ = ty-Unguard {F = F} wf
+⌈ Guard {F} wf ⌉ = ty-Guard {F = F} wf
+⌈ Hylo {F} wf alg coalg ⌉ = ty-Hylo {F = F} wf ⌈ alg ⌉ ⌈ coalg ⌉
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f (semantically)
 --
@@ -324,18 +327,18 @@ round-trip-ir arr x = refl
 round-trip-ir (Prim name) x = refl
 round-trip-ir (free-heap h) x = refl
 -- OCP-0003 recursion schemes: these use postulated semantics
--- so we postulate the round-trip property
-round-trip-ir (In {F} _) x = round-trip-In {F} x
-  where postulate round-trip-In : ∀ {F} (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) → eval′ ⌊ ⌈ In {F} Heap ⌉ ⌋ x ≡ eval′ (In {F} Heap) x
-round-trip-ir (Cata {F} alg) x = round-trip-Cata {F} alg x
-  where postulate round-trip-Cata : ∀ {F A} (alg : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧) → eval′ ⌊ ⌈ Cata {F} alg ⌉ ⌋ x ≡ eval′ (Cata {F} alg) x
-round-trip-ir (Out {F}) x = round-trip-Out {F} x
-  where postulate round-trip-Out : ∀ {F} (x : ⟦ ν-type F ⟧) → eval′ ⌊ ⌈ Out {F} ⌉ ⌋ x ≡ eval′ (Out {F}) x
-round-trip-ir (Ana {F} coalg) x = round-trip-Ana {F} coalg x
-  where postulate round-trip-Ana : ∀ {F A} (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Ana {F} coalg ⌉ ⌋ x ≡ eval′ (Ana {F} coalg) x
-round-trip-ir (Unguard {F} {A}) x = round-trip-Unguard {F} {A} x
-  where postulate round-trip-Unguard : ∀ {F A} (x : ⟦ GuardedT F A ⟧) → eval′ ⌊ ⌈ Unguard {F} {A} ⌉ ⌋ x ≡ eval′ (Unguard {F} {A}) x
-round-trip-ir (Guard {F} {A}) x = round-trip-Guard {F} {A} x
-  where postulate round-trip-Guard : ∀ {F A} (x : ⟦ ⟦ F ⟧T A ⟧) → eval′ ⌊ ⌈ Guard {F} {A} ⌉ ⌋ x ≡ eval′ (Guard {F} {A}) x
-round-trip-ir (Hylo {F} alg coalg) x = round-trip-Hylo {F} alg coalg x
-  where postulate round-trip-Hylo : ∀ {F A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Hylo {F} alg coalg ⌉ ⌋ x ≡ eval′ (Hylo {F} alg coalg) x
+-- so we postulate the round-trip property (WellFormedF proofs preserved)
+round-trip-ir (In {F} wf _) x = round-trip-In {F} wf x
+  where postulate round-trip-In : ∀ {F} (wf : WellFormedF F) (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) → eval′ ⌊ ⌈ In {F} wf Heap ⌉ ⌋ x ≡ eval′ (In {F} wf Heap) x
+round-trip-ir (Cata {F} wf alg) x = round-trip-Cata {F} wf alg x
+  where postulate round-trip-Cata : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧) → eval′ ⌊ ⌈ Cata {F} wf alg ⌉ ⌋ x ≡ eval′ (Cata {F} wf alg) x
+round-trip-ir (Out {F} wf) x = round-trip-Out {F} wf x
+  where postulate round-trip-Out : ∀ {F} (wf : WellFormedF F) (x : ⟦ ν-type F ⟧) → eval′ ⌊ ⌈ Out {F} wf ⌉ ⌋ x ≡ eval′ (Out {F} wf) x
+round-trip-ir (Ana {F} wf coalg) x = round-trip-Ana {F} wf coalg x
+  where postulate round-trip-Ana : ∀ {F} (wf : WellFormedF F) {A} (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Ana {F} wf coalg ⌉ ⌋ x ≡ eval′ (Ana {F} wf coalg) x
+round-trip-ir (Unguard {F} wf) x = round-trip-Unguard {F} wf x
+  where postulate round-trip-Unguard : ∀ {F} (wf : WellFormedF F) {A} (x : ⟦ GuardedT F A ⟧) → eval′ ⌊ ⌈ Unguard {F} wf ⌉ ⌋ x ≡ eval′ (Unguard {F} wf) x
+round-trip-ir (Guard {F} wf) x = round-trip-Guard {F} wf x
+  where postulate round-trip-Guard : ∀ {F} (wf : WellFormedF F) {A} (x : ⟦ ⟦ F ⟧T A ⟧) → eval′ ⌊ ⌈ Guard {F} wf ⌉ ⌋ x ≡ eval′ (Guard {F} wf) x
+round-trip-ir (Hylo {F} wf alg coalg) x = round-trip-Hylo {F} wf alg coalg x
+  where postulate round-trip-Hylo : ∀ {F} (wf : WellFormedF F) {A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Hylo {F} wf alg coalg ⌉ ⌋ x ≡ eval′ (Hylo {F} wf alg coalg) x

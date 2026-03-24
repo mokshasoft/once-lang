@@ -50,22 +50,22 @@ ir-stack-requirement (curry _ _) = pair-slots
 ir-stack-requirement apply = pair-slots
 ir-stack-requirement arr = 0
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
--- Recursion schemes (OCP-0003)
+-- Recursion schemes (OCP-0003) - WellFormedF proofs are ignored for stack
 -- In: constructs μ-value, similar to fold
-ir-stack-requirement (In _) = 1
+ir-stack-requirement (In _ _) = 1
 -- Cata: tail-recursive consumption, needs stack for intermediate results
 -- Uses a while-loop pattern at runtime
-ir-stack-requirement (Cata alg) = ir-stack-requirement alg +ℕ pair-slots
+ir-stack-requirement (Cata _ alg) = ir-stack-requirement alg +ℕ pair-slots
 -- Out: extracts from ν-value, constant
-ir-stack-requirement Out = 0
+ir-stack-requirement (Out _) = 0
 -- Ana: produces ν-value lazily, needs stack for coalgebra
-ir-stack-requirement (Ana coalg) = ir-stack-requirement coalg +ℕ pair-slots
+ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg +ℕ pair-slots
 -- Hylo: fused cata ∘ ana, combines both requirements
-ir-stack-requirement (Hylo alg coalg) = ir-stack-requirement alg +ℕ ir-stack-requirement coalg +ℕ pair-slots
+ir-stack-requirement (Hylo _ alg coalg) = ir-stack-requirement alg +ℕ ir-stack-requirement coalg +ℕ pair-slots
 -- Unguard: extracts from GuardedT, constant
-ir-stack-requirement Unguard = 0
+ir-stack-requirement (Unguard _) = 0
 -- Guard: wraps as GuardedT, constant
-ir-stack-requirement Guard = 0
+ir-stack-requirement (Guard _) = 0
 -- Other
 ir-stack-requirement (free-heap _) = 0
 ir-stack-requirement (Prim _) = 0  -- Primitives manage own stack

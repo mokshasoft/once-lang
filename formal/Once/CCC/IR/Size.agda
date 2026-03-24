@@ -35,14 +35,14 @@ ir-size (curry f _) = 2 +ℕ ir-size f
 ir-size apply = 1
 ir-size arr = 1
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
--- Recursion schemes (OCP-0003)
-ir-size (In _) = 1
-ir-size (Cata alg) = 2 +ℕ ir-size alg  -- Similar to curry: contains body
-ir-size Out = 1
-ir-size (Ana coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
-ir-size (Hylo alg coalg) = 2 +ℕ ir-size alg +ℕ ir-size coalg
-ir-size Unguard = 1
-ir-size Guard = 1
+-- Recursion schemes (OCP-0003) - WellFormedF proofs are ignored for size
+ir-size (In _ _) = 1
+ir-size (Cata _ alg) = 2 +ℕ ir-size alg  -- Similar to curry: contains body
+ir-size (Out _) = 1
+ir-size (Ana _ coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
+ir-size (Hylo _ alg coalg) = 2 +ℕ ir-size alg +ℕ ir-size coalg
+ir-size (Unguard _) = 1
+ir-size (Guard _) = 1
 -- Other
 ir-size (free-heap _) = 1
 ir-size (Prim _) = 1

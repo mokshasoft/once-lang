@@ -33,6 +33,7 @@ open import Induction.WellFounded using (Acc; acc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.IR
+open import Once.Functor.Translate using (WellFormedF)
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR.Size
@@ -377,45 +378,45 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
     -- In: wrap into μ-type (initial algebra constructor)
     -- Similar to fold: wraps F(μF) into μF
-    run-ir-wf mIn (In {F} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+    run-ir-wf mIn (In {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
       m , run-In-postulated
-      where postulate run-In-postulated : IRResultAWF m (In {F} m) x s alloc
+      where postulate run-In-postulated : IRResultAWF m (In {F} wf m) x s alloc
 
     -- Cata: catamorphism (fold over μ-type)
     -- Takes algebra: IR (⟦ F ⟧T A) A, recursively applies to μF
-    run-ir-wf mIn (Cata {F} {A} alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (Cata {F} wf alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       Heap , run-Cata-postulated
-      where postulate run-Cata-postulated : IRResultAWF Heap (Cata {F} {A} alg) x s alloc
+      where postulate run-Cata-postulated : IRResultAWF Heap (Cata {F} wf alg) x s alloc
 
     -- Out: observe ν-type (final coalgebra destructor)
     -- Similar to unfold: extracts F(νF) from νF
-    run-ir-wf mIn (Out {F}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn (Out {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       Heap , run-Out-postulated
-      where postulate run-Out-postulated : IRResultAWF Heap (Out {F}) x s alloc
+      where postulate run-Out-postulated : IRResultAWF Heap (Out {F} wf) x s alloc
 
     -- Ana: anamorphism (unfold to build ν-type)
     -- Takes coalgebra: IR A (⟦ F ⟧T A), corecursively builds νF
-    run-ir-wf mIn (Ana {F} {A} coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (Ana {F} wf coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       Heap , run-Ana-postulated
-      where postulate run-Ana-postulated : IRResultAWF Heap (Ana {F} {A} coalg) x s alloc
+      where postulate run-Ana-postulated : IRResultAWF Heap (Ana {F} wf coalg) x s alloc
 
     -- Hylo: hylomorphism (fused cata ∘ ana)
     -- Combines algebra and coalgebra without intermediate structure
-    run-ir-wf mIn (Hylo {F} {A} {B} alg coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (Hylo {F} wf alg coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       Heap , run-Hylo-postulated
-      where postulate run-Hylo-postulated : IRResultAWF Heap (Hylo {F} {A} {B} alg coalg) x s alloc
+      where postulate run-Hylo-postulated : IRResultAWF Heap (Hylo {F} wf alg coalg) x s alloc
 
     -- Unguard: extract functor value from guarded value
     -- Semantically isomorphism: ⟦Guarded⟧ F A ≅ ⟦ F ⟧F A
-    run-ir-wf mIn (Unguard {F} {A}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn (Unguard {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       Heap , run-Unguard-postulated
-      where postulate run-Unguard-postulated : IRResultAWF Heap (Unguard {F} {A}) x s alloc
+      where postulate run-Unguard-postulated : IRResultAWF Heap (Unguard {F} wf) x s alloc
 
     -- Guard: wrap functor value as guarded value
     -- Semantically isomorphism: ⟦ F ⟧F A ≅ ⟦Guarded⟧ F A
-    run-ir-wf mIn (Guard {F} {A}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn (Guard {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       Heap , run-Guard-postulated
-      where postulate run-Guard-postulated : IRResultAWF Heap (Guard {F} {A}) x s alloc
+      where postulate run-Guard-postulated : IRResultAWF Heap (Guard {F} wf) x s alloc
 
   -- Public API with ValidAtWF
   -- Returns existential mode + IRResultAWF with ValidAtWF for result validity.

@@ -14,6 +14,7 @@ module Once.Category.Laws where
 
 open import Once.Type
 open import Once.CCC.IR
+open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.IR using (⟦_⟧; eval′)
 
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
@@ -339,8 +340,8 @@ open import Once.Postulates using (extensionality)
 --
 -- Note: Requires WellFormedF proof for postulate-free verification.
 --
-eval-cata-In-id : ∀ {F : Functor} → WellFormedF F → (m : AllocMode) (x : ⟦ μ-type F ⟧)
-                → eval′ (Cata {F} (In {F} m)) x ≡ x
+eval-cata-In-id : ∀ {F : Functor} → (wf : WellFormedF F) → (m : AllocMode) (x : ⟦ μ-type F ⟧)
+                → eval′ (Cata {F} wf (In {F} wf m)) x ≡ x
 eval-cata-In-id {F} wf m x =
   let -- The algebra used by Cata evaluation: λ fa → eval′ (In m) (coerce⁻¹ fa)
       -- which equals λ fa → sem-In F (coerce (coerce⁻¹ fa))
@@ -353,12 +354,12 @@ eval-cata-In-id {F} wf m x =
       alg-eq = extensionality alg-pointwise
 
       -- Step 1: Substitute equal algebras in sem-cata
-      step1 : sem-cata F (λ fa → sem-In F (coerce-functor F (μ-type F) (coerce-functor⁻¹ F (μ-type F) fa))) x
-            ≡ sem-cata F (sem-In F) x
-      step1 = cong (λ alg → sem-cata F alg x) alg-eq
+      step1 : sem-cata wf (λ fa → sem-In F (coerce-functor F (μ-type F) (coerce-functor⁻¹ F (μ-type F) fa))) x
+            ≡ sem-cata wf (sem-In F) x
+      step1 = cong (λ alg → sem-cata wf alg x) alg-eq
 
       -- Step 2: Apply sem-cata-In-id (well-formed, no postulates)
-      step2 : sem-cata F (sem-In F) x ≡ x
+      step2 : sem-cata wf (sem-In F) x ≡ x
       step2 = sem-cata-In-id wf x
 
   in trans step1 step2
@@ -448,31 +449,31 @@ fmap-coerce-coherence′ F f y = trans (fmap-struct-coherence′ F f y) (sym (fm
 --   = eval′ alg (fmap-Type F (sem-cata F alg′) x)       (by fmap-coerce-coherence)
 --   = eval′ alg (fmap-Type F (eval′ (Cata alg)) x)      (by def of eval′ (Cata alg))
 --
-eval-cata-In : ∀ {F : Functor} → WellFormedF F → ∀ {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
+eval-cata-In : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Type} (alg : IR (⟦ F ⟧T A) A) (m : AllocMode)
                (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
-             → eval′ (Cata {F} alg ∘ In {F} m) x ≡
-               eval′ alg (fmap-Type F (eval′ (Cata {F} alg)) x)
+             → eval′ (Cata {F} wf alg ∘ In {F} wf m) x ≡
+               eval′ alg (fmap-Type F (eval′ (Cata {F} wf alg)) x)
 eval-cata-In {F} wf {A} alg m x =
   let -- The algebra lifted to Set level
       alg′ : ⟦ F ⟧F ⟦ A ⟧ → ⟦ A ⟧
       alg′ = λ fa → eval′ alg (coerce-functor⁻¹ F A fa)
 
       -- Step 1: Apply sem-cata-compute (well-formed, no postulates)
-      -- sem-cata F alg′ (sem-In F (coerce x)) = alg′ (sem-fmap F (sem-cata F alg′) (coerce x))
-      step1 : sem-cata F alg′ (sem-In F (coerce-functor F (μ-type F) x))
-            ≡ alg′ (sem-fmap F (sem-cata F alg′) (coerce-functor F (μ-type F) x))
+      -- sem-cata wf alg′ (sem-In F (coerce x)) = alg′ (sem-fmap F (sem-cata wf alg′) (coerce x))
+      step1 : sem-cata wf alg′ (sem-In F (coerce-functor F (μ-type F) x))
+            ≡ alg′ (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ-type F) x))
       step1 = sem-cata-compute wf alg′ (coerce-functor F (μ-type F) x)
 
       -- Step 2: Apply fmap-coerce-coherence
       -- coerce⁻¹ (sem-fmap F f (coerce x)) = fmap-Type F f x
-      step2 : coerce-functor⁻¹ F A (sem-fmap F (sem-cata F alg′) (coerce-functor F (μ-type F) x))
-            ≡ fmap-Type F (sem-cata F alg′) x
-      step2 = fmap-coerce-coherence F (sem-cata F alg′) x
+      step2 : coerce-functor⁻¹ F A (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ-type F) x))
+            ≡ fmap-Type F (sem-cata wf alg′) x
+      step2 = fmap-coerce-coherence F (sem-cata wf alg′) x
 
       -- Step 3: Combine - alg′ of step1 = eval′ alg (coerce⁻¹ ...)
       -- eval′ alg (coerce⁻¹ (sem-fmap F ...)) = eval′ alg (fmap-Type F ... x)
-      step3 : eval′ alg (coerce-functor⁻¹ F A (sem-fmap F (sem-cata F alg′) (coerce-functor F (μ-type F) x)))
-            ≡ eval′ alg (fmap-Type F (sem-cata F alg′) x)
+      step3 : eval′ alg (coerce-functor⁻¹ F A (sem-fmap F (sem-cata wf alg′) (coerce-functor F (μ-type F) x)))
+            ≡ eval′ alg (fmap-Type F (sem-cata wf alg′) x)
       step3 = cong (eval′ alg) step2
 
   in trans step1 step3
@@ -501,12 +502,12 @@ eval-cata-In {F} wf {A} alg m x =
 -- Since sem-hylo-guarded-compute is refl, both sides reduce definitionally
 -- to alg′ applied to the fmap result, differing only by coercion placement.
 --
-eval-hylo-unfold : ∀ (F : Functor) {A B : Type}
+eval-hylo-unfold : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A B : Type}
                    (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧)
-                 → eval′ (Hylo {F} alg coalg) x ≡
-                   eval′ alg (fmap-Type F (eval′ (Hylo {F} alg coalg)) (eval′ (Unguard ∘ coalg) x))
-eval-hylo-unfold F {A} {B} alg coalg x =
-  cong (eval′ alg) (fmap-coerce-coherence′ F {A} {B} (eval′ (Hylo {F} alg coalg)) (sem-unguard F (eval′ coalg x)))
+                 → eval′ (Hylo {F} wf alg coalg) x ≡
+                   eval′ alg (fmap-Type F (eval′ (Hylo {F} wf alg coalg)) (eval′ (Unguard {F} wf ∘ coalg) x))
+eval-hylo-unfold {F} wf {A} {B} alg coalg x =
+  cong (eval′ alg) (fmap-coerce-coherence′ F {A} {B} (eval′ (Hylo {F} wf alg coalg)) (sem-unguard wf (eval′ coalg x)))
 
 ------------------------------------------------------------------------
 -- Ana-Out Identity Law (Coinductive)

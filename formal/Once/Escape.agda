@@ -107,13 +107,13 @@ escape-once (Prim name) = Prim name
 escape-once (free-heap h) = free-heap h
 
 -- OCP-0003 recursion schemes: recurse into algebras/coalgebras
-escape-once (In m) = In m
-escape-once (Cata {F} alg) = Cata {F} (escape-once alg)
-escape-once Out = Out
-escape-once (Ana {F} coalg) = Ana {F} (escape-once coalg)
-escape-once (Hylo {F} alg coalg) = Hylo {F} (escape-once alg) (escape-once coalg)
-escape-once Unguard = Unguard
-escape-once Guard = Guard
+escape-once (In wf m) = In wf m
+escape-once (Cata {F} wf alg) = Cata {F} wf (escape-once alg)
+escape-once (Out wf) = Out wf
+escape-once (Ana {F} wf coalg) = Ana {F} wf (escape-once coalg)
+escape-once (Hylo {F} wf alg coalg) = Hylo {F} wf (escape-once alg) (escape-once coalg)
+escape-once (Unguard wf) = Unguard wf
+escape-once (Guard wf) = Guard wf
 
 ------------------------------------------------------------------------
 -- Escape Analysis: Bounded Iteration

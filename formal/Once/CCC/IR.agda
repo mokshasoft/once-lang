@@ -28,6 +28,9 @@ open import Data.String using (String)
 -- Import and re-export Type
 open import Once.Type public
 
+-- Import WellFormedF for recursion scheme constructors
+open import Once.Functor.Translate using (WellFormedF)
+
 -- HeapRef for free-heap
 open import Once.CCC.Machine.SMCore using (HeapRef)
 
@@ -84,32 +87,35 @@ data IR : Type → Type → Set where
   --
   -- These replace general fold/unfold with structured recursion that
   -- guarantees termination (cata) or productivity (ana).
+  --
+  -- All constructors require WellFormedF proofs to ensure functors only
+  -- use K with base types, enabling postulate-free semantic evaluation.
   --------------------------------------------------------------------------
 
   -- Initial algebra operations (inductive types, total recursion)
   -- In: F(μF) → μF (constructor)
-  In : ∀ {F} → AllocMode → IR (⟦ F ⟧T (μ-type F)) (μ-type F)
+  In : ∀ {F} → WellFormedF F → AllocMode → IR (⟦ F ⟧T (μ-type F)) (μ-type F)
 
   -- Cata: given IR morphism (F(A) → A), produce μF → A
   -- This is the universal property of initial algebras.
   -- Total by Lambek's Lemma: μF is well-founded.
-  Cata : ∀ {F A} → IR (⟦ F ⟧T A) A → IR (μ-type F) A
+  Cata : ∀ {F} → WellFormedF F → ∀ {A} → IR (⟦ F ⟧T A) A → IR (μ-type F) A
 
   -- Final coalgebra operations (coinductive types, productive corecursion)
   -- Out: νF → F(νF) (observation/destructor)
-  Out : ∀ {F} → IR (ν-type F) (⟦ F ⟧T (ν-type F))
+  Out : ∀ {F} → WellFormedF F → IR (ν-type F) (⟦ F ⟧T (ν-type F))
 
   -- Ana: given IR morphism (A → GuardedT F A), produce A → νF
   -- OCP-0003: Productivity enforced by requiring GuardedT output.
   -- The coalgebra must produce guarded values, guaranteeing that each
   -- unfolding step produces one F-layer before any recursive call.
   -- This makes productivity DEFINITIONAL - unguarded coalgebras cannot type-check.
-  Ana : ∀ {F A} → IR A (GuardedT F A) → IR A (ν-type F)
+  Ana : ∀ {F} → WellFormedF F → ∀ {A} → IR A (GuardedT F A) → IR A (ν-type F)
 
   -- Unguard: extract underlying functor value from guarded value
   -- GuardedT F A → ⟦ F ⟧T A
   -- This "consumes" the guardedness guarantee - use after Ana has processed.
-  Unguard : ∀ {F A} → IR (GuardedT F A) (⟦ F ⟧T A)
+  Unguard : ∀ {F} → WellFormedF F → ∀ {A} → IR (GuardedT F A) (⟦ F ⟧T A)
 
   --------------------------------------------------------------------------
   -- Guard: wrap functor value as guarded
@@ -137,12 +143,12 @@ data IR : Type → Type → Set where
   -- Guard ∘ Out represents the same coalgebra as Out, just with the
   -- type wrapped to satisfy Ana's signature.
   --------------------------------------------------------------------------
-  Guard : ∀ {F A} → IR (⟦ F ⟧T A) (GuardedT F A)
+  Guard : ∀ {F} → WellFormedF F → ∀ {A} → IR (⟦ F ⟧T A) (GuardedT F A)
 
   -- Hylo: fusion of cata and ana (deforestation)
   -- OCP-0003: coalg must produce GuardedT for productivity
   -- cata alg ∘ ana coalg, computed directly without intermediate structure
-  Hylo : ∀ {F A B} → IR (⟦ F ⟧T B) B → IR A (GuardedT F A) → IR A B
+  Hylo : ∀ {F} → WellFormedF F → ∀ {A B} → IR (⟦ F ⟧T B) B → IR A (GuardedT F A) → IR A B
 
   -- Explicit heap deallocation
   -- Added by escape analysis when heap values can be freed.

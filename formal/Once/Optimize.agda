@@ -476,13 +476,13 @@ mutual
   -- are documented but not automatically applied at the IR level.
   -- The semantic equivalence is proven in the laws module.
   --
-  optimize-once-structural (In m) = In m
-  optimize-once-structural (Cata {F} alg) = Cata {F} (optimize-once alg)
-  optimize-once-structural Out = Out
-  optimize-once-structural (Ana {F} coalg) = Ana {F} (optimize-once coalg)
-  optimize-once-structural (Hylo {F} alg coalg) = Hylo {F} (optimize-once alg) (optimize-once coalg)
-  optimize-once-structural Unguard = Unguard
-  optimize-once-structural Guard = Guard
+  optimize-once-structural (In wf m) = In wf m
+  optimize-once-structural (Cata {F} wf alg) = Cata {F} wf (optimize-once alg)
+  optimize-once-structural (Out wf) = Out wf
+  optimize-once-structural (Ana {F} wf coalg) = Ana {F} wf (optimize-once coalg)
+  optimize-once-structural (Hylo {F} wf alg coalg) = Hylo {F} wf (optimize-once alg) (optimize-once coalg)
+  optimize-once-structural (Unguard wf) = Unguard wf
+  optimize-once-structural (Guard wf) = Guard wf
 
   -- | Type-directed optimization
   optimize-once : ∀ {A B} → IR A B → IR A B

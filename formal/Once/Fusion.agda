@@ -163,13 +163,13 @@ fusion-once apply = apply
 -- which causes SplitError.UnificationStuck. The rules are proven semantically
 -- in Category/Laws.agda (eval-cata-In, eval-hylo-unfold, eval-ana-Out-id).
 --
-fusion-once (In m) = In m
-fusion-once (Cata {F} alg) = Cata {F} (fusion-once alg)
-fusion-once Out = Out
-fusion-once (Ana {F} coalg) = Ana {F} (fusion-once coalg)
-fusion-once (Hylo {F} alg coalg) = Hylo {F} (fusion-once alg) (fusion-once coalg)
-fusion-once Unguard = Unguard
-fusion-once Guard = Guard
+fusion-once (In wf m) = In wf m
+fusion-once (Cata {F} wf alg) = Cata {F} wf (fusion-once alg)
+fusion-once (Out wf) = Out wf
+fusion-once (Ana {F} wf coalg) = Ana {F} wf (fusion-once coalg)
+fusion-once (Hylo {F} wf alg coalg) = Hylo {F} wf (fusion-once alg) (fusion-once coalg)
+fusion-once (Unguard wf) = Unguard wf
+fusion-once (Guard wf) = Guard wf
 
 -- Effects: nothing to fuse
 fusion-once arr = arr
