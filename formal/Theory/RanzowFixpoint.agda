@@ -44,7 +44,6 @@ record ReductionSystem : Set₁ where
 
     -- Normal form predicate
     IsNormalForm : ∀ {A B} → Hom A B → Set
-    NoRedex : ∀ {A B} → Hom A B → Set
 
 ------------------------------------------------------------------------
 -- Required Properties (provided by tower level)
@@ -65,11 +64,6 @@ record RFProperties (R : ReductionSystem) : Set₁ where
     -- Encoding function
     encode : ∀ {A B} → Hom A B → Hom Unit Code
 
-    -- NoRedex terms have normal encodings
-    encode-noredex-is-nf : ∀ {A B} (t : Hom A B) →
-                           NoRedex t →
-                           IsNormalForm (encode t)
-
 ------------------------------------------------------------------------
 -- The Ranzow Fixpoint
 --
@@ -78,8 +72,8 @@ record RFProperties (R : ReductionSystem) : Set₁ where
 --
 --   T(⌜T⌝) →* ⌜T⌝
 --
--- THEOREM: If T is NoRedex and has the Ranzow Fixpoint, then T is
--- correct (preserves semantics).
+-- THEOREM: If T has the Ranzow Fixpoint, then T is correct
+-- (preserves semantics).
 ------------------------------------------------------------------------
 
 module RF (R : ReductionSystem) (P : RFProperties R) where
@@ -91,34 +85,17 @@ module RF (R : ReductionSystem) (P : RFProperties R) where
   HasRanzowFixpoint : Hom Code Code → Set
   HasRanzowFixpoint T = (T ∘ encode T) ⟶* encode T
 
-  -- A transformation is self-verifying if it's NoRedex and has RF
-  record SelfVerifying (T : Hom Code Code) : Set where
-    field
-      is-noredex : NoRedex T
-      has-fixpoint : HasRanzowFixpoint T
+  -- A transformation is self-verifying if it has the Ranzow Fixpoint
+  SelfVerifying : Hom Code Code → Set
+  SelfVerifying = HasRanzowFixpoint
 
   ------------------------------------------------------------------------
   -- Main Theorem: Ranzow Fixpoint implies Correctness
   --
-  -- If T is NoRedex, then T(⌜T⌝) →* ⌜T⌝
+  -- If T(⌜T⌝) →* ⌜T⌝, then T preserves semantics.
   --
-  -- Proof sketch:
-  --   1. T is NoRedex, so encode(T) is a normal form
-  --   2. T ∘ encode(T) reduces to some normal form nf
-  --   3. By confluence, nf = encode(T)
-  --   4. Therefore T(⌜T⌝) →* ⌜T⌝
-  ------------------------------------------------------------------------
-
-  -- NoRedex implies Ranzow Fixpoint (this is what the bootstrap proves)
-  postulate
-    noredex-implies-rf : (T : Hom Code Code) →
-                         NoRedex T →
-                         HasRanzowFixpoint T
-
-  ------------------------------------------------------------------------
-  -- Correctness: T computes normal forms
-  --
-  -- For any term t, if T(⌜t⌝) →* ⌜t'⌝, then t' is the normal form of t.
+  -- Proofs that specific classes of transformations have the Ranzow
+  -- Fixpoint property live in Theory.RanzowFixpoint.Correctness.
   ------------------------------------------------------------------------
 
   -- T preserves semantics (abstract - depends on semantic model)
@@ -130,12 +107,6 @@ module RF (R : ReductionSystem) (P : RFProperties R) where
     rf-implies-correct : (T : Hom Code Code) →
                          HasRanzowFixpoint T →
                          PreservesSemantics T
-
-  -- Combined: NoRedex implies correct
-  noredex-implies-correct : (T : Hom Code Code) →
-                            NoRedex T →
-                            PreservesSemantics T
-  noredex-implies-correct T nr = rf-implies-correct T (noredex-implies-rf T nr)
 
 ------------------------------------------------------------------------
 -- Instantiation at Tower Levels
