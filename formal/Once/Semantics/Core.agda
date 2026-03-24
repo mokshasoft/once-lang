@@ -874,25 +874,48 @@ sem-cata-In-id F x =
 -- Anamorphism Laws (OCP-0003: Proven)
 ------------------------------------------------------------------------
 
--- | Identity anamorphism: ana with CoOut coalgebra is identity
+-- | Key lemma: coerce-ν-in after sem-CoOut equals unfoldS
 --
--- OCP-0003: This law fundamentally requires coinductive reasoning
--- (bisimulation = equality).
+-- This follows from the coercion round-trip: coerce-ν-in ∘ coerce-ν-out = id.
+-- Since sem-CoOut F x = coerce-ν-out F (unfoldS x), we have:
+--   coerce-ν-in F (sem-CoOut F x) = coerce-ν-in F (coerce-ν-out F (unfoldS x)) = unfoldS x
 --
--- The proof sketch is:
---   sem-ana F (sem-CoOut F) x
---   is bisimilar to anaS unfoldS x (via coercion round-trips)
---   = x (by anaS-Out-id)
+coerce-ν-in-sem-CoOut : ∀ F (x : ⟦ν⟧ F)
+                      → coerce-ν-in F (⟦ν⟧ F) (sem-CoOut F x) ≡ unfoldS x
+coerce-ν-in-sem-CoOut F x = coerce-μ⁻¹-round-trip F (⟦ν⟧ F) (unfoldS x)
+
+-- | sem-ana F (sem-CoOut F) equals anaS unfoldS (coinductive equivalence)
 --
--- Since sem-ana uses coercions while anaS doesn't, showing the
--- bisimilarity requires establishing that coerce-ν-in ∘ sem-CoOut = unfoldS,
--- which follows from coerce-ν-in ∘ coerce-ν-out = id.
+-- Both functions satisfy the same corecursive equation:
+--   unfoldS (f x) = sfmap TF f (unfoldS x)
 --
--- We postulate this because the coinductive proof structure is the same
--- as anaS-Out-id. Both require the bisim-to-eq axiom.
+-- By uniqueness of the anamorphism (the coinductive principle), they are equal.
+--
+-- Proof sketch:
+-- 1. unfoldS (sem-ana F (sem-CoOut F) x)
+--    = sfmap TF (sem-ana F (sem-CoOut F)) (coerce-ν-in F (sem-CoOut F x))  [by def]
+--    = sfmap TF (sem-ana F (sem-CoOut F)) (unfoldS x)                      [by round-trip]
+--
+-- 2. unfoldS (anaS unfoldS x)
+--    = sfmap TF (anaS unfoldS) (unfoldS x)                                  [by def]
+--
+-- Both have the same structure: sfmap TF f (unfoldS x) where f is the respective
+-- anamorphism. By coinduction (using anaS-Out-id as the coinductive principle),
+-- they produce the same observations at all depths.
+--
+-- This postulate captures the coinductive step. It follows from the same
+-- bisimulation principle as anaS-Out-id, instantiated with our coercions.
 --
 postulate
-  sem-ana-Out-id : ∀ (F : Functor) (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut F) x ≡ x
+  sem-ana-is-anaS-unfoldS : ∀ F (x : ⟦ν⟧ F)
+                          → sem-ana F (sem-CoOut F) x ≡ anaS unfoldS x
+
+-- | Identity anamorphism: ana with CoOut coalgebra is identity
+--
+-- Proof: Combine sem-ana-is-anaS-unfoldS with anaS-Out-id.
+--
+sem-ana-Out-id : ∀ (F : Functor) (x : ⟦ν⟧ F) → sem-ana F (sem-CoOut F) x ≡ x
+sem-ana-Out-id F x = trans (sem-ana-is-anaS-unfoldS F x) (anaS-Out-id (translateF IntRep F) x)
 
 ------------------------------------------------------------------------
 -- Hylomorphism Laws (OCP-0003: Definitional)
