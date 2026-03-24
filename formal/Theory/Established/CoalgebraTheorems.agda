@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.Axioms.Established.CoalgebraTheorems
+-- Theory.Established.CoalgebraTheorems
 --
 -- Coalgebra Theorems (Rutten, 2000)
 --
@@ -12,7 +12,7 @@
 -- establish properties of final coalgebras.
 ------------------------------------------------------------------------
 
-module Once.Axioms.Established.CoalgebraTheorems where
+module Theory.Established.CoalgebraTheorems where
 
 open import Once.Type using (Type; Fix)
 open import Relation.Binary.PropositionalEquality using (_≡_)
