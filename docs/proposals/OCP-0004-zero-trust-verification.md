@@ -1517,6 +1517,88 @@ SOFTWARE TRUST: ZERO
 HARDWARE TRUST: ZERO (just read bytes, verify as math)
 ```
 
+### Protection Against Malicious Assembly
+
+A critical question: what stops a malicious actor from modifying the assembly?
+
+**What does NOT protect us:**
+
+The claim "CCC code IS math" applies to CCC terms on paper or in Agda. It does NOT apply to assembly. Assembly is physical machinery, not mathematics. A malicious actor could write assembly that:
+- Internally computes a wrong answer R'
+- Outputs a pre-computed valid trace ending with correct answer R
+- Uses R' for malicious purposes
+
+**What DOES protect us:**
+
+We define "the result" as what's in the verified trace, not what the assembly "computed":
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Malicious assembly A                                        │
+│                                                              │
+│  Internally: computes wrong answer R', does evil things      │
+│  Output: valid trace T ending with correct answer R          │
+│                                                              │
+│  We verify T.                                                │
+│  We USE R (from trace), never R' (from assembly internals).  │
+│  R is mathematically correct. R' is never seen or used.      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The trace is not "evidence of what the assembly did." The trace IS the output. We read it, verify it mathematically, and use its conclusion.
+
+**The real trust:**
+
+The only trust is human perception and reasoning:
+1. We correctly perceive the bytes of the trace
+2. We correctly verify each step matches a CCC rule
+3. We correctly read the final term
+
+This is not software or hardware trust — it's trusting our own ability to read and reason.
+
+### What Each Component Actually Contributes
+
+Being precise about what CCC, fixpoint, and traces each provide:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  CCC contributes: SIMPLICITY                                 │
+│                                                              │
+│  - ~12-15 reduction rules (finite, simple patterns)          │
+│  - Each rule: "fst ∘ ⟨f,g⟩ → f" (obvious pattern match)      │
+│  - Makes traces HUMAN-VERIFIABLE                             │
+│  - Without this simplicity, verification would be infeasible │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│  Fixpoint contributes: SELF-CONSISTENCY                      │
+│                                                              │
+│  - normalize(encode(N)) ⟶* encode(N)                         │
+│  - Proves N is well-formed (no stuck states)                 │
+│  - Proves N terminates on its own encoding                   │
+│  - Does NOT prove N computes correctly on arbitrary inputs   │
+│  - Limited value against malicious assembly                  │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│  Traces contribute: RESULT DEFINITION                        │
+│                                                              │
+│  - Result = final term of verified trace                     │
+│  - NOT "what the assembly computed internally"               │
+│  - This is the KEY protection against malicious assembly     │
+│  - Valid trace → correct result (by math, not trust)         │
+│  - General technique, not specific to CCC                    │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**The key insight is:**
+```
+Result = trace content (verified mathematically)
+     NOT
+Result = assembly output (requires trust)
+```
+
+CCC's contribution is making this practical: the traces are simple enough for humans to verify. Without CCC's simplicity, trace verification might be as complex as the original computation.
+
 ---
 
 ## Limitations and Caveats
@@ -1603,21 +1685,20 @@ This would require dependent types (per Once's roadmap) but the same minimal-tru
 │                     THE MECHANISM                           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Once IR = CCC morphisms (not representation — identity)    │
-│  Validity = categorical laws (definitions, not theorems)    │
-│  Totality = Lambek's Lemma (math theorem, 1968)            │
-│  Productivity = coalgebra theorems (math)                   │
+│  KEY INSIGHT: Result = verified trace content               │
+│  - We define "result" as final term of verified trace       │
+│  - NOT "what the assembly computed internally"              │
+│  - Malicious assembly can't affect verified results         │
+│  - This is the core protection (general technique)          │
 │                                                             │
-│  KEY INSIGHT: Traces are mathematical proofs                │
-│  - A valid trace proves correctness BY MATH                 │
-│  - Invalid traces are caught by verification                │
-│  - We verify traces, not software                           │
+│  CCC's contribution: SIMPLICITY                             │
+│  - ~12-15 simple reduction rules                            │
+│  - Each step is obvious pattern match                       │
+│  - Makes traces HUMAN-VERIFIABLE                            │
 │                                                             │
-│  THE VERIFIER HAS A FIXPOINT:                               │
-│  - V (verifier) is a CCC term (~25 primitives)              │
-│  - normalize(encode(V)) ⟶* encode(V)                        │
-│  - V's correctness is proven the same way as N's            │
-│  - But V is small enough for human trace verification       │
+│  Fixpoint's contribution: SELF-CONSISTENCY                  │
+│  - normalize(encode(N)) ⟶* encode(N)                        │
+│  - Proves well-formedness, not arbitrary correctness        │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                     THE BOOTSTRAP                           │
