@@ -1262,10 +1262,11 @@ See "The Assembly Gap and Its Resolution" below for the complete solution.
 The absolute minimum TCB is:
 
 1. **Mathematics**: CCC reduction rules (definitions, not code)
-2. **Hardware**: Must render traces faithfully (unavoidable)
-3. **Human**: Must verify ~200-400 pattern matches once (bootstrap)
+2. **Human**: Must verify self-evident pattern matches once (bootstrap)
 
-No software trust required. This is the theoretical minimum for any verification system.
+No software trust. No hardware trust beyond basic I/O.
+
+The trace is data we read and verify mathematically. We don't trust that any computation happened correctly — we verify the mathematical content of the trace directly.
 
 ---
 
@@ -1291,28 +1292,80 @@ This matters because:
 
 The fixpoint property proves N (the abstract CCC term) is correct, but says nothing about whether B corresponds to N.
 
-### Why Trace Verification Alone Doesn't Solve It
+### Why We Don't Need to Trust Software At All
 
-One might think: "Run B, get a trace, verify the trace by hand."
+One might worry: "B produces the trace. A malicious B could output a valid trace while internally doing something wrong."
 
-But this has a flaw: **B produces the trace**. A malicious B could:
-- Internally compute something wrong
-- Output a perfectly valid trace
-- Humans verify the printed trace, not what actually happened
+But this concern misses the key insight: **we don't care what B does internally**.
 
-The trace is just bytes that B chose to output. There's no guarantee they reflect B's actual computation.
+The trace is not "evidence of what B did." The trace is a **mathematical proof that stands on its own**. We verify the proof, not the software.
 
-### The Solution: Traces as Self-Certifying Mathematical Objects
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Software B (untrusted, arbitrary, possibly malicious)       │
+│                                                              │
+│  Input: encode(V)                                            │
+│  Output: Trace T                                             │
+│                                                              │
+│  We don't care what B does internally.                       │
+│  We only care: is T a valid mathematical proof?              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-The key insight is to change our perspective on what traces are:
+If T is valid:
+- T proves that encode(V) reduces to some result R
+- This is a mathematical fact, independent of B
+- R is correct by math, regardless of what B did
 
-**Old view**: Trace = record of what the software did (requires trusting software)
-**New view**: Trace = mathematical proof that stands on its own (requires no trust)
+If T is invalid:
+- We catch it during verification
+- B failed to produce a valid proof
 
-A valid CCC reduction trace is a **mathematical object**. Each step either is or isn't a valid CCC reduction — this is a mathematical fact independent of what produced the trace.
+**The software is just a proof generator. We verify proofs, not software.**
 
-If a binary produces an **invalid** trace, verification catches it.
-If a binary produces a **valid** trace, the **result is correct by math**, regardless of what the binary does internally.
+### Software-Only Verification (No Special Hardware)
+
+This approach requires no special hardware — just ordinary computers running ordinary software:
+
+```
+1. Run ANY software S₁ on encode(V)
+   → S₁ outputs trace T_V (a file, a string, bytes)
+
+2. Run ANY software S₂ on (V applied to T_V)
+   → S₂ outputs trace T_check
+
+3. Read T_check
+   → If T_check is valid and ends with "true", then T_V is valid
+   → If T_V is valid, then V is correct
+```
+
+S₁ and S₂ can be different programs, same program, buggy, correct — it doesn't matter. We verify the traces, not the software.
+
+### The Checking Trace is Simpler Than the Computation Trace
+
+Here's a crucial insight: **verification is simpler than computation**.
+
+V checking a single step is just pattern matching:
+
+```
+Step to check: (fst ∘ ⟨f, g⟩, "fst-pair", f)
+
+V's computation:
+  1. Match (fst ∘ ⟨f, g⟩) against pattern (fst ∘ ⟨_, _⟩) → success
+  2. Extract: _ = f, _ = g
+  3. Check: result f equals extracted f → true
+  4. Return: true
+```
+
+The trace of this verification is ~4 trivial steps. Each step is **self-evidently valid** — a human can verify it by inspection in seconds.
+
+This creates a "compression" effect:
+- Complex computation trace T_V (~40-60 steps)
+- V verifies T_V, producing T_check
+- T_check is a sequence of simple pattern matches
+- Each pattern match is obviously correct
+
+The final verification (human reading T_check) involves only self-evident steps.
 
 ### The Minimal Verifier with Fixpoint Property
 
@@ -1435,30 +1488,33 @@ The key properties:
 
 1. **Traces are mathematical proofs**: A valid trace proves the computation is correct, regardless of what produced it. An invalid trace is caught by verification.
 
-2. **V has a fixpoint**: V is itself a CCC term with the fixpoint property, so V's correctness can be verified the same way as N's.
+2. **Software is just a proof generator**: We run arbitrary software to produce traces. We don't trust the software — we verify the traces mathematically.
 
-3. **V is small enough for human verification**: The meta-trace M_V is ~200-400 operations, verifiable in 1-2 hours.
+3. **V has a fixpoint**: V is itself a CCC term with the fixpoint property, so V's correctness can be verified the same way as N's.
 
-4. **Human verification is one-time**: After the bootstrap, V is proven correct and can verify everything else.
+4. **Checking is simpler than computing**: V checking a step is just pattern matching. The checking trace T_check consists of self-evident steps that anyone can verify by inspection.
 
-5. **No code inspection needed**: We don't verify source code or assembly. We verify mathematical traces.
+5. **Human verification is one-time**: After verifying T_check once, V is proven correct and can verify everything else.
+
+6. **No code inspection needed**: We don't verify source code or assembly. We verify mathematical traces.
 
 ```
 Trust chain:
 
 Mathematics (CCC reduction rules)
     ↓ defines
-What counts as a valid trace
+What counts as a valid trace step
     ↓ verified by
-Human reading meta-traces (one time, ~2 hours)
+Human reading T_check (self-evident pattern matches)
     ↓ proves
 V (verifier) is correct
-    ↓ proves via traces
+    ↓ V verifies traces from any software
 N (normalizer) is correct
-    ↓ proves via traces
+    ↓ V verifies traces from any software
 All Once programs are correct
 
-SOFTWARE TRUST AT EACH STEP: ZERO
+SOFTWARE TRUST: ZERO
+HARDWARE TRUST: ZERO (just read bytes, verify as math)
 ```
 
 ---
@@ -1469,9 +1525,9 @@ SOFTWARE TRUST AT EACH STEP: ZERO
 
 1. **Mathematics**: Category theory is consistent and the CCC reduction rules are correct. If mathematics itself is inconsistent, all bets are off. (But then so is everything else in formal verification.)
 
-2. **Hardware**: The hardware correctly outputs the trace to a human-readable medium (paper, screen). This is unavoidable for any computation, but the trust is minimal: we only need the trace to be faithfully rendered, not that any computation was performed correctly.
+2. **Human Verification** (one-time): A human correctly verifies the bootstrap checking trace. The trace consists of self-evident pattern matching steps — each step is obviously valid or obviously invalid. This is pure mathematical reasoning requiring no trust in software or hardware.
 
-3. **Human Verification** (one-time): A human correctly verifies the bootstrap meta-traces (~200-400 operations, ~2 hours). The trace format is designed to make each step self-evident — pattern matching that a mathematician can verify by inspection.
+**Note on I/O**: We need some way to read the trace (screen, file, printout). But this is not "hardware trust" — we don't trust that any computation happened correctly. We simply read bytes and verify them mathematically. The trace is data, not a claim about computation. If the bytes form a valid proof, the result is correct by math. If they don't, we reject them.
 
 4. **Encoding Faithfulness**: The IR representation faithfully captures the program.
 
@@ -1537,8 +1593,9 @@ This would require dependent types (per Once's roadmap) but the same minimal-tru
 │                                                             │
 │  Trust only:                                                │
 │  1. Mathematics (CCC reduction rules, since 1960s)          │
-│  2. Hardware (to render traces faithfully)                  │
-│  3. Human verification (one-time, ~2 hours)                 │
+│  2. Human verification (one-time, self-evident steps)       │
+│                                                             │
+│  No hardware trust — we read bytes, verify them as math     │
 │                                                             │
 │  NO trust in: compilers, proof assistants, or any code      │
 │                                                             │
@@ -1566,11 +1623,12 @@ This would require dependent types (per Once's roadmap) but the same minimal-tru
 │                     THE BOOTSTRAP                           │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Phase 1: Verify the Verifier (~2 hours, one time)          │
-│  - Run V on encode(V), get trace                            │
-│  - Format trace in human-readable form                      │
-│  - Human verifies ~200-400 pattern matches                  │
-│  - V is now PROVEN correct                                  │
+│  Phase 1: Verify the Verifier (one time)                    │
+│  - Run ANY software on encode(V), get trace T_V             │
+│  - Run ANY software on V(T_V), get checking trace T_check   │
+│  - T_check contains only self-evident pattern matches       │
+│  - Human verifies T_check (each step obviously valid)       │
+│  - V is now PROVEN correct — no software trust              │
 │                                                             │
 │  Phase 2: Verify Everything Else (automatic)                │
 │  - V verifies normalizer, compiler, all programs            │
