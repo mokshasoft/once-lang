@@ -1,22 +1,22 @@
 ------------------------------------------------------------------------
 -- Once.Semantics.Coherence
 --
--- Semantic coherence layer for OCP-0003 Phase 6 Formal Verification.
+-- Semantic coherence lemmas for OCP-0003.
 --
--- This module establishes the connection between:
---   - Once.Semantics.Core (postulated ⟦μ⟧, ⟦ν⟧, and operations)
---   - Once.SPF (concrete μ, ν implementations with proven properties)
+-- This module provides PROVEN coherence lemmas that don't require postulates:
+--   - Base type interpretation coherence
+--   - Functor interpretation coherence
+--   - fmap coherence (sem-fmap ≡ SPF.fmap)
+--   - Functor laws for sem-fmap
 --
--- The coherence consists of:
---   1. Type equivalences: ⟦μ⟧ F ≡ μ F, ⟦ν⟧ F ≡ ν F
---   2. Operation implementations: sem-In, sem-Out, sem-cata, etc.
---   3. Law validations: sem-Out-In, sem-In-Out, sem-cata-compute
+-- HISTORICAL NOTE (2026-03-24):
+-- This module previously contained postulates (μ-coherence, ν-coherence)
+-- to relate Core's definitions to SPF. Those have been removed because:
+--   1. Core.agda now has direct proofs for all key laws (WellFormedF)
+--   2. The postulates were unprovable (different Agda data types)
+--   3. They were not needed for any proofs outside this module
 --
--- DESIGN NOTE: Core uses postulates to break circularity in ⟦_⟧ definition
--- (which includes function types). SPF provides the actual implementations
--- using Once.Type.Functor. This module shows the postulates are consistent
--- with SPF's implementations.
---
+-- All remaining content is fully proven with no postulates.
 ------------------------------------------------------------------------
 
 module Once.Semantics.Coherence where
@@ -24,30 +24,28 @@ module Once.Semantics.Coherence where
 open import Data.Unit using (⊤; tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 
-open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type;
-                               Unit; Void; Int; Float; Str; Buffer; _*_; _+_; NatF)
-open import Once.Semantics.IR using (⟦_⟧; ⟦_⟧F; ⟦μ⟧; ⟦ν⟧; sem-fmap; coerce-functor; coerce-functor⁻¹)
+open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_;
+                               Unit; Void; Int; Float; Str; Buffer; _*_; _+_)
+open import Once.Semantics.IR using (⟦_⟧; ⟦_⟧F; sem-fmap)
 import Once.SPF as SPF
 open import Once.Functor.Translate using (IsBaseType; WellFormedF; ⟦_⟧-base; ⟦_⟧F-base;
                                           base-Unit; base-Void; base-Int; base-Float;
                                           base-Str; base-Buffer; base-Prod; base-Sum;
-                                          wf-K; wf-Id; wf-Sum; wf-Prod; wf-NatF)
+                                          wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Data.Integer using (ℤ)
 
 ------------------------------------------------------------------------
--- Part 0: Base Type Interpretation Coherence
+-- Base Type Interpretation Coherence (PROVEN)
 --
 -- For well-formed functors (K only with base types), the base
 -- interpretation ⟦_⟧-base equals the full interpretation ⟦_⟧.
--- This is key to proving μ-coherence for practical functors.
 ------------------------------------------------------------------------
 
 -- | For base types, the base interpretation equals the full interpretation
 --
 -- Proof by induction on the IsBaseType predicate.
--- Each case is definitional equality (refl).
 --
 base-interp-coherence : ∀ A → IsBaseType A → ⟦ ℤ ⟧-base A ≡ ⟦ A ⟧
 base-interp-coherence .Unit base-Unit = refl
@@ -59,20 +57,17 @@ base-interp-coherence .Buffer base-Buffer = refl
 base-interp-coherence (A * B) (base-Prod pA pB) =
   cong₂-× (base-interp-coherence A pA) (base-interp-coherence B pB)
   where
-    -- Helper for product types
     cong₂-× : ∀ {A A' B B' : Set} → A ≡ A' → B ≡ B' → (A × B) ≡ (A' × B')
     cong₂-× refl refl = refl
 base-interp-coherence (A + B) (base-Sum pA pB) =
   cong₂-⊎ (base-interp-coherence A pA) (base-interp-coherence B pB)
   where
-    -- Helper for sum types
     cong₂-⊎ : ∀ {A A' B B' : Set} → A ≡ A' → B ≡ B' → (A ⊎ B) ≡ (A' ⊎ B')
     cong₂-⊎ refl refl = refl
 
--- | For well-formed functors, the base functor interpretation equals the full interpretation
+-- | For well-formed functors, base interpretation equals full interpretation
 --
 -- Proof by induction on the WellFormedF predicate.
--- Uses base-interp-coherence for K positions.
 --
 functor-interp-coherence : ∀ F → WellFormedF F → ∀ X → ⟦ ℤ ⟧F-base F X ≡ ⟦ F ⟧F X
 functor-interp-coherence (K A) (wf-K pA) X = base-interp-coherence A pA
@@ -89,51 +84,12 @@ functor-interp-coherence (F ⊗ G) (wf-Prod pF pG) X =
     cong₂-× refl refl = refl
 
 ------------------------------------------------------------------------
--- Part 1: Type Coherence
+-- Functor Map Coherence (PROVEN)
 --
--- Show that Core's postulated ⟦μ⟧ and ⟦ν⟧ can be instantiated as
--- SPF's concrete μ and ν.
---
--- Note: These are stated as postulates connecting the abstract and
--- concrete types. A full formalization would parameterize Core by
--- these implementations.
+-- Core's sem-fmap and SPF's fmap are extensionally equal.
 ------------------------------------------------------------------------
 
--- | Coherence axiom: ⟦μ⟧ F ≡ SPF.μ F
---
--- OCP-0003 Phase 6: ⟦μ⟧ is now DEFINED (not postulated) as:
---   ⟦μ⟧ F = μS (translateF ℤ F)
--- where μS is from Once.Functor.Base and translateF is from Once.Functor.Translate.
---
--- The coherence states this equals SPF.μ F (which uses ⟦_⟧F from Core).
---
--- For well-formed functors (K only with base types like Unit, Int, etc.):
---   ⟦ translateF ℤ F ⟧SF X ≡ ⟦ F ⟧F X
--- because the base interpretation equals the full interpretation for base types.
---
--- This makes μS (translateF ℤ F) ≅ SPF.μ F structurally isomorphic.
--- The postulate captures this isomorphism.
---
-postulate
-  μ-coherence : ∀ F → ⟦μ⟧ F ≡ SPF.μ F
-
--- | Coherence axiom: ⟦ν⟧ F ≡ SPF.ν F
---
--- Similar to μ-coherence: ⟦ν⟧ is now DEFINED as:
---   ⟦ν⟧ F = νS (translateF ℤ F)
---
--- For well-formed functors, this equals SPF.ν F.
---
-postulate
-  ν-coherence : ∀ F → ⟦ν⟧ F ≡ SPF.ν F
-
-------------------------------------------------------------------------
--- Part 2: Functor Map Coherence
---
--- Show that Core's sem-fmap and SPF's fmap are equivalent.
-------------------------------------------------------------------------
-
--- | fmap coherence: sem-fmap and SPF.fmap are extensionally equal
+-- | fmap coherence: sem-fmap ≡ SPF.fmap
 --
 -- Both map a function over all recursive positions in a functor structure.
 --
@@ -150,333 +106,21 @@ fmap-coherence (F ⊗ G) f (x , y) = cong₂ _,_ (fmap-coherence F f x) (fmap-co
     cong₂ h refl refl = refl
 
 ------------------------------------------------------------------------
--- Part 3: Operation Coherence
+-- Functor Laws for sem-fmap (PROVEN)
 --
--- Define how Core's postulated operations correspond to SPF's
--- implementations using the type coherence axioms.
+-- Since sem-fmap ≡ SPF.fmap, we inherit SPF's functor laws.
 ------------------------------------------------------------------------
 
--- | Transport a value from SPF.μ F to ⟦μ⟧ F
---
--- Uses the coherence axiom to coerce between equivalent types.
---
-μ-to-sem : ∀ F → SPF.μ F → ⟦μ⟧ F
-μ-to-sem F = subst (λ T → T) (sym (μ-coherence F))
-
--- | Transport a value from ⟦μ⟧ F to SPF.μ F
---
-μ-from-sem : ∀ F → ⟦μ⟧ F → SPF.μ F
-μ-from-sem F = subst (λ T → T) (μ-coherence F)
-
--- | Transport a value from SPF.ν F to ⟦ν⟧ F
---
-ν-to-sem : ∀ F → SPF.ν F → ⟦ν⟧ F
-ν-to-sem F = subst (λ T → T) (sym (ν-coherence F))
-
--- | Transport a value from ⟦ν⟧ F to SPF.ν F
---
-ν-from-sem : ∀ F → ⟦ν⟧ F → SPF.ν F
-ν-from-sem F = subst (λ T → T) (ν-coherence F)
-
-------------------------------------------------------------------------
--- Part 4: Transport for Functor-Applied Types
---
--- When we have ⟦ F ⟧F (⟦μ⟧ F) vs ⟦ F ⟧F (SPF.μ F), we need to transport
--- values between these types.
-------------------------------------------------------------------------
-
--- | Transport functor application with μ
---
--- ⟦ F ⟧F (⟦μ⟧ G) → ⟦ F ⟧F (SPF.μ G)
---
-transport-μ : ∀ F G → ⟦ F ⟧F (⟦μ⟧ G) → ⟦ F ⟧F (SPF.μ G)
-transport-μ F G = subst (λ T → ⟦ F ⟧F T) (μ-coherence G)
-
--- | Inverse transport for μ
---
-transport-μ⁻¹ : ∀ F G → ⟦ F ⟧F (SPF.μ G) → ⟦ F ⟧F (⟦μ⟧ G)
-transport-μ⁻¹ F G = subst (λ T → ⟦ F ⟧F T) (sym (μ-coherence G))
-
--- | Transport functor application with ν
---
-transport-ν : ∀ F G → ⟦ F ⟧F (⟦ν⟧ G) → ⟦ F ⟧F (SPF.ν G)
-transport-ν F G = subst (λ T → ⟦ F ⟧F T) (ν-coherence G)
-
--- | Inverse transport for ν
---
-transport-ν⁻¹ : ∀ F G → ⟦ F ⟧F (SPF.ν G) → ⟦ F ⟧F (⟦ν⟧ G)
-transport-ν⁻¹ F G = subst (λ T → ⟦ F ⟧F T) (sym (ν-coherence G))
-
-------------------------------------------------------------------------
--- Part 5: Semantic Operation Implementations via SPF
---
--- These show how Core's postulated operations can be implemented
--- using SPF's concrete operations.
-------------------------------------------------------------------------
-
--- | sem-In via SPF.⟨_⟩
---
--- Core: sem-In : ∀ F → ⟦ F ⟧F (⟦μ⟧ F) → ⟦μ⟧ F
--- SPF:  ⟨_⟩   : ⟦ F ⟧F (μ F) → μ F
---
-sem-In-impl : ∀ F → ⟦ F ⟧F (⟦μ⟧ F) → ⟦μ⟧ F
-sem-In-impl F x = μ-to-sem F (SPF.⟨ transport-μ F F x ⟩)
-
--- | sem-Out via SPF.out
---
--- Core: sem-Out : ∀ F → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
--- SPF:  out     : ∀ F → μ F → ⟦ F ⟧F (μ F)
---
-sem-Out-impl : ∀ F → ⟦μ⟧ F → ⟦ F ⟧F (⟦μ⟧ F)
-sem-Out-impl F x = transport-μ⁻¹ F F (SPF.out F (μ-from-sem F x))
-
--- | sem-cata via SPF.cata
---
--- Core: sem-cata : ∀ F {A} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
--- SPF:  cata     : ∀ {F A} → (⟦ F ⟧F A → A) → μ F → A
---
-sem-cata-impl : ∀ F {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
-sem-cata-impl F alg x = SPF.cata alg (μ-from-sem F x)
-
--- | sem-CoOut via SPF.unfold
---
--- Core: sem-CoOut : ∀ F → ⟦ν⟧ F → ⟦ F ⟧F (⟦ν⟧ F)
--- SPF:  unfold    : ν F → ⟦ F ⟧F (ν F)
---
-sem-CoOut-impl : ∀ F → ⟦ν⟧ F → ⟦ F ⟧F (⟦ν⟧ F)
-sem-CoOut-impl F x = transport-ν⁻¹ F F (SPF.unfold (ν-from-sem F x))
-
--- | sem-CoIn via SPF record construction
---
--- Core: sem-CoIn : ∀ F → ⟦ F ⟧F (⟦ν⟧ F) → ⟦ν⟧ F
--- SPF:  record { unfold = ... }
---
-sem-CoIn-impl : ∀ F → ⟦ F ⟧F (⟦ν⟧ F) → ⟦ν⟧ F
-sem-CoIn-impl F x = ν-to-sem F (record { unfold = transport-ν F F x })
-
--- | sem-ana via SPF.ana
---
--- Core: sem-ana : ∀ F {A} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
--- SPF:  ana     : ∀ {F A} → (A → ⟦ F ⟧F A) → A → ν F
---
-sem-ana-impl : ∀ F {A : Set} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
-sem-ana-impl F coalg x = ν-to-sem F (SPF.ana coalg x)
-
-------------------------------------------------------------------------
--- Part 6: Law Validation
---
--- Show that the implementations satisfy Core's postulated laws.
--- These use SPF's proven properties (fold-unfold, unfold-fold).
-------------------------------------------------------------------------
-
--- Transport round-trip lemmas (standard)
-private
-  -- General subst round-trip for any type family P
-  subst-sym-subst : ∀ {ℓ ℓ'} {A B : Set ℓ} {P : Set ℓ → Set ℓ'} (p : A ≡ B) (v : P B)
-                  → subst P p (subst P (sym p) v) ≡ v
-  subst-sym-subst refl v = refl
-
-  subst-subst-sym : ∀ {ℓ ℓ'} {A B : Set ℓ} {P : Set ℓ → Set ℓ'} (p : A ≡ B) (v : P A)
-                  → subst P (sym p) (subst P p v) ≡ v
-  subst-subst-sym refl v = refl
-
-  -- Transport round-trip for functor-applied types
-  transport-round-trip : ∀ F G (x : ⟦ F ⟧F (⟦μ⟧ G))
-                       → transport-μ⁻¹ F G (transport-μ F G x) ≡ x
-  transport-round-trip F G x = subst-subst-sym {P = λ T → ⟦ F ⟧F T} (μ-coherence G) x
-
-  transport⁻¹-round-trip : ∀ F G (x : ⟦ F ⟧F (SPF.μ G))
-                         → transport-μ F G (transport-μ⁻¹ F G x) ≡ x
-  transport⁻¹-round-trip F G x = subst-sym-subst {P = λ T → ⟦ F ⟧F T} (μ-coherence G) x
-
-  -- μ transport round-trips
-  μ-round-trip : ∀ F (x : SPF.μ F) → μ-from-sem F (μ-to-sem F x) ≡ x
-  μ-round-trip F x = subst-sym-subst {P = λ T → T} (μ-coherence F) x
-
-  μ⁻¹-round-trip : ∀ F (x : ⟦μ⟧ F) → μ-to-sem F (μ-from-sem F x) ≡ x
-  μ⁻¹-round-trip F x = subst-subst-sym {P = λ T → T} (μ-coherence F) x
-
--- | Key lemma: subst over functor type equals fmap with subst (PROVEN)
---
--- For polynomial functors, transporting ⟦ F ⟧F A to ⟦ F ⟧F B via an equality
--- p : A ≡ B is the same as applying fmap F (subst id p).
---
--- Proof: By path induction (J), it suffices to prove for p = refl.
--- When p = refl:
---   LHS: subst (λ T → ⟦ F ⟧F T) refl x = x
---   RHS: fmap F (subst id refl) x = fmap F id x = x  (by fmap-id)
---
-subst-fmap-natural : ∀ F {A B : Set} (p : A ≡ B) (x : ⟦ F ⟧F A)
-                   → subst (λ T → ⟦ F ⟧F T) p x ≡ SPF.fmap F (subst (λ T → T) p) x
-subst-fmap-natural F refl x = sym (SPF.fmap-id F x)
-
--- | transport-μ equals fmap with μ-from-sem (PROVEN via subst-fmap-natural)
---
--- This follows directly from subst-fmap-natural instantiated with μ-coherence.
---
-transport-μ-is-fmap : ∀ F G (x : ⟦ F ⟧F (⟦μ⟧ G))
-                    → transport-μ F G x ≡ SPF.fmap F (μ-from-sem G) x
-transport-μ-is-fmap F G x = subst-fmap-natural F (μ-coherence G) x
-
--- | Lambek's Lemma (one direction): Out ∘ In ≡ id (PROVEN)
---
--- Core postulates: sem-Out-In : ∀ F x → sem-Out F (sem-In F x) ≡ x
--- SPF proves:      fold-unfold : ∀ F x → out F ⟨ x ⟩ ≡ x
---
--- Proof:
---   sem-Out-impl F (sem-In-impl F x)
---   = transport-μ⁻¹ F F (SPF.out F (μ-from-sem F (μ-to-sem F (SPF.⟨ transport-μ F F x ⟩))))
---   = transport-μ⁻¹ F F (SPF.out F (SPF.⟨ transport-μ F F x ⟩))   [by μ-round-trip]
---   = transport-μ⁻¹ F F (transport-μ F F x)                       [by SPF.fold-unfold]
---   = x                                                           [by transport-round-trip]
---
-sem-Out-In-valid : ∀ F (x : ⟦ F ⟧F (⟦μ⟧ F))
-                 → sem-Out-impl F (sem-In-impl F x) ≡ x
-sem-Out-In-valid F x =
-  trans step1 (trans step2 step3)
-  where
-    -- Step 1: Apply μ-round-trip to remove μ-to-sem/μ-from-sem pair
-    step1 : sem-Out-impl F (sem-In-impl F x) ≡
-            transport-μ⁻¹ F F (SPF.out F SPF.⟨ transport-μ F F x ⟩)
-    step1 = cong (λ z → transport-μ⁻¹ F F (SPF.out F z))
-                 (μ-round-trip F SPF.⟨ transport-μ F F x ⟩)
-
-    -- Step 2: Apply SPF.fold-unfold
-    step2 : transport-μ⁻¹ F F (SPF.out F SPF.⟨ transport-μ F F x ⟩) ≡
-            transport-μ⁻¹ F F (transport-μ F F x)
-    step2 = cong (transport-μ⁻¹ F F) (SPF.fold-unfold F (transport-μ F F x))
-
-    -- Step 3: Apply transport round-trip
-    step3 : transport-μ⁻¹ F F (transport-μ F F x) ≡ x
-    step3 = transport-round-trip F F x
-
--- | Lambek's Lemma (other direction): In ∘ Out ≡ id (PROVEN)
---
--- Core postulates: sem-In-Out : ∀ F x → sem-In F (sem-Out F x) ≡ x
--- SPF proves:      unfold-fold : ∀ F x → ⟨ out F x ⟩ ≡ x
---
--- Proof:
---   sem-In-impl F (sem-Out-impl F x)
---   = μ-to-sem F (SPF.⟨ transport-μ F F (transport-μ⁻¹ F F (SPF.out F (μ-from-sem F x))) ⟩)
---   = μ-to-sem F (SPF.⟨ SPF.out F (μ-from-sem F x) ⟩)   [by transport⁻¹-round-trip]
---   = μ-to-sem F (μ-from-sem F x)                        [by SPF.unfold-fold]
---   = x                                                  [by μ⁻¹-round-trip]
---
-sem-In-Out-valid : ∀ F (x : ⟦μ⟧ F)
-                 → sem-In-impl F (sem-Out-impl F x) ≡ x
-sem-In-Out-valid F x =
-  trans step1 (trans step2 step3)
-  where
-    -- Step 1: Apply transport⁻¹-round-trip
-    step1 : sem-In-impl F (sem-Out-impl F x) ≡
-            μ-to-sem F SPF.⟨ SPF.out F (μ-from-sem F x) ⟩
-    step1 = cong (λ z → μ-to-sem F SPF.⟨ z ⟩)
-                 (transport⁻¹-round-trip F F (SPF.out F (μ-from-sem F x)))
-
-    -- Step 2: Apply SPF.unfold-fold
-    step2 : μ-to-sem F SPF.⟨ SPF.out F (μ-from-sem F x) ⟩ ≡
-            μ-to-sem F (μ-from-sem F x)
-    step2 = cong (μ-to-sem F) (SPF.unfold-fold F (μ-from-sem F x))
-
-    -- Step 3: Apply μ⁻¹-round-trip
-    step3 : μ-to-sem F (μ-from-sem F x) ≡ x
-    step3 = μ⁻¹-round-trip F x
-
--- | Catamorphism computation law (PROVEN via SPF.cata-computation)
---
--- Core postulates: sem-cata-compute : ∀ F alg x →
---                    sem-cata F alg (sem-In F x) ≡ alg (sem-fmap F (sem-cata F alg) x)
---
--- Proof:
---   sem-cata-impl F alg (sem-In-impl F x)
---   = SPF.cata alg (μ-from-sem F (μ-to-sem F (SPF.⟨ transport-μ F F x ⟩)))
---   = SPF.cata alg (SPF.⟨ transport-μ F F x ⟩)           [by μ-round-trip]
---   = alg (SPF.fmap F (SPF.cata alg) (transport-μ F F x)) [by SPF.cata-computation]
---   = alg (SPF.fmap F (SPF.cata alg) (SPF.fmap F (μ-from-sem F) x))
---                                                         [by transport-μ-is-fmap]
---   = alg (SPF.fmap F (SPF.cata alg ∘ μ-from-sem F) x)   [by fmap-comp inverse]
---   = alg (sem-fmap F (sem-cata-impl F alg) x)           [by fmap-coherence inverse]
---
-sem-cata-compute-valid : ∀ F {A : Set} (alg : ⟦ F ⟧F A → A) (x : ⟦ F ⟧F (⟦μ⟧ F))
-                       → sem-cata-impl F alg (sem-In-impl F x)
-                         ≡ alg (sem-fmap F (sem-cata-impl F alg) x)
-sem-cata-compute-valid F {A} alg x =
-  trans step1 (trans step2 (trans step3 (trans step4 step5)))
-  where
-    -- Step 1: Apply μ-round-trip to remove μ-from-sem ∘ μ-to-sem
-    step1 : sem-cata-impl F alg (sem-In-impl F x) ≡
-            SPF.cata {F} alg SPF.⟨ transport-μ F F x ⟩
-    step1 = cong (SPF.cata alg) (μ-round-trip F SPF.⟨ transport-μ F F x ⟩)
-
-    -- Step 2: Apply SPF.cata-computation
-    step2 : SPF.cata {F} alg SPF.⟨ transport-μ F F x ⟩ ≡
-            alg (SPF.fmap F (SPF.cata {F} alg) (transport-μ F F x))
-    step2 = SPF.cata-computation F alg (transport-μ F F x)
-
-    -- Step 3: Apply transport-μ-is-fmap
-    step3 : alg (SPF.fmap F (SPF.cata {F} alg) (transport-μ F F x)) ≡
-            alg (SPF.fmap F (SPF.cata {F} alg) (SPF.fmap F (μ-from-sem F) x))
-    step3 = cong (λ z → alg (SPF.fmap F (SPF.cata {F} alg) z))
-                 (transport-μ-is-fmap F F x)
-
-    -- Step 4: Apply fmap composition (fmap g (fmap f x) = fmap (g ∘ f) x)
-    step4 : alg (SPF.fmap F (SPF.cata {F} alg) (SPF.fmap F (μ-from-sem F) x)) ≡
-            alg (SPF.fmap F (λ z → SPF.cata {F} alg (μ-from-sem F z)) x)
-    step4 = cong alg (sym (SPF.fmap-comp F (μ-from-sem F) (SPF.cata {F} alg) x))
-
-    -- Step 5: Convert SPF.fmap to sem-fmap (both are the same by fmap-coherence)
-    step5 : alg (SPF.fmap F (λ z → SPF.cata {F} alg (μ-from-sem F z)) x) ≡
-            alg (sem-fmap F (sem-cata-impl F alg) x)
-    step5 = cong alg (sym (fmap-coherence F (sem-cata-impl F alg) x))
-
--- | Identity anamorphism law (via SPF.ana-Out-id)
---
--- Core postulates: sem-ana-Out-id : ∀ F x → sem-ana F sem-CoOut x ≡ x
---
--- Proof:
---   sem-ana-impl F sem-CoOut-impl x
---   = ν-to-sem F (SPF.ana sem-CoOut-impl x)
---   Since sem-CoOut-impl involves transport, this doesn't directly reduce.
---   We use the identity ana property from SPF.
---
--- Note: This proof requires showing that sem-ana with sem-CoOut as coalgebra
--- behaves like identity. Due to transport complexity, we postulate this
--- coherence property.
---
-postulate
-  sem-ana-Out-id-valid : ∀ F (x : ⟦ν⟧ F)
-                       → sem-ana-impl F (sem-CoOut-impl F) x ≡ x
-
-------------------------------------------------------------------------
--- Part 7: Functor Law Inheritance
---
--- SPF's fmap satisfies functor laws (fmap-id, fmap-comp).
--- Since sem-fmap ≡ SPF.fmap (by fmap-coherence), Core's sem-fmap
--- inherits these laws.
-------------------------------------------------------------------------
-
--- | sem-fmap identity law
---
--- SPF.fmap-id : ∀ F x → fmap F id x ≡ x
+-- | sem-fmap preserves identity
 --
 sem-fmap-id : ∀ F {X : Set} (x : ⟦ F ⟧F X) → sem-fmap F (λ z → z) x ≡ x
 sem-fmap-id F x = trans (fmap-coherence F (λ z → z) x) (SPF.fmap-id F x)
 
--- | sem-fmap composition law
---
--- SPF.fmap-comp : ∀ F f g x → fmap F (g ∘ f) x ≡ fmap F g (fmap F f x)
---
--- Note: We use explicit trans chains instead of equational reasoning
--- since the stdlib ≡-Reasoning module imports vary by version.
+-- | sem-fmap preserves composition
 --
 sem-fmap-comp : ∀ F {X Y Z : Set} (f : X → Y) (g : Y → Z) (x : ⟦ F ⟧F X)
               → sem-fmap F (λ z → g (f z)) x ≡ sem-fmap F g (sem-fmap F f x)
 sem-fmap-comp F f g x =
-  -- sem-fmap F (g ∘ f) x
-  -- ≡ SPF.fmap F (g ∘ f) x          (by fmap-coherence)
-  -- ≡ SPF.fmap F g (SPF.fmap F f x) (by SPF.fmap-comp)
-  -- ≡ SPF.fmap F g (sem-fmap F f x) (by fmap-coherence⁻¹)
-  -- ≡ sem-fmap F g (sem-fmap F f x) (by fmap-coherence⁻¹)
   trans step1 (trans step2 (trans step3 step4))
   where
     step1 : sem-fmap F (λ z → g (f z)) x ≡ SPF.fmap F (λ z → g (f z)) x
@@ -494,53 +138,23 @@ sem-fmap-comp F f g x =
 ------------------------------------------------------------------------
 -- Summary
 ------------------------------------------------------------------------
-
--- This module establishes:
 --
--- 0. Base Type Interpretation Coherence (PROVEN):
---    - base-interp-coherence: For IsBaseType A, ⟦ ℤ ⟧-base A ≡ ⟦ A ⟧
---    - functor-interp-coherence: For WellFormedF F, ⟦ ℤ ⟧F-base F X ≡ ⟦ F ⟧F X
+-- This module provides fully PROVEN coherence lemmas (no postulates):
 --
--- 1. Type Coherence (postulated, justified by Part 0):
---    - ⟦μ⟧ F ≡ SPF.μ F
---    - ⟦ν⟧ F ≡ SPF.ν F
---    For well-formed functors (K only with base types), functor-interp-coherence
---    shows the interpretations coincide layer by layer. The postulates capture
---    the fixed point equivalence which follows by structural induction.
+-- 1. Base Type Interpretation Coherence:
+--    - base-interp-coherence: ⟦ ℤ ⟧-base A ≡ ⟦ A ⟧ for IsBaseType A
+--    - functor-interp-coherence: ⟦ ℤ ⟧F-base F X ≡ ⟦ F ⟧F X for WellFormedF F
 --
--- 2. Functor Map Coherence (PROVEN):
---    - sem-fmap F f x ≡ SPF.fmap F f x
+-- 2. Functor Map Coherence:
+--    - fmap-coherence: sem-fmap F f x ≡ SPF.fmap F f x
 --
--- 3. Operation Implementations:
---    - sem-In-impl, sem-Out-impl, sem-cata-impl
---    - sem-CoOut-impl, sem-CoIn-impl, sem-ana-impl
+-- 3. Functor Laws:
+--    - sem-fmap-id: sem-fmap F id ≡ id
+--    - sem-fmap-comp: sem-fmap F (g ∘ f) ≡ sem-fmap F g ∘ sem-fmap F f
 --
--- 4. Law Validation:
---    - Lambek's Lemma direction 1 (PROVEN via SPF.fold-unfold)
---    - Lambek's Lemma direction 2 (PROVEN via SPF.unfold-fold)
---    - Catamorphism computation law (PROVEN via SPF.cata-computation)
---    - Identity anamorphism SPF.ana-Out-id (PROVEN via bisimulation)
---    - Identity anamorphism sem-ana-Out-id-valid (postulated - transport complexity)
+-- The primary recursion scheme proofs are in Once.Semantics.Core:
+--    - sem-Out-In, sem-In-Out (Lambek's Lemma)
+--    - sem-cata-compute, sem-cata-In-id (catamorphism laws)
+--    - sem-ana-Out-id (identity anamorphism)
 --
--- 5. Functor Law Inheritance (PROVEN):
---    - sem-fmap-id, sem-fmap-comp
---
--- Remaining postulates:
---    - μ-coherence, ν-coherence: Fixed point equivalence
---      (justified by functor-interp-coherence for well-formed functors)
---    - bisim-to-eq: Bisimulation implies equality (standard coalgebraic principle)
---    - sem-ana-Out-id-valid: Transport-level identity anamorphism
---
--- Key architectural changes (OCP-0003 Phase 6):
---    - ⟦μ⟧, ⟦ν⟧ are now DEFINED (not postulated) via Once.Functor.Translate
---    - transport-μ-is-fmap: PROVEN via path induction (subst-fmap-natural)
---    - base-interp-coherence, functor-interp-coherence: PROVEN by induction
---    - SPF.ana-Out-id: PROVEN via coinductive bisimulation
---    - SPF productivity justified by Once.SPF.SizedProof (isolated sized types)
---    - μ-coherence/ν-coherence relate the defined ⟦μ⟧ to SPF.μ
---
--- The type coherence postulates can be eliminated by parameterizing
--- Core by the μ/ν implementations, or by defining the fixed points
--- more carefully to ensure definitional equality.
---
--- This completes the semantic coherence layer for OCP-0003 Phase 6.
+-- All proofs require WellFormedF for the functor.
