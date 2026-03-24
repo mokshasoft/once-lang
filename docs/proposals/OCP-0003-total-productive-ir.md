@@ -1028,30 +1028,41 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Prove `base-interp-coherence` and `functor-interp-coherence` (justifies μ-coherence)
 - [x] Rename SumFixWF to SumRecWF (fold/unfold removed)
 - [x] Prove `sem-ana-Out-id` via coinductive bisimulation (2026-03-24)
+- [x] Add well-formed functor round-trip proofs (postulate-free path) (2026-03-24)
 - [ ] Full IR law proofs (requires function extensionality)
 - [ ] Align with OCP-0004 bootstrap verification
 
-**Remaining Postulates** (2026-03-24)
+**Well-Formed Functor Proofs** ✓ COMPLETE (2026-03-24)
 
-The following postulates remain in the codebase:
+Added postulate-free round-trip proofs for well-formed functors:
+
+- `IsBaseType` / `WellFormedF`: Predicates in `Once.Functor.Translate`
+- `coerce-base-type-round-trip`: Proven for `IsBaseType`
+- `coerce-base-type⁻¹-round-trip`: Proven for `IsBaseType`
+- `coerce-wf-μ-round-trip`: Proven for `WellFormedF`
+- `coerce-wf-μ⁻¹-round-trip`: Proven for `WellFormedF`
+
+For well-formed functors, the coercion round-trips are now fully provable
+without any postulates. The well-formedness predicate ensures K positions
+only contain base types (Unit, Int, Float, Str, Buffer, and their products/sums).
+
+**Remaining Postulates** (2026-03-24)
 
 | Postulate | Location | Category | Notes |
 |-----------|----------|----------|-------|
 | `funext` | Core.agda | Standard axiom | Function extensionality, provable in Cubical Agda |
 | `bisimS-to-eq` | Functor/Base.agda | Standard axiom | Coalgebraic extensionality, provable in Cubical Agda |
-| `ill-formed-K-value` | Core.agda | Unreachable | Only triggered if K used with complex types (ill-formed functor) |
-| `coerce-type-round-trip-*` | Core.agda | Unreachable | Only triggered if K used with functions/μ/ν/Guarded (ill-formed) |
-| `coerce-type⁻¹-round-trip-*` | Core.agda | Unreachable | Same as above |
+| `ill-formed-K-value` | Core.agda | Backward compat | Only for ill-formed functors; well-formed use proven lemmas |
+| `coerce-type-round-trip-*` | Core.agda | Backward compat | Only for ill-formed functors; well-formed use proven lemmas |
+| `coerce-type⁻¹-round-trip-*` | Core.agda | Backward compat | Same as above |
 
 **Standard axioms** (funext, bisimS-to-eq) are well-established mathematical principles that:
 - Are provable in Cubical Agda
 - Are consistent with standard type theory
 - Do not affect computational behavior
 
-**Unreachable postulates** are only invoked for ill-formed functors (K with complex types).
-Well-formed functors use K only with base types (Unit, Int, Float, Str, etc.), making these
-cases unreachable in practice. A future enhancement could add a well-formedness predicate
-to eliminate these postulates entirely.
+**Backward compatibility postulates** remain for code that doesn't use well-formedness
+predicates. For code using `WellFormedF`, the proven lemmas provide a postulate-free path.
 
 ---
 
