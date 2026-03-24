@@ -66,7 +66,10 @@ postulate
 -- interpretation equals the full interpretation.
 ------------------------------------------------------------------------
 
-open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_⟧-base)
+open import Once.Functor.Translate using (μ-sem; ν-sem; translateF; ⟦_⟧-base; IsBaseType; WellFormedF)
+open import Once.Functor.Translate
+  using ( base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer
+        ; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Base
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
          sfmap; cataS; sfmapCata; sfmapCata-is-sfmap; anaS;
@@ -505,6 +508,50 @@ coerce-type⁻¹-round-trip Buffer x = refl
 coerce-type⁻¹-round-trip (TVar _) x = refl
 
 ------------------------------------------------------------------------
+-- Well-Formed Round-Trip Lemmas (No Postulates Needed)
+--
+-- For base types (IsBaseType A), the coercions are definitionally identity.
+-- This provides a postulate-free path for well-formed functors.
+------------------------------------------------------------------------
+
+-- | For base types, coerce-base-to-full ∘ coerce-full-to-base = id (PROVEN)
+--
+-- This is the key lemma that eliminates the need for postulates
+-- when working with well-formed functors.
+--
+coerce-base-type-round-trip : ∀ {A} → IsBaseType A → (x : ⟦ A ⟧)
+                            → coerce-base-to-full A (coerce-full-to-base A x) ≡ x
+coerce-base-type-round-trip base-Unit x = refl
+coerce-base-type-round-trip base-Void ()
+coerce-base-type-round-trip base-Int x = refl
+coerce-base-type-round-trip base-Float x = refl
+coerce-base-type-round-trip base-Str x = refl
+coerce-base-type-round-trip base-Buffer x = refl
+coerce-base-type-round-trip (base-Prod pA pB) (a , b) =
+  cong₂ _,_ (coerce-base-type-round-trip pA a) (coerce-base-type-round-trip pB b)
+coerce-base-type-round-trip (base-Sum pA pB) (inj₁ a) =
+  cong inj₁ (coerce-base-type-round-trip pA a)
+coerce-base-type-round-trip (base-Sum pA pB) (inj₂ b) =
+  cong inj₂ (coerce-base-type-round-trip pB b)
+
+-- | For base types, coerce-full-to-base ∘ coerce-base-to-full = id (PROVEN)
+--
+coerce-base-type⁻¹-round-trip : ∀ {A} → IsBaseType A → (x : ⟦ IntRep ⟧-base A)
+                              → coerce-full-to-base A (coerce-base-to-full A x) ≡ x
+coerce-base-type⁻¹-round-trip base-Unit x = refl
+coerce-base-type⁻¹-round-trip base-Void ()
+coerce-base-type⁻¹-round-trip base-Int x = refl
+coerce-base-type⁻¹-round-trip base-Float x = refl
+coerce-base-type⁻¹-round-trip base-Str x = refl
+coerce-base-type⁻¹-round-trip base-Buffer x = refl
+coerce-base-type⁻¹-round-trip (base-Prod pA pB) (a , b) =
+  cong₂ _,_ (coerce-base-type⁻¹-round-trip pA a) (coerce-base-type⁻¹-round-trip pB b)
+coerce-base-type⁻¹-round-trip (base-Sum pA pB) (inj₁ a) =
+  cong inj₁ (coerce-base-type⁻¹-round-trip pA a)
+coerce-base-type⁻¹-round-trip (base-Sum pA pB) (inj₂ b) =
+  cong inj₂ (coerce-base-type⁻¹-round-trip pB b)
+
+------------------------------------------------------------------------
 -- μ-type Coercions (OCP-0003)
 --
 -- Structural coercions between ⟦ F ⟧F X and ⟦ translateF IntRep F ⟧SF X.
@@ -528,6 +575,39 @@ coerce-μ-out Id X x = x
 coerce-μ-out (F ⊕ G) X (inj₁ x) = inj₁ (coerce-μ-out F X x)
 coerce-μ-out (F ⊕ G) X (inj₂ y) = inj₂ (coerce-μ-out G X y)
 coerce-μ-out (F ⊗ G) X (x , y) = (coerce-μ-out F X x , coerce-μ-out G X y)
+
+------------------------------------------------------------------------
+-- Well-Formed μ-Coercion Round-Trip (PROVEN, No Postulates)
+--
+-- For well-formed functors, the μ-coercion round-trips are provable
+-- using the base-type round-trip lemmas.
+------------------------------------------------------------------------
+
+-- | For well-formed functors: coerce-μ-out ∘ coerce-μ-in = id (PROVEN)
+--
+coerce-wf-μ-round-trip : ∀ {F} → WellFormedF F → ∀ (X : Set) (x : ⟦ F ⟧F X)
+                       → coerce-μ-out F X (coerce-μ-in F X x) ≡ x
+coerce-wf-μ-round-trip (wf-K pA) X x = coerce-base-type-round-trip pA x
+coerce-wf-μ-round-trip wf-Id X x = refl
+coerce-wf-μ-round-trip (wf-Sum wfF wfG) X (inj₁ x) =
+  cong inj₁ (coerce-wf-μ-round-trip wfF X x)
+coerce-wf-μ-round-trip (wf-Sum wfF wfG) X (inj₂ y) =
+  cong inj₂ (coerce-wf-μ-round-trip wfG X y)
+coerce-wf-μ-round-trip (wf-Prod wfF wfG) X (x , y) =
+  cong₂ _,_ (coerce-wf-μ-round-trip wfF X x) (coerce-wf-μ-round-trip wfG X y)
+
+-- | For well-formed functors: coerce-μ-in ∘ coerce-μ-out = id (PROVEN)
+--
+coerce-wf-μ⁻¹-round-trip : ∀ {F} → WellFormedF F → ∀ (X : Set) (x : ⟦ translateF IntRep F ⟧SF X)
+                         → coerce-μ-in F X (coerce-μ-out F X x) ≡ x
+coerce-wf-μ⁻¹-round-trip (wf-K pA) X x = coerce-base-type⁻¹-round-trip pA x
+coerce-wf-μ⁻¹-round-trip wf-Id X x = refl
+coerce-wf-μ⁻¹-round-trip (wf-Sum wfF wfG) X (inj₁ x) =
+  cong inj₁ (coerce-wf-μ⁻¹-round-trip wfF X x)
+coerce-wf-μ⁻¹-round-trip (wf-Sum wfF wfG) X (inj₂ y) =
+  cong inj₂ (coerce-wf-μ⁻¹-round-trip wfG X y)
+coerce-wf-μ⁻¹-round-trip (wf-Prod wfF wfG) X (x , y) =
+  cong₂ _,_ (coerce-wf-μ⁻¹-round-trip wfF X x) (coerce-wf-μ⁻¹-round-trip wfG X y)
 
 ------------------------------------------------------------------------
 -- μ-type Operations (OCP-0003: Defined via SPF)
