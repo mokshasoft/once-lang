@@ -64,6 +64,8 @@ ir-stack-requirement (Ana coalg) = ir-stack-requirement coalg +ℕ pair-slots
 ir-stack-requirement (Hylo alg coalg) = ir-stack-requirement alg +ℕ ir-stack-requirement coalg +ℕ pair-slots
 -- Unguard: extracts from GuardedT, constant
 ir-stack-requirement Unguard = 0
+-- Guard: wraps as GuardedT, constant
+ir-stack-requirement Guard = 0
 -- Other
 ir-stack-requirement (free-heap _) = 0
 ir-stack-requirement (Prim _) = 0  -- Primitives manage own stack

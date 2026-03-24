@@ -169,6 +169,7 @@ fusion-once Out = Out
 fusion-once (Ana {F} coalg) = Ana {F} (fusion-once coalg)
 fusion-once (Hylo {F} alg coalg) = Hylo {F} (fusion-once alg) (fusion-once coalg)
 fusion-once Unguard = Unguard
+fusion-once Guard = Guard
 
 -- Effects: nothing to fuse
 fusion-once arr = arr

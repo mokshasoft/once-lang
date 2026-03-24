@@ -25,8 +25,8 @@ open import Once.Semantics.Machine
   using (⟦_⟧; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case;
          -- OCP-0003: fold/unfold removed. Use recursion scheme semantics:
          sem-In; sem-cata; sem-CoOut;
-         -- OCP-0003: Guarded anamorphism for productive corecursion:
-         sem-unguard; sem-ana-guarded; sem-hylo-guarded;
+         -- OCP-0003: Guarded operations for productive corecursion:
+         sem-unguard; sem-guard; sem-ana-guarded; sem-hylo-guarded;
          coerce-functor; coerce-functor⁻¹)
 
 -- Re-export ⟦_⟧ for convenience
@@ -81,6 +81,8 @@ eval ps (Out {F}) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut F x)
 eval ps (Ana {F} {A} coalg) x = sem-ana-guarded F (λ a → eval ps coalg a) x
 -- Unguard: extract functor value from guarded value
 eval ps (Unguard {F} {A}) x = coerce-functor⁻¹ F A (sem-unguard F x)
+-- Guard: wrap functor value as guarded value
+eval ps (Guard {F} {A}) x = sem-guard F (coerce-functor F A x)
 -- Hylo: fused cata ∘ ana with GUARDED coalgebra (OCP-0003 productivity)
 eval ps (Hylo {F} {A} {B} alg coalg) x =
   sem-hylo-guarded F

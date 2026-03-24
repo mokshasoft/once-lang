@@ -217,6 +217,13 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   ty-Unguard : ∀ {Γ F A} → Γ ⊢ GuardedT F A ⟶ ⟦ F ⟧T A
 
+  -- Guard: wrap functor value as guarded value
+  -- OCP-0003: inverse of Unguard, establishes GuardedT ≅ ⟦ F ⟧T isomorphism
+  -- ──────────────────────────────────────
+  -- Γ ⊢ ⟦ F ⟧T A ⟶ GuardedT F A
+  --
+  ty-Guard : ∀ {Γ F A} → Γ ⊢ ⟦ F ⟧T A ⟶ GuardedT F A
+
   -- Hylo: hylomorphism (fused ana-cata)
   -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
   --      Γ ⊢ ⟦ F ⟧T B ⟶ B    Γ ⊢ A ⟶ GuardedT F A
@@ -256,6 +263,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-Out {F = F} ⌋ = Out {F}
 ⌊ ty-Ana {F = F} coalg ⌋ = Ana {F} ⌊ coalg ⌋
 ⌊ ty-Unguard {F = F} ⌋ = Unguard {F}
+⌊ ty-Guard {F = F} ⌋ = Guard {F}
 ⌊ ty-Hylo {F = F} alg coalg ⌋ = Hylo {F} ⌊ alg ⌋ ⌊ coalg ⌋
 
 -- | Convert IR term to explicit typing derivation
@@ -286,6 +294,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ Out {F} ⌉ = ty-Out {F = F}
 ⌈ Ana {F} coalg ⌉ = ty-Ana {F = F} ⌈ coalg ⌉
 ⌈ Unguard {F} ⌉ = ty-Unguard {F = F}
+⌈ Guard {F} ⌉ = ty-Guard {F = F}
 ⌈ Hylo {F} alg coalg ⌉ = ty-Hylo {F = F} ⌈ alg ⌉ ⌈ coalg ⌉
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f (semantically)
@@ -326,5 +335,7 @@ round-trip-ir (Ana {F} coalg) x = round-trip-Ana {F} coalg x
   where postulate round-trip-Ana : ∀ {F A} (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Ana {F} coalg ⌉ ⌋ x ≡ eval′ (Ana {F} coalg) x
 round-trip-ir (Unguard {F} {A}) x = round-trip-Unguard {F} {A} x
   where postulate round-trip-Unguard : ∀ {F A} (x : ⟦ GuardedT F A ⟧) → eval′ ⌊ ⌈ Unguard {F} {A} ⌉ ⌋ x ≡ eval′ (Unguard {F} {A}) x
+round-trip-ir (Guard {F} {A}) x = round-trip-Guard {F} {A} x
+  where postulate round-trip-Guard : ∀ {F A} (x : ⟦ ⟦ F ⟧T A ⟧) → eval′ ⌊ ⌈ Guard {F} {A} ⌉ ⌋ x ≡ eval′ (Guard {F} {A}) x
 round-trip-ir (Hylo {F} alg coalg) x = round-trip-Hylo {F} alg coalg x
   where postulate round-trip-Hylo : ∀ {F A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Hylo {F} alg coalg ⌉ ⌋ x ≡ eval′ (Hylo {F} alg coalg) x

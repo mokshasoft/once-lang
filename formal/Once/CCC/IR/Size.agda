@@ -42,6 +42,7 @@ ir-size Out = 1
 ir-size (Ana coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
 ir-size (Hylo alg coalg) = 2 +ℕ ir-size alg +ℕ ir-size coalg
 ir-size Unguard = 1
+ir-size Guard = 1
 -- Other
 ir-size (free-heap _) = 1
 ir-size (Prim _) = 1

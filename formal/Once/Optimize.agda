@@ -482,6 +482,7 @@ mutual
   optimize-once-structural (Ana {F} coalg) = Ana {F} (optimize-once coalg)
   optimize-once-structural (Hylo {F} alg coalg) = Hylo {F} (optimize-once alg) (optimize-once coalg)
   optimize-once-structural Unguard = Unguard
+  optimize-once-structural Guard = Guard
 
   -- | Type-directed optimization
   optimize-once : ∀ {A B} → IR A B → IR A B

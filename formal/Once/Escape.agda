@@ -113,6 +113,7 @@ escape-once Out = Out
 escape-once (Ana {F} coalg) = Ana {F} (escape-once coalg)
 escape-once (Hylo {F} alg coalg) = Hylo {F} (escape-once alg) (escape-once coalg)
 escape-once Unguard = Unguard
+escape-once Guard = Guard
 
 ------------------------------------------------------------------------
 -- Escape Analysis: Bounded Iteration
