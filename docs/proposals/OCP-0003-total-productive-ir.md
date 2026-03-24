@@ -3,7 +3,7 @@
 **Author:** [TBD]
 **Status:** Draft
 **Created:** 2026-03-10
-**Updated:** 2026-03-22
+**Updated:** 2026-03-24
 
 ---
 
@@ -945,15 +945,24 @@ Proven laws in `Once.SPF`:
 
 These proofs enable `sem-cata-compute-valid` in the Coherence layer.
 
-**SPF Anamorphism Laws** ✓ COMPLETE (2026-03-23)
+**SPF Anamorphism Laws** ✓ COMPLETE (2026-03-24)
 
-Proven/documented laws in `Once.SPF`:
+Proven laws in `Once.Functor.Base`:
 
 - `ana-unfold`: `unfold (ana coalg a) ≡ fmap F (ana coalg) (coalg a)` (trivial by definition)
-- `ana-Out-id`: `ana unfold x ≡ x` (proven via bisimulation, with `bisim-to-eq` postulate)
+- `anaS-Out-id`: `anaS unfoldS x ≡ x` (PROVEN via coinductive bisimulation)
 
-Note: `ana-Out-id` is semantically valid but requires either sized types or an explicit
-bisimulation relation to prove in Agda. Postulated with clear justification.
+Bisimulation infrastructure added:
+- `⟦_⟧SF-rel`: Relational interpretation lifting relations through functors
+- `_∼S_`: Coinductive bisimulation relation on νS F values
+- `bisimS-to-eq`: Coalgebraic extensionality (postulate, provable in Cubical Agda)
+- `sfmap-rel`, `sfmap-f-rel`: Helper lemmas for bisimulation proofs
+- `anaS-unfoldS-bisim`: Coinductive proof that `anaS unfoldS x ∼S x`
+
+Proven laws in `Once.Semantics.Core`:
+
+- `sem-ana-is-anaS-unfoldS`: `sem-ana F (sem-CoOut F) x ≡ anaS unfoldS x` (PROVEN via bisimulation)
+- `sem-ana-Out-id`: `sem-ana F (sem-CoOut F) x ≡ x` (PROVEN by composition)
 
 **Recursion Scheme Laws** ✓ COMPLETE (2026-03-23)
 
@@ -1018,8 +1027,31 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Add isolated sized-types proof in Once.SPF.SizedProof (justifies TERMINATING)
 - [x] Prove `base-interp-coherence` and `functor-interp-coherence` (justifies μ-coherence)
 - [x] Rename SumFixWF to SumRecWF (fold/unfold removed)
+- [x] Prove `sem-ana-Out-id` via coinductive bisimulation (2026-03-24)
 - [ ] Full IR law proofs (requires function extensionality)
 - [ ] Align with OCP-0004 bootstrap verification
+
+**Remaining Postulates** (2026-03-24)
+
+The following postulates remain in the codebase:
+
+| Postulate | Location | Category | Notes |
+|-----------|----------|----------|-------|
+| `funext` | Core.agda | Standard axiom | Function extensionality, provable in Cubical Agda |
+| `bisimS-to-eq` | Functor/Base.agda | Standard axiom | Coalgebraic extensionality, provable in Cubical Agda |
+| `ill-formed-K-value` | Core.agda | Unreachable | Only triggered if K used with complex types (ill-formed functor) |
+| `coerce-type-round-trip-*` | Core.agda | Unreachable | Only triggered if K used with functions/μ/ν/Guarded (ill-formed) |
+| `coerce-type⁻¹-round-trip-*` | Core.agda | Unreachable | Same as above |
+
+**Standard axioms** (funext, bisimS-to-eq) are well-established mathematical principles that:
+- Are provable in Cubical Agda
+- Are consistent with standard type theory
+- Do not affect computational behavior
+
+**Unreachable postulates** are only invoked for ill-formed functors (K with complex types).
+Well-formed functors use K only with base types (Unit, Int, Float, Str, etc.), making these
+cases unreachable in practice. A future enhancement could add a well-formedness predicate
+to eliminate these postulates entirely.
 
 ---
 
