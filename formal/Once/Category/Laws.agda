@@ -493,48 +493,16 @@ eval-cata-In F {A} alg m x =
 -- This is the defining equation for hylomorphisms.
 -- OCP-0003: coalg now produces GuardedT F A for productivity enforcement.
 --
--- Proof:
---   eval′ (Hylo alg coalg) x
---   = sem-hylo-guarded F alg′ coalg′ x            (by eval Hylo)
---   = alg′ (sem-fmap F (sem-hylo-guarded F alg′ coalg′) (sem-unguard F (coalg′ x)))
---                                                  (by sem-hylo-guarded-compute)
---   = eval′ alg (coerce⁻¹ (sem-fmap F ... (sem-unguard F ...)))
---   = eval′ alg (fmap-Type F ... (coerce⁻¹ (sem-unguard F ...)))  (by fmap-coerce-coherence′)
---   = eval′ alg (fmap-Type F (eval′ (Hylo alg coalg)) (eval′ (Unguard ∘ coalg) x))
+-- The proof avoids trans by using cong directly on fmap-coerce-coherence′.
+-- Since sem-hylo-guarded-compute is refl, both sides reduce definitionally
+-- to alg′ applied to the fmap result, differing only by coercion placement.
 --
 eval-hylo-unfold : ∀ (F : Functor) {A B : Type}
                    (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧)
                  → eval′ (Hylo {F} alg coalg) x ≡
                    eval′ alg (fmap-Type F (eval′ (Hylo {F} alg coalg)) (eval′ (Unguard ∘ coalg) x))
 eval-hylo-unfold F {A} {B} alg coalg x =
-  let -- The algebra lifted to Set level
-      alg′ : ⟦ F ⟧F ⟦ B ⟧ → ⟦ B ⟧
-      alg′ = λ fb → eval′ alg (coerce-functor⁻¹ F B fb)
-
-      -- The coalgebra at Set level
-      coalg′ : ⟦ A ⟧ → ⟦Guarded⟧ F ⟦ A ⟧
-      coalg′ = λ a → eval′ coalg a
-
-      -- The recursive function at Set level
-      hylo′ : ⟦ A ⟧ → ⟦ B ⟧
-      hylo′ = sem-hylo-guarded F alg′ coalg′
-
-      -- Step 1: Apply sem-hylo-guarded-compute
-      step1 : hylo′ x ≡ alg′ (sem-fmap F hylo′ (sem-unguard F (coalg′ x)))
-      step1 = sem-hylo-guarded-compute F alg′ coalg′ x
-
-      -- Step 2: Apply fmap-coerce-coherence′
-      -- coerce⁻¹ (sem-fmap F hylo′ (sem-unguard F ...)) = fmap-Type F hylo′ (coerce⁻¹ (sem-unguard F ...))
-      step2 : coerce-functor⁻¹ F B (sem-fmap F hylo′ (sem-unguard F (coalg′ x)))
-            ≡ fmap-Type F hylo′ (coerce-functor⁻¹ F A (sem-unguard F (coalg′ x)))
-      step2 = fmap-coerce-coherence′ F hylo′ (sem-unguard F (coalg′ x))
-
-      -- Step 3: Combine - alg′ includes coerce⁻¹
-      step3 : eval′ alg (coerce-functor⁻¹ F B (sem-fmap F hylo′ (sem-unguard F (coalg′ x))))
-            ≡ eval′ alg (fmap-Type F hylo′ (coerce-functor⁻¹ F A (sem-unguard F (coalg′ x))))
-      step3 = cong (eval′ alg) step2
-
-  in trans step1 step3
+  cong (eval′ alg) (fmap-coerce-coherence′ F {A} {B} (eval′ (Hylo {F} alg coalg)) (sem-unguard F (eval′ coalg x)))
 
 ------------------------------------------------------------------------
 -- Ana-Out Identity Law (Coinductive)
