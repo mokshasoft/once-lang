@@ -9,7 +9,55 @@
 
 ## Summary
 
-Establish that Once programs can be formally verified with a **minimal trusted computing base (TCB)**: mathematics, hardware, and a tiny bootstrap normalizer (~50-100 lines). This is achieved by recognizing that the CCC IR (from OCP-0003) **is** category theory, not an implementation of it. Verification becomes checking conformance to mathematical definitions, reducing the software TCB from ~50,000 lines (typical proof assistant) to ~50-100 lines (bootstrap normalizer).
+Establish that Once programs can be formally verified with a **minimal trusted computing base (TCB)**: mathematics and human verification of simple traces. This is achieved by recognizing that the BCCR IR (from OCP-0003) **is** category theory, not an implementation of it. Verification becomes checking conformance to mathematical definitions, eliminating software trust entirely.
+
+---
+
+## Terminology: BCCR
+
+This proposal uses the term **BCCR** (Bicartesian Closed Category with Recursion) for the categorical structure underlying Once:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  BCCR = Bicartesian Closed Category with Recursion          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Cartesian (products):                                      │
+│    fst, snd, ⟨_,_⟩, terminal                                │
+│                                                             │
+│  + Cocartesian (coproducts):                                │
+│    inl, inr, [_,_], initial                                 │
+│                                                             │
+│  = Bicartesian                                              │
+│                                                             │
+│  + Closed (exponentials):                                   │
+│    curry, apply                                             │
+│                                                             │
+│  = Bicartesian Closed Category (BCC)                        │
+│                                                             │
+│  + Recursion (initial algebras, final coalgebras):          │
+│    μF, In, cata        (inductive types)                    │
+│    νF, Out, ana        (coinductive types)                  │
+│                                                             │
+│  = BCCR                                                     │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│  Classical results and their scope:                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Lambek's Lemma (1968)     : Any category with initial alg. │
+│  CCC confluence            : CCC (Lambek & Scott)           │
+│  Strong normalization      : λ-calculus + inductive types   │
+│  Coalgebra theorems        : Categories with final coalg.   │
+│                                                             │
+│  Gap: Unified treatment of full BCCR (confluence,           │
+│       normalization, fixpoint uniqueness) is less common.   │
+│       This may be a contribution of Once.                   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+When we say "CCC rules" below, we mean the reduction rules from the Cartesian Closed fragment. When we say "BCCR," we mean the full structure including coproducts and recursion schemes.
 
 ---
 
@@ -22,7 +70,7 @@ The path from "trust only mathematics" to "fully verified Once" is a **bootstrap
 │                    THE BOOTSTRAP TOWER                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Level 0: Minimal CCC                                            │
+│  Level 0: Minimal BCCR (without exponentials)                     │
 │    IR: id, ∘, fst, snd, ⟨_,_⟩, inl, inr, [_,_], terminal, In, cata │
 │    Verified by: Fixpoint property + mathematical theorems        │
 │    TCB: Mathematics only (~0 lines of code)                      │
@@ -90,7 +138,7 @@ Action:  Return encoding of f ∘ ⟨id, x⟩
 
 This is like writing a Python interpreter in C: C doesn't have Python features, but can simulate them by manipulating data.
 
-### Level 0: Minimal CCC
+### Level 0: Minimal BCCR (without exponentials)
 
 **IR Operations:**
 - Category: `id`, `_∘_`
@@ -98,6 +146,8 @@ This is like writing a Python interpreter in C: C doesn't have Python features, 
 - Coproducts: `inl`, `inr`, `[_,_]`
 - Terminal: `terminal`
 - Initial Algebras: `In`, `cata`
+
+This is BCCR without the "Closed" part (no curry/apply yet).
 
 **Verification method**: Fixpoint property
 
@@ -334,7 +384,7 @@ Verified Code
 
 ### Why This Is Possible for Once
 
-The CCC IR from OCP-0003 is not a programming language *based on* category theory. It **is** category theory:
+The BCCR IR from OCP-0003 is not a programming language *based on* category theory. It **is** category theory:
 
 - The 12 generators ARE categorical morphisms
 - The typing rules ARE categorical laws
@@ -344,13 +394,15 @@ There's no gap between "specification" and "implementation" to trust.
 
 ---
 
-## The Foundation: CCC IR = Category Theory
+## The Foundation: BCCR = Category Theory
 
-### The 12 Generators ARE Categorical Morphisms
+### The Generators ARE Categorical Morphisms
+
+The Once IR consists of generators from BCCR (Bicartesian Closed Category with Recursion):
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│     Once CCC IR          │     Category Theory             │
+│     Once BCCR IR         │     Category Theory             │
 ├──────────────────────────┼──────────────────────────────────┤
 │ Id A                     │ id_A : A → A                    │
 │ Compose g f              │ g ∘ f                           │
@@ -371,7 +423,7 @@ These aren't representations of categorical concepts — they ARE the concepts.
 
 ### The Categorical Laws ARE Definitional
 
-The equations that govern CCC IR are not theorems to prove. They are the **definition** of what "Cartesian Closed Category" means:
+The equations that govern BCCR are not theorems to prove. They are the **definitions** of categorical structure:
 
 ```
 Identity Laws (definition of identity morphism):
@@ -404,7 +456,7 @@ Exponential Laws (definition of exponential/closed structure):
     curry (apply ∘ pair (g ∘ fst) snd) = g -- η
 ```
 
-A structure satisfying these laws IS a CCC. The laws don't describe CCCs — they DEFINE them.
+A structure satisfying these laws (plus the recursion laws below) IS a BCCR. The laws don't describe the category — they DEFINE it.
 
 ### RecursionIR = Initial Algebras + Final Coalgebras
 
@@ -464,6 +516,8 @@ Final Coalgebra (definition):
     This diagram commutes BY DEFINITION of final coalgebra.
 ```
 
+**Together, these form BCCR**: The 12 BCC generators (products, coproducts, exponentials) plus initial algebras (μ, In, cata) and final coalgebras (ν, Out, ana). This is the categorical foundation of Once.
+
 ### Totality and Productivity ARE Definitional
 
 ```
@@ -514,7 +568,7 @@ Minimal-Trust:
 ```
 A Once program P is valid iff:
 
-1. P is a well-formed morphism in a CCC
+1. P is a well-formed morphism in a BCCR
    (follows from the generators and composition rules)
 
 2. All eliminations of μF are via cata
@@ -587,7 +641,7 @@ Claim: Verifying Once programs requires trust ONLY in:
 ```
 Step 1: Once IR = Category Theory
         ─────────────────────────
-        The CCC IR generators ARE categorical morphisms.
+        The BCCR IR generators ARE categorical morphisms.
         The RecursionIR constructs ARE initial/final (co)algebras.
         There is no "implementation" separate from "specification".
 
@@ -700,7 +754,7 @@ We break the cycle with a tiny external normalizer:
 ```
 Bootstrap Normalizer (~50-100 lines):
 ─────────────────────────────────────
-Input:  CCC/RecursionIR expressions
+Input:  BCCR expressions
 Output: Normalized form
 
 Implementation:
@@ -870,13 +924,13 @@ Let P be a Once program.
 
 Claim: P is total + productive
        iff
-       P is a valid morphism in a CCC with initial algebras
-       and final coalgebras (with guarded corecursion)
+       P is a valid morphism in a BCCR
+       (with guarded corecursion for final coalgebras)
 
 Proof:
 
 (→) If P is total + productive, then by the semantics of Once,
-    P denotes a morphism in a CCC with the required structure.
+    P denotes a morphism in a BCCR.
 
 (←) If P is a valid morphism in such a category, then:
 
@@ -926,7 +980,8 @@ This is a dramatic reduction from ~50,000 lines (typical proof assistant) to ~50
 Write the categorical foundations as pure mathematics:
 
 ```
-Definition (CCC): A category C is cartesian closed iff ...
+Definition (BCCR): A category is BCCR iff it has products, coproducts,
+                   exponentials, initial algebras, and final coalgebras...
 Definition (Initial Algebra): An initial F-algebra is ...
 Definition (Once IR): An Once IR term is ...
 Definition (Validity): An IR term is valid iff ...
@@ -1240,7 +1295,7 @@ Phase 2: Add trace generation
          Normalizer outputs reduction traces
          Enables manual verification of bootstrap
 
-Phase 3: Implement trace verifier as CCC term (~25 primitives)
+Phase 3: Implement trace verifier as BCCR term (~25 primitives)
          Verifier has fixpoint property like normalizer
          Verifier's meta-trace is human-verifiable
 
@@ -1274,11 +1329,11 @@ The trace is data we read and verify mathematically. We don't trust that any com
 
 ### The Problem: Mathematical Proofs Don't Apply to Binaries
 
-The previous sections establish that if a normalizer N is built from CCC primitives and achieves a fixpoint, then N is correct. But there's a critical gap:
+The previous sections establish that if a normalizer N is built from BCCR primitives and achieves a fixpoint, then N is correct. But there's a critical gap:
 
 ```
 Mathematical Normalizer N          Assembly/Binary B
-(CCC primitives, proven correct)   (running on hardware)
+(BCCR primitives, proven correct)  (running on hardware)
             ↑                              ↑
       Theorems apply here           Theorems say nothing here
 ```
@@ -1290,7 +1345,7 @@ This matters because:
 2. **Compiler bugs**: The compiler translating N to assembly could have bugs
 3. **"Trusting Trust"**: The entire toolchain could be compromised
 
-The fixpoint property proves N (the abstract CCC term) is correct, but says nothing about whether B corresponds to N.
+The fixpoint property proves N (the abstract BCCR term) is correct, but says nothing about whether B corresponds to N.
 
 ### Why We Don't Need to Trust Software At All
 
@@ -1384,20 +1439,20 @@ V (before, rule, after) =
     ... (12-15 rules total)
 ```
 
-**Crucially, V itself is a CCC term**. Written as `cata TermF verifyAlgebra` where `verifyAlgebra` is NoRedex, V has the **same fixpoint property** as the normalizer:
+**Crucially, V itself is a BCCR term**. Written as `cata TermF verifyAlgebra` where `verifyAlgebra` is NoRedex, V has the **same fixpoint property** as the normalizer:
 
 ```
 normalize(encode(V)) ⟶* encode(V)
 ```
 
 But V is **much smaller** than the normalizer:
-- Normalizer N: ~100-150 CCC primitives
-- Verifier V: ~20-30 CCC primitives
+- Normalizer N: ~100-150 BCCR primitives
+- Verifier V: ~20-30 BCCR primitives
 
 ### Size Estimates for Human Verification
 
 ```
-V ≈ 25 CCC primitives
+V ≈ 25 BCCR primitives
 encode(V) ≈ 30-40 nodes
 Trace of normalizing encode(V) ≈ 40-60 steps
 V verifying that trace ≈ 40-60 verification steps
@@ -1490,7 +1545,7 @@ The key properties:
 
 2. **Software is just a proof generator**: We run arbitrary software to produce traces. We don't trust the software — we verify the traces mathematically.
 
-3. **V has a fixpoint**: V is itself a CCC term with the fixpoint property, so V's correctness can be verified the same way as N's.
+3. **V has a fixpoint**: V is itself a BCCR term with the fixpoint property, so V's correctness can be verified the same way as N's.
 
 4. **Checking is simpler than computing**: V checking a step is just pattern matching. The checking trace T_check consists of self-evident steps that anyone can verify by inspection.
 
