@@ -107,6 +107,9 @@ eval ps (Ana {F} {A} coalg) x =
 -- Unguard: extract functor value from guarded value
 eval ps (Unguard {F} {A}) x = coerce-functor⁻¹ F A (sem-unguard F x)
 --
+-- Guard: wrap functor value as guarded (establishes GuardedT ≅ ⟦ F ⟧T isomorphism)
+eval ps (Guard {F} {A}) x = sem-guard F (coerce-functor F A x)
+--
 -- Hylo: Cata alg ∘ Ana coalg, computed directly without intermediate
 -- OCP-0003: Uses GUARDED coalgebra for productivity
 eval ps (Hylo {F} {A} {B} alg coalg) x =

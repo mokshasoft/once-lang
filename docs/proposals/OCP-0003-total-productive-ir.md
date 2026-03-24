@@ -1018,8 +1018,8 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Add isolated sized-types proof in Once.SPF.SizedProof (justifies TERMINATING)
 - [x] Prove `base-interp-coherence` and `functor-interp-coherence` (justifies μ-coherence)
 - [x] Rename SumFixWF to SumRecWF (fold/unfold removed)
-- [ ] Align with OCP-0004 bootstrap verification
 - [ ] Full IR law proofs (requires function extensionality)
+- [ ] Align with OCP-0004 bootstrap verification
 
 ---
 

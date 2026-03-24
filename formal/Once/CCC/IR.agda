@@ -111,6 +111,34 @@ data IR : Type → Type → Set where
   -- This "consumes" the guardedness guarantee - use after Ana has processed.
   Unguard : ∀ {F A} → IR (GuardedT F A) (⟦ F ⟧T A)
 
+  --------------------------------------------------------------------------
+  -- Guard: wrap functor value as guarded
+  -- ⟦ F ⟧T A → GuardedT F A
+  --
+  -- This establishes the isomorphism: GuardedT F A ≅ ⟦ F ⟧T A
+  --
+  -- CATEGORICAL JUSTIFICATION:
+  -- GuardedT F A is structurally isomorphic to ⟦ F ⟧T A. The Guarded
+  -- constructors (GProd, GInl, GInr, GConst, GRec) mirror the functor
+  -- structure exactly. Any F(A) value can be wrapped as Guarded F A.
+  --
+  -- The PURPOSE of requiring GuardedT in Ana's type is to ensure that
+  -- coalgebras are DEFINED in a guarded way (syntactically proving that
+  -- each corecursive step produces one F-layer before recursing).
+  --
+  -- But once you HAVE an ⟦ F ⟧T A value (e.g., from Out observing a ν-value),
+  -- wrapping it as GuardedT is always valid - the value already exists.
+  --
+  -- This enables the Ana-Out identity law:
+  --   Ana (Guard ∘ Out) ≡ id
+  --
+  -- Which is categorically required: (νF, Out) is the final F-coalgebra,
+  -- so the unique morphism from it to itself must be the identity.
+  -- Guard ∘ Out represents the same coalgebra as Out, just with the
+  -- type wrapped to satisfy Ana's signature.
+  --------------------------------------------------------------------------
+  Guard : ∀ {F A} → IR (⟦ F ⟧T A) (GuardedT F A)
+
   -- Hylo: fusion of cata and ana (deforestation)
   -- OCP-0003: coalg must produce GuardedT for productivity
   -- cata alg ∘ ana coalg, computed directly without intermediate structure

@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
+{-# OPTIONS --large-indices #-}
 ------------------------------------------------------------------------
 -- Once.Semantics.Core
 --
@@ -12,6 +13,10 @@
 --   - Semantic laws
 --
 -- Instantiate with ℕ for machine semantics, ℤ for proof semantics.
+--
+-- Note: --large-indices is required because ⟦Guarded⟧ is indexed by Set.
+-- This allows constructors like GRec to store values of the index type.
+-- Agda explicitly suggests this for forced index patterns.
 ------------------------------------------------------------------------
 
 module Once.Semantics.Core (IntRep : Set) where
@@ -86,18 +91,47 @@ open import Once.Functor.Base
 ------------------------------------------------------------------------
 -- Guarded Functor Values
 --
--- ⟦Guarded⟧ F A represents guarded F-shaped values with A at recursive positions.
+-- ⟦Guarded⟧ F A represents guarded F-shaped values with A at recursive
+-- positions. It is structurally isomorphic to ⟦ F ⟧F A.
 --
--- This is postulated because defining it structurally at Set level causes
--- universe and strict positivity issues (⟦_⟧ includes function types).
--- The CCC/IR/Guarded.agda module provides the Set₁ version.
+-- KEY DESIGN DECISION: GConst uses ⟦_⟧-base instead of ⟦_⟧.
+-- This breaks the mutual dependency cycle and avoids strict positivity
+-- violations. Since ⟦_⟧-base returns ⊤ for complex types (functions,
+-- μ-type, ν-type, GuardedT), and well-formed functors only use base
+-- types in K positions, this is semantically equivalent for valid code.
 --
--- OCP-0003: Kept as postulate to avoid complexity.
+-- STRUCTURAL ISOMORPHISM: ⟦Guarded⟧ F A ≅ ⟦ F ⟧F A
+-- The Guarded constructors mirror the functor structure exactly:
+--   GConst for K, GRec for Id, GProd for ⊗, GInl/GInr for ⊕
+--
+-- This enables proving:
+--   sem-guard : ⟦ F ⟧F A → ⟦Guarded⟧ F A
+--   sem-unguard : ⟦Guarded⟧ F A → ⟦ F ⟧F A
+--   sem-unguard ∘ sem-guard = id
+--   sem-guard ∘ sem-unguard = id
 ------------------------------------------------------------------------
 
-postulate
-  ⟦Guarded⟧ : Functor → Set → Set
+-- | Guarded functor values (structural definition)
+--
+-- Each constructor corresponds to a functor constructor:
+--   GConst : constant values (K A) - uses ⟦_⟧-base to avoid cycle
+--   GRec   : recursive positions (Id) - the "guard"
+--   GProd  : products (F ⊗ G)
+--   GInl   : left injection (F ⊕ G)
+--   GInr   : right injection (F ⊕ G)
+--
+data ⟦Guarded⟧ : Functor → Set → Set where
+  GConst : ∀ {A B} → ⟦ IntRep ⟧-base A → ⟦Guarded⟧ (K A) B
+  GRec   : ∀ {A} → A → ⟦Guarded⟧ Id A
+  GProd  : ∀ {F G A} → ⟦Guarded⟧ F A → ⟦Guarded⟧ G A → ⟦Guarded⟧ (F ⊗ G) A
+  GInl   : ∀ {F G A} → ⟦Guarded⟧ F A → ⟦Guarded⟧ (F ⊕ G) A
+  GInr   : ∀ {F G A} → ⟦Guarded⟧ G A → ⟦Guarded⟧ (F ⊕ G) A
 
+------------------------------------------------------------------------
+-- Type Interpretation
+------------------------------------------------------------------------
+
+-- | Type interpretation
 ⟦_⟧ : Type → Set
 ⟦ Unit ⟧         = ⊤
 ⟦ Void ⟧         = ⊥
@@ -390,6 +424,85 @@ coerce-base-to-full Buffer x = x
 coerce-base-to-full (TVar _) x = x
 
 ------------------------------------------------------------------------
+-- Type Coercion Round-Trip Properties
+--
+-- For base types, coerce-base-to-full ∘ coerce-full-to-base = id.
+-- For complex types, we use the ill-formed-K-value postulate.
+--
+-- These are placed here (before μ-type coercions) because they're
+-- needed by both sem-guard-unguard proofs and μ-coercion round-trips.
+------------------------------------------------------------------------
+
+-- | Round-trip: base-to-full ∘ full-to-base ≡ id
+--
+-- Proven by pattern matching on A. For base types this is definitional.
+-- For complex types, we postulate it (these cases are unreachable for
+-- well-formed functors).
+--
+postulate
+  -- Round-trip for complex types (unreachable for well-formed functors)
+  coerce-type-round-trip-function : ∀ {A B q} (x : ⟦ A ⟧ → ⟦ B ⟧) →
+    coerce-base-to-full (A ⇒[ q ] B) (coerce-full-to-base (A ⇒[ q ] B) x) ≡ x
+  coerce-type-round-trip-eff : ∀ {A B} (x : ⟦ A ⟧ → ⟦ B ⟧) →
+    coerce-base-to-full (Eff A B) (coerce-full-to-base (Eff A B) x) ≡ x
+  coerce-type-round-trip-μ : ∀ {F} (x : ⟦μ⟧ F) →
+    coerce-base-to-full (μ-type F) (coerce-full-to-base (μ-type F) x) ≡ x
+  coerce-type-round-trip-ν : ∀ {F} (x : ⟦ν⟧ F) →
+    coerce-base-to-full (ν-type F) (coerce-full-to-base (ν-type F) x) ≡ x
+  coerce-type-round-trip-guarded : ∀ {F A} (x : ⟦Guarded⟧ F ⟦ A ⟧) →
+    coerce-base-to-full (GuardedT F A) (coerce-full-to-base (GuardedT F A) x) ≡ x
+
+coerce-type-round-trip : ∀ A (x : ⟦ A ⟧) → coerce-base-to-full A (coerce-full-to-base A x) ≡ x
+coerce-type-round-trip Unit x = refl
+coerce-type-round-trip Void x = refl
+coerce-type-round-trip (A * B) (a , b) = cong₂ _,_ (coerce-type-round-trip A a) (coerce-type-round-trip B b)
+coerce-type-round-trip (A + B) (inj₁ a) = cong inj₁ (coerce-type-round-trip A a)
+coerce-type-round-trip (A + B) (inj₂ b) = cong inj₂ (coerce-type-round-trip B b)
+coerce-type-round-trip (A ⇒[ q ] B) x = coerce-type-round-trip-function {A} {B} {q} x
+coerce-type-round-trip (Eff A B) x = coerce-type-round-trip-eff {A} {B} x
+coerce-type-round-trip (μ-type F) x = coerce-type-round-trip-μ {F} x
+coerce-type-round-trip (ν-type F) x = coerce-type-round-trip-ν {F} x
+coerce-type-round-trip (GuardedT F A) x = coerce-type-round-trip-guarded {F} {A} x
+coerce-type-round-trip Int x = refl
+coerce-type-round-trip Float x = refl
+coerce-type-round-trip Str x = refl
+coerce-type-round-trip Buffer x = refl
+coerce-type-round-trip (TVar _) x = refl
+
+-- | Round-trip: full-to-base ∘ base-to-full ≡ id
+--
+-- Similar structure to the above.
+--
+postulate
+  coerce-type⁻¹-round-trip-function : ∀ {A B q} (x : ⊤) →
+    coerce-full-to-base (A ⇒[ q ] B) (coerce-base-to-full (A ⇒[ q ] B) x) ≡ x
+  coerce-type⁻¹-round-trip-eff : ∀ {A B} (x : ⊤) →
+    coerce-full-to-base (Eff A B) (coerce-base-to-full (Eff A B) x) ≡ x
+  coerce-type⁻¹-round-trip-μ : ∀ {F} (x : ⊤) →
+    coerce-full-to-base (μ-type F) (coerce-base-to-full (μ-type F) x) ≡ x
+  coerce-type⁻¹-round-trip-ν : ∀ {F} (x : ⊤) →
+    coerce-full-to-base (ν-type F) (coerce-base-to-full (ν-type F) x) ≡ x
+  coerce-type⁻¹-round-trip-guarded : ∀ {F A} (x : ⊤) →
+    coerce-full-to-base (GuardedT F A) (coerce-base-to-full (GuardedT F A) x) ≡ x
+
+coerce-type⁻¹-round-trip : ∀ A (x : ⟦ IntRep ⟧-base A) → coerce-full-to-base A (coerce-base-to-full A x) ≡ x
+coerce-type⁻¹-round-trip Unit x = refl
+coerce-type⁻¹-round-trip Void x = refl
+coerce-type⁻¹-round-trip (A * B) (a , b) = cong₂ _,_ (coerce-type⁻¹-round-trip A a) (coerce-type⁻¹-round-trip B b)
+coerce-type⁻¹-round-trip (A + B) (inj₁ a) = cong inj₁ (coerce-type⁻¹-round-trip A a)
+coerce-type⁻¹-round-trip (A + B) (inj₂ b) = cong inj₂ (coerce-type⁻¹-round-trip B b)
+coerce-type⁻¹-round-trip (A ⇒[ q ] B) x = coerce-type⁻¹-round-trip-function {A} {B} {q} x
+coerce-type⁻¹-round-trip (Eff A B) x = coerce-type⁻¹-round-trip-eff {A} {B} x
+coerce-type⁻¹-round-trip (μ-type F) x = coerce-type⁻¹-round-trip-μ {F} x
+coerce-type⁻¹-round-trip (ν-type F) x = coerce-type⁻¹-round-trip-ν {F} x
+coerce-type⁻¹-round-trip (GuardedT F A) x = coerce-type⁻¹-round-trip-guarded {F} {A} x
+coerce-type⁻¹-round-trip Int x = refl
+coerce-type⁻¹-round-trip Float x = refl
+coerce-type⁻¹-round-trip Str x = refl
+coerce-type⁻¹-round-trip Buffer x = refl
+coerce-type⁻¹-round-trip (TVar _) x = refl
+
+------------------------------------------------------------------------
 -- μ-type Coercions (OCP-0003)
 --
 -- Structural coercions between ⟦ F ⟧F X and ⟦ translateF IntRep F ⟧SF X.
@@ -489,16 +602,76 @@ unfoldS (sem-ana F {A} coalg a) = sfmap (translateF IntRep F) (sem-ana F coalg) 
 -- Guarded Operations (OCP-0003)
 --
 -- These operations support the GuardedT type for productive corecursion.
+-- Now defined structurally since ⟦Guarded⟧ is structurally defined.
 ------------------------------------------------------------------------
 
 -- | Unguard: extract functor value from guarded value
+--
 -- This "consumes" the guardedness - the F-layer has been observed.
+-- Defined by pattern matching on the guarded value.
 --
--- OCP-0003: Postulated since ⟦Guarded⟧ is postulated.
--- Structurally, this would pattern match on the guarded value.
+-- Note: For K positions, we coerce from ⟦_⟧-base to ⟦_⟧ since GConst
+-- stores base interpretation values but ⟦ F ⟧F uses full interpretation.
 --
-postulate
-  sem-unguard : ∀ (F : Functor) {A : Set} → ⟦Guarded⟧ F A → ⟦ F ⟧F A
+sem-unguard : ∀ (F : Functor) {A : Set} → ⟦Guarded⟧ F A → ⟦ F ⟧F A
+sem-unguard (K B) (GConst x) = coerce-base-to-full B x
+sem-unguard Id (GRec a) = a
+sem-unguard (F ⊗ G) (GProd gf gg) = (sem-unguard F gf , sem-unguard G gg)
+sem-unguard (F ⊕ G) (GInl gf) = inj₁ (sem-unguard F gf)
+sem-unguard (F ⊕ G) (GInr gg) = inj₂ (sem-unguard G gg)
+
+-- | Guard: wrap functor value as guarded
+--
+-- Establishes the isomorphism: ⟦Guarded⟧ F A ≅ ⟦ F ⟧F A
+--
+-- CATEGORICAL JUSTIFICATION:
+-- ⟦Guarded⟧ F A is structurally isomorphic to ⟦ F ⟧F A. The Guarded
+-- constructors mirror the functor structure exactly:
+--   GConst for K, GRec for Id, GProd for ⊗, GInl/GInr for ⊕
+--
+-- Any ⟦ F ⟧F A value can be wrapped as ⟦Guarded⟧ F A by following the
+-- functor structure. This doesn't bypass productivity - it just
+-- recognizes that the types are isomorphic.
+--
+-- The PURPOSE of requiring GuardedT in Ana is to ensure coalgebras are
+-- DEFINED in a guarded way. But for EXISTING F(A) values (e.g., from
+-- Out observing a ν-value), wrapping as Guarded is always valid.
+--
+-- Note: For K positions, we coerce from ⟦_⟧ to ⟦_⟧-base since GConst
+-- stores base interpretation values but ⟦ F ⟧F uses full interpretation.
+--
+sem-guard : ∀ (F : Functor) {A : Set} → ⟦ F ⟧F A → ⟦Guarded⟧ F A
+sem-guard (K B) x = GConst (coerce-full-to-base B x)
+sem-guard Id a = GRec a
+sem-guard (F ⊗ G) (xf , xg) = GProd (sem-guard F xf) (sem-guard G xg)
+sem-guard (F ⊕ G) (inj₁ xf) = GInl (sem-guard F xf)
+sem-guard (F ⊕ G) (inj₂ xg) = GInr (sem-guard G xg)
+
+-- | Guard-Unguard round-trip: unguard ∘ guard = id
+--
+-- Proven by structural induction on the functor.
+-- For K positions, uses type-level round-trip lemma.
+--
+sem-unguard-guard : ∀ (F : Functor) {A : Set} (x : ⟦ F ⟧F A)
+                  → sem-unguard F (sem-guard F x) ≡ x
+sem-unguard-guard (K B) x = coerce-type-round-trip B x
+sem-unguard-guard Id a = refl
+sem-unguard-guard (F ⊗ G) (xf , xg) = cong₂ _,_ (sem-unguard-guard F xf) (sem-unguard-guard G xg)
+sem-unguard-guard (F ⊕ G) (inj₁ xf) = cong inj₁ (sem-unguard-guard F xf)
+sem-unguard-guard (F ⊕ G) (inj₂ xg) = cong inj₂ (sem-unguard-guard G xg)
+
+-- | Guard-Unguard round-trip: guard ∘ unguard = id
+--
+-- Proven by structural induction on the guarded value.
+-- For K positions, uses type-level round-trip lemma.
+--
+sem-guard-unguard : ∀ (F : Functor) {A : Set} (x : ⟦Guarded⟧ F A)
+                  → sem-guard F (sem-unguard F x) ≡ x
+sem-guard-unguard (K B) (GConst x) = cong GConst (coerce-type⁻¹-round-trip B x)
+sem-guard-unguard Id (GRec a) = refl
+sem-guard-unguard (F ⊗ G) (GProd gf gg) = cong₂ GProd (sem-guard-unguard F gf) (sem-guard-unguard G gg)
+sem-guard-unguard (F ⊕ G) (GInl gf) = cong GInl (sem-guard-unguard F gf)
+sem-guard-unguard (F ⊕ G) (GInr gg) = cong GInr (sem-guard-unguard G gg)
 
 -- | Guarded anamorphism: given guarded coalgebra A → Guarded F A, unfold A → νF
 -- This is the productive version of sem-ana.
@@ -532,82 +705,6 @@ sem-hylo-guarded : ∀ (F : Functor) {A B : Set}
                  → (A → ⟦Guarded⟧ F A)      -- guarded coalgebra
                  → A → B
 sem-hylo-guarded F alg coalg = sem-hylo F alg (sem-unguard F ∘ coalg)
-
-------------------------------------------------------------------------
--- Type Coercion Round-Trip Properties
---
--- For base types, coerce-base-to-full ∘ coerce-full-to-base = id.
--- For complex types, we use the ill-formed-K-value postulate.
-------------------------------------------------------------------------
-
--- | Round-trip: base-to-full ∘ full-to-base ≡ id
---
--- Proven by pattern matching on A. For base types this is definitional.
--- For complex types, we postulate it (these cases are unreachable for
--- well-formed functors).
---
-postulate
-  -- Round-trip for complex types (unreachable for well-formed functors)
-  coerce-type-round-trip-function : ∀ {A B q} (x : ⟦ A ⟧ → ⟦ B ⟧) →
-    coerce-base-to-full (A ⇒[ q ] B) (coerce-full-to-base (A ⇒[ q ] B) x) ≡ x
-  coerce-type-round-trip-eff : ∀ {A B} (x : ⟦ A ⟧ → ⟦ B ⟧) →
-    coerce-base-to-full (Eff A B) (coerce-full-to-base (Eff A B) x) ≡ x
-  coerce-type-round-trip-μ : ∀ {F} (x : ⟦μ⟧ F) →
-    coerce-base-to-full (μ-type F) (coerce-full-to-base (μ-type F) x) ≡ x
-  coerce-type-round-trip-ν : ∀ {F} (x : ⟦ν⟧ F) →
-    coerce-base-to-full (ν-type F) (coerce-full-to-base (ν-type F) x) ≡ x
-  coerce-type-round-trip-guarded : ∀ {F A} (x : ⟦Guarded⟧ F ⟦ A ⟧) →
-    coerce-base-to-full (GuardedT F A) (coerce-full-to-base (GuardedT F A) x) ≡ x
-
-coerce-type-round-trip : ∀ A (x : ⟦ A ⟧) → coerce-base-to-full A (coerce-full-to-base A x) ≡ x
-coerce-type-round-trip Unit x = refl
-coerce-type-round-trip Void x = refl
-coerce-type-round-trip (A * B) (a , b) = cong₂ _,_ (coerce-type-round-trip A a) (coerce-type-round-trip B b)
-coerce-type-round-trip (A + B) (inj₁ a) = cong inj₁ (coerce-type-round-trip A a)
-coerce-type-round-trip (A + B) (inj₂ b) = cong inj₂ (coerce-type-round-trip B b)
-coerce-type-round-trip (A ⇒[ q ] B) x = coerce-type-round-trip-function {A} {B} {q} x
-coerce-type-round-trip (Eff A B) x = coerce-type-round-trip-eff {A} {B} x
-coerce-type-round-trip (μ-type F) x = coerce-type-round-trip-μ {F} x
-coerce-type-round-trip (ν-type F) x = coerce-type-round-trip-ν {F} x
-coerce-type-round-trip (GuardedT F A) x = coerce-type-round-trip-guarded {F} {A} x
-coerce-type-round-trip Int x = refl
-coerce-type-round-trip Float x = refl
-coerce-type-round-trip Str x = refl
-coerce-type-round-trip Buffer x = refl
-coerce-type-round-trip (TVar _) x = refl
-
--- | Round-trip: full-to-base ∘ base-to-full ≡ id
---
--- Similar structure to the above.
---
-postulate
-  coerce-type⁻¹-round-trip-function : ∀ {A B q} (x : ⊤) →
-    coerce-full-to-base (A ⇒[ q ] B) (coerce-base-to-full (A ⇒[ q ] B) x) ≡ x
-  coerce-type⁻¹-round-trip-eff : ∀ {A B} (x : ⊤) →
-    coerce-full-to-base (Eff A B) (coerce-base-to-full (Eff A B) x) ≡ x
-  coerce-type⁻¹-round-trip-μ : ∀ {F} (x : ⊤) →
-    coerce-full-to-base (μ-type F) (coerce-base-to-full (μ-type F) x) ≡ x
-  coerce-type⁻¹-round-trip-ν : ∀ {F} (x : ⊤) →
-    coerce-full-to-base (ν-type F) (coerce-base-to-full (ν-type F) x) ≡ x
-  coerce-type⁻¹-round-trip-guarded : ∀ {F A} (x : ⊤) →
-    coerce-full-to-base (GuardedT F A) (coerce-base-to-full (GuardedT F A) x) ≡ x
-
-coerce-type⁻¹-round-trip : ∀ A (x : ⟦ IntRep ⟧-base A) → coerce-full-to-base A (coerce-base-to-full A x) ≡ x
-coerce-type⁻¹-round-trip Unit x = refl
-coerce-type⁻¹-round-trip Void x = refl
-coerce-type⁻¹-round-trip (A * B) (a , b) = cong₂ _,_ (coerce-type⁻¹-round-trip A a) (coerce-type⁻¹-round-trip B b)
-coerce-type⁻¹-round-trip (A + B) (inj₁ a) = cong inj₁ (coerce-type⁻¹-round-trip A a)
-coerce-type⁻¹-round-trip (A + B) (inj₂ b) = cong inj₂ (coerce-type⁻¹-round-trip B b)
-coerce-type⁻¹-round-trip (A ⇒[ q ] B) x = coerce-type⁻¹-round-trip-function {A} {B} {q} x
-coerce-type⁻¹-round-trip (Eff A B) x = coerce-type⁻¹-round-trip-eff {A} {B} x
-coerce-type⁻¹-round-trip (μ-type F) x = coerce-type⁻¹-round-trip-μ {F} x
-coerce-type⁻¹-round-trip (ν-type F) x = coerce-type⁻¹-round-trip-ν {F} x
-coerce-type⁻¹-round-trip (GuardedT F A) x = coerce-type⁻¹-round-trip-guarded {F} {A} x
-coerce-type⁻¹-round-trip Int x = refl
-coerce-type⁻¹-round-trip Float x = refl
-coerce-type⁻¹-round-trip Str x = refl
-coerce-type⁻¹-round-trip Buffer x = refl
-coerce-type⁻¹-round-trip (TVar _) x = refl
 
 ------------------------------------------------------------------------
 -- μ-Coercion Round-Trip Properties (OCP-0003)
