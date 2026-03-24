@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.Axioms.BCCR.Theory
+-- Theory.BCCR.Theory
 --
 -- BCCR THEORY: Unified Properties of Bicartesian Closed Categories
 --              with Recursion
@@ -22,14 +22,14 @@
 -- Each proof is SMALL because it only handles ONE extension at a time.
 ------------------------------------------------------------------------
 
-module Once.Axioms.BCCR.Theory where
+module Theory.BCCR.Theory where
 
 open import Once.Type using (Type; Unit)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
 
 -- Import the tower (which provides confluence and normalization)
-open import Once.Axioms.CCTower as Tower using
+open import Theory.CCTower as Tower using
   ( Term; _⟶_; _⟶*_; IsNormalForm; NoRedex
   ; bccr-confluence; bccr-normalization
   )

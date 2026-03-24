@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.Axioms.Established.StrongNormalization
+-- Theory.Established.StrongNormalization
 --
 -- Strong Normalization Results
 --
@@ -16,7 +16,7 @@
 -- type systems. We postulate them as they are standard.
 ------------------------------------------------------------------------
 
-module Once.Axioms.Established.StrongNormalization where
+module Theory.Established.StrongNormalization where
 
 open import Once.Type using (Type)
 open import Relation.Binary.PropositionalEquality using (_≡_)

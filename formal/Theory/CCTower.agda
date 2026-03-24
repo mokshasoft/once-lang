@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.Axioms.CCTower
+-- Theory.CCTower
 --
 -- The Categorical Tower: Five levels of categorical structure
 --
@@ -39,7 +39,7 @@
 --   3. Established math is IMPORTED, not re-proven
 ------------------------------------------------------------------------
 
-module Once.Axioms.CCTower where
+module Theory.CCTower where
 
 open import Once.Type using (Type; _*_; _+_; _⇒[_]_; Unit; Void; Fix; Quantity)
 open import Relation.Binary.PropositionalEquality using (_≡_)

@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Once.Axioms.Established.LambekLemma
+-- Theory.Established.LambekLemma
 --
 -- Lambek's Lemma (1968)
 --
@@ -12,7 +12,7 @@
 -- establish properties of initial algebras.
 ------------------------------------------------------------------------
 
-module Once.Axioms.Established.LambekLemma where
+module Theory.Established.LambekLemma where
 
 open import Once.Type using (Type; Fix)
 open import Relation.Binary.PropositionalEquality using (_≡_)
