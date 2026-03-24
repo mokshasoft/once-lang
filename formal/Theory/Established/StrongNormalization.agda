@@ -1,182 +1,208 @@
 ------------------------------------------------------------------------
 -- Theory.Established.StrongNormalization
 --
--- Strong Normalization Results
+-- Strong Normalization and Confluence Results
 --
--- Scope: Simply-typed λ-calculus + extensions
+-- These are ESTABLISHED RESULTS from the literature.
+-- Each theorem is annotated with the TOWER LEVEL it applies to.
+--
 -- Sources:
 --   - Tait (1967) "Intensional interpretations of functionals..."
 --   - Girard (1972) "Interprétation fonctionnelle..."
+--   - Lambek & Scott (1986) "Introduction to Higher Order Categorical Logic"
 --   - Mendler (1987) "Inductive types and type constraints..."
 --   - Geuvers (1992) "Inductive and coinductive types with iteration..."
 --   - Abel (2012) "Type-based termination..."
---
--- These are ESTABLISHED RESULTS that we build upon. Each theorem
--- has been proven in the literature and applies to well-defined
--- type systems. We postulate them as they are standard.
 ------------------------------------------------------------------------
 
 module Theory.Established.StrongNormalization where
 
-open import Once.Type using (Type)
+open import Theory.CCTower using (TowerLevel; CCTB; CCT1; CCT2; CCT3; CCT4)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.Product using (Σ; _×_; _,_)
 
 ------------------------------------------------------------------------
--- Abstract Term and Reduction
+-- Abstract Term and Reduction (for stating the theorems)
 ------------------------------------------------------------------------
 
 postulate
-  Term : Type → Type → Set
-  _⟶_ : ∀ {A B} → Term A B → Term A B → Set
-  _⟶*_ : ∀ {A B} → Term A B → Term A B → Set
-  IsNormalForm : ∀ {A B} → Term A B → Set
+  Obj : Set
+  Hom : Obj → Obj → Set
+  _⟶_ : ∀ {A B} → Hom A B → Hom A B → Set
+  _⟶*_ : ∀ {A B} → Hom A B → Hom A B → Set
+  IsNormalForm : ∀ {A B} → Hom A B → Set
 
 ------------------------------------------------------------------------
--- Strong Normalization for STLC
+-- CCT1: Strong Normalization for CCC (Tait 1967)
 --
--- THEOREM (Tait 1967): The simply-typed λ-calculus (STLC) is
--- strongly normalizing. Every reduction sequence terminates.
+-- TOWER LEVEL: CCT1
+--
+-- THEOREM: The simply-typed λ-calculus (= internal language of CCC)
+-- is strongly normalizing.
 --
 -- PROOF TECHNIQUE: Logical relations / reducibility candidates.
--- Define a predicate "reducible" by induction on types, then show:
--- 1. All reducible terms are SN
--- 2. All well-typed terms are reducible
---
--- This establishes that CCC (CCT1) is strongly normalizing.
 ------------------------------------------------------------------------
+
+cct1-sn-applies-to : TowerLevel
+cct1-sn-applies-to = CCT1
 
 postulate
-  stlc-strong-normalization :
-    ∀ {A B} (t : Term A B) →
-    Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
+  cct1-strong-normalization :
+    ∀ {A B} (t : Hom A B) →
+    Σ (Hom A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
 
 ------------------------------------------------------------------------
--- Strong Normalization for System F (Polymorphism)
+-- CCT1: Confluence for CCC (Lambek & Scott 1986)
 --
--- THEOREM (Girard 1972): System F (polymorphic λ-calculus) is
--- strongly normalizing.
+-- TOWER LEVEL: CCT1
 --
--- PROOF TECHNIQUE: Reducibility candidates indexed by type interpretations.
--- More complex than STLC because types can be quantified.
---
--- Note: Full System F is beyond CCT4, but this result is foundational.
+-- THEOREM: CCC reduction is confluent (Church-Rosser).
 ------------------------------------------------------------------------
+
+cct1-confluence-applies-to : TowerLevel
+cct1-confluence-applies-to = CCT1
 
 postulate
-  system-f-strong-normalization :
-    ∀ {A B} (t : Term A B) →
-    Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
-
-------------------------------------------------------------------------
--- Strong Normalization with Inductive Types
---
--- THEOREM (Mendler 1987, Geuvers 1992): STLC extended with
--- strictly positive inductive types is strongly normalizing.
---
--- KEY INSIGHT: Strict positivity ensures that recursive calls
--- are always on structurally smaller arguments.
---
--- This establishes that CCT3 is strongly normalizing.
-------------------------------------------------------------------------
-
--- Strict positivity condition
-postulate
-  IsStrictlyPositive : Type → Set
-
--- SN for STLC + strictly positive inductive types
-postulate
-  inductive-strong-normalization :
-    ∀ {A B} (t : Term A B) →
-    -- Given: All Fix types are strictly positive
-    Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
-
-------------------------------------------------------------------------
--- Productivity for Coinductive Types
---
--- THEOREM (Abel 2012): STLC extended with guarded coinductive types
--- is productive: every term normalizes to WHNF in finite steps.
---
--- KEY INSIGHT: Guardedness ensures that each corecursive step
--- produces observable output before recursing.
---
--- Note: "Normalization" for coinductive types means productivity,
--- not full evaluation (which may be infinite).
-------------------------------------------------------------------------
-
--- Guardedness condition (corecursion guarded by constructors)
-postulate
-  IsGuarded : ∀ {A B} → Term A B → Set
-
--- Weak head normal form (observable structure)
-postulate
-  IsWHNF : ∀ {A B} → Term A B → Set
-
--- Productivity for guarded coinductive types
-postulate
-  coinductive-productivity :
-    ∀ {A B} (t : Term A B) →
-    -- Given: All corecursive definitions are guarded
-    Σ (Term A B) (λ whnf → (t ⟶* whnf) × IsWHNF whnf)
-
-------------------------------------------------------------------------
--- Mixed Inductive-Coinductive Types
---
--- THEOREM (Abel 2012): Systems with both inductive AND coinductive
--- types normalize, provided:
--- 1. Inductive types are strictly positive
--- 2. Coinductive types are guarded
--- 3. The polarity (μ vs ν) is respected
---
--- This establishes that CCT4 (full BCCR) is well-behaved.
-------------------------------------------------------------------------
-
-postulate
-  mixed-normalization :
-    ∀ {A B} (t : Term A B) →
-    -- Given: Positivity for μ, guardedness for ν
-    Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
-
-------------------------------------------------------------------------
--- Confluence (Church-Rosser)
---
--- THEOREM: The λ-calculus and its extensions are confluent.
--- If t ⟶* u and t ⟶* v, then there exists w with u ⟶* w and v ⟶* w.
---
--- Combined with strong normalization, this gives UNIQUE normal forms.
-------------------------------------------------------------------------
-
-postulate
-  church-rosser :
-    ∀ {A B} {t u v : Term A B} →
+  cct1-confluence :
+    ∀ {A B} {t u v : Hom A B} →
     t ⟶* u → t ⟶* v →
-    Σ (Term A B) (λ w → (u ⟶* w) × (v ⟶* w))
+    Σ (Hom A B) (λ w → (u ⟶* w) × (v ⟶* w))
 
 ------------------------------------------------------------------------
--- Confluence + SN = Unique Normal Forms
+-- CCT2: Strong Normalization for BCC
 --
--- COROLLARY: In a confluent, strongly normalizing system,
--- every term has a UNIQUE normal form.
+-- TOWER LEVEL: CCT2
+--
+-- THEOREM: Adding coproducts to CCC preserves strong normalization.
+--
+-- This follows from CCT1-SN because coproduct rules are eliminative.
+------------------------------------------------------------------------
+
+cct2-sn-applies-to : TowerLevel
+cct2-sn-applies-to = CCT2
+
+postulate
+  cct2-strong-normalization :
+    ∀ {A B} (t : Hom A B) →
+    Σ (Hom A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
+
+------------------------------------------------------------------------
+-- CCT2: Confluence for BCC
+--
+-- TOWER LEVEL: CCT2
+--
+-- THEOREM: Adding coproducts to CCC preserves confluence.
+--
+-- Coproduct rules are orthogonal to exponential rules.
+------------------------------------------------------------------------
+
+cct2-confluence-applies-to : TowerLevel
+cct2-confluence-applies-to = CCT2
+
+postulate
+  cct2-confluence :
+    ∀ {A B} {t u v : Hom A B} →
+    t ⟶* u → t ⟶* v →
+    Σ (Hom A B) (λ w → (u ⟶* w) × (v ⟶* w))
+
+------------------------------------------------------------------------
+-- CCT3: Strong Normalization with Inductive Types (Mendler 1987)
+--
+-- TOWER LEVEL: CCT3
+--
+-- THEOREM: BCC extended with strictly positive inductive types
+-- is strongly normalizing.
+--
+-- REQUIREMENT: All μ-types must be strictly positive.
+------------------------------------------------------------------------
+
+cct3-sn-applies-to : TowerLevel
+cct3-sn-applies-to = CCT3
+
+postulate
+  IsStrictlyPositive : Obj → Set
+
+  cct3-strong-normalization :
+    ∀ {A B} (t : Hom A B) →
+    -- Given: All Fix types are strictly positive
+    Σ (Hom A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
+
+------------------------------------------------------------------------
+-- CCT3: Confluence with Inductive Types
+--
+-- TOWER LEVEL: CCT3
+--
+-- THEOREM: Adding cata rules to BCC preserves confluence.
+--
+-- REQUIREMENT: cata rules must be orthogonal to BCC rules.
+-- This is proven via the parallel reduction technique.
+------------------------------------------------------------------------
+
+cct3-confluence-applies-to : TowerLevel
+cct3-confluence-applies-to = CCT3
+
+postulate
+  cct3-confluence :
+    ∀ {A B} {t u v : Hom A B} →
+    t ⟶* u → t ⟶* v →
+    Σ (Hom A B) (λ w → (u ⟶* w) × (v ⟶* w))
+
+------------------------------------------------------------------------
+-- CCT4: Productivity for Coinductive Types (Abel 2012)
+--
+-- TOWER LEVEL: CCT4
+--
+-- THEOREM: BCC extended with guarded coinductive types is productive.
+--
+-- "Productive" means: every term reduces to WHNF in finite steps.
+-- Full evaluation may be infinite, but each step is finite.
+--
+-- REQUIREMENT: All corecursive definitions must be guarded.
+------------------------------------------------------------------------
+
+cct4-productivity-applies-to : TowerLevel
+cct4-productivity-applies-to = CCT4
+
+postulate
+  IsGuarded : ∀ {A B} → Hom A B → Set
+  IsWHNF : ∀ {A B} → Hom A B → Set
+
+  cct4-productivity :
+    ∀ {A B} (t : Hom A B) →
+    -- Given: All corecursive definitions are guarded
+    Σ (Hom A B) (λ whnf → (t ⟶* whnf) × IsWHNF whnf)
+
+------------------------------------------------------------------------
+-- CCT4: Confluence with Coinductive Types
+--
+-- TOWER LEVEL: CCT4
+--
+-- THEOREM: Adding ana rules to CCT3 preserves confluence.
+--
+-- REQUIREMENT: ana rules must be orthogonal to cata and BCC rules.
+------------------------------------------------------------------------
+
+cct4-confluence-applies-to : TowerLevel
+cct4-confluence-applies-to = CCT4
+
+postulate
+  cct4-confluence :
+    ∀ {A B} {t u v : Hom A B} →
+    t ⟶* u → t ⟶* v →
+    Σ (Hom A B) (λ w → (u ⟶* w) × (v ⟶* w))
+
+------------------------------------------------------------------------
+-- Derived: Unique Normal Forms
+--
+-- COROLLARY: Confluence + SN implies unique normal forms.
+--
+-- Applies to: CCT1, CCT2, CCT3
+-- For CCT4: unique WHNF (not full NF, since ν-types may be infinite)
 ------------------------------------------------------------------------
 
 postulate
   unique-normal-form :
-    ∀ {A B} (t : Term A B) →
-    Σ (Term A B) (λ nf →
+    ∀ {A B} (t : Hom A B) →
+    Σ (Hom A B) (λ nf →
       (t ⟶* nf) × IsNormalForm nf ×
       (∀ nf' → (t ⟶* nf') → IsNormalForm nf' → nf ≡ nf'))
-
-------------------------------------------------------------------------
--- Consequences for BCCR
---
--- The tower structure allows us to COMPOSE these results:
---
--- CCTB: SN trivially (no recursion)
--- CCT1: SN by Tait (1967)
--- CCT2: SN by extension (coproducts preserve SN)
--- CCT3: SN by Mendler/Geuvers (inductive types)
--- CCT4: Productivity by Abel (coinductive types)
---
--- Each level INHERITS the previous level's SN and adds new constructs
--- that preserve the property.
-------------------------------------------------------------------------

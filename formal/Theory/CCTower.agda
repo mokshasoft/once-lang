@@ -1,74 +1,69 @@
 ------------------------------------------------------------------------
 -- Theory.CCTower
 --
--- The Categorical Tower: Five levels of categorical structure
+-- The Categorical Tower: Definition of the five levels
 --
--- Each level EXTENDS the previous. Properties proven at lower levels
--- lift to higher levels, giving compositional proofs.
+-- This module DEFINES what each level of the tower contains.
+-- It does NOT postulate any properties - those are in Established/.
 --
 -- ┌─────────────────────────────────────────────────────────────┐
 -- │  CCT4: + νF, Out, ana (final coalgebras / coinductive)      │
--- │    Properties: DERIVED from CCT3 + Coalgebra theorems       │
 -- │    = Full BCCR                                              │
 -- ├─────────────────────────────────────────────────────────────┤
 -- │  CCT3: + μF, In, cata (initial algebras / inductive)        │
--- │    Properties: DERIVED from CCT2 + Lambek's Lemma           │
 -- ├─────────────────────────────────────────────────────────────┤
 -- │  CCT2: + initial, inl, inr, [_,_] (coproducts)              │
--- │    Properties: DERIVED from CCT1 + coproduct preservation   │
 -- │    = BCC (Bicartesian Closed Category)                      │
 -- ├─────────────────────────────────────────────────────────────┤
 -- │  CCT1: + curry, apply (exponentials)                        │
--- │    Properties: ESTABLISHED (Lambek & Scott 1986)            │
 -- │    = CCC (Cartesian Closed Category)                        │
 -- ├─────────────────────────────────────────────────────────────┤
 -- │  CCTB: terminal, fst, snd, ⟨_,_⟩, id, ∘                     │
--- │    Properties: BASE CASE (trivial/definitional)             │
 -- │    = CC (Cartesian Category)                                │
 -- └─────────────────────────────────────────────────────────────┘
 --
--- WHY THIS STRUCTURE?
---
--- Monolithic Approach (Hard):
---   Prove confluence for full BCCR all at once: ~15+ rules, O(n²) cases
---
--- Tower Approach (Simple):
---   Each proof is SMALL because:
---   1. It ASSUMES the previous level's result
---   2. It only proves NEW constructs preserve the property
---   3. Established math is IMPORTED, not re-proven
+-- Each level EXTENDS the previous with new structure.
 ------------------------------------------------------------------------
 
 module Theory.CCTower where
 
-open import Once.Type using (Type; _*_; _+_; _⇒[_]_; Unit; Void; Fix; Quantity)
-open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Data.Product using (Σ; _×_; _,_; proj₁; proj₂)
-
 ------------------------------------------------------------------------
--- Common Definitions
+-- Tower Level Enumeration
 ------------------------------------------------------------------------
 
--- Abstract term type (morphism in the category)
--- In the concrete implementation, this is Once.CCC.IR.IR
-postulate
-  Term : Type → Type → Set
-
--- Abstract reduction relation
-postulate
-  _⟶_ : ∀ {A B} → Term A B → Term A B → Set
-  _⟶*_ : ∀ {A B} → Term A B → Term A B → Set  -- reflexive transitive closure
-
--- Normal form predicate
-postulate
-  IsNormalForm : ∀ {A B} → Term A B → Set
-  NoRedex : ∀ {A B} → Term A B → Set
+data TowerLevel : Set where
+  CCTB : TowerLevel  -- Cartesian Category (base)
+  CCT1 : TowerLevel  -- + Exponentials = CCC
+  CCT2 : TowerLevel  -- + Coproducts = BCC
+  CCT3 : TowerLevel  -- + Initial Algebras (μ-types)
+  CCT4 : TowerLevel  -- + Final Coalgebras (ν-types) = BCCR
 
 ------------------------------------------------------------------------
--- CCTB: Cartesian Category (Base Case)
+-- Level Extension Relation
+------------------------------------------------------------------------
+
+data _extends_ : TowerLevel → TowerLevel → Set where
+  cct1-extends-cctb : CCT1 extends CCTB
+  cct2-extends-cct1 : CCT2 extends CCT1
+  cct3-extends-cct2 : CCT3 extends CCT2
+  cct4-extends-cct3 : CCT4 extends CCT3
+
+-- Transitive closure: CCT4 extends everything below it
+data _extends*_ : TowerLevel → TowerLevel → Set where
+  ext-refl : ∀ {l} → l extends* l
+  ext-step : ∀ {l m n} → l extends m → m extends* n → l extends* n
+
+------------------------------------------------------------------------
+-- CCTB: Cartesian Category (Base)
 ------------------------------------------------------------------------
 --
--- Structure: id, ∘, terminal, fst, snd, ⟨_,_⟩
+-- Structure:
+--   id       : A → A
+--   _∘_      : (B → C) → (A → B) → (A → C)
+--   terminal : A → Unit
+--   fst      : A × B → A
+--   snd      : A × B → B
+--   ⟨_,_⟩    : (C → A) → (C → B) → (C → A × B)
 --
 -- Reduction rules:
 --   id-left   : id ∘ f ⟶ f
@@ -76,235 +71,95 @@ postulate
 --   fst-pair  : fst ∘ ⟨f,g⟩ ⟶ f
 --   snd-pair  : snd ∘ ⟨f,g⟩ ⟶ g
 --   η-pair    : ⟨fst,snd⟩ ⟶ id
---   terminal  : f ⟶ terminal (uniqueness)
---
--- Properties (BASE CASE - trivial/definitional):
---   The confluence and normalization of these rules are essentially
---   definitional: products have unique pairing, terminal object is
---   unique, and identity is absorbed by composition.
+--   terminal  : !f = !g (uniqueness)
 ------------------------------------------------------------------------
 
-module CCTB where
-
-  -- Base case: confluence for cartesian category
-  -- This is trivial because the rules are non-overlapping and
-  -- each reduces to a canonical form.
-  postulate
-    cctb-confluence : ∀ {A B} {t u v : Term A B} →
-                      t ⟶* u → t ⟶* v →
-                      Σ (Term A B) (λ w → (u ⟶* w) × (v ⟶* w))
-
-  -- Base case: normalization for cartesian category
-  -- Every term has a normal form because the rules are size-reducing.
-  postulate
-    cctb-normalization : ∀ {A B} (t : Term A B) →
-                         Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
-
-
 ------------------------------------------------------------------------
--- CCT1: + Exponentials (extends CCTB)
--- = CCC (Cartesian Closed Category)
+-- CCT1: + Exponentials = CCC (Cartesian Closed Category)
 ------------------------------------------------------------------------
 --
--- Additional structure: curry, apply
+-- Additional structure:
+--   curry : (A × B → C) → (A → B ⇒ C)
+--   apply : (A ⇒ B) × A → B
 --
 -- Additional reduction rules:
---   curry-β : apply ∘ ⟨curry f, id⟩ ⟶ f
+--   curry-β : apply ∘ ⟨curry f, g⟩ ⟶ f ∘ ⟨id, g⟩
 --   curry-η : curry (apply ∘ ⟨f ∘ fst, snd⟩) ⟶ f
 --
--- Properties (REDUCE to CCTB + exponential preservation):
---
--- Source: Lambek & Scott (1986) "Introduction to Higher Order
---         Categorical Logic", Cambridge University Press.
---
--- The λ-calculus interpretation in a CCC is well-known to have
--- confluence (Church-Rosser) and strong normalization (for STLC).
+-- Established properties (see Established/):
+--   - Confluence: Lambek & Scott (1986)
+--   - Strong Normalization: Tait (1967)
 ------------------------------------------------------------------------
 
-module CCT1 where
-
-  open CCTB public
-
-  -- CCT1 confluence: Via CCTB confluence + exponential orthogonality
-  --
-  -- The curry/apply rules are orthogonal to the product rules:
-  -- - curry-β creates a function, product rules project components
-  -- - curry-η eliminates redundant currying, independent of products
-  --
-  -- Source: Lambek & Scott (1986), Section 1.4
-  postulate
-    cct1-confluence : ∀ {A B} {t u v : Term A B} →
-                      t ⟶* u → t ⟶* v →
-                      Σ (Term A B) (λ w → (u ⟶* w) × (v ⟶* w))
-
-  -- CCT1 normalization: Via CCTB normalization + exponential preservation
-  --
-  -- STLC (CCC interpretation) is strongly normalizing.
-  --
-  -- Source: Tait (1967) "Intensional interpretations of functionals..."
-  postulate
-    cct1-normalization : ∀ {A B} (t : Term A B) →
-                         Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
-
-
 ------------------------------------------------------------------------
--- CCT2: + Coproducts (extends CCT1)
--- = BCC (Bicartesian Closed Category)
+-- CCT2: + Coproducts = BCC (Bicartesian Closed Category)
 ------------------------------------------------------------------------
 --
--- Additional structure: initial, inl, inr, [_,_] (case)
+-- Additional structure:
+--   initial : Void → A
+--   inl     : A → A + B
+--   inr     : B → A + B
+--   [_,_]   : (A → C) → (B → C) → (A + B → C)
 --
 -- Additional reduction rules:
 --   case-inl : [f,g] ∘ inl ⟶ f
 --   case-inr : [f,g] ∘ inr ⟶ g
 --   η-case   : [inl,inr] ⟶ id
---   initial  : uniqueness from initial object
+--   initial  : !f = !g (uniqueness from Void)
 --
--- Properties (REDUCE to CCT1 + coproduct preservation):
---   Coproducts are orthogonal to products and exponentials.
---   The case rules match on constructors, while product/exponential
---   rules manipulate structure - they don't interfere.
+-- Established properties:
+--   - Confluence: extends CCT1 (coproducts orthogonal)
+--   - Strong Normalization: extends CCT1
 ------------------------------------------------------------------------
 
-module CCT2 where
-
-  open CCT1 public
-
-  -- CCT2 confluence: Via CCT1 confluence + coproduct orthogonality
-  --
-  -- Coproduct rules are orthogonal to exponential/product rules:
-  -- - case-β rules match on inl/inr constructors
-  -- - curry/apply work on function types
-  -- - fst/snd work on product types
-  -- These operate on different type constructors, so no critical pairs.
-  postulate
-    cct2-confluence : ∀ {A B} {t u v : Term A B} →
-                      t ⟶* u → t ⟶* v →
-                      Σ (Term A B) (λ w → (u ⟶* w) × (v ⟶* w))
-
-  -- CCT2 normalization: Via CCT1 normalization + coproduct preservation
-  --
-  -- Adding coproducts to CCC preserves strong normalization because
-  -- case analysis is eliminative (reduces term size or structure).
-  postulate
-    cct2-normalization : ∀ {A B} (t : Term A B) →
-                         Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
-
-
 ------------------------------------------------------------------------
--- CCT3: + Initial Algebras (extends CCT2)
--- = BCC + Inductive Types
+-- CCT3: + Initial Algebras (μ-types / inductive types)
 ------------------------------------------------------------------------
 --
--- Additional structure: μF (Fix), In (fold), cata
+-- Additional structure:
+--   μF   : Type (least fixed point of functor F)
+--   In   : F(μF) → μF
+--   Out  : μF → F(μF)
+--   cata : (F A → A) → (μF → A)
 --
 -- Additional reduction rules:
 --   cata-β : cata alg ∘ In ⟶ alg ∘ fmap (cata alg)
---   Out-In : Out ∘ In ⟶ id (from Lambek's Lemma)
+--   out-in : Out ∘ In ⟶ id (Lambek's Lemma)
 --
--- Properties (REDUCE to CCT2 + Lambek's Lemma):
---
--- Lambek's Lemma (1968): The structure map In : F(μF) → μF is an
--- isomorphism. This means Out ∘ In = id and In ∘ Out = id.
---
--- The cata rule is the universal property of initial algebras:
--- cata is THE unique morphism from the initial algebra.
+-- Established properties (see Established/LambekLemma.agda):
+--   - Lambek's Lemma: In is an isomorphism (Lambek 1968)
+--   - cata uniqueness: universal property of initial algebras
+--   - Strong Normalization: Mendler (1987), requires strict positivity
+--   - Confluence: requires orthogonality argument
 ------------------------------------------------------------------------
 
-module CCT3 where
-
-  open CCT2 public
-
-  -- CCT3 confluence: Via CCT2 confluence + cata orthogonality
-  --
-  -- The cata-β rule is orthogonal to BCC rules:
-  -- - cata works on Fix types, while curry/apply work on arrows
-  -- - cata consumes In constructors, while case consumes inl/inr
-  --
-  -- The Out-In rule is just Lambek's lemma (isomorphism).
-  --
-  -- Source: Lambek (1968) "A fixpoint theorem for complete categories"
-  postulate
-    cct3-confluence : ∀ {A B} {t u v : Term A B} →
-                      t ⟶* u → t ⟶* v →
-                      Σ (Term A B) (λ w → (u ⟶* w) × (v ⟶* w))
-
-  -- CCT3 normalization: Via CCT2 normalization + Lambek (finite depth)
-  --
-  -- Normalization for inductive types relies on:
-  -- 1. cata unfolds finitely (μF is LEAST fixpoint)
-  -- 2. Each cata-β step reduces the "size" of the algebra
-  --
-  -- Source: Mendler (1987), Geuvers (1992)
-  postulate
-    cct3-normalization : ∀ {A B} (t : Term A B) →
-                         Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
-
-
 ------------------------------------------------------------------------
--- CCT4: + Final Coalgebras (extends CCT3)
--- = Full BCCR (Bicartesian Closed Category with Recursion)
+-- CCT4: + Final Coalgebras (ν-types / coinductive types) = Full BCCR
 ------------------------------------------------------------------------
 --
--- Additional structure: νF (cofix), Out, ana
+-- Additional structure:
+--   νF  : Type (greatest fixed point of functor F)
+--   Out : νF → F(νF)
+--   In  : F(νF) → νF
+--   ana : (A → F A) → (A → νF)
 --
 -- Additional reduction rules:
 --   ana-β  : Out ∘ ana coalg ⟶ fmap (ana coalg) ∘ coalg
---   In-Out : In ∘ Out ⟶ id (for ν-types)
+--   in-out : In ∘ Out ⟶ id (dual to Lambek)
 --
--- Properties (REDUCE to CCT3 + Coalgebra theorems):
---
--- Source: Rutten (2000) "Universal coalgebra: a theory of systems"
---
--- Key properties:
--- - ana is THE unique morphism to the final coalgebra
--- - Bisimulation implies equality (coinduction principle)
+-- Established properties (see Established/CoalgebraTheorems.agda):
+--   - ana uniqueness: universal property of final coalgebras (Rutten 2000)
+--   - Coinduction principle: bisimulation implies equality
+--   - Productivity: Abel (2012), requires guardedness
+--   - Confluence: requires orthogonality argument
 ------------------------------------------------------------------------
 
-module CCT4 where
-
-  open CCT3 public
-
-  -- CCT4 confluence: Via CCT3 confluence + ana orthogonality
-  --
-  -- The ana-β rule is orthogonal to algebra rules:
-  -- - ana produces structure, while cata consumes it
-  -- - ana works with Out, while cata works with In
-  --
-  -- The In-Out rule for ν-types is dual to Out-In for μ-types.
-  --
-  -- Source: Rutten (2000) "Universal coalgebra"
-  postulate
-    cct4-confluence : ∀ {A B} {t u v : Term A B} →
-                      t ⟶* u → t ⟶* v →
-                      Σ (Term A B) (λ w → (u ⟶* w) × (v ⟶* w))
-
-  -- CCT4 normalization: Via CCT3 normalization + guardedness
-  --
-  -- Normalization for coinductive types requires GUARDEDNESS:
-  -- Each ana step must be guarded by a constructor (Out).
-  -- This ensures productive corecursion.
-  --
-  -- Source: Abel (2012) "Type-based termination, inflationary fixed-points,
-  --         and mixed inductive-coinductive types"
-  postulate
-    cct4-normalization : ∀ {A B} (t : Term A B) →
-                         Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
-
-
 ------------------------------------------------------------------------
--- Re-exports: Full BCCR = CCT4
+-- BCCR = CCT4
+--
+-- Bicartesian Closed Category with Recursion
+-- The full categorical structure for Once.
 ------------------------------------------------------------------------
 
-open CCT4 public
-
--- BCCR confluence is CCT4 confluence
-bccr-confluence : ∀ {A B} {t u v : Term A B} →
-                  t ⟶* u → t ⟶* v →
-                  Σ (Term A B) (λ w → (u ⟶* w) × (v ⟶* w))
-bccr-confluence = cct4-confluence
-
--- BCCR normalization is CCT4 normalization
-bccr-normalization : ∀ {A B} (t : Term A B) →
-                     Σ (Term A B) (λ nf → (t ⟶* nf) × IsNormalForm nf)
-bccr-normalization = cct4-normalization
+BCCR : TowerLevel
+BCCR = CCT4
