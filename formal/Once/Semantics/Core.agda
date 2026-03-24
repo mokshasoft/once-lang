@@ -407,6 +407,8 @@ coerce-full-to-base (TVar _) x = x
 -- For safety, we postulate a value for unreachable cases.
 -- This makes it explicit: using K with complex types is ill-formed.
 --
+-- DEPRECATED: Use coerce-base-type-round-trip with IsBaseType instead.
+-- This postulate is only needed for ill-formed functors (K with complex types).
 postulate
   -- Value for unreachable cases (ill-formed functor usage)
   ill-formed-K-value : ∀ {A : Set} → A
@@ -444,6 +446,8 @@ coerce-base-to-full (TVar _) x = x
 -- For complex types, we postulate it (these cases are unreachable for
 -- well-formed functors).
 --
+-- DEPRECATED: Use coerce-base-type-round-trip with IsBaseType instead.
+-- These postulates are only needed for ill-formed functors.
 postulate
   -- Round-trip for complex types (unreachable for well-formed functors)
   coerce-type-round-trip-function : ∀ {A B q} (x : ⟦ A ⟧ → ⟦ B ⟧) →
