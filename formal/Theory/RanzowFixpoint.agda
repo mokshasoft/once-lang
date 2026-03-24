@@ -72,8 +72,8 @@ record RFProperties (R : ReductionSystem) : Set₁ where
 --
 --   T(⌜T⌝) →* ⌜T⌝
 --
--- THEOREM: If T has the Ranzow Fixpoint, then T is correct
--- (preserves semantics).
+-- Theorems about the Ranzow Fixpoint (e.g., that it implies
+-- correctness) live in Theory.RanzowFixpoint.Correctness.
 ------------------------------------------------------------------------
 
 module RF (R : ReductionSystem) (P : RFProperties R) where
@@ -88,25 +88,6 @@ module RF (R : ReductionSystem) (P : RFProperties R) where
   -- A transformation is self-verifying if it has the Ranzow Fixpoint
   SelfVerifying : Hom Code Code → Set
   SelfVerifying = HasRanzowFixpoint
-
-  ------------------------------------------------------------------------
-  -- Main Theorem: Ranzow Fixpoint implies Correctness
-  --
-  -- If T(⌜T⌝) →* ⌜T⌝, then T preserves semantics.
-  --
-  -- Proofs that specific classes of transformations have the Ranzow
-  -- Fixpoint property live in Theory.RanzowFixpoint.Correctness.
-  ------------------------------------------------------------------------
-
-  -- T preserves semantics (abstract - depends on semantic model)
-  postulate
-    PreservesSemantics : Hom Code Code → Set
-
-  -- Ranzow Fixpoint implies correctness
-  postulate
-    rf-implies-correct : (T : Hom Code Code) →
-                         HasRanzowFixpoint T →
-                         PreservesSemantics T
 
 ------------------------------------------------------------------------
 -- Instantiation at Tower Levels
@@ -135,14 +116,13 @@ open import Theory.CCTower using (TowerLevel; CCT1; CCT2; CCT3; CCT4)
 --
 --   "A transformation is correct if it is a fixpoint on its own encoding"
 --
--- This is parameterized so it applies to any level of the tower:
+-- This module DEFINES the property. It is parameterized so it can be
+-- instantiated at any level of the tower:
 --   - CCT1: CCC (simply-typed λ-calculus)
 --   - CCT2: BCC (+ coproducts)
 --   - CCT3: BCC + μ-types (+ inductive types)
 --   - CCT4: BCCR (+ coinductive types)
 --
--- The proof at each level uses:
---   - Confluence from Established/StrongNormalization
---   - Normalization from Established/StrongNormalization
---   - Encoding properties specific to that level
+-- Proofs about the Ranzow Fixpoint live in:
+--   - Theory.RanzowFixpoint.Correctness (RF implies semantics preservation)
 ------------------------------------------------------------------------
