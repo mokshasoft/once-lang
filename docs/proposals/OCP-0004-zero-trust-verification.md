@@ -722,13 +722,7 @@ Why ~50-100 lines suffices:
 - No complex algorithms
 ```
 
-The bootstrap normalizer can be:
-1. Hand-verified by mathematicians (it IS the math)
-2. Implemented multiple times independently
-3. Cross-checked against hand calculations
-4. Run on paper for small examples
-
-Once the bootstrap normalizer verifies the Once verifier, the Once verifier can self-verify and verify everything else.
+**Note**: The approach below still trusts this code. See "The Assembly Gap and Its Resolution" for how to eliminate even this trust by verifying the normalizer's traces directly.
 
 ---
 
@@ -769,21 +763,19 @@ The checker can be implemented in any language. Its correctness follows from:
 
 All of these are **mechanical** checks that directly correspond to definitions.
 
-### Multiple Independent Implementations
+### Multiple Implementations (Development Aid)
+
+During development, multiple implementations can help catch bugs:
 
 ```
 Checker in C      ──┐
 Checker in Rust    │
-Checker in Python  ├──→ All must agree on all inputs
+Checker in Python  ├──→ Disagreement reveals bugs
 Checker in OCaml   │
 Checker in Haskell─┘
-
-If 5 independent implementations agree:
-- Either all are correct
-- Or all have the same bug (virtually impossible)
 ```
 
-The implementations don't trust each other. They just check against the categorical definitions, which are the same for everyone.
+However, this is **not** the basis for trust. See "The Assembly Gap and Its Resolution" for how trust is established through human-verifiable traces, not through implementation diversity.
 
 ---
 
@@ -921,10 +913,9 @@ Proof:
 - After bootstrap, trust chain is: math → bootstrap → Once      □
 ```
 
-This is a dramatic reduction from ~50,000 lines (typical proof assistant) to ~50-100 lines (bootstrap normalizer). The bootstrap normalizer is small enough to be:
-- Hand-verified against the mathematical definitions
-- Implemented multiple times for cross-checking
-- Tested exhaustively on small examples
+This is a dramatic reduction from ~50,000 lines (typical proof assistant) to ~50-100 lines (bootstrap normalizer).
+
+**Update**: See "The Assembly Gap and Its Resolution" for how to eliminate even this ~50-100 line TCB by verifying traces instead of trusting code.
 
 ---
 
@@ -955,27 +946,17 @@ valid = cata validAlgebra
 
 This is not "implementing" the specification. It IS the specification, in executable notation.
 
-### Phase 3: Multiple Implementations
+### Phase 3: Development Testing
 
-Create independent implementations:
-
-```
-valid.c      -- C implementation (~100 lines)
-valid.rs     -- Rust implementation (~80 lines)
-valid.py     -- Python implementation (~60 lines)
-valid.ml     -- OCaml implementation (~70 lines)
-valid.once   -- Once implementation (~50 lines)
-```
-
-Cross-check on large corpus of programs.
+During development, test implementations against each other to catch bugs. This is a development aid, not the trust basis.
 
 ### Phase 4: Self-Hosting
 
 ```
 1. Compile valid.once to IR using Once compiler
-2. Run valid.c on this IR → true
-3. Run valid.once on its own IR → true
-4. Self-verification achieved
+2. Run valid.once on its own IR, producing trace
+3. Human verifies trace (one time, ~2 hours)
+4. Trust established through human-verified math
 ```
 
 ### Phase 5: Full Deployment
@@ -1246,9 +1227,8 @@ TCB: Literally just mathematics + human pattern matching
 | Approach | TCB Size | Verification Method |
 |----------|----------|---------------------|
 | Current bootstrap | ~50-100 lines | Code inspection |
-| Proof-carrying + trace verifier | ~15-20 lines | Verify verifier |
-| String rewriting | ~10-15 lines | Rules ARE specification |
-| Pen-and-paper bootstrap | ~0 lines code | Manual trace check |
+| Proof-carrying + trace verifier | ~15-20 lines | Verify verifier code |
+| Verifier with fixpoint (new) | 0 lines | Human verifies verifier's trace |
 
 ### Recommended Path
 
@@ -1260,30 +1240,226 @@ Phase 2: Add trace generation
          Normalizer outputs reduction traces
          Enables manual verification of bootstrap
 
-Phase 3: Implement trace verifier (~15-20 lines)
-         Multiple independent implementations
-         Cross-check on all inputs
+Phase 3: Implement trace verifier as CCC term (~25 primitives)
+         Verifier has fixpoint property like normalizer
+         Verifier's meta-trace is human-verifiable
 
-Phase 4: Pen-and-paper bootstrap verification
-         One-time manual verification of trace verifier
-         Reduces "opaque" TCB to mathematics itself
+Phase 4: Human verification of verifier's meta-trace
+         One-time ~2 hour verification
+         Grounds entire system in human-checked math
 
 Final state:
 ┌─────────────────────────────────────────────────────────────┐
-│  Trusted: Mathematics + ~15-20 line trace verifier          │
-│  Verified by traces: Everything else                        │
+│  Trusted: Mathematics only                                   │
+│  Verified by human-checked traces: Verifier, then everything│
 └─────────────────────────────────────────────────────────────┘
 ```
 
+See "The Assembly Gap and Its Resolution" below for the complete solution.
+
 ### The Theoretical Minimum
 
-The absolute minimum TCB would be:
+The absolute minimum TCB is:
 
-1. **~0 lines of code**: Define rules on paper, verify traces by hand
-2. **Hardware**: Must execute something (unavoidable)
-3. **Human**: Must check something once (unavoidable for bootstrap)
+1. **Mathematics**: CCC reduction rules (definitions, not code)
+2. **Hardware**: Must render traces faithfully (unavoidable)
+3. **Human**: Must verify ~200-400 pattern matches once (bootstrap)
 
-This is as close to "trust only mathematics" as computationally possible.
+No software trust required. This is the theoretical minimum for any verification system.
+
+---
+
+## The Assembly Gap and Its Resolution
+
+### The Problem: Mathematical Proofs Don't Apply to Binaries
+
+The previous sections establish that if a normalizer N is built from CCC primitives and achieves a fixpoint, then N is correct. But there's a critical gap:
+
+```
+Mathematical Normalizer N          Assembly/Binary B
+(CCC primitives, proven correct)   (running on hardware)
+            ↑                              ↑
+      Theorems apply here           Theorems say nothing here
+```
+
+**The gap**: How do we know the actual binary B faithfully implements the mathematical N?
+
+This matters because:
+1. **Malicious tampering**: Someone could modify the assembly while preserving the fixpoint on self-test
+2. **Compiler bugs**: The compiler translating N to assembly could have bugs
+3. **"Trusting Trust"**: The entire toolchain could be compromised
+
+The fixpoint property proves N (the abstract CCC term) is correct, but says nothing about whether B corresponds to N.
+
+### Why Trace Verification Alone Doesn't Solve It
+
+One might think: "Run B, get a trace, verify the trace by hand."
+
+But this has a flaw: **B produces the trace**. A malicious B could:
+- Internally compute something wrong
+- Output a perfectly valid trace
+- Humans verify the printed trace, not what actually happened
+
+The trace is just bytes that B chose to output. There's no guarantee they reflect B's actual computation.
+
+### The Solution: Traces as Self-Certifying Mathematical Objects
+
+The key insight is to change our perspective on what traces are:
+
+**Old view**: Trace = record of what the software did (requires trusting software)
+**New view**: Trace = mathematical proof that stands on its own (requires no trust)
+
+A valid CCC reduction trace is a **mathematical object**. Each step either is or isn't a valid CCC reduction — this is a mathematical fact independent of what produced the trace.
+
+If a binary produces an **invalid** trace, verification catches it.
+If a binary produces a **valid** trace, the **result is correct by math**, regardless of what the binary does internally.
+
+### The Minimal Verifier with Fixpoint Property
+
+The verifier V only needs to check: "Is this single step a valid CCC reduction?"
+
+```
+V : Step → Bool
+V (before, rule, after) =
+  case rule of
+    IdRight  → before matches (f ∘ id) ∧ after ≡ f
+    IdLeft   → before matches (id ∘ f) ∧ after ≡ f
+    FstPair  → before matches (fst ∘ ⟨f,g⟩) ∧ after ≡ f
+    SndPair  → before matches (snd ∘ ⟨f,g⟩) ∧ after ≡ g
+    CaseInl  → before matches ([f,g] ∘ inl) ∧ after ≡ f
+    CaseInr  → before matches ([f,g] ∘ inr) ∧ after ≡ g
+    ... (12-15 rules total)
+```
+
+**Crucially, V itself is a CCC term**. Written as `cata TermF verifyAlgebra` where `verifyAlgebra` is NoRedex, V has the **same fixpoint property** as the normalizer:
+
+```
+normalize(encode(V)) ⟶* encode(V)
+```
+
+But V is **much smaller** than the normalizer:
+- Normalizer N: ~100-150 CCC primitives
+- Verifier V: ~20-30 CCC primitives
+
+### Size Estimates for Human Verification
+
+```
+V ≈ 25 CCC primitives
+encode(V) ≈ 30-40 nodes
+Trace of normalizing encode(V) ≈ 40-60 steps
+V verifying that trace ≈ 40-60 verification steps
+Meta-trace ≈ 200-400 primitive operations
+```
+
+At 10 seconds per operation: **~1-2 hours of human work**.
+
+### Decomposition for Even Smaller Verification
+
+V can be split into micro-verifiers:
+
+```
+V_id   : checks id-left, id-right           (~5 primitives)  ~15 min
+V_pair : checks fst-pair, snd-pair, η-pair  (~8 primitives)  ~20 min
+V_case : checks case-inl, case-inr, η-case  (~8 primitives)  ~20 min
+V_exp  : checks β-curry, η-curry            (~6 primitives)  ~15 min
+V_cata : checks cata-β                      (~5 primitives)  ~15 min
+```
+
+Each micro-verifier has its own fixpoint, and each can be verified independently in ~15-20 minutes.
+
+### The Complete Bootstrap Protocol
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              PHASE 1: VERIFY THE VERIFIER                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  For each micro-verifier V_x:                                │
+│                                                              │
+│  1. Run ANY implementation of V_x on encode(V_x)             │
+│     → Produces trace T_x                                     │
+│                                                              │
+│  2. V verifies T_x, producing meta-trace M_x                │
+│                                                              │
+│  3. Format M_x in human-readable form:                       │
+│                                                              │
+│     ═══════════════════════════════════════════════════════  │
+│     VERIFICATION OF T_id, STEP 3                             │
+│     ═══════════════════════════════════════════════════════  │
+│                                                              │
+│     Claim: (compose f id) ──[id-right]──▶ f                  │
+│                                                              │
+│     Check 1: Does "compose f id" match pattern "_ ∘ id"?     │
+│              compose  f   id                                 │
+│              [_____] [_] [id]                                │
+│              ✓ Match with _ = f                              │
+│                                                              │
+│     Check 2: Does result "f" equal the extracted _?          │
+│              Result: f                                       │
+│              Extracted: f                                    │
+│              ✓ Equal                                         │
+│                                                              │
+│     Step 3 VALID ✓                                           │
+│     ═══════════════════════════════════════════════════════  │
+│                                                              │
+│  4. Human verifies M_x by reading (one time, ~15-20 min)    │
+│                                                              │
+│  After Phase 1: V is PROVEN correct, not trusted             │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│              PHASE 2: VERIFY THE NORMALIZER                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. Run normalizer N on encode(N)                            │
+│     → Produces trace T_N                                     │
+│                                                              │
+│  2. V verifies T_N (V is now trusted from Phase 1)          │
+│     → If valid, N is PROVEN correct                          │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│              PHASE 3: ONGOING VERIFICATION                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  All computation produces traces                             │
+│  V verifies all traces                                       │
+│  V's correctness is grounded in human-verified proof         │
+│                                                              │
+│  SOFTWARE TRUST: ZERO                                        │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Why This Eliminates All Software Trust
+
+The key properties:
+
+1. **Traces are mathematical proofs**: A valid trace proves the computation is correct, regardless of what produced it. An invalid trace is caught by verification.
+
+2. **V has a fixpoint**: V is itself a CCC term with the fixpoint property, so V's correctness can be verified the same way as N's.
+
+3. **V is small enough for human verification**: The meta-trace M_V is ~200-400 operations, verifiable in 1-2 hours.
+
+4. **Human verification is one-time**: After the bootstrap, V is proven correct and can verify everything else.
+
+5. **No code inspection needed**: We don't verify source code or assembly. We verify mathematical traces.
+
+```
+Trust chain:
+
+Mathematics (CCC reduction rules)
+    ↓ defines
+What counts as a valid trace
+    ↓ verified by
+Human reading meta-traces (one time, ~2 hours)
+    ↓ proves
+V (verifier) is correct
+    ↓ proves via traces
+N (normalizer) is correct
+    ↓ proves via traces
+All Once programs are correct
+
+SOFTWARE TRUST AT EACH STEP: ZERO
+```
 
 ---
 
@@ -1291,26 +1467,11 @@ This is as close to "trust only mathematics" as computationally possible.
 
 ### What We Still Trust
 
-1. **Mathematics**: Category theory is consistent. If mathematics itself is inconsistent, all bets are off. (But then so is everything else.)
+1. **Mathematics**: Category theory is consistent and the CCC reduction rules are correct. If mathematics itself is inconsistent, all bets are off. (But then so is everything else in formal verification.)
 
-2. **Hardware**: CPU executes correctly. A hardware bug could cause incorrect verification. (Unavoidable for any computation.)
+2. **Hardware**: The hardware correctly outputs the trace to a human-readable medium (paper, screen). This is unavoidable for any computation, but the trust is minimal: we only need the trace to be faithfully rendered, not that any computation was performed correctly.
 
-3. **Bootstrap Code** (choose your level):
-
-   **Level 1 (~50-100 lines)**: Full bootstrap normalizer
-   - Direct correspondence to mathematical definitions
-   - Multiple independent implementations possible
-   - Small enough for careful code review
-
-   **Level 2 (~15-20 lines)**: Trace verifier only
-   - Normalizer produces proof traces
-   - Only the trace verifier is trusted
-   - Even smaller, even easier to verify
-
-   **Level 3 (~0 lines)**: Pen-and-paper verification
-   - One-time manual check of bootstrap trace
-   - Trust only human pattern matching ability
-   - Theoretical minimum for any computational system
+3. **Human Verification** (one-time): A human correctly verifies the bootstrap meta-traces (~200-400 operations, ~2 hours). The trace format is designed to make each step self-evident — pattern matching that a mathematician can verify by inspection.
 
 4. **Encoding Faithfulness**: The IR representation faithfully captures the program.
 
@@ -1372,11 +1533,14 @@ This would require dependent types (per Once's roadmap) but the same minimal-tru
 │                     THE CLAIM                               │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Once programs can be verified with trust only in:          │
+│  Once programs can be verified with ZERO SOFTWARE TRUST:    │
 │                                                             │
-│  1. Mathematics (category theory, since 1960s)              │
-│  2. Hardware (physical computation)                         │
-│  3. Minimal bootstrap code (see levels below)               │
+│  Trust only:                                                │
+│  1. Mathematics (CCC reduction rules, since 1960s)          │
+│  2. Hardware (to render traces faithfully)                  │
+│  3. Human verification (one-time, ~2 hours)                 │
+│                                                             │
+│  NO trust in: compilers, proof assistants, or any code      │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                     THE MECHANISM                           │
@@ -1386,36 +1550,50 @@ This would require dependent types (per Once's roadmap) but the same minimal-tru
 │  Validity = categorical laws (definitions, not theorems)    │
 │  Totality = Lambek's Lemma (math theorem, 1968)            │
 │  Productivity = coalgebra theorems (math)                   │
-│  Verification = checking categorical structure (syntactic)  │
-│  Bootstrap = breaks circular dependency with tiny verifier  │
+│                                                             │
+│  KEY INSIGHT: Traces are mathematical proofs                │
+│  - A valid trace proves correctness BY MATH                 │
+│  - Invalid traces are caught by verification                │
+│  - We verify traces, not software                           │
+│                                                             │
+│  THE VERIFIER HAS A FIXPOINT:                               │
+│  - V (verifier) is a CCC term (~25 primitives)              │
+│  - normalize(encode(V)) ⟶* encode(V)                        │
+│  - V's correctness is proven the same way as N's            │
+│  - But V is small enough for human trace verification       │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                     THE BOOTSTRAP                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Phase 1: Verify the Verifier (~2 hours, one time)          │
+│  - Run V on encode(V), get trace                            │
+│  - Format trace in human-readable form                      │
+│  - Human verifies ~200-400 pattern matches                  │
+│  - V is now PROVEN correct                                  │
+│                                                             │
+│  Phase 2: Verify Everything Else (automatic)                │
+│  - V verifies normalizer, compiler, all programs            │
+│  - V's correctness is grounded in Phase 1                   │
+│  - No further human verification needed                     │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                     THE RESULT                              │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Software TCB options (choose your trust level):            │
+│  Software TCB: ZERO LINES                                   │
 │                                                             │
-│  Level 1: ~50-100 lines (bootstrap normalizer)              │
-│           - Standard approach, code inspection              │
-│           - 500x smaller than proof assistants              │
-│                                                             │
-│  Level 2: ~15-20 lines (trace verifier only)                │
-│           - Proof-carrying normalization                    │
-│           - Normalizer verified by traces, not trusted      │
-│                                                             │
-│  Level 3: ~0 lines (pen-and-paper bootstrap)                │
-│           - One-time manual trace verification              │
-│           - Trust only math + human pattern matching        │
+│  We don't trust any software. We verify mathematical        │
+│  traces that prove correctness regardless of what           │
+│  software produced them.                                    │
 │                                                             │
 │  Compare to other systems:                                  │
-│  - Typical proof assistant: ~50,000 lines                   │
-│  - Metamath verifier: ~300 lines                            │
-│  - Once (Level 1): ~50-100 lines                            │
-│  - Once (Level 2): ~15-20 lines                             │
-│  - Once (Level 3): ~0 lines code                            │
+│  - Typical proof assistant: ~50,000 lines trusted           │
+│  - Metamath verifier: ~300 lines trusted                    │
+│  - Once: 0 lines trusted (only math + traces)               │
 │                                                             │
-│  After bootstrap, Once self-verifies with zero additional   │
-│  trust: the verified Once verifier checks everything else.  │
+│  This is the theoretical minimum for any verification       │
+│  system: trust only mathematics and human reasoning.        │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -1429,6 +1607,7 @@ This would require dependent types (per Once's roadmap) but the same minimal-tru
 - Mac Lane, S. (1971). *Categories for the Working Mathematician.*
 - OCP-0003: Total and Productive IR via Layered Architecture.
 - Rutten, J. (2000). "Universal coalgebra: a theory of systems."
+- Thompson, K. (1984). "Reflections on Trusting Trust." *Turing Award Lecture*. (The problem this proposal solves.)
 
 ---
 
