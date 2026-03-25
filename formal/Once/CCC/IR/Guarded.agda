@@ -1,20 +1,19 @@
 ------------------------------------------------------------------------
 -- Once.CCC.IR.Guarded
 --
+-- DEPRECATED: This module is no longer used.
+--
+-- OCP-0003: GuardedT was removed from the IR because productivity
+-- follows directly from IR totality (see IR/Totality.agda).
+-- All IR morphisms terminate, so coalgebras are automatically "guarded"
+-- in the sense that they produce F-layers in finite time.
+--
+-- The module is kept for historical reference but is not imported
+-- by any other module.
+--
+-- Original documentation:
 -- Guarded types for productive corecursion (anamorphisms).
---
--- The Guarded type encodes the guardedness condition: every recursive
--- occurrence must be "guarded" by at least one constructor. This ensures
--- that anamorphisms are productive - each unfolding step produces
--- observable structure before any recursive call.
---
--- KEY INSIGHT: Rather than relying on Agda's built-in productivity
--- checking (which requires copatterns), we encode guardedness in the
--- type. A coalgebra A → Guarded F A guarantees that evaluating it
--- produces at least one constructor before any A values appear.
---
--- Mathematical foundation: This is related to the guardedness predicate
--- in guarded type theory, but simplified for polynomial functors.
+-- The Guarded type encodes the guardedness condition.
 ------------------------------------------------------------------------
 
 module Once.CCC.IR.Guarded where

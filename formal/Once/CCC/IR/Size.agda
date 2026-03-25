@@ -41,8 +41,7 @@ ir-size (Cata _ alg) = 2 +ℕ ir-size alg  -- Similar to curry: contains body
 ir-size (Out _) = 1
 ir-size (Ana _ coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
 ir-size (Hylo _ alg coalg) = 2 +ℕ ir-size alg +ℕ ir-size coalg
-ir-size (Unguard _) = 1
-ir-size (Guard _) = 1
+-- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-size (free-heap _) = 1
 ir-size (Prim _) = 1

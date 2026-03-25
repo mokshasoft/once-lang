@@ -24,9 +24,7 @@ open import Once.CCC.IR
 open import Once.Semantics.Machine
   using (⟦_⟧; sem-pair; sem-fst; sem-snd; sem-inl; sem-inr; sem-case;
          -- OCP-0003: fold/unfold removed. Use recursion scheme semantics:
-         sem-In; sem-cata; sem-CoOut;
-         -- OCP-0003: Guarded operations for productive corecursion:
-         sem-unguard; sem-guard; sem-ana-guarded; sem-hylo-guarded;
+         sem-In; sem-cata; sem-CoOut; sem-ana; sem-hylo;
          coerce-functor; coerce-functor⁻¹)
 
 -- Re-export ⟦_⟧ for convenience
@@ -76,16 +74,13 @@ eval ps (In {F} _ _) x = sem-In F (coerce-functor F (μ-type F) x)
 eval ps (Cata {F} wf alg) x = sem-cata wf (λ fa → eval ps alg (coerce-functor⁻¹ F _ fa)) x
 -- Out: observe ν-type (final coalgebra destructor)
 eval ps (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
--- Ana: unfold with GUARDED coalgebra to build ν-type (OCP-0003 productivity)
--- The coalgebra produces GuardedT F A, ensuring productivity by construction.
-eval ps (Ana {F} wf coalg) x = sem-ana-guarded wf (λ a → eval ps coalg a) x
--- Unguard: extract functor value from guarded value
-eval ps (Unguard {F} wf) x = coerce-functor⁻¹ F _ (sem-unguard wf x)
--- Guard: wrap functor value as guarded value
-eval ps (Guard {F} _ {A}) x = sem-guard F (coerce-functor F A x)
--- Hylo: fused cata ∘ ana with GUARDED coalgebra (OCP-0003 productivity)
+-- Ana: unfold with coalgebra to build ν-type (OCP-0003 productivity)
+-- Productivity follows from IR totality - no GuardedT needed.
+eval ps (Ana {F} wf coalg) x = sem-ana F (λ a → coerce-functor F _ (eval ps coalg a)) x
+-- Guard/Unguard removed: productivity follows from IR totality
+-- Hylo: fused cata ∘ ana (OCP-0003 productivity)
 eval ps (Hylo {F} wf alg coalg) x =
-  sem-hylo-guarded wf
+  sem-hylo F
     (λ fb → eval ps alg (coerce-functor⁻¹ F _ fb))
-    (λ a → eval ps coalg a)
+    (λ a → coerce-functor F _ (eval ps coalg a))
     x

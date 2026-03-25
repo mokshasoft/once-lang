@@ -406,17 +406,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       Heap , run-Hylo-postulated
       where postulate run-Hylo-postulated : IRResultAWF Heap (Hylo {F} wf alg coalg) x s alloc
 
-    -- Unguard: extract functor value from guarded value
-    -- Semantically isomorphism: ⟦Guarded⟧ F A ≅ ⟦ F ⟧F A
-    run-ir-wf mIn (Unguard {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      Heap , run-Unguard-postulated
-      where postulate run-Unguard-postulated : IRResultAWF Heap (Unguard {F} wf) x s alloc
-
-    -- Guard: wrap functor value as guarded value
-    -- Semantically isomorphism: ⟦ F ⟧F A ≅ ⟦Guarded⟧ F A
-    run-ir-wf mIn (Guard {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      Heap , run-Guard-postulated
-      where postulate run-Guard-postulated : IRResultAWF Heap (Guard {F} wf) x s alloc
+    -- Guard/Unguard removed: productivity follows from IR totality
 
   -- Public API with ValidAtWF
   -- Returns existential mode + IRResultAWF with ValidAtWF for result validity.

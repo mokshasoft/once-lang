@@ -1,7 +1,6 @@
 -- SPDX-License-Identifier: AGPL-3.0-or-later
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
-{-# OPTIONS --large-indices #-}
 ------------------------------------------------------------------------
 -- Once.Semantics.Core
 --
@@ -13,10 +12,6 @@
 --   - Semantic laws
 --
 -- Instantiate with ℕ for machine semantics, ℤ for proof semantics.
---
--- Note: --large-indices is required because ⟦Guarded⟧ is indexed by Set.
--- This allows constructors like GRec to store values of the index type.
--- Agda explicitly suggests this for forced index patterns.
 ------------------------------------------------------------------------
 
 module Once.Semantics.Core (IntRep : Set) where
@@ -93,44 +88,7 @@ open import Once.Functor.Base
 ⟦ν⟧ : Functor → Set
 ⟦ν⟧ = ν-sem IntRep
 
-------------------------------------------------------------------------
--- Guarded Functor Values
---
--- ⟦Guarded⟧ F A represents guarded F-shaped values with A at recursive
--- positions. It is structurally isomorphic to ⟦ F ⟧F A.
---
--- KEY DESIGN DECISION: GConst uses ⟦_⟧-base instead of ⟦_⟧.
--- This breaks the mutual dependency cycle and avoids strict positivity
--- violations. Since ⟦_⟧-base returns ⊤ for complex types (functions,
--- μ-type, ν-type, GuardedT), and well-formed functors only use base
--- types in K positions, this is semantically equivalent for valid code.
---
--- STRUCTURAL ISOMORPHISM: ⟦Guarded⟧ F A ≅ ⟦ F ⟧F A
--- The Guarded constructors mirror the functor structure exactly:
---   GConst for K, GRec for Id, GProd for ⊗, GInl/GInr for ⊕
---
--- This enables proving:
---   sem-guard : ⟦ F ⟧F A → ⟦Guarded⟧ F A
---   sem-unguard : ⟦Guarded⟧ F A → ⟦ F ⟧F A
---   sem-unguard ∘ sem-guard = id
---   sem-guard ∘ sem-unguard = id
-------------------------------------------------------------------------
-
--- | Guarded functor values (structural definition)
---
--- Each constructor corresponds to a functor constructor:
---   GConst : constant values (K A) - uses ⟦_⟧-base to avoid cycle
---   GRec   : recursive positions (Id) - the "guard"
---   GProd  : products (F ⊗ G)
---   GInl   : left injection (F ⊕ G)
---   GInr   : right injection (F ⊕ G)
---
-data ⟦Guarded⟧ : Functor → Set → Set where
-  GConst : ∀ {A B} → ⟦ IntRep ⟧-base A → ⟦Guarded⟧ (K A) B
-  GRec   : ∀ {A} → A → ⟦Guarded⟧ Id A
-  GProd  : ∀ {F G A} → ⟦Guarded⟧ F A → ⟦Guarded⟧ G A → ⟦Guarded⟧ (F ⊗ G) A
-  GInl   : ∀ {F G A} → ⟦Guarded⟧ F A → ⟦Guarded⟧ (F ⊕ G) A
-  GInr   : ∀ {F G A} → ⟦Guarded⟧ G A → ⟦Guarded⟧ (F ⊕ G) A
+-- ⟦Guarded⟧ removed: productivity follows from IR totality (see IR/Totality.agda)
 
 ------------------------------------------------------------------------
 -- Type Interpretation
@@ -147,8 +105,7 @@ data ⟦Guarded⟧ : Functor → Set → Set where
 -- OCP-0003: Fix removed, use μ-type/ν-type
 ⟦ μ-type F ⟧     = ⟦μ⟧ F
 ⟦ ν-type F ⟧     = ⟦ν⟧ F
--- OCP-0003: GuardedT for productive corecursion
-⟦ GuardedT F A ⟧ = ⟦Guarded⟧ F ⟦ A ⟧
+-- GuardedT removed: productivity follows from IR totality
 ⟦ Int ⟧          = IntRep
 ⟦ Float ⟧        = AgdaFloat
 ⟦ Str ⟧          = String
@@ -391,7 +348,7 @@ coerce-full-to-base (_ ⇒[ _ ] _) _ = tt   -- Functions → ⊤
 coerce-full-to-base (Eff _ _) _ = tt       -- Effects → ⊤
 coerce-full-to-base (μ-type _) _ = tt      -- μ → ⊤
 coerce-full-to-base (ν-type _) _ = tt      -- ν → ⊤
-coerce-full-to-base (GuardedT _ _) _ = tt  -- Guarded → ⊤
+-- GuardedT removed: productivity follows from IR totality
 coerce-full-to-base Int x = x
 coerce-full-to-base Float x = x
 coerce-full-to-base Str x = x
@@ -605,87 +562,6 @@ unfoldS (sem-CoIn F x) = coerce-ν-in F (⟦ν⟧ F) x
 sem-ana : ∀ (F : Functor) {A : Set} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
 unfoldS (sem-ana F {A} coalg a) = sfmap (translateF IntRep F) (sem-ana F coalg) (coerce-ν-in F A (coalg a))
 
-------------------------------------------------------------------------
--- Guarded Operations (OCP-0003)
---
--- These operations support the GuardedT type for productive corecursion.
--- Now defined structurally since ⟦Guarded⟧ is structurally defined.
-------------------------------------------------------------------------
-
--- | Unguard: extract functor value from guarded value
---
--- This "consumes" the guardedness - the F-layer has been observed.
--- Requires WellFormedF proof for postulate-free coercion at K positions.
---
--- Note: For K positions, we coerce from ⟦_⟧-base to ⟦_⟧ since GConst
--- stores base interpretation values but ⟦ F ⟧F uses full interpretation.
---
-sem-unguard : ∀ {F : Functor} → WellFormedF F → ∀ {A : Set} → ⟦Guarded⟧ F A → ⟦ F ⟧F A
-sem-unguard (wf-K pB) (GConst x) = coerce-base-to-full pB x
-sem-unguard wf-Id (GRec a) = a
-sem-unguard (wf-Prod wfF wfG) (GProd gf gg) =
-  (sem-unguard wfF gf , sem-unguard wfG gg)
-sem-unguard (wf-Sum wfF wfG) (GInl gf) = inj₁ (sem-unguard wfF gf)
-sem-unguard (wf-Sum wfF wfG) (GInr gg) = inj₂ (sem-unguard wfG gg)
-
--- | Guard: wrap functor value as guarded
---
--- Establishes the isomorphism: ⟦Guarded⟧ F A ≅ ⟦ F ⟧F A
---
--- CATEGORICAL JUSTIFICATION:
--- ⟦Guarded⟧ F A is structurally isomorphic to ⟦ F ⟧F A. The Guarded
--- constructors mirror the functor structure exactly:
---   GConst for K, GRec for Id, GProd for ⊗, GInl/GInr for ⊕
---
--- Any ⟦ F ⟧F A value can be wrapped as ⟦Guarded⟧ F A by following the
--- functor structure. This doesn't bypass productivity - it just
--- recognizes that the types are isomorphic.
---
--- The PURPOSE of requiring GuardedT in Ana is to ensure coalgebras are
--- DEFINED in a guarded way. But for EXISTING F(A) values (e.g., from
--- Out observing a ν-value), wrapping as Guarded is always valid.
---
--- Note: For K positions, we coerce from ⟦_⟧ to ⟦_⟧-base since GConst
--- stores base interpretation values but ⟦ F ⟧F uses full interpretation.
---
-sem-guard : ∀ (F : Functor) {A : Set} → ⟦ F ⟧F A → ⟦Guarded⟧ F A
-sem-guard (K B) x = GConst (coerce-full-to-base B x)
-sem-guard Id a = GRec a
-sem-guard (F ⊗ G) (xf , xg) = GProd (sem-guard F xf) (sem-guard G xg)
-sem-guard (F ⊕ G) (inj₁ xf) = GInl (sem-guard F xf)
-sem-guard (F ⊕ G) (inj₂ xg) = GInr (sem-guard G xg)
-
--- | Guard-Unguard round-trip: unguard ∘ guard = id (PROVEN)
---
-sem-unguard-guard : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Set} (x : ⟦ F ⟧F A)
-                  → sem-unguard wf (sem-guard F x) ≡ x
-sem-unguard-guard (wf-K pB) x = coerce-base-type-round-trip pB x
-sem-unguard-guard wf-Id a = refl
-sem-unguard-guard (wf-Prod wfF wfG) (xf , xg) =
-  cong₂ _,_ (sem-unguard-guard wfF xf) (sem-unguard-guard wfG xg)
-sem-unguard-guard (wf-Sum wfF wfG) (inj₁ xf) = cong inj₁ (sem-unguard-guard wfF xf)
-sem-unguard-guard (wf-Sum wfF wfG) (inj₂ xg) = cong inj₂ (sem-unguard-guard wfG xg)
-
--- | Guard-Unguard round-trip: guard ∘ unguard = id (PROVEN)
---
-sem-guard-unguard : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A : Set} (x : ⟦Guarded⟧ F A)
-                  → sem-guard F (sem-unguard wf x) ≡ x
-sem-guard-unguard (wf-K pB) (GConst x) = cong GConst (coerce-base-type⁻¹-round-trip pB x)
-sem-guard-unguard wf-Id (GRec a) = refl
-sem-guard-unguard (wf-Prod wfF wfG) (GProd gf gg) =
-  cong₂ GProd (sem-guard-unguard wfF gf) (sem-guard-unguard wfG gg)
-sem-guard-unguard (wf-Sum wfF wfG) (GInl gf) = cong GInl (sem-guard-unguard wfF gf)
-sem-guard-unguard (wf-Sum wfF wfG) (GInr gg) = cong GInr (sem-guard-unguard wfG gg)
-
--- | Guarded anamorphism: given guarded coalgebra A → Guarded F A, unfold A → νF
--- This is the productive version of sem-ana.
---
--- OCP-0003: Defined as sem-ana composed with sem-unguard.
--- Requires WellFormedF proof for postulate-free coercion.
---
-sem-ana-guarded : ∀ {F : Functor} → WellFormedF F → {A : Set} → (A → ⟦Guarded⟧ F A) → A → ⟦ν⟧ F
-sem-ana-guarded {F} wf coalg = sem-ana F (sem-unguard wf ∘ coalg)
-
 -- | Hylomorphism: fused cata ∘ ana, computed directly
 -- Semantically: hylo alg coalg = cata alg ∘ ana coalg
 -- But computed without building intermediate structure
@@ -698,17 +574,6 @@ sem-hylo : ∀ (F : Functor) {A B : Set}
          → (A → ⟦ F ⟧F A)  -- coalgebra
          → A → B
 sem-hylo F alg coalg x = alg (sem-fmap F (sem-hylo F alg coalg) (coalg x))
-
--- | Guarded hylomorphism: fused cata with guarded coalgebra
---
--- OCP-0003: Defined as sem-hylo composed with sem-unguard.
--- Requires WellFormedF proof for postulate-free coercion.
---
-sem-hylo-guarded : ∀ {F : Functor} → WellFormedF F → {A B : Set}
-                 → (⟦ F ⟧F B → B)           -- algebra
-                 → (A → ⟦Guarded⟧ F A)      -- guarded coalgebra
-                 → A → B
-sem-hylo-guarded {F} wf alg coalg = sem-hylo F alg (sem-unguard wf ∘ coalg)
 
 ------------------------------------------------------------------------
 -- μ-Coercion Round-Trip Properties (OCP-0003)
@@ -927,18 +792,3 @@ sem-ana-Out-id {F} wf x = trans (sem-ana-is-anaS-unfoldS wf x) (anaS-Out-id (tra
 sem-hylo-compute : ∀ (F : Functor) {A B : Set} (alg : ⟦ F ⟧F B → B) (coalg : A → ⟦ F ⟧F A) (x : A)
                  → sem-hylo F alg coalg x ≡ alg (sem-fmap F (sem-hylo F alg coalg) (coalg x))
 sem-hylo-compute F alg coalg x = refl
-
--- | Guarded hylomorphism computation law
---
--- OCP-0003: Definitionally true from the definition of sem-hylo-guarded.
---
--- sem-hylo-guarded wf alg coalg = sem-hylo F alg (sem-unguard wf ∘ coalg)
--- So sem-hylo-guarded wf alg coalg x
---    = alg (fmap (sem-hylo F alg (sem-unguard wf ∘ coalg)) (sem-unguard wf (coalg x)))
---    = alg (fmap (sem-hylo-guarded wf alg coalg) (sem-unguard wf (coalg x)))
---
-sem-hylo-guarded-compute : ∀ {F : Functor} (wf : WellFormedF F) {A B : Set}
-                           (alg : ⟦ F ⟧F B → B) (coalg : A → ⟦Guarded⟧ F A) (x : A)
-                         → sem-hylo-guarded wf alg coalg x ≡
-                           alg (sem-fmap F (sem-hylo-guarded wf alg coalg) (sem-unguard wf (coalg x)))
-sem-hylo-guarded-compute wf alg coalg x = refl

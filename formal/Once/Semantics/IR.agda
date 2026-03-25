@@ -100,22 +100,17 @@ eval ps (Cata {F} wf alg) x =
 -- Out: ν-type F → ⟦ F ⟧T (ν-type F)
 eval ps (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
 --
--- Ana: given GUARDED coalg : A → GuardedT F A, produce A → ν-type F
--- OCP-0003: Productivity enforced by requiring GuardedT output.
-eval ps (Ana {F} wf coalg) x =
-  sem-ana-guarded wf (λ a → eval ps coalg a) x
+-- Ana: given coalg : A → ⟦ F ⟧T A, produce A → ν-type F
+-- Productivity follows from IR totality (see IR/Totality.agda).
+eval ps (Ana {F} wf {A} coalg) x =
+  sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
 --
--- Unguard: extract functor value from guarded value
-eval ps (Unguard {F} wf) x = coerce-functor⁻¹ F _ (sem-unguard wf x)
---
--- Guard: wrap functor value as guarded (establishes GuardedT ≅ ⟦ F ⟧T isomorphism)
-eval ps (Guard {F} _ {A}) x = sem-guard F (coerce-functor F A x)
+-- Guard/Unguard removed: GuardedT was unnecessary.
 --
 -- Hylo: Cata alg ∘ Ana coalg, computed directly without intermediate
--- OCP-0003: Uses GUARDED coalgebra for productivity
-eval ps (Hylo {F} wf alg coalg) x =
+eval ps (Hylo {F} wf {A} alg coalg) x =
   let alg-set = λ fb → eval ps alg (coerce-functor⁻¹ F _ fb)
-  in sem-hylo-guarded wf alg-set (λ a → eval ps coalg a) x
+  in sem-hylo F alg-set (λ a → coerce-functor F A (eval ps coalg a)) x
 
 -- Effect lifting (D032)
 -- arr : (A ⇒ B) → Eff A B

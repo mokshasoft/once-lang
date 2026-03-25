@@ -206,34 +206,23 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   ty-Out : ∀ {Γ F} → WellFormedF F → Γ ⊢ ν-type F ⟶ ⟦ F ⟧T (ν-type F)
 
   -- Ana: anamorphism (unfold into ν-type)
-  -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
-  --      Γ ⊢ A ⟶ GuardedT F A
+  -- Productivity follows from IR totality: coalgebras are IR morphisms,
+  -- and IR morphisms are total. See IR/Totality.agda.
+  --      Γ ⊢ A ⟶ ⟦ F ⟧T A
   -- ───────────────────────────────
   --      Γ ⊢ A ⟶ ν-type F
   --
-  ty-Ana : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ A ⟶ GuardedT F A → Γ ⊢ A ⟶ ν-type F
+  ty-Ana : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ A ⟶ ⟦ F ⟧T A → Γ ⊢ A ⟶ ν-type F
 
-  -- Unguard: extract functor value from guarded value
-  -- OCP-0003: used after Ana processing
-  -- ──────────────────────────────────────
-  -- Γ ⊢ GuardedT F A ⟶ ⟦ F ⟧T A
-  --
-  ty-Unguard : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ GuardedT F A ⟶ ⟦ F ⟧T A
-
-  -- Guard: wrap functor value as guarded value
-  -- OCP-0003: inverse of Unguard, establishes GuardedT ≅ ⟦ F ⟧T isomorphism
-  -- ──────────────────────────────────────
-  -- Γ ⊢ ⟦ F ⟧T A ⟶ GuardedT F A
-  --
-  ty-Guard : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ ⟦ F ⟧T A ⟶ GuardedT F A
+  -- Guard/Unguard removed: productivity follows from IR totality (see IR/Totality.agda)
 
   -- Hylo: hylomorphism (fused ana-cata)
-  -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
-  --      Γ ⊢ ⟦ F ⟧T B ⟶ B    Γ ⊢ A ⟶ GuardedT F A
+  -- Productivity follows from IR totality.
+  --      Γ ⊢ ⟦ F ⟧T B ⟶ B    Γ ⊢ A ⟶ ⟦ F ⟧T A
   -- ───────────────────────────────────────────────
   --                Γ ⊢ A ⟶ B
   --
-  ty-Hylo : ∀ {Γ F} → WellFormedF F → ∀ {A B} → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ A ⟶ GuardedT F A → Γ ⊢ A ⟶ B
+  ty-Hylo : ∀ {Γ F} → WellFormedF F → ∀ {A B} → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ A ⟶ ⟦ F ⟧T A → Γ ⊢ A ⟶ B
 
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
@@ -265,8 +254,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-Cata {F = F} wf alg ⌋ = Cata {F} wf ⌊ alg ⌋
 ⌊ ty-Out {F = F} wf ⌋ = Out {F} wf
 ⌊ ty-Ana {F = F} wf coalg ⌋ = Ana {F} wf ⌊ coalg ⌋
-⌊ ty-Unguard {F = F} wf ⌋ = Unguard {F} wf
-⌊ ty-Guard {F = F} wf ⌋ = Guard {F} wf
+-- Guard/Unguard removed: productivity follows from IR totality
 ⌊ ty-Hylo {F = F} wf alg coalg ⌋ = Hylo {F} wf ⌊ alg ⌋ ⌊ coalg ⌋
 
 -- | Convert IR term to explicit typing derivation
@@ -296,8 +284,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ Cata {F} wf alg ⌉ = ty-Cata {F = F} wf ⌈ alg ⌉
 ⌈ Out {F} wf ⌉ = ty-Out {F = F} wf
 ⌈ Ana {F} wf coalg ⌉ = ty-Ana {F = F} wf ⌈ coalg ⌉
-⌈ Unguard {F} wf ⌉ = ty-Unguard {F = F} wf
-⌈ Guard {F} wf ⌉ = ty-Guard {F = F} wf
+-- Guard/Unguard removed: productivity follows from IR totality
 ⌈ Hylo {F} wf alg coalg ⌉ = ty-Hylo {F = F} wf ⌈ alg ⌉ ⌈ coalg ⌉
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f (semantically)
@@ -335,10 +322,7 @@ round-trip-ir (Cata {F} wf alg) x = round-trip-Cata {F} wf alg x
 round-trip-ir (Out {F} wf) x = round-trip-Out {F} wf x
   where postulate round-trip-Out : ∀ {F} (wf : WellFormedF F) (x : ⟦ ν-type F ⟧) → eval′ ⌊ ⌈ Out {F} wf ⌉ ⌋ x ≡ eval′ (Out {F} wf) x
 round-trip-ir (Ana {F} wf coalg) x = round-trip-Ana {F} wf coalg x
-  where postulate round-trip-Ana : ∀ {F} (wf : WellFormedF F) {A} (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Ana {F} wf coalg ⌉ ⌋ x ≡ eval′ (Ana {F} wf coalg) x
-round-trip-ir (Unguard {F} wf) x = round-trip-Unguard {F} wf x
-  where postulate round-trip-Unguard : ∀ {F} (wf : WellFormedF F) {A} (x : ⟦ GuardedT F A ⟧) → eval′ ⌊ ⌈ Unguard {F} wf ⌉ ⌋ x ≡ eval′ (Unguard {F} wf) x
-round-trip-ir (Guard {F} wf) x = round-trip-Guard {F} wf x
-  where postulate round-trip-Guard : ∀ {F} (wf : WellFormedF F) {A} (x : ⟦ ⟦ F ⟧T A ⟧) → eval′ ⌊ ⌈ Guard {F} wf ⌉ ⌋ x ≡ eval′ (Guard {F} wf) x
+  where postulate round-trip-Ana : ∀ {F} (wf : WellFormedF F) {A} (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Ana {F} wf coalg ⌉ ⌋ x ≡ eval′ (Ana {F} wf coalg) x
+-- Guard/Unguard removed: productivity follows from IR totality
 round-trip-ir (Hylo {F} wf alg coalg) x = round-trip-Hylo {F} wf alg coalg x
-  where postulate round-trip-Hylo : ∀ {F} (wf : WellFormedF F) {A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Hylo {F} wf alg coalg ⌉ ⌋ x ≡ eval′ (Hylo {F} wf alg coalg) x
+  where postulate round-trip-Hylo : ∀ {F} (wf : WellFormedF F) {A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Hylo {F} wf alg coalg ⌉ ⌋ x ≡ eval′ (Hylo {F} wf alg coalg) x

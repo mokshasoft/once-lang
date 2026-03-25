@@ -27,8 +27,9 @@ open import Once.Type public
   using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Eff; Int; Float; Str; Buffer; TVar;
          Quantity; Zero; One; Many;
          _⊸_; _⇒_; _⇒₀_; IO;
-         Functor; μ-type; ν-type; GuardedT)
+         Functor; μ-type; ν-type)
   -- OCP-0003: Fix removed. Use μ-type/ν-type instead.
+  -- GuardedT removed: productivity follows from IR totality
 
 ------------------------------------------------------------------------
 -- Re-export generic semantics from Once.Sem
@@ -84,7 +85,7 @@ stack-type-slots (Eff _ B) = stack-type-slots B
 -- OCP-0003: Fix removed. Use μ-type/ν-type instead.
 stack-type-slots (μ-type _) = 1   -- OCP-0003: pointer to inductive structure
 stack-type-slots (ν-type _) = 1   -- OCP-0003: pointer to coinductive structure
-stack-type-slots (GuardedT _ _) = 1  -- OCP-0003: pointer to guarded functor value
+-- GuardedT removed: productivity follows from IR totality
 stack-type-slots (TVar _) = 1     -- polymorphic = pointer
 
 -- Heap representation: identical to stack (reference-based model)
@@ -103,7 +104,7 @@ heap-type-slots (Eff _ B) = heap-type-slots B
 -- OCP-0003: Fix removed. Use μ-type/ν-type instead.
 heap-type-slots (μ-type _) = 1     -- OCP-0003: pointer to inductive structure
 heap-type-slots (ν-type _) = 1     -- OCP-0003: pointer to coinductive structure
-heap-type-slots (GuardedT _ _) = 1  -- OCP-0003: pointer to guarded functor value
+-- GuardedT removed: productivity follows from IR totality
 heap-type-slots (TVar _) = 1       -- polymorphic = pointer
 
 -- Legacy alias (all representations now use reference-based model)

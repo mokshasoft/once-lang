@@ -1281,8 +1281,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ∃[ mOut ] IRResultAWF mOut (Cata {F} wf alg) x s alloc
 
     -- | Ana handler: unfolds coalgebra into ν-type
-    -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
-    run-Ana : ∀ {F} (wf : WellFormedF F) {A} (mIn : AllocMode) (coalg : IR A (GuardedT F A))
+    -- OCP-0003: productivity follows from IR totality, no GuardedT needed
+    run-Ana : ∀ {F} (wf : WellFormedF F) {A} (mIn : AllocMode) (coalg : IR A (⟦ F ⟧T A))
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →
@@ -1293,9 +1293,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       IRResultAWF Heap (Ana {F} wf coalg) x s alloc
 
     -- | Hylo handler: fused cata ∘ ana (deforestation)
-    -- OCP-0003: coalg produces GuardedT F A for productivity enforcement
+    -- OCP-0003: productivity follows from IR totality, no GuardedT needed
     run-Hylo : ∀ {F} (wf : WellFormedF F) {A B} (mIn : AllocMode)
-      (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A))
+      (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A))
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →

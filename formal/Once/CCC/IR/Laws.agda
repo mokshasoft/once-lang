@@ -66,9 +66,9 @@ alloc-mode-independent-curry ps f m₁ m₂ x = refl
 
 -- Import recursion scheme semantic operations
 open import Once.Semantics.Machine
-  using (sem-In; sem-cata; sem-CoOut; sem-ana-guarded; sem-hylo-guarded; sem-unguard;
+  using (sem-In; sem-cata; sem-CoOut; sem-ana; sem-hylo;
          coerce-functor; coerce-functor⁻¹)
-open import Once.Type using (Functor; μ-type; ν-type; GuardedT; ⟦_⟧T)
+open import Once.Type using (Functor; μ-type; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
 
 -- | In evaluation: wraps into μ-type
@@ -86,18 +86,18 @@ eval-Out : ∀ (ps : PrimSem) {F} (wf : WellFormedF F) (x : ⟦ ν-type F ⟧) �
   eval ps (Out {F} wf) x ≡ coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
 eval-Out ps wf x = refl
 
--- | Ana evaluation: unfolds with guarded coalgebra
--- OCP-0003: coalg now produces GuardedT F A for productivity enforcement
-eval-Ana : ∀ (ps : PrimSem) {F A} (wf : WellFormedF F) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) →
-  eval ps (Ana {F} wf coalg) x ≡ sem-ana-guarded wf (λ a → eval ps coalg a) x
+-- | Ana evaluation: unfolds with coalgebra
+-- OCP-0003: productivity follows from IR totality, no GuardedT needed
+eval-Ana : ∀ (ps : PrimSem) {F A} (wf : WellFormedF F) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) →
+  eval ps (Ana {F} wf coalg) x ≡ sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
 eval-Ana ps wf coalg x = refl
 
--- | Hylo evaluation: fused cata ∘ ana with guarded coalgebra
--- OCP-0003: coalg now produces GuardedT F A for productivity enforcement
-eval-Hylo : ∀ (ps : PrimSem) {F A B} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧) →
+-- | Hylo evaluation: fused cata ∘ ana
+-- OCP-0003: productivity follows from IR totality, no GuardedT needed
+eval-Hylo : ∀ (ps : PrimSem) {F A B} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) →
   eval ps (Hylo {F} wf alg coalg) x ≡
-    sem-hylo-guarded wf (λ fb → eval ps alg (coerce-functor⁻¹ F B fb))
-                        (λ a → eval ps coalg a) x
+    sem-hylo F (λ fb → eval ps alg (coerce-functor⁻¹ F B fb))
+               (λ a → coerce-functor F A (eval ps coalg a)) x
 eval-Hylo ps wf alg coalg x = refl
 
 -- | AllocMode independence for In

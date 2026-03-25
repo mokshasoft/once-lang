@@ -62,10 +62,7 @@ ir-stack-requirement (Out _) = 0
 ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg +ℕ pair-slots
 -- Hylo: fused cata ∘ ana, combines both requirements
 ir-stack-requirement (Hylo _ alg coalg) = ir-stack-requirement alg +ℕ ir-stack-requirement coalg +ℕ pair-slots
--- Unguard: extracts from GuardedT, constant
-ir-stack-requirement (Unguard _) = 0
--- Guard: wraps as GuardedT, constant
-ir-stack-requirement (Guard _) = 0
+-- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-stack-requirement (free-heap _) = 0
 ir-stack-requirement (Prim _) = 0  -- Primitives manage own stack

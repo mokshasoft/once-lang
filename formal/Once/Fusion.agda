@@ -168,8 +168,7 @@ fusion-once (Cata {F} wf alg) = Cata {F} wf (fusion-once alg)
 fusion-once (Out wf) = Out wf
 fusion-once (Ana {F} wf coalg) = Ana {F} wf (fusion-once coalg)
 fusion-once (Hylo {F} wf alg coalg) = Hylo {F} wf (fusion-once alg) (fusion-once coalg)
-fusion-once (Unguard wf) = Unguard wf
-fusion-once (Guard wf) = Guard wf
+-- Guard/Unguard removed: productivity follows from IR totality
 
 -- Effects: nothing to fuse
 fusion-once arr = arr

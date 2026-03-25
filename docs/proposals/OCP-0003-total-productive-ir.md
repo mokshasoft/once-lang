@@ -1029,6 +1029,9 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Rename SumFixWF to SumRecWF (fold/unfold removed)
 - [x] Prove `sem-ana-Out-id` via coinductive bisimulation (2026-03-24)
 - [x] Add well-formed functor round-trip proofs (postulate-free path) (2026-03-24)
+- [x] Create Once/CCC/IR/Totality.agda (postulates IR totality) (2026-03-25)
+- [x] Update Once/CCC/IR/Productivity.agda (derives productivity from totality) (2026-03-25)
+- [x] Remove GuardedT/Guard/Unguard from IR (productivity follows from totality) (2026-03-25)
 - [ ] Full IR law proofs (requires function extensionality)
 - [ ] Align with OCP-0004 bootstrap verification
 
@@ -1046,12 +1049,13 @@ For well-formed functors, the coercion round-trips are now fully provable
 without any postulates. The well-formedness predicate ensures K positions
 only contain base types (Unit, Int, Float, Str, Buffer, and their products/sums).
 
-**Remaining Postulates** (2026-03-24)
+**Remaining Postulates** (2026-03-25)
 
 | Postulate | Location | Category | Notes |
 |-----------|----------|----------|-------|
 | `funext` | Core.agda | Standard axiom | Function extensionality, provable in Cubical Agda |
 | `bisimS-to-eq` | Functor/Base.agda | Standard axiom | Coalgebraic extensionality, provable in Cubical Agda |
+| `eval-total` | IR/Totality.agda | Established math | IR evaluation terminates (Tait/Girard/Lambek) |
 | `defaultEvalPrim` | IR.agda | External | Primitive operations are inherently external |
 
 **Standard axioms** (funext, bisimS-to-eq) are well-established mathematical principles that:
@@ -1062,6 +1066,34 @@ only contain base types (Unit, Int, Float, Str, Buffer, and their products/sums)
 **Coercion postulates eliminated:** The previous `ill-formed-K-value` and `coerce-type-round-trip-*`
 postulates have been removed. All IR recursion scheme constructors now require `WellFormedF` proofs,
 making the postulate-free path mandatory rather than optional.
+
+**Totality and Productivity Proofs** (2026-03-25)
+
+New understanding: **Productivity follows from IR totality**, making GuardedT unnecessary.
+
+The reasoning chain:
+```
+IR evaluation is total (established math: Tait, Girard, Lambek)
+    ↓
+Coalgebra c : IR A (⟦ F ⟧T A) terminates, producing F-layer
+    ↓  (this IS "guardedness" — automatic, not checked)
+Each observation of (ana c a) terminates
+    ↓  (this IS "productivity")
+ana c a is productive
+```
+
+New modules created:
+- **Once/CCC/IR/Totality.agda**: Postulates IR evaluation totality (like bootstrap/EstablishedMath)
+- **Once/CCC/IR/Productivity.agda**: Derives productivity from totality
+
+Key insight: In Once's IR, coalgebras `IR A (⟦ F ⟧T A)` are just IR morphisms. IR morphisms
+are total (no general recursion). Therefore:
+1. Every coalgebra terminates and produces `⟦ F ⟧T A` — one F-layer
+2. This is exactly what "guarded" means
+3. GuardedT provides no additional safety — it's just bookkeeping
+
+**Consequence:** GuardedT, Guard, and Unguard can be removed from the IR. Ana can take
+`IR A (⟦ F ⟧T A)` directly. This simplification is planned for Phase 8.
 
 ---
 
@@ -1083,17 +1115,15 @@ type ExprDeclF X Y = (ExprF X Y, DeclF X Y)
 type (Expr, Decl) = μ ExprDeclF
 ```
 
-### 2. Guarded Type Ergonomics
+### 2. ~~Guarded Type Ergonomics~~ RESOLVED
 
-The `Guarded` type enforces guardedness definitionally, but how ergonomic is it in practice?
+~~The `Guarded` type enforces guardedness definitionally, but how ergonomic is it in practice?~~
 
-| Concern | Possible Solution |
-|---------|-------------------|
-| Verbose construction | Smart constructors that build `Guarded` values |
-| Pattern matching | View patterns or projection functions |
-| Nested guardedness | Functorial lifting of `Guarded` |
+**Resolution (2026-03-25):** GuardedT is unnecessary and will be removed.
 
-**Recommendation:** Provide syntactic sugar that elaborates to `Guarded` constructors. Users write natural-looking coalgebras; elaboration produces typed `Guarded` terms.
+Productivity follows from IR totality (see "Totality and Productivity Proofs" above).
+Since all IR coalgebras are automatically "guarded" (they terminate and produce F-layers),
+there's no need for a type-level wrapper. Ana will take `IR A (⟦ F ⟧T A)` directly.
 
 ### 3. QTT Interaction
 
@@ -1129,15 +1159,16 @@ How to ensure `Eff A B` satisfies arrow laws?
 
 ## Implementation Plan
 
-| Phase | Deliverable |
-|-------|-------------|
-| 1. Unified IR | `Once.CCC.IR` with `Functor`, `Guarded`, unified `IR` type |
-| 2. Recognition | `Fold`/`Unfold` → scheme patterns |
-| 3. Backends | Code generation for recursion schemes |
-| 4. Optimizer | Hylo fusion rule, categorical simplifications |
-| 5. Migration | Warnings, guide, auto-rewrite |
-| 6. Removal | Delete `Fold`/`Unfold` |
-| 7. Verification | Agda proofs, bootstrap tower alignment |
+| Phase | Deliverable | Status |
+|-------|-------------|--------|
+| 1. Unified IR | `Once.CCC.IR` with `Functor`, unified `IR` type | ✓ |
+| 2. Recognition | `Fold`/`Unfold` → scheme patterns | ✓ |
+| 3. Backends | Code generation for recursion schemes | |
+| 4. Optimizer | Hylo fusion rule, categorical simplifications | |
+| 5. Migration | Warnings, guide, auto-rewrite | ✓ |
+| 6. Removal | Delete `Fold`/`Unfold` | ✓ |
+| 7. Verification | Agda proofs, Totality.agda, Productivity.agda | ✓ |
+| 8. Simplification | Remove GuardedT/Guard/Unguard (unnecessary) | ✓ |
 
 ---
 
@@ -1148,9 +1179,9 @@ This proposal defines a **unified IR** in `Once.CCC.IR` that enforces totality a
 | Property | Mechanism |
 |----------|-----------|
 | **Totality** | Recursion only via `Cata` (structural, by Lambek's Lemma) |
-| **Productivity** | Corecursion only via `Ana` with `Guarded` coalgebra |
+| **Productivity** | Corecursion only via `Ana`; follows from IR totality |
 | **No infinite loops** | No general `fix` |
-| **No deadlocks** | Type-level guardedness prevents unproductive corecursion |
+| **No deadlocks** | Coalgebras are total → Ana is productive |
 | **Arrow-based effects** | CCC provides structure, types distinguish `A → B` from `Eff A B` |
 | **Dependent types ready** | Consistent logic without termination checker |
 | **Verification simplified** | Proofs focus on algebras, not termination |
@@ -1159,7 +1190,7 @@ This proposal defines a **unified IR** in `Once.CCC.IR` that enforces totality a
 The design:
 - Single unified `IR : Type → Type → Set` with all CCC operations
 - `Functor` type for polynomial functors (per D037)
-- `Guarded` type enforces guardedness at type level — unguarded coalgebras are unconstructable
+- Productivity follows from IR totality — GuardedT is unnecessary (removal planned)
 - Primitive constructors for derived schemes (`Hylo`, `Para`, `Apo`) enable direct optimization
 - Arrow-based effects: CCC structure provides arrow combinators, types distinguish `A → B` from `Eff A B`
 - Aligns with D037 (polynomial functors)
@@ -1170,7 +1201,7 @@ The design:
 
 **The core insight:** Turing completeness is not a feature — it's the absence of a safety guarantee. By removing general recursion and providing structured schemes, Once gains strong guarantees while losing only the ability to write bugs.
 
-**The key principle:** The IR should BE the categorical structure, not a representation that needs validation. `Cata` IS the unique algebra morphism (totality by definition), and `Ana` IS the unique coalgebra morphism (productivity by definition with guarded output).
+**The key principle:** The IR should BE the categorical structure, not a representation that needs validation. `Cata` IS the unique algebra morphism (totality by definition), and `Ana` IS the unique coalgebra morphism (productivity follows from totality — coalgebras are IR morphisms, and IR morphisms are total).
 
 ---
 

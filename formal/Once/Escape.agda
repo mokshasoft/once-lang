@@ -112,8 +112,7 @@ escape-once (Cata {F} wf alg) = Cata {F} wf (escape-once alg)
 escape-once (Out wf) = Out wf
 escape-once (Ana {F} wf coalg) = Ana {F} wf (escape-once coalg)
 escape-once (Hylo {F} wf alg coalg) = Hylo {F} wf (escape-once alg) (escape-once coalg)
-escape-once (Unguard wf) = Unguard wf
-escape-once (Guard wf) = Guard wf
+-- Guard/Unguard removed: productivity follows from IR totality
 
 ------------------------------------------------------------------------
 -- Escape Analysis: Bounded Iteration

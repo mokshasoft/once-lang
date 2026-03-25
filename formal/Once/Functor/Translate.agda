@@ -50,7 +50,6 @@ open import Once.Functor.Base
 ⟦ IntRep ⟧-base (Eff _ _) = ⊤     -- Effects: return ⊤ (not used in K)
 ⟦ IntRep ⟧-base (μ-type _) = ⊤    -- Recursive: return ⊤ (not used in K)
 ⟦ IntRep ⟧-base (ν-type _) = ⊤    -- Corecursive: return ⊤ (not used in K)
-⟦ IntRep ⟧-base (GuardedT _ _) = ⊤ -- Guarded: return ⊤ (not used in K)
 ⟦ IntRep ⟧-base Int = IntRep
 ⟦ IntRep ⟧-base Float = AgdaFloat
 ⟦ IntRep ⟧-base Str = String

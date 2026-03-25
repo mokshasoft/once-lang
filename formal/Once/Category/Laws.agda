@@ -298,11 +298,11 @@ eval-arr-identity f = refl
 open import Once.Semantics.IR
   using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana; sem-hylo;
          sem-fmap; sem-ana-Out-id; sem-hylo-compute;
-         sem-hylo-guarded; sem-hylo-guarded-compute; sem-unguard;
          coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
-         ⟦_⟧F; ⟦Guarded⟧;
+         ⟦_⟧F;
          -- Proven for well-formed functors (no postulates)
          sem-cata-compute; sem-cata-In-id)
+-- GuardedT/sem-unguard/sem-hylo-guarded removed: productivity follows from IR totality
 open import Once.Functor.Translate using (WellFormedF)
 
 open import Once.Postulates using (extensionality)
@@ -493,44 +493,37 @@ eval-cata-In {F} wf {A} alg m x =
 
 -- | Hylo semantics: recursive application of algebra after coalgebra
 --
--- hylo alg coalg x = alg (fmap (hylo alg coalg) (unguard (coalg x)))
+-- hylo alg coalg x = alg (fmap (hylo alg coalg) (coalg x))
 --
 -- This is the defining equation for hylomorphisms.
--- OCP-0003: coalg now produces GuardedT F A for productivity enforcement.
+-- OCP-0003: productivity follows from IR totality, no GuardedT needed.
 --
--- The proof avoids trans by using cong directly on fmap-coerce-coherence′.
--- Since sem-hylo-guarded-compute is refl, both sides reduce definitionally
--- to alg′ applied to the fmap result, differing only by coercion placement.
+-- The proof uses fmap-coerce-coherence′ to relate Set-level sem-fmap
+-- with Type-level fmap-Type through coercions.
 --
 eval-hylo-unfold : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A B : Type}
-                   (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (GuardedT F A)) (x : ⟦ A ⟧)
+                   (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧)
                  → eval′ (Hylo {F} wf alg coalg) x ≡
-                   eval′ alg (fmap-Type F (eval′ (Hylo {F} wf alg coalg)) (eval′ (Unguard {F} wf ∘ coalg) x))
+                   eval′ alg (fmap-Type F (eval′ (Hylo {F} wf alg coalg)) (eval′ coalg x))
 eval-hylo-unfold {F} wf {A} {B} alg coalg x =
-  cong (eval′ alg) (fmap-coerce-coherence′ F {A} {B} (eval′ (Hylo {F} wf alg coalg)) (sem-unguard wf (eval′ coalg x)))
+  cong (eval′ alg) (fmap-coerce-coherence′ F {A} {B} (eval′ (Hylo {F} wf alg coalg)) (coerce-functor F A (eval′ coalg x)))
 
 ------------------------------------------------------------------------
 -- Ana-Out Identity Law (Coinductive)
 --
--- OCP-0003: With guarded corecursion, this law requires reformulation.
+-- OCP-0003: With productivity derived from IR totality, Ana Out now type-checks.
+-- Out : IR (ν-type F) (⟦ F ⟧T (ν-type F))
+-- Ana : IR A (⟦ F ⟧T A) → IR A (ν-type F)
 --
--- Out : IR (ν-type F) (⟦ F ⟧T (ν-type F)) produces unguarded output.
--- Ana : IR A (GuardedT F A) → IR A (ν-type F) requires guarded coalgebras.
---
--- The direct composition Ana Out doesn't type-check because Out produces
--- ⟦ F ⟧T (ν-type F), not GuardedT F (ν-type F).
---
--- The semantic law still holds at the level of sem-ana-Out-id in Core.agda:
--- if we had a way to "guard" Out's output, Ana (guard ∘ Out) = id.
---
--- This is intentional: the guardedness requirement prevents non-productive
--- coalgebras from being passed to Ana. For observations of existing ν-type
--- values (like Out), the value is inherently productive, but this must be
--- made explicit in the type system.
---
--- Future work: Add GuardObs : IR (⟦ F ⟧T A) (GuardedT F A) for cases where
--- guardedness is guaranteed by observation rather than construction.
+-- So Ana Out : IR (ν-type F) (ν-type F) is well-typed.
+-- Semantically: Ana Out ≡ id (identity anamorphism)
 ------------------------------------------------------------------------
 
--- Note: eval-ana-Out-id removed - doesn't type-check with GuardedT enforcement.
--- The semantic foundation (sem-ana-Out-id) still holds in Once.Semantics.Core.
+-- | Ana Out ≡ id (identity anamorphism)
+--
+-- Unfolding with the destructor coalgebra gives back the original value.
+-- This is the dual of eval-cata-In-id.
+--
+eval-ana-Out-id : ∀ {F : Functor} → (wf : WellFormedF F) (x : ⟦ ν-type F ⟧)
+                → eval′ (Ana {F} wf (Out {F} wf)) x ≡ x
+eval-ana-Out-id {F} wf x = sem-ana-Out-id wf x

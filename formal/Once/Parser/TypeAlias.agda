@@ -19,8 +19,9 @@ open import Data.Bool using (if_then_else_)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; TVar; GuardedT;
+                             _*_; _+_; _⇒[_]_; Eff; TVar;
                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
+-- GuardedT removed: productivity follows from IR totality
 
 ------------------------------------------------------------------------
 -- Type Alias Environment
@@ -70,7 +71,7 @@ mutual
   substTVar name rep (Eff a b) = Eff (substTVar name rep a) (substTVar name rep b)
   substTVar name rep (μ-type F) = μ-type (substTVarF name rep F)
   substTVar name rep (ν-type F) = ν-type (substTVarF name rep F)
-  substTVar name rep (GuardedT F A) = GuardedT (substTVarF name rep F) (substTVar name rep A)
+  -- GuardedT removed: productivity follows from IR totality
 
 -- | Apply multiple substitutions (params zipped with args)
 applySubsts : List (String × Type) → Type → Type
@@ -106,4 +107,4 @@ mutual
   expandAliases env (Eff a b) = Eff (expandAliases env a) (expandAliases env b)
   expandAliases env (μ-type F) = μ-type (expandAliasesF env F)
   expandAliases env (ν-type F) = ν-type (expandAliasesF env F)
-  expandAliases env (GuardedT F A) = GuardedT (expandAliasesF env F) (expandAliases env A)
+  -- GuardedT removed: productivity follows from IR totality
