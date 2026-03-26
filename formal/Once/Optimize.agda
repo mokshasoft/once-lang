@@ -447,11 +447,14 @@ mutual
   -- The semantic equivalence is proven in the laws module.
   --
   optimize-once-structural (In wf m) = In wf m
+  optimize-once-structural (out-μ wf) = out-μ wf
   optimize-once-structural (Cata {F} wf alg) = Cata {F} wf (optimize-once alg)
   optimize-once-structural (Out wf) = Out wf
+  optimize-once-structural (in-ν wf m) = in-ν wf m
   optimize-once-structural (Ana {F} wf coalg) = Ana {F} wf (optimize-once coalg)
   optimize-once-structural (Hylo {F} wf alg coalg) = Hylo {F} wf (optimize-once alg) (optimize-once coalg)
   -- Guard/Unguard removed: productivity follows from IR totality
+  -- out-μ/in-ν: Lambek isomorphisms (potential fusion: out-μ ∘ In = id, In ∘ out-μ = id)
 
   -- | Type-directed optimization
   optimize-once : ∀ {A B} → IR A B → IR A B

@@ -92,6 +92,9 @@ eval ps apply (f , a)     = f a
 -- In: ⟦ F ⟧T (μ-type F) → μ-type F
 eval ps (In {F} _ _) x = sem-In F (coerce-functor F (μ-type F) x)
 --
+-- out-μ: μ-type F → ⟦ F ⟧T (μ-type F) (inverse of In, by Lambek's Lemma)
+eval ps (out-μ {F} wf) x = coerce-functor⁻¹ F (μ-type F) (sem-Out wf x)
+--
 -- Cata: given alg : ⟦ F ⟧T A → A, produce μ-type F → A
 -- Build Set-level algebra from Type-level, then apply sem-cata
 eval ps (Cata {F} wf alg) x =
@@ -100,12 +103,16 @@ eval ps (Cata {F} wf alg) x =
 -- Out: ν-type F → ⟦ F ⟧T (ν-type F)
 eval ps (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
 --
+-- in-ν: ⟦ F ⟧T (ν-type F) → ν-type F (inverse of Out, by Lambek's Lemma)
+eval ps (in-ν {F} _ _) x = sem-CoIn F (coerce-functor F (ν-type F) x)
+--
 -- Ana: given coalg : A → ⟦ F ⟧T A, produce A → ν-type F
 -- Productivity follows from IR totality (see IR/Totality.agda).
 eval ps (Ana {F} wf {A} coalg) x =
   sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
 --
 -- Guard/Unguard removed: GuardedT was unnecessary.
+-- out-μ/in-ν: Lambek isomorphisms added for full fusion in observation primitives.
 --
 -- Hylo: Cata alg ∘ Ana coalg, computed directly without intermediate
 eval ps (Hylo {F} wf {A} alg coalg) x =

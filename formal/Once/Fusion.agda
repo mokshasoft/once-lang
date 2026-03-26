@@ -164,11 +164,14 @@ fusion-once apply = apply
 -- in Category/Laws.agda (eval-cata-In, eval-hylo-unfold, eval-ana-Out-id).
 --
 fusion-once (In wf m) = In wf m
+fusion-once (out-μ wf) = out-μ wf
 fusion-once (Cata {F} wf alg) = Cata {F} wf (fusion-once alg)
 fusion-once (Out wf) = Out wf
+fusion-once (in-ν wf m) = in-ν wf m
 fusion-once (Ana {F} wf coalg) = Ana {F} wf (fusion-once coalg)
 fusion-once (Hylo {F} wf alg coalg) = Hylo {F} wf (fusion-once alg) (fusion-once coalg)
 -- Guard/Unguard removed: productivity follows from IR totality
+-- out-μ/in-ν: Lambek isomorphisms, pass through (potential fusion with In/Out)
 
 -- Effects: nothing to fuse
 fusion-once arr = arr

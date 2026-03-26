@@ -96,6 +96,13 @@ data IR : Type → Type → Set where
   -- In: F(μF) → μF (constructor)
   In : ∀ {F} → WellFormedF F → AllocMode → IR (⟦ F ⟧T (μ-type F)) (μ-type F)
 
+  -- out-μ: μF → F(μF) (destructor, inverse of In)
+  -- By Lambek's Lemma, In is an isomorphism, so its inverse exists.
+  -- This enables pattern-matching on μ-types inside Hylo coalgebras,
+  -- which is essential for proper fusion in observation primitives.
+  -- See OCP-0003 "Lambek Isomorphisms" section.
+  out-μ : ∀ {F} → WellFormedF F → IR (μ-type F) (⟦ F ⟧T (μ-type F))
+
   -- Cata: given IR morphism (F(A) → A), produce μF → A
   -- This is the universal property of initial algebras.
   -- Total by Lambek's Lemma: μF is well-founded.
@@ -104,6 +111,11 @@ data IR : Type → Type → Set where
   -- Final coalgebra operations (coinductive types, productive corecursion)
   -- Out: νF → F(νF) (observation/destructor)
   Out : ∀ {F} → WellFormedF F → IR (ν-type F) (⟦ F ⟧T (ν-type F))
+
+  -- in-ν: F(νF) → νF (constructor, inverse of Out)
+  -- By Lambek's Lemma (dual), Out is an isomorphism, so its inverse exists.
+  -- Provides symmetry with μ-type operations.
+  in-ν : ∀ {F} → WellFormedF F → AllocMode → IR (⟦ F ⟧T (ν-type F)) (ν-type F)
 
   -- Ana: given IR morphism (A → F(A)), produce A → νF
   -- Productivity follows from IR totality: coalgebras are IR morphisms,

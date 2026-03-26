@@ -108,11 +108,14 @@ escape-once (free-heap h) = free-heap h
 
 -- OCP-0003 recursion schemes: recurse into algebras/coalgebras
 escape-once (In wf m) = In wf m
+escape-once (out-μ wf) = out-μ wf
 escape-once (Cata {F} wf alg) = Cata {F} wf (escape-once alg)
 escape-once (Out wf) = Out wf
+escape-once (in-ν wf m) = in-ν wf m
 escape-once (Ana {F} wf coalg) = Ana {F} wf (escape-once coalg)
 escape-once (Hylo {F} wf alg coalg) = Hylo {F} wf (escape-once alg) (escape-once coalg)
 -- Guard/Unguard removed: productivity follows from IR totality
+-- out-μ/in-ν: Lambek isomorphisms, pass through
 
 ------------------------------------------------------------------------
 -- Escape Analysis: Bounded Iteration

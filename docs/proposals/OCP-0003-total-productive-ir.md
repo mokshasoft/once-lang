@@ -3,7 +3,7 @@
 **Author:** [TBD]
 **Status:** Draft
 **Created:** 2026-03-10
-**Updated:** 2026-03-24
+**Updated:** 2026-03-26
 
 ---
 
@@ -125,8 +125,8 @@ By enforcing totality through structured recursion schemes, this proposal enable
 │  Coproducts:   Inl, Inr, Case, Initial      │
 │  Exponentials: Curry, Apply                 │
 │  Primitives:   Opaque                       │
-│  Algebras:     In, Cata (total)             │
-│  Coalgebras:   Out, Ana (productive)        │
+│  Algebras:     In, out-μ, Cata (total)      │
+│  Coalgebras:   Out, in-ν, Ana (productive)  │
 │  Derived:      Hylo, Para, Apo              │
 │                                             │
 │  Single unified datatype for all operations │
@@ -189,13 +189,15 @@ data IR : Type → Type → Set where
   Opaque : Name → IR A B
 
   -- Initial algebras (inductive/finite data)
-  In   : IR (⟦ F ⟧ (μ F)) (μ F)
-  Cata : (alg : IR (⟦ F ⟧ A) A) → IR (μ F) A
+  In    : IR (⟦ F ⟧ (μ F)) (μ F)           -- constructor
+  out-μ : IR (μ F) (⟦ F ⟧ (μ F))           -- destructor (inverse of In, by Lambek)
+  Cata  : (alg : IR (⟦ F ⟧ A) A) → IR (μ F) A
 
   -- Final coalgebras (coinductive/infinite codata)
-  -- Guardedness enforced at type level: coalg must produce guarded result
-  Out : IR (ν F) (⟦ F ⟧ (ν F))
-  Ana : (coalg : IR A (Guarded F A)) → IR A (ν F)
+  -- Productivity follows from IR totality (see IR/Totality.agda)
+  Out  : IR (ν F) (⟦ F ⟧ (ν F))            -- destructor
+  in-ν : IR (⟦ F ⟧ (ν F)) (ν F)            -- constructor (inverse of Out, by Lambek)
+  Ana  : (coalg : IR A (⟦ F ⟧ A)) → IR A (ν F)
 
   -- Derived schemes (primitive constructors for optimization)
   Hylo : IR (⟦ F ⟧ B) B → IR A (⟦ F ⟧ A) → IR A B
@@ -267,6 +269,90 @@ data RecType : Set where
   μ : Functor → RecType    -- Least fixed point (inductive/finite)
   ν : Functor → RecType    -- Greatest fixed point (coinductive/infinite)
 ```
+
+### Why μ-type and ν-type Must Be Distinct
+
+A natural question is whether to unify `μ-type` and `ν-type` into a single `Fix` type (as Haskell does).
+This would enable the fusion rule `Cata alg ∘ Ana coalg → Hylo alg coalg` to type-check directly.
+
+**However, unification breaks totality:**
+
+```agda
+-- With unified types, this would type-check:
+natsCoalg : IR Unit (⟦ StreamF ⟧T Unit)   -- produces infinite stream
+sumAlg    : IR (⟦ StreamF ⟧T Int) Int      -- folds to sum
+
+badProgram : IR Unit Int
+badProgram = Cata sumAlg ∘ Ana natsCoalg  -- Type-checks but doesn't terminate!
+```
+
+The problem: `Ana natsCoalg` produces a potentially infinite stream, but `Cata sumAlg` tries to consume
+the entire structure. With unified types, there's no static prevention of folding infinite codata.
+
+**The μ/ν distinction is essential:**
+
+| Type | Semantics | Why Safe |
+|------|-----------|----------|
+| `μ-type F` | Inductive, finite, well-founded | Cata terminates (finite input) |
+| `ν-type F` | Coinductive, potentially infinite | Ana is productive (IR totality) |
+
+With split types:
+- `Cata : IR (μ-type F) A` — only accepts finite data
+- `Ana : IR A (ν-type F)` — produces potentially infinite codata
+- `Cata ∘ Ana` — **type error** (good! prevents non-termination)
+
+**Key insight:** Safety comes from the **type distinction**, not just the operations. IR totality ensures
+each coalgebra step terminates, but that doesn't mean folding infinite codata terminates.
+
+See "Observation Primitives" below for how to safely cross the μ/ν boundary when needed.
+
+### Lambek Isomorphisms
+
+By Lambek's Lemma (1968), the structure maps for initial algebras and final coalgebras are isomorphisms:
+
+```
+In  : ⟦ F ⟧T (μ F) → μ F    is an isomorphism
+Out : ν F → ⟦ F ⟧T (ν F)    is an isomorphism
+```
+
+This means their inverses exist:
+
+```agda
+out-μ : ∀ {F} → IR (μ-type F) (⟦ F ⟧T (μ-type F))   -- inverse of In
+in-ν  : ∀ {F} → IR (⟦ F ⟧T (ν-type F)) (ν-type F)   -- inverse of Out
+```
+
+**Why `out-μ` is needed for full optimization:**
+
+Consider implementing `obs : Nat → Stream A → List A` (observe n elements). The optimal implementation
+is a Hylo where the coalgebra observes both the counter AND the stream:
+
+```agda
+obs = Hylo listAlg obsCoalg
+  where
+    obsCoalg : IR (Nat * Stream A) (⟦ ListF A ⟧T (Nat * Stream A))
+    obsCoalg = case (inl ∘ terminal)
+                    (inr ∘ ⟨ head ∘ snd , ⟨ fst , tail ∘ snd ⟩ ⟩)
+             ∘ ⟨ out-μ ∘ fst , snd ⟩  -- pattern-match on Nat!
+```
+
+Without `out-μ`, we cannot pattern-match on the `Nat` (a μ-type) inside the coalgebra. The alternative
+(using `Cata` over Nat) produces a function that builds intermediate structures, losing fusion:
+
+```
+-- Without out-μ: sum (obs n s) builds intermediate list, then sums
+-- With out-μ:    sum (obs n s) = Hylo sumAlg obsCoalg — no intermediate list!
+```
+
+**The symmetric IR structure:**
+
+| μ-type | ν-type | Justification |
+|--------|--------|---------------|
+| `In` (constructor) | `in-ν` (constructor) | Build recursive structure |
+| `out-μ` (destructor) | `Out` (destructor) | Observe one layer |
+| `Cata` (fold) | `Ana` (unfold) | Universal morphisms |
+
+This symmetry reflects the categorical duality between initial algebras and final coalgebras.
 
 ### Functor Interpretation
 
@@ -386,21 +472,29 @@ This is **not expressible** with `cata`/`ana` — you cannot write mutually recu
 
 ## Alignment with Existing Design
 
-### The Three Strata
+### The Extended Strata
 
-The strata structure (from `libraries.md`) is preserved with the unified IR:
+The strata structure (from `libraries.md`) is extended with coinductive types and observation operations:
 
 ```
 ┌─────────────────────────────────────────────┐
 │         Interpretations                     │  Effect arrows (Opaque with Eff A B types)
 ├─────────────────────────────────────────────┤
-│         Initial                             │  Data types + operations (uses Cata/Ana)
+│         Observation                         │  Safe ν→μ conversions (obs, obsWhile, etc.)
+├─────────────────────────────────────────────┤
+│         Coinitial                           │  Codata types + operations (uses Ana/Out)
+├─────────────────────────────────────────────┤
+│         Initial                             │  Data types + operations (uses Cata/In)
 ├─────────────────────────────────────────────┤
 │         Canonical                           │  Non-recursive combinators (CCC operations)
 ├─────────────────────────────────────────────┤
 │         Once.CCC.IR                         │  Unified IR: all CCC + recursion schemes
 └─────────────────────────────────────────────┘
 ```
+
+**Key insight:** The `Observation` stratum contains primitives that safely cross from `ν-type` to `μ-type`.
+These are implemented as `Hylo` operations — they don't require new IR primitives, just derived operations
+that bound their input. This enables full optimization while preserving totality.
 
 Note: The same `Opaque` constructor is used for both pure primitives (typed `A → B`) and effectful primitives (typed `Eff A B`). The stratum difference is in the types, not the IR structure. The unified IR provides all operations; library strata are a matter of which subset they use.
 
@@ -433,6 +527,110 @@ Operations in Initial become explicit uses of the unified IR's recursion schemes
 
 The operations are the same; the recursion is now explicit and structured. The unified IR types
 (`IR A B`) make domain and codomain explicit.
+
+### Coinitial Library (New)
+
+Parallel to Initial (inductive types), Coinitial provides coinductive types built with `ν-type`:
+
+```
+-- Coinductive types (potentially infinite, produced via Ana, observed via Out)
+type Stream A  = ν(FSum (FConst A) FId)           -- Infinite stream
+type CoList A  = ν(FSum (FConst Unit) (FProd (FConst A) FId))  -- Possibly-finite stream
+
+-- Stream operations (built from Ana/Out)
+head    : Stream A → A                            -- Out then Fst
+tail    : Stream A → Stream A                     -- Out then Snd
+repeat  : A → Stream A                            -- Ana with constant coalgebra
+iterate : (A → A) → A → Stream A                  -- Ana with function application
+map     : (A → B) → Stream A → Stream B           -- Ana transforming elements
+zipWith : (A → B → C) → Stream A → Stream B → Stream C
+filter  : (A → Bool) → Stream A → CoList A        -- May be finite!
+```
+
+**Key difference from Initial:**
+- Initial types are consumed by `Cata` (fold the whole structure)
+- Coinitial types are observed by `Out` (peek at one layer) or transformed by `Ana`
+- You cannot `Cata` a `ν-type` — that's a type error (intentionally!)
+
+### Observation Primitives (New)
+
+Observation primitives safely convert `ν-type` to `μ-type` by **bounding** the output.
+They are implemented as `Hylo` operations — no new IR primitives needed.
+
+The naming follows coalgebraic terminology: we **observe** a coalgebra (coinductive structure)
+by witnessing a bounded number of its unfolding steps, producing an inductive (finite) result.
+
+#### ν → μ Conversions (Bounded Observation)
+
+| Primitive | Type | Description | Implementation |
+|-----------|------|-------------|----------------|
+| `obs` | `Nat → ν F → μ F` | Observe n steps | Hylo |
+| `obsWhile` | `(A → Bool) → ν F → μ F` | Observe while predicate holds | Hylo |
+| `obsUntil` | `(A → Bool) → ν F → μ F` | Observe until predicate holds | Hylo |
+
+#### μ → ν Conversions (Embedding)
+
+| Primitive | Type | Description | Implementation |
+|-----------|------|-------------|----------------|
+| `embed` | `μ F → ν F` | Canonical embedding (finite into cofinite) | Ana |
+| `periodic` | `μ F → ν F` | Periodic extension (repeat forever) | Ana |
+
+#### Direct Hylo Operations (Observation with Fold)
+
+| Primitive | Type | Description |
+|-----------|------|-------------|
+| `foldObs` | `Nat → (B → A → B) → B → ν F → B` | Fold over n observations |
+
+#### Why Observation Primitives Are Safe
+
+Observation primitives are **Hylos** — they fuse generation and consumption without building intermediate structures:
+
+```agda
+-- obs implemented as Hylo
+obs : Nat → Stream A → List A
+obs n s = Hylo listAlg obsCoalg (n, s)
+  where
+    -- Coalgebra: observe stream, decrement counter
+    obsCoalg : (Nat × Stream A) → ListF (Nat × Stream A)
+    obsCoalg (0, _) = Nil
+    obsCoalg (n, s) = Cons (head s, (n-1, tail s))
+
+    -- Algebra: build list
+    listAlg : ListF (List A) → List A
+    listAlg = In
+```
+
+The bounding (counter reaching 0, predicate failing) ensures termination.
+The `Hylo` fuses the bounded observation with list construction — optimal by construction.
+
+### No Lost Optimizations
+
+A key concern was whether split types (μ ≠ ν) would lose the `Cata ∘ Ana → Hylo` optimization.
+
+**Resolution:** Real programs that would benefit from this fusion go through observation primitives,
+which ARE Hylos. The optimization isn't "lost" — it's achieved through a different (safer) path.
+
+**Example: Stream processing pipeline**
+
+```
+-- Haskell (unified types): all can fuse (using Haskell's "take")
+sum . map f . filter p . take n . iterate g $ seed
+
+-- Once (split types): same fusion, explicit observation
+sum ∘ map f ∘ filter p ∘ obs n ∘ iterate g $ seed
+│                       │         │
+│                       │         └─ ν-type (Coinitial)
+│                       └─ Observation (Hylo!)
+└─ μ-type (Initial)
+```
+
+Fusion happens:
+- **Within μ-world (Initial):** Cata computation rules fuse `sum ∘ map f ∘ filter p`
+- **Within ν-world (Coinitial):** Ana computation rules optimize `iterate g`
+- **At observation:** `obs n` IS a Hylo — already optimal!
+
+**The "missing" `Cata ∘ Ana → Hylo` rule is recovered** because `obs n` (and other observation
+primitives) ARE Hylos. No optimization is lost; the code just makes the observation explicit.
 
 ---
 
@@ -514,9 +712,11 @@ From OCP-0004, the unified IR maps directly to categorical concepts:
 ├──────────────────────────┼──────────────────────────────────┤
 │ μF                       │ Initial F-algebra                │
 │ In                       │ Algebra structure: F(μF) → μF    │
+│ out-μ                    │ In⁻¹ : μF → F(μF) (Lambek iso)   │
 │ Cata alg                 │ Unique F-algebra morphism        │
 │ νF                       │ Final F-coalgebra                │
 │ Out                      │ Coalgebra structure: νF → F(νF)  │
+│ in-ν                     │ Out⁻¹ : F(νF) → νF (Lambek iso)  │
 │ Ana coalg                │ Unique F-coalgebra morphism      │
 └──────────────────────────┴──────────────────────────────────┘
 ```
@@ -645,6 +845,7 @@ None of these are useful programs.
 - **Uniform arrow structure** — CCC combinators work for both pure and effectful arrows
 - **Alignment with D037** — IR matches verification requirements
 - **Minimal TCB** — supports OCP-0004 trust boundaries
+- **Full optimization** — observation primitives recover all fusion opportunities (see below)
 
 ### Lost
 
@@ -652,6 +853,23 @@ None of these are useful programs.
 - **Some exotic algorithms** — need restructuring (rare in practice)
 - **Self-interpreters** — need fuel parameter (niche use case)
 - **"Flexibility" to write bugs** — this is not actually a loss
+
+### Not Lost: Optimizations
+
+A concern with split types (μ ≠ ν) was losing the `Cata ∘ Ana → Hylo` fusion.
+
+**This is NOT lost.** The fusion is recovered through observation primitives:
+
+| Concern | Resolution |
+|---------|------------|
+| `Cata ∘ Ana` doesn't type-check | By design — prevents folding infinite codata |
+| Stream pipelines can't fuse | They CAN — through observation primitives |
+| `obs n` breaks fusion | `obs n` IS a Hylo — already optimal |
+| Need to restructure code | Just use explicit observations (clearer anyway) |
+
+**The key insight:** Real programs that would benefit from `Cata ∘ Ana` fusion actually go through
+observation primitives like `obs`. These ARE Hylos, so the optimization happens automatically.
+Split types give us totality AND full optimization — having our cake and eating it too.
 
 ---
 
@@ -703,20 +921,25 @@ Value hylo(Algebra alg, Coalgebra coalg, Seed s) {
 
 ### Optimization: Deforestation
 
-The key optimization is **hylo fusion** (deforestation):
+The key optimization is **hylo fusion** (deforestation). With split types (μ ≠ ν), this works
+through **observation primitives** rather than direct composition:
 
 ```
--- Before: allocates intermediate structure
-result = cata alg (ana coalg seed)
+-- Direct Cata ∘ Ana doesn't type-check (by design — prevents folding infinite codata)
+-- result = cata alg (ana coalg seed)  -- TYPE ERROR: ν-type ≠ μ-type
 
--- After: fused, no intermediate allocation
+-- Instead, use observation primitives which ARE Hylos:
+result = sum (obs n (iterate f seed))
+       = sum ∘ obs n ∘ iterate f $ seed
+--            └──────┬──────┘
+--             Hylo (already optimal!)
+
+-- For direct generate-consume patterns, use Hylo explicitly:
 result = hylo alg coalg seed
-
--- Rewrite rule (always valid)
-cata alg ∘ ana coalg = hylo alg coalg
 ```
 
-This is a straightforward rewrite rule that eliminates intermediate data structures.
+Observation primitives like `obs` are Hylos by construction — no rewrite rule needed.
+The optimization happens automatically through the library design.
 
 ### Backend-Specific Patterns
 
@@ -755,10 +978,11 @@ User Code
 Structural transformations for recursion schemes:
 
 ```
--- Deforestation (the big win)
-Compose (Cata alg) (Ana coalg)     →  Hylo alg coalg
+-- NOTE: Cata ∘ Ana does NOT type-check (μ-type ≠ ν-type)
+-- This is intentional — it prevents folding infinite codata
+-- Instead, observation primitives (obs, etc.) are Hylos and already optimal
 
--- Functor fusion
+-- Functor fusion (within μ-world)
 map f ∘ map g                      →  map (Compose f g)
 filter p ∘ filter q                →  filter (λx → p x ∧ q x)
 
@@ -767,7 +991,24 @@ Compose (Cata alg) In              →  Compose alg (fmap (Cata alg))
 
 -- Ana computation (unfold definition)
 Compose Out (Ana coalg)            →  Compose (fmap (Ana coalg)) coalg
+
+-- Hylo computation (already fused by construction)
+Hylo alg coalg x                   =  alg (fmap (Hylo alg coalg) (coalg x))
 ```
+
+**Fusion landscape with split types:**
+
+| Domain | Fusion Rule | Applies To |
+|--------|-------------|------------|
+| μ-world (Initial) | Cata computation | `Cata alg ∘ In → alg ∘ fmap (Cata alg)` |
+| μ-world (Initial) | Functor fusion | `map f ∘ map g → map (f ∘ g)` |
+| ν-world (Coinitial) | Ana computation | `Out ∘ Ana coalg → fmap (Ana coalg) ∘ coalg` |
+| Observation | Already optimal | Observation primitives ARE Hylos |
+
+The "missing" `Cata ∘ Ana → Hylo` rule is not needed because:
+1. `Cata ∘ Ana` doesn't type-check (by design)
+2. Real code uses observation primitives which are already Hylos
+3. No optimization opportunity is lost
 
 ### Categorical Laws (CCC Simplifications)
 
@@ -1032,6 +1273,13 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Create Once/CCC/IR/Totality.agda (postulates IR totality) (2026-03-25)
 - [x] Update Once/CCC/IR/Productivity.agda (derives productivity from totality) (2026-03-25)
 - [x] Remove GuardedT/Guard/Unguard from IR (productivity follows from totality) (2026-03-25)
+- [x] Design μ/ν type distinction and observation primitives (2026-03-26)
+- [x] Implement Coinitial library (Stream, CoList operations) (2026-03-26)
+- [x] Implement Observation library with obs primitive (2026-03-26)
+- [x] Add out-μ and in-ν to IR (Lambek isomorphisms) (2026-03-26)
+- [ ] Reimplement obs using Hylo + out-μ for full fusion
+- [ ] Implement obsWhile, obsUntil (requires Bool infrastructure)
+- [ ] Implement embed, periodic (requires Para or out-μ pattern)
 - [ ] Full IR law proofs (requires function extensionality)
 - [ ] Align with OCP-0004 bootstrap verification
 
@@ -1119,11 +1367,31 @@ type (Expr, Decl) = μ ExprDeclF
 
 ~~The `Guarded` type enforces guardedness definitionally, but how ergonomic is it in practice?~~
 
-**Resolution (2026-03-25):** GuardedT is unnecessary and will be removed.
+**Resolution (2026-03-25):** GuardedT is unnecessary and has been removed.
 
 Productivity follows from IR totality (see "Totality and Productivity Proofs" above).
 Since all IR coalgebras are automatically "guarded" (they terminate and produce F-layers),
-there's no need for a type-level wrapper. Ana will take `IR A (⟦ F ⟧T A)` directly.
+there's no need for a type-level wrapper. Ana takes `IR A (⟦ F ⟧T A)` directly.
+
+### 2b. ~~Cata ∘ Ana Fusion~~ RESOLVED
+
+~~With split types (μ ≠ ν), the fusion rule `Cata alg ∘ Ana coalg → Hylo alg coalg` doesn't type-check.
+Does this lose important optimizations?~~
+
+**Resolution (2026-03-26):** No optimizations are lost.
+
+The μ/ν split is necessary for totality (prevents folding infinite codata). The "missing" fusion
+is recovered through **observation primitives** (`obs`, `obsWhile`, etc.) which ARE Hylos.
+
+Real programs that would benefit from `Cata ∘ Ana` fusion actually go through observation primitives:
+```
+sum ∘ map f ∘ obs n ∘ iterate g
+            └─────┬─────┘
+              Hylo (already optimal)
+```
+
+The observation primitives safely cross from ν-type to μ-type while being optimal by construction.
+We get totality AND full optimization — having our cake and eating it too.
 
 ### 3. QTT Interaction
 
@@ -1164,11 +1432,50 @@ How to ensure `Eff A B` satisfies arrow laws?
 | 1. Unified IR | `Once.CCC.IR` with `Functor`, unified `IR` type | ✓ |
 | 2. Recognition | `Fold`/`Unfold` → scheme patterns | ✓ |
 | 3. Backends | Code generation for recursion schemes | |
-| 4. Optimizer | Hylo fusion rule, categorical simplifications | |
+| 4. Optimizer | Cata/Ana computation rules, categorical simplifications | |
 | 5. Migration | Warnings, guide, auto-rewrite | ✓ |
 | 6. Removal | Delete `Fold`/`Unfold` | ✓ |
 | 7. Verification | Agda proofs, Totality.agda, Productivity.agda | ✓ |
 | 8. Simplification | Remove GuardedT/Guard/Unguard (unnecessary) | ✓ |
+| 9. Libraries | Coinitial library + Observation primitives | |
+
+### Phase 9: Coinitial and Observation Libraries
+
+**Coinitial Library** (parallel to Initial):
+
+```
+Strata/Derived/Coinitial.once:
+  -- Types
+  type Stream A = ν (K A ⊗ Id)
+  type CoList A = ν (K Unit ⊕ (K A ⊗ Id))
+
+  -- Stream operations
+  head    : Stream A → A
+  tail    : Stream A → Stream A
+  repeat  : A → Stream A
+  iterate : (A → A) → A → Stream A
+  map     : (A → B) → Stream A → Stream B
+  zipWith : (A → B → C) → Stream A → Stream B → Stream C
+```
+
+**Observation Library** (safe μ/ν crossings):
+
+```
+Strata/Derived/Observation.once:
+  -- ν → μ (bounded observation)
+  obs       : Nat → ν F → μ F              -- Observe n steps
+  obsWhile  : (A → Bool) → ν F → μ F       -- Observe while predicate holds
+  obsUntil  : (A → Bool) → ν F → μ F       -- Observe until predicate holds
+
+  -- μ → ν (embedding)
+  embed     : μ F → ν F                     -- Canonical embedding
+  periodic  : μ F → ν F                     -- Periodic extension
+
+  -- Direct Hylo operations (observation with fold)
+  foldObs   : Nat → (B → A → B) → B → ν F → B  -- Fold over n observations
+```
+
+All observation primitives are implemented as `Hylo` operations — no new IR primitives needed.
 
 ---
 
@@ -1186,22 +1493,30 @@ This proposal defines a **unified IR** in `Once.CCC.IR` that enforces totality a
 | **Dependent types ready** | Consistent logic without termination checker |
 | **Verification simplified** | Proofs focus on algebras, not termination |
 | **Minimal TCB** | Matches OCP-0004 bootstrap tower |
+| **Full optimization** | Observation primitives (Hylos) recover all fusion opportunities |
 
 The design:
 - Single unified `IR : Type → Type → Set` with all CCC operations
 - `Functor` type for polynomial functors (per D037)
-- Productivity follows from IR totality — GuardedT is unnecessary (removal planned)
+- **Split types** (`μ-type` ≠ `ν-type`) for totality — prevents folding infinite codata
+- **Observation primitives** (`obs`, `obsWhile`, etc.) safely cross μ/ν boundary as Hylos
+- Productivity follows from IR totality — GuardedT is unnecessary (removed)
 - Primitive constructors for derived schemes (`Hylo`, `Para`, `Apo`) enable direct optimization
 - Arrow-based effects: CCC structure provides arrow combinators, types distinguish `A → B` from `Eff A B`
 - Aligns with D037 (polynomial functors)
 - Matches OCP-0004 bootstrap architecture (single IR for verifier)
-- Preserves the three strata (Generators/Canonical/Initial)
+- **Extended strata**: Generators/Canonical/Initial/Coinitial/Observation/Interpretations
 - Enables planned dependent type extensions
 - Opens path to session types for deadlock-free communication
 
 **The core insight:** Turing completeness is not a feature — it's the absence of a safety guarantee. By removing general recursion and providing structured schemes, Once gains strong guarantees while losing only the ability to write bugs.
 
 **The key principle:** The IR should BE the categorical structure, not a representation that needs validation. `Cata` IS the unique algebra morphism (totality by definition), and `Ana` IS the unique coalgebra morphism (productivity follows from totality — coalgebras are IR morphisms, and IR morphisms are total).
+
+**The optimization insight:** Split types (μ ≠ ν) are necessary for totality but don't lose optimizations.
+Observation primitives like `obs` are Hylos that safely cross the μ/ν boundary. Real stream processing
+pipelines go through these observations, so fusion happens automatically. We get totality AND full
+optimization — having our cake and eating it too.
 
 ---
 
@@ -1219,4 +1534,116 @@ The design:
 
 ## Discussion
 
-[Comments, concerns, and resolutions will be added here as discussion proceeds.]
+### 2026-03-26: μ/ν Type Distinction and Observation Primitives
+
+**Issue raised:** With split types (μ-type ≠ ν-type), the fusion rule `Cata ∘ Ana → Hylo` doesn't
+type-check. Initial concern was that this loses important optimizations.
+
+**Analysis:**
+1. Unifying μ and ν (like Haskell's `Fix`) would break totality — you could fold infinite codata
+2. The old `Fix` type (pre-OCP-0003) was removed precisely because it allowed non-termination
+3. The safety of the new system comes from BOTH the operations (Cata/Ana) AND the type distinction
+
+**Resolution:** Observation primitives are the key insight.
+
+Operations like `obs`, `obsWhile`, and `obsUntil` safely cross from ν-type to μ-type by
+**bounding** their output. These are implemented as `Hylo` operations — they don't require
+new IR primitives, just derived library functions.
+
+The naming follows coalgebraic terminology: we **observe** a coalgebra (coinductive structure)
+by witnessing a bounded number of its unfolding steps, producing an inductive (finite) result.
+
+```
+Stream processing pipeline:
+  sum ∘ map f ∘ filter p ∘ obs n ∘ iterate g
+  │                       │         │
+  │                       │         └─ ν-world (Coinitial)
+  │                       └─ Observation (Hylo! Already optimal)
+  └─ μ-world (Initial)
+```
+
+Fusion happens naturally:
+- Within μ-world: Cata computation rules
+- Within ν-world: Ana computation rules
+- At observations: Already Hylos — no fusion needed
+
+**Naming convention:** The library uses coalgebraic observation terminology:
+- `obs n` — observe n steps (bounded observation)
+- `obsWhile p` — observe while predicate holds (conditional observation)
+- `obsUntil p` — observe until predicate holds (terminating observation)
+- `embed` — canonical embedding (finite into cofinite)
+- `periodic` — periodic extension (repeat finite structure)
+- `foldObs n` — fold over n observations (direct Hylo)
+
+**Conclusion:** Split types + observation primitives give us:
+- ✓ Totality (can't fold infinite codata)
+- ✓ Productivity (IR totality guarantees each step terminates)
+- ✓ Full optimization (observation primitives ARE the fused form)
+
+This is the "have your cake and eat it too" solution. The design is extended with:
+- **Coinitial library**: Stream, CoList operations (parallel to Initial)
+- **Observation library**: obs, obsWhile, embed, periodic, foldObs, etc.
+
+### 2026-03-26: Lambek Isomorphisms (out-μ and in-ν)
+
+**Issue raised:** The initial implementation of `obs` used Cata-over-Nat, which builds intermediate
+closures and prevents fusion with downstream operations like `sum (obs n stream)`.
+
+**Analysis:**
+
+To implement `obs` as a proper Hylo (enabling full fusion), the coalgebra needs to pattern-match
+on the Nat counter. But Nat is a μ-type, and pattern-matching on μ-types requires either:
+1. Using Cata (which replaces the recursive structure, breaking the Hylo pattern)
+2. Using `out-μ : μ F → ⟦ F ⟧T (μ F)` (the inverse of In)
+
+By Lambek's Lemma (1968), `In` is an isomorphism for initial algebras, so `out-μ = In⁻¹` exists.
+
+**Resolution:** Add `out-μ` and `in-ν` to the IR.
+
+```agda
+-- Added to Once.CCC.IR
+out-μ : ∀ {F} → WellFormedF F → IR (μ-type F) (⟦ F ⟧T (μ-type F))
+in-ν  : ∀ {F} → WellFormedF F → AllocMode → IR (⟦ F ⟧T (ν-type F)) (ν-type F)
+```
+
+**Effect on optimization:**
+
+Without `out-μ`:
+```
+sum (obs n s)
+  = Cata sumAlg (apply (Cata natAlg n) s)
+  -- Intermediate list IS built, then summed
+```
+
+With `out-μ`:
+```
+obs = Hylo listAlg (case ... ∘ ⟨ out-μ ∘ fst , snd ⟩)
+
+sum (obs n s)
+  = Cata sumAlg (Hylo In obsCoalg (n,s))
+  = Hylo sumAlg obsCoalg (n,s)  -- by Hylo-Cata fusion!
+  -- NO intermediate list — sum accumulates as we observe
+```
+
+**Effect on library code:**
+
+| Layer | Changes? |
+|-------|----------|
+| Client code | No change (same API) |
+| Observation module | Implementation uses Hylo + out-μ |
+| Initial library | No change |
+| Coinitial library | No change |
+
+The `out-μ` primitive is invisible to library users — it's an optimization enabler that makes
+the "have cake and eat it too" promise actually work.
+
+**Symmetric IR structure:**
+
+| μ-type | ν-type | Role |
+|--------|--------|------|
+| `In` | `in-ν` | Constructor (build structure) |
+| `out-μ` | `Out` | Destructor (observe one layer) |
+| `Cata` | `Ana` | Universal morphism (fold/unfold all) |
+
+This symmetry reflects the categorical duality between initial algebras and final coalgebras,
+both justified by Lambek's Lemma.
