@@ -3,7 +3,7 @@
 **Author:** [TBD]
 **Status:** Draft
 **Created:** 2026-03-10
-**Updated:** 2026-03-26
+**Updated:** 2026-03-26 (Phase 10: Para added)
 
 ---
 
@@ -1277,9 +1277,21 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Implement Coinitial library (Stream, CoList operations) (2026-03-26)
 - [x] Implement Observation library with obs primitive (2026-03-26)
 - [x] Add out-μ and in-ν to IR (Lambek isomorphisms) (2026-03-26)
-- [ ] Reimplement obs using Hylo + out-μ for full fusion
+
+**Phase 10: Paramorphism** (next)
+- [ ] Add `paraS` to `Once.Functor.Base` (derived from `cataS`)
+- [ ] Add `Para` constructor to `Once.CCC.IR`
+- [ ] Add `sem-para` to `Once.Semantics.Core` (no TERMINATING pragma)
+- [ ] Update IR passes (Escape, Fusion, Optimize, eval)
+- [ ] Migrate `obs` to use Para (provably terminating)
+- [ ] Document Hylo as expert-only escape hatch
+
+**Remaining Libraries:**
 - [ ] Implement obsWhile, obsUntil (requires Bool infrastructure)
-- [ ] Implement embed, periodic (requires Para or out-μ pattern)
+- [ ] Implement embed, periodic (use Para)
+- [ ] Complete Once surface syntax for Coinitial/Observation
+
+**Future:**
 - [ ] Full IR law proofs (requires function extensionality)
 - [ ] Align with OCP-0004 bootstrap verification
 
@@ -1437,7 +1449,8 @@ How to ensure `Eff A B` satisfies arrow laws?
 | 6. Removal | Delete `Fold`/`Unfold` | ✓ |
 | 7. Verification | Agda proofs, Totality.agda, Productivity.agda | ✓ |
 | 8. Simplification | Remove GuardedT/Guard/Unguard (unnecessary) | ✓ |
-| 9. Libraries | Coinitial library + Observation primitives | |
+| 9. Libraries | Coinitial library + Observation primitives (Agda) | ✓ |
+| 10. Para | Paramorphism for provable termination | |
 
 ### Phase 9: Coinitial and Observation Libraries
 
@@ -1477,6 +1490,86 @@ Strata/Derived/Observation.once:
 
 All observation primitives are implemented as `Hylo` operations — no new IR primitives needed.
 
+### Phase 10: Paramorphism for Provable Termination
+
+**Problem:** The semantic implementations of `sem-ana` and `sem-hylo` in `Once.Semantics.Core` use
+Agda's `{-# TERMINATING #-}` pragma — a trust annotation that bypasses the termination checker.
+This is a hole in the formal development.
+
+| Function | Pragma | Issue |
+|----------|--------|-------|
+| `sem-ana` | `{-# TERMINATING #-}` | Productivity trusted, not proven |
+| `sem-hylo` | `{-# TERMINATING #-}` | Termination trusted, not proven |
+| `sem-cata` | None needed | Sound (structural recursion on μS) |
+
+**Solution: Paramorphism (Para)**
+
+Paramorphism is a recursion scheme that gives the algebra access to both:
+- The original substructures (μF values)
+- The recursive results (A values)
+
+```agda
+Para : (F (μF × A) → A) → μF → A
+```
+
+**Key insight:** Para is derivable from Cata by returning pairs:
+
+```agda
+paraS : ∀ {F} {A : Set} → (⟦ F ⟧SF (μS F × A) → A) → μS F → A
+paraS {F} {A} alg x = proj₂ (cataS {F} alg' x)
+  where
+    alg' : ⟦ F ⟧SF (μS F × A) → (μS F × A)
+    alg' fx = (⟨ sfmap F proj₁ fx ⟩ , alg fx)
+```
+
+**This terminates without any pragma** because Cata uses structural recursion on well-founded μS.
+
+**Bounded Hylo via Para:**
+
+With Para, observation primitives like `obs` can be implemented with provable termination:
+
+```agda
+-- obs via Para (provably terminating)
+obs : Nat × Stream A → List A
+obs (fuel, stream) = para paraAlg fuel stream
+  where
+    -- Para gives: NatF (Nat × (Stream A → List A))
+    paraAlg (inl tt) _ = []                       -- zero: empty
+    paraAlg (inr (_, k)) s = head s :: k (tail s) -- suc: cons + continue
+```
+
+Termination follows from structural recursion on Nat — no trust pragma needed.
+
+**Implementation Plan:**
+
+1. **Add `paraS` to `Once.Functor.Base`**
+   - Derived from `cataS` (returns pairs)
+   - No TERMINATING pragma needed
+
+2. **Add `Para` constructor to `Once.CCC.IR`**
+   ```agda
+   Para : ∀ {F} → WellFormedF F → ∀ {A}
+        → IR (⟦ F ⟧T (μ-type F * A)) A
+        → IR (μ-type F) A
+   ```
+
+3. **Add `sem-para` to `Once.Semantics.Core`**
+   - Uses `sem-cata` internally
+   - Provably terminating (no pragma)
+
+4. **Update IR passes** (Escape, Fusion, Optimize, eval)
+
+5. **Migrate `obs`** in `Observation.agda` to use Para
+   - Removes reliance on Hylo's TERMINATING pragma
+
+6. **Document Hylo as expert-only**
+   - General Hylo remains for cases requiring external termination arguments
+   - Bounded patterns should use Para
+
+**Result:** Observation primitives (`obs`, `obsWhile`, etc.) will have provably-terminating
+implementations. The TERMINATING pragma on `sem-hylo` becomes an escape hatch for expert use,
+not a foundational hole.
+
 ---
 
 ## Summary
@@ -1499,8 +1592,9 @@ The design:
 - Single unified `IR : Type → Type → Set` with all CCC operations
 - `Functor` type for polynomial functors (per D037)
 - **Split types** (`μ-type` ≠ `ν-type`) for totality — prevents folding infinite codata
-- **Observation primitives** (`obs`, `obsWhile`, etc.) safely cross μ/ν boundary as Hylos
+- **Observation primitives** (`obs`, `obsWhile`, etc.) safely cross μ/ν boundary
 - Productivity follows from IR totality — GuardedT is unnecessary (removed)
+- **Para** (paramorphism) enables provably-terminating bounded iteration (Phase 10)
 - Primitive constructors for derived schemes (`Hylo`, `Para`, `Apo`) enable direct optimization
 - Arrow-based effects: CCC structure provides arrow combinators, types distinguish `A → B` from `Eff A B`
 - Aligns with D037 (polynomial functors)
