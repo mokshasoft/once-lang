@@ -100,6 +100,11 @@ eval ps (out-μ {F} wf) x = coerce-functor⁻¹ F (μ-type F) (sem-Out wf x)
 eval ps (Cata {F} wf alg) x =
   sem-cata wf (λ fa → eval ps alg (coerce-functor⁻¹ F _ fa)) x
 --
+-- Para: paramorphism - fold with access to original substructure
+-- Derived from Cata, total by structural recursion on μF.
+eval ps (Para {F} wf alg) x =
+  sem-para wf (λ fx → eval ps alg (coerce-functor⁻¹ F _ fx)) x
+--
 -- Out: ν-type F → ⟦ F ⟧T (ν-type F)
 eval ps (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
 --
@@ -114,10 +119,20 @@ eval ps (Ana {F} wf {A} coalg) x =
 -- Guard/Unguard removed: GuardedT was unnecessary.
 -- out-μ/in-ν: Lambek isomorphisms added for full fusion in observation primitives.
 --
--- Hylo: Cata alg ∘ Ana coalg, computed directly without intermediate
-eval ps (Hylo {F} wf {A} alg coalg) x =
+-- Hylo: fused cata ∘ ana (CORRECT BY CONSTRUCTION)
+-- OCP-0003: Based on Fuse, no TerminatesOn needed - structural recursion on μG
+eval ps (Hylo {F} {G} wfF wfG alg coalg) x =
   let alg-set = λ fb → eval ps alg (coerce-functor⁻¹ F _ fb)
-  in sem-hylo F alg-set (λ a → coerce-functor F A (eval ps coalg a)) x
+      coalg-set = λ μg → coerce-functor F (μ-type G) (eval ps coalg μg)
+  in sem-hylo F G wfF wfG alg-set coalg-set x
+--
+-- Fuse: μ-anchored fusion (correct by construction)
+-- OCP-0003: Structural recursion on μG, no termination witness needed
+eval ps (Fuse {F} {G} wfF wfG alg transform) x =
+  sem-fuse F G wfF wfG
+    (λ fb → eval ps alg (coerce-functor⁻¹ F _ fb))
+    (λ gx → coerce-functor F _ (eval ps transform (coerce-functor⁻¹ G _ gx)))
+    x
 
 -- Effect lifting (D032)
 -- arr : (A ⇒ B) → Eff A B

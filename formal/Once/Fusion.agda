@@ -166,10 +166,14 @@ fusion-once apply = apply
 fusion-once (In wf m) = In wf m
 fusion-once (out-μ wf) = out-μ wf
 fusion-once (Cata {F} wf alg) = Cata {F} wf (fusion-once alg)
+fusion-once (Para {F} wf alg) = Para {F} wf (fusion-once alg)
 fusion-once (Out wf) = Out wf
 fusion-once (in-ν wf m) = in-ν wf m
 fusion-once (Ana {F} wf coalg) = Ana {F} wf (fusion-once coalg)
-fusion-once (Hylo {F} wf alg coalg) = Hylo {F} wf (fusion-once alg) (fusion-once coalg)
+fusion-once (Hylo {F} wf term alg coalg) = Hylo {F} wf term (fusion-once alg) (fusion-once coalg)
+-- Fuse: μ-anchored fusion (correct by construction)
+-- No fusion opportunities here - Fuse is already the fused form
+fusion-once (Fuse {F} {G} wfF wfG alg transform) = Fuse {F} {G} wfF wfG (fusion-once alg) (fusion-once transform)
 -- Guard/Unguard removed: productivity follows from IR totality
 -- out-μ/in-ν: Lambek isomorphisms, pass through (potential fusion with In/Out)
 

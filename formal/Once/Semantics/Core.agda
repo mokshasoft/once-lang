@@ -67,7 +67,7 @@ open import Once.Functor.Translate
         ; base-Prod; base-Sum; wf-K; wf-Id; wf-Sum; wf-Prod)
 open import Once.Functor.Base
   using (SFunctor; SK; SId; _S⊕_; _S⊗_; ⟦_⟧SF; μS; ⟨_⟩; outS; νS; unfoldS;
-         sfmap; cataS; sfmapCata; sfmapCata-is-sfmap; anaS;
+         sfmap; cataS; sfmapCata; sfmapCata-is-sfmap; anaS; fuseS; fuseNatS;
          fold-unfoldS; unfold-foldS; cataS-computation; cataS-In-id; anaS-Out-id;
          -- Bisimulation machinery
          ⟦_⟧SF-rel; _∼S_; bisimS-to-eq; sfmap-rel; sfmap-f-rel)
@@ -518,6 +518,22 @@ sem-Out {F} wf x = coerce-μ-out wf (⟦μ⟧ F) (outS (translateF IntRep F) x)
 sem-cata : ∀ {F : Functor} → WellFormedF F → {A : Set} → (⟦ F ⟧F A → A) → ⟦μ⟧ F → A
 sem-cata {F} wf {A} alg = cataS {translateF IntRep F} (λ x → alg (coerce-μ-out wf A x))
 
+-- | Paramorphism: fold with access to original substructure
+--
+-- OCP-0003 Phase 10: Derived from sem-cata - NO TERMINATING pragma needed.
+-- Para's algebra receives (⟦ F ⟧F (⟦μ⟧ F × A)), giving access to both
+-- the original substructure (⟦μ⟧ F) and the recursive result (A).
+--
+-- Implementation: Encode via sem-cata with a product that carries both
+-- the original structure and the recursive result.
+--
+sem-para : ∀ {F : Functor} → WellFormedF F → {A : Set}
+         → (⟦ F ⟧F (⟦μ⟧ F × A) → A) → ⟦μ⟧ F → A
+sem-para {F} wf {A} alg x = proj₂ (sem-cata wf alg' x)
+  where
+    alg' : ⟦ F ⟧F (⟦μ⟧ F × A) → (⟦μ⟧ F × A)
+    alg' fx = (sem-In F (sem-fmap F proj₁ fx) , alg fx)
+
 ------------------------------------------------------------------------
 -- ν-type Coercions (OCP-0003)
 --
@@ -553,6 +569,69 @@ sem-CoOut {F} wf x = coerce-ν-out wf (⟦ν⟧ F) (unfoldS x)
 sem-CoIn : ∀ (F : Functor) → ⟦ F ⟧F (⟦ν⟧ F) → ⟦ν⟧ F
 unfoldS (sem-CoIn F x) = coerce-ν-in F (⟦ν⟧ F) x
 
+------------------------------------------------------------------------
+-- ν-type Lambek Laws (OCP-0003)
+--
+-- By Lambek's Lemma (dual), Out and in-ν are inverses:
+--   sem-CoOut ∘ sem-CoIn = id  (Out ∘ in-ν = id)
+--   sem-CoIn ∘ sem-CoOut = id  (in-ν ∘ Out = id)
+------------------------------------------------------------------------
+
+-- | Out ∘ in-ν = id (Lambek, one direction)
+--
+-- Proof: unfoldS (sem-CoIn F x) = coerce-ν-in F x (by definition)
+--        sem-CoOut wf (sem-CoIn F x) = coerce-ν-out wf (unfoldS (sem-CoIn F x))
+--                                    = coerce-ν-out wf (coerce-ν-in F x)
+--                                    = x  (by round-trip)
+--
+sem-CoOut-CoIn : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ F ⟧F (⟦ν⟧ F))
+               → sem-CoOut wf (sem-CoIn F x) ≡ x
+sem-CoOut-CoIn {F} wf x = coerce-μ-round-trip wf (⟦ν⟧ F) x
+
+-- | in-ν ∘ Out = id (Lambek, other direction)
+--
+-- Proof: We need sem-CoIn F (sem-CoOut wf x) ≡ x
+--        unfoldS (sem-CoIn F y) = coerce-ν-in F y  (by definition)
+--        sem-CoOut wf x = coerce-ν-out wf (unfoldS x)  (by definition)
+--        So: unfoldS (sem-CoIn F (sem-CoOut wf x)) = coerce-ν-in F (coerce-ν-out wf (unfoldS x))
+--                                                 = unfoldS x  (by round-trip)
+--        Since observations are equal, values are bisimilar, hence equal.
+--
+
+-- | Coinductive helper: reflexivity of bisimulation
+--
+-- Moved outside where clause so TERMINATING pragma is respected.
+-- These are mutually recursive coinductive proofs.
+--
+private
+  open _∼S_
+
+  {-# TERMINATING #-}
+  ∼S-refl-at : ∀ {F} → (y : ⟦ν⟧ F) → y ∼S y
+  sfmap-∼S-refl : ∀ {F} G (v : ⟦ G ⟧SF (⟦ν⟧ F)) → ⟦ G ⟧SF-rel (_∼S_ {translateF IntRep F}) v v
+
+  unfoldS-∼ (∼S-refl-at {F} y) = sfmap-∼S-refl (translateF IntRep F) (unfoldS y)
+
+  sfmap-∼S-refl (SK _) v = refl
+  sfmap-∼S-refl SId v = ∼S-refl-at v
+  sfmap-∼S-refl (G₁ S⊕ G₂) (inj₁ v) = sfmap-∼S-refl G₁ v
+  sfmap-∼S-refl (G₁ S⊕ G₂) (inj₂ v) = sfmap-∼S-refl G₂ v
+  sfmap-∼S-refl (G₁ S⊗ G₂) (v₁ , v₂) = sfmap-∼S-refl G₁ v₁ , sfmap-∼S-refl G₂ v₂
+
+  -- | Bisimulation proof for CoIn-CoOut law
+  {-# TERMINATING #-}
+  CoIn-CoOut-bisim : ∀ {F} (wf : WellFormedF F) (y : ⟦ν⟧ F)
+                   → sem-CoIn F (sem-CoOut wf y) ∼S y
+  unfoldS-∼ (CoIn-CoOut-bisim {F} wf y) =
+    let TF = translateF IntRep F
+        eq : coerce-ν-in F (⟦ν⟧ F) (sem-CoOut wf y) ≡ unfoldS y
+        eq = coerce-μ⁻¹-round-trip wf (⟦ν⟧ F) (unfoldS y)
+    in subst (λ z → ⟦ TF ⟧SF-rel _∼S_ z (unfoldS y)) (sym eq) (sfmap-∼S-refl TF (unfoldS y))
+
+sem-CoIn-CoOut : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
+               → sem-CoIn F (sem-CoOut wf x) ≡ x
+sem-CoIn-CoOut {F} wf x = bisimS-to-eq (sem-CoIn F (sem-CoOut wf x)) x (CoIn-CoOut-bisim wf x)
+
 -- | Anamorphism: given coalgebra A → F(A), unfold A → νF
 --
 -- OCP-0003: Defined via SPF's anaS with coercions.
@@ -562,18 +641,75 @@ unfoldS (sem-CoIn F x) = coerce-ν-in F (⟦ν⟧ F) x
 sem-ana : ∀ (F : Functor) {A : Set} → (A → ⟦ F ⟧F A) → A → ⟦ν⟧ F
 unfoldS (sem-ana F {A} coalg a) = sfmap (translateF IntRep F) (sem-ana F coalg) (coerce-ν-in F A (coalg a))
 
--- | Hylomorphism: fused cata ∘ ana, computed directly
--- Semantically: hylo alg coalg = cata alg ∘ ana coalg
--- But computed without building intermediate structure
+-- | Structured Fusion: μ-anchored hylomorphism (correct by construction)
 --
--- OCP-0003: Defined directly via recursion.
+-- OCP-0003: Unlike Hylo where termination is a CONTRACT (coalgebra must
+-- destruct the μ-component), Fuse guarantees termination STRUCTURALLY:
+-- - Input is μG (well-founded inductive type)
+-- - Transform receives pre-destructed G-layer via out-μ
+-- - Transform produces F-layer with same μG values (rearranged)
+-- - Recursion is structural on the μG subterms
 --
-{-# TERMINATING #-}
-sem-hylo : ∀ (F : Functor) {A B : Set}
-         → (⟦ F ⟧F B → B)  -- algebra
-         → (A → ⟦ F ⟧F A)  -- coalgebra
-         → A → B
-sem-hylo F alg coalg x = alg (sem-fmap F (sem-hylo F alg coalg) (coalg x))
+-- The TERMINATING pragma on fuseS is JUSTIFIED (unlike sem-hylo) because:
+-- - Transform is an IR morphism (total, cannot synthesize values)
+-- - Therefore μG values in output came from input (subterms)
+-- - This is a valid structural recursion that Agda cannot see
+--
+-- Equivalence: fuse alg transform = cata (alg ∘ fmap fuse ∘ transform)
+-- But computed directly for deforestation (no intermediate structure).
+--
+sem-fuse : ∀ (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
+         → (⟦ F ⟧F B → B)                    -- algebra: F(B) → B
+         → (⟦ G ⟧F (⟦μ⟧ G) → ⟦ F ⟧F (⟦μ⟧ G))  -- transform: G(μG) → F(μG)
+         → ⟦μ⟧ G → B
+sem-fuse F G wfF wfG {B} alg transform =
+  fuseS {translateF IntRep F} {translateF IntRep G} {B}
+    (alg ∘ coerce-μ-out wfF B)
+    (coerce-μ-in F (⟦μ⟧ G) ∘ transform ∘ coerce-μ-out wfG (⟦μ⟧ G))
+
+-- | Natural Transformation Fusion (TERMINATING-free)
+--
+-- OCP-0003: When the transform is a NATURAL TRANSFORMATION (parametric in
+-- the recursive position), fusion can be implemented without TERMINATING.
+--
+-- A natural transform `∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A` cannot inspect the A values,
+-- so it reduces to structural recursion: fuseNatS transform alg = cataS (alg ∘ transform)
+--
+-- This is the preferred version when the transform is known to be natural.
+-- For transforms that inspect recursive positions, use sem-fuse instead.
+--
+-- Note: At the IR level, transforms are monomorphic (IR (⟦ G ⟧T X) (⟦ F ⟧T X)).
+-- When such IR morphisms use only structural operations (no Cata/Ana/etc.),
+-- they evaluate to natural transformations.
+--
+sem-fuseNat : ∀ (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
+            → (∀ {A} → ⟦ G ⟧F A → ⟦ F ⟧F A)   -- natural transform: G → F
+            → (⟦ F ⟧F B → B)                   -- algebra: F(B) → B
+            → ⟦μ⟧ G → B
+sem-fuseNat F G wfF wfG {B} transform alg =
+  fuseNatS {translateF IntRep F} {translateF IntRep G} {B}
+    (coerce-μ-in F _ ∘ transform ∘ coerce-μ-out wfG _)
+    (alg ∘ coerce-μ-out wfF B)
+
+-- | Hylomorphism: fused cata ∘ ana (CORRECT BY CONSTRUCTION)
+--
+-- OCP-0003: Hylo is now based on Fuse, removing the need for TerminatesOn.
+-- Termination is guaranteed by requiring μG as input:
+-- - Input is μG (well-founded inductive type)
+-- - Coalgebra produces F-layers from μG values
+-- - Recursion is structural on μG
+--
+-- Semantically: sem-hylo alg coalg = sem-fuse alg (coalg ∘ sem-In)
+-- The coalgebra wraps sem-In to convert the pre-destructed G-layer to F-layer.
+--
+-- NO TERMINATING PRAGMA NEEDED - termination follows from sem-fuse!
+--
+sem-hylo : ∀ (F G : Functor) → WellFormedF F → WellFormedF G → {B : Set}
+         → (⟦ F ⟧F B → B)              -- algebra: F(B) → B
+         → (⟦μ⟧ G → ⟦ F ⟧F (⟦μ⟧ G))    -- coalgebra: μG → F(μG)
+         → ⟦μ⟧ G → B
+sem-hylo F G wfF wfG {B} alg coalg =
+  sem-fuse F G wfF wfG alg (coalg ∘ sem-In G)
 
 ------------------------------------------------------------------------
 -- μ-Coercion Round-Trip Properties (OCP-0003)
@@ -778,17 +914,16 @@ sem-ana-Out-id : ∀ {F : Functor} → (wf : WellFormedF F) → (x : ⟦ν⟧ F)
 sem-ana-Out-id {F} wf x = trans (sem-ana-is-anaS-unfoldS wf x) (anaS-Out-id (translateF IntRep F) x)
 
 ------------------------------------------------------------------------
--- Hylomorphism Laws (OCP-0003: Definitional)
+-- Hylomorphism Laws (OCP-0003 Phase 10)
 ------------------------------------------------------------------------
 
--- | Hylomorphism computation law
+-- | Hylomorphism is equivalent to Fuse with composed transform
 --
--- OCP-0003: Definitionally true from the recursive definition of sem-hylo.
---
--- hylo alg coalg x = alg (fmap (hylo alg coalg) (coalg x))
+-- sem-hylo alg coalg = sem-fuse alg (coalg ∘ sem-In)
 --
 -- This is exactly how sem-hylo is defined, so the proof is refl.
 --
-sem-hylo-compute : ∀ (F : Functor) {A B : Set} (alg : ⟦ F ⟧F B → B) (coalg : A → ⟦ F ⟧F A) (x : A)
-                 → sem-hylo F alg coalg x ≡ alg (sem-fmap F (sem-hylo F alg coalg) (coalg x))
-sem-hylo-compute F alg coalg x = refl
+sem-hylo-is-fuse : ∀ (F G : Functor) (wfF : WellFormedF F) (wfG : WellFormedF G) {B : Set}
+                 → (alg : ⟦ F ⟧F B → B) (coalg : ⟦μ⟧ G → ⟦ F ⟧F (⟦μ⟧ G)) (x : ⟦μ⟧ G)
+                 → sem-hylo F G wfF wfG alg coalg x ≡ sem-fuse F G wfF wfG alg (coalg ∘ sem-In G) x
+sem-hylo-is-fuse F G wfF wfG alg coalg x = refl

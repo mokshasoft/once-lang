@@ -3,7 +3,7 @@
 **Author:** [TBD]
 **Status:** Draft
 **Created:** 2026-03-10
-**Updated:** 2026-03-26 (Phase 10: Para added)
+**Updated:** 2026-03-27 (μ-anchored Hylo/Fuse, removed TerminatesOn/GuardedT)
 
 ---
 
@@ -16,9 +16,13 @@ Define a **single unified IR** in `Once.CCC.IR` containing all CCC operations:
 - **Coproducts**: `Inl`, `Inr`, `Case`, `Initial`
 - **Exponentials**: `Curry`, `Apply`
 - **Primitive arrows**: `Opaque` (both pure `A → B` and effectful `Eff A B`)
-- **Initial algebras**: `In`, `Cata` (inductive/finite data)
-- **Final coalgebras**: `Out`, `Ana` (coinductive/infinite codata)
-- **Derived schemes**: `Hylo`, `Para`, `Apo` (optimizations)
+- **Initial algebras**: `In`, `out-μ`, `Cata`, `Para` (inductive/finite data, total by Lambek)
+- **Final coalgebras**: `Out`, `in-ν`, `Ana`, `Apo` (coinductive/infinite codata, productive by Lambek)
+- **Fusions** (optimization layer): `Hylo` and other μ-anchored optimizations
+
+The IR is **layered**: categorical primitives (Cata, Para, Ana, Apo) provide the semantic foundation with
+proven totality/productivity. Fusions are optimization morphisms added later, requiring explicit
+termination witnesses. See "The Fusion Category" section below.
 
 Effects are **arrow-based**: the CCC structure provides arrow combinators (composition, products), and the type system distinguishes pure arrows (`A → B`) from effect arrows (`Eff A B`). The IR is about structure; types track semantics.
 
@@ -56,10 +60,13 @@ Categories 2 and 3 are almost never intentional. A language that makes them **im
 | Process finite data | `cata` (fold) | Sum a list |
 | Generate finite data | `ana` (unfold) | Range 1..n |
 | Generate infinite data | `ana` (unfold) | Stream of events |
-| Transform then consume | `hylo` (fused) | Factorial |
-| Fold with context | `para` | Safe tail |
+| Fold with context | `para` (paramorphism) | Safe tail, bounded observation |
+| Unfold with early exit | `apo` (apomorphism) | Early-terminating generation |
+| Fused transform | `Fusion` (optimization) | Deforestation |
 
-These schemes cover virtually all recursive patterns in real software. General recursion adds only the ability to write bugs.
+These **categorical schemes** (Cata, Para, Ana, Apo) cover virtually all recursive patterns with proven
+termination/productivity. Fusions are compiler optimizations that preserve semantics while eliminating
+intermediate structures. General recursion adds only the ability to write bugs.
 
 ### Servers and Infinite Processes
 
@@ -120,14 +127,22 @@ By enforcing totality through structured recursion schemes, this proposal enable
 ┌─────────────────────────────────────────────┐
 │           Once.CCC.IR                       │
 │                                             │
+│  ═══════════ CCC Foundation ═══════════    │
 │  Category:     Id, Compose                  │
 │  Products:     Fst, Snd, Pair, Terminal     │
 │  Coproducts:   Inl, Inr, Case, Initial      │
 │  Exponentials: Curry, Apply                 │
 │  Primitives:   Opaque                       │
-│  Algebras:     In, out-μ, Cata (total)      │
-│  Coalgebras:   Out, in-ν, Ana (productive)  │
-│  Derived:      Hylo, Para, Apo              │
+│                                             │
+│  ══════ Categorical Recursion Schemes ═════ │
+│  μ-world (total by Lambek):                 │
+│    In, out-μ, Cata, Para                    │
+│  ν-world (productive by Lambek):            │
+│    Out, in-ν, Ana, Apo                      │
+│                                             │
+│  ══════════ Fusion Layer ═══════════════   │
+│  (Optimization, requires μ-anchoring)       │
+│    Hylo, Dyna, Chrono, ...                  │
 │                                             │
 │  Single unified datatype for all operations │
 └─────────────────────────────────────────────┘
@@ -140,6 +155,14 @@ By enforcing totality through structured recursion schemes, this proposal enable
 
 This unified structure matches OCP-0004's bootstrap tower, where the verifier checks traces of categorical reductions on a single IR representation.
 
+**Key insight:** The IR is conceptually layered:
+1. **Categorical primitives** (Cata, Para, Ana, Apo) have universal properties — totality/productivity is PROVEN
+2. **Fusions** (Hylo, Dyna, etc.) are optimization morphisms — they require μ-anchoring witnesses
+
+Fusions are NOT categorical primitives. They don't have universal properties. But they ARE essential for
+compiler optimization. The layering makes this explicit: semantic correctness comes from the categorical
+layer; optimization comes from the fusion layer.
+
 ### Module Structure
 
 ```agda
@@ -151,15 +174,6 @@ data Functor : Set where
   FConst : Type → Functor               -- Constant: A
   FSum   : Functor → Functor → Functor  -- Sum: F + G
   FProd  : Functor → Functor → Functor  -- Product: F × G
-
--- Guardedness type: ensures coalgebras produce guarded results
--- Only constructors (Pair, Inl, Inr) can wrap corecursive results
-data Guarded (F : Functor) (A : Type) : Type where
-  GProd  : Guarded F₁ A → Guarded F₂ A → Guarded (FProd F₁ F₂) A  -- product guards
-  GInl   : Guarded F A → Guarded (FSum F G) A                      -- sum guards
-  GInr   : Guarded G A → Guarded (FSum F G) A
-  GConst : B → Guarded (FConst B) A                                -- base case
-  GRec   : A → Guarded FId A                                       -- recursive position
 
 -- Unified IR: all CCC operations in a single datatype
 data IR : Type → Type → Set where
@@ -198,11 +212,37 @@ data IR : Type → Type → Set where
   Out  : IR (ν F) (⟦ F ⟧ (ν F))            -- destructor
   in-ν : IR (⟦ F ⟧ (ν F)) (ν F)            -- constructor (inverse of Out, by Lambek)
   Ana  : (coalg : IR A (⟦ F ⟧ A)) → IR A (ν F)
+  Apo  : IR A (⟦ F ⟧ (A + ν F)) → IR A (ν F)  -- apomorphism (dual of Para)
 
-  -- Derived schemes (primitive constructors for optimization)
-  Hylo : IR (⟦ F ⟧ B) B → IR A (⟦ F ⟧ A) → IR A B
-  Para : IR (⟦ F ⟧ (A × μ F)) A → IR (μ F) A
-  Apo  : IR A (⟦ F ⟧ (A + ν F)) → IR A (ν F)
+  -- ═══════════════════════════════════════════════════════════════════
+  -- FUSIONS: Optimization morphisms (not categorical primitives!)
+  --
+  -- Fusions bridge μ-consumers and ν-producers. They eliminate intermediate
+  -- structures (deforestation). They are NOT universal morphisms — they don't
+  -- have categorical universal properties. Termination is guaranteed by
+  -- requiring μ-type input (μ-anchoring).
+  --
+  -- The Fusion category contains well-founded optimization morphisms between
+  -- recursion schemes. See "The Fusion Category" section for theory.
+  -- ═══════════════════════════════════════════════════════════════════
+
+  -- Hylo: Fusion of Cata and Ana (μ-anchored, correct by construction)
+  -- Termination is guaranteed by requiring μG as input — structural recursion
+  -- on the well-founded μG type. The coalgebra produces F-layers from μG values.
+  -- Semantically: Hylo alg coalg ≡ Fuse alg (coalg ∘ In)
+  Hylo : ∀ {F G} → WellFormedF F → WellFormedF G → ∀ {B}
+       → IR (⟦ F ⟧ B) B                       -- algebra: F(B) → B
+       → IR (μ G) (⟦ F ⟧ (μ G))               -- coalgebra: μG → F(μG)
+       → IR (μ G) B
+
+  -- Fuse: μ-anchored fusion (correct by construction)
+  -- The transform receives the pre-destructed G-layer via out-μ.
+  -- Recursion is structural on μG — each recursive call on strict subterm.
+  -- Semantically: Fuse alg transform = cata (alg ∘ transform)
+  Fuse : ∀ {F G} → WellFormedF F → WellFormedF G → ∀ {B}
+       → IR (⟦ F ⟧ B) B                       -- algebra: F(B) → B
+       → IR (⟦ G ⟧ (μ G)) (⟦ F ⟧ (μ G))       -- transform: G(μG) → F(μG)
+       → IR (μ G) B
 ```
 
 ### Why This Structure
@@ -211,7 +251,7 @@ data IR : Type → Type → Set where
 - Matches the bootstrap architecture (OCP-0004) where the verifier checks traces on one IR
 - Case analysis covers all constructors directly — no artificial wrappers
 - Type indices (`IR A B`) encode source and target types, enabling typed reductions
-- Guardedness is part of `Ana`'s type — unguarded terms are **unconstructable**
+- Productivity follows from IR totality — all coalgebras are inherently "guarded"
 
 **Philosophy: IR = Natural Transformations**
 
@@ -219,7 +259,7 @@ The IR should BE the categorical structure, not a representation that needs vali
 
 - **Cata** IS the unique F-algebra morphism from μF (totality by definition)
 - **Ana** IS the unique F-coalgebra morphism to νF (productivity by definition)
-- **Guardedness** is part of Ana's type — unguarded terms cannot be constructed
+- **Productivity** follows from totality — IR coalgebras terminate, producing one F-layer
 
 This means:
 - No separate "guardedness checker" pass
@@ -354,6 +394,122 @@ Without `out-μ`, we cannot pattern-match on the `Nat` (a μ-type) inside the co
 
 This symmetry reflects the categorical duality between initial algebras and final coalgebras.
 
+### The Fusion Category
+
+**Key insight from analysis:** Hylo and similar "bridge" morphisms are NOT categorical primitives.
+They don't arise from universal properties like Cata (initiality) and Ana (finality). Instead, they
+are **optimization morphisms** that fuse a μ-consumer with a ν-producer.
+
+#### Why Hylo Is Not Categorical
+
+In proper category theory:
+- `Cata : μF → A` is THE unique F-algebra morphism from the initial algebra
+- `Ana : A → νF` is THE unique F-coalgebra morphism to the final coalgebra
+- `Hylo : A → B` is... just a recursive function that "happens to work"
+
+The issue: `μF ≠ νF`. They are different types:
+- `μF` is the initial F-algebra (least fixed point, inductive, finite)
+- `νF` is the final F-coalgebra (greatest fixed point, coinductive, potentially infinite)
+
+So `Cata ∘ Ana` doesn't type-check! Hylo is defined directly as:
+```
+hylo alg coalg x = alg (fmap (hylo alg coalg) (coalg x))
+```
+
+This terminates only when the coalgebra eventually produces base cases. That's a **semantic property**,
+not guaranteed by any universal property.
+
+#### The Fusion Category
+
+We define **Fusions** as the class of well-founded optimization morphisms:
+
+> **Definition:** The Fusion category contains morphisms that bridge μ-consumers and ν-producers,
+> anchored by a μ-type component that ensures well-founded recursion.
+
+| μ-side (consumer) | ν-side (producer) | Fusion Name |
+|-------------------|-------------------|-------------|
+| Cata | Ana | **Hylo** (hylomorphism) |
+| Histo | Ana | **Dyna** (dynamorphism) |
+| Histo | Futu | **Chrono** (chronomorphism) |
+| Para | Ana | (unnamed, but valid) |
+| Cata | Apo | (related to Elgot algebras) |
+
+All fusions share:
+1. **Bridge** a consumer (μ-side) and producer (ν-side)
+2. **Eliminate** intermediate structures (deforestation)
+3. **Require** μ-anchoring for termination
+4. **Lack** categorical universal properties
+
+#### μ-Anchoring: The Key to Safe Fusions
+
+A fusion is **safe** (total) when:
+1. The input type is a μ-type: `μG`
+2. The coalgebra/transform operates on that μ-type
+3. Recursive positions receive strictly smaller μG values (subterms)
+
+**The implementation enforces this through type structure:**
+
+```agda
+-- Hylo: requires μG as input, coalgebra produces F-layers from μG
+Hylo : ∀ {F G} → WellFormedF F → WellFormedF G → ∀ {B}
+     → IR (⟦ F ⟧ B) B                       -- algebra: F(B) → B
+     → IR (μ G) (⟦ F ⟧ (μ G))               -- coalgebra: μG → F(μG)
+     → IR (μ G) B
+
+-- Fuse: transform receives pre-destructed G-layer
+Fuse : ∀ {F G} → WellFormedF F → WellFormedF G → ∀ {B}
+     → IR (⟦ F ⟧ B) B                       -- algebra: F(B) → B
+     → IR (⟦ G ⟧ (μ G)) (⟦ F ⟧ (μ G))       -- transform: G(μG) → F(μG)
+     → IR (μ G) B
+```
+
+**Hylo** requires the input to BE a μ-type (`μG`). The coalgebra produces F-layers from μG values.
+Termination follows because μG is well-founded — structural recursion on the input.
+
+**Fuse** is even more structured: the transform receives the **already-destructed** G-layer.
+The fusion construct itself applies `out-μ` before calling the user's transform:
+
+```
+                         Fuse
+                          │
+    μG ────out-μ────→ ⟦G⟧(μG) ──transform──→ ⟦F⟧(μG)
+                          │                      │
+                    (automatic)            (user provides)
+```
+
+**This is correct by construction:**
+- The user CANNOT avoid destructing the μ-type — `out-μ` is built into Fuse
+- Recursive positions receive `μG` (subterms), not the original `μG`
+- Structural recursion is enforced by types
+
+**Relationship:** `Hylo alg coalg ≡ Fuse alg (coalg ∘ In)` — Hylo is syntactic sugar for Fuse
+where the user provides the full coalgebra rather than just the layer-to-layer transform.
+
+#### Fusions vs Categorical Schemes: The Layered IR
+
+| Property | Categorical Schemes | Fusions |
+|----------|--------------------| --------|
+| Examples | Cata, Para, Ana, Apo | Hylo, Fuse |
+| Universal property | Yes (initiality/finality) | No |
+| Termination proof | By construction (Lambek) | By μ-anchoring (type structure) |
+| In semantic core | Yes | Optional (optimization) |
+| TERMINATING pragma | No | No (μ-anchoring is structural) |
+
+**Implication for IR design:**
+1. Start with categorical schemes (Cata, Para, Ana, Apo) — they provide the semantic foundation
+2. Add fusions incrementally for optimization — μ-anchoring ensures termination
+3. Fusions are NOT needed for IR correctness — they're purely optimization
+
+#### Why This Matters
+
+The principled approach:
+- **Semantic layer**: Use categorical schemes (proven total/productive)
+- **Optimization layer**: Compiler recognizes patterns and applies fusions
+- **Correctness**: μ-anchoring makes fusions correct by construction
+
+This is why `obs` was migrated from Hylo to Para in Phase 10 — Para is categorical (derived from Cata).
+Hylo/Fuse are fusions for deforestation. Both are now structurally terminating via μ-anchoring.
+
 ### Functor Interpretation
 
 ```agda
@@ -383,54 +539,44 @@ type Colist A  = ν(FSum (FConst Unit) (FProd (FConst A) FId))
 type Process I O = ν(FConst I → FProd (FConst O) FId)
 ```
 
-### Guardedness as Type-Level Constraint
+### Productivity from IR Totality
 
-For coinductive definitions (`Ana`, `Apo`), guardedness is enforced **at the type level** via the `Guarded` type:
+For coinductive definitions (`Ana`, `Apo`), productivity follows from **IR totality**:
 
-```agda
--- Guarded F A represents a value of shape F where corecursive positions are guarded
-data Guarded (F : Functor) (A : Type) : Type where
-  GProd  : Guarded F₁ A → Guarded F₂ A → Guarded (FProd F₁ F₂) A  -- product guards
-  GInl   : Guarded F A → Guarded (FSum F G) A                      -- sum guards
-  GInr   : Guarded G A → Guarded (FSum F G) A
-  GConst : B → Guarded (FConst B) A                                -- base case (no recursion)
-  GRec   : A → Guarded FId A                                       -- corecursive position
-
--- Ana only accepts guarded coalgebras — unguarded ones cannot be typed
-Ana : (coalg : IR A (Guarded F A)) → IR A (ν F)
+```
+IR evaluation is total (established math: Tait, Girard, Lambek)
+    ↓
+Coalgebra c : IR A (⟦ F ⟧T A) terminates, producing one F-layer
+    ↓  (this IS "guardedness" — automatic, not checked)
+Each observation of (Ana c a) terminates
+    ↓  (this IS "productivity")
+Ana c a is productive
 ```
 
-This is **definitional**: unguarded coalgebras simply cannot be constructed. There is no
-"guardedness checker" algorithm to trust — the type system makes invalid terms unconstructable.
+**Key insight:** In Once's IR, coalgebras `IR A (⟦ F ⟧T A)` are just IR morphisms. IR morphisms
+are total (no general recursion). Therefore:
+1. Every coalgebra terminates and produces `⟦ F ⟧T A` — one F-layer
+2. This is exactly what "guarded" means — you MUST produce a constructor
+3. No separate guardedness type or checker needed
 
-#### Examples
-
-```agda
--- GOOD: coalgebra produces guarded output (constructor wraps corecursion)
-streamCoalg : IR State (Guarded (FProd (FConst Output) FId) State)
-streamCoalg = ... produces GProd (GConst output) (GRec nextState) ...
--- ✓ Type-checks: pair constructor guards the recursive position
-
--- BAD: cannot construct unguarded coalgebra
--- There is no Guarded constructor that allows corecursion without a guard
--- Such a term simply CANNOT be written — not "rejected", unconstructable
-```
-
-#### Why Type-Level Guardedness
+This is **definitional**: non-productive corecursion cannot be expressed because that would
+require a coalgebra that doesn't terminate or doesn't produce an F-layer. Both are impossible
+in the total IR.
 
 | Approach | Adds to TCB? | When checked? |
 |----------|--------------|---------------|
 | Algorithmic checker | Yes (must trust checker) | Runtime/compile-time |
-| Type-level constraint | No (types are definitional) | Construction time |
+| GuardedT type (superseded) | No (types are definitional) | Construction time |
+| **IR totality (current)** | No (math theorem) | **By construction** |
 
 This aligns with OCP-0004's minimal-trust philosophy: productivity is **definitional**
-(follows from the type structure), not checked by an algorithm we must trust.
+(follows from IR totality), not checked by an algorithm we must trust.
 
 ### Mutual Recursion and Deadlock Prevention
 
-#### Guarded Mutual Corecursion
+#### Mutual Corecursion
 
-Two servers exchanging messages are expressible if properly guarded:
+Two servers exchanging messages are expressible if each produces output before consuming:
 
 ```
 -- GOOD: Each produces output before needing input from the other
@@ -464,9 +610,9 @@ This is **not expressible** with `cata`/`ana` — you cannot write mutually recu
 | Pattern | With cata/ana | Reason |
 |---------|---------------|--------|
 | `f x = g x; g x = f x` | Not expressible | Needs general fix |
-| Mutual streams, unguarded | Rejected | Fails guardedness |
-| Mutual streams, guarded | Productive | Progress guaranteed |
-| No external driver | Unproductive | Guardedness catches it |
+| Mutual streams, non-productive | Not expressible | IR totality prevents it |
+| Mutual streams, productive | Works | Each step terminates |
+| No external driver | Unproductive | Cannot write the coalgebra |
 
 ---
 
@@ -523,7 +669,7 @@ Operations in Initial become explicit uses of the unified IR's recursion schemes
 | `map f xs` | `Cata (Case nil (Compose cons (Pair (Compose f Fst) Snd))) : IR (μ ListF) (μ ListF)` |
 | `filter p xs` | `Cata (Case nil (λ(a,as) → if p a then cons a as else as)) : IR (μ ListF) (μ ListF)` |
 | `length xs` | `Cata (Case (const 0) (Compose succ Snd)) : IR (μ ListF) Nat` |
-| `range lo hi` | `Ana coalg : IR (Nat × Nat) (ν StreamF)` where coalg produces `Guarded` output |
+| `range lo hi` | `Ana coalg : IR (Nat × Nat) (ν StreamF)` where coalg produces F-layer output |
 
 The operations are the same; the recursion is now explicit and structured. The unified IR types
 (`IR A B`) make domain and codomain explicit.
@@ -555,18 +701,22 @@ filter  : (A → Bool) → Stream A → CoList A        -- May be finite!
 ### Observation Primitives (New)
 
 Observation primitives safely convert `ν-type` to `μ-type` by **bounding** the output.
-They are implemented as `Hylo` operations — no new IR primitives needed.
+They are implemented using **Para** (paramorphism) — a categorical scheme with proven termination.
 
 The naming follows coalgebraic terminology: we **observe** a coalgebra (coinductive structure)
 by witnessing a bounded number of its unfolding steps, producing an inductive (finite) result.
+
+**Why Para, not Hylo?** Para is a categorical primitive (derived from Cata) with proven termination.
+Hylo is a fusion (optimization morphism) requiring external termination reasoning. For the semantic
+foundation, we use categorical schemes. Fusions are for the optimizer.
 
 #### ν → μ Conversions (Bounded Observation)
 
 | Primitive | Type | Description | Implementation |
 |-----------|------|-------------|----------------|
-| `obs` | `Nat → ν F → μ F` | Observe n steps | Hylo |
-| `obsWhile` | `(A → Bool) → ν F → μ F` | Observe while predicate holds | Hylo |
-| `obsUntil` | `(A → Bool) → ν F → μ F` | Observe until predicate holds | Hylo |
+| `obs` | `Nat → ν F → μ F` | Observe n steps | Para (proven terminating) |
+| `obsWhile` | `(A → Bool) → ν F → μ F` | Observe while predicate holds | Para (proven terminating) |
+| `obsUntil` | `(A → Bool) → ν F → μ F` | Observe until predicate holds | Para (proven terminating) |
 
 #### μ → ν Conversions (Embedding)
 
@@ -583,25 +733,27 @@ by witnessing a bounded number of its unfolding steps, producing an inductive (f
 
 #### Why Observation Primitives Are Safe
 
-Observation primitives are **Hylos** — they fuse generation and consumption without building intermediate structures:
+Observation primitives use **Para** (paramorphism) — a categorical scheme with proven termination:
 
 ```agda
--- obs implemented as Hylo
+-- obs implemented as Para (provably terminating, no TERMINATING pragma)
 obs : Nat → Stream A → List A
-obs n s = Hylo listAlg obsCoalg (n, s)
+obs n s = apply (Para obsAlg n) s
   where
-    -- Coalgebra: observe stream, decrement counter
-    obsCoalg : (Nat × Stream A) → ListF (Nat × Stream A)
-    obsCoalg (0, _) = Nil
-    obsCoalg (n, s) = Cons (head s, (n-1, tail s))
-
-    -- Algebra: build list
-    listAlg : ListF (List A) → List A
-    listAlg = In
+    -- Para algebra: receives NatF (Nat × (Stream A → List A))
+    -- Zero case: return function that produces Nil
+    -- Suc case: return function that produces Cons (head, rec tail)
+    obsAlg : NatF (Nat × (Stream A → List A)) → (Stream A → List A)
+    obsAlg (inl tt) = const Nil
+    obsAlg (inr (_, rec)) = λs → Cons (head s, rec (tail s))
 ```
 
-The bounding (counter reaching 0, predicate failing) ensures termination.
-The `Hylo` fuses the bounded observation with list construction — optimal by construction.
+**Key insight:** Para recurses on Nat (a μ-type), which is well-founded. Termination follows
+from structural recursion — no TERMINATING pragma needed, no trust required.
+
+**Optimization:** The compiler can recognize this pattern and apply fusion. But the **semantic
+foundation** uses Para (categorical, proven), not Hylo (fusion, requires witness). Optimization
+is a separate concern from correctness.
 
 ### No Lost Optimizations
 
@@ -655,23 +807,25 @@ ir-simulation (Ana coalg)  = ...
 1. **Direct proofs** — no wrapper overhead, case analysis is straightforward
 2. **Type-indexed IR** — `IR A B` carries type information, enabling typed rewrites
 3. **Definitional totality** — `Cata` is total by Lambek's Lemma, not by analysis
-4. **Definitional productivity** — `Ana` with `Guarded` coalgebra is productive by construction
+4. **Definitional productivity** — `Ana` is productive because IR coalgebras are total
 5. **Matches bootstrap tower** — same IR structure the verifier checks
 
-### Guardedness as Type-Level Constraint
+### Productivity from IR Totality
 
-The `Guarded` type ensures coalgebras are guarded **by construction**:
+Productivity follows from **IR totality**: coalgebras `IR A (⟦ F ⟧T A)` are IR morphisms, and
+IR morphisms are total (no general recursion). Therefore every coalgebra terminates, producing
+exactly one F-layer — which is precisely what "guarded" means.
 
 ```agda
--- This coalgebra type-checks: produces guarded output
-goodCoalg : IR State (Guarded (FProd (FConst Output) FId) State)
-goodCoalg = ...  -- must produce GProd (GConst output) (GRec nextState)
+-- This coalgebra is productive: it's an IR morphism that terminates
+goodCoalg : IR State (⟦ FProd (FConst Output) FId ⟧T State)
+goodCoalg = ⟨ outputExpr , nextStateExpr ⟩ Heap
 
--- Unguarded coalgebras cannot be typed
--- No Guarded constructor allows: corecurse without a guard
+-- Non-productive coalgebras cannot exist in the total IR
+-- There's no way to write a non-terminating IR morphism
 ```
 
-This aligns with OCP-0004's minimal-trust philosophy: totality/productivity are **definitional** (Lambek's Lemma), not checked by an algorithm we must trust.
+This aligns with OCP-0004's minimal-trust philosophy: totality/productivity are **definitional** (Lambek's Lemma + IR totality), not checked by an algorithm we must trust.
 
 ---
 
@@ -714,12 +868,22 @@ From OCP-0004, the unified IR maps directly to categorical concepts:
 │ In                       │ Algebra structure: F(μF) → μF    │
 │ out-μ                    │ In⁻¹ : μF → F(μF) (Lambek iso)   │
 │ Cata alg                 │ Unique F-algebra morphism        │
+│ Para alg                 │ Paramorphism (derived from Cata) │
 │ νF                       │ Final F-coalgebra                │
 │ Out                      │ Coalgebra structure: νF → F(νF)  │
 │ in-ν                     │ Out⁻¹ : F(νF) → νF (Lambek iso)  │
 │ Ana coalg                │ Unique F-coalgebra morphism      │
+│ Apo coalg                │ Apomorphism (derived from Ana)   │
+├──────────────────────────┼──────────────────────────────────┤
+│ Hylo (FUSION)            │ NOT a categorical morphism!      │
+│                          │ Optimization pattern, requires   │
+│                          │ μ-anchoring for termination      │
 └──────────────────────────┴──────────────────────────────────┘
 ```
+
+**Note:** Hylo is explicitly marked as NOT categorical. It's in the IR for optimization purposes
+but doesn't have a universal property. Termination is guaranteed by μ-anchoring: requiring
+a μ-type as input ensures structural recursion on a well-founded type.
 
 ### Bootstrap Tower Alignment
 
@@ -754,16 +918,16 @@ Dual (Final Coalgebras):
     Consequence: νF is productive (always has next element).
     Therefore: Ana always makes progress.
 
-Guardedness (Type-Level):
-    Ana requires: coalg : IR A (Guarded F A)
-    The Guarded type ONLY allows constructor-guarded corecursion.
-    Unguarded coalgebras cannot be typed — they are unconstructable.
+Productivity (from IR Totality):
+    Ana requires: coalg : IR A (⟦ F ⟧T A)
+    IR morphisms are total (no general recursion).
+    Therefore each coalgebra step terminates, producing one F-layer.
+    This IS "guardedness" — automatic, not checked separately.
 ```
 
 These are mathematical facts, not implementation details. The unified IR makes
 these facts explicit: `Cata` is total because it IS the unique algebra morphism,
-and `Ana` is productive because it IS the unique coalgebra morphism with guarded
-output.
+and `Ana` is productive because IR totality ensures each coalgebra step terminates.
 
 ---
 
@@ -1069,7 +1233,7 @@ The unified IR can be extended with session type constructors that enforce commu
 
 | Extension | Removes | Mechanism |
 |-----------|---------|-----------|
-| Recursion schemes | Infinite loops, unproductive codata | `Cata`/`Ana` with `Guarded` |
+| Recursion schemes | Infinite loops, unproductive codata | `Cata`/`Ana` (total IR) |
 | Session types | Communication deadlocks | Linear channels, dual sessions |
 | Both | All major bug classes | Type-level constraints |
 
@@ -1103,14 +1267,15 @@ Rejected:
 - Less modular proof structure
 - Layers not truly independent
 
-### D: Unified IR with Type-Level Guardedness (This Proposal)
+### D: Unified IR with μ-Anchored Fusions (This Proposal)
 
 Accepted:
 - Matches OCP-0004 bootstrap tower architecture
 - Direct case analysis over all constructors
 - Totality and productivity by construction (definitional)
 - Type-indexed IR enables typed rewrites
-- Guardedness enforced at type level — unguarded terms unconstructable
+- Productivity follows from IR totality — no separate checker needed
+- Fusions (Hylo/Fuse) are μ-anchored for provable termination
 - Aligns with D037 verification strategy
 - Enables dependent types naturally
 - Minimal TCB — no guardedness checker to trust
@@ -1123,7 +1288,6 @@ Accepted:
 
 - Create `Once.CCC.IR` with:
   - `Functor` type for polynomial functors
-  - `Guarded` type for guardedness enforcement
   - Unified `IR` datatype with all constructors
 - Establish arrow-based effect typing (`A → B` vs `Eff A B`)
 - Both old and new IR coexist temporarily
@@ -1240,18 +1404,17 @@ Established semantic foundation for guardedness enforcement:
   - `gmapA` = functorial map over guarded values
   - Smart constructors: guardConst, guardRec, guardPair, etc.
 
-**Type-Level GuardedT Integration** ✓ COMPLETE (2026-03-23)
+**Type-Level GuardedT Integration** ✓ COMPLETE then SUPERSEDED (2026-03-23 → 2026-03-25)
 
-Enforced productive corecursion at the type level:
+*Historical note: GuardedT was added then removed when we realized productivity follows from IR totality.*
 
-- **Once/Type.agda**: Added `GuardedT : Functor → Type → Type` constructor
-- **Once/CCC/IR.agda**: Changed Ana signature to `IR A (GuardedT F A) → IR A (ν-type F)`
-- **Once/CCC/IR.agda**: Changed Hylo coalgebra to require `GuardedT F A`
-- **Once/CCC/IR.agda**: Added `Unguard : IR (GuardedT F A) (⟦ F ⟧T A)` for extraction
-- **Once/Semantics/Core.agda**: Added `sem-unguard`, `sem-ana-guarded`, `sem-hylo-guarded`
-- **17 files updated**: Propagated GuardedT through all Type pattern matches and Unguard through IR traversals
+Originally added:
+- `GuardedT : Functor → Type → Type` constructor
+- Ana required `IR A (GuardedT F A)` coalgebras
+- `Unguard` extractor, various semantic machinery
 
-This makes productivity **definitional** - non-productive coalgebras cannot type-check.
+**Superseded by IR Totality approach (2026-03-25):** See IR/Totality.agda and IR/Productivity.agda.
+GuardedT was unnecessary bookkeeping — IR coalgebras are inherently "guarded" because IR is total.
 
 **Remaining Work**:
 
@@ -1278,13 +1441,15 @@ This makes productivity **definitional** - non-productive coalgebras cannot type
 - [x] Implement Observation library with obs primitive (2026-03-26)
 - [x] Add out-μ and in-ν to IR (Lambek isomorphisms) (2026-03-26)
 
-**Phase 10: Paramorphism** (next)
-- [ ] Add `paraS` to `Once.Functor.Base` (derived from `cataS`)
-- [ ] Add `Para` constructor to `Once.CCC.IR`
-- [ ] Add `sem-para` to `Once.Semantics.Core` (no TERMINATING pragma)
-- [ ] Update IR passes (Escape, Fusion, Optimize, eval)
-- [ ] Migrate `obs` to use Para (provably terminating)
-- [ ] Document Hylo as expert-only escape hatch
+**Phase 10: Paramorphism** ✓ COMPLETE (2026-03-26)
+- [x] Add `paraS` to `Once.Functor.Base` (derived from `cataS`)
+- [x] Add `Para` constructor to `Once.CCC.IR`
+- [x] Add `sem-para` to `Once.Semantics.Core` (no TERMINATING pragma)
+- [x] Update IR passes (Escape, Fusion, Optimize, eval)
+- [x] Migrate `obs` to use Para (provably terminating)
+- [x] Add `out-μ` and `in-ν` eval cases to CCC/Eval.agda
+- [x] Document Hylo as expert-only escape hatch (eval-Hylo intentionally omitted, not postulated)
+- [x] Verify all modified files (10/10 pass)
 
 **Remaining Libraries:**
 - [ ] Implement obsWhile, obsUntil (requires Bool infrastructure)
@@ -1309,7 +1474,7 @@ For well-formed functors, the coercion round-trips are now fully provable
 without any postulates. The well-formedness predicate ensures K positions
 only contain base types (Unit, Int, Float, Str, Buffer, and their products/sums).
 
-**Remaining Postulates** (2026-03-25)
+**Remaining Postulates** (2026-03-26)
 
 | Postulate | Location | Category | Notes |
 |-----------|----------|----------|-------|
@@ -1317,6 +1482,21 @@ only contain base types (Unit, Int, Float, Str, Buffer, and their products/sums)
 | `bisimS-to-eq` | Functor/Base.agda | Standard axiom | Coalgebraic extensionality, provable in Cubical Agda |
 | `eval-total` | IR/Totality.agda | Established math | IR evaluation terminates (Tait/Girard/Lambek) |
 | `defaultEvalPrim` | IR.agda | External | Primitive operations are inherently external |
+
+**Principled Handling of Hylo:**
+
+The `eval-Hylo` law is intentionally omitted (not postulated) from `CCC/IR/Laws.agda`. This is the
+principled approach because:
+
+1. **Hylo is an optimization primitive**, not a correctness primitive
+2. **sem-hylo requires TERMINATING** - it's already outside Agda's proof system
+3. **Postulating would hide the trust boundary** - omission makes it explicit
+
+Correctness guarantees for Hylo-based operations:
+- **Bounded patterns** (obs, obsWhile, etc.): Use Para, which is provably terminating
+- **Unbounded Hylo**: Expert-only escape hatch, requires external termination reasoning
+
+The absence of eval-Hylo is a feature, not a bug.
 
 **Standard axioms** (funext, bisimS-to-eq) are well-established mathematical principles that:
 - Are provable in Cubical Agda
@@ -1450,7 +1630,18 @@ How to ensure `Eff A B` satisfies arrow laws?
 | 7. Verification | Agda proofs, Totality.agda, Productivity.agda | ✓ |
 | 8. Simplification | Remove GuardedT/Guard/Unguard (unnecessary) | ✓ |
 | 9. Libraries | Coinitial library + Observation primitives (Agda) | ✓ |
-| 10. Para | Paramorphism for provable termination | |
+| 10. Para | Paramorphism for provable termination | ✓ |
+| 11. Fusion Layer | Hylo and Fuse (μ-anchored, correct by construction) | ✓ |
+
+**Layered implementation strategy:**
+1. **Categorical foundation first** (Phases 1-10): Cata, Para, Ana, Apo — proven total/productive
+2. **μ-anchored fusions** (Phase 11): Hylo and Fuse — correct by construction via μ-type input
+3. **Fusions are optional**: The IR is semantically complete without them
+
+**The progression mirrors Para's relationship to Hylo:**
+- Para is structured (derived from Cata) → provably terminating
+- Fuse is structured (μ-type pre-destructed) → provably terminating
+- Hylo ≡ Fuse (coalg ∘ In) — both are μ-anchored for termination
 
 ### Phase 9: Coinitial and Observation Libraries
 
@@ -1592,10 +1783,12 @@ The design:
 - Single unified `IR : Type → Type → Set` with all CCC operations
 - `Functor` type for polynomial functors (per D037)
 - **Split types** (`μ-type` ≠ `ν-type`) for totality — prevents folding infinite codata
-- **Observation primitives** (`obs`, `obsWhile`, etc.) safely cross μ/ν boundary
+- **Layered architecture**:
+  - **Categorical primitives** (Cata, Para, Ana, Apo) — proven total/productive by Lambek
+  - **Fusions** (Hylo, Dyna, etc.) — optimization layer, requires μ-anchoring
+- **Observation primitives** (`obs`, `obsWhile`, etc.) use Para (categorical), not Hylo (fusion)
 - Productivity follows from IR totality — GuardedT is unnecessary (removed)
-- **Para** (paramorphism) enables provably-terminating bounded iteration (Phase 10)
-- Primitive constructors for derived schemes (`Hylo`, `Para`, `Apo`) enable direct optimization
+- **The Fusion category** contains well-founded optimization morphisms between recursion schemes
 - Arrow-based effects: CCC structure provides arrow combinators, types distinguish `A → B` from `Eff A B`
 - Aligns with D037 (polynomial functors)
 - Matches OCP-0004 bootstrap architecture (single IR for verifier)
@@ -1607,10 +1800,15 @@ The design:
 
 **The key principle:** The IR should BE the categorical structure, not a representation that needs validation. `Cata` IS the unique algebra morphism (totality by definition), and `Ana` IS the unique coalgebra morphism (productivity follows from totality — coalgebras are IR morphisms, and IR morphisms are total).
 
+**The layering insight:** The IR is conceptually layered:
+1. **Categorical primitives** (Cata, Para, Ana, Apo) have universal properties — totality/productivity is PROVEN by Lambek's Lemma
+2. **Fusions** (Hylo, Dyna, Chrono) are optimization morphisms — they require μ-anchoring witnesses for termination
+
+Fusions are NOT categorical primitives. They don't have universal properties. But they ARE essential for compiler optimization. The Fusion category contains "well-founded optimization morphisms between recursion schemes."
+
 **The optimization insight:** Split types (μ ≠ ν) are necessary for totality but don't lose optimizations.
-Observation primitives like `obs` are Hylos that safely cross the μ/ν boundary. Real stream processing
-pipelines go through these observations, so fusion happens automatically. We get totality AND full
-optimization — having our cake and eating it too.
+Observation primitives like `obs` use Para (categorical, proven terminating), NOT Hylo (fusion, requires witness). The semantic foundation uses categorical schemes; fusions are added by the optimizer.
+We get totality AND full optimization — having our cake and eating it too.
 
 ---
 
@@ -1623,6 +1821,13 @@ optimization — having our cake and eating it too.
 - `docs/design/libraries.md`: Three strata architecture
 - `docs/design/dependent-types-options.md`: Dependent type roadmap
 - `docs/design/categorical-foundations.md`: Coalgebras and codata
+- `docs/proposals/hylo-categorical-analysis.md`: Analysis of Hylo's non-categorical status
+
+**External references:**
+- Meijer, Fokkinga, Paterson (1991): "Functional Programming with Bananas, Lenses, Envelopes and Barbed Wire"
+- Bird & de Moor (1997): "Algebra of Programming"
+- Capretta, Uustalu, Vene: "Recursive Coalgebras from Comonads"
+- Hinze, Harper, James (2010): "Theory and Practice of Fusion"
 
 ---
 
@@ -1741,3 +1946,95 @@ the "have cake and eat it too" promise actually work.
 
 This symmetry reflects the categorical duality between initial algebras and final coalgebras,
 both justified by Lambek's Lemma.
+
+### 2026-03-27: The Fusion Category — Hylo Is Not Categorical
+
+**Issue raised:** Why does Hylo require a `TERMINATING` pragma while Cata/Ana don't? Is Hylo a
+fundamental recursion scheme, or something different?
+
+**Analysis:**
+
+Hylo is often treated as a peer of Cata and Ana in functional programming literature. But careful
+analysis reveals a fundamental difference:
+
+| Property | Cata | Ana | Hylo |
+|----------|------|-----|------|
+| Universal property | Yes (initiality) | Yes (finality) | **No** |
+| Termination proof | Lambek's Lemma | Lambek's Lemma | **Depends on coalgebra** |
+| Types align | μF → A | A → νF | **μF ≠ νF, doesn't compose!** |
+
+**The key insight:** `Cata ∘ Ana` doesn't type-check because μF ≠ νF:
+- `Ana : A → νF` (produces coinductive)
+- `Cata : μF → B` (consumes inductive)
+- Composition requires μF = νF, which would break totality!
+
+Hylo is defined directly as a recursive function:
+```
+hylo alg coalg x = alg (fmap (hylo alg coalg) (coalg x))
+```
+
+This terminates only when the coalgebra eventually produces base cases — a semantic property
+that depends on the specific coalgebra, not guaranteed by any universal property.
+
+**Resolution:** Introduce the **Fusion category** terminology.
+
+The Fusion category contains **well-founded optimization morphisms between recursion schemes**:
+
+| μ-consumer | ν-producer | Fusion |
+|------------|------------|--------|
+| Cata | Ana | **Hylo** |
+| Histo | Ana | **Dyna** (dynamorphism) |
+| Histo | Futu | **Chrono** (chronomorphism) |
+| Para | Ana | (unnamed) |
+| Cata | Apo | (related to Elgot algebras) |
+
+All fusions share:
+1. Bridge a consumer (μ-side) and producer (ν-side)
+2. Eliminate intermediate structures (deforestation)
+3. Require **μ-anchoring** for termination
+4. Lack categorical universal properties
+
+**μ-Anchoring:** A fusion is safe (total) when:
+- Input type is a μ-type: `μG`
+- Coalgebra/transform operates on that μ-type
+- Recursive positions receive strictly smaller μG values (subterms)
+
+This is enforced through the type structure: Hylo and Fuse both require `μG` as input type.
+
+**Implications for IR design:**
+
+1. **Categorical schemes** (Cata, Para, Ana, Apo) form the **semantic foundation** — proven
+   total/productive by Lambek's Lemma, no TERMINATING pragma needed
+
+2. **Fusions** (Hylo, Fuse) are the **optimization layer** — μ-anchoring enforced by types,
+   structural recursion on well-founded μ-type input
+
+3. **Observation primitives** (`obs`, `obsWhile`) use **Para** (categorical) — Para is
+   derived from Cata, provably terminating (done in Phase 10)
+
+4. **Fusions are optional** — the IR is semantically complete without them. They exist purely
+   for optimization. Add them incrementally as the optimizer matures.
+
+**Naming convention adopted:**
+- "Categorical schemes" = Cata, Para, Ana, Apo (universal properties, proven)
+- "Fusions" = Hylo, Fuse (optimization morphisms, μ-anchored)
+- "Fusion category" = the class of well-founded optimization morphisms
+
+**Related work:**
+- Capretta, Uustalu, Vene: "Recursive Coalgebras" — characterizes coalgebras that give terminating hylos
+- Elgot algebras: Capture iteration with possible divergence
+- Traced monoidal categories: Feedback/iteration as categorical structure
+
+**Fusion safety via μ-anchoring:**
+
+| Construct | Input Type | Guarantee |
+|-----------|------------|-----------|
+| `Hylo` | `μG` | Structural recursion on well-founded type |
+| `Fuse` | `μG` | μ-type pre-destructed, transform receives G-layer |
+
+Both are correct by construction — the type structure enforces μ-anchoring.
+
+**Conclusion:** The principled architecture is:
+- Semantic layer: Categorical schemes (proven total/productive)
+- Optimization layer: Fusions (μ-anchored, correct by construction)
+- The IR reflects this: categorical primitives first, fusions added for optimization

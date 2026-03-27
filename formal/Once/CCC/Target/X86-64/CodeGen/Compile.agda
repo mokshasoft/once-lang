@@ -191,7 +191,7 @@ compile-length (In _) = 1       -- wrap μ-type constructor
 compile-length (Cata alg) = compile-length alg  -- placeholder: iterative loop
 compile-length Out = 1          -- observe ν-type
 compile-length (Ana coalg) = compile-length coalg  -- placeholder: demand-driven
-compile-length (Hylo alg coalg) = compile-length alg +ℕ compile-length coalg  -- placeholder: fused
+compile-length (Hylo _ alg coalg) = compile-length alg +ℕ compile-length coalg  -- placeholder: fused
 compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles actual free)
 compile-length (Prim _) = 1       -- primitive
 compile-length arr = length id-instrs  -- arr is identity at runtime (Eff = Arrow)
@@ -239,7 +239,7 @@ compile-ir (In _) = id-instrs     -- wrap μ-type: transfer rdi → rax (same re
 compile-ir (Cata alg) = ud2 ∷ []  -- placeholder: needs iterative loop implementation
 compile-ir Out = id-instrs        -- observe ν-type: transfer rdi → rax
 compile-ir (Ana coalg) = ud2 ∷ []  -- placeholder: needs demand-driven implementation
-compile-ir (Hylo alg coalg) = ud2 ∷ []  -- placeholder: needs fused loop
+compile-ir (Hylo _ alg coalg) = ud2 ∷ []  -- placeholder: needs fused loop
 compile-ir (free-heap _) = []     -- no-op: actual deallocation handled by runtime
 compile-ir (Prim _) = ud2 ∷ []    -- primitives need FFI (placeholder)
 compile-ir arr = id-instrs        -- arr is identity at runtime (Eff = Arrow)
@@ -442,7 +442,7 @@ compile-ir-length (In _) = refl
 compile-ir-length (Cata alg) = refl
 compile-ir-length Out = refl
 compile-ir-length (Ana coalg) = refl
-compile-ir-length (Hylo alg coalg) = refl
+compile-ir-length (Hylo _ alg coalg) = refl
 compile-ir-length (free-heap _) = refl
 compile-ir-length (Prim _) = refl
 compile-ir-length arr = refl

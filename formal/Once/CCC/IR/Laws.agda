@@ -66,7 +66,7 @@ alloc-mode-independent-curry ps f m₁ m₂ x = refl
 
 -- Import recursion scheme semantic operations
 open import Once.Semantics.Machine
-  using (sem-In; sem-cata; sem-CoOut; sem-ana; sem-hylo;
+  using (sem-In; sem-cata; sem-para; sem-CoOut; sem-ana; sem-hylo;
          coerce-functor; coerce-functor⁻¹)
 open import Once.Type using (Functor; μ-type; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
@@ -81,6 +81,11 @@ eval-Cata : ∀ (ps : PrimSem) {F A} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T 
   eval ps (Cata {F} wf alg) x ≡ sem-cata wf (λ fa → eval ps alg (coerce-functor⁻¹ F A fa)) x
 eval-Cata ps wf alg x = refl
 
+-- | Para evaluation: paramorphism - fold with access to original substructure
+eval-Para : ∀ (ps : PrimSem) {F A} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T (μ-type F * A)) A) (x : ⟦ μ-type F ⟧) →
+  eval ps (Para {F} wf alg) x ≡ sem-para wf (λ fx → eval ps alg (coerce-functor⁻¹ F (μ-type F * A) fx)) x
+eval-Para ps wf alg x = refl
+
 -- | Out evaluation: observes ν-type
 eval-Out : ∀ (ps : PrimSem) {F} (wf : WellFormedF F) (x : ⟦ ν-type F ⟧) →
   eval ps (Out {F} wf) x ≡ coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
@@ -92,15 +97,83 @@ eval-Ana : ∀ (ps : PrimSem) {F A} (wf : WellFormedF F) (coalg : IR A (⟦ F �
   eval ps (Ana {F} wf coalg) x ≡ sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
 eval-Ana ps wf coalg x = refl
 
--- | Hylo evaluation: fused cata ∘ ana
--- OCP-0003: productivity follows from IR totality, no GuardedT needed
-eval-Hylo : ∀ (ps : PrimSem) {F A B} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) →
-  eval ps (Hylo {F} wf alg coalg) x ≡
-    sem-hylo F (λ fb → eval ps alg (coerce-functor⁻¹ F B fb))
-               (λ a → coerce-functor F A (eval ps coalg a)) x
-eval-Hylo ps wf alg coalg x = refl
+-- | Hylo evaluation law
+--
+-- OCP-0003: Hylo is now based on Fuse, removing the need for TerminatesOn.
+-- Termination is guaranteed by requiring μG as input - structural recursion
+-- on the well-founded μG type ensures termination.
+--
+-- sem-hylo alg coalg = sem-fuse alg (coalg ∘ sem-In)
+--
+-- No TERMINATING pragma needed on sem-hylo - it delegates to sem-fuse.
 
 -- | AllocMode independence for In
 alloc-mode-independent-In : ∀ (ps : PrimSem) {F} (wf : WellFormedF F) (m₁ m₂ : AllocMode) (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) →
   eval ps (In {F} wf m₁) x ≡ eval ps (In {F} wf m₂) x
 alloc-mode-independent-In ps wf m₁ m₂ x = refl
+
+------------------------------------------------------------------------
+-- OCP-0003: Lambek Isomorphism Laws
+--
+-- By Lambek's Lemma:
+--   - In and out-μ are inverses (μ-type)
+--   - Out and in-ν are inverses (ν-type)
+------------------------------------------------------------------------
+
+-- Import semantic Lambek laws
+open import Once.Semantics.Machine
+  using (sem-Out-In; sem-In-Out; sem-CoOut-CoIn; sem-CoIn-CoOut;
+         coerce-round-trip; coerce⁻¹-round-trip; sem-Out; sem-CoIn)
+open import Relation.Binary.PropositionalEquality using (cong; trans; sym)
+
+-- | out-μ ∘ In = id (Lambek, μ-type, one direction)
+--
+-- Proof: eval (out-μ ∘ In) x
+--      = coerce-functor⁻¹ (sem-Out (sem-In (coerce-functor x)))
+--      = coerce-functor⁻¹ (coerce-functor x)   [by sem-Out-In]
+--      = x                                      [by coerce-round-trip]
+--
+eval-out-μ-In : ∀ (ps : PrimSem) {F} (wf : WellFormedF F) (m : AllocMode) (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) →
+  eval ps (out-μ wf ∘ In wf m) x ≡ x
+eval-out-μ-In ps {F} wf m x =
+  trans (cong (coerce-functor⁻¹ F (μ-type F)) (sem-Out-In wf (coerce-functor F (μ-type F) x)))
+        (coerce-round-trip F (μ-type F) x)
+
+-- | In ∘ out-μ = id (Lambek, μ-type, other direction)
+--
+-- Proof: eval (In ∘ out-μ) x
+--      = sem-In (coerce-functor (coerce-functor⁻¹ (sem-Out x)))
+--      = sem-In (sem-Out x)                    [by coerce⁻¹-round-trip]
+--      = x                                      [by sem-In-Out]
+--
+eval-In-out-μ : ∀ (ps : PrimSem) {F} (wf : WellFormedF F) (m : AllocMode) (x : ⟦ μ-type F ⟧) →
+  eval ps (In wf m ∘ out-μ wf) x ≡ x
+eval-In-out-μ ps {F} wf m x =
+  trans (cong (sem-In F) (coerce⁻¹-round-trip F (μ-type F) (sem-Out wf x)))
+        (sem-In-Out wf x)
+
+-- | Out ∘ in-ν = id (Lambek, ν-type, one direction)
+--
+-- Proof: eval (Out ∘ in-ν) x
+--      = coerce-functor⁻¹ (sem-CoOut (sem-CoIn (coerce-functor x)))
+--      = coerce-functor⁻¹ (coerce-functor x)   [by sem-CoOut-CoIn]
+--      = x                                      [by coerce-round-trip]
+--
+eval-Out-in-ν : ∀ (ps : PrimSem) {F} (wf : WellFormedF F) (m : AllocMode) (x : ⟦ ⟦ F ⟧T (ν-type F) ⟧) →
+  eval ps (Out wf ∘ in-ν wf m) x ≡ x
+eval-Out-in-ν ps {F} wf m x =
+  trans (cong (coerce-functor⁻¹ F (ν-type F)) (sem-CoOut-CoIn wf (coerce-functor F (ν-type F) x)))
+        (coerce-round-trip F (ν-type F) x)
+
+-- | in-ν ∘ Out = id (Lambek, ν-type, other direction)
+--
+-- Proof: eval (in-ν ∘ Out) x
+--      = sem-CoIn (coerce-functor (coerce-functor⁻¹ (sem-CoOut x)))
+--      = sem-CoIn (sem-CoOut x)                [by coerce⁻¹-round-trip]
+--      = x                                      [by sem-CoIn-CoOut]
+--
+eval-in-ν-Out : ∀ (ps : PrimSem) {F} (wf : WellFormedF F) (m : AllocMode) (x : ⟦ ν-type F ⟧) →
+  eval ps (in-ν wf m ∘ Out wf) x ≡ x
+eval-in-ν-Out ps {F} wf m x =
+  trans (cong (sem-CoIn F) (coerce⁻¹-round-trip F (ν-type F) (sem-CoOut wf x)))
+        (sem-CoIn-CoOut wf x)

@@ -41,11 +41,14 @@ open import Once.CCC.IR
 open import Data.Nat using (ℕ; zero; suc)
 
 ------------------------------------------------------------------------
--- Escape Analysis: Composition Rules (Postulated)
+-- Escape Analysis: Composition Rules
 --
--- NOTE: Due to type index unification issues with OCP-0003's new
--- recursion scheme constructors, escape-compose is temporarily
--- postulated. The intended rules are documented in the module comment.
+-- NOTE: Due to type index unification complexity with OCP-0003's recursion
+-- schemes (Agda gets stuck unifying μ-type F with product types), we keep
+-- escape-compose as a postulate. The semantics are correct since AllocMode
+-- is ignored in evaluation - this only affects performance, not correctness.
+--
+-- The intended rules are documented in the module header comment.
 ------------------------------------------------------------------------
 
 postulate
@@ -110,10 +113,13 @@ escape-once (free-heap h) = free-heap h
 escape-once (In wf m) = In wf m
 escape-once (out-μ wf) = out-μ wf
 escape-once (Cata {F} wf alg) = Cata {F} wf (escape-once alg)
+escape-once (Para {F} wf alg) = Para {F} wf (escape-once alg)
 escape-once (Out wf) = Out wf
 escape-once (in-ν wf m) = in-ν wf m
 escape-once (Ana {F} wf coalg) = Ana {F} wf (escape-once coalg)
-escape-once (Hylo {F} wf alg coalg) = Hylo {F} wf (escape-once alg) (escape-once coalg)
+escape-once (Hylo {F} {G} wfF wfG alg coalg) = Hylo {F} {G} wfF wfG (escape-once alg) (escape-once coalg)
+-- Fuse: μ-anchored fusion (correct by construction)
+escape-once (Fuse {F} {G} wfF wfG alg transform) = Fuse {F} {G} wfF wfG (escape-once alg) (escape-once transform)
 -- Guard/Unguard removed: productivity follows from IR totality
 -- out-μ/in-ν: Lambek isomorphisms, pass through
 

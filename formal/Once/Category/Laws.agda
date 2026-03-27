@@ -17,7 +17,7 @@ open import Once.CCC.IR
 open import Once.Functor.Translate using (WellFormedF)
 open import Once.Semantics.IR using (⟦_⟧; eval′)
 
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans; subst)
 open import Data.Product using (_,_; proj₁; proj₂)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
@@ -296,8 +296,8 @@ eval-arr-identity f = refl
 -- Note: We import from IR (not Machine) to match the ℤ interpretation
 -- used by eval′. Machine uses ℕ which would cause type mismatches.
 open import Once.Semantics.IR
-  using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana; sem-hylo;
-         sem-fmap; sem-ana-Out-id; sem-hylo-compute;
+  using (sem-In; sem-Out; sem-cata; sem-CoOut; sem-ana; sem-hylo; sem-fuse;
+         sem-fmap; sem-ana-Out-id; sem-hylo-is-fuse;
          coerce-functor; coerce-functor⁻¹; coerce-round-trip; coerce⁻¹-round-trip;
          ⟦_⟧F;
          -- Proven for well-formed functors (no postulates)
@@ -491,22 +491,63 @@ eval-cata-In {F} wf {A} alg m x =
 -- The hylo is the primitive operation; cata and ana are special cases.
 ------------------------------------------------------------------------
 
--- | Hylo semantics: recursive application of algebra after coalgebra
+-- | Hylo is equivalent to Fuse (OCP-0003)
 --
--- hylo alg coalg x = alg (fmap (hylo alg coalg) (coalg x))
+-- OCP-0003: Hylo is now defined in terms of Fuse:
+--   sem-hylo alg coalg = sem-fuse alg (coalg ∘ sem-In)
 --
--- This is the defining equation for hylomorphisms.
--- OCP-0003: productivity follows from IR totality, no GuardedT needed.
+-- This is proven at the semantic level by sem-hylo-is-fuse.
+-- At the IR level, Hylo can be understood as Fuse with the transform
+-- being the coalgebra composed with In.
 --
--- The proof uses fmap-coerce-coherence′ to relate Set-level sem-fmap
--- with Type-level fmap-Type through coercions.
+-- PROOF: The key insight is that the coercions cancel out:
+--   eval′ (In wfG Heap) y = sem-In G (coerce-functor G (μ-type G) y)
+--   So eval′ (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G (μ-type G) gx)
+--    = eval′ coalg (sem-In G (coerce-functor G ... (coerce-functor⁻¹ G ... gx)))
+--    = eval′ coalg (sem-In G gx)  [by coerce⁻¹-round-trip]
 --
-eval-hylo-unfold : ∀ {F : Functor} → (wf : WellFormedF F) → ∀ {A B : Type}
-                   (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧)
-                 → eval′ (Hylo {F} wf alg coalg) x ≡
-                   eval′ alg (fmap-Type F (eval′ (Hylo {F} wf alg coalg)) (eval′ coalg x))
-eval-hylo-unfold {F} wf {A} {B} alg coalg x =
-  cong (eval′ alg) (fmap-coerce-coherence′ F {A} {B} (eval′ (Hylo {F} wf alg coalg)) (coerce-functor F A (eval′ coalg x)))
+eval-hylo-is-fuse : ∀ {F G : Functor} → (wfF : WellFormedF F) → (wfG : WellFormedF G)
+                    → ∀ {B : Type} (alg : IR (⟦ F ⟧T B) B) (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
+                    → (x : ⟦ μ-type G ⟧)
+                    → eval′ (Hylo wfF wfG alg coalg) x ≡
+                      eval′ (Fuse wfF wfG alg (coalg ∘ In wfG Heap)) x
+eval-hylo-is-fuse {F} {G} wfF wfG {B} alg coalg x =
+  -- LHS unfolds to: sem-hylo ... alg-set coalg-set x
+  -- By sem-hylo definition: = sem-fuse ... alg-set (coalg-set ∘ sem-In G) x
+  -- RHS unfolds to: sem-fuse ... alg-set transform-set x
+  -- We show: coalg-set ∘ sem-In G ≡ transform-set
+  cong (λ t → sem-fuse F G wfF wfG alg-set t x) transform-eq
+  where
+    -- The algebra for both sides (identical)
+    alg-set : ⟦ F ⟧F ⟦ B ⟧ → ⟦ B ⟧
+    alg-set = λ fb → eval′ alg (coerce-functor⁻¹ F B fb)
+
+    -- The coalgebra used in Hylo (via sem-hylo)
+    coalg-set : ⟦ μ-type G ⟧ → ⟦ F ⟧F ⟦ μ-type G ⟧
+    coalg-set = λ μg → coerce-functor F (μ-type G) (eval′ coalg μg)
+
+    -- The transform used in Fuse
+    transform-set : ⟦ G ⟧F ⟦ μ-type G ⟧ → ⟦ F ⟧F ⟦ μ-type G ⟧
+    transform-set = λ gx → coerce-functor F (μ-type G)
+                             (eval′ (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G (μ-type G) gx))
+
+    -- Key: show the transforms are pointwise equal
+    transform-pointwise : ∀ gx → (coalg-set ∘′ sem-In G) gx ≡ transform-set gx
+    transform-pointwise gx =
+      -- (coalg-set ∘ sem-In G) gx
+      -- = coerce-functor F ... (eval′ coalg (sem-In G gx))
+      --
+      -- transform-set gx
+      -- = coerce-functor F ... (eval′ (coalg ∘ In wfG Heap) (coerce-functor⁻¹ G ... gx))
+      -- = coerce-functor F ... (eval′ coalg (eval′ (In wfG Heap) (coerce-functor⁻¹ G ... gx)))
+      -- = coerce-functor F ... (eval′ coalg (sem-In G (coerce-functor G ... (coerce-functor⁻¹ G ... gx))))
+      -- = coerce-functor F ... (eval′ coalg (sem-In G gx))  [by coerce⁻¹-round-trip]
+      cong (λ y → coerce-functor F (μ-type G) (eval′ coalg (sem-In G y)))
+           (sym (coerce⁻¹-round-trip G (μ-type G) gx))
+
+    -- Function extensionality gives us equality of transforms
+    transform-eq : (coalg-set ∘′ sem-In G) ≡ transform-set
+    transform-eq = extensionality transform-pointwise
 
 ------------------------------------------------------------------------
 -- Ana-Out Identity Law (Coinductive)
@@ -524,6 +565,29 @@ eval-hylo-unfold {F} wf {A} {B} alg coalg x =
 -- Unfolding with the destructor coalgebra gives back the original value.
 -- This is the dual of eval-cata-In-id.
 --
+-- Proof:
+--   eval (Ana wf (Out wf)) x
+--   = sem-ana F (λ a → coerce-functor F _ (eval (Out wf) a)) x
+--   = sem-ana F (λ a → coerce-functor F _ (coerce-functor⁻¹ F _ (sem-CoOut wf a))) x
+--   = sem-ana F (sem-CoOut wf) x   [by coerce⁻¹-round-trip + extensionality]
+--   = x                            [by sem-ana-Out-id]
+--
 eval-ana-Out-id : ∀ {F : Functor} → (wf : WellFormedF F) (x : ⟦ ν-type F ⟧)
                 → eval′ (Ana {F} wf (Out {F} wf)) x ≡ x
-eval-ana-Out-id {F} wf x = sem-ana-Out-id wf x
+eval-ana-Out-id {F} wf x =
+  let -- The actual coalgebra from eval (with round-trip coercions)
+      actual-coalg : ⟦ ν-type F ⟧ → ⟦ F ⟧F ⟦ ν-type F ⟧
+      actual-coalg a = coerce-functor F (ν-type F) (coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf a))
+      -- The coalgebra expected by sem-ana-Out-id
+      expected-coalg : ⟦ ν-type F ⟧ → ⟦ F ⟧F ⟦ ν-type F ⟧
+      expected-coalg = sem-CoOut wf
+      -- They're pointwise equal via round-trip
+      coalg-eq : ∀ a → actual-coalg a ≡ expected-coalg a
+      coalg-eq a = coerce⁻¹-round-trip F (ν-type F) (sem-CoOut wf a)
+      -- Therefore equal as functions (by extensionality)
+      coalg-ext : actual-coalg ≡ expected-coalg
+      coalg-ext = extensionality coalg-eq
+      -- Substitute to get sem-ana with expected-coalg
+      step : sem-ana F actual-coalg x ≡ sem-ana F expected-coalg x
+      step = cong (λ c → sem-ana F c x) coalg-ext
+  in trans step (sem-ana-Out-id wf x)

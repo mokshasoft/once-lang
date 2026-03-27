@@ -449,10 +449,13 @@ mutual
   optimize-once-structural (In wf m) = In wf m
   optimize-once-structural (out-μ wf) = out-μ wf
   optimize-once-structural (Cata {F} wf alg) = Cata {F} wf (optimize-once alg)
+  optimize-once-structural (Para {F} wf alg) = Para {F} wf (optimize-once alg)
   optimize-once-structural (Out wf) = Out wf
   optimize-once-structural (in-ν wf m) = in-ν wf m
   optimize-once-structural (Ana {F} wf coalg) = Ana {F} wf (optimize-once coalg)
-  optimize-once-structural (Hylo {F} wf alg coalg) = Hylo {F} wf (optimize-once alg) (optimize-once coalg)
+  optimize-once-structural (Hylo {F} wf term alg coalg) = Hylo {F} wf term (optimize-once alg) (optimize-once coalg)
+  -- Fuse: μ-anchored fusion (correct by construction)
+  optimize-once-structural (Fuse {F} {G} wfF wfG alg transform) = Fuse {F} {G} wfF wfG (optimize-once alg) (optimize-once transform)
   -- Guard/Unguard removed: productivity follows from IR totality
   -- out-μ/in-ν: Lambek isomorphisms (potential fusion: out-μ ∘ In = id, In ∘ out-μ = id)
 

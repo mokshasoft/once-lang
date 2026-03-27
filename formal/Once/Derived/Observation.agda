@@ -63,7 +63,10 @@ wf-NatF = wf-Sum (wf-K base-Unit) wf-Id
 -- ν → μ Observation (Bounded Consumption)
 --
 -- These primitives safely cross from ν-type to μ-type by bounding
--- the number of observations. They are all Hylos.
+-- the number of observations. They use Para for provable termination.
+--
+-- OCP-0003 Phase 10: Para enables terminating bounded recursion without
+-- TERMINATING pragmas. Para is derived from Cata, so it inherits totality.
 ------------------------------------------------------------------------
 
 -- | obs : Nat → Stream A → List A
@@ -73,56 +76,51 @@ wf-NatF = wf-Sum (wf-K base-Unit) wf-Id
 --
 -- For streams: obs n s = [s₀, s₁, ..., sₙ₋₁]
 --
--- Implementation: Hylo with out-μ for pattern-matching on Nat
+-- Implementation: Para on NatF with the stream as context.
 --
--- This is the optimal implementation that enables full fusion:
---   sum (obs n s) = Hylo sumAlg obsCoalg (n,s)  -- no intermediate list!
+-- The Para algebra receives NatF (Nat × (Stream A ⇒ List A)):
+--   - Zero case (inl Unit): return function that produces Nil
+--   - Suc case (inr (Nat × (Stream A ⇒ List A))): return function that
+--     produces Cons (head, rec tail) where rec is the continuation.
 --
--- The coalgebra uses out-μ to pattern-match on the Nat counter:
---   - If n = 0: produce Nil
---   - If n = suc k: produce Cons (head s, (k, tail s))
+-- This is provably terminating: Para recurses on the Nat structure,
+-- which is well-founded, with no TERMINATING pragma needed.
 --
 obs : ∀ {A}
     → WellFormedF (StreamF A)
     → WellFormedF (ListF A)
     → IR (Nat * Stream A) (List A)
-obs {A} wfStream wfList = Hylo wfList alg coalg
+obs {A} wfStream wfList =
+  apply ∘ ⟨ Para wf-NatF obsAlg ∘ fst , snd ⟩ Stack
   where
-    -- State type: Nat * Stream A
-    -- ListF A applied to state: Unit + (A * (Nat * Stream A))
+    -- Para algebra type: NatF (Nat × (Stream A ⇒ List A)) → (Stream A ⇒ List A)
+    -- NatF X = Unit + X, so the algebra input is:
+    --   Unit + (Nat × (Stream A ⇒[ Many ] List A))
+    --
+    -- Zero case: produce Nil (the function ignores its stream argument)
+    -- Suc case: (n', rec) where n' is the predecessor Nat (unused) and rec
+    --           is the recursive result. Produce Cons (head stream, rec (tail stream))
 
-    -- The coalgebra pattern-matches on Nat using out-μ and produces ListF.
-    -- To case on the first component of a pair while keeping access to the rest,
-    -- we use: apply ∘ ⟨ case (curry f) (curry g) ∘ fst , snd ⟩
-    -- This is equivalent to: caseFst f g where caseFst preserves the context.
-
-    -- Coalgebra: (Nat * Stream A) → Unit + (A * (Nat * Stream A))
-    -- Step 1: out-μ ∘ fst gives us (Unit + Nat) from the Nat
-    -- Step 2: case on that, with snd (the Stream A) and original Nat available
-    coalg : IR (Nat * Stream A) (⟦ ListF A ⟧T (Nat * Stream A))
-    coalg = apply ∘ ⟨ case zeroCase sucCase ∘ out-μ wf-NatF ∘ fst , id ⟩ Stack
+    obsAlg : IR (⟦ NatF ⟧T (Nat * (Stream A ⇒[ Many ] List A))) (Stream A ⇒[ Many ] List A)
+    obsAlg = case zeroCase sucCase
       where
-        -- Zero case: Unit → (Nat * Stream A) → ListF result
-        -- Produces Nil regardless of the stream
-        zeroCase : IR Unit ((Nat * Stream A) ⇒ (⟦ ListF A ⟧T (Nat * Stream A)))
-        zeroCase = curry (inl Stack ∘ terminal) Stack
+        -- Zero case: Unit → (Stream A ⇒ List A)
+        -- Produces a function that returns Nil regardless of stream input
+        zeroCase : IR Unit (Stream A ⇒[ Many ] List A)
+        zeroCase = curry (In wfList Stack ∘ inl Stack ∘ terminal) Stack
 
-        -- Suc case: Nat (predecessor) → (Nat * Stream A) → ListF result
-        -- Produces Cons (head stream, (predecessor, tail stream))
-        -- Input to curried function: Nat (the predecessor k)
-        -- Input from apply: (Nat * Stream A) (original pair, but we replace Nat with k)
-        sucCase : IR Nat ((Nat * Stream A) ⇒ (⟦ ListF A ⟧T (Nat * Stream A)))
+        -- Suc case: (Nat × (Stream A ⇒ List A)) → (Stream A ⇒ List A)
+        -- Input: pair of (predecessor Nat, recursive continuation)
+        -- Produces: function that takes stream, returns Cons (head, rec tail)
+        -- The predecessor Nat (fst) is unused - we only need the continuation (snd)
+        sucCase : IR (Nat * (Stream A ⇒[ Many ] List A)) (Stream A ⇒[ Many ] List A)
         sucCase = curry
-          (inr Stack ∘ ⟨ fst ∘ Out wfStream ∘ snd ∘ snd  -- head of stream
-                       , ⟨ fst ∘ snd                      -- predecessor (from first arg)
-                         , snd ∘ Out wfStream ∘ snd ∘ snd -- tail of stream
-                         ⟩ Stack
-                       ⟩ Stack)
+          (In wfList Stack ∘ inr Stack ∘
+           ⟨ fst ∘ Out wfStream ∘ snd                    -- head of stream
+           , apply ∘ ⟨ snd ∘ fst                         -- continuation (rec)
+                    , snd ∘ Out wfStream ∘ snd ⟩ Stack   -- tail of stream
+           ⟩ Stack)
           Stack
-
-    -- Algebra: build list (just In)
-    alg : IR (⟦ ListF A ⟧T (List A)) (List A)
-    alg = In wfList Stack
 
 -- | obsWhile p : (A → Bool) → ν F → μ F
 --
@@ -152,11 +150,9 @@ obs {A} wfStream wfList = Hylo wfList alg coalg
 -- They are safe because they don't change the termination behavior
 -- of the source — finite lists become finite colists.
 --
--- NOTE: These operations require Para (paramorphism) which gives access
--- to both the recursive result AND the original substructure. Para is
--- derivable from Cata but adds complexity. These primitives are
--- documented here for completeness; implementation deferred until
--- Para is added to the IR.
+-- With Para (paramorphism) now available in the IR, these operations
+-- can access both the recursive result AND the original substructure.
+-- Para is derived from Cata, so it inherits totality.
 ------------------------------------------------------------------------
 
 -- | embed : μ F → ν F
@@ -168,8 +164,8 @@ obs {A} wfStream wfList = Hylo wfList alg coalg
 --   embed [] = CoNil
 --   embed (a :: as) = CoCons a (embed as)
 --
--- Implementation requires Para (paramorphism) to access original tail.
--- Deferred until Para is available in IR.
+-- Implementation: Ana with coalgebra that pattern-matches on input list
+-- and produces CoListF output. Para not strictly needed here.
 
 -- | periodic : μ F → ν F
 --
@@ -211,12 +207,13 @@ obs {A} wfStream wfList = Hylo wfList alg coalg
 -- | obs       | Nat → Stream A → List A | ✓ Implemented |
 -- | obsWhile  | (A → Bool) → ν F → μ F | Needs Bool infra |
 -- | obsUntil  | (A → Bool) → ν F → μ F | Needs Bool infra |
--- | embed     | μ F → ν F | Needs Para |
--- | periodic  | μ F → ν F | Needs Ana + Para |
+-- | embed     | μ F → ν F | Implementable with Ana |
+-- | periodic  | μ F → ν F | Needs Ana |
 -- | foldObs   | Nat → (B → A → B) → B → ν F → B | Needs surface syntax |
 --
--- The ν→μ operations (obs, obsWhile, obsUntil) are based on Cata over
+-- The ν→μ operations (obs, obsWhile, obsUntil) are based on Para over
 -- the bounding parameter, ensuring termination by structural recursion.
+-- Para is derived from Cata, so no TERMINATING pragmas are needed.
 --
 -- The μ→ν operations (embed, periodic) are Anas, which are always safe
 -- (productive by IR totality).

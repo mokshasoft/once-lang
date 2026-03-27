@@ -1293,14 +1293,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       IRResultAWF Heap (Ana {F} wf coalg) x s alloc
 
     -- | Hylo handler: fused cata ∘ ana (deforestation)
-    -- OCP-0003: productivity follows from IR totality, no GuardedT needed
-    run-Hylo : ∀ {F} (wf : WellFormedF F) {A B} (mIn : AllocMode)
-      (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A))
-      (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
+    -- OCP-0003: Hylo is now based on Fuse, structurally terminating on μG input
+    run-Hylo : ∀ {F G} (wfF : WellFormedF F) (wfG : WellFormedF G) {B} (mIn : AllocMode)
+      (alg : IR (⟦ F ⟧T B) B) (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
+      (x : ⟦ μ-type G ⟧) (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS}) →
       ValidAtWF mIn alloc x input-loc s →
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (Hylo {F} wf alg coalg) ≤ frame-capacity alloc →
-      ∃[ mOut ] IRResultAWF mOut (Hylo {F} wf alg coalg) x s alloc
+      next-slot alloc +ℕ ir-stack-requirement (Hylo wfF wfG alg coalg) ≤ frame-capacity alloc →
+      ∃[ mOut ] IRResultAWF mOut (Hylo wfF wfG alg coalg) x s alloc

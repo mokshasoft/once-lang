@@ -18,7 +18,7 @@ module Once.TypeSystem.Typing where
 open import Once.Type
 open import Once.CCC.IR
 open import Once.CCC.Machine.SMCore using (HeapRef)
-open import Once.Semantics.IR using (⟦_⟧; eval′)
+open import Once.Semantics.IR using (⟦_⟧; eval′; sem-cata; sem-para; sem-ana; sem-hylo; sem-fuse; coerce-functor; coerce-functor⁻¹)
 open import Once.Postulates using (extensionality)
 open import Once.Functor.Translate using (WellFormedF)
 
@@ -199,11 +199,30 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   --
   ty-Cata : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ ⟦ F ⟧T A ⟶ A → Γ ⊢ μ-type F ⟶ A
 
+  -- out-μ: destructor for μ-type (inverse of In, by Lambek's Lemma)
+  -- ──────────────────────────────────────
+  -- Γ ⊢ μ-type F ⟶ ⟦ F ⟧T (μ-type F)
+  --
+  ty-out-μ : ∀ {Γ F} → WellFormedF F → Γ ⊢ μ-type F ⟶ ⟦ F ⟧T (μ-type F)
+
+  -- Para: paramorphism (fold with access to original substructure)
+  --      Γ ⊢ ⟦ F ⟧T (μ-type F * A) ⟶ A
+  -- ─────────────────────────────────────
+  --         Γ ⊢ μ-type F ⟶ A
+  --
+  ty-Para : ∀ {Γ F} → WellFormedF F → ∀ {A} → Γ ⊢ ⟦ F ⟧T (μ-type F * A) ⟶ A → Γ ⊢ μ-type F ⟶ A
+
   -- Out: observation of ν-type (unfold from final coalgebra)
   -- ──────────────────────────────────────
   -- Γ ⊢ ν-type F ⟶ ⟦ F ⟧T (ν-type F)
   --
   ty-Out : ∀ {Γ F} → WellFormedF F → Γ ⊢ ν-type F ⟶ ⟦ F ⟧T (ν-type F)
+
+  -- in-ν: constructor for ν-type (inverse of Out, by Lambek's Lemma)
+  -- ──────────────────────────────────────
+  -- Γ ⊢ ⟦ F ⟧T (ν-type F) ⟶ ν-type F
+  --
+  ty-in-ν : ∀ {Γ F} → WellFormedF F → Γ ⊢ ⟦ F ⟧T (ν-type F) ⟶ ν-type F
 
   -- Ana: anamorphism (unfold into ν-type)
   -- Productivity follows from IR totality: coalgebras are IR morphisms,
@@ -217,12 +236,24 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- Guard/Unguard removed: productivity follows from IR totality (see IR/Totality.agda)
 
   -- Hylo: hylomorphism (fused ana-cata)
-  -- Productivity follows from IR totality.
-  --      Γ ⊢ ⟦ F ⟧T B ⟶ B    Γ ⊢ A ⟶ ⟦ F ⟧T A
-  -- ───────────────────────────────────────────────
-  --                Γ ⊢ A ⟶ B
+  -- OCP-0003: Based on Fuse, structurally terminating on μG input.
+  --      Γ ⊢ ⟦ F ⟧T B ⟶ B    Γ ⊢ μG ⟶ ⟦ F ⟧T μG
+  -- ─────────────────────────────────────────────────
+  --                Γ ⊢ μG ⟶ B
   --
-  ty-Hylo : ∀ {Γ F} → WellFormedF F → ∀ {A B} → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ A ⟶ ⟦ F ⟧T A → Γ ⊢ A ⟶ B
+  ty-Hylo : ∀ {Γ F G} → WellFormedF F → WellFormedF G → ∀ {B}
+          → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ μ-type G ⟶ ⟦ F ⟧T (μ-type G)
+          → Γ ⊢ μ-type G ⟶ B
+
+  -- Fuse: μ-anchored fusion (deforestation, correct by construction)
+  -- OCP-0003: Structural recursion on μG, no contract needed.
+  --      Γ ⊢ ⟦ F ⟧T B ⟶ B    Γ ⊢ ⟦ G ⟧T μG ⟶ ⟦ F ⟧T μG
+  -- ──────────────────────────────────────────────────────
+  --                   Γ ⊢ μG ⟶ B
+  --
+  ty-Fuse : ∀ {Γ F G} → WellFormedF F → WellFormedF G → ∀ {B}
+          → Γ ⊢ ⟦ F ⟧T B ⟶ B → Γ ⊢ ⟦ G ⟧T (μ-type G) ⟶ ⟦ F ⟧T (μ-type G)
+          → Γ ⊢ μ-type G ⟶ B
 
 ------------------------------------------------------------------------
 -- Correspondence with IR GADT
@@ -251,11 +282,16 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-free-heap h ⌋ = free-heap h
 -- OCP-0003 recursion schemes (WellFormedF proofs preserved)
 ⌊ ty-In {F = F} wf ⌋ = In {F} wf Heap
+⌊ ty-out-μ {F = F} wf ⌋ = out-μ {F} wf
 ⌊ ty-Cata {F = F} wf alg ⌋ = Cata {F} wf ⌊ alg ⌋
+⌊ ty-Para {F = F} wf alg ⌋ = Para {F} wf ⌊ alg ⌋
 ⌊ ty-Out {F = F} wf ⌋ = Out {F} wf
+⌊ ty-in-ν {F = F} wf ⌋ = in-ν {F} wf Heap
 ⌊ ty-Ana {F = F} wf coalg ⌋ = Ana {F} wf ⌊ coalg ⌋
 -- Guard/Unguard removed: productivity follows from IR totality
-⌊ ty-Hylo {F = F} wf alg coalg ⌋ = Hylo {F} wf ⌊ alg ⌋ ⌊ coalg ⌋
+-- OCP-0003: Hylo based on Fuse, structurally terminating on μG
+⌊ ty-Hylo {F = F} {G = G} wfF wfG alg coalg ⌋ = Hylo wfF wfG ⌊ alg ⌋ ⌊ coalg ⌋
+⌊ ty-Fuse {F = F} {G = G} wfF wfG alg transform ⌋ = Fuse wfF wfG ⌊ alg ⌋ ⌊ transform ⌋
 
 -- | Convert IR term to explicit typing derivation
 --
@@ -281,11 +317,16 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ free-heap h ⌉ = ty-free-heap h
 -- OCP-0003 recursion schemes (WellFormedF proofs preserved)
 ⌈ In {F} wf _ ⌉ = ty-In {F = F} wf
+⌈ out-μ {F} wf ⌉ = ty-out-μ {F = F} wf
 ⌈ Cata {F} wf alg ⌉ = ty-Cata {F = F} wf ⌈ alg ⌉
+⌈ Para {F} wf alg ⌉ = ty-Para {F = F} wf ⌈ alg ⌉
 ⌈ Out {F} wf ⌉ = ty-Out {F = F} wf
+⌈ in-ν {F} wf _ ⌉ = ty-in-ν {F = F} wf
 ⌈ Ana {F} wf coalg ⌉ = ty-Ana {F = F} wf ⌈ coalg ⌉
 -- Guard/Unguard removed: productivity follows from IR totality
-⌈ Hylo {F} wf alg coalg ⌉ = ty-Hylo {F = F} wf ⌈ alg ⌉ ⌈ coalg ⌉
+-- OCP-0003: Hylo based on Fuse, structurally terminating on μG
+⌈ Hylo {F} {G} wfF wfG alg coalg ⌉ = ty-Hylo {F = F} {G = G} wfF wfG ⌈ alg ⌉ ⌈ coalg ⌉
+⌈ Fuse {F} {G} wfF wfG alg transform ⌉ = ty-Fuse {F = F} {G = G} wfF wfG ⌈ alg ⌉ ⌈ transform ⌉
 
 -- | Round-trip: ⌊ ⌈ f ⌉ ⌋ ≡ f (semantically)
 --
@@ -313,16 +354,57 @@ round-trip-ir apply x = refl
 round-trip-ir arr x = refl
 round-trip-ir (Prim name) x = refl
 round-trip-ir (free-heap h) x = refl
--- OCP-0003 recursion schemes: these use postulated semantics
--- so we postulate the round-trip property (WellFormedF proofs preserved)
-round-trip-ir (In {F} wf _) x = round-trip-In {F} wf x
-  where postulate round-trip-In : ∀ {F} (wf : WellFormedF F) (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) → eval′ ⌊ ⌈ In {F} wf Heap ⌉ ⌋ x ≡ eval′ (In {F} wf Heap) x
-round-trip-ir (Cata {F} wf alg) x = round-trip-Cata {F} wf alg x
-  where postulate round-trip-Cata : ∀ {F} (wf : WellFormedF F) {A} (alg : IR (⟦ F ⟧T A) A) (x : ⟦ μ-type F ⟧) → eval′ ⌊ ⌈ Cata {F} wf alg ⌉ ⌋ x ≡ eval′ (Cata {F} wf alg) x
-round-trip-ir (Out {F} wf) x = round-trip-Out {F} wf x
-  where postulate round-trip-Out : ∀ {F} (wf : WellFormedF F) (x : ⟦ ν-type F ⟧) → eval′ ⌊ ⌈ Out {F} wf ⌉ ⌋ x ≡ eval′ (Out {F} wf) x
-round-trip-ir (Ana {F} wf coalg) x = round-trip-Ana {F} wf coalg x
-  where postulate round-trip-Ana : ∀ {F} (wf : WellFormedF F) {A} (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Ana {F} wf coalg ⌉ ⌋ x ≡ eval′ (Ana {F} wf coalg) x
+-- OCP-0003 recursion schemes: these are refl because:
+-- 1. ⌊ ⌈ f ⌉ ⌋ produces the same IR (modulo AllocMode normalization to Heap)
+-- 2. eval ignores AllocMode, so the semantics are identical
+round-trip-ir (In {F} wf _) x = refl  -- AllocMode ignored in eval
+round-trip-ir (out-μ {F} wf) x = refl  -- ⌊ ⌈ out-μ wf ⌉ ⌋ = out-μ wf
+round-trip-ir (Cata {F} wf {A} alg) x =
+  -- Goal: eval′ (Cata wf ⌊ ⌈ alg ⌉ ⌋) x ≡ eval′ (Cata wf alg) x
+  -- eval (Cata wf alg') x = sem-cata wf (λ fa → eval alg' (coerce-functor⁻¹ F A fa)) x
+  -- So we need to show the algebras are equal via function extensionality
+  cong (λ f → sem-cata wf f x) (extensionality alg-eq)
+  where
+    alg-eq : ∀ fa → eval′ ⌊ ⌈ alg ⌉ ⌋ (coerce-functor⁻¹ F A fa) ≡ eval′ alg (coerce-functor⁻¹ F A fa)
+    alg-eq fa = round-trip-ir alg (coerce-functor⁻¹ F A fa)
+round-trip-ir (Para {F} wf {A} alg) x =
+  -- eval (Para wf alg') x = sem-para wf (λ fx → eval alg' (coerce-functor⁻¹ F (μ-type F * A) fx)) x
+  cong (λ f → sem-para wf f x) (extensionality alg-eq)
+  where
+    alg-eq : ∀ fx → eval′ ⌊ ⌈ alg ⌉ ⌋ (coerce-functor⁻¹ F (μ-type F * A) fx) ≡ eval′ alg (coerce-functor⁻¹ F (μ-type F * A) fx)
+    alg-eq fx = round-trip-ir alg (coerce-functor⁻¹ F (μ-type F * A) fx)
+round-trip-ir (Out {F} wf) x = refl  -- ⌊ ⌈ Out wf ⌉ ⌋ = Out wf
+round-trip-ir (in-ν {F} wf _) x = refl  -- AllocMode ignored in eval
+round-trip-ir (Ana {F} wf {A} coalg) x =
+  -- eval (Ana wf coalg') x = sem-ana F (λ a → coerce-functor F A (eval coalg' a)) x
+  cong (λ f → sem-ana F f x) (extensionality coalg-eq)
+  where
+    coalg-eq : ∀ a → coerce-functor F A (eval′ ⌊ ⌈ coalg ⌉ ⌋ a) ≡ coerce-functor F A (eval′ coalg a)
+    coalg-eq a = cong (coerce-functor F A) (round-trip-ir coalg a)
 -- Guard/Unguard removed: productivity follows from IR totality
-round-trip-ir (Hylo {F} wf alg coalg) x = round-trip-Hylo {F} wf alg coalg x
-  where postulate round-trip-Hylo : ∀ {F} (wf : WellFormedF F) {A B} (alg : IR (⟦ F ⟧T B) B) (coalg : IR A (⟦ F ⟧T A)) (x : ⟦ A ⟧) → eval′ ⌊ ⌈ Hylo {F} wf alg coalg ⌉ ⌋ x ≡ eval′ (Hylo {F} wf alg coalg) x
+-- OCP-0003: Hylo based on Fuse, structurally terminating on μG
+round-trip-ir (Hylo {F} {G} wfF wfG {B} alg coalg) x =
+  -- eval (Hylo wfF wfG alg' coalg') x = sem-hylo F G wfF wfG alg-set coalg-set x
+  -- where alg-set = λ fb → eval alg' (coerce-functor⁻¹ F B fb)
+  --       coalg-set = λ μg → coerce-functor F (μ-type G) (eval coalg' μg)
+  cong₂ (λ a c → sem-hylo F G wfF wfG a c x)
+        (extensionality alg-eq)
+        (extensionality coalg-eq)
+  where
+    alg-eq : ∀ fb → eval′ ⌊ ⌈ alg ⌉ ⌋ (coerce-functor⁻¹ F B fb) ≡ eval′ alg (coerce-functor⁻¹ F B fb)
+    alg-eq fb = round-trip-ir alg (coerce-functor⁻¹ F B fb)
+    coalg-eq : ∀ μg → coerce-functor F (μ-type G) (eval′ ⌊ ⌈ coalg ⌉ ⌋ μg) ≡ coerce-functor F (μ-type G) (eval′ coalg μg)
+    coalg-eq μg = cong (coerce-functor F (μ-type G)) (round-trip-ir coalg μg)
+round-trip-ir (Fuse {F} {G} wfF wfG {B} alg transform) x =
+  -- eval (Fuse wfF wfG alg' transform') x = sem-fuse F G wfF wfG alg-set transform-set x
+  -- where alg-set = λ fb → eval alg' (coerce-functor⁻¹ F B fb)
+  --       transform-set = λ gx → coerce-functor F (μ-type G) (eval transform' (coerce-functor⁻¹ G (μ-type G) gx))
+  cong₂ (λ a t → sem-fuse F G wfF wfG a t x)
+        (extensionality alg-eq)
+        (extensionality transform-eq)
+  where
+    alg-eq : ∀ fb → eval′ ⌊ ⌈ alg ⌉ ⌋ (coerce-functor⁻¹ F B fb) ≡ eval′ alg (coerce-functor⁻¹ F B fb)
+    alg-eq fb = round-trip-ir alg (coerce-functor⁻¹ F B fb)
+    transform-eq : ∀ gx → coerce-functor F (μ-type G) (eval′ ⌊ ⌈ transform ⌉ ⌋ (coerce-functor⁻¹ G (μ-type G) gx))
+                        ≡ coerce-functor F (μ-type G) (eval′ transform (coerce-functor⁻¹ G (μ-type G) gx))
+    transform-eq gx = cong (coerce-functor F (μ-type G)) (round-trip-ir transform (coerce-functor⁻¹ G (μ-type G) gx))

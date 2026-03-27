@@ -53,15 +53,23 @@ ir-stack-requirement arr = 0
 -- Recursion schemes (OCP-0003) - WellFormedF proofs are ignored for stack
 -- In: constructs μ-value, similar to fold
 ir-stack-requirement (In _ _) = 1
+-- out-μ: destructs μ-value (Lambek inverse of In), constant
+ir-stack-requirement (out-μ _) = 0
 -- Cata: tail-recursive consumption, needs stack for intermediate results
 -- Uses a while-loop pattern at runtime
 ir-stack-requirement (Cata _ alg) = ir-stack-requirement alg +ℕ pair-slots
+-- Para: paramorphism, like Cata but with access to original structure
+ir-stack-requirement (Para _ alg) = ir-stack-requirement alg +ℕ pair-slots
 -- Out: extracts from ν-value, constant
 ir-stack-requirement (Out _) = 0
+-- in-ν: constructs ν-value (Lambek inverse of Out)
+ir-stack-requirement (in-ν _ _) = 1
 -- Ana: produces ν-value lazily, needs stack for coalgebra
 ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg +ℕ pair-slots
 -- Hylo: fused cata ∘ ana, combines both requirements
-ir-stack-requirement (Hylo _ alg coalg) = ir-stack-requirement alg +ℕ ir-stack-requirement coalg +ℕ pair-slots
+ir-stack-requirement (Hylo _ _ alg coalg) = ir-stack-requirement alg +ℕ ir-stack-requirement coalg +ℕ pair-slots
+-- Fuse: μ-anchored fusion (correct by construction)
+ir-stack-requirement (Fuse _ _ alg transform) = ir-stack-requirement alg +ℕ ir-stack-requirement transform +ℕ pair-slots
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-stack-requirement (free-heap _) = 0

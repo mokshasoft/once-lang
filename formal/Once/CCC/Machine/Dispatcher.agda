@@ -382,17 +382,35 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       m , run-In-postulated
       where postulate run-In-postulated : IRResultAWF m (In {F} wf m) x s alloc
 
+    -- out-μ: destruct μ-type (Lambek inverse of In)
+    -- Extracts F(μF) from μF
+    run-ir-wf mIn (out-μ {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+      Heap , run-out-μ-postulated
+      where postulate run-out-μ-postulated : IRResultAWF Heap (out-μ {F} wf) x s alloc
+
     -- Cata: catamorphism (fold over μ-type)
     -- Takes algebra: IR (⟦ F ⟧T A) A, recursively applies to μF
     run-ir-wf mIn (Cata {F} wf alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       Heap , run-Cata-postulated
       where postulate run-Cata-postulated : IRResultAWF Heap (Cata {F} wf alg) x s alloc
 
+    -- Para: paramorphism (fold with access to original substructure)
+    -- Takes algebra: IR (⟦ F ⟧T (μF × A)) A, recursively applies to μF
+    run-ir-wf mIn (Para {F} wf alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      Heap , run-Para-postulated
+      where postulate run-Para-postulated : IRResultAWF Heap (Para {F} wf alg) x s alloc
+
     -- Out: observe ν-type (final coalgebra destructor)
     -- Similar to unfold: extracts F(νF) from νF
     run-ir-wf mIn (Out {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
       Heap , run-Out-postulated
       where postulate run-Out-postulated : IRResultAWF Heap (Out {F} wf) x s alloc
+
+    -- in-ν: construct ν-type (Lambek inverse of Out)
+    -- Wraps F(νF) into νF
+    run-ir-wf mIn (in-ν {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      m , run-in-ν-postulated
+      where postulate run-in-ν-postulated : IRResultAWF m (in-ν {F} wf m) x s alloc
 
     -- Ana: anamorphism (unfold to build ν-type)
     -- Takes coalgebra: IR A (⟦ F ⟧T A), corecursively builds νF
@@ -402,9 +420,16 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
     -- Hylo: hylomorphism (fused cata ∘ ana)
     -- Combines algebra and coalgebra without intermediate structure
-    run-ir-wf mIn (Hylo {F} wf alg coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    -- OCP-0003: Based on Fuse, structurally terminating on μG input
+    run-ir-wf mIn (Hylo {F} {G} wfF wfG alg coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
       Heap , run-Hylo-postulated
-      where postulate run-Hylo-postulated : IRResultAWF Heap (Hylo {F} wf alg coalg) x s alloc
+      where postulate run-Hylo-postulated : IRResultAWF Heap (Hylo wfF wfG alg coalg) x s alloc
+
+    -- Fuse: μ-anchored fusion (correct by construction)
+    -- Structural recursion on μG - termination guaranteed by well-foundedness
+    run-ir-wf mIn (Fuse {F} {G} wfF wfG alg transform) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+      Heap , run-Fuse-postulated
+      where postulate run-Fuse-postulated : IRResultAWF Heap (Fuse {F} {G} wfF wfG alg transform) x s alloc
 
     -- Guard/Unguard removed: productivity follows from IR totality
 

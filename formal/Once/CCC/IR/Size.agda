@@ -37,10 +37,15 @@ ir-size arr = 1
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 -- Recursion schemes (OCP-0003) - WellFormedF proofs are ignored for size
 ir-size (In _ _) = 1
+ir-size (out-μ _) = 1             -- Lambek isomorphism inverse
 ir-size (Cata _ alg) = 2 +ℕ ir-size alg  -- Similar to curry: contains body
+ir-size (Para _ alg) = 2 +ℕ ir-size alg  -- Paramorphism body
 ir-size (Out _) = 1
+ir-size (in-ν _ _) = 1            -- Lambek isomorphism inverse
 ir-size (Ana _ coalg) = 2 +ℕ ir-size coalg  -- Contains coalgebra body
-ir-size (Hylo _ alg coalg) = 2 +ℕ ir-size alg +ℕ ir-size coalg
+ir-size (Hylo _ _ alg coalg) = 2 +ℕ ir-size alg +ℕ ir-size coalg
+-- Fuse: μ-anchored fusion (correct by construction)
+ir-size (Fuse _ _ alg transform) = 2 +ℕ ir-size alg +ℕ ir-size transform
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-size (free-heap _) = 1
