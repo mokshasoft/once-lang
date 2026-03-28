@@ -281,33 +281,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     proj₁ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace) s alloc) ≡ s-final
   case-trace-state-correct = case-dispatch-output-independent
 
-  ------------------------------------------------------------------------
-  -- Case Dispatch Frontier Slot Preservation Postulate
-  --
-  -- For case dispatch traces (load-indirect-suc ∷ mov-to-input ∷ dispatch-trace):
-  --   1. load-indirect-suc doesn't write to stack memory
-  --   2. mov-to-input doesn't write to stack memory
-  --   3. dispatch-trace preserves frontier slot (from its TraceWritesAbove)
-  --
-  -- The frontier slot at (next-slot alloc) is preserved because:
-  --   - Setup instructions only modify registers
-  --   - dispatch-trace writes at slots ≥ (next-slot alloc), and the
-  --     frontier slot contains input-loc' which is preserved
-  --
-  -- Justification (why this is PROVABLE):
-  --   1. Use exec-trace-preserves-slot lemmas for register-only instructions
-  --   2. Use dispatch-trace's TraceWritesAbove for slot preservation
-  --   3. Compose the preservation proofs
-  ------------------------------------------------------------------------
-  postulate
-    case-frontier-slot-preserved : ∀ (case-trace : AbstractTrace)
-      (s' : LocState FS) (alloc : AllocState {FS})
-      (input-loc' : ValueLocation FS) →
-      halted s' ≡ false →
-      readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-      readLoc (proj₁ (exec-trace case-trace s' alloc))
-              (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
-
   -- OCP-0003: sem-fold-injective removed (fold/unfold replaced by recursion schemes)
 
   -- Helper: sem-inl is injective
@@ -1123,14 +1096,14 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                        f-trace
 
       -- Frontier slot stability for case (inl branch)
-      -- The setup trace doesn't write to stack, then f's frontier-slot-stable applies
+      -- Return uncertain (inj₂ (inj₂ tt)) since f may allocate at the frontier slot.
+      -- This is safe: compose handles uncertainty correctly by propagating it.
       case-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
-      case-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        inj₂ (inj₁ (case-frontier-slot-preserved case-inl-trace s' alloc input-loc' s'-not-halted slot-eq'))
+      case-frontier-stable _ _ _ _ _ = inj₂ (inj₂ tt)
 
   -- Case for inr: dispatch to g
   run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
@@ -1238,13 +1211,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                        g-trace
 
       -- Frontier slot stability for case (inr branch)
+      -- Return uncertain (inj₂ (inj₂ tt)) since g may allocate at the frontier slot.
       case-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
         _
-      case-frontier-stable s' input-loc' s'-not-halted input-eq' slot-eq' =
-        inj₂ (inj₁ (case-frontier-slot-preserved case-inr-trace s' alloc input-loc' s'-not-halted slot-eq'))
+      case-frontier-stable _ _ _ _ _ = inj₂ (inj₂ tt)
 
   ------------------------------------------------------------------------
   ------------------------------------------------------------------------
