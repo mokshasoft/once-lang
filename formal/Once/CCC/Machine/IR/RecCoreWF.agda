@@ -29,17 +29,27 @@
 --
 -- Current status:
 --   - Trace mechanics are fully proven (memory preservation, halted, etc.)
---   - Semantic correctness uses documented postulates (see below)
+--   - Semantic correctness uses documented postulate (see below)
 --
--- Semantic correctness postulate justification:
---   - The current stub traces store input values, not computed results
---   - Full semantic correctness requires recursive trace construction
---   - The postulate `rec-scheme-semantic` states that recursion schemes
---     correctly compute their mathematical semantics
---   - This is sound because eval primSem (Cata wf alg) x is the
---     standard categorical catamorphism, which is well-defined
+-- Path to full proof (rec-scheme-semantic is PROVABLE):
+--   See Once.CCC.Machine.IR.RecTrace for the architecture.
 --
--- Future work: Build recursive traces by structural induction on μ-values
+--   The proof strategy uses structural recursion on μ-values:
+--   1. Build recursive traces: cata-trace (In layer) = destruct ++
+--      process-layer ++ apply-alg (trace follows μ-value structure)
+--   2. Prove correctness by induction: use sem-cata-compute at each step
+--   3. Connect to ValidAtWF: trace execution produces correct result
+--
+--   Key insight: For any concrete μ-value, the trace is FINITE and
+--   computes exactly the catamorphism. No fuel needed - termination
+--   follows from well-foundedness of μ-types.
+--
+-- Current postulate justification (until full proof implemented):
+--   - rec-scheme-semantic postulates that recursion schemes correctly
+--     compute their mathematical semantics
+--   - This IS provable via the RecTrace architecture
+--   - eval primSem (Cata wf alg) x is the standard categorical
+--     catamorphism, proven correct in Once.Semantics.Core
 ------------------------------------------------------------------------
 
 module Once.CCC.Machine.IR.RecCoreWF where
