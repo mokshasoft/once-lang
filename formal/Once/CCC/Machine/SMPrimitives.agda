@@ -2061,11 +2061,63 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   open InstrPrimitives {FS}
   open MemoryOps {FS}
   open TraceComposition {FS}
+  open import Data.Empty using (⊥-elim)
 
   private
     RSFrame : Set
     RSFrame = FrameSemantics.Frame FS
 
+  ------------------------------------------------------------------------
+  -- Single mov-to-output trace: mov-to-output ∷ []
+  --
+  -- This is the identity trace - just copies Input to Output.
+  -- Used by out-μ and Out which are representationally identity.
+  ------------------------------------------------------------------------
+
+  -- After mov-to-output ∷ [], Output = Input
+  passthrough-output-is-input : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    readReg (regs (proj₁ (exec-trace (mov-to-output ∷ []) s alloc))) Output ≡
+    readReg (regs s) Input
+  passthrough-output-is-input s alloc not-halted with halted s
+  ... | false = writeReg-same (regs s) Output (readReg (regs s) Input)
+
+  -- After mov-to-output ∷ [], halted = false
+  passthrough-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    halted (proj₁ (exec-trace (mov-to-output ∷ []) s alloc)) ≡ false
+  passthrough-preserves-halted s alloc not-halted =
+    exec-trace-preserves-halted (mov-to-output ∷ []) s alloc not-halted
+      (tph-∷ iph-mov-to-output tph-[])
+
+  -- exec-abstract mov-to-output preserves memory (it only changes registers)
+  -- Pattern match on loc to handle stack/heap cases separately
+  exec-abstract-mov-to-output-preserves-mem : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) →
+    readLoc (proj₁ (exec-abstract mov-to-output s alloc)) loc ≡ readLoc s loc
+  exec-abstract-mov-to-output-preserves-mem s alloc (OnStack f k) = refl
+  exec-abstract-mov-to-output-preserves-mem s alloc (OnHeap hl) = refl
+
+  -- After mov-to-output ∷ [], memory is preserved
+  -- mov-to-output only modifies registers, not memory
+  --
+  -- We use exec-trace-single to reduce to exec-abstract, then show
+  -- exec-abstract preserves memory.
+  passthrough-mem-preserved : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) →
+    halted s ≡ false →
+    readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s alloc)) loc ≡ readLoc s loc
+  passthrough-mem-preserved s alloc loc not-halted =
+    let step : exec-trace (mov-to-output ∷ []) s alloc ≡ exec-abstract mov-to-output s alloc
+        step = exec-trace-single mov-to-output s alloc not-halted
+        state-eq : proj₁ (exec-trace (mov-to-output ∷ []) s alloc) ≡
+                   proj₁ (exec-abstract mov-to-output s alloc)
+        state-eq = cong proj₁ step
+        mem-pres : readLoc (proj₁ (exec-abstract mov-to-output s alloc)) loc ≡ readLoc s loc
+        mem-pres = exec-abstract-mov-to-output-preserves-mem s alloc loc
+    in trans (cong (λ st → readLoc st loc) state-eq) mem-pres
+
+  ------------------------------------------------------------------------
   -- Common trace pattern for recursion schemes:
   -- mov-to-output ∷ store-at-slot n ∷ []
   --

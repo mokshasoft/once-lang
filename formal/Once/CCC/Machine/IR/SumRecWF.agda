@@ -23,7 +23,7 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (inj₁; inj₂)
 open import Data.Unit using (tt)
 open import Data.Empty using (⊥-elim)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; subst; cong; cong₂; module ≡-Reasoning)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; trans; sym; subst; cong; cong₂; module ≡-Reasoning; ≢-sym)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
@@ -54,6 +54,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
   -- Open SMPrimitives modules for trace predicates
   open SMP.TracePrimitives {FS}
+  open SMP.RecSchemeSemantics {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -1296,9 +1297,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = trace-wb
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot tpc-[])
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       -- ir-stack-requirement (In _ _) = 1
@@ -1321,8 +1322,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Trace: store input at slot, return slot address
       -- 1. mov-to-output: Output := Input
       -- 2. store-at-slot: slot[n] := Output
+      -- 3. lea-slot: Output := &slot[n] (result location)
       in-trace : AbstractTrace
-      in-trace = mov-to-output ∷ store-at-slot result-slot ∷ []
+      in-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
 
       s' : LocState FS
       s' = proj₁ (exec-trace in-trace s alloc)
@@ -1336,16 +1338,21 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Result validity: In semantically is identity, so input validity transfers
       -- The semantic eval (In wf m) x = InS x, which is representationally same as x
       result-valid : ValidAtWF m alloc' (eval primSem (In wf m) x) result-loc s'
-      result-valid = SMP.!!
+      result-valid = SMP.!!  -- TODO: semantic correctness for In
 
       rax-eq : readReg (regs s') Output ≡ result-loc
-      rax-eq = SMP.!!
+      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = SMP.!!
+      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = SMP.!!
+      mem-preserved (OnStack f k) (stack-before refl k<n) =
+        rec-scheme-preserves-slot-below-3 result-slot k s alloc not-halted k<n
+      mem-preserved (OnStack f k) (stack-ancestor cf≺f _) =
+        rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
+      mem-preserved (OnHeap hl) (heap-before _) =
+        rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-trace
       trace-wa = ≤-refl , tt
@@ -1417,16 +1424,19 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
       -- Result validity: out-μ extracts F(μF) from μF, representationally same
       result-valid : ValidAtWF Heap alloc (eval primSem (out-μ wf) x) input-loc s'
-      result-valid = SMP.!!
+      result-valid = SMP.!!  -- TODO: semantic correctness for out-μ
 
+      -- mov-to-output sets Output := Input = input-loc
       rax-eq : readReg (regs s') Output ≡ input-loc
-      rax-eq = SMP.!!
+      rax-eq = trans (passthrough-output-is-input s alloc not-halted) rdi-eq
 
+      -- mov-to-output preserves halted
       not-halted' : halted s' ≡ false
-      not-halted' = SMP.!!
+      not-halted' = passthrough-preserves-halted s alloc not-halted
 
+      -- mov-to-output doesn't write memory
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = SMP.!!
+      mem-preserved loc bf = passthrough-mem-preserved s alloc loc not-halted
 
       -- IR doesn't allocate, return inj₁ refl
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
@@ -1494,16 +1504,17 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
       -- Result validity: Out extracts F(νF) from νF, representationally same
       result-valid : ValidAtWF Heap alloc (eval primSem (Out wf) x) input-loc s'
-      result-valid = SMP.!!
+      result-valid = SMP.!!  -- TODO: semantic correctness for Out
 
+      -- rax-eq: Output = Input (from passthrough) = input-loc (from rdi-eq)
       rax-eq : readReg (regs s') Output ≡ input-loc
-      rax-eq = SMP.!!
+      rax-eq = trans (passthrough-output-is-input s alloc not-halted) rdi-eq
 
       not-halted' : halted s' ≡ false
-      not-halted' = SMP.!!
+      not-halted' = passthrough-preserves-halted s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = SMP.!!
+      mem-preserved loc _ = passthrough-mem-preserved s alloc loc not-halted
 
       -- IR doesn't allocate, return inj₁ refl
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
@@ -1557,9 +1568,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = trace-wb
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot tpc-[])
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       -- ir-stack-requirement (in-ν _ _) = 1
@@ -1570,8 +1581,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
 
       -- Trace: store input at slot, return slot address (same as In)
+      -- 1. mov-to-output: Output := Input
+      -- 2. store-at-slot: slot[n] := Output
+      -- 3. lea-slot: Output := &slot[n] (result location)
       in-ν-trace : AbstractTrace
-      in-ν-trace = mov-to-output ∷ store-at-slot result-slot ∷ []
+      in-ν-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
 
       s' : LocState FS
       s' = proj₁ (exec-trace in-ν-trace s alloc)
@@ -1584,7 +1598,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
       -- Result validity: in-ν semantically wraps F(νF) → νF, representationally same
       result-valid : ValidAtWF m alloc' (eval primSem (in-ν wf m) x) result-loc s'
-      result-valid = SMP.!!
+      result-valid = SMP.!!  -- TODO: semantic correctness for in-ν
 
       -- suc n ≤ n + 1: ir-stack-requirement (in-ν wf m) ≡ 1 definitionally
       -- +-comm 1 n : 1 + n ≡ n + 1 where 1 + n = suc n
@@ -1595,14 +1609,20 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (in-ν {F} wf m)
       reclaim-bound = ≤-reflexive suc-n≡n+1
 
+      -- rax-eq: Output = slot address after lea-slot
       rax-eq : readReg (regs s') Output ≡ result-loc
-      rax-eq = SMP.!!
+      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = SMP.!!
+      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = SMP.!!
+      mem-preserved (OnStack f k) (stack-before refl k<n) =
+        rec-scheme-preserves-slot-below-3 result-slot k s alloc not-halted k<n
+      mem-preserved (OnStack f k) (stack-ancestor cf≺f _) =
+        rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (≢-sym (≺⇒≢ cf≺f))
+      mem-preserved (OnHeap hl) (heap-before _) =
+        rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
 
       trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-ν-trace
       trace-wa = ≤-refl , tt
