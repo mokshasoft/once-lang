@@ -1891,6 +1891,9 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   open MemOps {FS}
   open AbstractExec {FS}
   open TracePrimitives {FS}
+  open InstrPrimitives {FS}
+  open MemoryOps {FS}
+  open TraceComposition {FS}
 
   private
     RSFrame : Set
@@ -1906,12 +1909,33 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   -- 4. Memory at slots < n is preserved (trace writes only at slot n)
 
   -- After mov-to-output ∷ store-at-slot n ∷ [], Output = original Input
-  -- This is postulated for now as the proof requires careful reasoning about exec-trace unfolding
   rec-scheme-output-is-input : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     readReg (regs (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc))) Output ≡
     readReg (regs s) Input
-  rec-scheme-output-is-input n s alloc not-halted = !!
+  rec-scheme-output-is-input n s alloc not-halted =
+    let -- Step 1: Unfold first instruction (mov-to-output)
+        s1 = proj₁ (exec-abstract mov-to-output s alloc)
+        alloc1 = proj₂ (exec-abstract mov-to-output s alloc)
+        -- After mov-to-output: Output = Input
+        mov-result : readReg (regs s1) Output ≡ readReg (regs s) Input
+        mov-result = writeReg-same (regs s) Output (readReg (regs s) Input)
+        -- mov-to-output doesn't halt
+        s1-not-halted : halted s1 ≡ false
+        s1-not-halted = not-halted  -- mov-to-output preserves halted
+        -- Step 2: Unfold second instruction (store-at-slot n)
+        s2 = proj₁ (exec-abstract (store-at-slot n) s1 alloc1)
+        -- store-at-slot preserves registers
+        store-regs : regs s2 ≡ regs s1
+        store-regs = store-at-slot-regs n s1 alloc1
+        -- Step 3: Combine
+        -- exec-trace (mov ∷ store ∷ []) = exec-trace (store ∷ []) after mov
+        step1 : exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc ≡
+                exec-trace (store-at-slot n ∷ []) s1 alloc1
+        step1 = exec-trace-cons mov-to-output (store-at-slot n ∷ []) s alloc not-halted
+        step2 : exec-trace (store-at-slot n ∷ []) s1 alloc1 ≡ exec-abstract (store-at-slot n) s1 alloc1
+        step2 = exec-trace-single (store-at-slot n) s1 alloc1 s1-not-halted
+    in trans (cong (λ r → readReg r Output) (trans (cong (λ p → regs (proj₁ p)) (trans step1 step2)) store-regs)) mov-result
 
   -- After mov-to-output ∷ store-at-slot n ∷ [], halted = false (preserved)
   rec-scheme-preserves-halted : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -1922,12 +1946,38 @@ module RecSchemeSemantics {FS : FrameSemantics} where
       (tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[]))
 
   -- After mov-to-output ∷ store-at-slot n ∷ [], slot n contains Input value
-  -- This is postulated for now as it requires reasoning about the store effect
   rec-scheme-stores-input : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc))
             (OnStack (current-frame alloc) n) ≡ just (readReg (regs s) Input)
-  rec-scheme-stores-input n s alloc not-halted = !!
+  rec-scheme-stores-input n s alloc not-halted =
+    let -- Step 1: Unfold first instruction (mov-to-output)
+        s1 = proj₁ (exec-abstract mov-to-output s alloc)
+        alloc1 = proj₂ (exec-abstract mov-to-output s alloc)
+        -- After mov-to-output: Output = Input
+        mov-result : readReg (regs s1) Output ≡ readReg (regs s) Input
+        mov-result = writeReg-same (regs s) Output (readReg (regs s) Input)
+        -- mov-to-output doesn't halt
+        s1-not-halted : halted s1 ≡ false
+        s1-not-halted = not-halted
+        -- alloc1 = alloc (mov-to-output doesn't change alloc)
+        alloc1-eq : alloc1 ≡ alloc
+        alloc1-eq = refl
+        -- Step 2: store-at-slot n writes Output to slot n
+        s2 = proj₁ (exec-abstract (store-at-slot n) s1 alloc1)
+        store-result : readLoc s2 (OnStack (current-frame alloc1) n) ≡ just (readReg (regs s1) Output)
+        store-result = store-at-slot-result n s1 alloc1
+        -- Step 3: Unfold trace
+        step1 : exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc ≡
+                exec-trace (store-at-slot n ∷ []) s1 alloc1
+        step1 = exec-trace-cons mov-to-output (store-at-slot n ∷ []) s alloc not-halted
+        step2 : exec-trace (store-at-slot n ∷ []) s1 alloc1 ≡ exec-abstract (store-at-slot n) s1 alloc1
+        step2 = exec-trace-single (store-at-slot n) s1 alloc1 s1-not-halted
+        -- Step 4: Combine
+        final-state-eq : proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc) ≡ s2
+        final-state-eq = cong proj₁ (trans step1 step2)
+    in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) n)) final-state-eq)
+             (trans store-result (cong just mov-result))
 
   ------------------------------------------------------------------------
   -- Extended trace pattern: mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []
@@ -1945,7 +1995,14 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     halted s ≡ false →
     readReg (regs (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))) Output ≡
     OnStack (current-frame alloc) n
-  rec-scheme-output-is-slot n s alloc not-halted = !!
+  rec-scheme-output-is-slot n s alloc not-halted =
+    -- The trace is (mov-to-output ∷ store-at-slot n ∷ []) ++ (lea-slot n ∷ [])
+    -- which is definitionally equal to mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []
+    let prefix = mov-to-output ∷ store-at-slot n ∷ []
+        -- After prefix, halted = false
+        not-halted-after : halted (proj₁ (exec-trace prefix s alloc)) ≡ false
+        not-halted-after = rec-scheme-preserves-halted n s alloc not-halted
+    in exec-trace-final-lea-slot prefix n s alloc not-halted-after
 
   -- After mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ [], halted = false (preserved)
   rec-scheme-preserves-halted-3 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -1960,7 +2017,32 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     halted s ≡ false →
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
             (OnStack (current-frame alloc) n) ≡ just (readReg (regs s) Input)
-  rec-scheme-stores-input-3 n s alloc not-halted = !!
+  rec-scheme-stores-input-3 n s alloc not-halted =
+    let prefix = mov-to-output ∷ store-at-slot n ∷ []
+        s-after-prefix = proj₁ (exec-trace prefix s alloc)
+        alloc-after-prefix = proj₂ (exec-trace prefix s alloc)
+        -- After prefix, slot n = Input
+        prefix-result : readLoc s-after-prefix (OnStack (current-frame alloc) n) ≡ just (readReg (regs s) Input)
+        prefix-result = rec-scheme-stores-input n s alloc not-halted
+        -- After prefix, halted = false
+        not-halted-after : halted s-after-prefix ≡ false
+        not-halted-after = rec-scheme-preserves-halted n s alloc not-halted
+        -- lea-slot preserves memory
+        s-after-lea = proj₁ (exec-abstract (lea-slot n) s-after-prefix alloc-after-prefix)
+        lea-preserves : readLoc s-after-lea (OnStack (current-frame alloc) n) ≡
+                        readLoc s-after-prefix (OnStack (current-frame alloc) n)
+        lea-preserves = lea-slot-preserves-mem n s-after-prefix alloc-after-prefix (OnStack (current-frame alloc) n)
+        -- Trace decomposition
+        step1 : exec-trace (prefix ++ (lea-slot n ∷ [])) s alloc ≡
+                exec-trace (lea-slot n ∷ []) s-after-prefix alloc-after-prefix
+        step1 = exec-trace-append prefix (lea-slot n ∷ []) s alloc
+        step2 : exec-trace (lea-slot n ∷ []) s-after-prefix alloc-after-prefix ≡
+                exec-abstract (lea-slot n) s-after-prefix alloc-after-prefix
+        step2 = exec-trace-single (lea-slot n) s-after-prefix alloc-after-prefix not-halted-after
+        final-state-eq : proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc) ≡ s-after-lea
+        final-state-eq = cong proj₁ (trans step1 step2)
+    in trans (cong (λ st → readLoc st (OnStack (current-frame alloc) n)) final-state-eq)
+             (trans lea-preserves prefix-result)
 
   -- After mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ [], memory at slots < n is preserved
   -- This follows because:
@@ -1974,7 +2056,15 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
             (OnStack (current-frame alloc) k) ≡
     readLoc s (OnStack (current-frame alloc) k)
-  rec-scheme-preserves-slot-below-3 n k s alloc not-halted k<n = !!
+  rec-scheme-preserves-slot-below-3 n k s alloc not-halted k<n =
+    -- The trace writes only at slot n, so slots k < n are preserved
+    -- TraceWritesAbove n: store-at-slot n writes at n ≥ n
+    -- TraceNoHeapWrites: no heap-writing instructions
+    exec-trace-preserves-slot-below
+      (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc n k
+      (≤-refl , tt)  -- TraceWritesAbove n: n ≤ n, and mov/lea don't write slots
+      tt             -- TraceNoHeapWrites: no heap writes
+      k<n
 
   -- Memory preservation for heap locations through the recursion scheme trace
   rec-scheme-preserves-heap-3 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (hl : HeapLocation) →
@@ -1982,7 +2072,11 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
             (OnHeap hl) ≡
     readLoc s (OnHeap hl)
-  rec-scheme-preserves-heap-3 n s alloc hl not-halted = !!
+  rec-scheme-preserves-heap-3 n s alloc hl not-halted =
+    -- The trace has no heap-writing instructions
+    exec-trace-preserves-heap-loc
+      (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc hl
+      tt  -- TraceNoHeapWrites: no store-indirect or store-indirect-suc
 
   -- Memory preservation for ancestor frame slots through the recursion scheme trace
   -- The trace only writes to (current-frame alloc, n), so any slot on a different frame is preserved
@@ -1992,4 +2086,42 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
             (OnStack f k) ≡
     readLoc s (OnStack f k)
-  rec-scheme-preserves-ancestor-3 n s alloc f k not-halted f≢cf = !!
+  rec-scheme-preserves-ancestor-3 n s alloc f k not-halted f≢cf =
+    -- The trace writes only to OnStack (current-frame alloc) n
+    -- OnStack f k is on a different frame (f ≢ cf), so it's preserved
+    trans (cong (λ st → readLoc st (OnStack f k)) final-state-eq)
+          (trans lea-preserves (trans store-preserves mov-preserves))
+    where
+      -- Step 1: Unfold first instruction (mov-to-output) - preserves all memory
+      s1 = proj₁ (exec-abstract mov-to-output s alloc)
+      alloc1 = proj₂ (exec-abstract mov-to-output s alloc)
+      mov-preserves : readLoc s1 (OnStack f k) ≡ readLoc s (OnStack f k)
+      mov-preserves = refl  -- mov-to-output only changes registers
+      s1-not-halted : halted s1 ≡ false
+      s1-not-halted = not-halted
+      -- Step 2: store-at-slot n writes to OnStack cf n, preserves OnStack f k (different frame)
+      s2 = proj₁ (exec-abstract (store-at-slot n) s1 alloc1)
+      alloc2 = proj₂ (exec-abstract (store-at-slot n) s1 alloc1)
+      -- OnStack cf n ≢ OnStack f k because f ≢ cf
+      loc-neq : OnStack (current-frame alloc1) n ≢ OnStack f k
+      loc-neq refl = f≢cf refl  -- contradiction: f ≡ cf
+      store-preserves : readLoc s2 (OnStack f k) ≡ readLoc s1 (OnStack f k)
+      store-preserves = writeLoc-preserves-other s1 (OnStack (current-frame alloc1) n) (OnStack f k)
+                          (readReg (regs s1) Output) loc-neq
+      s2-not-halted : halted s2 ≡ false
+      s2-not-halted = s1-not-halted
+      -- Step 3: lea-slot n - preserves all memory
+      s3 = proj₁ (exec-abstract (lea-slot n) s2 alloc2)
+      lea-preserves : readLoc s3 (OnStack f k) ≡ readLoc s2 (OnStack f k)
+      lea-preserves = lea-slot-preserves-mem n s2 alloc2 (OnStack f k)
+      -- Step 4: Trace decomposition
+      step1 : exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc ≡
+              exec-trace (store-at-slot n ∷ lea-slot n ∷ []) s1 alloc1
+      step1 = exec-trace-cons mov-to-output (store-at-slot n ∷ lea-slot n ∷ []) s alloc not-halted
+      step2 : exec-trace (store-at-slot n ∷ lea-slot n ∷ []) s1 alloc1 ≡
+              exec-trace (lea-slot n ∷ []) s2 alloc2
+      step2 = exec-trace-cons (store-at-slot n) (lea-slot n ∷ []) s1 alloc1 s1-not-halted
+      step3 : exec-trace (lea-slot n ∷ []) s2 alloc2 ≡ exec-abstract (lea-slot n) s2 alloc2
+      step3 = exec-trace-single (lea-slot n) s2 alloc2 s2-not-halted
+      final-state-eq : proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc) ≡ s3
+      final-state-eq = cong proj₁ (trans step1 (trans step2 step3))
