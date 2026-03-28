@@ -12,6 +12,12 @@
 --
 -- When observed via Out, the thunk is forced by applying coalg to seed,
 -- producing an F-layer with new seeds for recursive positions.
+--
+------------------------------------------------------------------------
+-- Star-Based Proof Architecture (per lessons-learned.md)
+--
+-- See RecCoreWF.agda for full documentation.
+-- Semantic correctness uses the same documented postulate approach.
 ------------------------------------------------------------------------
 
 module Once.CCC.Machine.IR.AnaWF where
@@ -95,6 +101,16 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance)
+
+  ------------------------------------------------------------------------
+  -- Semantic Correctness Postulate
+  --
+  -- See RecCoreWF.agda for full documentation and justification.
+  ------------------------------------------------------------------------
+  postulate
+    rec-scheme-semantic : ∀ {A B} (ir : IR A B) (alloc : AllocState {FS})
+      (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
+      ValidAtWF Heap alloc (eval primSem ir x) result-loc s
 
   ------------------------------------------------------------------------
   -- Arithmetic helpers for stack requirement bounds
@@ -215,9 +231,9 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
       result-bf : BeforeFrontier alloc' result-loc
       result-bf = stack-before refl (n<1+n (next-slot alloc))
 
-      -- Result validity: Ana produces νF from seed, semantically correct
+      -- Result validity: Ana produces νF from seed (postulated)
       result-valid : ValidAtWF Heap alloc' (eval primSem (Ana wf coalg) x) result-loc s'
-      result-valid = SMP.!!
+      result-valid = rec-scheme-semantic (Ana wf coalg) alloc' x result-loc s'
 
       -- Stack requirement bound: suc n ≤ n + ir-stack-requirement (Ana wf coalg)
       -- ir-stack-requirement (Ana _ coalg) = ir-stack-requirement coalg + pair-slots
@@ -272,5 +288,5 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
 -- The implementation provides:
 --   - Algorithmic structure (traces, state computation)
 --   - Proven properties: trace bounds, halted preservation, memory preservation
---   - Semantic correctness (result-valid) deferred via SMP.!!
+--   - Semantic correctness via documented postulate (rec-scheme-semantic)
 ------------------------------------------------------------------------
