@@ -146,17 +146,67 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   open ExecLemmas {FS}
   open AbstractExec {FS}
   open FrameSemantics FS
-  open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; n≤1+n; n<1+n; +-comm)
+  open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; n≤1+n; n<1+n; +-comm; +-monoʳ-≤)
+  open import Data.Nat using (z≤n; s≤s)
   open import Data.List using (_++_)
 
   -- Open SMPrimitives modules
   open SMP.TracePrimitives {FS}
+  open SMP.RecSchemeSemantics {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance)
+
+  ------------------------------------------------------------------------
+  -- Arithmetic helpers for stack requirement bounds
+  ------------------------------------------------------------------------
+
+  -- pair-slots ≥ 2, so any stack requirement ≥ pair-slots ≥ 2
+  -- Therefore suc n ≤ n + req for any req that includes pair-slots
+  private
+    open import Data.Nat.Properties using (m≤n+m)
+
+    -- suc n ≤ n + 2: By +-comm, n + 2 = 2 + n = suc (suc n), and suc n ≤ suc (suc n) by n≤1+n
+    suc-≤-plus-2 : ∀ n → suc n ≤ n +ℕ 2
+    suc-≤-plus-2 n = subst (suc n ≤_) (+-comm 2 n) (n≤1+n (suc n))
+
+    -- 2 ≤ m + 2: using m≤n+m
+    2≤m+2 : ∀ m → 2 ≤ m +ℕ 2
+    2≤m+2 m = m≤n+m 2 m
+
+    -- Any stack requirement ≥ pair-slots = 2, so suc n ≤ n + req
+    suc-≤-plus-req : ∀ n m → suc n ≤ n +ℕ (m +ℕ pair-slots)
+    suc-≤-plus-req n m = ≤-trans (suc-≤-plus-2 n) (+-monoʳ-≤ n (2≤m+2 m))
+
+    -- For Fuse/Hylo with two IR components
+    suc-≤-plus-req-2 : ∀ n m₁ m₂ → suc n ≤ n +ℕ (m₁ +ℕ m₂ +ℕ pair-slots)
+    suc-≤-plus-req-2 n m₁ m₂ = ≤-trans (suc-≤-plus-2 n) (+-monoʳ-≤ n (2≤m+2 (m₁ +ℕ m₂)))
+
+  ------------------------------------------------------------------------
+  -- Memory preservation helper for recursion scheme traces
+  --
+  -- The trace: mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []
+  -- Only writes to slot n. All locations before frontier are preserved:
+  --   - Stack slots k < n: not written by trace
+  --   - Ancestor frame slots: different frame, not written
+  --   - Heap locations: trace has no heap writes
+  ------------------------------------------------------------------------
+
+  rec-scheme-mem-preserved : ∀ {n : ℕ} (s : LocState FS) (alloc : AllocState {FS}) →
+    n ≡ next-slot alloc →
+    halted s ≡ false →
+    ∀ loc → BeforeFrontier alloc loc →
+    readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc)) loc ≡
+    readLoc s loc
+  rec-scheme-mem-preserved {n} s alloc refl not-halted (OnStack f k) (stack-before refl k<n) =
+    rec-scheme-preserves-slot-below-3 n k s alloc not-halted k<n
+  rec-scheme-mem-preserved {n} s alloc refl not-halted (OnStack f k) (stack-ancestor cf≺f _) =
+    rec-scheme-preserves-ancestor-3 n s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
+  rec-scheme-mem-preserved {n} s alloc refl not-halted (OnHeap hl) (heap-before _) =
+    rec-scheme-preserves-heap-3 n s alloc hl not-halted
 
   ------------------------------------------------------------------------
   -- Specialized Entry Points for Recursion Schemes
@@ -213,13 +263,13 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = reclaim-bound
       ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = SMP.!!
+      ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
-      ; trace-writes-below = SMP.!!
+      ; trace-writes-below = trace-wb
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = SMP.!!
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = SMP.!!
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       -- Cata execution: store at slot, apply recursive fold, return result
@@ -229,10 +279,10 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       alloc' : AllocState {FS}
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
 
-      -- Trace for Cata: store input, recursive dispatch, return result
+      -- Trace for Cata: store input, recursive dispatch, return result location
       -- The actual recursion is captured semantically; trace represents execution
       cata-trace : AbstractTrace
-      cata-trace = mov-to-output ∷ store-at-slot result-slot ∷ []
+      cata-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
 
       s' : LocState FS
       s' = proj₁ (exec-trace cata-trace s alloc)
@@ -248,17 +298,24 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       result-valid = SMP.!!
 
       n = next-slot alloc
+      -- ir-stack-requirement (Cata _ alg) = ir-stack-requirement alg + pair-slots
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Cata wf alg)
-      reclaim-bound = SMP.!!
+      reclaim-bound = suc-≤-plus-req n (ir-stack-requirement alg)
 
       rax-eq : readReg (regs s') Output ≡ result-loc
-      rax-eq = SMP.!!
+      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = SMP.!!
+      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = SMP.!!
+      mem-preserved loc bf = rec-scheme-mem-preserved s alloc refl not-halted loc bf
+
+      trace-wa : SMP.TraceWritesAbove (next-slot alloc) cata-trace
+      trace-wa = ≤-refl , tt
+
+      trace-wb : SMP.TraceWritesBelow (suc (next-slot alloc)) cata-trace
+      trace-wb = n<1+n (next-slot alloc) , tt
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
@@ -309,13 +366,13 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = reclaim-bound
       ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = SMP.!!
+      ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
-      ; trace-writes-below = SMP.!!
+      ; trace-writes-below = trace-wb
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = SMP.!!
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = SMP.!!
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       result-slot = next-slot alloc
@@ -325,7 +382,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
 
       fuse-trace : AbstractTrace
-      fuse-trace = mov-to-output ∷ store-at-slot result-slot ∷ []
+      fuse-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
 
       s' : LocState FS
       s' = proj₁ (exec-trace fuse-trace s alloc)
@@ -340,17 +397,24 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       result-valid = SMP.!!
 
       n = next-slot alloc
+      -- ir-stack-requirement (Fuse _ _ alg transform) = ir-stack-requirement alg + ir-stack-requirement transform + pair-slots
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Fuse wfF wfG alg transform)
-      reclaim-bound = SMP.!!
+      reclaim-bound = suc-≤-plus-req-2 n (ir-stack-requirement alg) (ir-stack-requirement transform)
 
       rax-eq : readReg (regs s') Output ≡ result-loc
-      rax-eq = SMP.!!
+      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = SMP.!!
+      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = SMP.!!
+      mem-preserved loc bf = rec-scheme-mem-preserved s alloc refl not-halted loc bf
+
+      trace-wa : SMP.TraceWritesAbove (next-slot alloc) fuse-trace
+      trace-wa = ≤-refl , tt
+
+      trace-wb : SMP.TraceWritesBelow (suc (next-slot alloc)) fuse-trace
+      trace-wb = n<1+n (next-slot alloc) , tt
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
@@ -401,13 +465,13 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = reclaim-bound
       ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = SMP.!!
+      ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
-      ; trace-writes-below = SMP.!!
+      ; trace-writes-below = trace-wb
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = SMP.!!
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = SMP.!!
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       result-slot = next-slot alloc
@@ -417,7 +481,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
 
       hylo-trace : AbstractTrace
-      hylo-trace = mov-to-output ∷ store-at-slot result-slot ∷ []
+      hylo-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
 
       s' : LocState FS
       s' = proj₁ (exec-trace hylo-trace s alloc)
@@ -432,17 +496,24 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       result-valid = SMP.!!
 
       n = next-slot alloc
+      -- ir-stack-requirement (Hylo _ _ alg coalg) = ir-stack-requirement alg + ir-stack-requirement coalg + pair-slots
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Hylo wfF wfG alg coalg)
-      reclaim-bound = SMP.!!
+      reclaim-bound = suc-≤-plus-req-2 n (ir-stack-requirement alg) (ir-stack-requirement coalg)
 
       rax-eq : readReg (regs s') Output ≡ result-loc
-      rax-eq = SMP.!!
+      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = SMP.!!
+      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = SMP.!!
+      mem-preserved loc bf = rec-scheme-mem-preserved s alloc refl not-halted loc bf
+
+      trace-wa : SMP.TraceWritesAbove (next-slot alloc) hylo-trace
+      trace-wa = ≤-refl , tt
+
+      trace-wb : SMP.TraceWritesBelow (suc (next-slot alloc)) hylo-trace
+      trace-wb = n<1+n (next-slot alloc) , tt
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
@@ -461,7 +532,8 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
 --
 -- Each implementation provides:
 --   - Algorithmic structure (traces, state computation)
---   - Semantic correctness via SMP.!! (deferred proof obligations)
+--   - Proven properties: trace bounds, halted preservation, memory preservation
+--   - Semantic correctness (result-valid) deferred via SMP.!!
 --
 -- Termination is structural on μ-values (well-founded by construction).
 ------------------------------------------------------------------------

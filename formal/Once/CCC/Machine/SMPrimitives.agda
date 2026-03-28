@@ -1872,3 +1872,124 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
   -- Since all reads come from slots in [n, m) (where states agree), computed values are same.
   -- Therefore stores to slots in [n, m) write the same values in both executions.
   exec-trace-mem-deterministic = !!
+
+------------------------------------------------------------------------
+-- Recursion Scheme Semantic Correctness
+--
+-- These postulates specify the semantic correctness requirements for
+-- recursion scheme implementations (Cata, Fuse, Hylo, Para, Ana).
+--
+-- The implementations in RecCoreWF, ParaWF, AnaWF use abstract traces
+-- that represent the recursive execution pattern. The actual recursion
+-- is captured semantically through these postulates.
+--
+-- Each postulate documents a specific proof obligation that must be
+-- discharged to complete the formal verification.
+------------------------------------------------------------------------
+
+module RecSchemeSemantics {FS : FrameSemantics} where
+  open MemOps {FS}
+  open AbstractExec {FS}
+  open TracePrimitives {FS}
+
+  private
+    RSFrame : Set
+    RSFrame = FrameSemantics.Frame FS
+
+  -- Common trace pattern for recursion schemes:
+  -- mov-to-output ∷ store-at-slot n ∷ []
+  --
+  -- After this trace:
+  -- 1. Slot n contains the input location (originally in Input register)
+  -- 2. Output register still contains Input (store doesn't change regs)
+  -- 3. Halted flag is preserved (both instructions preserve halted)
+  -- 4. Memory at slots < n is preserved (trace writes only at slot n)
+
+  -- After mov-to-output ∷ store-at-slot n ∷ [], Output = original Input
+  -- This is postulated for now as the proof requires careful reasoning about exec-trace unfolding
+  rec-scheme-output-is-input : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    readReg (regs (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc))) Output ≡
+    readReg (regs s) Input
+  rec-scheme-output-is-input n s alloc not-halted = !!
+
+  -- After mov-to-output ∷ store-at-slot n ∷ [], halted = false (preserved)
+  rec-scheme-preserves-halted : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    halted (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc)) ≡ false
+  rec-scheme-preserves-halted n s alloc not-halted =
+    exec-trace-preserves-halted (mov-to-output ∷ store-at-slot n ∷ []) s alloc not-halted
+      (tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[]))
+
+  -- After mov-to-output ∷ store-at-slot n ∷ [], slot n contains Input value
+  -- This is postulated for now as it requires reasoning about the store effect
+  rec-scheme-stores-input : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ []) s alloc))
+            (OnStack (current-frame alloc) n) ≡ just (readReg (regs s) Input)
+  rec-scheme-stores-input n s alloc not-halted = !!
+
+  ------------------------------------------------------------------------
+  -- Extended trace pattern: mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []
+  --
+  -- This trace:
+  -- 1. Copies Input to Output
+  -- 2. Stores Output at slot n
+  -- 3. Loads address of slot n into Output
+  --
+  -- After this trace, Output = OnStack frame n (the result location)
+  ------------------------------------------------------------------------
+
+  -- After mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ [], Output = OnStack frame n
+  rec-scheme-output-is-slot : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    readReg (regs (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))) Output ≡
+    OnStack (current-frame alloc) n
+  rec-scheme-output-is-slot n s alloc not-halted = !!
+
+  -- After mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ [], halted = false (preserved)
+  rec-scheme-preserves-halted-3 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    halted (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc)) ≡ false
+  rec-scheme-preserves-halted-3 n s alloc not-halted =
+    exec-trace-preserves-halted (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc not-halted
+      (tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[])))
+
+  -- After mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ [], slot n contains Input value
+  rec-scheme-stores-input-3 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
+            (OnStack (current-frame alloc) n) ≡ just (readReg (regs s) Input)
+  rec-scheme-stores-input-3 n s alloc not-halted = !!
+
+  -- After mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ [], memory at slots < n is preserved
+  -- This follows because:
+  --   1. mov-to-output only modifies registers (no memory writes)
+  --   2. store-at-slot n writes only to slot n
+  --   3. lea-slot n only modifies registers (no memory writes)
+  -- So slots < n are not modified.
+  rec-scheme-preserves-slot-below-3 : ∀ (n k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    k < n →
+    readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
+            (OnStack (current-frame alloc) k) ≡
+    readLoc s (OnStack (current-frame alloc) k)
+  rec-scheme-preserves-slot-below-3 n k s alloc not-halted k<n = !!
+
+  -- Memory preservation for heap locations through the recursion scheme trace
+  rec-scheme-preserves-heap-3 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (hl : HeapLocation) →
+    halted s ≡ false →
+    readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
+            (OnHeap hl) ≡
+    readLoc s (OnHeap hl)
+  rec-scheme-preserves-heap-3 n s alloc hl not-halted = !!
+
+  -- Memory preservation for ancestor frame slots through the recursion scheme trace
+  -- The trace only writes to (current-frame alloc, n), so any slot on a different frame is preserved
+  rec-scheme-preserves-ancestor-3 : ∀ (n : ℕ) (s : LocState FS) (alloc : AllocState {FS}) (f : RSFrame) (k : ℕ) →
+    halted s ≡ false →
+    f ≢ current-frame alloc →
+    readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc))
+            (OnStack f k) ≡
+    readLoc s (OnStack f k)
+  rec-scheme-preserves-ancestor-3 n s alloc f k not-halted f≢cf = !!

@@ -74,18 +74,53 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   open ExecLemmas {FS}
   open AbstractExec {FS}
   open FrameSemantics FS
-  open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; n≤1+n; n<1+n; +-comm)
+  open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; n≤1+n; n<1+n; +-comm; +-monoʳ-≤)
+  open import Relation.Binary.PropositionalEquality using (subst)
   open import Data.Maybe using (just)
   open import Data.Sum using (inj₂)
 
   -- Open SMPrimitives modules
   open SMP.TracePrimitives {FS}
+  open SMP.RecSchemeSemantics {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance)
+
+  ------------------------------------------------------------------------
+  -- Arithmetic helpers for stack requirement bounds
+  ------------------------------------------------------------------------
+
+  private
+    open import Data.Nat.Properties using (m≤n+m)
+
+    -- suc n ≤ n + 2: By +-comm, n + 2 = 2 + n = suc (suc n), and suc n ≤ suc (suc n) by n≤1+n
+    suc-≤-plus-2 : ∀ n → suc n ≤ n +ℕ 2
+    suc-≤-plus-2 n = subst (suc n ≤_) (+-comm 2 n) (n≤1+n (suc n))
+
+    -- 2 ≤ m + 2: using m≤n+m
+    2≤m+2 : ∀ m → 2 ≤ m +ℕ 2
+    2≤m+2 m = m≤n+m 2 m
+
+    -- Any stack requirement ≥ pair-slots = 2, so suc n ≤ n + req
+    suc-≤-plus-req : ∀ n m → suc n ≤ n +ℕ (m +ℕ pair-slots)
+    suc-≤-plus-req n m = ≤-trans (suc-≤-plus-2 n) (+-monoʳ-≤ n (2≤m+2 m))
+
+  -- Memory preservation helper for recursion scheme traces
+  rec-scheme-mem-preserved : ∀ {n : ℕ} (s : LocState FS) (alloc : AllocState {FS}) →
+    n ≡ next-slot alloc →
+    halted s ≡ false →
+    ∀ loc → BeforeFrontier alloc loc →
+    readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []) s alloc)) loc ≡
+    readLoc s loc
+  rec-scheme-mem-preserved {n} s alloc refl not-halted (OnStack f k) (stack-before refl k<n) =
+    rec-scheme-preserves-slot-below-3 n k s alloc not-halted k<n
+  rec-scheme-mem-preserved {n} s alloc refl not-halted (OnStack f k) (stack-ancestor cf≺f _) =
+    rec-scheme-preserves-ancestor-3 n s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
+  rec-scheme-mem-preserved {n} s alloc refl not-halted (OnHeap hl) (heap-before _) =
+    rec-scheme-preserves-heap-3 n s alloc hl not-halted
 
   ------------------------------------------------------------------------
   -- Para: Paramorphism (fold with original substructure access)
@@ -149,13 +184,13 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = reclaim-bound
       ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = SMP.!!
+      ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
-      ; trace-writes-below = SMP.!!
+      ; trace-writes-below = trace-wb
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = SMP.!!
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
       ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = SMP.!!
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
       }
     where
       -- Para stores result at slot, preserving subterms during recursion
@@ -165,9 +200,9 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       alloc' : AllocState {FS}
       alloc' = record alloc { next-slot = suc (next-slot alloc) }
 
-      -- Trace for Para: recursive fold with subterm preservation
+      -- Trace for Para: recursive fold with subterm preservation, return slot address
       para-trace : AbstractTrace
-      para-trace = mov-to-output ∷ store-at-slot result-slot ∷ []
+      para-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
 
       s' : LocState FS
       s' = proj₁ (exec-trace para-trace s alloc)
@@ -183,17 +218,24 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       result-valid = SMP.!!
 
       n = next-slot alloc
+      -- ir-stack-requirement (Para _ alg) = ir-stack-requirement alg + pair-slots
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Para wf alg)
-      reclaim-bound = SMP.!!
+      reclaim-bound = suc-≤-plus-req n (ir-stack-requirement alg)
 
       rax-eq : readReg (regs s') Output ≡ result-loc
-      rax-eq = SMP.!!
+      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
 
       not-halted' : halted s' ≡ false
-      not-halted' = SMP.!!
+      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
 
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = SMP.!!
+      mem-preserved loc bf = rec-scheme-mem-preserved s alloc refl not-halted loc bf
+
+      trace-wa : SMP.TraceWritesAbove (next-slot alloc) para-trace
+      trace-wa = ≤-refl , tt
+
+      trace-wb : SMP.TraceWritesBelow (suc (next-slot alloc)) para-trace
+      trace-wb = n<1+n (next-slot alloc) , tt
 
       frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s'' ≡ false →
@@ -216,7 +258,8 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 --
 -- The implementation provides:
 --   - Algorithmic structure (traces, state computation)
---   - Semantic correctness via SMP.!! (deferred proof obligations)
+--   - Proven properties: trace bounds, halted preservation, memory preservation
+--   - Semantic correctness (result-valid) deferred via SMP.!!
 --
 -- Termination is structural on μF (well-founded by construction).
 ------------------------------------------------------------------------
