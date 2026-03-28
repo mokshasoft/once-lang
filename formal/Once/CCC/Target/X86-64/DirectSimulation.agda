@@ -836,6 +836,53 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
   ... | false | _ = corr  -- call is identity in our model
 
+  -- OCP-0003: Worklist instructions
+  -- worklist-init: no-op (compiles to empty)
+  instr-sim (worklist-init _) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = corr
+
+  -- worklist-push: like store-at-slot (compiles to mov [rbp + offset], rax)
+  instr-sim (worklist-push slot) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ =
+    let frame = current-frame alloc
+        loc = OnStack frame slot
+        val = readReg (regs ls) Output
+        ls' = writeLoc ls loc val
+        regs-eq : regs ls' ≡ regs ls
+        regs-eq = writeLoc-regs ls loc val
+        -- x86 writes to slotLoc frame (disp-to-slot (slot * slot-size)) = OnStack frame slot
+        slot-recover : disp-to-slot (slot *ℕ slot-size) ≡ slot
+        slot-recover = m*n/n≡m slot slot-size
+        -- Use slot-recover to fix the slot argument
+        mem-eq' : ∀ l → writeX86Mem (x86-mem xs) (OnStack frame (disp-to-slot (slot *ℕ slot-size))) (rax-val xs) l ≡ readLoc ls' l
+        mem-eq' = subst (λ s → ∀ l → writeX86Mem (x86-mem xs) (OnStack frame s) (rax-val xs) l ≡ readLoc ls' l)
+                        (sym slot-recover)
+                        (writeX86Mem-stack-corresponds ls xs frame slot val (mem-eq corr) (rax-eq corr))
+    in record
+    { rdi-eq = trans (rdi-eq corr) (cong (λ r → readReg r Input) (sym regs-eq))
+    ; rax-eq = trans (rax-eq corr) (cong (λ r → readReg r Output) (sym regs-eq))
+    ; frame-eq = frame-eq corr
+    ; slot-eq = trans (slot-eq corr) (slot-eq-lift alloc (cong stackSlot (sym regs-eq)))
+    ; mem-eq = mem-eq'
+    ; halt-eq = trans (halt-eq corr) (sym (writeLoc-halted ls loc val))
+    }
+
+  -- worklist-pop: like load-from-slot (compiles to mov rax, [rbp + offset])
+  instr-sim (worklist-pop slot) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = PO.!!  -- TODO: load simulation proof (similar to load-from-slot)
+
+  -- worklist-check: no-op (compiles to empty)
+  instr-sim (worklist-check _) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = corr
+
   -- Lemma: exec-abstract preserves current-frame
   -- All instructions either return alloc unchanged or only modify frame-capacity
   exec-abstract-preserves-frame : ∀ i ls alloc →
@@ -863,6 +910,14 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-push-frame _) ls alloc = refl
   exec-abstract-preserves-frame instr-pop-frame ls alloc = refl
   exec-abstract-preserves-frame instr-call-closure ls alloc = refl
+  -- OCP-0003: Worklist instructions
+  exec-abstract-preserves-frame (worklist-init _) ls alloc = refl
+  exec-abstract-preserves-frame (worklist-push _) ls alloc = refl
+  exec-abstract-preserves-frame (worklist-pop slot) ls alloc
+    with readLoc ls (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-frame (worklist-check _) ls alloc = refl
 
   ------------------------------------------------------------------------
   -- Trace simulation

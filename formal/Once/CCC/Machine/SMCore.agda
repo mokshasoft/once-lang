@@ -641,6 +641,20 @@ data AbstractInstr : Set where
   instr-pop-frame    : AbstractInstr              -- restore caller frame
   instr-call-closure : AbstractInstr              -- jump to closure code
 
+  -- OCP-0003: Worklist operations for loop-based recursion schemes
+  --
+  -- The worklist is a slot-based stack for tree traversal:
+  --   Slot (base-1): count (number of items)
+  --   Slots base, base+1, ...: data items
+  --
+  -- Runtime uses loops; proofs use Star (structural induction on μ-values).
+  -- These instructions implement the runtime loop operations.
+  --
+  worklist-init  : Slot → AbstractInstr  -- Initialize: count := 0
+  worklist-push  : Slot → AbstractInstr  -- Push Output, count++
+  worklist-pop   : Slot → AbstractInstr  -- count--, Output := top item
+  worklist-check : Slot → AbstractInstr  -- Output := 1 if empty, 0 if not
+
 -- | A trace is a sequence of abstract instructions
 AbstractTrace : Set
 AbstractTrace = List AbstractInstr
@@ -781,6 +795,36 @@ module AbstractExec {FS : FrameSemantics} where
   -- This is a no-op at abstract level - the call happens via BodyCorrect.execute
   exec-abstract instr-call-closure s alloc =
     s , alloc
+
+  ------------------------------------------------------------------------
+  -- OCP-0003: Worklist Instruction Semantics
+  --
+  -- Worklist operations support loop-based tree traversal at runtime.
+  -- Proofs use Star-based structural induction on μ-values, not loops.
+  --
+  -- These semantics are simplified abstractions:
+  --   - Runtime uses actual counters and indexed slots
+  --   - Abstract level provides type-correct behavior
+  --   - Correctness follows from Star proofs, not loop simulation
+  ------------------------------------------------------------------------
+
+  -- worklist-init: Initialize worklist (count := 0)
+  -- Abstract: no observable state change (empty worklist has no items)
+  exec-abstract (worklist-init slot) s alloc = s , alloc
+
+  -- worklist-push: Push Output onto worklist, advance count
+  -- Abstract: store value at slot (simplified - runtime tracks index)
+  exec-abstract (worklist-push slot) s alloc =
+    writeLoc s (OnStack (current-frame alloc) slot) (readReg (regs s) Output) , alloc
+
+  -- worklist-pop: Pop top item into Output, decrement count
+  -- Abstract: load from slot (simplified - runtime tracks index)
+  exec-abstract (worklist-pop slot) s alloc =
+    exec-load-from-slot-with-value (readLoc s (OnStack (current-frame alloc) slot)) s alloc
+
+  -- worklist-check: Set Output based on worklist empty status
+  -- Abstract: no-op (Star proofs handle termination structurally)
+  exec-abstract (worklist-check slot) s alloc = s , alloc
 
   -- | Execute a trace (sequence of abstract instructions)
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →

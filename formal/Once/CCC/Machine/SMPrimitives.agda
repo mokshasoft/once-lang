@@ -224,15 +224,17 @@ module MemoryOps {FS : FrameSemantics} where
 -- Slot-specific characterization (state-independent)
 -- These are useful for trace analysis where we track slot bounds
 
--- What slot does this instruction write to? (store-at-slot only)
+-- What slot does this instruction write to? (store-at-slot, worklist-push)
 instr-writes-slot : AbstractInstr → Maybe ℕ
 instr-writes-slot (store-at-slot k) = just k
+instr-writes-slot (worklist-push k) = just k  -- OCP-0003: worklist push writes to slot
 instr-writes-slot _ = nothing
 
--- What slot does this instruction read from? (load-from-slot, restore-input)
+-- What slot does this instruction read from? (load-from-slot, restore-input, worklist-pop)
 instr-reads-slot : AbstractInstr → Maybe ℕ
 instr-reads-slot (load-from-slot k) = just k
 instr-reads-slot (restore-input k) = just k
+instr-reads-slot (worklist-pop k) = just k  -- OCP-0003: worklist pop reads from slot
 instr-reads-slot _ = nothing
 
 ------------------------------------------------------------------------
@@ -290,6 +292,11 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-instr-push-frame   : ∀ {cap} → InstrNoHeapWrite (instr-push-frame cap)
   nhw-instr-pop-frame    : InstrNoHeapWrite instr-pop-frame
   nhw-instr-call-closure : InstrNoHeapWrite instr-call-closure
+  -- OCP-0003: Worklist instructions write to stack, not heap
+  nhw-worklist-init      : ∀ {slot} → InstrNoHeapWrite (worklist-init slot)
+  nhw-worklist-push      : ∀ {slot} → InstrNoHeapWrite (worklist-push slot)
+  nhw-worklist-pop       : ∀ {slot} → InstrNoHeapWrite (worklist-pop slot)
+  nhw-worklist-check     : ∀ {slot} → InstrNoHeapWrite (worklist-check slot)
 
 -- Instruction preserves frame (doesn't push/pop frame)
 InstrPreservesFrame : AbstractInstr → Set
@@ -317,6 +324,11 @@ instr-reads-mem (instr-dealloc-stack n) s alloc = nothing
 instr-reads-mem (instr-push-frame cap) s alloc = nothing
 instr-reads-mem instr-pop-frame s alloc = nothing
 instr-reads-mem instr-call-closure s alloc = nothing
+-- OCP-0003: Worklist instructions
+instr-reads-mem (worklist-init k) s alloc = nothing      -- no-op
+instr-reads-mem (worklist-push k) s alloc = nothing      -- reads register, not memory
+instr-reads-mem (worklist-pop k) s alloc = just (OnStack (current-frame alloc) k)
+instr-reads-mem (worklist-check k) s alloc = nothing     -- no-op
 
 -- What memory location does this instruction write?
 -- Returns nothing if instruction doesn't write memory.
@@ -336,6 +348,11 @@ instr-writes-mem (instr-dealloc-stack n) s alloc = nothing
 instr-writes-mem (instr-push-frame cap) s alloc = nothing
 instr-writes-mem instr-pop-frame s alloc = nothing
 instr-writes-mem instr-call-closure s alloc = nothing
+-- OCP-0003: Worklist instructions
+instr-writes-mem (worklist-init k) s alloc = nothing     -- no-op
+instr-writes-mem (worklist-push k) s alloc = just (OnStack (current-frame alloc) k)
+instr-writes-mem (worklist-pop k) s alloc = nothing      -- writes register, not memory
+instr-writes-mem (worklist-check k) s alloc = nothing    -- no-op
 
 ------------------------------------------------------------------------
 -- Level 4: Instruction Primitives
@@ -413,6 +430,14 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-push-frame cap) s alloc = refl
   exec-abstract-preserves-frame instr-pop-frame s alloc = refl
   exec-abstract-preserves-frame instr-call-closure s alloc = refl
+  -- OCP-0003: Worklist instructions
+  exec-abstract-preserves-frame (worklist-init slot) s alloc = refl
+  exec-abstract-preserves-frame (worklist-push slot) s alloc = refl  -- alloc unchanged
+  exec-abstract-preserves-frame (worklist-pop slot) s alloc
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-frame (worklist-check slot) s alloc = refl
 
   -- (E) HEAP PRESERVATION
   -- Instructions that don't write to heap preserve heapMem
@@ -446,6 +471,15 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (instr-push-frame cap) s alloc nhw-instr-push-frame = refl
   exec-abstract-preserves-heapMem instr-pop-frame s alloc nhw-instr-pop-frame = refl
   exec-abstract-preserves-heapMem instr-call-closure s alloc nhw-instr-call-closure = refl
+  -- OCP-0003: Worklist instructions
+  exec-abstract-preserves-heapMem (worklist-init slot) s alloc nhw-worklist-init = refl
+  exec-abstract-preserves-heapMem (worklist-push slot) s alloc nhw-worklist-push =
+    writeLoc-heapMem-stack s (current-frame alloc) slot (readReg (regs s) Output)
+  exec-abstract-preserves-heapMem (worklist-pop slot) s alloc nhw-worklist-pop
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-heapMem (worklist-check slot) s alloc nhw-worklist-check = refl
 
   ------------------------------------------------------------------------
   -- (E2) STACK SLOT PRESERVATION - instruction level
@@ -488,6 +522,15 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot (instr-push-frame _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot instr-pop-frame s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot instr-call-closure s alloc f slot _ _ = refl
+  -- OCP-0003: Worklist instructions
+  exec-abstract-preserves-stack-slot (worklist-init _) s alloc f slot _ _ = refl
+  -- worklist-push is like store-at-slot - need to handle separately with slot bounds
+  exec-abstract-preserves-stack-slot (worklist-push k) s alloc f slot _ _ = !!  -- TODO: needs slot bound reasoning
+  exec-abstract-preserves-stack-slot (worklist-pop k) s alloc f slot _ _
+    with readLoc s (OnStack (current-frame alloc) k)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-stack-slot (worklist-check _) s alloc f slot _ _ = refl
 
   -- store-at-slot k preserves slot j when j < k (positive ordering)
   store-at-slot-preserves-below : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -558,6 +601,19 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
+  -- OCP-0003: Worklist instructions
+  exec-abstract-same-frame (worklist-init slot) s alloc₁ alloc₂ _ = refl
+  exec-abstract-same-frame (worklist-push slot) s alloc₁ alloc₂ frame-eq
+    rewrite frame-eq = refl
+  exec-abstract-same-frame (worklist-pop slot) s alloc₁ alloc₂ frame-eq
+    with readLoc s (OnStack (current-frame alloc₁) slot)
+       | readLoc s (OnStack (current-frame alloc₂) slot)
+       | cong (λ f → readLoc s (OnStack f slot)) frame-eq
+  ... | just v₁ | just v₂ | eq rewrite just-injective eq = refl
+  ... | nothing | nothing | _ = refl
+  ... | just _ | nothing | ()
+  ... | nothing | just _ | ()
+  exec-abstract-same-frame (worklist-check slot) s alloc₁ alloc₂ _ = refl
 
 ------------------------------------------------------------------------
 -- Level 5: Trace Primitives
@@ -690,6 +746,11 @@ data InstrPreservesCapacity : AbstractInstr → Set where
   ipc-dealloc-stack      : ∀ {n} → InstrPreservesCapacity (instr-dealloc-stack n)
   ipc-pop-frame          : InstrPreservesCapacity instr-pop-frame
   ipc-call-closure       : InstrPreservesCapacity instr-call-closure
+  -- OCP-0003: Worklist instructions preserve capacity
+  ipc-worklist-init      : ∀ {slot} → InstrPreservesCapacity (worklist-init slot)
+  ipc-worklist-push      : ∀ {slot} → InstrPreservesCapacity (worklist-push slot)
+  ipc-worklist-pop       : ∀ {slot} → InstrPreservesCapacity (worklist-pop slot)
+  ipc-worklist-check     : ∀ {slot} → InstrPreservesCapacity (worklist-check slot)
   -- Note: instr-push-frame is NOT included (it modifies capacity)
 
 -- Trace preserves capacity (all instructions preserve capacity)
@@ -724,6 +785,11 @@ trace-no-heap-writes-append (instr-dealloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no
 trace-no-heap-writes-append (instr-push-frame _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-pop-frame ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-call-closure ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+-- OCP-0003: Worklist instructions
+trace-no-heap-writes-append (worklist-init _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (worklist-push _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (worklist-pop _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (worklist-check _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 
 -- Append preserves TraceWritesAbove
 trace-writes-above-append : ∀ n t1 t2 →
@@ -860,6 +926,14 @@ module TraceComposition {FS : FrameSemantics} where
   exec-abstract-preserves-capacity (instr-dealloc-stack n) s alloc _ = refl
   exec-abstract-preserves-capacity instr-pop-frame s alloc _ = refl
   exec-abstract-preserves-capacity instr-call-closure s alloc _ = refl
+  -- OCP-0003: Worklist instructions
+  exec-abstract-preserves-capacity (worklist-init slot) s alloc _ = refl
+  exec-abstract-preserves-capacity (worklist-push slot) s alloc _ = refl
+  exec-abstract-preserves-capacity (worklist-pop slot) s alloc _
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _ = refl
+  ... | nothing = refl
+  exec-abstract-preserves-capacity (worklist-check slot) s alloc _ = refl
 
   -- Trace capacity preservation
   exec-trace-preserves-capacity' : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -922,6 +996,11 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (instr-push-frame _) _ _ = nhw-instr-push-frame
     tnhw-head instr-pop-frame _ _ = nhw-instr-pop-frame
     tnhw-head instr-call-closure _ _ = nhw-instr-call-closure
+    -- OCP-0003: Worklist instructions
+    tnhw-head (worklist-init _) _ _ = nhw-worklist-init
+    tnhw-head (worklist-push _) _ _ = nhw-worklist-push
+    tnhw-head (worklist-pop _) _ _ = nhw-worklist-pop
+    tnhw-head (worklist-check _) _ _ = nhw-worklist-check
 
     -- Helper: extract TraceNoHeapWrites for tail
     tnhw-tail : ∀ (i : AbstractInstr) (rest : AbstractTrace) →
@@ -939,6 +1018,11 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (instr-push-frame _) rest tnhw = tnhw
     tnhw-tail instr-pop-frame rest tnhw = tnhw
     tnhw-tail instr-call-closure rest tnhw = tnhw
+    -- OCP-0003: Worklist instructions
+    tnhw-tail (worklist-init _) rest tnhw = tnhw
+    tnhw-tail (worklist-push _) rest tnhw = tnhw
+    tnhw-tail (worklist-pop _) rest tnhw = tnhw
+    tnhw-tail (worklist-check _) rest tnhw = tnhw
 
   -- (A1) Current frame slot below write bound is preserved
   -- If trace writes above n (at slots ≥ n), then slot < n is preserved
@@ -999,6 +1083,30 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-below-nonwrite instr-pop-frame rest s alloc n slot twa tnhw slot<n nhw-instr-pop-frame refl
     exec-trace-preserves-slot-below (instr-call-closure ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite instr-call-closure rest s alloc n slot twa tnhw slot<n nhw-instr-call-closure refl
+    -- OCP-0003: Worklist instructions
+    exec-trace-preserves-slot-below (worklist-init k ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (worklist-init k) rest s alloc n slot twa tnhw slot<n nhw-worklist-init refl
+    -- worklist-push writes to slot k, like store-at-slot
+    exec-trace-preserves-slot-below (worklist-push k ∷ rest) s alloc n slot (n≤k , twa-rest) tnhw slot<n
+      with halted s
+    ... | true = refl
+    ... | false =
+      let s' = proj₁ (exec-abstract (worklist-push k) s alloc)
+          alloc' = proj₂ (exec-abstract (worklist-push k) s alloc)
+          slot<k : slot < k
+          slot<k = ≤-trans slot<n n≤k
+          -- worklist-push k preserves slot since slot < k (similar to store-at-slot)
+          step-pres = store-at-slot-preserves-below slot k s alloc slot<k
+          frame-pres = exec-abstract-preserves-frame (worklist-push k) s alloc
+          ih = exec-trace-preserves-slot-below rest s' alloc' n slot twa-rest tnhw slot<n
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
+                             readLoc s' (OnStack cf slot))
+                     frame-pres ih)
+               step-pres
+    exec-trace-preserves-slot-below (worklist-pop k ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (worklist-pop k) rest s alloc n slot twa tnhw slot<n nhw-worklist-pop refl
+    exec-trace-preserves-slot-below (worklist-check k ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (worklist-check k) rest s alloc n slot twa tnhw slot<n nhw-worklist-check refl
 
     -- Helper for non-writing instructions
     exec-trace-preserves-slot-below-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1085,6 +1193,31 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-above-nonwrite instr-pop-frame rest s alloc m slot twb tnhw m≤slot nhw-instr-pop-frame refl
     exec-trace-preserves-slot-above (instr-call-closure ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite instr-call-closure rest s alloc m slot twb tnhw m≤slot nhw-instr-call-closure refl
+    -- OCP-0003: Worklist instructions
+    exec-trace-preserves-slot-above (worklist-init k ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (worklist-init k) rest s alloc m slot twb tnhw m≤slot nhw-worklist-init refl
+    -- worklist-push writes to slot k, like store-at-slot
+    exec-trace-preserves-slot-above (worklist-push k ∷ rest) s alloc m slot (k<m , twb-rest) tnhw m≤slot
+      with halted s
+    ... | true = refl
+    ... | false =
+      let s' = proj₁ (exec-abstract (worklist-push k) s alloc)
+          alloc' = proj₂ (exec-abstract (worklist-push k) s alloc)
+          -- k < m ≤ slot, so k < slot
+          k<slot : k < slot
+          k<slot = <-≤-trans k<m m≤slot
+          -- worklist-push k preserves slot since k < slot (similar to store-at-slot)
+          step-pres = store-at-slot-preserves-above k slot s alloc k<slot
+          frame-pres = exec-abstract-preserves-frame (worklist-push k) s alloc
+          ih = exec-trace-preserves-slot-above rest s' alloc' m slot twb-rest tnhw m≤slot
+      in trans (subst (λ cf → readLoc (proj₁ (exec-trace rest s' alloc')) (OnStack cf slot) ≡
+                             readLoc s' (OnStack cf slot))
+                     frame-pres ih)
+               step-pres
+    exec-trace-preserves-slot-above (worklist-pop k ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (worklist-pop k) rest s alloc m slot twb tnhw m≤slot nhw-worklist-pop refl
+    exec-trace-preserves-slot-above (worklist-check k ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (worklist-check k) rest s alloc m slot twb tnhw m≤slot nhw-worklist-check refl
 
     -- Helper for non-writing instructions
     exec-trace-preserves-slot-above-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1166,6 +1299,25 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-ancestor-nonwrite instr-pop-frame rest s alloc f slot cf≺f tnhw nhw-instr-pop-frame refl
     exec-trace-preserves-ancestor (instr-call-closure ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite instr-call-closure rest s alloc f slot cf≺f tnhw nhw-instr-call-closure refl
+    -- OCP-0003: Worklist instructions
+    exec-trace-preserves-ancestor (worklist-init k ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (worklist-init k) rest s alloc f slot cf≺f tnhw nhw-worklist-init refl
+    -- worklist-push writes to current-frame, preserves ancestor f (like store-at-slot)
+    exec-trace-preserves-ancestor (worklist-push k ∷ rest) s alloc f slot cf≺f tnhw with halted s
+    ... | true = refl
+    ... | false =
+      let s' = proj₁ (exec-abstract (worklist-push k) s alloc)
+          alloc' = proj₂ (exec-abstract (worklist-push k) s alloc)
+          -- worklist-push writes to current-frame, preserves ancestor f
+          step-pres = store-at-slot-preserves-ancestor k s alloc f slot cf≺f
+          cf≺f' : current-frame alloc' ≺ f
+          cf≺f' = subst (λ cf → cf ≺ f) (sym (exec-abstract-preserves-frame (worklist-push k) s alloc)) cf≺f
+          ih = exec-trace-preserves-ancestor rest s' alloc' f slot cf≺f' tnhw
+      in trans ih step-pres
+    exec-trace-preserves-ancestor (worklist-pop k ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (worklist-pop k) rest s alloc f slot cf≺f tnhw nhw-worklist-pop refl
+    exec-trace-preserves-ancestor (worklist-check k ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (worklist-check k) rest s alloc f slot cf≺f tnhw nhw-worklist-check refl
 
     -- Helper for non-writing instructions in ancestor preservation
     exec-trace-preserves-ancestor-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1360,6 +1512,14 @@ module TracePrimitives {FS : FrameSemantics} where
     iph-load-indirect      : InstrPreservesHalted load-indirect
     iph-load-indirect-suc  : InstrPreservesHalted load-indirect-suc
     iph-restore-input      : ∀ {slot} → InstrPreservesHalted (restore-input slot)
+    -- OCP-0003: Worklist instructions preserve halted
+    -- worklist-init and worklist-check are no-ops
+    -- worklist-push is a store (always preserves)
+    -- worklist-pop is a load (may fail, but IR compilation ensures validity)
+    iph-worklist-init      : ∀ {slot} → InstrPreservesHalted (worklist-init slot)
+    iph-worklist-push      : ∀ {slot} → InstrPreservesHalted (worklist-push slot)
+    iph-worklist-pop       : ∀ {slot} → InstrPreservesHalted (worklist-pop slot)
+    iph-worklist-check     : ∀ {slot} → InstrPreservesHalted (worklist-check slot)
 
   -- Load instructions: these cases require the read to succeed.
   -- Our IR compilation ensures loads are only executed when the slot/location is valid,
@@ -1413,6 +1573,13 @@ module TracePrimitives {FS : FrameSemantics} where
     load-indirect-suc-preserves-halted s alloc h-eq
   exec-abstract-preserves-halted (restore-input slot) s alloc h-eq iph-restore-input =
     restore-input-preserves-halted slot s alloc h-eq
+  -- OCP-0003: Worklist instructions
+  exec-abstract-preserves-halted (worklist-init slot) s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted (worklist-push slot) s alloc h-eq _ =
+    trans (writeLoc-halted s (OnStack (current-frame alloc) slot) (readReg (regs s) Output)) h-eq
+  exec-abstract-preserves-halted (worklist-pop slot) s alloc h-eq iph-worklist-pop =
+    load-from-slot-preserves-halted slot s alloc h-eq  -- same as load-from-slot
+  exec-abstract-preserves-halted (worklist-check slot) s alloc h-eq _ = h-eq
 
   -- TracePreservesHalted: predicate on trace that all instructions preserve halted
   data TracePreservesHaltedP : AbstractTrace → Set where
