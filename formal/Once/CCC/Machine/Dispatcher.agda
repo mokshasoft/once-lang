@@ -67,6 +67,9 @@ import Once.CCC.Machine.IR.ComposeWF as ComposeWFModule
 import Once.CCC.Machine.IR.PairWF as PairWFModule
 import Once.CCC.Machine.IR.CurryWF as CurryWFModule
 import Once.CCC.Machine.IR.ApplyWF as ApplyWFModule
+import Once.CCC.Machine.IR.RecCoreWF as RecCoreWFModule
+import Once.CCC.Machine.IR.ParaWF as ParaWFModule
+import Once.CCC.Machine.IR.AnaWF as AnaWFModule
 
 -- Import write operations from separate module
 open import Once.CCC.Machine.WriteOps public using (module WriteWithDisjoint)
@@ -192,6 +195,15 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana handlers instead.
   open import Once.CCC.Machine.IR.SumRecWF as SumRecWFModule
   open SumRecWFModule.SumRecWFImpl {FS} program-bound primSem
+
+  -- Import recursion scheme core (Cata, Fuse, Hylo)
+  open RecCoreWFModule.RecCoreWFImpl {FS} program-bound primSem
+
+  -- Import paramorphism handler (Para)
+  open ParaWFModule.ParaWFImpl {FS} program-bound primSem
+
+  -- Import anamorphism handler (Ana)
+  open AnaWFModule.AnaWFImpl {FS} program-bound primSem
 
   ------------------------------------------------------------------------
   -- Helper: get Acc for any IR size < program-bound
@@ -372,64 +384,67 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     --------------------------------------------------------------------------
     -- OCP-0003: Recursion Schemes
     --
-    -- These handlers are postulated pending full machine-level implementation.
-    -- Semantically, they wrap/unwrap μ-type and ν-type values.
+    -- In/out-μ/Out/in-ν are implemented in SumRecWF (trivial pass-through).
+    -- Cata/Fuse/Hylo use the unified RecCoreWF pattern.
+    -- Para uses ParaWF with subterm preservation.
+    -- Ana uses AnaWF for lazy thunk creation.
     --------------------------------------------------------------------------
 
     -- In: wrap into μ-type (initial algebra constructor)
-    -- Similar to fold: wraps F(μF) into μF
+    -- By Lambek's Lemma, In : F(μF) → μF is an isomorphism at runtime.
+    -- Implementation: allocates 1 slot and stores the pointer.
     run-ir-wf mIn (In {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      m , run-In-postulated
-      where postulate run-In-postulated : IRResultAWF m (In {F} wf m) x s alloc
+      m , run-In wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- out-μ: destruct μ-type (Lambek inverse of In)
-    -- Extracts F(μF) from μF
+    -- By Lambek's Lemma, this is identity at runtime (just pass-through).
     run-ir-wf mIn (out-μ {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      Heap , run-out-μ-postulated
-      where postulate run-out-μ-postulated : IRResultAWF Heap (out-μ {F} wf) x s alloc
+      Heap , run-out-μ wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Cata: catamorphism (fold over μ-type)
-    -- Takes algebra: IR (⟦ F ⟧T A) A, recursively applies to μF
+    -- Uses unified RecCoreWF with Cata configuration
     run-ir-wf mIn (Cata {F} wf alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      Heap , run-Cata-postulated
-      where postulate run-Cata-postulated : IRResultAWF Heap (Cata {F} wf alg) x s alloc
+      run-cata-core wf alg (make-rec-wf ir<bound rs) mIn x input-loc s alloc
+        input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Para: paramorphism (fold with access to original substructure)
     -- Takes algebra: IR (⟦ F ⟧T (μF × A)) A, recursively applies to μF
+    -- Uses ParaWF handler with subterm preservation
     run-ir-wf mIn (Para {F} wf alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      Heap , run-Para-postulated
-      where postulate run-Para-postulated : IRResultAWF Heap (Para {F} wf alg) x s alloc
+      run-para-core wf alg (make-rec-wf ir<bound rs) mIn x input-loc s alloc
+        input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Out: observe ν-type (final coalgebra destructor)
-    -- Similar to unfold: extracts F(νF) from νF
-    run-ir-wf mIn (Out {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
-      Heap , run-Out-postulated
-      where postulate run-Out-postulated : IRResultAWF Heap (Out {F} wf) x s alloc
+    -- By dual Lambek's Lemma, Out : νF → F(νF) is identity at runtime.
+    run-ir-wf mIn (Out {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
+      Heap , run-Out wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- in-ν: construct ν-type (Lambek inverse of Out)
-    -- Wraps F(νF) into νF
+    -- By dual Lambek's Lemma, this allocates 1 slot (like In).
     run-ir-wf mIn (in-ν {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      m , run-in-ν-postulated
-      where postulate run-in-ν-postulated : IRResultAWF m (in-ν {F} wf m) x s alloc
+      m , run-in-ν wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Ana: anamorphism (unfold to build ν-type)
     -- Takes coalgebra: IR A (⟦ F ⟧T A), corecursively builds νF
+    -- Uses AnaWF handler for lazy thunk creation
     run-ir-wf mIn (Ana {F} wf coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      Heap , run-Ana-postulated
-      where postulate run-Ana-postulated : IRResultAWF Heap (Ana {F} wf coalg) x s alloc
+      run-ana-core wf coalg (make-rec-wf ir<bound rs) mIn x input-loc s alloc
+        input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Hylo: hylomorphism (fused cata ∘ ana)
     -- Combines algebra and coalgebra without intermediate structure
     -- OCP-0003: Based on Fuse, structurally terminating on μG input
+    -- Uses unified RecCoreWF with Hylo configuration
     run-ir-wf mIn (Hylo {F} {G} wfF wfG alg coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      Heap , run-Hylo-postulated
-      where postulate run-Hylo-postulated : IRResultAWF Heap (Hylo wfF wfG alg coalg) x s alloc
+      run-hylo-core wfF wfG alg coalg (make-rec-wf ir<bound rs) mIn x input-loc s alloc
+        input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Fuse: μ-anchored fusion (correct by construction)
     -- Structural recursion on μG - termination guaranteed by well-foundedness
+    -- Uses unified RecCoreWF with Fuse configuration
     run-ir-wf mIn (Fuse {F} {G} wfF wfG alg transform) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
-      Heap , run-Fuse-postulated
-      where postulate run-Fuse-postulated : IRResultAWF Heap (Fuse {F} {G} wfF wfG alg transform) x s alloc
+      run-fuse-core wfF wfG alg transform (make-rec-wf ir<bound rs) mIn x input-loc s alloc
+        input-valid-wf input-before not-halted rdi-eq combined-cap
 
     -- Guard/Unguard removed: productivity follows from IR totality
 

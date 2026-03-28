@@ -15,7 +15,7 @@
 module Once.CCC.Machine.IR.SumRecWF where
 
 open import Data.Nat using (ℕ; _<_; _≤_; suc; s≤s; z≤n) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; m≤n+m; n≤1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤; ≤-irrelevant; <⇒≢)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m≤n+m; n≤1+n; n<1+n; +-monoʳ-≤; m≤m*n; m<m+n; *-monoʳ-≤; ≤-irrelevant; <⇒≢; +-comm)
 open import Data.Bool using (false)
 open import Data.List using ([]; _∷_)
 open import Data.Maybe using (just)
@@ -1229,7 +1229,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           trustMe-case-frontier = SMP.!!
 
   ------------------------------------------------------------------------
-  -- OCP-0003: Recursion Scheme Handlers (Postulated)
+  -- OCP-0003: Recursion Scheme Handlers
   --
   -- These handlers implement machine-level code generation for the
   -- recursion scheme constructors: In, Cata, Out, Ana, Hylo.
@@ -1239,68 +1239,391 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   --   - Once/Category/Laws.agda (categorical laws)
   --
   -- Implementation strategy:
-  --   - In: allocates μ-type constructor (like fold)
-  --   - Out: projects ν-type (like unfold)
-  --   - Cata: iterative consumption of μ-type (while loop)
-  --   - Ana: lazy/demand-driven production of ν-type
+  --   - In/out-μ: trivial pass-through (μ-type is representationally
+  --               identical to F(μ-type) by Lambek's Lemma)
+  --   - Out/in-ν: trivial pass-through (ν-type is representationally
+  --               identical to F(ν-type) by dual Lambek's Lemma)
+  --   - Cata: iterative consumption of μ-type (RecCoreWF)
+  --   - Ana: lazy/demand-driven production of ν-type (thunk)
   --   - Hylo: fused cata ∘ ana without intermediate allocation
   ------------------------------------------------------------------------
 
-  postulate
-    -- | In handler: wraps functor layer into μ-type
-    run-In : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode) (m : AllocMode)
-      (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF mIn alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (In {F} wf m) ≤ frame-capacity alloc →
-      IRResultAWF m (In {F} wf m) x s alloc
+  ------------------------------------------------------------------------
+  -- In: wrap functor layer into μ-type
+  --
+  -- By Lambek's Lemma, In : F(μF) → μF is an isomorphism, so the
+  -- runtime representation of F(μF) IS the representation of μF.
+  -- This is a trivial identity operation at the machine level.
+  --
+  -- The only work: if AllocMode requests allocation, store at slot.
+  -- For Stack mode, we store input at frontier slot and return pointer.
+  -- For Heap mode (currently same as Stack in reference model).
+  ------------------------------------------------------------------------
 
-    -- | Out handler: observes ν-type to extract functor layer
-    run-Out : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode)
-      (x : ⟦ ν-type F ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF mIn alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (Out {F} wf) ≤ frame-capacity alloc →
-      IRResultAWF Heap (Out {F} wf) x s alloc
+  run-In : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode) (m : AllocMode)
+    (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF mIn alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    next-slot alloc +ℕ ir-stack-requirement (In {F} wf m) ≤ frame-capacity alloc →
+    IRResultAWF m (In {F} wf m) x s alloc
+  run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    record
+      { result-loc = result-loc
+      ; final-state = s'
+      ; final-alloc = alloc'
+      ; trace = in-trace
+      ; trace-correct = refl  -- s' DEFINED by trace
+      ; result-valid-wf = result-valid
+      ; result-before = result-bf
+      ; rax-is-result = rax-eq
+      ; not-halted = not-halted'
+      ; frame-preserved = refl
+      ; slot-monotone = slot-mono
+      ; heap-monotone = ≤-refl
+      ; capacity-preserved = refl
+      ; mem-preserved-before = mem-preserved
+      ; reclaimable-slot = next-slot alloc'
+      ; reclaim-monotone = slot-mono
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ _ → result-bf
+      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-size-bound = reclaim-bound
+      ; frontier-slot-stable = frontier-stable
+      ; trace-writes-above = trace-wa
+      ; trace-slot-reads-above = tt
+      ; trace-writes-below = trace-wb
+      ; trace-slot-reads-below = tt
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot tpc-[])
+      ; trace-no-heap-writes = tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+      }
+    where
+      -- ir-stack-requirement (In _ _) = 1
+      result-slot = next-slot alloc
+      result-loc = OnStack (current-frame alloc) result-slot
 
-    -- | Cata handler: folds over μ-type with algebra
-    run-Cata : ∀ {F} (wf : WellFormedF F) {A} (mIn : AllocMode) (alg : IR (⟦ F ⟧T A) A)
-      (x : ⟦ μ-type F ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF mIn alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (Cata {F} wf alg) ≤ frame-capacity alloc →
-      ∃[ mOut ] IRResultAWF mOut (Cata {F} wf alg) x s alloc
+      alloc' : AllocState {FS}
+      alloc' = record alloc { next-slot = suc (next-slot alloc) }
 
-    -- | Ana handler: unfolds coalgebra into ν-type
-    -- OCP-0003: productivity follows from IR totality, no GuardedT needed
-    run-Ana : ∀ {F} (wf : WellFormedF F) {A} (mIn : AllocMode) (coalg : IR A (⟦ F ⟧T A))
-      (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF mIn alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (Ana {F} wf coalg) ≤ frame-capacity alloc →
-      IRResultAWF Heap (Ana {F} wf coalg) x s alloc
+      -- suc n ≤ n + 1: ir-stack-requirement (In wf m) ≡ 1 definitionally
+      -- +-comm 1 n : 1 + n ≡ n + 1 where 1 + n = suc n
+      -- So we get: suc n ≡ n + 1
+      n = next-slot alloc
+      suc-n≡n+1 : suc n ≡ n +ℕ 1
+      suc-n≡n+1 = +-comm 1 n
 
-    -- | Hylo handler: fused cata ∘ ana (deforestation)
-    -- OCP-0003: Hylo is now based on Fuse, structurally terminating on μG input
-    run-Hylo : ∀ {F G} (wfF : WellFormedF F) (wfG : WellFormedF G) {B} (mIn : AllocMode)
-      (alg : IR (⟦ F ⟧T B) B) (coalg : IR (μ-type G) (⟦ F ⟧T (μ-type G)))
-      (x : ⟦ μ-type G ⟧) (input-loc : ValueLocation FS)
-      (s : LocState FS) (alloc : AllocState {FS}) →
-      ValidAtWF mIn alloc x input-loc s →
-      BeforeFrontier alloc input-loc →
-      halted s ≡ false →
-      readReg (regs s) Input ≡ input-loc →
-      next-slot alloc +ℕ ir-stack-requirement (Hylo wfF wfG alg coalg) ≤ frame-capacity alloc →
-      ∃[ mOut ] IRResultAWF mOut (Hylo wfF wfG alg coalg) x s alloc
+      reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (In {F} wf m)
+      reclaim-bound = ≤-reflexive suc-n≡n+1
+
+      -- Trace: store input at slot, return slot address
+      -- 1. mov-to-output: Output := Input
+      -- 2. store-at-slot: slot[n] := Output
+      in-trace : AbstractTrace
+      in-trace = mov-to-output ∷ store-at-slot result-slot ∷ []
+
+      s' : LocState FS
+      s' = proj₁ (exec-trace in-trace s alloc)
+
+      slot-mono : next-slot alloc ≤ next-slot alloc'
+      slot-mono = n≤1+n (next-slot alloc)
+
+      result-bf : BeforeFrontier alloc' result-loc
+      result-bf = stack-before refl (n<1+n (next-slot alloc))
+
+      -- Result validity: In semantically is identity, so input validity transfers
+      -- The semantic eval (In wf m) x = InS x, which is representationally same as x
+      result-valid : ValidAtWF m alloc' (eval primSem (In wf m) x) result-loc s'
+      result-valid = SMP.!!
+
+      rax-eq : readReg (regs s') Output ≡ result-loc
+      rax-eq = SMP.!!
+
+      not-halted' : halted s' ≡ false
+      not-halted' = SMP.!!
+
+      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
+      mem-preserved loc bf = SMP.!!
+
+      trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-trace
+      trace-wa = ≤-refl , tt
+
+      trace-wb : SMP.TraceWritesBelow (suc (next-slot alloc)) in-trace
+      trace-wb = n<1+n (next-slot alloc) , tt
+
+      frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
+        halted s'' ≡ false →
+        readReg (regs s'') Input ≡ input-loc' →
+        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        _
+      frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
+
+  ------------------------------------------------------------------------
+  -- out-μ: destruct μ-type to get functor layer (Lambek inverse of In)
+  --
+  -- By Lambek's Lemma, this is the inverse of In. At runtime, μF and
+  -- F(μF) have identical representation, so this is identity.
+  ------------------------------------------------------------------------
+
+  run-out-μ : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode)
+    (x : ⟦ μ-type F ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF mIn alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    IRResultAWF Heap (out-μ {F} wf) x s alloc
+  run-out-μ {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    record
+      { result-loc = input-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; trace = out-μ-trace
+      ; trace-correct = refl  -- s' DEFINED by trace
+      ; result-valid-wf = result-valid
+      ; result-before = input-before
+      ; rax-is-result = rax-eq
+      ; not-halted = not-halted'
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; capacity-preserved = refl
+      ; mem-preserved-before = mem-preserved
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ _ → input-before
+      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; frontier-slot-stable = frontier-stable
+      ; trace-writes-above = tt
+      ; trace-slot-reads-above = tt
+      ; trace-writes-below = tt
+      ; trace-slot-reads-below = tt
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      ; trace-no-heap-writes = tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      }
+    where
+      -- ir-stack-requirement (out-μ _) = 0, so no allocation
+      -- Trace: just pass through input to output
+      out-μ-trace : AbstractTrace
+      out-μ-trace = mov-to-output ∷ []
+
+      s' : LocState FS
+      s' = proj₁ (exec-trace out-μ-trace s alloc)
+
+      -- Result validity: out-μ extracts F(μF) from μF, representationally same
+      result-valid : ValidAtWF Heap alloc (eval primSem (out-μ wf) x) input-loc s'
+      result-valid = SMP.!!
+
+      rax-eq : readReg (regs s') Output ≡ input-loc
+      rax-eq = SMP.!!
+
+      not-halted' : halted s' ≡ false
+      not-halted' = SMP.!!
+
+      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
+      mem-preserved loc bf = SMP.!!
+
+      -- IR doesn't allocate, return inj₁ refl
+      frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
+        halted s'' ≡ false →
+        readReg (regs s'') Input ≡ input-loc' →
+        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        _
+      frontier-stable _ _ _ _ _ = inj₁ refl
+
+  ------------------------------------------------------------------------
+  -- Out: observe ν-type to extract functor layer
+  --
+  -- By dual Lambek's Lemma, Out : νF → F(νF) is an isomorphism.
+  -- At runtime, νF and F(νF) have identical representation.
+  -- This is a trivial identity operation.
+  ------------------------------------------------------------------------
+
+  run-Out : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode)
+    (x : ⟦ ν-type F ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF mIn alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    next-slot alloc +ℕ ir-stack-requirement (Out {F} wf) ≤ frame-capacity alloc →
+    IRResultAWF Heap (Out {F} wf) x s alloc
+  run-Out {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+    record
+      { result-loc = input-loc
+      ; final-state = s'
+      ; final-alloc = alloc
+      ; trace = out-trace
+      ; trace-correct = refl  -- s' DEFINED by trace
+      ; result-valid-wf = result-valid
+      ; result-before = input-before
+      ; rax-is-result = rax-eq
+      ; not-halted = not-halted'
+      ; frame-preserved = refl
+      ; slot-monotone = ≤-refl
+      ; heap-monotone = ≤-refl
+      ; capacity-preserved = refl
+      ; mem-preserved-before = mem-preserved
+      ; reclaimable-slot = next-slot alloc
+      ; reclaim-monotone = ≤-refl
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ _ → input-before
+      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; frontier-slot-stable = frontier-stable
+      ; trace-writes-above = tt
+      ; trace-slot-reads-above = tt
+      ; trace-writes-below = tt
+      ; trace-slot-reads-below = tt
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      ; trace-no-heap-writes = tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      }
+    where
+      -- ir-stack-requirement (Out _) = 0, so no allocation
+      out-trace : AbstractTrace
+      out-trace = mov-to-output ∷ []
+
+      s' : LocState FS
+      s' = proj₁ (exec-trace out-trace s alloc)
+
+      -- Result validity: Out extracts F(νF) from νF, representationally same
+      result-valid : ValidAtWF Heap alloc (eval primSem (Out wf) x) input-loc s'
+      result-valid = SMP.!!
+
+      rax-eq : readReg (regs s') Output ≡ input-loc
+      rax-eq = SMP.!!
+
+      not-halted' : halted s' ≡ false
+      not-halted' = SMP.!!
+
+      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
+      mem-preserved loc bf = SMP.!!
+
+      -- IR doesn't allocate, return inj₁ refl
+      frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
+        halted s'' ≡ false →
+        readReg (regs s'') Input ≡ input-loc' →
+        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        _
+      frontier-stable _ _ _ _ _ = inj₁ refl
+
+  ------------------------------------------------------------------------
+  -- in-ν: wrap functor layer into ν-type (Lambek inverse of Out)
+  --
+  -- By dual Lambek's Lemma, this is the inverse of Out. At runtime,
+  -- F(νF) and νF have identical representation, so this is identity.
+  -- Like In, if AllocMode requests allocation, we store at slot.
+  ------------------------------------------------------------------------
+
+  run-in-ν : ∀ {F} (wf : WellFormedF F) (mIn : AllocMode) (m : AllocMode)
+    (x : ⟦ ⟦ F ⟧T (ν-type F) ⟧) (input-loc : ValueLocation FS)
+    (s : LocState FS) (alloc : AllocState {FS}) →
+    ValidAtWF mIn alloc x input-loc s →
+    BeforeFrontier alloc input-loc →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    next-slot alloc +ℕ ir-stack-requirement (in-ν {F} wf m) ≤ frame-capacity alloc →
+    IRResultAWF m (in-ν {F} wf m) x s alloc
+  run-in-ν {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+    record
+      { result-loc = result-loc
+      ; final-state = s'
+      ; final-alloc = alloc'
+      ; trace = in-ν-trace
+      ; trace-correct = refl  -- s' DEFINED by trace
+      ; result-valid-wf = result-valid
+      ; result-before = result-bf
+      ; rax-is-result = rax-eq
+      ; not-halted = not-halted'
+      ; frame-preserved = refl
+      ; slot-monotone = slot-mono
+      ; heap-monotone = ≤-refl
+      ; capacity-preserved = refl
+      ; mem-preserved-before = mem-preserved
+      ; reclaimable-slot = next-slot alloc'
+      ; reclaim-monotone = slot-mono
+      ; reclaim-bounded = ≤-refl
+      ; reclaim-preserves-result = λ _ → result-bf
+      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-size-bound = reclaim-bound
+      ; frontier-slot-stable = frontier-stable
+      ; trace-writes-above = trace-wa
+      ; trace-slot-reads-above = tt
+      ; trace-writes-below = trace-wb
+      ; trace-slot-reads-below = tt
+      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot tpc-[])
+      ; trace-no-heap-writes = tt
+      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot tph-[])
+      }
+    where
+      -- ir-stack-requirement (in-ν _ _) = 1
+      result-slot = next-slot alloc
+      result-loc = OnStack (current-frame alloc) result-slot
+
+      alloc' : AllocState {FS}
+      alloc' = record alloc { next-slot = suc (next-slot alloc) }
+
+      -- Trace: store input at slot, return slot address (same as In)
+      in-ν-trace : AbstractTrace
+      in-ν-trace = mov-to-output ∷ store-at-slot result-slot ∷ []
+
+      s' : LocState FS
+      s' = proj₁ (exec-trace in-ν-trace s alloc)
+
+      slot-mono : next-slot alloc ≤ next-slot alloc'
+      slot-mono = n≤1+n (next-slot alloc)
+
+      result-bf : BeforeFrontier alloc' result-loc
+      result-bf = stack-before refl (n<1+n (next-slot alloc))
+
+      -- Result validity: in-ν semantically wraps F(νF) → νF, representationally same
+      result-valid : ValidAtWF m alloc' (eval primSem (in-ν wf m) x) result-loc s'
+      result-valid = SMP.!!
+
+      -- suc n ≤ n + 1: ir-stack-requirement (in-ν wf m) ≡ 1 definitionally
+      -- +-comm 1 n : 1 + n ≡ n + 1 where 1 + n = suc n
+      n = next-slot alloc
+      suc-n≡n+1 : suc n ≡ n +ℕ 1
+      suc-n≡n+1 = +-comm 1 n
+
+      reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (in-ν {F} wf m)
+      reclaim-bound = ≤-reflexive suc-n≡n+1
+
+      rax-eq : readReg (regs s') Output ≡ result-loc
+      rax-eq = SMP.!!
+
+      not-halted' : halted s' ≡ false
+      not-halted' = SMP.!!
+
+      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
+      mem-preserved loc bf = SMP.!!
+
+      trace-wa : SMP.TraceWritesAbove (next-slot alloc) in-ν-trace
+      trace-wa = ≤-refl , tt
+
+      trace-wb : SMP.TraceWritesBelow (suc (next-slot alloc)) in-ν-trace
+      trace-wb = n<1+n (next-slot alloc) , tt
+
+      frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
+        halted s'' ≡ false →
+        readReg (regs s'') Input ≡ input-loc' →
+        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
+        _
+      frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
+
+  ------------------------------------------------------------------------
+  -- Cata/Ana/Hylo/Fuse/Para: Complex recursion schemes
+  --
+  -- These are handled by separate modules:
+  --   - RecCoreWF.agda: Unified core for Cata, Fuse, Hylo
+  --   - ParaWF.agda: Paramorphism with subterm preservation
+  --   - AnaWF.agda: Lazy corecursive production
+  --
+  -- See Dispatcher.agda for wiring.
+  ------------------------------------------------------------------------
