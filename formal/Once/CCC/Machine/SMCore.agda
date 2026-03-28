@@ -25,10 +25,10 @@ module Once.CCC.Machine.SMCore where
 open import Data.Nat using (ℕ; zero; suc; _+_; _≤_; _<_; _>_; _≥_; s≤s)
 open import Data.Nat.Properties using (_≟_; <⇒≢; ≤-trans)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Bool using (Bool; true; false)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
-open import Function using (_∘_)
+open import Function using (_∘_; case_of_)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.List using (List; []; _∷_; _++_)
@@ -641,9 +641,58 @@ data AbstractInstr : Set where
   instr-pop-frame    : AbstractInstr              -- restore caller frame
   instr-call-closure : AbstractInstr              -- jump to closure code
 
--- | A trace is a sequence of abstract instructions
-AbstractTrace : Set
-AbstractTrace = List AbstractInstr
+  ------------------------------------------------------------------------
+  -- OCP-0003: Worklist instructions for loop-based recursion schemes
+  --
+  -- These support iterative traversal of μ-types without recursive calls.
+  -- The worklist uses stack slots, with worklist-base holding the base slot
+  -- and worklist-top tracking the current top.
+  --
+  -- Registers used:
+  --   worklist-base: stored in a dedicated slot (passed as parameter)
+  --   worklist-top: stored in slot (base-1)
+  --   values: stored at slots [base, base+1, ...]
+  ------------------------------------------------------------------------
+
+  -- init-worklist base: Initialize worklist at slot `base`
+  --   worklist-top := base; stack[base] := Input
+  init-worklist      : Slot → AbstractInstr
+
+  -- push-worklist base: Push Output onto worklist
+  --   worklist-top++; stack[worklist-top] := Output
+  push-worklist      : Slot → AbstractInstr
+
+  -- pop-worklist base: Pop from worklist to Input
+  --   Input := stack[worklist-top]; worklist-top--
+  --   Sets Output to 1 if worklist now empty (top < base), 0 otherwise
+  pop-worklist       : Slot → AbstractInstr
+
+  -- check-worklist base: Check if worklist is empty
+  --   Output := 1 if worklist-top < base (empty), 0 otherwise
+  check-worklist     : Slot → AbstractInstr
+
+------------------------------------------------------------------------
+-- Abstract Trace with Loop Support
+--
+-- OCP-0003: Traces now support structured iteration for recursion schemes.
+-- The `iterate` constructor repeats its body until worklist is empty.
+-- Termination is guaranteed by fuel parameter (bounded by μ-type depth).
+------------------------------------------------------------------------
+
+data AbstractTrace : Set where
+  []       : AbstractTrace
+  _∷_      : AbstractInstr → AbstractTrace → AbstractTrace
+  -- iterate fuel base body: Repeat body while worklist (at base) is non-empty
+  -- fuel bounds iterations for termination proofs
+  iterate  : ℕ → Slot → AbstractTrace → AbstractTrace
+
+-- Trace append
+-- Note: iterate is expected to be terminal; append after iterate ignores t₂
+infixr 5 _++ₜ_
+_++ₜ_ : AbstractTrace → AbstractTrace → AbstractTrace
+[] ++ₜ t₂ = t₂
+(i ∷ t₁) ++ₜ t₂ = i ∷ (t₁ ++ₜ t₂)
+(iterate n s body) ++ₜ _ = iterate n s body  -- iterate is terminal
 
 ------------------------------------------------------------------------
 -- Abstract Instruction Semantics
@@ -705,6 +754,26 @@ module AbstractExec {FS : FrameSemantics} where
     exec-restore-input-with-value nothing s alloc ≡
     (record s { halted = true } , alloc)
   exec-restore-input-nothing _ _ = refl
+
+  ------------------------------------------------------------------------
+  -- OCP-0003: Worklist helper functions
+  --
+  -- The worklist uses stack slots [base, base+1, ...] for items.
+  -- Slot (base-1) stores the worklist-top as an encoded natural number.
+  --
+  -- Encoding: We use OnStack frame n as a "sentinel" where n encodes the top.
+  ------------------------------------------------------------------------
+
+  open import Data.Nat using (_∸_; _<ᵇ_) public
+
+  -- Helper: encode ℕ as a sentinel location (uses slot number as the value)
+  encode-nat : Frame → ℕ → ValueLocation FS
+  encode-nat f n = OnStack f n
+
+  -- Helper: decode sentinel location to ℕ (extract slot number)
+  decode-nat : ValueLocation FS → ℕ
+  decode-nat (OnStack _ n) = n
+  decode-nat (OnHeap _) = 0  -- Invalid, should not occur
 
   ------------------------------------------------------------------------
   -- Main exec-abstract definition
@@ -782,14 +851,103 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract instr-call-closure s alloc =
     s , alloc
 
-  -- | Execute a trace (sequence of abstract instructions)
+  -- init-worklist base: worklist-top := base; stack[base] := Input
+  exec-abstract (init-worklist base) s alloc =
+    let cf = current-frame alloc
+        top-slot = OnStack cf (base ∸ 1)
+        -- Store base as top index (encoded as location)
+        s1 = writeLoc s top-slot (encode-nat cf base)
+        -- Store Input value at base slot
+        s2 = writeLoc s1 (OnStack cf base) (readReg (regs s) Input)
+    in s2 , alloc
+
+  -- push-worklist base: top++; stack[top] := Output
+  exec-abstract (push-worklist base) s alloc =
+    let cf = current-frame alloc
+        top-slot = OnStack cf (base ∸ 1)
+    in case readLoc s top-slot of λ where
+      (just top-loc) →
+        let top = decode-nat top-loc
+            new-top = suc top
+            -- Update top index
+            s1 = writeLoc s top-slot (encode-nat cf new-top)
+            -- Store Output at new top
+            s2 = writeLoc s1 (OnStack cf new-top) (readReg (regs s) Output)
+        in s2 , alloc
+      nothing → record s { halted = true } , alloc
+
+  -- pop-worklist base: Input := stack[top]; top--; Output := (top < base ? 1 : 0)
+  exec-abstract (pop-worklist base) s alloc =
+    let cf = current-frame alloc
+        top-slot = OnStack cf (base ∸ 1)
+    in case readLoc s top-slot of λ where
+      (just top-loc) →
+        let top = decode-nat top-loc
+        in case readLoc s (OnStack cf top) of λ where
+          (just item) →
+            let -- Load item to Input
+                s1 = record s { regs = writeReg (regs s) Input item }
+                -- Decrement top (use 0 if already at 0)
+                new-top = top ∸ 1
+                s2 = writeLoc s1 top-slot (encode-nat cf new-top)
+                -- Set Output to 1 if now empty (new-top < base), 0 otherwise
+                empty = if new-top <ᵇ base then encode-nat cf 1 else encode-nat cf 0
+                s3 = record s2 { regs = writeReg (regs s2) Output empty }
+            in s3 , alloc
+          nothing → record s { halted = true } , alloc
+      nothing → record s { halted = true } , alloc
+
+  -- check-worklist base: Output := 1 if empty, 0 otherwise
+  exec-abstract (check-worklist base) s alloc =
+    let cf = current-frame alloc
+        top-slot = OnStack cf (base ∸ 1)
+    in case readLoc s top-slot of λ where
+      (just top-loc) →
+        let top = decode-nat top-loc
+            empty = if top <ᵇ base then encode-nat cf 1 else encode-nat cf 0
+            s' = record s { regs = writeReg (regs s) Output empty }
+        in s' , alloc
+      nothing → record s { halted = true } , alloc
+
+  ------------------------------------------------------------------------
+  -- Execute a trace (sequence of abstract instructions)
+  --
+  -- OCP-0003: Now handles the iterate constructor for loops.
+  -- iterate fuel base body: repeat body while worklist non-empty, up to fuel times
+  ------------------------------------------------------------------------
+
+  -- Helper: check if worklist is empty (returns true if top < base)
+  worklist-empty? : Slot → LocState FS → AllocState {FS} → Bool
+  worklist-empty? base s alloc =
+    let cf = current-frame alloc
+        top-slot = OnStack cf (base ∸ 1)
+    in case readLoc s top-slot of λ where
+      (just top-loc) → decode-nat top-loc <ᵇ base
+      nothing → true  -- Treat uninitialized as empty
+
+  -- | Execute a trace
+  -- Uses mutual recursion with exec-iterate for termination checking
   exec-trace : AbstractTrace → LocState FS → AllocState {FS} →
                LocState FS × AllocState {FS}
+  exec-iterate : ℕ → Slot → AbstractTrace → LocState FS → AllocState {FS} →
+                 LocState FS × AllocState {FS}
+
   exec-trace [] s alloc = s , alloc
   exec-trace (i ∷ is) s alloc with halted s
   ... | true  = s , alloc
   ... | false = let (s' , alloc') = exec-abstract i s alloc
                 in exec-trace is s' alloc'
+  exec-trace (iterate fuel base body) s alloc = exec-iterate fuel base body s alloc
+
+  -- iterate: repeat body while worklist non-empty, bounded by fuel
+  exec-iterate zero base body s alloc = s , alloc  -- fuel exhausted
+  exec-iterate (suc fuel) base body s alloc with halted s
+  ... | true = s , alloc
+  ... | false with worklist-empty? base s alloc
+  ... | true = s , alloc  -- Empty, done
+  ... | false =
+    let (s' , alloc') = exec-trace body s alloc
+    in exec-iterate fuel base body s' alloc'
 
   -- | Reduction lemma: when not halted, exec-trace reduces
   exec-trace-cons : ∀ (i : AbstractInstr) (is : AbstractTrace)
