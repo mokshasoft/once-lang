@@ -290,11 +290,6 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-instr-push-frame   : ∀ {cap} → InstrNoHeapWrite (instr-push-frame cap)
   nhw-instr-pop-frame    : InstrNoHeapWrite instr-pop-frame
   nhw-instr-call-closure : InstrNoHeapWrite instr-call-closure
-  -- OCP-0003: Worklist instructions don't write to heap
-  nhw-init-worklist      : ∀ {base} → InstrNoHeapWrite (init-worklist base)
-  nhw-push-worklist      : ∀ {base} → InstrNoHeapWrite (push-worklist base)
-  nhw-pop-worklist       : ∀ {base} → InstrNoHeapWrite (pop-worklist base)
-  nhw-check-worklist     : ∀ {base} → InstrNoHeapWrite (check-worklist base)
 
 -- Instruction preserves frame (doesn't push/pop frame)
 InstrPreservesFrame : AbstractInstr → Set
@@ -322,14 +317,6 @@ instr-reads-mem (instr-dealloc-stack n) s alloc = nothing
 instr-reads-mem (instr-push-frame cap) s alloc = nothing
 instr-reads-mem instr-pop-frame s alloc = nothing
 instr-reads-mem instr-call-closure s alloc = nothing
--- OCP-0003: Worklist instructions read the top-index slot and worklist slots
-instr-reads-mem (init-worklist base) s alloc = nothing  -- only writes
-instr-reads-mem (push-worklist base) s alloc = just (OnStack (current-frame alloc) (base ∸ 1))
-  where open import Data.Nat using (_∸_)
-instr-reads-mem (pop-worklist base) s alloc = just (OnStack (current-frame alloc) (base ∸ 1))
-  where open import Data.Nat using (_∸_)
-instr-reads-mem (check-worklist base) s alloc = just (OnStack (current-frame alloc) (base ∸ 1))
-  where open import Data.Nat using (_∸_)
 
 -- What memory location does this instruction write?
 -- Returns nothing if instruction doesn't write memory.
@@ -349,14 +336,6 @@ instr-writes-mem (instr-dealloc-stack n) s alloc = nothing
 instr-writes-mem (instr-push-frame cap) s alloc = nothing
 instr-writes-mem instr-pop-frame s alloc = nothing
 instr-writes-mem instr-call-closure s alloc = nothing
--- OCP-0003: Worklist instructions write to top-index slot and worklist slots
--- Note: These write to multiple locations; we return the primary write location
-instr-writes-mem (init-worklist base) s alloc = just (OnStack (current-frame alloc) base)
-instr-writes-mem (push-worklist base) s alloc = just (OnStack (current-frame alloc) (base ∸ 1))
-  where open import Data.Nat using (_∸_)
-instr-writes-mem (pop-worklist base) s alloc = just (OnStack (current-frame alloc) (base ∸ 1))
-  where open import Data.Nat using (_∸_)
-instr-writes-mem (check-worklist base) s alloc = nothing  -- only reads memory, writes to register
 
 ------------------------------------------------------------------------
 -- Level 4: Instruction Primitives
@@ -434,22 +413,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-push-frame cap) s alloc = refl
   exec-abstract-preserves-frame instr-pop-frame s alloc = refl
   exec-abstract-preserves-frame instr-call-closure s alloc = refl
-  -- OCP-0003: Worklist instructions preserve frame (_∸_ from AbstractExec)
-  exec-abstract-preserves-frame (init-worklist base) s alloc = refl
-  exec-abstract-preserves-frame (push-worklist base) s alloc
-    with readLoc s (OnStack (current-frame alloc) (base ∸ 1))
-  ... | just _  = refl
-  ... | nothing = refl
-  exec-abstract-preserves-frame (pop-worklist base) s alloc
-    with readLoc s (OnStack (current-frame alloc) (base ∸ 1))
-  ... | just top-loc with readLoc s (OnStack (current-frame alloc) (decode-nat top-loc))
-  ...   | just _  = refl
-  ...   | nothing = refl
-  exec-abstract-preserves-frame (pop-worklist base) s alloc | nothing = refl
-  exec-abstract-preserves-frame (check-worklist base) s alloc
-    with readLoc s (OnStack (current-frame alloc) (base ∸ 1))
-  ... | just _  = refl
-  ... | nothing = refl
 
   -- (E) HEAP PRESERVATION
   -- Instructions that don't write to heap preserve heapMem
@@ -483,17 +446,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-heapMem (instr-push-frame cap) s alloc nhw-instr-push-frame = refl
   exec-abstract-preserves-heapMem instr-pop-frame s alloc nhw-instr-pop-frame = refl
   exec-abstract-preserves-heapMem instr-call-closure s alloc nhw-instr-call-closure = refl
-  -- OCP-0003: Worklist instructions preserve heapMem (_∸_ from AbstractExec)
-  exec-abstract-preserves-heapMem (init-worklist _) s alloc nhw-init-worklist = refl
-  exec-abstract-preserves-heapMem (push-worklist base) s alloc nhw-push-worklist
-    with readLoc s (OnStack (current-frame alloc) (base ∸ 1))
-  ... | just _  = refl
-  ... | nothing = refl
-  exec-abstract-preserves-heapMem (pop-worklist base) s alloc nhw-pop-worklist = !!  -- Complex
-  exec-abstract-preserves-heapMem (check-worklist base) s alloc nhw-check-worklist
-    with readLoc s (OnStack (current-frame alloc) (base ∸ 1))
-  ... | just _  = refl
-  ... | nothing = refl
 
   ------------------------------------------------------------------------
   -- (E2) STACK SLOT PRESERVATION - instruction level
@@ -536,11 +488,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-stack-slot (instr-push-frame _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot instr-pop-frame s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot instr-call-closure s alloc f slot _ _ = refl
-  -- OCP-0003: Worklist instructions (use !! for complex semantics)
-  exec-abstract-preserves-stack-slot (init-worklist _) s alloc f slot _ _ = !!
-  exec-abstract-preserves-stack-slot (push-worklist _) s alloc f slot _ _ = !!
-  exec-abstract-preserves-stack-slot (pop-worklist _) s alloc f slot _ _ = !!
-  exec-abstract-preserves-stack-slot (check-worklist _) s alloc f slot _ _ = !!
 
   -- store-at-slot k preserves slot j when j < k (positive ordering)
   store-at-slot-preserves-below : ∀ (j k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -611,21 +558,6 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | nothing | nothing | _ = refl
   ... | just _ | nothing | ()
   ... | nothing | just _ | ()
-  -- OCP-0003: Worklist instructions use current-frame
-  exec-abstract-same-frame (init-worklist base) s alloc₁ alloc₂ frame-eq
-    rewrite frame-eq = refl
-  exec-abstract-same-frame (push-worklist base) s alloc₁ alloc₂ frame-eq
-    with readLoc s (OnStack (current-frame alloc₁) (base ∸ 1))
-       | readLoc s (OnStack (current-frame alloc₂) (base ∸ 1))
-       | cong (λ f → readLoc s (OnStack f (base ∸ 1))) frame-eq
-  ... | just v₁ | just v₂ | eq rewrite just-injective eq | frame-eq = refl
-  ... | nothing | nothing | _ = refl
-  ... | just _ | nothing | ()
-  ... | nothing | just _ | ()
-  -- pop-worklist: complex nested with-patterns, deferred
-  exec-abstract-same-frame (pop-worklist base) s alloc₁ alloc₂ frame-eq = !!
-  -- check-worklist: complex nested with-patterns, deferred
-  exec-abstract-same-frame (check-worklist base) s alloc₁ alloc₂ frame-eq = !!
 
 ------------------------------------------------------------------------
 -- Level 5: Trace Primitives
@@ -650,7 +582,6 @@ TraceWritesAbove n [] = ⊤
 TraceWritesAbove n (i ∷ t) with instr-writes-slot i
 ... | nothing = TraceWritesAbove n t
 ... | just k = (n ≤ k) × TraceWritesAbove n t
-TraceWritesAbove n (iterate fuel slot body) = TraceWritesAbove n body
 
 -- All slot writes in trace are at slots < n
 TraceWritesBelow : ℕ → AbstractTrace → Set
@@ -658,7 +589,6 @@ TraceWritesBelow n [] = ⊤
 TraceWritesBelow n (i ∷ t) with instr-writes-slot i
 ... | nothing = TraceWritesBelow n t
 ... | just k = (k < n) × TraceWritesBelow n t
-TraceWritesBelow n (iterate fuel slot body) = TraceWritesBelow n body
 
 -- Extract tail of TraceWritesAbove for non-writing instruction
 twa-tail : ∀ (n : ℕ) (i : AbstractInstr) (rest : AbstractTrace) →
@@ -684,7 +614,6 @@ TraceSlotReadsAbove n [] = ⊤
 TraceSlotReadsAbove n (i ∷ t) with instr-reads-slot i
 ... | nothing = TraceSlotReadsAbove n t
 ... | just k = (n ≤ k) × TraceSlotReadsAbove n t
-TraceSlotReadsAbove n (iterate fuel slot body) = TraceSlotReadsAbove n body
 
 -- All slot reads in trace are from slots < n
 TraceSlotReadsBelow : ℕ → AbstractTrace → Set
@@ -692,7 +621,6 @@ TraceSlotReadsBelow n [] = ⊤
 TraceSlotReadsBelow n (i ∷ t) with instr-reads-slot i
 ... | nothing = TraceSlotReadsBelow n t
 ... | just k = (k < n) × TraceSlotReadsBelow n t
-TraceSlotReadsBelow n (iterate fuel slot body) = TraceSlotReadsBelow n body
 
 ------------------------------------------------------------------------
 -- Trace Heap Write Characterization (POSITIVE)
@@ -714,9 +642,6 @@ module TraceHeapOwnership {FS : FrameSemantics} where
   ... | false = InstrWritesWithinOwned i s owned ×
                 TraceWritesWithinOwned t (proj₁ (exec-abstract i s alloc))
                                          (proj₂ (exec-abstract i s alloc)) owned
-  -- OCP-0003: iterate has same ownership requirements as body
-  TraceWritesWithinOwned (iterate fuel slot body) s alloc owned =
-    TraceWritesWithinOwned body s alloc owned
 
 -- Helper: check if instruction writes to heap (syntactic)
 InstrWritesToHeap : AbstractInstr → Set
@@ -731,22 +656,16 @@ TraceNoHeapWrites [] = ⊤
 TraceNoHeapWrites (store-indirect ∷ t) = ⊥
 TraceNoHeapWrites (store-indirect-suc ∷ t) = ⊥
 TraceNoHeapWrites (_ ∷ t) = TraceNoHeapWrites t
--- OCP-0003: iterate has same property as body
-TraceNoHeapWrites (iterate fuel slot body) = TraceNoHeapWrites body
 
 -- All instructions in trace preserve frame
 TracePreservesFrame : AbstractTrace → Set
 TracePreservesFrame [] = ⊤
 TracePreservesFrame (i ∷ t) = InstrPreservesFrame i × TracePreservesFrame t
--- OCP-0003: iterate has same property as body
-TracePreservesFrame (iterate fuel slot body) = TracePreservesFrame body
 
 -- All instructions in trace preserve heapMem (no heap writes)
 TracePreservesHeapMem : AbstractTrace → Set
 TracePreservesHeapMem [] = ⊤
 TracePreservesHeapMem (i ∷ t) = InstrNoHeapWrite i × TracePreservesHeapMem t
--- OCP-0003: iterate has same property as body
-TracePreservesHeapMem (iterate fuel slot body) = TracePreservesHeapMem body
 
 ------------------------------------------------------------------------
 -- Capacity Preservation
@@ -781,15 +700,14 @@ data TracePreservesCapacity : AbstractTrace → Set where
 
 -- Append preserves TracePreservesCapacity
 tpc-++ : ∀ {t₁ t₂} → TracePreservesCapacity t₁ → TracePreservesCapacity t₂ →
-         TracePreservesCapacity (t₁ ++ₜ t₂)
+         TracePreservesCapacity (t₁ ++ t₂)
 tpc-++ tpc-[] tpc₂ = tpc₂
 tpc-++ (tpc-∷ ipc tpc₁) tpc₂ = tpc-∷ ipc (tpc-++ tpc₁ tpc₂)
-tpc-++ {iterate _ _ _} _ _ = !!  -- iterate is terminal
 
 -- Append preserves TraceNoHeapWrites
 trace-no-heap-writes-append : ∀ t1 t2 →
   TraceNoHeapWrites t1 → TraceNoHeapWrites t2 →
-  TraceNoHeapWrites (t1 ++ₜ t2)
+  TraceNoHeapWrites (t1 ++ t2)
 trace-no-heap-writes-append [] t2 _ tn2 = tn2
 trace-no-heap-writes-append (mov-to-output ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (mov-to-input ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
@@ -806,52 +724,42 @@ trace-no-heap-writes-append (instr-dealloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no
 trace-no-heap-writes-append (instr-push-frame _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-pop-frame ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-call-closure ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
--- OCP-0003: Worklist instructions don't write to heap
-trace-no-heap-writes-append (init-worklist _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (push-worklist _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (pop-worklist _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (check-worklist _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
-trace-no-heap-writes-append (iterate _ _ _) _ tn1 _ = tn1  -- iterate is terminal
 
 -- Append preserves TraceWritesAbove
 trace-writes-above-append : ∀ n t1 t2 →
   TraceWritesAbove n t1 → TraceWritesAbove n t2 →
-  TraceWritesAbove n (t1 ++ₜ t2)
+  TraceWritesAbove n (t1 ++ t2)
 trace-writes-above-append n [] t2 _ tw2 = tw2
 trace-writes-above-append n (i ∷ t1) t2 tw1 tw2 with instr-writes-slot i
 ... | nothing = trace-writes-above-append n t1 t2 tw1 tw2
 ... | just k = proj₁ tw1 , trace-writes-above-append n t1 t2 (proj₂ tw1) tw2
-trace-writes-above-append n (iterate _ _ _) t2 tw1 _ = tw1  -- iterate is terminal
 
 -- Append preserves TraceWritesBelow
 trace-writes-below-append : ∀ n t1 t2 →
   TraceWritesBelow n t1 → TraceWritesBelow n t2 →
-  TraceWritesBelow n (t1 ++ₜ t2)
+  TraceWritesBelow n (t1 ++ t2)
 trace-writes-below-append n [] t2 _ tw2 = tw2
 trace-writes-below-append n (i ∷ t1) t2 tw1 tw2 with instr-writes-slot i
 ... | nothing = trace-writes-below-append n t1 t2 tw1 tw2
 ... | just k = proj₁ tw1 , trace-writes-below-append n t1 t2 (proj₂ tw1) tw2
-trace-writes-below-append n (iterate _ _ _) t2 tw1 _ = tw1  -- iterate is terminal
 
 -- Append preserves TraceSlotReadsAbove
 trace-slot-reads-above-append : ∀ n t1 t2 →
   TraceSlotReadsAbove n t1 → TraceSlotReadsAbove n t2 →
-  TraceSlotReadsAbove n (t1 ++ₜ t2)
+  TraceSlotReadsAbove n (t1 ++ t2)
 trace-slot-reads-above-append n [] t2 _ tr2 = tr2
 trace-slot-reads-above-append n (i ∷ t1) t2 tr1 tr2 with instr-reads-slot i
 ... | nothing = trace-slot-reads-above-append n t1 t2 tr1 tr2
 ... | just k = proj₁ tr1 , trace-slot-reads-above-append n t1 t2 (proj₂ tr1) tr2
-trace-slot-reads-above-append n (iterate _ _ _) t2 tr1 _ = tr1  -- iterate is terminal
 
 -- Append preserves TraceSlotReadsBelow
 trace-slot-reads-below-append : ∀ n t1 t2 →
   TraceSlotReadsBelow n t1 → TraceSlotReadsBelow n t2 →
-  TraceSlotReadsBelow n (t1 ++ₜ t2)
+  TraceSlotReadsBelow n (t1 ++ t2)
 trace-slot-reads-below-append n [] t2 _ tr2 = tr2
 trace-slot-reads-below-append n (i ∷ t1) t2 tr1 tr2 with instr-reads-slot i
 ... | nothing = trace-slot-reads-below-append n t1 t2 tr1 tr2
 ... | just k = proj₁ tr1 , trace-slot-reads-below-append n t1 t2 (proj₂ tr1) tr2
-trace-slot-reads-below-append n (iterate _ _ _) t2 tr1 _ = tr1  -- iterate is terminal
 
 -- Monotonicity: if trace writes above n, and m ≤ n, then writes above m
 trace-writes-above-mono : ∀ m n t →
@@ -860,7 +768,6 @@ trace-writes-above-mono m n [] _ _ = tt
 trace-writes-above-mono m n (i ∷ t) m≤n tw with instr-writes-slot i
 ... | nothing = trace-writes-above-mono m n t m≤n tw
 ... | just k = ≤-trans m≤n (proj₁ tw) , trace-writes-above-mono m n t m≤n (proj₂ tw)
-trace-writes-above-mono m n (iterate _ _ body) m≤n tw = trace-writes-above-mono m n body m≤n tw
 
 -- Monotonicity: if trace reads above n, and m ≤ n, then reads above m
 trace-slot-reads-above-mono : ∀ m n t →
@@ -869,7 +776,6 @@ trace-slot-reads-above-mono m n [] _ _ = tt
 trace-slot-reads-above-mono m n (i ∷ t) m≤n tr with instr-reads-slot i
 ... | nothing = trace-slot-reads-above-mono m n t m≤n tr
 ... | just k = ≤-trans m≤n (proj₁ tr) , trace-slot-reads-above-mono m n t m≤n (proj₂ tr)
-trace-slot-reads-above-mono m n (iterate _ _ body) m≤n tr = trace-slot-reads-above-mono m n body m≤n tr
 
 -- Monotonicity: if trace writes below n, and n ≤ m, then writes below m
 trace-writes-below-mono : ∀ n m t →
@@ -880,7 +786,6 @@ trace-writes-below-mono n m (i ∷ t) n≤m tw with instr-writes-slot i
 ... | just k = <-≤-trans (proj₁ tw) n≤m , trace-writes-below-mono n m t n≤m (proj₂ tw)
   where
     open import Data.Nat.Properties using (<-≤-trans)
-trace-writes-below-mono n m (iterate _ _ body) n≤m tw = trace-writes-below-mono n m body n≤m tw
 
 -- Monotonicity: if trace reads below n, and n ≤ m, then reads below m
 trace-slot-reads-below-mono : ∀ n m t →
@@ -891,7 +796,6 @@ trace-slot-reads-below-mono n m (i ∷ t) n≤m tr with instr-reads-slot i
 ... | just k = <-≤-trans (proj₁ tr) n≤m , trace-slot-reads-below-mono n m t n≤m (proj₂ tr)
   where
     open import Data.Nat.Properties using (<-≤-trans)
-trace-slot-reads-below-mono n m (iterate _ _ body) n≤m tr = trace-slot-reads-below-mono n m body n≤m tr
 
 ------------------------------------------------------------------------
 -- Trace Composition
@@ -910,32 +814,25 @@ module TraceComposition {FS : FrameSemantics} where
   exec-trace-halted (i ∷ is) s alloc halt-eq with halted s
   ... | true = refl
   ... | false with () ← halt-eq
-  -- iterate: exec-iterate checks halted in each iteration (suc case)
-  exec-trace-halted (iterate zero _ _) s alloc _ = refl
-  exec-trace-halted (iterate (suc fuel) base body) s alloc halt-eq with halted s
-  ... | true = refl
-  ... | false with () ← halt-eq
 
-  -- exec-trace distributes over ++ₜ (iterate is terminal, so t2 is ignored)
+  -- exec-trace distributes over ++
   exec-trace-append : ∀ (t1 t2 : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
-    exec-trace (t1 ++ₜ t2) s alloc ≡
+    exec-trace (t1 ++ t2) s alloc ≡
     let (s₁ , alloc₁) = exec-trace t1 s alloc
     in exec-trace t2 s₁ alloc₁
   exec-trace-append [] t2 s alloc = refl
   exec-trace-append (i ∷ is) t2 s alloc with halted s in h-eq
   ... | true = sym (exec-trace-halted t2 s alloc h-eq)
   ... | false with halted (proj₁ (exec-abstract i s alloc)) in h'-eq
-  ...   | true = trans (exec-trace-halted (is ++ₜ t2) (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)) h'-eq)
+  ...   | true = trans (exec-trace-halted (is ++ t2) (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)) h'-eq)
                        (sym (trans (cong (λ p → exec-trace t2 (proj₁ p) (proj₂ p))
                                          (exec-trace-halted is (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)) h'-eq))
                                    (exec-trace-halted t2 (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc)) h'-eq)))
   ...   | false = exec-trace-append is t2 (proj₁ (exec-abstract i s alloc)) (proj₂ (exec-abstract i s alloc))
-  -- iterate is terminal: iterate ++ₜ t2 = iterate, so t2 is not executed
-  exec-trace-append (iterate fuel slot body) t2 s alloc = !!  -- Complex: needs iterate semantics
 
   -- State version of exec-trace-append
   exec-trace-append-state : ∀ (t1 t2 : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
-    proj₁ (exec-trace (t1 ++ₜ t2) s alloc) ≡
+    proj₁ (exec-trace (t1 ++ t2) s alloc) ≡
     proj₁ (exec-trace t2 (proj₁ (exec-trace t1 s alloc)) (proj₂ (exec-trace t1 s alloc)))
   exec-trace-append-state t1 t2 s alloc = cong proj₁ (exec-trace-append t1 t2 s alloc)
 
@@ -1025,11 +922,6 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (instr-push-frame _) _ _ = nhw-instr-push-frame
     tnhw-head instr-pop-frame _ _ = nhw-instr-pop-frame
     tnhw-head instr-call-closure _ _ = nhw-instr-call-closure
-    -- OCP-0003: Worklist instructions
-    tnhw-head (init-worklist _) _ _ = nhw-init-worklist
-    tnhw-head (push-worklist _) _ _ = nhw-push-worklist
-    tnhw-head (pop-worklist _) _ _ = nhw-pop-worklist
-    tnhw-head (check-worklist _) _ _ = nhw-check-worklist
 
     -- Helper: extract TraceNoHeapWrites for tail
     tnhw-tail : ∀ (i : AbstractInstr) (rest : AbstractTrace) →
@@ -1047,11 +939,6 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (instr-push-frame _) rest tnhw = tnhw
     tnhw-tail instr-pop-frame rest tnhw = tnhw
     tnhw-tail instr-call-closure rest tnhw = tnhw
-    -- OCP-0003: Worklist instructions
-    tnhw-tail (init-worklist _) rest tnhw = tnhw
-    tnhw-tail (push-worklist _) rest tnhw = tnhw
-    tnhw-tail (pop-worklist _) rest tnhw = tnhw
-    tnhw-tail (check-worklist _) rest tnhw = tnhw
 
   -- (A1) Current frame slot below write bound is preserved
   -- If trace writes above n (at slots ≥ n), then slot < n is preserved
@@ -1112,13 +999,6 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-below-nonwrite instr-pop-frame rest s alloc n slot twa tnhw slot<n nhw-instr-pop-frame refl
     exec-trace-preserves-slot-below (instr-call-closure ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite instr-call-closure rest s alloc n slot twa tnhw slot<n nhw-instr-call-closure refl
-    -- OCP-0003: Worklist instructions (use !! for complex semantics)
-    exec-trace-preserves-slot-below (init-worklist _ ∷ rest) s alloc n slot twa tnhw slot<n = !!
-    exec-trace-preserves-slot-below (push-worklist _ ∷ rest) s alloc n slot twa tnhw slot<n = !!
-    exec-trace-preserves-slot-below (pop-worklist _ ∷ rest) s alloc n slot twa tnhw slot<n = !!
-    exec-trace-preserves-slot-below (check-worklist _ ∷ rest) s alloc n slot twa tnhw slot<n = !!
-    -- OCP-0003: iterate case
-    exec-trace-preserves-slot-below (iterate _ _ _) s alloc n slot twa tnhw slot<n = !!
 
     -- Helper for non-writing instructions
     exec-trace-preserves-slot-below-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1205,13 +1085,6 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-above-nonwrite instr-pop-frame rest s alloc m slot twb tnhw m≤slot nhw-instr-pop-frame refl
     exec-trace-preserves-slot-above (instr-call-closure ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite instr-call-closure rest s alloc m slot twb tnhw m≤slot nhw-instr-call-closure refl
-    -- OCP-0003: Worklist instructions (use !! for complex semantics)
-    exec-trace-preserves-slot-above (init-worklist _ ∷ rest) s alloc m slot twb tnhw m≤slot = !!
-    exec-trace-preserves-slot-above (push-worklist _ ∷ rest) s alloc m slot twb tnhw m≤slot = !!
-    exec-trace-preserves-slot-above (pop-worklist _ ∷ rest) s alloc m slot twb tnhw m≤slot = !!
-    exec-trace-preserves-slot-above (check-worklist _ ∷ rest) s alloc m slot twb tnhw m≤slot = !!
-    -- OCP-0003: iterate case
-    exec-trace-preserves-slot-above (iterate _ _ _) s alloc m slot twb tnhw m≤slot = !!
 
     -- Helper for non-writing instructions
     exec-trace-preserves-slot-above-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1293,12 +1166,6 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-ancestor-nonwrite instr-pop-frame rest s alloc f slot cf≺f tnhw nhw-instr-pop-frame refl
     exec-trace-preserves-ancestor (instr-call-closure ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite instr-call-closure rest s alloc f slot cf≺f tnhw nhw-instr-call-closure refl
-    -- OCP-0003: Worklist and iterate cases (use !!)
-    exec-trace-preserves-ancestor (init-worklist _ ∷ rest) s alloc f slot cf≺f tnhw = !!
-    exec-trace-preserves-ancestor (push-worklist _ ∷ rest) s alloc f slot cf≺f tnhw = !!
-    exec-trace-preserves-ancestor (pop-worklist _ ∷ rest) s alloc f slot cf≺f tnhw = !!
-    exec-trace-preserves-ancestor (check-worklist _ ∷ rest) s alloc f slot cf≺f tnhw = !!
-    exec-trace-preserves-ancestor (iterate _ _ _) s alloc f slot cf≺f tnhw = !!
 
     -- Helper for non-writing instructions in ancestor preservation
     exec-trace-preserves-ancestor-nonwrite : ∀ (i : AbstractInstr) (rest : AbstractTrace)
@@ -1349,8 +1216,6 @@ module TracePrimitives {FS : FrameSemantics} where
         -- IH
         ih = exec-trace-preserves-heap-loc rest s' alloc' h tnhw-rest
     in trans ih step-pres
-  -- OCP-0003: iterate case
-  exec-trace-preserves-heap-loc (iterate _ _ _) s alloc h tnhw = !!
 
   -- (B) INDEPENDENCE - trace version
   -- If loc is disjoint from all reads and writes, writeLoc commutes with trace
@@ -1419,8 +1284,6 @@ module TracePrimitives {FS : FrameSemantics} where
         step-preserves = exec-abstract-preserves-frame i s alloc
         rest-preserves = exec-trace-preserves-frame rest s' alloc'
     in trans rest-preserves step-preserves
-  -- OCP-0003: iterate case
-  exec-trace-preserves-frame (iterate _ _ _) s alloc = !!
 
   -- (E) HEAP PRESERVATION - trace version
   exec-trace-preserves-heapMem : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -1435,8 +1298,6 @@ module TracePrimitives {FS : FrameSemantics} where
         step-preserves = exec-abstract-preserves-heapMem i s alloc iph
         rest-preserves = exec-trace-preserves-heapMem rest s' alloc' tph
     in trans rest-preserves step-preserves
-  -- OCP-0003: iterate case
-  exec-trace-preserves-heapMem (iterate _ _ _) s alloc _ = !!
 
   -- (F) FRAME EQUIVALENCE - trace version
   exec-trace-same-frame : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) →
@@ -1472,8 +1333,6 @@ module TracePrimitives {FS : FrameSemantics} where
                      state-eq
                      ih
     in result
-  -- OCP-0003: iterate case
-  exec-trace-same-frame (iterate _ _ _) s alloc₁ alloc₂ frame-eq = !!
 
   -- (G) HALTED PRESERVATION
   -- Instructions preserve halted=false if they don't cause errors
@@ -1560,9 +1419,6 @@ module TracePrimitives {FS : FrameSemantics} where
     tph-[] : TracePreservesHaltedP []
     tph-∷  : ∀ {i rest} → InstrPreservesHalted i → TracePreservesHaltedP rest →
              TracePreservesHaltedP (i ∷ rest)
-    -- OCP-0003: iterate has same property as body
-    tph-iterate : ∀ {fuel slot body} → TracePreservesHaltedP body →
-                  TracePreservesHaltedP (iterate fuel slot body)
 
   -- exec-trace preserves halted=false when TracePreservesHaltedP holds
   exec-trace-preserves-halted : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
@@ -1576,14 +1432,12 @@ module TracePrimitives {FS : FrameSemantics} where
         alloc' = proj₂ (exec-abstract i s alloc)
         h-step = exec-abstract-preserves-halted i s alloc h-eq iph
     in exec-trace-preserves-halted rest s' alloc' h-step tph
-  exec-trace-preserves-halted (iterate _ _ _) s alloc h-eq _ = !!  -- Complex: iterate semantics
 
   -- Append preserves TracePreservesHaltedP
   tph-++ : ∀ {t₁ t₂} → TracePreservesHaltedP t₁ → TracePreservesHaltedP t₂ →
-           TracePreservesHaltedP (t₁ ++ₜ t₂)
+           TracePreservesHaltedP (t₁ ++ t₂)
   tph-++ tph-[] tph₂ = tph₂
   tph-++ (tph-∷ iph tph₁) tph₂ = tph-∷ iph (tph-++ tph₁ tph₂)
-  tph-++ (tph-iterate tph₁) _ = tph-iterate tph₁  -- iterate is terminal
 
   ------------------------------------------------------------------------
   -- (H) WRITE-THEN-PRESERVE PATTERN
@@ -1667,11 +1521,11 @@ module TracePrimitives {FS : FrameSemantics} where
   -- exec-trace (trace ++ [i]) = exec-trace [i] (exec-trace trace ...)
   ------------------------------------------------------------------------
 
-  -- Snoc decomposition: trace ++ₜ [i] executes trace, then [i]
+  -- Snoc decomposition: trace ++ [i] executes trace, then [i]
   -- Uses exec-trace-append directly
   exec-trace-snoc : ∀ (trace : AbstractTrace) (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) →
-    exec-trace (trace ++ₜ (i ∷ [])) s alloc ≡
+    exec-trace (trace ++ (i ∷ [])) s alloc ≡
     exec-trace (i ∷ []) (proj₁ (exec-trace trace s alloc))
                         (proj₂ (exec-trace trace s alloc))
   exec-trace-snoc trace i s alloc = exec-trace-append trace (i ∷ []) s alloc
@@ -1681,7 +1535,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-trace-snoc-state : ∀ (trace : AbstractTrace) (i : AbstractInstr) (s : LocState FS)
     (alloc : AllocState {FS}) →
     halted (proj₁ (exec-trace trace s alloc)) ≡ false →
-    proj₁ (exec-trace (trace ++ₜ (i ∷ [])) s alloc) ≡
+    proj₁ (exec-trace (trace ++ (i ∷ [])) s alloc) ≡
     proj₁ (exec-abstract i (proj₁ (exec-trace trace s alloc))
                            (proj₂ (exec-trace trace s alloc)))
   exec-trace-snoc-state trace i s alloc not-halted =
@@ -1719,13 +1573,13 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-trace-final-lea-slot : ∀ (trace : AbstractTrace) (k : ℕ) (s : LocState FS)
     (alloc : AllocState {FS}) →
     halted (proj₁ (exec-trace trace s alloc)) ≡ false →
-    readReg (regs (proj₁ (exec-trace (trace ++ₜ (lea-slot k ∷ [])) s alloc))) Output ≡
+    readReg (regs (proj₁ (exec-trace (trace ++ (lea-slot k ∷ [])) s alloc))) Output ≡
     OnStack (current-frame alloc) k
   exec-trace-final-lea-slot trace k s alloc not-halted-after =
     let s' = proj₁ (exec-trace trace s alloc)
         alloc' = proj₂ (exec-trace trace s alloc)
         -- Step 1: Decompose trace ++ [lea-slot k] using snoc
-        snoc-eq : proj₁ (exec-trace (trace ++ₜ (lea-slot k ∷ [])) s alloc) ≡
+        snoc-eq : proj₁ (exec-trace (trace ++ (lea-slot k ∷ [])) s alloc) ≡
                   proj₁ (exec-abstract (lea-slot k) s' alloc')
         snoc-eq = exec-trace-snoc-state trace (lea-slot k) s alloc not-halted-after
         -- Step 2: lea-slot result (uses alloc')
@@ -1736,7 +1590,7 @@ module TracePrimitives {FS : FrameSemantics} where
         frame-eq : current-frame alloc' ≡ current-frame alloc
         frame-eq = exec-trace-preserves-frame trace s alloc
         -- Step 4: Combine
-        result-with-alloc' : readReg (regs (proj₁ (exec-trace (trace ++ₜ (lea-slot k ∷ [])) s alloc))) Output ≡
+        result-with-alloc' : readReg (regs (proj₁ (exec-trace (trace ++ (lea-slot k ∷ [])) s alloc))) Output ≡
                              OnStack (current-frame alloc') k
         result-with-alloc' = trans (cong (λ st → readReg (regs st) Output) snoc-eq) lea-result
     in trans result-with-alloc' (cong (λ f → OnStack f k) frame-eq)
@@ -1746,13 +1600,13 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-trace-final-lea-mov-input : ∀ (trace : AbstractTrace) (k : ℕ) (s : LocState FS)
     (alloc : AllocState {FS}) →
     halted (proj₁ (exec-trace trace s alloc)) ≡ false →
-    readReg (regs (proj₁ (exec-trace (trace ++ₜ (lea-slot k ∷ mov-to-input ∷ [])) s alloc))) Input ≡
+    readReg (regs (proj₁ (exec-trace (trace ++ (lea-slot k ∷ mov-to-input ∷ [])) s alloc))) Input ≡
     OnStack (current-frame alloc) k
   exec-trace-final-lea-mov-input trace k s alloc not-halted-after =
     let s' = proj₁ (exec-trace trace s alloc)
         alloc' = proj₂ (exec-trace trace s alloc)
         -- Step 1: Decompose using append
-        append-eq : exec-trace (trace ++ₜ (lea-slot k ∷ mov-to-input ∷ [])) s alloc ≡
+        append-eq : exec-trace (trace ++ (lea-slot k ∷ mov-to-input ∷ [])) s alloc ≡
                     exec-trace (lea-slot k ∷ mov-to-input ∷ []) s' alloc'
         append-eq = exec-trace-append trace (lea-slot k ∷ mov-to-input ∷ []) s alloc
         -- Step 2: Execute lea-slot (not halted)
@@ -1780,7 +1634,7 @@ module TracePrimitives {FS : FrameSemantics} where
         frame-eq = exec-trace-preserves-frame trace s alloc
         -- Step 8: Combine step by step
         -- First show that the final state equals s-after-mov
-        final-state = proj₁ (exec-trace (trace ++ₜ (lea-slot k ∷ mov-to-input ∷ [])) s alloc)
+        final-state = proj₁ (exec-trace (trace ++ (lea-slot k ∷ mov-to-input ∷ [])) s alloc)
         eq1 : proj₁ (exec-trace (lea-slot k ∷ mov-to-input ∷ []) s' alloc') ≡ s-after-mov
         eq1 = trans (cong proj₁ lea-step) (cong proj₁ mov-step)
         eq2 : final-state ≡ proj₁ (exec-trace (lea-slot k ∷ mov-to-input ∷ []) s' alloc')
@@ -1853,7 +1707,7 @@ module TracePrimitives {FS : FrameSemantics} where
     -- Result: slot k contains what Output had after prefix
     let s-after-prefix = proj₁ (exec-trace prefix s alloc)
     in
-    readLoc (proj₁ (exec-trace (prefix ++ₜ store-at-slot k ∷ suffix) s alloc))
+    readLoc (proj₁ (exec-trace (prefix ++ store-at-slot k ∷ suffix) s alloc))
             (OnStack (current-frame alloc) k) ≡
     just (readReg (regs s-after-prefix) Output)
   prefix-store-preserve [] k suffix s alloc tph-prefix not-halted twa tnhw =
@@ -1871,7 +1725,7 @@ module TracePrimitives {FS : FrameSemantics} where
         TraceWritesAbove (suc k) suffix →
         TraceNoHeapWrites suffix →
         halted s ≡ false →  -- duplicate for pattern matching
-        readLoc (proj₁ (exec-trace ((i ∷ prefix) ++ₜ store-at-slot k ∷ suffix) s alloc))
+        readLoc (proj₁ (exec-trace ((i ∷ prefix) ++ store-at-slot k ∷ suffix) s alloc))
                 (OnStack (current-frame alloc) k) ≡
         just (readReg (regs (proj₁ (exec-trace (i ∷ prefix) s alloc))) Output)
       psp-cons i prefix k suffix s alloc iph tph-rest not-halted twa tnhw refl =
@@ -1884,7 +1738,7 @@ module TracePrimitives {FS : FrameSemantics} where
             not-halted₁ = exec-abstract-preserves-halted i s alloc refl iph
 
             -- Recursive call for rest of prefix
-            rest-trace = prefix ++ₜ store-at-slot k ∷ suffix
+            rest-trace = prefix ++ store-at-slot k ∷ suffix
             ih : readLoc (proj₁ (exec-trace rest-trace s₁ alloc₁))
                          (OnStack (current-frame alloc₁) k) ≡
                  just (readReg (regs (proj₁ (exec-trace prefix s₁ alloc₁))) Output)
@@ -1900,8 +1754,6 @@ module TracePrimitives {FS : FrameSemantics} where
         in subst (λ f → readLoc (proj₁ (exec-trace rest-trace s₁ alloc₁)) (OnStack f k) ≡
                         just (readReg (regs s-after-prefix) Output))
                  frame-eq ih
-  -- OCP-0003: iterate case (deferred)
-  prefix-store-preserve (iterate _ _ _) k suffix s alloc _ not-halted twa tnhw = !!
 
 ------------------------------------------------------------------------
 -- Summary: Minimal Axioms + Positive Characterization
@@ -2181,7 +2033,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
                         readLoc s-after-prefix (OnStack (current-frame alloc) n)
         lea-preserves = lea-slot-preserves-mem n s-after-prefix alloc-after-prefix (OnStack (current-frame alloc) n)
         -- Trace decomposition
-        step1 : exec-trace (prefix ++ₜ (lea-slot n ∷ [])) s alloc ≡
+        step1 : exec-trace (prefix ++ (lea-slot n ∷ [])) s alloc ≡
                 exec-trace (lea-slot n ∷ []) s-after-prefix alloc-after-prefix
         step1 = exec-trace-append prefix (lea-slot n ∷ []) s alloc
         step2 : exec-trace (lea-slot n ∷ []) s-after-prefix alloc-after-prefix ≡
