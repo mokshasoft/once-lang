@@ -642,20 +642,111 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
       -- Id case: single recursive position
       -- Call cata-dispatched recursively, then algebra
+      --
+      -- SEMANTIC EQUATION (from sem-cata-compute):
+      --   For Id-layer where layer = μ-sub:
+      --   sem-cata wfG alg orig-x = alg (sem-fmap Id (sem-cata wfG alg) μ-sub)
+      --                           = alg (sem-cata wfG alg μ-sub)  [sem-fmap Id f = f]
+      --
+      -- PROOF STRUCTURE (like compose):
+      --   1. Call cata-dispatched on μ-sub (IH)
+      --      → IRResultAWF for sem-cata on μ-sub
+      --   2. mov-to-input bridges Output to Input
+      --   3. Call dispatcher on alg' (smaller IR)
+      --      → IRResultAWF for alg applied to recursive result
+      --   4. Chain: combined trace and ValidAtWF proofs
+      --
       cata-dispatch-layer wf-Id wfG alg' disp μ-sub orig-x mIn' input-loc' s' alloc'
         x-valid' input-before' not-halted' rdi-eq' cap' =
-        -- For Id-layer: layer = μ-sub (sub-μ-value)
-        -- 1. Recursively compute cata on μ-sub (IH)
-        let (mRec , rec-result) = cata-dispatched wfG alg' disp μ-sub mIn' input-loc' s' alloc'
-                                    SMP.!! input-before' not-halted' rdi-eq' cap'
-            -- rec-result : IRResultAWF mRec (Cata wfG alg') μ-sub s' alloc'
-            -- Contains ValidAtWF for sem-cata wfG (eval alg') μ-sub
+        -- Step 1: Recursive call (IH)
+        -- For Id-layer: μ-sub IS the recursive μ-value from the layer
+        -- It's a strict sub-value of orig-x (via sem-Out)
+        --
+        -- PROOF OBLIGATION: Extract validity for μ-sub from orig-x
+        -- Need: ValidAtWF decomposition lemma for μ-types
+        --   If ValidAtWF m alloc (In layer) loc s, then
+        --   the sub-values in layer are valid at derived locations
+        --
+        -- For now, use placeholder pending μ-validity decomposition
+        let μ-sub-valid : ValidAtWF mIn' alloc' μ-sub input-loc' s'
+            μ-sub-valid = SMP.!!  -- PROOF OBLIGATION: μ-validity-decompose
 
-            -- 2. Call dispatcher on alg' with recursive result
-            -- Need to bridge Output to Input, then call dispatcher
-            -- This chains the IRResultAWF proofs
+            (mRec , rec-result) = cata-dispatched wfG alg' disp μ-sub mIn' input-loc' s' alloc'
+                                    μ-sub-valid input-before' not-halted' rdi-eq' cap'
 
-            -- For now, use SMP.!! for the full chaining
+            -- Extract from recursive result
+            s-rec = IRResultAWF.final-state rec-result
+            alloc-rec = IRResultAWF.final-alloc rec-result
+            rec-loc = IRResultAWF.result-loc rec-result
+            rec-trace = IRResultAWF.trace rec-result
+            rec-valid = IRResultAWF.result-valid-wf rec-result
+            rec-before = IRResultAWF.result-before rec-result
+            rec-rax = IRResultAWF.rax-is-result rec-result
+            rec-not-halted = IRResultAWF.not-halted rec-result
+
+            -- Step 2: Bridge state with mov-to-input
+            -- After mov-to-input: Input := Output = rec-loc
+            s-bridged : LocState FS
+            s-bridged = record s-rec { regs = writeReg (regs s-rec) Input rec-loc }
+
+            rdi-bridged : readReg (regs s-bridged) Input ≡ rec-loc
+            rdi-bridged = writeReg-same (regs s-rec) Input rec-loc
+
+            -- ValidAtWF transfers through mov-to-input (only registers change)
+            rec-valid-bridged : ValidAtWF mRec alloc-rec (eval primSem (Cata wfG alg') μ-sub) rec-loc s-bridged
+            rec-valid-bridged = validityWF-mem-only (eval primSem (Cata wfG alg') μ-sub) rec-loc s-rec s-bridged refl refl rec-valid
+
+            -- Step 3: Capacity for algebra
+            -- From combined cap, we need: next-slot alloc-rec + ir-stack-requirement alg' ≤ frame-capacity alloc-rec
+            -- Since rec-result consumed some stack, we need to use reclaim
+
+            reclaim-rec = IRResultAWF.reclaimable-slot rec-result
+            alloc-reclaimed : AllocState {FS}
+            alloc-reclaimed = record alloc' { next-slot = reclaim-rec }
+
+            -- rec-before transfers to reclaimed state
+            rec-before-reclaimed : BeforeFrontier alloc-reclaimed rec-loc
+            rec-before-reclaimed = IRResultAWF.reclaim-preserves-result rec-result SMP.!!
+
+            -- reclaim-preserves-validity gives validity at s-rec (final-state)
+            -- Then we transfer to s-bridged using validityWF-mem-only
+            rec-valid-reclaimed-at-s-rec : ValidAtWF mRec alloc-reclaimed (eval primSem (Cata wfG alg') μ-sub) rec-loc s-rec
+            rec-valid-reclaimed-at-s-rec = IRResultAWF.reclaim-preserves-validity rec-result SMP.!!
+
+            rec-valid-reclaimed : ValidAtWF mRec alloc-reclaimed (eval primSem (Cata wfG alg') μ-sub) rec-loc s-bridged
+            rec-valid-reclaimed = validityWF-mem-only (eval primSem (Cata wfG alg') μ-sub) rec-loc s-rec s-bridged refl refl rec-valid-reclaimed-at-s-rec
+
+            -- Capacity for algebra from cap'
+            -- cap' : next-slot alloc' + ir-stack-requirement (Cata wfG alg') ≤ frame-capacity alloc'
+            -- ir-stack-requirement (Cata wfG alg') = 2 + ir-stack-requirement alg'
+            -- reclaim-rec ≤ next-slot alloc' + ir-stack-requirement (Cata wfG alg') - 2 (approx)
+            -- This requires careful arithmetic - use SMP.!! for now
+            cap-alg : reclaim-rec +ℕ ir-stack-requirement alg' ≤ frame-capacity alloc'
+            cap-alg = SMP.!!
+
+            -- ARCHITECTURAL ISSUE:
+            --
+            -- The current architecture has a fundamental problem:
+            --   - cata-dispatch-layer traverses the functor structure
+            --   - But loses context needed to rebuild the processed layer
+            --
+            -- For the Id case, we compute `rec-result` which is `sem-cata wfG alg' μ-sub`.
+            -- To compute `sem-cata wfG alg' orig-x`, we need to:
+            --   1. Take the FULL layer (⟦ G ⟧F (⟦μ⟧ G))
+            --   2. Replace each recursive position with its folded result
+            --   3. Apply the algebra to the processed layer
+            --
+            -- But in the Id case, we've already pattern-matched down to a single
+            -- recursive position. We don't have the surrounding Sum/Prod structure.
+            --
+            -- SOLUTION (TODO):
+            --   1. Change cata-dispatch-layer to return (trace × processed-layer-fragment)
+            --   2. Sum/Prod cases rebuild the structure from sub-results
+            --   3. cata-dispatched applies algebra at the end with full processed layer
+            --
+            -- For now, use placeholder to allow type-checking.
+            -- The recursive infrastructure is correct; just needs restructuring.
+
         in Heap , SMP.!!
 
       -- Sum inl case: process left branch
