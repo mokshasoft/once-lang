@@ -488,14 +488,48 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   -- by RecCoreWF. This replaces the postulated rec-scheme-semantic.
   ------------------------------------------------------------------------
 
+  ------------------------------------------------------------------------
+  -- Recursive IRResultAWF Construction (Proof Architecture)
+  --
+  -- STRUCTURAL RECURSION on μ-values (well-founded):
+  --   - Base: K-layer (no recursion)
+  --   - Step: Id-layer calls IH on sub-μ-value
+  --   - Sum: dispatch on tag, IH on taken branch
+  --   - Prod: IH on both components, chain results
+  --
+  -- DISPATCHER only for ALGEBRA (smaller IR):
+  --   ir-size alg < ir-size (Cata wf alg)  ✓
+  --
+  -- This eliminates the postulate by:
+  --   1. Building actual traces via structural recursion
+  --   2. Chaining IRResultAWF proofs from recursive calls
+  --   3. Using dispatcher for algebra application
+  --   4. Composing ValidAtWF proofs
+  ------------------------------------------------------------------------
+
+  -- Helper: Algebra has smaller IR size than Cata
+  -- ir-size (Cata wf alg) = 2 + ir-size alg, so ir-size alg < ir-size (Cata wf alg)
+  alg-size-bound : ∀ {F A} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T A) A) →
+    ir-size alg < ir-size (Cata wf alg)
+  alg-size-bound {F} {A} wf alg = n<2+n (ir-size alg)
+    where
+      open import Data.Nat using (_<_; s≤s)
+      -- n < 2 + n for any n: suc n ≤ suc (suc n)
+      n<2+n : ∀ n → n < 2 +ℕ n
+      n<2+n n = s≤s (n≤1+n n)
+
   -- | Cata result: full IRResultAWF from trace execution
   --
   -- This is the entry point for RecCoreWF to call instead of using
   -- the rec-scheme-semantic postulate.
   --
-  -- For now, we use the existing stub trace structure. The key change
-  -- is that ValidAtWF is produced by structural induction rather than
-  -- postulate.
+  -- Currently uses stub trace. Full implementation would:
+  --   1. Accept RecDispatcherWF as parameter
+  --   2. Build trace by structural recursion on μ-value
+  --   3. Chain IRResultAWF proofs from:
+  --      - Recursive calls (IH on sub-μ-values)
+  --      - Dispatcher call on algebra (smaller IR)
+  --   4. Construct ValidAtWF from chained proofs
   cata-result : ∀ {F A} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T A) A)
     (mIn : AllocMode)
     (x : ⟦ μ-type F ⟧)
