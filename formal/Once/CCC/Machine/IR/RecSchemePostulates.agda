@@ -79,27 +79,18 @@ module RecSchemePostulatesImpl {FS : FrameSemantics} (program-bound : ℕ) (prim
   rec-scheme-semantic = SMP.!!
 
   ------------------------------------------------------------------------
-  -- Lambek Isomorphism Semantic Correctness: TRUST BOUNDARY
+  -- Lambek Isomorphism Semantic Correctness
   --
-  -- For the Lambek isomorphisms (In, out-μ, Out, in-ν), the semantic
-  -- identity is trivial: F(μF) ≅ μF and F(νF) ≅ νF representationally.
+  -- MOVED TO: LambekValidity.agda
   --
-  -- These ARE simpler than recursion schemes (no recursion involved),
-  -- but proving them requires showing ValidAtWF transfers between types
-  -- that have identical memory representation. The challenge is that
-  -- ValidAtWF is indexed by Type, so we need to relate:
+  -- For the Lambek isomorphisms (In, out-μ, Out, in-ν), we now use
+  -- specific lemmas in LambekValidity.agda instead of a general
+  -- postulate. This provides:
+  --   1. Better documentation of each operation's justification
+  --   2. More targeted postulates per operation
+  --   3. A path toward structural proof via functor shape induction
   --
-  --   ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} x loc s
-  --   ValidAtWF m alloc {μ-type F} (sem-In F x) loc s
-  --
-  -- Since both types have identical memory layout (both are boxed
-  -- pointers to F-layer content), the proof should be straightforward
-  -- with a ValidAtWF constructor for μ-types. Currently, ValidAtWF
-  -- lacks such a constructor (see ClosureWellFormed.agda).
-  --
-  -- This postulate captures the representational identity of Lambek isos.
+  -- See LambekValidity.agda for the specific lemmas:
+  --   - In-trace-valid, out-μ-trace-valid
+  --   - in-ν-trace-valid, Out-trace-valid
   ------------------------------------------------------------------------
-  lambek-iso-semantic : ∀ {A B} (ir : IR A B) (m : AllocMode) (alloc : AllocState {FS})
-    (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
-    ValidAtWF m alloc (eval primSem ir x) result-loc s
-  lambek-iso-semantic = SMP.!!

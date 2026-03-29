@@ -41,6 +41,9 @@ import Once.CCC.Machine.SMPrimitives as SMP
 -- Import consolidated postulates (shared with RecCoreWF, ParaWF, AnaWF)
 import Once.CCC.Machine.IR.RecSchemePostulates as RSP
 
+-- Import Lambek validity lemmas for In/Out operations
+import Once.CCC.Machine.IR.LambekValidity as LV
+
 ------------------------------------------------------------------------
 -- Sum and Fix IR implementations
 ------------------------------------------------------------------------
@@ -1244,13 +1247,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   ------------------------------------------------------------------------
 
   ------------------------------------------------------------------------
-  -- Semantic Correctness Postulate for Isomorphism Operations
-  -- (from consolidated module)
+  -- Semantic Correctness for Isomorphism Operations
   --
-  -- See RecSchemePostulates.agda for documentation.
+  -- Uses targeted Lambek validity lemmas instead of general postulate.
+  -- See LambekValidity.agda for documentation and justification.
   ------------------------------------------------------------------------
-  open RSP.RecSchemePostulatesImpl {FS} program-bound primSem public
-    using (lambek-iso-semantic)
+  open LV.LambekValidityImpl {FS} program-bound primSem
+    using (In-trace-valid; out-μ-trace-valid; in-ν-trace-valid; Out-trace-valid)
 
   ------------------------------------------------------------------------
   -- In: wrap functor layer into μ-type
@@ -1341,7 +1344,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Result validity: In semantically is identity, so input validity transfers
       -- The semantic eval (In wf m) x = InS x, which is representationally same as x
       result-valid : ValidAtWF m alloc' (eval primSem (In wf m) x) result-loc s'
-      result-valid = lambek-iso-semantic (In wf m) m alloc' x result-loc s'
+      result-valid = In-trace-valid wf m x
 
       rax-eq : readReg (regs s') Output ≡ result-loc
       rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
@@ -1427,7 +1430,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
       -- Result validity: out-μ extracts F(μF) from μF, representationally same
       result-valid : ValidAtWF Heap alloc (eval primSem (out-μ wf) x) input-loc s'
-      result-valid = lambek-iso-semantic (out-μ wf) Heap alloc x input-loc s'
+      result-valid = out-μ-trace-valid wf x
 
       -- mov-to-output sets Output := Input = input-loc
       rax-eq : readReg (regs s') Output ≡ input-loc
@@ -1507,7 +1510,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
       -- Result validity: Out extracts F(νF) from νF, representationally same
       result-valid : ValidAtWF Heap alloc (eval primSem (Out wf) x) input-loc s'
-      result-valid = lambek-iso-semantic (Out wf) Heap alloc x input-loc s'
+      result-valid = Out-trace-valid wf x
 
       -- rax-eq: Output = Input (from passthrough) = input-loc (from rdi-eq)
       rax-eq : readReg (regs s') Output ≡ input-loc
@@ -1601,7 +1604,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
       -- Result validity: in-ν semantically wraps F(νF) → νF, representationally same
       result-valid : ValidAtWF m alloc' (eval primSem (in-ν wf m) x) result-loc s'
-      result-valid = lambek-iso-semantic (in-ν wf m) m alloc' x result-loc s'
+      result-valid = in-ν-trace-valid wf m x
 
       -- suc n ≤ n + 1: ir-stack-requirement (in-ν wf m) ≡ 1 definitionally
       -- +-comm 1 n : 1 + n ≡ n + 1 where 1 + n = suc n
