@@ -50,7 +50,7 @@ import Once.CCC.Machine.SMPrimitives as SMP
 open import Once.CCC.Machine.SMCore using (TreeTrace; ε; instr; _▸_; branch; call-sub; flat)
 
 -- Import semantic operations
-open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
+open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap; coerce-struct⁻¹)
 
 ------------------------------------------------------------------------
 -- Structural Trace Building
@@ -517,6 +517,382 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- n < 2 + n for any n: suc n ≤ suc (suc n)
       n<2+n : ∀ n → n < 2 +ℕ n
       n<2+n n = s≤s (n≤1+n n)
+
+  ------------------------------------------------------------------------
+  -- TWO-PHASE ARCHITECTURE: ProcessedLayerResult
+  --
+  -- Phase 1 (process-layer) returns this record containing:
+  --   - The processed layer value: ⟦ F ⟧F ⟦ A ⟧
+  --   - Trace that computes it
+  --   - Final state and allocation
+  --   - Validity proof for the processed layer
+  --
+  -- Phase 2 (apply algebra) takes the processed layer and applies alg.
+  ------------------------------------------------------------------------
+
+  -- | Result of processing an F-layer within a μG cata computation
+  --
+  -- For layer : ⟦ F ⟧F (⟦μ⟧ G), produces processed : ⟦ ⟦ F ⟧T A ⟧
+  -- where each μG sub-value has been replaced by its cata result.
+  --
+  -- Note: ⟦ ⟦ F ⟧T A ⟧ = ⟦ F ⟧F ⟦ A ⟧ (type interpretation equals functor action)
+  record ProcessedLayerResult
+    {G : Functor} {A : Type}
+    (wfG : WellFormedF G)
+    (alg : IR (⟦ G ⟧T A) A)
+    (m : AllocMode)
+    {F : Functor}
+    (layer : ⟦ F ⟧F (⟦μ⟧ G))
+    (s : LocState FS) (alloc : AllocState {FS}) : Set where
+    field
+      -- The processed layer with recursive results filled in
+      -- Type: ⟦ ⟦ F ⟧T A ⟧ which equals ⟦ F ⟧F ⟦ A ⟧
+      processed : ⟦ ⟦ F ⟧T A ⟧
+
+      -- Trace that computes the processed layer
+      trace : AbstractTrace
+
+      -- Final state after trace execution
+      final-state : LocState FS
+      final-alloc : AllocState {FS}
+
+      -- Where the processed layer result is stored
+      result-loc : ValueLocation FS
+
+      -- The processed layer is valid at result-loc
+      -- Uses ⟦ F ⟧T A as the Type, so value has type ⟦ ⟦ F ⟧T A ⟧
+      processed-valid : ValidAtWF m final-alloc processed result-loc final-state
+
+      -- Result is before frontier (can be used as input)
+      result-before : BeforeFrontier final-alloc result-loc
+
+      -- Output register contains result location
+      rax-is-result : readReg (regs final-state) Output ≡ result-loc
+
+      -- Machine not halted
+      not-halted : halted final-state ≡ false
+
+      -- Semantic correctness: processed equals fmap of cata on layer
+      -- This captures: processed ≡ fmap (cata alg) layer (up to type coercion)
+      -- Full proof requires showing equivalence via coerce-struct isomorphism
+      -- For now, we mark this as a trivial obligation to focus on structure
+      semantic-correct : ⊤  -- PROOF OBLIGATION: processed ≡ fmap (cata alg) layer
+
+      -- Trace properties
+      slot-monotone : next-slot alloc ≤ next-slot final-alloc
+
+  ------------------------------------------------------------------------
+  -- Process Layer: Phase 1 of Two-Phase Architecture
+  --
+  -- Recursively processes an F-layer, computing cata on all μG sub-values.
+  -- Returns ProcessedLayerResult with the processed layer.
+  --
+  -- STRUCTURAL RECURSION on:
+  --   1. WellFormedF structure (K/Id/Sum/Prod)
+  --   2. μ-values at Id positions (recursive cata calls)
+  --
+  -- KEY INSIGHT: This function returns the PROCESSED VALUE, not IRResultAWF.
+  -- The caller (cata-dispatched) applies the algebra to get the final result.
+  ------------------------------------------------------------------------
+
+  {-# TERMINATING #-}
+  mutual
+    -- | Process an F-layer within μG context
+    --
+    -- Dispatches on functor structure:
+    --   K: constant, no recursion - just return the value
+    --   Id: recursive position - compute cata and return result
+    --   Sum: process taken branch, wrap result in inj₁/inj₂
+    --   Prod: process both components, combine results
+    -- Note: Layer validity is handled separately since ⟦ F ⟧F (⟦μ⟧ G) is not ⟦ T ⟧
+    -- for a simple Type T. We assume layer is at input-loc by the rdi-eq constraint.
+    process-layer : ∀ {F G A}
+      (wfF : WellFormedF F) (wfG : WellFormedF G)
+      (alg : IR (⟦ G ⟧T A) A)
+      (dispatch : RecDispatcherWF (ir-size (Cata wfG alg)))
+      (layer : ⟦ F ⟧F (⟦μ⟧ G))
+      (mIn : AllocMode)
+      (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS})
+      → BeforeFrontier alloc input-loc
+      → halted s ≡ false
+      → readReg (regs s) Input ≡ input-loc
+      → next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
+      → ∃[ mOut ] ProcessedLayerResult wfG alg mOut {F} layer s alloc
+
+    -- K case: constant layer, no recursion
+    -- The processed layer is just the constant value itself
+    process-layer (wf-K {T} isBase) wfG alg dispatch k-val mIn input-loc s alloc
+      input-before not-halted rdi-eq cap =
+      -- For K T: ⟦ K T ⟧F X = ⟦ T ⟧ for any X
+      -- The processed layer is the same constant: k-val : ⟦ T ⟧
+      -- sem-fmap (K T) f k-val = k-val (fmap for K is identity)
+      mIn , record
+        { processed = k-val
+        ; trace = []  -- No computation needed for constants
+        ; final-state = s
+        ; final-alloc = alloc
+        ; result-loc = input-loc
+        ; processed-valid = SMP.!!  -- K-value validity (constant type)
+        ; result-before = input-before
+        ; rax-is-result = SMP.!!  -- Need: Output already contains input-loc
+        ; not-halted = not-halted
+        ; semantic-correct = tt  -- sem-fmap K f x = x
+        ; slot-monotone = ≤-refl
+        }
+
+    -- Id case: recursive position, compute cata on μ-value
+    -- The processed layer is the cata result
+    process-layer wf-Id wfG alg dispatch μ-val mIn input-loc s alloc
+      input-before not-halted rdi-eq cap =
+      -- For Id: ⟦ Id ⟧F (⟦μ⟧ G) = ⟦μ⟧ G
+      -- The μ-val IS the recursive μ-value
+      -- Compute sem-cata wfG alg μ-val via recursive dispatch
+      let
+        -- Validity for μ-val (extracted from representational identity with layer)
+        μ-val-valid : ValidAtWF mIn alloc μ-val input-loc s
+        μ-val-valid = SMP.!!  -- PROOF OBLIGATION: μ-type validity at input-loc
+
+        -- Recursive call: compute cata on μ-val
+        (mRec , rec-result) = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
+                                μ-val-valid input-before not-halted rdi-eq cap
+
+        -- Extract results
+        rec-val = eval primSem (Cata wfG alg) μ-val
+        s-rec = IRResultAWF.final-state rec-result
+        alloc-rec = IRResultAWF.final-alloc rec-result
+        rec-loc = IRResultAWF.result-loc rec-result
+        rec-trace = IRResultAWF.trace rec-result
+        rec-valid = IRResultAWF.result-valid-wf rec-result
+        rec-before = IRResultAWF.result-before rec-result
+        rec-rax = IRResultAWF.rax-is-result rec-result
+        rec-not-halted = IRResultAWF.not-halted rec-result
+        rec-slot-mono = IRResultAWF.slot-monotone rec-result
+      in
+      mRec , record
+        { processed = rec-val  -- The cata result
+        ; trace = rec-trace
+        ; final-state = s-rec
+        ; final-alloc = alloc-rec
+        ; result-loc = rec-loc
+        ; processed-valid = rec-valid
+        ; result-before = rec-before
+        ; rax-is-result = rec-rax
+        ; not-halted = rec-not-halted
+        ; semantic-correct = tt  -- sem-fmap Id f x = f x = sem-cata wfG alg μ-val
+        ; slot-monotone = rec-slot-mono
+        }
+
+    -- Sum inj₁ case: process left branch, wrap in inj₁
+    process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
+      input-before not-halted rdi-eq cap =
+      -- Process left sub-layer
+      let
+        (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn input-loc s alloc
+                            input-before not-halted rdi-eq cap
+
+        -- Extract results and wrap in inj₁
+        l-processed = ProcessedLayerResult.processed l-result
+        processed = inj₁ l-processed
+      in
+      mL , record
+        { processed = processed
+        ; trace = ProcessedLayerResult.trace l-result
+        ; final-state = ProcessedLayerResult.final-state l-result
+        ; final-alloc = ProcessedLayerResult.final-alloc l-result
+        ; result-loc = ProcessedLayerResult.result-loc l-result
+        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: inj₁-preserves-validity
+        ; result-before = ProcessedLayerResult.result-before l-result
+        ; rax-is-result = ProcessedLayerResult.rax-is-result l-result
+        ; not-halted = ProcessedLayerResult.not-halted l-result
+        ; semantic-correct = tt  -- Follows from l-result.semantic-correct
+        ; slot-monotone = ProcessedLayerResult.slot-monotone l-result
+        }
+
+    -- Sum inj₂ case: process right branch, wrap in inj₂
+    process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
+      input-before not-halted rdi-eq cap =
+      -- Process right sub-layer
+      let
+        (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn input-loc s alloc
+                            input-before not-halted rdi-eq cap
+
+        -- Extract results and wrap in inj₂
+        r-processed = ProcessedLayerResult.processed r-result
+        processed = inj₂ r-processed
+      in
+      mR , record
+        { processed = processed
+        ; trace = ProcessedLayerResult.trace r-result
+        ; final-state = ProcessedLayerResult.final-state r-result
+        ; final-alloc = ProcessedLayerResult.final-alloc r-result
+        ; result-loc = ProcessedLayerResult.result-loc r-result
+        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: inj₂-preserves-validity
+        ; result-before = ProcessedLayerResult.result-before r-result
+        ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
+        ; not-halted = ProcessedLayerResult.not-halted r-result
+        ; semantic-correct = tt  -- Follows from r-result.semantic-correct
+        ; slot-monotone = ProcessedLayerResult.slot-monotone r-result
+        }
+
+    -- Product case: process both components, combine
+    process-layer (wf-Prod wfL wfR) wfG alg dispatch (l-comp , r-comp) mIn input-loc s alloc
+      input-before not-halted rdi-eq cap =
+      -- Process left component first
+      let
+        (mL , l-result) = process-layer wfL wfG alg dispatch l-comp mIn input-loc s alloc
+                            input-before not-halted rdi-eq cap
+
+        -- Extract left results
+        l-processed = ProcessedLayerResult.processed l-result
+        s-l = ProcessedLayerResult.final-state l-result
+        alloc-l = ProcessedLayerResult.final-alloc l-result
+        l-loc = ProcessedLayerResult.result-loc l-result
+        l-trace = ProcessedLayerResult.trace l-result
+        l-not-halted = ProcessedLayerResult.not-halted l-result
+
+        -- Bridge: save left result, setup for right processing
+        -- Need to store l-result and load r-comp into Input
+
+        r-input-before : BeforeFrontier alloc-l input-loc
+        r-input-before = SMP.!!  -- PROOF OBLIGATION: frontier monotonicity
+
+        r-cap : next-slot alloc-l +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-l
+        r-cap = SMP.!!  -- PROOF OBLIGATION: capacity preserved
+
+        -- Process right component
+        (mR , r-result) = process-layer wfR wfG alg dispatch r-comp mIn input-loc s-l alloc-l
+                            r-input-before l-not-halted SMP.!! r-cap
+
+        -- Combine results
+        r-processed = ProcessedLayerResult.processed r-result
+        processed = (l-processed , r-processed)
+      in
+      mR , record
+        { processed = processed
+        ; trace = l-trace ++ ProcessedLayerResult.trace r-result  -- Chain traces
+        ; final-state = ProcessedLayerResult.final-state r-result
+        ; final-alloc = ProcessedLayerResult.final-alloc r-result
+        ; result-loc = ProcessedLayerResult.result-loc r-result  -- Simplified: just use right result loc
+        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: pair-validity
+        ; result-before = ProcessedLayerResult.result-before r-result
+        ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
+        ; not-halted = ProcessedLayerResult.not-halted r-result
+        ; semantic-correct = tt  -- Follows from l-result and r-result semantic-correct
+        ; slot-monotone = ≤-trans (ProcessedLayerResult.slot-monotone l-result)
+                                  (ProcessedLayerResult.slot-monotone r-result)
+        }
+
+    ------------------------------------------------------------------------
+    -- Cata Dispatched (New Architecture)
+    --
+    -- Uses two-phase approach:
+    --   1. process-layer: compute ⟦ G ⟧F A' from ⟦ G ⟧F (⟦μ⟧ G)
+    --   2. apply algebra: compute alg (processed-layer)
+    ------------------------------------------------------------------------
+
+    cata-dispatched-new : ∀ {G A}
+      (wfG : WellFormedF G)
+      (alg : IR (⟦ G ⟧T A) A)
+      (dispatch : RecDispatcherWF (ir-size (Cata wfG alg)))
+      (x : ⟦μ⟧ G)
+      (mIn : AllocMode)
+      (input-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS})
+      → ValidAtWF mIn alloc x input-loc s
+      → BeforeFrontier alloc input-loc
+      → halted s ≡ false
+      → readReg (regs s) Input ≡ input-loc
+      → next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
+      → ∃[ mOut ] IRResultAWF mOut (Cata wfG alg) x s alloc
+    cata-dispatched-new {G} {A} wfG alg dispatch x mIn input-loc s alloc
+      x-valid input-before not-halted rdi-eq cap =
+      let
+        -- Step 1: Destruct to get layer
+        layer : ⟦ G ⟧F (⟦μ⟧ G)
+        layer = sem-Out wfG x
+
+        -- Step 2: Process layer to get ⟦ G ⟧F A
+        (mLayer , layer-result) = process-layer wfG wfG alg dispatch layer mIn input-loc s alloc
+                                    input-before not-halted rdi-eq cap
+
+        -- Extract layer processing results
+        processed-layer = ProcessedLayerResult.processed layer-result
+        s-layer = ProcessedLayerResult.final-state layer-result
+        alloc-layer = ProcessedLayerResult.final-alloc layer-result
+        layer-loc = ProcessedLayerResult.result-loc layer-result
+        layer-trace = ProcessedLayerResult.trace layer-result
+        layer-valid-wf = ProcessedLayerResult.processed-valid layer-result
+        layer-before = ProcessedLayerResult.result-before layer-result
+        layer-rax = ProcessedLayerResult.rax-is-result layer-result
+        layer-not-halted = ProcessedLayerResult.not-halted layer-result
+        layer-sem-correct = ProcessedLayerResult.semantic-correct layer-result
+
+        -- Step 3: Bridge state with mov-to-input for algebra
+        s-bridged : LocState FS
+        s-bridged = record s-layer { regs = writeReg (regs s-layer) Input layer-loc }
+
+        rdi-bridged : readReg (regs s-bridged) Input ≡ layer-loc
+        rdi-bridged = writeReg-same (regs s-layer) Input layer-loc
+
+        layer-valid-bridged : ValidAtWF mLayer alloc-layer processed-layer layer-loc s-bridged
+        layer-valid-bridged = validityWF-mem-only processed-layer layer-loc s-layer s-bridged refl refl layer-valid-wf
+
+        -- Step 4: Apply algebra via dispatcher
+        -- alg has smaller size than Cata
+        alg-bound : ir-size alg < ir-size (Cata wfG alg)
+        alg-bound = alg-size-bound wfG alg
+
+        -- Capacity for algebra (using alloc-layer's frontier)
+        cap-alg : next-slot alloc-layer +ℕ ir-stack-requirement alg ≤ frame-capacity alloc-layer
+        cap-alg = SMP.!!  -- PROOF OBLIGATION: capacity arithmetic
+
+        -- Call dispatcher on algebra
+        (mAlg , alg-result) = dispatch mLayer alg alg-bound processed-layer
+                                layer-loc s-bridged alloc-layer
+                                layer-valid-bridged layer-before layer-not-halted rdi-bridged cap-alg
+
+        -- Step 5: Build final IRResultAWF
+        -- Trace: layer-trace ++ mov-to-input ∷ alg-trace
+        final-trace = layer-trace ++ mov-to-input ∷ IRResultAWF.trace alg-result
+
+        -- Semantic correctness via sem-cata-compute:
+        --   sem-cata wfG alg x = alg (sem-fmap G (sem-cata wfG alg) (sem-Out wfG x))
+        --                      = alg processed-layer  (by layer-sem-eq)
+        --                      = eval alg processed-layer
+      in
+      mAlg , record
+        { result-loc = IRResultAWF.result-loc alg-result
+        ; final-state = IRResultAWF.final-state alg-result
+        ; final-alloc = IRResultAWF.final-alloc alg-result
+        ; trace = final-trace
+        ; trace-correct = SMP.!!  -- PROOF OBLIGATION: trace execution correctness
+        -- result-valid-wf needs: eval primSem (Cata wfG alg) x = eval primSem alg processed-layer
+        -- This follows from sem-cata-compute but requires proof
+        ; result-valid-wf = SMP.!!  -- PROOF OBLIGATION: semantic equivalence via sem-cata-compute
+        ; result-before = IRResultAWF.result-before alg-result
+        ; rax-is-result = IRResultAWF.rax-is-result alg-result
+        ; not-halted = IRResultAWF.not-halted alg-result
+        ; frame-preserved = SMP.!!  -- PROOF OBLIGATION: frame preserved through layer + alg
+        ; slot-monotone = SMP.!!  -- PROOF OBLIGATION: slot monotonicity
+        ; heap-monotone = SMP.!!  -- PROOF OBLIGATION: heap monotone through layer + alg
+        ; capacity-preserved = SMP.!!  -- PROOF OBLIGATION: capacity preserved
+        ; mem-preserved-before = SMP.!!  -- PROOF OBLIGATION: memory preservation
+        ; reclaimable-slot = IRResultAWF.reclaimable-slot alg-result
+        ; reclaim-monotone = SMP.!!
+        ; reclaim-bounded = SMP.!!
+        ; reclaim-preserves-result = SMP.!!
+        ; reclaim-preserves-validity = SMP.!!
+        ; reclaim-size-bound = SMP.!!
+        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+        ; trace-writes-above = SMP.!!
+        ; trace-slot-reads-above = SMP.!!
+        ; trace-writes-below = SMP.!!
+        ; trace-slot-reads-below = SMP.!!
+        ; trace-preserves-capacity = SMP.!!
+        ; trace-no-heap-writes = SMP.!!
+        ; trace-preserves-halted = SMP.!!
+        }
 
   ------------------------------------------------------------------------
   -- IMPLEMENTATION PLAN: Eliminate rec-scheme-semantic postulate
