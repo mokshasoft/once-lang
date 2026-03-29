@@ -562,13 +562,72 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   ------------------------------------------------------------------------
 
   ------------------------------------------------------------------------
-  -- Recursive Dispatch Implementation
+  -- Recursive Dispatch: Architectural Analysis
   --
-  -- This is the actual proof that eliminates the postulate.
-  -- Uses structural recursion on μ-values with RecDispatcherWF for algebra.
+  -- CURRENT ISSUE:
+  -- The current cata-dispatch-layer traverses the functor structure
+  -- via pattern matching on wfF, but the return type expects the FULL
+  -- Cata result. This causes a mismatch because:
   --
-  -- The key insight: structural recursion on μ-values gives us
-  -- IRResultAWF for each sub-Cata, which we chain with the algebra.
+  --   1. K case: We have a constant, need to build full processed layer
+  --   2. Id case: We have recursive result, need to wrap it in context
+  --   3. Sum/Prod: We recurse but lose the inj₁/inj₂/pair structure
+  --
+  -- SEMANTIC EQUATION (what we need to compute):
+  --   sem-cata wfG alg' (In layer) = alg' (sem-fmap G (sem-cata wfG alg') layer)
+  --
+  -- For G = K Unit ⊕ Id (naturals):
+  --   layer = inj₁ tt  → processed = inj₁ tt              → result = alg' (inj₁ tt)
+  --   layer = inj₂ m   → processed = inj₂ (cata alg' m)   → result = alg' (inj₂ ...)
+  --
+  -- SOLUTION: Two-Phase Architecture
+  --
+  -- Phase 1: process-layer
+  --   Input:  layer : ⟦ G ⟧F (⟦μ⟧ G)  (layer with μ-values at Id positions)
+  --   Output: processed : ⟦ G ⟧F A'    (layer with fold results at Id positions)
+  --           + trace, state, validity proofs
+  --
+  --   Implementation by functor induction:
+  --   - K: processed = k-val (no change)
+  --   - Id: processed = cata alg' μ-sub (recursive call)
+  --   - Sum (inj₁ l): recurse on l, wrap result in inj₁
+  --   - Sum (inj₂ r): recurse on r, wrap result in inj₂
+  --   - Prod (l, r): recurse on both, combine as (processed-l, processed-r)
+  --
+  -- Phase 2: apply-algebra
+  --   Input:  processed : ⟦ G ⟧F A'
+  --   Output: result : A' = alg' processed
+  --
+  -- RETURN TYPE for process-layer:
+  --   record ProcessedLayerResult {G A'} (wfG : WellFormedF G)
+  --     (layer : ⟦ G ⟧F (⟦μ⟧ G)) (s : LocState FS) (alloc : AllocState) : Set where
+  --     field
+  --       processed : ⟦ G ⟧F ⟦ A' ⟧
+  --       trace : AbstractTrace
+  --       final-state : LocState FS
+  --       final-alloc : AllocState
+  --       result-loc : ValueLocation FS  -- Where processed is stored
+  --       processed-valid : ValidAtWF m final-alloc processed result-loc final-state
+  --       semantic-eq : processed ≡ sem-fmap G (sem-cata wfG alg') layer
+  --       ... other invariants ...
+  --
+  -- BENEFITS:
+  --   1. Clean separation: layer processing vs algebra application
+  --   2. Return type matches semantics: processed : ⟦ G ⟧F A'
+  --   3. Sum/Prod cases naturally rebuild structure
+  --   4. cata-dispatched just chains: process-layer → apply-algebra
+  --
+  -- CURRENT STATUS:
+  -- The implementation below uses the old architecture with SMP.!! placeholders.
+  -- It demonstrates the recursive structure but needs restructuring to
+  -- implement the two-phase approach above.
+  ------------------------------------------------------------------------
+
+  ------------------------------------------------------------------------
+  -- Recursive Dispatch Implementation (Current Architecture)
+  --
+  -- This uses structural recursion on μ-values with RecDispatcherWF for algebra.
+  -- See architectural analysis above for the required restructuring.
   ------------------------------------------------------------------------
 
   -- | Recursive dispatch for Cata
