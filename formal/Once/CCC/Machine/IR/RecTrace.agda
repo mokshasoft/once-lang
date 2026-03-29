@@ -518,18 +518,53 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       n<2+n : ∀ n → n < 2 +ℕ n
       n<2+n n = s≤s (n≤1+n n)
 
+  ------------------------------------------------------------------------
+  -- IMPLEMENTATION PLAN: Eliminate rec-scheme-semantic postulate
+  --
+  -- The proof chains IRResultAWF proofs from:
+  --   1. Recursive calls (structural IH on sub-μ-values)
+  --   2. F-layer construction (existing inl/inr/pair handlers)
+  --   3. Algebra dispatch (smaller IR)
+  --
+  -- TRACE STRUCTURE for Cata on μF:
+  --   For each recursive position in layer = sem-Out wf x:
+  --     recursive-trace ++ mov-to-input ∷ []
+  --   Then:
+  --     layer-construction-trace (inl/inr/pair)
+  --     mov-to-input ∷ alg-trace
+  --
+  -- CHAINING (like compose):
+  --   Each IRResultAWF has:
+  --     - result-loc: where result is stored
+  --     - final-state: state after trace
+  --     - result-valid-wf: ValidAtWF for result
+  --
+  --   Chain by:
+  --     1. Execute trace₁, get IRResultAWF₁
+  --     2. mov-to-input bridges Output to Input
+  --     3. Execute trace₂ from IRResultAWF₁.final-state
+  --     4. Combine proofs (validityWF-mem-preserved, etc.)
+  --
+  -- EXAMPLE: NatF = K Unit ⊕ Id
+  --
+  --   Zero (inj₁ tt):
+  --     trace = inl-trace ++ mov-to-input ∷ alg-trace
+  --     Proof: valid-inl-wf for input, alg's IRResultAWF for output
+  --
+  --   Suc m (inj₂ m):
+  --     trace = cata-trace m ++ mov-to-input ∷ inr-trace ++
+  --             mov-to-input ∷ alg-trace
+  --     Proof: IH gives ValidAtWF for recursive result,
+  --            valid-inr-wf for constructed sum,
+  --            alg's IRResultAWF for output
+  --
+  -- TERMINATING justified: structural recursion on μ-values (well-founded)
+  ------------------------------------------------------------------------
+
   -- | Cata result: full IRResultAWF from trace execution
   --
-  -- This is the entry point for RecCoreWF to call instead of using
-  -- the rec-scheme-semantic postulate.
-  --
-  -- Currently uses stub trace. Full implementation would:
-  --   1. Accept RecDispatcherWF as parameter
-  --   2. Build trace by structural recursion on μ-value
-  --   3. Chain IRResultAWF proofs from:
-  --      - Recursive calls (IH on sub-μ-values)
-  --      - Dispatcher call on algebra (smaller IR)
-  --   4. Construct ValidAtWF from chained proofs
+  -- Currently uses stub trace pending full recursive implementation.
+  -- See IMPLEMENTATION PLAN above for the proof architecture.
   cata-result : ∀ {F A} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T A) A)
     (mIn : AllocMode)
     (x : ⟦ μ-type F ⟧)
