@@ -835,15 +835,31 @@ The unified IR directly supports OCP-0004's minimal TCB goal and bootstrap tower
 
 ### Trust Boundaries
 
-| IR Construct | TCB Addition | Verification |
-|--------------|--------------|--------------|
-| Category (Id, Compose) | ~5 lines | Identity/composition laws |
-| Products (Fst, Snd, Pair, Terminal) | ~15 lines | Product universal property |
-| Coproducts (Inl, Inr, Case, Initial) | ~15 lines | Coproduct universal property |
-| Exponentials (Curry, Apply) | ~10 lines | Exponential adjunction |
-| Initial algebras (In, Cata) | ~10 lines | Lambek's Lemma (1968) |
-| Final coalgebras (Out, Ana) | ~10 lines | Dual of Lambek's Lemma |
-| **Total** | ~65 lines | Well-established category theory |
+**Mathematical TCB (category theory, safe to postulate):**
+
+| IR Construct | Math Justification |
+|--------------|-------------------|
+| Category (Id, Compose) | Identity/composition laws |
+| Products (Fst, Snd, Pair, Terminal) | Product universal property |
+| Coproducts (Inl, Inr, Case, Initial) | Coproduct universal property |
+| Exponentials (Curry, Apply) | Exponential adjunction |
+| Initial algebras (In, out-μ) | Lambek's Lemma (1968) |
+| Final coalgebras (Out, in-ν) | Dual of Lambek's Lemma |
+| Cata uniqueness/termination | Initiality of μF |
+| Ana uniqueness/productivity | Finality of νF |
+
+**Implementation TCB (must be proven, not postulated):**
+
+| Component | Claim | Current Status |
+|-----------|-------|----------------|
+| Dispatcher traces | Traces correctly implement IR semantics | PROVEN for CCC ops |
+| rec-scheme-semantic | Recursion scheme traces produce correct results | POSTULATED (TODO) |
+| lambek-iso-semantic | In/out-μ/Out/in-ν traces are identity | POSTULATED (TODO) |
+| exec-trace lemmas | Trace execution is deterministic, preserves state | Partially proven |
+| X86 simulation | Abstract traces simulate correctly on x86 | PROVEN (DirectSimulation) |
+
+The mathematical TCB is trustworthy because it encodes well-established category theory.
+The implementation TCB requires explicit proofs connecting codegen to semantics.
 
 ### The IR IS Category Theory
 
@@ -928,6 +944,72 @@ Productivity (from IR Totality):
 These are mathematical facts, not implementation details. The unified IR makes
 these facts explicit: `Cata` is total because it IS the unique algebra morphism,
 and `Ana` is productive because IR totality ensures each coalgebra step terminates.
+
+### CRITICAL: Mathematical Truth vs Implementation Correctness
+
+**The distinction between what is proven mathematics and what requires implementation proofs:**
+
+| Layer | What It Claims | Status | Trust Level |
+|-------|----------------|--------|-------------|
+| **Category Theory** | CCC laws, Lambek's Lemma, universal properties | Proven (1968+) | Mathematical axiom |
+| **Semantic eval** | `eval primSem (Cata wf alg) x` computes catamorphism correctly | Proven in Agda | Trusted Agda TCB |
+| **Trace generation** | Generated traces execute correctly on abstract machine | **MUST BE PROVEN** | Implementation claim |
+| **X86 codegen** | Compiled x86 code matches abstract machine execution | **MUST BE PROVEN** | Implementation claim |
+
+**What the mathematical facts prove:**
+- Lambek's Lemma proves μF ≅ F(μF) — the isomorphism exists
+- Lambek's Lemma proves Cata is the unique algebra morphism — uniqueness
+- CCC laws prove composition, products, etc. satisfy universal properties
+
+**What the mathematical facts do NOT prove:**
+- That our `Dispatcher` generates correct traces for Cata
+- That `exec-trace` on those traces produces the semantic result
+- That the x86 compilation preserves meaning
+
+**Current Implementation Status:**
+
+The `rec-scheme-semantic` postulate (consolidated in `RecSchemePostulates.agda`) claims:
+```agda
+rec-scheme-semantic : ValidAtWF Heap alloc (eval primSem ir x) result-loc s
+```
+
+**Why this is currently a trust boundary:**
+
+The abstract machine model has a fundamental architectural limitation:
+- Traces are LINEAR sequences of abstract instructions
+- Recursive execution is NOT modeled in the trace semantics
+- RecCoreWF generates STUB traces that allocate storage and return pointers
+- The actual catamorphism computation happens "outside" the trace model
+
+What the stub traces do:
+```agda
+cata-trace = mov-to-output ∷ store-at-slot n ∷ lea-slot n ∷ []
+```
+This stores the input at a slot and returns a pointer — it does NOT compute the catamorphism!
+
+**Paths to eliminate this postulate:**
+
+1. **Extend Abstract Machine** (MAJOR effort):
+   - Add recursive trace execution (call stack, returns)
+   - Generate traces that include recursive calls
+   - Prove these traces compute sem-cata
+
+2. **Direct Semantic Proof** (MODERATE effort):
+   - Prove at semantic level that eval (Cata wf alg) preserves ValidAtWF
+   - Use well-founded recursion on μ-values
+   - Connect to trace model via representation lemmas
+   - See `RecSchemeProof.agda` for the architecture
+
+3. **Accept Trust Boundary** (current state):
+   - Document that rec-scheme-semantic is a compiler correctness claim
+   - The claim: "Once runtime correctly implements recursion schemes"
+   - Analogous to trusting GHC RTS implements recursion correctly
+
+**Relevant modules:**
+- `RecSchemePostulates.agda`: Consolidated postulates
+- `RecSchemeProof.agda`: Proof architecture (incomplete)
+- `RecTrace.agda`: Trace building strategy
+- `NatCataProof.agda`: Concrete example for NatF
 
 ---
 

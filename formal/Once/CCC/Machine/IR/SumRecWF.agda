@@ -38,6 +38,9 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 -- Import SMPrimitives qualified for trace predicates
 import Once.CCC.Machine.SMPrimitives as SMP
 
+-- Import consolidated postulates (shared with RecCoreWF, ParaWF, AnaWF)
+import Once.CCC.Machine.IR.RecSchemePostulates as RSP
+
 ------------------------------------------------------------------------
 -- Sum and Fix IR implementations
 ------------------------------------------------------------------------
@@ -1242,34 +1245,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
   ------------------------------------------------------------------------
   -- Semantic Correctness Postulate for Isomorphism Operations
+  -- (from consolidated module)
   --
-  -- By Lambek's Lemma and its dual:
-  --   - In : F(μF) ≅ μF  (In is an isomorphism)
-  --   - out-μ : μF → F(μF) (inverse of In)
-  --   - Out : νF → F(νF) (Out is an isomorphism)
-  --   - in-ν : F(νF) ≅ νF (inverse of Out)
-  --
-  -- At the machine level, these are representationally identity:
-  --   - μF and F(μF) have identical representation
-  --   - νF and F(νF) have identical representation
-  --
-  -- The postulate captures that ValidAtWF transfers through these
-  -- isomorphisms since representation is unchanged.
-  --
-  -- Justification (why this is PROVABLE):
-  --   1. ValidAtWF is defined inductively on type structure
-  --   2. μ-type F and F applied to μ-type have isomorphic structures
-  --   3. The coerce-functor operations preserve representation
-  --   4. Therefore validity at one type implies validity at the other
-  --
-  -- Future work: Prove this using the representational identity of
-  -- μ/ν types and their functor applications.
+  -- See RecSchemePostulates.agda for documentation.
   ------------------------------------------------------------------------
-  postulate
-    lambek-iso-semantic : ∀ {A B} (ir : IR A B) (m : AllocMode)
-      (alloc : AllocState {FS}) (x : ⟦ A ⟧)
-      (result-loc : ValueLocation FS) (s : LocState FS) →
-      ValidAtWF m alloc (eval primSem ir x) result-loc s
+  open RSP.RecSchemePostulatesImpl {FS} program-bound primSem public
+    using (lambek-iso-semantic)
 
   ------------------------------------------------------------------------
   -- In: wrap functor layer into μ-type

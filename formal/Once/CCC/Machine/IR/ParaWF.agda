@@ -47,6 +47,9 @@ open import Once.CCC.Machine.IR.FunctorDispatch
 -- Import SMPrimitives for trace predicates
 import Once.CCC.Machine.SMPrimitives as SMP
 
+-- Import consolidated postulates (shared with RecCoreWF, AnaWF, SumRecWF)
+import Once.CCC.Machine.IR.RecSchemePostulates as RSP
+
 ------------------------------------------------------------------------
 -- Slot Layout for Paramorphism
 --
@@ -95,14 +98,12 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
            validityWF-alloc-advance)
 
   ------------------------------------------------------------------------
-  -- Semantic Correctness Postulate
+  -- Semantic Correctness Postulate (from consolidated module)
   --
-  -- See RecCoreWF.agda for full documentation and justification.
+  -- See RecSchemePostulates.agda for documentation.
   ------------------------------------------------------------------------
-  postulate
-    rec-scheme-semantic : ∀ {A B} (ir : IR A B) (alloc : AllocState {FS})
-      (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
-      ValidAtWF Heap alloc (eval primSem ir x) result-loc s
+  open RSP.RecSchemePostulatesImpl {FS} program-bound primSem public
+    using (rec-scheme-semantic)
 
   ------------------------------------------------------------------------
   -- Arithmetic helpers for stack requirement bounds
