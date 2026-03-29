@@ -39,6 +39,13 @@ open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
+-- Import μ-type/ν-type and WellFormedF for recursive type validity
+open import Once.Type using (μ-type; ν-type; Functor)
+open import Once.Functor.Translate using (WellFormedF)
+
+-- Import MuValidity for μValid/νValid
+import Once.CCC.Machine.IR.MuValidity as MV
+
 ------------------------------------------------------------------------
 -- BodyResult: Result type for body execution
 --
@@ -57,6 +64,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   open AbstractExec {FS}
   open TracePrimitives {FS}
   open FrameSemantics FS
+
+  -- Import μValid/νValid and preservation lemmas from MuValidity
+  open MV.MuValidityImpl {FS} program-bound primSem
+    using (μValid; νValid;
+           μValid-mem-only; νValid-mem-only;
+           μValid-frontier-advance; νValid-frontier-advance;
+           μValid-bf-transfer; νValid-bf-transfer;
+           μValid-mem-preserved; νValid-mem-preserved)
 
   -- Import write operations for validity preservation proofs
   open import Once.CCC.Machine.WriteOps using (module WriteWithDisjoint)
@@ -154,7 +169,24 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         ValidAtWF mB alloc b payload-loc s →
         ValidAtWF m alloc {A + B} (sem-inr b) sum-loc s
 
-      -- OCP-0003: valid-fold-wf removed. Use μ-type/ν-type validity instead.
+      -- OCP-0003: μ-type and ν-type validity via MuValidity predicates
+      -- These wrap μValid/νValid from MuValidity, avoiding pattern matching issues
+      -- by keeping the layer type opaque to ValidAtWF pattern matching.
+      valid-μ-wf : ∀ {m F}
+        {alloc : AllocState {FS}}
+        {loc : ValueLocation FS} {s : LocState FS}
+        (wf : WellFormedF F)
+        (x : ⟦ μ-type F ⟧) →
+        μValid alloc wf x loc s →
+        ValidAtWF m alloc {μ-type F} x loc s
+
+      valid-ν-wf : ∀ {m F}
+        {alloc : AllocState {FS}}
+        {loc : ValueLocation FS} {s : LocState FS}
+        (wf : WellFormedF F)
+        (x : ⟦ ν-type F ⟧) →
+        νValid alloc wf x loc s →
+        ValidAtWF m alloc {ν-type F} x loc s
 
       -- Primitive types: valid at any mode if location is before frontier
       -- Primitives are single-slot values (Int, Float, Str, Buffer).
@@ -642,7 +674,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
 
       pv' = validityWF-mem-only b pl s₁ s₂ stack-eq heap-eq pv
 
-  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
+  -- OCP-0003: μ-type and ν-type validity preservation
+  -- Uses proven lemmas from MuValidity
+  validityWF-mem-only {m} {alloc} {μ-type F} x loc s₁ s₂ stack-eq heap-eq (valid-μ-wf wf .x μv) =
+    valid-μ-wf wf x (μValid-mem-only alloc wf x loc s₁ s₂ stack-eq heap-eq μv)
+
+  validityWF-mem-only {m} {alloc} {ν-type F} x loc s₁ s₂ stack-eq heap-eq (valid-ν-wf wf .x νv) =
+    valid-ν-wf wf x (νValid-mem-only alloc wf x loc s₁ s₂ stack-eq heap-eq νv)
 
   -- Primitives: memory-independent (BeforeFrontier doesn't depend on state)
   validityWF-mem-only {m} {alloc} {Int} _ loc s₁ s₂ stack-eq heap-eq (valid-int-wf bf) =
@@ -710,7 +748,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       pp' = trans (write-at-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-frontier b pl s val pb pv
 
-  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
+  -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
+  -- Writing at frontier preserves memory at all BeforeFrontier locations
+  validityWF-write-at-frontier {m} {alloc} {μ-type F} x loc s val loc-before (valid-μ-wf wf .x μv) =
+    valid-μ-wf wf x (μValid-mem-preserved alloc wf x loc s s' loc-before mem-eq μv)
+    where
+      s' = write-loc s (OnStack (current-frame alloc) (next-slot alloc)) val
+      mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s' loc' ≡ readLoc s loc'
+      mem-eq loc' bf = write-at-frontier-preserves-before s alloc loc' val bf
+
+  validityWF-write-at-frontier {m} {alloc} {ν-type F} x loc s val loc-before (valid-ν-wf wf .x νv) =
+    valid-ν-wf wf x (νValid-mem-preserved alloc wf x loc s s' loc-before mem-eq νv)
+    where
+      s' = write-loc s (OnStack (current-frame alloc) (next-slot alloc)) val
+      mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s' loc' ≡ readLoc s loc'
+      mem-eq loc' bf = write-at-frontier-preserves-before s alloc loc' val bf
 
   -- Primitives: BeforeFrontier unchanged
   validityWF-write-at-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf) =
@@ -770,7 +822,21 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       pp' = trans (write-at-suc-frontier-preserves-before s alloc (sucLoc loc) val slb) pp
       pv' = validityWF-write-at-suc-frontier b pl s val pb pv
 
-  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
+  -- OCP-0003: μ-type and ν-type cases - using μValid-mem-preserved
+  -- Writing at suc-frontier preserves memory at all BeforeFrontier locations
+  validityWF-write-at-suc-frontier {m} {alloc} {μ-type F} x loc s val loc-before (valid-μ-wf wf .x μv) =
+    valid-μ-wf wf x (μValid-mem-preserved alloc wf x loc s s' loc-before mem-eq μv)
+    where
+      s' = write-loc s (OnStack (current-frame alloc) (suc (next-slot alloc))) val
+      mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s' loc' ≡ readLoc s loc'
+      mem-eq loc' bf = write-at-suc-frontier-preserves-before s alloc loc' val bf
+
+  validityWF-write-at-suc-frontier {m} {alloc} {ν-type F} x loc s val loc-before (valid-ν-wf wf .x νv) =
+    valid-ν-wf wf x (νValid-mem-preserved alloc wf x loc s s' loc-before mem-eq νv)
+    where
+      s' = write-loc s (OnStack (current-frame alloc) (suc (next-slot alloc))) val
+      mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s' loc' ≡ readLoc s loc'
+      mem-eq loc' bf = write-at-suc-frontier-preserves-before s alloc loc' val bf
 
   -- Primitives: BeforeFrontier unchanged
   validityWF-write-at-suc-frontier {m} {alloc} {Int} _ loc s val loc-before (valid-int-wf bf) =
@@ -843,7 +909,22 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       slb' = stack-alloc-advances alloc n (sucLoc loc) slb
       pv' = validityWF-alloc-advance b pl s n pv
 
-  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
+  -- OCP-0003: μ-type and ν-type cases - using μValid-frontier-advance
+  validityWF-alloc-advance {m} {alloc} {μ-type F} x loc s n (valid-μ-wf wf .x μv) =
+    valid-μ-wf wf x (μValid-frontier-advance alloc alloc' wf x loc s refl slot-≤ ≤-refl μv)
+    where
+      open import Data.Nat.Properties using (≤-refl; m≤m+n)
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n }
+      slot-≤ : next-slot alloc ≤ next-slot alloc'
+      slot-≤ = m≤m+n (next-slot alloc) n
+
+  validityWF-alloc-advance {m} {alloc} {ν-type F} x loc s n (valid-ν-wf wf .x νv) =
+    valid-ν-wf wf x (νValid-frontier-advance alloc alloc' wf x loc s refl slot-≤ ≤-refl νv)
+    where
+      open import Data.Nat.Properties using (≤-refl; m≤m+n)
+      alloc' = record alloc { next-slot = next-slot alloc +ℕ n }
+      slot-≤ : next-slot alloc ≤ next-slot alloc'
+      slot-≤ = m≤m+n (next-slot alloc) n
 
   -- Primitives: advance BeforeFrontier
   validityWF-alloc-advance {m} {alloc} {Int} _ loc s n (valid-int-wf bf) =
@@ -915,7 +996,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       slb' = frontier-monotone alloc alloc' (sym cf-eq) slot-≤ heap-≤ (sucLoc loc) slb
       pv' = validityWF-frontier-advance b pl s cf-eq slot-≤ heap-≤ pv
 
-  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
+  -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
+  validityWF-frontier-advance {m} {alloc} {alloc'} {μ-type F} x loc s cf-eq slot-≤ heap-≤ (valid-μ-wf wf .x μv) =
+    valid-μ-wf wf x (μValid-frontier-advance alloc alloc' wf x loc s cf-eq slot-≤ heap-≤ μv)
+
+  validityWF-frontier-advance {m} {alloc} {alloc'} {ν-type F} x loc s cf-eq slot-≤ heap-≤ (valid-ν-wf wf .x νv) =
+    valid-ν-wf wf x (νValid-frontier-advance alloc alloc' wf x loc s cf-eq slot-≤ heap-≤ νv)
 
   -- Primitives: advance BeforeFrontier
   validityWF-frontier-advance {m} {alloc} {alloc'} {Int} _ loc s cf-eq slot-≤ heap-≤ (valid-int-wf bf) =
@@ -974,7 +1060,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     valid-inr-wf pp (bf pl pb) (bf (sucLoc loc) slb)
       (validityWF-with-bf-transfer b pl s a₁ a₂ bf pv)
 
-  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
+  -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
+  validityWF-with-bf-transfer {m} {μ-type F} x loc s a₁ a₂ bf (valid-μ-wf wf .x μv) =
+    valid-μ-wf wf x (μValid-bf-transfer a₁ a₂ wf x loc s bf μv)
+
+  validityWF-with-bf-transfer {m} {ν-type F} x loc s a₁ a₂ bf (valid-ν-wf wf .x νv) =
+    valid-ν-wf wf x (νValid-bf-transfer a₁ a₂ wf x loc s bf νv)
 
   -- Primitives: transfer BeforeFrontier
   validityWF-with-bf-transfer {m} {Int} _ loc s a₁ a₂ bf (valid-int-wf bfr) =
@@ -1044,7 +1135,12 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       pp' = trans (mem-eq (sucLoc loc) slb) pp
       pv' = validityWF-mem-preserved b pl s₁ s₂ pb mem-eq pv
 
-  -- OCP-0003: fold case removed. Use μ-type/ν-type validity instead.
+  -- OCP-0003: μ-type and ν-type cases - using proven lemmas from MuValidity
+  validityWF-mem-preserved {m} {alloc} {μ-type F} x loc s₁ s₂ loc-before mem-eq (valid-μ-wf wf .x μv) =
+    valid-μ-wf wf x (μValid-mem-preserved alloc wf x loc s₁ s₂ loc-before mem-eq μv)
+
+  validityWF-mem-preserved {m} {alloc} {ν-type F} x loc s₁ s₂ loc-before mem-eq (valid-ν-wf wf .x νv) =
+    valid-ν-wf wf x (νValid-mem-preserved alloc wf x loc s₁ s₂ loc-before mem-eq νv)
 
   -- Primitives: BeforeFrontier unchanged
   validityWF-mem-preserved {m} {alloc} {Int} _ loc s₁ s₂ loc-before mem-eq (valid-int-wf bf) =
