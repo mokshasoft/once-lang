@@ -34,7 +34,7 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Target.X86-64.Types
 open import Once.CCC.IR
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
+open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType)
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
@@ -242,10 +242,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   -- | Semantic correctness for K-layer processing
   --
   -- K-layers have no recursive positions, so fmap is identity on them.
-  cata-K-layer-correct : ∀ {A B : Set} (baseType : Type) (alg : ⟦ K baseType ⟧F B → B)
+  cata-K-layer-correct : ∀ {B : Set} (baseType : Type) (isBase : IsBaseType baseType)
+    (alg : ⟦ K baseType ⟧F B → B)
     (x : ⟦ baseType ⟧) →
-    sem-fmap (K baseType) (sem-cata (wf-K SMP.!!) alg) x ≡ x
-  cata-K-layer-correct _ _ x = refl
+    sem-fmap (K baseType) (sem-cata (wf-K isBase) alg) x ≡ x
+  cata-K-layer-correct _ _ _ x = refl
 
   -- | Semantic correctness for Id-layer processing
   --
@@ -391,10 +392,25 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       result-bf : BeforeFrontier alloc' result-loc
       result-bf = stack-before refl (n<1+n (next-slot alloc))
 
-      -- Semantic correctness: the key proof
-      -- This is where we use structural induction instead of postulate
+      -- Semantic correctness: TRUST BOUNDARY
+      --
+      -- This is where structural induction would establish correctness, but
+      -- the current abstract machine doesn't model recursive trace execution.
+      -- The stub trace above doesn't compute the catamorphism; it only stores
+      -- a pointer. The actual recursive computation is handled by the Dispatcher
+      -- at a level not captured in traces.
+      --
+      -- See RecSchemeProof.agda for full architectural analysis.
+      --
+      -- To prove this, we would need either:
+      --   A. Extended machine model with recursive trace execution
+      --   B. Direct semantic proof via well-founded recursion on μ-values
+      --
+      -- For now, this is a trust boundary: we assume the compiler's Dispatcher
+      -- correctly implements recursion schemes. This is analogous to trusting
+      -- that a runtime correctly implements recursive function calls.
       result-valid : ValidAtWF Heap alloc' (eval primSem (Cata wf alg) x) result-loc s'
-      result-valid = SMP.!!  -- PROOF OBLIGATION: Replace with structural induction proof
+      result-valid = SMP.!!
 
       -- Reclaim bound
       n = next-slot alloc

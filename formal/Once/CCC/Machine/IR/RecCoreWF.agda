@@ -191,26 +191,26 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
            validityWF-alloc-advance)
 
   ------------------------------------------------------------------------
-  -- Semantic Correctness
+  -- Semantic Correctness: TRUST BOUNDARY
   --
-  -- PROOF ARCHITECTURE (see RecTrace.agda):
-  --   Cata is now STRUCTURALLY PROVABLE via induction on μ-values.
-  --   See RecTrace.cata-trace-μ for trace building and
-  --   RecTrace.cata-trace-valid-spec for the correctness specification.
+  -- PROOF ARCHITECTURE (see RecTrace.agda and RecSchemeProof.agda):
+  --   RecTrace provides structural trace building (cata-trace-μ) and
+  --   the proof specification (cata-trace-valid-spec). The semantic
+  --   equation sem-cata-compute drives the structure.
   --
-  --   The proof uses sem-cata-compute: at each layer, we:
-  --   1. Destruct the μ-value (representational identity at runtime)
-  --   2. Recursively process sub-μ-values (IH)
-  --   3. Apply the algebra (alg-trace execution)
+  -- WHY THIS IS A TRUST BOUNDARY:
+  --   The abstract machine doesn't model recursive trace execution.
+  --   The traces here are stubs that store/return pointers; the actual
+  --   recursive computation is handled by the Dispatcher at runtime.
+  --   See RecSchemeProof.agda for full architectural analysis.
   --
-  -- REMAINING PROOF OBLIGATION:
-  --   The postulate below is now a proof obligation marker (SMP.!!).
-  --   The full proof would instantiate RecTrace.cata-result which
-  --   produces IRResultAWF using structural induction.
+  -- TO PROVE THIS, we would need either:
+  --   A. Extended machine model with recursive trace execution
+  --   B. Direct semantic proof via well-founded recursion on μ-values
   --
-  --   For Fuse/Hylo, the same pattern applies (future work).
+  -- This postulate captures the correctness claim:
+  --   "The Once compiler + runtime correctly implements recursion schemes"
   ------------------------------------------------------------------------
-  -- PROOF OBLIGATION: Replace with RecTrace structural proof
   rec-scheme-semantic : ∀ {A B} (ir : IR A B) (alloc : AllocState {FS})
     (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
     ValidAtWF Heap alloc (eval primSem ir x) result-loc s

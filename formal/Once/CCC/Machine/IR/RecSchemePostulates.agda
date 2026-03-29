@@ -55,21 +55,23 @@ module RecSchemePostulatesImpl {FS : FrameSemantics} (program-bound : ℕ) (prim
     using (ValidAtWF)
 
   ------------------------------------------------------------------------
-  -- Semantic Correctness Postulate
+  -- Semantic Correctness: TRUST BOUNDARY
   --
-  -- For any IR expression and its denotational semantics (eval primSem ir x),
-  -- when we execute the corresponding trace to produce a result at some
-  -- location, that result is semantically valid (ValidAtWF).
+  -- This asserts that the result of evaluating an IR expression is
+  -- semantically valid at the given location. This is a trust boundary
+  -- because the abstract machine model doesn't capture recursive execution.
   --
-  -- JUSTIFICATION: This is provable by structural induction on μ/ν values:
-  --   1. Build trace by recursion on value structure
-  --   2. At each step, trace produces intermediate ValidAtWF results
-  --   3. Composition via trace concatenation preserves validity
+  -- The abstract traces are stubs that don't actually compute recursion
+  -- schemes. The real computation is handled by the Dispatcher, which
+  -- generates code that the runtime executes. This postulate captures:
   --
-  -- See RecTrace.agda for the full proof for Cata.
-  -- The same pattern applies to Para, Ana, and SumRec.
+  --   "The Once compiler + runtime correctly implements recursion schemes"
   --
-  -- PROOF OBLIGATION: Replace with structural proof following RecTrace pattern
+  -- To eliminate this postulate, we would need either:
+  --   A. Extended machine model with recursive trace execution
+  --   B. Direct semantic proof via well-founded recursion
+  --
+  -- See RecSchemeProof.agda for full architectural analysis.
   ------------------------------------------------------------------------
   rec-scheme-semantic : ∀ {A B} (ir : IR A B) (alloc : AllocState {FS})
     (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
@@ -77,15 +79,25 @@ module RecSchemePostulatesImpl {FS : FrameSemantics} (program-bound : ℕ) (prim
   rec-scheme-semantic = SMP.!!
 
   ------------------------------------------------------------------------
-  -- Lambek Isomorphism Semantic Correctness
+  -- Lambek Isomorphism Semantic Correctness: TRUST BOUNDARY
   --
   -- For the Lambek isomorphisms (In, out-μ, Out, in-ν), the semantic
   -- identity is trivial: F(μF) ≅ μF and F(νF) ≅ νF representationally.
-  -- The postulate captures that ValidAtWF transfers through these isos.
   --
-  -- PROOF OBLIGATION: These are even simpler than recursion schemes
-  -- since no actual computation occurs - just reinterpretation of
-  -- the same data.
+  -- These ARE simpler than recursion schemes (no recursion involved),
+  -- but proving them requires showing ValidAtWF transfers between types
+  -- that have identical memory representation. The challenge is that
+  -- ValidAtWF is indexed by Type, so we need to relate:
+  --
+  --   ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} x loc s
+  --   ValidAtWF m alloc {μ-type F} (sem-In F x) loc s
+  --
+  -- Since both types have identical memory layout (both are boxed
+  -- pointers to F-layer content), the proof should be straightforward
+  -- with a ValidAtWF constructor for μ-types. Currently, ValidAtWF
+  -- lacks such a constructor (see ClosureWellFormed.agda).
+  --
+  -- This postulate captures the representational identity of Lambek isos.
   ------------------------------------------------------------------------
   lambek-iso-semantic : ∀ {A B} (ir : IR A B) (m : AllocMode) (alloc : AllocState {FS})
     (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
