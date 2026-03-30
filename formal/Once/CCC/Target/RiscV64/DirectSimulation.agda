@@ -880,6 +880,32 @@ module Simulation {FS : FrameSemantics} where
         rv64-identity = exec-prog-call-closure rs (current-frame alloc) rs-nothalt
     in subst (λ ys → Corresponds ls ys alloc) (sym rv64-identity) corr
 
+  -- OCP-0003: Worklist instructions
+  -- worklist-init: no-op (compiles to empty)
+  instr-sim (worklist-init _) ls rs alloc not-halted corr
+    with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = corr
+
+  -- worklist-push: like store-at-slot
+  -- TODO: Full proof similar to X86-64 version
+  instr-sim (worklist-push slot) ls rs alloc not-halted corr
+    with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = PO.!!  -- Placeholder: needs store simulation proof
+
+  -- worklist-pop: like load-from-slot
+  instr-sim (worklist-pop slot) ls rs alloc not-halted corr
+    with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = PO.!!  -- Placeholder: needs load simulation proof
+
+  -- worklist-check: no-op (compiles to empty)
+  instr-sim (worklist-check _) ls rs alloc not-halted corr
+    with rv64-halted rs | rs-not-halted ls rs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = corr
+
   ------------------------------------------------------------------------
   -- Trace simulation
   ------------------------------------------------------------------------
@@ -907,6 +933,14 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-push-frame _) ls alloc = refl
   exec-abstract-preserves-frame instr-pop-frame ls alloc = refl
   exec-abstract-preserves-frame instr-call-closure ls alloc = refl
+  -- OCP-0003: Worklist instructions
+  exec-abstract-preserves-frame (worklist-init _) ls alloc = refl
+  exec-abstract-preserves-frame (worklist-push _) ls alloc = refl
+  exec-abstract-preserves-frame (worklist-pop slot) ls alloc
+    with readLoc ls (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-frame (worklist-check _) ls alloc = refl
 
   trace-sim : ∀ trace ls rs alloc →
     Corresponds ls rs alloc →

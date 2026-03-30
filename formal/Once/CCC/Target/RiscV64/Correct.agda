@@ -23,6 +23,12 @@
 --   ✓ Layer 2: STRUCTURE COMPLETE (DirectSimulation.trace-simulation)
 --   ⊕ Full theorem: CONNECTED via ir-to-rv64-correctness
 --
+-- ENTRY POINT:
+--   See Once.CCC.EntryPointCCC for the concrete instantiation that:
+--     - Instantiates Correctness with rv64-frame-semantics
+--     - Exports compile-riscv64 (code generation via AbstractTrace)
+--     - Exports compile-correct-riscv64 (for dead code analysis)
+--
 ------------------------------------------------------------------------
 
 module Once.CCC.Target.RiscV64.Correct where

@@ -77,6 +77,9 @@ open import Once.CCC.Machine.IR.FunctorDispatch
 -- Import SMPrimitives for trace predicates
 import Once.CCC.Machine.SMPrimitives as SMP
 
+-- Import RecTrace for structural cata implementation
+import Once.CCC.Machine.IR.RecTrace as RecTrace
+
 ------------------------------------------------------------------------
 -- RecConfig: Configuration record for the unified recursive core
 --
@@ -179,6 +182,11 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; n≤1+n; n<1+n; +-comm; +-monoʳ-≤)
   open import Data.Nat using (z≤n; s≤s)
   open import Data.List using (_++_)
+
+  -- Open RecTrace implementation for structural cata proofs
+  open RecTrace.RecTraceImpl {FS} program-bound primSem
+    using (cata-dispatched-new; process-layer; ProcessedLayerResult)
+    public
 
   -- Open SMPrimitives modules
   open SMP.TracePrimitives {FS}

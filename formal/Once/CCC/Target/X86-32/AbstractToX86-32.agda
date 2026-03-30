@@ -43,7 +43,8 @@ open import Once.CCC.Machine.SMCore
          load-from-slot; store-at-slot; store-indirect; store-indirect-suc;
          lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack;
-         instr-push-frame; instr-pop-frame; instr-call-closure)
+         instr-push-frame; instr-pop-frame; instr-call-closure;
+         worklist-init; worklist-push; worklist-pop; worklist-check)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -148,6 +149,31 @@ compile-abstract instr-pop-frame =
 -- x86-32: call [ebx + 4]
 compile-abstract instr-call-closure =
   call (mem (base+disp ebx slot-size)) ∷ []
+
+------------------------------------------------------------------------
+-- Worklist operations (for Cata/recursion scheme support)
+--
+-- These are placeholders for the recursive worklist-based iteration.
+-- A full implementation would include counter management.
+------------------------------------------------------------------------
+
+-- worklist-init: Initialize worklist (no-op in simplified model)
+-- x86-32: (empty - no runtime effect)
+compile-abstract (worklist-init n) = []
+
+-- worklist-push: Push Output to worklist at slot
+-- x86-32: mov [ebp + slot*4], eax  (same as store-at-slot)
+compile-abstract (worklist-push n) =
+  mov (mem (base+disp ebp (slot-to-disp n))) (reg eax) ∷ []
+
+-- worklist-pop: Pop from worklist at slot to Output
+-- x86-32: mov eax, [ebp + slot*4]  (same as load-from-slot)
+compile-abstract (worklist-pop n) =
+  mov (reg eax) (mem (base+disp ebp (slot-to-disp n))) ∷ []
+
+-- worklist-check: Check if worklist is empty (no-op in simplified model)
+-- x86-32: (empty - proofs use Star-based reasoning, not loop mechanics)
+compile-abstract (worklist-check n) = []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to x86-32

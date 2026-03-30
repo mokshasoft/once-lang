@@ -23,6 +23,12 @@
 --   ✓ Layer 2: STRUCTURE COMPLETE (DirectSimulation.trace-simulation)
 --   ⊕ Full theorem: CONNECTED via ir-to-x86-32-correctness
 --
+-- ENTRY POINT:
+--   See Once.CCC.EntryPointCCC for the concrete instantiation that:
+--     - Instantiates Correctness with x86-32-frame-semantics
+--     - Exports compile-x86-32 (code generation via AbstractTrace)
+--     - Exports compile-correct-x86-32 (for dead code analysis)
+--
 ------------------------------------------------------------------------
 
 module Once.CCC.Target.X86-32.Correct where

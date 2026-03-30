@@ -842,6 +842,32 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
   ... | false | _ = corr  -- Both sides are identity, correspondence unchanged
 
+  -- OCP-0003: Worklist instructions
+  -- worklist-init: no-op (compiles to empty)
+  instr-sim (worklist-init _) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = corr
+
+  -- worklist-push: like store-at-slot (compiles to mov [ebp + offset], eax)
+  -- TODO: Full proof similar to X86-64 version
+  instr-sim (worklist-push slot) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = PO.!!  -- Placeholder: needs store simulation proof
+
+  -- worklist-pop: like load-from-slot (compiles to mov eax, [ebp + offset])
+  instr-sim (worklist-pop slot) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = PO.!!  -- TODO: load simulation proof (similar to load-from-slot)
+
+  -- worklist-check: no-op (compiles to empty)
+  instr-sim (worklist-check _) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ = corr
+
   ------------------------------------------------------------------------
   -- Trace simulation
   ------------------------------------------------------------------------
@@ -873,6 +899,14 @@ module Simulation {FS : FrameSemantics} where
   exec-abstract-preserves-frame (instr-push-frame _) ls alloc = refl
   exec-abstract-preserves-frame instr-pop-frame ls alloc = refl
   exec-abstract-preserves-frame instr-call-closure ls alloc = refl
+  -- OCP-0003: Worklist instructions
+  exec-abstract-preserves-frame (worklist-init _) ls alloc = refl
+  exec-abstract-preserves-frame (worklist-push _) ls alloc = refl
+  exec-abstract-preserves-frame (worklist-pop slot) ls alloc
+    with readLoc ls (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-preserves-frame (worklist-check _) ls alloc = refl
 
   -- Trace simulation follows from instr-sim by induction
   -- With proper structure (parallel with-patterns), this is trivial
