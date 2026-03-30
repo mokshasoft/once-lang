@@ -108,7 +108,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     using (μLayerValid; μValid; μ-valid;
            μlayer-K; μlayer-Id; μlayer-inl; μlayer-inr; μlayer-prod;
            μLayerValid-mem-only; μLayerValid-frontier-advance;
-           μValid-frontier-advance)
+           μLayerValid-mem-preserved; μValid-frontier-advance)
 
   ------------------------------------------------------------------------
   -- Core Trace Building
@@ -888,8 +888,16 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         l-slot-mono = ProcessedLayerResult.slot-monotone l-result
 
         -- Bridge: r-layer-valid needs to be transferred to s-l, alloc-l
+        -- Step 1: Transfer state (s → s-l) using mem-preserved
+        -- Step 2: Transfer alloc (alloc → alloc-l) using frontier-advance
         r-layer-valid-transferred : μLayerValid alloc-l wfR wfG r-comp snd-loc s-l
-        r-layer-valid-transferred = SMP.!!  -- PROOF OBLIGATION: layer validity preservation
+        r-layer-valid-transferred =
+          μLayerValid-frontier-advance alloc alloc-l wfR wfG r-comp snd-loc s-l
+            (ProcessedLayerResult.frame-preserved l-result)
+            (ProcessedLayerResult.slot-monotone l-result)
+            (ProcessedLayerResult.heap-monotone l-result)
+            (μLayerValid-mem-preserved alloc wfR wfG r-comp snd-loc s s-l snd-bf
+              (ProcessedLayerResult.mem-preserved l-result) r-layer-valid)
 
         r-snd-bf : BeforeFrontier alloc-l snd-loc
         r-snd-bf = frontier-monotone alloc alloc-l
@@ -1031,6 +1039,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     readLoc-regs-irrelevant s r (OnStack f k) = refl
     readLoc-regs-irrelevant s r (OnHeap hl) = refl
 
+    -- Helper: mov-to-input state equals manual Input write when Output = target
+    -- exec-abstract mov-to-input s alloc = (record s { regs = writeReg (regs s) Input (readReg (regs s) Output) }, alloc)
+    -- When Output = target-loc, this equals (record s { regs = writeReg (regs s) Input target-loc }, alloc)
+    exec-mov-to-input-state : ∀ (s : LocState FS) (alloc : AllocState {FS}) (target-loc : ValueLocation FS) →
+      readReg (regs s) Output ≡ target-loc →
+      proj₁ (exec-abstract mov-to-input s alloc) ≡ record s { regs = writeReg (regs s) Input target-loc }
+    exec-mov-to-input-state s alloc target-loc output-eq =
+      cong (λ loc → record s { regs = writeReg (regs s) Input loc }) output-eq
+
     extract-μLayerValid : ∀ {G m} (wfG : WellFormedF G)
       {alloc : AllocState {FS}} {x : ⟦μ⟧ G}
       {input-loc : ValueLocation FS} {s : LocState FS}
@@ -1144,13 +1161,61 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
               -- s-bridged = record s-layer { regs = ... }
               bridged-eq = readLoc-regs-irrelevant s-layer (writeReg (regs s-layer) Input layer-loc) loc
           in trans (alg-mem-pres loc bf-layer) (trans bridged-eq (layer-mem-pres loc bf))
+
+        -- Trace correctness: compose layer-trace ++ mov-to-input ∷ alg-trace
+        alg-trace = IRResultAWF.trace alg-result
+        final-state = IRResultAWF.final-state alg-result
+
+        -- Runtime alloc after layer processing
+        layer-runtime-alloc : AllocState {FS}
+        layer-runtime-alloc = proj₂ (exec-trace layer-trace s alloc)
+
+        -- State after mov-to-input (using runtime alloc)
+        s-after-mov : LocState FS
+        s-after-mov = proj₁ (exec-abstract mov-to-input s-layer layer-runtime-alloc)
+
+        -- Key: s-after-mov equals s-bridged (up to definitional equality via layer-rax)
+        s-after-mov-eq-bridged : s-after-mov ≡ s-bridged
+        s-after-mov-eq-bridged = exec-mov-to-input-state s-layer layer-runtime-alloc layer-loc layer-rax
+
+        -- Alloc after mov-to-input (unchanged)
+        alloc-after-mov : AllocState {FS}
+        alloc-after-mov = proj₂ (exec-abstract mov-to-input s-layer layer-runtime-alloc)
+
+        -- Step 1: Split trace via exec-trace-append
+        trace-step1 : exec-trace final-trace s alloc ≡
+                      exec-trace (mov-to-input ∷ alg-trace) s-layer layer-runtime-alloc
+        trace-step1 = trans
+          (exec-trace-append layer-trace (mov-to-input ∷ alg-trace) s alloc)
+          (cong (λ st → exec-trace (mov-to-input ∷ alg-trace) st layer-runtime-alloc)
+                (ProcessedLayerResult.trace-correct layer-result))
+
+        -- Step 2: Execute mov-to-input via exec-trace-cons
+        trace-step2 : exec-trace (mov-to-input ∷ alg-trace) s-layer layer-runtime-alloc ≡
+                      exec-trace alg-trace s-after-mov alloc-after-mov
+        trace-step2 = exec-trace-cons mov-to-input alg-trace s-layer layer-runtime-alloc layer-not-halted
+
+        -- Step 3: Substitute s-after-mov with s-bridged
+        trace-step3 : exec-trace alg-trace s-after-mov alloc-after-mov ≡
+                      exec-trace alg-trace s-bridged alloc-after-mov
+        trace-step3 = cong (λ st → exec-trace alg-trace st alloc-after-mov) s-after-mov-eq-bridged
+
+        -- Final trace composition (for state only)
+        trace-correct-proof : proj₁ (exec-trace final-trace s alloc) ≡ final-state
+        trace-correct-proof = trans (cong proj₁ (trans trace-step1 (trans trace-step2 trace-step3)))
+          -- Now we need: proj₁ (exec-trace alg-trace s-bridged alloc-after-mov) ≡ final-state
+          -- But alg-result.trace-correct uses alloc-layer, not alloc-after-mov
+          -- The key insight: exec-trace only depends on alloc for certain instructions
+          -- For most traces, the state computation is independent of alloc
+          -- Use TracePreservesHaltedP and trace properties to show state is same
+          SMP.!!  -- Need: proj₁ independent of alloc for this trace
       in
       mAlg , record
         { result-loc = IRResultAWF.result-loc alg-result
         ; final-state = IRResultAWF.final-state alg-result
         ; final-alloc = IRResultAWF.final-alloc alg-result
         ; trace = final-trace
-        ; trace-correct = SMP.!!  -- PROOF OBLIGATION: trace execution correctness
+        ; trace-correct = trace-correct-proof
         -- result-valid-wf needs: eval primSem (Cata wfG alg) x = eval primSem alg processed-layer
         -- This follows from sem-cata-compute but requires proof
         ; result-valid-wf = SMP.!!  -- PROOF OBLIGATION: semantic equivalence via sem-cata-compute
