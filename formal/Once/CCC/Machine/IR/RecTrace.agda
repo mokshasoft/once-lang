@@ -27,7 +27,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃; ∃-syntax)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂; subst)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
@@ -91,6 +91,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
   open SMP.TracePrimitives {FS}
   open SMP.RecSchemeSemantics {FS}
+  open SMP.TraceComposition {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -568,8 +569,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       final-state : LocState FS
       final-alloc : AllocState {FS}
 
-      -- Trace execution correctness: executing trace from s produces final-state
+      -- Trace execution correctness: executing trace from s produces final-state/alloc
       trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
+      alloc-correct : proj₂ (exec-trace trace s alloc) ≡ final-alloc
 
       -- Where the processed layer result is stored
       result-loc : ValueLocation FS
@@ -598,6 +600,20 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       slot-monotone : next-slot alloc ≤ next-slot final-alloc
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
       capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
+
+      -- Memory preservation: locations before frontier are unchanged
+      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc final-state loc ≡ readLoc s loc
+
+      -- Trace properties for composition (positive characterization)
+      -- Region bounds: trace operates in [next-slot alloc, next-slot final-alloc)
+      trace-writes-above : TraceWritesAbove (next-slot alloc) trace
+      trace-writes-below : TraceWritesBelow (next-slot final-alloc) trace
+      trace-slot-reads-above : TraceSlotReadsAbove (next-slot alloc) trace
+      trace-slot-reads-below : TraceSlotReadsBelow (next-slot final-alloc) trace
+      -- Preservation properties
+      trace-preserves-halted : TracePreservesHaltedP trace
+      trace-preserves-capacity : TracePreservesCapacity trace
+      trace-no-heap-writes : TraceNoHeapWrites trace
 
   ------------------------------------------------------------------------
   -- Process Layer: Phase 1 of Two-Phase Architecture
@@ -673,11 +689,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       mIn , record
         { processed = k-val
         ; trace = k-trace
-        ; final-state = s-after-mov
+        ; final-state = s-after
         ; final-alloc = alloc
         ; trace-correct = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
+        ; alloc-correct = cong proj₂ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-loc = input-loc
-        ; processed-valid = validityWF-mem-only k-val input-loc s s-after-mov refl refl (valid-basetype-wf isBase input-before)
+        ; processed-valid = validityWF-mem-only k-val input-loc s s-after refl refl (valid-basetype-wf isBase input-before)
         ; result-before = input-before
         ; rax-is-result = trans (writeReg-same (regs s) Output (readReg (regs s) Input)) rdi-eq
         ; not-halted = not-halted
@@ -686,16 +703,24 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; slot-monotone = ≤-refl
         ; heap-monotone = ≤-refl
         ; capacity-preserved = refl
+        ; mem-preserved = λ loc _ → exec-abstract-mov-to-output-preserves-mem s alloc loc
+        -- Trace region bounds: mov-to-output writes/reads no slots
+        ; trace-writes-above = tt
+        ; trace-writes-below = tt
+        ; trace-slot-reads-above = tt
+        ; trace-slot-reads-below = tt
+        -- Trace preservation properties
+        ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+        ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+        ; trace-no-heap-writes = tt
         }
       where
-        -- Execute mov-to-output to set Output := Input
         k-trace : AbstractTrace
         k-trace = mov-to-output ∷ []
 
-        -- After mov-to-output: state has Output = Input
-        -- exec-abstract mov-to-output s alloc = (s with regs updated, alloc)
-        s-after-mov : LocState FS
-        s-after-mov = record s { regs = writeReg (regs s) Output (readReg (regs s) Input) }
+        -- Use proj₁ (exec-abstract ...) to get state consistent with exec-abstract-mov-to-output-preserves-mem
+        s-after : LocState FS
+        s-after = proj₁ (exec-abstract mov-to-output s alloc)
 
     -- Id case: recursive position, compute cata on μ-value
     -- The processed layer is the cata result
@@ -731,6 +756,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; final-state = s-rec
         ; final-alloc = alloc-rec
         ; trace-correct = IRResultAWF.trace-correct rec-result
+        ; alloc-correct = SMP.!!  -- Need alloc-correct in IRResultAWF
         ; result-loc = rec-loc
         ; processed-valid = rec-valid
         ; result-before = rec-before
@@ -741,6 +767,22 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; slot-monotone = rec-slot-mono
         ; heap-monotone = IRResultAWF.heap-monotone rec-result
         ; capacity-preserved = IRResultAWF.capacity-preserved rec-result
+        ; mem-preserved = IRResultAWF.mem-preserved-before rec-result
+        -- Trace region bounds from IRResultAWF (converted via monotonicity)
+        -- IRResultAWF uses reclaimable-slot as bound, we use next-slot final-alloc
+        -- Since reclaimable-slot ≤ next-slot final-alloc (reclaim-bounded), monotonicity applies
+        ; trace-writes-above = IRResultAWF.trace-writes-above rec-result
+        ; trace-writes-below = SMP.trace-writes-below-mono
+            (IRResultAWF.reclaimable-slot rec-result) (next-slot alloc-rec) rec-trace
+            (IRResultAWF.reclaim-bounded rec-result) (IRResultAWF.trace-writes-below rec-result)
+        ; trace-slot-reads-above = IRResultAWF.trace-slot-reads-above rec-result
+        ; trace-slot-reads-below = SMP.trace-slot-reads-below-mono
+            (IRResultAWF.reclaimable-slot rec-result) (next-slot alloc-rec) rec-trace
+            (IRResultAWF.reclaim-bounded rec-result) (IRResultAWF.trace-slot-reads-below rec-result)
+        -- Trace preservation properties
+        ; trace-preserves-halted = IRResultAWF.trace-preserves-halted rec-result
+        ; trace-preserves-capacity = IRResultAWF.trace-preserves-capacity rec-result
+        ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes rec-result
         }
 
     -- Sum inj₁ case: process left branch, wrap in inj₁
@@ -762,8 +804,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; final-state = ProcessedLayerResult.final-state l-result
         ; final-alloc = ProcessedLayerResult.final-alloc l-result
         ; trace-correct = ProcessedLayerResult.trace-correct l-result
+        ; alloc-correct = ProcessedLayerResult.alloc-correct l-result
         ; result-loc = ProcessedLayerResult.result-loc l-result
-        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: inj₁ validity from l-result
+        ; processed-valid = SMP.!!  -- BLOCKED: inj₁ validity composition
         ; result-before = ProcessedLayerResult.result-before l-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result l-result
         ; not-halted = ProcessedLayerResult.not-halted l-result
@@ -772,6 +815,16 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; slot-monotone = ProcessedLayerResult.slot-monotone l-result
         ; heap-monotone = ProcessedLayerResult.heap-monotone l-result
         ; capacity-preserved = ProcessedLayerResult.capacity-preserved l-result
+        ; mem-preserved = ProcessedLayerResult.mem-preserved l-result
+        -- Trace region bounds from l-result
+        ; trace-writes-above = ProcessedLayerResult.trace-writes-above l-result
+        ; trace-writes-below = ProcessedLayerResult.trace-writes-below l-result
+        ; trace-slot-reads-above = ProcessedLayerResult.trace-slot-reads-above l-result
+        ; trace-slot-reads-below = ProcessedLayerResult.trace-slot-reads-below l-result
+        -- Trace preservation properties
+        ; trace-preserves-halted = ProcessedLayerResult.trace-preserves-halted l-result
+        ; trace-preserves-capacity = ProcessedLayerResult.trace-preserves-capacity l-result
+        ; trace-no-heap-writes = ProcessedLayerResult.trace-no-heap-writes l-result
         }
 
     -- Sum inj₂ case: process right branch, wrap in inj₂
@@ -793,8 +846,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; final-state = ProcessedLayerResult.final-state r-result
         ; final-alloc = ProcessedLayerResult.final-alloc r-result
         ; trace-correct = ProcessedLayerResult.trace-correct r-result
+        ; alloc-correct = ProcessedLayerResult.alloc-correct r-result
         ; result-loc = ProcessedLayerResult.result-loc r-result
-        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: inj₂ validity from r-result
+        ; processed-valid = SMP.!!  -- BLOCKED: inj₂ validity composition
         ; result-before = ProcessedLayerResult.result-before r-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
         ; not-halted = ProcessedLayerResult.not-halted r-result
@@ -803,6 +857,16 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; slot-monotone = ProcessedLayerResult.slot-monotone r-result
         ; heap-monotone = ProcessedLayerResult.heap-monotone r-result
         ; capacity-preserved = ProcessedLayerResult.capacity-preserved r-result
+        ; mem-preserved = ProcessedLayerResult.mem-preserved r-result
+        -- Trace region bounds from r-result
+        ; trace-writes-above = ProcessedLayerResult.trace-writes-above r-result
+        ; trace-writes-below = ProcessedLayerResult.trace-writes-below r-result
+        ; trace-slot-reads-above = ProcessedLayerResult.trace-slot-reads-above r-result
+        ; trace-slot-reads-below = ProcessedLayerResult.trace-slot-reads-below r-result
+        -- Trace preservation properties
+        ; trace-preserves-halted = ProcessedLayerResult.trace-preserves-halted r-result
+        ; trace-preserves-capacity = ProcessedLayerResult.trace-preserves-capacity r-result
+        ; trace-no-heap-writes = ProcessedLayerResult.trace-no-heap-writes r-result
         }
 
     -- Product case: process both components, combine
@@ -851,33 +915,101 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         r-trace-correct = ProcessedLayerResult.trace-correct r-result
 
         -- exec-trace (l-trace ++ r-trace) s alloc
-        --   = exec-trace r-trace (exec-trace l-trace s alloc)  by exec-trace-append-state
-        --   = exec-trace r-trace s-l alloc-l                   by l-trace-correct (need alloc-correct too)
-        --   = final-state                                       by r-trace-correct
+        --   = exec-trace r-trace (exec-trace l-trace s alloc)  by exec-trace-append
+        --   = exec-trace r-trace s-l alloc-l                   by l-trace-correct/alloc-correct
+        --   = (final-state, final-alloc)                       by r-trace-correct/alloc-correct
+        l-alloc-correct = ProcessedLayerResult.alloc-correct l-result
+        r-alloc-correct = ProcessedLayerResult.alloc-correct r-result
+
+        -- Use exec-trace-append to decompose
+        append-eq = exec-trace-append l-trace r-trace s alloc
+
         trace-correct-proof : proj₁ (exec-trace (l-trace ++ r-trace) s alloc) ≡
                               ProcessedLayerResult.final-state r-result
-        trace-correct-proof = SMP.!!  -- PROOF OBLIGATION: compose via exec-trace-append-state
+        trace-correct-proof =
+          trans (cong proj₁ append-eq)
+                (trans (cong (λ p → proj₁ (exec-trace r-trace (proj₁ p) (proj₂ p)))
+                             (cong₂ _,_ l-trace-correct l-alloc-correct))
+                       r-trace-correct)
+
+        alloc-correct-proof : proj₂ (exec-trace (l-trace ++ r-trace) s alloc) ≡
+                              ProcessedLayerResult.final-alloc r-result
+        alloc-correct-proof =
+          trans (cong proj₂ append-eq)
+                (trans (cong (λ p → proj₂ (exec-trace r-trace (proj₁ p) (proj₂ p)))
+                             (cong₂ _,_ l-trace-correct l-alloc-correct))
+                       r-alloc-correct)
+
+        -- Memory preservation composition
+        l-mem-preserved = ProcessedLayerResult.mem-preserved l-result
+        r-mem-preserved = ProcessedLayerResult.mem-preserved r-result
+        mem-preserved-proof : ∀ loc → BeforeFrontier alloc loc →
+                              readLoc (ProcessedLayerResult.final-state r-result) loc ≡ readLoc s loc
+        mem-preserved-proof loc bf =
+          let bf-l = frontier-monotone alloc alloc-l
+                       (sym (ProcessedLayerResult.frame-preserved l-result))
+                       (ProcessedLayerResult.slot-monotone l-result)
+                       (ProcessedLayerResult.heap-monotone l-result)
+                       loc bf
+          in trans (r-mem-preserved loc bf-l) (l-mem-preserved loc bf)
+
+        -- Trace property composition
+        -- Extract individual properties
+        l-tph = ProcessedLayerResult.trace-preserves-halted l-result
+        r-tph = ProcessedLayerResult.trace-preserves-halted r-result
+        l-tpc = ProcessedLayerResult.trace-preserves-capacity l-result
+        r-tpc = ProcessedLayerResult.trace-preserves-capacity r-result
+        l-twa = ProcessedLayerResult.trace-writes-above l-result
+        r-twa = ProcessedLayerResult.trace-writes-above r-result
+        l-twb = ProcessedLayerResult.trace-writes-below l-result
+        r-twb = ProcessedLayerResult.trace-writes-below r-result
+        l-tsra = ProcessedLayerResult.trace-slot-reads-above l-result
+        r-tsra = ProcessedLayerResult.trace-slot-reads-above r-result
+        l-tsrb = ProcessedLayerResult.trace-slot-reads-below l-result
+        r-tsrb = ProcessedLayerResult.trace-slot-reads-below r-result
+        l-tnhw = ProcessedLayerResult.trace-no-heap-writes l-result
+        r-tnhw = ProcessedLayerResult.trace-no-heap-writes r-result
+
+        -- Final alloc slot monotonicity for upper bound composition
+        r-slot-mono = ProcessedLayerResult.slot-monotone r-result
+        final-alloc = ProcessedLayerResult.final-alloc r-result
       in
       mR , record
         { processed = processed
         ; trace = l-trace ++ r-trace  -- Chain traces
         ; final-state = ProcessedLayerResult.final-state r-result
-        ; final-alloc = ProcessedLayerResult.final-alloc r-result
+        ; final-alloc = final-alloc
         ; trace-correct = trace-correct-proof
-        ; result-loc = ProcessedLayerResult.result-loc r-result  -- Simplified: just use right result loc
-        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: pair validity from l-result and r-result
+        ; alloc-correct = alloc-correct-proof
+        ; result-loc = ProcessedLayerResult.result-loc r-result
+        ; processed-valid = SMP.!!  -- BLOCKED: pair validity composition
         ; result-before = ProcessedLayerResult.result-before r-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
         ; not-halted = ProcessedLayerResult.not-halted r-result
-        ; semantic-correct = tt  -- Follows from l-result and r-result semantic-correct
+        ; semantic-correct = tt
         ; frame-preserved = trans (ProcessedLayerResult.frame-preserved r-result)
                                   (ProcessedLayerResult.frame-preserved l-result)
-        ; slot-monotone = ≤-trans (ProcessedLayerResult.slot-monotone l-result)
-                                  (ProcessedLayerResult.slot-monotone r-result)
+        ; slot-monotone = ≤-trans (ProcessedLayerResult.slot-monotone l-result) r-slot-mono
         ; heap-monotone = ≤-trans (ProcessedLayerResult.heap-monotone l-result)
                                   (ProcessedLayerResult.heap-monotone r-result)
         ; capacity-preserved = trans (ProcessedLayerResult.capacity-preserved r-result)
                                      (ProcessedLayerResult.capacity-preserved l-result)
+        ; mem-preserved = mem-preserved-proof
+        -- Trace region bounds: composed via append + monotonicity
+        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) l-trace r-trace l-twa
+            (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-l) r-trace l-slot-mono r-twa)
+        ; trace-writes-below = SMP.trace-writes-below-append (next-slot final-alloc) l-trace r-trace
+            (SMP.trace-writes-below-mono (next-slot alloc-l) (next-slot final-alloc) l-trace r-slot-mono l-twb)
+            r-twb
+        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) l-trace r-trace l-tsra
+            (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-l) r-trace l-slot-mono r-tsra)
+        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (next-slot final-alloc) l-trace r-trace
+            (SMP.trace-slot-reads-below-mono (next-slot alloc-l) (next-slot final-alloc) l-trace r-slot-mono l-tsrb)
+            r-tsrb
+        -- Trace preservation properties
+        ; trace-preserves-halted = tph-++ l-tph r-tph
+        ; trace-preserves-capacity = SMP.tpc-++ l-tpc r-tpc
+        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append l-trace r-trace l-tnhw r-tnhw
         }
 
     ------------------------------------------------------------------------
@@ -892,6 +1024,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     -- PROOF OBLIGATION: The wf stored in ValidAtWF must equal the wfG used in sem-Out
     -- This is guaranteed by construction (we create ValidAtWF with the same wfG)
     -- but Agda can't verify it directly, so we use SMP.!! for now
+    -- Helper: readLoc ignores changes to regs field
+    -- Pattern matching helps Agda see the definitional equality
+    readLoc-regs-irrelevant : ∀ (s : LocState FS) (r : Registers FS) (loc : ValueLocation FS) →
+      readLoc (record s { regs = r }) loc ≡ readLoc s loc
+    readLoc-regs-irrelevant s r (OnStack f k) = refl
+    readLoc-regs-irrelevant s r (OnHeap hl) = refl
+
     extract-μLayerValid : ∀ {G m} (wfG : WellFormedF G)
       {alloc : AllocState {FS}} {x : ⟦μ⟧ G}
       {input-loc : ValueLocation FS} {s : LocState FS}
@@ -992,6 +1131,19 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
         cap-preserved-proof : frame-capacity (IRResultAWF.final-alloc alg-result) ≡ frame-capacity alloc
         cap-preserved-proof = trans (IRResultAWF.capacity-preserved alg-result) layer-cap-preserved
+
+        -- Memory preservation composition
+        layer-mem-pres = ProcessedLayerResult.mem-preserved layer-result
+        alg-mem-pres = IRResultAWF.mem-preserved-before alg-result
+
+        mem-preserved-proof : ∀ loc → BeforeFrontier alloc loc →
+          readLoc (IRResultAWF.final-state alg-result) loc ≡ readLoc s loc
+        mem-preserved-proof loc bf =
+          let bf-layer = frontier-monotone alloc alloc-layer
+                          (sym layer-frame-preserved) layer-slot-mono layer-heap-mono loc bf
+              -- s-bridged = record s-layer { regs = ... }
+              bridged-eq = readLoc-regs-irrelevant s-layer (writeReg (regs s-layer) Input layer-loc) loc
+          in trans (alg-mem-pres loc bf-layer) (trans bridged-eq (layer-mem-pres loc bf))
       in
       mAlg , record
         { result-loc = IRResultAWF.result-loc alg-result
@@ -1009,7 +1161,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; slot-monotone = slot-mono-proof
         ; heap-monotone = heap-mono-proof
         ; capacity-preserved = cap-preserved-proof
-        ; mem-preserved-before = SMP.!!  -- PROOF OBLIGATION: memory preservation
+        ; mem-preserved-before = mem-preserved-proof
         ; reclaimable-slot = IRResultAWF.reclaimable-slot alg-result
         ; reclaim-monotone = ≤-trans layer-slot-mono (IRResultAWF.reclaim-monotone alg-result)
         ; reclaim-bounded = IRResultAWF.reclaim-bounded alg-result
@@ -1017,13 +1169,40 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaim-preserves-validity = SMP.!!
         ; reclaim-size-bound = SMP.!!
         ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-        ; trace-writes-above = SMP.!!
-        ; trace-slot-reads-above = SMP.!!
-        ; trace-writes-below = SMP.!!
-        ; trace-slot-reads-below = SMP.!!
-        ; trace-preserves-capacity = SMP.!!
-        ; trace-no-heap-writes = SMP.!!
-        ; trace-preserves-halted = SMP.!!
+        -- Trace region bounds: compose layer + mov-to-input + alg
+        -- mov-to-input doesn't read/write any slots
+        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) layer-trace
+            (mov-to-input ∷ IRResultAWF.trace alg-result)
+            (ProcessedLayerResult.trace-writes-above layer-result)
+            (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-layer)
+              (IRResultAWF.trace alg-result) layer-slot-mono
+              (IRResultAWF.trace-writes-above alg-result))
+        ; trace-writes-below = SMP.trace-writes-below-append (IRResultAWF.reclaimable-slot alg-result) layer-trace
+            (mov-to-input ∷ IRResultAWF.trace alg-result)
+            (SMP.trace-writes-below-mono (next-slot alloc-layer) (IRResultAWF.reclaimable-slot alg-result) layer-trace
+              (IRResultAWF.reclaim-monotone alg-result)
+              (ProcessedLayerResult.trace-writes-below layer-result))
+            (IRResultAWF.trace-writes-below alg-result)
+        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) layer-trace
+            (mov-to-input ∷ IRResultAWF.trace alg-result)
+            (ProcessedLayerResult.trace-slot-reads-above layer-result)
+            (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-layer)
+              (IRResultAWF.trace alg-result) layer-slot-mono
+              (IRResultAWF.trace-slot-reads-above alg-result))
+        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (IRResultAWF.reclaimable-slot alg-result) layer-trace
+            (mov-to-input ∷ IRResultAWF.trace alg-result)
+            (SMP.trace-slot-reads-below-mono (next-slot alloc-layer) (IRResultAWF.reclaimable-slot alg-result) layer-trace
+              (IRResultAWF.reclaim-monotone alg-result)
+              (ProcessedLayerResult.trace-slot-reads-below layer-result))
+            (IRResultAWF.trace-slot-reads-below alg-result)
+        -- Trace preservation properties
+        ; trace-preserves-capacity = SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity layer-result)
+            (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity alg-result))
+        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
+            (ProcessedLayerResult.trace-no-heap-writes layer-result)
+            (IRResultAWF.trace-no-heap-writes alg-result)
+        ; trace-preserves-halted = tph-++ (ProcessedLayerResult.trace-preserves-halted layer-result)
+            (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted alg-result))
         }
 
   ------------------------------------------------------------------------
