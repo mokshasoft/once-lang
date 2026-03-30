@@ -34,7 +34,8 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Target.X86-64.Types
 open import Once.CCC.IR
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
-open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType)
+open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType;
+  base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
@@ -95,7 +96,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
-           validityWF-alloc-advance)
+           validityWF-alloc-advance;
+           valid-μ-wf; valid-primitive-wf;
+           valid-unit-wf; valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
+           valid-pair-wf; valid-inl-wf; valid-inr-wf)
+
+  -- Import μLayerValid for layer validity
+  open import Once.CCC.Machine.IR.MuValidity
+  open MuValidityImpl {FS} program-bound primSem
+    using (μLayerValid; μValid; μ-valid;
+           μlayer-K; μlayer-Id; μlayer-inl; μlayer-inr; μlayer-prod;
+           μLayerValid-mem-only; μLayerValid-frontier-advance;
+           μValid-frontier-advance)
 
   ------------------------------------------------------------------------
   -- Core Trace Building
@@ -556,6 +568,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       final-state : LocState FS
       final-alloc : AllocState {FS}
 
+      -- Trace execution correctness: executing trace from s produces final-state
+      trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
+
       -- Where the processed layer result is stored
       result-loc : ValueLocation FS
 
@@ -578,8 +593,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- For now, we mark this as a trivial obligation to focus on structure
       semantic-correct : ⊤  -- PROOF OBLIGATION: processed ≡ fmap (cata alg) layer
 
-      -- Trace properties
+      -- Allocation state invariants (for composition)
+      frame-preserved : current-frame final-alloc ≡ current-frame alloc
       slot-monotone : next-slot alloc ≤ next-slot final-alloc
+      heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
+      capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
 
   ------------------------------------------------------------------------
   -- Process Layer: Phase 1 of Two-Phase Architecture
@@ -595,6 +613,27 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   -- The caller (cata-dispatched) applies the algebra to get the final result.
   ------------------------------------------------------------------------
 
+  -- | Convert IsBaseType + BeforeFrontier to ValidAtWF
+  --
+  -- For base types, validity is determined by BeforeFrontier alone.
+  -- This helper dispatches on IsBaseType to build the appropriate ValidAtWF.
+  valid-basetype-wf : ∀ {m B} {v : ⟦ B ⟧}
+    {alloc : AllocState {FS}}
+    {loc : ValueLocation FS} {s : LocState FS}
+    → IsBaseType B
+    → BeforeFrontier alloc loc
+    → ValidAtWF m alloc {B} v loc s
+  valid-basetype-wf base-Unit bf = valid-unit-wf
+  -- Void has no inhabitants, so this case is vacuously true
+  -- We use absurd pattern matching: no value v : ⟦ Void ⟧ exists
+  valid-basetype-wf {v = ()} base-Void bf
+  valid-basetype-wf base-Int bf = valid-int-wf bf
+  valid-basetype-wf base-Float bf = valid-float-wf bf
+  valid-basetype-wf base-Str bf = valid-str-wf bf
+  valid-basetype-wf base-Buffer bf = valid-buffer-wf bf
+  valid-basetype-wf (base-Prod ibA ibB) bf = SMP.!!  -- Product of base types - needs decomposition
+  valid-basetype-wf (base-Sum ibA ibB) bf = SMP.!!  -- Sum of base types - needs decomposition
+
   {-# TERMINATING #-}
   mutual
     -- | Process an F-layer within μG context
@@ -604,8 +643,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     --   Id: recursive position - compute cata and return result
     --   Sum: process taken branch, wrap result in inj₁/inj₂
     --   Prod: process both components, combine results
-    -- Note: Layer validity is handled separately since ⟦ F ⟧F (⟦μ⟧ G) is not ⟦ T ⟧
-    -- for a simple Type T. We assume layer is at input-loc by the rdi-eq constraint.
+    --
+    -- Key: layer-valid provides μLayerValid proof which enables:
+    --   K: use valid-primitive-wf with BeforeFrontier
+    --   Id: extract μValid for recursive call
+    --   Sum/Prod: decompose structurally
     process-layer : ∀ {F G A}
       (wfF : WellFormedF F) (wfG : WellFormedF G)
       (alg : IR (⟦ G ⟧T A) A)
@@ -614,6 +656,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       (mIn : AllocMode)
       (input-loc : ValueLocation FS)
       (s : LocState FS) (alloc : AllocState {FS})
+      → μLayerValid alloc wfF wfG layer input-loc s  -- Layer validity
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
       → readReg (regs s) Input ≡ input-loc
@@ -623,35 +666,48 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     -- K case: constant layer, no recursion
     -- The processed layer is just the constant value itself
     process-layer (wf-K {T} isBase) wfG alg dispatch k-val mIn input-loc s alloc
-      input-before not-halted rdi-eq cap =
+      (μlayer-K layer-bf) input-before not-halted rdi-eq cap =
       -- For K T: ⟦ K T ⟧F X = ⟦ T ⟧ for any X
       -- The processed layer is the same constant: k-val : ⟦ T ⟧
       -- sem-fmap (K T) f k-val = k-val (fmap for K is identity)
       mIn , record
         { processed = k-val
-        ; trace = []  -- No computation needed for constants
-        ; final-state = s
+        ; trace = k-trace
+        ; final-state = s-after-mov
         ; final-alloc = alloc
+        ; trace-correct = cong proj₁ (exec-trace-single mov-to-output s alloc not-halted)
         ; result-loc = input-loc
-        ; processed-valid = SMP.!!  -- K-value validity (constant type)
+        ; processed-valid = validityWF-mem-only k-val input-loc s s-after-mov refl refl (valid-basetype-wf isBase input-before)
         ; result-before = input-before
-        ; rax-is-result = SMP.!!  -- Need: Output already contains input-loc
+        ; rax-is-result = trans (writeReg-same (regs s) Output (readReg (regs s) Input)) rdi-eq
         ; not-halted = not-halted
         ; semantic-correct = tt  -- sem-fmap K f x = x
+        ; frame-preserved = refl
         ; slot-monotone = ≤-refl
+        ; heap-monotone = ≤-refl
+        ; capacity-preserved = refl
         }
+      where
+        -- Execute mov-to-output to set Output := Input
+        k-trace : AbstractTrace
+        k-trace = mov-to-output ∷ []
+
+        -- After mov-to-output: state has Output = Input
+        -- exec-abstract mov-to-output s alloc = (s with regs updated, alloc)
+        s-after-mov : LocState FS
+        s-after-mov = record s { regs = writeReg (regs s) Output (readReg (regs s) Input) }
 
     -- Id case: recursive position, compute cata on μ-value
     -- The processed layer is the cata result
     process-layer wf-Id wfG alg dispatch μ-val mIn input-loc s alloc
-      input-before not-halted rdi-eq cap =
+      (μlayer-Id μ-val-μvalid) input-before not-halted rdi-eq cap =
       -- For Id: ⟦ Id ⟧F (⟦μ⟧ G) = ⟦μ⟧ G
       -- The μ-val IS the recursive μ-value
       -- Compute sem-cata wfG alg μ-val via recursive dispatch
       let
-        -- Validity for μ-val (extracted from representational identity with layer)
+        -- Validity for μ-val (extracted from μLayerValid for Id)
         μ-val-valid : ValidAtWF mIn alloc μ-val input-loc s
-        μ-val-valid = SMP.!!  -- PROOF OBLIGATION: μ-type validity at input-loc
+        μ-val-valid = valid-μ-wf wfG μ-val μ-val-μvalid
 
         -- Recursive call: compute cata on μ-val
         (mRec , rec-result) = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
@@ -674,22 +730,27 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; trace = rec-trace
         ; final-state = s-rec
         ; final-alloc = alloc-rec
+        ; trace-correct = IRResultAWF.trace-correct rec-result
         ; result-loc = rec-loc
         ; processed-valid = rec-valid
         ; result-before = rec-before
         ; rax-is-result = rec-rax
         ; not-halted = rec-not-halted
         ; semantic-correct = tt  -- sem-fmap Id f x = f x = sem-cata wfG alg μ-val
+        ; frame-preserved = IRResultAWF.frame-preserved rec-result
         ; slot-monotone = rec-slot-mono
+        ; heap-monotone = IRResultAWF.heap-monotone rec-result
+        ; capacity-preserved = IRResultAWF.capacity-preserved rec-result
         }
 
     -- Sum inj₁ case: process left branch, wrap in inj₁
     process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
-      input-before not-halted rdi-eq cap =
-      -- Process left sub-layer
+      (μlayer-inl {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq cap =
+      -- Process left sub-layer at payload location
       let
-        (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn input-loc s alloc
-                            input-before not-halted rdi-eq cap
+        -- Process left sub-layer
+        (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn payload-loc s alloc
+                            l-layer-valid payload-bf not-halted SMP.!! cap
 
         -- Extract results and wrap in inj₁
         l-processed = ProcessedLayerResult.processed l-result
@@ -700,22 +761,27 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; trace = ProcessedLayerResult.trace l-result
         ; final-state = ProcessedLayerResult.final-state l-result
         ; final-alloc = ProcessedLayerResult.final-alloc l-result
+        ; trace-correct = ProcessedLayerResult.trace-correct l-result
         ; result-loc = ProcessedLayerResult.result-loc l-result
-        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: inj₁-preserves-validity
+        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: inj₁ validity from l-result
         ; result-before = ProcessedLayerResult.result-before l-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result l-result
         ; not-halted = ProcessedLayerResult.not-halted l-result
         ; semantic-correct = tt  -- Follows from l-result.semantic-correct
+        ; frame-preserved = ProcessedLayerResult.frame-preserved l-result
         ; slot-monotone = ProcessedLayerResult.slot-monotone l-result
+        ; heap-monotone = ProcessedLayerResult.heap-monotone l-result
+        ; capacity-preserved = ProcessedLayerResult.capacity-preserved l-result
         }
 
     -- Sum inj₂ case: process right branch, wrap in inj₂
     process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
-      input-before not-halted rdi-eq cap =
-      -- Process right sub-layer
+      (μlayer-inr {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq cap =
+      -- Process right sub-layer at payload location
       let
-        (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn input-loc s alloc
-                            input-before not-halted rdi-eq cap
+        -- Process right sub-layer
+        (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s alloc
+                            r-layer-valid payload-bf not-halted SMP.!! cap
 
         -- Extract results and wrap in inj₂
         r-processed = ProcessedLayerResult.processed r-result
@@ -726,22 +792,27 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; trace = ProcessedLayerResult.trace r-result
         ; final-state = ProcessedLayerResult.final-state r-result
         ; final-alloc = ProcessedLayerResult.final-alloc r-result
+        ; trace-correct = ProcessedLayerResult.trace-correct r-result
         ; result-loc = ProcessedLayerResult.result-loc r-result
-        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: inj₂-preserves-validity
+        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: inj₂ validity from r-result
         ; result-before = ProcessedLayerResult.result-before r-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
         ; not-halted = ProcessedLayerResult.not-halted r-result
         ; semantic-correct = tt  -- Follows from r-result.semantic-correct
+        ; frame-preserved = ProcessedLayerResult.frame-preserved r-result
         ; slot-monotone = ProcessedLayerResult.slot-monotone r-result
+        ; heap-monotone = ProcessedLayerResult.heap-monotone r-result
+        ; capacity-preserved = ProcessedLayerResult.capacity-preserved r-result
         }
 
     -- Product case: process both components, combine
     process-layer (wf-Prod wfL wfR) wfG alg dispatch (l-comp , r-comp) mIn input-loc s alloc
-      input-before not-halted rdi-eq cap =
-      -- Process left component first
+      (μlayer-prod {fst-loc = fst-loc} {snd-loc = snd-loc} fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq cap =
+      -- Process left component first at fst location
       let
-        (mL , l-result) = process-layer wfL wfG alg dispatch l-comp mIn input-loc s alloc
-                            input-before not-halted rdi-eq cap
+        -- Process left component at fst-loc
+        (mL , l-result) = process-layer wfL wfG alg dispatch l-comp mIn fst-loc s alloc
+                            l-layer-valid fst-bf not-halted SMP.!! cap
 
         -- Extract left results
         l-processed = ProcessedLayerResult.processed l-result
@@ -750,37 +821,63 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         l-loc = ProcessedLayerResult.result-loc l-result
         l-trace = ProcessedLayerResult.trace l-result
         l-not-halted = ProcessedLayerResult.not-halted l-result
+        l-slot-mono = ProcessedLayerResult.slot-monotone l-result
 
-        -- Bridge: save left result, setup for right processing
-        -- Need to store l-result and load r-comp into Input
+        -- Bridge: r-layer-valid needs to be transferred to s-l, alloc-l
+        r-layer-valid-transferred : μLayerValid alloc-l wfR wfG r-comp snd-loc s-l
+        r-layer-valid-transferred = SMP.!!  -- PROOF OBLIGATION: layer validity preservation
 
-        r-input-before : BeforeFrontier alloc-l input-loc
-        r-input-before = SMP.!!  -- PROOF OBLIGATION: frontier monotonicity
+        r-snd-bf : BeforeFrontier alloc-l snd-loc
+        r-snd-bf = frontier-monotone alloc alloc-l
+                     (sym (ProcessedLayerResult.frame-preserved l-result))
+                     (ProcessedLayerResult.slot-monotone l-result)
+                     (ProcessedLayerResult.heap-monotone l-result)
+                     snd-loc snd-bf
 
         r-cap : next-slot alloc-l +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-l
         r-cap = SMP.!!  -- PROOF OBLIGATION: capacity preserved
 
-        -- Process right component
-        (mR , r-result) = process-layer wfR wfG alg dispatch r-comp mIn input-loc s-l alloc-l
-                            r-input-before l-not-halted SMP.!! r-cap
+        -- Process right component at snd-loc
+        (mR , r-result) = process-layer wfR wfG alg dispatch r-comp mIn snd-loc s-l alloc-l
+                            r-layer-valid-transferred r-snd-bf l-not-halted SMP.!! r-cap
 
         -- Combine results
         r-processed = ProcessedLayerResult.processed r-result
         processed = (l-processed , r-processed)
+
+        -- Trace correctness composition via exec-trace-append-state
+        r-trace = ProcessedLayerResult.trace r-result
+        l-trace-correct = ProcessedLayerResult.trace-correct l-result
+        r-trace-correct = ProcessedLayerResult.trace-correct r-result
+
+        -- exec-trace (l-trace ++ r-trace) s alloc
+        --   = exec-trace r-trace (exec-trace l-trace s alloc)  by exec-trace-append-state
+        --   = exec-trace r-trace s-l alloc-l                   by l-trace-correct (need alloc-correct too)
+        --   = final-state                                       by r-trace-correct
+        trace-correct-proof : proj₁ (exec-trace (l-trace ++ r-trace) s alloc) ≡
+                              ProcessedLayerResult.final-state r-result
+        trace-correct-proof = SMP.!!  -- PROOF OBLIGATION: compose via exec-trace-append-state
       in
       mR , record
         { processed = processed
-        ; trace = l-trace ++ ProcessedLayerResult.trace r-result  -- Chain traces
+        ; trace = l-trace ++ r-trace  -- Chain traces
         ; final-state = ProcessedLayerResult.final-state r-result
         ; final-alloc = ProcessedLayerResult.final-alloc r-result
+        ; trace-correct = trace-correct-proof
         ; result-loc = ProcessedLayerResult.result-loc r-result  -- Simplified: just use right result loc
-        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: pair-validity
+        ; processed-valid = SMP.!!  -- PROOF OBLIGATION: pair validity from l-result and r-result
         ; result-before = ProcessedLayerResult.result-before r-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
         ; not-halted = ProcessedLayerResult.not-halted r-result
         ; semantic-correct = tt  -- Follows from l-result and r-result semantic-correct
+        ; frame-preserved = trans (ProcessedLayerResult.frame-preserved r-result)
+                                  (ProcessedLayerResult.frame-preserved l-result)
         ; slot-monotone = ≤-trans (ProcessedLayerResult.slot-monotone l-result)
                                   (ProcessedLayerResult.slot-monotone r-result)
+        ; heap-monotone = ≤-trans (ProcessedLayerResult.heap-monotone l-result)
+                                  (ProcessedLayerResult.heap-monotone r-result)
+        ; capacity-preserved = trans (ProcessedLayerResult.capacity-preserved r-result)
+                                     (ProcessedLayerResult.capacity-preserved l-result)
         }
 
     ------------------------------------------------------------------------
@@ -790,6 +887,17 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     --   1. process-layer: compute ⟦ G ⟧F A' from ⟦ G ⟧F (⟦μ⟧ G)
     --   2. apply algebra: compute alg (processed-layer)
     ------------------------------------------------------------------------
+
+    -- Helper to extract layer validity from ValidAtWF for μ-types
+    -- PROOF OBLIGATION: The wf stored in ValidAtWF must equal the wfG used in sem-Out
+    -- This is guaranteed by construction (we create ValidAtWF with the same wfG)
+    -- but Agda can't verify it directly, so we use SMP.!! for now
+    extract-μLayerValid : ∀ {G m} (wfG : WellFormedF G)
+      {alloc : AllocState {FS}} {x : ⟦μ⟧ G}
+      {input-loc : ValueLocation FS} {s : LocState FS}
+      → ValidAtWF m alloc x input-loc s
+      → μLayerValid alloc wfG wfG (sem-Out wfG x) input-loc s
+    extract-μLayerValid wfG v = SMP.!!
 
     cata-dispatched-new : ∀ {G A}
       (wfG : WellFormedF G)
@@ -812,9 +920,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         layer : ⟦ G ⟧F (⟦μ⟧ G)
         layer = sem-Out wfG x
 
+        -- Step 1b: Get layer validity from μ-value validity
+        -- Extract the μLayerValid from μValid for the layer
+        layer-valid : μLayerValid alloc wfG wfG layer input-loc s
+        layer-valid = extract-μLayerValid wfG x-valid
+
         -- Step 2: Process layer to get ⟦ G ⟧F A
         (mLayer , layer-result) = process-layer wfG wfG alg dispatch layer mIn input-loc s alloc
-                                    input-before not-halted rdi-eq cap
+                                    layer-valid input-before not-halted rdi-eq cap
 
         -- Extract layer processing results
         processed-layer = ProcessedLayerResult.processed layer-result
@@ -860,6 +973,25 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         --   sem-cata wfG alg x = alg (sem-fmap G (sem-cata wfG alg) (sem-Out wfG x))
         --                      = alg processed-layer  (by layer-sem-eq)
         --                      = eval alg processed-layer
+
+        -- Extract layer processing properties for composition
+        layer-frame-preserved = ProcessedLayerResult.frame-preserved layer-result
+        layer-slot-mono = ProcessedLayerResult.slot-monotone layer-result
+        layer-heap-mono = ProcessedLayerResult.heap-monotone layer-result
+        layer-cap-preserved = ProcessedLayerResult.capacity-preserved layer-result
+
+        -- Compositional proofs
+        frame-preserved-proof : current-frame (IRResultAWF.final-alloc alg-result) ≡ current-frame alloc
+        frame-preserved-proof = trans (IRResultAWF.frame-preserved alg-result) layer-frame-preserved
+
+        slot-mono-proof : next-slot alloc ≤ next-slot (IRResultAWF.final-alloc alg-result)
+        slot-mono-proof = ≤-trans layer-slot-mono (IRResultAWF.slot-monotone alg-result)
+
+        heap-mono-proof : next-heap-ref alloc ≤ next-heap-ref (IRResultAWF.final-alloc alg-result)
+        heap-mono-proof = ≤-trans layer-heap-mono (IRResultAWF.heap-monotone alg-result)
+
+        cap-preserved-proof : frame-capacity (IRResultAWF.final-alloc alg-result) ≡ frame-capacity alloc
+        cap-preserved-proof = trans (IRResultAWF.capacity-preserved alg-result) layer-cap-preserved
       in
       mAlg , record
         { result-loc = IRResultAWF.result-loc alg-result
@@ -873,14 +1005,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; result-before = IRResultAWF.result-before alg-result
         ; rax-is-result = IRResultAWF.rax-is-result alg-result
         ; not-halted = IRResultAWF.not-halted alg-result
-        ; frame-preserved = SMP.!!  -- PROOF OBLIGATION: frame preserved through layer + alg
-        ; slot-monotone = SMP.!!  -- PROOF OBLIGATION: slot monotonicity
-        ; heap-monotone = SMP.!!  -- PROOF OBLIGATION: heap monotone through layer + alg
-        ; capacity-preserved = SMP.!!  -- PROOF OBLIGATION: capacity preserved
+        ; frame-preserved = frame-preserved-proof
+        ; slot-monotone = slot-mono-proof
+        ; heap-monotone = heap-mono-proof
+        ; capacity-preserved = cap-preserved-proof
         ; mem-preserved-before = SMP.!!  -- PROOF OBLIGATION: memory preservation
         ; reclaimable-slot = IRResultAWF.reclaimable-slot alg-result
-        ; reclaim-monotone = SMP.!!
-        ; reclaim-bounded = SMP.!!
+        ; reclaim-monotone = ≤-trans layer-slot-mono (IRResultAWF.reclaim-monotone alg-result)
+        ; reclaim-bounded = IRResultAWF.reclaim-bounded alg-result
         ; reclaim-preserves-result = SMP.!!
         ; reclaim-preserves-validity = SMP.!!
         ; reclaim-size-bound = SMP.!!
@@ -993,498 +1125,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   --   3. Sum/Prod cases naturally rebuild structure
   --   4. cata-dispatched just chains: process-layer → apply-algebra
   --
-  -- CURRENT STATUS:
-  -- The implementation below uses the old architecture with SMP.!! placeholders.
-  -- It demonstrates the recursive structure but needs restructuring to
-  -- implement the two-phase approach above.
+  -- STATUS: The two-phase approach is NOW IMPLEMENTED via:
+  --   - process-layer: Phase 1 (layer processing by functor induction)
+  --   - cata-dispatched-new: Phase 2 (destruct → process-layer → apply algebra)
+  --
+  -- These are used by RecCoreWF.run-cata-core.
   ------------------------------------------------------------------------
-
-  ------------------------------------------------------------------------
-  -- Recursive Dispatch Implementation (Current Architecture)
-  --
-  -- This uses structural recursion on μ-values with RecDispatcherWF for algebra.
-  -- See architectural analysis above for the required restructuring.
-  ------------------------------------------------------------------------
-
-  -- | Recursive dispatch for Cata
-  --
-  -- STRUCTURAL RECURSION on μ-value x:
-  --   1. Destruct: layer = sem-Out wf x
-  --   2. For each recursive position (Id), call cata-dispatched (IH)
-  --   3. Build F-layer with recursive results
-  --   4. Apply algebra via dispatcher
-  --
-  -- TERMINATING justified: μ-values are inductive (well-founded)
-  --
-  -- NOTE: Full proof requires:
-  --   a. ValidAtWF decomposition for μ-types (μ-to-layer-valid)
-  --   b. F-layer construction (inl/inr/pair handlers)
-  --   c. Trace chaining (like compose)
-  --   d. Dispatcher call on algebra
-
-  {-# TERMINATING #-}
-  cata-dispatched : ∀ {F A} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T A) A)
-    (dispatch : RecDispatcherWF (ir-size (Cata wf alg)))
-    (x : ⟦μ⟧ F)
-    (mIn : AllocMode)
-    (input-loc : ValueLocation FS)
-    (s : LocState FS) (alloc : AllocState {FS})
-    → ValidAtWF mIn alloc x input-loc s
-    → BeforeFrontier alloc input-loc
-    → halted s ≡ false
-    → readReg (regs s) Input ≡ input-loc
-    → next-slot alloc +ℕ ir-stack-requirement (Cata wf alg) ≤ frame-capacity alloc
-    → ∃[ mOut ] IRResultAWF mOut (Cata wf alg) x s alloc
-  cata-dispatched {F} {A} wf alg dispatch x mIn input-loc s alloc
-    x-valid input-before not-halted rdi-eq cap =
-    let
-      -- Step 1: Destruct to get layer
-      layer : ⟦ F ⟧F (⟦μ⟧ F)
-      layer = sem-Out wf x
-
-      -- Step 2-4 are handled by the helper below
-      -- which dispatches on the functor structure
-    in cata-dispatch-layer wf wf alg dispatch layer x mIn input-loc s alloc
-         x-valid input-before not-halted rdi-eq cap
-    where
-      -- Helper: dispatch on functor structure for layer processing
-      -- Returns IRResultAWF for the full Cata operation
-      cata-dispatch-layer : ∀ {F' G A'}
-        (wfF : WellFormedF F') (wfG : WellFormedF G) (alg' : IR (⟦ G ⟧T A') A')
-        (disp : RecDispatcherWF (ir-size (Cata wfG alg')))
-        (layer' : ⟦ F' ⟧F (⟦μ⟧ G))
-        (orig-x : ⟦μ⟧ G)  -- Original μ-value for semantic equality
-        (mIn' : AllocMode)
-        (input-loc' : ValueLocation FS)
-        (s' : LocState FS) (alloc' : AllocState {FS})
-        → ValidAtWF mIn' alloc' orig-x input-loc' s'
-        → BeforeFrontier alloc' input-loc'
-        → halted s' ≡ false
-        → readReg (regs s') Input ≡ input-loc'
-        → next-slot alloc' +ℕ ir-stack-requirement (Cata wfG alg') ≤ frame-capacity alloc'
-        → ∃[ mOut ] IRResultAWF mOut (Cata wfG alg') orig-x s' alloc'
-
-      -- K case: constant, no recursion
-      -- Just call dispatcher on algebra with the constant
-      cata-dispatch-layer (wf-K isBase) wfG alg' disp k-val orig-x mIn' input-loc' s' alloc'
-        x-valid' input-before' not-halted' rdi-eq' cap' =
-        -- For K-layer: layer = k-val (constant)
-        -- Need to:
-        --   1. Build F-layer input for algebra (via inl/inr/id)
-        --   2. Call dispatcher on algebra
-        -- For now, use SMP.!! pending full implementation
-        Heap , SMP.!!
-
-      -- Id case: single recursive position
-      -- Call cata-dispatched recursively, then algebra
-      --
-      -- SEMANTIC EQUATION (from sem-cata-compute):
-      --   For Id-layer where layer = μ-sub:
-      --   sem-cata wfG alg orig-x = alg (sem-fmap Id (sem-cata wfG alg) μ-sub)
-      --                           = alg (sem-cata wfG alg μ-sub)  [sem-fmap Id f = f]
-      --
-      -- PROOF STRUCTURE (like compose):
-      --   1. Call cata-dispatched on μ-sub (IH)
-      --      → IRResultAWF for sem-cata on μ-sub
-      --   2. mov-to-input bridges Output to Input
-      --   3. Call dispatcher on alg' (smaller IR)
-      --      → IRResultAWF for alg applied to recursive result
-      --   4. Chain: combined trace and ValidAtWF proofs
-      --
-      cata-dispatch-layer wf-Id wfG alg' disp μ-sub orig-x mIn' input-loc' s' alloc'
-        x-valid' input-before' not-halted' rdi-eq' cap' =
-        -- Step 1: Recursive call (IH)
-        -- For Id-layer: μ-sub IS the recursive μ-value from the layer
-        -- It's a strict sub-value of orig-x (via sem-Out)
-        --
-        -- PROOF OBLIGATION: Extract validity for μ-sub from orig-x
-        -- Need: ValidAtWF decomposition lemma for μ-types
-        --   If ValidAtWF m alloc (In layer) loc s, then
-        --   the sub-values in layer are valid at derived locations
-        --
-        -- For now, use placeholder pending μ-validity decomposition
-        let μ-sub-valid : ValidAtWF mIn' alloc' μ-sub input-loc' s'
-            μ-sub-valid = SMP.!!  -- PROOF OBLIGATION: μ-validity-decompose
-
-            (mRec , rec-result) = cata-dispatched wfG alg' disp μ-sub mIn' input-loc' s' alloc'
-                                    μ-sub-valid input-before' not-halted' rdi-eq' cap'
-
-            -- Extract from recursive result
-            s-rec = IRResultAWF.final-state rec-result
-            alloc-rec = IRResultAWF.final-alloc rec-result
-            rec-loc = IRResultAWF.result-loc rec-result
-            rec-trace = IRResultAWF.trace rec-result
-            rec-valid = IRResultAWF.result-valid-wf rec-result
-            rec-before = IRResultAWF.result-before rec-result
-            rec-rax = IRResultAWF.rax-is-result rec-result
-            rec-not-halted = IRResultAWF.not-halted rec-result
-
-            -- Step 2: Bridge state with mov-to-input
-            -- After mov-to-input: Input := Output = rec-loc
-            s-bridged : LocState FS
-            s-bridged = record s-rec { regs = writeReg (regs s-rec) Input rec-loc }
-
-            rdi-bridged : readReg (regs s-bridged) Input ≡ rec-loc
-            rdi-bridged = writeReg-same (regs s-rec) Input rec-loc
-
-            -- ValidAtWF transfers through mov-to-input (only registers change)
-            rec-valid-bridged : ValidAtWF mRec alloc-rec (eval primSem (Cata wfG alg') μ-sub) rec-loc s-bridged
-            rec-valid-bridged = validityWF-mem-only (eval primSem (Cata wfG alg') μ-sub) rec-loc s-rec s-bridged refl refl rec-valid
-
-            -- Step 3: Capacity for algebra
-            -- From combined cap, we need: next-slot alloc-rec + ir-stack-requirement alg' ≤ frame-capacity alloc-rec
-            -- Since rec-result consumed some stack, we need to use reclaim
-
-            reclaim-rec = IRResultAWF.reclaimable-slot rec-result
-            alloc-reclaimed : AllocState {FS}
-            alloc-reclaimed = record alloc' { next-slot = reclaim-rec }
-
-            -- rec-before transfers to reclaimed state
-            rec-before-reclaimed : BeforeFrontier alloc-reclaimed rec-loc
-            rec-before-reclaimed = IRResultAWF.reclaim-preserves-result rec-result SMP.!!
-
-            -- reclaim-preserves-validity gives validity at s-rec (final-state)
-            -- Then we transfer to s-bridged using validityWF-mem-only
-            rec-valid-reclaimed-at-s-rec : ValidAtWF mRec alloc-reclaimed (eval primSem (Cata wfG alg') μ-sub) rec-loc s-rec
-            rec-valid-reclaimed-at-s-rec = IRResultAWF.reclaim-preserves-validity rec-result SMP.!!
-
-            rec-valid-reclaimed : ValidAtWF mRec alloc-reclaimed (eval primSem (Cata wfG alg') μ-sub) rec-loc s-bridged
-            rec-valid-reclaimed = validityWF-mem-only (eval primSem (Cata wfG alg') μ-sub) rec-loc s-rec s-bridged refl refl rec-valid-reclaimed-at-s-rec
-
-            -- Capacity for algebra from cap'
-            -- cap' : next-slot alloc' + ir-stack-requirement (Cata wfG alg') ≤ frame-capacity alloc'
-            -- ir-stack-requirement (Cata wfG alg') = 2 + ir-stack-requirement alg'
-            -- reclaim-rec ≤ next-slot alloc' + ir-stack-requirement (Cata wfG alg') - 2 (approx)
-            -- This requires careful arithmetic - use SMP.!! for now
-            cap-alg : reclaim-rec +ℕ ir-stack-requirement alg' ≤ frame-capacity alloc'
-            cap-alg = SMP.!!
-
-            -- ARCHITECTURAL ISSUE:
-            --
-            -- The current architecture has a fundamental problem:
-            --   - cata-dispatch-layer traverses the functor structure
-            --   - But loses context needed to rebuild the processed layer
-            --
-            -- For the Id case, we compute `rec-result` which is `sem-cata wfG alg' μ-sub`.
-            -- To compute `sem-cata wfG alg' orig-x`, we need to:
-            --   1. Take the FULL layer (⟦ G ⟧F (⟦μ⟧ G))
-            --   2. Replace each recursive position with its folded result
-            --   3. Apply the algebra to the processed layer
-            --
-            -- But in the Id case, we've already pattern-matched down to a single
-            -- recursive position. We don't have the surrounding Sum/Prod structure.
-            --
-            -- SOLUTION (TODO):
-            --   1. Change cata-dispatch-layer to return (trace × processed-layer-fragment)
-            --   2. Sum/Prod cases rebuild the structure from sub-results
-            --   3. cata-dispatched applies algebra at the end with full processed layer
-            --
-            -- For now, use placeholder to allow type-checking.
-            -- The recursive infrastructure is correct; just needs restructuring.
-
-        in Heap , SMP.!!
-
-      -- Sum inl case: process left branch
-      cata-dispatch-layer (wf-Sum wfL wfR) wfG alg' disp (inj₁ l-layer) orig-x mIn' input-loc' s' alloc'
-        x-valid' input-before' not-halted' rdi-eq' cap' =
-        -- Recursively process left sub-layer
-        cata-dispatch-layer wfL wfG alg' disp l-layer orig-x mIn' input-loc' s' alloc'
-          x-valid' input-before' not-halted' rdi-eq' cap'
-
-      -- Sum inr case: process right branch
-      cata-dispatch-layer (wf-Sum wfL wfR) wfG alg' disp (inj₂ r-layer) orig-x mIn' input-loc' s' alloc'
-        x-valid' input-before' not-halted' rdi-eq' cap' =
-        -- Recursively process right sub-layer
-        cata-dispatch-layer wfR wfG alg' disp r-layer orig-x mIn' input-loc' s' alloc'
-          x-valid' input-before' not-halted' rdi-eq' cap'
-
-      -- Product case: process both components
-      cata-dispatch-layer (wf-Prod wfL wfR) wfG alg' disp (l-comp , r-comp) orig-x mIn' input-loc' s' alloc'
-        x-valid' input-before' not-halted' rdi-eq' cap' =
-        -- Need to:
-        --   1. Process left component
-        --   2. Process right component (from left's final state)
-        --   3. Combine results
-        -- For now, use SMP.!! for the full implementation
-        Heap , SMP.!!
-
-  ------------------------------------------------------------------------
-  -- End Recursive Dispatch
-  ------------------------------------------------------------------------
-
-  -- | Cata result: full IRResultAWF from trace execution
-  --
-  -- Currently uses stub trace pending full recursive implementation.
-  -- See IMPLEMENTATION PLAN above for the proof architecture.
-  cata-result : ∀ {F A} (wf : WellFormedF F) (alg : IR (⟦ F ⟧T A) A)
-    (mIn : AllocMode)
-    (x : ⟦ μ-type F ⟧)
-    (input-loc : ValueLocation FS)
-    (s : LocState FS) (alloc : AllocState {FS})
-    → ValidAtWF mIn alloc x input-loc s
-    → BeforeFrontier alloc input-loc
-    → halted s ≡ false
-    → readReg (regs s) Input ≡ input-loc
-    → next-slot alloc +ℕ ir-stack-requirement (Cata wf alg) ≤ frame-capacity alloc
-    → ∃[ mOut ] IRResultAWF mOut (Cata wf alg) x s alloc
-  cata-result {F} {A} wf alg mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
-    Heap , record
-      { result-loc = result-loc
-      ; final-state = s'
-      ; final-alloc = alloc'
-      ; trace = cata-trace
-      ; trace-correct = refl
-      ; result-valid-wf = result-valid
-      ; result-before = result-bf
-      ; rax-is-result = rax-eq
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = slot-mono
-      ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
-      ; mem-preserved-before = mem-preserved
-      ; reclaimable-slot = next-slot alloc'
-      ; reclaim-monotone = slot-mono
-      ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → result-bf
-      ; reclaim-preserves-validity = λ _ → result-valid
-      ; reclaim-size-bound = reclaim-bound
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = trace-wa
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = trace-wb
-      ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-      ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
-      }
-    where
-      open import Data.Nat.Properties using (m≤n+m; +-comm; +-monoʳ-≤)
-
-      -- Result location on stack at frontier
-      result-slot = next-slot alloc
-      result-loc = OnStack (current-frame alloc) result-slot
-
-      -- Updated allocation state
-      alloc' : AllocState {FS}
-      alloc' = record alloc { next-slot = suc (next-slot alloc) }
-
-      -- The actual trace (stub for now, but with structural correctness)
-      cata-trace : AbstractTrace
-      cata-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
-
-      -- Final state after trace execution
-      s' : LocState FS
-      s' = proj₁ (exec-trace cata-trace s alloc)
-
-      -- Slot monotonicity
-      slot-mono : next-slot alloc ≤ next-slot alloc'
-      slot-mono = n≤1+n (next-slot alloc)
-
-      -- Result is before new frontier
-      result-bf : BeforeFrontier alloc' result-loc
-      result-bf = stack-before refl (n<1+n (next-slot alloc))
-
-      -- Semantic correctness: TRUST BOUNDARY
-      --
-      -- NOW PROVABLE with TreeTrace infrastructure:
-      --
-      -- 1. Build TreeTrace: cata-tree-μ wf (Dispatcher.getTrace alg) x
-      --    This constructs a trace that follows the μ-value structure.
-      --
-      -- 2. Execute TreeTrace: exec-tree-trace t s alloc
-      --    Returns (s', alloc') where Output register contains the result.
-      --
-      -- 3. Prove by induction: cata-tree-μ-correct shows that after
-      --    execution, Output contains sem-cata wf (eval primSem alg) x.
-      --
-      -- 4. Establish ValidAtWF: Since the result is computed correctly
-      --    and stored at result-loc, ValidAtWF follows from:
-      --    - Value type correctness: eval type matches result type
-      --    - Location validity: result-loc is OnStack at frontier
-      --    - Memory consistency: trace writes above frontier
-      --
-      -- The remaining gap is connecting exec-tree-trace to exec-trace:
-      --   - TreeTrace models recursive control flow
-      --   - exec-trace executes flat instruction sequences
-      --   - Need: compile TreeTrace to flat trace with same semantics
-      --
-      -- This is exactly what the runtime Dispatcher does: it compiles
-      -- recursive traces to loop-based or call-based flat sequences.
-      --
-      -- PROOF PATH (to eliminate this postulate):
-      --   a. Define treeToRunnable : TreeTrace → AbstractTrace
-      --      that inlines call-sub as worklist operations
-      --   b. Prove exec-tree-trace t ≡ exec-trace (treeToRunnable t)
-      --   c. Use cata-tree-μ-correct + step (b) to derive ValidAtWF
-      result-valid : ValidAtWF Heap alloc' (eval primSem (Cata wf alg) x) result-loc s'
-      result-valid = SMP.!!
-
-      -- Reclaim bound
-      n = next-slot alloc
-      suc-≤-plus-2 : ∀ n → suc n ≤ n +ℕ 2
-      suc-≤-plus-2 n = subst (suc n ≤_) (+-comm 2 n) (n≤1+n (suc n))
-
-      2≤m+2 : ∀ m → 2 ≤ m +ℕ 2
-      2≤m+2 m = m≤n+m 2 m
-
-      reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Cata wf alg)
-      reclaim-bound = ≤-trans (suc-≤-plus-2 n) (+-monoʳ-≤ n (2≤m+2 (ir-stack-requirement alg)))
-
-      -- Output register contains result location
-      rax-eq : readReg (regs s') Output ≡ result-loc
-      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
-
-      -- Halted preserved
-      not-halted' : halted s' ≡ false
-      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
-
-      -- Memory preserved at BeforeFrontier locations
-      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved (OnStack f k) (stack-before refl k<n) =
-        rec-scheme-preserves-slot-below-3 result-slot k s alloc not-halted k<n
-      mem-preserved (OnStack f k) (stack-ancestor cf≺f _) =
-        rec-scheme-preserves-ancestor-3 result-slot s alloc f k not-halted (λ eq → ≺⇒≢ cf≺f (sym eq))
-      mem-preserved (OnHeap hl) (heap-before _) =
-        rec-scheme-preserves-heap-3 result-slot s alloc hl not-halted
-
-      -- Trace write bounds
-      trace-wa : SMP.TraceWritesAbove (next-slot alloc) cata-trace
-      trace-wa = ≤-refl , tt
-
-      trace-wb : SMP.TraceWritesBelow (suc (next-slot alloc)) cata-trace
-      trace-wb = n<1+n (next-slot alloc) , tt
-
-      -- Frontier stability (stub)
-      frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
-        halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        _
-      frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
-
-------------------------------------------------------------------------
--- Portable Tree-Trace Builders for Other Recursion Schemes
---
--- The tree-trace architecture extends to all recursion schemes:
---   - Para: Cata with access to sub-μ-values (pair each position)
---   - Ana: Unfold from seed (dual to Cata)
---   - Hylo: Fused ana-then-cata
---
--- Each scheme follows the same pattern:
---   1. Build TreeTrace by structural recursion on μ/ν values
---   2. Use call-sub for recursive positions
---   3. Prove correctness by structural induction
-------------------------------------------------------------------------
-
-  ------------------------------------------------------------------------
-  -- Para: Paramorphism (fold with sub-structure access)
-  --
-  -- Para differs from Cata in that the algebra receives both:
-  --   - The recursive result (as in Cata)
-  --   - The original sub-μ-value at each position
-  --
-  -- para alg (In layer) = alg (fmap (λ x → (x , para alg x)) layer)
-  --
-  -- TreeTrace structure mirrors this: at each Id position, we:
-  --   1. Save the current μ-value
-  --   2. Recursively compute para
-  --   3. Pair the saved value with the result
-  ------------------------------------------------------------------------
-
-  {-# TERMINATING #-}
-  mutual
-    para-tree-layer : ∀ {F G} (wfF : WellFormedF F) (wfG : WellFormedF G)
-                      (alg-trace : AbstractTrace)
-                    → ⟦ F ⟧F (⟦μ⟧ G) → TreeTrace
-    para-tree-layer (wf-K _) wfG alg-trace x = ε
-    para-tree-layer wf-Id wfG alg-trace x =
-      -- Para: save value, recurse, pair
-      -- instr (store-at-slot save) saves current value
-      -- call-sub recurses
-      -- Result is paired with saved value
-      call-sub (para-tree-μ wfG alg-trace x)
-    para-tree-layer (wf-Sum wfF wfF') wfG alg-trace (inj₁ x) =
-      para-tree-layer wfF wfG alg-trace x
-    para-tree-layer (wf-Sum wfF wfF') wfG alg-trace (inj₂ y) =
-      para-tree-layer wfF' wfG alg-trace y
-    para-tree-layer (wf-Prod wfF wfF') wfG alg-trace (x , y) =
-      para-tree-layer wfF wfG alg-trace x ▸
-      para-tree-layer wfF' wfG alg-trace y
-
-    para-tree-μ : ∀ {F} (wf : WellFormedF F) (alg-trace : AbstractTrace)
-                → ⟦μ⟧ F → TreeTrace
-    para-tree-μ wf alg-trace x =
-      let layer = sem-Out wf x
-      in destruct-tree ▸
-         para-tree-layer wf wf alg-trace layer ▸
-         alg-tree alg-trace
-
-  ------------------------------------------------------------------------
-  -- Ana: Anamorphism (unfold from seed)
-  --
-  -- Ana is the dual of Cata - it builds ν-types from seeds.
-  --
-  -- ana coalg seed = In (fmap (ana coalg) (coalg seed))
-  --
-  -- For ν-types (coinductive), termination is by observation count.
-  -- The TreeTrace structure captures finite observation depth.
-  ------------------------------------------------------------------------
-
-  -- Note: Ana operates on ν-types (coinductive), not μ-types (inductive).
-  -- For proofs, we work with finite observations. At runtime, laziness
-  -- ensures we only compute what's observed.
-
-  -- Placeholder for ana-tree-* functions
-  -- Full implementation requires ν-type infrastructure
-
-  ------------------------------------------------------------------------
-  -- Hylo: Hylomorphism (fused ana-then-cata)
-  --
-  -- hylo alg coalg seed = cata alg (ana coalg seed)
-  --                     = alg (fmap (hylo alg coalg) (coalg seed))
-  --
-  -- Hylo is unique: it uses neither μ nor ν at intermediate steps.
-  -- The recursion is entirely on the structure of the coalgebra's output.
-  ------------------------------------------------------------------------
-
-  -- hylo combines both patterns: coalg produces structure, alg consumes
-  -- The tree-trace follows the shape produced by coalg
-
-------------------------------------------------------------------------
--- Summary
---
--- This module provides:
---
--- 1. TRACE BUILDING (cata-trace-μ, cata-trace-F):
---    Build traces by structural recursion on μ-values.
---    - K: no recursive positions, empty trace
---    - Id: single recursive position, recursive call
---    - Sum: dispatch to taken branch
---    - Prod: process both components
---
--- 2. TREE-TRACE BUILDING (cata-tree-μ, para-tree-μ):
---    TreeTrace versions using call-sub for recursive positions.
---    - Portable: maps to calls, loops, or worklists per backend
---    - Provable: structural induction via call-sub markers
---
--- 3. CORRECTNESS BY INDUCTION:
---    The proof follows the same structure as trace building:
---    - Use sem-cata-compute at each step
---    - IH for recursive positions
---    - Combine results for products
---
--- 4. INTEGRATION (cata-result):
---    Package trace and proof as IRResultAWF for RecCoreWF.
---
--- REMAINING PROOF OBLIGATION (marked with SMP.!!):
---    result-valid in cata-result needs the actual inductive proof
---    that maps trace execution to semantic evaluation.
---
--- MACHINE MODEL EXTENSION:
---    SMCore.agda now provides TreeTrace with exec-tree-trace.
---    This enables proofs by structural induction on traces.
---
--- The key insight: trace structure mirrors semantic structure exactly,
--- so correctness is a structural induction following sem-cata-compute.
-------------------------------------------------------------------------

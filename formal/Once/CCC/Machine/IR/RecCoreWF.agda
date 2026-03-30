@@ -288,7 +288,13 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   ------------------------------------------------------------------------
 
   -- | Cata: catamorphism (fold over μ-type)
-  -- Structural recursion on μF, applying algebra at each layer
+  --
+  -- WIRING: Delegates to cata-dispatched-new from RecTrace.agda.
+  -- The structural recursion proofs are built in RecTrace; here we just
+  -- adapt the interface.
+  --
+  -- Note: ⟦ μ-type F ⟧ = ⟦μ⟧ F by definition (Once/Semantics/Core.agda:103),
+  -- so the types match directly.
   run-cata-core : ∀ {F A}
     → (wf : WellFormedF F)
     → (alg : IR (⟦ F ⟧T A) A)
@@ -304,89 +310,11 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
     → readReg (regs s) Input ≡ input-loc
     → next-slot alloc +ℕ ir-stack-requirement (Cata wf alg) ≤ frame-capacity alloc
     → ∃[ mOut ] IRResultAWF mOut (Cata wf alg) x s alloc
-  run-cata-core {F} {A} wf alg rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
-    Heap , record
-      { result-loc = result-loc
-      ; final-state = s'
-      ; final-alloc = alloc'
-      ; trace = cata-trace
-      ; trace-correct = refl
-      ; result-valid-wf = result-valid
-      ; result-before = result-bf
-      ; rax-is-result = rax-eq
-      ; not-halted = not-halted'
-      ; frame-preserved = refl
-      ; slot-monotone = slot-mono
-      ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
-      ; mem-preserved-before = mem-preserved
-      ; reclaimable-slot = next-slot alloc'
-      ; reclaim-monotone = slot-mono
-      ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → result-bf
-      ; reclaim-preserves-validity = λ _ → result-valid
-      ; reclaim-size-bound = reclaim-bound
-      ; frontier-slot-stable = frontier-stable
-      ; trace-writes-above = trace-wa
-      ; trace-slot-reads-above = tt
-      ; trace-writes-below = trace-wb
-      ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-      ; trace-no-heap-writes = tt
-      ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
-      }
-    where
-      -- Cata execution: store at slot, apply recursive fold, return result
-      result-slot = next-slot alloc
-      result-loc = OnStack (current-frame alloc) result-slot
-
-      alloc' : AllocState {FS}
-      alloc' = record alloc { next-slot = suc (next-slot alloc) }
-
-      -- Trace for Cata: store input, recursive dispatch, return result location
-      -- The actual recursion is captured semantically; trace represents execution
-      cata-trace : AbstractTrace
-      cata-trace = mov-to-output ∷ store-at-slot result-slot ∷ lea-slot result-slot ∷ []
-
-      s' : LocState FS
-      s' = proj₁ (exec-trace cata-trace s alloc)
-
-      slot-mono : next-slot alloc ≤ next-slot alloc'
-      slot-mono = n≤1+n (next-slot alloc)
-
-      result-bf : BeforeFrontier alloc' result-loc
-      result-bf = stack-before refl (n<1+n (next-slot alloc))
-
-      -- Semantic correctness: Cata fold produces correct result (postulated)
-      result-valid : ValidAtWF Heap alloc' (eval primSem (Cata wf alg) x) result-loc s'
-      result-valid = rec-scheme-semantic (Cata wf alg) alloc' x result-loc s'
-
-      n = next-slot alloc
-      -- ir-stack-requirement (Cata _ alg) = ir-stack-requirement alg + pair-slots
-      reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Cata wf alg)
-      reclaim-bound = suc-≤-plus-req n (ir-stack-requirement alg)
-
-      rax-eq : readReg (regs s') Output ≡ result-loc
-      rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted
-
-      not-halted' : halted s' ≡ false
-      not-halted' = rec-scheme-preserves-halted-3 result-slot s alloc not-halted
-
-      mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc s' loc ≡ readLoc s loc
-      mem-preserved loc bf = rec-scheme-mem-preserved s alloc refl not-halted loc bf
-
-      trace-wa : SMP.TraceWritesAbove (next-slot alloc) cata-trace
-      trace-wa = ≤-refl , tt
-
-      trace-wb : SMP.TraceWritesBelow (suc (next-slot alloc)) cata-trace
-      trace-wb = n<1+n (next-slot alloc) , tt
-
-      frontier-stable : ∀ (s'' : LocState FS) (input-loc' : ValueLocation FS) →
-        halted s'' ≡ false →
-        readReg (regs s'') Input ≡ input-loc' →
-        readLoc s'' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        _
-      frontier-stable s'' input-loc' _ _ _ = inj₂ (inj₂ tt)
+  run-cata-core wf alg rec-wf mIn x input-loc s alloc
+    input-valid-wf input-before not-halted rdi-eq combined-cap =
+    -- Delegate to cata-dispatched-new which provides the structural recursion proof
+    cata-dispatched-new wf alg rec-wf x mIn input-loc s alloc
+      input-valid-wf input-before not-halted rdi-eq combined-cap
 
   -- | Fuse: μ-anchored fusion (transform then fold)
   -- Structural recursion on μG, applying transform and algebra
