@@ -52,7 +52,7 @@ import Once.CCC.Machine.SMPrimitives as SMP
 open import Once.CCC.Machine.SMCore using (TreeTrace; ε; instr; _▸_; branch; call-sub; flat)
 
 -- Import semantic operations
-open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap; coerce-struct⁻¹)
+open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-In-Out; sem-cata; sem-cata-compute; sem-fmap; coerce-struct⁻¹)
 
 ------------------------------------------------------------------------
 -- Structural Trace Building
@@ -593,10 +593,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       not-halted : halted final-state ≡ false
 
       -- Semantic correctness: processed equals fmap of cata on layer
-      -- This captures: processed ≡ fmap (cata alg) layer (up to type coercion)
-      -- Full proof requires showing equivalence via coerce-struct isomorphism
-      -- For now, we mark this as a trivial obligation to focus on structure
-      semantic-correct : ⊤  -- PROOF OBLIGATION: processed ≡ fmap (cata alg) layer
+      -- This is the core correctness property connecting trace execution to semantics
+      -- Key equation: processed ≡ coerce-struct⁻¹ F A (sem-fmap F (eval primSem (Cata wfG alg)) layer)
+      semantic-correct : processed ≡ coerce-struct⁻¹ F A (sem-fmap F (eval primSem (Cata wfG alg)) layer)
 
       -- Allocation state invariants (for composition)
       frame-preserved : current-frame final-alloc ≡ current-frame alloc
@@ -701,7 +700,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; result-before = input-before
         ; rax-is-result = trans (writeReg-same (regs s) Output (readReg (regs s) Input)) rdi-eq
         ; not-halted = not-halted
-        ; semantic-correct = tt  -- sem-fmap K f x = x
+        ; semantic-correct = refl  -- sem-fmap K f x = x, coerce-struct⁻¹ K _ x = x
         ; frame-preserved = refl
         ; slot-monotone = ≤-refl
         ; heap-monotone = ≤-refl
@@ -765,7 +764,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; result-before = rec-before
         ; rax-is-result = rec-rax
         ; not-halted = rec-not-halted
-        ; semantic-correct = tt  -- sem-fmap Id f x = f x = sem-cata wfG alg μ-val
+        ; semantic-correct = refl  -- sem-fmap Id f x = f x, coerce-struct⁻¹ Id _ x = x
         ; frame-preserved = IRResultAWF.frame-preserved rec-result
         ; slot-monotone = rec-slot-mono
         ; heap-monotone = IRResultAWF.heap-monotone rec-result
@@ -979,7 +978,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; result-before = l-before
         ; rax-is-result = l-rax
         ; not-halted = l-not-halted
-        ; semantic-correct = tt
+        ; semantic-correct = cong inj₁ (ProcessedLayerResult.semantic-correct l-result)
         ; frame-preserved = frame-preserved-inj1
         ; slot-monotone = slot-monotone-inj1
         ; heap-monotone = heap-monotone-inj1
@@ -1151,7 +1150,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; result-before = ProcessedLayerResult.result-before r-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
         ; not-halted = ProcessedLayerResult.not-halted r-result
-        ; semantic-correct = tt  -- Follows from r-result.semantic-correct
+        ; semantic-correct = cong inj₂ (ProcessedLayerResult.semantic-correct r-result)
         ; frame-preserved = frame-preserved-inj2
         ; slot-monotone = slot-monotone-inj2
         ; heap-monotone = heap-monotone-inj2
@@ -1301,7 +1300,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; result-before = ProcessedLayerResult.result-before r-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
         ; not-halted = ProcessedLayerResult.not-halted r-result
-        ; semantic-correct = tt
+        ; semantic-correct = cong₂ _,_ (ProcessedLayerResult.semantic-correct l-result)
+                                       (ProcessedLayerResult.semantic-correct r-result)
         ; frame-preserved = trans (ProcessedLayerResult.frame-preserved r-result)
                                   (ProcessedLayerResult.frame-preserved l-result)
         ; slot-monotone = ≤-trans (ProcessedLayerResult.slot-monotone l-result) r-slot-mono
@@ -1445,10 +1445,19 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         --                      = eval alg processed-layer
 
         -- Key semantic equality: eval (Cata wfG alg) x ≡ eval alg processed-layer
-        -- This follows from sem-cata-compute and the fact that processed-layer
-        -- equals sem-fmap G (sem-cata wfG (eval alg ∘ coerce⁻¹)) layer
+        -- Proof chain:
+        --   eval (Cata wfG alg) x
+        --   = sem-cata wfG (λ fa → eval alg (coerce⁻¹ fa)) x           [by def of eval for Cata]
+        --   = sem-cata ... (sem-In G layer)                            [since x = sem-In G (sem-Out wfG x)]
+        --   = (λ fa → eval alg (coerce⁻¹ fa)) (sem-fmap G (sem-cata ...) layer)  [by sem-cata-compute]
+        --   = eval alg (coerce⁻¹ (sem-fmap G (eval (Cata wfG alg)) layer))      [β-reduction + def eq]
+        --   = eval alg processed-layer                                 [by layer-sem-correct]
         cata-sem-eq : eval primSem (Cata wfG alg) x ≡ eval primSem alg processed-layer
-        cata-sem-eq = SMP.!! {A = eval primSem (Cata wfG alg) x ≡ eval primSem alg processed-layer}
+        cata-sem-eq =
+          trans (cong (sem-cata wfG (λ fa → eval primSem alg (coerce-struct⁻¹ G A fa)))
+                      (sym (sem-In-Out wfG x)))
+                (trans (sem-cata-compute wfG (λ fa → eval primSem alg (coerce-struct⁻¹ G A fa)) layer)
+                       (cong (eval primSem alg) (sym layer-sem-correct)))
 
         -- Extract layer processing properties for composition
         layer-frame-preserved = ProcessedLayerResult.frame-preserved layer-result
@@ -1561,7 +1570,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           ; final-alloc = IRResultAWF.final-alloc alg-result
           ; trace = final-trace
           ; trace-correct = trace-correct-proof
-          ; alloc-correct = SMP.!! {A = proj₂ (exec-trace final-trace s alloc) ≡ IRResultAWF.final-alloc alg-result}
+          ; alloc-correct =
+              -- Compose: final-trace alloc → mov+alg alloc → alg alloc → final-alloc
+              let step1 = cong proj₂ trace-step1
+                  step2 = cong proj₂ trace-step2
+                  step3 = cong proj₂ trace-step3
+                  -- alloc-after-mov ≡ alloc-layer via layer-runtime
+                  alloc-eq = trans alloc-after-mov-eq layer-runtime-eq
+                  step4 = cong (λ a → proj₂ (exec-trace alg-trace s-bridged a)) alloc-eq
+              in trans step1 (trans step2 (trans step3 (trans step4 (IRResultAWF.alloc-correct alg-result))))
           -- Transport validity via semantic equivalence
           ; result-valid-wf = subst (λ v → ValidAtWF mAlg (IRResultAWF.final-alloc alg-result) v (IRResultAWF.result-loc alg-result) (IRResultAWF.final-state alg-result))
                                     (sym cata-sem-eq)
