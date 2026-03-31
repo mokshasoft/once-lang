@@ -129,6 +129,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; final-alloc = alloc'
       ; trace = trace
       ; trace-correct = refl  -- BY DEFINITION
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: curry trace preserves alloc
       ; result-valid-wf = result-valid-wf'
       ; result-before = closure-before'
       ; rax-is-result = rax-eq'

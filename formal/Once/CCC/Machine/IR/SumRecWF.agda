@@ -354,6 +354,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc₁
       ; trace = inl-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: inl/inr trace preserves alloc
       ; result-valid-wf = inl-valid-wf-final
       ; result-before = sum-before
       ; rax-is-result = rax-eq
@@ -509,6 +510,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc₁
       ; trace = inl-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: inl/inr trace preserves alloc
       ; result-valid-wf = inl-valid-wf-final
       ; result-before = sum-before
       ; rax-is-result = rax-eq
@@ -683,6 +685,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc₁
       ; trace = inr-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: inl/inr trace preserves alloc
       ; result-valid-wf = inr-valid-wf-final
       ; result-before = sum-before
       ; rax-is-result = rax-eq
@@ -829,6 +832,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc₁
       ; trace = inr-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: inl/inr trace preserves alloc
       ; result-valid-wf = inr-valid-wf-final
       ; result-before = sum-before
       ; rax-is-result = rax-eq
@@ -1006,6 +1010,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                           (subst (λ loc → readLoc s (sucLoc loc) ≡ just payload-loc) (sym rdi-eq) (InlValidWF.payload-ptr inl-decomp))
                           refl
                           (IRResultAWF.trace-correct result-f) not-halted
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: case-inl trace preserves alloc
       ; result-valid-wf = IRResultAWF.result-valid-wf result-f
       ; result-before = IRResultAWF.result-before result-f
       ; rax-is-result = IRResultAWF.rax-is-result result-f
@@ -1122,6 +1127,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                           (subst (λ loc → readLoc s (sucLoc loc) ≡ just payload-loc) (sym rdi-eq) (InrValidWF.payload-ptr inr-decomp))
                           refl
                           (IRResultAWF.trace-correct result-g) not-halted
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: case-inr trace preserves alloc
       ; result-valid-wf = IRResultAWF.result-valid-wf result-g
       ; result-before = IRResultAWF.result-before result-g
       ; rax-is-result = IRResultAWF.rax-is-result result-g
@@ -1283,6 +1289,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc'
       ; trace = in-trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq
@@ -1395,6 +1402,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = out-μ-trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -1476,6 +1484,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = out-trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -1554,6 +1563,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc'
       ; trace = in-ν-trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq

@@ -189,6 +189,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; final-alloc = alloc'
       ; trace = trace
       ; trace-correct = refl  -- BY DEFINITION
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: push/pop frame preserves alloc structure
       ; result-valid-wf = result-valid-wf'
       ; result-before = result-before'
       ; rax-is-result = rax-eq'

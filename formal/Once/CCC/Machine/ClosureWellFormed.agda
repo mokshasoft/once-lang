@@ -274,6 +274,10 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- Note: exec-trace returns (final-state, alloc) for non-apply IRs
         -- since next-slot is compile-time only and traces don't modify it
         trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
+        -- Allocation state correctness: connects declared final-alloc to execution
+        -- For non-Apply IRs: alloc passes through unchanged (no frame ops)
+        -- For Apply: frame push/pop modifies alloc, but frame-preserved still holds
+        alloc-correct : proj₂ (exec-trace trace s alloc) ≡ final-alloc
         -- Existing validity fields
         result-valid-wf : ValidAtWF m final-alloc (eval primSem ir x) result-loc final-state
         result-before : BeforeFrontier final-alloc result-loc

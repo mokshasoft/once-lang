@@ -78,6 +78,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = valid-s'
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -156,6 +157,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = fst-valid-s'
       ; result-before = fst-before
       ; rax-is-result = rax-eq
@@ -248,6 +250,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = snd-valid-s'
       ; result-before = snd-before
       ; rax-is-result = rax-eq
@@ -340,6 +343,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = valid-unit-wf
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -414,6 +418,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = valid-s'
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -491,6 +496,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = valid-eff
       ; result-before = input-before
       ; rax-is-result = rax-eq

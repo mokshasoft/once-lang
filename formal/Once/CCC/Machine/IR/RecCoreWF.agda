@@ -342,6 +342,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; final-alloc = alloc'
       ; trace = fuse-trace
       ; trace-correct = refl
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: fuse trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq
@@ -442,6 +443,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; final-alloc = alloc'
       ; trace = hylo-trace
       ; trace-correct = refl
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: hylo trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq

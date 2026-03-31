@@ -101,6 +101,7 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; final-alloc = alloc₃
       ; trace = pair-trace
       ; trace-correct = refl  -- s-final DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: pair trace preserves alloc
       ; result-valid-wf = pair-valid-wf-final
       ; result-before = pair-before
       ; rax-is-result = rax-eq

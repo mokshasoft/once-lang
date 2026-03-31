@@ -184,6 +184,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; final-alloc = alloc'
       ; trace = para-trace
       ; trace-correct = refl
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: para trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq

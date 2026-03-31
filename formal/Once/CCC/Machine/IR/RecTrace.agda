@@ -40,6 +40,7 @@ open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
+open import Once.CCC.Machine.FrontierLemma
 
 -- Import functor dispatch helpers
 open import Once.CCC.Machine.IR.FunctorDispatch
@@ -87,11 +88,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   open MemOps {FS}
   open WriteOps {FS}
   open AbstractExec {FS}
+  open ExecLemmas {FS}
   open FrameSemantics FS
 
   open SMP.TracePrimitives {FS}
   open SMP.RecSchemeSemantics {FS}
   open SMP.TraceComposition {FS}
+  open FrontierLemmas {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -756,7 +759,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; final-state = s-rec
         ; final-alloc = alloc-rec
         ; trace-correct = IRResultAWF.trace-correct rec-result
-        ; alloc-correct = SMP.!!  -- Need alloc-correct in IRResultAWF
+        ; alloc-correct = IRResultAWF.alloc-correct rec-result
         ; result-loc = rec-loc
         ; processed-valid = rec-valid
         ; result-before = rec-before
@@ -785,88 +788,392 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes rec-result
         }
 
-    -- Sum inj₁ case: process left branch, wrap in inj₁
+    -- Sum inj₁ case (LINEAR): process left branch, update pointer in-place, return container
+    --
+    -- Linear trace structure:
+    --   1. load-indirect-suc  -- Output := payload-loc (read from sucLoc input-loc)
+    --   2. mov-to-input       -- Input := payload-loc
+    --   3. [sub-trace]        -- recursive processing, Output := processed-result-loc
+    --   4. store-indirect-suc -- *(sucLoc input-loc)... wait, Input changed!
+    --
+    -- Issue: After step 2-3, Input = payload-loc, but step 4 needs Input = input-loc
+    -- Solution: Save input-loc to stack before step 1, restore after step 3
+    --
+    -- Correct linear trace:
+    --   1. store-at-slot save-slot   -- Save input-loc
+    --   2. load-indirect-suc         -- Output := payload-loc
+    --   3. mov-to-input              -- Input := payload-loc
+    --   4. [sub-trace]               -- Output := processed-result-loc
+    --   5. restore-input save-slot   -- Input := input-loc (restored)
+    --   6. store-indirect-suc        -- *(sucLoc input-loc) := processed-result-loc
+    --   7. mov-to-output             -- Output := input-loc
+    --
+    -- Result: result-loc = input-loc (the Sum container with updated pointer)
+    --
     process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
       (μlayer-inl {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq cap =
-      -- Process left sub-layer at payload location
       let
-        -- Process left sub-layer
-        (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn payload-loc s alloc
-                            l-layer-valid payload-bf not-halted SMP.!! cap
+        -- Step 1: Setup trace - load payload pointer and set Input
+        -- This transforms s (where Input = input-loc) to s-setup (where Input = payload-loc)
+        setup-trace : AbstractTrace
+        setup-trace = load-indirect-suc ∷ mov-to-input ∷ []
 
-        -- Extract results and wrap in inj₁
+        -- Execute setup trace to get state where Input = payload-loc
+        s-after-load : LocState FS
+        s-after-load = proj₁ (exec-abstract load-indirect-suc s alloc)
+
+        alloc-after-load : AllocState {FS}
+        alloc-after-load = proj₂ (exec-abstract load-indirect-suc s alloc)
+
+        -- After load-indirect-suc: Output = payload-loc (from sucLoc input-loc)
+        -- The payload-ptr proof tells us: readLoc s (sucLoc input-loc) ≡ just payload-loc
+        -- exec-abstract load-indirect-suc reads from sucLoc(Input) = sucLoc(input-loc)
+        -- and writes the result to Output
+
+        -- Then mov-to-input copies Output to Input
+        s-setup : LocState FS
+        s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
+
+        alloc-setup : AllocState {FS}
+        alloc-setup = proj₂ (exec-abstract mov-to-input s-after-load alloc-after-load)
+
+        -- At s-setup: Input = payload-loc, so rdi-eq is satisfied for recursive call
+        -- Proof: load-indirect-suc sets Output to value at sucLoc(Input)
+        --        Since Input = input-loc and payload-ptr says sucLoc(input-loc) contains payload-loc,
+        --        Output = payload-loc
+        --        Then mov-to-input copies Output to Input, so Input = payload-loc
+        rdi-setup : readReg (regs s-setup) Input ≡ payload-loc
+        rdi-setup = setup-trace-sets-input s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+
+        -- Transfer l-layer-valid through setup (memory not changed by register ops)
+        l-layer-valid-setup : μLayerValid alloc-setup wfL wfG l-layer payload-loc s-setup
+        l-layer-valid-setup =
+          μLayerValid-mem-only alloc wfL wfG l-layer payload-loc s s-setup
+            (setup-trace-preserves-stackMem s alloc)
+            (setup-trace-preserves-heapMem s alloc)
+            (subst (λ al → μLayerValid al wfL wfG l-layer payload-loc s)
+                   (sym (setup-trace-preserves-alloc s alloc))
+                   l-layer-valid)
+
+        -- Transfer payload-bf through setup (alloc unchanged by register ops)
+        payload-bf-setup : BeforeFrontier alloc-setup payload-loc
+        payload-bf-setup = subst (λ al → BeforeFrontier al payload-loc)
+                                 (sym (setup-trace-preserves-alloc s alloc))
+                                 payload-bf
+
+        -- Halted preserved through setup
+        not-halted-setup : halted s-setup ≡ false
+        not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+
+        -- Step 2: Process left sub-layer (recursive call)
+        (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn payload-loc s-setup alloc-setup
+                            l-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup cap
+
+        -- Extract recursive results
         l-processed = ProcessedLayerResult.processed l-result
+        s-after-sub = ProcessedLayerResult.final-state l-result
+        alloc-after-sub = ProcessedLayerResult.final-alloc l-result
+        l-result-loc = ProcessedLayerResult.result-loc l-result
+        sub-trace = ProcessedLayerResult.trace l-result
+        l-valid = ProcessedLayerResult.processed-valid l-result
+        l-before = ProcessedLayerResult.result-before l-result
+        l-rax = ProcessedLayerResult.rax-is-result l-result
+        l-not-halted = ProcessedLayerResult.not-halted l-result
+
+        -- Wrap in inj₁
         processed = inj₁ l-processed
+
+        -- For now, return payload result (non-linear approach)
+        -- TODO: Implement full linear trace with store-indirect-suc update
+        -- Full linear would need suffix trace to update pointer and return input-loc
+
+        -- Full trace: setup ++ sub-trace
+        full-trace : AbstractTrace
+        full-trace = setup-trace ++ sub-trace
+
+        -- Trace execution correctness
+        -- exec-trace (setup ++ sub) s alloc = exec-trace sub (exec-trace setup s alloc)
+        -- and exec-trace setup s alloc = (s-setup, alloc-setup)
+        setup-exec-eq : exec-trace setup-trace s alloc ≡ (s-setup , alloc-setup)
+        setup-exec-eq = setup-trace-exec s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+
+        trace-correct-inj1 : proj₁ (exec-trace full-trace s alloc) ≡ s-after-sub
+        trace-correct-inj1 =
+          trans (cong proj₁ (exec-trace-append setup-trace sub-trace s alloc))
+                (trans (cong (λ p → proj₁ (exec-trace sub-trace (proj₁ p) (proj₂ p))) setup-exec-eq)
+                       (ProcessedLayerResult.trace-correct l-result))
+
+        alloc-correct-inj1 : proj₂ (exec-trace full-trace s alloc) ≡ alloc-after-sub
+        alloc-correct-inj1 =
+          trans (cong proj₂ (exec-trace-append setup-trace sub-trace s alloc))
+                (trans (cong (λ p → proj₂ (exec-trace sub-trace (proj₁ p) (proj₂ p))) setup-exec-eq)
+                       (ProcessedLayerResult.alloc-correct l-result))
+
+        -- Invariant composition using setup-trace-preserves-alloc
+        alloc-setup-eq : alloc-setup ≡ alloc
+        alloc-setup-eq = setup-trace-preserves-alloc s alloc
+
+        frame-preserved-inj1 : current-frame alloc-after-sub ≡ current-frame alloc
+        frame-preserved-inj1 =
+          trans (ProcessedLayerResult.frame-preserved l-result)
+                (cong current-frame alloc-setup-eq)
+
+        slot-monotone-inj1 : next-slot alloc ≤ next-slot alloc-after-sub
+        slot-monotone-inj1 =
+          subst (λ al → next-slot al ≤ next-slot alloc-after-sub)
+                alloc-setup-eq
+                (ProcessedLayerResult.slot-monotone l-result)
+
+        heap-monotone-inj1 : next-heap-ref alloc ≤ next-heap-ref alloc-after-sub
+        heap-monotone-inj1 =
+          subst (λ al → next-heap-ref al ≤ next-heap-ref alloc-after-sub)
+                alloc-setup-eq
+                (ProcessedLayerResult.heap-monotone l-result)
+
+        capacity-preserved-inj1 : frame-capacity alloc-after-sub ≡ frame-capacity alloc
+        capacity-preserved-inj1 =
+          trans (ProcessedLayerResult.capacity-preserved l-result)
+                (cong frame-capacity alloc-setup-eq)
+
+        -- Memory preservation: setup preserves all memory, then sub preserves below frontier
+        mem-preserved-inj1 : ∀ loc → BeforeFrontier alloc loc → readLoc s-after-sub loc ≡ readLoc s loc
+        mem-preserved-inj1 loc bf =
+          let bf-setup = subst (λ al → BeforeFrontier al loc) (sym alloc-setup-eq) bf
+              sub-pres = ProcessedLayerResult.mem-preserved l-result loc bf-setup
+              setup-pres-stack = setup-trace-preserves-stackMem s alloc
+              setup-pres-heap = setup-trace-preserves-heapMem s alloc
+          in trans sub-pres (readLoc-stackMem-eq s-setup s loc setup-pres-stack setup-pres-heap)
+
+        -- Trace properties for setup trace
+        -- load-indirect-suc and mov-to-input don't write to slots
+        setup-twa : TraceWritesAbove (next-slot alloc) setup-trace
+        setup-twa = tt  -- Neither instruction writes slots
+
+        setup-twb : TraceWritesBelow (next-slot alloc-after-sub) setup-trace
+        setup-twb = tt  -- Neither instruction writes slots
+
+        setup-tsra : TraceSlotReadsAbove (next-slot alloc) setup-trace
+        setup-tsra = tt  -- Neither instruction reads slots
+
+        setup-tsrb : TraceSlotReadsBelow (next-slot alloc-after-sub) setup-trace
+        setup-tsrb = tt  -- Neither instruction reads slots
+
+        setup-tph : TracePreservesHaltedP setup-trace
+        setup-tph = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])
+
+        setup-tpc : TracePreservesCapacity setup-trace
+        setup-tpc = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input tpc-[])
+
+        setup-tnhw : TraceNoHeapWrites setup-trace
+        setup-tnhw = tt
       in
       mL , record
         { processed = processed
-        ; trace = ProcessedLayerResult.trace l-result
-        ; final-state = ProcessedLayerResult.final-state l-result
-        ; final-alloc = ProcessedLayerResult.final-alloc l-result
-        ; trace-correct = ProcessedLayerResult.trace-correct l-result
-        ; alloc-correct = ProcessedLayerResult.alloc-correct l-result
-        ; result-loc = ProcessedLayerResult.result-loc l-result
-        ; processed-valid = SMP.!!  -- BLOCKED: inj₁ validity composition
-        ; result-before = ProcessedLayerResult.result-before l-result
-        ; rax-is-result = ProcessedLayerResult.rax-is-result l-result
-        ; not-halted = ProcessedLayerResult.not-halted l-result
-        ; semantic-correct = tt  -- Follows from l-result.semantic-correct
-        ; frame-preserved = ProcessedLayerResult.frame-preserved l-result
-        ; slot-monotone = ProcessedLayerResult.slot-monotone l-result
-        ; heap-monotone = ProcessedLayerResult.heap-monotone l-result
-        ; capacity-preserved = ProcessedLayerResult.capacity-preserved l-result
-        ; mem-preserved = ProcessedLayerResult.mem-preserved l-result
-        -- Trace region bounds from l-result
-        ; trace-writes-above = ProcessedLayerResult.trace-writes-above l-result
-        ; trace-writes-below = ProcessedLayerResult.trace-writes-below l-result
-        ; trace-slot-reads-above = ProcessedLayerResult.trace-slot-reads-above l-result
-        ; trace-slot-reads-below = ProcessedLayerResult.trace-slot-reads-below l-result
-        -- Trace preservation properties
-        ; trace-preserves-halted = ProcessedLayerResult.trace-preserves-halted l-result
-        ; trace-preserves-capacity = ProcessedLayerResult.trace-preserves-capacity l-result
-        ; trace-no-heap-writes = ProcessedLayerResult.trace-no-heap-writes l-result
+        ; trace = full-trace
+        ; final-state = s-after-sub
+        ; final-alloc = alloc-after-sub
+        ; trace-correct = trace-correct-inj1
+        ; alloc-correct = alloc-correct-inj1
+        ; result-loc = l-result-loc  -- For now, return payload result
+        ; processed-valid = SMP.!!  -- BLOCKED: need linear trace for valid-inl-wf
+        ; result-before = l-before
+        ; rax-is-result = l-rax
+        ; not-halted = l-not-halted
+        ; semantic-correct = tt
+        ; frame-preserved = frame-preserved-inj1
+        ; slot-monotone = slot-monotone-inj1
+        ; heap-monotone = heap-monotone-inj1
+        ; capacity-preserved = capacity-preserved-inj1
+        ; mem-preserved = mem-preserved-inj1
+        -- Trace region bounds: composed via append
+        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace sub-trace
+            setup-twa
+            (subst (λ al → TraceWritesAbove (next-slot al) sub-trace)
+                   alloc-setup-eq (ProcessedLayerResult.trace-writes-above l-result))
+        ; trace-writes-below = SMP.trace-writes-below-append (next-slot alloc-after-sub) setup-trace sub-trace
+            setup-twb (ProcessedLayerResult.trace-writes-below l-result)
+        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace sub-trace
+            setup-tsra
+            (subst (λ al → TraceSlotReadsAbove (next-slot al) sub-trace)
+                   alloc-setup-eq (ProcessedLayerResult.trace-slot-reads-above l-result))
+        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (next-slot alloc-after-sub) setup-trace sub-trace
+            setup-tsrb (ProcessedLayerResult.trace-slot-reads-below l-result)
+        ; trace-preserves-halted = tph-++ setup-tph (ProcessedLayerResult.trace-preserves-halted l-result)
+        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (ProcessedLayerResult.trace-preserves-capacity l-result)
+        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace sub-trace
+            setup-tnhw (ProcessedLayerResult.trace-no-heap-writes l-result)
         }
 
     -- Sum inj₂ case: process right branch, wrap in inj₂
+    -- Same setup pattern as inj₁: load-indirect-suc + mov-to-input
     process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
       (μlayer-inr {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq cap =
-      -- Process right sub-layer at payload location
       let
-        -- Process right sub-layer
-        (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s alloc
-                            r-layer-valid payload-bf not-halted SMP.!! cap
+        -- Step 1: Setup trace - load payload pointer and set Input
+        setup-trace : AbstractTrace
+        setup-trace = load-indirect-suc ∷ mov-to-input ∷ []
+
+        -- Execute setup trace to get state where Input = payload-loc
+        s-after-load : LocState FS
+        s-after-load = proj₁ (exec-abstract load-indirect-suc s alloc)
+
+        alloc-after-load : AllocState {FS}
+        alloc-after-load = proj₂ (exec-abstract load-indirect-suc s alloc)
+
+        s-setup : LocState FS
+        s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
+
+        alloc-setup : AllocState {FS}
+        alloc-setup = proj₂ (exec-abstract mov-to-input s-after-load alloc-after-load)
+
+        -- At s-setup: Input = payload-loc
+        rdi-setup : readReg (regs s-setup) Input ≡ payload-loc
+        rdi-setup = setup-trace-sets-input s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+
+        -- Transfer r-layer-valid through setup (memory not changed by register ops)
+        r-layer-valid-setup : μLayerValid alloc-setup wfR wfG r-layer payload-loc s-setup
+        r-layer-valid-setup =
+          μLayerValid-mem-only alloc wfR wfG r-layer payload-loc s s-setup
+            (setup-trace-preserves-stackMem s alloc)
+            (setup-trace-preserves-heapMem s alloc)
+            (subst (λ al → μLayerValid al wfR wfG r-layer payload-loc s)
+                   (sym (setup-trace-preserves-alloc s alloc))
+                   r-layer-valid)
+
+        -- Transfer payload-bf through setup (alloc unchanged by register ops)
+        payload-bf-setup : BeforeFrontier alloc-setup payload-loc
+        payload-bf-setup = subst (λ al → BeforeFrontier al payload-loc)
+                                 (sym (setup-trace-preserves-alloc s alloc))
+                                 payload-bf
+
+        -- Halted preserved through setup
+        not-halted-setup : halted s-setup ≡ false
+        not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+
+        -- Step 2: Process right sub-layer (recursive call)
+        (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s-setup alloc-setup
+                            r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup cap
 
         -- Extract results and wrap in inj₂
         r-processed = ProcessedLayerResult.processed r-result
         processed = inj₂ r-processed
+        s-after-sub = ProcessedLayerResult.final-state r-result
+        alloc-after-sub = ProcessedLayerResult.final-alloc r-result
+        sub-trace = ProcessedLayerResult.trace r-result
+
+        -- Full trace: setup ++ sub-trace
+        full-trace : AbstractTrace
+        full-trace = setup-trace ++ sub-trace
+
+        -- Setup exec equality
+        setup-exec-eq : exec-trace setup-trace s alloc ≡ (s-setup , alloc-setup)
+        setup-exec-eq = setup-trace-exec s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+
+        -- Trace correctness composition
+        trace-correct-inj2 : proj₁ (exec-trace full-trace s alloc) ≡ s-after-sub
+        trace-correct-inj2 =
+          trans (cong proj₁ (exec-trace-append setup-trace sub-trace s alloc))
+                (trans (cong (λ p → proj₁ (exec-trace sub-trace (proj₁ p) (proj₂ p))) setup-exec-eq)
+                       (ProcessedLayerResult.trace-correct r-result))
+
+        alloc-correct-inj2 : proj₂ (exec-trace full-trace s alloc) ≡ alloc-after-sub
+        alloc-correct-inj2 =
+          trans (cong proj₂ (exec-trace-append setup-trace sub-trace s alloc))
+                (trans (cong (λ p → proj₂ (exec-trace sub-trace (proj₁ p) (proj₂ p))) setup-exec-eq)
+                       (ProcessedLayerResult.alloc-correct r-result))
+
+        -- Invariant composition using setup-trace-preserves-alloc
+        alloc-setup-eq : alloc-setup ≡ alloc
+        alloc-setup-eq = setup-trace-preserves-alloc s alloc
+
+        frame-preserved-inj2 : current-frame alloc-after-sub ≡ current-frame alloc
+        frame-preserved-inj2 =
+          trans (ProcessedLayerResult.frame-preserved r-result)
+                (cong current-frame alloc-setup-eq)
+
+        slot-monotone-inj2 : next-slot alloc ≤ next-slot alloc-after-sub
+        slot-monotone-inj2 =
+          subst (λ al → next-slot al ≤ next-slot alloc-after-sub)
+                alloc-setup-eq
+                (ProcessedLayerResult.slot-monotone r-result)
+
+        heap-monotone-inj2 : next-heap-ref alloc ≤ next-heap-ref alloc-after-sub
+        heap-monotone-inj2 =
+          subst (λ al → next-heap-ref al ≤ next-heap-ref alloc-after-sub)
+                alloc-setup-eq
+                (ProcessedLayerResult.heap-monotone r-result)
+
+        capacity-preserved-inj2 : frame-capacity alloc-after-sub ≡ frame-capacity alloc
+        capacity-preserved-inj2 =
+          trans (ProcessedLayerResult.capacity-preserved r-result)
+                (cong frame-capacity alloc-setup-eq)
+
+        -- Memory preservation composition
+        mem-preserved-inj2 : ∀ loc → BeforeFrontier alloc loc → readLoc s-after-sub loc ≡ readLoc s loc
+        mem-preserved-inj2 loc bf =
+          let bf-setup = subst (λ al → BeforeFrontier al loc) (sym alloc-setup-eq) bf
+              sub-pres = ProcessedLayerResult.mem-preserved r-result loc bf-setup
+              setup-pres-stack = setup-trace-preserves-stackMem s alloc
+              setup-pres-heap = setup-trace-preserves-heapMem s alloc
+          in trans sub-pres (readLoc-stackMem-eq s-setup s loc setup-pres-stack setup-pres-heap)
+
+        -- Trace properties for setup trace
+        setup-twa : TraceWritesAbove (next-slot alloc) setup-trace
+        setup-twa = tt  -- Neither instruction writes slots
+
+        setup-twb : TraceWritesBelow (next-slot alloc-after-sub) setup-trace
+        setup-twb = tt  -- Neither instruction writes slots
+
+        setup-tsra : TraceSlotReadsAbove (next-slot alloc) setup-trace
+        setup-tsra = tt  -- Neither instruction reads slots
+
+        setup-tsrb : TraceSlotReadsBelow (next-slot alloc-after-sub) setup-trace
+        setup-tsrb = tt  -- Neither instruction reads slots
+
+        setup-tph : TracePreservesHaltedP setup-trace
+        setup-tph = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])
+
+        setup-tpc : TracePreservesCapacity setup-trace
+        setup-tpc = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input tpc-[])
+
+        setup-tnhw : TraceNoHeapWrites setup-trace
+        setup-tnhw = tt
       in
       mR , record
         { processed = processed
-        ; trace = ProcessedLayerResult.trace r-result
-        ; final-state = ProcessedLayerResult.final-state r-result
-        ; final-alloc = ProcessedLayerResult.final-alloc r-result
-        ; trace-correct = ProcessedLayerResult.trace-correct r-result
-        ; alloc-correct = ProcessedLayerResult.alloc-correct r-result
+        ; trace = full-trace
+        ; final-state = s-after-sub
+        ; final-alloc = alloc-after-sub
+        ; trace-correct = trace-correct-inj2
+        ; alloc-correct = alloc-correct-inj2
         ; result-loc = ProcessedLayerResult.result-loc r-result
-        ; processed-valid = SMP.!!  -- BLOCKED: inj₂ validity composition
+        ; processed-valid = SMP.!!  -- BLOCKED: need sum validity composition (inj₂ wrapping)
         ; result-before = ProcessedLayerResult.result-before r-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
         ; not-halted = ProcessedLayerResult.not-halted r-result
         ; semantic-correct = tt  -- Follows from r-result.semantic-correct
-        ; frame-preserved = ProcessedLayerResult.frame-preserved r-result
-        ; slot-monotone = ProcessedLayerResult.slot-monotone r-result
-        ; heap-monotone = ProcessedLayerResult.heap-monotone r-result
-        ; capacity-preserved = ProcessedLayerResult.capacity-preserved r-result
-        ; mem-preserved = ProcessedLayerResult.mem-preserved r-result
-        -- Trace region bounds from r-result
-        ; trace-writes-above = ProcessedLayerResult.trace-writes-above r-result
-        ; trace-writes-below = ProcessedLayerResult.trace-writes-below r-result
-        ; trace-slot-reads-above = ProcessedLayerResult.trace-slot-reads-above r-result
-        ; trace-slot-reads-below = ProcessedLayerResult.trace-slot-reads-below r-result
-        -- Trace preservation properties
-        ; trace-preserves-halted = ProcessedLayerResult.trace-preserves-halted r-result
-        ; trace-preserves-capacity = ProcessedLayerResult.trace-preserves-capacity r-result
-        ; trace-no-heap-writes = ProcessedLayerResult.trace-no-heap-writes r-result
+        ; frame-preserved = frame-preserved-inj2
+        ; slot-monotone = slot-monotone-inj2
+        ; heap-monotone = heap-monotone-inj2
+        ; capacity-preserved = capacity-preserved-inj2
+        ; mem-preserved = mem-preserved-inj2
+        -- Trace region bounds: composed via append
+        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace sub-trace
+            setup-twa
+            (subst (λ al → TraceWritesAbove (next-slot al) sub-trace)
+                   alloc-setup-eq (ProcessedLayerResult.trace-writes-above r-result))
+        ; trace-writes-below = SMP.trace-writes-below-append (next-slot alloc-after-sub) setup-trace sub-trace
+            setup-twb (ProcessedLayerResult.trace-writes-below r-result)
+        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace sub-trace
+            setup-tsra
+            (subst (λ al → TraceSlotReadsAbove (next-slot al) sub-trace)
+                   alloc-setup-eq (ProcessedLayerResult.trace-slot-reads-above r-result))
+        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (next-slot alloc-after-sub) setup-trace sub-trace
+            setup-tsrb (ProcessedLayerResult.trace-slot-reads-below r-result)
+        ; trace-preserves-halted = tph-++ setup-tph (ProcessedLayerResult.trace-preserves-halted r-result)
+        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (ProcessedLayerResult.trace-preserves-capacity r-result)
+        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace sub-trace
+            setup-tnhw (ProcessedLayerResult.trace-no-heap-writes r-result)
         }
 
     -- Product case: process both components, combine
@@ -1053,6 +1360,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       {input-loc : ValueLocation FS} {s : LocState FS}
       → ValidAtWF m alloc x input-loc s
       → μLayerValid alloc wfG wfG (sem-Out wfG x) input-loc s
+    -- Note: This requires wf proof uniqueness (all WellFormedF G proofs are equal)
+    -- or refactoring ValidAtWF to carry the wf proof used in construction
     extract-μLayerValid wfG v = SMP.!!
 
     cata-dispatched-new : ∀ {G A}
@@ -1114,12 +1423,17 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
         -- Capacity for algebra (using alloc-layer's frontier)
         cap-alg : next-slot alloc-layer +ℕ ir-stack-requirement alg ≤ frame-capacity alloc-layer
-        cap-alg = SMP.!!  -- PROOF OBLIGATION: capacity arithmetic
+        cap-alg = SMP.!! {A = next-slot alloc-layer +ℕ ir-stack-requirement alg ≤ frame-capacity alloc-layer}
 
         -- Call dispatcher on algebra
-        (mAlg , alg-result) = dispatch mLayer alg alg-bound processed-layer
-                                layer-loc s-bridged alloc-layer
-                                layer-valid-bridged layer-before layer-not-halted rdi-bridged cap-alg
+        dispatch-result : ∃[ mOut ] IRResultAWF mOut alg processed-layer s-bridged alloc-layer
+        dispatch-result = dispatch mLayer alg alg-bound processed-layer
+                            layer-loc s-bridged alloc-layer
+                            layer-valid-bridged layer-before layer-not-halted rdi-bridged cap-alg
+        mAlg : AllocMode
+        mAlg = proj₁ dispatch-result
+        alg-result : IRResultAWF mAlg alg processed-layer s-bridged alloc-layer
+        alg-result = proj₂ dispatch-result
 
         -- Step 5: Build final IRResultAWF
         -- Trace: layer-trace ++ mov-to-input ∷ alg-trace
@@ -1129,6 +1443,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         --   sem-cata wfG alg x = alg (sem-fmap G (sem-cata wfG alg) (sem-Out wfG x))
         --                      = alg processed-layer  (by layer-sem-eq)
         --                      = eval alg processed-layer
+
+        -- Key semantic equality: eval (Cata wfG alg) x ≡ eval alg processed-layer
+        -- This follows from sem-cata-compute and the fact that processed-layer
+        -- equals sem-fmap G (sem-cata wfG (eval alg ∘ coerce⁻¹)) layer
+        cata-sem-eq : eval primSem (Cata wfG alg) x ≡ eval primSem alg processed-layer
+        cata-sem-eq = SMP.!! {A = eval primSem (Cata wfG alg) x ≡ eval primSem alg processed-layer}
 
         -- Extract layer processing properties for composition
         layer-frame-preserved = ProcessedLayerResult.frame-preserved layer-result
@@ -1149,6 +1469,21 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         cap-preserved-proof : frame-capacity (IRResultAWF.final-alloc alg-result) ≡ frame-capacity alloc
         cap-preserved-proof = trans (IRResultAWF.capacity-preserved alg-result) layer-cap-preserved
 
+        -- Runtime alloc after layer processing (needed for heap-ref preservation)
+        layer-runtime-alloc : AllocState {FS}
+        layer-runtime-alloc = proj₂ (exec-trace layer-trace s alloc)
+
+        -- Heap-ref preservation: layer processing doesn't modify heap
+        -- Uses the runtime alloc to prove equality, then connects via alloc-correct
+        layer-runtime-heap-preserved : next-heap-ref layer-runtime-alloc ≡ next-heap-ref alloc
+        layer-runtime-heap-preserved = exec-trace-preserves-heap-ref layer-trace s alloc
+
+        -- Connect runtime alloc to alloc-layer via alloc-correct
+        layer-heap-preserved : next-heap-ref alloc-layer ≡ next-heap-ref alloc
+        layer-heap-preserved =
+          trans (cong next-heap-ref (sym (ProcessedLayerResult.alloc-correct layer-result)))
+                layer-runtime-heap-preserved
+
         -- Memory preservation composition
         layer-mem-pres = ProcessedLayerResult.mem-preserved layer-result
         alg-mem-pres = IRResultAWF.mem-preserved-before alg-result
@@ -1165,10 +1500,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- Trace correctness: compose layer-trace ++ mov-to-input ∷ alg-trace
         alg-trace = IRResultAWF.trace alg-result
         final-state = IRResultAWF.final-state alg-result
-
-        -- Runtime alloc after layer processing
-        layer-runtime-alloc : AllocState {FS}
-        layer-runtime-alloc = proj₂ (exec-trace layer-trace s alloc)
 
         -- State after mov-to-input (using runtime alloc)
         s-after-mov : LocState FS
@@ -1200,75 +1531,107 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                       exec-trace alg-trace s-bridged alloc-after-mov
         trace-step3 = cong (λ st → exec-trace alg-trace st alloc-after-mov) s-after-mov-eq-bridged
 
+        -- Key: alloc-after-mov and alloc-layer have the same current-frame
+        -- layer-runtime-alloc ≡ alloc-layer by layer-result.alloc-correct
+        -- alloc-after-mov = proj₂ (exec-abstract mov-to-input s-layer layer-runtime-alloc)
+        -- mov-to-input preserves alloc, so alloc-after-mov ≡ layer-runtime-alloc
+        alloc-after-mov-eq : alloc-after-mov ≡ layer-runtime-alloc
+        alloc-after-mov-eq = refl  -- mov-to-input doesn't change alloc
+
+        layer-runtime-eq : layer-runtime-alloc ≡ alloc-layer
+        layer-runtime-eq = ProcessedLayerResult.alloc-correct layer-result
+
+        alloc-frame-eq : current-frame alloc-after-mov ≡ current-frame alloc-layer
+        alloc-frame-eq = cong current-frame (trans alloc-after-mov-eq layer-runtime-eq)
+
+        -- Use exec-trace-same-frame: state depends only on current-frame
+        alg-trace-frame-indep : proj₁ (exec-trace alg-trace s-bridged alloc-after-mov) ≡
+                                proj₁ (exec-trace alg-trace s-bridged alloc-layer)
+        alg-trace-frame-indep = exec-trace-same-frame alg-trace s-bridged alloc-after-mov alloc-layer alloc-frame-eq
+
         -- Final trace composition (for state only)
         trace-correct-proof : proj₁ (exec-trace final-trace s alloc) ≡ final-state
         trace-correct-proof = trans (cong proj₁ (trans trace-step1 (trans trace-step2 trace-step3)))
-          -- Now we need: proj₁ (exec-trace alg-trace s-bridged alloc-after-mov) ≡ final-state
-          -- But alg-result.trace-correct uses alloc-layer, not alloc-after-mov
-          -- The key insight: exec-trace only depends on alloc for certain instructions
-          -- For most traces, the state computation is independent of alloc
-          -- Use TracePreservesHaltedP and trace properties to show state is same
-          SMP.!!  -- Need: proj₁ independent of alloc for this trace
+          (trans alg-trace-frame-indep (IRResultAWF.trace-correct alg-result))
+
+        cata-result : IRResultAWF mAlg {μ-type G} {A} (Cata wfG alg) x s alloc
+        cata-result = record
+          { result-loc = IRResultAWF.result-loc alg-result
+          ; final-state = IRResultAWF.final-state alg-result
+          ; final-alloc = IRResultAWF.final-alloc alg-result
+          ; trace = final-trace
+          ; trace-correct = trace-correct-proof
+          ; alloc-correct = SMP.!! {A = proj₂ (exec-trace final-trace s alloc) ≡ IRResultAWF.final-alloc alg-result}
+          -- Transport validity via semantic equivalence
+          ; result-valid-wf = subst (λ v → ValidAtWF mAlg (IRResultAWF.final-alloc alg-result) v (IRResultAWF.result-loc alg-result) (IRResultAWF.final-state alg-result))
+                                    (sym cata-sem-eq)
+                                    (IRResultAWF.result-valid-wf alg-result)
+          ; result-before = IRResultAWF.result-before alg-result
+          ; rax-is-result = IRResultAWF.rax-is-result alg-result
+          ; not-halted = IRResultAWF.not-halted alg-result
+          ; frame-preserved = frame-preserved-proof
+          ; slot-monotone = slot-mono-proof
+          ; heap-monotone = heap-mono-proof
+          ; capacity-preserved = cap-preserved-proof
+          ; mem-preserved-before = mem-preserved-proof
+          ; reclaimable-slot = IRResultAWF.reclaimable-slot alg-result
+          ; reclaim-monotone = ≤-trans layer-slot-mono (IRResultAWF.reclaim-monotone alg-result)
+          ; reclaim-bounded = IRResultAWF.reclaim-bounded alg-result
+          ; reclaim-preserves-result = λ fits →
+              let rs = IRResultAWF.reclaimable-slot alg-result
+                  fits' : rs ≤ frame-capacity alloc-layer
+                  fits' = subst (rs ≤_) (sym layer-cap-preserved) fits
+                  bf-layer : BeforeFrontier (record alloc-layer { next-slot = rs }) (IRResultAWF.result-loc alg-result)
+                  bf-layer = IRResultAWF.reclaim-preserves-result alg-result fits'
+              in frontier-same-heap (record alloc-layer { next-slot = rs }) (record alloc { next-slot = rs })
+                   layer-frame-preserved refl layer-heap-preserved
+                   (IRResultAWF.result-loc alg-result) bf-layer
+          ; reclaim-preserves-validity = λ fits →
+              let rs = IRResultAWF.reclaimable-slot alg-result
+                  fits' = subst (rs ≤_) (sym layer-cap-preserved) fits
+                  valid-layer-alg = IRResultAWF.reclaim-preserves-validity alg-result fits'
+                  -- Transport to Cata type via semantic equality
+                  valid-layer-cata = subst (λ v → ValidAtWF mAlg (record alloc-layer { next-slot = rs }) v
+                                                   (IRResultAWF.result-loc alg-result) (IRResultAWF.final-state alg-result))
+                                          (sym cata-sem-eq) valid-layer-alg
+              in SMP.!! {A = ValidAtWF mAlg (record alloc { next-slot = rs }) (eval primSem (Cata wfG alg) x) (IRResultAWF.result-loc alg-result) (IRResultAWF.final-state alg-result)}
+          ; reclaim-size-bound = SMP.!! {A = IRResultAWF.reclaimable-slot alg-result ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)}
+          ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
+          ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) layer-trace
+              (mov-to-input ∷ IRResultAWF.trace alg-result)
+              (ProcessedLayerResult.trace-writes-above layer-result)
+              (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-layer)
+                (IRResultAWF.trace alg-result) layer-slot-mono
+                (IRResultAWF.trace-writes-above alg-result))
+          ; trace-writes-below = SMP.trace-writes-below-append (IRResultAWF.reclaimable-slot alg-result) layer-trace
+              (mov-to-input ∷ IRResultAWF.trace alg-result)
+              (SMP.trace-writes-below-mono (next-slot alloc-layer) (IRResultAWF.reclaimable-slot alg-result) layer-trace
+                (IRResultAWF.reclaim-monotone alg-result)
+                (ProcessedLayerResult.trace-writes-below layer-result))
+              (IRResultAWF.trace-writes-below alg-result)
+          ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) layer-trace
+              (mov-to-input ∷ IRResultAWF.trace alg-result)
+              (ProcessedLayerResult.trace-slot-reads-above layer-result)
+              (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-layer)
+                (IRResultAWF.trace alg-result) layer-slot-mono
+                (IRResultAWF.trace-slot-reads-above alg-result))
+          ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (IRResultAWF.reclaimable-slot alg-result) layer-trace
+              (mov-to-input ∷ IRResultAWF.trace alg-result)
+              (SMP.trace-slot-reads-below-mono (next-slot alloc-layer) (IRResultAWF.reclaimable-slot alg-result) layer-trace
+                (IRResultAWF.reclaim-monotone alg-result)
+                (ProcessedLayerResult.trace-slot-reads-below layer-result))
+              (IRResultAWF.trace-slot-reads-below alg-result)
+          ; trace-preserves-capacity = SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity layer-result)
+              (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity alg-result))
+          ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
+              (ProcessedLayerResult.trace-no-heap-writes layer-result)
+              (IRResultAWF.trace-no-heap-writes alg-result)
+          ; trace-preserves-halted = tph-++ (ProcessedLayerResult.trace-preserves-halted layer-result)
+              (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted alg-result))
+          }
+
       in
-      mAlg , record
-        { result-loc = IRResultAWF.result-loc alg-result
-        ; final-state = IRResultAWF.final-state alg-result
-        ; final-alloc = IRResultAWF.final-alloc alg-result
-        ; trace = final-trace
-        ; trace-correct = trace-correct-proof
-        -- result-valid-wf needs: eval primSem (Cata wfG alg) x = eval primSem alg processed-layer
-        -- This follows from sem-cata-compute but requires proof
-        ; result-valid-wf = SMP.!!  -- PROOF OBLIGATION: semantic equivalence via sem-cata-compute
-        ; result-before = IRResultAWF.result-before alg-result
-        ; rax-is-result = IRResultAWF.rax-is-result alg-result
-        ; not-halted = IRResultAWF.not-halted alg-result
-        ; frame-preserved = frame-preserved-proof
-        ; slot-monotone = slot-mono-proof
-        ; heap-monotone = heap-mono-proof
-        ; capacity-preserved = cap-preserved-proof
-        ; mem-preserved-before = mem-preserved-proof
-        ; reclaimable-slot = IRResultAWF.reclaimable-slot alg-result
-        ; reclaim-monotone = ≤-trans layer-slot-mono (IRResultAWF.reclaim-monotone alg-result)
-        ; reclaim-bounded = IRResultAWF.reclaim-bounded alg-result
-        ; reclaim-preserves-result = SMP.!!
-        ; reclaim-preserves-validity = SMP.!!
-        ; reclaim-size-bound = SMP.!!
-        ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
-        -- Trace region bounds: compose layer + mov-to-input + alg
-        -- mov-to-input doesn't read/write any slots
-        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) layer-trace
-            (mov-to-input ∷ IRResultAWF.trace alg-result)
-            (ProcessedLayerResult.trace-writes-above layer-result)
-            (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-layer)
-              (IRResultAWF.trace alg-result) layer-slot-mono
-              (IRResultAWF.trace-writes-above alg-result))
-        ; trace-writes-below = SMP.trace-writes-below-append (IRResultAWF.reclaimable-slot alg-result) layer-trace
-            (mov-to-input ∷ IRResultAWF.trace alg-result)
-            (SMP.trace-writes-below-mono (next-slot alloc-layer) (IRResultAWF.reclaimable-slot alg-result) layer-trace
-              (IRResultAWF.reclaim-monotone alg-result)
-              (ProcessedLayerResult.trace-writes-below layer-result))
-            (IRResultAWF.trace-writes-below alg-result)
-        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) layer-trace
-            (mov-to-input ∷ IRResultAWF.trace alg-result)
-            (ProcessedLayerResult.trace-slot-reads-above layer-result)
-            (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-layer)
-              (IRResultAWF.trace alg-result) layer-slot-mono
-              (IRResultAWF.trace-slot-reads-above alg-result))
-        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (IRResultAWF.reclaimable-slot alg-result) layer-trace
-            (mov-to-input ∷ IRResultAWF.trace alg-result)
-            (SMP.trace-slot-reads-below-mono (next-slot alloc-layer) (IRResultAWF.reclaimable-slot alg-result) layer-trace
-              (IRResultAWF.reclaim-monotone alg-result)
-              (ProcessedLayerResult.trace-slot-reads-below layer-result))
-            (IRResultAWF.trace-slot-reads-below alg-result)
-        -- Trace preservation properties
-        ; trace-preserves-capacity = SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity layer-result)
-            (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity alg-result))
-        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
-            (ProcessedLayerResult.trace-no-heap-writes layer-result)
-            (IRResultAWF.trace-no-heap-writes alg-result)
-        ; trace-preserves-halted = tph-++ (ProcessedLayerResult.trace-preserves-halted layer-result)
-            (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted alg-result))
-        }
+      mAlg , cata-result
 
   ------------------------------------------------------------------------
   -- IMPLEMENTATION PLAN: Eliminate rec-scheme-semantic postulate

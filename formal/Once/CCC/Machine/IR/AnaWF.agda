@@ -186,6 +186,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
       ; final-alloc = alloc'
       ; trace = ana-trace
       ; trace-correct = refl  -- s' DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: ana trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq

@@ -169,6 +169,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; final-alloc = alloc₂
       ; trace = compose-trace
       ; trace-correct = refl  -- s-final DEFINED by trace
+      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: compose trace preserves alloc
       ; result-valid-wf = result-valid-final
       ; result-before = result-before-g
       ; rax-is-result = rax-eq-final
