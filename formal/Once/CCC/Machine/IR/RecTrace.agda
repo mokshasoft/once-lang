@@ -752,7 +752,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     loc ≢ OnStack (current-frame alloc) save-slot →
     let (s' , _) = exec-trace (prod-left-setup-trace save-slot) s alloc
     in readLoc s' loc ≡ readLoc s loc
-  prod-left-setup-mem-eq save-slot s alloc loc not-halted loc-neq = SMP.!!  -- Uses read-write-other
+  prod-left-setup-mem-eq save-slot s alloc loc not-halted loc-neq =
+    SMP.RecSchemeSemantics.prod-left-setup-mem-helper save-slot s alloc loc not-halted loc-neq
 
   {-# TERMINATING #-}
   mutual

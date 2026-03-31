@@ -3002,3 +3002,76 @@ module RecSchemeSemantics {FS : FrameSemantics} where
                 -- After load-indirect and mov-to-input: Input = fst-loc
                 -- This uses prod-setup-trace-sets-input from earlier
                 !!  -- The final step requires showing load-indirect reads fst-loc
+
+  -- | load-indirect preserves memory (only changes registers)
+  exec-abstract-load-indirect-preserves-mem : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) →
+    readLoc (proj₁ (exec-abstract load-indirect s alloc)) loc ≡ readLoc s loc
+  exec-abstract-load-indirect-preserves-mem s alloc (OnStack f k)
+    with readLoc s (readReg (regs s) Input)
+  ... | just v = refl   -- When load succeeds, only registers change
+  ... | nothing = refl  -- When load fails (halts), memory unchanged
+  exec-abstract-load-indirect-preserves-mem s alloc (OnHeap hl)
+    with readLoc s (readReg (regs s) Input)
+  ... | just v = refl
+  ... | nothing = refl
+
+  -- | mov-to-input preserves memory (only changes registers)
+  exec-abstract-mov-to-input-preserves-mem : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) →
+    readLoc (proj₁ (exec-abstract mov-to-input s alloc)) loc ≡ readLoc s loc
+  exec-abstract-mov-to-input-preserves-mem s alloc (OnStack f k) = refl
+  exec-abstract-mov-to-input-preserves-mem s alloc (OnHeap hl) = refl
+
+  -- | 4-instruction left setup trace preserves memory except save-slot
+  prod-left-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) →
+    halted s ≡ false →
+    loc ≢ OnStack (current-frame alloc) save-slot →
+    readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc)) loc ≡ readLoc s loc
+  prod-left-setup-mem-helper save-slot s alloc loc not-halted loc-neq =
+    step-through save-slot s alloc loc not-halted loc-neq
+    where
+      step-through : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+        (loc : ValueLocation FS) →
+        halted s ≡ false →
+        loc ≢ OnStack (current-frame alloc) slot →
+        readLoc (proj₁ (exec-trace (mov-to-output ∷ store-at-slot slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc)) loc ≡ readLoc s loc
+      step-through slot s alloc loc h-eq loc-neq rewrite h-eq =
+        let
+          s₁ = proj₁ (exec-abstract mov-to-output s alloc)
+          mem₁ = exec-abstract-mov-to-output-preserves-mem s alloc loc
+          h-eq₁ : halted s₁ ≡ false
+          h-eq₁ = h-eq
+        in trans (step-2 slot s₁ alloc loc h-eq₁ loc-neq) mem₁
+        where
+          step-2 : ∀ (slot : ℕ) (s₁ : LocState FS) (alloc : AllocState {FS})
+            (loc : ValueLocation FS) →
+            halted s₁ ≡ false →
+            loc ≢ OnStack (current-frame alloc) slot →
+            readLoc (proj₁ (exec-trace (store-at-slot slot ∷ load-indirect ∷ mov-to-input ∷ []) s₁ alloc)) loc ≡ readLoc s₁ loc
+          step-2 slot s₁ alloc loc h-eq₁ loc-neq rewrite h-eq₁ =
+            let
+              s₂ = proj₁ (exec-abstract (store-at-slot slot) s₁ alloc)
+              mem₂ = exec-abstract-store-at-slot-preserves-loc slot s₁ alloc loc loc-neq
+              h-eq₂ : halted s₂ ≡ false
+              h-eq₂ = trans (store-at-slot-halted slot s₁ alloc) h-eq₁
+            in trans (step-3 s₂ alloc loc h-eq₂) mem₂
+            where
+              step-3 : ∀ (s₂ : LocState FS) (alloc : AllocState {FS})
+                (loc : ValueLocation FS) →
+                halted s₂ ≡ false →
+                readLoc (proj₁ (exec-trace (load-indirect ∷ mov-to-input ∷ []) s₂ alloc)) loc ≡ readLoc s₂ loc
+              step-3 s₂ alloc loc h-eq₂ rewrite h-eq₂ =
+                let
+                  s₃ = proj₁ (exec-abstract load-indirect s₂ alloc)
+                  mem₃ = exec-abstract-load-indirect-preserves-mem s₂ alloc loc
+                  h-eq₃ = load-indirect-preserves-halted s₂ alloc h-eq₂
+                in trans (step-4 s₃ alloc loc h-eq₃) mem₃
+                where
+                  step-4 : ∀ (s₃ : LocState FS) (alloc : AllocState {FS})
+                    (loc : ValueLocation FS) →
+                    halted s₃ ≡ false →
+                    readLoc (proj₁ (exec-trace (mov-to-input ∷ []) s₃ alloc)) loc ≡ readLoc s₃ loc
+                  step-4 s₃ alloc loc h-eq₃ rewrite h-eq₃ =
+                    exec-abstract-mov-to-input-preserves-mem s₃ alloc loc
