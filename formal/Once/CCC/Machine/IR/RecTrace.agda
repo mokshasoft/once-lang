@@ -1327,7 +1327,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- 1. Memory preserved except save-slot (which fst-loc isn't, since fst-bf < save-slot)
         -- 2. Alloc frontier advanced by 1
         l-layer-valid-setup : μLayerValid alloc-for-left wfL wfG l-comp fst-loc s-left-setup
-        l-layer-valid-setup = SMP.!!  -- Transfer via mem-preserved + frontier-advance
+        l-layer-valid-setup = SMP.!!
+          -- PROOF APPROACH (needs where clause or module-level helper):
+          -- Step 1: Transfer through state change s → s-left-setup using μLayerValid-mem-preserved
+          --   - Need: ∀ loc' → BeforeFrontier alloc loc' → readLoc s-left-setup loc' ≡ readLoc s loc'
+          --   - Derive: BeforeFrontier alloc loc' implies loc' ≠ OnStack cf save-slot
+          --   - Use prod-left-setup-mem-eq
+          -- Step 2: Transfer through alloc change using μLayerValid-frontier-advance
 
         -- BeforeFrontier preserved (fst-loc was before, still before after incr)
         fst-bf-setup : BeforeFrontier alloc-for-left fst-loc
