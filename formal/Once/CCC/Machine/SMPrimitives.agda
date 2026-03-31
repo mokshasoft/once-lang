@@ -2407,6 +2407,56 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   ... | just v = refl
   ... | nothing = refl
 
+  ------------------------------------------------------------------------
+  -- load-indirect lemmas (parallel to load-indirect-suc)
+  --
+  -- load-indirect reads from *Input and writes to Output
+  ------------------------------------------------------------------------
+
+  -- Helper for load-indirect output proof
+  exec-abstract-load-indirect-output-helper : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (target-loc : ValueLocation FS) →
+    readLoc s (readReg (regs s) Input) ≡ just target-loc →
+    readReg (regs (proj₁ (exec-abstract load-indirect s alloc))) Output ≡ target-loc
+  exec-abstract-load-indirect-output-helper s alloc target-loc read-eq
+    with readLoc s (readReg (regs s) Input) | read-eq
+  ... | just v | refl = writeReg-same (regs s) Output v
+
+  -- load-indirect sets Output to value at *Input
+  exec-abstract-load-indirect-output : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc target-loc : ValueLocation FS) →
+    readReg (regs s) Input ≡ input-loc →
+    readLoc s input-loc ≡ just target-loc →
+    readReg (regs (proj₁ (exec-abstract load-indirect s alloc))) Output ≡ target-loc
+  exec-abstract-load-indirect-output s alloc input-loc target-loc rdi-eq ptr-eq =
+    exec-abstract-load-indirect-output-helper s alloc target-loc
+      (trans (cong (readLoc s) rdi-eq) ptr-eq)
+
+  -- load-indirect preserves Input register
+  exec-abstract-load-indirect-preserves-input : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    readReg (regs (proj₁ (exec-abstract load-indirect s alloc))) Input ≡ readReg (regs s) Input
+  exec-abstract-load-indirect-preserves-input s alloc with readLoc s (readReg (regs s) Input)
+  ... | just v = writeReg-preserves (regs s) Output Input v (λ ())
+  ... | nothing = refl
+
+  -- load-indirect preserves stackMem and heapMem
+  exec-abstract-load-indirect-preserves-stackMem : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    stackMem (proj₁ (exec-abstract load-indirect s alloc)) ≡ stackMem s
+  exec-abstract-load-indirect-preserves-stackMem s alloc with readLoc s (readReg (regs s) Input)
+  ... | just v = refl
+  ... | nothing = refl
+
+  exec-abstract-load-indirect-preserves-heapMem : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    heapMem (proj₁ (exec-abstract load-indirect s alloc)) ≡ heapMem s
+  exec-abstract-load-indirect-preserves-heapMem s alloc with readLoc s (readReg (regs s) Input)
+  ... | just v = refl
+  ... | nothing = refl
+
+  -- load-indirect preserves alloc
+  exec-abstract-load-indirect-preserves-alloc : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    proj₂ (exec-abstract load-indirect s alloc) ≡ alloc
+  exec-abstract-load-indirect-preserves-alloc s alloc = refl
+
   -- mov-to-input sets Input to Output
   exec-abstract-mov-to-input-input : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
     readReg (regs (proj₁ (exec-abstract mov-to-input s alloc))) Input ≡ readReg (regs s) Output
@@ -2547,6 +2597,126 @@ module RecSchemeSemantics {FS : FrameSemantics} where
       s-after-load = proj₁ (exec-abstract load-indirect-suc s alloc)
       alloc-after-load = proj₂ (exec-abstract load-indirect-suc s alloc)
       -- Step 2: exec-trace (mov ∷ []) s-after-load alloc-after-load = exec-abstract mov-to-input s-after-load alloc-after-load
+      step2 = exec-trace-single mov-to-input s-after-load alloc-after-load halted-after-load
+    in trans step1 step2
+
+  ------------------------------------------------------------------------
+  -- Product Setup Trace Helpers
+  --
+  -- For Product types, the fst pointer is at *input-loc (not sucLoc).
+  -- Setup trace: load-indirect ∷ mov-to-input ∷ []
+  -- This gets the fst location into the Input register.
+  ------------------------------------------------------------------------
+
+  -- Product setup trace: load-indirect ∷ mov-to-input
+  -- After execution: Input = *input-loc = fst-loc
+  prod-setup-trace-sets-input : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc fst-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    readLoc s input-loc ≡ just fst-loc →
+    let s-after-load = proj₁ (exec-abstract load-indirect s alloc)
+        alloc-after-load = proj₂ (exec-abstract load-indirect s alloc)
+        s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
+    in readReg (regs s-setup) Input ≡ fst-loc
+  prod-setup-trace-sets-input s alloc input-loc fst-loc not-halted rdi-eq ptr-eq =
+    let
+      s-after-load = proj₁ (exec-abstract load-indirect s alloc)
+      alloc-after-load = proj₂ (exec-abstract load-indirect s alloc)
+      -- After load-indirect: Output = fst-loc
+      output-eq : readReg (regs s-after-load) Output ≡ fst-loc
+      output-eq = exec-abstract-load-indirect-output s alloc input-loc fst-loc rdi-eq ptr-eq
+      -- After mov-to-input: Input = Output = fst-loc
+      s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
+      input-eq : readReg (regs s-setup) Input ≡ readReg (regs s-after-load) Output
+      input-eq = exec-abstract-mov-to-input-input s-after-load alloc-after-load
+    in trans input-eq output-eq
+
+  -- Product setup trace preserves stackMem
+  prod-setup-trace-preserves-stackMem : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    let s-after-load = proj₁ (exec-abstract load-indirect s alloc)
+        alloc-after-load = proj₂ (exec-abstract load-indirect s alloc)
+        s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
+    in stackMem s-setup ≡ stackMem s
+  prod-setup-trace-preserves-stackMem s alloc =
+    trans (exec-abstract-mov-to-input-preserves-stackMem
+            (proj₁ (exec-abstract load-indirect s alloc))
+            (proj₂ (exec-abstract load-indirect s alloc)))
+          (exec-abstract-load-indirect-preserves-stackMem s alloc)
+
+  -- Product setup trace preserves heapMem
+  prod-setup-trace-preserves-heapMem : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    let s-after-load = proj₁ (exec-abstract load-indirect s alloc)
+        alloc-after-load = proj₂ (exec-abstract load-indirect s alloc)
+        s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
+    in heapMem s-setup ≡ heapMem s
+  prod-setup-trace-preserves-heapMem s alloc =
+    trans (exec-abstract-mov-to-input-preserves-heapMem
+            (proj₁ (exec-abstract load-indirect s alloc))
+            (proj₂ (exec-abstract load-indirect s alloc)))
+          (exec-abstract-load-indirect-preserves-heapMem s alloc)
+
+  -- Product setup trace preserves alloc
+  prod-setup-trace-preserves-alloc : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
+    let s-after-load = proj₁ (exec-abstract load-indirect s alloc)
+        alloc-after-load = proj₂ (exec-abstract load-indirect s alloc)
+        alloc-setup = proj₂ (exec-abstract mov-to-input s-after-load alloc-after-load)
+    in alloc-setup ≡ alloc
+  prod-setup-trace-preserves-alloc s alloc =
+    trans (exec-abstract-mov-to-input-preserves-alloc
+            (proj₁ (exec-abstract load-indirect s alloc))
+            (proj₂ (exec-abstract load-indirect s alloc)))
+          (exec-abstract-load-indirect-preserves-alloc s alloc)
+
+  -- Helper: load-indirect preserves halted when read succeeds
+  load-indirect-halted-success : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (v : ValueLocation FS) →
+    halted s ≡ false →
+    readLoc s (readReg (regs s) Input) ≡ just v →
+    halted (proj₁ (exec-abstract load-indirect s alloc)) ≡ false
+  load-indirect-halted-success s alloc v not-halted read-eq
+    with readLoc s (readReg (regs s) Input) | read-eq
+  ... | just _ | refl = not-halted
+
+  -- Product setup trace preserves halted status
+  prod-setup-trace-preserves-halted : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc fst-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    readLoc s input-loc ≡ just fst-loc →
+    let s-after-load = proj₁ (exec-abstract load-indirect s alloc)
+        alloc-after-load = proj₂ (exec-abstract load-indirect s alloc)
+        s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
+    in halted s-setup ≡ false
+  prod-setup-trace-preserves-halted s alloc input-loc fst-loc not-halted rdi-eq ptr-eq =
+    let
+      input-eq : readReg (regs s) Input ≡ input-loc
+      input-eq = rdi-eq
+      read-eq : readLoc s (readReg (regs s) Input) ≡ just fst-loc
+      read-eq = trans (cong (readLoc s) input-eq) ptr-eq
+      halted-after-load = load-indirect-halted-success s alloc fst-loc not-halted read-eq
+    in halted-after-load
+
+  -- Product setup trace execution equality
+  prod-setup-trace-exec : ∀ (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc fst-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    readLoc s input-loc ≡ just fst-loc →
+    let setup-trace = load-indirect ∷ mov-to-input ∷ []
+        s-after-load = proj₁ (exec-abstract load-indirect s alloc)
+        alloc-after-load = proj₂ (exec-abstract load-indirect s alloc)
+        s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
+        alloc-setup = proj₂ (exec-abstract mov-to-input s-after-load alloc-after-load)
+    in exec-trace setup-trace s alloc ≡ (s-setup , alloc-setup)
+  prod-setup-trace-exec s alloc input-loc fst-loc not-halted rdi-eq ptr-eq =
+    let
+      read-eq : readLoc s (readReg (regs s) Input) ≡ just fst-loc
+      read-eq = trans (cong (readLoc s) rdi-eq) ptr-eq
+      halted-after-load = load-indirect-halted-success s alloc fst-loc not-halted read-eq
+      step1 = exec-trace-cons load-indirect (mov-to-input ∷ []) s alloc not-halted
+      s-after-load = proj₁ (exec-abstract load-indirect s alloc)
+      alloc-after-load = proj₂ (exec-abstract load-indirect s alloc)
       step2 = exec-trace-single mov-to-input s-after-load alloc-after-load halted-after-load
     in trans step1 step2
 
