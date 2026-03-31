@@ -100,7 +100,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
-           validityWF-alloc-advance;
+           validityWF-alloc-advance; validityWF-with-bf-transfer;
            valid-μ-wf; valid-primitive-wf;
            valid-unit-wf; valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
            valid-pair-wf; valid-inl-wf; valid-inr-wf)
@@ -1611,7 +1611,21 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                   valid-layer-cata = subst (λ v → ValidAtWF mAlg (record alloc-layer { next-slot = rs }) v
                                                    (IRResultAWF.result-loc alg-result) (IRResultAWF.final-state alg-result))
                                           (sym cata-sem-eq) valid-layer-alg
-              in SMP.!! {A = ValidAtWF mAlg (record alloc { next-slot = rs }) (eval primSem (Cata wfG alg) x) (IRResultAWF.result-loc alg-result) (IRResultAWF.final-state alg-result)}
+              -- Transfer via frontier-same-heap: alloc-layer with rs ≈ alloc with rs
+                  bf-transfer = frontier-same-heap
+                    (record alloc-layer { next-slot = rs })
+                    (record alloc { next-slot = rs })
+                    layer-frame-preserved  -- current-frame equal
+                    refl                   -- next-slot both = rs
+                    layer-heap-preserved   -- next-heap-ref equal
+              in validityWF-with-bf-transfer
+                   (eval primSem (Cata wfG alg) x)
+                   (IRResultAWF.result-loc alg-result)
+                   (IRResultAWF.final-state alg-result)
+                   (record alloc-layer { next-slot = rs })
+                   (record alloc { next-slot = rs })
+                   bf-transfer
+                   valid-layer-cata
           ; reclaim-size-bound = SMP.!! {A = IRResultAWF.reclaimable-slot alg-result ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)}
           ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
           ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) layer-trace
