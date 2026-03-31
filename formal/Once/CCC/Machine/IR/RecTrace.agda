@@ -35,7 +35,8 @@ open import Once.CCC.Target.X86-64.Types
 open import Once.CCC.IR
 open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType;
-  base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum)
+  base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
+  WellFormedF-irrelevant)
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
@@ -1335,10 +1336,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     --   2. apply algebra: compute alg (processed-layer)
     ------------------------------------------------------------------------
 
-    -- Helper to extract layer validity from ValidAtWF for μ-types
-    -- PROOF OBLIGATION: The wf stored in ValidAtWF must equal the wfG used in sem-Out
-    -- This is guaranteed by construction (we create ValidAtWF with the same wfG)
-    -- but Agda can't verify it directly, so we use SMP.!! for now
     -- Helper: readLoc ignores changes to regs field
     -- Pattern matching helps Agda see the definitional equality
     readLoc-regs-irrelevant : ∀ (s : LocState FS) (r : Registers FS) (loc : ValueLocation FS) →
@@ -1360,9 +1357,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       {input-loc : ValueLocation FS} {s : LocState FS}
       → ValidAtWF m alloc x input-loc s
       → μLayerValid alloc wfG wfG (sem-Out wfG x) input-loc s
-    -- Note: This requires wf proof uniqueness (all WellFormedF G proofs are equal)
-    -- or refactoring ValidAtWF to carry the wf proof used in construction
-    extract-μLayerValid wfG v = SMP.!!
+    -- Uses WellFormedF-irrelevant to transport layer validity from wf to wfG
+    extract-μLayerValid {G} wfG (valid-μ-wf wf x (μ-valid bf lv)) =
+      subst (λ w → μLayerValid _ w w (sem-Out w x) _ _)
+            (WellFormedF-irrelevant wf wfG)
+            lv
 
     cata-dispatched-new : ∀ {G A}
       (wfG : WellFormedF G)

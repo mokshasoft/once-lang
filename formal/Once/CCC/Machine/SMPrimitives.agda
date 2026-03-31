@@ -1681,6 +1681,26 @@ module TracePrimitives {FS : FrameSemantics} where
     writeLoc-preserves-other s (OnStack (current-frame alloc) j) (OnStack (current-frame alloc) k)
       (readReg (regs s) Output) (stack-slot-disjoint (current-frame alloc) j k (≢-sym (<⇒≢ k<j)))
 
+  -- store-at-slot preserves Input register (derived from store-at-slot-regs)
+  exec-abstract-store-at-slot-preserves-input : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    readReg (regs (proj₁ (exec-abstract (store-at-slot k) s alloc))) Input ≡
+    readReg (regs s) Input
+  exec-abstract-store-at-slot-preserves-input k s alloc =
+    cong (λ r → readReg r Input) (store-at-slot-regs k s alloc)
+
+  -- store-at-slot preserves any memory location except the written slot
+  -- This handles heap locations, ancestor frames, and different slots
+  exec-abstract-store-at-slot-preserves-loc : ∀ (k : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) →
+    loc ≢ OnStack (current-frame alloc) k →
+    readLoc (proj₁ (exec-abstract (store-at-slot k) s alloc)) loc ≡ readLoc s loc
+  exec-abstract-store-at-slot-preserves-loc k s alloc (OnStack f j) loc≢slot =
+    writeLoc-preserves-other s (OnStack (current-frame alloc) k) (OnStack f j)
+      (readReg (regs s) Output) (λ eq → loc≢slot (sym eq))
+  exec-abstract-store-at-slot-preserves-loc k s alloc (OnHeap hl) _ =
+    writeLoc-preserves-other s (OnStack (current-frame alloc) k) (OnHeap hl)
+      (readReg (regs s) Output) (λ ())
+
   ------------------------------------------------------------------------
   -- (I) SNOC DECOMPOSITION
   --
@@ -2480,6 +2500,62 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   exec-abstract-mov-to-input-preserves-alloc : ∀ (s : LocState FS) (alloc : AllocState {FS}) →
     proj₂ (exec-abstract mov-to-input s alloc) ≡ alloc
   exec-abstract-mov-to-input-preserves-alloc s alloc = refl
+
+  -- restore-input preserves alloc
+  exec-abstract-restore-input-preserves-alloc : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    proj₂ (exec-abstract (restore-input slot) s alloc) ≡ alloc
+  exec-abstract-restore-input-preserves-alloc slot s alloc
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+
+  -- exec-trace (restore-input slot ∷ []) preserves alloc when not halted
+  restore-trace-preserves-alloc : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₂ (exec-trace (restore-input slot ∷ []) s alloc) ≡ alloc
+  restore-trace-preserves-alloc slot s alloc not-halted =
+    let step = exec-trace-single (restore-input slot) s alloc not-halted
+    in trans (cong proj₂ step) (exec-abstract-restore-input-preserves-alloc slot s alloc)
+
+  -- restore-input sets Input to the value read from the slot
+  -- When slot contains v, restore-input sets Input := v
+  exec-abstract-restore-input-sets-input : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (v : ValueLocation FS) →
+    readLoc s (OnStack (current-frame alloc) slot) ≡ just v →
+    readReg (regs (proj₁ (exec-abstract (restore-input slot) s alloc))) Input ≡ v
+  exec-abstract-restore-input-sets-input slot s alloc v slot-has-v
+    with readLoc s (OnStack (current-frame alloc) slot) | slot-has-v
+  ... | just _ | refl = writeReg-same (regs s) Input v
+
+  -- restore-input preserves memory (it only writes to Input register)
+  exec-abstract-restore-input-preserves-stackMem : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    stackMem (proj₁ (exec-abstract (restore-input slot) s alloc)) ≡ stackMem s
+  exec-abstract-restore-input-preserves-stackMem slot s alloc
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+
+  exec-abstract-restore-input-preserves-heapMem : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    heapMem (proj₁ (exec-abstract (restore-input slot) s alloc)) ≡ heapMem s
+  exec-abstract-restore-input-preserves-heapMem slot s alloc
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+
+  -- restore-trace preserves memory (only register operation)
+  restore-trace-preserves-stackMem : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    stackMem (proj₁ (exec-trace (restore-input slot ∷ []) s alloc)) ≡ stackMem s
+  restore-trace-preserves-stackMem slot s alloc not-halted =
+    trans (cong stackMem (cong proj₁ (exec-trace-single (restore-input slot) s alloc not-halted)))
+          (exec-abstract-restore-input-preserves-stackMem slot s alloc)
+
+  restore-trace-preserves-heapMem : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    heapMem (proj₁ (exec-trace (restore-input slot ∷ []) s alloc)) ≡ heapMem s
+  restore-trace-preserves-heapMem slot s alloc not-halted =
+    trans (cong heapMem (cong proj₁ (exec-trace-single (restore-input slot) s alloc not-halted)))
+          (exec-abstract-restore-input-preserves-heapMem slot s alloc)
 
   -- Combined: load-indirect-suc then mov-to-input sets Input to payload-loc
   -- This is the key lemma for rdi-setup proof

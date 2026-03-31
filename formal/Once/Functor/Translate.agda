@@ -21,7 +21,7 @@ open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Float using () renaming (Float to AgdaFloat)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂)
 
 open import Once.Type
 open import Once.Functor.Base
@@ -154,6 +154,36 @@ data WellFormedF : Functor → Set where
   wf-Id  : WellFormedF Id
   wf-Sum : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊕ G)
   wf-Prod : ∀ {F G} → WellFormedF F → WellFormedF G → WellFormedF (F ⊗ G)
+
+------------------------------------------------------------------------
+-- Proof Irrelevance for IsBaseType and WellFormedF
+--
+-- These proofs show that any two proofs of IsBaseType or WellFormedF
+-- for the same type/functor are equal. This enables pattern matching
+-- on validity proofs without worrying about which proof was used.
+------------------------------------------------------------------------
+
+-- | IsBaseType is proof-irrelevant
+IsBaseType-irrelevant : ∀ {A} (ib₁ ib₂ : IsBaseType A) → ib₁ ≡ ib₂
+IsBaseType-irrelevant base-Unit base-Unit = refl
+IsBaseType-irrelevant base-Void base-Void = refl
+IsBaseType-irrelevant base-Int base-Int = refl
+IsBaseType-irrelevant base-Float base-Float = refl
+IsBaseType-irrelevant base-Str base-Str = refl
+IsBaseType-irrelevant base-Buffer base-Buffer = refl
+IsBaseType-irrelevant (base-Prod ibA₁ ibB₁) (base-Prod ibA₂ ibB₂) =
+  cong₂ base-Prod (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
+IsBaseType-irrelevant (base-Sum ibA₁ ibB₁) (base-Sum ibA₂ ibB₂) =
+  cong₂ base-Sum (IsBaseType-irrelevant ibA₁ ibA₂) (IsBaseType-irrelevant ibB₁ ibB₂)
+
+-- | WellFormedF is proof-irrelevant
+WellFormedF-irrelevant : ∀ {F} (wf₁ wf₂ : WellFormedF F) → wf₁ ≡ wf₂
+WellFormedF-irrelevant (wf-K ib₁) (wf-K ib₂) = cong wf-K (IsBaseType-irrelevant ib₁ ib₂)
+WellFormedF-irrelevant wf-Id wf-Id = refl
+WellFormedF-irrelevant (wf-Sum wfF₁ wfG₁) (wf-Sum wfF₂ wfG₂) =
+  cong₂ wf-Sum (WellFormedF-irrelevant wfF₁ wfF₂) (WellFormedF-irrelevant wfG₁ wfG₂)
+WellFormedF-irrelevant (wf-Prod wfF₁ wfG₁) (wf-Prod wfF₂ wfG₂) =
+  cong₂ wf-Prod (WellFormedF-irrelevant wfF₁ wfF₂) (WellFormedF-irrelevant wfG₁ wfG₂)
 
 ------------------------------------------------------------------------
 -- Standard Functor Codes
