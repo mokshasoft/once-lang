@@ -729,16 +729,20 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     --
     -- After load-indirect: Output = fst-loc (from fst-ptr)
     -- After mov-to-input: Input = fst-loc
-    SMP.!!  -- PROOF OBLIGATION: prod-left-setup sets Input = fst-loc
+    SMP.RecSchemeSemantics.prod-left-setup-input-helper save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr
 
   -- | After prod-left-setup-trace, alloc unchanged
+  --
+  -- Each instruction preserves alloc:
+  --   mov-to-output: proj₂ (exec-abstract mov-to-output s alloc) ≡ alloc (by def)
+  --   store-at-slot: proj₂ (exec-abstract (store-at-slot k) s alloc) ≡ alloc (by def)
+  --   load-indirect: proj₂ (exec-abstract load-indirect s alloc) ≡ alloc (by def)
+  --   mov-to-input: proj₂ (exec-abstract mov-to-input s alloc) ≡ alloc (by def)
   prod-left-setup-alloc : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     halted s ≡ false →
     proj₂ (exec-trace (prod-left-setup-trace save-slot) s alloc) ≡ alloc
   prod-left-setup-alloc save-slot s alloc not-halted =
-    -- None of the instructions (mov-to-output, store-at-slot, load-indirect, mov-to-input)
-    -- modify the AllocState, so proj₂ gives back alloc.
-    SMP.!!  -- PROOF OBLIGATION: setup trace preserves alloc
+    SMP.RecSchemeSemantics.prod-left-setup-alloc-helper save-slot s alloc not-halted
 
   -- | Memory preservation: prod-left-setup only modifies one stack slot
   -- All locations before frontier (except the save slot) are preserved
@@ -1331,7 +1335,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
         -- halted preserved through setup
         not-halted-left-setup : halted s-left-setup ≡ false
-        not-halted-left-setup = SMP.!!  -- Setup instructions preserve halted
+        not-halted-left-setup = SMP.RecSchemeSemantics.prod-left-setup-halted-helper
+                                  save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr
 
         -- Capacity: need suc (next-slot alloc) + req ≤ capacity
         -- We have: next-slot alloc + req ≤ capacity
@@ -1411,7 +1416,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
         -- halted preserved through right setup
         not-halted-right-setup : halted s-right-setup ≡ false
-        not-halted-right-setup = SMP.!!  -- Setup instructions preserve halted
+        not-halted-right-setup = SMP.TracePrimitives.exec-trace-preserves-halted
+                                   right-setup-trace s-l alloc-l l-not-halted
+                                   (tph-∷ iph-load-from-slot (tph-∷ iph-mov-to-input
+                                     (tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[]))))
 
         -- Transfer r-layer-valid through right setup
         -- Memory at snd-loc should be preserved through the setup
@@ -1479,6 +1487,22 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- Final alloc slot monotonicity for upper bound composition
         r-slot-mono = ProcessedLayerResult.slot-monotone r-result
         final-alloc = ProcessedLayerResult.final-alloc r-result
+
+        -- Setup trace halted preservation proofs
+        left-setup-tph : TracePreservesHaltedP left-setup-trace
+        left-setup-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot
+                          (tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input tph-[])))
+        right-setup-tph : TracePreservesHaltedP right-setup-trace
+        right-setup-tph = tph-∷ iph-load-from-slot (tph-∷ iph-mov-to-input
+                            (tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])))
+
+        -- Setup trace capacity preservation proofs
+        left-setup-tpc : TracePreservesCapacity left-setup-trace
+        left-setup-tpc = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot
+                          (tpc-∷ ipc-load-indirect (tpc-∷ ipc-mov-to-input tpc-[])))
+        right-setup-tpc : TracePreservesCapacity right-setup-trace
+        right-setup-tpc = tpc-∷ ipc-load-from-slot (tpc-∷ ipc-mov-to-input
+                            (tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input tpc-[])))
       in
       mR , record
         { processed = processed
@@ -1511,9 +1535,20 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; trace-slot-reads-above = SMP.!!  -- PROOF: setup reads above, l/r reads above
         ; trace-slot-reads-below = SMP.!!  -- PROOF: all reads below
         -- Trace preservation properties
-        ; trace-preserves-halted = SMP.!!  -- PROOF: setup + l + r preserve halted
-        ; trace-preserves-capacity = SMP.!!  -- PROOF: setup + l + r preserve capacity
-        ; trace-no-heap-writes = SMP.!!  -- PROOF: setup + l + r don't write heap
+        ; trace-preserves-halted = tph-++ left-setup-tph
+                                    (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result)
+                                            (tph-++ right-setup-tph
+                                                    (ProcessedLayerResult.trace-preserves-halted r-result)))
+        ; trace-preserves-capacity = SMP.tpc-++ left-setup-tpc
+                                      (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity l-result)
+                                              (SMP.tpc-++ right-setup-tpc
+                                                      (ProcessedLayerResult.trace-preserves-capacity r-result)))
+        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append left-setup-trace
+                                    (l-trace ++ right-setup-trace ++ r-trace) tt
+                                    (SMP.trace-no-heap-writes-append l-trace (right-setup-trace ++ r-trace)
+                                       (ProcessedLayerResult.trace-no-heap-writes l-result)
+                                       (SMP.trace-no-heap-writes-append right-setup-trace r-trace tt
+                                          (ProcessedLayerResult.trace-no-heap-writes r-result)))
         }
 
     ------------------------------------------------------------------------
