@@ -2501,6 +2501,14 @@ module RecSchemeSemantics {FS : FrameSemantics} where
     proj₂ (exec-abstract mov-to-input s alloc) ≡ alloc
   exec-abstract-mov-to-input-preserves-alloc s alloc = refl
 
+  -- load-from-slot preserves alloc
+  exec-abstract-load-from-slot-preserves-alloc : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    proj₂ (exec-abstract (load-from-slot slot) s alloc) ≡ alloc
+  exec-abstract-load-from-slot-preserves-alloc slot s alloc
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+
   -- restore-input preserves alloc
   exec-abstract-restore-input-preserves-alloc : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
     proj₂ (exec-abstract (restore-input slot) s alloc) ≡ alloc
@@ -3075,3 +3083,296 @@ module RecSchemeSemantics {FS : FrameSemantics} where
                     readLoc (proj₁ (exec-trace (mov-to-input ∷ []) s₃ alloc)) loc ≡ readLoc s₃ loc
                   step-4 s₃ alloc loc h-eq₃ rewrite h-eq₃ =
                     exec-abstract-mov-to-input-preserves-mem s₃ alloc loc
+
+  ------------------------------------------------------------------------
+  -- Additional Product Setup Helpers
+  ------------------------------------------------------------------------
+
+  -- | After prod-left-setup, stack[save-slot] contains input-loc
+  --
+  -- Trace: mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input
+  -- After step 1: Output = Input = input-loc
+  -- After step 2: stack[save-slot] = Output = input-loc
+  -- Steps 3-4 don't modify stack[save-slot]
+  prod-left-setup-saves-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    let (s' , _) = exec-trace (mov-to-output ∷ store-at-slot save-slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc
+    in readLoc s' (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+  prod-left-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq =
+    step-through save-slot s alloc input-loc not-halted rdi-eq
+    where
+      step-through : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+        (input-loc : ValueLocation FS) →
+        halted s ≡ false →
+        readReg (regs s) Input ≡ input-loc →
+        let (s' , _) = exec-trace (mov-to-output ∷ store-at-slot slot ∷ load-indirect ∷ mov-to-input ∷ []) s alloc
+        in readLoc s' (OnStack (current-frame alloc) slot) ≡ just input-loc
+      step-through slot s alloc input-loc h-eq rdi-eq rewrite h-eq =
+        let
+          -- After mov-to-output: Output = input-loc
+          s₁ = proj₁ (exec-abstract mov-to-output s alloc)
+          output-s₁ : readReg (regs s₁) Output ≡ input-loc
+          output-s₁ = rdi-eq  -- mov-to-output copies Input to Output
+          h-eq₁ : halted s₁ ≡ false
+          h-eq₁ = h-eq
+        in step-2 slot s₁ alloc input-loc h-eq₁ output-s₁
+        where
+          step-2 : ∀ (slot : ℕ) (s₁ : LocState FS) (alloc : AllocState {FS})
+            (input-loc : ValueLocation FS) →
+            halted s₁ ≡ false →
+            readReg (regs s₁) Output ≡ input-loc →
+            let (s' , _) = exec-trace (store-at-slot slot ∷ load-indirect ∷ mov-to-input ∷ []) s₁ alloc
+            in readLoc s' (OnStack (current-frame alloc) slot) ≡ just input-loc
+          step-2 slot s₁ alloc input-loc h-eq₁ output-eq rewrite h-eq₁ =
+            let
+              -- After store-at-slot: stack[slot] = Output = input-loc
+              s₂ = proj₁ (exec-abstract (store-at-slot slot) s₁ alloc)
+              -- The key: store-at-slot writes Output to stack[slot]
+              slot-has-input : readLoc s₂ (OnStack (current-frame alloc) slot) ≡ just input-loc
+              slot-has-input = trans (store-at-slot-result slot s₁ alloc) (cong just output-eq)
+              h-eq₂ : halted s₂ ≡ false
+              h-eq₂ = trans (store-at-slot-halted slot s₁ alloc) h-eq₁
+            in step-3 s₂ alloc slot h-eq₂ slot-has-input
+            where
+              -- load-indirect and mov-to-input don't modify stack[slot]
+              step-3 : ∀ (s₂ : LocState FS) (alloc : AllocState {FS}) (slot : ℕ) →
+                halted s₂ ≡ false →
+                readLoc s₂ (OnStack (current-frame alloc) slot) ≡ just input-loc →
+                let (s' , _) = exec-trace (load-indirect ∷ mov-to-input ∷ []) s₂ alloc
+                in readLoc s' (OnStack (current-frame alloc) slot) ≡ just input-loc
+              step-3 s₂ alloc slot h-eq₂ slot-eq rewrite h-eq₂ =
+                let
+                  s₃ = proj₁ (exec-abstract load-indirect s₂ alloc)
+                  mem₃ = exec-abstract-load-indirect-preserves-mem s₂ alloc (OnStack (current-frame alloc) slot)
+                  slot-s₃ = trans mem₃ slot-eq
+                  h-eq₃ = load-indirect-preserves-halted s₂ alloc h-eq₂
+                in step-4 s₃ alloc slot h-eq₃ slot-s₃
+                where
+                  step-4 : ∀ (s₃ : LocState FS) (alloc : AllocState {FS}) (slot : ℕ) →
+                    halted s₃ ≡ false →
+                    readLoc s₃ (OnStack (current-frame alloc) slot) ≡ just input-loc →
+                    let (s' , _) = exec-trace (mov-to-input ∷ []) s₃ alloc
+                    in readLoc s' (OnStack (current-frame alloc) slot) ≡ just input-loc
+                  step-4 s₃ alloc slot h-eq₃ slot-eq rewrite h-eq₃ =
+                    trans (exec-abstract-mov-to-input-preserves-mem s₃ alloc (OnStack (current-frame alloc) slot)) slot-eq
+
+  ------------------------------------------------------------------------
+  -- Right Setup Helpers
+  --
+  -- Right setup trace: load-from-slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input
+  -- This trace only modifies registers, never memory.
+  ------------------------------------------------------------------------
+
+  -- | load-from-slot preserves memory (only changes registers)
+  exec-abstract-load-from-slot-preserves-mem : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) →
+    readLoc (proj₁ (exec-abstract (load-from-slot slot) s alloc)) loc ≡ readLoc s loc
+  exec-abstract-load-from-slot-preserves-mem slot s alloc (OnStack f k)
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+  exec-abstract-load-from-slot-preserves-mem slot s alloc (OnHeap hl)
+    with readLoc s (OnStack (current-frame alloc) slot)
+  ... | just _  = refl
+  ... | nothing = refl
+
+  -- | prod-right-setup preserves alloc
+  --
+  -- All 4 instructions (load-from-slot, mov-to-input, load-indirect-suc, mov-to-input)
+  -- preserve alloc by definition of exec-abstract.
+  prod-right-setup-alloc-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₂ (exec-trace (load-from-slot save-slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc) ≡ alloc
+  prod-right-setup-alloc-helper save-slot s alloc not-halted =
+    step-through save-slot s alloc not-halted
+    where
+      step-through : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+        halted s ≡ false →
+        proj₂ (exec-trace (load-from-slot slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc) ≡ alloc
+      step-through slot s alloc h-eq rewrite h-eq
+        with readLoc s (OnStack (current-frame alloc) slot)
+      ... | nothing = refl  -- halted becomes true, trace returns alloc immediately
+      ... | just v = step-2 (record s { regs = writeReg (regs s) Output v }) alloc h-eq
+        where
+          step-2 : ∀ (s₁ : LocState FS) (alloc : AllocState {FS}) →
+            halted s₁ ≡ false →
+            proj₂ (exec-trace (mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s₁ alloc) ≡ alloc
+          step-2 s₁ alloc h-eq₁ rewrite h-eq₁ =
+            let
+              s₂ = proj₁ (exec-abstract mov-to-input s₁ alloc)
+              h-eq₂ : halted s₂ ≡ false
+              h-eq₂ = h-eq₁
+            in step-3 s₂ alloc h-eq₂
+            where
+              step-3 : ∀ (s₂ : LocState FS) (alloc : AllocState {FS}) →
+                halted s₂ ≡ false →
+                proj₂ (exec-trace (load-indirect-suc ∷ mov-to-input ∷ []) s₂ alloc) ≡ alloc
+              step-3 s₂ alloc h-eq₂ rewrite h-eq₂ =
+                let
+                  s₃ = proj₁ (exec-abstract load-indirect-suc s₂ alloc)
+                  h-eq₃ = load-indirect-suc-preserves-halted s₂ alloc h-eq₂
+                in step-4 s₃ alloc h-eq₃
+                where
+                  step-4 : ∀ (s₃ : LocState FS) (alloc : AllocState {FS}) →
+                    halted s₃ ≡ false →
+                    proj₂ (exec-trace (mov-to-input ∷ []) s₃ alloc) ≡ alloc
+                  step-4 s₃ alloc h-eq₃ rewrite h-eq₃ = refl
+
+  -- | prod-right-setup preserves memory
+  --
+  -- All 4 instructions only modify registers, never memory.
+  prod-right-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) →
+    halted s ≡ false →
+    loc ≢ OnStack (current-frame alloc) save-slot →  -- This constraint is actually not needed but kept for symmetry
+    let (s' , _) = exec-trace (load-from-slot save-slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc
+    in readLoc s' loc ≡ readLoc s loc
+  prod-right-setup-mem-helper save-slot s alloc loc not-halted _ =
+    step-through save-slot s alloc loc not-halted
+    where
+      step-through : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+        (loc : ValueLocation FS) →
+        halted s ≡ false →
+        let (s' , _) = exec-trace (load-from-slot slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc
+        in readLoc s' loc ≡ readLoc s loc
+      step-through slot s alloc loc h-eq rewrite h-eq
+        with readLoc s (OnStack (current-frame alloc) slot)
+      -- When read fails: halted becomes true, rest of trace is skipped, memory unchanged
+      ... | nothing = nothing-case
+        where
+          s' : LocState FS
+          s' = record s { halted = true }
+          mem-eq : readLoc s' loc ≡ readLoc s loc
+          mem-eq = ExecLemmas.readLoc-stackMem-eq s' s loc refl refl
+          nothing-case : readLoc (proj₁ (exec-trace (mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s' alloc)) loc ≡ readLoc s loc
+          nothing-case with halted s'
+          ... | true = mem-eq  -- exec-trace returns s' unchanged when halted=true, and s' has same memory as s
+          ... | false = mem-eq  -- also works (halted s' is always true here, but Agda may not reduce it)
+      ... | just v =
+        let
+          s₁ = record s { regs = writeReg (regs s) Output v }
+          mem₁ : readLoc s₁ loc ≡ readLoc s loc
+          mem₁ = ExecLemmas.readLoc-stackMem-eq s₁ s loc refl refl  -- Only regs changed, memory unchanged
+          h-eq₁ : halted s₁ ≡ false
+          h-eq₁ = h-eq
+        in trans (step-2 s₁ alloc loc h-eq₁) mem₁
+        where
+          step-2 : ∀ (s₁ : LocState FS) (alloc : AllocState {FS})
+            (loc : ValueLocation FS) →
+            halted s₁ ≡ false →
+            let (s' , _) = exec-trace (mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s₁ alloc
+            in readLoc s' loc ≡ readLoc s₁ loc
+          step-2 s₁ alloc loc h-eq₁ rewrite h-eq₁ =
+            let
+              s₂ = proj₁ (exec-abstract mov-to-input s₁ alloc)
+              mem₂ = exec-abstract-mov-to-input-preserves-mem s₁ alloc loc
+              h-eq₂ : halted s₂ ≡ false
+              h-eq₂ = h-eq₁
+            in trans (step-3 s₂ alloc loc h-eq₂) mem₂
+            where
+              step-3 : ∀ (s₂ : LocState FS) (alloc : AllocState {FS})
+                (loc : ValueLocation FS) →
+                halted s₂ ≡ false →
+                let (s' , _) = exec-trace (load-indirect-suc ∷ mov-to-input ∷ []) s₂ alloc
+                in readLoc s' loc ≡ readLoc s₂ loc
+              step-3 s₂ alloc loc h-eq₂ rewrite h-eq₂ =
+                let
+                  s₃ = proj₁ (exec-abstract load-indirect-suc s₂ alloc)
+                  mem₃ = exec-abstract-load-indirect-suc-preserves-mem s₂ alloc loc
+                  h-eq₃ = load-indirect-suc-preserves-halted s₂ alloc h-eq₂
+                in trans (step-4 s₃ alloc loc h-eq₃) mem₃
+                where
+                  step-4 : ∀ (s₃ : LocState FS) (alloc : AllocState {FS})
+                    (loc : ValueLocation FS) →
+                    halted s₃ ≡ false →
+                    let (s' , _) = exec-trace (mov-to-input ∷ []) s₃ alloc
+                    in readLoc s' loc ≡ readLoc s₃ loc
+                  step-4 s₃ alloc loc h-eq₃ rewrite h-eq₃ =
+                    exec-abstract-mov-to-input-preserves-mem s₃ alloc loc
+
+  -- | prod-right-setup sets Input = snd-loc
+  --
+  -- Trace: load-from-slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input
+  -- After step 1: Output = stack[save-slot] = input-loc
+  -- After step 2: Input = Output = input-loc
+  -- After step 3: Output = *(Input + 1) = *(input-loc + 1) = snd-loc
+  -- After step 4: Input = Output = snd-loc
+  prod-right-setup-input-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc snd-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+    readLoc s (sucLoc input-loc) ≡ just snd-loc →
+    let (s' , _) = exec-trace (load-from-slot save-slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc
+    in readReg (regs s') Input ≡ snd-loc
+  prod-right-setup-input-helper save-slot s alloc input-loc snd-loc not-halted stack-eq snd-ptr =
+    step-through save-slot s alloc input-loc snd-loc not-halted stack-eq snd-ptr
+    where
+      step-through : ∀ (slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+        (input-loc snd-loc : ValueLocation FS) →
+        halted s ≡ false →
+        readLoc s (OnStack (current-frame alloc) slot) ≡ just input-loc →
+        readLoc s (sucLoc input-loc) ≡ just snd-loc →
+        let (s' , _) = exec-trace (load-from-slot slot ∷ mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s alloc
+        in readReg (regs s') Input ≡ snd-loc
+      step-through slot s alloc input-loc snd-loc h-eq stack-eq snd-ptr rewrite h-eq
+        with readLoc s (OnStack (current-frame alloc) slot) | stack-eq
+      ... | .(just input-loc) | refl =
+        let
+          -- After load-from-slot with just: s₁ = record s { regs = writeReg ... }
+          s₁ = record s { regs = writeReg (regs s) Output input-loc }
+          output-s₁ : readReg (regs s₁) Output ≡ input-loc
+          output-s₁ = writeReg-same (regs s) Output input-loc
+          h-eq₁ : halted s₁ ≡ false
+          h-eq₁ = h-eq
+          -- Memory of s₁ equals memory of s (only regs changed)
+          mem-eq : readLoc s₁ (sucLoc input-loc) ≡ readLoc s (sucLoc input-loc)
+          mem-eq = ExecLemmas.readLoc-stackMem-eq s₁ s (sucLoc input-loc) refl refl
+          snd-ptr-s₁ : readLoc s₁ (sucLoc input-loc) ≡ just snd-loc
+          snd-ptr-s₁ = trans mem-eq snd-ptr
+        in step-2 s₁ alloc input-loc snd-loc h-eq₁ output-s₁ snd-ptr-s₁
+        where
+          step-2 : ∀ (s₁ : LocState FS) (alloc : AllocState {FS})
+            (input-loc snd-loc : ValueLocation FS) →
+            halted s₁ ≡ false →
+            readReg (regs s₁) Output ≡ input-loc →
+            readLoc s₁ (sucLoc input-loc) ≡ just snd-loc →
+            let (s' , _) = exec-trace (mov-to-input ∷ load-indirect-suc ∷ mov-to-input ∷ []) s₁ alloc
+            in readReg (regs s') Input ≡ snd-loc
+          step-2 s₁ alloc input-loc snd-loc h-eq₁ output-eq snd-ptr-s₁ rewrite h-eq₁ =
+            let
+              -- After mov-to-input: Input = Output = input-loc
+              s₂ = proj₁ (exec-abstract mov-to-input s₁ alloc)
+              input-s₂ : readReg (regs s₂) Input ≡ input-loc
+              input-s₂ = output-eq  -- mov-to-input copies Output to Input
+              h-eq₂ : halted s₂ ≡ false
+              h-eq₂ = h-eq₁
+              -- Memory preserved through mov-to-input
+              snd-ptr-s₂ : readLoc s₂ (sucLoc input-loc) ≡ just snd-loc
+              snd-ptr-s₂ = trans (exec-abstract-mov-to-input-preserves-mem s₁ alloc (sucLoc input-loc)) snd-ptr-s₁
+            in step-3 s₂ alloc input-loc snd-loc h-eq₂ input-s₂ snd-ptr-s₂
+            where
+              step-3 : ∀ (s₂ : LocState FS) (alloc : AllocState {FS})
+                (input-loc snd-loc : ValueLocation FS) →
+                halted s₂ ≡ false →
+                readReg (regs s₂) Input ≡ input-loc →
+                readLoc s₂ (sucLoc input-loc) ≡ just snd-loc →
+                let (s' , _) = exec-trace (load-indirect-suc ∷ mov-to-input ∷ []) s₂ alloc
+                in readReg (regs s') Input ≡ snd-loc
+              step-3 s₂ alloc input-loc snd-loc h-eq₂ input-eq snd-ptr-s₂ rewrite h-eq₂ =
+                let
+                  -- After load-indirect-suc: Output = *(Input + 1) = *(input-loc + 1) = snd-loc
+                  s₃ = proj₁ (exec-abstract load-indirect-suc s₂ alloc)
+                  output-s₃ : readReg (regs s₃) Output ≡ snd-loc
+                  output-s₃ = !!  -- load-indirect-suc reads *(Input + 1) into Output
+                  h-eq₃ = load-indirect-suc-preserves-halted s₂ alloc h-eq₂
+                in step-4 s₃ alloc snd-loc h-eq₃ output-s₃
+                where
+                  step-4 : ∀ (s₃ : LocState FS) (alloc : AllocState {FS})
+                    (snd-loc : ValueLocation FS) →
+                    halted s₃ ≡ false →
+                    readReg (regs s₃) Output ≡ snd-loc →
+                    let (s' , _) = exec-trace (mov-to-input ∷ []) s₃ alloc
+                    in readReg (regs s') Input ≡ snd-loc
+                  step-4 s₃ alloc snd-loc h-eq₃ output-eq rewrite h-eq₃ = output-eq

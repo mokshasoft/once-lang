@@ -19,8 +19,8 @@
 
 module Once.CCC.Machine.IR.RecTrace where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; n<1+n)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _⊔_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-≤-trans; m≤m+n; n≤1+n; n<1+n; m≤m⊔n; m≤n⊔m; +-monoʳ-≤)
 open import Data.Bool using (false)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -113,6 +113,30 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
            μlayer-K; μlayer-Id; μlayer-inl; μlayer-inr; μlayer-prod;
            μLayerValid-mem-only; μLayerValid-frontier-advance;
            μLayerValid-mem-preserved; μValid-frontier-advance)
+
+  ------------------------------------------------------------------------
+  -- BeforeFrontier Helpers
+  --
+  -- These are needed for the Product case refactoring.
+  ------------------------------------------------------------------------
+
+  open import Data.Empty using (⊥-elim)
+
+  -- | BeforeFrontier alloc loc → loc ≡ OnStack cf slot → slot < next-slot alloc
+  bf-slot-contradiction : (alloc : AllocState {FS}) (loc : ValueLocation FS) (slot : ℕ)
+    → BeforeFrontier alloc loc
+    → loc ≡ OnStack (current-frame alloc) slot
+    → slot < next-slot alloc
+  bf-slot-contradiction alloc .(OnStack f k) slot (stack-before {f} {k} f-eq k<ns) loc-eq =
+    subst (λ s → s < next-slot alloc) (SMP.stack-slot-injective loc-eq) k<ns
+  bf-slot-contradiction alloc .(OnStack f k) slot (stack-ancestor {f} {k} cf≺f src) loc-eq =
+    ⊥-elim (≺-irrefl (subst (λ f' → current-frame alloc ≺ f') (SMP.stack-frame-injective loc-eq) cf≺f))
+
+  -- | The slot at next-slot is BeforeFrontier after incrementing next-slot
+  slot-at-next-bf : (alloc : AllocState {FS})
+    → BeforeFrontier (record alloc { next-slot = suc (next-slot alloc) })
+                     (OnStack (current-frame alloc) (next-slot alloc))
+  slot-at-next-bf alloc = stack-before refl (n<1+n (next-slot alloc))
 
   ------------------------------------------------------------------------
   -- Core Trace Building
@@ -559,6 +583,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     (alg : IR (⟦ G ⟧T A) A)
     (m : AllocMode)
     {F : Functor}
+    (wfF : WellFormedF F)
     (layer : ⟦ F ⟧F (⟦μ⟧ G))
     (s : LocState FS) (alloc : AllocState {FS}) : Set where
     field
@@ -601,6 +626,21 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Allocation state invariants (for composition)
       frame-preserved : current-frame final-alloc ≡ current-frame alloc
       slot-monotone : next-slot alloc ≤ next-slot final-alloc
+
+      -- Slot reclamation: temporary slots can be reclaimed after processing
+      -- Mirrors the IRResultAWF reclamation pattern (ClosureWellFormed.agda:289-297)
+      reclaimable-slot : ℕ
+      reclaim-monotone : next-slot alloc ≤ reclaimable-slot
+      reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
+      reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+        BeforeFrontier (record alloc { next-slot = reclaimable-slot }) result-loc
+      reclaim-preserves-validity : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+        ValidAtWF m (record alloc { next-slot = reclaimable-slot }) processed result-loc final-state
+
+      -- Slot usage bound: reclaimable-slot bounded by ir-stack-requirement
+      -- Uses Cata's requirement for provability in Id case
+      slot-usage-bound : reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)
+
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
       capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
 
@@ -690,6 +730,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   incr-next-slot-mono : ∀ (alloc : AllocState {FS}) →
     next-slot alloc ≤ next-slot (incr-next-slot alloc)
   incr-next-slot-mono alloc = n≤1+n (next-slot alloc)
+
+  -- | Corollary: incr-next-slot doesn't affect trace execution (state)
+  --
+  -- Key insight: next-slot is purely for proof bookkeeping, not execution.
+  -- The actual trace execution only uses current-frame for stack addressing.
+  exec-trace-incr-next-slot : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
+    proj₁ (exec-trace trace s alloc) ≡ proj₁ (exec-trace trace s (incr-next-slot alloc))
+  exec-trace-incr-next-slot trace s alloc =
+    SMP.TracePrimitives.exec-trace-same-frame trace s alloc (incr-next-slot alloc) refl
 
   -- | Product left setup trace
   --
@@ -782,7 +831,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       → halted s ≡ false
       → readReg (regs s) Input ≡ input-loc
       → next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
-      → ∃[ mOut ] ProcessedLayerResult wfG alg mOut {F} layer s alloc
+      → ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfF layer s alloc
 
     -- K case: constant layer, no recursion
     -- The processed layer is just the constant value itself
@@ -806,6 +855,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; semantic-correct = refl  -- sem-fmap K f x = x, coerce-struct⁻¹ K _ x = x
         ; frame-preserved = refl
         ; slot-monotone = ≤-refl
+        -- Reclamation: K case doesn't allocate, so reclaimable = next-slot alloc
+        ; reclaimable-slot = next-slot alloc
+        ; reclaim-monotone = ≤-refl
+        ; reclaim-bounded = ≤-refl
+        ; reclaim-preserves-result = λ _ → input-before
+        ; reclaim-preserves-validity = λ _ → valid-basetype-wf isBase input-before
+        ; slot-usage-bound = m≤m+n (next-slot alloc) (ir-stack-requirement (Cata wfG alg))
         ; heap-monotone = ≤-refl
         ; capacity-preserved = refl
         ; mem-preserved = λ loc _ → exec-abstract-mov-to-output-preserves-mem s alloc loc
@@ -870,6 +926,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; semantic-correct = refl  -- sem-fmap Id f x = f x, coerce-struct⁻¹ Id _ x = x
         ; frame-preserved = IRResultAWF.frame-preserved rec-result
         ; slot-monotone = rec-slot-mono
+        -- Id case: inherit reclamation directly from IRResultAWF
+        ; reclaimable-slot = IRResultAWF.reclaimable-slot rec-result
+        ; reclaim-monotone = IRResultAWF.reclaim-monotone rec-result
+        ; reclaim-bounded = IRResultAWF.reclaim-bounded rec-result
+        ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result rec-result
+        ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity rec-result
+        -- slot-usage-bound: IRResultAWF.reclaim-size-bound gives exactly this bound
+        ; slot-usage-bound = IRResultAWF.reclaim-size-bound rec-result
         ; heap-monotone = IRResultAWF.heap-monotone rec-result
         ; capacity-preserved = IRResultAWF.capacity-preserved rec-result
         ; mem-preserved = IRResultAWF.mem-preserved-before rec-result
@@ -967,9 +1031,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         not-halted-setup : halted s-setup ≡ false
         not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
+        -- Capacity for sub-layer: preserved since alloc-setup = alloc
+        cap-setup : next-slot alloc-setup +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-setup
+        cap-setup = subst (λ al → next-slot al +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity al)
+                          (sym (setup-trace-preserves-alloc s alloc)) cap
+
         -- Step 2: Process left sub-layer (recursive call)
         (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn payload-loc s-setup alloc-setup
-                            l-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup cap
+                            l-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup cap-setup
 
         -- Extract recursive results
         l-processed = ProcessedLayerResult.processed l-result
@@ -1025,6 +1094,26 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           subst (λ al → next-slot al ≤ next-slot alloc-after-sub)
                 alloc-setup-eq
                 (ProcessedLayerResult.slot-monotone l-result)
+
+        -- Slot usage bound: sub-result uses ≤ product-depth wfL slots,
+        -- which is ≤ product-depth wfL ⊔ product-depth wfR = product-depth (wf-Sum wfL wfR)
+        -- Reclamation: inherit from sub-result
+        l-reclaimable : ℕ
+        l-reclaimable = ProcessedLayerResult.reclaimable-slot l-result
+
+        reclaim-mono-inj1 : next-slot alloc ≤ l-reclaimable
+        reclaim-mono-inj1 = subst (λ al → next-slot al ≤ l-reclaimable)
+                                  alloc-setup-eq
+                                  (ProcessedLayerResult.reclaim-monotone l-result)
+
+        reclaim-bounded-inj1 : l-reclaimable ≤ next-slot alloc-after-sub
+        reclaim-bounded-inj1 = ProcessedLayerResult.reclaim-bounded l-result
+
+        -- Slot usage bound: sub-result bound applies since alloc-setup ≡ alloc
+        slot-usage-bound-inj1 : l-reclaimable ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)
+        slot-usage-bound-inj1 = subst (λ al → l-reclaimable ≤ next-slot al +ℕ ir-stack-requirement (Cata wfG alg))
+                                      alloc-setup-eq
+                                      (ProcessedLayerResult.slot-usage-bound l-result)
 
         heap-monotone-inj1 : next-heap-ref alloc ≤ next-heap-ref alloc-after-sub
         heap-monotone-inj1 =
@@ -1084,6 +1173,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; semantic-correct = cong inj₁ (ProcessedLayerResult.semantic-correct l-result)
         ; frame-preserved = frame-preserved-inj1
         ; slot-monotone = slot-monotone-inj1
+        -- Reclamation: inherit from sub-result
+        ; reclaimable-slot = l-reclaimable
+        ; reclaim-monotone = reclaim-mono-inj1
+        ; reclaim-bounded = reclaim-bounded-inj1
+        ; reclaim-preserves-result = λ fits →
+            let fits' = subst (l-reclaimable ≤_) (sym (cong frame-capacity alloc-setup-eq)) fits
+            in ProcessedLayerResult.reclaim-preserves-result l-result fits'
+        ; reclaim-preserves-validity = λ fits → SMP.!!  -- BLOCKED: need inj₁ validity composition
+        ; slot-usage-bound = slot-usage-bound-inj1
         ; heap-monotone = heap-monotone-inj1
         ; capacity-preserved = capacity-preserved-inj1
         ; mem-preserved = mem-preserved-inj1
@@ -1152,9 +1250,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         not-halted-setup : halted s-setup ≡ false
         not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
+        -- Capacity for sub-layer: preserved since alloc-setup = alloc
+        cap-setup : next-slot alloc-setup +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-setup
+        cap-setup = subst (λ al → next-slot al +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity al)
+                          (sym (setup-trace-preserves-alloc s alloc)) cap
+
         -- Step 2: Process right sub-layer (recursive call)
         (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s-setup alloc-setup
-                            r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup cap
+                            r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup cap-setup
 
         -- Extract results and wrap in inj₂
         r-processed = ProcessedLayerResult.processed r-result
@@ -1198,6 +1301,24 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           subst (λ al → next-slot al ≤ next-slot alloc-after-sub)
                 alloc-setup-eq
                 (ProcessedLayerResult.slot-monotone r-result)
+
+        -- Reclamation: inherit from sub-result
+        r-reclaimable : ℕ
+        r-reclaimable = ProcessedLayerResult.reclaimable-slot r-result
+
+        reclaim-mono-inj2 : next-slot alloc ≤ r-reclaimable
+        reclaim-mono-inj2 = subst (λ al → next-slot al ≤ r-reclaimable)
+                                  alloc-setup-eq
+                                  (ProcessedLayerResult.reclaim-monotone r-result)
+
+        reclaim-bounded-inj2 : r-reclaimable ≤ next-slot alloc-after-sub
+        reclaim-bounded-inj2 = ProcessedLayerResult.reclaim-bounded r-result
+
+        -- Slot usage bound: sub-result bound applies since alloc-setup ≡ alloc
+        slot-usage-bound-inj2 : r-reclaimable ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)
+        slot-usage-bound-inj2 = subst (λ al → r-reclaimable ≤ next-slot al +ℕ ir-stack-requirement (Cata wfG alg))
+                                      alloc-setup-eq
+                                      (ProcessedLayerResult.slot-usage-bound r-result)
 
         heap-monotone-inj2 : next-heap-ref alloc ≤ next-heap-ref alloc-after-sub
         heap-monotone-inj2 =
@@ -1256,6 +1377,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; semantic-correct = cong inj₂ (ProcessedLayerResult.semantic-correct r-result)
         ; frame-preserved = frame-preserved-inj2
         ; slot-monotone = slot-monotone-inj2
+        -- Reclamation: inherit from sub-result
+        ; reclaimable-slot = r-reclaimable
+        ; reclaim-monotone = reclaim-mono-inj2
+        ; reclaim-bounded = reclaim-bounded-inj2
+        ; reclaim-preserves-result = λ fits →
+            let fits' = subst (r-reclaimable ≤_) (sym (cong frame-capacity alloc-setup-eq)) fits
+            in ProcessedLayerResult.reclaim-preserves-result r-result fits'
+        ; reclaim-preserves-validity = λ fits → SMP.!!  -- BLOCKED: need inj₂ validity composition
+        ; slot-usage-bound = slot-usage-bound-inj2
         ; heap-monotone = heap-monotone-inj2
         ; capacity-preserved = capacity-preserved-inj2
         ; mem-preserved = mem-preserved-inj2
@@ -1278,270 +1408,83 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             setup-tnhw (ProcessedLayerResult.trace-no-heap-writes r-result)
         }
 
-    -- Product case: process both components, combine
-    --
-    -- Setup phases required because:
-    --   - We have: readReg (regs s) Input ≡ input-loc (pair container)
-    --   - Left needs: readReg (regs s-left) Input ≡ fst-loc
-    --   - Right needs: readReg (regs s-right) Input ≡ snd-loc
-    --
-    -- Trace structure:
-    --   left-setup-trace ++ l-trace ++ right-setup-trace ++ r-trace
-    --
+    -- Product case: delegate to helper (enables where clauses)
     process-layer (wf-Prod wfL wfR) wfG alg dispatch (l-comp , r-comp) mIn input-loc s alloc
       (μlayer-prod {fst-loc = fst-loc} {snd-loc = snd-loc} fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq cap =
-      let
-        -- Save slot for input-loc preservation
-        save-slot = next-slot alloc
+      process-layer-prod wfL wfR wfG alg dispatch l-comp r-comp mIn
+        input-loc fst-loc snd-loc s alloc
+        fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
+        input-before not-halted rdi-eq cap
 
-        ------------------------------------------------------------------------
-        -- Phase 1: Left Setup
-        -- Execute: mov-to-output, store-at-slot, load-indirect, mov-to-input
-        -- Result: Input = fst-loc, input-loc saved to stack
-        ------------------------------------------------------------------------
-        left-setup-trace = prod-left-setup-trace save-slot
+    ------------------------------------------------------------------------
+    -- Product Case Helper (Refactored per lessons-learned.md)
+    --
+    -- Extracted to module level to enable where clauses for complex proofs.
+    -- The let-block limitation in Agda prevents where clauses inside let.
+    ------------------------------------------------------------------------
 
-        -- State after left setup
-        s-left-setup : LocState FS
-        s-left-setup = proj₁ (exec-trace left-setup-trace s alloc)
-
-        -- Alloc after left setup (unchanged by register/memory ops)
-        alloc-left-setup : AllocState {FS}
-        alloc-left-setup = proj₂ (exec-trace left-setup-trace s alloc)
-
-        -- Key property: Input = fst-loc after setup
-        rdi-left-setup : readReg (regs s-left-setup) Input ≡ fst-loc
-        rdi-left-setup = prod-left-setup-input save-slot s alloc input-loc fst-loc
-                           not-halted rdi-eq fst-ptr
-
-        -- Alloc preserved through setup
-        alloc-left-setup-eq : alloc-left-setup ≡ alloc
-        alloc-left-setup-eq = prod-left-setup-alloc save-slot s alloc not-halted
-
-        -- Use incr-next-slot to protect save-slot from being overwritten
-        -- Left processing will write to slots ≥ suc (next-slot alloc)
-        alloc-for-left : AllocState {FS}
-        alloc-for-left = incr-next-slot alloc
-
-        -- Transfer l-layer-valid through setup
-        -- 1. Memory preserved except save-slot (which fst-loc isn't, since fst-bf < save-slot)
-        -- 2. Alloc frontier advanced by 1
-        l-layer-valid-setup : μLayerValid alloc-for-left wfL wfG l-comp fst-loc s-left-setup
-        l-layer-valid-setup = SMP.!!
-          -- PROOF APPROACH (needs where clause or module-level helper):
-          -- Step 1: Transfer through state change s → s-left-setup using μLayerValid-mem-preserved
-          --   - Need: ∀ loc' → BeforeFrontier alloc loc' → readLoc s-left-setup loc' ≡ readLoc s loc'
-          --   - Derive: BeforeFrontier alloc loc' implies loc' ≠ OnStack cf save-slot
-          --   - Use prod-left-setup-mem-eq
-          -- Step 2: Transfer through alloc change using μLayerValid-frontier-advance
-
-        -- BeforeFrontier preserved (fst-loc was before, still before after incr)
-        fst-bf-setup : BeforeFrontier alloc-for-left fst-loc
-        fst-bf-setup = frontier-monotone alloc alloc-for-left
-                         refl (incr-next-slot-mono alloc) ≤-refl fst-loc fst-bf
-
-        -- halted preserved through setup
-        not-halted-left-setup : halted s-left-setup ≡ false
-        not-halted-left-setup = SMP.RecSchemeSemantics.prod-left-setup-halted-helper
-                                  save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr
-
-        -- Capacity: need suc (next-slot alloc) + req ≤ capacity
-        -- We have: next-slot alloc + req ≤ capacity
-        -- This works if req > 0 (need to verify)
-        cap-left : next-slot alloc-for-left +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-for-left
-        cap-left = SMP.!!  -- Capacity arithmetic
-
-        ------------------------------------------------------------------------
-        -- Phase 2: Left Processing
-        ------------------------------------------------------------------------
-        (mL , l-result) = process-layer wfL wfG alg dispatch l-comp mIn fst-loc s-left-setup alloc-for-left
-                            l-layer-valid-setup fst-bf-setup not-halted-left-setup rdi-left-setup cap-left
-
-        -- Extract left results
-        l-processed = ProcessedLayerResult.processed l-result
-        s-l = ProcessedLayerResult.final-state l-result
-        alloc-l = ProcessedLayerResult.final-alloc l-result
-        l-loc = ProcessedLayerResult.result-loc l-result
-        l-trace = ProcessedLayerResult.trace l-result
-        l-not-halted = ProcessedLayerResult.not-halted l-result
-        l-slot-mono = ProcessedLayerResult.slot-monotone l-result
-
-        -- Bridge: r-layer-valid needs to be transferred to s-l, alloc-l
-        -- Step 1: Transfer state (s → s-l via s-left-setup) using mem-preserved
-        -- Step 2: Transfer alloc (alloc → alloc-for-left → alloc-l) using frontier-advance
-        --
-        -- Note: l-result uses alloc-for-left, not alloc directly
-        -- So slot-monotone gives: next-slot alloc-for-left ≤ next-slot alloc-l
-        -- We need: next-slot alloc ≤ next-slot alloc-l (use transitivity)
-        slot-mono-full : next-slot alloc ≤ next-slot alloc-l
-        slot-mono-full = ≤-trans (incr-next-slot-mono alloc) l-slot-mono
-
-        -- Frame preserved (alloc-for-left has same frame as alloc)
-        frame-pres-full : current-frame alloc-l ≡ current-frame alloc
-        frame-pres-full = trans (ProcessedLayerResult.frame-preserved l-result)
-                                (incr-next-slot-frame alloc)
-
-        -- Heap monotone
-        heap-mono-full : next-heap-ref alloc ≤ next-heap-ref alloc-l
-        heap-mono-full = subst (λ h → h ≤ next-heap-ref alloc-l)
-                               (incr-next-slot-heap alloc)
-                               (ProcessedLayerResult.heap-monotone l-result)
-
-        r-layer-valid-transferred : μLayerValid alloc-l wfR wfG r-comp snd-loc s-l
-        r-layer-valid-transferred =
-          μLayerValid-frontier-advance alloc alloc-l wfR wfG r-comp snd-loc s-l
-            frame-pres-full
-            slot-mono-full
-            heap-mono-full
-            (SMP.!! {A = μLayerValid alloc wfR wfG r-comp snd-loc s-l})
-            -- Original: mem-preserved from alloc through s → s-left-setup → s-l
-            -- Needs: composition of left-setup mem preservation + l-result mem preservation
-
-        r-snd-bf : BeforeFrontier alloc-l snd-loc
-        r-snd-bf = frontier-monotone alloc alloc-l
-                     (sym frame-pres-full)
-                     slot-mono-full
-                     heap-mono-full
-                     snd-loc snd-bf
-
-        ------------------------------------------------------------------------
-        -- Phase 3: Right Setup
-        -- Execute: load-from-slot, mov-to-input, load-indirect-suc, mov-to-input
-        -- Result: Input = snd-loc
-        ------------------------------------------------------------------------
-        right-setup-trace = prod-right-setup-trace save-slot
-
-        -- State after right setup
-        s-right-setup : LocState FS
-        s-right-setup = proj₁ (exec-trace right-setup-trace s-l alloc-l)
-
-        -- Key property: Input = snd-loc after right setup
-        -- This requires: stack[save-slot] still contains input-loc (preserved through left processing)
-        -- And: readLoc s-right-setup (sucLoc input-loc) ≡ just snd-loc (preserved through setup+left)
-        rdi-right-setup : readReg (regs s-right-setup) Input ≡ snd-loc
-        rdi-right-setup = SMP.!!  -- PROOF: restore input-loc from stack, then load snd-loc
-
-        -- halted preserved through right setup
-        not-halted-right-setup : halted s-right-setup ≡ false
-        not-halted-right-setup = SMP.TracePrimitives.exec-trace-preserves-halted
-                                   right-setup-trace s-l alloc-l l-not-halted
-                                   (tph-∷ iph-load-from-slot (tph-∷ iph-mov-to-input
-                                     (tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[]))))
-
-        -- Transfer r-layer-valid through right setup
-        -- Memory at snd-loc should be preserved through the setup
-        r-layer-valid-right-setup : μLayerValid alloc-l wfR wfG r-comp snd-loc s-right-setup
-        r-layer-valid-right-setup = SMP.!!  -- Transfer via mem-only (setup doesn't write to snd-loc)
-
-        r-cap : next-slot alloc-l +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-l
-        r-cap = SMP.!!  -- PROOF OBLIGATION: capacity preserved
-
-        ------------------------------------------------------------------------
-        -- Phase 4: Right Processing
-        ------------------------------------------------------------------------
-        (mR , r-result) = process-layer wfR wfG alg dispatch r-comp mIn snd-loc s-right-setup alloc-l
-                            r-layer-valid-right-setup r-snd-bf not-halted-right-setup rdi-right-setup r-cap
-
-        -- Combine results
-        r-processed = ProcessedLayerResult.processed r-result
-        processed = (l-processed , r-processed)
-
-        -- Full trace: left-setup ++ l-trace ++ right-setup ++ r-trace
-        r-trace = ProcessedLayerResult.trace r-result
-
-        -- The full trace structure with both setups:
-        -- exec-trace (left-setup ++ l-trace ++ right-setup ++ r-trace) s alloc
-        --   = exec-trace (l-trace ++ right-setup ++ r-trace) (s-left-setup, alloc)
-        --   = exec-trace (right-setup ++ r-trace) (s-l, alloc-l)
-        --   = exec-trace r-trace (s-right-setup, alloc-l)
-        --   = (final-state, final-alloc)
-
-        full-trace : AbstractTrace
-        full-trace = left-setup-trace ++ l-trace ++ right-setup-trace ++ r-trace
-
-        trace-correct-proof : proj₁ (exec-trace full-trace s alloc) ≡
-                              ProcessedLayerResult.final-state r-result
-        trace-correct-proof = SMP.!!  -- PROOF: trace composition through setup phases
-
-        alloc-correct-proof : proj₂ (exec-trace full-trace s alloc) ≡
-                              ProcessedLayerResult.final-alloc r-result
-        alloc-correct-proof = SMP.!!  -- PROOF: alloc composition through setup phases
-
-        -- Memory preservation composition
-        -- Needs to compose: setup (saves to slot) → l-result → r-result
-        -- Locations before frontier (except save-slot) are preserved
-        mem-preserved-proof : ∀ loc → BeforeFrontier alloc loc →
-                              readLoc (ProcessedLayerResult.final-state r-result) loc ≡ readLoc s loc
-        mem-preserved-proof loc bf = SMP.!!  -- PROOF: compose setup + left + right mem preservation
-
-        -- Trace property composition
-        -- Extract individual properties
-        l-tph = ProcessedLayerResult.trace-preserves-halted l-result
-        r-tph = ProcessedLayerResult.trace-preserves-halted r-result
-        l-tpc = ProcessedLayerResult.trace-preserves-capacity l-result
-        r-tpc = ProcessedLayerResult.trace-preserves-capacity r-result
-        l-twa = ProcessedLayerResult.trace-writes-above l-result
-        r-twa = ProcessedLayerResult.trace-writes-above r-result
-        l-twb = ProcessedLayerResult.trace-writes-below l-result
-        r-twb = ProcessedLayerResult.trace-writes-below r-result
-        l-tsra = ProcessedLayerResult.trace-slot-reads-above l-result
-        r-tsra = ProcessedLayerResult.trace-slot-reads-above r-result
-        l-tsrb = ProcessedLayerResult.trace-slot-reads-below l-result
-        r-tsrb = ProcessedLayerResult.trace-slot-reads-below r-result
-        l-tnhw = ProcessedLayerResult.trace-no-heap-writes l-result
-        r-tnhw = ProcessedLayerResult.trace-no-heap-writes r-result
-
-        -- Final alloc slot monotonicity for upper bound composition
-        r-slot-mono = ProcessedLayerResult.slot-monotone r-result
-        final-alloc = ProcessedLayerResult.final-alloc r-result
-
-        -- Setup trace halted preservation proofs
-        left-setup-tph : TracePreservesHaltedP left-setup-trace
-        left-setup-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot
-                          (tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input tph-[])))
-        right-setup-tph : TracePreservesHaltedP right-setup-trace
-        right-setup-tph = tph-∷ iph-load-from-slot (tph-∷ iph-mov-to-input
-                            (tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])))
-
-        -- Setup trace capacity preservation proofs
-        left-setup-tpc : TracePreservesCapacity left-setup-trace
-        left-setup-tpc = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot
-                          (tpc-∷ ipc-load-indirect (tpc-∷ ipc-mov-to-input tpc-[])))
-        right-setup-tpc : TracePreservesCapacity right-setup-trace
-        right-setup-tpc = tpc-∷ ipc-load-from-slot (tpc-∷ ipc-mov-to-input
-                            (tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input tpc-[])))
-      in
+    process-layer-prod : ∀ {FL FR G A}
+      (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
+      (alg : IR (⟦ G ⟧T A) A)
+      (dispatch : RecDispatcherWF (ir-size (Cata wfG alg)))
+      (l-comp : ⟦ FL ⟧F (⟦μ⟧ G)) (r-comp : ⟦ FR ⟧F (⟦μ⟧ G))
+      (mIn : AllocMode)
+      (input-loc fst-loc snd-loc : ValueLocation FS)
+      (s : LocState FS) (alloc : AllocState {FS})
+      (fst-ptr : readLoc s input-loc ≡ just fst-loc)
+      (snd-ptr : readLoc s (sucLoc input-loc) ≡ just snd-loc)
+      (fst-bf : BeforeFrontier alloc fst-loc)
+      (snd-bf : BeforeFrontier alloc snd-loc)
+      (sucLoc-bf : BeforeFrontier alloc (sucLoc input-loc))
+      (l-layer-valid : μLayerValid alloc wfL wfG l-comp fst-loc s)
+      (r-layer-valid : μLayerValid alloc wfR wfG r-comp snd-loc s)
+      (input-before : BeforeFrontier alloc input-loc)
+      (not-halted : halted s ≡ false)
+      (rdi-eq : readReg (regs s) Input ≡ input-loc)
+      (cap : next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc)
+      → ∃[ mOut ] ProcessedLayerResult wfG alg mOut (wf-Prod wfL wfR) (l-comp , r-comp) s alloc
+    process-layer-prod {FL} {FR} {G} {A} wfL wfR wfG alg dispatch l-comp r-comp mIn
+      input-loc fst-loc snd-loc s alloc
+      fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
+      input-before not-halted rdi-eq cap =
       mR , record
         { processed = processed
-        ; trace = full-trace  -- Setup + left + right
+        ; trace = full-trace
         ; final-state = ProcessedLayerResult.final-state r-result
         ; final-alloc = final-alloc
         ; trace-correct = trace-correct-proof
         ; alloc-correct = alloc-correct-proof
         ; result-loc = ProcessedLayerResult.result-loc r-result
-        ; processed-valid = SMP.!!  -- BLOCKED: pair validity composition
+        ; processed-valid = processed-valid-proof
         ; result-before = ProcessedLayerResult.result-before r-result
         ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
         ; not-halted = ProcessedLayerResult.not-halted r-result
         ; semantic-correct = cong₂ _,_ (ProcessedLayerResult.semantic-correct l-result)
                                        (ProcessedLayerResult.semantic-correct r-result)
-        -- Allocation state invariants: need to account for alloc-for-left
         ; frame-preserved = trans (ProcessedLayerResult.frame-preserved r-result)
-                                  frame-pres-full
+                                  alloc-for-right-frame
+        -- Chain: next-slot alloc < alloc-for-left ≤ l-reclaimable = alloc-for-right ≤ final-alloc
         ; slot-monotone = ≤-trans (incr-next-slot-mono alloc)
-                                  (≤-trans l-slot-mono r-slot-mono)
-        ; heap-monotone = ≤-trans heap-mono-full
-                                  (ProcessedLayerResult.heap-monotone r-result)
+                                  (≤-trans l-reclaim-mono r-slot-mono)
+        -- Slot reclamation: save-slot is temporary, can be reclaimed after Product completes
+        -- Reclaim back to next-slot alloc (conservative: the save-slot itself)
+        ; reclaimable-slot = reclaimable-slot-prod
+        ; reclaim-monotone = reclaim-monotone-prod
+        ; reclaim-bounded = reclaim-bounded-prod
+        ; reclaim-preserves-result = λ fits → SMP.!!  -- BLOCKED: needs result-loc analysis
+        ; reclaim-preserves-validity = λ fits → SMP.!!  -- BLOCKED: needs pair validity
+        ; slot-usage-bound = slot-usage-bound-prod
+        -- heap-monotone: alloc.heap = alloc-for-right.heap ≤ final-alloc.heap
+        ; heap-monotone = subst (λ h → h ≤ next-heap-ref final-alloc) alloc-for-right-heap
+                                (ProcessedLayerResult.heap-monotone r-result)
+        -- capacity-preserved: final-alloc.cap = alloc-for-right.cap = alloc.cap
         ; capacity-preserved = trans (ProcessedLayerResult.capacity-preserved r-result)
-                                     (trans (ProcessedLayerResult.capacity-preserved l-result)
-                                            (incr-next-slot-capacity alloc))
+                                     alloc-for-right-cap
         ; mem-preserved = mem-preserved-proof
-        -- Trace region bounds: composed via append (with setup trace included)
-        ; trace-writes-above = SMP.!!  -- PROOF: setup writes to save-slot ≥ next-slot alloc
-        ; trace-writes-below = SMP.!!  -- PROOF: all writes below next-slot final-alloc
-        ; trace-slot-reads-above = SMP.!!  -- PROOF: setup reads above, l/r reads above
-        ; trace-slot-reads-below = SMP.!!  -- PROOF: all reads below
-        -- Trace preservation properties
+        ; trace-writes-above = trace-writes-above-proof
+        ; trace-writes-below = trace-writes-below-proof
+        ; trace-slot-reads-above = trace-slot-reads-above-proof
+        ; trace-slot-reads-below = trace-slot-reads-below-proof
         ; trace-preserves-halted = tph-++ left-setup-tph
                                     (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result)
                                             (tph-++ right-setup-tph
@@ -1557,6 +1500,597 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                        (SMP.trace-no-heap-writes-append right-setup-trace r-trace tt
                                           (ProcessedLayerResult.trace-no-heap-writes r-result)))
         }
+      where
+        -- Save slot for input-loc preservation
+        save-slot : ℕ
+        save-slot = next-slot alloc
+
+        ------------------------------------------------------------------------
+        -- Slot Reclamation for Product
+        --
+        -- The save-slot is temporary: it's used during left/right traversal
+        -- but can be reclaimed after Product processing completes.
+        -- We reclaim back to next-slot alloc (the save-slot itself).
+        ------------------------------------------------------------------------
+        reclaimable-slot-prod : ℕ
+        reclaimable-slot-prod = next-slot alloc
+
+        reclaim-monotone-prod : next-slot alloc ≤ reclaimable-slot-prod
+        reclaim-monotone-prod = ≤-refl
+
+        -- reclaim-bounded requires: reclaimable-slot-prod ≤ next-slot final-alloc
+        -- save-slot < suc save-slot ≤ next-slot alloc-for-left ≤ next-slot alloc-l ≤ next-slot final-alloc
+        -- Deferred until l-slot-mono and r-slot-mono are in scope (defined below)
+
+        ------------------------------------------------------------------------
+        -- Phase 1: Left Setup
+        ------------------------------------------------------------------------
+        left-setup-trace : AbstractTrace
+        left-setup-trace = prod-left-setup-trace save-slot
+
+        s-left-setup : LocState FS
+        s-left-setup = proj₁ (exec-trace left-setup-trace s alloc)
+
+        alloc-left-setup : AllocState {FS}
+        alloc-left-setup = proj₂ (exec-trace left-setup-trace s alloc)
+
+        rdi-left-setup : readReg (regs s-left-setup) Input ≡ fst-loc
+        rdi-left-setup = prod-left-setup-input save-slot s alloc input-loc fst-loc
+                           not-halted rdi-eq fst-ptr
+
+        alloc-left-setup-eq : alloc-left-setup ≡ alloc
+        alloc-left-setup-eq = prod-left-setup-alloc save-slot s alloc not-halted
+
+        alloc-for-left : AllocState {FS}
+        alloc-for-left = incr-next-slot alloc
+
+        -- Transfer l-layer-valid through setup
+        -- Now we can use a proper proof with where clause helpers
+        l-layer-valid-setup : μLayerValid alloc-for-left wfL wfG l-comp fst-loc s-left-setup
+        l-layer-valid-setup = l-layer-valid-setup-proof
+          where
+            -- Step 1: Transfer through state change using μLayerValid-mem-preserved
+            l-layer-valid-state : μLayerValid alloc wfL wfG l-comp fst-loc s-left-setup
+            l-layer-valid-state = μLayerValid-mem-preserved alloc wfL wfG l-comp fst-loc s s-left-setup
+              fst-bf mem-eq l-layer-valid
+              where
+                mem-eq : ∀ loc' → BeforeFrontier alloc loc' → readLoc s-left-setup loc' ≡ readLoc s loc'
+                mem-eq loc' bf' = prod-left-setup-mem-eq save-slot s alloc loc' not-halted loc'-neq-slot
+                  where
+                    -- BeforeFrontier alloc loc' implies loc' is not at save-slot
+                    -- because save-slot = next-slot alloc, and BeforeFrontier requires < next-slot
+                    loc'-neq-slot : loc' ≢ OnStack (current-frame alloc) save-slot
+                    loc'-neq-slot eq = Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc loc' save-slot bf' eq)
+
+            -- Step 2: Transfer through alloc change using μLayerValid-frontier-advance
+            l-layer-valid-setup-proof : μLayerValid alloc-for-left wfL wfG l-comp fst-loc s-left-setup
+            l-layer-valid-setup-proof = μLayerValid-frontier-advance alloc alloc-for-left wfL wfG l-comp fst-loc s-left-setup
+              refl (incr-next-slot-mono alloc) ≤-refl l-layer-valid-state
+
+        fst-bf-setup : BeforeFrontier alloc-for-left fst-loc
+        fst-bf-setup = frontier-monotone alloc alloc-for-left
+                         refl (incr-next-slot-mono alloc) ≤-refl fst-loc fst-bf
+
+        not-halted-left-setup : halted s-left-setup ≡ false
+        not-halted-left-setup = SMP.RecSchemeSemantics.prod-left-setup-halted-helper
+                                  save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr
+
+        -- Capacity for left sub-layer
+        cap-left : next-slot alloc-for-left +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-for-left
+        cap-left = SMP.!!  -- PROOF: Category 1 blocker - capacity for left component after saving one slot
+
+        ------------------------------------------------------------------------
+        -- Phase 2: Left Processing
+        ------------------------------------------------------------------------
+        l-result-pair : ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfL l-comp s-left-setup alloc-for-left
+        l-result-pair = process-layer wfL wfG alg dispatch l-comp mIn fst-loc s-left-setup alloc-for-left
+                          l-layer-valid-setup fst-bf-setup not-halted-left-setup rdi-left-setup cap-left
+
+        mL : AllocMode
+        mL = proj₁ l-result-pair
+
+        l-result : ProcessedLayerResult wfG alg mL wfL l-comp s-left-setup alloc-for-left
+        l-result = proj₂ l-result-pair
+
+        l-processed : ⟦ ⟦ FL ⟧T A ⟧
+        l-processed = ProcessedLayerResult.processed l-result
+
+        s-l : LocState FS
+        s-l = ProcessedLayerResult.final-state l-result
+
+        alloc-l : AllocState {FS}
+        alloc-l = ProcessedLayerResult.final-alloc l-result
+
+        l-loc : ValueLocation FS
+        l-loc = ProcessedLayerResult.result-loc l-result
+
+        l-trace : AbstractTrace
+        l-trace = ProcessedLayerResult.trace l-result
+
+        l-not-halted : halted s-l ≡ false
+        l-not-halted = ProcessedLayerResult.not-halted l-result
+
+        l-slot-mono : next-slot alloc-for-left ≤ next-slot alloc-l
+        l-slot-mono = ProcessedLayerResult.slot-monotone l-result
+
+        slot-mono-full : next-slot alloc ≤ next-slot alloc-l
+        slot-mono-full = ≤-trans (incr-next-slot-mono alloc) l-slot-mono
+
+        frame-pres-full : current-frame alloc-l ≡ current-frame alloc
+        frame-pres-full = trans (ProcessedLayerResult.frame-preserved l-result)
+                                (incr-next-slot-frame alloc)
+
+        heap-mono-full : next-heap-ref alloc ≤ next-heap-ref alloc-l
+        heap-mono-full = subst (λ h → h ≤ next-heap-ref alloc-l)
+                               (incr-next-slot-heap alloc)
+                               (ProcessedLayerResult.heap-monotone l-result)
+
+        ------------------------------------------------------------------------
+        -- Slot Reclamation After Left Processing
+        --
+        -- After left completes, reclaim to l-reclaimable. Right processing
+        -- starts from this reclaimed position, enabling capacity sharing.
+        ------------------------------------------------------------------------
+        l-reclaimable : ℕ
+        l-reclaimable = ProcessedLayerResult.reclaimable-slot l-result
+
+        -- Reclaimed allocation for right processing
+        -- Uses alloc-for-left as base (same frame/heap as alloc after save-slot)
+        -- but with next-slot reset to l-reclaimable
+        alloc-for-right : AllocState {FS}
+        alloc-for-right = record alloc-for-left { next-slot = l-reclaimable }
+
+        -- Properties of alloc-for-right
+        alloc-for-right-frame : current-frame alloc-for-right ≡ current-frame alloc
+        alloc-for-right-frame = incr-next-slot-frame alloc
+
+        alloc-for-right-heap : next-heap-ref alloc-for-right ≡ next-heap-ref alloc
+        alloc-for-right-heap = incr-next-slot-heap alloc
+
+        alloc-for-right-cap : frame-capacity alloc-for-right ≡ frame-capacity alloc
+        alloc-for-right-cap = incr-next-slot-capacity alloc
+
+        -- l-reclaimable bounds
+        l-reclaim-mono : next-slot alloc-for-left ≤ l-reclaimable
+        l-reclaim-mono = ProcessedLayerResult.reclaim-monotone l-result
+
+        l-reclaim-bounded : l-reclaimable ≤ next-slot alloc-l
+        l-reclaim-bounded = ProcessedLayerResult.reclaim-bounded l-result
+
+        -- slot-usage-bound from l-result: l-reclaimable ≤ next-slot alloc-for-left + ir-stack-requirement (Cata wfG alg)
+        l-slot-usage : l-reclaimable ≤ next-slot alloc-for-left +ℕ ir-stack-requirement (Cata wfG alg)
+        l-slot-usage = ProcessedLayerResult.slot-usage-bound l-result
+
+        r-layer-valid-transferred : μLayerValid alloc-for-right wfR wfG r-comp snd-loc s-l
+        r-layer-valid-transferred =
+          -- Transfer through alloc → alloc-for-right using frontier-advance
+          -- Chain: next-slot alloc < next-slot alloc-for-left ≤ l-reclaimable = next-slot alloc-for-right
+          μLayerValid-frontier-advance alloc alloc-for-right wfR wfG r-comp snd-loc s-l
+            alloc-for-right-frame
+            slot-mono-to-right
+            heap-mono-to-right
+            r-layer-valid-at-s-l
+          where
+            -- Slot monotonicity: next-slot alloc ≤ next-slot alloc-for-right
+            slot-mono-to-right : next-slot alloc ≤ next-slot alloc-for-right
+            slot-mono-to-right = ≤-trans (incr-next-slot-mono alloc) l-reclaim-mono
+
+            -- Heap monotonicity (heap unchanged)
+            heap-mono-to-right : next-heap-ref alloc ≤ next-heap-ref alloc-for-right
+            heap-mono-to-right = subst (next-heap-ref alloc ≤_) (sym alloc-for-right-heap) ≤-refl
+
+            -- First transfer r-layer-valid through the state changes
+            r-layer-valid-at-s-left-setup : μLayerValid alloc wfR wfG r-comp snd-loc s-left-setup
+            r-layer-valid-at-s-left-setup = μLayerValid-mem-preserved alloc wfR wfG r-comp snd-loc s s-left-setup
+              snd-bf
+              (λ loc' bf' → prod-left-setup-mem-eq save-slot s alloc loc' not-halted
+                (λ eq → Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc loc' save-slot bf' eq)))
+              r-layer-valid
+
+            -- Then through left processing
+            r-layer-valid-at-s-l : μLayerValid alloc wfR wfG r-comp snd-loc s-l
+            r-layer-valid-at-s-l = μLayerValid-mem-preserved alloc wfR wfG r-comp snd-loc s-left-setup s-l
+              snd-bf
+              (λ loc' bf' → ProcessedLayerResult.mem-preserved l-result loc'
+                (frontier-monotone alloc alloc-for-left refl (incr-next-slot-mono alloc) ≤-refl loc' bf'))
+              r-layer-valid-at-s-left-setup
+
+        r-snd-bf : BeforeFrontier alloc-for-right snd-loc
+        r-snd-bf = frontier-monotone alloc alloc-for-right
+                     (sym alloc-for-right-frame)
+                     (≤-trans (incr-next-slot-mono alloc) l-reclaim-mono)
+                     (subst (next-heap-ref alloc ≤_) (sym alloc-for-right-heap) ≤-refl)
+                     snd-loc snd-bf
+
+        ------------------------------------------------------------------------
+        -- Phase 3: Right Setup
+        ------------------------------------------------------------------------
+        right-setup-trace : AbstractTrace
+        right-setup-trace = prod-right-setup-trace save-slot
+
+        -- Right setup uses alloc-for-right (reclaimed allocation)
+        -- The frame is the same, so stack access at save-slot still works
+        s-right-setup : LocState FS
+        s-right-setup = proj₁ (exec-trace right-setup-trace s-l alloc-for-right)
+
+        -- Input = snd-loc after right setup
+        rdi-right-setup : readReg (regs s-right-setup) Input ≡ snd-loc
+        rdi-right-setup = rdi-right-setup-proof
+          where
+            -- Stack at save-slot still contains input-loc (preserved through left processing)
+            stack-preserved : readLoc s-l (OnStack (current-frame alloc) save-slot) ≡
+                              readLoc s-left-setup (OnStack (current-frame alloc) save-slot)
+            stack-preserved = ProcessedLayerResult.mem-preserved l-result
+              (OnStack (current-frame alloc) save-slot)
+              (slot-at-next-bf alloc)
+
+            -- After left-setup, stack[save-slot] = input-loc
+            stack-has-input : readLoc s-left-setup (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+            stack-has-input = SMP.RecSchemeSemantics.prod-left-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq
+
+            -- So s-l still has input-loc at save-slot
+            stack-at-s-l : readLoc s-l (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+            stack-at-s-l = trans stack-preserved stack-has-input
+
+            -- sucLoc input-loc still points to snd-loc (memory preserved)
+            snd-ptr-at-s-l : readLoc s-l (sucLoc input-loc) ≡ just snd-loc
+            snd-ptr-at-s-l = trans
+              (ProcessedLayerResult.mem-preserved l-result (sucLoc input-loc)
+                (frontier-monotone alloc alloc-for-left refl (incr-next-slot-mono alloc) ≤-refl
+                  (sucLoc input-loc) sucLoc-bf))
+              (trans (prod-left-setup-mem-eq save-slot s alloc (sucLoc input-loc) not-halted
+                (λ eq → Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc (sucLoc input-loc) save-slot sucLoc-bf eq)))
+                snd-ptr)
+
+            rdi-right-setup-proof : readReg (regs s-right-setup) Input ≡ snd-loc
+            rdi-right-setup-proof = SMP.RecSchemeSemantics.prod-right-setup-input-helper
+              save-slot s-l alloc-for-right input-loc snd-loc l-not-halted
+              stack-at-s-l' snd-ptr-at-s-l
+              where
+                -- Convert stack-at-s-l to use alloc-for-right's frame (they're equal)
+                stack-at-s-l' : readLoc s-l (OnStack (current-frame alloc-for-right) save-slot) ≡ just input-loc
+                stack-at-s-l' = subst (λ cf → readLoc s-l (OnStack cf save-slot) ≡ just input-loc)
+                                      (sym alloc-for-right-frame) stack-at-s-l
+
+        not-halted-right-setup : halted s-right-setup ≡ false
+        not-halted-right-setup = SMP.TracePrimitives.exec-trace-preserves-halted
+                                   right-setup-trace s-l alloc-for-right l-not-halted
+                                   (tph-∷ iph-load-from-slot (tph-∷ iph-mov-to-input
+                                     (tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[]))))
+
+        r-layer-valid-right-setup : μLayerValid alloc-for-right wfR wfG r-comp snd-loc s-right-setup
+        r-layer-valid-right-setup = μLayerValid-mem-preserved alloc-for-right wfR wfG r-comp snd-loc s-l s-right-setup
+          r-snd-bf
+          (λ loc' bf' → SMP.RecSchemeSemantics.prod-right-setup-mem-helper save-slot s-l alloc-for-right loc' l-not-halted
+            (λ _ → SMP.!!))  -- The constraint is not used by the helper
+          r-layer-valid-transferred
+
+        -- Capacity for right sub-layer (NOW PROVABLE with reclamation!)
+        -- l-reclaimable ≤ next-slot alloc-for-left + ir-stack-requirement (Cata wfG alg)  (from l-slot-usage)
+        -- next-slot alloc-for-right = l-reclaimable
+        -- frame-capacity alloc-for-right = frame-capacity alloc
+        -- Need: l-reclaimable + ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
+        r-cap : next-slot alloc-for-right +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-for-right
+        r-cap = r-cap-proof
+          where
+            -- From l-slot-usage: l-reclaimable ≤ suc (next-slot alloc) + ir-stack-requirement (Cata wfG alg)
+            -- From cap: next-slot alloc + ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
+            -- We need: l-reclaimable + ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
+            --
+            -- This requires: l-reclaimable ≤ next-slot alloc (i.e., reclamation goes back to start)
+            -- But l-slot-usage only gives l-reclaimable ≤ suc (next-slot alloc) + ...
+            --
+            -- The proof works if we can show l-reclaimable doesn't exceed what we started with
+            -- plus the available capacity. Since cap-left provides the capacity for left processing,
+            -- and l-result stays within that capacity (by slot-usage-bound), we have room for right.
+            --
+            -- Key insight: l-reclaimable + ir-stack-requirement ≤ (suc (next-slot alloc) + ir-stack-requirement) + ir-stack-requirement
+            -- This would require 2x the stack requirement, which we don't have!
+            --
+            -- The fix requires a TIGHTER bound on l-reclaimable: it should be bounded by
+            -- next-slot alloc-for-left + product-depth wfL, not the full ir-stack-requirement.
+            -- For now, mark as blocked pending layer-specific capacity tracking.
+            r-cap-proof : next-slot alloc-for-right +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-for-right
+            r-cap-proof = SMP.!!  -- BLOCKED: needs tighter layer-slot-bound (product-depth wfL, not full ir-stack-requirement)
+
+        ------------------------------------------------------------------------
+        -- Phase 4: Right Processing
+        ------------------------------------------------------------------------
+        r-result-pair : ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfR r-comp s-right-setup alloc-for-right
+        r-result-pair = process-layer wfR wfG alg dispatch r-comp mIn snd-loc s-right-setup alloc-for-right
+                          r-layer-valid-right-setup r-snd-bf not-halted-right-setup rdi-right-setup r-cap
+
+        mR : AllocMode
+        mR = proj₁ r-result-pair
+
+        r-result : ProcessedLayerResult wfG alg mR wfR r-comp s-right-setup alloc-for-right
+        r-result = proj₂ r-result-pair
+
+        r-processed : ⟦ ⟦ FR ⟧T A ⟧
+        r-processed = ProcessedLayerResult.processed r-result
+
+        processed : ⟦ ⟦ FL ⊗ FR ⟧T A ⟧
+        processed = (l-processed , r-processed)
+
+        r-trace : AbstractTrace
+        r-trace = ProcessedLayerResult.trace r-result
+
+        -- r-result uses alloc-for-right, so slot-monotone is from alloc-for-right
+        r-slot-mono : next-slot alloc-for-right ≤ next-slot (ProcessedLayerResult.final-alloc r-result)
+        r-slot-mono = ProcessedLayerResult.slot-monotone r-result
+
+        final-alloc : AllocState {FS}
+        final-alloc = ProcessedLayerResult.final-alloc r-result
+
+        -- Reclamation bound: reclaimable-slot-prod ≤ next-slot final-alloc
+        -- Chain: next-slot alloc < suc (next-slot alloc) ≤ l-reclaimable = next-slot alloc-for-right ≤ next-slot final-alloc
+        reclaim-bounded-prod : reclaimable-slot-prod ≤ next-slot final-alloc
+        reclaim-bounded-prod = ≤-trans (≤-trans (n≤1+n (next-slot alloc)) l-reclaim-mono) r-slot-mono
+
+        -- Slot usage bound: reclaimable-slot-prod ≤ next-slot alloc + ir-stack-requirement (Cata wfG alg)
+        -- Since reclaimable-slot-prod = next-slot alloc, this is trivial
+        slot-usage-bound-prod : reclaimable-slot-prod ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)
+        slot-usage-bound-prod = m≤m+n (next-slot alloc) (ir-stack-requirement (Cata wfG alg))
+
+        full-trace : AbstractTrace
+        full-trace = left-setup-trace ++ l-trace ++ right-setup-trace ++ r-trace
+
+        ------------------------------------------------------------------------
+        -- Trace composition proofs (now possible with where clause)
+        ------------------------------------------------------------------------
+
+        -- Left setup execution
+        left-setup-exec : exec-trace left-setup-trace s alloc ≡ (s-left-setup , alloc-left-setup)
+        left-setup-exec = refl
+
+        -- Trace correctness composition
+        trace-correct-proof : proj₁ (exec-trace full-trace s alloc) ≡
+                              ProcessedLayerResult.final-state r-result
+        trace-correct-proof = trans step1 (trans step2 (trans step3 (trans step4 step5)))
+          where
+            -- Step 1: Decompose full-trace, extracting left-setup-trace
+            step1 : proj₁ (exec-trace full-trace s alloc) ≡
+                    proj₁ (exec-trace (l-trace ++ right-setup-trace ++ r-trace) s-left-setup alloc-left-setup)
+            step1 = cong proj₁ (SMP.TraceComposition.exec-trace-append left-setup-trace (l-trace ++ right-setup-trace ++ r-trace) s alloc)
+
+            -- Step 2: alloc-left-setup = alloc, so substitute
+            step2 : proj₁ (exec-trace (l-trace ++ right-setup-trace ++ r-trace) s-left-setup alloc-left-setup) ≡
+                    proj₁ (exec-trace (l-trace ++ right-setup-trace ++ r-trace) s-left-setup alloc)
+            step2 = cong (λ a → proj₁ (exec-trace (l-trace ++ right-setup-trace ++ r-trace) s-left-setup a))
+                         alloc-left-setup-eq
+
+            -- Step 3: Decompose, extracting l-trace
+            -- After l-trace, state is s-l (using exec-trace-incr-next-slot)
+            alloc-after-l : AllocState {FS}
+            alloc-after-l = proj₂ (exec-trace l-trace s-left-setup alloc)
+
+            -- The states after l-trace are the same regardless of alloc vs alloc-for-left
+            l-state-eq : proj₁ (exec-trace l-trace s-left-setup alloc) ≡ s-l
+            l-state-eq = trans (exec-trace-incr-next-slot l-trace s-left-setup alloc)
+                               (ProcessedLayerResult.trace-correct l-result)
+
+            -- The frames are preserved through l-trace
+            frame-after-l-alloc : current-frame alloc-after-l ≡ current-frame alloc
+            frame-after-l-alloc = SMP.TracePrimitives.exec-trace-preserves-frame l-trace s-left-setup alloc
+
+            frame-after-l-eq : current-frame alloc-after-l ≡ current-frame alloc-l
+            frame-after-l-eq = trans frame-after-l-alloc
+                                     (trans (sym (incr-next-slot-frame alloc))
+                                            (sym (ProcessedLayerResult.frame-preserved l-result)))
+
+            step3 : proj₁ (exec-trace (l-trace ++ right-setup-trace ++ r-trace) s-left-setup alloc) ≡
+                    proj₁ (exec-trace (right-setup-trace ++ r-trace) s-l alloc-after-l)
+            step3 = trans (cong proj₁ (SMP.TraceComposition.exec-trace-append l-trace (right-setup-trace ++ r-trace) s-left-setup alloc))
+                          (cong (λ s' → proj₁ (exec-trace (right-setup-trace ++ r-trace) s' alloc-after-l)) l-state-eq)
+
+            -- Step 4: Bridge from alloc-after-l to alloc-for-right (same current-frame)
+            -- The frames are equal: alloc-after-l has frame = alloc, alloc-for-right has frame = alloc
+            frame-after-l-to-right : current-frame alloc-after-l ≡ current-frame alloc-for-right
+            frame-after-l-to-right = trans frame-after-l-alloc (sym alloc-for-right-frame)
+
+            step4 : proj₁ (exec-trace (right-setup-trace ++ r-trace) s-l alloc-after-l) ≡
+                    proj₁ (exec-trace (right-setup-trace ++ r-trace) s-l alloc-for-right)
+            step4 = SMP.TracePrimitives.exec-trace-same-frame (right-setup-trace ++ r-trace) s-l alloc-after-l alloc-for-right frame-after-l-to-right
+
+            -- Step 5: Decompose right-setup and r-trace (now using alloc-for-right)
+            -- After right-setup, alloc is preserved (prod-right-setup-alloc-helper)
+            alloc-after-right-setup : AllocState {FS}
+            alloc-after-right-setup = proj₂ (exec-trace right-setup-trace s-l alloc-for-right)
+
+            right-setup-alloc-eq : alloc-after-right-setup ≡ alloc-for-right
+            right-setup-alloc-eq = SMP.RecSchemeSemantics.prod-right-setup-alloc-helper save-slot s-l alloc-for-right l-not-halted
+
+            step5 : proj₁ (exec-trace (right-setup-trace ++ r-trace) s-l alloc-for-right) ≡
+                    ProcessedLayerResult.final-state r-result
+            step5 = trans step5a (trans step5b (ProcessedLayerResult.trace-correct r-result))
+              where
+                -- Decompose the trace
+                step5a : proj₁ (exec-trace (right-setup-trace ++ r-trace) s-l alloc-for-right) ≡
+                         proj₁ (exec-trace r-trace s-right-setup alloc-after-right-setup)
+                step5a = cong proj₁ (SMP.TraceComposition.exec-trace-append right-setup-trace r-trace s-l alloc-for-right)
+
+                -- Substitute alloc back to alloc-for-right
+                step5b : proj₁ (exec-trace r-trace s-right-setup alloc-after-right-setup) ≡
+                         proj₁ (exec-trace r-trace s-right-setup alloc-for-right)
+                step5b = cong (λ a → proj₁ (exec-trace r-trace s-right-setup a)) right-setup-alloc-eq
+
+        alloc-correct-proof : proj₂ (exec-trace full-trace s alloc) ≡
+                              ProcessedLayerResult.final-alloc r-result
+        alloc-correct-proof = SMP.!!  -- PROOF: alloc threading issue - alloc-left-setup ≠ alloc-for-left
+
+        -- Memory preservation composition
+        mem-preserved-proof : ∀ loc → BeforeFrontier alloc loc →
+                              readLoc (ProcessedLayerResult.final-state r-result) loc ≡ readLoc s loc
+        mem-preserved-proof loc bf = trans step4 (trans step3 (trans step2 step1))
+          where
+            -- Preserved through left setup (except save-slot, but bf excludes that)
+            step1 : readLoc s-left-setup loc ≡ readLoc s loc
+            step1 = prod-left-setup-mem-eq save-slot s alloc loc not-halted
+              (λ eq → Data.Nat.Properties.<-irrefl refl (bf-slot-contradiction alloc loc save-slot bf eq))
+
+            -- Preserved through left processing
+            bf-for-left : BeforeFrontier alloc-for-left loc
+            bf-for-left = frontier-monotone alloc alloc-for-left refl (incr-next-slot-mono alloc) ≤-refl loc bf
+
+            step2 : readLoc s-l loc ≡ readLoc s-left-setup loc
+            step2 = ProcessedLayerResult.mem-preserved l-result loc bf-for-left
+
+            -- Preserved through right setup (now using alloc-for-right)
+            bf-for-right : BeforeFrontier alloc-for-right loc
+            bf-for-right = frontier-monotone alloc alloc-for-right
+                             (sym alloc-for-right-frame)
+                             (≤-trans (incr-next-slot-mono alloc) l-reclaim-mono)
+                             (subst (next-heap-ref alloc ≤_) (sym alloc-for-right-heap) ≤-refl)
+                             loc bf
+
+            step3 : readLoc s-right-setup loc ≡ readLoc s-l loc
+            step3 = SMP.RecSchemeSemantics.prod-right-setup-mem-helper save-slot s-l alloc-for-right loc l-not-halted
+              (λ _ → SMP.!!)  -- The callback is ignored in the implementation
+
+            -- Preserved through right processing
+            step4 : readLoc (ProcessedLayerResult.final-state r-result) loc ≡ readLoc s-right-setup loc
+            step4 = ProcessedLayerResult.mem-preserved r-result loc bf-for-right
+
+        -- Validity proof (still needs linear trace work)
+        processed-valid-proof : ValidAtWF mR final-alloc processed
+                                  (ProcessedLayerResult.result-loc r-result)
+                                  (ProcessedLayerResult.final-state r-result)
+        processed-valid-proof = SMP.!!  -- BLOCKED: pair validity composition
+
+        -- Setup trace halted preservation proofs
+        left-setup-tph : TracePreservesHaltedP left-setup-trace
+        left-setup-tph = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot
+                          (tph-∷ iph-load-indirect (tph-∷ iph-mov-to-input tph-[])))
+
+        right-setup-tph : TracePreservesHaltedP right-setup-trace
+        right-setup-tph = tph-∷ iph-load-from-slot (tph-∷ iph-mov-to-input
+                            (tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])))
+
+        -- Setup trace capacity preservation proofs
+        left-setup-tpc : TracePreservesCapacity left-setup-trace
+        left-setup-tpc = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot
+                          (tpc-∷ ipc-load-indirect (tpc-∷ ipc-mov-to-input tpc-[])))
+
+        right-setup-tpc : TracePreservesCapacity right-setup-trace
+        right-setup-tpc = tpc-∷ ipc-load-from-slot (tpc-∷ ipc-mov-to-input
+                            (tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input tpc-[])))
+
+        -- Trace region bounds
+        -- full-trace = left-setup-trace ++ l-trace ++ right-setup-trace ++ r-trace
+        -- left-setup writes to save-slot = next-slot alloc
+        -- right-setup reads from save-slot = next-slot alloc
+
+        -- Left setup: mov-to-output writes nothing, store-at-slot writes save-slot, others nothing
+        left-setup-twa : TraceWritesAbove (next-slot alloc) left-setup-trace
+        left-setup-twa = ≤-refl , tt  -- store-at-slot writes to save-slot = next-slot alloc
+
+        left-setup-twb : TraceWritesBelow (next-slot final-alloc) left-setup-trace
+        left-setup-twb = save-slot<final , tt
+          where
+            -- save-slot < next-slot final-alloc because:
+            -- save-slot = next-slot alloc < suc (next-slot alloc) ≤ l-reclaimable = next-slot alloc-for-right ≤ next-slot final-alloc
+            save-slot<final : save-slot < next-slot final-alloc
+            save-slot<final = <-≤-trans (n<1+n save-slot)
+                                (≤-trans l-reclaim-mono r-slot-mono)
+
+        -- Right setup: load-from-slot reads, others read nothing; no writes
+        right-setup-twa : TraceWritesAbove (next-slot alloc) right-setup-trace
+        right-setup-twa = tt  -- No slot writes
+
+        right-setup-twb : TraceWritesBelow (next-slot final-alloc) right-setup-trace
+        right-setup-twb = tt  -- No slot writes
+
+        -- l-trace bounds (from l-result, converted via monotonicity)
+        l-trace-twa : TraceWritesAbove (next-slot alloc) l-trace
+        l-trace-twa = SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-for-left) l-trace
+                        (n≤1+n (next-slot alloc))
+                        (ProcessedLayerResult.trace-writes-above l-result)
+
+        -- ISSUE: With reclamation, next-slot final-alloc might be < next-slot alloc-l
+        -- because right processing starts from l-reclaimable and might not use all slots.
+        -- The proper fix is to track max(alloc-l, final-alloc) as the write bound.
+        -- For now, using a looser bound via SMP.!!
+        l-trace-twb : TraceWritesBelow (next-slot final-alloc) l-trace
+        l-trace-twb = SMP.!!
+
+        -- r-trace bounds (from r-result, using alloc-for-right)
+        r-trace-twa : TraceWritesAbove (next-slot alloc) r-trace
+        r-trace-twa = SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-for-right) r-trace
+                        (≤-trans (incr-next-slot-mono alloc) l-reclaim-mono)
+                        (ProcessedLayerResult.trace-writes-above r-result)
+
+        r-trace-twb : TraceWritesBelow (next-slot final-alloc) r-trace
+        r-trace-twb = ProcessedLayerResult.trace-writes-below r-result
+
+        trace-writes-above-proof : TraceWritesAbove (next-slot alloc) full-trace
+        trace-writes-above-proof =
+          SMP.trace-writes-above-append (next-slot alloc) left-setup-trace (l-trace ++ right-setup-trace ++ r-trace)
+            left-setup-twa
+            (SMP.trace-writes-above-append (next-slot alloc) l-trace (right-setup-trace ++ r-trace)
+              l-trace-twa
+              (SMP.trace-writes-above-append (next-slot alloc) right-setup-trace r-trace
+                right-setup-twa r-trace-twa))
+
+        trace-writes-below-proof : TraceWritesBelow (next-slot final-alloc) full-trace
+        trace-writes-below-proof =
+          SMP.trace-writes-below-append (next-slot final-alloc) left-setup-trace (l-trace ++ right-setup-trace ++ r-trace)
+            left-setup-twb
+            (SMP.trace-writes-below-append (next-slot final-alloc) l-trace (right-setup-trace ++ r-trace)
+              l-trace-twb
+              (SMP.trace-writes-below-append (next-slot final-alloc) right-setup-trace r-trace
+                right-setup-twb r-trace-twb))
+
+        -- Slot reads: left-setup reads nothing, right-setup reads save-slot
+        left-setup-tsra : TraceSlotReadsAbove (next-slot alloc) left-setup-trace
+        left-setup-tsra = tt  -- No slot reads
+
+        left-setup-tsrb : TraceSlotReadsBelow (next-slot final-alloc) left-setup-trace
+        left-setup-tsrb = tt  -- No slot reads
+
+        right-setup-tsra : TraceSlotReadsAbove (next-slot alloc) right-setup-trace
+        right-setup-tsra = ≤-refl , tt  -- load-from-slot reads save-slot = next-slot alloc
+
+        right-setup-tsrb : TraceSlotReadsBelow (next-slot final-alloc) right-setup-trace
+        right-setup-tsrb = save-slot<final , tt
+          where
+            save-slot<final : save-slot < next-slot final-alloc
+            save-slot<final = <-≤-trans (n<1+n save-slot) (≤-trans l-reclaim-mono r-slot-mono)
+
+        -- l-trace and r-trace slot reads (from results, converted via monotonicity)
+        l-trace-tsra : TraceSlotReadsAbove (next-slot alloc) l-trace
+        l-trace-tsra = SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-for-left) l-trace
+                         (n≤1+n (next-slot alloc))
+                         (ProcessedLayerResult.trace-slot-reads-above l-result)
+
+        -- Same issue as l-trace-twb: need alloc-l ≤ final-alloc, which might not hold
+        l-trace-tsrb : TraceSlotReadsBelow (next-slot final-alloc) l-trace
+        l-trace-tsrb = SMP.!!
+
+        r-trace-tsra : TraceSlotReadsAbove (next-slot alloc) r-trace
+        r-trace-tsra = SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-for-right) r-trace
+                         (≤-trans (incr-next-slot-mono alloc) l-reclaim-mono)
+                         (ProcessedLayerResult.trace-slot-reads-above r-result)
+
+        r-trace-tsrb : TraceSlotReadsBelow (next-slot final-alloc) r-trace
+        r-trace-tsrb = ProcessedLayerResult.trace-slot-reads-below r-result
+
+        trace-slot-reads-above-proof : TraceSlotReadsAbove (next-slot alloc) full-trace
+        trace-slot-reads-above-proof =
+          SMP.trace-slot-reads-above-append (next-slot alloc) left-setup-trace (l-trace ++ right-setup-trace ++ r-trace)
+            left-setup-tsra
+            (SMP.trace-slot-reads-above-append (next-slot alloc) l-trace (right-setup-trace ++ r-trace)
+              l-trace-tsra
+              (SMP.trace-slot-reads-above-append (next-slot alloc) right-setup-trace r-trace
+                right-setup-tsra r-trace-tsra))
+
+        trace-slot-reads-below-proof : TraceSlotReadsBelow (next-slot final-alloc) full-trace
+        trace-slot-reads-below-proof =
+          SMP.trace-slot-reads-below-append (next-slot final-alloc) left-setup-trace (l-trace ++ right-setup-trace ++ r-trace)
+            left-setup-tsrb
+            (SMP.trace-slot-reads-below-append (next-slot final-alloc) l-trace (right-setup-trace ++ r-trace)
+              l-trace-tsrb
+              (SMP.trace-slot-reads-below-append (next-slot final-alloc) right-setup-trace r-trace
+                right-setup-tsrb r-trace-tsrb))
 
     ------------------------------------------------------------------------
     -- Cata Dispatched (New Architecture)
@@ -1855,7 +2389,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                    (record alloc { next-slot = rs })
                    bf-transfer
                    valid-layer-cata
-          ; reclaim-size-bound = SMP.!! {A = IRResultAWF.reclaimable-slot alg-result ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)}
+          -- BLOCKED: reclaim-size-bound requires either:
+          -- 1. A tighter layer bound: next-slot alloc-layer ≤ next-slot alloc +ℕ (product-depth wfG +ℕ pair-slots)
+          -- 2. Or passing reclaimed alloc to algebra instead of alloc-layer
+          -- Current: alg-result's reclaim-size-bound gives reclaimable ≤ alloc-layer + ir-stack-requirement alg
+          -- Need: reclaimable ≤ alloc + ir-stack-requirement (Cata wfG alg)
+          ; reclaim-size-bound = SMP.!!
           ; frontier-slot-stable = λ _ _ _ _ _ → inj₂ (inj₂ tt)
           ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) layer-trace
               (mov-to-input ∷ IRResultAWF.trace alg-result)
