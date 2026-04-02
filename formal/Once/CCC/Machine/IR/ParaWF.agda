@@ -124,6 +124,10 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
     suc-≤-plus-req : ∀ n m → suc n ≤ n +ℕ (m +ℕ pair-slots)
     suc-≤-plus-req n m = ≤-trans (suc-≤-plus-2 n) (+-monoʳ-≤ n (2≤m+2 m))
 
+    -- For recursion schemes with two components (e.g., product-depth + alg)
+    suc-≤-plus-req-2 : ∀ n m₁ m₂ → suc n ≤ n +ℕ (m₁ +ℕ m₂ +ℕ pair-slots)
+    suc-≤-plus-req-2 n m₁ m₂ = ≤-trans (suc-≤-plus-2 n) (+-monoʳ-≤ n (2≤m+2 (m₁ +ℕ m₂)))
+
   -- Memory preservation helper for recursion scheme traces
   rec-scheme-mem-preserved : ∀ {n : ℕ} (s : LocState FS) (alloc : AllocState {FS}) →
     n ≡ next-slot alloc →
@@ -235,9 +239,9 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       result-valid = rec-scheme-semantic (Para wf alg) alloc' x result-loc s'
 
       n = next-slot alloc
-      -- ir-stack-requirement (Para _ alg) = ir-stack-requirement alg + pair-slots
+      -- ir-stack-requirement (Para wf alg) = product-depth wf + ir-stack-requirement alg + pair-slots
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Para wf alg)
-      reclaim-bound = suc-≤-plus-req n (ir-stack-requirement alg)
+      reclaim-bound = suc-≤-plus-req-2 n (product-depth wf) (ir-stack-requirement alg)
 
       rax-eq : readReg (regs s') Output ≡ result-loc
       rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted

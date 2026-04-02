@@ -875,10 +875,12 @@ module AbstractExec {FS : FrameSemantics} where
   exec-abstract (restore-input slot) s alloc =
     exec-restore-input-with-value (readLoc s (OnStack (current-frame alloc) slot)) s alloc
 
-  -- instr-alloc-stack: advance stackSlot by n
+  -- instr-alloc-stack: advance stackSlot by n AND advance next-slot frontier
   -- Capacity was verified by Dispatcher when constructing the trace
+  -- Note: next-slot tracks compile-time allocation frontier (monotonically increasing)
   exec-abstract (instr-alloc-stack n) s alloc =
-    record s { regs = incrStackSlot (regs s) n } , alloc
+    record s { regs = incrStackSlot (regs s) n } ,
+    record alloc { next-slot = next-slot alloc + n }
 
   -- instr-dealloc-stack: reclaim n slots (decrement stackSlot)
   exec-abstract (instr-dealloc-stack n) s alloc =
