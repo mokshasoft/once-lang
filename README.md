@@ -200,4 +200,21 @@ The design of Once was influenced by [Ya](https://github.com/iokasimov/ya), a ca
 
 ## License
 
-GPL-2.0
+AGPL-3.0-or-later
+
+### Compiler Output Licensing
+
+**Programs compiled with Once are derivative works under AGPL-3.0.**
+
+Compilation is translation, not pass-through. The compiler's implementation
+choices are structurally present in every compiled binary:
+
+- **Slot machine model** for stack frame management
+- **Catamorphism strategies** for recursive type compilation
+- **Memory layouts** for products, sums, and recursive structures
+
+Every major compiler either adds a runtime exception (GCC, GNAT) or uses a
+permissive license (LLVM, Rust, Go) to permit proprietary compilation.
+Once does neither. AGPL-3.0 applies to compiled output.
+
+See [NOTICE](NOTICE) for full legal basis and details.

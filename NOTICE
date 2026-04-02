@@ -1,0 +1,127 @@
+ONCE COMPILER - LICENSING NOTICE
+
+Copyright (C) 2025-2026 Jonas Claesson and contributors
+Licensed under AGPL-3.0-or-later
+
+================================================================================
+                        COMPILER OUTPUT LICENSING
+================================================================================
+
+Programs compiled with Once are derivative works subject to AGPL-3.0.
+
+LEGAL BASIS
+-----------
+
+1. COMPILATION IS TRANSLATION, NOT PASS-THROUGH
+
+   A pass-through tool (like `cat`) outputs unchanged input. The output is
+   a derivative of the input only.
+
+   A compiler transforms input according to its copyrighted implementation.
+   The output is a derivative of BOTH the source code AND the compiler's
+   structural choices. Those choices are embedded in every compiled binary.
+
+2. DUAL DERIVATION
+
+   Compiled output is a function of two copyrighted works:
+
+     output = f(source_code, compiler_implementation)
+
+   The source code is licensed by the user. The compiler implementation is
+   licensed under AGPL-3.0. For the output to be legally distributable,
+   both licenses must be satisfied.
+
+3. INDUSTRY PRECEDENT
+
+   Every major compiler addresses this through one of two approaches:
+
+   Copyleft compilers add explicit exceptions to permit proprietary use:
+
+     GCC        GPL-3.0 + Runtime Library Exception
+     GNAT       GPL-3.0 + Runtime Library Exception
+
+   Permissive compilers avoid the issue entirely:
+
+     LLVM       Apache 2.0 + LLVM exceptions
+     Clang      Apache 2.0 + LLVM exceptions
+     Rust       Apache 2.0 / MIT dual license
+     Go         BSD license
+     Swift      Apache 2.0 + Runtime Library Exception
+
+   The GCC Runtime Library Exception FAQ states:
+
+     "The binary is therefore a derivative work of both your source code
+      and the runtime library. If GCC were pure GPL, every binary compiled
+      with GCC would need to be licensed under the terms of GPL."
+
+   Once provides no such exception. The default AGPL-3.0 terms apply.
+
+4. IMPLEMENTATION, NOT INTERFACE
+
+   The categorical IR (the 12 generators: id, compose, fst, snd, pair, inl,
+   inr, case, terminal, initial, curry, apply) is an abstract mathematical
+   interface.
+
+   The IMPLEMENTATION of that interface - how each generator maps to
+   machine code - is copyrighted creative expression. This implementation
+   maps directly to compiled output.
+
+5. CREATIVE CHOICES
+
+   The Once compiler makes specific, non-obvious implementation choices:
+
+   - Slot machine model for stack frame management (not push/pop recursion)
+   - Catamorphism compilation strategies for recursive types
+   - Memory layouts for products, sums, and recursive structures
+   - Escape analysis determining stack vs. heap allocation
+
+   These are creative choices among many valid alternatives, reflected
+   directly in the structure of compiled code.
+
+6. ARCHITECTURAL INTEGRATION
+
+   GCC separates its runtime into a linkable library (libgcc). Once
+   integrates equivalent functionality directly into code generation.
+
+   This is an architectural choice, not a legal distinction. The copyright
+   question is: "Is copyrighted material present in the binary?"
+
+   For Once, the answer is yes. The compiler's implementation choices are
+   structurally present in every compiled function. Unlike a separate
+   runtime library, this cannot be swapped out or reimplemented separately.
+
+LEGAL EFFECT
+------------
+
+Compiled Once programs are derivative works of AGPL-3.0 licensed code.
+Distribution must comply with AGPL-3.0, including:
+
+  - Source code availability (AGPL-3.0 Section 5, 6)
+  - License preservation (AGPL-3.0 Section 4)
+  - Network use provisions (AGPL-3.0 Section 13)
+
+For the output to be legally distributable, the source code's license
+must be compatible with AGPL-3.0.
+
+  Compatible:      AGPL-3.0, GPL-3.0, MIT, BSD, Apache 2.0, public domain
+  Not compatible:  Proprietary, GPL-2.0-only, other copyleft without
+                   AGPL-3.0 compatibility
+
+Note on permissive licenses: MIT, BSD, and Apache 2.0 are compatible
+because they permit sublicensing under more restrictive terms. Source
+code under these licenses can legally become part of an AGPL-3.0 work.
+The compiled output must then be distributed under AGPL-3.0 terms.
+
+REFERENCES
+----------
+
+  GCC Runtime Library Exception:
+  https://www.gnu.org/licenses/gcc-exception-3.1.html
+
+  GCC Runtime Library Exception FAQ:
+  https://www.gnu.org/licenses/gcc-exception-3.1-faq.en.html
+
+  AGPL-3.0 License:
+  https://www.gnu.org/licenses/agpl-3.0.html
+
+================================================================================
