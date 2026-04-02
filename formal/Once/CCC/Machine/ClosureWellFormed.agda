@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
 ------------------------------------------------------------------------
 -- Once.CCC.Target.X86-64.ClosureWellFormed
 --
@@ -1288,5 +1291,3 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
       mem-preserved (OnHeap h) (heap-before _) =
         -- Heap location
         exec-trace-preserves-heap-loc trace s alloc h tnhw
-
-

@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
 ------------------------------------------------------------------------
 -- Once.Surface.Thinning
 --
@@ -292,4 +295,3 @@ weakenFromEmpty {Γ = _S,_^_ Γ' _ _} e = weaken (weakenFromEmpty {Γ = Γ'} e)
 --   - NO postulates
 --
 -- BONUS: Works for ANY depth by adding more one-line thinnings
-

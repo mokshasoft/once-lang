@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
 ------------------------------------------------------------------------
 -- Once.Postulates
 --
@@ -219,4 +222,3 @@ open import Once.Surface.Syntax as Surface using ()
 postulate
   coerceQuantity : ∀ {n} {Γ : SCtx n} {A B : Type} {q q' : Quantity}
                  → SExpr (_S,_^_ Γ A q) B → SExpr (_S,_^_ Γ A q') B
-

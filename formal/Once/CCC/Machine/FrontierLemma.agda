@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
 ------------------------------------------------------------------------
 -- Once.CCC.Target.X86-64.FrontierLemma
 --
@@ -84,4 +87,3 @@ module FrontierLemmas {FS : FrameSemantics} where
     stack-ancestor (subst (_≺ f) frame-eq cf≺f) src  -- Transfer ordering via frame equality, preserve provenance
   frontier-same-heap a1 a2 frame-eq slot-eq heap-eq (OnHeap hl) (heap-before ref<heap) =
     heap-before (subst (ref-id (heap-ref hl) <_) heap-eq ref<heap)
-

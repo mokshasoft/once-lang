@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
 ------------------------------------------------------------------------
 -- Once.CCC.Target.X86-64.IR.CurryWF
 --
@@ -435,4 +438,3 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
           (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
           refl refl refl loc bf)
         result-valid-wf'
-

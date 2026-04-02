@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
 ------------------------------------------------------------------------
 -- Once.Allocator.Slab
 --
@@ -413,4 +416,3 @@ asMalloc = record
 -- For larger allocations (> 4 slots), fall back to BumpAllocator
 -- or implement additional size classes.
 ------------------------------------------------------------------------
-

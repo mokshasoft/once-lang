@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
 ------------------------------------------------------------------------
 -- Once.CCC.Target.X86-64.SizeBoundLemma
 --
@@ -49,4 +52,3 @@ curry-body-bound : ∀ {A B C q} (f : IR (A * B) C) {m : AllocMode} (program-bou
   ir-size (curry {q = q} f m) < program-bound →
   ir-size f < program-bound
 curry-body-bound {q = q} f {m} pb ir<bound = <-trans (curry-smaller {q = q} f {m}) ir<bound
-

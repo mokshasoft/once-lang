@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
 -- MallocLike interface implementation for Linux
 -- See docs/design/buffers.md for interface specification
 -- D032: Memory operations are effectful
