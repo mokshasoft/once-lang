@@ -244,3 +244,45 @@ layer-capacity-sum-right : ∀ {FL FR G A}
   slot +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg ≤ cap →
   slot +ℕ layer-capacity wfR wfG alg ≤ cap
 layer-capacity-sum-right wfL wfR wfG alg slot cap pf = SMP.!!
+
+------------------------------------------------------------------------
+-- Sum Wrapper Capacity Lemmas (OCP-0003 Option B)
+--
+-- These lemmas show that child capacity + 2 wrapper slots ≤ parent capacity.
+-- This is used for proving slot-usage-bound when allocating Sum wrappers.
+--
+-- Key insight: sum-depth (wf-Sum wfL wfR) = suc (sum-depth wfL ⊔ sum-depth wfR)
+-- So sum-depth (wf-Sum ...) * 2 = 2 + 2 * (sum-depth wfL ⊔ sum-depth wfR)
+--                               ≥ 2 + sum-depth wfL * 2
+-- This gives exactly the +2 slack needed for wrapper allocation.
+------------------------------------------------------------------------
+
+open import Data.Nat.Properties using (*-monoˡ-≤; *-distribˡ-+)
+
+-- | Sum child capacity + 2 ≤ Sum parent capacity (left child)
+-- Used for slot-usage-bound in Sum inj₁ case
+sum-wrapper-fits-left : ∀ {FL FR G A}
+  (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
+  (alg : IR (⟦ G ⟧T A) A) →
+  layer-capacity wfL wfG alg +ℕ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
+sum-wrapper-fits-left wfL wfR wfG alg =
+  let pdL = product-depth wfL
+      pdR = product-depth wfR
+      sdL = sum-depth wfL
+      sdR = sum-depth wfR
+      algReq = ir-stack-requirement alg
+      ps = pair-slots
+      -- layer-capacity wfL = pdL + sdL * 2 + algReq + ps
+      -- layer-capacity (wf-Sum wfL wfR) = (pdL ⊔ pdR) + suc (sdL ⊔ sdR) * 2 + algReq + ps
+      --                                 = (pdL ⊔ pdR) + 2 + (sdL ⊔ sdR) * 2 + algReq + ps
+      -- Difference = (pdL ⊔ pdR - pdL) + 2 + ((sdL ⊔ sdR) - sdL) * 2
+      --            ≥ 0 + 2 + 0 = 2
+  in SMP.!!  -- TODO: Fill with arithmetic proof
+
+-- | Sum child capacity + 2 ≤ Sum parent capacity (right child)
+-- Used for slot-usage-bound in Sum inj₂ case
+sum-wrapper-fits-right : ∀ {FL FR G A}
+  (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
+  (alg : IR (⟦ G ⟧T A) A) →
+  layer-capacity wfR wfG alg +ℕ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
+sum-wrapper-fits-right wfL wfR wfG alg = SMP.!!  -- TODO: Fill with arithmetic proof
