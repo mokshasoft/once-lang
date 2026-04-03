@@ -1815,16 +1815,22 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- slot-monotone: wrapper advances next-slot by 2, so frontier increases
         ; slot-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-advances)
                                 (≤-trans slot-monotone-inj1 (m≤m+n (next-slot alloc-after-sub) 2))
-        -- Reclamation: the wrapper slots are NOT reclaimable (they're output)
-        -- So reclaimable-slot stays at l-reclaimable (from sub-result)
-        ; reclaimable-slot = l-reclaimable
-        ; reclaim-monotone = reclaim-mono-inj1
-        ; reclaim-bounded = subst (λ x → l-reclaimable ≤ x) (sym wrapper-next-slot-advances)
-                                  (≤-trans reclaim-bounded-inj1 (m≤m+n (next-slot alloc-after-sub) 2))
-        ; reclaim-preserves-result = λ fits → SMP.!!  -- TODO: wrapper survives reclamation
-        ; reclaim-preserves-validity = λ fits → SMP.!!  -- TODO: inj₁ validity after reclamation
-        -- slot-usage-bound: wrapper doesn't change temporary slot usage (it's output allocation)
-        ; slot-usage-bound = slot-usage-bound-inj1
+        -- Reclamation: wrapper slots are OUTPUT, not temporary, so reclaimable-slot = next-slot final
+        -- This ensures wrapper-loc is before the reclaimable frontier
+        ; reclaimable-slot = next-slot alloc-after-wrapper
+        ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-advances)
+                                   (≤-trans slot-monotone-inj1 (m≤m+n (next-slot alloc-after-sub) 2))
+        ; reclaim-bounded = ≤-refl
+        ; reclaim-preserves-result = λ fits →
+            -- wrapper-loc = OnStack (current-frame alloc-after-sub) wrapper-base
+            -- reclaimed alloc has current-frame = current-frame alloc
+            -- stack-before expects: f ≡ current-frame (reclaimed alloc) where f = current-frame alloc-after-sub
+            -- So we need: current-frame alloc-after-sub ≡ current-frame alloc
+            stack-before frame-preserved-inj1 wrapper-before-frontier
+        ; reclaim-preserves-validity = λ fits → SMP.!!  -- TODO: transfer validity to reclaimed alloc
+        -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + ir-stack-requirement
+        -- The wrapper adds 2 slots; ir-stack-requirement for Cata includes pair-slots (2) for this
+        ; slot-usage-bound = SMP.!!  -- TODO: needs proof that wrapper fits within ir-stack-requirement
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj1
         -- capacity-preserved: capacity unchanged by wrapper trace
@@ -2230,16 +2236,22 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- slot-monotone: wrapper advances next-slot by 2, so frontier increases
         ; slot-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-advances)
                                 (≤-trans slot-monotone-inj2 (m≤m+n (next-slot alloc-after-sub) 2))
-        -- Reclamation: the wrapper slots are NOT reclaimable (they're output)
-        -- So reclaimable-slot stays at r-reclaimable (from sub-result)
-        ; reclaimable-slot = r-reclaimable
-        ; reclaim-monotone = reclaim-mono-inj2
-        ; reclaim-bounded = subst (λ x → r-reclaimable ≤ x) (sym wrapper-next-slot-advances)
-                                  (≤-trans reclaim-bounded-inj2 (m≤m+n (next-slot alloc-after-sub) 2))
-        ; reclaim-preserves-result = λ fits → SMP.!!  -- TODO: wrapper survives reclamation
-        ; reclaim-preserves-validity = λ fits → SMP.!!  -- TODO: inj₂ validity after reclamation
-        -- slot-usage-bound: wrapper doesn't change temporary slot usage (it's output allocation)
-        ; slot-usage-bound = slot-usage-bound-inj2
+        -- Reclamation: wrapper slots are OUTPUT, not temporary, so reclaimable-slot = next-slot final
+        -- This ensures wrapper-loc is before the reclaimable frontier
+        ; reclaimable-slot = next-slot alloc-after-wrapper
+        ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-advances)
+                                   (≤-trans slot-monotone-inj2 (m≤m+n (next-slot alloc-after-sub) 2))
+        ; reclaim-bounded = ≤-refl
+        ; reclaim-preserves-result = λ fits →
+            -- wrapper-loc = OnStack (current-frame alloc-after-sub) wrapper-base
+            -- reclaimed alloc has current-frame = current-frame alloc
+            -- stack-before expects: f ≡ current-frame (reclaimed alloc) where f = current-frame alloc-after-sub
+            -- So we need: current-frame alloc-after-sub ≡ current-frame alloc
+            stack-before frame-preserved-inj2 wrapper-before-frontier
+        ; reclaim-preserves-validity = λ fits → SMP.!!  -- TODO: transfer validity to reclaimed alloc
+        -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + ir-stack-requirement
+        -- The wrapper adds 2 slots; ir-stack-requirement for Cata includes pair-slots (2) for this
+        ; slot-usage-bound = SMP.!!  -- TODO: needs proof that wrapper fits within ir-stack-requirement
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj2
         -- capacity-preserved: capacity unchanged by wrapper trace
