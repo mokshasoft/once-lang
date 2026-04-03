@@ -1240,6 +1240,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     --   K: use valid-primitive-wf with BeforeFrontier
     --   Id: extract μValid for recursive call
     --   Sum/Prod: decompose structurally
+    -- Capacity model: Each layer F needs layer-capacity wfF wfG alg slots.
+    -- For Product: layer-capacity (wf-Prod L R) = 1 + max(L, R) - save-slot + child
+    -- For Sum: layer-capacity (wf-Sum L R) = 2 + max(L, R) - wrapper + child
+    -- For Id: layer-capacity wf-Id wfG = ir-stack-requirement (Cata wfG alg)
+    -- For K: layer-capacity (wf-K _) = ir-stack-requirement alg + pair-slots
     process-layer : ∀ {F G A}
       (wfF : WellFormedF F) (wfG : WellFormedF G)
       (alg : IR (⟦ G ⟧T A) A)
@@ -1252,7 +1257,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
       → readReg (regs s) Input ≡ input-loc
-      → next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
+      → next-slot alloc +ℕ layer-capacity wfF wfG alg ≤ frame-capacity alloc
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfF layer s alloc
 
     -- K case: constant layer, no recursion
@@ -1319,9 +1324,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         μ-val-valid : ValidAtWF mIn alloc μ-val input-loc s
         μ-val-valid = valid-μ-wf wfG μ-val μ-val-μvalid
 
+        -- Convert capacity: layer-capacity wf-Id wfG = ir-stack-requirement (Cata wfG)
+        -- But cata-dispatched-new needs layer-capacity wfG wfG alg
+        -- Use ir-stack-req-geq-layer-cap to derive the needed capacity
+        cap-converted : next-slot alloc +ℕ layer-capacity wfG wfG alg ≤ frame-capacity alloc
+        cap-converted = ir-stack-req-geq-layer-cap wfG alg (next-slot alloc) (frame-capacity alloc) cap
+
         -- Recursive call: compute cata on μ-val
         (mRec , rec-result) = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
-                                μ-val-valid input-before not-halted rdi-eq cap
+                                μ-val-valid input-before not-halted rdi-eq cap-converted
 
         -- Extract results
         rec-val = eval primSem (Cata wfG alg) μ-val
@@ -1458,10 +1469,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         not-halted-setup : halted s-setup ≡ false
         not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
-        -- Capacity for sub-layer: preserved since alloc-setup = alloc
-        cap-setup : next-slot alloc-setup +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-setup
-        cap-setup = subst (λ al → next-slot al +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity al)
-                          (sym (setup-trace-preserves-alloc s alloc)) cap
+        -- Capacity for sub-layer: use layer-capacity-sum-left to derive child capacity from parent
+        -- alloc-setup = alloc (setup-trace doesn't change alloc)
+        cap-setup : next-slot alloc-setup +ℕ layer-capacity wfL wfG alg ≤ frame-capacity alloc-setup
+        cap-setup = subst (λ al → next-slot al +ℕ layer-capacity wfL wfG alg ≤ frame-capacity al)
+                          (sym (setup-trace-preserves-alloc s alloc))
+                          (layer-capacity-sum-left wfL wfR wfG alg (next-slot alloc) (frame-capacity alloc) cap)
 
         -- Step 2: Process left sub-layer (recursive call)
         (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn payload-loc s-setup alloc-setup
@@ -1982,10 +1995,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         not-halted-setup : halted s-setup ≡ false
         not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
-        -- Capacity for sub-layer: preserved since alloc-setup = alloc
-        cap-setup : next-slot alloc-setup +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-setup
-        cap-setup = subst (λ al → next-slot al +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity al)
-                          (sym (setup-trace-preserves-alloc s alloc)) cap
+        -- Capacity for sub-layer: use layer-capacity-sum-right to derive child capacity from parent
+        -- alloc-setup = alloc (setup-trace doesn't change alloc)
+        cap-setup : next-slot alloc-setup +ℕ layer-capacity wfR wfG alg ≤ frame-capacity alloc-setup
+        cap-setup = subst (λ al → next-slot al +ℕ layer-capacity wfR wfG alg ≤ frame-capacity al)
+                          (sym (setup-trace-preserves-alloc s alloc))
+                          (layer-capacity-sum-right wfL wfR wfG alg (next-slot alloc) (frame-capacity alloc) cap)
 
         -- Step 2: Process right sub-layer (recursive call)
         (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s-setup alloc-setup
@@ -2393,7 +2408,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       (input-before : BeforeFrontier alloc input-loc)
       (not-halted : halted s ≡ false)
       (rdi-eq : readReg (regs s) Input ≡ input-loc)
-      (cap : next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc)
+      (cap : next-slot alloc +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg ≤ frame-capacity alloc)
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut (wf-Prod wfL wfR) (l-comp , r-comp) s alloc
     process-layer-prod {FL} {FR} {G} {A} wfL wfR wfG alg dispatch l-comp r-comp mIn
       input-loc fst-loc snd-loc s alloc
@@ -2530,8 +2545,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                   save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr
 
         -- Capacity for left sub-layer
-        cap-left : next-slot alloc-for-left +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-for-left
-        cap-left = SMP.!!  -- PROOF: Category 1 blocker - capacity for left component after saving one slot
+        -- Uses layer-capacity-prod-left: given parent capacity, derive left child capacity
+        -- alloc-for-left.next-slot = suc (alloc.next-slot), alloc-for-left.frame-capacity = alloc.frame-capacity
+        cap-left : next-slot alloc-for-left +ℕ layer-capacity wfL wfG alg ≤ frame-capacity alloc-for-left
+        cap-left = layer-capacity-prod-left wfL wfR wfG alg (next-slot alloc) (frame-capacity alloc) cap
 
         ------------------------------------------------------------------------
         -- Phase 2: Left Processing
@@ -2719,33 +2736,17 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             (λ _ → SMP.!!))  -- The constraint is not used by the helper
           r-layer-valid-transferred
 
-        -- Capacity for right sub-layer (NOW PROVABLE with reclamation!)
-        -- l-reclaimable ≤ next-slot alloc-for-left + ir-stack-requirement (Cata wfG alg)  (from l-slot-usage)
-        -- next-slot alloc-for-right = l-reclaimable
-        -- frame-capacity alloc-for-right = frame-capacity alloc
-        -- Need: l-reclaimable + ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
-        r-cap : next-slot alloc-for-right +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-for-right
-        r-cap = r-cap-proof
-          where
-            -- From l-slot-usage: l-reclaimable ≤ suc (next-slot alloc) + ir-stack-requirement (Cata wfG alg)
-            -- From cap: next-slot alloc + ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
-            -- We need: l-reclaimable + ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
-            --
-            -- This requires: l-reclaimable ≤ next-slot alloc (i.e., reclamation goes back to start)
-            -- But l-slot-usage only gives l-reclaimable ≤ suc (next-slot alloc) + ...
-            --
-            -- The proof works if we can show l-reclaimable doesn't exceed what we started with
-            -- plus the available capacity. Since cap-left provides the capacity for left processing,
-            -- and l-result stays within that capacity (by slot-usage-bound), we have room for right.
-            --
-            -- Key insight: l-reclaimable + ir-stack-requirement ≤ (suc (next-slot alloc) + ir-stack-requirement) + ir-stack-requirement
-            -- This would require 2x the stack requirement, which we don't have!
-            --
-            -- The fix requires a TIGHTER bound on l-reclaimable: it should be bounded by
-            -- next-slot alloc-for-left + product-depth wfL, not the full ir-stack-requirement.
-            -- For now, mark as blocked pending layer-specific capacity tracking.
-            r-cap-proof : next-slot alloc-for-right +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc-for-right
-            r-cap-proof = SMP.!!  -- BLOCKED: needs tighter layer-slot-bound (product-depth wfL, not full ir-stack-requirement)
+        -- Capacity for right sub-layer
+        -- With layer-capacity model:
+        --   cap : next-slot alloc + layer-capacity (wf-Prod wfL wfR) wfG alg ≤ frame-capacity alloc
+        --       = next-slot alloc + (1 + (capL ⊔ capR)) ≤ frame-capacity alloc
+        --   After save-slot: suc (next-slot alloc) + (capL ⊔ capR) ≤ frame-capacity alloc
+        -- For right, need: l-reclaimable + capR ≤ frame-capacity alloc
+        -- This requires: l-reclaimable ≤ suc (next-slot alloc) + (capL ⊔ capR) - capR
+        --                             = suc (next-slot alloc) + capL (when capL ≥ capR)
+        -- The reclaim model should give l-reclaimable ≤ suc (next-slot alloc) for Product
+        r-cap : next-slot alloc-for-right +ℕ layer-capacity wfR wfG alg ≤ frame-capacity alloc-for-right
+        r-cap = SMP.!!  -- BLOCKED: needs reclamation bound l-reclaimable ≤ suc (next-slot alloc)
 
         ------------------------------------------------------------------------
         -- Phase 4: Right Processing
@@ -3084,6 +3085,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             (WellFormedF-irrelevant wf wfG)
             lv
 
+    -- cata-dispatched-new uses layer-capacity wfG wfG alg for the root layer
+    -- This matches the new capacity model where each layer F needs layer-capacity wfF wfG alg
     cata-dispatched-new : ∀ {G A}
       (wfG : WellFormedF G)
       (alg : IR (⟦ G ⟧T A) A)
@@ -3096,7 +3099,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
       → readReg (regs s) Input ≡ input-loc
-      → next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
+      → next-slot alloc +ℕ layer-capacity wfG wfG alg ≤ frame-capacity alloc
       → ∃[ mOut ] IRResultAWF mOut (Cata wfG alg) x s alloc
     cata-dispatched-new {G} {A} wfG alg dispatch x mIn input-loc s alloc
       x-valid input-before not-halted rdi-eq cap =

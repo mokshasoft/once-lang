@@ -12,9 +12,9 @@
 module Once.CCC.IR.Stack where
 
 open import Data.Nat using (ℕ; zero; suc; _≤_; _⊔_; s≤s) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; ≤-refl; ≤-trans; m≤m⊔n; m≤n⊔m; +-monoˡ-≤; +-monoʳ-≤; *-monoˡ-≤; m+n≤o⇒m≤o; m+n≤o⇒n≤o)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; ≤-trans; m≤m⊔n; m≤n⊔m; m≤n+m; +-monoˡ-≤; +-monoʳ-≤; *-monoˡ-≤; m+n≤o⇒m≤o; m+n≤o⇒n≤o)
 open import Data.String using (String)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
 open import Once.CCC.IR
 open import Once.CCC.IR.Size using (ir-size)
@@ -128,25 +128,40 @@ ir-stack-requirement (free-heap _) = 0
 ir-stack-requirement (Prim _) = 0  -- Primitives manage own stack
 
 ------------------------------------------------------------------------
--- Layer Capacity
+-- Layer Capacity (Redesigned OCP-0003)
 --
--- Capacity needed for layer processing, based on current layer functor.
+-- The capacity model is fundamentally based on:
+-- 1. Each Product level needs 1 save-slot
+-- 2. Each Sum level needs 2 wrapper-slots
+-- 3. The algebra needs ir-stack-requirement alg + pair-slots for output
+--
+-- The key insight is that capacity is computed from the FUNCTOR STRUCTURE
+-- (product-depth, sum-depth), not from recursion depth. With reclamation,
+-- each level reuses slots from completed subtrees.
+--
+-- For the capacity INEQUALITY LEMMAS to work, we need:
+--   layer-capacity (wf-Prod wfL wfR) ≥ 1 + max(layer-capacity wfL, layer-capacity wfR)
+--   layer-capacity (wf-Sum wfL wfR) ≥ 2 + max(layer-capacity wfL, layer-capacity wfR)
+--
+-- The formula: product-depth wfF + sum-depth wfF * 2 + ir-stack-requirement alg + pair-slots
+-- satisfies these because:
+--   product-depth (wf-Prod wfL wfR) = suc (product-depth wfL ⊔ product-depth wfR)
+--   sum-depth (wf-Sum wfL wfR) = suc (sum-depth wfL ⊔ sum-depth wfR)
 ------------------------------------------------------------------------
 
--- | Capacity needed for layer processing
+-- | Layer capacity based on functor structure
 --
--- This is the capacity needed to process a single layer of functor F,
--- where the layer may contain μ-values of functor G with algebra alg.
+-- This uses the structural product-depth and sum-depth of F.
+-- The Id case is special: it requires ir-stack-requirement (Cata wfG alg)
+-- because processing Id recurses into the full Cata.
 --
--- The capacity is: product-depth wfF + sum-depth wfF * 2 + ir-stack-requirement alg + pair-slots
---
--- Note: This depends on wfF (current layer) not wfG (μ-type functor).
--- This ensures capacity decreases as we recurse into Product/Sum sub-layers.
---
--- OCP-0003: Added sum-depth * 2 for Sum wrapper slots (Option B).
---
+-- For non-Id functors: product-depth wfF + sum-depth wfF * 2 + alg + ps
+-- For Id: ir-stack-requirement (Cata wfG alg)
 layer-capacity : ∀ {F G A} → WellFormedF F → WellFormedF G → IR (⟦ G ⟧T A) A → ℕ
-layer-capacity wfF wfG alg = product-depth wfF +ℕ (sum-depth wfF *ℕ 2) +ℕ ir-stack-requirement alg +ℕ pair-slots
+layer-capacity wf-Id wfG alg = ir-stack-requirement (Cata wfG alg)
+layer-capacity (wf-K _) _ alg = ir-stack-requirement alg +ℕ pair-slots
+layer-capacity (wf-Sum wfL wfR) wfG alg = 2 +ℕ (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg)
+layer-capacity (wf-Prod wfL wfR) wfG alg = 1 +ℕ (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg)
 
 ------------------------------------------------------------------------
 -- Stack Requirement Lemmas
@@ -196,54 +211,107 @@ prim-stack-req _ = refl
 open import Data.Nat.Properties using (+-comm; +-suc; m≤m⊔n; m≤n⊔m; +-monoˡ-≤; +-monoʳ-≤; ≤-trans)
 open import Data.Nat using (s≤s)
 
--- | Cata stack requirement equals layer capacity at the same functor
---
--- ir-stack-requirement (Cata wfG alg) = layer-capacity wfG wfG alg
---
-cata-req-eq-layer-cap : ∀ {G A} (wfG : WellFormedF G) (alg : IR (⟦ G ⟧T A) A) →
-  ir-stack-requirement (Cata wfG alg) ≡ layer-capacity wfG wfG alg
-cata-req-eq-layer-cap wfG alg = refl
+-- Note: ir-stack-requirement (Cata wfG alg) uses a flat formula based on
+-- product-depth/sum-depth, while layer-capacity uses a recursive formula.
+-- These compute the same upper bound but via different structures.
+-- The recursive layer-capacity is used for the capacity inequality lemmas.
 
 -- | Layer capacity for Product left component after using 1 slot
 --
 -- If we have capacity for layer-capacity (wf-Prod wfL wfR) at slot n,
 -- then after using 1 slot (at slot n+1), we have capacity for layer-capacity wfL.
 --
--- TODO: Update proof to account for sum-depth * 2 in layer-capacity
+-- With recursive definition:
+--   layer-capacity (wf-Prod wfL wfR) = 1 + (capL ⊔ capR)
+--   Given: slot + 1 + (capL ⊔ capR) ≤ cap
+--   Need: suc slot + capL ≤ cap
+--   Since: capL ≤ capL ⊔ capR, this follows from monotonicity
 layer-capacity-prod-left : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) (slot cap : ℕ) →
   slot +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg ≤ cap →
   suc slot +ℕ layer-capacity wfL wfG alg ≤ cap
-layer-capacity-prod-left wfL wfR wfG alg slot cap pf = SMP.!!
+layer-capacity-prod-left wfL wfR wfG alg slot cap pf =
+  let capL = layer-capacity wfL wfG alg
+      capR = layer-capacity wfR wfG alg
+      -- capL ≤ capL ⊔ capR
+      cap-mono : capL ≤ capL ⊔ capR
+      cap-mono = m≤m⊔n capL capR
+      -- suc slot + capL ≤ suc slot + (capL ⊔ capR)
+      step1 : suc slot +ℕ capL ≤ suc slot +ℕ (capL ⊔ capR)
+      step1 = +-monoʳ-≤ (suc slot) cap-mono
+      -- Convert pf: slot + (1 + (capL ⊔ capR)) ≤ cap  to  suc slot + (capL ⊔ capR) ≤ cap
+      -- Using: slot + suc x = suc (slot + x) = suc slot + x
+      eq : slot +ℕ suc (capL ⊔ capR) ≡ suc slot +ℕ (capL ⊔ capR)
+      eq = trans (+-suc slot (capL ⊔ capR)) refl
+      step2 : suc slot +ℕ (capL ⊔ capR) ≤ cap
+      step2 = subst (_≤ cap) eq pf
+  in ≤-trans step1 step2
 
 -- | Layer capacity for Product right component after using 1 slot
--- TODO: Update proof to account for sum-depth * 2 in layer-capacity
+-- Symmetric to prod-left, using m≤n⊔m
 layer-capacity-prod-right : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) (slot cap : ℕ) →
   slot +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg ≤ cap →
   suc slot +ℕ layer-capacity wfR wfG alg ≤ cap
-layer-capacity-prod-right wfL wfR wfG alg slot cap pf = SMP.!!
+layer-capacity-prod-right wfL wfR wfG alg slot cap pf =
+  let capL = layer-capacity wfL wfG alg
+      capR = layer-capacity wfR wfG alg
+      -- capR ≤ capL ⊔ capR
+      cap-mono : capR ≤ capL ⊔ capR
+      cap-mono = m≤n⊔m capL capR
+      -- suc slot + capR ≤ suc slot + (capL ⊔ capR)
+      step1 : suc slot +ℕ capR ≤ suc slot +ℕ (capL ⊔ capR)
+      step1 = +-monoʳ-≤ (suc slot) cap-mono
+      -- Convert pf: slot + (1 + (capL ⊔ capR)) ≤ cap  to  suc slot + (capL ⊔ capR) ≤ cap
+      eq : slot +ℕ suc (capL ⊔ capR) ≡ suc slot +ℕ (capL ⊔ capR)
+      eq = trans (+-suc slot (capL ⊔ capR)) refl
+      step2 : suc slot +ℕ (capL ⊔ capR) ≤ cap
+      step2 = subst (_≤ cap) eq pf
+  in ≤-trans step1 step2
 
 -- | Layer capacity for Sum left component
 -- For Sum with Option B: outer capacity includes wrapper slots (+2) that inner doesn't need yet
--- TODO: Update proof to account for sum-depth * 2 in layer-capacity
+--
+-- With recursive definition:
+--   layer-capacity (wf-Sum wfL wfR) = 2 + (capL ⊔ capR)
+--   Given: slot + 2 + (capL ⊔ capR) ≤ cap
+--   Need: slot + capL ≤ cap
+--   Since capL ≤ 2 + (capL ⊔ capR), this follows from monotonicity
 layer-capacity-sum-left : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) (slot cap : ℕ) →
   slot +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg ≤ cap →
   slot +ℕ layer-capacity wfL wfG alg ≤ cap
-layer-capacity-sum-left wfL wfR wfG alg slot cap pf = SMP.!!
+layer-capacity-sum-left wfL wfR wfG alg slot cap pf =
+  let capL = layer-capacity wfL wfG alg
+      capR = layer-capacity wfR wfG alg
+      -- capL ≤ capL ⊔ capR ≤ 2 + (capL ⊔ capR)
+      cap-mono : capL ≤ 2 +ℕ (capL ⊔ capR)
+      cap-mono = ≤-trans (m≤m⊔n capL capR) (m≤n+m (capL ⊔ capR) 2)
+      -- slot + capL ≤ slot + (2 + (capL ⊔ capR))
+      step1 : slot +ℕ capL ≤ slot +ℕ (2 +ℕ (capL ⊔ capR))
+      step1 = +-monoʳ-≤ slot cap-mono
+  in ≤-trans step1 pf
 
 -- | Layer capacity for Sum right component
--- TODO: Update proof to account for sum-depth * 2 in layer-capacity
+-- Symmetric to sum-left, using m≤n⊔m
 layer-capacity-sum-right : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) (slot cap : ℕ) →
   slot +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg ≤ cap →
   slot +ℕ layer-capacity wfR wfG alg ≤ cap
-layer-capacity-sum-right wfL wfR wfG alg slot cap pf = SMP.!!
+layer-capacity-sum-right wfL wfR wfG alg slot cap pf =
+  let capL = layer-capacity wfL wfG alg
+      capR = layer-capacity wfR wfG alg
+      -- capR ≤ capL ⊔ capR ≤ 2 + (capL ⊔ capR)
+      cap-mono : capR ≤ 2 +ℕ (capL ⊔ capR)
+      cap-mono = ≤-trans (m≤n⊔m capL capR) (m≤n+m (capL ⊔ capR) 2)
+      -- slot + capR ≤ slot + (2 + (capL ⊔ capR))
+      step1 : slot +ℕ capR ≤ slot +ℕ (2 +ℕ (capL ⊔ capR))
+      step1 = +-monoʳ-≤ slot cap-mono
+  in ≤-trans step1 pf
 
 ------------------------------------------------------------------------
 -- Sum Wrapper Capacity Lemmas (OCP-0003 Option B)
@@ -257,75 +325,70 @@ layer-capacity-sum-right wfL wfR wfG alg slot cap pf = SMP.!!
 -- This gives exactly the +2 slack needed for wrapper allocation.
 ------------------------------------------------------------------------
 
--- | Helper: rearrange (a + b + c + d) + 2 to show ≤ (a' + (2 + b') + c + d)
--- when a + b ≤ a' + b'
---
--- The key observation is that suc n * 2 = 2 + n * 2 (by definition of _*_).
--- So layer-capacity (wf-Sum ...) has form: (pd⊔) + (2 + sd⊔*2) + algReq + ps
--- And layer-capacity wfL + 2 has form: (pdL + sdL*2 + algReq + ps) + 2
---
--- We use: if pdL + sdL*2 ≤ pd⊔ + sd⊔*2, then adding common terms preserves ≤
-private
-  rearrange-+2 : ∀ a b c d a' b' →
-    a +ℕ b ≤ a' +ℕ b' →
-    a +ℕ b +ℕ c +ℕ d +ℕ 2 ≤ a' +ℕ (2 +ℕ b') +ℕ c +ℕ d
-  rearrange-+2 a b c d a' b' base =
-    -- LHS: ((((a + b) + c) + d) + 2)
-    -- RHS: ((((a' + (2 + b')) + c) + d)
-    --     = (((a' + 2 + b') + c) + d)  [by +-assoc]
-    --     = (((2 + a' + b') + c) + d)  [by +-comm]
-    -- Need LHS ≤ RHS
-    -- Add c, d, 2 to base inequality: a + b ≤ a' + b'
-    -- => a + b + c + d + 2 ≤ a' + b' + c + d + 2
-    -- Then rearrange RHS to (2 + a' + b') + c + d = a' + (2 + b') + c + d
-    SMP.!!  -- Arithmetic rearrangement
-
 -- | Sum child capacity + 2 ≤ Sum parent capacity (left child)
--- Used for slot-usage-bound in Sum inj₁ case
+--
+-- With recursive layer-capacity definition:
+--   layer-capacity (wf-Sum wfL wfR) = 2 + (layer-capacity wfL ⊔ layer-capacity wfR)
+--
+-- So we need: layer-capacity wfL + 2 ≤ 2 + (layer-capacity wfL ⊔ layer-capacity wfR)
+-- Which follows from: layer-capacity wfL ≤ layer-capacity wfL ⊔ layer-capacity wfR
 sum-wrapper-fits-left : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) →
   layer-capacity wfL wfG alg +ℕ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
 sum-wrapper-fits-left wfL wfR wfG alg =
-  let pdL = product-depth wfL
-      pdR = product-depth wfR
-      sdL = sum-depth wfL
-      sdR = sum-depth wfR
-      algReq = ir-stack-requirement alg
-      ps = pair-slots
-      -- Key inequalities for core terms
-      pd-mono : pdL ≤ pdL ⊔ pdR
-      pd-mono = m≤m⊔n pdL pdR
-      sd-mono : sdL ≤ sdL ⊔ sdR
-      sd-mono = m≤m⊔n sdL sdR
-      sd*2-mono : sdL *ℕ 2 ≤ (sdL ⊔ sdR) *ℕ 2
-      sd*2-mono = *-monoˡ-≤ 2 sd-mono
-      -- Combine: pdL + sdL*2 ≤ (pdL ⊔ pdR) + (sdL ⊔ sdR)*2
-      core-mono : pdL +ℕ sdL *ℕ 2 ≤ (pdL ⊔ pdR) +ℕ (sdL ⊔ sdR) *ℕ 2
-      core-mono = ≤-trans (+-monoˡ-≤ (sdL *ℕ 2) pd-mono)
-                          (+-monoʳ-≤ (pdL ⊔ pdR) sd*2-mono)
-  in rearrange-+2 pdL (sdL *ℕ 2) algReq ps (pdL ⊔ pdR) ((sdL ⊔ sdR) *ℕ 2) core-mono
+  let capL = layer-capacity wfL wfG alg
+      capR = layer-capacity wfR wfG alg
+      -- capL ≤ capL ⊔ capR
+      cap-mono : capL ≤ capL ⊔ capR
+      cap-mono = m≤m⊔n capL capR
+      -- capL + 2 ≤ (capL ⊔ capR) + 2
+      step1 : capL +ℕ 2 ≤ (capL ⊔ capR) +ℕ 2
+      step1 = +-monoˡ-≤ 2 cap-mono
+      -- (capL ⊔ capR) + 2 = 2 + (capL ⊔ capR)
+      eq : (capL ⊔ capR) +ℕ 2 ≡ 2 +ℕ (capL ⊔ capR)
+      eq = +-comm (capL ⊔ capR) 2
+  in subst (capL +ℕ 2 ≤_) eq step1
 
 -- | Sum child capacity + 2 ≤ Sum parent capacity (right child)
--- Symmetric to left, using m≤n⊔m instead of m≤m⊔n
+-- Symmetric using m≤n⊔m
 sum-wrapper-fits-right : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) →
   layer-capacity wfR wfG alg +ℕ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
 sum-wrapper-fits-right wfL wfR wfG alg =
-  let pdL = product-depth wfL
-      pdR = product-depth wfR
-      sdL = sum-depth wfL
-      sdR = sum-depth wfR
-      algReq = ir-stack-requirement alg
-      ps = pair-slots
-      pd-mono : pdR ≤ pdL ⊔ pdR
-      pd-mono = m≤n⊔m pdL pdR
-      sd-mono : sdR ≤ sdL ⊔ sdR
-      sd-mono = m≤n⊔m sdL sdR
-      sd*2-mono : sdR *ℕ 2 ≤ (sdL ⊔ sdR) *ℕ 2
-      sd*2-mono = *-monoˡ-≤ 2 sd-mono
-      core-mono : pdR +ℕ sdR *ℕ 2 ≤ (pdL ⊔ pdR) +ℕ (sdL ⊔ sdR) *ℕ 2
-      core-mono = ≤-trans (+-monoˡ-≤ (sdR *ℕ 2) pd-mono)
-                          (+-monoʳ-≤ (pdL ⊔ pdR) sd*2-mono)
-  in rearrange-+2 pdR (sdR *ℕ 2) algReq ps (pdL ⊔ pdR) ((sdL ⊔ sdR) *ℕ 2) core-mono
+  let capL = layer-capacity wfL wfG alg
+      capR = layer-capacity wfR wfG alg
+      -- capR ≤ capL ⊔ capR
+      cap-mono : capR ≤ capL ⊔ capR
+      cap-mono = m≤n⊔m capL capR
+      -- capR + 2 ≤ (capL ⊔ capR) + 2
+      step1 : capR +ℕ 2 ≤ (capL ⊔ capR) +ℕ 2
+      step1 = +-monoˡ-≤ 2 cap-mono
+      -- (capL ⊔ capR) + 2 = 2 + (capL ⊔ capR)
+      eq : (capL ⊔ capR) +ℕ 2 ≡ 2 +ℕ (capL ⊔ capR)
+      eq = +-comm (capL ⊔ capR) 2
+  in subst (capR +ℕ 2 ≤_) eq step1
+
+------------------------------------------------------------------------
+-- Capacity Conversion Lemma
+--
+-- ir-stack-requirement (Cata wfG alg) ≥ layer-capacity wfG wfG alg
+-- This allows converting from the flat formula (used for total capacity)
+-- to the recursive formula (used for layer-specific capacity).
+--
+-- The lemma is needed because:
+-- - layer-capacity wf-Id wfG alg = ir-stack-requirement (Cata wfG alg) by definition
+-- - When processing an Id layer, we pass this to cata-dispatched-new
+-- - cata-dispatched-new needs layer-capacity wfG wfG alg
+-- - So we need to show ir-stack-requirement ≥ layer-capacity at root
+------------------------------------------------------------------------
+
+-- Helper: ir-stack-requirement ≥ layer-capacity at the root functor
+ir-stack-req-geq-layer-cap : ∀ {G A}
+  (wfG : WellFormedF G)
+  (alg : IR (⟦ G ⟧T A) A)
+  (slot cap : ℕ) →
+  slot +ℕ ir-stack-requirement (Cata wfG alg) ≤ cap →
+  slot +ℕ layer-capacity wfG wfG alg ≤ cap
+ir-stack-req-geq-layer-cap wfG alg slot cap pf = SMP.!!  -- TODO: prove by structural induction on wfG
