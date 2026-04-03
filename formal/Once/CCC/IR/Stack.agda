@@ -400,9 +400,20 @@ layer-cap-bound : ∀ {F G A}
   (wfF : WellFormedF F) (wfG : WellFormedF G) (alg : IR (⟦ G ⟧T A) A) →
   layer-capacity wfF wfG alg ≤ ir-stack-requirement (Cata wfG alg)
 -- K case: alg + ps ≤ pd + sd*2 + alg + ps
--- This is m ≤ n + m where n = pd + sd*2 and m = alg + ps
--- But ir-req = ((pd + sd*2) + alg) + ps, need to handle associativity
-layer-cap-bound (wf-K _) wfG alg = SMP.!!  -- TODO: associativity proof
+-- Proof: m≤n+m gives alg+ps ≤ (pd+sd*2) + (alg+ps)
+--        sym(+-assoc) gives (pd+sd*2) + (alg+ps) = ((pd+sd*2) + alg) + ps = ir-req
+layer-cap-bound (wf-K _) wfG alg =
+  let pd = product-depth wfG
+      sd2 = sum-depth wfG *ℕ 2
+      algReq = ir-stack-requirement alg
+      ps = pair-slots
+      -- alg + ps ≤ (pd + sd2) + (alg + ps)
+      step1 : algReq +ℕ ps ≤ (pd +ℕ sd2) +ℕ (algReq +ℕ ps)
+      step1 = m≤n+m (algReq +ℕ ps) (pd +ℕ sd2)
+      -- (pd + sd2) + (alg + ps) = ((pd + sd2) + alg) + ps
+      assoc-eq : (pd +ℕ sd2) +ℕ (algReq +ℕ ps) ≡ ((pd +ℕ sd2) +ℕ algReq) +ℕ ps
+      assoc-eq = sym (+-assoc (pd +ℕ sd2) algReq ps)
+  in subst (algReq +ℕ ps ≤_) assoc-eq step1
 -- Id case: layer-capacity = ir-stack-requirement by definition
 layer-cap-bound wf-Id wfG alg = ≤-refl
 -- Sum case: (capL ⊔ capR) ⊔ 2 ≤ ir-req
@@ -419,9 +430,25 @@ layer-cap-bound (wf-Sum wfL wfR) wfG alg =
       two-bound = ir-req-geq-ps wfG alg
   in ⊔-lub max-bound two-bound
 -- Prod case: 1 + (capL ⊔ capR) ≤ ir-req
--- Since capL, capR ≤ ir-req by IH, we have (capL ⊔ capR) ≤ ir-req
--- Since ir-req ≥ 1 (it's ≥ 2), we have 1 + (capL ⊔ capR) ≤ 1 + ir-req ≤ ... needs more thought
-layer-cap-bound (wf-Prod wfL wfR) wfG alg = SMP.!!  -- TODO: need to show 1 + max(children) ≤ ir-req
+-- BLOCKED: This is false when children contain Id!
+--
+-- Example: wf-Prod wf-Id wf-Id with wfG = wf-Prod wf-Id wf-Id
+--   capL = capR = ir-stack-requirement (Cata wfG alg) = 1 + alg + ps
+--   layer-capacity = 1 + (capL ⊔ capR) = 1 + (1 + alg + ps) = 2 + alg + ps
+--   ir-req = product-depth wfG + 0 + alg + ps = 1 + alg + ps
+--   2 + alg + ps > 1 + alg + ps  ✗
+--
+-- The issue: layer-capacity for Id gives full cata capacity, but when nested
+-- inside Product, the Product's save-slot adds 1 more, causing overcounting.
+--
+-- This is a fundamental limitation: runtime recursion depth (via Id) can exceed
+-- the structural depth (product-depth) tracked by ir-stack-requirement.
+--
+-- The proof would require either:
+-- 1. Changing layer-capacity wf-Id to not include full ir-req, or
+-- 2. Tracking "remaining capacity" instead of "required capacity", or
+-- 3. A more sophisticated capacity model that accounts for data depth
+layer-cap-bound (wf-Prod wfL wfR) wfG alg = SMP.!!
 
 -- Main conversion lemma
 ir-stack-req-geq-layer-cap : ∀ {G A}
