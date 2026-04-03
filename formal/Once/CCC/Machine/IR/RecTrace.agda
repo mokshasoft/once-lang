@@ -638,13 +638,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       reclaim-preserves-validity : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
         ValidAtWF m (record alloc { next-slot = reclaimable-slot }) processed result-loc final-state
 
-      -- Slot usage bound: reclaimable-slot bounded by ir-stack-requirement (Cata wfG alg)
-      -- This uniform bound works for all layer cases:
-      -- - K case: uses 0 slots, trivially bounded
-      -- - Id case: calls full Cata, needs full ir-stack-requirement
-      -- - Sum case: child + 2 wrapper slots ≤ ir-stack-requirement (includes sum-depth * 2)
-      -- - Prod case: children + 1 save-slot ≤ ir-stack-requirement (includes product-depth)
-      slot-usage-bound : reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)
+      -- Slot usage bound: reclaimable-slot bounded by layer-capacity wfF wfG alg
+      -- Using layer-capacity (not ir-stack-requirement) allows Sum/Prod wrapper proofs:
+      -- - K case: uses ir-stack-requirement alg + pair-slots
+      -- - Id case: calls full Cata, needs ir-stack-requirement (= layer-capacity wf-Id)
+      -- - Sum case: child reclaimable + 2 ≤ layer-capacity parent (since parent = 2 + child)
+      -- - Prod case: max(children) + 1 ≤ layer-capacity parent (since parent = 1 + max)
+      slot-usage-bound : reclaimable-slot ≤ next-slot alloc +ℕ layer-capacity wfF wfG alg
 
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
       -- heap-preserved: For polynomial functors (K, Sum, Prod without Id), heap is unchanged.
@@ -1288,8 +1288,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaim-bounded = ≤-refl
         ; reclaim-preserves-result = λ _ → input-before
         ; reclaim-preserves-validity = λ _ → valid-basetype-wf isBase input-before
-        -- slot-usage-bound: K case uses 0 slots, so reclaimable = next-slot alloc ≤ next-slot alloc + ir-stack-requirement
-        ; slot-usage-bound = m≤m+n (next-slot alloc) (ir-stack-requirement (Cata wfG alg))
+        -- slot-usage-bound: K case uses 0 slots, so reclaimable = next-slot alloc ≤ next-slot alloc + layer-capacity
+        -- layer-capacity (wf-K _) wfG alg = ir-stack-requirement alg + pair-slots
+        ; slot-usage-bound = m≤m+n (next-slot alloc) (layer-capacity (wf-K isBase) wfG alg)
         ; heap-monotone = ≤-refl
         ; heap-preserved = refl  -- final-alloc = alloc, so heap unchanged
         ; capacity-preserved = refl
@@ -1574,18 +1575,19 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         reclaim-bounded-inj1 = ProcessedLayerResult.reclaim-bounded l-result
 
         ------------------------------------------------------------------------
-        -- Wrapper definitions (moved here because wrapper-base = l-reclaimable)
+        -- Wrapper definitions
         ------------------------------------------------------------------------
 
-        -- OCP-0003 Option B: Allocate wrapper, with reclaimable-slot tracking output bound
-        -- The wrapper is placed at l-reclaimable position for slot-usage-bound proof:
-        --   l-reclaimable + 2 ≤ next-slot alloc + layer-capacity (wf-Sum wfL wfR)
-        -- Since layer-capacity (wf-Sum ...) ≥ layer-capacity wfL + 2 (sum-depth adds +1 which becomes +2)
+        -- OCP-0003 Option B: Allocate wrapper at reclaimed position
+        -- With tight allocation (reclaimable-slot = next-slot final-alloc), we have:
+        --   l-reclaimable = next-slot alloc-after-sub
+        -- So wrapper-base = next-slot alloc-after-sub = l-reclaimable.
         --
-        -- Note: wrapper-base = next-slot alloc-after-sub is the actual frontier position
-        -- where the wrapper is allocated. This aligns with trace execution semantics.
+        -- For slot-usage-bound proof:
+        --   l-reclaimable + 2 ≤ next-slot alloc + layer-capacity (wf-Sum wfL wfR)
+        -- Since layer-capacity (wf-Sum wfL wfR) = 2 + (capL ⊔ capR) ≥ capL + 2
 
-        -- Wrapper allocation: wrapper-base is where we allocate (at current frontier)
+        -- Wrapper allocation: wrapper-base is where we allocate (at frontier = reclaimed)
         wrapper-base : ℕ
         wrapper-base = next-slot alloc-after-sub
 
@@ -1631,8 +1633,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                        refl)
 
         -- Slot usage bound: sub-result bound applies since alloc-setup ≡ alloc
-        slot-usage-bound-inj1 : l-reclaimable ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)
-        slot-usage-bound-inj1 = subst (λ al → l-reclaimable ≤ next-slot al +ℕ ir-stack-requirement (Cata wfG alg))
+        -- Child's bound uses layer-capacity wfL wfG alg
+        slot-usage-bound-inj1 : l-reclaimable ≤ next-slot alloc +ℕ layer-capacity wfL wfG alg
+        slot-usage-bound-inj1 = subst (λ al → l-reclaimable ≤ next-slot al +ℕ layer-capacity wfL wfG alg)
                                       alloc-setup-eq
                                       (ProcessedLayerResult.slot-usage-bound l-result)
 
@@ -1891,9 +1894,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 bf-transfer = frontier-same-heap alloc-after-wrapper reclaim-alloc frame-eq refl heap-eq
             in validityWF-with-bf-transfer processed wrapper-loc s-after-wrapper
                  alloc-after-wrapper reclaim-alloc bf-transfer processed-valid-proof
-        -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + ir-stack-requirement
+        -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + layer-capacity
+        --
+        -- BLOCKED: The proof requires bounding next-slot alloc-after-sub, but
+        -- slot-usage-bound only bounds reclaimable-slot, not next-slot final-alloc.
+        --
+        -- For "tight" allocation (reclaimable-slot = next-slot final-alloc), the proof is:
+        --   l-reclaimable = next-slot alloc-after-sub
+        --   l-reclaimable + 2 ≤ start + capL + 2 ≤ start + (capL ⊔ capR) + 2 = start + layer-capacity
+        --
+        -- But Prod has reclaimable-slot < next-slot final-alloc (it reclaims to start).
+        -- Fix: either require tight allocation, or add a slot-bound field to ProcessedLayerResult.
         ; slot-usage-bound = SMP.!!
-            -- BLOCKED: ir-stack-requirement gap (same as inj₂)
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj1
         -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj1)
@@ -2111,8 +2123,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         reclaim-bounded-inj2 = ProcessedLayerResult.reclaim-bounded r-result
 
         -- Slot usage bound: sub-result bound applies since alloc-setup ≡ alloc
-        slot-usage-bound-inj2 : r-reclaimable ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)
-        slot-usage-bound-inj2 = subst (λ al → r-reclaimable ≤ next-slot al +ℕ ir-stack-requirement (Cata wfG alg))
+        -- Child's bound uses layer-capacity wfR wfG alg
+        slot-usage-bound-inj2 : r-reclaimable ≤ next-slot alloc +ℕ layer-capacity wfR wfG alg
+        slot-usage-bound-inj2 = subst (λ al → r-reclaimable ≤ next-slot al +ℕ layer-capacity wfR wfG alg)
                                       alloc-setup-eq
                                       (ProcessedLayerResult.slot-usage-bound r-result)
 
@@ -2328,9 +2341,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 bf-transfer = frontier-same-heap alloc-after-wrapper reclaim-alloc frame-eq refl heap-eq
             in validityWF-with-bf-transfer processed wrapper-loc s-after-wrapper
                  alloc-after-wrapper reclaim-alloc bf-transfer processed-valid-proof
-        -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + ir-stack-requirement
+        -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + layer-capacity
+        --
+        -- BLOCKED: Same issue as inj₁ - slot-usage-bound only bounds reclaimable-slot,
+        -- not next-slot final-alloc. For Prod children that reclaim to start,
+        -- next-slot alloc-after-sub can exceed what we can prove from the child's bound.
         ; slot-usage-bound = SMP.!!
-            -- BLOCKED: ir-stack-requirement gap (same as inj₁)
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj2
         -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj2)
@@ -2628,8 +2644,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         l-reclaim-bounded : l-reclaimable ≤ next-slot alloc-l
         l-reclaim-bounded = ProcessedLayerResult.reclaim-bounded l-result
 
-        -- slot-usage-bound from l-result: l-reclaimable ≤ next-slot alloc-for-left + ir-stack-requirement (Cata wfG alg)
-        l-slot-usage : l-reclaimable ≤ next-slot alloc-for-left +ℕ ir-stack-requirement (Cata wfG alg)
+        -- slot-usage-bound from l-result: l-reclaimable ≤ next-slot alloc-for-left + layer-capacity wfL
+        l-slot-usage : l-reclaimable ≤ next-slot alloc-for-left +ℕ layer-capacity wfL wfG alg
         l-slot-usage = ProcessedLayerResult.slot-usage-bound l-result
 
         r-layer-valid-transferred : μLayerValid alloc-for-right wfR wfG r-comp snd-loc s-l
@@ -2782,10 +2798,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         reclaim-bounded-prod : reclaimable-slot-prod ≤ next-slot final-alloc
         reclaim-bounded-prod = ≤-trans (≤-trans (n≤1+n (next-slot alloc)) l-reclaim-mono) r-slot-mono
 
-        -- Slot usage bound: reclaimable-slot-prod ≤ next-slot alloc + ir-stack-requirement (Cata wfG alg)
-        -- Since reclaimable-slot-prod = next-slot alloc, this is trivial
-        slot-usage-bound-prod : reclaimable-slot-prod ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)
-        slot-usage-bound-prod = m≤m+n (next-slot alloc) (ir-stack-requirement (Cata wfG alg))
+        -- Slot usage bound: reclaimable-slot-prod ≤ next-slot alloc + layer-capacity
+        -- Since reclaimable-slot-prod = next-slot alloc, this is trivial (m ≤ m + n)
+        slot-usage-bound-prod : reclaimable-slot-prod ≤ next-slot alloc +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg
+        slot-usage-bound-prod = m≤m+n (next-slot alloc) (layer-capacity (wf-Prod wfL wfR) wfG alg)
 
         full-trace : AbstractTrace
         full-trace = left-setup-trace ++ l-trace ++ right-setup-trace ++ r-trace

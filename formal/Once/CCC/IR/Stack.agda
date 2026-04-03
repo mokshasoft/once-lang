@@ -159,19 +159,22 @@ ir-stack-requirement (Prim _) = 0  -- Primitives manage own stack
 -- For Id: ir-stack-requirement (Cata wfG alg)
 -- | Layer capacity based on functor structure
 --
--- Key insight: With slot reclamation between processing phases:
--- - Sum: process child, reclaim, allocate wrapper -> max(child, wrapper)
+-- Key insight: Reclamation allows wrapper allocation at reclaimed position:
+-- - Sum: process child (uses capChild), reclaim to reclaimable, allocate wrapper at reclaimable
+--   Final bound: reclaimable + 2 ≤ start + capChild + 2 = start + (2 + capChild)
+--   So layer-capacity Sum = 2 + max(capL, capR)
 -- - Prod: save slot held during both children -> 1 + max(children)
 --
 -- The formulas account for reclamation:
--- - Sum: (child-capacity) ⊔ 2, NOT 2 + child (wrapper allocated after child reclaimed)
--- - Prod: 1 + (child-capacity), NOT 1 + left + right (children processed sequentially with reclaim)
+-- - Sum: 2 + max(child), wrapper allocated at reclaimed position (after child)
+-- - Prod: 1 + max(children), children processed sequentially with reclaim
 --
 layer-capacity : ∀ {F G A} → WellFormedF F → WellFormedF G → IR (⟦ G ⟧T A) A → ℕ
 layer-capacity wf-Id wfG alg = ir-stack-requirement (Cata wfG alg)
 layer-capacity (wf-K _) _ alg = ir-stack-requirement alg +ℕ pair-slots
--- Sum: max of child capacity and wrapper slots (with reclamation, don't add)
-layer-capacity (wf-Sum wfL wfR) wfG alg = (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg) ⊔ 2
+-- Sum: wrapper (2 slots) allocated AFTER child reclaims, so add 2 to max child capacity
+-- NOT max(child, 2) - the wrapper is allocated at reclaimed position, not overlapping
+layer-capacity (wf-Sum wfL wfR) wfG alg = 2 +ℕ (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg)
 -- Prod: save-slot held during child processing, so add 1
 layer-capacity (wf-Prod wfL wfR) wfG alg = 1 +ℕ (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg)
 
@@ -284,11 +287,11 @@ layer-capacity-prod-right wfL wfR wfG alg slot cap pf =
   in ≤-trans step1 step2
 
 -- | Layer capacity for Sum left component
--- With reclamation, Sum formula: (capL ⊔ capR) ⊔ 2
+-- With reclamation, Sum formula: 2 + (capL ⊔ capR)
 --
---   Given: slot + ((capL ⊔ capR) ⊔ 2) ≤ cap
+--   Given: slot + (2 + (capL ⊔ capR)) ≤ cap
 --   Need: slot + capL ≤ cap
---   Since capL ≤ capL ⊔ capR ≤ (capL ⊔ capR) ⊔ 2, this follows from monotonicity
+--   Since capL ≤ capL ⊔ capR ≤ 2 + (capL ⊔ capR), this follows from monotonicity
 layer-capacity-sum-left : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) (slot cap : ℕ) →
@@ -297,11 +300,11 @@ layer-capacity-sum-left : ∀ {FL FR G A}
 layer-capacity-sum-left wfL wfR wfG alg slot cap pf =
   let capL = layer-capacity wfL wfG alg
       capR = layer-capacity wfR wfG alg
-      -- capL ≤ capL ⊔ capR ≤ (capL ⊔ capR) ⊔ 2
-      cap-mono : capL ≤ (capL ⊔ capR) ⊔ 2
-      cap-mono = ≤-trans (m≤m⊔n capL capR) (m≤m⊔n (capL ⊔ capR) 2)
-      -- slot + capL ≤ slot + ((capL ⊔ capR) ⊔ 2)
-      step1 : slot +ℕ capL ≤ slot +ℕ ((capL ⊔ capR) ⊔ 2)
+      -- capL ≤ capL ⊔ capR ≤ 2 + (capL ⊔ capR)
+      cap-mono : capL ≤ 2 +ℕ (capL ⊔ capR)
+      cap-mono = ≤-trans (m≤m⊔n capL capR) (m≤n+m (capL ⊔ capR) 2)
+      -- slot + capL ≤ slot + (2 + (capL ⊔ capR))
+      step1 : slot +ℕ capL ≤ slot +ℕ (2 +ℕ (capL ⊔ capR))
       step1 = +-monoʳ-≤ slot cap-mono
   in ≤-trans step1 pf
 
@@ -315,11 +318,11 @@ layer-capacity-sum-right : ∀ {FL FR G A}
 layer-capacity-sum-right wfL wfR wfG alg slot cap pf =
   let capL = layer-capacity wfL wfG alg
       capR = layer-capacity wfR wfG alg
-      -- capR ≤ capL ⊔ capR ≤ (capL ⊔ capR) ⊔ 2
-      cap-mono : capR ≤ (capL ⊔ capR) ⊔ 2
-      cap-mono = ≤-trans (m≤n⊔m capL capR) (m≤m⊔n (capL ⊔ capR) 2)
-      -- slot + capR ≤ slot + ((capL ⊔ capR) ⊔ 2)
-      step1 : slot +ℕ capR ≤ slot +ℕ ((capL ⊔ capR) ⊔ 2)
+      -- capR ≤ capL ⊔ capR ≤ 2 + (capL ⊔ capR)
+      cap-mono : capR ≤ 2 +ℕ (capL ⊔ capR)
+      cap-mono = ≤-trans (m≤n⊔m capL capR) (m≤n+m (capL ⊔ capR) 2)
+      -- slot + capR ≤ slot + (2 + (capL ⊔ capR))
+      step1 : slot +ℕ capR ≤ slot +ℕ (2 +ℕ (capL ⊔ capR))
       step1 = +-monoʳ-≤ slot cap-mono
   in ≤-trans step1 pf
 
@@ -327,48 +330,57 @@ layer-capacity-sum-right wfL wfR wfG alg slot cap pf =
 -- Sum Wrapper Capacity Lemmas (OCP-0003 Option B with Reclamation)
 --
 -- With reclamation, Sum processing is:
---   1. Process child -> uses capChild slots
---   2. Reclaim child slots (back to 0)
---   3. Allocate wrapper -> uses 2 slots
--- Max concurrent = max(capChild, 2), NOT capChild + 2
+--   1. Process child -> uses capChild slots, reclaims to reclaimable
+--   2. Allocate wrapper at reclaimable position -> uses 2 more slots
+-- Final: reclaimable + 2 ≤ start + capChild + 2
 --
--- New formula: layer-capacity (wf-Sum wfL wfR) = (capL ⊔ capR) ⊔ 2
+-- Formula: layer-capacity (wf-Sum wfL wfR) = 2 + (capL ⊔ capR)
 --
--- The lemma shows: max(capChild, 2) ≤ (capL ⊔ capR) ⊔ 2
+-- The lemma shows: capChild + 2 ≤ 2 + (capL ⊔ capR)
 -- Which follows from capChild ≤ capL ⊔ capR (monotonicity of ⊔).
 ------------------------------------------------------------------------
 
--- | Sum child max usage ≤ Sum parent capacity (left child)
+-- | Sum child capacity + wrapper ≤ Sum parent capacity (left child)
 --
--- With reclamation: max(capL, 2) ≤ (capL ⊔ capR) ⊔ 2
--- Since capL ≤ capL ⊔ capR, we have capL ⊔ 2 ≤ (capL ⊔ capR) ⊔ 2
+-- capL + 2 ≤ 2 + (capL ⊔ capR)
+-- Since capL ≤ capL ⊔ capR, we have capL + 2 ≤ (capL ⊔ capR) + 2 = 2 + (capL ⊔ capR)
 sum-wrapper-fits-left : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) →
-  layer-capacity wfL wfG alg ⊔ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
+  layer-capacity wfL wfG alg +ℕ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
 sum-wrapper-fits-left wfL wfR wfG alg =
   let capL = layer-capacity wfL wfG alg
       capR = layer-capacity wfR wfG alg
       -- capL ≤ capL ⊔ capR
       cap-mono : capL ≤ capL ⊔ capR
       cap-mono = m≤m⊔n capL capR
-      -- capL ⊔ 2 ≤ (capL ⊔ capR) ⊔ 2 by monotonicity of ⊔
-  in ⊔-monoˡ-≤ 2 cap-mono
+      -- capL + 2 ≤ (capL ⊔ capR) + 2
+      step1 : capL +ℕ 2 ≤ (capL ⊔ capR) +ℕ 2
+      step1 = +-monoˡ-≤ 2 cap-mono
+      -- (capL ⊔ capR) + 2 = 2 + (capL ⊔ capR) by commutativity
+      eq : (capL ⊔ capR) +ℕ 2 ≡ 2 +ℕ (capL ⊔ capR)
+      eq = +-comm (capL ⊔ capR) 2
+  in subst (capL +ℕ 2 ≤_) eq step1
 
--- | Sum child max usage ≤ Sum parent capacity (right child)
+-- | Sum child capacity + wrapper ≤ Sum parent capacity (right child)
 -- Symmetric using m≤n⊔m
 sum-wrapper-fits-right : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) →
-  layer-capacity wfR wfG alg ⊔ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
+  layer-capacity wfR wfG alg +ℕ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
 sum-wrapper-fits-right wfL wfR wfG alg =
   let capL = layer-capacity wfL wfG alg
       capR = layer-capacity wfR wfG alg
       -- capR ≤ capL ⊔ capR
       cap-mono : capR ≤ capL ⊔ capR
       cap-mono = m≤n⊔m capL capR
-      -- capR ⊔ 2 ≤ (capL ⊔ capR) ⊔ 2 by monotonicity of ⊔
-  in ⊔-monoˡ-≤ 2 cap-mono
+      -- capR + 2 ≤ (capL ⊔ capR) + 2
+      step1 : capR +ℕ 2 ≤ (capL ⊔ capR) +ℕ 2
+      step1 = +-monoˡ-≤ 2 cap-mono
+      -- (capL ⊔ capR) + 2 = 2 + (capL ⊔ capR) by commutativity
+      eq : (capL ⊔ capR) +ℕ 2 ≡ 2 +ℕ (capL ⊔ capR)
+      eq = +-comm (capL ⊔ capR) 2
+  in subst (capR +ℕ 2 ≤_) eq step1
 
 ------------------------------------------------------------------------
 -- Capacity Conversion Lemma
@@ -382,8 +394,8 @@ sum-wrapper-fits-right wfL wfR wfG alg =
 -- The proof is by structural induction on wfF:
 -- - K: alg + ps ≤ pd(G) + sd(G)*2 + alg + ps (trivially since pd,sd ≥ 0)
 -- - Id: layer-capacity = ir-stack-requirement by definition
--- - Sum: (capL ⊔ capR) ⊔ 2 ≤ ir-req (by IH and ir-req ≥ 2)
--- - Prod: 1 + (capL ⊔ capR) ≤ ir-req (by IH and ir-req ≥ 1)
+-- - Sum: 2 + (capL ⊔ capR) ≤ ir-req - BLOCKED when children contain Id
+-- - Prod: 1 + (capL ⊔ capR) ≤ ir-req - BLOCKED when children contain Id
 ------------------------------------------------------------------------
 
 -- Helper: ir-req ≥ pair-slots (= 2)
@@ -416,19 +428,17 @@ layer-cap-bound (wf-K _) wfG alg =
   in subst (algReq +ℕ ps ≤_) assoc-eq step1
 -- Id case: layer-capacity = ir-stack-requirement by definition
 layer-cap-bound wf-Id wfG alg = ≤-refl
--- Sum case: (capL ⊔ capR) ⊔ 2 ≤ ir-req
--- Since capL, capR ≤ ir-req by IH, we have (capL ⊔ capR) ≤ ir-req
--- Since ir-req ≥ 2, we have (capL ⊔ capR) ⊔ 2 ≤ ir-req
-layer-cap-bound (wf-Sum wfL wfR) wfG alg =
-  let ir-req = ir-stack-requirement (Cata wfG alg)
-      capL-bound = layer-cap-bound wfL wfG alg
-      capR-bound = layer-cap-bound wfR wfG alg
-      -- m ≤ o ∧ n ≤ o → m ⊔ n ≤ o (lub property)
-      max-bound : layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg ≤ ir-req
-      max-bound = ⊔-lub capL-bound capR-bound
-      two-bound : 2 ≤ ir-req
-      two-bound = ir-req-geq-ps wfG alg
-  in ⊔-lub max-bound two-bound
+-- Sum case: 2 + (capL ⊔ capR) ≤ ir-req
+-- BLOCKED: This is false when children contain Id!
+--
+-- Example: wf-Sum wf-Id (wf-K Unit) with wfG containing at least one Sum
+--   ir-req = pd(G) + sd(G)*2 + alg + ps
+--   capL = layer-capacity wf-Id = ir-req (by definition)
+--   layer-capacity = 2 + (capL ⊔ capR) = 2 + ir-req > ir-req ✗
+--
+-- The issue: layer-capacity for Id gives full cata capacity, but when nested
+-- inside Sum, the Sum's wrapper slots (2) add more, causing overcounting.
+layer-cap-bound (wf-Sum wfL wfR) wfG alg = SMP.!!
 -- Prod case: 1 + (capL ⊔ capR) ≤ ir-req
 -- BLOCKED: This is false when children contain Id!
 --
