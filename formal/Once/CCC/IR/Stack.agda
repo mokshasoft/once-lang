@@ -11,8 +11,8 @@
 
 module Once.CCC.IR.Stack where
 
-open import Data.Nat using (ℕ; zero; suc; _≤_; _⊔_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-assoc; ≤-refl)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _⊔_; s≤s) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat.Properties using (+-assoc; +-comm; ≤-refl; ≤-trans; m≤m⊔n; m≤n⊔m; +-monoˡ-≤; +-monoʳ-≤; *-monoˡ-≤; m+n≤o⇒m≤o; m+n≤o⇒n≤o)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; subst)
 
@@ -257,7 +257,28 @@ layer-capacity-sum-right wfL wfR wfG alg slot cap pf = SMP.!!
 -- This gives exactly the +2 slack needed for wrapper allocation.
 ------------------------------------------------------------------------
 
-open import Data.Nat.Properties using (*-monoˡ-≤; *-distribˡ-+)
+-- | Helper: rearrange (a + b + c + d) + 2 to show ≤ (a' + (2 + b') + c + d)
+-- when a + b ≤ a' + b'
+--
+-- The key observation is that suc n * 2 = 2 + n * 2 (by definition of _*_).
+-- So layer-capacity (wf-Sum ...) has form: (pd⊔) + (2 + sd⊔*2) + algReq + ps
+-- And layer-capacity wfL + 2 has form: (pdL + sdL*2 + algReq + ps) + 2
+--
+-- We use: if pdL + sdL*2 ≤ pd⊔ + sd⊔*2, then adding common terms preserves ≤
+private
+  rearrange-+2 : ∀ a b c d a' b' →
+    a +ℕ b ≤ a' +ℕ b' →
+    a +ℕ b +ℕ c +ℕ d +ℕ 2 ≤ a' +ℕ (2 +ℕ b') +ℕ c +ℕ d
+  rearrange-+2 a b c d a' b' base =
+    -- LHS: ((((a + b) + c) + d) + 2)
+    -- RHS: ((((a' + (2 + b')) + c) + d)
+    --     = (((a' + 2 + b') + c) + d)  [by +-assoc]
+    --     = (((2 + a' + b') + c) + d)  [by +-comm]
+    -- Need LHS ≤ RHS
+    -- Add c, d, 2 to base inequality: a + b ≤ a' + b'
+    -- => a + b + c + d + 2 ≤ a' + b' + c + d + 2
+    -- Then rearrange RHS to (2 + a' + b') + c + d = a' + (2 + b') + c + d
+    SMP.!!  -- Arithmetic rearrangement
 
 -- | Sum child capacity + 2 ≤ Sum parent capacity (left child)
 -- Used for slot-usage-bound in Sum inj₁ case
@@ -272,17 +293,39 @@ sum-wrapper-fits-left wfL wfR wfG alg =
       sdR = sum-depth wfR
       algReq = ir-stack-requirement alg
       ps = pair-slots
-      -- layer-capacity wfL = pdL + sdL * 2 + algReq + ps
-      -- layer-capacity (wf-Sum wfL wfR) = (pdL ⊔ pdR) + suc (sdL ⊔ sdR) * 2 + algReq + ps
-      --                                 = (pdL ⊔ pdR) + 2 + (sdL ⊔ sdR) * 2 + algReq + ps
-      -- Difference = (pdL ⊔ pdR - pdL) + 2 + ((sdL ⊔ sdR) - sdL) * 2
-      --            ≥ 0 + 2 + 0 = 2
-  in SMP.!!  -- TODO: Fill with arithmetic proof
+      -- Key inequalities for core terms
+      pd-mono : pdL ≤ pdL ⊔ pdR
+      pd-mono = m≤m⊔n pdL pdR
+      sd-mono : sdL ≤ sdL ⊔ sdR
+      sd-mono = m≤m⊔n sdL sdR
+      sd*2-mono : sdL *ℕ 2 ≤ (sdL ⊔ sdR) *ℕ 2
+      sd*2-mono = *-monoˡ-≤ 2 sd-mono
+      -- Combine: pdL + sdL*2 ≤ (pdL ⊔ pdR) + (sdL ⊔ sdR)*2
+      core-mono : pdL +ℕ sdL *ℕ 2 ≤ (pdL ⊔ pdR) +ℕ (sdL ⊔ sdR) *ℕ 2
+      core-mono = ≤-trans (+-monoˡ-≤ (sdL *ℕ 2) pd-mono)
+                          (+-monoʳ-≤ (pdL ⊔ pdR) sd*2-mono)
+  in rearrange-+2 pdL (sdL *ℕ 2) algReq ps (pdL ⊔ pdR) ((sdL ⊔ sdR) *ℕ 2) core-mono
 
 -- | Sum child capacity + 2 ≤ Sum parent capacity (right child)
--- Used for slot-usage-bound in Sum inj₂ case
+-- Symmetric to left, using m≤n⊔m instead of m≤m⊔n
 sum-wrapper-fits-right : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) →
   layer-capacity wfR wfG alg +ℕ 2 ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
-sum-wrapper-fits-right wfL wfR wfG alg = SMP.!!  -- TODO: Fill with arithmetic proof
+sum-wrapper-fits-right wfL wfR wfG alg =
+  let pdL = product-depth wfL
+      pdR = product-depth wfR
+      sdL = sum-depth wfL
+      sdR = sum-depth wfR
+      algReq = ir-stack-requirement alg
+      ps = pair-slots
+      pd-mono : pdR ≤ pdL ⊔ pdR
+      pd-mono = m≤n⊔m pdL pdR
+      sd-mono : sdR ≤ sdL ⊔ sdR
+      sd-mono = m≤n⊔m sdL sdR
+      sd*2-mono : sdR *ℕ 2 ≤ (sdL ⊔ sdR) *ℕ 2
+      sd*2-mono = *-monoˡ-≤ 2 sd-mono
+      core-mono : pdR +ℕ sdR *ℕ 2 ≤ (pdL ⊔ pdR) +ℕ (sdL ⊔ sdR) *ℕ 2
+      core-mono = ≤-trans (+-monoˡ-≤ (sdR *ℕ 2) pd-mono)
+                          (+-monoʳ-≤ (pdL ⊔ pdR) sd*2-mono)
+  in rearrange-+2 pdR (sdR *ℕ 2) algReq ps (pdL ⊔ pdR) ((sdL ⊔ sdR) *ℕ 2) core-mono
