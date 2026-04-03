@@ -1827,10 +1827,24 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             -- stack-before expects: f ≡ current-frame (reclaimed alloc) where f = current-frame alloc-after-sub
             -- So we need: current-frame alloc-after-sub ≡ current-frame alloc
             stack-before frame-preserved-inj1 wrapper-before-frontier
-        ; reclaim-preserves-validity = λ fits → SMP.!!  -- TODO: transfer validity to reclaimed alloc
+        ; reclaim-preserves-validity = λ fits → SMP.!!
+            -- BLOCKED: Need validityWF-stack-alloc-equiv lemma
+            -- The two allocs (alloc-after-wrapper vs record alloc {next-slot = ...}) have:
+            --   - Same current-frame (by frame-preserved)
+            --   - Same next-slot (by construction)
+            --   - Different next-heap-ref (alloc vs alloc-after-wrapper)
+            -- For stack-only validity (which Sum produces), heap doesn't affect BeforeFrontier.
+            -- Need: lemma that for stack locations, ValidAtWF only depends on frame and next-slot.
         -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + ir-stack-requirement
-        -- The wrapper adds 2 slots; ir-stack-requirement for Cata includes pair-slots (2) for this
-        ; slot-usage-bound = SMP.!!  -- TODO: needs proof that wrapper fits within ir-stack-requirement
+        ; slot-usage-bound = SMP.!!
+            -- BLOCKED: ir-stack-requirement gap
+            -- With reclaimable-slot = next-slot alloc-after-wrapper, we need:
+            --   next-slot alloc-after-sub + 2 ≤ next-slot alloc + ir-stack-requirement (Cata wfG alg)
+            -- But l-result.slot-usage-bound only gives:
+            --   l-reclaimable ≤ next-slot alloc + ir-stack-requirement (Cata wfG alg)
+            -- The +2 wrapper slots are OUTPUT allocation, not accounted for in ir-stack-requirement.
+            -- FIX: ir-stack-requirement needs to account for wrapper slots at EACH layer level,
+            -- not just pair-slots at the top Cata level.
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj1
         -- capacity-preserved: capacity unchanged by wrapper trace
@@ -2248,10 +2262,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             -- stack-before expects: f ≡ current-frame (reclaimed alloc) where f = current-frame alloc-after-sub
             -- So we need: current-frame alloc-after-sub ≡ current-frame alloc
             stack-before frame-preserved-inj2 wrapper-before-frontier
-        ; reclaim-preserves-validity = λ fits → SMP.!!  -- TODO: transfer validity to reclaimed alloc
+        ; reclaim-preserves-validity = λ fits → SMP.!!
+            -- BLOCKED: Need validityWF-stack-alloc-equiv lemma (same as inj₁)
         -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + ir-stack-requirement
-        -- The wrapper adds 2 slots; ir-stack-requirement for Cata includes pair-slots (2) for this
-        ; slot-usage-bound = SMP.!!  -- TODO: needs proof that wrapper fits within ir-stack-requirement
+        ; slot-usage-bound = SMP.!!
+            -- BLOCKED: ir-stack-requirement gap (same as inj₁)
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj2
         -- capacity-preserved: capacity unchanged by wrapper trace
