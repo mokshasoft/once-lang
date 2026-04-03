@@ -1751,6 +1751,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         wrapper-twa : TraceWritesAbove (next-slot alloc-after-sub) wrapper-trace
         wrapper-twa = n≤1+n wrapper-base , tt  -- store-at-slot (suc wrapper-base) writes above wrapper-base
 
+        -- wrapper-trace writes at suc wrapper-base, which is < wrapper-base + 2 = next-slot alloc-after-wrapper
+        wrapper-twb : TraceWritesBelow (next-slot alloc-after-wrapper) wrapper-trace
+        wrapper-twb = subst (λ x → suc wrapper-base < x) (sym wrapper-next-slot-advances)
+                            (subst (λ x → suc wrapper-base < x) (sym wb+2≡sswb) (n<1+n (suc wrapper-base))) , tt
+
+        -- wrapper-trace doesn't read any slots
+        wrapper-tsra : TraceSlotReadsAbove (next-slot alloc) wrapper-trace
+        wrapper-tsra = tt
+
+        wrapper-tsrb : TraceSlotReadsBelow (next-slot alloc-after-wrapper) wrapper-trace
+        wrapper-tsrb = tt
+
         l-valid-after-wrapper-trace : ValidAtWF mL alloc-after-sub l-processed l-result-loc s-after-wrapper
         l-valid-after-wrapper-trace = validityWF-trace-preserves alloc-after-sub wrapper-trace
                                         l-processed l-result-loc s-after-sub
@@ -1822,11 +1834,33 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; mem-preserved = λ loc bf →
             let bf-sub = frontier-monotone alloc alloc-after-sub (sym frame-preserved-inj1) slot-monotone-inj1 heap-monotone-inj1 loc bf
             in trans (wrapper-mem-preserved loc bf-sub) (mem-preserved-inj1 loc bf)
-        -- Trace region bounds: need to account for full trace including wrapper
-        ; trace-writes-above = SMP.!!  -- TODO: full trace writes above original frontier
-        ; trace-writes-below = SMP.!!  -- TODO: full trace writes below final frontier
-        ; trace-slot-reads-above = SMP.!!  -- TODO: account for wrapper trace
-        ; trace-slot-reads-below = SMP.!!  -- TODO: account for wrapper trace
+        -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ wrapper-trace
+        -- sub-trace bounds are relative to alloc-setup, but alloc-setup ≡ alloc
+        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace (sub-trace ++ wrapper-trace)
+            setup-twa (SMP.trace-writes-above-append (next-slot alloc) sub-trace wrapper-trace
+              (subst (λ al → TraceWritesAbove (next-slot al) sub-trace) alloc-setup-eq
+                     (ProcessedLayerResult.trace-writes-above l-result))
+              (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-after-sub) wrapper-trace
+                     slot-monotone-inj1 wrapper-twa))
+        ; trace-writes-below = SMP.trace-writes-below-append (next-slot alloc-after-wrapper) setup-trace (sub-trace ++ wrapper-trace)
+            setup-twb (SMP.trace-writes-below-append (next-slot alloc-after-wrapper) sub-trace wrapper-trace
+              (SMP.trace-writes-below-mono (next-slot alloc-after-sub) (next-slot alloc-after-wrapper) sub-trace
+                     (subst (λ x → next-slot alloc-after-sub ≤ x) (sym wrapper-next-slot-advances)
+                            (m≤m+n (next-slot alloc-after-sub) 2))
+                     (ProcessedLayerResult.trace-writes-below l-result))
+              wrapper-twb)
+        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace (sub-trace ++ wrapper-trace)
+            setup-tsra (SMP.trace-slot-reads-above-append (next-slot alloc) sub-trace wrapper-trace
+              (subst (λ al → TraceSlotReadsAbove (next-slot al) sub-trace) alloc-setup-eq
+                     (ProcessedLayerResult.trace-slot-reads-above l-result))
+              wrapper-tsra)
+        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (next-slot alloc-after-wrapper) setup-trace (sub-trace ++ wrapper-trace)
+            setup-tsrb (SMP.trace-slot-reads-below-append (next-slot alloc-after-wrapper) sub-trace wrapper-trace
+              (SMP.trace-slot-reads-below-mono (next-slot alloc-after-sub) (next-slot alloc-after-wrapper) sub-trace
+                     (subst (λ x → next-slot alloc-after-sub ≤ x) (sym wrapper-next-slot-advances)
+                            (m≤m+n (next-slot alloc-after-sub) 2))
+                     (ProcessedLayerResult.trace-slot-reads-below l-result))
+              wrapper-tsrb)
         ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result) wrapper-tph)
         ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity l-result) wrapper-tpc)
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ wrapper-trace)
@@ -2140,6 +2174,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         wrapper-twa : TraceWritesAbove (next-slot alloc-after-sub) wrapper-trace
         wrapper-twa = n≤1+n wrapper-base , tt  -- store-at-slot (suc wrapper-base) writes above wrapper-base
 
+        -- wrapper-trace writes at suc wrapper-base, which is < wrapper-base + 2 = next-slot alloc-after-wrapper
+        wrapper-twb : TraceWritesBelow (next-slot alloc-after-wrapper) wrapper-trace
+        wrapper-twb = subst (λ x → suc wrapper-base < x) (sym wrapper-next-slot-advances)
+                            (subst (λ x → suc wrapper-base < x) (sym wb+2≡sswb) (n<1+n (suc wrapper-base))) , tt
+
+        -- wrapper-trace doesn't read any slots
+        wrapper-tsra : TraceSlotReadsAbove (next-slot alloc) wrapper-trace
+        wrapper-tsra = tt
+
+        wrapper-tsrb : TraceSlotReadsBelow (next-slot alloc-after-wrapper) wrapper-trace
+        wrapper-tsrb = tt
+
         r-valid-after-wrapper-trace : ValidAtWF mR alloc-after-sub r-processed r-result-loc s-after-wrapper
         r-valid-after-wrapper-trace = validityWF-trace-preserves alloc-after-sub wrapper-trace
                                         r-processed r-result-loc s-after-sub
@@ -2202,11 +2248,33 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; mem-preserved = λ loc bf →
             let bf-sub = frontier-monotone alloc alloc-after-sub (sym frame-preserved-inj2) slot-monotone-inj2 heap-monotone-inj2 loc bf
             in trans (wrapper-mem-preserved loc bf-sub) (mem-preserved-inj2 loc bf)
-        -- Trace region bounds
-        ; trace-writes-above = SMP.!!  -- TODO: full trace writes above original frontier
-        ; trace-writes-below = SMP.!!  -- TODO: full trace writes below final frontier
-        ; trace-slot-reads-above = SMP.!!  -- TODO: account for wrapper trace
-        ; trace-slot-reads-below = SMP.!!  -- TODO: account for wrapper trace
+        -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ wrapper-trace
+        -- sub-trace bounds are relative to alloc-setup, but alloc-setup ≡ alloc
+        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace (sub-trace ++ wrapper-trace)
+            setup-twa (SMP.trace-writes-above-append (next-slot alloc) sub-trace wrapper-trace
+              (subst (λ al → TraceWritesAbove (next-slot al) sub-trace) alloc-setup-eq
+                     (ProcessedLayerResult.trace-writes-above r-result))
+              (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-after-sub) wrapper-trace
+                     slot-monotone-inj2 wrapper-twa))
+        ; trace-writes-below = SMP.trace-writes-below-append (next-slot alloc-after-wrapper) setup-trace (sub-trace ++ wrapper-trace)
+            setup-twb (SMP.trace-writes-below-append (next-slot alloc-after-wrapper) sub-trace wrapper-trace
+              (SMP.trace-writes-below-mono (next-slot alloc-after-sub) (next-slot alloc-after-wrapper) sub-trace
+                     (subst (λ x → next-slot alloc-after-sub ≤ x) (sym wrapper-next-slot-advances)
+                            (m≤m+n (next-slot alloc-after-sub) 2))
+                     (ProcessedLayerResult.trace-writes-below r-result))
+              wrapper-twb)
+        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace (sub-trace ++ wrapper-trace)
+            setup-tsra (SMP.trace-slot-reads-above-append (next-slot alloc) sub-trace wrapper-trace
+              (subst (λ al → TraceSlotReadsAbove (next-slot al) sub-trace) alloc-setup-eq
+                     (ProcessedLayerResult.trace-slot-reads-above r-result))
+              wrapper-tsra)
+        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (next-slot alloc-after-wrapper) setup-trace (sub-trace ++ wrapper-trace)
+            setup-tsrb (SMP.trace-slot-reads-below-append (next-slot alloc-after-wrapper) sub-trace wrapper-trace
+              (SMP.trace-slot-reads-below-mono (next-slot alloc-after-sub) (next-slot alloc-after-wrapper) sub-trace
+                     (subst (λ x → next-slot alloc-after-sub ≤ x) (sym wrapper-next-slot-advances)
+                            (m≤m+n (next-slot alloc-after-sub) 2))
+                     (ProcessedLayerResult.trace-slot-reads-below r-result))
+              wrapper-tsrb)
         ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted r-result) wrapper-tph)
         ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity r-result) wrapper-tpc)
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ wrapper-trace)
