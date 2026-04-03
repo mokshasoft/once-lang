@@ -1039,6 +1039,184 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                    readLoc s loc
       mem-result = trans (cong (λ st → readLoc st loc) trace-eq) (trans s3-mem (trans s2-mem s1-mem))
 
+  ------------------------------------------------------------------------
+  -- Sum Approach C Traces (OCP-0003: Reuse Input Container)
+  --
+  -- Instead of allocating a new Sum wrapper, we reuse the input container
+  -- by updating its payload pointer in place. This matches cata semantics:
+  -- fmap (cata alg) preserves structure while transforming payloads.
+  --
+  -- sum-setup-trace: saves input-loc, loads payload-loc into Input
+  -- sum-update-trace: restores input-loc, updates pointer, returns input-loc
+  ------------------------------------------------------------------------
+
+  -- | Sum setup trace (saves input-loc and loads payload)
+  --
+  -- Instructions:
+  --   1. mov-to-output    -- Output := Input (= input-loc)
+  --   2. store-at-slot    -- stack[save-slot] := Output (save input-loc)
+  --   3. load-indirect-suc -- Output := *(sucLoc Input) = payload-loc
+  --   4. mov-to-input     -- Input := Output (= payload-loc for recursive call)
+  sum-setup-trace : (save-slot : ℕ) → AbstractTrace
+  sum-setup-trace save-slot =
+    mov-to-output ∷ store-at-slot save-slot ∷ load-indirect-suc ∷ mov-to-input ∷ []
+
+  -- | Sum update trace (restores input-loc and updates payload pointer)
+  --
+  -- After recursive processing, Output contains result-loc.
+  -- This trace:
+  --   1. restore-input    -- Input := stack[save-slot] = input-loc
+  --   2. store-indirect-suc -- *(sucLoc Input) := Output (update container pointer)
+  --   3. mov-to-output    -- Output := Input = input-loc (result location in rax)
+  sum-update-trace : (save-slot : ℕ) → AbstractTrace
+  sum-update-trace save-slot =
+    restore-input save-slot ∷ store-indirect-suc ∷ mov-to-output ∷ []
+
+  -- Postulated helpers for Sum Approach C (to be proven in SMPrimitives)
+  -- These must be declared before use
+  postulate
+    sum-setup-input-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+      (input-loc payload-loc : ValueLocation FS) →
+      halted s ≡ false →
+      readReg (regs s) Input ≡ input-loc →
+      readLoc s (sucLoc input-loc) ≡ just payload-loc →
+      readReg (regs (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))) Input ≡ payload-loc
+
+    sum-setup-alloc-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+      halted s ≡ false →
+      proj₂ (exec-trace (sum-setup-trace save-slot) s alloc) ≡ alloc
+
+    sum-setup-saves-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+      (input-loc : ValueLocation FS) →
+      halted s ≡ false →
+      readReg (regs s) Input ≡ input-loc →
+      readLoc (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc))
+              (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+
+    sum-setup-mem-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+      (loc : ValueLocation FS) →
+      halted s ≡ false →
+      loc ≢ OnStack (current-frame alloc) save-slot →
+      readLoc (proj₁ (exec-trace (sum-setup-trace save-slot) s alloc)) loc ≡ readLoc s loc
+
+    sum-update-input-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+      (input-loc : ValueLocation FS) →
+      halted s ≡ false →
+      readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+      readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Input ≡ input-loc
+
+    sum-update-output-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+      (input-loc : ValueLocation FS) →
+      halted s ≡ false →
+      readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+      readReg (regs (proj₁ (exec-trace (sum-update-trace save-slot) s alloc))) Output ≡ input-loc
+
+    sum-update-ptr-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+      (input-loc result-loc : ValueLocation FS) →
+      halted s ≡ false →
+      readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+      readReg (regs s) Output ≡ result-loc →
+      readLoc (proj₁ (exec-trace (sum-update-trace save-slot) s alloc)) (sucLoc input-loc) ≡ just result-loc
+
+    sum-update-alloc-helper : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+      halted s ≡ false →
+      proj₂ (exec-trace (sum-update-trace save-slot) s alloc) ≡ alloc
+
+  -- | After sum-setup-trace, Input = payload-loc
+  --
+  -- Preconditions:
+  --   - Input = input-loc
+  --   - readLoc s (sucLoc input-loc) ≡ just payload-loc
+  --   - halted s ≡ false
+  sum-setup-sets-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc payload-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    readLoc s (sucLoc input-loc) ≡ just payload-loc →
+    let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
+    in readReg (regs s') Input ≡ payload-loc
+  sum-setup-sets-input save-slot s alloc input-loc payload-loc not-halted rdi-eq payload-ptr =
+    -- Same logic as prod-left-setup but uses load-indirect-suc instead of load-indirect
+    -- Step 1: mov-to-output: Output := Input = input-loc
+    -- Step 2: store-at-slot: stack[save-slot] := Output (memory write, regs unchanged)
+    -- Step 3: load-indirect-suc: Output := *(sucLoc Input) = payload-loc
+    -- Step 4: mov-to-input: Input := Output = payload-loc
+    sum-setup-input-helper save-slot s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
+
+  -- | After sum-setup-trace, alloc unchanged
+  sum-setup-preserves-alloc : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₂ (exec-trace (sum-setup-trace save-slot) s alloc) ≡ alloc
+  sum-setup-preserves-alloc save-slot s alloc not-halted =
+    sum-setup-alloc-helper save-slot s alloc not-halted
+
+  -- | Sum setup trace saves input-loc to stack[save-slot]
+  sum-setup-saves-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readReg (regs s) Input ≡ input-loc →
+    let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
+    in readLoc s' (OnStack (current-frame alloc) save-slot) ≡ just input-loc
+  sum-setup-saves-input save-slot s alloc input-loc not-halted rdi-eq =
+    sum-setup-saves-helper save-slot s alloc input-loc not-halted rdi-eq
+
+  -- | Memory preservation: sum-setup only modifies one stack slot
+  sum-setup-mem-eq : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (loc : ValueLocation FS) →
+    halted s ≡ false →
+    loc ≢ OnStack (current-frame alloc) save-slot →
+    let (s' , _) = exec-trace (sum-setup-trace save-slot) s alloc
+    in readLoc s' loc ≡ readLoc s loc
+  sum-setup-mem-eq save-slot s alloc loc not-halted loc-neq =
+    sum-setup-mem-helper save-slot s alloc loc not-halted loc-neq
+
+  -- | After sum-update-trace, Input = input-loc (restored from stack)
+  sum-update-restores-input : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+    let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
+    in readReg (regs s') Input ≡ input-loc
+  sum-update-restores-input save-slot s alloc input-loc not-halted stack-has-input =
+    sum-update-input-helper save-slot s alloc input-loc not-halted stack-has-input
+
+  -- | After sum-update-trace, Output = input-loc (final result)
+  sum-update-output : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+    let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
+    in readReg (regs s') Output ≡ input-loc
+  sum-update-output save-slot s alloc input-loc not-halted stack-has-input =
+    sum-update-output-helper save-slot s alloc input-loc not-halted stack-has-input
+
+  -- | After sum-update-trace, the container's payload pointer is updated
+  -- *(sucLoc input-loc) := result-loc (from Output before update)
+  sum-update-writes-ptr : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS})
+    (input-loc result-loc : ValueLocation FS) →
+    halted s ≡ false →
+    readLoc s (OnStack (current-frame alloc) save-slot) ≡ just input-loc →
+    readReg (regs s) Output ≡ result-loc →
+    let (s' , _) = exec-trace (sum-update-trace save-slot) s alloc
+    in readLoc s' (sucLoc input-loc) ≡ just result-loc
+  sum-update-writes-ptr save-slot s alloc input-loc result-loc not-halted stack-has-input output-eq =
+    sum-update-ptr-helper save-slot s alloc input-loc result-loc not-halted stack-has-input output-eq
+
+  -- | After sum-update-trace, alloc unchanged
+  sum-update-preserves-alloc : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    proj₂ (exec-trace (sum-update-trace save-slot) s alloc) ≡ alloc
+  sum-update-preserves-alloc save-slot s alloc not-halted =
+    sum-update-alloc-helper save-slot s alloc not-halted
+
+  -- | Sum update preserves halted=false
+  sum-update-preserves-halted : ∀ (save-slot : ℕ) (s : LocState FS) (alloc : AllocState {FS}) →
+    halted s ≡ false →
+    halted (proj₁ (exec-trace (sum-update-trace save-slot) s alloc)) ≡ false
+  sum-update-preserves-halted save-slot s alloc not-halted =
+    exec-trace-preserves-halted (sum-update-trace save-slot) s alloc not-halted
+      (tph-∷ iph-restore-input (tph-∷ iph-store-indirect-suc (tph-∷ iph-mov-to-output tph-[])))
+
   {-# TERMINATING #-}
   mutual
     -- | Process an F-layer within μG context
@@ -1656,12 +1834,22 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                          (ProcessedLayerResult.trace-no-heap-writes l-result) wrapper-tnhw)
         }
 
-    -- Sum inj₂ case: process right branch, wrap in inj₂
-    -- Same setup pattern as inj₁: load-indirect-suc + mov-to-input
+    ------------------------------------------------------------------------
+    -- Sum inj₂ case: process right branch, allocate new wrapper (Option B)
+    --
+    -- OCP-0003: For the general (non-linear) case, we allocate a new wrapper
+    -- at the frontier. This mirrors the inj₁ case exactly.
+    --
+    -- Trace structure:
+    --   1. setup-trace: load payload-loc into Input
+    --   2. sub-trace: process payload recursively
+    --   3. wrapper-trace: allocate Sum wrapper at frontier
+    ------------------------------------------------------------------------
     process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
       (μlayer-inr {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq cap =
       let
         -- Step 1: Setup trace - load payload pointer and set Input
+        -- This transforms s (where Input = input-loc) to s-setup (where Input = payload-loc)
         setup-trace : AbstractTrace
         setup-trace = load-indirect-suc ∷ mov-to-input ∷ []
 
@@ -1672,6 +1860,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         alloc-after-load : AllocState {FS}
         alloc-after-load = proj₂ (exec-abstract load-indirect-suc s alloc)
 
+        -- Then mov-to-input copies Output to Input
         s-setup : LocState FS
         s-setup = proj₁ (exec-abstract mov-to-input s-after-load alloc-after-load)
 
@@ -1711,46 +1900,81 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s-setup alloc-setup
                             r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup cap-setup
 
-        -- Extract results and wrap in inj₂
+        -- Extract recursive results
         r-processed = ProcessedLayerResult.processed r-result
-        processed = inj₂ r-processed
         s-after-sub = ProcessedLayerResult.final-state r-result
         alloc-after-sub = ProcessedLayerResult.final-alloc r-result
+        r-result-loc = ProcessedLayerResult.result-loc r-result
         sub-trace = ProcessedLayerResult.trace r-result
+        r-valid = ProcessedLayerResult.processed-valid r-result
+        r-before = ProcessedLayerResult.result-before r-result
+        r-rax = ProcessedLayerResult.rax-is-result r-result
+        r-not-halted = ProcessedLayerResult.not-halted r-result
+
+        -- Wrap in inj₂
+        processed = inj₂ r-processed
 
         ------------------------------------------------------------------------
-        -- Frontier Allocation Model for Sum Wrapper (inj₂ case)
+        -- Frontier Allocation Model for Sum Wrapper (Option B)
         --
-        -- Same approach as inj₁ case - see comments there for full explanation.
-        --
-        -- NON-LINEAR approach: allocate new wrapper [tag=1, ptr] at frontier
-        -- LINEAR approach: update input container's pointer in place
-        --
-        -- CURRENT STATUS: Returns payload result directly (incomplete).
-        -- TODO: Add wrapper allocation trace after sub-trace
+        -- For the general (non-linear) case, we allocate a new wrapper at the
+        -- frontier. This is the same approach as inj₁.
         ------------------------------------------------------------------------
 
-        -- Full trace: setup ++ sub-trace
-        -- TODO: Add wrapper allocation trace after sub-trace
+        -- Wrapper allocation: the wrapper will be placed at current frontier
+        wrapper-base : ℕ
+        wrapper-base = next-slot alloc-after-sub
+
+        -- Wrapper allocation trace:
+        --   1. instr-alloc-stack 2: reserve slots [wrapper-base, wrapper-base+1]
+        --   2. store-at-slot (wrapper-base+1): write result pointer (rax) to ptr slot
+        --   3. lea-slot wrapper-base: put wrapper address in rax
+        wrapper-trace : AbstractTrace
+        wrapper-trace = instr-alloc-stack 2 ∷
+                        store-at-slot (suc wrapper-base) ∷
+                        lea-slot wrapper-base ∷
+                        []
+
+        -- Full trace: setup ++ sub-trace ++ wrapper-trace
         full-trace : AbstractTrace
-        full-trace = setup-trace ++ sub-trace
+        full-trace = setup-trace ++ sub-trace ++ wrapper-trace
 
-        -- Setup exec equality
+        -- Execute wrapper trace to get final state
+        s-after-wrapper : LocState FS
+        s-after-wrapper = proj₁ (exec-trace wrapper-trace s-after-sub alloc-after-sub)
+
+        alloc-after-wrapper : AllocState {FS}
+        alloc-after-wrapper = proj₂ (exec-trace wrapper-trace s-after-sub alloc-after-sub)
+
+        -- The wrapper location
+        wrapper-loc : ValueLocation FS
+        wrapper-loc = OnStack (current-frame alloc-after-sub) wrapper-base
+
+        -- Trace execution correctness
+        -- Full trace: setup ++ sub ++ wrapper
         setup-exec-eq : exec-trace setup-trace s alloc ≡ (s-setup , alloc-setup)
         setup-exec-eq = setup-trace-exec s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
-        -- Trace correctness composition
-        trace-correct-inj2 : proj₁ (exec-trace full-trace s alloc) ≡ s-after-sub
-        trace-correct-inj2 =
-          trans (cong proj₁ (exec-trace-append setup-trace sub-trace s alloc))
-                (trans (cong (λ p → proj₁ (exec-trace sub-trace (proj₁ p) (proj₂ p))) setup-exec-eq)
-                       (ProcessedLayerResult.trace-correct r-result))
+        -- After setup ++ sub, we're at (s-after-sub, alloc-after-sub)
+        setup-sub-exec-eq : exec-trace (setup-trace ++ sub-trace) s alloc ≡ (s-after-sub , alloc-after-sub)
+        setup-sub-exec-eq =
+          trans (exec-trace-append setup-trace sub-trace s alloc)
+                (trans (cong (λ p → exec-trace sub-trace (proj₁ p) (proj₂ p)) setup-exec-eq)
+                       (cong₂ _,_ (ProcessedLayerResult.trace-correct r-result)
+                                  (ProcessedLayerResult.alloc-correct r-result)))
 
-        alloc-correct-inj2 : proj₂ (exec-trace full-trace s alloc) ≡ alloc-after-sub
+        -- Full trace ends at (s-after-wrapper, alloc-after-wrapper)
+        trace-correct-inj2 : proj₁ (exec-trace full-trace s alloc) ≡ s-after-wrapper
+        trace-correct-inj2 =
+          trans (cong proj₁ (exec-trace-append (setup-trace ++ sub-trace) wrapper-trace s alloc))
+                (trans (cong (λ p → proj₁ (exec-trace wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
+                       refl)
+
+        alloc-correct-inj2 : proj₂ (exec-trace full-trace s alloc) ≡ alloc-after-wrapper
         alloc-correct-inj2 =
-          trans (cong proj₂ (exec-trace-append setup-trace sub-trace s alloc))
-                (trans (cong (λ p → proj₂ (exec-trace sub-trace (proj₁ p) (proj₂ p))) setup-exec-eq)
-                       (ProcessedLayerResult.alloc-correct r-result))
+          trans (cong proj₂ (exec-trace-append (setup-trace ++ sub-trace) wrapper-trace s alloc))
+                (trans (cong (λ p → proj₂ (exec-trace wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
+                       refl)
 
         -- Invariant composition using setup-trace-preserves-alloc
         alloc-setup-eq : alloc-setup ≡ alloc
@@ -1767,6 +1991,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 alloc-setup-eq
                 (ProcessedLayerResult.slot-monotone r-result)
 
+        -- Slot usage bound: sub-result uses ≤ product-depth wfR slots
         -- Reclamation: inherit from sub-result
         r-reclaimable : ℕ
         r-reclaimable = ProcessedLayerResult.reclaimable-slot r-result
@@ -1796,7 +2021,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           trans (ProcessedLayerResult.capacity-preserved r-result)
                 (cong frame-capacity alloc-setup-eq)
 
-        -- Memory preservation composition
+        -- Memory preservation: setup preserves all memory, then sub preserves below frontier
         mem-preserved-inj2 : ∀ loc → BeforeFrontier alloc loc → readLoc s-after-sub loc ≡ readLoc s loc
         mem-preserved-inj2 loc bf =
           let bf-setup = subst (λ al → BeforeFrontier al loc) (sym alloc-setup-eq) bf
@@ -1826,51 +2051,167 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
         setup-tnhw : TraceNoHeapWrites setup-trace
         setup-tnhw = tt
+
+        ------------------------------------------------------------------------
+        -- Wrapper trace properties (same as inj₁)
+        ------------------------------------------------------------------------
+
+        -- Key insight: wrapper-trace advances next-slot by 2 (instr-alloc-stack 2)
+        wrapper-alloc-eq : alloc-after-wrapper ≡ wrapper-alloc-result alloc-after-sub
+        wrapper-alloc-eq = wrapper-trace-advances-slot wrapper-base s-after-sub alloc-after-sub r-not-halted
+
+        -- Frame is preserved through wrapper trace (only next-slot changes)
+        wrapper-frame-preserved : current-frame alloc-after-wrapper ≡ current-frame alloc-after-sub
+        wrapper-frame-preserved = cong current-frame wrapper-alloc-eq
+
+        -- Heap is unchanged by wrapper trace (only next-slot changes)
+        wrapper-heap-preserved : next-heap-ref alloc-after-wrapper ≡ next-heap-ref alloc-after-sub
+        wrapper-heap-preserved = cong next-heap-ref wrapper-alloc-eq
+
+        -- Capacity is preserved through wrapper trace (only next-slot changes)
+        wrapper-capacity-preserved : frame-capacity alloc-after-wrapper ≡ frame-capacity alloc-after-sub
+        wrapper-capacity-preserved = cong frame-capacity wrapper-alloc-eq
+
+        -- next-slot advances by 2 (wrapper allocates 2 slots for Sum container)
+        wrapper-next-slot-advances : next-slot alloc-after-wrapper ≡ next-slot alloc-after-sub +ℕ 2
+        wrapper-next-slot-advances = cong next-slot wrapper-alloc-eq
+
+        -- TracePreservesHaltedP for wrapper-trace
+        wrapper-tph : TracePreservesHaltedP wrapper-trace
+        wrapper-tph = tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+
+        -- TracePreservesCapacity for wrapper-trace
+        wrapper-tpc : TracePreservesCapacity wrapper-trace
+        wrapper-tpc = tpc-∷ ipc-alloc-stack (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+
+        -- TraceNoHeapWrites for wrapper-trace
+        wrapper-tnhw : TraceNoHeapWrites wrapper-trace
+        wrapper-tnhw = tt
+
+        -- Wrapper trace preserves halted=false
+        wrapper-not-halted : halted s-after-sub ≡ false → halted s-after-wrapper ≡ false
+        wrapper-not-halted nh = exec-trace-preserves-halted wrapper-trace s-after-sub alloc-after-sub nh wrapper-tph
+
+        -- After lea-slot, Output register contains wrapper-loc
+        wrapper-rax-result : readReg (regs s-after-wrapper) Output ≡ wrapper-loc
+        wrapper-rax-result = wrapper-trace-output wrapper-base s-after-sub alloc-after-sub r-not-halted
+
+        -- wrapper-before-frontier: wrapper-base < next-slot alloc-after-wrapper
+        wrapper-before-frontier : wrapper-base < next-slot alloc-after-wrapper
+        wrapper-before-frontier = subst (λ x → wrapper-base < x) (sym wrapper-next-slot-advances)
+                                        (m<m+n wrapper-base {2} (s≤s z≤n))
+
+        -- The pointer slot (wrapper-base + 1) was written with r-result-loc
+        wrapper-ptr-written : readLoc s-after-wrapper (sucLoc wrapper-loc) ≡ just r-result-loc
+        wrapper-ptr-written = trans (wrapper-trace-ptr-written wrapper-base s-after-sub alloc-after-sub r-not-halted)
+                                    (cong just r-rax)
+
+        -- Memory below wrapper-base is preserved by wrapper trace
+        wrapper-mem-preserved : ∀ loc → BeforeFrontier alloc-after-sub loc →
+                                readLoc s-after-wrapper loc ≡ readLoc s-after-sub loc
+        wrapper-mem-preserved loc bf = wrapper-trace-mem-preserved wrapper-base s-after-sub alloc-after-sub loc r-not-halted refl bf
+
+        -- For processed-valid (valid-inr-wf), we need:
+        -- 1. BeforeFrontier alloc-after-wrapper r-result-loc
+        r-before-wrapper : BeforeFrontier alloc-after-wrapper r-result-loc
+        r-before-wrapper = frontier-monotone alloc-after-sub alloc-after-wrapper
+                             (sym wrapper-frame-preserved)
+                             (subst (λ x → next-slot alloc-after-sub ≤ x)
+                                    (sym wrapper-next-slot-advances)
+                                    (m≤m+n (next-slot alloc-after-sub) 2))
+                             (subst (λ x → next-heap-ref alloc-after-sub ≤ x)
+                                    (sym wrapper-heap-preserved)
+                                    ≤-refl)
+                             r-result-loc r-before
+
+        -- 2. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
+        wb+2≡sswb : wrapper-base +ℕ 2 ≡ suc (suc wrapper-base)
+        wb+2≡sswb = +-comm wrapper-base 2
+
+        suc-wrapper-lt : suc wrapper-base < next-slot alloc-after-wrapper
+        suc-wrapper-lt = subst (λ x → suc wrapper-base < x)
+                               (trans (sym wb+2≡sswb) (sym wrapper-next-slot-advances))
+                               (n<1+n (suc wrapper-base))
+
+        suc-wrapper-before : BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
+        suc-wrapper-before = stack-before (sym wrapper-frame-preserved) suc-wrapper-lt
+
+        -- 3. ValidAtWF for r-processed at r-result-loc in alloc-after-wrapper
+        wrapper-twa : TraceWritesAbove (next-slot alloc-after-sub) wrapper-trace
+        wrapper-twa = n≤1+n wrapper-base , tt  -- store-at-slot (suc wrapper-base) writes above wrapper-base
+
+        r-valid-after-wrapper-trace : ValidAtWF mR alloc-after-sub r-processed r-result-loc s-after-wrapper
+        r-valid-after-wrapper-trace = validityWF-trace-preserves alloc-after-sub wrapper-trace
+                                        r-processed r-result-loc s-after-sub
+                                        r-before r-valid wrapper-twa wrapper-tnhw
+
+        r-valid-alloc-advanced : ValidAtWF mR (wrapper-alloc-result alloc-after-sub) r-processed r-result-loc s-after-wrapper
+        r-valid-alloc-advanced = validityWF-alloc-advance r-processed r-result-loc s-after-wrapper 2 r-valid-after-wrapper-trace
+
+        r-valid-wrapper : ValidAtWF mR alloc-after-wrapper r-processed r-result-loc s-after-wrapper
+        r-valid-wrapper = subst (λ al → ValidAtWF mR al r-processed r-result-loc s-after-wrapper)
+                                (sym wrapper-alloc-eq)
+                                r-valid-alloc-advanced
+
+        -- Construct full validity using valid-inr-wf
+        processed-valid-proof : ValidAtWF mR alloc-after-wrapper processed wrapper-loc s-after-wrapper
+        processed-valid-proof = valid-inr-wf wrapper-ptr-written r-before-wrapper suc-wrapper-before r-valid-wrapper
+
+        -- result-before: wrapper-base < next-slot alloc-after-wrapper
+        result-before-proof : BeforeFrontier alloc-after-wrapper wrapper-loc
+        result-before-proof = stack-before (sym wrapper-frame-preserved) wrapper-before-frontier
+
       in
       mR , record
         { processed = processed
         ; trace = full-trace
-        ; final-state = s-after-sub
-        ; final-alloc = alloc-after-sub
+        ; final-state = s-after-wrapper
+        ; final-alloc = alloc-after-wrapper
         ; trace-correct = trace-correct-inj2
         ; alloc-correct = alloc-correct-inj2
-        ; result-loc = ProcessedLayerResult.result-loc r-result
-        ; processed-valid = SMP.!!  -- BLOCKED: need sum validity composition (inj₂ wrapping)
-        ; result-before = ProcessedLayerResult.result-before r-result
-        ; rax-is-result = ProcessedLayerResult.rax-is-result r-result
-        ; not-halted = ProcessedLayerResult.not-halted r-result
+        -- Wrapper location: the Sum container at [wrapper-base, wrapper-base+1]
+        ; result-loc = wrapper-loc
+        ; processed-valid = processed-valid-proof
+        -- result-before: wrapper-base < next-slot alloc-after-wrapper (allocated at frontier)
+        ; result-before = result-before-proof
+        -- rax-is-result: lea-slot wrapper-base sets Output to wrapper-loc
+        ; rax-is-result = wrapper-rax-result
+        -- not-halted: wrapper trace preserves halted=false
+        ; not-halted = wrapper-not-halted r-not-halted
         ; semantic-correct = cong inj₂ (ProcessedLayerResult.semantic-correct r-result)
-        ; frame-preserved = frame-preserved-inj2
-        ; slot-monotone = slot-monotone-inj2
-        -- Reclamation: inherit from sub-result
+        -- frame-preserved: wrapper trace (alloc-stack, store, lea) doesn't change frame
+        ; frame-preserved = trans wrapper-frame-preserved frame-preserved-inj2
+        -- slot-monotone: wrapper advances next-slot by 2, so frontier increases
+        ; slot-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-advances)
+                                (≤-trans slot-monotone-inj2 (m≤m+n (next-slot alloc-after-sub) 2))
+        -- Reclamation: the wrapper slots are NOT reclaimable (they're output)
+        -- So reclaimable-slot stays at r-reclaimable (from sub-result)
         ; reclaimable-slot = r-reclaimable
         ; reclaim-monotone = reclaim-mono-inj2
-        ; reclaim-bounded = reclaim-bounded-inj2
-        ; reclaim-preserves-result = λ fits →
-            let fits' = subst (r-reclaimable ≤_) (sym (cong frame-capacity alloc-setup-eq)) fits
-            in ProcessedLayerResult.reclaim-preserves-result r-result fits'
-        ; reclaim-preserves-validity = λ fits → SMP.!!  -- BLOCKED: need inj₂ validity composition
+        ; reclaim-bounded = subst (λ x → r-reclaimable ≤ x) (sym wrapper-next-slot-advances)
+                                  (≤-trans reclaim-bounded-inj2 (m≤m+n (next-slot alloc-after-sub) 2))
+        ; reclaim-preserves-result = λ fits → SMP.!!  -- TODO: wrapper survives reclamation
+        ; reclaim-preserves-validity = λ fits → SMP.!!  -- TODO: inj₂ validity after reclamation
+        -- slot-usage-bound: wrapper doesn't change temporary slot usage (it's output allocation)
         ; slot-usage-bound = slot-usage-bound-inj2
-        ; heap-monotone = heap-monotone-inj2
-        ; capacity-preserved = capacity-preserved-inj2
-        ; mem-preserved = mem-preserved-inj2
-        -- Trace region bounds: composed via append
-        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace sub-trace
-            setup-twa
-            (subst (λ al → TraceWritesAbove (next-slot al) sub-trace)
-                   alloc-setup-eq (ProcessedLayerResult.trace-writes-above r-result))
-        ; trace-writes-below = SMP.trace-writes-below-append (next-slot alloc-after-sub) setup-trace sub-trace
-            setup-twb (ProcessedLayerResult.trace-writes-below r-result)
-        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace sub-trace
-            setup-tsra
-            (subst (λ al → TraceSlotReadsAbove (next-slot al) sub-trace)
-                   alloc-setup-eq (ProcessedLayerResult.trace-slot-reads-above r-result))
-        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (next-slot alloc-after-sub) setup-trace sub-trace
-            setup-tsrb (ProcessedLayerResult.trace-slot-reads-below r-result)
-        ; trace-preserves-halted = tph-++ setup-tph (ProcessedLayerResult.trace-preserves-halted r-result)
-        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (ProcessedLayerResult.trace-preserves-capacity r-result)
-        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace sub-trace
-            setup-tnhw (ProcessedLayerResult.trace-no-heap-writes r-result)
+        -- heap-monotone: heap unchanged by wrapper trace
+        ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj2
+        -- capacity-preserved: capacity unchanged by wrapper trace
+        ; capacity-preserved = trans wrapper-capacity-preserved capacity-preserved-inj2
+        -- mem-preserved: memory below original frontier preserved through full trace
+        ; mem-preserved = λ loc bf →
+            let bf-sub = frontier-monotone alloc alloc-after-sub (sym frame-preserved-inj2) slot-monotone-inj2 heap-monotone-inj2 loc bf
+            in trans (wrapper-mem-preserved loc bf-sub) (mem-preserved-inj2 loc bf)
+        -- Trace region bounds
+        ; trace-writes-above = SMP.!!  -- TODO: full trace writes above original frontier
+        ; trace-writes-below = SMP.!!  -- TODO: full trace writes below final frontier
+        ; trace-slot-reads-above = SMP.!!  -- TODO: account for wrapper trace
+        ; trace-slot-reads-below = SMP.!!  -- TODO: account for wrapper trace
+        ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted r-result) wrapper-tph)
+        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity r-result) wrapper-tpc)
+        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ wrapper-trace)
+            setup-tnhw (SMP.trace-no-heap-writes-append sub-trace wrapper-trace
+                         (ProcessedLayerResult.trace-no-heap-writes r-result) wrapper-tnhw)
         }
 
     -- Product case: delegate to helper (enables where clauses)
@@ -2416,11 +2757,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             step4 : readLoc (ProcessedLayerResult.final-state r-result) loc ≡ readLoc s-right-setup loc
             step4 = ProcessedLayerResult.mem-preserved r-result loc bf-for-right
 
-        -- Validity proof (still needs linear trace work)
+        -- Validity proof: need pair container allocation (like Sum inj₁ has wrapper allocation)
+        -- Currently result-loc = r-result-loc (just the right component)
+        -- But processed = (l-processed, r-processed), which needs a pair container
+        -- Fix: add pair-wrapper-trace to allocate [fst-ptr, snd-ptr] at frontier
         processed-valid-proof : ValidAtWF mR final-alloc processed
                                   (ProcessedLayerResult.result-loc r-result)
                                   (ProcessedLayerResult.final-state r-result)
-        processed-valid-proof = SMP.!!  -- BLOCKED: pair validity composition
+        processed-valid-proof = SMP.!!  -- BLOCKED: missing pair container allocation
 
         -- Setup trace halted preservation proofs
         left-setup-tph : TracePreservesHaltedP left-setup-trace
