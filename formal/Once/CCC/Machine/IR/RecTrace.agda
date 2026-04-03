@@ -643,6 +643,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       slot-usage-bound : reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg)
 
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
+      -- heap-preserved: For polynomial functors (K, Sum, Prod without Id), heap is unchanged.
+      -- This enables validity transfer during reclamation where we need frame+slot equality
+      -- but heap refs might differ. With heap-preserved, we can use frontier-same-heap.
+      -- Note: Id case delegates to algorithm which might allocate heap, marked SMP.!!
+      heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
       capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
 
       -- Memory preservation: locations before frontier are unchanged
@@ -1276,6 +1281,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaim-preserves-validity = λ _ → valid-basetype-wf isBase input-before
         ; slot-usage-bound = m≤m+n (next-slot alloc) (ir-stack-requirement (Cata wfG alg))
         ; heap-monotone = ≤-refl
+        ; heap-preserved = refl  -- final-alloc = alloc, so heap unchanged
         ; capacity-preserved = refl
         ; mem-preserved = λ loc _ → exec-abstract-mov-to-output-preserves-mem s alloc loc
         -- Trace region bounds: mov-to-output writes/reads no slots
@@ -1348,6 +1354,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- slot-usage-bound: IRResultAWF.reclaim-size-bound gives exactly this bound
         ; slot-usage-bound = IRResultAWF.reclaim-size-bound rec-result
         ; heap-monotone = IRResultAWF.heap-monotone rec-result
+        -- heap-preserved: Depends on Cata algebra - stack-only algebras preserve heap
+        -- For algebras that allocate heap, this would need additional assumptions
+        ; heap-preserved = SMP.!!
         ; capacity-preserved = IRResultAWF.capacity-preserved rec-result
         ; mem-preserved = IRResultAWF.mem-preserved-before rec-result
         -- Trace region bounds from IRResultAWF (converted via monotonicity)
@@ -1596,6 +1605,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 alloc-setup-eq
                 (ProcessedLayerResult.heap-monotone l-result)
 
+        -- heap-preserved: chains through sub-result and setup-alloc equality
+        heap-preserved-inj1 : next-heap-ref alloc-after-sub ≡ next-heap-ref alloc
+        heap-preserved-inj1 =
+          trans (ProcessedLayerResult.heap-preserved l-result)
+                (cong next-heap-ref alloc-setup-eq)
+
         capacity-preserved-inj1 : frame-capacity alloc-after-sub ≡ frame-capacity alloc
         capacity-preserved-inj1 =
           trans (ProcessedLayerResult.capacity-preserved l-result)
@@ -1827,14 +1842,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             -- stack-before expects: f ≡ current-frame (reclaimed alloc) where f = current-frame alloc-after-sub
             -- So we need: current-frame alloc-after-sub ≡ current-frame alloc
             stack-before frame-preserved-inj1 wrapper-before-frontier
-        ; reclaim-preserves-validity = λ fits → SMP.!!
-            -- BLOCKED: Need validityWF-stack-alloc-equiv lemma
-            -- The two allocs (alloc-after-wrapper vs record alloc {next-slot = ...}) have:
-            --   - Same current-frame (by frame-preserved)
-            --   - Same next-slot (by construction)
-            --   - Different next-heap-ref (alloc vs alloc-after-wrapper)
-            -- For stack-only validity (which Sum produces), heap doesn't affect BeforeFrontier.
-            -- Need: lemma that for stack locations, ValidAtWF only depends on frame and next-slot.
+        ; reclaim-preserves-validity = λ fits →
+            -- Use heap-preserved to transfer validity via frontier-same-heap
+            let frame-eq = trans wrapper-frame-preserved frame-preserved-inj1
+                heap-eq = trans wrapper-heap-preserved heap-preserved-inj1
+                reclaim-alloc = record alloc { next-slot = next-slot alloc-after-wrapper }
+                bf-transfer = frontier-same-heap alloc-after-wrapper reclaim-alloc frame-eq refl heap-eq
+            in validityWF-with-bf-transfer processed wrapper-loc s-after-wrapper
+                 alloc-after-wrapper reclaim-alloc bf-transfer processed-valid-proof
         -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + ir-stack-requirement
         ; slot-usage-bound = SMP.!!
             -- BLOCKED: ir-stack-requirement gap
@@ -1847,6 +1862,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             -- not just pair-slots at the top Cata level.
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj1
+        -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj1)
+        ; heap-preserved = trans wrapper-heap-preserved heap-preserved-inj1
         -- capacity-preserved: capacity unchanged by wrapper trace
         ; capacity-preserved = trans wrapper-capacity-preserved capacity-preserved-inj1
         -- mem-preserved: memory below original frontier preserved through full trace
@@ -2070,6 +2087,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 alloc-setup-eq
                 (ProcessedLayerResult.heap-monotone r-result)
 
+        -- heap-preserved: chains through sub-result and setup-alloc equality
+        heap-preserved-inj2 : next-heap-ref alloc-after-sub ≡ next-heap-ref alloc
+        heap-preserved-inj2 =
+          trans (ProcessedLayerResult.heap-preserved r-result)
+                (cong next-heap-ref alloc-setup-eq)
+
         capacity-preserved-inj2 : frame-capacity alloc-after-sub ≡ frame-capacity alloc
         capacity-preserved-inj2 =
           trans (ProcessedLayerResult.capacity-preserved r-result)
@@ -2262,13 +2285,21 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             -- stack-before expects: f ≡ current-frame (reclaimed alloc) where f = current-frame alloc-after-sub
             -- So we need: current-frame alloc-after-sub ≡ current-frame alloc
             stack-before frame-preserved-inj2 wrapper-before-frontier
-        ; reclaim-preserves-validity = λ fits → SMP.!!
-            -- BLOCKED: Need validityWF-stack-alloc-equiv lemma (same as inj₁)
+        ; reclaim-preserves-validity = λ fits →
+            -- Use heap-preserved to transfer validity via frontier-same-heap (same as inj₁)
+            let frame-eq = trans wrapper-frame-preserved frame-preserved-inj2
+                heap-eq = trans wrapper-heap-preserved heap-preserved-inj2
+                reclaim-alloc = record alloc { next-slot = next-slot alloc-after-wrapper }
+                bf-transfer = frontier-same-heap alloc-after-wrapper reclaim-alloc frame-eq refl heap-eq
+            in validityWF-with-bf-transfer processed wrapper-loc s-after-wrapper
+                 alloc-after-wrapper reclaim-alloc bf-transfer processed-valid-proof
         -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + ir-stack-requirement
         ; slot-usage-bound = SMP.!!
             -- BLOCKED: ir-stack-requirement gap (same as inj₁)
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj2
+        -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj2)
+        ; heap-preserved = trans wrapper-heap-preserved heap-preserved-inj2
         -- capacity-preserved: capacity unchanged by wrapper trace
         ; capacity-preserved = trans wrapper-capacity-preserved capacity-preserved-inj2
         -- mem-preserved: memory below original frontier preserved through full trace
@@ -2378,6 +2409,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- heap-monotone: alloc.heap = alloc-for-right.heap ≤ final-alloc.heap
         ; heap-monotone = subst (λ h → h ≤ next-heap-ref final-alloc) alloc-for-right-heap
                                 (ProcessedLayerResult.heap-monotone r-result)
+        -- heap-preserved: chain through r-result.heap-preserved and alloc-for-right-heap
+        ; heap-preserved = trans (ProcessedLayerResult.heap-preserved r-result) alloc-for-right-heap
         -- capacity-preserved: final-alloc.cap = alloc-for-right.cap = alloc.cap
         ; capacity-preserved = trans (ProcessedLayerResult.capacity-preserved r-result)
                                      alloc-for-right-cap
