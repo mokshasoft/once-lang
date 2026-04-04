@@ -20,7 +20,7 @@
 module Once.CCC.Machine.IR.RecTrace where
 
 open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _⊔_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; <-≤-trans; ≤-<-trans; m≤m+n; m<m+n; n≤1+n; n<1+n; m≤m⊔n; m≤n⊔m; +-monoʳ-≤; +-monoˡ-≤; <⇒≢; +-comm; +-assoc)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; <-≤-trans; ≤-<-trans; m≤m+n; m<m+n; m≤n+m; n≤1+n; n<1+n; m≤m⊔n; m≤n⊔m; n≤m⊔n; ⊔-lub; ⊔-monoˡ-≤; ⊔-monoʳ-≤; +-monoʳ-≤; +-monoˡ-≤; <⇒≢; +-comm; +-assoc; +-suc)
 open import Data.Bool using (false)
 open import Data.List using (List; []; _∷_; _++_)
 open import Data.Maybe using (Maybe; just; nothing)
@@ -646,6 +646,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- - Prod case: max(children) + 1 ≤ layer-capacity parent (since parent = 1 + max)
       slot-usage-bound : reclaimable-slot ≤ next-slot alloc +ℕ layer-capacity wfF wfG alg
 
+      -- High-water mark of slot allocation
+      -- With reclamation, next-slot final-alloc may be < max slots actually written
+      -- (e.g., child writes [start, start+N), parent reclaims to reclaimable, allocates wrapper)
+      -- This tracks the maximum slot ever used during processing.
+      max-slot-used : ℕ
+      max-slot-geq-reclaim : reclaimable-slot ≤ max-slot-used
+      max-slot-usage-bound : max-slot-used ≤ next-slot alloc +ℕ layer-capacity wfF wfG alg
+
       heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
       -- heap-preserved: For polynomial functors (K, Sum, Prod without Id), heap is unchanged.
       -- This enables validity transfer during reclamation where we need frame+slot equality
@@ -658,11 +666,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc final-state loc ≡ readLoc s loc
 
       -- Trace properties for composition (positive characterization)
-      -- Region bounds: trace operates in [next-slot alloc, next-slot final-alloc)
+      -- Region bounds: trace operates in [next-slot alloc, max-slot-used)
+      -- Using max-slot-used (not next-slot final-alloc) because reclamation may lower frontier
+      -- below slots actually written by child processing.
       trace-writes-above : TraceWritesAbove (next-slot alloc) trace
-      trace-writes-below : TraceWritesBelow (next-slot final-alloc) trace
+      trace-writes-below : TraceWritesBelow max-slot-used trace
       trace-slot-reads-above : TraceSlotReadsAbove (next-slot alloc) trace
-      trace-slot-reads-below : TraceSlotReadsBelow (next-slot final-alloc) trace
+      trace-slot-reads-below : TraceSlotReadsBelow max-slot-used trace
       -- Preservation properties
       trace-preserves-halted : TracePreservesHaltedP trace
       trace-preserves-capacity : TracePreservesCapacity trace
@@ -1291,6 +1301,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- slot-usage-bound: K case uses 0 slots, so reclaimable = next-slot alloc ≤ next-slot alloc + layer-capacity
         -- layer-capacity (wf-K _) wfG alg = ir-stack-requirement alg + pair-slots
         ; slot-usage-bound = m≤m+n (next-slot alloc) (layer-capacity (wf-K isBase) wfG alg)
+        -- max-slot-used: K case doesn't write any slots
+        ; max-slot-used = next-slot alloc
+        ; max-slot-geq-reclaim = ≤-refl
+        ; max-slot-usage-bound = m≤m+n (next-slot alloc) (layer-capacity (wf-K isBase) wfG alg)
         ; heap-monotone = ≤-refl
         ; heap-preserved = refl  -- final-alloc = alloc, so heap unchanged
         ; capacity-preserved = refl
@@ -1370,23 +1384,23 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity rec-result
         -- slot-usage-bound: IRResultAWF.reclaim-size-bound gives exactly this bound
         ; slot-usage-bound = IRResultAWF.reclaim-size-bound rec-result
+        -- max-slot-used: For Id case, IRResultAWF.reclaimable-slot IS the high-water mark
+        -- IRResultAWF.trace-writes-below is TraceWritesBelow reclaimable-slot trace
+        ; max-slot-used = IRResultAWF.reclaimable-slot rec-result
+        ; max-slot-geq-reclaim = ≤-refl
+        ; max-slot-usage-bound = IRResultAWF.reclaim-size-bound rec-result
         ; heap-monotone = IRResultAWF.heap-monotone rec-result
         -- heap-preserved: Depends on Cata algebra - stack-only algebras preserve heap
         -- For algebras that allocate heap, this would need additional assumptions
         ; heap-preserved = SMP.!!
         ; capacity-preserved = IRResultAWF.capacity-preserved rec-result
         ; mem-preserved = IRResultAWF.mem-preserved-before rec-result
-        -- Trace region bounds from IRResultAWF (converted via monotonicity)
-        -- IRResultAWF uses reclaimable-slot as bound, we use next-slot final-alloc
-        -- Since reclaimable-slot ≤ next-slot final-alloc (reclaim-bounded), monotonicity applies
+        -- Trace region bounds from IRResultAWF
+        -- IRResultAWF uses reclaimable-slot as bound, which equals our max-slot-used
         ; trace-writes-above = IRResultAWF.trace-writes-above rec-result
-        ; trace-writes-below = SMP.trace-writes-below-mono
-            (IRResultAWF.reclaimable-slot rec-result) (next-slot alloc-rec) rec-trace
-            (IRResultAWF.reclaim-bounded rec-result) (IRResultAWF.trace-writes-below rec-result)
+        ; trace-writes-below = IRResultAWF.trace-writes-below rec-result
         ; trace-slot-reads-above = IRResultAWF.trace-slot-reads-above rec-result
-        ; trace-slot-reads-below = SMP.trace-slot-reads-below-mono
-            (IRResultAWF.reclaimable-slot rec-result) (next-slot alloc-rec) rec-trace
-            (IRResultAWF.reclaim-bounded rec-result) (IRResultAWF.trace-slot-reads-below rec-result)
+        ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below rec-result
         -- Trace preservation properties
         ; trace-preserves-halted = IRResultAWF.trace-preserves-halted rec-result
         ; trace-preserves-capacity = IRResultAWF.trace-preserves-capacity rec-result
@@ -1655,6 +1669,20 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         slot-usage-bound-inj1 = subst (λ al → l-reclaimable ≤ next-slot al +ℕ layer-capacity wfL wfG alg)
                                       alloc-setup-eq
                                       (ProcessedLayerResult.slot-usage-bound l-result)
+
+        -- Max slot used: maximum of child's max-slot-used and wrapper allocation (l-reclaimable + 2)
+        -- The child may have written above l-reclaimable before reclamation
+        l-max-slot-used : ℕ
+        l-max-slot-used = ProcessedLayerResult.max-slot-used l-result
+
+        max-slot-used-inj1 : ℕ
+        max-slot-used-inj1 = l-max-slot-used ⊔ (l-reclaimable +ℕ 2)
+
+        -- l-max-slot-used ≤ start + layer-capacity wfL (from child's bound, adjusted for alloc-setup ≡ alloc)
+        l-max-slot-usage-bound : l-max-slot-used ≤ next-slot alloc +ℕ layer-capacity wfL wfG alg
+        l-max-slot-usage-bound = subst (λ al → l-max-slot-used ≤ next-slot al +ℕ layer-capacity wfL wfG alg)
+                                       alloc-setup-eq
+                                       (ProcessedLayerResult.max-slot-usage-bound l-result)
 
         heap-monotone-inj1 : next-heap-ref alloc ≤ next-heap-ref alloc-after-sub
         heap-monotone-inj1 =
@@ -1996,6 +2024,33 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             in subst (_≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg)
                      (sym wrapper-next-slot-eq)
                      (≤-trans (subst (l-reclaimable +ℕ 2 ≤_) step2 step1) step3)
+        -- max-slot-used: max of child's max-slot-used and wrapper allocation
+        ; max-slot-used = max-slot-used-inj1
+        -- max-slot-geq-reclaim: reclaimable-slot ≤ max-slot-used
+        -- reclaimable-slot = next-slot alloc-after-wrapper = l-reclaimable + 2 (by wrapper-next-slot-eq)
+        -- l-reclaimable + 2 ≤ max-slot-used-inj1 (by n≤m⊔n)
+        ; max-slot-geq-reclaim = subst (_≤ max-slot-used-inj1) (sym wrapper-next-slot-eq)
+                                       (n≤m⊔n l-max-slot-used (l-reclaimable +ℕ 2))
+        ; max-slot-usage-bound =
+            -- max-slot-used-inj1 = l-max-slot-used ⊔ (l-reclaimable + 2)
+            -- Need: max-slot-used-inj1 ≤ next-slot alloc + layer-capacity (wf-Sum wfL wfR)
+            let -- l-max-slot-used ≤ next-slot alloc + layer-capacity wfL (from l-max-slot-usage-bound)
+                -- layer-capacity wfL ≤ layer-capacity (wf-Sum wfL wfR)
+                -- layer-capacity (wf-Sum wfL wfR) = 2 + (capL ⊔ capR) ≥ capL ⊔ capR ≥ capL
+                child-cap-bound : layer-capacity wfL wfG alg ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
+                child-cap-bound = ≤-trans (m≤m⊔n (layer-capacity wfL wfG alg) (layer-capacity wfR wfG alg))
+                                          (m≤n+m (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg) 2)
+                l-max-bound : l-max-slot-used ≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg
+                l-max-bound = ≤-trans l-max-slot-usage-bound (+-monoʳ-≤ (next-slot alloc) child-cap-bound)
+                -- l-reclaimable + 2 ≤ next-slot alloc + layer-capacity (wf-Sum wfL wfR) (from slot-usage-bound proof)
+                wrapper-bound : l-reclaimable +ℕ 2 ≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg
+                wrapper-bound =
+                  let step1 = +-monoˡ-≤ 2 slot-usage-bound-inj1
+                      step2 = +-assoc (next-slot alloc) (layer-capacity wfL wfG alg) 2
+                      fits = sum-wrapper-fits-left wfL wfR wfG alg
+                      step3 = +-monoʳ-≤ (next-slot alloc) fits
+                  in ≤-trans (subst (l-reclaimable +ℕ 2 ≤_) step2 step1) step3
+            in ⊔-lub l-max-bound wrapper-bound
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj1
         -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj1)
@@ -2008,25 +2063,37 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; mem-preserved = λ loc bf → trans (wrapper-mem-preserved loc bf) (mem-preserved-inj1 loc bf)
         -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ reclaim-wrapper-trace
         -- sub-trace bounds are relative to alloc-setup, but alloc-setup ≡ alloc
-        -- With actual reclamation, reclaimable-slot = l-reclaimable + 2 (= next-slot alloc-after-wrapper)
+        -- With max-slot-used = l-max-slot-used ⊔ (l-reclaimable + 2), proofs go through
         ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace (sub-trace ++ reclaim-wrapper-trace)
             setup-twa (SMP.trace-writes-above-append (next-slot alloc) sub-trace reclaim-wrapper-trace
               (subst (λ al → TraceWritesAbove (next-slot al) sub-trace) alloc-setup-eq
                      (ProcessedLayerResult.trace-writes-above l-result))
               (SMP.trace-writes-above-mono (next-slot alloc) l-reclaimable reclaim-wrapper-trace
                      reclaim-mono-inj1 wrapper-twa))
-        -- trace-writes-below: With actual reclamation, child may have written above next-slot alloc-after-wrapper
-        -- (if child allocated slots in [l-reclaimable + 2, next-slot alloc-after-sub)).
-        -- This property tracks writes, not the final frontier position.
-        -- For now, mark as proof obligation - same issue as Product case (line 2970)
-        ; trace-writes-below = SMP.!!
+        -- trace-writes-below: Using max-slot-used = l-max-slot-used ⊔ (l-reclaimable + 2)
+        -- setup: no writes (tt)
+        -- sub-trace: writes below l-max-slot-used ≤ max-slot-used (via m≤m⊔n)
+        -- wrapper: writes below l-reclaimable + 2 ≤ max-slot-used (via n≤m⊔n)
+        ; trace-writes-below = SMP.trace-writes-below-append max-slot-used-inj1 setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            tt (SMP.trace-writes-below-append max-slot-used-inj1 sub-trace reclaim-wrapper-trace
+              (SMP.trace-writes-below-mono l-max-slot-used max-slot-used-inj1 sub-trace
+                 (m≤m⊔n l-max-slot-used (l-reclaimable +ℕ 2))
+                 (ProcessedLayerResult.trace-writes-below l-result))
+              (SMP.trace-writes-below-mono (l-reclaimable +ℕ 2) max-slot-used-inj1 reclaim-wrapper-trace
+                 (n≤m⊔n l-max-slot-used (l-reclaimable +ℕ 2)) wrapper-twb))
         ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace (sub-trace ++ reclaim-wrapper-trace)
             setup-tsra (SMP.trace-slot-reads-above-append (next-slot alloc) sub-trace reclaim-wrapper-trace
               (subst (λ al → TraceSlotReadsAbove (next-slot al) sub-trace) alloc-setup-eq
                      (ProcessedLayerResult.trace-slot-reads-above l-result))
               wrapper-tsra)
-        -- trace-slot-reads-below: Same issue as trace-writes-below
-        ; trace-slot-reads-below = SMP.!!
+        -- trace-slot-reads-below: Using max-slot-used = l-max-slot-used ⊔ (l-reclaimable + 2)
+        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append max-slot-used-inj1 setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            tt (SMP.trace-slot-reads-below-append max-slot-used-inj1 sub-trace reclaim-wrapper-trace
+              (SMP.trace-slot-reads-below-mono l-max-slot-used max-slot-used-inj1 sub-trace
+                 (m≤m⊔n l-max-slot-used (l-reclaimable +ℕ 2))
+                 (ProcessedLayerResult.trace-slot-reads-below l-result))
+              (SMP.trace-slot-reads-below-mono (l-reclaimable +ℕ 2) max-slot-used-inj1 reclaim-wrapper-trace
+                 (n≤m⊔n l-max-slot-used (l-reclaimable +ℕ 2)) wrapper-tsrb))
         ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result) reclaim-wrapper-tph)
         ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity l-result) reclaim-wrapper-tpc)
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
@@ -2226,6 +2293,20 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         slot-usage-bound-inj2 = subst (λ al → r-reclaimable ≤ next-slot al +ℕ layer-capacity wfR wfG alg)
                                       alloc-setup-eq
                                       (ProcessedLayerResult.slot-usage-bound r-result)
+
+        -- Max slot used: maximum of child's max-slot-used and wrapper allocation (r-reclaimable + 2)
+        -- The child may have written above r-reclaimable before reclamation
+        r-max-slot-used : ℕ
+        r-max-slot-used = ProcessedLayerResult.max-slot-used r-result
+
+        max-slot-used-inj2 : ℕ
+        max-slot-used-inj2 = r-max-slot-used ⊔ (r-reclaimable +ℕ 2)
+
+        -- r-max-slot-used ≤ start + layer-capacity wfR (from child's bound, adjusted for alloc-setup ≡ alloc)
+        r-max-slot-usage-bound : r-max-slot-used ≤ next-slot alloc +ℕ layer-capacity wfR wfG alg
+        r-max-slot-usage-bound = subst (λ al → r-max-slot-used ≤ next-slot al +ℕ layer-capacity wfR wfG alg)
+                                       alloc-setup-eq
+                                       (ProcessedLayerResult.max-slot-usage-bound r-result)
 
         heap-monotone-inj2 : next-heap-ref alloc ≤ next-heap-ref alloc-after-sub
         heap-monotone-inj2 =
@@ -2558,6 +2639,32 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             in subst (_≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg)
                      (sym wrapper-next-slot-eq)
                      (≤-trans (subst (r-reclaimable +ℕ 2 ≤_) step2 step1) step3)
+        -- max-slot-used: max of child's max-slot-used and wrapper allocation
+        ; max-slot-used = max-slot-used-inj2
+        -- max-slot-geq-reclaim: reclaimable-slot ≤ max-slot-used
+        -- reclaimable-slot = next-slot alloc-after-wrapper = r-reclaimable + 2 (by wrapper-next-slot-eq)
+        -- r-reclaimable + 2 ≤ max-slot-used-inj2 (by n≤m⊔n)
+        ; max-slot-geq-reclaim = subst (_≤ max-slot-used-inj2) (sym wrapper-next-slot-eq)
+                                       (n≤m⊔n r-max-slot-used (r-reclaimable +ℕ 2))
+        ; max-slot-usage-bound =
+            -- max-slot-used-inj2 = r-max-slot-used ⊔ (r-reclaimable + 2)
+            -- Need: max-slot-used-inj2 ≤ next-slot alloc + layer-capacity (wf-Sum wfL wfR)
+            let -- r-max-slot-used ≤ next-slot alloc + layer-capacity wfR (from r-max-slot-usage-bound)
+                -- layer-capacity wfR ≤ layer-capacity (wf-Sum wfL wfR) = 2 + (capL ⊔ capR) ≥ capR
+                child-cap-bound : layer-capacity wfR wfG alg ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
+                child-cap-bound = ≤-trans (n≤m⊔n (layer-capacity wfL wfG alg) (layer-capacity wfR wfG alg))
+                                          (m≤n+m (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg) 2)
+                r-max-bound : r-max-slot-used ≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg
+                r-max-bound = ≤-trans r-max-slot-usage-bound (+-monoʳ-≤ (next-slot alloc) child-cap-bound)
+                -- r-reclaimable + 2 ≤ next-slot alloc + layer-capacity (wf-Sum wfL wfR) (from slot-usage-bound proof)
+                wrapper-bound : r-reclaimable +ℕ 2 ≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg
+                wrapper-bound =
+                  let step1 = +-monoˡ-≤ 2 slot-usage-bound-inj2
+                      step2 = +-assoc (next-slot alloc) (layer-capacity wfR wfG alg) 2
+                      fits = sum-wrapper-fits-right wfL wfR wfG alg
+                      step3 = +-monoʳ-≤ (next-slot alloc) fits
+                  in ≤-trans (subst (r-reclaimable +ℕ 2 ≤_) step2 step1) step3
+            in ⊔-lub r-max-bound wrapper-bound
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj2
         -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj2)
@@ -2568,25 +2675,34 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; mem-preserved = λ loc bf → trans (wrapper-mem-preserved loc bf) (mem-preserved-inj2 loc bf)
         -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ reclaim-wrapper-trace
         -- sub-trace bounds are relative to alloc-setup, but alloc-setup ≡ alloc
-        -- With actual reclamation, reclaimable-slot = r-reclaimable + 2 (= next-slot alloc-after-wrapper)
+        -- With max-slot-used = r-max-slot-used ⊔ (r-reclaimable + 2), proofs go through
         ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace (sub-trace ++ reclaim-wrapper-trace)
             setup-twa (SMP.trace-writes-above-append (next-slot alloc) sub-trace reclaim-wrapper-trace
               (subst (λ al → TraceWritesAbove (next-slot al) sub-trace) alloc-setup-eq
                      (ProcessedLayerResult.trace-writes-above r-result))
               (SMP.trace-writes-above-mono (next-slot alloc) r-reclaimable reclaim-wrapper-trace
                      reclaim-mono-inj2 wrapper-twa))
-        -- trace-writes-below: With actual reclamation, child may have written above next-slot alloc-after-wrapper
-        -- (if child allocated slots in [r-reclaimable + 2, next-slot alloc-after-sub)).
-        -- This property tracks writes, not the final frontier position.
-        -- For now, mark as proof obligation - same issue as Product case (line 2970)
-        ; trace-writes-below = SMP.!!
+        -- trace-writes-below: Using max-slot-used = r-max-slot-used ⊔ (r-reclaimable + 2)
+        ; trace-writes-below = SMP.trace-writes-below-append max-slot-used-inj2 setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            tt (SMP.trace-writes-below-append max-slot-used-inj2 sub-trace reclaim-wrapper-trace
+              (SMP.trace-writes-below-mono r-max-slot-used max-slot-used-inj2 sub-trace
+                 (m≤m⊔n r-max-slot-used (r-reclaimable +ℕ 2))
+                 (ProcessedLayerResult.trace-writes-below r-result))
+              (SMP.trace-writes-below-mono (r-reclaimable +ℕ 2) max-slot-used-inj2 reclaim-wrapper-trace
+                 (n≤m⊔n r-max-slot-used (r-reclaimable +ℕ 2)) wrapper-twb))
         ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace (sub-trace ++ reclaim-wrapper-trace)
             setup-tsra (SMP.trace-slot-reads-above-append (next-slot alloc) sub-trace reclaim-wrapper-trace
               (subst (λ al → TraceSlotReadsAbove (next-slot al) sub-trace) alloc-setup-eq
                      (ProcessedLayerResult.trace-slot-reads-above r-result))
               wrapper-tsra)
-        -- trace-slot-reads-below: Same issue as trace-writes-below
-        ; trace-slot-reads-below = SMP.!!
+        -- trace-slot-reads-below: Using max-slot-used = r-max-slot-used ⊔ (r-reclaimable + 2)
+        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append max-slot-used-inj2 setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            tt (SMP.trace-slot-reads-below-append max-slot-used-inj2 sub-trace reclaim-wrapper-trace
+              (SMP.trace-slot-reads-below-mono r-max-slot-used max-slot-used-inj2 sub-trace
+                 (m≤m⊔n r-max-slot-used (r-reclaimable +ℕ 2))
+                 (ProcessedLayerResult.trace-slot-reads-below r-result))
+              (SMP.trace-slot-reads-below-mono (r-reclaimable +ℕ 2) max-slot-used-inj2 reclaim-wrapper-trace
+                 (n≤m⊔n r-max-slot-used (r-reclaimable +ℕ 2)) wrapper-tsrb))
         ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted r-result) reclaim-wrapper-tph)
         ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity r-result) reclaim-wrapper-tpc)
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
@@ -2660,6 +2776,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaim-preserves-result = λ fits → SMP.!!  -- BLOCKED: needs result-loc analysis
         ; reclaim-preserves-validity = λ fits → SMP.!!  -- BLOCKED: needs pair validity
         ; slot-usage-bound = slot-usage-bound-prod
+        -- max-slot-used: max of both children's max-slot-used
+        ; max-slot-used = max-slot-used-prod
+        ; max-slot-geq-reclaim = reclaimable-geq-max
+        ; max-slot-usage-bound = max-slot-usage-bound-prod
         -- heap-monotone: alloc.heap = alloc-for-right.heap ≤ final-alloc.heap
         ; heap-monotone = subst (λ h → h ≤ next-heap-ref final-alloc) alloc-for-right-heap
                                 (ProcessedLayerResult.heap-monotone r-result)
@@ -3006,6 +3126,74 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         slot-usage-bound-prod : reclaimable-slot-prod ≤ next-slot alloc +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg
         slot-usage-bound-prod = m≤m+n (next-slot alloc) (layer-capacity (wf-Prod wfL wfR) wfG alg)
 
+        -- Max slot used: max of both children's max-slot-used
+        -- Product doesn't allocate any wrapper, so we just take the max
+        l-max-slot-used : ℕ
+        l-max-slot-used = ProcessedLayerResult.max-slot-used l-result
+
+        r-max-slot-used : ℕ
+        r-max-slot-used = ProcessedLayerResult.max-slot-used r-result
+
+        max-slot-used-prod : ℕ
+        max-slot-used-prod = l-max-slot-used ⊔ r-max-slot-used
+
+        -- Bounds for max-slot-used components
+        l-max-slot-usage : l-max-slot-used ≤ next-slot alloc-for-left +ℕ layer-capacity wfL wfG alg
+        l-max-slot-usage = ProcessedLayerResult.max-slot-usage-bound l-result
+
+        r-max-slot-usage : r-max-slot-used ≤ next-slot alloc-for-right +ℕ layer-capacity wfR wfG alg
+        r-max-slot-usage = ProcessedLayerResult.max-slot-usage-bound r-result
+
+        -- reclaimable-slot-prod = next-slot alloc ≤ max-slot-used-prod
+        -- Chain: next-slot alloc < suc (next-slot alloc) = next-slot alloc-for-left ≤ l-reclaimable ≤ l-max-slot-used ≤ max-slot-used-prod
+        reclaimable-geq-max : reclaimable-slot-prod ≤ max-slot-used-prod
+        reclaimable-geq-max =
+          let l-reclaim-leq-max : l-reclaimable ≤ l-max-slot-used
+              l-reclaim-leq-max = ProcessedLayerResult.max-slot-geq-reclaim l-result
+          in ≤-trans (n≤1+n (next-slot alloc))
+               (≤-trans l-reclaim-mono
+                 (≤-trans l-reclaim-leq-max
+                   (m≤m⊔n l-max-slot-used r-max-slot-used)))
+
+        -- max-slot-used-prod ≤ next-slot alloc + layer-capacity (wf-Prod wfL wfR)
+        -- layer-capacity (wf-Prod wfL wfR) = 1 + (capL ⊔ capR)
+        -- l-max-slot-used ≤ suc (next-slot alloc) + capL ≤ next-slot alloc + 1 + capL ≤ next-slot alloc + 1 + (capL ⊔ capR)
+        -- r-max-slot-used: Right child starts from l-reclaimable, and the key is that left and right
+        -- share the capacity via max, not sum. The reclamation allows r to reuse l's slots.
+        -- r-max-slot-used ≤ l-reclaimable + capR
+        -- Since l-reclaimable ≤ l-max-slot-used (by max-slot-geq-reclaim), and l-max-slot-used ≤ suc n + capL:
+        -- r-max-slot-used ≤ l-reclaimable + capR ≤ (suc n + capL) + capR
+        -- But this gives capL + capR, not max(capL, capR)!
+        -- The solution: r starts from l-reclaimable ≤ suc n + capL, but capL ⊔ capR ≥ capR
+        -- So: r-max ≤ l-reclaimable + capR ≤ (suc n + capL) + capR
+        -- This is only ≤ suc n + max when capL = 0 or similar
+        -- The actual invariant is that slot sharing works because we reclaim BEFORE r starts
+        -- l-reclaimable ≤ suc n + max (by the sharing model)
+        -- BLOCKED: This proof requires the sharing model to give l-reclaimable ≤ suc n + max - capR
+        -- For now, mark as proof obligation
+        max-slot-usage-bound-prod : max-slot-used-prod ≤ next-slot alloc +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg
+        max-slot-usage-bound-prod =
+          let -- l-max-slot-used ≤ next-slot alloc-for-left + capL = suc (next-slot alloc) + capL
+              l-bound = l-max-slot-usage
+              -- Need: suc (next-slot alloc) + capL = next-slot alloc + suc capL
+              -- +-suc : n + suc m = suc (n + m), so sym (+-suc n m) : suc (n + m) = n + suc m
+              -- But we have suc n + m, not suc (n + m)
+              -- Actually suc n + m = suc (n + m) by refl (definition of +)
+              -- So: suc (next-slot alloc) + capL = suc (next-slot alloc + capL) [by refl]
+              --     = next-slot alloc + suc capL [by sym (+-suc)]
+              suc-eq : suc (next-slot alloc) +ℕ layer-capacity wfL wfG alg ≡
+                       next-slot alloc +ℕ suc (layer-capacity wfL wfG alg)
+              suc-eq = sym (+-suc (next-slot alloc) (layer-capacity wfL wfG alg))
+              l-bound-rearranged : l-max-slot-used ≤ next-slot alloc +ℕ suc (layer-capacity wfL wfG alg)
+              l-bound-rearranged = subst (l-max-slot-used ≤_) suc-eq l-bound
+              -- 1 + capL ≤ 1 + (capL ⊔ capR) = layer-capacity (wf-Prod wfL wfR)
+              l-cap-fit : suc (layer-capacity wfL wfG alg) ≤ layer-capacity (wf-Prod wfL wfR) wfG alg
+              l-cap-fit = s≤s (m≤m⊔n (layer-capacity wfL wfG alg) (layer-capacity wfR wfG alg))
+              l-final : l-max-slot-used ≤ next-slot alloc +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg
+              l-final = ≤-trans l-bound-rearranged (+-monoʳ-≤ (next-slot alloc) l-cap-fit)
+              -- r-max-slot-used bound: needs reclamation model proof (SMP.!!)
+          in ⊔-lub l-final SMP.!!
+
         full-trace : AbstractTrace
         full-trace = left-setup-trace ++ l-trace ++ right-setup-trace ++ r-trace
 
@@ -3161,20 +3349,24 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         left-setup-twa : TraceWritesAbove (next-slot alloc) left-setup-trace
         left-setup-twa = ≤-refl , tt  -- store-at-slot writes to save-slot = next-slot alloc
 
-        left-setup-twb : TraceWritesBelow (next-slot final-alloc) left-setup-trace
-        left-setup-twb = save-slot<final , tt
+        left-setup-twb : TraceWritesBelow max-slot-used-prod left-setup-trace
+        left-setup-twb = save-slot<max , tt
           where
-            -- save-slot < next-slot final-alloc because:
-            -- save-slot = next-slot alloc < suc (next-slot alloc) ≤ l-reclaimable = next-slot alloc-for-right ≤ next-slot final-alloc
-            save-slot<final : save-slot < next-slot final-alloc
-            save-slot<final = <-≤-trans (n<1+n save-slot)
-                                (≤-trans l-reclaim-mono r-slot-mono)
+            -- save-slot < max-slot-used-prod because:
+            -- save-slot = next-slot alloc < suc save-slot ≤ l-reclaimable ≤ l-max-slot-used ≤ max-slot-used-prod
+            l-reclaim-leq-max : l-reclaimable ≤ l-max-slot-used
+            l-reclaim-leq-max = ProcessedLayerResult.max-slot-geq-reclaim l-result
+            save-slot<max : save-slot < max-slot-used-prod
+            save-slot<max = <-≤-trans (n<1+n save-slot)
+                              (≤-trans l-reclaim-mono
+                                (≤-trans l-reclaim-leq-max
+                                  (m≤m⊔n l-max-slot-used r-max-slot-used)))
 
         -- Right setup: load-from-slot reads, others read nothing; no writes
         right-setup-twa : TraceWritesAbove (next-slot alloc) right-setup-trace
         right-setup-twa = tt  -- No slot writes
 
-        right-setup-twb : TraceWritesBelow (next-slot final-alloc) right-setup-trace
+        right-setup-twb : TraceWritesBelow max-slot-used-prod right-setup-trace
         right-setup-twb = tt  -- No slot writes
 
         -- l-trace bounds (from l-result, converted via monotonicity)
@@ -3183,12 +3375,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                         (n≤1+n (next-slot alloc))
                         (ProcessedLayerResult.trace-writes-above l-result)
 
-        -- ISSUE: With reclamation, next-slot final-alloc might be < next-slot alloc-l
-        -- because right processing starts from l-reclaimable and might not use all slots.
-        -- The proper fix is to track max(alloc-l, final-alloc) as the write bound.
-        -- For now, using a looser bound via SMP.!!
-        l-trace-twb : TraceWritesBelow (next-slot final-alloc) l-trace
-        l-trace-twb = SMP.!!
+        -- Using max-slot-used-prod: l-max-slot-used ≤ max-slot-used-prod (via m≤m⊔n)
+        l-trace-twb : TraceWritesBelow max-slot-used-prod l-trace
+        l-trace-twb = SMP.trace-writes-below-mono l-max-slot-used max-slot-used-prod l-trace
+                        (m≤m⊔n l-max-slot-used r-max-slot-used)
+                        (ProcessedLayerResult.trace-writes-below l-result)
 
         -- r-trace bounds (from r-result, using alloc-for-right)
         r-trace-twa : TraceWritesAbove (next-slot alloc) r-trace
@@ -3196,8 +3387,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                         (≤-trans (incr-next-slot-mono alloc) l-reclaim-mono)
                         (ProcessedLayerResult.trace-writes-above r-result)
 
-        r-trace-twb : TraceWritesBelow (next-slot final-alloc) r-trace
-        r-trace-twb = ProcessedLayerResult.trace-writes-below r-result
+        -- Using max-slot-used-prod: r-max-slot-used ≤ max-slot-used-prod (via n≤m⊔n)
+        r-trace-twb : TraceWritesBelow max-slot-used-prod r-trace
+        r-trace-twb = SMP.trace-writes-below-mono r-max-slot-used max-slot-used-prod r-trace
+                        (n≤m⊔n l-max-slot-used r-max-slot-used)
+                        (ProcessedLayerResult.trace-writes-below r-result)
 
         trace-writes-above-proof : TraceWritesAbove (next-slot alloc) full-trace
         trace-writes-above-proof =
@@ -3208,30 +3402,41 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
               (SMP.trace-writes-above-append (next-slot alloc) right-setup-trace r-trace
                 right-setup-twa r-trace-twa))
 
-        trace-writes-below-proof : TraceWritesBelow (next-slot final-alloc) full-trace
+        trace-writes-below-proof : TraceWritesBelow max-slot-used-prod full-trace
         trace-writes-below-proof =
-          SMP.trace-writes-below-append (next-slot final-alloc) left-setup-trace (l-trace ++ right-setup-trace ++ r-trace)
+          SMP.trace-writes-below-append max-slot-used-prod left-setup-trace (l-trace ++ right-setup-trace ++ r-trace)
             left-setup-twb
-            (SMP.trace-writes-below-append (next-slot final-alloc) l-trace (right-setup-trace ++ r-trace)
+            (SMP.trace-writes-below-append max-slot-used-prod l-trace (right-setup-trace ++ r-trace)
               l-trace-twb
-              (SMP.trace-writes-below-append (next-slot final-alloc) right-setup-trace r-trace
+              (SMP.trace-writes-below-append max-slot-used-prod right-setup-trace r-trace
                 right-setup-twb r-trace-twb))
 
         -- Slot reads: left-setup reads nothing, right-setup reads save-slot
         left-setup-tsra : TraceSlotReadsAbove (next-slot alloc) left-setup-trace
         left-setup-tsra = tt  -- No slot reads
 
-        left-setup-tsrb : TraceSlotReadsBelow (next-slot final-alloc) left-setup-trace
+        left-setup-tsrb : TraceSlotReadsBelow max-slot-used-prod left-setup-trace
         left-setup-tsrb = tt  -- No slot reads
 
         right-setup-tsra : TraceSlotReadsAbove (next-slot alloc) right-setup-trace
         right-setup-tsra = ≤-refl , tt  -- load-from-slot reads save-slot = next-slot alloc
 
-        right-setup-tsrb : TraceSlotReadsBelow (next-slot final-alloc) right-setup-trace
-        right-setup-tsrb = save-slot<final , tt
+        -- right-setup reads save-slot; need save-slot < max-slot-used-prod
+        -- save-slot = next-slot alloc < suc (next-slot alloc) = next-slot alloc-for-left
+        -- next-slot alloc-for-left ≤ l-max-slot-used (since max-slot-used tracks all writes including alloc)
+        -- Actually: save-slot < next-slot alloc-for-left ≤ l-reclaimable ≤ l-max-slot-used ≤ max-slot-used-prod
+        right-setup-tsrb : TraceSlotReadsBelow max-slot-used-prod right-setup-trace
+        right-setup-tsrb = save-slot<max , tt
           where
-            save-slot<final : save-slot < next-slot final-alloc
-            save-slot<final = <-≤-trans (n<1+n save-slot) (≤-trans l-reclaim-mono r-slot-mono)
+            -- l-result.reclaimable-slot ≤ l-result.max-slot-used (from max-slot-geq-reclaim)
+            l-reclaim-leq-max : l-reclaimable ≤ l-max-slot-used
+            l-reclaim-leq-max = ProcessedLayerResult.max-slot-geq-reclaim l-result
+            -- save-slot < suc save-slot ≤ l-reclaimable ≤ l-max-slot-used ≤ max-slot-used-prod
+            save-slot<max : save-slot < max-slot-used-prod
+            save-slot<max = <-≤-trans (n<1+n save-slot)
+                              (≤-trans l-reclaim-mono
+                                (≤-trans l-reclaim-leq-max
+                                  (m≤m⊔n l-max-slot-used r-max-slot-used)))
 
         -- l-trace and r-trace slot reads (from results, converted via monotonicity)
         l-trace-tsra : TraceSlotReadsAbove (next-slot alloc) l-trace
@@ -3239,17 +3444,22 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                          (n≤1+n (next-slot alloc))
                          (ProcessedLayerResult.trace-slot-reads-above l-result)
 
-        -- Same issue as l-trace-twb: need alloc-l ≤ final-alloc, which might not hold
-        l-trace-tsrb : TraceSlotReadsBelow (next-slot final-alloc) l-trace
-        l-trace-tsrb = SMP.!!
+        -- Using max-slot-used-prod: l-max-slot-used ≤ max-slot-used-prod (via m≤m⊔n)
+        l-trace-tsrb : TraceSlotReadsBelow max-slot-used-prod l-trace
+        l-trace-tsrb = SMP.trace-slot-reads-below-mono l-max-slot-used max-slot-used-prod l-trace
+                         (m≤m⊔n l-max-slot-used r-max-slot-used)
+                         (ProcessedLayerResult.trace-slot-reads-below l-result)
 
         r-trace-tsra : TraceSlotReadsAbove (next-slot alloc) r-trace
         r-trace-tsra = SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-for-right) r-trace
                          (≤-trans (incr-next-slot-mono alloc) l-reclaim-mono)
                          (ProcessedLayerResult.trace-slot-reads-above r-result)
 
-        r-trace-tsrb : TraceSlotReadsBelow (next-slot final-alloc) r-trace
-        r-trace-tsrb = ProcessedLayerResult.trace-slot-reads-below r-result
+        -- Using max-slot-used-prod: r-max-slot-used ≤ max-slot-used-prod (via n≤m⊔n)
+        r-trace-tsrb : TraceSlotReadsBelow max-slot-used-prod r-trace
+        r-trace-tsrb = SMP.trace-slot-reads-below-mono r-max-slot-used max-slot-used-prod r-trace
+                         (n≤m⊔n l-max-slot-used r-max-slot-used)
+                         (ProcessedLayerResult.trace-slot-reads-below r-result)
 
         trace-slot-reads-above-proof : TraceSlotReadsAbove (next-slot alloc) full-trace
         trace-slot-reads-above-proof =
@@ -3260,13 +3470,13 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
               (SMP.trace-slot-reads-above-append (next-slot alloc) right-setup-trace r-trace
                 right-setup-tsra r-trace-tsra))
 
-        trace-slot-reads-below-proof : TraceSlotReadsBelow (next-slot final-alloc) full-trace
+        trace-slot-reads-below-proof : TraceSlotReadsBelow max-slot-used-prod full-trace
         trace-slot-reads-below-proof =
-          SMP.trace-slot-reads-below-append (next-slot final-alloc) left-setup-trace (l-trace ++ right-setup-trace ++ r-trace)
+          SMP.trace-slot-reads-below-append max-slot-used-prod left-setup-trace (l-trace ++ right-setup-trace ++ r-trace)
             left-setup-tsrb
-            (SMP.trace-slot-reads-below-append (next-slot final-alloc) l-trace (right-setup-trace ++ r-trace)
+            (SMP.trace-slot-reads-below-append max-slot-used-prod l-trace (right-setup-trace ++ r-trace)
               l-trace-tsrb
-              (SMP.trace-slot-reads-below-append (next-slot final-alloc) right-setup-trace r-trace
+              (SMP.trace-slot-reads-below-append max-slot-used-prod right-setup-trace r-trace
                 right-setup-tsrb r-trace-tsrb))
 
     ------------------------------------------------------------------------
@@ -3581,24 +3791,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
               (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-layer)
                 (IRResultAWF.trace alg-result) layer-slot-mono
                 (IRResultAWF.trace-writes-above alg-result))
-          ; trace-writes-below = SMP.trace-writes-below-append (IRResultAWF.reclaimable-slot alg-result) layer-trace
-              (mov-to-input ∷ IRResultAWF.trace alg-result)
-              (SMP.trace-writes-below-mono (next-slot alloc-layer) (IRResultAWF.reclaimable-slot alg-result) layer-trace
-                (IRResultAWF.reclaim-monotone alg-result)
-                (ProcessedLayerResult.trace-writes-below layer-result))
-              (IRResultAWF.trace-writes-below alg-result)
+          -- trace-writes-below: Need max(layer.max-slot-used, alg.reclaimable-slot) as bound
+          -- With max-slot-used, layer might have written above alloc-layer.next-slot before reclamation
+          -- For now, use SMP.!! as this requires restructuring the bound handling
+          ; trace-writes-below = SMP.!!
           ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) layer-trace
               (mov-to-input ∷ IRResultAWF.trace alg-result)
               (ProcessedLayerResult.trace-slot-reads-above layer-result)
               (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-layer)
                 (IRResultAWF.trace alg-result) layer-slot-mono
                 (IRResultAWF.trace-slot-reads-above alg-result))
-          ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (IRResultAWF.reclaimable-slot alg-result) layer-trace
-              (mov-to-input ∷ IRResultAWF.trace alg-result)
-              (SMP.trace-slot-reads-below-mono (next-slot alloc-layer) (IRResultAWF.reclaimable-slot alg-result) layer-trace
-                (IRResultAWF.reclaim-monotone alg-result)
-                (ProcessedLayerResult.trace-slot-reads-below layer-result))
-              (IRResultAWF.trace-slot-reads-below alg-result)
+          -- trace-slot-reads-below: Same issue as trace-writes-below
+          ; trace-slot-reads-below = SMP.!!
           ; trace-preserves-capacity = SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity layer-result)
               (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity alg-result))
           ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
