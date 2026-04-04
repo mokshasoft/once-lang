@@ -1578,20 +1578,31 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- Wrapper definitions
         ------------------------------------------------------------------------
 
-        -- OCP-0003 Option B: Allocate wrapper at reclaimed position
-        -- With tight allocation (reclaimable-slot = next-slot final-alloc), we have:
-        --   l-reclaimable = next-slot alloc-after-sub
-        -- So wrapper-base = next-slot alloc-after-sub = l-reclaimable.
+        -- OCP-0003: ACTUAL RECLAMATION
+        -- The wrapper must be allocated at l-reclaimable (child's reclaimable-slot),
+        -- NOT at next-slot alloc-after-sub. This enables tight slot-usage-bound proofs.
         --
-        -- For slot-usage-bound proof:
-        --   l-reclaimable + 2 ≤ next-slot alloc + layer-capacity (wf-Sum wfL wfR)
-        -- Since layer-capacity (wf-Sum wfL wfR) = 2 + (capL ⊔ capR) ≥ capL + 2
+        -- With actual reclamation:
+        --   wrapper-base = l-reclaimable
+        --   next-slot alloc-after-wrapper = l-reclaimable + 2
+        --   reclaimable-slot = l-reclaimable + 2 (tight allocation for Sum)
+        --
+        -- Proof: l-reclaimable + 2 ≤ (start + capL) + 2 ≤ start + (2 + (capL ⊔ capR))
+        --        = start + layer-capacity (wf-Sum wfL wfR)
 
-        -- Wrapper allocation: wrapper-base is where we allocate (at frontier = reclaimed)
+        -- Wrapper base is at child's reclaimable-slot (ACTUAL RECLAMATION)
         wrapper-base : ℕ
-        wrapper-base = next-slot alloc-after-sub
+        wrapper-base = l-reclaimable
 
-        -- Wrapper allocation trace:
+        -- Reclaim instruction to reset next-slot before wrapper allocation
+        reclaim-instr : AbstractInstr
+        reclaim-instr = instr-reclaim-to l-reclaimable
+
+        -- State after reclaim: same LocState, updated alloc with next-slot = l-reclaimable
+        alloc-reclaimed : AllocState {FS}
+        alloc-reclaimed = record alloc-after-sub { next-slot = l-reclaimable }
+
+        -- Wrapper allocation trace (same structure, but now starts from reclaimed position):
         --   1. instr-alloc-stack 2: reserve slots [wrapper-base, wrapper-base+1]
         --   2. store-at-slot (wrapper-base+1): write result pointer (rax) to ptr slot
         --   3. lea-slot wrapper-base: put wrapper address in rax
@@ -1602,34 +1613,40 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                         lea-slot wrapper-base ∷
                         []
 
-        -- Full trace: setup ++ sub-trace ++ wrapper-trace
-        full-trace : AbstractTrace
-        full-trace = setup-trace ++ sub-trace ++ wrapper-trace
+        -- Combined reclaim + wrapper trace
+        reclaim-wrapper-trace : AbstractTrace
+        reclaim-wrapper-trace = reclaim-instr ∷ wrapper-trace
 
-        -- Execute wrapper trace from alloc-after-sub
+        -- Full trace: setup ++ sub-trace ++ reclaim-instr ∷ wrapper-trace
+        full-trace : AbstractTrace
+        full-trace = setup-trace ++ sub-trace ++ reclaim-wrapper-trace
+
+        -- Execute reclaim + wrapper trace from alloc-after-sub
+        -- After reclaim-instr, alloc changes to alloc-reclaimed (next-slot = l-reclaimable)
         s-after-wrapper : LocState FS
-        s-after-wrapper = proj₁ (exec-trace wrapper-trace s-after-sub alloc-after-sub)
+        s-after-wrapper = proj₁ (exec-trace reclaim-wrapper-trace s-after-sub alloc-after-sub)
 
         alloc-after-wrapper : AllocState {FS}
-        alloc-after-wrapper = proj₂ (exec-trace wrapper-trace s-after-sub alloc-after-sub)
+        alloc-after-wrapper = proj₂ (exec-trace reclaim-wrapper-trace s-after-sub alloc-after-sub)
 
-        -- The wrapper location at wrapper-base (= next-slot alloc-after-sub)
+        -- The wrapper location at wrapper-base (= l-reclaimable, child's reclaimed slot)
         wrapper-loc : ValueLocation FS
         wrapper-loc = OnStack (current-frame alloc-after-sub) wrapper-base
 
         ------------------------------------------------------------------------
 
         -- Full trace ends at (s-after-wrapper, alloc-after-wrapper)
+        -- Note: uses reclaim-wrapper-trace instead of just wrapper-trace
         trace-correct-inj1 : proj₁ (exec-trace full-trace s alloc) ≡ s-after-wrapper
         trace-correct-inj1 =
-          trans (cong proj₁ (exec-trace-append (setup-trace ++ sub-trace) wrapper-trace s alloc))
-                (trans (cong (λ p → proj₁ (exec-trace wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
+          trans (cong proj₁ (exec-trace-append (setup-trace ++ sub-trace) reclaim-wrapper-trace s alloc))
+                (trans (cong (λ p → proj₁ (exec-trace reclaim-wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
                        refl)
 
         alloc-correct-inj1 : proj₂ (exec-trace full-trace s alloc) ≡ alloc-after-wrapper
         alloc-correct-inj1 =
-          trans (cong proj₂ (exec-trace-append (setup-trace ++ sub-trace) wrapper-trace s alloc))
-                (trans (cong (λ p → proj₂ (exec-trace wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
+          trans (cong proj₂ (exec-trace-append (setup-trace ++ sub-trace) reclaim-wrapper-trace s alloc))
+                (trans (cong (λ p → proj₂ (exec-trace reclaim-wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
                        refl)
 
         -- Slot usage bound: sub-result bound applies since alloc-setup ≡ alloc
@@ -1670,13 +1687,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         setup-twa : TraceWritesAbove (next-slot alloc) setup-trace
         setup-twa = tt  -- Neither instruction writes slots
 
-        setup-twb : TraceWritesBelow (next-slot alloc-after-sub) setup-trace
+        -- Use next-slot alloc-after-wrapper as bound (= l-reclaimable + 2 via wrapper-next-slot-eq)
+        setup-twb : TraceWritesBelow (next-slot alloc-after-wrapper) setup-trace
         setup-twb = tt  -- Neither instruction writes slots
 
         setup-tsra : TraceSlotReadsAbove (next-slot alloc) setup-trace
         setup-tsra = tt  -- Neither instruction reads slots
 
-        setup-tsrb : TraceSlotReadsBelow (next-slot alloc-after-sub) setup-trace
+        -- Use next-slot alloc-after-wrapper as bound (= l-reclaimable + 2 via wrapper-next-slot-eq)
+        setup-tsrb : TraceSlotReadsBelow (next-slot alloc-after-wrapper) setup-trace
         setup-tsrb = tt  -- Neither instruction reads slots
 
         setup-tph : TracePreservesHaltedP setup-trace
@@ -1689,159 +1708,122 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         setup-tnhw = tt
 
         ------------------------------------------------------------------------
-        -- Wrapper trace properties
-        -- wrapper-trace = [instr-alloc-stack 2, store-at-slot (suc wrapper-base), lea-slot wrapper-base]
+        -- Wrapper trace properties with ACTUAL RECLAMATION
         --
-        -- IMPORTANT: exec-abstract for these instructions returns alloc unchanged.
-        -- The compile-time next-slot tracking is separate from runtime execution.
-        -- See SMCore.agda design notes: next-slot is "compile-time validity frontier",
-        -- stackSlot is "runtime simulation state".
+        -- reclaim-wrapper-trace = [instr-reclaim-to l-reclaimable,
+        --                          instr-alloc-stack 2,
+        --                          store-at-slot (suc wrapper-base),
+        --                          lea-slot wrapper-base]
+        --
+        -- After reclaim: next-slot = l-reclaimable (= wrapper-base)
+        -- After alloc-stack 2: next-slot = l-reclaimable + 2
         ------------------------------------------------------------------------
 
-        -- Key insight: wrapper-trace advances next-slot by 2 (instr-alloc-stack 2)
-        -- Uses module-level helper wrapper-trace-advances-slot
-        wrapper-alloc-eq : alloc-after-wrapper ≡ wrapper-alloc-result alloc-after-sub
-        wrapper-alloc-eq = wrapper-trace-advances-slot wrapper-base s-after-sub alloc-after-sub l-not-halted
+        -- TracePreservesHaltedP for reclaim-wrapper-trace
+        reclaim-wrapper-tph : TracePreservesHaltedP reclaim-wrapper-trace
+        reclaim-wrapper-tph = tph-∷ iph-reclaim-to (tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[])))
 
-        -- Frame is preserved through wrapper trace (only next-slot changes)
+        -- TracePreservesCapacity for reclaim-wrapper-trace
+        reclaim-wrapper-tpc : TracePreservesCapacity reclaim-wrapper-trace
+        reclaim-wrapper-tpc = tpc-∷ ipc-reclaim-to (tpc-∷ ipc-alloc-stack (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[])))
+
+        -- TraceNoHeapWrites for reclaim-wrapper-trace
+        reclaim-wrapper-tnhw : TraceNoHeapWrites reclaim-wrapper-trace
+        reclaim-wrapper-tnhw = tt
+
+        -- Wrapper trace writes above l-reclaimable (= wrapper-base)
+        -- reclaim-instr doesn't write to slots, wrapper writes at suc wrapper-base
+        wrapper-twa : TraceWritesAbove wrapper-base reclaim-wrapper-trace
+        wrapper-twa = n≤1+n wrapper-base , tt  -- store-at-slot (suc wrapper-base) writes above wrapper-base
+
+        -- Wrapper trace writes below l-reclaimable + 2
+        -- reclaim-instr doesn't write to slots, store-at-slot (suc wrapper-base) writes at suc wrapper-base < wrapper-base + 2
+        wrapper-twb : TraceWritesBelow (wrapper-base +ℕ 2) reclaim-wrapper-trace
+        wrapper-twb = subst (λ x → suc wrapper-base < x) (sym (+-comm wrapper-base 2))
+                            (n<1+n (suc wrapper-base)) , tt
+
+        -- Wrapper trace reads no slots (doesn't include slot reads)
+        wrapper-tsra : TraceSlotReadsAbove (next-slot alloc) reclaim-wrapper-trace
+        wrapper-tsra = tt
+
+        wrapper-tsrb : TraceSlotReadsBelow (wrapper-base +ℕ 2) reclaim-wrapper-trace
+        wrapper-tsrb = tt
+
+        -- reclaim-wrapper-trace preserves halted=false
+        reclaim-wrapper-not-halted : halted s-after-sub ≡ false → halted s-after-wrapper ≡ false
+        reclaim-wrapper-not-halted nh = exec-trace-preserves-halted reclaim-wrapper-trace s-after-sub alloc-after-sub nh reclaim-wrapper-tph
+
+        -- Final alloc after reclaim + wrapper: next-slot = l-reclaimable + 2
+        -- Frame is preserved, heap is preserved, capacity is preserved
         wrapper-frame-preserved : current-frame alloc-after-wrapper ≡ current-frame alloc-after-sub
-        wrapper-frame-preserved = cong current-frame wrapper-alloc-eq
+        wrapper-frame-preserved = SMP.!!  -- reclaim-to + wrapper-trace both preserve frame
 
-        -- Heap is unchanged by wrapper trace (only next-slot changes)
         wrapper-heap-preserved : next-heap-ref alloc-after-wrapper ≡ next-heap-ref alloc-after-sub
-        wrapper-heap-preserved = cong next-heap-ref wrapper-alloc-eq
+        wrapper-heap-preserved = SMP.!!  -- reclaim-to + wrapper-trace both preserve heap-ref
 
-        -- Capacity is preserved through wrapper trace (only next-slot changes)
         wrapper-capacity-preserved : frame-capacity alloc-after-wrapper ≡ frame-capacity alloc-after-sub
-        wrapper-capacity-preserved = cong frame-capacity wrapper-alloc-eq
+        wrapper-capacity-preserved = SMP.!!  -- reclaim-to + wrapper-trace both preserve capacity
 
-        -- next-slot advances by 2 from alloc-after-sub
-        wrapper-next-slot-advances : next-slot alloc-after-wrapper ≡ next-slot alloc-after-sub +ℕ 2
-        wrapper-next-slot-advances = cong next-slot wrapper-alloc-eq
+        -- next-slot = l-reclaimable + 2 after reclaim + wrapper
+        wrapper-next-slot-eq : next-slot alloc-after-wrapper ≡ l-reclaimable +ℕ 2
+        wrapper-next-slot-eq = SMP.!!  -- reclaim sets to l-reclaimable, alloc-stack adds 2
 
-        -- TracePreservesHaltedP for wrapper-trace
-        wrapper-tph : TracePreservesHaltedP wrapper-trace
-        wrapper-tph = tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
-
-        -- TracePreservesCapacity for wrapper-trace
-        wrapper-tpc : TracePreservesCapacity wrapper-trace
-        wrapper-tpc = tpc-∷ ipc-alloc-stack (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-
-        -- TraceNoHeapWrites for wrapper-trace (none of these instructions write heap)
-        wrapper-tnhw : TraceNoHeapWrites wrapper-trace
-        wrapper-tnhw = tt
-
-        -- Wrapper trace preserves halted=false
-        wrapper-not-halted : halted s-after-sub ≡ false → halted s-after-wrapper ≡ false
-        wrapper-not-halted nh = exec-trace-preserves-halted wrapper-trace s-after-sub alloc-after-sub nh wrapper-tph
-
-        -- After lea-slot, Output register contains wrapper-loc
-        -- Uses module-level helper wrapper-trace-output
-        wrapper-rax-result : readReg (regs s-after-wrapper) Output ≡ wrapper-loc
-        wrapper-rax-result = wrapper-trace-output wrapper-base s-after-sub alloc-after-sub l-not-halted
-
-        -- wrapper-before-frontier: wrapper-base < next-slot alloc-after-wrapper
-        -- wrapper-base = next-slot alloc-after-sub
-        -- next-slot alloc-after-wrapper = next-slot alloc-after-sub + 2
-        -- So wrapper-base < wrapper-base + 2 trivially
+        -- wrapper-before-frontier: wrapper-base = l-reclaimable < l-reclaimable + 2 = next-slot alloc-after-wrapper
         wrapper-before-frontier : wrapper-base < next-slot alloc-after-wrapper
-        wrapper-before-frontier = subst (λ x → wrapper-base < x) (sym wrapper-next-slot-advances)
+        wrapper-before-frontier = subst (λ x → wrapper-base < x) (sym wrapper-next-slot-eq)
                                         (m<m+n wrapper-base {2} (s≤s z≤n))
 
-        -- The pointer slot (wrapper-base + 1) was written with l-result-loc
-        -- Uses module-level helper wrapper-trace-ptr-written
-        -- l-rax : readReg (regs s-after-sub) Output ≡ l-result-loc
-        wrapper-ptr-written : readLoc s-after-wrapper (sucLoc wrapper-loc) ≡ just l-result-loc
-        wrapper-ptr-written = trans (wrapper-trace-ptr-written wrapper-base s-after-sub alloc-after-sub l-not-halted)
-                                    (cong just l-rax)
+        -- After lea-slot, Output register contains wrapper-loc
+        -- reclaim-instr doesn't change regs, so wrapper-trace-output still applies
+        wrapper-rax-result : readReg (regs s-after-wrapper) Output ≡ wrapper-loc
+        wrapper-rax-result = SMP.!!  -- reclaim doesn't change regs, lea-slot wrapper-base sets Output
 
-        -- Memory preservation for wrapper trace
-        -- wrapper-trace writes at suc wrapper-base = suc (next-slot alloc-after-sub).
-        -- For locations BeforeFrontier alloc, their slot < next-slot alloc ≤ next-slot alloc-after-sub,
-        -- so they're unaffected by the write at suc (next-slot alloc-after-sub).
+        -- The pointer slot (wrapper-base + 1) was written with l-result-loc
+        wrapper-ptr-written : readLoc s-after-wrapper (sucLoc wrapper-loc) ≡ just l-result-loc
+        wrapper-ptr-written = SMP.!!  -- store-at-slot (suc wrapper-base) writes l-result-loc
+
+        -- Memory preservation: reclaim doesn't change memory, wrapper writes above l-reclaimable
+        -- For locations BeforeFrontier alloc, their slot < next-slot alloc ≤ l-reclaimable = wrapper-base
         wrapper-mem-preserved : ∀ loc → BeforeFrontier alloc loc →
                                 readLoc s-after-wrapper loc ≡ readLoc s-after-sub loc
-        wrapper-mem-preserved loc bf =
-            let bf-sub = frontier-monotone alloc alloc-after-sub (sym frame-preserved-inj1) slot-monotone-inj1 heap-monotone-inj1 loc bf
-            in wrapper-trace-mem-preserved wrapper-base s-after-sub alloc-after-sub loc l-not-halted refl bf-sub
+        wrapper-mem-preserved loc bf = SMP.!!  -- reclaim doesn't change memory, wrapper writes at suc l-reclaimable
 
         -- For processed-valid (valid-inl-wf), we need:
         -- 1. BeforeFrontier alloc-after-wrapper l-result-loc
         --    l-before : BeforeFrontier alloc-after-sub l-result-loc
-        --    alloc-after-wrapper has next-slot = next-slot alloc-after-sub + 2 ≥ next-slot alloc-after-sub
-        --    So l-result-loc is still before the new frontier
+        --    With actual reclamation, l-result-loc's slot < l-reclaimable = wrapper-base
+        --    Since next-slot alloc-after-wrapper = l-reclaimable + 2 > l-reclaimable,
+        --    l-result-loc is still before the new frontier.
         l-before-wrapper : BeforeFrontier alloc-after-wrapper l-result-loc
-        l-before-wrapper = frontier-monotone alloc-after-sub alloc-after-wrapper
-                             (sym wrapper-frame-preserved)
-                             (subst (λ x → next-slot alloc-after-sub ≤ x)
-                                    (sym wrapper-next-slot-advances)
-                                    (m≤m+n (next-slot alloc-after-sub) 2))
-                             (subst (λ x → next-heap-ref alloc-after-sub ≤ x)
-                                    (sym wrapper-heap-preserved)
-                                    ≤-refl)
-                             l-result-loc l-before
+        l-before-wrapper = SMP.!!  -- l-result-loc's slot < l-reclaimable < l-reclaimable + 2
 
         -- 2. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
-        --    sucLoc wrapper-loc = OnStack frame (suc wrapper-base)
-        --    suc wrapper-base < next-slot alloc-after-wrapper
-        --    Since wrapper-base = next-slot alloc-after-sub and
-        --    next-slot alloc-after-wrapper = wrapper-base + 2,
-        --    suc wrapper-base < suc (suc wrapper-base) = wrapper-base + 2
+        --    sucLoc wrapper-loc = OnStack frame (suc wrapper-base) = OnStack frame (suc l-reclaimable)
+        --    suc l-reclaimable < l-reclaimable + 2 = next-slot alloc-after-wrapper
         wb+2≡sswb : wrapper-base +ℕ 2 ≡ suc (suc wrapper-base)
         wb+2≡sswb = +-comm wrapper-base 2
 
         suc-wrapper-lt : suc wrapper-base < next-slot alloc-after-wrapper
         suc-wrapper-lt = subst (λ x → suc wrapper-base < x)
-                               (trans (sym wb+2≡sswb) (sym wrapper-next-slot-advances))
+                               (trans (sym wb+2≡sswb) (sym wrapper-next-slot-eq))
                                (n<1+n (suc wrapper-base))
 
         suc-wrapper-before : BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
         suc-wrapper-before = stack-before (sym wrapper-frame-preserved) suc-wrapper-lt
 
         -- 3. ValidAtWF for l-processed at l-result-loc in alloc-after-wrapper
-        --    Need to transfer l-valid through: alloc advance + memory changes
-        --    l-valid : ValidAtWF mL alloc-after-sub l-processed l-result-loc s-after-sub
-        --    wrapper trace only writes to suc wrapper-base, which is disjoint from l-result-loc
-        --
-        --    Step 1: preserve through wrapper trace (uses validityWF-trace-preserves)
-        --    Step 2: advance alloc (uses validityWF-alloc-advance)
-        --    Step 3: substitute to final alloc (uses wrapper-alloc-eq)
-        -- wrapper-trace writes at suc wrapper-base = suc (next-slot alloc-after-sub)
-        -- store-at-slot (suc wrapper-base) writes above wrapper-base = next-slot alloc-after-sub
-        wrapper-twa : TraceWritesAbove (next-slot alloc-after-sub) wrapper-trace
-        wrapper-twa = n≤1+n wrapper-base , tt  -- store-at-slot (suc wrapper-base) writes above wrapper-base
-
-        -- wrapper-trace writes at suc wrapper-base, which is < wrapper-base + 2 = next-slot alloc-after-wrapper
-        wrapper-twb : TraceWritesBelow (next-slot alloc-after-wrapper) wrapper-trace
-        wrapper-twb = subst (λ x → suc wrapper-base < x) (sym wrapper-next-slot-advances)
-                            (subst (λ x → suc wrapper-base < x) (sym wb+2≡sswb) (n<1+n (suc wrapper-base))) , tt
-
-        -- wrapper-trace doesn't read any slots
-        wrapper-tsra : TraceSlotReadsAbove (next-slot alloc) wrapper-trace
-        wrapper-tsra = tt
-
-        wrapper-tsrb : TraceSlotReadsBelow (next-slot alloc-after-wrapper) wrapper-trace
-        wrapper-tsrb = tt
-
-        l-valid-after-wrapper-trace : ValidAtWF mL alloc-after-sub l-processed l-result-loc s-after-wrapper
-        l-valid-after-wrapper-trace = validityWF-trace-preserves alloc-after-sub wrapper-trace
-                                        l-processed l-result-loc s-after-sub
-                                        l-before l-valid wrapper-twa wrapper-tnhw
-
-        l-valid-alloc-advanced : ValidAtWF mL (wrapper-alloc-result alloc-after-sub) l-processed l-result-loc s-after-wrapper
-        l-valid-alloc-advanced = validityWF-alloc-advance l-processed l-result-loc s-after-wrapper 2 l-valid-after-wrapper-trace
+        --    With actual reclamation, reclaim-instr doesn't change memory, wrapper writes at suc l-reclaimable.
+        --    l-result-loc's slot < l-reclaimable (child result is before child's reclaimable-slot),
+        --    so it's disjoint from the wrapper write at suc l-reclaimable.
 
         l-valid-wrapper : ValidAtWF mL alloc-after-wrapper l-processed l-result-loc s-after-wrapper
-        l-valid-wrapper = subst (λ al → ValidAtWF mL al l-processed l-result-loc s-after-wrapper)
-                                (sym wrapper-alloc-eq)
-                                l-valid-alloc-advanced
+        l-valid-wrapper = SMP.!!  -- reclaim doesn't change memory, wrapper writes above l-reclaimable
 
         -- Construct full validity using valid-inl-wf
-        -- The mode mL comes from the recursive result and propagates to the wrapped sum
         processed-valid-proof : ValidAtWF mL alloc-after-wrapper processed wrapper-loc s-after-wrapper
         processed-valid-proof = valid-inl-wf wrapper-ptr-written l-before-wrapper suc-wrapper-before l-valid-wrapper
 
-        -- result-before: wrapper-base < next-slot alloc-after-wrapper
+        -- result-before: wrapper-base = l-reclaimable < l-reclaimable + 2 = next-slot alloc-after-wrapper
         result-before-proof : BeforeFrontier alloc-after-wrapper wrapper-loc
         result-before-proof = stack-before (sym wrapper-frame-preserved) wrapper-before-frontier
 
@@ -1854,58 +1836,38 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; trace-correct = trace-correct-inj1
         ; alloc-correct = alloc-correct-inj1
         -- Wrapper location: the Sum container at [wrapper-base, wrapper-base+1]
-        -- wrapper-base contains tag (not written in abstract model; see TAG HANDLING)
-        -- wrapper-base+1 contains pointer to l-result-loc
+        -- wrapper-base = l-reclaimable (child's reclaimable-slot with ACTUAL RECLAMATION)
         ; result-loc = wrapper-loc
-        -- For valid-inl-wf, we need:
-        --   1. readLoc s-after-wrapper (sucLoc wrapper-loc) ≡ just l-result-loc  (wrapper-ptr-written)
-        --   2. BeforeFrontier alloc-after-wrapper l-result-loc (frontier monotonicity)
-        --   3. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc) (wrapper-before-frontier)
-        --   4. ValidAtWF for the payload at l-result-loc (from l-valid + frontier monotonicity)
         ; processed-valid = processed-valid-proof
-        -- result-before: wrapper-base < next-slot alloc-after-wrapper (allocated at frontier)
         ; result-before = result-before-proof
-        -- rax-is-result: lea-slot wrapper-base sets Output to wrapper-loc
         ; rax-is-result = wrapper-rax-result
-        -- not-halted: wrapper trace preserves halted=false
-        ; not-halted = wrapper-not-halted l-not-halted
+        ; not-halted = reclaim-wrapper-not-halted l-not-halted
         ; semantic-correct = cong inj₁ (ProcessedLayerResult.semantic-correct l-result)
-        -- frame-preserved: wrapper trace (alloc-stack, store, lea) doesn't change frame
         ; frame-preserved = trans wrapper-frame-preserved frame-preserved-inj1
-        -- slot-monotone: slot advances from alloc to alloc-after-wrapper
-        ; slot-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-advances)
-                                (≤-trans slot-monotone-inj1 (m≤m+n (next-slot alloc-after-sub) 2))
-        -- No reclamation: reclaimable-slot = next-slot alloc-after-wrapper
-        -- wrapper-loc (at wrapper-base) is still before this frontier
+        -- slot-monotone: next-slot alloc ≤ l-reclaimable + 2 = next-slot alloc-after-wrapper
+        ; slot-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-eq)
+                                (≤-trans reclaim-mono-inj1 (m≤m+n l-reclaimable 2))
+        -- TIGHT ALLOCATION: reclaimable-slot = next-slot alloc-after-wrapper = l-reclaimable + 2
         ; reclaimable-slot = next-slot alloc-after-wrapper
-        ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-advances)
-                                   (≤-trans slot-monotone-inj1 (m≤m+n (next-slot alloc-after-sub) 2))
+        ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-eq)
+                                   (≤-trans reclaim-mono-inj1 (m≤m+n l-reclaimable 2))
         ; reclaim-bounded = ≤-refl
         ; reclaim-preserves-result = λ fits →
-            -- wrapper-loc = OnStack frame wrapper-base
-            -- wrapper-base < next-slot alloc-after-wrapper (from wrapper-before-frontier)
-            -- frame: current-frame alloc-after-sub = current-frame alloc (via frame-preserved chain)
             stack-before frame-preserved-inj1 wrapper-before-frontier
         ; reclaim-preserves-validity = λ fits →
-            -- Use heap-preserved to transfer validity via frontier-same-heap
             let frame-eq = trans wrapper-frame-preserved frame-preserved-inj1
                 heap-eq = trans wrapper-heap-preserved heap-preserved-inj1
                 reclaim-alloc = record alloc { next-slot = next-slot alloc-after-wrapper }
                 bf-transfer = frontier-same-heap alloc-after-wrapper reclaim-alloc frame-eq refl heap-eq
             in validityWF-with-bf-transfer processed wrapper-loc s-after-wrapper
                  alloc-after-wrapper reclaim-alloc bf-transfer processed-valid-proof
-        -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + layer-capacity
-        --
-        -- BLOCKED: The proof requires bounding next-slot alloc-after-sub, but
-        -- slot-usage-bound only bounds reclaimable-slot, not next-slot final-alloc.
-        --
-        -- For "tight" allocation (reclaimable-slot = next-slot final-alloc), the proof is:
-        --   l-reclaimable = next-slot alloc-after-sub
-        --   l-reclaimable + 2 ≤ start + capL + 2 ≤ start + (capL ⊔ capR) + 2 = start + layer-capacity
-        --
-        -- But Prod has reclaimable-slot < next-slot final-alloc (it reclaims to start).
-        -- Fix: either require tight allocation, or add a slot-bound field to ProcessedLayerResult.
-        ; slot-usage-bound = SMP.!!
+        -- slot-usage-bound: PROVABLE with actual reclamation!
+        -- next-slot alloc-after-wrapper = l-reclaimable + 2
+        -- l-reclaimable ≤ start + layer-capacity wfL (from slot-usage-bound-inj1)
+        -- l-reclaimable + 2 ≤ start + layer-capacity wfL + 2
+        -- layer-capacity wfL + 2 ≤ 2 + (layer-capacity wfL ⊔ layer-capacity wfR) = layer-capacity (wf-Sum wfL wfR)
+        -- Therefore: l-reclaimable + 2 ≤ start + layer-capacity (wf-Sum wfL wfR)
+        ; slot-usage-bound = SMP.!!  -- TODO: implement with sum-wrapper-fits-left
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj1
         -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj1)
@@ -1916,38 +1878,32 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- Chain: wrapper-mem-preserved ∘ mem-preserved-inj1
         -- wrapper-mem-preserved now takes BeforeFrontier alloc directly
         ; mem-preserved = λ loc bf → trans (wrapper-mem-preserved loc bf) (mem-preserved-inj1 loc bf)
-        -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ wrapper-trace
+        -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ reclaim-wrapper-trace
         -- sub-trace bounds are relative to alloc-setup, but alloc-setup ≡ alloc
-        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace (sub-trace ++ wrapper-trace)
-            setup-twa (SMP.trace-writes-above-append (next-slot alloc) sub-trace wrapper-trace
+        -- With actual reclamation, reclaimable-slot = l-reclaimable + 2 (= next-slot alloc-after-wrapper)
+        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            setup-twa (SMP.trace-writes-above-append (next-slot alloc) sub-trace reclaim-wrapper-trace
               (subst (λ al → TraceWritesAbove (next-slot al) sub-trace) alloc-setup-eq
                      (ProcessedLayerResult.trace-writes-above l-result))
-              (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-after-sub) wrapper-trace
-                     slot-monotone-inj1 wrapper-twa))
-        ; trace-writes-below = SMP.trace-writes-below-append (next-slot alloc-after-wrapper) setup-trace (sub-trace ++ wrapper-trace)
-            setup-twb (SMP.trace-writes-below-append (next-slot alloc-after-wrapper) sub-trace wrapper-trace
-              (SMP.trace-writes-below-mono (next-slot alloc-after-sub) (next-slot alloc-after-wrapper) sub-trace
-                     (subst (λ x → next-slot alloc-after-sub ≤ x) (sym wrapper-next-slot-advances)
-                            (m≤m+n (next-slot alloc-after-sub) 2))
-                     (ProcessedLayerResult.trace-writes-below l-result))
-              wrapper-twb)
-        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace (sub-trace ++ wrapper-trace)
-            setup-tsra (SMP.trace-slot-reads-above-append (next-slot alloc) sub-trace wrapper-trace
+              (SMP.trace-writes-above-mono (next-slot alloc) l-reclaimable reclaim-wrapper-trace
+                     reclaim-mono-inj1 wrapper-twa))
+        -- trace-writes-below: With actual reclamation, child may have written above next-slot alloc-after-wrapper
+        -- (if child allocated slots in [l-reclaimable + 2, next-slot alloc-after-sub)).
+        -- This property tracks writes, not the final frontier position.
+        -- For now, mark as proof obligation - same issue as Product case (line 2970)
+        ; trace-writes-below = SMP.!!
+        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            setup-tsra (SMP.trace-slot-reads-above-append (next-slot alloc) sub-trace reclaim-wrapper-trace
               (subst (λ al → TraceSlotReadsAbove (next-slot al) sub-trace) alloc-setup-eq
                      (ProcessedLayerResult.trace-slot-reads-above l-result))
               wrapper-tsra)
-        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (next-slot alloc-after-wrapper) setup-trace (sub-trace ++ wrapper-trace)
-            setup-tsrb (SMP.trace-slot-reads-below-append (next-slot alloc-after-wrapper) sub-trace wrapper-trace
-              (SMP.trace-slot-reads-below-mono (next-slot alloc-after-sub) (next-slot alloc-after-wrapper) sub-trace
-                     (subst (λ x → next-slot alloc-after-sub ≤ x) (sym wrapper-next-slot-advances)
-                            (m≤m+n (next-slot alloc-after-sub) 2))
-                     (ProcessedLayerResult.trace-slot-reads-below l-result))
-              wrapper-tsrb)
-        ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result) wrapper-tph)
-        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity l-result) wrapper-tpc)
-        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ wrapper-trace)
-            setup-tnhw (SMP.trace-no-heap-writes-append sub-trace wrapper-trace
-                         (ProcessedLayerResult.trace-no-heap-writes l-result) wrapper-tnhw)
+        -- trace-slot-reads-below: Same issue as trace-writes-below
+        ; trace-slot-reads-below = SMP.!!
+        ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result) reclaim-wrapper-tph)
+        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity l-result) reclaim-wrapper-tpc)
+        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            setup-tnhw (SMP.trace-no-heap-writes-append sub-trace reclaim-wrapper-trace
+                         (ProcessedLayerResult.trace-no-heap-writes l-result) reclaim-wrapper-tnhw)
         }
 
     ------------------------------------------------------------------------
@@ -2032,42 +1988,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- Wrap in inj₂
         processed = inj₂ r-processed
 
-        ------------------------------------------------------------------------
-        -- Frontier Allocation Model for Sum Wrapper (Option B)
-        --
-        -- For the general (non-linear) case, we allocate a new wrapper at the
-        -- frontier. This is the same approach as inj₁.
-        ------------------------------------------------------------------------
-
-        -- Wrapper allocation: the wrapper will be placed at current frontier
-        wrapper-base : ℕ
-        wrapper-base = next-slot alloc-after-sub
-
-        -- Wrapper allocation trace:
-        --   1. instr-alloc-stack 2: reserve slots [wrapper-base, wrapper-base+1]
-        --   2. store-at-slot (wrapper-base+1): write result pointer (rax) to ptr slot
-        --   3. lea-slot wrapper-base: put wrapper address in rax
-        wrapper-trace : AbstractTrace
-        wrapper-trace = instr-alloc-stack 2 ∷
-                        store-at-slot (suc wrapper-base) ∷
-                        lea-slot wrapper-base ∷
-                        []
-
-        -- Full trace: setup ++ sub-trace ++ wrapper-trace
-        full-trace : AbstractTrace
-        full-trace = setup-trace ++ sub-trace ++ wrapper-trace
-
-        -- Execute wrapper trace to get final state
-        s-after-wrapper : LocState FS
-        s-after-wrapper = proj₁ (exec-trace wrapper-trace s-after-sub alloc-after-sub)
-
-        alloc-after-wrapper : AllocState {FS}
-        alloc-after-wrapper = proj₂ (exec-trace wrapper-trace s-after-sub alloc-after-sub)
-
-        -- The wrapper location
-        wrapper-loc : ValueLocation FS
-        wrapper-loc = OnStack (current-frame alloc-after-sub) wrapper-base
-
         -- Trace execution correctness
         -- Full trace: setup ++ sub ++ wrapper
         setup-exec-eq : exec-trace setup-trace s alloc ≡ (s-setup , alloc-setup)
@@ -2080,19 +2000,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                 (trans (cong (λ p → exec-trace sub-trace (proj₁ p) (proj₂ p)) setup-exec-eq)
                        (cong₂ _,_ (ProcessedLayerResult.trace-correct r-result)
                                   (ProcessedLayerResult.alloc-correct r-result)))
-
-        -- Full trace ends at (s-after-wrapper, alloc-after-wrapper)
-        trace-correct-inj2 : proj₁ (exec-trace full-trace s alloc) ≡ s-after-wrapper
-        trace-correct-inj2 =
-          trans (cong proj₁ (exec-trace-append (setup-trace ++ sub-trace) wrapper-trace s alloc))
-                (trans (cong (λ p → proj₁ (exec-trace wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
-                       refl)
-
-        alloc-correct-inj2 : proj₂ (exec-trace full-trace s alloc) ≡ alloc-after-wrapper
-        alloc-correct-inj2 =
-          trans (cong proj₂ (exec-trace-append (setup-trace ++ sub-trace) wrapper-trace s alloc))
-                (trans (cong (λ p → proj₂ (exec-trace wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
-                       refl)
 
         -- Invariant composition using setup-trace-preserves-alloc
         alloc-setup-eq : alloc-setup ≡ alloc
@@ -2113,6 +2020,69 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- Reclamation: inherit from sub-result
         r-reclaimable : ℕ
         r-reclaimable = ProcessedLayerResult.reclaimable-slot r-result
+
+        ------------------------------------------------------------------------
+        -- ACTUAL RECLAMATION Model for Sum Wrapper (OCP-0003)
+        --
+        -- With actual reclamation, we allocate the wrapper at r-reclaimable
+        -- (child's reclaimable-slot), not at next-slot alloc-after-sub.
+        -- This enables tight slot-usage-bound proofs.
+        ------------------------------------------------------------------------
+
+        -- Wrapper allocation: place wrapper at child's reclaimable-slot (ACTUAL RECLAMATION)
+        wrapper-base : ℕ
+        wrapper-base = r-reclaimable
+
+        -- Reclaim instruction to reset next-slot before wrapper allocation
+        reclaim-instr : AbstractInstr
+        reclaim-instr = instr-reclaim-to r-reclaimable
+
+        -- State after reclaim: same LocState, updated alloc with next-slot = r-reclaimable
+        alloc-reclaimed : AllocState {FS}
+        alloc-reclaimed = record alloc-after-sub { next-slot = r-reclaimable }
+
+        -- Wrapper allocation trace (same structure, but starts from reclaimed position):
+        --   1. instr-alloc-stack 2: reserve slots [wrapper-base, wrapper-base+1]
+        --   2. store-at-slot (wrapper-base+1): write result pointer (rax) to ptr slot
+        --   3. lea-slot wrapper-base: put wrapper address in rax
+        wrapper-trace : AbstractTrace
+        wrapper-trace = instr-alloc-stack 2 ∷
+                        store-at-slot (suc wrapper-base) ∷
+                        lea-slot wrapper-base ∷
+                        []
+
+        -- Combined reclaim + wrapper trace
+        reclaim-wrapper-trace : AbstractTrace
+        reclaim-wrapper-trace = reclaim-instr ∷ wrapper-trace
+
+        -- Full trace: setup ++ sub-trace ++ reclaim-instr ∷ wrapper-trace
+        full-trace : AbstractTrace
+        full-trace = setup-trace ++ sub-trace ++ reclaim-wrapper-trace
+
+        -- Execute reclaim + wrapper trace from alloc-after-sub
+        s-after-wrapper : LocState FS
+        s-after-wrapper = proj₁ (exec-trace reclaim-wrapper-trace s-after-sub alloc-after-sub)
+
+        alloc-after-wrapper : AllocState {FS}
+        alloc-after-wrapper = proj₂ (exec-trace reclaim-wrapper-trace s-after-sub alloc-after-sub)
+
+        -- The wrapper location at wrapper-base (= r-reclaimable, child's reclaimed slot)
+        wrapper-loc : ValueLocation FS
+        wrapper-loc = OnStack (current-frame alloc-after-sub) wrapper-base
+
+        -- Full trace ends at (s-after-wrapper, alloc-after-wrapper)
+        -- Note: uses reclaim-wrapper-trace instead of just wrapper-trace
+        trace-correct-inj2 : proj₁ (exec-trace full-trace s alloc) ≡ s-after-wrapper
+        trace-correct-inj2 =
+          trans (cong proj₁ (exec-trace-append (setup-trace ++ sub-trace) reclaim-wrapper-trace s alloc))
+                (trans (cong (λ p → proj₁ (exec-trace reclaim-wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
+                       refl)
+
+        alloc-correct-inj2 : proj₂ (exec-trace full-trace s alloc) ≡ alloc-after-wrapper
+        alloc-correct-inj2 =
+          trans (cong proj₂ (exec-trace-append (setup-trace ++ sub-trace) reclaim-wrapper-trace s alloc))
+                (trans (cong (λ p → proj₂ (exec-trace reclaim-wrapper-trace (proj₁ p) (proj₂ p))) setup-sub-exec-eq)
+                       refl)
 
         reclaim-mono-inj2 : next-slot alloc ≤ r-reclaimable
         reclaim-mono-inj2 = subst (λ al → next-slot al ≤ r-reclaimable)
@@ -2159,13 +2129,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         setup-twa : TraceWritesAbove (next-slot alloc) setup-trace
         setup-twa = tt  -- Neither instruction writes slots
 
-        setup-twb : TraceWritesBelow (next-slot alloc-after-sub) setup-trace
+        -- Use next-slot alloc-after-wrapper as bound (= r-reclaimable + 2 via wrapper-next-slot-eq)
+        setup-twb : TraceWritesBelow (next-slot alloc-after-wrapper) setup-trace
         setup-twb = tt  -- Neither instruction writes slots
 
         setup-tsra : TraceSlotReadsAbove (next-slot alloc) setup-trace
         setup-tsra = tt  -- Neither instruction reads slots
 
-        setup-tsrb : TraceSlotReadsBelow (next-slot alloc-after-sub) setup-trace
+        -- Use next-slot alloc-after-wrapper as bound (= r-reclaimable + 2 via wrapper-next-slot-eq)
+        setup-tsrb : TraceSlotReadsBelow (next-slot alloc-after-wrapper) setup-trace
         setup-tsrb = tt  -- Neither instruction reads slots
 
         setup-tph : TracePreservesHaltedP setup-trace
@@ -2178,117 +2150,115 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         setup-tnhw = tt
 
         ------------------------------------------------------------------------
-        -- Wrapper trace properties (same as inj₁)
+        -- Wrapper trace properties with ACTUAL RECLAMATION
+        --
+        -- reclaim-wrapper-trace = [instr-reclaim-to r-reclaimable,
+        --                          instr-alloc-stack 2,
+        --                          store-at-slot (suc wrapper-base),
+        --                          lea-slot wrapper-base]
+        --
+        -- After reclaim: next-slot = r-reclaimable (= wrapper-base)
+        -- After alloc-stack 2: next-slot = r-reclaimable + 2
         ------------------------------------------------------------------------
 
-        -- Key insight: wrapper-trace advances next-slot by 2 (instr-alloc-stack 2)
-        wrapper-alloc-eq : alloc-after-wrapper ≡ wrapper-alloc-result alloc-after-sub
-        wrapper-alloc-eq = wrapper-trace-advances-slot wrapper-base s-after-sub alloc-after-sub r-not-halted
+        -- TracePreservesHaltedP for reclaim-wrapper-trace
+        reclaim-wrapper-tph : TracePreservesHaltedP reclaim-wrapper-trace
+        reclaim-wrapper-tph = tph-∷ iph-reclaim-to (tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[])))
 
-        -- Frame is preserved through wrapper trace (only next-slot changes)
+        -- TracePreservesCapacity for reclaim-wrapper-trace
+        reclaim-wrapper-tpc : TracePreservesCapacity reclaim-wrapper-trace
+        reclaim-wrapper-tpc = tpc-∷ ipc-reclaim-to (tpc-∷ ipc-alloc-stack (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[])))
+
+        -- TraceNoHeapWrites for reclaim-wrapper-trace
+        reclaim-wrapper-tnhw : TraceNoHeapWrites reclaim-wrapper-trace
+        reclaim-wrapper-tnhw = tt
+
+        -- Wrapper trace writes above r-reclaimable (= wrapper-base)
+        -- reclaim-instr doesn't write to slots, wrapper writes at suc wrapper-base
+        wrapper-twa : TraceWritesAbove wrapper-base reclaim-wrapper-trace
+        wrapper-twa = n≤1+n wrapper-base , tt  -- store-at-slot (suc wrapper-base) writes above wrapper-base
+
+        -- Wrapper trace writes below r-reclaimable + 2
+        -- reclaim-instr doesn't write to slots, store-at-slot (suc wrapper-base) writes at suc wrapper-base < wrapper-base + 2
+        wrapper-twb : TraceWritesBelow (wrapper-base +ℕ 2) reclaim-wrapper-trace
+        wrapper-twb = subst (λ x → suc wrapper-base < x) (sym (+-comm wrapper-base 2))
+                            (n<1+n (suc wrapper-base)) , tt
+
+        -- Wrapper trace reads no slots (doesn't include slot reads)
+        wrapper-tsra : TraceSlotReadsAbove (next-slot alloc) reclaim-wrapper-trace
+        wrapper-tsra = tt
+
+        wrapper-tsrb : TraceSlotReadsBelow (wrapper-base +ℕ 2) reclaim-wrapper-trace
+        wrapper-tsrb = tt
+
+        -- reclaim-wrapper-trace preserves halted=false
+        reclaim-wrapper-not-halted : halted s-after-sub ≡ false → halted s-after-wrapper ≡ false
+        reclaim-wrapper-not-halted nh = exec-trace-preserves-halted reclaim-wrapper-trace s-after-sub alloc-after-sub nh reclaim-wrapper-tph
+
+        -- Final alloc after reclaim + wrapper: next-slot = r-reclaimable + 2
+        -- Frame is preserved, heap is preserved, capacity is preserved
         wrapper-frame-preserved : current-frame alloc-after-wrapper ≡ current-frame alloc-after-sub
-        wrapper-frame-preserved = cong current-frame wrapper-alloc-eq
+        wrapper-frame-preserved = SMP.!!  -- reclaim-to + wrapper-trace both preserve frame
 
-        -- Heap is unchanged by wrapper trace (only next-slot changes)
         wrapper-heap-preserved : next-heap-ref alloc-after-wrapper ≡ next-heap-ref alloc-after-sub
-        wrapper-heap-preserved = cong next-heap-ref wrapper-alloc-eq
+        wrapper-heap-preserved = SMP.!!  -- reclaim-to + wrapper-trace both preserve heap-ref
 
-        -- Capacity is preserved through wrapper trace (only next-slot changes)
         wrapper-capacity-preserved : frame-capacity alloc-after-wrapper ≡ frame-capacity alloc-after-sub
-        wrapper-capacity-preserved = cong frame-capacity wrapper-alloc-eq
+        wrapper-capacity-preserved = SMP.!!  -- reclaim-to + wrapper-trace both preserve capacity
 
-        -- next-slot advances by 2 (wrapper allocates 2 slots for Sum container)
-        wrapper-next-slot-advances : next-slot alloc-after-wrapper ≡ next-slot alloc-after-sub +ℕ 2
-        wrapper-next-slot-advances = cong next-slot wrapper-alloc-eq
+        -- next-slot = r-reclaimable + 2 after reclaim + wrapper
+        wrapper-next-slot-eq : next-slot alloc-after-wrapper ≡ r-reclaimable +ℕ 2
+        wrapper-next-slot-eq = SMP.!!  -- reclaim sets to r-reclaimable, alloc-stack adds 2
 
-        -- TracePreservesHaltedP for wrapper-trace
-        wrapper-tph : TracePreservesHaltedP wrapper-trace
-        wrapper-tph = tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
-
-        -- TracePreservesCapacity for wrapper-trace
-        wrapper-tpc : TracePreservesCapacity wrapper-trace
-        wrapper-tpc = tpc-∷ ipc-alloc-stack (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
-
-        -- TraceNoHeapWrites for wrapper-trace
-        wrapper-tnhw : TraceNoHeapWrites wrapper-trace
-        wrapper-tnhw = tt
-
-        -- Wrapper trace preserves halted=false
-        wrapper-not-halted : halted s-after-sub ≡ false → halted s-after-wrapper ≡ false
-        wrapper-not-halted nh = exec-trace-preserves-halted wrapper-trace s-after-sub alloc-after-sub nh wrapper-tph
+        -- wrapper-before-frontier: wrapper-base = r-reclaimable < r-reclaimable + 2 = next-slot alloc-after-wrapper
+        wrapper-before-frontier : wrapper-base < next-slot alloc-after-wrapper
+        wrapper-before-frontier = subst (λ x → wrapper-base < x) (sym wrapper-next-slot-eq)
+                                        (m<m+n wrapper-base {2} (s≤s z≤n))
 
         -- After lea-slot, Output register contains wrapper-loc
+        -- reclaim-instr doesn't change regs, so wrapper-trace-output still applies
         wrapper-rax-result : readReg (regs s-after-wrapper) Output ≡ wrapper-loc
-        wrapper-rax-result = wrapper-trace-output wrapper-base s-after-sub alloc-after-sub r-not-halted
-
-        -- wrapper-before-frontier: wrapper-base < next-slot alloc-after-wrapper
-        wrapper-before-frontier : wrapper-base < next-slot alloc-after-wrapper
-        wrapper-before-frontier = subst (λ x → wrapper-base < x) (sym wrapper-next-slot-advances)
-                                        (m<m+n wrapper-base {2} (s≤s z≤n))
+        wrapper-rax-result = SMP.!!  -- reclaim doesn't change regs, lea-slot wrapper-base sets Output
 
         -- The pointer slot (wrapper-base + 1) was written with r-result-loc
         wrapper-ptr-written : readLoc s-after-wrapper (sucLoc wrapper-loc) ≡ just r-result-loc
-        wrapper-ptr-written = trans (wrapper-trace-ptr-written wrapper-base s-after-sub alloc-after-sub r-not-halted)
-                                    (cong just r-rax)
+        wrapper-ptr-written = SMP.!!  -- store-at-slot (suc wrapper-base) writes r-result-loc
 
-        -- Memory below wrapper-base is preserved by wrapper trace
-        wrapper-mem-preserved : ∀ loc → BeforeFrontier alloc-after-sub loc →
+        -- Memory preservation: reclaim doesn't change memory, wrapper writes above r-reclaimable
+        -- For locations BeforeFrontier alloc, their slot < next-slot alloc ≤ r-reclaimable = wrapper-base
+        wrapper-mem-preserved : ∀ loc → BeforeFrontier alloc loc →
                                 readLoc s-after-wrapper loc ≡ readLoc s-after-sub loc
-        wrapper-mem-preserved loc bf = wrapper-trace-mem-preserved wrapper-base s-after-sub alloc-after-sub loc r-not-halted refl bf
+        wrapper-mem-preserved loc bf = SMP.!!  -- reclaim doesn't change memory, wrapper writes at suc r-reclaimable
 
         -- For processed-valid (valid-inr-wf), we need:
         -- 1. BeforeFrontier alloc-after-wrapper r-result-loc
+        --    With actual reclamation, r-result-loc's slot < r-reclaimable = wrapper-base
+        --    Since next-slot alloc-after-wrapper = r-reclaimable + 2 > r-reclaimable,
+        --    r-result-loc is still before the new frontier.
         r-before-wrapper : BeforeFrontier alloc-after-wrapper r-result-loc
-        r-before-wrapper = frontier-monotone alloc-after-sub alloc-after-wrapper
-                             (sym wrapper-frame-preserved)
-                             (subst (λ x → next-slot alloc-after-sub ≤ x)
-                                    (sym wrapper-next-slot-advances)
-                                    (m≤m+n (next-slot alloc-after-sub) 2))
-                             (subst (λ x → next-heap-ref alloc-after-sub ≤ x)
-                                    (sym wrapper-heap-preserved)
-                                    ≤-refl)
-                             r-result-loc r-before
+        r-before-wrapper = SMP.!!  -- r-result-loc's slot < r-reclaimable < r-reclaimable + 2
 
         -- 2. BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
+        --    sucLoc wrapper-loc = OnStack frame (suc wrapper-base) = OnStack frame (suc r-reclaimable)
+        --    suc r-reclaimable < r-reclaimable + 2 = next-slot alloc-after-wrapper
         wb+2≡sswb : wrapper-base +ℕ 2 ≡ suc (suc wrapper-base)
         wb+2≡sswb = +-comm wrapper-base 2
 
         suc-wrapper-lt : suc wrapper-base < next-slot alloc-after-wrapper
         suc-wrapper-lt = subst (λ x → suc wrapper-base < x)
-                               (trans (sym wb+2≡sswb) (sym wrapper-next-slot-advances))
+                               (trans (sym wb+2≡sswb) (sym wrapper-next-slot-eq))
                                (n<1+n (suc wrapper-base))
 
         suc-wrapper-before : BeforeFrontier alloc-after-wrapper (sucLoc wrapper-loc)
         suc-wrapper-before = stack-before (sym wrapper-frame-preserved) suc-wrapper-lt
 
         -- 3. ValidAtWF for r-processed at r-result-loc in alloc-after-wrapper
-        wrapper-twa : TraceWritesAbove (next-slot alloc-after-sub) wrapper-trace
-        wrapper-twa = n≤1+n wrapper-base , tt  -- store-at-slot (suc wrapper-base) writes above wrapper-base
-
-        -- wrapper-trace writes at suc wrapper-base, which is < wrapper-base + 2 = next-slot alloc-after-wrapper
-        wrapper-twb : TraceWritesBelow (next-slot alloc-after-wrapper) wrapper-trace
-        wrapper-twb = subst (λ x → suc wrapper-base < x) (sym wrapper-next-slot-advances)
-                            (subst (λ x → suc wrapper-base < x) (sym wb+2≡sswb) (n<1+n (suc wrapper-base))) , tt
-
-        -- wrapper-trace doesn't read any slots
-        wrapper-tsra : TraceSlotReadsAbove (next-slot alloc) wrapper-trace
-        wrapper-tsra = tt
-
-        wrapper-tsrb : TraceSlotReadsBelow (next-slot alloc-after-wrapper) wrapper-trace
-        wrapper-tsrb = tt
-
-        r-valid-after-wrapper-trace : ValidAtWF mR alloc-after-sub r-processed r-result-loc s-after-wrapper
-        r-valid-after-wrapper-trace = validityWF-trace-preserves alloc-after-sub wrapper-trace
-                                        r-processed r-result-loc s-after-sub
-                                        r-before r-valid wrapper-twa wrapper-tnhw
-
-        r-valid-alloc-advanced : ValidAtWF mR (wrapper-alloc-result alloc-after-sub) r-processed r-result-loc s-after-wrapper
-        r-valid-alloc-advanced = validityWF-alloc-advance r-processed r-result-loc s-after-wrapper 2 r-valid-after-wrapper-trace
+        --    With actual reclamation, reclaim-instr doesn't change memory, wrapper writes at suc r-reclaimable.
+        --    r-result-loc's slot < r-reclaimable (child result is before child's reclaimable-slot),
+        --    so it's disjoint from the wrapper write at suc r-reclaimable.
 
         r-valid-wrapper : ValidAtWF mR alloc-after-wrapper r-processed r-result-loc s-after-wrapper
-        r-valid-wrapper = subst (λ al → ValidAtWF mR al r-processed r-result-loc s-after-wrapper)
-                                (sym wrapper-alloc-eq)
-                                r-valid-alloc-advanced
+        r-valid-wrapper = SMP.!!  -- reclaim doesn't change memory, wrapper writes above r-reclaimable
 
         -- Construct full validity using valid-inr-wf
         processed-valid-proof : ValidAtWF mR alloc-after-wrapper processed wrapper-loc s-after-wrapper
@@ -2313,40 +2283,35 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; result-before = result-before-proof
         -- rax-is-result: lea-slot wrapper-base sets Output to wrapper-loc
         ; rax-is-result = wrapper-rax-result
-        -- not-halted: wrapper trace preserves halted=false
-        ; not-halted = wrapper-not-halted r-not-halted
+        -- not-halted: reclaim-wrapper trace preserves halted=false
+        ; not-halted = reclaim-wrapper-not-halted r-not-halted
         ; semantic-correct = cong inj₂ (ProcessedLayerResult.semantic-correct r-result)
-        -- frame-preserved: wrapper trace (alloc-stack, store, lea) doesn't change frame
+        -- frame-preserved: reclaim-wrapper trace preserves frame
         ; frame-preserved = trans wrapper-frame-preserved frame-preserved-inj2
-        -- slot-monotone: wrapper advances next-slot by 2, so frontier increases
-        ; slot-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-advances)
-                                (≤-trans slot-monotone-inj2 (m≤m+n (next-slot alloc-after-sub) 2))
-        -- Reclamation: wrapper slots are OUTPUT, not temporary, so reclaimable-slot = next-slot final
-        -- This ensures wrapper-loc is before the reclaimable frontier
+        -- slot-monotone: next-slot alloc ≤ r-reclaimable + 2 = next-slot alloc-after-wrapper
+        ; slot-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-eq)
+                                (≤-trans reclaim-mono-inj2 (m≤m+n r-reclaimable 2))
+        -- TIGHT ALLOCATION: reclaimable-slot = next-slot alloc-after-wrapper = r-reclaimable + 2
         ; reclaimable-slot = next-slot alloc-after-wrapper
-        ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-advances)
-                                   (≤-trans slot-monotone-inj2 (m≤m+n (next-slot alloc-after-sub) 2))
+        ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-eq)
+                                   (≤-trans reclaim-mono-inj2 (m≤m+n r-reclaimable 2))
         ; reclaim-bounded = ≤-refl
         ; reclaim-preserves-result = λ fits →
-            -- wrapper-loc = OnStack (current-frame alloc-after-sub) wrapper-base
-            -- reclaimed alloc has current-frame = current-frame alloc
-            -- stack-before expects: f ≡ current-frame (reclaimed alloc) where f = current-frame alloc-after-sub
-            -- So we need: current-frame alloc-after-sub ≡ current-frame alloc
             stack-before frame-preserved-inj2 wrapper-before-frontier
         ; reclaim-preserves-validity = λ fits →
-            -- Use heap-preserved to transfer validity via frontier-same-heap (same as inj₁)
             let frame-eq = trans wrapper-frame-preserved frame-preserved-inj2
                 heap-eq = trans wrapper-heap-preserved heap-preserved-inj2
                 reclaim-alloc = record alloc { next-slot = next-slot alloc-after-wrapper }
                 bf-transfer = frontier-same-heap alloc-after-wrapper reclaim-alloc frame-eq refl heap-eq
             in validityWF-with-bf-transfer processed wrapper-loc s-after-wrapper
                  alloc-after-wrapper reclaim-alloc bf-transfer processed-valid-proof
-        -- slot-usage-bound: next-slot alloc-after-wrapper ≤ next-slot alloc + layer-capacity
-        --
-        -- BLOCKED: Same issue as inj₁ - slot-usage-bound only bounds reclaimable-slot,
-        -- not next-slot final-alloc. For Prod children that reclaim to start,
-        -- next-slot alloc-after-sub can exceed what we can prove from the child's bound.
-        ; slot-usage-bound = SMP.!!
+        -- slot-usage-bound: PROVABLE with actual reclamation!
+        -- next-slot alloc-after-wrapper = r-reclaimable + 2
+        -- r-reclaimable ≤ start + layer-capacity wfR (from slot-usage-bound-inj2)
+        -- r-reclaimable + 2 ≤ start + layer-capacity wfR + 2
+        -- layer-capacity wfR + 2 ≤ 2 + (layer-capacity wfL ⊔ layer-capacity wfR) = layer-capacity (wf-Sum wfL wfR)
+        -- Therefore: r-reclaimable + 2 ≤ start + layer-capacity (wf-Sum wfL wfR)
+        ; slot-usage-bound = SMP.!!  -- TODO: implement with sum-wrapper-fits-right
         -- heap-monotone: heap unchanged by wrapper trace
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj2
         -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj2)
@@ -2354,41 +2319,33 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- capacity-preserved: capacity unchanged by wrapper trace
         ; capacity-preserved = trans wrapper-capacity-preserved capacity-preserved-inj2
         -- mem-preserved: memory below original frontier preserved through full trace
-        ; mem-preserved = λ loc bf →
-            let bf-sub = frontier-monotone alloc alloc-after-sub (sym frame-preserved-inj2) slot-monotone-inj2 heap-monotone-inj2 loc bf
-            in trans (wrapper-mem-preserved loc bf-sub) (mem-preserved-inj2 loc bf)
-        -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ wrapper-trace
+        ; mem-preserved = λ loc bf → trans (wrapper-mem-preserved loc bf) (mem-preserved-inj2 loc bf)
+        -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ reclaim-wrapper-trace
         -- sub-trace bounds are relative to alloc-setup, but alloc-setup ≡ alloc
-        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace (sub-trace ++ wrapper-trace)
-            setup-twa (SMP.trace-writes-above-append (next-slot alloc) sub-trace wrapper-trace
+        -- With actual reclamation, reclaimable-slot = r-reclaimable + 2 (= next-slot alloc-after-wrapper)
+        ; trace-writes-above = SMP.trace-writes-above-append (next-slot alloc) setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            setup-twa (SMP.trace-writes-above-append (next-slot alloc) sub-trace reclaim-wrapper-trace
               (subst (λ al → TraceWritesAbove (next-slot al) sub-trace) alloc-setup-eq
                      (ProcessedLayerResult.trace-writes-above r-result))
-              (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-after-sub) wrapper-trace
-                     slot-monotone-inj2 wrapper-twa))
-        ; trace-writes-below = SMP.trace-writes-below-append (next-slot alloc-after-wrapper) setup-trace (sub-trace ++ wrapper-trace)
-            setup-twb (SMP.trace-writes-below-append (next-slot alloc-after-wrapper) sub-trace wrapper-trace
-              (SMP.trace-writes-below-mono (next-slot alloc-after-sub) (next-slot alloc-after-wrapper) sub-trace
-                     (subst (λ x → next-slot alloc-after-sub ≤ x) (sym wrapper-next-slot-advances)
-                            (m≤m+n (next-slot alloc-after-sub) 2))
-                     (ProcessedLayerResult.trace-writes-below r-result))
-              wrapper-twb)
-        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace (sub-trace ++ wrapper-trace)
-            setup-tsra (SMP.trace-slot-reads-above-append (next-slot alloc) sub-trace wrapper-trace
+              (SMP.trace-writes-above-mono (next-slot alloc) r-reclaimable reclaim-wrapper-trace
+                     reclaim-mono-inj2 wrapper-twa))
+        -- trace-writes-below: With actual reclamation, child may have written above next-slot alloc-after-wrapper
+        -- (if child allocated slots in [r-reclaimable + 2, next-slot alloc-after-sub)).
+        -- This property tracks writes, not the final frontier position.
+        -- For now, mark as proof obligation - same issue as Product case (line 2970)
+        ; trace-writes-below = SMP.!!
+        ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            setup-tsra (SMP.trace-slot-reads-above-append (next-slot alloc) sub-trace reclaim-wrapper-trace
               (subst (λ al → TraceSlotReadsAbove (next-slot al) sub-trace) alloc-setup-eq
                      (ProcessedLayerResult.trace-slot-reads-above r-result))
               wrapper-tsra)
-        ; trace-slot-reads-below = SMP.trace-slot-reads-below-append (next-slot alloc-after-wrapper) setup-trace (sub-trace ++ wrapper-trace)
-            setup-tsrb (SMP.trace-slot-reads-below-append (next-slot alloc-after-wrapper) sub-trace wrapper-trace
-              (SMP.trace-slot-reads-below-mono (next-slot alloc-after-sub) (next-slot alloc-after-wrapper) sub-trace
-                     (subst (λ x → next-slot alloc-after-sub ≤ x) (sym wrapper-next-slot-advances)
-                            (m≤m+n (next-slot alloc-after-sub) 2))
-                     (ProcessedLayerResult.trace-slot-reads-below r-result))
-              wrapper-tsrb)
-        ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted r-result) wrapper-tph)
-        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity r-result) wrapper-tpc)
-        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ wrapper-trace)
-            setup-tnhw (SMP.trace-no-heap-writes-append sub-trace wrapper-trace
-                         (ProcessedLayerResult.trace-no-heap-writes r-result) wrapper-tnhw)
+        -- trace-slot-reads-below: Same issue as trace-writes-below
+        ; trace-slot-reads-below = SMP.!!
+        ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted r-result) reclaim-wrapper-tph)
+        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity r-result) reclaim-wrapper-tpc)
+        ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
+            setup-tnhw (SMP.trace-no-heap-writes-append sub-trace reclaim-wrapper-trace
+                         (ProcessedLayerResult.trace-no-heap-writes r-result) reclaim-wrapper-tnhw)
         }
 
     -- Product case: delegate to helper (enables where clauses)

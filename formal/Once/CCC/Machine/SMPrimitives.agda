@@ -289,6 +289,7 @@ data InstrNoHeapWrite : AbstractInstr → Set where
   nhw-restore-input      : ∀ {slot} → InstrNoHeapWrite (restore-input slot)
   nhw-instr-alloc-stack  : ∀ {n} → InstrNoHeapWrite (instr-alloc-stack n)
   nhw-instr-dealloc-stack : ∀ {n} → InstrNoHeapWrite (instr-dealloc-stack n)
+  nhw-instr-reclaim-to   : ∀ {n} → InstrNoHeapWrite (instr-reclaim-to n)
   nhw-instr-push-frame   : ∀ {cap} → InstrNoHeapWrite (instr-push-frame cap)
   nhw-instr-pop-frame    : InstrNoHeapWrite instr-pop-frame
   nhw-instr-call-closure : InstrNoHeapWrite instr-call-closure
@@ -321,6 +322,7 @@ instr-reads-mem (lea-slot k) s alloc = nothing       -- computes address, no rea
 instr-reads-mem (restore-input k) s alloc = just (OnStack (current-frame alloc) k)
 instr-reads-mem (instr-alloc-stack n) s alloc = nothing
 instr-reads-mem (instr-dealloc-stack n) s alloc = nothing
+instr-reads-mem (instr-reclaim-to n) s alloc = nothing
 instr-reads-mem (instr-push-frame cap) s alloc = nothing
 instr-reads-mem instr-pop-frame s alloc = nothing
 instr-reads-mem instr-call-closure s alloc = nothing
@@ -345,6 +347,7 @@ instr-writes-mem (lea-slot k) s alloc = nothing
 instr-writes-mem (restore-input k) s alloc = nothing  -- writes Input register, not memory
 instr-writes-mem (instr-alloc-stack n) s alloc = nothing
 instr-writes-mem (instr-dealloc-stack n) s alloc = nothing
+instr-writes-mem (instr-reclaim-to n) s alloc = nothing
 instr-writes-mem (instr-push-frame cap) s alloc = nothing
 instr-writes-mem instr-pop-frame s alloc = nothing
 instr-writes-mem instr-call-closure s alloc = nothing
@@ -427,6 +430,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | nothing = refl
   exec-abstract-preserves-frame (instr-alloc-stack n) s alloc = refl
   exec-abstract-preserves-frame (instr-dealloc-stack n) s alloc = refl
+  exec-abstract-preserves-frame (instr-reclaim-to n) s alloc = refl
   exec-abstract-preserves-frame (instr-push-frame cap) s alloc = refl
   exec-abstract-preserves-frame instr-pop-frame s alloc = refl
   exec-abstract-preserves-frame instr-call-closure s alloc = refl
@@ -468,6 +472,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   ... | nothing = refl
   exec-abstract-preserves-heapMem (instr-alloc-stack n) s alloc nhw-instr-alloc-stack = refl
   exec-abstract-preserves-heapMem (instr-dealloc-stack n) s alloc nhw-instr-dealloc-stack = refl
+  exec-abstract-preserves-heapMem (instr-reclaim-to n) s alloc nhw-instr-reclaim-to = refl
   exec-abstract-preserves-heapMem (instr-push-frame cap) s alloc nhw-instr-push-frame = refl
   exec-abstract-preserves-heapMem instr-pop-frame s alloc nhw-instr-pop-frame = refl
   exec-abstract-preserves-heapMem instr-call-closure s alloc nhw-instr-call-closure = refl
@@ -519,6 +524,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   -- Stack management instructions: preserve all memory
   exec-abstract-preserves-stack-slot (instr-alloc-stack _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-dealloc-stack _) s alloc f slot _ _ = refl
+  exec-abstract-preserves-stack-slot (instr-reclaim-to _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot (instr-push-frame _) s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot instr-pop-frame s alloc f slot _ _ = refl
   exec-abstract-preserves-stack-slot instr-call-closure s alloc f slot _ _ = refl
@@ -577,6 +583,7 @@ module InstrPrimitives {FS : FrameSemantics} where
   exec-abstract-same-frame store-indirect-suc s alloc₁ alloc₂ _ = refl
   exec-abstract-same-frame (instr-alloc-stack n) s alloc₁ alloc₂ _ = refl
   exec-abstract-same-frame (instr-dealloc-stack n) s alloc₁ alloc₂ _ = refl
+  exec-abstract-same-frame (instr-reclaim-to n) s alloc₁ alloc₂ _ = refl
   exec-abstract-same-frame (instr-push-frame cap) s alloc₁ alloc₂ _ = refl
   exec-abstract-same-frame instr-pop-frame s alloc₁ alloc₂ _ = refl
   exec-abstract-same-frame instr-call-closure s alloc₁ alloc₂ _ = refl
@@ -744,6 +751,7 @@ data InstrPreservesCapacity : AbstractInstr → Set where
   ipc-restore-input      : ∀ {slot} → InstrPreservesCapacity (restore-input slot)
   ipc-alloc-stack        : ∀ {n} → InstrPreservesCapacity (instr-alloc-stack n)
   ipc-dealloc-stack      : ∀ {n} → InstrPreservesCapacity (instr-dealloc-stack n)
+  ipc-reclaim-to         : ∀ {n} → InstrPreservesCapacity (instr-reclaim-to n)
   ipc-pop-frame          : InstrPreservesCapacity instr-pop-frame
   ipc-call-closure       : InstrPreservesCapacity instr-call-closure
   -- OCP-0003: Worklist instructions preserve capacity
@@ -782,6 +790,7 @@ trace-no-heap-writes-append (lea-slot _ ∷ t1) t2 tn1 tn2 = trace-no-heap-write
 trace-no-heap-writes-append (restore-input _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-alloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-dealloc-stack _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
+trace-no-heap-writes-append (instr-reclaim-to _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-push-frame _ ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-pop-frame ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
 trace-no-heap-writes-append (instr-call-closure ∷ t1) t2 tn1 tn2 = trace-no-heap-writes-append t1 t2 tn1 tn2
@@ -924,6 +933,7 @@ module TraceComposition {FS : FrameSemantics} where
   ... | nothing = refl
   exec-abstract-preserves-capacity (instr-alloc-stack n) s alloc _ = refl
   exec-abstract-preserves-capacity (instr-dealloc-stack n) s alloc _ = refl
+  exec-abstract-preserves-capacity (instr-reclaim-to n) s alloc _ = refl
   exec-abstract-preserves-capacity instr-pop-frame s alloc _ = refl
   exec-abstract-preserves-capacity instr-call-closure s alloc _ = refl
   -- OCP-0003: Worklist instructions
@@ -993,6 +1003,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-head (restore-input _) _ _ = nhw-restore-input
     tnhw-head (instr-alloc-stack _) _ _ = nhw-instr-alloc-stack
     tnhw-head (instr-dealloc-stack _) _ _ = nhw-instr-dealloc-stack
+    tnhw-head (instr-reclaim-to _) _ _ = nhw-instr-reclaim-to
     tnhw-head (instr-push-frame _) _ _ = nhw-instr-push-frame
     tnhw-head instr-pop-frame _ _ = nhw-instr-pop-frame
     tnhw-head instr-call-closure _ _ = nhw-instr-call-closure
@@ -1015,6 +1026,7 @@ module TracePrimitives {FS : FrameSemantics} where
     tnhw-tail (restore-input _) rest tnhw = tnhw
     tnhw-tail (instr-alloc-stack _) rest tnhw = tnhw
     tnhw-tail (instr-dealloc-stack _) rest tnhw = tnhw
+    tnhw-tail (instr-reclaim-to _) rest tnhw = tnhw
     tnhw-tail (instr-push-frame _) rest tnhw = tnhw
     tnhw-tail instr-pop-frame rest tnhw = tnhw
     tnhw-tail instr-call-closure rest tnhw = tnhw
@@ -1077,6 +1089,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-below-nonwrite (instr-alloc-stack m) rest s alloc n slot twa tnhw slot<n nhw-instr-alloc-stack refl
     exec-trace-preserves-slot-below (instr-dealloc-stack m ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (instr-dealloc-stack m) rest s alloc n slot twa tnhw slot<n nhw-instr-dealloc-stack refl
+    exec-trace-preserves-slot-below (instr-reclaim-to m ∷ rest) s alloc n slot twa tnhw slot<n =
+      exec-trace-preserves-slot-below-nonwrite (instr-reclaim-to m) rest s alloc n slot twa tnhw slot<n nhw-instr-reclaim-to refl
     exec-trace-preserves-slot-below (instr-push-frame cap ∷ rest) s alloc n slot twa tnhw slot<n =
       exec-trace-preserves-slot-below-nonwrite (instr-push-frame cap) rest s alloc n slot twa tnhw slot<n nhw-instr-push-frame refl
     exec-trace-preserves-slot-below (instr-pop-frame ∷ rest) s alloc n slot twa tnhw slot<n =
@@ -1187,6 +1201,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-slot-above-nonwrite (instr-alloc-stack n) rest s alloc m slot twb tnhw m≤slot nhw-instr-alloc-stack refl
     exec-trace-preserves-slot-above (instr-dealloc-stack n ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (instr-dealloc-stack n) rest s alloc m slot twb tnhw m≤slot nhw-instr-dealloc-stack refl
+    exec-trace-preserves-slot-above (instr-reclaim-to n ∷ rest) s alloc m slot twb tnhw m≤slot =
+      exec-trace-preserves-slot-above-nonwrite (instr-reclaim-to n) rest s alloc m slot twb tnhw m≤slot nhw-instr-reclaim-to refl
     exec-trace-preserves-slot-above (instr-push-frame cap ∷ rest) s alloc m slot twb tnhw m≤slot =
       exec-trace-preserves-slot-above-nonwrite (instr-push-frame cap) rest s alloc m slot twb tnhw m≤slot nhw-instr-push-frame refl
     exec-trace-preserves-slot-above (instr-pop-frame ∷ rest) s alloc m slot twb tnhw m≤slot =
@@ -1293,6 +1309,8 @@ module TracePrimitives {FS : FrameSemantics} where
       exec-trace-preserves-ancestor-nonwrite (instr-alloc-stack m) rest s alloc f slot cf≺f tnhw nhw-instr-alloc-stack refl
     exec-trace-preserves-ancestor (instr-dealloc-stack m ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (instr-dealloc-stack m) rest s alloc f slot cf≺f tnhw nhw-instr-dealloc-stack refl
+    exec-trace-preserves-ancestor (instr-reclaim-to m ∷ rest) s alloc f slot cf≺f tnhw =
+      exec-trace-preserves-ancestor-nonwrite (instr-reclaim-to m) rest s alloc f slot cf≺f tnhw nhw-instr-reclaim-to refl
     exec-trace-preserves-ancestor (instr-push-frame cap ∷ rest) s alloc f slot cf≺f tnhw =
       exec-trace-preserves-ancestor-nonwrite (instr-push-frame cap) rest s alloc f slot cf≺f tnhw nhw-instr-push-frame refl
     exec-trace-preserves-ancestor (instr-pop-frame ∷ rest) s alloc f slot cf≺f tnhw =
@@ -1502,6 +1520,7 @@ module TracePrimitives {FS : FrameSemantics} where
     iph-lea-slot           : ∀ {slot} → InstrPreservesHalted (lea-slot slot)
     iph-alloc-stack        : ∀ {n} → InstrPreservesHalted (instr-alloc-stack n)
     iph-dealloc-stack      : ∀ {n} → InstrPreservesHalted (instr-dealloc-stack n)
+    iph-reclaim-to         : ∀ {n} → InstrPreservesHalted (instr-reclaim-to n)
     iph-push-frame         : ∀ {cap} → InstrPreservesHalted (instr-push-frame cap)
     iph-pop-frame          : InstrPreservesHalted instr-pop-frame
     iph-call-closure       : InstrPreservesHalted instr-call-closure
@@ -1562,6 +1581,7 @@ module TracePrimitives {FS : FrameSemantics} where
   exec-abstract-preserves-halted (lea-slot slot) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (instr-alloc-stack n) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (instr-dealloc-stack n) s alloc h-eq _ = h-eq
+  exec-abstract-preserves-halted (instr-reclaim-to n) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted (instr-push-frame cap) s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted instr-pop-frame s alloc h-eq _ = h-eq
   exec-abstract-preserves-halted instr-call-closure s alloc h-eq _ = h-eq
@@ -2832,6 +2852,7 @@ module RecSchemeSemantics {FS : FrameSemantics} where
   ... | nothing = refl
   exec-abstract-preserves-heap-ref (instr-alloc-stack _) s alloc = refl
   exec-abstract-preserves-heap-ref (instr-dealloc-stack _) s alloc = refl
+  exec-abstract-preserves-heap-ref (instr-reclaim-to _) s alloc = refl
   exec-abstract-preserves-heap-ref (instr-push-frame _) s alloc = refl
   exec-abstract-preserves-heap-ref instr-pop-frame s alloc = refl
   exec-abstract-preserves-heap-ref instr-call-closure s alloc = refl

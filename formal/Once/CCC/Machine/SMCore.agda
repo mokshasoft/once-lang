@@ -636,6 +636,11 @@ data AbstractInstr : Set where
   instr-alloc-stack   : ℕ → AbstractInstr          -- allocate N slots
   instr-dealloc-stack : ℕ → AbstractInstr          -- deallocate N slots
 
+  -- OCP-0003: Slot reclamation for Sum wrappers
+  -- Sets next-slot to a specific value, allowing wrapper allocation at reclaimed position.
+  -- Used by Sum to place wrapper at child's reclaimable-slot for tight allocation.
+  instr-reclaim-to    : ℕ → AbstractInstr          -- set next-slot to n
+
   -- Apply-specific (function calls)
   instr-push-frame   : ℕ → AbstractInstr          -- push new frame with capacity
   instr-pop-frame    : AbstractInstr              -- restore caller frame
@@ -885,6 +890,12 @@ module AbstractExec {FS : FrameSemantics} where
   -- instr-dealloc-stack: reclaim n slots (decrement stackSlot)
   exec-abstract (instr-dealloc-stack n) s alloc =
     record s { regs = decrStackSlot (regs s) n } , alloc
+
+  -- instr-reclaim-to: set next-slot to given value (actual reclamation)
+  -- OCP-0003: Used by Sum wrapper allocation to place wrapper at child's reclaimable-slot.
+  -- The LocState is unchanged; only the AllocState's next-slot is updated.
+  exec-abstract (instr-reclaim-to n) s alloc =
+    s , record alloc { next-slot = n }
 
   -- instr-push-frame: create new frame with given capacity
   -- Resets stackSlot to 0 for the new frame
