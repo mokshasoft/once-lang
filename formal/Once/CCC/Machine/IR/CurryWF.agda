@@ -145,6 +145,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; reclaim-preserves-result = reclaim-preserves-result'
       ; reclaim-preserves-validity = reclaim-preserves-validity'
       ; reclaim-size-bound = +-monoʳ-≤ (next-slot alloc) closure-bound
+      ; max-slot-written = next-slot alloc +ℕ closure-slots
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = +-monoʳ-≤ (next-slot alloc) closure-bound
       ; frontier-slot-stable = frontier-stable'
       ; trace-writes-above = trace-writes-above'
       ; trace-slot-reads-above = tt

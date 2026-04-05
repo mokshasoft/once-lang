@@ -205,6 +205,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; reclaim-preserves-result = reclaim-preserves-result'
       ; reclaim-preserves-validity = reclaim-preserves-validity'
       ; reclaim-size-bound = ≤-refl
+      ; max-slot-written = next-slot alloc +ℕ pair-slots
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = ≤-refl
       ; frontier-slot-stable = frontier-stable'
       ; trace-writes-above = trace-writes-above'
       ; trace-slot-reads-above = trace-slot-reads-above'

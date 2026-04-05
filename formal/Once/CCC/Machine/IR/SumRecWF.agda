@@ -370,6 +370,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = inl-reclaim-preserves-result
       ; reclaim-preserves-validity = inl-reclaim-preserves-validity
       ; reclaim-size-bound = reclaim-size-bound-inl
+      ; max-slot-written = next-slot alloc +ℕ sum-slots
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = reclaim-size-bound-inl
       -- Frontier slot stability for inl (Stack mode)
       -- inl writes to suc(frontier-slot), not to frontier-slot itself
       ; frontier-slot-stable = inl-frontier-stable
@@ -526,6 +529,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = inl-reclaim-preserves-result
       ; reclaim-preserves-validity = inl-reclaim-preserves-validity
       ; reclaim-size-bound = reclaim-size-bound-inl
+      ; max-slot-written = next-slot alloc +ℕ sum-slots
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = reclaim-size-bound-inl
       -- Frontier slot stability for inl (Heap mode)
       ; frontier-slot-stable = inl-frontier-stable
       -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
@@ -701,6 +707,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = inr-reclaim-preserves-result
       ; reclaim-preserves-validity = inr-reclaim-preserves-validity
       ; reclaim-size-bound = reclaim-size-bound-inr
+      ; max-slot-written = next-slot alloc +ℕ sum-slots
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = reclaim-size-bound-inr
       -- Frontier slot stability for inr (Stack mode)
       ; frontier-slot-stable = inr-frontier-stable
       -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
@@ -848,6 +857,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = inr-reclaim-preserves-result
       ; reclaim-preserves-validity = inr-reclaim-preserves-validity
       ; reclaim-size-bound = reclaim-size-bound-inr
+      ; max-slot-written = next-slot alloc +ℕ sum-slots
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = reclaim-size-bound-inr
       -- Frontier slot stability for inr (Heap mode)
       ; frontier-slot-stable = inr-frontier-stable
       -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
@@ -1027,6 +1039,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-f
       ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity result-f
       ; reclaim-size-bound = ≤-trans (IRResultAWF.reclaim-size-bound result-f) cap-f-bound
+      ; max-slot-written = IRResultAWF.max-slot-written result-f
+      ; max-slot-geq-reclaim = IRResultAWF.max-slot-geq-reclaim result-f
+      ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-f) cap-f-bound
       -- Frontier slot stability for case (inl branch)
       ; frontier-slot-stable = case-frontier-stable
       -- Trace writes above: setup instructions don't store, f-trace writes above frontier
@@ -1144,6 +1159,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-g
       ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity result-g
       ; reclaim-size-bound = ≤-trans (IRResultAWF.reclaim-size-bound result-g) cap-g-bound
+      ; max-slot-written = IRResultAWF.max-slot-written result-g
+      ; max-slot-geq-reclaim = IRResultAWF.max-slot-geq-reclaim result-g
+      ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-g) cap-g-bound
       -- Frontier slot stability for case (inr branch)
       ; frontier-slot-stable = case-frontier-stable
       -- Trace writes above: setup instructions don't store, g-trace writes above frontier
@@ -1305,6 +1323,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → result-bf
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = reclaim-bound
+      ; max-slot-written = next-slot alloc'
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
@@ -1418,6 +1439,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → input-before
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; max-slot-written = next-slot alloc
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -1500,6 +1524,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → input-before
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; max-slot-written = next-slot alloc
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -1579,6 +1606,9 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → result-bf
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = reclaim-bound
+      ; max-slot-written = next-slot alloc'
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt

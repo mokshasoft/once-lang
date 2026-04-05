@@ -358,6 +358,9 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; reclaim-preserves-result = λ _ → result-bf
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = reclaim-bound
+      ; max-slot-written = next-slot alloc'
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
@@ -459,6 +462,9 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; reclaim-preserves-result = λ _ → result-bf
       ; reclaim-preserves-validity = λ _ → result-valid
       ; reclaim-size-bound = reclaim-bound
+      ; max-slot-written = next-slot alloc'
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt

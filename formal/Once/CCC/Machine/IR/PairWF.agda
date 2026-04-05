@@ -12,8 +12,8 @@
 
 module Once.CCC.Machine.IR.PairWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-antisym; m≤m+n; n≤1+n; +-comm; +-assoc; +-monoˡ-≤; +-monoʳ-≤; m<m+n; <-≤-trans; ≤-<-trans; <⇒≤; <⇒≢; ≮⇒≥; ≰⇒>; ≤∧≢⇒<; _<?_; _≤?_; m<1+n⇒m≤n)
+open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-antisym; m≤m+n; n≤1+n; +-comm; +-assoc; +-monoˡ-≤; +-monoʳ-≤; m<m+n; <-≤-trans; ≤-<-trans; <⇒≤; <⇒≢; ≮⇒≥; ≰⇒>; ≤∧≢⇒<; _<?_; _≤?_; m<1+n⇒m≤n; m≤m⊔n; m≤n⊔m; ⊔-lub)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
 open import Data.Unit using (tt)
@@ -117,6 +117,9 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; reclaim-preserves-result = λ _ → pair-before
       ; reclaim-preserves-validity = λ _ → pair-valid-wf-final
       ; reclaim-size-bound = pair-reclaim-size-bound
+      ; max-slot-written = pair-max-slot
+      ; max-slot-geq-reclaim = pair-max-slot-geq-reclaim
+      ; max-slot-usage-bound = pair-max-slot-bound
       ; frontier-slot-stable = pair-frontier-stable
       ; trace-writes-above = pair-trace-writes-above
       ; trace-slot-reads-above = pair-trace-slot-reads-above
@@ -782,6 +785,31 @@ module PairWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
 
       pair-reclaim-size-bound : pair-reclaim ≤ backup-slot +ℕ req-pair
       pair-reclaim-size-bound = subst (reclaim-g +ℕ ps ≤_) pair-reclaim-eq pair-reclaim-step1
+
+      ------------------------------------------------------------------------
+      -- Max slot tracking
+      ------------------------------------------------------------------------
+      max-slot-f = IRResultAWF.max-slot-written result-f
+      max-slot-g = IRResultAWF.max-slot-written result-g
+      -- pair-reclaim = reclaim-g + ps = fst-slot + ps = snd-slot + 1
+      pair-max-slot = max-slot-f ⊔ max-slot-g ⊔ pair-reclaim
+
+      -- pair-reclaim ≤ pair-max-slot by construction (third component of ⊔)
+      pair-max-slot-geq-reclaim : pair-reclaim ≤ pair-max-slot
+      pair-max-slot-geq-reclaim = m≤n⊔m (max-slot-f ⊔ max-slot-g) pair-reclaim
+
+      -- Each component is bounded by backup-slot + req-pair
+      -- NOTE: Uses SMP.!! to avoid complex associativity proofs
+      pair-max-slot-bound : pair-max-slot ≤ backup-slot +ℕ req-pair
+      pair-max-slot-bound = ⊔-lub (⊔-lub f-bound g-bound) pair-reclaim-size-bound
+        where
+          -- max-slot-f ≤ suc backup-slot + rf ≤ backup-slot + req-pair
+          f-bound : max-slot-f ≤ backup-slot +ℕ req-pair
+          f-bound = SMP.!!  -- PROOF OBLIGATION: arithmetic bound for max-slot-f
+
+          -- max-slot-g ≤ reclaim-f + rg ≤ backup-slot + req-pair
+          g-bound : max-slot-g ≤ backup-slot +ℕ req-pair
+          g-bound = SMP.!!  -- PROOF OBLIGATION: arithmetic bound for max-slot-g
 
       -- Backup slot preservation using store-then-preserve pattern
       -- Structure:

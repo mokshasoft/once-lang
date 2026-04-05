@@ -94,6 +94,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → input-before
       ; reclaim-preserves-validity = λ _ → valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; max-slot-written = next-slot alloc
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -173,6 +176,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → fst-before
       ; reclaim-preserves-validity = λ _ → fst-valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; max-slot-written = next-slot alloc
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -266,6 +272,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → snd-before
       ; reclaim-preserves-validity = λ _ → snd-valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; max-slot-written = next-slot alloc
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -359,6 +368,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → input-before
       ; reclaim-preserves-validity = λ _ → valid-unit-wf
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; max-slot-written = next-slot alloc
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -434,6 +446,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → input-before
       ; reclaim-preserves-validity = λ _ → valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; max-slot-written = next-slot alloc
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -512,6 +527,9 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; reclaim-preserves-result = λ _ → input-before
       ; reclaim-preserves-validity = λ _ → valid-eff
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
+      ; max-slot-written = next-slot alloc
+      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt

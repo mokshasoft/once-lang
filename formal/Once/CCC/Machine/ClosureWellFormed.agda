@@ -298,6 +298,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
           ValidAtWF m (record alloc { next-slot = reclaimable-slot })
                     (eval primSem ir x) result-loc final-state
         reclaim-size-bound : reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement ir
+        -- High-water mark of slot allocation (maximum slot ever written)
+        -- With reclamation, next-slot final-alloc may be < max slots actually written
+        max-slot-written : ℕ
+        -- max-slot-written is at least reclaimable-slot
+        max-slot-geq-reclaim : reclaimable-slot ≤ max-slot-written
+        -- max-slot-written is bounded by input next-slot + ir-stack-requirement
+        max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ ir-stack-requirement ir
         -- Frontier slot stability: if input-loc is at frontier initially, it stays there
         -- This is because IR traces either:
         --   1. Don't write to frontier slot (e.g., inl/inr write to suc)

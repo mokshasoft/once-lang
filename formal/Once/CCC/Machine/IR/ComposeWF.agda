@@ -10,8 +10,8 @@
 
 module Once.CCC.Machine.IR.ComposeWF where
 
-open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n; _≟_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; m≤m+n; m≤n⇒m<n∨m≡n)
+open import Data.Nat using (ℕ; suc; _<_; _≤_; s≤s; z≤n; _≟_; _⊔_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; +-monoˡ-≤; +-monoʳ-≤; +-assoc; +-comm; m+n≤o⇒m≤o; m≤m+n; m≤n⇒m<n∨m≡n; m≤m⊔n; m≤n⊔m; ⊔-lub)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Nullary using (yes; no)
 open import Data.Bool using (false)
@@ -185,6 +185,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; reclaim-preserves-result = compose-reclaim-preserves-result
       ; reclaim-preserves-validity = compose-reclaim-preserves-validity
       ; reclaim-size-bound = compose-reclaim-size-bound
+      ; max-slot-written = compose-max-slot
+      ; max-slot-geq-reclaim = compose-max-slot-geq-reclaim
+      ; max-slot-usage-bound = compose-max-slot-bound
       ; frontier-slot-stable = compose-frontier-stable
       ; trace-writes-above = compose-trace-writes-above
       ; trace-slot-reads-above = compose-trace-slot-reads-above
@@ -378,6 +381,36 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
                                        (trans (cong (next-slot alloc +ℕ_) (sym (∘-stack-req f g))) refl)
                                        (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
                                          (≤-reflexive (+-assoc (next-slot alloc) rf rg))))
+
+      ------------------------------------------------------------------------
+      -- Max slot tracking
+      ------------------------------------------------------------------------
+      max-slot-f = IRResultAWF.max-slot-written result-f
+      max-slot-g = IRResultAWF.max-slot-written result-g
+      compose-max-slot = max-slot-f ⊔ max-slot-g
+
+      -- compose-reclaim = reclaim-g ≤ max-slot-g ≤ max-slot-f ⊔ max-slot-g
+      compose-max-slot-geq-reclaim : compose-reclaim ≤ compose-max-slot
+      compose-max-slot-geq-reclaim = ≤-trans (IRResultAWF.max-slot-geq-reclaim result-g)
+                                             (m≤n⊔m max-slot-f max-slot-g)
+
+      -- max-slot-f ≤ next-slot alloc + rf ≤ next-slot alloc + (rf + rg)
+      -- max-slot-g ≤ reclaim-f + rg ≤ (next-slot alloc + rf) + rg = next-slot alloc + (rf + rg)
+      compose-max-slot-bound : compose-max-slot ≤ next-slot alloc +ℕ req-compose
+      compose-max-slot-bound = ⊔-lub f-bound g-bound
+        where
+          f-bound : max-slot-f ≤ next-slot alloc +ℕ req-compose
+          f-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-f)
+                            (subst (next-slot alloc +ℕ rf ≤_)
+                              (trans (cong (next-slot alloc +ℕ_) (sym (∘-stack-req f g))) refl)
+                              (+-monoʳ-≤ (next-slot alloc) (m≤m+n rf rg)))
+
+          g-bound : max-slot-g ≤ next-slot alloc +ℕ req-compose
+          g-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-g)
+                            (subst (reclaim-f +ℕ rg ≤_)
+                              (trans (cong (next-slot alloc +ℕ_) (sym (∘-stack-req f g))) refl)
+                              (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
+                                (≤-reflexive (+-assoc (next-slot alloc) rf rg))))
 
       ------------------------------------------------------------------------
       -- Trace predicates
