@@ -17,7 +17,7 @@
 module Once.CCC.Machine.IR.PairWF2 where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-comm; +-assoc; +-suc; +-identityʳ; +-monoˡ-≤; +-monoʳ-≤; <-≤-trans; <⇒≤; <⇒≢; m≤m⊔n; m≤n⊔m; ⊔-lub)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-comm; +-assoc; +-suc; +-identityʳ; +-monoˡ-≤; +-monoʳ-≤; <-≤-trans; <⇒≤; <⇒≢; m≤m⊔n; m≤n⊔m; ⊔-lub; _<?_; ≮⇒≥)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
 open import Data.Unit using (⊤; tt)
@@ -1055,14 +1055,125 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       oag-mem-agree : ∀ slot → reclaim-f ≤ slot → slot < max-slot-g →
         readLoc s-after-middle (OnStack (current-frame alloc-after-middle) slot) ≡
         readLoc s₁' (OnStack (current-frame alloc-after-f-reclaim) slot)
-      oag-mem-agree slot rf≤slot slot<max =
-        -- Both s-after-middle and s₁' have uninitialized memory at slots ≥ reclaim-f
-        -- since neither f-trace, setup-trace, nor middle-trace writes there
-        -- However, proving this requires showing memory determinism through the entire trace
-        -- For now, use subst with frame equalities to reduce to frame, then use SMP.!! as placeholder
-        subst₂ (λ f1 f2 → readLoc s-after-middle (OnStack f1 slot) ≡ readLoc s₁' (OnStack f2 slot))
-               (sym oag-frame-middle) (sym oag-frame-reclaim)
-               SMP.!!  -- Complex: requires full memory determinism proof
+      oag-mem-agree slot rf≤slot slot<max with slot <? max-slot-f
+      ... | yes slot<max-f =
+        -- Case 1: slot ∈ [reclaim-f, max-slot-f) - in f's write range, use determinism
+        let -- Frame equalities
+            frame-f-eq : current-frame alloc-after-f ≡ frame
+            frame-f-eq = trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+                               (exec-trace-preserves-frame setup-trace s alloc)
+
+            -- middle-trace preserves slot ≥ reclaim-f (writes at fst-slot < reclaim-f)
+            middle-twb : TraceWritesBelow reclaim-f middle-trace
+            middle-twb = fst-slot<reclaim-f , tt
+            middle-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above middle-trace
+                            s-after-f alloc-after-f reclaim-f slot middle-twb tt rf≤slot
+            middle-pres-frame = subst (λ fr → readLoc s-after-middle (OnStack fr slot) ≡
+                                              readLoc s-after-f (OnStack fr slot))
+                                      frame-f-eq middle-pres
+
+            -- slot ≥ reclaim-f ≥ f-start
+            slot≥f-start : f-start ≤ slot
+            slot≥f-start = ≤-trans reclaim-f-above-f-start rf≤slot
+
+            -- Use determinism lemma for [f-start, max-slot-f)
+            mem-det = SMP.TraceOutputDeterminism.exec-trace-mem-deterministic f-trace
+                        s-after-setup s alloc-after-setup alloc-after-pair-slots f-start max-slot-f
+                        not-halted-after-setup not-halted
+                        oaf-frame-eq oaf-input-preserved
+                        f-tsra f-tsrb f-twa f-twb f-tnhw oaf-mem-agree
+                        slot slot≥f-start slot<max-f
+
+            -- Convert frames
+            mem-det-frame : readLoc s-after-f (OnStack frame slot) ≡
+                            readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (OnStack frame slot)
+            mem-det-frame = subst₂ (λ f1 f2 → readLoc s-after-f (OnStack f1 slot) ≡
+                                              readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (OnStack f2 slot))
+                                   oaf-frame-setup oaf-frame-pair-slots mem-det
+
+            -- Convert to s₁ using trace-correct
+            s₁-eq : readLoc (proj₁ (exec-trace f-trace s alloc-after-pair-slots)) (OnStack frame slot) ≡
+                    readLoc s₁ (OnStack frame slot)
+            s₁-eq = cong (λ st → readLoc st (OnStack frame slot)) (IRResultAWF.trace-correct result-f)
+
+            -- s₁' has same stack as s₁
+            s₁'-eq : readLoc s₁' (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            s₁'-eq = refl
+
+            f-eq : readLoc s-after-f (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            f-eq = trans mem-det-frame s₁-eq
+
+        in subst₂ (λ f1 f2 → readLoc s-after-middle (OnStack f1 slot) ≡ readLoc s₁' (OnStack f2 slot))
+                  (sym oag-frame-middle) (sym oag-frame-reclaim)
+                  (trans middle-pres-frame (trans f-eq (sym s₁'-eq)))
+      ... | no slot≮max-f =
+        -- Case 2: slot ≥ max-slot-f - f doesn't write there, both preserve from s
+        let slot≥max-f : max-slot-f ≤ slot
+            slot≥max-f = ≮⇒≥ slot≮max-f
+
+            -- Frame equalities
+            frame-f-eq : current-frame alloc-after-f ≡ frame
+            frame-f-eq = trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+                               (exec-trace-preserves-frame setup-trace s alloc)
+
+            -- middle-trace preserves slot ≥ reclaim-f (writes at fst-slot < reclaim-f)
+            middle-twb : TraceWritesBelow reclaim-f middle-trace
+            middle-twb = fst-slot<reclaim-f , tt
+            middle-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above middle-trace
+                            s-after-f alloc-after-f reclaim-f slot middle-twb tt rf≤slot
+            middle-pres-frame = subst (λ fr → readLoc s-after-middle (OnStack fr slot) ≡
+                                              readLoc s-after-f (OnStack fr slot))
+                                      frame-f-eq middle-pres
+
+            -- f-trace preserves slot ≥ max-slot-f (writes below max-slot-f)
+            f-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above f-trace
+                       s-after-setup alloc-after-setup max-slot-f slot f-twb f-tnhw slot≥max-f
+            f-pres-frame = subst (λ fr → readLoc s-after-f (OnStack fr slot) ≡
+                                         readLoc s-after-setup (OnStack fr slot))
+                                 oaf-frame-setup f-pres
+
+            -- setup-trace preserves slot ≥ max-slot-f (writes at backup-slot < max-slot-f)
+            -- backup-slot < fst-slot = ≤-refl (since suc backup-slot = fst-slot)
+            -- fst-slot < snd-slot = ≤-refl
+            -- snd-slot < f-start = ≤-refl
+            -- f-start ≤ reclaim-f (reclaim-f-above-f-start)
+            -- reclaim-f ≤ max-slot-f (max-slot-geq-reclaim)
+            backup<fst-slot : backup-slot < fst-slot
+            backup<fst-slot = ≤-refl
+            fst<snd-slot : fst-slot < snd-slot
+            fst<snd-slot = ≤-refl
+            snd<f-start' : snd-slot < f-start
+            snd<f-start' = ≤-refl
+            backup<f-start' : backup-slot < f-start
+            backup<f-start' = ≤-trans (≤-trans backup<fst-slot (n≤1+n fst-slot)) (n≤1+n snd-slot)
+            backup<max-slot-f : backup-slot < max-slot-f
+            backup<max-slot-f = <-≤-trans backup<f-start'
+                                  (≤-trans reclaim-f-above-f-start (IRResultAWF.max-slot-geq-reclaim result-f))
+            setup-twb : TraceWritesBelow max-slot-f setup-trace
+            setup-twb = backup<max-slot-f , tt
+            setup-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above setup-trace
+                           s alloc max-slot-f slot setup-twb tt slot≥max-f
+
+            -- Combine: s-after-f preserves from s
+            s-after-f-pres = trans f-pres-frame setup-pres
+
+            -- s₁ also preserves from s (f writes below max-slot-f)
+            s₁-f-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above f-trace
+                          s alloc-after-pair-slots max-slot-f slot f-twb f-tnhw slot≥max-f
+            s₁-pres = subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s (OnStack frame slot))
+                            (IRResultAWF.trace-correct result-f) s₁-f-pres
+
+            -- s₁' = s₁ (only regs changed)
+            s₁'-eq : readLoc s₁' (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            s₁'-eq = refl
+
+            -- Both preserve from s, so they're equal
+            f-eq : readLoc s-after-f (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            f-eq = trans s-after-f-pres (sym s₁-pres)
+
+        in subst₂ (λ f1 f2 → readLoc s-after-middle (OnStack f1 slot) ≡ readLoc s₁' (OnStack f2 slot))
+                  (sym oag-frame-middle) (sym oag-frame-reclaim)
+                  (trans middle-pres-frame (trans f-eq (sym s₁'-eq)))
 
       -- s₂ output from trace-correct and rax-is-result
       oag-s2-output : readReg (regs (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim))) Output ≡ snd-loc
@@ -1559,10 +1670,14 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ----------------------------------------------------------------------
       -- snd-valid: Validity of g's result at snd-loc in s-final
       --
-      -- Strategy (similar to fst-valid):
+      -- Strategy using POSITIVE BOUNDS (same approach as fst-valid):
       -- 1. reclaim-preserves-validity gives validity at s₂ with alloc-reclaim-g
-      -- 2. Memory at BeforeFrontier locations preserved from s₂ to s-final
-      -- 3. Frontier advance is trivial (alloc-reclaim-g and alloc-final both have next-slot = reclaim-g)
+      -- 2. Transfer validity from s₂ to s-after-g using validityWF-mem-preserved-in-regions
+      --    Memory agrees in two disjoint regions:
+      --      - Input region: [0, backup-slot) - preserved from before g
+      --      - Fresh region: [reclaim-f, reclaim-g) - written by g-trace deterministically
+      -- 3. Transfer validity from s-after-g to s-final (final-trace preserves both regions)
+      -- 4. Frontier advance is trivial (alloc-reclaim-g = alloc-final)
       ----------------------------------------------------------------------
 
       -- Alloc state after g's reclaim
@@ -1577,21 +1692,212 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       snd-loc-before-reclaim-g : BeforeFrontier alloc-reclaim-g snd-loc
       snd-loc-before-reclaim-g = IRResultAWF.reclaim-preserves-result result-g reclaim-g-fits
 
-      -- Step 2-3: Memory preservation from s₂ to s-final
-      -- final-trace = store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
-      -- Neither writes to slots where snd-loc's sub-locations reside (which are < reclaim-g)
-      -- Note: validityWF-mem-preserved expects (readLoc s₂ ≡ readLoc s₁) format
-      snd-mem-s2-to-final : ∀ loc' → BeforeFrontier alloc-reclaim-g loc' →
-        readLoc s-final loc' ≡ readLoc s₂ loc'
-      snd-mem-s2-to-final loc' bf = SMP.!!  -- Requires: g-trace determinism + final-trace preservation
+      -- Region bounds for snd-loc's sub-locations:
+      --   input-bound = backup-slot (sub-locations from x are < backup-slot)
+      --   fresh-start = reclaim-f (sub-locations from g are ≥ reclaim-f)
+      backup≤reclaim-f' : backup-slot ≤ reclaim-f
+      backup≤reclaim-f' = backup≤reclaim-f
 
-      valid-snd-at-s-final : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s-final
-      valid-snd-at-s-final = validityWF-mem-preserved (eval primSem g x) snd-loc s₂ s-final
-                               snd-loc-before-reclaim-g snd-mem-s2-to-final valid-s2-reclaimed
+      reclaim-f≤reclaim-g : reclaim-f ≤ reclaim-g
+      reclaim-f≤reclaim-g = IRResultAWF.reclaim-monotone result-g  -- alloc-after-f-reclaim has next-slot = reclaim-f
 
-      -- Step 4: Frontier advance (trivial since both have next-slot = reclaim-g)
+      -- Step 2: Memory agreement from s₂ to s-after-g
+      -- s₂ = exec g-trace s₁' alloc-after-f-reclaim (recursive call result)
+      -- s-after-g = exec g-trace s-after-middle alloc-after-middle
+
+      -- Memory agrees on input region [0, backup-slot)
+      -- Both s₂ and s-after-g preserve this from before g runs
+      g-mem-input-region : ∀ slot → slot < backup-slot →
+        readLoc s-after-g (OnStack frame slot) ≡ readLoc s₂ (OnStack frame slot)
+      g-mem-input-region slot slot<backup =
+        let -- slot < backup-slot < reclaim-f, so g-trace preserves slot
+            slot<reclaim-f : slot < reclaim-f
+            slot<reclaim-f = <-≤-trans slot<backup backup≤reclaim-f'
+            -- s-after-g preserves slot from s-after-middle (g-trace writes above reclaim-f)
+            g-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below g-trace s-after-middle
+                       alloc-after-middle reclaim-f slot g-twa g-tnhw slot<reclaim-f
+            g-pres-frame = subst (λ fr → readLoc s-after-g (OnStack fr slot) ≡
+                                         readLoc s-after-middle (OnStack fr slot))
+                                 oag-frame-middle g-pres
+            -- s₂ preserves slot from s₁' (g-trace writes above reclaim-f)
+            exec-g-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below g-trace s₁'
+                            alloc-after-f-reclaim reclaim-f slot g-twa g-tnhw slot<reclaim-f
+            s₂-pres = subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s₁' (OnStack frame slot))
+                            (IRResultAWF.trace-correct result-g) exec-g-pres
+            -- s₁' has same memory as s₁ at this slot (only regs changed)
+            s₁'-eq : readLoc s₁' (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+            s₁'-eq = refl
+            -- Now chain back through middle, f, setup to compare with path from s-after-g
+            -- Both paths end at same value from s
+            -- Path 1: s-after-g <- s-after-middle
+            -- We need s-after-middle to agree with s₁' at this slot
+            -- Use f-mem-input-region and middle preservation
+            slot<fst : slot < fst-slot
+            slot<fst = ≤-trans slot<backup (n≤1+n backup-slot)
+            middle-twa : TraceWritesAbove fst-slot middle-trace
+            middle-twa = ≤-refl , tt
+            middle-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below middle-trace
+                            s-after-f alloc-after-f fst-slot slot middle-twa tt slot<fst
+            middle-pres-frame = subst (λ fr → readLoc s-after-middle (OnStack fr slot) ≡
+                                              readLoc s-after-f (OnStack fr slot))
+                                      frame-after-f-eq middle-pres
+            -- Use f-mem-input-region for s-after-f vs s₁
+            f-input-eq = f-mem-input-region slot slot<backup
+        in trans g-pres-frame (trans middle-pres-frame (trans f-input-eq (trans (sym s₁'-eq) (sym s₂-pres))))
+
+      -- Memory agrees on fresh region [reclaim-f, reclaim-g)
+      -- Both executions of g-trace write same values (deterministic given same Input)
+      g-mem-fresh-region : ∀ slot → reclaim-f ≤ slot → slot < reclaim-g →
+        readLoc s-after-g (OnStack frame slot) ≡ readLoc s₂ (OnStack frame slot)
+      g-mem-fresh-region slot rf≤slot slot<rg =
+        let -- slot < reclaim-g ≤ max-slot-g
+            slot<max : slot < max-slot-g
+            slot<max = <-≤-trans slot<rg (IRResultAWF.max-slot-geq-reclaim result-g)
+            -- Use exec-trace-mem-deterministic for g-trace
+            mem-det = SMP.TraceOutputDeterminism.exec-trace-mem-deterministic g-trace
+                        s-after-middle s₁' alloc-after-middle alloc-after-f-reclaim reclaim-f max-slot-g
+                        not-halted-after-middle (IRResultAWF.not-halted result-f) oag-frame-eq oag-input-eq
+                        g-tsra (IRResultAWF.trace-slot-reads-below result-g)
+                        g-twa g-twb g-tnhw oag-mem-agree
+                        slot rf≤slot slot<max
+            -- Convert frames
+            mem-det-frame : readLoc s-after-g (OnStack frame slot) ≡
+                            readLoc (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim)) (OnStack frame slot)
+            mem-det-frame = subst₂ (λ f1 f2 → readLoc s-after-g (OnStack f1 slot) ≡
+                                              readLoc (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim)) (OnStack f2 slot))
+                                   oag-frame-middle oag-frame-reclaim mem-det
+            -- Convert exec result to s₂ using trace-correct
+            s₂-eq : readLoc (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim)) (OnStack frame slot) ≡
+                    readLoc s₂ (OnStack frame slot)
+            s₂-eq = cong (λ st → readLoc st (OnStack frame slot)) (IRResultAWF.trace-correct result-g)
+        in trans mem-det-frame s₂-eq
+
+      -- Memory agrees on heap (no heap writes in g-trace)
+      g-mem-heap : ∀ h → readLoc s-after-g (OnHeap h) ≡ readLoc s₂ (OnHeap h)
+      g-mem-heap h =
+        let -- s-after-g preserves heap from s-after-middle
+            g-heap = SMP.TracePrimitives.exec-trace-preserves-heap-loc g-trace
+                       s-after-middle alloc-after-middle h g-tnhw
+            -- s₂ preserves heap from s₁'
+            exec-g-heap = SMP.TracePrimitives.exec-trace-preserves-heap-loc g-trace
+                            s₁' alloc-after-f-reclaim h g-tnhw
+            s₂-heap = subst (λ st → readLoc st (OnHeap h) ≡ readLoc s₁' (OnHeap h))
+                            (IRResultAWF.trace-correct result-g) exec-g-heap
+            -- s₁' has same heap as s₁ (only regs changed)
+            s₁'-heap : readLoc s₁' (OnHeap h) ≡ readLoc s₁ (OnHeap h)
+            s₁'-heap = refl
+            -- Chain back through middle, f, setup
+            middle-heap = SMP.TracePrimitives.exec-trace-preserves-heap-loc middle-trace
+                            s-after-f alloc-after-f h tt
+            -- Use f-mem-heap
+            f-heap-eq = f-mem-heap h
+        in trans g-heap (trans middle-heap (trans f-heap-eq (trans (sym s₁'-heap) (sym s₂-heap))))
+
+      -- Memory agrees on ancestor frames
+      g-mem-ancestors : ∀ f' k → current-frame alloc-reclaim-g ≺ f' →
+        readLoc s-after-g (OnStack f' k) ≡ readLoc s₂ (OnStack f' k)
+      g-mem-ancestors f' k cf≺f' =
+        let -- current-frame alloc-reclaim-g = frame
+            frame≺f' : frame ≺ f'
+            frame≺f' = cf≺f'
+            -- s-after-g preserves ancestors from s-after-middle
+            alloc-after-middle-cf≺f' : current-frame alloc-after-middle ≺ f'
+            alloc-after-middle-cf≺f' = subst (_≺ f') (sym oag-frame-middle) frame≺f'
+            g-anc = SMP.TracePrimitives.exec-trace-preserves-ancestor g-trace
+                      s-after-middle alloc-after-middle f' k alloc-after-middle-cf≺f' g-tnhw
+            -- s₂ preserves ancestors from s₁'
+            alloc-f-reclaim-cf≺f' : current-frame alloc-after-f-reclaim ≺ f'
+            alloc-f-reclaim-cf≺f' = frame≺f'
+            exec-g-anc = SMP.TracePrimitives.exec-trace-preserves-ancestor g-trace
+                           s₁' alloc-after-f-reclaim f' k alloc-f-reclaim-cf≺f' g-tnhw
+            s₂-anc = subst (λ st → readLoc st (OnStack f' k) ≡ readLoc s₁' (OnStack f' k))
+                           (IRResultAWF.trace-correct result-g) exec-g-anc
+            -- s₁' has same stack as s₁
+            s₁'-anc : readLoc s₁' (OnStack f' k) ≡ readLoc s₁ (OnStack f' k)
+            s₁'-anc = refl
+            -- Chain back through middle, f
+            alloc-after-f-cf≺f' : current-frame alloc-after-f ≺ f'
+            alloc-after-f-cf≺f' = subst (_≺ f') (sym frame-after-f-eq) frame≺f'
+            middle-anc = SMP.TracePrimitives.exec-trace-preserves-ancestor middle-trace
+                           s-after-f alloc-after-f f' k alloc-after-f-cf≺f' tt
+            -- Use f-mem-ancestors
+            f-anc-eq = f-mem-ancestors f' k frame≺f'
+        in trans g-anc (trans middle-anc (trans f-anc-eq (trans (sym s₁'-anc) (sym s₂-anc))))
+
+      -- Transfer validity from s₂ to s-after-g using positive regions
+      valid-at-s-after-g : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s-after-g
+      valid-at-s-after-g = validityWF-mem-preserved-in-regions alloc-reclaim-g
+                             (eval primSem g x) snd-loc backup-slot reclaim-f s₂ s-after-g
+                             snd-loc-before-reclaim-g backup≤reclaim-f' reclaim-f≤reclaim-g
+                             g-mem-input-region g-mem-fresh-region g-mem-heap g-mem-ancestors
+                             valid-s2-reclaimed
+
+      -- Step 3: Transfer validity from s-after-g to s-final
+      -- final-trace writes at snd-slot which is in [backup-slot, f-start) ⊂ [backup-slot, reclaim-f)
+      -- So it doesn't write to input region [0, backup-slot) or fresh region [reclaim-f, reclaim-g)
+
+      -- Memory agrees on input region [0, backup-slot): final-trace writes above backup-slot
+      final-mem-input-region : ∀ slot → slot < backup-slot →
+        readLoc s-final (OnStack frame slot) ≡ readLoc s-after-g (OnStack frame slot)
+      final-mem-input-region slot slot<backup =
+        let slot<snd : slot < snd-slot
+            slot<snd = ≤-trans slot<backup (≤-trans (n≤1+n backup-slot) (n≤1+n fst-slot))
+            final-twa : TraceWritesAbove snd-slot final-trace
+            final-twa = ≤-refl , tt
+            final-pres = SMP.TracePrimitives.exec-trace-preserves-slot-below final-trace
+                           s-after-g alloc-after-g snd-slot slot final-twa tt slot<snd
+            final-pres-frame = subst (λ fr → readLoc s-after-final (OnStack fr slot) ≡
+                                             readLoc s-after-g (OnStack fr slot))
+                                     frame-preserved-through final-pres
+        in subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s-after-g (OnStack frame slot))
+                 (sym s-final-eq) final-pres-frame
+
+      -- Memory agrees on fresh region [reclaim-f, reclaim-g): final-trace writes below reclaim-f
+      final-mem-fresh-region : ∀ slot → reclaim-f ≤ slot → slot < reclaim-g →
+        readLoc s-final (OnStack frame slot) ≡ readLoc s-after-g (OnStack frame slot)
+      final-mem-fresh-region slot rf≤slot _ =
+        let final-twb : TraceWritesBelow reclaim-f final-trace
+            final-twb = snd-slot<reclaim-f , tt  -- snd-slot < f-start ≤ reclaim-f
+            final-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above final-trace
+                           s-after-g alloc-after-g reclaim-f slot final-twb tt rf≤slot
+            final-pres-frame = subst (λ fr → readLoc s-after-final (OnStack fr slot) ≡
+                                             readLoc s-after-g (OnStack fr slot))
+                                     frame-preserved-through final-pres
+        in subst (λ st → readLoc st (OnStack frame slot) ≡ readLoc s-after-g (OnStack frame slot))
+                 (sym s-final-eq) final-pres-frame
+
+      -- Memory agrees on heap (no heap writes in final-trace)
+      final-mem-heap : ∀ h → readLoc s-final (OnHeap h) ≡ readLoc s-after-g (OnHeap h)
+      final-mem-heap h =
+        let final-heap = SMP.TracePrimitives.exec-trace-preserves-heap-loc final-trace
+                           s-after-g alloc-after-g h tt
+        in subst (λ st → readLoc st (OnHeap h) ≡ readLoc s-after-g (OnHeap h))
+                 (sym s-final-eq) final-heap
+
+      -- Memory agrees on ancestor frames
+      final-mem-ancestors : ∀ f' k → current-frame alloc-reclaim-g ≺ f' →
+        readLoc s-final (OnStack f' k) ≡ readLoc s-after-g (OnStack f' k)
+      final-mem-ancestors f' k cf≺f' =
+        let frame≺f' : frame ≺ f'
+            frame≺f' = cf≺f'
+            alloc-after-g-cf≺f' : current-frame alloc-after-g ≺ f'
+            alloc-after-g-cf≺f' = subst (_≺ f') (sym frame-preserved-through) frame≺f'
+            final-anc = SMP.TracePrimitives.exec-trace-preserves-ancestor final-trace
+                          s-after-g alloc-after-g f' k alloc-after-g-cf≺f' tt
+        in subst (λ st → readLoc st (OnStack f' k) ≡ readLoc s-after-g (OnStack f' k))
+                 (sym s-final-eq) final-anc
+
+      -- Transfer validity from s-after-g to s-final using positive regions
+      snd-valid-at-s-final : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s-final
+      snd-valid-at-s-final = validityWF-mem-preserved-in-regions alloc-reclaim-g
+                               (eval primSem g x) snd-loc backup-slot reclaim-f s-after-g s-final
+                               snd-loc-before-reclaim-g backup≤reclaim-f' reclaim-f≤reclaim-g
+                               final-mem-input-region final-mem-fresh-region final-mem-heap final-mem-ancestors
+                               valid-at-s-after-g
+
+      -- Step 4: Frontier advance (trivial since alloc-reclaim-g and alloc-final both have next-slot = reclaim-g)
       snd-valid : ValidAtWF mG alloc-final (eval primSem g x) snd-loc s-final
-      snd-valid = validityWF-frontier-advance (eval primSem g x) snd-loc s-final refl ≤-refl ≤-refl valid-snd-at-s-final
+      snd-valid = validityWF-frontier-advance (eval primSem g x) snd-loc s-final refl ≤-refl ≤-refl snd-valid-at-s-final
 
       ------------------------------------------------------------------------
       -- Final pair validity
