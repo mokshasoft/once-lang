@@ -305,13 +305,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         max-slot-geq-reclaim : reclaimable-slot ≤ max-slot-written
         -- max-slot-written is bounded by input next-slot + ir-stack-requirement
         max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ ir-stack-requirement ir
-        -- For non-reclaiming IRs, max-slot-written equals reclaimable-slot.
-        -- This invariant holds for base IRs (by construction) and composed IRs
-        -- (Compose, Pair) when sub-IRs satisfy it. Only recursion schemes
-        -- (Cata, Ana, Para) have actual reclamation where max > reclaim.
-        -- Key for Pair's preservation proofs: if sub-IR g has max-slot-eq-reclaim,
-        -- then g writes in [start, reclaim), so fst-slot = reclaim is preserved.
-        max-slot-eq-reclaim : max-slot-written ≡ reclaimable-slot
         -- Frontier slot stability: if input-loc is at frontier initially, it stays there
         -- This is because IR traces either:
         --   1. Don't write to frontier slot (e.g., inl/inr write to suc)

@@ -112,7 +112,6 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; max-slot-written = pair-max-slot
       ; max-slot-geq-reclaim = pair-max-slot-geq-reclaim
       ; max-slot-usage-bound = pair-max-slot-bound
-      ; max-slot-eq-reclaim = SMP.!!
       ; frontier-slot-stable = pair-frontier-stable
       ; trace-writes-above = pair-trace-writes-above
       ; trace-slot-reads-above = pair-trace-slot-reads-above
