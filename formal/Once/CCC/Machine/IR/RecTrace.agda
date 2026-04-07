@@ -1384,11 +1384,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity rec-result
         -- slot-usage-bound: IRResultAWF.reclaim-size-bound gives exactly this bound
         ; slot-usage-bound = IRResultAWF.reclaim-size-bound rec-result
-        -- max-slot-used: For Id case, IRResultAWF.reclaimable-slot IS the high-water mark
-        -- IRResultAWF.trace-writes-below is TraceWritesBelow reclaimable-slot trace
-        ; max-slot-used = IRResultAWF.reclaimable-slot rec-result
-        ; max-slot-geq-reclaim = ≤-refl
-        ; max-slot-usage-bound = IRResultAWF.reclaim-size-bound rec-result
+        -- max-slot-used: Use IRResultAWF.max-slot-written for consistent trace-writes-below type
+        ; max-slot-used = IRResultAWF.max-slot-written rec-result
+        ; max-slot-geq-reclaim = IRResultAWF.max-slot-geq-reclaim rec-result
+        ; max-slot-usage-bound = IRResultAWF.max-slot-usage-bound rec-result
         ; heap-monotone = IRResultAWF.heap-monotone rec-result
         -- heap-preserved: Depends on Cata algebra - stack-only algebras preserve heap
         -- For algebras that allocate heap, this would need additional assumptions
@@ -1396,7 +1395,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; capacity-preserved = IRResultAWF.capacity-preserved rec-result
         ; mem-preserved = IRResultAWF.mem-preserved-before rec-result
         -- Trace region bounds from IRResultAWF
-        -- IRResultAWF uses reclaimable-slot as bound, which equals our max-slot-used
+        -- IRResultAWF uses max-slot-written as bound, which equals our max-slot-used
         ; trace-writes-above = IRResultAWF.trace-writes-above rec-result
         ; trace-writes-below = IRResultAWF.trace-writes-below rec-result
         ; trace-slot-reads-above = IRResultAWF.trace-slot-reads-above rec-result
@@ -3723,15 +3722,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         cata-max-slot-geq-reclaim : IRResultAWF.reclaimable-slot alg-result ≤ cata-max-slot
         cata-max-slot-geq-reclaim = ≤-trans (IRResultAWF.max-slot-geq-reclaim alg-result) (n≤m⊔n layer-max-slot alg-max-slot)
 
-        -- NOTE on trace-writes-below / trace-slot-reads-below:
-        -- We CAN prove TraceWritesBelow cata-max-slot final-trace where
+        -- NOTE: With IRResultAWF field types changed to use max-slot-written,
+        -- we can now prove TraceWritesBelow cata-max-slot final-trace where
         -- cata-max-slot = layer-max-slot ⊔ alg-max-slot.
-        -- However, the field requires TraceWritesBelow reclaimable-slot trace,
-        -- and reclaimable-slot = alg-reclaimable-slot ≤ alg-max-slot ≤ cata-max-slot.
-        -- Monotonicity goes the wrong way: we can only lift TO larger bounds, not FROM them.
-        -- Closing this gap requires either:
-        --   1. Changing IRResultAWF field types to use max-slot-written (breaks other proofs)
-        --   2. Proving layer-max-slot ≤ alg-reclaimable-slot (requires reclamation model)
 
         cata-result : IRResultAWF mAlg {μ-type G} {A} (Cata wfG alg) x s alloc
         cata-result = record
@@ -3812,16 +3805,28 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
               (SMP.trace-writes-above-mono (next-slot alloc) (next-slot alloc-layer)
                 (IRResultAWF.trace alg-result) layer-slot-mono
                 (IRResultAWF.trace-writes-above alg-result))
-          -- trace-writes-below: Need TraceWritesBelow reclaimable-slot, see NOTE above
-          ; trace-writes-below = SMP.!!
+          ; trace-writes-below = SMP.trace-writes-below-append cata-max-slot layer-trace
+              (mov-to-input ∷ IRResultAWF.trace alg-result)
+              (SMP.trace-writes-below-mono layer-max-slot cata-max-slot layer-trace
+                 (m≤m⊔n layer-max-slot alg-max-slot)
+                 (ProcessedLayerResult.trace-writes-below layer-result))
+              (SMP.trace-writes-below-mono alg-max-slot cata-max-slot (IRResultAWF.trace alg-result)
+                 (m≤n⊔m layer-max-slot alg-max-slot)
+                 (IRResultAWF.trace-writes-below alg-result))
           ; trace-slot-reads-above = SMP.trace-slot-reads-above-append (next-slot alloc) layer-trace
               (mov-to-input ∷ IRResultAWF.trace alg-result)
               (ProcessedLayerResult.trace-slot-reads-above layer-result)
               (SMP.trace-slot-reads-above-mono (next-slot alloc) (next-slot alloc-layer)
                 (IRResultAWF.trace alg-result) layer-slot-mono
                 (IRResultAWF.trace-slot-reads-above alg-result))
-          -- trace-slot-reads-below: Need TraceSlotReadsBelow reclaimable-slot, see NOTE above
-          ; trace-slot-reads-below = SMP.!!
+          ; trace-slot-reads-below = SMP.trace-slot-reads-below-append cata-max-slot layer-trace
+              (mov-to-input ∷ IRResultAWF.trace alg-result)
+              (SMP.trace-slot-reads-below-mono layer-max-slot cata-max-slot layer-trace
+                 (m≤m⊔n layer-max-slot alg-max-slot)
+                 (ProcessedLayerResult.trace-slot-reads-below layer-result))
+              (SMP.trace-slot-reads-below-mono alg-max-slot cata-max-slot (IRResultAWF.trace alg-result)
+                 (m≤n⊔m layer-max-slot alg-max-slot)
+                 (IRResultAWF.trace-slot-reads-below alg-result))
           ; trace-preserves-capacity = SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity layer-result)
               (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity alg-result))
           ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
