@@ -313,8 +313,10 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   run-cata-core wf alg rec-wf mIn x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq combined-cap =
     -- Delegate to cata-dispatched-new which provides the structural recursion proof
-    cata-dispatched-new wf alg rec-wf x mIn input-loc s alloc
-      input-valid-wf input-before not-halted rdi-eq combined-cap
+    -- Convert capacity from ir-stack-requirement to layer-capacity using ir-stack-req-geq-layer-cap
+    let cap-converted = ir-stack-req-geq-layer-cap wf alg (next-slot alloc) (frame-capacity alloc) combined-cap
+    in cata-dispatched-new wf alg rec-wf x mIn input-loc s alloc
+         input-valid-wf input-before not-halted rdi-eq cap-converted
 
   -- | Fuse: μ-anchored fusion (transform then fold)
   -- Structural recursion on μG, applying transform and algebra

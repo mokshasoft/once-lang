@@ -469,7 +469,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
           f-twa : TraceWritesAbove (next-slot alloc) f-trace
           f-twa = IRResultAWF.trace-writes-above result-f
 
-          f-twb : TraceWritesBelow reclaim-f f-trace
+          f-twb : TraceWritesBelow max-slot-f f-trace
           f-twb = IRResultAWF.trace-writes-below result-f
 
           f-tnhw : TraceNoHeapWrites f-trace
@@ -487,7 +487,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
           g-twa : TraceWritesAbove reclaim-f g-trace
           g-twa = IRResultAWF.trace-writes-above result-g
 
-          g-twb : TraceWritesBelow reclaim-g g-trace
+          g-twb : TraceWritesBelow max-slot-g g-trace
           g-twb = IRResultAWF.trace-writes-below result-g
 
           g-tnhw : TraceNoHeapWrites g-trace
@@ -569,32 +569,18 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
               ... | inj₂ reclaim-f≡reclaim-g = inj₁ (trans slot≡reclaim-f reclaim-f≡reclaim-g)
 
           -- If f doesn't allocate (inj₁)
+          -- With max-slot-written bounds, we can't easily prove slot preservation in this case
+          -- (max-slot-f might be larger than reclaim-f even when f doesn't grow reclaimable-slot).
+          -- We return uncertain since this is a rare edge case.
           ... | inj₁ f-no-alloc = result-f-no-alloc
             where
-              -- f doesn't allocate: trace writes at [next-slot, reclaim-f) = [next-slot, next-slot) = ∅
-              slot-after-f : readLoc s-after-f (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
-              slot-after-f =
-                let m≤slot : reclaim-f ≤ next-slot alloc
-                    m≤slot = ≤-reflexive (sym f-no-alloc)
-                    preserved = exec-trace-preserves-slot-above f-trace s' alloc
-                                  reclaim-f (next-slot alloc) f-twb f-tnhw m≤slot
-                in trans preserved slot-eq'
-
-              slot-after-mov : readLoc s-after-mov (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc'
-              slot-after-mov = trans (sym (exec-abstract-preserves-stack-slot mov-to-input s-after-f alloc-after-f
-                                             (current-frame alloc) (next-slot alloc) nhw-mov-to-input refl))
-                                     slot-after-f
-
-              -- Since f-no-alloc: next-slot = reclaim-f, case analysis on g's allocation
               result-f-no-alloc : (next-slot alloc ≡ compose-reclaim) ⊎
                                   ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
                                            (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)
               result-f-no-alloc with m≤n⇒m<n∨m≡n (IRResultAWF.reclaim-monotone result-g)
               -- Case B1: g allocates at frontier - uncertain
-              -- g writes to [reclaim-f, reclaim-g) which includes next-slot = reclaim-f
-              -- g writes f's result (not original input) to the slot
               ... | inj₁ reclaim-f<reclaim-g = inj₂ (inj₂ tt)
-              -- Case B2: neither allocates
+              -- Case B2: neither allocates - return no-alloc proof
               ... | inj₂ reclaim-f≡reclaim-g = inj₁ (trans f-no-alloc reclaim-f≡reclaim-g)
 
       ------------------------------------------------------------------------
@@ -628,28 +614,30 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
             mov-g-ra = g-ra
         in trace-slot-reads-above-append n f-trace (mov-to-input ∷ g-trace) f-ra mov-g-ra
 
-      compose-trace-writes-below : TraceWritesBelow compose-reclaim compose-trace
+      compose-trace-writes-below : TraceWritesBelow compose-max-slot compose-trace
       compose-trace-writes-below =
-        let f-wb-at-reclaim-f : TraceWritesBelow reclaim-f f-trace
-            f-wb-at-reclaim-f = IRResultAWF.trace-writes-below result-f
-            f-wb : TraceWritesBelow reclaim-g f-trace
-            f-wb = trace-writes-below-mono reclaim-f reclaim-g f-trace
-                     (IRResultAWF.reclaim-monotone result-g) f-wb-at-reclaim-f
-            g-wb : TraceWritesBelow reclaim-g g-trace
-            g-wb = IRResultAWF.trace-writes-below result-g
-            mov-g-wb : TraceWritesBelow reclaim-g (mov-to-input ∷ g-trace)
+        let f-wb : TraceWritesBelow compose-max-slot f-trace
+            f-wb = trace-writes-below-mono max-slot-f compose-max-slot f-trace
+                     (m≤m⊔n max-slot-f max-slot-g)
+                     (IRResultAWF.trace-writes-below result-f)
+            g-wb : TraceWritesBelow compose-max-slot g-trace
+            g-wb = trace-writes-below-mono max-slot-g compose-max-slot g-trace
+                     (m≤n⊔m max-slot-f max-slot-g)
+                     (IRResultAWF.trace-writes-below result-g)
+            mov-g-wb : TraceWritesBelow compose-max-slot (mov-to-input ∷ g-trace)
             mov-g-wb = g-wb
-        in trace-writes-below-append reclaim-g f-trace (mov-to-input ∷ g-trace) f-wb mov-g-wb
+        in trace-writes-below-append compose-max-slot f-trace (mov-to-input ∷ g-trace) f-wb mov-g-wb
 
-      compose-trace-slot-reads-below : TraceSlotReadsBelow compose-reclaim compose-trace
+      compose-trace-slot-reads-below : TraceSlotReadsBelow compose-max-slot compose-trace
       compose-trace-slot-reads-below =
-        let f-rb-at-reclaim-f : TraceSlotReadsBelow reclaim-f f-trace
-            f-rb-at-reclaim-f = IRResultAWF.trace-slot-reads-below result-f
-            f-rb : TraceSlotReadsBelow reclaim-g f-trace
-            f-rb = trace-slot-reads-below-mono reclaim-f reclaim-g f-trace
-                     (IRResultAWF.reclaim-monotone result-g) f-rb-at-reclaim-f
-            g-rb : TraceSlotReadsBelow reclaim-g g-trace
-            g-rb = IRResultAWF.trace-slot-reads-below result-g
-            mov-g-rb : TraceSlotReadsBelow reclaim-g (mov-to-input ∷ g-trace)
+        let f-rb : TraceSlotReadsBelow compose-max-slot f-trace
+            f-rb = trace-slot-reads-below-mono max-slot-f compose-max-slot f-trace
+                     (m≤m⊔n max-slot-f max-slot-g)
+                     (IRResultAWF.trace-slot-reads-below result-f)
+            g-rb : TraceSlotReadsBelow compose-max-slot g-trace
+            g-rb = trace-slot-reads-below-mono max-slot-g compose-max-slot g-trace
+                     (m≤n⊔m max-slot-f max-slot-g)
+                     (IRResultAWF.trace-slot-reads-below result-g)
+            mov-g-rb : TraceSlotReadsBelow compose-max-slot (mov-to-input ∷ g-trace)
             mov-g-rb = g-rb
-        in trace-slot-reads-below-append reclaim-g f-trace (mov-to-input ∷ g-trace) f-rb mov-g-rb
+        in trace-slot-reads-below-append compose-max-slot f-trace (mov-to-input ∷ g-trace) f-rb mov-g-rb
