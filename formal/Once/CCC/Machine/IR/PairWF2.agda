@@ -949,13 +949,89 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       oag-input-s1' : readReg (regs s₁') Input ≡ input-loc
       oag-input-s1' = writeReg-same (regs s₁) Input input-loc
 
+      -- Decompose middle-trace: store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
+      -- (moved before oag-input-after-middle which needs these)
+      oag-s-after-fst-store : LocState FS
+      oag-s-after-fst-store = proj₁ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
+
+      oag-alloc-after-fst-store : AllocState {FS}
+      oag-alloc-after-fst-store = proj₂ (exec-abstract (store-at-slot fst-slot) s-after-f alloc-after-f)
+
+      oag-not-halted-fst-store : halted oag-s-after-fst-store ≡ false
+      oag-not-halted-fst-store = trans (store-at-slot-halted fst-slot s-after-f alloc-after-f) not-halted-after-f
+
+      oag-frame-fst-store-eq : current-frame oag-alloc-after-fst-store ≡ frame
+      oag-frame-fst-store-eq = trans (exec-abstract-preserves-frame (store-at-slot fst-slot) s-after-f alloc-after-f)
+                                     (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+                                            (exec-trace-preserves-frame setup-trace s alloc))
+
       -- Input after middle-trace: restore-input backup-slot sets Input to backup-slot's value
       -- Chain: setup writes input-loc to backup → f preserves → store fst preserves → restore reads
-      -- PROOF: The logic is sound but requires reorganizing definitions due to mutual dependencies.
       -- Key steps: (1) setup writes input-loc to backup-slot, (2) f-trace preserves backup (writes above f-start),
       -- (3) store-at-slot fst-slot preserves backup (fst > backup), (4) restore-input reads backup and sets Input
       oag-input-after-middle : readReg (regs s-after-middle) Input ≡ input-loc
-      oag-input-after-middle = SMP.!!
+      oag-input-after-middle =
+        let -- Step 1: After setup-trace, backup-slot has input-loc
+            -- setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
+            -- Use rec-scheme-stores-input which proves exactly this
+            setup-stores : readLoc s-after-setup (OnStack (current-frame alloc) backup-slot) ≡ just (readReg (regs s) Input)
+            setup-stores = SMP.RecSchemeSemantics.rec-scheme-stores-input backup-slot s alloc not-halted
+            setup-has-input : readLoc s-after-setup (OnStack frame backup-slot) ≡ just input-loc
+            setup-has-input = trans setup-stores (cong just rdi-eq)
+
+            -- Step 2: f-trace preserves backup-slot (writes above f-start, backup-slot < f-start)
+            -- backup-slot < f-start (backup-slot < suc (suc (suc backup-slot)))
+            backup<f-start : backup-slot < f-start
+            backup<f-start = ≤-trans (n≤1+n fst-slot) (n≤1+n snd-slot)
+            -- f-trace writes above f-start
+            -- Use exec-trace-preserves-slot-below
+            frame-setup-eq : current-frame alloc-after-setup ≡ frame
+            frame-setup-eq = exec-trace-preserves-frame setup-trace s alloc
+            f-preserves-backup : readLoc s-after-f (OnStack (current-frame alloc-after-setup) backup-slot) ≡
+                                 readLoc s-after-setup (OnStack (current-frame alloc-after-setup) backup-slot)
+            f-preserves-backup = exec-trace-preserves-slot-below f-trace s-after-setup alloc-after-setup f-start backup-slot
+                                   f-twa f-tnhw backup<f-start
+            -- Transport to frame
+            f-has-input : readLoc s-after-f (OnStack frame backup-slot) ≡ just input-loc
+            f-has-input = trans (subst (λ f → readLoc s-after-f (OnStack f backup-slot) ≡ readLoc s-after-setup (OnStack f backup-slot))
+                                       frame-setup-eq f-preserves-backup)
+                                setup-has-input
+
+            -- Step 3: store-at-slot fst-slot preserves backup-slot (backup-slot < fst-slot)
+            -- fst-slot = suc backup-slot, so backup-slot < fst-slot is suc backup-slot ≤ suc backup-slot = ≤-refl
+            backup<fst : backup-slot < fst-slot
+            backup<fst = ≤-refl
+            frame-f-eq : current-frame alloc-after-f ≡ frame
+            frame-f-eq = trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+                               (exec-trace-preserves-frame setup-trace s alloc)
+            store-fst-preserves-backup : readLoc oag-s-after-fst-store (OnStack frame backup-slot) ≡ readLoc s-after-f (OnStack frame backup-slot)
+            store-fst-preserves-backup = subst (λ f → readLoc oag-s-after-fst-store (OnStack f backup-slot) ≡ readLoc s-after-f (OnStack f backup-slot))
+                                               frame-f-eq
+                                               (store-at-slot-preserves-other fst-slot backup-slot s-after-f alloc-after-f (inj₂ backup<fst))
+            fst-store-has-input : readLoc oag-s-after-fst-store (OnStack frame backup-slot) ≡ just input-loc
+            fst-store-has-input = trans store-fst-preserves-backup f-has-input
+
+            -- Step 4: restore-input backup-slot sets Input to value at backup-slot
+            fst-store-backup-slot-eq : readLoc oag-s-after-fst-store (OnStack (current-frame oag-alloc-after-fst-store) backup-slot) ≡ just input-loc
+            fst-store-backup-slot-eq = subst (λ f → readLoc oag-s-after-fst-store (OnStack f backup-slot) ≡ just input-loc)
+                                             (sym oag-frame-fst-store-eq)
+                                             fst-store-has-input
+            restore-sets-input : readReg (regs (proj₁ (exec-abstract (restore-input backup-slot) oag-s-after-fst-store oag-alloc-after-fst-store))) Input ≡ input-loc
+            restore-sets-input = SMP.RecSchemeSemantics.exec-abstract-restore-input-sets-input backup-slot oag-s-after-fst-store oag-alloc-after-fst-store input-loc fst-store-backup-slot-eq
+
+            -- Connect s-after-middle to the restore result
+            -- s-after-middle = proj₁ (exec-trace middle-trace s-after-f alloc-after-f)
+            -- middle-trace = store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
+            middle-decomp : exec-trace middle-trace s-after-f alloc-after-f ≡
+                            exec-trace (restore-input backup-slot ∷ []) oag-s-after-fst-store oag-alloc-after-fst-store
+            middle-decomp = exec-trace-cons (store-at-slot fst-slot) (restore-input backup-slot ∷ []) s-after-f alloc-after-f not-halted-after-f
+            restore-single : exec-trace (restore-input backup-slot ∷ []) oag-s-after-fst-store oag-alloc-after-fst-store ≡
+                             exec-abstract (restore-input backup-slot) oag-s-after-fst-store oag-alloc-after-fst-store
+            restore-single = exec-trace-single (restore-input backup-slot) oag-s-after-fst-store oag-alloc-after-fst-store oag-not-halted-fst-store
+            s-middle-eq : s-after-middle ≡ proj₁ (exec-abstract (restore-input backup-slot) oag-s-after-fst-store oag-alloc-after-fst-store)
+            s-middle-eq = cong proj₁ (trans middle-decomp restore-single)
+
+        in trans (cong (λ st → readReg (regs st) Input) s-middle-eq) restore-sets-input
 
       oag-input-eq : readReg (regs s-after-middle) Input ≡ readReg (regs s₁') Input
       oag-input-eq = trans oag-input-after-middle (sym oag-input-s1')
