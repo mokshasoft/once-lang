@@ -66,6 +66,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            valid-pair-wf;
            validityWF-mem-only; validityWF-mem-preserved;
+           validityWF-mem-preserved-in-regions;
            validityWF-frontier-advance;
            validityWF-trace-preserves)
 
@@ -1243,12 +1244,20 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ----------------------------------------------------------------------
       -- fst-valid: Validity of f's result at fst-loc in s-final
       --
-      -- Strategy:
+      -- Strategy using POSITIVE BOUNDS:
       -- 1. reclaim-preserves-validity gives validity at s₁ with alloc-after-f-reclaim
-      -- 2. Memory at BeforeFrontier locations is preserved from s₁ to s-final
-      --    (rest of trace writes above reclaim-f, fst-loc is below reclaim-f)
-      -- 3. Use validityWF-mem-preserved to transfer validity
+      -- 2. Transfer validity from s₁ to s-after-f using validityWF-mem-preserved-in-regions
+      --    Memory agrees in two disjoint regions:
+      --      - Input region: [0, backup-slot) - preserved from initial state
+      --      - Fresh region: [f-start, reclaim-f) - written by f-trace deterministically
+      --    The gap [backup-slot, f-start) = {backup-slot, fst-slot, snd-slot} contains
+      --    no sub-locations of fst-loc.
+      -- 3. Apply validityWF-trace-preserves for rest-trace to reach s-final
       -- 4. Advance frontier from reclaim-f to reclaim-g
+      --
+      -- Key insight (positive characterization): fst-loc's sub-locations are in:
+      --   - Input region: [0, backup-slot) - from input x
+      --   - Fresh region: [f-start, reclaim-f) - from f's allocations
       ----------------------------------------------------------------------
 
       -- Step 1: Get validity at s₁ with alloc-after-f-reclaim
@@ -1259,20 +1268,90 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       fst-loc-before-reclaimed : BeforeFrontier alloc-after-f-reclaim fst-loc
       fst-loc-before-reclaimed = IRResultAWF.reclaim-preserves-result result-f reclaim-f-fits
 
-      -- Step 2-3: Memory preservation from s₁ to s-final at BeforeFrontier locations
-      -- This is the key lemma connecting the two execution paths.
-      -- Uses the fact that:
-      --   - s₁ and s-after-f agree on memory at BeforeFrontier locations (f-trace determinism)
-      --   - rest-trace (middle ++ g ++ final) writes above reclaim-f
-      --   - fst-loc and its sub-locations are below reclaim-f
-      -- Note: validityWF-mem-preserved expects (readLoc s₂ ≡ readLoc s₁) format
-      fst-mem-s1-to-final : ∀ loc' → BeforeFrontier alloc-after-f-reclaim loc' →
-        readLoc s-final loc' ≡ readLoc s₁ loc'
-      fst-mem-s1-to-final loc' bf = SMP.!!  -- Requires: f-trace determinism + rest-trace preservation
+      -- Step 2: Memory agreement from s₁ to s-after-f using POSITIVE BOUNDS
+      -- s₁ = exec f-trace s alloc-after-pair-slots (recursive call result)
+      -- s-after-f = exec f-trace s-after-setup alloc-after-setup
+      --
+      -- Region bounds for fst-loc's sub-locations:
+      --   input-bound = backup-slot (sub-locations from x are < backup-slot)
+      --   fresh-start = f-start (sub-locations from f are ≥ f-start)
 
+      -- Memory agrees on input region [0, backup-slot)
+      -- Both s₁ and s-after-f preserve this from initial state (f writes above f-start)
+      f-mem-input-region : ∀ slot → slot < backup-slot →
+        readLoc s-after-f (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+      f-mem-input-region slot slot<backup = SMP.!!  -- Both preserve [0, backup-slot) from s
+
+      -- Memory agrees on fresh region [f-start, reclaim-f)
+      -- Both executions of f-trace write same values (deterministic given same Input)
+      f-mem-fresh-region : ∀ slot → f-start ≤ slot → slot < reclaim-f →
+        readLoc s-after-f (OnStack frame slot) ≡ readLoc s₁ (OnStack frame slot)
+      f-mem-fresh-region slot f-start≤slot slot<reclaim = SMP.!!  -- f-trace determinism
+
+      -- Memory agrees on heap (no heap writes)
+      f-mem-heap : ∀ h → readLoc s-after-f (OnHeap h) ≡ readLoc s₁ (OnHeap h)
+      f-mem-heap h = SMP.!!  -- f-trace has no heap writes
+
+      -- Memory agrees on ancestor frames (f doesn't write there)
+      f-mem-ancestors : ∀ f' k → current-frame alloc-after-f-reclaim ≺ f' →
+        readLoc s-after-f (OnStack f' k) ≡ readLoc s₁ (OnStack f' k)
+      f-mem-ancestors f' k cf≺f' = SMP.!!  -- f-trace preserves ancestor frames
+
+      -- Region ordering: backup-slot ≤ f-start ≤ reclaim-f
+      backup≤f-start : backup-slot ≤ f-start
+      backup≤f-start = ≤-trans (n≤1+n backup-slot) (≤-trans (n≤1+n fst-slot) (n≤1+n snd-slot))
+
+      f-start≤reclaim-f : f-start ≤ reclaim-f
+      f-start≤reclaim-f = reclaim-f-above-f-start
+
+      -- Transfer validity from s₁ to s-after-f using positive regions lemma
+      valid-at-s-after-f : ValidAtWF mF alloc-after-f-reclaim (eval primSem f x) fst-loc s-after-f
+      valid-at-s-after-f = validityWF-mem-preserved-in-regions alloc-after-f-reclaim
+                             (eval primSem f x) fst-loc backup-slot f-start s₁ s-after-f
+                             fst-loc-before-reclaimed backup≤f-start f-start≤reclaim-f
+                             f-mem-input-region f-mem-fresh-region f-mem-heap f-mem-ancestors
+                             valid-s1-reclaimed
+
+      -- Step 3: Transfer validity from s-after-f to s-final using POSITIVE BOUNDS
+      --
+      -- rest-trace = middle ++ g ++ final writes to:
+      --   - fst-slot, snd-slot (in gap [backup-slot, f-start))
+      --   - g's allocations in [reclaim-f, max-g)
+      --
+      -- fst-loc's sub-locations are in [0, backup-slot) ∪ [f-start, reclaim-f).
+      -- rest-trace does NOT write to these regions, so sub-locations are preserved.
+      --
+      -- Note: We can't use validityWF-trace-preserves here because rest-trace writes
+      -- BELOW reclaim-f (at fst-slot, snd-slot). Instead, we use positive region
+      -- preservation again.
+
+      -- Memory agrees on input region [0, backup-slot): rest-trace writes above backup-slot
+      rest-mem-input-region : ∀ slot → slot < backup-slot →
+        readLoc s-final (OnStack frame slot) ≡ readLoc s-after-f (OnStack frame slot)
+      rest-mem-input-region slot slot<backup = SMP.!!  -- rest-trace writes ≥ backup-slot
+
+      -- Memory agrees on fresh region [f-start, reclaim-f): rest-trace writes elsewhere
+      -- rest-trace writes to [backup-slot, f-start) ∪ [reclaim-f, max-g), so [f-start, reclaim-f) preserved
+      rest-mem-fresh-region : ∀ slot → f-start ≤ slot → slot < reclaim-f →
+        readLoc s-final (OnStack frame slot) ≡ readLoc s-after-f (OnStack frame slot)
+      rest-mem-fresh-region slot f-start≤slot slot<reclaim = SMP.!!  -- rest-trace doesn't write [f-start, reclaim-f)
+
+      -- Memory agrees on heap (no heap writes in rest-trace)
+      rest-mem-heap : ∀ h → readLoc s-final (OnHeap h) ≡ readLoc s-after-f (OnHeap h)
+      rest-mem-heap h = SMP.!!  -- rest-trace has no heap writes
+
+      -- Memory agrees on ancestor frames
+      rest-mem-ancestors : ∀ f' k → current-frame alloc-after-f-reclaim ≺ f' →
+        readLoc s-final (OnStack f' k) ≡ readLoc s-after-f (OnStack f' k)
+      rest-mem-ancestors f' k cf≺f' = SMP.!!  -- rest-trace preserves ancestor frames
+
+      -- Transfer validity from s-after-f to s-final using positive regions
       valid-at-s-final : ValidAtWF mF alloc-after-f-reclaim (eval primSem f x) fst-loc s-final
-      valid-at-s-final = validityWF-mem-preserved (eval primSem f x) fst-loc s₁ s-final
-                           fst-loc-before-reclaimed fst-mem-s1-to-final valid-s1-reclaimed
+      valid-at-s-final = validityWF-mem-preserved-in-regions alloc-after-f-reclaim
+                           (eval primSem f x) fst-loc backup-slot f-start s-after-f s-final
+                           fst-loc-before-reclaimed backup≤f-start f-start≤reclaim-f
+                           rest-mem-input-region rest-mem-fresh-region rest-mem-heap rest-mem-ancestors
+                           valid-at-s-after-f
 
       -- Step 4: Advance frontier from alloc-after-f-reclaim to alloc-final
       fst-valid : ValidAtWF mF alloc-final (eval primSem f x) fst-loc s-final

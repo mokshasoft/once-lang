@@ -305,6 +305,13 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         max-slot-geq-reclaim : reclaimable-slot ≤ max-slot-written
         -- max-slot-written is bounded by input next-slot + ir-stack-requirement
         max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ ir-stack-requirement ir
+        -- For non-reclaiming IRs, max-slot-written equals reclaimable-slot.
+        -- This invariant holds for base IRs (by construction) and composed IRs
+        -- (Compose, Pair) when sub-IRs satisfy it. Only recursion schemes
+        -- (Cata, Ana, Para) have actual reclamation where max > reclaim.
+        -- Key for Pair's preservation proofs: if sub-IR g has max-slot-eq-reclaim,
+        -- then g writes in [start, reclaim), so fst-slot = reclaim is preserved.
+        max-slot-eq-reclaim : max-slot-written ≡ reclaimable-slot
         -- Frontier slot stability: if input-loc is at frontier initially, it stays there
         -- This is because IR traces either:
         --   1. Don't write to frontier slot (e.g., inl/inr write to suc)
@@ -336,14 +343,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- a slot written (below frontier) produces the same result with that slot preserved.
         -- Key for pair's trustMe-pair-stack/heap proofs via exec-trace-slot-independent.
         trace-slot-reads-above : TraceSlotReadsAbove (next-slot alloc) trace
-        -- Trace upper bound: all stack writes are at slots < reclaimable-slot.
-        -- Combined with trace-writes-above, this gives: writes are in [next-slot alloc, reclaimable-slot).
-        -- Key for pair's g-fst-slot preservation: g writes in [reclaim-f, reclaim-g), so fst-slot = reclaim-g is safe.
-        trace-writes-below : TraceWritesBelow reclaimable-slot trace
-        -- Trace slot read upper bound: all stack reads are from slots < reclaimable-slot.
-        -- Combined with trace-slot-reads-above, this gives: reads are in [next-slot alloc, reclaimable-slot).
-        -- Key for pair's g-fst-indep: g reads in [reclaim-f, reclaim-g), so fst-slot = reclaim-g is independent.
-        trace-slot-reads-below : TraceSlotReadsBelow reclaimable-slot trace
+        -- Trace upper bound: all stack writes are at slots < max-slot-written.
+        -- Combined with trace-writes-above, this gives: writes are in [next-slot alloc, max-slot-written).
+        -- With reclamation, traces may write up to max-slot-written, then reclaim back to reclaimable-slot.
+        -- Key for pair's g-fst-slot preservation: g writes in [reclaim-f, max-slot-g), so fst-slot = reclaim-g is safe.
+        trace-writes-below : TraceWritesBelow max-slot-written trace
+        -- Trace slot read upper bound: all stack reads are from slots < max-slot-written.
+        -- Combined with trace-slot-reads-above, this gives: reads are in [next-slot alloc, max-slot-written).
+        -- With reclamation, traces may read up to max-slot-written before reclaiming back.
+        -- Key for pair's g-fst-indep: g reads in [reclaim-f, max-slot-g), so fst-slot = reclaim-g is independent.
+        trace-slot-reads-below : TraceSlotReadsBelow max-slot-written trace
         -- Trace preserves capacity: no instr-push-frame in trace.
         -- This allows using exec-trace-preserves-capacity' to prove frame-capacity
         -- is preserved through trace execution. Apply is the only IR that uses
@@ -1221,6 +1230,48 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     ValidAtWF m alloc v loc s₁ →
     ValidAtWF m alloc v loc s₂
   validityWF-mem-preserved-excluding = SMP.!!
+
+  ------------------------------------------------------------------------
+  -- Validity preservation with positive region bounds
+  --
+  -- Positive characterization: instead of excluding a gap slot, we specify
+  -- the two disjoint regions where sub-locations can exist:
+  --   1. Input region: [0, input-bound) - inherited from input value
+  --   2. Fresh region: [fresh-start, frontier) - newly allocated by IR
+  --
+  -- The gap [input-bound, fresh-start) contains no sub-locations, so we
+  -- don't need memory agreement there.
+  --
+  -- This is semantically equivalent to validityWF-mem-preserved-excluding
+  -- but uses positive bounds rather than negative (≢) reasoning.
+  ------------------------------------------------------------------------
+
+  validityWF-mem-preserved-in-regions :
+    ∀ {m A} (alloc : AllocState {FS}) (v : ⟦ A ⟧) (loc : ValueLocation FS)
+      (input-bound fresh-start : ℕ)
+      (s₁ s₂ : LocState FS) →
+    -- Location is before frontier
+    BeforeFrontier alloc loc →
+    -- Regions are properly ordered: input-bound ≤ fresh-start ≤ frontier
+    input-bound ≤ fresh-start →
+    fresh-start ≤ next-slot alloc →
+    -- Memory agrees on input region [0, input-bound) on current frame
+    (∀ slot → slot < input-bound →
+      readLoc s₂ (OnStack (current-frame alloc) slot) ≡
+      readLoc s₁ (OnStack (current-frame alloc) slot)) →
+    -- Memory agrees on fresh region [fresh-start, frontier) on current frame
+    (∀ slot → fresh-start ≤ slot → slot < next-slot alloc →
+      readLoc s₂ (OnStack (current-frame alloc) slot) ≡
+      readLoc s₁ (OnStack (current-frame alloc) slot)) →
+    -- Memory agrees on heap locations (sub-locations may be on heap)
+    (∀ h → readLoc s₂ (OnHeap h) ≡ readLoc s₁ (OnHeap h)) →
+    -- Memory agrees on ancestor frames (sub-locations may be there)
+    (∀ f k → current-frame alloc ≺ f →
+      readLoc s₂ (OnStack f k) ≡ readLoc s₁ (OnStack f k)) →
+    -- Validity transfers
+    ValidAtWF m alloc v loc s₁ →
+    ValidAtWF m alloc v loc s₂
+  validityWF-mem-preserved-in-regions = SMP.!!
 
   ------------------------------------------------------------------------
   -- Stack Reclamation
