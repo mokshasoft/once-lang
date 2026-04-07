@@ -17,7 +17,7 @@
 module Once.CCC.Machine.IR.PairWF2 where
 
 open import Data.Nat using (ℕ; suc; _<_; _≤_; _≥_; s≤s; z≤n; _⊔_) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-comm; +-assoc; +-suc; +-identityʳ; +-monoˡ-≤; +-monoʳ-≤; <-≤-trans; <⇒≤; m≤m⊔n; m≤n⊔m; ⊔-lub)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n; +-comm; +-assoc; +-suc; +-identityʳ; +-monoˡ-≤; +-monoʳ-≤; <-≤-trans; <⇒≤; <⇒≢; m≤m⊔n; m≤n⊔m; ⊔-lub)
 open import Data.Empty using (⊥-elim)
 open import Data.Bool using (false)
 open import Data.Unit using (⊤; tt)
@@ -59,6 +59,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open SMP.InstrPrimitives {FS}
   open SMP.TracePrimitives {FS}
   open SMP.TraceComposition {FS}
+  open SMP.TraceOutputDeterminism {FS}
 
   -- Types from ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
@@ -826,19 +827,180 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ------------------------------------------------------------------------
 
       -- Output at s-after-f contains fst-loc
-      -- PROOF OBLIGATION: Requires trace determinism - showing that:
-      --   s-after-f = proj₁ (exec-trace f-trace s-after-setup alloc-after-setup)
-      --   has the same Output register as
-      --   s₁ = IRResultAWF.final-state result-f (where rax-is-result gives Output ≡ fst-loc)
-      -- The two differ in starting state (s-after-setup vs s) and alloc (alloc-after-setup vs alloc-after-pair-slots)
-      -- but the trace and relevant register/memory inputs are the same.
+      -- Use exec-trace-output-deterministic: two executions of f-trace from states
+      -- that agree on Input and memory in [f-start, max-slot-f) give same Output.
+      --
+      -- Execution 1: f-trace from s-after-setup with alloc-after-setup → s-after-f
+      -- Execution 2: f-trace from s with alloc-after-pair-slots → s₁ (via trace-correct)
+      -- IRResultAWF.rax-is-result gives Output at s��� = fst-loc
+
+      -- Prerequisites for exec-trace-output-deterministic
+      -- Frame equality: both allocators have same frame
+      oaf-frame-eq : current-frame alloc-after-setup ≡ current-frame alloc-after-pair-slots
+      oaf-frame-eq = trans (exec-trace-preserves-frame setup-trace s alloc) refl
+
+      -- Input preservation through setup-trace (mov-to-output and store-at-slot don't modify Input)
+      oaf-input-preserved : readReg (regs s-after-setup) Input ≡ readReg (regs s) Input
+      oaf-input-preserved =
+        let s₁' = proj₁ (exec-abstract mov-to-output s alloc)
+            alloc₁' = proj₂ (exec-abstract mov-to-output s alloc)
+            mov-preserves-input : readReg (regs s₁') Input ≡ readReg (regs s) Input
+            mov-preserves-input = writeReg-preserves (regs s) Output Input (readReg (regs s) Input) (λ ())
+            not-halted₁' = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
+            s₂' = proj₁ (exec-abstract (store-at-slot backup-slot) s₁' alloc₁')
+            store-preserves-input : readReg (regs s₂') Input ≡ readReg (regs s₁') Input
+            store-preserves-input = exec-abstract-store-at-slot-preserves-input backup-slot s₁' alloc₁'
+            setup-decomp : exec-trace setup-trace s alloc ≡ exec-trace (store-at-slot backup-slot ∷ []) s₁' alloc₁'
+            setup-decomp = exec-trace-cons mov-to-output (store-at-slot backup-slot ∷ []) s alloc not-halted
+            store-single : exec-trace (store-at-slot backup-slot ∷ []) s₁' alloc₁' ≡ exec-abstract (store-at-slot backup-slot) s₁' alloc₁'
+            store-single = exec-trace-single (store-at-slot backup-slot) s₁' alloc₁' not-halted₁'
+            s-setup-eq : s-after-setup ≡ s₂'
+            s-setup-eq = cong proj₁ (trans setup-decomp store-single)
+        in trans (cong (λ st → readReg (regs st) Input) s-setup-eq)
+                 (trans store-preserves-input mov-preserves-input)
+
+      -- Memory agreement at [f-start, max-slot-f): setup writes only at backup-slot < f-start
+      -- Both frames are equal to `frame`:
+      -- - current-frame alloc-after-setup ≡ frame (via exec-trace-preserves-frame)
+      -- - current-frame alloc-after-pair-slots ≡ frame (by definition, only next-slot changed)
+      oaf-frame-setup : current-frame alloc-after-setup ≡ frame
+      oaf-frame-setup = exec-trace-preserves-frame setup-trace s alloc
+
+      oaf-frame-pair-slots : current-frame alloc-after-pair-slots ≡ frame
+      oaf-frame-pair-slots = refl
+
+      oaf-mem-agree : ∀ slot → f-start ≤ slot → slot < max-slot-f →
+        readLoc s-after-setup (OnStack (current-frame alloc-after-setup) slot) ≡
+        readLoc s (OnStack (current-frame alloc-after-pair-slots) slot)
+      oaf-mem-agree slot f-start≤slot slot<max =
+        -- setup-trace writes only to backup-slot, and f-start > backup-slot
+        -- So memory at slot ≥ f-start is unchanged
+        -- Use frame equalities to convert to `frame`, prove equality, then convert back
+        subst₂ (λ f1 f2 → readLoc s-after-setup (OnStack f1 slot) ≡ readLoc s (OnStack f2 slot))
+               (sym oaf-frame-setup) (sym oaf-frame-pair-slots)
+               oaf-mem-at-frame
+        where
+          -- backup-slot < f-start (since f-start = suc (suc (suc backup-slot)))
+          -- and f-start ≤ slot, so backup-slot < slot
+          backup<f-start : backup-slot < f-start
+          backup<f-start = ≤-trans (n≤1+n fst-slot) (n≤1+n snd-slot)
+          backup<slot : backup-slot < slot
+          backup<slot = <-≤-trans backup<f-start f-start≤slot
+
+          -- Core proof: s-after-setup agrees with s at (OnStack frame slot)
+          oaf-mem-at-frame : readLoc s-after-setup (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
+          oaf-mem-at-frame =
+            let -- setup-trace = mov-to-output ∷ store-at-slot backup-slot ∷ []
+                -- mov-to-output preserves memory
+                s₁' = proj₁ (exec-abstract mov-to-output s alloc)
+                alloc₁' = proj₂ (exec-abstract mov-to-output s alloc)
+                mov-preserves-mem : readLoc s₁' (OnStack frame slot) ≡ readLoc s (OnStack frame slot)
+                mov-preserves-mem = readLoc-stackMem-eq s₁' s (OnStack frame slot) refl refl
+                -- store-at-slot backup-slot preserves slot (since backup-slot < slot)
+                s₂' = proj₁ (exec-abstract (store-at-slot backup-slot) s₁' alloc₁')
+                not-halted₁' = exec-abstract-preserves-halted mov-to-output s alloc not-halted iph-mov-to-output
+                frame₁' : current-frame alloc₁' ≡ frame
+                frame₁' = exec-abstract-preserves-frame mov-to-output s alloc
+                store-preserves-slot : readLoc s₂' (OnStack frame slot) ≡ readLoc s₁' (OnStack frame slot)
+                store-preserves-slot = subst (λ f → readLoc s₂' (OnStack f slot) ≡ readLoc s₁' (OnStack f slot))
+                                             frame₁'
+                                             (store-at-slot-preserves-other backup-slot slot s₁' alloc₁' (inj₁ backup<slot))
+                -- Connect s-after-setup to s₂'
+                setup-decomp : exec-trace setup-trace s alloc ≡ exec-trace (store-at-slot backup-slot ∷ []) s₁' alloc₁'
+                setup-decomp = exec-trace-cons mov-to-output (store-at-slot backup-slot ∷ []) s alloc not-halted
+                store-single : exec-trace (store-at-slot backup-slot ∷ []) s₁' alloc₁' ≡ exec-abstract (store-at-slot backup-slot) s₁' alloc₁'
+                store-single = exec-trace-single (store-at-slot backup-slot) s₁' alloc₁' not-halted₁'
+                s-setup-eq : s-after-setup ≡ s₂'
+                s-setup-eq = cong proj₁ (trans setup-decomp store-single)
+            in trans (cong (λ st → readLoc st (OnStack frame slot)) s-setup-eq)
+                     (trans store-preserves-slot mov-preserves-mem)
+
+      -- s₁ output from trace-correct and rax-is-result
+      oaf-s1-output : readReg (regs (proj₁ (exec-trace f-trace s alloc-after-pair-slots))) Output ≡ fst-loc
+      oaf-s1-output = subst (λ st → readReg (regs st) Output ≡ fst-loc)
+                            (sym (IRResultAWF.trace-correct result-f))
+                            (IRResultAWF.rax-is-result result-f)
+
       output-after-f : readReg (regs s-after-f) Output ≡ fst-loc
-      output-after-f = SMP.!!
+      output-after-f =
+        trans (exec-trace-output-deterministic f-trace
+                s-after-setup s alloc-after-setup alloc-after-pair-slots f-start max-slot-f
+                not-halted-after-setup not-halted oaf-frame-eq oaf-input-preserved
+                f-tsra (IRResultAWF.trace-slot-reads-below result-f)
+                f-twa f-tnhw oaf-mem-agree)
+              oaf-s1-output
 
       -- Output at s-after-g contains snd-loc
-      -- PROOF OBLIGATION: Same as output-after-f, for g instead of f
+      -- Use exec-trace-output-deterministic: two executions of g-trace from states
+      -- that agree on Input and memory in [reclaim-f, max-slot-g) give same Output.
+      --
+      -- Execution 1: g-trace from s-after-middle with alloc-after-middle → s-after-g
+      -- Execution 2: g-trace from s₁' with alloc-after-f-reclaim → (via trace-correct)
+      -- IRResultAWF.rax-is-result gives Output = snd-loc
+
+      -- Prerequisites for exec-trace-output-deterministic
+      -- Frame equality
+      oag-frame-eq : current-frame alloc-after-middle ≡ current-frame alloc-after-f-reclaim
+      oag-frame-eq = trans (exec-trace-preserves-frame middle-trace s-after-f alloc-after-f)
+                     (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+                     (trans (exec-trace-preserves-frame setup-trace s alloc) refl))
+
+      -- Input equality: both have input-loc (s₁' has it from writeReg, s-after-middle from restore-input)
+      oag-input-s1' : readReg (regs s₁') Input ≡ input-loc
+      oag-input-s1' = writeReg-same (regs s₁) Input input-loc
+
+      -- Input after middle-trace: restore-input backup-slot sets Input to backup-slot's value
+      -- Chain: setup writes input-loc to backup → f preserves → store fst preserves → restore reads
+      -- PROOF: The logic is sound but requires reorganizing definitions due to mutual dependencies.
+      -- Key steps: (1) setup writes input-loc to backup-slot, (2) f-trace preserves backup (writes above f-start),
+      -- (3) store-at-slot fst-slot preserves backup (fst > backup), (4) restore-input reads backup and sets Input
+      oag-input-after-middle : readReg (regs s-after-middle) Input ≡ input-loc
+      oag-input-after-middle = SMP.!!
+
+      oag-input-eq : readReg (regs s-after-middle) Input ≡ readReg (regs s₁') Input
+      oag-input-eq = trans oag-input-after-middle (sym oag-input-s1')
+
+      -- Memory agreement at [reclaim-f, max-slot-g)
+      -- middle-trace writes to fst-slot (< reclaim-f), so slots ≥ reclaim-f unchanged from s-after-f
+      -- s-after-f vs s₁': need trace determinism on f-trace results for memory
+      -- This is complex because s-after-f and s₁ may differ in memory outside [f-start, max-slot-f)
+      -- For now, use the fact that both agree on slots in [reclaim-f, max-slot-g) because:
+      -- - slots ≥ reclaim-f are uninitialized before g runs
+      -- - the memory values at these slots don't affect g's output
+      oag-frame-middle : current-frame alloc-after-middle ≡ frame
+      oag-frame-middle = trans (exec-trace-preserves-frame middle-trace s-after-f alloc-after-f)
+                         (trans (exec-trace-preserves-frame f-trace s-after-setup alloc-after-setup)
+                                (exec-trace-preserves-frame setup-trace s alloc))
+
+      oag-frame-reclaim : current-frame alloc-after-f-reclaim ≡ frame
+      oag-frame-reclaim = refl
+
+      oag-mem-agree : ∀ slot → reclaim-f ≤ slot → slot < max-slot-g →
+        readLoc s-after-middle (OnStack (current-frame alloc-after-middle) slot) ≡
+        readLoc s₁' (OnStack (current-frame alloc-after-f-reclaim) slot)
+      oag-mem-agree slot rf≤slot slot<max =
+        -- Both s-after-middle and s₁' have uninitialized memory at slots ≥ reclaim-f
+        -- since neither f-trace, setup-trace, nor middle-trace writes there
+        -- However, proving this requires showing memory determinism through the entire trace
+        -- For now, use subst with frame equalities to reduce to frame, then use SMP.!! as placeholder
+        subst₂ (λ f1 f2 → readLoc s-after-middle (OnStack f1 slot) ≡ readLoc s₁' (OnStack f2 slot))
+               (sym oag-frame-middle) (sym oag-frame-reclaim)
+               SMP.!!  -- Complex: requires full memory determinism proof
+
+      -- s₂ output from trace-correct and rax-is-result
+      oag-s2-output : readReg (regs (proj₁ (exec-trace g-trace s₁' alloc-after-f-reclaim))) Output ≡ snd-loc
+      oag-s2-output = subst (λ st → readReg (regs st) Output ≡ snd-loc)
+                            (sym (IRResultAWF.trace-correct result-g))
+                            (IRResultAWF.rax-is-result result-g)
+
       output-after-g : readReg (regs s-after-g) Output ≡ snd-loc
-      output-after-g = SMP.!!
+      output-after-g =
+        trans (exec-trace-output-deterministic g-trace
+                s-after-middle s₁' alloc-after-middle alloc-after-f-reclaim reclaim-f max-slot-g
+                not-halted-after-middle (IRResultAWF.not-halted result-f) oag-frame-eq oag-input-eq
+                g-tsra (IRResultAWF.trace-slot-reads-below result-g)
+                g-twa g-tnhw oag-mem-agree)
+              oag-s2-output
 
       -- Decompose middle-trace: store-at-slot fst-slot ∷ restore-input backup-slot ∷ []
       s-after-fst-store : LocState FS
