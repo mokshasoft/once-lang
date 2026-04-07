@@ -1164,18 +1164,81 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       sucLoc-pair-before : BeforeFrontier alloc-final (sucLoc pair-loc)
       sucLoc-pair-before = stack-before refl snd<reclaim-g
 
-      -- f's result validity at final state
-      -- PROOF OBLIGATION: Transfer validity from s₁ (recursive call result) to s-final (our decomposition)
-      -- Strategy: Use IRResultAWF.reclaim-preserves-validity to get validity at reclaim-f,
-      -- then use validityWF-trace-preserves to show it's preserved through the rest of the trace.
-      -- This depends on output-after-f (trace determinism) to relate s₁ and s-after-f.
-      fst-valid : ValidAtWF mF alloc-final (eval primSem f x) fst-loc s-final
-      fst-valid = SMP.!!
+      ----------------------------------------------------------------------
+      -- fst-valid: Validity of f's result at fst-loc in s-final
+      --
+      -- Strategy:
+      -- 1. reclaim-preserves-validity gives validity at s₁ with alloc-after-f-reclaim
+      -- 2. Memory at BeforeFrontier locations is preserved from s₁ to s-final
+      --    (rest of trace writes above reclaim-f, fst-loc is below reclaim-f)
+      -- 3. Use validityWF-mem-preserved to transfer validity
+      -- 4. Advance frontier from reclaim-f to reclaim-g
+      ----------------------------------------------------------------------
 
-      -- g's result validity at final state
-      -- PROOF OBLIGATION: Same as fst-valid, for g instead of f
+      -- Step 1: Get validity at s₁ with alloc-after-f-reclaim
+      valid-s1-reclaimed : ValidAtWF mF alloc-after-f-reclaim (eval primSem f x) fst-loc s₁
+      valid-s1-reclaimed = IRResultAWF.reclaim-preserves-validity result-f reclaim-f-fits
+
+      -- fst-loc is before frontier at alloc-after-f-reclaim
+      fst-loc-before-reclaimed : BeforeFrontier alloc-after-f-reclaim fst-loc
+      fst-loc-before-reclaimed = IRResultAWF.reclaim-preserves-result result-f reclaim-f-fits
+
+      -- Step 2-3: Memory preservation from s₁ to s-final at BeforeFrontier locations
+      -- This is the key lemma connecting the two execution paths.
+      -- Uses the fact that:
+      --   - s₁ and s-after-f agree on memory at BeforeFrontier locations (f-trace determinism)
+      --   - rest-trace (middle ++ g ++ final) writes above reclaim-f
+      --   - fst-loc and its sub-locations are below reclaim-f
+      -- Note: validityWF-mem-preserved expects (readLoc s₂ ≡ readLoc s₁) format
+      fst-mem-s1-to-final : ∀ loc' → BeforeFrontier alloc-after-f-reclaim loc' →
+        readLoc s-final loc' ≡ readLoc s₁ loc'
+      fst-mem-s1-to-final loc' bf = SMP.!!  -- Requires: f-trace determinism + rest-trace preservation
+
+      valid-at-s-final : ValidAtWF mF alloc-after-f-reclaim (eval primSem f x) fst-loc s-final
+      valid-at-s-final = validityWF-mem-preserved (eval primSem f x) fst-loc s₁ s-final
+                           fst-loc-before-reclaimed fst-mem-s1-to-final valid-s1-reclaimed
+
+      -- Step 4: Advance frontier from alloc-after-f-reclaim to alloc-final
+      fst-valid : ValidAtWF mF alloc-final (eval primSem f x) fst-loc s-final
+      fst-valid = validityWF-frontier-advance (eval primSem f x) fst-loc s-final refl
+                    (IRResultAWF.reclaim-monotone result-g) ≤-refl valid-at-s-final
+
+      ----------------------------------------------------------------------
+      -- snd-valid: Validity of g's result at snd-loc in s-final
+      --
+      -- Strategy (similar to fst-valid):
+      -- 1. reclaim-preserves-validity gives validity at s₂ with alloc-reclaim-g
+      -- 2. Memory at BeforeFrontier locations preserved from s₂ to s-final
+      -- 3. Frontier advance is trivial (alloc-reclaim-g and alloc-final both have next-slot = reclaim-g)
+      ----------------------------------------------------------------------
+
+      -- Alloc state after g's reclaim
+      alloc-reclaim-g : AllocState {FS}
+      alloc-reclaim-g = record alloc { next-slot = reclaim-g }
+
+      -- Step 1: Get validity at s₂ with alloc-reclaim-g
+      valid-s2-reclaimed : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s₂
+      valid-s2-reclaimed = IRResultAWF.reclaim-preserves-validity result-g reclaim-g-fits
+
+      -- snd-loc is before frontier at alloc-reclaim-g
+      snd-loc-before-reclaim-g : BeforeFrontier alloc-reclaim-g snd-loc
+      snd-loc-before-reclaim-g = IRResultAWF.reclaim-preserves-result result-g reclaim-g-fits
+
+      -- Step 2-3: Memory preservation from s₂ to s-final
+      -- final-trace = store-at-slot snd-slot ∷ lea-slot fst-slot ∷ []
+      -- Neither writes to slots where snd-loc's sub-locations reside (which are < reclaim-g)
+      -- Note: validityWF-mem-preserved expects (readLoc s₂ ≡ readLoc s₁) format
+      snd-mem-s2-to-final : ∀ loc' → BeforeFrontier alloc-reclaim-g loc' →
+        readLoc s-final loc' ≡ readLoc s₂ loc'
+      snd-mem-s2-to-final loc' bf = SMP.!!  -- Requires: g-trace determinism + final-trace preservation
+
+      valid-snd-at-s-final : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s-final
+      valid-snd-at-s-final = validityWF-mem-preserved (eval primSem g x) snd-loc s₂ s-final
+                               snd-loc-before-reclaim-g snd-mem-s2-to-final valid-s2-reclaimed
+
+      -- Step 4: Frontier advance (trivial since both have next-slot = reclaim-g)
       snd-valid : ValidAtWF mG alloc-final (eval primSem g x) snd-loc s-final
-      snd-valid = SMP.!!
+      snd-valid = validityWF-frontier-advance (eval primSem g x) snd-loc s-final refl ≤-refl ≤-refl valid-snd-at-s-final
 
       ------------------------------------------------------------------------
       -- Final pair validity
