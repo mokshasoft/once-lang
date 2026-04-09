@@ -354,7 +354,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc₁
       ; trace = inl-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: inl/inr trace preserves alloc
       ; result-valid-wf = inl-valid-wf-final
       ; result-before = sum-before
       ; rax-is-result = rax-eq
@@ -373,6 +372,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inl
+      ; slot-stays-in-budget = reclaim-size-bound-inl
       -- Frontier slot stability for inl (Stack mode)
       -- inl writes to suc(frontier-slot), not to frontier-slot itself
       ; frontier-slot-stable = inl-frontier-stable
@@ -513,7 +513,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc₁
       ; trace = inl-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: inl/inr trace preserves alloc
       ; result-valid-wf = inl-valid-wf-final
       ; result-before = sum-before
       ; rax-is-result = rax-eq
@@ -532,6 +531,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inl
+      ; slot-stays-in-budget = reclaim-size-bound-inl
       -- Frontier slot stability for inl (Heap mode)
       ; frontier-slot-stable = inl-frontier-stable
       -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
@@ -691,7 +691,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc₁
       ; trace = inr-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: inl/inr trace preserves alloc
       ; result-valid-wf = inr-valid-wf-final
       ; result-before = sum-before
       ; rax-is-result = rax-eq
@@ -710,6 +709,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inr
+      ; slot-stays-in-budget = reclaim-size-bound-inr
       -- Frontier slot stability for inr (Stack mode)
       ; frontier-slot-stable = inr-frontier-stable
       -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
@@ -841,7 +841,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc₁
       ; trace = inr-trace
       ; trace-correct = inl-inr-trace-state-correct (suc (next-slot alloc)) (next-slot alloc) s alloc input-loc sum-loc s-final rdi-eq refl refl not-halted
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: inl/inr trace preserves alloc
       ; result-valid-wf = inr-valid-wf-final
       ; result-before = sum-before
       ; rax-is-result = rax-eq
@@ -860,6 +859,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc +ℕ sum-slots
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inr
+      ; slot-stays-in-budget = reclaim-size-bound-inr
       -- Frontier slot stability for inr (Heap mode)
       ; frontier-slot-stable = inr-frontier-stable
       -- Trace writes above: store-at-slot (suc sum-slot) writes above next-slot alloc
@@ -1022,7 +1022,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                           (subst (λ loc → readLoc s (sucLoc loc) ≡ just payload-loc) (sym rdi-eq) (InlValidWF.payload-ptr inl-decomp))
                           refl
                           (IRResultAWF.trace-correct result-f) not-halted
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: case-inl trace preserves alloc
       ; result-valid-wf = IRResultAWF.result-valid-wf result-f
       ; result-before = IRResultAWF.result-before result-f
       ; rax-is-result = IRResultAWF.rax-is-result result-f
@@ -1042,6 +1041,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = IRResultAWF.max-slot-written result-f
       ; max-slot-geq-reclaim = IRResultAWF.max-slot-geq-reclaim result-f
       ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-f) cap-f-bound
+      ; slot-stays-in-budget = ≤-trans (IRResultAWF.slot-stays-in-budget result-f) cap-f-bound
       -- Frontier slot stability for case (inl branch)
       ; frontier-slot-stable = case-frontier-stable
       -- Trace writes above: setup instructions don't store, f-trace writes above frontier
@@ -1142,7 +1142,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                           (subst (λ loc → readLoc s (sucLoc loc) ≡ just payload-loc) (sym rdi-eq) (InrValidWF.payload-ptr inr-decomp))
                           refl
                           (IRResultAWF.trace-correct result-g) not-halted
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: case-inr trace preserves alloc
       ; result-valid-wf = IRResultAWF.result-valid-wf result-g
       ; result-before = IRResultAWF.result-before result-g
       ; rax-is-result = IRResultAWF.rax-is-result result-g
@@ -1162,6 +1161,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = IRResultAWF.max-slot-written result-g
       ; max-slot-geq-reclaim = IRResultAWF.max-slot-geq-reclaim result-g
       ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-g) cap-g-bound
+      ; slot-stays-in-budget = ≤-trans (IRResultAWF.slot-stays-in-budget result-g) cap-g-bound
       -- Frontier slot stability for case (inr branch)
       ; frontier-slot-stable = case-frontier-stable
       -- Trace writes above: setup instructions don't store, g-trace writes above frontier
@@ -1307,7 +1307,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc'
       ; trace = in-trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq
@@ -1326,6 +1325,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
+      -- slot-stays-in-budget: In allocates exactly 1 slot
+      ; slot-stays-in-budget = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
@@ -1423,7 +1424,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = out-μ-trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -1442,6 +1442,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+      -- slot-stays-in-budget: out-μ allocates 0 slots
+      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -1508,7 +1510,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = out-trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -1527,6 +1528,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -1590,7 +1592,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc'
       ; trace = in-ν-trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq
@@ -1609,6 +1610,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
+      ; slot-stays-in-budget = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt

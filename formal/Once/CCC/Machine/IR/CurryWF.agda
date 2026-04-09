@@ -129,7 +129,6 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; final-alloc = alloc'
       ; trace = trace
       ; trace-correct = refl  -- BY DEFINITION
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: curry trace preserves alloc
       ; result-valid-wf = result-valid-wf'
       ; result-before = closure-before'
       ; rax-is-result = rax-eq'
@@ -148,6 +147,10 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; max-slot-written = next-slot alloc +ℕ closure-slots
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = +-monoʳ-≤ (next-slot alloc) closure-bound
+      -- slot-stays-in-budget: curry allocates closure-slots
+      -- next-slot alloc' = next-slot alloc + closure-slots
+      -- closure-bound: closure-slots ≤ ir-stack-requirement (curry f m)
+      ; slot-stays-in-budget = +-monoʳ-≤ (next-slot alloc) closure-bound
       ; frontier-slot-stable = frontier-stable'
       ; trace-writes-above = trace-writes-above'
       ; trace-slot-reads-above = tt

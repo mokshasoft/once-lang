@@ -64,7 +64,7 @@ open import Once.CCC.Machine.SizeBoundLemma public
 
 import Once.CCC.Machine.IR.SimpleWF as SimpleWFModule
 import Once.CCC.Machine.IR.ComposeWF as ComposeWFModule
-import Once.CCC.Machine.IR.PairWF as PairWFModule
+import Once.CCC.Machine.IR.PairWF2 as PairWFModule
 import Once.CCC.Machine.IR.CurryWF as CurryWFModule
 import Once.CCC.Machine.IR.ApplyWF as ApplyWFModule
 import Once.CCC.Machine.IR.RecCoreWF as RecCoreWFModule
@@ -179,8 +179,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   -- Import compose IR implementation
   open ComposeWFModule.ComposeWFImpl {FS} program-bound primSem
 
-  -- Import pair IR implementation (using PairWF - the new trace-based proof)
-  open PairWFModule.PairWFImpl {FS} program-bound primSem
+  -- Import pair IR implementation (using PairWF2 - the new trace-based proof)
+  open PairWFModule.PairWF2Impl {FS} program-bound primSem
 
   -- Import curry IR implementation
   open CurryWFModule.CurryWFImpl {FS} program-bound primSem

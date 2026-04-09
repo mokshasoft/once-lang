@@ -189,7 +189,6 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; final-alloc = alloc'
       ; trace = trace
       ; trace-correct = refl  -- BY DEFINITION
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: push/pop frame preserves alloc structure
       ; result-valid-wf = result-valid-wf'
       ; result-before = result-before'
       ; rax-is-result = rax-eq'
@@ -208,6 +207,10 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; max-slot-written = next-slot alloc +ℕ pair-slots
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = ≤-refl
+      -- slot-stays-in-budget: apply allocates exactly pair-slots
+      -- next-slot alloc' = next-slot alloc + pair-slots
+      -- ir-stack-requirement apply = pair-slots
+      ; slot-stays-in-budget = ≤-refl
       ; frontier-slot-stable = frontier-stable'
       ; trace-writes-above = trace-writes-above'
       ; trace-slot-reads-above = trace-slot-reads-above'

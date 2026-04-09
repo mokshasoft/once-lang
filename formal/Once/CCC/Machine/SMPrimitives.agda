@@ -41,7 +41,7 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 open import Function using (_∘_; case_of_)
-open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; inspect; [_]; ≢-sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; sym; trans; cong; cong₂; subst; subst₂; inspect; [_]; ≢-sym)
 open import Relation.Nullary using (¬_; Dec; yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics; module FrameSemantics)
@@ -2057,6 +2057,11 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
   -- If two states agree on Input and memory at slots in [n, m),
   -- and trace reads/writes are bounded by [n, m),
   -- then after execution, memory at slots in [n, m) is the same.
+  --
+  -- The proof is by induction on trace, maintaining that Input, Output, and
+  -- memory at [n, m) stay synchronized. Key insight: writes only happen via
+  -- store-at-slot which writes Output, and Output stays synced because
+  -- instructions that set Output read from Input or memory (both synced).
   exec-trace-mem-deterministic : ∀ (trace : AbstractTrace)
     (s₁ s₂ : LocState FS) (alloc₁ alloc₂ : AllocState {FS}) (n m : ℕ) →
     halted s₁ ≡ false →
@@ -2064,21 +2069,30 @@ module TraceOutputDeterminism {FS : FrameSemantics} where
     current-frame alloc₁ ≡ current-frame alloc₂ →
     readReg (regs s₁) Input ≡ readReg (regs s₂) Input →
     TraceSlotReadsAbove n trace →
-    TraceSlotReadsBelow m trace →   -- reads are bounded above by m
+    TraceSlotReadsBelow m trace →
     TraceWritesAbove n trace →
     TraceWritesBelow m trace →
     TraceNoHeapWrites trace →
-    (∀ slot → n ≤ slot → slot < m →   -- only require agreement on [n, m)
+    (∀ slot → n ≤ slot → slot < m →
       readLoc s₁ (OnStack (current-frame alloc₁) slot) ≡
       readLoc s₂ (OnStack (current-frame alloc₂) slot)) →
     ∀ slot → n ≤ slot → slot < m →
       readLoc (proj₁ (exec-trace trace s₁ alloc₁)) (OnStack (current-frame alloc₁) slot) ≡
       readLoc (proj₁ (exec-trace trace s₂ alloc₂)) (OnStack (current-frame alloc₂) slot)
-  -- Proof sketch: by induction on trace
-  -- Each store instruction writes a value computed from Input, Output, or memory reads.
-  -- Since all reads come from slots in [n, m) (where states agree), computed values are same.
-  -- Therefore stores to slots in [n, m) write the same values in both executions.
-  exec-trace-mem-deterministic = !!
+  -- Base case: empty trace - memory unchanged, use input agreement directly
+  exec-trace-mem-deterministic [] s₁ s₂ alloc₁ alloc₂ n m _ _ _ _ _ _ _ _ _ mem-agree slot n≤slot slot<m =
+    mem-agree slot n≤slot slot<m
+
+  -- Inductive case: each instruction type handled separately
+  -- For most cases, we use the fact that non-writing instructions preserve memory
+  -- For writing instructions (store-at-slot, worklist-push), we need Output synchronization
+
+  -- All non-writing, non-frame-changing instructions follow a common pattern:
+  -- Memory is preserved, Input is preserved (except mov-to-input, restore-input)
+  -- We use !! for complex sub-cases that require detailed Output tracking
+
+  exec-trace-mem-deterministic (i ∷ rest) s₁ s₂ alloc₁ alloc₂ n m nh₁ nh₂ frame-eq input-eq
+      rsra rsrb twa twb tnhw mem-agree slot n≤slot slot<m = !!
 
 ------------------------------------------------------------------------
 -- Recursion Scheme Semantic Correctness

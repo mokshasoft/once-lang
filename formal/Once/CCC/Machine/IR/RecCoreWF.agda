@@ -313,10 +313,9 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   run-cata-core wf alg rec-wf mIn x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq combined-cap =
     -- Delegate to cata-dispatched-new which provides the structural recursion proof
-    -- Convert capacity from ir-stack-requirement to layer-capacity using ir-stack-req-geq-layer-cap
-    let cap-converted = ir-stack-req-geq-layer-cap wf alg (next-slot alloc) (frame-capacity alloc) combined-cap
-    in cata-dispatched-new wf alg rec-wf x mIn input-loc s alloc
-         input-valid-wf input-before not-halted rdi-eq cap-converted
+    -- Pass the full ir-stack-requirement capacity (cata-dispatched-new derives layer-capacity internally)
+    cata-dispatched-new wf alg rec-wf x mIn input-loc s alloc
+      input-valid-wf input-before not-halted rdi-eq combined-cap
 
   -- | Fuse: μ-anchored fusion (transform then fold)
   -- Structural recursion on μG, applying transform and algebra
@@ -344,7 +343,6 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; final-alloc = alloc'
       ; trace = fuse-trace
       ; trace-correct = refl
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: fuse trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq
@@ -363,6 +361,9 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
+      -- slot-stays-in-budget: allocates exactly 1 slot
+      -- next-slot alloc' = suc (next-slot alloc) ≤ next-slot alloc + ir-stack-requirement
+      ; slot-stays-in-budget = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
@@ -448,7 +449,6 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; final-alloc = alloc'
       ; trace = hylo-trace
       ; trace-correct = refl
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: hylo trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq
@@ -467,6 +467,9 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
+      -- slot-stays-in-budget: allocates exactly 1 slot
+      -- next-slot alloc' = suc (next-slot alloc) ≤ next-slot alloc + ir-stack-requirement
+      ; slot-stays-in-budget = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt

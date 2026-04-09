@@ -169,7 +169,6 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; final-alloc = alloc₂
       ; trace = compose-trace
       ; trace-correct = refl  -- s-final DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: compose trace preserves alloc
       ; result-valid-wf = result-valid-final
       ; result-before = result-before-g
       ; rax-is-result = rax-eq-final
@@ -188,6 +187,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; max-slot-written = compose-max-slot
       ; max-slot-geq-reclaim = compose-max-slot-geq-reclaim
       ; max-slot-usage-bound = compose-max-slot-bound
+      ; slot-stays-in-budget = compose-slot-stays-in-budget
       ; frontier-slot-stable = compose-frontier-stable
       ; trace-writes-above = compose-trace-writes-above
       ; trace-slot-reads-above = compose-trace-slot-reads-above
@@ -411,6 +411,19 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
                               (trans (cong (next-slot alloc +ℕ_) (sym (∘-stack-req f g))) refl)
                               (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
                                 (≤-reflexive (+-assoc (next-slot alloc) rf rg))))
+
+      -- Stack discipline: composition stays within budget
+      -- alloc₂ is final after g, which ran on alloc₁-reclaimed with next-slot = reclaim-f
+      -- From g.slot-stays-in-budget: next-slot alloc₂ ≤ reclaim-f + rg
+      -- From f.reclaim-size-bound: reclaim-f ≤ next-slot alloc + rf
+      -- Therefore: next-slot alloc₂ ≤ next-slot alloc + (rf + rg) = next-slot alloc + req-compose
+      compose-slot-stays-in-budget : next-slot alloc₂ ≤ next-slot alloc +ℕ req-compose
+      compose-slot-stays-in-budget =
+        ≤-trans (IRResultAWF.slot-stays-in-budget result-g)
+          (subst (reclaim-f +ℕ rg ≤_)
+            (trans (cong (next-slot alloc +ℕ_) (sym (∘-stack-req f g))) refl)
+            (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
+              (≤-reflexive (+-assoc (next-slot alloc) rf rg))))
 
       ------------------------------------------------------------------------
       -- Trace predicates

@@ -1,3 +1,35 @@
+
+The build succeeds. Let me summarize the current state of remaining postulates:                                                                                        
+                                                                                                                                                                         
+  Summary of Remaining Postulates                                                                                                                                        
+                                                                                                                                                                         
+  SumRecWF.agda (2 postulates):                                                                                                                                          
+  1. case-dispatch-output-independent - Proves that case dispatch traces are Output-independent (dispatch doesn't read initial Output value)                             
+  2. lambek-iso-semantic - ValidAtWF for Lambek isomorphisms (In, out-μ, Out, in-ν)                                                                                      
+                                                                                                                                                                         
+  RecCoreWF.agda, ParaWF.agda, AnaWF.agda (1 postulate each):                                                                                                            
+  - rec-scheme-semantic - ValidAtWF for recursion schemes (Cata, Fuse, Hylo, Para, Ana)                                                                                  
+                                                                                                                                                                         
+  SMPrimitives.agda (10 !! holes):                                                                                                                                       
+  - exec-abstract-preserves-stack-slot (worklist-push k) - slot bound reasoning                                                                                          
+  - exec-trace-independent / exec-trace-independent-below - trace/memory commutation                                                                                     
+  - exec-trace-deterministic - trace determinism on same inputs                                                                                                          
+  - load-*-preserves-halted (4 variants) - load instructions preserve non-halted                                                                                         
+  - exec-trace-output-deterministic / exec-trace-mem-deterministic - output/memory determinism                                                                           
+                                                                                                                                                                         
+  Key blocking dependencies:                                                                                                                                             
+  - case-dispatch-output-independent would follow from exec-trace-deterministic                                                                                          
+  - The semantic postulates (lambek-iso-semantic, rec-scheme-semantic) require ValidAtWF constructors for μ-type and ν-type values                                       
+                                                                                                                                                                         
+  The commit earlier removed the case-frontier-slot-preserved postulate by returning "uncertain" instead of claiming preservation. The remaining postulates require      
+  either:                                                                                                                                                                
+  1. Additional infrastructure (ValidAtWF for μ/ν types)                                                                                                                 
+  2. Proving trace execution lemmas (exec-trace-deterministic)                                                                                                           
+                                                                                                                                                                         
+  Would you like me to continue working on proving any specific postulate, or should we document this state and move on?                                                 
+                                                                                                                                                                         
+✻ Sautéed for 53s                                                                                                                                                        
+
 Next Step: Complete compose-simulation                                                                                                                                 
                                                                                                                                                                          
   The current compose-simulation-with-IH only executes f and embeds it. To complete the compose proof:                                                                   

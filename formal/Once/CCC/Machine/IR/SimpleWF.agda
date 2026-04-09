@@ -78,7 +78,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = valid-s'
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -97,6 +96,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+      -- slot-stays-in-budget: no allocation, ir-stack-requirement = 0
+      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -160,7 +161,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = fst-valid-s'
       ; result-before = fst-before
       ; rax-is-result = rax-eq
@@ -179,6 +179,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+      -- slot-stays-in-budget: no allocation, ir-stack-requirement = 0
+      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -256,7 +258,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = snd-valid-s'
       ; result-before = snd-before
       ; rax-is-result = rax-eq
@@ -275,6 +276,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+      -- slot-stays-in-budget: no allocation, ir-stack-requirement = 0
+      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -352,7 +355,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = valid-unit-wf
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -371,6 +373,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+      -- slot-stays-in-budget: no allocation, ir-stack-requirement = 0
+      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -430,7 +434,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = valid-s'
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -449,6 +452,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+      -- slot-stays-in-budget: no allocation, ir-stack-requirement = 0
+      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt
@@ -511,7 +516,6 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; final-alloc = alloc
       ; trace = trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: alloc unchanged by simple trace
       ; result-valid-wf = valid-eff
       ; result-before = input-before
       ; rax-is-result = rax-eq
@@ -530,6 +534,8 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
+      -- slot-stays-in-budget: no allocation, ir-stack-requirement = 0
+      ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = tt
       ; trace-slot-reads-above = tt

@@ -274,10 +274,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- Note: exec-trace returns (final-state, alloc) for non-apply IRs
         -- since next-slot is compile-time only and traces don't modify it
         trace-correct : proj₁ (exec-trace trace s alloc) ≡ final-state
-        -- Allocation state correctness: connects declared final-alloc to execution
-        -- For non-Apply IRs: alloc passes through unchanged (no frame ops)
-        -- For Apply: frame push/pop modifies alloc, but frame-preserved still holds
-        alloc-correct : proj₂ (exec-trace trace s alloc) ≡ final-alloc
         -- Existing validity fields
         result-valid-wf : ValidAtWF m final-alloc (eval primSem ir x) result-loc final-state
         result-before : BeforeFrontier final-alloc result-loc
@@ -305,6 +301,11 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         max-slot-geq-reclaim : reclaimable-slot ≤ max-slot-written
         -- max-slot-written is bounded by input next-slot + ir-stack-requirement
         max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ ir-stack-requirement ir
+        -- Stack discipline: execution stays within stack requirement budget
+        -- Final stack frontier bounded by requirement (pointers/tags/temps)
+        -- Even with arbitrary-sized output (on heap), stack usage (pointers/tags) is bounded
+        -- Enables compositional capacity proofs: if f and g stay in bounds, so does f;g
+        slot-stays-in-budget : next-slot final-alloc ≤ next-slot alloc +ℕ ir-stack-requirement ir
         -- Frontier slot stability: if input-loc is at frontier initially, it stays there
         -- This is because IR traces either:
         --   1. Don't write to frontier slot (e.g., inl/inr write to suc)

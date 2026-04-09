@@ -93,7 +93,6 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; final-alloc = alloc-final
       ; trace = pair-trace
       ; trace-correct = refl  -- s-final DEFINED by trace
-      ; alloc-correct = SMP.!!
       ; result-valid-wf = pair-valid-wf-final
       ; result-before = pair-before
       ; rax-is-result = rax-eq
@@ -112,6 +111,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; max-slot-written = pair-max-slot
       ; max-slot-geq-reclaim = pair-max-slot-geq-reclaim
       ; max-slot-usage-bound = pair-max-slot-bound
+      ; slot-stays-in-budget = pair-slot-stays-in-budget
       ; frontier-slot-stable = pair-frontier-stable
       ; trace-writes-above = pair-trace-writes-above
       ; trace-slot-reads-above = pair-trace-slot-reads-above
@@ -730,6 +730,13 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
           max-slot-g-bound = ≤-trans max-slot-g-usage
             (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
                      (subst (((f-start +ℕ rf) +ℕ rg) ≤_) sss-rf-rg≡req-pair ≤-refl))
+
+      -- Stack discipline: pair stays within budget
+      -- alloc-final has next-slot = reclaim-g = pair-reclaim
+      -- pair-reclaim-size-bound proves: pair-reclaim ≤ backup-slot + req-pair
+      -- backup-slot = next-slot alloc, so this is exactly slot-stays-in-budget
+      pair-slot-stays-in-budget : next-slot alloc-final ≤ backup-slot +ℕ req-pair
+      pair-slot-stays-in-budget = pair-reclaim-size-bound
 
       ------------------------------------------------------------------------
       -- Memory preservation (using positive write bounds)

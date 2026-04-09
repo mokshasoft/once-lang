@@ -12,7 +12,7 @@
 module Once.CCC.IR.Stack where
 
 open import Data.Nat using (ℕ; zero; suc; _≤_; _⊔_; s≤s) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
-open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; ≤-trans; m≤m⊔n; m≤n⊔m; m≤n+m; +-monoˡ-≤; +-monoʳ-≤; ⊔-monoˡ-≤; ⊔-lub; *-monoˡ-≤; m+n≤o⇒m≤o; m+n≤o⇒n≤o)
+open import Data.Nat.Properties using (+-assoc; +-comm; +-suc; ≤-refl; ≤-trans; m≤m⊔n; m≤n⊔m; m≤n+m; m≤m+n; +-monoˡ-≤; +-monoʳ-≤; ⊔-monoˡ-≤; ⊔-lub; *-monoˡ-≤; m+n≤o⇒m≤o; m+n≤o⇒n≤o)
 open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; subst)
 
@@ -159,15 +159,21 @@ ir-stack-requirement (Prim _) = 0  -- Primitives manage own stack
 -- For Id: ir-stack-requirement (Cata wfG alg)
 -- | Layer capacity based on functor structure
 --
--- Key insight: Reclamation allows wrapper allocation at reclaimed position:
--- - Sum: process child (uses capChild), reclaim to reclaimable, allocate wrapper at reclaimable
+-- Key insight: Allocation models differ between Sum and Prod:
+--
+-- - Sum: Only ONE child is processed (inj₁ or inj₂). The wrapper (2 slots)
+--   is allocated at the child's reclaimed position.
 --   Final bound: reclaimable + 2 ≤ start + capChild + 2 = start + (2 + capChild)
 --   So layer-capacity Sum = 2 + max(capL, capR)
--- - Prod: save slot held during both children -> 1 + max(children)
 --
--- The formulas account for reclamation:
--- - Sum: 2 + max(child), wrapper allocated at reclaimed position (after child)
--- - Prod: 1 + max(children), children processed sequentially with reclaim
+-- - Prod: BOTH children are processed sequentially. Left child's output persists
+--   while right child runs, so capacities ADD rather than share via reclaim.
+--   Final bound: start + 1 + capL + capR (save-slot + left output + right processing)
+--   So layer-capacity Prod = 1 + capL + capR
+--
+-- Note: The MAX formula for Prod would only be correct with "perfect scratch reclaim"
+-- where left child fully reclaims before right child starts. The current implementation
+-- does not enforce this invariant, so we use SUM to be sound.
 --
 layer-capacity : ∀ {F G A} → WellFormedF F → WellFormedF G → IR (⟦ G ⟧T A) A → ℕ
 layer-capacity wf-Id wfG alg = ir-stack-requirement (Cata wfG alg)
@@ -175,8 +181,8 @@ layer-capacity (wf-K _) _ alg = ir-stack-requirement alg +ℕ pair-slots
 -- Sum: wrapper (2 slots) allocated AFTER child reclaims, so add 2 to max child capacity
 -- NOT max(child, 2) - the wrapper is allocated at reclaimed position, not overlapping
 layer-capacity (wf-Sum wfL wfR) wfG alg = 2 +ℕ (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg)
--- Prod: save-slot held during child processing, so add 1
-layer-capacity (wf-Prod wfL wfR) wfG alg = 1 +ℕ (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg)
+-- Prod: both children processed sequentially, outputs persist, so ADD capacities
+layer-capacity (wf-Prod wfL wfR) wfG alg = 1 +ℕ layer-capacity wfL wfG alg +ℕ layer-capacity wfR wfG alg
 
 ------------------------------------------------------------------------
 -- Stack Requirement Lemmas
@@ -236,11 +242,11 @@ open import Data.Nat using (s≤s)
 -- If we have capacity for layer-capacity (wf-Prod wfL wfR) at slot n,
 -- then after using 1 slot (at slot n+1), we have capacity for layer-capacity wfL.
 --
--- With recursive definition:
---   layer-capacity (wf-Prod wfL wfR) = 1 + (capL ⊔ capR)
---   Given: slot + 1 + (capL ⊔ capR) ≤ cap
+-- With SUM definition:
+--   layer-capacity (wf-Prod wfL wfR) = 1 + capL + capR
+--   Given: slot + (1 + capL + capR) ≤ cap
 --   Need: suc slot + capL ≤ cap
---   Since: capL ≤ capL ⊔ capR, this follows from monotonicity
+--   Since: capL ≤ capL + capR, this follows from monotonicity
 layer-capacity-prod-left : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) (slot cap : ℕ) →
@@ -249,22 +255,28 @@ layer-capacity-prod-left : ∀ {FL FR G A}
 layer-capacity-prod-left wfL wfR wfG alg slot cap pf =
   let capL = layer-capacity wfL wfG alg
       capR = layer-capacity wfR wfG alg
-      -- capL ≤ capL ⊔ capR
-      cap-mono : capL ≤ capL ⊔ capR
-      cap-mono = m≤m⊔n capL capR
-      -- suc slot + capL ≤ suc slot + (capL ⊔ capR)
-      step1 : suc slot +ℕ capL ≤ suc slot +ℕ (capL ⊔ capR)
+      -- capL ≤ capL + capR
+      cap-mono : capL ≤ capL +ℕ capR
+      cap-mono = m≤m+n capL capR
+      -- suc slot + capL ≤ suc slot + (capL + capR)
+      step1 : suc slot +ℕ capL ≤ suc slot +ℕ (capL +ℕ capR)
       step1 = +-monoʳ-≤ (suc slot) cap-mono
-      -- Convert pf: slot + (1 + (capL ⊔ capR)) ≤ cap  to  suc slot + (capL ⊔ capR) ≤ cap
-      -- Using: slot + suc x = suc (slot + x) = suc slot + x
-      eq : slot +ℕ suc (capL ⊔ capR) ≡ suc slot +ℕ (capL ⊔ capR)
-      eq = trans (+-suc slot (capL ⊔ capR)) refl
-      step2 : suc slot +ℕ (capL ⊔ capR) ≤ cap
+      -- Convert pf: slot + (1 + capL + capR) ≤ cap  to  suc slot + (capL + capR) ≤ cap
+      -- layer-capacity (wf-Prod wfL wfR) = 1 + capL + capR = suc (capL + capR)
+      -- slot + suc (capL + capR) = suc slot + (capL + capR) by +-suc
+      eq : slot +ℕ suc (capL +ℕ capR) ≡ suc slot +ℕ (capL +ℕ capR)
+      eq = +-suc slot (capL +ℕ capR)
+      step2 : suc slot +ℕ (capL +ℕ capR) ≤ cap
       step2 = subst (_≤ cap) eq pf
   in ≤-trans step1 step2
 
 -- | Layer capacity for Product right component after using 1 slot
--- Symmetric to prod-left, using m≤n⊔m
+--
+-- With SUM definition:
+--   layer-capacity (wf-Prod wfL wfR) = 1 + capL + capR
+--   Given: slot + (1 + capL + capR) ≤ cap
+--   Need: suc slot + capR ≤ cap
+--   Since: capR ≤ capL + capR, this follows from monotonicity
 layer-capacity-prod-right : ∀ {FL FR G A}
   (wfL : WellFormedF FL) (wfR : WellFormedF FR) (wfG : WellFormedF G)
   (alg : IR (⟦ G ⟧T A) A) (slot cap : ℕ) →
@@ -273,16 +285,16 @@ layer-capacity-prod-right : ∀ {FL FR G A}
 layer-capacity-prod-right wfL wfR wfG alg slot cap pf =
   let capL = layer-capacity wfL wfG alg
       capR = layer-capacity wfR wfG alg
-      -- capR ≤ capL ⊔ capR
-      cap-mono : capR ≤ capL ⊔ capR
-      cap-mono = m≤n⊔m capL capR
-      -- suc slot + capR ≤ suc slot + (capL ⊔ capR)
-      step1 : suc slot +ℕ capR ≤ suc slot +ℕ (capL ⊔ capR)
+      -- capR ≤ capL + capR
+      cap-mono : capR ≤ capL +ℕ capR
+      cap-mono = m≤n+m capR capL
+      -- suc slot + capR ≤ suc slot + (capL + capR)
+      step1 : suc slot +ℕ capR ≤ suc slot +ℕ (capL +ℕ capR)
       step1 = +-monoʳ-≤ (suc slot) cap-mono
-      -- Convert pf: slot + (1 + (capL ⊔ capR)) ≤ cap  to  suc slot + (capL ⊔ capR) ≤ cap
-      eq : slot +ℕ suc (capL ⊔ capR) ≡ suc slot +ℕ (capL ⊔ capR)
-      eq = trans (+-suc slot (capL ⊔ capR)) refl
-      step2 : suc slot +ℕ (capL ⊔ capR) ≤ cap
+      -- Convert pf: slot + (1 + capL + capR) ≤ cap  to  suc slot + (capL + capR) ≤ cap
+      eq : slot +ℕ suc (capL +ℕ capR) ≡ suc slot +ℕ (capL +ℕ capR)
+      eq = +-suc slot (capL +ℕ capR)
+      step2 : suc slot +ℕ (capL +ℕ capR) ≤ cap
       step2 = subst (_≤ cap) eq pf
   in ≤-trans step1 step2
 

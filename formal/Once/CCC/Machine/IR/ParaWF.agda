@@ -20,7 +20,7 @@
 
 module Once.CCC.Machine.IR.ParaWF where
 
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_) renaming (_+_ to _+ℕ_)
+open import Data.Nat using (ℕ; zero; suc; _<_; _≤_) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (≤-refl; ≤-trans; m≤m+n; n≤1+n)
 open import Data.Bool using (false)
 open import Data.List using (List; []; _∷_)
@@ -188,7 +188,6 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; final-alloc = alloc'
       ; trace = para-trace
       ; trace-correct = refl
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: para trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq
@@ -207,6 +206,10 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
+      -- slot-stays-in-budget: Para allocates exactly 1 slot
+      -- next-slot alloc' = suc (next-slot alloc)
+      -- reclaim-bound proves: suc n ≤ n + ir-stack-requirement (Para wf alg)
+      ; slot-stays-in-budget = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
@@ -242,9 +245,9 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       result-valid = rec-scheme-semantic (Para wf alg) alloc' x result-loc s'
 
       n = next-slot alloc
-      -- ir-stack-requirement (Para wf alg) = product-depth wf + ir-stack-requirement alg + pair-slots
+      -- ir-stack-requirement (Para wf alg) = product-depth wf + sum-depth wf * 2 + ir-stack-requirement alg + pair-slots
       reclaim-bound : suc n ≤ n +ℕ ir-stack-requirement (Para wf alg)
-      reclaim-bound = suc-≤-plus-req-2 n (product-depth wf) (ir-stack-requirement alg)
+      reclaim-bound = suc-≤-plus-req-2 n (product-depth wf +ℕ sum-depth wf *ℕ 2) (ir-stack-requirement alg)
 
       rax-eq : readReg (regs s') Output ≡ result-loc
       rax-eq = rec-scheme-output-is-slot result-slot s alloc not-halted

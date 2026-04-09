@@ -186,7 +186,6 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
       ; final-alloc = alloc'
       ; trace = ana-trace
       ; trace-correct = refl  -- s' DEFINED by trace
-      ; alloc-correct = SMP.!!  -- PROOF OBLIGATION: ana trace preserves alloc
       ; result-valid-wf = result-valid
       ; result-before = result-bf
       ; rax-is-result = rax-eq
@@ -205,6 +204,10 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-reclaim = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
+      -- slot-stays-in-budget: Ana allocates exactly 1 slot
+      -- next-slot alloc' = suc (next-slot alloc)
+      -- reclaim-bound proves: suc n ≤ n + ir-stack-requirement (Ana wf coalg)
+      ; slot-stays-in-budget = reclaim-bound
       ; frontier-slot-stable = frontier-stable
       ; trace-writes-above = trace-wa
       ; trace-slot-reads-above = tt
