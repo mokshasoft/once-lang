@@ -347,16 +347,16 @@ module FrameOps {FS : FrameSemantics} where
   open FrontierInvariant {FS}
 
   -- Push a child frame for body execution
-  -- Child frame starts at next-slot = 0 with given capacity
+  -- Child frame starts at next-slot = 0
   -- Heap state is shared between frames
+  -- Note: child-capacity parameter retained for API compatibility but no longer stored
   push-frame : (parent : AllocState {FS})
              → (child-frame : Frame)
              → (child-capacity : ℕ)
              → AllocState {FS}
-  push-frame parent cf cc = record
+  push-frame parent cf _ = record
     { current-frame = cf
     ; next-slot = 0
-    ; frame-capacity = cc
     ; next-heap-ref = next-heap-ref parent  -- Heap shared
     }
 

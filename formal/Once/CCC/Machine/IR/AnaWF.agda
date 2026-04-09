@@ -177,9 +177,8 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
     → BeforeFrontier alloc input-loc
     → halted s ≡ false
     → readReg (regs s) Input ≡ input-loc
-    → next-slot alloc +ℕ ir-stack-requirement (Ana wf coalg) ≤ frame-capacity alloc
     → ∃[ mOut ] IRResultAWF mOut (Ana wf coalg) x s alloc
-  run-ana-core {F} {A} wf coalg rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-ana-core {F} {A} wf coalg rec-wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     Heap , record
       { result-loc = result-loc
       ; final-state = s'
@@ -193,13 +192,13 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc'
       ; reclaim-monotone = slot-mono
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → result-bf
-      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-preserves-result = result-bf
+      ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound = reclaim-bound
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-reclaim = ≤-refl
@@ -213,9 +212,12 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
       ; trace-slot-reads-above = tt
       ; trace-writes-below = trace-wb
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      -- scratch-bounded: max-slot-written = suc n = next-slot alloc'
+      -- suc n ≤ suc n + ir-scratch-requirement (Ana wf coalg) by m≤m+n
+      ; scratch-bounded = m≤m+n (suc (next-slot alloc)) (ir-scratch-requirement (Ana wf coalg))
       }
     where
       -- Ana stores seed at frontier slot as thunk representation

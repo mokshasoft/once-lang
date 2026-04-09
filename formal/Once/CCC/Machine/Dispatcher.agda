@@ -256,18 +256,18 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- Helper to construct RecDispatcherWF from rs accessor
     -- Defined in mutual block so termination checker can see the structure
     -- Returns existential mode + IRResultAWF with ValidAtWF for proper threading
-    -- Uses ir-stack-requirement for capacity
+    -- Note: capacity argument removed in Phase 3
     make-rec-wf : ∀ {n} (ir<bound : n < program-bound) →
       (∀ {m} → m < n → Acc _<_ m) →
       RecDispatcherWF n
-    make-rec-wf {n} ir<bound rs mIn ir lt x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' =
-      run-ir-wf mIn ir (<-trans lt ir<bound) x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' combined-cap' (rs lt)
+    make-rec-wf {n} ir<bound rs mIn ir lt x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' =
+      run-ir-wf mIn ir (<-trans lt ir<bound) x' input-loc' s' alloc' valid' before' not-halted' rdi-eq' (rs lt)
 
     -- run-ir-wf uses Acc _<_ (ir-size ir) for termination.
     -- Uses ValidAtWF input and returns existential mode + IRResultAWF with ValidAtWF output.
     -- For Compose/Pair: sub-IRs have smaller size, so rs gives Acc
     -- For Apply: uses body-correct.execute instead of recursive call!
-    -- Uses ir-stack-requirement for capacity
+    -- Note: capacity argument removed in Phase 3
     run-ir-wf : ∀ {A B} (mIn : AllocMode) (ir : IR A B)
       (ir<bound : ir-size ir < program-bound) →
       (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
@@ -276,88 +276,86 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       BeforeFrontier alloc input-loc →
       halted s ≡ false →
       readReg (regs s) Input ≡ input-loc →
-      -- Capacity using ir-stack-requirement
-      next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
       Acc _<_ (ir-size ir) →
       ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
     -- Simple cases delegated to SimpleWF module (returns same mode as input for id/terminal)
-    run-ir-wf mIn id _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn id _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       mIn , run-id x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- fst/snd extract component modes from pair (input must be Heap for boxed pair)
     -- Stack case is impossible (fst/snd operate on boxed pairs)
-    run-ir-wf Heap fst _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Heap fst _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       run-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack fst _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Stack fst _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       -- Reference-based model: Stack and Heap use same pointer representation
       run-fst x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Heap snd _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Heap snd _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       run-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack snd _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf Stack snd _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       -- Reference-based model: Stack and Heap use same pointer representation
       run-snd x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf mIn terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn terminal _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       mIn , run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Arr: effectful morphism coercion (delegated to SimpleWF module)
     -- Converts (A ⇒[ q ] B) to (Eff A B) - semantically identity
-    run-ir-wf mIn (arr {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn (arr {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       mIn , run-arr {mIn} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Prim: primitive operations (uses proof provider)
     -- With opaque Prim (just name), contract comes from proof provider
-    run-ir-wf mIn (Prim name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn (Prim name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       let (m , result) = run-prim mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
       in m , result
 
     -- Sum type: inject left (delegated to SumRecWF module)
     -- Output mode is m (from inl m)
-    run-ir-wf mIn (inl {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      m , run-inl {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf mIn (inl {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      m , run-inl {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Sum type: inject right (delegated to SumRecWF module)
     -- Output mode is m (from inr m)
-    run-ir-wf mIn (inr {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      m , run-inr {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf mIn (inr {A} {B} m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      m , run-inr {A} {B} mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Sum type: case analysis (delegated to SumRecWF module)
     -- Reference-based model: any mode works since sums use pointer representation
-    run-ir-wf Heap (case f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf Heap (case f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       run-case {Heap} f g (make-rec-wf ir<bound rs) x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack (case f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf Stack (case f g) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       -- Reference-based model: Stack and Heap use same pointer representation for sums
       run-case {Stack} f g (make-rec-wf ir<bound rs) x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
     -- Initial: absurd elimination (delegated to SumRecWF module)
-    run-ir-wf mIn initial _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn initial _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       run-initial x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- OCP-0003: fold/unfold cases removed. Use In/Cata/Out/Ana instead.
 
     -- Compose: delegated to ComposeWF module
-    run-ir-wf mIn (g ∘ f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (g ∘ f) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       run-compose mIn f g (make-rec-wf ir<bound rs) x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
     -- Pair: delegated to PairWF module
     -- Output mode is m (from ⟨ f , g ⟩ m)
-    run-ir-wf mIn (⟨ f , g ⟩ m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (⟨ f , g ⟩ m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       m , run-pair mIn f g m (make-rec-wf ir<bound rs) x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
     -- Curry: delegated to CurryWF module (quantity-polymorphic)
     -- Output is always Heap (closure is boxed)
-    run-ir-wf mIn (curry {q = q} f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (curry {q = q} f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       Heap , run-curry {q = q} mIn f m ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
     -- Apply: uses BodyCorrect.execute from closure (quantity-polymorphic)
     -- Input must be Heap (boxed pair of closure * arg)
@@ -369,16 +367,16 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- Apply: CHILD FRAME EXECUTION
     -- Body executes in child frame with child-capacity (from module params).
     -- Body capacity follows from child-cap-sufficient
-    run-ir-wf Heap (apply {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-        run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf Heap (apply {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+        run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack (apply {A} {B} {q}) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap acc-ir =
+    run-ir-wf Stack (apply {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       -- Reference-based model: Stack and Heap use same pointer representation for pairs
-      run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+      run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Free-heap: explicit heap deallocation (delegated to SimpleWF module)
     -- Semantically a no-op (returns input unchanged).
-    run-ir-wf mIn (free-heap ref) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn (free-heap ref) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       mIn , run-free-heap ref x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     --------------------------------------------------------------------------
@@ -393,64 +391,64 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- In: wrap into μ-type (initial algebra constructor)
     -- By Lambek's Lemma, In : F(μF) → μF is an isomorphism at runtime.
     -- Implementation: allocates 1 slot and stores the pointer.
-    run-ir-wf mIn (In {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      m , run-In wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf mIn (In {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      m , run-In wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- out-μ: destruct μ-type (Lambek inverse of In)
     -- By Lambek's Lemma, this is identity at runtime (just pass-through).
-    run-ir-wf mIn (out-μ {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ _ =
+    run-ir-wf mIn (out-μ {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       Heap , run-out-μ wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Cata: catamorphism (fold over μ-type)
     -- Uses unified RecCoreWF with Cata configuration
-    run-ir-wf mIn (Cata {F} wf alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (Cata {F} wf alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       run-cata-core wf alg (make-rec-wf ir<bound rs) mIn x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
     -- Para: paramorphism (fold with access to original substructure)
     -- Takes algebra: IR (⟦ F ⟧T (μF × A)) A, recursively applies to μF
     -- Uses ParaWF handler with subterm preservation
-    run-ir-wf mIn (Para {F} wf alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (Para {F} wf alg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       run-para-core wf alg (make-rec-wf ir<bound rs) mIn x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
     -- Out: observe ν-type (final coalgebra destructor)
     -- By dual Lambek's Lemma, Out : νF → F(νF) is identity at runtime.
-    run-ir-wf mIn (Out {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      Heap , run-Out wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf mIn (Out {F} wf) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      Heap , run-Out wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- in-ν: construct ν-type (Lambek inverse of Out)
     -- By dual Lambek's Lemma, this allocates 1 slot (like In).
-    run-ir-wf mIn (in-ν {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap _ =
-      m , run-in-ν wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+    run-ir-wf mIn (in-ν {F} wf m) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      m , run-in-ν wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Ana: anamorphism (unfold to build ν-type)
     -- Takes coalgebra: IR A (⟦ F ⟧T A), corecursively builds νF
     -- Uses AnaWF handler for lazy thunk creation
-    run-ir-wf mIn (Ana {F} wf coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (Ana {F} wf coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       run-ana-core wf coalg (make-rec-wf ir<bound rs) mIn x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
     -- Hylo: hylomorphism (fused cata ∘ ana)
     -- Combines algebra and coalgebra without intermediate structure
     -- OCP-0003: Based on Fuse, structurally terminating on μG input
     -- Uses unified RecCoreWF with Hylo configuration
-    run-ir-wf mIn (Hylo {F} {G} wfF wfG alg coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (Hylo {F} {G} wfF wfG alg coalg) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       run-hylo-core wfF wfG alg coalg (make-rec-wf ir<bound rs) mIn x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
     -- Fuse: μ-anchored fusion (correct by construction)
     -- Structural recursion on μG - termination guaranteed by well-foundedness
     -- Uses unified RecCoreWF with Fuse configuration
-    run-ir-wf mIn (Fuse {F} {G} wfF wfG alg transform) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap (acc rs) =
+    run-ir-wf mIn (Fuse {F} {G} wfF wfG alg transform) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
       run-fuse-core wfF wfG alg transform (make-rec-wf ir<bound rs) mIn x input-loc s alloc
-        input-valid-wf input-before not-halted rdi-eq combined-cap
+        input-valid-wf input-before not-halted rdi-eq
 
     -- Guard/Unguard removed: productivity follows from IR totality
 
   -- Public API with ValidAtWF
   -- Returns existential mode + IRResultAWF with ValidAtWF for result validity.
-  -- Uses ir-stack-requirement for capacity
+  -- Phase 3: capacity parameter removed (frame-capacity is now a shim)
   run-wf : ∀ {A B} (mIn : AllocMode) (ir : IR A B) (ir<bound : ir-size ir < program-bound)
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
@@ -458,11 +456,9 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    -- Capacity using ir-stack-requirement
-    next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc
-  run-wf mIn ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
-    run-ir-wf mIn ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap
+  run-wf mIn ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    run-ir-wf mIn ir ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
       (get-acc-from-pb (ir-size ir) ir<bound)
 
   -- NOTE: Use `run-wf` with ValidAtWF inputs. The basic ValidAt API was removed.

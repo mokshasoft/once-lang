@@ -85,13 +85,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → input-before
-      ; reclaim-preserves-validity = λ _ → valid-s'
+      ; reclaim-preserves-result = input-before
+      ; reclaim-preserves-validity = valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
@@ -103,9 +103,12 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      -- scratch-bounded: max-slot-written = next-slot alloc = next-slot final-alloc
+      -- ir-scratch-requirement id = 0, so bound is next-slot alloc +ℕ 0 = next-slot alloc
+      ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
       trace : AbstractTrace
@@ -168,13 +171,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → fst-before
-      ; reclaim-preserves-validity = λ _ → fst-valid-s'
+      ; reclaim-preserves-result = fst-before
+      ; reclaim-preserves-validity = fst-valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
@@ -186,9 +189,12 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-load-indirect tpc-[]
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-load-indirect tph-[]
+      -- scratch-bounded: max-slot-written = next-slot alloc = next-slot final-alloc
+      -- ir-scratch-requirement fst = 0, so bound is next-slot alloc +ℕ 0 = next-slot alloc
+      ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
       pair-decomp = decomposePairWF {m} input-valid-wf
@@ -265,13 +271,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → snd-before
-      ; reclaim-preserves-validity = λ _ → snd-valid-s'
+      ; reclaim-preserves-result = snd-before
+      ; reclaim-preserves-validity = snd-valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
@@ -283,9 +289,12 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc tpc-[]
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-load-indirect-suc tph-[]
+      -- scratch-bounded: max-slot-written = next-slot alloc = next-slot final-alloc
+      -- ir-scratch-requirement snd = 0, so bound is next-slot alloc +ℕ 0 = next-slot alloc
+      ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
       pair-decomp = decomposePairWF {m} input-valid-wf
@@ -362,13 +371,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → input-before
-      ; reclaim-preserves-validity = λ _ → valid-unit-wf
+      ; reclaim-preserves-result = input-before
+      ; reclaim-preserves-validity = valid-unit-wf
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
@@ -380,9 +389,12 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      -- scratch-bounded: max-slot-written = next-slot alloc = next-slot final-alloc
+      -- ir-scratch-requirement terminal = 0, so bound is next-slot alloc +ℕ 0 = next-slot alloc
+      ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
       trace : AbstractTrace
@@ -441,13 +453,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → input-before
-      ; reclaim-preserves-validity = λ _ → valid-s'
+      ; reclaim-preserves-result = input-before
+      ; reclaim-preserves-validity = valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
@@ -459,9 +471,12 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      -- scratch-bounded: max-slot-written = next-slot alloc = next-slot final-alloc
+      -- ir-scratch-requirement (free-heap _) = 0, so bound is next-slot alloc +ℕ 0 = next-slot alloc
+      ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
       trace : AbstractTrace
@@ -523,13 +538,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → input-before
-      ; reclaim-preserves-validity = λ _ → valid-eff
+      ; reclaim-preserves-result = input-before
+      ; reclaim-preserves-validity = valid-eff
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
@@ -541,9 +556,12 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      -- scratch-bounded: max-slot-written = next-slot alloc = next-slot final-alloc
+      -- ir-scratch-requirement arr = 0, so bound is next-slot alloc +ℕ 0 = next-slot alloc
+      ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
       trace : AbstractTrace

@@ -180,9 +180,8 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement (apply {A} {B} {q}) ≤ frame-capacity alloc →
     ∃[ mOut ] IRResultAWF mOut (apply {A} {B} {q}) x s alloc
-  run-apply {m} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-apply {m} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mBody , record
       { result-loc = result-loc
       ; final-state = s'
@@ -196,7 +195,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) pair-slots
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved'
       ; reclaimable-slot = next-slot alloc +ℕ pair-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) pair-slots
@@ -216,9 +215,12 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-slot-reads-above = trace-slot-reads-above'
       ; trace-writes-below = trace-writes-below'
       ; trace-slot-reads-below = trace-slot-reads-below'
-      ; trace-preserves-capacity = trace-preserves-capacity'
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = trace-no-heap-writes'
       ; trace-preserves-halted = trace-preserves-halted'
+      -- scratch-bounded: apply allocates pair-slots, max-slot-written = n + pair-slots = n + 2
+      -- ir-scratch-requirement apply = pair-slots = 2, so (n + 2) ≤ (n + 2) + 2
+      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ pair-slots) pair-slots
       }
     where
       open import Data.Nat using (_≥_)
@@ -275,7 +277,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       child-alloc = record
         { current-frame = child-frame
         ; next-slot = 0
-        ; frame-capacity = body-cap
+        -- Note: frame-capacity removed in Phase 3
         ; next-heap-ref = next-heap-ref alloc
         }
 
@@ -657,7 +659,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       body-exec-result = BodyCorrect.execute body-correct arg arg-loc pair-input-loc
         s-after-setup child-alloc Heap
         pair-input-valid-child pair-input-before-child not-halted-after-setup pair-input-eq
-        ≤-refl
+        -- Note: capacity argument removed in Phase 3
 
       mBody = proj₁ body-exec-result
       body-result = proj₂ body-exec-result
@@ -729,8 +731,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       trace-slot-reads-below' : TraceSlotReadsBelow (next-slot alloc +ℕ pair-slots) trace
       trace-slot-reads-below' = SMP.!!
 
-      trace-preserves-capacity' : TracePreservesCapacity trace
-      trace-preserves-capacity' = SMP.!!
+      -- Note: trace-preserves-capacity' removed in Phase 3
 
       -- Setup trace has no heap writes (simplified: just tt since no heap-writing instrs)
       setup-no-heap-writes : TraceNoHeapWrites (apply-setup-trace pair-slot)
@@ -746,16 +747,17 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
                   tt)
 
       -- Reclamation proofs
-      reclaim-preserves-result' : ∀ (fits : next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc) →
+      -- Note: fits parameter removed in Phase 3
+      reclaim-preserves-result' :
         BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ pair-slots }) result-loc
-      reclaim-preserves-result' fits = bf-same-frame-slot alloc'
+      reclaim-preserves-result' = bf-same-frame-slot alloc'
         (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
         refl refl refl result-loc result-before'
 
-      reclaim-preserves-validity' : ∀ (fits : next-slot alloc +ℕ pair-slots ≤ frame-capacity alloc) →
+      reclaim-preserves-validity' :
         ValidAtWF mBody (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
                   (eval primSem (apply {A} {B} {q}) x) result-loc s'
-      reclaim-preserves-validity' fits = validityWF-with-bf-transfer
+      reclaim-preserves-validity' = validityWF-with-bf-transfer
         (eval primSem (apply {A} {B} {q}) x) result-loc s' alloc'
         (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
         (λ loc bf → bf-same-frame-slot alloc'

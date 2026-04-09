@@ -119,10 +119,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement (curry {q = q} f m) ≤ frame-capacity alloc →
     IRResultAWF Heap (curry {q = q} f m) x s alloc
   run-curry {A} {B} {C} {q} mIn f m ir<bound rec-wf x input-loc s alloc
-    input-valid-wf input-before not-halted rdi-eq combined-cap =
+    input-valid-wf input-before not-halted rdi-eq =
     record
       { result-loc = closure-loc
       ; final-state = s'
@@ -136,7 +135,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) closure-slots
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved'
       ; reclaimable-slot = next-slot alloc +ℕ closure-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) closure-slots
@@ -156,9 +155,12 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; trace-slot-reads-above = tt
       ; trace-writes-below = trace-writes-below'
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = trace-preserves-capacity'
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = trace-preserves-halted'
+      -- scratch-bounded: max-slot-written = next-slot alloc + closure-slots = next-slot alloc'
+      -- (n + 2) ≤ (n + 2) + req by m≤m+n
+      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ closure-slots) req-curry
       }
     where
       -- Closure location and trace
@@ -192,13 +194,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         m<m+n closure-slot {closure-slots} (s≤s z≤n) ,
         (suc<+2 closure-slot , tt)
 
-      trace-preserves-capacity' : TracePreservesCapacity trace
-      trace-preserves-capacity' =
-        tpc-∷ ipc-mov-to-output
-        (tpc-∷ ipc-store-at-slot
-        (tpc-∷ ipc-lea-slot
-        (tpc-∷ ipc-store-at-slot
-        (tpc-∷ ipc-lea-slot tpc-[]))))
+      -- Note: trace-preserves-capacity' removed in Phase 3
 
       trace-preserves-halted' : TracePreservesHaltedP trace
       trace-preserves-halted' =
@@ -417,9 +413,10 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       body-correct = record
         { body-capacity = ir-stack-requirement f
         ; body-cap-eq = refl
-        ; execute = λ arg arg-loc pair-loc s'' alloc'' mPair pair-valid-wf pair-before not-halt rdi-eq' cap' →
+        -- Note: cap' parameter removed in Phase 3
+        ; execute = λ arg arg-loc pair-loc s'' alloc'' mPair pair-valid-wf pair-before not-halt rdi-eq' →
             rec-wf mPair f (curry-smaller {q = q} f {m}) (pair x arg) pair-loc s'' alloc''
-              pair-valid-wf pair-before not-halt rdi-eq' cap'
+              pair-valid-wf pair-before not-halt rdi-eq'
         }
 
       -- Result validity: closure with body-correct embedded
@@ -429,16 +426,17 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         input-valid-wf' body-correct
 
       -- Reclamation proofs
-      reclaim-preserves-result' : ∀ (fits : next-slot alloc +ℕ closure-slots ≤ frame-capacity alloc) →
+      -- Note: fits parameter removed in Phase 3
+      reclaim-preserves-result' :
         BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ closure-slots }) closure-loc
-      reclaim-preserves-result' fits =
+      reclaim-preserves-result' =
         frontier-same-heap alloc' (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
           refl refl refl closure-loc closure-before'
 
-      reclaim-preserves-validity' : ∀ (fits : next-slot alloc +ℕ closure-slots ≤ frame-capacity alloc) →
+      reclaim-preserves-validity' :
         ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
                   (eval primSem (curry {q = q} f m) x) closure-loc s'
-      reclaim-preserves-validity' fits = validityWF-with-bf-transfer
+      reclaim-preserves-validity' = validityWF-with-bf-transfer
         (eval primSem (curry {q = q} f m) x) closure-loc s' alloc'
         (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
         (λ loc bf → bf-same-frame-slot alloc'

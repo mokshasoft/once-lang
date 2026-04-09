@@ -128,6 +128,17 @@ ir-stack-requirement (free-heap _) = 0
 ir-stack-requirement (Prim _) = 0  -- Primitives manage own stack
 
 ------------------------------------------------------------------------
+-- Scratch Requirement (alias for stack requirement)
+--
+-- OCP-0003: scratch-bounded uses ir-scratch-requirement relative to OUTPUT.
+-- For now, scratch requirement equals stack requirement. Later phases may
+-- refine this to track only temporary (non-output) slots.
+------------------------------------------------------------------------
+
+ir-scratch-requirement : ∀ {A B} → IR A B → ℕ
+ir-scratch-requirement = ir-stack-requirement
+
+------------------------------------------------------------------------
 -- Layer Capacity (Redesigned OCP-0003)
 --
 -- The capacity model is fundamentally based on:

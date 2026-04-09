@@ -282,15 +282,16 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         frame-preserved : current-frame final-alloc ≡ current-frame alloc
         slot-monotone : next-slot alloc ≤ next-slot final-alloc
         heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
-        capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
+        -- Note: capacity-preserved removed in Phase 3 (frame-capacity removed from AllocState)
         mem-preserved-before : ∀ loc → BeforeFrontier alloc loc →
           readLoc final-state loc ≡ readLoc s loc
         reclaimable-slot : ℕ
         reclaim-monotone : next-slot alloc ≤ reclaimable-slot
         reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
-        reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+        -- Note: fits parameter removed (frame-capacity removed from AllocState)
+        reclaim-preserves-result :
           BeforeFrontier (record alloc { next-slot = reclaimable-slot }) result-loc
-        reclaim-preserves-validity : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+        reclaim-preserves-validity :
           ValidAtWF m (record alloc { next-slot = reclaimable-slot })
                     (eval primSem ir x) result-loc final-state
         reclaim-size-bound : reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement ir
@@ -347,11 +348,14 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- With reclamation, traces may read up to max-slot-written before reclaiming back.
         -- Key for pair's g-fst-indep: g reads in [reclaim-f, max-slot-g), so fst-slot = reclaim-g is independent.
         trace-slot-reads-below : TraceSlotReadsBelow max-slot-written trace
-        -- Trace preserves capacity: no instr-push-frame in trace.
-        -- This allows using exec-trace-preserves-capacity' to prove frame-capacity
-        -- is preserved through trace execution. Apply is the only IR that uses
-        -- push-frame, and it handles capacity specially via frame push/pop.
-        trace-preserves-capacity : TracePreservesCapacity trace
+        -- OCP-0003: Scratch bounded relative to OUTPUT frontier (not input)
+        -- This is the key insight from stack-model-design.md:
+        --   - Output: unbounded, runtime-determined (how much frontier advanced)
+        --   - Scratch: bounded, static (temporary space above output)
+        -- max-slot-written ≤ next-slot final-alloc +ℕ ir-scratch-requirement
+        -- Combined with slot-monotone, this enables MAX-based composition
+        scratch-bounded : max-slot-written ≤ next-slot final-alloc +ℕ ir-scratch-requirement ir
+        -- Note: trace-preserves-capacity removed in Phase 3 (frame-capacity removed)
         -- Trace contains no heap-writing instructions.
         -- Heap writes (store-indirect) write to arbitrary memory (wherever Input points),
         -- so traces containing them require additional disjointness preconditions.
@@ -384,6 +388,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- Execute returns mode-indexed result
         -- Input pair is Heap (boxed) - constructed by Apply
         -- Output mode is existentially quantified (body decides)
+        -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
         execute : ∀ (arg : ⟦ A ⟧) (arg-loc pair-loc : ValueLocation FS)
           (s : LocState FS) (alloc : AllocState {FS})
           (mPair : AllocMode) →  -- Input pair mode (Apply provides Heap)
@@ -391,7 +396,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
           BeforeFrontier alloc pair-loc →
           halted s ≡ false →
           readReg (regs s) Input ≡ pair-loc →
-          next-slot alloc +ℕ body-capacity ≤ frame-capacity alloc →
           ∃[ mOut ] IRResultAWF mOut body (pair env arg) s alloc
 
   open IRResultAWF public
@@ -492,6 +496,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   -- No global invariants needed - capacity is threaded dynamically per closure.
   ------------------------------------------------------------------------
 
+  -- Note: capacity precondition removed in Phase 3 (frame-capacity removed)
   RecDispatcherWF : ℕ → Set
   RecDispatcherWF bound = ∀ {A B} (mIn : AllocMode) (ir : IR A B) →
     ir-size ir < bound →
@@ -501,8 +506,6 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    -- Capacity using ir-stack-requirement
-    next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
     ∃[ mOut ] IRResultAWF mOut ir x s alloc
 
   ------------------------------------------------------------------------
@@ -1330,11 +1333,62 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   --   - Therefore validity is preserved through those traces
   --
   -- The proof combines:
-  --   1. exec-trace-preserves-disjoint: memory at disjoint locations preserved
+  --   1. derive-mem-preserved: memory at BeforeFrontier locations preserved
   --   2. validityWF-mem-preserved: validity transfers when memory preserved
   ------------------------------------------------------------------------
 
+  -- Phase 2 Core: Derive memory preservation from trace write bounds
+  --
+  -- This is the UNIFIED derivation function that routes to the appropriate
+  -- positive characterization lemma based on BeforeFrontier constructor:
+  --   - stack-before: exec-trace-preserves-slot-below (slot < frontier)
+  --   - stack-ancestor: exec-trace-preserves-ancestor (ancestor frame)
+  --   - heap-before: exec-trace-preserves-heap-loc (heap location)
+  --
+  -- Usage: Instead of storing mem-preserved-before in IRResultAWF,
+  -- callers can derive it using this function from trace-writes-above
+  -- and trace-no-heap-writes.
+
+  -- General variant: derive preservation for slots below an explicit boundary
+  -- Useful for composition where the boundary may differ from next-slot alloc
+  derive-mem-preserved-at : ∀ (alloc : AllocState {FS}) (start : ℕ)
+    (trace : AbstractTrace) (s : LocState FS) →
+    TraceWritesAbove start trace →
+    TraceNoHeapWrites trace →
+    (loc : ValueLocation FS) →
+    BeforeFrontier alloc loc →
+    start ≥ next-slot alloc →  -- start is at or above frontier
+    readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
+  derive-mem-preserved-at alloc start trace s twa tnhw (OnStack f k) (stack-before f≡cf k<next) start≥frontier =
+    -- k < next-slot alloc ≤ start, so k < start and slot k is below write region
+    subst (λ f' → readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f' k) ≡
+                  readLoc s (OnStack f' k))
+          (sym f≡cf)
+          (exec-trace-preserves-slot-below trace s alloc start k twa tnhw k<start)
+    where
+      open import Data.Nat.Properties using (<-≤-trans)
+      k<start = <-≤-trans k<next start≥frontier
+  derive-mem-preserved-at alloc start trace s twa tnhw (OnStack f k) (stack-ancestor cf≺f _) _ =
+    -- f is an ancestor frame (current-frame alloc ≺ f)
+    exec-trace-preserves-ancestor trace s alloc f k cf≺f tnhw
+  derive-mem-preserved-at alloc start trace s twa tnhw (OnHeap h) (heap-before _) _ =
+    -- Heap location
+    exec-trace-preserves-heap-loc trace s alloc h tnhw
+
+  -- Standard variant: derive preservation for slots below next-slot alloc
+  derive-mem-preserved : ∀ (alloc : AllocState {FS})
+    (trace : AbstractTrace) (s : LocState FS) →
+    TraceWritesAbove (next-slot alloc) trace →
+    TraceNoHeapWrites trace →
+    (loc : ValueLocation FS) →
+    BeforeFrontier alloc loc →
+    readLoc (proj₁ (exec-trace trace s alloc)) loc ≡ readLoc s loc
+  derive-mem-preserved alloc trace s twa tnhw loc bf =
+    derive-mem-preserved-at alloc (next-slot alloc) trace s twa tnhw loc bf ≤-refl
+    where open import Data.Nat.Properties using (≤-refl)
+
   -- Main lemma: trace preserves validity when writing above frontier
+  -- Now uses derive-mem-preserved instead of inline proof
   validityWF-trace-preserves : ∀ {m A} (alloc : AllocState {FS})
     (trace : AbstractTrace) (v : ⟦ A ⟧) (loc : ValueLocation FS)
     (s : LocState FS) →
@@ -1347,21 +1401,5 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
     -- Validity preserved after trace
     ValidAtWF m alloc v loc (proj₁ (exec-trace trace s alloc))
   validityWF-trace-preserves alloc trace v loc s loc-bf valid twa tnhw =
-    validityWF-mem-preserved v loc s (proj₁ (exec-trace trace s alloc)) loc-bf mem-preserved valid
-    where
-      -- Memory at all BeforeFrontier locations is preserved
-      -- Using positive characterization lemmas based on location type
-      mem-preserved : ∀ loc' → BeforeFrontier alloc loc' →
-        readLoc (proj₁ (exec-trace trace s alloc)) loc' ≡ readLoc s loc'
-      mem-preserved (OnStack f k) (stack-before f≡cf k<next) =
-        -- k < next-slot alloc, so slot k is below write region
-        subst (λ f' → readLoc (proj₁ (exec-trace trace s alloc)) (OnStack f' k) ≡
-                      readLoc s (OnStack f' k))
-              (sym f≡cf)
-              (exec-trace-preserves-slot-below trace s alloc (next-slot alloc) k twa tnhw k<next)
-      mem-preserved (OnStack f k) (stack-ancestor cf≺f _) =
-        -- f is an ancestor frame (current-frame alloc ≺ f)
-        exec-trace-preserves-ancestor trace s alloc f k cf≺f tnhw
-      mem-preserved (OnHeap h) (heap-before _) =
-        -- Heap location
-        exec-trace-preserves-heap-loc trace s alloc h tnhw
+    validityWF-mem-preserved v loc s (proj₁ (exec-trace trace s alloc)) loc-bf
+      (derive-mem-preserved alloc trace s twa tnhw) valid

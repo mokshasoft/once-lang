@@ -724,9 +724,10 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       reclaimable-slot : ℕ
       reclaim-monotone : next-slot alloc ≤ reclaimable-slot
       reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
-      reclaim-preserves-result : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+      -- Note: fits parameter removed in Phase 3 (frame-capacity removed from AllocState)
+      reclaim-preserves-result :
         BeforeFrontier (record alloc { next-slot = reclaimable-slot }) result-loc
-      reclaim-preserves-validity : ∀ (fits : reclaimable-slot ≤ frame-capacity alloc) →
+      reclaim-preserves-validity :
         ValidAtWF m (record alloc { next-slot = reclaimable-slot }) processed result-loc final-state
 
       -- Slot usage bound: reclaimable-slot bounded by layer-capacity wfF wfG alg
@@ -757,10 +758,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- but heap refs might differ. With heap-preserved, we can use frontier-same-heap.
       -- Note: Id case delegates to algorithm which might allocate heap, marked SMP.!!
       heap-preserved : next-heap-ref final-alloc ≡ next-heap-ref alloc
-      capacity-preserved : frame-capacity final-alloc ≡ frame-capacity alloc
+      -- Note: capacity-preserved removed in Phase 3 (frame-capacity removed from AllocState)
 
       -- Memory preservation: locations before frontier are unchanged
       mem-preserved : ∀ loc → BeforeFrontier alloc loc → readLoc final-state loc ≡ readLoc s loc
+
+      -- OCP-0003: Scratch bounded relative to INPUT frontier
+      -- With reclamation, OUTPUT-relative bounds don't compose directly because
+      -- reclamation can lower the frontier below the high-water mark.
+      -- Using INPUT-relative bounds still enables Cata composition via:
+      --   layer-max ≤ alloc + layer-cap ≤ cata-final + cata-scratch (by overall monotone)
+      -- This is the same as max-slot-usage-bound.
+      scratch-bounded : max-slot-used ≤ next-slot alloc +ℕ layer-capacity wfF wfG alg
 
       -- Trace properties for composition (positive characterization)
       -- Region bounds: trace operates in [next-slot alloc, max-slot-used)
@@ -772,7 +781,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       trace-slot-reads-below : TraceSlotReadsBelow max-slot-used trace
       -- Preservation properties
       trace-preserves-halted : TracePreservesHaltedP trace
-      trace-preserves-capacity : TracePreservesCapacity trace
+      -- Note: trace-preserves-capacity removed in Phase 3 (frame-capacity removed)
       trace-no-heap-writes : TraceNoHeapWrites trace
 
   ------------------------------------------------------------------------
@@ -835,10 +844,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   incr-next-slot-frame : ∀ (alloc : AllocState {FS}) →
     current-frame (incr-next-slot alloc) ≡ current-frame alloc
   incr-next-slot-frame alloc = refl
-
-  incr-next-slot-capacity : ∀ (alloc : AllocState {FS}) →
-    frame-capacity (incr-next-slot alloc) ≡ frame-capacity alloc
-  incr-next-slot-capacity alloc = refl
 
   incr-next-slot-heap : ∀ (alloc : AllocState {FS}) →
     next-heap-ref (incr-next-slot alloc) ≡ next-heap-ref alloc
@@ -1364,13 +1369,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
       → readReg (regs s) Input ≡ input-loc
-      → next-slot alloc +ℕ layer-capacity wfF wfG alg ≤ frame-capacity alloc
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfF layer s alloc
 
     -- K case: constant layer, no recursion
     -- The processed layer is just the constant value itself
     process-layer (wf-K {T} isBase) wfG alg dispatch k-val mIn input-loc s alloc
-      (μlayer-K layer-bf) input-before not-halted rdi-eq cap =
+      (μlayer-K layer-bf) input-before not-halted rdi-eq =
       -- For K T: ⟦ K T ⟧F X = ⟦ T ⟧ for any X
       -- The processed layer is the same constant: k-val : ⟦ T ⟧
       -- sem-fmap (K T) f k-val = k-val (fmap for K is identity)
@@ -1392,8 +1396,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaimable-slot = next-slot alloc
         ; reclaim-monotone = ≤-refl
         ; reclaim-bounded = ≤-refl
-        ; reclaim-preserves-result = λ _ → input-before
-        ; reclaim-preserves-validity = λ _ → valid-basetype-wf isBase input-before
+        ; reclaim-preserves-result = input-before
+        ; reclaim-preserves-validity = valid-basetype-wf isBase input-before
         -- slot-usage-bound: K case uses 0 slots, so reclaimable = next-slot alloc ≤ next-slot alloc + layer-capacity
         -- layer-capacity (wf-K _) wfG alg = ir-stack-requirement alg + pair-slots
         ; slot-usage-bound = m≤m+n (next-slot alloc) (layer-capacity (wf-K isBase) wfG alg)
@@ -1405,7 +1409,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; slot-stays-in-budget = m≤m+n (next-slot alloc) (layer-capacity (wf-K isBase) wfG alg)
         ; heap-monotone = ≤-refl
         ; heap-preserved = refl  -- final-alloc = alloc, so heap unchanged
-        ; capacity-preserved = refl
         ; mem-preserved = λ loc _ → exec-abstract-mov-to-output-preserves-mem s alloc loc
         -- Trace region bounds: mov-to-output writes/reads no slots
         ; trace-writes-above = tt
@@ -1414,8 +1417,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; trace-slot-reads-below = tt
         -- Trace preservation properties
         ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
-        ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
         ; trace-no-heap-writes = tt
+        -- scratch-bounded: K case has final-alloc = alloc, so same as max-slot-usage-bound
+        ; scratch-bounded = m≤m+n (next-slot alloc) (layer-capacity (wf-K isBase) wfG alg)
         }
       where
         k-trace : AbstractTrace
@@ -1428,7 +1432,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     -- Id case: recursive position, compute cata on μ-value
     -- The processed layer is the cata result
     process-layer wf-Id wfG alg dispatch μ-val mIn input-loc s alloc
-      (μlayer-Id μ-val-μvalid) input-before not-halted rdi-eq cap =
+      (μlayer-Id μ-val-μvalid) input-before not-halted rdi-eq =
       -- For Id: ⟦ Id ⟧F (⟦μ⟧ G) = ⟦μ⟧ G
       -- The μ-val IS the recursive μ-value
       -- Compute sem-cata wfG alg μ-val via recursive dispatch
@@ -1437,12 +1441,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         μ-val-valid : ValidAtWF mIn alloc μ-val input-loc s
         μ-val-valid = valid-μ-wf wfG μ-val μ-val-μvalid
 
-        -- Capacity: layer-capacity wf-Id wfG alg = ir-stack-requirement (Cata wfG alg) (definitional)
-        -- So cap already has the right type for cata-dispatched-new
-
         -- Recursive call: compute cata on μ-val
         (mRec , rec-result) = cata-dispatched-new wfG alg dispatch μ-val mIn input-loc s alloc
-                                μ-val-valid input-before not-halted rdi-eq cap
+                                μ-val-valid input-before not-halted rdi-eq
 
         -- Extract results
         rec-val = eval primSem (Cata wfG alg) μ-val
@@ -1490,7 +1491,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- heap-preserved: Depends on Cata algebra - stack-only algebras preserve heap
         -- For algebras that allocate heap, this would need additional assumptions
         ; heap-preserved = SMP.!!
-        ; capacity-preserved = IRResultAWF.capacity-preserved rec-result
         ; mem-preserved = IRResultAWF.mem-preserved-before rec-result
         -- Trace region bounds from IRResultAWF
         -- IRResultAWF uses max-slot-written as bound, which equals our max-slot-used
@@ -1500,8 +1500,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below rec-result
         -- Trace preservation properties
         ; trace-preserves-halted = IRResultAWF.trace-preserves-halted rec-result
-        ; trace-preserves-capacity = IRResultAWF.trace-preserves-capacity rec-result
         ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes rec-result
+        -- scratch-bounded (INPUT-relative): Id delegates to Cata
+        -- layer-capacity wf-Id = ir-stack-requirement (Cata wfG alg)
+        -- Use max-slot-usage-bound which is INPUT-relative
+        ; scratch-bounded = IRResultAWF.max-slot-usage-bound rec-result
         }
 
     -- Sum inj₁ case (LINEAR): process left branch, update pointer in-place, return container
@@ -1527,7 +1530,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     -- Result: result-loc = input-loc (the Sum container with updated pointer)
     --
     process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₁ l-layer) mIn input-loc s alloc
-      (μlayer-inl {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq cap =
+      (μlayer-inl {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf l-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input
         -- This transforms s (where Input = input-loc) to s-setup (where Input = payload-loc)
@@ -1581,16 +1584,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         not-halted-setup : halted s-setup ≡ false
         not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
-        -- Capacity for sub-layer: use layer-capacity-sum-left to derive child capacity from parent
-        -- alloc-setup = alloc (setup-trace doesn't change alloc)
-        cap-setup : next-slot alloc-setup +ℕ layer-capacity wfL wfG alg ≤ frame-capacity alloc-setup
-        cap-setup = subst (λ al → next-slot al +ℕ layer-capacity wfL wfG alg ≤ frame-capacity al)
-                          (sym (setup-trace-preserves-alloc s alloc))
-                          (layer-capacity-sum-left wfL wfR wfG alg (next-slot alloc) (frame-capacity alloc) cap)
-
         -- Step 2: Process left sub-layer (recursive call)
         (mL , l-result) = process-layer wfL wfG alg dispatch l-layer mIn payload-loc s-setup alloc-setup
-                            l-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup cap-setup
+                            l-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
 
         -- Extract recursive results
         l-processed = ProcessedLayerResult.processed l-result
@@ -1802,10 +1798,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           trans (ProcessedLayerResult.heap-preserved l-result)
                 (cong next-heap-ref alloc-setup-eq)
 
-        capacity-preserved-inj1 : frame-capacity alloc-after-sub ≡ frame-capacity alloc
-        capacity-preserved-inj1 =
-          trans (ProcessedLayerResult.capacity-preserved l-result)
-                (cong frame-capacity alloc-setup-eq)
+        -- Note: capacity-preserved-inj1 removed in Phase 3
 
         -- Memory preservation: setup preserves all memory, then sub preserves below frontier
         mem-preserved-inj1 : ∀ loc → BeforeFrontier alloc loc → readLoc s-after-sub loc ≡ readLoc s loc
@@ -1835,8 +1828,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         setup-tph : TracePreservesHaltedP setup-trace
         setup-tph = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])
 
-        setup-tpc : TracePreservesCapacity setup-trace
-        setup-tpc = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input tpc-[])
+        -- Note: setup-tpc removed in Phase 3
 
         setup-tnhw : TraceNoHeapWrites setup-trace
         setup-tnhw = tt
@@ -1857,9 +1849,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         reclaim-wrapper-tph : TracePreservesHaltedP reclaim-wrapper-trace
         reclaim-wrapper-tph = tph-∷ iph-reclaim-to (tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[])))
 
-        -- TracePreservesCapacity for reclaim-wrapper-trace
-        reclaim-wrapper-tpc : TracePreservesCapacity reclaim-wrapper-trace
-        reclaim-wrapper-tpc = tpc-∷ ipc-reclaim-to (tpc-∷ ipc-alloc-stack (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[])))
+        -- Note: reclaim-wrapper-tpc removed in Phase 3
 
         -- TraceNoHeapWrites for reclaim-wrapper-trace
         reclaim-wrapper-tnhw : TraceNoHeapWrites reclaim-wrapper-trace
@@ -1895,8 +1885,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         wrapper-heap-preserved : next-heap-ref alloc-after-wrapper ≡ next-heap-ref alloc-after-sub
         wrapper-heap-preserved = SMP.RecSchemeSemantics.exec-trace-preserves-heap-ref reclaim-wrapper-trace s-after-sub alloc-after-sub
 
-        wrapper-capacity-preserved : frame-capacity alloc-after-wrapper ≡ frame-capacity alloc-after-sub
-        wrapper-capacity-preserved = SMP.TraceComposition.exec-trace-preserves-capacity' reclaim-wrapper-trace s-after-sub alloc-after-sub reclaim-wrapper-tpc
+        -- Note: wrapper-capacity-preserved removed in Phase 3
 
         -- next-slot = l-reclaimable + 2 after reclaim + wrapper
         wrapper-next-slot-eq : next-slot alloc-after-wrapper ≡ l-reclaimable +ℕ 2
@@ -1970,10 +1959,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         l-before-wrapper : BeforeFrontier alloc-after-wrapper l-result-loc
         l-before-wrapper =
           -- l-result-loc is BeforeFrontier at child's reclaimable-slot (from reclaim-preserves-result)
-          let cap-ok : l-reclaimable ≤ frame-capacity alloc-setup
-              cap-ok = ≤-trans slot-usage-bound-inj1 cap-setup
-              l-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = l-reclaimable }) l-result-loc
-              l-bf-reclaimed = ProcessedLayerResult.reclaim-preserves-result l-result cap-ok
+          let l-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = l-reclaimable }) l-result-loc
+              l-bf-reclaimed = ProcessedLayerResult.reclaim-preserves-result l-result
               -- Transfer to alloc-after-wrapper: frame same, slot monotone (l-reclaimable ≤ l-reclaimable + 2)
               -- Heap equality chain: next-heap-ref alloc-setup = next-heap-ref alloc (by alloc-setup-eq)
               --                      = next-heap-ref alloc-after-sub (by sym heap-preserved-inj1)
@@ -2014,13 +2001,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           -- 2. Use validityWF-trace-preserves to preserve through wrapper-trace to s-after-wrapper
           --    (wrapper-trace writes at l-reclaimable+1, above the frontier l-reclaimable)
           -- 3. Use validityWF-frontier-advance to transfer to alloc-after-wrapper
-          let cap-ok : l-reclaimable ≤ frame-capacity alloc-setup
-              cap-ok = ≤-trans slot-usage-bound-inj1 cap-setup
-              l-valid-reclaimed : ValidAtWF mL (record alloc-setup { next-slot = l-reclaimable }) l-processed l-result-loc s-after-sub
-              l-valid-reclaimed = ProcessedLayerResult.reclaim-preserves-validity l-result cap-ok
+          let l-valid-reclaimed : ValidAtWF mL (record alloc-setup { next-slot = l-reclaimable }) l-processed l-result-loc s-after-sub
+              l-valid-reclaimed = ProcessedLayerResult.reclaim-preserves-validity l-result
               -- l-result-loc is BeforeFrontier at the reclaim alloc
               l-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = l-reclaimable }) l-result-loc
-              l-bf-reclaimed = ProcessedLayerResult.reclaim-preserves-result l-result cap-ok
+              l-bf-reclaimed = ProcessedLayerResult.reclaim-preserves-result l-result
               -- wrapper-trace writes above l-reclaimable (at suc l-reclaimable)
               wrapper-twa-l : TraceWritesAbove l-reclaimable wrapper-trace
               wrapper-twa-l = n≤1+n l-reclaimable , tt
@@ -2101,9 +2086,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-eq)
                                    (≤-trans reclaim-mono-inj1 (m≤m+n l-reclaimable 2))
         ; reclaim-bounded = ≤-refl
-        ; reclaim-preserves-result = λ fits →
+        ; reclaim-preserves-result =
             stack-before frame-preserved-inj1 wrapper-before-frontier
-        ; reclaim-preserves-validity = λ fits →
+        ; reclaim-preserves-validity =
             let frame-eq = trans wrapper-frame-preserved frame-preserved-inj1
                 heap-eq = trans wrapper-heap-preserved heap-preserved-inj1
                 reclaim-alloc = record alloc { next-slot = next-slot alloc-after-wrapper }
@@ -2143,8 +2128,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj1
         -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj1)
         ; heap-preserved = trans wrapper-heap-preserved heap-preserved-inj1
-        -- capacity-preserved: capacity unchanged by wrapper trace
-        ; capacity-preserved = trans wrapper-capacity-preserved capacity-preserved-inj1
         -- mem-preserved: memory below original frontier preserved through full trace
         -- Chain: wrapper-mem-preserved ∘ mem-preserved-inj1
         -- wrapper-mem-preserved now takes BeforeFrontier alloc directly
@@ -2183,10 +2166,24 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
               (SMP.trace-slot-reads-below-mono (l-reclaimable +ℕ 2) max-slot-used-inj1 reclaim-wrapper-trace
                  (n≤m⊔n l-max-slot-used (l-reclaimable +ℕ 2)) wrapper-tsrb))
         ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result) reclaim-wrapper-tph)
-        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity l-result) reclaim-wrapper-tpc)
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
             setup-tnhw (SMP.trace-no-heap-writes-append sub-trace reclaim-wrapper-trace
                          (ProcessedLayerResult.trace-no-heap-writes l-result) reclaim-wrapper-tnhw)
+        -- scratch-bounded = max-slot-usage-bound (same proof, INPUT-relative)
+        ; scratch-bounded =
+            let child-cap-bound : layer-capacity wfL wfG alg ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
+                child-cap-bound = ≤-trans (m≤m⊔n (layer-capacity wfL wfG alg) (layer-capacity wfR wfG alg))
+                                          (m≤n+m (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg) 2)
+                l-max-bound : l-max-slot-used ≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg
+                l-max-bound = ≤-trans l-max-slot-usage-bound (+-monoʳ-≤ (next-slot alloc) child-cap-bound)
+                wrapper-bound : l-reclaimable +ℕ 2 ≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg
+                wrapper-bound =
+                  let step1 = +-monoˡ-≤ 2 slot-usage-bound-inj1
+                      step2 = +-assoc (next-slot alloc) (layer-capacity wfL wfG alg) 2
+                      fits = sum-wrapper-fits-left wfL wfR wfG alg
+                      step3 = +-monoʳ-≤ (next-slot alloc) fits
+                  in ≤-trans (subst (l-reclaimable +ℕ 2 ≤_) step2 step1) step3
+            in ⊔-lub l-max-bound wrapper-bound
         }
 
     ------------------------------------------------------------------------
@@ -2201,7 +2198,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     --   3. wrapper-trace: allocate Sum wrapper at frontier
     ------------------------------------------------------------------------
     process-layer (wf-Sum wfL wfR) wfG alg dispatch (inj₂ r-layer) mIn input-loc s alloc
-      (μlayer-inr {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq cap =
+      (μlayer-inr {payload-loc = payload-loc} payload-ptr payload-bf sucLoc-bf r-layer-valid) input-before not-halted rdi-eq =
       let
         -- Step 1: Setup trace - load payload pointer and set Input
         -- This transforms s (where Input = input-loc) to s-setup (where Input = payload-loc)
@@ -2246,16 +2243,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         not-halted-setup : halted s-setup ≡ false
         not-halted-setup = setup-trace-preserves-halted s alloc input-loc payload-loc not-halted rdi-eq payload-ptr
 
-        -- Capacity for sub-layer: use layer-capacity-sum-right to derive child capacity from parent
-        -- alloc-setup = alloc (setup-trace doesn't change alloc)
-        cap-setup : next-slot alloc-setup +ℕ layer-capacity wfR wfG alg ≤ frame-capacity alloc-setup
-        cap-setup = subst (λ al → next-slot al +ℕ layer-capacity wfR wfG alg ≤ frame-capacity al)
-                          (sym (setup-trace-preserves-alloc s alloc))
-                          (layer-capacity-sum-right wfL wfR wfG alg (next-slot alloc) (frame-capacity alloc) cap)
-
         -- Step 2: Process right sub-layer (recursive call)
         (mR , r-result) = process-layer wfR wfG alg dispatch r-layer mIn payload-loc s-setup alloc-setup
-                            r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup cap-setup
+                            r-layer-valid-setup payload-bf-setup not-halted-setup rdi-setup
 
         -- Extract recursive results
         r-processed = ProcessedLayerResult.processed r-result
@@ -2415,10 +2405,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           trans (ProcessedLayerResult.heap-preserved r-result)
                 (cong next-heap-ref alloc-setup-eq)
 
-        capacity-preserved-inj2 : frame-capacity alloc-after-sub ≡ frame-capacity alloc
-        capacity-preserved-inj2 =
-          trans (ProcessedLayerResult.capacity-preserved r-result)
-                (cong frame-capacity alloc-setup-eq)
+        -- Note: capacity-preserved-inj2 removed in Phase 3
 
         -- Memory preservation: setup preserves all memory, then sub preserves below frontier
         mem-preserved-inj2 : ∀ loc → BeforeFrontier alloc loc → readLoc s-after-sub loc ≡ readLoc s loc
@@ -2447,8 +2434,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         setup-tph : TracePreservesHaltedP setup-trace
         setup-tph = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])
 
-        setup-tpc : TracePreservesCapacity setup-trace
-        setup-tpc = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input tpc-[])
+        -- Note: setup-tpc removed in Phase 3
 
         setup-tnhw : TraceNoHeapWrites setup-trace
         setup-tnhw = tt
@@ -2469,9 +2455,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         reclaim-wrapper-tph : TracePreservesHaltedP reclaim-wrapper-trace
         reclaim-wrapper-tph = tph-∷ iph-reclaim-to (tph-∷ iph-alloc-stack (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[])))
 
-        -- TracePreservesCapacity for reclaim-wrapper-trace
-        reclaim-wrapper-tpc : TracePreservesCapacity reclaim-wrapper-trace
-        reclaim-wrapper-tpc = tpc-∷ ipc-reclaim-to (tpc-∷ ipc-alloc-stack (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[])))
+        -- Note: reclaim-wrapper-tpc removed in Phase 3
 
         -- TraceNoHeapWrites for reclaim-wrapper-trace
         reclaim-wrapper-tnhw : TraceNoHeapWrites reclaim-wrapper-trace
@@ -2507,8 +2491,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         wrapper-heap-preserved : next-heap-ref alloc-after-wrapper ≡ next-heap-ref alloc-after-sub
         wrapper-heap-preserved = SMP.RecSchemeSemantics.exec-trace-preserves-heap-ref reclaim-wrapper-trace s-after-sub alloc-after-sub
 
-        wrapper-capacity-preserved : frame-capacity alloc-after-wrapper ≡ frame-capacity alloc-after-sub
-        wrapper-capacity-preserved = SMP.TraceComposition.exec-trace-preserves-capacity' reclaim-wrapper-trace s-after-sub alloc-after-sub reclaim-wrapper-tpc
+        -- Note: wrapper-capacity-preserved removed in Phase 3
 
         -- next-slot = r-reclaimable + 2 after reclaim + wrapper
         wrapper-next-slot-eq : next-slot alloc-after-wrapper ≡ r-reclaimable +ℕ 2
@@ -2581,10 +2564,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         r-before-wrapper : BeforeFrontier alloc-after-wrapper r-result-loc
         r-before-wrapper =
           -- r-result-loc is BeforeFrontier at child's reclaimable-slot (from reclaim-preserves-result)
-          let cap-ok : r-reclaimable ≤ frame-capacity alloc-setup
-              cap-ok = ≤-trans slot-usage-bound-inj2 cap-setup
-              r-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = r-reclaimable }) r-result-loc
-              r-bf-reclaimed = ProcessedLayerResult.reclaim-preserves-result r-result cap-ok
+          let r-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = r-reclaimable }) r-result-loc
+              r-bf-reclaimed = ProcessedLayerResult.reclaim-preserves-result r-result
               -- Transfer to alloc-after-wrapper: frame same, slot monotone (r-reclaimable ≤ r-reclaimable + 2)
               -- Heap equality chain: next-heap-ref alloc-setup = next-heap-ref alloc (by alloc-setup-eq)
               --                      = next-heap-ref alloc-after-sub (by sym heap-preserved-inj2)
@@ -2625,13 +2606,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           -- 2. Use validityWF-trace-preserves to preserve through wrapper-trace to s-after-wrapper
           --    (wrapper-trace writes at r-reclaimable+1, above the frontier r-reclaimable)
           -- 3. Use validityWF-frontier-advance to transfer to alloc-after-wrapper
-          let cap-ok : r-reclaimable ≤ frame-capacity alloc-setup
-              cap-ok = ≤-trans slot-usage-bound-inj2 cap-setup
-              r-valid-reclaimed : ValidAtWF mR (record alloc-setup { next-slot = r-reclaimable }) r-processed r-result-loc s-after-sub
-              r-valid-reclaimed = ProcessedLayerResult.reclaim-preserves-validity r-result cap-ok
+          let r-valid-reclaimed : ValidAtWF mR (record alloc-setup { next-slot = r-reclaimable }) r-processed r-result-loc s-after-sub
+              r-valid-reclaimed = ProcessedLayerResult.reclaim-preserves-validity r-result
               -- r-result-loc is BeforeFrontier at the reclaim alloc
               r-bf-reclaimed : BeforeFrontier (record alloc-setup { next-slot = r-reclaimable }) r-result-loc
-              r-bf-reclaimed = ProcessedLayerResult.reclaim-preserves-result r-result cap-ok
+              r-bf-reclaimed = ProcessedLayerResult.reclaim-preserves-result r-result
               -- wrapper-trace writes above r-reclaimable (at suc r-reclaimable)
               wrapper-twa-r : TraceWritesAbove r-reclaimable wrapper-trace
               wrapper-twa-r = n≤1+n r-reclaimable , tt
@@ -2705,9 +2684,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-eq)
                                    (≤-trans reclaim-mono-inj2 (m≤m+n r-reclaimable 2))
         ; reclaim-bounded = ≤-refl
-        ; reclaim-preserves-result = λ fits →
+        ; reclaim-preserves-result =
             stack-before frame-preserved-inj2 wrapper-before-frontier
-        ; reclaim-preserves-validity = λ fits →
+        ; reclaim-preserves-validity =
             let frame-eq = trans wrapper-frame-preserved frame-preserved-inj2
                 heap-eq = trans wrapper-heap-preserved heap-preserved-inj2
                 reclaim-alloc = record alloc { next-slot = next-slot alloc-after-wrapper }
@@ -2746,8 +2725,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; heap-monotone = subst (λ x → next-heap-ref alloc ≤ x) (sym wrapper-heap-preserved) heap-monotone-inj2
         -- heap-preserved: chain through wrapper (preserves heap) and sub-result (heap-preserved-inj2)
         ; heap-preserved = trans wrapper-heap-preserved heap-preserved-inj2
-        -- capacity-preserved: capacity unchanged by wrapper trace
-        ; capacity-preserved = trans wrapper-capacity-preserved capacity-preserved-inj2
         -- mem-preserved: memory below original frontier preserved through full trace
         ; mem-preserved = λ loc bf → trans (wrapper-mem-preserved loc bf) (mem-preserved-inj2 loc bf)
         -- Trace region bounds: full-trace = setup-trace ++ sub-trace ++ reclaim-wrapper-trace
@@ -2781,19 +2758,33 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
               (SMP.trace-slot-reads-below-mono (r-reclaimable +ℕ 2) max-slot-used-inj2 reclaim-wrapper-trace
                  (n≤m⊔n r-max-slot-used (r-reclaimable +ℕ 2)) wrapper-tsrb))
         ; trace-preserves-halted = tph-++ setup-tph (tph-++ (ProcessedLayerResult.trace-preserves-halted r-result) reclaim-wrapper-tph)
-        ; trace-preserves-capacity = SMP.tpc-++ setup-tpc (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity r-result) reclaim-wrapper-tpc)
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append setup-trace (sub-trace ++ reclaim-wrapper-trace)
             setup-tnhw (SMP.trace-no-heap-writes-append sub-trace reclaim-wrapper-trace
                          (ProcessedLayerResult.trace-no-heap-writes r-result) reclaim-wrapper-tnhw)
+        -- scratch-bounded = max-slot-usage-bound (same proof, INPUT-relative)
+        ; scratch-bounded =
+            let child-cap-bound : layer-capacity wfR wfG alg ≤ layer-capacity (wf-Sum wfL wfR) wfG alg
+                child-cap-bound = ≤-trans (n≤m⊔n (layer-capacity wfL wfG alg) (layer-capacity wfR wfG alg))
+                                          (m≤n+m (layer-capacity wfL wfG alg ⊔ layer-capacity wfR wfG alg) 2)
+                r-max-bound : r-max-slot-used ≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg
+                r-max-bound = ≤-trans r-max-slot-usage-bound (+-monoʳ-≤ (next-slot alloc) child-cap-bound)
+                wrapper-bound : r-reclaimable +ℕ 2 ≤ next-slot alloc +ℕ layer-capacity (wf-Sum wfL wfR) wfG alg
+                wrapper-bound =
+                  let step1 = +-monoˡ-≤ 2 slot-usage-bound-inj2
+                      step2 = +-assoc (next-slot alloc) (layer-capacity wfR wfG alg) 2
+                      fits = sum-wrapper-fits-right wfL wfR wfG alg
+                      step3 = +-monoʳ-≤ (next-slot alloc) fits
+                  in ≤-trans (subst (r-reclaimable +ℕ 2 ≤_) step2 step1) step3
+            in ⊔-lub r-max-bound wrapper-bound
         }
 
     -- Product case: delegate to helper (enables where clauses)
     process-layer (wf-Prod wfL wfR) wfG alg dispatch (l-comp , r-comp) mIn input-loc s alloc
-      (μlayer-prod {fst-loc = fst-loc} {snd-loc = snd-loc} fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq cap =
+      (μlayer-prod {fst-loc = fst-loc} {snd-loc = snd-loc} fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid) input-before not-halted rdi-eq =
       process-layer-prod wfL wfR wfG alg dispatch l-comp r-comp mIn
         input-loc fst-loc snd-loc s alloc
         fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
-        input-before not-halted rdi-eq cap
+        input-before not-halted rdi-eq
 
     ------------------------------------------------------------------------
     -- Product Case Helper (Refactored per lessons-learned.md)
@@ -2820,12 +2811,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       (input-before : BeforeFrontier alloc input-loc)
       (not-halted : halted s ≡ false)
       (rdi-eq : readReg (regs s) Input ≡ input-loc)
-      (cap : next-slot alloc +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg ≤ frame-capacity alloc)
       → ∃[ mOut ] ProcessedLayerResult wfG alg mOut (wf-Prod wfL wfR) (l-comp , r-comp) s alloc
     process-layer-prod {FL} {FR} {G} {A} wfL wfR wfG alg dispatch l-comp r-comp mIn
       input-loc fst-loc snd-loc s alloc
       fst-ptr snd-ptr fst-bf snd-bf sucLoc-bf l-layer-valid r-layer-valid
-      input-before not-halted rdi-eq cap =
+      input-before not-halted rdi-eq =
       mR , record
         { processed = processed
         ; trace = full-trace
@@ -2849,8 +2839,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaimable-slot = reclaimable-slot-prod
         ; reclaim-monotone = reclaim-monotone-prod
         ; reclaim-bounded = reclaim-bounded-prod
-        ; reclaim-preserves-result = λ fits → SMP.!!  -- BLOCKED: needs result-loc analysis
-        ; reclaim-preserves-validity = λ fits → SMP.!!  -- BLOCKED: needs pair validity
+        ; reclaim-preserves-result = SMP.!!  -- BLOCKED: needs result-loc analysis
+        ; reclaim-preserves-validity = SMP.!!  -- BLOCKED: needs pair validity
         ; slot-usage-bound = slot-usage-bound-prod
         -- max-slot-used: max of both children's max-slot-used
         ; max-slot-used = max-slot-used-prod
@@ -2869,9 +2859,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                 (ProcessedLayerResult.heap-monotone r-result)
         -- heap-preserved: chain through r-result.heap-preserved and alloc-for-right-heap
         ; heap-preserved = trans (ProcessedLayerResult.heap-preserved r-result) alloc-for-right-heap
-        -- capacity-preserved: final-alloc.cap = alloc-for-right.cap = alloc.cap
-        ; capacity-preserved = trans (ProcessedLayerResult.capacity-preserved r-result)
-                                     alloc-for-right-cap
         ; mem-preserved = mem-preserved-proof
         ; trace-writes-above = trace-writes-above-proof
         ; trace-writes-below = trace-writes-below-proof
@@ -2881,16 +2868,15 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                     (tph-++ (ProcessedLayerResult.trace-preserves-halted l-result)
                                             (tph-++ right-setup-tph
                                                     (ProcessedLayerResult.trace-preserves-halted r-result)))
-        ; trace-preserves-capacity = SMP.tpc-++ left-setup-tpc
-                                      (SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity l-result)
-                                              (SMP.tpc-++ right-setup-tpc
-                                                      (ProcessedLayerResult.trace-preserves-capacity r-result)))
         ; trace-no-heap-writes = SMP.trace-no-heap-writes-append left-setup-trace
                                     (l-trace ++ right-setup-trace ++ r-trace) tt
                                     (SMP.trace-no-heap-writes-append l-trace (right-setup-trace ++ r-trace)
                                        (ProcessedLayerResult.trace-no-heap-writes l-result)
                                        (SMP.trace-no-heap-writes-append right-setup-trace r-trace tt
                                           (ProcessedLayerResult.trace-no-heap-writes r-result)))
+        -- scratch-bounded: max-slot-used ≤ next-slot alloc + layer-capacity
+        -- This is exactly max-slot-usage-bound-prod (INPUT-relative bounds)
+        ; scratch-bounded = max-slot-usage-bound-prod
         }
       where
         -- Save slot for input-loc preservation
@@ -2967,18 +2953,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         not-halted-left-setup = SMP.RecSchemeSemantics.prod-left-setup-halted-helper
                                   save-slot s alloc input-loc fst-loc not-halted rdi-eq fst-ptr
 
-        -- Capacity for left sub-layer
-        -- Uses layer-capacity-prod-left: given parent capacity, derive left child capacity
-        -- alloc-for-left.next-slot = suc (alloc.next-slot), alloc-for-left.frame-capacity = alloc.frame-capacity
-        cap-left : next-slot alloc-for-left +ℕ layer-capacity wfL wfG alg ≤ frame-capacity alloc-for-left
-        cap-left = layer-capacity-prod-left wfL wfR wfG alg (next-slot alloc) (frame-capacity alloc) cap
-
         ------------------------------------------------------------------------
         -- Phase 2: Left Processing
         ------------------------------------------------------------------------
         l-result-pair : ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfL l-comp s-left-setup alloc-for-left
         l-result-pair = process-layer wfL wfG alg dispatch l-comp mIn fst-loc s-left-setup alloc-for-left
-                          l-layer-valid-setup fst-bf-setup not-halted-left-setup rdi-left-setup cap-left
+                          l-layer-valid-setup fst-bf-setup not-halted-left-setup rdi-left-setup
 
         mL : AllocMode
         mL = proj₁ l-result-pair
@@ -3040,9 +3020,6 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
         alloc-for-right-heap : next-heap-ref alloc-for-right ≡ next-heap-ref alloc
         alloc-for-right-heap = incr-next-slot-heap alloc
-
-        alloc-for-right-cap : frame-capacity alloc-for-right ≡ frame-capacity alloc
-        alloc-for-right-cap = incr-next-slot-capacity alloc
 
         -- l-reclaimable bounds
         l-reclaim-mono : next-slot alloc-for-left ≤ l-reclaimable
@@ -3159,24 +3136,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             (λ _ → SMP.!!))  -- The constraint is not used by the helper
           r-layer-valid-transferred
 
-        -- Capacity for right sub-layer
-        -- With layer-capacity model:
-        --   cap : next-slot alloc + layer-capacity (wf-Prod wfL wfR) wfG alg ≤ frame-capacity alloc
-        --       = next-slot alloc + (1 + (capL ⊔ capR)) ≤ frame-capacity alloc
-        --   After save-slot: suc (next-slot alloc) + (capL ⊔ capR) ≤ frame-capacity alloc
-        -- For right, need: l-reclaimable + capR ≤ frame-capacity alloc
-        -- This requires: l-reclaimable ≤ suc (next-slot alloc) + (capL ⊔ capR) - capR
-        --                             = suc (next-slot alloc) + capL (when capL ≥ capR)
-        -- The reclaim model should give l-reclaimable ≤ suc (next-slot alloc) for Product
-        r-cap : next-slot alloc-for-right +ℕ layer-capacity wfR wfG alg ≤ frame-capacity alloc-for-right
-        r-cap = SMP.!!  -- BLOCKED: needs reclamation bound l-reclaimable ≤ suc (next-slot alloc)
-
         ------------------------------------------------------------------------
         -- Phase 4: Right Processing
         ------------------------------------------------------------------------
         r-result-pair : ∃[ mOut ] ProcessedLayerResult wfG alg mOut wfR r-comp s-right-setup alloc-for-right
         r-result-pair = process-layer wfR wfG alg dispatch r-comp mIn snd-loc s-right-setup alloc-for-right
-                          r-layer-valid-right-setup r-snd-bf not-halted-right-setup rdi-right-setup r-cap
+                          r-layer-valid-right-setup r-snd-bf not-halted-right-setup rdi-right-setup
 
         mR : AllocMode
         mR = proj₁ r-result-pair
@@ -3425,14 +3390,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         right-setup-tph = tph-∷ iph-load-from-slot (tph-∷ iph-mov-to-input
                             (tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input tph-[])))
 
-        -- Setup trace capacity preservation proofs
-        left-setup-tpc : TracePreservesCapacity left-setup-trace
-        left-setup-tpc = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot
-                          (tpc-∷ ipc-load-indirect (tpc-∷ ipc-mov-to-input tpc-[])))
-
-        right-setup-tpc : TracePreservesCapacity right-setup-trace
-        right-setup-tpc = tpc-∷ ipc-load-from-slot (tpc-∷ ipc-mov-to-input
-                            (tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input tpc-[])))
+        -- Note: left-setup-tpc and right-setup-tpc removed in Phase 3
 
         -- Trace region bounds
         -- full-trace = left-setup-trace ++ l-trace ++ right-setup-trace ++ r-trace
@@ -3608,9 +3566,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
             (WellFormedF-irrelevant wf wfG)
             lv
 
-    -- cata-dispatched-new uses ir-stack-requirement (Cata wfG alg) for total capacity
-    -- This includes both layer processing and algebra computation
-    -- The layer-capacity bound is derived internally for process-layer
+    -- cata-dispatched-new delegates to process-layer for layer handling
+    -- and to dispatcher for algebra execution
     cata-dispatched-new : ∀ {G A}
       (wfG : WellFormedF G)
       (alg : IR (⟦ G ⟧T A) A)
@@ -3623,10 +3580,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       → BeforeFrontier alloc input-loc
       → halted s ≡ false
       → readReg (regs s) Input ≡ input-loc
-      → next-slot alloc +ℕ ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
       → ∃[ mOut ] IRResultAWF mOut (Cata wfG alg) x s alloc
     cata-dispatched-new {G} {A} wfG alg dispatch x mIn input-loc s alloc
-      x-valid input-before not-halted rdi-eq combined-cap =
+      x-valid input-before not-halted rdi-eq =
       let
         -- Step 1: Destruct to get layer
         layer : ⟦ G ⟧F (⟦μ⟧ G)
@@ -3637,15 +3593,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         layer-valid : μLayerValid alloc wfG wfG layer input-loc s
         layer-valid = extract-μLayerValid wfG x-valid
 
-        -- Step 1c: Derive layer-capacity bound from ir-stack-requirement bound
-        -- combined-cap : next-slot alloc + ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
-        -- We need: next-slot alloc + layer-capacity wfG wfG alg ≤ frame-capacity alloc
-        cap-layer : next-slot alloc +ℕ layer-capacity wfG wfG alg ≤ frame-capacity alloc
-        cap-layer = ir-stack-req-geq-layer-cap wfG alg (next-slot alloc) (frame-capacity alloc) combined-cap
-
         -- Step 2: Process layer to get ⟦ G ⟧F A
         (mLayer , layer-result) = process-layer wfG wfG alg dispatch layer mIn input-loc s alloc
-                                    layer-valid input-before not-halted rdi-eq cap-layer
+                                    layer-valid input-before not-halted rdi-eq
 
         -- Extract layer processing results
         processed-layer = ProcessedLayerResult.processed layer-result
@@ -3674,13 +3624,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         alg-bound : ir-size alg < ir-size (Cata wfG alg)
         alg-bound = alg-size-bound wfG alg
 
-        -- Capacity for algebra
-        -- We use: reclaimable-slot ≤ next-slot alloc + layer-capacity wfG wfG alg
-        -- And: layer-capacity wfG wfG alg ≤ ir-stack-requirement (Cata wfG alg)
-        -- Combined with: next-slot alloc + ir-stack-requirement (Cata wfG alg) ≤ frame-capacity alloc
-        --
-        -- The key missing piece: next-slot alloc-layer ≤ reclaimable-slot + small-overhead
-        -- This holds by construction (each layer case does reclamation), but needs proof
+        -- Slot usage bounds for composition proofs
         layer-slot-usage-bound : ProcessedLayerResult.reclaimable-slot layer-result
                                   ≤ next-slot alloc +ℕ layer-capacity wfG wfG alg
         layer-slot-usage-bound = ProcessedLayerResult.slot-usage-bound layer-result
@@ -3688,17 +3632,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         layer-cap-bounded : layer-capacity wfG wfG alg ≤ ir-stack-requirement (Cata wfG alg)
         layer-cap-bounded = layer-cap-bound wfG wfG alg
 
-        -- TODO: Need lemma: next-slot alloc-layer + alg ≤ reclaimable-slot + layer-overhead + alg
-        --                                               ≤ (next-slot alloc + layer-cap) + alg
-        --                                               ≤ next-slot alloc + ir-stack-requirement (Cata wfG alg)
-        cap-alg : next-slot alloc-layer +ℕ ir-stack-requirement alg ≤ frame-capacity alloc-layer
-        cap-alg = SMP.!! {A = next-slot alloc-layer +ℕ ir-stack-requirement alg ≤ frame-capacity alloc-layer}
-
         -- Call dispatcher on algebra
         dispatch-result : ∃[ mOut ] IRResultAWF mOut alg processed-layer s-bridged alloc-layer
         dispatch-result = dispatch mLayer alg alg-bound processed-layer
                             layer-loc s-bridged alloc-layer
-                            layer-valid-bridged layer-before layer-not-halted rdi-bridged cap-alg
+                            layer-valid-bridged layer-before layer-not-halted rdi-bridged
         mAlg : AllocMode
         mAlg = proj₁ dispatch-result
         alg-result : IRResultAWF mAlg alg processed-layer s-bridged alloc-layer
@@ -3732,7 +3670,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         layer-frame-preserved = ProcessedLayerResult.frame-preserved layer-result
         layer-slot-mono = ProcessedLayerResult.slot-monotone layer-result
         layer-heap-mono = ProcessedLayerResult.heap-monotone layer-result
-        layer-cap-preserved = ProcessedLayerResult.capacity-preserved layer-result
+        -- Note: layer-cap-preserved removed in Phase 3
 
         -- Compositional proofs
         frame-preserved-proof : current-frame (IRResultAWF.final-alloc alg-result) ≡ current-frame alloc
@@ -3744,8 +3682,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         heap-mono-proof : next-heap-ref alloc ≤ next-heap-ref (IRResultAWF.final-alloc alg-result)
         heap-mono-proof = ≤-trans layer-heap-mono (IRResultAWF.heap-monotone alg-result)
 
-        cap-preserved-proof : frame-capacity (IRResultAWF.final-alloc alg-result) ≡ frame-capacity alloc
-        cap-preserved-proof = trans (IRResultAWF.capacity-preserved alg-result) layer-cap-preserved
+        -- Note: cap-preserved-proof removed in Phase 3
 
         -- Runtime alloc after layer processing (needed for heap-ref preservation)
         layer-runtime-alloc : AllocState {FS}
@@ -3863,24 +3800,20 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           ; frame-preserved = frame-preserved-proof
           ; slot-monotone = slot-mono-proof
           ; heap-monotone = heap-mono-proof
-          ; capacity-preserved = cap-preserved-proof
           ; mem-preserved-before = mem-preserved-proof
           ; reclaimable-slot = IRResultAWF.reclaimable-slot alg-result
           ; reclaim-monotone = ≤-trans layer-slot-mono (IRResultAWF.reclaim-monotone alg-result)
           ; reclaim-bounded = IRResultAWF.reclaim-bounded alg-result
-          ; reclaim-preserves-result = λ fits →
+          ; reclaim-preserves-result =
               let rs = IRResultAWF.reclaimable-slot alg-result
-                  fits' : rs ≤ frame-capacity alloc-layer
-                  fits' = subst (rs ≤_) (sym layer-cap-preserved) fits
                   bf-layer : BeforeFrontier (record alloc-layer { next-slot = rs }) (IRResultAWF.result-loc alg-result)
-                  bf-layer = IRResultAWF.reclaim-preserves-result alg-result fits'
+                  bf-layer = IRResultAWF.reclaim-preserves-result alg-result
               in frontier-same-heap (record alloc-layer { next-slot = rs }) (record alloc { next-slot = rs })
                    layer-frame-preserved refl layer-heap-preserved
                    (IRResultAWF.result-loc alg-result) bf-layer
-          ; reclaim-preserves-validity = λ fits →
+          ; reclaim-preserves-validity =
               let rs = IRResultAWF.reclaimable-slot alg-result
-                  fits' = subst (rs ≤_) (sym layer-cap-preserved) fits
-                  valid-layer-alg = IRResultAWF.reclaim-preserves-validity alg-result fits'
+                  valid-layer-alg = IRResultAWF.reclaim-preserves-validity alg-result
                   -- Transport to Cata type via semantic equality
                   valid-layer-cata = subst (λ v → ValidAtWF mAlg (record alloc-layer { next-slot = rs }) v
                                                    (IRResultAWF.result-loc alg-result) (IRResultAWF.final-state alg-result))
@@ -3943,13 +3876,14 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
               (SMP.trace-slot-reads-below-mono alg-max-slot cata-max-slot (IRResultAWF.trace alg-result)
                  (m≤n⊔m layer-max-slot alg-max-slot)
                  (IRResultAWF.trace-slot-reads-below alg-result))
-          ; trace-preserves-capacity = SMP.tpc-++ (ProcessedLayerResult.trace-preserves-capacity layer-result)
-              (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity alg-result))
           ; trace-no-heap-writes = SMP.trace-no-heap-writes-append layer-trace (mov-to-input ∷ IRResultAWF.trace alg-result)
               (ProcessedLayerResult.trace-no-heap-writes layer-result)
               (IRResultAWF.trace-no-heap-writes alg-result)
           ; trace-preserves-halted = tph-++ (ProcessedLayerResult.trace-preserves-halted layer-result)
               (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted alg-result))
+          -- scratch-bounded: composite of layer and algebra
+          -- BLOCKED: needs composition proof similar to other blocked fields
+          ; scratch-bounded = SMP.!!
           }
 
       in

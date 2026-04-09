@@ -293,7 +293,6 @@ data AllocMode : Set where
 --
 --   - current-frame: which frame we're executing in
 --   - next-slot: next available stack slot (for BeforeFrontier validity)
---   - frame-capacity: how many slots the frame can hold (for Dispatcher checks)
 --   - next-heap-ref: next available heap block ID
 --
 -- Design note: Both AllocState.next-slot and Registers.stackSlot track
@@ -304,9 +303,9 @@ data AllocMode : Set where
 -- The Dispatcher updates next-slot when constructing traces.
 -- exec-abstract updates stackSlot when executing alloc/dealloc instructions.
 --
--- NOTE: The old slots-available proof (next-slot ≤ frame-capacity) was
--- removed. Capacity verification stays in Dispatcher's local reasoning,
--- making exec-abstract fully defined without threading proofs.
+-- NOTE: frame-capacity was removed in Phase 3 refactoring. Capacity bounds
+-- are now enforced per-IR via the scratch-bounded invariant, eliminating
+-- the need for global capacity tracking in AllocState.
 ------------------------------------------------------------------------
 
 record AllocState {FS : FrameSemantics} : Set where
@@ -315,8 +314,9 @@ record AllocState {FS : FrameSemantics} : Set where
   field
     current-frame : Frame
     next-slot : ℕ
-    frame-capacity : ℕ
     next-heap-ref : ℕ
+  -- Note: frame-capacity removed in Phase 3 of core invariants refactoring.
+  -- Capacity bounds are now enforced per-closure via scratch-bounded invariant.
 
 open AllocState public
 
@@ -900,9 +900,10 @@ module AbstractExec {FS : FrameSemantics} where
   -- instr-push-frame: create new frame with given capacity
   -- Resets stackSlot to 0 for the new frame
   -- Note: Frame identity is managed by AllocState.current-frame
+  -- Note: capacity parameter retained for API compatibility but not stored
   exec-abstract (instr-push-frame cap) s alloc =
     record s { regs = writeStackSlot (regs s) 0 } ,
-    record alloc { frame-capacity = cap }
+    alloc  -- AllocState unchanged (frame-capacity removed)
 
   -- instr-pop-frame: restore caller frame
   -- Note: stackSlot restoration handled by caller (who saved it)

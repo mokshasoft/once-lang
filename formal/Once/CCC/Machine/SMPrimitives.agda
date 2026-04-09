@@ -731,47 +731,12 @@ TracePreservesHeapMem [] = ⊤
 TracePreservesHeapMem (i ∷ t) = InstrNoHeapWrite i × TracePreservesHeapMem t
 
 ------------------------------------------------------------------------
--- Capacity Preservation
+-- Capacity Preservation (REMOVED in Phase 3)
 --
--- Instructions that don't push a new frame preserve capacity.
--- This is needed for threading capacity through trace execution.
+-- InstrPreservesCapacity and TracePreservesCapacity have been removed
+-- because frame-capacity was removed from AllocState. Capacity bounds
+-- are now enforced per-IR via the scratch-bounded invariant.
 ------------------------------------------------------------------------
-
--- Instruction preserves capacity (all except push-frame)
-data InstrPreservesCapacity : AbstractInstr → Set where
-  ipc-mov-to-output      : InstrPreservesCapacity mov-to-output
-  ipc-mov-to-input       : InstrPreservesCapacity mov-to-input
-  ipc-load-indirect      : InstrPreservesCapacity load-indirect
-  ipc-load-indirect-suc  : InstrPreservesCapacity load-indirect-suc
-  ipc-load-from-slot     : ∀ {slot} → InstrPreservesCapacity (load-from-slot slot)
-  ipc-store-at-slot      : ∀ {slot} → InstrPreservesCapacity (store-at-slot slot)
-  ipc-store-indirect     : InstrPreservesCapacity store-indirect
-  ipc-store-indirect-suc : InstrPreservesCapacity store-indirect-suc
-  ipc-lea-slot           : ∀ {slot} → InstrPreservesCapacity (lea-slot slot)
-  ipc-restore-input      : ∀ {slot} → InstrPreservesCapacity (restore-input slot)
-  ipc-alloc-stack        : ∀ {n} → InstrPreservesCapacity (instr-alloc-stack n)
-  ipc-dealloc-stack      : ∀ {n} → InstrPreservesCapacity (instr-dealloc-stack n)
-  ipc-reclaim-to         : ∀ {n} → InstrPreservesCapacity (instr-reclaim-to n)
-  ipc-pop-frame          : InstrPreservesCapacity instr-pop-frame
-  ipc-call-closure       : InstrPreservesCapacity instr-call-closure
-  -- OCP-0003: Worklist instructions preserve capacity
-  ipc-worklist-init      : ∀ {slot} → InstrPreservesCapacity (worklist-init slot)
-  ipc-worklist-push      : ∀ {slot} → InstrPreservesCapacity (worklist-push slot)
-  ipc-worklist-pop       : ∀ {slot} → InstrPreservesCapacity (worklist-pop slot)
-  ipc-worklist-check     : ∀ {slot} → InstrPreservesCapacity (worklist-check slot)
-  -- Note: instr-push-frame is NOT included (it modifies capacity)
-
--- Trace preserves capacity (all instructions preserve capacity)
-data TracePreservesCapacity : AbstractTrace → Set where
-  tpc-[] : TracePreservesCapacity []
-  tpc-∷  : ∀ {i rest} → InstrPreservesCapacity i → TracePreservesCapacity rest →
-           TracePreservesCapacity (i ∷ rest)
-
--- Append preserves TracePreservesCapacity
-tpc-++ : ∀ {t₁ t₂} → TracePreservesCapacity t₁ → TracePreservesCapacity t₂ →
-         TracePreservesCapacity (t₁ ++ t₂)
-tpc-++ tpc-[] tpc₂ = tpc₂
-tpc-++ (tpc-∷ ipc tpc₁) tpc₂ = tpc-∷ ipc (tpc-++ tpc₁ tpc₂)
 
 -- Append preserves TraceNoHeapWrites
 trace-no-heap-writes-append : ∀ t1 t2 →
@@ -911,53 +876,8 @@ module TraceComposition {FS : FrameSemantics} where
     proj₁ (exec-trace t2 (proj₁ (exec-trace t1 s alloc)) (proj₂ (exec-trace t1 s alloc)))
   exec-trace-append-state t1 t2 s alloc = cong proj₁ (exec-trace-append t1 t2 s alloc)
 
-  -- Single instruction capacity preservation
-  exec-abstract-preserves-capacity : ∀ (i : AbstractInstr) (s : LocState FS) (alloc : AllocState {FS}) →
-    InstrPreservesCapacity i →
-    frame-capacity (proj₂ (exec-abstract i s alloc)) ≡ frame-capacity alloc
-  exec-abstract-preserves-capacity mov-to-output s alloc _ = refl
-  exec-abstract-preserves-capacity mov-to-input s alloc _ = refl
-  exec-abstract-preserves-capacity load-indirect s alloc _ = refl
-  exec-abstract-preserves-capacity load-indirect-suc s alloc _ = refl
-  exec-abstract-preserves-capacity (load-from-slot slot) s alloc _
-    with readLoc s (OnStack (current-frame alloc) slot)
-  ... | just _ = refl
-  ... | nothing = refl
-  exec-abstract-preserves-capacity (store-at-slot slot) s alloc _ = refl
-  exec-abstract-preserves-capacity store-indirect s alloc _ = refl
-  exec-abstract-preserves-capacity store-indirect-suc s alloc _ = refl
-  exec-abstract-preserves-capacity (lea-slot slot) s alloc _ = refl
-  exec-abstract-preserves-capacity (restore-input slot) s alloc _
-    with readLoc s (OnStack (current-frame alloc) slot)
-  ... | just _ = refl
-  ... | nothing = refl
-  exec-abstract-preserves-capacity (instr-alloc-stack n) s alloc _ = refl
-  exec-abstract-preserves-capacity (instr-dealloc-stack n) s alloc _ = refl
-  exec-abstract-preserves-capacity (instr-reclaim-to n) s alloc _ = refl
-  exec-abstract-preserves-capacity instr-pop-frame s alloc _ = refl
-  exec-abstract-preserves-capacity instr-call-closure s alloc _ = refl
-  -- OCP-0003: Worklist instructions
-  exec-abstract-preserves-capacity (worklist-init slot) s alloc _ = refl
-  exec-abstract-preserves-capacity (worklist-push slot) s alloc _ = refl
-  exec-abstract-preserves-capacity (worklist-pop slot) s alloc _
-    with readLoc s (OnStack (current-frame alloc) slot)
-  ... | just _ = refl
-  ... | nothing = refl
-  exec-abstract-preserves-capacity (worklist-check slot) s alloc _ = refl
-
-  -- Trace capacity preservation
-  exec-trace-preserves-capacity' : ∀ (trace : AbstractTrace) (s : LocState FS) (alloc : AllocState {FS}) →
-    TracePreservesCapacity trace →
-    frame-capacity (proj₂ (exec-trace trace s alloc)) ≡ frame-capacity alloc
-  exec-trace-preserves-capacity' [] s alloc _ = refl
-  exec-trace-preserves-capacity' (i ∷ rest) s alloc (tpc-∷ ipc tpc) with halted s
-  ... | true = refl
-  ... | false =
-    let s' = proj₁ (exec-abstract i s alloc)
-        alloc' = proj₂ (exec-abstract i s alloc)
-        step = exec-abstract-preserves-capacity i s alloc ipc
-        rest-pres = exec-trace-preserves-capacity' rest s' alloc' tpc
-    in trans rest-pres step
+  -- Note: exec-abstract-preserves-capacity and exec-trace-preserves-capacity'
+  -- have been removed in Phase 3 (frame-capacity removed from AllocState).
 
 -- Trace lemmas (lifted from Level 4 by induction)
 module TracePrimitives {FS : FrameSemantics} where

@@ -328,14 +328,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   sum-slots-pos : ∀ {A B} → 0 < type-slots (A + B)
   sum-slots-pos {A} {B} = s≤s z≤n
 
-  -- Proof irrelevance for allocation state equality
-  -- With slots-available removed, this is just refl
-  alloc-slots-eq : ∀ {FS : FrameSemantics} (alloc : AllocState {FS}) (k : ℕ)
-    (fits₁ fits₂ : next-slot alloc +ℕ k ≤ frame-capacity alloc) →
-    record alloc { next-slot = next-slot alloc +ℕ k } ≡
-    record alloc { next-slot = next-slot alloc +ℕ k }
-  alloc-slots-eq alloc k fits₁ fits₂ = refl
-
   run-inl : ∀ {A B} (mIn : AllocMode) (m : AllocMode)
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
@@ -343,11 +335,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement (inl {A} {B} m) ≤ frame-capacity alloc →
     IRResultAWF m (inl {A} {B} m) x s alloc  -- Output mode is m (the inl's AllocMode)
 
   -- Stack mode: reference-based (tag + pointer), same as Heap mode
-  run-inl {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-inl {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
       { result-loc = sum-loc
       ; final-state = s-final
@@ -361,7 +352,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved-inl
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
@@ -385,9 +376,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Trace slot reads below: no slot reads in inl-trace
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inl-trace
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
+      -- (n + 2) ≤ (n + 2) + 2 by m≤m+n
+      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
     where
       -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
@@ -395,10 +389,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       sum-slots = 2
 
       sum-loc = OnStack (current-frame alloc) (next-slot alloc)
-
-      -- ir-stack-requirement (inl Stack) = stack-type-slots (A + B) = 2 = sum-slots
-      sum-fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc
-      sum-fits = combined-cap
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
@@ -454,17 +444,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
               (write-at-suc-frontier-preserves-before s alloc loc input-loc bf)
 
-      inl-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+      -- Note: fits parameter removed in Phase 3
+      inl-reclaim-preserves-result :
         BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots  }) sum-loc
-      inl-reclaim-preserves-result fits = at-frontier-becomes-before alloc sum-slots sum-slots>0
+      inl-reclaim-preserves-result = at-frontier-becomes-before alloc sum-slots sum-slots>0
 
-      inl-reclaim-preserves-validity : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+      inl-reclaim-preserves-validity :
         ValidAtWF Stack (record alloc { next-slot = next-slot alloc +ℕ sum-slots  })
                   (sem-inl {A} {B} x) sum-loc s-final
-      inl-reclaim-preserves-validity fits =
-        subst (λ a → ValidAtWF Stack a (sem-inl {A} {B} x) sum-loc s-final)
-              (alloc-slots-eq alloc sum-slots sum-fits fits)
-              inl-valid-wf-final
+      inl-reclaim-preserves-validity = inl-valid-wf-final
 
       -- reclaim-size-bound: sum-slots = 2 = ir-stack-requirement (inl Stack)
       reclaim-size-bound-inl : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inl {A} {B} Stack)
@@ -506,7 +494,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           preserved = exec-trace-preserves-slot-below inl-trace s' alloc (suc n) n tw tnhw n<suc-n
 
   -- Heap mode: boxed representation (tag + pointer)
-  run-inl {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-inl {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
       { result-loc = sum-loc
       ; final-state = s-final
@@ -520,7 +508,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved-inl
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
@@ -543,9 +531,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Trace slot reads below: no slot reads in inl-trace
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inl-trace
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
+      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
     where
       -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
@@ -553,11 +543,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       sum-slots = 2
 
       sum-loc = OnStack (current-frame alloc) (next-slot alloc)
-
-      -- ir-stack-requirement (inl Heap) = heap-type-slots (A + B) = 2 = sum-slots
-      -- So sum-fits follows directly from combined-cap
-      sum-fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc
-      sum-fits = combined-cap
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
@@ -616,19 +601,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
               (write-at-suc-frontier-preserves-before s alloc loc input-loc bf)
 
-      inl-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+      -- Note: fits parameter removed in Phase 3
+      inl-reclaim-preserves-result :
         BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots  }) sum-loc
-      inl-reclaim-preserves-result fits = at-frontier-becomes-before alloc sum-slots sum-slots>0
+      inl-reclaim-preserves-result = at-frontier-becomes-before alloc sum-slots sum-slots>0
 
-      inl-reclaim-preserves-validity : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+      inl-reclaim-preserves-validity :
         ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ sum-slots  })
                   (sem-inl {A} {B} x) sum-loc s-final
-      -- alloc₁ has sum-fits but fits might be different proof object
-      -- Use ≤-irrelevant to equate different ≤ proof terms
-      inl-reclaim-preserves-validity fits =
-        subst (λ a → ValidAtWF Heap a (sem-inl {A} {B} x) sum-loc s-final)
-              (alloc-slots-eq alloc sum-slots sum-fits fits)
-              inl-valid-wf-final
+      inl-reclaim-preserves-validity = inl-valid-wf-final
 
       -- reclaim-size-bound: sum-slots = 2 = ir-stack-requirement (inl Heap)
       reclaim-size-bound-inl : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inl {A} {B} Heap)
@@ -680,11 +661,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement (inr {A} {B} m) ≤ frame-capacity alloc →
     IRResultAWF m (inr {A} {B} m) x s alloc  -- Output mode is m (the inr's AllocMode)
 
   -- Stack mode: reference-based (tag + pointer), same as Heap mode
-  run-inr {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-inr {A} {B} mIn Stack x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
       { result-loc = sum-loc
       ; final-state = s-final
@@ -698,7 +678,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved-inr
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
@@ -721,9 +701,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Trace slot reads below: no slot reads in inr-trace
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inr-trace
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
+      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
     where
       -- Stack mode: sum-slots = stack-type-slots (A + B) = 2 (tag + pointer)
@@ -731,10 +713,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       sum-slots = 2
 
       sum-loc = OnStack (current-frame alloc) (next-slot alloc)
-
-      -- ir-stack-requirement (inr Stack) = stack-type-slots (A + B) = 2 = sum-slots
-      sum-fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc
-      sum-fits = combined-cap
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
@@ -790,17 +768,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
               (write-at-suc-frontier-preserves-before s alloc loc input-loc bf)
 
-      inr-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+      -- Note: fits parameter removed in Phase 3
+      inr-reclaim-preserves-result :
         BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots  }) sum-loc
-      inr-reclaim-preserves-result fits = at-frontier-becomes-before alloc sum-slots sum-slots>0
+      inr-reclaim-preserves-result = at-frontier-becomes-before alloc sum-slots sum-slots>0
 
-      inr-reclaim-preserves-validity : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+      inr-reclaim-preserves-validity :
         ValidAtWF Stack (record alloc { next-slot = next-slot alloc +ℕ sum-slots  })
                   (sem-inr {A} {B} x) sum-loc s-final
-      inr-reclaim-preserves-validity fits =
-        subst (λ a → ValidAtWF Stack a (sem-inr {A} {B} x) sum-loc s-final)
-              (alloc-slots-eq alloc sum-slots sum-fits fits)
-              inr-valid-wf-final
+      inr-reclaim-preserves-validity = inr-valid-wf-final
 
       -- reclaim-size-bound: sum-slots = 2 = ir-stack-requirement (inr Stack)
       reclaim-size-bound-inr : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inr {A} {B} Stack)
@@ -834,7 +810,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           preserved = exec-trace-preserves-slot-below inr-trace s' alloc (suc n) n tw tnhw n<suc-n
 
   -- Heap mode: boxed representation (tag + pointer)
-  run-inr {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-inr {A} {B} mIn Heap x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
       { result-loc = sum-loc
       ; final-state = s-final
@@ -848,7 +824,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved-inr
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
@@ -871,9 +847,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Trace slot reads below: no slot reads in inr-trace
       ; trace-slot-reads-below = tt
       -- Trace preserves capacity: no push-frame in inr-trace
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      -- scratch-bounded: max-slot-written = n + 2, final-alloc = n + 2, ir-scratch-requirement = 2
+      ; scratch-bounded = m≤m+n (next-slot alloc +ℕ 2) 2
       }
     where
       -- Heap mode: sum-slots = heap-type-slots (A + B) = 2 (tag + pointer)
@@ -881,11 +859,6 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       sum-slots = 2
 
       sum-loc = OnStack (current-frame alloc) (next-slot alloc)
-
-      -- ir-stack-requirement (inr Heap) = heap-type-slots (A + B) = 2 = sum-slots
-      -- So sum-fits follows directly from combined-cap
-      sum-fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc
-      sum-fits = combined-cap
 
       alloc₁ : AllocState {FS}
       alloc₁ = record alloc
@@ -943,17 +916,15 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         trans (readLoc-stackMem-eq s-final s₁ loc refl refl)
               (write-at-suc-frontier-preserves-before s alloc loc input-loc bf)
 
-      inr-reclaim-preserves-result : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+      -- Note: fits parameter removed in Phase 3
+      inr-reclaim-preserves-result :
         BeforeFrontier (record alloc { next-slot = next-slot alloc +ℕ sum-slots  }) sum-loc
-      inr-reclaim-preserves-result fits = at-frontier-becomes-before alloc sum-slots sum-slots>0
+      inr-reclaim-preserves-result = at-frontier-becomes-before alloc sum-slots sum-slots>0
 
-      inr-reclaim-preserves-validity : ∀ (fits : next-slot alloc +ℕ sum-slots ≤ frame-capacity alloc) →
+      inr-reclaim-preserves-validity :
         ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ sum-slots  })
                   (sem-inr {A} {B} x) sum-loc s-final
-      inr-reclaim-preserves-validity fits =
-        subst (λ a → ValidAtWF Heap a (sem-inr {A} {B} x) sum-loc s-final)
-              (alloc-slots-eq alloc sum-slots sum-fits fits)
-              inr-valid-wf-final
+      inr-reclaim-preserves-validity = inr-valid-wf-final
 
       -- reclaim-size-bound: sum-slots = 2 = ir-stack-requirement (inr Heap)
       reclaim-size-bound-inr : next-slot alloc +ℕ sum-slots ≤ next-slot alloc +ℕ ir-stack-requirement (inr {A} {B} Heap)
@@ -1008,11 +979,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement (case f g) ≤ frame-capacity alloc →
     ∃[ mOut ] IRResultAWF mOut (case f g) x s alloc
 
   -- Case for inl: dispatch to f
-  run-case {m} {A} {B} {C} f g rec-wf (inj₁ a) input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-case {m} {A} {B} {C} f g rec-wf (inj₁ a) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mF , record
       { result-loc = IRResultAWF.result-loc result-f
       ; final-state = IRResultAWF.final-state result-f
@@ -1029,7 +999,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = IRResultAWF.frame-preserved result-f
       ; slot-monotone = IRResultAWF.slot-monotone result-f
       ; heap-monotone = IRResultAWF.heap-monotone result-f
-      ; capacity-preserved = IRResultAWF.capacity-preserved result-f
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = λ loc bf → trans (IRResultAWF.mem-preserved-before result-f loc bf)
                                                 (mem-setup-eq loc)
       ; reclaimable-slot = IRResultAWF.reclaimable-slot result-f
@@ -1053,9 +1023,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Trace slot reads below: forward from f
       ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-f
       -- Trace preserves capacity: setup + f-trace preserves capacity
-      ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity result-f))
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-f
       ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-f))
+      -- scratch-bounded: forward from f, lifting rf to req-case
+      ; scratch-bounded = ≤-trans (IRResultAWF.scratch-bounded result-f)
+                                   (+-monoʳ-≤ (next-slot (IRResultAWF.final-alloc result-f)) (m≤m+n rf rg))
       }
     where
       rf = ir-stack-requirement f
@@ -1078,14 +1051,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       payload-valid-wf : ValidAtWF mA alloc a payload-loc s
       payload-valid-wf = subst (λ x → ValidAtWF mA alloc x payload-loc s) a-eq payload-valid-wf'
 
-      -- Capacity for f
+      -- Capacity bound for f
       -- case-stack-req: ir-stack-requirement (case f g) = rf + rg
-      -- So rf ≤ req-case, hence slot + rf ≤ slot + req-case ≤ cap
+      -- So rf ≤ req-case, hence slot + rf ≤ slot + req-case
       cap-f-bound : next-slot alloc +ℕ rf ≤ next-slot alloc +ℕ req-case
       cap-f-bound = +-monoʳ-≤ (next-slot alloc) (m≤m+n rf rg)
-
-      cap-f : next-slot alloc +ℕ rf ≤ frame-capacity alloc
-      cap-f = ≤-trans cap-f-bound combined-cap
 
       -- Put payload-loc in Input for dispatch
       s-setup = record s { regs = writeReg (regs s) Input payload-loc }
@@ -1104,9 +1074,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       payload-valid-wf-setup = validityWF-mem-only a payload-loc s s-setup refl refl payload-valid-wf
 
       -- Dispatch to f via recursive dispatch
+      -- Note: cap-f argument removed in Phase 3
       f-exec-result : ∃[ mOut ] IRResultAWF mOut f a s-setup alloc
       f-exec-result = rec-wf mA f (case-f-smaller f g) a payload-loc s-setup alloc
-                        payload-valid-wf-setup payload-before not-halted-setup rdi-payload cap-f
+                        payload-valid-wf-setup payload-before not-halted-setup rdi-payload
       mF = proj₁ f-exec-result
       result-f = proj₂ f-exec-result
 
@@ -1132,7 +1103,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       case-frontier-stable _ _ _ _ _ = inj₂ (inj₂ tt)
 
   -- Case for inr: dispatch to g
-  run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-case {m} {A} {B} {C} f g rec-wf (inj₂ b) input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mG , record
       { result-loc = IRResultAWF.result-loc result-g
       ; final-state = IRResultAWF.final-state result-g
@@ -1149,7 +1120,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = IRResultAWF.slot-monotone result-g
       ; heap-monotone = IRResultAWF.heap-monotone result-g
-      ; capacity-preserved = IRResultAWF.capacity-preserved result-g
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = λ loc bf → trans (IRResultAWF.mem-preserved-before result-g loc bf)
                                                 (mem-setup-eq loc)
       ; reclaimable-slot = IRResultAWF.reclaimable-slot result-g
@@ -1173,9 +1144,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Trace slot reads below: forward from g
       ; trace-slot-reads-below = IRResultAWF.trace-slot-reads-below result-g
       -- Trace preserves capacity: setup + g-trace preserves capacity
-      ; trace-preserves-capacity = tpc-∷ ipc-load-indirect-suc (tpc-∷ ipc-mov-to-input (IRResultAWF.trace-preserves-capacity result-g))
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = IRResultAWF.trace-no-heap-writes result-g
       ; trace-preserves-halted = tph-∷ iph-load-indirect-suc (tph-∷ iph-mov-to-input (IRResultAWF.trace-preserves-halted result-g))
+      -- scratch-bounded: forward from g, lifting rg to req-case
+      ; scratch-bounded = ≤-trans (IRResultAWF.scratch-bounded result-g)
+                                   (+-monoʳ-≤ (next-slot (IRResultAWF.final-alloc result-g)) (m≤n+m rg rf))
       }
     where
       rf = ir-stack-requirement f
@@ -1198,14 +1172,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       payload-valid-wf : ValidAtWF mB alloc b payload-loc s
       payload-valid-wf = subst (λ x → ValidAtWF mB alloc x payload-loc s) b-eq payload-valid-wf'
 
-      -- Capacity for g
+      -- Capacity bound for g
       -- case-stack-req: ir-stack-requirement (case f g) = rf + rg
-      -- So rg ≤ req-case, hence slot + rg ≤ slot + req-case ≤ cap
+      -- So rg ≤ req-case, hence slot + rg ≤ slot + req-case
       cap-g-bound : next-slot alloc +ℕ rg ≤ next-slot alloc +ℕ req-case
       cap-g-bound = +-monoʳ-≤ (next-slot alloc) (m≤n+m rg rf)
-
-      cap-g : next-slot alloc +ℕ rg ≤ frame-capacity alloc
-      cap-g = ≤-trans cap-g-bound combined-cap
 
       -- Put payload-loc in Input for dispatch
       s-setup = record s { regs = writeReg (regs s) Input payload-loc }
@@ -1224,9 +1195,10 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       payload-valid-wf-setup = validityWF-mem-only b payload-loc s s-setup refl refl payload-valid-wf
 
       -- Dispatch to g via recursive dispatch
+      -- Note: cap-g argument removed in Phase 3
       g-exec-result : ∃[ mOut ] IRResultAWF mOut g b s-setup alloc
       g-exec-result = rec-wf mB g (case-g-smaller f g) b payload-loc s-setup alloc
-                        payload-valid-wf-setup payload-before not-halted-setup rdi-payload cap-g
+                        payload-valid-wf-setup payload-before not-halted-setup rdi-payload
       mG = proj₁ g-exec-result
       result-g = proj₂ g-exec-result
 
@@ -1298,9 +1270,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement (In {F} wf m) ≤ frame-capacity alloc →
     IRResultAWF m (In {F} wf m) x s alloc
-  run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-In {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
       { result-loc = result-loc
       ; final-state = s'
@@ -1314,13 +1285,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc'
       ; reclaim-monotone = slot-mono
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → result-bf
-      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-preserves-result = result-bf
+      ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound = reclaim-bound
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-reclaim = ≤-refl
@@ -1332,9 +1303,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = trace-wb
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      -- scratch-bounded: In allocates 1 slot (max-slot = suc n = next-slot alloc')
+      -- ir-scratch-requirement (In _ _) = 1, so bound is suc n ≤ suc n + 1
+      ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
       }
     where
       -- ir-stack-requirement (In _ _) = 1
@@ -1431,13 +1405,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → input-before
-      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-preserves-result = input-before
+      ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
@@ -1449,9 +1423,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      -- scratch-bounded: out-μ allocates 0 slots, max-slot = next-slot alloc
+      -- ir-scratch-requirement (out-μ _) = 0, so bound is n + 0 = n
+      ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
       -- ir-stack-requirement (out-μ _) = 0, so no allocation
@@ -1501,9 +1478,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement (Out {F} wf) ≤ frame-capacity alloc →
     IRResultAWF Heap (Out {F} wf) x s alloc
-  run-Out {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+  run-Out {F} wf mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
       { result-loc = input-loc
       ; final-state = s'
@@ -1517,13 +1493,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → input-before
-      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-preserves-result = input-before
+      ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-reclaim = ≤-refl
@@ -1534,9 +1510,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
+      -- scratch-bounded: Out allocates 0 slots, max-slot = next-slot alloc
+      -- ir-scratch-requirement (Out _) = 0, so bound is n + 0 = n
+      ; scratch-bounded = m≤m+n (next-slot alloc) 0
       }
     where
       -- ir-stack-requirement (Out _) = 0, so no allocation
@@ -1583,9 +1562,8 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement (in-ν {F} wf m) ≤ frame-capacity alloc →
     IRResultAWF m (in-ν {F} wf m) x s alloc
-  run-in-ν {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq combined-cap =
+  run-in-ν {F} wf mIn m x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     record
       { result-loc = result-loc
       ; final-state = s'
@@ -1599,13 +1577,13 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
+      -- Note: capacity-preserved removed in Phase 3
       ; mem-preserved-before = mem-preserved
       ; reclaimable-slot = next-slot alloc'
       ; reclaim-monotone = slot-mono
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → result-bf
-      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-preserves-result = result-bf
+      ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound = reclaim-bound
       ; max-slot-written = next-slot alloc'
       ; max-slot-geq-reclaim = ≤-refl
@@ -1616,9 +1594,12 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; trace-slot-reads-above = tt
       ; trace-writes-below = trace-wb
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output (tpc-∷ ipc-store-at-slot (tpc-∷ ipc-lea-slot tpc-[]))
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output (tph-∷ iph-store-at-slot (tph-∷ iph-lea-slot tph-[]))
+      -- scratch-bounded: in-ν allocates 1 slot (max-slot = suc n = next-slot alloc')
+      -- ir-scratch-requirement (in-ν _ _) = 1, so bound is suc n ≤ suc n + 1
+      ; scratch-bounded = m≤m+n (suc (next-slot alloc)) 1
       }
     where
       -- ir-stack-requirement (in-ν _ _) = 1
