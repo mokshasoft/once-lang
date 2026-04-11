@@ -352,16 +352,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc +ℕ sum-slots
-      ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = inl-reclaim-preserves-result
       ; reclaim-preserves-validity = inl-reclaim-preserves-validity
-      ; reclaim-size-bound = reclaim-size-bound-inl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inl
       ; slot-stays-in-budget = reclaim-size-bound-inl
       -- Frontier slot stability for inl (Stack mode)
@@ -508,16 +503,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc +ℕ sum-slots
-      ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = inl-reclaim-preserves-result
       ; reclaim-preserves-validity = inl-reclaim-preserves-validity
-      ; reclaim-size-bound = reclaim-size-bound-inl
       ; max-slot-written = next-slot alloc +ℕ sum-slots
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inl
       ; slot-stays-in-budget = reclaim-size-bound-inl
       -- Frontier slot stability for inl (Heap mode)
@@ -678,16 +668,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc +ℕ sum-slots
-      ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = inr-reclaim-preserves-result
       ; reclaim-preserves-validity = inr-reclaim-preserves-validity
-      ; reclaim-size-bound = reclaim-size-bound-inr
       ; max-slot-written = next-slot alloc +ℕ sum-slots
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inr
       ; slot-stays-in-budget = reclaim-size-bound-inr
       -- Frontier slot stability for inr (Stack mode)
@@ -824,16 +809,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc +ℕ sum-slots
-      ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = inr-reclaim-preserves-result
       ; reclaim-preserves-validity = inr-reclaim-preserves-validity
-      ; reclaim-size-bound = reclaim-size-bound-inr
       ; max-slot-written = next-slot alloc +ℕ sum-slots
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-size-bound-inr
       ; slot-stays-in-budget = reclaim-size-bound-inr
       -- Frontier slot stability for inr (Heap mode)
@@ -999,16 +979,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = IRResultAWF.frame-preserved result-f
       ; slot-monotone = IRResultAWF.slot-monotone result-f
       ; heap-monotone = IRResultAWF.heap-monotone result-f
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = IRResultAWF.reclaimable-slot result-f
-      ; reclaim-monotone = IRResultAWF.reclaim-monotone result-f
-      ; reclaim-bounded = IRResultAWF.reclaim-bounded result-f
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-f
       ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity result-f
-      ; reclaim-size-bound = ≤-trans (IRResultAWF.reclaim-size-bound result-f) cap-f-bound
       ; max-slot-written = IRResultAWF.max-slot-written result-f
-      ; max-slot-geq-reclaim = IRResultAWF.max-slot-geq-reclaim result-f
+      ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-f
       ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-f) cap-f-bound
       ; slot-stays-in-budget = ≤-trans (IRResultAWF.slot-stays-in-budget result-f) cap-f-bound
       -- Frontier slot stability for case (inl branch)
@@ -1119,16 +1094,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = IRResultAWF.slot-monotone result-g
       ; heap-monotone = IRResultAWF.heap-monotone result-g
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = IRResultAWF.reclaimable-slot result-g
-      ; reclaim-monotone = IRResultAWF.reclaim-monotone result-g
-      ; reclaim-bounded = IRResultAWF.reclaim-bounded result-g
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-g
       ; reclaim-preserves-validity = IRResultAWF.reclaim-preserves-validity result-g
-      ; reclaim-size-bound = ≤-trans (IRResultAWF.reclaim-size-bound result-g) cap-g-bound
       ; max-slot-written = IRResultAWF.max-slot-written result-g
-      ; max-slot-geq-reclaim = IRResultAWF.max-slot-geq-reclaim result-g
+      ; max-slot-geq-final = IRResultAWF.max-slot-geq-final result-g
       ; max-slot-usage-bound = ≤-trans (IRResultAWF.max-slot-usage-bound result-g) cap-g-bound
       ; slot-stays-in-budget = ≤-trans (IRResultAWF.slot-stays-in-budget result-g) cap-g-bound
       -- Frontier slot stability for case (inr branch)
@@ -1283,16 +1253,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc'
-      ; reclaim-monotone = slot-mono
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = result-bf
       ; reclaim-preserves-validity = result-valid
-      ; reclaim-size-bound = reclaim-bound
       ; max-slot-written = next-slot alloc'
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
       -- slot-stays-in-budget: In allocates exactly 1 slot
       ; slot-stays-in-budget = reclaim-bound
@@ -1403,16 +1368,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc
-      ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = input-before
       ; reclaim-preserves-validity = result-valid
-      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       -- slot-stays-in-budget: out-μ allocates 0 slots
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
@@ -1491,16 +1451,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc
-      ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = input-before
       ; reclaim-preserves-validity = result-valid
-      ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
       ; max-slot-written = next-slot alloc
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = m≤m+n (next-slot alloc) 0
       ; slot-stays-in-budget = m≤m+n (next-slot alloc) 0
       ; frontier-slot-stable = frontier-stable
@@ -1575,16 +1530,11 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc'
-      ; reclaim-monotone = slot-mono
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = result-bf
       ; reclaim-preserves-validity = result-valid
-      ; reclaim-size-bound = reclaim-bound
       ; max-slot-written = next-slot alloc'
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
       ; slot-stays-in-budget = reclaim-bound
       ; frontier-slot-stable = frontier-stable

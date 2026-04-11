@@ -100,16 +100,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; frame-preserved = refl
       ; slot-monotone = slot-monotone-pair
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = pair-reclaim
-      ; reclaim-monotone = pair-reclaim-monotone
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = pair-before
       ; reclaim-preserves-validity = pair-valid-wf-final
-      ; reclaim-size-bound = pair-reclaim-size-bound
       ; max-slot-written = pair-max-slot
-      ; max-slot-geq-reclaim = pair-max-slot-geq-reclaim
+      ; max-slot-geq-final = pair-max-slot-geq-final
       ; max-slot-usage-bound = pair-max-slot-bound
       ; slot-stays-in-budget = pair-slot-stays-in-budget
       ; frontier-slot-stable = pair-frontier-stable
@@ -184,15 +179,15 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       f-trace = IRResultAWF.trace result-f
 
       ------------------------------------------------------------------------
-      -- Reclaim after f
+      -- Reclaim after f (Phase 7: use next-slot final-alloc instead of reclaimable-slot)
       ------------------------------------------------------------------------
-      reclaim-f = IRResultAWF.reclaimable-slot result-f
+      reclaim-f = next-slot (IRResultAWF.final-alloc result-f)
 
       reclaim-f-bound : reclaim-f ≤ f-start +ℕ rf
-      reclaim-f-bound = IRResultAWF.reclaim-size-bound result-f
+      reclaim-f-bound = IRResultAWF.slot-stays-in-budget result-f
 
       reclaim-f-above-f-start : f-start ≤ reclaim-f
-      reclaim-f-above-f-start = IRResultAWF.reclaim-monotone result-f
+      reclaim-f-above-f-start = IRResultAWF.slot-monotone result-f
 
       alloc-after-f-reclaim : AllocState {FS}
       alloc-after-f-reclaim = record alloc { next-slot = reclaim-f }
@@ -242,12 +237,12 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       g-trace = IRResultAWF.trace result-g
 
       ------------------------------------------------------------------------
-      -- Reclaim after g
+      -- Reclaim after g (Phase 7: use next-slot final-alloc instead of reclaimable-slot)
       ------------------------------------------------------------------------
-      reclaim-g = IRResultAWF.reclaimable-slot result-g
+      reclaim-g = next-slot (IRResultAWF.final-alloc result-g)
 
       reclaim-g-bound : reclaim-g ≤ reclaim-f +ℕ rg
-      reclaim-g-bound = IRResultAWF.reclaim-size-bound result-g
+      reclaim-g-bound = IRResultAWF.slot-stays-in-budget result-g
 
       ------------------------------------------------------------------------
       -- Final allocation
@@ -261,7 +256,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       pair-reclaim-monotone = ≤-trans (n≤1+n backup-slot)
                                 (≤-trans (n≤1+n fst-slot)
                                   (≤-trans (n≤1+n snd-slot)
-                                    (≤-trans reclaim-f-above-f-start (IRResultAWF.reclaim-monotone result-g))))
+                                    (≤-trans reclaim-f-above-f-start (IRResultAWF.slot-monotone result-g))))
 
       ------------------------------------------------------------------------
       -- Trace Construction
@@ -415,8 +410,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       max-slot-g = IRResultAWF.max-slot-written result-g
       pair-max-slot = max-slot-f ⊔ max-slot-g
 
-      pair-max-slot-geq-reclaim : pair-reclaim ≤ pair-max-slot
-      pair-max-slot-geq-reclaim = ≤-trans (IRResultAWF.max-slot-geq-reclaim result-g) (m≤n⊔m max-slot-f max-slot-g)
+      pair-max-slot-geq-final : pair-reclaim ≤ pair-max-slot
+      pair-max-slot-geq-final = ≤-trans (IRResultAWF.max-slot-geq-final result-g) (m≤n⊔m max-slot-f max-slot-g)
 
       max-slot-f≤pair : max-slot-f ≤ pair-max-slot
       max-slot-f≤pair = m≤m⊔n max-slot-f max-slot-g
@@ -434,10 +429,10 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       snd-slot<reclaim-f = reclaim-f-above-f-start
 
       fst<reclaim-g : fst-slot < reclaim-g
-      fst<reclaim-g = <-≤-trans fst-slot<reclaim-f (IRResultAWF.reclaim-monotone result-g)
+      fst<reclaim-g = <-≤-trans fst-slot<reclaim-f (IRResultAWF.slot-monotone result-g)
 
       snd<reclaim-g : snd-slot < reclaim-g
-      snd<reclaim-g = <-≤-trans snd-slot<reclaim-f (IRResultAWF.reclaim-monotone result-g)
+      snd<reclaim-g = <-≤-trans snd-slot<reclaim-f (IRResultAWF.slot-monotone result-g)
 
       ------------------------------------------------------------------------
       -- Trace bounds (write above/below)
@@ -495,11 +490,11 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ------------------------------------------------------------------------
       fst<bound : fst-slot < pair-max-slot
       fst<bound = <-≤-trans fst-slot<reclaim-f
-                    (≤-trans (IRResultAWF.max-slot-geq-reclaim result-f) max-slot-f≤pair)
+                    (≤-trans (IRResultAWF.max-slot-geq-final result-f) max-slot-f≤pair)
 
       snd<bound : snd-slot < pair-max-slot
       snd<bound = <-≤-trans snd-slot<reclaim-f
-                    (≤-trans (IRResultAWF.max-slot-geq-reclaim result-f) max-slot-f≤pair)
+                    (≤-trans (IRResultAWF.max-slot-geq-final result-f) max-slot-f≤pair)
 
       backup<bound : backup-slot < pair-max-slot
       backup<bound = <-≤-trans (s≤s backup≤fst) fst<bound
@@ -1128,7 +1123,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
             -- fst-slot < snd-slot = ≤-refl
             -- snd-slot < f-start = ≤-refl
             -- f-start ≤ reclaim-f (reclaim-f-above-f-start)
-            -- reclaim-f ≤ max-slot-f (max-slot-geq-reclaim)
+            -- reclaim-f ≤ max-slot-f (max-slot-geq-final)
             backup<fst-slot : backup-slot < fst-slot
             backup<fst-slot = ≤-refl
             fst<snd-slot : fst-slot < snd-slot
@@ -1139,7 +1134,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
             backup<f-start' = ≤-trans (≤-trans backup<fst-slot (n≤1+n fst-slot)) (n≤1+n snd-slot)
             backup<max-slot-f : backup-slot < max-slot-f
             backup<max-slot-f = <-≤-trans backup<f-start'
-                                  (≤-trans reclaim-f-above-f-start (IRResultAWF.max-slot-geq-reclaim result-f))
+                                  (≤-trans reclaim-f-above-f-start (IRResultAWF.max-slot-geq-final result-f))
             setup-twb : TraceWritesBelow max-slot-f setup-trace
             setup-twb = backup<max-slot-f , tt
             setup-pres = SMP.TracePrimitives.exec-trace-preserves-slot-above setup-trace
@@ -1329,7 +1324,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       fst-before : BeforeFrontier alloc-final fst-loc
       fst-before = frontier-monotone alloc-after-f-reclaim alloc-final
                      refl
-                     (IRResultAWF.reclaim-monotone result-g)
+                     (IRResultAWF.slot-monotone result-g)
                      ≤-refl
                      fst-loc
                      (IRResultAWF.reclaim-preserves-result result-f)
@@ -1417,7 +1412,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       f-mem-fresh-region slot f-start≤slot slot<reclaim =
         let -- slot < reclaim-f ≤ max-slot-f
             slot<max : slot < max-slot-f
-            slot<max = <-≤-trans slot<reclaim (IRResultAWF.max-slot-geq-reclaim result-f)
+            slot<max = <-≤-trans slot<reclaim (IRResultAWF.max-slot-geq-final result-f)
             -- Use exec-trace-mem-deterministic to show both executions produce same memory
             -- Execution 1: f-trace from s-after-setup with alloc-after-setup → s-after-f
             -- Execution 2: f-trace from s with alloc-after-pair-slots → proj₁ (exec-trace f-trace s alloc-after-pair-slots)
@@ -1656,7 +1651,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- Step 4: Advance frontier from alloc-after-f-reclaim to alloc-final
       fst-valid : ValidAtWF mF alloc-final (eval primSem f x) fst-loc s-final
       fst-valid = validityWF-frontier-advance (eval primSem f x) fst-loc s-final refl
-                    (IRResultAWF.reclaim-monotone result-g) ≤-refl valid-at-s-final
+                    (IRResultAWF.slot-monotone result-g) ≤-refl valid-at-s-final
 
       ----------------------------------------------------------------------
       -- snd-valid: Validity of g's result at snd-loc in s-final
@@ -1690,7 +1685,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       backup≤reclaim-f' = backup≤reclaim-f
 
       reclaim-f≤reclaim-g : reclaim-f ≤ reclaim-g
-      reclaim-f≤reclaim-g = IRResultAWF.reclaim-monotone result-g  -- alloc-after-f-reclaim has next-slot = reclaim-f
+      reclaim-f≤reclaim-g = IRResultAWF.slot-monotone result-g  -- alloc-after-f-reclaim has next-slot = reclaim-f
 
       -- Step 2: Memory agreement from s₂ to s-after-g
       -- s₂ = exec g-trace s₁' alloc-after-f-reclaim (recursive call result)
@@ -1743,7 +1738,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       g-mem-fresh-region slot rf≤slot slot<rg =
         let -- slot < reclaim-g ≤ max-slot-g
             slot<max : slot < max-slot-g
-            slot<max = <-≤-trans slot<rg (IRResultAWF.max-slot-geq-reclaim result-g)
+            slot<max = <-≤-trans slot<rg (IRResultAWF.max-slot-geq-final result-g)
             -- Use exec-trace-mem-deterministic for g-trace
             mem-det = SMP.TraceOutputDeterminism.exec-trace-mem-deterministic g-trace
                         s-after-middle s₁' alloc-after-middle alloc-after-f-reclaim reclaim-f max-slot-g

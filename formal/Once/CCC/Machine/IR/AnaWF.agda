@@ -192,16 +192,11 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
       ; frame-preserved = refl
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc'
-      ; reclaim-monotone = slot-mono
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = result-bf
       ; reclaim-preserves-validity = result-valid
-      ; reclaim-size-bound = reclaim-bound
       ; max-slot-written = next-slot alloc'
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = reclaim-bound
       -- slot-stays-in-budget: Ana allocates exactly 1 slot
       -- next-slot alloc' = suc (next-slot alloc)

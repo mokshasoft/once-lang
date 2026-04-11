@@ -48,8 +48,8 @@ open import Once.CCC.Target.X86-64.Types using (Type; ⟦_⟧)
 open import Once.CCC.IR using (IR; AllocMode)
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size using (ir-size)
-open import Once.CCC.IR.Stack using (ir-stack-requirement)
-open import Once.CCC.Machine.Allocation using (AllocState; next-slot; current-frame; frame-capacity; module FrontierInvariant)
+-- Phase 3: ir-stack-requirement import removed (capacity check removed)
+open import Once.CCC.Machine.Allocation using (AllocState; next-slot; current-frame; module FrontierInvariant)
 
 -- Import the new RuntimeContract
 open import Once.CCC.Target.X86-64.RuntimeContract using (RuntimeContract; FrameOps)
@@ -149,16 +149,16 @@ module Correctness
     -- Machine is ready to execute (caller must establish)
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
+    -- Phase 3: capacity parameter removed (unbounded stack model)
     -- ...then output represents (eval primSem ir x)
     ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
       Represents mOut alloc' (eval primSem ir x) result-loc s'
       --                      ^^^^^^^^^^
       --            THE SEMANTIC CONNECTION
-  compile-correct ir mIn x input-loc s alloc repr before ir<bound not-halted rdi-eq capacity-ok =
+  compile-correct ir mIn x input-loc s alloc repr before ir<bound not-halted rdi-eq =
     -- Invoke Dispatcher with operational preconditions (caller provided)
     let (mOut , result) = D.run-wf mIn ir ir<bound x input-loc s alloc
-          repr before not-halted rdi-eq capacity-ok
+          repr before not-halted rdi-eq
     in mOut
      , CWF.IRResultAWF.result-loc result
      , CWF.IRResultAWF.final-state result
@@ -172,7 +172,7 @@ module Correctness
 --   Represents x input-loc s
 --   ∧ halted s ≡ false           (CPU running)
 --   ∧ Input = input-loc            (calling convention)
---   ∧ capacity sufficient        (stack space)
+--   (Phase 3: capacity precondition removed - unbounded stack model)
 --     →
 --   Represents (eval primSem ir x) result-loc s'
 --

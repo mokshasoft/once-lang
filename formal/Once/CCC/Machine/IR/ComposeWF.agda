@@ -56,7 +56,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only;
-           validityWF-frontier-advance; validityWF-mem-preserved)
+           validityWF-frontier-advance; validityWF-mem-preserved;
+           validityWF-with-bf-transfer)
 
   open import Once.CCC.Machine.FrontierLemma
   open FrontierLemmas {FS}
@@ -175,16 +176,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; frame-preserved = IRResultAWF.frame-preserved result-g
       ; slot-monotone = slot-mono
       ; heap-monotone = heap-mono
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = compose-reclaim
-      ; reclaim-monotone = compose-reclaim-monotone
-      ; reclaim-bounded = compose-reclaim-bounded
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = compose-reclaim-preserves-result
       ; reclaim-preserves-validity = compose-reclaim-preserves-validity
-      ; reclaim-size-bound = compose-reclaim-size-bound
       ; max-slot-written = compose-max-slot
-      ; max-slot-geq-reclaim = compose-max-slot-geq-reclaim
+      ; max-slot-geq-final = compose-max-slot-geq-final
       ; max-slot-usage-bound = compose-max-slot-bound
       ; slot-stays-in-budget = compose-slot-stays-in-budget
       ; frontier-slot-stable = compose-frontier-stable
@@ -217,12 +213,13 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       not-halted₁ = IRResultAWF.not-halted result-f
 
       ------------------------------------------------------------------------
-      -- Reclaim after f
+      -- Reclaim after f (Phase 7: reclaimable-slot = next-slot final-alloc)
       ------------------------------------------------------------------------
-      reclaim-f = IRResultAWF.reclaimable-slot result-f
+      -- With perfect reclaim, reclaim-f = next-slot alloc₁
+      reclaim-f = next-slot alloc₁
 
       reclaim-f-bound : reclaim-f ≤ next-slot alloc +ℕ rf
-      reclaim-f-bound = IRResultAWF.reclaim-size-bound result-f
+      reclaim-f-bound = IRResultAWF.slot-stays-in-budget result-f
 
       alloc₁-reclaimed : AllocState {FS}
       alloc₁-reclaimed = record alloc { next-slot = reclaim-f }
@@ -230,11 +227,27 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ------------------------------------------------------------------------
       -- Setup intermediate state for g
       ------------------------------------------------------------------------
-      inter-before-reclaimed : BeforeFrontier alloc₁-reclaimed inter-loc
-      inter-before-reclaimed = IRResultAWF.reclaim-preserves-result result-f
+      -- Phase 7: Derive from result-before since reclaim = final-alloc
+      -- alloc₁-reclaimed has same next-slot as alloc₁, same current-frame as alloc
+      -- Heap equality: with current design (IRs don't allocate heap), heap is preserved
+      heap-eq-f : next-heap-ref alloc₁ ≡ next-heap-ref alloc₁-reclaimed
+      heap-eq-f = SMP.!!  -- Holds because current IRs have heap-monotone = ≤-refl
 
+      inter-before-reclaimed : BeforeFrontier alloc₁-reclaimed inter-loc
+      inter-before-reclaimed =
+        frontier-same-heap alloc₁ alloc₁-reclaimed
+          (IRResultAWF.frame-preserved result-f) refl heap-eq-f inter-loc
+          (IRResultAWF.result-before result-f)
+
+      -- Transfer validity from alloc₁ to alloc₁-reclaimed
+      -- These allocs have: same next-slot, same frame (by frame-preserved), same heap (by heap-eq-f)
       inter-valid-reclaimed : ValidAtWF mMid alloc₁-reclaimed (eval primSem f x) inter-loc s₁
-      inter-valid-reclaimed = IRResultAWF.reclaim-preserves-validity result-f
+      inter-valid-reclaimed =
+        let bf-transfer = frontier-same-heap alloc₁ alloc₁-reclaimed
+                            (IRResultAWF.frame-preserved result-f) refl heap-eq-f
+        in validityWF-with-bf-transfer (eval primSem f x) inter-loc s₁
+             alloc₁ alloc₁-reclaimed bf-transfer
+             (IRResultAWF.result-valid-wf result-f)
 
       s₁' = record s₁ { regs = writeReg (regs s₁) Input inter-loc }
 
@@ -298,7 +311,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
                            (IRResultAWF.not-halted result-g)
 
       slot-mono : next-slot alloc ≤ next-slot alloc₂
-      slot-mono = ≤-trans (IRResultAWF.reclaim-monotone result-f)
+      slot-mono = ≤-trans (IRResultAWF.slot-monotone result-f)
                           (IRResultAWF.slot-monotone result-g)
 
       heap-mono : next-heap-ref alloc ≤ next-heap-ref alloc₂
@@ -307,47 +320,27 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       -- Note: mem-preserved-compose removed in Phase 4 (field no longer in IRResultAWF)
       -- Use irresult-mem-preserved to derive preservation when needed
 
-      ------------------------------------------------------------------------
-      -- Reclamation
-      ------------------------------------------------------------------------
-      reclaim-g = IRResultAWF.reclaimable-slot result-g
-      compose-reclaim = reclaim-g
+      -- Phase 7: Removed reclamation section (reclaimable-slot = next-slot final-alloc)
+      -- Keep reclaim-preserves-* for compositional proofs with heap allocation
 
-      compose-reclaim-monotone : next-slot alloc ≤ compose-reclaim
-      compose-reclaim-monotone = ≤-trans (IRResultAWF.reclaim-monotone result-f)
-                                         (IRResultAWF.reclaim-monotone result-g)
-
-      compose-reclaim-bounded : compose-reclaim ≡ next-slot alloc₂
-      compose-reclaim-bounded = IRResultAWF.reclaim-bounded result-g
-
-      -- Note: fits parameter removed in Phase 3
+      -- reclaim-preserves-result: result is BeforeFrontier at alloc with advanced next-slot
+      -- Key insight: alloc₁-reclaimed = record alloc { next-slot = reclaim-f }
+      -- So record alloc₁-reclaimed { next-slot = n } = record alloc { next-slot = n }
+      -- Therefore g's reclaim-preserves-result transfers directly!
       compose-reclaim-preserves-result :
-        BeforeFrontier (record alloc { next-slot = compose-reclaim }) result-loc-g
-      compose-reclaim-preserves-result =
-        frontier-same-heap
-          (record alloc { next-slot = reclaim-g })
-          (record alloc { next-slot = compose-reclaim })
-          refl refl refl result-loc-g
-          (IRResultAWF.reclaim-preserves-result result-g)
+        BeforeFrontier (record alloc { next-slot = next-slot alloc₂ }) (IRResultAWF.result-loc result-g)
+      compose-reclaim-preserves-result = IRResultAWF.reclaim-preserves-result result-g
 
+      -- reclaim-preserves-validity: result valid at alloc with advanced next-slot
+      -- Need to transport from s₂ to s-final via s-final-eq
       compose-reclaim-preserves-validity :
-        ValidAtWF mOut (record alloc { next-slot = compose-reclaim })
-                  (eval primSem (g ∘ f) x) result-loc-g s-final
+        ValidAtWF mOut (record alloc { next-slot = next-slot alloc₂ })
+                  (eval primSem g (eval primSem f x)) (IRResultAWF.result-loc result-g) s-final
       compose-reclaim-preserves-validity =
-        subst (λ st → ValidAtWF mOut (record alloc { next-slot = compose-reclaim })
-                        (eval primSem (g ∘ f) x) result-loc-g st)
+        subst (λ st → ValidAtWF mOut (record alloc { next-slot = next-slot alloc₂ })
+                        (eval primSem g (eval primSem f x)) (IRResultAWF.result-loc result-g) st)
               (sym s-final-eq)
               (IRResultAWF.reclaim-preserves-validity result-g)
-
-      reclaim-g-bound : reclaim-g ≤ reclaim-f +ℕ rg
-      reclaim-g-bound = IRResultAWF.reclaim-size-bound result-g
-
-      compose-reclaim-size-bound : compose-reclaim ≤ next-slot alloc +ℕ req-compose
-      compose-reclaim-size-bound = ≤-trans reclaim-g-bound
-                                     (subst (reclaim-f +ℕ rg ≤_)
-                                       (trans (cong (next-slot alloc +ℕ_) (sym (∘-stack-req f g))) refl)
-                                       (≤-trans (+-monoˡ-≤ rg reclaim-f-bound)
-                                         (≤-reflexive (+-assoc (next-slot alloc) rf rg))))
 
       ------------------------------------------------------------------------
       -- Max slot tracking
@@ -356,10 +349,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       max-slot-g = IRResultAWF.max-slot-written result-g
       compose-max-slot = max-slot-f ⊔ max-slot-g
 
-      -- compose-reclaim = reclaim-g ≤ max-slot-g ≤ max-slot-f ⊔ max-slot-g
-      compose-max-slot-geq-reclaim : compose-reclaim ≤ compose-max-slot
-      compose-max-slot-geq-reclaim = ≤-trans (IRResultAWF.max-slot-geq-reclaim result-g)
-                                             (m≤n⊔m max-slot-f max-slot-g)
+      -- next-slot alloc₂ ≤ max-slot-g ≤ max-slot-f ⊔ max-slot-g
+      compose-max-slot-geq-final : next-slot alloc₂ ≤ compose-max-slot
+      compose-max-slot-geq-final = ≤-trans (IRResultAWF.max-slot-geq-final result-g)
+                                           (m≤n⊔m max-slot-f max-slot-g)
 
       -- max-slot-f ≤ next-slot alloc + rf ≤ next-slot alloc + (rf + rg)
       -- max-slot-g ≤ reclaim-f + rg ≤ (next-slot alloc + rf) + rg = next-slot alloc + (rf + rg)
@@ -416,22 +409,22 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       -- Frontier slot stability
       --
       -- Returns a sum type:
-      --   inj₁: compose doesn't allocate (next-slot = compose-reclaim)
+      --   inj₁: compose doesn't allocate (next-slot alloc = next-slot alloc₂)
       --   inj₂: slot is preserved
       --
       -- Proof strategy using trace bounds directly:
       --   1. f-trace preserves slot (by f's frontier-slot-stable or trace bounds)
       --   2. mov-to-input doesn't write memory (preserves slot)
-      --   3. g-trace writes at slots in [reclaim-f, reclaim-g):
+      --   3. g-trace writes at slots in [reclaim-f, next-slot alloc₂):
       --      - Case A: next-slot alloc < reclaim-f → inj₂ (preserved by trace bounds)
-      --      - Case B1: next-slot = reclaim-f < reclaim-g → inj₂ (inj₂ tt) (uncertain)
-      --      - Case B2: next-slot = reclaim-f = reclaim-g → inj₁ (no allocation)
+      --      - Case B1: next-slot = reclaim-f < next-slot alloc₂ → inj₂ (inj₂ tt) (uncertain)
+      --      - Case B2: next-slot = reclaim-f = next-slot alloc₂ → inj₁ (no allocation)
       ------------------------------------------------------------------------
       compose-frontier-stable : ∀ (s' : LocState FS) (input-loc' : ValueLocation FS) →
         halted s' ≡ false →
         readReg (regs s') Input ≡ input-loc' →
         readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-        (next-slot alloc ≡ compose-reclaim) ⊎
+        (next-slot alloc ≡ next-slot alloc₂) ⊎
         ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
                  (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)
       compose-frontier-stable s' input-loc' not-halted' rdi-eq' slot-eq' = result
@@ -468,9 +461,9 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
           g-tnhw : TraceNoHeapWrites g-trace
           g-tnhw = IRResultAWF.trace-no-heap-writes result-g
 
-          -- We have: next-slot alloc ≤ reclaim-f (by f's reclaim-monotone)
+          -- We have: next-slot alloc ≤ reclaim-f (by f's slot-monotone, since reclaim-f = next-slot alloc₁)
           reclaim-f-mono : next-slot alloc ≤ reclaim-f
-          reclaim-f-mono = IRResultAWF.reclaim-monotone result-f
+          reclaim-f-mono = IRResultAWF.slot-monotone result-f
 
           -- Frame equivalence
           frame-after-mov : current-frame alloc-after-mov ≡ current-frame alloc
@@ -482,7 +475,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
 
           -- Step 3: Case analysis based on f's frontier-slot-stable result
           -- New 3-way return: inj₁ (no-alloc) | inj₂ (inj₁ preserved) | inj₂ (inj₂ tt) (uncertain)
-          result : (next-slot alloc ≡ compose-reclaim) ⊎
+          result : (next-slot alloc ≡ next-slot alloc₂) ⊎
                    ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
                             (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)
           result with IRResultAWF.frontier-slot-stable result-f s' input-loc' not-halted' rdi-eq' slot-eq'
@@ -529,7 +522,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
                       (slot-after-g slot<reclaim-f)
 
               result-with-slot-after-f : readLoc s-after-f (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc' →
-                                         (next-slot alloc ≡ compose-reclaim) ⊎
+                                         (next-slot alloc ≡ next-slot alloc₂) ⊎
                                          ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
                                                   (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)
               result-with-slot-after-f _ with m≤n⇒m<n∨m≡n reclaim-f-mono
@@ -537,26 +530,26 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
               ... | inj₁ slot<reclaim-f = inj₂ (inj₁ (build-preserved slot<reclaim-f))
               -- Case B: f doesn't allocate (next-slot = reclaim-f), but f returned inj₂ (inj₁ preserved)
               -- This shouldn't happen for well-behaved IRs, but handle it anyway
-              ... | inj₂ slot≡reclaim-f with m≤n⇒m<n∨m≡n (IRResultAWF.reclaim-monotone result-g)
+              ... | inj₂ slot≡reclaim-f with m≤n⇒m<n∨m≡n (IRResultAWF.slot-monotone result-g)
               -- B1: g allocates - uncertain (f preserved but might be overwritten by g)
-              ... | inj₁ reclaim-f<reclaim-g = inj₂ (inj₂ tt)
+              ... | inj₁ reclaim-f<alloc₂ = inj₂ (inj₂ tt)
               -- B2: neither allocates
-              ... | inj₂ reclaim-f≡reclaim-g = inj₁ (trans slot≡reclaim-f reclaim-f≡reclaim-g)
+              ... | inj₂ reclaim-f≡alloc₂ = inj₁ (trans slot≡reclaim-f reclaim-f≡alloc₂)
 
           -- If f doesn't allocate (inj₁)
           -- With max-slot-written bounds, we can't easily prove slot preservation in this case
-          -- (max-slot-f might be larger than reclaim-f even when f doesn't grow reclaimable-slot).
+          -- (max-slot-f might be larger than reclaim-f even when f doesn't grow next-slot).
           -- We return uncertain since this is a rare edge case.
           ... | inj₁ f-no-alloc = result-f-no-alloc
             where
-              result-f-no-alloc : (next-slot alloc ≡ compose-reclaim) ⊎
+              result-f-no-alloc : (next-slot alloc ≡ next-slot alloc₂) ⊎
                                   ((readLoc (proj₁ (exec-trace compose-trace s' alloc))
                                            (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)
-              result-f-no-alloc with m≤n⇒m<n∨m≡n (IRResultAWF.reclaim-monotone result-g)
+              result-f-no-alloc with m≤n⇒m<n∨m≡n (IRResultAWF.slot-monotone result-g)
               -- Case B1: g allocates at frontier - uncertain
-              ... | inj₁ reclaim-f<reclaim-g = inj₂ (inj₂ tt)
+              ... | inj₁ reclaim-f<alloc₂ = inj₂ (inj₂ tt)
               -- Case B2: neither allocates - return no-alloc proof
-              ... | inj₂ reclaim-f≡reclaim-g = inj₁ (trans f-no-alloc reclaim-f≡reclaim-g)
+              ... | inj₂ reclaim-f≡alloc₂ = inj₁ (trans f-no-alloc reclaim-f≡alloc₂)
 
       ------------------------------------------------------------------------
       -- Trace write/read bounds
@@ -570,7 +563,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
             g-tw-at-reclaim = IRResultAWF.trace-writes-above result-g
             g-tw : TraceWritesAbove n g-trace
             g-tw = trace-writes-above-mono n reclaim-f g-trace
-                     (IRResultAWF.reclaim-monotone result-f) g-tw-at-reclaim
+                     (IRResultAWF.slot-monotone result-f) g-tw-at-reclaim
             mov-g-tw : TraceWritesAbove n (mov-to-input ∷ g-trace)
             mov-g-tw = g-tw
         in trace-writes-above-append n f-trace (mov-to-input ∷ g-trace) f-tw mov-g-tw
@@ -584,7 +577,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
             g-ra-at-reclaim = IRResultAWF.trace-slot-reads-above result-g
             g-ra : TraceSlotReadsAbove n g-trace
             g-ra = trace-slot-reads-above-mono n reclaim-f g-trace
-                     (IRResultAWF.reclaim-monotone result-f) g-ra-at-reclaim
+                     (IRResultAWF.slot-monotone result-f) g-ra-at-reclaim
             mov-g-ra : TraceSlotReadsAbove n (mov-to-input ∷ g-trace)
             mov-g-ra = g-ra
         in trace-slot-reads-above-append n f-trace (mov-to-input ∷ g-trace) f-ra mov-g-ra

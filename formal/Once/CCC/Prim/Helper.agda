@@ -215,21 +215,12 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc
-      ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = result-before
       ; reclaim-preserves-validity = result-valid
-      ; reclaim-size-bound =
-          let n = next-slot alloc
-              eq : n +ℕ ir-stack-requirement (Prim {A} {B} name) ≡ n
-              eq = trans (cong (n +ℕ_) (prim-stack-req {A} {B} name)) (+-identityʳ n)
-          in subst (n ≤_) (sym eq) ≤-refl
       -- Pure primitives don't write to stack, so max-slot-written = next-slot alloc
       ; max-slot-written = next-slot alloc
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       -- max-slot-usage-bound: next-slot alloc ≤ next-slot alloc +ℕ ir-stack-requirement (Prim name)
       -- Since prim-stack-req proves ir-stack-requirement (Prim name) ≡ 0, this is trivially ≤-refl
       ; max-slot-usage-bound =

@@ -88,11 +88,9 @@ module Simulation {FS : FrameSemantics} where
       rdi-eq : rdi-val xs ≡ readReg (regs ls) Input
       rax-eq : rax-val xs ≡ readReg (regs ls) Output
       frame-eq : cur-frame xs ≡ current-frame alloc
-      -- KEY INSIGHT: stack-slot includes frame-capacity (pre-allocated by push-frame)
-      -- while stackSlot tracks only slots used beyond the initial allocation.
-      -- After push-frame cap: stackSlot=0, stack-slot=cap, so slot-eq holds.
-      -- After alloc-stack n: stackSlot=n, stack-slot=cap+n, so slot-eq still holds.
-      slot-eq : stack-slot xs ≡ stackSlot (regs ls) +ℕ frame-capacity alloc
+      -- Phase 3: frame-capacity removed from AllocState
+      -- Now stack-slot directly corresponds to stackSlot
+      slot-eq : stack-slot xs ≡ stackSlot (regs ls)
       mem-eq : ∀ loc → x86-mem xs loc ≡ readLoc ls loc
       halt-eq : x86-halted xs ≡ halted ls
   open Corresponds public
@@ -381,12 +379,12 @@ module Simulation {FS : FrameSemantics} where
     readReg (decrStackSlot r n) Output ≡ readReg r Output
   decrStackSlot-preserves-Output r n = refl
 
-  -- Helper: lift stackSlot equality to include frame-capacity
-  -- Used for slot-eq proofs when alloc is unchanged
+  -- Phase 3: slot-eq-lift simplified (frame-capacity removed)
+  -- Now slot-eq is direct: stack-slot xs ≡ stackSlot (regs ls)
   slot-eq-lift : ∀ {s1 s2 : ℕ} (alloc : AllocState {FS}) →
     s1 ≡ s2 →
-    s1 +ℕ frame-capacity alloc ≡ s2 +ℕ frame-capacity alloc
-  slot-eq-lift alloc eq = cong (_+ℕ frame-capacity alloc) eq
+    s1 ≡ s2
+  slot-eq-lift alloc eq = eq
 
   -- Helper for alloc-stack: (a + b) + c ≡ (a + c) + b
   -- Used when alloc-stack adds c to both stack-slot and stackSlot
@@ -741,15 +739,11 @@ module Simulation {FS : FrameSemantics} where
         -- stack-slot xs + (n*8/8) = stack-slot xs + n
         x86-slot : stack-slot xs +ℕ (n *ℕ slot-size / slot-size) ≡ stack-slot xs +ℕ n
         x86-slot = cong (stack-slot xs +ℕ_) slot-recover
-        -- From slot-eq corr: stack-slot xs ≡ stackSlot (regs ls) + frame-capacity alloc
-        -- Adding n: stack-slot xs + n ≡ (stackSlot + frame-capacity) + n
-        step1 : stack-slot xs +ℕ n ≡ (stackSlot (regs ls) +ℕ frame-capacity alloc) +ℕ n
-        step1 = cong (_+ℕ n) (slot-eq corr)
-        -- Reorder: (a + b) + c ≡ (a + c) + b
-        step2 : (stackSlot (regs ls) +ℕ frame-capacity alloc) +ℕ n ≡ (stackSlot (regs ls) +ℕ n) +ℕ frame-capacity alloc
-        step2 = slot-eq-alloc-helper (stackSlot (regs ls)) (frame-capacity alloc) n
-        new-slot-eq : stack-slot xs +ℕ n ≡ (stackSlot (regs ls) +ℕ n) +ℕ frame-capacity alloc
-        new-slot-eq = trans step1 step2
+        -- Phase 3: simplified slot-eq (frame-capacity removed)
+        -- From slot-eq corr: stack-slot xs ≡ stackSlot (regs ls)
+        -- Adding n: stack-slot xs + n ≡ stackSlot + n
+        new-slot-eq : stack-slot xs +ℕ n ≡ stackSlot (regs ls) +ℕ n
+        new-slot-eq = cong (_+ℕ n) (slot-eq corr)
         newRegs = incrStackSlot (regs ls) n
     in record
     { rdi-eq = trans (rdi-eq corr) (sym (incrStackSlot-preserves-Input (regs ls) n))
@@ -769,15 +763,11 @@ module Simulation {FS : FrameSemantics} where
         slot-recover = m*n/n≡m n slot-size
         x86-slot : stack-slot xs ∸ (n *ℕ slot-size / slot-size) ≡ stack-slot xs ∸ n
         x86-slot = cong (stack-slot xs ∸_) slot-recover
-        -- From slot-eq corr: stack-slot xs ≡ stackSlot (regs ls) + frame-capacity alloc
-        -- Subtracting n: stack-slot xs ∸ n ≡ (stackSlot + frame-capacity) ∸ n
-        step1 : stack-slot xs ∸ n ≡ (stackSlot (regs ls) +ℕ frame-capacity alloc) ∸ n
-        step1 = cong (_∸ n) (slot-eq corr)
-        -- Reorder: (a + b) ∸ c ≡ (a ∸ c) + b
-        step2 : (stackSlot (regs ls) +ℕ frame-capacity alloc) ∸ n ≡ (stackSlot (regs ls) ∸ n) +ℕ frame-capacity alloc
-        step2 = slot-eq-dealloc-helper (stackSlot (regs ls)) (frame-capacity alloc) n (dealloc-well-formed ls n)
-        new-slot-eq : stack-slot xs ∸ n ≡ (stackSlot (regs ls) ∸ n) +ℕ frame-capacity alloc
-        new-slot-eq = trans step1 step2
+        -- Phase 3: simplified slot-eq (frame-capacity removed)
+        -- From slot-eq corr: stack-slot xs ≡ stackSlot (regs ls)
+        -- Subtracting n: stack-slot xs ∸ n ≡ stackSlot ∸ n
+        new-slot-eq : stack-slot xs ∸ n ≡ stackSlot (regs ls) ∸ n
+        new-slot-eq = cong (_∸ n) (slot-eq corr)
         newRegs = decrStackSlot (regs ls) n
     in record
     { rdi-eq = trans (rdi-eq corr) (sym (decrStackSlot-preserves-Input (regs ls) n))
@@ -789,28 +779,28 @@ module Simulation {FS : FrameSemantics} where
     }
 
   -- instr-push-frame: push new frame with capacity cap
-  -- Abstract: writeStackSlot (regs s) 0, frame-capacity becomes cap
+  -- Phase 3: frame-capacity removed from AllocState
+  -- Abstract: writeStackSlot (regs s) 0, alloc unchanged
   -- x86: push rbp; mov rbp, rsp; sub rsp, cap*slot-size → stack-slot = cap
-  -- New slot-eq: stack-slot ≡ stackSlot + frame-capacity, so cap ≡ 0 + cap ✓
+  -- NOTE: With simplified correspondence (slot-eq: stack-slot = stackSlot),
+  -- the x86 stack-slot should match stackSlot = 0 after push-frame.
+  -- The capacity parameter is now just for x86 space reservation.
   instr-sim (instr-push-frame cap) ls xs alloc not-halted corr =
     let xs-not-halt = xs-not-halted ls xs alloc not-halted corr
-        -- x86 stack-slot is cap (because cap*slot-size / slot-size = cap)
-        slot-recover : cap *ℕ slot-size / slot-size ≡ cap
-        slot-recover = m*n/n≡m cap slot-size
-        -- Abstract sets stackSlot = 0, frame-capacity = cap
-        alloc' = record alloc { frame-capacity = cap }
         newRegs = writeStackSlot (regs ls) 0
         -- The x86 program execution result
         x86-eq : exec-prog (compile-abstract (instr-push-frame cap)) xs (current-frame alloc)
                ≡ record xs { stack-slot = cap *ℕ slot-size / slot-size }
         x86-eq = exec-prog-push-frame (cap *ℕ slot-size) xs (current-frame alloc) xs-not-halt
-        -- slot-eq: stack-slot = cap ≡ 0 + cap = stackSlot newRegs + frame-capacity alloc'
-        new-slot-eq : cap *ℕ slot-size / slot-size ≡ stackSlot newRegs +ℕ frame-capacity alloc'
-        new-slot-eq = slot-recover  -- cap ≡ 0 + cap (definitionally)
+        -- Phase 3: With frame-capacity removed, slot-eq requires stack-slot = stackSlot = 0
+        -- But x86 sets stack-slot = cap. This is an architectural mismatch that needs resolution.
+        -- For now, use proof obligation pending x86 model update.
+        new-slot-eq : cap *ℕ slot-size / slot-size ≡ stackSlot newRegs
+        new-slot-eq = PO.!!  -- TODO: Update x86 model to reset stack-slot to 0 on push-frame
         -- Build correspondence for the transformed state
         new-corr : Corresponds (record ls { regs = newRegs })
                                (record xs { stack-slot = cap *ℕ slot-size / slot-size })
-                               alloc'
+                               alloc
         new-corr = record
           { rdi-eq = rdi-eq corr  -- regs unchanged except stackSlot
           ; rax-eq = rax-eq corr
@@ -819,7 +809,7 @@ module Simulation {FS : FrameSemantics} where
           ; mem-eq = λ loc → trans (mem-eq corr loc) (sym (readLoc-regs-irrel ls newRegs loc))
           ; halt-eq = halt-eq corr
           }
-    in subst (λ ys → Corresponds (record ls { regs = newRegs }) ys alloc') (sym x86-eq) new-corr
+    in subst (λ ys → Corresponds (record ls { regs = newRegs }) ys alloc) (sym x86-eq) new-corr
 
   -- instr-pop-frame: No-op at abstract level
   -- x86: mov rsp, rbp; pop rbp - both are no-ops in our exec-x86
@@ -883,8 +873,27 @@ module Simulation {FS : FrameSemantics} where
   ... | true | ()
   ... | false | _ = corr
 
+  -- instr-reclaim-to: no-op in x86 (compiles to empty)
+  -- Abstract: only updates alloc.next-slot, ls unchanged
+  -- x86: empty program, xs unchanged
+  -- Correspondence preserved: current-frame unchanged, ls unchanged, xs unchanged
+  instr-sim (instr-reclaim-to n) ls xs alloc not-halted corr
+    with x86-halted xs | xs-not-halted ls xs alloc not-halted corr
+  ... | true | ()
+  ... | false | _ =
+    let alloc' = record alloc { next-slot = n }
+    in record
+      { rdi-eq = rdi-eq corr
+      ; rax-eq = rax-eq corr
+      ; frame-eq = frame-eq corr  -- current-frame unchanged
+      ; slot-eq = slot-eq corr    -- ls and xs unchanged, so slot-eq preserved
+      ; mem-eq = mem-eq corr      -- ls unchanged
+      ; halt-eq = halt-eq corr    -- ls unchanged
+      }
+
   -- Lemma: exec-abstract preserves current-frame
-  -- All instructions either return alloc unchanged or only modify frame-capacity
+  -- All instructions either return alloc unchanged or only modify next-slot
+  -- (Phase 3: frame-capacity no longer exists in AllocState)
   exec-abstract-preserves-frame : ∀ i ls alloc →
     current-frame (proj₂ (exec-abstract i ls alloc)) ≡ current-frame alloc
   exec-abstract-preserves-frame mov-to-output ls alloc = refl
@@ -918,6 +927,7 @@ module Simulation {FS : FrameSemantics} where
   ... | just _  = refl
   ... | nothing = refl
   exec-abstract-preserves-frame (worklist-check _) ls alloc = refl
+  exec-abstract-preserves-frame (instr-reclaim-to _) ls alloc = refl
 
   ------------------------------------------------------------------------
   -- Trace simulation

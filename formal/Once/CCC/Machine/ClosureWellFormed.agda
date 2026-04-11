@@ -284,22 +284,23 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
         -- Note: capacity-preserved removed in Phase 3 (frame-capacity removed from AllocState)
         -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved instead
-        reclaimable-slot : ℕ
-        reclaim-monotone : next-slot alloc ≤ reclaimable-slot
-        -- Phase 6: Perfect scratch reclaim - scratch is fully cleared when done
-        reclaim-bounded : reclaimable-slot ≡ next-slot final-alloc
-        -- Note: fits parameter removed (frame-capacity removed from AllocState)
+        -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
+        --   With perfect reclaim, reclaimable-slot ≡ next-slot final-alloc, so:
+        --   - reclaim-monotone = slot-monotone
+        --   - reclaim-size-bound = slot-stays-in-budget
+        -- Result is BeforeFrontier relative to original alloc with advanced next-slot
+        -- (Needed for compositional proofs - can't be derived from result-before for heap results)
         reclaim-preserves-result :
-          BeforeFrontier (record alloc { next-slot = reclaimable-slot }) result-loc
+          BeforeFrontier (record alloc { next-slot = next-slot final-alloc }) result-loc
+        -- Validity preserved in reclaimed alloc state
         reclaim-preserves-validity :
-          ValidAtWF m (record alloc { next-slot = reclaimable-slot })
+          ValidAtWF m (record alloc { next-slot = next-slot final-alloc })
                     (eval primSem ir x) result-loc final-state
-        reclaim-size-bound : reclaimable-slot ≤ next-slot alloc +ℕ ir-stack-requirement ir
         -- High-water mark of slot allocation (maximum slot ever written)
         -- With reclamation, next-slot final-alloc may be < max slots actually written
         max-slot-written : ℕ
-        -- max-slot-written is at least reclaimable-slot
-        max-slot-geq-reclaim : reclaimable-slot ≤ max-slot-written
+        -- max-slot-written is at least next-slot final-alloc (was: reclaimable-slot)
+        max-slot-geq-final : next-slot final-alloc ≤ max-slot-written
         -- max-slot-written is bounded by input next-slot + ir-stack-requirement
         max-slot-usage-bound : max-slot-written ≤ next-slot alloc +ℕ ir-stack-requirement ir
         -- Stack discipline: execution stays within stack requirement budget
@@ -315,7 +316,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- This property enables pair's backup-slot preservation proof.
         --
         -- Returns a 3-way sum:
-        --   inj₁: IR doesn't allocate (reclaim = next-slot)
+        --   inj₁: IR doesn't allocate (final-alloc = input alloc)
         --   inj₂ (inj₁ proof): IR allocates and preserves the slot
         --   inj₂ (inj₂ tt): IR allocates but might not preserve (edge case in compose)
         --
@@ -326,7 +327,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
           halted s' ≡ false →
           readReg (regs s') Input ≡ input-loc →
           readLoc s' (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc →
-          (next-slot alloc ≡ reclaimable-slot) ⊎
+          (next-slot alloc ≡ next-slot final-alloc) ⊎
           ((readLoc (proj₁ (exec-trace trace s' alloc))
                    (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc) ⊎ ⊤)
         -- Trace slot bound: all stack writes are at slots ≥ next-slot alloc.

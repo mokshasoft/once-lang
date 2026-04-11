@@ -135,16 +135,11 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; frame-preserved = refl
       ; slot-monotone = m≤m+n (next-slot alloc) closure-slots
       ; heap-monotone = ≤-refl
-      -- Note: capacity-preserved removed in Phase 3
-      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
-      ; reclaimable-slot = next-slot alloc +ℕ closure-slots
-      ; reclaim-monotone = m≤m+n (next-slot alloc) closure-slots
-      ; reclaim-bounded = refl
+      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = reclaim-preserves-result'
       ; reclaim-preserves-validity = reclaim-preserves-validity'
-      ; reclaim-size-bound = +-monoʳ-≤ (next-slot alloc) closure-bound
       ; max-slot-written = next-slot alloc +ℕ closure-slots
-      ; max-slot-geq-reclaim = ≤-refl
+      ; max-slot-geq-final = ≤-refl
       ; max-slot-usage-bound = +-monoʳ-≤ (next-slot alloc) closure-bound
       -- slot-stays-in-budget: curry allocates closure-slots
       -- next-slot alloc' = next-slot alloc + closure-slots
