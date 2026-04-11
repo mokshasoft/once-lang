@@ -105,7 +105,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
            validityWF-alloc-advance; validityWF-with-bf-transfer;
            valid-μ-wf; valid-primitive-wf;
            valid-unit-wf; valid-int-wf; valid-float-wf; valid-str-wf; valid-buffer-wf;
-           valid-pair-wf; valid-inl-wf; valid-inr-wf)
+           valid-pair-wf; valid-inl-wf; valid-inr-wf;
+           irresult-mem-preserved)
 
   -- Import μLayerValid for layer validity
   open import Once.CCC.Machine.IR.MuValidity
@@ -1491,7 +1492,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- heap-preserved: Depends on Cata algebra - stack-only algebras preserve heap
         -- For algebras that allocate heap, this would need additional assumptions
         ; heap-preserved = SMP.!!
-        ; mem-preserved = IRResultAWF.mem-preserved-before rec-result
+        ; mem-preserved = irresult-mem-preserved rec-result
         -- Trace region bounds from IRResultAWF
         -- IRResultAWF uses max-slot-written as bound, which equals our max-slot-used
         ; trace-writes-above = IRResultAWF.trace-writes-above rec-result
@@ -3700,7 +3701,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
         -- Memory preservation composition
         layer-mem-pres = ProcessedLayerResult.mem-preserved layer-result
-        alg-mem-pres = IRResultAWF.mem-preserved-before alg-result
+        alg-mem-pres = irresult-mem-preserved alg-result
 
         mem-preserved-proof : ∀ loc → BeforeFrontier alloc loc →
           readLoc (IRResultAWF.final-state alg-result) loc ≡ readLoc s loc
@@ -3800,7 +3801,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
           ; frame-preserved = frame-preserved-proof
           ; slot-monotone = slot-mono-proof
           ; heap-monotone = heap-mono-proof
-          ; mem-preserved-before = mem-preserved-proof
+          -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
           ; reclaimable-slot = IRResultAWF.reclaimable-slot alg-result
           ; reclaim-monotone = ≤-trans layer-slot-mono (IRResultAWF.reclaim-monotone alg-result)
           ; reclaim-bounded = IRResultAWF.reclaim-bounded alg-result

@@ -176,7 +176,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; slot-monotone = slot-mono
       ; heap-monotone = heap-mono
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved-compose
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = compose-reclaim
       ; reclaim-monotone = compose-reclaim-monotone
       ; reclaim-bounded = compose-reclaim-bounded
@@ -304,19 +304,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       heap-mono : next-heap-ref alloc ≤ next-heap-ref alloc₂
       heap-mono = IRResultAWF.heap-monotone result-g
 
-      ------------------------------------------------------------------------
-      -- Memory preservation
-      ------------------------------------------------------------------------
-      mem-preserved-compose : ∀ loc → BeforeFrontier alloc loc → readLoc s-final loc ≡ readLoc s loc
-      mem-preserved-compose loc bf =
-        let bf-reclaimed : BeforeFrontier alloc₁-reclaimed loc
-            bf-reclaimed = frontier-monotone alloc alloc₁-reclaimed refl
-                             (IRResultAWF.reclaim-monotone result-f) ≤-refl loc bf
-            step-g = IRResultAWF.mem-preserved-before result-g loc bf-reclaimed
-            step-reg = readLoc-stackMem-eq s₁' s₁ loc refl refl
-            step-f = IRResultAWF.mem-preserved-before result-f loc bf
-        in trans (cong (λ st → readLoc st loc) s-final-eq)
-                 (trans step-g (trans step-reg step-f))
+      -- Note: mem-preserved-compose removed in Phase 4 (field no longer in IRResultAWF)
+      -- Use irresult-mem-preserved to derive preservation when needed
 
       ------------------------------------------------------------------------
       -- Reclamation

@@ -353,7 +353,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved-inl
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
       ; reclaim-bounded = ≤-refl
@@ -509,7 +509,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = slot-monotone-inl
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved-inl
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
       ; reclaim-bounded = ≤-refl
@@ -679,7 +679,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved-inr
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
       ; reclaim-bounded = ≤-refl
@@ -825,7 +825,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = slot-monotone-inr
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved-inr
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
       ; reclaim-bounded = ≤-refl
@@ -1000,8 +1000,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = IRResultAWF.slot-monotone result-f
       ; heap-monotone = IRResultAWF.heap-monotone result-f
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = λ loc bf → trans (IRResultAWF.mem-preserved-before result-f loc bf)
-                                                (mem-setup-eq loc)
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = IRResultAWF.reclaimable-slot result-f
       ; reclaim-monotone = IRResultAWF.reclaim-monotone result-f
       ; reclaim-bounded = IRResultAWF.reclaim-bounded result-f
@@ -1121,8 +1120,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = IRResultAWF.slot-monotone result-g
       ; heap-monotone = IRResultAWF.heap-monotone result-g
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = λ loc bf → trans (IRResultAWF.mem-preserved-before result-g loc bf)
-                                                (mem-setup-eq loc)
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = IRResultAWF.reclaimable-slot result-g
       ; reclaim-monotone = IRResultAWF.reclaim-monotone result-g
       ; reclaim-bounded = IRResultAWF.reclaim-bounded result-g
@@ -1286,7 +1284,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc'
       ; reclaim-monotone = slot-mono
       ; reclaim-bounded = ≤-refl
@@ -1406,7 +1404,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
@@ -1494,7 +1492,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
@@ -1578,7 +1576,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc'
       ; reclaim-monotone = slot-mono
       ; reclaim-bounded = ≤-refl

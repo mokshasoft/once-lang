@@ -283,8 +283,7 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         slot-monotone : next-slot alloc ≤ next-slot final-alloc
         heap-monotone : next-heap-ref alloc ≤ next-heap-ref final-alloc
         -- Note: capacity-preserved removed in Phase 3 (frame-capacity removed from AllocState)
-        mem-preserved-before : ∀ loc → BeforeFrontier alloc loc →
-          readLoc final-state loc ≡ readLoc s loc
+        -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved instead
         reclaimable-slot : ℕ
         reclaim-monotone : next-slot alloc ≤ reclaimable-slot
         reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
@@ -1403,3 +1402,26 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
   validityWF-trace-preserves alloc trace v loc s loc-bf valid twa tnhw =
     validityWF-mem-preserved v loc s (proj₁ (exec-trace trace s alloc)) loc-bf
       (derive-mem-preserved alloc trace s twa tnhw) valid
+
+  ------------------------------------------------------------------------
+  -- Phase 4: Derive mem-preserved from IRResultAWF
+  --
+  -- This function replaces the stored mem-preserved-before field.
+  -- It derives preservation from trace-writes-above and trace-no-heap-writes,
+  -- using trace-correct to translate from exec-trace to final-state.
+  ------------------------------------------------------------------------
+
+  irresult-mem-preserved : ∀ {m A B} {ir : IR A B} {x : ⟦ A ⟧}
+    {s : LocState FS} {alloc : AllocState {FS}}
+    (result : IRResultAWF m ir x s alloc) →
+    (loc : ValueLocation FS) →
+    BeforeFrontier alloc loc →
+    readLoc (IRResultAWF.final-state result) loc ≡ readLoc s loc
+  irresult-mem-preserved {s = s} {alloc = alloc} result loc bf =
+    subst (λ fs → readLoc fs loc ≡ readLoc s loc)
+      (IRResultAWF.trace-correct result)
+      (derive-mem-preserved alloc (IRResultAWF.trace result) s
+        (IRResultAWF.trace-writes-above result)
+        (IRResultAWF.trace-no-heap-writes result)
+        loc bf)
+    where open import Relation.Binary.PropositionalEquality using (subst)

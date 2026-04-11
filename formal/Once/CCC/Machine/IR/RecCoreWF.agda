@@ -348,7 +348,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc'
       ; reclaim-monotone = slot-mono
       ; reclaim-bounded = ≤-refl
@@ -456,7 +456,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       ; slot-monotone = slot-mono
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc'
       ; reclaim-monotone = slot-mono
       ; reclaim-bounded = ≤-refl

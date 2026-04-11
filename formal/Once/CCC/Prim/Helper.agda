@@ -18,7 +18,7 @@
 module Once.CCC.Prim.Helper where
 
 open import Data.Nat using (ℕ; _≤_; z≤n; s≤s) renaming (_+_ to _+ℕ_)
-open import Data.Nat.Properties using (≤-refl; ≤-trans; +-identityʳ)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; +-identityʳ; m≤m+n)
 open import Data.Bool using (false)
 open import Data.Product using (_×_; _,_; proj₁; ∃; ∃-syntax)
 open import Data.Unit using (⊤; tt)
@@ -45,7 +45,7 @@ open import Once.CCC.Eval using (PrimSem; evalPrim)
 
 module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   open import Once.CCC.Machine.Allocation
-    using (AllocState; current-frame; next-slot; next-heap-ref; frame-capacity)
+    using (AllocState; current-frame; next-slot; next-heap-ref)
   open import Once.CCC.Machine.Allocation
     using (module FrontierInvariant)
   open FrontierInvariant {FS}
@@ -72,8 +72,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       -- Not halted
       not-halted : halted s-after ≡ false
 
-      -- Capacity unchanged (frame not resized)
-      capacity-eq : frame-capacity alloc-after ≡ frame-capacity alloc-before
+      -- Note: capacity-eq removed in Phase 3 (frame-capacity removed from AllocState)
 
       -- Prior memory preserved: BeforeFrontier locations unchanged
       prior-preserved : ∀ loc → BeforeFrontier alloc-before loc →
@@ -142,7 +141,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   pure-preserves sem x input-loc s alloc not-halted = record
     { frame-eq = refl
     ; not-halted = not-halted
-    ; capacity-eq = refl
+    -- Note: capacity-eq removed in Phase 3
     ; prior-preserved = λ loc bf →
         readLoc-stackMem-eq
           (mkLocState (writeReg (regs s) Output input-loc) (stackMem s) (heapMem s) (halted s))
@@ -160,12 +159,10 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
     using (ValidAtWF; IRResultAWF; valid-primitive-wf)
-  open import Once.CCC.IR.Stack using (ir-stack-requirement; prim-stack-req)
+  open import Once.CCC.IR.Stack using (ir-stack-requirement; ir-scratch-requirement; prim-stack-req)
 
   import Once.CCC.Machine.SMPrimitives as SMP
   open SMP.TracePrimitives {FS}
-  open SMP using (TracePreservesCapacity; tpc-[]; tpc-∷;
-                  InstrPreservesCapacity; ipc-mov-to-output)
   open import Once.CCC.Machine.SMCore using (module AbstractExec)
   open AbstractExec {FS} using (exec-trace)
 
@@ -218,15 +215,30 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      ; capacity-preserved = refl
-      ; mem-preserved-before = λ loc bf →
-          readLoc-stackMem-eq final-state s loc refl refl
+      -- Note: capacity-preserved removed in Phase 3
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
       ; reclaim-bounded = ≤-refl
-      ; reclaim-preserves-result = λ _ → result-before
-      ; reclaim-preserves-validity = λ _ → result-valid
+      ; reclaim-preserves-result = result-before
+      ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound =
+          let n = next-slot alloc
+              eq : n +ℕ ir-stack-requirement (Prim {A} {B} name) ≡ n
+              eq = trans (cong (n +ℕ_) (prim-stack-req {A} {B} name)) (+-identityʳ n)
+          in subst (n ≤_) (sym eq) ≤-refl
+      -- Pure primitives don't write to stack, so max-slot-written = next-slot alloc
+      ; max-slot-written = next-slot alloc
+      ; max-slot-geq-reclaim = ≤-refl
+      -- max-slot-usage-bound: next-slot alloc ≤ next-slot alloc +ℕ ir-stack-requirement (Prim name)
+      -- Since prim-stack-req proves ir-stack-requirement (Prim name) ≡ 0, this is trivially ≤-refl
+      ; max-slot-usage-bound =
+          let n = next-slot alloc
+              eq : n +ℕ ir-stack-requirement (Prim {A} {B} name) ≡ n
+              eq = trans (cong (n +ℕ_) (prim-stack-req {A} {B} name)) (+-identityʳ n)
+          in subst (n ≤_) (sym eq) ≤-refl
+      -- slot-stays-in-budget: final = input for pure primitives
+      ; slot-stays-in-budget =
           let n = next-slot alloc
               eq : n +ℕ ir-stack-requirement (Prim {A} {B} name) ≡ n
               eq = trans (cong (n +ℕ_) (prim-stack-req {A} {B} name)) (+-identityʳ n)
@@ -236,7 +248,14 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       ; trace-slot-reads-above = tt
       ; trace-writes-below = tt
       ; trace-slot-reads-below = tt
-      ; trace-preserves-capacity = tpc-∷ ipc-mov-to-output tpc-[]
+      -- scratch-bounded: max-slot-written = next-slot alloc = next-slot final-alloc
+      -- ir-scratch-requirement (Prim name) = 0, so bound is n +ℕ 0 = n
+      ; scratch-bounded =
+          let n = next-slot alloc
+              eq : n +ℕ ir-scratch-requirement (Prim {A} {B} name) ≡ n
+              eq = trans (cong (n +ℕ_) (prim-stack-req {A} {B} name)) (+-identityʳ n)
+          in subst (n ≤_) (sym eq) ≤-refl
+      -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt
       ; trace-preserves-halted = tph-∷ iph-mov-to-output tph-[]
       }

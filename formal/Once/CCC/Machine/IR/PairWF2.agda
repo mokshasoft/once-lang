@@ -68,7 +68,8 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
            validityWF-mem-only; validityWF-mem-preserved;
            validityWF-mem-preserved-in-regions;
            validityWF-frontier-advance;
-           validityWF-trace-preserves)
+           validityWF-trace-preserves;
+           irresult-mem-preserved)
 
   ------------------------------------------------------------------------
   -- run-pair: Main implementation
@@ -100,7 +101,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ; slot-monotone = slot-monotone-pair
       ; heap-monotone = ≤-refl
       -- Note: capacity-preserved removed in Phase 3
-      ; mem-preserved-before = mem-preserved-pair
+      -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = pair-reclaim
       ; reclaim-monotone = pair-reclaim-monotone
       ; reclaim-bounded = ≤-refl
@@ -209,7 +210,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- Input validity at s₁ (memory preserved through f-trace for input-loc)
       input-valid-wf-s1 : ValidAtWF mIn alloc x input-loc s₁
       input-valid-wf-s1 = validityWF-mem-preserved x input-loc s s₁ input-before
-                            (λ loc bf → IRResultAWF.mem-preserved-before result-f loc (bf-to-after-pair-slots loc bf))
+                            (λ loc bf → irresult-mem-preserved result-f loc (bf-to-after-pair-slots loc bf))
                             input-valid-wf
 
       input-valid-wf-at-reclaim-f : ValidAtWF mIn alloc-after-f-reclaim x input-loc s₁
