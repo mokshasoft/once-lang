@@ -89,7 +89,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = input-before
       ; reclaim-preserves-validity = valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
@@ -175,7 +175,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = fst-before
       ; reclaim-preserves-validity = fst-valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
@@ -275,7 +275,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = snd-before
       ; reclaim-preserves-validity = snd-valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
@@ -375,7 +375,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = input-before
       ; reclaim-preserves-validity = valid-unit-wf
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
@@ -457,7 +457,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = input-before
       ; reclaim-preserves-validity = valid-s'
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
@@ -542,7 +542,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = input-before
       ; reclaim-preserves-validity = valid-eff
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0

@@ -104,7 +104,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = pair-reclaim
       ; reclaim-monotone = pair-reclaim-monotone
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = pair-before
       ; reclaim-preserves-validity = pair-valid-wf-final
       ; reclaim-size-bound = pair-reclaim-size-bound

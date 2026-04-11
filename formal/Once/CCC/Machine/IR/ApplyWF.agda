@@ -199,7 +199,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc +ℕ pair-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) pair-slots
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = reclaim-preserves-result'
       ; reclaim-preserves-validity = reclaim-preserves-validity'
       ; reclaim-size-bound = ≤-refl

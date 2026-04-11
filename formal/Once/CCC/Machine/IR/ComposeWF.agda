@@ -317,7 +317,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       compose-reclaim-monotone = ≤-trans (IRResultAWF.reclaim-monotone result-f)
                                          (IRResultAWF.reclaim-monotone result-g)
 
-      compose-reclaim-bounded : compose-reclaim ≤ next-slot alloc₂
+      compose-reclaim-bounded : compose-reclaim ≡ next-slot alloc₂
       compose-reclaim-bounded = IRResultAWF.reclaim-bounded result-g
 
       -- Note: fits parameter removed in Phase 3

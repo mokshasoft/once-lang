@@ -219,7 +219,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = result-before
       ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound =

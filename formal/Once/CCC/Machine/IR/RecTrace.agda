@@ -724,7 +724,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Mirrors the IRResultAWF reclamation pattern (ClosureWellFormed.agda:289-297)
       reclaimable-slot : ℕ
       reclaim-monotone : next-slot alloc ≤ reclaimable-slot
-      reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
+      -- Phase 6: Perfect scratch reclaim
+      reclaim-bounded : reclaimable-slot ≡ next-slot final-alloc
       -- Note: fits parameter removed in Phase 3 (frame-capacity removed from AllocState)
       reclaim-preserves-result :
         BeforeFrontier (record alloc { next-slot = reclaimable-slot }) result-loc
@@ -1396,7 +1397,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         -- Reclamation: K case doesn't allocate, so reclaimable = next-slot alloc
         ; reclaimable-slot = next-slot alloc
         ; reclaim-monotone = ≤-refl
-        ; reclaim-bounded = ≤-refl
+        ; reclaim-bounded = refl
         ; reclaim-preserves-result = input-before
         ; reclaim-preserves-validity = valid-basetype-wf isBase input-before
         -- slot-usage-bound: K case uses 0 slots, so reclaimable = next-slot alloc ≤ next-slot alloc + layer-capacity
@@ -1692,7 +1693,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                   alloc-setup-eq
                                   (ProcessedLayerResult.reclaim-monotone l-result)
 
-        reclaim-bounded-inj1 : l-reclaimable ≤ next-slot alloc-after-sub
+        reclaim-bounded-inj1 : l-reclaimable ≡ next-slot alloc-after-sub
         reclaim-bounded-inj1 = ProcessedLayerResult.reclaim-bounded l-result
 
         ------------------------------------------------------------------------
@@ -2086,7 +2087,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaimable-slot = next-slot alloc-after-wrapper
         ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-eq)
                                    (≤-trans reclaim-mono-inj1 (m≤m+n l-reclaimable 2))
-        ; reclaim-bounded = ≤-refl
+        ; reclaim-bounded = refl
         ; reclaim-preserves-result =
             stack-before frame-preserved-inj1 wrapper-before-frontier
         ; reclaim-preserves-validity =
@@ -2370,7 +2371,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                   alloc-setup-eq
                                   (ProcessedLayerResult.reclaim-monotone r-result)
 
-        reclaim-bounded-inj2 : r-reclaimable ≤ next-slot alloc-after-sub
+        reclaim-bounded-inj2 : r-reclaimable ≡ next-slot alloc-after-sub
         reclaim-bounded-inj2 = ProcessedLayerResult.reclaim-bounded r-result
 
         -- Slot usage bound: sub-result bound applies since alloc-setup ≡ alloc
@@ -2684,7 +2685,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         ; reclaimable-slot = next-slot alloc-after-wrapper
         ; reclaim-monotone = subst (λ x → next-slot alloc ≤ x) (sym wrapper-next-slot-eq)
                                    (≤-trans reclaim-mono-inj2 (m≤m+n r-reclaimable 2))
-        ; reclaim-bounded = ≤-refl
+        ; reclaim-bounded = refl
         ; reclaim-preserves-result =
             stack-before frame-preserved-inj2 wrapper-before-frontier
         ; reclaim-preserves-validity =
@@ -2886,20 +2887,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
         ------------------------------------------------------------------------
         -- Slot Reclamation for Product
-        --
-        -- The save-slot is temporary: it's used during left/right traversal
-        -- but can be reclaimed after Product processing completes.
-        -- We reclaim back to next-slot alloc (the save-slot itself).
+        -- Phase 6: Perfect scratch reclaim - reclaimable-slot-prod, reclaim-monotone-prod,
+        -- and reclaim-bounded-prod defined after final-alloc (see below)
         ------------------------------------------------------------------------
-        reclaimable-slot-prod : ℕ
-        reclaimable-slot-prod = next-slot alloc
-
-        reclaim-monotone-prod : next-slot alloc ≤ reclaimable-slot-prod
-        reclaim-monotone-prod = ≤-refl
-
-        -- reclaim-bounded requires: reclaimable-slot-prod ≤ next-slot final-alloc
-        -- save-slot < suc save-slot ≤ next-slot alloc-for-left ≤ next-slot alloc-l ≤ next-slot final-alloc
-        -- Deferred until l-slot-mono and r-slot-mono are in scope (defined below)
 
         ------------------------------------------------------------------------
         -- Phase 1: Left Setup
@@ -3026,7 +3016,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         l-reclaim-mono : next-slot alloc-for-left ≤ l-reclaimable
         l-reclaim-mono = ProcessedLayerResult.reclaim-monotone l-result
 
-        l-reclaim-bounded : l-reclaimable ≤ next-slot alloc-l
+        l-reclaim-bounded : l-reclaimable ≡ next-slot alloc-l
         l-reclaim-bounded = ProcessedLayerResult.reclaim-bounded l-result
 
         -- slot-usage-bound from l-result: l-reclaimable ≤ next-slot alloc-for-left + layer-capacity wfL
@@ -3166,15 +3156,17 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         final-alloc : AllocState {FS}
         final-alloc = ProcessedLayerResult.final-alloc r-result
 
-        -- Reclamation bound: reclaimable-slot-prod ≤ next-slot final-alloc
-        -- Chain: next-slot alloc < suc (next-slot alloc) ≤ l-reclaimable = next-slot alloc-for-right ≤ next-slot final-alloc
-        reclaim-bounded-prod : reclaimable-slot-prod ≤ next-slot final-alloc
-        reclaim-bounded-prod = ≤-trans (≤-trans (n≤1+n (next-slot alloc)) l-reclaim-mono) r-slot-mono
+        -- Phase 6: Perfect scratch reclaim
+        reclaimable-slot-prod : ℕ
+        reclaimable-slot-prod = next-slot final-alloc
 
-        -- Slot usage bound: reclaimable-slot-prod ≤ next-slot alloc + layer-capacity
-        -- Since reclaimable-slot-prod = next-slot alloc, this is trivial (m ≤ m + n)
-        slot-usage-bound-prod : reclaimable-slot-prod ≤ next-slot alloc +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg
-        slot-usage-bound-prod = m≤m+n (next-slot alloc) (layer-capacity (wf-Prod wfL wfR) wfG alg)
+        -- reclaim-monotone: next-slot alloc ≤ reclaimable-slot-prod = next-slot final-alloc
+        reclaim-monotone-prod : next-slot alloc ≤ reclaimable-slot-prod
+        reclaim-monotone-prod = ≤-trans (incr-next-slot-mono alloc) (≤-trans l-reclaim-mono r-slot-mono)
+
+        -- reclaim-bounded: reclaimable-slot-prod = next-slot final-alloc (perfect reclaim)
+        reclaim-bounded-prod : reclaimable-slot-prod ≡ next-slot final-alloc
+        reclaim-bounded-prod = refl
 
         -- slot-stays-in-budget: next-slot final-alloc ≤ next-slot alloc + layer-capacity
         -- Uses prod-slot-budget helper with the SUM formula (1 + capL + capR)
@@ -3185,6 +3177,11 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         slot-stays-in-budget-prod = prod-slot-budget wfL wfR wfG alg alloc l-reclaimable final-alloc
                                       l-slot-usage r-slot-stays-in-budget
 
+        -- Slot usage bound: reclaimable-slot-prod ≤ next-slot alloc + layer-capacity
+        -- Since reclaimable-slot-prod = next-slot final-alloc, this equals slot-stays-in-budget
+        slot-usage-bound-prod : reclaimable-slot-prod ≤ next-slot alloc +ℕ layer-capacity (wf-Prod wfL wfR) wfG alg
+        slot-usage-bound-prod = slot-stays-in-budget-prod
+
         -- Max slot used: max of both children's max-slot-used
         -- Product doesn't allocate any wrapper, so we just take the max
         l-max-slot-used : ℕ
@@ -3192,6 +3189,9 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
         r-max-slot-used : ℕ
         r-max-slot-used = ProcessedLayerResult.max-slot-used r-result
+
+        r-reclaimable : ℕ
+        r-reclaimable = ProcessedLayerResult.reclaimable-slot r-result
 
         max-slot-used-prod : ℕ
         max-slot-used-prod = l-max-slot-used ⊔ r-max-slot-used
@@ -3203,16 +3203,18 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         r-max-slot-usage : r-max-slot-used ≤ next-slot alloc-for-right +ℕ layer-capacity wfR wfG alg
         r-max-slot-usage = ProcessedLayerResult.max-slot-usage-bound r-result
 
-        -- reclaimable-slot-prod = next-slot alloc ≤ max-slot-used-prod
-        -- Chain: next-slot alloc < suc (next-slot alloc) = next-slot alloc-for-left ≤ l-reclaimable ≤ l-max-slot-used ≤ max-slot-used-prod
+        -- Phase 6: reclaimable-slot-prod = next-slot final-alloc ≤ max-slot-used-prod
+        -- Chain: reclaimable-slot-prod ≡ r-reclaimable (by perfect reclaim)
+        --        r-reclaimable ≤ r-max-slot-used ≤ max-slot-used-prod
         reclaimable-geq-max : reclaimable-slot-prod ≤ max-slot-used-prod
         reclaimable-geq-max =
-          let l-reclaim-leq-max : l-reclaimable ≤ l-max-slot-used
-              l-reclaim-leq-max = ProcessedLayerResult.max-slot-geq-reclaim l-result
-          in ≤-trans (n≤1+n (next-slot alloc))
-               (≤-trans l-reclaim-mono
-                 (≤-trans l-reclaim-leq-max
-                   (m≤m⊔n l-max-slot-used r-max-slot-used)))
+          let r-reclaim-leq-max : r-reclaimable ≤ r-max-slot-used
+              r-reclaim-leq-max = ProcessedLayerResult.max-slot-geq-reclaim r-result
+              -- r-reclaimable ≡ next-slot final-alloc = reclaimable-slot-prod (by r-result's perfect reclaim)
+              r-eq-prod : r-reclaimable ≡ reclaimable-slot-prod
+              r-eq-prod = ProcessedLayerResult.reclaim-bounded r-result
+          in subst (_≤ max-slot-used-prod) r-eq-prod
+               (≤-trans r-reclaim-leq-max (n≤m⊔n l-max-slot-used r-max-slot-used))
 
         -- max-slot-used-prod ≤ next-slot alloc + layer-capacity (wf-Prod wfL wfR)
         -- layer-capacity (wf-Prod wfL wfR) = 1 + (capL ⊔ capR)

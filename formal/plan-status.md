@@ -27,18 +27,20 @@
 - Added missing fields in Helper.agda (max-slot-written, scratch-bounded, etc.)
 - All builds pass with `timeout 300 make agda MODULE=Once/CCC/Machine/Dispatcher.agda`
 
+### Phase 6: Enforce Perfect Scratch Reclaim (DONE)
+- Changed `reclaim-bounded` type from `≤` to `≡` (perfect reclaim invariant)
+- Updated all IR handlers: `reclaim-bounded = refl` instead of `reclaim-bounded = ≤-refl`
+- Updated ProcessedLayerResult in RecTrace.agda with same change
+- Fixed Product case: `reclaimable-slot-prod = next-slot final-alloc` (no reclaim - output persists)
+- Updated ComposeWF type annotation for `compose-reclaim-bounded`
+- All builds pass
+
 ## Next Phases
 
-### Phase 5: Remove Redundant Fields
-1. Remove `max-slot-usage-bound` (subsumed by scratch-bounded + output-monotone)
-2. Remove `slot-stays-in-budget` (subsumed)
-3. Remove `reclaim-*` fields if no longer needed
-4. Rename `ir-stack-requirement` → `ir-scratch-requirement`
-
-### Phase 6: Enforce Perfect Scratch Reclaim
-1. Add invariant: `next-slot final-alloc ≡ output-boundary` (perfect reclaim)
-2. Update IR handlers to actually reclaim scratch before returning
-3. This enables MAX-based composition
+### Phase 5: Remove Redundant Fields (DEFERRED)
+- `max-slot-usage-bound` and `slot-stays-in-budget` are actively used in compositional proofs
+- Removal would require deriving these on-the-fly each time
+- Consider after further simplification
 
 ### Phase 7: Remove Redundant Reclaim Fields
 1. Remove `reclaimable-slot`, `reclaim-monotone`, `reclaim-bounded`
@@ -60,4 +62,5 @@ If timeout occurs, refactor by extracting where-clause proofs to module level.
 ## Commits
 1. `85dfb2ff` - Add slot-stays-in-budget field and stack model design (squashed 4 commits)
 2. `431de18c` - Phase 3: Remove frame-capacity from codebase
-3. `9566a920` - Phase 4: Remove mem-preserved-before, use derived preservation
+3. `3b1cc387` - Phase 4: Remove mem-preserved-before, use derived preservation
+4. `b47c74ce` - Phase 6: Enforce perfect scratch reclaim

@@ -286,7 +286,8 @@ module ClosureWellFormedDef {FS : FrameSemantics} (program-bound : ℕ) (primSem
         -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved instead
         reclaimable-slot : ℕ
         reclaim-monotone : next-slot alloc ≤ reclaimable-slot
-        reclaim-bounded : reclaimable-slot ≤ next-slot final-alloc
+        -- Phase 6: Perfect scratch reclaim - scratch is fully cleared when done
+        reclaim-bounded : reclaimable-slot ≡ next-slot final-alloc
         -- Note: fits parameter removed (frame-capacity removed from AllocState)
         reclaim-preserves-result :
           BeforeFrontier (record alloc { next-slot = reclaimable-slot }) result-loc

@@ -356,7 +356,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = inl-reclaim-preserves-result
       ; reclaim-preserves-validity = inl-reclaim-preserves-validity
       ; reclaim-size-bound = reclaim-size-bound-inl
@@ -512,7 +512,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = inl-reclaim-preserves-result
       ; reclaim-preserves-validity = inl-reclaim-preserves-validity
       ; reclaim-size-bound = reclaim-size-bound-inl
@@ -682,7 +682,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = inr-reclaim-preserves-result
       ; reclaim-preserves-validity = inr-reclaim-preserves-validity
       ; reclaim-size-bound = reclaim-size-bound-inr
@@ -828,7 +828,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc +ℕ sum-slots
       ; reclaim-monotone = m≤m+n (next-slot alloc) sum-slots
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = inr-reclaim-preserves-result
       ; reclaim-preserves-validity = inr-reclaim-preserves-validity
       ; reclaim-size-bound = reclaim-size-bound-inr
@@ -1287,7 +1287,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc'
       ; reclaim-monotone = slot-mono
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = result-bf
       ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound = reclaim-bound
@@ -1407,7 +1407,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = input-before
       ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
@@ -1495,7 +1495,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc
       ; reclaim-monotone = ≤-refl
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = input-before
       ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound = m≤m+n (next-slot alloc) 0
@@ -1579,7 +1579,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       -- Note: mem-preserved-before removed in Phase 4 - use irresult-mem-preserved
       ; reclaimable-slot = next-slot alloc'
       ; reclaim-monotone = slot-mono
-      ; reclaim-bounded = ≤-refl
+      ; reclaim-bounded = refl
       ; reclaim-preserves-result = result-bf
       ; reclaim-preserves-validity = result-valid
       ; reclaim-size-bound = reclaim-bound
