@@ -4,6 +4,25 @@
 
 This document describes the stack layout strategy for IR execution, focusing on how composition handles statically-known and runtime-dependent output sizes.
 
+## Categorical Layers
+
+The IR is built from successive categorical extensions. Each layer adds structure:
+
+| Layer | Name | Morphisms |
+|-------|------|-----------|
+| 0 | Category | `id`, `∘` |
+| 1 | Products | `⟨_,_⟩`, `fst`, `snd` |
+| 2 | Coproducts | `inl`, `inr`, `[_,_]` |
+| 3 | Terminal/Initial | `terminal`, `initial` |
+| 4 | Exponentials | `curry`, `apply` |
+| 5 | Initial Algebras | `In`, `cata` |
+| 6 | Final Coalgebras | `Out`, `ana` |
+
+- **Layers 0–2**: Cartesian Category
+- **Layers 0–4**: Cartesian Closed Category (CCC)
+- **Layers 0–5**: CCC with Initial Algebras
+- **Layers 0–6**: CCC with Initial Algebras and Final Coalgebras
+
 ## Terminology
 
 - **Frontier**: The boundary in the stack where everything below is "real" output data, and everything above is scratch space.
