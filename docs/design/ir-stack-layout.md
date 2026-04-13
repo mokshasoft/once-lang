@@ -12,7 +12,7 @@ This document describes the stack layout strategy for IR execution, focusing on 
 - **Runtime-dependent size**: Output whose size depends on input data, only known at runtime. Determined by the output type: recursive types (involving μ) have runtime-dependent size.
 - **Functor map**: A morphism f : F A → F B of the form `fmap h` for some h : A → B. Applies h independently to each element in the structure. Output[i] depends only on input[i], enabling parallel execution.
 - **Size-preserving functor map**: A functor map where size(A) = size(B). Enables in-place overwrite: since each element transforms independently and the output fits in the input's space, we can overwrite as we go.
-- **Linear morphism**: A morphism that reads each input exactly once. Enables reclamation: after f consumes g's output, that space is dead and can be reclaimed. Note: linearity alone does not enable in-place overwrite (see functor map).
+- **Linear morphism**: A morphism that reads each input exactly once. Enables reclamation: after g consumes f's output, that space is dead and can be reclaimed. Note: linearity alone does not enable in-place overwrite (see functor map).
 
 ## Core Principles
 
@@ -20,13 +20,15 @@ This document describes the stack layout strategy for IR execution, focusing on 
 2. **Output at frontier**: Each IR concatenates its output to the frontier and advances it.
 3. **Linearity**: Intermediate results are consumed exactly once, enabling reclamation.
 
-## Compose: `(f ∘ g)(x)` = `f(g(x))`
+## Compose: `(g ∘ f)(x)` = `g(f(x))`
 
-Legend: `O` = earlier output, `G` = g output, `F` = f output, `^` = frontier
+Legend: `O` = earlier output, `F` = f output, `G` = g output, `^` = frontier
+
+Here `f` runs first (inner), `g` runs second (outer). This matches the standard convention where alphabetical order corresponds to execution order.
 
 The fundamental cases depend on whether `f` and `g` have statically-known or runtime-dependent output sizes.
 
-### Case 1: f static, g static (Optimal)
+### Case 1: g static, f static (Optimal)
 
 Both output sizes known at compile time.
 
@@ -35,59 +37,59 @@ Before compose:
 OOOOOOOOOO
           ^ frontier
 
-During (F reserved at frontier, G in scratch):
-OOOOOOOOOOFFFFF GGGGG
+During (G reserved at frontier, F in scratch):
+OOOOOOOOOOGGGGG FFFFF
           ^    ^ frontier
 
-After (G reclaimed):
-OOOOOOOOOOFFFFF
-          ^    ^ frontier
-```
-
-We reserve space for `f`'s output at frontier. `g` writes in scratch above. `g` is reclaimed.
-
-### Case 2: f static, g runtime (Optimal)
-
-`f`'s size known, `g`'s size runtime-dependent.
-
-```
-Before compose:
-OOOOOOOOOO
-          ^ frontier
-
-During (F reserved at frontier, G in scratch):
-OOOOOOOOOOFFFFF GGG...
-          ^    ^ frontier (G size unknown, but in scratch)
-
-After (G reclaimed):
-OOOOOOOOOOFFFFF
-          ^    ^ frontier
-```
-
-Since `f`'s size is known, we reserve space for it. `g` writes in scratch (even though `g`'s size is unknown, scratch can grow). `g` is reclaimed.
-
-### Case 3: f runtime, g static (Suboptimal)
-
-`f`'s size runtime-dependent, `g`'s size known.
-
-```
-Before compose:
-OOOOOOOOOO
-          ^ frontier
-
-After g (G committed at frontier):
+After (F reclaimed):
 OOOOOOOOOOGGGGG
           ^    ^ frontier
-
-After f (F after G):
-OOOOOOOOOOGGGGG FFF...
-          ^           ^ frontier
-          (G is dead, wasted space)
 ```
 
-We can't reserve space for `f` (unknown size). `g` must commit at frontier. `f` writes after `g`. `g` is dead but stuck below frontier.
+We reserve space for `g`'s output at frontier. `f` writes in scratch above. `f` is reclaimed.
 
-### Case 4: f runtime, g runtime (Suboptimal)
+### Case 2: g static, f runtime (Optimal)
+
+`g`'s size known, `f`'s size runtime-dependent.
+
+```
+Before compose:
+OOOOOOOOOO
+          ^ frontier
+
+During (G reserved at frontier, F in scratch):
+OOOOOOOOOOGGGGG FFF...
+          ^    ^ frontier (F size unknown, but in scratch)
+
+After (F reclaimed):
+OOOOOOOOOOGGGGG
+          ^    ^ frontier
+```
+
+Since `g`'s size is known, we reserve space for it. `f` writes in scratch (even though `f`'s size is unknown, scratch can grow). `f` is reclaimed.
+
+### Case 3: g runtime, f static (Suboptimal)
+
+`g`'s size runtime-dependent, `f`'s size known.
+
+```
+Before compose:
+OOOOOOOOOO
+          ^ frontier
+
+After f (F committed at frontier):
+OOOOOOOOOOFFFFF
+          ^    ^ frontier
+
+After g (G after F):
+OOOOOOOOOOFFFFF GGG...
+          ^           ^ frontier
+          (F is dead, wasted space)
+```
+
+We can't reserve space for `g` (unknown size). `f` must commit at frontier. `g` writes after `f`. `f` is dead but stuck below frontier.
+
+### Case 4: g runtime, f runtime (Suboptimal)
 
 Both sizes runtime-dependent.
 
@@ -96,91 +98,91 @@ Before compose:
 OOOOOOOOOO
           ^ frontier
 
-After g (G committed at frontier):
-OOOOOOOOOOGGG...
+After f (F committed at frontier):
+OOOOOOOOOOFFF...
           ^     ^ frontier
 
-After f (F after G):
-OOOOOOOOOOGGG... FFF...
+After g (G after F):
+OOOOOOOOOOFFF... GGG...
           ^            ^ frontier
-          (G is dead, wasted space)
+          (F is dead, wasted space)
 ```
 
-Neither size is known. `g` commits at frontier. `f` writes after. `g` is wasted space.
+Neither size is known. `f` commits at frontier. `g` writes after. `f` is wasted space.
 
 ### Summary: Fundamental Cases
 
-| Case | f | g | Optimal? | Reason |
-|------|---|---|----------|--------|
-| 1 | static | static | ✓ | Reserve F, G in scratch |
-| 2 | static | runtime | ✓ | Reserve F, G in scratch |
-| 3 | runtime | static | ✗ | Can't reserve F, G committed |
-| 4 | runtime | runtime | ✗ | Can't reserve F, G committed |
+| Case | g (outer) | f (inner) | Optimal? | Reason |
+|------|-----------|-----------|----------|--------|
+| 1 | static | static | ✓ | Reserve G, F in scratch |
+| 2 | static | runtime | ✓ | Reserve G, F in scratch |
+| 3 | runtime | static | ✗ | Can't reserve G, F committed |
+| 4 | runtime | runtime | ✗ | Can't reserve G, F committed |
 
-**Key insight**: The determining factor is whether `f` is statically-known. If so, we can reserve space for `f` and put `g` in scratch.
+**Key insight**: The determining factor is whether `g` (the outer) is statically-known. If so, we can reserve space for `g` and put `f` in scratch.
 
 ### Functor Map Optimizations
 
-Size-preserving functor maps can only occur in cases where f and g have the same size category:
+Size-preserving functor maps can only occur in cases where g and f have the same size category:
 
-- **Case 2 (f static, g runtime)**: If f is size-preserving, f's output depends on g's size → f would be runtime. Contradiction.
-- **Case 3 (f runtime, g static)**: If f is size-preserving, f's output equals g's size → f would be static. Contradiction.
+- **Case 2 (g static, f runtime)**: If g is size-preserving, g's output depends on f's size → g would be runtime. Contradiction.
+- **Case 3 (g runtime, f static)**: If g is size-preserving, g's output equals f's size → g would be static. Contradiction.
 
 So size-preserving functor maps only apply to **cases 1 and 4**:
 
-**Case 1 (f static, g static)**: Both sizes known and equal. Instead of reserving F and writing G to scratch, write G at frontier and transform in-place.
+**Case 1 (g static, f static)**: Both sizes known and equal. Instead of reserving G and writing F to scratch, write F at frontier and transform in-place.
 
 ```
-After g (at frontier, not scratch):
-OOOOOOOOOOGGGGG
+After f (at frontier, not scratch):
+OOOOOOOOOOFFFFF
           ^    ^ frontier
 
-After f (in-place transform):
-OOOOOOOOOOfffff
+After g (in-place transform):
+OOOOOOOOOOggggg
           ^    ^ frontier
 ```
 
-**Case 4 (f runtime, g runtime)**: Both sizes depend on input and are equal. G writes at frontier, f overwrites in place. No wasted space.
+**Case 4 (g runtime, f runtime)**: Both sizes depend on input and are equal. F writes at frontier, g overwrites in place. No wasted space.
 
 ```
-After g (at frontier):
-OOOOOOOOOOGGG...
+After f (at frontier):
+OOOOOOOOOOFFF...
           ^     ^ frontier
 
-After f (in-place transform):
-OOOOOOOOOOfff...
+After g (in-place transform):
+OOOOOOOOOOggg...
           ^     ^ frontier
 ```
 
-**f is cata-like (reducing)**: `f` produces smaller output than its input. Linearity allows reclaiming `g`'s excess space.
+**g is cata-like (reducing)**: `g` produces smaller output than its input. Linearity allows reclaiming `f`'s excess space.
 
 ```
-After g:
-OOOOOOOOOOGGGGGGG
+After f:
+OOOOOOOOOOfffffff
           ^      ^ frontier
 
-After f (F smaller, frontier retracts):
-OOOOOOOOOOFFF
+After g (G smaller, frontier retracts):
+OOOOOOOOOOGGG
           ^  ^ frontier
 ```
 
-**Key insight**: Size-preserving functor maps enable in-place transformation only when f and g have matching size categories (both static or both runtime). Cases 2 and 3 have mismatched categories, so in-place is impossible.
+**Key insight**: Size-preserving functor maps enable in-place transformation only when g and f have matching size categories (both static or both runtime). Cases 2 and 3 have mismatched categories, so in-place is impossible.
 
 ## Summary Tables
 
 ### Baseline Strategy (no linearity assumptions)
 
-| f \ g               | g statically-known     | g runtime-dependent            |
-|---------------------|------------------------|--------------------------------|
-| **f statically-known**  | Optimal (reserve F, G in scratch) | Optimal (reserve F, G in scratch) |
-| **f runtime-dependent** | Suboptimal (G committed, then F) | Suboptimal (G committed, then F) |
+| g (outer) \ f (inner) | f statically-known     | f runtime-dependent            |
+|-----------------------|------------------------|--------------------------------|
+| **g statically-known**    | Optimal (reserve G, F in scratch) | Optimal (reserve G, F in scratch) |
+| **g runtime-dependent**   | Suboptimal (F committed, then G) | Suboptimal (F committed, then G) |
 
 ### With Size-Preserving Functor Map
 
-Only applies when f and g have matching size categories:
+Only applies when g and f have matching size categories:
 
-| Case | f | g | Result |
-|------|---|---|--------|
+| Case | g (outer) | f (inner) | Result |
+|------|-----------|-----------|--------|
 | 1 | static (size-preserving) | static | Optimal (in-place) |
 | 2 | static | runtime | N/A (category mismatch) |
 | 3 | runtime | static | N/A (category mismatch) |
@@ -188,7 +190,7 @@ Only applies when f and g have matching size categories:
 
 ## Open Questions
 
-1. How do we statically determine if `f` is a size-preserving functor map? (We know f is static/runtime from its output type, but how do we recognize functor map structure?)
+1. How do we statically determine if `g` is a size-preserving functor map? (We know g is static/runtime from its output type, but how do we recognize functor map structure?)
 
 ## IR-Specific Layouts
 
