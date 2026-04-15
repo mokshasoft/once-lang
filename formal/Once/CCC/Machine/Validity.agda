@@ -27,10 +27,11 @@ open import Induction.WellFounded using (Acc; acc)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.Allocation
-import Once.CCC.Target.X86-64.Types as Types
-open Types public using (Type; Unit; Void; _*_; _+_; Int; Float; Str; Buffer; Eff; _⇒[_]_; _⇒_; Quantity; ⟦_⟧; pair;
-                         sem-fst; sem-snd; sem-inl; sem-inr)
--- OCP-0003: Fix, wrap, sem-fold removed. Use μ-type/ν-type instead.
+open import Once.Type public
+  using (Type; Unit; Void; _*_; _+_; Int; Float; Str; Buffer; Eff; _⇒[_]_; _⇒_; Quantity)
+open import Once.Semantics.Machine public
+  using (⟦_⟧; sem-fst; sem-snd; sem-inl; sem-inr; sem-pair)
+pair = sem-pair
 open import Once.CCC.IR
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size

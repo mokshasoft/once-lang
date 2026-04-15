@@ -32,7 +32,7 @@ module Once.CCC.Machine.IR.LambekValidity where
 open import Data.Nat using (ℕ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.CCC.Target.X86-64.Types
+open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)

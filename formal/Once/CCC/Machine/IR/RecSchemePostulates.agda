@@ -32,8 +32,8 @@ open import Once.CCC.IR
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
--- Import Types for ⟦_⟧ (type value interpretation)
-open import Once.CCC.Target.X86-64.Types using (⟦_⟧)
+-- Import ⟦_⟧ (type value interpretation) directly from source
+open import Once.Semantics.Machine using (⟦_⟧)
 
 -- Import SMPrimitives for the !! proof obligation marker
 import Once.CCC.Machine.SMPrimitives as SMP

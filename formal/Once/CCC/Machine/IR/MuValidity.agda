@@ -27,7 +27,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.CCC.Target.X86-64.Types
+open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type; ⟦_⟧T; _+_; _*_)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)

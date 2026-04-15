@@ -41,7 +41,7 @@ open import Once.CCC.Target.X86-32.AbstractToX86-32
   using (compile-abstract; compile-trace; slot-to-disp)
 open import Once.CCC.IR using (IR)
 open import Once.CCC.Eval using (PrimSem)
-open import Once.CCC.Target.X86-32.Types using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧)
 
 ------------------------------------------------------------------------
 -- Simulation module

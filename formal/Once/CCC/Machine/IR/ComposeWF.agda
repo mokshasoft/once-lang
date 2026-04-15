@@ -23,7 +23,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; trans; sym
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.CCC.Target.X86-64.Types
+open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size
@@ -231,7 +231,12 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       -- alloc₁-reclaimed has same next-slot as alloc₁, same current-frame as alloc
       -- Heap equality: with current design (IRs don't allocate heap), heap is preserved
       heap-eq-f : next-heap-ref alloc₁ ≡ next-heap-ref alloc₁-reclaimed
-      heap-eq-f = SMP.!!  -- Holds because current IRs have heap-monotone = ≤-refl
+      heap-eq-f = SMP.!!
+      -- PROOF OBLIGATION: Valid for Layer 0 because:
+      -- 1. alloc₁-reclaimed only changes next-slot (line 225)
+      -- 2. Layer 0 IRs (id, compose) all set final-alloc = alloc or preserve heap-ref inductively
+      -- 3. No Layer 0 IR allocates on heap
+      -- Will need formal proof when heap-allocating IRs are added.
 
       inter-before-reclaimed : BeforeFrontier alloc₁-reclaimed inter-loc
       inter-before-reclaimed =

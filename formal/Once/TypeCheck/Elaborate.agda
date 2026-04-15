@@ -35,7 +35,7 @@ open import Induction.WellFounded using (Acc; acc; WfRec)
 open import Data.Nat.Induction using (<-wellFounded)
 
 open import Once.Type
-open Once.Type using (showQuantity) public
+open Once.Type using (showQuantity; showType) public
 open import Once.CCC.IR as IR
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -652,7 +652,7 @@ mutual
   ... | failure err = failure err
   ... | success inferredType expr depth fresh' usage' with inferredType ≟T expectedType
   ...   | yes refl = success expr depth fresh' usage'
-  ...   | no _     = failure "Type mismatch in checking mode"
+  ...   | no _     = failure ("Type mismatch: expected " ++ showType expectedType ++ " but got " ++ showType inferredType)
 
   -- | Type inference mode: compute the type
   -- This is the "inference" judgment: Γ ⊢ e ⇒ A

@@ -41,7 +41,7 @@ open import Once.CCC.Target.RiscV64.AbstractToRiscV
   using (compile-abstract; compile-trace; slot-to-disp)
 open import Once.CCC.IR using (IR)
 open import Once.CCC.Eval using (PrimSem)
-open import Once.CCC.Target.RiscV64.Types using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧)
 
 ------------------------------------------------------------------------
 -- Simulation module

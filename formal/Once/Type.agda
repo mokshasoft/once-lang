@@ -11,7 +11,7 @@
 module Once.Type where
 
 open import Level using (Level)
-open import Data.String using (String)
+open import Data.String using (String; _++_)
 open import Data.Bool using (Bool; true; false)
 open import Relation.Nullary using (Dec; yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
@@ -175,10 +175,9 @@ infixr 30 _⊸_
 infixr 30 _⇒_
 infixr 30 _⇒₀_
 
--- | IO type alias (D032)
--- IO A is sugar for Eff Unit A (effectful computation producing A)
-IO : Type → Type
-IO A = Eff Unit A
+-- Note: IO sugar removed for clarity in error messages.
+-- The parser desugars "IO A" to "Eff Unit A" at parse time.
+-- Use Eff Unit A directly in Agda code.
 
 ------------------------------------------------------------------------
 -- Type-Level Functor Interpretation
@@ -228,3 +227,31 @@ data IsPrimitive : Type → Set where
   is-float  : IsPrimitive Float
   is-str    : IsPrimitive Str
   is-buffer : IsPrimitive Buffer
+
+------------------------------------------------------------------------
+-- Type Pretty Printing
+------------------------------------------------------------------------
+
+-- | Convert types and functors to human-readable strings
+-- Used for error messages
+mutual
+  showType : Type → String
+  showType Unit = "Unit"
+  showType Void = "Void"
+  showType (A * B) = "(" ++ showType A ++ " * " ++ showType B ++ ")"
+  showType (A + B) = "(" ++ showType A ++ " + " ++ showType B ++ ")"
+  showType (A ⇒[ q ] B) = "(" ++ showType A ++ " " ++ showQuantity q ++ "→ " ++ showType B ++ ")"
+  showType (Eff A B) = "Eff " ++ showType A ++ " " ++ showType B
+  showType (μ-type F) = "μ " ++ showFunctor F
+  showType (ν-type F) = "ν " ++ showFunctor F
+  showType Int = "Int"
+  showType Float = "Float"
+  showType Str = "String"
+  showType Buffer = "Buffer"
+  showType (TVar x) = x
+
+  showFunctor : Functor → String
+  showFunctor (K A) = "(K " ++ showType A ++ ")"
+  showFunctor Id = "Id"
+  showFunctor (F ⊕ G) = "(" ++ showFunctor F ++ " ⊕ " ++ showFunctor G ++ ")"
+  showFunctor (F ⊗ G) = "(" ++ showFunctor F ++ " ⊗ " ++ showFunctor G ++ ")"
