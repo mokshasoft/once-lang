@@ -68,7 +68,7 @@ d_tryParseTypeVar_20 v0 v1
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                             (coe MAlonzo.Code.Once.Type.C_TVar_56 (coe v0)) (coe v1))
+                             (coe MAlonzo.Code.Once.Type.C_TVar_68 (coe v0)) (coe v1))
                    else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Type.parseTypeAtom
@@ -91,7 +91,7 @@ d_parseTypeAtom_38 v0
                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                   (coe MAlonzo.Code.Once.Type.C_Buffer_54) (coe v2))
+                                   (coe MAlonzo.Code.Once.Type.C_Buffer_66) (coe v2))
                           l | (==) l ("Eff" :: Data.Text.Text) ->
                               coe
                                 MAlonzo.Code.Once.Parser.Core.du__'62''62''61'__22
@@ -106,25 +106,15 @@ d_parseTypeAtom_38 v0
                                               coe
                                                 MAlonzo.Code.Once.Parser.Core.du_return_12
                                                 (coe
-                                                   MAlonzo.Code.Once.Type.C_Eff_44 (coe v6)
+                                                   MAlonzo.Code.Once.Type.C_Eff_54 (coe v6)
                                                    (coe v7))))))
-                                (coe v2)
-                          l | (==) l ("Fix" :: Data.Text.Text) ->
-                              coe
-                                MAlonzo.Code.Once.Parser.Core.du__'62''62''61'__22
-                                (coe d_parseTypeAtom_38)
-                                (coe
-                                   (\ v6 ->
-                                      coe
-                                        MAlonzo.Code.Once.Parser.Core.du_return_12
-                                        (coe MAlonzo.Code.Once.Type.C_Fix_46 (coe v6))))
                                 (coe v2)
                           l | (==) l ("Float" :: Data.Text.Text) ->
                               coe
                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                   (coe MAlonzo.Code.Once.Type.C_Float_50) (coe v2))
+                                   (coe MAlonzo.Code.Once.Type.C_Float_62) (coe v2))
                           l | (==) l ("IO" :: Data.Text.Text) ->
                               coe
                                 MAlonzo.Code.Once.Parser.Core.du__'62''62''61'__22
@@ -134,33 +124,33 @@ d_parseTypeAtom_38 v0
                                       coe
                                         MAlonzo.Code.Once.Parser.Core.du_return_12
                                         (coe
-                                           MAlonzo.Code.Once.Type.C_Eff_44
-                                           (coe MAlonzo.Code.Once.Type.C_Unit_34) (coe v6))))
+                                           MAlonzo.Code.Once.Type.C_Eff_54
+                                           (coe MAlonzo.Code.Once.Type.C_Unit_44) (coe v6))))
                                 (coe v2)
                           l | (==) l ("Int" :: Data.Text.Text) ->
                               coe
                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                   (coe MAlonzo.Code.Once.Type.C_Int_48) (coe v2))
+                                   (coe MAlonzo.Code.Once.Type.C_Int_60) (coe v2))
                           l | (==) l ("String" :: Data.Text.Text) ->
                               coe
                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                   (coe MAlonzo.Code.Once.Type.C_Str_52) (coe v2))
+                                   (coe MAlonzo.Code.Once.Type.C_Str_64) (coe v2))
                           l | (==) l ("Unit" :: Data.Text.Text) ->
                               coe
                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                   (coe MAlonzo.Code.Once.Type.C_Unit_34) (coe v2))
+                                   (coe MAlonzo.Code.Once.Type.C_Unit_44) (coe v2))
                           l | (==) l ("Void" :: Data.Text.Text) ->
                               coe
                                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
                                 (coe
                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                                   (coe MAlonzo.Code.Once.Type.C_Void_36) (coe v2))
+                                   (coe MAlonzo.Code.Once.Type.C_Void_46) (coe v2))
                           _ -> coe v5)
                 MAlonzo.Code.Once.Parser.Token.C_TLParen_14
                   -> coe
@@ -188,19 +178,19 @@ d_parseType_40 v0
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                  -> let v5 = d_parseTypeProdTail_84 (coe v3) (coe v4) in
+                  -> let v5 = d_parseTypeProdTail_80 (coe v3) (coe v4) in
                      coe
                        (case coe v5 of
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> case coe v6 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                   -> let v9 = d_parseTypeSumTail_124 (coe v7) (coe v8) in
+                                   -> let v9 = d_parseTypeSumTail_120 (coe v7) (coe v8) in
                                       coe
                                         (case coe v9 of
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v10
                                              -> case coe v10 of
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
-                                                    -> coe d_parseArrowTail_160 (coe v11) (coe v12)
+                                                    -> coe d_parseArrowTail_156 (coe v11) (coe v12)
                                                   _ -> MAlonzo.RTE.mazUnreachableError
                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v9
                                            _ -> MAlonzo.RTE.mazUnreachableError)
@@ -210,7 +200,7 @@ d_parseType_40 v0
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                    -> case coe v6 of
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                          -> coe d_parseArrowTail_160 (coe v7) (coe v8)
+                                          -> coe d_parseArrowTail_156 (coe v7) (coe v8)
                                         _ -> MAlonzo.RTE.mazUnreachableError
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                                  _ -> MAlonzo.RTE.mazUnreachableError
@@ -221,13 +211,13 @@ d_parseType_40 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                   -> case coe v2 of
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                         -> let v5 = d_parseTypeSumTail_124 (coe v3) (coe v4) in
+                         -> let v5 = d_parseTypeSumTail_120 (coe v3) (coe v4) in
                             coe
                               (case coe v5 of
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                                    -> case coe v6 of
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                          -> coe d_parseArrowTail_160 (coe v7) (coe v8)
+                                          -> coe d_parseArrowTail_156 (coe v7) (coe v8)
                                         _ -> MAlonzo.RTE.mazUnreachableError
                                  MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                                  _ -> MAlonzo.RTE.mazUnreachableError)
@@ -237,7 +227,7 @@ d_parseType_40 v0
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                          -> case coe v2 of
                               MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                                -> coe d_parseArrowTail_160 (coe v3) (coe v4)
+                                -> coe d_parseArrowTail_156 (coe v3) (coe v4)
                               _ -> MAlonzo.RTE.mazUnreachableError
                        MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
                        _ -> MAlonzo.RTE.mazUnreachableError
@@ -254,13 +244,13 @@ d_parseTypeSum_42 v0
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                  -> let v5 = d_parseTypeProdTail_84 (coe v3) (coe v4) in
+                  -> let v5 = d_parseTypeProdTail_80 (coe v3) (coe v4) in
                      coe
                        (case coe v5 of
                           MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v6
                             -> case coe v6 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
-                                   -> coe d_parseTypeSumTail_124 (coe v7) (coe v8)
+                                   -> coe d_parseTypeSumTail_120 (coe v7) (coe v8)
                                  _ -> MAlonzo.RTE.mazUnreachableError
                           MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v5
                           _ -> MAlonzo.RTE.mazUnreachableError)
@@ -270,7 +260,7 @@ d_parseTypeSum_42 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
                   -> case coe v2 of
                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                         -> coe d_parseTypeSumTail_124 (coe v3) (coe v4)
+                         -> coe d_parseTypeSumTail_120 (coe v3) (coe v4)
                        _ -> MAlonzo.RTE.mazUnreachableError
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
                 _ -> MAlonzo.RTE.mazUnreachableError
@@ -286,15 +276,15 @@ d_parseTypeProd_44 v0
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v2
            -> case coe v2 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v3 v4
-                  -> coe d_parseTypeProdTail_84 (coe v3) (coe v4)
+                  -> coe d_parseTypeProdTail_80 (coe v3) (coe v4)
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Type.tryProdCont
-d_tryProdCont_80 ::
+d_tryProdCont_76 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_tryProdCont_80 v0
+d_tryProdCont_76 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -305,20 +295,20 @@ d_tryProdCont_80 v0
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Type.parseTypeProdTail
-d_parseTypeProdTail_84 ::
-  MAlonzo.Code.Once.Type.T_Type_32 ->
+d_parseTypeProdTail_80 ::
+  MAlonzo.Code.Once.Type.T_Type_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseTypeProdTail_84 v0 v1
-  = let v2 = d_tryProdCont_80 (coe v1) in
+d_parseTypeProdTail_80 v0 v1
+  = let v2 = d_tryProdCont_76 (coe v1) in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
            -> case coe v3 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                   -> coe
-                       d_parseTypeProdTail_84
-                       (coe MAlonzo.Code.Once.Type.C__'42'__38 (coe v0) (coe v4)) (coe v5)
+                       d_parseTypeProdTail_80
+                       (coe MAlonzo.Code.Once.Type.C__'42'__48 (coe v0) (coe v4)) (coe v5)
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> coe
@@ -326,10 +316,10 @@ d_parseTypeProdTail_84 v0 v1
                 (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v0) (coe v1))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Type.trySumCont
-d_trySumCont_120 ::
+d_trySumCont_116 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_trySumCont_120 v0
+d_trySumCont_116 v0
   = let v1 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
     coe
       (case coe v0 of
@@ -340,20 +330,20 @@ d_trySumCont_120 v0
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Parser.Type.parseTypeSumTail
-d_parseTypeSumTail_124 ::
-  MAlonzo.Code.Once.Type.T_Type_32 ->
+d_parseTypeSumTail_120 ::
+  MAlonzo.Code.Once.Type.T_Type_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseTypeSumTail_124 v0 v1
-  = let v2 = d_trySumCont_120 (coe v1) in
+d_parseTypeSumTail_120 v0 v1
+  = let v2 = d_trySumCont_116 (coe v1) in
     coe
       (case coe v2 of
          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v3
            -> case coe v3 of
                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v4 v5
                   -> coe
-                       d_parseTypeSumTail_124
-                       (coe MAlonzo.Code.Once.Type.C__'43'__40 (coe v0) (coe v4)) (coe v5)
+                       d_parseTypeSumTail_120
+                       (coe MAlonzo.Code.Once.Type.C__'43'__50 (coe v0) (coe v4)) (coe v5)
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
            -> coe
@@ -361,11 +351,11 @@ d_parseTypeSumTail_124 v0 v1
                 (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v0) (coe v1))
          _ -> MAlonzo.RTE.mazUnreachableError)
 -- Once.Parser.Type.parseArrowTail
-d_parseArrowTail_160 ::
-  MAlonzo.Code.Once.Type.T_Type_32 ->
+d_parseArrowTail_156 ::
+  MAlonzo.Code.Once.Type.T_Type_34 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parseArrowTail_160 v0 v1
+d_parseArrowTail_156 v0 v1
   = let v2
           = coe
               MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
@@ -387,7 +377,7 @@ d_parseArrowTail_160 v0 v1
                                         (coe
                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                            (coe
-                                              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__42 (coe v0)
+                                              MAlonzo.Code.Once.Type.C__'8658''91'_'93'__52 (coe v0)
                                               (coe MAlonzo.Code.Once.Type.C_Many_10) (coe v7))
                                            (coe v8))
                                  _ -> MAlonzo.RTE.mazUnreachableError

@@ -33,7 +33,7 @@ import System.Process (readProcessWithExitCode)
 import Unsafe.Coerce (unsafeCoerce)
 
 -- MAlonzo-extracted Agda compilation entry point
-import qualified MAlonzo.Code.Once.CompileX86v3 as MCompile
+import qualified MAlonzo.Code.Once.Compile as MCompile
 import qualified MAlonzo.Code.Data.Sum.Base as MSum
 
 -- | Convert MAlonzo AgdaAny to Text (Agda String → Haskell Text)
@@ -154,7 +154,7 @@ runBuild opts = do
   case target of
     TargetX86_64 -> do
       -- Call Agda compilation pipeline (parse → elaborate → optimize → codegen → emit)
-      let result = MCompile.d_compileX86v3_92 source
+      let result = MCompile.d_compile_234 MCompile.C_x86'45'64_194 source
       case result of
         MSum.C_inj'8321'_38 err -> do
           TIO.putStrLn $ "Compilation error: " <> agdaToText err
@@ -225,7 +225,7 @@ runCheck opts = do
   source <- TIO.readFile inputPath
 
   -- Use the same pipeline but only check for errors (no codegen output needed)
-  let result = MCompile.d_compileX86v3_92 source
+  let result = MCompile.d_compile_234 MCompile.C_x86'45'64_194 source
   case result of
     MSum.C_inj'8321'_38 err -> do
       TIO.putStrLn $ "Error: " <> agdaToText err

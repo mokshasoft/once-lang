@@ -27,14 +27,14 @@ import qualified MAlonzo.Code.Once.Type
 d_Ctx_6 a0 = ()
 data T_Ctx_6
   = C_'8709'_8 |
-    C__'44'_'94'__12 T_Ctx_6 MAlonzo.Code.Once.Type.T_Type_32
+    C__'44'_'94'__12 T_Ctx_6 MAlonzo.Code.Once.Type.T_Type_34
                      MAlonzo.Code.Once.Type.T_Quantity_4
 -- Once.Surface.Syntax._,_
 d__'44'__16 ::
-  Integer -> T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_32 -> T_Ctx_6
+  Integer -> T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_34 -> T_Ctx_6
 d__'44'__16 ~v0 v1 v2 = du__'44'__16 v1 v2
 du__'44'__16 ::
-  T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_32 -> T_Ctx_6
+  T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_34 -> T_Ctx_6
 du__'44'__16 v0 v1
   = coe C__'44'_'94'__12 v0 v1 (coe MAlonzo.Code.Once.Type.C_Many_10)
 -- Once.Surface.Syntax.lookup
@@ -42,12 +42,12 @@ d_lookup_24 ::
   Integer ->
   T_Ctx_6 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_Type_32
+  MAlonzo.Code.Once.Type.T_Type_34
 d_lookup_24 ~v0 v1 v2 = du_lookup_24 v1 v2
 du_lookup_24 ::
   T_Ctx_6 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_Type_32
+  MAlonzo.Code.Once.Type.T_Type_34
 du_lookup_24 v0 v1
   = case coe v0 of
       C__'44'_'94'__12 v3 v4 v5
@@ -196,18 +196,18 @@ d_Expr_162 a0 a1 a2 = ()
 data T_Expr_162
   = C_var_170 MAlonzo.Code.Data.Fin.Base.T_Fin_10 |
     C_lam_182 T_Expr_162 |
-    C_app_194 MAlonzo.Code.Once.Type.T_Type_32
+    C_app_194 MAlonzo.Code.Once.Type.T_Type_34
               MAlonzo.Code.Once.Type.T_Quantity_4 T_Expr_162 T_Expr_162 |
-    C_effApp_204 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162
+    C_effApp_204 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162
                  T_Expr_162 |
     C_pair_214 T_Expr_162 T_Expr_162 |
-    C_fst''_224 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 |
-    C_snd''_234 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 |
+    C_fst''_224 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162 |
+    C_snd''_234 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162 |
     C_inl''_244 T_Expr_162 | C_inr''_254 T_Expr_162 |
-    C_case''_266 MAlonzo.Code.Once.Type.T_Type_32
-                 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162 T_Expr_162 T_Expr_162 |
+    C_case''_266 MAlonzo.Code.Once.Type.T_Type_34
+                 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162 T_Expr_162 T_Expr_162 |
     C_unit_272 | C_absurd_280 T_Expr_162 |
-    C_let''_290 MAlonzo.Code.Once.Type.T_Type_32 T_Expr_162
+    C_let''_290 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162
                 T_Expr_162 |
     C_int_296 Integer |
     C_str_302 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
@@ -217,6 +217,5 @@ data T_Expr_162
     C_lt_344 T_Expr_162 T_Expr_162 | C_le_350 T_Expr_162 T_Expr_162 |
     C_gt_356 T_Expr_162 T_Expr_162 | C_ge_362 T_Expr_162 T_Expr_162 |
     C_eq_368 T_Expr_162 T_Expr_162 | C_ne_374 T_Expr_162 T_Expr_162 |
-    C_arr''_384 T_Expr_162 | C_roll''_392 T_Expr_162 |
-    C_unroll''_400 T_Expr_162 |
-    C_prim_408 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_arr''_384 T_Expr_162 |
+    C_prim_392 MAlonzo.Code.Agda.Builtin.String.T_String_6

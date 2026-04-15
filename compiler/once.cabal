@@ -42,7 +42,6 @@ library
       Once.CLI
       Once.Eval
       Once.IR
-      Once.MAlonzo
       Once.Type
       Once.Value
       MAlonzo.RTE
@@ -229,15 +228,18 @@ library
       -- Frontend modules (extracted via MAlonzo from verified Agda)
       MAlonzo.Code.Once.Arith.IR
       MAlonzo.Code.Once.Arith.Type
+      MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.IR
-      MAlonzo.Code.Once.CCC.SlotMachine
-      MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen
-      MAlonzo.Code.Once.CCC.Target.X86v3.CodeGen.Compile
-      MAlonzo.Code.Once.CCC.Target.X86v3.Types
+      MAlonzo.Code.Once.CCC.Machine.SMCore
+      MAlonzo.Code.Once.CCC.Memory.Memory
+      MAlonzo.Code.Once.CCC.Memory.MemoryLayoutSemantics
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Compile
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax
       MAlonzo.Code.Once.Compile
-      MAlonzo.Code.Once.CompileX86v3
       MAlonzo.Code.Once.Escape
-      MAlonzo.Code.Once.IR
+      MAlonzo.Code.Once.Functor.Base
+      MAlonzo.Code.Once.Functor.Translate
       MAlonzo.Code.Once.Optimize
       MAlonzo.Code.Once.Parser
       MAlonzo.Code.Once.Parser.Core
@@ -249,13 +251,15 @@ library
       MAlonzo.Code.Once.Parser.Type
       MAlonzo.Code.Once.Parser.TypeAlias
       MAlonzo.Code.Once.Postulates
+      MAlonzo.Code.Once.Semantics.Core
+      MAlonzo.Code.Once.Semantics.IR
       MAlonzo.Code.Once.Surface.Desugar
       MAlonzo.Code.Once.Surface.Elaborate
       MAlonzo.Code.Once.Surface.IR
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Surface.Thinning
-      MAlonzo.Code.Once.Target.X86.Emit
-      MAlonzo.Code.Once.Target.X86.Syntax
+      MAlonzo.Code.Once.Target
+      MAlonzo.Code.Once.Target.X86Z45Z64
       MAlonzo.Code.Once.Type
       MAlonzo.Code.Once.TypeCheck.Context
       MAlonzo.Code.Once.TypeCheck.Elaborate
@@ -353,27 +357,8 @@ executable once
     , once
     , text
 
-executable once-discover
-  import: shared
-  main-is: Main.hs
-  other-modules:
-      Common.Enumerate
-      Common.Equivalence
-      CCC.Cost
-      CCC.Rules
-      CCC.Completeness
-      Escape.Patterns
-  hs-source-dirs:
-      tools/discovery
-  ghc-options:
-      -threaded
-      -rtsopts
-      -with-rtsopts=-N
-  build-depends:
-      base >=4.7 && <5
-    , once
-    , QuickCheck
-    , text
+-- once-discover removed: depends on removed Once.MAlonzo module
+-- Can be restored when optimizer testing is reimplemented at source level
 
 test-suite once-test
   import: shared

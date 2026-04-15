@@ -2287,7 +2287,7 @@ d_parseParenCont_264 v0 v1
                             -> case coe v6 of
                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                                    -> let v9
-                                            = MAlonzo.Code.Once.Parser.Type.d_parseTypeProdTail_84
+                                            = MAlonzo.Code.Once.Parser.Type.d_parseTypeProdTail_80
                                                 (coe v7) (coe v8) in
                                       coe
                                         (case coe v9 of
@@ -2295,7 +2295,7 @@ d_parseParenCont_264 v0 v1
                                              -> case coe v10 of
                                                   MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                     -> let v13
-                                                             = MAlonzo.Code.Once.Parser.Type.d_parseTypeSumTail_124
+                                                             = MAlonzo.Code.Once.Parser.Type.d_parseTypeSumTail_120
                                                                  (coe v11) (coe v12) in
                                                        coe
                                                          (case coe v13 of
@@ -2303,7 +2303,7 @@ d_parseParenCont_264 v0 v1
                                                               -> case coe v14 of
                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v15 v16
                                                                      -> let v17
-                                                                              = MAlonzo.Code.Once.Parser.Type.d_parseArrowTail_160
+                                                                              = MAlonzo.Code.Once.Parser.Type.d_parseArrowTail_156
                                                                                   (coe v15)
                                                                                   (coe v16) in
                                                                         coe
@@ -2371,7 +2371,7 @@ d_parseParenCont_264 v0 v1
                                                     -> case coe v10 of
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                            -> let v13
-                                                                    = MAlonzo.Code.Once.Parser.Type.d_parseArrowTail_160
+                                                                    = MAlonzo.Code.Once.Parser.Type.d_parseArrowTail_156
                                                                         (coe v11) (coe v12) in
                                                               coe
                                                                 (case coe v13 of
@@ -2432,7 +2432,7 @@ d_parseParenCont_264 v0 v1
                                    -> case coe v6 of
                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                                           -> let v9
-                                                   = MAlonzo.Code.Once.Parser.Type.d_parseTypeSumTail_124
+                                                   = MAlonzo.Code.Once.Parser.Type.d_parseTypeSumTail_120
                                                        (coe v7) (coe v8) in
                                              coe
                                                (case coe v9 of
@@ -2440,7 +2440,7 @@ d_parseParenCont_264 v0 v1
                                                     -> case coe v10 of
                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v11 v12
                                                            -> let v13
-                                                                    = MAlonzo.Code.Once.Parser.Type.d_parseArrowTail_160
+                                                                    = MAlonzo.Code.Once.Parser.Type.d_parseArrowTail_156
                                                                         (coe v11) (coe v12) in
                                                               coe
                                                                 (case coe v13 of
@@ -2500,7 +2500,7 @@ d_parseParenCont_264 v0 v1
                                           -> case coe v6 of
                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v7 v8
                                                  -> let v9
-                                                          = MAlonzo.Code.Once.Parser.Type.d_parseArrowTail_160
+                                                          = MAlonzo.Code.Once.Parser.Type.d_parseArrowTail_156
                                                               (coe v7) (coe v8) in
                                                     coe
                                                       (case coe v9 of

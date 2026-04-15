@@ -255,7 +255,7 @@ du_go_26 v0
 d_FunInfo_38 = ()
 data T_FunInfo_38
   = C_mkFunInfo_56 MAlonzo.Code.Agda.Builtin.String.T_String_6
-                   MAlonzo.Code.Once.Type.T_Type_32
+                   MAlonzo.Code.Once.Type.T_Type_34
                    (Maybe MAlonzo.Code.Once.Parser.Module.T_AllocStrategy_6)
                    MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34
 -- Once.Parser.FunInfo.funName
@@ -266,7 +266,7 @@ d_funName_48 v0
       C_mkFunInfo_56 v1 v2 v3 v4 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.FunInfo.funType
-d_funType_50 :: T_FunInfo_38 -> MAlonzo.Code.Once.Type.T_Type_32
+d_funType_50 :: T_FunInfo_38 -> MAlonzo.Code.Once.Type.T_Type_34
 d_funType_50 v0
   = case coe v0 of
       C_mkFunInfo_56 v1 v2 v3 v4 -> coe v2
@@ -323,7 +323,7 @@ du_go_68 v0 v1 v2
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6)
                              (coe
-                                MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_122 (coe v0)
+                                MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_154 (coe v0)
                                 (coe v7))))
                 MAlonzo.Code.Once.Parser.Module.C_DFunDef_34 v6 v7 v8
                   -> case coe v2 of

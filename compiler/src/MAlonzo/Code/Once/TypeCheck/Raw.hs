@@ -47,7 +47,7 @@ data T_RawExpr_34
                    MAlonzo.Code.Agda.Builtin.String.T_String_6 T_RawExpr_34 |
     C_RUnit_50 | C_RInt_52 Integer |
     C_RStringLit_54 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_RAnnot_56 T_RawExpr_34 MAlonzo.Code.Once.Type.T_Type_32 |
+    C_RAnnot_56 T_RawExpr_34 MAlonzo.Code.Once.Type.T_Type_34 |
     C_RBinOp_58 T_BinOp_6 T_RawExpr_34 T_RawExpr_34 |
     C_RUnaryOp_60 T_RawExpr_34
 -- Once.TypeCheck.Raw.RawType
