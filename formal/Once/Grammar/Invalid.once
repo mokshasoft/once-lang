@@ -1,0 +1,70 @@
+-- Invalid syntax examples
+-- Each section shows what should be REJECTED by the parser
+-- See Grammar.agda for the formal specification
+
+------------------------------------------------------------------------
+-- INVALID: Inline type signature + definition
+------------------------------------------------------------------------
+
+-- This is NOT valid Once syntax:
+-- main : Eff Unit Int = 42
+
+-- Correct form (separate lines):
+-- main : Eff Unit Int
+-- main = 42
+
+------------------------------------------------------------------------
+-- INVALID: Definition without type signature
+------------------------------------------------------------------------
+
+-- This is NOT valid:
+-- foo = 42
+
+-- Correct form:
+-- foo : Int
+-- foo = 42
+
+------------------------------------------------------------------------
+-- INVALID: Type signature without definition
+------------------------------------------------------------------------
+
+-- This is NOT valid (orphan signature):
+-- bar : Int
+-- (no definition follows)
+
+------------------------------------------------------------------------
+-- INVALID: Mismatched names
+------------------------------------------------------------------------
+
+-- This is NOT valid:
+-- foo : Int
+-- bar = 42
+
+------------------------------------------------------------------------
+-- INVALID: main with wrong type
+------------------------------------------------------------------------
+
+-- This is NOT valid (main must be Eff Unit A):
+-- main : Int
+-- main = 42
+
+-- main : Int -> Int
+-- main x = x
+
+-- main : Eff Int Int
+-- main = id
+
+------------------------------------------------------------------------
+-- INVALID: Semicolon in let bindings
+------------------------------------------------------------------------
+
+-- This is NOT valid (use multi-line instead):
+-- foo : Int
+-- foo = let x = 1 ; y = 2 in x + y
+
+-- Correct form (multi-line):
+-- foo : Int
+-- foo =
+--   let x = 1
+--       y = 2
+--   in x + y

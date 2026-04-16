@@ -1,0 +1,195 @@
+-- Examples covering all Once grammar constructs
+-- This file should parse successfully if the parser implements Grammar.agda
+
+------------------------------------------------------------------------
+-- Imports (GDecl.DImport)
+------------------------------------------------------------------------
+
+import Data.List
+import Data.Maybe as M
+
+------------------------------------------------------------------------
+-- Type Aliases (GDecl.DTypeAlias)
+------------------------------------------------------------------------
+
+type Pair a b = a * b
+type Result a = a + Unit
+type IO a = Eff Unit a
+
+------------------------------------------------------------------------
+-- Primitives (GDecl.DPrimitive)
+------------------------------------------------------------------------
+
+primitive println : Eff String Unit
+primitive readInt : Eff Unit Int
+primitive exit : Eff Int Void
+
+------------------------------------------------------------------------
+-- Types (GType)
+------------------------------------------------------------------------
+
+-- TUnit
+unitFn : Unit -> Unit
+unitFn x = x
+
+-- TVoid (only appears in types, no values)
+absurd : Void -> Int
+absurd v = destruct v of { Left x -> 0 ; Right y -> 0 }
+
+-- TInt
+intConst : Int
+intConst = 42
+
+-- TFloat
+floatConst : Float
+floatConst = 0
+
+-- TBuffer
+bufferFn : Buffer -> Buffer
+bufferFn b = b
+
+-- TString
+stringConst : String
+stringConst = "hello"
+
+-- Function type (GType._⇒_)
+applyTwice : (Int -> Int) -> Int -> Int
+applyTwice f x = f (f x)
+
+-- Product type (GType._⊗_)
+swap : Int * String -> String * Int
+swap p = (snd p, fst p)
+
+-- Sum type (GType._⊕_)
+fromLeft : Int + String -> Int
+fromLeft s = destruct s of { Left n -> n ; Right str -> 0 }
+
+-- Effect type (GType.TEff)
+pureInt : Eff Unit Int
+pureInt = arr 42
+
+-- Type variable (GType.TVar)
+identity : A -> A
+identity x = x
+
+------------------------------------------------------------------------
+-- Expressions (GExpr)
+------------------------------------------------------------------------
+
+-- EUnit: unit literal
+unitVal : Unit
+unitVal = ()
+
+-- EInt: integer literal
+fortyTwo : Int
+fortyTwo = 42
+
+-- EString: string literal
+greeting : String
+greeting = "Hello, World!"
+
+-- EVar: variable reference
+useId : Int -> Int
+useId x = identity x
+
+-- EQualified: qualified reference (name@module)
+-- useAlias : A -> A
+-- useAlias x = identity@M x
+
+-- ELam: lambda expression
+addOne : Int -> Int
+addOne = \x -> x + 1
+
+-- Multi-param lambda
+add : Int -> Int -> Int
+add = \x y -> x + y
+
+-- EApp: application
+five : Int
+five = addOne 4
+
+-- EPair: pair construction
+pair : Int * String
+pair = (1, "one")
+
+-- Triple (nested pairs)
+triple : (Int * Int) * Int
+triple = (1, 2, 3)
+
+-- ELet: single binding
+letSingle : Int
+letSingle = let x = 1 in x + 1
+
+-- ELet: multi-line bindings (no semicolons)
+letMulti : Int
+letMulti =
+  let x = 1
+      y = 2
+      z = 3
+  in x + y + z
+
+-- EDestruct: sum elimination
+handleSum : Int + String -> Int
+handleSum s = destruct s of { Left n -> n ; Right str -> 0 }
+
+-- EBinOp: arithmetic operators
+arithmetic : Int
+arithmetic = 1 + 2 - 3 * 4 / 5 % 6
+
+-- EBinOp: comparison operators
+comparisons : Int -> Int -> Int
+comparisons x y =
+  let a = x < y in
+  let b = x <= y in
+  let c = x > y in
+  let d = x >= y in
+  let e = x == y in
+  let f = x != y in
+  0
+
+-- EUnaryOp: negation
+negate : Int -> Int
+negate x = -x
+
+-- ECompose: composition (desugars to compose)
+composed : Int -> Int
+composed = addOne . addOne . addOne
+
+-- EAnnot: type annotation
+annotated : Int
+annotated = (42 : Int)
+
+------------------------------------------------------------------------
+-- Function Definitions (GDecl.DFunDef)
+------------------------------------------------------------------------
+
+-- With parameters
+addParams : Int -> Int -> Int
+addParams x y = x + y
+
+-- With allocation annotation (after params, before '=')
+stackAlloc : Int -> Int
+stackAlloc x @stack = x
+
+heapAlloc : Int -> Int
+heapAlloc x @heap = x
+
+constAlloc : String
+constAlloc @const = "immutable"
+
+------------------------------------------------------------------------
+-- Operator definitions
+------------------------------------------------------------------------
+
+(|>) : A -> (A -> B) -> B
+(|>) x f = f x
+
+(&) : A -> (A -> B) -> B
+(&) = (|>)
+
+------------------------------------------------------------------------
+-- Main function (ValidMainType)
+------------------------------------------------------------------------
+
+main : Eff Unit Int
+main = arr 0
