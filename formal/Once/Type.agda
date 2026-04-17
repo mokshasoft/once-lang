@@ -382,6 +382,50 @@ mutual
   Ground PBuffer = ⊤
   Ground (TVar _) = ⊥
 
+-- | Decidability of Ground predicate
+--
+-- Given any PolyType, we can decide whether it's ground (no TVars).
+-- This enables total extraction without postulates.
+mutual
+  groundFunctor? : (F : PolyFunctor) → Dec (GroundFunctor F)
+  groundFunctor? (PK A) = ground? A
+  groundFunctor? PId = yes tt
+  groundFunctor? (F P⊕ G) with groundFunctor? F | groundFunctor? G
+  ... | yes gF | yes gG = yes (gF , gG)
+  ... | no ¬gF | _ = no (λ { (gF , _) → ¬gF gF })
+  ... | _ | no ¬gG = no (λ { (_ , gG) → ¬gG gG })
+  groundFunctor? (F P⊗ G) with groundFunctor? F | groundFunctor? G
+  ... | yes gF | yes gG = yes (gF , gG)
+  ... | no ¬gF | _ = no (λ { (gF , _) → ¬gF gF })
+  ... | _ | no ¬gG = no (λ { (_ , gG) → ¬gG gG })
+
+  ground? : (A : PolyType) → Dec (Ground A)
+  ground? PUnit = yes tt
+  ground? PVoid = yes tt
+  ground? (A P* B) with ground? A | ground? B
+  ... | yes gA | yes gB = yes (gA , gB)
+  ... | no ¬gA | _ = no (λ { (gA , _) → ¬gA gA })
+  ... | _ | no ¬gB = no (λ { (_ , gB) → ¬gB gB })
+  ground? (A P+ B) with ground? A | ground? B
+  ... | yes gA | yes gB = yes (gA , gB)
+  ... | no ¬gA | _ = no (λ { (gA , _) → ¬gA gA })
+  ... | _ | no ¬gB = no (λ { (_ , gB) → ¬gB gB })
+  ground? (A P⇒[ q ] B) with ground? A | ground? B
+  ... | yes gA | yes gB = yes (gA , gB)
+  ... | no ¬gA | _ = no (λ { (gA , _) → ¬gA gA })
+  ... | _ | no ¬gB = no (λ { (_ , gB) → ¬gB gB })
+  ground? (PEff A B) with ground? A | ground? B
+  ... | yes gA | yes gB = yes (gA , gB)
+  ... | no ¬gA | _ = no (λ { (gA , _) → ¬gA gA })
+  ... | _ | no ¬gB = no (λ { (_ , gB) → ¬gB gB })
+  ground? (Pμ-type F) = groundFunctor? F
+  ground? (Pν-type F) = groundFunctor? F
+  ground? PInt = yes tt
+  ground? PFloat = yes tt
+  ground? PStr = yes tt
+  ground? PBuffer = yes tt
+  ground? (TVar _) = no (λ ())
+
 mutual
   -- | Total extraction for ground functors
   extractGroundFunctor : (F : PolyFunctor) → GroundFunctor F → Functor

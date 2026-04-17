@@ -28,6 +28,10 @@ open import Data.String using (String)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst; trans; sym)
+open import Relation.Nullary using (Dec; yes; no)
+
+-- Import decidable ground predicates from Type
+open import Once.Type using (ground?; groundFunctor?)
 
 ------------------------------------------------------------------------
 -- Polymorphic Context
@@ -185,6 +189,14 @@ lookupGround-extract : ∀ {n} (Γ : PolyCtx n) (gΓ : GroundCtx Γ) (i : Fin n)
 lookupGround-extract (Γ P, A ^ q) (gΓ , gA) Fin.zero = refl
 lookupGround-extract (Γ P, A ^ q) (gΓ , gA) (Fin.suc i) = lookupGround-extract Γ gΓ i
 
+-- | Decidability of GroundCtx
+groundCtx? : ∀ {n} (Γ : PolyCtx n) → Dec (GroundCtx Γ)
+groundCtx? P∅ = yes tt
+groundCtx? (Γ P, A ^ q) with groundCtx? Γ | ground? A
+... | yes gΓ | yes gA = yes (gΓ , gA)
+... | no ¬gΓ | _ = no (λ { (gΓ , _) → ¬gΓ gΓ })
+... | _ | no ¬gA = no (λ { (_ , gA) → ¬gA gA })
+
 ------------------------------------------------------------------------
 -- Ground Expression Predicate (as data type for pattern matching)
 ------------------------------------------------------------------------
@@ -254,6 +266,135 @@ data GroundExpr : ∀ {n} {Γ : PolyCtx n} {A : PolyType} → PolyExpr Γ A → 
        → GroundExpr f → GroundExpr (parr' f)
   gprim : ∀ {n} {Γ : PolyCtx n} {A : PolyType} {name : String}
         → GroundExpr (pprim {Γ = Γ} {A = A} name)
+
+-- | Decidability of GroundExpr
+--
+-- Given any PolyExpr, we can decide whether all types in it are ground.
+-- This enables total extraction without postulates.
+groundExpr? : ∀ {n} {Γ : PolyCtx n} {A : PolyType} (e : PolyExpr Γ A) → Dec (GroundExpr e)
+-- Variable: always ground (types come from context, handled separately)
+groundExpr? (pvar i) = yes gvar
+-- Lambda: check body is ground
+groundExpr? (plam q body) with groundExpr? body
+... | yes gb = yes (glam gb)
+... | no ¬gb = no (λ { (glam gb) → ¬gb gb })
+-- Application: check function, argument, and hidden type A
+groundExpr? (papp {A = A} f x) with ground? A | groundExpr? f | groundExpr? x
+... | yes gA | yes gf | yes gx = yes (gapp gA gf gx)
+... | no ¬gA | _ | _ = no (λ { (gapp gA _ _) → ¬gA gA })
+... | _ | no ¬gf | _ = no (λ { (gapp _ gf _) → ¬gf gf })
+... | _ | _ | no ¬gx = no (λ { (gapp _ _ gx) → ¬gx gx })
+-- Effect application: check function, argument, and hidden type A
+groundExpr? (peffApp {A = A} f x) with ground? A | groundExpr? f | groundExpr? x
+... | yes gA | yes gf | yes gx = yes (geffApp gA gf gx)
+... | no ¬gA | _ | _ = no (λ { (geffApp gA _ _) → ¬gA gA })
+... | _ | no ¬gf | _ = no (λ { (geffApp _ gf _) → ¬gf gf })
+... | _ | _ | no ¬gx = no (λ { (geffApp _ _ gx) → ¬gx gx })
+-- Pair: check both components
+groundExpr? (ppair a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (gpair ga gb)
+... | no ¬ga | _ = no (λ { (gpair ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (gpair _ gb) → ¬gb gb })
+-- Fst: check pair and hidden type B
+groundExpr? (pfst' {B = B} p) with ground? B | groundExpr? p
+... | yes gB | yes gp = yes (gfst gB gp)
+... | no ¬gB | _ = no (λ { (gfst gB _) → ¬gB gB })
+... | _ | no ¬gp = no (λ { (gfst _ gp) → ¬gp gp })
+-- Snd: check pair and hidden type A
+groundExpr? (psnd' {A = A} p) with ground? A | groundExpr? p
+... | yes gA | yes gp = yes (gsnd gA gp)
+... | no ¬gA | _ = no (λ { (gsnd gA _) → ¬gA gA })
+... | _ | no ¬gp = no (λ { (gsnd _ gp) → ¬gp gp })
+-- Inl: check element and hidden type B
+groundExpr? (pinl' {B = B} x) with ground? B | groundExpr? x
+... | yes gB | yes gx = yes (ginl gB gx)
+... | no ¬gB | _ = no (λ { (ginl gB _) → ¬gB gB })
+... | _ | no ¬gx = no (λ { (ginl _ gx) → ¬gx gx })
+-- Inr: check element and hidden type A
+groundExpr? (pinr' {A = A} x) with ground? A | groundExpr? x
+... | yes gA | yes gx = yes (ginr gA gx)
+... | no ¬gA | _ = no (λ { (ginr gA _) → ¬gA gA })
+... | _ | no ¬gx = no (λ { (ginr _ gx) → ¬gx gx })
+-- Case: check scrutinee, both branches, and hidden types A and B
+groundExpr? (pcase' {A = A} {B = B} s l r) with ground? A | ground? B | groundExpr? s | groundExpr? l | groundExpr? r
+... | yes gA | yes gB | yes gs | yes gl | yes gr = yes (gcase gA gB gs gl gr)
+... | no ¬gA | _ | _ | _ | _ = no (λ { (gcase gA _ _ _ _) → ¬gA gA })
+... | _ | no ¬gB | _ | _ | _ = no (λ { (gcase _ gB _ _ _) → ¬gB gB })
+... | _ | _ | no ¬gs | _ | _ = no (λ { (gcase _ _ gs _ _) → ¬gs gs })
+... | _ | _ | _ | no ¬gl | _ = no (λ { (gcase _ _ _ gl _) → ¬gl gl })
+... | _ | _ | _ | _ | no ¬gr = no (λ { (gcase _ _ _ _ gr) → ¬gr gr })
+-- Unit: always ground
+groundExpr? punit = yes gunit
+-- Absurd: check void value
+groundExpr? (pabsurd v) with groundExpr? v
+... | yes gv = yes (gabsurd gv)
+... | no ¬gv = no (λ { (gabsurd gv) → ¬gv gv })
+-- Let: check bound expression, body, and hidden type A
+groundExpr? (plet' {A = A} e body) with ground? A | groundExpr? e | groundExpr? body
+... | yes gA | yes gexp | yes gbody = yes (glet gA gexp gbody)
+... | no ¬gA | _ | _ = no (λ { (glet gA _ _) → ¬gA gA })
+... | _ | no ¬gexp | _ = no (λ { (glet _ gexp _) → ¬gexp gexp })
+... | _ | _ | no ¬gbody = no (λ { (glet _ _ gbody) → ¬gbody gbody })
+-- Int literal: always ground
+groundExpr? (pint n) = yes gint
+-- String literal: always ground
+groundExpr? (pstr s) = yes gstr
+-- Arithmetic operations: check both operands
+groundExpr? (padd a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (gadd ga gb)
+... | no ¬ga | _ = no (λ { (gadd ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (gadd _ gb) → ¬gb gb })
+groundExpr? (psub a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (gsub ga gb)
+... | no ¬ga | _ = no (λ { (gsub ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (gsub _ gb) → ¬gb gb })
+groundExpr? (pmul a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (gmul ga gb)
+... | no ¬ga | _ = no (λ { (gmul ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (gmul _ gb) → ¬gb gb })
+groundExpr? (pdiv a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (gdiv ga gb)
+... | no ¬ga | _ = no (λ { (gdiv ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (gdiv _ gb) → ¬gb gb })
+groundExpr? (pmod' a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (gmod ga gb)
+... | no ¬ga | _ = no (λ { (gmod ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (gmod _ gb) → ¬gb gb })
+-- Negation: check operand
+groundExpr? (pneg x) with groundExpr? x
+... | yes gx = yes (gneg gx)
+... | no ¬gx = no (λ { (gneg gx) → ¬gx gx })
+-- Comparisons: check both operands
+groundExpr? (plt a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (glt ga gb)
+... | no ¬ga | _ = no (λ { (glt ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (glt _ gb) → ¬gb gb })
+groundExpr? (ple a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (gle ga gb)
+... | no ¬ga | _ = no (λ { (gle ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (gle _ gb) → ¬gb gb })
+groundExpr? (pgt a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (ggt ga gb)
+... | no ¬ga | _ = no (λ { (ggt ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (ggt _ gb) → ¬gb gb })
+groundExpr? (pge a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (gge ga gb)
+... | no ¬ga | _ = no (λ { (gge ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (gge _ gb) → ¬gb gb })
+groundExpr? (peq a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (geq ga gb)
+... | no ¬ga | _ = no (λ { (geq ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (geq _ gb) → ¬gb gb })
+groundExpr? (pne a b) with groundExpr? a | groundExpr? b
+... | yes ga | yes gb = yes (gne ga gb)
+... | no ¬ga | _ = no (λ { (gne ga _) → ¬ga ga })
+... | _ | no ¬gb = no (λ { (gne _ gb) → ¬gb gb })
+-- Arr: check function
+groundExpr? (parr' f) with groundExpr? f
+... | yes gf = yes (garr gf)
+... | no ¬gf = no (λ { (garr gf) → ¬gf gf })
+-- Primitive: always ground (type handled separately)
+groundExpr? (pprim name) = yes gprim
 
 ------------------------------------------------------------------------
 -- Total Ground Expression Extraction
@@ -852,13 +993,13 @@ extractCtx (Γ P, A ^ q) with extractCtx Γ | extract A
 
 -- | Partial expression extraction (may fail if TVars present)
 -- Returns (extracted context, extracted type, extracted expression)
+--
+-- Now implemented using decidable ground predicates and total extraction,
+-- eliminating the previous unsafeExtract postulate.
 extractExpr : ∀ {n} {Γ : PolyCtx n} {A : PolyType}
             → PolyExpr Γ A
             → Maybe (∃[ Γ' ] ∃[ A' ] Expr Γ' A')
-extractExpr {Γ = Γ} {A = A} e with extractCtx Γ | extract A
-... | just Γ' | just A' = just (Γ' , A' , unsafeExtract e)
-  where
-    -- Unsafe extraction using Agda's postulate (types already checked via extract)
-    postulate unsafeExtract : ∀ {n} {Γ : PolyCtx n} {A : PolyType} → PolyExpr Γ A → Expr Γ' A'
-... | _ | _ = nothing
+extractExpr {Γ = Γ} {A = A} e with groundCtx? Γ | ground? A | groundExpr? e
+... | yes gΓ | yes gA | yes gexpr = just (extractGroundCtx Γ gΓ , extractGround A gA , extractGroundExpr e gΓ gA gexpr)
+... | _ | _ | _ = nothing
 
