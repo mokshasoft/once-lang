@@ -2855,26 +2855,11 @@ newCheckElab ctx expr ty = checkDepth (checkNew ctx expr ty)
 -- This enables polymorphic builtins (id, fst, snd, etc.) to unify properly
 -- during type inference before committing to ground types.
 --
+-- | Implementation now delegates to newInferElab (bidirectional, ground).
+-- The old polymorphic-inference-then-extract path is retained only for the
+-- deprecated compile paths while downstream stages are verified.
 inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
-inferElab ctx rawExpr =
-  -- First try polymorphic inference + extraction
-  let polyCtx = namedToPolyCtx ctx
-  in tryPolyInfer (polyInferImpl polyCtx rawExpr)
-  where
-    checkDepth : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
-    checkDepth (failure err) = failure err
-    checkDepth (success ty expr depth fresh usage) with depth ≤? 7
-    ... | yes _ = success ty expr depth fresh usage
-    ... | no _ = failure ("Expression nesting depth exceeds verified limit.\n" ++
-                         "  Depth encountered: " ++ showℕ depth ++ "\n" ++
-                         "  Proven depth limit: 7\n" ++
-                         "  Please refactor to reduce nesting of λ/case/let expressions.")
-
-    tryPolyInfer : PolyInferResult (PolyNamedCtx.polyCtx (namedToPolyCtx ctx))
-                 → InferElabResult (NamedCtx.debruijn ctx)
-    tryPolyInfer polyResult with extractInferResultTo (NamedCtx.debruijn ctx) polyResult
-    ... | nothing = failure "Internal error: extraction returned nothing"
-    ... | just result = checkDepth result
+inferElab = newInferElab
 
 ------------------------------------------------------------------------
 -- Top-level Compilation
@@ -2903,28 +2888,9 @@ extractCheckResultTo Δ A' (success pexpr depth fresh usage)
     subst₂ C refl refl z = z
 ... | no _ = nothing
 
--- | Checking mode with depth limit (helper for top-level compilation)
--- Uses polymorphic checking with extraction for proper TVar handling.
+-- | Implementation delegates to newCheckElab (bidirectional, ground).
 checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
-checkElab ctx expr ty =
-  let polyCtx = namedToPolyCtx ctx
-      polyTy = embed ty
-  in tryPolyCheck (polyCheckImpl polyCtx expr polyTy)
-  where
-    checkDepth : CheckElabResult (NamedCtx.debruijn ctx) ty → CheckElabResult (NamedCtx.debruijn ctx) ty
-    checkDepth (failure err) = failure err
-    checkDepth (success expr' depth fresh usage) with depth ≤? 7
-    ... | yes _ = success expr' depth fresh usage
-    ... | no _ = failure ("Expression nesting depth exceeds verified limit.\n" ++
-                         "  Depth encountered: " ++ showℕ depth ++ "\n" ++
-                         "  Proven depth limit: 7\n" ++
-                         "  Please refactor to reduce nesting of λ/case/let expressions.")
-
-    tryPolyCheck : PolyCheckResult (PolyNamedCtx.polyCtx (namedToPolyCtx ctx)) (embed ty)
-                 → CheckElabResult (NamedCtx.debruijn ctx) ty
-    tryPolyCheck polyResult with extractCheckResultTo (NamedCtx.debruijn ctx) ty polyResult
-    ... | nothing = failure "Internal error: extraction returned nothing"
-    ... | just result = checkDepth result
+checkElab = newCheckElab
 
 -- | Compile with type signature (PRIMARY INTERFACE - uses checking mode)
 --
