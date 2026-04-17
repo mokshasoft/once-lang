@@ -122,6 +122,29 @@ round-trip-erased-smoke :
     ≡ just (G.TInt G.⇒[ Zero ] G.TUnit , [])
 round-trip-erased-smoke = refl
 
+-- Nested compounds.
+round-trip-nested-product-smoke :
+  parseGType (printGType ((G.TInt G.⊗ G.TString) G.⊗ G.TUnit))
+    ≡ just ((G.TInt G.⊗ G.TString) G.⊗ G.TUnit , [])
+round-trip-nested-product-smoke = refl
+
+round-trip-arrow-into-product-smoke :
+  parseGType (printGType (G.TInt G.⇒[ Many ] (G.TInt G.⊗ G.TString)))
+    ≡ just (G.TInt G.⇒[ Many ] (G.TInt G.⊗ G.TString) , [])
+round-trip-arrow-into-product-smoke = refl
+
+round-trip-curried-linear-smoke :
+  parseGType (printGType (G.TInt G.⇒[ One ] (G.TInt G.⇒[ One ] G.TInt)))
+    ≡ just (G.TInt G.⇒[ One ] (G.TInt G.⇒[ One ] G.TInt) , [])
+round-trip-curried-linear-smoke = refl
+
+round-trip-sum-of-arrows-smoke :
+  parseGType (printGType
+    ((G.TInt G.⇒[ Many ] G.TInt) G.⊕ (G.TString G.⇒[ Many ] G.TUnit)))
+    ≡ just
+    ((G.TInt G.⇒[ Many ] G.TInt) G.⊕ (G.TString G.⇒[ Many ] G.TUnit) , [])
+round-trip-sum-of-arrows-smoke = refl
+
 -- The general per-constructor compound round-trip theorems require
 -- list-append reasoning (++-assoc, ∷-++ equations) to thread the
 -- parser's sequential token consumption through the printer's
