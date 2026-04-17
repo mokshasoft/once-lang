@@ -21,11 +21,13 @@ module Once.TypeCheck.ErrorProofs where
 
 open import Data.String using (String; _++_)
 open import Data.Empty using (⊥; ⊥-elim)
+open import Relation.Nullary using (¬_; yes; no)
+import Data.String.Properties
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃; ∃-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Void; Int)
+open import Once.Type using (Type; Unit; Void; Int; Str)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RLam; RQualified)
 open import Once.TypeCheck.Elaborate
@@ -36,7 +38,10 @@ open import Once.TypeCheck.Error
          LambdaInInferMode; LambdaRequiresFunctionType;
          InlInInferMode; InrInInferMode;
          InitialInInferMode; InlNeedsSumType; InrNeedsSumType;
+         FstNeedsPair; SndNeedsPair; NegationNotInt;
+         CaseScrutineeNotSum; CaseBranchMismatch;
          UnboundVariable; UnboundQualified)
+import Once.Type as T
 
 ------------------------------------------------------------------------
 -- Bundle wrapping for lookups, reused from Soundness style
@@ -139,3 +144,77 @@ inl-check-Int ctx arg refl = refl
 -- (Analogous theorems for inr + lam's non-function target exist by
 -- the same `refl`-based pattern; omitted here to avoid bulk.
 -- Future expansion point as the need for specific variants arises.)
+
+------------------------------------------------------------------------
+-- Conditional failure paths for polymorphic-builtin-app wrong-type args
+--
+-- For the RApp of `fst`/`snd` when the argument infers to a non-product
+-- type, and for `RUnaryOp OpNeg` when the sub infers to a non-Int type,
+-- the elaborator emits a distinct fixed error string.
+--
+-- Per-type enumeration: one theorem per non-matching `Type` constructor.
+------------------------------------------------------------------------
+
+-- Bundle for inferElab, reused from the Soundness module's pattern.
+private
+  InferBundle : (ctx : NamedCtx) → Raw.RawExpr → Set
+  InferBundle ctx e = ∃[ r ] Once.TypeCheck.Elaborate.inferElab ctx e ≡ r
+
+  inferBundle : (ctx : NamedCtx) (e : Raw.RawExpr) → InferBundle ctx e
+  inferBundle ctx e = Once.TypeCheck.Elaborate.inferElab ctx e , refl
+
+-- fst argument infers to non-product → FstNeedsPair.
+fst-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                   {Ψ' eE' d' f' msg}
+                 → Once.TypeCheck.Elaborate.inferElab ctx arg
+                     ≡ success Unit Ψ' eE' d' f'
+                 → Once.TypeCheck.Elaborate.inferElab ctx (Raw.RApp (Raw.RVar "fst") arg)
+                     ≡ failure msg
+                 → msg ≡ renderError FstNeedsPair
+fst-non-pair-Unit ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+fst-non-pair-Int : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                   {Ψ' eE' d' f' msg}
+                 → Once.TypeCheck.Elaborate.inferElab ctx arg
+                     ≡ success Int Ψ' eE' d' f'
+                 → Once.TypeCheck.Elaborate.inferElab ctx (Raw.RApp (Raw.RVar "fst") arg)
+                     ≡ failure msg
+                 → msg ≡ renderError FstNeedsPair
+fst-non-pair-Int ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+-- Unary negation on a non-Int → NegationNotInt.
+neg-non-Int-Unit : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                   {Ψ' eE' d' f' msg}
+                 → Once.TypeCheck.Elaborate.inferElab ctx e
+                     ≡ success Unit Ψ' eE' d' f'
+                 → Once.TypeCheck.Elaborate.inferElab ctx
+                     (Raw.RUnaryOp Raw.OpNeg e) ≡ failure msg
+                 → msg ≡ renderError NegationNotInt
+neg-non-Int-Unit ctx e eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+neg-non-Int-Str : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                  {Ψ' eE' d' f' msg}
+                → Once.TypeCheck.Elaborate.inferElab ctx e
+                    ≡ success Str Ψ' eE' d' f'
+                → Once.TypeCheck.Elaborate.inferElab ctx
+                    (Raw.RUnaryOp Raw.OpNeg e) ≡ failure msg
+                → msg ≡ renderError NegationNotInt
+neg-non-Int-Str ctx e eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+-- RVar unbound (neither "unit", local, nor import succeeds).
+var-unbound-is-UnboundVariable :
+  ∀ (ctx : NamedCtx) (x : Data.String.String)
+    {msg : Data.String.String}
+  → ¬ (x ≡ "unit")
+  → Once.TypeCheck.Elaborate.lookupLocal ctx x ≡ nothing
+  → Once.TypeCheck.Elaborate.lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → Once.TypeCheck.Elaborate.inferElab ctx (Raw.RVar x) ≡ failure msg
+  → msg ≡ renderError (UnboundVariable x)
+var-unbound-is-UnboundVariable ctx x x≢unit eqLoc eqImp eqFail with x Data.String.Properties.≟ "unit"
+... | yes p  = ⊥-elim (x≢unit p)
+... | no  _ rewrite eqLoc | eqImp with eqFail
+...   | refl = refl

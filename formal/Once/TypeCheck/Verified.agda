@@ -39,7 +39,7 @@ import Once.Type
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure; extendNamedCtx; lookupImport)
+         success; failure; extendNamedCtx; lookupImport; lookupLocal)
 open import Data.Maybe using (Maybe; nothing)
 
 open import Data.Integer using (ℤ)
@@ -53,7 +53,8 @@ import Once.TypeCheck.ErrorProofs as EP
 open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
-  UnboundQualified)
+  UnboundQualified; UnboundVariable; FstNeedsPair; NegationNotInt)
+open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Data.String using (String)
 import Once.Grammar.Convert       as Conv
@@ -236,6 +237,45 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RQualified name alias) ≡ failure msg
       → msg ≡ renderError (UnboundQualified name alias)
 
+    -- fst with Unit / Int argument → FstNeedsPair
+    tc-err-fst-non-pair-Unit :
+      ∀ (ctx : NamedCtx) (arg : RawExpr)
+        {Ψ' eE' d' f' msg}
+      → tcInfer ctx arg ≡ success Once.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure msg
+      → msg ≡ renderError FstNeedsPair
+
+    tc-err-fst-non-pair-Int :
+      ∀ (ctx : NamedCtx) (arg : RawExpr)
+        {Ψ' eE' d' f' msg}
+      → tcInfer ctx arg ≡ success Once.Type.Int Ψ' eE' d' f'
+      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure msg
+      → msg ≡ renderError FstNeedsPair
+
+    -- Negation with Unit / Str argument → NegationNotInt
+    tc-err-neg-non-Int-Unit :
+      ∀ (ctx : NamedCtx) (e : RawExpr)
+        {Ψ' eE' d' f' msg}
+      → tcInfer ctx e ≡ success Once.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure msg
+      → msg ≡ renderError NegationNotInt
+
+    tc-err-neg-non-Int-Str :
+      ∀ (ctx : NamedCtx) (e : RawExpr)
+        {Ψ' eE' d' f' msg}
+      → tcInfer ctx e ≡ success Once.Type.Str Ψ' eE' d' f'
+      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure msg
+      → msg ≡ renderError NegationNotInt
+
+    -- Bare-name variable that is not "unit" and not in local/import scope.
+    tc-err-var-unbound :
+      ∀ (ctx : NamedCtx) (x : String) {msg : String}
+      → ¬ (x ≡ "unit")
+      → lookupLocal ctx x ≡ nothing
+      → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+      → tcInfer ctx (RVar x) ≡ failure msg
+      → msg ≡ renderError (UnboundVariable x)
+
     ----------------------------------------------------------------
     -- G2 (continued): remaining soundness fields.
     ----------------------------------------------------------------
@@ -392,6 +432,11 @@ verifiedTypeChecker = record
   ; tc-err-inr-infer              = EP.inr-app-infer-is-InrInInferMode
   ; tc-err-initial-infer          = EP.initial-app-infer-is-InitialInInferMode
   ; tc-err-qualified-unbound      = EP.qualified-not-found-is-UnboundQualified
+  ; tc-err-fst-non-pair-Unit      = EP.fst-non-pair-Unit
+  ; tc-err-fst-non-pair-Int       = EP.fst-non-pair-Int
+  ; tc-err-neg-non-Int-Unit       = EP.neg-non-Int-Unit
+  ; tc-err-neg-non-Int-Str        = EP.neg-non-Int-Str
+  ; tc-err-var-unbound            = EP.var-unbound-is-UnboundVariable
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
