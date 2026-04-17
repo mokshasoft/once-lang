@@ -430,3 +430,69 @@ case-scrut-Str : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
 case-scrut-Str ctx scrut xL eL xR eR eqSub eqFail
   rewrite eqSub with eqFail
 ... | refl = refl
+
+-- fst non-pair: Float, Buffer, sum (_+_), function, Eff, μ, ν
+fst-non-pair-Float : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                    {Ψ' eE' d' f' err}
+                  → inferElab ctx arg ≡ success T.Float Ψ' eE' d' f'
+                  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                  → err ≡ FstNeedsPair
+fst-non-pair-Float ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+fst-non-pair-Buffer : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                     {Ψ' eE' d' f' err}
+                   → inferElab ctx arg ≡ success T.Buffer Ψ' eE' d' f'
+                   → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                   → err ≡ FstNeedsPair
+fst-non-pair-Buffer ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+fst-non-pair-Sum : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type}
+                  {Ψ' eE' d' f' err}
+                → inferElab ctx arg ≡ success (A T.+ B) Ψ' eE' d' f'
+                → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                → err ≡ FstNeedsPair
+fst-non-pair-Sum ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+fst-non-pair-Fun : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr) {A B : Type} {q : _}
+                  {Ψ' eE' d' f' err}
+                → inferElab ctx arg ≡ success (A T.⇒[ q ] B) Ψ' eE' d' f'
+                → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                → err ≡ FstNeedsPair
+fst-non-pair-Fun ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+-- neg non-Int: same pattern per Type.
+neg-non-Int-Float : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                   {Ψ' eE' d' f' err}
+                 → inferElab ctx e ≡ success T.Float Ψ' eE' d' f'
+                 → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                 → err ≡ NegationNotInt
+neg-non-Int-Float ctx e eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+neg-non-Int-Buffer : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                    {Ψ' eE' d' f' err}
+                  → inferElab ctx e ≡ success T.Buffer Ψ' eE' d' f'
+                  → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                  → err ≡ NegationNotInt
+neg-non-Int-Buffer ctx e eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+neg-non-Int-Product : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
+                     {Ψ' eE' d' f' err}
+                   → inferElab ctx e ≡ success (A T.* B) Ψ' eE' d' f'
+                   → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                   → err ≡ NegationNotInt
+neg-non-Int-Product ctx e eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+neg-non-Int-Sum : ∀ (ctx : NamedCtx) (e : Raw.RawExpr) {A B : Type}
+                 {Ψ' eE' d' f' err}
+               → inferElab ctx e ≡ success (A T.+ B) Ψ' eE' d' f'
+               → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+               → err ≡ NegationNotInt
+neg-non-Int-Sum ctx e eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
