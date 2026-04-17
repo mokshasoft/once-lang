@@ -452,6 +452,32 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
       → err ≡ CaseScrutineeNotSum
 
+    -- Exhaustive per-Type G4 wiring (Float, Buffer, Sum, Product, Fun).
+    tc-err-fst-non-pair-Float :
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {Ψ' eE' d' f' err}
+      → tcInfer ctx arg ≡ success Once.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure err
+      → err ≡ FstNeedsPair
+
+    tc-err-snd-non-pair-Float :
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {Ψ' eE' d' f' err}
+      → tcInfer ctx arg ≡ success Once.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure err
+      → err ≡ SndNeedsPair
+
+    tc-err-neg-non-Int-Float :
+      ∀ (ctx : NamedCtx) (e : RawExpr) {Ψ' eE' d' f' err}
+      → tcInfer ctx e ≡ success Once.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
+      → err ≡ NegationNotInt
+
+    tc-err-case-scrut-Float :
+      ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
+        (xR : String) (eR : RawExpr) {Ψ' eE' d' f' err}
+      → tcInfer ctx scrut ≡ success Once.Type.Float Ψ' eE' d' f'
+      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
+      → err ≡ CaseScrutineeNotSum
+
     ----------------------------------------------------------------
     -- G2 (continued): remaining soundness fields.
     ----------------------------------------------------------------
@@ -926,6 +952,10 @@ verifiedTypeChecker = record
   ; tc-err-neg-non-Int-Void       = EP.neg-non-Int-Void
   ; tc-err-case-scrut-Void        = EP.case-scrut-Void
   ; tc-err-case-scrut-Str         = EP.case-scrut-Str
+  ; tc-err-fst-non-pair-Float     = EP.fst-non-pair-Float
+  ; tc-err-snd-non-pair-Float     = EP.snd-non-pair-Float
+  ; tc-err-neg-non-Int-Float      = EP.neg-non-Int-Float
+  ; tc-err-case-scrut-Float       = EP.case-scrut-Float
   ; tc-err-case-branch-mismatch   = EP.case-branch-mismatch-is-CaseBranchMismatch
   ; tc-err-check-RInt-type-mismatch  = EP.check-RInt-type-mismatch
   ; tc-err-check-RUnit-type-mismatch = EP.check-RUnit-type-mismatch
