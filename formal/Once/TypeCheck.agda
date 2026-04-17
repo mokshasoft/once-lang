@@ -54,6 +54,23 @@ open import Once.Surface.Thinning public
 open import Once.Surface.Syntax public
   using () renaming (∅ to S∅)
 
+-- Proof-bundled public API.
+--
+-- `VerifiedTypeChecker` is a record whose fields are the typechecker
+-- entry points together with every meta-property we have proved about
+-- them. The single inhabitant `verifiedTypeChecker` cannot be
+-- constructed without witnesses to every field — so a regression in
+-- any proof fails the compiler build by construction.
+--
+-- Downstream consumers should prefer calling through this record
+-- (`VerifiedTypeChecker.tcInfer verifiedTypeChecker ctx e`) rather
+-- than using `inferElab` directly, to ensure the proof obligations
+-- are part of what they depend on.
+--
+-- See plans/0.3-frontend-verification-gaps.md.
+open import Once.TypeCheck.Verified public
+  using (VerifiedTypeChecker; verifiedTypeChecker)
+
 ------------------------------------------------------------------------
 -- Convenience API
 ------------------------------------------------------------------------
