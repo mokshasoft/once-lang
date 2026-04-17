@@ -41,6 +41,8 @@ open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
          RLam; RLet; RUnaryOp; OpNeg)
 open import Data.String using (_++_)
+import Data.String.Properties
+open import Relation.Nullary using (yes; no)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport; extendNamedCtx)
@@ -264,6 +266,80 @@ sound-RQualified ctx name alias eq | just T , eqLookup
 sound-RQualified ctx name alias eq | nothing , eqLookup
   rewrite eqLookup with eq
 ... | ()
+
+------------------------------------------------------------------------
+-- Soundness for RVar
+--
+-- Three branches, reflecting the elaborator's precedence after the
+-- `decideLeq`-style refactor:
+--   (1) `x ≡ "unit"` → apply `t-unit-var`;
+--   (2) `x ≢ "unit"` and `lookupLocal` succeeds → `t-var-local`;
+--   (3) `x ≢ "unit"`, no local, `lookupImport` succeeds → `t-var-import`.
+-- Every other shape (both lookups fail) is a `failure`, closed by
+-- the absurd pattern on the outer equation.
+------------------------------------------------------------------------
+
+-- Bundle for local lookup.
+LocalLookupBundle : (ctx : NamedCtx) (x : _) → Set
+LocalLookupBundle ctx x = ∃[ r ] lookupLocal ctx x ≡ r
+
+localLookupBundle : ∀ (ctx : NamedCtx) (x : _) → LocalLookupBundle ctx x
+localLookupBundle ctx x = lookupLocal ctx x , refl
+
+-- Bundle for the `x ≟ "unit"` decision.
+UnitDecBundle : (x : _) → Set
+UnitDecBundle x = ∃[ r ] Data.String.Properties._≟_ x "unit" ≡ r
+
+unitDecBundle : (x : _) → UnitDecBundle x
+unitDecBundle x = Data.String.Properties._≟_ x "unit" , refl
+
+sound-RVar :
+  ∀ (ctx : NamedCtx) (x : _)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → inferElab ctx (RVar x) ≡ success A Ψ eE d f
+  → ctx ⊢ RVar x ∶ A ⨾ Ψ
+sound-RVar ctx x eq with unitDecBundle x
+-- Branch 1: x = "unit"
+sound-RVar ctx x eq | yes eqUnit , eqDec
+  rewrite eqUnit | eqDec with eq
+... | refl = t-unit-var
+-- Branch 2/3: x ≠ "unit", fall through to local lookup
+sound-RVar ctx x eq | no ¬eqUnit , eqDec
+  rewrite eqDec with localLookupBundle ctx x
+-- Branch 2: local lookup found the binding
+sound-RVar ctx x eq
+  | no ¬eqUnit , eqDec
+  | just (A' , Ψ' , eE') , eqLocal
+  rewrite eqLocal with eq
+... | refl = t-var-local eqLocal
+-- Branch 3: local missed; try imports
+sound-RVar ctx x eq
+  | no ¬eqUnit , eqDec
+  | nothing , eqLocal
+  rewrite eqLocal with lookupBundle (NamedCtx.imports ctx) x
+sound-RVar ctx x eq
+  | no ¬eqUnit , eqDec
+  | nothing , eqLocal
+  | just T , eqImport
+  rewrite eqImport with eq
+... | refl = t-var-import eqImport
+sound-RVar ctx x eq
+  | no ¬eqUnit , eqDec
+  | nothing , eqLocal
+  | nothing , eqImport
+  rewrite eqImport with eq
+... | ()
+
+-- `sound-RVar-unit` is now a specialisation; rewrite in terms of
+-- the generic `sound-RVar` for consistency.
+sound-RVar-unit-generic :
+  ∀ (ctx : NamedCtx)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → inferElab ctx (RVar "unit") ≡ success A Ψ eE d f
+  → ctx ⊢ RVar "unit" ∶ A ⨾ Ψ
+sound-RVar-unit-generic ctx = sound-RVar ctx "unit"
 
 ------------------------------------------------------------------------
 -- Soundness for RLet

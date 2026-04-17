@@ -149,6 +149,17 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RVar "unit") ≡ success A Ψ eE d f
       → ctx ⊢ RVar "unit" ∶ A ⨾ Ψ
 
+    -- Full RVar soundness: covers the `"unit"` builtin path, local
+    -- bindings, and import lookup — unblocked by refactoring the
+    -- elaborator to use decidable equality on `x ≟ "unit"` instead
+    -- of a literal string pattern.
+    tcInfer-sound-RVar :
+      ∀ (ctx : NamedCtx) (x : String)
+        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
+      → tcInfer ctx (RVar x) ≡ success A Ψ eE d f
+      → ctx ⊢ RVar x ∶ A ⨾ Ψ
+
     -- Recursive RawExpr cases: soundness is parameterised by an IH
     -- for the sub-expression(s). A top-level structural recursion
     -- over RawExpr stitches these lemmas together — omitted here
@@ -292,6 +303,7 @@ verifiedTypeChecker = record
   ; tcInfer-sound-RStringLit      = Snd.sound-RStringLit
   ; tcInfer-sound-RUnit           = Snd.sound-RUnit
   ; tcInfer-sound-RVar-unit       = Snd.sound-RVar-unit
+  ; tcInfer-sound-RVar            = Snd.sound-RVar
   ; tcInfer-sound-RUnaryOp-neg    = Snd.sound-RUnaryOp-neg
   ; tcInfer-sound-RAnnot          = Snd.sound-RAnnot
   ; tcInfer-sound-RPair           = Snd.sound-RPair

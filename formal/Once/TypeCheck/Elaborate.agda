@@ -26,7 +26,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; inspect; [_])
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
 open import Once.Type
 open Once.Type using (showQuantity; showType) public
@@ -611,17 +611,27 @@ mutual
   ... | success Ψ se d f = success T Ψ se d f
   ... | failure err     = failure err
 
-  -- The `unit` builtin is monomorphic (type Unit).
-  inferElab ctx (Raw.RVar "unit") =
-    success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx)
-
-  -- Variable lookup (local first, then imports; polymorphic builtins need context)
-  inferElab ctx (Raw.RVar x) with lookupLocal ctx x
-  ... | just (A , Ψ , se) = success A Ψ se 0 (NamedCtx.freshCounter ctx)
-  ... | nothing with lookupImport (NamedCtx.imports ctx) x
-  ...   | just ty = success ty _ (Surface.prim x) 0 (NamedCtx.freshCounter ctx)
-  ...   | nothing = failure ("Unbound or unspecialized variable: " ++ x ++
-                             " (polymorphic builtins must appear applied or in check mode)")
+  -- Variable lookup.
+  --
+  -- Order of precedence:
+  --   (1) the `"unit"` builtin (monomorphic Unit);
+  --   (2) local bindings in the typing context;
+  --   (3) imported primitives (qualified-ish via bare name).
+  --
+  -- The `"unit"` check is written as a decidable equality (via
+  -- `StrProp._≟_`) rather than a literal pattern match so downstream
+  -- soundness proofs can case-split on it without hitting Agda's
+  -- neutral-term obstacle on literal strings (analogous to the
+  -- `decideLeq` refactor for `RLam`).
+  inferElab ctx (Raw.RVar x) with StrProp._≟_ x "unit"
+  ... | yes _ =
+        success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx)
+  ... | no  _ with lookupLocal ctx x
+  ...   | just (A , Ψ , se) = success A Ψ se 0 (NamedCtx.freshCounter ctx)
+  ...   | nothing with lookupImport (NamedCtx.imports ctx) x
+  ...     | just ty = success ty _ (Surface.prim x) 0 (NamedCtx.freshCounter ctx)
+  ...     | nothing = failure ("Unbound or unspecialized variable: " ++ x ++
+                               " (polymorphic builtins must appear applied or in check mode)")
 
   -- Qualified name: look up as "alias.name"
   inferElab ctx (Raw.RQualified name alias) with lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
