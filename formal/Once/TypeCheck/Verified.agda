@@ -812,6 +812,18 @@ record VerifiedTypeChecker : Set₁ where
       → Raw.isComparisonOp op ≡ Data.Bool.true
       → Data.Empty.⊥
 
+    id-≤q-refl : ∀ (q : _) → (q Once.Type.≤q q) ≡ Data.Bool.true
+
+    id-≤q-trans :
+      ∀ (q₁ q₂ q₃ : _)
+      → (q₁ Once.Type.≤q q₂) ≡ Data.Bool.true
+      → (q₂ Once.Type.≤q q₃) ≡ Data.Bool.true
+      → (q₁ Once.Type.≤q q₃) ≡ Data.Bool.true
+
+    id-Zero-≤q-all : ∀ (q : _) → (Once.Type.Zero Once.Type.≤q q) ≡ Data.Bool.true
+
+    id-all-≤q-Many : ∀ (q : _) → (q Once.Type.≤q Once.Type.Many) ≡ Data.Bool.true
+
     ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips
     -- through the internal `Type` representation on its expressible
@@ -917,6 +929,10 @@ verifiedTypeChecker = record
   ; id-decideLeq-iff              = λ q' q → Id.decideLeq-correct-true q' q , Id.decideLeq-correct-just q' q
   ; id-binop-classification-exhaustive = Id.binop-classification-exhaustive
   ; id-binop-classification-exclusive  = Id.binop-classification-exclusive
+  ; id-≤q-refl                    = Id.≤q-refl
+  ; id-≤q-trans                   = Id.≤q-trans
+  ; id-Zero-≤q-all                = Id.Zero-≤q-all
+  ; id-all-≤q-Many                = Id.all-≤q-Many
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }

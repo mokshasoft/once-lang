@@ -26,6 +26,7 @@ open import Data.Empty using (⊥)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃; ∃-syntax; _,_)
 open import Data.String using (String)
+open import Data.Product using (_×_; _,_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym; trans)
 open import Relation.Nullary using (¬_)
@@ -184,3 +185,65 @@ classifyAppHead-inr = refl
 classifyAppHead-initial :
   classifyAppHead (RVar "initial") ≡ just pba-initial
 classifyAppHead-initial = refl
+
+------------------------------------------------------------------------
+-- QTT quantity order: reflexivity and transitivity
+------------------------------------------------------------------------
+
+-- Reflexivity: q ≤q q always.
+≤q-refl : ∀ (q : Quantity) → (q ≤q q) ≡ true
+≤q-refl Zero = refl
+≤q-refl One  = refl
+≤q-refl Many = refl
+
+-- Transitivity: chain of quantity ≤q relations.
+≤q-trans : ∀ (q₁ q₂ q₃ : Quantity)
+         → (q₁ ≤q q₂) ≡ true
+         → (q₂ ≤q q₃) ≡ true
+         → (q₁ ≤q q₃) ≡ true
+-- q₁ = Zero: Zero ≤q anything is true definitionally.
+≤q-trans Zero _    _    _  _  = refl
+-- q₁ = One: q₂ must be One or Many (else first premise is false).
+≤q-trans One  Zero _    () _
+≤q-trans One  One  Zero _  ()
+≤q-trans One  One  One  _  _  = refl
+≤q-trans One  One  Many _  _  = refl
+≤q-trans One  Many Zero _  ()
+≤q-trans One  Many One  _  ()
+≤q-trans One  Many Many _  _  = refl
+-- q₁ = Many: q₂ must be Many.
+≤q-trans Many Zero _    () _
+≤q-trans Many One  _    () _
+≤q-trans Many Many Zero _  ()
+≤q-trans Many Many One  _  ()
+≤q-trans Many Many Many _  _  = refl
+
+-- Zero is the minimum.
+Zero-≤q-all : ∀ (q : Quantity) → (Zero ≤q q) ≡ true
+Zero-≤q-all _ = refl
+
+-- Many is the maximum.
+all-≤q-Many : ∀ (q : Quantity) → (q ≤q Many) ≡ true
+all-≤q-Many Zero = refl
+all-≤q-Many One  = refl
+all-≤q-Many Many = refl
+
+------------------------------------------------------------------------
+-- Grammar round-trip injectivity corollaries
+------------------------------------------------------------------------
+
+open import Once.Grammar.Convert
+  using (gtypeToType; typeToGType;
+         typeToGType-gtypeToType; gtypeToType-typeToGType)
+open import Once.Grammar using (GType)
+
+-- typeToGType is injective on its domain (restricted to grammar-
+-- expressible types): if two types map to the same GType, they're
+-- equal.
+typeToGType-injective :
+  ∀ {t₁ t₂ : Type} {g : GType}
+  → typeToGType t₁ ≡ just g
+  → typeToGType t₂ ≡ just g
+  → (gtypeToType g ≡ just t₁) × (gtypeToType g ≡ just t₂)
+typeToGType-injective {t₁} {t₂} {g} eq₁ eq₂ =
+  typeToGType-gtypeToType t₁ g eq₁ , typeToGType-gtypeToType t₂ g eq₂
