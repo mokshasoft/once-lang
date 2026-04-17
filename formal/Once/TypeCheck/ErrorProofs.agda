@@ -354,3 +354,79 @@ binop-right-err-wraps :
 binop-right-err-wraps ctx op e₁ e₂ eqL eqR eqFail
   rewrite eqL | eqR with eqFail
 ... | refl = refl
+
+------------------------------------------------------------------------
+-- Exhaustive per-Type coverage for the "sub-type-mismatch" errors
+--
+-- Previously we proved these per-Type theorems only for representative
+-- types (Unit, Int, Str). This section fills in the remaining Type
+-- constructors so every non-matching argument shape has its own
+-- named theorem. Each proof is the same mechanical pattern:
+-- `rewrite eqSub with eqFail ; ... | refl = refl`.
+------------------------------------------------------------------------
+
+-- fst argument: exhaustive non-product types → FstNeedsPair.
+fst-non-pair-Void : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                   {Ψ' eE' d' f' err}
+                 → inferElab ctx arg ≡ success Void Ψ' eE' d' f'
+                 → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                 → err ≡ FstNeedsPair
+fst-non-pair-Void ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+fst-non-pair-Str : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                  {Ψ' eE' d' f' err}
+                → inferElab ctx arg ≡ success Str Ψ' eE' d' f'
+                → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ failure err
+                → err ≡ FstNeedsPair
+fst-non-pair-Str ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+-- snd argument: exhaustive non-product types → SndNeedsPair.
+snd-non-pair-Void : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                   {Ψ' eE' d' f' err}
+                 → inferElab ctx arg ≡ success Void Ψ' eE' d' f'
+                 → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                 → err ≡ SndNeedsPair
+snd-non-pair-Void ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+snd-non-pair-Str : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                  {Ψ' eE' d' f' err}
+                → inferElab ctx arg ≡ success Str Ψ' eE' d' f'
+                → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ failure err
+                → err ≡ SndNeedsPair
+snd-non-pair-Str ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+-- Negation: exhaustive non-Int types → NegationNotInt.
+neg-non-Int-Void : ∀ (ctx : NamedCtx) (e : Raw.RawExpr)
+                  {Ψ' eE' d' f' err}
+                → inferElab ctx e ≡ success Void Ψ' eE' d' f'
+                → inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) ≡ failure err
+                → err ≡ NegationNotInt
+neg-non-Int-Void ctx e eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+-- Case scrutinee: exhaustive non-sum types → CaseScrutineeNotSum.
+case-scrut-Void : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+                  (xL : String) (eL : Raw.RawExpr)
+                  (xR : String) (eR : Raw.RawExpr)
+                  {Ψ' eE' d' f' err}
+                → inferElab ctx scrut ≡ success Void Ψ' eE' d' f'
+                → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
+                → err ≡ CaseScrutineeNotSum
+case-scrut-Void ctx scrut xL eL xR eR eqSub eqFail
+  rewrite eqSub with eqFail
+... | refl = refl
+
+case-scrut-Str : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+                 (xL : String) (eL : Raw.RawExpr)
+                 (xR : String) (eR : Raw.RawExpr)
+                 {Ψ' eE' d' f' err}
+               → inferElab ctx scrut ≡ success Str Ψ' eE' d' f'
+               → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
+               → err ≡ CaseScrutineeNotSum
+case-scrut-Str ctx scrut xL eL xR eR eqSub eqFail
+  rewrite eqSub with eqFail
+... | refl = refl
