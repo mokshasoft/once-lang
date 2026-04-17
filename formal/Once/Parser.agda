@@ -32,6 +32,11 @@ open import Once.Parser.TypeAlias public
 -- so a regression in parser behaviour fails `make parser`.
 import Once.Parser.Tests
 
+-- Grammar pretty-printer + round-trip smoke tests (plan 0.3 G1):
+-- same principle — force the printer/parser consistency into
+-- the parser-target dependency chain.
+import Once.Grammar.Printer
+
 
 ------------------------------------------------------------------------
 -- Top-level Parse Function
