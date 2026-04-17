@@ -2475,6 +2475,51 @@ findLocalVarUsage (mkCtx n Γ Δ _ _) x = go Γ Δ
     ...   | nothing = nothing
     ...   | just (i , q') = just (suc i , q')
 
+-- | Projection of an InferElabResult as a function-typed result.
+-- Used to avoid combinatorial nested-with coverage when the caller needs
+-- the inferred type to be a function type. Handles failure propagation
+-- and exhaustive non-function-type cases in one place.
+data FunProjection {n : ℕ} (Δ : SCtx n) : Set where
+  isFun  : (A : Type) (q : Quantity) (B : Type)
+         → SExpr Δ (A ⇒[ q ] B) → ℕ → ℕ → Surface.Usage n
+         → FunProjection Δ
+  notFun : String → FunProjection Δ
+
+asFun : ∀ {n} {Δ : SCtx n} → InferElabResult Δ → FunProjection Δ
+asFun (failure err)                           = notFun err
+asFun (success (A ⇒[ q ] B) se d f u)          = isFun A q B se d f u
+asFun (success Unit _ _ _ _)                  = notFun "expected function type, got Unit"
+asFun (success Void _ _ _ _)                  = notFun "expected function type, got Void"
+asFun (success Int _ _ _ _)                   = notFun "expected function type, got Int"
+asFun (success Float _ _ _ _)                 = notFun "expected function type, got Float"
+asFun (success Str _ _ _ _)                   = notFun "expected function type, got Str"
+asFun (success Buffer _ _ _ _)                = notFun "expected function type, got Buffer"
+asFun (success (_ Once.Type.* _) _ _ _ _)     = notFun "expected function type, got product"
+asFun (success (_ Once.Type.+ _) _ _ _ _)     = notFun "expected function type, got sum"
+asFun (success (Eff _ _) _ _ _ _)             = notFun "expected function type, got Eff"
+asFun (success (μ-type _) _ _ _ _)            = notFun "expected function type, got μ-type"
+asFun (success (ν-type _) _ _ _ _)            = notFun "expected function type, got ν-type"
+
+-- | Projection as an Int-typed result. Same pattern as asFun.
+data IntProjection {n : ℕ} (Δ : SCtx n) : Set where
+  isInt  : SExpr Δ Int → ℕ → ℕ → Surface.Usage n → IntProjection Δ
+  notInt : String → IntProjection Δ
+
+asInt : ∀ {n} {Δ : SCtx n} → InferElabResult Δ → IntProjection Δ
+asInt (failure err)                           = notInt err
+asInt (success Int se d f u)                  = isInt se d f u
+asInt (success Unit _ _ _ _)                  = notInt "expected Int, got Unit"
+asInt (success Void _ _ _ _)                  = notInt "expected Int, got Void"
+asInt (success Float _ _ _ _)                 = notInt "expected Int, got Float"
+asInt (success Str _ _ _ _)                   = notInt "expected Int, got Str"
+asInt (success Buffer _ _ _ _)                = notInt "expected Int, got Buffer"
+asInt (success (_ Once.Type.* _) _ _ _ _)     = notInt "expected Int, got product"
+asInt (success (_ Once.Type.+ _) _ _ _ _)     = notInt "expected Int, got sum"
+asInt (success (_ ⇒[ _ ] _) _ _ _ _)          = notInt "expected Int, got function"
+asInt (success (Eff _ _) _ _ _ _)             = notInt "expected Int, got Eff"
+asInt (success (μ-type _) _ _ _ _)            = notInt "expected Int, got μ-type"
+asInt (success (ν-type _) _ _ _ _)            = notInt "expected Int, got ν-type"
+
 ------------------------------------------------------------------------
 -- New Bidirectional Inference/Checking (ground types throughout)
 ------------------------------------------------------------------------
@@ -2574,16 +2619,76 @@ mutual
   ...   | no _ = failure "apply: function domain must match second component"
   inferNew ctx (Raw.RApp (Raw.RVar "apply") _) | success _ _ _ _ _ = failure "apply requires ((A → B) * A)"
 
-  -- compose/pair/curry (arity 3) NOT YET HANDLED in inferNew.
-  -- These require a function-type projection helper to avoid nested-with
-  -- coverage issues when the inferred types don't have function shape.
-  -- Left for a follow-up once the simpler slice is wired up and verified.
-  inferNew ctx (Raw.RApp (Raw.RApp (Raw.RApp (Raw.RVar "compose") _) _) _) =
-    failure "inferNew: compose not yet implemented (arity 3 builtin)"
-  inferNew ctx (Raw.RApp (Raw.RApp (Raw.RApp (Raw.RVar "pair") _) _) _) =
-    failure "inferNew: pair (fork) not yet implemented (arity 3 builtin)"
-  inferNew ctx (Raw.RApp (Raw.RApp (Raw.RApp (Raw.RVar "curry") _) _) _) =
-    failure "inferNew: curry not yet implemented (arity 3 builtin)"
+  -- compose : (B → C) → (A → B) → A → C  (arity 3)
+  inferNew ctx (Raw.RApp (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g) x) with asFun (inferNew ctx f)
+  ... | notFun err = failure ("compose/f: " ++ err)
+  ... | isFun B qF C fE df ff uf with qF ≟q Many
+  ...   | no _ = failure "compose: f must have Many-arrow function type"
+  ...   | yes refl with asFun (inferNew ctx g)
+  ...     | notFun err = failure ("compose/g: " ++ err)
+  ...     | isFun A qG B' gE dg fg ug with qG ≟q Many | B ≟T B'
+  ...       | no _ | _ = failure "compose: g must have Many-arrow function type"
+  ...       | yes _ | no _ = failure "compose: g's codomain must match f's domain"
+  ...       | yes refl | yes refl with inferNew ctx x
+  ...         | failure err = failure err
+  ...         | success A' xE dx fx ux with A ≟T A'
+  ...           | yes refl = success C
+                               (Surface.app (Surface.app
+                                 (Surface.app (weakenFromEmpty (specCompose A B C)) fE)
+                                 gE) xE)
+                               (suc (df ⊔ dg ⊔ dx)) fx (uf +ᵘ ug +ᵘ ux)
+  ...           | no _ = failure "compose: x's type must match g's domain"
+
+  -- pair (fork) : (A → B) → (A → C) → A → (B * C)  (arity 3)
+  inferNew ctx (Raw.RApp (Raw.RApp (Raw.RApp (Raw.RVar "pair") f) g) x) with asFun (inferNew ctx f)
+  ... | notFun err = failure ("pair/f: " ++ err)
+  ... | isFun A qF B fE df ff uf with qF ≟q Many
+  ...   | no _ = failure "pair: f must have Many-arrow function type"
+  ...   | yes refl with asFun (inferNew ctx g)
+  ...     | notFun err = failure ("pair/g: " ++ err)
+  ...     | isFun A' qG C gE dg fg ug with qG ≟q Many | A ≟T A'
+  ...       | no _ | _ = failure "pair: g must have Many-arrow function type"
+  ...       | yes _ | no _ = failure "pair: f and g must share the same domain"
+  ...       | yes refl | yes refl with inferNew ctx x
+  ...         | failure err = failure err
+  ...         | success A'' xE dx fx ux with A ≟T A''
+  ...           | yes refl = success (B Once.Type.* C)
+                               (Surface.app (Surface.app
+                                 (Surface.app (weakenFromEmpty (specPair A B C)) fE)
+                                 gE) xE)
+                               (suc (df ⊔ dg ⊔ dx)) fx (uf +ᵘ ug +ᵘ ux)
+  ...           | no _ = failure "pair: x's type must match f/g domain"
+
+  -- curry : ((A * B) → C) → A → B → C  (arity 3)
+  inferNew ctx (Raw.RApp (Raw.RApp (Raw.RApp (Raw.RVar "curry") fn) a) b) with asFun (inferNew ctx fn)
+  ... | notFun err = failure ("curry/fn: " ++ err)
+  ... | isFun domT qF C fnE df ff uf with qF ≟q Many
+  ...   | no _ = failure "curry: fn must have Many-arrow function type"
+  ...   | yes refl with domT
+  ...     | Unit        = failure "curry: fn's domain must be a product (A * B)"
+  ...     | Void        = failure "curry: fn's domain must be a product (A * B)"
+  ...     | Int         = failure "curry: fn's domain must be a product (A * B)"
+  ...     | Float       = failure "curry: fn's domain must be a product (A * B)"
+  ...     | Str         = failure "curry: fn's domain must be a product (A * B)"
+  ...     | Buffer      = failure "curry: fn's domain must be a product (A * B)"
+  ...     | (_ Once.Type.+ _) = failure "curry: fn's domain must be a product (A * B)"
+  ...     | (_ ⇒[ _ ] _)       = failure "curry: fn's domain must be a product (A * B)"
+  ...     | (Eff _ _)   = failure "curry: fn's domain must be a product (A * B)"
+  ...     | (μ-type _)  = failure "curry: fn's domain must be a product (A * B)"
+  ...     | (ν-type _)  = failure "curry: fn's domain must be a product (A * B)"
+  ...     | (A Once.Type.* B) with inferNew ctx a
+  ...       | failure err = failure err
+  ...       | success A' aE da fa ua with A ≟T A'
+  ...         | no _ = failure "curry: a's type must match the first component"
+  ...         | yes refl with inferNew ctx b
+  ...           | failure err = failure err
+  ...           | success B' bE db fb ub with B ≟T B'
+  ...             | yes refl = success C
+                                 (Surface.app (Surface.app
+                                   (Surface.app (weakenFromEmpty (specCurry A B C)) fnE)
+                                   aE) bE)
+                                 (suc (df ⊔ da ⊔ db)) fb (uf +ᵘ ua +ᵘ ub)
+  ...             | no _ = failure "curry: b's type must match the second component"
 
   -- Partial or unsupported builtins in infer mode
   inferNew ctx (Raw.RApp (Raw.RVar "inl") _) =
@@ -2593,10 +2698,15 @@ mutual
   inferNew ctx (Raw.RApp (Raw.RVar "initial") _) =
     failure "initial requires check mode (needs target type)"
 
-  -- Generic application NOT YET HANDLED in inferNew. Same coverage issue
-  -- as compose/pair/curry (requires function-type projection helper).
-  inferNew ctx (Raw.RApp _ _) =
-    failure "inferNew: generic application not yet implemented"
+  -- Generic application: infer f, project as function type, then infer x.
+  inferNew ctx (Raw.RApp f x) with asFun (inferNew ctx f)
+  ... | notFun err = failure err
+  ... | isFun A q B fE df ff uf with inferNew ctx x
+  ...   | failure err = failure err
+  ...   | success A' xE dx fx ux with A ≟T A'
+  ...     | yes refl = success B (Surface.app fE xE) (df ⊔ dx) fx (uf +ᵘ ux)
+  ...     | no _ = failure ("Application: argument type " ++ showType A' ++
+                            " does not match function domain " ++ showType A)
 
   -- Let binding: infer e₁ monomorphically, then e₂ under extended context
   inferNew ctx (Raw.RLet x e₁ e₂) with inferNew ctx e₁
@@ -2627,10 +2737,31 @@ mutual
   ...       | no _ = failure "Case branches have different types"
   inferNew ctx (Raw.RDestruct _ _ _ _ _) | success _ _ _ _ _ = failure "Case requires a sum-typed scrutinee"
 
-  -- Binary operators. NOT YET HANDLED in inferNew due to nested-with
-  -- coverage issues when operands aren't Int. Left for follow-up.
-  inferNew ctx (Raw.RBinOp _ _ _) =
-    failure "inferNew: binary operators not yet implemented"
+  -- Binary operators: both operands must be Int.
+  inferNew ctx (Raw.RBinOp op e₁ e₂) with asInt (inferNew ctx e₁)
+  ... | notInt err = failure ("binop left: " ++ err)
+  ... | isInt e₁E d₁ f₁ u₁ with asInt (inferNew ctx e₂)
+  ...   | notInt err = failure ("binop right: " ++ err)
+  ...   | isInt e₂E d₂ f₂ u₂ =
+        if Raw.isArithmeticOp op
+          then success Int (mkArith op e₁E e₂E) (d₁ ⊔ d₂) f₂ (u₁ +ᵘ u₂)
+          else success (Unit Once.Type.+ Unit) (mkCmp op e₁E e₂E) (d₁ ⊔ d₂) f₂ (u₁ +ᵘ u₂)
+    where
+      mkArith : Raw.BinOp → SExpr _ Int → SExpr _ Int → SExpr _ Int
+      mkArith Raw.OpAdd = Surface.add
+      mkArith Raw.OpSub = Surface.sub
+      mkArith Raw.OpMul = Surface.mul
+      mkArith Raw.OpDiv = Surface.div
+      mkArith Raw.OpMod = Surface.mod'
+      mkArith _ = Surface.add
+      mkCmp : Raw.BinOp → SExpr _ Int → SExpr _ Int → SExpr _ (Unit Once.Type.+ Unit)
+      mkCmp Raw.OpLt = Surface.lt
+      mkCmp Raw.OpLe = Surface.le
+      mkCmp Raw.OpGt = Surface.gt
+      mkCmp Raw.OpGe = Surface.ge
+      mkCmp Raw.OpEq = Surface.eq
+      mkCmp Raw.OpNe = Surface.ne
+      mkCmp _ = Surface.lt
 
   -- Unary
   inferNew ctx (Raw.RUnaryOp Raw.OpNeg e) with inferNew ctx e
