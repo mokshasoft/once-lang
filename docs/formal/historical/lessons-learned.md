@@ -1221,6 +1221,121 @@ find formal/_build/malonzo -name "*.hs" | \
 ```
 Then update the cabal file with any new modules.
 
+### Soundness proofs vs. `with`-abstraction: the bundle-and-rewrite idiom
+
+When proving soundness lemmas of the form
+
+```agda
+sound-F : ∀ ctx sub₁ sub₂ → (IH₁ : ...) → (IH₂ : ...)
+        → operational-fn ctx (F sub₁ sub₂) ≡ success ...
+        → declarative-judgment ctx (F sub₁ sub₂) ...
+```
+
+the natural proof is: case-split on the sub-calls, apply the IHs, combine. But if `operational-fn ctx (F sub₁ sub₂)` itself uses `with operational-fn ctx sub₁` internally, the straightforward `with operational-fn ctx sub₁ in eqSub` idiom collapses `eqSub` to trivial reflexivity. (This is the `with` abstraction behaviour flagged above.)
+
+**Idiom that works**: bundle the sub-call with its defining equation into a fresh scrutinee.
+
+```agda
+SubBundle : ctx → ... → Set
+SubBundle ctx e = ∃[ r ] operational-fn ctx e ≡ r
+
+subBundle : ∀ ctx e → SubBundle ctx e
+subBundle ctx e = operational-fn ctx e , refl
+
+-- Proof:
+sound-F ctx e₁ e₂ IH₁ IH₂ eq with subBundle ctx e₁
+... | success A Ψ subE d f , eqSub  -- eqSub : operational-fn ctx e₁ ≡ success …
+     rewrite eqSub with eq          -- now the *outer* operational-fn reduces
+  ... | refl = <build judgment using (IH₁ refl) and the now-forced indices>
+... | failure _ , eqSub rewrite eqSub with eq | ()
+```
+
+The key move: the `with` scrutinee is `subBundle ctx e₁` (a pair-shaped value), not `operational-fn ctx e₁` directly. So Agda's with-abstraction substitutes a different term, and the equation survives in the bundle's second component.
+
+### Apply induction hypotheses eagerly, before `rewrite`
+
+When the IH quantifies over a parameter used in an extended context (e.g. `IH : ∀ {Aty} → operational ctx' (extend ctx x Aty) … → judgment (extend ctx x Aty) …`), applying `IH` *after* a `rewrite eq₁` leaves Agda unable to solve `Aty` — the rewrite has already normalised the LHS, losing the concrete type.
+
+**Fix**: apply the IH to the raw sub-equation (before any rewrite), `let`-bind the resulting judgment, then rewrite for the final `eq` step.
+
+```agda
+sound-Let ctx x e₁ e₂ IH₁ IH₂ eq with inferBundle ctx e₁
+... | success A' Ψ₁ e₁E d₁ f₁ , eq₁ with letBodyBundle ctx x A' e₂
+...   | success B' (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , eq₂
+        -- ❌ Don't: rewrite eq₁ | eq₂ then IH₂ {Aty = A'} refl
+        -- ✅ Do:    apply IHs first, then rewrite.
+        with IH₁ eq₁ | IH₂ {Aty = A'} eq₂
+...     | sub₁ | sub₂ rewrite eq₁ | eq₂ with eq
+...     | refl = t-let sub₁ sub₂
+```
+
+### Eliminate opaque `with`-helpers by refactoring the definition
+
+If the operational function uses `with scrutinee | inspect (…) …` to capture a Bool decision's proof (because a downstream constructor needs a propositional witness), external soundness proofs cannot unify with the internal `with`-helper name. This is not fixable by proof tactics alone — the opaque internal name is stable only within one module's `with`-macro expansion.
+
+**Principled fix**: refactor the definition to return the proof *directly* via a `Maybe` (or `Dec`). Instead of
+
+```agda
+check (Lam x body) (A ⇒[ q ] B) with checkBody … body B
+... | success (q' ∷ᵘ Ψ) bodyE d f with q' ≤q q | inspect (q' ≤q_) q
+...   | true  | [ eq ] = success Ψ (lam q eq bodyE) (suc d) f
+...   | false | _      = failure "…"
+```
+
+extract the Bool-decision-with-proof into a helper:
+
+```agda
+decideLeq : (q' q : Quantity) → Maybe ((q' ≤q q) ≡ true)
+decideLeq q' q with q' ≤q q
+... | true  = just refl
+... | false = nothing
+
+check (Lam x body) (A ⇒[ q ] B) with checkBody … body B
+... | success (q' ∷ᵘ Ψ) bodyE d f with decideLeq q' q
+...   | just eq  = success Ψ (lam q eq bodyE) (suc d) f
+...   | nothing  = failure "…"
+```
+
+Now the `with` dispatches on a plain `Maybe` pattern: no `inspect`, no opaque helper. Downstream soundness proofs can case-split on `just eq`/`nothing` directly.
+
+The same idea extends to literal-string patterns (e.g. `Raw.RVar "unit"` as a special-cased clause). For an abstract variable `x`, `inferElab ctx (RVar x)` is neutral between the literal clause and the generic one — Agda won't commit. Refactor to
+
+```agda
+infer ctx (RVar x) with StrProp._≟_ x "unit"
+... | yes _ = < unit-builtin success >
+... | no  _ with lookupLocal ctx x
+  ...
+```
+
+so the dispatch is explicit in the source structure.
+
+### Structural proof-obligation enforcement: the VerifiedFoo record
+
+A proof module that lives next to the implementation is only as strong as the CI command that type-checks it. If the top-level compiler's module graph doesn't transitively import the proof, a broken proof may slip through. The fix that scales:
+
+Define a `VerifiedFoo` record whose fields are (a) the implementation entry points and (b) every proven meta-property of those entry points, bundled together.
+
+```agda
+record VerifiedTypeChecker : Set₁ where
+  field
+    tcInfer      : NamedCtx → RawExpr → InferResult
+    tcCheck      : NamedCtx → RawExpr → Type → CheckResult
+    tcInfer-refl : ∀ ctx e → tcInfer ctx e ≡ tcInfer ctx e
+    tc-sound-RInt : ∀ ctx n → … → judgment
+    -- … one field per proven property.
+
+verifiedTypeChecker : VerifiedTypeChecker
+verifiedTypeChecker = record { … }  -- ALL fields must be filled
+```
+
+Re-export `verifiedTypeChecker` from the public API module (here `Once.TypeCheck`). Now:
+
+- If a proof breaks → `verifiedTypeChecker` fails to type-check → every downstream dependent fails.
+- Adding a new proven property = adding a field + filling it. A missing field is a compile error, not a convention violation.
+- The record's field list is the auditable manifest of proven properties.
+
+This converts "we wrote a proof, hopefully CI runs it" into "the compiler cannot build without this proof" — enforcement is structural.
+
 ### Type equality case explosion
 
 Adding N new type constructors requires O(N²) new cases in decidable equality:

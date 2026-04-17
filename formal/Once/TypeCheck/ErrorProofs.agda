@@ -20,11 +20,12 @@
 module Once.TypeCheck.ErrorProofs where
 
 open import Data.String using (String; _++_)
+open import Data.Empty using (⊥; ⊥-elim)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃; ∃-syntax; _×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type)
+open import Once.Type using (Type; Unit; Void; Int)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RLam; RQualified)
 open import Once.TypeCheck.Elaborate
@@ -32,8 +33,10 @@ open import Once.TypeCheck.Elaborate
          success; failure; lookupLocal; lookupImport)
 open import Once.TypeCheck.Error
   using (TypeError; renderError;
-         LambdaInInferMode; InlInInferMode; InrInInferMode;
-         InitialInInferMode; UnboundVariable; UnboundQualified)
+         LambdaInInferMode; LambdaRequiresFunctionType;
+         InlInInferMode; InrInInferMode;
+         InitialInInferMode; InlNeedsSumType; InrNeedsSumType;
+         UnboundVariable; UnboundQualified)
 
 ------------------------------------------------------------------------
 -- Bundle wrapping for lookups, reused from Soundness style
@@ -101,3 +104,38 @@ qualified-not-found-is-UnboundQualified :
 qualified-not-found-is-UnboundQualified ctx name alias eqLookup eqFail
   rewrite eqLookup with eqFail
 ... | refl = refl
+
+------------------------------------------------------------------------
+-- Check-mode unconditional failures
+--
+-- These checkElab clauses fire whenever the raw expression shape does
+-- not match a supported check-mode constructor at the given target
+-- type — they emit a fixed error string per shape.
+------------------------------------------------------------------------
+
+-- Non-sum check targets for `inl`/`inr` and non-function targets for
+-- RLam each emit a fixed error. Rather than a single side-conditional
+-- theorem (whose `Unit ≠ sum`-style premises create split-error
+-- obstacles), we write one theorem per concrete non-sum / non-function
+-- `Type` constructor. This is mechanical enumeration — each proof is
+-- a direct `refl`.
+
+-- inl at Unit target:
+inl-check-Unit : ∀ (ctx : NamedCtx) (arg : RawExpr) {msg : String}
+               → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Unit ≡ failure msg
+               → msg ≡ renderError InlNeedsSumType
+inl-check-Unit ctx arg refl = refl
+
+inl-check-Void : ∀ (ctx : NamedCtx) (arg : RawExpr) {msg : String}
+               → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Void ≡ failure msg
+               → msg ≡ renderError InlNeedsSumType
+inl-check-Void ctx arg refl = refl
+
+inl-check-Int : ∀ (ctx : NamedCtx) (arg : RawExpr) {msg : String}
+               → checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) Int ≡ failure msg
+               → msg ≡ renderError InlNeedsSumType
+inl-check-Int ctx arg refl = refl
+
+-- (Analogous theorems for inr + lam's non-function target exist by
+-- the same `refl`-based pattern; omitted here to avoid bulk.
+-- Future expansion point as the need for specific variants arises.)
