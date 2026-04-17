@@ -40,7 +40,7 @@ open import Once.TypeCheck.Error
          InitialInInferMode; InlNeedsSumType; InrNeedsSumType;
          FstNeedsPair; SndNeedsPair; NegationNotInt;
          CaseScrutineeNotSum; CaseBranchMismatch;
-         ApplicationTypeMismatch;
+         ApplicationTypeMismatch; TypeMismatch;
          UnboundVariable; UnboundQualified)
 import Once.TypeCheck.Error
 import Once.Type as T
@@ -347,3 +347,44 @@ case-branch-mismatch-is-CaseBranchMismatch
 -- Deferred: the proof has a subtle implicit-dependency issue with
 -- Ψ' and q' that needs a different formulation; documented here for
 -- future follow-up.
+
+------------------------------------------------------------------------
+-- Check-mode type mismatch (generic fallback)
+------------------------------------------------------------------------
+
+-- For RInt checked against a non-Int target, the generic check-mode
+-- fallback emits the TypeMismatch string.
+check-RInt-type-mismatch :
+  ∀ (ctx : NamedCtx) (n : _) (T : Type) {msg}
+  → ¬ (T ≡ Int)
+  → checkElab ctx (Raw.RInt n) T ≡ failure msg
+  → msg ≡ renderError (Once.TypeCheck.Error.TypeMismatch T Int)
+check-RInt-type-mismatch ctx n T T≢Int eqFail
+  with Once.TypeCheck.Elaborate._≟T_ T Int
+... | yes p = ⊥-elim (T≢Int p)
+... | no  _ with eqFail
+...   | refl = refl
+
+-- For RUnit checked against a non-Unit target.
+check-RUnit-type-mismatch :
+  ∀ (ctx : NamedCtx) (T : Type) {msg}
+  → ¬ (T ≡ Unit)
+  → checkElab ctx Raw.RUnit T ≡ failure msg
+  → msg ≡ renderError (Once.TypeCheck.Error.TypeMismatch T Unit)
+check-RUnit-type-mismatch ctx T T≢Unit eqFail
+  with Once.TypeCheck.Elaborate._≟T_ T Unit
+... | yes p = ⊥-elim (T≢Unit p)
+... | no  _ with eqFail
+...   | refl = refl
+
+-- For RStringLit checked against a non-Str target.
+check-RStringLit-type-mismatch :
+  ∀ (ctx : NamedCtx) (s : _) (T : Type) {msg}
+  → ¬ (T ≡ Str)
+  → checkElab ctx (Raw.RStringLit s) T ≡ failure msg
+  → msg ≡ renderError (Once.TypeCheck.Error.TypeMismatch T Str)
+check-RStringLit-type-mismatch ctx s T T≢Str eqFail
+  with Once.TypeCheck.Elaborate._≟T_ T Str
+... | yes p = ⊥-elim (T≢Str p)
+... | no  _ with eqFail
+...   | refl = refl

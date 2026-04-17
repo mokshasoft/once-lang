@@ -56,7 +56,7 @@ open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
   UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair;
   NegationNotInt; CaseScrutineeNotSum; CaseBranchMismatch;
-  ApplicationTypeMismatch)
+  ApplicationTypeMismatch; TypeMismatch)
 open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Data.String using (String)
@@ -311,6 +311,20 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
       → msg ≡ renderError CaseScrutineeNotSum
 
+    -- Check-mode RInt at non-Int target → TypeMismatch
+    tc-err-check-RInt-type-mismatch :
+      ∀ (ctx : NamedCtx) (n : _) (T : Type) {msg : _}
+      → ¬ (T ≡ Once.Type.Int)
+      → tcCheck ctx (Raw.RInt n) T ≡ failure msg
+      → msg ≡ renderError (TypeMismatch T Once.Type.Int)
+
+    -- Check-mode RUnit at non-Unit target → TypeMismatch
+    tc-err-check-RUnit-type-mismatch :
+      ∀ (ctx : NamedCtx) (T : Type) {msg : _}
+      → ¬ (T ≡ Once.Type.Unit)
+      → tcCheck ctx Raw.RUnit T ≡ failure msg
+      → msg ≡ renderError (TypeMismatch T Once.Type.Unit)
+
     -- RDestruct branches with mismatched types → CaseBranchMismatch.
     tc-err-case-branch-mismatch :
       ∀ (ctx : NamedCtx) (scrut : RawExpr)
@@ -528,6 +542,8 @@ verifiedTypeChecker = record
   ; tc-err-case-scrut-Int         = EP.case-scrut-Int
   ; tc-err-app-domain-mismatch    = EP.app-domain-mismatch-is-ApplicationTypeMismatch
   ; tc-err-case-branch-mismatch   = EP.case-branch-mismatch-is-CaseBranchMismatch
+  ; tc-err-check-RInt-type-mismatch  = EP.check-RInt-type-mismatch
+  ; tc-err-check-RUnit-type-mismatch = EP.check-RUnit-type-mismatch
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
