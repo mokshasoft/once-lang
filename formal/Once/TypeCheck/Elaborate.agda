@@ -595,10 +595,19 @@ asInt (success (ν-type F) _ _ _ _)                       = notInt (TypeMismatch
 -- internal `with`-function that downstream proofs cannot unify with.
 -- See `docs/formal/historical/lessons-learned.md` § "`with` patterns
 -- block computation" for background.
+-- | Pattern-match directly on the two quantities rather than on
+-- the Bool `q' ≤q q` to keep the definition transparent to external
+-- reduction (no opaque internal `with`-helper).
 decideLeq : (q' q : Quantity) → Maybe ((q' ≤q q) ≡ true)
-decideLeq q' q with q' ≤q q
-... | true  = just refl
-... | false = nothing
+decideLeq Zero Zero = just refl
+decideLeq Zero One  = just refl
+decideLeq Zero Many = just refl
+decideLeq One  Zero = nothing
+decideLeq One  One  = just refl
+decideLeq One  Many = just refl
+decideLeq Many Zero = nothing
+decideLeq Many One  = nothing
+decideLeq Many Many = just refl
 
 -- | Polymorphic-builtin identifier for the function position of an
 -- `RApp`. The elaborator handles each polymorphic builtin specially

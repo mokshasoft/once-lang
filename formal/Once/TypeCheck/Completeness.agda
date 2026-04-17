@@ -46,6 +46,10 @@ open import Once.TypeCheck.Judgment
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
+open import Data.Bool using (Bool; true; false)
+open import Relation.Nullary using (¬_)
+open import Data.Empty using (⊥-elim)
+import Data.String.Properties
 
 ------------------------------------------------------------------------
 -- Leaf-case completeness
@@ -224,3 +228,125 @@ infer-complete-RApp-snd :
         ≡ success B (zeroUsage +ᵘ (T.Many *ᵘ Ψ)) eE d f
 infer-complete-RApp-snd arg eqSub rewrite eqSub =
   _ , _ , _ , refl
+
+------------------------------------------------------------------------
+-- Variable lookup (local / import)
+------------------------------------------------------------------------
+
+infer-complete-RVar-local :
+  ∀ {ctx : NamedCtx} (x : String) {A : Type}
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE' : SExpr (NamedCtx.debruijn ctx) Ψ A}
+  → ¬ (x ≡ "unit")
+  → lookupLocal ctx x ≡ just (A , Ψ , eE')
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (RVar x) ≡ success A Ψ eE d f
+infer-complete-RVar-local {ctx} x x≢unit eqLocal
+  with x Data.String.Properties.≟ "unit"
+... | yes p = ⊥-elim (x≢unit p)
+... | no  _ rewrite eqLocal =
+  _ , 0 , NamedCtx.freshCounter ctx , refl
+
+infer-complete-RVar-import :
+  ∀ {ctx : NamedCtx} (x : String) {T : Type}
+  → ¬ (x ≡ "unit")
+  → lookupLocal ctx x ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) x ≡ just T
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (RVar x) ≡ success T zeroUsage eE d f
+infer-complete-RVar-import {ctx} x x≢unit eqLoc eqImp
+  with x Data.String.Properties.≟ "unit"
+... | yes p = ⊥-elim (x≢unit p)
+... | no  _ rewrite eqLoc | eqImp =
+  Surface.prim x , 0 , NamedCtx.freshCounter ctx , refl
+
+------------------------------------------------------------------------
+-- RBinOp (arithmetic and comparison)
+--
+-- Each of the 10 operators has its own completeness theorem since
+-- `isArithmeticOp op` / `isComparisonOp op` only reduces when `op`
+-- is concrete. The outer elaborator's `if Raw.isArithmeticOp op`
+-- dispatches per-operator.
+------------------------------------------------------------------------
+
+infer-complete-RBinOp-arith :
+  ∀ {ctx : NamedCtx} (op : Raw.BinOp) (arithEq : Raw.isArithmeticOp op ≡ true)
+    (e₁ e₂ : RawExpr)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
+    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+    {d₁ d₂ f₁ f₂ : ℕ}
+  → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
+  → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success Int (Ψ₁ +ᵘ Ψ₂) eE d f
+-- Proof: case-split on `op` and each concrete arith op reduces the
+-- outer elaborator's `if` to the `then` (success Int ...) branch.
+infer-complete-RBinOp-arith Raw.OpAdd _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-arith Raw.OpSub _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-arith Raw.OpMul _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-arith Raw.OpDiv _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-arith Raw.OpMod _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+-- Comparison ops are excluded by `arithEq`: the premise says
+-- `isArithmeticOp op ≡ true`, which is `false` for cmp ops,
+-- so those cases are unreachable via the absurd pattern on arithEq.
+infer-complete-RBinOp-arith Raw.OpLt ()
+infer-complete-RBinOp-arith Raw.OpLe ()
+infer-complete-RBinOp-arith Raw.OpGt ()
+infer-complete-RBinOp-arith Raw.OpGe ()
+infer-complete-RBinOp-arith Raw.OpEq ()
+infer-complete-RBinOp-arith Raw.OpNe ()
+
+infer-complete-RBinOp-cmp :
+  ∀ {ctx : NamedCtx} (op : Raw.BinOp) (cmpEq : Raw.isComparisonOp op ≡ true)
+    (e₁ e₂ : RawExpr)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Int}
+    {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Int}
+    {d₁ d₂ f₁ f₂ : ℕ}
+  → inferElab ctx e₁ ≡ success Int Ψ₁ e₁E d₁ f₁
+  → inferElab ctx e₂ ≡ success Int Ψ₂ e₂E d₂ f₂
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success (Unit + Unit) (Ψ₁ +ᵘ Ψ₂) eE d f
+infer-complete-RBinOp-cmp Raw.OpLt _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-cmp Raw.OpLe _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-cmp Raw.OpGt _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-cmp Raw.OpGe _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-cmp Raw.OpEq _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-cmp Raw.OpNe _ e₁ e₂ eq₁ eq₂ rewrite eq₁ | eq₂ = _ , _ , _ , refl
+infer-complete-RBinOp-cmp Raw.OpAdd ()
+infer-complete-RBinOp-cmp Raw.OpSub ()
+infer-complete-RBinOp-cmp Raw.OpMul ()
+infer-complete-RBinOp-cmp Raw.OpDiv ()
+infer-complete-RBinOp-cmp Raw.OpMod ()
+
+------------------------------------------------------------------------
+-- RLam check mode
+------------------------------------------------------------------------
+
+check-complete-RLam :
+  ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
+    (A : Type) (q q' : Quantity) (B : Type)
+    {Ψ' : Surface.Usage (NamedCtx.size ctx)}
+    {eE' : SExpr (NamedCtx.debruijn (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A))
+                 (q' Surface.Usage.∷ Ψ') B}
+    {d' f' : ℕ}
+  → (q' T.≤q q) ≡ true
+  → checkElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
+      ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      checkElab ctx (Raw.RLam x body) (A T.⇒[ q ] B) ≡ success Ψ' eE d f
+-- Enumerate the 9 (q, q') pairs; 6 have `q' ≤q q = true` and
+-- admit the success; 3 have `q' ≤q q = false` and are ruled out
+-- by the `leq-eq : q' ≤q q ≡ true` premise (absurd pattern `()`).
+-- Arg order: ctx x body A (q : arrow grade) (q' : body-usage qty) B.
+check-complete-RLam ctx x body A T.Zero T.Zero B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
+check-complete-RLam ctx x body A T.One  T.Zero B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
+check-complete-RLam ctx x body A T.One  T.One  B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
+check-complete-RLam ctx x body A T.Many T.Zero B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
+check-complete-RLam ctx x body A T.Many T.One  B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
+check-complete-RLam ctx x body A T.Many T.Many B leq-eq eqBody rewrite eqBody = _ , _ , _ , refl
+-- Absurd: q' ≤q q = false makes leq-eq uninhabited.
+check-complete-RLam ctx x body A T.Zero T.One  B ()     eqBody
+check-complete-RLam ctx x body A T.Zero T.Many B ()     eqBody
+check-complete-RLam ctx x body A T.One  T.Many B ()     eqBody
