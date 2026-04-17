@@ -36,6 +36,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type)
 import Once.Type
+import Once.Surface.Syntax
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
@@ -54,7 +55,8 @@ open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
   UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair;
-  NegationNotInt; CaseScrutineeNotSum; ApplicationTypeMismatch)
+  NegationNotInt; CaseScrutineeNotSum; CaseBranchMismatch;
+  ApplicationTypeMismatch)
 open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Data.String using (String)
@@ -309,6 +311,23 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
       → msg ≡ renderError CaseScrutineeNotSum
 
+    -- RDestruct branches with mismatched types → CaseBranchMismatch.
+    tc-err-case-branch-mismatch :
+      ∀ (ctx : NamedCtx) (scrut : RawExpr)
+        (xL : String) (eL : RawExpr) (xR : String) (eR : RawExpr)
+        (A B : Type)
+        {Ψs scrutE ds fs}
+        (C₁ C₂ : Type) {qℓ qr}
+        {Ψₗ eLE dL fL Ψᵣ eRE dR fR msg}
+      → tcInfer ctx scrut ≡ success (A Once.Type.+ B) Ψs scrutE ds fs
+      → tcInfer (extendNamedCtx ctx xL A) eL
+          ≡ success C₁ (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
+      → tcInfer (extendNamedCtx ctx xR B) eR
+          ≡ success C₂ (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
+      → ¬ (C₁ ≡ C₂)
+      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
+      → msg ≡ renderError CaseBranchMismatch
+
     -- Generic RApp argument-type mismatch → ApplicationTypeMismatch.
     tc-err-app-domain-mismatch :
       ∀ (ctx : NamedCtx) (f x : RawExpr)
@@ -508,6 +527,7 @@ verifiedTypeChecker = record
   ; tc-err-case-scrut-Unit        = EP.case-scrut-Unit
   ; tc-err-case-scrut-Int         = EP.case-scrut-Int
   ; tc-err-app-domain-mismatch    = EP.app-domain-mismatch-is-ApplicationTypeMismatch
+  ; tc-err-case-branch-mismatch   = EP.case-branch-mismatch-is-CaseBranchMismatch
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }

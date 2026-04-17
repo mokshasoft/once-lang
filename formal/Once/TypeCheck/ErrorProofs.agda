@@ -44,6 +44,7 @@ open import Once.TypeCheck.Error
          UnboundVariable; UnboundQualified)
 import Once.TypeCheck.Error
 import Once.Type as T
+import Once.Surface.Syntax
 
 ------------------------------------------------------------------------
 -- Bundle wrapping for lookups, reused from Soundness style
@@ -306,3 +307,43 @@ app-domain-mismatch-is-ApplicationTypeMismatch
 ... | yes p = ⊥-elim (A≢Ax p)
 ... | no  _ with eqFail
 ...   | refl = refl
+
+------------------------------------------------------------------------
+-- Case branch mismatch (RDestruct with C₁ ≠ C₂)
+------------------------------------------------------------------------
+
+case-branch-mismatch-is-CaseBranchMismatch :
+  ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+    (xL : Data.String.String) (eL : Raw.RawExpr)
+    (xR : Data.String.String) (eR : Raw.RawExpr)
+    (A B : Type)
+    {Ψs scrutE ds fs}
+    (C₁ C₂ : Type) {qℓ qr}
+    {Ψₗ eLE dL fL Ψᵣ eRE dR fR msg}
+  → Once.TypeCheck.Elaborate.inferElab ctx scrut
+      ≡ success (A T.+ B) Ψs scrutE ds fs
+  → Once.TypeCheck.Elaborate.inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL
+      ≡ success C₁ (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
+  → Once.TypeCheck.Elaborate.inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR
+      ≡ success C₂ (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
+  → ¬ (C₁ ≡ C₂)
+  → Once.TypeCheck.Elaborate.inferElab ctx
+      (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
+  → msg ≡ renderError CaseBranchMismatch
+case-branch-mismatch-is-CaseBranchMismatch
+  ctx scrut xL eL xR eR A B C₁ C₂ eqS eqL eqR C₁≢C₂ eqFail
+  rewrite eqS | eqL | eqR with Once.TypeCheck.Elaborate._≟T_ C₁ C₂
+... | yes p = ⊥-elim (C₁≢C₂ p)
+... | no  _ with eqFail
+...   | refl = refl
+
+------------------------------------------------------------------------
+-- Usage violation (RLam check mode with q' ≤q q false)
+------------------------------------------------------------------------
+
+-- UsageViolation: when checkElab on RLam finds the body usage has
+-- `q' ∷ᵘ Ψ'` and `decideLeq q' q ≡ nothing`, the error equals
+-- `renderError (UsageViolation x q q')`.
+-- Deferred: the proof has a subtle implicit-dependency issue with
+-- Ψ' and q' that needs a different formulation; documented here for
+-- future follow-up.
