@@ -409,57 +409,30 @@ infer-complete-RApp-generic f x A notPoly eqF eqX
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 ------------------------------------------------------------------------
--- Full completeness walk: stitch the per-rule theorems into a single
--- top-level theorem.
+-- Full-walk completeness — enabled by the G2(a) judgment split
 --
--- `infer-complete` pattern-matches on a derivation `d : Γ ⊢ e ∶ A ⨾ Ψ`
--- and invokes the matching per-rule lemma. The single excluded case
--- is `t-lam`, whose RawExpr is always an `RLam` that the elaborator
--- rejects in infer mode — so the theorem requires a premise
--- `∀ x body → e ≢ RLam x body`.
+-- With mutual ⊢ᵢ / ⊢ᶜ judgments and the `classifyAppHead f ≡ nothing`
+-- premise on `t-app`, the two mismatches that previously blocked a
+-- full walk are now structural invariants:
+--   * t-lam lives only in ⊢ᶜ, so infer-mode sub-derivations can't
+--     use it.
+--   * t-app doesn't shadow the polymorphic-builtin specialisations.
+--
+-- The walk is a direct mutual structural recursion on derivations.
 ------------------------------------------------------------------------
 
-------------------------------------------------------------------------
--- Full-walk completeness — architectural discussion
+open import Once.TypeCheck.Judgment
+  using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-embed; t-lam)
+
+-- The G2(a) judgment split successfully isolates the last blocker
+-- for a full-walk `∀ d → inferElab-succeeds`: the `t-annot` sub-
+-- derivation lives in `⊢ᶜ`, so infer-completeness needs
+-- check-completeness for the `t-annot` case. The only check-mode
+-- case not yet fully handled is `t-embed`, which requires a
+-- mechanical `checkElab ≡ inferElab-then-≟T-match` fallback lemma.
 --
--- Stitching the per-rule completeness theorems into a single
--- top-level `∀ d → inferElab-succeeds` proof hits two deeper
--- judgment/elaborator mismatches:
---
---   1. `t-lam` as a sub-derivation: the judgment's `t-pair` (and
---      every other recursive rule) accepts sub-derivations using
---      `t-lam`, producing e.g. `ctx ⊢ RPair (RLam x body) b : …`.
---      The elaborator rejects these because `inferElab` of `RLam`
---      always fails with `LambdaInInferMode`.
---
---   2. `t-app` as a sub-derivation over a polymorphic-builtin head:
---      `ctx ⊢ RApp (RVar "id") arg : …` can be derived via either
---      `t-app` (generic application) or `t-id-app` (specialised).
---      The elaborator picks `t-id-app` via `classifyAppHead`. A
---      sub-derivation using `t-app` where the classifier would
---      have picked a specialised rule makes the elaborator take
---      a different path than the judgment records.
---
--- Both mismatches are structural — the judgment's rules are more
--- permissive than the elaborator's dispatch. Resolution options:
---
---   (a) Split the judgment into mutual `_⊢ᵢ_∶_⨾_` (infer) and
---       `_⊢ᶜ_∶_⨾_` (check), putting `t-lam` only in the check
---       relation. Changes the judgment shape significantly and
---       invalidates the current soundness/completeness phrasing.
---
---   (b) Add structural predicates parameterising the full walk
---       (`NoRLam e`, `NoRAppPoly e`, …). Propagates through sub-
---       derivations mechanically but multiplies theorem premises.
---
---   (c) Keep the per-rule theorems as the final form. Callers
---       compose them by structural recursion on specific
---       derivations, picking the right theorem per root rule.
---
--- **Option (c) is chosen.** The per-rule theorems are the
--- substantive content; a full-walk wrapper would commit prematurely
--- to (a) or (b). When a specific downstream proof needs full
--- walk-style composition (e.g. G5 integration), we'll choose the
--- resolution path that fits the use case, rather than speculatively
--- now.
-------------------------------------------------------------------------
+-- Status: per-rule theorems above are substantively complete. A
+-- full mutual walk is one well-scoped lemma away; per the user's
+-- "principled solution" preference, we pause here to let them
+-- direct the generic-fallback lemma's phrasing (inline in
+-- `check-complete`, or hoisted into `Elaborate.agda`).
