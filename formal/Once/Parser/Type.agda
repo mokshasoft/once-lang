@@ -8,13 +8,20 @@
 -- Produces Once.Type values directly (no intermediate representation).
 --
 -- Grammar:
---   Type     ::= TypeSum '->' Type | TypeSum     (right-assoc arrow)
---   TypeSum  ::= TypeProd ('+' TypeProd)*         (left-assoc sum)
---   TypeProd ::= TypeAtom ('*' TypeAtom)*         (left-assoc product)
+--   Type     ::= TypeSum ArrowTail | TypeSum                  (right-assoc arrow)
+--   ArrowTail ::= GradeAnn? '->' Type
+--   GradeAnn  ::= '^1' | '^0' | '^w'                          (QTT argument grade)
+--   TypeSum  ::= TypeProd ('+' TypeProd)*                     (left-assoc sum)
+--   TypeProd ::= TypeAtom ('*' TypeAtom)*                     (left-assoc product)
 --   TypeAtom ::= 'Unit' | 'Void' | 'Int' | 'Float' | 'Buffer' | 'String'
 --              | 'Eff' TypeAtom TypeAtom | 'IO' TypeAtom
---              | UpperIdent                       (type variable)
+--              | UpperIdent                                   (type variable)
 --              | '(' Type ')'
+--
+-- The `A^q -> B` form desugars to the graded arrow `A ⇒[ q ] B` internally.
+-- Grade annotations are only valid immediately before `->`; using them
+-- elsewhere (on the output, inside a product, etc.) is a parse error.
+--
 -- Note: Fix removed by OCP-0003. Use μ-type/ν-type for recursive types.
 ------------------------------------------------------------------------
 
@@ -28,7 +35,7 @@ open import Data.Bool using (Bool; true; false; _∧_; not)
 open import Data.Char using (isAlpha; isLower)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; Quantity; Many)
+                             _*_; _+_; _⇒[_]_; Eff; Quantity; Zero; One; Many)
 open import Once.Parser.Token
 open import Once.Parser.Core
 
@@ -129,8 +136,29 @@ parseTypeSum toks with parseTypeProd toks
 -- Type Arrow Parser (right-associative ->)
 ------------------------------------------------------------------------
 
--- | Try to parse an arrow continuation
+-- | Try to parse an arrow continuation, optionally preceded by a grade:
+--     `A^1 -> B` → A ⇒[ One ]  B
+--     `A^0 -> B` → A ⇒[ Zero ] B
+--     `A^w -> B` → A ⇒[ Many ] B
+--     `A   -> B` → A ⇒[ Many ] B   (default, unrestricted)
+--
+-- A grade annotation NOT followed by `->` is a parse error (not silently
+-- dropped) — that way `A^1`, `A^1 * B`, etc. fail loudly, making clear
+-- that type-level grades are only allowed in argument position on arrows.
 parseArrowTail : Type → List Token → Maybe (Type × List Token)
+parseArrowTail left (TCaret1 ∷ TArrow ∷ rest) with parseType rest
+... | just (right , rest') = just (left ⇒[ One ] right , rest')
+... | nothing = nothing
+parseArrowTail left (TCaret0 ∷ TArrow ∷ rest) with parseType rest
+... | just (right , rest') = just (left ⇒[ Zero ] right , rest')
+... | nothing = nothing
+parseArrowTail left (TCaretW ∷ TArrow ∷ rest) with parseType rest
+... | just (right , rest') = just (left ⇒[ Many ] right , rest')
+... | nothing = nothing
+-- Grade annotation not followed by `->` → reject (strict error, not a warning).
+parseArrowTail left (TCaret1 ∷ _) = nothing
+parseArrowTail left (TCaret0 ∷ _) = nothing
+parseArrowTail left (TCaretW ∷ _) = nothing
 parseArrowTail left (TArrow ∷ rest) with parseType rest
 ... | just (right , rest') = just (left ⇒[ Many ] right , rest')
 ... | nothing = nothing

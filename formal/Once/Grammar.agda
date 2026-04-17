@@ -19,6 +19,8 @@ open import Data.Nat using (ℕ)
 open import Data.Product using (_×_)
 open import Data.String using (String)
 
+open import Once.Type using (Quantity)
+
 ------------------------------------------------------------------------
 -- Identifiers
 ------------------------------------------------------------------------
@@ -36,6 +38,13 @@ UpperIdent = String
 ------------------------------------------------------------------------
 
 -- | Type syntax
+--
+-- The function arrow is graded with a QTT Quantity (the grade that the
+-- docs render as `A^q -> B` in surface syntax). The parser desugars
+-- `A^q -> B` to `_⇒[_]_ A q B`; a bare `A -> B` uses `Many` (unrestricted).
+-- Grade annotations are only allowed as arrow-argument grades — they
+-- are parse errors in any other position, so the grammar's `GType` does
+-- not carry grades inside products, sums, or on outputs.
 data GType : Set where
   -- Primitive types
   TUnit   : GType
@@ -46,15 +55,21 @@ data GType : Set where
   TString : GType
 
   -- Type constructors
-  _⇒_     : GType → GType → GType          -- Function: A → B
-  _⊗_     : GType → GType → GType          -- Product: A * B
-  _⊕_     : GType → GType → GType          -- Sum: A + B
-  TEff    : GType → GType → GType          -- Effect: Eff A B
+  _⇒[_]_  : GType → Quantity → GType → GType  -- Graded function: A -q> B (A^q -> B)
+  _⊗_     : GType → GType → GType              -- Product: A * B
+  _⊕_     : GType → GType → GType              -- Sum: A + B
+  TEff    : GType → GType → GType              -- Effect: Eff A B
 
   -- Type variable (for polymorphism and aliases)
   TVar    : UpperIdent → GType
 
+-- | Convenience alias for the unrestricted (Many) arrow, matching
+-- the common `A -> B` surface form.
+_⇒_ : GType → GType → GType
+A ⇒ B = _⇒[_]_ A Once.Type.Many B
+
 infixr 20 _⇒_
+infixr 20 _⇒[_]_
 infixl 25 _⊕_
 infixl 30 _⊗_
 

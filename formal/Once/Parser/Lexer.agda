@@ -145,6 +145,13 @@ tokenize ('\n' ∷ ' ' ∷ cs) = tokenize (' ' ∷ cs)   -- continuation (space-
 tokenize ('\n' ∷ '\t' ∷ cs) = tokenize ('\t' ∷ cs)  -- continuation (tab-indented)
 tokenize ('\n' ∷ cs) = TNewline ∷ tokenize cs        -- declaration separator
 
+-- QTT grade annotations on argument types: A^1, A^0, A^w.
+-- Must appear immediately before an arrow: `A^1 -> B` desugars to
+-- the graded arrow A ⇒[ One ] B in the type checker's internal form.
+tokenize ('^' ∷ '1' ∷ cs) = TCaret1 ∷ tokenize cs
+tokenize ('^' ∷ '0' ∷ cs) = TCaret0 ∷ tokenize cs
+tokenize ('^' ∷ 'w' ∷ cs) = TCaretW ∷ tokenize cs
+
 -- Two-character operators (max munch)
 tokenize ('-' ∷ '>' ∷ cs) = TArrow ∷ tokenize cs
 tokenize ('<' ∷ '=' ∷ cs) = TLe ∷ tokenize cs

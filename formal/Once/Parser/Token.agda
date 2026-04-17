@@ -30,7 +30,10 @@ data Token : Set where
   TRBrace  : Token              -- }
   TColon   : Token              -- :
   TEquals  : Token              -- =
-  TArrow   : Token              -- ->
+  TArrow   : Token              -- ->         (unrestricted by default; preceding type may add ^q)
+  TCaret1  : Token              -- ^1         (linear grade on argument type)
+  TCaret0  : Token              -- ^0         (erased grade on argument type)
+  TCaretW  : Token              -- ^w         (explicit unrestricted grade)
   TLambda  : Token              -- \
   TComma   : Token              -- ,
   TSemicolon : Token            -- ;
