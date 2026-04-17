@@ -20,7 +20,7 @@ open import Data.Nat using (ℕ; zero; suc)
 open import Data.Nat as Nat using (_+_)
 open import Data.Nat.Properties using (+-identityʳ; +-suc)
 open import Data.Fin using (Fin; zero; suc)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; subst; trans; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; trans; sym)
 
 open import Once.Type
 open import Once.Surface.Syntax as Surface
@@ -94,43 +94,147 @@ thin-var-lookup (keep θ) (suc i) = thin-var-lookup θ i
 -- Expression Renaming via Thinning
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+-- Thinning on Usage Vectors
+------------------------------------------------------------------------
+
+-- Apply a thinning to a usage vector.
+-- skip inserts Zero at the new position (the skipped variable is unused).
+-- keep copies the head, recurses on the tail.
+thin-usage : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+           → Γ ⊆ Δ → Usage n → Usage m
+thin-usage done     []        = []
+thin-usage (skip θ) Ψ         = Zero ∷ thin-usage θ Ψ
+thin-usage (keep θ) (q ∷ Ψ)  = q ∷ thin-usage θ Ψ
+
+-- Distribution lemmas: thin-usage commutes with QTT usage arithmetic.
+
+thin-usage-+ᵘ : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+              → (θ : Γ ⊆ Δ) (Ψ₁ Ψ₂ : Usage n)
+              → thin-usage θ (Ψ₁ +ᵘ Ψ₂) ≡ thin-usage θ Ψ₁ +ᵘ thin-usage θ Ψ₂
+thin-usage-+ᵘ done     [] []               = refl
+thin-usage-+ᵘ (skip θ) Ψ₁ Ψ₂
+  rewrite thin-usage-+ᵘ θ Ψ₁ Ψ₂             = refl
+thin-usage-+ᵘ (keep θ) (q₁ ∷ Ψ₁) (q₂ ∷ Ψ₂)
+  rewrite thin-usage-+ᵘ θ Ψ₁ Ψ₂             = refl
+
+thin-usage-*ᵘ : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+              → (θ : Γ ⊆ Δ) (q : Quantity) (Ψ : Usage n)
+              → thin-usage θ (q *ᵘ Ψ) ≡ q *ᵘ thin-usage θ Ψ
+thin-usage-*ᵘ done     q []                 = refl
+thin-usage-*ᵘ {Γ = Γ} {Δ = Δ S, _ ^ _} (skip θ) q Ψ
+  rewrite thin-usage-*ᵘ θ q Ψ               = cong (_∷ (q *ᵘ thin-usage θ Ψ)) (sym (q*q-zero q))
+  where
+    -- q *q Zero = Zero for all q (needed for the skip case)
+    q*q-zero : (q : Quantity) → q *q Zero ≡ Zero
+    q*q-zero Zero = refl
+    q*q-zero One  = refl
+    q*q-zero Many = refl
+thin-usage-*ᵘ (keep θ) q (q' ∷ Ψ)
+  rewrite thin-usage-*ᵘ θ q Ψ               = refl
+
+thin-usage-⊔ᵘ : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+              → (θ : Γ ⊆ Δ) (Ψ₁ Ψ₂ : Usage n)
+              → thin-usage θ (Ψ₁ ⊔ᵘ Ψ₂) ≡ thin-usage θ Ψ₁ ⊔ᵘ thin-usage θ Ψ₂
+thin-usage-⊔ᵘ done     [] []               = refl
+thin-usage-⊔ᵘ (skip θ) Ψ₁ Ψ₂
+  rewrite thin-usage-⊔ᵘ θ Ψ₁ Ψ₂             = refl
+thin-usage-⊔ᵘ (keep θ) (q₁ ∷ Ψ₁) (q₂ ∷ Ψ₂)
+  rewrite thin-usage-⊔ᵘ θ Ψ₁ Ψ₂             = refl
+
+thin-usage-zeroUsage : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+                     → (θ : Γ ⊆ Δ) → thin-usage θ (zeroUsage {n}) ≡ zeroUsage {m}
+thin-usage-zeroUsage done     = refl
+thin-usage-zeroUsage (skip θ) = cong (Zero ∷_) (thin-usage-zeroUsage θ)
+thin-usage-zeroUsage (keep θ) = cong (Zero ∷_) (thin-usage-zeroUsage θ)
+
+thin-usage-refl : ∀ {n} {Γ : SCtx n} (Ψ : Usage n)
+                → thin-usage (⊆-refl {Γ = Γ}) Ψ ≡ Ψ
+thin-usage-refl {Γ = S∅} []                = refl
+thin-usage-refl {Γ = _ S, _ ^ _} (q ∷ Ψ)  = cong (q ∷_) (thin-usage-refl Ψ)
+
+thin-usage-singleUse : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m}
+                     → (θ : Γ ⊆ Δ) (i : Fin n) (q : Quantity)
+                     → thin-usage θ (singleUse i q) ≡ singleUse (thin-var θ i) q
+thin-usage-singleUse done     ()       q
+thin-usage-singleUse (skip θ) i        q
+  rewrite thin-usage-singleUse θ i q    = refl
+thin-usage-singleUse (keep θ) zero     q = cong (q ∷_) (thin-usage-zeroUsage θ)
+thin-usage-singleUse (keep θ) (suc i) q  = cong (Zero ∷_) (thin-usage-singleUse θ i q)
+
+
+------------------------------------------------------------------------
+-- Expression Renaming via Thinning
+------------------------------------------------------------------------
+
 -- THE CORE OPERATION: rename an expression through a thinning
 -- This single function replaces ALL exchange functions!
+-- Preserves the usage vector via thin-usage propagation.
 
-rename : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m} {A : Type}
-       → Γ ⊆ Δ → SExpr Γ A → SExpr Δ A
+rename : ∀ {n m} {Γ : SCtx n} {Δ : SCtx m} {Ψ : Usage n} {A : Type}
+       → (θ : Γ ⊆ Δ) → SExpr Γ Ψ A → SExpr Δ (thin-usage θ Ψ) A
 rename {Δ = Δ} θ (Surface.var i) =
-  subst (SExpr Δ) (sym (thin-var-lookup θ i)) (Surface.var (thin-var θ i))
-rename θ (Surface.lam q e) = Surface.lam q (rename (keep θ) e)
-rename θ (Surface.app f x) = Surface.app (rename θ f) (rename θ x)
-rename θ (Surface.effApp f x) = Surface.effApp (rename θ f) (rename θ x)
-rename θ (Surface.pair a b) = Surface.pair (rename θ a) (rename θ b)
+  subst₂ (SExpr Δ) (sym (thin-usage-singleUse θ i One))
+         (sym (thin-var-lookup θ i)) (Surface.var (thin-var θ i))
+  where
+    subst₂ : ∀ {a b c} {A : Set a} {B : Set b} (C : A → B → Set c)
+           → {x₁ x₂ : A} {y₁ y₂ : B} → x₁ ≡ x₂ → y₁ ≡ y₂ → C x₁ y₁ → C x₂ y₂
+    subst₂ C refl refl z = z
+rename θ (Surface.lam q p e) = Surface.lam q p (rename (keep θ) e)
+rename {Δ = Δ} θ (Surface.app {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} f x) =
+  subst (λ Ψ → SExpr Δ Ψ _)
+        (sym (trans (thin-usage-+ᵘ θ Ψ₁ (q *ᵘ Ψ₂))
+                    (cong (thin-usage θ Ψ₁ +ᵘ_) (thin-usage-*ᵘ θ q Ψ₂))))
+        (Surface.app (rename θ f) (rename θ x))
+rename {Δ = Δ} θ (Surface.effApp {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} f x) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
+        (Surface.effApp (rename θ f) (rename θ x))
+rename {Δ = Δ} θ (Surface.pair {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂))
+        (Surface.pair (rename θ a) (rename θ b))
 rename θ (Surface.fst' p) = Surface.fst' (rename θ p)
 rename θ (Surface.snd' p) = Surface.snd' (rename θ p)
 rename θ (Surface.inl' a) = Surface.inl' (rename θ a)
 rename θ (Surface.inr' b) = Surface.inr' (rename θ b)
-rename θ (Surface.case' s l r) =
-  Surface.case' (rename θ s) (rename (keep θ) l) (rename (keep θ) r)
-rename θ Surface.unit = Surface.unit
+rename {Δ = Δ} θ (Surface.case' {Ψs = Ψs} {Ψₗ = Ψₗ} {Ψᵣ = Ψᵣ} s l r) =
+  subst (λ Ψ → SExpr Δ Ψ _)
+        (sym (trans (thin-usage-+ᵘ θ Ψs (Ψₗ ⊔ᵘ Ψᵣ))
+                    (cong (thin-usage θ Ψs +ᵘ_) (thin-usage-⊔ᵘ θ Ψₗ Ψᵣ))))
+        (Surface.case' (rename θ s) (rename (keep θ) l) (rename (keep θ) r))
+rename {Δ = Δ} θ Surface.unit = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) Surface.unit
 rename θ (Surface.absurd v) = Surface.absurd (rename θ v)
-rename θ (Surface.let' e₁ e₂) =
-  Surface.let' (rename θ e₁) (rename (keep θ) e₂)
-rename θ (Surface.int n) = Surface.int n
-rename θ (Surface.str s) = Surface.str s
-rename θ (Surface.add a b) = Surface.add (rename θ a) (rename θ b)
-rename θ (Surface.sub a b) = Surface.sub (rename θ a) (rename θ b)
-rename θ (Surface.mul a b) = Surface.mul (rename θ a) (rename θ b)
-rename θ (Surface.div a b) = Surface.div (rename θ a) (rename θ b)
-rename θ (Surface.mod' a b) = Surface.mod' (rename θ a) (rename θ b)
+rename {Δ = Δ} θ (Surface.let' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} {q = q} e₁ e₂) =
+  subst (λ Ψ → SExpr Δ Ψ _)
+        (sym (trans (thin-usage-+ᵘ θ Ψ₂ (q *ᵘ Ψ₁))
+                    (cong (thin-usage θ Ψ₂ +ᵘ_) (thin-usage-*ᵘ θ q Ψ₁))))
+        (Surface.let' (rename θ e₁) (rename (keep θ) e₂))
+rename {Δ = Δ} θ (Surface.int n) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.int n)
+rename {Δ = Δ} θ (Surface.add {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.add (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.sub {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.sub (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.mul {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.mul (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.div {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.div (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.mod' {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.mod' (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.str s) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.str s)
 rename θ (Surface.neg a) = Surface.neg (rename θ a)
-rename θ (Surface.lt a b) = Surface.lt (rename θ a) (rename θ b)
-rename θ (Surface.le a b) = Surface.le (rename θ a) (rename θ b)
-rename θ (Surface.gt a b) = Surface.gt (rename θ a) (rename θ b)
-rename θ (Surface.ge a b) = Surface.ge (rename θ a) (rename θ b)
-rename θ (Surface.eq a b) = Surface.eq (rename θ a) (rename θ b)
-rename θ (Surface.ne a b) = Surface.ne (rename θ a) (rename θ b)
+rename {Δ = Δ} θ (Surface.lt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.lt (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.le {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.le (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.gt {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.gt (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.ge {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.ge (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.eq (rename θ a) (rename θ b))
+rename {Δ = Δ} θ (Surface.ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
+  subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.ne (rename θ a) (rename θ b))
 rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
-rename θ (Surface.prim name) = Surface.prim name
+rename {Δ = Δ} θ (Surface.prim name) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.prim name)
 
 ------------------------------------------------------------------------
 -- Telescopes (for generalized exchange)
@@ -220,57 +324,69 @@ applyTel {n} {suc d} Γ (B ∷ tel) = subst SCtx (sym (+-suc n d)) (applyTel (Γ
 ------------------------------------------------------------------------
 
 -- Weaken: Γ → (Γ , A ^ q)
-weaken : ∀ {n} {Γ : SCtx n} {A B : Type} {q : Quantity} → SExpr Γ B → SExpr (Γ S, A ^ q) B
-weaken = rename ⊆-wk
+-- The new variable is unused (Zero), so the usage prefix gets Zero.
+weaken : ∀ {n} {Γ : SCtx n} {Ψ : Usage n} {A B : Type} {q : Quantity}
+       → SExpr Γ Ψ B → SExpr (Γ S, A ^ q) (Zero ∷ Ψ) B
+weaken {Γ = Γ} {Ψ = Ψ} e =
+  subst (λ Ψ' → SExpr _ (Zero ∷ Ψ') _) (thin-usage-refl Ψ) (rename ⊆-wk e)
 
 -- Exchange at depth 1 (insert A at position 1, below B)
-exchange : ∀ {n} {Γ : SCtx n} {A B C : Type}
-         → SExpr (Γ S, B) C → SExpr ((Γ S, A) S, B) C
+exchange : ∀ {n} {Γ : SCtx n} {Ψ : Usage (suc n)} {A B C : Type}
+         → SExpr (Γ S, B) Ψ C
+         → SExpr ((Γ S, A) S, B) (thin-usage (⊆-exch₁ {A = A}) Ψ) C
 exchange = rename ⊆-exch₁
 
 -- Exchange at depth 2
-exchange₂ : ∀ {n} {Γ : SCtx n} {A B C D : Type}
-          → SExpr ((Γ S, B) S, C) D → SExpr (((Γ S, A) S, B) S, C) D
+exchange₂ : ∀ {n} {Γ : SCtx n} {Ψ : Usage (suc (suc n))} {A B C D : Type}
+          → SExpr ((Γ S, B) S, C) Ψ D
+          → SExpr (((Γ S, A) S, B) S, C) (thin-usage (⊆-exch₂ {A = A}) Ψ) D
 exchange₂ = rename ⊆-exch₂
 
 -- Exchange at depth 3
-exchange₃ : ∀ {n} {Γ : SCtx n} {A B C D E : Type}
-          → SExpr (((Γ S, B) S, C) S, D) E → SExpr ((((Γ S, A) S, B) S, C) S, D) E
+exchange₃ : ∀ {n} {Γ : SCtx n} {Ψ : Usage (suc (suc (suc n)))} {A B C D E : Type}
+          → SExpr (((Γ S, B) S, C) S, D) Ψ E
+          → SExpr ((((Γ S, A) S, B) S, C) S, D) (thin-usage (⊆-exch₃ {A = A}) Ψ) E
 exchange₃ = rename ⊆-exch₃
 
 -- Exchange at depth 4
-exchange₄ : ∀ {n} {Γ : SCtx n} {A B C D E F : Type}
-          → SExpr ((((Γ S, B) S, C) S, D) S, E) F → SExpr (((((Γ S, A) S, B) S, C) S, D) S, E) F
+exchange₄ : ∀ {n} {Γ : SCtx n} {Ψ : Usage (suc (suc (suc (suc n))))} {A B C D E F : Type}
+          → SExpr ((((Γ S, B) S, C) S, D) S, E) Ψ F
+          → SExpr (((((Γ S, A) S, B) S, C) S, D) S, E) (thin-usage (⊆-exch₄ {A = A}) Ψ) F
 exchange₄ = rename ⊆-exch₄
 
 -- Exchange at depth 5
-exchange₅ : ∀ {n} {Γ : SCtx n} {A B C D E F G : Type}
-          → SExpr (((((Γ S, B) S, C) S, D) S, E) S, F) G → SExpr ((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) G
+exchange₅ : ∀ {n} {Γ : SCtx n} {Ψ : Usage (suc (suc (suc (suc (suc n)))))} {A B C D E F G : Type}
+          → SExpr (((((Γ S, B) S, C) S, D) S, E) S, F) Ψ G
+          → SExpr ((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) (thin-usage (⊆-exch₅ {A = A}) Ψ) G
 exchange₅ = rename ⊆-exch₅
 
 -- Exchange at depth 6
-exchange₆ : ∀ {n} {Γ : SCtx n} {A B C D E F G H : Type}
-          → SExpr ((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) H → SExpr (((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) H
+exchange₆ : ∀ {n} {Γ : SCtx n} {Ψ : Usage (suc (suc (suc (suc (suc (suc n))))))} {A B C D E F G H : Type}
+          → SExpr ((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) Ψ H
+          → SExpr (((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) (thin-usage (⊆-exch₆ {A = A}) Ψ) H
 exchange₆ = rename ⊆-exch₆
 
 -- Exchange at depth 7
-exchange₇ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I : Type}
-          → SExpr (((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) I
-          → SExpr ((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) I
+exchange₇ : ∀ {n} {Γ : SCtx n} {Ψ : Usage (suc (suc (suc (suc (suc (suc (suc n)))))))} {A B C D E F G H I : Type}
+          → SExpr (((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) Ψ I
+          → SExpr ((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) (thin-usage (⊆-exch₇ {A = A}) Ψ) I
 exchange₇ = rename ⊆-exch₇
 
 -- Exchange at depth 8
-exchange₈ : ∀ {n} {Γ : SCtx n} {A B C D E F G H I J : Type}
-          → SExpr ((((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
-          → SExpr (((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) J
+exchange₈ : ∀ {n} {Γ : SCtx n} {Ψ : Usage (suc (suc (suc (suc (suc (suc (suc (suc n))))))))} {A B C D E F G H I J : Type}
+          → SExpr ((((((((Γ S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) Ψ J
+          → SExpr (((((((((Γ S, A) S, B) S, C) S, D) S, E) S, F) S, G) S, H) S, I) (thin-usage (⊆-exch₈ {A = A}) Ψ) J
 exchange₈ = rename ⊆-exch₈
 
 ------------------------------------------------------------------------
 -- Weaken from empty context
 ------------------------------------------------------------------------
 
--- Repeatedly weaken to go from empty context to any context
-weakenFromEmpty : ∀ {n} {Γ : SCtx n} {A : Type} → SExpr S∅ A → SExpr Γ A
+-- Repeatedly weaken to go from empty context to any context.
+-- Lifts a closed expression (zeroUsage) into any context; usage stays zero
+-- in the larger context because we only add unused variables.
+weakenFromEmpty : ∀ {n} {Γ : SCtx n} {A : Type}
+                → SExpr S∅ [] A → SExpr Γ (zeroUsage {n}) A
 weakenFromEmpty {Γ = S∅}            e = e
 weakenFromEmpty {Γ = _S,_^_ Γ' _ _} e = weaken (weakenFromEmpty {Γ = Γ'} e)
 

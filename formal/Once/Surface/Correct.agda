@@ -14,7 +14,8 @@ open import Once.Type
 open import Once.CCC.IR
 open import Once.Semantics.IR as IR using (⟦_⟧; eval′)
 -- Using eval′ (backward-compatible non-parameterized eval)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; prim) renaming (_,_ to _▸_; eq to eq')
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; prim) renaming (_,_ to _▸_; eq to eq')
+open Once.Surface.Syntax.Usage using ([]; _∷_)
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
 open import Once.Surface.Elaborate using (⟦_⟧ᶜ; proj; swap'; distribute; elaborate; intLit; strLit; addIR; subIR; mulIR; divIR; modIR; negIR; ltIR; leIR; gtIR; geIR; eqIR; neIR)
@@ -124,15 +125,21 @@ distribute-inr γ b = refl
 -- We need this to relate the with-pattern in evalSurface to our proofs.
 -- When evalSurface ρ s ≡ v, then evalSurface ρ (case' s l r) computes
 -- based on v (which is either inj₁ a or inj₂ b).
-case-analysis-inl : ∀ {n} {Γ : Ctx n} {A B C}
-                    (ρ : Env Γ) (s : Expr Γ (A + B)) (l : Expr (Γ ▸ A) C) (r : Expr (Γ ▸ B) C)
+case-analysis-inl : ∀ {n} {Γ : Ctx n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr} {A B C}
+                    (ρ : Env Γ)
+                    (s : Expr Γ Ψs (A + B))
+                    (l : Expr (Γ ▸ A) (qℓ ∷ Ψₗ) C)
+                    (r : Expr (Γ ▸ B) (qr ∷ Ψᵣ) C)
                     (a : ⟦ A ⟧) → evalSurface ρ s ≡ inj₁ a →
                     evalSurface ρ (case' s l r) ≡ evalSurface (a ∷ ρ) l
 case-analysis-inl ρ s l r a eq with evalSurface ρ s | eq
 ... | inj₁ x | refl = refl
 
-case-analysis-inr : ∀ {n} {Γ : Ctx n} {A B C}
-                    (ρ : Env Γ) (s : Expr Γ (A + B)) (l : Expr (Γ ▸ A) C) (r : Expr (Γ ▸ B) C)
+case-analysis-inr : ∀ {n} {Γ : Ctx n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr} {A B C}
+                    (ρ : Env Γ)
+                    (s : Expr Γ Ψs (A + B))
+                    (l : Expr (Γ ▸ A) (qℓ ∷ Ψₗ) C)
+                    (r : Expr (Γ ▸ B) (qr ∷ Ψᵣ) C)
                     (b : ⟦ B ⟧) → evalSurface ρ s ≡ inj₂ b →
                     evalSurface ρ (case' s l r) ≡ evalSurface (b ∷ ρ) r
 case-analysis-inr ρ s l r b eq with evalSurface ρ s | eq
@@ -147,14 +154,14 @@ case-analysis-inr ρ s l r b eq with evalSurface ρ s | eq
 
 mutual
   -- Main theorem: elaboration preserves semantics
-  elaborate-correct : ∀ {n} {Γ : Ctx n} {A} (ρ : Env Γ) (e : Expr Γ A) →
+  elaborate-correct : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} (ρ : Env Γ) (e : Expr Γ Ψ A) →
                       evalSurface ρ e ≡ eval′ (elaborate e) (interpEnv ρ)
   elaborate-correct ρ (var i) = proj-correct ρ i
   -- For lam: both sides are plain functions, use extensionality
   -- LHS: evalSurface ρ (lam q e) = λ a → evalSurface (a ∷ ρ) e
   -- RHS: eval′ (curry (elaborate e) Heap) (interpEnv ρ) = λ a → eval′ (elaborate e) (interpEnv ρ , a)
   -- By IH: evalSurface (a ∷ ρ) e ≡ eval′ (elaborate e) (interpEnv ρ , a)
-  elaborate-correct ρ (lam q e) = extensionality (λ a → elaborate-correct (a ∷ ρ) e)
+  elaborate-correct ρ (lam q _ e) = extensionality (λ a → elaborate-correct (a ∷ ρ) e)
   -- For app: elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩
   -- LHS: evalSurface ρ (app f x) = (evalSurface ρ f) (evalSurface ρ x)
   -- RHS: eval′ (apply ∘ ⟨ ef , ex ⟩) γ = (eval′ ef γ) (eval′ ex γ)
@@ -165,8 +172,9 @@ mutual
           (elaborate-correct ρ x)
   -- For effApp: same as app since Eff A B has same semantics as A ⇒ B
   elaborate-correct ρ (effApp f x) = effApp-correct ρ f x
-    where postulate effApp-correct : ∀ {n} {Γ : Ctx n} {A B} (ρ : Env Γ) (f : Expr Γ (Eff A B)) (x : Expr Γ A) →
-                                     evalSurface ρ (effApp f x) ≡ eval′ (elaborate (effApp f x)) (interpEnv ρ)
+    where postulate effApp-correct : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B} (ρ : Env Γ)
+                                       (f : Expr Γ Ψ₁ (Eff A B)) (x : Expr Γ Ψ₂ A) →
+                                       evalSurface ρ (effApp f x) ≡ eval′ (elaborate (effApp f x)) (interpEnv ρ)
   elaborate-correct ρ (pair a b) = cong₂ _,_ (elaborate-correct ρ a) (elaborate-correct ρ b)
   elaborate-correct ρ (fst' p) = cong proj₁ (elaborate-correct ρ p)
   elaborate-correct ρ (snd' p) = cong proj₂ (elaborate-correct ρ p)
@@ -232,20 +240,24 @@ mutual
     where postulate prim-correct : ∀ (n : String) → evalSurface ρ (prim n) ≡ eval′ (elaborate (prim n)) (interpEnv ρ)
 
   -- Helper for comparison correctness
-  arith-cmp-correct : ∀ {n} {Γ : Ctx n} (ρ : Env Γ) (e₁ e₂ : Expr Γ Int)
+  arith-cmp-correct : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} (ρ : Env Γ)
+                      (e₁ : Expr Γ Ψ₁ Int) (e₂ : Expr Γ Ψ₂ Int)
                       (irOp : IR (Int * Int) (Unit + Unit))
-                      (surfOp : ∀ {m} {Δ : Ctx m} → Expr Δ Int → Expr Δ Int → Expr Δ (Unit + Unit))
+                      (surfOp : ∀ {m} {Δ : Ctx m} {Φ₁ Φ₂ : Usage m}
+                              → Expr Δ Φ₁ Int → Expr Δ Φ₂ Int → Expr Δ (Φ₁ +ᵘ Φ₂) (Unit + Unit))
                       (correct : ∀ (a b : ℤ) → eval′ irOp (a , b) ≡ evalSurface ε (surfOp (int a) (int b))) →
                       evalSurface ρ (surfOp e₁ e₂) ≡ eval′ (irOp ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap) (interpEnv ρ)
   arith-cmp-correct ρ e₁ e₂ irOp surfOp correct = arith-cmp-postulate ρ e₁ e₂ irOp surfOp
-    where postulate arith-cmp-postulate : ∀ {n} {Γ : Ctx n} (ρ : Env Γ) (e₁ e₂ : Expr Γ Int)
+    where postulate arith-cmp-postulate : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} (ρ : Env Γ)
+                                           (e₁ : Expr Γ Ψ₁ Int) (e₂ : Expr Γ Ψ₂ Int)
                                            (irOp : IR (Int * Int) (Unit + Unit))
-                                           (surfOp : ∀ {m} {Δ : Ctx m} → Expr Δ Int → Expr Δ Int → Expr Δ (Unit + Unit)) →
+                                           (surfOp : ∀ {m} {Δ : Ctx m} {Φ₁ Φ₂ : Usage m}
+                                                   → Expr Δ Φ₁ Int → Expr Δ Φ₂ Int → Expr Δ (Φ₁ +ᵘ Φ₂) (Unit + Unit)) →
                                            evalSurface ρ (surfOp e₁ e₂) ≡ eval′ (irOp ∘ ⟨ elaborate e₁ , elaborate e₂ ⟩ Heap) (interpEnv ρ)
 
   -- Case dispatch: routes to inl or inr case based on scrutinee value
   case-correct : ∀ {n} {Γ : Ctx n} {A B C} (ρ : Env Γ)
-                 (s : Expr Γ (A + B)) (l : Expr (Γ ▸ A) C) (r : Expr (Γ ▸ B) C)
+                 {Ψs Ψₗ Ψᵣ : Usage _} {qℓ qr : Once.Type.Quantity} (s : Expr Γ Ψs (A + B)) (l : Expr (Γ ▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ ▸ B) (qr ∷ Ψᵣ) C)
                  (v : ⟦ A ⟧ ⊎ ⟦ B ⟧) → evalSurface ρ s ≡ v →
                  evalSurface ρ (case' s l r) ≡ eval′ (elaborate (case' s l r)) (interpEnv ρ)
   case-correct ρ s l r (inj₁ a) eq = case-correct-inl ρ s l r a eq
@@ -264,7 +276,7 @@ mutual
   --      = evalSurface (a ∷ ρ) l                           [by IH for l]
   --
   case-correct-inl : ∀ {n} {Γ : Ctx n} {A B C} (ρ : Env Γ)
-                     (s : Expr Γ (A + B)) (l : Expr (Γ ▸ A) C) (r : Expr (Γ ▸ B) C)
+                     {Ψs Ψₗ Ψᵣ : Usage _} {qℓ qr : Once.Type.Quantity} (s : Expr Γ Ψs (A + B)) (l : Expr (Γ ▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ ▸ B) (qr ∷ Ψᵣ) C)
                      (a : ⟦ A ⟧) → evalSurface ρ s ≡ inj₁ a →
                      evalSurface ρ (case' s l r) ≡ eval′ (elaborate (case' s l r)) (interpEnv ρ)
   case-correct-inl {Γ = Γ} {A} {B} {C} ρ s l r a eq-s =
@@ -301,7 +313,7 @@ mutual
 
   -- Case correctness for right injection (symmetric to left case)
   case-correct-inr : ∀ {n} {Γ : Ctx n} {A B C} (ρ : Env Γ)
-                     (s : Expr Γ (A + B)) (l : Expr (Γ ▸ A) C) (r : Expr (Γ ▸ B) C)
+                     {Ψs Ψₗ Ψᵣ : Usage _} {qℓ qr : Once.Type.Quantity} (s : Expr Γ Ψs (A + B)) (l : Expr (Γ ▸ A) (qℓ ∷ Ψₗ) C) (r : Expr (Γ ▸ B) (qr ∷ Ψᵣ) C)
                      (b : ⟦ B ⟧) → evalSurface ρ s ≡ inj₂ b →
                      evalSurface ρ (case' s l r) ≡ eval′ (elaborate (case' s l r)) (interpEnv ρ)
   case-correct-inr {Γ = Γ} {A} {B} {C} ρ s l r b eq-s =

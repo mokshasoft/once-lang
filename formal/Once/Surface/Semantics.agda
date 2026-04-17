@@ -12,7 +12,7 @@ module Once.Surface.Semantics where
 
 open import Once.Type
 open import Once.Semantics.IR using (⟦_⟧)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; prim) renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; prim) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -57,12 +57,12 @@ envLookup (_ ∷ ρ) (Fin.suc i) = envLookup ρ i
 -- evalSurface ρ e evaluates expression e in environment ρ.
 -- This is the reference semantics that elaboration must preserve.
 --
-evalSurface : ∀ {n} {Γ : Ctx n} {A} → Env Γ → Expr Γ A → ⟦ A ⟧
+evalSurface : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Env Γ → Expr Γ Ψ A → ⟦ A ⟧
 
 evalSurface ρ (var i)        = envLookup ρ i
 -- Lambda creates a plain function (no Closure record)
 -- Quantity q is ignored in semantics (type-level only)
-evalSurface ρ (lam q e)      = λ a → evalSurface (a ∷ ρ) e
+evalSurface ρ (lam q _ e)    = λ a → evalSurface (a ∷ ρ) e
 -- Apply function directly (plain function, not Closure)
 evalSurface ρ (app f x)      = (evalSurface ρ f) (evalSurface ρ x)
 -- Effect application: same as app since Eff A B has same semantics as A ⇒ B

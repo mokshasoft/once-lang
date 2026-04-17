@@ -16,6 +16,7 @@ open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
 open import Data.Bool using (Bool; true; _∧_)
 open import Data.Integer using (ℤ)
+open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Data.String using (String)
 
 -- | Typing context (de Bruijn indexed with quantities)
@@ -128,82 +129,99 @@ lookupUsage (q ∷ ψ) (Fin.suc i) = lookupUsage ψ i
 tailUsage : ∀ {n} → Usage (ℕ.suc n) → Usage n
 tailUsage (q ∷ ψ) = ψ
 
--- | Surface expressions (well-typed by construction)
+-- | Surface expressions (well-typed AND well-used by construction)
 --
--- Expr Γ A represents a well-typed expression of type A in context Γ.
+-- Expr Γ Ψ A represents a well-typed expression of type A in context Γ
+-- that uses variables according to usage vector Ψ. The Ψ index makes
+-- linearity (QTT grading) a type-level fact: the `lam` constructor rejects
+-- bodies whose head-usage exceeds the declared arrow grade, so no term
+-- that violates its declared linearity can be built.
+--
 -- Uses de Bruijn indices for variables.
 --
-data Expr : ∀ {n} → Ctx n → Type → Set where
-  -- Variable reference (de Bruijn index)
-  var   : ∀ {n} {Γ : Ctx n} (i : Fin n) → Expr Γ (lookup Γ i)
+data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
+  -- Variable reference (de Bruijn index) — uses itself exactly once.
+  var   : ∀ {n} {Γ : Ctx n} (i : Fin n) → Expr Γ (singleUse i One) (lookup Γ i)
 
-  -- Lambda abstraction with quantity annotation
-  -- lam q e represents λ^q x. e where q is the usage quantity for x
-  lam   : ∀ {n} {Γ : Ctx n} {A B} (q : Quantity) → Expr (Γ , A) B → Expr Γ (A ⇒[ q ] B)
+  -- Lambda abstraction with quantity annotation.
+  -- The body's head-usage q' must be ≤ the declared arrow grade q
+  -- (sub-usage allowed: linear-use body accepted under ω-declared arrow).
+  -- The explicit proof argument is the linearity-by-construction witness:
+  -- no term violating its declared usage discipline can be built.
+  lam   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {q' : Quantity} {A B} (q : Quantity)
+        → (q' ≤q q) ≡ true
+        → Expr (Γ , A) (q' ∷ Ψ) B
+        → Expr Γ Ψ (A ⇒[ q ] B)
 
-  -- Application (pure function)
-  app   : ∀ {n} {Γ : Ctx n} {A B} {q : Quantity} → Expr Γ (A ⇒[ q ] B) → Expr Γ A → Expr Γ B
+  -- Application (pure function) — argument usage scales by arrow grade q.
+  app   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B} {q : Quantity}
+        → Expr Γ Ψ₁ (A ⇒[ q ] B)
+        → Expr Γ Ψ₂ A
+        → Expr Γ (Ψ₁ +ᵘ (q *ᵘ Ψ₂)) B
 
-  -- Effect application (effectful morphism)
-  effApp : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (Eff A B) → Expr Γ A → Expr Γ B
+  -- Effect application — effectful call uses argument once (linear).
+  effApp : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
+         → Expr Γ Ψ₁ (Eff A B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ Ψ₂) B
 
-  -- Pair introduction
-  pair  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ A → Expr Γ B → Expr Γ (A * B)
+  -- Pair introduction — both components consumed.
+  pair  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
+        → Expr Γ Ψ₁ A → Expr Γ Ψ₂ B → Expr Γ (Ψ₁ +ᵘ Ψ₂) (A * B)
 
-  -- Pair elimination
-  fst'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (A * B) → Expr Γ A
-  snd'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (A * B) → Expr Γ B
+  -- Pair elimination — same usage as the pair itself.
+  fst'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A * B) → Expr Γ Ψ A
+  snd'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A * B) → Expr Γ Ψ B
 
-  -- Sum introduction
-  inl'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ A → Expr Γ (A + B)
-  inr'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ B → Expr Γ (A + B)
+  -- Sum introduction — same usage as the injected component.
+  inl'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ A → Expr Γ Ψ (A + B)
+  inr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ B → Expr Γ Ψ (A + B)
 
-  -- Sum elimination (case)
-  case' : ∀ {n} {Γ : Ctx n} {A B C}
-        → Expr Γ (A + B) → Expr (Γ , A) C → Expr (Γ , B) C → Expr Γ C
+  -- Sum elimination (case): scrutinee used, branches combined by per-position
+  -- max (⊔ᵘ) since exactly one branch runs. Bound branch-variables'
+  -- head-usages (qℓ, qr) pop off at the constructor.
+  case' : ∀ {n} {Γ : Ctx n} {Ψs Ψₗ Ψᵣ : Usage n} {qℓ qr : Quantity} {A B C}
+        → Expr Γ Ψs (A + B)
+        → Expr (Γ , A) (qℓ ∷ Ψₗ) C
+        → Expr (Γ , B) (qr ∷ Ψᵣ) C
+        → Expr Γ (Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ)) C
 
-  -- Unit introduction
-  unit  : ∀ {n} {Γ : Ctx n} → Expr Γ Unit
+  -- Unit introduction — uses nothing.
+  unit  : ∀ {n} {Γ : Ctx n} → Expr Γ zeroUsage Unit
 
-  -- Void elimination (absurd)
-  absurd : ∀ {n} {Γ : Ctx n} {A} → Expr Γ Void → Expr Γ A
+  -- Void elimination — same usage as the absurd proof.
+  absurd : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ Void → Expr Γ Ψ A
 
-  -- Let binding: let x = e1 in e2
-  -- e1 computes a value of type A, e2 uses it (at de Bruijn index 0)
-  let'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ A → Expr (Γ , A) B → Expr Γ B
+  -- Let binding: let x = e₁ in e₂ — sugar for (λ^q x. e₂) e₁ where q is
+  -- the head-usage of the body. RHS usage scales by q; the body's head
+  -- (the bound variable) pops off into Ψ₂.
+  let'  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {q : Quantity} {A B}
+        → Expr Γ Ψ₁ A
+        → Expr (Γ , A) (q ∷ Ψ₂) B
+        → Expr Γ (Ψ₂ +ᵘ (q *ᵘ Ψ₁)) B
 
-  -- Integer literal
-  int   : ∀ {n} {Γ : Ctx n} → ℤ → Expr Γ Int
+  -- Literals — use no variables.
+  int   : ∀ {n} {Γ : Ctx n} → ℤ → Expr Γ zeroUsage Int
+  str   : ∀ {n} {Γ : Ctx n} → String → Expr Γ zeroUsage Str
 
-  -- String literal
-  str   : ∀ {n} {Γ : Ctx n} → String → Expr Γ Str
+  -- Arithmetic (Int → Int → Int)
+  add   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  sub   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  mul   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  div   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
+  mod'  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) Int
 
-  -- Arithmetic operations (Int → Int → Int)
-  add   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
-  sub   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
-  mul   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
-  div   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
-  mod'  : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ Int
+  -- Unary negation
+  neg   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} → Expr Γ Ψ Int → Expr Γ Ψ Int
 
-  -- Unary negation (Int → Int)
-  neg   : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int
+  -- Comparison (Int → Int → Bool, where Bool = Unit + Unit)
+  lt    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  le    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  gt    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  ge    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  eq    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
+  ne    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
 
-  -- Comparison operations (Int → Int → Bool, where Bool = Unit + Unit)
-  lt    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
-  le    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
-  gt    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
-  ge    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
-  eq    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
-  ne    : ∀ {n} {Γ : Ctx n} → Expr Γ Int → Expr Γ Int → Expr Γ (Unit + Unit)
+  -- Effect lifting — identity on usage
+  arr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A ⇒ B) → Expr Γ Ψ (Eff A B)
 
-  -- Effect lifting (arr combinator from arrow-based effects)
-  -- Lifts a pure function to an effectful morphism
-  arr'  : ∀ {n} {Γ : Ctx n} {A B} → Expr Γ (A ⇒ B) → Expr Γ (Eff A B)
-
-  -- OCP-0003: roll'/unroll' removed. Use In/Cata/Out/Ana for recursive types.
-  -- See Once.CCC.IR for structured recursion schemes.
-
-  -- Primitive reference (imported functions)
-  -- Used for qualified imports like exit0@S → prim "S.exit0"
-  -- The type A is determined by the import
-  prim    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ A
+  -- Primitive reference — uses no variables
+  prim    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A

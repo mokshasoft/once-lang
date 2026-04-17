@@ -133,7 +133,7 @@ distribute {Γ} {A} {B} = distrib' ∘ swap'
 -- Key insight: lambdas extend the environment (product), variables
 -- project from the environment, and applications compose appropriately.
 --
-elaborate : ∀ {n} {Γ : Ctx n} {A} → Expr Γ A → IR ⟦ Γ ⟧ᶜ A
+elaborate : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A} → Expr Γ Ψ A → IR ⟦ Γ ⟧ᶜ A
 
 -- Variable: project from environment
 elaborate (var i) = proj i
@@ -142,7 +142,7 @@ elaborate (var i) = proj i
 -- Context (Γ, A) has type ⟦Γ⟧ᶜ * A = ⟦Γ,A⟧ᶜ
 -- IR curry is quantity-polymorphic, so it directly produces (A ⇒[ q ] B)
 -- The quantity q is enforced during type checking, not during elaboration
-elaborate (lam q e) = curry (elaborate e) Heap
+elaborate (lam q _ e) = curry (elaborate e) Heap
 
 -- Application: f x becomes apply ∘ ⟨f, x⟩
 -- IR's apply is quantity-polymorphic, no coercion needed
