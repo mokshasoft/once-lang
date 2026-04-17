@@ -247,3 +247,102 @@ typeToGType-injective :
   → (gtypeToType g ≡ just t₁) × (gtypeToType g ≡ just t₂)
 typeToGType-injective {t₁} {t₂} {g} eq₁ eq₂ =
   typeToGType-gtypeToType t₁ g eq₁ , typeToGType-gtypeToType t₂ g eq₂
+
+------------------------------------------------------------------------
+-- QTT quantity algebra: commutativity, associativity, identity
+------------------------------------------------------------------------
+
+open Once.Type using (_+q_; _*q_; _⊔q_)
+
+-- Quantity addition is commutative.
++q-comm : ∀ (q₁ q₂ : Quantity) → q₁ +q q₂ ≡ q₂ +q q₁
++q-comm Zero Zero = refl
++q-comm Zero One  = refl
++q-comm Zero Many = refl
++q-comm One  Zero = refl
++q-comm One  One  = refl
++q-comm One  Many = refl
++q-comm Many Zero = refl
++q-comm Many One  = refl
++q-comm Many Many = refl
+
+-- Zero is the left identity of +q.
++q-identity-left : ∀ (q : Quantity) → Zero +q q ≡ q
++q-identity-left Zero = refl
++q-identity-left One  = refl
++q-identity-left Many = refl
+
+-- Zero is also the right identity (by commutativity).
++q-identity-right : ∀ (q : Quantity) → q +q Zero ≡ q
++q-identity-right Zero = refl
++q-identity-right One  = refl
++q-identity-right Many = refl
+
+-- Many is absorbing for +q.
++q-absorbs-Many-left : ∀ (q : Quantity) → Many +q q ≡ Many
++q-absorbs-Many-left Zero = refl
++q-absorbs-Many-left One  = refl
++q-absorbs-Many-left Many = refl
+
++q-absorbs-Many-right : ∀ (q : Quantity) → q +q Many ≡ Many
++q-absorbs-Many-right Zero = refl
++q-absorbs-Many-right One  = refl
++q-absorbs-Many-right Many = refl
+
+-- Quantity multiplication: Zero is absorbing.
+*q-absorbs-Zero-left : ∀ (q : Quantity) → Zero *q q ≡ Zero
+*q-absorbs-Zero-left _ = refl
+
+*q-absorbs-Zero-right : ∀ (q : Quantity) → q *q Zero ≡ Zero
+*q-absorbs-Zero-right Zero = refl
+*q-absorbs-Zero-right One  = refl
+*q-absorbs-Zero-right Many = refl
+
+-- One is the identity for *q.
+*q-identity-left : ∀ (q : Quantity) → One *q q ≡ q
+*q-identity-left Zero = refl
+*q-identity-left One  = refl
+*q-identity-left Many = refl
+
+*q-identity-right : ∀ (q : Quantity) → q *q One ≡ q
+*q-identity-right Zero = refl
+*q-identity-right One  = refl
+*q-identity-right Many = refl
+
+-- Quantity join (⊔q) is commutative.
+⊔q-comm : ∀ (q₁ q₂ : Quantity) → q₁ ⊔q q₂ ≡ q₂ ⊔q q₁
+⊔q-comm Zero Zero = refl
+⊔q-comm Zero One  = refl
+⊔q-comm Zero Many = refl
+⊔q-comm One  Zero = refl
+⊔q-comm One  One  = refl
+⊔q-comm One  Many = refl
+⊔q-comm Many Zero = refl
+⊔q-comm Many One  = refl
+⊔q-comm Many Many = refl
+
+-- ⊔q is idempotent.
+⊔q-idem : ∀ (q : Quantity) → q ⊔q q ≡ q
+⊔q-idem Zero = refl
+⊔q-idem One  = refl
+⊔q-idem Many = refl
+
+-- Zero is the bottom of ⊔q.
+⊔q-Zero-left : ∀ (q : Quantity) → Zero ⊔q q ≡ q
+⊔q-Zero-left _ = refl
+
+⊔q-Zero-right : ∀ (q : Quantity) → q ⊔q Zero ≡ q
+⊔q-Zero-right Zero = refl
+⊔q-Zero-right One  = refl
+⊔q-Zero-right Many = refl
+
+-- Many is the top of ⊔q.
+⊔q-Many-left : ∀ (q : Quantity) → Many ⊔q q ≡ Many
+⊔q-Many-left Zero = refl
+⊔q-Many-left One  = refl
+⊔q-Many-left Many = refl
+
+⊔q-Many-right : ∀ (q : Quantity) → q ⊔q Many ≡ Many
+⊔q-Many-right Zero = refl
+⊔q-Many-right One  = refl
+⊔q-Many-right Many = refl
