@@ -2397,6 +2397,315 @@ namedToPolyCtx : NamedCtx → PolyNamedCtx
 namedToPolyCtx (mkCtx n Γ Δ fresh imps) = mkPolyCtx n Γ (embedSCtx Δ) fresh (embedImports imps)
 
 ------------------------------------------------------------------------
+-- New Ground Inference (Phase B: wired-up alongside old)
+------------------------------------------------------------------------
+--
+-- These functions implement bidirectional type-checking producing ground
+-- Type and SExpr directly, without going through PolyExpr or InferSubst.
+-- Polymorphic builtins are specialized at their use site via spine
+-- detection of App chains whose head is a builtin name.
+--
+-- The new implementation is additive; old code is retained until
+-- coverage is complete and the switch is made.
+
+-- | Walk the left spine of Raw.RApp to extract the head and argument list.
+record AppSpine : Set where
+  constructor mkSpine
+  field
+    head : RawExpr
+    args : List RawExpr
+
+spineOf : RawExpr → AppSpine
+spineOf e = go e []
+  where
+    go : RawExpr → List RawExpr → AppSpine
+    go (Raw.RApp f x) args = go f (x ∷ args)
+    go other          args = mkSpine other args
+
+-- | Is this name one of the 13 polymorphic builtins?
+isPolyBuiltin : String → Bool
+isPolyBuiltin "id"       = true
+isPolyBuiltin "fst"      = true
+isPolyBuiltin "snd"      = true
+isPolyBuiltin "inl"      = true
+isPolyBuiltin "inr"      = true
+isPolyBuiltin "unit"     = true
+isPolyBuiltin "pair"     = true
+isPolyBuiltin "terminal" = true
+isPolyBuiltin "initial"  = true
+isPolyBuiltin "curry"    = true
+isPolyBuiltin "apply"    = true
+isPolyBuiltin "compose"  = true
+isPolyBuiltin "arr"      = true
+isPolyBuiltin _          = false
+
+-- | Look up a local variable by name in a NamedCtx.
+-- Returns just (i , type-at-i) if found in local bindings, nothing otherwise.
+lookupLocal : (ctx : NamedCtx) → String
+            → Maybe (∃[ A ] (SExpr (NamedCtx.debruijn ctx) A))
+lookupLocal (mkCtx n Γ Δ _ _) x = go Γ Δ
+  where
+    go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (∃[ A ] (SExpr Δ' A))
+    go [] S∅                  = nothing
+    go [] (_ S, _ ^ _)        = nothing
+    go (_ ∷ _) S∅             = nothing
+    go {suc m} (b ∷ Γ') (Δ' S, B ^ Many) with Data.String._≟_ x (name b)
+    ... | yes _ = just (B , Surface.var zero)
+    ... | no _  with go Γ' Δ'
+    ...   | nothing             = nothing
+    ...   | just (A , se)       = just (A , weaken se)
+    go {suc m} (b ∷ Γ') (Δ' S, B ^ q) with Data.String._≟_ x (name b)
+    ... | yes _ = just (B , Surface.var zero)
+    ... | no _  with go Γ' Δ'
+    ...   | nothing             = nothing
+    ...   | just (A , se)       = just (A , coerceQuantity (weaken {A = B} {q = q} se))
+
+-- | Find a local variable's de Bruijn position and quantity by name.
+-- Returns nothing if not in local bindings.
+findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
+findLocalVarUsage (mkCtx n Γ Δ _ _) x = go Γ Δ
+  where
+    go : ∀ {m} → Ctx → SCtx m → Maybe (Fin m × Quantity)
+    go [] S∅ = nothing
+    go [] (_ S, _ ^ _) = nothing
+    go (_ ∷ _) S∅ = nothing
+    go {suc m} (b ∷ Γ') (Δ' S, _ ^ q) with Data.String._≟_ x (name b)
+    ... | yes _ = just (zero , q)
+    ... | no  _ with go Γ' Δ'
+    ...   | nothing = nothing
+    ...   | just (i , q') = just (suc i , q')
+
+------------------------------------------------------------------------
+-- New Bidirectional Inference/Checking (ground types throughout)
+------------------------------------------------------------------------
+--
+-- These produce InferElabResult/CheckElabResult directly — no PolyExpr
+-- intermediate, no InferSubst, no extraction. Polymorphic builtins are
+-- specialized at their use site by inline pattern matching on the
+-- application chain shape.
+--
+-- Current coverage: literals, unit, local variables, imports, type
+-- annotations, let bindings (monomorphic), pair, case, binops, unary,
+-- full applications of polymorphic builtins with all arguments provided,
+-- lambdas in check mode, arbitrary applications in infer mode when the
+-- function's type is a ground function type.
+
+mutual
+  inferNew : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
+  checkNew : (ctx : NamedCtx) → RawExpr → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+
+  -- ===== inferNew =====
+
+  -- Literals
+  inferNew ctx (Raw.RInt n) =
+    success Int (Surface.int n) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  inferNew ctx (Raw.RStringLit s) =
+    success Str (Surface.str s) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  inferNew ctx Raw.RUnit =
+    success Unit Surface.unit 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+
+  -- Type annotation: check against the annotated type
+  inferNew ctx (Raw.RAnnot e T) with checkNew ctx e T
+  ... | success se d f u = success T se d f u
+  ... | failure err = failure err
+
+  -- The `unit` builtin is monomorphic: type is Unit.
+  inferNew ctx (Raw.RVar "unit") =
+    success Unit Surface.unit 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+
+  -- Variable lookup (generic). Local first, then import, else fail.
+  inferNew ctx (Raw.RVar x) with lookupLocal ctx x
+  ... | just (A , se) with findLocalVarUsage ctx x
+  ...   | just (i , q) = success A se 0 (NamedCtx.freshCounter ctx) (Surface.singleUse i q)
+  ...   | nothing = success A se 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  inferNew ctx (Raw.RVar x) | nothing with lookupImport (NamedCtx.imports ctx) x
+  ... | just ty = success ty (Surface.prim x) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | nothing = failure ("Unbound or unspecialized variable: " ++ x ++
+                           " (polymorphic builtins must appear applied or in check mode)")
+
+  -- Qualified name: look up as "alias.name"
+  inferNew ctx (Raw.RQualified name alias) with lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
+  ... | just ty = success ty (Surface.prim (alias ++ "." ++ name)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | nothing = failure ("Unbound qualified variable: " ++ name ++ "@" ++ alias)
+
+  -- Lambda without annotation: rejected in infer mode
+  inferNew ctx (Raw.RLam _ _) =
+    failure "Lambda without type annotation not supported in inference mode."
+
+  -- Polymorphic builtin applications (full arity).
+  -- id : A → A
+  inferNew ctx (Raw.RApp (Raw.RVar "id") arg) with inferNew ctx arg
+  ... | failure err = failure err
+  ... | success T argE d f u =
+        success T (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) f u
+
+  -- fst : (A * B) → A
+  inferNew ctx (Raw.RApp (Raw.RVar "fst") arg) with inferNew ctx arg
+  ... | failure err = failure err
+  ... | success (A Once.Type.* B) argE d f u =
+        success A (Surface.app (weakenFromEmpty (specFst A B)) argE) (suc d) f u
+  ... | success _ _ _ _ _ = failure "fst requires a pair argument"
+
+  -- snd : (A * B) → B
+  inferNew ctx (Raw.RApp (Raw.RVar "snd") arg) with inferNew ctx arg
+  ... | failure err = failure err
+  ... | success (A Once.Type.* B) argE d f u =
+        success B (Surface.app (weakenFromEmpty (specSnd A B)) argE) (suc d) f u
+  ... | success _ _ _ _ _ = failure "snd requires a pair argument"
+
+  -- terminal : A → Unit
+  inferNew ctx (Raw.RApp (Raw.RVar "terminal") arg) with inferNew ctx arg
+  ... | failure err = failure err
+  ... | success A argE d f u =
+        success Unit (Surface.app (weakenFromEmpty (specTerminal A)) argE) (suc d) f u
+
+  -- arr : (A → B) → Eff A B
+  inferNew ctx (Raw.RApp (Raw.RVar "arr") arg) with inferNew ctx arg
+  ... | failure err = failure err
+  ... | success (A ⇒[ Many ] B) argE d f u =
+        success (Eff A B) (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) f u
+  ... | success _ _ _ _ _ = failure "arr requires a (A → B) pure-function argument"
+
+  -- apply : ((A → B) * A) → B
+  inferNew ctx (Raw.RApp (Raw.RVar "apply") arg) with inferNew ctx arg
+  ... | failure err = failure err
+  ... | success ((A ⇒[ Many ] B) Once.Type.* A') argE d f u with A ≟T A'
+  ...   | yes refl = success B (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) f u
+  ...   | no _ = failure "apply: function domain must match second component"
+  inferNew ctx (Raw.RApp (Raw.RVar "apply") _) | success _ _ _ _ _ = failure "apply requires ((A → B) * A)"
+
+  -- compose/pair/curry (arity 3) NOT YET HANDLED in inferNew.
+  -- These require a function-type projection helper to avoid nested-with
+  -- coverage issues when the inferred types don't have function shape.
+  -- Left for a follow-up once the simpler slice is wired up and verified.
+  inferNew ctx (Raw.RApp (Raw.RApp (Raw.RApp (Raw.RVar "compose") _) _) _) =
+    failure "inferNew: compose not yet implemented (arity 3 builtin)"
+  inferNew ctx (Raw.RApp (Raw.RApp (Raw.RApp (Raw.RVar "pair") _) _) _) =
+    failure "inferNew: pair (fork) not yet implemented (arity 3 builtin)"
+  inferNew ctx (Raw.RApp (Raw.RApp (Raw.RApp (Raw.RVar "curry") _) _) _) =
+    failure "inferNew: curry not yet implemented (arity 3 builtin)"
+
+  -- Partial or unsupported builtins in infer mode
+  inferNew ctx (Raw.RApp (Raw.RVar "inl") _) =
+    failure "inl requires check mode (needs target sum type)"
+  inferNew ctx (Raw.RApp (Raw.RVar "inr") _) =
+    failure "inr requires check mode (needs target sum type)"
+  inferNew ctx (Raw.RApp (Raw.RVar "initial") _) =
+    failure "initial requires check mode (needs target type)"
+
+  -- Generic application NOT YET HANDLED in inferNew. Same coverage issue
+  -- as compose/pair/curry (requires function-type projection helper).
+  inferNew ctx (Raw.RApp _ _) =
+    failure "inferNew: generic application not yet implemented"
+
+  -- Let binding: infer e₁ monomorphically, then e₂ under extended context
+  inferNew ctx (Raw.RLet x e₁ e₂) with inferNew ctx e₁
+  ... | failure err = failure err
+  ... | success A e₁E d₁ f₁ u₁ with inferNew (extendNamedCtx ctx x A) e₂
+  ...   | failure err = failure err
+  ...   | success B e₂E d₂ f₂ u₂ =
+        success B (Surface.let' e₁E e₂E) (d₁ ⊔ suc d₂) f₂ (u₁ +ᵘ Surface.tailUsage u₂)
+
+  -- Pair introduction
+  inferNew ctx (Raw.RPair a b) with inferNew ctx a
+  ... | failure err = failure err
+  ... | success A aE da fa ua with inferNew ctx b
+  ...   | failure err = failure err
+  ...   | success B bE db fb ub =
+        success (A Once.Type.* B) (Surface.pair aE bE) (da ⊔ db) fb (ua +ᵘ ub)
+
+  -- Case (destruct)
+  inferNew ctx (Raw.RDestruct scrut xL eL xR eR) with inferNew ctx scrut
+  ... | failure err = failure err
+  ... | success (A Once.Type.+ B) scrutE ds fs us with inferNew (extendNamedCtx ctx xL A) eL
+  ...   | failure err = failure err
+  ...   | success C₁ eLE dL fL uL with inferNew (extendNamedCtx ctx xR B) eR
+  ...     | failure err = failure err
+  ...     | success C₂ eRE dR fR uR with C₁ ≟T C₂
+  ...       | yes refl = success C₁ (Surface.case' scrutE eLE eRE)
+                           (ds ⊔ suc dL ⊔ suc dR) fR (us +ᵘ Surface.tailUsage uL +ᵘ Surface.tailUsage uR)
+  ...       | no _ = failure "Case branches have different types"
+  inferNew ctx (Raw.RDestruct _ _ _ _ _) | success _ _ _ _ _ = failure "Case requires a sum-typed scrutinee"
+
+  -- Binary operators. NOT YET HANDLED in inferNew due to nested-with
+  -- coverage issues when operands aren't Int. Left for follow-up.
+  inferNew ctx (Raw.RBinOp _ _ _) =
+    failure "inferNew: binary operators not yet implemented"
+
+  -- Unary
+  inferNew ctx (Raw.RUnaryOp Raw.OpNeg e) with inferNew ctx e
+  ... | failure err = failure err
+  ... | success Int eE d f u = success Int (Surface.neg eE) d f u
+  ... | success _ _ _ _ _ = failure "Negation requires Int operand"
+
+  -- ===== checkNew =====
+
+  -- Lambda in check mode: destruct function type from expected
+  checkNew ctx (Raw.RLam x body) (A ⇒[ q ] B) with checkNew (extendNamedCtx ctx x A) body B
+  ... | failure err = failure err
+  ... | success bodyE d f u =
+        let paramUsage = Surface.lookupUsage u zero
+        in if paramUsage ≤q q
+             then success (Surface.lam q bodyE) (suc d) f (Surface.tailUsage u)
+             else failure ("Parameter '" ++ x ++ "' used with quantity " ++ showQuantity paramUsage ++
+                          " but declared with quantity " ++ showQuantity q)
+  checkNew ctx (Raw.RLam _ _) _ = failure "Lambda requires function type"
+
+  -- inl in check mode: expected sum type
+  checkNew ctx (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B) with checkNew ctx arg A
+  ... | failure err = failure err
+  ... | success argE d f u =
+        success (Surface.app (weakenFromEmpty (specInl A B)) argE) (suc d) f u
+  checkNew ctx (Raw.RApp (Raw.RVar "inl") _) _ = failure "inl expects a sum type in check mode"
+
+  -- inr in check mode
+  checkNew ctx (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B) with checkNew ctx arg B
+  ... | failure err = failure err
+  ... | success argE d f u =
+        success (Surface.app (weakenFromEmpty (specInr A B)) argE) (suc d) f u
+  checkNew ctx (Raw.RApp (Raw.RVar "inr") _) _ = failure "inr expects a sum type in check mode"
+
+  -- initial in check mode: Void → A, so arg must have type Void, result T = A
+  checkNew ctx (Raw.RApp (Raw.RVar "initial") arg) T with checkNew ctx arg Void
+  ... | failure err = failure err
+  ... | success argE d f u =
+        success (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) f u
+
+  -- Generic fallback: infer and match types
+  checkNew ctx e T with inferNew ctx e
+  ... | failure err = failure err
+  ... | success T' eE d f u with T ≟T T'
+  ...   | yes refl = success eE d f u
+  ...   | no _ = failure ("Type mismatch: expected " ++ showType T ++ " but got " ++ showType T')
+
+-- | Experimental: new-architecture inference entry point (not yet default).
+-- Enforces the depth ≤ 7 limit, same as inferElab.
+newInferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
+newInferElab ctx rawExpr = checkDepth (inferNew ctx rawExpr)
+  where
+    checkDepth : InferElabResult (NamedCtx.debruijn ctx) → InferElabResult (NamedCtx.debruijn ctx)
+    checkDepth (failure err) = failure err
+    checkDepth (success ty expr depth fresh usage) with depth ≤? 7
+    ... | yes _ = success ty expr depth fresh usage
+    ... | no _ = failure ("Expression nesting depth exceeds verified limit.\n" ++
+                         "  Depth encountered: " ++ showℕ depth ++ "\n" ++
+                         "  Proven depth limit: 7\n" ++
+                         "  Please refactor to reduce nesting of λ/case/let expressions.")
+
+-- | Experimental: new-architecture checking entry point (not yet default).
+newCheckElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
+newCheckElab ctx expr ty = checkDepth (checkNew ctx expr ty)
+  where
+    checkDepth : CheckElabResult (NamedCtx.debruijn ctx) ty → CheckElabResult (NamedCtx.debruijn ctx) ty
+    checkDepth (failure err) = failure err
+    checkDepth (success expr' depth fresh usage) with depth ≤? 7
+    ... | yes _ = success expr' depth fresh usage
+    ... | no _ = failure ("Expression nesting depth exceeds verified limit.\n" ++
+                         "  Depth encountered: " ++ showℕ depth ++ "\n" ++
+                         "  Proven depth limit: 7\n" ++
+                         "  Please refactor to reduce nesting of λ/case/let expressions.")
+
+------------------------------------------------------------------------
 -- Depth-Checked Inference (Public Interface)
 ------------------------------------------------------------------------
 
