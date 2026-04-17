@@ -40,7 +40,9 @@ open import Once.TypeCheck.Error
          InitialInInferMode; InlNeedsSumType; InrNeedsSumType;
          FstNeedsPair; SndNeedsPair; NegationNotInt;
          CaseScrutineeNotSum; CaseBranchMismatch;
+         ApplicationTypeMismatch;
          UnboundVariable; UnboundQualified)
+import Once.TypeCheck.Error
 import Once.Type as T
 
 ------------------------------------------------------------------------
@@ -274,3 +276,33 @@ case-scrut-Int : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
 case-scrut-Int ctx scrut xL eL xR eR eqSub eqFail
   rewrite eqSub with eqFail
 ... | refl = refl
+
+------------------------------------------------------------------------
+-- Application type mismatch (generic RApp path)
+--
+-- When the generic RApp rule fires (f is not a polymorphic builtin)
+-- and the inferred argument type does not match the function's
+-- domain, the elaborator emits the ApplicationTypeMismatch string.
+------------------------------------------------------------------------
+
+app-domain-mismatch-is-ApplicationTypeMismatch :
+  ∀ (ctx : NamedCtx) (f x : Raw.RawExpr)
+    (A B : Type) (q : _)
+    {Ψf : _} {fE : _} {df fx-fresh : _}
+    (Ax : Type)
+    {Ψx : _} {xE : _} {dx fx-f-fresh : _}
+    {msg : _}
+  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+  → Once.TypeCheck.Elaborate.inferElab ctx f
+      ≡ success (A T.⇒[ q ] B) Ψf fE df fx-fresh
+  → Once.TypeCheck.Elaborate.inferElab ctx x
+      ≡ success Ax Ψx xE dx fx-f-fresh
+  → ¬ (A ≡ Ax)
+  → Once.TypeCheck.Elaborate.inferElab ctx (Raw.RApp f x) ≡ failure msg
+  → msg ≡ renderError (Once.TypeCheck.Error.ApplicationTypeMismatch A Ax)
+app-domain-mismatch-is-ApplicationTypeMismatch
+  ctx f x A B q Ax notPoly eqF eqX A≢Ax eqFail
+  rewrite notPoly | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A Ax
+... | yes p = ⊥-elim (A≢Ax p)
+... | no  _ with eqFail
+...   | refl = refl

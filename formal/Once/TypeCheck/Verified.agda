@@ -54,7 +54,7 @@ open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
   UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair;
-  NegationNotInt; CaseScrutineeNotSum)
+  NegationNotInt; CaseScrutineeNotSum; ApplicationTypeMismatch)
 open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Data.String using (String)
@@ -309,6 +309,20 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
       → msg ≡ renderError CaseScrutineeNotSum
 
+    -- Generic RApp argument-type mismatch → ApplicationTypeMismatch.
+    tc-err-app-domain-mismatch :
+      ∀ (ctx : NamedCtx) (f x : RawExpr)
+        (A B : Type) (q : _)
+        {Ψf fE df fx-fresh}
+        (Ax : Type)
+        {Ψx xE dx fx-f-fresh msg}
+      → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+      → tcInfer ctx f ≡ success (A Once.Type.⇒[ q ] B) Ψf fE df fx-fresh
+      → tcInfer ctx x ≡ success Ax Ψx xE dx fx-f-fresh
+      → ¬ (A ≡ Ax)
+      → tcInfer ctx (RApp f x) ≡ failure msg
+      → msg ≡ renderError (ApplicationTypeMismatch A Ax)
+
     ----------------------------------------------------------------
     -- G2 (continued): remaining soundness fields.
     ----------------------------------------------------------------
@@ -493,6 +507,7 @@ verifiedTypeChecker = record
   ; tc-err-snd-non-pair-Int       = EP.snd-non-pair-Int
   ; tc-err-case-scrut-Unit        = EP.case-scrut-Unit
   ; tc-err-case-scrut-Int         = EP.case-scrut-Int
+  ; tc-err-app-domain-mismatch    = EP.app-domain-mismatch-is-ApplicationTypeMismatch
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
