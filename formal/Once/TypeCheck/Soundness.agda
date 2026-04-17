@@ -31,10 +31,11 @@ open import Data.String using (String; _++_)
 open import Data.Integer using (ℤ)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃; ∃-syntax; _,_; _×_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality
+  using (_≡_; refl; sym; trans; cong; subst; inspect; [_])
 
-open import Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
-                             _*_; _+_; _⇒[_]_)
+open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
+                                  _*_; _+_; _⇒[_]_)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RInt; RStringLit; RUnit; RAnnot; RPair;
          RUnaryOp; OpNeg)
@@ -90,20 +91,142 @@ sound-RVar-unit : ∀ (ctx : NamedCtx)
 sound-RVar-unit ctx refl = t-unit-var
 
 ------------------------------------------------------------------------
--- Recursive cases (RUnaryOp, RAnnot, RPair, …)
+-- Recursive cases (RUnaryOp, RAnnot, RPair)
 --
 -- These cases require the soundness induction hypothesis applied to
--- sub-expressions. A clean structural proof runs into a well-known
--- obstacle: Agda's `with … in` idiom abstracts the scrutinee in the
--- goal type, and when the scrutinee is the same `inferElab` call
--- whose equation we want to pass to the IH, the equation collapses
--- to a trivial reflexivity after abstraction. The standard remedies
--- (explicit inversion lemmas, packaged `Σ`-returning sub-calls,
--- `inspect`-free structural destructors on `InferElabResult`) are
--- each ≈30 lines of boilerplate per construct.
+-- a sub-expression. Naïve `with inferElab ctx e in eqSub` collapses
+-- `eqSub` to reflexivity because Agda's `with` machinery abstracts the
+-- scrutinee throughout the clause, including in the type of `eqSub`
+-- itself. The stdlib `inspect` idiom has the same problem when the
+-- scrutinee appears in the IH's type.
 --
--- These recursive soundness cases are left as an explicit TODO for a
--- follow-on session. The leaf cases above establish the proof
--- pattern and the judgment shape; the recursive cases are mechanical
--- once one inversion-lemma scheme is in place.
+-- The workaround: bundle each sub-call with a proof-of-equality into
+-- a fresh scrutinee value, then match on that. The bundle's type is
+-- a view-like Σ: `(r : InferElabResult _) × inferElab ctx e ≡ r`.
+-- Because the `with` now dispatches on the bundle (not on the bare
+-- `inferElab ctx e`), the equation survives the substitution.
 ------------------------------------------------------------------------
+
+-- A view bundling an inference result with its defining equation.
+InferBundle : (ctx : NamedCtx) → RawExpr → Set
+InferBundle ctx e =
+  ∃[ r ] inferElab ctx e ≡ r
+
+inferBundle : (ctx : NamedCtx) (e : RawExpr) → InferBundle ctx e
+inferBundle ctx e = inferElab ctx e , refl
+
+CheckBundle : (ctx : NamedCtx) → RawExpr → Type → Set
+CheckBundle ctx e T =
+  ∃[ r ] checkElab ctx e T ≡ r
+
+checkBundle : (ctx : NamedCtx) (e : RawExpr) (T : Type) → CheckBundle ctx e T
+checkBundle ctx e T = checkElab ctx e T , refl
+
+-- Soundness for RUnaryOp OpNeg: the sub-expression must be inferable
+-- at type Int, and the result inherits that type and its usage
+-- vector unchanged.
+--
+-- Strategy: bundle the sub-call with its equation, then `rewrite`
+-- with the equation inside each branch. The rewrite causes the outer
+-- `inferElab` to reduce according to the sub-result's shape — either
+-- to `success Int …` (the Int branch) or to `failure …`. In the
+-- Int branch, we apply `t-neg` with `IH refl` (the IH is also
+-- rewritten, so `refl` now gives us the judgment for the sub). In
+-- every other branch, the outer `eq` is `failure ≡ success`, absurd.
+sound-RUnaryOp-neg :
+  ∀ (ctx : NamedCtx) (e : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx e ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ e ∶ A' ⨾ Ψ')
+  → inferElab ctx (RUnaryOp OpNeg e) ≡ success A Ψ eE d f
+  → ctx ⊢ RUnaryOp OpNeg e ∶ A ⨾ Ψ
+sound-RUnaryOp-neg ctx e IH eq with inferBundle ctx e
+sound-RUnaryOp-neg ctx e IH eq | success Int _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | refl = t-neg (IH refl)
+sound-RUnaryOp-neg ctx e IH eq | success Unit _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success Void _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success Float _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success Str _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success Buffer _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success (_ * _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success (_ + _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success (_ ⇒[ _ ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success (T.Eff _ _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success (T.μ-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | success (T.ν-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RUnaryOp-neg ctx e IH eq | failure _ , eqSub
+  rewrite eqSub with eq
+... | ()
+
+-- Soundness for RAnnot: the sub-expression must successfully check
+-- at the annotated type, and the result's type equals that annotation.
+sound-RAnnot :
+  ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {Ψ' eE' d' f'}
+        → checkElab ctx e T ≡ success Ψ' eE' d' f'
+        → ctx ⊢ e ∶ T ⨾ Ψ')
+  → inferElab ctx (RAnnot e T) ≡ success A Ψ eE d f
+  → ctx ⊢ RAnnot e T ∶ A ⨾ Ψ
+sound-RAnnot ctx e T IH eq with checkBundle ctx e T
+sound-RAnnot ctx e T IH eq | success _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | refl = t-annot (IH refl)
+sound-RAnnot ctx e T IH eq | failure _ , eqSub
+  rewrite eqSub with eq
+... | ()
+
+-- Soundness for RPair: both sub-expressions infer; the pair's type
+-- is the product, and its usage is the per-position sum.
+sound-RPair :
+  ∀ (ctx : NamedCtx) (a b : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IHa : ∀ {A' Ψ' eE' d' f'}
+         → inferElab ctx a ≡ success A' Ψ' eE' d' f'
+         → ctx ⊢ a ∶ A' ⨾ Ψ')
+  → (IHb : ∀ {B' Ψ' eE' d' f'}
+         → inferElab ctx b ≡ success B' Ψ' eE' d' f'
+         → ctx ⊢ b ∶ B' ⨾ Ψ')
+  → inferElab ctx (RPair a b) ≡ success A Ψ eE d f
+  → ctx ⊢ RPair a b ∶ A ⨾ Ψ
+sound-RPair ctx a b IHa IHb eq with inferBundle ctx a
+sound-RPair ctx a b IHa IHb eq | success _ _ _ _ _ , eqA
+  with inferBundle ctx b
+sound-RPair ctx a b IHa IHb eq
+  | success _ _ _ _ _ , eqA | success _ _ _ _ _ , eqB
+  rewrite eqA | eqB with eq
+... | refl = t-pair (IHa refl) (IHb refl)
+sound-RPair ctx a b IHa IHb eq
+  | success _ _ _ _ _ , eqA | failure _ , eqB
+  rewrite eqA | eqB with eq
+... | ()
+sound-RPair ctx a b IHa IHb eq | failure _ , eqA
+  rewrite eqA with eq
+... | ()
