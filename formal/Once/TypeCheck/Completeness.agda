@@ -420,44 +420,46 @@ infer-complete-RApp-generic f x A notPoly eqF eqX
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
--- Full completeness walk — discussion
+-- Full-walk completeness — architectural discussion
 --
 -- Stitching the per-rule completeness theorems into a single
--- top-level `∀ d → inferElab-succeeds` proof hits a deeper issue
--- than the ones we've resolved so far: the declarative judgment
--- permits derivations the operational elaborator cannot realize in
--- pure infer mode.
+-- top-level `∀ d → inferElab-succeeds` proof hits two deeper
+-- judgment/elaborator mismatches:
 --
--- The obstacle: the `t-pair` (and every other recursive rule) takes
--- sub-derivations without restricting which rules those sub-derivations
--- may use. In particular, a sub-derivation of t-pair could be a
--- `t-lam`, producing `ctx ⊢ RPair (RLam x body) b ∶ <fun-type> * B`.
--- The elaborator, however, calls `inferElab ctx (RLam x body)` for
--- the first component of a pair — which always fails with
--- `LambdaInInferMode`. So the derivation exists declaratively but
--- cannot be realized operationally.
+--   1. `t-lam` as a sub-derivation: the judgment's `t-pair` (and
+--      every other recursive rule) accepts sub-derivations using
+--      `t-lam`, producing e.g. `ctx ⊢ RPair (RLam x body) b : …`.
+--      The elaborator rejects these because `inferElab` of `RLam`
+--      always fails with `LambdaInInferMode`.
 --
--- Resolutions in increasing order of invasiveness:
+--   2. `t-app` as a sub-derivation over a polymorphic-builtin head:
+--      `ctx ⊢ RApp (RVar "id") arg : …` can be derived via either
+--      `t-app` (generic application) or `t-id-app` (specialised).
+--      The elaborator picks `t-id-app` via `classifyAppHead`. A
+--      sub-derivation using `t-app` where the classifier would
+--      have picked a specialised rule makes the elaborator take
+--      a different path than the judgment records.
 --
---   (1) Split the judgment into two mutually-recursive relations —
---       an infer-mode judgment (rules with sub-derivations in infer
---       position) and a check-mode judgment (with t-lam only
---       derivable in check position). The bidirectional discipline
---       becomes part of the judgment structure. Significant refactor.
+-- Both mismatches are structural — the judgment's rules are more
+-- permissive than the elaborator's dispatch. Resolution options:
 --
---   (2) Add a `NoLamSub` predicate recording that a derivation uses
---       only infer-mode rules throughout its sub-tree, and
---       parametrise `infer-complete` on it. Trace-the-tree is
---       mechanical but verbose.
+--   (a) Split the judgment into mutual `_⊢ᵢ_∶_⨾_` (infer) and
+--       `_⊢ᶜ_∶_⨾_` (check), putting `t-lam` only in the check
+--       relation. Changes the judgment shape significantly and
+--       invalidates the current soundness/completeness phrasing.
 --
---   (3) Leave the per-rule completeness theorems as the final form
---       of G2 completeness. The theorems are composable by hand at
---       call sites: given a specific derivation, the proof is built
---       by pattern-matching on its structure.
+--   (b) Add structural predicates parameterising the full walk
+--       (`NoRLam e`, `NoRAppPoly e`, …). Propagates through sub-
+--       derivations mechanically but multiplies theorem premises.
 --
--- We go with (3) for now. The per-rule theorems are the real
--- content; the "walk" is an accident of theorem phrasing. G2's
--- completeness direction is substantively proved — the decision to
--- not wrap it in a single top-level theorem is a style choice that
--- avoids committing to one of (1) or (2) prematurely.
+--   (c) Keep the per-rule theorems as the final form. Callers
+--       compose them by structural recursion on specific
+--       derivations, picking the right theorem per root rule.
+--
+-- **Option (c) is chosen.** The per-rule theorems are the
+-- substantive content; a full-walk wrapper would commit prematurely
+-- to (a) or (b). When a specific downstream proof needs full
+-- walk-style composition (e.g. G5 integration), we'll choose the
+-- resolution path that fits the use case, rather than speculatively
+-- now.
 ------------------------------------------------------------------------
