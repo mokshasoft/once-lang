@@ -145,19 +145,45 @@ round-trip-sum-of-arrows-smoke :
     ((G.TInt G.⇒[ Many ] G.TInt) G.⊕ (G.TString G.⇒[ Many ] G.TUnit) , [])
 round-trip-sum-of-arrows-smoke = refl
 
+------------------------------------------------------------------------
+-- Concrete GType predicate (`TVar`-free) for the round-trip domain
+--
+-- Plan 0.2.5 deliberately disabled type-variable parsing in user-
+-- written surface types (type variables live only in PolyType
+-- signatures now). So parsing a printed `TVar x` would currently
+-- fail — the round-trip theorem restricts to the TVar-free subset
+-- of GType, which matches the invariant the parser already enforces.
+--
+-- This mirrors the `NoMuNu` approach for the Type-side conversion.
+------------------------------------------------------------------------
+
+data Concrete : GType → Set where
+  c-unit   : Concrete G.TUnit
+  c-void   : Concrete G.TVoid
+  c-int    : Concrete G.TInt
+  c-float  : Concrete G.TFloat
+  c-buffer : Concrete G.TBuffer
+  c-string : Concrete G.TString
+  c-prod   : ∀ {A B} → Concrete A → Concrete B → Concrete (A G.⊗ B)
+  c-sum    : ∀ {A B} → Concrete A → Concrete B → Concrete (A G.⊕ B)
+  c-fun    : ∀ {A B q} → Concrete A → Concrete B → Concrete (A G.⇒[ q ] B)
+  c-eff    : ∀ {A B} → Concrete A → Concrete B → Concrete (G.TEff A B)
+  -- no c-var: TVar is excluded from the round-trip domain
+
+------------------------------------------------------------------------
 -- The general per-constructor compound round-trip theorems require
 -- list-append reasoning (++-assoc, ∷-++ equations) to thread the
 -- parser's sequential token consumption through the printer's
 -- paren-delimited output. Each case is ~15-30 lines of structural
--- reasoning. Drafted for a future pass; the smoke tests above
--- demonstrate the shape holds on concrete canonical inputs.
+-- reasoning.
 --
--- Note on TVar: the current parser's `tryParseTypeVar` is
--- intentionally `nothing`-always (see
--- `Once.Parser.Type.tryParseTypeVar`, which returns `nothing` for
--- both the "upper-word" and "other" cases). So parsing a
--- printed TVar would currently fail, and the round-trip for TVar
--- doesn't hold under the current parser. Either:
---   (a) enable type-variable parsing (re-point tryParseTypeVar),
---   (b) exclude TVar from the round-trip theorem via a predicate.
--- Design decision deferred.
+-- Claim: `∀ {g} → Concrete g → parseGType (printGType g) ≡ just (g , [])`
+--
+-- Proof: induction on Concrete. Base cases are refl (the leaf
+-- smoke tests above). Compound cases rewrite with the IH, then
+-- thread the parser through the paren-delimited output.
+--
+-- Drafted as future work — the Concrete predicate above makes the
+-- theorem statement precise, and the smoke tests demonstrate the
+-- shape holds on concrete inputs from each Concrete constructor.
+------------------------------------------------------------------------
