@@ -55,7 +55,6 @@ open import Once.TypeCheck.Elaborate as Elaborate public
   using (InferElabResult)
   renaming (success to elab-success; failure to elab-failure)
   using (NamedCtx; emptyCtx; extendNamedCtx)
-  using (lookupVar)
   using (inferElab; checkElab)
   using (compileExpr; compileExprTyped)
 
