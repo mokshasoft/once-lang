@@ -56,7 +56,8 @@ open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
   UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair;
   NegationNotInt; CaseScrutineeNotSum; CaseBranchMismatch;
-  ApplicationTypeMismatch; TypeMismatch)
+  ApplicationTypeMismatch; TypeMismatch; UsageViolation;
+  BinOpLeftError; BinOpRightError)
 open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Data.String using (String)
@@ -363,6 +364,38 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RApp f x) ≡ failure err
       → err ≡ (ApplicationTypeMismatch A Ax)
 
+    -- Previously-blocked: RLam with a body usage that violates the
+    -- arrow's declared grade → UsageViolation.
+    tc-err-lam-usage-violation :
+      ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
+        (A : Type) (q : _) (B : Type)
+        (q' : _) {Ψ' eE' d' f' err}
+      → tcCheck (extendNamedCtx ctx x A) body B
+          ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
+      → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
+      → tcCheck ctx (RLam x body) (A Once.Type.⇒[ q ] B) ≡ failure err
+      → err ≡ UsageViolation x q q'
+
+    -- Previously-blocked: BinOp's operand sub-error is wrapped in
+    -- BinOpLeftError or BinOpRightError.
+    tc-err-binop-left-wraps :
+      ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
+        {sub-err outer-err}
+      → Once.TypeCheck.Elaborate.asInt (tcInfer ctx e₁)
+          ≡ Once.TypeCheck.Elaborate.notInt sub-err
+      → tcInfer ctx (RBinOp op e₁ e₂) ≡ failure outer-err
+      → outer-err ≡ BinOpLeftError sub-err
+
+    tc-err-binop-right-wraps :
+      ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
+        {Ψ₁ e₁E d₁ f₁ sub-err outer-err}
+      → Once.TypeCheck.Elaborate.asInt (tcInfer ctx e₁)
+          ≡ Once.TypeCheck.Elaborate.isInt Ψ₁ e₁E d₁ f₁
+      → Once.TypeCheck.Elaborate.asInt (tcInfer ctx e₂)
+          ≡ Once.TypeCheck.Elaborate.notInt sub-err
+      → tcInfer ctx (RBinOp op e₁ e₂) ≡ failure outer-err
+      → outer-err ≡ BinOpRightError sub-err
+
     ----------------------------------------------------------------
     -- G2 (continued): remaining soundness fields.
     ----------------------------------------------------------------
@@ -548,6 +581,9 @@ verifiedTypeChecker = record
   ; tc-err-case-scrut-Unit        = EP.case-scrut-Unit
   ; tc-err-case-scrut-Int         = EP.case-scrut-Int
   ; tc-err-app-domain-mismatch    = EP.app-domain-mismatch-is-ApplicationTypeMismatch
+  ; tc-err-lam-usage-violation    = EP.lam-usage-violation-is-UsageViolation
+  ; tc-err-binop-left-wraps       = EP.binop-left-err-wraps
+  ; tc-err-binop-right-wraps      = EP.binop-right-err-wraps
   ; tc-err-case-branch-mismatch   = EP.case-branch-mismatch-is-CaseBranchMismatch
   ; tc-err-check-RInt-type-mismatch  = EP.check-RInt-type-mismatch
   ; tc-err-check-RUnit-type-mismatch = EP.check-RUnit-type-mismatch

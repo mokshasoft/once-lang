@@ -288,3 +288,69 @@ check-RStringLit-type-mismatch ctx s T T≢Str eqFail
 ... | yes p = ⊥-elim (T≢Str p)
 ... | no  _ with eqFail
 ...   | refl = refl
+
+------------------------------------------------------------------------
+-- Previously-blocked theorems, now tractable after structured-error
+-- refactor: UsageViolation and BinOpLeftError/RightError wrappers.
+------------------------------------------------------------------------
+
+-- RLam check mode: body succeeds at `(q' ∷ Ψ)` but `q' ≤q q` is false
+-- (decideLeq returns nothing) → UsageViolation x q q'.
+--
+-- Before the refactor this ran into scoping issues because the theorem
+-- needed to state `msg ≡ renderError (UsageViolation x q q')` with
+-- implicit q' and Ψ that weren't properly bound. After the refactor,
+-- the elaborator emits `failure (UsageViolation x q q')` directly —
+-- the structured err IS `UsageViolation x q q'` by construction, and
+-- the theorem is a direct rewrite.
+lam-usage-violation-is-UsageViolation :
+  ∀ (ctx : NamedCtx) (x : String) (body : Raw.RawExpr)
+    (A : Type) (q : _) (B : Type)
+    (q' : _) {Ψ' eE' d' f' err}
+  → Once.TypeCheck.Elaborate.checkElab
+      (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
+      ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
+  → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
+  → Once.TypeCheck.Elaborate.checkElab ctx (Raw.RLam x body)
+      (A T.⇒[ q ] B) ≡ failure err
+  → err ≡ Once.TypeCheck.Error.UsageViolation x q q'
+lam-usage-violation-is-UsageViolation
+  ctx x body A q B q' eqBody eqDec eqFail
+  rewrite eqBody | eqDec with eqFail
+... | refl = refl
+
+------------------------------------------------------------------------
+-- BinOpLeftError / BinOpRightError: sub-errors from binop operands
+-- are wrapped in the structured error. Now a direct `refl` since the
+-- elaborator emits `failure (BinOpLeftError err)` where `err` is
+-- already a TypeError from `asInt`'s notInt branch.
+------------------------------------------------------------------------
+
+-- When the left operand of a binop infers to a non-Int and produces
+-- `asInt-sub-err : TypeError`, the outer err equals
+-- `BinOpLeftError asInt-sub-err`.
+binop-left-err-wraps :
+  ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
+    {sub-err outer-err}
+  → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
+      ≡ Once.TypeCheck.Elaborate.notInt sub-err
+  → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
+  → outer-err ≡ Once.TypeCheck.Error.BinOpLeftError sub-err
+binop-left-err-wraps ctx op e₁ e₂ eqSub eqFail
+  rewrite eqSub with eqFail
+... | refl = refl
+
+-- When left is Int but right fails at asInt, the outer err wraps
+-- the right sub-error.
+binop-right-err-wraps :
+  ∀ (ctx : NamedCtx) (op : Raw.BinOp) (e₁ e₂ : Raw.RawExpr)
+    {Ψ₁ e₁E d₁ f₁ sub-err outer-err}
+  → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₁)
+      ≡ Once.TypeCheck.Elaborate.isInt Ψ₁ e₁E d₁ f₁
+  → Once.TypeCheck.Elaborate.asInt (inferElab ctx e₂)
+      ≡ Once.TypeCheck.Elaborate.notInt sub-err
+  → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ failure outer-err
+  → outer-err ≡ Once.TypeCheck.Error.BinOpRightError sub-err
+binop-right-err-wraps ctx op e₁ e₂ eqL eqR eqFail
+  rewrite eqL | eqR with eqFail
+... | refl = refl
