@@ -39,13 +39,15 @@ open import Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
                              _*_; _+_; _⇒[_]_; Quantity)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RUnaryOp; OpNeg; UnaryOp)
-open import Once.TypeCheck.Elaborate using (NamedCtx; lookupLocal; lookupImport)
+         RLet; RUnaryOp; OpNeg; UnaryOp)
+open import Once.TypeCheck.Elaborate
+  using (NamedCtx; lookupLocal; lookupImport; extendNamedCtx)
 
 open import Data.String using (_++_)
 
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_)
+open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr; Ctx to SCtx)
+open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 
 ------------------------------------------------------------------------
 -- The judgment
@@ -143,6 +145,24 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
   t-var-qualified : ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
                   → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
                   → ctx ⊢ RQualified name alias ∶ T ⨾ zeroUsage
+
+  ----------------------------------------------------------------
+  -- Let binding: `let x = e₁ in e₂`
+  --
+  -- The body `e₂` is checked under the extended context with `x : A`;
+  -- its usage vector must start with a quantity `q` at position 0
+  -- (the let-bound variable's usage), followed by the usage in the
+  -- outer context `Ψ₂`. The let's overall usage is `Ψ₂ +ᵘ (q *ᵘ Ψ₁)`
+  -- — the scaled e₁-usage (by how many times the binding is used in
+  -- the body) plus the outer-side of e₂'s usage.
+  ----------------------------------------------------------------
+
+  t-let : ∀ {ctx : NamedCtx} {x : String} {e₁ e₂ : RawExpr}
+          {A B : Type} {q : Quantity}
+          {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+        → ctx ⊢ e₁ ∶ A ⨾ Ψ₁
+        → (extendNamedCtx ctx x A) ⊢ e₂ ∶ B ⨾ (q ∷ᵘ Ψ₂)
+        → ctx ⊢ RLet x e₁ e₂ ∶ B ⨾ (Ψ₂ +ᵘ (q *ᵘ Ψ₁))
 
   ----------------------------------------------------------------
   -- TODO (future G2 passes): rules for

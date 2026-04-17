@@ -38,7 +38,7 @@ open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure)
+         success; failure; extendNamedCtx)
 
 open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
@@ -47,7 +47,7 @@ import Once.TypeCheck.Determinism as Det
 import Once.TypeCheck.Totality    as Tot
 import Once.TypeCheck.Soundness   as Snd
 open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
-open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RUnaryOp; OpNeg)
+open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RUnaryOp; OpNeg)
 open import Data.String using (String)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
@@ -186,6 +186,19 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RQualified name alias) ≡ success A Ψ eE d f
       → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
 
+    tcInfer-sound-RLet :
+      ∀ (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
+        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
+      → (IH₁ : ∀ {A' Ψ' eE' d' f'}
+             → tcInfer ctx e₁ ≡ success A' Ψ' eE' d' f'
+             → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
+      → (IH₂ : ∀ {Aty B' Ψ' eE' d' f'}
+             → tcInfer (extendNamedCtx ctx x Aty) e₂ ≡ success B' Ψ' eE' d' f'
+             → (extendNamedCtx ctx x Aty) ⊢ e₂ ∶ B' ⨾ Ψ')
+      → tcInfer ctx (RLet x e₁ e₂) ≡ success A Ψ eE d f
+      → ctx ⊢ RLet x e₁ e₂ ∶ A ⨾ Ψ
+
     ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips
     -- through the internal `Type` representation on its expressible
@@ -228,6 +241,7 @@ verifiedTypeChecker = record
   ; tcInfer-sound-RAnnot          = Snd.sound-RAnnot
   ; tcInfer-sound-RPair           = Snd.sound-RPair
   ; tcInfer-sound-RQualified      = Snd.sound-RQualified
+  ; tcInfer-sound-RLet            = Snd.sound-RLet
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }

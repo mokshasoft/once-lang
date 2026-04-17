@@ -38,15 +38,16 @@ open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
                                   _*_; _+_; _⇒[_]_)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RUnaryOp; OpNeg)
+         RLet; RUnaryOp; OpNeg)
 open import Data.String using (_++_)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure; lookupLocal; lookupImport)
+         success; failure; lookupLocal; lookupImport; extendNamedCtx)
 open import Once.TypeCheck.Judgment
 
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_)
+open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
   renaming (Expr to SExpr)
+open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 
 ------------------------------------------------------------------------
 -- Soundness of `inferElab` (partial coverage)
@@ -260,4 +261,58 @@ sound-RQualified ctx name alias eq | just T , eqLookup
 ... | refl = t-var-qualified eqLookup
 sound-RQualified ctx name alias eq | nothing , eqLookup
   rewrite eqLookup with eq
+... | ()
+
+------------------------------------------------------------------------
+-- Soundness for RLet
+--
+-- Two-stage recursion, but the second IH lives in the *extended*
+-- context `extendNamedCtx ctx x A` — where `A` is the type inferred
+-- for `e₁` in stage one. The second IH is therefore parameterised by
+-- `A`: before we've inspected e₁'s result, we don't know which
+-- extended context applies. Using the standard bundle + rewrite
+-- technique, we inspect e₁ first, pin `A`, then apply IH₂ at that A.
+------------------------------------------------------------------------
+
+-- Sub-bundle for the body of a let: the body's inferElab call is
+-- parameterised by the let-bound variable's type.
+LetBodyBundle : (ctx : NamedCtx) (x : _) (A : Type) (e₂ : RawExpr) → Set
+LetBodyBundle ctx x A e₂ =
+  ∃[ r ] inferElab (extendNamedCtx ctx x A) e₂ ≡ r
+
+letBodyBundle : ∀ (ctx : NamedCtx) (x : _) (A : Type) (e₂ : RawExpr)
+              → LetBodyBundle ctx x A e₂
+letBodyBundle ctx x A e₂ = inferElab (extendNamedCtx ctx x A) e₂ , refl
+
+sound-RLet :
+  ∀ (ctx : NamedCtx) (x : _) (e₁ e₂ : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH₁ : ∀ {A' Ψ' eE' d' f'}
+         → inferElab ctx e₁ ≡ success A' Ψ' eE' d' f'
+         → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
+  → (IH₂ : ∀ {Aty B' Ψ' eE' d' f'}
+         → inferElab (extendNamedCtx ctx x Aty) e₂ ≡ success B' Ψ' eE' d' f'
+         → (extendNamedCtx ctx x Aty) ⊢ e₂ ∶ B' ⨾ Ψ')
+  → inferElab ctx (RLet x e₁ e₂) ≡ success A Ψ eE d f
+  → ctx ⊢ RLet x e₁ e₂ ∶ A ⨾ Ψ
+sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq with inferBundle ctx e₁
+sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq | success A' Ψ₁ e₁E d₁ f₁ , eq₁
+  with letBodyBundle ctx x A' e₂
+sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq
+  | success A' Ψ₁ e₁E d₁ f₁ , eq₁
+  | success B' (q ∷ᵘ Ψ₂) e₂E d₂ f₂ , eq₂
+  -- Feed the raw equations to the IHs *before* any rewrite, so Agda
+  -- can solve implicits from the equation's type. Then rewrite the
+  -- outer elaborator step to line up the final `eq`.
+  with IH₁ eq₁ | IH₂ {Aty = A'} eq₂
+... | sub1 | sub2 rewrite eq₁ | eq₂ with eq
+... | refl = t-let sub1 sub2
+sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq
+  | success A' Ψ₁ e₁E d₁ f₁ , eq₁
+  | failure _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq | failure _ , eq₁
+  rewrite eq₁ with eq
 ... | ()
