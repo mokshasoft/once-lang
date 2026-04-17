@@ -15,7 +15,7 @@ open import Data.String using (String; _++_)
 open import Data.Bool using (Bool; true; false)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
 
 ------------------------------------------------------------------------
 -- Quantitative Type Theory: Usage Grades
@@ -490,6 +490,68 @@ mutual
   extractGround-consistent (TVar _) ()
 
 ------------------------------------------------------------------------
+-- Embedding Roundtrip Lemmas
+------------------------------------------------------------------------
+--
+-- These lemmas prove that embedding a ground Type and then extracting
+-- gives back the original Type. This is key for eliminating coercion
+-- postulates in the type checker.
+--
+
+mutual
+  -- | Embedded functors are always ground (they have no TVars)
+  embedFunctor-ground : (F : Functor) → GroundFunctor (embedFunctor F)
+  embedFunctor-ground (K A) = embed-ground A
+  embedFunctor-ground Id = tt
+  embedFunctor-ground (F ⊕ G) = embedFunctor-ground F , embedFunctor-ground G
+  embedFunctor-ground (F ⊗ G) = embedFunctor-ground F , embedFunctor-ground G
+
+  -- | Embedded types are always ground (they have no TVars)
+  embed-ground : (A : Type) → Ground (embed A)
+  embed-ground Unit = tt
+  embed-ground Void = tt
+  embed-ground (A * B) = embed-ground A , embed-ground B
+  embed-ground (A + B) = embed-ground A , embed-ground B
+  embed-ground (A ⇒[ q ] B) = embed-ground A , embed-ground B
+  embed-ground (Eff A B) = embed-ground A , embed-ground B
+  embed-ground (μ-type F) = embedFunctor-ground F
+  embed-ground (ν-type F) = embedFunctor-ground F
+  embed-ground Int = tt
+  embed-ground Float = tt
+  embed-ground Str = tt
+  embed-ground Buffer = tt
+
+mutual
+  -- | Extracting an embedded functor gives back the original
+  extractGroundFunctor-embed : (F : Functor)
+                              → extractGroundFunctor (embedFunctor F) (embedFunctor-ground F) ≡ F
+  extractGroundFunctor-embed (K A) = cong K (extractGround-embed A)
+  extractGroundFunctor-embed Id = refl
+  extractGroundFunctor-embed (F ⊕ G)
+    rewrite extractGroundFunctor-embed F | extractGroundFunctor-embed G = refl
+  extractGroundFunctor-embed (F ⊗ G)
+    rewrite extractGroundFunctor-embed F | extractGroundFunctor-embed G = refl
+
+  -- | Extracting an embedded type gives back the original
+  extractGround-embed : (A : Type) → extractGround (embed A) (embed-ground A) ≡ A
+  extractGround-embed Unit = refl
+  extractGround-embed Void = refl
+  extractGround-embed (A * B)
+    rewrite extractGround-embed A | extractGround-embed B = refl
+  extractGround-embed (A + B)
+    rewrite extractGround-embed A | extractGround-embed B = refl
+  extractGround-embed (A ⇒[ q ] B)
+    rewrite extractGround-embed A | extractGround-embed B = refl
+  extractGround-embed (Eff A B)
+    rewrite extractGround-embed A | extractGround-embed B = refl
+  extractGround-embed (μ-type F) = cong μ-type (extractGroundFunctor-embed F)
+  extractGround-embed (ν-type F) = cong ν-type (extractGroundFunctor-embed F)
+  extractGround-embed Int = refl
+  extractGround-embed Float = refl
+  extractGround-embed Str = refl
+  extractGround-embed Buffer = refl
+
+------------------------------------------------------------------------
 -- Substitution Infrastructure
 ------------------------------------------------------------------------
 --
@@ -603,34 +665,7 @@ mutual
   complete→ground σ PStr _ = tt
   complete→ground σ PBuffer _ = tt
   complete→ground σ (TVar x) (T , pf) with σ x | pf
-  ... | just T' | refl = embed-ground T'
-    where
-      -- Embedded types are always ground (they have no TVars)
-      embed-ground : (T : Type) → Ground (embed T)
-      embed-ground Unit = tt
-      embed-ground Void = tt
-      embed-ground (A * B) = embed-ground A , embed-ground B
-      embed-ground (A + B) = embed-ground A , embed-ground B
-      embed-ground (A ⇒[ q ] B) = embed-ground A , embed-ground B
-      embed-ground (Eff A B) = embed-ground A , embed-ground B
-      embed-ground (μ-type F) = embed-ground-functor F
-        where
-          embed-ground-functor : (F : Functor) → GroundFunctor (embedFunctor F)
-          embed-ground-functor (K A) = embed-ground A
-          embed-ground-functor Id = tt
-          embed-ground-functor (F ⊕ G) = embed-ground-functor F , embed-ground-functor G
-          embed-ground-functor (F ⊗ G) = embed-ground-functor F , embed-ground-functor G
-      embed-ground (ν-type F) = embed-ground-functor F
-        where
-          embed-ground-functor : (F : Functor) → GroundFunctor (embedFunctor F)
-          embed-ground-functor (K A) = embed-ground A
-          embed-ground-functor Id = tt
-          embed-ground-functor (F ⊕ G) = embed-ground-functor F , embed-ground-functor G
-          embed-ground-functor (F ⊗ G) = embed-ground-functor F , embed-ground-functor G
-      embed-ground Int = tt
-      embed-ground Float = tt
-      embed-ground Str = tt
-      embed-ground Buffer = tt
+  ... | just T' | refl = embed-ground T'  -- Uses module-level embed-ground
 
 -- | Smart constructors for common quantity patterns
 _⊸_ : Type → Type → Type  -- Linear function (quantity = 1)

@@ -26,6 +26,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Fin as Fin using (_↑ˡ_)
 open import Data.Vec using (Vec; []; _∷_; tail) renaming (lookup to Vec-lookup)
 open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Data.Unit using (tt)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing; _>>=_)
 open import Data.List using (List; []; _∷_; length)
@@ -39,7 +40,9 @@ open Once.Type using (showQuantity; showType; showPolyType; PolyType; PolyFuncto
                        PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type;
                        PInt; PFloat; PStr; PBuffer; TVar;
                        PK; PId; _P⊕_; _P⊗_;
-                       embed; extract; embedFunctor; extractFunctor) public
+                       embed; extract; embedFunctor; extractFunctor;
+                       Ground; extractGround; embed-ground; extractGround-embed;
+                       ground?) public
 open import Once.CCC.IR as IR
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
@@ -55,7 +58,8 @@ open import Once.Surface.PolySyntax as Poly
          pvar; plam; papp; peffApp; ppair; pfst'; psnd'; pinl'; pinr'; pcase';
          punit; pabsurd; plet'; pint; pstr; padd; psub; pmul; pdiv; pmod'; pneg;
          plt; ple; pgt; pge; peq; pne; parr'; pprim;
-         extractCtx; extractExpr; pweaken; pweakenFromEmpty)
+         extractCtx; extractExpr; pweaken; pweakenFromEmpty;
+         GroundCtx; extractGroundCtx; groundCtx?; groundExpr?; extractGroundExpr)
 open import Once.Postulates using (coerceQuantity)
 
 ------------------------------------------------------------------------
@@ -1698,14 +1702,48 @@ mutual
   ... | success (Pν-type _) _ _ _ _ = failure "Negation requires Int operand"
   ... | success (TVar _) _ _ _ _ = failure "Negation requires Int operand"
 
+------------------------------------------------------------------------
+-- Context Embedding and Roundtrip Lemmas
+------------------------------------------------------------------------
+
+-- | Embed a ground context as a polymorphic context
+embedSCtx : ∀ {n} → SCtx n → PolyCtx n
+embedSCtx S∅ = P∅
+embedSCtx (Δ S, A ^ q) = Poly._P,_^_ (embedSCtx Δ) (embed A) q
+
+-- | Embedded contexts are always ground
+embedSCtx-ground : ∀ {n} (Δ : SCtx n) → GroundCtx (embedSCtx Δ)
+embedSCtx-ground S∅ = tt
+embedSCtx-ground (Δ S, A ^ q) = embedSCtx-ground Δ , embed-ground A
+
+-- | Extracting an embedded context gives back the original
+extractGroundCtx-embedSCtx : ∀ {n} (Δ : SCtx n)
+                           → extractGroundCtx (embedSCtx Δ) (embedSCtx-ground Δ) ≡ Δ
+extractGroundCtx-embedSCtx S∅ = refl
+extractGroundCtx-embedSCtx (Δ S, A ^ q)
+  rewrite extractGroundCtx-embedSCtx Δ | extractGround-embed A = refl
+
+-- | Extract inference result to a specific target context
+-- Uses the roundtrip lemma: extracting an embedded context gives back the original
+extractInferResultTo : ∀ {n} (Δ : SCtx n)
+                     → PolyInferResult (embedSCtx Δ)
+                     → Maybe (InferElabResult Δ)
+extractInferResultTo Δ (failure err) = just (failure err)
+extractInferResultTo Δ (success A pexpr depth fresh usage)
+  with Once.Type.ground? A | Poly.groundExpr? pexpr
+... | yes gA | yes gexpr =
+      let gΓ = embedSCtx-ground Δ  -- Embedded contexts are always ground
+      in just (success (extractGround A gA)
+                       (subst (λ ctx → Surface.Expr ctx (extractGround A gA))
+                              (extractGroundCtx-embedSCtx Δ)
+                              (Poly.extractGroundExpr pexpr gΓ gA gexpr))
+                       depth fresh usage)
+... | _ | _ = nothing
+
 -- | Convert NamedCtx to PolyNamedCtx
 -- Embeds all ground types as PolyTypes
 namedToPolyCtx : NamedCtx → PolyNamedCtx
 namedToPolyCtx (mkCtx n Γ Δ fresh imps) = mkPolyCtx n Γ (embedSCtx Δ) fresh (embedImports imps)
-  where
-    embedSCtx : ∀ {m} → SCtx m → PolyCtx m
-    embedSCtx S∅ = P∅
-    embedSCtx (Δ' S, A ^ q) = Poly._P,_^_ (embedSCtx Δ') (embed A) q
 
 ------------------------------------------------------------------------
 -- Depth-Checked Inference (Public Interface)
@@ -1743,29 +1781,36 @@ inferElab ctx rawExpr =
 
     tryPolyInfer : PolyInferResult (PolyNamedCtx.polyCtx (namedToPolyCtx ctx))
                  → InferElabResult (NamedCtx.debruijn ctx)
-    tryPolyInfer polyResult with extractInferResult polyResult
+    tryPolyInfer polyResult with extractInferResultTo (NamedCtx.debruijn ctx) polyResult
     ... | nothing = failure "Internal error: extraction returned nothing"
-    ... | just (_ , result) = coerceResult result
-      where
-        -- The extracted context should match NamedCtx.debruijn ctx
-        -- Safe coercion: extraction of namedToPolyCtx ctx equals debruijn ctx
-        postulate coerceResult : ∀ {Δ} → InferElabResult Δ → InferElabResult (NamedCtx.debruijn ctx)
+    ... | just result = checkDepth result
 
 ------------------------------------------------------------------------
 -- Top-level Compilation
 ------------------------------------------------------------------------
 
--- | Helper to extract PolyCheckResult to CheckElabResult
-extractCheckResult : ∀ {n} {Γ : PolyCtx n} {Δ : SCtx n} {A : PolyType} {A' : Type}
-                   → PolyCheckResult Γ A
-                   → Maybe (CheckElabResult Δ A')
-extractCheckResult (failure err) = just (failure err)
-extractCheckResult {Δ = Δ} {A' = A'} (success pexpr depth fresh usage) with extractExpr pexpr
-... | nothing = just (failure "Expression extraction failed")
-... | just (Δ' , A'' , sexpr) = just (success (coerceExpr sexpr) depth fresh usage)
+-- | Extract checking result to a specific target context and type
+-- Uses roundtrip lemmas: extracting embedded context/type gives back the original
+extractCheckResultTo : ∀ {n} (Δ : SCtx n) (A' : Type)
+                     → PolyCheckResult (embedSCtx Δ) (embed A')
+                     → Maybe (CheckElabResult Δ A')
+extractCheckResultTo Δ A' (failure err) = just (failure err)
+extractCheckResultTo Δ A' (success pexpr depth fresh usage)
+  with Poly.groundExpr? pexpr
+... | yes gexpr =
+      let gΓ = embedSCtx-ground Δ  -- Embedded contexts are always ground
+          gA = embed-ground A'      -- Embedded types are always ground
+      in just (success (subst₂ Surface.Expr
+                               (extractGroundCtx-embedSCtx Δ)
+                               (extractGround-embed A')
+                               (Poly.extractGroundExpr pexpr gΓ gA gexpr))
+                       depth fresh usage)
   where
-    -- Coerce extracted expression to expected types (types match by construction)
-    postulate coerceExpr : Surface.Expr Δ' A'' → Surface.Expr Δ A'
+    -- Binary subst for expressions indexed by context and type
+    subst₂ : ∀ {a b c} {A : Set a} {B : Set b} (C : A → B → Set c)
+           → {x₁ x₂ : A} {y₁ y₂ : B} → x₁ ≡ x₂ → y₁ ≡ y₂ → C x₁ y₁ → C x₂ y₂
+    subst₂ C refl refl z = z
+... | no _ = nothing
 
 -- | Checking mode with depth limit (helper for top-level compilation)
 -- Uses polymorphic checking with extraction for proper TVar handling.
@@ -1786,7 +1831,7 @@ checkElab ctx expr ty =
 
     tryPolyCheck : PolyCheckResult (PolyNamedCtx.polyCtx (namedToPolyCtx ctx)) (embed ty)
                  → CheckElabResult (NamedCtx.debruijn ctx) ty
-    tryPolyCheck polyResult with extractCheckResult {Δ = NamedCtx.debruijn ctx} {A' = ty} polyResult
+    tryPolyCheck polyResult with extractCheckResultTo (NamedCtx.debruijn ctx) ty polyResult
     ... | nothing = failure "Internal error: extraction returned nothing"
     ... | just result = checkDepth result
 
