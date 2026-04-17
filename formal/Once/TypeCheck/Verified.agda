@@ -54,7 +54,7 @@ open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
   UnboundQualified)
-open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; OpNeg; RLam; RApp)
+open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Data.String using (String)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
@@ -240,6 +240,19 @@ record VerifiedTypeChecker : Set₁ where
     -- G2 (continued): remaining soundness fields.
     ----------------------------------------------------------------
 
+    tcInfer-sound-RBinOp :
+      ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
+        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
+      → (IH₁ : ∀ {A' Ψ' eE' d' f'}
+             → tcInfer ctx e₁ ≡ success A' Ψ' eE' d' f'
+             → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
+      → (IH₂ : ∀ {B' Ψ' eE' d' f'}
+             → tcInfer ctx e₂ ≡ success B' Ψ' eE' d' f'
+             → ctx ⊢ e₂ ∶ B' ⨾ Ψ')
+      → tcInfer ctx (RBinOp op e₁ e₂) ≡ success A Ψ eE d f
+      → ctx ⊢ RBinOp op e₁ e₂ ∶ A ⨾ Ψ
+
     tcInfer-sound-RDestruct :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr)
@@ -327,6 +340,7 @@ verifiedTypeChecker = record
   ; tcInfer-sound-RQualified      = Snd.sound-RQualified
   ; tcInfer-sound-RLet            = Snd.sound-RLet
   ; tcInfer-sound-RDestruct       = Snd.sound-RDestruct
+  ; tcInfer-sound-RBinOp          = Snd.sound-RBinOp
   ; tcCheck-sound-RLam            = Snd.sound-check-RLam
   ; tc-err-lam-infer              = EP.lam-infer-is-LambdaInInferMode
   ; tc-err-inl-infer              = EP.inl-app-infer-is-InlInInferMode

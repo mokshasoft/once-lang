@@ -39,7 +39,7 @@ open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
 open import Data.Bool using (Bool; true; false)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RLam; RLet; RDestruct; RUnaryOp; OpNeg)
+         RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
 open import Data.String using (_++_)
 import Data.String.Properties
 open import Relation.Nullary using (yes; no)
@@ -340,6 +340,172 @@ sound-RVar-unit-generic :
   → inferElab ctx (RVar "unit") ≡ success A Ψ eE d f
   → ctx ⊢ RVar "unit" ∶ A ⨾ Ψ
 sound-RVar-unit-generic ctx = sound-RVar ctx "unit"
+
+------------------------------------------------------------------------
+-- Soundness for RBinOp (binary operators)
+--
+-- Two sub-inferences, both required to be `Int`. The output type
+-- depends on `op`: arithmetic ops (Add/Sub/Mul/Div/Mod) return `Int`
+-- via `t-binop-arith`; comparison ops (Lt/Le/Gt/Ge/Eq/Ne) return
+-- `Unit + Unit` (the boolean encoding) via `t-binop-cmp`.
+--
+-- Absurd cases (non-Int sub-result or sub-failure) are shared
+-- across all operators — the elaborator returns `failure` regardless
+-- of `op`, so no op-dispatch is needed in those clauses.
+--
+-- The 10 successful-Int×Int cases are written out per operator since
+-- `isArithmeticOp op` and `isComparisonOp op` only reduce when `op`
+-- is concrete.
+------------------------------------------------------------------------
+
+sound-RBinOp :
+  ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH₁ : ∀ {A' Ψ' eE' d' f'}
+         → inferElab ctx e₁ ≡ success A' Ψ' eE' d' f'
+         → ctx ⊢ e₁ ∶ A' ⨾ Ψ')
+  → (IH₂ : ∀ {B' Ψ' eE' d' f'}
+         → inferElab ctx e₂ ≡ success B' Ψ' eE' d' f'
+         → ctx ⊢ e₂ ∶ B' ⨾ Ψ')
+  → inferElab ctx (RBinOp op e₁ e₂) ≡ success A Ψ eE d f
+  → ctx ⊢ RBinOp op e₁ e₂ ∶ A ⨾ Ψ
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq with inferBundle ctx e₁
+-- Left side Int → inspect right.
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success Int Ψ₁ e₁E d₁ f₁ , eq₁
+  with inferBundle ctx e₂
+-- Both Int → dispatch on `op` via nested with in the same clause.
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  rewrite eq₁ | eq₂ with op
+... | Raw.OpAdd with eq
+...   | refl = t-binop-arith refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpSub with eq
+... | refl = t-binop-arith refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpMul with eq
+... | refl = t-binop-arith refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpDiv with eq
+... | refl = t-binop-arith refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpMod with eq
+... | refl = t-binop-arith refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpLt with eq
+... | refl = t-binop-cmp refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpLe with eq
+... | refl = t-binop-cmp refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpGt with eq
+... | refl = t-binop-cmp refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpGe with eq
+... | refl = t-binop-cmp refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpEq with eq
+... | refl = t-binop-cmp refl (IH₁ refl) (IH₂ refl)
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Int Ψ₂ e₂E d₂ f₂ , eq₂
+  | Raw.OpNe with eq
+... | refl = t-binop-cmp refl (IH₁ refl) (IH₂ refl)
+-- Right non-Int: 11 absurd cases, op-independent (elaborator returns failure).
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Unit _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Void _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Float _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Str _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success Buffer _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success (_ * _) _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success (_ + _) _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success (_ ⇒[ _ ] _) _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success (T.Eff _ _) _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success (T.μ-type _) _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success (T.ν-type _) _ _ _ _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
+  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | failure _ , eq₂
+  rewrite eq₁ | eq₂ with eq
+... | ()
+-- Left non-Int: 11 absurd cases.
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success Unit _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success Void _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success Float _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success Str _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success Buffer _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (_ * _) _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (_ + _) _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (_ ⇒[ _ ] _) _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (T.Eff _ _) _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (T.μ-type _) _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (T.ν-type _) _ _ _ _ , eq₁
+  rewrite eq₁ with eq
+... | ()
+sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | failure _ , eq₁
+  rewrite eq₁ with eq
+... | ()
 
 ------------------------------------------------------------------------
 -- Soundness for RLet

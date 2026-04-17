@@ -41,7 +41,8 @@ open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
 open import Data.Bool using (true)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RLam; RLet; RDestruct; RUnaryOp; OpNeg; UnaryOp)
+         RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
+         BinOp; isArithmeticOp; isComparisonOp)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; lookupLocal; lookupImport; extendNamedCtx)
 
@@ -225,6 +226,33 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
          → (extendNamedCtx ctx xR B) ⊢ eR ∶ C ⨾ (qR ∷ᵘ Ψᵣ)
          → ctx ⊢ RDestruct scrut xL eL xR eR ∶ C
                  ⨾ (Ψs +ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ))
+
+  ----------------------------------------------------------------
+  -- Binary operators.
+  --
+  -- Both operands must have type Int. The result is Int for
+  -- arithmetic operators (Add/Sub/Mul/Div/Mod) and `Unit + Unit`
+  -- (Once's boolean encoding) for comparison operators
+  -- (Lt/Le/Gt/Ge/Eq/Ne). The split is determined by
+  -- `isArithmeticOp` (resp. `isComparisonOp`), which are total
+  -- Bool-valued functions on `BinOp` — so the Bool-equation
+  -- premise below is decidable and mechanically satisfied for any
+  -- concrete operator.
+  ----------------------------------------------------------------
+
+  t-binop-arith : ∀ {ctx : NamedCtx} {op : BinOp} {e₁ e₂ : RawExpr}
+                  {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                → isArithmeticOp op ≡ true
+                → ctx ⊢ e₁ ∶ Int ⨾ Ψ₁
+                → ctx ⊢ e₂ ∶ Int ⨾ Ψ₂
+                → ctx ⊢ RBinOp op e₁ e₂ ∶ Int ⨾ (Ψ₁ +ᵘ Ψ₂)
+
+  t-binop-cmp : ∀ {ctx : NamedCtx} {op : BinOp} {e₁ e₂ : RawExpr}
+                {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+              → isComparisonOp op ≡ true
+              → ctx ⊢ e₁ ∶ Int ⨾ Ψ₁
+              → ctx ⊢ e₂ ∶ Int ⨾ Ψ₂
+              → ctx ⊢ RBinOp op e₁ e₂ ∶ (Unit Once.Type.+ Unit) ⨾ (Ψ₁ +ᵘ Ψ₂)
 
   ----------------------------------------------------------------
   -- TODO (future G2 passes): rules for
