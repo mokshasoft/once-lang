@@ -23,6 +23,11 @@
 -- Steps (2) and (3) are mandatory — Agda will reject a record value
 -- with missing fields, or a record type with an unfilled field.
 --
+-- As of plan 0.3's main pass: ~99 proof fields across G2 (soundness +
+-- per-rule completeness), G3 (totality), G4 (structured errors +
+-- per-Type coverage), G6 (determinism), G7 (algebraic identities),
+-- and the Grammar round-trip.
+--
 -- Reference: plans/0.3-frontend-verification-gaps.md.
 ------------------------------------------------------------------------
 
