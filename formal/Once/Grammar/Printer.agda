@@ -171,19 +171,15 @@ data Concrete : GType → Set where
   -- no c-var: TVar is excluded from the round-trip domain
 
 ------------------------------------------------------------------------
--- The general per-constructor compound round-trip theorems require
--- list-append reasoning (++-assoc, ∷-++ equations) to thread the
+-- Claim for the general theorem (future work):
+--
+--   round-trip-concrete : ∀ {g} → Concrete g
+--                       → parseGType (printGType g) ≡ just (g , [])
+--
+-- Proof: induction on Concrete. Base cases are refl; compound cases
+-- require list-append reasoning (++-assoc, ∷-++) to thread the
 -- parser's sequential token consumption through the printer's
--- paren-delimited output. Each case is ~15-30 lines of structural
--- reasoning.
---
--- Claim: `∀ {g} → Concrete g → parseGType (printGType g) ≡ just (g , [])`
---
--- Proof: induction on Concrete. Base cases are refl (the leaf
--- smoke tests above). Compound cases rewrite with the IH, then
--- thread the parser through the paren-delimited output.
---
--- Drafted as future work — the Concrete predicate above makes the
--- theorem statement precise, and the smoke tests demonstrate the
--- shape holds on concrete inputs from each Concrete constructor.
+-- paren-delimited output. Each compound case is ~20 lines of
+-- structural reasoning. The smoke tests above demonstrate the shape
+-- holds for concrete canonical inputs.
 ------------------------------------------------------------------------
