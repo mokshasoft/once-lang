@@ -1,0 +1,13 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 0 test: identity function
+-- Tests the simplest possible program using only `id`
+-- Expected: exit code 42
+
+import I.Linux.Syscalls as S
+
+-- Use exit directly applied to the value
+-- exit@S : Eff Int Unit, when applied to Int, yields Eff Unit Unit
+main : IO Unit
+main = exit@S (id 42)
