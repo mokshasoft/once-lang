@@ -47,12 +47,14 @@ open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
 import Data.String
 import Data.Bool
+import Data.Empty
 
 import Once.TypeCheck.Determinism  as Det
 import Once.TypeCheck.Totality     as Tot
 import Once.TypeCheck.Soundness    as Snd
 import Once.TypeCheck.Completeness as Cmp
 import Once.TypeCheck.ErrorProofs  as EP
+import Once.TypeCheck.Identities   as Id
 open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
@@ -737,6 +739,28 @@ record VerifiedTypeChecker : Set₁ where
           tcCheck ctx (RLam x body) (A Once.Type.⇒[ q ] B) ≡ success Ψ' eE d f
 
     ----------------------------------------------------------------
+    -- G7 (first pass): algebraic identities
+    ----------------------------------------------------------------
+
+    id-decideLeq-iff :
+      ∀ (q' q : _)
+      → ((q' Once.Type.≤q q) ≡ Data.Bool.true
+          → ∃[ p ] Once.TypeCheck.Elaborate.decideLeq q' q ≡ just p)
+      × (∀ {p} → Once.TypeCheck.Elaborate.decideLeq q' q ≡ just p
+             → (q' Once.Type.≤q q) ≡ Data.Bool.true)
+
+    id-binop-classification-exhaustive :
+      ∀ (op : BinOp)
+      → (Raw.isArithmeticOp op ≡ Data.Bool.true)
+      ⊎ (Raw.isComparisonOp op ≡ Data.Bool.true)
+
+    id-binop-classification-exclusive :
+      ∀ (op : BinOp)
+      → Raw.isArithmeticOp op ≡ Data.Bool.true
+      → Raw.isComparisonOp op ≡ Data.Bool.true
+      → Data.Empty.⊥
+
+    ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips
     -- through the internal `Type` representation on its expressible
     -- fragment. Pins the parser's output to the formal grammar.
@@ -831,6 +855,9 @@ verifiedTypeChecker = record
   ; tcInfer-complete-RDestruct    = λ ctx → Cmp.infer-complete-RDestruct
   ; tcInfer-complete-RApp-generic = λ ctx → Cmp.infer-complete-RApp-generic
   ; tcCheck-complete-RLam         = Cmp.check-complete-RLam
+  ; id-decideLeq-iff              = λ q' q → Id.decideLeq-correct-true q' q , Id.decideLeq-correct-just q' q
+  ; id-binop-classification-exhaustive = Id.binop-classification-exhaustive
+  ; id-binop-classification-exclusive  = Id.binop-classification-exclusive
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
