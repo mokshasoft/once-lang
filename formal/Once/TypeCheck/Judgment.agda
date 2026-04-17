@@ -41,13 +41,13 @@ open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
 open import Data.Bool using (true)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RLam; RLet; RUnaryOp; OpNeg; UnaryOp)
+         RLam; RLet; RDestruct; RUnaryOp; OpNeg; UnaryOp)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; lookupLocal; lookupImport; extendNamedCtx)
 
 open import Data.String using (_++_)
 
-open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
+open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
   renaming (Expr to SExpr; Ctx to SCtx)
 open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 
@@ -198,6 +198,33 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
         → (q' Once.Type.≤q q) ≡ true
         → (extendNamedCtx ctx x A) ⊢ body ∶ B ⨾ (q' ∷ᵘ Ψ)
         → ctx ⊢ RLam x body ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ
+
+  ----------------------------------------------------------------
+  -- Case / sum-elimination (`destruct`).
+  --
+  -- The scrutinee must have sum type `A + B`. Each branch introduces
+  -- one of the component types as a new binding (`xL : A` in `eL`,
+  -- `xR : B` in `eR`) and must elaborate to the SAME result type
+  -- `C`. Both branches have usage vectors shaped `(q ∷ᵘ Ψ')` —
+  -- a position for the bound variable plus the outer usage.
+  --
+  -- The overall usage is
+  --   `Ψs +ᵘ (Ψₗ ⊔ᵘ Ψᵣ)`
+  -- — the scrutinee's usage plus the pointwise max of the two
+  -- branches' outer usages (since only one branch runs, the max is
+  -- the right QTT upper bound).
+  ----------------------------------------------------------------
+
+  t-case : ∀ {ctx : NamedCtx} {scrut eL eR : RawExpr}
+           {xL xR : String}
+           {A B C : Type}
+           {qL qR : Quantity}
+           {Ψs Ψₗ Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
+         → ctx ⊢ scrut ∶ (A Once.Type.+ B) ⨾ Ψs
+         → (extendNamedCtx ctx xL A) ⊢ eL ∶ C ⨾ (qL ∷ᵘ Ψₗ)
+         → (extendNamedCtx ctx xR B) ⊢ eR ∶ C ⨾ (qR ∷ᵘ Ψᵣ)
+         → ctx ⊢ RDestruct scrut xL eL xR eR ∶ C
+                 ⨾ (Ψs +ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ))
 
   ----------------------------------------------------------------
   -- TODO (future G2 passes): rules for

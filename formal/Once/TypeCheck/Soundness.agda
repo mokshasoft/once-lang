@@ -39,7 +39,7 @@ open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
 open import Data.Bool using (Bool; true; false)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RLam; RLet; RUnaryOp; OpNeg)
+         RLam; RLet; RDestruct; RUnaryOp; OpNeg)
 open import Data.String using (_++_)
 import Data.String.Properties
 open import Relation.Nullary using (yes; no)
@@ -393,6 +393,137 @@ sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq
 ... | ()
 sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq | failure _ , eq₁
   rewrite eq₁ with eq
+... | ()
+
+------------------------------------------------------------------------
+-- Soundness for RDestruct (case / sum elimination)
+--
+-- Three sub-expressions, two in extended contexts, plus a type-equality
+-- check for branch agreement. Uses the same "apply IHs eagerly, then
+-- rewrite" pattern as `RLet`, plus a bundle on the `_≟T_` decision.
+--
+-- The many "absurd" branches correspond to:
+--   * scrutinee is non-sum (enumerate each Type constructor);
+--   * scrutinee fails;
+--   * either branch fails;
+--   * branch types differ (`≟T` gives `no`).
+------------------------------------------------------------------------
+
+-- Sub-bundles for the branches in extended contexts.
+CaseBranchBundle : (ctx : NamedCtx) (x : _) (T : Type) (branch : RawExpr) → Set
+CaseBranchBundle ctx x T branch =
+  ∃[ r ] inferElab (extendNamedCtx ctx x T) branch ≡ r
+
+caseBranchBundle : ∀ (ctx : NamedCtx) (x : _) (T : Type) (branch : RawExpr)
+                 → CaseBranchBundle ctx x T branch
+caseBranchBundle ctx x T branch = inferElab (extendNamedCtx ctx x T) branch , refl
+
+-- Bundle for the type-equality decision.
+TyEqBundle : (A B : Type) → Set
+TyEqBundle A B = ∃[ r ] Once.TypeCheck.Elaborate._≟T_ A B ≡ r
+
+tyEqBundle : (A B : Type) → TyEqBundle A B
+tyEqBundle A B = Once.TypeCheck.Elaborate._≟T_ A B , refl
+
+sound-RDestruct :
+  ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : _) (eL : RawExpr)
+    (xR : _) (eR : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IHs : ∀ {T' Ψ' eE' d' f'}
+         → inferElab ctx scrut ≡ success T' Ψ' eE' d' f'
+         → ctx ⊢ scrut ∶ T' ⨾ Ψ')
+  → (IHL : ∀ {Aty B' Ψ' eE' d' f'}
+         → inferElab (extendNamedCtx ctx xL Aty) eL ≡ success B' Ψ' eE' d' f'
+         → (extendNamedCtx ctx xL Aty) ⊢ eL ∶ B' ⨾ Ψ')
+  → (IHR : ∀ {Bty C' Ψ' eE' d' f'}
+         → inferElab (extendNamedCtx ctx xR Bty) eR ≡ success C' Ψ' eE' d' f'
+         → (extendNamedCtx ctx xR Bty) ⊢ eR ∶ C' ⨾ Ψ')
+  → inferElab ctx (RDestruct scrut xL eL xR eR) ≡ success A Ψ eE d f
+  → ctx ⊢ RDestruct scrut xL eL xR eR ∶ A ⨾ Ψ
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  with inferBundle ctx scrut
+-- Sum-typed scrutinee: proceed with branch analysis.
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (Aty T.+ Bty) Ψs scrutE ds fs , eqS
+  with caseBranchBundle ctx xL Aty eL
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (Aty T.+ Bty) Ψs scrutE ds fs , eqS
+  | success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , eqL
+  with caseBranchBundle ctx xR Bty eR
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (Aty T.+ Bty) Ψs scrutE ds fs , eqS
+  | success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , eqL
+  | success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , eqR
+  with tyEqBundle C₁ C₂
+-- Types match: apply t-case.
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (Aty T.+ Bty) Ψs scrutE ds fs , eqS
+  | success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , eqL
+  | success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , eqR
+  | yes refl , eqTy
+  with IHs eqS | IHL {Aty = Aty} eqL | IHR {Bty = Bty} eqR
+... | sJ | lJ | rJ
+  rewrite eqS | eqL | eqR | eqTy with eq
+... | refl = t-case sJ lJ rJ
+-- Types disagree: absurd.
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (Aty T.+ Bty) Ψs scrutE ds fs , eqS
+  | success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , eqL
+  | success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR , eqR
+  | no _ , eqTy
+  rewrite eqS | eqL | eqR | eqTy with eq
+... | ()
+-- Right branch fails.
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (Aty T.+ Bty) Ψs scrutE ds fs , eqS
+  | success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL , eqL
+  | failure _ , eqR
+  rewrite eqS | eqL | eqR with eq
+... | ()
+-- Left branch fails.
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (Aty T.+ Bty) Ψs scrutE ds fs , eqS
+  | failure _ , eqL
+  rewrite eqS | eqL with eq
+... | ()
+-- Non-sum scrutinee: one absurd case per non-sum Type shape.
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success Unit _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success Void _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success Int _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success Float _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success Str _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success Buffer _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (_ T.* _) _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (_ T.⇒[ _ ] _) _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (T.Eff _ _) _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (T.μ-type _) _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | success (T.ν-type _) _ _ _ _ , eqS rewrite eqS with eq
+... | ()
+-- Scrutinee infers as failure.
+sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
+  | failure _ , eqS rewrite eqS with eq
 ... | ()
 
 ------------------------------------------------------------------------
