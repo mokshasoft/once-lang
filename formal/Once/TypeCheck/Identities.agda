@@ -471,3 +471,31 @@ open Once.Surface.Syntax.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ
 ⊔ᵘ-zero-left : ∀ {n} (Ψ : Usage n) → zeroUsage ⊔ᵘ Ψ ≡ Ψ
 ⊔ᵘ-zero-left {zero}  []ᵘ = refl
 ⊔ᵘ-zero-left {suc n} (q ∷ᵘ Ψ) rewrite ⊔ᵘ-zero-left Ψ = refl
+
+⊔ᵘ-zero-right : ∀ {n} (Ψ : Usage n) → Ψ ⊔ᵘ zeroUsage ≡ Ψ
+⊔ᵘ-zero-right {zero}  []ᵘ = refl
+⊔ᵘ-zero-right {suc n} (q ∷ᵘ Ψ)
+  rewrite ⊔q-Zero-right q | ⊔ᵘ-zero-right Ψ = refl
+
+-- +ᵘ associativity.
++ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Usage n) → Ψ₁ +ᵘ (Ψ₂ +ᵘ Ψ₃) ≡ (Ψ₁ +ᵘ Ψ₂) +ᵘ Ψ₃
++ᵘ-assoc {zero}  []ᵘ []ᵘ []ᵘ = refl
++ᵘ-assoc {suc n} (q₁ ∷ᵘ Ψ₁) (q₂ ∷ᵘ Ψ₂) (q₃ ∷ᵘ Ψ₃)
+  rewrite +q-assoc q₁ q₂ q₃ | +ᵘ-assoc Ψ₁ Ψ₂ Ψ₃ = refl
+
+-- ⊔ᵘ associativity.
+⊔ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Usage n) → Ψ₁ ⊔ᵘ (Ψ₂ ⊔ᵘ Ψ₃) ≡ (Ψ₁ ⊔ᵘ Ψ₂) ⊔ᵘ Ψ₃
+⊔ᵘ-assoc {zero}  []ᵘ []ᵘ []ᵘ = refl
+⊔ᵘ-assoc {suc n} (q₁ ∷ᵘ Ψ₁) (q₂ ∷ᵘ Ψ₂) (q₃ ∷ᵘ Ψ₃)
+  rewrite ⊔q-assoc q₁ q₂ q₃ | ⊔ᵘ-assoc Ψ₁ Ψ₂ Ψ₃ = refl
+
+-- *ᵘ identity: multiplying by `One` acts as an identity scalar.
+*ᵘ-identity-One : ∀ {n} (Ψ : Usage n) → One *ᵘ Ψ ≡ Ψ
+*ᵘ-identity-One {zero}  []ᵘ = refl
+*ᵘ-identity-One {suc n} (q ∷ᵘ Ψ)
+  rewrite *q-identity-left q | *ᵘ-identity-One Ψ = refl
+
+-- *ᵘ absorbs zero scalar.
+*ᵘ-Zero : ∀ {n} (Ψ : Usage n) → Zero *ᵘ Ψ ≡ zeroUsage
+*ᵘ-Zero {zero}  []ᵘ = refl
+*ᵘ-Zero {suc n} (q ∷ᵘ Ψ) rewrite *ᵘ-Zero Ψ = refl
