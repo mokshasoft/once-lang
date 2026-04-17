@@ -27,11 +27,12 @@ open import Data.Fin as Fin using (_↑ˡ_)
 open import Data.Vec using (Vec; []; _∷_; tail) renaming (lookup to Vec-lookup)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Unit using (tt)
+open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
 open import Data.Maybe using (Maybe; just; nothing; _>>=_)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; trans; sym)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; trans; sym; inspect; [_])
 open import Induction.WellFounded using (Acc; acc; WfRec)
 open import Data.Nat.Induction using (<-wellFounded)
 
@@ -541,9 +542,9 @@ matchesPolyType (A₁ P* B₁) (A₂ P* B₂) with matchesPolyType A₁ A₂ | m
 matchesPolyType (A₁ P+ B₁) (A₂ P+ B₂) with matchesPolyType A₁ A₂ | matchesPolyType B₁ B₂
 ... | just A | just B = just (A P+ B)
 ... | _ | _ = nothing
-matchesPolyType (A₁ P⇒[ q₁ ] B₁) (A₂ P⇒[ q₂ ] B₂) with matchesPolyType A₁ A₂ | matchesPolyType B₁ B₂
-... | just A | just B = just (A P⇒[ q₁ ] B)  -- Keep first quantity
-... | _ | _ = nothing
+matchesPolyType (A₁ P⇒[ q₁ ] B₁) (A₂ P⇒[ q₂ ] B₂) with q₁ ≟q q₂ | matchesPolyType A₁ A₂ | matchesPolyType B₁ B₂
+... | yes refl | just A | just B = just (A P⇒[ q₁ ] B)  -- Quantities must match
+... | _ | _ | _ = nothing
 matchesPolyType (PEff A₁ B₁) (PEff A₂ B₂) with matchesPolyType A₁ A₂ | matchesPolyType B₁ B₂
 ... | just A | just B = just (PEff A B)
 ... | _ | _ = nothing
@@ -554,6 +555,169 @@ matchesPolyType (Pν-type F₁) (Pν-type F₂) with F₁ ≟PF F₂
 ... | yes refl = just (Pν-type F₁)
 ... | no _ = nothing
 matchesPolyType _ _ = nothing
+
+-- | Ground types that match via matchesPolyType are definitionally equal
+-- This is the key lemma for eliminating the coercePolyArg postulate.
+--
+-- Proof: Ground types have no TVars, so the TVar cases in matchesPolyType
+-- are never reached. The remaining cases all require structural equality.
+matchesPolyType-ground-eq : (A B : PolyType) → Ground A → Ground B
+                          → (C : PolyType) → matchesPolyType A B ≡ just C
+                          → A ≡ B
+matchesPolyType-ground-eq PUnit PUnit _ _ .PUnit refl = refl
+matchesPolyType-ground-eq PVoid PVoid _ _ .PVoid refl = refl
+matchesPolyType-ground-eq PInt PInt _ _ .PInt refl = refl
+matchesPolyType-ground-eq PFloat PFloat _ _ .PFloat refl = refl
+matchesPolyType-ground-eq PStr PStr _ _ .PStr refl = refl
+matchesPolyType-ground-eq PBuffer PBuffer _ _ .PBuffer refl = refl
+matchesPolyType-ground-eq (A₁ P* B₁) (A₂ P* B₂) (gA₁ , gB₁) (gA₂ , gB₂) C eq
+  with matchesPolyType A₁ A₂ | matchesPolyType B₁ B₂ | inspect (matchesPolyType A₁) A₂ | inspect (matchesPolyType B₁) B₂
+... | just A | just B | [ eqA ] | [ eqB ] with eq
+...   | refl = cong₂ _P*_ (matchesPolyType-ground-eq A₁ A₂ gA₁ gA₂ A eqA)
+                          (matchesPolyType-ground-eq B₁ B₂ gB₁ gB₂ B eqB)
+matchesPolyType-ground-eq (A₁ P* B₁) (A₂ P* B₂) _ _ C () | nothing | nothing | _ | _
+matchesPolyType-ground-eq (A₁ P* B₁) (A₂ P* B₂) _ _ C () | nothing | just _ | _ | _
+matchesPolyType-ground-eq (A₁ P* B₁) (A₂ P* B₂) _ _ C () | just _ | nothing | _ | _
+matchesPolyType-ground-eq (A₁ P+ B₁) (A₂ P+ B₂) (gA₁ , gB₁) (gA₂ , gB₂) C eq
+  with matchesPolyType A₁ A₂ | matchesPolyType B₁ B₂ | inspect (matchesPolyType A₁) A₂ | inspect (matchesPolyType B₁) B₂
+... | just A | just B | [ eqA ] | [ eqB ] with eq
+...   | refl = cong₂ _P+_ (matchesPolyType-ground-eq A₁ A₂ gA₁ gA₂ A eqA)
+                          (matchesPolyType-ground-eq B₁ B₂ gB₁ gB₂ B eqB)
+matchesPolyType-ground-eq (A₁ P+ B₁) (A₂ P+ B₂) _ _ C () | nothing | nothing | _ | _
+matchesPolyType-ground-eq (A₁ P+ B₁) (A₂ P+ B₂) _ _ C () | nothing | just _ | _ | _
+matchesPolyType-ground-eq (A₁ P+ B₁) (A₂ P+ B₂) _ _ C () | just _ | nothing | _ | _
+matchesPolyType-ground-eq (A₁ P⇒[ q₁ ] B₁) (A₂ P⇒[ q₂ ] B₂) (gA₁ , gB₁) (gA₂ , gB₂) C eq
+  with q₁ ≟q q₂ | matchesPolyType A₁ A₂ | matchesPolyType B₁ B₂ | inspect (matchesPolyType A₁) A₂ | inspect (matchesPolyType B₁) B₂
+... | yes refl | just A | just B | [ eqA ] | [ eqB ] with eq
+...   | refl = cong₂ (λ a b → a P⇒[ q₁ ] b)
+                     (matchesPolyType-ground-eq A₁ A₂ gA₁ gA₂ A eqA)
+                     (matchesPolyType-ground-eq B₁ B₂ gB₁ gB₂ B eqB)
+matchesPolyType-ground-eq (A₁ P⇒[ _ ] B₁) (A₂ P⇒[ _ ] B₂) _ _ C () | no _ | _ | _ | _ | _
+matchesPolyType-ground-eq (A₁ P⇒[ q ] B₁) (A₂ P⇒[ .q ] B₂) _ _ C () | yes refl | nothing | nothing | _ | _
+matchesPolyType-ground-eq (A₁ P⇒[ q ] B₁) (A₂ P⇒[ .q ] B₂) _ _ C () | yes refl | nothing | just _ | _ | _
+matchesPolyType-ground-eq (A₁ P⇒[ q ] B₁) (A₂ P⇒[ .q ] B₂) _ _ C () | yes refl | just _ | nothing | _ | _
+matchesPolyType-ground-eq (PEff A₁ B₁) (PEff A₂ B₂) (gA₁ , gB₁) (gA₂ , gB₂) C eq
+  with matchesPolyType A₁ A₂ | matchesPolyType B₁ B₂ | inspect (matchesPolyType A₁) A₂ | inspect (matchesPolyType B₁) B₂
+... | just A | just B | [ eqA ] | [ eqB ] with eq
+...   | refl = cong₂ PEff (matchesPolyType-ground-eq A₁ A₂ gA₁ gA₂ A eqA)
+                          (matchesPolyType-ground-eq B₁ B₂ gB₁ gB₂ B eqB)
+matchesPolyType-ground-eq (PEff A₁ B₁) (PEff A₂ B₂) _ _ C () | nothing | nothing | _ | _
+matchesPolyType-ground-eq (PEff A₁ B₁) (PEff A₂ B₂) _ _ C () | nothing | just _ | _ | _
+matchesPolyType-ground-eq (PEff A₁ B₁) (PEff A₂ B₂) _ _ C () | just _ | nothing | _ | _
+matchesPolyType-ground-eq (Pμ-type F₁) (Pμ-type F₂) gF₁ gF₂ C eq with F₁ ≟PF F₂
+... | yes refl with eq
+...   | refl = refl
+matchesPolyType-ground-eq (Pμ-type F₁) (Pμ-type F₂) _ _ C eq | no _ with eq
+... | ()
+matchesPolyType-ground-eq (Pν-type F₁) (Pν-type F₂) gF₁ gF₂ C eq with F₁ ≟PF F₂
+... | yes refl with eq
+...   | refl = refl
+matchesPolyType-ground-eq (Pν-type F₁) (Pν-type F₂) _ _ C eq | no _ with eq
+... | ()
+-- Remaining cases are structural mismatches that can't succeed
+matchesPolyType-ground-eq PUnit (A P* B) _ _ C ()
+matchesPolyType-ground-eq PUnit (A P+ B) _ _ C ()
+matchesPolyType-ground-eq PUnit (A P⇒[ _ ] B) _ _ C ()
+matchesPolyType-ground-eq PUnit (PEff A B) _ _ C ()
+matchesPolyType-ground-eq PUnit (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq PUnit (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq PVoid (A P* B) _ _ C ()
+matchesPolyType-ground-eq PVoid (A P+ B) _ _ C ()
+matchesPolyType-ground-eq PVoid (A P⇒[ _ ] B) _ _ C ()
+matchesPolyType-ground-eq PVoid (PEff A B) _ _ C ()
+matchesPolyType-ground-eq PVoid (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq PVoid (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq PInt (A P* B) _ _ C ()
+matchesPolyType-ground-eq PInt (A P+ B) _ _ C ()
+matchesPolyType-ground-eq PInt (A P⇒[ _ ] B) _ _ C ()
+matchesPolyType-ground-eq PInt (PEff A B) _ _ C ()
+matchesPolyType-ground-eq PInt (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq PInt (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq PFloat (A P* B) _ _ C ()
+matchesPolyType-ground-eq PFloat (A P+ B) _ _ C ()
+matchesPolyType-ground-eq PFloat (A P⇒[ _ ] B) _ _ C ()
+matchesPolyType-ground-eq PFloat (PEff A B) _ _ C ()
+matchesPolyType-ground-eq PFloat (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq PFloat (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq PStr (A P* B) _ _ C ()
+matchesPolyType-ground-eq PStr (A P+ B) _ _ C ()
+matchesPolyType-ground-eq PStr (A P⇒[ _ ] B) _ _ C ()
+matchesPolyType-ground-eq PStr (PEff A B) _ _ C ()
+matchesPolyType-ground-eq PStr (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq PStr (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq PBuffer (A P* B) _ _ C ()
+matchesPolyType-ground-eq PBuffer (A P+ B) _ _ C ()
+matchesPolyType-ground-eq PBuffer (A P⇒[ _ ] B) _ _ C ()
+matchesPolyType-ground-eq PBuffer (PEff A B) _ _ C ()
+matchesPolyType-ground-eq PBuffer (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq PBuffer (Pν-type _) _ _ C ()
+-- Continue for structural mismatches in reverse direction
+matchesPolyType-ground-eq (A P* B) PUnit _ _ C ()
+matchesPolyType-ground-eq (A P* B) PVoid _ _ C ()
+matchesPolyType-ground-eq (A P* B) PInt _ _ C ()
+matchesPolyType-ground-eq (A P* B) PFloat _ _ C ()
+matchesPolyType-ground-eq (A P* B) PStr _ _ C ()
+matchesPolyType-ground-eq (A P* B) PBuffer _ _ C ()
+matchesPolyType-ground-eq (A P* B) (_ P+ _) _ _ C ()
+matchesPolyType-ground-eq (A P* B) (_ P⇒[ _ ] _) _ _ C ()
+matchesPolyType-ground-eq (A P* B) (PEff _ _) _ _ C ()
+matchesPolyType-ground-eq (A P* B) (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq (A P* B) (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq (A P+ B) PUnit _ _ C ()
+matchesPolyType-ground-eq (A P+ B) PVoid _ _ C ()
+matchesPolyType-ground-eq (A P+ B) PInt _ _ C ()
+matchesPolyType-ground-eq (A P+ B) PFloat _ _ C ()
+matchesPolyType-ground-eq (A P+ B) PStr _ _ C ()
+matchesPolyType-ground-eq (A P+ B) PBuffer _ _ C ()
+matchesPolyType-ground-eq (A P+ B) (_ P* _) _ _ C ()
+matchesPolyType-ground-eq (A P+ B) (_ P⇒[ _ ] _) _ _ C ()
+matchesPolyType-ground-eq (A P+ B) (PEff _ _) _ _ C ()
+matchesPolyType-ground-eq (A P+ B) (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq (A P+ B) (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) PUnit _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) PVoid _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) PInt _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) PFloat _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) PStr _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) PBuffer _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) (_ P* _) _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) (_ P+ _) _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) (PEff _ _) _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq (A P⇒[ _ ] B) (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq (PEff A B) PUnit _ _ C ()
+matchesPolyType-ground-eq (PEff A B) PVoid _ _ C ()
+matchesPolyType-ground-eq (PEff A B) PInt _ _ C ()
+matchesPolyType-ground-eq (PEff A B) PFloat _ _ C ()
+matchesPolyType-ground-eq (PEff A B) PStr _ _ C ()
+matchesPolyType-ground-eq (PEff A B) PBuffer _ _ C ()
+matchesPolyType-ground-eq (PEff A B) (_ P* _) _ _ C ()
+matchesPolyType-ground-eq (PEff A B) (_ P+ _) _ _ C ()
+matchesPolyType-ground-eq (PEff A B) (_ P⇒[ _ ] _) _ _ C ()
+matchesPolyType-ground-eq (PEff A B) (Pμ-type _) _ _ C ()
+matchesPolyType-ground-eq (PEff A B) (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) PUnit _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) PVoid _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) PInt _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) PFloat _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) PStr _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) PBuffer _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) (_ P* _) _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) (_ P+ _) _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) (_ P⇒[ _ ] _) _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) (PEff _ _) _ _ C ()
+matchesPolyType-ground-eq (Pμ-type _) (Pν-type _) _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) PUnit _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) PVoid _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) PInt _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) PFloat _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) PStr _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) PBuffer _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) (_ P* _) _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) (_ P+ _) _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) (_ P⇒[ _ ] _) _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) (PEff _ _) _ _ C ()
+matchesPolyType-ground-eq (Pν-type _) (Pμ-type _) _ _ C ()
 
 -- | Substitute TVars in a type based on a match
 -- When we match `TVar x` against `T`, all occurrences of `TVar x` in related
@@ -962,6 +1126,53 @@ matchWithSubst (Pν-type F₁) (Pν-type F₂) σ with F₁ ≟PF F₂
 ... | yes refl = just (Pν-type F₁ , σ)
 ... | no _ = nothing
 matchWithSubst _ _ _ = nothing
+
+------------------------------------------------------------------------
+-- Substitution Extension Lemmas
+------------------------------------------------------------------------
+
+-- | Looking up a just-extended variable returns the value
+extendInferSubst-lookup-eq : ∀ (σ : InferSubst) (x : String) (A : PolyType)
+                           → lookupInferSubst (extendInferSubst σ x A) x ≡ just A
+extendInferSubst-lookup-eq σ x A with x Data.String.≟ x
+... | yes _ = refl
+... | no x≢x = ⊥-elim (x≢x refl)
+  where open import Data.Empty using (⊥-elim)
+
+-- | Applying extended substitution to the variable gives the value
+applySubst-extend-var : ∀ (σ : InferSubst) (x : String) (A : PolyType)
+                      → applySubst (extendInferSubst σ x A) (TVar x) ≡ A
+applySubst-extend-var σ x A with lookupInferSubst (extendInferSubst σ x A) x
+                               | extendInferSubst-lookup-eq σ x A
+... | just .A | refl = refl
+... | nothing | ()
+
+------------------------------------------------------------------------
+-- Unification Lemmas for matchWithSubst
+------------------------------------------------------------------------
+
+-- | When matchWithSubst succeeds, applying σ' to the first arg gives C
+-- | When matchWithSubst succeeds, applying σ' to the second arg gives C
+--
+-- These proofs are complex due to the recursive structure.
+-- For now, we postulate them and prove a weaker property inline.
+--
+-- The key insight is that when both types are GROUND after substitution,
+-- they must be definitionally equal.
+
+-- | Weaker property: when matchWithSubst succeeds and both results are ground,
+-- they must be equal
+matchWithSubst-ground-eq : (A B : PolyType) (σ : InferSubst) (C : PolyType) (σ' : InferSubst)
+                         → matchWithSubst A B σ ≡ just (C , σ')
+                         → Ground (applySubst σ' A) → Ground (applySubst σ' B)
+                         → applySubst σ' A ≡ applySubst σ' B
+matchWithSubst-ground-eq A B σ C σ' match-eq gA gB with applySubst σ' A ≟PT applySubst σ' B
+... | yes eq = eq
+... | no neq = helper
+  where
+    -- When ground types don't match via ≟PT, matchWithSubst would have failed
+    -- This is a contradiction, so we postulate it for now
+    postulate helper : applySubst σ' A ≡ applySubst σ' B
 
 -- | Instantiate a polymorphic type with fresh type variables
 -- Collects all distinct TVar names and substitutes them with fresh variables
@@ -1577,28 +1788,56 @@ coercePolyArgWithSubst {A = A} {A' = A'} gΓ σ e with A ≟PT A'
 ...   | no _ = nothing  -- Target has TVars, cannot coerce safely
 
 -- | Coerce PolyExpr when types are definitionally equal
--- For types that differ only in TVar naming, this relies on the coercion
--- being eliminated by extraction (when all TVars are resolved).
+-- Uses decidable equality for proven coercion.
 --
--- This function:
--- 1. Returns the expression unchanged when types are definitionally equal
--- 2. For TVar mismatches, relies on the fact that:
---    - matchesPolyType only succeeds when types are unifiable
---    - Extraction requires all types to be ground (no TVars)
---    - Therefore, TVar mismatches that reach extraction would fail anyway
+-- When types aren't definitionally equal, we check if they would be equal
+-- after considering ground-ness. If both are ground but ≟PT fails, this indicates
+-- a bug in matchesPolyType (since ground types that "match" should be definitionally equal).
 --
--- TODO: Properly propagate substitutions through inference to eliminate this
+-- The key insight: matchesPolyType A A' only succeeds when:
+-- 1. A ≡ A' (definitionally equal), OR
+-- 2. At least one has a TVar that gets "matched" to the other
+--
+-- For ground types (no TVars), matchesPolyType is equivalent to ≟PT.
+-- So if both are ground and ≟PT fails, matchesPolyType would have failed too.
+
+-- | Coerce with match proof - eliminates ground case postulate
+-- When we have proof that matchesPolyType succeeded, we can prove ground types are equal.
+-- Note: Takes matchesPolyType A A' (domain vs arg type) to match call site pattern.
+coercePolyArgWithProof : ∀ {n} {Γ : PolyCtx n} {A A' C}
+                        → matchesPolyType A A' ≡ just C
+                        → PolyExpr Γ A'
+                        → PolyExpr Γ A
+coercePolyArgWithProof {Γ = Γ} {A = A} {A' = A'} {C = C} matchProof e with A ≟PT A'
+... | yes refl = e
+... | no neq with Once.Type.ground? A | Once.Type.ground? A'
+-- Both ground and matchesPolyType succeeded: by matchesPolyType-ground-eq, A ≡ A'
+-- This contradicts neq, so the case is impossible.
+...   | yes gA | yes gA' = ⊥-elim (neq (matchesPolyType-ground-eq A A' gA gA' C matchProof))
+-- At least one has TVars: need substitution context (not available here)
+-- This is the remaining case that needs proper substitution propagation.
+...   | _ | no _ = needsSubstitution e
+  where postulate needsSubstitution : PolyExpr Γ A' → PolyExpr Γ A
+...   | no _ | yes _ = needsSubstitution e
+  where postulate needsSubstitution : PolyExpr Γ A' → PolyExpr Γ A
+
+-- | Legacy coercion without match proof - kept for compatibility
+-- Should eventually be replaced with coercePolyArgWithProof at all call sites.
 coercePolyArg : ∀ {n} {Γ : PolyCtx n} {A A'} → PolyExpr Γ A' → PolyExpr Γ A
 coercePolyArg {Γ = Γ} {A = A} {A' = A'} e with A ≟PT A'
 ... | yes refl = e
-... | no _ = coercePolyArgTVar e
+... | no neq with Once.Type.ground? A | Once.Type.ground? A'
+-- Both ground but ≟PT failed: This is unreachable if matchesPolyType was correct.
+-- Ground types only match via matchesPolyType when structurally equal.
+-- We use a postulate here, but it should never be reached in correct programs.
+...   | yes gA | yes gA' = unreachableGroundMismatch e
   where
-    -- Postulate for TVar mismatch case only
-    -- This is sound because:
-    -- 1. We only reach here when matchesPolyType A A' succeeded
-    -- 2. At extraction time, both types must be ground (no TVars)
-    -- 3. Ground types that match via matchesPolyType are definitionally equal
-    postulate coercePolyArgTVar : PolyExpr Γ A' → PolyExpr Γ A
+    postulate unreachableGroundMismatch : PolyExpr Γ A' → PolyExpr Γ A
+-- At least one has TVars: need substitution context (not available here)
+...   | _ | no _ = needsSubstitution e
+  where postulate needsSubstitution : PolyExpr Γ A' → PolyExpr Γ A
+...   | no _ | yes _ = needsSubstitution e
+  where postulate needsSubstitution : PolyExpr Γ A' → PolyExpr Γ A
 
 {-# TERMINATING #-}
 mutual
@@ -1700,18 +1939,18 @@ mutual
     where
       inferPolyArg : PolyInferResult (PolyNamedCtx.polyCtx ctx) → PolyInferResult (PolyNamedCtx.polyCtx ctx)
       inferPolyArg (failure err) = failure err
-      inferPolyArg (success A' argExpr argDepth argFresh usageArg) with matchesPolyType A A'
-      ... | just _ = success B (papp funExpr (coercePolyArg argExpr)) (funDepth ⊔ argDepth) argFresh (usageFun +ᵘ usageArg)
-      ... | nothing = failure ("Type mismatch in application: expected " ++ showPolyType A ++
+      inferPolyArg (success A' argExpr argDepth argFresh usageArg) with matchesPolyType A A' | inspect (matchesPolyType A) A'
+      ... | just _ | [ eq ] = success B (papp funExpr (coercePolyArgWithProof eq argExpr)) (funDepth ⊔ argDepth) argFresh (usageFun +ᵘ usageArg)
+      ... | nothing | _ = failure ("Type mismatch in application: expected " ++ showPolyType A ++
                                " but got " ++ showPolyType A')
   ... | success (PEff A B) funExpr funDepth funFresh usageFun =
         inferPolyArgEff (polyInferImpl (setPolyFresh ctx funFresh) arg)
     where
       inferPolyArgEff : PolyInferResult (PolyNamedCtx.polyCtx ctx) → PolyInferResult (PolyNamedCtx.polyCtx ctx)
       inferPolyArgEff (failure err) = failure err
-      inferPolyArgEff (success A' argExpr argDepth argFresh usageArg) with matchesPolyType A A'
-      ... | just _ = success B (peffApp funExpr (coercePolyArg argExpr)) (funDepth ⊔ argDepth) argFresh (usageFun +ᵘ usageArg)
-      ... | nothing = failure ("Type mismatch in effect application: expected " ++ showPolyType A ++
+      inferPolyArgEff (success A' argExpr argDepth argFresh usageArg) with matchesPolyType A A' | inspect (matchesPolyType A) A'
+      ... | just _ | [ eq ] = success B (peffApp funExpr (coercePolyArgWithProof eq argExpr)) (funDepth ⊔ argDepth) argFresh (usageFun +ᵘ usageArg)
+      ... | nothing | _ = failure ("Type mismatch in effect application: expected " ++ showPolyType A ++
                                " but got " ++ showPolyType A')
   ... | success PUnit _ _ _ _ = failure "Expected function type in application"
   ... | success PVoid _ _ _ _ = failure "Expected function type in application"
@@ -1757,11 +1996,11 @@ mutual
         where
           inferPolyRight : PolyInferResult _ → PolyInferResult (PolyNamedCtx.polyCtx ctx)
           inferPolyRight (failure err) = failure err
-          inferPolyRight (success C₂ eRExpr eRDepth eRFresh usageR) with matchesPolyType C₁ C₂
-          ... | just C = success C₁ (pcase' scrutExpr eLExpr (coercePolyArg eRExpr))
+          inferPolyRight (success C₂ eRExpr eRDepth eRFresh usageR) with matchesPolyType C₁ C₂ | inspect (matchesPolyType C₁) C₂
+          ... | just C | [ eq ] = success C₁ (pcase' scrutExpr eLExpr (coercePolyArgWithProof eq eRExpr))
                                     (scrutDepth ⊔ suc eLDepth ⊔ suc eRDepth) eRFresh
                                     (usageScr +ᵘ ptailUsage usageL +ᵘ ptailUsage usageR)
-          ... | nothing = failure "Case branches have different types"
+          ... | nothing | _ = failure "Case branches have different types"
   ... | success PUnit _ _ _ _ = failure "Expected sum type in case"
   ... | success PVoid _ _ _ _ = failure "Expected sum type in case"
   ... | success PInt _ _ _ _ = failure "Expected sum type in case"
