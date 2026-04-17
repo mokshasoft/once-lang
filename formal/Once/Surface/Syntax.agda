@@ -91,6 +91,16 @@ q *ᵘ (q' ∷ ψ) = (q *q q') ∷ (q *ᵘ ψ)
 
 infixl 70 _*ᵘ_
 
+-- | Per-position maximum of two usage vectors (for case branches).
+--
+-- Exactly one branch of a case runs at runtime; the effective usage is
+-- the position-wise upper bound in the QTT lattice.
+_⊔ᵘ_ : ∀ {n} → Usage n → Usage n → Usage n
+[]        ⊔ᵘ []        = []
+(q₁ ∷ ψ₁) ⊔ᵘ (q₂ ∷ ψ₂) = (q₁ ⊔q q₂) ∷ (ψ₁ ⊔ᵘ ψ₂)
+
+infixl 55 _⊔ᵘ_
+
 -- | Check if usage respects declared quantities
 -- ψ ≤ᵘ Γ means all actual usages are within declared bounds
 _≤ᵘ_ : ∀ {n} → Usage n → Ctx n → Set

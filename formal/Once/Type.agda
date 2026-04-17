@@ -78,6 +78,28 @@ Many  ≟q Zero  = no (λ ())
 Many  ≟q One   = no (λ ())
 Many  ≟q Many  = yes refl
 
+-- | Quantity maximum (per-branch upper bound)
+--
+-- Used for case analysis: exactly one branch runs, so the effective usage
+-- at each position is the maximum over branches in the QTT lattice.
+--
+-- Lattice order: Zero ≤ One ≤ Many
+--
+-- - Zero ⊔q q = q
+-- - q ⊔q Zero = q
+-- - One ⊔q One = One
+-- - One ⊔q Many = Many
+-- - Many ⊔q _ = Many
+--
+_⊔q_ : Quantity → Quantity → Quantity
+Zero ⊔q q    = q
+One  ⊔q Zero = One
+One  ⊔q One  = One
+One  ⊔q Many = Many
+Many ⊔q _    = Many
+
+infixl 55 _⊔q_
+
 -- | Subusaging order (q₁ ≤ q₂ means q₁ can be used where q₂ is expected)
 --
 -- - 0 ≤ q for all q (can always erase)
