@@ -46,7 +46,7 @@ open import Once.TypeCheck.Raw as Raw
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
          BinOp; isArithmeticOp; isComparisonOp)
 open import Once.TypeCheck.Elaborate
-  using (NamedCtx; lookupLocal; lookupImport; extendNamedCtx)
+  using (NamedCtx; lookupLocal; lookupImport; extendNamedCtx; classifyAppHead)
 
 open import Data.String using (_++_)
 
@@ -204,14 +204,17 @@ mutual
     ----------------------------------------------------------------
     -- Generic function application.
     --
-    -- The function sub is in infer mode (its type must be
-    -- synthesisable as an arrow); the argument sub is in infer mode
-    -- too (its type is used to match the function's domain).
+    -- The `classifyAppHead f ≡ nothing` premise ensures the judgment
+    -- matches the elaborator's dispatch: polymorphic-builtin heads
+    -- (RApp (RVar "id") …) must use the specialised `t-id-app`
+    -- rules, not `t-app`. Without this premise the judgment would
+    -- admit derivations the elaborator cannot realise.
     ----------------------------------------------------------------
 
     t-app : ∀ {ctx : NamedCtx} {f x : RawExpr}
             {A B : Type} {q : Quantity}
             {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+          → classifyAppHead f ≡ nothing
           → ctx ⊢ᵢ f ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ₁
           → ctx ⊢ᵢ x ∶ A ⨾ Ψ₂
           → ctx ⊢ᵢ RApp f x ∶ B ⨾ (Ψ₁ +ᵘ (q *ᵘ Ψ₂))

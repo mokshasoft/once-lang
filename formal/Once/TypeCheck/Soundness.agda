@@ -954,7 +954,7 @@ sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | yes refl , eqTy
   with IH_f eqF | IH_x eqX
 ... | fJ | xJ rewrite eqF | eqX | eqTy with eq
-... | refl = t-app fJ xJ
+... | refl = t-app notPoly fJ xJ
 -- Arg type mismatches.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
