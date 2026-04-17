@@ -64,25 +64,67 @@ printGType (G.TEff A B) =
   TLParen ∷ TWord "Eff" ∷ printGType A ++ printGType B ++ TRParen ∷ []
 
 ------------------------------------------------------------------------
--- Round-trip theorem: parseGType ∘ printGType ≡ just
+-- Round-trip theorems: parseGType ∘ printGType ≡ just
 --
--- This is the headline G1 claim. The proof is per-constructor
--- induction on GType. Each compound case threads the parser through
--- the opening paren, recurses into the components, consumes the
--- infix token, and closes with the matching paren.
---
--- **Current status**: theorem statement drafted; proof is future
--- work — the per-step threading requires explicit token-list append
--- manipulation which Agda doesn't automate. Commented here so the
--- shape is visible at review time.
---
--- round-trip : ∀ (g : GType) → parseGType (printGType g) ≡ just (g , [])
---
--- The compound cases need list-append reasoning (++-assoc, ∷-++)
--- plus the parser's step-by-step consumption matched against the
--- printer's output. Each case is 10-20 lines; the full proof is
--- ~200 lines.
---
--- Unblocks G5 integration — once round-trip holds, every GType in
--- the parser's output is grammar-faithful by construction.
+-- Per-constructor theorems. Base cases are direct refl; the
+-- compound cases need explicit list-append reasoning and are
+-- drafted for future work.
 ------------------------------------------------------------------------
+
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Maybe using (just; nothing)
+open import Data.Product using (_,_)
+open import Once.Grammar.Convert using (parseGType)
+
+round-trip-Unit : parseGType (printGType G.TUnit) ≡ just (G.TUnit , [])
+round-trip-Unit = refl
+
+round-trip-Void : parseGType (printGType G.TVoid) ≡ just (G.TVoid , [])
+round-trip-Void = refl
+
+round-trip-Int : parseGType (printGType G.TInt) ≡ just (G.TInt , [])
+round-trip-Int = refl
+
+round-trip-Float : parseGType (printGType G.TFloat) ≡ just (G.TFloat , [])
+round-trip-Float = refl
+
+round-trip-Buffer : parseGType (printGType G.TBuffer) ≡ just (G.TBuffer , [])
+round-trip-Buffer = refl
+
+round-trip-String : parseGType (printGType G.TString) ≡ just (G.TString , [])
+round-trip-String = refl
+
+-- Compound round-trip smoke tests: specific concrete GTypes whose
+-- printed token streams the parser can reduce computationally (refl
+-- suffices). These don't prove the general compound case, but they
+-- document that the printer + parser agree on canonical inputs.
+
+round-trip-Unit⊗Int-smoke :
+  parseGType (printGType (G.TUnit G.⊗ G.TInt)) ≡ just (G.TUnit G.⊗ G.TInt , [])
+round-trip-Unit⊗Int-smoke = refl
+
+round-trip-Int⊕Str-smoke :
+  parseGType (printGType (G.TInt G.⊕ G.TString)) ≡ just (G.TInt G.⊕ G.TString , [])
+round-trip-Int⊕Str-smoke = refl
+
+round-trip-Int⇒Int-smoke :
+  parseGType (printGType (G.TInt G.⇒[ Many ] G.TInt))
+    ≡ just (G.TInt G.⇒[ Many ] G.TInt , [])
+round-trip-Int⇒Int-smoke = refl
+
+round-trip-linear-smoke :
+  parseGType (printGType (G.TInt G.⇒[ One ] G.TInt))
+    ≡ just (G.TInt G.⇒[ One ] G.TInt , [])
+round-trip-linear-smoke = refl
+
+round-trip-erased-smoke :
+  parseGType (printGType (G.TInt G.⇒[ Zero ] G.TUnit))
+    ≡ just (G.TInt G.⇒[ Zero ] G.TUnit , [])
+round-trip-erased-smoke = refl
+
+-- The general per-constructor compound round-trip theorems require
+-- list-append reasoning (++-assoc, ∷-++ equations) to thread the
+-- parser's sequential token consumption through the printer's
+-- paren-delimited output. Each case is ~15-30 lines of structural
+-- reasoning. Drafted for a future pass; the smoke tests above
+-- demonstrate the shape holds on concrete canonical inputs.
