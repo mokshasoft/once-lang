@@ -28,7 +28,7 @@ open import Data.Bool using (Bool; true; false; _∧_; not)
 open import Data.Char using (isAlpha; isLower)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; TVar; Quantity; Many)
+                             _*_; _+_; _⇒[_]_; Eff; Quantity; Many)
 open import Once.Parser.Token
 open import Once.Parser.Core
 

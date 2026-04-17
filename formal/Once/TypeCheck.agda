@@ -18,7 +18,7 @@ module Once.TypeCheck where
 
 -- Types
 open import Once.Type public
-  using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒_; Eff; TVar)
+  using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒_; Eff)
 
 -- Raw syntax (parser output)
 open import Once.TypeCheck.Raw public
