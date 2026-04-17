@@ -128,3 +128,13 @@ round-trip-erased-smoke = refl
 -- paren-delimited output. Each case is ~15-30 lines of structural
 -- reasoning. Drafted for a future pass; the smoke tests above
 -- demonstrate the shape holds on concrete canonical inputs.
+--
+-- Note on TVar: the current parser's `tryParseTypeVar` is
+-- intentionally `nothing`-always (see
+-- `Once.Parser.Type.tryParseTypeVar`, which returns `nothing` for
+-- both the "upper-word" and "other" cases). So parsing a
+-- printed TVar would currently fail, and the round-trip for TVar
+-- doesn't hold under the current parser. Either:
+--   (a) enable type-variable parsing (re-point tryParseTypeVar),
+--   (b) exclude TVar from the round-trip theorem via a predicate.
+-- Design decision deferred.
