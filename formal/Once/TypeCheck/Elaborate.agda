@@ -18,49 +18,27 @@ module Once.TypeCheck.Elaborate where
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ; zero; suc; _<_; _≤_; _≤?_; _⊔_)
-open import Data.Nat as Nat
-open import Data.Nat.Properties using (≤-refl; n<1+n; +-identityʳ; +-suc; +-comm)
+open import Data.Nat using (ℕ; zero; suc; _≤?_; _⊔_)
 open import Data.Nat.Show renaming (show to showℕ)
 open import Data.Fin using (Fin; zero; suc)
-open import Data.Fin as Fin using (_↑ˡ_)
-open import Data.Vec using (Vec; []; _∷_; tail) renaming (lookup to Vec-lookup)
 open import Data.Bool using (Bool; true; false; if_then_else_)
-open import Data.Unit using (tt)
-open import Data.Empty using (⊥-elim)
-open import Data.Product using (_×_; _,_; proj₁; proj₂; ∃-syntax)
-open import Data.Maybe using (Maybe; just; nothing; _>>=_)
-open import Data.List using (List; []; _∷_; length)
+open import Data.Maybe using (Maybe; just; nothing)
+open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (Dec; yes; no)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst; trans; sym; inspect; [_])
-open import Induction.WellFounded using (Acc; acc; WfRec)
-open import Data.Nat.Induction using (<-wellFounded)
+open import Data.Product using (_×_; _,_; ∃-syntax)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
 open import Once.Type
-open Once.Type using (showQuantity; showType; showPolyType; PolyType; PolyFunctor;
-                       PUnit; PVoid; _P*_; _P+_; _P⇒[_]_; PEff; Pμ-type; Pν-type;
-                       PInt; PFloat; PStr; PBuffer; TVar;
-                       PK; PId; _P⊕_; _P⊗_;
-                       embed; extract; embedFunctor; extractFunctor;
-                       Ground; GroundFunctor; extractGround; embed-ground; extractGround-embed;
-                       ground?) public
+open Once.Type using (showQuantity; showType) public
 open import Once.CCC.IR as IR
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
-open import Once.TypeCheck.Context using (Ctx; ∅; Binding; mkBinding; name; type)
+open import Once.TypeCheck.Context using (Ctx; ∅; name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
-open import Once.Surface.Syntax as Surface using (lookup; lookupQuantity; lookupUsage; tailUsage; _≤ᵘ?_)
+open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage)
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
-open import Once.Surface.Thinning
-  using (weaken; exchange; exchange₂; exchange₃; exchange₄; exchange₅; exchange₆; exchange₇; exchange₈)
-open import Once.Surface.Elaborate as Elab using (elaborate; ⟦_⟧ᶜ)
-open import Once.Surface.PolySyntax as Poly
-  using (PolyCtx; P∅; _P,_; _P,_^_; PolyExpr; lookupPoly; lookupPolyQuantity;
-         pvar; plam; papp; peffApp; ppair; pfst'; psnd'; pinl'; pinr'; pcase';
-         punit; pabsurd; plet'; pint; pstr; padd; psub; pmul; pdiv; pmod'; pneg;
-         plt; ple; pgt; pge; peq; pne; parr'; pprim;
-         extractCtx; extractExpr; pweaken; pweakenFromEmpty;
-         GroundCtx; extractGroundCtx; groundCtx?; groundExpr?; extractGroundExpr)
+open import Once.Surface.Thinning using (weaken)
+open import Once.Surface.Elaborate as Elab using (elaborate)
 open import Once.Postulates using (coerceQuantity)
 
 ------------------------------------------------------------------------
