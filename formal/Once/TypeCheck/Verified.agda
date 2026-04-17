@@ -325,6 +325,13 @@ record VerifiedTypeChecker : Set₁ where
       → tcCheck ctx Raw.RUnit T ≡ failure msg
       → msg ≡ renderError (TypeMismatch T Once.Type.Unit)
 
+    -- Check-mode RStringLit at non-Str target → TypeMismatch
+    tc-err-check-RStringLit-type-mismatch :
+      ∀ (ctx : NamedCtx) (s : String) (T : Type) {msg : _}
+      → ¬ (T ≡ Once.Type.Str)
+      → tcCheck ctx (Raw.RStringLit s) T ≡ failure msg
+      → msg ≡ renderError (TypeMismatch T Once.Type.Str)
+
     -- RDestruct branches with mismatched types → CaseBranchMismatch.
     tc-err-case-branch-mismatch :
       ∀ (ctx : NamedCtx) (scrut : RawExpr)
@@ -544,6 +551,7 @@ verifiedTypeChecker = record
   ; tc-err-case-branch-mismatch   = EP.case-branch-mismatch-is-CaseBranchMismatch
   ; tc-err-check-RInt-type-mismatch  = EP.check-RInt-type-mismatch
   ; tc-err-check-RUnit-type-mismatch = EP.check-RUnit-type-mismatch
+  ; tc-err-check-RStringLit-type-mismatch = EP.check-RStringLit-type-mismatch
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
