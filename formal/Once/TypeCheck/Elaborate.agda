@@ -588,6 +588,38 @@ decideLeq q' q with q' ≤q q
 ... | true  = just refl
 ... | false = nothing
 
+-- | Polymorphic-builtin identifier for the function position of an
+-- `RApp`. The elaborator handles each polymorphic builtin specially
+-- (separate type-checking rules, separate error paths). Hoisting the
+-- dispatch into a classifier + `Maybe PolyBuiltinApp` makes the
+-- elaborator's pattern coverage explicit and avoids the neutral-term
+-- obstacle with literal-string patterns (analogous to the RVar "unit"
+-- refactor).
+data PolyBuiltinApp : Set where
+  pba-id pba-fst pba-snd pba-terminal : PolyBuiltinApp  -- infer-mode successes
+  pba-inl pba-inr pba-initial : PolyBuiltinApp          -- infer-mode rejections
+
+-- | Classify an application head. `just <pba>` iff the head is an
+-- `RVar` bound to one of the seven polymorphic builtins; `nothing`
+-- otherwise, in which case the generic application rule applies.
+classifyAppHead : RawExpr → Maybe PolyBuiltinApp
+classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
+... | yes _ = just pba-id
+... | no  _ with StrProp._≟_ x "fst"
+...   | yes _ = just pba-fst
+...   | no  _ with StrProp._≟_ x "snd"
+...     | yes _ = just pba-snd
+...     | no  _ with StrProp._≟_ x "terminal"
+...       | yes _ = just pba-terminal
+...       | no  _ with StrProp._≟_ x "inl"
+...         | yes _ = just pba-inl
+...         | no  _ with StrProp._≟_ x "inr"
+...           | yes _ = just pba-inr
+...           | no  _ with StrProp._≟_ x "initial"
+...             | yes _ = just pba-initial
+...             | no  _ = nothing
+classifyAppHead _ = nothing
+
 ------------------------------------------------------------------------
 -- Bidirectional Inference (produces usage-indexed Expr)
 ------------------------------------------------------------------------
@@ -642,44 +674,48 @@ mutual
   inferElab ctx (Raw.RLam _ _) =
     failure "Lambda without type annotation not supported in inference mode."
 
-  -- Polymorphic builtin applications (fully applied):
-
+  -- Application.
+  --
+  -- The elaborator dispatches via `classifyAppHead f`: when `f` is
+  -- one of the seven polymorphic builtins (`id`, `fst`, `snd`,
+  -- `terminal`, `inl`, `inr`, `initial`), the specialised rule
+  -- fires; otherwise the generic application rule applies.
+  -- Collapsing the seven literal-pattern clauses into one `Maybe`
+  -- dispatch keeps all soundness paths proof-tractable — no more
+  -- neutral-term ambiguity between literal-pattern clauses and the
+  -- generic-RApp clause.
+  inferElab ctx (Raw.RApp f x) with classifyAppHead f
   -- id : A → A
-  inferElab ctx (Raw.RApp (Raw.RVar "id") arg) with inferElab ctx arg
-  ... | failure err = failure err
-  ... | success T Ψ argE d f =
-        success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) f
-
+  ... | just pba-id with inferElab ctx x
+  ...   | failure err = failure err
+  ...   | success T Ψ argE d f' =
+          success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) f'
   -- fst : (A * B) → A
-  inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) with inferElab ctx arg
+  inferElab ctx (Raw.RApp f x) | just pba-fst with inferElab ctx x
   ... | failure err = failure err
-  ... | success (A Once.Type.* B) Ψ argE d f =
-        success A _ (Surface.app (weakenFromEmpty (specFst A B)) argE) (suc d) f
+  ... | success (A Once.Type.* B) Ψ argE d f' =
+        success A _ (Surface.app (weakenFromEmpty (specFst A B)) argE) (suc d) f'
   ... | success _ _ _ _ _ = failure "fst requires a pair argument"
-
   -- snd : (A * B) → B
-  inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) with inferElab ctx arg
+  inferElab ctx (Raw.RApp f x) | just pba-snd with inferElab ctx x
   ... | failure err = failure err
-  ... | success (A Once.Type.* B) Ψ argE d f =
-        success B _ (Surface.app (weakenFromEmpty (specSnd A B)) argE) (suc d) f
+  ... | success (A Once.Type.* B) Ψ argE d f' =
+        success B _ (Surface.app (weakenFromEmpty (specSnd A B)) argE) (suc d) f'
   ... | success _ _ _ _ _ = failure "snd requires a pair argument"
-
   -- terminal : A → Unit
-  inferElab ctx (Raw.RApp (Raw.RVar "terminal") arg) with inferElab ctx arg
+  inferElab ctx (Raw.RApp f x) | just pba-terminal with inferElab ctx x
   ... | failure err = failure err
-  ... | success A Ψ argE d f =
-        success Unit _ (Surface.app (weakenFromEmpty (specTerminal A)) argE) (suc d) f
-
+  ... | success A Ψ argE d f' =
+        success Unit _ (Surface.app (weakenFromEmpty (specTerminal A)) argE) (suc d) f'
   -- Partial / check-only builtins in infer mode: fail.
-  inferElab ctx (Raw.RApp (Raw.RVar "inl") _) =
+  inferElab ctx (Raw.RApp _ _) | just pba-inl =
     failure "inl requires check mode (needs target sum type)"
-  inferElab ctx (Raw.RApp (Raw.RVar "inr") _) =
+  inferElab ctx (Raw.RApp _ _) | just pba-inr =
     failure "inr requires check mode (needs target sum type)"
-  inferElab ctx (Raw.RApp (Raw.RVar "initial") _) =
+  inferElab ctx (Raw.RApp _ _) | just pba-initial =
     failure "initial requires check mode (needs target type)"
-
-  -- Generic application: infer f as function type, then x
-  inferElab ctx (Raw.RApp f x) with asFun (inferElab ctx f)
+  -- Generic application: infer f as function type, then x.
+  inferElab ctx (Raw.RApp f x) | nothing with asFun (inferElab ctx f)
   ... | notFun err = failure err
   ... | isFun A q B Ψ₁ fE df ff with inferElab ctx x
   ...   | failure err = failure err
