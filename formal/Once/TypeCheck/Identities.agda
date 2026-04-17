@@ -499,3 +499,56 @@ open Once.Surface.Syntax.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ
 *ᵘ-Zero : ∀ {n} (Ψ : Usage n) → Zero *ᵘ Ψ ≡ zeroUsage
 *ᵘ-Zero {zero}  []ᵘ = refl
 *ᵘ-Zero {suc n} (q ∷ᵘ Ψ) rewrite *ᵘ-Zero Ψ = refl
+
+------------------------------------------------------------------------
+-- ≤q monotonicity w.r.t. quantity operators
+------------------------------------------------------------------------
+
+-- If q₁ ≤q q₂ and q₃ ≤q q₄, then q₁ +q q₃ ≤q q₂ +q q₄.
++q-mono : ∀ (q₁ q₂ q₃ q₄ : Quantity)
+        → (q₁ ≤q q₂) ≡ true
+        → (q₃ ≤q q₄) ≡ true
+        → (q₁ +q q₃ ≤q q₂ +q q₄) ≡ true
++q-mono Zero Zero Zero Zero _ _ = refl
++q-mono Zero Zero Zero One  _ _ = refl
++q-mono Zero Zero Zero Many _ _ = refl
++q-mono Zero Zero One  One  _ _ = refl
++q-mono Zero Zero One  Many _ _ = refl
++q-mono Zero Zero Many Many _ _ = refl
++q-mono Zero One  Zero Zero _ _ = refl
++q-mono Zero One  Zero One  _ _ = refl
++q-mono Zero One  Zero Many _ _ = refl
++q-mono Zero One  One  One  _ _ = refl
++q-mono Zero One  One  Many _ _ = refl
++q-mono Zero One  Many Many _ _ = refl
++q-mono Zero Many Zero Zero _ _ = refl
++q-mono Zero Many Zero One  _ _ = refl
++q-mono Zero Many Zero Many _ _ = refl
++q-mono Zero Many One  One  _ _ = refl
++q-mono Zero Many One  Many _ _ = refl
++q-mono Zero Many Many Many _ _ = refl
++q-mono One  One  Zero Zero _ _ = refl
++q-mono One  One  Zero One  _ _ = refl
++q-mono One  One  Zero Many _ _ = refl
++q-mono One  One  One  One  _ _ = refl
++q-mono One  One  One  Many _ _ = refl
++q-mono One  One  Many Many _ _ = refl
++q-mono One  Many Zero Zero _ _ = refl
++q-mono One  Many Zero One  _ _ = refl
++q-mono One  Many Zero Many _ _ = refl
++q-mono One  Many One  One  _ _ = refl
++q-mono One  Many One  Many _ _ = refl
++q-mono One  Many Many Many _ _ = refl
++q-mono Many Many Zero Zero _ _ = refl
++q-mono Many Many Zero One  _ _ = refl
++q-mono Many Many Zero Many _ _ = refl
++q-mono Many Many One  One  _ _ = refl
++q-mono Many Many One  Many _ _ = refl
++q-mono Many Many Many Many _ _ = refl
+-- absurd cases from false premises:
++q-mono One  Zero _    _    () _
++q-mono Many Zero _    _    () _
++q-mono Many One  _    _    () _
++q-mono _    _    One  Zero _ ()
++q-mono _    _    Many Zero _ ()
++q-mono _    _    Many One  _ ()
