@@ -346,3 +346,61 @@ open Once.Type using (_+q_; _*q_; _⊔q_)
 ⊔q-Many-right Zero = refl
 ⊔q-Many-right One  = refl
 ⊔q-Many-right Many = refl
+
+-- Associativity of +q. Zero absorbs on the left side; Many absorbs
+-- completely; the interesting cases are One × One × {Zero, One, Many}.
++q-assoc : ∀ (q₁ q₂ q₃ : Quantity) → q₁ +q (q₂ +q q₃) ≡ (q₁ +q q₂) +q q₃
++q-assoc Zero _    _    = refl
++q-assoc Many Zero _    = refl
++q-assoc Many One  _    = refl
++q-assoc Many Many _    = refl
++q-assoc One  Zero _    = refl
++q-assoc One  One  Zero = refl
++q-assoc One  One  One  = refl
++q-assoc One  One  Many = refl
++q-assoc One  Many Zero = refl
++q-assoc One  Many One  = refl
++q-assoc One  Many Many = refl
+
+-- Associativity of *q. The clauses of `_*q_` overlap for concrete
+-- arguments, so we enumerate all 27 cases to force reduction.
+*q-assoc : ∀ (q₁ q₂ q₃ : Quantity) → q₁ *q (q₂ *q q₃) ≡ (q₁ *q q₂) *q q₃
+*q-assoc Zero Zero Zero = refl
+*q-assoc Zero Zero One  = refl
+*q-assoc Zero Zero Many = refl
+*q-assoc Zero One  Zero = refl
+*q-assoc Zero One  One  = refl
+*q-assoc Zero One  Many = refl
+*q-assoc Zero Many Zero = refl
+*q-assoc Zero Many One  = refl
+*q-assoc Zero Many Many = refl
+*q-assoc One  Zero Zero = refl
+*q-assoc One  Zero One  = refl
+*q-assoc One  Zero Many = refl
+*q-assoc One  One  Zero = refl
+*q-assoc One  One  One  = refl
+*q-assoc One  One  Many = refl
+*q-assoc One  Many Zero = refl
+*q-assoc One  Many One  = refl
+*q-assoc One  Many Many = refl
+*q-assoc Many Zero Zero = refl
+*q-assoc Many Zero One  = refl
+*q-assoc Many Zero Many = refl
+*q-assoc Many One  Zero = refl
+*q-assoc Many One  One  = refl
+*q-assoc Many One  Many = refl
+*q-assoc Many Many Zero = refl
+*q-assoc Many Many One  = refl
+*q-assoc Many Many Many = refl
+
+-- Associativity of ⊔q.
+⊔q-assoc : ∀ (q₁ q₂ q₃ : Quantity) → q₁ ⊔q (q₂ ⊔q q₃) ≡ (q₁ ⊔q q₂) ⊔q q₃
+⊔q-assoc Zero _    _    = refl
+⊔q-assoc One  Zero _    = refl
+⊔q-assoc One  One  Zero = refl
+⊔q-assoc One  One  One  = refl
+⊔q-assoc One  One  Many = refl
+⊔q-assoc One  Many _    = refl
+⊔q-assoc Many Zero _    = refl
+⊔q-assoc Many One  _    = refl
+⊔q-assoc Many Many _    = refl
