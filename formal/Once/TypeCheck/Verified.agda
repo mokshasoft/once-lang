@@ -46,6 +46,7 @@ open import Data.Maybe using (Maybe; nothing)
 open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
 import Data.String
+import Data.Bool
 
 import Once.TypeCheck.Determinism  as Det
 import Once.TypeCheck.Totality     as Tot
@@ -548,6 +549,193 @@ record VerifiedTypeChecker : Set₁ where
       → ∃[ eE ] ∃[ d ] ∃[ f ]
           tcInfer ctx (RQualified name alias) ≡ success T Surface.zeroUsage eE d f
 
+    -- RPair: both subs infer → outer succeeds.
+    tcInfer-complete-RPair :
+      ∀ (ctx : NamedCtx) (a b : RawExpr) {A B : Type}
+        {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+        {aE : SExpr (NamedCtx.debruijn ctx) Ψ₁ A}
+        {bE : SExpr (NamedCtx.debruijn ctx) Ψ₂ B}
+        {dA dB fA fB : _}
+      → tcInfer ctx a ≡ success A Ψ₁ aE dA fA
+      → tcInfer ctx b ≡ success B Ψ₂ bE dB fB
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RPair a b) ≡ success (A Once.Type.* B) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+
+    -- RUnaryOp OpNeg: sub at Int → outer success at Int.
+    tcInfer-complete-RUnaryOp-neg :
+      ∀ (ctx : NamedCtx) (e : RawExpr)
+        {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE' : SExpr (NamedCtx.debruijn ctx) Ψ Once.Type.Int}
+        {d' f' : _}
+      → tcInfer ctx e ≡ success Once.Type.Int Ψ eE' d' f'
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RUnaryOp OpNeg e) ≡ success Once.Type.Int Ψ eE d f
+
+    -- RAnnot: check-mode sub success → infer-mode success.
+    tcInfer-complete-RAnnot :
+      ∀ (ctx : NamedCtx) (e : RawExpr) (T : Type)
+        {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE' : SExpr (NamedCtx.debruijn ctx) Ψ T}
+        {d' f' : _}
+      → tcCheck ctx e T ≡ success Ψ eE' d' f'
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RAnnot e T) ≡ success T Ψ eE d f
+
+    -- RLet: sub₁ + extended-context sub₂ both infer → outer success.
+    tcInfer-complete-RLet :
+      ∀ (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
+        {A B : Type} {q : _}
+        {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+        {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ A}
+        {e₂E : SExpr (NamedCtx.debruijn (extendNamedCtx ctx x A))
+                     (q Once.Surface.Syntax.Usage.∷ Ψ₂) B}
+        {d₁ d₂ f₁ f₂ : _}
+      → tcInfer ctx e₁ ≡ success A Ψ₁ e₁E d₁ f₁
+      → tcInfer (extendNamedCtx ctx x A) e₂
+          ≡ success B (q Once.Surface.Syntax.Usage.∷ Ψ₂) e₂E d₂ f₂
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RLet x e₁ e₂)
+            ≡ success B (Ψ₂ Surface.+ᵘ (q Surface.*ᵘ Ψ₁)) eE d f
+
+    -- RApp polymorphic builtin completenesses
+    tcInfer-complete-RApp-id :
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {T : Type}
+        {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {argE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+        {d' f' : _}
+      → tcInfer ctx arg ≡ success T Ψ argE d' f'
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RApp (RVar "id") arg)
+            ≡ success T (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
+
+    tcInfer-complete-RApp-fst :
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {A B : Type}
+        {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.* B)}
+        {d' f' : _}
+      → tcInfer ctx arg ≡ success (A Once.Type.* B) Ψ argE d' f'
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RApp (RVar "fst") arg)
+            ≡ success A (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
+
+    tcInfer-complete-RApp-snd :
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {A B : Type}
+        {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {argE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.* B)}
+        {d' f' : _}
+      → tcInfer ctx arg ≡ success (A Once.Type.* B) Ψ argE d' f'
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RApp (RVar "snd") arg)
+            ≡ success B (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
+
+    tcInfer-complete-RApp-terminal :
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {T : Type}
+        {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {argE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+        {d' f' : _}
+      → tcInfer ctx arg ≡ success T Ψ argE d' f'
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RApp (RVar "terminal") arg)
+            ≡ success Once.Type.Unit (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE d f
+
+    -- RVar local and import
+    tcInfer-complete-RVar-local :
+      ∀ (ctx : NamedCtx) (x : String) {A : Type}
+        {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE' : SExpr (NamedCtx.debruijn ctx) Ψ A}
+      → ¬ (x ≡ "unit")
+      → lookupLocal ctx x ≡ just (A , Ψ , eE')
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RVar x) ≡ success A Ψ eE d f
+
+    tcInfer-complete-RVar-import :
+      ∀ (ctx : NamedCtx) (x : String) {T : Type}
+      → ¬ (x ≡ "unit")
+      → lookupLocal ctx x ≡ nothing
+      → lookupImport (NamedCtx.imports ctx) x ≡ just T
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RVar x) ≡ success T Surface.zeroUsage eE d f
+
+    -- RBinOp (arithmetic / comparison families)
+    tcInfer-complete-RBinOp-arith :
+      ∀ (ctx : NamedCtx) (op : BinOp) (arithEq : Raw.isArithmeticOp op ≡ Data.Bool.true)
+        (e₁ e₂ : RawExpr)
+        {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+        {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Once.Type.Int}
+        {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Once.Type.Int}
+        {d₁ d₂ f₁ f₂ : _}
+      → tcInfer ctx e₁ ≡ success Once.Type.Int Ψ₁ e₁E d₁ f₁
+      → tcInfer ctx e₂ ≡ success Once.Type.Int Ψ₂ e₂E d₂ f₂
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RBinOp op e₁ e₂) ≡ success Once.Type.Int (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+
+    tcInfer-complete-RBinOp-cmp :
+      ∀ (ctx : NamedCtx) (op : BinOp) (cmpEq : Raw.isComparisonOp op ≡ Data.Bool.true)
+        (e₁ e₂ : RawExpr)
+        {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+        {e₁E : SExpr (NamedCtx.debruijn ctx) Ψ₁ Once.Type.Int}
+        {e₂E : SExpr (NamedCtx.debruijn ctx) Ψ₂ Once.Type.Int}
+        {d₁ d₂ f₁ f₂ : _}
+      → tcInfer ctx e₁ ≡ success Once.Type.Int Ψ₁ e₁E d₁ f₁
+      → tcInfer ctx e₂ ≡ success Once.Type.Int Ψ₂ e₂E d₂ f₂
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RBinOp op e₁ e₂)
+            ≡ success (Once.Type.Unit Once.Type.+ Once.Type.Unit) (Ψ₁ Surface.+ᵘ Ψ₂) eE d f
+
+    -- RDestruct (case/sum elim)
+    tcInfer-complete-RDestruct :
+      ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
+        (xR : String) (eR : RawExpr) {A B : Type}
+        {Ψs : Surface.Usage (NamedCtx.size ctx)}
+        {scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A Once.Type.+ B)}
+        {ds fs : _}
+        (C : Type) {qℓ qr : _}
+        {Ψₗ : Surface.Usage (NamedCtx.size ctx)}
+        {eLE : SExpr (NamedCtx.debruijn (extendNamedCtx ctx xL A))
+                     (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) C}
+        {dL fL : _}
+        {Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
+        {eRE : SExpr (NamedCtx.debruijn (extendNamedCtx ctx xR B))
+                     (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) C}
+        {dR fR : _}
+      → tcInfer ctx scrut ≡ success (A Once.Type.+ B) Ψs scrutE ds fs
+      → tcInfer (extendNamedCtx ctx xL A) eL
+          ≡ success C (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
+      → tcInfer (extendNamedCtx ctx xR B) eR
+          ≡ success C (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (Raw.RDestruct scrut xL eL xR eR)
+            ≡ success C (Ψs Surface.+ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
+
+    -- Generic RApp
+    tcInfer-complete-RApp-generic :
+      ∀ (ctx : NamedCtx) (f x : RawExpr) (A : Type) {B : Type} {q : _}
+        {Ψf : Surface.Usage (NamedCtx.size ctx)}
+        {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A Once.Type.⇒[ q ] B)}
+        {df ff : _}
+        {Ψx : Surface.Usage (NamedCtx.size ctx)}
+        {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
+        {dx fx : _}
+      → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+      → tcInfer ctx f ≡ success (A Once.Type.⇒[ q ] B) Ψf fE df ff
+      → tcInfer ctx x ≡ success A Ψx xE dx fx
+      → ∃[ eE ] ∃[ d ] ∃[ f' ]
+          tcInfer ctx (RApp f x) ≡ success B (Ψf Surface.+ᵘ (q Surface.*ᵘ Ψx)) eE d f'
+
+    -- Check-mode RLam
+    tcCheck-complete-RLam :
+      ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
+        (A : Type) (q q' : _) (B : Type)
+        {Ψ' : Surface.Usage (NamedCtx.size ctx)}
+        {eE' : SExpr (NamedCtx.debruijn (extendNamedCtx ctx x A))
+                     (q' Once.Surface.Syntax.Usage.∷ Ψ') B}
+        {d' f' : _}
+      → (q' Once.Type.≤q q) ≡ Data.Bool.true
+      → tcCheck (extendNamedCtx ctx x A) body B
+          ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcCheck ctx (RLam x body) (A Once.Type.⇒[ q ] B) ≡ success Ψ' eE d f
+
     ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips
     -- through the internal `Type` representation on its expressible
@@ -628,6 +816,21 @@ verifiedTypeChecker = record
   ; tcInfer-complete-RVar-unit    = λ ctx → Cmp.infer-complete-RVar-unit {ctx = ctx}
   ; tcInfer-complete-RQualified   = λ ctx name alias T eq →
                                      Cmp.infer-complete-RQualified {ctx = ctx} {name = name} {alias = alias} {T = T} eq
+  ; tcInfer-complete-RPair        = λ ctx → Cmp.infer-complete-RPair
+  ; tcInfer-complete-RUnaryOp-neg = λ ctx → Cmp.infer-complete-RUnaryOp-neg
+  ; tcInfer-complete-RAnnot       = λ ctx → Cmp.infer-complete-RAnnot
+  ; tcInfer-complete-RLet         = λ ctx → Cmp.infer-complete-RLet
+  ; tcInfer-complete-RApp-id      = λ ctx → Cmp.infer-complete-RApp-id
+  ; tcInfer-complete-RApp-fst     = λ ctx → Cmp.infer-complete-RApp-fst
+  ; tcInfer-complete-RApp-snd     = λ ctx → Cmp.infer-complete-RApp-snd
+  ; tcInfer-complete-RApp-terminal = λ ctx → Cmp.infer-complete-RApp-terminal
+  ; tcInfer-complete-RVar-local   = λ ctx → Cmp.infer-complete-RVar-local
+  ; tcInfer-complete-RVar-import  = λ ctx → Cmp.infer-complete-RVar-import
+  ; tcInfer-complete-RBinOp-arith = λ ctx → Cmp.infer-complete-RBinOp-arith
+  ; tcInfer-complete-RBinOp-cmp   = λ ctx → Cmp.infer-complete-RBinOp-cmp
+  ; tcInfer-complete-RDestruct    = λ ctx → Cmp.infer-complete-RDestruct
+  ; tcInfer-complete-RApp-generic = λ ctx → Cmp.infer-complete-RApp-generic
+  ; tcCheck-complete-RLam         = Cmp.check-complete-RLam
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
