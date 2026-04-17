@@ -230,3 +230,47 @@ _ = refl
 -- μ-type is rejected:
 _ : typeToGType (T.μ-type (T.K T.Int)) ≡ nothing
 _ = refl
+
+------------------------------------------------------------------------
+-- Grammar-expressibility characterisation
+--
+-- An internal `Type` is grammar-expressible exactly when it avoids
+-- the `μ-type` / `ν-type` constructors (the two Type constructors
+-- without corresponding `GType` constructors). This predicate +
+-- lemma pair provides a structural characterisation independent
+-- of the partial conversion function.
+------------------------------------------------------------------------
+
+data NoMuNu : Type → Set where
+  nmn-unit   : NoMuNu T.Unit
+  nmn-void   : NoMuNu T.Void
+  nmn-int    : NoMuNu T.Int
+  nmn-float  : NoMuNu T.Float
+  nmn-str    : NoMuNu T.Str
+  nmn-buffer : NoMuNu T.Buffer
+  nmn-prod   : ∀ {A B} → NoMuNu A → NoMuNu B → NoMuNu (A T.* B)
+  nmn-sum    : ∀ {A B} → NoMuNu A → NoMuNu B → NoMuNu (A T.+ B)
+  nmn-fun    : ∀ {A B q} → NoMuNu A → NoMuNu B → NoMuNu (A T.⇒[ q ] B)
+  nmn-eff    : ∀ {A B} → NoMuNu A → NoMuNu B → NoMuNu (T.Eff A B)
+
+-- | `NoMuNu t` suffices for `typeToGType t` to return `just _`.
+typeToGType-NoMuNu :
+  ∀ {t : Type} → NoMuNu t → Σ[ g ∈ GType ] typeToGType t ≡ just g
+typeToGType-NoMuNu nmn-unit   = G.TUnit   , refl
+typeToGType-NoMuNu nmn-void   = G.TVoid   , refl
+typeToGType-NoMuNu nmn-int    = G.TInt    , refl
+typeToGType-NoMuNu nmn-float  = G.TFloat  , refl
+typeToGType-NoMuNu nmn-str    = G.TString , refl
+typeToGType-NoMuNu nmn-buffer = G.TBuffer , refl
+typeToGType-NoMuNu (nmn-prod nrA nrB)
+  with typeToGType-NoMuNu nrA | typeToGType-NoMuNu nrB
+... | gA , eqA | gB , eqB rewrite eqA | eqB = (gA G.⊗ gB) , refl
+typeToGType-NoMuNu (nmn-sum nrA nrB)
+  with typeToGType-NoMuNu nrA | typeToGType-NoMuNu nrB
+... | gA , eqA | gB , eqB rewrite eqA | eqB = (gA G.⊕ gB) , refl
+typeToGType-NoMuNu (nmn-fun {q = q} nrA nrB)
+  with typeToGType-NoMuNu nrA | typeToGType-NoMuNu nrB
+... | gA , eqA | gB , eqB rewrite eqA | eqB = (gA G.⇒[ q ] gB) , refl
+typeToGType-NoMuNu (nmn-eff nrA nrB)
+  with typeToGType-NoMuNu nrA | typeToGType-NoMuNu nrB
+... | gA , eqA | gB , eqB rewrite eqA | eqB = G.TEff gA gB , refl
