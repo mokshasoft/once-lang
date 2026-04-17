@@ -47,7 +47,8 @@ import Once.TypeCheck.Determinism as Det
 import Once.TypeCheck.Totality    as Tot
 import Once.TypeCheck.Soundness   as Snd
 open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
-open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RAnnot; RPair; RUnaryOp; OpNeg)
+open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RUnaryOp; OpNeg)
+open import Data.String using (String)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
 open Conv using (typeToGType; gtypeToType)
@@ -178,6 +179,13 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RPair a b) ≡ success A Ψ eE d f
       → ctx ⊢ RPair a b ∶ A ⨾ Ψ
 
+    tcInfer-sound-RQualified :
+      ∀ (ctx : NamedCtx) (name alias : String)
+        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
+      → tcInfer ctx (RQualified name alias) ≡ success A Ψ eE d f
+      → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
+
     ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips
     -- through the internal `Type` representation on its expressible
@@ -219,6 +227,7 @@ verifiedTypeChecker = record
   ; tcInfer-sound-RUnaryOp-neg    = Snd.sound-RUnaryOp-neg
   ; tcInfer-sound-RAnnot          = Snd.sound-RAnnot
   ; tcInfer-sound-RPair           = Snd.sound-RPair
+  ; tcInfer-sound-RQualified      = Snd.sound-RQualified
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }

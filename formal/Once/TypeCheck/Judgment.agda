@@ -38,9 +38,11 @@ open import Relation.Binary.PropositionalEquality using (_≡_)
 open import Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
                              _*_; _+_; _⇒[_]_; Quantity)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RInt; RStringLit; RUnit; RAnnot; RPair;
+  using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
          RUnaryOp; OpNeg; UnaryOp)
-open import Once.TypeCheck.Elaborate using (NamedCtx; lookupLocal)
+open import Once.TypeCheck.Elaborate using (NamedCtx; lookupLocal; lookupImport)
+
+open import Data.String using (_++_)
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_)
   renaming (Expr to SExpr; Ctx to SCtx)
@@ -129,6 +131,18 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
           {Ψ : Surface.Usage (NamedCtx.size ctx)}
         → ctx ⊢ e ∶ Int ⨾ Ψ
         → ctx ⊢ RUnaryOp OpNeg e ∶ Int ⨾ Ψ
+
+  ----------------------------------------------------------------
+  -- Qualified names (imported identifiers: `name@alias`)
+  --
+  -- The elaborator looks up "alias.name" in the imports. If found,
+  -- the result is a primitive with that type and zero usage (no
+  -- local variables consumed).
+  ----------------------------------------------------------------
+
+  t-var-qualified : ∀ {ctx : NamedCtx} {name alias : String} {T : Type}
+                  → lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name) ≡ just T
+                  → ctx ⊢ RQualified name alias ∶ T ⨾ zeroUsage
 
   ----------------------------------------------------------------
   -- TODO (future G2 passes): rules for

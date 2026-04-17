@@ -37,11 +37,12 @@ open import Relation.Binary.PropositionalEquality
 open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
                                   _*_; _+_; _⇒[_]_)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RInt; RStringLit; RUnit; RAnnot; RPair;
+  using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
          RUnaryOp; OpNeg)
+open import Data.String using (_++_)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure; lookupLocal)
+         success; failure; lookupLocal; lookupImport)
 open import Once.TypeCheck.Judgment
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_)
@@ -229,4 +230,34 @@ sound-RPair ctx a b IHa IHb eq
 ... | ()
 sound-RPair ctx a b IHa IHb eq | failure _ , eqA
   rewrite eqA with eq
+... | ()
+
+------------------------------------------------------------------------
+-- Soundness for RQualified
+--
+-- No recursion — a `RQualified` either resolves in the imports table
+-- or fails. We case-split on the lookup result and either apply
+-- `t-var-qualified` (success) or close with an absurd pattern (failure).
+------------------------------------------------------------------------
+
+-- Bundle wrapping `lookupImport` calls (single-shot, no IH involved).
+LookupBundle : (xs : _) → (q : _) → Set
+LookupBundle xs q = ∃[ r ] lookupImport xs q ≡ r
+
+lookupBundle : ∀ xs q → LookupBundle xs q
+lookupBundle xs q = lookupImport xs q , refl
+
+sound-RQualified :
+  ∀ (ctx : NamedCtx) (name alias : _)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → inferElab ctx (RQualified name alias) ≡ success A Ψ eE d f
+  → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
+sound-RQualified ctx name alias eq
+  with lookupBundle (NamedCtx.imports ctx) (alias ++ "." ++ name)
+sound-RQualified ctx name alias eq | just T , eqLookup
+  rewrite eqLookup with eq
+... | refl = t-var-qualified eqLookup
+sound-RQualified ctx name alias eq | nothing , eqLookup
+  rewrite eqLookup with eq
 ... | ()
