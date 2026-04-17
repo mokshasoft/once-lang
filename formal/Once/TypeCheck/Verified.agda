@@ -38,16 +38,22 @@ open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
-         success; failure; extendNamedCtx)
+         success; failure; extendNamedCtx; lookupImport)
+open import Data.Maybe using (Maybe; nothing)
 
 open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
+import Data.String
 
 import Once.TypeCheck.Determinism as Det
 import Once.TypeCheck.Totality    as Tot
 import Once.TypeCheck.Soundness   as Snd
+import Once.TypeCheck.ErrorProofs as EP
 open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
-open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RUnaryOp; OpNeg)
+open import Once.TypeCheck.Error using (TypeError; renderError;
+  LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
+  UnboundQualified)
+open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RUnaryOp; OpNeg; RLam; RApp)
 open import Data.String using (String)
 import Once.Grammar.Convert       as Conv
 open import Once.Grammar using (GType)
@@ -186,6 +192,42 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RQualified name alias) ≡ success A Ψ eE d f
       → ctx ⊢ RQualified name alias ∶ A ⨾ Ψ
 
+    ----------------------------------------------------------------
+    -- G4 (partial): structured-error preservation.
+    -- Each theorem pins a specific elaborator failure path to a
+    -- canonical `TypeError` variant (via `renderError`).
+    ----------------------------------------------------------------
+
+    tc-err-lam-infer :
+      ∀ (ctx : NamedCtx) (x : String) (body : RawExpr) {msg : String}
+      → tcInfer ctx (RLam x body) ≡ failure msg
+      → msg ≡ renderError LambdaInInferMode
+
+    tc-err-inl-infer :
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {msg : String}
+      → tcInfer ctx (RApp (RVar "inl") arg) ≡ failure msg
+      → msg ≡ renderError InlInInferMode
+
+    tc-err-inr-infer :
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {msg : String}
+      → tcInfer ctx (RApp (RVar "inr") arg) ≡ failure msg
+      → msg ≡ renderError InrInInferMode
+
+    tc-err-initial-infer :
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {msg : String}
+      → tcInfer ctx (RApp (RVar "initial") arg) ≡ failure msg
+      → msg ≡ renderError InitialInInferMode
+
+    tc-err-qualified-unbound :
+      ∀ (ctx : NamedCtx) (name alias : String) {msg : String}
+      → lookupImport (NamedCtx.imports ctx) (alias Data.String.++ "." Data.String.++ name) ≡ nothing
+      → tcInfer ctx (RQualified name alias) ≡ failure msg
+      → msg ≡ renderError (UnboundQualified name alias)
+
+    ----------------------------------------------------------------
+    -- G2 (continued): remaining soundness fields.
+    ----------------------------------------------------------------
+
     tcInfer-sound-RLet :
       ∀ (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
         {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -242,6 +284,11 @@ verifiedTypeChecker = record
   ; tcInfer-sound-RPair           = Snd.sound-RPair
   ; tcInfer-sound-RQualified      = Snd.sound-RQualified
   ; tcInfer-sound-RLet            = Snd.sound-RLet
+  ; tc-err-lam-infer              = EP.lam-infer-is-LambdaInInferMode
+  ; tc-err-inl-infer              = EP.inl-app-infer-is-InlInInferMode
+  ; tc-err-inr-infer              = EP.inr-app-infer-is-InrInInferMode
+  ; tc-err-initial-infer          = EP.initial-app-infer-is-InitialInInferMode
+  ; tc-err-qualified-unbound      = EP.qualified-not-found-is-UnboundQualified
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
