@@ -218,3 +218,59 @@ var-unbound-is-UnboundVariable ctx x x≢unit eqLoc eqImp eqFail with x Data.Str
 ... | yes p  = ⊥-elim (x≢unit p)
 ... | no  _ rewrite eqLoc | eqImp with eqFail
 ...   | refl = refl
+
+-- snd argument infers to non-product → SndNeedsPair (mirror of fst).
+snd-non-pair-Unit : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                    {Ψ' eE' d' f' msg}
+                  → Once.TypeCheck.Elaborate.inferElab ctx arg
+                      ≡ success Unit Ψ' eE' d' f'
+                  → Once.TypeCheck.Elaborate.inferElab ctx (Raw.RApp (Raw.RVar "snd") arg)
+                      ≡ failure msg
+                  → msg ≡ renderError SndNeedsPair
+snd-non-pair-Unit ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+snd-non-pair-Int : ∀ (ctx : NamedCtx) (arg : Raw.RawExpr)
+                   {Ψ' eE' d' f' msg}
+                 → Once.TypeCheck.Elaborate.inferElab ctx arg
+                     ≡ success Int Ψ' eE' d' f'
+                 → Once.TypeCheck.Elaborate.inferElab ctx (Raw.RApp (Raw.RVar "snd") arg)
+                     ≡ failure msg
+                 → msg ≡ renderError SndNeedsPair
+snd-non-pair-Int ctx arg eqSub eqFail rewrite eqSub with eqFail
+... | refl = refl
+
+------------------------------------------------------------------------
+-- Case (RDestruct) error paths
+--
+-- `CaseScrutineeNotSum` fires when the scrutinee has a non-sum type.
+-- `CaseBranchMismatch` fires when the two branches have different
+-- result types (the `C₁ ≟T C₂` returns `no`).
+------------------------------------------------------------------------
+
+-- Scrutinee has Unit (or another non-sum) → CaseScrutineeNotSum.
+case-scrut-Unit : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+                  (xL : Data.String.String) (eL : Raw.RawExpr)
+                  (xR : Data.String.String) (eR : Raw.RawExpr)
+                  {Ψ' eE' d' f' msg}
+                → Once.TypeCheck.Elaborate.inferElab ctx scrut
+                    ≡ success Unit Ψ' eE' d' f'
+                → Once.TypeCheck.Elaborate.inferElab ctx
+                    (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
+                → msg ≡ renderError CaseScrutineeNotSum
+case-scrut-Unit ctx scrut xL eL xR eR eqSub eqFail
+  rewrite eqSub with eqFail
+... | refl = refl
+
+case-scrut-Int : ∀ (ctx : NamedCtx) (scrut : Raw.RawExpr)
+                 (xL : Data.String.String) (eL : Raw.RawExpr)
+                 (xR : Data.String.String) (eR : Raw.RawExpr)
+                 {Ψ' eE' d' f' msg}
+               → Once.TypeCheck.Elaborate.inferElab ctx scrut
+                   ≡ success Int Ψ' eE' d' f'
+               → Once.TypeCheck.Elaborate.inferElab ctx
+                   (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
+               → msg ≡ renderError CaseScrutineeNotSum
+case-scrut-Int ctx scrut xL eL xR eR eqSub eqFail
+  rewrite eqSub with eqFail
+... | refl = refl

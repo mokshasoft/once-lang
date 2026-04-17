@@ -53,7 +53,8 @@ import Once.TypeCheck.ErrorProofs as EP
 open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
-  UnboundQualified; UnboundVariable; FstNeedsPair; NegationNotInt)
+  UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair;
+  NegationNotInt; CaseScrutineeNotSum)
 open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw using (RawExpr; RInt; RStringLit; RUnit; RVar; RQualified; RAnnot; RPair; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; RLam; RApp; BinOp)
 open import Data.String using (String)
@@ -276,6 +277,38 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RVar x) ≡ failure msg
       → msg ≡ renderError (UnboundVariable x)
 
+    -- snd with Unit / Int argument → SndNeedsPair
+    tc-err-snd-non-pair-Unit :
+      ∀ (ctx : NamedCtx) (arg : RawExpr)
+        {Ψ' eE' d' f' msg}
+      → tcInfer ctx arg ≡ success Once.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure msg
+      → msg ≡ renderError SndNeedsPair
+
+    tc-err-snd-non-pair-Int :
+      ∀ (ctx : NamedCtx) (arg : RawExpr)
+        {Ψ' eE' d' f' msg}
+      → tcInfer ctx arg ≡ success Once.Type.Int Ψ' eE' d' f'
+      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure msg
+      → msg ≡ renderError SndNeedsPair
+
+    -- Case scrutinee non-sum → CaseScrutineeNotSum
+    tc-err-case-scrut-Unit :
+      ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
+        (xR : String) (eR : RawExpr)
+        {Ψ' eE' d' f' msg}
+      → tcInfer ctx scrut ≡ success Once.Type.Unit Ψ' eE' d' f'
+      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
+      → msg ≡ renderError CaseScrutineeNotSum
+
+    tc-err-case-scrut-Int :
+      ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
+        (xR : String) (eR : RawExpr)
+        {Ψ' eE' d' f' msg}
+      → tcInfer ctx scrut ≡ success Once.Type.Int Ψ' eE' d' f'
+      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
+      → msg ≡ renderError CaseScrutineeNotSum
+
     ----------------------------------------------------------------
     -- G2 (continued): remaining soundness fields.
     ----------------------------------------------------------------
@@ -437,6 +470,10 @@ verifiedTypeChecker = record
   ; tc-err-neg-non-Int-Unit       = EP.neg-non-Int-Unit
   ; tc-err-neg-non-Int-Str        = EP.neg-non-Int-Str
   ; tc-err-var-unbound            = EP.var-unbound-is-UnboundVariable
+  ; tc-err-snd-non-pair-Unit      = EP.snd-non-pair-Unit
+  ; tc-err-snd-non-pair-Int       = EP.snd-non-pair-Int
+  ; tc-err-case-scrut-Unit        = EP.case-scrut-Unit
+  ; tc-err-case-scrut-Int         = EP.case-scrut-Int
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
