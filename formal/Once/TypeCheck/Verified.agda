@@ -60,7 +60,7 @@ import Once.TypeCheck.Soundness    as Snd
 import Once.TypeCheck.Completeness as Cmp
 import Once.TypeCheck.ErrorProofs  as EP
 import Once.TypeCheck.Identities   as Id
-open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
+open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_; _⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
   UnboundQualified; UnboundVariable; FstNeedsPair; SndNeedsPair;
@@ -584,9 +584,9 @@ record VerifiedTypeChecker : Set₁ where
         {d f : _}
       → (IH : ∀ {Ψ' eE' d' f'}
             → tcCheck (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
-            → (extendNamedCtx ctx x A) ⊢ body ∶ B ⨾ Ψ')
+            → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ Ψ')
       → tcCheck ctx (RLam x body) (A Once.Type.⇒[ q ] B) ≡ success Ψ eE d f
-      → ctx ⊢ RLam x body ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ
+      → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ
 
     tcInfer-sound-RLet :
       ∀ (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)

@@ -203,7 +203,7 @@ sound-RAnnot :
 sound-RAnnot ctx e T IH eq with checkBundle ctx e T
 sound-RAnnot ctx e T IH eq | success _ _ _ _ , eqSub
   rewrite eqSub with eq
-... | refl = t-annot (IH refl)
+... | refl = t-annot (t-embed (IH refl))
 sound-RAnnot ctx e T IH eq | failure _ , eqSub
   rewrite eqSub with eq
 ... | ()
@@ -733,9 +733,9 @@ sound-check-RLam :
     {d f : ℕ}
   → (IH : ∀ {Ψ' eE' d' f'}
         → checkElab (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
-        → (extendNamedCtx ctx x A) ⊢ body ∶ B ⨾ Ψ')
+        → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ Ψ')
   → checkElab ctx (RLam x body) (A T.⇒[ q ] B) ≡ success Ψ eE d f
-  → ctx ⊢ RLam x body ∶ (A T.⇒[ q ] B) ⨾ Ψ
+  → ctx ⊢ᶜ RLam x body ∶ (A T.⇒[ q ] B) ⨾ Ψ
 sound-check-RLam ctx x body A q B IH eq with lamBodyBundle ctx x A body B
 sound-check-RLam ctx x body A q B IH eq
   | success (q' ∷ᵘ Ψ') bodyE d f , eqBody
