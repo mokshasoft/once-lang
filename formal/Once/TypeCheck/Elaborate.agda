@@ -79,379 +79,433 @@ weakenFromEmpty {Γ = Γ S, B ^ q} e = coerceQuantity (weaken {A = B} {q = q} (w
 -- Type Equality (Decidable with proof)
 ------------------------------------------------------------------------
 
--- | Functor equality (postulated for OCP-0003)
-postulate _≟F_ : (F G : Functor) → Dec (F ≡ G)
+-- | Decidable functor and type equality (mutually recursive)
+mutual
+  -- | Decidable functor equality
+  _≟F_ : (F G : Functor) → Dec (F ≡ G)
+  K A ≟F K B with A ≟T B
+  ... | yes refl = yes refl
+  ... | no ¬p = no λ { refl → ¬p refl }
+  Id ≟F Id = yes refl
+  (F₁ ⊕ G₁) ≟F (F₂ ⊕ G₂) with F₁ ≟F F₂ | G₁ ≟F G₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  (F₁ ⊗ G₁) ≟F (F₂ ⊗ G₂) with F₁ ≟F F₂ | G₁ ≟F G₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  -- Mismatched constructors
+  K _ ≟F Id = no λ ()
+  K _ ≟F (_ ⊕ _) = no λ ()
+  K _ ≟F (_ ⊗ _) = no λ ()
+  Id ≟F K _ = no λ ()
+  Id ≟F (_ ⊕ _) = no λ ()
+  Id ≟F (_ ⊗ _) = no λ ()
+  (_ ⊕ _) ≟F K _ = no λ ()
+  (_ ⊕ _) ≟F Id = no λ ()
+  (_ ⊕ _) ≟F (_ ⊗ _) = no λ ()
+  (_ ⊗ _) ≟F K _ = no λ ()
+  (_ ⊗ _) ≟F Id = no λ ()
+  (_ ⊗ _) ≟F (_ ⊕ _) = no λ ()
 
--- | Decidable type equality
-_≟T_ : (A B : Type) → Dec (A ≡ B)
-Unit ≟T Unit = yes refl
-Void ≟T Void = yes refl
-Int ≟T Int = yes refl
-Float ≟T Float = yes refl
-Str ≟T Str = yes refl
-Buffer ≟T Buffer = yes refl
-(A₁ Once.Type.* B₁) ≟T (A₂ Once.Type.* B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
-(A₁ Once.Type.+ B₁) ≟T (A₂ Once.Type.+ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
-(A₁ ⇒[ q₁ ] B₁) ≟T (A₂ ⇒[ q₂ ] B₂) with A₁ ≟T A₂ | q₁ ≟q q₂ | B₁ ≟T B₂
-... | yes refl | yes refl | yes refl = yes refl
-... | no ¬p | _ | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q | _ = no λ { refl → ¬q refl }
-... | _ | _ | no ¬r = no λ { refl → ¬r refl }
-(Eff A₁ B₁) ≟T (Eff A₂ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
--- OCP-0003: Fix removed
--- TVar removed from Type; now in PolyType (see Once.Type)
--- All other combinations are unequal
-Unit ≟T Void = no λ ()
-Unit ≟T Int = no λ ()
-Unit ≟T Float = no λ ()
-Unit ≟T Str = no λ ()
-Unit ≟T Buffer = no λ ()
-Unit ≟T (_ Once.Type.* _) = no λ ()
-Unit ≟T (_ Once.Type.+ _) = no λ ()
-Unit ≟T (_ ⇒[ _ ] _) = no λ ()
-Unit ≟T Eff _ _ = no λ ()
-Void ≟T Unit = no λ ()
-Void ≟T Int = no λ ()
-Void ≟T Float = no λ ()
-Void ≟T Str = no λ ()
-Void ≟T Buffer = no λ ()
-Void ≟T (_ Once.Type.* _) = no λ ()
-Void ≟T (_ Once.Type.+ _) = no λ ()
-Void ≟T (_ ⇒[ _ ] _) = no λ ()
-Void ≟T Eff _ _ = no λ ()
-Int ≟T Unit = no λ ()
-Int ≟T Void = no λ ()
-Int ≟T Float = no λ ()
-Int ≟T Str = no λ ()
-Int ≟T Buffer = no λ ()
-Int ≟T (_ Once.Type.* _) = no λ ()
-Int ≟T (_ Once.Type.+ _) = no λ ()
-Int ≟T (_ ⇒[ _ ] _) = no λ ()
-Int ≟T Eff _ _ = no λ ()
-Float ≟T Unit = no λ ()
-Float ≟T Void = no λ ()
-Float ≟T Int = no λ ()
-Float ≟T Str = no λ ()
-Float ≟T Buffer = no λ ()
-Float ≟T (_ Once.Type.* _) = no λ ()
-Float ≟T (_ Once.Type.+ _) = no λ ()
-Float ≟T (_ ⇒[ _ ] _) = no λ ()
-Float ≟T Eff _ _ = no λ ()
-Str ≟T Unit = no λ ()
-Str ≟T Void = no λ ()
-Str ≟T Int = no λ ()
-Str ≟T Float = no λ ()
-Str ≟T Buffer = no λ ()
-Str ≟T (_ Once.Type.* _) = no λ ()
-Str ≟T (_ Once.Type.+ _) = no λ ()
-Str ≟T (_ ⇒[ _ ] _) = no λ ()
-Str ≟T Eff _ _ = no λ ()
-Buffer ≟T Unit = no λ ()
-Buffer ≟T Void = no λ ()
-Buffer ≟T Int = no λ ()
-Buffer ≟T Float = no λ ()
-Buffer ≟T Str = no λ ()
-Buffer ≟T (_ Once.Type.* _) = no λ ()
-Buffer ≟T (_ Once.Type.+ _) = no λ ()
-Buffer ≟T (_ ⇒[ _ ] _) = no λ ()
-Buffer ≟T Eff _ _ = no λ ()
-(_ Once.Type.* _) ≟T Unit = no λ ()
-(_ Once.Type.* _) ≟T Void = no λ ()
-(_ Once.Type.* _) ≟T Int = no λ ()
-(_ Once.Type.* _) ≟T Float = no λ ()
-(_ Once.Type.* _) ≟T Str = no λ ()
-(_ Once.Type.* _) ≟T Buffer = no λ ()
-(_ Once.Type.* _) ≟T (_ Once.Type.+ _) = no λ ()
-(_ Once.Type.* _) ≟T (_ ⇒[ _ ] _) = no λ ()
-(_ Once.Type.* _) ≟T Eff _ _ = no λ ()
-(_ Once.Type.+ _) ≟T Unit = no λ ()
-(_ Once.Type.+ _) ≟T Void = no λ ()
-(_ Once.Type.+ _) ≟T Int = no λ ()
-(_ Once.Type.+ _) ≟T Float = no λ ()
-(_ Once.Type.+ _) ≟T Str = no λ ()
-(_ Once.Type.+ _) ≟T Buffer = no λ ()
-(_ Once.Type.+ _) ≟T (_ Once.Type.* _) = no λ ()
-(_ Once.Type.+ _) ≟T (_ ⇒[ _ ] _) = no λ ()
-(_ Once.Type.+ _) ≟T Eff _ _ = no λ ()
-(_ ⇒[ _ ] _) ≟T Unit = no λ ()
-(_ ⇒[ _ ] _) ≟T Void = no λ ()
-(_ ⇒[ _ ] _) ≟T Int = no λ ()
-(_ ⇒[ _ ] _) ≟T Float = no λ ()
-(_ ⇒[ _ ] _) ≟T Str = no λ ()
-(_ ⇒[ _ ] _) ≟T Buffer = no λ ()
-(_ ⇒[ _ ] _) ≟T (_ Once.Type.* _) = no λ ()
-(_ ⇒[ _ ] _) ≟T (_ Once.Type.+ _) = no λ ()
-(_ ⇒[ _ ] _) ≟T Eff _ _ = no λ ()
-Eff _ _ ≟T Unit = no λ ()
-Eff _ _ ≟T Void = no λ ()
-Eff _ _ ≟T Int = no λ ()
-Eff _ _ ≟T Float = no λ ()
-Eff _ _ ≟T Str = no λ ()
-Eff _ _ ≟T Buffer = no λ ()
-Eff _ _ ≟T (_ Once.Type.* _) = no λ ()
-Eff _ _ ≟T (_ Once.Type.+ _) = no λ ()
-Eff _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
--- TVar removed from Type; now in PolyType (see Once.Type)
--- OCP-0003: μ-type and ν-type cases
-(μ-type F₁) ≟T (μ-type F₂) with F₁ ≟F F₂
-... | yes refl = yes refl
-... | no ¬p = no λ { refl → ¬p refl }
-(ν-type F₁) ≟T (ν-type F₂) with F₁ ≟F F₂
-... | yes refl = yes refl
-... | no ¬p = no λ { refl → ¬p refl }
-μ-type _ ≟T Unit = no λ ()
-μ-type _ ≟T Void = no λ ()
-μ-type _ ≟T Int = no λ ()
-μ-type _ ≟T Float = no λ ()
-μ-type _ ≟T Str = no λ ()
-μ-type _ ≟T Buffer = no λ ()
-μ-type _ ≟T (_ Once.Type.* _) = no λ ()
-μ-type _ ≟T (_ Once.Type.+ _) = no λ ()
-μ-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
-μ-type _ ≟T Eff _ _ = no λ ()
-μ-type _ ≟T ν-type _ = no λ ()
-ν-type _ ≟T Unit = no λ ()
-ν-type _ ≟T Void = no λ ()
-ν-type _ ≟T Int = no λ ()
-ν-type _ ≟T Float = no λ ()
-ν-type _ ≟T Str = no λ ()
-ν-type _ ≟T Buffer = no λ ()
-ν-type _ ≟T (_ Once.Type.* _) = no λ ()
-ν-type _ ≟T (_ Once.Type.+ _) = no λ ()
-ν-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
-ν-type _ ≟T Eff _ _ = no λ ()
-ν-type _ ≟T μ-type _ = no λ ()
-Unit ≟T μ-type _ = no λ ()
-Unit ≟T ν-type _ = no λ ()
-Void ≟T μ-type _ = no λ ()
-Void ≟T ν-type _ = no λ ()
-Int ≟T μ-type _ = no λ ()
-Int ≟T ν-type _ = no λ ()
-Float ≟T μ-type _ = no λ ()
-Float ≟T ν-type _ = no λ ()
-Str ≟T μ-type _ = no λ ()
-Str ≟T ν-type _ = no λ ()
-Buffer ≟T μ-type _ = no λ ()
-Buffer ≟T ν-type _ = no λ ()
-(_ Once.Type.* _) ≟T μ-type _ = no λ ()
-(_ Once.Type.* _) ≟T ν-type _ = no λ ()
-(_ Once.Type.+ _) ≟T μ-type _ = no λ ()
-(_ Once.Type.+ _) ≟T ν-type _ = no λ ()
-(_ ⇒[ _ ] _) ≟T μ-type _ = no λ ()
-(_ ⇒[ _ ] _) ≟T ν-type _ = no λ ()
-Eff _ _ ≟T μ-type _ = no λ ()
-Eff _ _ ≟T ν-type _ = no λ ()
--- GuardedT removed: productivity follows from IR totality
--- TVar removed from Type; now in PolyType (see Once.Type)
+  -- | Decidable type equality
+  _≟T_ : (A B : Type) → Dec (A ≡ B)
+  Unit ≟T Unit = yes refl
+  Void ≟T Void = yes refl
+  Int ≟T Int = yes refl
+  Float ≟T Float = yes refl
+  Str ≟T Str = yes refl
+  Buffer ≟T Buffer = yes refl
+  (A₁ Once.Type.* B₁) ≟T (A₂ Once.Type.* B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  (A₁ Once.Type.+ B₁) ≟T (A₂ Once.Type.+ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  (A₁ ⇒[ q₁ ] B₁) ≟T (A₂ ⇒[ q₂ ] B₂) with A₁ ≟T A₂ | q₁ ≟q q₂ | B₁ ≟T B₂
+  ... | yes refl | yes refl | yes refl = yes refl
+  ... | no ¬p | _ | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q | _ = no λ { refl → ¬q refl }
+  ... | _ | _ | no ¬r = no λ { refl → ¬r refl }
+  (Eff A₁ B₁) ≟T (Eff A₂ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  -- OCP-0003: Fix removed
+  -- TVar removed from Type; now in PolyType (see Once.Type)
+  -- All other combinations are unequal
+  Unit ≟T Void = no λ ()
+  Unit ≟T Int = no λ ()
+  Unit ≟T Float = no λ ()
+  Unit ≟T Str = no λ ()
+  Unit ≟T Buffer = no λ ()
+  Unit ≟T (_ Once.Type.* _) = no λ ()
+  Unit ≟T (_ Once.Type.+ _) = no λ ()
+  Unit ≟T (_ ⇒[ _ ] _) = no λ ()
+  Unit ≟T Eff _ _ = no λ ()
+  Void ≟T Unit = no λ ()
+  Void ≟T Int = no λ ()
+  Void ≟T Float = no λ ()
+  Void ≟T Str = no λ ()
+  Void ≟T Buffer = no λ ()
+  Void ≟T (_ Once.Type.* _) = no λ ()
+  Void ≟T (_ Once.Type.+ _) = no λ ()
+  Void ≟T (_ ⇒[ _ ] _) = no λ ()
+  Void ≟T Eff _ _ = no λ ()
+  Int ≟T Unit = no λ ()
+  Int ≟T Void = no λ ()
+  Int ≟T Float = no λ ()
+  Int ≟T Str = no λ ()
+  Int ≟T Buffer = no λ ()
+  Int ≟T (_ Once.Type.* _) = no λ ()
+  Int ≟T (_ Once.Type.+ _) = no λ ()
+  Int ≟T (_ ⇒[ _ ] _) = no λ ()
+  Int ≟T Eff _ _ = no λ ()
+  Float ≟T Unit = no λ ()
+  Float ≟T Void = no λ ()
+  Float ≟T Int = no λ ()
+  Float ≟T Str = no λ ()
+  Float ≟T Buffer = no λ ()
+  Float ≟T (_ Once.Type.* _) = no λ ()
+  Float ≟T (_ Once.Type.+ _) = no λ ()
+  Float ≟T (_ ⇒[ _ ] _) = no λ ()
+  Float ≟T Eff _ _ = no λ ()
+  Str ≟T Unit = no λ ()
+  Str ≟T Void = no λ ()
+  Str ≟T Int = no λ ()
+  Str ≟T Float = no λ ()
+  Str ≟T Buffer = no λ ()
+  Str ≟T (_ Once.Type.* _) = no λ ()
+  Str ≟T (_ Once.Type.+ _) = no λ ()
+  Str ≟T (_ ⇒[ _ ] _) = no λ ()
+  Str ≟T Eff _ _ = no λ ()
+  Buffer ≟T Unit = no λ ()
+  Buffer ≟T Void = no λ ()
+  Buffer ≟T Int = no λ ()
+  Buffer ≟T Float = no λ ()
+  Buffer ≟T Str = no λ ()
+  Buffer ≟T (_ Once.Type.* _) = no λ ()
+  Buffer ≟T (_ Once.Type.+ _) = no λ ()
+  Buffer ≟T (_ ⇒[ _ ] _) = no λ ()
+  Buffer ≟T Eff _ _ = no λ ()
+  (_ Once.Type.* _) ≟T Unit = no λ ()
+  (_ Once.Type.* _) ≟T Void = no λ ()
+  (_ Once.Type.* _) ≟T Int = no λ ()
+  (_ Once.Type.* _) ≟T Float = no λ ()
+  (_ Once.Type.* _) ≟T Str = no λ ()
+  (_ Once.Type.* _) ≟T Buffer = no λ ()
+  (_ Once.Type.* _) ≟T (_ Once.Type.+ _) = no λ ()
+  (_ Once.Type.* _) ≟T (_ ⇒[ _ ] _) = no λ ()
+  (_ Once.Type.* _) ≟T Eff _ _ = no λ ()
+  (_ Once.Type.+ _) ≟T Unit = no λ ()
+  (_ Once.Type.+ _) ≟T Void = no λ ()
+  (_ Once.Type.+ _) ≟T Int = no λ ()
+  (_ Once.Type.+ _) ≟T Float = no λ ()
+  (_ Once.Type.+ _) ≟T Str = no λ ()
+  (_ Once.Type.+ _) ≟T Buffer = no λ ()
+  (_ Once.Type.+ _) ≟T (_ Once.Type.* _) = no λ ()
+  (_ Once.Type.+ _) ≟T (_ ⇒[ _ ] _) = no λ ()
+  (_ Once.Type.+ _) ≟T Eff _ _ = no λ ()
+  (_ ⇒[ _ ] _) ≟T Unit = no λ ()
+  (_ ⇒[ _ ] _) ≟T Void = no λ ()
+  (_ ⇒[ _ ] _) ≟T Int = no λ ()
+  (_ ⇒[ _ ] _) ≟T Float = no λ ()
+  (_ ⇒[ _ ] _) ≟T Str = no λ ()
+  (_ ⇒[ _ ] _) ≟T Buffer = no λ ()
+  (_ ⇒[ _ ] _) ≟T (_ Once.Type.* _) = no λ ()
+  (_ ⇒[ _ ] _) ≟T (_ Once.Type.+ _) = no λ ()
+  (_ ⇒[ _ ] _) ≟T Eff _ _ = no λ ()
+  Eff _ _ ≟T Unit = no λ ()
+  Eff _ _ ≟T Void = no λ ()
+  Eff _ _ ≟T Int = no λ ()
+  Eff _ _ ≟T Float = no λ ()
+  Eff _ _ ≟T Str = no λ ()
+  Eff _ _ ≟T Buffer = no λ ()
+  Eff _ _ ≟T (_ Once.Type.* _) = no λ ()
+  Eff _ _ ≟T (_ Once.Type.+ _) = no λ ()
+  Eff _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
+  -- TVar removed from Type; now in PolyType (see Once.Type)
+  -- OCP-0003: μ-type and ν-type cases
+  (μ-type F₁) ≟T (μ-type F₂) with F₁ ≟F F₂
+  ... | yes refl = yes refl
+  ... | no ¬p = no λ { refl → ¬p refl }
+  (ν-type F₁) ≟T (ν-type F₂) with F₁ ≟F F₂
+  ... | yes refl = yes refl
+  ... | no ¬p = no λ { refl → ¬p refl }
+  μ-type _ ≟T Unit = no λ ()
+  μ-type _ ≟T Void = no λ ()
+  μ-type _ ≟T Int = no λ ()
+  μ-type _ ≟T Float = no λ ()
+  μ-type _ ≟T Str = no λ ()
+  μ-type _ ≟T Buffer = no λ ()
+  μ-type _ ≟T (_ Once.Type.* _) = no λ ()
+  μ-type _ ≟T (_ Once.Type.+ _) = no λ ()
+  μ-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
+  μ-type _ ≟T Eff _ _ = no λ ()
+  μ-type _ ≟T ν-type _ = no λ ()
+  ν-type _ ≟T Unit = no λ ()
+  ν-type _ ≟T Void = no λ ()
+  ν-type _ ≟T Int = no λ ()
+  ν-type _ ≟T Float = no λ ()
+  ν-type _ ≟T Str = no λ ()
+  ν-type _ ≟T Buffer = no λ ()
+  ν-type _ ≟T (_ Once.Type.* _) = no λ ()
+  ν-type _ ≟T (_ Once.Type.+ _) = no λ ()
+  ν-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
+  ν-type _ ≟T Eff _ _ = no λ ()
+  ν-type _ ≟T μ-type _ = no λ ()
+  Unit ≟T μ-type _ = no λ ()
+  Unit ≟T ν-type _ = no λ ()
+  Void ≟T μ-type _ = no λ ()
+  Void ≟T ν-type _ = no λ ()
+  Int ≟T μ-type _ = no λ ()
+  Int ≟T ν-type _ = no λ ()
+  Float ≟T μ-type _ = no λ ()
+  Float ≟T ν-type _ = no λ ()
+  Str ≟T μ-type _ = no λ ()
+  Str ≟T ν-type _ = no λ ()
+  Buffer ≟T μ-type _ = no λ ()
+  Buffer ≟T ν-type _ = no λ ()
+  (_ Once.Type.* _) ≟T μ-type _ = no λ ()
+  (_ Once.Type.* _) ≟T ν-type _ = no λ ()
+  (_ Once.Type.+ _) ≟T μ-type _ = no λ ()
+  (_ Once.Type.+ _) ≟T ν-type _ = no λ ()
+  (_ ⇒[ _ ] _) ≟T μ-type _ = no λ ()
+  (_ ⇒[ _ ] _) ≟T ν-type _ = no λ ()
+  Eff _ _ ≟T μ-type _ = no λ ()
+  Eff _ _ ≟T ν-type _ = no λ ()
+  -- GuardedT removed: productivity follows from IR totality
+  -- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
 -- PolyType Equality (for type checking during inference)
 ------------------------------------------------------------------------
 
--- | PolyFunctor equality (postulated)
-postulate _≟PF_ : (F G : PolyFunctor) → Dec (F ≡ G)
+-- | Decidable PolyFunctor and PolyType equality (mutually recursive)
+mutual
+  -- | Decidable PolyFunctor equality
+  _≟PF_ : (F G : PolyFunctor) → Dec (F ≡ G)
+  PK A ≟PF PK B with A ≟PT B
+  ... | yes refl = yes refl
+  ... | no ¬p = no λ { refl → ¬p refl }
+  PId ≟PF PId = yes refl
+  (F₁ P⊕ G₁) ≟PF (F₂ P⊕ G₂) with F₁ ≟PF F₂ | G₁ ≟PF G₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  (F₁ P⊗ G₁) ≟PF (F₂ P⊗ G₂) with F₁ ≟PF F₂ | G₁ ≟PF G₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  -- Mismatched constructors
+  PK _ ≟PF PId = no λ ()
+  PK _ ≟PF (_ P⊕ _) = no λ ()
+  PK _ ≟PF (_ P⊗ _) = no λ ()
+  PId ≟PF PK _ = no λ ()
+  PId ≟PF (_ P⊕ _) = no λ ()
+  PId ≟PF (_ P⊗ _) = no λ ()
+  (_ P⊕ _) ≟PF PK _ = no λ ()
+  (_ P⊕ _) ≟PF PId = no λ ()
+  (_ P⊕ _) ≟PF (_ P⊗ _) = no λ ()
+  (_ P⊗ _) ≟PF PK _ = no λ ()
+  (_ P⊗ _) ≟PF PId = no λ ()
+  (_ P⊗ _) ≟PF (_ P⊕ _) = no λ ()
 
--- | Decidable PolyType equality
--- Note: TVars are compared by name (structural equality)
-_≟PT_ : (A B : PolyType) → Dec (A ≡ B)
-PUnit ≟PT PUnit = yes refl
-PVoid ≟PT PVoid = yes refl
-PInt ≟PT PInt = yes refl
-PFloat ≟PT PFloat = yes refl
-PStr ≟PT PStr = yes refl
-PBuffer ≟PT PBuffer = yes refl
-(A₁ P* B₁) ≟PT (A₂ P* B₂) with A₁ ≟PT A₂ | B₁ ≟PT B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
-(A₁ P+ B₁) ≟PT (A₂ P+ B₂) with A₁ ≟PT A₂ | B₁ ≟PT B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
-(A₁ P⇒[ q₁ ] B₁) ≟PT (A₂ P⇒[ q₂ ] B₂) with A₁ ≟PT A₂ | B₁ ≟PT B₂ | q₁ Once.Type.≟q q₂
-... | yes refl | yes refl | yes refl = yes refl
-... | no ¬p | _ | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q | _ = no λ { refl → ¬q refl }
-... | _ | _ | no ¬r = no λ { refl → ¬r refl }
-(PEff A₁ B₁) ≟PT (PEff A₂ B₂) with A₁ ≟PT A₂ | B₁ ≟PT B₂
-... | yes refl | yes refl = yes refl
-... | no ¬p | _ = no λ { refl → ¬p refl }
-... | _ | no ¬q = no λ { refl → ¬q refl }
-(Pμ-type F₁) ≟PT (Pμ-type F₂) with F₁ ≟PF F₂
-... | yes refl = yes refl
-... | no ¬p = no λ { refl → ¬p refl }
-(Pν-type F₁) ≟PT (Pν-type F₂) with F₁ ≟PF F₂
-... | yes refl = yes refl
-... | no ¬p = no λ { refl → ¬p refl }
-(TVar x) ≟PT (TVar y) with x Data.String.≟ y
-... | yes refl = yes refl
-... | no ¬p = no λ { refl → ¬p refl }
--- All other combinations are not equal
-PUnit ≟PT PVoid = no λ ()
-PUnit ≟PT PInt = no λ ()
-PUnit ≟PT PFloat = no λ ()
-PUnit ≟PT PStr = no λ ()
-PUnit ≟PT PBuffer = no λ ()
-PUnit ≟PT (_ P* _) = no λ ()
-PUnit ≟PT (_ P+ _) = no λ ()
-PUnit ≟PT (_ P⇒[ _ ] _) = no λ ()
-PUnit ≟PT PEff _ _ = no λ ()
-PUnit ≟PT Pμ-type _ = no λ ()
-PUnit ≟PT Pν-type _ = no λ ()
-PUnit ≟PT TVar _ = no λ ()
-PVoid ≟PT PUnit = no λ ()
-PVoid ≟PT PInt = no λ ()
-PVoid ≟PT PFloat = no λ ()
-PVoid ≟PT PStr = no λ ()
-PVoid ≟PT PBuffer = no λ ()
-PVoid ≟PT (_ P* _) = no λ ()
-PVoid ≟PT (_ P+ _) = no λ ()
-PVoid ≟PT (_ P⇒[ _ ] _) = no λ ()
-PVoid ≟PT PEff _ _ = no λ ()
-PVoid ≟PT Pμ-type _ = no λ ()
-PVoid ≟PT Pν-type _ = no λ ()
-PVoid ≟PT TVar _ = no λ ()
-PInt ≟PT PUnit = no λ ()
-PInt ≟PT PVoid = no λ ()
-PInt ≟PT PFloat = no λ ()
-PInt ≟PT PStr = no λ ()
-PInt ≟PT PBuffer = no λ ()
-PInt ≟PT (_ P* _) = no λ ()
-PInt ≟PT (_ P+ _) = no λ ()
-PInt ≟PT (_ P⇒[ _ ] _) = no λ ()
-PInt ≟PT PEff _ _ = no λ ()
-PInt ≟PT Pμ-type _ = no λ ()
-PInt ≟PT Pν-type _ = no λ ()
-PInt ≟PT TVar _ = no λ ()
-PFloat ≟PT PUnit = no λ ()
-PFloat ≟PT PVoid = no λ ()
-PFloat ≟PT PInt = no λ ()
-PFloat ≟PT PStr = no λ ()
-PFloat ≟PT PBuffer = no λ ()
-PFloat ≟PT (_ P* _) = no λ ()
-PFloat ≟PT (_ P+ _) = no λ ()
-PFloat ≟PT (_ P⇒[ _ ] _) = no λ ()
-PFloat ≟PT PEff _ _ = no λ ()
-PFloat ≟PT Pμ-type _ = no λ ()
-PFloat ≟PT Pν-type _ = no λ ()
-PFloat ≟PT TVar _ = no λ ()
-PStr ≟PT PUnit = no λ ()
-PStr ≟PT PVoid = no λ ()
-PStr ≟PT PInt = no λ ()
-PStr ≟PT PFloat = no λ ()
-PStr ≟PT PBuffer = no λ ()
-PStr ≟PT (_ P* _) = no λ ()
-PStr ≟PT (_ P+ _) = no λ ()
-PStr ≟PT (_ P⇒[ _ ] _) = no λ ()
-PStr ≟PT PEff _ _ = no λ ()
-PStr ≟PT Pμ-type _ = no λ ()
-PStr ≟PT Pν-type _ = no λ ()
-PStr ≟PT TVar _ = no λ ()
-PBuffer ≟PT PUnit = no λ ()
-PBuffer ≟PT PVoid = no λ ()
-PBuffer ≟PT PInt = no λ ()
-PBuffer ≟PT PFloat = no λ ()
-PBuffer ≟PT PStr = no λ ()
-PBuffer ≟PT (_ P* _) = no λ ()
-PBuffer ≟PT (_ P+ _) = no λ ()
-PBuffer ≟PT (_ P⇒[ _ ] _) = no λ ()
-PBuffer ≟PT PEff _ _ = no λ ()
-PBuffer ≟PT Pμ-type _ = no λ ()
-PBuffer ≟PT Pν-type _ = no λ ()
-PBuffer ≟PT TVar _ = no λ ()
-(_ P* _) ≟PT PUnit = no λ ()
-(_ P* _) ≟PT PVoid = no λ ()
-(_ P* _) ≟PT PInt = no λ ()
-(_ P* _) ≟PT PFloat = no λ ()
-(_ P* _) ≟PT PStr = no λ ()
-(_ P* _) ≟PT PBuffer = no λ ()
-(_ P* _) ≟PT (_ P+ _) = no λ ()
-(_ P* _) ≟PT (_ P⇒[ _ ] _) = no λ ()
-(_ P* _) ≟PT PEff _ _ = no λ ()
-(_ P* _) ≟PT Pμ-type _ = no λ ()
-(_ P* _) ≟PT Pν-type _ = no λ ()
-(_ P* _) ≟PT TVar _ = no λ ()
-(_ P+ _) ≟PT PUnit = no λ ()
-(_ P+ _) ≟PT PVoid = no λ ()
-(_ P+ _) ≟PT PInt = no λ ()
-(_ P+ _) ≟PT PFloat = no λ ()
-(_ P+ _) ≟PT PStr = no λ ()
-(_ P+ _) ≟PT PBuffer = no λ ()
-(_ P+ _) ≟PT (_ P* _) = no λ ()
-(_ P+ _) ≟PT (_ P⇒[ _ ] _) = no λ ()
-(_ P+ _) ≟PT PEff _ _ = no λ ()
-(_ P+ _) ≟PT Pμ-type _ = no λ ()
-(_ P+ _) ≟PT Pν-type _ = no λ ()
-(_ P+ _) ≟PT TVar _ = no λ ()
-(_ P⇒[ _ ] _) ≟PT PUnit = no λ ()
-(_ P⇒[ _ ] _) ≟PT PVoid = no λ ()
-(_ P⇒[ _ ] _) ≟PT PInt = no λ ()
-(_ P⇒[ _ ] _) ≟PT PFloat = no λ ()
-(_ P⇒[ _ ] _) ≟PT PStr = no λ ()
-(_ P⇒[ _ ] _) ≟PT PBuffer = no λ ()
-(_ P⇒[ _ ] _) ≟PT (_ P* _) = no λ ()
-(_ P⇒[ _ ] _) ≟PT (_ P+ _) = no λ ()
-(_ P⇒[ _ ] _) ≟PT PEff _ _ = no λ ()
-(_ P⇒[ _ ] _) ≟PT Pμ-type _ = no λ ()
-(_ P⇒[ _ ] _) ≟PT Pν-type _ = no λ ()
-(_ P⇒[ _ ] _) ≟PT TVar _ = no λ ()
-PEff _ _ ≟PT PUnit = no λ ()
-PEff _ _ ≟PT PVoid = no λ ()
-PEff _ _ ≟PT PInt = no λ ()
-PEff _ _ ≟PT PFloat = no λ ()
-PEff _ _ ≟PT PStr = no λ ()
-PEff _ _ ≟PT PBuffer = no λ ()
-PEff _ _ ≟PT (_ P* _) = no λ ()
-PEff _ _ ≟PT (_ P+ _) = no λ ()
-PEff _ _ ≟PT (_ P⇒[ _ ] _) = no λ ()
-PEff _ _ ≟PT Pμ-type _ = no λ ()
-PEff _ _ ≟PT Pν-type _ = no λ ()
-PEff _ _ ≟PT TVar _ = no λ ()
-Pμ-type _ ≟PT PUnit = no λ ()
-Pμ-type _ ≟PT PVoid = no λ ()
-Pμ-type _ ≟PT PInt = no λ ()
-Pμ-type _ ≟PT PFloat = no λ ()
-Pμ-type _ ≟PT PStr = no λ ()
-Pμ-type _ ≟PT PBuffer = no λ ()
-Pμ-type _ ≟PT (_ P* _) = no λ ()
-Pμ-type _ ≟PT (_ P+ _) = no λ ()
-Pμ-type _ ≟PT (_ P⇒[ _ ] _) = no λ ()
-Pμ-type _ ≟PT PEff _ _ = no λ ()
-Pμ-type _ ≟PT Pν-type _ = no λ ()
-Pμ-type _ ≟PT TVar _ = no λ ()
-Pν-type _ ≟PT PUnit = no λ ()
-Pν-type _ ≟PT PVoid = no λ ()
-Pν-type _ ≟PT PInt = no λ ()
-Pν-type _ ≟PT PFloat = no λ ()
-Pν-type _ ≟PT PStr = no λ ()
-Pν-type _ ≟PT PBuffer = no λ ()
-Pν-type _ ≟PT (_ P* _) = no λ ()
-Pν-type _ ≟PT (_ P+ _) = no λ ()
-Pν-type _ ≟PT (_ P⇒[ _ ] _) = no λ ()
-Pν-type _ ≟PT PEff _ _ = no λ ()
-Pν-type _ ≟PT Pμ-type _ = no λ ()
-Pν-type _ ≟PT TVar _ = no λ ()
-TVar _ ≟PT PUnit = no λ ()
-TVar _ ≟PT PVoid = no λ ()
-TVar _ ≟PT PInt = no λ ()
-TVar _ ≟PT PFloat = no λ ()
-TVar _ ≟PT PStr = no λ ()
-TVar _ ≟PT PBuffer = no λ ()
-TVar _ ≟PT (_ P* _) = no λ ()
-TVar _ ≟PT (_ P+ _) = no λ ()
-TVar _ ≟PT (_ P⇒[ _ ] _) = no λ ()
-TVar _ ≟PT PEff _ _ = no λ ()
-TVar _ ≟PT Pμ-type _ = no λ ()
-TVar _ ≟PT Pν-type _ = no λ ()
+  -- | Decidable PolyType equality
+  -- Note: TVars are compared by name (structural equality)
+  _≟PT_ : (A B : PolyType) → Dec (A ≡ B)
+  PUnit ≟PT PUnit = yes refl
+  PVoid ≟PT PVoid = yes refl
+  PInt ≟PT PInt = yes refl
+  PFloat ≟PT PFloat = yes refl
+  PStr ≟PT PStr = yes refl
+  PBuffer ≟PT PBuffer = yes refl
+  (A₁ P* B₁) ≟PT (A₂ P* B₂) with A₁ ≟PT A₂ | B₁ ≟PT B₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  (A₁ P+ B₁) ≟PT (A₂ P+ B₂) with A₁ ≟PT A₂ | B₁ ≟PT B₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  (A₁ P⇒[ q₁ ] B₁) ≟PT (A₂ P⇒[ q₂ ] B₂) with A₁ ≟PT A₂ | B₁ ≟PT B₂ | q₁ Once.Type.≟q q₂
+  ... | yes refl | yes refl | yes refl = yes refl
+  ... | no ¬p | _ | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q | _ = no λ { refl → ¬q refl }
+  ... | _ | _ | no ¬r = no λ { refl → ¬r refl }
+  (PEff A₁ B₁) ≟PT (PEff A₂ B₂) with A₁ ≟PT A₂ | B₁ ≟PT B₂
+  ... | yes refl | yes refl = yes refl
+  ... | no ¬p | _ = no λ { refl → ¬p refl }
+  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  (Pμ-type F₁) ≟PT (Pμ-type F₂) with F₁ ≟PF F₂
+  ... | yes refl = yes refl
+  ... | no ¬p = no λ { refl → ¬p refl }
+  (Pν-type F₁) ≟PT (Pν-type F₂) with F₁ ≟PF F₂
+  ... | yes refl = yes refl
+  ... | no ¬p = no λ { refl → ¬p refl }
+  (TVar x) ≟PT (TVar y) with x Data.String.≟ y
+  ... | yes refl = yes refl
+  ... | no ¬p = no λ { refl → ¬p refl }
+  -- All other combinations are not equal
+  PUnit ≟PT PVoid = no λ ()
+  PUnit ≟PT PInt = no λ ()
+  PUnit ≟PT PFloat = no λ ()
+  PUnit ≟PT PStr = no λ ()
+  PUnit ≟PT PBuffer = no λ ()
+  PUnit ≟PT (_ P* _) = no λ ()
+  PUnit ≟PT (_ P+ _) = no λ ()
+  PUnit ≟PT (_ P⇒[ _ ] _) = no λ ()
+  PUnit ≟PT PEff _ _ = no λ ()
+  PUnit ≟PT Pμ-type _ = no λ ()
+  PUnit ≟PT Pν-type _ = no λ ()
+  PUnit ≟PT TVar _ = no λ ()
+  PVoid ≟PT PUnit = no λ ()
+  PVoid ≟PT PInt = no λ ()
+  PVoid ≟PT PFloat = no λ ()
+  PVoid ≟PT PStr = no λ ()
+  PVoid ≟PT PBuffer = no λ ()
+  PVoid ≟PT (_ P* _) = no λ ()
+  PVoid ≟PT (_ P+ _) = no λ ()
+  PVoid ≟PT (_ P⇒[ _ ] _) = no λ ()
+  PVoid ≟PT PEff _ _ = no λ ()
+  PVoid ≟PT Pμ-type _ = no λ ()
+  PVoid ≟PT Pν-type _ = no λ ()
+  PVoid ≟PT TVar _ = no λ ()
+  PInt ≟PT PUnit = no λ ()
+  PInt ≟PT PVoid = no λ ()
+  PInt ≟PT PFloat = no λ ()
+  PInt ≟PT PStr = no λ ()
+  PInt ≟PT PBuffer = no λ ()
+  PInt ≟PT (_ P* _) = no λ ()
+  PInt ≟PT (_ P+ _) = no λ ()
+  PInt ≟PT (_ P⇒[ _ ] _) = no λ ()
+  PInt ≟PT PEff _ _ = no λ ()
+  PInt ≟PT Pμ-type _ = no λ ()
+  PInt ≟PT Pν-type _ = no λ ()
+  PInt ≟PT TVar _ = no λ ()
+  PFloat ≟PT PUnit = no λ ()
+  PFloat ≟PT PVoid = no λ ()
+  PFloat ≟PT PInt = no λ ()
+  PFloat ≟PT PStr = no λ ()
+  PFloat ≟PT PBuffer = no λ ()
+  PFloat ≟PT (_ P* _) = no λ ()
+  PFloat ≟PT (_ P+ _) = no λ ()
+  PFloat ≟PT (_ P⇒[ _ ] _) = no λ ()
+  PFloat ≟PT PEff _ _ = no λ ()
+  PFloat ≟PT Pμ-type _ = no λ ()
+  PFloat ≟PT Pν-type _ = no λ ()
+  PFloat ≟PT TVar _ = no λ ()
+  PStr ≟PT PUnit = no λ ()
+  PStr ≟PT PVoid = no λ ()
+  PStr ≟PT PInt = no λ ()
+  PStr ≟PT PFloat = no λ ()
+  PStr ≟PT PBuffer = no λ ()
+  PStr ≟PT (_ P* _) = no λ ()
+  PStr ≟PT (_ P+ _) = no λ ()
+  PStr ≟PT (_ P⇒[ _ ] _) = no λ ()
+  PStr ≟PT PEff _ _ = no λ ()
+  PStr ≟PT Pμ-type _ = no λ ()
+  PStr ≟PT Pν-type _ = no λ ()
+  PStr ≟PT TVar _ = no λ ()
+  PBuffer ≟PT PUnit = no λ ()
+  PBuffer ≟PT PVoid = no λ ()
+  PBuffer ≟PT PInt = no λ ()
+  PBuffer ≟PT PFloat = no λ ()
+  PBuffer ≟PT PStr = no λ ()
+  PBuffer ≟PT (_ P* _) = no λ ()
+  PBuffer ≟PT (_ P+ _) = no λ ()
+  PBuffer ≟PT (_ P⇒[ _ ] _) = no λ ()
+  PBuffer ≟PT PEff _ _ = no λ ()
+  PBuffer ≟PT Pμ-type _ = no λ ()
+  PBuffer ≟PT Pν-type _ = no λ ()
+  PBuffer ≟PT TVar _ = no λ ()
+  (_ P* _) ≟PT PUnit = no λ ()
+  (_ P* _) ≟PT PVoid = no λ ()
+  (_ P* _) ≟PT PInt = no λ ()
+  (_ P* _) ≟PT PFloat = no λ ()
+  (_ P* _) ≟PT PStr = no λ ()
+  (_ P* _) ≟PT PBuffer = no λ ()
+  (_ P* _) ≟PT (_ P+ _) = no λ ()
+  (_ P* _) ≟PT (_ P⇒[ _ ] _) = no λ ()
+  (_ P* _) ≟PT PEff _ _ = no λ ()
+  (_ P* _) ≟PT Pμ-type _ = no λ ()
+  (_ P* _) ≟PT Pν-type _ = no λ ()
+  (_ P* _) ≟PT TVar _ = no λ ()
+  (_ P+ _) ≟PT PUnit = no λ ()
+  (_ P+ _) ≟PT PVoid = no λ ()
+  (_ P+ _) ≟PT PInt = no λ ()
+  (_ P+ _) ≟PT PFloat = no λ ()
+  (_ P+ _) ≟PT PStr = no λ ()
+  (_ P+ _) ≟PT PBuffer = no λ ()
+  (_ P+ _) ≟PT (_ P* _) = no λ ()
+  (_ P+ _) ≟PT (_ P⇒[ _ ] _) = no λ ()
+  (_ P+ _) ≟PT PEff _ _ = no λ ()
+  (_ P+ _) ≟PT Pμ-type _ = no λ ()
+  (_ P+ _) ≟PT Pν-type _ = no λ ()
+  (_ P+ _) ≟PT TVar _ = no λ ()
+  (_ P⇒[ _ ] _) ≟PT PUnit = no λ ()
+  (_ P⇒[ _ ] _) ≟PT PVoid = no λ ()
+  (_ P⇒[ _ ] _) ≟PT PInt = no λ ()
+  (_ P⇒[ _ ] _) ≟PT PFloat = no λ ()
+  (_ P⇒[ _ ] _) ≟PT PStr = no λ ()
+  (_ P⇒[ _ ] _) ≟PT PBuffer = no λ ()
+  (_ P⇒[ _ ] _) ≟PT (_ P* _) = no λ ()
+  (_ P⇒[ _ ] _) ≟PT (_ P+ _) = no λ ()
+  (_ P⇒[ _ ] _) ≟PT PEff _ _ = no λ ()
+  (_ P⇒[ _ ] _) ≟PT Pμ-type _ = no λ ()
+  (_ P⇒[ _ ] _) ≟PT Pν-type _ = no λ ()
+  (_ P⇒[ _ ] _) ≟PT TVar _ = no λ ()
+  PEff _ _ ≟PT PUnit = no λ ()
+  PEff _ _ ≟PT PVoid = no λ ()
+  PEff _ _ ≟PT PInt = no λ ()
+  PEff _ _ ≟PT PFloat = no λ ()
+  PEff _ _ ≟PT PStr = no λ ()
+  PEff _ _ ≟PT PBuffer = no λ ()
+  PEff _ _ ≟PT (_ P* _) = no λ ()
+  PEff _ _ ≟PT (_ P+ _) = no λ ()
+  PEff _ _ ≟PT (_ P⇒[ _ ] _) = no λ ()
+  PEff _ _ ≟PT Pμ-type _ = no λ ()
+  PEff _ _ ≟PT Pν-type _ = no λ ()
+  PEff _ _ ≟PT TVar _ = no λ ()
+  Pμ-type _ ≟PT PUnit = no λ ()
+  Pμ-type _ ≟PT PVoid = no λ ()
+  Pμ-type _ ≟PT PInt = no λ ()
+  Pμ-type _ ≟PT PFloat = no λ ()
+  Pμ-type _ ≟PT PStr = no λ ()
+  Pμ-type _ ≟PT PBuffer = no λ ()
+  Pμ-type _ ≟PT (_ P* _) = no λ ()
+  Pμ-type _ ≟PT (_ P+ _) = no λ ()
+  Pμ-type _ ≟PT (_ P⇒[ _ ] _) = no λ ()
+  Pμ-type _ ≟PT PEff _ _ = no λ ()
+  Pμ-type _ ≟PT Pν-type _ = no λ ()
+  Pμ-type _ ≟PT TVar _ = no λ ()
+  Pν-type _ ≟PT PUnit = no λ ()
+  Pν-type _ ≟PT PVoid = no λ ()
+  Pν-type _ ≟PT PInt = no λ ()
+  Pν-type _ ≟PT PFloat = no λ ()
+  Pν-type _ ≟PT PStr = no λ ()
+  Pν-type _ ≟PT PBuffer = no λ ()
+  Pν-type _ ≟PT (_ P* _) = no λ ()
+  Pν-type _ ≟PT (_ P+ _) = no λ ()
+  Pν-type _ ≟PT (_ P⇒[ _ ] _) = no λ ()
+  Pν-type _ ≟PT PEff _ _ = no λ ()
+  Pν-type _ ≟PT Pμ-type _ = no λ ()
+  Pν-type _ ≟PT TVar _ = no λ ()
+  TVar _ ≟PT PUnit = no λ ()
+  TVar _ ≟PT PVoid = no λ ()
+  TVar _ ≟PT PInt = no λ ()
+  TVar _ ≟PT PFloat = no λ ()
+  TVar _ ≟PT PStr = no λ ()
+  TVar _ ≟PT PBuffer = no λ ()
+  TVar _ ≟PT (_ P* _) = no λ ()
+  TVar _ ≟PT (_ P+ _) = no λ ()
+  TVar _ ≟PT (_ P⇒[ _ ] _) = no λ ()
+  TVar _ ≟PT PEff _ _ = no λ ()
+  TVar _ ≟PT Pμ-type _ = no λ ()
+  TVar _ ≟PT Pν-type _ = no λ ()
 
 ------------------------------------------------------------------------
 -- Type Matching with Unification (for polymorphic inference)
