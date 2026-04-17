@@ -857,6 +857,69 @@ mutual
   ... | success argE d f u =
         success (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) f u
 
+  ----------------------------------------------------------------------
+  -- Bare polymorphic-builtin variables in check mode (e.g. `foo = id`).
+  -- The expected type drives specialization of the builtin's signature.
+  ----------------------------------------------------------------------
+
+  -- id : A → A
+  checkNew ctx (Raw.RVar "id") (A ⇒[ Many ] B) with A ≟T B
+  ... | yes refl = success (weakenFromEmpty (specId A)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | no _ = failure "id: expected type A → A (domain must equal codomain)"
+
+  -- fst : (A * B) → A
+  checkNew ctx (Raw.RVar "fst") ((A Once.Type.* B) ⇒[ Many ] A') with A ≟T A'
+  ... | yes refl = success (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | no _ = failure "fst: expected type (A * B) → A"
+
+  -- snd : (A * B) → B
+  checkNew ctx (Raw.RVar "snd") ((A Once.Type.* B) ⇒[ Many ] B') with B ≟T B'
+  ... | yes refl = success (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | no _ = failure "snd: expected type (A * B) → B"
+
+  -- inl : A → (A + B)
+  checkNew ctx (Raw.RVar "inl") (A ⇒[ Many ] (A' Once.Type.+ B)) with A ≟T A'
+  ... | yes refl = success (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | no _ = failure "inl: expected type A → (A + B)"
+
+  -- inr : B → (A + B)
+  checkNew ctx (Raw.RVar "inr") (B ⇒[ Many ] (A Once.Type.+ B')) with B ≟T B'
+  ... | yes refl = success (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | no _ = failure "inr: expected type B → (A + B)"
+
+  -- terminal : A → Unit
+  checkNew ctx (Raw.RVar "terminal") (A ⇒[ Many ] Unit) =
+    success (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+
+  -- initial : Void → A
+  checkNew ctx (Raw.RVar "initial") (Void ⇒[ Many ] A) =
+    success (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+
+  -- arr : (A → B) → Eff A B
+  checkNew ctx (Raw.RVar "arr") ((A ⇒[ Many ] B) ⇒[ Many ] (Eff A' B')) with A ≟T A' | B ≟T B'
+  ... | yes refl | yes refl = success (weakenFromEmpty (specArr A B)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | _ | _ = failure "arr: expected type (A → B) → Eff A B"
+
+  -- apply : ((A → B) * A) → B
+  checkNew ctx (Raw.RVar "apply") (((A ⇒[ Many ] B) Once.Type.* A') ⇒[ Many ] B') with A ≟T A' | B ≟T B'
+  ... | yes refl | yes refl = success (weakenFromEmpty (specApply A B)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | _ | _ = failure "apply: expected type ((A → B) * A) → B"
+
+  -- compose : (B → C) → (A → B) → A → C
+  checkNew ctx (Raw.RVar "compose") ((B ⇒[ Many ] C) ⇒[ Many ] ((A ⇒[ Many ] B') ⇒[ Many ] (A' ⇒[ Many ] C'))) with B ≟T B' | A ≟T A' | C ≟T C'
+  ... | yes refl | yes refl | yes refl = success (weakenFromEmpty (specCompose A B C)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | _ | _ | _ = failure "compose: expected type (B → C) → (A → B) → A → C"
+
+  -- pair (fork) : (A → B) → (A → C) → A → (B * C)
+  checkNew ctx (Raw.RVar "pair") ((A ⇒[ Many ] B) ⇒[ Many ] ((A' ⇒[ Many ] C) ⇒[ Many ] (A'' ⇒[ Many ] (B' Once.Type.* C')))) with A ≟T A' | A ≟T A'' | B ≟T B' | C ≟T C'
+  ... | yes refl | yes refl | yes refl | yes refl = success (weakenFromEmpty (specPair A B C)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | _ | _ | _ | _ = failure "pair (fork): expected type (A → B) → (A → C) → A → (B * C)"
+
+  -- curry : ((A * B) → C) → A → B → C
+  checkNew ctx (Raw.RVar "curry") (((A Once.Type.* B) ⇒[ Many ] C) ⇒[ Many ] (A' ⇒[ Many ] (B' ⇒[ Many ] C'))) with A ≟T A' | B ≟T B' | C ≟T C'
+  ... | yes refl | yes refl | yes refl = success (weakenFromEmpty (specCurry A B C)) 0 (NamedCtx.freshCounter ctx) Surface.zeroUsage
+  ... | _ | _ | _ = failure "curry: expected type ((A * B) → C) → A → B → C"
+
   -- Generic fallback: infer and match types
   checkNew ctx e T with inferNew ctx e
   ... | failure err = failure err
