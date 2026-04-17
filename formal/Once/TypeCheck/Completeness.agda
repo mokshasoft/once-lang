@@ -350,3 +350,60 @@ check-complete-RLam ctx x body A T.Many T.Many B leq-eq eqBody rewrite eqBody = 
 check-complete-RLam ctx x body A T.Zero T.One  B ()     eqBody
 check-complete-RLam ctx x body A T.Zero T.Many B ()     eqBody
 check-complete-RLam ctx x body A T.One  T.Many B ()     eqBody
+
+------------------------------------------------------------------------
+-- RDestruct (case / sum elimination)
+------------------------------------------------------------------------
+
+infer-complete-RDestruct :
+  ∀ {ctx : NamedCtx} (scrut : RawExpr) (xL : String) (eL : RawExpr)
+    (xR : String) (eR : RawExpr) {A B : Type}
+    {Ψs : Surface.Usage (NamedCtx.size ctx)}
+    {scrutE : SExpr (NamedCtx.debruijn ctx) Ψs (A + B)}
+    {ds fs : ℕ}
+    (C : Type) {qℓ qr : Quantity}
+    {Ψₗ : Surface.Usage (NamedCtx.size ctx)}
+    {eLE : SExpr (NamedCtx.debruijn
+                    (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A))
+                 (qℓ Surface.Usage.∷ Ψₗ) C}
+    {dL fL : ℕ}
+    {Ψᵣ : Surface.Usage (NamedCtx.size ctx)}
+    {eRE : SExpr (NamedCtx.debruijn
+                    (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B))
+                 (qr Surface.Usage.∷ Ψᵣ) C}
+    {dR fR : ℕ}
+  → inferElab ctx scrut ≡ success (A + B) Ψs scrutE ds fs
+  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xL A) eL
+      ≡ success C (qℓ Surface.Usage.∷ Ψₗ) eLE dL fL
+  → inferElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx xR B) eR
+      ≡ success C (qr Surface.Usage.∷ Ψᵣ) eRE dR fR
+  → ∃[ eE ] ∃[ d ] ∃[ f ]
+      inferElab ctx (Raw.RDestruct scrut xL eL xR eR)
+        ≡ success C (Ψs +ᵘ (Ψₗ Surface.⊔ᵘ Ψᵣ)) eE d f
+infer-complete-RDestruct scrut xL eL xR eR C eqS eqL eqR
+  rewrite eqS | eqL | eqR with Once.TypeCheck.Elaborate._≟T_ C C
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+------------------------------------------------------------------------
+-- Generic RApp
+------------------------------------------------------------------------
+
+infer-complete-RApp-generic :
+  ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type} {q : Quantity}
+    {Ψf : Surface.Usage (NamedCtx.size ctx)}
+    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ q ] B)}
+    {df ff : ℕ}
+    {Ψx : Surface.Usage (NamedCtx.size ctx)}
+    {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
+    {dx fx : ℕ}
+  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+  → inferElab ctx f ≡ success (A T.⇒[ q ] B) Ψf fE df ff
+  → inferElab ctx x ≡ success A Ψx xE dx fx
+  → ∃[ eE ] ∃[ d ] ∃[ f' ]
+      inferElab ctx (Raw.RApp f x)
+        ≡ success B (Ψf +ᵘ (q *ᵘ Ψx)) eE d f'
+infer-complete-RApp-generic f x A notPoly eqF eqX
+  rewrite notPoly | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A A
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
