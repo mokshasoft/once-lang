@@ -404,3 +404,70 @@ open Once.Type using (_+q_; _*q_; _⊔q_)
 ⊔q-assoc Many Zero _    = refl
 ⊔q-assoc Many One  _    = refl
 ⊔q-assoc Many Many _    = refl
+
+-- Left-distributivity: q₁ *q (q₂ +q q₃) ≡ (q₁ *q q₂) +q (q₁ *q q₃).
+*q-distrib-+q-left :
+  ∀ (q₁ q₂ q₃ : Quantity) → q₁ *q (q₂ +q q₃) ≡ (q₁ *q q₂) +q (q₁ *q q₃)
+*q-distrib-+q-left Zero _    _    = refl
+*q-distrib-+q-left One  Zero Zero = refl
+*q-distrib-+q-left One  Zero One  = refl
+*q-distrib-+q-left One  Zero Many = refl
+*q-distrib-+q-left One  One  Zero = refl
+*q-distrib-+q-left One  One  One  = refl
+*q-distrib-+q-left One  One  Many = refl
+*q-distrib-+q-left One  Many Zero = refl
+*q-distrib-+q-left One  Many One  = refl
+*q-distrib-+q-left One  Many Many = refl
+*q-distrib-+q-left Many Zero Zero = refl
+*q-distrib-+q-left Many Zero One  = refl
+*q-distrib-+q-left Many Zero Many = refl
+*q-distrib-+q-left Many One  Zero = refl
+*q-distrib-+q-left Many One  One  = refl
+*q-distrib-+q-left Many One  Many = refl
+*q-distrib-+q-left Many Many Zero = refl
+*q-distrib-+q-left Many Many One  = refl
+*q-distrib-+q-left Many Many Many = refl
+
+------------------------------------------------------------------------
+-- Usage-vector identities (per-position lifts of quantity laws)
+------------------------------------------------------------------------
+
+open import Data.Nat using (ℕ; zero; suc)
+open import Once.Surface.Syntax using (Usage; zeroUsage; _+ᵘ_; _*ᵘ_; _⊔ᵘ_)
+open Once.Surface.Syntax.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ)
+
+-- Note: Once.Surface.Syntax.Usage is an indexed vector of Quantity.
+-- Pattern matching exposes its per-position structure; the identities
+-- lift the quantity identities pointwise.
+
+-- +ᵘ is commutative.
++ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ +ᵘ Ψ₂ ≡ Ψ₂ +ᵘ Ψ₁
++ᵘ-comm {zero}  []ᵘ []ᵘ = refl
++ᵘ-comm {suc n} (q₁ ∷ᵘ Ψ₁) (q₂ ∷ᵘ Ψ₂)
+  rewrite +q-comm q₁ q₂ | +ᵘ-comm Ψ₁ Ψ₂ = refl
+
+-- zeroUsage is the identity of +ᵘ on both sides.
++ᵘ-identity-left : ∀ {n} (Ψ : Usage n) → zeroUsage +ᵘ Ψ ≡ Ψ
++ᵘ-identity-left {zero}  []ᵘ = refl
++ᵘ-identity-left {suc n} (q ∷ᵘ Ψ) rewrite +ᵘ-identity-left Ψ = refl
+
++ᵘ-identity-right : ∀ {n} (Ψ : Usage n) → Ψ +ᵘ zeroUsage ≡ Ψ
++ᵘ-identity-right {zero}  []ᵘ = refl
++ᵘ-identity-right {suc n} (q ∷ᵘ Ψ)
+  rewrite +q-identity-right q | +ᵘ-identity-right Ψ = refl
+
+-- ⊔ᵘ is commutative.
+⊔ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Usage n) → Ψ₁ ⊔ᵘ Ψ₂ ≡ Ψ₂ ⊔ᵘ Ψ₁
+⊔ᵘ-comm {zero}  []ᵘ []ᵘ = refl
+⊔ᵘ-comm {suc n} (q₁ ∷ᵘ Ψ₁) (q₂ ∷ᵘ Ψ₂)
+  rewrite ⊔q-comm q₁ q₂ | ⊔ᵘ-comm Ψ₁ Ψ₂ = refl
+
+-- ⊔ᵘ is idempotent.
+⊔ᵘ-idem : ∀ {n} (Ψ : Usage n) → Ψ ⊔ᵘ Ψ ≡ Ψ
+⊔ᵘ-idem {zero}  []ᵘ = refl
+⊔ᵘ-idem {suc n} (q ∷ᵘ Ψ) rewrite ⊔q-idem q | ⊔ᵘ-idem Ψ = refl
+
+-- zeroUsage is bottom of ⊔ᵘ.
+⊔ᵘ-zero-left : ∀ {n} (Ψ : Usage n) → zeroUsage ⊔ᵘ Ψ ≡ Ψ
+⊔ᵘ-zero-left {zero}  []ᵘ = refl
+⊔ᵘ-zero-left {suc n} (q ∷ᵘ Ψ) rewrite ⊔ᵘ-zero-left Ψ = refl
