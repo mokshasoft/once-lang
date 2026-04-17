@@ -824,6 +824,31 @@ record VerifiedTypeChecker : Set₁ where
 
     id-all-≤q-Many : ∀ (q : _) → (q Once.Type.≤q Once.Type.Many) ≡ Data.Bool.true
 
+    -- Quantity algebra
+    id-+q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Type.+q q₂ ≡ q₂ Once.Type.+q q₁
+    id-+q-assoc : ∀ (q₁ q₂ q₃ : _)
+                → q₁ Once.Type.+q (q₂ Once.Type.+q q₃)
+                  ≡ (q₁ Once.Type.+q q₂) Once.Type.+q q₃
+    id-*q-distrib-+q :
+      ∀ (q₁ q₂ q₃ : _) → q₁ Once.Type.*q (q₂ Once.Type.+q q₃)
+                        ≡ (q₁ Once.Type.*q q₂) Once.Type.+q (q₁ Once.Type.*q q₃)
+    id-⊔q-comm : ∀ (q₁ q₂ : _) → q₁ Once.Type.⊔q q₂ ≡ q₂ Once.Type.⊔q q₁
+    id-⊔q-idem : ∀ (q : _) → q Once.Type.⊔q q ≡ q
+
+    -- Usage-vector algebra
+    id-+ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Surface.Syntax.Usage n)
+                → Ψ₁ Surface.+ᵘ Ψ₂ ≡ Ψ₂ Surface.+ᵘ Ψ₁
+    id-+ᵘ-assoc : ∀ {n} (Ψ₁ Ψ₂ Ψ₃ : Once.Surface.Syntax.Usage n)
+                 → Ψ₁ Surface.+ᵘ (Ψ₂ Surface.+ᵘ Ψ₃)
+                   ≡ (Ψ₁ Surface.+ᵘ Ψ₂) Surface.+ᵘ Ψ₃
+    id-⊔ᵘ-comm : ∀ {n} (Ψ₁ Ψ₂ : Once.Surface.Syntax.Usage n)
+                → Ψ₁ Surface.⊔ᵘ Ψ₂ ≡ Ψ₂ Surface.⊔ᵘ Ψ₁
+    id-⊔ᵘ-idem : ∀ {n} (Ψ : Once.Surface.Syntax.Usage n) → Ψ Surface.⊔ᵘ Ψ ≡ Ψ
+    id-*ᵘ-identity-One : ∀ {n} (Ψ : Once.Surface.Syntax.Usage n)
+                       → Once.Type.One Surface.*ᵘ Ψ ≡ Ψ
+    id-+ᵘ-identity-left : ∀ {n} (Ψ : Once.Surface.Syntax.Usage n)
+                        → Surface.zeroUsage Surface.+ᵘ Ψ ≡ Ψ
+
     ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips
     -- through the internal `Type` representation on its expressible
@@ -933,6 +958,17 @@ verifiedTypeChecker = record
   ; id-≤q-trans                   = Id.≤q-trans
   ; id-Zero-≤q-all                = Id.Zero-≤q-all
   ; id-all-≤q-Many                = Id.all-≤q-Many
+  ; id-+q-comm                    = Id.+q-comm
+  ; id-+q-assoc                   = Id.+q-assoc
+  ; id-*q-distrib-+q              = Id.*q-distrib-+q-left
+  ; id-⊔q-comm                    = Id.⊔q-comm
+  ; id-⊔q-idem                    = Id.⊔q-idem
+  ; id-+ᵘ-comm                    = Id.+ᵘ-comm
+  ; id-+ᵘ-assoc                   = Id.+ᵘ-assoc
+  ; id-⊔ᵘ-comm                    = Id.⊔ᵘ-comm
+  ; id-⊔ᵘ-idem                    = Id.⊔ᵘ-idem
+  ; id-*ᵘ-identity-One            = Id.*ᵘ-identity-One
+  ; id-+ᵘ-identity-left           = Id.+ᵘ-identity-left
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
