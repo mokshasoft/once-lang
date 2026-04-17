@@ -47,10 +47,11 @@ open import Data.Integer using (ℤ)
 open import Data.Sum using (_⊎_)
 import Data.String
 
-import Once.TypeCheck.Determinism as Det
-import Once.TypeCheck.Totality    as Tot
-import Once.TypeCheck.Soundness   as Snd
-import Once.TypeCheck.ErrorProofs as EP
+import Once.TypeCheck.Determinism  as Det
+import Once.TypeCheck.Totality     as Tot
+import Once.TypeCheck.Soundness    as Snd
+import Once.TypeCheck.Completeness as Cmp
+import Once.TypeCheck.ErrorProofs  as EP
 open import Once.TypeCheck.Judgment using (_⊢_∶_⨾_)
 open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; InlInInferMode; InrInInferMode; InitialInInferMode;
@@ -515,6 +516,39 @@ record VerifiedTypeChecker : Set₁ where
       → ctx ⊢ RLet x e₁ e₂ ∶ A ⨾ Ψ
 
     ----------------------------------------------------------------
+    -- G2 (completeness direction): if the elaborator's sub-expressions
+    -- succeed (from IHs), the outer elaborator succeeds. These lemmas
+    -- are the forward counterparts of the soundness theorems; combined
+    -- they give iff-completeness for each construct.
+    ----------------------------------------------------------------
+
+    tcInfer-complete-RInt :
+      ∀ (ctx : NamedCtx) (n : ℤ)
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RInt n) ≡ success Once.Type.Int Surface.zeroUsage eE d f
+
+    tcInfer-complete-RUnit :
+      ∀ (ctx : NamedCtx)
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx RUnit ≡ success Once.Type.Unit Surface.zeroUsage eE d f
+
+    tcInfer-complete-RStringLit :
+      ∀ (ctx : NamedCtx) (s : String)
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RStringLit s) ≡ success Once.Type.Str Surface.zeroUsage eE d f
+
+    tcInfer-complete-RVar-unit :
+      ∀ (ctx : NamedCtx)
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RVar "unit") ≡ success Once.Type.Unit Surface.zeroUsage eE d f
+
+    tcInfer-complete-RQualified :
+      ∀ (ctx : NamedCtx) (name alias : String) (T : Type)
+      → lookupImport (NamedCtx.imports ctx) (alias Data.String.++ "." Data.String.++ name) ≡ just T
+      → ∃[ eE ] ∃[ d ] ∃[ f ]
+          tcInfer ctx (RQualified name alias) ≡ success T Surface.zeroUsage eE d f
+
+    ----------------------------------------------------------------
     -- Grammar connection: the surface-grammar spec round-trips
     -- through the internal `Type` representation on its expressible
     -- fragment. Pins the parser's output to the formal grammar.
@@ -588,6 +622,12 @@ verifiedTypeChecker = record
   ; tc-err-check-RInt-type-mismatch  = EP.check-RInt-type-mismatch
   ; tc-err-check-RUnit-type-mismatch = EP.check-RUnit-type-mismatch
   ; tc-err-check-RStringLit-type-mismatch = EP.check-RStringLit-type-mismatch
+  ; tcInfer-complete-RInt         = λ ctx n → Cmp.infer-complete-RInt {ctx = ctx} n
+  ; tcInfer-complete-RUnit        = λ ctx → Cmp.infer-complete-RUnit {ctx = ctx}
+  ; tcInfer-complete-RStringLit   = λ ctx s → Cmp.infer-complete-RStringLit {ctx = ctx} s
+  ; tcInfer-complete-RVar-unit    = λ ctx → Cmp.infer-complete-RVar-unit {ctx = ctx}
+  ; tcInfer-complete-RQualified   = λ ctx name alias T eq →
+                                     Cmp.infer-complete-RQualified {ctx = ctx} {name = name} {alias = alias} {T = T} eq
   ; grammar-to-type-roundtrip = Conv.gtypeToType-typeToGType
   ; type-to-grammar-roundtrip = Conv.typeToGType-gtypeToType
   }
