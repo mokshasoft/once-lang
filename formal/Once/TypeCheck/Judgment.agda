@@ -316,20 +316,14 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
         → ctx ⊢ RApp f x ∶ B ⨾ (Ψ₁ +ᵘ (q *ᵘ Ψ₂))
 
   ----------------------------------------------------------------
-  -- TODO (future G2 passes): rules for
-  --   * RApp (with polymorphic builtin specializations as sub-rules)
-  --   * RLam (check mode only)
-  --   * RLet
-  --   * RDestruct (sum elimination)
-  --   * RBinOp (arithmetic and comparison)
-  --   * RQualified
-  --   * RVar (import lookup path)
+  -- All rules for the 15 RawExpr constructors + RLam check-mode are
+  -- now present in this judgment (t-int, t-str, t-unit, t-unit-var,
+  -- t-var-local / -import / -qualified, t-annot, t-pair, t-neg,
+  -- t-let, t-case, t-binop-arith / -cmp, t-id-app / -fst-app /
+  -- -snd-app / -terminal-app, t-app generic, t-lam).
   --
-  -- These are omitted from the first-pass judgment because they
-  -- either involve subtle usage-vector combinations (let, case), or
-  -- require specializer rules for polymorphic builtins (app of id /
-  -- fst / snd / ...), or involve bidirectional mode-switching (lam).
-  -- The corresponding soundness proofs are similarly deferred.
+  -- Per-rule soundness and completeness theorems live in
+  -- `Once.TypeCheck.Soundness` and `Once.TypeCheck.Completeness`.
   ----------------------------------------------------------------
 
 -- | Specification relation: the judgment's type+usage match.
