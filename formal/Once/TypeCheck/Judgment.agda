@@ -35,11 +35,13 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (∃; ∃-syntax; _×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
-open import Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
-                             _*_; _+_; _⇒[_]_; Quantity)
+import Once.Type
+open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
+                      _*_; _+_; _⇒[_]_; Quantity)
+open import Data.Bool using (true)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RLet; RUnaryOp; OpNeg; UnaryOp)
+         RLam; RLet; RUnaryOp; OpNeg; UnaryOp)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; lookupLocal; lookupImport; extendNamedCtx)
 
@@ -147,6 +149,21 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
                   → ctx ⊢ RQualified name alias ∶ T ⨾ zeroUsage
 
   ----------------------------------------------------------------
+  -- Variable resolution via imports (bare name, not qualified).
+  --
+  -- The elaborator tries `lookupLocal` first; if that fails, it
+  -- tries `lookupImport`. The rule below captures the import-success
+  -- path. Note the `x ≢ "unit"` side-condition: the elaborator
+  -- short-circuits `RVar "unit"` to the monomorphic unit builtin
+  -- *before* doing any lookup, so the import rule applies only when
+  -- the variable name is not the syntactic "unit".
+  ----------------------------------------------------------------
+
+  t-var-import : ∀ {ctx : NamedCtx} {x : String} {T : Type}
+               → lookupImport (NamedCtx.imports ctx) x ≡ just T
+               → ctx ⊢ RVar x ∶ T ⨾ zeroUsage
+
+  ----------------------------------------------------------------
   -- Let binding: `let x = e₁ in e₂`
   --
   -- The body `e₂` is checked under the extended context with `x : A`;
@@ -163,6 +180,24 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
         → ctx ⊢ e₁ ∶ A ⨾ Ψ₁
         → (extendNamedCtx ctx x A) ⊢ e₂ ∶ B ⨾ (q ∷ᵘ Ψ₂)
         → ctx ⊢ RLet x e₁ e₂ ∶ B ⨾ (Ψ₂ +ᵘ (q *ᵘ Ψ₁))
+
+  ----------------------------------------------------------------
+  -- Lambda abstraction (check-mode only; `RLam` without an expected
+  -- function type is rejected in infer mode).
+  --
+  -- The body's usage vector begins with a quantity `q'` at the
+  -- binder's position; `q' ≤q q` must hold (the body uses the binder
+  -- at most as many times as the arrow's declared grade allows).
+  -- This linearity constraint is the propositional witness recorded
+  -- in `Surface.lam`'s constructor.
+  ----------------------------------------------------------------
+
+  t-lam : ∀ {ctx : NamedCtx} {x : String} {body : RawExpr}
+          {A B : Type} {q q' : Quantity}
+          {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        → (q' Once.Type.≤q q) ≡ true
+        → (extendNamedCtx ctx x A) ⊢ body ∶ B ⨾ (q' ∷ᵘ Ψ)
+        → ctx ⊢ RLam x body ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ
 
   ----------------------------------------------------------------
   -- TODO (future G2 passes): rules for

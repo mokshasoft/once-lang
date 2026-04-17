@@ -570,6 +570,25 @@ asInt (success (μ-type _) _ _ _ _)                       = notInt "expected Int
 asInt (success (ν-type _) _ _ _ _)                       = notInt "expected Int, got ν-type"
 
 ------------------------------------------------------------------------
+-- Decide-with-proof helpers
+------------------------------------------------------------------------
+
+-- | Decide `q' ≤q q`, returning the propositional proof on success.
+--
+-- This is the Bool-decision packaged with its equality witness, as
+-- the `just`/`nothing` distinction. The elaborator uses this in the
+-- lambda case where the `Surface.lam` constructor requires a proof
+-- `(q' ≤q q) ≡ true`. Using this helper (instead of stdlib's
+-- `with q' ≤q q | inspect (q' ≤q_) q`) avoids producing an opaque
+-- internal `with`-function that downstream proofs cannot unify with.
+-- See `docs/formal/historical/lessons-learned.md` § "`with` patterns
+-- block computation" for background.
+decideLeq : (q' q : Quantity) → Maybe ((q' ≤q q) ≡ true)
+decideLeq q' q with q' ≤q q
+... | true  = just refl
+... | false = nothing
+
+------------------------------------------------------------------------
 -- Bidirectional Inference (produces usage-indexed Expr)
 ------------------------------------------------------------------------
 
@@ -726,12 +745,18 @@ mutual
   -- ===== checkElab =====
 
   -- Lambda in check mode: destruct expected function type
+  --
+  -- The body's first-position usage `q'` must satisfy `q' ≤q q`; we
+  -- need the Bool decision *with its proof* to construct `Surface.lam`.
+  -- Returning the decision via a `Maybe`-wrapping helper (`decideLeq`,
+  -- defined above) avoids the stdlib `inspect` idiom, whose internal
+  -- `with`-helper name is opaque to external proofs.
   checkElab ctx (Raw.RLam x body) (A ⇒[ q ] B) with checkElab (extendNamedCtx ctx x A) body B
   ... | failure err = failure err
-  ... | success (q' ∷ᵘ Ψ) bodyE d f with q' ≤q q | inspect (q' ≤q_) q
-  ...   | true  | [ eq ] =
+  ... | success (q' ∷ᵘ Ψ) bodyE d f with decideLeq q' q
+  ...   | just eq =
         success _ (Surface.lam q eq bodyE) (suc d) f
-  ...   | false | _ = failure ("Parameter '" ++ x ++ "' used with quantity " ++ showQuantity q' ++
+  ...   | nothing = failure ("Parameter '" ++ x ++ "' used with quantity " ++ showQuantity q' ++
                               " but declared with quantity " ++ showQuantity q)
   checkElab ctx (Raw.RLam _ _) _ = failure "Lambda requires function type"
 

@@ -35,14 +35,16 @@ open import Relation.Binary.PropositionalEquality
   using (_≡_; refl; sym; trans; cong; subst; inspect; [_])
 
 open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
-                                  _*_; _+_; _⇒[_]_)
+                                  _*_; _+_; _⇒[_]_; Quantity)
+open import Data.Bool using (Bool; true; false)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
-         RLet; RUnaryOp; OpNeg)
+         RLam; RLet; RUnaryOp; OpNeg)
 open import Data.String using (_++_)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure; lookupLocal; lookupImport; extendNamedCtx)
+import Once.TypeCheck.Elaborate
 open import Once.TypeCheck.Judgment
 
 open import Once.Surface.Syntax as Surface using (zeroUsage; _+ᵘ_; _*ᵘ_)
@@ -315,4 +317,67 @@ sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq
 ... | ()
 sound-RLet ctx x e₁ e₂ IH₁ IH₂ eq | failure _ , eq₁
   rewrite eq₁ with eq
+... | ()
+
+------------------------------------------------------------------------
+-- Soundness for RLam in CHECK mode
+--
+-- The elaborator was previously using `with q' ≤q q | inspect (q' ≤q_) q`
+-- to capture the linearity-proof equation, which produced an opaque
+-- internal `with`-helper that blocked this proof (see
+-- `docs/formal/historical/lessons-learned.md` § "`with` patterns block
+-- computation"). `Elaborate.agda` now uses `decideLeq : (q' q : Quantity)
+-- → Maybe ((q' ≤q q) ≡ true)` instead — a local refactor that returns
+-- the Bool decision *with its proof* directly, avoiding the inspect
+-- idiom. The proof below is straightforward: pattern-match on the
+-- bundled sub-result, then on `decideLeq`'s `just/nothing`.
+------------------------------------------------------------------------
+
+-- Bundle for the body's check call, parameterised by the lambda's
+-- argument type `A` and expected result type `B`.
+LamBodyBundle : (ctx : NamedCtx) (x : _) (A : Type) (body : RawExpr) (B : Type)
+              → Set
+LamBodyBundle ctx x A body B =
+  ∃[ r ] checkElab (extendNamedCtx ctx x A) body B ≡ r
+
+lamBodyBundle : ∀ (ctx : NamedCtx) (x : _) (A : Type) (body : RawExpr) (B : Type)
+              → LamBodyBundle ctx x A body B
+lamBodyBundle ctx x A body B = checkElab (extendNamedCtx ctx x A) body B , refl
+
+-- Bundle for the linearity decision, pairing the `Maybe` result with
+-- its defining equation.
+LeqBundle : (q' q : Quantity) → Set
+LeqBundle q' q = ∃[ r ] Once.TypeCheck.Elaborate.decideLeq q' q ≡ r
+
+leqBundle : (q' q : Quantity) → LeqBundle q' q
+leqBundle q' q = Once.TypeCheck.Elaborate.decideLeq q' q , refl
+
+sound-check-RLam :
+  ∀ (ctx : NamedCtx) (x : _) (body : RawExpr)
+    (A : Type) (q : Quantity) (B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ q ] B)}
+    {d f : ℕ}
+  → (IH : ∀ {Ψ' eE' d' f'}
+        → checkElab (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
+        → (extendNamedCtx ctx x A) ⊢ body ∶ B ⨾ Ψ')
+  → checkElab ctx (RLam x body) (A T.⇒[ q ] B) ≡ success Ψ eE d f
+  → ctx ⊢ RLam x body ∶ (A T.⇒[ q ] B) ⨾ Ψ
+sound-check-RLam ctx x body A q B IH eq with lamBodyBundle ctx x A body B
+sound-check-RLam ctx x body A q B IH eq
+  | success (q' ∷ᵘ Ψ') bodyE d f , eqBody
+  with leqBundle q' q
+sound-check-RLam ctx x body A q B IH eq
+  | success (q' ∷ᵘ Ψ') bodyE d f , eqBody
+  | just prf , eqDec
+  with IH eqBody
+... | subJudg rewrite eqBody | eqDec with eq
+... | refl = t-lam prf subJudg
+sound-check-RLam ctx x body A q B IH eq
+  | success (q' ∷ᵘ Ψ') bodyE d f , eqBody
+  | nothing , eqDec
+  rewrite eqBody | eqDec with eq
+... | ()
+sound-check-RLam ctx x body A q B IH eq | failure _ , eqBody
+  rewrite eqBody with eq
 ... | ()

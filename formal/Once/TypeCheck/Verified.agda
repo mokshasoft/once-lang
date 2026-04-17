@@ -35,6 +35,7 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type)
+import Once.Type
 open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
@@ -228,6 +229,18 @@ record VerifiedTypeChecker : Set₁ where
     -- G2 (continued): remaining soundness fields.
     ----------------------------------------------------------------
 
+    tcCheck-sound-RLam :
+      ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
+        (A : Type) (q : _) (B : Type)
+        {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ q ] B)}
+        {d f : _}
+      → (IH : ∀ {Ψ' eE' d' f'}
+            → tcCheck (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
+            → (extendNamedCtx ctx x A) ⊢ body ∶ B ⨾ Ψ')
+      → tcCheck ctx (RLam x body) (A Once.Type.⇒[ q ] B) ≡ success Ψ eE d f
+      → ctx ⊢ RLam x body ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ
+
     tcInfer-sound-RLet :
       ∀ (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
         {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -284,6 +297,7 @@ verifiedTypeChecker = record
   ; tcInfer-sound-RPair           = Snd.sound-RPair
   ; tcInfer-sound-RQualified      = Snd.sound-RQualified
   ; tcInfer-sound-RLet            = Snd.sound-RLet
+  ; tcCheck-sound-RLam            = Snd.sound-check-RLam
   ; tc-err-lam-infer              = EP.lam-infer-is-LambdaInInferMode
   ; tc-err-inl-infer              = EP.inl-app-infer-is-InlInInferMode
   ; tc-err-inr-infer              = EP.inr-app-infer-is-InrInInferMode
