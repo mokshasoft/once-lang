@@ -26,7 +26,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
 open import Relation.Nullary using (Dec; yes; no)
 open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; inspect; [_])
 
 open import Once.Type
 open Once.Type using (showQuantity; showType) public
@@ -35,8 +35,9 @@ open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Raw as Raw
 open import Once.TypeCheck.Context using (Ctx; ∅; name)
 open import Once.TypeCheck.Context as Context using () renaming (_,_∷_ to extendCtx)
-open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage)
+open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage; _+ᵘ_)
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
+open Surface.Usage using () renaming (_∷_ to _∷ᵘ_)
 open import Once.Surface.Thinning using (weaken; weakenFromEmpty)
 open import Once.Surface.Elaborate as Elab using (elaborate)
 
@@ -496,23 +497,318 @@ isPolyBuiltin "arr"      = true
 isPolyBuiltin _          = false
 
 -- | Look up a local variable by name in a NamedCtx.
--- Returns just (i , type-at-i) if found in local bindings, nothing otherwise.
+-- Returns (A , Ψ , e) where Ψ is the usage vector of the resulting expression.
+lookupLocal : (ctx : NamedCtx) → String
+            → Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A))
+lookupLocal (mkCtx n Γ Δ _ _) x = go Γ Δ
+  where
+    go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (∃[ A ] ∃[ Ψ ] (SExpr Δ' Ψ A))
+    go [] S∅                   = nothing
+    go [] (_ S, _ ^ _)         = nothing
+    go (_ ∷ _) S∅              = nothing
+    go {suc m} (b ∷ Γ') (Δ' S, B ^ _) with Data.String._≟_ x (name b)
+    ... | yes _ = just (B , _ , Surface.var zero)
+    ... | no _  with go Γ' Δ'
+    ...   | nothing        = nothing
+    ...   | just (A , Ψ , se) = just (A , _ , weaken se)
+
+-- | Find a local variable's de Bruijn position and declared quantity.
+findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
+findLocalVarUsage (mkCtx n Γ Δ _ _) x = go Γ Δ
+  where
+    go : ∀ {m} → Ctx → SCtx m → Maybe (Fin m × Quantity)
+    go [] S∅ = nothing
+    go [] (_ S, _ ^ _) = nothing
+    go (_ ∷ _) S∅ = nothing
+    go {suc m} (b ∷ Γ') (Δ' S, _ ^ q) with Data.String._≟_ x (name b)
+    ... | yes _ = just (zero , q)
+    ... | no  _ with go Γ' Δ'
+    ...   | nothing = nothing
+    ...   | just (i , q') = just (suc i , q')
 
 ------------------------------------------------------------------------
--- Phase 3 Stubs (plan 0.2.6)
+-- Function-type and Int-type projections (for inference branching)
 ------------------------------------------------------------------------
---
--- The bidirectional type-checker (inferNew / checkNew) is being rewired
--- to produce usage-indexed Expr. Until Phase 3 completes, the top-level
--- entry points return failures so the rest of the pipeline still
--- type-checks against the new result shape.
---
 
-inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
-inferElab _ _ = failure "inferElab: Phase 3 rewire pending (plan 0.2.6)"
+data FunProjection {n : ℕ} (Δ : SCtx n) : Set where
+  isFun  : (A : Type) (q : Quantity) (B : Type) (Ψ : Surface.Usage n)
+         → SExpr Δ Ψ (A ⇒[ q ] B) → ℕ → ℕ → FunProjection Δ
+  notFun : String → FunProjection Δ
 
-checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
-checkElab _ _ _ = failure "checkElab: Phase 3 rewire pending (plan 0.2.6)"
+asFun : ∀ {n} {Δ : SCtx n} → InferElabResult Δ → FunProjection Δ
+asFun (failure err)                                      = notFun err
+asFun (success (A ⇒[ q ] B) Ψ se d f)                    = isFun A q B Ψ se d f
+asFun (success Unit _ _ _ _)                             = notFun "expected function type, got Unit"
+asFun (success Void _ _ _ _)                             = notFun "expected function type, got Void"
+asFun (success Int _ _ _ _)                              = notFun "expected function type, got Int"
+asFun (success Float _ _ _ _)                            = notFun "expected function type, got Float"
+asFun (success Str _ _ _ _)                              = notFun "expected function type, got Str"
+asFun (success Buffer _ _ _ _)                           = notFun "expected function type, got Buffer"
+asFun (success (_ Once.Type.* _) _ _ _ _)                = notFun "expected function type, got product"
+asFun (success (_ Once.Type.+ _) _ _ _ _)                = notFun "expected function type, got sum"
+asFun (success (Eff _ _) _ _ _ _)                        = notFun "expected function type, got Eff"
+asFun (success (μ-type _) _ _ _ _)                       = notFun "expected function type, got μ-type"
+asFun (success (ν-type _) _ _ _ _)                       = notFun "expected function type, got ν-type"
+
+data IntProjection {n : ℕ} (Δ : SCtx n) : Set where
+  isInt  : (Ψ : Surface.Usage n) → SExpr Δ Ψ Int → ℕ → ℕ → IntProjection Δ
+  notInt : String → IntProjection Δ
+
+asInt : ∀ {n} {Δ : SCtx n} → InferElabResult Δ → IntProjection Δ
+asInt (failure err)                                      = notInt err
+asInt (success Int Ψ se d f)                             = isInt Ψ se d f
+asInt (success Unit _ _ _ _)                             = notInt "expected Int, got Unit"
+asInt (success Void _ _ _ _)                             = notInt "expected Int, got Void"
+asInt (success Float _ _ _ _)                            = notInt "expected Int, got Float"
+asInt (success Str _ _ _ _)                              = notInt "expected Int, got Str"
+asInt (success Buffer _ _ _ _)                           = notInt "expected Int, got Buffer"
+asInt (success (_ Once.Type.* _) _ _ _ _)                = notInt "expected Int, got product"
+asInt (success (_ Once.Type.+ _) _ _ _ _)                = notInt "expected Int, got sum"
+asInt (success (_ ⇒[ _ ] _) _ _ _ _)                     = notInt "expected Int, got function"
+asInt (success (Eff _ _) _ _ _ _)                        = notInt "expected Int, got Eff"
+asInt (success (μ-type _) _ _ _ _)                       = notInt "expected Int, got μ-type"
+asInt (success (ν-type _) _ _ _ _)                       = notInt "expected Int, got ν-type"
+
+------------------------------------------------------------------------
+-- Bidirectional Inference (produces usage-indexed Expr)
+------------------------------------------------------------------------
+
+mutual
+  inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
+  checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
+
+  -- ===== inferElab =====
+
+  -- Literals
+  inferElab ctx (Raw.RInt n) =
+    success Int _ (Surface.int n) 0 (NamedCtx.freshCounter ctx)
+  inferElab ctx (Raw.RStringLit s) =
+    success Str _ (Surface.str s) 0 (NamedCtx.freshCounter ctx)
+  inferElab ctx Raw.RUnit =
+    success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx)
+
+  -- Type annotation: check against the annotated type
+  inferElab ctx (Raw.RAnnot e T) with checkElab ctx e T
+  ... | success Ψ se d f = success T Ψ se d f
+  ... | failure err     = failure err
+
+  -- The `unit` builtin is monomorphic (type Unit).
+  inferElab ctx (Raw.RVar "unit") =
+    success Unit _ Surface.unit 0 (NamedCtx.freshCounter ctx)
+
+  -- Variable lookup (local first, then imports; polymorphic builtins need context)
+  inferElab ctx (Raw.RVar x) with lookupLocal ctx x
+  ... | just (A , Ψ , se) = success A Ψ se 0 (NamedCtx.freshCounter ctx)
+  ... | nothing with lookupImport (NamedCtx.imports ctx) x
+  ...   | just ty = success ty _ (Surface.prim x) 0 (NamedCtx.freshCounter ctx)
+  ...   | nothing = failure ("Unbound or unspecialized variable: " ++ x ++
+                             " (polymorphic builtins must appear applied or in check mode)")
+
+  -- Qualified name: look up as "alias.name"
+  inferElab ctx (Raw.RQualified name alias) with lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
+  ... | just ty = success ty _ (Surface.prim (alias ++ "." ++ name)) 0 (NamedCtx.freshCounter ctx)
+  ... | nothing = failure ("Unbound qualified variable: " ++ name ++ "@" ++ alias)
+
+  -- Lambda without annotation: rejected in infer mode
+  inferElab ctx (Raw.RLam _ _) =
+    failure "Lambda without type annotation not supported in inference mode."
+
+  -- Polymorphic builtin applications (fully applied):
+
+  -- id : A → A
+  inferElab ctx (Raw.RApp (Raw.RVar "id") arg) with inferElab ctx arg
+  ... | failure err = failure err
+  ... | success T Ψ argE d f =
+        success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) f
+
+  -- fst : (A * B) → A
+  inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) with inferElab ctx arg
+  ... | failure err = failure err
+  ... | success (A Once.Type.* B) Ψ argE d f =
+        success A _ (Surface.app (weakenFromEmpty (specFst A B)) argE) (suc d) f
+  ... | success _ _ _ _ _ = failure "fst requires a pair argument"
+
+  -- snd : (A * B) → B
+  inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) with inferElab ctx arg
+  ... | failure err = failure err
+  ... | success (A Once.Type.* B) Ψ argE d f =
+        success B _ (Surface.app (weakenFromEmpty (specSnd A B)) argE) (suc d) f
+  ... | success _ _ _ _ _ = failure "snd requires a pair argument"
+
+  -- terminal : A → Unit
+  inferElab ctx (Raw.RApp (Raw.RVar "terminal") arg) with inferElab ctx arg
+  ... | failure err = failure err
+  ... | success A Ψ argE d f =
+        success Unit _ (Surface.app (weakenFromEmpty (specTerminal A)) argE) (suc d) f
+
+  -- Partial / check-only builtins in infer mode: fail.
+  inferElab ctx (Raw.RApp (Raw.RVar "inl") _) =
+    failure "inl requires check mode (needs target sum type)"
+  inferElab ctx (Raw.RApp (Raw.RVar "inr") _) =
+    failure "inr requires check mode (needs target sum type)"
+  inferElab ctx (Raw.RApp (Raw.RVar "initial") _) =
+    failure "initial requires check mode (needs target type)"
+
+  -- Generic application: infer f as function type, then x
+  inferElab ctx (Raw.RApp f x) with asFun (inferElab ctx f)
+  ... | notFun err = failure err
+  ... | isFun A q B Ψ₁ fE df ff with inferElab ctx x
+  ...   | failure err = failure err
+  ...   | success A' Ψ₂ xE dx fx with A ≟T A'
+  ...     | yes refl = success B _ (Surface.app fE xE) (df ⊔ dx) fx
+  ...     | no _ = failure ("Application: argument type " ++ showType A' ++
+                            " does not match function domain " ++ showType A)
+
+  -- Let binding: infer e₁, then e₂ under extended context.
+  -- e₂'s usage has the shape (q ∷ᵘ Ψ) where q is the bound var's usage.
+  inferElab ctx (Raw.RLet x e₁ e₂) with inferElab ctx e₁
+  ... | failure err = failure err
+  ... | success A Ψ₁ e₁E d₁ f₁ with inferElab (extendNamedCtx ctx x A) e₂
+  ...   | failure err = failure err
+  ...   | success B (q ∷ᵘ Ψ₂) e₂E d₂ f₂ =
+        success B _ (Surface.let' e₁E e₂E) (d₁ ⊔ suc d₂) f₂
+
+  -- Pair introduction
+  inferElab ctx (Raw.RPair a b) with inferElab ctx a
+  ... | failure err = failure err
+  ... | success A Ψ₁ aE da fa with inferElab ctx b
+  ...   | failure err = failure err
+  ...   | success B Ψ₂ bE db fb =
+        success (A Once.Type.* B) _ (Surface.pair aE bE) (da ⊔ db) fb
+
+  -- Case (destruct)
+  inferElab ctx (Raw.RDestruct scrut xL eL xR eR) with inferElab ctx scrut
+  ... | failure err = failure err
+  ... | success (A Once.Type.+ B) Ψs scrutE ds fs with inferElab (extendNamedCtx ctx xL A) eL
+  ...   | failure err = failure err
+  ...   | success C₁ (qℓ ∷ᵘ Ψₗ) eLE dL fL with inferElab (extendNamedCtx ctx xR B) eR
+  ...     | failure err = failure err
+  ...     | success C₂ (qr ∷ᵘ Ψᵣ) eRE dR fR with C₁ ≟T C₂
+  ...       | yes refl = success C₁ _ (Surface.case' scrutE eLE eRE)
+                           (ds ⊔ suc dL ⊔ suc dR) fR
+  ...       | no _ = failure "Case branches have different types"
+  inferElab ctx (Raw.RDestruct _ _ _ _ _) | success _ _ _ _ _ = failure "Case requires a sum-typed scrutinee"
+
+  -- Binary operators
+  inferElab ctx (Raw.RBinOp op e₁ e₂) with asInt (inferElab ctx e₁)
+  ... | notInt err = failure ("binop left: " ++ err)
+  ... | isInt Ψ₁ e₁E d₁ f₁ with asInt (inferElab ctx e₂)
+  ...   | notInt err = failure ("binop right: " ++ err)
+  ...   | isInt Ψ₂ e₂E d₂ f₂ =
+        if Raw.isArithmeticOp op
+          then success Int _ (mkArith op e₁E e₂E) (d₁ ⊔ d₂) f₂
+          else success (Unit Once.Type.+ Unit) _ (mkCmp op e₁E e₂E) (d₁ ⊔ d₂) f₂
+    where
+      mkArith : ∀ {Δ : SCtx (NamedCtx.size ctx)} {Ψa Ψb : Surface.Usage (NamedCtx.size ctx)}
+              → Raw.BinOp → SExpr Δ Ψa Int → SExpr Δ Ψb Int → SExpr Δ (Ψa +ᵘ Ψb) Int
+      mkArith Raw.OpAdd = Surface.add
+      mkArith Raw.OpSub = Surface.sub
+      mkArith Raw.OpMul = Surface.mul
+      mkArith Raw.OpDiv = Surface.div
+      mkArith Raw.OpMod = Surface.mod'
+      mkArith _         = Surface.add
+      mkCmp : ∀ {Δ : SCtx (NamedCtx.size ctx)} {Ψa Ψb : Surface.Usage (NamedCtx.size ctx)}
+            → Raw.BinOp → SExpr Δ Ψa Int → SExpr Δ Ψb Int → SExpr Δ (Ψa +ᵘ Ψb) (Unit Once.Type.+ Unit)
+      mkCmp Raw.OpLt = Surface.lt
+      mkCmp Raw.OpLe = Surface.le
+      mkCmp Raw.OpGt = Surface.gt
+      mkCmp Raw.OpGe = Surface.ge
+      mkCmp Raw.OpEq = Surface.eq
+      mkCmp Raw.OpNe = Surface.ne
+      mkCmp _         = Surface.lt
+
+  -- Unary negation
+  inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) with inferElab ctx e
+  ... | failure err = failure err
+  ... | success Int Ψ eE d f = success Int _ (Surface.neg eE) d f
+  ... | success _ _ _ _ _ = failure "Negation requires Int operand"
+
+  -- ===== checkElab =====
+
+  -- Lambda in check mode: destruct expected function type
+  checkElab ctx (Raw.RLam x body) (A ⇒[ q ] B) with checkElab (extendNamedCtx ctx x A) body B
+  ... | failure err = failure err
+  ... | success (q' ∷ᵘ Ψ) bodyE d f with q' ≤q q | inspect (q' ≤q_) q
+  ...   | true  | [ eq ] =
+        success _ (Surface.lam q eq bodyE) (suc d) f
+  ...   | false | _ = failure ("Parameter '" ++ x ++ "' used with quantity " ++ showQuantity q' ++
+                              " but declared with quantity " ++ showQuantity q)
+  checkElab ctx (Raw.RLam _ _) _ = failure "Lambda requires function type"
+
+  -- inl in check mode: expected sum type
+  checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B) with checkElab ctx arg A
+  ... | failure err = failure err
+  ... | success Ψ argE d f =
+        success _ (Surface.app (weakenFromEmpty (specInl A B)) argE) (suc d) f
+  checkElab ctx (Raw.RApp (Raw.RVar "inl") _) _ = failure "inl expects a sum type in check mode"
+
+  -- inr in check mode
+  checkElab ctx (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B) with checkElab ctx arg B
+  ... | failure err = failure err
+  ... | success Ψ argE d f =
+        success _ (Surface.app (weakenFromEmpty (specInr A B)) argE) (suc d) f
+  checkElab ctx (Raw.RApp (Raw.RVar "inr") _) _ = failure "inr expects a sum type in check mode"
+
+  -- initial in check mode: Void → A
+  checkElab ctx (Raw.RApp (Raw.RVar "initial") arg) T with checkElab ctx arg Void
+  ... | failure err = failure err
+  ... | success Ψ argE d f =
+        success _ (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) f
+
+  -- Bare polymorphic builtins in check mode: specialize against expected type.
+
+  checkElab ctx (Raw.RVar "id") (A ⇒[ Many ] B) with A ≟T B
+  ... | yes refl = success _ (weakenFromEmpty (specId A)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure "id: expected type A → A (domain must equal codomain)"
+
+  checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) ⇒[ Many ] A') with A ≟T A'
+  ... | yes refl = success _ (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure "fst: expected type (A * B) → A"
+
+  checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) ⇒[ Many ] B') with B ≟T B'
+  ... | yes refl = success _ (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure "snd: expected type (A * B) → B"
+
+  checkElab ctx (Raw.RVar "inl") (A ⇒[ Many ] (A' Once.Type.+ B)) with A ≟T A'
+  ... | yes refl = success _ (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure "inl: expected type A → (A + B)"
+
+  checkElab ctx (Raw.RVar "inr") (B ⇒[ Many ] (A Once.Type.+ B')) with B ≟T B'
+  ... | yes refl = success _ (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure "inr: expected type B → (A + B)"
+
+  checkElab ctx (Raw.RVar "terminal") (A ⇒[ Many ] Unit) =
+    success _ (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx)
+
+  checkElab ctx (Raw.RVar "initial") (Void ⇒[ Many ] A) =
+    success _ (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx)
+
+  checkElab ctx (Raw.RVar "arr") ((A ⇒[ Many ] B) ⇒[ Many ] (Eff A' B')) with A ≟T A' | B ≟T B'
+  ... | yes refl | yes refl = success _ (weakenFromEmpty (specArr A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | _ | _ = failure "arr: expected type (A → B) → Eff A B"
+
+  checkElab ctx (Raw.RVar "apply") (((A ⇒[ Many ] B) Once.Type.* A') ⇒[ Many ] B') with A ≟T A' | B ≟T B'
+  ... | yes refl | yes refl = success _ (weakenFromEmpty (specApply A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | _ | _ = failure "apply: expected type ((A → B) * A) → B"
+
+  checkElab ctx (Raw.RVar "compose") ((B ⇒[ Many ] C) ⇒[ Many ] ((A ⇒[ Many ] B') ⇒[ Many ] (A' ⇒[ Many ] C'))) with B ≟T B' | A ≟T A' | C ≟T C'
+  ... | yes refl | yes refl | yes refl = success _ (weakenFromEmpty (specCompose A B C)) 0 (NamedCtx.freshCounter ctx)
+  ... | _ | _ | _ = failure "compose: expected type (B → C) → (A → B) → A → C"
+
+  checkElab ctx (Raw.RVar "pair") ((A ⇒[ Many ] B) ⇒[ Many ] ((A' ⇒[ Many ] C) ⇒[ Many ] (A'' ⇒[ Many ] (B' Once.Type.* C')))) with A ≟T A' | A ≟T A'' | B ≟T B' | C ≟T C'
+  ... | yes refl | yes refl | yes refl | yes refl = success _ (weakenFromEmpty (specPair A B C)) 0 (NamedCtx.freshCounter ctx)
+  ... | _ | _ | _ | _ = failure "pair (fork): expected type (A → B) → (A → C) → A → (B * C)"
+
+  checkElab ctx (Raw.RVar "curry") (((A Once.Type.* B) ⇒[ Many ] C) ⇒[ Many ] (A' ⇒[ Many ] (B' ⇒[ Many ] C'))) with A ≟T A' | B ≟T B' | C ≟T C'
+  ... | yes refl | yes refl | yes refl = success _ (weakenFromEmpty (specCurry A B C)) 0 (NamedCtx.freshCounter ctx)
+  ... | _ | _ | _ = failure "curry: expected type ((A * B) → C) → A → B → C"
+
+  -- Generic fallback: infer and match types
+  checkElab ctx e T with inferElab ctx e
+  ... | failure err = failure err
+  ... | success T' Ψ eE d f with T ≟T T'
+  ...   | yes refl = success _ eE d f
+  ...   | no _ = failure ("Type mismatch: expected " ++ showType T ++ " but got " ++ showType T')
 
 ------------------------------------------------------------------------
 -- Top-level Compilation
