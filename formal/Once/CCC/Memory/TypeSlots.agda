@@ -23,8 +23,10 @@ module Once.CCC.Memory.TypeSlots where
 
 open import Data.Nat using (ℕ)
 open import Once.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Eff;
-                             Int; Float; Str; Buffer; TVar;
+                             Int; Float; Str; Buffer;
                              Functor; μ-type; ν-type)
+-- TVar removed: Code generation works with concrete types only.
+-- Type variables exist only in PolyType during type inference.
 
 ------------------------------------------------------------------------
 -- Type Slot Counts
@@ -42,7 +44,8 @@ open import Once.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Eff;
 --   - Functions: 2 (closure: env-ptr + code-ptr)
 --   - Eff: delegates to result type
 --   - Recursive types: 1 (pointer to structure)
---   - Type variables: 1 (polymorphic = pointer)
+-- Note: Type variables (TVar) only exist in PolyType during inference.
+-- By code generation time, all types are concrete.
 ------------------------------------------------------------------------
 
 -- | Compute slot count for stack allocation
@@ -59,7 +62,6 @@ stack-type-slots (_ ⇒[ _ ] _) = 2 -- closure: env-ptr + code-ptr
 stack-type-slots (Eff _ B) = stack-type-slots B
 stack-type-slots (μ-type _) = 1   -- pointer to inductive structure
 stack-type-slots (ν-type _) = 1   -- pointer to coinductive structure
-stack-type-slots (TVar _) = 1     -- polymorphic = pointer
 
 -- | Compute slot count for heap allocation
 -- Identical to stack (reference-based model)
@@ -76,7 +78,6 @@ heap-type-slots (_ ⇒[ _ ] _) = 2
 heap-type-slots (Eff _ B) = heap-type-slots B
 heap-type-slots (μ-type _) = 1
 heap-type-slots (ν-type _) = 1
-heap-type-slots (TVar _) = 1
 
 -- | Legacy alias (defaults to stack representation)
 type-slots : Type → ℕ

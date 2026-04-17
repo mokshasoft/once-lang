@@ -37,13 +37,13 @@ tA = TVar "A"
 tB = TVar "B"
 
 -- | Run the once compiler. Tries 'once' directly first (for Nix builds),
--- falls back to 'stack exec -- once' for development.
+-- falls back to 'cabal run once --' for development.
 runOnce :: [String] -> IO (ExitCode, String, String)
 runOnce args = do
   onceInPath <- findExecutable "once"
   case onceInPath of
     Just oncePath -> readProcessWithExitCode oncePath args ""
-    Nothing -> readProcessWithExitCode "stack" (["exec", "--", "once"] ++ args) ""
+    Nothing -> readProcessWithExitCode "cabal" (["run", "once", "--"] ++ args) ""
 
 -- | Cleanup a test directory, ignoring errors
 cleanupDir :: FilePath -> IO ()

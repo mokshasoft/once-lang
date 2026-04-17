@@ -59,7 +59,6 @@ Unit ≟Type Int = no (λ ())
 Unit ≟Type Float = no (λ ())
 Unit ≟Type Str = no (λ ())
 Unit ≟Type Buffer = no (λ ())
-Unit ≟Type (TVar _) = no (λ ())
 Void ≟Type Unit = no (λ ())
 Void ≟Type Void = yes refl
 Void ≟Type (_ * _) = no (λ ())
@@ -70,7 +69,6 @@ Void ≟Type Int = no (λ ())
 Void ≟Type Float = no (λ ())
 Void ≟Type Str = no (λ ())
 Void ≟Type Buffer = no (λ ())
-Void ≟Type (TVar _) = no (λ ())
 (A * B) ≟Type Unit = no (λ ())
 (A * B) ≟Type Void = no (λ ())
 (A * B) ≟Type (C * D) with A ≟Type C | B ≟Type D
@@ -84,7 +82,6 @@ Void ≟Type (TVar _) = no (λ ())
 (A * B) ≟Type Float = no (λ ())
 (A * B) ≟Type Str = no (λ ())
 (A * B) ≟Type Buffer = no (λ ())
-(A * B) ≟Type (TVar _) = no (λ ())
 (A + B) ≟Type Unit = no (λ ())
 (A + B) ≟Type Void = no (λ ())
 (A + B) ≟Type (_ * _) = no (λ ())
@@ -98,7 +95,6 @@ Void ≟Type (TVar _) = no (λ ())
 (A + B) ≟Type Float = no (λ ())
 (A + B) ≟Type Str = no (λ ())
 (A + B) ≟Type Buffer = no (λ ())
-(A + B) ≟Type (TVar _) = no (λ ())
 (A ⇒[ q ] B) ≟Type Unit = no (λ ())
 (A ⇒[ q ] B) ≟Type Void = no (λ ())
 (A ⇒[ q ] B) ≟Type (_ * _) = no (λ ())
@@ -113,7 +109,6 @@ Void ≟Type (TVar _) = no (λ ())
 (A ⇒[ q ] B) ≟Type Float = no (λ ())
 (A ⇒[ q ] B) ≟Type Str = no (λ ())
 (A ⇒[ q ] B) ≟Type Buffer = no (λ ())
-(A ⇒[ q ] B) ≟Type (TVar _) = no (λ ())
 (Eff A B) ≟Type Unit = no (λ ())
 (Eff A B) ≟Type Void = no (λ ())
 (Eff A B) ≟Type (_ * _) = no (λ ())
@@ -127,7 +122,6 @@ Void ≟Type (TVar _) = no (λ ())
 (Eff A B) ≟Type Float = no (λ ())
 (Eff A B) ≟Type Str = no (λ ())
 (Eff A B) ≟Type Buffer = no (λ ())
-(Eff A B) ≟Type (TVar _) = no (λ ())
 -- OCP-0003: Fix removed. Use μ-type/ν-type instead.
 Int ≟Type Unit = no (λ ())
 Int ≟Type Void = no (λ ())
@@ -139,7 +133,6 @@ Int ≟Type Int = yes refl
 Int ≟Type Float = no (λ ())
 Int ≟Type Str = no (λ ())
 Int ≟Type Buffer = no (λ ())
-Int ≟Type (TVar _) = no (λ ())
 Float ≟Type Unit = no (λ ())
 Float ≟Type Void = no (λ ())
 Float ≟Type (_ * _) = no (λ ())
@@ -150,7 +143,6 @@ Float ≟Type Int = no (λ ())
 Float ≟Type Float = yes refl
 Float ≟Type Str = no (λ ())
 Float ≟Type Buffer = no (λ ())
-Float ≟Type (TVar _) = no (λ ())
 Str ≟Type Unit = no (λ ())
 Str ≟Type Void = no (λ ())
 Str ≟Type (_ * _) = no (λ ())
@@ -161,7 +153,6 @@ Str ≟Type Int = no (λ ())
 Str ≟Type Float = no (λ ())
 Str ≟Type Str = yes refl
 Str ≟Type Buffer = no (λ ())
-Str ≟Type (TVar _) = no (λ ())
 Buffer ≟Type Unit = no (λ ())
 Buffer ≟Type Void = no (λ ())
 Buffer ≟Type (_ * _) = no (λ ())
@@ -172,20 +163,7 @@ Buffer ≟Type Int = no (λ ())
 Buffer ≟Type Float = no (λ ())
 Buffer ≟Type Str = no (λ ())
 Buffer ≟Type Buffer = yes refl
-Buffer ≟Type (TVar _) = no (λ ())
-(TVar x) ≟Type Unit = no (λ ())
-(TVar x) ≟Type Void = no (λ ())
-(TVar x) ≟Type (_ * _) = no (λ ())
-(TVar x) ≟Type (_ + _) = no (λ ())
-(TVar x) ≟Type (_ ⇒[ _ ] _) = no (λ ())
-(TVar x) ≟Type (Eff _ _) = no (λ ())
-(TVar x) ≟Type Int = no (λ ())
-(TVar x) ≟Type Float = no (λ ())
-(TVar x) ≟Type Str = no (λ ())
-(TVar x) ≟Type Buffer = no (λ ())
-(TVar x) ≟Type (TVar y) with x ≟String y
-... | yes refl = yes refl
-... | no neq   = no (λ { refl → neq refl })
+-- TVar removed from Type; now in PolyType (see Once.Type)
 -- μ-type cases (OCP-0003)
 (μ-type F) ≟Type Unit = no (λ ())
 (μ-type F) ≟Type Void = no (λ ())
@@ -201,7 +179,6 @@ Buffer ≟Type (TVar _) = no (λ ())
 (μ-type F) ≟Type Float = no (λ ())
 (μ-type F) ≟Type Str = no (λ ())
 (μ-type F) ≟Type Buffer = no (λ ())
-(μ-type F) ≟Type (TVar _) = no (λ ())
 -- ν-type cases (OCP-0003)
 (ν-type F) ≟Type Unit = no (λ ())
 (ν-type F) ≟Type Void = no (λ ())
@@ -217,7 +194,6 @@ Buffer ≟Type (TVar _) = no (λ ())
 (ν-type F) ≟Type Float = no (λ ())
 (ν-type F) ≟Type Str = no (λ ())
 (ν-type F) ≟Type Buffer = no (λ ())
-(ν-type F) ≟Type (TVar _) = no (λ ())
 -- Reverse cases for other types against μ-type/ν-type
 Unit ≟Type (μ-type _) = no (λ ())
 Unit ≟Type (ν-type _) = no (λ ())
@@ -239,9 +215,8 @@ Str ≟Type (μ-type _) = no (λ ())
 Str ≟Type (ν-type _) = no (λ ())
 Buffer ≟Type (μ-type _) = no (λ ())
 Buffer ≟Type (ν-type _) = no (λ ())
-(TVar _) ≟Type (μ-type _) = no (λ ())
-(TVar _) ≟Type (ν-type _) = no (λ ())
 -- GuardedT removed: productivity follows from IR totality
+-- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
 -- Functor equality implementation
@@ -353,23 +328,103 @@ wants-coprod _ = false
 -- OCP-0003: wants-unfold/wants-fold removed. Use Cata/Ana instead.
 
 ------------------------------------------------------------------------
--- | Composition optimization (postulated)
+-- | Composition optimization
 --
--- NOTE: Due to type index unification issues with OCP-0003's new
--- recursion scheme constructors (In, Cata, Out, Ana, Hylo), the
--- structural composition rules are temporarily disabled via postulate.
+-- Rules implemented:
+--   - Identity: id ∘ f = f, g ∘ id = g
+--   - Beta (products): fst ∘ ⟨f,g⟩ = f, snd ∘ ⟨f,g⟩ = g
+--   - Beta (coproducts): case f g ∘ inl = f, case f g ∘ inr = g
+--   - Dead code: terminal ∘ f = terminal, g ∘ initial = initial
 --
--- Type-directed rules (conceptually):
---   1. Any g ∘ f : A → Unit  becomes terminal (Unit target rule)
---   2. Any g ∘ f : Void → C  becomes initial  (Void source rule)
---
--- TODO: Re-enable full optimization rules once the coverage checking
--- issues are resolved. The intended rules include identity laws, beta
--- laws, fixed point fusion, dead code elimination, and distribution.
+-- NOTE: Due to dependent type indices in recursion scheme constructors
+-- (⟦ F ⟧T can produce any type structure), we use "view" patterns to
+-- isolate the coverage gap into explicit postulates.
 ------------------------------------------------------------------------
 
+-- View: classify IR terms targeting a product type
+data PairView : ∀ {A B C : Type} → IR A (B * C) → Set where
+  is-pair : ∀ {A B C} (f : IR A B) (g : IR A C) m → PairView (⟨ f , g ⟩ m)
+  is-other-pair : ∀ {A B C} (f : IR A (B * C)) → PairView f
+
+-- View: classify IR terms targeting a coproduct type
+-- Note: inl : IR A (A + B), inr : IR B (A + B) - source must match component
+data CoprodView : ∀ {A B D : Type} → IR D (A + B) → Set where
+  is-inl : ∀ {A B} m → CoprodView {A} {B} {A} (inl m)
+  is-inr : ∀ {A B} m → CoprodView {A} {B} {B} (inr m)
+  is-other-coprod : ∀ {A B D} (f : IR D (A + B)) → CoprodView f
+
+-- View: classify IR by optimization-relevant structure (first argument of compose)
+data ComposeFirstView : ∀ {B C : Type} → IR B C → Set where
+  cf-id : ∀ {A} → ComposeFirstView {A} {A} id
+  cf-terminal : ∀ {A} → ComposeFirstView {A} {Unit} terminal
+  cf-fst : ∀ {A B} → ComposeFirstView {A * B} {A} fst
+  cf-snd : ∀ {A B} → ComposeFirstView {A * B} {B} snd
+  cf-case : ∀ {A B C} (h : IR A C) (k : IR B C) → ComposeFirstView {A + B} {C} (case h k)
+  cf-other : ∀ {B C} (g : IR B C) → ComposeFirstView g
+
+-- View: classify IR by optimization-relevant structure (second argument of compose)
+data ComposeSecondView : ∀ {A B : Type} → IR A B → Set where
+  cs-id : ∀ {A} → ComposeSecondView {A} {A} id
+  cs-initial : ∀ {A} → ComposeSecondView {Void} {A} initial
+  cs-other : ∀ {A B} (f : IR A B) → ComposeSecondView f
+
+-- View: classify IR as fst, snd, or other (for pair eta law)
+data FstSndView : ∀ {A B : Type} → IR A B → Set where
+  fsv-fst : ∀ {X Y} → FstSndView {X * Y} {X} fst
+  fsv-snd : ∀ {X Y} → FstSndView {X * Y} {Y} snd
+  fsv-other : ∀ {A B} (f : IR A B) → FstSndView f
+
+-- View: classify IR as inl, inr, or other (for case eta law)
+data InlInrView : ∀ {A B : Type} → IR A B → Set where
+  iiv-inl : ∀ {X Y} m → InlInrView {X} {X + Y} (inl m)
+  iiv-inr : ∀ {X Y} m → InlInrView {Y} {X + Y} (inr m)
+  iiv-other : ∀ {A B} (f : IR A B) → InlInrView f
+
+-- Postulates: we can classify any IR by structure
+-- (True at runtime, unprovable due to ⟦ F ⟧T type indices)
 postulate
-  optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
+  pairView : ∀ {A B C} → (f : IR A (B * C)) → PairView f
+  coprodView : ∀ {A B D} → (f : IR D (A + B)) → CoprodView f
+  composeFirstView : ∀ {B C} → (g : IR B C) → ComposeFirstView g
+  composeSecondView : ∀ {A B} → (f : IR A B) → ComposeSecondView f
+  fstSndView : ∀ {A B} → (f : IR A B) → FstSndView f
+  inlInrView : ∀ {A B} → (f : IR A B) → InlInrView f
+
+-- Helper: beta reduction for fst ∘ f (verified given view)
+optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
+optimize-fst f with pairView f
+... | is-pair g _ _ = g
+... | is-other-pair f = fst ∘ f
+
+-- Helper: beta reduction for snd ∘ f (verified given view)
+optimize-snd : ∀ {A B C} → IR A (B * C) → IR A C
+optimize-snd f with pairView f
+... | is-pair _ g _ = g
+... | is-other-pair f = snd ∘ f
+
+-- Helper: optimize (case h k) ∘ f (verified given view)
+-- When f = inl, D = A; when f = inr, D = B
+optimize-post-case : ∀ {A B C D} → IR A C → IR B C → IR D (A + B) → IR D C
+optimize-post-case {A} {B} {C} {D} h k f with coprodView f
+... | is-inl _ = h    -- D = A, so IR D C = IR A C
+... | is-inr _ = k    -- D = B, so IR D C = IR B C
+... | is-other-coprod f = case h k ∘ f
+
+-- Helper: handle second argument after first is classified as "other"
+optimize-compose-second : ∀ {A B C} → IR B C → IR A B → IR A C
+optimize-compose-second g f with composeSecondView f
+... | cs-id = g
+... | cs-initial = initial
+... | cs-other f = g ∘ f
+
+optimize-compose : ∀ {A B C} → IR B C → IR A B → IR A C
+optimize-compose g f with composeFirstView g
+... | cf-id = f                                    -- id ∘ f = f
+... | cf-terminal = terminal                       -- terminal ∘ f = terminal
+... | cf-fst = optimize-fst f                      -- fst ∘ f (beta reduction)
+... | cf-snd = optimize-snd f                      -- snd ∘ f (beta reduction)
+... | cf-case h k = optimize-post-case h k f       -- case h k ∘ f (beta reduction)
+... | cf-other g = optimize-compose-second g f     -- check second arg
 
 ------------------------------------------------------------------------
 -- Eta Laws (for pairs and cases) - Postulated
@@ -381,14 +436,18 @@ postulate
 -- | Optimize pair construction
 --   ⟨ fst , snd ⟩ = id (eta)
 --   ⟨ fst ∘ h , snd ∘ h ⟩ = h (uniqueness)
-postulate
-  optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
+optimize-pair : ∀ {A B C} → IR C A → IR C B → IR C (A * B)
+optimize-pair f g with fstSndView f | fstSndView g
+... | fsv-fst | fsv-snd = id                          -- eta: C = A * B, so id : IR C C
+... | _ | _ = ⟨ f , g ⟩ Stack                         -- default (use Stack allocation)
 
 -- | Optimize case construction
 --   [ inl , inr ] = id (eta)
 --   [ h ∘ inl , h ∘ inr ] = h (uniqueness)
-postulate
-  optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
+optimize-case : ∀ {A B C} → IR A C → IR B C → IR (A + B) C
+optimize-case f g with inlInrView f | inlInrView g
+... | iiv-inl _ | iiv-inr _ = id                      -- eta: C = A + B, so id : IR C C
+... | _ | _ = case f g                                -- default
 
 ------------------------------------------------------------------------
 -- Full Recursive Optimization

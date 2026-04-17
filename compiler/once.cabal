@@ -40,6 +40,7 @@ library
   exposed-modules:
       Lib
       Once.CLI
+      Once.Compile.Bridge
       Once.Eval
       Once.IR
       Once.Type
@@ -256,6 +257,7 @@ library
       MAlonzo.Code.Once.Surface.Desugar
       MAlonzo.Code.Once.Surface.Elaborate
       MAlonzo.Code.Once.Surface.IR
+      MAlonzo.Code.Once.Surface.PolySyntax
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Surface.Thinning
       MAlonzo.Code.Once.Target
@@ -370,13 +372,16 @@ test-suite once-test
       Backend.C.Spec
       Backend.Common
       BackendSpec
-      ElaborateSpec
       IRSpec
-      ModuleSpec
-      OptimizeSpec
-      ParserSpec
-      QuantitySpec
+      Layer0Spec
+      ParseSpec
       TypeCheckSpec
+      TypeErrorSpec
+      -- Disabled: reference old Haskell modules that no longer exist
+      -- ElaborateSpec (Once.Elaborate, Once.Parser, Once.Syntax)
+      -- ModuleSpec (Once.Module, Once.Syntax)
+      -- ParserSpec (Once.Parser, Once.Syntax)
+      -- QuantitySpec (Once.Quantity)
   autogen-modules:
       Paths_once
   hs-source-dirs:
@@ -389,6 +394,7 @@ test-suite once-test
       base >=4.7 && <5
     , containers
     , directory
+    , filepath
     , once
     , process
     , tasty

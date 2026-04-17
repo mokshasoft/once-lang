@@ -54,7 +54,7 @@ open import Once.Functor.Base
 ⟦ IntRep ⟧-base Float = AgdaFloat
 ⟦ IntRep ⟧-base Str = String
 ⟦ IntRep ⟧-base Buffer = String
-⟦ IntRep ⟧-base (TVar _) = ⊤      -- Type variables: return ⊤
+-- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
 -- Functor Translation

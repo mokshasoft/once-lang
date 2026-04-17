@@ -110,7 +110,7 @@ open import Once.Functor.Base
 ⟦ Float ⟧        = AgdaFloat
 ⟦ Str ⟧          = String
 ⟦ Buffer ⟧       = String
-⟦ TVar _ ⟧       = ⊤
+-- TVar removed from Type; now in PolyType (see Once.Type)
 
 ------------------------------------------------------------------------
 -- Functor Interpretation (Set level)
@@ -353,7 +353,7 @@ coerce-full-to-base Int x = x
 coerce-full-to-base Float x = x
 coerce-full-to-base Str x = x
 coerce-full-to-base Buffer x = x
-coerce-full-to-base (TVar _) x = x
+-- TVar removed from Type; now in PolyType (see Once.Type)
 
 -- | Coerce from base to full interpretation
 --

@@ -6,7 +6,12 @@ Build & Test Strategy
  - No function definitions in where clauses                                                                                                                              
  - Use records instead of nested tuples                                                                                                                                  
  - Consider extracting helpers to module level                                                                                                                           
+
  If something is Blocked, then we should stop and make a decision before continueing                                                                                                                                                                         
+ No backwards compatibility
+ No justified postulates
+ No trust boundaries
+
  ---                                                                                                                                                                     
  Verification                                                                                                                                                            
                                                                                                                                                                          

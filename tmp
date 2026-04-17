@@ -1,132 +1,78 @@
-
-The build succeeds. Let me summarize the current state of remaining postulates:                                                                                        
+● Update(~/Repo/mokshasoft/Once/once-lang2/compiler/app/Main.hs)                                                                                                         
+  ⎿  Added 1 line                                                                                                                                                        
+      64          , buildStrata = bcStrata cfg                                                                                                                           
+      65          , buildTarget = bcTarget cfg                                                                                                                           
+      66          , buildSaveTemps = bcSaveTemps cfg                                                                                                                     
+      67 +        , buildOptimize = bcOptimize cfg                                                                                                                       
+      68          , buildExplicitInterps = bcExplicit cfg                                                                                                                
+      69          }                                                                                                                                                      
+      70      go ("-o" : out : rest) cfg = go rest cfg { bcOutput = Just out }                                                                                           
                                                                                                                                                                          
-  Summary of Remaining Postulates                                                                                                                                        
+● Update(~/Repo/mokshasoft/Once/once-lang2/compiler/app/Main.hs)                                                                                                         
+  ⎿  Added 1 line                                                                                                                                                        
+      79        Just alloc -> go rest cfg { bcAlloc = Just alloc }                                                                                                       
+      80        Nothing -> Nothing  -- invalid allocation strategy                                                                                                       
+      81      go ("--save-temps" : rest) cfg = go rest cfg { bcSaveTemps = True }                                                                                        
+      82 +    go ("--no-optimize" : rest) cfg = go rest cfg { bcOptimize = False }                                                                                       
+      83      -- Parse -I:TYPE MODULE (explicit interpretation with type)                                                                                                
+      84      go (x : modPath : rest) cfg                                                                                                                                
+      85        | "-I:" `isPrefixOf` x =                                                                                                                                 
                                                                                                                                                                          
-  SumRecWF.agda (2 postulates):                                                                                                                                          
-  1. case-dispatch-output-independent - Proves that case dispatch traces are Output-independent (dispatch doesn't read initial Output value)                             
-  2. lambek-iso-semantic - ValidAtWF for Lambek isomorphisms (In, out-μ, Out, in-ν)                                                                                      
+● Update(~/Repo/mokshasoft/Once/once-lang2/compiler/app/Main.hs)                                                                                                         
+  ⎿  Added 9 lines, removed 7 lines                                                                                                                                      
+      102                                                                                                                                                                
+      103  -- | Parse check command arguments                                                                                                                            
+      104  parseCheck :: [String] -> Maybe Command                                                                                                                       
+      105 -parseCheck args = go args Nothing Nothing                                                                                                                     
+      105 +parseCheck args = go args Nothing Nothing True                                                                                                                
+      106    where                                                                                                                                                       
+      107 -    go :: [String] -> Maybe String -> Maybe String -> Maybe Command                                                                                           
+      108 -    go [] _ Nothing = Nothing  -- no input file                                                                                                               
+      109 -    go [] strataPath (Just input) = Just $ Check CheckOptions                                                                                                 
+      107 +    go :: [String] -> Maybe String -> Maybe String -> Bool -> Maybe Command                                                                                   
+      108 +    go [] _ Nothing _ = Nothing  -- no input file                                                                                                             
+      109 +    go [] strataPath (Just input) doOpt = Just $ Check CheckOptions                                                                                           
+      110        { checkInput = input                                                                                                                                    
+      111        , checkStrata = strataPath                                                                                                                              
+      112 +      , checkOptimize = doOpt                                                                                                                                 
+      113        }                                                                                                                                                       
+      113 -    go ("--strata" : s : rest) _ inputPath = go rest (Just s) inputPath                                                                                       
+      114 -    go (x : rest) strataPath inputPath = case x of                                                                                                            
+      114 +    go ("--strata" : s : rest) _ inputPath doOpt = go rest (Just s) inputPath doOpt                                                                           
+      115 +    go ("--no-optimize" : rest) strataPath inputPath _ = go rest strataPath inputPath False                                                                   
+      116 +    go (x : rest) strataPath inputPath doOpt = case x of                                                                                                      
+      117        ('-':_) -> Nothing  -- unknown flag                                                                                                                     
+      116 -      _ -> go rest strataPath (Just x)  -- treat as input file                                                                                                
+      118 +      _ -> go rest strataPath (Just x) doOpt  -- treat as input file                                                                                          
+      119                                                                                                                                                                
+      120  -- | Print usage information                                                                                                                                  
+      121  usage :: IO ()                                                                                                                                                
                                                                                                                                                                          
-  RecCoreWF.agda, ParaWF.agda, AnaWF.agda (1 postulate each):                                                                                                            
-  - rec-scheme-semantic - ValidAtWF for recursion schemes (Cata, Fuse, Hylo, Para, Ana)                                                                                  
+● Update(~/Repo/mokshasoft/Once/once-lang2/compiler/app/Main.hs)                                                                                                         
+  ⎿  Added 1 line                                                                                                                                                        
+      130    TIO.putStrLn "  --exe               Generate standalone executable"                                                                                         
+      131    TIO.putStrLn "  --target ARCH       Target architecture (c|x86_64|arm64|riscv64) [default: c]"                                                              
+      132    TIO.putStrLn "  --save-temps        Keep intermediate files (.c, .s, .o)"                                                                                   
+      133 +  TIO.putStrLn "  --no-optimize       Skip optimizer (workaround for postulate issues)"                                                                       
+      134    TIO.putStrLn "  --strata PATH       Path to Strata directory for imports (default: auto-detect)"                                                            
+      135    TIO.putStrLn "  --alloc STRATEGY    Default allocation strategy (stack|heap|pool|arena|const)"                                                              
+      136    TIO.putStrLn ""                                                                                                                                             
                                                                                                                                                                          
-  SMPrimitives.agda (10 !! holes):                                                                                                                                       
-  - exec-abstract-preserves-stack-slot (worklist-push k) - slot bound reasoning                                                                                          
-  - exec-trace-independent / exec-trace-independent-below - trace/memory commutation                                                                                     
-  - exec-trace-deterministic - trace determinism on same inputs                                                                                                          
-  - load-*-preserves-halted (4 variants) - load instructions preserve non-halted                                                                                         
-  - exec-trace-output-deterministic / exec-trace-mem-deterministic - output/memory determinism                                                                           
+● Now let me build and test.                                                                                                                                             
                                                                                                                                                                          
-  Key blocking dependencies:                                                                                                                                             
-  - case-dispatch-output-independent would follow from exec-trace-deterministic                                                                                          
-  - The semantic postulates (lambek-iso-semantic, rec-scheme-semantic) require ValidAtWF constructors for μ-type and ν-type values                                       
+● Bash(cd /home/whatever/Repo/mokshasoft/Once/once-lang2/compiler && cabal build 2>&1 | tail -20)                                                                        
+  ⎿  1192 |                                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v8 -> coe v7                                                                    
+          |                                                                              ^^                                                                              
+     … +19 lines (ctrl+o to expand)                                                                                                                                      
+  ⎿  (timeout 5m)                                                                                                                                                        
                                                                                                                                                                          
-  The commit earlier removed the case-frontier-slot-preserved postulate by returning "uncertain" instead of claiming preservation. The remaining postulates require      
-  either:                                                                                                                                                                
-  1. Additional infrastructure (ValidAtWF for μ/ν types)                                                                                                                 
-  2. Proving trace execution lemmas (exec-trace-deterministic)                                                                                                           
+● Let me test with --no-optimize.                                                                                                                                        
                                                                                                                                                                          
-  Would you like me to continue working on proving any specific postulate, or should we document this state and move on?                                                 
+● Bash(echo 'test : Int                                                                                                                                                  
+      test = 42' | cabal run once -- check --no-optimize /dev/stdin 2>&1)                                                                                                
+  ⎿  Source: test : Int                                                                                                                                                  
+     test = 42                                                                                                                                                           
+     … +12 lines (ctrl+o to expand)                                                                                                                                      
                                                                                                                                                                          
-✻ Sautéed for 53s                                                                                                                                                        
-
-Next Step: Complete compose-simulation                                                                                                                                 
-                                                                                                                                                                         
-  The current compose-simulation-with-IH only executes f and embeds it. To complete the compose proof:                                                                   
-                                                                                                                                                                         
-  1. Execute bridge at offset length (compile-ir f) using bridge-star-at-offset                                                                                          
-  2. Execute g at offset length (compile-ir f) + 1 using recursive call                                                                                                  
-  3. Chain all three Stars with star-trans                                                                                                                               
-                                                                                                                                                                         
-  The challenge is that after executing f, the pc is at length (compile-ir f) but IRSimulation requires pc = 0. This is exactly why we need IRRunner instead:            
-                                                                                                                                                                         
-  -- Current: requires pc = 0                                                                                                                                            
-  IRSimulation ir = ... → pc s ≡ 0 → IRSimResult ir s                                                                                                                    
-                                                                                                                                                                         
-  -- Needed: works at any offset                                                                                                                                         
-  IRRunner ir = ... → pc s ≡ length prefix → IRStarResult ir prefix suffix s s' (length prefix)                                                                          
-                                                                                                                                                                         
-  Proposed next step: Convert compose-simulation-with-IH to use IRRunner instead of IRSimulation:                                                                        
-                                                                                                                                                                         
-  1. Change type to take IRRunner f and IRRunner g instead of IRSimulation                                                                                               
-  2. Call f-runner (compile-ir f) (compose-bridge ++ compile-ir g) ...                                                                                                   
-  3. Call bridge-runner at the new offset                                                                                                                                
-  4. Call g-runner at the final offset                                                                                                                                   
-  5. Chain the Stars together                                                                                                                                            
-                                                                                                                                                                         
-  This would eliminate the compose-simulation postulate and prove compose using the offset-parameterized infrastructure we just built.                                   
-                                                                                                                                                                         
-  Want me to implement this?                                                                                                                                             
-                                                                                                                                                                         
-✻ Cooked for 44s                                                                                                                                                         
-                                                                                                                                                                         
-❯ Should IRSimulation be scraped since it works with pc = 0? Seems like the same problem solved in the previous commit?                                                  
-                                                                                                                                                                         
-● You're right. IRSimulation and the old IRSimResult have the same pc=0 problem. Let me remove them and use only IRRunner/IRStarResult.                                  
-
-
-● I found the connection. Looking at ValidAtWF in ClosureWellFormed.agda:                                                                                                
-                                                                                                                                                                         
-  valid-pair-wf : ∀ {m A B} {a : ⟦ A ⟧} {b : ⟦ B ⟧} ... →                                                                                                                
-    readLoc s pair-loc ≡ just fst-loc →           -- ← This proves fst-mem-valid!                                                                                        
-    readLoc s (sucLoc pair-loc) ≡ just snd-loc → -- ← This proves snd-mem-valid!                                                                                         
-    ...                                                                                                                                                                  
-    ValidAtWF m alloc {A * B} (a , b) pair-loc s                                                                                                                         
-                                                                                                                                                                         
-  The key insight: ValidAtWF at Layer 2→3 (Dispatcher) already contains exactly the memory validity proofs we need:                                                      
-  - For fst: readLoc s pair-loc ≡ just fst-loc                                                                                                                           
-  - For snd: readLoc s (sucLoc pair-loc) ≡ just snd-loc                                                                                                                  
-                                                                                                                                                                         
-  The gap: The current IRRunner at Layer 1→2 only has StateCorresponds σ s (correspondence), not ValidAtWF (typing). It operates without type information.               
-                                                                                                                                                                         
-  To eliminate the postulates, we need to either:                                                                                                                        
-  1. Add ValidAtWF to IRRunner - Make runners take validity proofs as input                                                                                              
-  2. Connect the layers - Thread ValidAtWF from Dispatcher down to the runners                                                                                           
-                                                                                                                                                                         
-  The postulates are sound because:                                                                                                                                      
-  - fst-ir is only called on pairs (by typing)                                                                                                                           
-  - Valid pairs have the readLoc preconditions (by valid-pair-wf)                                                                                                        
-  - So when we reach fst-runner, the memory validity must hold                                                                                                           
-                                                                                                                                                                         
-  But proving them requires structural changes to pass type information through. This isn't in the commits you mentioned - it would be new work to connect Layer 2→3's   
-  ValidAtWF with Layer 1→2's IRRunner.                                                                                                                                   
-                                                                                                                                                                         
-✻ Worked for 1m 43s                                                                                                                                                      
-                                                                                                                                                                         
-─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-❯ add ValidAtWF to IRRunner                                                                                                                                              
-
-
-The most portable solution is to make the memory validity a precondition rather than a postulate inside the runner.                                                    
-                                                                                                                                                                         
-  Currently:                                                                                                                                                             
-  -- Postulate inside fst-runner                                                                                                                                         
-  postulate                                                                                                                                                              
-    fst-mem-valid : ∀ σ s → StateCorresponds σ s →                                                                                                                       
-      ∃[ fst-loc ] (readLoc σ (readReg RDI) ≡ just fst-loc)                                                                                                              
-                                                                                                                                                                         
-  fst-runner : IRRunner fst-ir                                                                                                                                           
-  fst-runner ... = ... fst-mem-valid σ s sc ...                                                                                                                          
-                                                                                                                                                                         
-  Portable approach:                                                                                                                                                     
-  -- fst-runner takes the proof as a parameter                                                                                                                           
-  fst-runner : ∀ {A B} (fst-loc : ValueLocation FS') →                                                                                                                   
-    (mem-valid : ∀ σ s → StateCorresponds σ s →                                                                                                                          
-      readLoc σ (readReg RDI) ≡ just fst-loc) →                                                                                                                          
-    IRRunner (fst-ir {A} {B})                                                                                                                                            
-                                                                                                                                                                         
-  Then ir-runner (which builds IRRunner by induction) also takes a validity parameter:                                                                                   
-  ir-runner : ∀ {A B} (ir : IR A B) →                                                                                                                                    
-    InputValid ir →  -- Abstract predicate, instantiated at integration                                                                                                  
-    IRRunner ir                                                                                                                                                          
-                                                                                                                                                                         
-  Why this is most portable:                                                                                                                                             
-  1. Layer 1→2 stays pure - No assumptions about where validity comes from                                                                                               
-  2. Backend-agnostic - Different backends can provide validity proofs differently                                                                                       
-  3. Testable - Tests can construct validity proofs directly                                                                                                             
-  4. Clean integration - At the full-correctness theorem, we instantiate with ValidAtWF from Layer 2→3                                                                   
-                                                                                                                                                                         
-  The pattern: Push proof obligations to the caller, don't hide them in postulates. The postulate becomes explicit in the type signature, making the contract clear.     
-                                                                                                                                                                         
-  Want me to refactor fst-runner and snd-runner to take the memory validity as a parameter instead of using postulates?                                                  
+✶ Cooking… (2m 58s · ↑ 7.9k tokens · thinking)                                                                                                                           
 

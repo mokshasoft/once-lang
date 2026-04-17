@@ -5,7 +5,7 @@
 -- Once.Optimizer.Cost
 --
 -- Cost model for Once IR terms.
--- Counts allocating constructors (pairs, sums, closures, folds).
+-- Counts allocating constructors (pairs, sums, closures, In/in-ν).
 --
 -- This is the measure we want the optimizer to minimize.
 ------------------------------------------------------------------------
@@ -30,7 +30,8 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong
 --   - ⟨_,_⟩  : pair allocation (1)
 --   - inl/inr: sum allocation (1)
 --   - curry  : closure allocation (1)
---   - fold   : recursive type wrapper (1)
+--   - In     : μ-type wrapper allocation (1)
+--   - in-ν   : ν-type wrapper allocation (1)
 --
 -- Non-allocating operations have cost 0.
 --
@@ -42,16 +43,25 @@ cost snd           = 0
 cost (⟨ f , g ⟩ _) = 1 ℕ+ cost f ℕ+ cost g   -- pair allocation
 cost (inl _)       = 1                        -- sum allocation
 cost (inr _)       = 1                        -- sum allocation
-cost (case f g)     = cost f ℕ+ cost g
+cost (case f g)    = cost f ℕ+ cost g
 cost terminal      = 0
 cost initial       = 0
 cost (curry f _)   = 1 ℕ+ cost f              -- closure allocation
 cost apply         = 0
-cost (fold _)          = 1                        -- Fix wrapper allocation
-cost unfold        = 0                        -- unwrapping is free
 cost arr           = 0
-cost (Prim _)      = 0                        -- primitives are opaque
+-- Recursion schemes (OCP-0003)
+cost (In _ _)      = 1                        -- μ-type wrapper allocation
+cost (out-μ _)     = 0                        -- destructor is free
+cost (Cata _ alg)  = cost alg                 -- cost of algebra
+cost (Para _ alg)  = cost alg                 -- cost of algebra
+cost (Out _)       = 0                        -- observation is free
+cost (in-ν _ _)    = 1                        -- ν-type wrapper allocation
+cost (Ana _ coalg) = cost coalg               -- cost of coalgebra
+cost (Hylo _ _ alg coalg) = cost alg ℕ+ cost coalg  -- fusion: both algebra and coalgebra
+cost (Fuse _ _ alg trans) = cost alg ℕ+ cost trans  -- fusion: algebra + transform
+-- Memory and primitives
 cost (free-heap _) = 0                        -- deallocation doesn't allocate
+cost (Prim _)      = 0                        -- primitives are opaque
 
 ------------------------------------------------------------------------
 -- Basic properties

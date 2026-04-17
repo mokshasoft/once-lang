@@ -22,11 +22,14 @@
 
 module Once.Compile where
 
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.List using (List; []; _∷_; foldr)
 open import Data.Maybe using (Maybe; just; nothing)
+open import Data.Product using (_×_; _,_)
 open import Data.String using (String; _++_; _==_)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Unit using (⊤; tt)
+open import Function using (case_of_)
 
 -- Re-export types
 open import Once.Type public
@@ -102,23 +105,38 @@ validateMain ty = inj₁ ("main must have type Eff Unit A, but got: " ++ showTyp
 -- Function compilation: RawExpr → IR
 ------------------------------------------------------------------------
 
--- | Compile a function body to IR
--- Pipeline: typecheck → elaborate → optimize
--- Returns optimized IR or error message
-compileFunBody : (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
-compileFunBody name ty expr with checkElab (ctxWithImportsAndSelf [] name ty) expr ty
+-- | Type context for inter-function calls
+-- Maps function names to their types (used as imports for type checking)
+FunCtx : Set
+FunCtx = List (String × Type)
+
+-- | Empty function context
+emptyFunCtx : FunCtx
+emptyFunCtx = []
+
+-- | Extend context with a new function
+extendFunCtx : FunCtx → String → Type → FunCtx
+extendFunCtx ctx name ty = (name , ty) ∷ ctx
+
+-- | Compile a function body to IR with context of previous functions
+-- Pipeline: typecheck → elaborate → (optionally) optimize
+-- Returns IR or error message
+compileFunBody : Bool → FunCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
+compileFunBody doOpt ctx name ty expr with checkElab (ctxWithImportsAndSelf ctx name ty) expr ty
 ... | TE.failure err = inj₁ ("Type error in " ++ name ++ ": " ++ err)
-... | TE.success surfaceExpr _ _ _ = inj₂ (optimize (elaborate surfaceExpr))
+... | TE.success surfaceExpr _ _ _ =
+  let ir = elaborate surfaceExpr
+  in inj₂ (if doOpt then optimize ir else ir)
 
 -- | Compile a function with main validation
 -- For main: validates type is Eff Unit A before compiling
 -- For other functions: compiles directly
-compileFun : (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
-compileFun name ty expr with name == "main"
+compileFun : Bool → FunCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
+compileFun doOpt ctx name ty expr with name == "main"
 ... | true with validateMain ty
 ...   | inj₁ err = inj₁ err
-...   | inj₂ _   = compileFunBody name ty expr
-compileFun name ty expr | false = compileFunBody name ty expr
+...   | inj₂ _   = compileFunBody doOpt ctx name ty expr
+compileFun doOpt ctx name ty expr | false = compileFunBody doOpt ctx name ty expr
 
 ------------------------------------------------------------------------
 -- Module compilation: source → List (name, IR)
@@ -135,24 +153,33 @@ record CompiledFun : Set where
 
 open CompiledFun
 
--- | Compile all functions from parsed module
-compileAllFuns : List FunInfo → String ⊎ List CompiledFun
-compileAllFuns [] = inj₂ []
-compileAllFuns (fi ∷ rest) with compileFun (funName fi) (funType fi) (funBody fi)
-... | inj₁ err = inj₁ err
-... | inj₂ ir with compileAllFuns rest
-...   | inj₁ err = inj₁ err
-...   | inj₂ compiled = inj₂ (mkCompiledFun (funName fi) (funType fi) ir ∷ compiled)
+-- | Build context from list of FunInfo (for previously processed functions)
+buildFunCtx : List FunInfo → FunCtx
+buildFunCtx [] = emptyFunCtx
+buildFunCtx (fi ∷ rest) = extendFunCtx (buildFunCtx rest) (funName fi) (funType fi)
+
+-- | Compile all functions from parsed module, accumulating context
+-- Each function is compiled with access to all previously defined functions
+compileAllFuns : Bool → List FunInfo → String ⊎ List CompiledFun
+compileAllFuns doOpt funs = go funs emptyFunCtx
+  where
+    go : List FunInfo → FunCtx → String ⊎ List CompiledFun
+    go [] _ = inj₂ []
+    go (fi ∷ rest) ctx with compileFun doOpt ctx (funName fi) (funType fi) (funBody fi)
+    ... | inj₁ err = inj₁ err
+    ... | inj₂ ir with go rest (extendFunCtx ctx (funName fi) (funType fi))
+    ...   | inj₁ err = inj₁ err
+    ...   | inj₂ compiled = inj₂ (mkCompiledFun (funName fi) (funType fi) ir ∷ compiled)
 
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)
-compileModule : String → String ⊎ List CompiledFun
-compileModule source with parse source
+compileModule : Bool → String → String ⊎ List CompiledFun
+compileModule doOpt source with parse source
 ... | nothing = inj₁ "Parse error: failed to parse module"
 ... | just mod =
       let aliases = extractAliases mod
           funs = extractFunctions aliases mod
-      in compileAllFuns funs
+      in compileAllFuns doOpt funs
 
 ------------------------------------------------------------------------
 -- Pipeline composition (SurfaceIR → IR)
@@ -206,14 +233,51 @@ compileFunWithTarget target cf =
 compileAllWithTarget : Target → List CompiledFun → String
 compileAllWithTarget target = foldr (λ cf acc → compileFunWithTarget target cf ++ acc) ""
 
--- | Compile source text to assembly using specified target
-compileWith : Target → String → String ⊎ String
-compileWith target source with compileModule source
-... | inj₁ err = inj₁ err
-... | inj₂ funs = inj₂ (asmHeader target ++ compileAllWithTarget target funs)
+------------------------------------------------------------------------
+-- Unified compilation entry point
+------------------------------------------------------------------------
 
--- | Compile source text to assembly for specified architecture
--- This is the main entry point for cross-compilation.
--- Returns: Left error | Right assembly
-compile : Arch → String → String ⊎ String
-compile arch = compileWith (archTarget arch)
+-- | Compilation stage
+data Stage : Set where
+  Parse : Stage   -- Just parse, return function signatures
+  Check : Stage   -- Parse + typecheck, no codegen
+  Build : Stage   -- Full pipeline including codegen
+
+-- | Compilation result (varies by stage)
+data CompileResult : Set where
+  Parsed  : List FunInfo → CompileResult       -- Parse succeeded
+  Checked : List CompiledFun → CompileResult   -- Typecheck succeeded
+  Built   : String → CompileResult             -- Codegen succeeded (assembly)
+  Error   : String → CompileResult             -- Any stage failed
+
+-- | Show a FunInfo as "name : type"
+showFunInfo : FunInfo → String
+showFunInfo fi = funName fi ++ " : " ++ showType (funType fi)
+
+-- | Show all function signatures
+showFunInfos : List FunInfo → String
+showFunInfos [] = ""
+showFunInfos (fi ∷ []) = showFunInfo fi
+showFunInfos (fi ∷ rest) = showFunInfo fi ++ "\n" ++ showFunInfos rest
+
+-- | Unified compile function - single entry point for all stages
+-- stage: how far to compile (ParseOnly, CheckOnly, FullBuild)
+-- doOpt: whether to run optimizer (only relevant for CheckOnly/FullBuild)
+-- arch: target architecture (only relevant for FullBuild)
+-- source: source code text
+compile : Stage → Bool → Arch → String → CompileResult
+compile stage doOpt arch source with parse source
+... | nothing = Error "Parse error: failed to parse module"
+... | just mod =
+  let aliases = extractAliases mod
+      funs = extractFunctions aliases mod
+  in case stage of λ where
+    Parse → Parsed funs
+    Check → case compileAllFuns doOpt funs of λ where
+      (inj₁ err) → Error err
+      (inj₂ compiled) → Checked compiled
+    Build → case compileAllFuns doOpt funs of λ where
+      (inj₁ err) → Error err
+      (inj₂ compiled) →
+        let target = archTarget arch
+        in Built (asmHeader target ++ compileAllWithTarget target compiled)

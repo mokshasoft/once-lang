@@ -19,9 +19,11 @@ open import Data.Bool using (if_then_else_)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; TVar;
+                             _*_; _+_; _⇒[_]_; Eff;
                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
--- GuardedT removed: productivity follows from IR totality
+-- TVar removed: Type variables only exist in PolyType (for type inference).
+-- User-written types must be concrete. Type aliases without parameters
+-- are still supported via name lookup in the alias environment.
 
 ------------------------------------------------------------------------
 -- Type Alias Environment
@@ -44,46 +46,24 @@ lookupAlias name ((n , params , body) ∷ rest) with name ≟ n
 ... | no _  = lookupAlias name rest
 
 ------------------------------------------------------------------------
--- Type Substitution
+-- Type Substitution (Simplified)
 ------------------------------------------------------------------------
 
--- | Substitute a type variable with a type
-mutual
-  substTVarF : String → Type → Functor → Functor
-  substTVarF name rep (K A) = K (substTVar name rep A)
-  substTVarF _ _ Id = Id
-  substTVarF name rep (F ⊕ G) = substTVarF name rep F ⊕ substTVarF name rep G
-  substTVarF name rep (F ⊗ G) = substTVarF name rep F ⊗ substTVarF name rep G
-
-  substTVar : String → Type → Type → Type
-  substTVar name replacement (TVar v) with name ≟ v
-  ... | yes _ = replacement
-  ... | no _  = TVar v
-  substTVar _ _ Unit = Unit
-  substTVar _ _ Void = Void
-  substTVar _ _ Int = Int
-  substTVar _ _ Float = Float
-  substTVar _ _ Buffer = Buffer
-  substTVar _ _ Str = Str
-  substTVar name rep (a * b) = substTVar name rep a * substTVar name rep b
-  substTVar name rep (a + b) = substTVar name rep a + substTVar name rep b
-  substTVar name rep (a ⇒[ q ] b) = substTVar name rep a ⇒[ q ] substTVar name rep b
-  substTVar name rep (Eff a b) = Eff (substTVar name rep a) (substTVar name rep b)
-  substTVar name rep (μ-type F) = μ-type (substTVarF name rep F)
-  substTVar name rep (ν-type F) = ν-type (substTVarF name rep F)
-  -- GuardedT removed: productivity follows from IR totality
-
--- | Apply multiple substitutions (params zipped with args)
-applySubsts : List (String × Type) → Type → Type
-applySubsts [] body = body
-applySubsts ((name , arg) ∷ rest) body = applySubsts rest (substTVar name arg body)
+-- Note: Type variable substitution was removed because TVar is no longer
+-- part of Type (only PolyType). User-written types must be concrete.
+-- Parametric type aliases are not currently supported.
+-- If needed in the future, parametric aliases should use PolyType.
 
 ------------------------------------------------------------------------
--- Alias Expansion
+-- Alias Expansion (Simplified)
 ------------------------------------------------------------------------
 
--- | Expand type aliases in a type (single pass)
-{-# TERMINATING #-}
+-- Note: Since TVar is no longer in Type, type aliases cannot be
+-- referenced in user-written types. Alias expansion is now a no-op.
+-- For proper type alias support, the parser would need to directly
+-- recognize alias names and expand them during parsing.
+
+-- | Expand type aliases in a type (currently a no-op)
 mutual
   expandAliasesF : TypeAliasEnv → Functor → Functor
   expandAliasesF env (K A) = K (expandAliases env A)
@@ -92,9 +72,6 @@ mutual
   expandAliasesF env (F ⊗ G) = expandAliasesF env F ⊗ expandAliasesF env G
 
   expandAliases : TypeAliasEnv → Type → Type
-  expandAliases env (TVar name) with lookupAlias name env
-  ... | just ([] , body) = expandAliases env body  -- nullary alias
-  ... | _ = TVar name  -- not an alias or has params (need args)
   expandAliases _ Unit = Unit
   expandAliases _ Void = Void
   expandAliases _ Int = Int
@@ -107,4 +84,3 @@ mutual
   expandAliases env (Eff a b) = Eff (expandAliases env a) (expandAliases env b)
   expandAliases env (μ-type F) = μ-type (expandAliasesF env F)
   expandAliases env (ν-type F) = ν-type (expandAliasesF env F)
-  -- GuardedT removed: productivity follows from IR totality

@@ -8,6 +8,7 @@ import Test.Tasty.HUnit
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.Exit (ExitCode(..))
+import System.IO (hClose)
 import System.IO.Temp (withSystemTempFile)
 import System.Process (readProcessWithExitCode)
 
@@ -230,6 +231,7 @@ builtinShadowingTests = testGroup "Builtin names"
 typeCheckSource :: T.Text -> IO (Either String ())
 typeCheckSource source = withSystemTempFile "test.once" $ \path handle -> do
   TIO.hPutStr handle source
+  hClose handle  -- Must close before external process reads
   -- Note: cabal run resolves to the built executable
   (exitCode, _stdout, stderr) <- readProcessWithExitCode
     "cabal" ["run", "once", "--", "check", path] ""

@@ -406,7 +406,7 @@ du_rename_140 v0 v1 v2 v3 v4
                     MAlonzo.Code.Once.Surface.Syntax.C_arr''_384
                     (coe
                        du_rename_140 (coe v0) (coe v1)
-                       (coe MAlonzo.Code.Once.Type.d__'8658'__76 (coe v10) (coe v11))
+                       (coe MAlonzo.Code.Once.Type.d__'8658'__314 (coe v10) (coe v11))
                        (coe v3) (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_prim_392 v8

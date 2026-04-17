@@ -38,14 +38,24 @@ depth snd           = 0
 depth (⟨ f , g ⟩ _) = suc (depth f ⊔ depth g)
 depth (inl _)       = 0
 depth (inr _)       = 0
-depth (case f g)     = suc (depth f ⊔ depth g)
+depth (case f g)    = suc (depth f ⊔ depth g)
 depth terminal      = 0
 depth initial       = 0
 depth (curry f _)   = suc (depth f)
 depth apply         = 0
-depth (fold _)          = 0
-depth unfold        = 0
 depth arr           = 0
+-- Recursion schemes (OCP-0003)
+depth (In _ _)      = 0
+depth (out-μ _)     = 0
+depth (Cata _ alg)  = suc (depth alg)
+depth (Para _ alg)  = suc (depth alg)
+depth (Out _)       = 0
+depth (in-ν _ _)    = 0
+depth (Ana _ coalg) = suc (depth coalg)
+depth (Hylo _ _ alg coalg) = suc (depth alg ⊔ depth coalg)
+depth (Fuse _ _ alg trans) = suc (depth alg ⊔ depth trans)
+-- Memory and primitives
+depth (free-heap _) = 0
 depth (Prim _)      = 0
 
 ------------------------------------------------------------------------

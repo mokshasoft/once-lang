@@ -73,7 +73,7 @@ d_parse_4 v0
                                                    -> case coe v12 of
                                                         MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                           -> let v15
-                                                                   = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_468
+                                                                   = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_474
                                                                        (coe v13) (coe v14) in
                                                              coe
                                                                (case coe v15 of
@@ -126,7 +126,7 @@ d_parse_4 v0
                                             -> case coe v9 of
                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v10 v11
                                                    -> let v12
-                                                            = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_468
+                                                            = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_474
                                                                 (coe v10) (coe v11) in
                                                       coe
                                                         (case coe v12 of
@@ -179,7 +179,7 @@ d_parse_4 v0
                            -> case coe v5 of
                                 MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v6 v7
                                   -> let v8
-                                           = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_468
+                                           = MAlonzo.Code.Once.Parser.Module.d_parseDeclsAfter_474
                                                (coe v6) (coe v7) in
                                      coe
                                        (case coe v8 of
@@ -323,7 +323,7 @@ du_go_68 v0 v1 v2
                           (coe
                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v6)
                              (coe
-                                MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_154 (coe v0)
+                                MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
                                 (coe v7))))
                 MAlonzo.Code.Once.Parser.Module.C_DFunDef_34 v6 v7 v8
                   -> case coe v2 of
@@ -365,26 +365,39 @@ du_go_68 v0 v1 v2
                                         _ -> MAlonzo.RTE.mazUnreachableError)
                               _ -> MAlonzo.RTE.mazUnreachableError
                        _ -> coe v5
+                MAlonzo.Code.Once.Parser.Module.C_DPrimitive_36 v6 v7
+                  -> coe
+                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                       (coe
+                          C_mkFunInfo_56 (coe v6)
+                          (coe
+                             MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
+                             (coe v7))
+                          (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                          (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 (coe v6)))
+                       (coe
+                          du_go_68 (coe v0) (coe v4)
+                          (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
                 _ -> coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.inlineAll
-d_inlineAll_120 :: Integer -> [T_FunInfo_38] -> [T_FunInfo_38]
-d_inlineAll_120 v0 v1
+d_inlineAll_126 :: Integer -> [T_FunInfo_38] -> [T_FunInfo_38]
+d_inlineAll_126 v0 v1
   = coe
-      du_go_130 (coe v0)
+      du_go_136 (coe v0)
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v1)
 -- Once.Parser._.go
-d_go_130 ::
+d_go_136 ::
   Integer ->
   [T_FunInfo_38] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [T_FunInfo_38] -> [T_FunInfo_38]
-d_go_130 v0 ~v1 v2 v3 = du_go_130 v0 v2 v3
-du_go_130 ::
+d_go_136 v0 ~v1 v2 v3 = du_go_136 v0 v2 v3
+du_go_136 ::
   Integer ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [T_FunInfo_38] -> [T_FunInfo_38]
-du_go_130 v0 v1 v2
+du_go_136 v0 v1 v2
   = case coe v2 of
       [] -> coe v2
       (:) v3 v4
@@ -398,7 +411,7 @@ du_go_130 v0 v1 v2
                           MAlonzo.Code.Once.Parser.Inline.d_inlineReferences_68 (coe v0)
                           (coe v1) (coe v8)))
                     (coe
-                       du_go_130 (coe v0)
+                       du_go_136 (coe v0)
                        (coe
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                           (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5) (coe v8))

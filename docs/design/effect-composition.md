@@ -305,3 +305,123 @@ If we proceed with Option 1:
 
 4. **Is the pure/Eff distinction worth the complexity?**
    - Alternative: unify them, track effects differently
+
+---
+
+## Implementation Status (Updated April 2026)
+
+### Branch Analysis Summary
+
+The following was found by analyzing all remote branches:
+
+#### Previously Implemented (Old Haskell Type Checker - Now Removed)
+
+The old Haskell type checker (removed in commit `191f1756`) had these builtins:
+
+```haskell
+-- In TypeCheck.hs generatorType function:
+
+-- effCompose : Eff B C -> Eff A B -> Eff A C
+"effCompose" ->
+  let (a, f1) = freshTVar fresh
+      (b, f2) = freshTVar f1
+      (c, f3) = freshTVar f2
+  in Just (TArrow (TEff b c) (TArrow (TEff a b) (TEff a c)), f3)
+
+-- arr : (A -> B) -> Eff A B
+"arr" ->
+  let (a, f1) = freshTVar fresh
+      (b, f2) = freshTVar f1
+  in Just (TArrow (TArrow a b) (TEff a b), f2)
+
+-- pure was handled via: arr . const
+```
+
+Elaboration (in `Elaborate.hs`) treated `effCompose g f` as `Compose g' f'` at the IR level.
+
+#### Examples Using effCompose (Commit `ab8f6575`)
+
+```once
+-- examples/hello.once (on multiple branches)
+import I.Linux.File as F
+
+main : IO Unit
+main = effCompose (println@F) (pure "Hello for Once")
+```
+
+#### Thread Primitives (`Strata/Interpretations/Linux/Thread.once`)
+
+Found on branches: `origin/allocator-implementation`, `origin/arm-*`, `origin/competetive`, etc.
+
+```once
+-- Thread creation
+primitive thread_spawn  : Eff (Eff Unit Unit) Buffer
+primitive thread_join   : Eff Buffer Unit
+primitive thread_detach : Eff (Eff Unit Unit) Unit
+
+-- Synchronization
+primitive mutex_init      : Eff Unit Buffer
+primitive mutex_lock      : Eff Buffer Unit
+primitive mutex_unlock    : Eff Buffer Unit
+primitive cond_init       : Eff Unit Buffer
+primitive cond_wait       : Eff (Buffer * Buffer) Unit
+primitive cond_signal     : Eff Buffer Unit
+primitive cond_broadcast  : Eff Buffer Unit
+
+-- Atomics
+primitive atomic_cas      : Eff (Buffer * Int * Int) Int
+primitive atomic_add      : Eff (Buffer * Int) Int
+primitive memory_barrier  : Eff Unit Unit
+```
+
+#### Canonical Morphisms (`origin/competetive:Strata/Derived/Canonical.once`)
+
+Defines categorical utilities but notes effect composition is missing:
+```once
+-- Note: "effCompose" and "pure" are builtins, not in this file
+-- The >>> operator for effect composition is planned but not yet implemented
+```
+
+### Current State (Agda Type Checker)
+
+The Agda type checker does NOT have `effCompose`, `pure`, or `arr` builtins.
+
+**What works:**
+- `IO a` as sugar for `Eff Unit a` (built into type parser)
+- Import resolution with qualified names (`exit@S`)
+- Effect application when types align (`exit@S 42` where `exit : Eff Int Unit`)
+
+**What doesn't work:**
+- `effCompose` - not a recognized builtin
+- `pure` - not a recognized builtin
+- `arr` - defined in IR but not exposed as builtin
+- `>>>` - never implemented
+
+### To Implement
+
+Add to `formal/Once/TypeCheck/Elaborate.agda`:
+
+```agda
+-- In builtin/import lookup:
+lookupBuiltin "effCompose" = just (Eff b c -> Eff a b -> Eff a c)
+lookupBuiltin "pure" = just (a -> Eff Unit a)
+lookupBuiltin "arr" = just ((a -> b) -> Eff a b)
+
+-- In elaboration:
+-- effCompose g f  ~~>  g ∘ f  (same IR as compose)
+-- pure x          ~~>  arr (const x)  ~~>  terminal >>> const-morphism
+-- arr f           ~~>  f  (identity at IR level, type coercion only)
+```
+
+### Arrow Operators (Future Work)
+
+| Operator | Type | Status |
+|----------|------|--------|
+| `>>>` | `Eff A B -> Eff B C -> Eff A C` | Never implemented |
+| `<<<` | `Eff B C -> Eff A B -> Eff A C` | Never implemented |
+| `***` | `Eff A B -> Eff C D -> Eff (A*C) (B*D)` | Never implemented |
+| `&&&` | `Eff A B -> Eff A C -> Eff A (B*C)` | Never implemented |
+| `|||` | `Eff A C -> Eff B C -> Eff (A+B) C` | Never implemented |
+| `+++` | `Eff A B -> Eff C D -> Eff (A+C) (B+D)` | Never implemented |
+
+These require infix operator support in the parser/type checker.

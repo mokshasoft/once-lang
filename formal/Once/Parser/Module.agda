@@ -207,9 +207,11 @@ parseDecl (TWord "primitive" ∷ rest) = parsePrimitive rest
 -- Operator definition: (op) ...
 parseDecl (TLParen ∷ rest) = tryOpDecl (TLParen ∷ rest)
 -- Type signature: name : Type
+-- Note: if followed by '=' this is a syntax error (use separate lines)
 parseDecl (TWord name ∷ TColon ∷ rest) with parseType rest
-... | just (ty , rest') = just (DTypeSig name ty , rest')
 ... | nothing = nothing
+... | just (ty , TEquals ∷ _) = nothing  -- reject inline syntax: use separate lines
+... | just (ty , rest') = just (DTypeSig name ty , rest')
 -- Function definition: name ...
 parseDecl (TWord name ∷ rest) = parseFunDef name rest
 parseDecl (_ ∷ _) = nothing

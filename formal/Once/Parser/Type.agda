@@ -43,9 +43,13 @@ isUpperWord s with Data.String.toList s
 ... | (c ∷ _) = isAlpha c ∧ not (isLower c)
 
 -- | Try to parse a type variable (uppercase word)
+-- NOTE: Type variables are now only used internally during type inference.
+-- User-written types should be concrete. This function is kept for
+-- backward compatibility but will likely fail at elaboration time.
+-- For proper polymorphism support, use PolyType instead.
 tryParseTypeVar : String → List Token → Maybe (Type × List Token)
 tryParseTypeVar name rest with isUpperWord name
-... | true = just (TVar name , rest)
+... | true = nothing  -- Type variables not allowed in user-written types
 ... | false = nothing
 
 -- | Parse a type atom (highest precedence)

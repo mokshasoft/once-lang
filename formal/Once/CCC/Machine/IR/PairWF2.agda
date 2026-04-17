@@ -30,7 +30,8 @@ open import Relation.Nullary using (yes; no)
 
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
-open import Once.Semantics.Machine using (⟦_⟧)
+open import Once.Semantics.Machine using (⟦_⟧; sem-pair)
+pair = sem-pair  -- Semantic pair constructor for ⟦ A * B ⟧
 open import Once.CCC.IR
 open import Once.CCC.Eval using (PrimSem; eval)
 open import Once.CCC.IR.Size

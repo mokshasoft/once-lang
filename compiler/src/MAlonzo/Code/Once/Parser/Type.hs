@@ -49,28 +49,28 @@ d_tryParseTypeVar_20 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_tryParseTypeVar_20 v0 v1
-  = let v2
-          = coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0 in
-    coe
-      (case coe v2 of
-         [] -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-         (:) v3 v4
-           -> let v5
-                    = MAlonzo.Code.Data.Bool.Base.d__'8743'__24
-                        (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsAlpha_12 v3)
+d_tryParseTypeVar_20 v0 ~v1 = du_tryParseTypeVar_20 v0
+du_tryParseTypeVar_20 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
+du_tryParseTypeVar_20 v0
+  = let v1
+          = let v1
+                  = coe MAlonzo.Code.Agda.Builtin.String.d_primStringToList_12 v0 in
+            coe
+              (case coe v1 of
+                 [] -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+                 (:) v2 v3
+                   -> coe
+                        MAlonzo.Code.Data.Bool.Base.d__'8743'__24
+                        (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsAlpha_12 v2)
                         (coe
                            MAlonzo.Code.Data.Bool.Base.d_not_22
-                           (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsLower_8 v3)) in
-              coe
-                (if coe v5
-                   then coe
-                          MAlonzo.Code.Agda.Builtin.Maybe.C_just_16
-                          (coe
-                             MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
-                             (coe MAlonzo.Code.Once.Type.C_TVar_68 (coe v0)) (coe v1))
-                   else coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
-         _ -> MAlonzo.RTE.mazUnreachableError)
+                           (coe MAlonzo.Code.Agda.Builtin.Char.d_primIsLower_8 v2))
+                 _ -> MAlonzo.RTE.mazUnreachableError) in
+    coe
+      (coe
+         seq (coe v1) (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
 -- Once.Parser.Type.parseTypeAtom
 d_parseTypeAtom_38 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
@@ -83,7 +83,7 @@ d_parseTypeAtom_38 v0
            coe
              (case coe v1 of
                 MAlonzo.Code.Once.Parser.Token.C_TWord_8 v4
-                  -> let v5 = d_tryParseTypeVar_20 (coe v4) (coe v2) in
+                  -> let v5 = coe du_tryParseTypeVar_20 (coe v4) in
                      coe
                        (case coe v4 of
                           l | (==) l ("Buffer" :: Data.Text.Text) ->

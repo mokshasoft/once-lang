@@ -18,7 +18,7 @@ open import Data.Nat using (ℕ)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Type using (Type)
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.TypeCheck.Raw using (RawExpr; RVar)
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString)
 open import Once.Parser.Core using (Parser)
@@ -73,6 +73,9 @@ extractFunctions aliases (mkModule ds) = go ds nothing
   go (DFunDef name alloc body ∷ rest) (just (sigName , sigTy)) with sigName ≟ name
   ... | yes _ = mkFunInfo name sigTy alloc body ∷ go rest nothing
   ... | no _  = go rest nothing  -- mismatched sig, skip
+  -- Primitives: use RVar as placeholder body (actual impl is external)
+  go (DPrimitive name ty ∷ rest) _ =
+    mkFunInfo name (expandAliases aliases ty) nothing (RVar name) ∷ go rest nothing
   go (_ ∷ rest) pending = go rest pending
 
 -- | Inline all functions and return elaboration-ready pairs

@@ -23,6 +23,7 @@ open import Data.Nat using (ℕ) renaming (_+_ to _+ℕ_; _*_ to _*ℕ_)
 open import Data.Nat.Properties using (+-assoc)
 open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.List.Properties using (length-++)
+open import Data.Product using (_×_; _,_; proj₁; proj₂)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong)
 
 -- Import X86 syntax
@@ -117,19 +118,22 @@ pair-cleanup =
 
 -- | Curry setup: allocate closure, store env, compute code-ptr
 -- Uses RIP-relative addressing for code pointer
-curry-closure-setup : ℕ → Program  -- takes body length for jump offset
-curry-closure-setup body-len =
+-- lbl: unique label base for this curry expression
+-- body-len: length of the body code (for computing end label)
+curry-closure-setup : ℕ → ℕ → Program  -- takes label base and body length
+curry-closure-setup lbl body-len =
   sub (reg rsp) (imm (slots 2)) ∷       -- allocate closure
   mov (mem (base rsp)) (reg rdi) ∷      -- [closure] = env (input)
   lea r9 (rip+disp 4) ∷                 -- r9 = thunk address (rip + 4)
   mov (mem (base+disp rsp slot-size)) (reg r9) ∷  -- [closure+8] = code-ptr
   mov (reg rax) (reg rsp) ∷             -- rax = closure address
-  jmp (12 +ℕ body-len) ∷ []              -- jump over thunk code
+  jmp (lbl +ℕ 1) ∷ []                    -- jump to end label (lbl+1)
 
 -- | Thunk code prefix: called with arg in rdi, env in r12
-curry-thunk-setup : Program
-curry-thunk-setup =
-  label 6 ∷                             -- thunk entry point
+-- lbl: unique label base for this curry expression
+curry-thunk-setup' : ℕ → Program
+curry-thunk-setup' lbl =
+  label lbl ∷                           -- thunk entry point (lbl)
   push (reg r15) ∷                      -- save r15
   push (reg rbp) ∷                      -- save rbp
   mov (reg rbp) (reg rsp) ∷             -- set frame
@@ -139,13 +143,21 @@ curry-thunk-setup =
   mov (reg rdi) (reg rsp) ∷ []          -- rdi = pair address
 
 -- | Thunk code suffix: cleanup and return
-curry-thunk-cleanup : ℕ → Program  -- takes body length for label
-curry-thunk-cleanup body-len =
+-- lbl: unique label base for this curry expression
+curry-thunk-cleanup' : ℕ → Program
+curry-thunk-cleanup' lbl =
   mov (reg rsp) (reg rbp) ∷             -- restore stack
   pop rbp ∷                             -- restore rbp
   pop r15 ∷                             -- restore r15
   ret ∷                                 -- return to caller
-  label (18 +ℕ body-len) ∷ []            -- end label
+  label (lbl +ℕ 1) ∷ []                  -- end label (lbl+1)
+
+-- Legacy wrappers for backward compatibility (used by compile-length)
+curry-thunk-setup : Program
+curry-thunk-setup = curry-thunk-setup' 0
+
+curry-thunk-cleanup : ℕ → Program
+curry-thunk-cleanup _ = curry-thunk-cleanup' 0
 
 ------------------------------------------------------------------------
 -- Apply: call closure
@@ -200,57 +212,63 @@ compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles act
 compile-length (Prim _) = 1       -- primitive
 compile-length arr = length id-instrs  -- arr is identity at runtime (Eff = Arrow)
 
--- | Generate x86 code for IR
-compile-ir : ∀ {A B} → IR A B → Program
+-- | Generate x86 code for IR with label counter
+-- Returns (program, next-label-counter)
+compile-ir' : ∀ {A B} → ℕ → IR A B → Program × ℕ
 
-compile-ir id = id-instrs
+compile-ir' n id = id-instrs , n
 
-compile-ir (g ∘ f) =
-  compile-ir f ++
-  compose-bridge ++
-  compile-ir g
+compile-ir' n (g ∘ f) =
+  let (pf , n1) = compile-ir' n f
+      (pg , n2) = compile-ir' n1 g
+  in (pf ++ compose-bridge ++ pg) , n2
 
-compile-ir fst = fst-instrs
+compile-ir' n fst = fst-instrs , n
 
-compile-ir snd = snd-instrs
+compile-ir' n snd = snd-instrs , n
 
-compile-ir (⟨ f , g ⟩ _) =
-  pair-setup ++
-  compile-ir f ++
-  pair-middle ++
-  compile-ir g ++
-  pair-cleanup
+compile-ir' n (⟨ f , g ⟩ _) =
+  let (pf , n1) = compile-ir' n f
+      (pg , n2) = compile-ir' n1 g
+  in (pair-setup ++ pf ++ pair-middle ++ pg ++ pair-cleanup) , n2
 
-compile-ir terminal = terminal-instrs
+compile-ir' n terminal = terminal-instrs , n
 
-compile-ir (curry f _) =
-  let body = compile-ir f
-      body-len = compile-length f
-  in curry-closure-setup body-len ++
-     curry-thunk-setup ++
-     body ++
-     curry-thunk-cleanup body-len
+compile-ir' n (curry f _) =
+  let (body , n1) = compile-ir' (n +ℕ 2) f  -- reserve 2 labels for this curry
+      lbl = n                               -- use n as label base
+  in (curry-closure-setup lbl (length body) ++
+      curry-thunk-setup' lbl ++
+      body ++
+      curry-thunk-cleanup' lbl) , n1
 
-compile-ir apply = apply-instrs
+compile-ir' n apply = apply-instrs , n
 
 -- Sum type operations (TODO: implement)
-compile-ir (inl _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
-compile-ir (inr _) = ud2 ∷ []  -- placeholder: crash (unimplemented)
-compile-ir (case f g) = compile-ir f ++ compile-ir g  -- placeholder
-compile-ir initial = ud2 ∷ []     -- absurd elimination (should never execute)
+compile-ir' n (inl _) = ud2 ∷ [] , n
+compile-ir' n (inr _) = ud2 ∷ [] , n
+compile-ir' n (case f g) =
+  let (pf , n1) = compile-ir' n f
+      (pg , n2) = compile-ir' n1 g
+  in (pf ++ pg) , n2
+compile-ir' n initial = ud2 ∷ [] , n
 -- OCP-0003: Recursion scheme operations (placeholders)
-compile-ir (In _ _) = id-instrs   -- wrap μ-type: transfer rdi → rax (same representation)
-compile-ir (out-μ _) = id-instrs  -- unwrap μ-type: transfer rdi → rax (same representation)
-compile-ir (Cata _ _) = ud2 ∷ []  -- placeholder: needs iterative loop implementation
-compile-ir (Para _ _) = ud2 ∷ []  -- placeholder: needs paramorphism implementation
-compile-ir (Out _) = id-instrs    -- observe ν-type: transfer rdi → rax
-compile-ir (in-ν _ _) = id-instrs -- wrap ν-type: transfer rdi → rax (same representation)
-compile-ir (Ana _ _) = ud2 ∷ []   -- placeholder: needs demand-driven implementation
-compile-ir (Hylo _ _ _ _) = ud2 ∷ []  -- placeholder: needs fused loop
-compile-ir (Fuse _ _ _ _) = ud2 ∷ []  -- placeholder: needs μ-anchored fusion
-compile-ir (free-heap _) = []     -- no-op: actual deallocation handled by runtime
-compile-ir (Prim _) = ud2 ∷ []    -- primitives need FFI (placeholder)
-compile-ir arr = id-instrs        -- arr is identity at runtime (Eff = Arrow)
+compile-ir' n (In _ _) = id-instrs , n
+compile-ir' n (out-μ _) = id-instrs , n
+compile-ir' n (Cata _ _) = ud2 ∷ [] , n
+compile-ir' n (Para _ _) = ud2 ∷ [] , n
+compile-ir' n (Out _) = id-instrs , n
+compile-ir' n (in-ν _ _) = id-instrs , n
+compile-ir' n (Ana _ _) = ud2 ∷ [] , n
+compile-ir' n (Hylo _ _ _ _) = ud2 ∷ [] , n
+compile-ir' n (Fuse _ _ _ _) = ud2 ∷ [] , n
+compile-ir' n (free-heap _) = [] , n
+compile-ir' n (Prim _) = ud2 ∷ [] , n
+compile-ir' n arr = id-instrs , n
+
+-- | Public interface: compile IR starting with label counter 0
+compile-ir : ∀ {A B} → IR A B → Program
+compile-ir ir = proj₁ (compile-ir' 0 ir)
 
 ------------------------------------------------------------------------
 -- Summary
@@ -277,184 +295,97 @@ compile-ir arr = id-instrs        -- arr is identity at runtime (Eff = Arrow)
 --
 -- Proves that length (compile-ir ir) ≡ compile-length ir
 -- This is essential for offset-parameterized compose proofs.
+--
+-- Key lemma: length is independent of label counter
 ------------------------------------------------------------------------
 
-compile-ir-length : ∀ {A B} (ir : IR A B) → length (compile-ir ir) ≡ compile-length ir
-compile-ir-length id = refl
-compile-ir-length (g ∘ f) =
-  -- Goal: length (compile-ir f ++ compose-bridge ++ compile-ir g) ≡
-  --       compile-length f +ℕ length compose-bridge +ℕ compile-length g
-  -- Note: ++ associates right, so the LHS is compile-ir f ++ (compose-bridge ++ compile-ir g)
-  let lf = compile-ir-length f
-      lg = compile-ir-length g
-      -- Step 1: length (f ++ (bridge ++ g)) = length f + length (bridge ++ g)
-      step1 = length-++ (compile-ir f)
-      -- Step 2: length (bridge ++ g) = length bridge + length g
-      step2 = length-++ compose-bridge {compile-ir g}
-      -- Step 3: Combine with IH and associativity
-      step3 : length (compile-ir f) +ℕ (length compose-bridge +ℕ length (compile-ir g))
+-- | The length of compiled code is independent of the label counter
+compile-ir'-length : ∀ {A B} (n : ℕ) (ir : IR A B) → length (proj₁ (compile-ir' n ir)) ≡ compile-length ir
+
+compile-ir'-length n id = refl
+
+compile-ir'-length n (g ∘ f) =
+  let (pf , n1) = compile-ir' n f
+      (pg , n2) = compile-ir' n1 g
+      lf = compile-ir'-length n f
+      lg = compile-ir'-length n1 g
+      step1 = length-++ pf {compose-bridge ++ pg}
+      step2 = length-++ compose-bridge {pg}
+      step3 : length pf +ℕ (length compose-bridge +ℕ length pg)
             ≡ compile-length f +ℕ length compose-bridge +ℕ compile-length g
-      step3 = trans (cong (_+ℕ (length compose-bridge +ℕ length (compile-ir g))) lf)
+      step3 = trans (cong (_+ℕ (length compose-bridge +ℕ length pg)) lf)
                     (trans (cong (λ x → compile-length f +ℕ (length compose-bridge +ℕ x)) lg)
                            (sym (+-assoc (compile-length f) (length compose-bridge) (compile-length g))))
-  in trans step1 (trans (cong (length (compile-ir f) +ℕ_) step2) step3)
-compile-ir-length fst = refl
-compile-ir-length snd = refl
-compile-ir-length (⟨ f , g ⟩ m) = pair-length-proof f g
-  where
-    open import Data.Nat.Properties using (+-identityʳ)
-    -- compile-ir (⟨ f , g ⟩ m) = pair-setup ++ compile-ir f ++ pair-middle ++ compile-ir g ++ pair-cleanup
-    -- compile-length (⟨ f , g ⟩ m) = length pair-setup + compile-length f + length pair-middle + compile-length g + length pair-cleanup
-    -- using length-++ and IH
-    pair-length-proof : ∀ {A B C} (f : IR A B) (g : IR A C) →
-      length (compile-ir (⟨ f , g ⟩ m)) ≡ compile-length (⟨ f , g ⟩ m)
-    pair-length-proof f g =
-      let lf = compile-ir-length f
-          lg = compile-ir-length g
-          -- Abbreviations
-          ps = pair-setup
-          pm = pair-middle
-          pc = pair-cleanup
-          cf = compile-ir f
-          cg = compile-ir g
+  in trans step1 (trans (cong (length pf +ℕ_) step2) step3)
 
-          -- Split using length-++
-          step1 : length (ps ++ cf ++ pm ++ cg ++ pc)
-                ≡ length ps +ℕ length (cf ++ pm ++ cg ++ pc)
-          step1 = length-++ ps {cf ++ pm ++ cg ++ pc}
+compile-ir'-length n fst = refl
+compile-ir'-length n snd = refl
 
-          step2 : length (cf ++ pm ++ cg ++ pc)
-                ≡ length cf +ℕ length (pm ++ cg ++ pc)
-          step2 = length-++ cf {pm ++ cg ++ pc}
+compile-ir'-length n (⟨ f , g ⟩ m) =
+  let (pf , n1) = compile-ir' n f
+      (pg , n2) = compile-ir' n1 g
+      lf = compile-ir'-length n f
+      lg = compile-ir'-length n1 g
+      ps = pair-setup
+      pm = pair-middle
+      pc = pair-cleanup
+      step1 = length-++ ps {pf ++ pm ++ pg ++ pc}
+      step2 = length-++ pf {pm ++ pg ++ pc}
+      step3 = length-++ pm {pg ++ pc}
+      step4 = length-++ pg {pc}
+      subst-lg = cong (length pm +ℕ_) (cong (_+ℕ length pc) lg)
+      subst-lf = cong (_+ℕ (length pm +ℕ (compile-length g +ℕ length pc))) lf
+      assoc1 = sym (+-assoc (length ps) (compile-length f) _)
+      assoc2 = sym (+-assoc (length ps +ℕ compile-length f) (length pm) _)
+      assoc3 = sym (+-assoc ((length ps +ℕ compile-length f) +ℕ length pm) (compile-length g) (length pc))
+  in trans step1 (trans (cong (length ps +ℕ_) (trans step2 (trans (cong (length pf +ℕ_)
+       (trans step3 (trans (cong (length pm +ℕ_) step4) subst-lg))) subst-lf)))
+       (trans assoc1 (trans assoc2 assoc3)))
 
-          step3 : length (pm ++ cg ++ pc)
-                ≡ length pm +ℕ length (cg ++ pc)
-          step3 = length-++ pm {cg ++ pc}
+compile-ir'-length n terminal = refl
 
-          step4 : length (cg ++ pc)
-                ≡ length cg +ℕ length pc
-          step4 = length-++ cg {pc}
+compile-ir'-length n (curry f m) =
+  let (body , n1) = compile-ir' (n +ℕ 2) f
+      lbl = n
+      lf = compile-ir'-length (n +ℕ 2) f
+      ccs = curry-closure-setup lbl (length body)
+      cts = curry-thunk-setup' lbl
+      ctc = curry-thunk-cleanup' lbl
+      step1 = length-++ ccs {cts ++ body ++ ctc}
+      step2 = length-++ cts {body ++ ctc}
+      step3 = length-++ body {ctc}
+      inner = cong (length cts +ℕ_) (trans (cong (_+ℕ length ctc) lf) refl)
+      outer = refl
+      assoc1 = sym (+-assoc 6 (length cts) (compile-length f +ℕ 5))
+      assoc2 = sym (+-assoc (6 +ℕ length cts) (compile-length f) 5)
+  in trans step1 (trans (cong (length ccs +ℕ_) (trans step2 (trans (cong (length cts +ℕ_) step3) inner)))
+                        (trans outer (trans assoc1 assoc2)))
 
-          -- After splitting: length ps + (length cf + (length pm + (length cg + length pc)))
-          -- Goal: length ps + compile-length f + length pm + compile-length g + length pc
-          -- Note: compile-length uses left-associative + but we have right-associative from splits
+compile-ir'-length n apply = refl
+compile-ir'-length n (inl _) = refl
+compile-ir'-length n (inr _) = refl
 
-          -- First substitute the IH
-          subst-lg : length pm +ℕ (length cg +ℕ length pc)
-                   ≡ length pm +ℕ (compile-length g +ℕ length pc)
-          subst-lg = cong (length pm +ℕ_) (cong (_+ℕ length pc) lg)
+compile-ir'-length n (case f g) =
+  let (pf , n1) = compile-ir' n f
+      (pg , n2) = compile-ir' n1 g
+      lf = compile-ir'-length n f
+      lg = compile-ir'-length n1 g
+  in trans (length-++ pf) (trans (cong (_+ℕ length pg) lf) (cong (compile-length f +ℕ_) lg))
 
-          subst-lf : length cf +ℕ (length pm +ℕ (compile-length g +ℕ length pc))
-                   ≡ compile-length f +ℕ (length pm +ℕ (compile-length g +ℕ length pc))
-          subst-lf = cong (_+ℕ (length pm +ℕ (compile-length g +ℕ length pc))) lf
+compile-ir'-length n initial = refl
+compile-ir'-length n (In _ _) = refl
+compile-ir'-length n (out-μ _) = refl
+compile-ir'-length n (Cata _ _) = refl
+compile-ir'-length n (Para _ _) = refl
+compile-ir'-length n (Out _) = refl
+compile-ir'-length n (in-ν _ _) = refl
+compile-ir'-length n (Ana _ _) = refl
+compile-ir'-length n (Hylo _ _ _ _) = refl
+compile-ir'-length n (Fuse _ _ _ _) = refl
+compile-ir'-length n (free-heap _) = refl
+compile-ir'-length n (Prim _) = refl
+compile-ir'-length n arr = refl
 
-          -- Now fix associativity to match compile-length
-          -- compile-length = ps + (cf + (pm + (cg + pc))) with left assoc
-          -- = ((((ps + cf) + pm) + cg) + pc)
-          -- Our result: ps + (cf + (pm + (cg + pc))) - need to reassociate
-
-          assoc1 : length ps +ℕ (compile-length f +ℕ (length pm +ℕ (compile-length g +ℕ length pc)))
-                 ≡ (length ps +ℕ compile-length f) +ℕ (length pm +ℕ (compile-length g +ℕ length pc))
-          assoc1 = sym (+-assoc (length ps) (compile-length f) _)
-
-          assoc2 : (length ps +ℕ compile-length f) +ℕ (length pm +ℕ (compile-length g +ℕ length pc))
-                 ≡ ((length ps +ℕ compile-length f) +ℕ length pm) +ℕ (compile-length g +ℕ length pc)
-          assoc2 = sym (+-assoc (length ps +ℕ compile-length f) (length pm) _)
-
-          assoc3 : ((length ps +ℕ compile-length f) +ℕ length pm) +ℕ (compile-length g +ℕ length pc)
-                 ≡ (((length ps +ℕ compile-length f) +ℕ length pm) +ℕ compile-length g) +ℕ length pc
-          assoc3 = sym (+-assoc ((length ps +ℕ compile-length f) +ℕ length pm) (compile-length g) (length pc))
-
-      in trans step1 (trans (cong (length ps +ℕ_) (trans step2 (trans (cong (length cf +ℕ_)
-           (trans step3 (trans (cong (length pm +ℕ_) step4) subst-lg))) subst-lf)))
-           (trans assoc1 (trans assoc2 assoc3)))
-compile-ir-length terminal = refl
-compile-ir-length (curry {q = q} f m) = curry-length-eq q f m
-  where
-    -- curry-closure-setup always has 6 instructions regardless of body-len
-    closure-setup-length : ∀ n → length (curry-closure-setup n) ≡ 6
-    closure-setup-length _ = refl
-
-    -- curry-thunk-cleanup always has 5 instructions regardless of body-len
-    thunk-cleanup-length : ∀ n → length (curry-thunk-cleanup n) ≡ 5
-    thunk-cleanup-length _ = refl
-
-    -- using length-++ and IH
-    curry-length-eq : ∀ {A B C} (q : Quantity) (f : IR (A * B) C) (m : AllocMode) →
-      length (compile-ir (curry {q = q} f m)) ≡ compile-length (curry {q = q} f m)
-    curry-length-eq _ f _ =
-      let lf = compile-ir-length f
-          body = compile-ir f
-          body-len = compile-length f
-          ccs = curry-closure-setup body-len
-          cts = curry-thunk-setup
-          ctc = curry-thunk-cleanup body-len
-
-          -- Split using length-++
-          step1 : length (ccs ++ cts ++ body ++ ctc)
-                ≡ length ccs +ℕ length (cts ++ body ++ ctc)
-          step1 = length-++ ccs {cts ++ body ++ ctc}
-
-          step2 : length (cts ++ body ++ ctc)
-                ≡ length cts +ℕ length (body ++ ctc)
-          step2 = length-++ cts {body ++ ctc}
-
-          step3 : length (body ++ ctc)
-                ≡ length body +ℕ length ctc
-          step3 = length-++ body {ctc}
-
-          -- Now we have: length ccs + (length cts + (length body + length ctc))
-          -- Goal: 6 + length cts + compile-length f + 5
-
-          -- Substitute the known lengths
-          ccs-eq : length ccs ≡ 6
-          ccs-eq = closure-setup-length body-len
-
-          ctc-eq : length ctc ≡ 5
-          ctc-eq = thunk-cleanup-length body-len
-
-          -- Combine: length body = compile-length f (IH)
-          inner : length cts +ℕ (length body +ℕ length ctc)
-                ≡ length cts +ℕ (compile-length f +ℕ 5)
-          inner = cong (length cts +ℕ_) (trans (cong (_+ℕ length ctc) lf)
-                                               (cong (compile-length f +ℕ_) ctc-eq))
-
-          outer : length ccs +ℕ (length cts +ℕ (compile-length f +ℕ 5))
-                ≡ 6 +ℕ (length cts +ℕ (compile-length f +ℕ 5))
-          outer = cong (_+ℕ (length cts +ℕ (compile-length f +ℕ 5))) ccs-eq
-
-          -- Fix associativity: 6 + (length cts + (compile-length f + 5))
-          -- Goal: 6 + length cts + compile-length f + 5 (= ((6 + length cts) + compile-length f) + 5)
-          assoc1 : 6 +ℕ (length cts +ℕ (compile-length f +ℕ 5))
-                 ≡ (6 +ℕ length cts) +ℕ (compile-length f +ℕ 5)
-          assoc1 = sym (+-assoc 6 (length cts) (compile-length f +ℕ 5))
-
-          assoc2 : (6 +ℕ length cts) +ℕ (compile-length f +ℕ 5)
-                 ≡ ((6 +ℕ length cts) +ℕ compile-length f) +ℕ 5
-          assoc2 = sym (+-assoc (6 +ℕ length cts) (compile-length f) 5)
-
-      in trans step1 (trans (cong (length ccs +ℕ_) (trans step2 (trans (cong (length cts +ℕ_) step3) inner)))
-                            (trans outer (trans assoc1 assoc2)))
-compile-ir-length apply = refl
-compile-ir-length (inl _) = refl
-compile-ir-length (inr _) = refl
-compile-ir-length (case f g) =
-  trans (length-++ (compile-ir f))
-        (cong (_+ℕ length (compile-ir g)) (compile-ir-length f)
-        `trans` cong (compile-length f +ℕ_) (compile-ir-length g))
-  where
-    _`trans`_ = trans
-compile-ir-length initial = refl
--- OCP-0003: Recursion scheme proofs (placeholders)
-compile-ir-length (In _ _) = refl
-compile-ir-length (out-μ _) = refl
-compile-ir-length (Cata _ _) = refl
-compile-ir-length (Para _ _) = refl
-compile-ir-length (Out _) = refl
-compile-ir-length (in-ν _ _) = refl
-compile-ir-length (Ana _ _) = refl
-compile-ir-length (Hylo _ _ _ _) = refl
-compile-ir-length (Fuse _ _ _ _) = refl
-compile-ir-length (free-heap _) = refl
-compile-ir-length (Prim _) = refl
-compile-ir-length arr = refl
+-- | Public interface: proof that compile-ir produces code of the expected length
+compile-ir-length : ∀ {A B} (ir : IR A B) → length (compile-ir ir) ≡ compile-length ir
+compile-ir-length ir = compile-ir'-length 0 ir

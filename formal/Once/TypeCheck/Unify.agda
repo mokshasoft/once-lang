@@ -21,29 +21,37 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; sym; trans)
 
-open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer; _*_; _+_; _⇒[_]_; _⇒_; Eff; TVar; Quantity;
-                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
--- GuardedT removed: productivity follows from IR totality
-open import Once.TypeCheck.Error using (TypeError; OccursCheck; UnificationError; Result; ok; fail)
+open import Once.Type using (PolyType; PUnit; PVoid; PInt; PFloat; PStr; PBuffer;
+                              _P*_; _P+_; _P⇒[_]_; PEff; TVar;
+                              PolyFunctor; PK; PId; _P⊕_; _P⊗_; Pμ-type; Pν-type;
+                              Type; Quantity)
+-- Unification works with PolyType (which has TVar) during type inference.
+-- After inference completes, PolyType is extracted to Type.
+open import Once.TypeCheck.Error using (PolyTypeError; PolyResult; pok; pfail)
+  renaming (OccursCheck to OccursCheck'; UnificationError to UnificationError')
+-- Note: We rename the PolyTypeError constructors to avoid ambiguity with
+-- the TypeError constructors that may be imported elsewhere.
+-- Usage: OccursCheck' and UnificationError' for poly type errors
 
 ------------------------------------------------------------------------
 -- Substitution
 ------------------------------------------------------------------------
 
--- | A substitution maps type variable names to types
+-- | A substitution maps type variable names to PolyTypes
+-- Unification works with PolyType during inference; results extracted later.
 Subst : Set
-Subst = List (String × Type)
+Subst = List (String × PolyType)
 
 -- | Empty substitution
 emptySubst : Subst
 emptySubst = []
 
 -- | Singleton substitution: [x ↦ T]
-singleSubst : String → Type → Subst
+singleSubst : String → PolyType → Subst
 singleSubst x T = (x , T) ∷ []
 
 -- | Lookup a variable in a substitution
-lookupSubst : String → Subst → Maybe Type
+lookupSubst : String → Subst → Maybe PolyType
 lookupSubst x [] = nothing
 lookupSubst x ((y , T) ∷ σ) with x ≟ y
 ... | yes _ = just T
@@ -53,28 +61,27 @@ lookupSubst x ((y , T) ∷ σ) with x ≟ y
 -- Applying Substitutions
 ------------------------------------------------------------------------
 
--- | Apply a substitution to a type
+-- | Apply a substitution to a PolyType
 mutual
-  applySubstF : Subst → Functor → Functor
-  applySubstF σ (K A) = K (applySubst σ A)
-  applySubstF _ Id = Id
-  applySubstF σ (F ⊕ G) = applySubstF σ F ⊕ applySubstF σ G
-  applySubstF σ (F ⊗ G) = applySubstF σ F ⊗ applySubstF σ G
+  applySubstF : Subst → PolyFunctor → PolyFunctor
+  applySubstF σ (PK A) = PK (applySubst σ A)
+  applySubstF _ PId = PId
+  applySubstF σ (F P⊕ G) = applySubstF σ F P⊕ applySubstF σ G
+  applySubstF σ (F P⊗ G) = applySubstF σ F P⊗ applySubstF σ G
 
-  applySubst : Subst → Type → Type
-  applySubst σ Unit = Unit
-  applySubst σ Void = Void
-  applySubst σ Int = Int
-  applySubst σ Float = Float
-  applySubst σ Str = Str
-  applySubst σ Buffer = Buffer
-  applySubst σ (A * B) = applySubst σ A * applySubst σ B
-  applySubst σ (A + B) = applySubst σ A + applySubst σ B
-  applySubst σ (A ⇒[ q ] B) = applySubst σ A ⇒[ q ] applySubst σ B
-  applySubst σ (Eff A B) = Eff (applySubst σ A) (applySubst σ B)
-  applySubst σ (μ-type F) = μ-type (applySubstF σ F)
-  applySubst σ (ν-type F) = ν-type (applySubstF σ F)
-  -- GuardedT removed: productivity follows from IR totality
+  applySubst : Subst → PolyType → PolyType
+  applySubst σ PUnit = PUnit
+  applySubst σ PVoid = PVoid
+  applySubst σ PInt = PInt
+  applySubst σ PFloat = PFloat
+  applySubst σ PStr = PStr
+  applySubst σ PBuffer = PBuffer
+  applySubst σ (A P* B) = applySubst σ A P* applySubst σ B
+  applySubst σ (A P+ B) = applySubst σ A P+ applySubst σ B
+  applySubst σ (A P⇒[ q ] B) = applySubst σ A P⇒[ q ] applySubst σ B
+  applySubst σ (PEff A B) = PEff (applySubst σ A) (applySubst σ B)
+  applySubst σ (Pμ-type F) = Pμ-type (applySubstF σ F)
+  applySubst σ (Pν-type F) = Pν-type (applySubstF σ F)
   applySubst σ (TVar x) with lookupSubst x σ
   ... | just T  = T
   ... | nothing = TVar x
@@ -88,28 +95,27 @@ composeSubst σ₂ σ₁ =
 -- Occurs Check
 ------------------------------------------------------------------------
 
--- | Check if a type variable occurs in a type
+-- | Check if a type variable occurs in a PolyType
 mutual
-  occursF : String → Functor → Bool
-  occursF x (K A) = occurs x A
-  occursF _ Id = false
-  occursF x (F ⊕ G) = occursF x F ∨ occursF x G
-  occursF x (F ⊗ G) = occursF x F ∨ occursF x G
+  occursF : String → PolyFunctor → Bool
+  occursF x (PK A) = occurs x A
+  occursF _ PId = false
+  occursF x (F P⊕ G) = occursF x F ∨ occursF x G
+  occursF x (F P⊗ G) = occursF x F ∨ occursF x G
 
-  occurs : String → Type → Bool
-  occurs x Unit = false
-  occurs x Void = false
-  occurs x Int = false
-  occurs x Float = false
-  occurs x Str = false
-  occurs x Buffer = false
-  occurs x (A * B) = occurs x A ∨ occurs x B
-  occurs x (A + B) = occurs x A ∨ occurs x B
-  occurs x (A ⇒[ q ] B) = occurs x A ∨ occurs x B
-  occurs x (Eff A B) = occurs x A ∨ occurs x B
-  occurs x (μ-type F) = occursF x F
-  occurs x (ν-type F) = occursF x F
-  -- GuardedT removed: productivity follows from IR totality
+  occurs : String → PolyType → Bool
+  occurs x PUnit = false
+  occurs x PVoid = false
+  occurs x PInt = false
+  occurs x PFloat = false
+  occurs x PStr = false
+  occurs x PBuffer = false
+  occurs x (A P* B) = occurs x A ∨ occurs x B
+  occurs x (A P+ B) = occurs x A ∨ occurs x B
+  occurs x (A P⇒[ q ] B) = occurs x A ∨ occurs x B
+  occurs x (PEff A B) = occurs x A ∨ occurs x B
+  occurs x (Pμ-type F) = occursF x F
+  occurs x (Pν-type F) = occursF x F
   occurs x (TVar y) with x ≟ y
   ... | yes _ = true
   ... | no  _ = false
@@ -121,24 +127,24 @@ mutual
 -- | Unification result
 data UnifyResult : Set where
   unified : Subst → UnifyResult
-  failed  : TypeError → UnifyResult
+  failed  : PolyTypeError → UnifyResult
 
--- | Unify two types
+-- | Unify two PolyTypes
 -- Returns a most general unifier (MGU) or an error
 --
 -- Note: We use TERMINATING pragma because the termination argument
 -- is non-trivial (requires showing applySubst preserves a measure).
 -- A proper proof would use well-founded recursion on type size.
 {-# TERMINATING #-}
-unify : Type → Type → UnifyResult
+unify : PolyType → PolyType → UnifyResult
 
 -- Base types unify only with themselves
-unify Unit Unit = unified emptySubst
-unify Void Void = unified emptySubst
-unify Int Int = unified emptySubst
-unify Float Float = unified emptySubst
-unify Str Str = unified emptySubst
-unify Buffer Buffer = unified emptySubst
+unify PUnit PUnit = unified emptySubst
+unify PVoid PVoid = unified emptySubst
+unify PInt PInt = unified emptySubst
+unify PFloat PFloat = unified emptySubst
+unify PStr PStr = unified emptySubst
+unify PBuffer PBuffer = unified emptySubst
 
 -- Type variable unification (with occurs check)
 unify (TVar x) (TVar y) with x ≟ y
@@ -146,50 +152,50 @@ unify (TVar x) (TVar y) with x ≟ y
 ... | no  _ = unified (singleSubst x (TVar y))  -- Different variables
 
 unify (TVar x) T with occurs x T
-... | true  = failed (OccursCheck x T)
+... | true  = failed (OccursCheck' x T)
 ... | false = unified (singleSubst x T)
 
 unify T (TVar x) with occurs x T
-... | true  = failed (OccursCheck x T)
+... | true  = failed (OccursCheck' x T)
 ... | false = unified (singleSubst x T)
 
 -- Product types
-unify (A₁ * B₁) (A₂ * B₂) with unify A₁ A₂
+unify (A₁ P* B₁) (A₂ P* B₂) with unify A₁ A₂
 ... | failed err = failed err
 ... | unified σ₁ with unify (applySubst σ₁ B₁) (applySubst σ₁ B₂)
 ...   | failed err = failed err
 ...   | unified σ₂ = unified (composeSubst σ₂ σ₁)
 
 -- Sum types
-unify (A₁ + B₁) (A₂ + B₂) with unify A₁ A₂
+unify (A₁ P+ B₁) (A₂ P+ B₂) with unify A₁ A₂
 ... | failed err = failed err
 ... | unified σ₁ with unify (applySubst σ₁ B₁) (applySubst σ₁ B₂)
 ...   | failed err = failed err
 ...   | unified σ₂ = unified (composeSubst σ₂ σ₁)
 
 -- Function types (graded arrows)
-unify (A₁ ⇒[ q₁ ] B₁) (A₂ ⇒[ q₂ ] B₂) with unify A₁ A₂
+unify (A₁ P⇒[ q₁ ] B₁) (A₂ P⇒[ q₂ ] B₂) with unify A₁ A₂
 ... | failed err = failed err
 ... | unified σ₁ with unify (applySubst σ₁ B₁) (applySubst σ₁ B₂)
 ...   | failed err = failed err
 ...   | unified σ₂ = unified (composeSubst σ₂ σ₁)
 
 -- Effectful types
-unify (Eff A₁ B₁) (Eff A₂ B₂) with unify A₁ A₂
+unify (PEff A₁ B₁) (PEff A₂ B₂) with unify A₁ A₂
 ... | failed err = failed err
 ... | unified σ₁ with unify (applySubst σ₁ B₁) (applySubst σ₁ B₂)
 ...   | failed err = failed err
 ...   | unified σ₂ = unified (composeSubst σ₂ σ₁)
 
 -- Everything else fails
-unify A B = failed (UnificationError A B)
+unify A B = failed (UnificationError' A B)
 
 ------------------------------------------------------------------------
 -- Convenience: Result-based unification
 ------------------------------------------------------------------------
 
--- | Unify returning Result monad
-unifyResult : Type → Type → Result Subst
-unifyResult A B with unify A B
-... | unified σ = ok σ
-... | failed e  = fail e
+-- | Unify returning PolyResult monad
+unifyPolyResult : PolyType → PolyType → PolyResult Subst
+unifyPolyResult A B with unify A B
+... | unified σ = pok σ
+... | failed e  = pfail e

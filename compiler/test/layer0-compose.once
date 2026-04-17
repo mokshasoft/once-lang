@@ -1,0 +1,14 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- Layer 0 test: composed identities
+-- Tests composition of identity morphisms
+-- Expected: exit code 42
+--
+-- NOTE: This test uses a direct primitive pattern since effCompose/pure
+-- are not yet implemented as builtins. See docs/design/effect-composition.md
+
+primitive exit : Int -> Unit
+
+main : Unit
+main = exit ((id . id . id) 42)

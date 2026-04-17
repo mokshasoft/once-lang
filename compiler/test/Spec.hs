@@ -4,23 +4,19 @@ import Test.Tasty
 
 import AllocationSpec (allocationStressTests)
 import BackendSpec (backendTests)
-import ElaborateSpec (elaborateTests)
 import IRSpec (irTests)
-import ModuleSpec (moduleTests)
-import OptimizeSpec (optimizeTests)
-import ParserSpec (parserTests)
-import QuantitySpec (quantityTests)
+import Layer0Spec (layer0Tests)
+import ParseSpec (parseTests)
 import TypeCheckSpec (typeCheckTests)
+import TypeErrorSpec (typeErrorTests)
 
 main :: IO ()
 main = defaultMain $ testGroup "Once"
-  [ quantityTests
+  [ parseTests
+  , typeCheckTests
+  , typeErrorTests
   , irTests
-  , optimizeTests
-  , parserTests
-  , elaborateTests
-  , moduleTests
+  , layer0Tests
   , backendTests
   , allocationStressTests
-  , typeCheckTests
   ]

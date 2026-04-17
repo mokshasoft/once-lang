@@ -15,7 +15,7 @@ module Once.TypeCheck.Error where
 open import Data.String using (String)
 open import Data.Nat using (ℕ)
 
-open import Once.Type using (Type; Quantity)
+open import Once.Type using (Type; PolyType; Quantity)
 
 ------------------------------------------------------------------------
 -- Type Errors
@@ -70,6 +70,19 @@ data TypeError : Set where
   CompareNonInteger : Type → TypeError
 
 ------------------------------------------------------------------------
+-- PolyType Errors (for unification during type inference)
+------------------------------------------------------------------------
+
+-- | Type errors during unification (uses PolyType, which has TVar)
+-- These are used during type inference before types are fully resolved.
+data PolyTypeError : Set where
+  -- Occurs check failed (infinite type)
+  OccursCheck : String → PolyType → PolyTypeError
+
+  -- General unification failure
+  UnificationError : PolyType → PolyType → PolyTypeError
+
+------------------------------------------------------------------------
 -- Error Messages (for debugging/display)
 ------------------------------------------------------------------------
 
@@ -120,3 +133,23 @@ _>>=_ = bindResult
 -- | Return for Result monad
 return : ∀ {A : Set} → A → Result A
 return = ok
+
+------------------------------------------------------------------------
+-- PolyType Error Result Type (for unification)
+------------------------------------------------------------------------
+
+-- | Either a poly type error or a successful result
+-- Used during unification when working with PolyType (which has TVar)
+data PolyResult (A : Set) : Set where
+  pok   : A → PolyResult A
+  pfail : PolyTypeError → PolyResult A
+
+-- | Functor instance for PolyResult
+mapPolyResult : ∀ {A B : Set} → (A → B) → PolyResult A → PolyResult B
+mapPolyResult f (pok x)   = pok (f x)
+mapPolyResult f (pfail e) = pfail e
+
+-- | Monad bind for PolyResult
+bindPolyResult : ∀ {A B : Set} → PolyResult A → (A → PolyResult B) → PolyResult B
+bindPolyResult (pok x)   f = f x
+bindPolyResult (pfail e) f = pfail e

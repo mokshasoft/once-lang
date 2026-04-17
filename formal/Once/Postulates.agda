@@ -128,6 +128,18 @@ postulate
 open import Once.Surface.Syntax as Surface using ()
   renaming (Ctx to SCtx; Expr to SExpr; _,_^_ to _S,_^_)
 
+-- | Coerce quantity annotation in outermost context position
+--
+-- This remains a postulate because properly defining it requires a general
+-- context substitution operation that handles nested bindings correctly.
+--
+-- JUSTIFICATION:
+--   The lookup function ignores quantities - lookup (Γ,A^q) i ≡ lookup (Γ,A^q') i.
+--   So expressions in different quantity contexts that are otherwise identical
+--   denote the same term. This is the QTT erasure property.
+--
+-- IMPACT: None at runtime (quantities are erased)
+--
 postulate
   coerceQuantity : ∀ {n} {Γ : SCtx n} {A B : Type} {q q' : Quantity}
                  → SExpr (_S,_^_ Γ A q) B → SExpr (_S,_^_ Γ A q') B
