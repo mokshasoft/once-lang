@@ -36,18 +36,6 @@ open import Once.TypeCheck.Context public
 open import Once.Type public
   using (Quantity; Zero; One; Many)
 
--- Type errors
-open import Once.TypeCheck.Error public
-  using (TypeError; UnboundVariable; TypeMismatch; NotAFunction; OccursCheck; UnificationError)
-  using (ArithNonInteger; CompareNonInteger)
-  using (Result; ok; fail)
-
--- Unification
-open import Once.TypeCheck.Unify public
-  using (Subst; emptySubst; singleSubst; applySubst; composeSubst)
-  using (unify; UnifyResult; unified; failed)
-  using (occurs)
-
 -- Combined inference + elaboration (intrinsically typed)
 -- Soundness is trivial by construction: if inferElab returns success,
 -- the expression IS well-typed (the type is encoded in the term).
