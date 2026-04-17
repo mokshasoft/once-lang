@@ -39,7 +39,6 @@ open import Once.Surface.Syntax as Surface using (lookupUsage; tailUsage)
   renaming (Ctx to SCtx; Expr to SExpr; ∅ to S∅; _,_ to _S,_; _,_^_ to _S,_^_)
 open import Once.Surface.Thinning using (weaken)
 open import Once.Surface.Elaborate as Elab using (elaborate)
-open import Once.Postulates using (coerceQuantity)
 
 ------------------------------------------------------------------------
 -- Weakening from Empty Context
@@ -54,9 +53,7 @@ open import Once.Postulates using (coerceQuantity)
 --
 weakenFromEmpty : ∀ {n} {Γ : SCtx n} {A : Type} → SExpr S∅ A → SExpr Γ A
 weakenFromEmpty {Γ = S∅} e = e
-weakenFromEmpty {Γ = Γ S, B ^ Many} e = weaken {A = B} {q = Many} (weakenFromEmpty {Γ = Γ} e)
--- For non-Many quantities, coerce (Step 2: infrastructure only, actual tracking in Step 3)
-weakenFromEmpty {Γ = Γ S, B ^ q} e = coerceQuantity (weaken {A = B} {q = q} (weakenFromEmpty {Γ = Γ} e))
+weakenFromEmpty {Γ = Γ S, B ^ q} e = weaken {A = B} {q = q} (weakenFromEmpty {Γ = Γ} e)
 
 ------------------------------------------------------------------------
 -- Type Equality (Decidable with proof)
@@ -512,16 +509,11 @@ lookupLocal (mkCtx n Γ Δ _ _) x = go Γ Δ
     go [] S∅                  = nothing
     go [] (_ S, _ ^ _)        = nothing
     go (_ ∷ _) S∅             = nothing
-    go {suc m} (b ∷ Γ') (Δ' S, B ^ Many) with Data.String._≟_ x (name b)
-    ... | yes _ = just (B , Surface.var zero)
-    ... | no _  with go Γ' Δ'
-    ...   | nothing             = nothing
-    ...   | just (A , se)       = just (A , weaken se)
     go {suc m} (b ∷ Γ') (Δ' S, B ^ q) with Data.String._≟_ x (name b)
     ... | yes _ = just (B , Surface.var zero)
     ... | no _  with go Γ' Δ'
     ...   | nothing             = nothing
-    ...   | just (A , se)       = just (A , coerceQuantity (weaken {A = B} {q = q} se))
+    ...   | just (A , se)       = just (A , weaken {A = B} {q = q} se)
 
 -- | Find a local variable's de Bruijn position and quantity by name.
 -- Returns nothing if not in local bindings.
