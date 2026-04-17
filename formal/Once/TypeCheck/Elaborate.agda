@@ -1109,11 +1109,13 @@ matchWithSubst (A₁ P+ B₁) (A₂ P+ B₂) σ with matchWithSubst A₁ A₂ σ
 ... | just (A , σ') with matchWithSubst B₁ B₂ σ'
 ...   | nothing = nothing
 ...   | just (B , σ'') = just (A P+ B , σ'')
-matchWithSubst (A₁ P⇒[ q₁ ] B₁) (A₂ P⇒[ q₂ ] B₂) σ with matchWithSubst A₁ A₂ σ
-... | nothing = nothing
-... | just (A , σ') with matchWithSubst B₁ B₂ σ'
+matchWithSubst (A₁ P⇒[ q₁ ] B₁) (A₂ P⇒[ q₂ ] B₂) σ with q₁ ≟q q₂
+... | no _ = nothing
+... | yes refl with matchWithSubst A₁ A₂ σ
 ...   | nothing = nothing
-...   | just (B , σ'') = just (A P⇒[ q₁ ] B , σ'')
+...   | just (A , σ') with matchWithSubst B₁ B₂ σ'
+...     | nothing = nothing
+...     | just (B , σ'') = just (A P⇒[ q₁ ] B , σ'')
 matchWithSubst (PEff A₁ B₁) (PEff A₂ B₂) σ with matchWithSubst A₁ A₂ σ
 ... | nothing = nothing
 ... | just (A , σ') with matchWithSubst B₁ B₂ σ'
@@ -1173,6 +1175,225 @@ matchWithSubst-ground-eq A B σ C σ' match-eq gA gB with applySubst σ' A ≟PT
     -- When ground types don't match via ≟PT, matchWithSubst would have failed
     -- This is a contradiction, so we postulate it for now
     postulate helper : applySubst σ' A ≡ applySubst σ' B
+
+------------------------------------------------------------------------
+-- Signature Matching (New architecture: bidirectional, no HM unification)
+------------------------------------------------------------------------
+--
+-- A SigMap records an assignment from signature-variable names to ground
+-- Types during a single one-shot structural match of a PolyType signature
+-- against a ground Type. Unlike InferSubst, a SigMap is:
+--
+--   * Local to one signature-matching operation (not threaded globally).
+--   * Consistency-checked on repeated variables.
+--   * Produces ground Type results directly.
+--
+-- This is the bidirectional-typechecking equivalent of "signature
+-- specialization at the use site" per D007 and Phase 5 of
+-- plans/0.2.5-type-polytype-split.md.
+
+SigMap : Set
+SigMap = List (String × Type)
+
+emptySig : SigMap
+emptySig = []
+
+-- | Look up a signature variable's current assignment, if any.
+lookupSig : SigMap → String → Maybe Type
+lookupSig [] _ = nothing
+lookupSig ((y , T) ∷ m) x with x StrProp.≟ y
+... | yes _ = just T
+... | no _  = lookupSig m x
+
+-- | Extend a SigMap with (x, T). Fails if x is already mapped to T' ≢ T.
+extendSig : SigMap → String → Type → Maybe SigMap
+extendSig m x T with lookupSig m x
+... | nothing = just ((x , T) ∷ m)
+... | just T' with T ≟T T'
+...   | yes _ = just m         -- consistent, existing binding preserved
+...   | no _  = nothing         -- inconsistent: same var, different types
+
+-- | Match a polymorphic signature against a ground type.
+--
+-- Walks P and T in parallel, recording signature-variable bindings in
+-- the accumulator. Fails on structural mismatch or inconsistent binding.
+--
+-- Terminates structurally on P.
+--
+matchSig : PolyType → Type → SigMap → Maybe SigMap
+-- TVar: record (or confirm) a binding for this signature variable.
+matchSig (TVar x) T m = extendSig m x T
+-- Base types must match exactly.
+matchSig PUnit   Unit   m = just m
+matchSig PVoid   Void   m = just m
+matchSig PInt    Int    m = just m
+matchSig PFloat  Float  m = just m
+matchSig PStr    Str    m = just m
+matchSig PBuffer Buffer m = just m
+-- Product: match both components.
+matchSig (A₁ P* B₁) (A₂ Once.Type.* B₂) m = matchSig A₁ A₂ m >>= matchSig B₁ B₂
+-- Sum: match both components.
+matchSig (A₁ P+ B₁) (A₂ Once.Type.+ B₂) m = matchSig A₁ A₂ m >>= matchSig B₁ B₂
+-- Function: quantities must match; then match domain and codomain.
+matchSig (A₁ P⇒[ q₁ ] B₁) (A₂ ⇒[ q₂ ] B₂) m with q₁ ≟q q₂
+... | yes refl = matchSig A₁ A₂ m >>= matchSig B₁ B₂
+... | no  _    = nothing
+-- Effect: match both components.
+matchSig (PEff A₁ B₁) (Eff A₂ B₂) m = matchSig A₁ A₂ m >>= matchSig B₁ B₂
+-- Functor fixed points: functors are ground by construction; use decidable equality.
+matchSig (Pμ-type F₁) (μ-type F₂) m with embedFunctor F₂ ≟PF F₁
+... | yes _ = just m
+... | no  _ = nothing
+matchSig (Pν-type F₁) (ν-type F₂) m with embedFunctor F₂ ≟PF F₁
+... | yes _ = just m
+... | no  _ = nothing
+-- All other combinations: structural mismatch.
+matchSig _ _ _ = nothing
+
+-- | Apply a complete SigMap to a signature to obtain a ground Type.
+--
+-- Returns nothing if any TVar in the signature has no assignment.
+-- Terminates structurally on the signature argument.
+--
+specialize : SigMap → PolyType → Maybe Type
+specializeFunctor : SigMap → PolyFunctor → Maybe Functor
+specialize m (TVar x)         = lookupSig m x
+specialize m PUnit             = just Unit
+specialize m PVoid             = just Void
+specialize m PInt              = just Int
+specialize m PFloat            = just Float
+specialize m PStr              = just Str
+specialize m PBuffer           = just Buffer
+specialize m (A P* B)          = do
+  A' ← specialize m A
+  B' ← specialize m B
+  just (A' Once.Type.* B')
+specialize m (A P+ B)          = do
+  A' ← specialize m A
+  B' ← specialize m B
+  just (A' Once.Type.+ B')
+specialize m (A P⇒[ q ] B)     = do
+  A' ← specialize m A
+  B' ← specialize m B
+  just (A' ⇒[ q ] B')
+specialize m (PEff A B)        = do
+  A' ← specialize m A
+  B' ← specialize m B
+  just (Eff A' B')
+specialize m (Pμ-type F)       = do
+  F' ← specializeFunctor m F
+  just (μ-type F')
+specialize m (Pν-type F)       = do
+  F' ← specializeFunctor m F
+  just (ν-type F')
+
+specializeFunctor m (PK A) = do
+  A' ← specialize m A
+  just (K A')
+specializeFunctor m PId        = just Id
+specializeFunctor m (F P⊕ G) = do
+  F' ← specializeFunctor m F
+  G' ← specializeFunctor m G
+  just (F' ⊕ G')
+specializeFunctor m (F P⊗ G) = do
+  F' ← specializeFunctor m F
+  G' ← specializeFunctor m G
+  just (F' ⊗ G')
+
+------------------------------------------------------------------------
+-- Per-Builtin Body Specializers
+------------------------------------------------------------------------
+--
+-- The 13 builtin generators have known polymorphic bodies. Rather than
+-- writing a generic PolyExpr→Expr specialization walk, we produce each
+-- builtin's specialized body directly given the ground type arguments.
+-- This is more principled: each builtin's body is a fixed small term
+-- and its specialization is a one-line function over ground types.
+--
+-- All return SExpr S∅ _ (closed expressions); weaken to the actual
+-- context with weakenFromEmpty at the call site.
+
+specId : (T : Type) → SExpr S∅ (T ⇒ T)
+specId T = Surface.lam Many (Surface.var zero)
+
+specFst : (A B : Type) → SExpr S∅ (A Once.Type.* B ⇒ A)
+specFst A B = Surface.lam Many (Surface.fst' (Surface.var zero))
+
+specSnd : (A B : Type) → SExpr S∅ (A Once.Type.* B ⇒ B)
+specSnd A B = Surface.lam Many (Surface.snd' (Surface.var zero))
+
+specInl : (A B : Type) → SExpr S∅ (A ⇒ (A Once.Type.+ B))
+specInl A B = Surface.lam Many (Surface.inl' (Surface.var zero))
+
+specInr : (A B : Type) → SExpr S∅ (B ⇒ (A Once.Type.+ B))
+specInr A B = Surface.lam Many (Surface.inr' (Surface.var zero))
+
+specUnitGen : SExpr S∅ Unit
+specUnitGen = Surface.unit
+
+-- pair : (a → b) → (a → c) → a → (b × c)
+specPair : (A B C : Type)
+         → SExpr S∅ ((A ⇒ B) ⇒ (A ⇒ C) ⇒ A ⇒ (B Once.Type.* C))
+specPair A B C =
+  Surface.lam Many (Surface.lam Many (Surface.lam Many
+    (Surface.pair
+      (Surface.app (Surface.var (suc (suc zero))) (Surface.var zero))
+      (Surface.app (Surface.var (suc zero)) (Surface.var zero)))))
+
+-- terminal : a → Unit
+specTerminal : (A : Type) → SExpr S∅ (A ⇒ Unit)
+specTerminal A = Surface.lam Many Surface.unit
+
+-- initial : Void → a
+specInitial : (A : Type) → SExpr S∅ (Void ⇒ A)
+specInitial A = Surface.lam Many (Surface.absurd (Surface.var zero))
+
+-- curry : ((a × b) → c) → a → b → c
+specCurry : (A B C : Type)
+          → SExpr S∅ ((A Once.Type.* B ⇒ C) ⇒ A ⇒ B ⇒ C)
+specCurry A B C =
+  Surface.lam Many (Surface.lam Many (Surface.lam Many
+    (Surface.app (Surface.var (suc (suc zero)))
+                 (Surface.pair (Surface.var (suc zero)) (Surface.var zero)))))
+
+-- apply : ((a → b) × a) → b
+specApply : (A B : Type)
+          → SExpr S∅ (((A ⇒ B) Once.Type.* A) ⇒ B)
+specApply A B =
+  Surface.lam Many
+    (Surface.app (Surface.fst' (Surface.var zero))
+                 (Surface.snd' (Surface.var zero)))
+
+-- compose : (b → c) → (a → b) → a → c
+specCompose : (A B C : Type)
+            → SExpr S∅ ((B ⇒ C) ⇒ (A ⇒ B) ⇒ A ⇒ C)
+specCompose A B C =
+  Surface.lam Many (Surface.lam Many (Surface.lam Many
+    (Surface.app (Surface.var (suc (suc zero)))
+                 (Surface.app (Surface.var (suc zero)) (Surface.var zero)))))
+
+-- arr : (a → b) → Eff a b
+specArr : (A B : Type) → SExpr S∅ ((A ⇒ B) ⇒ Eff A B)
+specArr A B = Surface.lam Many (Surface.arr' (Surface.var zero))
+
+------------------------------------------------------------------------
+-- Ground Inference/Check Results (new architecture)
+------------------------------------------------------------------------
+--
+-- Unlike PolyInferResult/PolyCheckResult, these carry a ground Type and
+-- a ground-indexed Expr — no PolyType, no InferSubst, no extraction step.
+
+data InferRes {n : ℕ} (Δ : SCtx n) : Set where
+  successI : (T : Type) → SExpr Δ T
+           → (depth : ℕ) → (fresh : ℕ) → Surface.Usage n
+           → InferRes Δ
+  failureI : String → InferRes Δ
+
+data CheckRes {n : ℕ} (Δ : SCtx n) (T : Type) : Set where
+  successC : SExpr Δ T
+           → (depth : ℕ) → (fresh : ℕ) → Surface.Usage n
+           → CheckRes Δ T
+  failureC : String → CheckRes Δ T
 
 -- | Instantiate a polymorphic type with fresh type variables
 -- Collects all distinct TVar names and substitutes them with fresh variables
