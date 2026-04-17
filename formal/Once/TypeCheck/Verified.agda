@@ -354,6 +354,24 @@ record VerifiedTypeChecker : Set₁ where
       → tcInfer ctx (RApp (RVar "terminal") arg) ≡ success A Ψ eE d f
       → ctx ⊢ RApp (RVar "terminal") arg ∶ A ⨾ Ψ
 
+    -- Generic function application. Premise:
+    -- `classifyAppHead f ≡ nothing`, i.e. `f` is not one of the
+    -- seven polymorphic builtins. Completes the 15 / 15 RawExpr
+    -- soundness coverage for infer mode.
+    tcInfer-sound-RApp-generic :
+      ∀ (ctx : NamedCtx) (f x : RawExpr)
+        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d fresh : _}
+      → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+      → (IH_f : ∀ {F' Ψ' eE' d' f'}
+             → tcInfer ctx f ≡ success F' Ψ' eE' d' f'
+             → ctx ⊢ f ∶ F' ⨾ Ψ')
+      → (IH_x : ∀ {X' Ψ' eE' d' f'}
+             → tcInfer ctx x ≡ success X' Ψ' eE' d' f'
+             → ctx ⊢ x ∶ X' ⨾ Ψ')
+      → tcInfer ctx (RApp f x) ≡ success A Ψ eE d fresh
+      → ctx ⊢ RApp f x ∶ A ⨾ Ψ
+
     tcInfer-sound-RBinOp :
       ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
         {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -458,6 +476,7 @@ verifiedTypeChecker = record
   ; tcInfer-sound-RApp-fst        = Snd.sound-RApp-fst
   ; tcInfer-sound-RApp-snd        = Snd.sound-RApp-snd
   ; tcInfer-sound-RApp-terminal   = Snd.sound-RApp-terminal
+  ; tcInfer-sound-RApp-generic    = Snd.sound-RApp-generic
   ; tcInfer-sound-RBinOp          = Snd.sound-RBinOp
   ; tcCheck-sound-RLam            = Snd.sound-check-RLam
   ; tc-err-lam-infer              = EP.lam-infer-is-LambdaInInferMode

@@ -287,6 +287,22 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
                  → ctx ⊢ RApp (RVar "terminal") e ∶ Unit ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
   ----------------------------------------------------------------
+  -- Generic function application.
+  --
+  -- When the function position is NOT one of the polymorphic
+  -- builtins (`classifyAppHead f ≡ nothing`), the generic
+  -- application rule applies: infer `f` at function type, infer `x`
+  -- at the domain type, combine.
+  ----------------------------------------------------------------
+
+  t-app : ∀ {ctx : NamedCtx} {f x : RawExpr}
+          {A B : Type} {q : Quantity}
+          {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+        → ctx ⊢ f ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ₁
+        → ctx ⊢ x ∶ A ⨾ Ψ₂
+        → ctx ⊢ RApp f x ∶ B ⨾ (Ψ₁ +ᵘ (q *ᵘ Ψ₂))
+
+  ----------------------------------------------------------------
   -- TODO (future G2 passes): rules for
   --   * RApp (with polymorphic builtin specializations as sub-rules)
   --   * RLam (check mode only)

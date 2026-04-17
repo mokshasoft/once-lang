@@ -903,3 +903,104 @@ sound-RApp-snd ctx arg IH eq | success (T.ν-type _) _ _ _ _ , eqSub
 sound-RApp-snd ctx arg IH eq | failure _ , eqSub
   rewrite eqSub with eq
 ... | ()
+
+------------------------------------------------------------------------
+-- Soundness for generic RApp
+--
+-- Applies when `classifyAppHead f ≡ nothing` — i.e. `f` is not one
+-- of the seven polymorphic builtins. After the elaborator refactor,
+-- rewriting with the `notPoly` hypothesis forces the classifier's
+-- `nothing` branch, exposing the generic application logic:
+--
+--   asFun (inferElab ctx f) —case on—
+--     isFun A q B … fE …    → next step
+--     notFun err            → failure err
+--
+-- We bypass `asFun` by pattern-matching on `inferElab ctx f` directly;
+-- the connection is one-to-one (`asFun (success (A ⇒ B) …)` returns
+-- `isFun A … B …`, other shapes return `notFun`). Every non-function
+-- type of the sub-result and every type-mismatch on the argument
+-- closes by absurd-pattern on the outer equation.
+------------------------------------------------------------------------
+
+sound-RApp-generic :
+  ∀ (ctx : NamedCtx) (f x : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d fresh : ℕ}
+  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+  → (IH_f : ∀ {F' Ψ' eE' d' f'}
+         → inferElab ctx f ≡ success F' Ψ' eE' d' f'
+         → ctx ⊢ f ∶ F' ⨾ Ψ')
+  → (IH_x : ∀ {X' Ψ' eE' d' f'}
+         → inferElab ctx x ≡ success X' Ψ' eE' d' f'
+         → ctx ⊢ x ∶ X' ⨾ Ψ')
+  → inferElab ctx (RApp f x) ≡ success A Ψ eE d fresh
+  → ctx ⊢ RApp f x ∶ A ⨾ Ψ
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  rewrite notPoly with inferBundle ctx f
+-- f is a function type — recurse into x.
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  with inferBundle ctx x
+-- Arg matches function domain (bundle the `≟T` decision to avoid
+-- the same opaque-with-helper issue seen with RDestruct).
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  | success Ax Ψx xE dx fx , eqX
+  with tyEqBundle Af Ax
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  | success .Af Ψx xE dx fx , eqX
+  | yes refl , eqTy
+  with IH_f eqF | IH_x eqX
+... | fJ | xJ rewrite eqF | eqX | eqTy with eq
+... | refl = t-app fJ xJ
+-- Arg type mismatches.
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  | success Ax Ψx xE dx fx , eqX
+  | no _ , eqTy rewrite eqF | eqX | eqTy with eq
+... | ()
+-- x failed.
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  | failure _ , eqX rewrite eqF | eqX with eq
+... | ()
+-- f succeeded at a non-function type: 11 absurd cases.
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success Unit _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success Void _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success Int _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success Float _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success Str _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success Buffer _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (_ * _) _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (_ + _) _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (T.Eff _ _) _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (T.μ-type _) _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (T.ν-type _) _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+-- f failed.
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | failure _ , eqF rewrite eqF with eq
+... | ()
