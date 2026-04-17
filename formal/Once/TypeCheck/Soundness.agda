@@ -312,7 +312,7 @@ sound-RVar ctx x eq
   | no ¬eqUnit , eqDec
   | just (A' , Ψ' , eE') , eqLocal
   rewrite eqLocal with eq
-... | refl = t-var-local eqLocal
+... | refl = t-var-local ¬eqUnit eqLocal
 -- Branch 3: local missed; try imports
 sound-RVar ctx x eq
   | no ¬eqUnit , eqDec
@@ -323,7 +323,7 @@ sound-RVar ctx x eq
   | nothing , eqLocal
   | just T , eqImport
   rewrite eqImport with eq
-... | refl = t-var-import eqImport
+... | refl = t-var-import ¬eqUnit eqLocal eqImport
 sound-RVar ctx x eq
   | no ¬eqUnit , eqDec
   | nothing , eqLocal

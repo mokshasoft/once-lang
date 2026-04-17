@@ -39,6 +39,7 @@ import Once.Type
 open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
                       _*_; _+_; _⇒[_]_; Quantity)
 open import Data.Bool using (true)
+open import Relation.Nullary using (¬_)
 open import Once.TypeCheck.Raw as Raw
   using (RawExpr; RVar; RQualified; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
@@ -97,9 +98,16 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
   -- type+usage, not the SExpr payload).
   ----------------------------------------------------------------
 
+  -- The `x ≢ "unit"` side condition reflects the elaborator's
+  -- short-circuit: `RVar "unit"` always maps to the monomorphic unit
+  -- builtin (`t-unit-var`), never through local lookup, even if a
+  -- local binding named "unit" happens to exist. Without this
+  -- side condition, the judgment would admit derivations the
+  -- operational elaborator cannot realize (breaking completeness).
   t-var-local : ∀ {ctx : NamedCtx} {x : String} {A : Type}
                 {Ψ : Surface.Usage (NamedCtx.size ctx)}
                 {eE : SExpr (NamedCtx.debruijn ctx) Ψ A}
+              → ¬ (x ≡ "unit")
               → lookupLocal ctx x ≡ just (A , Ψ , eE)
               → ctx ⊢ RVar x ∶ A ⨾ Ψ
 
@@ -160,7 +168,12 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
   -- the variable name is not the syntactic "unit".
   ----------------------------------------------------------------
 
+  -- Same `x ≢ "unit"` side condition as `t-var-local`, and
+  -- additionally `lookupLocal ctx x ≡ nothing` to rule out the
+  -- local-binding-takes-precedence case.
   t-var-import : ∀ {ctx : NamedCtx} {x : String} {T : Type}
+               → ¬ (x ≡ "unit")
+               → lookupLocal ctx x ≡ nothing
                → lookupImport (NamedCtx.imports ctx) x ≡ just T
                → ctx ⊢ RVar x ∶ T ⨾ zeroUsage
 

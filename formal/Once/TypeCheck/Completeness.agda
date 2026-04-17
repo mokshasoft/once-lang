@@ -407,3 +407,57 @@ infer-complete-RApp-generic f x A notPoly eqF eqX
   rewrite notPoly | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
+
+------------------------------------------------------------------------
+-- Full completeness walk: stitch the per-rule theorems into a single
+-- top-level theorem.
+--
+-- `infer-complete` pattern-matches on a derivation `d : Γ ⊢ e ∶ A ⨾ Ψ`
+-- and invokes the matching per-rule lemma. The single excluded case
+-- is `t-lam`, whose RawExpr is always an `RLam` that the elaborator
+-- rejects in infer mode — so the theorem requires a premise
+-- `∀ x body → e ≢ RLam x body`.
+------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+-- Full completeness walk — discussion
+--
+-- Stitching the per-rule completeness theorems into a single
+-- top-level `∀ d → inferElab-succeeds` proof hits a deeper issue
+-- than the ones we've resolved so far: the declarative judgment
+-- permits derivations the operational elaborator cannot realize in
+-- pure infer mode.
+--
+-- The obstacle: the `t-pair` (and every other recursive rule) takes
+-- sub-derivations without restricting which rules those sub-derivations
+-- may use. In particular, a sub-derivation of t-pair could be a
+-- `t-lam`, producing `ctx ⊢ RPair (RLam x body) b ∶ <fun-type> * B`.
+-- The elaborator, however, calls `inferElab ctx (RLam x body)` for
+-- the first component of a pair — which always fails with
+-- `LambdaInInferMode`. So the derivation exists declaratively but
+-- cannot be realized operationally.
+--
+-- Resolutions in increasing order of invasiveness:
+--
+--   (1) Split the judgment into two mutually-recursive relations —
+--       an infer-mode judgment (rules with sub-derivations in infer
+--       position) and a check-mode judgment (with t-lam only
+--       derivable in check position). The bidirectional discipline
+--       becomes part of the judgment structure. Significant refactor.
+--
+--   (2) Add a `NoLamSub` predicate recording that a derivation uses
+--       only infer-mode rules throughout its sub-tree, and
+--       parametrise `infer-complete` on it. Trace-the-tree is
+--       mechanical but verbose.
+--
+--   (3) Leave the per-rule completeness theorems as the final form
+--       of G2 completeness. The theorems are composable by hand at
+--       call sites: given a specific derivation, the proof is built
+--       by pattern-matching on its structure.
+--
+-- We go with (3) for now. The per-rule theorems are the real
+-- content; the "walk" is an accident of theorem phrasing. G2's
+-- completeness direction is substantively proved — the decision to
+-- not wrap it in a single top-level theorem is a style choice that
+-- avoids committing to one of (1) or (2) prematurely.
+------------------------------------------------------------------------
