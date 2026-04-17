@@ -240,6 +240,47 @@ record VerifiedTypeChecker : Set₁ where
     -- G2 (continued): remaining soundness fields.
     ----------------------------------------------------------------
 
+    -- RApp polymorphic builtin specialisations
+    tcInfer-sound-RApp-id :
+      ∀ (ctx : NamedCtx) (arg : RawExpr)
+        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
+      → (IH : ∀ {A' Ψ' eE' d' f'}
+            → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
+            → ctx ⊢ arg ∶ A' ⨾ Ψ')
+      → tcInfer ctx (RApp (RVar "id") arg) ≡ success A Ψ eE d f
+      → ctx ⊢ RApp (RVar "id") arg ∶ A ⨾ Ψ
+
+    tcInfer-sound-RApp-fst :
+      ∀ (ctx : NamedCtx) (arg : RawExpr)
+        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
+      → (IH : ∀ {A' Ψ' eE' d' f'}
+            → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
+            → ctx ⊢ arg ∶ A' ⨾ Ψ')
+      → tcInfer ctx (RApp (RVar "fst") arg) ≡ success A Ψ eE d f
+      → ctx ⊢ RApp (RVar "fst") arg ∶ A ⨾ Ψ
+
+    tcInfer-sound-RApp-snd :
+      ∀ (ctx : NamedCtx) (arg : RawExpr)
+        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
+      → (IH : ∀ {A' Ψ' eE' d' f'}
+            → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
+            → ctx ⊢ arg ∶ A' ⨾ Ψ')
+      → tcInfer ctx (RApp (RVar "snd") arg) ≡ success A Ψ eE d f
+      → ctx ⊢ RApp (RVar "snd") arg ∶ A ⨾ Ψ
+
+    tcInfer-sound-RApp-terminal :
+      ∀ (ctx : NamedCtx) (arg : RawExpr)
+        {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : _}
+      → (IH : ∀ {A' Ψ' eE' d' f'}
+            → tcInfer ctx arg ≡ success A' Ψ' eE' d' f'
+            → ctx ⊢ arg ∶ A' ⨾ Ψ')
+      → tcInfer ctx (RApp (RVar "terminal") arg) ≡ success A Ψ eE d f
+      → ctx ⊢ RApp (RVar "terminal") arg ∶ A ⨾ Ψ
+
     tcInfer-sound-RBinOp :
       ∀ (ctx : NamedCtx) (op : BinOp) (e₁ e₂ : RawExpr)
         {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -340,6 +381,10 @@ verifiedTypeChecker = record
   ; tcInfer-sound-RQualified      = Snd.sound-RQualified
   ; tcInfer-sound-RLet            = Snd.sound-RLet
   ; tcInfer-sound-RDestruct       = Snd.sound-RDestruct
+  ; tcInfer-sound-RApp-id         = Snd.sound-RApp-id
+  ; tcInfer-sound-RApp-fst        = Snd.sound-RApp-fst
+  ; tcInfer-sound-RApp-snd        = Snd.sound-RApp-snd
+  ; tcInfer-sound-RApp-terminal   = Snd.sound-RApp-terminal
   ; tcInfer-sound-RBinOp          = Snd.sound-RBinOp
   ; tcCheck-sound-RLam            = Snd.sound-check-RLam
   ; tc-err-lam-infer              = EP.lam-infer-is-LambdaInInferMode

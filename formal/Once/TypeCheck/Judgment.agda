@@ -40,7 +40,7 @@ open Once.Type using (Type; Unit; Int; Str; Void; Float; Buffer;
                       _*_; _+_; _⇒[_]_; Quantity)
 open import Data.Bool using (true)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
+  using (RawExpr; RVar; RQualified; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
          BinOp; isArithmeticOp; isComparisonOp)
 open import Once.TypeCheck.Elaborate
@@ -253,6 +253,38 @@ data _⊢_∶_⨾_ : (ctx : NamedCtx) → RawExpr → (A : Type)
               → ctx ⊢ e₁ ∶ Int ⨾ Ψ₁
               → ctx ⊢ e₂ ∶ Int ⨾ Ψ₂
               → ctx ⊢ RBinOp op e₁ e₂ ∶ (Unit Once.Type.+ Unit) ⨾ (Ψ₁ +ᵘ Ψ₂)
+
+  ----------------------------------------------------------------
+  -- Polymorphic-builtin applications (specialised syntactic forms).
+  --
+  -- The elaborator pattern-matches on `RApp (RVar "id") arg` (etc.)
+  -- *before* the generic application rule. Each polymorphic builtin
+  -- has a specialized judgment rule reflecting the type relation
+  -- between argument and result. The output-usage is the usage
+  -- produced by `Surface.app (specBuiltin) argE` — for an unrestricted
+  -- (`Many`-graded) builtin, that reduces to `Many *ᵘ Ψ` (since the
+  -- builtin itself has `zeroUsage`, and `zeroUsage +ᵘ x = x`).
+  ----------------------------------------------------------------
+
+  t-id-app : ∀ {ctx : NamedCtx} {e : RawExpr} {T : Type}
+             {Ψ : Surface.Usage (NamedCtx.size ctx)}
+           → ctx ⊢ e ∶ T ⨾ Ψ
+           → ctx ⊢ RApp (RVar "id") e ∶ T ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+
+  t-fst-app : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+              {Ψ : Surface.Usage (NamedCtx.size ctx)}
+            → ctx ⊢ e ∶ (A Once.Type.* B) ⨾ Ψ
+            → ctx ⊢ RApp (RVar "fst") e ∶ A ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+
+  t-snd-app : ∀ {ctx : NamedCtx} {e : RawExpr} {A B : Type}
+              {Ψ : Surface.Usage (NamedCtx.size ctx)}
+            → ctx ⊢ e ∶ (A Once.Type.* B) ⨾ Ψ
+            → ctx ⊢ RApp (RVar "snd") e ∶ B ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
+
+  t-terminal-app : ∀ {ctx : NamedCtx} {e : RawExpr} {T : Type}
+                   {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                 → ctx ⊢ e ∶ T ⨾ Ψ
+                 → ctx ⊢ RApp (RVar "terminal") e ∶ Unit ⨾ (zeroUsage +ᵘ (Once.Type.Many *ᵘ Ψ))
 
   ----------------------------------------------------------------
   -- TODO (future G2 passes): rules for

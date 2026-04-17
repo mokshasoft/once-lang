@@ -38,7 +38,7 @@ open import Once.Type as T using (Type; Unit; Int; Str; Void; Float; Buffer;
                                   _*_; _+_; _⇒[_]_; Quantity)
 open import Data.Bool using (Bool; true; false)
 open import Once.TypeCheck.Raw as Raw
-  using (RawExpr; RVar; RQualified; RInt; RStringLit; RUnit; RAnnot; RPair;
+  using (RawExpr; RVar; RQualified; RApp; RInt; RStringLit; RUnit; RAnnot; RPair;
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; BinOp)
 open import Data.String using (_++_)
 import Data.String.Properties
@@ -753,4 +753,153 @@ sound-check-RLam ctx x body A q B IH eq
 ... | ()
 sound-check-RLam ctx x body A q B IH eq | failure _ , eqBody
   rewrite eqBody with eq
+... | ()
+
+------------------------------------------------------------------------
+-- Soundness for RApp polymorphic-builtin specialisations
+--
+-- The elaborator matches `RApp (RVar "id") arg`, `RApp (RVar "fst") arg`,
+-- etc. as concrete syntactic patterns before the generic application
+-- rule. Soundness for each is structurally similar: infer the argument,
+-- then apply the specialised builtin rule. `fst` / `snd` additionally
+-- require the argument to have product type; non-product arguments
+-- are handled by absurd-pattern closure on the outer equation.
+------------------------------------------------------------------------
+
+-- id applied: the argument can have any type, result has the same type.
+sound-RApp-id :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "id") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "id") arg ∶ A ⨾ Ψ
+sound-RApp-id ctx arg IH eq with inferBundle ctx arg
+sound-RApp-id ctx arg IH eq | success T Ψ' argE d' f' , eqSub
+  rewrite eqSub with eq
+... | refl = t-id-app (IH refl)
+sound-RApp-id ctx arg IH eq | failure _ , eqSub
+  rewrite eqSub with eq
+... | ()
+
+-- terminal applied: any-typed argument, Unit result.
+sound-RApp-terminal :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "terminal") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "terminal") arg ∶ A ⨾ Ψ
+sound-RApp-terminal ctx arg IH eq with inferBundle ctx arg
+sound-RApp-terminal ctx arg IH eq | success T Ψ' argE d' f' , eqSub
+  rewrite eqSub with eq
+... | refl = t-terminal-app (IH refl)
+sound-RApp-terminal ctx arg IH eq | failure _ , eqSub
+  rewrite eqSub with eq
+... | ()
+
+-- fst applied: argument must have product type.
+sound-RApp-fst :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "fst") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "fst") arg ∶ A ⨾ Ψ
+sound-RApp-fst ctx arg IH eq with inferBundle ctx arg
+sound-RApp-fst ctx arg IH eq | success (_ * _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | refl = t-fst-app (IH refl)
+sound-RApp-fst ctx arg IH eq | success Unit _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success Void _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success Int _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success Float _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success Str _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success Buffer _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success (_ + _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success (_ ⇒[ _ ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success (T.Eff _ _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success (T.μ-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | success (T.ν-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-fst ctx arg IH eq | failure _ , eqSub
+  rewrite eqSub with eq
+... | ()
+
+-- snd applied: same structure as fst.
+sound-RApp-snd :
+  ∀ (ctx : NamedCtx) (arg : RawExpr)
+    {A : Type} {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ A} {d f : ℕ}
+  → (IH : ∀ {A' Ψ' eE' d' f'}
+        → inferElab ctx arg ≡ success A' Ψ' eE' d' f'
+        → ctx ⊢ arg ∶ A' ⨾ Ψ')
+  → inferElab ctx (RApp (RVar "snd") arg) ≡ success A Ψ eE d f
+  → ctx ⊢ RApp (RVar "snd") arg ∶ A ⨾ Ψ
+sound-RApp-snd ctx arg IH eq with inferBundle ctx arg
+sound-RApp-snd ctx arg IH eq | success (_ * _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | refl = t-snd-app (IH refl)
+sound-RApp-snd ctx arg IH eq | success Unit _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success Void _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success Int _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success Float _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success Str _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success Buffer _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success (_ + _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success (_ ⇒[ _ ] _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success (T.Eff _ _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success (T.μ-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | success (T.ν-type _) _ _ _ _ , eqSub
+  rewrite eqSub with eq
+... | ()
+sound-RApp-snd ctx arg IH eq | failure _ , eqSub
+  rewrite eqSub with eq
 ... | ()
