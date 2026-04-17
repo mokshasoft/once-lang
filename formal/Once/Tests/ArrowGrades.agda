@@ -75,7 +75,46 @@ test-unrestricted-alias : Int ⇒[ Many ] Int ≡ Int ⇒ Int
 test-unrestricted-alias = refl
 
 ------------------------------------------------------------------------
--- Test 5: `A -> B -> C` with default arrow grades (Many on both)
+-- Test 5a: `(Int) -> Int` — parens around a single atom, default arrow
+------------------------------------------------------------------------
+-- Does the paren case work at all?
+test-paren-default :
+    parseType (TLParen ∷ TWord "Int" ∷ TRParen ∷ TArrow ∷ TWord "Int" ∷ [])
+  ≡ just (Int ⇒[ Many ] Int , [])
+test-paren-default = refl
+
+------------------------------------------------------------------------
+-- Test 5b: `(Int)^1 -> Int` — parens + grade on atom
+------------------------------------------------------------------------
+-- Isolates whether the grade-after-paren works at all.
+test-paren-linear :
+    parseType (TLParen ∷ TWord "Int" ∷ TRParen ∷ TCaret1 ∷ TArrow ∷ TWord "Int" ∷ [])
+  ≡ just (Int ⇒[ One ] Int , [])
+test-paren-linear = refl
+
+------------------------------------------------------------------------
+-- Test 5c: `(Int * String) -> Int` — compound in parens, default arrow
+------------------------------------------------------------------------
+-- NOTE: the token must be `TWord "String"` not `TWord "Str"` — the lexer
+-- produces the source-level keyword, which the parser then maps to the
+-- internal `Str` type. (Str is the internal name; String is surface.)
+test-compound-paren-default :
+    parseType (TLParen ∷ TWord "Int" ∷ TStar ∷ TWord "String" ∷ TRParen
+               ∷ TArrow ∷ TWord "Int" ∷ [])
+  ≡ just ((Int * Str) ⇒[ Many ] Int , [])
+test-compound-paren-default = refl
+
+------------------------------------------------------------------------
+-- Test 5d: `(Int * String)^1 -> Int` — compound + grade
+------------------------------------------------------------------------
+test-compound-paren-linear :
+    parseType (TLParen ∷ TWord "Int" ∷ TStar ∷ TWord "String" ∷ TRParen
+               ∷ TCaret1 ∷ TArrow ∷ TWord "Int" ∷ [])
+  ≡ just ((Int * Str) ⇒[ One ] Int , [])
+test-compound-paren-linear = refl
+
+------------------------------------------------------------------------
+-- Test 5c: `A -> B -> C` with default arrow grades (Many on both)
 ------------------------------------------------------------------------
 
 test-curried-default :
