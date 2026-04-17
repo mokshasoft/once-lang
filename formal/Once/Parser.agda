@@ -28,6 +28,10 @@ open import Once.Parser.Module public
 open import Once.Parser.Inline public
 open import Once.Parser.TypeAlias public
 
+-- Parser smoke tests (plan 0.3 G1): pull into the compilation graph
+-- so a regression in parser behaviour fails `make parser`.
+import Once.Parser.Tests
+
 
 ------------------------------------------------------------------------
 -- Top-level Parse Function
