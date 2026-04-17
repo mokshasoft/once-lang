@@ -552,3 +552,27 @@ open Once.Surface.Syntax.Usage using () renaming (_∷_ to _∷ᵘ_; [] to []ᵘ
 +q-mono _    _    One  Zero _ ()
 +q-mono _    _    Many Zero _ ()
 +q-mono _    _    Many One  _ ()
+
+------------------------------------------------------------------------
+-- Named-context structure identities
+------------------------------------------------------------------------
+
+-- `extendNamedCtx` grows the context's size by exactly one.
+open Once.TypeCheck.Elaborate using (NamedCtx; extendNamedCtx)
+
+extendNamedCtx-size :
+  ∀ (ctx : NamedCtx) (x : String) (T : Type)
+  → NamedCtx.size (extendNamedCtx ctx x T) ≡ suc (NamedCtx.size ctx)
+extendNamedCtx-size _ _ _ = refl
+
+-- `extendNamedCtx` preserves the fresh counter and imports.
+extendNamedCtx-fresh :
+  ∀ (ctx : NamedCtx) (x : String) (T : Type)
+  → NamedCtx.freshCounter (extendNamedCtx ctx x T)
+    ≡ NamedCtx.freshCounter ctx
+extendNamedCtx-fresh _ _ _ = refl
+
+extendNamedCtx-imports :
+  ∀ (ctx : NamedCtx) (x : String) (T : Type)
+  → NamedCtx.imports (extendNamedCtx ctx x T) ≡ NamedCtx.imports ctx
+extendNamedCtx-imports _ _ _ = refl
