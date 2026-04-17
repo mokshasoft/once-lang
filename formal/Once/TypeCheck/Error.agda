@@ -80,6 +80,12 @@ data TypeError : Set where
   ApplicationTypeMismatch : (expected actual : Type) → TypeError
   TypeMismatch            : (expected actual : Type) → TypeError
 
+  -- Type-shape errors emitted by the `asInt` / `asFun` projection
+  -- views when the inferred sub-result has the wrong shape. Used by
+  -- RBinOp (via asInt on each operand) and generic RApp (via asFun
+  -- on the function position).
+  NotFunction : (actual : Type) → TypeError  -- "expected function, got X"
+
   -- Usage (QTT) violations
   UsageViolation : (name : String) (declared actual : Quantity) → TypeError
 
@@ -144,6 +150,8 @@ renderError (ApplicationTypeMismatch expected actual) =
 renderError (TypeMismatch expected actual) =
   "Type mismatch: expected " ++ showType expected
     ++ " but got " ++ showType actual
+renderError (NotFunction actual) =
+  "expected function type, got " ++ showType actual
 renderError (UsageViolation name declared actual) =
   "Parameter '" ++ name ++ "' used with quantity "
     ++ showQuantity actual ++ " but declared with quantity "

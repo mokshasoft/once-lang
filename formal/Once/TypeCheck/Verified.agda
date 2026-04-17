@@ -215,122 +215,122 @@ record VerifiedTypeChecker : Set₁ where
     ----------------------------------------------------------------
 
     tc-err-lam-infer :
-      ∀ (ctx : NamedCtx) (x : String) (body : RawExpr) {msg : String}
-      → tcInfer ctx (RLam x body) ≡ failure msg
-      → msg ≡ renderError LambdaInInferMode
+      ∀ (ctx : NamedCtx) (x : String) (body : RawExpr) {err : TypeError}
+      → tcInfer ctx (RLam x body) ≡ failure err
+      → err ≡ LambdaInInferMode
 
     tc-err-inl-infer :
-      ∀ (ctx : NamedCtx) (arg : RawExpr) {msg : String}
-      → tcInfer ctx (RApp (RVar "inl") arg) ≡ failure msg
-      → msg ≡ renderError InlInInferMode
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+      → tcInfer ctx (RApp (RVar "inl") arg) ≡ failure err
+      → err ≡ InlInInferMode
 
     tc-err-inr-infer :
-      ∀ (ctx : NamedCtx) (arg : RawExpr) {msg : String}
-      → tcInfer ctx (RApp (RVar "inr") arg) ≡ failure msg
-      → msg ≡ renderError InrInInferMode
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+      → tcInfer ctx (RApp (RVar "inr") arg) ≡ failure err
+      → err ≡ InrInInferMode
 
     tc-err-initial-infer :
-      ∀ (ctx : NamedCtx) (arg : RawExpr) {msg : String}
-      → tcInfer ctx (RApp (RVar "initial") arg) ≡ failure msg
-      → msg ≡ renderError InitialInInferMode
+      ∀ (ctx : NamedCtx) (arg : RawExpr) {err : TypeError}
+      → tcInfer ctx (RApp (RVar "initial") arg) ≡ failure err
+      → err ≡ InitialInInferMode
 
     tc-err-qualified-unbound :
-      ∀ (ctx : NamedCtx) (name alias : String) {msg : String}
+      ∀ (ctx : NamedCtx) (name alias : String) {err : TypeError}
       → lookupImport (NamedCtx.imports ctx) (alias Data.String.++ "." Data.String.++ name) ≡ nothing
-      → tcInfer ctx (RQualified name alias) ≡ failure msg
-      → msg ≡ renderError (UnboundQualified name alias)
+      → tcInfer ctx (RQualified name alias) ≡ failure err
+      → err ≡ (UnboundQualified name alias)
 
     -- fst with Unit / Int argument → FstNeedsPair
     tc-err-fst-non-pair-Unit :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {Ψ' eE' d' f' msg}
+        {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Unit Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure msg
-      → msg ≡ renderError FstNeedsPair
+      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure err
+      → err ≡ FstNeedsPair
 
     tc-err-fst-non-pair-Int :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {Ψ' eE' d' f' msg}
+        {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Int Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure msg
-      → msg ≡ renderError FstNeedsPair
+      → tcInfer ctx (RApp (RVar "fst") arg) ≡ failure err
+      → err ≡ FstNeedsPair
 
     -- Negation with Unit / Str argument → NegationNotInt
     tc-err-neg-non-Int-Unit :
       ∀ (ctx : NamedCtx) (e : RawExpr)
-        {Ψ' eE' d' f' msg}
+        {Ψ' eE' d' f' err}
       → tcInfer ctx e ≡ success Once.Type.Unit Ψ' eE' d' f'
-      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure msg
-      → msg ≡ renderError NegationNotInt
+      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
+      → err ≡ NegationNotInt
 
     tc-err-neg-non-Int-Str :
       ∀ (ctx : NamedCtx) (e : RawExpr)
-        {Ψ' eE' d' f' msg}
+        {Ψ' eE' d' f' err}
       → tcInfer ctx e ≡ success Once.Type.Str Ψ' eE' d' f'
-      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure msg
-      → msg ≡ renderError NegationNotInt
+      → tcInfer ctx (RUnaryOp OpNeg e) ≡ failure err
+      → err ≡ NegationNotInt
 
     -- Bare-name variable that is not "unit" and not in local/import scope.
     tc-err-var-unbound :
-      ∀ (ctx : NamedCtx) (x : String) {msg : String}
+      ∀ (ctx : NamedCtx) (x : String) {err : TypeError}
       → ¬ (x ≡ "unit")
       → lookupLocal ctx x ≡ nothing
       → lookupImport (NamedCtx.imports ctx) x ≡ nothing
-      → tcInfer ctx (RVar x) ≡ failure msg
-      → msg ≡ renderError (UnboundVariable x)
+      → tcInfer ctx (RVar x) ≡ failure err
+      → err ≡ (UnboundVariable x)
 
     -- snd with Unit / Int argument → SndNeedsPair
     tc-err-snd-non-pair-Unit :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {Ψ' eE' d' f' msg}
+        {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Unit Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure msg
-      → msg ≡ renderError SndNeedsPair
+      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure err
+      → err ≡ SndNeedsPair
 
     tc-err-snd-non-pair-Int :
       ∀ (ctx : NamedCtx) (arg : RawExpr)
-        {Ψ' eE' d' f' msg}
+        {Ψ' eE' d' f' err}
       → tcInfer ctx arg ≡ success Once.Type.Int Ψ' eE' d' f'
-      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure msg
-      → msg ≡ renderError SndNeedsPair
+      → tcInfer ctx (RApp (RVar "snd") arg) ≡ failure err
+      → err ≡ SndNeedsPair
 
     -- Case scrutinee non-sum → CaseScrutineeNotSum
     tc-err-case-scrut-Unit :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr)
-        {Ψ' eE' d' f' msg}
+        {Ψ' eE' d' f' err}
       → tcInfer ctx scrut ≡ success Once.Type.Unit Ψ' eE' d' f'
-      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
-      → msg ≡ renderError CaseScrutineeNotSum
+      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
+      → err ≡ CaseScrutineeNotSum
 
     tc-err-case-scrut-Int :
       ∀ (ctx : NamedCtx) (scrut : RawExpr) (xL : String) (eL : RawExpr)
         (xR : String) (eR : RawExpr)
-        {Ψ' eE' d' f' msg}
+        {Ψ' eE' d' f' err}
       → tcInfer ctx scrut ≡ success Once.Type.Int Ψ' eE' d' f'
-      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
-      → msg ≡ renderError CaseScrutineeNotSum
+      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
+      → err ≡ CaseScrutineeNotSum
 
     -- Check-mode RInt at non-Int target → TypeMismatch
     tc-err-check-RInt-type-mismatch :
-      ∀ (ctx : NamedCtx) (n : _) (T : Type) {msg : _}
+      ∀ (ctx : NamedCtx) (n : _) (T : Type) {err : TypeError}
       → ¬ (T ≡ Once.Type.Int)
-      → tcCheck ctx (Raw.RInt n) T ≡ failure msg
-      → msg ≡ renderError (TypeMismatch T Once.Type.Int)
+      → tcCheck ctx (Raw.RInt n) T ≡ failure err
+      → err ≡ (TypeMismatch T Once.Type.Int)
 
     -- Check-mode RUnit at non-Unit target → TypeMismatch
     tc-err-check-RUnit-type-mismatch :
-      ∀ (ctx : NamedCtx) (T : Type) {msg : _}
+      ∀ (ctx : NamedCtx) (T : Type) {err : TypeError}
       → ¬ (T ≡ Once.Type.Unit)
-      → tcCheck ctx Raw.RUnit T ≡ failure msg
-      → msg ≡ renderError (TypeMismatch T Once.Type.Unit)
+      → tcCheck ctx Raw.RUnit T ≡ failure err
+      → err ≡ (TypeMismatch T Once.Type.Unit)
 
     -- Check-mode RStringLit at non-Str target → TypeMismatch
     tc-err-check-RStringLit-type-mismatch :
-      ∀ (ctx : NamedCtx) (s : String) (T : Type) {msg : _}
+      ∀ (ctx : NamedCtx) (s : String) (T : Type) {err : TypeError}
       → ¬ (T ≡ Once.Type.Str)
-      → tcCheck ctx (Raw.RStringLit s) T ≡ failure msg
-      → msg ≡ renderError (TypeMismatch T Once.Type.Str)
+      → tcCheck ctx (Raw.RStringLit s) T ≡ failure err
+      → err ≡ (TypeMismatch T Once.Type.Str)
 
     -- RDestruct branches with mismatched types → CaseBranchMismatch.
     tc-err-case-branch-mismatch :
@@ -339,15 +339,15 @@ record VerifiedTypeChecker : Set₁ where
         (A B : Type)
         {Ψs scrutE ds fs}
         (C₁ C₂ : Type) {qℓ qr}
-        {Ψₗ eLE dL fL Ψᵣ eRE dR fR msg}
+        {Ψₗ eLE dL fL Ψᵣ eRE dR fR err}
       → tcInfer ctx scrut ≡ success (A Once.Type.+ B) Ψs scrutE ds fs
       → tcInfer (extendNamedCtx ctx xL A) eL
           ≡ success C₁ (qℓ Once.Surface.Syntax.Usage.∷ Ψₗ) eLE dL fL
       → tcInfer (extendNamedCtx ctx xR B) eR
           ≡ success C₂ (qr Once.Surface.Syntax.Usage.∷ Ψᵣ) eRE dR fR
       → ¬ (C₁ ≡ C₂)
-      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure msg
-      → msg ≡ renderError CaseBranchMismatch
+      → tcInfer ctx (Raw.RDestruct scrut xL eL xR eR) ≡ failure err
+      → err ≡ CaseBranchMismatch
 
     -- Generic RApp argument-type mismatch → ApplicationTypeMismatch.
     tc-err-app-domain-mismatch :
@@ -355,13 +355,13 @@ record VerifiedTypeChecker : Set₁ where
         (A B : Type) (q : _)
         {Ψf fE df fx-fresh}
         (Ax : Type)
-        {Ψx xE dx fx-f-fresh msg}
+        {Ψx xE dx fx-f-fresh err}
       → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
       → tcInfer ctx f ≡ success (A Once.Type.⇒[ q ] B) Ψf fE df fx-fresh
       → tcInfer ctx x ≡ success Ax Ψx xE dx fx-f-fresh
       → ¬ (A ≡ Ax)
-      → tcInfer ctx (RApp f x) ≡ failure msg
-      → msg ≡ renderError (ApplicationTypeMismatch A Ax)
+      → tcInfer ctx (RApp f x) ≡ failure err
+      → err ≡ (ApplicationTypeMismatch A Ax)
 
     ----------------------------------------------------------------
     -- G2 (continued): remaining soundness fields.

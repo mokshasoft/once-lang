@@ -123,7 +123,7 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- Returns IR or error message
 compileFunBody : Bool → FunCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
 compileFunBody doOpt ctx name ty expr with checkElab (ctxWithImportsAndSelf ctx name ty) expr ty
-... | TE.failure err = inj₁ ("Type error in " ++ name ++ ": " ++ err)
+... | TE.failure err = inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
 ... | TE.success surfaceExpr _ _ _ =
   let ir = elaborate surfaceExpr
   in inj₂ (if doOpt then optimize ir else ir)

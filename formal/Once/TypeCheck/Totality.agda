@@ -42,6 +42,7 @@ open import Once.TypeCheck.Raw using (RawExpr)
 open import Once.TypeCheck.Elaborate
   using (NamedCtx; inferElab; checkElab; InferElabResult; CheckElabResult;
          success; failure)
+open import Once.TypeCheck.Error using (TypeError)
 
 open import Once.Surface.Syntax as Surface using ()
   renaming (Expr to SExpr; Ctx to SCtx; Usage to SUsage)
@@ -63,7 +64,7 @@ data IsInferSuccess {n : ℕ} {Δ : SCtx n} : InferElabResult Δ → Set where
 
 -- | Witness that an inference result is a failure.
 data IsInferFailure {n : ℕ} {Δ : SCtx n} : InferElabResult Δ → Set where
-  isInferFailure : ∀ (err : String) → IsInferFailure (failure err)
+  isInferFailure : ∀ (err : TypeError) → IsInferFailure (failure err)
 
 -- | Same, for check mode.
 data IsCheckSuccess {n : ℕ} {Δ : SCtx n} {A : Type}
@@ -74,7 +75,7 @@ data IsCheckSuccess {n : ℕ} {Δ : SCtx n} {A : Type}
 
 data IsCheckFailure {n : ℕ} {Δ : SCtx n} {A : Type}
                   : CheckElabResult Δ A → Set where
-  isCheckFailure : ∀ (err : String) → IsCheckFailure (failure err)
+  isCheckFailure : ∀ (err : TypeError) → IsCheckFailure (failure err)
 
 ------------------------------------------------------------------------
 -- Totality: every result is success or failure
@@ -113,12 +114,12 @@ checkElab-total ctx e T with checkElab ctx e T
 
 success≢failure-infer : ∀ {n} {Δ : SCtx n}
                         {A : Type} {Ψ : Surface.Usage n}
-                        {eE : SExpr Δ Ψ A} {d f : ℕ} {err : String}
+                        {eE : SExpr Δ Ψ A} {d f : ℕ} {err : TypeError}
                       → success {Δ = Δ} A Ψ eE d f ≡ failure err → ⊥
 success≢failure-infer ()
 
 success≢failure-check : ∀ {n} {Δ : SCtx n} {A : Type}
                         {Ψ : Surface.Usage n}
-                        {eE : SExpr Δ Ψ A} {d f : ℕ} {err : String}
+                        {eE : SExpr Δ Ψ A} {d f : ℕ} {err : TypeError}
                       → success {Δ = Δ} {A = A} Ψ eE d f ≡ failure err → ⊥
 success≢failure-check ()
