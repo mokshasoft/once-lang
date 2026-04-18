@@ -824,25 +824,83 @@ mutual
   ...   | nothing = failure (UsageViolation x q q')
   checkElab ctx (Raw.RLam _ _) _ = failure LambdaRequiresFunctionType
 
-  -- inl in check mode: expected sum type
-  checkElab ctx (Raw.RApp (Raw.RVar "inl") arg) (A Once.Type.+ B) with checkElab ctx arg A
+  -- RApp in check mode: dispatch via `classifyAppHead` (same
+  -- classifier used by inferElab). Three polymorphic-builtin app
+  -- heads have specialised check-mode logic (inl, inr, initial); the
+  -- other four (id, fst, snd, terminal) and the default `nothing`
+  -- case fall through to the generic inferElab-then-match fallback.
+  --
+  -- Refactor rationale: with a concrete-string `Raw.RApp (Raw.RVar
+  -- "inl") arg` pattern, `classifyAppHead f ≡ nothing` cannot teach
+  -- Agda that `checkElab ctx (Raw.RApp f arg) T` reduces past the
+  -- specialised clauses when `f` is abstract. Classifier dispatch
+  -- lets `rewrite notPoly` unblock the reduction in downstream
+  -- fallback proofs (see plan 0.3 G2 decision 2 resolution).
+  checkElab ctx (Raw.RApp f arg) T with classifyAppHead f
+  ... | just pba-inl with T
+  ...   | (A Once.Type.+ B) with checkElab ctx arg A
+  ...     | failure err = failure err
+  ...     | success Ψ argE d fr =
+            success _ (Surface.app (weakenFromEmpty (specInl A B)) argE) (suc d) fr
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Unit = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Int = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Str = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Void = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Float = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Buffer = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | (_ Once.Type.* _) = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | (_ Once.Type.⇒[ _ ] _) = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Eff _ _ = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | μ-type _ = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inl | ν-type _ = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr with T
+  ...   | (A Once.Type.+ B) with checkElab ctx arg B
+  ...     | failure err = failure err
+  ...     | success Ψ argE d fr =
+            success _ (Surface.app (weakenFromEmpty (specInr A B)) argE) (suc d) fr
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Unit = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Int = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Str = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Void = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Float = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Buffer = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | (_ Once.Type.* _) = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | (_ Once.Type.⇒[ _ ] _) = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Eff _ _ = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | μ-type _ = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-inr | ν-type _ = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | just pba-initial with checkElab ctx arg Void
+  ...     | failure err = failure err
+  ...     | success Ψ argE d fr =
+            success _ (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) fr
+  -- pba-id / pba-fst / pba-snd / pba-terminal / nothing: fall through
+  -- to the generic check-via-infer fallback. Each inlines the same
+  -- body since Agda's `with` requires explicit coverage.
+  checkElab ctx (Raw.RApp f arg) T | just pba-id with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
-  ... | success Ψ argE d f =
-        success _ (Surface.app (weakenFromEmpty (specInl A B)) argE) (suc d) f
-  checkElab ctx (Raw.RApp (Raw.RVar "inl") _) _ = failure InlNeedsSumType
-
-  -- inr in check mode
-  checkElab ctx (Raw.RApp (Raw.RVar "inr") arg) (A Once.Type.+ B) with checkElab ctx arg B
+  ... | success T' Ψ eE d fr with T ≟T T'
+  ...   | yes refl = success _ eE d fr
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab ctx (Raw.RApp f arg) T | just pba-fst with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
-  ... | success Ψ argE d f =
-        success _ (Surface.app (weakenFromEmpty (specInr A B)) argE) (suc d) f
-  checkElab ctx (Raw.RApp (Raw.RVar "inr") _) _ = failure InrNeedsSumType
-
-  -- initial in check mode: Void → A
-  checkElab ctx (Raw.RApp (Raw.RVar "initial") arg) T with checkElab ctx arg Void
+  ... | success T' Ψ eE d fr with T ≟T T'
+  ...   | yes refl = success _ eE d fr
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab ctx (Raw.RApp f arg) T | just pba-snd with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
-  ... | success Ψ argE d f =
-        success _ (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) f
+  ... | success T' Ψ eE d fr with T ≟T T'
+  ...   | yes refl = success _ eE d fr
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab ctx (Raw.RApp f arg) T | just pba-terminal with inferElab ctx (Raw.RApp f arg)
+  ... | failure err = failure err
+  ... | success T' Ψ eE d fr with T ≟T T'
+  ...   | yes refl = success _ eE d fr
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab ctx (Raw.RApp f arg) T | nothing with inferElab ctx (Raw.RApp f arg)
+  ... | failure err = failure err
+  ... | success T' Ψ eE d fr with T ≟T T'
+  ...   | yes refl = success _ eE d fr
+  ...   | no _ = failure (TypeMismatch T T')
 
   -- Bare polymorphic builtins in check mode: specialize against expected type.
 
