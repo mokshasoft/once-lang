@@ -240,9 +240,13 @@ parseTypeAtomWF (TEOF       ∷ _) _ = nothing
 ------------------------------------------------------------------------
 
 parseTypeProdTailWF left [] _ = just (left , [] , ≤-refl)
+-- TStar with invalid atom after is a parse ERROR, not a pass-through.
+-- Previously returned `just (left, TStar ∷ rest, ≤-refl)` — that
+-- leniency complicated the parsing relation and its soundness proof
+-- (spurious identity derivations when the atom-sub-parse failed).
 parseTypeProdTailWF left (TStar ∷ rest) (acc rec)
   with parseTypeAtomWF rest (rec (s≤s ≤-refl))
-... | nothing = just (left , TStar ∷ rest , ≤-refl)
+... | nothing = nothing
 ... | just (right , rest' , bound') with parseTypeProdTailWF (left * right) rest'
                                           (rec (<-trans bound' (s≤s ≤-refl)))
 ...   | nothing = nothing
@@ -302,9 +306,11 @@ parseTypeProdWF toks (acc rec) with parseTypeAtomWF toks (acc rec)
 ------------------------------------------------------------------------
 
 parseTypeSumTailWF left [] _ = just (left , [] , ≤-refl)
+-- TPlus with invalid prod after is a parse ERROR, matching the
+-- corresponding tightening in `parseTypeProdTailWF`.
 parseTypeSumTailWF left (TPlus ∷ rest) (acc rec)
   with parseTypeProdWF rest (rec (s≤s ≤-refl))
-... | nothing = just (left , TPlus ∷ rest , ≤-refl)
+... | nothing = nothing
 ... | just (right , rest' , bound') with parseTypeSumTailWF (left + right) rest'
                                           (rec (<-trans bound' (s≤s ≤-refl)))
 ...   | nothing = nothing
@@ -451,37 +457,36 @@ parseTypeWF toks (acc rec) with parseTypeSumWF toks (acc rec)
 -- the Acc explicitly and use the Σ-return directly.
 ------------------------------------------------------------------------
 
+-- | Strip the length-bound witness from a WF-parser result.
+-- Kept at module scope (not inside a `where`) so downstream bridge
+-- lemmas can reference the exact definition used by the wrappers.
+-- `toks` is explicit so callers can specialise it without help from
+-- unification (the Maybe's payload type doesn't mention `toks`).
+stripBound< : (toks : List Token) → ParseT< toks → Maybe (Type × List Token)
+stripBound< _ nothing = nothing
+stripBound< _ (just (t , rest , _)) = just (t , rest)
+
+stripBound≤ : (toks : List Token) → ParseT≤ toks → Maybe (Type × List Token)
+stripBound≤ _ nothing = nothing
+stripBound≤ _ (just (t , rest , _)) = just (t , rest)
+
 parseType : Parser Type
-parseType toks with parseTypeWF toks (<-wellFounded (length toks))
-... | nothing = nothing
-... | just (t , rest , _) = just (t , rest)
+parseType toks = stripBound< toks (parseTypeWF toks (<-wellFounded (length toks)))
 
 parseTypeAtom : Parser Type
-parseTypeAtom toks with parseTypeAtomWF toks (<-wellFounded (length toks))
-... | nothing = nothing
-... | just (t , rest , _) = just (t , rest)
+parseTypeAtom toks = stripBound< toks (parseTypeAtomWF toks (<-wellFounded (length toks)))
 
 parseTypeSum : Parser Type
-parseTypeSum toks with parseTypeSumWF toks (<-wellFounded (length toks))
-... | nothing = nothing
-... | just (t , rest , _) = just (t , rest)
+parseTypeSum toks = stripBound< toks (parseTypeSumWF toks (<-wellFounded (length toks)))
 
 parseTypeProd : Parser Type
-parseTypeProd toks with parseTypeProdWF toks (<-wellFounded (length toks))
-... | nothing = nothing
-... | just (t , rest , _) = just (t , rest)
+parseTypeProd toks = stripBound< toks (parseTypeProdWF toks (<-wellFounded (length toks)))
 
 parseTypeProdTail : (left : Type) → Parser Type
-parseTypeProdTail left toks with parseTypeProdTailWF left toks (<-wellFounded (length toks))
-... | nothing = nothing
-... | just (t , rest , _) = just (t , rest)
+parseTypeProdTail left toks = stripBound≤ toks (parseTypeProdTailWF left toks (<-wellFounded (length toks)))
 
 parseTypeSumTail : (left : Type) → Parser Type
-parseTypeSumTail left toks with parseTypeSumTailWF left toks (<-wellFounded (length toks))
-... | nothing = nothing
-... | just (t , rest , _) = just (t , rest)
+parseTypeSumTail left toks = stripBound≤ toks (parseTypeSumTailWF left toks (<-wellFounded (length toks)))
 
 parseArrowTail : (left : Type) → Parser Type
-parseArrowTail left toks with parseArrowTailWF left toks (<-wellFounded (length toks))
-... | nothing = nothing
-... | just (t , rest , _) = just (t , rest)
+parseArrowTail left toks = stripBound≤ toks (parseArrowTailWF left toks (<-wellFounded (length toks)))
