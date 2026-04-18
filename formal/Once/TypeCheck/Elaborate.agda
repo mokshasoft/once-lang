@@ -1021,53 +1021,17 @@ mutual
   ...   | yes refl = success _ eE d fr
   ...   | no _ = failure (TypeMismatch T T')
 
-  -- Bare polymorphic builtins in check mode: specialize against expected type.
-
-  checkElab ctx (Raw.RVar "id") (A ⇒[ Many ] B) with A ≟T B
-  ... | yes refl = success _ (weakenFromEmpty (specId A)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "id")
-
-  checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) ⇒[ Many ] A') with A ≟T A'
-  ... | yes refl = success _ (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "fst")
-
-  checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) ⇒[ Many ] B') with B ≟T B'
-  ... | yes refl = success _ (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "snd")
-
-  checkElab ctx (Raw.RVar "inl") (A ⇒[ Many ] (A' Once.Type.+ B)) with A ≟T A'
-  ... | yes refl = success _ (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "inl")
-
-  checkElab ctx (Raw.RVar "inr") (B ⇒[ Many ] (A Once.Type.+ B')) with B ≟T B'
-  ... | yes refl = success _ (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | no _ = failure (BuiltinTypeMismatch "inr")
-
-  checkElab ctx (Raw.RVar "terminal") (A ⇒[ Many ] Unit) =
-    success _ (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx)
-
-  checkElab ctx (Raw.RVar "initial") (Void ⇒[ Many ] A) =
-    success _ (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx)
-
-  checkElab ctx (Raw.RVar "arr") ((A ⇒[ Many ] B) ⇒[ Many ] (Eff A' B')) with A ≟T A' | B ≟T B'
-  ... | yes refl | yes refl = success _ (weakenFromEmpty (specArr A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | _ | _ = failure (BuiltinTypeMismatch "arr")
-
-  checkElab ctx (Raw.RVar "apply") (((A ⇒[ Many ] B) Once.Type.* A') ⇒[ Many ] B') with A ≟T A' | B ≟T B'
-  ... | yes refl | yes refl = success _ (weakenFromEmpty (specApply A B)) 0 (NamedCtx.freshCounter ctx)
-  ... | _ | _ = failure (BuiltinTypeMismatch "apply")
-
-  checkElab ctx (Raw.RVar "compose") ((B ⇒[ Many ] C) ⇒[ Many ] ((A ⇒[ Many ] B') ⇒[ Many ] (A' ⇒[ Many ] C'))) with B ≟T B' | A ≟T A' | C ≟T C'
-  ... | yes refl | yes refl | yes refl = success _ (weakenFromEmpty (specCompose A B C)) 0 (NamedCtx.freshCounter ctx)
-  ... | _ | _ | _ = failure (BuiltinTypeMismatch "compose")
-
-  checkElab ctx (Raw.RVar "pair") ((A ⇒[ Many ] B) ⇒[ Many ] ((A' ⇒[ Many ] C) ⇒[ Many ] (A'' ⇒[ Many ] (B' Once.Type.* C')))) with A ≟T A' | A ≟T A'' | B ≟T B' | C ≟T C'
-  ... | yes refl | yes refl | yes refl | yes refl = success _ (weakenFromEmpty (specPair A B C)) 0 (NamedCtx.freshCounter ctx)
-  ... | _ | _ | _ | _ = failure (BuiltinTypeMismatch "pair")
-
-  checkElab ctx (Raw.RVar "curry") (((A Once.Type.* B) ⇒[ Many ] C) ⇒[ Many ] (A' ⇒[ Many ] (B' ⇒[ Many ] C'))) with A ≟T A' | B ≟T B' | C ≟T C'
-  ... | yes refl | yes refl | yes refl = success _ (weakenFromEmpty (specCurry A B C)) 0 (NamedCtx.freshCounter ctx)
-  ... | _ | _ | _ = failure (BuiltinTypeMismatch "curry")
+  -- Bare polymorphic builtins in check mode: the specialised
+  -- `RVar "id"`/`RVar "fst"`/... clauses were REMOVED (G2 decision,
+  -- plan 0.3). They created an impedance between the elaborator
+  -- (which short-circuited to the polymorphic builtin) and the
+  -- judgment (which routes bare `RVar x` through
+  -- t-var-local/t-var-import/t-var-qualified). Now bare builtin
+  -- names in check mode go through the generic fallback
+  -- (inferElab-then-type-match), which consults local/import lookup.
+  -- Users who want `check (id : A → A)` must have `id` in imports
+  -- or a local binding. In applied form `id e`, the inferElab
+  -- classifier-dispatch handles polymorphism (unchanged).
 
   -- Generic fallback: infer and match types
   checkElab ctx e T with inferElab ctx e
