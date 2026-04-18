@@ -900,6 +900,165 @@ mutual
   ...   | no _ = failure (TypeMismatch T T')
 
 ------------------------------------------------------------------------
+-- Generic-fallback lemmas (G2 completeness — check-mode).
+--
+-- These hoisted-helpers say: for each RawExpr shape whose check-mode
+-- clause is NOT specialised (i.e. falls through to the generic
+-- `with inferElab ctx e` fallback at line ~895), a successful
+-- inferElab result transports to a successful checkElab result at the
+-- same type. The proof strategy in each case:
+--
+--   (1) Rewrite with the inferElab success equation, so the fallback's
+--       `with inferElab ctx e` reduces to `success T Ψ eE d f`.
+--   (2) Case-split on `T ≟T T`; the `yes refl` branch yields the
+--       success; the `no` branch is absurd (`⊥-elim (¬refl refl)`).
+--
+-- The lemmas live in `Elaborate.agda` (not `Completeness.agda`) because
+-- they are structural facts about `checkElab`'s operational behaviour,
+-- proved by direct reduction — they belong alongside `decideLeq` and
+-- `classifyAppHead`, the other elaborator-fact helpers hoisted here.
+-- Dependency: downstream `Completeness.agda` uses these to complete
+-- the `t-embed` case of the check-mode walk (G2 full-walk).
+--
+-- Reference: plans/0.3-frontend-verification-gaps.md, gap G2.
+------------------------------------------------------------------------
+
+open import Data.Empty using (⊥-elim)
+
+-- RInt always infers at type `Int`; the fallback transports to check
+-- at `Int` directly.
+checkElab-fallback-RInt :
+  ∀ {ctx : NamedCtx} (n : ℤ)
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RInt n) Int
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RInt {ctx} n with Int ≟T Int
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RStringLit always infers at type `Str`.
+checkElab-fallback-RStringLit :
+  ∀ {ctx : NamedCtx} (s : String)
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RStringLit s) Str
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RStringLit {ctx} s with Str ≟T Str
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RUnit always infers at type `Unit`.
+checkElab-fallback-RUnit :
+  ∀ {ctx : NamedCtx}
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx Raw.RUnit Unit
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RUnit {ctx} with Unit ≟T Unit
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RQualified: inferElab ≡ success ⇒ checkElab at the same type ≡ success.
+checkElab-fallback-RQualified :
+  ∀ {ctx : NamedCtx} (name alias : String) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RQualified name alias) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RQualified name alias) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RQualified name alias T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RAnnot T: check-mode check at T falls to generic fallback (no
+-- specialised RAnnot check clause). inferElab ctx (RAnnot e T) succeeds
+-- exactly when checkElab ctx e T succeeds at the annotated type.
+checkElab-fallback-RAnnot :
+  ∀ {ctx : NamedCtx} (e : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RAnnot e T) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RAnnot e T) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RAnnot e T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RPair: check-mode at `A * B` falls to generic fallback.
+checkElab-fallback-RPair :
+  ∀ {ctx : NamedCtx} (a b : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RPair a b) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RPair a b) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RPair a b T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RLet: no specialised check clause.
+checkElab-fallback-RLet :
+  ∀ {ctx : NamedCtx} (x : String) (e₁ e₂ : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RLet x e₁ e₂) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RLet x e₁ e₂) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RLet x e₁ e₂ T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RDestruct: no specialised check clause.
+checkElab-fallback-RDestruct :
+  ∀ {ctx : NamedCtx} (scrut : RawExpr) (xL : String) (eL : RawExpr)
+    (xR : String) (eR : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RDestruct scrut xL eL xR eR) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RDestruct scrut xL eL xR eR) T
+        ≡ success Ψ eE' d' f')))
+checkElab-fallback-RDestruct scrut xL eL xR eR T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RUnaryOp: no specialised check clause.
+checkElab-fallback-RUnaryOp :
+  ∀ {ctx : NamedCtx} (op : Raw.UnaryOp) (e : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RUnaryOp op e) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RUnaryOp op e) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RUnaryOp op e T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RBinOp: no specialised check clause.
+checkElab-fallback-RBinOp :
+  ∀ {ctx : NamedCtx} (op : Raw.BinOp) (e₁ e₂ : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RBinOp op e₁ e₂) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RBinOp op e₁ e₂) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RBinOp op e₁ e₂ T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+------------------------------------------------------------------------
 -- Top-level Compilation
 ------------------------------------------------------------------------
 
