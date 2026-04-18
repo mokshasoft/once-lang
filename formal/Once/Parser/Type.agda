@@ -31,8 +31,10 @@ open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.String using (String)
+open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Bool using (Bool; true; false; _∧_; not)
 open import Data.Char using (isAlpha; isLower)
+open import Relation.Nullary using (yes; no)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
                              _*_; _+_; _⇒[_]_; Eff; Quantity; Zero; One; Many)
@@ -49,15 +51,15 @@ isUpperWord s with Data.String.toList s
 ... | [] = false
 ... | (c ∷ _) = isAlpha c ∧ not (isLower c)
 
--- | Try to parse a type variable (uppercase word)
--- NOTE: Type variables are now only used internally during type inference.
--- User-written types should be concrete. This function is kept for
--- backward compatibility but will likely fail at elaboration time.
--- For proper polymorphism support, use PolyType instead.
+-- | Try to parse a type variable (uppercase word).
+-- Per 0.2.5: user-written types are concrete; type variables live only
+-- inside `PolyType` signatures. This function always returns `nothing`.
+-- The (previously-conditional) `with isUpperWord name` dispatch was
+-- removed because both branches returned `nothing` — simplifying the
+-- definition makes downstream proofs (Grammar.ParserInvariant)
+-- trivially reduce this clause.
 tryParseTypeVar : String → List Token → Maybe (Type × List Token)
-tryParseTypeVar name rest with isUpperWord name
-... | true = nothing  -- Type variables not allowed in user-written types
-... | false = nothing
+tryParseTypeVar _ _ = nothing
 
 -- | Parse a type atom (highest precedence)
 {-# TERMINATING #-}
@@ -73,25 +75,38 @@ parseTypeSum : Parser Type
 parseTypeProd : Parser Type
 
 parseTypeAtom [] = nothing
-parseTypeAtom (TWord "Unit" ∷ rest) = just (Unit , rest)
-parseTypeAtom (TWord "Void" ∷ rest) = just (Void , rest)
-parseTypeAtom (TWord "Int" ∷ rest) = just (Int , rest)
-parseTypeAtom (TWord "Float" ∷ rest) = just (Float , rest)
-parseTypeAtom (TWord "Buffer" ∷ rest) = just (Buffer , rest)
-parseTypeAtom (TWord "String" ∷ rest) = just (Str , rest)
-parseTypeAtom (TWord "Eff" ∷ rest) =
+-- TWord clause: dispatch via decidable string equality. Replaces the
+-- prior literal-pattern chain with a `StrProp._≟_`-based dispatch,
+-- mirroring the `decideLeq` / `classifyAppHead` refactors. Proofs
+-- downstream can pattern-match on the decidable result and reduce the
+-- parser's behaviour without hitting the "abstract-literal" obstacle.
+parseTypeAtom (TWord name ∷ rest) with name ≟ "Unit"
+... | yes _ = just (Unit , rest)
+... | no _ with name ≟ "Void"
+... | yes _ = just (Void , rest)
+... | no _ with name ≟ "Int"
+... | yes _ = just (Int , rest)
+... | no _ with name ≟ "Float"
+... | yes _ = just (Float , rest)
+... | no _ with name ≟ "Buffer"
+... | yes _ = just (Buffer , rest)
+... | no _ with name ≟ "String"
+... | yes _ = just (Str , rest)
+... | no _ with name ≟ "Eff"
+... | yes _ =
   (parseTypeAtom >>= λ a →
    parseTypeAtom >>= λ b →
    return (Eff a b)) rest
-parseTypeAtom (TWord "IO" ∷ rest) =
+... | no _ with name ≟ "IO"
+... | yes _ =
   (parseTypeAtom >>= λ a →
    return (Eff Unit a)) rest
+... | no _ = tryParseTypeVar name rest
 -- Fix removed by OCP-0003: use μ-type/ν-type with structured recursion schemes
 parseTypeAtom (TLParen ∷ rest) =
   (parseType >>= λ t →
    expect TRParen >>
    return t) rest
-parseTypeAtom (TWord name ∷ rest) = tryParseTypeVar name rest
 parseTypeAtom (_ ∷ _) = nothing
 
 ------------------------------------------------------------------------
