@@ -1044,6 +1044,74 @@ checkElab-fallback-RUnaryOp op e T eqInf
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
+-- RVar "unit": no specialised check clause for "unit".
+-- The elaborator falls through to the generic fallback.
+checkElab-fallback-RVar-unit :
+  ∀ {ctx : NamedCtx}
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RVar "unit") Unit
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RVar-unit {ctx} with Unit ≟T Unit
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RApp (RVar "id") arg: no specialised check clause for "id" as app head
+-- (only "inl"/"inr"/"initial" are specialised). Falls to fallback.
+checkElab-fallback-RApp-id :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "id") arg) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "id") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-id arg T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RApp (RVar "fst") arg: no specialised check clause.
+checkElab-fallback-RApp-fst :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "fst") arg) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "fst") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-fst arg T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RApp (RVar "snd") arg: no specialised check clause.
+checkElab-fallback-RApp-snd :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "snd") arg) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "snd") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-snd arg T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RApp (RVar "terminal") arg: no specialised check clause.
+checkElab-fallback-RApp-terminal :
+  ∀ {ctx : NamedCtx} (arg : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f : ℕ}
+  → inferElab ctx (Raw.RApp (Raw.RVar "terminal") arg) ≡ success T Ψ eE d f
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "terminal") arg) T ≡ success Ψ eE' d' f')))
+checkElab-fallback-RApp-terminal arg T eqInf
+  rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
 -- RBinOp: no specialised check clause.
 checkElab-fallback-RBinOp :
   ∀ {ctx : NamedCtx} (op : Raw.BinOp) (e₁ e₂ : RawExpr) (T : Type)

@@ -421,18 +421,45 @@ infer-complete-RApp-generic f x A notPoly eqF eqX
 -- The walk is a direct mutual structural recursion on derivations.
 ------------------------------------------------------------------------
 
-open import Once.TypeCheck.Judgment
-  using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_; t-embed; t-lam)
+open Once.TypeCheck.Judgment
+  using (_⊢ᵢ_∶_⨾_; _⊢ᶜ_∶_⨾_;
+         t-int; t-str; t-unit; t-unit-var;
+         t-var-local; t-var-qualified; t-var-import;
+         t-annot; t-pair; t-neg; t-let; t-case;
+         t-binop-arith; t-binop-cmp;
+         t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-app;
+         t-embed; t-lam)
 
--- The G2(a) judgment split successfully isolates the last blocker
--- for a full-walk `∀ d → inferElab-succeeds`: the `t-annot` sub-
--- derivation lives in `⊢ᶜ`, so infer-completeness needs
--- check-completeness for the `t-annot` case. The only check-mode
--- case not yet fully handled is `t-embed`, which requires a
--- mechanical `checkElab ≡ inferElab-then-≟T-match` fallback lemma.
+
+------------------------------------------------------------------------
+-- Summary of completeness status (G2)
 --
--- Status: per-rule theorems above are substantively complete. A
--- full mutual walk is one well-scoped lemma away; per the user's
--- "principled solution" preference, we pause here to let them
--- direct the generic-fallback lemma's phrasing (inline in
--- `check-complete`, or hoisted into `Elaborate.agda`).
+-- Status: per-rule completeness theorems (the `infer-complete-*` and
+-- `check-complete-RLam` lemmas above) are complete, and the new
+-- `checkElab-fallback-*` helpers in `Elaborate.agda` supply the
+-- building blocks for the mutual full-walk.
+--
+-- Deferred (plan 0.3 G2 decision 2):
+--   * Full mutual `infer-complete` / `check-complete` walk.
+--     Two blockers remain:
+--     1. `t-embed (t-var-local …)` / `t-embed (t-var-import …)` for
+--        `x ∈ {id, fst, snd, inl, inr, terminal, initial, arr, apply,
+--         compose, pair, curry}`: the specialised check-mode bare-
+--        builtin clauses in `checkElab` can reject at types the
+--        fallback would accept. Needs either (a) a side-condition
+--        `x ∉ specialised-builtin-set` on the lookup rules, or (b)
+--        specialised lookup rules for each builtin name, or (c) the
+--        specialised check-mode bare-builtin clauses removed from
+--        `checkElab` in favour of inferElab-then-match.
+--     2. `t-app (notPoly) dF dX` under `t-embed`: `checkElab-fallback-
+--        RApp-generic` cannot reduce past the specialised check-mode
+--        app-head clauses (`Raw.RApp (Raw.RVar "inl"/"inr"/"initial")`),
+--        because Agda cannot use the `classifyAppHead f ≡ nothing`
+--        hypothesis to skip those literal-pattern clauses. Needs a
+--        `classifyAppHead`-style refactor of the app-head patterns
+--        in `checkElab` (mirroring the `inferElab` refactor done for
+--        gap G2(a)).
+--
+-- All infrastructure for the walk exists; the remaining work is
+-- restructuring, not proof discovery.
+------------------------------------------------------------------------
