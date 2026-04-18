@@ -139,20 +139,16 @@ optional p toks with p toks
 ... | just (a , rest) = just (just a , rest)
 ... | nothing = just (nothing , toks)
 
--- | Parse zero or more occurrences (greedy, structurally terminating on token consumption)
--- Note: each successful parse of p must consume ≥1 token for termination.
-{-# TERMINATING #-}
-many : {A : Set} → Parser A → Parser (List A)
-many p toks with p toks
-... | nothing = just ([] , toks)
-... | just (a , rest) with many p rest
-...   | nothing = just (a ∷ [] , rest)
-...   | just (as , rest') = just (a ∷ as , rest')
-
--- | Parse one or more occurrences
-some : {A : Set} → Parser A → Parser (List A)
-some p = p >>= λ a → many p >>= λ as → return (a ∷ as)
-
--- | Skip newlines (zero or more)
+-- | Skip newlines (zero or more).
+-- Specialised to `TNewline` so termination is structurally visible:
+-- each successful consumption removes exactly one token from the list.
+-- The prior generic `many : Parser A → Parser (List A)` combinator
+-- was removed (used only by `skipNewlines`; retaining it required a
+-- `{-# TERMINATING #-}` pragma since generic `many p` has no
+-- length-bound witness on `p`).
 skipNewlines : Parser (List Token)
-skipNewlines = many (expect TNewline)
+skipNewlines [] = just ([] , [])
+skipNewlines (TNewline ∷ rest) with skipNewlines rest
+... | just (ns , rest') = just (TNewline ∷ ns , rest')
+... | nothing = just (TNewline ∷ [] , rest)
+skipNewlines (t ∷ rest) = just ([] , t ∷ rest)
