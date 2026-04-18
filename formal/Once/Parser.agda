@@ -52,10 +52,22 @@ import Once.Grammar.Roundtrip
 -- `Once.Grammar.ParserBridge` handles the forward (completeness)
 -- direction; the reverse (soundness) — needed to lift `NoMuNu` from a
 -- `ParsesType` induction — hit Agda termination-checker limitations
--- around nested `with` inside a mutual Acc-recursive block. Resolving
--- this needs a dedicated pass using either a decidability witness
--- (`decParseType`) or a non-with-based case analysis. Leaving the
--- import out keeps `make parser` green in the meantime.
+-- around nested `with` inside a mutual Acc-recursive block.
+--
+-- Resolution options for a follow-up session:
+--   1. Decidability: define
+--        `decParses : ∀ toks → Dec (∃ T rest. ParsesType toks T rest)`
+--      with WF recursion on `length toks`, then extract derivation
+--      from a successful `parseType toks ≡ just …`.
+--   2. Non-`with` soundness: rewrite the `with parseTypeWF … in eq`
+--      splits as explicit `case` destructors via `refl`, to keep the
+--      termination checker happy across the mutual Acc-recursive block.
+--   3. Restructure `parseTypeAtomWF` so its `TLParen` clause calls a
+--      named helper, then prove that helper's soundness in isolation
+--      — avoids the nested `with` inside a mutual block.
+--
+-- Leaving the import out keeps `make parser` green in the meantime.
+-- See: memory/feedback_relational_vs_refl.md for context.
 
 
 ------------------------------------------------------------------------
