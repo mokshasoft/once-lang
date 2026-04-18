@@ -37,6 +37,15 @@ import Once.Parser.Tests
 -- the parser-target dependency chain.
 import Once.Grammar.Printer
 
+-- G1 parser correctness proofs: type-side round-trip
+-- (`parseType ∘ printGType ≡ just ∘ toType`) and parser invariant
+-- (the parser leaves the residual token list untouched on failure).
+-- Imported here so any regression in the parser's REDUCTION shape —
+-- not just its extensional behaviour — surfaces via `make parser` /
+-- `make frontend` rather than silently breaking a standalone file.
+import Once.Grammar.Roundtrip
+import Once.Grammar.ParserInvariant
+
 
 ------------------------------------------------------------------------
 -- Top-level Parse Function
