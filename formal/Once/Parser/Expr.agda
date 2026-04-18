@@ -25,7 +25,9 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_)
 open import Data.Char using (Char)
 open import Data.String using (String)
+open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Bool using (Bool; true; false; if_then_else_)
+open import Relation.Nullary using (yes; no)
 
 open import Once.Type using (Type)
 open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam; RLet;
@@ -95,10 +97,15 @@ parseLamParams _ = nothing
 parseLet : Parser RawExpr
 
 -- | Parse the continuation after 'let name = val': either 'in body' or '; more-lets in body'
+-- TWord clause uses `_≟_` dispatch rather than literal-string pattern
+-- so proofs can reduce for abstract names (same refactor as
+-- parseTypeAtom's keyword dispatch).
 parseLetCont : String → RawExpr → Parser RawExpr
-parseLetCont name val (TWord "in" ∷ rest) with parseExpr rest
-... | just (body , rest') = just (RLet name val body , rest')
-... | nothing = nothing
+parseLetCont name val (TWord w ∷ rest) with w ≟ "in"
+... | yes _ with parseExpr rest
+...   | just (body , rest') = just (RLet name val body , rest')
+...   | nothing = nothing
+parseLetCont name val (TWord w ∷ rest) | no _ = nothing
 parseLetCont name val (TSemicolon ∷ rest) with parseLet rest
 ... | just (body , rest') = just (RLet name val body , rest')
 ... | nothing = nothing
@@ -111,22 +118,32 @@ parseLet toks with anyWord toks
 ...   | just (val , rest') = parseLetCont name val rest'
 
 -- | Parse the right branch after semicolon: Right y -> e2 }
+-- Keyword "Right" matched via `_≟_`; abstract-name dispatch for
+-- downstream proof tractability.
 parseRightBranch : RawExpr → String → RawExpr → Parser RawExpr
-parseRightBranch scrut x left (TSemicolon ∷ TWord "Right" ∷ TWord y ∷ TArrow ∷ rest) with parseExpr rest
-... | just (right , TRBrace ∷ final) = just (RDestruct scrut x left y right , final)
-... | _ = nothing
+parseRightBranch scrut x left (TSemicolon ∷ TWord w ∷ TWord y ∷ TArrow ∷ rest) with w ≟ "Right"
+... | yes _ with parseExpr rest
+...   | just (right , TRBrace ∷ final) = just (RDestruct scrut x left y right , final)
+...   | _ = nothing
+parseRightBranch scrut x left (TSemicolon ∷ TWord w ∷ TWord y ∷ TArrow ∷ rest) | no _ = nothing
 parseRightBranch _ _ _ _ = nothing
 
 -- | Parse destruct branches: Left x -> e1 ; Right y -> e2 }
+-- Keyword "Left" matched via `_≟_`.
 parseDestructBranches : RawExpr → Parser RawExpr
-parseDestructBranches scrut (TWord "Left" ∷ TWord x ∷ TArrow ∷ rest) with parseExpr rest
-... | just (left , rest') = parseRightBranch scrut x left rest'
-... | nothing = nothing
+parseDestructBranches scrut (TWord w ∷ TWord x ∷ TArrow ∷ rest) with w ≟ "Left"
+... | yes _ with parseExpr rest
+...   | just (left , rest') = parseRightBranch scrut x left rest'
+...   | nothing = nothing
+parseDestructBranches scrut (TWord w ∷ TWord x ∷ TArrow ∷ rest) | no _ = nothing
 parseDestructBranches _ _ = nothing
 
--- | Parse destruct continuation after the scrutinee
+-- | Parse destruct continuation after the scrutinee.
+-- Keyword "of" matched via `_≟_`.
 parseDestructOf : RawExpr → Parser RawExpr
-parseDestructOf scrut (TWord "of" ∷ TLBrace ∷ rest) = parseDestructBranches scrut rest
+parseDestructOf scrut (TWord w ∷ TLBrace ∷ rest) with w ≟ "of"
+... | yes _ = parseDestructBranches scrut rest
+... | no _ = nothing
 parseDestructOf _ _ = nothing
 
 -- | Parse destruct: destruct e of { Left x -> e1 ; Right y -> e2 }
