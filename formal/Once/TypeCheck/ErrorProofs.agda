@@ -228,7 +228,8 @@ app-domain-mismatch-is-ApplicationTypeMismatch :
   → err ≡ ApplicationTypeMismatch A Ax
 app-domain-mismatch-is-ApplicationTypeMismatch
   ctx f x A B q Ax notPoly eqF eqX A≢Ax eqFail
-  rewrite notPoly | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A Ax
+  rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
+        | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A Ax
 ... | yes p = ⊥-elim (A≢Ax p)
 ... | no  _ with eqFail
 ...   | refl = refl

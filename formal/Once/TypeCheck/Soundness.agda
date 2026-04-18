@@ -937,7 +937,8 @@ sound-RApp-generic :
   → inferElab ctx (RApp f x) ≡ success A Ψ eE d fresh
   → ctx ⊢ RApp f x ∶ A ⨾ Ψ
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  rewrite notPoly with inferBundle ctx f
+  rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
+  with inferBundle ctx f
 -- f is a function type — recurse into x.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF

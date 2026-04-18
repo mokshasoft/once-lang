@@ -404,7 +404,8 @@ infer-complete-RApp-generic :
       inferElab ctx (Raw.RApp f x)
         ≡ success B (Ψf +ᵘ (q *ᵘ Ψx)) eE d f'
 infer-complete-RApp-generic f x A notPoly eqF eqX
-  rewrite notPoly | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A A
+  rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
+        | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A A
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
@@ -435,13 +436,14 @@ open Once.TypeCheck.Judgment
 -- Summary of completeness status (G2)
 --
 -- Status: per-rule completeness theorems (the `infer-complete-*` and
--- `check-complete-RLam` lemmas above) are complete, and the new
--- `checkElab-fallback-*` helpers in `Elaborate.agda` supply the
--- building blocks for the mutual full-walk.
+-- `check-complete-RLam` lemmas above) are complete, and the
+-- `checkElab-fallback-*` helpers in `Elaborate.agda` (including the
+-- RApp-generic case, unblocked by the `AppHeadView` refactor) supply
+-- the building blocks for the mutual full-walk.
 --
--- Deferred (plan 0.3 G2 decision 2):
+-- Deferred (plan 0.3 G2 decision 2, reduced to ONE blocker):
 --   * Full mutual `infer-complete` / `check-complete` walk.
---     Two blockers remain:
+--     Remaining blocker:
 --     1. `t-embed (t-var-local …)` / `t-embed (t-var-import …)` for
 --        `x ∈ {id, fst, snd, inl, inr, terminal, initial, arr, apply,
 --         compose, pair, curry}`: the specialised check-mode bare-
@@ -451,14 +453,15 @@ open Once.TypeCheck.Judgment
 --        specialised lookup rules for each builtin name, or (c) the
 --        specialised check-mode bare-builtin clauses removed from
 --        `checkElab` in favour of inferElab-then-match.
---     2. `t-app (notPoly) dF dX` under `t-embed`: `checkElab-fallback-
---        RApp-generic` cannot reduce past the specialised check-mode
---        app-head clauses (`Raw.RApp (Raw.RVar "inl"/"inr"/"initial")`),
---        because Agda cannot use the `classifyAppHead f ≡ nothing`
---        hypothesis to skip those literal-pattern clauses. Needs a
---        `classifyAppHead`-style refactor of the app-head patterns
---        in `checkElab` (mirroring the `inferElab` refactor done for
---        gap G2(a)).
+--
+--     Resolved: the t-app case was blocked by Agda's `with`-
+--     abstraction over `classifyAppHead`'s internal dispatch. The
+--     `AppHeadView` refactor in Elaborate.agda (mirroring the
+--     lesson "eliminate opaque `with`-helpers by refactoring the
+--     definition") exposes the classifier's result structurally, so
+--     `rewrite` can substitute both checkElab's and inferElab's
+--     dispatches in lockstep. See `checkElab-fallback-RApp-generic`
+--     in Elaborate.agda for the unblocked proof.
 --
 -- All infrastructure for the walk exists; the remaining work is
 -- restructuring, not proof discovery.

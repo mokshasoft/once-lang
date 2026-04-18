@@ -540,6 +540,21 @@ findLocalVarUsage (mkCtx n Γ Δ _ _) x = go Γ Δ
 -- Function-type and Int-type projections (for inference branching)
 ------------------------------------------------------------------------
 
+-- | Match an `InferElabResult` against an expected ground type and
+-- produce a `CheckElabResult`. Pure, non-recursive — caller passes
+-- the inferred result explicitly. Encapsulates the generic check-
+-- via-infer fallback so proofs can reason about it without fighting
+-- with-abstractions inside `checkElab`.
+matchInferResult :
+  ∀ {n} {Δ : SCtx n}
+  → InferElabResult Δ
+  → (T : Type)
+  → CheckElabResult Δ T
+matchInferResult (failure err) _ = failure err
+matchInferResult (success T' Ψ eE d f) T with T ≟T T'
+... | yes refl = success _ eE d f
+... | no _     = failure (TypeMismatch T T')
+
 data FunProjection {n : ℕ} (Δ : SCtx n) : Set where
   isFun  : (A : Type) (q : Quantity) (B : Type) (Ψ : Surface.Usage n)
          → SExpr Δ Ψ (A ⇒[ q ] B) → ℕ → ℕ → FunProjection Δ
@@ -641,6 +656,106 @@ classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
 ...             | no  _ = nothing
 classifyAppHead _ = nothing
 
+-- | View-type classification of an application head. Each constructor
+-- fixes the head's concrete RawExpr shape via an index, so pattern-
+-- matching on an `AppHeadView f` value makes `f`'s shape available
+-- in the goal structurally — no `with`-abstraction interplay. This
+-- is the "eliminate opaque `with`-helpers by refactoring the
+-- definition" idiom (see `docs/formal/historical/lessons-learned.md`):
+-- when a proof is fighting `rewrite` against an internal `with`-
+-- dispatch, the fix is to refactor the function to return a datatype
+-- carrying the proof, not to layer more proof tactics.
+data AppHeadView : RawExpr → Set where
+  ahv-id       : AppHeadView (Raw.RVar "id")
+  ahv-fst      : AppHeadView (Raw.RVar "fst")
+  ahv-snd      : AppHeadView (Raw.RVar "snd")
+  ahv-terminal : AppHeadView (Raw.RVar "terminal")
+  ahv-inl      : AppHeadView (Raw.RVar "inl")
+  ahv-inr      : AppHeadView (Raw.RVar "inr")
+  ahv-initial  : AppHeadView (Raw.RVar "initial")
+  ahv-other    : ∀ {f} → AppHeadView f
+
+classifyAppHeadView : (f : RawExpr) → AppHeadView f
+classifyAppHeadView (Raw.RVar x) with StrProp._≟_ x "id"
+... | yes refl = ahv-id
+... | no  _ with StrProp._≟_ x "fst"
+...   | yes refl = ahv-fst
+...   | no  _ with StrProp._≟_ x "snd"
+...     | yes refl = ahv-snd
+...     | no  _ with StrProp._≟_ x "terminal"
+...       | yes refl = ahv-terminal
+...       | no  _ with StrProp._≟_ x "inl"
+...         | yes refl = ahv-inl
+...         | no  _ with StrProp._≟_ x "inr"
+...           | yes refl = ahv-inr
+...           | no  _ with StrProp._≟_ x "initial"
+...             | yes refl = ahv-initial
+...             | no  _ = ahv-other
+classifyAppHeadView (Raw.RApp _ _)            = ahv-other
+classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
+classifyAppHeadView (Raw.RLam _ _)            = ahv-other
+classifyAppHeadView (Raw.RLet _ _ _)          = ahv-other
+classifyAppHeadView (Raw.RPair _ _)           = ahv-other
+classifyAppHeadView (Raw.RDestruct _ _ _ _ _) = ahv-other
+classifyAppHeadView Raw.RUnit                 = ahv-other
+classifyAppHeadView (Raw.RInt _)              = ahv-other
+classifyAppHeadView (Raw.RStringLit _)        = ahv-other
+classifyAppHeadView (Raw.RAnnot _ _)          = ahv-other
+classifyAppHeadView (Raw.RBinOp _ _ _)        = ahv-other
+classifyAppHeadView (Raw.RUnaryOp _ _)        = ahv-other
+
+-- | Compat: `classifyAppHead f ≡ nothing` ⇔ `classifyAppHeadView f ≡
+-- ahv-other`. Needed because existing downstream proofs (Judgment's
+-- t-app premise, Soundness's sound-RApp-generic, etc.) use
+-- `classifyAppHead`'s `Maybe`-return form, while the view enables
+-- new proofs (`checkElab-fallback-RApp-generic` below).
+classifyAppHead-nothing⇒view-other :
+  ∀ {f} → classifyAppHead f ≡ nothing → classifyAppHeadView f ≡ ahv-other
+-- Non-RVar heads: both classifyAppHead and classifyAppHeadView
+-- reduce definitionally to their respective nothing / ahv-other.
+classifyAppHead-nothing⇒view-other {Raw.RApp _ _}           _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RQualified _ _}     _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RLam _ _}           _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RLet _ _ _}         _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RPair _ _}          _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RDestruct _ _ _ _ _} _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RUnit}              _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RInt _}             _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RStringLit _}       _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RAnnot _ _}         _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RBinOp _ _ _}       _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RUnaryOp _ _}       _ = refl
+-- RVar: both dispatches walk the same 7-string chain; show the
+-- result alignment case-by-case.
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p with StrProp._≟_ s "id"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _
+  with StrProp._≟_ s "fst"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _
+  with StrProp._≟_ s "snd"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _
+  with StrProp._≟_ s "terminal"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "inl"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "inr"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "initial"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+
 ------------------------------------------------------------------------
 -- Bidirectional Inference (produces usage-indexed Expr)
 ------------------------------------------------------------------------
@@ -704,38 +819,38 @@ mutual
   -- dispatch keeps all soundness paths proof-tractable — no more
   -- neutral-term ambiguity between literal-pattern clauses and the
   -- generic-RApp clause.
-  inferElab ctx (Raw.RApp f x) with classifyAppHead f
+  inferElab ctx (Raw.RApp f x) with classifyAppHeadView f
   -- id : A → A
-  ... | just pba-id with inferElab ctx x
+  ... | ahv-id with inferElab ctx x
   ...   | failure err = failure err
   ...   | success T Ψ argE d f' =
           success T _ (Surface.app (weakenFromEmpty (specId T)) argE) (suc d) f'
   -- fst : (A * B) → A
-  inferElab ctx (Raw.RApp f x) | just pba-fst with inferElab ctx x
+  inferElab ctx (Raw.RApp f x) | ahv-fst with inferElab ctx x
   ... | failure err = failure err
   ... | success (A Once.Type.* B) Ψ argE d f' =
         success A _ (Surface.app (weakenFromEmpty (specFst A B)) argE) (suc d) f'
   ... | success _ _ _ _ _ = failure FstNeedsPair
   -- snd : (A * B) → B
-  inferElab ctx (Raw.RApp f x) | just pba-snd with inferElab ctx x
+  inferElab ctx (Raw.RApp f x) | ahv-snd with inferElab ctx x
   ... | failure err = failure err
   ... | success (A Once.Type.* B) Ψ argE d f' =
         success B _ (Surface.app (weakenFromEmpty (specSnd A B)) argE) (suc d) f'
   ... | success _ _ _ _ _ = failure SndNeedsPair
   -- terminal : A → Unit
-  inferElab ctx (Raw.RApp f x) | just pba-terminal with inferElab ctx x
+  inferElab ctx (Raw.RApp f x) | ahv-terminal with inferElab ctx x
   ... | failure err = failure err
   ... | success A Ψ argE d f' =
         success Unit _ (Surface.app (weakenFromEmpty (specTerminal A)) argE) (suc d) f'
   -- Partial / check-only builtins in infer mode: fail.
-  inferElab ctx (Raw.RApp _ _) | just pba-inl =
+  inferElab ctx (Raw.RApp _ _) | ahv-inl =
     failure InlInInferMode
-  inferElab ctx (Raw.RApp _ _) | just pba-inr =
+  inferElab ctx (Raw.RApp _ _) | ahv-inr =
     failure InrInInferMode
-  inferElab ctx (Raw.RApp _ _) | just pba-initial =
+  inferElab ctx (Raw.RApp _ _) | ahv-initial =
     failure InitialInInferMode
   -- Generic application: infer f as function type, then x.
-  inferElab ctx (Raw.RApp f x) | nothing with asFun (inferElab ctx f)
+  inferElab ctx (Raw.RApp f x) | ahv-other with asFun (inferElab ctx f)
   ... | notFun err = failure err
   ... | isFun A q B Ψ₁ fE df ff with inferElab ctx x
   ...   | failure err = failure err
@@ -836,67 +951,71 @@ mutual
   -- specialised clauses when `f` is abstract. Classifier dispatch
   -- lets `rewrite notPoly` unblock the reduction in downstream
   -- fallback proofs (see plan 0.3 G2 decision 2 resolution).
-  checkElab ctx (Raw.RApp f arg) T with classifyAppHead f
-  ... | just pba-inl with T
+  -- Dispatch via `classifyAppHeadView`: each specialised case binds
+  -- `f` concretely via the view-constructor's index, making the
+  -- reduction visible to downstream proofs (no opaque with-helper
+  -- over classifyAppHead's internal string-comparison chain).
+  checkElab ctx (Raw.RApp f arg) T with classifyAppHeadView f
+  ... | ahv-inl with T
   ...   | (A Once.Type.+ B) with checkElab ctx arg A
   ...     | failure err = failure err
   ...     | success Ψ argE d fr =
             success _ (Surface.app (weakenFromEmpty (specInl A B)) argE) (suc d) fr
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Unit = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Int = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Str = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Void = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Float = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Buffer = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | (_ Once.Type.* _) = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | (_ Once.Type.⇒[ _ ] _) = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | Eff _ _ = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | μ-type _ = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inl | ν-type _ = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr with T
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | Unit = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | Int = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | Str = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | Void = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | Float = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | Buffer = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | (_ Once.Type.* _) = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | (_ Once.Type.⇒[ _ ] _) = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | Eff _ _ = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | μ-type _ = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inl | ν-type _ = failure InlNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr with T
   ...   | (A Once.Type.+ B) with checkElab ctx arg B
   ...     | failure err = failure err
   ...     | success Ψ argE d fr =
             success _ (Surface.app (weakenFromEmpty (specInr A B)) argE) (suc d) fr
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Unit = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Int = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Str = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Void = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Float = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Buffer = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | (_ Once.Type.* _) = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | (_ Once.Type.⇒[ _ ] _) = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | Eff _ _ = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | μ-type _ = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-inr | ν-type _ = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | just pba-initial with checkElab ctx arg Void
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | Unit = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | Int = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | Str = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | Void = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | Float = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | Buffer = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | (_ Once.Type.* _) = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | (_ Once.Type.⇒[ _ ] _) = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | Eff _ _ = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | μ-type _ = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-inr | ν-type _ = failure InrNeedsSumType
+  checkElab ctx (Raw.RApp f arg) T | ahv-initial with checkElab ctx arg Void
   ...     | failure err = failure err
   ...     | success Ψ argE d fr =
             success _ (Surface.app (weakenFromEmpty (specInitial T)) argE) (suc d) fr
-  -- pba-id / pba-fst / pba-snd / pba-terminal / nothing: fall through
+  -- ahv-id / ahv-fst / ahv-snd / ahv-terminal / ahv-other: fall through
   -- to the generic check-via-infer fallback. Each inlines the same
   -- body since Agda's `with` requires explicit coverage.
-  checkElab ctx (Raw.RApp f arg) T | just pba-id with inferElab ctx (Raw.RApp f arg)
+  checkElab ctx (Raw.RApp f arg) T | ahv-id with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
   ... | success T' Ψ eE d fr with T ≟T T'
   ...   | yes refl = success _ eE d fr
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab ctx (Raw.RApp f arg) T | just pba-fst with inferElab ctx (Raw.RApp f arg)
+  checkElab ctx (Raw.RApp f arg) T | ahv-fst with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
   ... | success T' Ψ eE d fr with T ≟T T'
   ...   | yes refl = success _ eE d fr
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab ctx (Raw.RApp f arg) T | just pba-snd with inferElab ctx (Raw.RApp f arg)
+  checkElab ctx (Raw.RApp f arg) T | ahv-snd with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
   ... | success T' Ψ eE d fr with T ≟T T'
   ...   | yes refl = success _ eE d fr
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab ctx (Raw.RApp f arg) T | just pba-terminal with inferElab ctx (Raw.RApp f arg)
+  checkElab ctx (Raw.RApp f arg) T | ahv-terminal with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
   ... | success T' Ψ eE d fr with T ≟T T'
   ...   | yes refl = success _ eE d fr
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab ctx (Raw.RApp f arg) T | nothing with inferElab ctx (Raw.RApp f arg)
+  checkElab ctx (Raw.RApp f arg) T | ahv-other with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
   ... | success T' Ψ eE d fr with T ≟T T'
   ...   | yes refl = success _ eE d fr
@@ -1153,6 +1272,34 @@ checkElab-fallback-RApp-snd :
       checkElab ctx (Raw.RApp (Raw.RVar "snd") arg) T ≡ success Ψ eE' d' f')))
 checkElab-fallback-RApp-snd arg T eqInf
   rewrite eqInf with T ≟T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- RApp f x with `classifyAppHead f ≡ nothing`: provable thanks to the
+-- `AppHeadView` refactor. `classifyAppHead-nothing⇒view-other` converts
+-- the premise to the view form (`classifyAppHeadView f ≡ ahv-other`),
+-- which rewrites substitute cleanly — no opaque `with`-helper wall.
+--
+-- The rewrite is applied TWICE: `classifyAppHeadView f` appears in
+-- both checkElab's outer dispatch AND inferElab's nested dispatch
+-- (via the checkElab→inferElab call chain), and each `rewrite` pass
+-- substitutes one layer's occurrence. After both rewrites, Agda
+-- reduces through both with-abstractions; `rewrite eqInf` finishes
+-- the inferElab leg, and `with T ≟T T` closes the goal.
+checkElab-fallback-RApp-generic :
+  ∀ {ctx : NamedCtx} (f x : RawExpr) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ T}
+    {d f' : ℕ}
+  → classifyAppHead f ≡ nothing
+  → inferElab ctx (Raw.RApp f x) ≡ success T Ψ eE d f'
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f'' →
+      checkElab ctx (Raw.RApp f x) T ≡ success Ψ eE' d' f'')))
+checkElab-fallback-RApp-generic f x T notPoly eqInf
+  rewrite classifyAppHead-nothing⇒view-other {f} notPoly
+        | classifyAppHead-nothing⇒view-other {f} notPoly
+        | eqInf
+  with T ≟T T
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
