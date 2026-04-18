@@ -10,11 +10,15 @@
 
 module Once.Parser.Module where
 
-open import Data.List using (List; []; _∷_; _++_; reverse)
+open import Data.List using (List; []; _∷_; _++_; reverse; length)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.Product using (_×_; _,_)
+open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂; Σ-syntax)
 open import Data.String using (String; _≟_)
 open import Data.Char using (Char)
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n; <-trans; m≤n⇒m≤1+n)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Induction.WellFounded using (Acc; acc)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Type using (Type)
@@ -53,20 +57,65 @@ record Module : Set where
 -- Import Parser
 ------------------------------------------------------------------------
 
--- | Parse a dotted module path: Module.Path.Name
-{-# TERMINATING #-}
-parseModulePath : Parser (List String)
+-- | Bounded version of anyWord: on success the remainder is strictly
+-- shorter than the input. This lets us use `parseModulePath` under a
+-- well-founded recursion on token length without needing a TERMINATING
+-- pragma.
+anyWordB : (toks : List Token) →
+           Maybe (Σ[ s ∈ String ] Σ[ rest ∈ List Token ]
+                    length rest < length toks)
+anyWordB [] = nothing
+anyWordB (TWord s ∷ rest) = just (s , rest , s≤s ≤-refl)
+anyWordB (TLParen ∷ _) = nothing
+anyWordB (TRParen ∷ _) = nothing
+anyWordB (TLBrace ∷ _) = nothing
+anyWordB (TRBrace ∷ _) = nothing
+anyWordB (TColon ∷ _) = nothing
+anyWordB (TEquals ∷ _) = nothing
+anyWordB (TArrow ∷ _) = nothing
+anyWordB (TLambda ∷ _) = nothing
+anyWordB (TComma ∷ _) = nothing
+anyWordB (TSemicolon ∷ _) = nothing
+anyWordB (TAt ∷ _) = nothing
+anyWordB (TPipe ∷ _) = nothing
+anyWordB (TDot ∷ _) = nothing
+anyWordB (TPlus ∷ _) = nothing
+anyWordB (TMinus ∷ _) = nothing
+anyWordB (TStar ∷ _) = nothing
+anyWordB (TSlash ∷ _) = nothing
+anyWordB (TPercent ∷ _) = nothing
+anyWordB (TAmpersand ∷ _) = nothing
+anyWordB (TLt ∷ _) = nothing
+anyWordB (TLe ∷ _) = nothing
+anyWordB (TGt ∷ _) = nothing
+anyWordB (TGe ∷ _) = nothing
+anyWordB (TEqEq ∷ _) = nothing
+anyWordB (TNeq ∷ _) = nothing
+anyWordB (TCaret1 ∷ _) = nothing
+anyWordB (TCaret0 ∷ _) = nothing
+anyWordB (TCaretW ∷ _) = nothing
+anyWordB (TInt _ ∷ _) = nothing
+anyWordB (TString _ ∷ _) = nothing
+anyWordB (TNewline ∷ _) = nothing
+anyWordB (TEOF ∷ _) = nothing
 
--- | Parse continuation of dotted path after first name
-parsePathCont : String → Parser (List String)
-parsePathCont name (TDot ∷ rest) with parseModulePath rest
-... | just (path , rest') = just (name ∷ path , rest')
-... | nothing = just (name ∷ [] , (TDot ∷ rest))
-parsePathCont name rest = just (name ∷ [] , rest)
-
-parseModulePath toks with anyWord toks
+-- | Parse a dotted module path via well-founded recursion on token
+-- length. Each recursion consumes at least one identifier via
+-- `anyWordB`, guaranteeing strict decrease.
+parseModulePath-WF : (toks : List Token) → Acc _<_ (length toks) →
+                     Maybe (List String × List Token)
+parseModulePath-WF toks (acc rec) with anyWordB toks
 ... | nothing = nothing
-... | just (name , rest) = parsePathCont name rest
+... | just (name , TDot ∷ rest , bnd) with
+         parseModulePath-WF rest (rec (<-trans (s≤s ≤-refl) bnd))
+...   | just (path , rest') = just (name ∷ path , rest')
+...   | nothing = just (name ∷ [] , (TDot ∷ rest))
+parseModulePath-WF toks (acc rec) | just (name , rest , _) =
+      just (name ∷ [] , rest)
+
+-- | Parse a dotted module path: Module.Path.Name
+parseModulePath : Parser (List String)
+parseModulePath toks = parseModulePath-WF toks (<-wellFounded (length toks))
 
 -- | Parse optional 'as Alias' after import path
 parseImportAlias : List String → Parser Decl
@@ -99,21 +148,20 @@ parseAlloc _ = nothing
 ------------------------------------------------------------------------
 
 -- | Collect operator characters between parens
-{-# TERMINATING #-}
 parseOpChars : List Token → List Char → Maybe (String × List Token)
-parseOpChars (TDot ∷ rest) acc = parseOpChars rest ('.' ∷ acc)
-parseOpChars (TPlus ∷ rest) acc = parseOpChars rest ('+' ∷ acc)
-parseOpChars (TMinus ∷ rest) acc = parseOpChars rest ('-' ∷ acc)
-parseOpChars (TStar ∷ rest) acc = parseOpChars rest ('*' ∷ acc)
-parseOpChars (TSlash ∷ rest) acc = parseOpChars rest ('/' ∷ acc)
-parseOpChars (TPercent ∷ rest) acc = parseOpChars rest ('%' ∷ acc)
-parseOpChars (TLt ∷ rest) acc = parseOpChars rest ('<' ∷ acc)
-parseOpChars (TGt ∷ rest) acc = parseOpChars rest ('>' ∷ acc)
-parseOpChars (TPipe ∷ rest) acc = parseOpChars rest ('|' ∷ acc)
-parseOpChars (TAmpersand ∷ rest) acc = parseOpChars rest ('&' ∷ acc)
-parseOpChars (TAt ∷ rest) acc = parseOpChars rest ('@' ∷ acc)
+parseOpChars (TDot ∷ rest) cs = parseOpChars rest ('.' ∷ cs)
+parseOpChars (TPlus ∷ rest) cs = parseOpChars rest ('+' ∷ cs)
+parseOpChars (TMinus ∷ rest) cs = parseOpChars rest ('-' ∷ cs)
+parseOpChars (TStar ∷ rest) cs = parseOpChars rest ('*' ∷ cs)
+parseOpChars (TSlash ∷ rest) cs = parseOpChars rest ('/' ∷ cs)
+parseOpChars (TPercent ∷ rest) cs = parseOpChars rest ('%' ∷ cs)
+parseOpChars (TLt ∷ rest) cs = parseOpChars rest ('<' ∷ cs)
+parseOpChars (TGt ∷ rest) cs = parseOpChars rest ('>' ∷ cs)
+parseOpChars (TPipe ∷ rest) cs = parseOpChars rest ('|' ∷ cs)
+parseOpChars (TAmpersand ∷ rest) cs = parseOpChars rest ('&' ∷ cs)
+parseOpChars (TAt ∷ rest) cs = parseOpChars rest ('@' ∷ cs)
 parseOpChars (TRParen ∷ rest) [] = nothing  -- empty operator
-parseOpChars (TRParen ∷ rest) acc = just (Data.String.fromList (reverse acc) , rest)
+parseOpChars (TRParen ∷ rest) cs = just (Data.String.fromList (reverse cs) , rest)
 parseOpChars _ _ = nothing
 
 -- | Parse an operator name: (.) (&) (|>) etc.
@@ -126,7 +174,6 @@ parseOperatorName _ = nothing
 ------------------------------------------------------------------------
 
 -- | Parse function parameters before =
-{-# TERMINATING #-}
 parseParams : List Token → List String × List Token
 parseParams (TWord name ∷ rest) with rest
 ... | (TEquals ∷ _) = name ∷ [] , rest  -- last param before =
@@ -221,6 +268,16 @@ parseDecl (_ ∷ _) = nothing
 ------------------------------------------------------------------------
 
 -- | Parse all declarations (separated by newlines)
+-- Termination note: `parseDecl` on success returns a strictly shorter
+-- token list — but proving that length bound requires case-splitting
+-- on `parseType` and `parseExpr`, which themselves carry TERMINATING
+-- pragmas (task #40). Until those parsers are refactored to
+-- well-founded form (the refactor is tracked in task #40 but blocked on
+-- downstream Grammar proofs depending on their current reduction
+-- shape), the outer recursion in `parseDecls` cannot be proved
+-- terminating without a postulate. This is the last remaining
+-- TERMINATING pragma in this module; `parseModulePath`, `parseOpChars`,
+-- and `parseParams` have been eliminated.
 {-# TERMINATING #-}
 parseDecls : Parser (List Decl)
 
