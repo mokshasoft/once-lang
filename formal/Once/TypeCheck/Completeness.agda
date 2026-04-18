@@ -433,36 +433,172 @@ open Once.TypeCheck.Judgment
 
 
 ------------------------------------------------------------------------
--- Summary of completeness status (G2)
+-- Mutual full walk (G2 completeness — both directions)
 --
--- Status: per-rule completeness theorems (the `infer-complete-*` and
--- `check-complete-RLam` lemmas above) are complete, and the
--- `checkElab-fallback-*` helpers in `Elaborate.agda` (including the
--- RApp-generic case, unblocked by the `AppHeadView` refactor) supply
--- the building blocks for the mutual full-walk.
---
--- Deferred (plan 0.3 G2 decision 2, reduced to ONE blocker):
---   * Full mutual `infer-complete` / `check-complete` walk.
---     Remaining blocker:
---     1. `t-embed (t-var-local …)` / `t-embed (t-var-import …)` for
---        `x ∈ {id, fst, snd, inl, inr, terminal, initial, arr, apply,
---         compose, pair, curry}`: the specialised check-mode bare-
---        builtin clauses in `checkElab` can reject at types the
---        fallback would accept. Needs either (a) a side-condition
---        `x ∉ specialised-builtin-set` on the lookup rules, or (b)
---        specialised lookup rules for each builtin name, or (c) the
---        specialised check-mode bare-builtin clauses removed from
---        `checkElab` in favour of inferElab-then-match.
---
---     Resolved: the t-app case was blocked by Agda's `with`-
---     abstraction over `classifyAppHead`'s internal dispatch. The
---     `AppHeadView` refactor in Elaborate.agda (mirroring the
---     lesson "eliminate opaque `with`-helpers by refactoring the
---     definition") exposes the classifier's result structurally, so
---     `rewrite` can substitute both checkElab's and inferElab's
---     dispatches in lockstep. See `checkElab-fallback-RApp-generic`
---     in Elaborate.agda for the unblocked proof.
---
--- All infrastructure for the walk exists; the remaining work is
--- restructuring, not proof discovery.
+-- With the `AppHeadView` refactor unblocking `checkElab-fallback-RApp-
+-- generic` and the removal of the specialised bare-builtin check-mode
+-- clauses (G2 decision) eliminating the RVar-shadow impedance, the
+-- walk now closes.
 ------------------------------------------------------------------------
+
+open Once.TypeCheck.Elaborate
+  using (checkElab-fallback-RInt; checkElab-fallback-RStringLit;
+         checkElab-fallback-RUnit; checkElab-fallback-RVar-unit;
+         checkElab-fallback-RQualified; checkElab-fallback-RAnnot;
+         checkElab-fallback-RPair; checkElab-fallback-RLet;
+         checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
+         checkElab-fallback-RBinOp;
+         checkElab-fallback-RApp-id; checkElab-fallback-RApp-fst;
+         checkElab-fallback-RApp-snd; checkElab-fallback-RApp-terminal;
+         checkElab-fallback-RApp-generic)
+
+-- RVar case: covers both local and import lookups (and "unit"). The
+-- fallback lemma takes the inferElab-success equation uniformly.
+checkElab-fallback-RVar :
+  ∀ {ctx : NamedCtx} (x : String) (T : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : _} {d f : ℕ}
+  → inferElab ctx (Raw.RVar x) ≡ success T Ψ eE d f
+  → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
+      checkElab ctx (Raw.RVar x) T ≡ success Ψ eE' d' f'
+checkElab-fallback-RVar x T eqInf
+  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+mutual
+  infer-complete :
+    ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᵢ e ∶ A ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        inferElab ctx e ≡ success A Ψ eE d f
+
+  infer-complete {ctx} (t-int n)   = infer-complete-RInt {ctx} n
+  infer-complete {ctx} (t-str s)   = infer-complete-RStringLit {ctx} s
+  infer-complete {ctx} t-unit      = infer-complete-RUnit {ctx}
+  infer-complete {ctx} t-unit-var  = infer-complete-RVar-unit {ctx}
+  infer-complete (t-var-local {x = x} x≢unit eqLocal) =
+    infer-complete-RVar-local x x≢unit eqLocal
+  infer-complete (t-var-qualified eqImp) =
+    infer-complete-RQualified eqImp
+  infer-complete (t-var-import {x = x} x≢unit eqLoc eqImp) =
+    infer-complete-RVar-import x x≢unit eqLoc eqImp
+  infer-complete (t-annot {e = e} {T = T} d) =
+    let (_ , _ , _ , eqC) = check-complete d
+    in infer-complete-RAnnot e T eqC
+  infer-complete (t-pair {a = a} {b = b} d₁ d₂) =
+    let (_ , _ , _ , eq₁) = infer-complete d₁
+        (_ , _ , _ , eq₂) = infer-complete d₂
+    in infer-complete-RPair a b eq₁ eq₂
+  infer-complete (t-neg {e = e} d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RUnaryOp-neg e eqSub
+  infer-complete (t-let {x = x} {e₁ = e₁} {e₂ = e₂} d₁ d₂) =
+    let (_ , _ , _ , eq₁) = infer-complete d₁
+        (_ , _ , _ , eq₂) = infer-complete d₂
+    in infer-complete-RLet x e₁ e₂ eq₁ eq₂
+  infer-complete
+    (t-case {scrut = scrut} {eL = eL} {eR = eR} {xL = xL} {xR = xR} {C = C}
+            dS dL dR) =
+    let (_ , _ , _ , eqS) = infer-complete dS
+        (_ , _ , _ , eqL) = infer-complete dL
+        (_ , _ , _ , eqR) = infer-complete dR
+    in infer-complete-RDestruct scrut xL eL xR eR C eqS eqL eqR
+  infer-complete
+    (t-binop-arith {op = op} {e₁ = e₁} {e₂ = e₂} arithEq d₁ d₂) =
+    let (_ , _ , _ , eq₁) = infer-complete d₁
+        (_ , _ , _ , eq₂) = infer-complete d₂
+    in infer-complete-RBinOp-arith op arithEq e₁ e₂ eq₁ eq₂
+  infer-complete
+    (t-binop-cmp {op = op} {e₁ = e₁} {e₂ = e₂} cmpEq d₁ d₂) =
+    let (_ , _ , _ , eq₁) = infer-complete d₁
+        (_ , _ , _ , eq₂) = infer-complete d₂
+    in infer-complete-RBinOp-cmp op cmpEq e₁ e₂ eq₁ eq₂
+  infer-complete (t-id-app {e = e} d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-id e eqSub
+  infer-complete (t-fst-app {e = e} d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-fst e eqSub
+  infer-complete (t-snd-app {e = e} d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-snd e eqSub
+  infer-complete (t-terminal-app {e = e} d) =
+    let (_ , _ , _ , eqSub) = infer-complete d
+    in infer-complete-RApp-terminal e eqSub
+  infer-complete (t-app {f = f} {x = x} {A = A} notPoly dF dX) =
+    let (_ , _ , _ , eqF) = infer-complete dF
+        (_ , _ , _ , eqX) = infer-complete dX
+    in infer-complete-RApp-generic f x A notPoly eqF eqX
+
+  -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed
+  -- to the per-shape fallback lemma.
+  check-complete :
+    ∀ {ctx : NamedCtx} {e : RawExpr} {A : Type}
+      {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    → ctx ⊢ᶜ e ∶ A ⨾ Ψ
+    → ∃[ eE ] ∃[ d ] ∃[ f ]
+        checkElab ctx e A ≡ success Ψ eE d f
+
+  check-complete {ctx}
+    (t-lam {x = x} {body = body} {A = A} {B = B} {q = q} {q' = q'}
+           leq-eq bodyD) =
+    let (_ , _ , _ , eqBody) = check-complete bodyD
+    in check-complete-RLam ctx x body A q q' B leq-eq eqBody
+
+  -- t-embed: case-split on the inner ⊢ᵢ derivation to recover e's
+  -- shape, then invoke the matching fallback lemma.
+  check-complete {ctx} (t-embed (t-int n))   = checkElab-fallback-RInt {ctx} n
+  check-complete {ctx} (t-embed (t-str s))   = checkElab-fallback-RStringLit {ctx} s
+  check-complete {ctx} (t-embed t-unit)      = checkElab-fallback-RUnit {ctx}
+  check-complete {ctx} (t-embed t-unit-var)  = checkElab-fallback-RVar-unit {ctx}
+  check-complete (t-embed (t-var-local {x = x} {A = T} x≢unit eqLocal)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-var-local x≢unit eqLocal)
+    in checkElab-fallback-RVar x T eqI
+  check-complete {ctx}
+    (t-embed (t-var-qualified {name = n} {alias = a} {T = T} eqImp)) =
+    let (_ , _ , _ , eqI) = infer-complete {ctx} (t-var-qualified eqImp)
+    in checkElab-fallback-RQualified {ctx} n a T eqI
+  check-complete (t-embed (t-var-import {x = x} {T = T} x≢unit eqLoc eqImp)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-var-import x≢unit eqLoc eqImp)
+    in checkElab-fallback-RVar x T eqI
+  check-complete (t-embed (t-annot {e = e} {T = T} d)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-annot d)
+    in checkElab-fallback-RAnnot e T eqI
+  check-complete (t-embed (t-pair {a = a} {b = b} {A = A} {B = B} d₁ d₂)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-pair d₁ d₂)
+    in checkElab-fallback-RPair a b (A T.* B) eqI
+  check-complete (t-embed (t-neg {e = e} d)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-neg d)
+    in checkElab-fallback-RUnaryOp Raw.OpNeg e T.Int eqI
+  check-complete (t-embed (t-let {x = x} {e₁ = e₁} {e₂ = e₂} {B = B} d₁ d₂)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-let d₁ d₂)
+    in checkElab-fallback-RLet x e₁ e₂ B eqI
+  check-complete (t-embed (t-case {scrut = scrut} {eL = eL} {eR = eR}
+                                   {xL = xL} {xR = xR} {C = C} dS dL dR)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-case dS dL dR)
+    in checkElab-fallback-RDestruct scrut xL eL xR eR C eqI
+  check-complete (t-embed (t-binop-arith {op = op} {e₁ = e₁} {e₂ = e₂}
+                                          arithEq d₁ d₂)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-binop-arith arithEq d₁ d₂)
+    in checkElab-fallback-RBinOp op e₁ e₂ T.Int eqI
+  check-complete (t-embed (t-binop-cmp {op = op} {e₁ = e₁} {e₂ = e₂}
+                                        cmpEq d₁ d₂)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-binop-cmp cmpEq d₁ d₂)
+    in checkElab-fallback-RBinOp op e₁ e₂ (Unit T.+ Unit) eqI
+  check-complete (t-embed (t-id-app {e = e} {T = T} d)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-id-app d)
+    in checkElab-fallback-RApp-id e T eqI
+  check-complete (t-embed (t-fst-app {e = e} {A = A} d)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-fst-app d)
+    in checkElab-fallback-RApp-fst e A eqI
+  check-complete (t-embed (t-snd-app {e = e} {B = B} d)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-snd-app d)
+    in checkElab-fallback-RApp-snd e B eqI
+  check-complete (t-embed (t-terminal-app {e = e} d)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-terminal-app d)
+    in checkElab-fallback-RApp-terminal e Unit eqI
+  check-complete (t-embed (t-app {f = f} {x = x} {B = B} notPoly dF dX)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-app notPoly dF dX)
+    in checkElab-fallback-RApp-generic f x B notPoly eqI
