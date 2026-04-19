@@ -121,6 +121,22 @@ parseArrowTailWF : (left : Type) (toks : List Token)
                → Acc _<_ (length toks) → ParseT≤ toks
 
 ------------------------------------------------------------------------
+-- Named helpers for `parseTypeAtomWF`'s consume-and-recurse clauses.
+-- Each takes the POST-Acc-destructured sub-Acc directly, so the nested
+-- `with parseX …` tree lives in a top-level helper instead of inside
+-- parseTypeAtomWF's own `with` chain. This structure matches the
+-- "Fight the definition, not the proof" lesson: by moving the nested
+-- with out of the mutual parser's body, downstream soundness proofs
+-- can pattern-match the helper's output without Agda losing track of
+-- the Acc-structural decrease across nested `with` helpers.
+------------------------------------------------------------------------
+
+-- | Parse `( type )`: inner full-type then TRParen suffix.
+parseTypeAtomWF-TLParen :
+  (rest : List Token) → Acc _<_ (length rest)
+  → ParseT< (TLParen ∷ rest)
+
+------------------------------------------------------------------------
 -- parseTypeAtomWF
 ------------------------------------------------------------------------
 
@@ -162,8 +178,53 @@ parseTypeAtomWF (TWord name ∷ rest) (acc rec)
 parseTypeAtomWF (TWord name ∷ rest) _
   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
 
--- TLParen: inner parseTypeWF + expect TRParen.
-parseTypeAtomWF (TLParen ∷ rest) (acc rec) with parseTypeWF rest (rec (s≤s ≤-refl))
+-- TLParen: delegate to the named helper.
+parseTypeAtomWF (TLParen ∷ rest) (acc rec) = parseTypeAtomWF-TLParen rest (rec (s≤s ≤-refl))
+
+-- Other tokens: parser fails.
+parseTypeAtomWF (TInt _     ∷ _) _ = nothing
+parseTypeAtomWF (TString _  ∷ _) _ = nothing
+parseTypeAtomWF (TRParen    ∷ _) _ = nothing
+parseTypeAtomWF (TLBrace    ∷ _) _ = nothing
+parseTypeAtomWF (TRBrace    ∷ _) _ = nothing
+parseTypeAtomWF (TColon     ∷ _) _ = nothing
+parseTypeAtomWF (TEquals    ∷ _) _ = nothing
+parseTypeAtomWF (TArrow     ∷ _) _ = nothing
+parseTypeAtomWF (TCaret0    ∷ _) _ = nothing
+parseTypeAtomWF (TCaret1    ∷ _) _ = nothing
+parseTypeAtomWF (TCaretW    ∷ _) _ = nothing
+parseTypeAtomWF (TLambda    ∷ _) _ = nothing
+parseTypeAtomWF (TComma     ∷ _) _ = nothing
+parseTypeAtomWF (TSemicolon ∷ _) _ = nothing
+parseTypeAtomWF (TAt        ∷ _) _ = nothing
+parseTypeAtomWF (TPipe      ∷ _) _ = nothing
+parseTypeAtomWF (TDot       ∷ _) _ = nothing
+parseTypeAtomWF (TPlus      ∷ _) _ = nothing
+parseTypeAtomWF (TMinus     ∷ _) _ = nothing
+parseTypeAtomWF (TStar      ∷ _) _ = nothing
+parseTypeAtomWF (TSlash     ∷ _) _ = nothing
+parseTypeAtomWF (TPercent   ∷ _) _ = nothing
+parseTypeAtomWF (TAmpersand ∷ _) _ = nothing
+parseTypeAtomWF (TLt        ∷ _) _ = nothing
+parseTypeAtomWF (TLe        ∷ _) _ = nothing
+parseTypeAtomWF (TGt        ∷ _) _ = nothing
+parseTypeAtomWF (TGe        ∷ _) _ = nothing
+parseTypeAtomWF (TEqEq      ∷ _) _ = nothing
+parseTypeAtomWF (TNeq       ∷ _) _ = nothing
+parseTypeAtomWF (TNewline   ∷ _) _ = nothing
+parseTypeAtomWF (TEOF       ∷ _) _ = nothing
+
+------------------------------------------------------------------------
+-- parseTypeAtomWF-TLParen / -Eff / -IO (Acc-neutral helpers)
+--
+-- Each takes `rest` + Acc on `length rest` directly. The nested
+-- `with parseX …` tree lives here instead of inside parseTypeAtomWF's
+-- body, so downstream proofs can `with` the helper's result without
+-- tangling with Agda's termination checker through nested withs in a
+-- mutual Acc-recursive block.
+------------------------------------------------------------------------
+
+parseTypeAtomWF-TLParen rest a with parseTypeWF rest a
 ... | nothing = nothing
 ... | just (t , TRParen ∷ rest' , bound) =
       just (t , rest' , <-trans (s≤s ≤-refl) (<-trans bound (s≤s ≤-refl)))
@@ -202,38 +263,6 @@ parseTypeAtomWF (TLParen ∷ rest) (acc rec) with parseTypeWF rest (rec (s≤s �
 ... | just (_ , TInt _     ∷ _ , _) = nothing
 ... | just (_ , TString _  ∷ _ , _) = nothing
 
--- Other tokens: parser fails.
-parseTypeAtomWF (TInt _     ∷ _) _ = nothing
-parseTypeAtomWF (TString _  ∷ _) _ = nothing
-parseTypeAtomWF (TRParen    ∷ _) _ = nothing
-parseTypeAtomWF (TLBrace    ∷ _) _ = nothing
-parseTypeAtomWF (TRBrace    ∷ _) _ = nothing
-parseTypeAtomWF (TColon     ∷ _) _ = nothing
-parseTypeAtomWF (TEquals    ∷ _) _ = nothing
-parseTypeAtomWF (TArrow     ∷ _) _ = nothing
-parseTypeAtomWF (TCaret0    ∷ _) _ = nothing
-parseTypeAtomWF (TCaret1    ∷ _) _ = nothing
-parseTypeAtomWF (TCaretW    ∷ _) _ = nothing
-parseTypeAtomWF (TLambda    ∷ _) _ = nothing
-parseTypeAtomWF (TComma     ∷ _) _ = nothing
-parseTypeAtomWF (TSemicolon ∷ _) _ = nothing
-parseTypeAtomWF (TAt        ∷ _) _ = nothing
-parseTypeAtomWF (TPipe      ∷ _) _ = nothing
-parseTypeAtomWF (TDot       ∷ _) _ = nothing
-parseTypeAtomWF (TPlus      ∷ _) _ = nothing
-parseTypeAtomWF (TMinus     ∷ _) _ = nothing
-parseTypeAtomWF (TStar      ∷ _) _ = nothing
-parseTypeAtomWF (TSlash     ∷ _) _ = nothing
-parseTypeAtomWF (TPercent   ∷ _) _ = nothing
-parseTypeAtomWF (TAmpersand ∷ _) _ = nothing
-parseTypeAtomWF (TLt        ∷ _) _ = nothing
-parseTypeAtomWF (TLe        ∷ _) _ = nothing
-parseTypeAtomWF (TGt        ∷ _) _ = nothing
-parseTypeAtomWF (TGe        ∷ _) _ = nothing
-parseTypeAtomWF (TEqEq      ∷ _) _ = nothing
-parseTypeAtomWF (TNeq       ∷ _) _ = nothing
-parseTypeAtomWF (TNewline   ∷ _) _ = nothing
-parseTypeAtomWF (TEOF       ∷ _) _ = nothing
 
 ------------------------------------------------------------------------
 -- parseTypeProdTailWF (left-assoc *)
