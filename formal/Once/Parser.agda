@@ -53,6 +53,12 @@ import Once.Grammar.ExprPrinter
 import Once.Grammar.ExprConvert
 import Once.Grammar.ExprRoundtrip
 
+-- Phase 3a of task #38: inductive parsing relations for expressions.
+-- Used by the future Dec-valued Parser/Expr refactor and the structural
+-- round-trip proof. Wired in here so the relation file is type-checked
+-- under `make frontend` / `make parser`.
+import Once.Parser.ExprRelation
+
 
 ------------------------------------------------------------------------
 -- Top-level Parse Function

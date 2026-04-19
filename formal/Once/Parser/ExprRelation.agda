@@ -1,0 +1,504 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+------------------------------------------------------------------------
+-- Once.Parser.ExprRelation
+--
+-- Inductive parsing relations for Once expressions. Mirrors the
+-- precedence structure of `Once.Parser.Expr`'s mutual WF parsers:
+-- comp → cmp → add → mul → unary → app → atomExpr, plus special-form
+-- relations (lambda, let, destruct, paren).
+--
+-- Plan 0.3 task #38 (Phase 3a). Each `ParsesX toks e rest` reads
+-- as: "from `toks`, the X-level parser produces expression `e` and
+-- leaves residual tokens `rest`."
+--
+-- Kept in `Once.Parser.*` (not `Once.Grammar.*`) so a future
+-- Dec-valued refactor of `Once.Parser.Expr` can use these relations
+-- in its return type, mirroring `Once.Parser.Type`'s treatment.
+--
+-- This file defines the relations and `ParsesX-shrinks` lemmas only.
+-- The WF-parser bridge and round-trip theorem ride on later phases
+-- (3b + 3c). See `Once.Grammar.ExprRoundtrip` for the task #38
+-- roadmap.
+--
+-- Design notes:
+--
+-- 1. `parseExprWF toks a = parseCompWF toks a`, so `ParsesExpr`
+--    collapses to `ParsesComp`.
+--
+-- 2. Tail parsers may no-op → shrink lemmas are `≤`. Strict parsers
+--    always consume → `<`.
+--
+-- 3. `ParsesAtomExpr`'s variable branch mirrors the parser's
+--    `isReserved` guard: the relation's variable constructor
+--    includes `isReserved name ≡ false`. Additional dispatch-style
+--    conditions `name ≢ "let"` / `name ≢ "destruct"` aren't needed
+--    at the relation level because the parser's string-equality
+--    dispatch commits to a different token-shape when the word
+--    matches (the dispatch goes to `parseAtomExprWF-TLet` /
+--    `-TDestruct`, not to the variable branch).
+--
+-- 4. Special forms (`ParsesLam`, `ParsesLet`, `ParsesDestruct`,
+--    `ParsesParen`) are modelled only to the precision needed for
+--    `ConcreteExpr`'s restricted domain: single-binding `let`,
+--    fully-parenthesised printed form, no operator-as-expression.
+------------------------------------------------------------------------
+
+module Once.Parser.ExprRelation where
+
+open import Data.List using (List; []; _∷_; length)
+open import Data.String using (String)
+open import Data.Integer using (ℤ)
+open import Data.Bool using (Bool; true; false)
+open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-refl; <-trans; ≤-trans; ≤-<-trans;
+                                        <-≤-trans; <⇒≤; n≤1+n; m≤n⇒m≤1+n)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
+
+open import Once.Type using (Type)
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam;
+                                       RLet; RPair; RDestruct; RUnit; RInt;
+                                       RStringLit; RAnnot; RBinOp; RUnaryOp;
+                                       BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
+                                       OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
+                                       UnaryOp; OpNeg)
+open import Once.Parser.Token
+open import Once.Parser.Expr using (isReserved)
+open import Once.Parser.TypeRelation using (ParsesType; ParsesType-shrinks)
+
+------------------------------------------------------------------------
+-- Residual classifiers: token prefixes that would trigger a tail
+-- parser's consuming branch. A `NotX toks` witness proves the tail
+-- parser no-ops on `toks`.
+------------------------------------------------------------------------
+
+-- Does NOT start with TDot — the composition-tail trigger.
+NotDot : List Token → Set
+NotDot [] = ⊤
+NotDot (TDot ∷ _) = ⊥
+NotDot (_ ∷ _) = ⊤
+
+-- Does NOT start with an add-tail trigger: TPlus or TMinus.
+NotAdd : List Token → Set
+NotAdd [] = ⊤
+NotAdd (TPlus  ∷ _) = ⊥
+NotAdd (TMinus ∷ _) = ⊥
+NotAdd (_ ∷ _) = ⊤
+
+-- Does NOT start with a mul-tail trigger: TStar / TSlash / TPercent.
+NotMul : List Token → Set
+NotMul [] = ⊤
+NotMul (TStar    ∷ _) = ⊥
+NotMul (TSlash   ∷ _) = ⊥
+NotMul (TPercent ∷ _) = ⊥
+NotMul (_ ∷ _) = ⊤
+
+-- Does NOT start with a comparison-operator trigger.
+NotCmp : List Token → Set
+NotCmp [] = ⊤
+NotCmp (TLt   ∷ _) = ⊥
+NotCmp (TLe   ∷ _) = ⊥
+NotCmp (TGt   ∷ _) = ⊥
+NotCmp (TGe   ∷ _) = ⊥
+NotCmp (TEqEq ∷ _) = ⊥
+NotCmp (TNeq  ∷ _) = ⊥
+NotCmp (_ ∷ _) = ⊤
+
+-- Does NOT start with a token that parseAtomExpr would accept.
+-- Used to classify the "no-op" residual for parseAppTailWF.
+NotAtomStart : List Token → Set
+NotAtomStart [] = ⊤
+NotAtomStart (TLParen   ∷ _) = ⊥
+NotAtomStart (TLambda   ∷ _) = ⊥
+NotAtomStart (TWord _   ∷ _) = ⊥
+NotAtomStart (TInt _    ∷ _) = ⊥
+NotAtomStart (TString _ ∷ _) = ⊥
+NotAtomStart (_ ∷ _) = ⊤
+
+------------------------------------------------------------------------
+-- Parsing relations (mutual).
+------------------------------------------------------------------------
+
+mutual
+
+  -- Top-level: ParsesExpr ≡ ParsesComp.
+  data ParsesExpr : List Token → RawExpr → List Token → Set where
+    pe-mk : ∀ {toks e rest}
+          → ParsesComp toks e rest
+          → ParsesExpr toks e rest
+
+  -- cmp (. cmp)*, left-assoc, desugar to compose.
+  data ParsesComp : List Token → RawExpr → List Token → Set where
+    pc-mk : ∀ {toks toks1 rest e1 e}
+          → ParsesCmp toks e1 toks1
+          → ParsesCompTail e1 toks1 e rest
+          → ParsesComp toks e rest
+
+  data ParsesCompTail : RawExpr → List Token → RawExpr → List Token → Set where
+    pct-done : ∀ {left toks}
+             → NotDot toks
+             → ParsesCompTail left toks left toks
+    pct-dot  : ∀ {left toks1 toks2 rest right e}
+             → ParsesCmp toks1 right toks2
+             → ParsesCompTail (RApp (RApp (RVar "compose") left) right)
+                              toks2 e rest
+             → ParsesCompTail left (TDot ∷ toks1) e rest
+
+  -- add (cmpOp add)?  — non-associative. We only expose the no-op
+  -- case here; compound comparison round-trip isn't needed for the
+  -- printer's canonical output (which always wraps comparisons in
+  -- parens → atomExpr at the outer level).
+  data ParsesCmp : List Token → RawExpr → List Token → Set where
+    pcm-noop : ∀ {toks e rest}
+             → ParsesAdd toks e rest
+             → NotCmp rest
+             → ParsesCmp toks e rest
+
+  -- mul (+/- mul)*, left-assoc.
+  data ParsesAdd : List Token → RawExpr → List Token → Set where
+    pa-mk : ∀ {toks toks1 rest e1 e}
+          → ParsesMul toks e1 toks1
+          → ParsesAddTail e1 toks1 e rest
+          → ParsesAdd toks e rest
+
+  data ParsesAddTail : RawExpr → List Token → RawExpr → List Token → Set where
+    pat-done  : ∀ {left toks}
+              → NotAdd toks
+              → ParsesAddTail left toks left toks
+    pat-plus  : ∀ {left toks1 toks2 rest right e}
+              → ParsesMul toks1 right toks2
+              → ParsesAddTail (RBinOp OpAdd left right) toks2 e rest
+              → ParsesAddTail left (TPlus ∷ toks1) e rest
+    pat-minus : ∀ {left toks1 toks2 rest right e}
+              → ParsesMul toks1 right toks2
+              → ParsesAddTail (RBinOp OpSub left right) toks2 e rest
+              → ParsesAddTail left (TMinus ∷ toks1) e rest
+
+  -- unary (*,/,% unary)*, left-assoc.
+  data ParsesMul : List Token → RawExpr → List Token → Set where
+    pm-mk : ∀ {toks toks1 rest e1 e}
+          → ParsesUnary toks e1 toks1
+          → ParsesMulTail e1 toks1 e rest
+          → ParsesMul toks e rest
+
+  data ParsesMulTail : RawExpr → List Token → RawExpr → List Token → Set where
+    pmt-done    : ∀ {left toks}
+                → NotMul toks
+                → ParsesMulTail left toks left toks
+    pmt-star    : ∀ {left toks1 toks2 rest right e}
+                → ParsesUnary toks1 right toks2
+                → ParsesMulTail (RBinOp OpMul left right) toks2 e rest
+                → ParsesMulTail left (TStar ∷ toks1) e rest
+    pmt-slash   : ∀ {left toks1 toks2 rest right e}
+                → ParsesUnary toks1 right toks2
+                → ParsesMulTail (RBinOp OpDiv left right) toks2 e rest
+                → ParsesMulTail left (TSlash ∷ toks1) e rest
+    pmt-percent : ∀ {left toks1 toks2 rest right e}
+                → ParsesUnary toks1 right toks2
+                → ParsesMulTail (RBinOp OpMod left right) toks2 e rest
+                → ParsesMulTail left (TPercent ∷ toks1) e rest
+
+  -- (-)? app
+  data ParsesUnary : List Token → RawExpr → List Token → Set where
+    pu-neg : ∀ {toks rest e}
+           → ParsesUnary toks e rest
+           → ParsesUnary (TMinus ∷ toks) (RUnaryOp OpNeg e) rest
+    pu-app : ∀ {toks rest e}
+           → ParsesApp toks e rest
+           → ParsesUnary toks e rest
+
+  -- atomExpr (atomExpr)*, left-assoc juxtaposition.
+  data ParsesApp : List Token → RawExpr → List Token → Set where
+    papp-mk : ∀ {toks toks1 rest f e}
+            → ParsesAtomExpr toks f toks1
+            → ParsesAppTail f toks1 e rest
+            → ParsesApp toks e rest
+
+  data ParsesAppTail : RawExpr → List Token → RawExpr → List Token → Set where
+    papp-done : ∀ {left toks}
+              → NotAtomStart toks
+              → ParsesAppTail left toks left toks
+    papp-arg  : ∀ {left toks1 toks2 rest arg e}
+              → ParsesAtomExpr toks1 arg toks2
+              → ParsesAppTail (RApp left arg) toks2 e rest
+              → ParsesAppTail left toks1 e rest
+
+  -- Atoms: variables, literals, parens, lambdas, let, destruct.
+  data ParsesAtomExpr : List Token → RawExpr → List Token → Set where
+    pae-unit : ∀ {rest}
+             → ParsesAtomExpr (TLParen ∷ TRParen ∷ rest) RUnit rest
+
+    pae-int  : ∀ {n rest}
+             → ParsesAtomExpr (TInt n ∷ rest) (RInt n) rest
+
+    pae-str  : ∀ {s rest}
+             → ParsesAtomExpr (TString s ∷ rest) (RStringLit s) rest
+
+    pae-var  : ∀ {name rest}
+             → isReserved name ≡ false
+             → ParsesAtomExpr (TWord name ∷ rest) (RVar name) rest
+
+    pae-qual : ∀ {name alias rest}
+             → isReserved name ≡ false
+             → ParsesAtomExpr
+                 (TWord name ∷ TAt ∷ TWord alias ∷ rest)
+                 (RQualified name alias) rest
+
+    pae-paren : ∀ {toks toks1 rest e eOut}
+              → ParsesExpr toks e toks1
+              → ParsesParenCont e toks1 eOut rest
+              → ParsesAtomExpr (TLParen ∷ toks) eOut rest
+
+    pae-lambda : ∀ {rest e restOut}
+               → ParsesLamParams rest e restOut
+               → ParsesAtomExpr (TLambda ∷ rest) e restOut
+
+    pae-let : ∀ {rest e restOut}
+            → ParsesLet rest e restOut
+            → ParsesAtomExpr (TWord "let" ∷ rest) e restOut
+
+    pae-destruct : ∀ {rest e restOut}
+                 → ParsesDestruct rest e restOut
+                 → ParsesAtomExpr (TWord "destruct" ∷ rest) e restOut
+
+  -- `param1 ... paramN -> body`.
+  data ParsesLamParams : List Token → RawExpr → List Token → Set where
+    plp-body : ∀ {rest e restOut}
+             → ParsesExpr rest e restOut
+             → ParsesLamParams (TArrow ∷ rest) e restOut
+    plp-arg  : ∀ {name rest e restOut}
+             → ParsesLamParams rest e restOut
+             → ParsesLamParams (TWord name ∷ rest) (RLam name e) restOut
+
+  -- `name = val in body`. Single-binding only (ConcreteExpr's c-e-let1).
+  data ParsesLet : List Token → RawExpr → List Token → Set where
+    plet-single :
+        ∀ {name toks toks1 rest val body}
+      → ParsesExpr toks val toks1
+      → ParsesLetIn name val toks1 body rest
+      → ParsesLet (TWord name ∷ TEquals ∷ toks) body rest
+
+  data ParsesLetIn :
+       String → RawExpr → List Token → RawExpr → List Token → Set where
+    plin : ∀ {name val toks body rest}
+         → ParsesExpr toks body rest
+         → ParsesLetIn name val (TWord "in" ∷ toks) (RLet name val body) rest
+
+  -- `scrut of { Left x -> e1 ; Right y -> e2 }`.
+  data ParsesDestruct : List Token → RawExpr → List Token → Set where
+    pd-mk : ∀ {toks toks1 rest scrut body}
+          → ParsesExpr toks scrut toks1
+          → ParsesDestructOf scrut toks1 body rest
+          → ParsesDestruct toks body rest
+
+  data ParsesDestructOf :
+       RawExpr → List Token → RawExpr → List Token → Set where
+    pdof : ∀ {scrut rest body restOut}
+         → ParsesDestructBranches scrut rest body restOut
+         → ParsesDestructOf scrut
+             (TWord "of" ∷ TLBrace ∷ rest) body restOut
+
+  data ParsesDestructBranches :
+       RawExpr → List Token → RawExpr → List Token → Set where
+    pdb : ∀ {scrut x rest toks1 left body restOut}
+        → ParsesExpr rest left toks1
+        → ParsesRightBranch scrut x left toks1 body restOut
+        → ParsesDestructBranches scrut
+            (TWord "Left" ∷ TWord x ∷ TArrow ∷ rest) body restOut
+
+  data ParsesRightBranch :
+       RawExpr → String → RawExpr →
+       List Token → RawExpr → List Token → Set where
+    prb : ∀ {scrut x left y rest right restOut}
+        → ParsesExpr rest right (TRBrace ∷ restOut)
+        → ParsesRightBranch scrut x left
+            (TSemicolon ∷ TWord "Right" ∷ TWord y ∷ TArrow ∷ rest)
+            (RDestruct scrut x left y right) restOut
+
+  -- After `( expr`, the continuation is `)` (simple parens),
+  -- `, expr ...)` (pair/triple), or `: type )` (annotation).
+  data ParsesParenCont :
+       RawExpr → List Token → RawExpr → List Token → Set where
+    ppc-close : ∀ {e rest}
+              → ParsesParenCont e (TRParen ∷ rest) e rest
+    ppc-pair  : ∀ {e toks toks1 rest body}
+              → ParsesExpr toks body toks1
+              → ParsesParenTriple e body toks1 rest
+              → ParsesParenCont e (TComma ∷ toks) (RPair e body) rest
+    ppc-annot : ∀ {e toks ty rest}
+              → ParsesType toks ty (TRParen ∷ rest)
+              → ParsesParenCont e (TColon ∷ toks) (RAnnot e ty) rest
+
+  data ParsesParenTriple :
+       RawExpr → RawExpr → List Token → List Token → Set where
+    ppt-close : ∀ {e1 e2 rest}
+              → ParsesParenTriple e1 e2 (TRParen ∷ rest) rest
+
+------------------------------------------------------------------------
+-- Shrink lemmas
+--
+-- Each `ParsesX-shrinks` asserts that a successful derivation leaves
+-- a shorter (or ≤) residual. Proven by mutual induction on the
+-- derivation — no parser function involved.
+--
+-- Used by the downstream Dec-valued parser refactor (Phase 3b) to
+-- derive Acc arguments for WF sub-calls from sub-derivations.
+------------------------------------------------------------------------
+
+mutual
+
+  ParsesExpr-shrinks :
+    ∀ {toks e rest} → ParsesExpr toks e rest → length rest < length toks
+  ParsesExpr-shrinks (pe-mk d) = ParsesComp-shrinks d
+
+  ParsesComp-shrinks :
+    ∀ {toks e rest} → ParsesComp toks e rest → length rest < length toks
+  ParsesComp-shrinks (pc-mk dCmp dTail) =
+    ≤-<-trans (ParsesCompTail-shrinks dTail) (ParsesCmp-shrinks dCmp)
+
+  ParsesCompTail-shrinks :
+    ∀ {left toks e rest} → ParsesCompTail left toks e rest
+    → length rest ≤ length toks
+  ParsesCompTail-shrinks (pct-done _) = ≤-refl
+  ParsesCompTail-shrinks (pct-dot dC dT) =
+    <⇒≤ (≤-<-trans (ParsesCompTail-shrinks dT)
+                   (<-trans (ParsesCmp-shrinks dC) (s≤s ≤-refl)))
+
+  ParsesCmp-shrinks :
+    ∀ {toks e rest} → ParsesCmp toks e rest → length rest < length toks
+  ParsesCmp-shrinks (pcm-noop dA _) = ParsesAdd-shrinks dA
+
+  ParsesAdd-shrinks :
+    ∀ {toks e rest} → ParsesAdd toks e rest → length rest < length toks
+  ParsesAdd-shrinks (pa-mk dM dT) =
+    ≤-<-trans (ParsesAddTail-shrinks dT) (ParsesMul-shrinks dM)
+
+  ParsesAddTail-shrinks :
+    ∀ {left toks e rest} → ParsesAddTail left toks e rest
+    → length rest ≤ length toks
+  ParsesAddTail-shrinks (pat-done _) = ≤-refl
+  ParsesAddTail-shrinks (pat-plus dM dT) =
+    <⇒≤ (≤-<-trans (ParsesAddTail-shrinks dT)
+                   (<-trans (ParsesMul-shrinks dM) (s≤s ≤-refl)))
+  ParsesAddTail-shrinks (pat-minus dM dT) =
+    <⇒≤ (≤-<-trans (ParsesAddTail-shrinks dT)
+                   (<-trans (ParsesMul-shrinks dM) (s≤s ≤-refl)))
+
+  ParsesMul-shrinks :
+    ∀ {toks e rest} → ParsesMul toks e rest → length rest < length toks
+  ParsesMul-shrinks (pm-mk dU dT) =
+    ≤-<-trans (ParsesMulTail-shrinks dT) (ParsesUnary-shrinks dU)
+
+  ParsesMulTail-shrinks :
+    ∀ {left toks e rest} → ParsesMulTail left toks e rest
+    → length rest ≤ length toks
+  ParsesMulTail-shrinks (pmt-done _) = ≤-refl
+  ParsesMulTail-shrinks (pmt-star dU dT) =
+    <⇒≤ (≤-<-trans (ParsesMulTail-shrinks dT)
+                   (<-trans (ParsesUnary-shrinks dU) (s≤s ≤-refl)))
+  ParsesMulTail-shrinks (pmt-slash dU dT) =
+    <⇒≤ (≤-<-trans (ParsesMulTail-shrinks dT)
+                   (<-trans (ParsesUnary-shrinks dU) (s≤s ≤-refl)))
+  ParsesMulTail-shrinks (pmt-percent dU dT) =
+    <⇒≤ (≤-<-trans (ParsesMulTail-shrinks dT)
+                   (<-trans (ParsesUnary-shrinks dU) (s≤s ≤-refl)))
+
+  ParsesUnary-shrinks :
+    ∀ {toks e rest} → ParsesUnary toks e rest → length rest < length toks
+  ParsesUnary-shrinks (pu-neg dU) = <-trans (ParsesUnary-shrinks dU) (s≤s ≤-refl)
+  ParsesUnary-shrinks (pu-app dA) = ParsesApp-shrinks dA
+
+  ParsesApp-shrinks :
+    ∀ {toks e rest} → ParsesApp toks e rest → length rest < length toks
+  ParsesApp-shrinks (papp-mk dAE dT) =
+    ≤-<-trans (ParsesAppTail-shrinks dT) (ParsesAtomExpr-shrinks dAE)
+
+  ParsesAppTail-shrinks :
+    ∀ {left toks e rest} → ParsesAppTail left toks e rest
+    → length rest ≤ length toks
+  ParsesAppTail-shrinks (papp-done _) = ≤-refl
+  ParsesAppTail-shrinks (papp-arg dA dT) =
+    ≤-trans (ParsesAppTail-shrinks dT) (<⇒≤ (ParsesAtomExpr-shrinks dA))
+
+  ParsesAtomExpr-shrinks :
+    ∀ {toks e rest} → ParsesAtomExpr toks e rest → length rest < length toks
+  ParsesAtomExpr-shrinks pae-unit      = s≤s (m≤n⇒m≤1+n ≤-refl)
+  ParsesAtomExpr-shrinks pae-int       = s≤s ≤-refl
+  ParsesAtomExpr-shrinks pae-str       = s≤s ≤-refl
+  ParsesAtomExpr-shrinks (pae-var _)   = s≤s ≤-refl
+  ParsesAtomExpr-shrinks (pae-qual _)  = s≤s (m≤n⇒m≤1+n (n≤1+n _))
+  ParsesAtomExpr-shrinks (pae-paren dE dC) =
+    <-trans (ParsesParenCont-shrinks dC)
+            (<-trans (ParsesExpr-shrinks dE) (s≤s ≤-refl))
+  ParsesAtomExpr-shrinks (pae-lambda dLP) =
+    <-trans (ParsesLamParams-shrinks dLP) (s≤s ≤-refl)
+  ParsesAtomExpr-shrinks (pae-let dLet) =
+    <-trans (ParsesLet-shrinks dLet) (s≤s ≤-refl)
+  ParsesAtomExpr-shrinks (pae-destruct dD) =
+    <-trans (ParsesDestruct-shrinks dD) (s≤s ≤-refl)
+
+  ParsesLamParams-shrinks :
+    ∀ {toks e rest} → ParsesLamParams toks e rest → length rest < length toks
+  ParsesLamParams-shrinks (plp-body dE) =
+    <-trans (ParsesExpr-shrinks dE) (s≤s ≤-refl)
+  ParsesLamParams-shrinks (plp-arg dLP) =
+    <-trans (ParsesLamParams-shrinks dLP) (s≤s ≤-refl)
+
+  ParsesLet-shrinks :
+    ∀ {toks e rest} → ParsesLet toks e rest → length rest < length toks
+  ParsesLet-shrinks (plet-single dV dIn) =
+    m≤n⇒m≤1+n (m≤n⇒m≤1+n
+      (<-trans (ParsesLetIn-shrinks dIn) (ParsesExpr-shrinks dV)))
+
+  ParsesLetIn-shrinks :
+    ∀ {name val toks body rest} → ParsesLetIn name val toks body rest
+    → length rest < length toks
+  ParsesLetIn-shrinks (plin dB) = <-trans (ParsesExpr-shrinks dB) (s≤s ≤-refl)
+
+  ParsesDestruct-shrinks :
+    ∀ {toks e rest} → ParsesDestruct toks e rest → length rest < length toks
+  ParsesDestruct-shrinks (pd-mk dS dOf) =
+    <-trans (ParsesDestructOf-shrinks dOf) (ParsesExpr-shrinks dS)
+
+  ParsesDestructOf-shrinks :
+    ∀ {scrut toks e rest} → ParsesDestructOf scrut toks e rest
+    → length rest < length toks
+  ParsesDestructOf-shrinks (pdof dB) =
+    m≤n⇒m≤1+n (m≤n⇒m≤1+n (ParsesDestructBranches-shrinks dB))
+
+  ParsesDestructBranches-shrinks :
+    ∀ {scrut toks e rest} → ParsesDestructBranches scrut toks e rest
+    → length rest < length toks
+  ParsesDestructBranches-shrinks (pdb dL dR) =
+    m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n
+      (<-trans (ParsesRightBranch-shrinks dR) (ParsesExpr-shrinks dL))))
+
+  ParsesRightBranch-shrinks :
+    ∀ {scrut x left toks e rest} → ParsesRightBranch scrut x left toks e rest
+    → length rest < length toks
+  ParsesRightBranch-shrinks (prb dR) =
+    -- toks = TSemicolon ∷ TWord "Right" ∷ TWord y ∷ TArrow ∷ rest_inner
+    -- dR : ParsesExpr rest_inner right (TRBrace ∷ restOut) implies
+    --    |TRBrace ∷ restOut| < |rest_inner|, i.e. suc (suc |restOut|) ≤ |rest_inner|
+    -- Goal: suc |restOut| ≤ 4 + |rest_inner|.
+    m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n (m≤n⇒m≤1+n
+      (<-trans (s≤s ≤-refl) (ParsesExpr-shrinks dR)))))
+
+  ParsesParenCont-shrinks :
+    ∀ {e toks eOut rest} → ParsesParenCont e toks eOut rest
+    → length rest < length toks
+  ParsesParenCont-shrinks ppc-close = s≤s ≤-refl
+  ParsesParenCont-shrinks (ppc-pair dE dT) =
+    <-trans (ParsesParenTriple-shrinks dT)
+            (<-trans (ParsesExpr-shrinks dE) (s≤s ≤-refl))
+  ParsesParenCont-shrinks (ppc-annot dT) =
+    <-trans (s≤s ≤-refl)
+            (<-trans (ParsesType-shrinks dT) (s≤s ≤-refl))
+
+  ParsesParenTriple-shrinks :
+    ∀ {e1 e2 toks rest} → ParsesParenTriple e1 e2 toks rest
+    → length rest < length toks
+  ParsesParenTriple-shrinks ppt-close = s≤s ≤-refl
