@@ -20,12 +20,18 @@ This folder tracks the planning history and dependencies between design decision
 │                   └── 0.2.6-usage-indexed-expr  (completed 2026-04-17)
 │
 └── 0.3-frontend-verification-gaps  (completed 2026-04-19)
+    └── 0.4-frontend-completeness-and-bridges  (planning)
 ```
 
 **Current focus**: resume `0.2.4-categorical-layer-0` — compiler-side
 Layer 0 integration (MAlonzo extraction, Layer 0 test harness). The
 frontend verification track (0.2.5 / 0.2.6 / 0.3) has landed; the
 backend track picks up where it paused on 2026-04-14.
+
+**Future frontend work**: plan `0.4` closes G2 completeness, parse→pretty
+direction, grammar conformance, and the three surface-semantics bridge
+postulates. After 0.4 the frontend is "fully verified" modulo
+`extensionality` (standard Agda axiom).
 
 ## Numbering Scheme
 
