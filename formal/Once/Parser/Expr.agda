@@ -151,9 +151,9 @@ ParseParenTripleD : RawExpr → RawExpr → List Token → Set
 ParseParenTripleD e1 e2 toks =
   Maybe (Σ[ rest ∈ List Token ] ParsesParenTriple e1 e2 toks rest)
 
-ParseOpExprD : List Token → Set
-ParseOpExprD toks =
-  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesOpExpr toks e rest)
+ParseOpExprD : List Char → List Token → Set
+ParseOpExprD chars toks =
+  Maybe (Σ[ e ∈ RawExpr ] Σ[ rest ∈ List Token ] ParsesOpExpr chars toks e rest)
 
 ------------------------------------------------------------------------
 -- Operator-as-expression parser: (&), (.), (|>), etc.
@@ -163,7 +163,7 @@ ParseOpExprD toks =
 -- `ParsesOpExpr` derivation.
 ------------------------------------------------------------------------
 
-parseOpExprWF : (toks : List Token) → List Char → ParseOpExprD toks
+parseOpExprWF : (toks : List Token) (a : List Char) → ParseOpExprD a toks
 parseOpExprWF (TDot       ∷ rest) a with parseOpExprWF rest ('.' ∷ a)
 ... | nothing               = nothing
 ... | just (e , rest' , d) = just (e , rest' , poe-dot d)

@@ -47,7 +47,9 @@
 
 module Once.Parser.ExprRelation where
 
-open import Data.List using (List; []; _∷_; length)
+open import Data.List using (List; []; _∷_; length; reverse)
+open import Data.Char using (Char)
+import Data.String
 open import Data.String using (String)
 open import Data.Integer using (ℤ)
 open import Data.Bool using (Bool; true; false)
@@ -348,12 +350,11 @@ mutual
                  → ParsesAtomExpr (TWord "destruct" ∷ rest) e restOut
 
     -- Operator-as-expression: `( op )` → `RVar "op"`. The carried
-    -- derivation is opaque here — the parser's `parseOpExprWF` handles
-    -- the chars, and downstream proofs for this case treat the result
-    -- as an RVar via the projection. Modelled as a simple "there exists
-    -- a consumed token sequence" witness to match the parser's result.
+    -- derivation starts with an empty accumulator; the inner `poe-*`
+    -- constructors grow it to match the parser's deterministic
+    -- `fromList ∘ reverse` computation.
     pae-paren-op : ∀ {toks e rest}
-                 → ParsesOpExpr toks e rest
+                 → ParsesOpExpr [] toks e rest
                  → ParsesAtomExpr (TLParen ∷ toks) e rest
 
   -- `param1 ... paramN -> body`.
@@ -411,35 +412,37 @@ mutual
             (RDestruct scrut x left y right) restOut
 
   -- Operator-as-expression: the character-accumulating parser in
-  -- `parseOpExprWF`. We model it loosely since the string produced is
-  -- opaque to downstream proofs — the relation only asserts "these
-  -- operator-shaped tokens were consumed up to a TRParen, yielding
-  -- some RVar".
-  data ParsesOpExpr : List Token → RawExpr → List Token → Set where
-    poe-close : ∀ {name rest}
-              → ParsesOpExpr (TRParen ∷ rest) (RVar name) rest
-    poe-dot       : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TDot       ∷ toks) e rest
-    poe-plus      : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TPlus      ∷ toks) e rest
-    poe-minus     : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TMinus     ∷ toks) e rest
-    poe-star      : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TStar      ∷ toks) e rest
-    poe-slash     : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TSlash     ∷ toks) e rest
-    poe-percent   : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TPercent   ∷ toks) e rest
-    poe-lt        : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TLt        ∷ toks) e rest
-    poe-gt        : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TGt        ∷ toks) e rest
-    poe-pipe      : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TPipe      ∷ toks) e rest
-    poe-amp       : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TAmpersand ∷ toks) e rest
-    poe-at        : ∀ {toks e rest} → ParsesOpExpr toks e rest
-                  → ParsesOpExpr (TAt        ∷ toks) e rest
+  -- `parseOpExprWF`. Indexed by the current accumulator state so
+  -- `poe-close` can fix the RVar name from the accumulated chars,
+  -- matching the parser's deterministic behaviour.
+  data ParsesOpExpr : List Char → List Token → RawExpr → List Token → Set where
+    poe-close : ∀ {c acc rest}
+              → ParsesOpExpr (c ∷ acc)
+                  (TRParen ∷ rest)
+                  (RVar (Data.String.fromList (reverse (c ∷ acc))))
+                  rest
+    poe-dot     : ∀ {acc toks e rest} → ParsesOpExpr ('.' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TDot       ∷ toks) e rest
+    poe-plus    : ∀ {acc toks e rest} → ParsesOpExpr ('+' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TPlus      ∷ toks) e rest
+    poe-minus   : ∀ {acc toks e rest} → ParsesOpExpr ('-' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TMinus     ∷ toks) e rest
+    poe-star    : ∀ {acc toks e rest} → ParsesOpExpr ('*' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TStar      ∷ toks) e rest
+    poe-slash   : ∀ {acc toks e rest} → ParsesOpExpr ('/' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TSlash     ∷ toks) e rest
+    poe-percent : ∀ {acc toks e rest} → ParsesOpExpr ('%' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TPercent   ∷ toks) e rest
+    poe-lt      : ∀ {acc toks e rest} → ParsesOpExpr ('<' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TLt        ∷ toks) e rest
+    poe-gt      : ∀ {acc toks e rest} → ParsesOpExpr ('>' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TGt        ∷ toks) e rest
+    poe-pipe    : ∀ {acc toks e rest} → ParsesOpExpr ('|' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TPipe      ∷ toks) e rest
+    poe-amp     : ∀ {acc toks e rest} → ParsesOpExpr ('&' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TAmpersand ∷ toks) e rest
+    poe-at      : ∀ {acc toks e rest} → ParsesOpExpr ('@' ∷ acc) toks e rest
+                → ParsesOpExpr acc (TAt        ∷ toks) e rest
 
   -- After `( expr`, the continuation is `)` (simple parens),
   -- `, expr ...)` (pair/triple), or `: type )` (annotation).
@@ -584,7 +587,7 @@ mutual
     <-trans (ParsesOpExpr-shrinks dOp) (s≤s ≤-refl)
 
   ParsesOpExpr-shrinks :
-    ∀ {toks e rest} → ParsesOpExpr toks e rest → length rest < length toks
+    ∀ {acc toks e rest} → ParsesOpExpr acc toks e rest → length rest < length toks
   ParsesOpExpr-shrinks poe-close          = s≤s ≤-refl
   ParsesOpExpr-shrinks (poe-dot     d)    = <-trans (ParsesOpExpr-shrinks d) (s≤s ≤-refl)
   ParsesOpExpr-shrinks (poe-plus    d)    = <-trans (ParsesOpExpr-shrinks d) (s≤s ≤-refl)
