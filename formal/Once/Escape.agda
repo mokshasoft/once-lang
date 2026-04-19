@@ -43,16 +43,17 @@ open import Data.Nat using (ℕ; zero; suc)
 ------------------------------------------------------------------------
 -- Escape Analysis: Composition Rules
 --
--- NOTE: Due to type index unification complexity with OCP-0003's recursion
--- schemes (Agda gets stuck unifying μ-type F with product types), we keep
--- escape-compose as a postulate. The semantics are correct since AllocMode
--- is ignored in evaluation - this only affects performance, not correctness.
---
--- The intended rules are documented in the module header comment.
+-- OCP-0003 postulate eliminated: implemented as plain composition.
+-- AllocMode is semantically transparent (ignored in eval), so this is a
+-- trivially-correct pass that can later be extended with mode rewrites
+-- without breaking the correctness proof. The intended mode-rewrite
+-- rules are documented in the module header comment; they require
+-- view-based pattern matching similar to Once.Optimize and can be
+-- implemented analogously when needed.
 ------------------------------------------------------------------------
 
-postulate
-  escape-compose : ∀ {A B C} → IR B C → IR A B → IR A C
+escape-compose : ∀ {A B C} → IR B C → IR A B → IR A C
+escape-compose g f = g ∘ f
 
 ------------------------------------------------------------------------
 -- Escape Analysis: Single Pass
