@@ -26,6 +26,7 @@ module Once.Optimize where
 open import Once.Type
 open import Once.CCC.IR
 open import Once.CCC.Machine.SMCore using (_≟H_)
+open import Once.Functor.Translate using (WellFormedF-irrelevant)
 
 open import Data.Bool using (Bool; true; false; _∨_; _∧_)
 open import Data.Nat using (ℕ; zero; suc)
@@ -33,7 +34,8 @@ open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃)
 open import Data.String using (String)
 open import Data.String.Properties using () renaming (_≟_ to _≟String_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; cong₂; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; subst; sym; trans)
+open import Data.Empty using (⊥)
 
 ------------------------------------------------------------------------
 -- Equality decision (needed for eta laws)
@@ -249,16 +251,817 @@ Id ≟Functor (_ ⊗ _) = no (λ ())
 
 ------------------------------------------------------------------------
 -- IR equality (needed for eta uniqueness laws)
---
--- NOTE: Due to type index unification issues with the new recursion
--- scheme constructors (In, Cata, Out, Ana, Hylo), we postulate IR
--- equality. A full implementation would require explicit cases for
--- all pairs of constructors with compatible types, which is complex
--- due to the dependent type indices like ⟦ F ⟧T.
 ------------------------------------------------------------------------
 
-postulate
-  _≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
+-- IR equality — decidable equality, postulate-free.
+--
+-- Approach (generic-codomain trick):
+-- The inner helper `_≟IRH_` takes two IR terms with independent type
+-- indices, plus equality proofs connecting them:
+--
+--     f : IR A B,  g : IR A' B',  eqA : A ≡ A',  eqB : B ≡ B'
+--
+-- It decides whether `f ≡ subst₂ IR (sym eqA) (sym eqB) g`. Because g's
+-- indices are free when we case-split on g, Agda can assign them
+-- independently per constructor — no SplitError.UnificationStuck on
+-- stuck `⟦ F ⟧T` indices in cross-pairs.
+--
+-- Same-constructor cases use the existing decidable equalities for
+-- indices and recurse for sub-IRs. WellFormedF proofs are
+-- proof-irrelevant (via `WellFormedF-irrelevant`).
+--
+-- Cross-pair cases (different head constructors) are dispatched via
+-- `ir-head`: a `subst₂`-invariant discriminator. If `ir-head f` and
+-- `ir-head g` differ, any hypothetical equality would contradict it.
+
+-- IR head discriminator.
+data IRHead : Set where
+  h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
+    h-terminal h-initial h-curry h-apply h-arr
+    h-In h-out-μ h-Cata h-Para h-Out h-in-ν h-Ana h-Hylo h-Fuse
+    h-free-heap h-Prim : IRHead
+
+ir-head : ∀ {A B} → IR A B → IRHead
+ir-head id = h-id
+ir-head (_ ∘ _) = h-∘
+ir-head (⟨ _ , _ ⟩ _) = h-⟨,⟩
+ir-head fst = h-fst
+ir-head snd = h-snd
+ir-head (inl _) = h-inl
+ir-head (inr _) = h-inr
+ir-head (case _ _) = h-case
+ir-head terminal = h-terminal
+ir-head initial = h-initial
+ir-head (curry _ _) = h-curry
+ir-head apply = h-apply
+ir-head arr = h-arr
+ir-head (In _ _) = h-In
+ir-head (out-μ _) = h-out-μ
+ir-head (Cata _ _) = h-Cata
+ir-head (Para _ _) = h-Para
+ir-head (Out _) = h-Out
+ir-head (in-ν _ _) = h-in-ν
+ir-head (Ana _ _) = h-Ana
+ir-head (Hylo _ _ _ _) = h-Hylo
+ir-head (Fuse _ _ _ _) = h-Fuse
+ir-head (free-heap _) = h-free-heap
+ir-head (Prim _) = h-Prim
+
+-- subst₂ for IR.
+subst₂-IR : ∀ {A B A' B'} → A ≡ A' → B ≡ B' → IR A B → IR A' B'
+subst₂-IR refl refl f = f
+
+-- head is preserved under subst₂-IR.
+ir-head-subst₂ : ∀ {A B A' B'} (p : A ≡ A') (q : B ≡ B') (f : IR A B)
+               → ir-head (subst₂-IR p q f) ≡ ir-head f
+ir-head-subst₂ refl refl _ = refl
+
+-- Decidable comparison modulo type-index equalities.
+-- Result type: `Dec (f ≡ subst₂-IR (sym eqA) (sym eqB) g)` — when
+-- eqA, eqB are refl, this reduces to `Dec (f ≡ g)`.
+≟IRH : ∀ {A B A' B'} (f : IR A B) (g : IR A' B')
+     → (eqA : A ≡ A') (eqB : B ≡ B')
+     → Dec (f ≡ subst₂-IR (sym eqA) (sym eqB) g)
+
+_≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
+f ≟IR g = ≟IRH f g refl refl
+
+-- Cross-pair rejection: if heads differ, no equality is possible
+-- regardless of how the index equalities sit.
+head-mismatch-abs : ∀ {A B A' B'} (f : IR A B) (g : IR A' B')
+                  → (ir-head f ≡ ir-head g → ⊥)
+                  → (eqA : A ≡ A') (eqB : B ≡ B')
+                  → f ≡ subst₂-IR (sym eqA) (sym eqB) g
+                  → ⊥
+head-mismatch-abs f g hneq eqA eqB h =
+  hneq (trans (cong ir-head h) (ir-head-subst₂ (sym eqA) (sym eqB) g))
+
+-- Shorthand: build a "no" for cross-pairs via the head-mismatch lemma.
+cross-no : ∀ {A B A' B'} {f : IR A B} {g : IR A' B'}
+         → (ir-head f ≡ ir-head g → ⊥)
+         → (eqA : A ≡ A') (eqB : B ≡ B')
+         → f ≡ subst₂-IR (sym eqA) (sym eqB) g
+         → ⊥
+cross-no {f = f} {g = g} hneq eqA eqB = head-mismatch-abs f g hneq eqA eqB
+
+-- Implementation of ≟IRH.
+-- Structure:
+--   - 22 diagonal clauses (same constructor on both sides).
+--   - 22×21 = 462 cross-pair clauses, each a one-liner rejection via
+--     `cross-no (λ ()) eqA eqB`.
+
+------------------------------------------------------------------------
+-- Index-injectivity helpers for diagonal cases involving recursive types.
+------------------------------------------------------------------------
+
+μ-inj : ∀ {F F'} → μ-type F ≡ μ-type F' → F ≡ F'
+μ-inj refl = refl
+
+ν-inj : ∀ {F F'} → ν-type F ≡ ν-type F' → F ≡ F'
+ν-inj refl = refl
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- Diagonal (same-constructor) cases
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- id
+≟IRH id id refl refl = yes refl
+
+-- _∘_: compare the intermediate (middle) type first, then sub-IRs
+≟IRH (_∘_ {_} {B} g₁ f₁) (_∘_ {_} {B'} g₂ f₂) refl refl
+  with B ≟Type B'
+... | no neq = no (λ { refl → neq refl })
+... | yes refl with ≟IRH g₁ g₂ refl refl | ≟IRH f₁ f₂ refl refl
+...   | yes refl | yes refl = yes refl
+...   | no np    | _        = no (λ { refl → np refl })
+...   | _        | no nq    = no (λ { refl → nq refl })
+
+-- ⟨_,_⟩: B * C equality refl-unifies both component types
+≟IRH (⟨ f₁ , g₁ ⟩ m₁) (⟨ f₂ , g₂ ⟩ m₂) refl refl
+  with ≟IRH f₁ f₂ refl refl | ≟IRH g₁ g₂ refl refl | m₁ ≟AllocMode m₂
+... | yes refl | yes refl | yes refl = yes refl
+... | no np    | _        | _        = no (λ { refl → np refl })
+... | _        | no nq    | _        = no (λ { refl → nq refl })
+... | _        | _        | no nm    = no (λ { refl → nm refl })
+
+≟IRH fst fst refl refl = yes refl
+≟IRH snd snd refl refl = yes refl
+
+≟IRH (inl m₁) (inl m₂) refl refl with m₁ ≟AllocMode m₂
+... | yes refl = yes refl
+... | no nm    = no (λ { refl → nm refl })
+
+≟IRH (inr m₁) (inr m₂) refl refl with m₁ ≟AllocMode m₂
+... | yes refl = yes refl
+... | no nm    = no (λ { refl → nm refl })
+
+≟IRH (case f₁ g₁) (case f₂ g₂) refl refl
+  with ≟IRH f₁ f₂ refl refl | ≟IRH g₁ g₂ refl refl
+... | yes refl | yes refl = yes refl
+... | no np    | _        = no (λ { refl → np refl })
+... | _        | no nq    = no (λ { refl → nq refl })
+
+≟IRH terminal terminal refl refl = yes refl
+≟IRH initial initial refl refl = yes refl
+
+≟IRH (curry f₁ m₁) (curry f₂ m₂) refl refl
+  with ≟IRH f₁ f₂ refl refl | m₁ ≟AllocMode m₂
+... | yes refl | yes refl = yes refl
+... | no np    | _        = no (λ { refl → np refl })
+... | _        | no nm    = no (λ { refl → nm refl })
+
+≟IRH apply apply refl refl = yes refl
+≟IRH arr arr refl refl = yes refl
+
+-- In: eqB : μ-type F ≡ μ-type F' gives the Functor tag
+≟IRH (In {F} wf₁ m₁) (In {F'} wf₂ m₂) eqA eqB with F ≟Functor F'
+... | no fne = no (λ _ → fne (μ-inj eqB))
+... | yes refl with m₁ ≟AllocMode m₂ | eqA | eqB
+...   | yes refl | refl | refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...   | no nm    | refl | refl = no (λ { refl → nm refl })
+
+-- out-μ: eqA : μ-type F ≡ μ-type F'
+≟IRH (out-μ {F} wf₁) (out-μ {F'} wf₂) eqA eqB with F ≟Functor F'
+... | no fne = no (λ _ → fne (μ-inj eqA))
+... | yes refl with eqA | eqB
+...   | refl | refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+
+-- Cata: eqA : μ-type F ≡ μ-type F', eqB : A ≡ A'
+≟IRH (Cata {F} wf₁ alg₁) (Cata {F'} wf₂ alg₂) eqA eqB
+  with F ≟Functor F'
+... | no fne = no (λ _ → fne (μ-inj eqA))
+... | yes refl with eqA | eqB
+...   | refl | refl with ≟IRH alg₁ alg₂ refl refl
+...     | yes refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...     | no np = no (λ { refl → np refl })
+
+-- Para: similar
+≟IRH (Para {F} wf₁ alg₁) (Para {F'} wf₂ alg₂) eqA eqB
+  with F ≟Functor F'
+... | no fne = no (λ _ → fne (μ-inj eqA))
+... | yes refl with eqA | eqB
+...   | refl | refl with ≟IRH alg₁ alg₂ refl refl
+...     | yes refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...     | no np = no (λ { refl → np refl })
+
+-- Out: eqA : ν-type F ≡ ν-type F'
+≟IRH (Out {F} wf₁) (Out {F'} wf₂) eqA eqB with F ≟Functor F'
+... | no fne = no (λ _ → fne (ν-inj eqA))
+... | yes refl with eqA | eqB
+...   | refl | refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+
+-- in-ν: eqB : ν-type F ≡ ν-type F'
+≟IRH (in-ν {F} wf₁ m₁) (in-ν {F'} wf₂ m₂) eqA eqB
+  with F ≟Functor F'
+... | no fne = no (λ _ → fne (ν-inj eqB))
+... | yes refl with m₁ ≟AllocMode m₂ | eqA | eqB
+...   | yes refl | refl | refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...   | no nm    | refl | refl = no (λ { refl → nm refl })
+
+-- Ana: eqB : ν-type F ≡ ν-type F'
+≟IRH (Ana {F} wf₁ coalg₁) (Ana {F'} wf₂ coalg₂) eqA eqB
+  with F ≟Functor F'
+... | no fne = no (λ _ → fne (ν-inj eqB))
+... | yes refl with eqA | eqB
+...   | refl | refl with ≟IRH coalg₁ coalg₂ refl refl
+...     | yes refl rewrite WellFormedF-irrelevant wf₁ wf₂ = yes refl
+...     | no np = no (λ { refl → np refl })
+
+-- Hylo: eqA : μ-type G ≡ μ-type G', eqB : B ≡ B'.
+-- F is internal to the alg's type; require F ≟ F' separately.
+≟IRH (Hylo {F} {G} wfF₁ wfG₁ alg₁ coalg₁)
+     (Hylo {F'} {G'} wfF₂ wfG₂ alg₂ coalg₂) eqA eqB
+  with G ≟Functor G'
+... | no gne = no (λ _ → gne (μ-inj eqA))
+... | yes refl with eqA | eqB
+...   | refl | refl with F ≟Functor F'
+...     | no fne  = no (λ { refl → fne refl })
+...     | yes refl with ≟IRH alg₁ alg₂ refl refl | ≟IRH coalg₁ coalg₂ refl refl
+...       | yes refl | yes refl
+              rewrite WellFormedF-irrelevant wfF₁ wfF₂
+                    | WellFormedF-irrelevant wfG₁ wfG₂ = yes refl
+...       | no np    | _        = no (λ { refl → np refl })
+...       | _        | no nq    = no (λ { refl → nq refl })
+
+-- Fuse: similar shape to Hylo
+≟IRH (Fuse {F} {G} wfF₁ wfG₁ alg₁ tr₁)
+     (Fuse {F'} {G'} wfF₂ wfG₂ alg₂ tr₂) eqA eqB
+  with G ≟Functor G'
+... | no gne = no (λ _ → gne (μ-inj eqA))
+... | yes refl with eqA | eqB
+...   | refl | refl with F ≟Functor F'
+...     | no fne = no (λ { refl → fne refl })
+...     | yes refl with ≟IRH alg₁ alg₂ refl refl | ≟IRH tr₁ tr₂ refl refl
+...       | yes refl | yes refl
+              rewrite WellFormedF-irrelevant wfF₁ wfF₂
+                    | WellFormedF-irrelevant wfG₁ wfG₂ = yes refl
+...       | no np    | _        = no (λ { refl → np refl })
+...       | _        | no nq    = no (λ { refl → nq refl })
+
+≟IRH (free-heap h₁) (free-heap h₂) refl refl with h₁ ≟H h₂
+... | yes refl = yes refl
+... | no hne   = no (λ { refl → hne refl })
+
+≟IRH (Prim n₁) (Prim n₂) refl refl with n₁ ≟String n₂
+... | yes refl = yes refl
+... | no nne   = no (λ { refl → nne refl })
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- Cross-pair cases (462 clauses, one per ordered pair of distinct
+-- constructors). Each rejects via `cross-no (λ ()) eqA eqB`.
+-- ═══════════════════════════════════════════════════════════════════════
+≟IRH id (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH id (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
 
 ------------------------------------------------------------------------
 -- Helper: Check for Void types (enables dead code elimination)
@@ -337,8 +1140,9 @@ wants-coprod _ = false
 --   - Dead code: terminal ∘ f = terminal, g ∘ initial = initial
 --
 -- NOTE: Due to dependent type indices in recursion scheme constructors
--- (⟦ F ⟧T can produce any type structure), we use "view" patterns to
--- isolate the coverage gap into explicit postulates.
+-- (⟦ F ⟧T can produce any type structure), we use "view" patterns
+-- (see below, implemented postulate-free via the generic-codomain trick)
+-- to classify targets.
 ------------------------------------------------------------------------
 
 -- View: classify IR terms targeting a product type
@@ -607,10 +1411,7 @@ optimize-compose g f with composeFirstView g
 ... | cf-other g = optimize-compose-second g f     -- check second arg
 
 ------------------------------------------------------------------------
--- Eta Laws (for pairs and cases) - Postulated
---
--- NOTE: Due to type index unification issues with OCP-0003's new
--- recursion scheme constructors, these are temporarily postulated.
+-- Eta Laws (for pairs and cases)
 ------------------------------------------------------------------------
 
 -- | Optimize pair construction
