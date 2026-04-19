@@ -47,7 +47,7 @@
               if [ -t 0 ] && [ -z "$ONCE_QUIET" ]; then
                 echo "Once compiler development (minimal)"
                 echo "  ghc:   $(ghc --version)"
-                echo "  stack: $(stack --version | head -1)"
+                echo "  cabal: $(cabal --version | head -1)"
                 echo "  gcc:   $(gcc --version | head -1)"
                 echo ""
                 echo "For full environment: nix develop .#full"
@@ -158,7 +158,7 @@
               if [ -t 0 ] && [ -z "$ONCE_QUIET" ]; then
                 echo "Once full development environment"
                 echo "  ghc:   $(ghc --version)"
-                echo "  stack: $(stack --version | head -1)"
+                echo "  cabal: $(cabal --version | head -1)"
                 echo "  gcc:   $(gcc --version | head -1)"
                 echo "  agda:  $(agda --version)"
                 echo ""

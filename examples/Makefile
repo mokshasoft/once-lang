@@ -25,7 +25,7 @@ BUILD := $(REPO_ROOT)/.build
 STRATA := $(REPO_ROOT)/Strata
 
 # Once compiler (run from compiler directory)
-ONCE := cd $(REPO_ROOT)/compiler && stack exec -- once
+ONCE := cd $(REPO_ROOT)/compiler && cabal run --verbose=0 once --
 
 # Default target
 all: c native

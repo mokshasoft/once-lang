@@ -10,7 +10,7 @@
 #   make test-target - test --target flag
 #   make test-strata - test --strata flag
 
-ONCE = cd ../compiler && stack exec -- once
+ONCE = cd ../compiler && cabal run --verbose=0 once --
 GCC = gcc
 BUILD = .build
 TESTS_DIR = $(shell pwd)

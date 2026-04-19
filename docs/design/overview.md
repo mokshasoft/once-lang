@@ -173,10 +173,10 @@ See [Optimization](optimization.md) for theory, laws, and programming guidelines
 nix build
 ./result/bin/once build example.once -o example
 
-# Or with Stack
+# Or with cabal
 cd compiler
-stack build
-stack exec -- once build example.once -o example
+cabal build
+cabal run once -- build example.once -o example
 ```
 
 See [Quickstart](quickstart.md) for more details.

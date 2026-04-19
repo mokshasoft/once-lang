@@ -1007,7 +1007,8 @@ EOF
             qemu
 
             # Haskell for Once compiler
-            stack
+            pkgs.haskellPackages.ghc
+            pkgs.haskellPackages.cabal-install
           ];
 
           shellHook = ''
@@ -1029,7 +1030,7 @@ EOF
             echo "  ./simulate"
             echo ""
             echo "For Once compiler:"
-            echo "  cd ../../compiler && stack build"
+            echo "  cd ../../compiler && cabal build"
             echo ""
 
             export SEL4_SRC="${seL4-src}"

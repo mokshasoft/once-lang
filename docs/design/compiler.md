@@ -177,17 +177,17 @@ The C backend (`Backend/C.hs`) generates:
 
 ```bash
 cd compiler
-stack build
+cabal build
 ```
 
 ### Compiling Once Code
 
 ```bash
 # Library mode (generates .h and .c)
-stack exec -- once build example.once -o example
+cabal run once -- build example.once -o example
 
 # Executable mode (with interpretation)
-stack exec -- once build --exe --interp ../Strata/Interpretations/Linux main.once -o main
+cabal run once -- build --exe --interp ../Strata/Interpretations/Linux main.once -o main
 ```
 
 ### Example

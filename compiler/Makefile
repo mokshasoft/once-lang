@@ -7,45 +7,50 @@
 #   make test-quick    - Run fast tests (skip integration tests)
 #   make build         - Build the compiler
 #   make clean         - Clean build artifacts
+#
+# Build tool: cabal. Stack is NOT used — Stack 3.7.1 + Nix triggers a
+# self-referential thunk in Stack's GHC-version resolution that aborts
+# with `<<loop>>` before any user code runs. See
+# plans/0.2.4-categorical-layer-0.md for the diagnosis. The nix flake
+# uses callCabal2nix and is also cabal-based.
 
-.PHONY: all build test test-c test-x86 test-quick test-x86-level0 clean
+.PHONY: all build test test-c test-x86 test-quick test-x86-level0 test-codegen test-verbose clean
 
 # Default target
 all: build test
 
 # Build the compiler
 build:
-	stack build
+	cabal build
 
 # Run all tests
 test:
-	stack test
+	cabal test
 
 # Run only C backend tests
 test-c:
-	stack test --ta '-p "/Backend.C/"'
+	cabal test --test-options='-p "/Backend.C/"'
 
 # Run only x86 backend tests
 test-x86:
-	stack test --ta '-p "/Backend.X86/"'
+	cabal test --test-options='-p "/Backend.X86/"'
 
 # Run quick tests (excluding slow integration tests)
 test-quick:
-	stack test --ta '-p "!/executable/"'
+	cabal test --test-options='-p "!/executable/"'
 
 # Run Layer 0 tests only (isolated from MAlonzo issues)
 test-x86-level0:
-	stack test --ta '-p "/Layer0/"'
+	cabal test --test-options='-p "/Layer0/"'
 
 # Run codegen tests only (fastest)
 test-codegen:
-	stack test --ta '-p "/codegen/"'
+	cabal test --test-options='-p "/codegen/"'
 
 # Run with verbose output
 test-verbose:
-	stack test --ta '--hide-successes'
+	cabal test --test-options='--hide-successes'
 
 # Clean build artifacts
 clean:
-	stack clean
-	rm -rf .stack-work
+	cabal clean

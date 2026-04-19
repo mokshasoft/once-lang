@@ -68,24 +68,24 @@ Each shell provides:
    ```bash
    # From the once-lang root directory
    cd compiler
-   stack build
+   cabal build
 
    # Build rootserver
-   stack exec -- once build \
+   cabal run once -- build \
      --exe \
      --interp ../Strata/Interpretations/seL4 \
      ../examples/seL4/Rootserver/Rootserver.once \
      -o ../examples/seL4/build/rootserver
 
    # Build echo server
-   stack exec -- once build \
+   cabal run once -- build \
      --exe \
      --interp ../Strata/Interpretations/seL4 \
      ../examples/seL4/EchoServer/EchoServer.once \
      -o ../examples/seL4/build/echo-server
 
    # Build echo client
-   stack exec -- once build \
+   cabal run once -- build \
      --exe \
      --interp ../Strata/Interpretations/seL4 \
      ../examples/seL4/EchoServer/echo-client.once \
@@ -105,7 +105,7 @@ integration and smaller code size. Use `--target` to select the architecture:
 
 ```bash
 # Generate x86-64 assembly (library mode)
-stack exec -- once build \
+cabal run once -- build \
   --target x86_64 \
   --strata ../Strata \
   -I:x86_64 I.SeL4.IPC \

@@ -514,9 +514,9 @@ Write once, compile anywhere.
 nix build
 ./result/bin/once build --exe examples/hello.once
 
-### With Stack
-cd compiler && stack build
-stack exec -- once build --exe examples/hello.once
+### With cabal
+cd compiler && cabal build
+cabal run once -- build --exe examples/hello.once
 
 ## Hello World
 

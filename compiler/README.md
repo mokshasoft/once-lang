@@ -5,14 +5,23 @@ Haskell implementation of the Once compiler.
 ## Building
 
 ```bash
-stack build
+cabal build
 ```
 
 ## Testing
 
 ```bash
-stack test
+cabal test
 ```
+
+Also available via `make build` / `make test` (cabal-based).
+
+> **Note on build tooling**: this project uses `cabal` directly, not
+> `stack`. Stack 3.7.1 under Nix enters a self-referential loop in its
+> GHC version resolution (`<<loop>>`) before any user code runs. The
+> `once.cabal` file is authoritative; the nix flake's `once` package
+> uses `callCabal2nix` against it. `stack.yaml` is retained for
+> reference only.
 
 ## Documentation
 
