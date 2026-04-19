@@ -891,139 +891,76 @@ parseAtomExprWF (TEOF       ∷ _) _ = nothing
 -- witness. We supply it by case-splitting on the first token.
 ------------------------------------------------------------------------
 
--- | `NotAtomStart toks` from a first-token case split for non-atom leads.
-notAtomStart-[] : NotAtomStart []
-notAtomStart-[] = tt
-notAtomStart-TRParen    : ∀ rest → NotAtomStart (TRParen    ∷ rest)
-notAtomStart-TRParen _  = tt
-notAtomStart-TLBrace    : ∀ rest → NotAtomStart (TLBrace    ∷ rest)
-notAtomStart-TLBrace _  = tt
-notAtomStart-TRBrace    : ∀ rest → NotAtomStart (TRBrace    ∷ rest)
-notAtomStart-TRBrace _  = tt
-notAtomStart-TColon     : ∀ rest → NotAtomStart (TColon     ∷ rest)
-notAtomStart-TColon _   = tt
-notAtomStart-TEquals    : ∀ rest → NotAtomStart (TEquals    ∷ rest)
-notAtomStart-TEquals _  = tt
-notAtomStart-TArrow     : ∀ rest → NotAtomStart (TArrow     ∷ rest)
-notAtomStart-TArrow _   = tt
-notAtomStart-TCaret1    : ∀ rest → NotAtomStart (TCaret1    ∷ rest)
-notAtomStart-TCaret1 _  = tt
-notAtomStart-TCaret0    : ∀ rest → NotAtomStart (TCaret0    ∷ rest)
-notAtomStart-TCaret0 _  = tt
-notAtomStart-TCaretW    : ∀ rest → NotAtomStart (TCaretW    ∷ rest)
-notAtomStart-TCaretW _  = tt
-notAtomStart-TComma     : ∀ rest → NotAtomStart (TComma     ∷ rest)
-notAtomStart-TComma _   = tt
-notAtomStart-TSemicolon : ∀ rest → NotAtomStart (TSemicolon ∷ rest)
-notAtomStart-TSemicolon _ = tt
-notAtomStart-TAt        : ∀ rest → NotAtomStart (TAt        ∷ rest)
-notAtomStart-TAt _      = tt
-notAtomStart-TPipe      : ∀ rest → NotAtomStart (TPipe      ∷ rest)
-notAtomStart-TPipe _    = tt
-notAtomStart-TDot       : ∀ rest → NotAtomStart (TDot       ∷ rest)
-notAtomStart-TDot _     = tt
-notAtomStart-TPlus      : ∀ rest → NotAtomStart (TPlus      ∷ rest)
-notAtomStart-TPlus _    = tt
-notAtomStart-TMinus     : ∀ rest → NotAtomStart (TMinus     ∷ rest)
-notAtomStart-TMinus _   = tt
-notAtomStart-TStar      : ∀ rest → NotAtomStart (TStar      ∷ rest)
-notAtomStart-TStar _    = tt
-notAtomStart-TSlash     : ∀ rest → NotAtomStart (TSlash     ∷ rest)
-notAtomStart-TSlash _   = tt
-notAtomStart-TPercent   : ∀ rest → NotAtomStart (TPercent   ∷ rest)
-notAtomStart-TPercent _ = tt
-notAtomStart-TAmpersand : ∀ rest → NotAtomStart (TAmpersand ∷ rest)
-notAtomStart-TAmpersand _ = tt
-notAtomStart-TLt        : ∀ rest → NotAtomStart (TLt        ∷ rest)
-notAtomStart-TLt _      = tt
-notAtomStart-TLe        : ∀ rest → NotAtomStart (TLe        ∷ rest)
-notAtomStart-TLe _      = tt
-notAtomStart-TGt        : ∀ rest → NotAtomStart (TGt        ∷ rest)
-notAtomStart-TGt _      = tt
-notAtomStart-TGe        : ∀ rest → NotAtomStart (TGe        ∷ rest)
-notAtomStart-TGe _      = tt
-notAtomStart-TEqEq      : ∀ rest → NotAtomStart (TEqEq      ∷ rest)
-notAtomStart-TEqEq _    = tt
-notAtomStart-TNeq       : ∀ rest → NotAtomStart (TNeq       ∷ rest)
-notAtomStart-TNeq _     = tt
-notAtomStart-TNewline   : ∀ rest → NotAtomStart (TNewline   ∷ rest)
-notAtomStart-TNewline _ = tt
-notAtomStart-TEOF       : ∀ rest → NotAtomStart (TEOF       ∷ rest)
-notAtomStart-TEOF _     = tt
-
-parseAppTailWF f []               _ = just (f , [] , papp-done notAtomStart-[])
+parseAppTailWF f []               _ = just (f , [] , papp-done nas-[])
 parseAppTailWF f (TLParen   ∷ rest) (acc rec)
   with parseAtomExprWF (TLParen ∷ rest) (acc rec)
 ... | nothing = nothing
 ... | just (arg , rest' , dA)
     with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
 ...   | nothing                   = nothing
-...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg dA dT)
+...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg aao-TLParen dA dT)
 parseAppTailWF f (TLambda   ∷ rest) (acc rec)
   with parseAtomExprWF (TLambda ∷ rest) (acc rec)
 ... | nothing = nothing
 ... | just (arg , rest' , dA)
     with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
 ...   | nothing                   = nothing
-...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg dA dT)
+...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg aao-TLambda dA dT)
 -- TWord: reserved words stop the tail; non-reserved proceed into
 -- parseAtomExprWF. We case on isReserved WITH `in`-binding so the
--- NotAtomStart witness can be built from the same dispatch.
+-- NotAtomStart / AppArgOk witness can be built from the same dispatch.
 parseAppTailWF f (TWord s ∷ rest) (acc rec) with isReserved s in eqR
-... | true  = just (f , TWord s ∷ rest , papp-done subst-eq)
-  where
-    subst-eq : NotAtomStart (TWord s ∷ rest)
-    subst-eq rewrite eqR = tt
+... | true  = just (f , TWord s ∷ rest , papp-done (nas-word-res eqR))
 ... | false
     with parseAtomExprWF (TWord s ∷ rest) (acc rec)
 ...   | nothing = nothing
 ...   | just (arg , rest' , dA)
       with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
 ...     | nothing                   = nothing
-...     | just (body , rest'' , dT) = just (body , rest'' , papp-arg dA dT)
+...     | just (body , rest'' , dT) = just (body , rest'' , papp-arg (aao-word eqR) dA dT)
 parseAppTailWF f (TInt n    ∷ rest) (acc rec)
   with parseAtomExprWF (TInt n ∷ rest) (acc rec)
 ... | nothing = nothing
 ... | just (arg , rest' , dA)
     with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
 ...   | nothing                   = nothing
-...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg dA dT)
+...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg aao-TInt dA dT)
 parseAppTailWF f (TString s ∷ rest) (acc rec)
   with parseAtomExprWF (TString s ∷ rest) (acc rec)
 ... | nothing = nothing
 ... | just (arg , rest' , dA)
     with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
 ...   | nothing                   = nothing
-...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg dA dT)
+...   | just (body , rest'' , dT) = just (body , rest'' , papp-arg aao-TString dA dT)
 -- Non-atom-start tokens: tail no-ops.
-parseAppTailWF f (TRParen   ∷ r) _ = just (f , TRParen   ∷ r , papp-done (notAtomStart-TRParen   r))
-parseAppTailWF f (TLBrace   ∷ r) _ = just (f , TLBrace   ∷ r , papp-done (notAtomStart-TLBrace   r))
-parseAppTailWF f (TRBrace   ∷ r) _ = just (f , TRBrace   ∷ r , papp-done (notAtomStart-TRBrace   r))
-parseAppTailWF f (TColon    ∷ r) _ = just (f , TColon    ∷ r , papp-done (notAtomStart-TColon    r))
-parseAppTailWF f (TEquals   ∷ r) _ = just (f , TEquals   ∷ r , papp-done (notAtomStart-TEquals   r))
-parseAppTailWF f (TArrow    ∷ r) _ = just (f , TArrow    ∷ r , papp-done (notAtomStart-TArrow    r))
-parseAppTailWF f (TCaret1   ∷ r) _ = just (f , TCaret1   ∷ r , papp-done (notAtomStart-TCaret1   r))
-parseAppTailWF f (TCaret0   ∷ r) _ = just (f , TCaret0   ∷ r , papp-done (notAtomStart-TCaret0   r))
-parseAppTailWF f (TCaretW   ∷ r) _ = just (f , TCaretW   ∷ r , papp-done (notAtomStart-TCaretW   r))
-parseAppTailWF f (TComma    ∷ r) _ = just (f , TComma    ∷ r , papp-done (notAtomStart-TComma    r))
-parseAppTailWF f (TSemicolon ∷ r) _ = just (f , TSemicolon ∷ r , papp-done (notAtomStart-TSemicolon r))
-parseAppTailWF f (TAt       ∷ r) _ = just (f , TAt       ∷ r , papp-done (notAtomStart-TAt       r))
-parseAppTailWF f (TPipe     ∷ r) _ = just (f , TPipe     ∷ r , papp-done (notAtomStart-TPipe     r))
-parseAppTailWF f (TDot      ∷ r) _ = just (f , TDot      ∷ r , papp-done (notAtomStart-TDot      r))
-parseAppTailWF f (TPlus     ∷ r) _ = just (f , TPlus     ∷ r , papp-done (notAtomStart-TPlus     r))
-parseAppTailWF f (TMinus    ∷ r) _ = just (f , TMinus    ∷ r , papp-done (notAtomStart-TMinus    r))
-parseAppTailWF f (TStar     ∷ r) _ = just (f , TStar     ∷ r , papp-done (notAtomStart-TStar     r))
-parseAppTailWF f (TSlash    ∷ r) _ = just (f , TSlash    ∷ r , papp-done (notAtomStart-TSlash    r))
-parseAppTailWF f (TPercent  ∷ r) _ = just (f , TPercent  ∷ r , papp-done (notAtomStart-TPercent  r))
-parseAppTailWF f (TAmpersand ∷ r) _ = just (f , TAmpersand ∷ r , papp-done (notAtomStart-TAmpersand r))
-parseAppTailWF f (TLt       ∷ r) _ = just (f , TLt       ∷ r , papp-done (notAtomStart-TLt       r))
-parseAppTailWF f (TLe       ∷ r) _ = just (f , TLe       ∷ r , papp-done (notAtomStart-TLe       r))
-parseAppTailWF f (TGt       ∷ r) _ = just (f , TGt       ∷ r , papp-done (notAtomStart-TGt       r))
-parseAppTailWF f (TGe       ∷ r) _ = just (f , TGe       ∷ r , papp-done (notAtomStart-TGe       r))
-parseAppTailWF f (TEqEq     ∷ r) _ = just (f , TEqEq     ∷ r , papp-done (notAtomStart-TEqEq     r))
-parseAppTailWF f (TNeq      ∷ r) _ = just (f , TNeq      ∷ r , papp-done (notAtomStart-TNeq      r))
-parseAppTailWF f (TNewline  ∷ r) _ = just (f , TNewline  ∷ r , papp-done (notAtomStart-TNewline  r))
-parseAppTailWF f (TEOF      ∷ r) _ = just (f , TEOF      ∷ r , papp-done (notAtomStart-TEOF      r))
+parseAppTailWF f (TRParen   ∷ r) _ = just (f , TRParen   ∷ r , papp-done nas-TRParen)
+parseAppTailWF f (TLBrace   ∷ r) _ = just (f , TLBrace   ∷ r , papp-done nas-TLBrace)
+parseAppTailWF f (TRBrace   ∷ r) _ = just (f , TRBrace   ∷ r , papp-done nas-TRBrace)
+parseAppTailWF f (TColon    ∷ r) _ = just (f , TColon    ∷ r , papp-done nas-TColon)
+parseAppTailWF f (TEquals   ∷ r) _ = just (f , TEquals   ∷ r , papp-done nas-TEquals)
+parseAppTailWF f (TArrow    ∷ r) _ = just (f , TArrow    ∷ r , papp-done nas-TArrow)
+parseAppTailWF f (TCaret1   ∷ r) _ = just (f , TCaret1   ∷ r , papp-done nas-TCaret1)
+parseAppTailWF f (TCaret0   ∷ r) _ = just (f , TCaret0   ∷ r , papp-done nas-TCaret0)
+parseAppTailWF f (TCaretW   ∷ r) _ = just (f , TCaretW   ∷ r , papp-done nas-TCaretW)
+parseAppTailWF f (TComma    ∷ r) _ = just (f , TComma    ∷ r , papp-done nas-TComma)
+parseAppTailWF f (TSemicolon ∷ r) _ = just (f , TSemicolon ∷ r , papp-done nas-TSemicolon)
+parseAppTailWF f (TAt       ∷ r) _ = just (f , TAt       ∷ r , papp-done nas-TAt)
+parseAppTailWF f (TPipe     ∷ r) _ = just (f , TPipe     ∷ r , papp-done nas-TPipe)
+parseAppTailWF f (TDot      ∷ r) _ = just (f , TDot      ∷ r , papp-done nas-TDot)
+parseAppTailWF f (TPlus     ∷ r) _ = just (f , TPlus     ∷ r , papp-done nas-TPlus)
+parseAppTailWF f (TMinus    ∷ r) _ = just (f , TMinus    ∷ r , papp-done nas-TMinus)
+parseAppTailWF f (TStar     ∷ r) _ = just (f , TStar     ∷ r , papp-done nas-TStar)
+parseAppTailWF f (TSlash    ∷ r) _ = just (f , TSlash    ∷ r , papp-done nas-TSlash)
+parseAppTailWF f (TPercent  ∷ r) _ = just (f , TPercent  ∷ r , papp-done nas-TPercent)
+parseAppTailWF f (TAmpersand ∷ r) _ = just (f , TAmpersand ∷ r , papp-done nas-TAmpersand)
+parseAppTailWF f (TLt       ∷ r) _ = just (f , TLt       ∷ r , papp-done nas-TLt)
+parseAppTailWF f (TLe       ∷ r) _ = just (f , TLe       ∷ r , papp-done nas-TLe)
+parseAppTailWF f (TGt       ∷ r) _ = just (f , TGt       ∷ r , papp-done nas-TGt)
+parseAppTailWF f (TGe       ∷ r) _ = just (f , TGe       ∷ r , papp-done nas-TGe)
+parseAppTailWF f (TEqEq     ∷ r) _ = just (f , TEqEq     ∷ r , papp-done nas-TEqEq)
+parseAppTailWF f (TNeq      ∷ r) _ = just (f , TNeq      ∷ r , papp-done nas-TNeq)
+parseAppTailWF f (TNewline  ∷ r) _ = just (f , TNewline  ∷ r , papp-done nas-TNewline)
+parseAppTailWF f (TEOF      ∷ r) _ = just (f , TEOF      ∷ r , papp-done nas-TEOF)
 
 parseAppWF toks (acc rec) with parseAtomExprWF toks (acc rec)
 ... | nothing                  = nothing

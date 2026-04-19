@@ -126,17 +126,56 @@ NotCmp (_ ∷ _) = ⊤
 --
 -- For TWord, `parseAtomExpr` accepts only non-reserved names (and
 -- handles "let"/"destruct" via keyword dispatch). Reserved words like
--- "in" stop the tail. We express this via a guard on `isReserved`.
-NotAtomStart : List Token → Set
-NotAtomStart [] = ⊤
-NotAtomStart (TLParen   ∷ _) = ⊥
-NotAtomStart (TLambda   ∷ _) = ⊥
-NotAtomStart (TWord name ∷ _) with isReserved name
-... | true  = ⊤
-... | false = ⊥
-NotAtomStart (TInt _    ∷ _) = ⊥
-NotAtomStart (TString _ ∷ _) = ⊥
-NotAtomStart (_ ∷ _) = ⊤
+-- "in" stop the tail. We express this via a constructor that carries
+-- the `isReserved name ≡ true` evidence explicitly — computing via a
+-- `with isReserved` clause previously blocked `complete-appTailWFraw`
+-- through ill-typed-with-abstraction in the TWord case.
+data NotAtomStart : List Token → Set where
+  nas-[]         : NotAtomStart []
+  nas-word-res   : ∀ {name rest} → isReserved name ≡ true
+                 → NotAtomStart (TWord name ∷ rest)
+  nas-TRParen    : ∀ {rest} → NotAtomStart (TRParen    ∷ rest)
+  nas-TLBrace    : ∀ {rest} → NotAtomStart (TLBrace    ∷ rest)
+  nas-TRBrace    : ∀ {rest} → NotAtomStart (TRBrace    ∷ rest)
+  nas-TColon     : ∀ {rest} → NotAtomStart (TColon     ∷ rest)
+  nas-TEquals    : ∀ {rest} → NotAtomStart (TEquals    ∷ rest)
+  nas-TArrow     : ∀ {rest} → NotAtomStart (TArrow     ∷ rest)
+  nas-TCaret0    : ∀ {rest} → NotAtomStart (TCaret0    ∷ rest)
+  nas-TCaret1    : ∀ {rest} → NotAtomStart (TCaret1    ∷ rest)
+  nas-TCaretW    : ∀ {rest} → NotAtomStart (TCaretW    ∷ rest)
+  nas-TComma     : ∀ {rest} → NotAtomStart (TComma     ∷ rest)
+  nas-TSemicolon : ∀ {rest} → NotAtomStart (TSemicolon ∷ rest)
+  nas-TAt        : ∀ {rest} → NotAtomStart (TAt        ∷ rest)
+  nas-TPipe      : ∀ {rest} → NotAtomStart (TPipe      ∷ rest)
+  nas-TDot       : ∀ {rest} → NotAtomStart (TDot       ∷ rest)
+  nas-TPlus      : ∀ {rest} → NotAtomStart (TPlus      ∷ rest)
+  nas-TMinus     : ∀ {rest} → NotAtomStart (TMinus     ∷ rest)
+  nas-TStar      : ∀ {rest} → NotAtomStart (TStar      ∷ rest)
+  nas-TSlash     : ∀ {rest} → NotAtomStart (TSlash     ∷ rest)
+  nas-TPercent   : ∀ {rest} → NotAtomStart (TPercent   ∷ rest)
+  nas-TAmpersand : ∀ {rest} → NotAtomStart (TAmpersand ∷ rest)
+  nas-TLt        : ∀ {rest} → NotAtomStart (TLt        ∷ rest)
+  nas-TLe        : ∀ {rest} → NotAtomStart (TLe        ∷ rest)
+  nas-TGt        : ∀ {rest} → NotAtomStart (TGt        ∷ rest)
+  nas-TGe        : ∀ {rest} → NotAtomStart (TGe        ∷ rest)
+  nas-TEqEq      : ∀ {rest} → NotAtomStart (TEqEq      ∷ rest)
+  nas-TNeq       : ∀ {rest} → NotAtomStart (TNeq       ∷ rest)
+  nas-TNewline   : ∀ {rest} → NotAtomStart (TNewline   ∷ rest)
+  nas-TEOF       : ∀ {rest} → NotAtomStart (TEOF       ∷ rest)
+
+-- "AppArgOk toks" certifies that `toks` begins with a token that
+-- `parseAtomExpr` commits to as an application argument (i.e. a
+-- non-reserved TWord, or a literal/paren/lambda lead). Required by
+-- the `papp-arg` constructor so that `ParsesAppTail` is unambiguous
+-- on leads like `TWord "let" ∷ …` — `papp-done` fires via the
+-- reserved-word clause, `papp-arg` via this evidence.
+data AppArgOk : List Token → Set where
+  aao-TLParen : ∀ {rest} → AppArgOk (TLParen ∷ rest)
+  aao-TLambda : ∀ {rest} → AppArgOk (TLambda ∷ rest)
+  aao-TInt    : ∀ {n rest} → AppArgOk (TInt n ∷ rest)
+  aao-TString : ∀ {s rest} → AppArgOk (TString s ∷ rest)
+  aao-word    : ∀ {name rest} → isReserved name ≡ false
+              → AppArgOk (TWord name ∷ rest)
 
 ------------------------------------------------------------------------
 -- Parsing relations (mutual).
@@ -265,6 +304,7 @@ mutual
               → NotAtomStart toks
               → ParsesAppTail left toks left toks
     papp-arg  : ∀ {left toks1 toks2 rest arg e}
+              → AppArgOk toks1
               → ParsesAtomExpr toks1 arg toks2
               → ParsesAppTail (RApp left arg) toks2 e rest
               → ParsesAppTail left toks1 e rest
@@ -521,7 +561,7 @@ mutual
     ∀ {left toks e rest} → ParsesAppTail left toks e rest
     → length rest ≤ length toks
   ParsesAppTail-shrinks (papp-done _) = ≤-refl
-  ParsesAppTail-shrinks (papp-arg dA dT) =
+  ParsesAppTail-shrinks (papp-arg _ dA dT) =
     ≤-trans (ParsesAppTail-shrinks dT) (<⇒≤ (ParsesAtomExpr-shrinks dA))
 
   ParsesAtomExpr-shrinks :

@@ -52,222 +52,139 @@ open import Once.Grammar.ParserRelation using (toType)
 -- TRParen (the caller's closing paren) or is empty — both satisfy Quiet.
 ------------------------------------------------------------------------
 
--- | For `TWord name`: reserved → ⊤, non-reserved → ⊥. Written without
--- `with` so that functions `quiet→X` can unify the `TWord` case at use
--- sites without Agda failing to propagate the `with` abstraction.
-quietWord : Bool → Set
-quietWord true  = ⊤
-quietWord false = ⊥
-
-Quiet : List Token → Set
-Quiet [] = ⊤
-Quiet (TLParen    ∷ _) = ⊥
-Quiet (TLambda    ∷ _) = ⊥
-Quiet (TInt _     ∷ _) = ⊥
-Quiet (TString _  ∷ _) = ⊥
-Quiet (TPlus      ∷ _) = ⊥
-Quiet (TMinus     ∷ _) = ⊥
-Quiet (TStar      ∷ _) = ⊥
-Quiet (TSlash     ∷ _) = ⊥
-Quiet (TPercent   ∷ _) = ⊥
-Quiet (TLt        ∷ _) = ⊥
-Quiet (TLe        ∷ _) = ⊥
-Quiet (TGt        ∷ _) = ⊥
-Quiet (TGe        ∷ _) = ⊥
-Quiet (TEqEq      ∷ _) = ⊥
-Quiet (TNeq       ∷ _) = ⊥
-Quiet (TDot       ∷ _) = ⊥
-Quiet (TWord name ∷ _) = quietWord (isReserved name)
-Quiet (_ ∷ _) = ⊤
+-- `Quiet toks` : `toks` is a "no-op" residual for every tail parser
+-- (NotDot ∧ NotCmp ∧ NotAdd ∧ NotMul ∧ NotAtomStart). Inductive so
+-- the TWord case carries an explicit `isReserved name ≡ true` witness
+-- rather than computing via `with isReserved` — which would block
+-- downstream `complete-XWFraw` with ill-typed-with-abstraction.
+data Quiet : List Token → Set where
+  q-[]         : Quiet []
+  q-word-res   : ∀ {name rest} → isReserved name ≡ true
+               → Quiet (TWord name ∷ rest)
+  q-TRParen    : ∀ {rest} → Quiet (TRParen    ∷ rest)
+  q-TLBrace    : ∀ {rest} → Quiet (TLBrace    ∷ rest)
+  q-TRBrace    : ∀ {rest} → Quiet (TRBrace    ∷ rest)
+  q-TColon     : ∀ {rest} → Quiet (TColon     ∷ rest)
+  q-TEquals    : ∀ {rest} → Quiet (TEquals    ∷ rest)
+  q-TArrow     : ∀ {rest} → Quiet (TArrow     ∷ rest)
+  q-TCaret0    : ∀ {rest} → Quiet (TCaret0    ∷ rest)
+  q-TCaret1    : ∀ {rest} → Quiet (TCaret1    ∷ rest)
+  q-TCaretW    : ∀ {rest} → Quiet (TCaretW    ∷ rest)
+  q-TComma     : ∀ {rest} → Quiet (TComma     ∷ rest)
+  q-TSemicolon : ∀ {rest} → Quiet (TSemicolon ∷ rest)
+  q-TAt        : ∀ {rest} → Quiet (TAt        ∷ rest)
+  q-TAmpersand : ∀ {rest} → Quiet (TAmpersand ∷ rest)
+  q-TNewline   : ∀ {rest} → Quiet (TNewline   ∷ rest)
+  q-TEOF       : ∀ {rest} → Quiet (TEOF       ∷ rest)
 
 quiet→notDot : ∀ {toks} → Quiet toks → NotDot toks
-quiet→notDot {[]} _ = tt
-quiet→notDot {TDot ∷ _} ()
-quiet→notDot {TLParen    ∷ _} ()
-quiet→notDot {TRParen    ∷ _} _ = tt
-quiet→notDot {TLBrace    ∷ _} _ = tt
-quiet→notDot {TRBrace    ∷ _} _ = tt
-quiet→notDot {TColon     ∷ _} _ = tt
-quiet→notDot {TEquals    ∷ _} _ = tt
-quiet→notDot {TArrow     ∷ _} _ = tt
-quiet→notDot {TCaret0    ∷ _} _ = tt
-quiet→notDot {TCaret1    ∷ _} _ = tt
-quiet→notDot {TCaretW    ∷ _} _ = tt
-quiet→notDot {TLambda    ∷ _} ()
-quiet→notDot {TComma     ∷ _} _ = tt
-quiet→notDot {TSemicolon ∷ _} _ = tt
-quiet→notDot {TAt        ∷ _} _ = tt
-quiet→notDot {TPipe      ∷ _} _ = tt
-quiet→notDot {TPlus      ∷ _} ()
-quiet→notDot {TMinus     ∷ _} ()
-quiet→notDot {TStar      ∷ _} ()
-quiet→notDot {TSlash     ∷ _} ()
-quiet→notDot {TPercent   ∷ _} ()
-quiet→notDot {TAmpersand ∷ _} _ = tt
-quiet→notDot {TLt        ∷ _} ()
-quiet→notDot {TLe        ∷ _} ()
-quiet→notDot {TGt        ∷ _} ()
-quiet→notDot {TGe        ∷ _} ()
-quiet→notDot {TEqEq      ∷ _} ()
-quiet→notDot {TNeq       ∷ _} ()
-quiet→notDot {TNewline   ∷ _} _ = tt
-quiet→notDot {TEOF       ∷ _} _ = tt
-quiet→notDot {TWord n    ∷ _} q = tt
-quiet→notDot {TInt _     ∷ _} ()
-quiet→notDot {TString _  ∷ _} ()
+quiet→notDot q-[] = tt
+quiet→notDot (q-word-res _) = tt
+quiet→notDot q-TRParen    = tt
+quiet→notDot q-TLBrace    = tt
+quiet→notDot q-TRBrace    = tt
+quiet→notDot q-TColon     = tt
+quiet→notDot q-TEquals    = tt
+quiet→notDot q-TArrow     = tt
+quiet→notDot q-TCaret0    = tt
+quiet→notDot q-TCaret1    = tt
+quiet→notDot q-TCaretW    = tt
+quiet→notDot q-TComma     = tt
+quiet→notDot q-TSemicolon = tt
+quiet→notDot q-TAt        = tt
+quiet→notDot q-TAmpersand = tt
+quiet→notDot q-TNewline   = tt
+quiet→notDot q-TEOF       = tt
 
 quiet→notCmp : ∀ {toks} → Quiet toks → NotCmp toks
-quiet→notCmp {[]} _ = tt
-quiet→notCmp {TLt ∷ _} ()
-quiet→notCmp {TLe ∷ _} ()
-quiet→notCmp {TGt ∷ _} ()
-quiet→notCmp {TGe ∷ _} ()
-quiet→notCmp {TEqEq ∷ _} ()
-quiet→notCmp {TNeq ∷ _} ()
-quiet→notCmp {TLParen    ∷ _} _ = tt
-quiet→notCmp {TRParen    ∷ _} _ = tt
-quiet→notCmp {TLBrace    ∷ _} _ = tt
-quiet→notCmp {TRBrace    ∷ _} _ = tt
-quiet→notCmp {TColon     ∷ _} _ = tt
-quiet→notCmp {TEquals    ∷ _} _ = tt
-quiet→notCmp {TArrow     ∷ _} _ = tt
-quiet→notCmp {TCaret0    ∷ _} _ = tt
-quiet→notCmp {TCaret1    ∷ _} _ = tt
-quiet→notCmp {TCaretW    ∷ _} _ = tt
-quiet→notCmp {TLambda    ∷ _} _ = tt
-quiet→notCmp {TComma     ∷ _} _ = tt
-quiet→notCmp {TSemicolon ∷ _} _ = tt
-quiet→notCmp {TAt        ∷ _} _ = tt
-quiet→notCmp {TPipe      ∷ _} _ = tt
-quiet→notCmp {TDot       ∷ _} _ = tt
-quiet→notCmp {TPlus      ∷ _} _ = tt
-quiet→notCmp {TMinus     ∷ _} _ = tt
-quiet→notCmp {TStar      ∷ _} _ = tt
-quiet→notCmp {TSlash     ∷ _} _ = tt
-quiet→notCmp {TPercent   ∷ _} _ = tt
-quiet→notCmp {TAmpersand ∷ _} _ = tt
-quiet→notCmp {TNewline   ∷ _} _ = tt
-quiet→notCmp {TEOF       ∷ _} _ = tt
-quiet→notCmp {TWord _    ∷ _} _ = tt
-quiet→notCmp {TInt _     ∷ _} _ = tt
-quiet→notCmp {TString _  ∷ _} _ = tt
+quiet→notCmp q-[] = tt
+quiet→notCmp (q-word-res _) = tt
+quiet→notCmp q-TRParen    = tt
+quiet→notCmp q-TLBrace    = tt
+quiet→notCmp q-TRBrace    = tt
+quiet→notCmp q-TColon     = tt
+quiet→notCmp q-TEquals    = tt
+quiet→notCmp q-TArrow     = tt
+quiet→notCmp q-TCaret0    = tt
+quiet→notCmp q-TCaret1    = tt
+quiet→notCmp q-TCaretW    = tt
+quiet→notCmp q-TComma     = tt
+quiet→notCmp q-TSemicolon = tt
+quiet→notCmp q-TAt        = tt
+quiet→notCmp q-TAmpersand = tt
+quiet→notCmp q-TNewline   = tt
+quiet→notCmp q-TEOF       = tt
 
 quiet→notAdd : ∀ {toks} → Quiet toks → NotAdd toks
-quiet→notAdd {[]} _ = tt
-quiet→notAdd {TPlus ∷ _} ()
-quiet→notAdd {TMinus ∷ _} ()
-quiet→notAdd {TLParen    ∷ _} _ = tt
-quiet→notAdd {TRParen    ∷ _} _ = tt
-quiet→notAdd {TLBrace    ∷ _} _ = tt
-quiet→notAdd {TRBrace    ∷ _} _ = tt
-quiet→notAdd {TColon     ∷ _} _ = tt
-quiet→notAdd {TEquals    ∷ _} _ = tt
-quiet→notAdd {TArrow     ∷ _} _ = tt
-quiet→notAdd {TCaret0    ∷ _} _ = tt
-quiet→notAdd {TCaret1    ∷ _} _ = tt
-quiet→notAdd {TCaretW    ∷ _} _ = tt
-quiet→notAdd {TLambda    ∷ _} _ = tt
-quiet→notAdd {TComma     ∷ _} _ = tt
-quiet→notAdd {TSemicolon ∷ _} _ = tt
-quiet→notAdd {TAt        ∷ _} _ = tt
-quiet→notAdd {TPipe      ∷ _} _ = tt
-quiet→notAdd {TDot       ∷ _} _ = tt
-quiet→notAdd {TStar      ∷ _} _ = tt
-quiet→notAdd {TSlash     ∷ _} _ = tt
-quiet→notAdd {TPercent   ∷ _} _ = tt
-quiet→notAdd {TAmpersand ∷ _} _ = tt
-quiet→notAdd {TLt        ∷ _} _ = tt
-quiet→notAdd {TLe        ∷ _} _ = tt
-quiet→notAdd {TGt        ∷ _} _ = tt
-quiet→notAdd {TGe        ∷ _} _ = tt
-quiet→notAdd {TEqEq      ∷ _} _ = tt
-quiet→notAdd {TNeq       ∷ _} _ = tt
-quiet→notAdd {TNewline   ∷ _} _ = tt
-quiet→notAdd {TEOF       ∷ _} _ = tt
-quiet→notAdd {TWord _    ∷ _} _ = tt
-quiet→notAdd {TInt _     ∷ _} _ = tt
-quiet→notAdd {TString _  ∷ _} _ = tt
+quiet→notAdd q-[] = tt
+quiet→notAdd (q-word-res _) = tt
+quiet→notAdd q-TRParen    = tt
+quiet→notAdd q-TLBrace    = tt
+quiet→notAdd q-TRBrace    = tt
+quiet→notAdd q-TColon     = tt
+quiet→notAdd q-TEquals    = tt
+quiet→notAdd q-TArrow     = tt
+quiet→notAdd q-TCaret0    = tt
+quiet→notAdd q-TCaret1    = tt
+quiet→notAdd q-TCaretW    = tt
+quiet→notAdd q-TComma     = tt
+quiet→notAdd q-TSemicolon = tt
+quiet→notAdd q-TAt        = tt
+quiet→notAdd q-TAmpersand = tt
+quiet→notAdd q-TNewline   = tt
+quiet→notAdd q-TEOF       = tt
 
 quiet→notMul : ∀ {toks} → Quiet toks → NotMul toks
-quiet→notMul {[]} _ = tt
-quiet→notMul {TStar ∷ _} ()
-quiet→notMul {TSlash ∷ _} ()
-quiet→notMul {TPercent ∷ _} ()
-quiet→notMul {TLParen    ∷ _} _ = tt
-quiet→notMul {TRParen    ∷ _} _ = tt
-quiet→notMul {TLBrace    ∷ _} _ = tt
-quiet→notMul {TRBrace    ∷ _} _ = tt
-quiet→notMul {TColon     ∷ _} _ = tt
-quiet→notMul {TEquals    ∷ _} _ = tt
-quiet→notMul {TArrow     ∷ _} _ = tt
-quiet→notMul {TCaret0    ∷ _} _ = tt
-quiet→notMul {TCaret1    ∷ _} _ = tt
-quiet→notMul {TCaretW    ∷ _} _ = tt
-quiet→notMul {TLambda    ∷ _} _ = tt
-quiet→notMul {TComma     ∷ _} _ = tt
-quiet→notMul {TSemicolon ∷ _} _ = tt
-quiet→notMul {TAt        ∷ _} _ = tt
-quiet→notMul {TPipe      ∷ _} _ = tt
-quiet→notMul {TDot       ∷ _} _ = tt
-quiet→notMul {TPlus      ∷ _} _ = tt
-quiet→notMul {TMinus     ∷ _} _ = tt
-quiet→notMul {TAmpersand ∷ _} _ = tt
-quiet→notMul {TLt        ∷ _} _ = tt
-quiet→notMul {TLe        ∷ _} _ = tt
-quiet→notMul {TGt        ∷ _} _ = tt
-quiet→notMul {TGe        ∷ _} _ = tt
-quiet→notMul {TEqEq      ∷ _} _ = tt
-quiet→notMul {TNeq       ∷ _} _ = tt
-quiet→notMul {TNewline   ∷ _} _ = tt
-quiet→notMul {TEOF       ∷ _} _ = tt
-quiet→notMul {TWord _    ∷ _} _ = tt
-quiet→notMul {TInt _     ∷ _} _ = tt
-quiet→notMul {TString _  ∷ _} _ = tt
+quiet→notMul q-[] = tt
+quiet→notMul (q-word-res _) = tt
+quiet→notMul q-TRParen    = tt
+quiet→notMul q-TLBrace    = tt
+quiet→notMul q-TRBrace    = tt
+quiet→notMul q-TColon     = tt
+quiet→notMul q-TEquals    = tt
+quiet→notMul q-TArrow     = tt
+quiet→notMul q-TCaret0    = tt
+quiet→notMul q-TCaret1    = tt
+quiet→notMul q-TCaretW    = tt
+quiet→notMul q-TComma     = tt
+quiet→notMul q-TSemicolon = tt
+quiet→notMul q-TAt        = tt
+quiet→notMul q-TAmpersand = tt
+quiet→notMul q-TNewline   = tt
+quiet→notMul q-TEOF       = tt
 
 quiet→notAtom : ∀ {toks} → Quiet toks → NotAtomStart toks
-quiet→notAtom {[]} _ = tt
-quiet→notAtom {TLParen ∷ _} ()
-quiet→notAtom {TLambda ∷ _} ()
-quiet→notAtom {TInt _ ∷ _} ()
-quiet→notAtom {TString _ ∷ _} ()
-quiet→notAtom {TWord name ∷ _} q with isReserved name
-... | true  = tt
-... | false = q
-quiet→notAtom {TRParen    ∷ _} _ = tt
-quiet→notAtom {TLBrace    ∷ _} _ = tt
-quiet→notAtom {TRBrace    ∷ _} _ = tt
-quiet→notAtom {TColon     ∷ _} _ = tt
-quiet→notAtom {TEquals    ∷ _} _ = tt
-quiet→notAtom {TArrow     ∷ _} _ = tt
-quiet→notAtom {TCaret0    ∷ _} _ = tt
-quiet→notAtom {TCaret1    ∷ _} _ = tt
-quiet→notAtom {TCaretW    ∷ _} _ = tt
-quiet→notAtom {TComma     ∷ _} _ = tt
-quiet→notAtom {TSemicolon ∷ _} _ = tt
-quiet→notAtom {TAt        ∷ _} _ = tt
-quiet→notAtom {TPipe      ∷ _} _ = tt
-quiet→notAtom {TDot       ∷ _} _ = tt
-quiet→notAtom {TPlus      ∷ _} _ = tt
-quiet→notAtom {TMinus     ∷ _} _ = tt
-quiet→notAtom {TStar      ∷ _} _ = tt
-quiet→notAtom {TSlash     ∷ _} _ = tt
-quiet→notAtom {TPercent   ∷ _} _ = tt
-quiet→notAtom {TAmpersand ∷ _} _ = tt
-quiet→notAtom {TLt        ∷ _} _ = tt
-quiet→notAtom {TLe        ∷ _} _ = tt
-quiet→notAtom {TGt        ∷ _} _ = tt
-quiet→notAtom {TGe        ∷ _} _ = tt
-quiet→notAtom {TEqEq      ∷ _} _ = tt
-quiet→notAtom {TNeq       ∷ _} _ = tt
-quiet→notAtom {TNewline   ∷ _} _ = tt
-quiet→notAtom {TEOF       ∷ _} _ = tt
+quiet→notAtom q-[] = nas-[]
+quiet→notAtom (q-word-res eq) = nas-word-res eq
+quiet→notAtom q-TRParen    = nas-TRParen
+quiet→notAtom q-TLBrace    = nas-TLBrace
+quiet→notAtom q-TRBrace    = nas-TRBrace
+quiet→notAtom q-TColon     = nas-TColon
+quiet→notAtom q-TEquals    = nas-TEquals
+quiet→notAtom q-TArrow     = nas-TArrow
+quiet→notAtom q-TCaret0    = nas-TCaret0
+quiet→notAtom q-TCaret1    = nas-TCaret1
+quiet→notAtom q-TCaretW    = nas-TCaretW
+quiet→notAtom q-TComma     = nas-TComma
+quiet→notAtom q-TSemicolon = nas-TSemicolon
+quiet→notAtom q-TAt        = nas-TAt
+quiet→notAtom q-TAmpersand = nas-TAmpersand
+quiet→notAtom q-TNewline   = nas-TNewline
+quiet→notAtom q-TEOF       = nas-TEOF
 
 -- Canonical Quiet witnesses for common separator-prefixed residuals.
 quiet-TRParen : ∀ rest → Quiet (TRParen ∷ rest)
-quiet-TRParen _ = tt
+quiet-TRParen _ = q-TRParen
 
 quiet-[] : Quiet []
-quiet-[] = tt
+quiet-[] = q-[]
+
+-- Witnesses for reserved-word leads used inside inner-body helpers.
+quiet-in : ∀ rest → Quiet (TWord "in" ∷ rest)
+quiet-in _ = q-word-res refl
+
+quiet-of : ∀ rest → Quiet (TWord "of" ∷ rest)
+quiet-of _ = q-word-res refl
 
 ------------------------------------------------------------------------
 -- Wrappers: given a `ParsesAtomExpr toks e rest` with `Quiet rest`,
@@ -279,7 +196,7 @@ atomExpr→app :
   ∀ {toks e} (rest : List Token) → Quiet rest
   → ParsesAtomExpr toks e rest
   → ParsesApp toks e rest
-atomExpr→app rest q dAE = papp-mk dAE (papp-done (quiet→notAtom {rest} q))
+atomExpr→app rest q dAE = papp-mk dAE (papp-done (quiet→notAtom q))
 
 atomExpr→unary :
   ∀ {toks e} (rest : List Token) → Quiet rest
@@ -291,25 +208,25 @@ atomExpr→mul :
   ∀ {toks e} (rest : List Token) → Quiet rest
   → ParsesAtomExpr toks e rest
   → ParsesMul toks e rest
-atomExpr→mul rest q dAE = pm-mk (atomExpr→unary rest q dAE) (pmt-done (quiet→notMul {rest} q))
+atomExpr→mul rest q dAE = pm-mk (atomExpr→unary rest q dAE) (pmt-done (quiet→notMul q))
 
 atomExpr→add :
   ∀ {toks e} (rest : List Token) → Quiet rest
   → ParsesAtomExpr toks e rest
   → ParsesAdd toks e rest
-atomExpr→add rest q dAE = pa-mk (atomExpr→mul rest q dAE) (pat-done (quiet→notAdd {rest} q))
+atomExpr→add rest q dAE = pa-mk (atomExpr→mul rest q dAE) (pat-done (quiet→notAdd q))
 
 atomExpr→cmp :
   ∀ {toks e} (rest : List Token) → Quiet rest
   → ParsesAtomExpr toks e rest
   → ParsesCmp toks e rest
-atomExpr→cmp rest q dAE = pcm-noop (atomExpr→add rest q dAE) (quiet→notCmp {rest} q)
+atomExpr→cmp rest q dAE = pcm-noop (atomExpr→add rest q dAE) (quiet→notCmp q)
 
 atomExpr→comp :
   ∀ {toks e} (rest : List Token) → Quiet rest
   → ParsesAtomExpr toks e rest
   → ParsesComp toks e rest
-atomExpr→comp rest q dAE = pc-mk (atomExpr→cmp rest q dAE) (pct-done (quiet→notDot {rest} q))
+atomExpr→comp rest q dAE = pc-mk (atomExpr→cmp rest q dAE) (pct-done (quiet→notDot q))
 
 atomExpr→expr :
   ∀ {toks e} (rest : List Token) → Quiet rest
@@ -334,6 +251,33 @@ atomExpr→add' :
   → ParsesAdd toks e rest
 atomExpr→add' nas nm nadd dAE =
   pa-mk (atomExpr→mul' nas nm dAE) (pat-done nadd)
+
+------------------------------------------------------------------------
+-- AppArgOk for a printed concrete expression.
+--
+-- Every `ConcreteExpr` prints to a token stream whose first token is
+-- a valid atom-start: TLParen for compound shapes, a literal for
+-- literal leaves, a non-reserved TWord for variables. We derive
+-- `AppArgOk (printGExpr g ++ rest)` uniformly by case on `c`.
+------------------------------------------------------------------------
+
+concreteExpr-AppArgOk :
+    ∀ {g : GExpr} (c : ConcreteExpr g) (rest : List Token)
+  → AppArgOk (printGExpr g ++ rest)
+concreteExpr-AppArgOk c-e-unit   _ = aao-TLParen
+concreteExpr-AppArgOk c-e-int    _ = aao-TInt
+concreteExpr-AppArgOk c-e-string _ = aao-TString
+concreteExpr-AppArgOk (c-e-var  nr) _ = aao-word nr
+concreteExpr-AppArgOk (c-e-qual nr) _ = aao-word nr
+concreteExpr-AppArgOk (c-e-lam   _) _ = aao-TLParen
+concreteExpr-AppArgOk (c-e-app  _ _) _ = aao-TLParen
+concreteExpr-AppArgOk (c-e-pair _ _) _ = aao-TLParen
+concreteExpr-AppArgOk (c-e-annot _ _) _ = aao-TLParen
+concreteExpr-AppArgOk (c-e-binop _ _) _ = aao-TLParen
+concreteExpr-AppArgOk (c-e-unary {op = G.OpNeg} _) _ = aao-TLParen
+concreteExpr-AppArgOk (c-e-comp  _ _) _ = aao-TLParen
+concreteExpr-AppArgOk (c-e-let1  _ _) _ = aao-TLParen
+concreteExpr-AppArgOk (c-e-destr _ _ _) _ = aao-TLParen
 
 ------------------------------------------------------------------------
 -- Structural round-trip.
@@ -370,7 +314,7 @@ mutual
     rewrite ++-assoc (printGExpr a) (TComma ∷ printGExpr b ++ TRParen ∷ []) rest
           | ++-assoc (printGExpr b) (TRParen ∷ []) rest
     = pae-paren
-        (rt-expr cA (TComma ∷ printGExpr b ++ TRParen ∷ rest) tt)
+        (rt-expr cA (TComma ∷ printGExpr b ++ TRParen ∷ rest) q-TComma)
         (ppc-pair
           (rt-expr cB (TRParen ∷ rest) (quiet-TRParen rest))
           ppt-close)
@@ -392,7 +336,7 @@ mutual
         (pa-mk (pm-mk (pu-app (papp-mk
           (pae-lambda (plp-arg (plp-body
             (rt-expr cB (TRParen ∷ rest) (quiet-TRParen rest)))))
-          (papp-done tt)))
+          (papp-done nas-TRParen)))
           (pmt-done tt))
           (pat-done tt))
         tt)
@@ -404,7 +348,7 @@ mutual
     rewrite ++-assoc (printGExpr e) (TColon ∷ printGType t ++ TRParen ∷ []) rest
           | ++-assoc (printGType t) (TRParen ∷ []) rest
     = pae-paren
-        (rt-expr cE (TColon ∷ printGType t ++ TRParen ∷ rest) tt)
+        (rt-expr cE (TColon ∷ printGType t ++ TRParen ∷ rest) q-TColon)
         (ppc-annot (rt-type cT (TRParen ∷ rest) tt))
 
   -- EBinOp op a b: TLParen ∷ printGExpr a ++ binOpToken op ∷ printGExpr b ++ TRParen ∷ rest
@@ -430,6 +374,7 @@ mutual
         (pct-done tt)))
       ppc-close
 
+
   -- ECompose f g: TLParen ∷ printGExpr f ++ TDot ∷ printGExpr g ++ TRParen ∷ rest
   rt-atom-expr (c-e-comp {f = f} {g = g} cF cG) rest
     rewrite ++-assoc (printGExpr f) (TDot ∷ printGExpr g ++ TRParen ∷ []) rest
@@ -449,9 +394,10 @@ mutual
         (pe-mk (pc-mk (pcm-noop
           (pa-mk (pm-mk (pu-app (papp-mk
             (pae-let (plet-single
-              (rt-expr cV (TWord "in" ∷ printGExpr body ++ TRParen ∷ rest) tt)
+              (rt-expr cV (TWord "in" ∷ printGExpr body ++ TRParen ∷ rest)
+                      (q-word-res refl))
               (plin (rt-expr cBody (TRParen ∷ rest) (quiet-TRParen rest)))))
-            (papp-done tt)))
+            (papp-done nas-TRParen)))
             (pmt-done tt))
             (pat-done tt))
           tt)
@@ -482,13 +428,15 @@ mutual
                   (TWord "of" ∷ TLBrace ∷ TWord "Left" ∷ TWord x ∷ TArrow
                    ∷ printGExpr l
                    ++ TSemicolon ∷ TWord "Right" ∷ TWord y ∷ TArrow
-                   ∷ printGExpr r ++ TRBrace ∷ TRParen ∷ rest) tt)
+                   ∷ printGExpr r ++ TRBrace ∷ TRParen ∷ rest)
+                  (q-word-res refl))
                 (pdof (pdb
                   (rt-expr cL
                     (TSemicolon ∷ TWord "Right" ∷ TWord y ∷ TArrow
-                     ∷ printGExpr r ++ TRBrace ∷ TRParen ∷ rest) tt)
-                  (prb (rt-expr cR (TRBrace ∷ TRParen ∷ rest) tt))))))
-            (papp-done tt)))
+                     ∷ printGExpr r ++ TRBrace ∷ TRParen ∷ rest)
+                    q-TSemicolon)
+                  (prb (rt-expr cR (TRBrace ∷ TRParen ∷ rest) q-TRBrace))))))
+            (papp-done nas-TRParen)))
             (pmt-done tt))
             (pat-done tt))
           tt)
@@ -510,13 +458,13 @@ mutual
     pe-mk (pc-mk (pcm-noop
       (pa-mk (pm-mk (pu-app (papp-mk
         (rt-atom-expr cF (printGExpr x ++ rest))
-        (papp-arg
+        (papp-arg (concreteExpr-AppArgOk cX rest)
           (rt-atom-expr cX rest)
-          (papp-done (quiet→notAtom {rest} q)))))
-        (pmt-done (quiet→notMul {rest} q)))
-        (pat-done (quiet→notAdd {rest} q)))
-      (quiet→notCmp {rest} q))
-      (pct-done (quiet→notDot {rest} q)))
+          (papp-done (quiet→notAtom q)))))
+        (pmt-done (quiet→notMul q)))
+        (pat-done (quiet→notAdd q)))
+      (quiet→notCmp q))
+      (pct-done (quiet→notDot q)))
 
   -- (a op b) inner body: residual after inner is TRParen ∷ rest.
   -- Routing: cmp dispatches on the op. For +/-, cmp goes through
@@ -532,10 +480,10 @@ mutual
   rt-expr-binop-body {b = b} G.OpAdd cA cB rest =
     pe-mk (pc-mk (pcm-noop
       (pa-mk
-        (atomExpr→mul' tt tt
+        (atomExpr→mul' nas-TPlus tt
           (rt-atom-expr cA (TPlus ∷ printGExpr b ++ TRParen ∷ rest)))
         (pat-plus
-          (atomExpr→mul' tt tt (rt-atom-expr cB (TRParen ∷ rest)))
+          (atomExpr→mul' nas-TRParen tt (rt-atom-expr cB (TRParen ∷ rest)))
           (pat-done tt)))
       tt)
       (pct-done tt))
@@ -543,10 +491,10 @@ mutual
   rt-expr-binop-body {b = b} G.OpSub cA cB rest =
     pe-mk (pc-mk (pcm-noop
       (pa-mk
-        (atomExpr→mul' tt tt
+        (atomExpr→mul' nas-TMinus tt
           (rt-atom-expr cA (TMinus ∷ printGExpr b ++ TRParen ∷ rest)))
         (pat-minus
-          (atomExpr→mul' tt tt (rt-atom-expr cB (TRParen ∷ rest)))
+          (atomExpr→mul' nas-TRParen tt (rt-atom-expr cB (TRParen ∷ rest)))
           (pat-done tt)))
       tt)
       (pct-done tt))
@@ -558,11 +506,11 @@ mutual
         (pm-mk
           (pu-app (papp-mk
             (rt-atom-expr cA (TStar ∷ printGExpr b ++ TRParen ∷ rest))
-            (papp-done tt)))
+            (papp-done nas-TStar)))
           (pmt-star
             (pu-app (papp-mk
               (rt-atom-expr cB (TRParen ∷ rest))
-              (papp-done tt)))
+              (papp-done nas-TRParen)))
             (pmt-done tt)))
         (pat-done tt))
       tt)
@@ -574,11 +522,11 @@ mutual
         (pm-mk
           (pu-app (papp-mk
             (rt-atom-expr cA (TSlash ∷ printGExpr b ++ TRParen ∷ rest))
-            (papp-done tt)))
+            (papp-done nas-TSlash)))
           (pmt-slash
             (pu-app (papp-mk
               (rt-atom-expr cB (TRParen ∷ rest))
-              (papp-done tt)))
+              (papp-done nas-TRParen)))
             (pmt-done tt)))
         (pat-done tt))
       tt)
@@ -590,11 +538,11 @@ mutual
         (pm-mk
           (pu-app (papp-mk
             (rt-atom-expr cA (TPercent ∷ printGExpr b ++ TRParen ∷ rest))
-            (papp-done tt)))
+            (papp-done nas-TPercent)))
           (pmt-percent
             (pu-app (papp-mk
               (rt-atom-expr cB (TRParen ∷ rest))
-              (papp-done tt)))
+              (papp-done nas-TRParen)))
             (pmt-done tt)))
         (pat-done tt))
       tt)
@@ -605,49 +553,49 @@ mutual
   rt-expr-binop-body {b = b} G.OpLt cA cB rest =
     pe-mk (pc-mk
       (pcm-lt
-        (atomExpr→add' tt tt tt
+        (atomExpr→add' nas-TLt tt tt
           (rt-atom-expr cA (TLt ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' tt tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpLe cA cB rest =
     pe-mk (pc-mk
       (pcm-le
-        (atomExpr→add' tt tt tt
+        (atomExpr→add' nas-TLe tt tt
           (rt-atom-expr cA (TLe ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' tt tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpGt cA cB rest =
     pe-mk (pc-mk
       (pcm-gt
-        (atomExpr→add' tt tt tt
+        (atomExpr→add' nas-TGt tt tt
           (rt-atom-expr cA (TGt ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' tt tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpGe cA cB rest =
     pe-mk (pc-mk
       (pcm-ge
-        (atomExpr→add' tt tt tt
+        (atomExpr→add' nas-TGe tt tt
           (rt-atom-expr cA (TGe ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' tt tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpEq cA cB rest =
     pe-mk (pc-mk
       (pcm-eq
-        (atomExpr→add' tt tt tt
+        (atomExpr→add' nas-TEqEq tt tt
           (rt-atom-expr cA (TEqEq ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' tt tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpNe cA cB rest =
     pe-mk (pc-mk
       (pcm-ne
-        (atomExpr→add' tt tt tt
+        (atomExpr→add' nas-TNeq tt tt
           (rt-atom-expr cA (TNeq ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' tt tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
       (pct-done tt))
 
   -- (f . g) inner body: composition via pct-dot.
@@ -661,13 +609,13 @@ mutual
     pe-mk (pc-mk
       -- left at cmp level: residual TDot ∷ ... satisfies NotCmp ∧ NotAdd ∧ NotMul ∧ NotAtom.
       (pcm-noop
-        (atomExpr→add' tt tt tt
+        (atomExpr→add' nas-TDot tt tt
           (rt-atom-expr cF (TDot ∷ printGExpr g ++ TRParen ∷ rest)))
         tt)
       (pct-dot
         -- right at cmp level: residual TRParen ∷ rest.
         (pcm-noop
-          (atomExpr→add' tt tt tt (rt-atom-expr cG (TRParen ∷ rest)))
+          (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cG (TRParen ∷ rest)))
           tt)
         (pct-done tt)))
 
@@ -681,4 +629,4 @@ round-trip-rel-expr :
   → ParsesExpr (printGExpr g) (gexprToRaw c) []
 round-trip-rel-expr {g} c
   rewrite sym (++-identityʳ (printGExpr g))
-  = rt-expr c [] tt
+  = rt-expr c [] q-[]
