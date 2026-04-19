@@ -12,11 +12,20 @@ This folder tracks the planning history and dependencies between design decision
 │       └── 0.1.3-normalizer-restructure
 │           └── 0.1.4-cctower
 │
-└── 0.2-cata-postulates
-    └── 0.2.2-cata-remaining
-        └── 0.2.3-positive-invariants
-            └── 0.2.4-categorical-layer-0  ← ACTIVE
+├── 0.2-cata-postulates
+│   └── 0.2.2-cata-remaining
+│       └── 0.2.3-positive-invariants
+│           └── 0.2.4-categorical-layer-0  ← ACTIVE (resume next)
+│               └── 0.2.5-type-polytype-split  (completed 2026-04-17)
+│                   └── 0.2.6-usage-indexed-expr  (completed 2026-04-17)
+│
+└── 0.3-frontend-verification-gaps  (completed 2026-04-19)
 ```
+
+**Current focus**: resume `0.2.4-categorical-layer-0` — compiler-side
+Layer 0 integration (MAlonzo extraction, Layer 0 test harness). The
+frontend verification track (0.2.5 / 0.2.6 / 0.3) has landed; the
+backend track picks up where it paused on 2026-04-14.
 
 ## Numbering Scheme
 
