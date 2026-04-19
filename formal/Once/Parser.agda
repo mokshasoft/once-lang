@@ -64,6 +64,9 @@ import Once.Parser.ExprRelation
 -- `parseExpr` and `ParsesExpr`.
 import Once.Grammar.ExprBridge
 
+-- Phase 3c of task #38: structural round-trip for the parsing relation.
+import Once.Grammar.ExprRelRoundtrip
+
 
 ------------------------------------------------------------------------
 -- Top-level Parse Function
