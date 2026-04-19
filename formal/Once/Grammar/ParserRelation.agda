@@ -186,3 +186,79 @@ mutual
   quantityTokenOf Zero = TCaret0
   quantityTokenOf One  = TCaret1
   quantityTokenOf Many = TCaretW
+
+------------------------------------------------------------------------
+-- Shrinks lemmas: every successful derivation leaves a strictly
+-- smaller (or ≤) residual. Pure structural induction on derivations,
+-- no parser machinery involved. Used by the parser itself (see
+-- `Once.Parser.Type`) to construct the Acc arguments of its recursive
+-- sub-calls, and by soundness proofs downstream.
+------------------------------------------------------------------------
+
+open import Data.List using (length)
+open import Data.Nat using (_<_; _≤_; s≤s)
+open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <⇒≤;
+                                        n≤1+n)
+
+mutual
+
+  ParsesAtom-shrinks :
+    ∀ {toks T rest} → ParsesAtom toks T rest → length rest < length toks
+  ParsesAtom-shrinks (pa-unit   rest) = s≤s ≤-refl
+  ParsesAtom-shrinks (pa-void   rest) = s≤s ≤-refl
+  ParsesAtom-shrinks (pa-int    rest) = s≤s ≤-refl
+  ParsesAtom-shrinks (pa-float  rest) = s≤s ≤-refl
+  ParsesAtom-shrinks (pa-buffer rest) = s≤s ≤-refl
+  ParsesAtom-shrinks (pa-string rest) = s≤s ≤-refl
+  ParsesAtom-shrinks (pa-eff dA dB) =
+    <-trans (ParsesAtom-shrinks dB)
+            (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl))
+  ParsesAtom-shrinks (pa-io dA) =
+    <-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl)
+  ParsesAtom-shrinks (pa-paren dT refl) =
+    <-trans (s≤s ≤-refl)
+            (<-trans (ParsesType-shrinks dT) (s≤s ≤-refl))
+
+  ParsesProd-shrinks :
+    ∀ {toks T rest} → ParsesProd toks T rest → length rest < length toks
+  ParsesProd-shrinks (pp-mk dA dTail) =
+    ≤-<-trans (ParsesProdTail-shrinks dTail) (ParsesAtom-shrinks dA)
+
+  ParsesProdTail-shrinks :
+    ∀ {left toks T rest} → ParsesProdTail left toks T rest
+    → length rest ≤ length toks
+  ParsesProdTail-shrinks (ppt-done _) = ≤-refl
+  ParsesProdTail-shrinks (ppt-star dB dTail) =
+    <⇒≤ (≤-<-trans (ParsesProdTail-shrinks dTail)
+                   (<-trans (ParsesAtom-shrinks dB) (s≤s ≤-refl)))
+
+  ParsesSum-shrinks :
+    ∀ {toks T rest} → ParsesSum toks T rest → length rest < length toks
+  ParsesSum-shrinks (ps-mk dA dTail) =
+    ≤-<-trans (ParsesSumTail-shrinks dTail) (ParsesProd-shrinks dA)
+
+  ParsesSumTail-shrinks :
+    ∀ {left toks T rest} → ParsesSumTail left toks T rest
+    → length rest ≤ length toks
+  ParsesSumTail-shrinks (pst-done _) = ≤-refl
+  ParsesSumTail-shrinks (pst-plus dB dTail) =
+    <⇒≤ (≤-<-trans (ParsesSumTail-shrinks dTail)
+                   (<-trans (ParsesProd-shrinks dB) (s≤s ≤-refl)))
+
+  ParsesArrowTail-shrinks :
+    ∀ {left toks T rest} → ParsesArrowTail left toks T rest
+    → length rest ≤ length toks
+  ParsesArrowTail-shrinks (pat-done _) = ≤-refl
+  ParsesArrowTail-shrinks (pat-arrow-g {q = Zero} dT) =
+    <⇒≤ (<-trans (ParsesType-shrinks dT) (s≤s (n≤1+n _)))
+  ParsesArrowTail-shrinks (pat-arrow-g {q = One}  dT) =
+    <⇒≤ (<-trans (ParsesType-shrinks dT) (s≤s (n≤1+n _)))
+  ParsesArrowTail-shrinks (pat-arrow-g {q = Many} dT) =
+    <⇒≤ (<-trans (ParsesType-shrinks dT) (s≤s (n≤1+n _)))
+  ParsesArrowTail-shrinks (pat-arrow dT) =
+    <⇒≤ (<-trans (ParsesType-shrinks dT) (s≤s ≤-refl))
+
+  ParsesType-shrinks :
+    ∀ {toks T rest} → ParsesType toks T rest → length rest < length toks
+  ParsesType-shrinks (pt-mk dS dA) =
+    ≤-<-trans (ParsesArrowTail-shrinks dA) (ParsesSum-shrinks dS)
