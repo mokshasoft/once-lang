@@ -31,6 +31,7 @@ open import Once.Parser.Core
 open import Once.Parser.Type using (parseType; parseTypeWF; stripType)
 open import Once.Parser.TypeRelation using (ParsesType-shrinks)
 open import Once.Parser.Expr using (parseExpr; parseExprWF)
+open import Once.Parser.ExprRelation using (ParsesExpr-shrinks)
 
 ------------------------------------------------------------------------
 -- Module Types
@@ -81,7 +82,7 @@ parseTypeB toks with parseTypeWF toks (<-wellFounded (length toks))
 parseExprB : (toks : List Token) → ParseAtB {RawExpr} toks
 parseExprB toks with parseExprWF toks (<-wellFounded (length toks))
 ... | nothing = nothing
-... | just (e , rest , lt) = just (e , rest , lt)
+... | just (e , rest , d) = just (e , rest , ParsesExpr-shrinks d)
 
 ------------------------------------------------------------------------
 -- Bounded token consumers
