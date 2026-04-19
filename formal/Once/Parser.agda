@@ -44,6 +44,15 @@ import Once.Grammar.Printer
 import Once.Grammar.Roundtrip
 import Once.Grammar.ParserInvariant
 
+-- G1 expression-side round-trip infrastructure (plan 0.3 task #38):
+-- printer, ConcreteExpr predicate, converter, and per-leaf round-trip
+-- smoke tests. The general compound-case theorem is future work —
+-- see `Once.Grammar.ExprRoundtrip`'s header comment for the
+-- outstanding blocker (Parser/Expr Dec-valued refactor).
+import Once.Grammar.ExprPrinter
+import Once.Grammar.ExprConvert
+import Once.Grammar.ExprRoundtrip
+
 
 ------------------------------------------------------------------------
 -- Top-level Parse Function
