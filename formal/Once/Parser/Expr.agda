@@ -344,11 +344,11 @@ parseLamParamsWF (TEOF       ∷ _) _ = nothing
 -- c-e-let1). Multi-binding `; more-lets in body` is rejected.
 ------------------------------------------------------------------------
 
-parseLetContWF name val (TWord w ∷ rest) (acc rec) with w ≟ "in"
-... | yes refl with parseExprWF rest (rec (s≤s ≤-refl))
+parseLetContWF name val (TWord w ∷ rest) (acc rec) with wordEq-view w "in"
+... | we-match refl with parseExprWF rest (rec (s≤s ≤-refl))
 ...   | nothing                  = nothing
 ...   | just (body , rest' , d) = just (RLet name val body , rest' , plin d)
-parseLetContWF name val (TWord w ∷ rest) _ | no _ = nothing
+parseLetContWF name val (TWord w ∷ rest) _ | we-nomatch _ = nothing
 parseLetContWF _ _ []               _ = nothing
 parseLetContWF _ _ (TInt _     ∷ _) _ = nothing
 parseLetContWF _ _ (TString _  ∷ _) _ = nothing
@@ -429,9 +429,9 @@ rbView toks = rb-other toks
 
 parseRightBranchWF scrut x left toks (acc rec) with rbView toks
 ... | rb-other _ = nothing
-... | rb-head w y rest with w ≟ "Right"
-...   | no _ = nothing
-...   | yes refl
+... | rb-head w y rest with wordEq-view w "Right"
+...   | we-nomatch _ = nothing
+...   | we-match refl
       with parseExprWF rest (rec (s≤s (m≤n⇒m≤1+n (m≤n⇒m≤1+n (n≤1+n _)))))
 ...     | nothing                              = nothing
 ...     | just (right , TRBrace ∷ final , dR) =
@@ -486,9 +486,9 @@ dbView toks                                 = db-other toks
 
 parseDestructBranchesWF scrut toks (acc rec) with dbView toks
 ... | db-other _ = nothing
-... | db-head w x rest with w ≟ "Left"
-...   | no _ = nothing
-...   | yes refl
+... | db-head w x rest with wordEq-view w "Left"
+...   | we-nomatch _ = nothing
+...   | we-match refl
       with parseExprWF rest (rec (s≤s (m≤n⇒m≤1+n (n≤1+n _))))
 ...     | nothing                  = nothing
 ...     | just (left , rest' , dL)
@@ -513,9 +513,9 @@ doView toks                        = do-other toks
 
 parseDestructOfWF scrut toks (acc rec) with doView toks
 ... | do-other _ = nothing
-... | do-head w rest with w ≟ "of"
-...   | no _ = nothing
-...   | yes refl
+... | do-head w rest with wordEq-view w "of"
+...   | we-nomatch _ = nothing
+...   | we-match refl
       with parseDestructBranchesWF scrut rest (rec (s≤s (n≤1+n _)))
 ...     | nothing                  = nothing
 ...     | just (body , rest' , dB) = just (body , rest' , pdof dB)
@@ -840,13 +840,13 @@ atomExprWordWF :
     (name : String) (rest : List Token)
   → Acc _<_ (length rest)
   → ParseAtomExprD (TWord name ∷ rest)
-atomExprWordWF name rest a with name ≟ "let"
-... | yes refl = parseAtomExprWF-TLet rest a
-... | no _ with name ≟ "destruct"
-...   | yes refl = parseAtomExprWF-TDestruct rest a
-...   | no _ with isReserved name in eqR
-...     | true  = nothing
-...     | false = atomExprVarWF name eqR rest
+atomExprWordWF name rest a with wordEq-view name "let"
+... | we-match refl = parseAtomExprWF-TLet rest a
+... | we-nomatch _ with wordEq-view name "destruct"
+...   | we-match refl = parseAtomExprWF-TDestruct rest a
+...   | we-nomatch _ with reserved-view name
+...     | rv-reserved _      = nothing
+...     | rv-not-reserved eq = atomExprVarWF name eq rest
 
 parseAtomExprWF [] _ = nothing
 parseAtomExprWF (TLParen  ∷ rest) (acc rec) = parseAtomExprWF-TLParen rest (rec (s≤s ≤-refl))
@@ -909,15 +909,15 @@ parseAppTailWF f (TLambda   ∷ rest) (acc rec)
 -- TWord: reserved words stop the tail; non-reserved proceed into
 -- parseAtomExprWF. We case on isReserved WITH `in`-binding so the
 -- NotAtomStart / AppArgOk witness can be built from the same dispatch.
-parseAppTailWF f (TWord s ∷ rest) (acc rec) with isReserved s in eqR
-... | true  = just (f , TWord s ∷ rest , papp-done (nas-word-res eqR))
-... | false
+parseAppTailWF f (TWord s ∷ rest) (acc rec) with reserved-view s
+... | rv-reserved isR = just (f , TWord s ∷ rest , papp-done (nas-word-res isR))
+... | rv-not-reserved notR
     with parseAtomExprWF (TWord s ∷ rest) (acc rec)
 ...   | nothing = nothing
 ...   | just (arg , rest' , dA)
       with parseAppTailWF (RApp f arg) rest' (rec (ParsesAtomExpr-shrinks dA))
 ...     | nothing                   = nothing
-...     | just (body , rest'' , dT) = just (body , rest'' , papp-arg (aao-word eqR) dA dT)
+...     | just (body , rest'' , dT) = just (body , rest'' , papp-arg (aao-word notR) dA dT)
 parseAppTailWF f (TInt n    ∷ rest) (acc rec)
   with parseAtomExprWF (TInt n ∷ rest) (acc rec)
 ... | nothing = nothing

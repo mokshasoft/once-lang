@@ -56,7 +56,9 @@ open import Data.Bool using (Bool; true; false)
 open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n)
 open import Data.Nat.Properties using (≤-refl; <-trans; ≤-trans; ≤-<-trans;
                                         <-≤-trans; <⇒≤; n≤1+n; m≤n⇒m≤1+n)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl)
+open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl)
+open import Relation.Nullary using (yes; no; ¬_)
+open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Unit using (⊤; tt)
 open import Data.Empty using (⊥)
 
@@ -180,8 +182,36 @@ data AppArgOk : List Token → Set where
               → AppArgOk (TWord name ∷ rest)
 
 ------------------------------------------------------------------------
--- Parsing relations (mutual).
+-- Inductive view datatypes for string-dispatch sites
+--
+-- The parser previously used `with isReserved s in eqR` and
+-- `with w ≟ "in"` directly, which left the evidence opaque to external
+-- proofs (Agda's ill-typed-with-abstraction — see lessons-learned doc).
+-- Wrapping each dispatch in an inductive view that carries the evidence
+-- as a constructor argument makes downstream completeness proofs
+-- dispatch cleanly: `with reserved-view name` yields either
+-- `rv-reserved isR` or `rv-not-reserved notR`, each carrying the
+-- needed equation as first-class evidence.
 ------------------------------------------------------------------------
+
+data ReservedView (name : String) : Set where
+  rv-reserved     : isReserved name ≡ true  → ReservedView name
+  rv-not-reserved : isReserved name ≡ false → ReservedView name
+
+reserved-view : ∀ name → ReservedView name
+reserved-view name with isReserved name in eq
+... | true  = rv-reserved eq
+... | false = rv-not-reserved eq
+
+-- Generic "does this word equal a fixed target?" view.
+data WordEqView (word target : String) : Set where
+  we-match   : word ≡ target → WordEqView word target
+  we-nomatch : word ≢ target → WordEqView word target
+
+wordEq-view : (w t : String) → WordEqView w t
+wordEq-view w t with w ≟ t
+... | yes eq  = we-match eq
+... | no  neq = we-nomatch neq
 
 mutual
 
