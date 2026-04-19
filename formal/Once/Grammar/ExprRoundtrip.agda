@@ -243,31 +243,26 @@ round-trip-c-e-string = refl
 -- cover canonical instances.
 
 ------------------------------------------------------------------------
--- Top-level theorem claim (partially landed — Phase 3c of task #38).
+-- Top-level theorem (Phase 3c of task #38, fully landed).
 --
--- STATUS: Phase 3a+3b+3c infrastructure landed:
---   * Phase 3a: `Once.Parser.ExprRelation` — inductive parsing relations.
---   * Phase 3b: `Once.Parser.Expr` Dec-valued refactor — each parser
---     returns the derivation inline.
---   * Phase 3c partial: `Once.Grammar.ExprBridge` — soundness direction.
---   * Phase 3c partial: `Once.Grammar.ExprRelRoundtrip` — structural
---     round-trip `round-trip-rel-expr`: for every `ConcreteExpr g`,
---     `ParsesExpr (printGExpr g) (gexprToRaw c) []`.
+-- Phase 3a: `Once.Parser.ExprRelation` — inductive parsing relations.
+-- Phase 3b: `Once.Parser.Expr` Dec-valued refactor — each parser
+--   returns the derivation inline.
+-- Phase 3c: `Once.Grammar.ExprBridge` — soundness + completeness
+--   bridges between the relation and the WF-parser.
+-- Phase 3c: `Once.Grammar.ExprRelRoundtrip` — structural round-trip
+--   `round-trip-rel-expr`: for every `ConcreteExpr g`,
+--   `ParsesExpr (printGExpr g) (gexprToRaw c) []`.
 --
--- REMAINING: `complete-expr : ParsesExpr toks e rest → parseExpr toks
--- ≡ just (e , rest)` — the WF-function completeness bridge analogous
--- to `complete-type` in `Once.Grammar.ParserBridge`. Once it lands,
--- the final theorem composes trivially:
---
---   round-trip-concrete-expr : ∀ {g : GExpr} (c : ConcreteExpr g)
---                            → parseExpr (printGExpr g)
---                            ≡ just (gexprToRaw c , [])
---   round-trip-concrete-expr c = complete-expr (round-trip-rel-expr c)
---
--- The completeness proof is mechanical but long (~1500-2000 lines
--- of `complete-XWFraw` clauses, one per mutual level × derivation
--- constructor). Structure mirrors `complete-typeWFraw` in
--- `Once.Grammar.ParserBridge`.
+-- The round-trip follows by composing `round-trip-rel-expr` (the
+-- structural direction) with `complete-expr` (the WF-function
+-- completeness bridge).
 ------------------------------------------------------------------------
 
 open import Once.Grammar.ExprRelRoundtrip using (round-trip-rel-expr)
+open import Once.Grammar.ExprBridge using (complete-expr)
+
+round-trip-concrete-expr :
+  ∀ {g : GExpr} (c : ConcreteExpr g)
+  → parseExpr (printGExpr g) ≡ just (gexprToRaw c , [])
+round-trip-concrete-expr c = complete-expr (round-trip-rel-expr c)
