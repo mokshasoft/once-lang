@@ -96,51 +96,51 @@ parseArrowTailWF-irr t toks a b =
 
 parseType-as-strippedWF :
   ∀ toks (a : Acc _<_ (length toks))
-  → parseType toks ≡ stripBound< toks (parseTypeWF toks a)
+  → parseType toks ≡ stripType toks (parseTypeWF toks a)
 parseType-as-strippedWF toks a =
-  cong (stripBound< toks)
+  cong (stripType toks)
        (parseTypeWF-irr toks (<-wellFounded (length toks)) a)
 
 parseTypeAtom-as-strippedWF :
   ∀ toks (a : Acc _<_ (length toks))
-  → parseTypeAtom toks ≡ stripBound< toks (parseTypeAtomWF toks a)
+  → parseTypeAtom toks ≡ stripAtom toks (parseTypeAtomWF toks a)
 parseTypeAtom-as-strippedWF toks a =
-  cong (stripBound< toks)
+  cong (stripAtom toks)
        (parseTypeAtomWF-irr toks (<-wellFounded (length toks)) a)
 
 parseTypeSum-as-strippedWF :
   ∀ toks (a : Acc _<_ (length toks))
-  → parseTypeSum toks ≡ stripBound< toks (parseTypeSumWF toks a)
+  → parseTypeSum toks ≡ stripSum toks (parseTypeSumWF toks a)
 parseTypeSum-as-strippedWF toks a =
-  cong (stripBound< toks)
+  cong (stripSum toks)
        (parseTypeSumWF-irr toks (<-wellFounded (length toks)) a)
 
 parseTypeProd-as-strippedWF :
   ∀ toks (a : Acc _<_ (length toks))
-  → parseTypeProd toks ≡ stripBound< toks (parseTypeProdWF toks a)
+  → parseTypeProd toks ≡ stripProd toks (parseTypeProdWF toks a)
 parseTypeProd-as-strippedWF toks a =
-  cong (stripBound< toks)
+  cong (stripProd toks)
        (parseTypeProdWF-irr toks (<-wellFounded (length toks)) a)
 
 parseTypeProdTail-as-strippedWF :
   ∀ t toks (a : Acc _<_ (length toks))
-  → parseTypeProdTail t toks ≡ stripBound≤ toks (parseTypeProdTailWF t toks a)
+  → parseTypeProdTail t toks ≡ stripProdTail t toks (parseTypeProdTailWF t toks a)
 parseTypeProdTail-as-strippedWF t toks a =
-  cong (stripBound≤ toks)
+  cong (stripProdTail t toks)
        (parseTypeProdTailWF-irr t toks (<-wellFounded (length toks)) a)
 
 parseTypeSumTail-as-strippedWF :
   ∀ t toks (a : Acc _<_ (length toks))
-  → parseTypeSumTail t toks ≡ stripBound≤ toks (parseTypeSumTailWF t toks a)
+  → parseTypeSumTail t toks ≡ stripSumTail t toks (parseTypeSumTailWF t toks a)
 parseTypeSumTail-as-strippedWF t toks a =
-  cong (stripBound≤ toks)
+  cong (stripSumTail t toks)
        (parseTypeSumTailWF-irr t toks (<-wellFounded (length toks)) a)
 
 parseArrowTail-as-strippedWF :
   ∀ t toks (a : Acc _<_ (length toks))
-  → parseArrowTail t toks ≡ stripBound≤ toks (parseArrowTailWF t toks a)
+  → parseArrowTail t toks ≡ stripArrowTail t toks (parseArrowTailWF t toks a)
 parseArrowTail-as-strippedWF t toks a =
-  cong (stripBound≤ toks)
+  cong (stripArrowTail t toks)
        (parseArrowTailWF-irr t toks (<-wellFounded (length toks)) a)
 
 ------------------------------------------------------------------------
@@ -161,41 +161,41 @@ mutual
 
   complete-atomWFraw :
     ∀ {toks T rest} (d : ParsesAtom toks T rest) (a : Acc _<_ (length toks))
-    → ∃ λ (b : length rest < length toks)
-    → parseTypeAtomWF toks a ≡ just (T , rest , b)
+    → ∃ λ (d' : ParsesAtom toks T rest)
+    → parseTypeAtomWF toks a ≡ just (T , rest , d')
 
   complete-prodWFraw :
     ∀ {toks T rest} (d : ParsesProd toks T rest) (a : Acc _<_ (length toks))
-    → ∃ λ (b : length rest < length toks)
-    → parseTypeProdWF toks a ≡ just (T , rest , b)
+    → ∃ λ (d' : ParsesProd toks T rest)
+    → parseTypeProdWF toks a ≡ just (T , rest , d')
 
   complete-prodTailWFraw :
     ∀ {left toks T rest} (d : ParsesProdTail left toks T rest)
       (a : Acc _<_ (length toks))
-    → ∃ λ (b : length rest ≤ length toks)
-    → parseTypeProdTailWF left toks a ≡ just (T , rest , b)
+    → ∃ λ (d' : ParsesProdTail left toks T rest)
+    → parseTypeProdTailWF left toks a ≡ just (T , rest , d')
 
   complete-sumWFraw :
     ∀ {toks T rest} (d : ParsesSum toks T rest) (a : Acc _<_ (length toks))
-    → ∃ λ (b : length rest < length toks)
-    → parseTypeSumWF toks a ≡ just (T , rest , b)
+    → ∃ λ (d' : ParsesSum toks T rest)
+    → parseTypeSumWF toks a ≡ just (T , rest , d')
 
   complete-sumTailWFraw :
     ∀ {left toks T rest} (d : ParsesSumTail left toks T rest)
       (a : Acc _<_ (length toks))
-    → ∃ λ (b : length rest ≤ length toks)
-    → parseTypeSumTailWF left toks a ≡ just (T , rest , b)
+    → ∃ λ (d' : ParsesSumTail left toks T rest)
+    → parseTypeSumTailWF left toks a ≡ just (T , rest , d')
 
   complete-arrowTailWFraw :
     ∀ {left toks T rest} (d : ParsesArrowTail left toks T rest)
       (a : Acc _<_ (length toks))
-    → ∃ λ (b : length rest ≤ length toks)
-    → parseArrowTailWF left toks a ≡ just (T , rest , b)
+    → ∃ λ (d' : ParsesArrowTail left toks T rest)
+    → parseArrowTailWF left toks a ≡ just (T , rest , d')
 
   complete-typeWFraw :
     ∀ {toks T rest} (d : ParsesType toks T rest) (a : Acc _<_ (length toks))
-    → ∃ λ (b : length rest < length toks)
-    → parseTypeWF toks a ≡ just (T , rest , b)
+    → ∃ λ (d' : ParsesType toks T rest)
+    → parseTypeWF toks a ≡ just (T , rest , d')
 
   -- Base atom cases
   complete-atomWFraw (pa-unit   rest) _ = _ , refl
@@ -205,14 +205,14 @@ mutual
   complete-atomWFraw (pa-buffer rest) _ = _ , refl
   complete-atomWFraw (pa-string rest) _ = _ , refl
 
-  -- Eff A B: two recursive atom parses, thread the bound through.
+  -- Eff A B: two recursive atom parses.
   complete-atomWFraw (pa-eff {toks1 = toks1} {toks2 = toks2} {rest}
                              dA dB) (acc rec)
     with complete-atomWFraw dA (rec (s≤s ≤-refl))
-  ... | bA , eqA
+  ... | dA' , eqA
     rewrite eqA
-    with complete-atomWFraw dB (rec (<-trans bA (s≤s ≤-refl)))
-  ... | bB , eqB
+    with complete-atomWFraw dB (rec (<-trans (ParsesAtom-shrinks dA') (s≤s ≤-refl)))
+  ... | dB' , eqB
     rewrite eqB
     = _ , refl
 
@@ -234,10 +234,10 @@ mutual
   -- Product level
   complete-prodWFraw (pp-mk dA dTail) (acc rec)
     with complete-atomWFraw dA (acc rec)
-  ... | bA , eqA
+  ... | dA' , eqA
     rewrite eqA
-    with complete-prodTailWFraw dTail (rec bA)
-  ... | bT , eqT
+    with complete-prodTailWFraw dTail (rec (ParsesAtom-shrinks dA'))
+  ... | dT' , eqT
     rewrite eqT
     = _ , refl
 
@@ -281,20 +281,20 @@ mutual
   -- ProdTail star: consume TStar + atom + recurse on prodTail.
   complete-prodTailWFraw (ppt-star dB dTail) (acc rec)
     with complete-atomWFraw dB (rec (s≤s ≤-refl))
-  ... | bB , eqB
+  ... | dB' , eqB
     rewrite eqB
-    with complete-prodTailWFraw dTail (rec (<-trans bB (s≤s ≤-refl)))
-  ... | bT , eqT
+    with complete-prodTailWFraw dTail (rec (<-trans (ParsesAtom-shrinks dB') (s≤s ≤-refl)))
+  ... | dT' , eqT
     rewrite eqT
     = _ , refl
 
   -- Sum level (mirrors Product)
   complete-sumWFraw (ps-mk dA dTail) (acc rec)
     with complete-prodWFraw dA (acc rec)
-  ... | bA , eqA
+  ... | dA' , eqA
     rewrite eqA
-    with complete-sumTailWFraw dTail (rec bA)
-  ... | bT , eqT
+    with complete-sumTailWFraw dTail (rec (ParsesProd-shrinks dA'))
+  ... | dT' , eqT
     rewrite eqT
     = _ , refl
 
@@ -337,10 +337,10 @@ mutual
   -- Sum-tail plus: consume TPlus + prod + recurse.
   complete-sumTailWFraw (pst-plus dB dTail) (acc rec)
     with complete-prodWFraw dB (rec (s≤s ≤-refl))
-  ... | bB , eqB
+  ... | dB' , eqB
     rewrite eqB
-    with complete-sumTailWFraw dTail (rec (<-trans bB (s≤s ≤-refl)))
-  ... | bT , eqT
+    with complete-sumTailWFraw dTail (rec (<-trans (ParsesProd-shrinks dB') (s≤s ≤-refl)))
+  ... | dT' , eqT
     rewrite eqT
     = _ , refl
 
@@ -407,10 +407,10 @@ mutual
   -- Type level = sum + arrow tail
   complete-typeWFraw (pt-mk dS dA) (acc rec)
     with complete-sumWFraw dS (acc rec)
-  ... | bS , eqS
+  ... | dS' , eqS
     rewrite eqS
-    with complete-arrowTailWFraw dA (rec bS)
-  ... | bA , eqA
+    with complete-arrowTailWFraw dA (rec (ParsesSum-shrinks dS'))
+  ... | dA' , eqA
     rewrite eqA
     = _ , refl
 
@@ -423,14 +423,14 @@ complete-atom :
   → parseTypeAtom toks ≡ just (T , rest)
 complete-atom {toks} d
   with complete-atomWFraw d (<-wellFounded (length toks))
-... | b , eq = cong (stripBound< toks) eq
+... | b , eq = cong (stripAtom toks) eq
 
 complete-type :
   ∀ {toks T rest} → ParsesType toks T rest
   → parseType toks ≡ just (T , rest)
 complete-type {toks} d
   with complete-typeWFraw d (<-wellFounded (length toks))
-... | b , eq = cong (stripBound< toks) eq
+... | b , eq = cong (stripType toks) eq
 
 ------------------------------------------------------------------------
 -- Soundness: a successful parse produces a genuine derivation.
@@ -438,3 +438,37 @@ complete-type {toks} d
 -- Structure mirrors completeness — case-split on the token list /
 -- WF-parser clause, extract the derivation. Used by `ParserInvariant`
 -- to lift NoMuNu from a structural induction on `ParsesX`.
+
+-- With the Dec-valued parser, soundness is a trivial projection: the
+-- parser's success case already carries the derivation in its
+-- returned Σ.
+
+-- Invert a `stripX` equation to expose the underlying Σ-value carrying
+-- the derivation.
+stripType-inv :
+  ∀ toks (r : ParseTypeD toks) {T rest}
+  → stripType toks r ≡ just (T , rest)
+  → ∃ λ (d : ParsesType toks T rest) → r ≡ just (T , rest , d)
+stripType-inv toks nothing ()
+stripType-inv toks (just (t , r , d)) refl = d , refl
+
+stripAtom-inv :
+  ∀ toks (r : ParseAtomD toks) {T rest}
+  → stripAtom toks r ≡ just (T , rest)
+  → ∃ λ (d : ParsesAtom toks T rest) → r ≡ just (T , rest , d)
+stripAtom-inv toks nothing ()
+stripAtom-inv toks (just (t , r , d)) refl = d , refl
+
+sound-type :
+  ∀ {toks T rest} → parseType toks ≡ just (T , rest)
+  → ParsesType toks T rest
+sound-type {toks} eq
+  with stripType-inv toks (parseTypeWF toks (<-wellFounded (length toks))) eq
+... | d , _ = d
+
+sound-atom :
+  ∀ {toks T rest} → parseTypeAtom toks ≡ just (T , rest)
+  → ParsesAtom toks T rest
+sound-atom {toks} eq
+  with stripAtom-inv toks (parseTypeAtomWF toks (<-wellFounded (length toks))) eq
+... | d , _ = d

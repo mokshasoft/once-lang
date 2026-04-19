@@ -51,6 +51,7 @@ open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
                              _*_; _+_; _⇒[_]_; Eff; Quantity; Zero; One; Many)
 open import Once.Parser.Token
 open import Once.Parser.Core
+open import Once.Parser.TypeRelation
 
 ------------------------------------------------------------------------
 -- Type Atom Parser
@@ -81,60 +82,77 @@ tryParseTypeVar _ _ = nothing
 -- second parseTypeAtomWF call to derive its Acc input.
 ------------------------------------------------------------------------
 
-ParseT< : List Token → Set
-ParseT< toks = Maybe (Σ[ t ∈ Type ] Σ[ rest ∈ List Token ] length rest < length toks)
+------------------------------------------------------------------------
+-- Dec-valued return types: success carries a *derivation* in the
+-- corresponding parsing relation, not just a length bound. The bound
+-- is recovered on demand via the relation's `ParsesX-shrinks` lemma.
+--
+-- Plan 0.3 task #40 option 1: by making the parser's success result
+-- carry the derivation structurally, soundness is a trivial
+-- projection and ParserInvariant (NoMuNu) reduces to structural
+-- induction on the derivation.
+------------------------------------------------------------------------
 
-ParseT≤ : List Token → Set
-ParseT≤ toks = Maybe (Σ[ t ∈ Type ] Σ[ rest ∈ List Token ] length rest ≤ length toks)
+ParseAtomD : List Token → Set
+ParseAtomD toks = Maybe (Σ[ T ∈ Type ] Σ[ rest ∈ List Token ] ParsesAtom toks T rest)
 
--- | Lift a ParseT< to ParseT≤ (strict < implies non-strict ≤).
-weakenBound : ∀ {toks} → ParseT< toks → ParseT≤ toks
-weakenBound nothing = nothing
-weakenBound (just (t , rest , bound)) = just (t , rest , <⇒≤ bound)
+ParseProdD : List Token → Set
+ParseProdD toks = Maybe (Σ[ T ∈ Type ] Σ[ rest ∈ List Token ] ParsesProd toks T rest)
+
+ParseSumD : List Token → Set
+ParseSumD toks = Maybe (Σ[ T ∈ Type ] Σ[ rest ∈ List Token ] ParsesSum toks T rest)
+
+ParseTypeD : List Token → Set
+ParseTypeD toks = Maybe (Σ[ T ∈ Type ] Σ[ rest ∈ List Token ] ParsesType toks T rest)
+
+ParseProdTailD : Type → List Token → Set
+ParseProdTailD left toks = Maybe (Σ[ T ∈ Type ] Σ[ rest ∈ List Token ] ParsesProdTail left toks T rest)
+
+ParseSumTailD : Type → List Token → Set
+ParseSumTailD left toks = Maybe (Σ[ T ∈ Type ] Σ[ rest ∈ List Token ] ParsesSumTail left toks T rest)
+
+ParseArrowTailD : Type → List Token → Set
+ParseArrowTailD left toks = Maybe (Σ[ T ∈ Type ] Σ[ rest ∈ List Token ] ParsesArrowTail left toks T rest)
 
 ------------------------------------------------------------------------
 -- Mutual WF parsers
 ------------------------------------------------------------------------
 
 -- | Parse a type atom (highest precedence)
-parseTypeAtomWF : (toks : List Token) → Acc _<_ (length toks) → ParseT< toks
+parseTypeAtomWF : (toks : List Token) → Acc _<_ (length toks) → ParseAtomD toks
 
 -- | Parse a full type (lowest precedence, entry point)
-parseTypeWF : (toks : List Token) → Acc _<_ (length toks) → ParseT< toks
+parseTypeWF : (toks : List Token) → Acc _<_ (length toks) → ParseTypeD toks
 
 -- | Parse type sum level (left-assoc +)
-parseTypeSumWF : (toks : List Token) → Acc _<_ (length toks) → ParseT< toks
+parseTypeSumWF : (toks : List Token) → Acc _<_ (length toks) → ParseSumD toks
 
 -- | Parse type product level (left-assoc *)
-parseTypeProdWF : (toks : List Token) → Acc _<_ (length toks) → ParseT< toks
+parseTypeProdWF : (toks : List Token) → Acc _<_ (length toks) → ParseProdD toks
 
 -- | Parse continuation of product: ('*' TypeAtom)*
 parseTypeProdTailWF : (left : Type) (toks : List Token)
-                  → Acc _<_ (length toks) → ParseT≤ toks
+                  → Acc _<_ (length toks) → ParseProdTailD left toks
 
 -- | Parse continuation of sum: ('+' TypeProd)*
 parseTypeSumTailWF : (left : Type) (toks : List Token)
-                 → Acc _<_ (length toks) → ParseT≤ toks
+                 → Acc _<_ (length toks) → ParseSumTailD left toks
 
 -- | Parse arrow tail (optional grade + '->' Type), or no-op.
 parseArrowTailWF : (left : Type) (toks : List Token)
-               → Acc _<_ (length toks) → ParseT≤ toks
+               → Acc _<_ (length toks) → ParseArrowTailD left toks
 
 ------------------------------------------------------------------------
 -- Named helpers for `parseTypeAtomWF`'s consume-and-recurse clauses.
 -- Each takes the POST-Acc-destructured sub-Acc directly, so the nested
 -- `with parseX …` tree lives in a top-level helper instead of inside
--- parseTypeAtomWF's own `with` chain. This structure matches the
--- "Fight the definition, not the proof" lesson: by moving the nested
--- with out of the mutual parser's body, downstream soundness proofs
--- can pattern-match the helper's output without Agda losing track of
--- the Acc-structural decrease across nested `with` helpers.
+-- parseTypeAtomWF's own `with` chain.
 ------------------------------------------------------------------------
 
 -- | Parse `( type )`: inner full-type then TRParen suffix.
 parseTypeAtomWF-TLParen :
   (rest : List Token) → Acc _<_ (length rest)
-  → ParseT< (TLParen ∷ rest)
+  → ParseAtomD (TLParen ∷ rest)
 
 ------------------------------------------------------------------------
 -- parseTypeAtomWF
@@ -144,37 +162,34 @@ parseTypeAtomWF [] _ = nothing
 
 -- TWord dispatch via decidable string equality.
 parseTypeAtomWF (TWord name ∷ rest) _ with name ≟ "Unit"
-... | yes _ = just (Unit , rest , s≤s ≤-refl)
+... | yes refl = just (Unit , rest , pa-unit rest)
 parseTypeAtomWF (TWord name ∷ rest) _ | no _ with name ≟ "Void"
-... | yes _ = just (Void , rest , s≤s ≤-refl)
+... | yes refl = just (Void , rest , pa-void rest)
 parseTypeAtomWF (TWord name ∷ rest) _ | no _ | no _ with name ≟ "Int"
-... | yes _ = just (Int , rest , s≤s ≤-refl)
+... | yes refl = just (Int , rest , pa-int rest)
 parseTypeAtomWF (TWord name ∷ rest) _ | no _ | no _ | no _ with name ≟ "Float"
-... | yes _ = just (Float , rest , s≤s ≤-refl)
+... | yes refl = just (Float , rest , pa-float rest)
 parseTypeAtomWF (TWord name ∷ rest) _ | no _ | no _ | no _ | no _ with name ≟ "Buffer"
-... | yes _ = just (Buffer , rest , s≤s ≤-refl)
+... | yes refl = just (Buffer , rest , pa-buffer rest)
 parseTypeAtomWF (TWord name ∷ rest) _ | no _ | no _ | no _ | no _ | no _ with name ≟ "String"
-... | yes _ = just (Str , rest , s≤s ≤-refl)
--- Eff: two successive parseTypeAtomWF calls; use Σ-bounds for the
--- second Acc derivation.
+... | yes refl = just (Str , rest , pa-string rest)
+-- Eff: two successive parseTypeAtomWF calls. WF sub-call Accs derive
+-- from `ParsesAtom-shrinks` applied to the earlier sub-derivation.
 parseTypeAtomWF (TWord name ∷ rest) (acc rec)
   | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "Eff"
-... | yes _ with parseTypeAtomWF rest (rec (s≤s ≤-refl))
+... | yes refl with parseTypeAtomWF rest (rec (s≤s ≤-refl))
 ...   | nothing = nothing
-...   | just (a , rest1 , bound1) with parseTypeAtomWF rest1
-                                         (rec (<-trans bound1 (s≤s ≤-refl)))
+...   | just (A , rest1 , dA) with parseTypeAtomWF rest1
+                                     (rec (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl)))
 ...     | nothing = nothing
-...     | just (b , rest2 , bound2) =
-          just (Eff a b , rest2 ,
-                <-trans bound2 (<-trans bound1 (s≤s ≤-refl)))
--- IO A desugars to Eff Unit A
+...     | just (B , rest2 , dB) = just (Eff A B , rest2 , pa-eff dA dB)
+-- IO A desugars to Eff Unit A.
 parseTypeAtomWF (TWord name ∷ rest) (acc rec)
   | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "IO"
-... | yes _ with parseTypeAtomWF rest (rec (s≤s ≤-refl))
+... | yes refl with parseTypeAtomWF rest (rec (s≤s ≤-refl))
 ...   | nothing = nothing
-...   | just (a , rest1 , bound1) =
-        just (Eff Unit a , rest1 , <-trans bound1 (s≤s ≤-refl))
--- Non-keyword TWord: tryParseTypeVar returns nothing always.
+...   | just (A , rest1 , dA) = just (Eff Unit A , rest1 , pa-io dA)
+-- Non-keyword TWord: no derivation exists.
 parseTypeAtomWF (TWord name ∷ rest) _
   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
 
@@ -226,9 +241,7 @@ parseTypeAtomWF (TEOF       ∷ _) _ = nothing
 
 parseTypeAtomWF-TLParen rest a with parseTypeWF rest a
 ... | nothing = nothing
-... | just (t , TRParen ∷ rest' , bound) =
-      just (t , rest' , <-trans (s≤s ≤-refl) (<-trans bound (s≤s ≤-refl)))
--- After `just (t , rest' , bound)`, rest' wasn't `TRParen ∷ _` → fail.
+... | just (t , TRParen ∷ rest' , dT) = just (t , rest' , pa-paren dT refl)
 ... | just (_ , [] , _) = nothing
 ... | just (_ , TLParen    ∷ _ , _) = nothing
 ... | just (_ , TLBrace    ∷ _ , _) = nothing
@@ -268,55 +281,52 @@ parseTypeAtomWF-TLParen rest a with parseTypeWF rest a
 -- parseTypeProdTailWF (left-assoc *)
 ------------------------------------------------------------------------
 
-parseTypeProdTailWF left [] _ = just (left , [] , ≤-refl)
--- TStar with invalid atom after is a parse ERROR, not a pass-through.
--- Previously returned `just (left, TStar ∷ rest, ≤-refl)` — that
--- leniency complicated the parsing relation and its soundness proof
--- (spurious identity derivations when the atom-sub-parse failed).
+parseTypeProdTailWF left [] _ = just (left , [] , ppt-done tt)
+  where open import Data.Unit
+-- TStar with invalid atom after is a parse ERROR, not a pass-through
+-- (same strict choice as before; preserves semantics).
 parseTypeProdTailWF left (TStar ∷ rest) (acc rec)
   with parseTypeAtomWF rest (rec (s≤s ≤-refl))
 ... | nothing = nothing
-... | just (right , rest' , bound') with parseTypeProdTailWF (left * right) rest'
-                                          (rec (<-trans bound' (s≤s ≤-refl)))
+... | just (B , rest' , dB) with parseTypeProdTailWF (left * B) rest'
+                                   (rec (<-trans (ParsesAtom-shrinks dB)
+                                                 (s≤s ≤-refl)))
 ...   | nothing = nothing
-...   | just (t , rest'' , bound'') =
-        just (t , rest'' ,
-              <⇒≤ (≤-trans (s≤s bound'')
-                                               (<-trans bound' (s≤s ≤-refl))))
+...   | just (T , rest'' , dTail) = just (T , rest'' , ppt-star dB dTail)
 
--- No TStar: return (left, toks) unchanged.
-parseTypeProdTailWF left (TLParen    ∷ rest) _ = just (left , TLParen    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TRParen    ∷ rest) _ = just (left , TRParen    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TLBrace    ∷ rest) _ = just (left , TLBrace    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TRBrace    ∷ rest) _ = just (left , TRBrace    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TColon     ∷ rest) _ = just (left , TColon     ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TEquals    ∷ rest) _ = just (left , TEquals    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TArrow     ∷ rest) _ = just (left , TArrow     ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TCaret0    ∷ rest) _ = just (left , TCaret0    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TCaret1    ∷ rest) _ = just (left , TCaret1    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TCaretW    ∷ rest) _ = just (left , TCaretW    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TLambda    ∷ rest) _ = just (left , TLambda    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TComma     ∷ rest) _ = just (left , TComma     ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TSemicolon ∷ rest) _ = just (left , TSemicolon ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TAt        ∷ rest) _ = just (left , TAt        ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TPipe      ∷ rest) _ = just (left , TPipe      ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TDot       ∷ rest) _ = just (left , TDot       ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TPlus      ∷ rest) _ = just (left , TPlus      ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TMinus     ∷ rest) _ = just (left , TMinus     ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TSlash     ∷ rest) _ = just (left , TSlash     ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TPercent   ∷ rest) _ = just (left , TPercent   ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TAmpersand ∷ rest) _ = just (left , TAmpersand ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TLt        ∷ rest) _ = just (left , TLt        ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TLe        ∷ rest) _ = just (left , TLe        ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TGt        ∷ rest) _ = just (left , TGt        ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TGe        ∷ rest) _ = just (left , TGe        ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TEqEq      ∷ rest) _ = just (left , TEqEq      ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TNeq       ∷ rest) _ = just (left , TNeq       ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , ≤-refl)
-parseTypeProdTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , ≤-refl)
+-- No TStar: return (left, toks) unchanged with a `ppt-done` derivation.
+parseTypeProdTailWF left (TLParen    ∷ rest) _ = just (left , TLParen    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TRParen    ∷ rest) _ = just (left , TRParen    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TLBrace    ∷ rest) _ = just (left , TLBrace    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TRBrace    ∷ rest) _ = just (left , TRBrace    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TColon     ∷ rest) _ = just (left , TColon     ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TEquals    ∷ rest) _ = just (left , TEquals    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TArrow     ∷ rest) _ = just (left , TArrow     ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TCaret0    ∷ rest) _ = just (left , TCaret0    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TCaret1    ∷ rest) _ = just (left , TCaret1    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TCaretW    ∷ rest) _ = just (left , TCaretW    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TLambda    ∷ rest) _ = just (left , TLambda    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TComma     ∷ rest) _ = just (left , TComma     ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TSemicolon ∷ rest) _ = just (left , TSemicolon ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TAt        ∷ rest) _ = just (left , TAt        ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TPipe      ∷ rest) _ = just (left , TPipe      ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TDot       ∷ rest) _ = just (left , TDot       ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TPlus      ∷ rest) _ = just (left , TPlus      ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TMinus     ∷ rest) _ = just (left , TMinus     ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TSlash     ∷ rest) _ = just (left , TSlash     ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TPercent   ∷ rest) _ = just (left , TPercent   ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TAmpersand ∷ rest) _ = just (left , TAmpersand ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TLt        ∷ rest) _ = just (left , TLt        ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TLe        ∷ rest) _ = just (left , TLe        ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TGt        ∷ rest) _ = just (left , TGt        ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TGe        ∷ rest) _ = just (left , TGe        ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TEqEq      ∷ rest) _ = just (left , TEqEq      ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TNeq       ∷ rest) _ = just (left , TNeq       ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , ppt-done tt) where open import Data.Unit
+parseTypeProdTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , ppt-done tt) where open import Data.Unit
 
 ------------------------------------------------------------------------
 -- parseTypeProdWF: Atom + ProdTail
@@ -324,62 +334,58 @@ parseTypeProdTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ r
 
 parseTypeProdWF toks (acc rec) with parseTypeAtomWF toks (acc rec)
 ... | nothing = nothing
-... | just (first , rest , bound) with parseTypeProdTailWF first rest
-                                        (rec bound)
+... | just (A , rest , dA) with parseTypeProdTailWF A rest
+                                 (rec (ParsesAtom-shrinks dA))
 ...   | nothing = nothing
-...   | just (t , rest' , boundT) =
-        just (t , rest' , ≤-<-trans boundT bound)
+...   | just (T , rest' , dTail) = just (T , rest' , pp-mk dA dTail)
 
 ------------------------------------------------------------------------
 -- parseTypeSumTailWF (left-assoc +)
 ------------------------------------------------------------------------
 
-parseTypeSumTailWF left [] _ = just (left , [] , ≤-refl)
--- TPlus with invalid prod after is a parse ERROR, matching the
--- corresponding tightening in `parseTypeProdTailWF`.
+parseTypeSumTailWF left [] _ = just (left , [] , pst-done tt)
+  where open import Data.Unit
 parseTypeSumTailWF left (TPlus ∷ rest) (acc rec)
   with parseTypeProdWF rest (rec (s≤s ≤-refl))
 ... | nothing = nothing
-... | just (right , rest' , bound') with parseTypeSumTailWF (left + right) rest'
-                                          (rec (<-trans bound' (s≤s ≤-refl)))
+... | just (B , rest' , dB) with parseTypeSumTailWF (left + B) rest'
+                                   (rec (<-trans (ParsesProd-shrinks dB)
+                                                 (s≤s ≤-refl)))
 ...   | nothing = nothing
-...   | just (t , rest'' , bound'') =
-        just (t , rest'' ,
-              <⇒≤ (≤-trans (s≤s bound'')
-                                               (<-trans bound' (s≤s ≤-refl))))
+...   | just (T , rest'' , dTail) = just (T , rest'' , pst-plus dB dTail)
 
-parseTypeSumTailWF left (TLParen    ∷ rest) _ = just (left , TLParen    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TRParen    ∷ rest) _ = just (left , TRParen    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TLBrace    ∷ rest) _ = just (left , TLBrace    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TRBrace    ∷ rest) _ = just (left , TRBrace    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TColon     ∷ rest) _ = just (left , TColon     ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TEquals    ∷ rest) _ = just (left , TEquals    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TArrow     ∷ rest) _ = just (left , TArrow     ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TCaret0    ∷ rest) _ = just (left , TCaret0    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TCaret1    ∷ rest) _ = just (left , TCaret1    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TCaretW    ∷ rest) _ = just (left , TCaretW    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TLambda    ∷ rest) _ = just (left , TLambda    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TComma     ∷ rest) _ = just (left , TComma     ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TSemicolon ∷ rest) _ = just (left , TSemicolon ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TAt        ∷ rest) _ = just (left , TAt        ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TPipe      ∷ rest) _ = just (left , TPipe      ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TDot       ∷ rest) _ = just (left , TDot       ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TMinus     ∷ rest) _ = just (left , TMinus     ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TStar      ∷ rest) _ = just (left , TStar      ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TSlash     ∷ rest) _ = just (left , TSlash     ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TPercent   ∷ rest) _ = just (left , TPercent   ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TAmpersand ∷ rest) _ = just (left , TAmpersand ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TLt        ∷ rest) _ = just (left , TLt        ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TLe        ∷ rest) _ = just (left , TLe        ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TGt        ∷ rest) _ = just (left , TGt        ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TGe        ∷ rest) _ = just (left , TGe        ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TEqEq      ∷ rest) _ = just (left , TEqEq      ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TNeq       ∷ rest) _ = just (left , TNeq       ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , ≤-refl)
-parseTypeSumTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , ≤-refl)
+parseTypeSumTailWF left (TLParen    ∷ rest) _ = just (left , TLParen    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TRParen    ∷ rest) _ = just (left , TRParen    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TLBrace    ∷ rest) _ = just (left , TLBrace    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TRBrace    ∷ rest) _ = just (left , TRBrace    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TColon     ∷ rest) _ = just (left , TColon     ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TEquals    ∷ rest) _ = just (left , TEquals    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TArrow     ∷ rest) _ = just (left , TArrow     ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TCaret0    ∷ rest) _ = just (left , TCaret0    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TCaret1    ∷ rest) _ = just (left , TCaret1    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TCaretW    ∷ rest) _ = just (left , TCaretW    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TLambda    ∷ rest) _ = just (left , TLambda    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TComma     ∷ rest) _ = just (left , TComma     ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TSemicolon ∷ rest) _ = just (left , TSemicolon ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TAt        ∷ rest) _ = just (left , TAt        ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TPipe      ∷ rest) _ = just (left , TPipe      ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TDot       ∷ rest) _ = just (left , TDot       ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TMinus     ∷ rest) _ = just (left , TMinus     ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TStar      ∷ rest) _ = just (left , TStar      ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TSlash     ∷ rest) _ = just (left , TSlash     ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TPercent   ∷ rest) _ = just (left , TPercent   ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TAmpersand ∷ rest) _ = just (left , TAmpersand ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TLt        ∷ rest) _ = just (left , TLt        ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TLe        ∷ rest) _ = just (left , TLe        ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TGt        ∷ rest) _ = just (left , TGt        ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TGe        ∷ rest) _ = just (left , TGe        ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TEqEq      ∷ rest) _ = just (left , TEqEq      ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TNeq       ∷ rest) _ = just (left , TNeq       ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , pst-done tt) where open import Data.Unit
+parseTypeSumTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , pst-done tt) where open import Data.Unit
 
 ------------------------------------------------------------------------
 -- parseTypeSumWF: Prod + SumTail
@@ -387,39 +393,36 @@ parseTypeSumTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ re
 
 parseTypeSumWF toks (acc rec) with parseTypeProdWF toks (acc rec)
 ... | nothing = nothing
-... | just (first , rest , bound) with parseTypeSumTailWF first rest
-                                        (rec bound)
+... | just (A , rest , dA) with parseTypeSumTailWF A rest
+                                 (rec (ParsesProd-shrinks dA))
 ...   | nothing = nothing
-...   | just (t , rest' , boundT) =
-        just (t , rest' , ≤-<-trans boundT bound)
+...   | just (T , rest' , dTail) = just (T , rest' , ps-mk dA dTail)
 
 ------------------------------------------------------------------------
 -- parseArrowTailWF (right-assoc ->)
 ------------------------------------------------------------------------
 
-parseArrowTailWF left [] _ = just (left , [] , ≤-refl)
+parseArrowTailWF left [] _ = just (left , [] , pat-done tt)
+  where open import Data.Unit
 
 -- Grade + arrow: consume 2 tokens, recurse via parseTypeWF.
 parseArrowTailWF left (TCaret1 ∷ TArrow ∷ rest) (acc rec)
   with parseTypeWF rest (rec (s≤s (n≤1+n _)))
 ... | nothing = nothing
-... | just (right , rest' , bound) =
-      just (left ⇒[ One ] right , rest' ,
-            <⇒≤ (<-trans bound (s≤s (n≤1+n _))))
+... | just (B , rest' , dT) =
+      just (left ⇒[ One ] B , rest' , pat-arrow-g dT)
 
 parseArrowTailWF left (TCaret0 ∷ TArrow ∷ rest) (acc rec)
   with parseTypeWF rest (rec (s≤s (n≤1+n _)))
 ... | nothing = nothing
-... | just (right , rest' , bound) =
-      just (left ⇒[ Zero ] right , rest' ,
-            <⇒≤ (<-trans bound (s≤s (n≤1+n _))))
+... | just (B , rest' , dT) =
+      just (left ⇒[ Zero ] B , rest' , pat-arrow-g dT)
 
 parseArrowTailWF left (TCaretW ∷ TArrow ∷ rest) (acc rec)
   with parseTypeWF rest (rec (s≤s (n≤1+n _)))
 ... | nothing = nothing
-... | just (right , rest' , bound) =
-      just (left ⇒[ Many ] right , rest' ,
-            <⇒≤ (<-trans bound (s≤s (n≤1+n _))))
+... | just (B , rest' , dT) =
+      just (left ⇒[ Many ] B , rest' , pat-arrow-g dT)
 
 -- Grade without arrow: strict reject.
 parseArrowTailWF left (TCaret1 ∷ _)           _ = nothing
@@ -429,40 +432,39 @@ parseArrowTailWF left (TCaretW ∷ _)           _ = nothing
 parseArrowTailWF left (TArrow ∷ rest) (acc rec)
   with parseTypeWF rest (rec (s≤s ≤-refl))
 ... | nothing = nothing
-... | just (right , rest' , bound) =
-      just (left ⇒[ Many ] right , rest' ,
-            <⇒≤ (<-trans bound (s≤s ≤-refl)))
+... | just (B , rest' , dT) =
+      just (left ⇒[ Many ] B , rest' , pat-arrow dT)
 
 -- Any other first token: no consumption.
-parseArrowTailWF left (TLParen    ∷ rest) _ = just (left , TLParen    ∷ rest , ≤-refl)
-parseArrowTailWF left (TRParen    ∷ rest) _ = just (left , TRParen    ∷ rest , ≤-refl)
-parseArrowTailWF left (TLBrace    ∷ rest) _ = just (left , TLBrace    ∷ rest , ≤-refl)
-parseArrowTailWF left (TRBrace    ∷ rest) _ = just (left , TRBrace    ∷ rest , ≤-refl)
-parseArrowTailWF left (TColon     ∷ rest) _ = just (left , TColon     ∷ rest , ≤-refl)
-parseArrowTailWF left (TEquals    ∷ rest) _ = just (left , TEquals    ∷ rest , ≤-refl)
-parseArrowTailWF left (TLambda    ∷ rest) _ = just (left , TLambda    ∷ rest , ≤-refl)
-parseArrowTailWF left (TComma     ∷ rest) _ = just (left , TComma     ∷ rest , ≤-refl)
-parseArrowTailWF left (TSemicolon ∷ rest) _ = just (left , TSemicolon ∷ rest , ≤-refl)
-parseArrowTailWF left (TAt        ∷ rest) _ = just (left , TAt        ∷ rest , ≤-refl)
-parseArrowTailWF left (TPipe      ∷ rest) _ = just (left , TPipe      ∷ rest , ≤-refl)
-parseArrowTailWF left (TDot       ∷ rest) _ = just (left , TDot       ∷ rest , ≤-refl)
-parseArrowTailWF left (TPlus      ∷ rest) _ = just (left , TPlus      ∷ rest , ≤-refl)
-parseArrowTailWF left (TMinus     ∷ rest) _ = just (left , TMinus     ∷ rest , ≤-refl)
-parseArrowTailWF left (TStar      ∷ rest) _ = just (left , TStar      ∷ rest , ≤-refl)
-parseArrowTailWF left (TSlash     ∷ rest) _ = just (left , TSlash     ∷ rest , ≤-refl)
-parseArrowTailWF left (TPercent   ∷ rest) _ = just (left , TPercent   ∷ rest , ≤-refl)
-parseArrowTailWF left (TAmpersand ∷ rest) _ = just (left , TAmpersand ∷ rest , ≤-refl)
-parseArrowTailWF left (TLt        ∷ rest) _ = just (left , TLt        ∷ rest , ≤-refl)
-parseArrowTailWF left (TLe        ∷ rest) _ = just (left , TLe        ∷ rest , ≤-refl)
-parseArrowTailWF left (TGt        ∷ rest) _ = just (left , TGt        ∷ rest , ≤-refl)
-parseArrowTailWF left (TGe        ∷ rest) _ = just (left , TGe        ∷ rest , ≤-refl)
-parseArrowTailWF left (TEqEq      ∷ rest) _ = just (left , TEqEq      ∷ rest , ≤-refl)
-parseArrowTailWF left (TNeq       ∷ rest) _ = just (left , TNeq       ∷ rest , ≤-refl)
-parseArrowTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , ≤-refl)
-parseArrowTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , ≤-refl)
-parseArrowTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , ≤-refl)
-parseArrowTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , ≤-refl)
-parseArrowTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , ≤-refl)
+parseArrowTailWF left (TLParen    ∷ rest) _ = just (left , TLParen    ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TRParen    ∷ rest) _ = just (left , TRParen    ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TLBrace    ∷ rest) _ = just (left , TLBrace    ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TRBrace    ∷ rest) _ = just (left , TRBrace    ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TColon     ∷ rest) _ = just (left , TColon     ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TEquals    ∷ rest) _ = just (left , TEquals    ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TLambda    ∷ rest) _ = just (left , TLambda    ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TComma     ∷ rest) _ = just (left , TComma     ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TSemicolon ∷ rest) _ = just (left , TSemicolon ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TAt        ∷ rest) _ = just (left , TAt        ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TPipe      ∷ rest) _ = just (left , TPipe      ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TDot       ∷ rest) _ = just (left , TDot       ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TPlus      ∷ rest) _ = just (left , TPlus      ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TMinus     ∷ rest) _ = just (left , TMinus     ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TStar      ∷ rest) _ = just (left , TStar      ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TSlash     ∷ rest) _ = just (left , TSlash     ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TPercent   ∷ rest) _ = just (left , TPercent   ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TAmpersand ∷ rest) _ = just (left , TAmpersand ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TLt        ∷ rest) _ = just (left , TLt        ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TLe        ∷ rest) _ = just (left , TLe        ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TGt        ∷ rest) _ = just (left , TGt        ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TGe        ∷ rest) _ = just (left , TGe        ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TEqEq      ∷ rest) _ = just (left , TEqEq      ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TNeq       ∷ rest) _ = just (left , TNeq       ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TNewline   ∷ rest) _ = just (left , TNewline   ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TEOF       ∷ rest) _ = just (left , TEOF       ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TWord s    ∷ rest) _ = just (left , TWord s    ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TInt n     ∷ rest) _ = just (left , TInt n     ∷ rest , pat-done tt) where open import Data.Unit
+parseArrowTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest , pat-done tt) where open import Data.Unit
 
 ------------------------------------------------------------------------
 -- parseTypeWF: Sum + ArrowTail
@@ -470,11 +472,10 @@ parseArrowTailWF left (TString s  ∷ rest) _ = just (left , TString s  ∷ rest
 
 parseTypeWF toks (acc rec) with parseTypeSumWF toks (acc rec)
 ... | nothing = nothing
-... | just (first , rest , bound) with parseArrowTailWF first rest
-                                        (rec bound)
+... | just (A , rest , dS) with parseArrowTailWF A rest
+                                 (rec (ParsesSum-shrinks dS))
 ...   | nothing = nothing
-...   | just (t , rest' , boundT) =
-        just (t , rest' , ≤-<-trans boundT bound)
+...   | just (T , rest' , dA) = just (T , rest' , pt-mk dS dA)
 
 ------------------------------------------------------------------------
 -- Top-level convenience wrapper for external callers.
@@ -486,36 +487,58 @@ parseTypeWF toks (acc rec) with parseTypeSumWF toks (acc rec)
 -- the Acc explicitly and use the Σ-return directly.
 ------------------------------------------------------------------------
 
--- | Strip the length-bound witness from a WF-parser result.
--- Kept at module scope (not inside a `where`) so downstream bridge
--- lemmas can reference the exact definition used by the wrappers.
--- `toks` is explicit so callers can specialise it without help from
--- unification (the Maybe's payload type doesn't mention `toks`).
-stripBound< : (toks : List Token) → ParseT< toks → Maybe (Type × List Token)
-stripBound< _ nothing = nothing
-stripBound< _ (just (t , rest , _)) = just (t , rest)
+-- | Strip the derivation from a Dec-valued parser result, recovering
+-- the plain `Parser Type` shape. Kept at module scope and with `toks`
+-- explicit so downstream bridge lemmas can reference the exact
+-- definition used by the wrappers.
+stripAtom : (toks : List Token) → ParseAtomD toks → Maybe (Type × List Token)
+stripAtom _ nothing = nothing
+stripAtom _ (just (t , rest , _)) = just (t , rest)
 
-stripBound≤ : (toks : List Token) → ParseT≤ toks → Maybe (Type × List Token)
-stripBound≤ _ nothing = nothing
-stripBound≤ _ (just (t , rest , _)) = just (t , rest)
+stripProd : (toks : List Token) → ParseProdD toks → Maybe (Type × List Token)
+stripProd _ nothing = nothing
+stripProd _ (just (t , rest , _)) = just (t , rest)
+
+stripSum : (toks : List Token) → ParseSumD toks → Maybe (Type × List Token)
+stripSum _ nothing = nothing
+stripSum _ (just (t , rest , _)) = just (t , rest)
+
+stripType : (toks : List Token) → ParseTypeD toks → Maybe (Type × List Token)
+stripType _ nothing = nothing
+stripType _ (just (t , rest , _)) = just (t , rest)
+
+stripProdTail : (left : Type) (toks : List Token)
+              → ParseProdTailD left toks → Maybe (Type × List Token)
+stripProdTail _ _ nothing = nothing
+stripProdTail _ _ (just (t , rest , _)) = just (t , rest)
+
+stripSumTail : (left : Type) (toks : List Token)
+             → ParseSumTailD left toks → Maybe (Type × List Token)
+stripSumTail _ _ nothing = nothing
+stripSumTail _ _ (just (t , rest , _)) = just (t , rest)
+
+stripArrowTail : (left : Type) (toks : List Token)
+               → ParseArrowTailD left toks → Maybe (Type × List Token)
+stripArrowTail _ _ nothing = nothing
+stripArrowTail _ _ (just (t , rest , _)) = just (t , rest)
 
 parseType : Parser Type
-parseType toks = stripBound< toks (parseTypeWF toks (<-wellFounded (length toks)))
+parseType toks = stripType toks (parseTypeWF toks (<-wellFounded (length toks)))
 
 parseTypeAtom : Parser Type
-parseTypeAtom toks = stripBound< toks (parseTypeAtomWF toks (<-wellFounded (length toks)))
+parseTypeAtom toks = stripAtom toks (parseTypeAtomWF toks (<-wellFounded (length toks)))
 
 parseTypeSum : Parser Type
-parseTypeSum toks = stripBound< toks (parseTypeSumWF toks (<-wellFounded (length toks)))
+parseTypeSum toks = stripSum toks (parseTypeSumWF toks (<-wellFounded (length toks)))
 
 parseTypeProd : Parser Type
-parseTypeProd toks = stripBound< toks (parseTypeProdWF toks (<-wellFounded (length toks)))
+parseTypeProd toks = stripProd toks (parseTypeProdWF toks (<-wellFounded (length toks)))
 
 parseTypeProdTail : (left : Type) → Parser Type
-parseTypeProdTail left toks = stripBound≤ toks (parseTypeProdTailWF left toks (<-wellFounded (length toks)))
+parseTypeProdTail left toks = stripProdTail left toks (parseTypeProdTailWF left toks (<-wellFounded (length toks)))
 
 parseTypeSumTail : (left : Type) → Parser Type
-parseTypeSumTail left toks = stripBound≤ toks (parseTypeSumTailWF left toks (<-wellFounded (length toks)))
+parseTypeSumTail left toks = stripSumTail left toks (parseTypeSumTailWF left toks (<-wellFounded (length toks)))
 
 parseArrowTail : (left : Type) → Parser Type
-parseArrowTail left toks = stripBound≤ toks (parseArrowTailWF left toks (<-wellFounded (length toks)))
+parseArrowTail left toks = stripArrowTail left toks (parseArrowTailWF left toks (<-wellFounded (length toks)))
