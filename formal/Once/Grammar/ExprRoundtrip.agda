@@ -271,3 +271,14 @@ round-trip-c-e-string = refl
 ------------------------------------------------------------------------
 
 open import Once.Grammar.ExprRelRoundtrip using (round-trip-rel-expr)
+open import Once.Grammar.ExprBridge using (complete-expr)
+
+-- | Top-level round-trip theorem: every concrete GExpr's printed
+-- tokens parse back to the expected `RawExpr` (via `gexprToRaw`),
+-- leaving an empty residual. Composes the structural round-trip
+-- `round-trip-rel-expr` with the WF-parser completeness bridge
+-- `complete-expr`.
+round-trip-concrete-expr :
+  ∀ {g : GExpr} (c : ConcreteExpr g)
+  → parseExpr (printGExpr g) ≡ just (gexprToRaw c , [])
+round-trip-concrete-expr c = complete-expr (round-trip-rel-expr c)
