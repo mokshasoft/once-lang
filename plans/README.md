@@ -21,6 +21,7 @@ This folder tracks the planning history and dependencies between design decision
 │
 └── 0.3-frontend-verification-gaps  (completed 2026-04-19)
     └── 0.4-frontend-completeness-and-bridges  (planning)
+        └── 0.4.2-end-to-end-connector  (planning)
 ```
 
 **Current focus**: resume `0.2.4-categorical-layer-0` — compiler-side
@@ -32,6 +33,13 @@ backend track picks up where it paused on 2026-04-14.
 direction, grammar conformance, and the three surface-semantics bridge
 postulates. After 0.4 the frontend is "fully verified" modulo
 `extensionality` (standard Agda axiom).
+
+**Future integration work**: plan `0.4.2` closes the five structural
+gaps between frontend proofs and backend `compile-correct` theorems
+(semantics consolidation, pipeline-path alignment, `programToText`
+round-trip, composed end-to-end theorem, fusion wiring). Depends on
+0.4. After 0.4.2, `compile-correct-surface` is a single named
+theorem.
 
 ## Numbering Scheme
 
