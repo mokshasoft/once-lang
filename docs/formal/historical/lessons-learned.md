@@ -1354,3 +1354,52 @@ Int ≟Type (_ * _) = no (λ ())
 For our 4 new types + 7 existing = 11 total types, we added ~100 new cases.
 
 **Alternative**: Use a type universe with generic decidable equality, but this changes the API significantly.
+
+### GADT decidable equality with stuck type indices: one outer restructure handles the whole n²
+
+When a GADT's constructor indices involve abstract function applications like `⟦ F ⟧T (μ-type F)` (an interpretation of a Functor applied to a fixpoint), plain decidable equality hits `SplitError.UnificationStuck` even on the *cross-pairs* between well-behaved constructors — not just the recursion-scheme diagonals.
+
+**Concrete symptom** (task #41, `Once.Optimize._≟IR_` over IR's 22 constructors): naïvely writing
+
+```agda
+Cata {F} wfF alg ≟IR Cata {F'} wfF' alg' with F ≟Functor F'
+... | no neq = no λ { refl → neq refl }
+... | yes refl with alg ≟IR alg' | WellFormedF-irrelevant wfF wfF'
+...   | yes refl | refl = yes refl
+...   | no neq   | _    = no λ { refl → neq refl }
+_ ≟IR _ = no λ _ → {!!}
+```
+
+fails *not* on the Cata-Cata diagonal but with
+
+```
+I'm not sure if there should be a case for the constructor In,
+because I get stuck when trying to solve:
+  ⟦ F ⟧T (μ-type F) ≟ μ-type F₁
+  μ-type F ≟ B
+```
+
+The stuck-ness is in the **cross-pair** (Cata, In) — Agda's coverage check needs to verify `In`'s type is satisfiable at the Cata-typed domain, and `⟦_⟧T` is defined by pattern matching on `Functor`, so abstract `F` leaves it unreducible.
+
+**Silver-bullet fix** — one application of the generic-codomain + equality-proof trick at the **outer match shape**, not per-constructor:
+
+```agda
+_≟IR_ : ∀ {A B} → (f g : IR A B) → Dec (f ≡ g)
+f ≟IR g = ≟IRH f g refl refl
+
+≟IRH : ∀ {A B A' B'} (f : IR A B) (g : IR A' B')
+     → (eqA : A ≡ A') (eqB : B ≡ B')
+     → Dec (f ≡ subst₂ IR (sym eqA) (sym eqB) g)
+```
+
+g's type indices stay free until the LHS assigns them per constructor, so the `⟦ F ⟧T` unification never arises at the match point. Combined with a head-discriminator tag (`IRHead`) and a `ir-head-subst₂` preservation lemma, **every cross-pair collapses to one line** via a uniform rejection helper:
+
+```agda
+≟IRH <F-ctor> <G-ctor> eqA eqB = no (cross-no (λ ()) eqA eqB)
+```
+
+For the 9 scheme constructors (`In, out-μ, Cata, Para, Out, in-ν, Ana, Hylo, Fuse`), the diagonal first decides the Functor tag via index-injectivity lemmas (`μ-inj : μ-type F ≡ μ-type G → F ≡ G`, `ν-inj` likewise), then refl-matches `eqA`/`eqB`, then recurses. No per-constructor trick.
+
+Net shape for `_≟IR_`: 22 diagonal clauses + 462 one-line cross-pairs ≈ 815 LoC, zero postulates, zero TERMINATING. See commit `54cb938f` and `memory/feedback_generic_codomain_trick.md`.
+
+**Key takeaway**: if naïve pattern matching with a catchall fails because the *catchall* (not your written clause) triggers UnificationStuck, the fix is architectural — restructure the outer match so g's indices are free — rather than per-stuck-constructor. Applies to any GADT decidable equality where some constructors have type indices involving abstract function applications over another datatype.
