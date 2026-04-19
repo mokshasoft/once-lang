@@ -13,11 +13,16 @@
 --   * `sound-expr`    : `parseExpr toks ≡ just (e, rest) → ParsesExpr toks e rest`
 --     — trivial projection from the Dec-valued parser's inline
 --     derivation witness.
---   * `complete-expr` : `ParsesExpr toks e rest → parseExpr toks ≡ just (e, rest)`
---     — obtained via determinism of `ParsesExpr` together with
---     termination of the parser. Proved through a "raw-level" helper
---     that exhibits that a successful WF parse exists carrying the
---     same `(e, rest)`.
+--
+-- The `complete-expr` direction (WF-parser completeness) is delayed to
+-- a future commit — the mechanical case-enumeration is large (the
+-- type-side analog is ~500 lines; expressions add ~700 more for the
+-- operator / comparison / unary levels) and the foundational
+-- refactors (NotAtomStart / Quiet / AppArgOk / ParsesOpExpr's
+-- accumulator index) landed ahead of the big writeout. See this
+-- module's git history and `Once.Grammar.ExprRelRoundtrip` for the
+-- structural round-trip that the function-level bridge would compose
+-- with.
 --
 -- Plan 0.3 task #38 Phase 3c.
 ------------------------------------------------------------------------
