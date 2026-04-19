@@ -59,6 +59,11 @@ import Once.Grammar.ExprRoundtrip
 -- under `make frontend` / `make parser`.
 import Once.Parser.ExprRelation
 
+-- Phase 3c of task #38: WF-parser ↔ relation bridge for expressions.
+-- Provides soundness (and completeness, once lifted) between
+-- `parseExpr` and `ParsesExpr`.
+import Once.Grammar.ExprBridge
+
 
 ------------------------------------------------------------------------
 -- Top-level Parse Function

@@ -1396,7 +1396,13 @@ parseExprWF toks a with parseCompWF toks a
 -- Plain-Parser wrapper for external callers.
 ------------------------------------------------------------------------
 
+-- | Strip derivation from a Dec-valued parse result. Mirrors `stripType`
+-- in `Once.Parser.Type`. Used by `Once.Grammar.ExprBridge` to state
+-- parser success directly in terms of a raw `(e, rest)` pair, where
+-- the derivation then follows from an inversion lemma.
+stripExpr : (toks : List Token) → ParseExprD toks → Maybe (RawExpr × List Token)
+stripExpr _ nothing = nothing
+stripExpr _ (just (e , rest , _)) = just (e , rest)
+
 parseExpr : Parser RawExpr
-parseExpr toks with parseExprWF toks (<-wellFounded (length toks))
-... | nothing                = nothing
-... | just (e , rest , _)    = just (e , rest)
+parseExpr toks = stripExpr toks (parseExprWF toks (<-wellFounded (length toks)))
