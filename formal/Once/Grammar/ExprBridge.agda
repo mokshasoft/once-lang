@@ -13,16 +13,19 @@
 --   * `sound-expr`    : `parseExpr toks ≡ just (e, rest) → ParsesExpr toks e rest`
 --     — trivial projection from the Dec-valued parser's inline
 --     derivation witness.
+--   * `complete-opExprWFraw`, `complete-*TailWFraw` and partial
+--     machinery toward a WF-parser completeness bridge analogous to
+--     `complete-typeWFraw` in `Once.Grammar.ParserBridge`.
 --
--- The `complete-expr` direction (WF-parser completeness) is delayed to
--- a future commit — the mechanical case-enumeration is large (the
--- type-side analog is ~500 lines; expressions add ~700 more for the
--- operator / comparison / unary levels) and the foundational
--- refactors (NotAtomStart / Quiet / AppArgOk / ParsesOpExpr's
--- accumulator index) landed ahead of the big writeout. See this
--- module's git history and `Once.Grammar.ExprRelRoundtrip` for the
--- structural round-trip that the function-level bridge would compose
--- with.
+-- STATUS (task #38 Phase 3c): The tail parsers, cmp/add/mul/comp
+-- level parsers, and leaf-atom completeness are mechanical. The
+-- variable/qualified atom-expr case exposes a relation-level
+-- non-determinism: `pae-var` accepts ANY residual `rest`, but the
+-- parser dispatches on whether `rest` begins with `TAt ∷ TWord _ ∷ _`,
+-- committing to `pae-qual` in that case. A fully general
+-- `complete-expr` requires either (a) adding a `NotQualPrefix rest`
+-- side-condition to `pae-var`, or (b) weakening the statement to a
+-- canonical-derivation hypothesis.
 --
 -- Plan 0.3 task #38 Phase 3c.
 ------------------------------------------------------------------------
@@ -33,15 +36,29 @@ open import Data.List using (List; []; _∷_; _++_; length)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; Σ; Σ-syntax; ∃; ∃-syntax)
 open import Data.Nat using (ℕ; _<_; _≤_; s≤s; z≤n)
+open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <⇒≤;
+                                        n≤1+n; m≤n⇒m≤1+n)
 open import Data.Nat.Induction using (<-wellFounded)
 open import Induction.WellFounded using (Acc; acc)
+open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using
-  (_≡_; refl; cong; sym; trans; subst)
+  (_≡_; _≢_; refl; cong; sym; trans; subst)
+open import Data.Empty using (⊥; ⊥-elim)
+open import Data.String using (String)
+open import Data.Unit using (⊤; tt)
+open import Data.Bool using (Bool; true; false)
 
-open import Once.TypeCheck.Raw using (RawExpr)
+open import Once.TypeCheck.Raw using (RawExpr; RVar; RQualified; RApp; RLam;
+                                       RLet; RPair; RDestruct; RUnit; RInt;
+                                       RStringLit; RAnnot; RBinOp; RUnaryOp;
+                                       OpAdd; OpSub; OpMul; OpDiv; OpMod;
+                                       OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;
+                                       OpNeg)
 open import Once.Parser.Token
 open import Once.Parser.Expr
 open import Once.Parser.ExprRelation
+open import Once.Grammar.ParserBridge using (complete-typeWFraw)
+open import Once.Parser.TypeRelation using (ParsesType-shrinks)
 
 ------------------------------------------------------------------------
 -- Inversion lemmas: converting a `stripX ≡ just ...` equation back to
@@ -65,3 +82,56 @@ sound-expr :
 sound-expr {toks} eq
   with stripExpr-inv toks (parseExprWF toks (<-wellFounded (length toks))) eq
 ... | d , _ = d
+
+------------------------------------------------------------------------
+-- Helpers for completeness proofs.
+------------------------------------------------------------------------
+
+-- Absurd-helper: contradiction between `b ≡ true` and `b ≡ false`.
+bool-absurd :
+  ∀ {b : Bool} → b ≡ true → b ≡ false → ⊥
+bool-absurd refl ()
+
+------------------------------------------------------------------------
+-- Completeness for the operator-as-expression parser, which is
+-- structurally recursive on the tokens (not WF).
+------------------------------------------------------------------------
+
+complete-opExprWFraw :
+  ∀ {toks acc e rest} → ParsesOpExpr acc toks e rest
+  → ∃ λ (d' : ParsesOpExpr acc toks e rest)
+  → parseOpExprWF toks acc ≡ just (e , rest , d')
+complete-opExprWFraw poe-close = _ , refl
+complete-opExprWFraw (poe-dot d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-plus d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-minus d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-star d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-slash d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-percent d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-lt d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-gt d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-pipe d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-amp d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
+complete-opExprWFraw (poe-at d)
+  with complete-opExprWFraw d
+... | _ , eq rewrite eq = _ , refl
