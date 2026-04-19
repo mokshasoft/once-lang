@@ -288,54 +288,80 @@ concreteExpr-AppArgOk (c-e-destr _ _ _) _ = aao-TLParen
 -- for compounds (closing the printer's explicit parens).
 ------------------------------------------------------------------------
 
+-- Helper lemma: printing any ConcreteExpr yields a token stream whose
+-- leading token is never `TAt ∷ TWord _`, so the concatenation never
+-- qualifies as a qual-prefix regardless of the `rest` witness. The
+-- `rest` NQP parameter is kept for compositional uniformity even though
+-- no ConcreteExpr prints empty, so it is unused in every branch.
+nqp-printGExpr :
+  ∀ {g : GExpr} (c : ConcreteExpr g) (rest : List Token)
+  → NotQualPrefix rest
+  → NotQualPrefix (printGExpr g ++ rest)
+nqp-printGExpr c-e-unit       _ _ = nqp-TLParen
+nqp-printGExpr c-e-int        _ _ = nqp-TInt
+nqp-printGExpr c-e-string     _ _ = nqp-TString
+nqp-printGExpr (c-e-var  _)   _ _ = nqp-TWord
+nqp-printGExpr (c-e-qual _)   _ _ = nqp-TWord
+nqp-printGExpr (c-e-lam   _)  _ _ = nqp-TLParen
+nqp-printGExpr (c-e-app  _ _) _ _ = nqp-TLParen
+nqp-printGExpr (c-e-pair _ _) _ _ = nqp-TLParen
+nqp-printGExpr (c-e-annot _ _) _ _ = nqp-TLParen
+nqp-printGExpr (c-e-binop _ _) _ _ = nqp-TLParen
+nqp-printGExpr (c-e-unary {op = G.OpNeg} _) _ _ = nqp-TLParen
+nqp-printGExpr (c-e-comp  _ _) _ _ = nqp-TLParen
+nqp-printGExpr (c-e-let1  _ _) _ _ = nqp-TLParen
+nqp-printGExpr (c-e-destr _ _ _) _ _ = nqp-TLParen
+
 mutual
 
   rt-atom-expr :
     ∀ {g : GExpr} (c : ConcreteExpr g) (rest : List Token)
+    → NotQualPrefix rest
     → ParsesAtomExpr (printGExpr g ++ rest) (gexprToRaw c) rest
 
   -- Precedence-wrapped form for inner-body use. The caller must
   -- supply a `Quiet rest` witness because all tail parsers need to
   -- no-op on `rest`. Used from `rt-expr-*-body` helpers.
   rt-expr :
-    ∀ {g : GExpr} (c : ConcreteExpr g) (rest : List Token) → Quiet rest
+    ∀ {g : GExpr} (c : ConcreteExpr g) (rest : List Token)
+    → Quiet rest → NotQualPrefix rest
     → ParsesExpr (printGExpr g ++ rest) (gexprToRaw c) rest
-  rt-expr c rest q = atomExpr→expr rest q (rt-atom-expr c rest)
+  rt-expr c rest q nqp = atomExpr→expr rest q (rt-atom-expr c rest nqp)
 
   -- Leaves
-  rt-atom-expr c-e-unit   _ = pae-unit
-  rt-atom-expr c-e-int    _ = pae-int
-  rt-atom-expr c-e-string _ = pae-str
-  rt-atom-expr (c-e-var nr) _ = pae-var nr
-  rt-atom-expr (c-e-qual nr) _ = pae-qual nr
+  rt-atom-expr c-e-unit   _ _   = pae-unit
+  rt-atom-expr c-e-int    _ _   = pae-int
+  rt-atom-expr c-e-string _ _   = pae-str
+  rt-atom-expr (c-e-var nr) _ nqp = pae-var nr nqp
+  rt-atom-expr (c-e-qual nr) _ _  = pae-qual nr
 
   -- EPair a b:  TLParen ∷ printGExpr a ++ TComma ∷ printGExpr b ++ TRParen ∷ rest
-  rt-atom-expr (c-e-pair {a = a} {b = b} cA cB) rest
+  rt-atom-expr (c-e-pair {a = a} {b = b} cA cB) rest _
     rewrite ++-assoc (printGExpr a) (TComma ∷ printGExpr b ++ TRParen ∷ []) rest
           | ++-assoc (printGExpr b) (TRParen ∷ []) rest
     = pae-paren
-        (rt-expr cA (TComma ∷ printGExpr b ++ TRParen ∷ rest) q-TComma)
+        (rt-expr cA (TComma ∷ printGExpr b ++ TRParen ∷ rest) q-TComma nqp-TComma)
         (ppc-pair
-          (rt-expr cB (TRParen ∷ rest) (quiet-TRParen rest))
+          (rt-expr cB (TRParen ∷ rest) (quiet-TRParen rest) nqp-TRParen)
           ppt-close)
 
   -- EApp f x:  TLParen ∷ printGExpr f ++ printGExpr x ++ TRParen ∷ rest
-  rt-atom-expr (c-e-app {f = f} {x = x} cF cX) rest
+  rt-atom-expr (c-e-app {f = f} {x = x} cF cX) rest _
     rewrite ++-assoc (printGExpr f) (printGExpr x ++ TRParen ∷ []) rest
           | ++-assoc (printGExpr x) (TRParen ∷ []) rest
     = pae-paren
-        (rt-expr-app-body cF cX (TRParen ∷ rest) (quiet-TRParen rest))
+        (rt-expr-app-body cF cX (TRParen ∷ rest) (quiet-TRParen rest) nqp-TRParen)
         ppc-close
 
   -- ELam x body: TLParen ∷ TLambda ∷ TWord x ∷ TArrow ∷ printGExpr body ++ TRParen ∷ rest
-  rt-atom-expr (c-e-lam {x = x} {body = body} cB) rest
+  rt-atom-expr (c-e-lam {x = x} {body = body} cB) rest _
     rewrite ++-assoc (printGExpr body) (TRParen ∷ []) rest
     = pae-paren
       -- Inner body: TLambda ∷ TWord x ∷ TArrow ∷ printGExpr body ++ TRParen ∷ rest
       (pe-mk (pc-mk (pcm-noop
         (pa-mk (pm-mk (pu-app (papp-mk
           (pae-lambda (plp-arg (plp-body
-            (rt-expr cB (TRParen ∷ rest) (quiet-TRParen rest)))))
+            (rt-expr cB (TRParen ∷ rest) (quiet-TRParen rest) nqp-TRParen))))
           (papp-done nas-TRParen)))
           (pmt-done tt))
           (pat-done tt))
@@ -344,15 +370,15 @@ mutual
       ppc-close
 
   -- EAnnot e t: TLParen ∷ printGExpr e ++ TColon ∷ printGType t ++ TRParen ∷ rest
-  rt-atom-expr (c-e-annot {e = e} {t = t} cE cT) rest
+  rt-atom-expr (c-e-annot {e = e} {t = t} cE cT) rest _
     rewrite ++-assoc (printGExpr e) (TColon ∷ printGType t ++ TRParen ∷ []) rest
           | ++-assoc (printGType t) (TRParen ∷ []) rest
     = pae-paren
-        (rt-expr cE (TColon ∷ printGType t ++ TRParen ∷ rest) q-TColon)
+        (rt-expr cE (TColon ∷ printGType t ++ TRParen ∷ rest) q-TColon nqp-TColon)
         (ppc-annot (rt-type cT (TRParen ∷ rest) tt))
 
   -- EBinOp op a b: TLParen ∷ printGExpr a ++ binOpToken op ∷ printGExpr b ++ TRParen ∷ rest
-  rt-atom-expr (c-e-binop {op = op} {a = a} {b = b} cA cB) rest
+  rt-atom-expr (c-e-binop {op = op} {a = a} {b = b} cA cB) rest _
     rewrite ++-assoc (printGExpr a) (binOpToken op ∷ printGExpr b ++ TRParen ∷ []) rest
           | ++-assoc (printGExpr b) (TRParen ∷ []) rest
     = pae-paren
@@ -360,14 +386,14 @@ mutual
         ppc-close
 
   -- EUnaryOp OpNeg e: TLParen ∷ TMinus ∷ printGExpr e ++ TRParen ∷ rest
-  rt-atom-expr (c-e-unary {op = G.OpNeg} {e = e} cE) rest
+  rt-atom-expr (c-e-unary {op = G.OpNeg} {e = e} cE) rest _
     rewrite ++-assoc (printGExpr e) (TRParen ∷ []) rest
     = pae-paren
       -- Inner: TMinus ∷ printGExpr e ++ TRParen ∷ rest
       (pe-mk (pc-mk (pcm-noop
         (pa-mk (pm-mk
           (pu-neg (atomExpr→unary (TRParen ∷ rest) (quiet-TRParen rest)
-                     (rt-atom-expr cE (TRParen ∷ rest))))
+                     (rt-atom-expr cE (TRParen ∷ rest) nqp-TRParen)))
           (pmt-done tt))
           (pat-done tt))
         tt)
@@ -376,7 +402,7 @@ mutual
 
 
   -- ECompose f g: TLParen ∷ printGExpr f ++ TDot ∷ printGExpr g ++ TRParen ∷ rest
-  rt-atom-expr (c-e-comp {f = f} {g = g} cF cG) rest
+  rt-atom-expr (c-e-comp {f = f} {g = g} cF cG) rest _
     rewrite ++-assoc (printGExpr f) (TDot ∷ printGExpr g ++ TRParen ∷ []) rest
           | ++-assoc (printGExpr g) (TRParen ∷ []) rest
     = pae-paren
@@ -385,7 +411,7 @@ mutual
 
   -- ELet [(x, v)] body: TLParen ∷ TWord "let" ∷ TWord x ∷ TEquals ∷ printGExpr v
   --   ++ TWord "in" ∷ printGExpr body ++ TRParen ∷ rest
-  rt-atom-expr (c-e-let1 {x = x} {v = v} {body = body} cV cBody) rest
+  rt-atom-expr (c-e-let1 {x = x} {v = v} {body = body} cV cBody) rest _
     rewrite ++-assoc (printGExpr v) (TWord "in" ∷ printGExpr body ++ TRParen ∷ []) rest
           | ++-assoc (printGExpr body) (TRParen ∷ []) rest
     = pae-paren
@@ -395,8 +421,8 @@ mutual
           (pa-mk (pm-mk (pu-app (papp-mk
             (pae-let (plet-single
               (rt-expr cV (TWord "in" ∷ printGExpr body ++ TRParen ∷ rest)
-                      (q-word-res refl))
-              (plin (rt-expr cBody (TRParen ∷ rest) (quiet-TRParen rest)))))
+                      (q-word-res refl) nqp-TWord)
+              (plin (rt-expr cBody (TRParen ∷ rest) (quiet-TRParen rest) nqp-TRParen))))
             (papp-done nas-TRParen)))
             (pmt-done tt))
             (pat-done tt))
@@ -409,7 +435,7 @@ mutual
   --   ++ TSemicolon ∷ TWord "Right" ∷ TWord y ∷ TArrow ∷ printGExpr r
   --   ++ TRBrace ∷ TRParen ∷ rest
   rt-atom-expr (c-e-destr {scrut = scrut} {x = x} {l = l} {y = y} {r = r}
-                           cS cL cR) rest
+                           cS cL cR) rest _
     rewrite ++-assoc (printGExpr scrut)
               (TWord "of" ∷ TLBrace ∷ TWord "Left" ∷ TWord x ∷ TArrow
                ∷ printGExpr l
@@ -429,13 +455,13 @@ mutual
                    ∷ printGExpr l
                    ++ TSemicolon ∷ TWord "Right" ∷ TWord y ∷ TArrow
                    ∷ printGExpr r ++ TRBrace ∷ TRParen ∷ rest)
-                  (q-word-res refl))
+                  (q-word-res refl) nqp-TWord)
                 (pdof (pdb
                   (rt-expr cL
                     (TSemicolon ∷ TWord "Right" ∷ TWord y ∷ TArrow
                      ∷ printGExpr r ++ TRBrace ∷ TRParen ∷ rest)
-                    q-TSemicolon)
-                  (prb (rt-expr cR (TRBrace ∷ TRParen ∷ rest) q-TRBrace))))))
+                    q-TSemicolon nqp-TSemicolon)
+                  (prb (rt-expr cR (TRBrace ∷ TRParen ∷ rest) q-TRBrace nqp-TRBrace))))))
             (papp-done nas-TRParen)))
             (pmt-done tt))
             (pat-done tt))
@@ -451,15 +477,15 @@ mutual
   -- papp-arg consumes x via parseAtomExpr. Residual starts with TRParen.
   rt-expr-app-body :
     ∀ {f x : GExpr} (cF : ConcreteExpr f) (cX : ConcreteExpr x)
-      (rest : List Token) → Quiet rest
+      (rest : List Token) → Quiet rest → NotQualPrefix rest
     → ParsesExpr (printGExpr f ++ printGExpr x ++ rest)
                  (RApp (gexprToRaw cF) (gexprToRaw cX)) rest
-  rt-expr-app-body {f = f} {x = x} cF cX rest q =
+  rt-expr-app-body {f = f} {x = x} cF cX rest q nqp =
     pe-mk (pc-mk (pcm-noop
       (pa-mk (pm-mk (pu-app (papp-mk
-        (rt-atom-expr cF (printGExpr x ++ rest))
+        (rt-atom-expr cF (printGExpr x ++ rest) (nqp-printGExpr cX rest nqp))
         (papp-arg (concreteExpr-AppArgOk cX rest)
-          (rt-atom-expr cX rest)
+          (rt-atom-expr cX rest nqp)
           (papp-done (quiet→notAtom q)))))
         (pmt-done (quiet→notMul q)))
         (pat-done (quiet→notAdd q)))
@@ -481,9 +507,9 @@ mutual
     pe-mk (pc-mk (pcm-noop
       (pa-mk
         (atomExpr→mul' nas-TPlus tt
-          (rt-atom-expr cA (TPlus ∷ printGExpr b ++ TRParen ∷ rest)))
+          (rt-atom-expr cA (TPlus ∷ printGExpr b ++ TRParen ∷ rest) nqp-TPlus))
         (pat-plus
-          (atomExpr→mul' nas-TRParen tt (rt-atom-expr cB (TRParen ∷ rest)))
+          (atomExpr→mul' nas-TRParen tt (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen))
           (pat-done tt)))
       tt)
       (pct-done tt))
@@ -492,9 +518,9 @@ mutual
     pe-mk (pc-mk (pcm-noop
       (pa-mk
         (atomExpr→mul' nas-TMinus tt
-          (rt-atom-expr cA (TMinus ∷ printGExpr b ++ TRParen ∷ rest)))
+          (rt-atom-expr cA (TMinus ∷ printGExpr b ++ TRParen ∷ rest) nqp-TMinus))
         (pat-minus
-          (atomExpr→mul' nas-TRParen tt (rt-atom-expr cB (TRParen ∷ rest)))
+          (atomExpr→mul' nas-TRParen tt (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen))
           (pat-done tt)))
       tt)
       (pct-done tt))
@@ -505,11 +531,11 @@ mutual
       (pa-mk
         (pm-mk
           (pu-app (papp-mk
-            (rt-atom-expr cA (TStar ∷ printGExpr b ++ TRParen ∷ rest))
+            (rt-atom-expr cA (TStar ∷ printGExpr b ++ TRParen ∷ rest) nqp-TStar)
             (papp-done nas-TStar)))
           (pmt-star
             (pu-app (papp-mk
-              (rt-atom-expr cB (TRParen ∷ rest))
+              (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen)
               (papp-done nas-TRParen)))
             (pmt-done tt)))
         (pat-done tt))
@@ -521,11 +547,11 @@ mutual
       (pa-mk
         (pm-mk
           (pu-app (papp-mk
-            (rt-atom-expr cA (TSlash ∷ printGExpr b ++ TRParen ∷ rest))
+            (rt-atom-expr cA (TSlash ∷ printGExpr b ++ TRParen ∷ rest) nqp-TSlash)
             (papp-done nas-TSlash)))
           (pmt-slash
             (pu-app (papp-mk
-              (rt-atom-expr cB (TRParen ∷ rest))
+              (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen)
               (papp-done nas-TRParen)))
             (pmt-done tt)))
         (pat-done tt))
@@ -537,11 +563,11 @@ mutual
       (pa-mk
         (pm-mk
           (pu-app (papp-mk
-            (rt-atom-expr cA (TPercent ∷ printGExpr b ++ TRParen ∷ rest))
+            (rt-atom-expr cA (TPercent ∷ printGExpr b ++ TRParen ∷ rest) nqp-TPercent)
             (papp-done nas-TPercent)))
           (pmt-percent
             (pu-app (papp-mk
-              (rt-atom-expr cB (TRParen ∷ rest))
+              (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen)
               (papp-done nas-TRParen)))
             (pmt-done tt)))
         (pat-done tt))
@@ -554,48 +580,48 @@ mutual
     pe-mk (pc-mk
       (pcm-lt
         (atomExpr→add' nas-TLt tt tt
-          (rt-atom-expr cA (TLt ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+          (rt-atom-expr cA (TLt ∷ printGExpr b ++ TRParen ∷ rest) nqp-TLt))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen)))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpLe cA cB rest =
     pe-mk (pc-mk
       (pcm-le
         (atomExpr→add' nas-TLe tt tt
-          (rt-atom-expr cA (TLe ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+          (rt-atom-expr cA (TLe ∷ printGExpr b ++ TRParen ∷ rest) nqp-TLe))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen)))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpGt cA cB rest =
     pe-mk (pc-mk
       (pcm-gt
         (atomExpr→add' nas-TGt tt tt
-          (rt-atom-expr cA (TGt ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+          (rt-atom-expr cA (TGt ∷ printGExpr b ++ TRParen ∷ rest) nqp-TGt))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen)))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpGe cA cB rest =
     pe-mk (pc-mk
       (pcm-ge
         (atomExpr→add' nas-TGe tt tt
-          (rt-atom-expr cA (TGe ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+          (rt-atom-expr cA (TGe ∷ printGExpr b ++ TRParen ∷ rest) nqp-TGe))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen)))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpEq cA cB rest =
     pe-mk (pc-mk
       (pcm-eq
         (atomExpr→add' nas-TEqEq tt tt
-          (rt-atom-expr cA (TEqEq ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+          (rt-atom-expr cA (TEqEq ∷ printGExpr b ++ TRParen ∷ rest) nqp-TEqEq))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen)))
       (pct-done tt))
 
   rt-expr-binop-body {b = b} G.OpNe cA cB rest =
     pe-mk (pc-mk
       (pcm-ne
         (atomExpr→add' nas-TNeq tt tt
-          (rt-atom-expr cA (TNeq ∷ printGExpr b ++ TRParen ∷ rest)))
-        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest))))
+          (rt-atom-expr cA (TNeq ∷ printGExpr b ++ TRParen ∷ rest) nqp-TNeq))
+        (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cB (TRParen ∷ rest) nqp-TRParen)))
       (pct-done tt))
 
   -- (f . g) inner body: composition via pct-dot.
@@ -610,12 +636,12 @@ mutual
       -- left at cmp level: residual TDot ∷ ... satisfies NotCmp ∧ NotAdd ∧ NotMul ∧ NotAtom.
       (pcm-noop
         (atomExpr→add' nas-TDot tt tt
-          (rt-atom-expr cF (TDot ∷ printGExpr g ++ TRParen ∷ rest)))
+          (rt-atom-expr cF (TDot ∷ printGExpr g ++ TRParen ∷ rest) nqp-TDot))
         tt)
       (pct-dot
         -- right at cmp level: residual TRParen ∷ rest.
         (pcm-noop
-          (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cG (TRParen ∷ rest)))
+          (atomExpr→add' nas-TRParen tt tt (rt-atom-expr cG (TRParen ∷ rest) nqp-TRParen))
           tt)
         (pct-done tt)))
 
@@ -629,4 +655,4 @@ round-trip-rel-expr :
   → ParsesExpr (printGExpr g) (gexprToRaw c) []
 round-trip-rel-expr {g} c
   rewrite sym (++-identityʳ (printGExpr g))
-  = rt-expr c [] q-[]
+  = rt-expr c [] q-[] nqp-[]

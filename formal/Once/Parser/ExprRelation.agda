@@ -182,6 +182,90 @@ data AppArgOk : List Token → Set where
               → AppArgOk (TWord name ∷ rest)
 
 ------------------------------------------------------------------------
+-- NotQualPrefix: rest does NOT start with `TAt ∷ TWord _ ∷ _`.
+--
+-- The parser's `atomExprVarWF` eagerly commits to `RQualified name
+-- alias` whenever rest begins with `TAt ∷ TWord alias ∷ r`. So a
+-- `pae-var` derivation whose rest has that shape is formally valid
+-- but unreachable from the parser — breaking completeness. This
+-- side condition rules out the shape at the derivation level.
+------------------------------------------------------------------------
+
+-- Subsidiary: token t is not `TWord _`.
+data NotTWord : Token → Set where
+  ntw-TLParen    : NotTWord TLParen
+  ntw-TRParen    : NotTWord TRParen
+  ntw-TLBrace    : NotTWord TLBrace
+  ntw-TRBrace    : NotTWord TRBrace
+  ntw-TColon     : NotTWord TColon
+  ntw-TEquals    : NotTWord TEquals
+  ntw-TArrow     : NotTWord TArrow
+  ntw-TCaret0    : NotTWord TCaret0
+  ntw-TCaret1    : NotTWord TCaret1
+  ntw-TCaretW    : NotTWord TCaretW
+  ntw-TLambda    : NotTWord TLambda
+  ntw-TComma     : NotTWord TComma
+  ntw-TSemicolon : NotTWord TSemicolon
+  ntw-TAt        : NotTWord TAt
+  ntw-TPipe      : NotTWord TPipe
+  ntw-TDot       : NotTWord TDot
+  ntw-TPlus      : NotTWord TPlus
+  ntw-TMinus     : NotTWord TMinus
+  ntw-TStar      : NotTWord TStar
+  ntw-TSlash     : NotTWord TSlash
+  ntw-TPercent   : NotTWord TPercent
+  ntw-TAmpersand : NotTWord TAmpersand
+  ntw-TLt        : NotTWord TLt
+  ntw-TLe        : NotTWord TLe
+  ntw-TGt        : NotTWord TGt
+  ntw-TGe        : NotTWord TGe
+  ntw-TEqEq      : NotTWord TEqEq
+  ntw-TNeq       : NotTWord TNeq
+  ntw-TNewline   : NotTWord TNewline
+  ntw-TEOF       : NotTWord TEOF
+  ntw-TInt       : ∀ {n} → NotTWord (TInt n)
+  ntw-TString    : ∀ {s} → NotTWord (TString s)
+
+data NotQualPrefix : List Token → Set where
+  nqp-[]         : NotQualPrefix []
+  -- Lead token is not TAt → no ambiguity.
+  nqp-TLParen    : ∀ {rest} → NotQualPrefix (TLParen    ∷ rest)
+  nqp-TRParen    : ∀ {rest} → NotQualPrefix (TRParen    ∷ rest)
+  nqp-TLBrace    : ∀ {rest} → NotQualPrefix (TLBrace    ∷ rest)
+  nqp-TRBrace    : ∀ {rest} → NotQualPrefix (TRBrace    ∷ rest)
+  nqp-TColon     : ∀ {rest} → NotQualPrefix (TColon     ∷ rest)
+  nqp-TEquals    : ∀ {rest} → NotQualPrefix (TEquals    ∷ rest)
+  nqp-TArrow     : ∀ {rest} → NotQualPrefix (TArrow     ∷ rest)
+  nqp-TCaret0    : ∀ {rest} → NotQualPrefix (TCaret0    ∷ rest)
+  nqp-TCaret1    : ∀ {rest} → NotQualPrefix (TCaret1    ∷ rest)
+  nqp-TCaretW    : ∀ {rest} → NotQualPrefix (TCaretW    ∷ rest)
+  nqp-TLambda    : ∀ {rest} → NotQualPrefix (TLambda    ∷ rest)
+  nqp-TComma     : ∀ {rest} → NotQualPrefix (TComma     ∷ rest)
+  nqp-TSemicolon : ∀ {rest} → NotQualPrefix (TSemicolon ∷ rest)
+  nqp-TPipe      : ∀ {rest} → NotQualPrefix (TPipe      ∷ rest)
+  nqp-TDot       : ∀ {rest} → NotQualPrefix (TDot       ∷ rest)
+  nqp-TPlus      : ∀ {rest} → NotQualPrefix (TPlus      ∷ rest)
+  nqp-TMinus     : ∀ {rest} → NotQualPrefix (TMinus     ∷ rest)
+  nqp-TStar      : ∀ {rest} → NotQualPrefix (TStar      ∷ rest)
+  nqp-TSlash     : ∀ {rest} → NotQualPrefix (TSlash     ∷ rest)
+  nqp-TPercent   : ∀ {rest} → NotQualPrefix (TPercent   ∷ rest)
+  nqp-TAmpersand : ∀ {rest} → NotQualPrefix (TAmpersand ∷ rest)
+  nqp-TLt        : ∀ {rest} → NotQualPrefix (TLt        ∷ rest)
+  nqp-TLe        : ∀ {rest} → NotQualPrefix (TLe        ∷ rest)
+  nqp-TGt        : ∀ {rest} → NotQualPrefix (TGt        ∷ rest)
+  nqp-TGe        : ∀ {rest} → NotQualPrefix (TGe        ∷ rest)
+  nqp-TEqEq      : ∀ {rest} → NotQualPrefix (TEqEq      ∷ rest)
+  nqp-TNeq       : ∀ {rest} → NotQualPrefix (TNeq       ∷ rest)
+  nqp-TNewline   : ∀ {rest} → NotQualPrefix (TNewline   ∷ rest)
+  nqp-TEOF       : ∀ {rest} → NotQualPrefix (TEOF       ∷ rest)
+  nqp-TWord      : ∀ {s rest} → NotQualPrefix (TWord s  ∷ rest)
+  nqp-TInt       : ∀ {n rest} → NotQualPrefix (TInt n   ∷ rest)
+  nqp-TString    : ∀ {s rest} → NotQualPrefix (TString s ∷ rest)
+  -- Lead is TAt but follow is not TWord → no ambiguity.
+  nqp-TAt-[]     : NotQualPrefix (TAt ∷ [])
+  nqp-TAt-cons   : ∀ {t rest} → NotTWord t → NotQualPrefix (TAt ∷ t ∷ rest)
+
+------------------------------------------------------------------------
 -- Inductive view datatypes for string-dispatch sites
 --
 -- The parser previously used `with isReserved s in eqR` and
@@ -354,6 +438,7 @@ mutual
 
     pae-var  : ∀ {name rest}
              → isReserved name ≡ false
+             → NotQualPrefix rest
              → ParsesAtomExpr (TWord name ∷ rest) (RVar name) rest
 
     pae-qual : ∀ {name alias rest}
@@ -602,7 +687,7 @@ mutual
   ParsesAtomExpr-shrinks pae-unit      = s≤s (m≤n⇒m≤1+n ≤-refl)
   ParsesAtomExpr-shrinks pae-int       = s≤s ≤-refl
   ParsesAtomExpr-shrinks pae-str       = s≤s ≤-refl
-  ParsesAtomExpr-shrinks (pae-var _)   = s≤s ≤-refl
+  ParsesAtomExpr-shrinks (pae-var _ _) = s≤s ≤-refl
   ParsesAtomExpr-shrinks (pae-qual _)  = s≤s (m≤n⇒m≤1+n (n≤1+n _))
   ParsesAtomExpr-shrinks (pae-paren dE dC) =
     <-trans (ParsesParenCont-shrinks dC)
