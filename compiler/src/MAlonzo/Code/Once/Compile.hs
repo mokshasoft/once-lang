@@ -489,13 +489,30 @@ d_compileModule_216 v0 v1
             MAlonzo.Code.Once.Parser.d_extractFunctions_58
             (coe MAlonzo.Code.Once.Parser.d_extractAliases_18 (coe v2))
             (coe v2)))
+-- Once.Compile.parseSourceToModule
+d_parseSourceToModule_240 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
+  Maybe MAlonzo.Code.Once.Parser.Module.Core.T_Module_44
+d_parseSourceToModule_240 = coe MAlonzo.Code.Once.Parser.d_parse_4
+-- Once.Compile.compileResolvedModule
+d_compileResolvedModule_242 ::
+  Bool ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  MAlonzo.Code.Data.Sum.Base.T__'8846'__30
+d_compileResolvedModule_242 v0 v1
+  = coe
+      d_compileAllFuns_154 (coe v0)
+      (coe
+         MAlonzo.Code.Once.Parser.d_extractFunctions_58
+         (coe MAlonzo.Code.Once.Parser.d_extractAliases_18 (coe v1))
+         (coe v1))
 -- Once.Compile.pipeline
-d_pipeline_244 ::
+d_pipeline_256 ::
   MAlonzo.Code.Once.Type.T_Type_38 ->
   MAlonzo.Code.Once.Type.T_Type_38 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12
-d_pipeline_244 v0 v1 v2
+d_pipeline_256 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Escape.d_escape_120 v0 v1
       (coe
@@ -503,40 +520,40 @@ d_pipeline_244 v0 v1 v2
          (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16
             (coe v0) (coe v1) (coe v2)))
 -- Once.Compile.pipeline-no-escape
-d_pipeline'45'no'45'escape_252 ::
+d_pipeline'45'no'45'escape_264 ::
   MAlonzo.Code.Once.Type.T_Type_38 ->
   MAlonzo.Code.Once.Type.T_Type_38 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12
-d_pipeline'45'no'45'escape_252 v0 v1 v2
+d_pipeline'45'no'45'escape_264 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Optimize.d_optimize_5802 v0 v1
       (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16
          (coe v0) (coe v1) (coe v2))
 -- Once.Compile.pipeline-no-opt
-d_pipeline'45'no'45'opt_260 ::
+d_pipeline'45'no'45'opt_272 ::
   MAlonzo.Code.Once.Type.T_Type_38 ->
   MAlonzo.Code.Once.Type.T_Type_38 ->
   MAlonzo.Code.Once.Surface.IR.T_SurfaceIR_6 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12
-d_pipeline'45'no'45'opt_260 v0 v1
+d_pipeline'45'no'45'opt_272 v0 v1
   = coe
       MAlonzo.Code.Once.Surface.Desugar.d_desugar_16 (coe v0) (coe v1)
 -- Once.Compile.Arch
-d_Arch_262 = ()
-data T_Arch_262 = C_x86'45'64_264
+d_Arch_274 = ()
+data T_Arch_274 = C_x86'45'64_276
 -- Once.Compile.archTarget
-d_archTarget_266 ::
-  T_Arch_262 -> MAlonzo.Code.Once.Target.T_Target_4
-d_archTarget_266 ~v0 = du_archTarget_266
-du_archTarget_266 :: MAlonzo.Code.Once.Target.T_Target_4
-du_archTarget_266
+d_archTarget_278 ::
+  T_Arch_274 -> MAlonzo.Code.Once.Target.T_Target_4
+d_archTarget_278 ~v0 = du_archTarget_278
+du_archTarget_278 :: MAlonzo.Code.Once.Target.T_Target_4
+du_archTarget_278
   = coe MAlonzo.Code.Once.Target.X86Z45Z64.d_x86'45'64_22
 -- Once.Compile.compileFunWithTarget
-d_compileFunWithTarget_268 ::
+d_compileFunWithTarget_280 ::
   MAlonzo.Code.Once.Target.T_Target_4 ->
   T_CompiledFun_132 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_compileFunWithTarget_268 v0 v1
+d_compileFunWithTarget_280 v0 v1
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
       (coe
@@ -550,33 +567,33 @@ d_compileFunWithTarget_268 v0 v1
             (d_cfIR_144 (coe v1)))
          (MAlonzo.Code.Once.Target.d_functionEpilogue_28 (coe v0)))
 -- Once.Compile.compileAllWithTarget
-d_compileAllWithTarget_274 ::
+d_compileAllWithTarget_286 ::
   MAlonzo.Code.Once.Target.T_Target_4 ->
   [T_CompiledFun_132] -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_compileAllWithTarget_274 v0
+d_compileAllWithTarget_286 v0
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216
       (coe
          (\ v1 ->
             coe
               MAlonzo.Code.Data.String.Base.d__'43''43'__20
-              (d_compileFunWithTarget_268 (coe v0) (coe v1))))
+              (d_compileFunWithTarget_280 (coe v0) (coe v1))))
       (coe ("" :: Data.Text.Text))
 -- Once.Compile.Stage
-d_Stage_282 = ()
-data T_Stage_282 = C_Parse_284 | C_Check_286 | C_Build_288
+d_Stage_294 = ()
+data T_Stage_294 = C_Parse_296 | C_Check_298 | C_Build_300
 -- Once.Compile.CompileResult
-d_CompileResult_290 = ()
-data T_CompileResult_290
-  = C_Parsed_292 [MAlonzo.Code.Once.Parser.T_FunInfo_38] |
-    C_Checked_294 [T_CompiledFun_132] |
-    C_Built_296 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_Error_298 MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_CompileResult_302 = ()
+data T_CompileResult_302
+  = C_Parsed_304 [MAlonzo.Code.Once.Parser.T_FunInfo_38] |
+    C_Checked_306 [T_CompiledFun_132] |
+    C_Built_308 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_Error_310 MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.Compile.showFunInfo
-d_showFunInfo_300 ::
+d_showFunInfo_312 ::
   MAlonzo.Code.Once.Parser.T_FunInfo_38 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showFunInfo_300 v0
+d_showFunInfo_312 v0
   = coe
       MAlonzo.Code.Data.String.Base.d__'43''43'__20
       (MAlonzo.Code.Once.Parser.d_funName_48 (coe v0))
@@ -586,37 +603,37 @@ d_showFunInfo_300 v0
          (MAlonzo.Code.Once.Type.d_showType_132
             (coe MAlonzo.Code.Once.Parser.d_funType_50 (coe v0))))
 -- Once.Compile.showFunInfos
-d_showFunInfos_304 ::
+d_showFunInfos_316 ::
   [MAlonzo.Code.Once.Parser.T_FunInfo_38] ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_showFunInfos_304 v0
+d_showFunInfos_316 v0
   = case coe v0 of
       [] -> coe ("" :: Data.Text.Text)
       (:) v1 v2
         -> let v3
                  = coe
                      MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                     (d_showFunInfo_300 (coe v1))
+                     (d_showFunInfo_312 (coe v1))
                      (coe
                         MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                        ("\n" :: Data.Text.Text) (d_showFunInfos_304 (coe v2))) in
+                        ("\n" :: Data.Text.Text) (d_showFunInfos_316 (coe v2))) in
            coe
              (case coe v2 of
-                [] -> coe d_showFunInfo_300 (coe v1)
+                [] -> coe d_showFunInfo_312 (coe v1)
                 _ -> coe v3)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Compile.compile
-d_compile_312 ::
-  T_Stage_282 ->
+d_compile_324 ::
+  T_Stage_294 ->
   Bool ->
-  T_Arch_262 ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 -> T_CompileResult_290
-d_compile_312 v0 v1 ~v2 v3 = du_compile_312 v0 v1 v3
-du_compile_312 ::
-  T_Stage_282 ->
+  T_Arch_274 ->
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 -> T_CompileResult_302
+d_compile_324 v0 v1 ~v2 v3 = du_compile_324 v0 v1 v3
+du_compile_324 ::
+  T_Stage_294 ->
   Bool ->
-  MAlonzo.Code.Agda.Builtin.String.T_String_6 -> T_CompileResult_290
-du_compile_312 v0 v1 v2
+  MAlonzo.Code.Agda.Builtin.String.T_String_6 -> T_CompileResult_302
+du_compile_324 v0 v1 v2
   = let v3
           = coe
               MAlonzo.Code.Once.Parser.Module.Core.C_mkModule_50
@@ -707,14 +724,14 @@ du_compile_312 v0 v1 v2
                           _ -> MAlonzo.RTE.mazUnreachableError)))) in
     coe
       (case coe v0 of
-         C_Parse_284
+         C_Parse_296
            -> coe
-                C_Parsed_292
+                C_Parsed_304
                 (coe
                    MAlonzo.Code.Once.Parser.d_extractFunctions_58
                    (coe MAlonzo.Code.Once.Parser.d_extractAliases_18 (coe v3))
                    (coe v3))
-         C_Check_286
+         C_Check_298
            -> let v4
                     = d_compileAllFuns_154
                         (coe v1)
@@ -725,11 +742,11 @@ du_compile_312 v0 v1 v2
               coe
                 (case coe v4 of
                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v5
-                     -> coe C_Error_298 (coe v5)
+                     -> coe C_Error_310 (coe v5)
                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v5
-                     -> coe C_Checked_294 (coe v5)
+                     -> coe C_Checked_306 (coe v5)
                    _ -> MAlonzo.RTE.mazUnreachableError)
-         C_Build_288
+         C_Build_300
            -> let v4
                     = d_compileAllFuns_154
                         (coe v1)
@@ -740,13 +757,72 @@ du_compile_312 v0 v1 v2
               coe
                 (case coe v4 of
                    MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v5
-                     -> coe C_Error_298 (coe v5)
+                     -> coe C_Error_310 (coe v5)
                    MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v5
                      -> coe
-                          C_Built_296
+                          C_Built_308
                           (coe
                              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                             (MAlonzo.Code.Once.Target.d_asmHeader_24 (coe du_archTarget_266))
-                             (coe d_compileAllWithTarget_274 (coe du_archTarget_266) v5))
+                             (MAlonzo.Code.Once.Target.d_asmHeader_24 (coe du_archTarget_278))
+                             (coe d_compileAllWithTarget_286 (coe du_archTarget_278) v5))
                    _ -> MAlonzo.RTE.mazUnreachableError)
          _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.Compile.compileFromModule
+d_compileFromModule_376 ::
+  T_Stage_294 ->
+  Bool ->
+  T_Arch_274 ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  T_CompileResult_302
+d_compileFromModule_376 v0 v1 ~v2 v3
+  = du_compileFromModule_376 v0 v1 v3
+du_compileFromModule_376 ::
+  T_Stage_294 ->
+  Bool ->
+  MAlonzo.Code.Once.Parser.Module.Core.T_Module_44 ->
+  T_CompileResult_302
+du_compileFromModule_376 v0 v1 v2
+  = case coe v0 of
+      C_Parse_296
+        -> coe
+             C_Parsed_304
+             (coe
+                MAlonzo.Code.Once.Parser.d_extractFunctions_58
+                (coe MAlonzo.Code.Once.Parser.d_extractAliases_18 (coe v2))
+                (coe v2))
+      C_Check_298
+        -> let v3
+                 = d_compileAllFuns_154
+                     (coe v1)
+                     (coe
+                        MAlonzo.Code.Once.Parser.d_extractFunctions_58
+                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_18 (coe v2))
+                        (coe v2)) in
+           coe
+             (case coe v3 of
+                MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4
+                  -> coe C_Error_310 (coe v4)
+                MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v4
+                  -> coe C_Checked_306 (coe v4)
+                _ -> MAlonzo.RTE.mazUnreachableError)
+      C_Build_300
+        -> let v3
+                 = d_compileAllFuns_154
+                     (coe v1)
+                     (coe
+                        MAlonzo.Code.Once.Parser.d_extractFunctions_58
+                        (coe MAlonzo.Code.Once.Parser.d_extractAliases_18 (coe v2))
+                        (coe v2)) in
+           coe
+             (case coe v3 of
+                MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4
+                  -> coe C_Error_310 (coe v4)
+                MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42 v4
+                  -> coe
+                       C_Built_308
+                       (coe
+                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                          (MAlonzo.Code.Once.Target.d_asmHeader_24 (coe du_archTarget_278))
+                          (coe d_compileAllWithTarget_286 (coe du_archTarget_278) v4))
+                _ -> MAlonzo.RTE.mazUnreachableError)
+      _ -> MAlonzo.RTE.mazUnreachableError

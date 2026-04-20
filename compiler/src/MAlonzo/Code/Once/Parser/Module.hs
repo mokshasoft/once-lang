@@ -1821,6 +1821,8 @@ d_parseDeclB_8 v0
                                                                                                                                                          (coe
                                                                                                                                                             v16)
                                                                                                                                                          (coe
+                                                                                                                                                            MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                                                                                                         (coe
                                                                                                                                                             v24) in
                                                                                                                                                coe
                                                                                                                                                  (let v29

@@ -181,6 +181,23 @@ compileModule doOpt source with parse source
           funs = extractFunctions aliases mod
       in compileAllFuns doOpt funs
 
+-- | Parse source text to a Module AST. Haskell uses this to read
+-- both the user's file and each transitive import before calling
+-- `resolveImports` with the populated ModuleMap.
+parseSourceToModule : String → Maybe Module
+parseSourceToModule = parse
+
+-- | Compile a pre-parsed, pre-resolved Module. Same as `compileModule`
+-- but starting from an AST rather than source text. Used by the
+-- import-aware pipeline: Haskell parses each file separately, calls
+-- `resolveImports` to flatten imports into owner-tagged primitives,
+-- then hands the flat Module to this entry point.
+compileResolvedModule : Bool → Module → String ⊎ List CompiledFun
+compileResolvedModule doOpt mod =
+  let aliases = extractAliases mod
+      funs    = extractFunctions aliases mod
+  in compileAllFuns doOpt funs
+
 ------------------------------------------------------------------------
 -- Pipeline composition (SurfaceIR → IR)
 ------------------------------------------------------------------------
@@ -271,6 +288,25 @@ compile stage doOpt arch source with parse source
 ... | just mod =
   let aliases = extractAliases mod
       funs = extractFunctions aliases mod
+  in case stage of λ where
+    Parse → Parsed funs
+    Check → case compileAllFuns doOpt funs of λ where
+      (inj₁ err) → Error err
+      (inj₂ compiled) → Checked compiled
+    Build → case compileAllFuns doOpt funs of λ where
+      (inj₁ err) → Error err
+      (inj₂ compiled) →
+        let target = archTarget arch
+        in Built (asmHeader target ++ compileAllWithTarget target compiled)
+
+-- | Same as `compile` but starting from a pre-resolved `Module`.
+-- Haskell uses this after driving transitive-import I/O and calling
+-- `resolveImports` to flatten `DImport` decls into owner-tagged
+-- `DPrimitive` decls. Skips the `parse source` step of `compile`.
+compileFromModule : Stage → Bool → Arch → Module → CompileResult
+compileFromModule stage doOpt arch mod =
+  let aliases = extractAliases mod
+      funs    = extractFunctions aliases mod
   in case stage of λ where
     Parse → Parsed funs
     Check → case compileAllFuns doOpt funs of λ where

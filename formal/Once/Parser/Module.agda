@@ -23,6 +23,7 @@ open import Once.Parser.Module.Alloc public
 open import Once.Parser.Module.OpName public
 open import Once.Parser.Module.FunDef public
 open import Once.Parser.Module.DeclTail public
+open import Once.Parser.Module.Resolve public
 
 -- | Bounded parse of a single declaration. On success the residual is
 -- strictly shorter than the input, which gives us the measure to do

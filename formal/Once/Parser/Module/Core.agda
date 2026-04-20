@@ -50,7 +50,12 @@ record Import : Set where
 data Decl : Set where
   DTypeSig   : String → Type → Decl
   DFunDef    : String → Maybe AllocStrategy → RawExpr → Decl
-  DPrimitive : String → Type → Decl
+  -- | `DPrimitive name owner ty`
+  -- `owner = nothing`  : source-level primitive (user-written).
+  -- `owner = just A`   : primitive inlined by import resolution,
+  --                      imported under alias `A` (i.e. user writes
+  --                      `name@A`).
+  DPrimitive : String → Maybe String → Type → Decl
   DTypeAlias : String → List String → Type → Decl
   DImport    : Import → Decl
 

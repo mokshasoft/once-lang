@@ -46,7 +46,7 @@ parsePrimitiveB toks with anyWordB toks
 ... | nothing = nothing
 ... | just (name , TColon ∷ rest , bnd) with parseTypeB rest
 ...   | just (ty , rest' , bnd') =
-        just (DPrimitive name ty , rest' ,
+        just (DPrimitive name nothing ty , rest' ,
               <-trans (<-trans bnd' (s≤s ≤-refl)) bnd)
 ...   | nothing = nothing
 parsePrimitiveB toks | just (_ , _ , _) = nothing

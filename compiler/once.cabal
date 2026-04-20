@@ -273,6 +273,7 @@ library
       MAlonzo.Code.Once.Parser.Module.FunDef.Params
       MAlonzo.Code.Once.Parser.Module.Import
       MAlonzo.Code.Once.Parser.Module.OpName
+      MAlonzo.Code.Once.Parser.Module.Resolve
       MAlonzo.Code.Once.Parser.Tests
       MAlonzo.Code.Once.Parser.Token
       MAlonzo.Code.Once.Parser.Type

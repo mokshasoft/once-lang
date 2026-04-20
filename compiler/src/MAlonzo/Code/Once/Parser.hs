@@ -23,6 +23,7 @@ import qualified MAlonzo.Code.Agda.Builtin.Sigma
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.List.Base
 import qualified MAlonzo.Code.Data.Nat.Properties
+import qualified MAlonzo.Code.Data.String.Base
 import qualified MAlonzo.Code.Data.String.Properties
 import qualified MAlonzo.Code.Once.Parser.Core
 import qualified MAlonzo.Code.Once.Parser.Inline
@@ -277,39 +278,63 @@ du_go_68 v0 v1 v2
                                         _ -> MAlonzo.RTE.mazUnreachableError)
                               _ -> MAlonzo.RTE.mazUnreachableError
                        _ -> coe v5
-                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38 v6 v7
-                  -> coe
-                       MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
-                       (coe
-                          C_mkFunInfo_56 (coe v6)
-                          (coe
-                             MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
-                             (coe v7))
-                          (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
-                          (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 (coe v6)))
-                       (coe
-                          du_go_68 (coe v0) (coe v4)
-                          (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
+                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38 v6 v7 v8
+                  -> case coe v7 of
+                       MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
+                         -> coe
+                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                              (coe
+                                 C_mkFunInfo_56
+                                 (coe
+                                    MAlonzo.Code.Data.String.Base.d__'43''43'__20 v9
+                                    (coe
+                                       MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                       ("." :: Data.Text.Text) v6))
+                                 (coe
+                                    MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
+                                    (coe v8))
+                                 (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                 (coe
+                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
+                                    (coe
+                                       MAlonzo.Code.Data.String.Base.d__'43''43'__20 v9
+                                       (coe
+                                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
+                                          ("." :: Data.Text.Text) v6))))
+                              (coe
+                                 du_go_68 (coe v0) (coe v4)
+                                 (coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
+                       MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
+                         -> coe
+                              MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                              (coe
+                                 C_mkFunInfo_56 (coe v6)
+                                 (coe
+                                    MAlonzo.Code.Once.Parser.TypeAlias.d_expandAliases_48 (coe v0)
+                                    (coe v8))
+                                 (coe v7) (coe MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 (coe v6)))
+                              (coe du_go_68 (coe v0) (coe v4) (coe v7))
+                       _ -> MAlonzo.RTE.mazUnreachableError
                 _ -> coe v5)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.inlineAll
-d_inlineAll_126 :: Integer -> [T_FunInfo_38] -> [T_FunInfo_38]
-d_inlineAll_126 v0 v1
+d_inlineAll_136 :: Integer -> [T_FunInfo_38] -> [T_FunInfo_38]
+d_inlineAll_136 v0 v1
   = coe
-      du_go_136 (coe v0)
+      du_go_146 (coe v0)
       (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v1)
 -- Once.Parser._.go
-d_go_136 ::
+d_go_146 ::
   Integer ->
   [T_FunInfo_38] ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [T_FunInfo_38] -> [T_FunInfo_38]
-d_go_136 v0 ~v1 v2 v3 = du_go_136 v0 v2 v3
-du_go_136 ::
+d_go_146 v0 ~v1 v2 v3 = du_go_146 v0 v2 v3
+du_go_146 ::
   Integer ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
   [T_FunInfo_38] -> [T_FunInfo_38]
-du_go_136 v0 v1 v2
+du_go_146 v0 v1 v2
   = case coe v2 of
       [] -> coe v2
       (:) v3 v4
@@ -323,7 +348,7 @@ du_go_136 v0 v1 v2
                           MAlonzo.Code.Once.Parser.Inline.d_inlineReferences_68 (coe v0)
                           (coe v1) (coe v8)))
                     (coe
-                       du_go_136 (coe v0)
+                       du_go_146 (coe v0)
                        (coe
                           MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                           (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5) (coe v8))

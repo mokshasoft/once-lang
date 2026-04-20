@@ -1336,7 +1336,10 @@ d_parsePrimitiveB_138 v0
                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                        (coe
                                                                           MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
-                                                                          (coe v3) (coe v11))
+                                                                          (coe v3)
+                                                                          (coe
+                                                                             MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                          (coe v11))
                                                                        (coe
                                                                           MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                           (coe v13)
@@ -1972,7 +1975,10 @@ d_parsePrimitive_184 v0
                                                                -> let v15
                                                                         = coe
                                                                             MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
-                                                                            (coe v3) (coe v11) in
+                                                                            (coe v3)
+                                                                            (coe
+                                                                               MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18)
+                                                                            (coe v11) in
                                                                   coe
                                                                     (coe
                                                                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16

@@ -154,7 +154,7 @@ run cmd = case cmd of
   Build opts      -> runBuild opts
   Check opts      -> runCheck opts
   Parse opts      -> runParse opts
-  Preprocess opts -> runNotWired "preprocess" opts
+  Preprocess opts -> runPreprocess opts
   Elaborate opts  -> runNotWired "elaborate" opts
   Optimize opts   -> runNotWired "optimize" opts
   Escape opts     -> runNotWired "escape" opts
@@ -190,19 +190,44 @@ showFunSigs sigs = T.unlines [funSigName sig <> " : " <> funSigType sig | sig <-
 -- Parse Command
 ------------------------------------------------------------------------
 
--- | Run the parse command: parse only
+-- | Run the preprocess command: parse + resolve imports, dump the
+-- flat signature listing from the resolved Module. Exposes exactly
+-- the decls the typechecker will see after the verified Agda
+-- resolver has run. Imported primitives appear as
+-- `<alias>.<name> : <type>`.
+runPreprocess :: StageOptions -> IO ()
+runPreprocess opts = do
+  let inputPath = stageInput opts
+  source <- TIO.readFile inputPath
+  loadResult <- loadAndResolve inputPath Nothing source
+  case loadResult of
+    Left err -> do
+      TIO.putStrLn $ "Error: " <> T.pack err
+      exitFailure
+    Right mod_ ->
+      case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
+        Parsed sigs -> do
+          emitStage (stageOutput opts) (showFunSigs sigs)
+          exitSuccess
+        Error err -> do
+          TIO.putStrLn $ "Error: " <> err
+          exitFailure
+        _ -> do
+          TIO.putStrLn "Internal error: unexpected result from preprocess"
+          exitFailure
+
+-- | Run the parse command: parse + resolve imports, show signatures.
 runParse :: ParseOptions -> IO ()
 runParse opts = do
   let inputPath = parseInput opts
   source <- TIO.readFile inputPath
-  -- Resolve imports before parsing
-  resolveResult <- resolveImports inputPath Nothing source
-  case resolveResult of
+  loadResult <- loadAndResolve inputPath Nothing source
+  case loadResult of
     Left err -> do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
-    Right processedSource ->
-      case Bridge.compile Bridge.Parse False Bridge.X86_64 processedSource of
+    Right mod_ ->
+      case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
         Parsed sigs -> do
           emitStage (parseOutput opts) (showFunSigs sigs <> "Parse OK\n")
           exitSuccess
@@ -217,20 +242,19 @@ runParse opts = do
 -- Check Command
 ------------------------------------------------------------------------
 
--- | Run the check command: parse and type check
+-- | Run the check command: parse + resolve imports + type check.
 runCheck :: CheckOptions -> IO ()
 runCheck opts = do
   let inputPath = checkInput opts
   source <- TIO.readFile inputPath
-  -- Resolve imports before type checking
-  resolveResult <- resolveImports inputPath Nothing source
-  case resolveResult of
+  loadResult <- loadAndResolve inputPath Nothing source
+  case loadResult of
     Left err -> do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
-    Right processedSource ->
+    Right mod_ ->
       -- doOpt is irrelevant for Check stage (optimizer runs after type checking)
-      case Bridge.compile Bridge.Check False Bridge.X86_64 processedSource of
+      case Bridge.compileFromModule Bridge.Check False Bridge.X86_64 mod_ of
         Checked -> do
           emitStage (checkOutput opts) "Typecheck OK\n"
           exitSuccess
@@ -261,15 +285,15 @@ runBuild opts = do
   -- Read source file
   source <- TIO.readFile inputPath
 
-  -- Resolve imports before compilation
-  resolveResult <- resolveImports inputPath strataOpt source
-  case resolveResult of
+  -- Resolve imports (AST-level, via verified Agda resolver)
+  loadResult <- loadAndResolve inputPath strataOpt source
+  case loadResult of
     Left err -> do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
-    Right processedSource -> case target of
+    Right mod_ -> case target of
       TargetX86_64 ->
-        case Bridge.compile Bridge.Build doOpt Bridge.X86_64 processedSource of
+        case Bridge.compileFromModule Bridge.Build doOpt Bridge.X86_64 mod_ of
           Built asmText -> do
             let asmPath = outputBase ++ ".s"
                 objPath = outputBase ++ ".o"
@@ -364,106 +388,35 @@ link objFiles output = do
         ExitFailure _ -> pure $ Left $ "Linking failed (" ++ ld ++ "): " ++ stderr
 
 ------------------------------------------------------------------------
--- Import Resolution
+-- AST-level Import Resolution (drives verified Agda resolver)
 ------------------------------------------------------------------------
 
--- | Parsed import declaration
-data ImportDecl = ImportDecl
-  { importPath  :: [String]    -- ^ Module path segments (e.g., ["I", "Linux", "Syscalls"])
-  , importAlias :: Maybe String -- ^ Optional alias (e.g., Just "S")
-  } deriving (Eq, Show)
-
--- | Extract import declarations from source
--- Pattern: import Module.Path [as Alias]
-extractImports :: T.Text -> [ImportDecl]
-extractImports source = concatMap parseImportLine (T.lines source)
-  where
-    parseImportLine :: T.Text -> [ImportDecl]
-    parseImportLine line =
-      let stripped = T.strip line
-          lineStr = T.unpack stripped
-      in case words lineStr of
-        ("import" : rest) -> maybeToList (parseImportWords rest)
-        _ -> []
-
-    parseImportWords :: [String] -> Maybe ImportDecl
-    parseImportWords [] = Nothing
-    parseImportWords (pathStr : rest) =
-      let pathParts = splitOnDot pathStr
-      in case rest of
-        ("as" : alias : _) -> Just $ ImportDecl pathParts (Just alias)
-        [] -> Just $ ImportDecl pathParts Nothing
-        _ -> Just $ ImportDecl pathParts Nothing
-
-    splitOnDot :: String -> [String]
-    splitOnDot = go []
-      where
-        go acc [] = [reverse acc]
-        go acc ('.' : cs) = reverse acc : go [] cs
-        go acc (c : cs) = go (c : acc) cs
-
-    maybeToList :: Maybe a -> [a]
-    maybeToList Nothing = []
-    maybeToList (Just x) = [x]
-
--- | Convert import path to Strata file path
--- "I" prefix maps to "Interpretations" directory
-importPathToFilePath :: FilePath -> ImportDecl -> FilePath
-importPathToFilePath strataDir imp =
-  let pathParts = importPath imp
-      -- Map "I" prefix to "Interpretations"
-      mappedParts = case pathParts of
+-- | Map an import path (`["I","Linux","Syscalls"]`) to its disk
+-- location, applying the `I` → `Interpretations` prefix rule.
+importPathToFilePath :: FilePath -> [T.Text] -> FilePath
+importPathToFilePath strataDir pathParts =
+  let mapped = case map T.unpack pathParts of
         ("I" : rest) -> "Interpretations" : rest
-        other -> other
-  in strataDir </> intercalate "/" mappedParts ++ ".once"
+        other        -> other
+  in strataDir </> intercalate "/" mapped ++ ".once"
 
--- | Extract primitive declarations from a module source
--- Pattern: primitive name : Type
-extractPrimitives :: T.Text -> [(String, String)]
-extractPrimitives source = concatMap parsePrimLine (T.lines source)
-  where
-    parsePrimLine :: T.Text -> [(String, String)]
-    parsePrimLine line =
-      let stripped = T.strip line
-          lineStr = T.unpack stripped
-      in case words lineStr of
-        ("primitive" : name : ":" : typeParts) ->
-          [(name, unwords typeParts)]
-        _ -> []
-
--- | Rename primitives with module alias
--- e.g., ("exit", "Eff Int Unit") with alias "S" -> ("S.exit", "Eff Int Unit")
--- This matches the lookup format: RQualified "exit" "S" looks up "S.exit"
-qualifyPrimitives :: Maybe String -> [(String, String)] -> [(String, String)]
-qualifyPrimitives Nothing prims = prims  -- No alias, keep original names
-qualifyPrimitives (Just alias) prims =
-  [(alias ++ "." ++ name, ty) | (name, ty) <- prims]
-
--- | Format primitives as Once source lines
-formatPrimitives :: [(String, String)] -> T.Text
-formatPrimitives prims = T.unlines
-  [T.pack $ "primitive " ++ name ++ " : " ++ ty | (name, ty) <- prims]
-
--- | Find Strata directory relative to input file or from options
+-- | Find the Strata directory (containing Interpretations/) by walking
+-- up from the input file, then up from the CWD. Falls back to ./Strata.
 findStrataDir :: FilePath -> Maybe FilePath -> IO FilePath
 findStrataDir inputPath mStrataOpt = case mStrataOpt of
   Just dir -> pure dir
-  Nothing -> do
-    -- Make input path absolute for reliable traversal
+  Nothing  -> do
     absInputPath <- makeAbsolute inputPath
-    -- Try to find Strata directory relative to input file
-    -- Walk up directories looking for "Strata" folder
     let inputDir = takeDirectory absInputPath
-    mStrataFromInput <- findStrataUp inputDir
-    case mStrataFromInput of
+    mFromInput <- findStrataUp inputDir
+    case mFromInput of
       Just dir -> pure dir
-      Nothing -> do
-        -- Also try current working directory and its parents
+      Nothing  -> do
         cwd <- getCurrentDirectory
-        mStrataFromCwd <- findStrataUp cwd
-        case mStrataFromCwd of
+        mFromCwd <- findStrataUp cwd
+        case mFromCwd of
           Just dir -> pure dir
-          Nothing -> pure "Strata"  -- Default fallback
+          Nothing  -> pure "Strata"
   where
     findStrataUp :: FilePath -> IO (Maybe FilePath)
     findStrataUp dir = do
@@ -475,49 +428,72 @@ findStrataDir inputPath mStrataOpt = case mStrataOpt of
           then pure Nothing
           else findStrataUp (takeDirectory dir)
 
--- | Resolve imports and inline primitives with qualified names
--- Returns preprocessed source with all imported primitives inlined
-resolveImports :: FilePath -> Maybe FilePath -> T.Text -> IO (Either String T.Text)
-resolveImports inputPath mStrataOpt source = do
+-- | Resolve imports at the AST level: parse the user's source via
+-- Agda, recursively parse + resolve transitive imports, call Agda's
+-- verified `resolveImports` with the populated ModuleMap, return the
+-- flat Module ready for `compileFromModule`.
+--
+-- Import cycles are detected during the recursive descent (any path
+-- visited twice on the same chain triggers an error).
+loadAndResolve :: FilePath -> Maybe FilePath -> T.Text -> IO (Either String Bridge.Module)
+loadAndResolve inputPath mStrataOpt source = do
   strataDir <- findStrataDir inputPath mStrataOpt
-  let imports = extractImports source
-  result <- foldM (processImport strataDir) (Right []) imports
-  case result of
-    Left err -> pure $ Left err
-    Right allPrims ->
-      let primLines = formatPrimitives allPrims
-          -- Insert primitives after any comments at the top
-          processedSource = insertPrimitives primLines source
-      in pure $ Right processedSource
+  case Bridge.parseSource source of
+    Nothing -> pure (Left "Parse error: failed to parse module")
+    Just userMod -> do
+      mapResult <- buildModuleMap strataDir [] (Bridge.moduleImports userMod)
+      case mapResult of
+        Left err     -> pure (Left err)
+        Right modMap ->
+          case Bridge.resolveImports modMap userMod of
+            Left err    -> pure (Left (T.unpack err))
+            Right flat  -> pure (Right flat)
   where
-    processImport :: FilePath -> Either String [(String, String)]
-                  -> ImportDecl -> IO (Either String [(String, String)])
-    processImport _ (Left err) _ = pure $ Left err
-    processImport strataDir (Right accPrims) imp = do
-      let modulePath = importPathToFilePath strataDir imp
-      exists <- doesFileExist modulePath
-      if not exists
-        then pure $ Left $ "Import error: module not found: " ++ modulePath
+    -- | Recursively load all transitive imports. Returns a ModuleMap
+    -- where every entry is already fully resolved (its own DImport
+    -- decls flattened), so a single call to the Agda resolver at the
+    -- top suffices.
+    --
+    -- The `inProgress` list is the chain of paths currently being
+    -- resolved; re-entering one means a cycle.
+    buildModuleMap
+      :: FilePath
+      -> [[T.Text]]                         -- ^ in-progress (cycle detection)
+      -> [Bridge.ImportRef]
+      -> IO (Either String [([T.Text], Bridge.Module)])
+    buildModuleMap _         _           []           = pure (Right [])
+    buildModuleMap strataDir inProgress  (imp : rest) = do
+      let path = Bridge.importPath imp
+      if path `elem` inProgress
+        then pure (Left ("Import cycle detected at: " ++ showPath path))
         else do
-          moduleSource <- TIO.readFile modulePath
-          let prims = extractPrimitives moduleSource
-              qualifiedPrims = qualifyPrimitives (importAlias imp) prims
-          pure $ Right (accPrims ++ qualifiedPrims)
+          -- Load + parse this module
+          let filePath = importPathToFilePath strataDir path
+          exists <- doesFileExist filePath
+          if not exists
+            then pure (Left ("Import error: module not found: " ++ filePath))
+            else do
+              moduleSource <- TIO.readFile filePath
+              case Bridge.parseSource moduleSource of
+                Nothing   -> pure (Left ("Parse error in imported module: " ++ filePath))
+                Just subM -> do
+                  -- Recurse for subM's own imports FIRST, so when we
+                  -- resolve subM itself, modMap is complete.
+                  subResult <- buildModuleMap strataDir (path : inProgress)
+                                              (Bridge.moduleImports subM)
+                  case subResult of
+                    Left err      -> pure (Left err)
+                    Right subMap  ->
+                      case Bridge.resolveImports subMap subM of
+                        Left err     -> pure (Left (T.unpack err))
+                        Right subFlat -> do
+                          -- Continue with siblings, carrying this
+                          -- module's resolved entry + sub-deps.
+                          tailResult <- buildModuleMap strataDir inProgress rest
+                          case tailResult of
+                            Left err       -> pure (Left err)
+                            Right tailMap  ->
+                              pure (Right ((path, subFlat) : subMap ++ tailMap))
 
-    -- Insert primitive declarations after leading comments/blank lines
-    insertPrimitives :: T.Text -> T.Text -> T.Text
-    insertPrimitives prims src =
-      let (header, body) = splitHeader src
-      in header <> prims <> body
-
-    -- Split source into comment header and body
-    splitHeader :: T.Text -> (T.Text, T.Text)
-    splitHeader src =
-      let ls = T.lines src
-          (headerLines, bodyLines) = span isHeaderLine ls
-      in (T.unlines headerLines, T.unlines bodyLines)
-
-    isHeaderLine :: T.Text -> Bool
-    isHeaderLine line =
-      let stripped = T.strip line
-      in T.null stripped || T.isPrefixOf "--" stripped || T.isPrefixOf "import " stripped
+    showPath :: [T.Text] -> String
+    showPath = intercalate "." . map T.unpack

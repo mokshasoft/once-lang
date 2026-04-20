@@ -13,7 +13,7 @@ module Once.Parser where
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁)
-open import Data.String using (String; _≟_)
+open import Data.String using (String; _≟_; _++_)
 open import Data.Nat using (ℕ)
 open import Relation.Nullary using (yes; no)
 
@@ -113,9 +113,16 @@ extractFunctions aliases (mkModule ds) = go ds nothing
   go (DFunDef name alloc body ∷ rest) (just (sigName , sigTy)) with sigName ≟ name
   ... | yes _ = mkFunInfo name sigTy alloc body ∷ go rest nothing
   ... | no _  = go rest nothing  -- mismatched sig, skip
-  -- Primitives: use RVar as placeholder body (actual impl is external)
-  go (DPrimitive name ty ∷ rest) _ =
+  -- Primitives: use RVar as placeholder body (actual impl is external).
+  -- Owned primitives (from resolved imports) get qualified names
+  -- `alias.name` — same textual form that the typechecker's
+  -- `lookupImport` uses for `RQualified`, so user code `exit@S`
+  -- resolves to this FunInfo without further wiring.
+  go (DPrimitive name nothing       ty ∷ rest) _ =
     mkFunInfo name (expandAliases aliases ty) nothing (RVar name) ∷ go rest nothing
+  go (DPrimitive name (just owner) ty ∷ rest) _ =
+    let qname = owner ++ "." ++ name
+    in mkFunInfo qname (expandAliases aliases ty) nothing (RVar qname) ∷ go rest nothing
   go (_ ∷ rest) pending = go rest pending
 
 -- | Inline all functions and return elaboration-ready pairs
