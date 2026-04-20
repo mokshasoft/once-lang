@@ -97,10 +97,10 @@ agdaToText = unsafeCoerce
 textToAgda :: Text -> a
 textToAgda = unsafeCoerce
 
-fromMFunInfo :: MP.T_FunInfo_38 -> FunSig
+fromMFunInfo :: MP.T_FunInfo_84 -> FunSig
 fromMFunInfo fi = FunSig
-  { funSigName = agdaToText (MP.d_funName_48 fi)
-  , funSigType = agdaToText (MT.d_showType_132 (MP.d_funType_50 fi))
+  { funSigName = agdaToText (MP.d_funName_94 fi)
+  , funSigType = agdaToText (MT.d_showType_132 (MP.d_funType_96 fi))
   }
 
 fromMResult :: MC.T_CompileResult_302 -> CompileResult
@@ -122,10 +122,16 @@ compile stage doOpt arch source =
 ------------------------------------------------------------------------
 
 -- | Parse a single .once source into a Module AST.
--- Returns Nothing on parse failure.
-parseSource :: Text -> Maybe Module
-parseSource source = fmap (Module . unsafeCoerce)
-                          (MC.d_parseSourceToModule_240 (textToAgda source))
+-- Returns `Left err` if the source fails to parse cleanly (including
+-- silent-drop cases like dotted primitive names or TVars in type
+-- position — see plan 0.6 Phase A). Agda-side `parseSourceToModule`
+-- now uses the strict parser, so these failures surface rather than
+-- silently producing a module with missing decls.
+parseSource :: Text -> Either Text Module
+parseSource source =
+  case MC.d_parseSourceToModule_240 (textToAgda source) of
+    MSum.C_inj'8321'_38 err -> Left (agdaToText err)
+    MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
 -- | Extract just the `import` declarations from a parsed Module.
 -- Haskell uses this to decide which files to read + parse next.
@@ -165,4 +171,4 @@ resolveImports modMap (Module userMod) =
 compileFromModule :: Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule stage doOpt arch (Module m) =
   fromMResult
-    (MC.d_compileFromModule_376 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce m))
+    (MC.d_compileFromModule_378 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce m))

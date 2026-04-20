@@ -439,8 +439,8 @@ loadAndResolve :: FilePath -> Maybe FilePath -> T.Text -> IO (Either String Brid
 loadAndResolve inputPath mStrataOpt source = do
   strataDir <- findStrataDir inputPath mStrataOpt
   case Bridge.parseSource source of
-    Nothing -> pure (Left "Parse error: failed to parse module")
-    Just userMod -> do
+    Left err      -> pure (Left (T.unpack err))
+    Right userMod -> do
       mapResult <- buildModuleMap strataDir [] (Bridge.moduleImports userMod)
       case mapResult of
         Left err     -> pure (Left err)
@@ -475,8 +475,8 @@ loadAndResolve inputPath mStrataOpt source = do
             else do
               moduleSource <- TIO.readFile filePath
               case Bridge.parseSource moduleSource of
-                Nothing   -> pure (Left ("Parse error in imported module: " ++ filePath))
-                Just subM -> do
+                Left err   -> pure (Left ("Parse error in imported module " ++ filePath ++ ": " ++ T.unpack err))
+                Right subM -> do
                   -- Recurse for subM's own imports FIRST, so when we
                   -- resolve subM itself, modMap is complete.
                   subResult <- buildModuleMap strataDir (path : inProgress)

@@ -10,10 +10,12 @@
 
 module Once.Parser where
 
+open import Data.Bool using (Bool; true; false)
 open import Data.List using (List; []; _∷_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_×_; _,_; proj₁)
 open import Data.String using (String; _≟_; _++_)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (ℕ)
 open import Relation.Nullary using (yes; no)
 
@@ -74,10 +76,83 @@ import Once.Grammar.ExprRelRoundtrip
 
 -- | Parse a source string into a Module.
 -- Returns Nothing on parse failure.
+--
+-- DEPRECATED for new callers — use `parseStrict` instead so
+-- unexpected trailing tokens surface as errors rather than silent
+-- drops. Kept for compatibility with callers that intentionally
+-- want a partial parse (none in-tree as of plan 0.6 Phase A).
 parse : String → Maybe Module
 parse source with parseModule (tokenizeString source)
 ... | just (m , _) = just m
 ... | nothing = nothing
+
+-- | A parse residual is "trivial" iff it contains only trailing
+-- `TNewline`s and `TEOF`s. Anything else means the parser stopped
+-- early because a declaration failed — which was silently recovered
+-- by `parseDeclsWF` but should surface as an error at the top level.
+-- Plan 0.6 Phase A: strict parser errors, no silent drops.
+allTrailing : List Token → Bool
+allTrailing []              = true
+allTrailing (TNewline ∷ xs) = allTrailing xs
+allTrailing (TEOF     ∷ xs) = allTrailing xs
+allTrailing _               = false
+
+-- | Show the first few tokens (approximate position indicator) for
+-- error messages. We don't have column numbers yet; the first few
+-- token tags are still the single most useful piece of information
+-- for pointing a user to the failing decl.
+showTokenPrefix : List Token → String
+showTokenPrefix [] = ""
+showTokenPrefix (TWord s    ∷ _) = "TWord \"" ++ s ++ "\""
+showTokenPrefix (TInt _     ∷ _) = "TInt"
+showTokenPrefix (TString _  ∷ _) = "TString"
+showTokenPrefix (TNewline   ∷ xs) = showTokenPrefix xs
+showTokenPrefix (TLParen    ∷ _) = "TLParen"
+showTokenPrefix (TRParen    ∷ _) = "TRParen"
+showTokenPrefix (TLBrace    ∷ _) = "TLBrace"
+showTokenPrefix (TRBrace    ∷ _) = "TRBrace"
+showTokenPrefix (TColon     ∷ _) = "TColon"
+showTokenPrefix (TEquals    ∷ _) = "TEquals"
+showTokenPrefix (TArrow     ∷ _) = "TArrow"
+showTokenPrefix (TLambda    ∷ _) = "TLambda"
+showTokenPrefix (TComma     ∷ _) = "TComma"
+showTokenPrefix (TSemicolon ∷ _) = "TSemicolon"
+showTokenPrefix (TAt        ∷ _) = "TAt"
+showTokenPrefix (TPipe      ∷ _) = "TPipe"
+showTokenPrefix (TDot       ∷ _) = "TDot"
+showTokenPrefix (TPlus      ∷ _) = "TPlus"
+showTokenPrefix (TMinus     ∷ _) = "TMinus"
+showTokenPrefix (TStar      ∷ _) = "TStar"
+showTokenPrefix (TSlash     ∷ _) = "TSlash"
+showTokenPrefix (TPercent   ∷ _) = "TPercent"
+showTokenPrefix (TAmpersand ∷ _) = "TAmpersand"
+showTokenPrefix (TLt        ∷ _) = "TLt"
+showTokenPrefix (TLe        ∷ _) = "TLe"
+showTokenPrefix (TGt        ∷ _) = "TGt"
+showTokenPrefix (TGe        ∷ _) = "TGe"
+showTokenPrefix (TEqEq      ∷ _) = "TEqEq"
+showTokenPrefix (TNeq       ∷ _) = "TNeq"
+showTokenPrefix (TCaret1    ∷ _) = "TCaret1"
+showTokenPrefix (TCaret0    ∷ _) = "TCaret0"
+showTokenPrefix (TCaretW    ∷ _) = "TCaretW"
+showTokenPrefix (TEOF       ∷ xs) = showTokenPrefix xs
+
+-- | Strict parse entry: returns `inj₁ err` if tokenisation parses
+-- any decls but leaves non-trivial tokens behind (i.e. the parser
+-- gave up silently on a malformed decl), or if it parses nothing at
+-- all. Returns `inj₂ m` only when every token is accounted for.
+--
+-- Plan 0.6 Phase A — motivation: earlier this week two different
+-- silent-drop bugs cost material debugging time (dotted primitive
+-- names in the import preprocessor; TVars in type signatures). Both
+-- symptoms were "the thing I wrote just isn't there." This entry
+-- point makes that class of failure impossible.
+parseStrict : String → String ⊎ Module
+parseStrict source with parseModule (tokenizeString source)
+... | nothing       = inj₁ "Parse error: module failed to parse"
+... | just (m , r) with allTrailing r
+...   | true  = inj₂ m
+...   | false = inj₁ ("Parse error: unexpected tokens remaining after last parsed decl (starting at: " ++ showTokenPrefix r ++ ")")
 
 ------------------------------------------------------------------------
 -- Processing Pipeline Helpers

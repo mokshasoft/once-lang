@@ -68,43 +68,43 @@ primitive fd_dup2 : Eff (Int * Int) Int
 -- O_CREAT = 64, O_TRUNC = 512, O_APPEND = 1024
 
 -- | Open file, returns file descriptor
-primitive open : Eff (String Utf8 * Int * Int) Int
+primitive open : Eff (String * Int * Int) Int
 
 -- | Create file (shorthand for open with O_CREAT | O_WRONLY | O_TRUNC)
-primitive creat : Eff (String Utf8 * Int) Int
+primitive creat : Eff (String * Int) Int
 
 -- | Unlink (delete) file
-primitive unlink : Eff (String Utf8) Int
+primitive unlink : Eff (String) Int
 
 -- | Rename file
-primitive rename : Eff (String Utf8 * String Utf8) Int
+primitive rename : Eff (String * String) Int
 
 -- | Create symbolic link
-primitive symlink : Eff (String Utf8 * String Utf8) Int
+primitive symlink : Eff (String * String) Int
 
 -- | Read symbolic link target into buffer
-primitive readlink : Eff (String Utf8 * Buffer * Int) Int
+primitive readlink : Eff (String * Buffer * Int) Int
 
 -- | Get file status (returns encoded stat structure in buffer)
-primitive stat : Eff (String Utf8 * Buffer) Int
+primitive stat : Eff (String * Buffer) Int
 
 -- | Get file status (don't follow symlinks)
-primitive lstat : Eff (String Utf8 * Buffer) Int
+primitive lstat : Eff (String * Buffer) Int
 
 -- | Get file status by file descriptor
 primitive fstat : Eff (Int * Buffer) Int
 
 -- | Change file permissions
-primitive chmod : Eff (String Utf8 * Int) Int
+primitive chmod : Eff (String * Int) Int
 
 -- | Change file permissions by file descriptor
 primitive fchmod : Eff (Int * Int) Int
 
 -- | Change file owner
-primitive chown : Eff (String Utf8 * Int * Int) Int
+primitive chown : Eff (String * Int * Int) Int
 
 -- | Truncate file to specified length
-primitive truncate : Eff (String Utf8 * Int) Int
+primitive truncate : Eff (String * Int) Int
 
 -- | Truncate file by file descriptor
 primitive ftruncate : Eff (Int * Int) Int
@@ -114,19 +114,19 @@ primitive ftruncate : Eff (Int * Int) Int
 ------------------------------------------------------------------------
 
 -- | Create directory
-primitive mkdir : Eff (String Utf8 * Int) Int
+primitive mkdir : Eff (String * Int) Int
 
 -- | Remove directory
-primitive rmdir : Eff (String Utf8) Int
+primitive rmdir : Eff (String) Int
 
 -- | Change current directory
-primitive chdir : Eff (String Utf8) Int
+primitive chdir : Eff (String) Int
 
 -- | Get current directory into buffer
 primitive getcwd : Eff (Buffer * Int) Int
 
 -- | Change root directory
-primitive chroot : Eff (String Utf8) Int
+primitive chroot : Eff (String) Int
 
 ------------------------------------------------------------------------
 -- File Seeking (D032: All syscalls are effectful)
@@ -161,13 +161,13 @@ primitive nanosleep : Eff (Buffer * Buffer) Int
 ------------------------------------------------------------------------
 
 -- | Get environment variable value
-primitive getenv : Eff (String Utf8) (String Utf8)
+primitive getenv : Eff (String) (String)
 
 -- | Set environment variable
-primitive setenv : Eff (String Utf8 * String Utf8 * Int) Int
+primitive setenv : Eff (String * String * Int) Int
 
 -- | Unset environment variable
-primitive unsetenv : Eff (String Utf8) Int
+primitive unsetenv : Eff (String) Int
 
 ------------------------------------------------------------------------
 -- Memory Mapping (D032: All syscalls are effectful)

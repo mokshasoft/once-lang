@@ -185,8 +185,15 @@ compileModule doOpt source with parse source
 -- | Parse source text to a Module AST. Haskell uses this to read
 -- both the user's file and each transitive import before calling
 -- `resolveImports` with the populated ModuleMap.
-parseSourceToModule : String → Maybe Module
-parseSourceToModule = parse
+--
+-- Strict: returns `inj₁ err` if any tokens are left unconsumed after
+-- the parsed decls, or if the module failed to parse at all. This
+-- surfaces silent-drop failures (dotted primitive names, TVar-in-
+-- type-position, etc.) as real errors at the Haskell boundary
+-- instead of zero-decl "Parse OK" that cost a session's worth of
+-- debugging earlier. Plan 0.6 Phase A.
+parseSourceToModule : String → String ⊎ Module
+parseSourceToModule = parseStrict
 
 -- | Compile a pre-parsed, pre-resolved Module. Same as `compileModule`
 -- but starting from an AST rather than source text. Used by the
@@ -284,9 +291,9 @@ showFunInfos (fi ∷ rest) = showFunInfo fi ++ "\n" ++ showFunInfos rest
 -- arch: target architecture (only relevant for FullBuild)
 -- source: source code text
 compile : Stage → Bool → Arch → String → CompileResult
-compile stage doOpt arch source with parse source
-... | nothing = Error "Parse error: failed to parse module"
-... | just mod =
+compile stage doOpt arch source with parseStrict source
+... | inj₁ err = Error err
+... | inj₂ mod =
   let aliases = extractAliases mod
       funs = extractFunctions aliases mod
   in case stage of λ where
