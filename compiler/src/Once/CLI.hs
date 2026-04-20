@@ -11,6 +11,7 @@ module Once.CLI
   ( run
   , Command (..)
   , BuildOptions (..)
+  , StageOptions (..)
   , CheckOptions (..)
   , ParseOptions (..)
   , OutputMode (..)
@@ -47,7 +48,20 @@ data Command
   = Build BuildOptions
   | Check CheckOptions
   | Parse ParseOptions
+  | Preprocess StageOptions
+  | Elaborate StageOptions
+  | Optimize StageOptions
+  | Escape StageOptions
+  | CodeGen StageOptions
   deriving (Eq, Show)
+
+-- | Common options for pipeline-inspection stages
+-- (preprocess, elaborate, optimize, escape, codegen).
+-- Output goes to stdout unless stageOutput is Just FILE.
+data StageOptions = StageOptions
+  { stageInput  :: FilePath
+  , stageOutput :: Maybe FilePath
+  } deriving (Eq, Show)
 
 -- | Output mode for build command
 data OutputMode
@@ -120,12 +134,14 @@ data BuildOptions = BuildOptions
 
 -- | Options for the check command
 data CheckOptions = CheckOptions
-  { checkInput :: FilePath
+  { checkInput  :: FilePath
+  , checkOutput :: Maybe FilePath
   } deriving (Eq, Show)
 
 -- | Options for the parse command
 data ParseOptions = ParseOptions
-  { parseInput :: FilePath
+  { parseInput  :: FilePath
+  , parseOutput :: Maybe FilePath
   } deriving (Eq, Show)
 
 ------------------------------------------------------------------------
@@ -135,9 +151,31 @@ data ParseOptions = ParseOptions
 -- | Run the CLI with a command
 run :: Command -> IO ()
 run cmd = case cmd of
-  Build opts -> runBuild opts
-  Check opts -> runCheck opts
-  Parse opts -> runParse opts
+  Build opts      -> runBuild opts
+  Check opts      -> runCheck opts
+  Parse opts      -> runParse opts
+  Preprocess opts -> runPreprocess opts
+  Elaborate opts  -> runNotWired "elaborate" opts
+  Optimize opts   -> runNotWired "optimize" opts
+  Escape opts     -> runNotWired "escape" opts
+  CodeGen opts    -> runNotWired "codegen" opts
+
+-- | Emit the output text to the stage's configured destination.
+-- Nothing means stdout; Just path writes to that file. "-" also means stdout.
+emitStage :: Maybe FilePath -> T.Text -> IO ()
+emitStage Nothing     text = TIO.putStr text
+emitStage (Just "-")  text = TIO.putStr text
+emitStage (Just path) text = TIO.writeFile path text
+
+-- | Stage not yet wired to the verified pipeline. Prints a clear
+-- message so the CLI shape is discoverable without needing Agda-side
+-- pretty-printers first.
+runNotWired :: String -> StageOptions -> IO ()
+runNotWired name _ = do
+  TIO.putStrLn $ "Error: stage `" <> T.pack name <> "` is not yet wired to the Agda pipeline."
+  TIO.putStrLn "This requires show functions in Agda for the intermediate IR, and corresponding"
+  TIO.putStrLn "Stage/CompileResult constructors. See plan: \"Agda show functions for IRs\"."
+  exitFailure
 
 ------------------------------------------------------------------------
 -- Result Handling
@@ -166,8 +204,7 @@ runParse opts = do
     Right processedSource ->
       case Bridge.compile Bridge.Parse False Bridge.X86_64 processedSource of
         Parsed sigs -> do
-          TIO.putStr $ showFunSigs sigs
-          TIO.putStrLn "Parse OK"
+          emitStage (parseOutput opts) (showFunSigs sigs <> "Parse OK\n")
           exitSuccess
         Error err -> do
           TIO.putStrLn $ "Error: " <> err
@@ -175,6 +212,22 @@ runParse opts = do
         _ -> do
           TIO.putStrLn "Internal error: unexpected result from parse"
           exitFailure
+
+-- | Run the preprocess command: resolve imports, dump the source that
+-- the parser will actually see. Pure Haskell — no Agda call — because
+-- import resolution is currently text-level (TODO: move to Agda).
+runPreprocess :: StageOptions -> IO ()
+runPreprocess opts = do
+  let inputPath = stageInput opts
+  source <- TIO.readFile inputPath
+  resolveResult <- resolveImports inputPath Nothing source
+  case resolveResult of
+    Left err -> do
+      TIO.putStrLn $ "Error: " <> T.pack err
+      exitFailure
+    Right processedSource -> do
+      emitStage (stageOutput opts) processedSource
+      exitSuccess
 
 ------------------------------------------------------------------------
 -- Check Command
@@ -195,7 +248,7 @@ runCheck opts = do
       -- doOpt is irrelevant for Check stage (optimizer runs after type checking)
       case Bridge.compile Bridge.Check False Bridge.X86_64 processedSource of
         Checked -> do
-          TIO.putStrLn "Typecheck OK"
+          emitStage (checkOutput opts) "Typecheck OK\n"
           exitSuccess
         Error err -> do
           TIO.putStrLn $ "Error: " <> err

@@ -241,23 +241,49 @@ library
       MAlonzo.Code.Once.Escape
       MAlonzo.Code.Once.Functor.Base
       MAlonzo.Code.Once.Functor.Translate
+      MAlonzo.Code.Once.Grammar
+      MAlonzo.Code.Once.Grammar.Convert
+      MAlonzo.Code.Once.Grammar.ExprBridge
+      MAlonzo.Code.Once.Grammar.ExprConvert
+      MAlonzo.Code.Once.Grammar.ExprPrinter
+      MAlonzo.Code.Once.Grammar.ExprRelRoundtrip
+      MAlonzo.Code.Once.Grammar.ExprRoundtrip
+      MAlonzo.Code.Once.Grammar.ParserBridge
+      MAlonzo.Code.Once.Grammar.ParserInvariant
+      MAlonzo.Code.Once.Grammar.ParserRelation
+      MAlonzo.Code.Once.Grammar.Printer
+      MAlonzo.Code.Once.Grammar.RelRoundtrip
+      MAlonzo.Code.Once.Grammar.Roundtrip
       MAlonzo.Code.Once.Optimize
       MAlonzo.Code.Once.Parser
+      MAlonzo.Code.Once.Parser.AccIrrelevant
       MAlonzo.Code.Once.Parser.Core
       MAlonzo.Code.Once.Parser.Expr
+      MAlonzo.Code.Once.Parser.ExprRelation
       MAlonzo.Code.Once.Parser.Inline
       MAlonzo.Code.Once.Parser.Lexer
       MAlonzo.Code.Once.Parser.Module
+      MAlonzo.Code.Once.Parser.Module.Alloc
+      MAlonzo.Code.Once.Parser.Module.Core
+      MAlonzo.Code.Once.Parser.Module.DeclTail
+      MAlonzo.Code.Once.Parser.Module.FunDef
+      MAlonzo.Code.Once.Parser.Module.FunDef.Body
+      MAlonzo.Code.Once.Parser.Module.FunDef.Def
+      MAlonzo.Code.Once.Parser.Module.FunDef.OpDecl
+      MAlonzo.Code.Once.Parser.Module.FunDef.Params
+      MAlonzo.Code.Once.Parser.Module.Import
+      MAlonzo.Code.Once.Parser.Module.OpName
+      MAlonzo.Code.Once.Parser.Tests
       MAlonzo.Code.Once.Parser.Token
       MAlonzo.Code.Once.Parser.Type
       MAlonzo.Code.Once.Parser.TypeAlias
+      MAlonzo.Code.Once.Parser.TypeRelation
       MAlonzo.Code.Once.Postulates
       MAlonzo.Code.Once.Semantics.Core
       MAlonzo.Code.Once.Semantics.IR
       MAlonzo.Code.Once.Surface.Desugar
       MAlonzo.Code.Once.Surface.Elaborate
       MAlonzo.Code.Once.Surface.IR
-      MAlonzo.Code.Once.Surface.PolySyntax
       MAlonzo.Code.Once.Surface.Syntax
       MAlonzo.Code.Once.Surface.Thinning
       MAlonzo.Code.Once.Target
@@ -265,6 +291,7 @@ library
       MAlonzo.Code.Once.Type
       MAlonzo.Code.Once.TypeCheck.Context
       MAlonzo.Code.Once.TypeCheck.Elaborate
+      MAlonzo.Code.Once.TypeCheck.Error
       MAlonzo.Code.Once.TypeCheck.Raw
       MAlonzo.Code.Relation.Binary
       MAlonzo.Code.Relation.Binary.Bundles

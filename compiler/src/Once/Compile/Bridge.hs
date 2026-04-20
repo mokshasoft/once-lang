@@ -78,7 +78,7 @@ agdaToText = unsafeCoerce
 fromMFunInfo :: MP.T_FunInfo_38 -> FunSig
 fromMFunInfo fi = FunSig
   { funSigName = agdaToText (MP.d_funName_48 fi)
-  , funSigType = agdaToText (MT.d_showType_368 (MP.d_funType_50 fi))
+  , funSigType = agdaToText (MT.d_showType_132 (MP.d_funType_50 fi))
   }
 
 -- | Convert MAlonzo FunInfo list to Haskell FunSig list
