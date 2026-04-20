@@ -154,7 +154,7 @@ run cmd = case cmd of
   Build opts      -> runBuild opts
   Check opts      -> runCheck opts
   Parse opts      -> runParse opts
-  Preprocess opts -> runPreprocess opts
+  Preprocess opts -> runNotWired "preprocess" opts
   Elaborate opts  -> runNotWired "elaborate" opts
   Optimize opts   -> runNotWired "optimize" opts
   Escape opts     -> runNotWired "escape" opts
@@ -212,22 +212,6 @@ runParse opts = do
         _ -> do
           TIO.putStrLn "Internal error: unexpected result from parse"
           exitFailure
-
--- | Run the preprocess command: resolve imports, dump the source that
--- the parser will actually see. Pure Haskell — no Agda call — because
--- import resolution is currently text-level (TODO: move to Agda).
-runPreprocess :: StageOptions -> IO ()
-runPreprocess opts = do
-  let inputPath = stageInput opts
-  source <- TIO.readFile inputPath
-  resolveResult <- resolveImports inputPath Nothing source
-  case resolveResult of
-    Left err -> do
-      TIO.putStrLn $ "Error: " <> T.pack err
-      exitFailure
-    Right processedSource -> do
-      emitStage (stageOutput opts) processedSource
-      exitSuccess
 
 ------------------------------------------------------------------------
 -- Check Command

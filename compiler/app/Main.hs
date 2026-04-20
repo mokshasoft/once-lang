@@ -134,7 +134,7 @@ usage = do
   TIO.putStrLn "Usage: once <command> [options]"
   TIO.putStrLn ""
   TIO.putStrLn "Pipeline inspection (each stage takes [-o FILE] <file.once>):"
-  TIO.putStrLn "  preprocess <file.once>        Dump source after `import` resolution"
+  TIO.putStrLn "  preprocess <file.once>        Dump source after `import` resolution (TODO: Agda-level resolver)"
   TIO.putStrLn "  parse <file.once>             Parse only (show function signatures)"
   TIO.putStrLn "  check <file.once>             Parse and type check"
   TIO.putStrLn "  elaborate <file.once>         Surface IR after Surface → IR elaboration (TODO: Agda show)"
