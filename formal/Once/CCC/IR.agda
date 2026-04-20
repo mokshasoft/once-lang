@@ -76,8 +76,15 @@ data IR : Type → Type → Set where
   curry : ∀ {A B C q} → IR (A * B) C → AllocMode → IR A (B ⇒[ q ] C)
   apply : ∀ {A B q} → IR ((A ⇒[ q ] B) * A) B
 
-  -- Effect lifting
+  -- Effect lifting (arrow's unit: pure → effectful)
   arr : ∀ {A B q} → IR (A ⇒[ q ] B) (Eff A B)
+
+  -- Effect application (arrow's run: execute an effectful arrow on an input).
+  -- Dual to `apply` for pure arrows. At runtime compiles to the same code
+  -- as `apply` (both are function calls) — the distinction is purely type-
+  -- level tracking of effectfulness. Introduced so Surface.effApp elaborates
+  -- structurally via `applyEff` instead of a Eff→Arrow coercion postulate.
+  applyEff : ∀ {A B} → IR ((Eff A B) * A) B
 
   -- fold/unfold removed by OCP-0003: use In/Cata/Out/Ana instead
   -- (Total and productive by construction)

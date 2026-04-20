@@ -179,6 +179,7 @@ fusion-once (Fuse {F} {G} wfF wfG alg transform) = Fuse {F} {G} wfF wfG (fusion-
 
 -- Effects: nothing to fuse
 fusion-once arr = arr
+fusion-once applyEff = applyEff
 
 -- Primitives: opaque, pass through
 fusion-once (Prim name) = Prim name

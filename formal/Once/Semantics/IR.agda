@@ -139,6 +139,7 @@ eval ps (Fuse {F} {G} wfF wfG alg transform) x =
 -- Takes a pure function and returns it as an effectful function
 -- Both have the same plain function representation
 eval ps arr f             = f
+eval ps applyEff (f , a)  = f a
 
 -- Memory management (no-op in semantics)
 eval ps (free-heap _) x   = x

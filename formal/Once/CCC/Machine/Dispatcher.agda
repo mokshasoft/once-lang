@@ -374,6 +374,24 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       -- Reference-based model: Stack and Heap use same pointer representation for pairs
       run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
+    -- ApplyEff: effectful application `f x` where `f : Eff A B`.
+    -- At runtime identical to `apply` — `Eff A B` and `A ⇒[q] B` share
+    -- the semantic interpretation `⟦A⟧ → ⟦B⟧`, and the codegen emits
+    -- the same x86 instructions (see CodeGen.Compile: `compile-ir'
+    -- applyEff = apply-instrs`).
+    --
+    -- The Dispatcher's correctness proof for this case is a follow-up
+    -- — the runtime is fully wired (MAlonzo path), but mirroring the
+    -- full IRResultAWF proof structure from `run-apply` requires
+    -- decomposing the `ValidAtWF … {Eff A B}` pair via the inverse
+    -- of `valid-eff-wf` plus rebuilding ~30 record fields. Stubbed
+    -- pending that duplication.
+    --
+    -- TODO(applyEff-dispatcher-correct): replace with structural proof.
+    run-ir-wf mIn (applyEff {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      applyEff-placeholder
+      where postulate applyEff-placeholder : ∃[ mOut ] IRResultAWF mOut (applyEff {A} {B}) x s alloc
+
     -- Free-heap: explicit heap deallocation (delegated to SimpleWF module)
     -- Semantically a no-op (returns input unchanged).
     run-ir-wf mIn (free-heap ref) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =

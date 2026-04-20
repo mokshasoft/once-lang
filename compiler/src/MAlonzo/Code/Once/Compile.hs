@@ -60,16 +60,21 @@ d_validateMain_4 v0
               MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38
               (coe
                  MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                 ("main must have type Eff Unit A, but got: " :: Data.Text.Text)
+                 ("main must have type IO Unit (= Eff Unit Unit), but got: "
+                  ::
+                  Data.Text.Text)
                  (MAlonzo.Code.Once.Type.d_showType_132 (coe v0))) in
     coe
       (case coe v0 of
          MAlonzo.Code.Once.Type.C_Eff_58 v2 v3
            -> case coe v2 of
                 MAlonzo.Code.Once.Type.C_Unit_48
-                  -> coe
-                       MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
-                       (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                  -> case coe v3 of
+                       MAlonzo.Code.Once.Type.C_Unit_48
+                         -> coe
+                              MAlonzo.Code.Data.Sum.Base.C_inj'8322'_42
+                              (coe MAlonzo.Code.Agda.Builtin.Unit.C_tt_8)
+                       _ -> coe v1
                 _ -> coe v1
          _ -> coe v1)
 -- Once.Compile.FunCtx
@@ -99,7 +104,7 @@ d_compileFunBody_24 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_compileFunBody_24 v0 v1 v2 v3 v4
   = let v5
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1352
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1368
               (coe
                  MAlonzo.Code.Once.TypeCheck.Elaborate.d_ctxWithImportsAndSelf_454
                  (coe v1) (coe v2) (coe v3))
@@ -112,19 +117,17 @@ d_compileFunBody_24 v0 v1 v2 v3 v4
                 (coe
                    MAlonzo.Code.Data.Bool.Base.du_if_then_else__44 (coe v0)
                    (coe
-                      MAlonzo.Code.Once.Optimize.d_optimize_5802
+                      MAlonzo.Code.Once.Optimize.d_optimize_5996
                       (coe
                          MAlonzo.Code.Once.Surface.Elaborate.du_'10214'_'10215''7580'_44
                          (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8))
                       v3
                       (coe
                          MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
-                         (coe (0 :: Integer))
                          (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v3)
                          (coe v7)))
                    (coe
                       MAlonzo.Code.Once.Surface.Elaborate.du_elaborate_114
-                      (coe (0 :: Integer))
                       (coe MAlonzo.Code.Once.Surface.Syntax.C_'8709'_8) (coe v3)
                       (coe v7)))
          MAlonzo.Code.Once.TypeCheck.Elaborate.C_failure_418 v6
@@ -516,7 +519,7 @@ d_pipeline_256 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Escape.d_escape_120 v0 v1
       (coe
-         MAlonzo.Code.Once.Optimize.d_optimize_5802 v0 v1
+         MAlonzo.Code.Once.Optimize.d_optimize_5996 v0 v1
          (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16
             (coe v0) (coe v1) (coe v2)))
 -- Once.Compile.pipeline-no-escape
@@ -527,7 +530,7 @@ d_pipeline'45'no'45'escape_264 ::
   MAlonzo.Code.Once.CCC.IR.T_IR_12
 d_pipeline'45'no'45'escape_264 v0 v1 v2
   = coe
-      MAlonzo.Code.Once.Optimize.d_optimize_5802 v0 v1
+      MAlonzo.Code.Once.Optimize.d_optimize_5996 v0 v1
       (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16
          (coe v0) (coe v1) (coe v2))
 -- Once.Compile.pipeline-no-opt

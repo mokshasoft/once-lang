@@ -277,7 +277,7 @@ Id ≟Functor (_ ⊗ _) = no (λ ())
 -- IR head discriminator.
 data IRHead : Set where
   h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
-    h-terminal h-initial h-curry h-apply h-arr
+    h-terminal h-initial h-curry h-apply h-arr h-applyEff
     h-In h-out-μ h-Cata h-Para h-Out h-in-ν h-Ana h-Hylo h-Fuse
     h-free-heap h-Prim : IRHead
 
@@ -295,6 +295,7 @@ ir-head initial = h-initial
 ir-head (curry _ _) = h-curry
 ir-head apply = h-apply
 ir-head arr = h-arr
+ir-head applyEff = h-applyEff
 ir-head (In _ _) = h-In
 ir-head (out-μ _) = h-out-μ
 ir-head (Cata _ _) = h-Cata
@@ -412,6 +413,7 @@ cross-no {f = f} {g = g} hneq eqA eqB = head-mismatch-abs f g hneq eqA eqB
 
 ≟IRH apply apply refl refl = yes refl
 ≟IRH arr arr refl refl = yes refl
+≟IRH applyEff applyEff refl refl = yes refl
 
 -- In: eqB : μ-type F ≡ μ-type F' gives the Functor tag
 ≟IRH (In {F} wf₁ m₁) (In {F'} wf₂ m₂) eqA eqB with F ≟Functor F'
@@ -809,6 +811,58 @@ cross-no {f = f} {g = g} hneq eqA eqB = head-mismatch-abs f g hneq eqA eqB
 ≟IRH arr (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
 ≟IRH arr (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
 ≟IRH arr (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH arr applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+
+-- applyEff row
+≟IRH applyEff id eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff fst eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff snd eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (inl _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (inr _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (case _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff terminal eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff initial eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (curry _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff apply eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff arr eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (In _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (out-μ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (Cata _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (Para _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (Out _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (in-ν _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (Ana _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (Hylo _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (Fuse _ _ _ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (free-heap _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH applyEff (Prim _) eqA eqB = no (cross-no (λ ()) eqA eqB)
+
+-- applyEff column (other side)
+≟IRH id applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (_ ∘ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (⟨ _ , _ ⟩ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH fst applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH snd applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inl _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (inr _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (case _ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH terminal applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH initial applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (curry _ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH apply applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (In _ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (out-μ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Cata _ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Para _ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Out _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (in-ν _ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Ana _ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Hylo _ _ _ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Fuse _ _ _ _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (free-heap _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
+≟IRH (Prim _) applyEff eqA eqB = no (cross-no (λ ()) eqA eqB)
 ≟IRH (In _ _) id eqA eqB = no (cross-no (λ ()) eqA eqB)
 ≟IRH (In _ _) (_ ∘ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
 ≟IRH (In _ _) (⟨ _ , _ ⟩ _) eqA eqB = no (cross-no (λ ()) eqA eqB)
@@ -1223,6 +1277,7 @@ pairView-gen snd refl = is-other-pair snd
 pairView-gen (case f g) refl = is-other-pair (case f g)
 pairView-gen initial refl = is-other-pair initial
 pairView-gen apply refl = is-other-pair apply
+pairView-gen applyEff refl = is-other-pair applyEff
 -- Impossible cases: target is incompatible with B * C
 pairView-gen (inl m) ()
 pairView-gen (inr m) ()
@@ -1256,6 +1311,7 @@ coprodView-gen initial refl = is-other-coprod initial
 coprodView-gen apply refl = is-other-coprod apply
 coprodView-gen fst refl = is-other-coprod fst
 coprodView-gen snd refl = is-other-coprod snd
+coprodView-gen applyEff refl = is-other-coprod applyEff
 -- Impossible: target shape can't match A + B
 coprodView-gen (⟨ f , g ⟩ m) ()
 coprodView-gen terminal ()
@@ -1292,6 +1348,7 @@ composeFirstView (Hylo wfF wfG alg coalg) = cf-other (Hylo wfF wfG alg coalg)
 composeFirstView (Fuse wfF wfG alg tr) = cf-other (Fuse wfF wfG alg tr)
 composeFirstView (free-heap h) = cf-other (free-heap h)
 composeFirstView (Prim n) = cf-other (Prim n)
+composeFirstView applyEff = cf-other applyEff
 
 -- ComposeSecondView: fully generic source and target, direct matching works
 composeSecondView : ∀ {A B} → (f : IR A B) → ComposeSecondView f
@@ -1319,6 +1376,7 @@ composeSecondView (Hylo wfF wfG alg coalg) = cs-other (Hylo wfF wfG alg coalg)
 composeSecondView (Fuse wfF wfG alg tr) = cs-other (Fuse wfF wfG alg tr)
 composeSecondView (free-heap h) = cs-other (free-heap h)
 composeSecondView (Prim n) = cs-other (Prim n)
+composeSecondView applyEff = cs-other applyEff
 
 -- FstSndView: fully generic source and target, direct matching works
 fstSndView : ∀ {A B} → (f : IR A B) → FstSndView f
@@ -1346,6 +1404,7 @@ fstSndView (Hylo wfF wfG alg coalg) = fsv-other (Hylo wfF wfG alg coalg)
 fstSndView (Fuse wfF wfG alg tr) = fsv-other (Fuse wfF wfG alg tr)
 fstSndView (free-heap h) = fsv-other (free-heap h)
 fstSndView (Prim n) = fsv-other (Prim n)
+fstSndView applyEff = fsv-other applyEff
 
 -- InlInrView: fully generic source and target, direct matching works
 inlInrView : ∀ {A B} → (f : IR A B) → InlInrView f
@@ -1373,6 +1432,7 @@ inlInrView (Hylo wfF wfG alg coalg) = iiv-other (Hylo wfF wfG alg coalg)
 inlInrView (Fuse wfF wfG alg tr) = iiv-other (Fuse wfF wfG alg tr)
 inlInrView (free-heap h) = iiv-other (free-heap h)
 inlInrView (Prim n) = iiv-other (Prim n)
+inlInrView applyEff = iiv-other applyEff
 
 -- Helper: beta reduction for fst ∘ f (verified given view)
 optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
@@ -1469,6 +1529,7 @@ mutual
   optimize-once-structural apply = apply
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
   optimize-once-structural arr = arr
+  optimize-once-structural applyEff = applyEff
   -- | Prim with Void source is equivalent to initial (no inhabitants)
   optimize-once-structural (Prim {A} n) with A ≟Type Void
   ... | yes refl = initial

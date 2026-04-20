@@ -211,6 +211,7 @@ compile-length (Fuse _ _ _ _) = 1  -- placeholder: μ-anchored fusion (ud2)
 compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles actual free)
 compile-length (Prim _) = 1       -- primitive
 compile-length arr = length id-instrs  -- arr is identity at runtime (Eff = Arrow)
+compile-length applyEff = length apply-instrs  -- same codegen as apply
 
 -- | Generate x86 code for IR with label counter
 -- Returns (program, next-label-counter)
@@ -265,6 +266,7 @@ compile-ir' n (Fuse _ _ _ _) = ud2 ∷ [] , n
 compile-ir' n (free-heap _) = [] , n
 compile-ir' n (Prim _) = ud2 ∷ [] , n
 compile-ir' n arr = id-instrs , n
+compile-ir' n applyEff = apply-instrs , n  -- same x86 code as apply
 
 -- | Public interface: compile IR starting with label counter 0
 compile-ir : ∀ {A B} → IR A B → Program
@@ -385,6 +387,7 @@ compile-ir'-length n (Fuse _ _ _ _) = refl
 compile-ir'-length n (free-heap _) = refl
 compile-ir'-length n (Prim _) = refl
 compile-ir'-length n arr = refl
+compile-ir'-length n applyEff = refl
 
 -- | Public interface: proof that compile-ir produces code of the expected length
 compile-ir-length : ∀ {A B} (ir : IR A B) → length (compile-ir ir) ≡ compile-length ir

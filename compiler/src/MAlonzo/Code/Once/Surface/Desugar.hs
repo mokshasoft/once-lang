@@ -32,7 +32,7 @@ d_prim'45'desugar_10 ~v0 ~v1 = du_prim'45'desugar_10
 du_prim'45'desugar_10 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12
-du_prim'45'desugar_10 = coe MAlonzo.Code.Once.CCC.IR.C_Prim_156
+du_prim'45'desugar_10 = coe MAlonzo.Code.Once.CCC.IR.C_Prim_162
 -- Once.Surface.Desugar.desugar
 d_desugar_16 ::
   MAlonzo.Code.Once.Type.T_Type_38 ->

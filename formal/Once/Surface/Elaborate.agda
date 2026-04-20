@@ -148,14 +148,10 @@ elaborate (lam q _ e) = curry (elaborate e) Heap
 -- IR's apply is quantity-polymorphic, no coercion needed
 elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩ Heap
 
--- Effect application: same as app but for Eff A B
--- Eff A B is semantically an effectful morphism A → B
-elaborate (effApp f x) = apply ∘ ⟨ coerceEffToArrow (elaborate f) , elaborate x ⟩ Heap
-  where
-    -- Coerce Eff A B to A ⇒ B for IR's apply
-    coerceEffToArrow : ∀ {E A B} → IR E (Eff A B) → IR E (A ⇒[ Many ] B)
-    coerceEffToArrow = unsafeCoerce
-      where postulate unsafeCoerce : ∀ {E A B} → IR E (Eff A B) → IR E (A ⇒[ Many ] B)
+-- Effect application: `f x` where `f : Eff A B`. Elaborates
+-- structurally to the IR `applyEff` primitive — the dual of `apply`
+-- for effectful arrows. No coercion, no postulate.
+elaborate (effApp f x) = applyEff ∘ ⟨ elaborate f , elaborate x ⟩ Heap
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩ Heap

@@ -103,6 +103,7 @@ escape-once apply = apply
 
 -- Effects: no allocation
 escape-once arr = arr
+escape-once applyEff = applyEff
 
 -- Primitives: opaque, pass through
 escape-once (Prim name) = Prim name
