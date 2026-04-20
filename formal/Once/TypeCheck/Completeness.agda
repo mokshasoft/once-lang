@@ -410,6 +410,39 @@ infer-complete-RApp-generic f x A notPoly eqF eqX
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
 ------------------------------------------------------------------------
+-- Effectful RApp completeness
+--
+-- Same structure as `infer-complete-RApp-generic` but for the case
+-- where `f : Eff A B`. After `classifyAppHead-nothing⇒view-other`
+-- exposes the `ahv-other` branch, `asFun` sees `success (Eff A B) ...`
+-- and takes the `isEff` case; the body mirrors `isFun` but emits
+-- `Surface.effApp`. The check-mode fallback is
+-- `checkElab-fallback-RApp-generic`, reusable as-is because its
+-- statement only mentions the outer `inferElab (RApp f x)`, not the
+-- inner function-vs-effect dispatch.
+------------------------------------------------------------------------
+
+infer-complete-RApp-eff :
+  ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type}
+    {Ψf : Surface.Usage (NamedCtx.size ctx)}
+    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (T.Eff A B)}
+    {df ff : ℕ}
+    {Ψx : Surface.Usage (NamedCtx.size ctx)}
+    {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
+    {dx fx : ℕ}
+  → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
+  → inferElab ctx f ≡ success (T.Eff A B) Ψf fE df ff
+  → inferElab ctx x ≡ success A Ψx xE dx fx
+  → ∃[ eE ] ∃[ d ] ∃[ f' ]
+      inferElab ctx (Raw.RApp f x)
+        ≡ success B (Ψf +ᵘ Ψx) eE d f'
+infer-complete-RApp-eff f x A notPoly eqF eqX
+  rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
+        | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A A
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+------------------------------------------------------------------------
 -- Full-walk completeness — enabled by the G2(a) judgment split
 --
 -- With mutual ⊢ᵢ / ⊢ᶜ judgments and the `classifyAppHead f ≡ nothing`
@@ -428,7 +461,7 @@ open Once.TypeCheck.Judgment
          t-var-local; t-var-qualified; t-var-import;
          t-annot; t-pair; t-neg; t-let; t-case;
          t-binop-arith; t-binop-cmp;
-         t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-app;
+         t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-app; t-effApp;
          t-embed; t-lam)
 
 
@@ -531,6 +564,10 @@ mutual
     let (_ , _ , _ , eqF) = infer-complete dF
         (_ , _ , _ , eqX) = infer-complete dX
     in infer-complete-RApp-generic f x A notPoly eqF eqX
+  infer-complete (t-effApp {f = f} {x = x} {A = A} notPoly dF dX) =
+    let (_ , _ , _ , eqF) = infer-complete dF
+        (_ , _ , _ , eqX) = infer-complete dX
+    in infer-complete-RApp-eff f x A notPoly eqF eqX
 
   -- Full ⊢ᶜ walk: handles t-lam recursively and delegates t-embed
   -- to the per-shape fallback lemma.
@@ -601,4 +638,7 @@ mutual
     in checkElab-fallback-RApp-terminal e Unit eqI
   check-complete (t-embed (t-app {f = f} {x = x} {B = B} notPoly dF dX)) =
     let (_ , _ , _ , eqI) = infer-complete (t-app notPoly dF dX)
+    in checkElab-fallback-RApp-generic f x B notPoly eqI
+  check-complete (t-embed (t-effApp {f = f} {x = x} {B = B} notPoly dF dX)) =
+    let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
     in checkElab-fallback-RApp-generic f x B notPoly eqI

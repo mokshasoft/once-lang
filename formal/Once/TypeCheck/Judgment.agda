@@ -219,6 +219,23 @@ mutual
           → ctx ⊢ᵢ x ∶ A ⨾ Ψ₂
           → ctx ⊢ᵢ RApp f x ∶ B ⨾ (Ψ₁ +ᵘ (q *ᵘ Ψ₂))
 
+    ----------------------------------------------------------------
+    -- Effectful application `f x` where `f : Eff A B`.
+    --
+    -- Shares the `classifyAppHead f ≡ nothing` premise with `t-app`
+    -- so the two never overlap: polymorphic-builtin heads still go
+    -- through their specialised rules, regular arrow heads go through
+    -- `t-app`, effect-typed heads go through `t-effApp`.
+    ----------------------------------------------------------------
+
+    t-effApp : ∀ {ctx : NamedCtx} {f x : RawExpr}
+               {A B : Type}
+               {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+             → classifyAppHead f ≡ nothing
+             → ctx ⊢ᵢ f ∶ Once.Type.Eff A B ⨾ Ψ₁
+             → ctx ⊢ᵢ x ∶ A ⨾ Ψ₂
+             → ctx ⊢ᵢ RApp f x ∶ B ⨾ (Ψ₁ +ᵘ Ψ₂)
+
   -- | Check-mode judgment.
   --
   -- Contains:

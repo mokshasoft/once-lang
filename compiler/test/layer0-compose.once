@@ -4,11 +4,8 @@
 -- Layer 0 test: composed identities
 -- Tests composition of identity morphisms
 -- Expected: exit code 42
---
--- NOTE: This test uses a direct primitive pattern since effCompose/pure
--- are not yet implemented as builtins. See docs/design/effect-composition.md
 
-primitive exit : Int -> Unit
+primitive exit : Eff Int Unit
 
-main : Unit
+main : IO Unit
 main = exit ((id . id . id) 42)

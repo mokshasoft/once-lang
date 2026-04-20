@@ -555,14 +555,22 @@ matchInferResult (success T' Ψ eE d f) T with T ≟T T'
 ... | yes refl = success _ eE d f
 ... | no _     = failure (TypeMismatch T T')
 
+-- | Projection used by RApp inference. A successful application can
+-- come from either a regular arrow (`A ⇒[q] B`) or an effectful arrow
+-- (`Eff A B`); the two elaborate to different `Surface.app` /
+-- `Surface.effApp` nodes, so we surface them as distinct constructors
+-- rather than forcing a coercion at this layer.
 data FunProjection {n : ℕ} (Δ : SCtx n) : Set where
   isFun  : (A : Type) (q : Quantity) (B : Type) (Ψ : Surface.Usage n)
          → SExpr Δ Ψ (A ⇒[ q ] B) → ℕ → ℕ → FunProjection Δ
+  isEff  : (A B : Type) (Ψ : Surface.Usage n)
+         → SExpr Δ Ψ (Eff A B) → ℕ → ℕ → FunProjection Δ
   notFun : TypeError → FunProjection Δ
 
 asFun : ∀ {n} {Δ : SCtx n} → InferElabResult Δ → FunProjection Δ
 asFun (failure err)                                      = notFun err
 asFun (success (A ⇒[ q ] B) Ψ se d f)                    = isFun A q B Ψ se d f
+asFun (success (Eff A B) Ψ se d f)                       = isEff A B Ψ se d f
 asFun (success Unit Ψ _ _ _)                             = notFun (NotFunction Unit)
 asFun (success Void Ψ _ _ _)                             = notFun (NotFunction Void)
 asFun (success Int Ψ _ _ _)                              = notFun (NotFunction Int)
@@ -571,7 +579,6 @@ asFun (success Str Ψ _ _ _)                              = notFun (NotFunction 
 asFun (success Buffer Ψ _ _ _)                           = notFun (NotFunction Buffer)
 asFun (success (A Once.Type.* B) _ _ _ _)                = notFun (NotFunction (A Once.Type.* B))
 asFun (success (A Once.Type.+ B) _ _ _ _)                = notFun (NotFunction (A Once.Type.+ B))
-asFun (success (Eff A B) _ _ _ _)                        = notFun (NotFunction (Eff A B))
 asFun (success (μ-type F) _ _ _ _)                       = notFun (NotFunction (μ-type F))
 asFun (success (ν-type F) _ _ _ _)                       = notFun (NotFunction (ν-type F))
 
@@ -856,6 +863,11 @@ mutual
   ...   | failure err = failure err
   ...   | success A' Ψ₂ xE dx fx with A ≟T A'
   ...     | yes refl = success B _ (Surface.app fE xE) (df ⊔ dx) fx
+  ...     | no _ = failure (ApplicationTypeMismatch A A')
+  inferElab ctx (Raw.RApp f x) | ahv-other | isEff A B Ψ₁ fE df ff with inferElab ctx x
+  ...   | failure err = failure err
+  ...   | success A' Ψ₂ xE dx fx with A ≟T A'
+  ...     | yes refl = success B _ (Surface.effApp fE xE) (df ⊔ dx) fx
   ...     | no _ = failure (ApplicationTypeMismatch A A')
 
   -- Let binding: infer e₁, then e₂ under extended context.

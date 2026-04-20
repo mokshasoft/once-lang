@@ -91,15 +91,16 @@ open import Once.Surface.Elaborate using (elaborate)
 -- Main function validation
 ------------------------------------------------------------------------
 
--- | Validate that main has type Eff Unit A
+-- | Validate that main has type Eff Unit Unit (i.e. `IO Unit`).
 --
--- Programs must have an entry point of type Eff Unit A (effectful computation
--- from Unit to some result type A). Function types like Int -> Int are not
--- valid entry points because they represent pure morphisms, not effectful
--- computations that can perform I/O.
+-- The entry point is an effectful action that returns no meaningful
+-- value; exit codes come from explicit `exit@<alias>` calls in the
+-- body, not from `main`'s return. Admitting `Eff Unit A` for arbitrary
+-- A would silently discard any non-Unit return and invites confusion
+-- between "exit code" and "value to compose with".
 validateMain : Type → String ⊎ ⊤
-validateMain (Eff Unit _) = inj₂ tt
-validateMain ty = inj₁ ("main must have type Eff Unit A, but got: " ++ showType ty)
+validateMain (Eff Unit Unit) = inj₂ tt
+validateMain ty = inj₁ ("main must have type IO Unit (= Eff Unit Unit), but got: " ++ showType ty)
 
 ------------------------------------------------------------------------
 -- Function compilation: RawExpr → IR

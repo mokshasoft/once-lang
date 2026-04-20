@@ -992,8 +992,32 @@ sound-RApp-generic ctx f x notPoly IH_f IH_x eq
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (_ + _) _ _ _ _ , eqF rewrite eqF with eq
 ... | ()
+-- f succeeded at an effect type: dispatch to `t-effApp` (paralleling
+-- `t-app`'s success case above). Eff is no longer an absurd case.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (T.Eff _ _) _ _ _ _ , eqF rewrite eqF with eq
+  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  with inferBundle ctx x
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  | success Ax Ψx xE dx fx , eqX
+  with tyEqBundle Af Ax
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  | success .Af Ψx xE dx fx , eqX
+  | yes refl , eqTy
+  with IH_f eqF | IH_x eqX
+... | fJ | xJ rewrite eqF | eqX | eqTy with eq
+... | refl = t-effApp notPoly fJ xJ
+-- Arg type mismatches.
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  | success Ax Ψx xE dx fx , eqX
+  | no _ , eqTy rewrite eqF | eqX | eqTy with eq
+... | ()
+-- x failed.
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  | failure _ , eqX rewrite eqF | eqX with eq
 ... | ()
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (T.μ-type _) _ _ _ _ , eqF rewrite eqF with eq
