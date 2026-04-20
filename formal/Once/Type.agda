@@ -281,3 +281,223 @@ mutual
   showFunctor (F ⊕ G) = "(" ++ showFunctor F ++ " ⊕ " ++ showFunctor G ++ ")"
   showFunctor (F ⊗ G) = "(" ++ showFunctor F ++ " ⊗ " ++ showFunctor G ++ ")"
 
+------------------------------------------------------------------------
+-- PolyType: Parser-boundary staging area for type variables
+--
+-- Ground `Type` carries no type variables — that invariant is
+-- load-bearing for clean `_≟T_`, clean IR pattern-matching, and the
+-- optimizer's postulate-free status (plan 0.2.5 rationale).
+-- `PolyType` is a *separate* data type that mirrors `Type` plus a
+-- `PTVar` constructor, used strictly at the parser/signature boundary
+-- for user-declared polymorphic signatures like `swap : a * b → b * a`.
+--
+-- Data flow (plan 0.6 Phase B/C):
+--
+--   parser returns PolyType in DTypeSig / DPrimitive
+--        ↓
+--   extractFunctions projects PolyType → Type if Ground
+--        ↓ (else: package TVars for Phase C monomorphization)
+--   SExpr / IR / optimizer / semantics all see ground Type only
+--
+-- Nothing downstream of `extractFunctions` ever receives a `PTVar`.
+-- The April-17 split's invariant is preserved.
+------------------------------------------------------------------------
+
+mutual
+  data PolyFunctor : Set where
+    PK   : PolyType → PolyFunctor
+    PId  : PolyFunctor
+    _P⊕_ : PolyFunctor → PolyFunctor → PolyFunctor
+    _P⊗_ : PolyFunctor → PolyFunctor → PolyFunctor
+
+  data PolyType : Set where
+    -- Categorical structure
+    PUnit   : PolyType
+    PVoid   : PolyType
+    _P*_    : PolyType → PolyType → PolyType
+    _P+_    : PolyType → PolyType → PolyType
+    _P⇒[_]_ : PolyType → Quantity → PolyType → PolyType
+    PEff    : PolyType → PolyType → PolyType
+    -- Polynomial functor fixed points
+    Pμ-type : PolyFunctor → PolyType
+    Pν-type : PolyFunctor → PolyType
+    -- Base types
+    PInt    : PolyType
+    PFloat  : PolyType
+    PStr    : PolyType
+    PBuffer : PolyType
+    -- Type variable (the whole reason this type exists)
+    PTVar   : String → PolyType
+
+infixr 40 _P⊕_
+infixr 50 _P⊗_
+infixr 30 _P⇒[_]_
+infixr 40 _P+_
+infixr 50 _P*_
+
+------------------------------------------------------------------------
+-- Ground predicate: this PolyType contains no TVars
+--
+-- `Ground A` is a proof that every subterm of `A` is a non-TVar
+-- constructor. It's the precondition for the total projection
+-- `extractGround : PolyType → Type` (Lambek-style: Ground is an
+-- iso-class predicate; `extractGround` is its witness).
+------------------------------------------------------------------------
+
+open import Data.Product using (_×_; _,_)
+open import Data.Unit using (⊤; tt)
+open import Data.Empty using (⊥)
+
+mutual
+  GroundF : PolyFunctor → Set
+  GroundF (PK A)   = Ground A
+  GroundF PId      = ⊤
+  GroundF (F P⊕ G) = GroundF F × GroundF G
+  GroundF (F P⊗ G) = GroundF F × GroundF G
+
+  Ground : PolyType → Set
+  Ground PUnit           = ⊤
+  Ground PVoid           = ⊤
+  Ground (A P* B)        = Ground A × Ground B
+  Ground (A P+ B)        = Ground A × Ground B
+  Ground (A P⇒[ _ ] B)   = Ground A × Ground B
+  Ground (PEff A B)      = Ground A × Ground B
+  Ground (Pμ-type F)     = GroundF F
+  Ground (Pν-type F)     = GroundF F
+  Ground PInt            = ⊤
+  Ground PFloat          = ⊤
+  Ground PStr            = ⊤
+  Ground PBuffer         = ⊤
+  Ground (PTVar _)       = ⊥     -- the only non-Ground case
+
+------------------------------------------------------------------------
+-- Total projection PolyType → Type given Ground witness
+------------------------------------------------------------------------
+
+mutual
+  extractGroundF : (F : PolyFunctor) → GroundF F → Functor
+  extractGroundF (PK A) g          = K (extractGround A g)
+  extractGroundF PId _             = Id
+  extractGroundF (F P⊕ G) (gF , gG) = extractGroundF F gF ⊕ extractGroundF G gG
+  extractGroundF (F P⊗ G) (gF , gG) = extractGroundF F gF ⊗ extractGroundF G gG
+
+  extractGround : (A : PolyType) → Ground A → Type
+  extractGround PUnit            _        = Unit
+  extractGround PVoid            _        = Void
+  extractGround (A P* B)         (gA , gB) = extractGround A gA * extractGround B gB
+  extractGround (A P+ B)         (gA , gB) = extractGround A gA + extractGround B gB
+  extractGround (A P⇒[ q ] B)    (gA , gB) = extractGround A gA ⇒[ q ] extractGround B gB
+  extractGround (PEff A B)       (gA , gB) = Eff (extractGround A gA) (extractGround B gB)
+  extractGround (Pμ-type F)      g        = μ-type (extractGroundF F g)
+  extractGround (Pν-type F)      g        = ν-type (extractGroundF F g)
+  extractGround PInt             _        = Int
+  extractGround PFloat           _        = Float
+  extractGround PStr             _        = Str
+  extractGround PBuffer          _        = Buffer
+  -- PTVar case is unreachable (its Ground = ⊥)
+
+------------------------------------------------------------------------
+-- Embedding Type → PolyType (always Ground by construction)
+--
+-- Lets existing ground `Type` values flow through the PolyType layer
+-- when needed (e.g. alias expansion where the RHS was parsed as
+-- Type already).
+------------------------------------------------------------------------
+
+mutual
+  embedFunctor : Functor → PolyFunctor
+  embedFunctor (K A)   = PK (embed A)
+  embedFunctor Id      = PId
+  embedFunctor (F ⊕ G) = embedFunctor F P⊕ embedFunctor G
+  embedFunctor (F ⊗ G) = embedFunctor F P⊗ embedFunctor G
+
+  embed : Type → PolyType
+  embed Unit           = PUnit
+  embed Void           = PVoid
+  embed (A * B)        = embed A P* embed B
+  embed (A + B)        = embed A P+ embed B
+  embed (A ⇒[ q ] B)   = embed A P⇒[ q ] embed B
+  embed (Eff A B)      = PEff (embed A) (embed B)
+  embed (μ-type F)     = Pμ-type (embedFunctor F)
+  embed (ν-type F)     = Pν-type (embedFunctor F)
+  embed Int            = PInt
+  embed Float          = PFloat
+  embed Str            = PStr
+  embed Buffer         = PBuffer
+
+------------------------------------------------------------------------
+-- Decidable Ground check
+--
+-- `isGround` lets callers ask "can this PolyType be projected to
+-- Type?" without a dependent-type handstand. Returns the Ground
+-- witness on success so `extractGround` can be called directly.
+------------------------------------------------------------------------
+
+open import Data.Sum using (_⊎_; inj₁; inj₂)
+
+mutual
+  isGroundF : (F : PolyFunctor) → (GroundF F) ⊎ ⊤
+  isGroundF (PK A) with isGround A
+  ... | inj₁ gA = inj₁ gA
+  ... | inj₂ _  = inj₂ tt
+  isGroundF PId = inj₁ tt
+  isGroundF (F P⊕ G) with isGroundF F | isGroundF G
+  ... | inj₁ gF | inj₁ gG = inj₁ (gF , gG)
+  ... | _       | _       = inj₂ tt
+  isGroundF (F P⊗ G) with isGroundF F | isGroundF G
+  ... | inj₁ gF | inj₁ gG = inj₁ (gF , gG)
+  ... | _       | _       = inj₂ tt
+
+  isGround : (A : PolyType) → (Ground A) ⊎ ⊤
+  isGround PUnit        = inj₁ tt
+  isGround PVoid        = inj₁ tt
+  isGround (A P* B) with isGround A | isGround B
+  ... | inj₁ gA | inj₁ gB = inj₁ (gA , gB)
+  ... | _       | _       = inj₂ tt
+  isGround (A P+ B) with isGround A | isGround B
+  ... | inj₁ gA | inj₁ gB = inj₁ (gA , gB)
+  ... | _       | _       = inj₂ tt
+  isGround (A P⇒[ _ ] B) with isGround A | isGround B
+  ... | inj₁ gA | inj₁ gB = inj₁ (gA , gB)
+  ... | _       | _       = inj₂ tt
+  isGround (PEff A B) with isGround A | isGround B
+  ... | inj₁ gA | inj₁ gB = inj₁ (gA , gB)
+  ... | _       | _       = inj₂ tt
+  isGround (Pμ-type F) with isGroundF F
+  ... | inj₁ g = inj₁ g
+  ... | inj₂ _ = inj₂ tt
+  isGround (Pν-type F) with isGroundF F
+  ... | inj₁ g = inj₁ g
+  ... | inj₂ _ = inj₂ tt
+  isGround PInt         = inj₁ tt
+  isGround PFloat       = inj₁ tt
+  isGround PStr         = inj₁ tt
+  isGround PBuffer      = inj₁ tt
+  isGround (PTVar _)    = inj₂ tt
+
+------------------------------------------------------------------------
+-- PolyType Pretty Printing
+------------------------------------------------------------------------
+
+mutual
+  showPolyType : PolyType → String
+  showPolyType PUnit            = "Unit"
+  showPolyType PVoid            = "Void"
+  showPolyType (A P* B)         = "(" ++ showPolyType A ++ " * " ++ showPolyType B ++ ")"
+  showPolyType (A P+ B)         = "(" ++ showPolyType A ++ " + " ++ showPolyType B ++ ")"
+  showPolyType (A P⇒[ q ] B)    = "(" ++ showPolyType A ++ " " ++ showQuantity q ++ "→ " ++ showPolyType B ++ ")"
+  showPolyType (PEff A B)       = "Eff " ++ showPolyType A ++ " " ++ showPolyType B
+  showPolyType (Pμ-type F)      = "μ " ++ showPolyFunctor F
+  showPolyType (Pν-type F)      = "ν " ++ showPolyFunctor F
+  showPolyType PInt             = "Int"
+  showPolyType PFloat           = "Float"
+  showPolyType PStr             = "String"
+  showPolyType PBuffer          = "Buffer"
+  showPolyType (PTVar x)        = x
+
+  showPolyFunctor : PolyFunctor → String
+  showPolyFunctor (PK A)        = "(K " ++ showPolyType A ++ ")"
+  showPolyFunctor PId           = "Id"
+  showPolyFunctor (F P⊕ G)      = "(" ++ showPolyFunctor F ++ " ⊕ " ++ showPolyFunctor G ++ ")"
+  showPolyFunctor (F P⊗ G)      = "(" ++ showPolyFunctor F ++ " ⊗ " ++ showPolyFunctor G ++ ")"
+
