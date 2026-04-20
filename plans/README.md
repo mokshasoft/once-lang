@@ -19,9 +19,11 @@ This folder tracks the planning history and dependencies between design decision
 │               └── 0.2.5-type-polytype-split  (completed 2026-04-17)
 │                   └── 0.2.6-usage-indexed-expr  (completed 2026-04-17)
 │
-└── 0.3-frontend-verification-gaps  (completed 2026-04-19)
-    └── 0.4-frontend-completeness-and-bridges  (planning)
-        └── 0.4.2-end-to-end-connector  (planning)
+├── 0.3-frontend-verification-gaps  (completed 2026-04-19)
+│   └── 0.4-frontend-completeness-and-bridges  (planning)
+│       └── 0.4.2-end-to-end-connector  (planning)
+│
+└── 0.5-ir-extension-hygiene  (planning, cross-cutting — applies to any IR constructor addition)
 ```
 
 **Current focus**: resume `0.2.4-categorical-layer-0` — compiler-side
