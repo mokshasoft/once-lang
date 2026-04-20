@@ -82,13 +82,13 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_294
-toMStage Parse = MC.C_Parse_296
-toMStage Check = MC.C_Check_298
-toMStage Build = MC.C_Build_300
+toMStage :: Stage -> MC.T_Stage_302
+toMStage Parse = MC.C_Parse_304
+toMStage Check = MC.C_Check_306
+toMStage Build = MC.C_Build_308
 
-toMArch :: Arch -> MC.T_Arch_274
-toMArch X86_64 = MC.C_x86'45'64_276
+toMArch :: Arch -> MC.T_Arch_282
+toMArch X86_64 = MC.C_x86'45'64_284
 
 -- | Agda strings are Haskell `Text` at runtime (MAlonzo primitive binding).
 agdaToText :: a -> Text
@@ -103,11 +103,11 @@ fromMFunInfo fi = FunSig
   , funSigType = agdaToText (MT.d_showType_132 (MP.d_funType_96 fi))
   }
 
-fromMResult :: MC.T_CompileResult_302 -> CompileResult
-fromMResult (MC.C_Parsed_304 fis) = Parsed (map fromMFunInfo fis)
-fromMResult (MC.C_Checked_306 _)  = Checked
-fromMResult (MC.C_Built_308 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_310 err)  = Error (agdaToText err)
+fromMResult :: MC.T_CompileResult_310 -> CompileResult
+fromMResult (MC.C_Parsed_312 fis) = Parsed (map fromMFunInfo fis)
+fromMResult (MC.C_Checked_314 _)  = Checked
+fromMResult (MC.C_Built_316 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_318 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -115,7 +115,7 @@ fromMResult (MC.C_Error_310 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_324 (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_332 (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -129,7 +129,7 @@ compile stage doOpt arch source =
 -- silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MC.d_parseSourceToModule_240 (textToAgda source) of
+  case MC.d_parseSourceToModule_244 (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
@@ -171,4 +171,4 @@ resolveImports modMap (Module userMod) =
 compileFromModule :: Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule stage doOpt arch (Module m) =
   fromMResult
-    (MC.d_compileFromModule_378 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce m))
+    (MC.d_compileFromModule_390 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce m))

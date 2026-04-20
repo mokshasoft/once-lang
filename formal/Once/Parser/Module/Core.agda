@@ -25,7 +25,7 @@ open import Induction.WellFounded using (Acc; acc) public
 open import Relation.Nullary using (yes; no) public
 open import Relation.Binary.PropositionalEquality using (_≡_; refl) public
 
-open import Once.Type using (Type) public
+open import Once.Type using (Type; PolyType) public
 open import Once.TypeCheck.Raw using (RawExpr; RLam) public
 open import Once.Parser.Token public
 open import Once.Parser.Core public
@@ -48,14 +48,18 @@ record Import : Set where
     alias : Maybe String
 
 data Decl : Set where
-  DTypeSig   : String → Type → Decl
+  -- Type signatures and primitives carry `PolyType` (not `Type`) so
+  -- user-written polymorphic signatures (`swap : a * b → b * a`)
+  -- survive parsing. Ground `Type` is recovered at `extractFunctions`
+  -- via `isGround`/`extractGround`. Plan 0.6 Phase B.
+  DTypeSig   : String → PolyType → Decl
   DFunDef    : String → Maybe AllocStrategy → RawExpr → Decl
   -- | `DPrimitive name owner ty`
   -- `owner = nothing`  : source-level primitive (user-written).
   -- `owner = just A`   : primitive inlined by import resolution,
   --                      imported under alias `A` (i.e. user writes
   --                      `name@A`).
-  DPrimitive : String → Maybe String → Type → Decl
+  DPrimitive : String → Maybe String → PolyType → Decl
   DTypeAlias : String → List String → Type → Decl
   DImport    : Import → Decl
 

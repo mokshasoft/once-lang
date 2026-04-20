@@ -276,6 +276,7 @@ library
       MAlonzo.Code.Once.Parser.Module.Resolve
       MAlonzo.Code.Once.Parser.Tests
       MAlonzo.Code.Once.Parser.Token
+      MAlonzo.Code.Once.Parser.PolyType
       MAlonzo.Code.Once.Parser.Type
       MAlonzo.Code.Once.Parser.TypeAlias
       MAlonzo.Code.Once.Parser.TypeRelation

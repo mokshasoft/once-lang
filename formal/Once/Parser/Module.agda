@@ -24,6 +24,7 @@ open import Once.Parser.Module.OpName public
 open import Once.Parser.Module.FunDef public
 open import Once.Parser.Module.DeclTail public
 open import Once.Parser.Module.Resolve public
+open import Once.Parser.PolyType using (parsePolyTypeB)
 
 -- | Bounded parse of a single declaration. On success the residual is
 -- strictly shorter than the input, which gives us the measure to do
@@ -42,7 +43,7 @@ parseDeclB (TWord w ∷ rest) | no _ | no _ with w ≟ "primitive"
 ... | yes _ with parsePrimitiveB rest
 ...   | just (d , rest' , bnd) = just (d , rest' , <-trans bnd (s≤s ≤-refl))
 ...   | nothing = nothing
-parseDeclB (TWord w ∷ TColon ∷ rest) | no _ | no _ | no _ with parseTypeB rest
+parseDeclB (TWord w ∷ TColon ∷ rest) | no _ | no _ | no _ with parsePolyTypeB rest
 ... | nothing = nothing
 ... | just (ty , TEquals ∷ _ , _) = nothing
 ... | just (ty , rest' , bnd) =

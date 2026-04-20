@@ -13,13 +13,14 @@ module Once.Parser.Module.FunDef.OpDecl where
 open import Once.Parser.Module.Core
 open import Once.Parser.Module.OpName
 open import Once.Parser.Module.FunDef.Def
+open import Once.Parser.PolyType using (parsePolyTypeB)
 
 -- | After parsing an operator name, decide: type sig or fun def.
 -- Weak shrink: residual ≤ input. The TColon case produces a type
 -- signature; every other token delegates to `parseFunDefB`, which
 -- bundles the (possibly-empty) parameter list and body parse.
 tryOpDeclAfterB : String → (toks : List Token) → ParseAtB≤ {Decl} toks
-tryOpDeclAfterB name (TColon ∷ rest) with parseTypeB rest
+tryOpDeclAfterB name (TColon ∷ rest) with parsePolyTypeB rest
 ... | just (ty , rest' , bnd) =
       just (DTypeSig name ty , rest' , <⇒≤ (<-trans bnd (s≤s ≤-refl)))
 ... | nothing = nothing

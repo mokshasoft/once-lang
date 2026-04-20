@@ -179,8 +179,9 @@ compileModule doOpt source with parse source
 ... | nothing = inj₁ "Parse error: failed to parse module"
 ... | just mod =
       let aliases = extractAliases mod
-          funs = extractFunctions aliases mod
-      in compileAllFuns doOpt funs
+      in case extractFunctions aliases mod of λ where
+           (inj₁ err)  → inj₁ err
+           (inj₂ funs) → compileAllFuns doOpt funs
 
 -- | Parse source text to a Module AST. Haskell uses this to read
 -- both the user's file and each transitive import before calling
@@ -203,8 +204,9 @@ parseSourceToModule = parseStrict
 compileResolvedModule : Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule doOpt mod =
   let aliases = extractAliases mod
-      funs    = extractFunctions aliases mod
-  in compileAllFuns doOpt funs
+  in case extractFunctions aliases mod of λ where
+       (inj₁ err)  → inj₁ err
+       (inj₂ funs) → compileAllFuns doOpt funs
 
 ------------------------------------------------------------------------
 -- Pipeline composition (SurfaceIR → IR)
@@ -295,17 +297,18 @@ compile stage doOpt arch source with parseStrict source
 ... | inj₁ err = Error err
 ... | inj₂ mod =
   let aliases = extractAliases mod
-      funs = extractFunctions aliases mod
-  in case stage of λ where
-    Parse → Parsed funs
-    Check → case compileAllFuns doOpt funs of λ where
-      (inj₁ err) → Error err
-      (inj₂ compiled) → Checked compiled
-    Build → case compileAllFuns doOpt funs of λ where
-      (inj₁ err) → Error err
-      (inj₂ compiled) →
-        let target = archTarget arch
-        in Built (asmHeader target ++ compileAllWithTarget target compiled)
+  in case extractFunctions aliases mod of λ where
+       (inj₁ err)  → Error err
+       (inj₂ funs) → case stage of λ where
+         Parse → Parsed funs
+         Check → case compileAllFuns doOpt funs of λ where
+           (inj₁ err) → Error err
+           (inj₂ compiled) → Checked compiled
+         Build → case compileAllFuns doOpt funs of λ where
+           (inj₁ err) → Error err
+           (inj₂ compiled) →
+             let target = archTarget arch
+             in Built (asmHeader target ++ compileAllWithTarget target compiled)
 
 -- | Same as `compile` but starting from a pre-resolved `Module`.
 -- Haskell uses this after driving transitive-import I/O and calling
@@ -314,14 +317,15 @@ compile stage doOpt arch source with parseStrict source
 compileFromModule : Stage → Bool → Arch → Module → CompileResult
 compileFromModule stage doOpt arch mod =
   let aliases = extractAliases mod
-      funs    = extractFunctions aliases mod
-  in case stage of λ where
-    Parse → Parsed funs
-    Check → case compileAllFuns doOpt funs of λ where
-      (inj₁ err) → Error err
-      (inj₂ compiled) → Checked compiled
-    Build → case compileAllFuns doOpt funs of λ where
-      (inj₁ err) → Error err
-      (inj₂ compiled) →
-        let target = archTarget arch
-        in Built (asmHeader target ++ compileAllWithTarget target compiled)
+  in case extractFunctions aliases mod of λ where
+       (inj₁ err)  → Error err
+       (inj₂ funs) → case stage of λ where
+         Parse → Parsed funs
+         Check → case compileAllFuns doOpt funs of λ where
+           (inj₁ err) → Error err
+           (inj₂ compiled) → Checked compiled
+         Build → case compileAllFuns doOpt funs of λ where
+           (inj₁ err) → Error err
+           (inj₂ compiled) →
+             let target = archTarget arch
+             in Built (asmHeader target ++ compileAllWithTarget target compiled)

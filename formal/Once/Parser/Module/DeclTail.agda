@@ -13,6 +13,7 @@ module Once.Parser.Module.DeclTail where
 open import Data.List using (reverse)
 
 open import Once.Parser.Module.Core
+open import Once.Parser.PolyType using (parsePolyTypeB)
 
 -- | Parameter-scanning helper inside parseTypeAlias. Consumes `=`
 -- plus a type, so the residual is strictly shorter. Recursion shrinks
@@ -44,7 +45,7 @@ parseTypeAlias toks with parseTypeAliasB toks
 parsePrimitiveB : (toks : List Token) → ParseAtB {Decl} toks
 parsePrimitiveB toks with anyWordB toks
 ... | nothing = nothing
-... | just (name , TColon ∷ rest , bnd) with parseTypeB rest
+... | just (name , TColon ∷ rest , bnd) with parsePolyTypeB rest
 ...   | just (ty , rest' , bnd') =
         just (DPrimitive name nothing ty , rest' ,
               <-trans (<-trans bnd' (s≤s ≤-refl)) bnd)

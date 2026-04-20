@@ -19,12 +19,13 @@ open import Data.Sum using (_⊎_; inj₁; inj₂)
 open import Data.Nat using (ℕ)
 open import Relation.Nullary using (yes; no)
 
-open import Once.Type using (Type)
+open import Once.Type using (Type; PolyType; isGround; extractGround; showPolyType)
 open import Once.TypeCheck.Raw using (RawExpr; RVar)
 open import Once.Parser.Token
 open import Once.Parser.Lexer using (tokenizeString)
 open import Once.Parser.Core using (Parser)
 open import Once.Parser.Type using (parseType) public
+open import Once.Parser.PolyType using (parsePolyType) public
 open import Once.Parser.Expr using (parseExpr) public
 open import Once.Parser.Module public
 open import Once.Parser.Inline public
@@ -178,26 +179,55 @@ record FunInfo : Set where
     funAlloc : Maybe AllocStrategy
     funBody  : RawExpr
 
-extractFunctions : TypeAliasEnv → Module → List FunInfo
+-- | Project a parsed `PolyType` signature to a ground `Type` for
+-- downstream typechecking. Fails loudly if the signature contains
+-- unbound TVars — plan 0.6 Phase C (bidirectional specialization for
+-- user polymorphic signatures) is the follow-up that will
+-- monomorphize these at use sites instead of rejecting.
+--
+-- Applies alias expansion after projection (aliases currently live
+-- in ground `Type` land — see `expandAliases`). If a future phase
+-- introduces polymorphic aliases, expansion moves pre-projection.
+projectSig : TypeAliasEnv → String → PolyType → String ⊎ Type
+projectSig aliases name ty with isGround ty
+... | inj₁ g  = inj₂ (expandAliases aliases (extractGround ty g))
+... | inj₂ _  = inj₁ ("Type signature for `" ++ name
+                        ++ "` contains type variables (not yet supported): "
+                        ++ showPolyType ty
+                        ++ " — plan 0.6 Phase C will add bidirectional "
+                        ++ "specialization for user-polymorphic signatures")
+
+extractFunctions : TypeAliasEnv → Module → String ⊎ List FunInfo
 extractFunctions aliases (mkModule ds) = go ds nothing
   where
-  go : List Decl → Maybe (String × Type) → List FunInfo
-  go [] _ = []
-  go (DTypeSig name ty ∷ rest) _ =
-    go rest (just (name , expandAliases aliases ty))
+  go : List Decl → Maybe (String × Type) → String ⊎ List FunInfo
+  go [] _ = inj₂ []
+  go (DTypeSig name ty ∷ rest) _ with projectSig aliases name ty
+  ... | inj₁ err  = inj₁ err
+  ... | inj₂ gty  = go rest (just (name , gty))
   go (DFunDef name alloc body ∷ rest) (just (sigName , sigTy)) with sigName ≟ name
-  ... | yes _ = mkFunInfo name sigTy alloc body ∷ go rest nothing
-  ... | no _  = go rest nothing  -- mismatched sig, skip
+  ... | yes _ with go rest nothing
+  ...   | inj₁ err   = inj₁ err
+  ...   | inj₂ rest' = inj₂ (mkFunInfo name sigTy alloc body ∷ rest')
+  go (DFunDef _ _ _ ∷ rest) (just _) | no _ = go rest nothing  -- mismatched sig, skip
+  go (DFunDef _ _ _ ∷ rest) nothing = go rest nothing  -- no sig: definition dropped
   -- Primitives: use RVar as placeholder body (actual impl is external).
   -- Owned primitives (from resolved imports) get qualified names
   -- `alias.name` — same textual form that the typechecker's
   -- `lookupImport` uses for `RQualified`, so user code `exit@S`
   -- resolves to this FunInfo without further wiring.
-  go (DPrimitive name nothing       ty ∷ rest) _ =
-    mkFunInfo name (expandAliases aliases ty) nothing (RVar name) ∷ go rest nothing
-  go (DPrimitive name (just owner) ty ∷ rest) _ =
-    let qname = owner ++ "." ++ name
-    in mkFunInfo qname (expandAliases aliases ty) nothing (RVar qname) ∷ go rest nothing
+  go (DPrimitive name nothing ty ∷ rest) _ with projectSig aliases name ty
+  ... | inj₁ err  = inj₁ err
+  ... | inj₂ gty  with go rest nothing
+  ...   | inj₁ err   = inj₁ err
+  ...   | inj₂ rest' = inj₂ (mkFunInfo name gty nothing (RVar name) ∷ rest')
+  go (DPrimitive name (just owner) ty ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
+  ... | inj₁ err  = inj₁ err
+  ... | inj₂ gty  with go rest nothing
+  ...   | inj₁ err   = inj₁ err
+  ...   | inj₂ rest' =
+           let qname = owner ++ "." ++ name
+           in inj₂ (mkFunInfo qname gty nothing (RVar qname) ∷ rest')
   go (_ ∷ rest) pending = go rest pending
 
 -- | Inline all functions and return elaboration-ready pairs
