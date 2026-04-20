@@ -22,7 +22,3 @@ import qualified Data.Text
 d_extensionality_16
   = error
       "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.extensionality"
--- Once.Postulates.coerceQuantity
-d_coerceQuantity_30
-  = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Postulates.coerceQuantity"

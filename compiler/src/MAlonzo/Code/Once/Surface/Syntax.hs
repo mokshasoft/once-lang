@@ -18,6 +18,7 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
 import qualified MAlonzo.RTE
 import qualified Data.Text
 import qualified MAlonzo.Code.Agda.Builtin.Bool
+import qualified MAlonzo.Code.Agda.Builtin.Equality
 import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Data.Bool.Base
 import qualified MAlonzo.Code.Data.Fin.Base
@@ -27,14 +28,14 @@ import qualified MAlonzo.Code.Once.Type
 d_Ctx_6 a0 = ()
 data T_Ctx_6
   = C_'8709'_8 |
-    C__'44'_'94'__12 T_Ctx_6 MAlonzo.Code.Once.Type.T_Type_34
+    C__'44'_'94'__12 T_Ctx_6 MAlonzo.Code.Once.Type.T_Type_38
                      MAlonzo.Code.Once.Type.T_Quantity_4
 -- Once.Surface.Syntax._,_
 d__'44'__16 ::
-  Integer -> T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_34 -> T_Ctx_6
+  Integer -> T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_38 -> T_Ctx_6
 d__'44'__16 ~v0 v1 v2 = du__'44'__16 v1 v2
 du__'44'__16 ::
-  T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_34 -> T_Ctx_6
+  T_Ctx_6 -> MAlonzo.Code.Once.Type.T_Type_38 -> T_Ctx_6
 du__'44'__16 v0 v1
   = coe C__'44'_'94'__12 v0 v1 (coe MAlonzo.Code.Once.Type.C_Many_10)
 -- Once.Surface.Syntax.lookup
@@ -42,12 +43,12 @@ d_lookup_24 ::
   Integer ->
   T_Ctx_6 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_Type_34
+  MAlonzo.Code.Once.Type.T_Type_38
 d_lookup_24 ~v0 v1 v2 = du_lookup_24 v1 v2
 du_lookup_24 ::
   T_Ctx_6 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
-  MAlonzo.Code.Once.Type.T_Type_34
+  MAlonzo.Code.Once.Type.T_Type_38
 du_lookup_24 v0 v1
   = case coe v0 of
       C__'44'_'94'__12 v3 v4 v5
@@ -141,16 +142,33 @@ du__'42''7512'__92 v0 v1
              (MAlonzo.Code.Once.Type.d__'42'q__16 (coe v0) (coe v3))
              (coe du__'42''7512'__92 (coe v0) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Surface.Syntax._⊔ᵘ_
+d__'8852''7512'__104 ::
+  Integer -> T_Usage_50 -> T_Usage_50 -> T_Usage_50
+d__'8852''7512'__104 ~v0 v1 v2 = du__'8852''7512'__104 v1 v2
+du__'8852''7512'__104 :: T_Usage_50 -> T_Usage_50 -> T_Usage_50
+du__'8852''7512'__104 v0 v1
+  = case coe v0 of
+      C_'91''93'_52 -> coe seq (coe v1) (coe v0)
+      C__'8759'__56 v3 v4
+        -> case coe v1 of
+             C__'8759'__56 v6 v7
+               -> coe
+                    C__'8759'__56
+                    (MAlonzo.Code.Once.Type.d__'8852'q__28 (coe v3) (coe v6))
+                    (coe du__'8852''7512'__104 (coe v4) (coe v7))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Surface.Syntax._≤ᵘ_
-d__'8804''7512'__104 :: Integer -> T_Usage_50 -> T_Ctx_6 -> ()
-d__'8804''7512'__104 = erased
+d__'8804''7512'__116 :: Integer -> T_Usage_50 -> T_Ctx_6 -> ()
+d__'8804''7512'__116 = erased
 -- Once.Surface.Syntax._≤ᵘ?_
-d__'8804''7512''63'__126 ::
+d__'8804''7512''63'__138 ::
   Integer -> T_Usage_50 -> T_Ctx_6 -> Bool
-d__'8804''7512''63'__126 ~v0 v1 v2
-  = du__'8804''7512''63'__126 v1 v2
-du__'8804''7512''63'__126 :: T_Usage_50 -> T_Ctx_6 -> Bool
-du__'8804''7512''63'__126 v0 v1
+d__'8804''7512''63'__138 ~v0 v1 v2
+  = du__'8804''7512''63'__138 v1 v2
+du__'8804''7512''63'__138 :: T_Usage_50 -> T_Ctx_6 -> Bool
+du__'8804''7512''63'__138 v0 v1
   = case coe v0 of
       C_'91''93'_52
         -> coe seq (coe v1) (coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10)
@@ -159,63 +177,73 @@ du__'8804''7512''63'__126 v0 v1
              C__'44'_'94'__12 v6 v7 v8
                -> coe
                     MAlonzo.Code.Data.Bool.Base.d__'8743'__24
-                    (coe MAlonzo.Code.Once.Type.d__'8804'q__28 (coe v3) (coe v8))
-                    (coe du__'8804''7512''63'__126 (coe v4) (coe v6))
+                    (coe MAlonzo.Code.Once.Type.d__'8804'q__32 (coe v3) (coe v8))
+                    (coe du__'8804''7512''63'__138 (coe v4) (coe v6))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Surface.Syntax.lookupUsage
-d_lookupUsage_140 ::
+d_lookupUsage_152 ::
   Integer ->
   T_Usage_50 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Type.T_Quantity_4
-d_lookupUsage_140 ~v0 v1 v2 = du_lookupUsage_140 v1 v2
-du_lookupUsage_140 ::
+d_lookupUsage_152 ~v0 v1 v2 = du_lookupUsage_152 v1 v2
+du_lookupUsage_152 ::
   T_Usage_50 ->
   MAlonzo.Code.Data.Fin.Base.T_Fin_10 ->
   MAlonzo.Code.Once.Type.T_Quantity_4
-du_lookupUsage_140 v0 v1
+du_lookupUsage_152 v0 v1
   = case coe v0 of
       C__'8759'__56 v3 v4
         -> case coe v1 of
              MAlonzo.Code.Data.Fin.Base.C_zero_12 -> coe v3
              MAlonzo.Code.Data.Fin.Base.C_suc_16 v6
-               -> coe du_lookupUsage_140 (coe v4) (coe v6)
+               -> coe du_lookupUsage_152 (coe v4) (coe v6)
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Surface.Syntax.tailUsage
-d_tailUsage_154 :: Integer -> T_Usage_50 -> T_Usage_50
-d_tailUsage_154 ~v0 v1 = du_tailUsage_154 v1
-du_tailUsage_154 :: T_Usage_50 -> T_Usage_50
-du_tailUsage_154 v0
+d_tailUsage_166 :: Integer -> T_Usage_50 -> T_Usage_50
+d_tailUsage_166 ~v0 v1 = du_tailUsage_166 v1
+du_tailUsage_166 :: T_Usage_50 -> T_Usage_50
+du_tailUsage_166 v0
   = case coe v0 of
       C__'8759'__56 v2 v3 -> coe v3
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Surface.Syntax.Expr
-d_Expr_162 a0 a1 a2 = ()
-data T_Expr_162
-  = C_var_170 MAlonzo.Code.Data.Fin.Base.T_Fin_10 |
-    C_lam_182 T_Expr_162 |
-    C_app_194 MAlonzo.Code.Once.Type.T_Type_34
-              MAlonzo.Code.Once.Type.T_Quantity_4 T_Expr_162 T_Expr_162 |
-    C_effApp_204 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162
-                 T_Expr_162 |
-    C_pair_214 T_Expr_162 T_Expr_162 |
-    C_fst''_224 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162 |
-    C_snd''_234 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162 |
-    C_inl''_244 T_Expr_162 | C_inr''_254 T_Expr_162 |
-    C_case''_266 MAlonzo.Code.Once.Type.T_Type_34
-                 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162 T_Expr_162 T_Expr_162 |
-    C_unit_272 | C_absurd_280 T_Expr_162 |
-    C_let''_290 MAlonzo.Code.Once.Type.T_Type_34 T_Expr_162
-                T_Expr_162 |
-    C_int_296 Integer |
-    C_str_302 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_add_308 T_Expr_162 T_Expr_162 | C_sub_314 T_Expr_162 T_Expr_162 |
-    C_mul_320 T_Expr_162 T_Expr_162 | C_div_326 T_Expr_162 T_Expr_162 |
-    C_mod''_332 T_Expr_162 T_Expr_162 | C_neg_338 T_Expr_162 |
-    C_lt_344 T_Expr_162 T_Expr_162 | C_le_350 T_Expr_162 T_Expr_162 |
-    C_gt_356 T_Expr_162 T_Expr_162 | C_ge_362 T_Expr_162 T_Expr_162 |
-    C_eq_368 T_Expr_162 T_Expr_162 | C_ne_374 T_Expr_162 T_Expr_162 |
-    C_arr''_384 T_Expr_162 |
-    C_prim_392 MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_Expr_174 a0 a1 a2 a3 = ()
+data T_Expr_174
+  = C_var_182 MAlonzo.Code.Data.Fin.Base.T_Fin_10 |
+    C_lam_198 MAlonzo.Code.Once.Type.T_Quantity_4 T_Expr_174 |
+    C_app_214 T_Usage_50 T_Usage_50 MAlonzo.Code.Once.Type.T_Type_38
+              MAlonzo.Code.Once.Type.T_Quantity_4 T_Expr_174 T_Expr_174 |
+    C_effApp_228 T_Usage_50 T_Usage_50 MAlonzo.Code.Once.Type.T_Type_38
+                 T_Expr_174 T_Expr_174 |
+    C_pair_242 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_fst''_254 MAlonzo.Code.Once.Type.T_Type_38 T_Expr_174 |
+    C_snd''_266 MAlonzo.Code.Once.Type.T_Type_38 T_Expr_174 |
+    C_inl''_278 T_Expr_174 | C_inr''_290 T_Expr_174 |
+    C_case''_312 T_Usage_50 T_Usage_50 T_Usage_50
+                 MAlonzo.Code.Once.Type.T_Quantity_4
+                 MAlonzo.Code.Once.Type.T_Quantity_4
+                 MAlonzo.Code.Once.Type.T_Type_38 MAlonzo.Code.Once.Type.T_Type_38
+                 T_Expr_174 T_Expr_174 T_Expr_174 |
+    C_unit_318 | C_absurd_328 T_Expr_174 |
+    C_let''_344 T_Usage_50 T_Usage_50
+                MAlonzo.Code.Once.Type.T_Quantity_4
+                MAlonzo.Code.Once.Type.T_Type_38 T_Expr_174 T_Expr_174 |
+    C_int_350 Integer |
+    C_str_356 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_add_366 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_sub_376 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_mul_386 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_div_396 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_mod''_406 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_neg_414 T_Expr_174 |
+    C_lt_424 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_le_434 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_gt_444 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_ge_454 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_eq_464 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_ne_474 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
+    C_arr''_486 T_Expr_174 |
+    C_prim_494 MAlonzo.Code.Agda.Builtin.String.T_String_6

@@ -61,8 +61,8 @@ d_x86'45'64'45'functionEpilogue_12
   = coe ("    ret\n\n" :: Data.Text.Text)
 -- Once.Target.X86-64.x86-64-irToAsm
 d_x86'45'64'45'irToAsm_18 ::
-  MAlonzo.Code.Once.Type.T_Type_34 ->
-  MAlonzo.Code.Once.Type.T_Type_34 ->
+  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_38 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_x86'45'64'45'irToAsm_18 v0 v1 v2

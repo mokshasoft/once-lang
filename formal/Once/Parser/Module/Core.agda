@@ -1,0 +1,111 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+------------------------------------------------------------------------
+-- Once.Parser.Module.Core
+--
+-- Shared types and bounded-parser primitives used across all of the
+-- `Once.Parser.Module.*` submodules: the declaration / module AST,
+-- `ParseAtB` / `ParseAtB≤` wrappers, bounded lifts of the type and
+-- expression sub-parsers, and the `anyWordB` token consumer.
+------------------------------------------------------------------------
+
+module Once.Parser.Module.Core where
+
+open import Data.List using (List; []; _∷_; length) public
+open import Data.Maybe using (Maybe; just; nothing) public
+open import Data.Product using (_×_; _,_; Σ; proj₁; proj₂; Σ-syntax) public
+open import Data.String using (String; _≟_) public
+open import Data.Nat using (ℕ; zero; suc; _≤_; _<_; s≤s; z≤n) public
+open import Data.Nat.Properties using (≤-refl; ≤-trans; n<1+n; n≤1+n;
+                                        <-trans; ≤-<-trans; <-≤-trans;
+                                        <⇒≤; m≤n⇒m≤1+n) public
+open import Data.Nat.Induction using (<-wellFounded) public
+open import Induction.WellFounded using (Acc; acc) public
+open import Relation.Nullary using (yes; no) public
+open import Relation.Binary.PropositionalEquality using (_≡_; refl) public
+
+open import Once.Type using (Type) public
+open import Once.TypeCheck.Raw using (RawExpr; RLam) public
+open import Once.Parser.Token public
+open import Once.Parser.Core public
+open import Once.Parser.Type using (parseType; parseTypeWF; stripType) public
+open import Once.Parser.TypeRelation using (ParsesType-shrinks) public
+open import Once.Parser.Expr using (parseExpr; parseExprWF) public
+open import Once.Parser.ExprRelation using (ParsesExpr-shrinks) public
+
+------------------------------------------------------------------------
+-- Module Types
+------------------------------------------------------------------------
+
+data AllocStrategy : Set where
+  Stack Heap Pool Arena Const : AllocStrategy
+
+record Import : Set where
+  constructor mkImport
+  field
+    path  : List String
+    alias : Maybe String
+
+data Decl : Set where
+  DTypeSig   : String → Type → Decl
+  DFunDef    : String → Maybe AllocStrategy → RawExpr → Decl
+  DPrimitive : String → Type → Decl
+  DTypeAlias : String → List String → Type → Decl
+  DImport    : Import → Decl
+
+record Module : Set where
+  constructor mkModule
+  field
+    decls : List Decl
+
+------------------------------------------------------------------------
+-- Length-bound wrappers for sub-parsers.
+------------------------------------------------------------------------
+
+ParseAtB : ∀ {A : Set} → List Token → Set
+ParseAtB {A} toks =
+  Maybe (Σ[ a ∈ A ] Σ[ rest ∈ List Token ] length rest < length toks)
+
+ParseAtB≤ : ∀ {A : Set} → List Token → Set
+ParseAtB≤ {A} toks =
+  Maybe (Σ[ a ∈ A ] Σ[ rest ∈ List Token ] length rest ≤ length toks)
+
+-- The `-adapt` helpers exist so the `with`-free wrappers below
+-- compile to plain function applications. An inline `with parseXWF
+-- ...` version fuses the whole mutual WF-parser case-tree into the
+-- wrapper's generated Haskell (tens of thousands of lines), OOMing
+-- MAlonzo in downstream users.
+open import Once.Parser.Type using (ParseTypeD) public
+
+parseTypeB-adapt : ∀ (toks : List Token) → ParseTypeD toks →
+                   Maybe (Σ[ a ∈ Type ] Σ[ rest ∈ List Token ]
+                            length rest < length toks)
+parseTypeB-adapt _ nothing = nothing
+parseTypeB-adapt _ (just (T , rest , d)) = just (T , rest , ParsesType-shrinks d)
+
+parseTypeB : (toks : List Token) → ParseAtB {Type} toks
+parseTypeB toks = parseTypeB-adapt toks
+                    (parseTypeWF toks (<-wellFounded (length toks)))
+
+open import Once.Parser.Expr using (ParseExprD) public
+
+parseExprB-adapt : ∀ (toks : List Token) → ParseExprD toks →
+                   Maybe (Σ[ a ∈ RawExpr ] Σ[ rest ∈ List Token ]
+                            length rest < length toks)
+parseExprB-adapt _ nothing = nothing
+parseExprB-adapt _ (just (e , rest , d)) = just (e , rest , ParsesExpr-shrinks d)
+
+parseExprB : (toks : List Token) → ParseAtB {RawExpr} toks
+parseExprB toks = parseExprB-adapt toks
+                    (parseExprWF toks (<-wellFounded (length toks)))
+
+------------------------------------------------------------------------
+-- Bounded token consumers
+------------------------------------------------------------------------
+
+-- | Bounded version of anyWord: on success the remainder is strictly
+-- shorter than the input.
+anyWordB : (toks : List Token) → ParseAtB {String} toks
+anyWordB (TWord s ∷ rest) = just (s , rest , s≤s ≤-refl)
+anyWordB _ = nothing

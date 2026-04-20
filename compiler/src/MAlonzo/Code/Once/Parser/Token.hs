@@ -26,8 +26,9 @@ data T_Token_6
     C_TInt_10 Integer |
     C_TString_12 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
     C_TLParen_14 | C_TRParen_16 | C_TLBrace_18 | C_TRBrace_20 |
-    C_TColon_22 | C_TEquals_24 | C_TArrow_26 | C_TLambda_28 |
-    C_TComma_30 | C_TSemicolon_32 | C_TAt_34 | C_TPipe_36 | C_TDot_38 |
-    C_TPlus_40 | C_TMinus_42 | C_TStar_44 | C_TSlash_46 |
-    C_TPercent_48 | C_TAmpersand_50 | C_TLt_52 | C_TLe_54 | C_TGt_56 |
-    C_TGe_58 | C_TEqEq_60 | C_TNeq_62 | C_TNewline_64 | C_TEOF_66
+    C_TColon_22 | C_TEquals_24 | C_TArrow_26 | C_TCaret1_28 |
+    C_TCaret0_30 | C_TCaretW_32 | C_TLambda_34 | C_TComma_36 |
+    C_TSemicolon_38 | C_TAt_40 | C_TPipe_42 | C_TDot_44 | C_TPlus_46 |
+    C_TMinus_48 | C_TStar_50 | C_TSlash_52 | C_TPercent_54 |
+    C_TAmpersand_56 | C_TLt_58 | C_TLe_60 | C_TGt_62 | C_TGe_64 |
+    C_TEqEq_66 | C_TNeq_68 | C_TNewline_70 | C_TEOF_72

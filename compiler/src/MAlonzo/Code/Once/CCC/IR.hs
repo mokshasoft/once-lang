@@ -29,7 +29,7 @@ data T_AllocMode_6 = C_Stack_8 | C_Heap_10
 d_IR_12 a0 a1 = ()
 data T_IR_12
   = C_id_16 |
-    C__'8728'__24 MAlonzo.Code.Once.Type.T_Type_34 T_IR_12 T_IR_12 |
+    C__'8728'__24 MAlonzo.Code.Once.Type.T_Type_38 T_IR_12 T_IR_12 |
     C_'10216'_'44'_'10217'_32 T_IR_12 T_IR_12 T_AllocMode_6 |
     C_fst_38 | C_snd_44 | C_inl_50 T_AllocMode_6 |
     C_inr_56 T_AllocMode_6 | C_case_64 T_IR_12 T_IR_12 |
@@ -47,11 +47,11 @@ data T_IR_12
                   T_AllocMode_6 |
     C_Ana_132 MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_176
               T_IR_12 |
-    C_Hylo_140 MAlonzo.Code.Once.Type.T_Functor_32
+    C_Hylo_140 MAlonzo.Code.Once.Type.T_Functor_36
                MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_176
                MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_176 T_IR_12
                T_IR_12 |
-    C_Fuse_148 MAlonzo.Code.Once.Type.T_Functor_32
+    C_Fuse_148 MAlonzo.Code.Once.Type.T_Functor_36
                MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_176
                MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_176 T_IR_12
                T_IR_12 |
