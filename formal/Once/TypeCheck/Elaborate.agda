@@ -867,7 +867,7 @@ mutual
   inferElab ctx (Raw.RApp f x) | ahv-other | isEff A B Ψ₁ fE df ff with inferElab ctx x
   ...   | failure err = failure err
   ...   | success A' Ψ₂ xE dx fx with A ≟T A'
-  ...     | yes refl = success B _ (Surface.effApp fE xE) (df ⊔ dx) fx
+  ...     | yes refl = success (Eff Unit B) _ (Surface.effApp fE xE) (df ⊔ dx) fx
   ...     | no _ = failure (ApplicationTypeMismatch A A')
 
   -- Let binding: infer e₁, then e₂ under extended context.

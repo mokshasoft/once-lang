@@ -65,8 +65,11 @@ evalSurface ρ (var i)        = envLookup ρ i
 evalSurface ρ (lam q _ e)    = λ a → evalSurface (a ∷ ρ) e
 -- Apply function directly (plain function, not Closure)
 evalSurface ρ (app f x)      = (evalSurface ρ f) (evalSurface ρ x)
--- Effect application: same as app since Eff A B has same semantics as A ⇒ B
-evalSurface ρ (effApp f x)   = (evalSurface ρ f) (evalSurface ρ x)
+-- Effect application (D018-style lifting): the result is the suspended
+-- action `λ _ → f x` — a constant function on Unit that returns the
+-- applied effect. This matches the new `effApp : … → Eff Unit B` type
+-- signature (ignored-Unit interpretation of `⟦ Eff Unit B ⟧ = Unit → B`).
+evalSurface ρ (effApp f x)   = λ _ → (evalSurface ρ f) (evalSurface ρ x)
 evalSurface ρ (pair a b)     = (evalSurface ρ a , evalSurface ρ b)
 evalSurface ρ (fst' p)       = proj₁ (evalSurface ρ p)
 evalSurface ρ (snd' p)       = proj₂ (evalSurface ρ p)

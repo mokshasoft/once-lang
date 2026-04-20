@@ -435,7 +435,7 @@ infer-complete-RApp-eff :
   → inferElab ctx x ≡ success A Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
       inferElab ctx (Raw.RApp f x)
-        ≡ success B (Ψf +ᵘ Ψx) eE d f'
+        ≡ success (T.Eff T.Unit B) (Ψf +ᵘ Ψx) eE d f'
 infer-complete-RApp-eff f x A notPoly eqF eqX
   rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
         | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A A
@@ -641,4 +641,4 @@ mutual
     in checkElab-fallback-RApp-generic f x B notPoly eqI
   check-complete (t-embed (t-effApp {f = f} {x = x} {B = B} notPoly dF dX)) =
     let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
-    in checkElab-fallback-RApp-generic f x B notPoly eqI
+    in checkElab-fallback-RApp-generic f x (T.Eff T.Unit B) notPoly eqI

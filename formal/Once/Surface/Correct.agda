@@ -170,11 +170,20 @@ mutual
     cong₂ (λ f' x' → f' x')
           (elaborate-correct ρ f)
           (elaborate-correct ρ x)
-  -- For effApp: same as app since Eff A B has same semantics as A ⇒ B
-  elaborate-correct ρ (effApp f x) = effApp-correct ρ f x
-    where postulate effApp-correct : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B} (ρ : Env Γ)
-                                       (f : Expr Γ Ψ₁ (Eff A B)) (x : Expr Γ Ψ₂ A) →
-                                       evalSurface ρ (effApp f x) ≡ eval′ (elaborate (effApp f x)) (interpEnv ρ)
+  -- For effApp (D018-style lifting): both sides are plain functions
+  -- `Unit → B` (by the `Eff Unit B` interpretation). Use extensionality
+  -- on the Unit input, then the body is IH(f) applied to IH(x).
+  --
+  --   LHS  = λ _ → evalSurface ρ f (evalSurface ρ x)
+  --   RHS  = eval′ (arr ∘ curry ((applyEff ∘ ⟨f',x'⟩ Heap) ∘ fst) Heap) (interpEnv ρ)
+  --        = λ u → eval′ f' (interpEnv ρ) (eval′ x' (interpEnv ρ))
+  --          — `arr`, `fst ∘` ignore `u`; `applyEff ∘ ⟨,⟩` applies.
+  --   LHS ≡ RHS by IH on f and x (point-wise), lifted through funext.
+  elaborate-correct ρ (effApp f x) =
+    extensionality (λ _ →
+      cong₂ (λ f' x' → f' x')
+            (elaborate-correct ρ f)
+            (elaborate-correct ρ x))
   elaborate-correct ρ (pair a b) = cong₂ _,_ (elaborate-correct ρ a) (elaborate-correct ρ b)
   elaborate-correct ρ (fst' p) = cong proj₁ (elaborate-correct ρ p)
   elaborate-correct ρ (snd' p) = cong proj₂ (elaborate-correct ρ p)

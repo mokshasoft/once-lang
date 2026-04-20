@@ -234,7 +234,7 @@ mutual
              → classifyAppHead f ≡ nothing
              → ctx ⊢ᵢ f ∶ Once.Type.Eff A B ⨾ Ψ₁
              → ctx ⊢ᵢ x ∶ A ⨾ Ψ₂
-             → ctx ⊢ᵢ RApp f x ∶ B ⨾ (Ψ₁ +ᵘ Ψ₂)
+             → ctx ⊢ᵢ RApp f x ∶ Once.Type.Eff Once.Type.Unit B ⨾ (Ψ₁ +ᵘ Ψ₂)
 
   -- | Check-mode judgment.
   --

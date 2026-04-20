@@ -3381,7 +3381,12 @@ d_inferElab_1362 v0 v1
                                                      then coe
                                                             seq (coe v21)
                                                             (coe
-                                                               C_success_392 (coe v8)
+                                                               C_success_392
+                                                               (coe
+                                                                  MAlonzo.Code.Once.Type.C_Eff_58
+                                                                  (coe
+                                                                     MAlonzo.Code.Once.Type.C_Unit_48)
+                                                                  (coe v8))
                                                                (coe
                                                                   MAlonzo.Code.Once.Surface.Syntax.du__'43''7512'__80
                                                                   (coe v9) (coe v15))
@@ -4374,7 +4379,12 @@ d_checkElab_1368 v0 v1 v2
                                                                    = seq
                                                                        (coe v23)
                                                                        (coe
-                                                                          C_success_392 (coe v10)
+                                                                          C_success_392
+                                                                          (coe
+                                                                             MAlonzo.Code.Once.Type.C_Eff_58
+                                                                             (coe
+                                                                                MAlonzo.Code.Once.Type.C_Unit_48)
+                                                                             (coe v10))
                                                                           (coe
                                                                              MAlonzo.Code.Once.Surface.Syntax.du__'43''7512'__80
                                                                              (coe v11) (coe v17))

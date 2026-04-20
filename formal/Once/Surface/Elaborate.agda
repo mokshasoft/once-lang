@@ -148,10 +148,16 @@ elaborate (lam q _ e) = curry (elaborate e) Heap
 -- IR's apply is quantity-polymorphic, no coercion needed
 elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩ Heap
 
--- Effect application: `f x` where `f : Eff A B`. Elaborates
--- structurally to the IR `applyEff` primitive — the dual of `apply`
--- for effectful arrows. No coercion, no postulate.
-elaborate (effApp f x) = applyEff ∘ ⟨ elaborate f , elaborate x ⟩ Heap
+-- Effect application (D018-style lifting): `f x` where `f : Eff A B`
+-- becomes the suspended action `λ _ → f x : Eff Unit B`. Built from
+-- three existing IR primitives:
+--   `applyEff ∘ ⟨f, x⟩`  : IR Γ B                  -- run f on x
+--   (…) ∘ fst            : IR (Γ * Unit) B         -- ignore Unit input
+--   curry (…) Heap       : IR Γ (Unit ⇒[Many] B)    -- abstract the Unit
+--   arr ∘ curry (…) Heap : IR Γ (Eff Unit B)        -- tag as Eff
+-- No new IR constructors, no coercion, no postulate.
+elaborate (effApp f x) =
+  arr {q = Many} ∘ curry {q = Many} ((applyEff ∘ ⟨ elaborate f , elaborate x ⟩ Heap) ∘ fst) Heap
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩ Heap

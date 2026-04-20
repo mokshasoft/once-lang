@@ -328,15 +328,18 @@ du_rename_374 v0 v1 v2 v3 v4
                 (coe v3) (coe v12))
              (coe du_rename_374 (coe v0) (coe v1) (coe v9) (coe v3) (coe v13))
       MAlonzo.Code.Once.Surface.Syntax.C_effApp_228 v7 v8 v9 v11 v12
-        -> coe
-             MAlonzo.Code.Once.Surface.Syntax.C_effApp_228
-             (coe du_thin'45'usage_138 (coe v0) (coe v1) (coe v3) (coe v7))
-             (coe du_thin'45'usage_138 (coe v0) (coe v1) (coe v3) (coe v8)) v9
-             (coe
-                du_rename_374 (coe v0) (coe v1)
-                (coe MAlonzo.Code.Once.Type.C_Eff_58 (coe v9) (coe v2)) (coe v3)
-                (coe v11))
-             (coe du_rename_374 (coe v0) (coe v1) (coe v9) (coe v3) (coe v12))
+        -> case coe v2 of
+             MAlonzo.Code.Once.Type.C_Eff_58 v13 v14
+               -> coe
+                    MAlonzo.Code.Once.Surface.Syntax.C_effApp_228
+                    (coe du_thin'45'usage_138 (coe v0) (coe v1) (coe v3) (coe v7))
+                    (coe du_thin'45'usage_138 (coe v0) (coe v1) (coe v3) (coe v8)) v9
+                    (coe
+                       du_rename_374 (coe v0) (coe v1)
+                       (coe MAlonzo.Code.Once.Type.C_Eff_58 (coe v9) (coe v14)) (coe v3)
+                       (coe v11))
+                    (coe du_rename_374 (coe v0) (coe v1) (coe v9) (coe v3) (coe v12))
+             _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Surface.Syntax.C_pair_242 v7 v8 v11 v12
         -> case coe v2 of
              MAlonzo.Code.Once.Type.C__'42'__52 v13 v14

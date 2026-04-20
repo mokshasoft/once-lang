@@ -159,9 +159,21 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
         → Expr Γ Ψ₂ A
         → Expr Γ (Ψ₁ +ᵘ (q *ᵘ Ψ₂)) B
 
-  -- Effect application — effectful call uses argument once (linear).
+  -- Effect application with D018-style lifting.
+  --
+  -- Given `f : Eff A B` and `x : A`, `effApp f x` is the *suspended*
+  -- action `λ _ → f x : Eff Unit B` — not the immediate result. This
+  -- matches the Haskell idiom where `exit 42 :: IO ()` builds an action
+  -- rather than running the effect to yield a pure value. The D018
+  -- lifting rule from the parse/typecheck front-end emits this
+  -- constructor when a user writes `f x` with `f : Eff A B`.
+  --
+  -- Semantics: `λ _ → f x` (constant function ignoring the Unit input).
+  -- Elaboration: `arr ∘ curry ((applyEff ∘ ⟨f,x⟩ Heap) ∘ fst) Heap`
+  -- — see `Once.Surface.Elaborate` for the structural translation and
+  -- `Once.Surface.Correct` for the correctness proof.
   effApp : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
-         → Expr Γ Ψ₁ (Eff A B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ Ψ₂) B
+         → Expr Γ Ψ₁ (Eff A B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Eff Unit B)
 
   -- Pair introduction — both components consumed.
   pair  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
