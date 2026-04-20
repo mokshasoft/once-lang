@@ -23,7 +23,10 @@ This folder tracks the planning history and dependencies between design decision
 │   └── 0.4-frontend-completeness-and-bridges  (planning)
 │       └── 0.4.2-end-to-end-connector  (planning)
 │
-└── 0.5-ir-extension-hygiene  (planning, cross-cutting — applies to any IR constructor addition)
+├── 0.5-ir-extension-hygiene  (planning, cross-cutting — applies to any IR constructor addition)
+│
+├── 0.6-user-polymorphism-and-strict-parser  (planning — Phase A landed 2026-04-20)
+│   └── 0.7-parser-strictness-relational  (planning — relational parser + proofs)
 ```
 
 **Current focus**: resume `0.2.4-categorical-layer-0` — compiler-side
