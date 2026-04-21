@@ -1,0 +1,60 @@
+-- SPDX-License-Identifier: AGPL-3.0-or-later
+-- Copyright (C) 2025-2026 Jonas Claesson and contributors
+
+-- | Plan 0.6 Phase C.6 test fixture.
+--
+-- Exercises user-polymorphic definitions (C.0 + C.1) composed with
+-- the C.2-C.5 desugarings for pair, compose (via `.`), curry, apply.
+-- Each polymorphic def is accompanied by a ground-type use that
+-- forces the full inline + expand + betaReduce + typecheck path.
+--
+-- arr-based entries (Eff) are intentionally absent — arr needs the
+-- classifier route (C.5-arr deferred).
+
+------------------------------------------------------------------------
+-- Product morphisms
+------------------------------------------------------------------------
+
+swap : a * b -> b * a
+swap = pair snd fst
+
+diagonal : a -> a * a
+diagonal = pair id id
+
+-- Ground uses
+
+swapIntString : Int * String -> String * Int
+swapIntString = swap
+
+diagInt : Int -> Int * Int
+diagInt = diagonal
+
+------------------------------------------------------------------------
+-- Composition via `.`
+------------------------------------------------------------------------
+
+-- fst-after-swap: extracts second component
+projSecond : Int * Int -> Int
+projSecond = fst . swap
+
+-- Two-step composition chain
+chained : Int * Int -> Int
+chained = fst . fst . diagonal
+
+------------------------------------------------------------------------
+-- curry / apply
+------------------------------------------------------------------------
+
+-- curry lifts a pair-taking function to a two-argument form.
+-- `pairToInt p = fst p` wraps `fst` in an applied form; bare
+-- unapplied builtins like `pairToInt = fst` are a pre-existing
+-- classifier gap.
+pairToInt : Int * Int -> Int
+pairToInt p = fst p
+
+curriedPairToInt : Int -> Int -> Int
+curriedPairToInt = curry pairToInt
+
+-- apply at a concrete pair shape
+runFnOnInt : (Int -> Int) * Int -> Int
+runFnOnInt p = apply p

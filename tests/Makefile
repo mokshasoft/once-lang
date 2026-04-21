@@ -15,7 +15,7 @@ GCC = gcc
 BUILD = .build
 TESTS_DIR = $(shell pwd)
 
-.PHONY: all test clean test-exe test-lib test-target test-strata
+.PHONY: all test clean test-exe test-lib test-target test-strata test-poly
 
 all: test
 
@@ -102,10 +102,19 @@ test-strata-import: $(BUILD)
 	@echo "  OK"
 
 #-----------------------------------------------------------------------------
+# Test: Polymorphic user defs + NT desugaring (plan 0.6 Phase C.6)
+#-----------------------------------------------------------------------------
+
+test-poly: $(BUILD)
+	@echo "Testing: poly-defs.once --check"
+	$(ONCE) check $(TESTS_DIR)/poly-defs.once | grep -q "Typecheck OK"
+	@echo "  OK"
+
+#-----------------------------------------------------------------------------
 # Run all tests
 #-----------------------------------------------------------------------------
 
-test: test-exe test-lib test-target test-strata
+test: test-exe test-lib test-target test-strata test-poly
 	@echo ""
 	@echo "=========================================="
 	@echo "All integration tests passed!"
