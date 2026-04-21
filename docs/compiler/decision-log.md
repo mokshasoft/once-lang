@@ -3003,3 +3003,115 @@ visible, turns out to be genuinely load-bearing.
 - D021: Canonical.once (morphisms from universal properties —
   D043's desugaring IS the universal property in surface syntax)
 - Plan 0.6.1: Phase C Design (drives this decision)
+- **D044** (below) — partial supersession: reversal of G2 with
+  disjoint judgment rules
+
+---
+
+## D044: G2 Reversed — Classifier Route via Disjoint Judgment Rules
+
+**Date**: 2026-04-21
+**Status**: Accepted
+
+### Context
+
+D043's re-evaluation identified two costs of the desugaring approach:
+(1) diagnostics — `pair f g` errors surface `$pair_x`; (2) optimizer
+dependency — runtime equivalence to `IR.pair` requires the β/η
+laws to fuse. The forward plan committed to reversing G2 when the
+classifier machinery landed for `arr`.
+
+An initial attempt at simple G2 reversal (re-introducing specialised
+bare-builtin check-mode clauses that fell through to lookup on guard
+failure) surfaced a **Ψ-mismatch**: specialised clauses emit
+`zeroUsage`, while lookup-based derivations via `t-embed (t-var-local
+…)` produce non-zero Ψ. The existing `checkElab-fallback-RVar`
+completeness lemma asserts Ψ-preservation, which the specialised
+path broke.
+
+### Decision
+
+Resolve via **disjoint per-builtin check-mode judgment rules** with
+lookup-failure premises:
+
+```
+t-id-check : ∀ {ctx T}
+           → lookupLocal ctx "id" ≡ nothing
+           → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
+           → ctx ⊢ᶜ RVar "id" ∶ (T ⇒[Many] T) ⨾ zeroUsage
+```
+
+The lookup-failure premises make this rule **disjoint by
+construction** from `t-embed (t-var-local/import …)` — each
+derivation uniquely identifies which elab path fires, so the
+Ψ-mismatch evaporates. No global shadow-impossibility lemma
+required.
+
+For applied multi-arg NTs (`pair`, `compose`, `curry`, `apply`),
+disjointness with `t-embed (t-app …)` comes for free from the
+existing `classifyAppHead f ≡ nothing` premise on `t-app` — extending
+`classifyAppHead` to return `just pba-*-applied` for these shapes
+makes `t-app` inapplicable.
+
+### Architecture (landed commits)
+
+| Component | Commit |
+|---|---|
+| POC-1: bare `id` (validate pattern) | `bc1171f6` |
+| POC-2: applied `pair f g` (validate multi-arg + sub-derivation) | `77e24986` |
+| Bare fst/snd/terminal/initial/inl/inr/arr (`BareBuiltinClass` view) | `32b13467` |
+| Applied compose/curry/apply classifiers + judgment rules | `cdbfcdf5` |
+
+Key components:
+
+- **`BareBuiltinClass` view** (`Once.TypeCheck.Elaborate`): dispatches
+  `checkElab-RVar` by indexed view, scales cleanly to 8 bare
+  builtins without nested `with` explosion. Same idiom as
+  `classifyAppHeadView`.
+- **Per-builtin judgment rules** (`t-X-check` in
+  `Once.TypeCheck.Judgment`): 8 bare + 4 applied = 12 new rules.
+  All carry disjointness premises (lookup-failure for bare, or
+  classifier-derived for applied).
+- **Per-builtin completeness helpers**
+  (`checkElab-fallback-RVar-X` / `checkElab-fallback-RApp-X` in
+  `Elaborate.agda`): thread lookup-failure or sub-derivation
+  equations through `rewrite` to close `check-complete (t-X-check
+  …)`. Uniform proof structure; ~10 lines each.
+
+### Consequences
+
+**Gains (user-visible):**
+
+- Errors reference NT names directly (e.g. "pair: expected type
+  mismatch") instead of `$pair_x`. Diagnostic quality improves.
+- Direct `IR.pair` / `IR.compose` emission via `spec*`; no optimizer
+  β/η dependency for runtime equivalence.
+- Bare polymorphic builtins in check mode at their canonical types
+  now typecheck (e.g. `x : A → A; x = id` is legal).
+
+**Proof-side cost (realized):**
+
+- 12 judgment rules, 12 completeness helpers, ~1200 LoC added
+  (including mechanical repetition across builtins). In line with
+  the 300–500 LoC estimate's upper end. No soundness cases required
+  — following the architectural pattern of `ahv-inl`/`ahv-inr`/etc.
+  where elab coverage doesn't force per-builtin Soundness theorems.
+
+**Partial migration:**
+
+The classifier is the primary path but the desugarings in
+`Once.Parser.Inline.expandBuiltins` remain as a parallel fallback
+for complex nested cases (`compose f (pair g h)` where the
+classifier's per-NT infer-mode fails because `pair g h` has no
+inferable form). Both paths produce equivalent Surface IR; the
+desugaring fires first in the pipeline. Full desugaring removal
+awaits either a `pair`-infer-mode extension (requires inferable
+bare-builtin args) or a nested-RApp classifier extension. Scoped
+as future work.
+
+### See Also
+
+- **D043** — original decision, now superseded in part by D044
+- **G2 decision** (plan 0.3, 2026-04-17) — the specialised
+  bare-builtin check-mode removal that D044 reverses
+- Plan 0.6.1 Phase C.7 — migration implementation track
