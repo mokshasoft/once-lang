@@ -173,22 +173,22 @@ compileAllFuns doOpt funs = go funs emptyFunCtx
     ...   | inj₁ err = inj₁ err
     ...   | inj₂ compiled = inj₂ (mkCompiledFun (funName fi) (funType fi) ir ∷ compiled)
 
--- | Polymorphic user-defined functions are parsed and carried as
--- `PolyFunInfo` but not yet compiled. Call sites that need to compile
--- a module's functions use this helper to reject non-empty poly lists
--- with a message pointing at the Phase C.1 follow-up (schema
--- instantiation at call sites).
-polyPendingNames : List PolyFunInfo → String
-polyPendingNames []              = ""
-polyPendingNames (pfi ∷ [])       = pfunName pfi
-polyPendingNames (pfi ∷ rest@(_ ∷ _)) = pfunName pfi ++ ", " ++ polyPendingNames rest
-
-requireNoPoly : {A : Set} → List PolyFunInfo → String ⊎ A → String ⊎ A
-requireNoPoly []             r = r
-requireNoPoly ps@(_ ∷ _)    _ = inj₁ ("Polymorphic user functions are parsed but not yet compilable (plan 0.6 Phase C.1 will add schema instantiation at call sites). Found: " ++ polyPendingNames ps)
+-- | Inline fuel budget: bound on the recursion depth of the
+-- `inlineReferences` walk. User-polymorphic bodies are typically a
+-- handful of NT combinators deep (e.g. `pair snd fst`), so 1024 is
+-- far beyond any plausible usage. Kept conservatively large for
+-- future deeper libraries; the cost is at most O(fuel) per call site.
+inlineFuel : ℕ
+inlineFuel = 1024
 
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)
+--
+-- Plan 0.6 Phase C.1: ground function bodies are pre-inlined with
+-- both ground and polymorphic user-defined sources. Polymorphic names
+-- at call sites expand to their NT-combinator body before typechecking,
+-- at which point the existing bidirectional machinery specializes each
+-- constituent builtin against the call-site expected type.
 compileModule : Bool → String → String ⊎ List CompiledFun
 compileModule doOpt source with parse source
 ... | nothing = inj₁ "Parse error: failed to parse module"
@@ -196,7 +196,8 @@ compileModule doOpt source with parse source
       let aliases = extractAliases mod
       in case extractFunctions aliases mod of λ where
            (inj₁ err)             → inj₁ err
-           (inj₂ (funs , polys))  → requireNoPoly polys (compileAllFuns doOpt funs)
+           (inj₂ (funs , polys))  →
+             compileAllFuns doOpt (inlineAllWithPoly inlineFuel funs polys)
 
 -- | Parse source text to a Module AST. Haskell uses this to read
 -- both the user's file and each transitive import before calling
@@ -221,7 +222,8 @@ compileResolvedModule doOpt mod =
   let aliases = extractAliases mod
   in case extractFunctions aliases mod of λ where
        (inj₁ err)             → inj₁ err
-       (inj₂ (funs , polys))  → requireNoPoly polys (compileAllFuns doOpt funs)
+       (inj₂ (funs , polys))  →
+         compileAllFuns doOpt (inlineAllWithPoly inlineFuel funs polys)
 
 ------------------------------------------------------------------------
 -- Pipeline composition (SurfaceIR → IR)
@@ -323,16 +325,18 @@ compile stage doOpt arch source with parseStrict source
   let aliases = extractAliases mod
   in case extractFunctions aliases mod of λ where
        (inj₁ err)             → Error err
-       (inj₂ (funs , polys))  → case stage of λ where
-         Parse → Parsed funs polys
-         Check → case requireNoPoly polys (compileAllFuns doOpt funs) of λ where
-           (inj₁ err) → Error err
-           (inj₂ compiled) → Checked compiled
-         Build → case requireNoPoly polys (compileAllFuns doOpt funs) of λ where
-           (inj₁ err) → Error err
-           (inj₂ compiled) →
-             let target = archTarget arch
-             in Built (asmHeader target ++ compileAllWithTarget target compiled)
+       (inj₂ (funs , polys))  →
+         let inlined = inlineAllWithPoly inlineFuel funs polys
+         in case stage of λ where
+           Parse → Parsed funs polys
+           Check → case compileAllFuns doOpt inlined of λ where
+             (inj₁ err) → Error err
+             (inj₂ compiled) → Checked compiled
+           Build → case compileAllFuns doOpt inlined of λ where
+             (inj₁ err) → Error err
+             (inj₂ compiled) →
+               let target = archTarget arch
+               in Built (asmHeader target ++ compileAllWithTarget target compiled)
 
 -- | Same as `compile` but starting from a pre-resolved `Module`.
 -- Haskell uses this after driving transitive-import I/O and calling
@@ -343,13 +347,15 @@ compileFromModule stage doOpt arch mod =
   let aliases = extractAliases mod
   in case extractFunctions aliases mod of λ where
        (inj₁ err)             → Error err
-       (inj₂ (funs , polys))  → case stage of λ where
-         Parse → Parsed funs polys
-         Check → case requireNoPoly polys (compileAllFuns doOpt funs) of λ where
-           (inj₁ err) → Error err
-           (inj₂ compiled) → Checked compiled
-         Build → case requireNoPoly polys (compileAllFuns doOpt funs) of λ where
-           (inj₁ err) → Error err
-           (inj₂ compiled) →
-             let target = archTarget arch
-             in Built (asmHeader target ++ compileAllWithTarget target compiled)
+       (inj₂ (funs , polys))  →
+         let inlined = inlineAllWithPoly inlineFuel funs polys
+         in case stage of λ where
+           Parse → Parsed funs polys
+           Check → case compileAllFuns doOpt inlined of λ where
+             (inj₁ err) → Error err
+             (inj₂ compiled) → Checked compiled
+           Build → case compileAllFuns doOpt inlined of λ where
+             (inj₁ err) → Error err
+             (inj₂ compiled) →
+               let target = archTarget arch
+               in Built (asmHeader target ++ compileAllWithTarget target compiled)

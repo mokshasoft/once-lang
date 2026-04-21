@@ -943,3 +943,57 @@ du_go_366 v0 v1 v2
                        (coe v4))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Parser.polySeedDefs
+d_polySeedDefs_382 ::
+  [T_PolyFunInfo_104] -> [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14]
+d_polySeedDefs_382 v0
+  = case coe v0 of
+      [] -> coe v0
+      (:) v1 v2
+        -> case coe v1 of
+             C_mkPolyFunInfo_122 v3 v4 v5 v6
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                    (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v3) (coe v6))
+                    (coe d_polySeedDefs_382 (coe v2))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Parser.inlineAllWithPoly
+d_inlineAllWithPoly_390 ::
+  Integer -> [T_FunInfo_84] -> [T_PolyFunInfo_104] -> [T_FunInfo_84]
+d_inlineAllWithPoly_390 v0 v1 v2
+  = coe du_go_402 (coe v0) (coe d_polySeedDefs_382 (coe v2)) (coe v1)
+-- Once.Parser._.go
+d_go_402 ::
+  Integer ->
+  [T_FunInfo_84] ->
+  [T_PolyFunInfo_104] ->
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  [T_FunInfo_84] -> [T_FunInfo_84]
+d_go_402 v0 ~v1 ~v2 v3 v4 = du_go_402 v0 v3 v4
+du_go_402 ::
+  Integer ->
+  [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
+  [T_FunInfo_84] -> [T_FunInfo_84]
+du_go_402 v0 v1 v2
+  = case coe v2 of
+      [] -> coe v2
+      (:) v3 v4
+        -> case coe v3 of
+             C_mkFunInfo_102 v5 v6 v7 v8
+               -> coe
+                    MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                    (coe
+                       C_mkFunInfo_102 (coe v5) (coe v6) (coe v7)
+                       (coe
+                          MAlonzo.Code.Once.Parser.Inline.d_inlineReferences_68 (coe v0)
+                          (coe v1) (coe v8)))
+                    (coe
+                       du_go_402 (coe v0)
+                       (coe
+                          MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
+                          (coe MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 (coe v5) (coe v8))
+                          (coe v1))
+                       (coe v4))
+             _ -> MAlonzo.RTE.mazUnreachableError
+      _ -> MAlonzo.RTE.mazUnreachableError
