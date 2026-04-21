@@ -462,7 +462,7 @@ open Once.TypeCheck.Judgment
          t-annot; t-pair; t-neg; t-let; t-case;
          t-binop-arith; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-app; t-effApp;
-         t-embed; t-lam)
+         t-embed; t-lam; t-id-check)
 
 
 ------------------------------------------------------------------------
@@ -477,6 +477,7 @@ open Once.TypeCheck.Judgment
 open Once.TypeCheck.Elaborate
   using (checkElab-fallback-RInt; checkElab-fallback-RStringLit;
          checkElab-fallback-RUnit; checkElab-fallback-RVar-unit;
+         checkElab-fallback-RVar-id;
          checkElab-fallback-RQualified; checkElab-fallback-RAnnot;
          checkElab-fallback-RPair; checkElab-fallback-RLet;
          checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
@@ -487,6 +488,14 @@ open Once.TypeCheck.Elaborate
 
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
+--
+-- Plan 0.6 Phase C.7 POC-1: the "id" case is case-split out because
+-- `checkElab` has a specialised lookup-first clause for `RVar "id"`
+-- (Elaborate.agda). The proof structure is identical — rewrite by
+-- the inferElab success, discharge `T ≟T T` — but the reduction path
+-- goes through the specialised clause rather than the generic
+-- fallback. Case-splitting exposes the concrete `"id"` so Agda can
+-- reduce the specialised clause's pattern.
 checkElab-fallback-RVar :
   ∀ {ctx : NamedCtx} (x : String) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -494,7 +503,12 @@ checkElab-fallback-RVar :
   → inferElab ctx (Raw.RVar x) ≡ success T Ψ eE d f
   → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
       checkElab ctx (Raw.RVar x) T ≡ success Ψ eE' d' f'
-checkElab-fallback-RVar x T eqInf
+checkElab-fallback-RVar x T eqInf with x Data.String.Properties.≟ "id"
+... | yes refl
+      rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar x T eqInf | no _
   rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
@@ -642,3 +656,9 @@ mutual
   check-complete (t-embed (t-effApp {f = f} {x = x} {B = B} notPoly dF dX)) =
     let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
     in checkElab-fallback-RApp-generic f x (T.Eff T.Unit B) notPoly eqI
+  -- Plan 0.6 Phase C.7 POC-1: bare `id` check-mode. The derivation's
+  -- lookup-failure premises drive the elaborator past its lookup
+  -- branch (which matches `t-embed (t-var-local/import …)`) into
+  -- the specialised `specId` emission with `zeroUsage`.
+  check-complete {ctx} (t-id-check {T = T} localN importN) =
+    checkElab-fallback-RVar-id {ctx} T localN importN

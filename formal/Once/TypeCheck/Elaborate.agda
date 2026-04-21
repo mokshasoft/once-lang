@@ -780,6 +780,9 @@ classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ 
 mutual
   inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
   checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
+  -- RVar dispatch helper (plan 0.6 Phase C.7 POC-1). Separates
+  -- specialised bare-builtin handling from the generic lookup path.
+  checkElab-RVar : (ctx : NamedCtx) → (x : String) → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
 
   -- ===== inferElab =====
 
@@ -1086,12 +1089,47 @@ mutual
   -- or a local binding. In applied form `id e`, the inferElab
   -- classifier-dispatch handles polymorphism (unchanged).
 
-  -- Generic fallback: infer and match types
+  -- Generic fallback: infer and match types.
+  -- For `RVar x`, dispatches to `checkElab-RVar` to handle
+  -- specialised bare-builtin clauses via a view-based dispatch
+  -- (avoids clause-matching blocking on abstract `x` in proofs —
+  -- plan 0.6 Phase C.7 POC-1).
+  checkElab ctx (Raw.RVar x) T = checkElab-RVar ctx x T
   checkElab ctx e T with inferElab ctx e
   ... | failure err = failure err
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
+
+  -- | Check-mode dispatch for bare `RVar` names. Tries lookup first
+  -- (via `inferElab`). On lookup success, uses the bound
+  -- definition — this path matches `t-embed (t-var-local/import …)`
+  -- derivations with the correct non-zero Ψ. On lookup failure and
+  -- canonical-shape expected type, falls back to the specialised
+  -- builtin emission (`zeroUsage`) — matches the new `t-id-check`
+  -- judgment rule. The two paths are disjoint by construction:
+  -- each derivation uniquely identifies which elab path fires.
+  --
+  -- Dispatches on `x StrProp.≟ "id"` rather than direct string
+  -- patterns so abstract `x` in downstream proofs reduces correctly
+  -- (same idiom used by `classifyAppHeadView`).
+  checkElab-RVar ctx x T with StrProp._≟_ x "id"
+  -- Non-specialised names: generic lookup-then-match.
+  ... | no _ with inferElab ctx (Raw.RVar x)
+  ...   | failure err = failure err
+  ...   | success T' Ψ eE d f with T ≟T T'
+  ...     | yes refl = success _ eE d f
+  ...     | no _ = failure (TypeMismatch T T')
+  -- Name = "id": try lookup; on lookup success use the bound def;
+  -- on lookup failure and canonical type, emit specialised `specId`.
+  checkElab-RVar ctx x T | yes refl with inferElab ctx (Raw.RVar "id")
+  ... | success T' Ψ eE d f with T ≟T T'
+  ...   | yes refl = success _ eE d f
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab-RVar ctx x (A Once.Type.⇒[ Once.Type.Many ] B) | yes refl | failure _ with A ≟T B
+  ... | yes refl = success _ (weakenFromEmpty (specId A)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure (BuiltinTypeMismatch "id")
+  checkElab-RVar ctx x _ | yes refl | failure err = failure err
 
 ------------------------------------------------------------------------
 -- Generic-fallback lemmas (G2 completeness — check-mode).
@@ -1246,6 +1284,21 @@ checkElab-fallback-RVar-unit :
       checkElab ctx (Raw.RVar "unit") Unit
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-unit {ctx} with Unit ≟T Unit
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- Plan 0.6 Phase C.7 POC-1: bare `id` at canonical `T → T` shape.
+-- Given both lookup-failure premises, drives the elaborator through
+-- its lookup branch (empty) and into the specialised `specId` path.
+checkElab-fallback-RVar-id :
+  ∀ {ctx : NamedCtx} (T : Type)
+  → lookupLocal ctx "id" ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RVar "id") (T Once.Type.⇒[ Once.Type.Many ] T)
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RVar-id {ctx} T localN importN
+  rewrite localN | importN with T ≟T T
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 

@@ -259,6 +259,20 @@ mutual
           → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ (q' ∷ᵘ Ψ)
           → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ
 
+    -- | Bare `id` in check mode at the canonical `T → T` shape.
+    -- Plan 0.6 Phase C.7 POC-1. Made **disjoint** from
+    -- `t-embed (t-var-local/import …)` by requiring both lookups
+    -- to fail — so the specialised, `zeroUsage`-emitting path only
+    -- fires when no user shadowing binds `id`. The elaborator
+    -- tries lookup first (see `checkElab (Raw.RVar "id") T`
+    -- clauses); only on lookup failure does it emit `specId`. This
+    -- disjointness keeps Ψ-preservation in completeness intact:
+    -- each judgment rule uniquely identifies which elab path fires.
+    t-id-check : ∀ {ctx : NamedCtx} {T : Type}
+               → lookupLocal ctx "id" ≡ nothing
+               → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
+               → ctx ⊢ᶜ RVar "id" ∶ (T Once.Type.⇒[ Once.Type.Many ] T) ⨾ Surface.zeroUsage
+
 ------------------------------------------------------------------------
 -- Backward-compatible alias
 --
