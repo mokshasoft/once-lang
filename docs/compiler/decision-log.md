@@ -2772,7 +2772,7 @@ assocR x = destruct x
 ## D043: Applied-NT Desugaring via Universal Property (Parser) vs Classifier Extension (Typechecker)
 
 **Date**: 2026-04-21
-**Status**: Accepted
+**Status**: Accepted for pair/compose/curry/apply; **flagged for migration after C.5-arr lands classifier machinery** (see Re-evaluation below)
 
 ### Context
 
@@ -2866,6 +2866,46 @@ it will use the classifier route when added (plan 0.6 Phase C.5-arr).
 - **One optimizer law generalises.** A general proof "lambda+pair+app
   fuses to `IR.pair`" covers every occurrence. The classifier route
   requires per-builtin soundness independently.
+
+### Re-evaluation (2026-04-21, same day)
+
+A subsequent review flagged that the "zero proof-side delta" framing
+was misleading:
+
+1. **The classifier machinery has to be built anyway.** `arr` cannot
+   be lambda-desugared (`Eff` is a distinct IR type constructor with
+   no lambda reduction), so plan 0.6 Phase C.5-arr must land
+   `AppHeadView` / `classifyAppHead` / judgment rule / Soundness /
+   Completeness extensions for at least one NT. Once that machinery
+   exists, the marginal proof cost of extending it to
+   pair/compose/curry/apply is small — template-following, not
+   novel work.
+
+2. **Error-message quality is a permanent user-facing cost.** Every
+   compile error in `pair f g` surfaces `$pair_x` — a variable the
+   user never wrote. This is paid at every failing compile,
+   indefinitely, not as a one-time proof setup. A mitigation would
+   require reverse-mapping desugared names to user-level
+   expressions at diagnostic time, which is itself non-trivial.
+
+3. **IR-reachability and NT-identity costs** (see Consequences
+   above) are permanent. The classifier route preserves NT names in
+   IR and diagnostics.
+
+**Honest reassessment.** The savings realised in C.2-C.5 came from
+avoiding classifier machinery setup *in this session*, not from
+durable lifecycle savings. Once C.5-arr pays the setup cost, the
+per-NT marginal cost of classifier coverage is comparable to the
+desugaring's per-NT cost — and the classifier route wins on
+diagnostics, on avoiding the optimizer dependency, and on preserving
+NT identity for future features.
+
+**Forward plan.** Land C.5-arr with full classifier machinery. After
+that machinery exists, migrate pair/compose/curry/apply off the
+desugaring path onto the classifier. At that point this decision is
+superseded by a D044 recording the migration. D043 remains in the
+log as the record of the intermediate step and the lesson about
+front-loaded vs lifecycle cost framing.
 
 ### See Also
 
