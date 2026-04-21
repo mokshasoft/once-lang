@@ -2766,3 +2766,114 @@ assocR x = destruct x
 
 - D001: Generators as Reserved Words
 - D027: No Implicit Imports (generators are implicitly available)
+
+---
+
+## D043: Applied-NT Desugaring via Universal Property (Parser) vs Classifier Extension (Typechecker)
+
+**Date**: 2026-04-21
+**Status**: Accepted
+
+### Context
+
+Plan 0.6 Phase C needed to make multi-arg categorical NTs (`pair`,
+`compose`, `curry`, `apply`) typecheck at call sites in point-free
+user code — both in ground-typed definitions like
+`mkSwap : Int*Int → Int*Int; mkSwap = pair snd fst` and in
+polymorphic user defs like `swap : a*b → b*a; swap = pair snd fst`
+composed with ground-type use sites.
+
+Two implementation routes were considered, both producing equivalent
+typed IR:
+
+1. **Classifier extension (typechecker).** Add per-NT entries to
+   `AppHeadView` / `classifyAppHead` in
+   `Once.TypeCheck.Elaborate`, plus a `t-pair-app` / `t-compose-app`
+   / … judgment rule per NT in `Judgment.agda`, plus Soundness +
+   Completeness + ErrorProofs cases. Emits the direct IR
+   constructor (`IR.pair`, `IR.compose`, …) at elaboration time.
+
+2. **Surface-level desugaring (parser).** Rewrite applied NT forms
+   at the RawExpr level to explicit lambda+pair+app using the
+   universal property of each morphism:
+   - `pair f g`    → `λx → (f x, g x)`
+   - `compose f g` → `λx → f (g x)`
+   - `curry f`     → `λx → λy → f (x, y)`
+   - `apply p`     → `let $p = p in fst $p (snd $p)`
+   The desugared form is handled by existing RLam + RPair + RApp
+   typechecker machinery — no new rules, no new proofs.
+
+### Decision
+
+**Surface-level desugaring** for all NTs whose universal property
+*has* a lambda form. `arr : (A ⇒ B) ⇒ Eff A B` is excluded because
+`Eff` is a distinct IR type constructor with no lambda reduction;
+it will use the classifier route when added (plan 0.6 Phase C.5-arr).
+
+### Rationale
+
+- **Proof-surface cost.** Classifier extension = 5 NTs × per-NT
+  judgment rule + Soundness + Completeness + ErrorProofs +
+  classifier-view updates = substantial multi-file proof work per
+  addition. Desugaring = one pattern in `expandBuiltins` per NT.
+  Proof surface doesn't grow with each NT added.
+- **Semantic equivalence by construction.** `specPair`'s lambda body
+  in the elaborator is *literally* the desugaring target. Both
+  routes produce the same Surface IR term after elaboration, so the
+  desugaring is not an approximation — it's another path to the
+  same IR.
+- **Beta-reduction pass (`betaReduceApps`) recovers structural
+  shape** when nested desugarings produce `RApp (RLam …) _` in
+  inference position (e.g. `compose fst (pair h k)`). Without this,
+  the applied lambda can't be inferred.
+- **Fresh names (`$pair_x`, `$compose_x`, …).** `$` is illegal in
+  user identifiers (see `Once.Parser.Lexer.isIdentStart` /
+  `isIdentContinue`), so capture with user variables is impossible
+  by construction.
+
+### Consequences (future costs)
+
+- **Error messages reference desugared names.** A type error in
+  `pair f g` may surface a reference to `$pair_x`, a variable the
+  user never wrote. Cost: diagnostic quality degrades for these
+  builtins. Not yet mitigated.
+- **Optimizer-dependent IR equivalence.** The desugared form is
+  lambda+pair+app. Runtime equivalence to `IR.pair` relies on the
+  optimizer's beta/eta laws to fuse the lambda back. If optimization
+  is disabled or weakened (e.g. `-O0`), output IR is larger. The
+  classifier route would emit `IR.pair` directly.
+- **No user-source path to raw `IR.pair`.** Any future proof
+  targeting the `IR.pair` constructor is, transitively, a proof
+  about "lambda-fused-to-`IR.pair`." We've exchanged per-builtin
+  soundness proofs for one optimizer-correctness obligation.
+- **NT identity is erased.** After desugaring, `pair f g` is
+  indistinguishable from an arbitrary user lambda of the same
+  shape. Any future feature that keys off NT identity (specialized
+  codegen, rewrite rules, usage analysis keyed on NT name) loses
+  that hook.
+- **`arr` still needs the classifier.** Once classifier machinery
+  exists for `arr`, the argument "we already have it, just extend
+  it" becomes available. Stance: keep desugaring for lambda-form
+  NTs; classifier only for non-lambda-form NTs.
+
+### Consequences (future savings)
+
+- **New lambda-form NTs cost one pattern** in `expandBuiltins`.
+  No proof work.
+- **Uniform pipeline.** User polymorphic defs (plan 0.6 Phase C.0
+  + C.1) and NT builtins both flow through the same
+  inline → desugar → betaReduce → typecheck path. No bifurcation.
+- **One optimizer law generalises.** A general proof "lambda+pair+app
+  fuses to `IR.pair`" covers every occurrence. The classifier route
+  requires per-builtin soundness independently.
+
+### See Also
+
+- D001: Generators as Reserved Words
+- D007: Structural Type Matching for Signatures (frames why
+  user-polymorphic schemas do not need a separate specialisation
+  mechanism — call-site specialisation for user NTs is subsumed by
+  builtin specialisation after inlining)
+- D021: Canonical.once (morphisms from universal properties —
+  D043's desugaring IS the universal property in surface syntax)
+- Plan 0.6.1: Phase C Design (drives this decision)
