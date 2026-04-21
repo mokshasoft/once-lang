@@ -2947,6 +2947,52 @@ Three paths forward, each with real cost:
 until either path (1) or (2) is specifically chosen and scheduled.
 D043 stays the governing decision for now.
 
+### Deeper blocker (2026-04-21, second migration attempt): Ψ-mismatch
+
+A second, more determined migration attempt surfaced the actual
+architectural cost. Re-introducing specialised bare-builtin
+check-mode clauses — even with a clean "fall through on guard
+failure" design — breaks completeness via a **usage (Ψ) mismatch**:
+
+- Specialised clause for `RVar "id"` at `A ⇒[Many] A` emits
+  `specId A` with `Ψ = zeroUsage` (the specialised term is a closed
+  λ-abstraction, used zero times in the enclosing context).
+- Judgment derivation via `t-embed (t-var-local {x="id"} …)`
+  produces a non-zero Ψ reflecting the variable's single-use.
+
+The existing completeness helper `checkElab-fallback-RVar`
+(`Completeness.agda:490`) asserts that the inferred Ψ is *preserved*
+through to the check-mode result. The specialised path returns a
+different Ψ, so the lemma as stated fails.
+
+Two real fixes, both substantial:
+
+1. **Per-builtin check-mode judgment rules.** Add 12 new rules
+   (`t-id-check`, `t-fst-check`, …), each with conclusion
+   `ctx ⊢ᶜ RVar x ∶ T ⨾ zeroUsage`. Completeness then splits:
+   specialised Ψ matches the new rule; lookup Ψ matches the existing
+   `t-embed (t-var-local …)`. ≈12 new judgment rules + ≈24 new
+   soundness / completeness cases + ErrorProofs paths. Scope: 300–500
+   lines of proof. Principled.
+
+2. **Parser reservation + shadow-impossibility lemma.** Enforce D001
+   at parse time so reserved names can never appear in local/import
+   scope; prove the shadow-impossibility lemma globally; use it to
+   absurd-out the non-zero-Ψ case in completeness. Medium proof work
+   + parser change that ripples into existing fixtures / tests.
+   Less repetitive than (1) but coupling the proof to a parser
+   invariant is new territory.
+
+Neither path is a "small" lift. The hybrid remains in place.
+
+**Takeaway for future planning.** The proof architecture carries more
+weight than surface-level tooling in this codebase. When considering
+reversing a decision like G2, cost isn't just "re-add the clauses" —
+it's "re-align the Ψ-invariant across the elaborator / judgment /
+completeness triangle." D043's desugaring route avoided this cost
+entirely at the price of diagnostic quality. That trade, once made
+visible, turns out to be genuinely load-bearing.
+
 ### See Also
 
 - D001: Generators as Reserved Words
