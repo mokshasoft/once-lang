@@ -78,6 +78,7 @@ open import Once.Arith.IR public
 open import Once.Parser public
 open import Once.Parser.Module public
 open FunInfo
+open PolyFunInfo
 
 -- Type checking / elaboration
 open import Once.TypeCheck.Raw using (RawExpr)
@@ -172,6 +173,20 @@ compileAllFuns doOpt funs = go funs emptyFunCtx
     ...   | inj₁ err = inj₁ err
     ...   | inj₂ compiled = inj₂ (mkCompiledFun (funName fi) (funType fi) ir ∷ compiled)
 
+-- | Polymorphic user-defined functions are parsed and carried as
+-- `PolyFunInfo` but not yet compiled. Call sites that need to compile
+-- a module's functions use this helper to reject non-empty poly lists
+-- with a message pointing at the Phase C.1 follow-up (schema
+-- instantiation at call sites).
+polyPendingNames : List PolyFunInfo → String
+polyPendingNames []              = ""
+polyPendingNames (pfi ∷ [])       = pfunName pfi
+polyPendingNames (pfi ∷ rest@(_ ∷ _)) = pfunName pfi ++ ", " ++ polyPendingNames rest
+
+requireNoPoly : {A : Set} → List PolyFunInfo → String ⊎ A → String ⊎ A
+requireNoPoly []             r = r
+requireNoPoly ps@(_ ∷ _)    _ = inj₁ ("Polymorphic user functions are parsed but not yet compilable (plan 0.6 Phase C.1 will add schema instantiation at call sites). Found: " ++ polyPendingNames ps)
+
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)
 compileModule : Bool → String → String ⊎ List CompiledFun
@@ -180,8 +195,8 @@ compileModule doOpt source with parse source
 ... | just mod =
       let aliases = extractAliases mod
       in case extractFunctions aliases mod of λ where
-           (inj₁ err)  → inj₁ err
-           (inj₂ funs) → compileAllFuns doOpt funs
+           (inj₁ err)             → inj₁ err
+           (inj₂ (funs , polys))  → requireNoPoly polys (compileAllFuns doOpt funs)
 
 -- | Parse source text to a Module AST. Haskell uses this to read
 -- both the user's file and each transitive import before calling
@@ -205,8 +220,8 @@ compileResolvedModule : Bool → Module → String ⊎ List CompiledFun
 compileResolvedModule doOpt mod =
   let aliases = extractAliases mod
   in case extractFunctions aliases mod of λ where
-       (inj₁ err)  → inj₁ err
-       (inj₂ funs) → compileAllFuns doOpt funs
+       (inj₁ err)             → inj₁ err
+       (inj₂ (funs , polys))  → requireNoPoly polys (compileAllFuns doOpt funs)
 
 ------------------------------------------------------------------------
 -- Pipeline composition (SurfaceIR → IR)
@@ -272,20 +287,29 @@ data Stage : Set where
 
 -- | Compilation result (varies by stage)
 data CompileResult : Set where
-  Parsed  : List FunInfo → CompileResult       -- Parse succeeded
-  Checked : List CompiledFun → CompileResult   -- Typecheck succeeded
-  Built   : String → CompileResult             -- Codegen succeeded (assembly)
-  Error   : String → CompileResult             -- Any stage failed
+  Parsed  : List FunInfo → List PolyFunInfo → CompileResult  -- Parse succeeded (ground + poly)
+  Checked : List CompiledFun → CompileResult                 -- Typecheck succeeded
+  Built   : String → CompileResult                           -- Codegen succeeded (assembly)
+  Error   : String → CompileResult                           -- Any stage failed
 
 -- | Show a FunInfo as "name : type"
 showFunInfo : FunInfo → String
 showFunInfo fi = funName fi ++ " : " ++ showType (funType fi)
+
+-- | Show a PolyFunInfo as "name : polytype"
+showPolyFunInfo : PolyFunInfo → String
+showPolyFunInfo pfi = pfunName pfi ++ " : " ++ showPolyType (pfunType pfi)
 
 -- | Show all function signatures
 showFunInfos : List FunInfo → String
 showFunInfos [] = ""
 showFunInfos (fi ∷ []) = showFunInfo fi
 showFunInfos (fi ∷ rest) = showFunInfo fi ++ "\n" ++ showFunInfos rest
+
+showPolyFunInfos : List PolyFunInfo → String
+showPolyFunInfos [] = ""
+showPolyFunInfos (pfi ∷ []) = showPolyFunInfo pfi
+showPolyFunInfos (pfi ∷ rest) = showPolyFunInfo pfi ++ "\n" ++ showPolyFunInfos rest
 
 -- | Unified compile function - single entry point for all stages
 -- stage: how far to compile (ParseOnly, CheckOnly, FullBuild)
@@ -298,13 +322,13 @@ compile stage doOpt arch source with parseStrict source
 ... | inj₂ mod =
   let aliases = extractAliases mod
   in case extractFunctions aliases mod of λ where
-       (inj₁ err)  → Error err
-       (inj₂ funs) → case stage of λ where
-         Parse → Parsed funs
-         Check → case compileAllFuns doOpt funs of λ where
+       (inj₁ err)             → Error err
+       (inj₂ (funs , polys))  → case stage of λ where
+         Parse → Parsed funs polys
+         Check → case requireNoPoly polys (compileAllFuns doOpt funs) of λ where
            (inj₁ err) → Error err
            (inj₂ compiled) → Checked compiled
-         Build → case compileAllFuns doOpt funs of λ where
+         Build → case requireNoPoly polys (compileAllFuns doOpt funs) of λ where
            (inj₁ err) → Error err
            (inj₂ compiled) →
              let target = archTarget arch
@@ -318,13 +342,13 @@ compileFromModule : Stage → Bool → Arch → Module → CompileResult
 compileFromModule stage doOpt arch mod =
   let aliases = extractAliases mod
   in case extractFunctions aliases mod of λ where
-       (inj₁ err)  → Error err
-       (inj₂ funs) → case stage of λ where
-         Parse → Parsed funs
-         Check → case compileAllFuns doOpt funs of λ where
+       (inj₁ err)             → Error err
+       (inj₂ (funs , polys))  → case stage of λ where
+         Parse → Parsed funs polys
+         Check → case requireNoPoly polys (compileAllFuns doOpt funs) of λ where
            (inj₁ err) → Error err
            (inj₂ compiled) → Checked compiled
-         Build → case compileAllFuns doOpt funs of λ where
+         Build → case requireNoPoly polys (compileAllFuns doOpt funs) of λ where
            (inj₁ err) → Error err
            (inj₂ compiled) →
              let target = archTarget arch

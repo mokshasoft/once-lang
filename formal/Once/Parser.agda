@@ -179,11 +179,25 @@ record FunInfo : Set where
     funAlloc : Maybe AllocStrategy
     funBody  : RawExpr
 
--- | Project a parsed `PolyType` signature to a ground `Type` for
--- downstream typechecking. Fails loudly if the signature contains
--- unbound TVars — plan 0.6 Phase C (bidirectional specialization for
--- user polymorphic signatures) is the follow-up that will
--- monomorphize these at use sites instead of rejecting.
+-- | Polymorphic counterpart of `FunInfo`. User-declared definitions
+-- whose signature carries `TVar`s flow through this record and are
+-- handled downstream by schema instantiation at use sites — plan 0.6
+-- Phase C.1. Kept structurally separate from `FunInfo` so the ground
+-- compile pipeline stays untouched; the two lists are processed
+-- independently by `compileAllFuns`.
+record PolyFunInfo : Set where
+  constructor mkPolyFunInfo
+  field
+    pfunName  : String
+    pfunType  : PolyType
+    pfunAlloc : Maybe AllocStrategy
+    pfunBody  : RawExpr
+
+-- | Project a parsed `PolyType` signature to a ground `Type`. Used
+-- for declarations (primitives, ground-typed user defs) where
+-- polymorphic signatures are not admissible. User `DFunDef`s with
+-- polymorphic sigs route into `PolyFunInfo` instead of going through
+-- this projector.
 --
 -- Applies alias expansion after projection (aliases currently live
 -- in ground `Type` land — see `expandAliases`). If a future phase
@@ -191,43 +205,63 @@ record FunInfo : Set where
 projectSig : TypeAliasEnv → String → PolyType → String ⊎ Type
 projectSig aliases name ty with isGround ty
 ... | inj₁ g  = inj₂ (expandAliases aliases (extractGround ty g))
-... | inj₂ _  = inj₁ ("Type signature for `" ++ name
-                        ++ "` contains type variables (not yet supported): "
-                        ++ showPolyType ty
-                        ++ " — plan 0.6 Phase C will add bidirectional "
-                        ++ "specialization for user-polymorphic signatures")
+... | inj₂ _  = inj₁ ("Polymorphic signature not admissible here for `" ++ name
+                        ++ "`: " ++ showPolyType ty
+                        ++ " — primitives and type aliases must be ground. "
+                        ++ "User `DFunDef`s with polymorphic sigs route into "
+                        ++ "`PolyFunInfo` (plan 0.6 Phase C.1).")
 
-extractFunctions : TypeAliasEnv → Module → String ⊎ List FunInfo
+-- | Pending-signature state for `extractFunctions`' fold. A user
+-- `DTypeSig` is deferred until the subsequent `DFunDef` is seen:
+-- ground sigs yield a `FunInfo`, polymorphic sigs a `PolyFunInfo`.
+PendingSig : Set
+PendingSig = String × (Type ⊎ PolyType)
+
+extractFunctions : TypeAliasEnv → Module → String ⊎ (List FunInfo × List PolyFunInfo)
 extractFunctions aliases (mkModule ds) = go ds nothing
   where
-  go : List Decl → Maybe (String × Type) → String ⊎ List FunInfo
-  go [] _ = inj₂ []
-  go (DTypeSig name ty ∷ rest) _ with projectSig aliases name ty
-  ... | inj₁ err  = inj₁ err
-  ... | inj₂ gty  = go rest (just (name , gty))
-  go (DFunDef name alloc body ∷ rest) (just (sigName , sigTy)) with sigName ≟ name
-  ... | yes _ with go rest nothing
-  ...   | inj₁ err   = inj₁ err
-  ...   | inj₂ rest' = inj₂ (mkFunInfo name sigTy alloc body ∷ rest')
-  go (DFunDef _ _ _ ∷ rest) (just _) | no _ = go rest nothing  -- mismatched sig, skip
+  Result : Set
+  Result = String ⊎ (List FunInfo × List PolyFunInfo)
+
+  consFun : Result → FunInfo → Result
+  consFun (inj₁ err)        _  = inj₁ err
+  consFun (inj₂ (gs , ps)) fi = inj₂ (fi ∷ gs , ps)
+
+  consPoly : Result → PolyFunInfo → Result
+  consPoly (inj₁ err)        _   = inj₁ err
+  consPoly (inj₂ (gs , ps)) pfi = inj₂ (gs , pfi ∷ ps)
+
+  go : List Decl → Maybe PendingSig → Result
+  go [] _ = inj₂ ([] , [])
+  -- Signatures are classified now: ground types get expanded eagerly;
+  -- polymorphic types are carried as-is for the matching DFunDef.
+  go (DTypeSig name ty ∷ rest) _ with isGround ty
+  ... | inj₁ g  = go rest (just (name , inj₁ (expandAliases aliases (extractGround ty g))))
+  ... | inj₂ _  = go rest (just (name , inj₂ ty))
+  -- DFunDef with matching ground sig → FunInfo
+  go (DFunDef name alloc body ∷ rest) (just (sigName , inj₁ gty)) with sigName ≟ name
+  ... | yes _ = consFun (go rest nothing) (mkFunInfo name gty alloc body)
+  ... | no  _ = go rest nothing
+  -- DFunDef with matching polymorphic sig → PolyFunInfo
+  go (DFunDef name alloc body ∷ rest) (just (sigName , inj₂ pty)) with sigName ≟ name
+  ... | yes _ = consPoly (go rest nothing) (mkPolyFunInfo name pty alloc body)
+  ... | no  _ = go rest nothing
   go (DFunDef _ _ _ ∷ rest) nothing = go rest nothing  -- no sig: definition dropped
   -- Primitives: use RVar as placeholder body (actual impl is external).
   -- Owned primitives (from resolved imports) get qualified names
   -- `alias.name` — same textual form that the typechecker's
   -- `lookupImport` uses for `RQualified`, so user code `exit@S`
-  -- resolves to this FunInfo without further wiring.
+  -- resolves to this FunInfo without further wiring. Primitives must
+  -- be ground; polymorphic primitive signatures are rejected by
+  -- `projectSig`.
   go (DPrimitive name nothing ty ∷ rest) _ with projectSig aliases name ty
   ... | inj₁ err  = inj₁ err
-  ... | inj₂ gty  with go rest nothing
-  ...   | inj₁ err   = inj₁ err
-  ...   | inj₂ rest' = inj₂ (mkFunInfo name gty nothing (RVar name) ∷ rest')
+  ... | inj₂ gty  = consFun (go rest nothing) (mkFunInfo name gty nothing (RVar name))
   go (DPrimitive name (just owner) ty ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
   ... | inj₁ err  = inj₁ err
-  ... | inj₂ gty  with go rest nothing
-  ...   | inj₁ err   = inj₁ err
-  ...   | inj₂ rest' =
+  ... | inj₂ gty  =
            let qname = owner ++ "." ++ name
-           in inj₂ (mkFunInfo qname gty nothing (RVar qname) ∷ rest')
+           in consFun (go rest nothing) (mkFunInfo qname gty nothing (RVar qname))
   go (_ ∷ rest) pending = go rest pending
 
 -- | Inline all functions and return elaboration-ready pairs

@@ -21,6 +21,7 @@ module Once.Compile.Bridge
   , Arch (..)
   , CompileResult (..)
   , FunSig (..)
+  , PolyFunSig (..)
     -- * Module AST (opaque handle + import inspection)
   , Module
   , ImportRef (..)
@@ -60,8 +61,17 @@ data FunSig = FunSig
   , funSigType :: Text
   } deriving (Eq, Show)
 
+-- | User-declared polymorphic definitions surface as `PolyFunSig`.
+-- Their signatures are polymorphic schemas (with `TVar`s); downstream
+-- compile-stage consumers currently reject non-empty poly lists
+-- pending plan 0.6 Phase C.1 (schema instantiation at call sites).
+data PolyFunSig = PolyFunSig
+  { polyFunSigName :: Text
+  , polyFunSigType :: Text
+  } deriving (Eq, Show)
+
 data CompileResult
-  = Parsed [FunSig]
+  = Parsed [FunSig] [PolyFunSig]
   | Checked
   | Built Text
   | Error Text
@@ -82,13 +92,13 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_302
-toMStage Parse = MC.C_Parse_304
-toMStage Check = MC.C_Check_306
-toMStage Build = MC.C_Build_308
+toMStage :: Stage -> MC.T_Stage_322
+toMStage Parse = MC.C_Parse_324
+toMStage Check = MC.C_Check_326
+toMStage Build = MC.C_Build_328
 
-toMArch :: Arch -> MC.T_Arch_282
-toMArch X86_64 = MC.C_x86'45'64_284
+toMArch :: Arch -> MC.T_Arch_302
+toMArch X86_64 = MC.C_x86'45'64_304
 
 -- | Agda strings are Haskell `Text` at runtime (MAlonzo primitive binding).
 agdaToText :: a -> Text
@@ -103,11 +113,18 @@ fromMFunInfo fi = FunSig
   , funSigType = agdaToText (MT.d_showType_132 (MP.d_funType_96 fi))
   }
 
-fromMResult :: MC.T_CompileResult_310 -> CompileResult
-fromMResult (MC.C_Parsed_312 fis) = Parsed (map fromMFunInfo fis)
-fromMResult (MC.C_Checked_314 _)  = Checked
-fromMResult (MC.C_Built_316 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_318 err)  = Error (agdaToText err)
+fromMPolyFunInfo :: MP.T_PolyFunInfo_104 -> PolyFunSig
+fromMPolyFunInfo pfi = PolyFunSig
+  { polyFunSigName = agdaToText (MP.d_pfunName_114 pfi)
+  , polyFunSigType = agdaToText (MT.d_showPolyType_510 (MP.d_pfunType_116 pfi))
+  }
+
+fromMResult :: MC.T_CompileResult_330 -> CompileResult
+fromMResult (MC.C_Parsed_332 fis pfis) =
+  Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
+fromMResult (MC.C_Checked_334 _)  = Checked
+fromMResult (MC.C_Built_336 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_338 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -115,7 +132,7 @@ fromMResult (MC.C_Error_318 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_332 (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_364 (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -129,7 +146,7 @@ compile stage doOpt arch source =
 -- silently producing a module with missing decls.
 parseSource :: Text -> Either Text Module
 parseSource source =
-  case MC.d_parseSourceToModule_244 (textToAgda source) of
+  case MC.d_parseSourceToModule_262 (textToAgda source) of
     MSum.C_inj'8321'_38 err -> Left (agdaToText err)
     MSum.C_inj'8322'_42 m   -> Right (Module (unsafeCoerce m))
 
@@ -171,4 +188,4 @@ resolveImports modMap (Module userMod) =
 compileFromModule :: Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule stage doOpt arch (Module m) =
   fromMResult
-    (MC.d_compileFromModule_390 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce m))
+    (MC.d_compileFromModule_424 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce m))

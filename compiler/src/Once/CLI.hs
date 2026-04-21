@@ -36,7 +36,7 @@ import System.Environment (lookupEnv)
 import System.Process (readProcessWithExitCode)
 
 -- Bridge to MAlonzo-generated code (stable API)
-import Once.Compile.Bridge (CompileResult(..), FunSig(..))
+import Once.Compile.Bridge (CompileResult(..), FunSig(..), PolyFunSig(..))
 import qualified Once.Compile.Bridge as Bridge
 
 ------------------------------------------------------------------------
@@ -186,6 +186,12 @@ showFunSigs :: [FunSig] -> T.Text
 showFunSigs [] = ""
 showFunSigs sigs = T.unlines [funSigName sig <> " : " <> funSigType sig | sig <- sigs]
 
+-- | Format polymorphic function signatures for display
+showPolyFunSigs :: [PolyFunSig] -> T.Text
+showPolyFunSigs [] = ""
+showPolyFunSigs sigs =
+  T.unlines [polyFunSigName sig <> " : " <> polyFunSigType sig | sig <- sigs]
+
 ------------------------------------------------------------------------
 -- Parse Command
 ------------------------------------------------------------------------
@@ -206,8 +212,8 @@ runPreprocess opts = do
       exitFailure
     Right mod_ ->
       case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
-        Parsed sigs -> do
-          emitStage (stageOutput opts) (showFunSigs sigs)
+        Parsed sigs polySigs -> do
+          emitStage (stageOutput opts) (showFunSigs sigs <> showPolyFunSigs polySigs)
           exitSuccess
         Error err -> do
           TIO.putStrLn $ "Error: " <> err
@@ -228,8 +234,9 @@ runParse opts = do
       exitFailure
     Right mod_ ->
       case Bridge.compileFromModule Bridge.Parse False Bridge.X86_64 mod_ of
-        Parsed sigs -> do
-          emitStage (parseOutput opts) (showFunSigs sigs <> "Parse OK\n")
+        Parsed sigs polySigs -> do
+          emitStage (parseOutput opts)
+                    (showFunSigs sigs <> showPolyFunSigs polySigs <> "Parse OK\n")
           exitSuccess
         Error err -> do
           TIO.putStrLn $ "Error: " <> err
