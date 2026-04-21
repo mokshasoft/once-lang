@@ -84,3 +84,49 @@ inlineReferences (suc fuel) defs (RBinOp op a b) =
             (inlineReferences (suc fuel) defs b)
 inlineReferences (suc fuel) defs (RUnaryOp op e) =
   RUnaryOp op (inlineReferences (suc fuel) defs e)
+
+------------------------------------------------------------------------
+-- Applied-builtin desugaring
+------------------------------------------------------------------------
+
+-- | Fresh variable name for the `pair` desugaring. Contains `$`,
+-- which is not a legal identifier character in user source (see
+-- `Once.Parser.Lexer.isIdentStart` / `isIdentContinue`), so this
+-- name is guaranteed not to clash with any user-declared variable.
+pairDesugarVar : String
+pairDesugarVar = "$pair_x"
+
+-- | Desugar applied-pair forms to explicit lambda+pair shapes.
+--
+-- The 2-arg curried application `pair f g` is rewritten to
+-- `λ x → (f x, g x)` where `x = pairDesugarVar`. This lets the
+-- existing bidirectional typechecker handle `pair`'s specialization
+-- against the call site's expected type via the RLam + RPair + RApp
+-- paths, without a dedicated applied-form classifier and without
+-- corresponding judgment / soundness / completeness extensions.
+--
+-- Semantics: `pair f g ≡ λ x → (f x, g x)` is the universal property
+-- of the categorical pair morphism in a CCC — the two forms are
+-- beta-equivalent by construction. The optimizer's beta/eta laws
+-- fuse the lambda+pair+app form back into `IR.pair` so there is no
+-- runtime cost versus a direct classifier route.
+--
+-- Plan 0.6 Phase C.2.
+expandPairs : RawExpr → RawExpr
+expandPairs (RApp (RApp (RVar "pair") f) g) =
+  RLam pairDesugarVar (RPair (RApp (expandPairs f) (RVar pairDesugarVar))
+                              (RApp (expandPairs g) (RVar pairDesugarVar)))
+expandPairs (RVar name) = RVar name
+expandPairs (RQualified name alias) = RQualified name alias
+expandPairs (RApp f x) = RApp (expandPairs f) (expandPairs x)
+expandPairs (RLam x body) = RLam x (expandPairs body)
+expandPairs (RLet x e₁ e₂) = RLet x (expandPairs e₁) (expandPairs e₂)
+expandPairs (RPair a b) = RPair (expandPairs a) (expandPairs b)
+expandPairs (RDestruct s x l y r) =
+  RDestruct (expandPairs s) x (expandPairs l) y (expandPairs r)
+expandPairs RUnit = RUnit
+expandPairs (RInt n) = RInt n
+expandPairs (RStringLit s) = RStringLit s
+expandPairs (RAnnot e ty) = RAnnot (expandPairs e) ty
+expandPairs (RBinOp op a b) = RBinOp op (expandPairs a) (expandPairs b)
+expandPairs (RUnaryOp op e) = RUnaryOp op (expandPairs e)

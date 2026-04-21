@@ -168,3 +168,81 @@ d_inlineReferences_68 v0 v1 v2
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60
                        (d_inlineReferences_68 (coe v0) (coe v1) (coe v5))
                 _ -> MAlonzo.RTE.mazUnreachableError)
+-- Once.Parser.Inline.pairDesugarVar
+d_pairDesugarVar_178 :: MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_pairDesugarVar_178 = coe ("$pair_x" :: Data.Text.Text)
+-- Once.Parser.Inline.expandPairs
+d_expandPairs_180 ::
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
+  MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34
+d_expandPairs_180 v0
+  = case coe v0 of
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v1 -> coe v0
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RQualified_38 v1 v2 -> coe v0
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40 v1 v2
+        -> let v3
+                 = coe
+                     MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
+                     (coe d_expandPairs_180 (coe v1))
+                     (coe d_expandPairs_180 (coe v2)) in
+           coe
+             (case coe v1 of
+                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40 v4 v5
+                  -> case coe v4 of
+                       MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v6
+                         -> case coe v6 of
+                              l | (==) l ("pair" :: Data.Text.Text) ->
+                                  coe
+                                    MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42
+                                    (coe d_pairDesugarVar_178)
+                                    (coe
+                                       MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
+                                       (coe
+                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
+                                          (coe d_expandPairs_180 (coe v5))
+                                          (coe
+                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
+                                             (coe d_pairDesugarVar_178)))
+                                       (coe
+                                          MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
+                                          (coe d_expandPairs_180 (coe v2))
+                                          (coe
+                                             MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
+                                             (coe d_pairDesugarVar_178))))
+                              _ -> coe v3
+                       _ -> coe v3
+                _ -> coe v3)
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 v1 v2
+        -> coe
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 (coe v1)
+             (coe d_expandPairs_180 (coe v2))
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 v1 v2 v3
+        -> coe
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 (coe v1)
+             (coe d_expandPairs_180 (coe v2)) (coe d_expandPairs_180 (coe v3))
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46 v1 v2
+        -> coe
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
+             (coe d_expandPairs_180 (coe v1)) (coe d_expandPairs_180 (coe v2))
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48 v1 v2 v3 v4 v5
+        -> coe
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48
+             (coe d_expandPairs_180 (coe v1)) (coe v2)
+             (coe d_expandPairs_180 (coe v3)) (coe v4)
+             (coe d_expandPairs_180 (coe v5))
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RUnit_50 -> coe v0
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_52 v1 -> coe v0
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_54 v1 -> coe v0
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56 v1 v2
+        -> coe
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
+             (coe d_expandPairs_180 (coe v1)) (coe v2)
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58 v1 v2 v3
+        -> coe
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58 (coe v1)
+             (coe d_expandPairs_180 (coe v2)) (coe d_expandPairs_180 (coe v3))
+      MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60 v2
+        -> coe
+             MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60
+             (d_expandPairs_180 (coe v2))
+      _ -> MAlonzo.RTE.mazUnreachableError
