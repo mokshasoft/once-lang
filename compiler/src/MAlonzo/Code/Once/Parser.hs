@@ -986,10 +986,12 @@ du_go_402 v0 v1 v2
                     (coe
                        C_mkFunInfo_102 (coe v5) (coe v6) (coe v7)
                        (coe
-                          MAlonzo.Code.Once.Parser.Inline.d_expandPairs_180
+                          MAlonzo.Code.Once.Parser.Inline.d_betaReduceApps_468 (coe v0)
                           (coe
-                             MAlonzo.Code.Once.Parser.Inline.d_inlineReferences_68 (coe v0)
-                             (coe v1) (coe v8))))
+                             MAlonzo.Code.Once.Parser.Inline.d_expandBuiltins_182
+                             (coe
+                                MAlonzo.Code.Once.Parser.Inline.d_inlineReferences_68 (coe v0)
+                                (coe v1) (coe v8)))))
                     (coe
                        du_go_402 (coe v0)
                        (coe

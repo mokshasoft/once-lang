@@ -298,6 +298,7 @@ inlineAllWithPoly fuel fns polys = go (polySeedDefs polys) fns
   go : Defs → List FunInfo → List FunInfo
   go _ [] = []
   go defs (mkFunInfo name ty alloc body ∷ rest) =
-    let inlined  = inlineReferences fuel defs body
-        desugared = expandPairs inlined
-    in  mkFunInfo name ty alloc desugared ∷ go ((name , body) ∷ defs) rest
+    let inlined   = inlineReferences fuel defs body
+        desugared = expandBuiltins inlined
+        reduced   = betaReduceApps fuel desugared
+    in  mkFunInfo name ty alloc reduced ∷ go ((name , body) ∷ defs) rest
