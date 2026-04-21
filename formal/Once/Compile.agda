@@ -182,14 +182,6 @@ compileAllFuns doOpt funs polys = go funs emptyFunCtx
     ...   | inj₁ err = inj₁ err
     ...   | inj₂ compiled = inj₂ (mkCompiledFun (funName fi) (funType fi) ir ∷ compiled)
 
--- | Inline fuel budget: bound on the recursion depth of the
--- `inlineReferences` walk. User-polymorphic bodies are typically a
--- handful of NT combinators deep (e.g. `pair snd fst`), so 1024 is
--- far beyond any plausible usage. Kept conservatively large for
--- future deeper libraries; the cost is at most O(fuel) per call site.
-inlineFuel : ℕ
-inlineFuel = 1024
-
 -- | Compile source text to list of compiled functions
 -- Returns: Left error | Right list of (name, type, IR)
 --

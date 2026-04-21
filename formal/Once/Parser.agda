@@ -264,41 +264,9 @@ extractFunctions aliases (mkModule ds) = go ds nothing
            in consFun (go rest nothing) (mkFunInfo qname gty nothing (RVar qname))
   go (_ ∷ rest) pending = go rest pending
 
--- | Inline all functions and return elaboration-ready pairs
--- Each function's body is inlined with all previously-defined function bodies.
--- Returns: List (name, type, maybe alloc, inlined-body)
-inlineAll : ℕ → List FunInfo → List FunInfo
-inlineAll fuel fns = go [] fns
-  where
-  go : Defs → List FunInfo → List FunInfo
-  go _ [] = []
-  go defs (mkFunInfo name ty alloc body ∷ rest) =
-    let inlined = inlineReferences fuel defs body
-    in  mkFunInfo name ty alloc inlined ∷ go ((name , body) ∷ defs) rest
-
--- | Seed the inline substitution table with all `PolyFunInfo` bodies
--- before processing ground functions. This is how user-polymorphic
--- definitions reach call sites under the P-schema implementation
--- (plan 0.6 Phase C.1): each call site to a polymorphic name is
--- replaced by the NT-combinator body, which the existing bidirectional
--- typechecker then specializes at the call site's expected type via
--- the per-builtin `spec*` family.
---
--- Poly sources are available to every ground function (no ordering
--- constraint on poly definitions) because we build the seed in one
--- pass before the scan-over-ground begins. Ground-to-ground inlining
--- still respects source order via the accumulator.
-polySeedDefs : List PolyFunInfo → Defs
-polySeedDefs []                                 = []
-polySeedDefs (mkPolyFunInfo n _ _ body ∷ rest)  = (n , body) ∷ polySeedDefs rest
-
-inlineAllWithPoly : ℕ → List FunInfo → List PolyFunInfo → List FunInfo
-inlineAllWithPoly fuel fns polys = go (polySeedDefs polys) fns
-  where
-  go : Defs → List FunInfo → List FunInfo
-  go _ [] = []
-  go defs (mkFunInfo name ty alloc body ∷ rest) =
-    let inlined   = inlineReferences fuel defs body
-        desugared = expandBuiltins inlined
-        reduced   = betaReduceApps fuel desugared
-    in  mkFunInfo name ty alloc reduced ∷ go ((name , body) ∷ defs) rest
+-- Plan 0.6.2: `inlineAll`, `inlineAllWithPoly`, `polySeedDefs` all
+-- removed. The eager RawExpr-level inlining pipeline is replaced by
+-- typecheck-time schema instantiation via `PolyCtx`
+-- (Once.TypeCheck.Elaborate). Ground function cross-references flow
+-- through the `FunCtx` import list; user polymorphic definitions
+-- flow through `NamedCtx.polys`. See D045.
