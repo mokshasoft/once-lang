@@ -863,6 +863,29 @@ classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ 
 ...   | ()
 classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 
+-- | Plan 0.6.2 Phase 3b: for `compose f g` at expected `A → C`,
+-- when `inferElab g` fails, try to determine the intermediate
+-- type `B` from `g`'s structural shape:
+--   * `RVar poly_name` in `PolyCtx`: use schema instantiation.
+--   * Bare builtin (fst/snd/id/terminal): use canonical schema.
+--   * Anything else: `nothing` (compose can't proceed).
+-- Subsequent `checkElab ctx g (A → B)` will handle specialisation.
+composeArgB : NamedCtx → RawExpr → Type → Maybe Type
+-- fst : (X * Y) → X, so B = X when A = X * Y.
+composeArgB ctx (Raw.RVar "fst") (X Once.Type.* _) = just X
+-- snd : (X * Y) → Y, so B = Y when A = X * Y.
+composeArgB ctx (Raw.RVar "snd") (_ Once.Type.* Y) = just Y
+-- id : X → X, so B = A.
+composeArgB ctx (Raw.RVar "id") A = just A
+-- terminal : X → Unit, so B = Unit.
+composeArgB ctx (Raw.RVar "terminal") _ = just Unit
+-- User poly name: look up schema, match domain, extract codomain.
+composeArgB ctx (Raw.RVar name) A with lookupPoly (NamedCtx.polys ctx) name
+... | just (schema , _) = schemaArrowCodomain schema A
+... | nothing = nothing
+-- Other shapes: compose can't proceed without inferElab success.
+composeArgB _ _ _ = nothing
+
 ------------------------------------------------------------------------
 -- Bare polymorphic-builtin classifier (plan 0.6 Phase C.7)
 ------------------------------------------------------------------------
@@ -1404,14 +1427,28 @@ mutual
   -- ahv-inl's per-shape exhaustive enumeration pattern.
   checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair")
 
-  -- Plan 0.6 Phase C.7 POC-3: bare `compose f g` check-mode.
-  -- Expected `A ⇒[Many] C`. Infers g's type to determine B, then
-  -- checks f at `B ⇒[Many] C`. Emits `app (app specCompose fE) gE`.
+  -- Plan 0.6 Phase C.7 POC-3 + 0.6.2 Phase 3b: bare `compose f g`
+  -- check-mode. Expected `A ⇒[Many] C`. Primary path: infer g's type
+  -- to determine B, then check f at `B ⇒[Many] C`. Fallback: if g
+  -- is a polymorphic name (user def), derive B via
+  -- `composePolyArgB` (schema-instantiation at domain A), then
+  -- checkElab both sub-expressions at the resolved types.
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
                (A Once.Type.⇒[ Once.Type.Many ] C)
     with inferElab ctx arg
-  ... | failure err = failure err
-  ... | success (A' Once.Type.⇒[ Once.Type.Many ] B) Ψg gE dg frg with A ≟T A'
+  ... | failure _ with composeArgB ctx arg A
+  ...   | nothing = failure (BuiltinTypeMismatch "compose")
+  ...   | just B with checkElab ctx arg (A Once.Type.⇒[ Once.Type.Many ] B)
+  ...     | failure err = failure err
+  ...     | success Ψg gE dg frg with checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.Many ] C)
+  ...       | failure err = failure err
+  ...       | success Ψf fE df frf =
+              success _
+                (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
+                (suc (df Data.Nat.⊔ dg)) frf
+  checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
+               (A Once.Type.⇒[ Once.Type.Many ] C)
+    | success (A' Once.Type.⇒[ Once.Type.Many ] B) Ψg gE dg frg with A ≟T A'
   ...   | no _ = failure (BuiltinTypeMismatch "compose")
   ...   | yes refl with checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.Many ] C)
   ...     | failure err = failure err

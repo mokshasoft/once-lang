@@ -105,7 +105,7 @@ d_compileFunBody_24 ::
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_compileFunBody_24 v0 v1 v2 v3 v4 v5
   = let v6
-          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1732
+          = MAlonzo.Code.Once.TypeCheck.Elaborate.d_checkElab_1772
               (coe
                  MAlonzo.Code.Once.TypeCheck.Elaborate.d_ctxWithImportsAndSelfAndPolys_512
                  (coe v1) (coe v2) (coe v3) (coe v4))

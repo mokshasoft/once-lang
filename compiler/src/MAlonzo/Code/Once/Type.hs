@@ -1264,3 +1264,22 @@ d_applySubstFunctor_1000 v0 v1
                           _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                    _ -> coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18))
       _ -> MAlonzo.RTE.mazUnreachableError
+-- Once.Type.schemaArrowCodomain
+d_schemaArrowCodomain_1222 ::
+  T_PolyType_170 -> T_Type_38 -> Maybe T_Type_38
+d_schemaArrowCodomain_1222 v0 v1
+  = let v2 = coe MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 in
+    coe
+      (case coe v0 of
+         C__P'8658''91'_'93'__188 v3 v4 v5
+           -> let v6
+                    = d_instantiateAcc_692
+                        (coe v3) (coe v1)
+                        (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) in
+              coe
+                (case coe v6 of
+                   MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v7
+                     -> coe d_applySubst_998 (coe v7) (coe v5)
+                   MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v6
+                   _ -> MAlonzo.RTE.mazUnreachableError)
+         _ -> coe v2)

@@ -666,3 +666,19 @@ mutual
   ... | just f | just g = just (f ⊗ g)
   ... | _      | _      = nothing
 
+-- | For a polymorphic arrow schema `A ⇒[q] B` and a known ground
+-- domain `Adom`, compute the ground codomain by matching `A`
+-- against `Adom` (yielding a substitution) and applying it to `B`.
+-- Plan 0.6.2 Phase 3b: the load-bearing primitive for classifier
+-- helpers (e.g. `checkCompose`) that know one side of a poly
+-- sub-expression's arrow type and need the other.
+--
+-- Returns `nothing` if the schema isn't an arrow, if the domain
+-- doesn't match, or if the codomain still contains free TVars
+-- after substitution (shouldn't happen with well-formed schemas).
+schemaArrowCodomain : PolyType → Type → Maybe Type
+schemaArrowCodomain (A P⇒[ _ ] B) domain with instantiate A domain
+... | nothing = nothing
+... | just subst = applySubst subst B
+schemaArrowCodomain _ _ = nothing
+
