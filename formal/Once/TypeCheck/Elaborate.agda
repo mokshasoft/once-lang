@@ -330,6 +330,24 @@ Imports = List (String × Type)
 emptyImports : Imports
 emptyImports = []
 
+-- | Polymorphic-definition context (plan 0.6.2). Carries each
+-- user-declared poly def's schema and body so they can be
+-- specialised at call sites via schema instantiation. Structurally
+-- `List (name, schema, body)`; kept separate from `imports` (which
+-- is ground-typed) because lookup resolves differently.
+PolyCtx : Set
+PolyCtx = List (String × PolyType × RawExpr)
+
+emptyPolyCtx : PolyCtx
+emptyPolyCtx = []
+
+-- | Lookup a polymorphic def by name.
+lookupPoly : PolyCtx → String → Maybe (PolyType × RawExpr)
+lookupPoly [] _ = nothing
+lookupPoly ((n , schema , body) ∷ rest) x with StrProp._≟_ n x
+... | yes _ = just (schema , body)
+... | no  _ = lookupPoly rest x
+
 -- | A named context paired with its de Bruijn representation
 -- Includes a fresh counter for generating unique type variables during instantiation
 -- and imported primitives from other modules
@@ -341,14 +359,19 @@ record NamedCtx : Set where
     debruijn    : SCtx size
     freshCounter : ℕ  -- For generating fresh type variables (α₀, α₁, α₂, ...)
     imports     : Imports  -- Imported primitives (qualified names → types)
+    polys       : PolyCtx  -- User polymorphic definitions (plan 0.6.2)
 
 -- | Empty context
 emptyCtx : NamedCtx
-emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports
+emptyCtx = mkCtx 0 ∅ S∅ 0 emptyImports emptyPolyCtx
 
 -- | Create context with imports
 ctxWithImports : Imports → NamedCtx
-ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps
+ctxWithImports imps = mkCtx 0 ∅ S∅ 0 imps emptyPolyCtx
+
+-- | Create context with imports and polymorphic defs. Plan 0.6.2.
+ctxWithImportsAndPolys : Imports → PolyCtx → NamedCtx
+ctxWithImportsAndPolys imps polys = mkCtx 0 ∅ S∅ 0 imps polys
 
 -- | Create context with imports and self-reference for recursive definitions
 -- The function's own name and type are added to the imports list so it can call itself.
@@ -358,13 +381,14 @@ ctxWithImportsAndSelf : Imports → String → Type → NamedCtx
 ctxWithImportsAndSelf imps name ty =
   ctxWithImports ((name , ty) ∷ imps)
 
--- | Extend context with a new binding (preserves fresh counter and imports)
+-- | Extend context with a new binding (preserves fresh counter, imports, polys)
 extendNamedCtx : NamedCtx → String → Type → NamedCtx
-extendNamedCtx (mkCtx n Γ Δ fresh imps) x A = mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps
+extendNamedCtx (mkCtx n Γ Δ fresh imps polys) x A =
+  mkCtx (suc n) (extendCtx Γ x A) (Δ S, A) fresh imps polys
 
 -- | Bump fresh counter (for generating new type variables)
 bumpFresh : NamedCtx → NamedCtx
-bumpFresh (mkCtx n Γ Δ fresh imps) = mkCtx n Γ Δ (suc fresh) imps
+bumpFresh (mkCtx n Γ Δ fresh imps polys) = mkCtx n Γ Δ (suc fresh) imps polys
 
 -- | Generate fresh type variable name
 freshTVar : ℕ → String
@@ -510,7 +534,7 @@ isPolyBuiltin _          = false
 -- Returns (A , Ψ , e) where Ψ is the usage vector of the resulting expression.
 lookupLocal : (ctx : NamedCtx) → String
             → Maybe (∃[ A ] ∃[ Ψ ] (SExpr (NamedCtx.debruijn ctx) Ψ A))
-lookupLocal (mkCtx n Γ Δ _ _) x = go Γ Δ
+lookupLocal (mkCtx n Γ Δ _ _ _) x = go Γ Δ
   where
     go : ∀ {m} → Ctx → (Δ' : SCtx m) → Maybe (∃[ A ] ∃[ Ψ ] (SExpr Δ' Ψ A))
     go [] S∅                   = nothing
@@ -524,7 +548,7 @@ lookupLocal (mkCtx n Γ Δ _ _) x = go Γ Δ
 
 -- | Find a local variable's de Bruijn position and declared quantity.
 findLocalVarUsage : (ctx : NamedCtx) → String → Maybe (Fin (NamedCtx.size ctx) × Quantity)
-findLocalVarUsage (mkCtx n Γ Δ _ _) x = go Γ Δ
+findLocalVarUsage (mkCtx n Γ Δ _ _ _) x = go Γ Δ
   where
     go : ∀ {m} → Ctx → SCtx m → Maybe (Fin m × Quantity)
     go [] S∅ = nothing
