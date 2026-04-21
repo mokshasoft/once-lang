@@ -501,3 +501,168 @@ mutual
   showPolyFunctor (F P⊕ G)      = "(" ++ showPolyFunctor F ++ " ⊕ " ++ showPolyFunctor G ++ ")"
   showPolyFunctor (F P⊗ G)      = "(" ++ showPolyFunctor F ++ " ⊗ " ++ showPolyFunctor G ++ ")"
 
+------------------------------------------------------------------------
+-- Bool-valued Type / Functor equality
+------------------------------------------------------------------------
+-- Used by `instantiate` for the TVar-consistency check. Decidable
+-- equality lives in `Once.TypeCheck.Elaborate._≟T_` (richer form,
+-- returns Dec with refl evidence); this simpler Bool version avoids
+-- the upward dependency from Type → Elaborate. Plan 0.6.2 Phase 1.
+
+open Data.Bool using (_∧_)
+
+quantityEqBool : Quantity → Quantity → Bool
+quantityEqBool Zero Zero = true
+quantityEqBool One  One  = true
+quantityEqBool Many Many = true
+quantityEqBool _    _    = false
+
+mutual
+  typeEqBool : Type → Type → Bool
+  typeEqBool Unit Unit = true
+  typeEqBool Void Void = true
+  typeEqBool Int Int = true
+  typeEqBool Float Float = true
+  typeEqBool Str Str = true
+  typeEqBool Buffer Buffer = true
+  typeEqBool (a * b) (a' * b') = typeEqBool a a' ∧ typeEqBool b b'
+  typeEqBool (a + b) (a' + b') = typeEqBool a a' ∧ typeEqBool b b'
+  typeEqBool (a ⇒[ q ] b) (a' ⇒[ q' ] b') =
+    quantityEqBool q q' ∧ typeEqBool a a' ∧ typeEqBool b b'
+  typeEqBool (Eff a b) (Eff a' b') = typeEqBool a a' ∧ typeEqBool b b'
+  typeEqBool (μ-type f) (μ-type f') = functorEqBool f f'
+  typeEqBool (ν-type f) (ν-type f') = functorEqBool f f'
+  typeEqBool _ _ = false
+
+  functorEqBool : Functor → Functor → Bool
+  functorEqBool (K a) (K a') = typeEqBool a a'
+  functorEqBool Id Id = true
+  functorEqBool (f ⊕ g) (f' ⊕ g') = functorEqBool f f' ∧ functorEqBool g g'
+  functorEqBool (f ⊗ g) (f' ⊗ g') = functorEqBool f f' ∧ functorEqBool g g'
+  functorEqBool _ _ = false
+
+------------------------------------------------------------------------
+-- PolyType ↔ Type structural instantiation
+------------------------------------------------------------------------
+-- Plan 0.6.2 Phase 1 (load-bearing POC for Option C of D044's
+-- follow-up). Given a PolyType schema with `PTVar` type variables
+-- and a candidate ground Type, produces a TVar → Type substitution
+-- that makes the schema match the ground type, or `nothing` if the
+-- shapes don't line up or a TVar is bound to two distinct types.
+--
+-- D007-compatible: structural template matching, not unification.
+-- No meta-variables. Total function.
+
+open import Data.List using (List; []; _∷_)
+open import Data.Product using () renaming (_,_ to _,,_)
+
+Subst : Set
+Subst = List (String ×' Type)
+  where
+    _×'_ = _×_    -- bring product into scope under a local alias
+    open Data.Product using (_×_; _,_)
+
+lookupSubst : String → Subst → Maybe Type
+lookupSubst _ [] = nothing
+lookupSubst x ((y , t) ∷ rest) with Data.String._≟_ x y
+  where open import Data.String
+... | yes _ = just t
+... | no _  = lookupSubst x rest
+
+-- | Extend substitution with `(x, t)`; returns `nothing` if `x` was
+-- already bound to a different type.
+extendSubst : String → Type → Subst → Maybe Subst
+extendSubst x t s with lookupSubst x s
+... | just t' = if typeEqBool t t' then just s else nothing
+    where open Data.Bool using (if_then_else_)
+... | nothing = just ((x , t) ∷ s)
+
+-- | Instantiate a `PolyType` schema against a candidate ground `Type`.
+-- The top-level wrapper runs the accumulator form with an empty
+-- initial substitution.
+mutual
+  instantiate : PolyType → Type → Maybe Subst
+  instantiate p t = instantiateAcc p t []
+
+  instantiateAcc : PolyType → Type → Subst → Maybe Subst
+  instantiateAcc (PTVar x)       t               s = extendSubst x t s
+  instantiateAcc PUnit           Unit            s = just s
+  instantiateAcc PVoid           Void            s = just s
+  instantiateAcc PInt            Int             s = just s
+  instantiateAcc PFloat          Float           s = just s
+  instantiateAcc PStr            Str             s = just s
+  instantiateAcc PBuffer         Buffer          s = just s
+  instantiateAcc (A P* B)        (a * b)         s with instantiateAcc A a s
+  ... | nothing = nothing
+  ... | just s' = instantiateAcc B b s'
+  instantiateAcc (A P+ B)        (a + b)         s with instantiateAcc A a s
+  ... | nothing = nothing
+  ... | just s' = instantiateAcc B b s'
+  instantiateAcc (A P⇒[ q ] B)   (a ⇒[ q' ] b)   s with quantityEqBool q q'
+  ... | false = nothing
+  ... | true  with instantiateAcc A a s
+  ...   | nothing = nothing
+  ...   | just s' = instantiateAcc B b s'
+  instantiateAcc (PEff A B)      (Eff a b)       s with instantiateAcc A a s
+  ... | nothing = nothing
+  ... | just s' = instantiateAcc B b s'
+  instantiateAcc (Pμ-type F)     (μ-type f)      s = instantiateFunctor F f s
+  instantiateAcc (Pν-type F)     (ν-type f)      s = instantiateFunctor F f s
+  -- Shape mismatch: every other PolyType-vs-Type combination.
+  instantiateAcc _ _ _ = nothing
+
+  instantiateFunctor : PolyFunctor → Functor → Subst → Maybe Subst
+  instantiateFunctor (PK A)    (K a)   s = instantiateAcc A a s
+  instantiateFunctor PId       Id      s = just s
+  instantiateFunctor (F P⊕ G) (f ⊕ g) s with instantiateFunctor F f s
+  ... | nothing = nothing
+  ... | just s' = instantiateFunctor G g s'
+  instantiateFunctor (F P⊗ G) (f ⊗ g) s with instantiateFunctor F f s
+  ... | nothing = nothing
+  ... | just s' = instantiateFunctor G g s'
+  instantiateFunctor _ _ _ = nothing
+
+-- | Apply a substitution to a PolyType, producing a ground Type.
+-- Returns `nothing` if the PolyType contains a `PTVar` not covered
+-- by the substitution (shouldn't happen after a successful
+-- `instantiate`, but we return Maybe for safety rather than assuming).
+mutual
+  applySubst : Subst → PolyType → Maybe Type
+  applySubst s (PTVar x)       = lookupSubst x s
+  applySubst _ PUnit           = just Unit
+  applySubst _ PVoid           = just Void
+  applySubst _ PInt            = just Int
+  applySubst _ PFloat          = just Float
+  applySubst _ PStr            = just Str
+  applySubst _ PBuffer         = just Buffer
+  applySubst s (A P* B) with applySubst s A | applySubst s B
+  ... | just a | just b = just (a * b)
+  ... | _      | _      = nothing
+  applySubst s (A P+ B) with applySubst s A | applySubst s B
+  ... | just a | just b = just (a + b)
+  ... | _      | _      = nothing
+  applySubst s (A P⇒[ q ] B) with applySubst s A | applySubst s B
+  ... | just a | just b = just (a ⇒[ q ] b)
+  ... | _      | _      = nothing
+  applySubst s (PEff A B) with applySubst s A | applySubst s B
+  ... | just a | just b = just (Eff a b)
+  ... | _      | _      = nothing
+  applySubst s (Pμ-type F) with applySubstFunctor s F
+  ... | just f = just (μ-type f)
+  ... | nothing = nothing
+  applySubst s (Pν-type F) with applySubstFunctor s F
+  ... | just f = just (ν-type f)
+  ... | nothing = nothing
+
+  applySubstFunctor : Subst → PolyFunctor → Maybe Functor
+  applySubstFunctor s (PK A) with applySubst s A
+  ... | just a = just (K a)
+  ... | nothing = nothing
+  applySubstFunctor _ PId = just Id
+  applySubstFunctor s (F P⊕ G) with applySubstFunctor s F | applySubstFunctor s G
+  ... | just f | just g = just (f ⊕ g)
+  ... | _      | _      = nothing
+  applySubstFunctor s (F P⊗ G) with applySubstFunctor s F | applySubstFunctor s G
+  ... | just f | just g = just (f ⊗ g)
+  ... | _      | _      = nothing
+
