@@ -99,6 +99,15 @@ pairDesugarVar = "$pair_x"
 composeDesugarVar : String
 composeDesugarVar = "$compose_x"
 
+curryDesugarVarX : String
+curryDesugarVarX = "$curry_x"
+
+curryDesugarVarY : String
+curryDesugarVarY = "$curry_y"
+
+applyDesugarVar : String
+applyDesugarVar = "$apply_p"
+
 -- | Desugar applied-builtin forms to explicit lambda / pair / app
 -- shapes, so the existing bidirectional typechecker (RLam + RPair +
 -- RApp paths) handles their specialization against the call site's
@@ -111,16 +120,28 @@ composeDesugarVar = "$compose_x"
 -- laws fuse the lambda form back into the direct IR combinator so
 -- runtime output matches the classifier route.
 --
--- Covered (plan 0.6 Phase C.2 + C.3):
---   * `pair f g       ↦  λ x → (f x, g x)`        (2-arg form)
---   * `pair f g arg   ↦  (f arg, g arg)`          (beta-reduced)
---   * `compose f g    ↦  λ x → f (g x)`           (2-arg form)
---   * `compose f g x  ↦  f (g x)`                 (beta-reduced)
+-- Covered (plan 0.6 Phase C.2 + C.3 + C.4 + C.5-partial):
+--   * `pair f g       ↦  λ x → (f x, g x)`
+--   * `pair f g arg   ↦  (f arg, g arg)`                     (beta)
+--   * `compose f g    ↦  λ x → f (g x)`
+--   * `compose f g x  ↦  f (g x)`                            (beta)
+--   * `curry f        ↦  λ x → λ y → f (x, y)`
+--   * `apply p        ↦  let $p = p in fst $p (snd $p)`      (let-bound
+--                                                             to avoid
+--                                                             double-eval
+--                                                             of p)
 --
 -- Beta-reduced clauses come first so they win pattern matching when
 -- the full application is visible; the 2-arg lambda form is the
 -- fallback for cases where the call site is partially applied or
--- passes the NT as a higher-order argument.
+-- passes the NT as a higher-order argument. `apply` always binds its
+-- pair argument in a let so the pair is evaluated once regardless of
+-- the call-site shape.
+--
+-- Deferred: `arr : (A ⇒ B) ⇒ Eff A B` — cannot be lambda-desugared
+-- because `Eff` is a distinct IR type constructor, not reducible to
+-- lambdas. The applied-form classifier route (separate follow-up,
+-- tentatively plan 0.6 Phase C.5-arr) remains the path for `arr`.
 expandBuiltins : RawExpr → RawExpr
 expandBuiltins (RApp (RApp (RApp (RVar "pair") f) g) arg) =
   RPair (RApp (expandBuiltins f) (expandBuiltins arg))
@@ -134,6 +155,15 @@ expandBuiltins (RApp (RApp (RVar "compose") f) g) =
   RLam composeDesugarVar
     (RApp (expandBuiltins f)
           (RApp (expandBuiltins g) (RVar composeDesugarVar)))
+expandBuiltins (RApp (RVar "curry") f) =
+  RLam curryDesugarVarX
+    (RLam curryDesugarVarY
+      (RApp (expandBuiltins f)
+            (RPair (RVar curryDesugarVarX) (RVar curryDesugarVarY))))
+expandBuiltins (RApp (RVar "apply") p) =
+  RLet applyDesugarVar (expandBuiltins p)
+    (RApp (RApp (RVar "fst") (RVar applyDesugarVar))
+          (RApp (RVar "snd") (RVar applyDesugarVar)))
 expandBuiltins (RVar name) = RVar name
 expandBuiltins (RQualified name alias) = RQualified name alias
 expandBuiltins (RApp f x) = RApp (expandBuiltins f) (expandBuiltins x)

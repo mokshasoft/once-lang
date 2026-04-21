@@ -175,11 +175,23 @@ d_pairDesugarVar_178 = coe ("$pair_x" :: Data.Text.Text)
 d_composeDesugarVar_180 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6
 d_composeDesugarVar_180 = coe ("$compose_x" :: Data.Text.Text)
+-- Once.Parser.Inline.curryDesugarVarX
+d_curryDesugarVarX_182 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_curryDesugarVarX_182 = coe ("$curry_x" :: Data.Text.Text)
+-- Once.Parser.Inline.curryDesugarVarY
+d_curryDesugarVarY_184 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_curryDesugarVarY_184 = coe ("$curry_y" :: Data.Text.Text)
+-- Once.Parser.Inline.applyDesugarVar
+d_applyDesugarVar_186 ::
+  MAlonzo.Code.Agda.Builtin.String.T_String_6
+d_applyDesugarVar_186 = coe ("$apply_p" :: Data.Text.Text)
 -- Once.Parser.Inline.expandBuiltins
-d_expandBuiltins_182 ::
+d_expandBuiltins_188 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34
-d_expandBuiltins_182 v0
+d_expandBuiltins_188 v0
   = case coe v0 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v1 -> coe v0
       MAlonzo.Code.Once.TypeCheck.Raw.C_RQualified_38 v1 v2 -> coe v0
@@ -187,10 +199,53 @@ d_expandBuiltins_182 v0
         -> let v3
                  = coe
                      MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-                     (coe d_expandBuiltins_182 (coe v1))
-                     (coe d_expandBuiltins_182 (coe v2)) in
+                     (coe d_expandBuiltins_188 (coe v1))
+                     (coe d_expandBuiltins_188 (coe v2)) in
            coe
              (case coe v1 of
+                MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v4
+                  -> case coe v4 of
+                       l | (==) l ("apply" :: Data.Text.Text) ->
+                           coe
+                             MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44
+                             (coe d_applyDesugarVar_186) (coe d_expandBuiltins_188 (coe v2))
+                             (coe
+                                MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
+                                (coe
+                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
+                                   (coe
+                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
+                                      (coe ("fst" :: Data.Text.Text)))
+                                   (coe
+                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
+                                      (coe d_applyDesugarVar_186)))
+                                (coe
+                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
+                                   (coe
+                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
+                                      (coe ("snd" :: Data.Text.Text)))
+                                   (coe
+                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
+                                      (coe d_applyDesugarVar_186))))
+                       l | (==) l ("curry" :: Data.Text.Text) ->
+                           coe
+                             MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42
+                             (coe d_curryDesugarVarX_182)
+                             (coe
+                                MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42
+                                (coe d_curryDesugarVarY_184)
+                                (coe
+                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
+                                   (coe d_expandBuiltins_188 (coe v2))
+                                   (coe
+                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
+                                      (coe
+                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
+                                         (coe d_curryDesugarVarX_182))
+                                      (coe
+                                         MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
+                                         (coe d_curryDesugarVarY_184)))))
+                       _ -> coe v3
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40 v4 v5
                   -> case coe v4 of
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v6
@@ -201,10 +256,10 @@ d_expandBuiltins_182 v0
                                     (coe d_composeDesugarVar_180)
                                     (coe
                                        MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-                                       (coe d_expandBuiltins_182 (coe v5))
+                                       (coe d_expandBuiltins_188 (coe v5))
                                        (coe
                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-                                          (coe d_expandBuiltins_182 (coe v2))
+                                          (coe d_expandBuiltins_188 (coe v2))
                                           (coe
                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                              (coe d_composeDesugarVar_180))))
@@ -216,13 +271,13 @@ d_expandBuiltins_182 v0
                                        MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
                                        (coe
                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-                                          (coe d_expandBuiltins_182 (coe v5))
+                                          (coe d_expandBuiltins_188 (coe v5))
                                           (coe
                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                              (coe d_pairDesugarVar_178)))
                                        (coe
                                           MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-                                          (coe d_expandBuiltins_182 (coe v2))
+                                          (coe d_expandBuiltins_188 (coe v2))
                                           (coe
                                              MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36
                                              (coe d_pairDesugarVar_178))))
@@ -234,22 +289,22 @@ d_expandBuiltins_182 v0
                                      l | (==) l ("compose" :: Data.Text.Text) ->
                                          coe
                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-                                           (coe d_expandBuiltins_182 (coe v7))
+                                           (coe d_expandBuiltins_188 (coe v7))
                                            (coe
                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-                                              (coe d_expandBuiltins_182 (coe v5))
-                                              (coe d_expandBuiltins_182 (coe v2)))
+                                              (coe d_expandBuiltins_188 (coe v5))
+                                              (coe d_expandBuiltins_188 (coe v2)))
                                      l | (==) l ("pair" :: Data.Text.Text) ->
                                          coe
                                            MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
                                            (coe
                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-                                              (coe d_expandBuiltins_182 (coe v7))
-                                              (coe d_expandBuiltins_182 (coe v2)))
+                                              (coe d_expandBuiltins_188 (coe v7))
+                                              (coe d_expandBuiltins_188 (coe v2)))
                                            (coe
                                               MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-                                              (coe d_expandBuiltins_182 (coe v5))
-                                              (coe d_expandBuiltins_182 (coe v2)))
+                                              (coe d_expandBuiltins_188 (coe v5))
+                                              (coe d_expandBuiltins_188 (coe v2)))
                                      _ -> coe v3
                               _ -> coe v3
                        _ -> coe v3
@@ -257,52 +312,52 @@ d_expandBuiltins_182 v0
       MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 v1 v2
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 (coe v1)
-             (coe d_expandBuiltins_182 (coe v2))
+             (coe d_expandBuiltins_188 (coe v2))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 v1 v2 v3
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 (coe v1)
-             (coe d_expandBuiltins_182 (coe v2))
-             (coe d_expandBuiltins_182 (coe v3))
+             (coe d_expandBuiltins_188 (coe v2))
+             (coe d_expandBuiltins_188 (coe v3))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46 v1 v2
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
-             (coe d_expandBuiltins_182 (coe v1))
-             (coe d_expandBuiltins_182 (coe v2))
+             (coe d_expandBuiltins_188 (coe v1))
+             (coe d_expandBuiltins_188 (coe v2))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48 v1 v2 v3 v4 v5
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48
-             (coe d_expandBuiltins_182 (coe v1)) (coe v2)
-             (coe d_expandBuiltins_182 (coe v3)) (coe v4)
-             (coe d_expandBuiltins_182 (coe v5))
+             (coe d_expandBuiltins_188 (coe v1)) (coe v2)
+             (coe d_expandBuiltins_188 (coe v3)) (coe v4)
+             (coe d_expandBuiltins_188 (coe v5))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RUnit_50 -> coe v0
       MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_52 v1 -> coe v0
       MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_54 v1 -> coe v0
       MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56 v1 v2
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
-             (coe d_expandBuiltins_182 (coe v1)) (coe v2)
+             (coe d_expandBuiltins_188 (coe v1)) (coe v2)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58 v1 v2 v3
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58 (coe v1)
-             (coe d_expandBuiltins_182 (coe v2))
-             (coe d_expandBuiltins_182 (coe v3))
+             (coe d_expandBuiltins_188 (coe v2))
+             (coe d_expandBuiltins_188 (coe v3))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60 v2
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60
-             (d_expandBuiltins_182 (coe v2))
+             (d_expandBuiltins_188 (coe v2))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Inline.expandPairs
-d_expandPairs_256 ::
+d_expandPairs_266 ::
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34
-d_expandPairs_256 = coe d_expandBuiltins_182
+d_expandPairs_266 = coe d_expandBuiltins_188
 -- Once.Parser.Inline.subst
-d_subst_258 ::
+d_subst_268 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34
-d_subst_258 v0 v1 v2
+d_subst_268 v0 v1 v2
   = case coe v2 of
       MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v3
         -> let v4
@@ -327,8 +382,8 @@ d_subst_258 v0 v1 v2
       MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40 v3 v4
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40
-             (coe d_subst_258 (coe v0) (coe v1) (coe v3))
-             (coe d_subst_258 (coe v0) (coe v1) (coe v4))
+             (coe d_subst_268 (coe v0) (coe v1) (coe v3))
+             (coe d_subst_268 (coe v0) (coe v1) (coe v4))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 v3 v4
         -> let v5
                  = coe
@@ -350,7 +405,7 @@ d_subst_258 v0 v1 v2
                               seq (coe v7)
                               (coe
                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 (coe v3)
-                                 (coe d_subst_258 (coe v0) (coe v1) (coe v4)))
+                                 (coe d_subst_268 (coe v0) (coe v1) (coe v4)))
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 v3 v4 v5
         -> let v6
@@ -372,19 +427,19 @@ d_subst_258 v0 v1 v2
                               seq (coe v8)
                               (coe
                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 (coe v3)
-                                 (coe d_subst_258 (coe v0) (coe v1) (coe v4)) (coe v5))
+                                 (coe d_subst_268 (coe v0) (coe v1) (coe v4)) (coe v5))
                        else coe
                               seq (coe v8)
                               (coe
                                  MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 (coe v3)
-                                 (coe d_subst_258 (coe v0) (coe v1) (coe v4))
-                                 (coe d_subst_258 (coe v0) (coe v1) (coe v5)))
+                                 (coe d_subst_268 (coe v0) (coe v1) (coe v4))
+                                 (coe d_subst_268 (coe v0) (coe v1) (coe v5)))
                 _ -> MAlonzo.RTE.mazUnreachableError)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46 v3 v4
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
-             (coe d_subst_258 (coe v0) (coe v1) (coe v3))
-             (coe d_subst_258 (coe v0) (coe v1) (coe v4))
+             (coe d_subst_268 (coe v0) (coe v1) (coe v3))
+             (coe d_subst_268 (coe v0) (coe v1) (coe v4))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48 v3 v4 v5 v6 v7
         -> let v8
                  = coe
@@ -422,15 +477,15 @@ d_subst_258 v0 v1 v2
                                                   seq (coe v13)
                                                   (coe
                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48
-                                                     (coe d_subst_258 (coe v0) (coe v1) (coe v3))
+                                                     (coe d_subst_268 (coe v0) (coe v1) (coe v3))
                                                      (coe v4) (coe v5) (coe v6) (coe v7))
                                            else coe
                                                   seq (coe v13)
                                                   (coe
                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48
-                                                     (coe d_subst_258 (coe v0) (coe v1) (coe v3))
+                                                     (coe d_subst_268 (coe v0) (coe v1) (coe v3))
                                                      (coe v4) (coe v5) (coe v6)
-                                                     (coe d_subst_258 (coe v0) (coe v1) (coe v7)))
+                                                     (coe d_subst_268 (coe v0) (coe v1) (coe v7)))
                                     _ -> MAlonzo.RTE.mazUnreachableError)
                           else coe
                                  seq (coe v11)
@@ -441,19 +496,19 @@ d_subst_258 v0 v1 v2
                                                   seq (coe v13)
                                                   (coe
                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48
-                                                     (coe d_subst_258 (coe v0) (coe v1) (coe v3))
+                                                     (coe d_subst_268 (coe v0) (coe v1) (coe v3))
                                                      (coe v4)
-                                                     (coe d_subst_258 (coe v0) (coe v1) (coe v5))
+                                                     (coe d_subst_268 (coe v0) (coe v1) (coe v5))
                                                      (coe v6) (coe v7))
                                            else coe
                                                   seq (coe v13)
                                                   (coe
                                                      MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48
-                                                     (coe d_subst_258 (coe v0) (coe v1) (coe v3))
+                                                     (coe d_subst_268 (coe v0) (coe v1) (coe v3))
                                                      (coe v4)
-                                                     (coe d_subst_258 (coe v0) (coe v1) (coe v5))
+                                                     (coe d_subst_268 (coe v0) (coe v1) (coe v5))
                                                      (coe v6)
-                                                     (coe d_subst_258 (coe v0) (coe v1) (coe v7)))
+                                                     (coe d_subst_268 (coe v0) (coe v1) (coe v7)))
                                     _ -> MAlonzo.RTE.mazUnreachableError)
                    _ -> MAlonzo.RTE.mazUnreachableError))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RUnit_50 -> coe v2
@@ -462,23 +517,23 @@ d_subst_258 v0 v1 v2
       MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56 v3 v4
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
-             (coe d_subst_258 (coe v0) (coe v1) (coe v3)) (coe v4)
+             (coe d_subst_268 (coe v0) (coe v1) (coe v3)) (coe v4)
       MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58 v3 v4 v5
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58 (coe v3)
-             (coe d_subst_258 (coe v0) (coe v1) (coe v4))
-             (coe d_subst_258 (coe v0) (coe v1) (coe v5))
+             (coe d_subst_268 (coe v0) (coe v1) (coe v4))
+             (coe d_subst_268 (coe v0) (coe v1) (coe v5))
       MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60 v4
         -> coe
              MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60
-             (d_subst_258 (coe v0) (coe v1) (coe v4))
+             (d_subst_268 (coe v0) (coe v1) (coe v4))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Inline.betaReduceApps
-d_betaReduceApps_468 ::
+d_betaReduceApps_478 ::
   Integer ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34 ->
   MAlonzo.Code.Once.TypeCheck.Raw.T_RawExpr_34
-d_betaReduceApps_468 v0 v1
+d_betaReduceApps_478 v0 v1
   = case coe v0 of
       0 -> coe v1
       _ -> let v2 = subInt (coe v0) (coe (1 :: Integer)) in
@@ -487,55 +542,55 @@ d_betaReduceApps_468 v0 v1
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RVar_36 v3 -> coe v1
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RQualified_38 v3 v4 -> coe v1
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40 v3 v4
-                  -> let v5 = d_betaReduceApps_468 (coe v2) (coe v3) in
+                  -> let v5 = d_betaReduceApps_478 (coe v2) (coe v3) in
                      coe
                        (let v6
                               = coe
                                   MAlonzo.Code.Once.TypeCheck.Raw.C_RApp_40 (coe v5)
-                                  (coe d_betaReduceApps_468 (coe v2) (coe v4)) in
+                                  (coe d_betaReduceApps_478 (coe v2) (coe v4)) in
                         coe
                           (case coe v5 of
                              MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 v7 v8
                                -> coe
-                                    d_betaReduceApps_468 (coe v2)
+                                    d_betaReduceApps_478 (coe v2)
                                     (coe
-                                       d_subst_258 (coe v7)
-                                       (coe d_betaReduceApps_468 (coe v2) (coe v4)) (coe v8))
+                                       d_subst_268 (coe v7)
+                                       (coe d_betaReduceApps_478 (coe v2) (coe v4)) (coe v8))
                              _ -> coe v6))
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 v3 v4
                   -> coe
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RLam_42 (coe v3)
-                       (coe d_betaReduceApps_468 (coe v2) (coe v4))
+                       (coe d_betaReduceApps_478 (coe v2) (coe v4))
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 v3 v4 v5
                   -> coe
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RLet_44 (coe v3)
-                       (coe d_betaReduceApps_468 (coe v2) (coe v4))
-                       (coe d_betaReduceApps_468 (coe v2) (coe v5))
+                       (coe d_betaReduceApps_478 (coe v2) (coe v4))
+                       (coe d_betaReduceApps_478 (coe v2) (coe v5))
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46 v3 v4
                   -> coe
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RPair_46
-                       (coe d_betaReduceApps_468 (coe v2) (coe v3))
-                       (coe d_betaReduceApps_468 (coe v2) (coe v4))
+                       (coe d_betaReduceApps_478 (coe v2) (coe v3))
+                       (coe d_betaReduceApps_478 (coe v2) (coe v4))
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48 v3 v4 v5 v6 v7
                   -> coe
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RDestruct_48
-                       (coe d_betaReduceApps_468 (coe v2) (coe v3)) (coe v4)
-                       (coe d_betaReduceApps_468 (coe v2) (coe v5)) (coe v6)
-                       (coe d_betaReduceApps_468 (coe v2) (coe v7))
+                       (coe d_betaReduceApps_478 (coe v2) (coe v3)) (coe v4)
+                       (coe d_betaReduceApps_478 (coe v2) (coe v5)) (coe v6)
+                       (coe d_betaReduceApps_478 (coe v2) (coe v7))
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RUnit_50 -> coe v1
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RInt_52 v3 -> coe v1
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RStringLit_54 v3 -> coe v1
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56 v3 v4
                   -> coe
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RAnnot_56
-                       (coe d_betaReduceApps_468 (coe v2) (coe v3)) (coe v4)
+                       (coe d_betaReduceApps_478 (coe v2) (coe v3)) (coe v4)
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58 v3 v4 v5
                   -> coe
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RBinOp_58 (coe v3)
-                       (coe d_betaReduceApps_468 (coe v2) (coe v4))
-                       (coe d_betaReduceApps_468 (coe v2) (coe v5))
+                       (coe d_betaReduceApps_478 (coe v2) (coe v4))
+                       (coe d_betaReduceApps_478 (coe v2) (coe v5))
                 MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60 v4
                   -> coe
                        MAlonzo.Code.Once.TypeCheck.Raw.C_RUnaryOp_60
-                       (d_betaReduceApps_468 (coe v2) (coe v4))
+                       (d_betaReduceApps_478 (coe v2) (coe v4))
                 _ -> MAlonzo.RTE.mazUnreachableError)
