@@ -143,16 +143,16 @@ applyDesugarVar = "$apply_p"
 -- lambdas. The applied-form classifier route (separate follow-up,
 -- tentatively plan 0.6 Phase C.5-arr) remains the path for `arr`.
 expandBuiltins : RawExpr → RawExpr
+-- Plan 0.6 Phase C.7: pair/compose classifier is in place; removing
+-- the desugarings is blocked on compose-applied classifier (handles
+-- the `compose f (pair …)` nesting that desugaring currently
+-- β-reduces through). Keeping both paths for now — desugaring fires
+-- first, classifier is parallel.
 expandBuiltins (RApp (RApp (RApp (RVar "pair") f) g) arg) =
   RPair (RApp (expandBuiltins f) (expandBuiltins arg))
         (RApp (expandBuiltins g) (expandBuiltins arg))
 expandBuiltins (RApp (RApp (RApp (RVar "compose") f) g) arg) =
   RApp (expandBuiltins f) (RApp (expandBuiltins g) (expandBuiltins arg))
--- Plan 0.6 Phase C.7 POC-2: classifier route (`ahv-pair-applied`)
--- now handles `pair f g` directly once all its sub-expressions have
--- bare-builtin check-mode support (POC-3+). For now the desugaring
--- is kept as the active path; removing it awaits bare `fst`/`snd`
--- check-mode clauses.
 expandBuiltins (RApp (RApp (RVar "pair") f) g) =
   RLam pairDesugarVar (RPair (RApp (expandBuiltins f) (RVar pairDesugarVar))
                               (RApp (expandBuiltins g) (RVar pairDesugarVar)))

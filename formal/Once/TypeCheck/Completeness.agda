@@ -462,7 +462,10 @@ open Once.TypeCheck.Judgment
          t-annot; t-pair; t-neg; t-let; t-case;
          t-binop-arith; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-app; t-effApp;
-         t-embed; t-lam; t-id-check; t-pair-check)
+         t-embed; t-lam;
+         t-id-check; t-fst-check; t-snd-check; t-terminal-check;
+         t-initial-check; t-inl-check; t-inr-check; t-arr-check;
+         t-pair-check)
 
 
 ------------------------------------------------------------------------
@@ -477,7 +480,10 @@ open Once.TypeCheck.Judgment
 open Once.TypeCheck.Elaborate
   using (checkElab-fallback-RInt; checkElab-fallback-RStringLit;
          checkElab-fallback-RUnit; checkElab-fallback-RVar-unit;
-         checkElab-fallback-RVar-id;
+         checkElab-fallback-RVar-id; checkElab-fallback-RVar-fst;
+         checkElab-fallback-RVar-snd; checkElab-fallback-RVar-terminal;
+         checkElab-fallback-RVar-initial; checkElab-fallback-RVar-inl;
+         checkElab-fallback-RVar-inr; checkElab-fallback-RVar-arr;
          checkElab-fallback-RApp-pair;
          checkElab-fallback-RQualified; checkElab-fallback-RAnnot;
          checkElab-fallback-RPair; checkElab-fallback-RLet;
@@ -490,13 +496,13 @@ open Once.TypeCheck.Elaborate
 -- RVar case: covers both local and import lookups (and "unit"). The
 -- fallback lemma takes the inferElab-success equation uniformly.
 --
--- Plan 0.6 Phase C.7 POC-1: the "id" case is case-split out because
--- `checkElab` has a specialised lookup-first clause for `RVar "id"`
--- (Elaborate.agda). The proof structure is identical — rewrite by
--- the inferElab success, discharge `T ≟T T` — but the reduction path
--- goes through the specialised clause rather than the generic
--- fallback. Case-splitting exposes the concrete `"id"` so Agda can
--- reduce the specialised clause's pattern.
+-- Plan 0.6 Phase C.7: `checkElab-RVar` dispatches via
+-- `classifyBareBuiltin x` to specialised clauses for each bare
+-- polymorphic builtin. The proof mirrors this dispatch — each
+-- specialised case rewrites by `eqInf` (pushing lookup-success
+-- through), then discharges the `T ≟T T` guard. The proof is
+-- uniform across all specialised names because each specialised
+-- clause's lookup-success branch is identical in shape.
 checkElab-fallback-RVar :
   ∀ {ctx : NamedCtx} (x : String) (T : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
@@ -504,12 +510,40 @@ checkElab-fallback-RVar :
   → inferElab ctx (Raw.RVar x) ≡ success T Ψ eE d f
   → ∃[ eE' ] ∃[ d' ] ∃[ f' ]
       checkElab ctx (Raw.RVar x) T ≡ success Ψ eE' d' f'
-checkElab-fallback-RVar x T eqInf with x Data.String.Properties.≟ "id"
-... | yes refl
-      rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+checkElab-fallback-RVar x T eqInf with Once.TypeCheck.Elaborate.classifyBareBuiltin x
+-- Each specialised case's lookup-success branch closes identically.
+... | Once.TypeCheck.Elaborate.bbc-id       rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq   = ⊥-elim (¬eq refl)
-checkElab-fallback-RVar x T eqInf | no _
+checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-fst
+  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-snd
+  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-terminal
+  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-initial
+  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-inl
+  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-inr
+  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-arr
+  rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+checkElab-fallback-RVar x T eqInf | Once.TypeCheck.Elaborate.bbc-other
   rewrite eqInf with Once.TypeCheck.Elaborate._≟T_ T T
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
@@ -663,6 +697,20 @@ mutual
   -- the specialised `specId` emission with `zeroUsage`.
   check-complete {ctx} (t-id-check {T = T} localN importN) =
     checkElab-fallback-RVar-id {ctx} T localN importN
+  check-complete {ctx} (t-fst-check {A = A} {B = B} localN importN) =
+    checkElab-fallback-RVar-fst {ctx} A B localN importN
+  check-complete {ctx} (t-snd-check {A = A} {B = B} localN importN) =
+    checkElab-fallback-RVar-snd {ctx} A B localN importN
+  check-complete {ctx} (t-terminal-check {A = A} localN importN) =
+    checkElab-fallback-RVar-terminal {ctx} A localN importN
+  check-complete {ctx} (t-initial-check {A = A} localN importN) =
+    checkElab-fallback-RVar-initial {ctx} A localN importN
+  check-complete {ctx} (t-inl-check {A = A} {B = B} localN importN) =
+    checkElab-fallback-RVar-inl {ctx} A B localN importN
+  check-complete {ctx} (t-inr-check {A = A} {B = B} localN importN) =
+    checkElab-fallback-RVar-inr {ctx} A B localN importN
+  check-complete {ctx} (t-arr-check {A = A} {B = B} localN importN) =
+    checkElab-fallback-RVar-arr {ctx} A B localN importN
   -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` check-mode. The
   -- recursive check-complete calls on f and g give the
   -- inferElab-success equations threaded through the fallback

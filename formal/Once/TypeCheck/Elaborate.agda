@@ -805,6 +805,44 @@ classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ 
 classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 
 ------------------------------------------------------------------------
+-- Bare polymorphic-builtin classifier (plan 0.6 Phase C.7)
+------------------------------------------------------------------------
+-- Used by `checkElab-RVar` to dispatch specialised check-mode clauses
+-- per builtin name. The view-constructor index exposes the concrete
+-- string in each case, so Agda reductions proceed cleanly and proof
+-- `with classifyBareBuiltin x` mirrors the elaborator's dispatch.
+
+data BareBuiltinClass : String → Set where
+  bbc-id       : BareBuiltinClass "id"
+  bbc-fst      : BareBuiltinClass "fst"
+  bbc-snd      : BareBuiltinClass "snd"
+  bbc-terminal : BareBuiltinClass "terminal"
+  bbc-initial  : BareBuiltinClass "initial"
+  bbc-inl      : BareBuiltinClass "inl"
+  bbc-inr      : BareBuiltinClass "inr"
+  bbc-arr      : BareBuiltinClass "arr"
+  bbc-other    : ∀ {x} → BareBuiltinClass x
+
+classifyBareBuiltin : (x : String) → BareBuiltinClass x
+classifyBareBuiltin x with StrProp._≟_ x "id"
+... | yes refl = bbc-id
+... | no  _ with StrProp._≟_ x "fst"
+...   | yes refl = bbc-fst
+...   | no  _ with StrProp._≟_ x "snd"
+...     | yes refl = bbc-snd
+...     | no  _ with StrProp._≟_ x "terminal"
+...       | yes refl = bbc-terminal
+...       | no  _ with StrProp._≟_ x "initial"
+...         | yes refl = bbc-initial
+...         | no  _ with StrProp._≟_ x "inl"
+...           | yes refl = bbc-inl
+...           | no  _ with StrProp._≟_ x "inr"
+...             | yes refl = bbc-inr
+...             | no  _ with StrProp._≟_ x "arr"
+...               | yes refl = bbc-arr
+...               | no  _ = bbc-other
+
+------------------------------------------------------------------------
 -- Bidirectional Inference (produces usage-indexed Expr)
 ------------------------------------------------------------------------
 
@@ -1146,35 +1184,97 @@ mutual
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
 
-  -- | Check-mode dispatch for bare `RVar` names. Tries lookup first
-  -- (via `inferElab`). On lookup success, uses the bound
-  -- definition — this path matches `t-embed (t-var-local/import …)`
-  -- derivations with the correct non-zero Ψ. On lookup failure and
-  -- canonical-shape expected type, falls back to the specialised
-  -- builtin emission (`zeroUsage`) — matches the new `t-id-check`
-  -- judgment rule. The two paths are disjoint by construction:
-  -- each derivation uniquely identifies which elab path fires.
+  -- | Check-mode dispatch for bare `RVar` names (plan 0.6 Phase C.7).
+  -- Each bare polymorphic builtin has a specialised clause that:
+  --   1. Tries lookup first. On success, uses the bound definition —
+  --      matches `t-embed (t-var-local/import …)` with the correct
+  --      non-zero Ψ.
+  --   2. On lookup failure at the canonical type shape, emits the
+  --      `spec*` Surface IR with `zeroUsage` — matches the new
+  --      `t-X-check` judgment rule.
+  -- The two paths are disjoint by construction: each derivation
+  -- uniquely identifies which elab path fires.
   --
-  -- Dispatches on `x StrProp.≟ "id"` rather than direct string
-  -- patterns so abstract `x` in downstream proofs reduces correctly
-  -- (same idiom used by `classifyAppHeadView`).
-  checkElab-RVar ctx x T with StrProp._≟_ x "id"
+  -- Dispatches on `classifyBareBuiltin x` so abstract `x` in
+  -- downstream proofs reduces correctly (same idiom used by
+  -- `classifyAppHeadView`).
+  checkElab-RVar ctx x T with classifyBareBuiltin x
   -- Non-specialised names: generic lookup-then-match.
-  ... | no _ with inferElab ctx (Raw.RVar x)
+  ... | bbc-other with inferElab ctx (Raw.RVar x)
   ...   | failure err = failure err
   ...   | success T' Ψ eE d f with T ≟T T'
   ...     | yes refl = success _ eE d f
   ...     | no _ = failure (TypeMismatch T T')
-  -- Name = "id": try lookup; on lookup success use the bound def;
-  -- on lookup failure and canonical type, emit specialised `specId`.
-  checkElab-RVar ctx x T | yes refl with inferElab ctx (Raw.RVar "id")
+  -- id : T → T
+  checkElab-RVar ctx _ T | bbc-id with inferElab ctx (Raw.RVar "id")
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx x (A Once.Type.⇒[ Once.Type.Many ] B) | yes refl | failure _ with A ≟T B
+  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.Many ] B) | bbc-id | failure _ with A ≟T B
   ... | yes refl = success _ (weakenFromEmpty (specId A)) 0 (NamedCtx.freshCounter ctx)
   ... | no _ = failure (BuiltinTypeMismatch "id")
-  checkElab-RVar ctx x _ | yes refl | failure err = failure err
+  checkElab-RVar ctx _ _ | bbc-id | failure err = failure err
+  -- fst : (A * B) → A
+  checkElab-RVar ctx _ T | bbc-fst with inferElab ctx (Raw.RVar "fst")
+  ... | success T' Ψ eE d f with T ≟T T'
+  ...   | yes refl = success _ eE d f
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab-RVar ctx _ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] A') | bbc-fst | failure _ with A ≟T A'
+  ... | yes refl = success _ (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure (BuiltinTypeMismatch "fst")
+  checkElab-RVar ctx _ _ | bbc-fst | failure err = failure err
+  -- snd : (A * B) → B
+  checkElab-RVar ctx _ T | bbc-snd with inferElab ctx (Raw.RVar "snd")
+  ... | success T' Ψ eE d f with T ≟T T'
+  ...   | yes refl = success _ eE d f
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab-RVar ctx _ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] B') | bbc-snd | failure _ with B ≟T B'
+  ... | yes refl = success _ (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure (BuiltinTypeMismatch "snd")
+  checkElab-RVar ctx _ _ | bbc-snd | failure err = failure err
+  -- terminal : A → Unit
+  checkElab-RVar ctx _ T | bbc-terminal with inferElab ctx (Raw.RVar "terminal")
+  ... | success T' Ψ eE d f with T ≟T T'
+  ...   | yes refl = success _ eE d f
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.Many ] Unit) | bbc-terminal | failure _ =
+    success _ (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx)
+  checkElab-RVar ctx _ _ | bbc-terminal | failure err = failure err
+  -- initial : Void → A
+  checkElab-RVar ctx _ T | bbc-initial with inferElab ctx (Raw.RVar "initial")
+  ... | success T' Ψ eE d f with T ≟T T'
+  ...   | yes refl = success _ eE d f
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab-RVar ctx _ (Void Once.Type.⇒[ Once.Type.Many ] A) | bbc-initial | failure _ =
+    success _ (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx)
+  checkElab-RVar ctx _ _ | bbc-initial | failure err = failure err
+  -- inl : A → (A + B)
+  checkElab-RVar ctx _ T | bbc-inl with inferElab ctx (Raw.RVar "inl")
+  ... | success T' Ψ eE d f with T ≟T T'
+  ...   | yes refl = success _ eE d f
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.Many ] (A' Once.Type.+ B)) | bbc-inl | failure _ with A ≟T A'
+  ... | yes refl = success _ (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure (BuiltinTypeMismatch "inl")
+  checkElab-RVar ctx _ _ | bbc-inl | failure err = failure err
+  -- inr : B → (A + B)
+  checkElab-RVar ctx _ T | bbc-inr with inferElab ctx (Raw.RVar "inr")
+  ... | success T' Ψ eE d f with T ≟T T'
+  ...   | yes refl = success _ eE d f
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab-RVar ctx _ (B Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B')) | bbc-inr | failure _ with B ≟T B'
+  ... | yes refl = success _ (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | no _ = failure (BuiltinTypeMismatch "inr")
+  checkElab-RVar ctx _ _ | bbc-inr | failure err = failure err
+  -- arr : (A → B) → Eff A B
+  checkElab-RVar ctx _ T | bbc-arr with inferElab ctx (Raw.RVar "arr")
+  ... | success T' Ψ eE d f with T ≟T T'
+  ...   | yes refl = success _ eE d f
+  ...   | no _ = failure (TypeMismatch T T')
+  checkElab-RVar ctx _ ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.⇒[ Once.Type.Many ] Eff A' B') | bbc-arr | failure _ with A ≟T A' | B ≟T B'
+  ... | yes refl | yes refl = success _ (weakenFromEmpty (specArr A B)) 0 (NamedCtx.freshCounter ctx)
+  ... | _ | _ = failure (BuiltinTypeMismatch "arr")
+  checkElab-RVar ctx _ _ | bbc-arr | failure err = failure err
 
   -- Plan 0.6 Phase C.7 POC-2: bare `pair f g` check-mode.
   -- Expected type must be `A ⇒[Many] (B * C)`. Checks each
@@ -1353,9 +1453,11 @@ checkElab-fallback-RVar-unit {ctx} with Unit ≟T Unit
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
 
--- Plan 0.6 Phase C.7 POC-1: bare `id` at canonical `T → T` shape.
--- Given both lookup-failure premises, drives the elaborator through
--- its lookup branch (empty) and into the specialised `specId` path.
+-- Plan 0.6 Phase C.7: bare-builtin check-mode completeness helpers.
+-- Given the two lookup-failure premises, each drives the elaborator
+-- through its `bbc-X | failure _` branch and into the specialised
+-- `specX` emission. Uniform proof structure across all builtins.
+
 checkElab-fallback-RVar-id :
   ∀ {ctx : NamedCtx} (T : Type)
   → lookupLocal ctx "id" ≡ nothing
@@ -1367,6 +1469,88 @@ checkElab-fallback-RVar-id {ctx} T localN importN
   rewrite localN | importN with T ≟T T
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
+
+checkElab-fallback-RVar-fst :
+  ∀ {ctx : NamedCtx} (A B : Type)
+  → lookupLocal ctx "fst" ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] A)
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RVar-fst {ctx} A B localN importN
+  rewrite localN | importN with A ≟T A
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+checkElab-fallback-RVar-snd :
+  ∀ {ctx : NamedCtx} (A B : Type)
+  → lookupLocal ctx "snd" ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] B)
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RVar-snd {ctx} A B localN importN
+  rewrite localN | importN with B ≟T B
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+checkElab-fallback-RVar-terminal :
+  ∀ {ctx : NamedCtx} (A : Type)
+  → lookupLocal ctx "terminal" ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.Many ] Unit)
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RVar-terminal {ctx} A localN importN
+  rewrite localN | importN = _ , _ , _ , refl
+
+checkElab-fallback-RVar-initial :
+  ∀ {ctx : NamedCtx} (A : Type)
+  → lookupLocal ctx "initial" ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RVar "initial") (Void Once.Type.⇒[ Once.Type.Many ] A)
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RVar-initial {ctx} A localN importN
+  rewrite localN | importN = _ , _ , _ , refl
+
+checkElab-fallback-RVar-inl :
+  ∀ {ctx : NamedCtx} (A B : Type)
+  → lookupLocal ctx "inl" ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RVar "inl") (A Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B))
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RVar-inl {ctx} A B localN importN
+  rewrite localN | importN with A ≟T A
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+checkElab-fallback-RVar-inr :
+  ∀ {ctx : NamedCtx} (A B : Type)
+  → lookupLocal ctx "inr" ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RVar "inr") (B Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B))
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RVar-inr {ctx} A B localN importN
+  rewrite localN | importN with B ≟T B
+... | yes refl = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+checkElab-fallback-RVar-arr :
+  ∀ {ctx : NamedCtx} (A B : Type)
+  → lookupLocal ctx "arr" ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) "arr" ≡ nothing
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
+      checkElab ctx (Raw.RVar "arr")
+                   ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.⇒[ Once.Type.Many ] Eff A B)
+        ≡ success Surface.zeroUsage eE d f)))
+checkElab-fallback-RVar-arr {ctx} A B localN importN
+  rewrite localN | importN with A ≟T A | B ≟T B
+... | yes refl | yes refl = _ , _ , _ , refl
+... | no ¬eq | _ = ⊥-elim (¬eq refl)
+... | _ | no ¬eq = ⊥-elim (¬eq refl)
 
 -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` at canonical
 -- `A ⇒[Many] (B * C)` shape. Given check-mode elab successes for

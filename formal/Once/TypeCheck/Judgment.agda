@@ -273,6 +273,49 @@ mutual
                → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
                → ctx ⊢ᶜ RVar "id" ∶ (T Once.Type.⇒[ Once.Type.Many ] T) ⨾ Surface.zeroUsage
 
+    -- | Bare `fst` check-mode at canonical `(A * B) → A` shape. Same
+    -- disjointness argument as `t-id-check`. Plan 0.6 Phase C.7.
+    t-fst-check : ∀ {ctx : NamedCtx} {A B : Type}
+                → lookupLocal ctx "fst" ≡ nothing
+                → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
+                → ctx ⊢ᶜ RVar "fst" ∶ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] A) ⨾ Surface.zeroUsage
+
+    -- | Bare `snd` check-mode at canonical `(A * B) → B` shape.
+    t-snd-check : ∀ {ctx : NamedCtx} {A B : Type}
+                → lookupLocal ctx "snd" ≡ nothing
+                → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
+                → ctx ⊢ᶜ RVar "snd" ∶ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] B) ⨾ Surface.zeroUsage
+
+    -- | Bare `terminal` check-mode at canonical `A → Unit` shape.
+    t-terminal-check : ∀ {ctx : NamedCtx} {A : Type}
+                     → lookupLocal ctx "terminal" ≡ nothing
+                     → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
+                     → ctx ⊢ᶜ RVar "terminal" ∶ (A Once.Type.⇒[ Once.Type.Many ] Once.Type.Unit) ⨾ Surface.zeroUsage
+
+    -- | Bare `initial` check-mode at canonical `Void → A` shape.
+    t-initial-check : ∀ {ctx : NamedCtx} {A : Type}
+                    → lookupLocal ctx "initial" ≡ nothing
+                    → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
+                    → ctx ⊢ᶜ RVar "initial" ∶ (Once.Type.Void Once.Type.⇒[ Once.Type.Many ] A) ⨾ Surface.zeroUsage
+
+    -- | Bare `inl` check-mode at canonical `A → (A + B)` shape.
+    t-inl-check : ∀ {ctx : NamedCtx} {A B : Type}
+                → lookupLocal ctx "inl" ≡ nothing
+                → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
+                → ctx ⊢ᶜ RVar "inl" ∶ (A Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B)) ⨾ Surface.zeroUsage
+
+    -- | Bare `inr` check-mode at canonical `B → (A + B)` shape.
+    t-inr-check : ∀ {ctx : NamedCtx} {A B : Type}
+                → lookupLocal ctx "inr" ≡ nothing
+                → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
+                → ctx ⊢ᶜ RVar "inr" ∶ (B Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B)) ⨾ Surface.zeroUsage
+
+    -- | Bare `arr` check-mode at canonical `(A → B) → Eff A B` shape.
+    t-arr-check : ∀ {ctx : NamedCtx} {A B : Type}
+                → lookupLocal ctx "arr" ≡ nothing
+                → lookupImport (NamedCtx.imports ctx) "arr" ≡ nothing
+                → ctx ⊢ᶜ RVar "arr" ∶ ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.⇒[ Once.Type.Many ] Once.Type.Eff A B) ⨾ Surface.zeroUsage
+
     -- | Applied `pair f g` in check mode at the canonical
     -- `A ⇒[Many] (B * C)` shape. Plan 0.6 Phase C.7 POC-2.
     -- Disjoint from `t-embed (t-app …)` by construction: t-app's
