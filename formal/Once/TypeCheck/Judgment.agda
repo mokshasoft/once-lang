@@ -335,6 +335,36 @@ mutual
                           ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                               Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
+    -- | Applied `compose f g` in check mode at `A ⇒[Many] C`. Plan
+    -- 0.6 Phase C.7 POC-3. Intermediate type B is inferred from g.
+    -- Ψ follows the elab emission `app (app specCompose fE) gE`
+    -- with specCompose contributing zeroUsage.
+    t-compose-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                      {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                    → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.Many ] C) ⨾ Ψ₁
+                    → ctx ⊢ᵢ g ∶ (A Once.Type.⇒[ Once.Type.Many ] B) ⨾ Ψ₂
+                    → ctx ⊢ᶜ RApp (RApp (RVar "compose") f) g
+                             ∶ (A Once.Type.⇒[ Once.Type.Many ] C)
+                             ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
+                                 Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
+
+    -- | Applied `curry f` at `A ⇒[Many] (B ⇒[Many] C)`.
+    t-curry-check : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
+                    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                  → ctx ⊢ᶜ f ∶ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] C) ⨾ Ψ
+                  → ctx ⊢ᶜ RApp (RVar "curry") f
+                           ∶ (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.⇒[ Once.Type.Many ] C))
+                           ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+
+    -- | Applied `apply p` at result type B; p must be inferable as
+    -- `(A ⇒[Many] B) * A`.
+    t-apply-check : ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
+                    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+                  → ctx ⊢ᵢ p ∶ ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.* A) ⨾ Ψ
+                  → ctx ⊢ᶜ RApp (RVar "apply") p
+                           ∶ B
+                           ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+
 ------------------------------------------------------------------------
 -- Backward-compatible alias
 --

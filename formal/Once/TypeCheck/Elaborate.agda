@@ -643,6 +643,9 @@ data PolyBuiltinApp : Set where
   pba-inl pba-inr pba-initial : PolyBuiltinApp          -- infer-mode rejections
   pba-arr : PolyBuiltinApp                              -- Eff lift, infer mode
   pba-pair-applied : PolyBuiltinApp                     -- `RApp (RVar "pair") _` head, check mode
+  pba-compose-applied : PolyBuiltinApp                  -- `RApp (RVar "compose") _` head, check mode
+  pba-curry : PolyBuiltinApp                            -- 1-arg `curry f`, check mode
+  pba-apply : PolyBuiltinApp                            -- 1-arg `apply p`, infer / check mode
 
 -- | Classify an application head. `just <pba>` iff the head is an
 -- `RVar` bound to one of the seven polymorphic builtins; `nothing`
@@ -664,13 +667,18 @@ classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
 ...             | yes _ = just pba-initial
 ...             | no  _ with StrProp._≟_ x "arr"
 ...               | yes _ = just pba-arr
-...               | no  _ = nothing
--- Applied-form head: `RApp (RVar "pair") _`. Needed for the check-mode
--- classifier dispatch on the 2-arg curried form `pair f g`
--- (plan 0.6 Phase C.7 POC-2).
+...               | no  _ with StrProp._≟_ x "curry"
+...                 | yes _ = just pba-curry
+...                 | no  _ with StrProp._≟_ x "apply"
+...                   | yes _ = just pba-apply
+...                   | no  _ = nothing
+-- Applied-form heads: `RApp (RVar "pair" | "compose") _`. Plan 0.6
+-- Phase C.7 POC-2 / POC-3.
 classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 ... | yes _ = just pba-pair-applied
-... | no  _ = nothing
+... | no  _ with StrProp._≟_ x "compose"
+...   | yes _ = just pba-compose-applied
+...   | no  _ = nothing
 classifyAppHead (Raw.RApp _ _) = nothing
 classifyAppHead _ = nothing
 
@@ -692,7 +700,10 @@ data AppHeadView : RawExpr → Set where
   ahv-inr      : AppHeadView (Raw.RVar "inr")
   ahv-initial  : AppHeadView (Raw.RVar "initial")
   ahv-arr      : AppHeadView (Raw.RVar "arr")
-  ahv-pair-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "pair") f')
+  ahv-curry    : AppHeadView (Raw.RVar "curry")
+  ahv-apply    : AppHeadView (Raw.RVar "apply")
+  ahv-pair-applied    : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "pair") f')
+  ahv-compose-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "compose") f')
   ahv-other    : ∀ {f} → AppHeadView f
 
 classifyAppHeadView : (f : RawExpr) → AppHeadView f
@@ -712,10 +723,16 @@ classifyAppHeadView (Raw.RVar x) with StrProp._≟_ x "id"
 ...             | yes refl = ahv-initial
 ...             | no  _ with StrProp._≟_ x "arr"
 ...               | yes refl = ahv-arr
-...               | no  _ = ahv-other
+...               | no  _ with StrProp._≟_ x "curry"
+...                 | yes refl = ahv-curry
+...                 | no  _ with StrProp._≟_ x "apply"
+...                   | yes refl = ahv-apply
+...                   | no  _ = ahv-other
 classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
 ... | yes refl = ahv-pair-applied
-... | no  _    = ahv-other
+... | no  _    with StrProp._≟_ x "compose"
+...   | yes refl = ahv-compose-applied
+...   | no  _    = ahv-other
 classifyAppHeadView (Raw.RApp _ _)            = ahv-other
 classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
 classifyAppHeadView (Raw.RLam _ _)            = ahv-other
@@ -745,7 +762,10 @@ classifyAppHead-nothing⇒view-other :
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p with StrProp._≟_ s "pair"
 ... | yes _ with p
 ...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar _) _} _ | no _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p | no _ with StrProp._≟_ s "compose"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar _) _} _ | no _ | no _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RApp _ _) _}       _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RQualified _ _) _} _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLam _ _) _}       _ = refl
@@ -802,7 +822,15 @@ classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ 
   with StrProp._≟_ s "arr"
 ... | yes _ with p
 ...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "curry"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "apply"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 
 ------------------------------------------------------------------------
 -- Bare polymorphic-builtin classifier (plan 0.6 Phase C.7)
@@ -856,6 +884,11 @@ mutual
   -- 2-arg `pair f g` expression in check mode against the canonical
   -- `A ⇒[Many] (B * C)` shape.
   checkPair : (ctx : NamedCtx) → (pairHead arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+  -- Compose / curry / apply classifier helpers (plan 0.6 Phase C.7
+  -- POC-3).
+  checkCompose : (ctx : NamedCtx) → (composeHead arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+  checkCurry : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
+  checkApply : (ctx : NamedCtx) → (arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
 
   -- ===== inferElab =====
 
@@ -956,6 +989,20 @@ mutual
   -- A, B, C. Reject in infer mode (plan 0.6 Phase C.7 POC-2).
   inferElab ctx (Raw.RApp _ _) | ahv-pair-applied =
     failure (BuiltinTypeMismatch "pair")
+  -- `compose f g`, `curry f` similarly require check-mode.
+  inferElab ctx (Raw.RApp _ _) | ahv-compose-applied =
+    failure (BuiltinTypeMismatch "compose")
+  inferElab ctx (Raw.RApp _ _) | ahv-curry =
+    failure (BuiltinTypeMismatch "curry")
+  -- `apply p` is inferable when p has pair-of-function type.
+  inferElab ctx (Raw.RApp _ x) | ahv-apply with inferElab ctx x
+  ... | failure err = failure err
+  ... | success ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.* A') Ψ argE d f' with A ≟T A'
+  ...   | yes refl =
+          success B _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) f'
+  ...   | no  _ = failure (BuiltinTypeMismatch "apply")
+  inferElab ctx (Raw.RApp _ _) | ahv-apply | success _ _ _ _ _ =
+    failure (BuiltinTypeMismatch "apply")
   -- Generic application: infer f as function type, then x.
   inferElab ctx (Raw.RApp f x) | ahv-other with asFun (inferElab ctx f)
   ... | notFun err = failure err
@@ -1154,6 +1201,12 @@ mutual
   -- extract `f_inner` and checks both sub-expressions against the
   -- expected `A ⇒[Many] (B * C)` shape.
   checkElab ctx (Raw.RApp f arg) T | ahv-pair-applied = checkPair ctx f arg T
+  -- `compose f g` check-mode dispatch (plan 0.6 Phase C.7 POC-3).
+  checkElab ctx (Raw.RApp f arg) T | ahv-compose-applied = checkCompose ctx f arg T
+  -- `curry f` / `apply p` check-mode dispatch (plan 0.6 Phase C.7
+  -- POC-3).
+  checkElab ctx (Raw.RApp f arg) T | ahv-curry = checkCurry ctx arg T
+  checkElab ctx (Raw.RApp f arg) T | ahv-apply = checkApply ctx arg T
   checkElab ctx (Raw.RApp f arg) T | ahv-other with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
   ... | success T' Ψ eE d fr with T ≟T T'
@@ -1296,6 +1349,55 @@ mutual
   -- Any other shape falls through to failure. Consistent with
   -- ahv-inl's per-shape exhaustive enumeration pattern.
   checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair")
+
+  -- Plan 0.6 Phase C.7 POC-3: bare `compose f g` check-mode.
+  -- Expected `A ⇒[Many] C`. Infers g's type to determine B, then
+  -- checks f at `B ⇒[Many] C`. Emits `app (app specCompose fE) gE`.
+  checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
+               (A Once.Type.⇒[ Once.Type.Many ] C)
+    with inferElab ctx arg
+  ... | failure err = failure err
+  ... | success (A' Once.Type.⇒[ Once.Type.Many ] B) Ψg gE dg frg with A ≟T A'
+  ...   | no _ = failure (BuiltinTypeMismatch "compose")
+  ...   | yes refl with checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.Many ] C)
+  ...     | failure err = failure err
+  ...     | success Ψf fE df frf =
+            success _
+              (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
+              (suc (df Data.Nat.⊔ dg)) frf
+  -- Non-arrow-Many inferred types for g: compose can't proceed.
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Unit       _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Int        _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Str        _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Void       _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Float      _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Buffer     _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (_ Once.Type.* _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (_ Once.Type.+ _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (_ Once.Type.⇒[ Once.Type.One ] _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (_ Once.Type.⇒[ Once.Type.Zero ] _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (Eff _ _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (μ-type _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (ν-type _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+
+  -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
+  -- Expected `A ⇒[Many] (B ⇒[Many] C)`. Check f at `(A * B) ⇒[Many] C`.
+  checkCurry ctx arg (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.⇒[ Once.Type.Many ] C))
+    with checkElab ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] C)
+  ... | failure err = failure err
+  ... | success Ψ argE d fr =
+        success _ (Surface.app (weakenFromEmpty (specCurry A B C)) argE) (suc d) fr
+  checkCurry _ _ _ = failure (BuiltinTypeMismatch "curry")
+
+  -- Plan 0.6 Phase C.7 POC-3: `apply p` check-mode.
+  -- Check mode falls through to infer (apply's infer mode succeeds
+  -- when p has pair-of-function type). Matches result against T.
+  checkApply ctx arg T with inferElab ctx (Raw.RApp (Raw.RVar "apply") arg)
+  ... | failure err = failure err
+  ... | success T' Ψ eE d fr with T ≟T T'
+  ...   | yes refl = success _ eE d fr
+  ...   | no _ = failure (TypeMismatch T T')
 
 ------------------------------------------------------------------------
 -- Generic-fallback lemmas (G2 completeness — check-mode).
@@ -1573,6 +1675,58 @@ checkElab-fallback-RApp-pair :
                     Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
 checkElab-fallback-RApp-pair {ctx} f g A B C eq_f eq_g
   rewrite eq_f | eq_g = _ , _ , _ , refl
+
+-- Plan 0.6 Phase C.7 POC-3: applied `compose f g` at `A ⇒[Many] C`.
+-- Takes the inferElab-success for g (fixes B) and checkElab-success
+-- for f at `B ⇒[Many] C`.
+checkElab-fallback-RApp-compose :
+  ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (B Once.Type.⇒[ Once.Type.Many ] C)}
+    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.Many ] B)}
+    {d_f f_f d_g f_g : ℕ}
+  → checkElab ctx f (B Once.Type.⇒[ Once.Type.Many ] C) ≡ success Ψ₁ eE_f d_f f_f
+  → inferElab ctx g ≡ success (A Once.Type.⇒[ Once.Type.Many ] B) Ψ₂ eE_g d_g f_g
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
+                    (A Once.Type.⇒[ Once.Type.Many ] C)
+        ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
+                    Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
+checkElab-fallback-RApp-compose {ctx} f g A B C eq_f eq_g
+  rewrite eq_g with A ≟T A
+... | yes refl rewrite eq_f = _ , _ , _ , refl
+... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- Plan 0.6 Phase C.7 POC-3: applied `curry f` at `A → B → C`.
+checkElab-fallback-RApp-curry :
+  ∀ {ctx : NamedCtx} (f : RawExpr) (A B C : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] C)}
+    {d fr : ℕ}
+  → checkElab ctx f ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] C) ≡ success Ψ eE d fr
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "curry") f)
+                    (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.⇒[ Once.Type.Many ] C))
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+checkElab-fallback-RApp-curry {ctx} f A B C eq_f
+  rewrite eq_f = _ , _ , _ , refl
+
+-- Plan 0.6 Phase C.7 POC-3: applied `apply p` at result type B.
+checkElab-fallback-RApp-apply :
+  ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
+    {Ψ : Surface.Usage (NamedCtx.size ctx)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.* A)}
+    {d fr : ℕ}
+  → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.* A) Ψ eE d fr
+  → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
+      checkElab ctx (Raw.RApp (Raw.RVar "apply") p) B
+        ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
+checkElab-fallback-RApp-apply {ctx} p A B eq_p
+  rewrite eq_p with A ≟T A
+... | no ¬eq = ⊥-elim (¬eq refl)
+... | yes refl with B ≟T B
+...   | yes refl = _ , _ , _ , refl
+...   | no ¬eq = ⊥-elim (¬eq refl)
 
 -- RApp (RVar "id") arg: no specialised check clause for "id" as app head
 -- (only "inl"/"inr"/"initial" are specialised). Falls to fallback.

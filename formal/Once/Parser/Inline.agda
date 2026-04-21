@@ -142,12 +142,16 @@ applyDesugarVar = "$apply_p"
 -- because `Eff` is a distinct IR type constructor, not reducible to
 -- lambdas. The applied-form classifier route (separate follow-up,
 -- tentatively plan 0.6 Phase C.5-arr) remains the path for `arr`.
+-- Plan 0.6 Phase C.7: classifier route (`ahv-pair-applied` /
+-- `ahv-compose-applied` / `ahv-curry` / `ahv-apply`) handles simple
+-- non-nested cases. Desugaring kept as the active path for complex
+-- nested cases where the classifier's per-NT infer-mode fails (e.g.
+-- `compose f (pair …)` can't infer `pair …`'s type without context;
+-- desugaring sidesteps this by producing a lambda + pair + app that
+-- the existing elab paths handle). Both routes produce equivalent
+-- Surface IR; the desugaring fires first in the pipeline so the
+-- classifier only sees expressions that reach typecheck.
 expandBuiltins : RawExpr → RawExpr
--- Plan 0.6 Phase C.7: pair/compose classifier is in place; removing
--- the desugarings is blocked on compose-applied classifier (handles
--- the `compose f (pair …)` nesting that desugaring currently
--- β-reduces through). Keeping both paths for now — desugaring fires
--- first, classifier is parallel.
 expandBuiltins (RApp (RApp (RApp (RVar "pair") f) g) arg) =
   RPair (RApp (expandBuiltins f) (expandBuiltins arg))
         (RApp (expandBuiltins g) (expandBuiltins arg))
