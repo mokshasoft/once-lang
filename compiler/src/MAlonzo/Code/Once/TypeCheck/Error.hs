@@ -31,24 +31,24 @@ data T_TypeError_6
     C_InlInInferMode_20 | C_InrInInferMode_22 |
     C_InitialInInferMode_24 | C_InlNeedsSumType_26 |
     C_InrNeedsSumType_28 | C_FstNeedsPair_30 | C_SndNeedsPair_32 |
-    C_NegationNotInt_34 | C_CaseScrutineeNotSum_36 |
-    C_CaseBranchMismatch_38 |
-    C_ApplicationTypeMismatch_44 MAlonzo.Code.Once.Type.T_Type_38
+    C_ArrNeedsFunction_34 | C_NegationNotInt_36 |
+    C_CaseScrutineeNotSum_38 | C_CaseBranchMismatch_40 |
+    C_ApplicationTypeMismatch_46 MAlonzo.Code.Once.Type.T_Type_38
                                  MAlonzo.Code.Once.Type.T_Type_38 |
-    C_TypeMismatch_50 MAlonzo.Code.Once.Type.T_Type_38
+    C_TypeMismatch_52 MAlonzo.Code.Once.Type.T_Type_38
                       MAlonzo.Code.Once.Type.T_Type_38 |
-    C_NotFunction_54 MAlonzo.Code.Once.Type.T_Type_38 |
-    C_UsageViolation_62 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_NotFunction_56 MAlonzo.Code.Once.Type.T_Type_38 |
+    C_UsageViolation_64 MAlonzo.Code.Agda.Builtin.String.T_String_6
                         MAlonzo.Code.Once.Type.T_Quantity_4
                         MAlonzo.Code.Once.Type.T_Quantity_4 |
-    C_BuiltinTypeMismatch_66 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
-    C_BinOpLeftError_68 T_TypeError_6 |
-    C_BinOpRightError_70 T_TypeError_6 |
-    C_UnclassifiedError_72 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_BuiltinTypeMismatch_68 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_BinOpLeftError_70 T_TypeError_6 |
+    C_BinOpRightError_72 T_TypeError_6 |
+    C_UnclassifiedError_74 MAlonzo.Code.Agda.Builtin.String.T_String_6
 -- Once.TypeCheck.Error.renderError
-d_renderError_74 ::
+d_renderError_76 ::
   T_TypeError_6 -> MAlonzo.Code.Agda.Builtin.String.T_String_6
-d_renderError_74 v0
+d_renderError_76 v0
   = case coe v0 of
       C_UnboundVariable_8 v1
         -> coe
@@ -98,13 +98,16 @@ d_renderError_74 v0
         -> coe ("fst requires a pair argument" :: Data.Text.Text)
       C_SndNeedsPair_32
         -> coe ("snd requires a pair argument" :: Data.Text.Text)
-      C_NegationNotInt_34
+      C_ArrNeedsFunction_34
+        -> coe
+             ("arr requires a function argument (A \8594 B)" :: Data.Text.Text)
+      C_NegationNotInt_36
         -> coe ("Negation requires Int operand" :: Data.Text.Text)
-      C_CaseScrutineeNotSum_36
+      C_CaseScrutineeNotSum_38
         -> coe ("Case requires a sum-typed scrutinee" :: Data.Text.Text)
-      C_CaseBranchMismatch_38
+      C_CaseBranchMismatch_40
         -> coe ("Case branches have different types" :: Data.Text.Text)
-      C_ApplicationTypeMismatch_44 v1 v2
+      C_ApplicationTypeMismatch_46 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Application: argument type " :: Data.Text.Text)
@@ -115,7 +118,7 @@ d_renderError_74 v0
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" does not match function domain " :: Data.Text.Text)
                    (MAlonzo.Code.Once.Type.d_showType_132 (coe v1))))
-      C_TypeMismatch_50 v1 v2
+      C_TypeMismatch_52 v1 v2
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Type mismatch: expected " :: Data.Text.Text)
@@ -126,12 +129,12 @@ d_renderError_74 v0
                    MAlonzo.Code.Data.String.Base.d__'43''43'__20
                    (" but got " :: Data.Text.Text)
                    (MAlonzo.Code.Once.Type.d_showType_132 (coe v2))))
-      C_NotFunction_54 v1
+      C_NotFunction_56 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("expected function type, got " :: Data.Text.Text)
              (MAlonzo.Code.Once.Type.d_showType_132 (coe v1))
-      C_UsageViolation_62 v1 v2 v3
+      C_UsageViolation_64 v1 v2 v3
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              ("Parameter '" :: Data.Text.Text)
@@ -147,17 +150,17 @@ d_renderError_74 v0
                          MAlonzo.Code.Data.String.Base.d__'43''43'__20
                          (" but declared with quantity " :: Data.Text.Text)
                          (MAlonzo.Code.Once.Type.d_showQuantity_34 (coe v2))))))
-      C_BuiltinTypeMismatch_66 v1
+      C_BuiltinTypeMismatch_68 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20 v1
              (": expected type mismatch" :: Data.Text.Text)
-      C_BinOpLeftError_68 v1
+      C_BinOpLeftError_70 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("binop left: " :: Data.Text.Text) (d_renderError_74 (coe v1))
-      C_BinOpRightError_70 v1
+             ("binop left: " :: Data.Text.Text) (d_renderError_76 (coe v1))
+      C_BinOpRightError_72 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
-             ("binop right: " :: Data.Text.Text) (d_renderError_74 (coe v1))
-      C_UnclassifiedError_72 v1 -> coe v1
+             ("binop right: " :: Data.Text.Text) (d_renderError_76 (coe v1))
+      C_UnclassifiedError_74 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

@@ -37,7 +37,7 @@ open import Once.TypeCheck.Error using (TypeError; renderError;
   LambdaInInferMode; LambdaRequiresFunctionType;
   InlInInferMode; InrInInferMode; InitialInInferMode;
   InlNeedsSumType; InrNeedsSumType;
-  FstNeedsPair; SndNeedsPair; NegationNotInt;
+  FstNeedsPair; SndNeedsPair; ArrNeedsFunction; NegationNotInt;
   CaseScrutineeNotSum; CaseBranchMismatch;
   ApplicationTypeMismatch; TypeMismatch; NotFunction;
   UsageViolation; BuiltinTypeMismatch;
@@ -641,6 +641,7 @@ decideLeq Many Many = just refl
 data PolyBuiltinApp : Set where
   pba-id pba-fst pba-snd pba-terminal : PolyBuiltinApp  -- infer-mode successes
   pba-inl pba-inr pba-initial : PolyBuiltinApp          -- infer-mode rejections
+  pba-arr : PolyBuiltinApp                              -- Eff lift, infer mode
 
 -- | Classify an application head. `just <pba>` iff the head is an
 -- `RVar` bound to one of the seven polymorphic builtins; `nothing`
@@ -660,7 +661,9 @@ classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
 ...           | yes _ = just pba-inr
 ...           | no  _ with StrProp._≟_ x "initial"
 ...             | yes _ = just pba-initial
-...             | no  _ = nothing
+...             | no  _ with StrProp._≟_ x "arr"
+...               | yes _ = just pba-arr
+...               | no  _ = nothing
 classifyAppHead _ = nothing
 
 -- | View-type classification of an application head. Each constructor
@@ -680,6 +683,7 @@ data AppHeadView : RawExpr → Set where
   ahv-inl      : AppHeadView (Raw.RVar "inl")
   ahv-inr      : AppHeadView (Raw.RVar "inr")
   ahv-initial  : AppHeadView (Raw.RVar "initial")
+  ahv-arr      : AppHeadView (Raw.RVar "arr")
   ahv-other    : ∀ {f} → AppHeadView f
 
 classifyAppHeadView : (f : RawExpr) → AppHeadView f
@@ -697,7 +701,9 @@ classifyAppHeadView (Raw.RVar x) with StrProp._≟_ x "id"
 ...           | yes refl = ahv-inr
 ...           | no  _ with StrProp._≟_ x "initial"
 ...             | yes refl = ahv-initial
-...             | no  _ = ahv-other
+...             | no  _ with StrProp._≟_ x "arr"
+...               | yes refl = ahv-arr
+...               | no  _ = ahv-other
 classifyAppHeadView (Raw.RApp _ _)            = ahv-other
 classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
 classifyAppHeadView (Raw.RLam _ _)            = ahv-other
@@ -761,7 +767,11 @@ classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ 
   with StrProp._≟_ s "initial"
 ... | yes _ with p
 ...   | ()
-classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _
+  with StrProp._≟_ s "arr"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RVar s} p | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = refl
 
 ------------------------------------------------------------------------
 -- Bidirectional Inference (produces usage-indexed Expr)
@@ -849,6 +859,16 @@ mutual
   ... | failure err = failure err
   ... | success A Ψ argE d f' =
         success Unit _ (Surface.app (weakenFromEmpty (specTerminal A)) argE) (suc d) f'
+  -- arr : (A ⇒[Many] B) → Eff A B
+  -- Lifts a Many-quantity pure function into the Eff monad. Linear
+  -- (One-quantity) arrows are rejected — use explicit Surface.arr'
+  -- via a type annotation when that's really wanted.
+  inferElab ctx (Raw.RApp f x) | ahv-arr with inferElab ctx x
+  ... | failure err = failure err
+  ... | success (A Once.Type.⇒[ Once.Type.Many ] B) Ψ argE d f' =
+        success (Once.Type.Eff A B) _
+                (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) f'
+  ... | success _ _ _ _ _ = failure ArrNeedsFunction
   -- Partial / check-only builtins in infer mode: fail.
   inferElab ctx (Raw.RApp _ _) | ahv-inl =
     failure InlInInferMode
@@ -1027,6 +1047,27 @@ mutual
   ... | success T' Ψ eE d fr with T ≟T T'
   ...   | yes refl = success _ eE d fr
   ...   | no _ = failure (TypeMismatch T T')
+  -- arr in check mode: drive specialisation from the expected `Eff A
+  -- B` so the argument is checked at `A ⇒[Many] B`. This is the path
+  -- that lets `arr (\p -> p)` typecheck against an `Eff Int Int`
+  -- expectation — inferElab on the bare lambda would fail with
+  -- LambdaInInferMode, so we don't fall through to infer here.
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr with T
+  ... | (Once.Type.Eff A B) with checkElab ctx arg (A Once.Type.⇒[ Once.Type.Many ] B)
+  ...     | failure err = failure err
+  ...     | success Ψ argE d fr =
+            success _ (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | Unit         = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | Int          = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | Str          = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | Void         = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | Float        = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | Buffer       = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | (_ Once.Type.* _)      = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | (_ Once.Type.+ _)      = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | (_ Once.Type.⇒[ _ ] _) = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | μ-type _     = failure (TypeMismatch T T)
+  checkElab ctx (Raw.RApp f arg) T | ahv-arr | ν-type _     = failure (TypeMismatch T T)
   checkElab ctx (Raw.RApp f arg) T | ahv-other with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
   ... | success T' Ψ eE d fr with T ≟T T'

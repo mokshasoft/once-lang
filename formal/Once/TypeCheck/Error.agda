@@ -72,6 +72,7 @@ data TypeError : Set where
   -- Type-shape mismatches on builtin-specific argument forms
   FstNeedsPair        : TypeError
   SndNeedsPair        : TypeError
+  ArrNeedsFunction    : TypeError
   NegationNotInt      : TypeError
   CaseScrutineeNotSum : TypeError
   CaseBranchMismatch  : TypeError
@@ -138,6 +139,8 @@ renderError FstNeedsPair =
   "fst requires a pair argument"
 renderError SndNeedsPair =
   "snd requires a pair argument"
+renderError ArrNeedsFunction =
+  "arr requires a function argument (A → B)"
 renderError NegationNotInt =
   "Negation requires Int operand"
 renderError CaseScrutineeNotSum =
