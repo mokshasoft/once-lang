@@ -142,51 +142,15 @@ applyDesugarVar = "$apply_p"
 -- because `Eff` is a distinct IR type constructor, not reducible to
 -- lambdas. The applied-form classifier route (separate follow-up,
 -- tentatively plan 0.6 Phase C.5-arr) remains the path for `arr`.
--- Plan 0.6 Phase C.7: classifier route (`ahv-pair-applied` /
--- `ahv-compose-applied` / `ahv-curry` / `ahv-apply`) handles simple
--- non-nested cases. Desugaring kept as the active path for complex
--- nested cases where the classifier's per-NT infer-mode fails (e.g.
--- `compose f (pair …)` can't infer `pair …`'s type without context;
--- desugaring sidesteps this by producing a lambda + pair + app that
--- the existing elab paths handle). Both routes produce equivalent
--- Surface IR; the desugaring fires first in the pipeline so the
--- classifier only sees expressions that reach typecheck.
+-- Plan 0.6.2: all NT desugarings removed. The classifier route in
+-- `Once.TypeCheck.Elaborate` + `PolyCtx` (Phase 3 of plan 0.6.2)
+-- handle the full surface language: bare builtins in check mode,
+-- classifier-applied forms in check mode, polymorphic user defs
+-- via schema instantiation. `expandBuiltins` kept as identity so
+-- the `inlineAllWithPoly` call site in `Once.Parser` stays
+-- compilable; removed from the pipeline in Phase 5.
 expandBuiltins : RawExpr → RawExpr
-expandBuiltins (RApp (RApp (RApp (RVar "pair") f) g) arg) =
-  RPair (RApp (expandBuiltins f) (expandBuiltins arg))
-        (RApp (expandBuiltins g) (expandBuiltins arg))
-expandBuiltins (RApp (RApp (RApp (RVar "compose") f) g) arg) =
-  RApp (expandBuiltins f) (RApp (expandBuiltins g) (expandBuiltins arg))
-expandBuiltins (RApp (RApp (RVar "pair") f) g) =
-  RLam pairDesugarVar (RPair (RApp (expandBuiltins f) (RVar pairDesugarVar))
-                              (RApp (expandBuiltins g) (RVar pairDesugarVar)))
-expandBuiltins (RApp (RApp (RVar "compose") f) g) =
-  RLam composeDesugarVar
-    (RApp (expandBuiltins f)
-          (RApp (expandBuiltins g) (RVar composeDesugarVar)))
-expandBuiltins (RApp (RVar "curry") f) =
-  RLam curryDesugarVarX
-    (RLam curryDesugarVarY
-      (RApp (expandBuiltins f)
-            (RPair (RVar curryDesugarVarX) (RVar curryDesugarVarY))))
-expandBuiltins (RApp (RVar "apply") p) =
-  RLet applyDesugarVar (expandBuiltins p)
-    (RApp (RApp (RVar "fst") (RVar applyDesugarVar))
-          (RApp (RVar "snd") (RVar applyDesugarVar)))
-expandBuiltins (RVar name) = RVar name
-expandBuiltins (RQualified name alias) = RQualified name alias
-expandBuiltins (RApp f x) = RApp (expandBuiltins f) (expandBuiltins x)
-expandBuiltins (RLam x body) = RLam x (expandBuiltins body)
-expandBuiltins (RLet x e₁ e₂) = RLet x (expandBuiltins e₁) (expandBuiltins e₂)
-expandBuiltins (RPair a b) = RPair (expandBuiltins a) (expandBuiltins b)
-expandBuiltins (RDestruct s x l y r) =
-  RDestruct (expandBuiltins s) x (expandBuiltins l) y (expandBuiltins r)
-expandBuiltins RUnit = RUnit
-expandBuiltins (RInt n) = RInt n
-expandBuiltins (RStringLit s) = RStringLit s
-expandBuiltins (RAnnot e ty) = RAnnot (expandBuiltins e) ty
-expandBuiltins (RBinOp op a b) = RBinOp op (expandBuiltins a) (expandBuiltins b)
-expandBuiltins (RUnaryOp op e) = RUnaryOp op (expandBuiltins e)
+expandBuiltins e = e
 
 -- | Back-compat alias. Code calling `expandPairs` gets both `pair`
 -- and `compose` desugaring now.

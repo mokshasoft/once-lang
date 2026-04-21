@@ -381,6 +381,13 @@ ctxWithImportsAndSelf : Imports → String → Type → NamedCtx
 ctxWithImportsAndSelf imps name ty =
   ctxWithImports ((name , ty) ∷ imps)
 
+-- | Same as `ctxWithImportsAndSelf` but also carries a polymorphic
+-- context. Plan 0.6.2 — used by `compileFun` to make poly defs
+-- available to each ground function's body during typecheck.
+ctxWithImportsAndSelfAndPolys : Imports → PolyCtx → String → Type → NamedCtx
+ctxWithImportsAndSelfAndPolys imps polys name ty =
+  ctxWithImportsAndPolys ((name , ty) ∷ imps) polys
+
 -- | Extend context with a new binding (preserves fresh counter, imports, polys)
 extendNamedCtx : NamedCtx → String → Type → NamedCtx
 extendNamedCtx (mkCtx n Γ Δ fresh imps polys) x A =
@@ -898,6 +905,17 @@ classifyBareBuiltin x with StrProp._≟_ x "id"
 -- Bidirectional Inference (produces usage-indexed Expr)
 ------------------------------------------------------------------------
 
+-- | TERMINATING pragma rationale: `checkElab-RVar`'s polymorphic-def
+-- lookup branch recurses into `checkElab` on the poly body (plan
+-- 0.6.2 Phase 3). Termination is argued informally: poly bodies
+-- are closed top-level expressions; their poly references form a
+-- DAG in well-formed code, so the recursion terminates at a
+-- bounded depth. Agda's structural termination checker cannot see
+-- this without a well-founded measure. A principled follow-up is
+-- to thread a fuel parameter or remove each poly name from the
+-- `PolyCtx` as its body is specialised (preventing cycles by
+-- construction). Tracked in plan 0.6.2 Phase 3.
+{-# TERMINATING #-}
 mutual
   inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
   checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
@@ -1276,12 +1294,24 @@ mutual
   -- downstream proofs reduces correctly (same idiom used by
   -- `classifyAppHeadView`).
   checkElab-RVar ctx x T with classifyBareBuiltin x
-  -- Non-specialised names: generic lookup-then-match.
+  -- Non-specialised names: lookup-then-match. On inferElab failure,
+  -- try the polymorphic context (plan 0.6.2 Phase 3): if `x` is a
+  -- user poly def, specialise it by check-mode-typechecking its
+  -- body at the expected type `T`. Body is typechecked in a clean
+  -- context (no user locals) because poly defs are top-level and
+  -- can't reference user locals; the resulting SExpr is weakened
+  -- from the empty-local context into the caller's ctx.
   ... | bbc-other with inferElab ctx (Raw.RVar x)
-  ...   | failure err = failure err
   ...   | success T' Ψ eE d f with T ≟T T'
   ...     | yes refl = success _ eE d f
   ...     | no _ = failure (TypeMismatch T T')
+  checkElab-RVar ctx x T | bbc-other | failure err with lookupPoly (NamedCtx.polys ctx) x
+  ... | nothing = failure err
+  ... | just (_ , body) with
+         checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) body T
+  ...   | failure err' = failure err'
+  ...   | success Surface.[] eE d fr =
+           success _ (weakenFromEmpty eE) d fr
   -- id : T → T
   checkElab-RVar ctx _ T | bbc-id with inferElab ctx (Raw.RVar "id")
   ... | success T' Ψ eE d f with T ≟T T'

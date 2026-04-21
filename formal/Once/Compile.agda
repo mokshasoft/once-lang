@@ -82,7 +82,7 @@ open PolyFunInfo
 
 -- Type checking / elaboration
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelf; checkElab)
+open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelf; ctxWithImportsAndSelfAndPolys; PolyCtx; emptyPolyCtx; checkElab)
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 
 -- Surface → IR elaboration
@@ -123,8 +123,8 @@ extendFunCtx ctx name ty = (name , ty) ∷ ctx
 -- | Compile a function body to IR with context of previous functions
 -- Pipeline: typecheck → elaborate → (optionally) optimize
 -- Returns IR or error message
-compileFunBody : Bool → FunCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
-compileFunBody doOpt ctx name ty expr with checkElab (ctxWithImportsAndSelf ctx name ty) expr ty
+compileFunBody : Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
+compileFunBody doOpt ctx polys name ty expr with checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty
 ... | TE.failure err = inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
 ... | TE.success _ surfaceExpr _ _ =
   let ir = elaborate surfaceExpr
@@ -133,12 +133,12 @@ compileFunBody doOpt ctx name ty expr with checkElab (ctxWithImportsAndSelf ctx 
 -- | Compile a function with main validation
 -- For main: validates type is Eff Unit A before compiling
 -- For other functions: compiles directly
-compileFun : Bool → FunCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
-compileFun doOpt ctx name ty expr with name == "main"
+compileFun : Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
+compileFun doOpt ctx polys name ty expr with name == "main"
 ... | true with validateMain ty
 ...   | inj₁ err = inj₁ err
-...   | inj₂ _   = compileFunBody doOpt ctx name ty expr
-compileFun doOpt ctx name ty expr | false = compileFunBody doOpt ctx name ty expr
+...   | inj₂ _   = compileFunBody doOpt ctx polys name ty expr
+compileFun doOpt ctx polys name ty expr | false = compileFunBody doOpt ctx polys name ty expr
 
 ------------------------------------------------------------------------
 -- Module compilation: source → List (name, IR)
@@ -160,14 +160,23 @@ buildFunCtx : List FunInfo → FunCtx
 buildFunCtx [] = emptyFunCtx
 buildFunCtx (fi ∷ rest) = extendFunCtx (buildFunCtx rest) (funName fi) (funType fi)
 
+-- | Build a `PolyCtx` from the list of `PolyFunInfo`s extracted
+-- from a module. Plan 0.6.2.
+buildPolyCtx : List PolyFunInfo → PolyCtx
+buildPolyCtx [] = emptyPolyCtx
+buildPolyCtx (pfi ∷ rest) =
+  (pfunName pfi , pfunType pfi , pfunBody pfi) ∷ buildPolyCtx rest
+
 -- | Compile all functions from parsed module, accumulating context
--- Each function is compiled with access to all previously defined functions
-compileAllFuns : Bool → List FunInfo → String ⊎ List CompiledFun
-compileAllFuns doOpt funs = go funs emptyFunCtx
+-- Each function is compiled with access to all previously defined
+-- functions (ground, via FunCtx) and all polymorphic user defs
+-- (via PolyCtx, plan 0.6.2).
+compileAllFuns : Bool → List FunInfo → PolyCtx → String ⊎ List CompiledFun
+compileAllFuns doOpt funs polys = go funs emptyFunCtx
   where
     go : List FunInfo → FunCtx → String ⊎ List CompiledFun
     go [] _ = inj₂ []
-    go (fi ∷ rest) ctx with compileFun doOpt ctx (funName fi) (funType fi) (funBody fi)
+    go (fi ∷ rest) ctx with compileFun doOpt ctx polys (funName fi) (funType fi) (funBody fi)
     ... | inj₁ err = inj₁ err
     ... | inj₂ ir with go rest (extendFunCtx ctx (funName fi) (funType fi))
     ...   | inj₁ err = inj₁ err
@@ -197,7 +206,7 @@ compileModule doOpt source with parse source
       in case extractFunctions aliases mod of λ where
            (inj₁ err)             → inj₁ err
            (inj₂ (funs , polys))  →
-             compileAllFuns doOpt (inlineAllWithPoly inlineFuel funs polys)
+             compileAllFuns doOpt funs (buildPolyCtx polys)
 
 -- | Parse source text to a Module AST. Haskell uses this to read
 -- both the user's file and each transitive import before calling
@@ -223,7 +232,7 @@ compileResolvedModule doOpt mod =
   in case extractFunctions aliases mod of λ where
        (inj₁ err)             → inj₁ err
        (inj₂ (funs , polys))  →
-         compileAllFuns doOpt (inlineAllWithPoly inlineFuel funs polys)
+         compileAllFuns doOpt funs (buildPolyCtx polys)
 
 ------------------------------------------------------------------------
 -- Pipeline composition (SurfaceIR → IR)
@@ -326,13 +335,13 @@ compile stage doOpt arch source with parseStrict source
   in case extractFunctions aliases mod of λ where
        (inj₁ err)             → Error err
        (inj₂ (funs , polys))  →
-         let inlined = inlineAllWithPoly inlineFuel funs polys
+         let pctx = buildPolyCtx polys
          in case stage of λ where
            Parse → Parsed funs polys
-           Check → case compileAllFuns doOpt inlined of λ where
+           Check → case compileAllFuns doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) → Checked compiled
-           Build → case compileAllFuns doOpt inlined of λ where
+           Build → case compileAllFuns doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) →
                let target = archTarget arch
@@ -348,13 +357,13 @@ compileFromModule stage doOpt arch mod =
   in case extractFunctions aliases mod of λ where
        (inj₁ err)             → Error err
        (inj₂ (funs , polys))  →
-         let inlined = inlineAllWithPoly inlineFuel funs polys
+         let pctx = buildPolyCtx polys
          in case stage of λ where
            Parse → Parsed funs polys
-           Check → case compileAllFuns doOpt inlined of λ where
+           Check → case compileAllFuns doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) → Checked compiled
-           Build → case compileAllFuns doOpt inlined of λ where
+           Build → case compileAllFuns doOpt funs pctx of λ where
              (inj₁ err) → Error err
              (inj₂ compiled) →
                let target = archTarget arch
