@@ -2907,6 +2907,46 @@ superseded by a D044 recording the migration. D043 remains in the
 log as the record of the intermediate step and the lesson about
 front-loaded vs lifecycle cost framing.
 
+### Migration attempt (2026-04-21, same day): blocked on bare-builtin check-mode
+
+Attempted the migration of pair/compose/curry/apply off the desugaring
+path. C.5-arr worked cleanly because `arr`'s typical argument is a
+user-defined function. The multi-arg NTs hit a different blocker:
+
+Canonical point-free usage `swap = pair snd fst` needs the classifier
+to check `snd` at expected function type `(A * B) ⇒[Many] B`. But
+**bare polymorphic builtins in check mode were explicitly removed in
+plan 0.3 G2** — a deliberate earlier decision that `id`/`fst`/`snd`/...
+must appear applied (as RApp heads) or via imports, never as bare
+RVars. The removal was load-bearing for proof simplification.
+
+The desugaring route sidesteps this because `pair snd fst ↦ λx → (snd
+x, fst x)` wraps `snd`/`fst` in RApps inside the lambda body, where
+the classifier's infer-mode path handles them.
+
+Three paths forward, each with real cost:
+
+1. **Re-introduce bare-builtin check-mode clauses.** Reverses the G2
+   decision. Requires updating the removed clauses' proofs across
+   Elaborate / Judgment / Soundness / Completeness / ErrorProofs.
+   Substantial proof work re-done.
+
+2. **Eta-expand inside `checkPair`/`checkCompose`/`checkCurry`.** When
+   an arg is a bare polymorphic builtin RVar, wrap it in `RLam x (RApp
+   builtin (RVar x))` before recursing. Works around the gap locally.
+   Partial duplication of desugaring logic inside classifier helpers
+   — loses the "clean classifier vs desugaring" separation.
+
+3. **Keep the hybrid.** Classifier for `arr`; desugaring for
+   pair/compose/curry/apply. Accepts permanently worse diagnostics
+   for the lambda-reducible NTs in exchange for not taking on (1)
+   or (2). This is the **currently-landed state** (commits
+   `092d70d6`/`b32f8d0e`/`272e2fab`/`e7b984e5`).
+
+**Current status: parked at hybrid.** The full migration is deferred
+until either path (1) or (2) is specifically chosen and scheduled.
+D043 stays the governing decision for now.
+
 ### See Also
 
 - D001: Generators as Reserved Words
