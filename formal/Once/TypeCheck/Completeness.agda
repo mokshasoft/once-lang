@@ -462,7 +462,7 @@ open Once.TypeCheck.Judgment
          t-annot; t-pair; t-neg; t-let; t-case;
          t-binop-arith; t-binop-cmp;
          t-id-app; t-fst-app; t-snd-app; t-terminal-app; t-app; t-effApp;
-         t-embed; t-lam; t-id-check)
+         t-embed; t-lam; t-id-check; t-pair-check)
 
 
 ------------------------------------------------------------------------
@@ -478,6 +478,7 @@ open Once.TypeCheck.Elaborate
   using (checkElab-fallback-RInt; checkElab-fallback-RStringLit;
          checkElab-fallback-RUnit; checkElab-fallback-RVar-unit;
          checkElab-fallback-RVar-id;
+         checkElab-fallback-RApp-pair;
          checkElab-fallback-RQualified; checkElab-fallback-RAnnot;
          checkElab-fallback-RPair; checkElab-fallback-RLet;
          checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
@@ -662,3 +663,11 @@ mutual
   -- the specialised `specId` emission with `zeroUsage`.
   check-complete {ctx} (t-id-check {T = T} localN importN) =
     checkElab-fallback-RVar-id {ctx} T localN importN
+  -- Plan 0.6 Phase C.7 POC-2: applied `pair f g` check-mode. The
+  -- recursive check-complete calls on f and g give the
+  -- inferElab-success equations threaded through the fallback
+  -- helper.
+  check-complete (t-pair-check {f = f} {g = g} {A = A} {B = B} {C = C} d₁ d₂) =
+    let (_ , _ , _ , eq₁) = check-complete d₁
+        (_ , _ , _ , eq₂) = check-complete d₂
+    in checkElab-fallback-RApp-pair f g A B C eq₁ eq₂

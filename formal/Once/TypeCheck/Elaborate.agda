@@ -642,6 +642,7 @@ data PolyBuiltinApp : Set where
   pba-id pba-fst pba-snd pba-terminal : PolyBuiltinApp  -- infer-mode successes
   pba-inl pba-inr pba-initial : PolyBuiltinApp          -- infer-mode rejections
   pba-arr : PolyBuiltinApp                              -- Eff lift, infer mode
+  pba-pair-applied : PolyBuiltinApp                     -- `RApp (RVar "pair") _` head, check mode
 
 -- | Classify an application head. `just <pba>` iff the head is an
 -- `RVar` bound to one of the seven polymorphic builtins; `nothing`
@@ -664,6 +665,13 @@ classifyAppHead (Raw.RVar x) with StrProp._≟_ x "id"
 ...             | no  _ with StrProp._≟_ x "arr"
 ...               | yes _ = just pba-arr
 ...               | no  _ = nothing
+-- Applied-form head: `RApp (RVar "pair") _`. Needed for the check-mode
+-- classifier dispatch on the 2-arg curried form `pair f g`
+-- (plan 0.6 Phase C.7 POC-2).
+classifyAppHead (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
+... | yes _ = just pba-pair-applied
+... | no  _ = nothing
+classifyAppHead (Raw.RApp _ _) = nothing
 classifyAppHead _ = nothing
 
 -- | View-type classification of an application head. Each constructor
@@ -684,6 +692,7 @@ data AppHeadView : RawExpr → Set where
   ahv-inr      : AppHeadView (Raw.RVar "inr")
   ahv-initial  : AppHeadView (Raw.RVar "initial")
   ahv-arr      : AppHeadView (Raw.RVar "arr")
+  ahv-pair-applied : ∀ {f'} → AppHeadView (Raw.RApp (Raw.RVar "pair") f')
   ahv-other    : ∀ {f} → AppHeadView f
 
 classifyAppHeadView : (f : RawExpr) → AppHeadView f
@@ -704,6 +713,9 @@ classifyAppHeadView (Raw.RVar x) with StrProp._≟_ x "id"
 ...             | no  _ with StrProp._≟_ x "arr"
 ...               | yes refl = ahv-arr
 ...               | no  _ = ahv-other
+classifyAppHeadView (Raw.RApp (Raw.RVar x) _) with StrProp._≟_ x "pair"
+... | yes refl = ahv-pair-applied
+... | no  _    = ahv-other
 classifyAppHeadView (Raw.RApp _ _)            = ahv-other
 classifyAppHeadView (Raw.RQualified _ _)      = ahv-other
 classifyAppHeadView (Raw.RLam _ _)            = ahv-other
@@ -726,7 +738,26 @@ classifyAppHead-nothing⇒view-other :
   ∀ {f} → classifyAppHead f ≡ nothing → classifyAppHeadView f ≡ ahv-other
 -- Non-RVar heads: both classifyAppHead and classifyAppHeadView
 -- reduce definitionally to their respective nothing / ahv-other.
-classifyAppHead-nothing⇒view-other {Raw.RApp _ _}           _ = refl
+-- Plan 0.6 Phase C.7 POC-2: the RApp case now has a nested match
+-- on `RApp (RVar "pair") _`. Split: if head is `RVar "pair"`,
+-- classifyAppHead returns `just pba-pair-applied` (so the premise
+-- `≡ nothing` is impossible); otherwise uniform `refl`.
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar s) _} p with StrProp._≟_ s "pair"
+... | yes _ with p
+...   | ()
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RVar _) _} _ | no _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RApp _ _) _}       _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RQualified _ _) _} _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLam _ _) _}       _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RLet _ _ _) _}     _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RPair _ _) _}      _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RDestruct _ _ _ _ _) _} _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp Raw.RUnit _}            _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RInt _) _}         _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RStringLit _) _}   _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RAnnot _ _) _}     _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RBinOp _ _ _) _}   _ = refl
+classifyAppHead-nothing⇒view-other {Raw.RApp (Raw.RUnaryOp _ _) _}   _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RQualified _ _}     _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RLam _ _}           _ = refl
 classifyAppHead-nothing⇒view-other {Raw.RLet _ _ _}         _ = refl
@@ -783,6 +814,10 @@ mutual
   -- RVar dispatch helper (plan 0.6 Phase C.7 POC-1). Separates
   -- specialised bare-builtin handling from the generic lookup path.
   checkElab-RVar : (ctx : NamedCtx) → (x : String) → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
+  -- Pair classifier helper (plan 0.6 Phase C.7 POC-2). Checks a
+  -- 2-arg `pair f g` expression in check mode against the canonical
+  -- `A ⇒[Many] (B * C)` shape.
+  checkPair : (ctx : NamedCtx) → (pairHead arg : RawExpr) → (T : Type) → CheckElabResult (NamedCtx.debruijn ctx) T
 
   -- ===== inferElab =====
 
@@ -879,6 +914,10 @@ mutual
     failure InrInInferMode
   inferElab ctx (Raw.RApp _ _) | ahv-initial =
     failure InitialInInferMode
+  -- `pair f g` requires a check-mode expected type to determine
+  -- A, B, C. Reject in infer mode (plan 0.6 Phase C.7 POC-2).
+  inferElab ctx (Raw.RApp _ _) | ahv-pair-applied =
+    failure (BuiltinTypeMismatch "pair")
   -- Generic application: infer f as function type, then x.
   inferElab ctx (Raw.RApp f x) | ahv-other with asFun (inferElab ctx f)
   ... | notFun err = failure err
@@ -1071,6 +1110,12 @@ mutual
   checkElab ctx (Raw.RApp f arg) T | ahv-arr | (_ Once.Type.⇒[ _ ] _) = failure (TypeMismatch T T)
   checkElab ctx (Raw.RApp f arg) T | ahv-arr | μ-type _     = failure (TypeMismatch T T)
   checkElab ctx (Raw.RApp f arg) T | ahv-arr | ν-type _     = failure (TypeMismatch T T)
+  -- `pair f g` check-mode dispatch (plan 0.6 Phase C.7 POC-2).
+  -- The view index on `ahv-pair-applied` guarantees `f = Raw.RApp
+  -- (Raw.RVar "pair") f_inner`; `checkPair` pattern-matches to
+  -- extract `f_inner` and checks both sub-expressions against the
+  -- expected `A ⇒[Many] (B * C)` shape.
+  checkElab ctx (Raw.RApp f arg) T | ahv-pair-applied = checkPair ctx f arg T
   checkElab ctx (Raw.RApp f arg) T | ahv-other with inferElab ctx (Raw.RApp f arg)
   ... | failure err = failure err
   ... | success T' Ψ eE d fr with T ≟T T'
@@ -1130,6 +1175,27 @@ mutual
   ... | yes refl = success _ (weakenFromEmpty (specId A)) 0 (NamedCtx.freshCounter ctx)
   ... | no _ = failure (BuiltinTypeMismatch "id")
   checkElab-RVar ctx x _ | yes refl | failure err = failure err
+
+  -- Plan 0.6 Phase C.7 POC-2: bare `pair f g` check-mode.
+  -- Expected type must be `A ⇒[Many] (B * C)`. Checks each
+  -- component function at its projected arrow shape, then emits
+  -- `app (app specPair fE) gE`. No lookup-first branch: the
+  -- classifier's `ahv-pair-applied` dispatch already establishes
+  -- disjointness with `t-embed (t-app …)` — t-app's premise
+  -- `classifyAppHead f ≡ nothing` fails for the pair-applied shape.
+  checkPair ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg
+            (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.* C))
+    with checkElab ctx f_inner (A Once.Type.⇒[ Once.Type.Many ] B)
+  ... | failure err = failure err
+  ... | success Ψf fE df frf with checkElab ctx arg (A Once.Type.⇒[ Once.Type.Many ] C)
+  ...   | failure err = failure err
+  ...   | success Ψg gE dg frg =
+          success _
+            (Surface.app (Surface.app (weakenFromEmpty (specPair A B C)) fE) gE)
+            (suc (df Data.Nat.⊔ dg)) frg
+  -- Any other shape falls through to failure. Consistent with
+  -- ahv-inl's per-shape exhaustive enumeration pattern.
+  checkPair _ _ _ _ = failure (BuiltinTypeMismatch "pair")
 
 ------------------------------------------------------------------------
 -- Generic-fallback lemmas (G2 completeness — check-mode).
@@ -1301,6 +1367,28 @@ checkElab-fallback-RVar-id {ctx} T localN importN
   rewrite localN | importN with T ≟T T
 ... | yes refl = _ , _ , _ , refl
 ... | no ¬eq   = ⊥-elim (¬eq refl)
+
+-- Plan 0.6 Phase C.7 POC-2: applied `pair f g` at canonical
+-- `A ⇒[Many] (B * C)` shape. Given check-mode elab successes for
+-- both f and g, the specialised classifier dispatch
+-- (`ahv-pair-applied`) emits the `app (app specPair fE) gE` Surface
+-- IR. This helper threads the two sub-equations through the
+-- pattern-matching reduction chain to close completeness.
+checkElab-fallback-RApp-pair :
+  ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
+    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (A Once.Type.⇒[ Once.Type.Many ] B)}
+    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.Many ] C)}
+    {d_f f_f d_g f_g : ℕ}
+  → checkElab ctx f (A Once.Type.⇒[ Once.Type.Many ] B) ≡ success Ψ₁ eE_f d_f f_f
+  → checkElab ctx g (A Once.Type.⇒[ Once.Type.Many ] C) ≡ success Ψ₂ eE_g d_g f_g
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+      checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "pair") f) g)
+                    (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.* C))
+        ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
+                    Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
+checkElab-fallback-RApp-pair {ctx} f g A B C eq_f eq_g
+  rewrite eq_f | eq_g = _ , _ , _ , refl
 
 -- RApp (RVar "id") arg: no specialised check clause for "id" as app head
 -- (only "inl"/"inr"/"initial" are specialised). Falls to fallback.

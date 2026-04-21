@@ -273,6 +273,25 @@ mutual
                → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
                → ctx ⊢ᶜ RVar "id" ∶ (T Once.Type.⇒[ Once.Type.Many ] T) ⨾ Surface.zeroUsage
 
+    -- | Applied `pair f g` in check mode at the canonical
+    -- `A ⇒[Many] (B * C)` shape. Plan 0.6 Phase C.7 POC-2.
+    -- Disjoint from `t-embed (t-app …)` by construction: t-app's
+    -- `classifyAppHead f ≡ nothing` premise fails for the
+    -- `RApp (RVar "pair") _` head shape (classifyAppHead returns
+    -- `just pba-pair-applied`). The rule's two premises thread
+    -- check-mode derivations for each component function; the
+    -- conclusion's Ψ is their sum (matching the Surface IR
+    -- `app (app specPair fE) gE`, where specPair contributes zero
+    -- usage).
+    t-pair-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
+                   {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
+                 → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.Many ] B) ⨾ Ψ₁
+                 → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.Many ] C) ⨾ Ψ₂
+                 → ctx ⊢ᶜ RApp (RApp (RVar "pair") f) g
+                          ∶ (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.* C))
+                          ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
+                              Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
+
 ------------------------------------------------------------------------
 -- Backward-compatible alias
 --

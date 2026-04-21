@@ -148,6 +148,11 @@ expandBuiltins (RApp (RApp (RApp (RVar "pair") f) g) arg) =
         (RApp (expandBuiltins g) (expandBuiltins arg))
 expandBuiltins (RApp (RApp (RApp (RVar "compose") f) g) arg) =
   RApp (expandBuiltins f) (RApp (expandBuiltins g) (expandBuiltins arg))
+-- Plan 0.6 Phase C.7 POC-2: classifier route (`ahv-pair-applied`)
+-- now handles `pair f g` directly once all its sub-expressions have
+-- bare-builtin check-mode support (POC-3+). For now the desugaring
+-- is kept as the active path; removing it awaits bare `fst`/`snd`
+-- check-mode clauses.
 expandBuiltins (RApp (RApp (RVar "pair") f) g) =
   RLam pairDesugarVar (RPair (RApp (expandBuiltins f) (RVar pairDesugarVar))
                               (RApp (expandBuiltins g) (RVar pairDesugarVar)))
