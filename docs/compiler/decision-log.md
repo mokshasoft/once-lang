@@ -3115,3 +3115,108 @@ as future work.
 - **G2 decision** (plan 0.3, 2026-04-17) — the specialised
   bare-builtin check-mode removal that D044 reverses
 - Plan 0.6.1 Phase C.7 — migration implementation track
+- **D045** (below) — fully supersedes D043's desugaring-fallback
+  story via typecheck-time polymorphic schema instantiation
+
+---
+
+## D045: Polymorphic Schema Instantiation, Supersedes D043/D044's Fallback
+
+**Date**: 2026-04-21
+**Status**: Accepted
+
+### Context
+
+D043 introduced desugaring of multi-arg NTs at parser level; D044
+added classifier machinery for the same but kept the desugaring as
+a fallback for cases the classifier's per-NT infer-mode couldn't
+handle (e.g. `compose f (pair …)` — pair has no infer-mode because
+its polymorphic schema's result has no canonical ground shape).
+
+The desugaring fallback was honest but kept two sources of truth in
+the compiler: parser-level rewrites + classifier entries. Error
+messages referenced desugar-fresh variables like `$pair_x`. Runtime
+equivalence to `IR.pair` etc. depended on the optimiser's β/η laws
+to collapse the lambda+pair+app shapes.
+
+### Decision
+
+Replace the inlining pipeline with **typecheck-time polymorphic
+schema instantiation**. A user-declared `PolyFunInfo` is threaded
+through `NamedCtx.polys` (a new field), and each call site
+instantiates the schema against the call-site expected type,
+recursively typechecking the body at the resulting ground type.
+
+For cases where only one side of a poly arrow is known (e.g. `g` in
+`compose f g` at check `A → C` — only `A` is known), a new helper
+`composeArgB : NamedCtx → RawExpr → Type → Maybe Type` structurally
+derives the codomain from the poly schema's domain, bare-builtin
+canonical types (fst/snd/id/terminal), or nothing. The derived type
+then drives `checkElab` on the poly body.
+
+### Architecture (landed commits, plan 0.6.2)
+
+| Phase | Commit | Scope |
+|---|---|---|
+| 1 | `723397a9` | `instantiate` / `applySubst` / `schemaArrowCodomain` primitives in `Once.Type` |
+| 2 | `c6fa984d` | `PolyCtx` field on `NamedCtx`, plumbing |
+| 3a | `eceb23d2` | `checkElab-RVar` poly-lookup fallback |
+| 3b | `b854daf2` | `checkCompose` poly fallback via `composeArgB` |
+| 5 | `3dac99a8` | Remove inlining pipeline (-891 LoC) |
+
+### Consequences
+
+**User-facing gains:**
+
+- Errors for polymorphic code reference user-written names
+  (`swap`, `pair`, etc.) — no more `$pair_x` / `$compose_x`
+  leakage from desugar-fresh variables.
+- Direct `IR.pair` / `IR.compose` emission — no β/η-fusion
+  dependency for runtime equivalence.
+- `swap = pair snd fst` at any ground instantiation compiles once
+  per unique instantiation (schema-driven, cache-friendly).
+
+**Architectural:**
+
+- Single source of truth for poly-to-ground resolution: the
+  `PolyCtx` field threaded through typecheck.
+- `Once.Parser.Inline` empty; parser is pure syntactic
+  transformation, no semantic rewrites.
+- D007-compatible: `instantiate` is structural template matching,
+  not unification. No meta-variables.
+
+**Proof-side cost:**
+
+- `checkElab-RVar`'s poly branch recursively calls `checkElab` on
+  the poly body — Agda's structural termination checker can't see
+  this. Currently annotated with `{-# TERMINATING #-}` as a pragma
+  with informally-stated justification (poly bodies form a DAG in
+  well-formed code). A principled follow-up either threads fuel
+  through the recursion or removes each poly name from `PolyCtx`
+  during its body's specialisation, giving a natural decreasing
+  measure. Tracked in plan 0.6.2 Phase 3.
+- Judgment rule `t-var-poly-instantiate` and its soundness /
+  completeness cases are **not yet added**. Same precedent as
+  `ahv-inl` / `ahv-inr` / `ahv-initial` and the POC-3
+  classifier entries: elab coverage landed without per-case
+  judgment rules because no existing theorem forces coverage.
+  A future pass can add the rule + cases for full principled
+  coverage. Tracked in plan 0.6.2 Phase 4.
+
+**Relationship to D043 / D044:**
+
+- **D043** (desugaring approach): *superseded in full*. The
+  desugarings removed from `Parser.Inline` were the final piece.
+- **D044** (classifier approach): *compatible and coexisting*.
+  The classifier entries (pair/compose/curry/apply) are still
+  the check-mode elaboration path. D045 adds the `PolyCtx` layer
+  underneath so the classifier entries can recurse into poly
+  sub-expressions without desugaring fallback.
+
+### See Also
+
+- D043 / D044 — the two-step migration that D045 finalises
+- Plan 0.6.2 — implementation plan with 6 phases (2 remaining:
+  judgment rules + soundness/completeness proofs for poly path;
+  and termination principlization)
+- Plan 0.6.1 — overarching Phase C implementation track
