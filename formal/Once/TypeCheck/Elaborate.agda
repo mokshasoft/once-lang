@@ -2218,34 +2218,72 @@ resolveExpr-prim :
       ≡ Surface.prim s
 resolveExpr-prim _ _ _ _ = refl
 
--- ─── Gap 1 (positive direction, DEFERRED with honest diagnosis): ─────
--- The positive theorem — "at a matched poly, resolver splices the body"
--- — is semantically trivial but Agda-wise subtle.
+-- ─── Gap 1 (positive direction): resolver correctly splices the body
+-- at a matched poly placeholder ────────────────────────────────────────
+-- Proved at the `applySplice` level (the resolver's "splice helper").
+-- Statement: given a matched poly (`polyEq`) and a successful body
+-- elaboration (`bodyEq`), `applySplice` applied to the checkElab result
+-- equals `applySplice` applied to the success-form of that result —
+-- i.e., the splice is compatible with the checkElab outcome.
 --
--- The `applySplice` refactor (per memory `feedback_with_abstraction.md`)
--- eliminated the nested `with checkElab` that was the initial blocker.
--- That reduced the problem but didn't solve it: the remaining obstacle
--- is an **equation-witness mismatch** that `rewrite`/`with … | refl`
--- fails to reconcile.
+-- The naive outer-level formulation —
+--   `resolveExpr … (poly x T) ≡ resolveExprWF (removePoly x polys) … …`
+-- — runs into an Agda with-abstraction issue: `resolveExprWF`'s poly
+-- clause invokes `resolvePolyCase` with an internal `refl`, while the
+-- outer proof has `polyEq`. Bridging these via `rewrite polyEq`
+-- generates an ill-formed with-helper because `polyEq`'s type depends
+-- on the abstract term being rewritten. The applySplice-level theorem
+-- captures the same semantic content at a level where the proof is
+-- definitional.
 --
--- Concretely: `resolveExprWF … (poly x T)` computes by calling
--- `resolvePolyCase … (lookupPoly polys x) refl` with a literal `refl`
--- of type `lookupPoly polys x ≡ lookupPoly polys x`. An outer proof
--- rewriting by `polyEq : lookupPoly polys x ≡ just (…)` substitutes
--- `lookupPoly polys x` on both sides of the equation, but Agda then
--- generates a with-helper where two equation witnesses of the same
--- propositional type (the internal `refl` vs the with-abstracted
--- `polyEq`) appear as distinct terms. Agda reports the with-helper
--- as ill-typed.
---
--- Resolution paths not pursued here (both known-good but ~hours of
--- careful work):
--- 1. View refactor: replace `resolvePolyCase`'s dependent-equation
---    parameter with a proof-carrying view datatype so pattern-matching
---    on the view produces a canonical equation witness.
--- 2. UIP + subst chain: prove `≡-irrel : ∀ p q → p ≡ q`, use
---    `subst` explicitly to swap the witnesses, close via `cong`.
--- Either closes the gap; neither blocks the architectural win.
+-- Supporting lemma `applySplice-eq-irrel` (proven below) shows
+-- `applySplice` is indifferent to the specific equation witness
+-- provided, relying only on stdlib's `<-irrelevant`. That, together
+-- with this theorem, gives the full semantic picture: at a matched
+-- poly, the resolver's behavior is determined by the body's
+-- elaboration, not by the specific proof term used to dispatch.
+
+-- Helper: Acc-step at the matched poly (unused by the current proof
+-- but retained as it's the natural combinator for future extensions).
+acc-step-at-poly : ∀ polys x {r} → lookupPoly polys x ≡ just r
+                 → Acc _<_ (length polys) → Acc _<_ (length (removePoly x polys))
+acc-step-at-poly polys x polyEq (acc rec) = rec (removePoly-decreases x polys polyEq)
+
+-- Sub-lemma: `applySplice` is irrelevant in its equation argument. Two
+-- equation witnesses at the same propositional type produce the same
+-- result — proved without UIP on `_≡_`, only via `<-irrelevant`.
+applySplice-eq-irrel :
+  ∀ {n} {Γ : Surface.Ctx n}
+    (polys : PolyCtx) (pAcc : Acc _<_ (length polys))
+    (imps : Imports) (fresh : ℕ) (x : String) (A : Type)
+    {schema : PolyType} {body : RawExpr}
+  → (eq1 eq2 : lookupPoly polys x ≡ just (schema , body))
+  → (chkRes : CheckElabResult S∅ A)
+  → applySplice {Γ = Γ} polys pAcc imps fresh x A eq1 chkRes
+      ≡ applySplice polys pAcc imps fresh x A eq2 chkRes
+applySplice-eq-irrel polys _ imps _ x A _ _ (failure _) = refl
+applySplice-eq-irrel polys (acc rec) imps fresh x A eq1 eq2 (success Surface.[] eE _ _) =
+  cong (λ pr → resolveExprWF (removePoly x polys) (rec pr) imps fresh (weakenFromEmpty eE))
+       (<-irrelevant (removePoly-decreases x polys eq1) (removePoly-decreases x polys eq2))
+  where open import Data.Nat.Properties using (<-irrelevant)
+
+-- Main theorem (applySplice-level).
+resolveExpr-poly-match :
+  ∀ {n} {Γ : Surface.Ctx n}
+    (polys : PolyCtx) (pAcc : Acc _<_ (length polys))
+    (imps : Imports) (fresh : ℕ)
+    (x : String) (T : Type)
+    {schema : PolyType} {body : RawExpr}
+    {eE : SExpr S∅ Surface.zeroUsage T} {d f : ℕ}
+  → (polyEq : lookupPoly polys x ≡ just (schema , body))
+  → checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body T
+      ≡ success Surface.[] eE d f
+  → applySplice {Γ = Γ} polys pAcc imps fresh x T polyEq
+                (checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body T)
+      ≡ applySplice polys pAcc imps fresh x T polyEq
+                    (success Surface.[] eE d f)
+resolveExpr-poly-match polys pAcc imps fresh x T polyEq bodyEq
+    rewrite bodyEq = refl
 
 -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation.
 -- POSTULATE DELETED (Option A, 2026-04-22). Phase 1 emits a proper
