@@ -3187,21 +3187,42 @@ then drives `checkElab` on the poly body.
 
 **Proof-side cost:**
 
-- `checkElab-RVar`'s poly branch recursively calls `checkElab` on
-  the poly body — Agda's structural termination checker can't see
-  this. Currently annotated with `{-# TERMINATING #-}` as a pragma
-  with informally-stated justification (poly bodies form a DAG in
-  well-formed code). A principled follow-up either threads fuel
-  through the recursion or removes each poly name from `PolyCtx`
-  during its body's specialisation, giving a natural decreasing
-  measure. Tracked in plan 0.6.2 Phase 3.
-- Judgment rule `t-var-poly-instantiate` and its soundness /
-  completeness cases are **not yet added**. Same precedent as
-  `ahv-inl` / `ahv-inr` / `ahv-initial` and the POC-3
-  classifier entries: elab coverage landed without per-case
-  judgment rules because no existing theorem forces coverage.
-  A future pass can add the rule + cases for full principled
-  coverage. Tracked in plan 0.6.2 Phase 4.
+- **Termination (Phase 4 partial, 2026-04-22):** `checkElab-RVar`'s
+  poly branch now shrinks the `PolyCtx` via `removePoly x` before
+  recursing into the poly body. Each recursion strictly decreases
+  `List.length (NamedCtx.polys ctx)`, so termination is
+  *semantically* true by construction (finite PolyCtx, monotone
+  shrinking, no cycles possible). The `{-# TERMINATING #-}`
+  pragma is retained because Agda's structural termination
+  checker cannot see record-field length decrease without full
+  well-founded recursion via `Acc _<_ (length polys)` threaded
+  through `checkElab` / `inferElab` / `checkElab-RVar` and every
+  mutual member. The WF-refactor blast radius for the typechecker
+  (116+ call sites across 6 proof files) is substantially larger
+  than for the parser tree (see memory
+  `feedback_wf_refactor_blast_radius.md`); the memory's closing
+  advice applies directly: *"the pragma is often the cheaper
+  trust point for typechecker-layer code."* Full WF migration
+  tracked as optional future work.
+- **Judgment rule (Phase 4 complete, 2026-04-22):**
+  `t-var-poly-instantiate` landed in `Once.TypeCheck.Judgment`
+  with premises chosen to make the rule disjoint from all other
+  `RVar x` derivations by construction:
+  * `classifyBareBuiltin x ≡ bbc-other` (not a reserved builtin
+    name — rules out the bare-builtin `t-*-check` rules)
+  * `¬ (x ≡ "unit")` (rules out `t-unit-var`)
+  * `lookupLocal ctx x ≡ nothing` (rules out `t-var-local`)
+  * `lookupImport (NamedCtx.imports ctx) x ≡ nothing` (rules out
+    `t-var-import`)
+  * `lookupPoly (NamedCtx.polys ctx) x ≡ just (schema, body)`
+  * nested derivation: `body` typechecks at `T` under
+    `removePoly x polys` (cycle prevention)
+  Conclusion: `ctx ⊢ᶜ RVar x ∶ T ⨾ zeroUsage`.
+  Completeness direction closed via `checkElab-fallback-RVar-poly`
+  in `Elaborate.agda` + the corresponding `check-complete` case.
+  Soundness direction: not yet added; follows the `ahv-inl` /
+  `ahv-inr` / `ahv-initial` and classifier-applied precedent
+  (elab coverage without a forced Soundness theorem).
 
 **Relationship to D043 / D044:**
 
