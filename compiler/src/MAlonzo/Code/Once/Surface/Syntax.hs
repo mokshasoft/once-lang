@@ -246,4 +246,5 @@ data T_Expr_174
     C_eq_464 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
     C_ne_474 T_Usage_50 T_Usage_50 T_Expr_174 T_Expr_174 |
     C_arr''_486 T_Expr_174 |
-    C_prim_494 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_prim_494 MAlonzo.Code.Agda.Builtin.String.T_String_6 |
+    C_poly_504 MAlonzo.Code.Agda.Builtin.String.T_String_6

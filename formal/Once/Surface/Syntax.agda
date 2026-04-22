@@ -237,3 +237,11 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
 
   -- Primitive reference — uses no variables
   prim    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A
+
+  -- Unresolved polymorphic-def placeholder — Plan 0.6.2 Phase 2.
+  -- Phase 1 (checkElab) emits `poly x T` when encountering a reference
+  -- to a user polymorphic def; Phase 2 (`resolveExpr`) substitutes it
+  -- with the specialized body's elaboration. A well-formed compiled
+  -- Expr reaching IR emission / codegen contains no `poly` nodes —
+  -- downstream consumers reject it as "resolver not run".
+  poly    : ∀ {n} {Γ : Ctx n} (name : String) (T : Type) → Expr Γ zeroUsage T

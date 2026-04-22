@@ -12,7 +12,7 @@ module Once.Surface.Semantics where
 
 open import Once.Type
 open import Once.Semantics.IR using (⟦_⟧)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; prim) renaming (_,_ to _▸_)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; prim; poly) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -133,3 +133,6 @@ evalSurface ρ (arr' f)       = evalSurface ρ f
 -- OCP-0003: roll'/unroll' removed
 -- Primitives: opaque external operations (semantics defined by runtime)
 evalSurface ρ (prim name)    = evalSurfacePrim name
+-- Poly placeholder: if one reaches eval, resolver didn't clean it up.
+-- Treat as an opaque external ref, same as prim.
+evalSurface ρ (poly name _)  = evalSurfacePrim name

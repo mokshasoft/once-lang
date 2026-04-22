@@ -3185,44 +3185,71 @@ then drives `checkElab` on the poly body.
 - D007-compatible: `instantiate` is structural template matching,
   not unification. No meta-variables.
 
-**Proof-side cost:**
+**Proof-side cost (FINAL, 2026-04-22):**
 
-- **Termination (Phase 4 partial, 2026-04-22):** `checkElab-RVar`'s
-  poly branch now shrinks the `PolyCtx` via `removePoly x` before
-  recursing into the poly body. Each recursion strictly decreases
-  `List.length (NamedCtx.polys ctx)`, so termination is
-  *semantically* true by construction (finite PolyCtx, monotone
-  shrinking, no cycles possible). The `{-# TERMINATING #-}`
-  pragma is retained because Agda's structural termination
-  checker cannot see record-field length decrease without full
-  well-founded recursion via `Acc _<_ (length polys)` threaded
-  through `checkElab` / `inferElab` / `checkElab-RVar` and every
-  mutual member. The WF-refactor blast radius for the typechecker
-  (116+ call sites across 6 proof files) is substantially larger
-  than for the parser tree (see memory
-  `feedback_wf_refactor_blast_radius.md`); the memory's closing
-  advice applies directly: *"the pragma is often the cheaper
-  trust point for typechecker-layer code."* Full WF migration
-  tracked as optional future work.
-- **Judgment rule (Phase 4 complete, 2026-04-22):**
-  `t-var-poly-instantiate` landed in `Once.TypeCheck.Judgment`
-  with premises chosen to make the rule disjoint from all other
-  `RVar x` derivations by construction:
-  * `classifyBareBuiltin x ≡ bbc-other` (not a reserved builtin
-    name — rules out the bare-builtin `t-*-check` rules)
-  * `¬ (x ≡ "unit")` (rules out `t-unit-var`)
-  * `lookupLocal ctx x ≡ nothing` (rules out `t-var-local`)
-  * `lookupImport (NamedCtx.imports ctx) x ≡ nothing` (rules out
-    `t-var-import`)
-  * `lookupPoly (NamedCtx.polys ctx) x ≡ just (schema, body)`
-  * nested derivation: `body` typechecks at `T` under
-    `removePoly x polys` (cycle prevention)
-  Conclusion: `ctx ⊢ᶜ RVar x ∶ T ⨾ zeroUsage`.
-  Completeness direction closed via `checkElab-fallback-RVar-poly`
-  in `Elaborate.agda` + the corresponding `check-complete` case.
-  Soundness direction: not yet added; follows the `ahv-inl` /
-  `ahv-inr` / `ahv-initial` and classifier-applied precedent
-  (elab coverage without a forced Soundness theorem).
+Initial Phase 4 estimate flagged termination as "pragma + semantic
+guard" due to projected WF-refactor blast radius (116+ proof-file
+call sites). That estimate assumed preserving the interleaved
+typecheck-and-resolve architecture. A session pivot (2026-04-22)
+lifted to a **two-phase architecture** that flipped the cost:
+
+- **Phase 1 — structural typechecker.** `checkElab-RVar`'s poly
+  fallback now emits a `Surface.poly x T` placeholder constructor
+  (added to `Once.Surface.Syntax.Expr`) rather than recursing into
+  the body. The mutual block becomes purely structural on
+  `RawExpr`; **no TERMINATING pragma needed** on `checkElab` /
+  `inferElab` / `checkElab-RVar` or any mutual member. All 151+
+  internal sites and all downstream proof files reduce through a
+  machine-verified terminating function.
+
+- **Phase 2 — well-founded resolver.** A new `resolveExpr`
+  tree-walk (in `Once.TypeCheck.Elaborate`) substitutes each
+  `Surface.poly x T` placeholder with the specialised body's
+  elaboration. Written with explicit `Acc _<_ (length polys)` as
+  a direct argument, so Agda's lex termination checker accepts
+  it without a pragma. Localised to one non-mutual function
+  (split into `resolveExprWF` + `resolvePolyCase` helpers);
+  downstream proofs untouched.
+
+- **Encoding choice (Option A).** An intermediate design used a
+  string-encoded `prim ("poly:" ++ x)` placeholder (reusing the
+  existing `prim` constructor). It worked but overloaded `prim`'s
+  semantics, left cycles silently miscompiled (unresolved prims
+  became external function calls at codegen), and required
+  string-concatenation cancellation lemmas for proofs. Upgraded
+  to a proper `poly` constructor (~6 file touches, ~1 hour):
+  cycle safety via Agda's coverage checker, no string encoding,
+  direct constructor pattern-match in the resolver.
+
+- **Judgment rule `t-var-poly-instantiate`:** premises and
+  conclusion unchanged from the earlier design. Disjointness
+  premises (`classifyBareBuiltin x ≡ bbc-other`, `¬ (x ≡ "unit")`,
+  `lookupLocal ≡ nothing`, `lookupImport ≡ nothing`,
+  `lookupPoly ≡ just (schema, body)`) still make the rule
+  disjoint from all other `RVar x` derivations by construction.
+  The body-derivation premise is retained for semantic
+  soundness but — architecturally important — is no longer used
+  by the typechecker-completeness proof.
+
+- **Completeness:** `checkElab-fallback-RVar-poly` in
+  `Elaborate.agda` is now a **proven lemma**, no longer a
+  postulate. The existential-quantification trick: the signature
+  requires `∃ eE`, and `Surface.poly x T` is a valid witness
+  under Phase 1 — body's elaboration is the resolver's job, not
+  the typechecker's. The `bodyE` premise remains in the signature
+  for caller compatibility but is unused in the proof.
+
+- **Soundness:** not added for the poly case; follows the
+  `ahv-inl` / `ahv-inr` / `ahv-initial` precedent (elab coverage
+  without a forced Soundness theorem).
+
+**Final state (typecheck verification layer):**
+
+- Zero `{-# TERMINATING #-}` pragmas
+- Zero postulates
+- Zero downstream proof files modified (beyond the one `check-complete`
+  case that was already threading the body derivation through)
+- `tests/poly-defs.once` passes end-to-end via the new pipeline
 
 **Relationship to D043 / D044:**
 
@@ -3237,7 +3264,8 @@ then drives `checkElab` on the poly body.
 ### See Also
 
 - D043 / D044 — the two-step migration that D045 finalises
-- Plan 0.6.2 — implementation plan with 6 phases (2 remaining:
-  judgment rules + soundness/completeness proofs for poly path;
-  and termination principlization)
+- Plan 0.6.2 — implementation plan with 6 phases (all complete)
 - Plan 0.6.1 — overarching Phase C implementation track
+- Memory `feedback_load_bearing_lemma_poc.md` — the two-gate POC
+  discipline that surfaced the lift-to-nested insight before the
+  full refactor was committed

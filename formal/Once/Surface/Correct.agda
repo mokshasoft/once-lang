@@ -14,7 +14,7 @@ open import Once.Type
 open import Once.CCC.IR
 open import Once.Semantics.IR as IR using (⟦_⟧; eval′)
 -- Using eval′ (backward-compatible non-parameterized eval)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; prim) renaming (_,_ to _▸_; eq to eq')
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; prim; poly) renaming (_,_ to _▸_; eq to eq')
 open Once.Surface.Syntax.Usage using ([]; _∷_)
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
@@ -247,6 +247,11 @@ mutual
   -- The primitive has the same name in both Surface and IR semantics
   elaborate-correct ρ (prim name) = prim-correct name
     where postulate prim-correct : ∀ (n : String) → evalSurface ρ (prim n) ≡ eval′ (elaborate (prim n)) (interpEnv ρ)
+  -- Unresolved polymorphic placeholder. Elaborate and evalSurface both
+  -- treat it as an external Prim by unqualified name (cycle/unresolved
+  -- fallback); correctness is the same axiom as `prim`.
+  elaborate-correct ρ (poly name _) = poly-correct name
+    where postulate poly-correct : ∀ (n : String) → evalSurface ρ (poly n _) ≡ eval′ (elaborate (poly n _)) (interpEnv ρ)
 
   -- Helper for comparison correctness
   arith-cmp-correct : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} (ρ : Env Γ)

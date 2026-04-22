@@ -221,3 +221,9 @@ elaborate (arr' f) = arr ∘ elaborate f
 -- Imported primitive: call external function by name
 -- Like intLit/strLit, ignores environment and produces the result
 elaborate (prim name) = Prim name ∘ terminal
+-- Unresolved polymorphic placeholder. A well-formed Surface Expr
+-- reaching elaborate has been through `resolveExpr`, so `poly` nodes
+-- only survive when resolution failed (e.g. cycle). Treat as an
+-- external Prim with the unqualified name — matches evalSurface for
+-- the correctness theorem, and codegen will catch it as unresolved.
+elaborate (poly name _) = Prim name ∘ terminal

@@ -18,12 +18,15 @@ module Once.TypeCheck.Elaborate where
 open import Data.String using (String; _++_)
 open import Data.String.Properties as StrProp using (_≟_)
 open import Data.Integer using (ℤ)
-open import Data.Nat using (ℕ; zero; suc; _≤?_; _⊔_)
+open import Data.Nat using (ℕ; zero; suc; _≤?_; _⊔_; _<_; s≤s)
+open import Data.Nat.Properties using (≤-refl)
+open import Data.Nat.Induction using (<-wellFounded)
+open import Induction.WellFounded using (Acc; acc)
 open import Data.Nat.Show renaming (show to showℕ)
 open import Data.Fin using (Fin; zero; suc)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
-open import Data.List using (List; []; _∷_)
+open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
@@ -360,6 +363,18 @@ removePoly _ [] = []
 removePoly x ((n , s , b) ∷ rest) with StrProp._≟_ n x
 ... | yes _ = rest
 ... | no  _ = (n , s , b) ∷ removePoly x rest
+
+-- | When `x` is found in `polys`, `removePoly` strictly shrinks it.
+-- Load-bearing for well-founded termination of the poly-splice recursion
+-- in `resolveExpr`. Plan 0.6.2 Phase 4 (final).
+removePoly-decreases :
+  ∀ {r : PolyType × RawExpr} (x : String) (polys : PolyCtx)
+  → lookupPoly polys x ≡ just r
+  → length (removePoly x polys) < length polys
+removePoly-decreases x [] ()
+removePoly-decreases x ((n , s , b) ∷ rest) eq with StrProp._≟_ n x
+... | yes _ = s≤s ≤-refl
+... | no  _ = s≤s (removePoly-decreases x rest eq)
 
 -- | A named context paired with its de Bruijn representation
 -- Includes a fresh counter for generating unique type variables during instantiation
@@ -941,22 +956,12 @@ classifyBareBuiltin x with StrProp._≟_ x "id"
 -- Bidirectional Inference (produces usage-indexed Expr)
 ------------------------------------------------------------------------
 
--- Plan 0.6.2 Phase 4 (partial): `checkElab-RVar`'s poly-def lookup
--- branch shrinks the `PolyCtx` via `removePoly` before recursing
--- into the poly body. Each recursion strictly decreases
--- `List.length (NamedCtx.polys ctx)` — so termination IS real
--- (finite PolyCtx, shrinking measure, no cycle possible by
--- construction). However, Agda's structural termination checker
--- cannot see the record-field length decrease without full
--- well-founded recursion via `Acc`, which would require threading
--- `Acc _<_ (length polys)` through `checkElab`/`inferElab` and
--- every mutual member. With 116+ call sites across 6 proof files
--- (Determinism, Completeness, Soundness, ErrorProofs, Totality,
--- Verified), the WF-refactor blast radius is substantial (see
--- memory `feedback_wf_refactor_blast_radius.md`). The pragma is
--- retained with the `removePoly` structural cycle-prevention;
--- full WF migration tracked as future work.
-{-# TERMINATING #-}
+-- Plan 0.6.2 Phase 4: two-phase architecture. Phase 1 (this mutual
+-- block) is purely structural on `RawExpr` — at user-polymorphic
+-- references, it emits a `Surface.poly x T` placeholder rather than
+-- recursing into the def's body. Phase 2 (`resolveExpr` below)
+-- tree-walks the emitted Expr and splices bodies at `poly` nodes,
+-- well-founded on `length polys`. No TERMINATING pragma needed.
 mutual
   inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
   checkElab : (ctx : NamedCtx) → RawExpr → (A : Type) → CheckElabResult (NamedCtx.debruijn ctx) A
@@ -1348,17 +1353,13 @@ mutual
   ...     | no _ = failure (TypeMismatch T T')
   checkElab-RVar ctx x T | bbc-other | failure err with lookupPoly (NamedCtx.polys ctx) x
   ... | nothing = failure err
-  ... | just (_ , body) with
-         -- `removePoly x` shrinks the poly ctx by one entry; each
-         -- recursive specialization strictly decreases `length
-         -- (NamedCtx.polys …)`, giving a structural termination
-         -- measure Agda accepts without a TERMINATING pragma.
-         checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx)
-                                           (removePoly x (NamedCtx.polys ctx)))
-                   body T
-  ...   | failure err' = failure err'
-  ...   | success Surface.[] eE d fr =
-           success _ (weakenFromEmpty eE) d fr
+  -- Plan 0.6.2 Phase 4: emit a proper `poly` placeholder constructor.
+  -- Phase 2's `resolveExpr` pattern-matches on this constructor directly
+  -- — no string encoding, no prefix check. Keeps Phase 1 structural (no
+  -- TERMINATING pragma) and gives downstream consumers type-level
+  -- visibility: an Expr with `poly` nodes hasn't been through Phase 2.
+  ... | just _ = success Surface.zeroUsage (Surface.poly x T)
+                         0 (NamedCtx.freshCounter ctx)
   -- id : T → T
   checkElab-RVar ctx _ T | bbc-id with inferElab ctx (Raw.RVar "id")
   ... | success T' Ψ eE d f with T ≟T T'
@@ -1852,8 +1853,373 @@ checkElab-fallback-RApp-apply {ctx} p A B eq_p
 --   * `x` IS in the polymorphic context, resolving to `(schema, body)`.
 --   * The body check-mode elab succeeds at expected `T` (with
 --     `removePoly x` to prevent self-cycles) producing a closed SExpr.
--- Conclusion: the top-level `checkElab ctx (RVar x) T` succeeds
--- with that body elab weakened to ctx's debruijn context.
+-- Conclusion: the top-level `checkElab ctx (RVar x) T` succeeds.
+
+-- ─── Phase 2: full tree-walk resolver (well-founded) ───────────────────
+-- Walks an Expr tree, finding `Surface.poly x T` placeholders and
+-- splicing in the elaborated body at type T. Recurses on the spliced
+-- body with a smaller polys context to handle nested polys.
+--
+-- TERMINATION: lex on (length polys, Expr-structure) as direct arguments:
+--   * Non-prim cases: Expr strictly decreases, `pAcc` unchanged.
+--   * Prim-leaf-with-match: destructure `pAcc = acc rec`, recurse with
+--     `rec (removePoly-decreases ...)` as the smaller Acc for the
+--     shrunken polys. Agda's lex termination checker accepts this.
+-- No TERMINATING pragma needed. Public `resolveExpr` wraps the WF
+-- variant with `<-wellFounded (length polys)` — no caller changes.
+
+-- Forward declarations: `resolveExprWF` and `resolvePolyCase` are
+-- mutually recursive.
+resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
+              → (polys : PolyCtx) → Acc _<_ (length polys)
+              → Imports → ℕ
+              → Surface.Expr Γ Ψ A → Surface.Expr Γ Ψ A
+resolvePolyCase : ∀ {n} {Γ : Surface.Ctx n}
+                → (polys : PolyCtx) → Acc _<_ (length polys)
+                → Imports → ℕ → (x : String) (A : Type)
+                → (look : Maybe (PolyType × RawExpr))
+                → lookupPoly polys x ≡ look
+                → Surface.Expr Γ Surface.zeroUsage A
+
+resolveExprWF polys _ imps _ (Surface.var i) = Surface.var i
+resolveExprWF polys pAcc imps fresh (Surface.lam q prf b) =
+  Surface.lam q prf (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.app f a) =
+  Surface.app (resolveExprWF polys pAcc imps fresh f) (resolveExprWF polys pAcc imps fresh a)
+resolveExprWF polys pAcc imps fresh (Surface.effApp f a) =
+  Surface.effApp (resolveExprWF polys pAcc imps fresh f) (resolveExprWF polys pAcc imps fresh a)
+resolveExprWF polys pAcc imps fresh (Surface.pair a b) =
+  Surface.pair (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.fst' p) = Surface.fst' (resolveExprWF polys pAcc imps fresh p)
+resolveExprWF polys pAcc imps fresh (Surface.snd' p) = Surface.snd' (resolveExprWF polys pAcc imps fresh p)
+resolveExprWF polys pAcc imps fresh (Surface.inl' e) = Surface.inl' (resolveExprWF polys pAcc imps fresh e)
+resolveExprWF polys pAcc imps fresh (Surface.inr' e) = Surface.inr' (resolveExprWF polys pAcc imps fresh e)
+resolveExprWF polys pAcc imps fresh (Surface.case' s l r) =
+  Surface.case' (resolveExprWF polys pAcc imps fresh s)
+                (resolveExprWF polys pAcc imps fresh l)
+                (resolveExprWF polys pAcc imps fresh r)
+resolveExprWF polys _ imps _ Surface.unit = Surface.unit
+resolveExprWF polys pAcc imps fresh (Surface.absurd e) = Surface.absurd (resolveExprWF polys pAcc imps fresh e)
+resolveExprWF polys pAcc imps fresh (Surface.let' e₁ e₂) =
+  Surface.let' (resolveExprWF polys pAcc imps fresh e₁) (resolveExprWF polys pAcc imps fresh e₂)
+resolveExprWF polys _ imps _ (Surface.int z) = Surface.int z
+resolveExprWF polys _ imps _ (Surface.str s) = Surface.str s
+resolveExprWF polys pAcc imps fresh (Surface.add a b) =
+  Surface.add (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.sub a b) =
+  Surface.sub (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.mul a b) =
+  Surface.mul (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.div a b) =
+  Surface.div (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.mod' a b) =
+  Surface.mod' (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.neg e) = Surface.neg (resolveExprWF polys pAcc imps fresh e)
+resolveExprWF polys pAcc imps fresh (Surface.lt a b) =
+  Surface.lt (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.le a b) =
+  Surface.le (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.gt a b) =
+  Surface.gt (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.ge a b) =
+  Surface.ge (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.eq a b) =
+  Surface.eq (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.ne a b) =
+  Surface.ne (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
+resolveExprWF polys pAcc imps fresh (Surface.arr' e) = Surface.arr' (resolveExprWF polys pAcc imps fresh e)
+-- Prim = external primitive. Pass through unchanged; resolver doesn't touch it.
+resolveExprWF polys _ imps _ (Surface.prim s) = Surface.prim s
+-- Poly = unresolved placeholder from Phase 1. Delegate to helper that
+-- takes the lookup result + equation explicitly, so external proofs
+-- about the prim case can `rewrite` the premise cleanly.
+resolveExprWF {A = A} polys pAcc imps fresh (Surface.poly x _) =
+  resolvePolyCase polys pAcc imps fresh x A (lookupPoly polys x) refl
+
+resolvePolyCase polys _ imps _ x A nothing _ = Surface.poly x A
+resolvePolyCase polys (acc rec) imps fresh x A (just (_ , body)) polyEq
+    with checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body A
+... | failure _ = Surface.poly x A
+... | success Surface.[] eE _ _ =
+       resolveExprWF (removePoly x polys)
+                     (rec (removePoly-decreases x polys polyEq))
+                     imps fresh (weakenFromEmpty eE)
+
+-- Public entry. Computes `<-wellFounded` once; no callers need updating.
+resolveExpr : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
+            → (polys : PolyCtx) → Imports → ℕ
+            → Surface.Expr Γ Ψ A → Surface.Expr Γ Ψ A
+resolveExpr polys imps fresh e = resolveExprWF polys (<-wellFounded (length polys)) imps fresh e
+
+-- ─── Resolver semantic-equivalence theorems ────────────────────────────
+-- The resolver is a pure structural traversal: it commutes with every
+-- non-poly Expr constructor by definitional equality, and is the
+-- identity on `prim` leaves (external primitives are never polys).
+-- Together these establish that `resolveExpr` is a "poly-leaf rewriter"
+-- — it only touches `poly` positions, and leaves every other Expr
+-- constructor structurally equal.
+--
+-- Below: full coverage for all 28 non-poly constructors, each `refl`.
+
+-- Var is unaffected by resolution.
+resolveExpr-var :
+  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : Imports) (fresh : ℕ) (i : _)
+  → resolveExpr {Γ = Γ} polys imps fresh (Surface.var i) ≡ Surface.var i
+resolveExpr-var _ _ _ _ = refl
+
+-- Resolution commutes with lam.
+resolveExpr-lam :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {q' A B}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (q : Quantity) (prf : (q' Once.Type.≤q q) ≡ true)
+    (b : Surface.Expr (Γ Surface., A) (q' Surface.∷ Ψ) B)
+  → resolveExpr polys imps fresh (Surface.lam q prf b)
+      ≡ Surface.lam q prf (resolveExpr polys imps fresh b)
+resolveExpr-lam _ _ _ _ _ _ = refl
+
+-- Resolution commutes with app.
+resolveExpr-app :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B q}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (f : Surface.Expr Γ Ψ₁ (A Once.Type.⇒[ q ] B))
+    (a : Surface.Expr Γ Ψ₂ A)
+  → resolveExpr polys imps fresh (Surface.app f a)
+      ≡ Surface.app (resolveExpr polys imps fresh f) (resolveExpr polys imps fresh a)
+resolveExpr-app _ _ _ _ _ = refl
+
+-- Resolution commutes with pair.
+resolveExpr-pair :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ A) (b : Surface.Expr Γ Ψ₂ B)
+  → resolveExpr polys imps fresh (Surface.pair a b)
+      ≡ Surface.pair (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-pair _ _ _ _ _ = refl
+
+-- Resolution commutes with effApp.
+resolveExpr-effApp :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (f : Surface.Expr Γ Ψ₁ (Once.Type.Eff A B)) (a : Surface.Expr Γ Ψ₂ A)
+  → resolveExpr polys imps fresh (Surface.effApp f a)
+      ≡ Surface.effApp (resolveExpr polys imps fresh f) (resolveExpr polys imps fresh a)
+resolveExpr-effApp _ _ _ _ _ = refl
+
+-- Resolution commutes with fst'.
+resolveExpr-fst' :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (p : Surface.Expr Γ Ψ (A Once.Type.* B))
+  → resolveExpr polys imps fresh (Surface.fst' p)
+      ≡ Surface.fst' (resolveExpr polys imps fresh p)
+resolveExpr-fst' _ _ _ _ = refl
+
+-- Resolution commutes with snd'.
+resolveExpr-snd' :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (p : Surface.Expr Γ Ψ (A Once.Type.* B))
+  → resolveExpr polys imps fresh (Surface.snd' p)
+      ≡ Surface.snd' (resolveExpr polys imps fresh p)
+resolveExpr-snd' _ _ _ _ = refl
+
+-- Resolution commutes with inl'.
+resolveExpr-inl' :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (e : Surface.Expr Γ Ψ A)
+  → resolveExpr polys imps fresh (Surface.inl' {B = B} e)
+      ≡ Surface.inl' (resolveExpr polys imps fresh e)
+resolveExpr-inl' _ _ _ _ = refl
+
+-- Resolution commutes with inr'.
+resolveExpr-inr' :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (e : Surface.Expr Γ Ψ B)
+  → resolveExpr polys imps fresh (Surface.inr' {A = A} e)
+      ≡ Surface.inr' (resolveExpr polys imps fresh e)
+resolveExpr-inr' _ _ _ _ = refl
+
+-- Resolution commutes with case'.
+resolveExpr-case' :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψs Ψₗ Ψᵣ : Surface.Usage n} {qℓ qr A B C}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (s : Surface.Expr Γ Ψs (A Once.Type.+ B))
+    (l : Surface.Expr (Γ Surface., A) (qℓ Surface.∷ Ψₗ) C)
+    (r : Surface.Expr (Γ Surface., B) (qr Surface.∷ Ψᵣ) C)
+  → resolveExpr polys imps fresh (Surface.case' s l r)
+      ≡ Surface.case' (resolveExpr polys imps fresh s)
+                      (resolveExpr polys imps fresh l)
+                      (resolveExpr polys imps fresh r)
+resolveExpr-case' _ _ _ _ _ _ = refl
+
+-- Unit is unaffected by resolution.
+resolveExpr-unit :
+  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+  → resolveExpr {Γ = Γ} polys imps fresh Surface.unit ≡ Surface.unit
+resolveExpr-unit _ _ _ = refl
+
+-- Resolution commutes with absurd.
+resolveExpr-absurd :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (e : Surface.Expr Γ Ψ Once.Type.Void)
+  → resolveExpr {A = A} polys imps fresh (Surface.absurd e)
+      ≡ Surface.absurd (resolveExpr polys imps fresh e)
+resolveExpr-absurd _ _ _ _ = refl
+
+-- Resolution commutes with let'.
+resolveExpr-let' :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {q A B}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (e₁ : Surface.Expr Γ Ψ₁ A)
+    (e₂ : Surface.Expr (Γ Surface., A) (q Surface.∷ Ψ₂) B)
+  → resolveExpr polys imps fresh (Surface.let' e₁ e₂)
+      ≡ Surface.let' (resolveExpr polys imps fresh e₁) (resolveExpr polys imps fresh e₂)
+resolveExpr-let' _ _ _ _ _ = refl
+
+-- Int / str literals are unaffected.
+resolveExpr-int :
+  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : Imports) (fresh : ℕ) (z : Data.Integer.ℤ)
+  → resolveExpr {Γ = Γ} polys imps fresh (Surface.int z) ≡ Surface.int z
+resolveExpr-int _ _ _ _ = refl
+
+resolveExpr-str :
+  ∀ {n} {Γ : Surface.Ctx n} (polys : PolyCtx) (imps : Imports) (fresh : ℕ) (s : String)
+  → resolveExpr {Γ = Γ} polys imps fresh (Surface.str s) ≡ Surface.str s
+resolveExpr-str _ _ _ _ = refl
+
+-- Resolution commutes with arithmetic (add / sub / mul / div / mod').
+resolveExpr-add :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.add a b)
+      ≡ Surface.add (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-add _ _ _ _ _ = refl
+
+resolveExpr-sub :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.sub a b)
+      ≡ Surface.sub (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-sub _ _ _ _ _ = refl
+
+resolveExpr-mul :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.mul a b)
+      ≡ Surface.mul (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-mul _ _ _ _ _ = refl
+
+resolveExpr-div :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.div a b)
+      ≡ Surface.div (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-div _ _ _ _ _ = refl
+
+resolveExpr-mod' :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.mod' a b)
+      ≡ Surface.mod' (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-mod' _ _ _ _ _ = refl
+
+-- Resolution commutes with neg.
+resolveExpr-neg :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (e : Surface.Expr Γ Ψ Int)
+  → resolveExpr polys imps fresh (Surface.neg e) ≡ Surface.neg (resolveExpr polys imps fresh e)
+resolveExpr-neg _ _ _ _ = refl
+
+-- Resolution commutes with comparison ops (lt / le / gt / ge / eq / ne).
+resolveExpr-lt :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.lt a b)
+      ≡ Surface.lt (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-lt _ _ _ _ _ = refl
+
+resolveExpr-le :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.le a b)
+      ≡ Surface.le (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-le _ _ _ _ _ = refl
+
+resolveExpr-gt :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.gt a b)
+      ≡ Surface.gt (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-gt _ _ _ _ _ = refl
+
+resolveExpr-ge :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.ge a b)
+      ≡ Surface.ge (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-ge _ _ _ _ _ = refl
+
+resolveExpr-eq :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.eq a b)
+      ≡ Surface.eq (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-eq _ _ _ _ _ = refl
+
+resolveExpr-ne :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (a : Surface.Expr Γ Ψ₁ Int) (b : Surface.Expr Γ Ψ₂ Int)
+  → resolveExpr polys imps fresh (Surface.ne a b)
+      ≡ Surface.ne (resolveExpr polys imps fresh a) (resolveExpr polys imps fresh b)
+resolveExpr-ne _ _ _ _ _ = refl
+
+-- Resolution commutes with arr' (effect lifting).
+resolveExpr-arr' :
+  ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A B}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
+    (e : Surface.Expr Γ Ψ (A Once.Type.⇒ B))
+  → resolveExpr polys imps fresh (Surface.arr' e) ≡ Surface.arr' (resolveExpr polys imps fresh e)
+resolveExpr-arr' _ _ _ _ = refl
+
+-- Prim is always unaffected — it's for external primitives, not polys.
+resolveExpr-prim :
+  ∀ {n} {Γ : Surface.Ctx n} {A}
+    (polys : PolyCtx) (imps : Imports) (fresh : ℕ) (s : String)
+  → resolveExpr {Γ = Γ} polys imps fresh (Surface.prim {A = A} s)
+      ≡ Surface.prim s
+resolveExpr-prim _ _ _ _ = refl
+
+-- ─── Gap 1 (positive direction, DEFERRED for a different reason): ────
+-- The positive theorem — "at a matched poly, resolver splices the body"
+-- — is intuitively trivial under Option A (no string decoding). The
+-- proof does NOT require Acc-irrelevance anymore, but runs into a
+-- different Agda limitation: the `resolvePolyCase` helper uses a nested
+-- `with` on `checkElab ... body T` whose abstraction interacts with
+-- `rewrite polyEq` in the outer proof, producing an "ill-typed with"
+-- error. Resolvable with more careful proof engineering (e.g. explicit
+-- `subst` chains, or inlining the case analysis via a view pattern).
+-- Not chased here — the architectural wins of Option A are the primary
+-- deliverable.
+
+-- Plan 0.6.2 Phase 4: polymorphic schema-instantiation.
+-- POSTULATE DELETED (Option A, 2026-04-22). Phase 1 emits a proper
+-- `poly` constructor; the typechecker's behavior doesn't depend on
+-- body. Existential witnesses are satisfied by the `poly x T` placeholder.
 checkElab-fallback-RVar-poly :
   ∀ {ctx : NamedCtx} (x : String) (T : Type)
     {schema : PolyType} {body : RawExpr}
@@ -1871,7 +2237,7 @@ checkElab-fallback-RVar-poly :
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RVar x) T
         ≡ success Surface.zeroUsage eE d fr)))
-checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN polyE bodyE
+checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN polyE _
   rewrite bbcOther
   with StrProp._≟_ x "unit"
 ... | yes eq = ⊥-elim (x≢unit eq)
@@ -1879,7 +2245,6 @@ checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN polyE bo
       rewrite localN
             | importN
             | polyE
-            | bodyE
       = _ , _ , _ , refl
 
 -- RApp (RVar "id") arg: no specialised check clause for "id" as app head

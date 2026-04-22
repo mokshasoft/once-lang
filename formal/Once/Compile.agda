@@ -82,7 +82,7 @@ open PolyFunInfo
 
 -- Type checking / elaboration
 open import Once.TypeCheck.Raw using (RawExpr)
-open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelf; ctxWithImportsAndSelfAndPolys; PolyCtx; emptyPolyCtx; checkElab)
+open import Once.TypeCheck.Elaborate using (ctxWithImportsAndSelf; ctxWithImportsAndSelfAndPolys; PolyCtx; emptyPolyCtx; checkElab; resolveExpr)
 open import Once.TypeCheck.Elaborate as TE using (CheckElabResult)
 
 -- Surface → IR elaboration
@@ -121,13 +121,17 @@ extendFunCtx : FunCtx → String → Type → FunCtx
 extendFunCtx ctx name ty = (name , ty) ∷ ctx
 
 -- | Compile a function body to IR with context of previous functions
--- Pipeline: typecheck → elaborate → (optionally) optimize
+-- Pipeline: typecheck (Phase 1) → resolve polys (Phase 2) → elaborate → (optionally) optimize
+-- Phase 1 emits `poly x T` placeholders at user-polymorphic references;
+-- Phase 2's `resolveExpr` tree-walk substitutes them with the specialized
+-- body elaborations before the surface-to-IR pass.
 -- Returns IR or error message
 compileFunBody : Bool → FunCtx → PolyCtx → (name : String) (ty : Type) → RawExpr → String ⊎ IR Unit ty
 compileFunBody doOpt ctx polys name ty expr with checkElab (ctxWithImportsAndSelfAndPolys ctx polys name ty) expr ty
 ... | TE.failure err = inj₁ ("Type error in " ++ name ++ ": " ++ TE.renderError err)
 ... | TE.success _ surfaceExpr _ _ =
-  let ir = elaborate surfaceExpr
+  let resolved = resolveExpr polys ((name , ty) ∷ ctx) 0 surfaceExpr
+      ir = elaborate resolved
   in inj₂ (if doOpt then optimize ir else ir)
 
 -- | Compile a function with main validation

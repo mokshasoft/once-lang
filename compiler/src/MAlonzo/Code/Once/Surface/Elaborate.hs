@@ -706,4 +706,10 @@ du_elaborate_114 v0 v1 v2
              (coe MAlonzo.Code.Once.Type.C_Unit_48)
              (coe MAlonzo.Code.Once.CCC.IR.C_Prim_162 v6)
              (coe MAlonzo.Code.Once.CCC.IR.C_terminal_68)
+      MAlonzo.Code.Once.Surface.Syntax.C_poly_504 v5
+        -> coe
+             MAlonzo.Code.Once.CCC.IR.C__'8728'__24
+             (coe MAlonzo.Code.Once.Type.C_Unit_48)
+             (coe MAlonzo.Code.Once.CCC.IR.C_Prim_162 v5)
+             (coe MAlonzo.Code.Once.CCC.IR.C_terminal_68)
       _ -> MAlonzo.RTE.mazUnreachableError
