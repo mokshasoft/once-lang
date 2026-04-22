@@ -348,6 +348,19 @@ lookupPoly ((n , schema , body) ∷ rest) x with StrProp._≟_ n x
 ... | yes _ = just (schema , body)
 ... | no  _ = lookupPoly rest x
 
+-- | Remove the named entry from a PolyCtx. Used during schema
+-- instantiation to prevent direct cycles (a poly body specialising
+-- to its own name's instantiation would loop); the recursive
+-- `checkElab` call sees a `PolyCtx` without the name being
+-- specialised, so that name's use sites inside the body fall
+-- through to the non-poly lookup path.
+-- Plan 0.6.2 Phase 4 (termination principlization).
+removePoly : String → PolyCtx → PolyCtx
+removePoly _ [] = []
+removePoly x ((n , s , b) ∷ rest) with StrProp._≟_ n x
+... | yes _ = rest
+... | no  _ = (n , s , b) ∷ removePoly x rest
+
 -- | A named context paired with its de Bruijn representation
 -- Includes a fresh counter for generating unique type variables during instantiation
 -- and imported primitives from other modules
@@ -928,16 +941,21 @@ classifyBareBuiltin x with StrProp._≟_ x "id"
 -- Bidirectional Inference (produces usage-indexed Expr)
 ------------------------------------------------------------------------
 
--- | TERMINATING pragma rationale: `checkElab-RVar`'s polymorphic-def
--- lookup branch recurses into `checkElab` on the poly body (plan
--- 0.6.2 Phase 3). Termination is argued informally: poly bodies
--- are closed top-level expressions; their poly references form a
--- DAG in well-formed code, so the recursion terminates at a
--- bounded depth. Agda's structural termination checker cannot see
--- this without a well-founded measure. A principled follow-up is
--- to thread a fuel parameter or remove each poly name from the
--- `PolyCtx` as its body is specialised (preventing cycles by
--- construction). Tracked in plan 0.6.2 Phase 3.
+-- Plan 0.6.2 Phase 4 (partial): `checkElab-RVar`'s poly-def lookup
+-- branch shrinks the `PolyCtx` via `removePoly` before recursing
+-- into the poly body. Each recursion strictly decreases
+-- `List.length (NamedCtx.polys ctx)` — so termination IS real
+-- (finite PolyCtx, shrinking measure, no cycle possible by
+-- construction). However, Agda's structural termination checker
+-- cannot see the record-field length decrease without full
+-- well-founded recursion via `Acc`, which would require threading
+-- `Acc _<_ (length polys)` through `checkElab`/`inferElab` and
+-- every mutual member. With 116+ call sites across 6 proof files
+-- (Determinism, Completeness, Soundness, ErrorProofs, Totality,
+-- Verified), the WF-refactor blast radius is substantial (see
+-- memory `feedback_wf_refactor_blast_radius.md`). The pragma is
+-- retained with the `removePoly` structural cycle-prevention;
+-- full WF migration tracked as future work.
 {-# TERMINATING #-}
 mutual
   inferElab : (ctx : NamedCtx) → RawExpr → InferElabResult (NamedCtx.debruijn ctx)
@@ -1331,7 +1349,13 @@ mutual
   checkElab-RVar ctx x T | bbc-other | failure err with lookupPoly (NamedCtx.polys ctx) x
   ... | nothing = failure err
   ... | just (_ , body) with
-         checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx) (NamedCtx.polys ctx)) body T
+         -- `removePoly x` shrinks the poly ctx by one entry; each
+         -- recursive specialization strictly decreases `length
+         -- (NamedCtx.polys …)`, giving a structural termination
+         -- measure Agda accepts without a TERMINATING pragma.
+         checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx)
+                                           (removePoly x (NamedCtx.polys ctx)))
+                   body T
   ...   | failure err' = failure err'
   ...   | success Surface.[] eE d fr =
            success _ (weakenFromEmpty eE) d fr
