@@ -23,25 +23,30 @@ bccr-level : TowerLevel
 bccr-level = BCCR  -- = CCT4
 
 ------------------------------------------------------------------------
--- BCCR Properties (from Established modules)
+-- BCCR Properties (from Established modules, one paper per file)
 --
 -- These are the key properties that hold for full BCCR:
 --
--- 1. CONFLUENCE (Church-Rosser)
---    Source: Established/StrongNormalization.cct4-confluence
---    Requires: orthogonality of cata and ana rules
+-- 1. STRONG NORMALIZATION at each level:
+--    - CCT1: Theory.Established.Tait1967
+--    - CCT3: Theory.Established.Mendler1987 (requires strict positivity)
 --
--- 2. STRONG NORMALIZATION / PRODUCTIVITY
---    Source: Established/StrongNormalization.cct4-productivity
---    Requires: strict positivity for μ, guardedness for ν
+-- 2. CONFLUENCE at each level:
+--    - CCT1: Theory.Established.LambekScott1986
+--    - CCT3/CCT4: NOT YET in Established/; derivation pending
+--      (requires orthogonality of cata/ana rules — not directly cited)
 --
--- 3. LAMBEK'S LEMMA (for μ-types)
---    Source: Established/LambekLemma
---    In is an isomorphism, cata is unique
+-- 3. LAMBEK'S LEMMA (μ-types, CCT3):
+--    - Theory.Established.Lambek1968
+--    - In : F(μF) → μF is an isomorphism
+--    - cata is the unique F-algebra morphism
 --
--- 4. COALGEBRA THEOREMS (for ν-types)
---    Source: Established/CoalgebraTheorems
---    Out is an isomorphism, ana is unique, coinduction principle
+-- 4. FINAL COALGEBRA THEOREMS (ν-types, CCT4):
+--    - Theory.Established.Rutten2000
+--    - Out is an isomorphism, ana is unique, coinduction
+--
+-- 5. PRODUCTIVITY (ν-types, CCT4):
+--    - Theory.Established.Abel2012 (requires guardedness)
 ------------------------------------------------------------------------
 
 -- Re-export the tower level
