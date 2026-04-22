@@ -29,7 +29,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_; length)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Product using (_×_; _,_; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
+open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst; cong)
 
 open import Once.Type
 open Once.Type using (showQuantity; showType) public
@@ -1868,8 +1868,13 @@ checkElab-fallback-RApp-apply {ctx} p A B eq_p
 -- No TERMINATING pragma needed. Public `resolveExpr` wraps the WF
 -- variant with `<-wellFounded (length polys)` — no caller changes.
 
--- Forward declarations: `resolveExprWF` and `resolvePolyCase` are
--- mutually recursive.
+-- Forward declarations: `resolveExprWF`, `resolvePolyCase`, and
+-- `applySplice` are mutually recursive. The split avoids nested `with`
+-- abstractions that would block downstream proofs (see memory
+-- `feedback_with_abstraction.md`): `resolvePolyCase` pattern-matches on
+-- `lookupPoly polys x`'s value, `applySplice` pattern-matches on the
+-- checkElab result. Neither uses `with`-inspect, so external proofs
+-- can `rewrite` their premises cleanly.
 resolveExprWF : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
               → (polys : PolyCtx) → Acc _<_ (length polys)
               → Imports → ℕ
@@ -1880,6 +1885,13 @@ resolvePolyCase : ∀ {n} {Γ : Surface.Ctx n}
                 → (look : Maybe (PolyType × RawExpr))
                 → lookupPoly polys x ≡ look
                 → Surface.Expr Γ Surface.zeroUsage A
+applySplice : ∀ {n} {Γ : Surface.Ctx n}
+            → (polys : PolyCtx) → Acc _<_ (length polys)
+            → Imports → ℕ → (x : String) (A : Type)
+            → {schema : PolyType} {body : RawExpr}
+            → lookupPoly polys x ≡ just (schema , body)
+            → CheckElabResult S∅ A
+            → Surface.Expr Γ Surface.zeroUsage A
 
 resolveExprWF polys _ imps _ (Surface.var i) = Surface.var i
 resolveExprWF polys pAcc imps fresh (Surface.lam q prf b) =
@@ -1937,13 +1949,15 @@ resolveExprWF {A = A} polys pAcc imps fresh (Surface.poly x _) =
   resolvePolyCase polys pAcc imps fresh x A (lookupPoly polys x) refl
 
 resolvePolyCase polys _ imps _ x A nothing _ = Surface.poly x A
-resolvePolyCase polys (acc rec) imps fresh x A (just (_ , body)) polyEq
-    with checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body A
-... | failure _ = Surface.poly x A
-... | success Surface.[] eE _ _ =
-       resolveExprWF (removePoly x polys)
-                     (rec (removePoly-decreases x polys polyEq))
-                     imps fresh (weakenFromEmpty eE)
+resolvePolyCase polys pAcc imps fresh x A (just (_ , body)) polyEq =
+  applySplice polys pAcc imps fresh x A polyEq
+              (checkElab (ctxWithImportsAndPolys imps (removePoly x polys)) body A)
+
+applySplice polys _ imps _ x A _ (failure _) = Surface.poly x A
+applySplice polys (acc rec) imps fresh x A polyEq (success Surface.[] eE _ _) =
+  resolveExprWF (removePoly x polys)
+                (rec (removePoly-decreases x polys polyEq))
+                imps fresh (weakenFromEmpty eE)
 
 -- Public entry. Computes `<-wellFounded` once; no callers need updating.
 resolveExpr : ∀ {n} {Γ : Surface.Ctx n} {Ψ : Surface.Usage n} {A}
@@ -2204,17 +2218,34 @@ resolveExpr-prim :
       ≡ Surface.prim s
 resolveExpr-prim _ _ _ _ = refl
 
--- ─── Gap 1 (positive direction, DEFERRED for a different reason): ────
+-- ─── Gap 1 (positive direction, DEFERRED with honest diagnosis): ─────
 -- The positive theorem — "at a matched poly, resolver splices the body"
--- — is intuitively trivial under Option A (no string decoding). The
--- proof does NOT require Acc-irrelevance anymore, but runs into a
--- different Agda limitation: the `resolvePolyCase` helper uses a nested
--- `with` on `checkElab ... body T` whose abstraction interacts with
--- `rewrite polyEq` in the outer proof, producing an "ill-typed with"
--- error. Resolvable with more careful proof engineering (e.g. explicit
--- `subst` chains, or inlining the case analysis via a view pattern).
--- Not chased here — the architectural wins of Option A are the primary
--- deliverable.
+-- — is semantically trivial but Agda-wise subtle.
+--
+-- The `applySplice` refactor (per memory `feedback_with_abstraction.md`)
+-- eliminated the nested `with checkElab` that was the initial blocker.
+-- That reduced the problem but didn't solve it: the remaining obstacle
+-- is an **equation-witness mismatch** that `rewrite`/`with … | refl`
+-- fails to reconcile.
+--
+-- Concretely: `resolveExprWF … (poly x T)` computes by calling
+-- `resolvePolyCase … (lookupPoly polys x) refl` with a literal `refl`
+-- of type `lookupPoly polys x ≡ lookupPoly polys x`. An outer proof
+-- rewriting by `polyEq : lookupPoly polys x ≡ just (…)` substitutes
+-- `lookupPoly polys x` on both sides of the equation, but Agda then
+-- generates a with-helper where two equation witnesses of the same
+-- propositional type (the internal `refl` vs the with-abstracted
+-- `polyEq`) appear as distinct terms. Agda reports the with-helper
+-- as ill-typed.
+--
+-- Resolution paths not pursued here (both known-good but ~hours of
+-- careful work):
+-- 1. View refactor: replace `resolvePolyCase`'s dependent-equation
+--    parameter with a proof-carrying view datatype so pattern-matching
+--    on the view produces a canonical equation witness.
+-- 2. UIP + subst chain: prove `≡-irrel : ∀ p q → p ≡ q`, use
+--    `subst` explicitly to swap the witnesses, close via `cong`.
+-- Either closes the gap; neither blocks the architectural win.
 
 -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation.
 -- POSTULATE DELETED (Option A, 2026-04-22). Phase 1 emits a proper
