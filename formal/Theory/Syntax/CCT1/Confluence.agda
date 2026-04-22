@@ -1,17 +1,18 @@
 ------------------------------------------------------------------------
 -- Theory.Syntax.CCT1.Confluence
 --
--- CCT1 confluence, rigorously derived (no postulates).
+-- β-CCT1 confluence, rigorously derived (no postulates).
+--
+-- SCOPE: this proves confluence of the β-subset of CCT1 reduction
+-- (β rules + eta-pair inherited from CCTB). curry-η is excluded from
+-- the rule system used here — see BaseRules.agda for the βη-tangle
+-- rationale. Full βη-CCT1 confluence is proved separately via
+-- Newman's lemma; this file provides only the β-subset result.
 --
 -- Proof path:
 --   1. Parallel reduction _⟹_ has diamond property via triangle.
 --   2. Star _⟹_ is confluent (ConfluenceFromDiamond).
 --   3. Bridges _⟶*_ ↔ Star _⟹_ transfer confluence.
---
--- Scope: proves confluence of the β-only CCT1 reduction (includes
--- eta-pair from CCTB, whose syntactically-specific pattern causes
--- no βη-tangle). curry-η is excluded from the rule system for this
--- reason; see BaseRules.agda. Full βη-confluence is future work.
 ------------------------------------------------------------------------
 
 module Theory.Syntax.CCT1.Confluence where
@@ -51,11 +52,14 @@ Star-⟹-to-⟶* CFD.done       = done
 Star-⟹-to-⟶* (r CFD.∷ rs)   = ⟶*-trans (⟹-to-⟶* r) (Star-⟹-to-⟶* rs)
 
 ------------------------------------------------------------------------
--- CCT1 confluence — the main result
+-- β-CCT1 confluence — the main result of this file
+--
+-- NOTE: this covers the β-subset only (curry-η excluded from _⟶_ here).
+-- Full βη-CCT1 confluence is derived via Newman's lemma elsewhere.
 ------------------------------------------------------------------------
 
-cct1-confluence : ∀ {A B} {t u v : Term A B} →
-                  t ⟶* u → t ⟶* v →
-                  Σ (Term A B) (λ w → (u ⟶* w) ∧ (v ⟶* w))
-cct1-confluence tu tv with ⟹-confluent (⟶*-to-Star-⟹ tu) (⟶*-to-Star-⟹ tv)
+cct1-β-confluence : ∀ {A B} {t u v : Term A B} →
+                    t ⟶* u → t ⟶* v →
+                    Σ (Term A B) (λ w → (u ⟶* w) ∧ (v ⟶* w))
+cct1-β-confluence tu tv with ⟹-confluent (⟶*-to-Star-⟹ tu) (⟶*-to-Star-⟹ tv)
 ... | (w , star-uw , star-vw) = (w , Star-⟹-to-⟶* star-uw , Star-⟹-to-⟶* star-vw)
