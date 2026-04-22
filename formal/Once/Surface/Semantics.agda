@@ -11,7 +11,7 @@
 module Once.Surface.Semantics where
 
 open import Once.Type
-open import Once.Semantics.IR using (⟦_⟧)
+open import Once.Semantics.IR using (⟦_⟧; defaultEvalPrim)
 open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; prim; poly) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
@@ -31,10 +31,14 @@ postulate
   divℤ : ℤ → ℤ → ℤ
   modℤ : ℤ → ℤ → ℤ
 
--- Primitive evaluation (external/opaque semantics)
--- Primitives are defined by the runtime environment
-postulate
-  evalSurfacePrim : ∀ {A} → String → ⟦ A ⟧
+-- Primitive evaluation (external/opaque semantics).
+-- Defined in terms of IR's `defaultEvalPrim` so that Surface-level
+-- and IR-level prim semantics agree by CONSTRUCTION. This eliminates
+-- the `prim-correct` / `poly-correct` bridge postulates in
+-- `Once.Surface.Correct`: both sides reduce to the same IR primitive
+-- applied at Unit (matching `elaborate (prim name) = Prim name ∘ terminal`).
+evalSurfacePrim : ∀ {A} → String → ⟦ A ⟧
+evalSurfacePrim {A} name = defaultEvalPrim {Once.Type.Unit} {A} name _
 
 -- | Environment: maps variables to values
 --

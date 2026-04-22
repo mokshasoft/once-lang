@@ -245,13 +245,13 @@ mutual
   -- OCP-0003: roll'/unroll' removed
   -- Primitives: opaque operations with correctness axiom
   -- The primitive has the same name in both Surface and IR semantics
-  elaborate-correct ρ (prim name) = prim-correct name
-    where postulate prim-correct : ∀ (n : String) → evalSurface ρ (prim n) ≡ eval′ (elaborate (prim n)) (interpEnv ρ)
-  -- Unresolved polymorphic placeholder. Elaborate and evalSurface both
-  -- treat it as an external Prim by unqualified name (cycle/unresolved
-  -- fallback); correctness is the same axiom as `prim`.
-  elaborate-correct ρ (poly name _) = poly-correct name
-    where postulate poly-correct : ∀ (n : String) → evalSurface ρ (poly n _) ≡ eval′ (elaborate (poly n _)) (interpEnv ρ)
+  -- PROVEN: `evalSurfacePrim` is defined in terms of `defaultEvalPrim`
+  -- in `Surface.Semantics`, matching `elaborate (prim name) = Prim name
+  -- ∘ terminal` whose eval also reduces to `defaultEvalPrim name tt`.
+  elaborate-correct ρ (prim name) = refl
+  -- PROVEN: same as prim — poly placeholders elaborate to `Prim name`
+  -- (cycle/unresolved fallback), and evalSurface treats them identically.
+  elaborate-correct ρ (poly name _) = refl
 
   -- Helper for comparison correctness
   arith-cmp-correct : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} (ρ : Env Γ)
