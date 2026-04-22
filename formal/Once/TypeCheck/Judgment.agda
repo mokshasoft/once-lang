@@ -46,7 +46,8 @@ open import Once.TypeCheck.Raw as Raw
          RLam; RLet; RDestruct; RUnaryOp; RBinOp; OpNeg; UnaryOp;
          BinOp; isArithmeticOp; isComparisonOp)
 open import Once.TypeCheck.Elaborate
-  using (NamedCtx; lookupLocal; lookupImport; extendNamedCtx; classifyAppHead)
+  using (NamedCtx; lookupLocal; lookupImport; lookupPoly; removePoly;
+         ctxWithImportsAndPolys; extendNamedCtx; classifyAppHead)
 
 open import Data.String using (_++_)
 
@@ -364,6 +365,28 @@ mutual
                   → ctx ⊢ᶜ RApp (RVar "apply") p
                            ∶ B
                            ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
+
+    -- | Plan 0.6.2 Phase 4: polymorphic name specialisation at a
+    -- call-site expected type. Disjoint from `t-embed (t-var-
+    -- local/import …)` by the two lookup-failure premises (name
+    -- isn't in user scope). Disjoint from the bare-builtin
+    -- `t-id-check`/`t-fst-check`/... rules because the name isn't a
+    -- reserved builtin (checked by `lookupPoly` returning `just`).
+    -- The nested check-mode derivation premise threads the body's
+    -- typecheck at the ground expected type `T`; the `removePoly x`
+    -- in the nested ctx prevents the body from re-triggering this
+    -- rule on the same name (cycle prevention).
+    t-var-poly-instantiate :
+      ∀ {ctx : NamedCtx} {x : String} {T : Type} {schema : Once.Type.PolyType} {body : RawExpr}
+      → Once.TypeCheck.Elaborate.classifyBareBuiltin x ≡ Once.TypeCheck.Elaborate.bbc-other
+      → ¬ (x ≡ "unit")
+      → lookupLocal ctx x ≡ nothing
+      → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+      → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
+      → (ctxWithImportsAndPolys (NamedCtx.imports ctx)
+                                 (removePoly x (NamedCtx.polys ctx)))
+          ⊢ᶜ body ∶ T ⨾ Surface.zeroUsage
+      → ctx ⊢ᶜ RVar x ∶ T ⨾ Surface.zeroUsage
 
 ------------------------------------------------------------------------
 -- Backward-compatible alias

@@ -465,7 +465,8 @@ open Once.TypeCheck.Judgment
          t-embed; t-lam;
          t-id-check; t-fst-check; t-snd-check; t-terminal-check;
          t-initial-check; t-inl-check; t-inr-check; t-arr-check;
-         t-pair-check; t-compose-check; t-curry-check; t-apply-check)
+         t-pair-check; t-compose-check; t-curry-check; t-apply-check;
+         t-var-poly-instantiate)
 
 
 ------------------------------------------------------------------------
@@ -486,6 +487,7 @@ open Once.TypeCheck.Elaborate
          checkElab-fallback-RVar-inr; checkElab-fallback-RVar-arr;
          checkElab-fallback-RApp-pair; checkElab-fallback-RApp-compose;
          checkElab-fallback-RApp-curry; checkElab-fallback-RApp-apply;
+         checkElab-fallback-RVar-poly;
          checkElab-fallback-RQualified; checkElab-fallback-RAnnot;
          checkElab-fallback-RPair; checkElab-fallback-RLet;
          checkElab-fallback-RDestruct; checkElab-fallback-RUnaryOp;
@@ -730,3 +732,10 @@ mutual
   check-complete (t-apply-check {p = p} {A = A} {B = B} d) =
     let (_ , _ , _ , eq) = infer-complete d
     in checkElab-fallback-RApp-apply p A B eq
+  -- Plan 0.6.2 Phase 4: polymorphic schema-instantiation. Threads
+  -- the body's check-mode derivation through `check-complete`,
+  -- then composes with the lookup premises via the helper.
+  check-complete {ctx}
+    (t-var-poly-instantiate {x = x} {T = T} bbcOther x≢unit localN importN polyE bodyD) =
+    let (_ , _ , _ , eqBody) = check-complete bodyD
+    in checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN polyE eqBody

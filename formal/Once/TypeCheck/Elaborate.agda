@@ -24,7 +24,7 @@ open import Data.Fin using (Fin; zero; suc)
 open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Maybe using (Maybe; just; nothing)
 open import Data.List using (List; []; _∷_)
-open import Relation.Nullary using (Dec; yes; no)
+open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Data.Product using (_×_; _,_; ∃-syntax)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; subst)
 
@@ -1842,6 +1842,45 @@ checkElab-fallback-RApp-apply {ctx} p A B eq_p
 ... | yes refl with B ≟T B
 ...   | yes refl = _ , _ , _ , refl
 ...   | no ¬eq = ⊥-elim (¬eq refl)
+
+-- Plan 0.6.2 Phase 4: polymorphic schema-instantiation path.
+-- Premises:
+--   * `x` is not a reserved builtin name (`classifyBareBuiltin x ≡
+--     bbc-other`) — rules out the specialised bare-builtin paths.
+--   * `x` is not in the user's local scope.
+--   * `x` is not in the user's imports.
+--   * `x` IS in the polymorphic context, resolving to `(schema, body)`.
+--   * The body check-mode elab succeeds at expected `T` (with
+--     `removePoly x` to prevent self-cycles) producing a closed SExpr.
+-- Conclusion: the top-level `checkElab ctx (RVar x) T` succeeds
+-- with that body elab weakened to ctx's debruijn context.
+checkElab-fallback-RVar-poly :
+  ∀ {ctx : NamedCtx} (x : String) (T : Type)
+    {schema : PolyType} {body : RawExpr}
+    {eE_body : SExpr S∅ Surface.zeroUsage T}
+    {d_body f_body : ℕ}
+  → classifyBareBuiltin x ≡ bbc-other
+  → ¬ (x ≡ "unit")
+  → lookupLocal ctx x ≡ nothing
+  → lookupImport (NamedCtx.imports ctx) x ≡ nothing
+  → lookupPoly (NamedCtx.polys ctx) x ≡ just (schema , body)
+  → checkElab (ctxWithImportsAndPolys (NamedCtx.imports ctx)
+                                       (removePoly x (NamedCtx.polys ctx)))
+              body T
+      ≡ success Surface.zeroUsage eE_body d_body f_body
+  → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
+      checkElab ctx (Raw.RVar x) T
+        ≡ success Surface.zeroUsage eE d fr)))
+checkElab-fallback-RVar-poly {ctx} x T bbcOther x≢unit localN importN polyE bodyE
+  rewrite bbcOther
+  with StrProp._≟_ x "unit"
+... | yes eq = ⊥-elim (x≢unit eq)
+... | no  _
+      rewrite localN
+            | importN
+            | polyE
+            | bodyE
+      = _ , _ , _ , refl
 
 -- RApp (RVar "id") arg: no specialised check clause for "id" as app head
 -- (only "inl"/"inr"/"initial" are specialised). Falls to fallback.
