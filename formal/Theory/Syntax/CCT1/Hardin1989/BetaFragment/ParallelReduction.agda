@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Theory.Syntax.CCT1.ParallelReduction
+-- Theory.Syntax.CCT1.Hardin1989.BetaFragment.ParallelReduction
 --
 -- Parallel reduction at CCT1, and its bridges with _⟶*_.
 -- Extends the CCTB pattern with curry/apply generators and curry β/η.
@@ -7,9 +7,9 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCT1.Curien1985.ParallelReduction where
+module Theory.Syntax.CCT1.Hardin1989.BetaFragment.ParallelReduction where
 
-open import Theory.Syntax.CCT1.Curien1985
+open import Theory.Syntax.CCT1.Hardin1989.BetaFragment
 
 ------------------------------------------------------------------------
 -- Parallel reduction
