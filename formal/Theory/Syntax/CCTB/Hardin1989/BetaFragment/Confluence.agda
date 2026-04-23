@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Theory.Syntax.CCTB.Confluence
+-- Theory.Syntax.CCTB.Hardin1989.BetaFragment.Confluence
 --
 -- CCTB confluence: the _⟶*_ relation on CCTB terms is Church-Rosser.
 --
@@ -12,12 +12,12 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCTB.Curien1985.Confluence where
+module Theory.Syntax.CCTB.Hardin1989.BetaFragment.Confluence where
 
-open import Theory.Syntax.CCTB.Curien1985
-open import Theory.Syntax.CCTB.Curien1985.ParallelReduction
-open import Theory.Syntax.CCTB.Curien1985.Diamond
-open import Theory.Syntax.CCTB.Curien1985.Triangle
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment.ParallelReduction
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment.Diamond
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment.Triangle
 import Theory.Derived.ConfluenceFromDiamond as CFD
 open import Data.Product
   using (Σ; _,_; proj₁; proj₂) renaming (_×_ to _∧_)

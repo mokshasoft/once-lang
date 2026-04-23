@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Theory.Syntax.CCTB.Diamond
+-- Theory.Syntax.CCTB.Hardin1989.BetaFragment.Diamond
 --
 -- Takahashi-style diamond proof for CCTB parallel reduction.
 --
@@ -13,10 +13,10 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCTB.Curien1985.Diamond where
+module Theory.Syntax.CCTB.Hardin1989.BetaFragment.Diamond where
 
-open import Theory.Syntax.CCTB.Curien1985
-open import Theory.Syntax.CCTB.Curien1985.ParallelReduction
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment.ParallelReduction
 
 ------------------------------------------------------------------------
 -- Complete development _*

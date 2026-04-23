@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Theory.Syntax.CCTB.ParallelReduction
+-- Theory.Syntax.CCTB.Hardin1989.BetaFragment.ParallelReduction
 --
 -- Parallel reduction at CCTB, and its equivalence with ⟶* via two
 -- bridges:
@@ -12,9 +12,9 @@
 -- (Theory.Syntax.CCTB.Diamond) which in turn gives CCTB confluence.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCTB.Curien1985.ParallelReduction where
+module Theory.Syntax.CCTB.Hardin1989.BetaFragment.ParallelReduction where
 
-open import Theory.Syntax.CCTB.Curien1985
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment
 
 ------------------------------------------------------------------------
 -- Parallel reduction

@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Theory.Syntax.CCTB.Triangle
+-- Theory.Syntax.CCTB.Hardin1989.BetaFragment.Triangle
 --
 -- Takahashi's triangle lemma for CCTB parallel reduction:
 --
@@ -17,11 +17,11 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCTB.Curien1985.Triangle where
+module Theory.Syntax.CCTB.Hardin1989.BetaFragment.Triangle where
 
-open import Theory.Syntax.CCTB.Curien1985
-open import Theory.Syntax.CCTB.Curien1985.ParallelReduction
-open import Theory.Syntax.CCTB.Curien1985.Diamond
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment.ParallelReduction
+open import Theory.Syntax.CCTB.Hardin1989.BetaFragment.Diamond
 
 ------------------------------------------------------------------------
 -- Forward declarations (mutual)

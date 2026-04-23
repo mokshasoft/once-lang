@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------
--- Theory.Syntax.CCT1.Triangle
+-- Theory.Syntax.CCT1.Hardin1989.BetaFragment.Triangle
 --
 -- Takahashi triangle for CCT1 (β-only, no curry-η): t ⟹ u → u ⟹ t*.
 --
@@ -9,11 +9,11 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCT1.Curien1985.Triangle where
+module Theory.Syntax.CCT1.Hardin1989.BetaFragment.Triangle where
 
-open import Theory.Syntax.CCT1.Curien1985
-open import Theory.Syntax.CCT1.Curien1985.ParallelReduction
-open import Theory.Syntax.CCT1.Curien1985.Diamond
+open import Theory.Syntax.CCT1.Hardin1989.BetaFragment
+open import Theory.Syntax.CCT1.Hardin1989.BetaFragment.ParallelReduction
+open import Theory.Syntax.CCT1.Hardin1989.BetaFragment.Diamond
 
 triangle : ∀ {A B} {t u : Term A B} → t ⟹ u → u ⟹ t *
 
