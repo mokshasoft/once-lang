@@ -18,9 +18,6 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │   └── 0.4-frontend-completeness-and-bridges (planning)
 │       └── 0.4.2-end-to-end-connector (planning)
 │
-├── 0.5-ir-extension-hygiene (planning — Phase A/B landed 2026-04-23; Phase C superseded by 0.5.1)
-│   └── 0.5.1-kind-unified-arrow (design — supersedes 0.5 Phase C)
-│
 └── 0.6-user-polymorphism-and-strict-parser (planning — Section A landed 2026-04-20)
     ├── 0.6.1-phase-c-design (design)
     └── 0.7-parser-strictness-relational (planning)
@@ -38,8 +35,6 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.3-frontend-verification-gaps` | completed | Kept for 0.4 context |
 | `0.4-frontend-completeness-and-bridges` | planning | T1–T4 (G2 completeness, parse→pretty, grammar conformance, surface-semantics bridges) |
 | `0.4.2-end-to-end-connector` | planning | Depends on 0.4 — composed surface→machine theorem |
-| `0.5-ir-extension-hygiene` | planning | Phase A/B landed; Phase C superseded by 0.5.1 |
-| `0.5.1-kind-unified-arrow` | design | Unify `Eff` + `_⇒[_]_` under a kinded arrow; eliminates `applyEff` redundancy |
 | `0.6-user-polymorphism-and-strict-parser` | planning | Section A landed; B/C in progress via children |
 | `0.6.1-phase-c-design` | design | Phase C design + classifier migration |
 | `0.7-parser-strictness-relational` | planning | Relational parser + proofs |
@@ -52,6 +47,8 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.2.5-type-polytype-split` | 2026-04-17 | closed via direct landing |
 | `0.2.6-usage-indexed-expr` | 2026-04-17 | closed via direct landing |
 | `0.6.2-polymorphic-schema-instantiation` | 2026-04-23 | **D045** — two-phase elaborator, 0 pragmas, 0 postulates |
+| `0.5-ir-extension-hygiene` | 2026-04-23 | Phase A/B (view catch-alls, `≟IRHead`) landed; Phase C superseded by 0.5.1 |
+| `0.5.1-kind-unified-arrow` | 2026-04-23 | **D046** — unified `Eff` + `_⇒[_]_`; `applyEff` + placeholder postulate eliminated |
 | `0.8-dot-sugar-for-compose` | 2026-04-21 | dot-sugar lands as `compose` |
 
 ## Current Focus
