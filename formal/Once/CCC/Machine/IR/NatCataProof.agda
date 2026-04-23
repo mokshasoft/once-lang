@@ -28,7 +28,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode)
 open import Once.CCC.Machine.Allocation using (AllocMode; Stack; Heap)
 open import Once.CCC.IR using (IR; ⟦_⟧T)
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 
 -- Import semantics
 open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; sem-cata; sem-cata-compute; sem-fmap)
@@ -97,7 +97,7 @@ nat-cata {A} alg = sem-cata wf-NatF alg
 -- 4. Applies the algebra
 ------------------------------------------------------------------------
 
-module NatCataTrace {FS : FrameSemantics} (primSem : PrimSem) where
+module NatCataTrace {FS : FrameSemantics} (sigOpSem : SigOpSem) where
   open FrameSemantics FS
   open MemOps {FS}
   open AbstractExec {FS}

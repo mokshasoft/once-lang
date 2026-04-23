@@ -33,4 +33,4 @@ data T_SurfaceIR_6
     C_apply_80 | C_arr_86 |
     C_Let_94 MAlonzo.Code.Once.Type.T_Type_126 T_SurfaceIR_6
              T_SurfaceIR_6 |
-    C_Prim_100 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_SigOp_100 MAlonzo.Code.Agda.Builtin.String.T_String_6

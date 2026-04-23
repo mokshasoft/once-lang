@@ -36,7 +36,7 @@ open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
 open import Once.Type using (Functor)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
@@ -74,7 +74,7 @@ para-work-offset = 4
 -- The paramorphism pattern extending RecCoreWF with subterm preservation.
 ------------------------------------------------------------------------
 
-module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -92,7 +92,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   open SMP.RecSchemeSemantics {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance)
@@ -102,7 +102,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
   --
   -- See RecSchemePostulates.agda for documentation.
   ------------------------------------------------------------------------
-  open RSP.RecSchemePostulatesImpl {FS} program-bound primSem public
+  open RSP.RecSchemePostulatesImpl {FS} program-bound sigOpSem public
     using (rec-scheme-semantic)
 
   ------------------------------------------------------------------------
@@ -238,7 +238,7 @@ module ParaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem
       result-bf = stack-before refl (n<1+n (next-slot alloc))
 
       -- Semantic correctness: Para produces correct result (postulated)
-      result-valid : ValidAtWF Heap alloc' (eval primSem (Para wf alg) x) result-loc s'
+      result-valid : ValidAtWF Heap alloc' (eval sigOpSem (Para wf alg) x) result-loc s'
       result-valid = rec-scheme-semantic (Para wf alg) alloc' x result-loc s'
 
       n = next-slot alloc

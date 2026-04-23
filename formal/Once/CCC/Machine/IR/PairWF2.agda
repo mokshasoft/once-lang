@@ -33,7 +33,7 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧; sem-pair)
 pair = sem-pair  -- Semantic pair constructor for ⟦ A * B ⟧
 open import Once.CCC.IR
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
@@ -46,7 +46,7 @@ import Once.CCC.Machine.SMPrimitives as SMP
 -- PairWF2 Implementation
 ------------------------------------------------------------------------
 
-module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrameSemantics FS
   open FrontierInvariant {FS}
   open MemOps {FS}
@@ -63,7 +63,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open SMP.TraceOutputDeterminism {FS}
 
   -- Types from ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            valid-pair-wf;
            validityWF-mem-only; validityWF-mem-preserved;
@@ -1359,7 +1359,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       ----------------------------------------------------------------------
 
       -- Step 1: Get validity at s₁ with alloc-after-f-reclaim
-      valid-s1-reclaimed : ValidAtWF mF alloc-after-f-reclaim (eval primSem f x) fst-loc s₁
+      valid-s1-reclaimed : ValidAtWF mF alloc-after-f-reclaim (eval sigOpSem f x) fst-loc s₁
       valid-s1-reclaimed = IRResultAWF.reclaim-preserves-validity result-f
 
       -- fst-loc is before frontier at alloc-after-f-reclaim
@@ -1481,9 +1481,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       f-start≤reclaim-f = reclaim-f-above-f-start
 
       -- Transfer validity from s₁ to s-after-f using positive regions lemma
-      valid-at-s-after-f : ValidAtWF mF alloc-after-f-reclaim (eval primSem f x) fst-loc s-after-f
+      valid-at-s-after-f : ValidAtWF mF alloc-after-f-reclaim (eval sigOpSem f x) fst-loc s-after-f
       valid-at-s-after-f = validityWF-mem-preserved-in-regions alloc-after-f-reclaim
-                             (eval primSem f x) fst-loc backup-slot f-start s₁ s-after-f
+                             (eval sigOpSem f x) fst-loc backup-slot f-start s₁ s-after-f
                              fst-loc-before-reclaimed backup≤f-start f-start≤reclaim-f
                              f-mem-input-region f-mem-fresh-region f-mem-heap f-mem-ancestors
                              valid-s1-reclaimed
@@ -1642,16 +1642,16 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
                  (sym s-final-eq) chain
 
       -- Transfer validity from s-after-f to s-final using positive regions
-      valid-at-s-final : ValidAtWF mF alloc-after-f-reclaim (eval primSem f x) fst-loc s-final
+      valid-at-s-final : ValidAtWF mF alloc-after-f-reclaim (eval sigOpSem f x) fst-loc s-final
       valid-at-s-final = validityWF-mem-preserved-in-regions alloc-after-f-reclaim
-                           (eval primSem f x) fst-loc backup-slot f-start s-after-f s-final
+                           (eval sigOpSem f x) fst-loc backup-slot f-start s-after-f s-final
                            fst-loc-before-reclaimed backup≤f-start f-start≤reclaim-f
                            rest-mem-input-region rest-mem-fresh-region rest-mem-heap rest-mem-ancestors
                            valid-at-s-after-f
 
       -- Step 4: Advance frontier from alloc-after-f-reclaim to alloc-final
-      fst-valid : ValidAtWF mF alloc-final (eval primSem f x) fst-loc s-final
-      fst-valid = validityWF-frontier-advance (eval primSem f x) fst-loc s-final refl
+      fst-valid : ValidAtWF mF alloc-final (eval sigOpSem f x) fst-loc s-final
+      fst-valid = validityWF-frontier-advance (eval sigOpSem f x) fst-loc s-final refl
                     (IRResultAWF.slot-monotone result-g) ≤-refl valid-at-s-final
 
       ----------------------------------------------------------------------
@@ -1672,7 +1672,7 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       alloc-reclaim-g = record alloc { next-slot = reclaim-g }
 
       -- Step 1: Get validity at s₂ with alloc-reclaim-g
-      valid-s2-reclaimed : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s₂
+      valid-s2-reclaimed : ValidAtWF mG alloc-reclaim-g (eval sigOpSem g x) snd-loc s₂
       valid-s2-reclaimed = IRResultAWF.reclaim-preserves-validity result-g
 
       -- snd-loc is before frontier at alloc-reclaim-g
@@ -1812,9 +1812,9 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         in trans g-anc (trans middle-anc (trans f-anc-eq (trans (sym s₁'-anc) (sym s₂-anc))))
 
       -- Transfer validity from s₂ to s-after-g using positive regions
-      valid-at-s-after-g : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s-after-g
+      valid-at-s-after-g : ValidAtWF mG alloc-reclaim-g (eval sigOpSem g x) snd-loc s-after-g
       valid-at-s-after-g = validityWF-mem-preserved-in-regions alloc-reclaim-g
-                             (eval primSem g x) snd-loc backup-slot reclaim-f s₂ s-after-g
+                             (eval sigOpSem g x) snd-loc backup-slot reclaim-f s₂ s-after-g
                              snd-loc-before-reclaim-g backup≤reclaim-f' reclaim-f≤reclaim-g
                              g-mem-input-region g-mem-fresh-region g-mem-heap g-mem-ancestors
                              valid-s2-reclaimed
@@ -1875,21 +1875,21 @@ module PairWF2Impl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
                  (sym s-final-eq) final-anc
 
       -- Transfer validity from s-after-g to s-final using positive regions
-      snd-valid-at-s-final : ValidAtWF mG alloc-reclaim-g (eval primSem g x) snd-loc s-final
+      snd-valid-at-s-final : ValidAtWF mG alloc-reclaim-g (eval sigOpSem g x) snd-loc s-final
       snd-valid-at-s-final = validityWF-mem-preserved-in-regions alloc-reclaim-g
-                               (eval primSem g x) snd-loc backup-slot reclaim-f s-after-g s-final
+                               (eval sigOpSem g x) snd-loc backup-slot reclaim-f s-after-g s-final
                                snd-loc-before-reclaim-g backup≤reclaim-f' reclaim-f≤reclaim-g
                                final-mem-input-region final-mem-fresh-region final-mem-heap final-mem-ancestors
                                valid-at-s-after-g
 
       -- Step 4: Frontier advance (trivial since alloc-reclaim-g and alloc-final both have next-slot = reclaim-g)
-      snd-valid : ValidAtWF mG alloc-final (eval primSem g x) snd-loc s-final
-      snd-valid = validityWF-frontier-advance (eval primSem g x) snd-loc s-final refl ≤-refl ≤-refl snd-valid-at-s-final
+      snd-valid : ValidAtWF mG alloc-final (eval sigOpSem g x) snd-loc s-final
+      snd-valid = validityWF-frontier-advance (eval sigOpSem g x) snd-loc s-final refl ≤-refl ≤-refl snd-valid-at-s-final
 
       ------------------------------------------------------------------------
       -- Final pair validity
       ------------------------------------------------------------------------
       pair-valid-wf-final : ValidAtWF m alloc-final
-                              (pair (eval primSem f x) (eval primSem g x)) pair-loc s-final
+                              (pair (eval sigOpSem f x) (eval sigOpSem g x)) pair-loc s-final
       pair-valid-wf-final = valid-pair-wf fst-ptr snd-ptr fst-before snd-before
                               sucLoc-pair-before fst-valid snd-valid

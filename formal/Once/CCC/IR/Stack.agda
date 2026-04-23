@@ -125,7 +125,7 @@ ir-stack-requirement (Fuse _ _ alg transform) = ir-stack-requirement alg +ℕ ir
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-stack-requirement (free-heap _) = 0
-ir-stack-requirement (Prim _) = 0  -- Primitives manage own stack
+ir-stack-requirement (SigOp _) = 0  -- Primitives manage own stack
 
 ------------------------------------------------------------------------
 -- Scratch Requirement (alias for stack requirement)
@@ -207,9 +207,9 @@ layer-capacity (wf-Prod wfL wfR) wfG alg = 1 +ℕ layer-capacity wfL wfG alg +�
   ir-stack-requirement (⟨ f , g ⟩ m) ≡ 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
 ⟨,⟩-stack-req f g m = refl
 
-prim-stack-req : ∀ {A B} (name : String) →
-  ir-stack-requirement (Prim {A} {B} name) ≡ 0
-prim-stack-req _ = refl
+sigOp-stack-req : ∀ {A B} (name : String) →
+  ir-stack-requirement (SigOp {A} {B} name) ≡ 0
+sigOp-stack-req _ = refl
 
 ------------------------------------------------------------------------
 -- Capacity Lemmas

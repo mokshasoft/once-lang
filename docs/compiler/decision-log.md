@@ -3367,3 +3367,98 @@ After landing the refactor, `_⇒q[_]_` and `Eff` briefly remained as RHS-only s
 - Plan 0.5 (IR extension hygiene), Phase C
 - Plan 0.5.1 (kind-unified arrow)
 - D032 (arrow-based effects)
+
+---
+
+## D047: Rename `Prim` to `SigOp` (Signature Operation)
+
+**Date**: 2026-04-23
+**Status**: Accepted
+
+### Context
+
+The IR escape-hatch constructor was named `Prim` (short for "primitive"):
+
+```agda
+data IR : Type → Type → Set where
+  ...
+  Prim : ∀ {A B} → String → IR A B   -- opaque external morphism
+```
+
+Two problems with the name:
+
+1. **Categorical confusion.** "Primitive" in programming often means "built-in scalar type" (Int, Float, …). The name nudges readers to believe `Prim : IR A B` requires `A` and `B` to be primitive types. That's **wrong**: `Prim` is an opaque arrow that obeys the CCC's calling convention, and its types can be μ-types (lists, trees), products, coproducts — anything. The constraint is *protocol compliance at the target*, not type shape.
+
+   The actual "primitive types" predicate `IsPrimitive : Type → Set` already exists and is correctly named — it classifies register-representable types for layout purposes. It is *unrelated* to the `Prim` IR constructor. Two completely different axes, same misleading prefix.
+
+2. **Greppability.** Short generic names like `Prim` (or the alternative `Op`) collide with many unrelated occurrences in a codebase — documentation prose, user identifiers, stdlib names. A unique token is trivially auditable.
+
+### Decision
+
+Rename the IR escape-hatch constructor to **`SigOp`** (signature operation), matching the universal-algebra / operad-theory term for a basic operation in a signature. Rename surface vocabulary and all dependent machinery consistently.
+
+### Rationale
+
+The correct categorical framing: the IR is the **free cartesian closed category generated over a signature Σ**. The CCC's structural morphisms (id, ∘, fst, snd, pair, inl, inr, case, terminal, initial, curry, apply — the 12 generators of D001) are the axioms of CCC structure; the rest of Σ consists of "signature operations" — axiomatic arrows that are *given* rather than *derived*. `SigOp` is the inclusion of Σ into the free CCC.
+
+Why `SigOp` over alternatives:
+
+- **`Op`**: correct universal-algebra term but collides with every "operation" / "operator" / `_+_` in the tree. Loses the pragmatic grep win.
+- **`Foreign`** / **`Extern`**: programmer-intuitive (FFI) but not categorical. Once's naming policy is to follow established math vocabulary rather than invent per-language terms.
+- **`Generator`**: already used in D001 for the 12 structural CCC morphisms. Conflating the two kinds of generator would defeat the purpose of the rename.
+- **`Axiom`**: logic-flavored; less common in CT proper.
+
+### Surface keyword
+
+The corresponding surface-language declaration form renamed from `primitive` to `signature`:
+
+```once
+-- before:
+primitive exit : Eff Int Unit
+
+-- after:
+signature exit : Eff Int Unit
+```
+
+Reads as "declare `exit` as a signature operation of type …" — the intent is explicit.
+
+### Scope of the rename
+
+- `Prim` → `SigOp` (IR constructor, all case analyses, all WF proofs)
+- `prim` → `sigOp` (Surface expr constructor)
+- `DPrimitive` → `DSignature` (parser Decl constructor)
+- `parsePrimitive` → `parseSignature`
+- `primitivesWithOwner` → `signaturesWithOwner`
+- `PrimSem` → `SigOpSem`; `primSem` → `sigOpSem`
+- `evalPrim` → `evalSigOp`; `defaultEvalPrim` → `defaultEvalSigOp`; `defaultPrimSem` → `defaultSigOpSem`
+- `PrimContract` → `SigOpContract`; `prim-proof` → `sigOp-proof`
+- `prim-desugar` → `sigOp-desugar`; `desugar-correct-prim` → `desugar-correct-sigOp`
+- `ty-prim` → `ty-sigOp`
+- `run-prim` → `run-sigOp`; `normal-prim` → `normal-sigOp`
+- `h-Prim` → `h-SigOp`
+- `evalSurfacePrim` → `evalSurfaceSigOp`
+- `resolveExpr-prim` → `resolveExpr-sigOp`
+- `"primitive"` → `"signature"` (parser keyword token)
+- Directories: `formal/Once/Arith/Prim/` → `formal/Once/Arith/SigOp/`; `formal/Once/CCC/Prim/` → `formal/Once/CCC/SigOp/`
+- `.once` files: every `primitive NAME : TY` → `signature NAME : TY`
+
+### Explicitly NOT renamed
+
+- **`IsPrimitive`** and its constructors (`is-unit`, `is-int`, `is-float`, `is-str`, `is-buffer`). This predicate classifies register-representable Types and is correctly named. It is orthogonal to `SigOp` — the rename clarifies that the two concepts were never meant to be related.
+- **`is-prim`** (local parameter names referring to IsPrimitive evidence) — these are talking about primitive types, not signature ops.
+- **`primCharEquality`, `primCharToNat`, etc.** — Agda stdlib builtins using Agda's own `primitive` keyword. Unrelated.
+
+### Semantic equivalence
+
+The rename is purely syntactic. Every type-check, every extracted MAlonzo module, every generated x86 binary produces byte-identical output. Verified by re-running `make compiler` + MAlonzo extraction + cabal rebuild + the layer-0 smoke test: all produce the same results as before the rename.
+
+### Consequences
+
+- **Greppability.** `grep SigOp` gives exactly the signature operations. No false positives from stdlib or user code.
+- **Documentation.** Comments and error messages now distinguish "signature operation" (opaque CCC escape hatch) from "primitive type" (register-representable shape). These were conflated only by name coincidence.
+- **Future layering.** When platform-specific providers (Linux syscalls, seL4 syscalls, GPU kernels) register their signatures, the vocabulary is uniform: "provider X contributes these `SigOp`s to the signature."
+
+### See Also
+
+- D001 (Generators as Reserved Words) — the 12 *structural* generators of the CCC; distinct from signature operations.
+- Universal algebra: an "operation" in a multi-sorted signature is exactly what this constructor encodes.

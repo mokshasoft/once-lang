@@ -26,56 +26,56 @@ open import Data.String using (String; _++_)
 ------------------------------------------------------------------------
 --
 -- These primitives are the interface between Surface.Syntax arithmetic
--- and the IR. They use the Prim constructor for opaque runtime operations.
+-- and the IR. They use the SigOp constructor for opaque runtime operations.
 --
--- Semantics are defined by evalPrim in Once.Semantics (trust boundary).
+-- Semantics are defined by evalSigOp in Once.Semantics (trust boundary).
 
 -- Literals: constant morphisms that ignore input environment
 -- The value is encoded in the primitive name for runtime interpretation.
 intLit : ℤ → ∀ {Γ} → IR Γ Int
-intLit n = Prim ("lit.int." ++ showℤ n) ∘ terminal
+intLit n = SigOp ("lit.int." ++ showℤ n) ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
-strLit s = Prim ("lit.str." ++ s) ∘ terminal
+strLit s = SigOp ("lit.str." ++ s) ∘ terminal
 
 -- Arithmetic operations (Int * Int → Int)
 addIR : IR (Int * Int) Int
-addIR = Prim "arith.add.int"
+addIR = SigOp "arith.add.int"
 
 subIR : IR (Int * Int) Int
-subIR = Prim "arith.sub.int"
+subIR = SigOp "arith.sub.int"
 
 mulIR : IR (Int * Int) Int
-mulIR = Prim "arith.mul.int"
+mulIR = SigOp "arith.mul.int"
 
 divIR : IR (Int * Int) Int
-divIR = Prim "arith.div.int"
+divIR = SigOp "arith.div.int"
 
 modIR : IR (Int * Int) Int
-modIR = Prim "arith.mod.int"
+modIR = SigOp "arith.mod.int"
 
 -- Unary negation (Int → Int)
 negIR : IR Int Int
-negIR = Prim "arith.neg.int"
+negIR = SigOp "arith.neg.int"
 
 -- Comparison operations (Int * Int → Bool, where Bool = Unit + Unit)
 ltIR : IR (Int * Int) (Unit + Unit)
-ltIR = Prim "arith.lt.int"
+ltIR = SigOp "arith.lt.int"
 
 leIR : IR (Int * Int) (Unit + Unit)
-leIR = Prim "arith.le.int"
+leIR = SigOp "arith.le.int"
 
 gtIR : IR (Int * Int) (Unit + Unit)
-gtIR = Prim "arith.gt.int"
+gtIR = SigOp "arith.gt.int"
 
 geIR : IR (Int * Int) (Unit + Unit)
-geIR = Prim "arith.ge.int"
+geIR = SigOp "arith.ge.int"
 
 eqIR : IR (Int * Int) (Unit + Unit)
-eqIR = Prim "arith.eq.int"
+eqIR = SigOp "arith.eq.int"
 
 neIR : IR (Int * Int) (Unit + Unit)
-neIR = Prim "arith.ne.int"
+neIR = SigOp "arith.ne.int"
 
 -- | Interpret context as a product type (environment type)
 --
@@ -220,10 +220,10 @@ elaborate (arr' f) = arr ∘ elaborate f
 
 -- Imported primitive: call external function by name
 -- Like intLit/strLit, ignores environment and produces the result
-elaborate (prim name) = Prim name ∘ terminal
+elaborate (sigOp name) = SigOp name ∘ terminal
 -- Unresolved polymorphic placeholder. A well-formed Surface Expr
 -- reaching elaborate has been through `resolveExpr`, so `poly` nodes
 -- only survive when resolution failed (e.g. cycle). Treat as an
--- external Prim with the unqualified name — matches evalSurface for
+-- external SigOp with the unqualified name — matches evalSurface for
 -- the correctness theorem, and codegen will catch it as unresolved.
-elaborate (poly name _) = Prim name ∘ terminal
+elaborate (poly name _) = SigOp name ∘ terminal

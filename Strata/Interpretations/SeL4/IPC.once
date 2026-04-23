@@ -28,7 +28,7 @@
 -- - mr0-mr3: Message registers (first 4 words of message)
 --
 -- Returns: Unit (void)
-primitive seL4_Send : Eff (Int * Int * Int * Int * Int * Int) Unit
+signature seL4_Send : Eff (Int * Int * Int * Int * Int * Int) Unit
 
 -- | seL4_NBSend - Non-blocking send
 -- Returns immediately even if no receiver is waiting.
@@ -36,7 +36,7 @@ primitive seL4_Send : Eff (Int * Int * Int * Int * Int * Int) Unit
 --
 -- Arguments: Same as seL4_Send
 -- Returns: Unit
-primitive seL4_NBSend : Eff (Int * Int * Int * Int * Int * Int) Unit
+signature seL4_NBSend : Eff (Int * Int * Int * Int * Int * Int) Unit
 
 -- | seL4_Recv - Receive/wait on endpoint (blocking)
 -- Blocks until a message arrives on the endpoint.
@@ -49,14 +49,14 @@ primitive seL4_NBSend : Eff (Int * Int * Int * Int * Int * Int) Unit
 -- - badge: Sender's badge (identifies sender)
 -- - msgInfo: Received message info
 -- - mr0-mr3: Message registers
-primitive seL4_Recv : Eff (Int * Int) (Int * Int * Int * Int * Int * Int)
+signature seL4_Recv : Eff (Int * Int) (Int * Int * Int * Int * Int * Int)
 
 -- | seL4_NBRecv - Non-blocking receive
 -- Returns immediately with empty message if no sender waiting.
 --
 -- Arguments: Same as seL4_Recv
 -- Returns: Same as seL4_Recv (badge=0 if no message)
-primitive seL4_NBRecv : Eff (Int * Int) (Int * Int * Int * Int * Int * Int)
+signature seL4_NBRecv : Eff (Int * Int) (Int * Int * Int * Int * Int * Int)
 
 -- | seL4_Call - Send and wait for reply (RPC-style)
 -- Sends a message and blocks waiting for a reply.
@@ -70,7 +70,7 @@ primitive seL4_NBRecv : Eff (Int * Int) (Int * Int * Int * Int * Int * Int)
 -- Returns: (msgInfo, mr0, mr1, mr2, mr3)
 -- - msgInfo: Reply message info
 -- - mr0-mr3: Reply message registers
-primitive seL4_Call : Eff (Int * Int * Int * Int * Int * Int) (Int * Int * Int * Int * Int)
+signature seL4_Call : Eff (Int * Int * Int * Int * Int * Int) (Int * Int * Int * Int * Int)
 
 -- | seL4_Reply - Reply to caller
 -- Sends a reply to the thread that did seL4_Call.
@@ -81,7 +81,7 @@ primitive seL4_Call : Eff (Int * Int * Int * Int * Int * Int) (Int * Int * Int *
 -- - mr0-mr3: Reply message registers
 --
 -- Returns: Unit
-primitive seL4_Reply : Eff (Int * Int * Int * Int * Int) Unit
+signature seL4_Reply : Eff (Int * Int * Int * Int * Int) Unit
 
 -- | seL4_ReplyRecv - Atomic reply and wait for next message
 -- Combines seL4_Reply and seL4_Recv atomically.
@@ -96,7 +96,7 @@ primitive seL4_Reply : Eff (Int * Int * Int * Int * Int) Unit
 --
 -- Returns: (badge, msgInfo, mr0, mr1, mr2, mr3)
 -- - Same as seL4_Recv
-primitive seL4_ReplyRecv : Eff (Int * Int * Int * Int * Int * Int * Int) (Int * Int * Int * Int * Int * Int)
+signature seL4_ReplyRecv : Eff (Int * Int * Int * Int * Int * Int * Int) (Int * Int * Int * Int * Int * Int)
 
 -- | seL4_Yield - Yield remaining timeslice
 -- Voluntarily gives up CPU time to other threads of same or
@@ -104,4 +104,4 @@ primitive seL4_ReplyRecv : Eff (Int * Int * Int * Int * Int * Int * Int) (Int * 
 --
 -- Arguments: Unit
 -- Returns: Unit
-primitive seL4_Yield : Eff Unit Unit
+signature seL4_Yield : Eff Unit Unit

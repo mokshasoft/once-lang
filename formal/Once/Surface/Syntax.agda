@@ -236,7 +236,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   arr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A ⇒ B) → Expr Γ Ψ (A ⇒[ mk-kind Many eff ] B)
 
   -- Primitive reference — uses no variables
-  prim    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A
+  sigOp    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A
 
   -- Unresolved polymorphic-def placeholder — Plan 0.6.2 Phase 2.
   -- Phase 1 (checkElab) emits `poly x T` when encountering a reference

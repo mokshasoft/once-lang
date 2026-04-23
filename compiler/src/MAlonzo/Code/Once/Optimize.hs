@@ -2502,7 +2502,7 @@ data T_IRHead_510
     C_h'45'out'45'μ_540 | C_h'45'Cata_542 | C_h'45'Para_544 |
     C_h'45'Out_546 | C_h'45'in'45'ν_548 | C_h'45'Ana_550 |
     C_h'45'Hylo_552 | C_h'45'Fuse_554 | C_h'45'free'45'heap_556 |
-    C_h'45'Prim_558
+    C_h'45'SigOp_558
 -- Once.Optimize.headTag
 d_headTag_560 :: T_IRHead_510 -> Integer
 d_headTag_560 v0
@@ -2530,7 +2530,7 @@ d_headTag_560 v0
       C_h'45'Hylo_552 -> coe (21 :: Integer)
       C_h'45'Fuse_554 -> coe (22 :: Integer)
       C_h'45'free'45'heap_556 -> coe (23 :: Integer)
-      C_h'45'Prim_558 -> coe (24 :: Integer)
+      C_h'45'SigOp_558 -> coe (24 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.headTag-inj
 d_headTag'45'inj_566 ::
@@ -2615,7 +2615,7 @@ du_ir'45'head_600 v0
         -> coe C_h'45'Fuse_554
       MAlonzo.Code.Once.CCC.IR.C_free'45'heap_150 v1
         -> coe C_h'45'free'45'heap_556
-      MAlonzo.Code.Once.CCC.IR.C_Prim_156 v3 -> coe C_h'45'Prim_558
+      MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v3 -> coe C_h'45'SigOp_558
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.subst₂-IR
 d_subst'8322''45'IR_610 ::
@@ -16482,9 +16482,9 @@ du_'8799'IRH'45'diag_722 v0 v1 v2 v3 v4 v5
                                          _ -> MAlonzo.RTE.mazUnreachableError))
                        _ -> MAlonzo.RTE.mazUnreachableError)
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.CCC.IR.C_Prim_156 v8
+      MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v8
         -> case coe v5 of
-             MAlonzo.Code.Once.CCC.IR.C_Prim_156 v11
+             MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v11
                -> let v12
                         = coe
                             MAlonzo.Code.Relation.Nullary.Decidable.Core.du_map'8242'_178
@@ -17257,7 +17257,7 @@ d_optimize'45'once'45'structural_2986 v0 v1 v2
                        (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.CCC.IR.C_free'45'heap_150 v3 -> coe v2
-      MAlonzo.Code.Once.CCC.IR.C_Prim_156 v5
+      MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v5
         -> let v6
                  = d__'8799'Type__20
                      (coe v0) (coe MAlonzo.Code.Once.Type.C_Void_138) in
@@ -17266,7 +17266,7 @@ d_optimize'45'once'45'structural_2986 v0 v1 v2
                 MAlonzo.Code.Relation.Nullary.Decidable.Core.C__because__32 v7 v8
                   -> if coe v7
                        then coe seq (coe v8) (coe MAlonzo.Code.Once.CCC.IR.C_initial_72)
-                       else coe seq (coe v8) (coe MAlonzo.Code.Once.CCC.IR.C_Prim_156 v5)
+                       else coe seq (coe v8) (coe MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v5)
                 _ -> MAlonzo.RTE.mazUnreachableError)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Optimize.optimize-once

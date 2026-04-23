@@ -28,22 +28,22 @@ stderr = 2
 ------------------------------------------------------------------------
 
 -- | Write string to stdout (no newline)
-primitive print : Eff (String Utf8) Unit
+signature print : Eff (String Utf8) Unit
 
 -- | Write string to stdout with newline
-primitive println : Eff (String Utf8) Unit
+signature println : Eff (String Utf8) Unit
 
 -- | Write string to stderr (no newline)
-primitive err : Eff (String Utf8) Unit
+signature err : Eff (String Utf8) Unit
 
 -- | Write string to stderr with newline
-primitive errln : Eff (String Utf8) Unit
+signature errln : Eff (String Utf8) Unit
 
 -- | Write a single character to stdout
-primitive putc : Eff Int Unit
+signature putc : Eff Int Unit
 
 -- | Flush stdout
-primitive flush : Eff Unit Unit
+signature flush : Eff Unit Unit
 
 ------------------------------------------------------------------------
 -- Input Operations (D032: All I/O is effectful)
@@ -51,12 +51,12 @@ primitive flush : Eff Unit Unit
 
 -- | Read a single character from stdin
 -- Returns -1 on EOF
-primitive getc : Eff Unit Int
+signature getc : Eff Unit Int
 
 -- | Read a line from stdin into buffer
 -- Returns number of bytes read, or -1 on EOF
 -- Does not include the newline character
-primitive getline : Eff (Buffer * Int) Int
+signature getline : Eff (Buffer * Int) Int
 
 ------------------------------------------------------------------------
 -- File Reading Helpers (D032: All I/O is effectful)
@@ -64,8 +64,8 @@ primitive getline : Eff (Buffer * Int) Int
 
 -- | Read entire file contents into buffer
 -- Returns bytes read or -1 on error
-primitive readfile : Eff (String Utf8 * Buffer * Int) Int
+signature readfile : Eff (String Utf8 * Buffer * Int) Int
 
 -- | Get file size
 -- Returns size in bytes or -1 on error
-primitive filesize : Eff (String Utf8) Int
+signature filesize : Eff (String Utf8) Int

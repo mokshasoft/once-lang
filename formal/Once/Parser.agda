@@ -254,10 +254,10 @@ extractFunctions aliases (mkModule ds) = go ds nothing
   -- resolves to this FunInfo without further wiring. Primitives must
   -- be ground; polymorphic primitive signatures are rejected by
   -- `projectSig`.
-  go (DPrimitive name nothing ty ∷ rest) _ with projectSig aliases name ty
+  go (DSignature name nothing ty ∷ rest) _ with projectSig aliases name ty
   ... | inj₁ err  = inj₁ err
   ... | inj₂ gty  = consFun (go rest nothing) (mkFunInfo name gty nothing (RVar name))
-  go (DPrimitive name (just owner) ty ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
+  go (DSignature name (just owner) ty ∷ rest) _ with projectSig aliases (owner ++ "." ++ name) ty
   ... | inj₁ err  = inj₁ err
   ... | inj₂ gty  =
            let qname = owner ++ "." ++ name

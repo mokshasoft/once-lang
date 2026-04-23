@@ -14,7 +14,7 @@ open import Once.Type
 open import Once.CCC.IR
 open import Once.Semantics.IR as IR using (⟦_⟧; eval′)
 -- Using eval′ (backward-compatible non-parameterized eval)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; prim; poly) renaming (_,_ to _▸_; eq to eq')
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; zeroUsage; _+ᵘ_; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; ne; arr'; sigOp; poly) renaming (_,_ to _▸_; eq to eq')
 open Once.Surface.Syntax.Usage using ([]; _∷_)
 import Once.Surface.Syntax as S
 open import Once.Surface.Semantics using (Env; ε; _∷_; envLookup; evalSurface)
@@ -44,11 +44,11 @@ open import Once.Postulates using (extensionality)
 -- Primitive semantics (trust boundary)
 ------------------------------------------------------------------------
 --
--- These axioms define what evalPrim returns for arithmetic primitives.
+-- These axioms define what evalSigOp returns for arithmetic primitives.
 -- They are INTENTIONAL trust boundaries, not proof gaps:
 --
--- - The primitives (intLit, addIR, etc.) are now defined using Prim
--- - evalPrim is defined in Once.Semantics
+-- - The primitives (intLit, addIR, etc.) are now defined using SigOp
+-- - evalSigOp is defined in Once.Semantics
 -- - These axioms specify the contract the runtime must satisfy
 --
 -- This is the same pattern as Once.Arith.Boundary: the structure is
@@ -57,11 +57,11 @@ open import Once.Postulates using (extensionality)
 open import Once.Surface.Semantics using (divℤ; modℤ) public
 
 postulate
-  -- Literals: evalPrim for "lit.int.N" returns N
+  -- Literals: evalSigOp for "lit.int.N" returns N
   intLit-correct : ∀ {Γ} (n : ℤ) (γ : ⟦ Γ ⟧) → eval′ (intLit n) γ ≡ n
   strLit-correct : ∀ {Γ} (s : String) (γ : ⟦ Γ ⟧) → eval′ (strLit s) γ ≡ s
 
-  -- Arithmetic: evalPrim for "arith.X.int" computes X
+  -- Arithmetic: evalSigOp for "arith.X.int" computes X
   addIR-correct : ∀ (a b : ℤ) → eval′ addIR (a , b) ≡ a Data.Integer.+ b
   subIR-correct : ∀ (a b : ℤ) → eval′ subIR (a , b) ≡ a Data.Integer.- b
   mulIR-correct : ∀ (a b : ℤ) → eval′ mulIR (a , b) ≡ a Data.Integer.* b
@@ -73,7 +73,7 @@ postulate
   -- Negation
   negIR-correct : ∀ (a : ℤ) → eval′ negIR a ≡ Data.Integer.- a
 
-  -- Comparisons: evalPrim for "arith.X.int" matches surface semantics
+  -- Comparisons: evalSigOp for "arith.X.int" matches surface semantics
   ltIR-correct : ∀ (a b : ℤ) → eval′ ltIR (a , b) ≡ evalSurface ε (lt (int a) (int b))
   leIR-correct : ∀ (a b : ℤ) → eval′ leIR (a , b) ≡ evalSurface ε (le (int a) (int b))
   gtIR-correct : ∀ (a b : ℤ) → eval′ gtIR (a , b) ≡ evalSurface ε (gt (int a) (int b))
@@ -245,11 +245,11 @@ mutual
   -- OCP-0003: roll'/unroll' removed
   -- Primitives: opaque operations with correctness axiom
   -- The primitive has the same name in both Surface and IR semantics
-  -- PROVEN: `evalSurfacePrim` is defined in terms of `defaultEvalPrim`
-  -- in `Surface.Semantics`, matching `elaborate (prim name) = Prim name
-  -- ∘ terminal` whose eval also reduces to `defaultEvalPrim name tt`.
-  elaborate-correct ρ (prim name) = refl
-  -- PROVEN: same as prim — poly placeholders elaborate to `Prim name`
+  -- PROVEN: `evalSurfaceSigOp` is defined in terms of `defaultEvalSigOp`
+  -- in `Surface.Semantics`, matching `elaborate (sigOp name) = SigOp name
+  -- ∘ terminal` whose eval also reduces to `defaultEvalSigOp name tt`.
+  elaborate-correct ρ (sigOp name) = refl
+  -- PROVEN: same as sigOp — poly placeholders elaborate to `SigOp name`
   -- (cycle/unresolved fallback), and evalSurface treats them identically.
   elaborate-correct ρ (poly name _) = refl
 

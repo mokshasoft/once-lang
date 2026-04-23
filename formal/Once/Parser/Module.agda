@@ -39,8 +39,8 @@ parseDeclB (TWord w ∷ rest) | no _ with w ≟ "type"
 ... | yes _ with parseTypeAliasB rest
 ...   | just (d , rest' , bnd) = just (d , rest' , <-trans bnd (s≤s ≤-refl))
 ...   | nothing = nothing
-parseDeclB (TWord w ∷ rest) | no _ | no _ with w ≟ "primitive"
-... | yes _ with parsePrimitiveB rest
+parseDeclB (TWord w ∷ rest) | no _ | no _ with w ≟ "signature"
+... | yes _ with parseSignatureB rest
 ...   | just (d , rest' , bnd) = just (d , rest' , <-trans bnd (s≤s ≤-refl))
 ...   | nothing = nothing
 parseDeclB (TWord w ∷ TColon ∷ rest) | no _ | no _ | no _ with parsePolyTypeB rest

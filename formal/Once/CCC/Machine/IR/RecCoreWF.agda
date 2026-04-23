@@ -66,7 +66,7 @@ open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
 open import Once.Type using (Functor)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
@@ -171,7 +171,7 @@ work-offset = 3
 -- Each scheme uses structural recursion on μ-values.
 ------------------------------------------------------------------------
 
-module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -184,7 +184,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   open import Data.List using (_++_)
 
   -- Open RecTrace implementation for structural cata proofs
-  open RecTrace.RecTraceImpl {FS} program-bound primSem
+  open RecTrace.RecTraceImpl {FS} program-bound sigOpSem
     using (cata-dispatched-new; process-layer; ProcessedLayerResult)
     public
 
@@ -193,7 +193,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   open SMP.RecSchemeSemantics {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance)
@@ -221,7 +221,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
   ------------------------------------------------------------------------
   rec-scheme-semantic : ∀ {A B} (ir : IR A B) (alloc : AllocState {FS})
     (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
-    ValidAtWF Heap alloc (eval primSem ir x) result-loc s
+    ValidAtWF Heap alloc (eval sigOpSem ir x) result-loc s
   rec-scheme-semantic = SMP.!!
 
   ------------------------------------------------------------------------
@@ -388,7 +388,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       result-bf = stack-before refl (n<1+n (next-slot alloc))
 
       -- Semantic correctness: Fuse computes correct result (postulated)
-      result-valid : ValidAtWF Heap alloc' (eval primSem (Fuse wfF wfG alg transform) x) result-loc s'
+      result-valid : ValidAtWF Heap alloc' (eval sigOpSem (Fuse wfF wfG alg transform) x) result-loc s'
       result-valid = rec-scheme-semantic (Fuse wfF wfG alg transform) alloc' x result-loc s'
 
       n = next-slot alloc
@@ -491,7 +491,7 @@ module RecCoreWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : Prim
       result-bf = stack-before refl (n<1+n (next-slot alloc))
 
       -- Semantic correctness: Hylo computes correct result (postulated)
-      result-valid : ValidAtWF Heap alloc' (eval primSem (Hylo wfF wfG alg coalg) x) result-loc s'
+      result-valid : ValidAtWF Heap alloc' (eval sigOpSem (Hylo wfF wfG alg coalg) x) result-loc s'
       result-valid = rec-scheme-semantic (Hylo wfF wfG alg coalg) alloc' x result-loc s'
 
       n = next-slot alloc

@@ -56,7 +56,7 @@ depth (Hylo _ _ alg coalg) = suc (depth alg ⊔ depth coalg)
 depth (Fuse _ _ alg trans) = suc (depth alg ⊔ depth trans)
 -- Memory and primitives
 depth (free-heap _) = 0
-depth (Prim _)      = 0
+depth (SigOp _)      = 0
 
 ------------------------------------------------------------------------
 -- Bounded depth predicate

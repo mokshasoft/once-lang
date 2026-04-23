@@ -26,14 +26,14 @@
 -- Returns: Pointer to seL4_BootInfo
 --
 -- Note: This is a pure function - it returns a constant address.
-primitive getBootInfo : Unit -> Int
+signature getBootInfo : Unit -> Int
 
 -- | Get IPC buffer pointer
 --
 -- The rootserver's initial IPC buffer location.
 --
 -- Returns: Pointer to IPC buffer
-primitive getIPCBuffer : Unit -> Int
+signature getIPCBuffer : Unit -> Int
 
 ------------------------------------------------------------------------
 -- BootInfo Field Access
@@ -46,37 +46,37 @@ primitive getIPCBuffer : Unit -> Int
 -- | Get number of untyped caps
 -- Input: bootinfo pointer
 -- Returns: count of untyped memory regions
-primitive bootinfo_untypedCount : Int -> Int
+signature bootinfo_untypedCount : Int -> Int
 
 -- | Get start of untyped caps range
 -- Input: bootinfo pointer
 -- Returns: first untyped cap slot
-primitive bootinfo_untypedStart : Int -> Int
+signature bootinfo_untypedStart : Int -> Int
 
 -- | Get initial thread's TCB cap slot
 -- Input: bootinfo pointer
 -- Returns: TCB cap slot number
-primitive bootinfo_initThreadTCB : Int -> Int
+signature bootinfo_initThreadTCB : Int -> Int
 
 -- | Get initial thread's CNode cap slot
 -- Input: bootinfo pointer
 -- Returns: CNode cap slot number
-primitive bootinfo_initThreadCNode : Int -> Int
+signature bootinfo_initThreadCNode : Int -> Int
 
 -- | Get initial thread's VSpace cap slot
 -- Input: bootinfo pointer
 -- Returns: VSpace cap slot number
-primitive bootinfo_initThreadVSpace : Int -> Int
+signature bootinfo_initThreadVSpace : Int -> Int
 
 -- | Get number of user image frames
 -- Input: bootinfo pointer
 -- Returns: count of user image frames
-primitive bootinfo_userImageFrames : Int -> Int
+signature bootinfo_userImageFrames : Int -> Int
 
 -- | Get domain info pointer
 -- Input: bootinfo pointer
 -- Returns: pointer to seL4_BootInfoDomain
-primitive bootinfo_domainInfo : Int -> Int
+signature bootinfo_domainInfo : Int -> Int
 
 ------------------------------------------------------------------------
 -- Untyped Descriptor Access
@@ -92,7 +92,7 @@ primitive bootinfo_domainInfo : Int -> Int
 --   paddr    : physical address of untyped
 --   sizeBits : log2 of size in bytes
 --   isDevice : 1 if device memory, 0 otherwise
-primitive bootinfo_getUntyped : (Int * Int) -> (Int * Int * Int)
+signature bootinfo_getUntyped : (Int * Int) -> (Int * Int * Int)
 
 ------------------------------------------------------------------------
 -- Initial Cap Slots (standard seL4 layout)

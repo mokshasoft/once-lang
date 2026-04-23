@@ -22,17 +22,17 @@ import qualified MAlonzo.Code.Once.CCC.IR
 import qualified MAlonzo.Code.Once.Surface.IR
 import qualified MAlonzo.Code.Once.Type
 
--- Once.Surface.Desugar.prim-desugar
-d_prim'45'desugar_10 ::
+-- Once.Surface.Desugar.sigOp-desugar
+d_sigOp'45'desugar_10 ::
   MAlonzo.Code.Once.Type.T_Type_126 ->
   MAlonzo.Code.Once.Type.T_Type_126 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12
-d_prim'45'desugar_10 ~v0 ~v1 = du_prim'45'desugar_10
-du_prim'45'desugar_10 ::
+d_sigOp'45'desugar_10 ~v0 ~v1 = du_sigOp'45'desugar_10
+du_sigOp'45'desugar_10 ::
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12
-du_prim'45'desugar_10 = coe MAlonzo.Code.Once.CCC.IR.C_Prim_156
+du_sigOp'45'desugar_10 = coe MAlonzo.Code.Once.CCC.IR.C_SigOp_156
 -- Once.Surface.Desugar.desugar
 d_desugar_16 ::
   MAlonzo.Code.Once.Type.T_Type_126 ->
@@ -107,6 +107,6 @@ d_desugar_16 v0 v1 v2
                 (coe MAlonzo.Code.Once.CCC.IR.C_id_16)
                 (d_desugar_16 (coe v0) (coe v4) (coe v6))
                 (coe MAlonzo.Code.Once.CCC.IR.C_Heap_10))
-      MAlonzo.Code.Once.Surface.IR.C_Prim_100 v5
-        -> coe du_prim'45'desugar_10 v5
+      MAlonzo.Code.Once.Surface.IR.C_SigOp_100 v5
+        -> coe du_sigOp'45'desugar_10 v5
       _ -> MAlonzo.RTE.mazUnreachableError

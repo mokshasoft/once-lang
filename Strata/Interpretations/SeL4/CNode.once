@@ -38,7 +38,7 @@
 --   rights      : Capability rights mask
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_CNode_Copy : Eff (Int * Int * Int * Int * Int * Int * Int) Int
+signature seL4_CNode_Copy : Eff (Int * Int * Int * Int * Int * Int * Int) Int
 
 -- | seL4_CNode_Mint - Copy capability with a badge
 --
@@ -52,13 +52,13 @@ primitive seL4_CNode_Copy : Eff (Int * Int * Int * Int * Int * Int * Int) Int
 --   badge                          : Badge value to attach
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_CNode_Mint : Eff (Int * Int * Int * Int * Int * Int * Int * Int) Int
+signature seL4_CNode_Mint : Eff (Int * Int * Int * Int * Int * Int * Int * Int) Int
 
 -- | seL4_CNode_Move - Move a capability (delete from source)
 --
 -- Arguments: Same as Copy
 -- Returns: seL4_Error (0 = success)
-primitive seL4_CNode_Move : Eff (Int * Int * Int * Int * Int * Int * Int) Int
+signature seL4_CNode_Move : Eff (Int * Int * Int * Int * Int * Int * Int) Int
 
 -- | seL4_CNode_Delete - Delete a capability
 --
@@ -68,7 +68,7 @@ primitive seL4_CNode_Move : Eff (Int * Int * Int * Int * Int * Int * Int) Int
 --   depth  : Depth for addressing
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_CNode_Delete : Eff (Int * Int * Int) Int
+signature seL4_CNode_Delete : Eff (Int * Int * Int) Int
 
 -- | seL4_CNode_Revoke - Revoke all derived capabilities
 --
@@ -80,7 +80,7 @@ primitive seL4_CNode_Delete : Eff (Int * Int * Int) Int
 --   depth  : Depth for addressing
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_CNode_Revoke : Eff (Int * Int * Int) Int
+signature seL4_CNode_Revoke : Eff (Int * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Rights Constants

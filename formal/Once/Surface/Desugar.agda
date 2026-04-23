@@ -13,7 +13,7 @@
 module Once.Surface.Desugar where
 
 open import Once.Type
-open import Once.Surface.IR as S using (SurfaceIR; Let; Prim)
+open import Once.Surface.IR as S using (SurfaceIR; Let; SigOp)
 open import Once.CCC.IR as C
 
 open import Data.String using (String)
@@ -24,18 +24,18 @@ open import Data.String using (String)
 
 -- | Primitive desugaring: direct passthrough to Core IR
 --
--- Prim is a real constructor in Once.IR. Primitives are opaque operations
+-- SigOp is a real constructor in Once.IR. Primitives are opaque operations
 -- that cannot be expressed in terms of categorical generators (id, ∘, fst,
 -- snd, etc.). In MAlonzo compilation, this will be implemented via FFI.
 --
--- The Core IR Prim constructor was added with:
---   1. Prim constructor in Once.IR
---   2. eval case in Once.Semantics (using evalPrim)
+-- The Core IR SigOp constructor was added with:
+--   1. SigOp constructor in Once.IR
+--   2. eval case in Once.Semantics (using evalSigOp)
 --   3. optimize cases in Once.Optimize (pass through unchanged)
 --   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --
-prim-desugar : ∀ {A B} → String → C.IR A B
-prim-desugar = C.Prim
+sigOp-desugar : ∀ {A B} → String → C.IR A B
+sigOp-desugar = C.SigOp
 
 ------------------------------------------------------------------------
 -- Desugar transformation
@@ -46,7 +46,7 @@ prim-desugar = C.Prim
 -- Structural recursion that:
 -- 1. Passes through all Core IR constructors unchanged
 -- 2. Expands Let to composition + pairing
--- 3. Converts Prim to Core's prim
+-- 3. Converts SigOp to Core's sigOp
 --
 desugar : ∀ {A B} → SurfaceIR A B → C.IR A B
 
@@ -91,5 +91,5 @@ desugar (Let e1 e2) = desugar e2 C.∘ C.⟨ C.id , desugar e1 ⟩ C.Heap
 
 -- | Primitive passthrough
 --
--- Primitives are opaque - just convert to Core's Prim constructor
-desugar (Prim name) = prim-desugar name
+-- Primitives are opaque - just convert to Core's SigOp constructor
+desugar (SigOp name) = sigOp-desugar name

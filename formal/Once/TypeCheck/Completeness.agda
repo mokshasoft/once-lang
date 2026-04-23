@@ -99,7 +99,7 @@ infer-complete-RQualified :
       inferElab ctx (RQualified name alias) ≡ success T zeroUsage eE d f
 infer-complete-RQualified {ctx} {name} {alias} eqLookup
   rewrite eqLookup =
-  Surface.prim (alias ++ "." ++ name) , 0 , NamedCtx.freshCounter ctx , refl
+  Surface.sigOp (alias ++ "." ++ name) , 0 , NamedCtx.freshCounter ctx , refl
 
 ------------------------------------------------------------------------
 -- Sub-expression composition completeness.
@@ -258,7 +258,7 @@ infer-complete-RVar-import {ctx} x x≢unit eqLoc eqImp
   with x Data.String.Properties.≟ "unit"
 ... | yes p = ⊥-elim (x≢unit p)
 ... | no  _ rewrite eqLoc | eqImp =
-  Surface.prim x , 0 , NamedCtx.freshCounter ctx , refl
+  Surface.sigOp x , 0 , NamedCtx.freshCounter ctx , refl
 
 ------------------------------------------------------------------------
 -- RBinOp (arithmetic and comparison)

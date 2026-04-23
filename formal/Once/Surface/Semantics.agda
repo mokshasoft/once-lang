@@ -11,8 +11,8 @@
 module Once.Surface.Semantics where
 
 open import Once.Type
-open import Once.Semantics.IR using (⟦_⟧; defaultEvalPrim)
-open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; prim; poly) renaming (_,_ to _▸_)
+open import Once.Semantics.IR using (⟦_⟧; defaultEvalSigOp)
+open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; sigOp; poly) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
 open import Data.Fin using (Fin)
@@ -32,13 +32,13 @@ postulate
   modℤ : ℤ → ℤ → ℤ
 
 -- Primitive evaluation (external/opaque semantics).
--- Defined in terms of IR's `defaultEvalPrim` so that Surface-level
--- and IR-level prim semantics agree by CONSTRUCTION. This eliminates
--- the `prim-correct` / `poly-correct` bridge postulates in
+-- Defined in terms of IR's `defaultEvalSigOp` so that Surface-level
+-- and IR-level sigOp semantics agree by CONSTRUCTION. This eliminates
+-- the `sigOp-correct` / `poly-correct` bridge postulates in
 -- `Once.Surface.Correct`: both sides reduce to the same IR primitive
--- applied at Unit (matching `elaborate (prim name) = Prim name ∘ terminal`).
-evalSurfacePrim : ∀ {A} → String → ⟦ A ⟧
-evalSurfacePrim {A} name = defaultEvalPrim {Once.Type.Unit} {A} name _
+-- applied at Unit (matching `elaborate (sigOp name) = SigOp name ∘ terminal`).
+evalSurfaceSigOp : ∀ {A} → String → ⟦ A ⟧
+evalSurfaceSigOp {A} name = defaultEvalSigOp {Once.Type.Unit} {A} name _
 
 -- | Environment: maps variables to values
 --
@@ -136,7 +136,7 @@ evalSurface ρ (ne e₁ e₂)     = toSum (not (does (evalSurface ρ e₁ ≟ ev
 evalSurface ρ (arr' f)       = evalSurface ρ f
 -- OCP-0003: roll'/unroll' removed
 -- Primitives: opaque external operations (semantics defined by runtime)
-evalSurface ρ (prim name)    = evalSurfacePrim name
+evalSurface ρ (sigOp name)    = evalSurfaceSigOp name
 -- Poly placeholder: if one reaches eval, resolver didn't clean it up.
--- Treat as an opaque external ref, same as prim.
-evalSurface ρ (poly name _)  = evalSurfacePrim name
+-- Treat as an opaque external ref, same as sigOp.
+evalSurface ρ (poly name _)  = evalSurfaceSigOp name

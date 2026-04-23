@@ -209,7 +209,7 @@ compile-length (Ana _ _) = 1    -- placeholder: demand-driven (ud2)
 compile-length (Hylo _ _ _ _) = 1  -- placeholder: fused loop (ud2)
 compile-length (Fuse _ _ _ _) = 1  -- placeholder: μ-anchored fusion (ud2)
 compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles actual free)
-compile-length (Prim _) = 1       -- primitive
+compile-length (SigOp _) = 1       -- primitive
 compile-length arr = length id-instrs  -- arr is identity at runtime (Eff = Arrow)
 
 -- | Generate x86 code for IR with label counter
@@ -263,7 +263,7 @@ compile-ir' n (Ana _ _) = ud2 ∷ [] , n
 compile-ir' n (Hylo _ _ _ _) = ud2 ∷ [] , n
 compile-ir' n (Fuse _ _ _ _) = ud2 ∷ [] , n
 compile-ir' n (free-heap _) = [] , n
-compile-ir' n (Prim _) = ud2 ∷ [] , n
+compile-ir' n (SigOp _) = ud2 ∷ [] , n
 compile-ir' n arr = id-instrs , n
 
 -- | Public interface: compile IR starting with label counter 0
@@ -383,7 +383,7 @@ compile-ir'-length n (Ana _ _) = refl
 compile-ir'-length n (Hylo _ _ _ _) = refl
 compile-ir'-length n (Fuse _ _ _ _) = refl
 compile-ir'-length n (free-heap _) = refl
-compile-ir'-length n (Prim _) = refl
+compile-ir'-length n (SigOp _) = refl
 compile-ir'-length n arr = refl
 
 -- | Public interface: proof that compile-ir produces code of the expected length

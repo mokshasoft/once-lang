@@ -16,7 +16,7 @@ open import Once.Type
 open import Once.Surface.IR as S
 open import Once.Surface.Desugar
 open import Once.CCC.IR as C
-open import Once.Semantics.IR using (⟦_⟧; eval′; defaultEvalPrim)
+open import Once.Semantics.IR using (⟦_⟧; eval′; defaultEvalSigOp)
 open import Once.Postulates using (extensionality)
 
 open import Data.Unit using (⊤; tt)
@@ -31,8 +31,8 @@ open import Data.String using (String)
 -- Primitive evaluation
 ------------------------------------------------------------------------
 
--- | evalPrim is now imported from Once.Semantics
--- It was added when Prim constructor was added to Core IR.
+-- | evalSigOp is now imported from Once.Semantics
+-- It was added when SigOp constructor was added to Core IR.
 
 ------------------------------------------------------------------------
 -- Surface IR Semantics
@@ -42,7 +42,7 @@ open import Data.String using (String)
 --
 -- Same as Core IR semantics, plus:
 -- - Let: evaluate binding, pair with input, evaluate body
--- - Prim: use default primitive evaluation
+-- - SigOp: use default primitive evaluation
 --
 evalSurface : ∀ {A B} → SurfaceIR A B → ⟦ A ⟧ → ⟦ B ⟧
 
@@ -81,7 +81,7 @@ evalSurface S.arr f = f
 evalSurface (S.Let e1 e2) x = evalSurface e2 (x , evalSurface e1 x)
 
 -- Surface-only: Primitives
-evalSurface (S.Prim name) x = defaultEvalPrim name x
+evalSurface (S.SigOp name) x = defaultEvalSigOp name x
 
 ------------------------------------------------------------------------
 -- Correctness theorem
@@ -89,12 +89,12 @@ evalSurface (S.Prim name) x = defaultEvalPrim name x
 
 -- | Primitive correctness (definitional)
 --
--- Since prim-desugar = C.Prim and eval′ (C.Prim name) = defaultEvalPrim name,
+-- Since sigOp-desugar = C.SigOp and eval′ (C.SigOp name) = defaultEvalSigOp name,
 -- this is just refl.
 --
-desugar-correct-prim : ∀ {A B} (name : String) (x : ⟦ A ⟧)
-                     → eval′ (prim-desugar {A} {B} name) x ≡ defaultEvalPrim {A} {B} name x
-desugar-correct-prim name x = refl
+desugar-correct-sigOp : ∀ {A B} (name : String) (x : ⟦ A ⟧)
+                     → eval′ (sigOp-desugar {A} {B} name) x ≡ defaultEvalSigOp {A} {B} name x
+desugar-correct-sigOp name x = refl
 
 -- | Desugar preserves semantics
 --
@@ -103,7 +103,7 @@ desugar-correct-prim name x = refl
 --
 -- The proof is by structural induction on the Surface IR term.
 -- Most cases are trivial (refl) because the constructors are
--- the same in both IRs. The interesting cases are Let and Prim.
+-- the same in both IRs. The interesting cases are Let and SigOp.
 --
 desugar-correct : ∀ {A B} (ir : SurfaceIR A B) (x : ⟦ A ⟧)
                 → eval′ (desugar ir) x ≡ evalSurface ir x
@@ -183,5 +183,5 @@ desugar-correct (S.Let e1 e2) x =
       ∎
   where open Relation.Binary.PropositionalEquality.≡-Reasoning
 
--- | Primitive correctness (uses desugar-correct-prim)
-desugar-correct (S.Prim name) x = desugar-correct-prim name x
+-- | Primitive correctness (uses desugar-correct-sigOp)
+desugar-correct (S.SigOp name) x = desugar-correct-sigOp name x

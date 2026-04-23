@@ -154,7 +154,7 @@ data GDecl : Set where
   DFunDef    : LowerIdent → List LowerIdent → Maybe AllocStrategy → GExpr → GDecl
 
   -- Primitive: primitive name : Type
-  DPrimitive : LowerIdent → GType → GDecl
+  DSignature : LowerIdent → GType → GDecl
 
   -- Type alias: type Name params = Type
   DTypeAlias : UpperIdent → List LowerIdent → GType → GDecl

@@ -56,8 +56,8 @@ test-str-zero-usage = str "hello"
 test-unit-zero-usage : Expr (∅ , Int) zeroUsage Unit
 test-unit-zero-usage = unit
 
-test-prim-zero-usage : Expr (∅ , Int) zeroUsage Int
-test-prim-zero-usage = prim "external"
+test-sigOp-zero-usage : Expr (∅ , Int) zeroUsage Int
+test-sigOp-zero-usage = sigOp "external"
 
 ------------------------------------------------------------------------
 -- Test 3: Linear identity (\^1 x -> x) type-checks

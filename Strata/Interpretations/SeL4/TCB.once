@@ -38,7 +38,7 @@
 --   ipcBufferFrame : Frame capability for IPC buffer
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_Configure : Eff (Int * Int * Int * Int * Int * Int * Int * Int) Int
+signature seL4_TCB_Configure : Eff (Int * Int * Int * Int * Int * Int * Int * Int) Int
 
 -- | seL4_TCB_SetPriority - Set thread priority
 --
@@ -48,7 +48,7 @@ primitive seL4_TCB_Configure : Eff (Int * Int * Int * Int * Int * Int * Int * In
 --   priority  : New priority (0-255)
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_SetPriority : Eff (Int * Int * Int) Int
+signature seL4_TCB_SetPriority : Eff (Int * Int * Int) Int
 
 -- | seL4_TCB_SetMCPriority - Set thread max controlled priority
 --
@@ -58,7 +58,7 @@ primitive seL4_TCB_SetPriority : Eff (Int * Int * Int) Int
 --   mcp       : New MCP value
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_SetMCPriority : Eff (Int * Int * Int) Int
+signature seL4_TCB_SetMCPriority : Eff (Int * Int * Int) Int
 
 -- | seL4_TCB_SetSchedParams - Set scheduling parameters
 --
@@ -69,7 +69,7 @@ primitive seL4_TCB_SetMCPriority : Eff (Int * Int * Int) Int
 --   priority  : Priority
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_SetSchedParams : Eff (Int * Int * Int * Int) Int
+signature seL4_TCB_SetSchedParams : Eff (Int * Int * Int * Int) Int
 
 -- | seL4_TCB_SetIPCBuffer - Set IPC buffer
 --
@@ -79,7 +79,7 @@ primitive seL4_TCB_SetSchedParams : Eff (Int * Int * Int * Int) Int
 --   ipcBufferFrame : Frame capability
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_SetIPCBuffer : Eff (Int * Int * Int) Int
+signature seL4_TCB_SetIPCBuffer : Eff (Int * Int * Int) Int
 
 -- | seL4_TCB_SetSpace - Set CSpace and VSpace
 --
@@ -92,7 +92,7 @@ primitive seL4_TCB_SetIPCBuffer : Eff (Int * Int * Int) Int
 --   vspaceData : VSpace ASID
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_SetSpace : Eff (Int * Int * Int * Int * Int * Int) Int
+signature seL4_TCB_SetSpace : Eff (Int * Int * Int * Int * Int * Int) Int
 
 -- | seL4_TCB_Resume - Resume a suspended thread
 --
@@ -100,7 +100,7 @@ primitive seL4_TCB_SetSpace : Eff (Int * Int * Int * Int * Int * Int) Int
 --   tcb : TCB capability
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_Resume : Eff Int Int
+signature seL4_TCB_Resume : Eff Int Int
 
 -- | seL4_TCB_Suspend - Suspend a thread
 --
@@ -108,7 +108,7 @@ primitive seL4_TCB_Resume : Eff Int Int
 --   tcb : TCB capability
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_Suspend : Eff Int Int
+signature seL4_TCB_Suspend : Eff Int Int
 
 -- | seL4_TCB_WriteRegisters - Write thread registers
 --
@@ -120,7 +120,7 @@ primitive seL4_TCB_Suspend : Eff Int Int
 --   regs   : Pointer to register array
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_WriteRegisters : Eff (Int * Int * Int * Int * Int) Int
+signature seL4_TCB_WriteRegisters : Eff (Int * Int * Int * Int * Int) Int
 
 -- | seL4_TCB_ReadRegisters - Read thread registers
 --
@@ -132,7 +132,7 @@ primitive seL4_TCB_WriteRegisters : Eff (Int * Int * Int * Int * Int) Int
 --   regs    : Pointer to buffer for registers
 --
 -- Returns: seL4_Error (0 = success)
-primitive seL4_TCB_ReadRegisters : Eff (Int * Int * Int * Int * Int) Int
+signature seL4_TCB_ReadRegisters : Eff (Int * Int * Int * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Priority Constants

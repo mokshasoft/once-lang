@@ -491,25 +491,25 @@ d_'10214'μ'10215'_128 = erased
 -- Once.Semantics.IR._.⟦ν⟧
 d_'10214'ν'10215'_130 :: MAlonzo.Code.Once.Type.T_Functor_124 -> ()
 d_'10214'ν'10215'_130 = erased
--- Once.Semantics.IR.PrimSem
-d_PrimSem_132 = ()
-newtype T_PrimSem_132
+-- Once.Semantics.IR.SigOpSem
+d_SigOpSem_132 = ()
+newtype T_SigOpSem_132
   = C_constructor_146 (MAlonzo.Code.Once.Type.T_Type_126 ->
                        MAlonzo.Code.Once.Type.T_Type_126 ->
                        MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny -> AgdaAny)
--- Once.Semantics.IR.PrimSem.evalPrim
-d_evalPrim_144 ::
-  T_PrimSem_132 ->
+-- Once.Semantics.IR.SigOpSem.evalSigOp
+d_evalSigOp_144 ::
+  T_SigOpSem_132 ->
   MAlonzo.Code.Once.Type.T_Type_126 ->
   MAlonzo.Code.Once.Type.T_Type_126 ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 -> AgdaAny -> AgdaAny
-d_evalPrim_144 v0
+d_evalSigOp_144 v0
   = case coe v0 of
       C_constructor_146 v1 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Semantics.IR.eval
 d_eval_152 ::
-  T_PrimSem_132 ->
+  T_SigOpSem_132 ->
   MAlonzo.Code.Once.Type.T_Type_126 ->
   MAlonzo.Code.Once.Type.T_Type_126 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 -> AgdaAny -> AgdaAny
@@ -712,21 +712,21 @@ d_eval_152 v0 v1 v2 v3 v4
                     v4
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.CCC.IR.C_free'45'heap_150 v5 -> coe v4
-      MAlonzo.Code.Once.CCC.IR.C_Prim_156 v7
-        -> coe d_evalPrim_144 v0 v1 v2 v7 v4
+      MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v7
+        -> coe d_evalSigOp_144 v0 v1 v2 v7 v4
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Semantics.IR.defaultEvalPrim
-d_defaultEvalPrim_356
+-- Once.Semantics.IR.defaultEvalSigOp
+d_defaultEvalSigOp_356
   = error
-      "MAlonzo Runtime Error: postulate evaluated: Once.Semantics.IR.defaultEvalPrim"
--- Once.Semantics.IR.defaultPrimSem
-d_defaultPrimSem_358 :: T_PrimSem_132
-d_defaultPrimSem_358
-  = coe C_constructor_146 (coe d_defaultEvalPrim_356)
+      "MAlonzo Runtime Error: postulate evaluated: Once.Semantics.IR.defaultEvalSigOp"
+-- Once.Semantics.IR.defaultSigOpSem
+d_defaultSigOpSem_358 :: T_SigOpSem_132
+d_defaultSigOpSem_358
+  = coe C_constructor_146 (coe d_defaultEvalSigOp_356)
 -- Once.Semantics.IR.eval′
 d_eval'8242'_364 ::
   MAlonzo.Code.Once.Type.T_Type_126 ->
   MAlonzo.Code.Once.Type.T_Type_126 ->
   MAlonzo.Code.Once.CCC.IR.T_IR_12 -> AgdaAny -> AgdaAny
 d_eval'8242'_364 v0 v1
-  = coe d_eval_152 (coe d_defaultPrimSem_358) (coe v0) (coe v1)
+  = coe d_eval_152 (coe d_defaultSigOpSem_358) (coe v0) (coe v1)

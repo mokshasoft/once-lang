@@ -72,15 +72,15 @@ lookupModule ((p , m) ∷ rest)  path with p path≟ path
 -- Primitive extraction with owner tagging
 ------------------------------------------------------------------------
 
--- | Pull out just the DPrimitive decls from a module, retagging each
+-- | Pull out just the DSignature decls from a module, retagging each
 -- with the given owner alias. Non-primitive decls are dropped — they
 -- belong to the imported module's own scope, not the importer's.
-primitivesWithOwner : Maybe String → List Decl → List Decl
-primitivesWithOwner _     []                                   = []
-primitivesWithOwner owner (DPrimitive name _ ty ∷ rest)        =
-  DPrimitive name owner ty ∷ primitivesWithOwner owner rest
-primitivesWithOwner owner (_ ∷ rest)                           =
-  primitivesWithOwner owner rest
+signaturesWithOwner : Maybe String → List Decl → List Decl
+signaturesWithOwner _     []                                   = []
+signaturesWithOwner owner (DSignature name _ ty ∷ rest)        =
+  DSignature name owner ty ∷ signaturesWithOwner owner rest
+signaturesWithOwner owner (_ ∷ rest)                           =
+  signaturesWithOwner owner rest
 
 ------------------------------------------------------------------------
 -- resolveImports
@@ -106,7 +106,7 @@ resolveDecls modMap (DImport imp ∷ rest) with lookupModule modMap (Import.path
 ... | just (mkModule impDs) with resolveDecls modMap rest
 ...   | inj₁ err = inj₁ err
 ...   | inj₂ tailDs =
-        inj₂ (primitivesWithOwner (Import.alias imp) impDs ++L tailDs)
+        inj₂ (signaturesWithOwner (Import.alias imp) impDs ++L tailDs)
 resolveDecls modMap (d ∷ rest) with resolveDecls modMap rest
 ... | inj₁ err = inj₁ err
 ... | inj₂ tailDs = inj₂ (d ∷ tailDs)

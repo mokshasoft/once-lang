@@ -34,7 +34,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 open import Once.Type using (Type; Functor; μ-type; ν-type; ⟦_⟧T)
 open import Once.Functor.Translate using (WellFormedF)
@@ -50,12 +50,12 @@ open import Once.Semantics.Core ℕ using (sem-In; sem-Out; sem-CoIn; sem-CoOut;
 -- These are postulated because the type indices prevent direct proof.
 ------------------------------------------------------------------------
 
-module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrameSemantics FS
   open FrontierInvariant {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF)
 
   ------------------------------------------------------------------------
@@ -121,7 +121,7 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem :
     {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
     → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} x loc s
-    → ValidAtWF m alloc {μ-type F} (eval primSem (In wf mode) x) loc s
+    → ValidAtWF m alloc {μ-type F} (eval sigOpSem (In wf mode) x) loc s
   In-valid wf mode x valid = layer-to-μ-valid wf x valid
 
   -- | ValidAtWF for eval (out-μ wf) x, given ValidAtWF for x
@@ -130,7 +130,7 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem :
     {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ μ-type F ⟧)
     → ValidAtWF m alloc {μ-type F} x loc s
-    → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval primSem (out-μ wf) x) loc s
+    → ValidAtWF m alloc {⟦ F ⟧T (μ-type F)} (eval sigOpSem (out-μ wf) x) loc s
   out-μ-valid wf x valid = μ-to-layer-valid wf x valid
 
   -- | ValidAtWF for eval (in-ν wf m) x, given ValidAtWF for x
@@ -139,7 +139,7 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem :
     {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ ⟦ F ⟧T (ν-type F) ⟧)
     → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} x loc s
-    → ValidAtWF m alloc {ν-type F} (eval primSem (in-ν wf mode) x) loc s
+    → ValidAtWF m alloc {ν-type F} (eval sigOpSem (in-ν wf mode) x) loc s
   in-ν-valid wf mode x valid = layer-to-ν-valid wf x valid
 
   -- | ValidAtWF for eval (Out wf) x, given ValidAtWF for x
@@ -148,7 +148,7 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem :
     {loc : ValueLocation FS} {s : LocState FS}
     (x : ⟦ ν-type F ⟧)
     → ValidAtWF m alloc {ν-type F} x loc s
-    → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (eval primSem (Out wf) x) loc s
+    → ValidAtWF m alloc {⟦ F ⟧T (ν-type F)} (eval sigOpSem (Out wf) x) loc s
   Out-valid wf x valid = ν-to-layer-valid wf x valid
 
   ------------------------------------------------------------------------
@@ -169,25 +169,25 @@ module LambekValidityImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem :
       {alloc : AllocState {FS}}
       {result-loc : ValueLocation FS} {s' : LocState FS}
       (x : ⟦ ⟦ F ⟧T (μ-type F) ⟧)
-      → ValidAtWF m alloc {μ-type F} (eval primSem (In wf mode) x) result-loc s'
+      → ValidAtWF m alloc {μ-type F} (eval sigOpSem (In wf mode) x) result-loc s'
 
     -- | Validity for out-μ after trace execution
     out-μ-trace-valid : ∀ {F} (wf : WellFormedF F)
       {alloc : AllocState {FS}}
       {result-loc : ValueLocation FS} {s' : LocState FS}
       (x : ⟦ μ-type F ⟧)
-      → ValidAtWF Heap alloc {⟦ F ⟧T (μ-type F)} (eval primSem (out-μ wf) x) result-loc s'
+      → ValidAtWF Heap alloc {⟦ F ⟧T (μ-type F)} (eval sigOpSem (out-μ wf) x) result-loc s'
 
     -- | Validity for in-ν after trace execution
     in-ν-trace-valid : ∀ {m F} (wf : WellFormedF F) (mode : AllocMode)
       {alloc : AllocState {FS}}
       {result-loc : ValueLocation FS} {s' : LocState FS}
       (x : ⟦ ⟦ F ⟧T (ν-type F) ⟧)
-      → ValidAtWF m alloc {ν-type F} (eval primSem (in-ν wf mode) x) result-loc s'
+      → ValidAtWF m alloc {ν-type F} (eval sigOpSem (in-ν wf mode) x) result-loc s'
 
     -- | Validity for Out after trace execution
     Out-trace-valid : ∀ {F} (wf : WellFormedF F)
       {alloc : AllocState {FS}}
       {result-loc : ValueLocation FS} {s' : LocState FS}
       (x : ⟦ ν-type F ⟧)
-      → ValidAtWF Heap alloc {⟦ F ⟧T (ν-type F)} (eval primSem (Out wf) x) result-loc s'
+      → ValidAtWF Heap alloc {⟦ F ⟧T (ν-type F)} (eval sigOpSem (Out wf) x) result-loc s'

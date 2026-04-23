@@ -29,7 +29,7 @@ open import Data.Nat using (ℕ)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.IR
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
 -- Import ⟦_⟧ (type value interpretation) directly from source
@@ -45,13 +45,13 @@ import Once.CCC.Machine.SMPrimitives as SMP
 -- Used by ParaWF, AnaWF, and SumRecWF.
 ------------------------------------------------------------------------
 
-module RecSchemePostulatesImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module RecSchemePostulatesImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrameSemantics FS
   open SMP.TracePrimitives {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
   -- Open ClosureWellFormedDef to get ValidAtWF
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF)
 
   ------------------------------------------------------------------------
@@ -75,7 +75,7 @@ module RecSchemePostulatesImpl {FS : FrameSemantics} (program-bound : ℕ) (prim
   ------------------------------------------------------------------------
   rec-scheme-semantic : ∀ {A B} (ir : IR A B) (alloc : AllocState {FS})
     (x : ⟦ A ⟧) (result-loc : ValueLocation FS) (s : LocState FS) →
-    ValidAtWF Heap alloc (eval primSem ir x) result-loc s
+    ValidAtWF Heap alloc (eval sigOpSem ir x) result-loc s
   rec-scheme-semantic = SMP.!!
 
   ------------------------------------------------------------------------

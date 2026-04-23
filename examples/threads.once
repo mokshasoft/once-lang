@@ -11,9 +11,9 @@
 --   ../.build/threads
 
 -- Threading primitives (from interpretation layer)
-primitive thread_spawn : Eff (Eff Unit Unit) Buffer
-primitive thread_join : Eff Buffer Unit
-primitive println : Eff (String Utf8) Unit
+signature thread_spawn : Eff (Eff Unit Unit) Buffer
+signature thread_join : Eff Buffer Unit
+signature println : Eff (String Utf8) Unit
 
 -- Worker function that runs in a separate thread
 worker : Eff Unit Unit

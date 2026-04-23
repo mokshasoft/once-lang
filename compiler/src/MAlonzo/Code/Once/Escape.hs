@@ -163,8 +163,8 @@ d_escape'45'once_20 v0 v1 v2
                        (coe v9))
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.CCC.IR.C_free'45'heap_150 v3 -> coe v2
-      MAlonzo.Code.Once.CCC.IR.C_Prim_156 v5
-        -> coe MAlonzo.Code.Once.CCC.IR.C_Prim_156 v5
+      MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v5
+        -> coe MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v5
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Escape.escape-n
 d_escape'45'n_108 ::

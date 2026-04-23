@@ -2,7 +2,7 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.CCC.Prim.Contract
+-- Once.CCC.SigOp.Contract
 --
 -- Contract for primitive operations.
 --
@@ -10,7 +10,7 @@
 -- Provider is the interface for domain compilers to register primitives.
 ------------------------------------------------------------------------
 
-module Once.CCC.Prim.Contract where
+module Once.CCC.SigOp.Contract where
 
 open import Data.Nat using (ℕ)
 open import Data.Bool using (false)
@@ -19,9 +19,9 @@ open import Data.String using (String)
 open import Relation.Binary.PropositionalEquality using (_≡_)
 
 open import Once.Type using (Type)
-open import Once.CCC.IR using (IR; Prim; AllocMode)
+open import Once.CCC.IR using (IR; SigOp; AllocMode)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.Eval using (PrimSem)
+open import Once.CCC.Eval using (SigOpSem)
 open import Once.Semantics.Machine using (⟦_⟧)
 
 ------------------------------------------------------------------------
@@ -30,12 +30,12 @@ open import Once.Semantics.Machine using (⟦_⟧)
 -- Parameterized by FrameSemantics for portability.
 ------------------------------------------------------------------------
 
-module Def {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module Def {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; halted; regs; readReg; Input)
   open import Once.CCC.Machine.Allocation using (AllocState; module FrontierInvariant)
   open FrontierInvariant {FS} using (BeforeFrontier)
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem using (ValidAtWF; IRResultAWF)
+  open ClosureWellFormedDef {FS} program-bound sigOpSem using (ValidAtWF; IRResultAWF)
 
   -- The contract: what implementors must prove for a primitive
   Contract : ∀ {A B : Type}
@@ -55,4 +55,4 @@ module Def {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
   Provider : Set
   Provider =
     ∀ {A B : Type} (name : String) →
-    ∃[ m ] Contract {A} {B} m (Prim name)
+    ∃[ m ] Contract {A} {B} m (SigOp name)

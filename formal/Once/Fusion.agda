@@ -181,7 +181,7 @@ fusion-once (Fuse {F} {G} wfF wfG alg transform) = Fuse {F} {G} wfF wfG (fusion-
 fusion-once arr = arr
 
 -- Primitives: opaque, pass through
-fusion-once (Prim name) = Prim name
+fusion-once (SigOp name) = SigOp name
 
 -- free-heap: opaque, pass through
 fusion-once (free-heap h) = free-heap h

@@ -5013,7 +5013,7 @@ d_inferElab_1812 v0 v1
                                                         MAlonzo.Code.Once.Surface.Syntax.d_zeroUsage_60
                                                         (coe d_size_520 (coe v0)))
                                                      (coe
-                                                        MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                        MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                         v2)
                                                      (coe (0 :: Integer))
                                                      (coe d_freshCounter_526 (coe v0))
@@ -5044,7 +5044,7 @@ d_inferElab_1812 v0 v1
                           MAlonzo.Code.Once.Surface.Syntax.d_zeroUsage_60
                           (coe d_size_520 (coe v0)))
                        (coe
-                          MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                          MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                           (coe
                              MAlonzo.Code.Data.String.Base.d__'43''43'__20 v3
                              (coe
@@ -6979,7 +6979,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                       coe
                                                         (let v12
                                                                = coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                    v7 in
                                                          coe
                                                            (let v13 = 0 :: Integer in
@@ -7154,7 +7154,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                       coe
                                                         (let v12
                                                                = coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                    v7 in
                                                          coe
                                                            (let v13 = 0 :: Integer in
@@ -7336,7 +7336,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                       coe
                                                         (let v12
                                                                = coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                    v7 in
                                                          coe
                                                            (let v13 = 0 :: Integer in
@@ -7518,7 +7518,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                       coe
                                                         (let v12
                                                                = coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                    v7 in
                                                          coe
                                                            (let v13 = 0 :: Integer in
@@ -7663,7 +7663,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                       coe
                                                         (let v12
                                                                = coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                    v7 in
                                                          coe
                                                            (let v13 = 0 :: Integer in
@@ -7808,7 +7808,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                       coe
                                                         (let v12
                                                                = coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                    v7 in
                                                          coe
                                                            (let v13 = 0 :: Integer in
@@ -7992,7 +7992,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                       coe
                                                         (let v12
                                                                = coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                    v7 in
                                                          coe
                                                            (let v13 = 0 :: Integer in
@@ -8176,7 +8176,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                       coe
                                                         (let v12
                                                                = coe
-                                                                   MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                   MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                    v7 in
                                                          coe
                                                            (let v13 = 0 :: Integer in
@@ -8506,7 +8506,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                                                         d_size_520
                                                                                         (coe v0)))
                                                                                   (coe
-                                                                                     MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                                     MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                                      v1)
                                                                                   (coe
                                                                                      (0 :: Integer))
@@ -8848,7 +8848,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                        coe
                                                          (let v12
                                                                 = coe
-                                                                    MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                    MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                     v7 in
                                                           coe
                                                             (let v13 = 0 :: Integer in
@@ -9024,7 +9024,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                        coe
                                                          (let v12
                                                                 = coe
-                                                                    MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                    MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                     v7 in
                                                           coe
                                                             (let v13 = 0 :: Integer in
@@ -9207,7 +9207,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                        coe
                                                          (let v12
                                                                 = coe
-                                                                    MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                    MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                     v7 in
                                                           coe
                                                             (let v13 = 0 :: Integer in
@@ -9390,7 +9390,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                        coe
                                                          (let v12
                                                                 = coe
-                                                                    MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                    MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                     v7 in
                                                           coe
                                                             (let v13 = 0 :: Integer in
@@ -9536,7 +9536,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                        coe
                                                          (let v12
                                                                 = coe
-                                                                    MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                    MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                     v7 in
                                                           coe
                                                             (let v13 = 0 :: Integer in
@@ -9682,7 +9682,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                        coe
                                                          (let v12
                                                                 = coe
-                                                                    MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                    MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                     v7 in
                                                           coe
                                                             (let v13 = 0 :: Integer in
@@ -9867,7 +9867,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                        coe
                                                          (let v12
                                                                 = coe
-                                                                    MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                    MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                     v7 in
                                                           coe
                                                             (let v13 = 0 :: Integer in
@@ -10052,7 +10052,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                        coe
                                                          (let v12
                                                                 = coe
-                                                                    MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                    MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                     v7 in
                                                           coe
                                                             (let v13 = 0 :: Integer in
@@ -10385,7 +10385,7 @@ d_checkElab'45'RVar_1826 v0 v1 v2
                                                                                          d_size_520
                                                                                          (coe v0)))
                                                                                    (coe
-                                                                                      MAlonzo.Code.Once.Surface.Syntax.C_prim_494
+                                                                                      MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494
                                                                                       v1)
                                                                                    (coe
                                                                                       (0 ::
@@ -12905,8 +12905,8 @@ du_resolveExprWF_6688 v0 v1 v2 v3 v4 v5 v6
                        (coe MAlonzo.Code.Once.Type.d__'8658'__164 (coe v13) (coe v15))
                        (coe v3) (coe v4) (coe v5) (coe v12))
              _ -> MAlonzo.RTE.mazUnreachableError
-      MAlonzo.Code.Once.Surface.Syntax.C_prim_494 v10
-        -> coe MAlonzo.Code.Once.Surface.Syntax.C_prim_494 v10
+      MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494 v10
+        -> coe MAlonzo.Code.Once.Surface.Syntax.C_sigOp_494 v10
       MAlonzo.Code.Once.Surface.Syntax.C_poly_504 v9
         -> coe
              du_resolvePolyCase_6702 (coe v0) (coe v1) (coe v3) (coe v4)
@@ -13360,8 +13360,8 @@ d_resolveExpr'45'arr''_7672 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Expr_174 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
 d_resolveExpr'45'arr''_7672 = erased
--- Once.TypeCheck.Elaborate.resolveExpr-prim
-d_resolveExpr'45'prim_7688 ::
+-- Once.TypeCheck.Elaborate.resolveExpr-sigOp
+d_resolveExpr'45'sigOp_7688 ::
   MAlonzo.Code.Once.Surface.Syntax.T_Ctx_6 ->
   MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
@@ -13369,7 +13369,7 @@ d_resolveExpr'45'prim_7688 ::
   Integer ->
   MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12
-d_resolveExpr'45'prim_7688 = erased
+d_resolveExpr'45'sigOp_7688 = erased
 -- Once.TypeCheck.Elaborate.acc-step-at-poly
 d_acc'45'step'45'at'45'poly_7696 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->

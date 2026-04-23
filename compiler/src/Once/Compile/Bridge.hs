@@ -110,13 +110,13 @@ textToAgda = unsafeCoerce
 fromMFunInfo :: MP.T_FunInfo_84 -> FunSig
 fromMFunInfo fi = FunSig
   { funSigName = agdaToText (MP.d_funName_94 fi)
-  , funSigType = agdaToText (MT.d_showType_132 (MP.d_funType_96 fi))
+  , funSigType = agdaToText (MT.d_showType_218 (MP.d_funType_96 fi))
   }
 
 fromMPolyFunInfo :: MP.T_PolyFunInfo_104 -> PolyFunSig
 fromMPolyFunInfo pfi = PolyFunSig
   { polyFunSigName = agdaToText (MP.d_pfunName_114 pfi)
-  , polyFunSigType = agdaToText (MT.d_showPolyType_510 (MP.d_pfunType_116 pfi))
+  , polyFunSigType = agdaToText (MT.d_showPolyType_596 (MP.d_pfunType_116 pfi))
   }
 
 fromMResult :: MC.T_CompileResult_340 -> CompileResult

@@ -36,7 +36,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 
 -- Import IR and evaluation
 open import Once.CCC.IR using (IR)
-open import Once.CCC.Eval using (PrimSem)
+open import Once.CCC.Eval using (SigOpSem)
 
 -- Import for escape analysis types
 open import Once.CCC.Machine.SMCore using (ValueLocation)
@@ -75,18 +75,18 @@ module X86-64 where
   postulate
     runtime : RuntimeContract FS
     frame-ops : FrameOps FS
-    primSem : PrimSem
+    sigOpSem : SigOpSem
     escape-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
       (result-loc : ValueLocation FS) →
       current-frame body-final ≡ FrameOps.get-child-frame frame-ops (current-frame alloc) →
       ApplyWFModule.BeforeFrontier' body-final result-loc →
       ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc
-    prim-proof : DispatcherModule.PrimContract.Provider {FS}
-      (RuntimeContract.program-bound runtime) primSem
+    sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
+      (RuntimeContract.program-bound runtime) sigOpSem
 
   -- Instantiate Correctness
   open import Once.CCC.Target.X86-64.Correct as C
-  module Correct = C.Correctness {FS} runtime frame-ops primSem escape-survives prim-proof
+  module Correct = C.Correctness {FS} runtime frame-ops sigOpSem escape-survives sigOp-proof
 
   -- Code generation
   compile : ∀ {A B} → IR A B → Program
@@ -118,18 +118,18 @@ module X86-32 where
   postulate
     runtime : RuntimeContract FS
     frame-ops : FrameOps FS
-    primSem : PrimSem
+    sigOpSem : SigOpSem
     escape-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
       (result-loc : ValueLocation FS) →
       current-frame body-final ≡ FrameOps.get-child-frame frame-ops (current-frame alloc) →
       ApplyWFModule.BeforeFrontier' body-final result-loc →
       ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc
-    prim-proof : DispatcherModule.PrimContract.Provider {FS}
-      (RuntimeContract.program-bound runtime) primSem
+    sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
+      (RuntimeContract.program-bound runtime) sigOpSem
 
   -- Instantiate Correctness
   open import Once.CCC.Target.X86-32.Correct as C
-  module Correct = C.Correctness {FS} runtime frame-ops primSem escape-survives prim-proof
+  module Correct = C.Correctness {FS} runtime frame-ops sigOpSem escape-survives sigOp-proof
 
   -- Code generation: IR → AbstractTrace → Program
   -- Note: compile-trace converts AbstractTrace to x86-32 instructions
@@ -163,18 +163,18 @@ module RiscV64 where
   postulate
     runtime : RuntimeContract FS
     frame-ops : FrameOps FS
-    primSem : PrimSem
+    sigOpSem : SigOpSem
     escape-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
       (result-loc : ValueLocation FS) →
       current-frame body-final ≡ FrameOps.get-child-frame frame-ops (current-frame alloc) →
       ApplyWFModule.BeforeFrontier' body-final result-loc →
       ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc
-    prim-proof : DispatcherModule.PrimContract.Provider {FS}
-      (RuntimeContract.program-bound runtime) primSem
+    sigOp-proof : DispatcherModule.SigOpContract.Provider {FS}
+      (RuntimeContract.program-bound runtime) sigOpSem
 
   -- Instantiate Correctness
   open import Once.CCC.Target.RiscV64.Correct as C
-  module Correct = C.Correctness {FS} runtime frame-ops primSem escape-survives prim-proof
+  module Correct = C.Correctness {FS} runtime frame-ops sigOpSem escape-survives sigOp-proof
 
   -- Code generation: IR → AbstractTrace → Program
   -- Note: compile-trace converts AbstractTrace to RISC-V instructions
@@ -225,12 +225,12 @@ open RiscV64 public using () renaming
 -- 2. frame-ops : FrameOps FS
 --    - Child frame creation with stack decrement
 --
--- 3. primSem : PrimSem
+-- 3. sigOpSem : SigOpSem
 --    - Semantics for primitive operations
 --
 -- 4. escape-survives
 --    - Result survives frame pop (escape analysis guarantee)
 --
--- 5. prim-proof : PrimContract.Provider
+-- 5. sigOp-proof : SigOpContract.Provider
 --    - Domain-specific primitive proofs
 ------------------------------------------------------------------------

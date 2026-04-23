@@ -105,7 +105,7 @@ escape-once apply = apply
 escape-once arr = arr
 
 -- Primitives: opaque, pass through
-escape-once (Prim name) = Prim name
+escape-once (SigOp name) = SigOp name
 
 -- free-heap: opaque, pass through
 escape-once (free-heap h) = free-heap h

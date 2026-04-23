@@ -358,7 +358,7 @@ mutual
 --
 -- Data flow (plan 0.6 Phase B/C):
 --
---   parser returns PolyType in DTypeSig / DPrimitive
+--   parser returns PolyType in DTypeSig / DSignature
 --        ↓
 --   extractFunctions projects PolyType → Type if Ground
 --        ↓ (else: package TVars for Phase C monomorphization)

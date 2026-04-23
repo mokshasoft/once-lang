@@ -106,8 +106,8 @@ optimize-pair-shape unfold g = ops-pair unfold g
 -- f = arr
 optimize-pair-shape arr g = ops-pair arr g
 
--- f = Prim
-optimize-pair-shape (Prim _) g = ops-pair _ g
+-- f = SigOp
+optimize-pair-shape (SigOp _) g = ops-pair _ g
 
 -- f = fst, g is not snd (snd handled above via with)
 -- g must have source type (D * A) - constructors with any source type work
@@ -120,7 +120,7 @@ optimize-pair-shape fst terminal = ops-pair fst terminal
 optimize-pair-shape fst (curry _ _) = ops-pair fst _
 optimize-pair-shape fst apply = ops-pair fst apply
 optimize-pair-shape fst (fold _) = ops-pair fst (fold _)
-optimize-pair-shape fst (Prim _) = ops-pair fst _
+optimize-pair-shape fst (SigOp _) = ops-pair fst _
 optimize-pair-shape fst (_ ∘ _) = ops-pair fst _
 
 -- f = fst ∘ h, g is not snd ∘ _
@@ -138,7 +138,7 @@ optimize-pair-shape (fst ∘ _) apply = ops-pair _ apply
 optimize-pair-shape (fst ∘ _) fold = ops-pair _ (fold _)
 optimize-pair-shape (fst ∘ _) unfold = ops-pair _ unfold
 optimize-pair-shape (fst ∘ _) arr = ops-pair _ arr
-optimize-pair-shape (fst ∘ _) (Prim _) = ops-pair _ _
+optimize-pair-shape (fst ∘ _) (SigOp _) = ops-pair _ _
 -- g = _ ∘ _ where inner is not snd (snd ∘ _ handled above)
 optimize-pair-shape (fst ∘ _) (id ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (fst ∘ _) = ops-pair _ _
@@ -153,7 +153,7 @@ optimize-pair-shape (fst ∘ _) (apply ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (fold ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (unfold ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) (arr ∘ _) = ops-pair _ _
-optimize-pair-shape (fst ∘ _) ((Prim _) ∘ _) = ops-pair _ _
+optimize-pair-shape (fst ∘ _) ((SigOp _) ∘ _) = ops-pair _ _
 optimize-pair-shape (fst ∘ _) ((_ ∘ _) ∘ _) = ops-pair _ _
 
 -- f = h ∘ k where h is not fst
@@ -170,7 +170,7 @@ optimize-pair-shape (apply ∘ _) g = ops-pair _ g
 optimize-pair-shape (fold ∘ _) g = ops-pair _ g
 optimize-pair-shape (unfold ∘ _) g = ops-pair _ g
 optimize-pair-shape (arr ∘ _) g = ops-pair _ g
-optimize-pair-shape ((Prim _) ∘ _) g = ops-pair _ g
+optimize-pair-shape ((SigOp _) ∘ _) g = ops-pair _ g
 optimize-pair-shape ((_ ∘ _) ∘ _) g = ops-pair _ g
 
 ------------------------------------------------------------------------
@@ -258,8 +258,8 @@ optimize-case-shape unfold g = ocs-case unfold g
 -- f = arr
 optimize-case-shape arr g = ocs-case arr g
 
--- f = Prim
-optimize-case-shape (Prim _) g = ocs-case _ g
+-- f = SigOp
+optimize-case-shape (SigOp _) g = ocs-case _ g
 
 -- f = inl, g is not inr (inr handled above)
 -- g : IR B (A + X), so g's target must be a sum type
@@ -273,7 +273,7 @@ optimize-case-shape (inl _) (case _ _) = ocs-case _ _
 optimize-case-shape (inl _) initial = ocs-case _ initial
 optimize-case-shape (inl _) apply = ocs-case _ apply
 optimize-case-shape (inl _) unfold = ocs-case _ unfold
-optimize-case-shape (inl _) (Prim _) = ocs-case _ _
+optimize-case-shape (inl _) (SigOp _) = ocs-case _ _
 optimize-case-shape (inl _) (_ ∘ _) = ocs-case _ _
 
 -- f = h ∘ inl, g is not _ ∘ inr
@@ -291,7 +291,7 @@ optimize-case-shape (_ ∘ (inl _)) apply = ocs-case _ apply
 optimize-case-shape (_ ∘ (inl _)) fold = ocs-case _ (fold _)
 optimize-case-shape (_ ∘ (inl _)) unfold = ocs-case _ unfold
 optimize-case-shape (_ ∘ (inl _)) arr = ocs-case _ arr
-optimize-case-shape (_ ∘ (inl _)) (Prim _) = ocs-case _ _
+optimize-case-shape (_ ∘ (inl _)) (SigOp _) = ocs-case _ _
 -- g = _ ∘ k where k is not inr
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ id) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ fst) = ocs-case _ _
@@ -306,7 +306,7 @@ optimize-case-shape (_ ∘ (inl _)) (_ ∘ apply) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ (fold Heap)) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ unfold) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ arr) = ocs-case _ _
-optimize-case-shape (_ ∘ (inl _)) (_ ∘ (Prim _)) = ocs-case _ _
+optimize-case-shape (_ ∘ (inl _)) (_ ∘ (SigOp _)) = ocs-case _ _
 optimize-case-shape (_ ∘ (inl _)) (_ ∘ (_ ∘ _)) = ocs-case _ _
 
 -- f = h ∘ k where k is not inl
@@ -323,5 +323,5 @@ optimize-case-shape (_ ∘ apply) g = ocs-case _ g
 optimize-case-shape (_ ∘ (fold Heap)) g = ocs-case _ g
 optimize-case-shape (_ ∘ unfold) g = ocs-case _ g
 optimize-case-shape (_ ∘ arr) g = ocs-case _ g
-optimize-case-shape (_ ∘ (Prim _)) g = ocs-case _ g
+optimize-case-shape (_ ∘ (SigOp _)) g = ocs-case _ g
 optimize-case-shape (_ ∘ (_ ∘ _)) g = ocs-case _ g

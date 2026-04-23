@@ -85,25 +85,25 @@ d_lookupModule_40 v0 v1
                        else coe d_lookupModule_40 (coe v3) (coe v1))
              _ -> MAlonzo.RTE.mazUnreachableError
       _ -> MAlonzo.RTE.mazUnreachableError
--- Once.Parser.Module.Resolve.primitivesWithOwner
-d_primitivesWithOwner_70 ::
+-- Once.Parser.Module.Resolve.signaturesWithOwner
+d_signaturesWithOwner_70 ::
   Maybe MAlonzo.Code.Agda.Builtin.String.T_String_6 ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32] ->
   [MAlonzo.Code.Once.Parser.Module.Core.T_Decl_32]
-d_primitivesWithOwner_70 v0 v1
+d_signaturesWithOwner_70 v0 v1
   = case coe v1 of
       [] -> coe v1
       (:) v2 v3
-        -> let v4 = d_primitivesWithOwner_70 (coe v0) (coe v3) in
+        -> let v4 = d_signaturesWithOwner_70 (coe v0) (coe v3) in
            coe
              (case coe v2 of
-                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38 v5 v6 v7
+                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38 v5 v6 v7
                   -> coe
                        MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                        (coe
-                          MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38 (coe v5)
+                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38 (coe v5)
                           (coe v0) (coe v7))
-                       (coe d_primitivesWithOwner_70 (coe v0) (coe v3))
+                       (coe d_signaturesWithOwner_70 (coe v0) (coe v3))
                 _ -> coe v4)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.Module.Resolve.resolveDecls
@@ -148,7 +148,7 @@ d_resolveDecls_84 v0 v1
                                                   (coe
                                                      MAlonzo.Code.Data.List.Base.du__'43''43'__32
                                                      (coe
-                                                        d_primitivesWithOwner_70
+                                                        d_signaturesWithOwner_70
                                                         (coe
                                                            MAlonzo.Code.Once.Parser.Module.Core.d_alias_28
                                                            (coe v5))

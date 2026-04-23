@@ -7,8 +7,8 @@
 -- Semantic evaluation of IR terms.
 --
 -- Provides:
---   - PrimSem: Record for primitive semantics provider
---   - eval: Evaluator for IR parameterized by PrimSem
+--   - SigOpSem: Record for primitive semantics provider
+--   - eval: Evaluator for IR parameterized by SigOpSem
 ------------------------------------------------------------------------
 
 module Once.CCC.Eval where
@@ -39,11 +39,11 @@ open import Once.Semantics.Machine public using (⟦_⟧)
 -- primitive operations via this record.
 ------------------------------------------------------------------------
 
-record PrimSem : Set₁ where
+record SigOpSem : Set₁ where
   field
-    evalPrim : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
+    evalSigOp : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
 
-open PrimSem public
+open SigOpSem public
 
 ------------------------------------------------------------------------
 -- Semantic Evaluation
@@ -52,7 +52,7 @@ open PrimSem public
 -- AllocMode is ignored in semantics (it's a compilation concern).
 ------------------------------------------------------------------------
 
-eval : PrimSem → ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
+eval : SigOpSem → ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
 eval ps id x = x
 eval ps (g ∘ f) x = eval ps g (eval ps f x)
 eval ps (⟨ f , g ⟩ _) x = sem-pair (eval ps f x) (eval ps g x)
@@ -68,7 +68,7 @@ eval ps apply (closure , arg) = closure arg
 eval ps arr f = f
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 eval ps (free-heap _) x = x
-eval ps (Prim name) x = evalPrim ps name x
+eval ps (SigOp name) x = evalSigOp ps name x
 -- OCP-0003: Recursion scheme evaluation (WellFormedF proofs from IR constructors)
 -- In: wrap value into μ-type (initial algebra constructor)
 eval ps (In {F} _ _) x = sem-In F (coerce-functor F (μ-type F) x)

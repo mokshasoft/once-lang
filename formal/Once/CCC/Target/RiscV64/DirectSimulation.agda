@@ -40,7 +40,7 @@ open import Once.CCC.Target.RiscV64.Syntax
 open import Once.CCC.Target.RiscV64.AbstractToRiscV
   using (compile-abstract; compile-trace; slot-to-disp)
 open import Once.CCC.IR using (IR)
-open import Once.CCC.Eval using (PrimSem)
+open import Once.CCC.Eval using (SigOpSem)
 open import Once.Semantics.Machine using (⟦_⟧)
 
 ------------------------------------------------------------------------
@@ -972,13 +972,13 @@ module Simulation {FS : FrameSemantics} where
 -- Connection to IR
 ------------------------------------------------------------------------
 
-module IRConnection {FS : FrameSemantics} (bound : ℕ) (primSem : PrimSem) where
+module IRConnection {FS : FrameSemantics} (bound : ℕ) (sigOpSem : SigOpSem) where
   open Simulation {FS}
   open FrameSemantics FS
   open MemOps {FS}
   open AbstractExec {FS}
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} bound primSem using (IRResultAWF)
+  open ClosureWellFormedDef {FS} bound sigOpSem using (IRResultAWF)
 
   ir-sim : ∀ {m A B} (ir : IR A B) (x : ⟦ A ⟧) ls rs alloc →
     (result : IRResultAWF m ir x ls alloc) →

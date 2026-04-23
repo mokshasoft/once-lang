@@ -17,7 +17,7 @@
 --   - Exponentials: curry, apply
 --   - Recursive types: fold, unfold
 --   - Effects: arr
---   - Primitives: Prim (opaque external operations)
+--   - Primitives: SigOp (opaque external operations)
 --   - Memory: free-heap (explicit deallocation)
 ------------------------------------------------------------------------
 
@@ -187,7 +187,7 @@ data IR : Type → Type → Set where
   free-heap : HeapRef → IR Unit Unit
 
   -- Primitive operations (opaque)
-  Prim : ∀ {A B} → String → IR A B
+  SigOp : ∀ {A B} → String → IR A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

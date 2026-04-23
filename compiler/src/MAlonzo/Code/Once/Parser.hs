@@ -776,7 +776,7 @@ du_go_184 v0 v1 v2
                        MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
                          -> coe du_go_184 (coe v0) (coe v4) (coe v2)
                        _ -> MAlonzo.RTE.mazUnreachableError
-                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38 v6 v7 v8
+                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38 v6 v7 v8
                   -> case coe v7 of
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
                          -> let v10 = MAlonzo.Code.Once.Type.d_isGround_438 (coe v8) in

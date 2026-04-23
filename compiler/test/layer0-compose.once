@@ -5,7 +5,7 @@
 -- Tests composition of identity morphisms
 -- Expected: exit code 42
 
-primitive exit : Eff Int Unit
+signature exit : Eff Int Unit
 
 main : IO Unit
 main = exit ((id . id . id) 42)

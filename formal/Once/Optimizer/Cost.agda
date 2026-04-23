@@ -61,7 +61,7 @@ cost (Hylo _ _ alg coalg) = cost alg ℕ+ cost coalg  -- fusion: both algebra an
 cost (Fuse _ _ alg trans) = cost alg ℕ+ cost trans  -- fusion: algebra + transform
 -- Memory and primitives
 cost (free-heap _) = 0                        -- deallocation doesn't allocate
-cost (Prim _)      = 0                        -- primitives are opaque
+cost (SigOp _)      = 0                        -- primitives are opaque
 
 ------------------------------------------------------------------------
 -- Basic properties

@@ -56,4 +56,4 @@ data T_IR_12
                MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 T_IR_12
                T_IR_12 |
     C_free'45'heap_150 MAlonzo.Code.Once.CCC.Machine.SMCore.T_HeapRef_20 |
-    C_Prim_156 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_SigOp_156 MAlonzo.Code.Agda.Builtin.String.T_String_6

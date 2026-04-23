@@ -234,7 +234,7 @@ rename {Δ = Δ} θ (Surface.eq {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
 rename {Δ = Δ} θ (Surface.ne {Ψ₁ = Ψ₁} {Ψ₂ = Ψ₂} a b) =
   subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-+ᵘ θ Ψ₁ Ψ₂)) (Surface.ne (rename θ a) (rename θ b))
 rename θ (Surface.arr' f) = Surface.arr' (rename θ f)
-rename {Δ = Δ} θ (Surface.prim name) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.prim name)
+rename {Δ = Δ} θ (Surface.sigOp name) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.sigOp name)
 rename {Δ = Δ} θ (Surface.poly name T) = subst (λ Ψ → SExpr Δ Ψ _) (sym (thin-usage-zeroUsage θ)) (Surface.poly name T)
 
 ------------------------------------------------------------------------

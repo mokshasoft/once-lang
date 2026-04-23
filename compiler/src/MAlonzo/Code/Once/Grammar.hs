@@ -85,7 +85,7 @@ data T_GDecl_114
     C_DFunDef_118 MAlonzo.Code.Agda.Builtin.String.T_String_6
                   [MAlonzo.Code.Agda.Builtin.String.T_String_6]
                   (Maybe T_AllocStrategy_100) T_GExpr_70 |
-    C_DPrimitive_120 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_DSignature_120 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      T_GType_8 |
     C_DTypeAlias_122 MAlonzo.Code.Agda.Builtin.String.T_String_6
                      [MAlonzo.Code.Agda.Builtin.String.T_String_6] T_GType_8 |

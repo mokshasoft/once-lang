@@ -19,12 +19,12 @@ open import Data.String using (String)
 -- | Surface IR: Extends Core IR with surface-level constructs
 --
 -- SurfaceIR A B represents a morphism from A to B that may contain
--- surface-level constructs (Let, Prim) that will be desugared to
+-- surface-level constructs (Let, SigOp) that will be desugared to
 -- pure categorical Core IR before optimization.
 --
 -- Surface-only constructs:
 --   Let   : Let binding (desugars to composition + pairing)
---   Prim  : Primitive operation (opaque to optimizer)
+--   SigOp  : Primitive operation (opaque to optimizer)
 --
 data SurfaceIR : Type → Type → Set where
   -- Category structure (same as Core IR)
@@ -81,7 +81,7 @@ data SurfaceIR : Type → Type → Set where
   --
   -- Examples: syscalls, arithmetic, string operations
   --
-  Prim    : ∀ {A B} → String → SurfaceIR A B
+  SigOp    : ∀ {A B} → String → SurfaceIR A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

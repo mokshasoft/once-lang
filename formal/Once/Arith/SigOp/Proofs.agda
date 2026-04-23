@@ -2,15 +2,15 @@
 -- Copyright (C) 2025-2026 Jonas Claesson and contributors
 
 ------------------------------------------------------------------------
--- Once.Arith.Prim.Proofs
+-- Once.Arith.SigOp.Proofs
 --
 -- Arithmetic primitive proofs (arch-portable).
 --
 -- Parameterized by FrameSemantics, not tied to any specific target.
--- Uses the simplified Once.CCC.Prim.Helper interface.
+-- Uses the simplified Once.CCC.SigOp.Helper interface.
 ------------------------------------------------------------------------
 
-module Once.Arith.Prim.Proofs where
+module Once.Arith.SigOp.Proofs where
 
 open import Data.Nat using (ℕ; _≤_; z≤n) renaming (_+_ to _+ℕ_)
 open import Data.Nat.Properties using (≤-refl)
@@ -24,13 +24,13 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Type using (Type; Int; IsPrimitive; is-int; _*_)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.IR using (IR; Prim; AllocMode; Stack)
+open import Once.CCC.IR using (IR; SigOp; AllocMode; Stack)
 open import Once.CCC.Machine.SMCore
   using (LocState; ValueLocation; OnStack; halted; regs;
          readReg; Input; Output; AbstractTrace; mov-to-output;
          mkLocState; stackMem; heapMem; writeReg; module MemOps;
          module AbstractExec; module ExecLemmas)
-open import Once.CCC.Eval using (PrimSem; evalPrim)
+open import Once.CCC.Eval using (SigOpSem; evalSigOp)
 open import Once.Semantics.Machine using (⟦_⟧)
 
 ------------------------------------------------------------------------
@@ -44,9 +44,9 @@ add-sem (a , b) = a +ℕ b
 -- Arithmetic Proof Module
 ------------------------------------------------------------------------
 
-module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
-  open import Once.CCC.Prim.Helper
-  open PrimHelper {FS} program-bound primSem
+module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
+  open import Once.CCC.SigOp.Helper
+  open PrimHelper {FS} program-bound sigOpSem
 
   open import Once.CCC.Machine.Allocation
     using (AllocState; current-frame; next-slot; frame-capacity)
@@ -55,11 +55,11 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open FrontierInvariant {FS} using (BeforeFrontier)
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF; IRResultAWF)
 
-  open import Once.CCC.Prim.Contract using (module Def)
-  open Def {FS} program-bound primSem
+  open import Once.CCC.SigOp.Contract using (module Def)
+  open Def {FS} program-bound sigOpSem
     using (Contract)
 
   open AbstractExec {FS} using (exec-trace; exec-trace-single; exec-abstract)
@@ -137,7 +137,7 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- THE PROOF: Clean and simple
   ------------------------------------------------------------------------
 
-  add-int-proof : Contract {Int * Int} {Int} Stack (Prim "add-int")
+  add-int-proof : Contract {Int * Int} {Int} Stack (SigOp "add-int")
   add-int-proof mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mkPurePrimResult
       "add-int"
@@ -157,5 +157,5 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- Provider: Maps "add-int" to its proof
   ------------------------------------------------------------------------
 
-  add-int-contract-proof : ∃[ m ] Contract {Int * Int} {Int} m (Prim "add-int")
+  add-int-contract-proof : ∃[ m ] Contract {Int * Int} {Int} m (SigOp "add-int")
   add-int-contract-proof = Stack , add-int-proof

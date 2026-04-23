@@ -588,7 +588,7 @@ d_compile'45'length_52 v0 v1 v2
         -> coe (1 :: Integer)
       MAlonzo.Code.Once.CCC.IR.C_free'45'heap_150 v3
         -> coe (0 :: Integer)
-      MAlonzo.Code.Once.CCC.IR.C_Prim_156 v5 -> coe (1 :: Integer)
+      MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v5 -> coe (1 :: Integer)
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.CodeGen.Compile.compile-ir'
 d_compile'45'ir''_72 ::
@@ -826,7 +826,7 @@ d_compile'45'ir''_72 v0 v1 v2 v3
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe MAlonzo.Code.Agda.Builtin.List.C_'91''93'_16) (coe v2)
-      MAlonzo.Code.Once.CCC.IR.C_Prim_156 v6
+      MAlonzo.Code.Once.CCC.IR.C_SigOp_156 v6
         -> coe
              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
              (coe

@@ -145,7 +145,7 @@ escape-once-correct (curry {k = k} f m) x =
   funext (λ b → escape-once-correct f (x , b))
 escape-once-correct apply x = refl
 escape-once-correct arr x = refl
-escape-once-correct (Prim n) x = refl
+escape-once-correct (SigOp n) x = refl
 escape-once-correct (free-heap h) x = refl
 escape-once-correct (In wf m) x = refl
 escape-once-correct (out-μ wf) x = refl

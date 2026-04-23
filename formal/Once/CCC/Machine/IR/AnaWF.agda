@@ -38,7 +38,7 @@ open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
 open import Once.Type using (Functor)
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
@@ -84,7 +84,7 @@ thunk-seed-offset = 1
 -- No recursion needed - we just package coalg + seed.
 ------------------------------------------------------------------------
 
-module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -100,7 +100,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
   open SMP.RecSchemeSemantics {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance)
@@ -110,7 +110,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
   --
   -- See RecSchemePostulates.agda for documentation.
   ------------------------------------------------------------------------
-  open RSP.RecSchemePostulatesImpl {FS} program-bound primSem public
+  open RSP.RecSchemePostulatesImpl {FS} program-bound sigOpSem public
     using (rec-scheme-semantic)
 
   ------------------------------------------------------------------------
@@ -237,7 +237,7 @@ module AnaWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem)
       result-bf = stack-before refl (n<1+n (next-slot alloc))
 
       -- Result validity: Ana produces νF from seed (postulated)
-      result-valid : ValidAtWF Heap alloc' (eval primSem (Ana wf coalg) x) result-loc s'
+      result-valid : ValidAtWF Heap alloc' (eval sigOpSem (Ana wf coalg) x) result-loc s'
       result-valid = rec-scheme-semantic (Ana wf coalg) alloc' x result-loc s'
 
       -- Stack requirement bound: suc n ≤ n + ir-stack-requirement (Ana wf coalg)

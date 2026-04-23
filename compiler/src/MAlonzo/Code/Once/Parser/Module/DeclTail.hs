@@ -771,11 +771,11 @@ d_parseTypeAlias_120 v0
                 MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
                 _ -> MAlonzo.RTE.mazUnreachableError
          _ -> MAlonzo.RTE.mazUnreachableError)
--- Once.Parser.Module.DeclTail.parsePrimitiveB
-d_parsePrimitiveB_138 ::
+-- Once.Parser.Module.DeclTail.parseSignatureB
+d_parseSignatureB_138 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parsePrimitiveB_138 v0
+d_parseSignatureB_138 v0
   = let v1
           = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0) in
     coe
@@ -873,7 +873,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                                         (coe
                                                                                                                                            MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                            (coe
-                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                               (coe
                                                                                                                                                  v3)
                                                                                                                                               (coe
@@ -970,7 +970,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                                                           (coe
                                                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                              (coe
-                                                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                                 (coe
                                                                                                                                                                    v3)
                                                                                                                                                                 (coe
@@ -1068,7 +1068,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                  (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                     (coe
                                                                                                                                        v3)
                                                                                                                                     (coe
@@ -1203,7 +1203,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                  (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                     (coe
                                                                                                                                        v3)
                                                                                                                                     (coe
@@ -1300,7 +1300,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                       (coe
                                                                                                                                                          v3)
                                                                                                                                                       (coe
@@ -1398,7 +1398,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                           (coe
                                                                                                                              v3)
                                                                                                                           (coe
@@ -1545,7 +1545,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                  (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                     (coe
                                                                                                                                        v3)
                                                                                                                                     (coe
@@ -1642,7 +1642,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                       (coe
                                                                                                                                                          v3)
                                                                                                                                                       (coe
@@ -1740,7 +1740,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                           (coe
                                                                                                                              v3)
                                                                                                                           (coe
@@ -1873,7 +1873,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                           (coe
                                                                                                                              v3)
                                                                                                                           (coe
@@ -1970,7 +1970,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                                       (coe
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                          (coe
-                                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                             (coe
                                                                                                                                                v3)
                                                                                                                                             (coe
@@ -2067,7 +2067,7 @@ d_parsePrimitiveB_138 v0
                                                                                                           (coe
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                 (coe
                                                                                                                    v3)
                                                                                                                 (coe
@@ -2222,7 +2222,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                               (coe
                                                                                                                                  MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                  (coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                     (coe
                                                                                                                                        v3)
                                                                                                                                     (coe
@@ -2319,7 +2319,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                                                 (coe
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                                    (coe
-                                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                       (coe
                                                                                                                                                          v3)
                                                                                                                                                       (coe
@@ -2417,7 +2417,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                           (coe
                                                                                                                              v3)
                                                                                                                           (coe
@@ -2550,7 +2550,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                           (coe
                                                                                                                              v3)
                                                                                                                           (coe
@@ -2647,7 +2647,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                                       (coe
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                          (coe
-                                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                             (coe
                                                                                                                                                v3)
                                                                                                                                             (coe
@@ -2744,7 +2744,7 @@ d_parsePrimitiveB_138 v0
                                                                                                           (coe
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                 (coe
                                                                                                                    v3)
                                                                                                                 (coe
@@ -2886,7 +2886,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                     (coe
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                        (coe
-                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                           (coe
                                                                                                                              v3)
                                                                                                                           (coe
@@ -2983,7 +2983,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                                       (coe
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                          (coe
-                                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                             (coe
                                                                                                                                                v3)
                                                                                                                                             (coe
@@ -3080,7 +3080,7 @@ d_parsePrimitiveB_138 v0
                                                                                                           (coe
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                 (coe
                                                                                                                    v3)
                                                                                                                 (coe
@@ -3210,7 +3210,7 @@ d_parsePrimitiveB_138 v0
                                                                                                           (coe
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                              (coe
-                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                 (coe
                                                                                                                    v3)
                                                                                                                 (coe
@@ -3307,7 +3307,7 @@ d_parsePrimitiveB_138 v0
                                                                                                                             (coe
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                (coe
-                                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                   (coe
                                                                                                                                      v3)
                                                                                                                                   (coe
@@ -3403,7 +3403,7 @@ d_parsePrimitiveB_138 v0
                                                                                                 (coe
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                    (coe
-                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                       (coe
                                                                                                          v3)
                                                                                                       (coe
@@ -3493,11 +3493,11 @@ d_parsePrimitiveB_138 v0
                 _ -> MAlonzo.RTE.mazUnreachableError
          MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18 -> coe v1
          _ -> MAlonzo.RTE.mazUnreachableError)
--- Once.Parser.Module.DeclTail.parsePrimitive
-d_parsePrimitive_184 ::
+-- Once.Parser.Module.DeclTail.parseSignature
+d_parseSignature_184 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   Maybe MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14
-d_parsePrimitive_184 v0
+d_parseSignature_184 v0
   = let v1
           = MAlonzo.Code.Once.Parser.Module.Core.d_anyWordB_118 (coe v0) in
     coe
@@ -3596,7 +3596,7 @@ d_parsePrimitive_184 v0
                                                                                                                                     (coe
                                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                                        (coe
-                                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                          MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                           (coe
                                                                                                                                              v3)
                                                                                                                                           (coe
@@ -3623,7 +3623,7 @@ d_parsePrimitive_184 v0
                                                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v32 v33
                                                                                                                                                      -> let v34
                                                                                                                                                               = coe
-                                                                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                                   (coe
                                                                                                                                                                      v3)
                                                                                                                                                                   (coe
@@ -3680,7 +3680,7 @@ d_parsePrimitive_184 v0
                                                                                                                        MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v25 v26
                                                                                                                          -> let v27
                                                                                                                                   = coe
-                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                       (coe
                                                                                                                                          v3)
                                                                                                                                       (coe
@@ -3778,7 +3778,7 @@ d_parsePrimitive_184 v0
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                 (coe
                                                                                                                                    v3)
                                                                                                                                 (coe
@@ -3805,7 +3805,7 @@ d_parsePrimitive_184 v0
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                            -> let v30
                                                                                                                                                     = coe
-                                                                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                         (coe
                                                                                                                                                            v3)
                                                                                                                                                         (coe
@@ -3862,7 +3862,7 @@ d_parsePrimitive_184 v0
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                -> let v23
                                                                                                                         = coe
-                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                             (coe
                                                                                                                                v3)
                                                                                                                             (coe
@@ -3972,7 +3972,7 @@ d_parsePrimitive_184 v0
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                 (coe
                                                                                                                                    v3)
                                                                                                                                 (coe
@@ -3999,7 +3999,7 @@ d_parsePrimitive_184 v0
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                            -> let v30
                                                                                                                                                     = coe
-                                                                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                         (coe
                                                                                                                                                            v3)
                                                                                                                                                         (coe
@@ -4056,7 +4056,7 @@ d_parsePrimitive_184 v0
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                -> let v23
                                                                                                                         = coe
-                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                             (coe
                                                                                                                                v3)
                                                                                                                             (coe
@@ -4152,7 +4152,7 @@ d_parsePrimitive_184 v0
                                                                                                                 (coe
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                       (coe
                                                                                                                          v3)
                                                                                                                       (coe
@@ -4179,7 +4179,7 @@ d_parsePrimitive_184 v0
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                                                                  -> let v26
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                               (coe
                                                                                                                                                  v3)
                                                                                                                                               (coe
@@ -4235,7 +4235,7 @@ d_parsePrimitive_184 v0
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
                                                                                                      -> let v19
                                                                                                               = coe
-                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                   (coe
                                                                                                                      v3)
                                                                                                                   (coe
@@ -4354,7 +4354,7 @@ d_parsePrimitive_184 v0
                                                                                                                           (coe
                                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                              (coe
-                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                 (coe
                                                                                                                                    v3)
                                                                                                                                 (coe
@@ -4381,7 +4381,7 @@ d_parsePrimitive_184 v0
                                                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v28 v29
                                                                                                                                            -> let v30
                                                                                                                                                     = coe
-                                                                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                                         (coe
                                                                                                                                                            v3)
                                                                                                                                                         (coe
@@ -4438,7 +4438,7 @@ d_parsePrimitive_184 v0
                                                                                                              MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v21 v22
                                                                                                                -> let v23
                                                                                                                         = coe
-                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                             (coe
                                                                                                                                v3)
                                                                                                                             (coe
@@ -4534,7 +4534,7 @@ d_parsePrimitive_184 v0
                                                                                                                 (coe
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                       (coe
                                                                                                                          v3)
                                                                                                                       (coe
@@ -4561,7 +4561,7 @@ d_parsePrimitive_184 v0
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                                                                  -> let v26
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                               (coe
                                                                                                                                                  v3)
                                                                                                                                               (coe
@@ -4617,7 +4617,7 @@ d_parsePrimitive_184 v0
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
                                                                                                      -> let v19
                                                                                                               = coe
-                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                   (coe
                                                                                                                      v3)
                                                                                                                   (coe
@@ -4723,7 +4723,7 @@ d_parsePrimitive_184 v0
                                                                                                                 (coe
                                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                                    (coe
-                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                      MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                       (coe
                                                                                                                          v3)
                                                                                                                       (coe
@@ -4750,7 +4750,7 @@ d_parsePrimitive_184 v0
                                                                                                                                MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v24 v25
                                                                                                                                  -> let v26
                                                                                                                                           = coe
-                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                              MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                               (coe
                                                                                                                                                  v3)
                                                                                                                                               (coe
@@ -4806,7 +4806,7 @@ d_parsePrimitive_184 v0
                                                                                                    MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v17 v18
                                                                                                      -> let v19
                                                                                                               = coe
-                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                  MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                   (coe
                                                                                                                      v3)
                                                                                                                   (coe
@@ -4900,7 +4900,7 @@ d_parsePrimitive_184 v0
                                                                                                       (coe
                                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32
                                                                                                          (coe
-                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                            MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                             (coe
                                                                                                                v3)
                                                                                                             (coe
@@ -4927,7 +4927,7 @@ d_parsePrimitive_184 v0
                                                                                                                      MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v20 v21
                                                                                                                        -> let v22
                                                                                                                                 = coe
-                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                                                    MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                                                     (coe
                                                                                                                                        v3)
                                                                                                                                     (coe
@@ -4982,7 +4982,7 @@ d_parsePrimitive_184 v0
                                                                                          MAlonzo.Code.Agda.Builtin.Sigma.C__'44'__32 v13 v14
                                                                                            -> let v15
                                                                                                     = coe
-                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DPrimitive_38
+                                                                                                        MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38
                                                                                                         (coe
                                                                                                            v3)
                                                                                                         (coe

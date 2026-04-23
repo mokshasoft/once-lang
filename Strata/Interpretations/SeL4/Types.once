@@ -119,16 +119,16 @@ seL4_SysNBRecv = -8
 -- | Create MessageInfo from components
 -- Arguments: (label, capsUnwrapped, extraCaps, length)
 -- Returns packed MessageInfo word
-primitive mkMessageInfo : Eff (Int * Int * Int * Int) Int
+signature mkMessageInfo : Eff (Int * Int * Int * Int) Int
 
 -- | Extract label from MessageInfo (bits 12-63 on 64-bit)
-primitive msgLabel : Eff Int Int
+signature msgLabel : Eff Int Int
 
 -- | Extract message length from MessageInfo (bits 0-6)
-primitive msgLength : Eff Int Int
+signature msgLength : Eff Int Int
 
 -- | Extract extra capabilities count from MessageInfo (bits 7-8)
-primitive msgExtraCaps : Eff Int Int
+signature msgExtraCaps : Eff Int Int
 
 -- | Extract caps unwrapped count from MessageInfo (bits 9-11)
-primitive msgCapsUnwrapped : Eff Int Int
+signature msgCapsUnwrapped : Eff Int Int

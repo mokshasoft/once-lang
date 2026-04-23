@@ -35,8 +35,8 @@ open import Once.CCC.Machine.Allocation hiding (AllocMode)
 -- Import semantic operations
 open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦ν⟧; ⟦_⟧F; sem-In; sem-Out; sem-CoIn; sem-CoOut)
 
--- Import PrimSem for Validity module
-open import Once.CCC.Eval using (PrimSem)
+-- Import SigOpSem for Validity module
+open import Once.CCC.Eval using (SigOpSem)
 
 ------------------------------------------------------------------------
 -- μLayerValid: Validity for F-layers by functor induction
@@ -49,14 +49,14 @@ open import Once.CCC.Eval using (PrimSem)
 -- type statically, so we don't get unification failures.
 ------------------------------------------------------------------------
 
-module MuValidityImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module MuValidityImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open FrameSemantics FS
 
   -- Import readLoc-stack-heap-eq from Validity
   open import Once.CCC.Machine.Validity
-  open ValidityDef {FS} program-bound primSem using (readLoc-stack-heap-eq)
+  open ValidityDef {FS} program-bound sigOpSem using (readLoc-stack-heap-eq)
 
   -- | μLayerValid: F-layer at a location is memory-valid
   --

@@ -20,9 +20,9 @@ type IO a = Eff Unit a
 -- Primitives (GDecl.DPrimitive)
 ------------------------------------------------------------------------
 
-primitive println : Eff String Unit
-primitive readInt : Eff Unit Int
-primitive exit : Eff Int Void
+signature println : Eff String Unit
+signature readInt : Eff Unit Int
+signature exit : Eff Int Void
 
 ------------------------------------------------------------------------
 -- Types (GType)

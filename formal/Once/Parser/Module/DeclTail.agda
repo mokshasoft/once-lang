@@ -42,17 +42,17 @@ parseTypeAlias toks with parseTypeAliasB toks
 ... | just (d , rest , _) = just (d , rest)
 ... | nothing = nothing
 
-parsePrimitiveB : (toks : List Token) → ParseAtB {Decl} toks
-parsePrimitiveB toks with anyWordB toks
+parseSignatureB : (toks : List Token) → ParseAtB {Decl} toks
+parseSignatureB toks with anyWordB toks
 ... | nothing = nothing
 ... | just (name , TColon ∷ rest , bnd) with parsePolyTypeB rest
 ...   | just (ty , rest' , bnd') =
-        just (DPrimitive name nothing ty , rest' ,
+        just (DSignature name nothing ty , rest' ,
               <-trans (<-trans bnd' (s≤s ≤-refl)) bnd)
 ...   | nothing = nothing
-parsePrimitiveB toks | just (_ , _ , _) = nothing
+parseSignatureB toks | just (_ , _ , _) = nothing
 
-parsePrimitive : Parser Decl
-parsePrimitive toks with parsePrimitiveB toks
+parseSignature : Parser Decl
+parseSignature toks with parseSignatureB toks
 ... | just (d , rest , _) = just (d , rest)
 ... | nothing = nothing

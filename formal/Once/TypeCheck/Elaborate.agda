@@ -377,7 +377,7 @@ ctxWithImportsAndPolys imps polys = mkCtx 0 ∅ S∅ 0 imps polys
 
 -- | Create context with imports and self-reference for recursive definitions
 -- The function's own name and type are added to the imports list so it can call itself.
--- This causes recursive calls to elaborate to `Prim "name"` which the C backend
+-- This causes recursive calls to elaborate to `SigOp "name"` which the C backend
 -- handles as a function call.
 ctxWithImportsAndSelf : Imports → String → Type → NamedCtx
 ctxWithImportsAndSelf imps name ty =
@@ -986,12 +986,12 @@ mutual
   ... | no  _ with lookupLocal ctx x
   ...   | just (A , Ψ , se) = success A Ψ se 0 (NamedCtx.freshCounter ctx)
   ...   | nothing with lookupImport (NamedCtx.imports ctx) x
-  ...     | just ty = success ty _ (Surface.prim x) 0 (NamedCtx.freshCounter ctx)
+  ...     | just ty = success ty _ (Surface.sigOp x) 0 (NamedCtx.freshCounter ctx)
   ...     | nothing = failure (UnboundVariable x)
 
   -- Qualified name: look up as "alias.name"
   inferElab ctx (Raw.RQualified name alias) with lookupImport (NamedCtx.imports ctx) (alias ++ "." ++ name)
-  ... | just ty = success ty _ (Surface.prim (alias ++ "." ++ name)) 0 (NamedCtx.freshCounter ctx)
+  ... | just ty = success ty _ (Surface.sigOp (alias ++ "." ++ name)) 0 (NamedCtx.freshCounter ctx)
   ... | nothing = failure (UnboundQualified name alias)
 
   -- Lambda without annotation: rejected in infer mode
@@ -1834,8 +1834,8 @@ checkElab-fallback-RApp-apply {ctx} p A B eq_p
 -- body with a smaller polys context to handle nested polys.
 --
 -- TERMINATION: lex on (length polys, Expr-structure) as direct arguments:
---   * Non-prim cases: Expr strictly decreases, `pAcc` unchanged.
---   * Prim-leaf-with-match: destructure `pAcc = acc rec`, recurse with
+--   * Non-sigOp cases: Expr strictly decreases, `pAcc` unchanged.
+--   * SigOp-leaf-with-match: destructure `pAcc = acc rec`, recurse with
 --     `rec (removePoly-decreases ...)` as the smaller Acc for the
 --     shrunken polys. Agda's lex termination checker accepts this.
 -- No TERMINATING pragma needed. Public `resolveExpr` wraps the WF
@@ -1913,11 +1913,11 @@ resolveExprWF polys pAcc imps fresh (Surface.eq a b) =
 resolveExprWF polys pAcc imps fresh (Surface.ne a b) =
   Surface.ne (resolveExprWF polys pAcc imps fresh a) (resolveExprWF polys pAcc imps fresh b)
 resolveExprWF polys pAcc imps fresh (Surface.arr' e) = Surface.arr' (resolveExprWF polys pAcc imps fresh e)
--- Prim = external primitive. Pass through unchanged; resolver doesn't touch it.
-resolveExprWF polys _ imps _ (Surface.prim s) = Surface.prim s
+-- SigOp = external primitive. Pass through unchanged; resolver doesn't touch it.
+resolveExprWF polys _ imps _ (Surface.sigOp s) = Surface.sigOp s
 -- Poly = unresolved placeholder from Phase 1. Delegate to helper that
 -- takes the lookup result + equation explicitly, so external proofs
--- about the prim case can `rewrite` the premise cleanly.
+-- about the sigOp case can `rewrite` the premise cleanly.
 resolveExprWF {A = A} polys pAcc imps fresh (Surface.poly x _) =
   resolvePolyCase polys pAcc imps fresh x A (lookupPoly polys x) refl
 
@@ -1941,7 +1941,7 @@ resolveExpr polys imps fresh e = resolveExprWF polys (<-wellFounded (length poly
 -- ─── Resolver semantic-equivalence theorems ────────────────────────────
 -- The resolver is a pure structural traversal: it commutes with every
 -- non-poly Expr constructor by definitional equality, and is the
--- identity on `prim` leaves (external primitives are never polys).
+-- identity on `sigOp` leaves (external primitives are never polys).
 -- Together these establish that `resolveExpr` is a "poly-leaf rewriter"
 -- — it only touches `poly` positions, and leaves every other Expr
 -- constructor structurally equal.
@@ -2183,13 +2183,13 @@ resolveExpr-arr' :
   → resolveExpr polys imps fresh (Surface.arr' e) ≡ Surface.arr' (resolveExpr polys imps fresh e)
 resolveExpr-arr' _ _ _ _ = refl
 
--- Prim is always unaffected — it's for external primitives, not polys.
-resolveExpr-prim :
+-- SigOp is always unaffected — it's for external primitives, not polys.
+resolveExpr-sigOp :
   ∀ {n} {Γ : Surface.Ctx n} {A}
     (polys : PolyCtx) (imps : Imports) (fresh : ℕ) (s : String)
-  → resolveExpr {Γ = Γ} polys imps fresh (Surface.prim {A = A} s)
-      ≡ Surface.prim s
-resolveExpr-prim _ _ _ _ = refl
+  → resolveExpr {Γ = Γ} polys imps fresh (Surface.sigOp {A = A} s)
+      ≡ Surface.sigOp s
+resolveExpr-sigOp _ _ _ _ = refl
 
 -- ─── Gap 1 (positive direction): resolver correctly splices the body
 -- at a matched poly placeholder ────────────────────────────────────────

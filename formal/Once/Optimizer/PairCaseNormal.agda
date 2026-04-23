@@ -37,7 +37,7 @@ data IsNormal : ∀ {A B} → IR A B → Set where
   normal-arr      : ∀ {A B} → IsNormal (arr {A} {B})
   normal-fold     : ∀ {F} → ¬ (F ≡ Void) → IsNormal ((fold _) {F})
   normal-unfold   : ∀ {F} → IsNormal (unfold {F})
-  normal-prim     : ∀ {A B} {n} → ¬ (A ≡ Void) → IsNormal (Prim {A} {B} n)
+  normal-sigOp     : ∀ {A B} {n} → ¬ (A ≡ Void) → IsNormal (SigOp {A} {B} n)
 
   -- Composition is normal if not reducible and subterms are normal
   normal-compose : ∀ {A B C} {g : IR B C} {f : IR A B} →
@@ -131,7 +131,7 @@ optimize-pair-normal fst terminal nf ng = normal-pair nf ng λ ()
 optimize-pair-normal fst (curry _ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal fst apply nf ng = normal-pair nf ng λ ()
 optimize-pair-normal fst (fold _) nf ng = normal-pair nf ng λ ()
-optimize-pair-normal fst (Prim _) nf ng = normal-pair nf ng λ ()
+optimize-pair-normal fst (SigOp _) nf ng = normal-pair nf ng λ ()
 -- f = fst, g = _ ∘ _ (all composition cases)
 optimize-pair-normal fst (_ ∘ _) nf ng = normal-pair nf ng λ ()
 
@@ -174,8 +174,8 @@ optimize-pair-normal unfold _ nf ng = normal-pair nf ng λ ()
 -- f = arr
 optimize-pair-normal arr _ nf ng = normal-pair nf ng λ ()
 
--- f = Prim _
-optimize-pair-normal (Prim _) _ nf ng = normal-pair nf ng λ ()
+-- f = SigOp _
+optimize-pair-normal (SigOp _) _ nf ng = normal-pair nf ng λ ()
 
 -- f = non-fst ∘ _ (never matches eta or uniq because left of comp isn't fst)
 optimize-pair-normal (snd ∘ _) _ nf ng = normal-pair nf ng λ ()
@@ -191,7 +191,7 @@ optimize-pair-normal (apply ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal ((fold Heap) ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (unfold ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (arr ∘ _) _ nf ng = normal-pair nf ng λ ()
-optimize-pair-normal ((Prim _) ∘ _) _ nf ng = normal-pair nf ng λ ()
+optimize-pair-normal ((SigOp _) ∘ _) _ nf ng = normal-pair nf ng λ ()
 optimize-pair-normal ((_ ∘ _) ∘ _) _ nf ng = normal-pair nf ng λ ()
 
 -- f = fst ∘ h, g ≠ snd ∘ _ (all remaining g patterns)
@@ -211,7 +211,7 @@ optimize-pair-normal (fst ∘ _) apply nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (fold _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) unfold nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) arr nf ng = normal-pair nf ng λ ()
-optimize-pair-normal (fst ∘ _) (Prim _) nf ng = normal-pair nf ng λ ()
+optimize-pair-normal (fst ∘ _) (SigOp _) nf ng = normal-pair nf ng λ ()
 
 -- f = fst ∘ _, g = non-snd ∘ _
 optimize-pair-normal (fst ∘ _) (id ∘ _) nf ng = normal-pair nf ng λ ()
@@ -227,7 +227,7 @@ optimize-pair-normal (fst ∘ _) (apply ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) ((fold Heap) ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (unfold ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) (arr ∘ _) nf ng = normal-pair nf ng λ ()
-optimize-pair-normal (fst ∘ _) ((Prim _) ∘ _) nf ng = normal-pair nf ng λ ()
+optimize-pair-normal (fst ∘ _) ((SigOp _) ∘ _) nf ng = normal-pair nf ng λ ()
 optimize-pair-normal (fst ∘ _) ((_ ∘ _) ∘ _) nf ng = normal-pair nf ng λ ()
 
 ------------------------------------------------------------------------
@@ -284,7 +284,7 @@ optimize-case-normal (inl _) (case _ _) nf ng = normal-case nf ng λ ()
 optimize-case-normal (inl _) initial nf ng = normal-case nf ng λ ()
 optimize-case-normal (inl _) apply nf ng = normal-case nf ng λ ()
 optimize-case-normal (inl _) unfold nf ng = normal-case nf ng λ ()
-optimize-case-normal (inl _) (Prim _) nf ng = normal-case nf ng λ ()
+optimize-case-normal (inl _) (SigOp _) nf ng = normal-case nf ng λ ()
 -- f = inl _, g = _ ∘ _ (all composition cases)
 optimize-case-normal (inl _) (_ ∘ _) nf ng = normal-case nf ng λ ()
 
@@ -327,8 +327,8 @@ optimize-case-normal unfold _ nf ng = normal-case nf ng λ ()
 -- f = arr
 optimize-case-normal arr _ nf ng = normal-case nf ng λ ()
 
--- f = Prim _
-optimize-case-normal (Prim _) _ nf ng = normal-case nf ng λ ()
+-- f = SigOp _
+optimize-case-normal (SigOp _) _ nf ng = normal-case nf ng λ ()
 
 -- f = _ ∘ non-inl (never matches eta or uniq because right of comp isn't inl)
 optimize-case-normal (_ ∘ id) _ nf ng = normal-case nf ng λ ()
@@ -344,7 +344,7 @@ optimize-case-normal (_ ∘ apply) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ fold Heap) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ unfold) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ arr) _ nf ng = normal-case nf ng λ ()
-optimize-case-normal (_ ∘ (Prim _)) _ nf ng = normal-case nf ng λ ()
+optimize-case-normal (_ ∘ (SigOp _)) _ nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (_ ∘ _)) _ nf ng = normal-case nf ng λ ()
 
 -- f = _ ∘ inl _, g ≠ _ ∘ inr _ (all remaining g patterns)
@@ -362,7 +362,7 @@ optimize-case-normal (_ ∘ (inl _)) apply nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (fold _) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) unfold nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) arr nf ng = normal-case nf ng λ ()
-optimize-case-normal (_ ∘ (inl _)) (Prim _) nf ng = normal-case nf ng λ ()
+optimize-case-normal (_ ∘ (inl _)) (SigOp _) nf ng = normal-case nf ng λ ()
 
 -- f = _ ∘ inl _, g = _ ∘ non-inr _
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ id) nf ng = normal-case nf ng λ ()
@@ -378,5 +378,5 @@ optimize-case-normal (_ ∘ (inl _)) (_ ∘ apply) nf ng = normal-case nf ng λ 
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ fold Heap) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ unfold) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ arr) nf ng = normal-case nf ng λ ()
-optimize-case-normal (_ ∘ (inl _)) (_ ∘ (Prim _)) nf ng = normal-case nf ng λ ()
+optimize-case-normal (_ ∘ (inl _)) (_ ∘ (SigOp _)) nf ng = normal-case nf ng λ ()
 optimize-case-normal (_ ∘ (inl _)) (_ ∘ (_ ∘ _)) nf ng = normal-case nf ng λ ()

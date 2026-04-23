@@ -37,11 +37,11 @@ open import Once.Semantics.Core ℤ public
 -- Provides semantics for primitive operations (e.g., arithmetic).
 -- This is a module parameter, making proofs cleaner.
 --
-record PrimSem : Set₁ where
+record SigOpSem : Set₁ where
   field
-    evalPrim : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
+    evalSigOp : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
 
-open PrimSem public
+open SigOpSem public
 
 ------------------------------------------------------------------------
 -- Evaluation of IR morphisms
@@ -52,7 +52,7 @@ open PrimSem public
 -- Maps IR morphisms to Agda functions.
 -- This is the morphism mapping of a functor from Once's CCC to Set.
 --
-eval : PrimSem → ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
+eval : SigOpSem → ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
 
 -- Category structure
 eval ps id x              = x
@@ -146,7 +146,7 @@ eval ps arr f             = f
 eval ps (free-heap _) x   = x
 
 -- Primitives (opaque operations)
-eval ps (Prim name) x     = evalPrim ps name x
+eval ps (SigOp name) x     = evalSigOp ps name x
 
 ------------------------------------------------------------------------
 -- Backward-compatible eval (using default primitive semantics)
@@ -154,14 +154,14 @@ eval ps (Prim name) x     = evalPrim ps name x
 
 -- | Postulated primitive semantics for backward compatibility
 --
--- This allows existing proofs to use eval without passing PrimSem.
+-- This allows existing proofs to use eval without passing SigOpSem.
 -- New code should prefer the parameterized version.
 --
 postulate
-  defaultEvalPrim : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
+  defaultEvalSigOp : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
 
-defaultPrimSem : PrimSem
-defaultPrimSem = record { evalPrim = defaultEvalPrim }
+defaultSigOpSem : SigOpSem
+defaultSigOpSem = record { evalSigOp = defaultEvalSigOp }
 
 -- | Non-parameterized eval (backward compatible)
 --
@@ -169,7 +169,7 @@ defaultPrimSem = record { evalPrim = defaultEvalPrim }
 -- Prefer the parameterized version for new code.
 --
 eval′ : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
-eval′ = eval defaultPrimSem
+eval′ = eval defaultSigOpSem
 
 ------------------------------------------------------------------------
 -- OCP-0003: Recursion Scheme Semantics

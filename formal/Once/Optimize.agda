@@ -254,7 +254,7 @@ data IRHead : Set where
   h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
     h-terminal h-initial h-curry h-apply h-arr
     h-In h-out-μ h-Cata h-Para h-Out h-in-ν h-Ana h-Hylo h-Fuse
-    h-free-heap h-Prim : IRHead
+    h-free-heap h-SigOp : IRHead
 
 -- Decidable equality for IRHead via tag-to-ℕ conversion. Plan 0.5 Phase B
 -- / F1. Uses stdlib's `Data.Nat._≟_` for the actual comparison;
@@ -285,7 +285,7 @@ headTag h-Ana       = 20
 headTag h-Hylo      = 21
 headTag h-Fuse      = 22
 headTag h-free-heap = 23
-headTag h-Prim      = 24
+headTag h-SigOp      = 24
 
 -- Injectivity: if tags agree, the constructors agree. 24 diagonals;
 -- off-diagonal cases are automatically covered by Agda because their
@@ -314,7 +314,7 @@ headTag-inj h-Ana       h-Ana       _ = refl
 headTag-inj h-Hylo      h-Hylo      _ = refl
 headTag-inj h-Fuse      h-Fuse      _ = refl
 headTag-inj h-free-heap h-free-heap _ = refl
-headTag-inj h-Prim      h-Prim      _ = refl
+headTag-inj h-SigOp      h-SigOp      _ = refl
 
 _≟IRHead_ : (h₁ h₂ : IRHead) → Dec (h₁ ≡ h₂)
 h₁ ≟IRHead h₂ with headTag h₁ Data.Nat.Properties.≟ headTag h₂
@@ -345,7 +345,7 @@ ir-head (Ana _ _) = h-Ana
 ir-head (Hylo _ _ _ _) = h-Hylo
 ir-head (Fuse _ _ _ _) = h-Fuse
 ir-head (free-heap _) = h-free-heap
-ir-head (Prim _) = h-Prim
+ir-head (SigOp _) = h-SigOp
 
 -- subst₂ for IR.
 subst₂-IR : ∀ {A B A' B'} → A ≡ A' → B ≡ B' → IR A B → IR A' B'
@@ -551,7 +551,7 @@ f ≟IR g = ≟IRH f g refl refl
 ... | yes refl = yes refl
 ... | no hne   = no (λ { refl → hne refl })
 
-≟IRH-diag (Prim n₁) (Prim n₂) _ refl refl with n₁ ≟String n₂
+≟IRH-diag (SigOp n₁) (SigOp n₂) _ refl refl with n₁ ≟String n₂
 ... | yes refl = yes refl
 ... | no nne   = no (λ { refl → nne refl })
 
@@ -683,7 +683,7 @@ data InlInrView : ∀ {A B : Type} → IR A B → Set where
 -- shape (B * C or A + B), we use a helper with a free codomain and an
 -- equality proof. This avoids SplitError.UnificationStuck on constructors
 -- with stuck type indices (out-μ : IR (μ-type F) (⟦ F ⟧T (μ-type F)),
--- Out, Cata, Para, Ana, Hylo, Fuse, Prim, In, in-ν). Those constructors
+-- Out, Cata, Para, Ana, Hylo, Fuse, SigOp, In, in-ν). Those constructors
 -- get handled via `eq`-matching + subst; the refl cases cover concrete
 -- constructors whose target unifies.
 --
@@ -834,10 +834,10 @@ mutual
   optimize-once-structural apply = apply
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
   optimize-once-structural arr = arr
-  -- | Prim with Void source is equivalent to initial (no inhabitants)
-  optimize-once-structural (Prim {A} n) with A ≟Type Void
+  -- | SigOp with Void source is equivalent to initial (no inhabitants)
+  optimize-once-structural (SigOp {A} n) with A ≟Type Void
   ... | yes refl = initial
-  ... | no _     = Prim n
+  ... | no _     = SigOp n
   -- | free-heap is opaque (no optimization)
   optimize-once-structural (free-heap h) = free-heap h
   -- | OCP-0003 recursion schemes: optimize algebras/coalgebras

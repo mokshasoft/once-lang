@@ -5,7 +5,7 @@
 -- Tests composition with a constant function
 -- Expected: exit code 7
 
-primitive exit : Eff Int Unit
+signature exit : Eff Int Unit
 
 seven : Int
 seven = 7

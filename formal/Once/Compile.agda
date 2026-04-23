@@ -39,7 +39,7 @@ open import Once.CCC.IR public
 
 -- Re-export Surface IR
 open import Once.Surface.IR public
-  using (SurfaceIR; Let; Prim)
+  using (SurfaceIR; Let; SigOp)
   renaming
     ( id to S-id
     ; _∘_ to _S-∘_
@@ -346,7 +346,7 @@ compile stage doOpt arch source with parseStrict source
 -- | Same as `compile` but starting from a pre-resolved `Module`.
 -- Haskell uses this after driving transitive-import I/O and calling
 -- `resolveImports` to flatten `DImport` decls into owner-tagged
--- `DPrimitive` decls. Skips the `parse source` step of `compile`.
+-- `DSignature` decls. Skips the `parse source` step of `compile`.
 compileFromModule : Stage → Bool → Arch → Module → CompileResult
 compileFromModule stage doOpt arch mod =
   let aliases = extractAliases mod

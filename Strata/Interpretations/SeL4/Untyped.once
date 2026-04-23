@@ -65,7 +65,7 @@ seL4_CapTableObject = 4
 --
 -- Note: This is an object invocation, not a syscall.
 -- It internally uses seL4_Call to invoke the Untyped capability.
-primitive seL4_Untyped_Retype : Eff (Int * Int * Int * Int * Int * Int * Int * Int) Int
+signature seL4_Untyped_Retype : Eff (Int * Int * Int * Int * Int * Int * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Helper Types for Sizes

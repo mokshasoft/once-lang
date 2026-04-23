@@ -26,7 +26,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Target.X86-64.Layout using (closure-slots)
@@ -42,7 +42,7 @@ import Once.ProofObligation as PO
 -- Curry implementation with clean trace-based structure
 ------------------------------------------------------------------------
 
-module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -58,7 +58,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   open SMP.TraceComposition {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; BodyCorrect;
            valid-closure-wf; validityWF-mem-only;
            validityWF-alloc-advance; validityWF-frontier-advance;
@@ -415,7 +415,7 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         }
 
       -- Result validity: closure with body-correct embedded
-      result-valid-wf' : ValidAtWF Heap alloc' (eval primSem (curry {k = k} f m) x) closure-loc s'
+      result-valid-wf' : ValidAtWF Heap alloc' (eval sigOpSem (curry {k = k} f m) x) closure-loc s'
       result-valid-wf' = valid-closure-wf body<bound
         env-ptr' code-ptr' input-before' code-before' code-before'
         input-valid-wf' body-correct
@@ -430,9 +430,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
 
       reclaim-preserves-validity' :
         ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
-                  (eval primSem (curry {k = k} f m) x) closure-loc s'
+                  (eval sigOpSem (curry {k = k} f m) x) closure-loc s'
       reclaim-preserves-validity' = validityWF-with-bf-transfer
-        (eval primSem (curry {k = k} f m) x) closure-loc s' alloc'
+        (eval sigOpSem (curry {k = k} f m) x) closure-loc s' alloc'
         (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
         (λ loc bf → bf-same-frame-slot alloc'
           (record alloc { next-slot = next-slot alloc +ℕ closure-slots })

@@ -49,7 +49,7 @@ ir-size (Fuse _ _ alg transform) = 2 +ℕ ir-size alg +ℕ ir-size transform
 -- Guard/Unguard removed: productivity follows from IR totality
 -- Other
 ir-size (free-heap _) = 1
-ir-size (Prim _) = 1
+ir-size (SigOp _) = 1
 
 ------------------------------------------------------------------------
 -- Size Bound Lemmas

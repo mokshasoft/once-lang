@@ -24,7 +24,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
 
@@ -35,7 +35,7 @@ import Once.CCC.Machine.SMPrimitives as SMP
 -- Simple IR implementations
 ------------------------------------------------------------------------
 
-module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -50,7 +50,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   open SMP.TracePrimitives {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF; IRResultAWF; valid-unit-wf; valid-coerce-kind-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            decomposePairWF; PairValidWF)

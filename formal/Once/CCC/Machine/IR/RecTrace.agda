@@ -37,7 +37,7 @@ open import Once.Type using (Functor; K; Id; _⊕_; _⊗_)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod; IsBaseType;
   base-Unit; base-Void; base-Int; base-Float; base-Str; base-Buffer; base-Prod; base-Sum;
   WellFormedF-irrelevant)
-open import Once.CCC.Eval using (PrimSem; eval)
+open import Once.CCC.Eval using (SigOpSem; eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
@@ -84,7 +84,7 @@ record FunctorTraceResult {FS : FrameSemantics} (F : Functor) (A : Type) : Set w
 -- main recursion is structural on the μ-VALUE.
 ------------------------------------------------------------------------
 
-module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSem) where
+module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -98,7 +98,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
   open FrontierLemmas {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound primSem
+  open ClosureWellFormedDef {FS} program-bound sigOpSem
     using (ValidAtWF; IRResultAWF; RecDispatcherWF;
            validityWF-mem-only; validityWF-mem-preserved; validityWF-trace-preserves;
            validityWF-frontier-advance;
@@ -110,7 +110,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
   -- Import μLayerValid for layer validity
   open import Once.CCC.Machine.IR.MuValidity
-  open MuValidityImpl {FS} program-bound primSem
+  open MuValidityImpl {FS} program-bound sigOpSem
     using (μLayerValid; μValid; μ-valid;
            μlayer-K; μlayer-Id; μlayer-inl; μlayer-inr; μlayer-prod;
            μLayerValid-mem-only; μLayerValid-frontier-advance;
@@ -713,8 +713,8 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
       -- Semantic correctness: processed equals fmap of cata on layer
       -- This is the core correctness property connecting trace execution to semantics
-      -- Key equation: processed ≡ coerce-struct⁻¹ F A (sem-fmap F (eval primSem (Cata wfG alg)) layer)
-      semantic-correct : processed ≡ coerce-struct⁻¹ F A (sem-fmap F (eval primSem (Cata wfG alg)) layer)
+      -- Key equation: processed ≡ coerce-struct⁻¹ F A (sem-fmap F (eval sigOpSem (Cata wfG alg)) layer)
+      semantic-correct : processed ≡ coerce-struct⁻¹ F A (sem-fmap F (eval sigOpSem (Cata wfG alg)) layer)
 
       -- Allocation state invariants (for composition)
       frame-preserved : current-frame final-alloc ≡ current-frame alloc
@@ -1439,7 +1439,7 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
                                 μ-val-valid input-before not-halted rdi-eq
 
         -- Extract results
-        rec-val = eval primSem (Cata wfG alg) μ-val
+        rec-val = eval sigOpSem (Cata wfG alg) μ-val
         s-rec = IRResultAWF.final-state rec-result
         alloc-rec = IRResultAWF.final-alloc rec-result
         rec-loc = IRResultAWF.result-loc rec-result
@@ -3654,12 +3654,12 @@ module RecTraceImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
         --   = (λ fa → eval alg (coerce⁻¹ fa)) (sem-fmap G (sem-cata ...) layer)  [by sem-cata-compute]
         --   = eval alg (coerce⁻¹ (sem-fmap G (eval (Cata wfG alg)) layer))      [β-reduction + def eq]
         --   = eval alg processed-layer                                 [by layer-sem-correct]
-        cata-sem-eq : eval primSem (Cata wfG alg) x ≡ eval primSem alg processed-layer
+        cata-sem-eq : eval sigOpSem (Cata wfG alg) x ≡ eval sigOpSem alg processed-layer
         cata-sem-eq =
-          trans (cong (sem-cata wfG (λ fa → eval primSem alg (coerce-struct⁻¹ G A fa)))
+          trans (cong (sem-cata wfG (λ fa → eval sigOpSem alg (coerce-struct⁻¹ G A fa)))
                       (sym (sem-In-Out wfG x)))
-                (trans (sem-cata-compute wfG (λ fa → eval primSem alg (coerce-struct⁻¹ G A fa)) layer)
-                       (cong (eval primSem alg) (sym layer-sem-correct)))
+                (trans (sem-cata-compute wfG (λ fa → eval sigOpSem alg (coerce-struct⁻¹ G A fa)) layer)
+                       (cong (eval sigOpSem alg) (sym layer-sem-correct)))
 
         -- Extract layer processing properties for composition
         layer-frame-preserved = ProcessedLayerResult.frame-preserved layer-result

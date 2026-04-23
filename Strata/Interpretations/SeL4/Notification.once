@@ -32,7 +32,7 @@
 -- - cap: Notification capability with badge to signal
 --
 -- Returns: Unit
-primitive seL4_Signal : Eff Int Unit
+signature seL4_Signal : Eff Int Unit
 
 -- | seL4_Wait - Wait for notification (blocking)
 -- Blocks until the notification word is non-zero.
@@ -45,7 +45,7 @@ primitive seL4_Signal : Eff Int Unit
 -- Returns: Int (the notification word that was set)
 -- The returned word contains all badges that were signaled
 -- since last wait/poll.
-primitive seL4_Wait : Eff (Int * Int) Int
+signature seL4_Wait : Eff (Int * Int) Int
 
 -- | seL4_Poll - Poll notification (non-blocking)
 -- Checks if notification word is non-zero.
@@ -55,4 +55,4 @@ primitive seL4_Wait : Eff (Int * Int) Int
 -- - cap: Notification capability to poll
 --
 -- Returns: Int (notification word, 0 if nothing signaled)
-primitive seL4_Poll : Eff Int Int
+signature seL4_Poll : Eff Int Int

@@ -54,12 +54,12 @@ data Decl : Set where
   -- via `isGround`/`extractGround`. Plan 0.6 Phase B.
   DTypeSig   : String → PolyType → Decl
   DFunDef    : String → Maybe AllocStrategy → RawExpr → Decl
-  -- | `DPrimitive name owner ty`
+  -- | `DSignature name owner ty`
   -- `owner = nothing`  : source-level primitive (user-written).
   -- `owner = just A`   : primitive inlined by import resolution,
   --                      imported under alias `A` (i.e. user writes
   --                      `name@A`).
-  DPrimitive : String → Maybe String → PolyType → Decl
+  DSignature : String → Maybe String → PolyType → Decl
   DTypeAlias : String → List String → Type → Decl
   DImport    : Import → Decl
 

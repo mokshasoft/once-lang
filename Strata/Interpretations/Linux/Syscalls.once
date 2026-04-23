@@ -14,28 +14,28 @@
 ------------------------------------------------------------------------
 
 -- | Exit the process with code 0
-primitive exit0 : Eff Unit Unit
+signature exit0 : Eff Unit Unit
 
 -- | Exit the process with given code
-primitive exit : Eff Int Unit
+signature exit : Eff Int Unit
 
 -- | Get current process ID
-primitive getpid : Eff Unit Int
+signature getpid : Eff Unit Int
 
 -- | Get parent process ID
-primitive getppid : Eff Unit Int
+signature getppid : Eff Unit Int
 
 -- | Get user ID
-primitive getuid : Eff Unit Int
+signature getuid : Eff Unit Int
 
 -- | Get effective user ID
-primitive geteuid : Eff Unit Int
+signature geteuid : Eff Unit Int
 
 -- | Get group ID
-primitive getgid : Eff Unit Int
+signature getgid : Eff Unit Int
 
 -- | Get effective group ID
-primitive getegid : Eff Unit Int
+signature getegid : Eff Unit Int
 
 ------------------------------------------------------------------------
 -- File Descriptors (D032: All syscalls are effectful)
@@ -45,19 +45,19 @@ primitive getegid : Eff Unit Int
 -- fd: 0 = stdin, 1 = stdout, 2 = stderr
 
 -- | Read from file descriptor into buffer, returns bytes read
-primitive fd_read : Eff (Int * Buffer * Int) Int
+signature fd_read : Eff (Int * Buffer * Int) Int
 
 -- | Write buffer to file descriptor, returns bytes written
-primitive fd_write : Eff (Int * Buffer * Int) Int
+signature fd_write : Eff (Int * Buffer * Int) Int
 
 -- | Close file descriptor
-primitive fd_close : Eff Int Int
+signature fd_close : Eff Int Int
 
 -- | Duplicate file descriptor
-primitive fd_dup : Eff Int Int
+signature fd_dup : Eff Int Int
 
 -- | Duplicate file descriptor to specific number
-primitive fd_dup2 : Eff (Int * Int) Int
+signature fd_dup2 : Eff (Int * Int) Int
 
 ------------------------------------------------------------------------
 -- File Operations (D032: All syscalls are effectful)
@@ -68,65 +68,65 @@ primitive fd_dup2 : Eff (Int * Int) Int
 -- O_CREAT = 64, O_TRUNC = 512, O_APPEND = 1024
 
 -- | Open file, returns file descriptor
-primitive open : Eff (String * Int * Int) Int
+signature open : Eff (String * Int * Int) Int
 
 -- | Create file (shorthand for open with O_CREAT | O_WRONLY | O_TRUNC)
-primitive creat : Eff (String * Int) Int
+signature creat : Eff (String * Int) Int
 
 -- | Unlink (delete) file
-primitive unlink : Eff (String) Int
+signature unlink : Eff (String) Int
 
 -- | Rename file
-primitive rename : Eff (String * String) Int
+signature rename : Eff (String * String) Int
 
 -- | Create symbolic link
-primitive symlink : Eff (String * String) Int
+signature symlink : Eff (String * String) Int
 
 -- | Read symbolic link target into buffer
-primitive readlink : Eff (String * Buffer * Int) Int
+signature readlink : Eff (String * Buffer * Int) Int
 
 -- | Get file status (returns encoded stat structure in buffer)
-primitive stat : Eff (String * Buffer) Int
+signature stat : Eff (String * Buffer) Int
 
 -- | Get file status (don't follow symlinks)
-primitive lstat : Eff (String * Buffer) Int
+signature lstat : Eff (String * Buffer) Int
 
 -- | Get file status by file descriptor
-primitive fstat : Eff (Int * Buffer) Int
+signature fstat : Eff (Int * Buffer) Int
 
 -- | Change file permissions
-primitive chmod : Eff (String * Int) Int
+signature chmod : Eff (String * Int) Int
 
 -- | Change file permissions by file descriptor
-primitive fchmod : Eff (Int * Int) Int
+signature fchmod : Eff (Int * Int) Int
 
 -- | Change file owner
-primitive chown : Eff (String * Int * Int) Int
+signature chown : Eff (String * Int * Int) Int
 
 -- | Truncate file to specified length
-primitive truncate : Eff (String * Int) Int
+signature truncate : Eff (String * Int) Int
 
 -- | Truncate file by file descriptor
-primitive ftruncate : Eff (Int * Int) Int
+signature ftruncate : Eff (Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Directory Operations (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Create directory
-primitive mkdir : Eff (String * Int) Int
+signature mkdir : Eff (String * Int) Int
 
 -- | Remove directory
-primitive rmdir : Eff (String) Int
+signature rmdir : Eff (String) Int
 
 -- | Change current directory
-primitive chdir : Eff (String) Int
+signature chdir : Eff (String) Int
 
 -- | Get current directory into buffer
-primitive getcwd : Eff (Buffer * Int) Int
+signature getcwd : Eff (Buffer * Int) Int
 
 -- | Change root directory
-primitive chroot : Eff (String) Int
+signature chroot : Eff (String) Int
 
 ------------------------------------------------------------------------
 -- File Seeking (D032: All syscalls are effectful)
@@ -135,39 +135,39 @@ primitive chroot : Eff (String) Int
 -- | Seek flags: SEEK_SET = 0, SEEK_CUR = 1, SEEK_END = 2
 
 -- | Seek to position in file, returns new position
-primitive lseek : Eff (Int * Int * Int) Int
+signature lseek : Eff (Int * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Time (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Get current time in seconds since epoch
-primitive time : Eff Unit Int
+signature time : Eff Unit Int
 
 -- | Get high-resolution time (nanoseconds in buffer)
-primitive clock_gettime : Eff (Int * Buffer) Int
+signature clock_gettime : Eff (Int * Buffer) Int
 
 -- | Sleep for specified seconds
-primitive sleep : Eff Int Int
+signature sleep : Eff Int Int
 
 -- | Sleep for specified microseconds
-primitive usleep : Eff Int Int
+signature usleep : Eff Int Int
 
 -- | Sleep for specified nanoseconds (timespec in buffer)
-primitive nanosleep : Eff (Buffer * Buffer) Int
+signature nanosleep : Eff (Buffer * Buffer) Int
 
 ------------------------------------------------------------------------
 -- Environment (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Get environment variable value
-primitive getenv : Eff (String) (String)
+signature getenv : Eff (String) (String)
 
 -- | Set environment variable
-primitive setenv : Eff (String * String * Int) Int
+signature setenv : Eff (String * String * Int) Int
 
 -- | Unset environment variable
-primitive unsetenv : Eff (String) Int
+signature unsetenv : Eff (String) Int
 
 ------------------------------------------------------------------------
 -- Memory Mapping (D032: All syscalls are effectful)
@@ -176,13 +176,13 @@ primitive unsetenv : Eff (String) Int
 -- | Map memory region
 -- prot: PROT_READ=1, PROT_WRITE=2, PROT_EXEC=4
 -- flags: MAP_SHARED=1, MAP_PRIVATE=2, MAP_ANONYMOUS=32
-primitive mmap : Eff (Int * Int * Int * Int * Int * Int) Buffer
+signature mmap : Eff (Int * Int * Int * Int * Int * Int) Buffer
 
 -- | Unmap memory region
-primitive munmap : Eff (Buffer * Int) Int
+signature munmap : Eff (Buffer * Int) Int
 
 -- | Change memory protection
-primitive mprotect : Eff (Buffer * Int * Int) Int
+signature mprotect : Eff (Buffer * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Signals (D032: All syscalls are effectful)
@@ -192,20 +192,20 @@ primitive mprotect : Eff (Buffer * Int * Int) Int
 -- SIGHUP=1, SIGINT=2, SIGQUIT=3, SIGKILL=9, SIGTERM=15, etc.
 
 -- | Send signal to process
-primitive kill : Eff (Int * Int) Int
+signature kill : Eff (Int * Int) Int
 
 -- | Raise signal in current process
-primitive raise : Eff Int Int
+signature raise : Eff Int Int
 
 -- | Pause until signal received
-primitive pause : Eff Unit Int
+signature pause : Eff Unit Int
 
 ------------------------------------------------------------------------
 -- Pipe and IPC (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Create pipe (writes fds to buffer: [read_fd, write_fd])
-primitive pipe : Eff Buffer Int
+signature pipe : Eff Buffer Int
 
 ------------------------------------------------------------------------
 -- Socket Operations (D032: All syscalls are effectful)
@@ -215,48 +215,48 @@ primitive pipe : Eff Buffer Int
 -- | Socket types: SOCK_STREAM=1, SOCK_DGRAM=2
 
 -- | Create socket
-primitive socket : Eff (Int * Int * Int) Int
+signature socket : Eff (Int * Int * Int) Int
 
 -- | Bind socket to address (sockaddr in buffer)
-primitive bind : Eff (Int * Buffer * Int) Int
+signature bind : Eff (Int * Buffer * Int) Int
 
 -- | Listen for connections
-primitive listen : Eff (Int * Int) Int
+signature listen : Eff (Int * Int) Int
 
 -- | Accept connection, returns new socket fd
-primitive accept : Eff (Int * Buffer * Buffer) Int
+signature accept : Eff (Int * Buffer * Buffer) Int
 
 -- | Connect to address
-primitive connect : Eff (Int * Buffer * Int) Int
+signature connect : Eff (Int * Buffer * Int) Int
 
 -- | Send data on socket
-primitive send : Eff (Int * Buffer * Int * Int) Int
+signature send : Eff (Int * Buffer * Int * Int) Int
 
 -- | Receive data from socket
-primitive recv : Eff (Int * Buffer * Int * Int) Int
+signature recv : Eff (Int * Buffer * Int * Int) Int
 
 -- | Shutdown socket
-primitive shutdown : Eff (Int * Int) Int
+signature shutdown : Eff (Int * Int) Int
 
 -- | Set socket option
-primitive setsockopt : Eff (Int * Int * Int * Buffer * Int) Int
+signature setsockopt : Eff (Int * Int * Int * Buffer * Int) Int
 
 -- | Get socket option
-primitive getsockopt : Eff (Int * Int * Int * Buffer * Buffer) Int
+signature getsockopt : Eff (Int * Int * Int * Buffer * Buffer) Int
 
 ------------------------------------------------------------------------
 -- Polling (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Poll file descriptors (pollfd array in buffer)
-primitive poll : Eff (Buffer * Int * Int) Int
+signature poll : Eff (Buffer * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Random (D032: All syscalls are effectful)
 ------------------------------------------------------------------------
 
 -- | Get random bytes into buffer
-primitive getrandom : Eff (Buffer * Int * Int) Int
+signature getrandom : Eff (Buffer * Int * Int) Int
 
 ------------------------------------------------------------------------
 -- Threading (D032: All syscalls are effectful)
@@ -274,13 +274,13 @@ primitive getrandom : Eff (Buffer * Int * Int) Int
 -- clone(flags, stack_ptr) -> thread_id or -1 on error
 -- Note: This is a low-level syscall. The stack must be allocated
 -- via mmap and prepared with the thread entry point.
-primitive clone : Eff (Int * Buffer) Int
+signature clone : Eff (Int * Buffer) Int
 
 -- | Futex operations for thread synchronization
 -- futex(addr, op, val, timeout, addr2, val3) -> depends on op
 -- FUTEX_WAIT = 0    Block if *addr == val
 -- FUTEX_WAKE = 1    Wake up to val waiters
-primitive futex : Eff (Buffer * Int * Int * Buffer * Buffer * Int) Int
+signature futex : Eff (Buffer * Int * Int * Buffer * Buffer * Int) Int
 
 -- | Get thread ID
-primitive gettid : Eff Unit Int
+signature gettid : Eff Unit Int
