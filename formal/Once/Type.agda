@@ -120,6 +120,71 @@ showQuantity One  = "1"
 showQuantity Many = "ω"
 
 ------------------------------------------------------------------------
+-- Plan 0.5.1: Arrow Kinds — Orthogonal Quantity × Purity
+------------------------------------------------------------------------
+--
+-- An arrow type `A ⇒ B` in Once carries two independent annotations:
+--
+--   * Quantity (from QTT): tracks how many times the arrow's input
+--     is consumed. Zero / One / Many.
+--   * Purity (from D032): tracks whether the arrow's execution has
+--     observable side effects. pure / eff.
+--
+-- These are **categorically independent** annotations on the same
+-- exponential object. No structural law couples them; all four
+-- combinations are coherent morphism types.
+--
+-- `ArrowKind` packages both annotations into a single record. This
+-- replaces the earlier design where `Eff A B` was a distinct Type
+-- constructor and `A ⇒[q] B` carried only the quantity — that design
+-- had redundant type-level tagging (Eff duplicated the information
+-- the kind could carry) and foreclosed linear effects by omission.
+--
+-- See plan 0.5.1 for the full refactor design.
+
+data Purity : Set where
+  pure : Purity   -- No observable side effects
+  eff  : Purity   -- Effectful (D032: arrow-based effects)
+
+-- | Show function for Purity
+showPurity : Purity → String
+showPurity pure = "pure"
+showPurity eff  = "eff"
+
+record ArrowKind : Set where
+  constructor mk-kind
+  field
+    quantity : Quantity
+    purity   : Purity
+
+open ArrowKind public
+
+-- | Show function for ArrowKind
+showArrowKind : ArrowKind → String
+showArrowKind (mk-kind q p) = showQuantity q ++ "," ++ showPurity p
+
+-- | Common ArrowKind values (conveniences)
+pureK : Quantity → ArrowKind
+pureK q = mk-kind q pure
+
+effK : ArrowKind
+effK = mk-kind Many eff
+
+-- | Decidable equality on Purity (plan 0.5.1)
+_≟p_ : (p₁ p₂ : Purity) → Dec (p₁ ≡ p₂)
+pure ≟p pure = yes refl
+pure ≟p eff  = no (λ ())
+eff  ≟p pure = no (λ ())
+eff  ≟p eff  = yes refl
+
+-- | Decidable equality on ArrowKind (plan 0.5.1)
+_≟k_ : (k₁ k₂ : ArrowKind) → Dec (k₁ ≡ k₂)
+mk-kind q₁ p₁ ≟k mk-kind q₂ p₂ with q₁ ≟q q₂ | p₁ ≟p p₂
+... | yes refl | yes refl = yes refl
+... | no ¬q    | _        = no λ { refl → ¬q refl }
+... | _        | no ¬p    = no λ { refl → ¬p refl }
+
+------------------------------------------------------------------------
 -- Types and Functors (Mutually Recursive)
 ------------------------------------------------------------------------
 --
@@ -168,6 +233,11 @@ mutual
     _+_    : Type → Type → Type      -- Coproduct (sum)
     _⇒[_]_ : Type → Quantity → Type → Type  -- Graded function arrow (QTT)
     Eff    : Type → Type → Type      -- Effectful morphism (D032)
+    -- Plan 0.5.1 will unify these two arrow types under a single
+    -- `_⇒[_]_ : Type → ArrowKind → Type → Type`. The vocabulary
+    -- (Purity, ArrowKind, _≟p_, _≟k_) is already in place; the
+    -- signature change is Phase 1b, deferred until the downstream
+    -- migration is scoped as its own session.
     -- Fix removed by OCP-0003: use μ-type/ν-type instead
     -- Polynomial functor fixed points (OCP-0003: total/productive)
     μ-type : Functor → Type          -- Initial algebra (inductive, total)
@@ -516,6 +586,11 @@ quantityEqBool Zero Zero = true
 quantityEqBool One  One  = true
 quantityEqBool Many Many = true
 quantityEqBool _    _    = false
+
+purityEqBool : Purity → Purity → Bool
+purityEqBool pure pure = true
+purityEqBool eff  eff  = true
+purityEqBool _    _    = false
 
 mutual
   typeEqBool : Type → Type → Bool
