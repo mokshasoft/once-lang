@@ -1,50 +1,67 @@
 # Plans
 
-This folder tracks the planning history and dependencies between design decisions.
+This folder tracks active and recent planning. Completed plans with no
+unfinished downstream are archived in git history — see D045, D044, etc.
+in `docs/compiler/decision-log.md` for durable records of landed work.
 
-## Plan Tree
+## Active Plan Tree
 
 ```
-0-ocp3 (root)
+0-ocp3 (active root)
 │
-├── 0.1-encode-betanf
-│   └── 0.1.2-is-id-proofs
-│       └── 0.1.3-normalizer-restructure
-│           └── 0.1.4-cctower
+├── 0.2-cata-postulates (completed — retained for 0.2.4 context)
+│   └── 0.2.2-cata-remaining (completed)
+│       └── 0.2.3-positive-invariants (completed)
+│           └── 0.2.4-categorical-layer-0 ← ACTIVE (compiler-side Layer 0 integration)
 │
-├── 0.2-cata-postulates
-│   └── 0.2.2-cata-remaining
-│       └── 0.2.3-positive-invariants
-│           └── 0.2.4-categorical-layer-0  ← ACTIVE (resume next)
-│               └── 0.2.5-type-polytype-split  (completed 2026-04-17)
-│                   └── 0.2.6-usage-indexed-expr  (completed 2026-04-17)
+├── 0.3-frontend-verification-gaps (completed 2026-04-19 — retained for 0.4 context)
+│   └── 0.4-frontend-completeness-and-bridges (planning)
+│       └── 0.4.2-end-to-end-connector (planning)
 │
-├── 0.3-frontend-verification-gaps  (completed 2026-04-19)
-│   └── 0.4-frontend-completeness-and-bridges  (planning)
-│       └── 0.4.2-end-to-end-connector  (planning)
+├── 0.5-ir-extension-hygiene (planning, cross-cutting — applies to any IR constructor addition)
 │
-├── 0.5-ir-extension-hygiene  (planning, cross-cutting — applies to any IR constructor addition)
-│
-├── 0.6-user-polymorphism-and-strict-parser  (planning — Phase A landed 2026-04-20)
-│   └── 0.7-parser-strictness-relational  (planning — relational parser + proofs)
+└── 0.6-user-polymorphism-and-strict-parser (planning — Section A landed 2026-04-20)
+    ├── 0.6.1-phase-c-design (design)
+    └── 0.7-parser-strictness-relational (planning)
 ```
 
-**Current focus**: resume `0.2.4-categorical-layer-0` — compiler-side
-Layer 0 integration (MAlonzo extraction, Layer 0 test harness). The
-frontend verification track (0.2.5 / 0.2.6 / 0.3) has landed; the
-backend track picks up where it paused on 2026-04-14.
+## Status Summary
 
-**Future frontend work**: plan `0.4` closes G2 completeness, parse→pretty
-direction, grammar conformance, and the three surface-semantics bridge
-postulates. After 0.4 the frontend is "fully verified" modulo
-`extensionality` (standard Agda axiom).
+| Plan | Status | Notes |
+|---|---|---|
+| `0-ocp3` | active | Root proposal |
+| `0.2-cata-postulates` | completed | Kept for 0.2.4 context |
+| `0.2.2-cata-remaining` | completed | Kept for 0.2.4 context |
+| `0.2.3-positive-invariants` | completed | Kept for 0.2.4 context |
+| `0.2.4-categorical-layer-0` | active | Compiler Layer 0 integration |
+| `0.3-frontend-verification-gaps` | completed | Kept for 0.4 context |
+| `0.4-frontend-completeness-and-bridges` | planning | T1–T4 (G2 completeness, parse→pretty, grammar conformance, surface-semantics bridges) |
+| `0.4.2-end-to-end-connector` | planning | Depends on 0.4 — composed surface→machine theorem |
+| `0.5-ir-extension-hygiene` | planning | Cross-cutting — process for adding IR constructors |
+| `0.6-user-polymorphism-and-strict-parser` | planning | Section A landed; B/C in progress via children |
+| `0.6.1-phase-c-design` | design | Phase C design + classifier migration |
+| `0.7-parser-strictness-relational` | planning | Relational parser + proofs |
 
-**Future integration work**: plan `0.4.2` closes the five structural
-gaps between frontend proofs and backend `compile-correct` theorems
-(semantics consolidation, pipeline-path alignment, `programToText`
-round-trip, composed end-to-end theorem, fusion wiring). Depends on
-0.4. After 0.4.2, `compile-correct-surface` is a single named
-theorem.
+## Recently Closed (in git history + decision log)
+
+| Plan | Closed | Reference |
+|---|---|---|
+| `0.1` / `0.1.2` / `0.1.3` / `0.1.4` (normalizer chain) | 2025-03-24 | initial bootstrap |
+| `0.2.5-type-polytype-split` | 2026-04-17 | closed via direct landing |
+| `0.2.6-usage-indexed-expr` | 2026-04-17 | closed via direct landing |
+| `0.6.2-polymorphic-schema-instantiation` | 2026-04-23 | **D045** — two-phase elaborator, 0 pragmas, 0 postulates |
+| `0.8-dot-sugar-for-compose` | 2026-04-21 | dot-sugar lands as `compose` |
+
+## Current Focus
+
+- **`0.2.4-categorical-layer-0`** — compiler-side Layer 0 integration (MAlonzo extraction, Layer 0 test harness). Paused since 2025-04-14; backend track resumes here.
+- **`0.4` / `0.4.2`** — frontend completeness closure + end-to-end composed theorem. Natural follow-on from recently-landed `0.6.2`.
+
+## Notes on Layout
+
+**Completed plans kept for context**: a plan is retained if it is finished but has unfinished downstream children (so the unfinished children's context remains readable). `0.2` / `0.2.2` / `0.2.3` are kept because `0.2.4` is still active; `0.3` is kept because `0.4` depends on it.
+
+**Completed leaf plans are removed** once their durable record is in `docs/compiler/decision-log.md` or equivalent. Git history preserves the plan file.
 
 ## Numbering Scheme
 
@@ -57,19 +74,16 @@ theorem.
 Each plan has a YAML header:
 ```yaml
 ---
-parent: 0.1.3-normalizer-restructure
-status: active | completed | blocked | abandoned
-date: 2025-04-14
+parent: <parent-plan-id> | null
+status: active | planning | design | completed | blocked | abandoned
+date: YYYY-MM-DD
+closed: YYYY-MM-DD  # optional — when status became completed
 ---
 ```
 
-## Tracks
-
-- **0.1.x (Normalizer)**: Proving the bootstrap normalizer correct
-- **0.2.x (Implementation)**: Stack-allocated compiler, layer by layer
-
 ## Related Documents
 
-- `docs/proposals/OCP-0003-total-productive-ir.md` - Root proposal
-- `docs/proposals/OCP-0004-zero-trust-verification.md` - Bootstrap tower
-- `docs/design/ir-stack-layout.md` - Stack layout and categorical layers
+- `docs/compiler/decision-log.md` — durable record of landed architectural decisions
+- `docs/proposals/OCP-0003-total-productive-ir.md` — Root proposal
+- `docs/proposals/OCP-0004-zero-trust-verification.md` — Bootstrap tower
+- `docs/design/ir-stack-layout.md` — Stack layout and categorical layers
