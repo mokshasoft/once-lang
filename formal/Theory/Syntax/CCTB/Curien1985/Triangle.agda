@@ -17,11 +17,11 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCTB.Triangle where
+module Theory.Syntax.CCTB.Curien1985.Triangle where
 
-open import Theory.Syntax.CCTB
-open import Theory.Syntax.CCTB.ParallelReduction
-open import Theory.Syntax.CCTB.Diamond
+open import Theory.Syntax.CCTB.Curien1985
+open import Theory.Syntax.CCTB.Curien1985.ParallelReduction
+open import Theory.Syntax.CCTB.Curien1985.Diamond
 
 ------------------------------------------------------------------------
 -- Forward declarations (mutual)

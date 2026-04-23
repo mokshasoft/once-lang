@@ -15,20 +15,23 @@
 -- PROOF TECHNIQUE:
 --   Computability / reducibility candidates (logical relations).
 --
+-- PARAMETERIZATION:
+--   The theorem is a claim about a particular reduction relation, so
+--   we take both a CCT1 structure (the equational carrier) AND a
+--   Reducible carrier (the directed reduction). Concrete syntaxes
+--   discharge both from their own Term / _⟶_ / IsNormalForm.
+--
 -- SCOPE OF THIS POSTULATE:
 --   This module postulates ONLY Tait's theorem for CCT1. It does NOT
 --   claim anything about CCT2, CCT3, or CCT4. Extensions to richer
 --   systems require their own citations (e.g., Mendler 1987 for μ-types).
---
--- IMPORTANT: This is an abstract existence statement quantified over
--- any CCT1 structure — any structure satisfying the CCC laws and
--- reduction rules has the strong-normalization property.
 ------------------------------------------------------------------------
 
 module Theory.Established.Tait1967 where
 
 open import Theory.CCTower using (TowerLevel; CCT1)
 open import Theory.Systems.CCT1
+open import Theory.Syntax.Reducible using (Reducible)
 open import Data.Product using (Σ; _,_) renaming (_×_ to _∧_)
 
 ------------------------------------------------------------------------
@@ -39,13 +42,15 @@ applies-to : TowerLevel
 applies-to = CCT1
 
 ------------------------------------------------------------------------
--- The Theorem
---
--- Parameterized over any CCT1 structure S.
+-- The Theorem, parameterized over any CCT1 structure S equipped with
+-- a directed reduction Red.
 ------------------------------------------------------------------------
 
-module _ (S : CCT1Structure) where
+module _ (S : CCT1Structure)
+         (Red : Reducible (CCT1Structure.Obj S) (CCT1Structure.Hom S))
+         where
   open CCT1Structure S
+  open Reducible Red
 
   postulate
     strong-normalization :

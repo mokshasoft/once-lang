@@ -8,34 +8,22 @@
 -- TOWER LEVEL: CCT4 (BCCR = BCC + μ-types + ν-types).
 --
 -- THEOREMS (Rutten 2000, §3–§4):
---   (A) The structure map Out : νF → F(νF) of a final F-coalgebra is
---       an isomorphism (dual to Lambek's Lemma).
+--   (A) νOut : νF → F(νF) is an isomorphism (dual to Lambek's Lemma).
 --   (B) ana coalg : A → νF is the unique F-coalgebra morphism from
---       any (A, coalg) to the final coalgebra (νF, Out).
---   (C) Coinduction principle: two elements of νF are equal iff they
---       are bisimilar.
+--       any (A, coalg) to the final coalgebra (νF, νOut).
+--   (C) Coinduction principle: bisimilar elements of νF are equal.
 --
--- SCOPE OF THIS POSTULATE:
---   The universal property and its immediate consequences. Productivity
---   of guarded corecursion is a separate result (Abel 2012). Confluence
---   of ana reduction with other tower rules is NOT in Rutten — it
---   requires an orthogonality argument and belongs elsewhere.
---
--- NOTE ON FUNCTORS:
---   The β-rule for ana is stated abstractly pending a full functor
---   treatment (same situation as cata-β in Lambek1968).
---
--- NOTE ON BISIMULATION:
---   Coinduction is stated abstractly below; a full formalization
---   would define bisimilarity explicitly.
+-- STATUS IN THIS FORMALIZATION:
+--   The iso directions and ana-β are now LAW FIELDS of
+--   Theory.Systems.CCT4. This module re-exports them and keeps
+--   ana-unique + coinduction as true postulates (existence /
+--   uniqueness content).
 ------------------------------------------------------------------------
 
 module Theory.Established.Rutten2000 where
 
 open import Theory.CCTower using (TowerLevel; CCT4)
 open import Theory.Systems.CCT4
-open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Data.Product using (Σ; _×_; _,_)
 
 ------------------------------------------------------------------------
 -- Tower level annotation
@@ -52,39 +40,42 @@ module _ (S : CCT4Structure) where
   open CCT4Structure S
 
   ------------------------------------------------------------------------
-  -- (A) Out is an iso (dual Lambek).
+  -- (A) νOut / νIn are inverse — re-exports CCT4Structure laws.
   ------------------------------------------------------------------------
 
-  postulate
-    final-out-in : ∀ {F : Obj → Obj} → (νOut {F} ∘ νIn {F}) ≡ id
-    final-in-out : ∀ {F : Obj → Obj} → (νIn {F} ∘ νOut {F}) ≡ id
+  final-in-out : ∀ {F : Obj → Obj} → (νIn {F} ∘ νOut {F}) ≈ id
+  final-in-out = νin-νout
+
+  final-out-in : ∀ {F : Obj → Obj} → (νOut {F} ∘ νIn {F}) ≈ id
+  final-out-in = νout-νin
 
   ------------------------------------------------------------------------
-  -- (B) ana is unique.
+  -- β-rule for ana — re-exports the CCT4Structure law.
+  ------------------------------------------------------------------------
+
+  ana-β-law : ∀ {F : Obj → Obj} {A} {coalg : Hom A (F A)} →
+              (νOut {F} ∘ ana {F} coalg) ≈
+              (fmap {F} (ana {F} coalg) ∘ coalg)
+  ana-β-law = ana-β
+
+  ------------------------------------------------------------------------
+  -- (B) ana-unique: ana coalg is the UNIQUE F-coalgebra morphism.
   ------------------------------------------------------------------------
 
   postulate
     ana-unique : ∀ {F : Obj → Obj} {A}
                  (coalg : Hom A (F A)) (h : Hom A (ν F)) →
-                 -- Given: h is an F-coalgebra morphism (νOut ∘ h ≡ fmap h ∘ coalg)
-                 h ≡ ana coalg
+                 -- Hypothesis: h is an F-coalgebra morphism
+                 (νOut {F} ∘ h) ≈ (fmap {F} h ∘ coalg) →
+                 h ≈ ana coalg
 
   ------------------------------------------------------------------------
-  -- β-rule for ana (stated abstractly, pending fmap).
-  ------------------------------------------------------------------------
-
-  postulate
-    ana-β : ∀ {F : Obj → Obj} {A} (coalg : Hom A (F A)) →
-            Σ (Hom A (F (ν F))) (λ rhs → (νOut ∘ ana coalg) ≡ rhs)
-
-  ------------------------------------------------------------------------
-  -- (C) Coinduction: bisimilar implies equal.
+  -- (C) Coinduction: bisimilar elements of νF are equal.
   ------------------------------------------------------------------------
 
   postulate
-    -- Abstract bisimilarity relation on elements of νF.
     Bisimilar : ∀ {F : Obj → Obj} →
                 Hom Unit (ν F) → Hom Unit (ν F) → Set
 
     coinduction : ∀ {F : Obj → Obj} {x y : Hom Unit (ν F)} →
-                  Bisimilar {F} x y → x ≡ y
+                  Bisimilar {F} x y → x ≈ y

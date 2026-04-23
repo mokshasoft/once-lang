@@ -13,10 +13,10 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCTB.Diamond where
+module Theory.Syntax.CCTB.Curien1985.Diamond where
 
-open import Theory.Syntax.CCTB
-open import Theory.Syntax.CCTB.ParallelReduction
+open import Theory.Syntax.CCTB.Curien1985
+open import Theory.Syntax.CCTB.Curien1985.ParallelReduction
 
 ------------------------------------------------------------------------
 -- Complete development _*

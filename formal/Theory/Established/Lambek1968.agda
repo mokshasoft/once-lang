@@ -20,26 +20,25 @@
 --   5. The composition In ∘ Out satisfies the same equation as id on
 --      (μF, In), so by uniqueness, In ∘ Out = id.
 --
--- SCOPE OF THIS POSTULATE:
---   Only the iso statement for In. The universal property of cata
---   (that it is the unique F-algebra morphism) and the β-rule
---   (cata alg ∘ In = alg ∘ fmap (cata alg)) are additional postulates
---   listed below, each a distinct claim.
+-- STATUS IN THIS FORMALIZATION:
+--   Both iso directions are now LAW FIELDS of Theory.Systems.CCT3 —
+--   `out-in` and `in-out`. Any concrete syntax that instantiates
+--   CCT3Structure must prove them. This module exports them as
+--   theorems-under-CCT3 for citation purposes.
 --
--- NOTE ON FUNCTORS:
---   The β-rule for cata requires fmap (the functorial action of F on
---   morphisms). The current Systems/CCT3 abstracts F as Obj → Obj
---   without fmap. The β-rule is therefore postulated here with an
---   abstract "rhs" rather than explicitly as alg ∘ fmap (cata alg).
---   A future FunctorStructure will let us state it explicitly.
+--   cata-β is likewise a law field of CCT3Structure.
+--
+--   cata-unique (the universal property: every F-algebra morphism
+--   into a CCT3-structure is `cata` of its algebra map) remains
+--   postulated here — it is content that is NOT encoded as an
+--   equation on a specific rewrite rule but rather an existence /
+--   uniqueness principle over arbitrary `h`.
 ------------------------------------------------------------------------
 
 module Theory.Established.Lambek1968 where
 
 open import Theory.CCTower using (TowerLevel; CCT3)
 open import Theory.Systems.CCT3
-open import Relation.Binary.PropositionalEquality using (_≡_)
-open import Data.Product using (Σ; _×_; _,_)
 
 ------------------------------------------------------------------------
 -- Tower level annotation
@@ -57,30 +56,32 @@ module _ (S : CCT3Structure) where
 
   ------------------------------------------------------------------------
   -- Lambek's Lemma: In is an isomorphism.
+  -- Now simply re-exports the CCT3Structure laws.
   ------------------------------------------------------------------------
 
-  postulate
-    lambek-out-in : ∀ {F : Obj → Obj} → (Out {F} ∘ In {F}) ≡ id
-    lambek-in-out : ∀ {F : Obj → Obj} → (In {F} ∘ Out {F}) ≡ id
+  lambek-out-in : ∀ {F : Obj → Obj} → (Out {F} ∘ In {F}) ≈ id
+  lambek-out-in = out-in
+
+  lambek-in-out : ∀ {F : Obj → Obj} → (In {F} ∘ Out {F}) ≈ id
+  lambek-in-out = in-out
 
   ------------------------------------------------------------------------
-  -- Universal property of cata (initial F-algebra):
-  -- cata alg is the unique F-algebra morphism (μF, In) → (A, alg).
+  -- β-rule for cata — re-exports the CCT3Structure law.
+  ------------------------------------------------------------------------
+
+  cata-β-law : ∀ {F : Obj → Obj} {A} {alg : Hom (F A) A} →
+               (cata {F} alg ∘ In {F}) ≈ (alg ∘ fmap {F} (cata {F} alg))
+  cata-β-law = cata-β
+
+  ------------------------------------------------------------------------
+  -- Universal property of cata: cata alg is the UNIQUE F-algebra
+  -- morphism (μF, In) → (A, alg). Still postulated — expresses
+  -- existence/uniqueness over all morphisms, not a single equation.
   ------------------------------------------------------------------------
 
   postulate
     cata-unique : ∀ {F : Obj → Obj} {A}
                   (alg : Hom (F A) A) (h : Hom (μ F) A) →
-                  -- Given: h is an F-algebra morphism (h ∘ In ≡ alg ∘ fmap h)
-                  h ≡ cata alg
-
-  ------------------------------------------------------------------------
-  -- β-rule for cata.
-  -- Stated abstractly pending a full functor treatment:
-  -- there exists some rhs (alg ∘ fmap F (cata alg)) such that
-  -- cata alg ∘ In reduces to it.
-  ------------------------------------------------------------------------
-
-  postulate
-    cata-β : ∀ {F : Obj → Obj} {A} (alg : Hom (F A) A) →
-             Σ (Hom (F (μ F)) A) (λ rhs → (cata alg ∘ In) ≡ rhs)
+                  -- Hypothesis: h is an F-algebra morphism
+                  (h ∘ In {F}) ≈ (alg ∘ fmap {F} h) →
+                  h ≈ cata alg

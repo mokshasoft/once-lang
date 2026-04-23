@@ -16,6 +16,11 @@
 -- PROOF TECHNIQUE:
 --   Parallel reduction + diamond property (Takahashi-style).
 --
+-- PARAMETERIZATION:
+--   Confluence is a property of a directed reduction relation, so we
+--   take both a CCT1 structure (equational carrier) AND a Reducible
+--   carrier (directed reduction).
+--
 -- SCOPE OF THIS POSTULATE:
 --   CCT1 confluence only. Extending confluence to cata rules (CCT3)
 --   or ana rules (CCT4) requires an additional orthogonality argument
@@ -27,6 +32,7 @@ module Theory.Established.LambekScott1986 where
 
 open import Theory.CCTower using (TowerLevel; CCT1)
 open import Theory.Systems.CCT1
+open import Theory.Syntax.Reducible using (Reducible)
 open import Data.Product using (Σ; _,_) renaming (_×_ to _∧_)
 
 ------------------------------------------------------------------------
@@ -40,8 +46,11 @@ applies-to = CCT1
 -- The Theorem
 ------------------------------------------------------------------------
 
-module _ (S : CCT1Structure) where
+module _ (S : CCT1Structure)
+         (Red : Reducible (CCT1Structure.Obj S) (CCT1Structure.Hom S))
+         where
   open CCT1Structure S
+  open Reducible Red
 
   postulate
     confluence :
