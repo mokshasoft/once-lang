@@ -54,10 +54,10 @@ open CCTB-B.Rules Ty Unit _×_ Term id _∘_ terminal fst snd ⟨_,_⟩ public
 
 import Theory.Syntax.CCT1.BaseRules as CCT1-B
 open CCT1-B.Rules Ty Unit _×_ _⇒_ Term id _∘_ fst snd ⟨_,_⟩ curry apply public
-  renaming (_⟶β_ to _⟶β-CCT1_)
+  renaming (_⟶β_ to _⟶β-CCT1_; _⟶η_ to _⟶η-CCT1_)
 
 ------------------------------------------------------------------------
--- Union of all β/η rules at this level.
+-- Union of β-rules at this level.
 -- Structured so that Hindley-Rosen composition can later split back
 -- into the CCTB component and the CCT1 component cleanly.
 ------------------------------------------------------------------------
@@ -69,7 +69,9 @@ data _⟶β_ : ∀ {A B} → Term A B → Term A B → Set where
 infix 4 _⟶β_
 
 ------------------------------------------------------------------------
--- Full reduction = CCT1 congruence closure of the unioned β-rules.
+-- β-only reduction = CCT1 congruence closure of the β-rule union.
+-- This is the subject of Theory.Syntax.CCT1.{ParallelReduction,Diamond,
+-- Triangle,Confluence}, proved confluent via Takahashi.
 ------------------------------------------------------------------------
 
 open import Theory.Syntax.CongruenceClosure
@@ -77,10 +79,6 @@ open CCT1-Close Ty _×_ _⇒_ Term _∘_ ⟨_,_⟩ curry _⟶β_ public
   renaming (Closed to _⟶_)
 
 infix 4 _⟶_
-
-------------------------------------------------------------------------
--- Reflexive-transitive closure, normal form
-------------------------------------------------------------------------
 
 data _⟶*_ : ∀ {A B} → Term A B → Term A B → Set where
   done : ∀ {A B} {t : Term A B} → t ⟶* t
@@ -92,12 +90,49 @@ IsNormalForm : ∀ {A B} → Term A B → Set
 IsNormalForm {A} {B} t = ∀ {u : Term A B} → ¬ (t ⟶ u)
 
 ------------------------------------------------------------------------
+-- Full β ∪ η reduction.
+--
+-- The β-only relation above is a clean Takahashi target but is NOT the
+-- full CCT1 reduction — CCC rules are fixed and include curry-η. We
+-- define the full reduction here and prove confluence for it via
+-- Newman's lemma (SN + local confluence) in the CCT1.{SN,
+-- LocalConfluence,ConfluenceFull} chain.
+------------------------------------------------------------------------
+
+data _⟶βη-rules_ : ∀ {A B} → Term A B → Term A B → Set where
+  β-rule : ∀ {A B} {f g : Term A B} → f ⟶β g       → f ⟶βη-rules g
+  η-rule : ∀ {A B} {f g : Term A B} → f ⟶η-CCT1 g  → f ⟶βη-rules g
+
+infix 4 _⟶βη-rules_
+
+-- Congruence closure, via a named submodule so its constructors do not
+-- collide with the β-only instantiation already opened above.
+module βη-Closure =
+  CCT1-Close Ty _×_ _⇒_ Term _∘_ ⟨_,_⟩ curry _⟶βη-rules_
+
+_⟶βη_ : ∀ {A B} → Term A B → Term A B → Set
+_⟶βη_ = βη-Closure.Closed
+
+infix 4 _⟶βη_
+
+data _⟶βη*_ : ∀ {A B} → Term A B → Term A B → Set where
+  done : ∀ {A B} {t : Term A B} → t ⟶βη* t
+  _∷_  : ∀ {A B} {t u v : Term A B} → t ⟶βη u → u ⟶βη* v → t ⟶βη* v
+
+infix 4 _⟶βη*_
+
+IsβηNormalForm : ∀ {A B} → Term A B → Set
+IsβηNormalForm {A} {B} t = ∀ {u : Term A B} → ¬ (t ⟶βη u)
+
+------------------------------------------------------------------------
 -- Canonical structures
 ------------------------------------------------------------------------
 
 open import Theory.Systems.CCTB using (CCTBStructure)
 open import Theory.Systems.CCT1 using (CCT1Structure)
 
+-- The canonical record uses the FULL βη reduction; it is what CCT1
+-- actually is. The β-only relation is an intermediate artefact.
 canonical-base : CCTBStructure
 canonical-base = record
   { Obj          = Ty
@@ -110,9 +145,9 @@ canonical-base = record
   ; fst          = fst
   ; snd          = snd
   ; ⟨_,_⟩        = ⟨_,_⟩
-  ; _⟶_          = _⟶_
-  ; _⟶*_         = _⟶*_
-  ; IsNormalForm = IsNormalForm
+  ; _⟶_          = _⟶βη_
+  ; _⟶*_         = _⟶βη*_
+  ; IsNormalForm = IsβηNormalForm
   }
 
 canonical : CCT1Structure
