@@ -174,8 +174,8 @@ eval-initial-unique f ()
 -- This is the beta law for exponentials.
 -- The quantity {q} is phantom; the law holds for any quantity.
 --
-eval-curry-apply : ∀ {A B C q} (f : IR (A * B) C) (m₁ m₂ : AllocMode) (x : ⟦ A * B ⟧)
-                 → eval′ (apply {q = q} ∘ ⟨ curry {q = q} f m₁ ∘ fst , snd ⟩ m₂) x ≡ eval′ f x
+eval-curry-apply : ∀ {A B C k} (f : IR (A * B) C) (m₁ m₂ : AllocMode) (x : ⟦ A * B ⟧)
+                 → eval′ (apply {k = k} ∘ ⟨ curry {k = k} f m₁ ∘ fst , snd ⟩ m₂) x ≡ eval′ f x
 eval-curry-apply f m₁ m₂ (a , b) = refl
 
 -- | curry (apply ∘ ⟨ g ∘ fst , snd ⟩) ≡ g (semantically, for functions)
@@ -186,8 +186,8 @@ eval-curry-apply f m₁ m₂ (a , b) = refl
 --
 -- With plain functions, application is direct function application.
 -- The quantity {q} is phantom; the law holds for any quantity.
-eval-curry-eta : ∀ {A B C q} (g : IR A (B ⇒[ q ] C)) (m₁ m₂ : AllocMode) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
-               → eval′ (curry {q = q} (apply {q = q} ∘ ⟨ g ∘ fst , snd ⟩ m₁) m₂) a b ≡ eval′ g a b
+eval-curry-eta : ∀ {A B C k} (g : IR A (B ⇒[ k ] C)) (m₁ m₂ : AllocMode) (a : ⟦ A ⟧) (b : ⟦ B ⟧)
+               → eval′ (curry {k = k} (apply {k = k} ∘ ⟨ g ∘ fst , snd ⟩ m₁) m₂) a b ≡ eval′ g a b
 eval-curry-eta g m₁ m₂ a b = refl
 
 ------------------------------------------------------------------------

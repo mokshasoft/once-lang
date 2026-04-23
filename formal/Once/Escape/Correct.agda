@@ -141,11 +141,10 @@ escape-once-correct (case f g) (inj₁ a) = escape-once-correct f a
 escape-once-correct (case f g) (inj₂ b) = escape-once-correct g b
 escape-once-correct terminal x = refl
 escape-once-correct initial ()
-escape-once-correct (curry {q = q} f m) x =
+escape-once-correct (curry {k = k} f m) x =
   funext (λ b → escape-once-correct f (x , b))
 escape-once-correct apply x = refl
 escape-once-correct arr x = refl
-escape-once-correct applyEff x = refl
 escape-once-correct (Prim n) x = refl
 escape-once-correct (free-heap h) x = refl
 escape-once-correct (In wf m) x = refl

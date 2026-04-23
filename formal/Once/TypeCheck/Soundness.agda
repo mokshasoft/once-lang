@@ -176,9 +176,6 @@ sound-RUnaryOp-neg ctx e IH eq | success (_ + _) _ _ _ _ , eqSub
 sound-RUnaryOp-neg ctx e IH eq | success (_ ⇒[ _ ] _) _ _ _ _ , eqSub
   rewrite eqSub with eq
 ... | ()
-sound-RUnaryOp-neg ctx e IH eq | success (T.Eff _ _) _ _ _ _ , eqSub
-  rewrite eqSub with eq
-... | ()
 sound-RUnaryOp-neg ctx e IH eq | success (T.μ-type _) _ _ _ _ , eqSub
   rewrite eqSub with eq
 ... | ()
@@ -454,10 +451,6 @@ sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
   rewrite eq₁ | eq₂ with eq
 ... | ()
 sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
-  | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success (T.Eff _ _) _ _ _ _ , eq₂
-  rewrite eq₁ | eq₂ with eq
-... | ()
-sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq
   | success Int Ψ₁ e₁E d₁ f₁ , eq₁ | success (T.μ-type _) _ _ _ _ , eq₂
   rewrite eq₁ | eq₂ with eq
 ... | ()
@@ -492,9 +485,6 @@ sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (_ + _) _ _ _ _ , eq₁
   rewrite eq₁ with eq
 ... | ()
 sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (_ ⇒[ _ ] _) _ _ _ _ , eq₁
-  rewrite eq₁ with eq
-... | ()
-sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (T.Eff _ _) _ _ _ _ , eq₁
   rewrite eq₁ with eq
 ... | ()
 sound-RBinOp ctx op e₁ e₂ IH₁ IH₂ eq | success (T.μ-type _) _ _ _ _ , eq₁
@@ -679,9 +669,6 @@ sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
   | success (_ T.⇒[ _ ] _) _ _ _ _ , eqS rewrite eqS with eq
 ... | ()
 sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
-  | success (T.Eff _ _) _ _ _ _ , eqS rewrite eqS with eq
-... | ()
-sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
   | success (T.μ-type _) _ _ _ _ , eqS rewrite eqS with eq
 ... | ()
 sound-RDestruct ctx scrut xL eL xR eR IHs IHL IHR eq
@@ -729,13 +716,13 @@ sound-check-RLam :
   ∀ (ctx : NamedCtx) (x : _) (body : RawExpr)
     (A : Type) (q : Quantity) (B : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ q ] B)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A T.⇒[ T.mk-kind q T.pure ] B)}
     {d f : ℕ}
   → (IH : ∀ {Ψ' eE' d' f'}
         → checkElab (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
         → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ Ψ')
-  → checkElab ctx (RLam x body) (A T.⇒[ q ] B) ≡ success Ψ eE d f
-  → ctx ⊢ᶜ RLam x body ∶ (A T.⇒[ q ] B) ⨾ Ψ
+  → checkElab ctx (RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B) ≡ success Ψ eE d f
+  → ctx ⊢ᶜ RLam x body ∶ (A T.⇒[ T.mk-kind q T.pure ] B) ⨾ Ψ
 sound-check-RLam ctx x body A q B IH eq with lamBodyBundle ctx x A body B
 sound-check-RLam ctx x body A q B IH eq
   | success (q' ∷ᵘ Ψ') bodyE d f , eqBody
@@ -840,9 +827,6 @@ sound-RApp-fst ctx arg IH eq | success (_ + _) _ _ _ _ , eqSub
 sound-RApp-fst ctx arg IH eq | success (_ ⇒[ _ ] _) _ _ _ _ , eqSub
   rewrite eqSub with eq
 ... | ()
-sound-RApp-fst ctx arg IH eq | success (T.Eff _ _) _ _ _ _ , eqSub
-  rewrite eqSub with eq
-... | ()
 sound-RApp-fst ctx arg IH eq | success (T.μ-type _) _ _ _ _ , eqSub
   rewrite eqSub with eq
 ... | ()
@@ -889,9 +873,6 @@ sound-RApp-snd ctx arg IH eq | success (_ + _) _ _ _ _ , eqSub
   rewrite eqSub with eq
 ... | ()
 sound-RApp-snd ctx arg IH eq | success (_ ⇒[ _ ] _) _ _ _ _ , eqSub
-  rewrite eqSub with eq
-... | ()
-sound-RApp-snd ctx arg IH eq | success (T.Eff _ _) _ _ _ _ , eqSub
   rewrite eqSub with eq
 ... | ()
 sound-RApp-snd ctx arg IH eq | success (T.μ-type _) _ _ _ _ , eqSub
@@ -941,16 +922,16 @@ sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   with inferBundle ctx f
 -- f is a function type — recurse into x.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
   with inferBundle ctx x
 -- Arg matches function domain (bundle the `≟T` decision to avoid
 -- the same opaque-with-helper issue seen with RDestruct).
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
   | success Ax Ψx xE dx fx , eqX
   with tyEqBundle Af Ax
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
   | success .Af Ψx xE dx fx , eqX
   | yes refl , eqTy
   with IH_f eqF | IH_x eqX
@@ -958,13 +939,13 @@ sound-RApp-generic ctx f x notPoly IH_f IH_x eq
 ... | refl = t-app notPoly fJ xJ
 -- Arg type mismatches.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
   | success Ax Ψx xE dx fx , eqX
   | no _ , eqTy rewrite eqF | eqX | eqTy with eq
 ... | ()
 -- x failed.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (Af ⇒[ q ] Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind q T.pure ] Bf) Ψf fE df ff , eqF
   | failure _ , eqX rewrite eqF | eqX with eq
 ... | ()
 -- f succeeded at a non-function type: 11 absurd cases.
@@ -995,14 +976,14 @@ sound-RApp-generic ctx f x notPoly IH_f IH_x eq
 -- f succeeded at an effect type: dispatch to `t-effApp` (paralleling
 -- `t-app`'s success case above). Eff is no longer an absurd case.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
   with inferBundle ctx x
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
   | success Ax Ψx xE dx fx , eqX
   with tyEqBundle Af Ax
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
   | success .Af Ψx xE dx fx , eqX
   | yes refl , eqTy
   with IH_f eqF | IH_x eqX
@@ -1010,14 +991,22 @@ sound-RApp-generic ctx f x notPoly IH_f IH_x eq
 ... | refl = t-effApp notPoly fJ xJ
 -- Arg type mismatches.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
   | success Ax Ψx xE dx fx , eqX
   | no _ , eqTy rewrite eqF | eqX | eqTy with eq
 ... | ()
 -- x failed.
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
-  | success (T.Eff Af Bf) Ψf fE df ff , eqF
+  | success (Af T.⇒[ T.mk-kind T.Many T.eff ] Bf) Ψf fE df ff , eqF
   | failure _ , eqX rewrite eqF | eqX with eq
+... | ()
+-- Degenerate kinds: Zero/One + eff. asFun treats these as NotFunction,
+-- so the inferElab branch returns failure and eq is absurd.
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (_ T.⇒[ T.mk-kind T.Zero T.eff ] _) _ _ _ _ , eqF rewrite eqF with eq
+... | ()
+sound-RApp-generic ctx f x notPoly IH_f IH_x eq
+  | success (_ T.⇒[ T.mk-kind T.One T.eff ] _) _ _ _ _ , eqF rewrite eqF with eq
 ... | ()
 sound-RApp-generic ctx f x notPoly IH_f IH_x eq
   | success (T.μ-type _) _ _ _ _ , eqF rewrite eqF with eq

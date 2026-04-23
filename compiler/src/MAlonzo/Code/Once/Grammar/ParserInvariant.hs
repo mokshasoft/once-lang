@@ -28,7 +28,7 @@ import qualified MAlonzo.Code.Once.Type
 -- Once.Grammar.ParserInvariant.ParsesAtom-NoMuNu
 d_ParsesAtom'45'NoMuNu_12 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesAtom_96 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512
@@ -50,22 +50,22 @@ d_ParsesAtom'45'NoMuNu_12 v0 v1 v2 v3
         -> case coe v0 of
              (:) v11 v12
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C_Eff_58 v13 v14
+                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__144 v13 v14 v15
                       -> coe
                            MAlonzo.Code.Once.Grammar.Convert.C_nmn'45'eff_550
                            (d_ParsesAtom'45'NoMuNu_12 (coe v12) (coe v13) (coe v5) (coe v9))
-                           (d_ParsesAtom'45'NoMuNu_12 (coe v5) (coe v14) (coe v2) (coe v10))
+                           (d_ParsesAtom'45'NoMuNu_12 (coe v5) (coe v15) (coe v2) (coe v10))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'io_152 v7
         -> case coe v0 of
              (:) v8 v9
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C_Eff_58 v10 v11
+                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__144 v10 v11 v12
                       -> coe
                            MAlonzo.Code.Once.Grammar.Convert.C_nmn'45'eff_550
                            (coe MAlonzo.Code.Once.Grammar.Convert.C_nmn'45'unit_514)
-                           (d_ParsesAtom'45'NoMuNu_12 (coe v9) (coe v11) (coe v2) (coe v7))
+                           (d_ParsesAtom'45'NoMuNu_12 (coe v9) (coe v12) (coe v2) (coe v7))
                     _ -> MAlonzo.RTE.mazUnreachableError
              _ -> MAlonzo.RTE.mazUnreachableError
       MAlonzo.Code.Once.Parser.TypeRelation.C_pa'45'paren_162 v5 v8
@@ -82,7 +82,7 @@ d_ParsesAtom'45'NoMuNu_12 v0 v1 v2 v3
 -- Once.Grammar.ParserInvariant.ParsesProd-NoMuNu
 d_ParsesProd'45'NoMuNu_20 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesProd_98 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512
@@ -101,9 +101,9 @@ du_ParsesProd'45'NoMuNu_20 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserInvariant.ParsesProdTail-NoMuNu
 d_ParsesProdTail'45'NoMuNu_30 ::
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesProdTail_100 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512 ->
@@ -132,7 +132,7 @@ du_ParsesProdTail'45'NoMuNu_30 v0 v1 v2
 -- Once.Grammar.ParserInvariant.ParsesSum-NoMuNu
 d_ParsesSum'45'NoMuNu_38 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesSum_102 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512
@@ -151,9 +151,9 @@ du_ParsesSum'45'NoMuNu_38 v0 v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserInvariant.ParsesSumTail-NoMuNu
 d_ParsesSumTail'45'NoMuNu_48 ::
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesSumTail_104 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512 ->
@@ -181,9 +181,9 @@ du_ParsesSumTail'45'NoMuNu_48 v0 v1 v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Grammar.ParserInvariant.ParsesArrowTail-NoMuNu
 d_ParsesArrowTail'45'NoMuNu_58 ::
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesArrowTail_108 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512 ->
@@ -192,7 +192,7 @@ d_ParsesArrowTail'45'NoMuNu_58 ~v0 v1 v2 v3 v4 v5
   = du_ParsesArrowTail'45'NoMuNu_58 v1 v2 v3 v4 v5
 du_ParsesArrowTail'45'NoMuNu_58 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesArrowTail_108 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512 ->
@@ -207,7 +207,7 @@ du_ParsesArrowTail'45'NoMuNu_58 v0 v1 v2 v3 v4
                -> case coe v12 of
                     (:) v13 v14
                       -> case coe v1 of
-                           MAlonzo.Code.Once.Type.C__'8658''91'_'93'__56 v15 v16 v17
+                           MAlonzo.Code.Once.Type.C__'8658''91'_'93'__144 v15 v16 v17
                              -> coe
                                   MAlonzo.Code.Once.Grammar.Convert.C_nmn'45'fun_544 v4
                                   (d_ParsesType'45'NoMuNu_66 (coe v14) (coe v17) (coe v2) (coe v10))
@@ -218,7 +218,7 @@ du_ParsesArrowTail'45'NoMuNu_58 v0 v1 v2 v3 v4
         -> case coe v0 of
              (:) v10 v11
                -> case coe v1 of
-                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__56 v12 v13 v14
+                    MAlonzo.Code.Once.Type.C__'8658''91'_'93'__144 v12 v13 v14
                       -> coe
                            MAlonzo.Code.Once.Grammar.Convert.C_nmn'45'fun_544 v4
                            (d_ParsesType'45'NoMuNu_66 (coe v11) (coe v14) (coe v2) (coe v9))
@@ -228,7 +228,7 @@ du_ParsesArrowTail'45'NoMuNu_58 v0 v1 v2 v3 v4
 -- Once.Grammar.ParserInvariant.ParsesType-NoMuNu
 d_ParsesType'45'NoMuNu_66 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Parser.TypeRelation.T_ParsesType_106 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512
@@ -242,7 +242,7 @@ d_ParsesType'45'NoMuNu_66 v0 v1 v2 v3
 -- Once.Grammar.ParserInvariant.parseType-NoMuNu
 d_parseType'45'NoMuNu_120 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512
@@ -250,7 +250,7 @@ d_parseType'45'NoMuNu_120 v0 v1 v2 ~v3
   = du_parseType'45'NoMuNu_120 v0 v1 v2
 du_parseType'45'NoMuNu_120 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512
 du_parseType'45'NoMuNu_120 v0 v1 v2
@@ -262,7 +262,7 @@ du_parseType'45'NoMuNu_120 v0 v1 v2
 -- Once.Grammar.ParserInvariant.parseTypeAtom-NoMuNu
 d_parseTypeAtom'45'NoMuNu_132 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Agda.Builtin.Equality.T__'8801'__12 ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512
@@ -270,7 +270,7 @@ d_parseTypeAtom'45'NoMuNu_132 v0 v1 v2 ~v3
   = du_parseTypeAtom'45'NoMuNu_132 v0 v1 v2
 du_parseTypeAtom'45'NoMuNu_132 ::
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
+  MAlonzo.Code.Once.Type.T_Type_126 ->
   [MAlonzo.Code.Once.Parser.Token.T_Token_6] ->
   MAlonzo.Code.Once.Grammar.Convert.T_NoMuNu_512
 du_parseTypeAtom'45'NoMuNu_132 v0 v1 v2

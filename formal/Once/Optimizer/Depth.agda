@@ -109,6 +109,6 @@ depth-case-right : ∀ {A B C} (f : IR A C) (g : IR B C) →
   depth g ≤ depth (case f g)
 depth-case-right f g = ≤-trans (m≤n⊔m (depth f) (depth g)) (n≤1+n _)
 
-depth-curry : ∀ {A B C q} (f : IR (A * B) C) (m : AllocMode) →
-  depth f ≤ depth (curry {q = q} f m)
+depth-curry : ∀ {A B C k} (f : IR (A * B) C) (m : AllocMode) →
+  depth f ≤ depth (curry {k = k} f m)
 depth-curry f m = n≤1+n (depth f)

@@ -21,7 +21,7 @@ open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff;
+                             _*_; _+_; _⇒[_]_; mk-kind; pure; eff;
                              Zero; One; Many)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseType)
@@ -85,17 +85,17 @@ parseType-Int+Str = refl
 
 parseType-Int⇒Int-default :
   parseType (TWord "Int" ∷ TArrow ∷ TWord "Int" ∷ [])
-    ≡ just (Int ⇒[ Many ] Int , [])
+    ≡ just (Int ⇒[ mk-kind Many pure ] Int , [])
 parseType-Int⇒Int-default = refl
 
 parseType-Int-linear-Int :
   parseType (TWord "Int" ∷ TCaret1 ∷ TArrow ∷ TWord "Int" ∷ [])
-    ≡ just (Int ⇒[ One ] Int , [])
+    ≡ just (Int ⇒[ mk-kind One pure ] Int , [])
 parseType-Int-linear-Int = refl
 
 parseType-Int-erased-Unit :
   parseType (TWord "Int" ∷ TCaret0 ∷ TArrow ∷ TWord "Unit" ∷ [])
-    ≡ just (Int ⇒[ Zero ] Unit , [])
+    ≡ just (Int ⇒[ mk-kind Zero pure ] Unit , [])
 parseType-Int-erased-Unit = refl
 
 ------------------------------------------------------------------------

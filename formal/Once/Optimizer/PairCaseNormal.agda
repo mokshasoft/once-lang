@@ -58,9 +58,9 @@ data IsNormal : ∀ {A B} → IR A B → Set where
                 IsNormal (case f g)
 
   -- Curry is normal if body is normal
-  normal-curry : ∀ {A B C q} {f : IR (A * B) C} {m} →
+  normal-curry : ∀ {A B C k} {f : IR (A * B) C} {m} →
                  IsNormal f →
-                 IsNormal (curry {q = q} f m)
+                 IsNormal (curry {k = k} f m)
 
 ------------------------------------------------------------------------
 -- Helper: Extract normal subterms from normal compound terms

@@ -72,19 +72,19 @@ data IR : Type → Type → Set where
   -- Initial object (Void)
   initial : ∀ {A} → IR Void A
 
-  -- Exponential (A ⇒[ q ] B)
-  curry : ∀ {A B C q} → IR (A * B) C → AllocMode → IR A (B ⇒[ q ] C)
-  apply : ∀ {A B q} → IR ((A ⇒[ q ] B) * A) B
+  -- Exponential (A ⇒[ k ] B). Plan 0.5.1: unified apply for any kind.
+  -- Callers typically use `pureK q` (pure) or `effK` (effectful).
+  curry : ∀ {A B C k} → IR (A * B) C → AllocMode → IR A (B ⇒[ k ] C)
+  apply : ∀ {A B k} → IR ((A ⇒[ k ] B) * A) B
 
-  -- Effect lifting (arrow's unit: pure → effectful)
-  arr : ∀ {A B q} → IR (A ⇒[ q ] B) (Eff A B)
+  -- Effect lifting: coerce a pure arrow to an effectful one.
+  -- Both sides are `_⇒[_]_` types distinguished only by kind; `arr`
+  -- takes a pure arrow and tags it as effectful. Runtime: identity.
+  arr : ∀ {A B q} → IR (A ⇒[ mk-kind q pure ] B) (A ⇒[ mk-kind Many eff ] B)
 
-  -- Effect application (arrow's run: execute an effectful arrow on an input).
-  -- Dual to `apply` for pure arrows. At runtime compiles to the same code
-  -- as `apply` (both are function calls) — the distinction is purely type-
-  -- level tracking of effectfulness. Introduced so Surface.effApp elaborates
-  -- structurally via `applyEff` instead of a Eff→Arrow coercion postulate.
-  applyEff : ∀ {A B} → IR ((Eff A B) * A) B
+  -- applyEff removed in plan 0.5.1: `apply {k = effK}` handles
+  -- effectful application. Runtime is identical (same code); the
+  -- distinction was only type-level tagging.
 
   -- fold/unfold removed by OCP-0003: use In/Cata/Out/Ana instead
   -- (Total and productive by construction)

@@ -68,65 +68,60 @@ d_lookupAlias_10 v0 v1
 -- Once.Parser.TypeAlias.expandAliasesF
 d_expandAliasesF_46 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Functor_36 ->
-  MAlonzo.Code.Once.Type.T_Functor_36
+  MAlonzo.Code.Once.Type.T_Functor_124 ->
+  MAlonzo.Code.Once.Type.T_Functor_124
 d_expandAliasesF_46 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Type.C_K_40 v2
+      MAlonzo.Code.Once.Type.C_K_128 v2
         -> coe
-             MAlonzo.Code.Once.Type.C_K_40
+             MAlonzo.Code.Once.Type.C_K_128
              (coe d_expandAliases_48 (coe v0) (coe v2))
-      MAlonzo.Code.Once.Type.C_Id_42 -> coe v1
-      MAlonzo.Code.Once.Type.C__'8853'__44 v2 v3
+      MAlonzo.Code.Once.Type.C_Id_130 -> coe v1
+      MAlonzo.Code.Once.Type.C__'8853'__132 v2 v3
         -> coe
-             MAlonzo.Code.Once.Type.C__'8853'__44
+             MAlonzo.Code.Once.Type.C__'8853'__132
              (coe d_expandAliasesF_46 (coe v0) (coe v2))
              (coe d_expandAliasesF_46 (coe v0) (coe v3))
-      MAlonzo.Code.Once.Type.C__'8855'__46 v2 v3
+      MAlonzo.Code.Once.Type.C__'8855'__134 v2 v3
         -> coe
-             MAlonzo.Code.Once.Type.C__'8855'__46
+             MAlonzo.Code.Once.Type.C__'8855'__134
              (coe d_expandAliasesF_46 (coe v0) (coe v2))
              (coe d_expandAliasesF_46 (coe v0) (coe v3))
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.Parser.TypeAlias.expandAliases
 d_expandAliases_48 ::
   [MAlonzo.Code.Agda.Builtin.Sigma.T_Σ_14] ->
-  MAlonzo.Code.Once.Type.T_Type_38 ->
-  MAlonzo.Code.Once.Type.T_Type_38
+  MAlonzo.Code.Once.Type.T_Type_126 ->
+  MAlonzo.Code.Once.Type.T_Type_126
 d_expandAliases_48 v0 v1
   = case coe v1 of
-      MAlonzo.Code.Once.Type.C_Unit_48 -> coe v1
-      MAlonzo.Code.Once.Type.C_Void_50 -> coe v1
-      MAlonzo.Code.Once.Type.C__'42'__52 v2 v3
+      MAlonzo.Code.Once.Type.C_Unit_136 -> coe v1
+      MAlonzo.Code.Once.Type.C_Void_138 -> coe v1
+      MAlonzo.Code.Once.Type.C__'42'__140 v2 v3
         -> coe
-             MAlonzo.Code.Once.Type.C__'42'__52
+             MAlonzo.Code.Once.Type.C__'42'__140
              (coe d_expandAliases_48 (coe v0) (coe v2))
              (coe d_expandAliases_48 (coe v0) (coe v3))
-      MAlonzo.Code.Once.Type.C__'43'__54 v2 v3
+      MAlonzo.Code.Once.Type.C__'43'__142 v2 v3
         -> coe
-             MAlonzo.Code.Once.Type.C__'43'__54
+             MAlonzo.Code.Once.Type.C__'43'__142
              (coe d_expandAliases_48 (coe v0) (coe v2))
              (coe d_expandAliases_48 (coe v0) (coe v3))
-      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__56 v2 v3 v4
+      MAlonzo.Code.Once.Type.C__'8658''91'_'93'__144 v2 v3 v4
         -> coe
-             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__56
+             MAlonzo.Code.Once.Type.C__'8658''91'_'93'__144
              (coe d_expandAliases_48 (coe v0) (coe v2)) (coe v3)
              (coe d_expandAliases_48 (coe v0) (coe v4))
-      MAlonzo.Code.Once.Type.C_Eff_58 v2 v3
+      MAlonzo.Code.Once.Type.C_μ'45'type_146 v2
         -> coe
-             MAlonzo.Code.Once.Type.C_Eff_58
-             (coe d_expandAliases_48 (coe v0) (coe v2))
-             (coe d_expandAliases_48 (coe v0) (coe v3))
-      MAlonzo.Code.Once.Type.C_μ'45'type_60 v2
-        -> coe
-             MAlonzo.Code.Once.Type.C_μ'45'type_60
+             MAlonzo.Code.Once.Type.C_μ'45'type_146
              (coe d_expandAliasesF_46 (coe v0) (coe v2))
-      MAlonzo.Code.Once.Type.C_ν'45'type_62 v2
+      MAlonzo.Code.Once.Type.C_ν'45'type_148 v2
         -> coe
-             MAlonzo.Code.Once.Type.C_ν'45'type_62
+             MAlonzo.Code.Once.Type.C_ν'45'type_148
              (coe d_expandAliasesF_46 (coe v0) (coe v2))
-      MAlonzo.Code.Once.Type.C_Int_64 -> coe v1
-      MAlonzo.Code.Once.Type.C_Float_66 -> coe v1
-      MAlonzo.Code.Once.Type.C_Str_68 -> coe v1
-      MAlonzo.Code.Once.Type.C_Buffer_70 -> coe v1
+      MAlonzo.Code.Once.Type.C_Int_150 -> coe v1
+      MAlonzo.Code.Once.Type.C_Float_152 -> coe v1
+      MAlonzo.Code.Once.Type.C_Str_154 -> coe v1
+      MAlonzo.Code.Once.Type.C_Buffer_156 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError

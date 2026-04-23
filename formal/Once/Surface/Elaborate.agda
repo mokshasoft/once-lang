@@ -154,10 +154,10 @@ elaborate (app f x) = apply ∘ ⟨ elaborate f , elaborate x ⟩ Heap
 --   `applyEff ∘ ⟨f, x⟩`  : IR Γ B                  -- run f on x
 --   (…) ∘ fst            : IR (Γ * Unit) B         -- ignore Unit input
 --   curry (…) Heap       : IR Γ (Unit ⇒[Many] B)    -- abstract the Unit
---   arr ∘ curry (…) Heap : IR Γ (Eff Unit B)        -- tag as Eff
+--   arr ∘ curry (…) Heap : IR Γ (Unit ⇒[ mk-kind Many eff ] B)        -- tag as Eff
 -- No new IR constructors, no coercion, no postulate.
 elaborate (effApp f x) =
-  arr {q = Many} ∘ curry {q = Many} ((applyEff ∘ ⟨ elaborate f , elaborate x ⟩ Heap) ∘ fst) Heap
+  arr {q = Many} ∘ curry {k = pureK Many} ((apply {k = effK} ∘ ⟨ elaborate f , elaborate x ⟩ Heap) ∘ fst) Heap
 
 -- Pair: (a, b) becomes ⟨a, b⟩
 elaborate (pair a b) = ⟨ elaborate a , elaborate b ⟩ Heap

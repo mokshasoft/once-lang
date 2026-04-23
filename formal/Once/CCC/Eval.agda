@@ -66,7 +66,6 @@ eval ps initial ()
 eval ps (curry f _) x = λ y → eval ps f (sem-pair x y)
 eval ps apply (closure , arg) = closure arg
 eval ps arr f = f
-eval ps applyEff (closure , arg) = closure arg
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 eval ps (free-heap _) x = x
 eval ps (Prim name) x = evalPrim ps name x

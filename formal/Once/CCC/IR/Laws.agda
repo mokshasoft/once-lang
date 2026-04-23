@@ -57,7 +57,7 @@ alloc-mode-independent-inr : ∀ (ps : PrimSem) {A B} (m₁ m₂ : AllocMode) (x
 alloc-mode-independent-inr ps m₁ m₂ x = refl
 
 alloc-mode-independent-curry : ∀ (ps : PrimSem) {A B C q} (f : IR (A * B) C) (m₁ m₂ : AllocMode) (x : ⟦ A ⟧) →
-  eval ps (curry {q = q} f m₁) x ≡ eval ps (curry {q = q} f m₂) x
+  eval ps (curry {k = k} f m₁) x ≡ eval ps (curry {k = k} f m₂) x
 alloc-mode-independent-curry ps f m₁ m₂ x = refl
 
 ------------------------------------------------------------------------

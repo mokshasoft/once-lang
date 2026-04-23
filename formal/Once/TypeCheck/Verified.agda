@@ -367,7 +367,7 @@ record VerifiedTypeChecker : Set₁ where
         (Ax : Type)
         {Ψx xE dx fx-f-fresh err}
       → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-      → tcInfer ctx f ≡ success (A Once.Type.⇒[ q ] B) Ψf fE df fx-fresh
+      → tcInfer ctx f ≡ success (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) Ψf fE df fx-fresh
       → tcInfer ctx x ≡ success Ax Ψx xE dx fx-f-fresh
       → ¬ (A ≡ Ax)
       → tcInfer ctx (RApp f x) ≡ failure err
@@ -382,7 +382,7 @@ record VerifiedTypeChecker : Set₁ where
       → tcCheck (extendNamedCtx ctx x A) body B
           ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
       → Once.TypeCheck.Elaborate.decideLeq q' q ≡ nothing
-      → tcCheck ctx (RLam x body) (A Once.Type.⇒[ q ] B) ≡ failure err
+      → tcCheck ctx (RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ≡ failure err
       → err ≡ UsageViolation x q q'
 
     -- Previously-blocked: BinOp's operand sub-error is wrapped in
@@ -580,13 +580,13 @@ record VerifiedTypeChecker : Set₁ where
       ∀ (ctx : NamedCtx) (x : String) (body : RawExpr)
         (A : Type) (q : _) (B : Type)
         {Ψ : Surface.Usage (NamedCtx.size ctx)}
-        {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ q ] B)}
+        {eE : SExpr (NamedCtx.debruijn ctx) Ψ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B)}
         {d f : _}
       → (IH : ∀ {Ψ' eE' d' f'}
             → tcCheck (extendNamedCtx ctx x A) body B ≡ success Ψ' eE' d' f'
             → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ Ψ')
-      → tcCheck ctx (RLam x body) (A Once.Type.⇒[ q ] B) ≡ success Ψ eE d f
-      → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ
+      → tcCheck ctx (RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ≡ success Ψ eE d f
+      → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ⨾ Ψ
 
     tcInfer-sound-RLet :
       ∀ (ctx : NamedCtx) (x : String) (e₁ e₂ : RawExpr)
@@ -796,13 +796,13 @@ record VerifiedTypeChecker : Set₁ where
     tcInfer-complete-RApp-generic :
       ∀ (ctx : NamedCtx) (f x : RawExpr) (A : Type) {B : Type} {q : _}
         {Ψf : Surface.Usage (NamedCtx.size ctx)}
-        {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A Once.Type.⇒[ q ] B)}
+        {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B)}
         {df ff : _}
         {Ψx : Surface.Usage (NamedCtx.size ctx)}
         {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
         {dx fx : _}
       → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-      → tcInfer ctx f ≡ success (A Once.Type.⇒[ q ] B) Ψf fE df ff
+      → tcInfer ctx f ≡ success (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) Ψf fE df ff
       → tcInfer ctx x ≡ success A Ψx xE dx fx
       → ∃[ eE ] ∃[ d ] ∃[ f' ]
           tcInfer ctx (RApp f x) ≡ success B (Ψf Surface.+ᵘ (q Surface.*ᵘ Ψx)) eE d f'
@@ -819,7 +819,7 @@ record VerifiedTypeChecker : Set₁ where
       → tcCheck (extendNamedCtx ctx x A) body B
           ≡ success (q' Once.Surface.Syntax.Usage.∷ Ψ') eE' d' f'
       → ∃[ eE ] ∃[ d ] ∃[ f ]
-          tcCheck ctx (RLam x body) (A Once.Type.⇒[ q ] B) ≡ success Ψ' eE d f
+          tcCheck ctx (RLam x body) (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ≡ success Ψ' eE d f
 
     ----------------------------------------------------------------
     -- G7 (first pass): algebraic identities

@@ -94,7 +94,7 @@ escape-once initial = initial
 
 -- Curry: recurse into body, preserve mode
 -- (Mode may be optimized when this closure is consumed in a composition)
-escape-once (curry {q = q} f m) = curry {q = q} (escape-once f) m
+escape-once (curry {k = k} f m) = curry {k = k} (escape-once f) m
 
 -- Apply: no allocation in apply itself
 escape-once apply = apply
@@ -103,7 +103,6 @@ escape-once apply = apply
 
 -- Effects: no allocation
 escape-once arr = arr
-escape-once applyEff = applyEff
 
 -- Primitives: opaque, pass through
 escape-once (Prim name) = Prim name

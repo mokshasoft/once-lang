@@ -244,7 +244,6 @@ mutual
     funext (λ b → optimize-once-correct f (x , b))
   optimize-once-structural-correct apply x = refl
   optimize-once-structural-correct arr x = refl
-  optimize-once-structural-correct applyEff x = refl
   optimize-once-structural-correct (Prim {A} n) x with A ≟Type Void
   ... | yes refl = ⊥-elim x
   ... | no _ = refl

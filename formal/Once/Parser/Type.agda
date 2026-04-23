@@ -48,7 +48,7 @@ open import Relation.Nullary using (yes; no)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; Quantity; Zero; One; Many)
+                             _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff)
 open import Once.Parser.Token
 open import Once.Parser.Core
 open import Once.Parser.TypeRelation
@@ -182,13 +182,13 @@ parseTypeAtomWF (TWord name ∷ rest) (acc rec)
 ...   | just (A , rest1 , dA) with parseTypeAtomWF rest1
                                      (rec (<-trans (ParsesAtom-shrinks dA) (s≤s ≤-refl)))
 ...     | nothing = nothing
-...     | just (B , rest2 , dB) = just (Eff A B , rest2 , pa-eff dA dB)
+...     | just (B , rest2 , dB) = just (A ⇒[ mk-kind Many eff ] B , rest2 , pa-eff dA dB)
 -- IO A desugars to Eff Unit A.
 parseTypeAtomWF (TWord name ∷ rest) (acc rec)
   | no _ | no _ | no _ | no _ | no _ | no _ | no _ with name ≟ "IO"
 ... | yes refl with parseTypeAtomWF rest (rec (s≤s ≤-refl))
 ...   | nothing = nothing
-...   | just (A , rest1 , dA) = just (Eff Unit A , rest1 , pa-io dA)
+...   | just (A , rest1 , dA) = just (Unit ⇒[ mk-kind Many eff ] A , rest1 , pa-io dA)
 -- Non-keyword TWord: no derivation exists.
 parseTypeAtomWF (TWord name ∷ rest) _
   | no _ | no _ | no _ | no _ | no _ | no _ | no _ | no _ = nothing
@@ -410,19 +410,19 @@ parseArrowTailWF left (TCaret1 ∷ TArrow ∷ rest) (acc rec)
   with parseTypeWF rest (rec (s≤s (n≤1+n _)))
 ... | nothing = nothing
 ... | just (B , rest' , dT) =
-      just (left ⇒[ One ] B , rest' , pat-arrow-g dT)
+      just (left ⇒[ mk-kind One pure ] B , rest' , pat-arrow-g dT)
 
 parseArrowTailWF left (TCaret0 ∷ TArrow ∷ rest) (acc rec)
   with parseTypeWF rest (rec (s≤s (n≤1+n _)))
 ... | nothing = nothing
 ... | just (B , rest' , dT) =
-      just (left ⇒[ Zero ] B , rest' , pat-arrow-g dT)
+      just (left ⇒[ mk-kind Zero pure ] B , rest' , pat-arrow-g dT)
 
 parseArrowTailWF left (TCaretW ∷ TArrow ∷ rest) (acc rec)
   with parseTypeWF rest (rec (s≤s (n≤1+n _)))
 ... | nothing = nothing
 ... | just (B , rest' , dT) =
-      just (left ⇒[ Many ] B , rest' , pat-arrow-g dT)
+      just (left ⇒[ mk-kind Many pure ] B , rest' , pat-arrow-g dT)
 
 -- Grade without arrow: strict reject.
 parseArrowTailWF left (TCaret1 ∷ _)           _ = nothing
@@ -433,7 +433,7 @@ parseArrowTailWF left (TArrow ∷ rest) (acc rec)
   with parseTypeWF rest (rec (s≤s ≤-refl))
 ... | nothing = nothing
 ... | just (B , rest' , dT) =
-      just (left ⇒[ Many ] B , rest' , pat-arrow dT)
+      just (left ⇒[ mk-kind Many pure ] B , rest' , pat-arrow dT)
 
 -- Any other first token: no consumption.
 parseArrowTailWF left (TLParen    ∷ rest) _ = just (left , TLParen    ∷ rest , pat-done tt) where open import Data.Unit

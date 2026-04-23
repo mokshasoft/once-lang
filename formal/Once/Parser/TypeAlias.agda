@@ -19,7 +19,7 @@ open import Data.Bool using (if_then_else_)
 open import Relation.Nullary using (yes; no)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff;
+                             _*_; _+_; _⇒[_]_;
                              Functor; K; Id; _⊕_; _⊗_; μ-type; ν-type)
 -- TVar removed: Type variables only exist in PolyType (for type inference).
 -- User-written types must be concrete. Type aliases without parameters
@@ -80,7 +80,6 @@ mutual
   expandAliases _ Str = Str
   expandAliases env (a * b) = expandAliases env a * expandAliases env b
   expandAliases env (a + b) = expandAliases env a + expandAliases env b
-  expandAliases env (a ⇒[ q ] b) = expandAliases env a ⇒[ q ] expandAliases env b
-  expandAliases env (Eff a b) = Eff (expandAliases env a) (expandAliases env b)
+  expandAliases env (a ⇒[ k ] b) = expandAliases env a ⇒[ k ] expandAliases env b
   expandAliases env (μ-type F) = μ-type (expandAliasesF env F)
   expandAliases env (ν-type F) = ν-type (expandAliasesF env F)

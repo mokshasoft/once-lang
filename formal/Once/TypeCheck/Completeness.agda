@@ -335,7 +335,7 @@ check-complete-RLam :
   → checkElab (Once.TypeCheck.Elaborate.extendNamedCtx ctx x A) body B
       ≡ success (q' Surface.Usage.∷ Ψ') eE' d' f'
   → ∃[ eE ] ∃[ d ] ∃[ f ]
-      checkElab ctx (Raw.RLam x body) (A T.⇒[ q ] B) ≡ success Ψ' eE d f
+      checkElab ctx (Raw.RLam x body) (A T.⇒[ T.mk-kind q T.pure ] B) ≡ success Ψ' eE d f
 -- Enumerate the 9 (q, q') pairs; 6 have `q' ≤q q = true` and
 -- admit the success; 3 have `q' ≤q q = false` and are ruled out
 -- by the `leq-eq : q' ≤q q ≡ true` premise (absurd pattern `()`).
@@ -392,13 +392,13 @@ infer-complete-RDestruct scrut xL eL xR eR C eqS eqL eqR
 infer-complete-RApp-generic :
   ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type} {q : Quantity}
     {Ψf : Surface.Usage (NamedCtx.size ctx)}
-    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ q ] B)}
+    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind q T.pure ] B)}
     {df ff : ℕ}
     {Ψx : Surface.Usage (NamedCtx.size ctx)}
     {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
     {dx fx : ℕ}
   → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-  → inferElab ctx f ≡ success (A T.⇒[ q ] B) Ψf fE df ff
+  → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind q T.pure ] B) Ψf fE df ff
   → inferElab ctx x ≡ success A Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
       inferElab ctx (Raw.RApp f x)
@@ -414,7 +414,7 @@ infer-complete-RApp-generic f x A notPoly eqF eqX
 --
 -- Same structure as `infer-complete-RApp-generic` but for the case
 -- where `f : Eff A B`. After `classifyAppHead-nothing⇒view-other`
--- exposes the `ahv-other` branch, `asFun` sees `success (Eff A B) ...`
+-- exposes the `ahv-other` branch, `asFun` sees `success (A ⇒[ mk-kind Many eff ] B) ...`
 -- and takes the `isEff` case; the body mirrors `isFun` but emits
 -- `Surface.effApp`. The check-mode fallback is
 -- `checkElab-fallback-RApp-generic`, reusable as-is because its
@@ -425,17 +425,17 @@ infer-complete-RApp-generic f x A notPoly eqF eqX
 infer-complete-RApp-eff :
   ∀ {ctx : NamedCtx} (f x : RawExpr) (A : Type) {B : Type}
     {Ψf : Surface.Usage (NamedCtx.size ctx)}
-    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (T.Eff A B)}
+    {fE : SExpr (NamedCtx.debruijn ctx) Ψf (A T.⇒[ T.mk-kind T.Many T.eff ] B)}
     {df ff : ℕ}
     {Ψx : Surface.Usage (NamedCtx.size ctx)}
     {xE : SExpr (NamedCtx.debruijn ctx) Ψx A}
     {dx fx : ℕ}
   → Once.TypeCheck.Elaborate.classifyAppHead f ≡ nothing
-  → inferElab ctx f ≡ success (T.Eff A B) Ψf fE df ff
+  → inferElab ctx f ≡ success (A T.⇒[ T.mk-kind T.Many T.eff ] B) Ψf fE df ff
   → inferElab ctx x ≡ success A Ψx xE dx fx
   → ∃[ eE ] ∃[ d ] ∃[ f' ]
       inferElab ctx (Raw.RApp f x)
-        ≡ success (T.Eff T.Unit B) (Ψf +ᵘ Ψx) eE d f'
+        ≡ success (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) (Ψf +ᵘ Ψx) eE d f'
 infer-complete-RApp-eff f x A notPoly eqF eqX
   rewrite Once.TypeCheck.Elaborate.classifyAppHead-nothing⇒view-other {f} notPoly
         | eqF | eqX with Once.TypeCheck.Elaborate._≟T_ A A
@@ -693,7 +693,7 @@ mutual
     in checkElab-fallback-RApp-generic f x B notPoly eqI
   check-complete (t-embed (t-effApp {f = f} {x = x} {B = B} notPoly dF dX)) =
     let (_ , _ , _ , eqI) = infer-complete (t-effApp notPoly dF dX)
-    in checkElab-fallback-RApp-generic f x (T.Eff T.Unit B) notPoly eqI
+    in checkElab-fallback-RApp-generic f x (T.Unit T.⇒[ T.mk-kind T.Many T.eff ] B) notPoly eqI
   -- Plan 0.6 Phase C.7 POC-1: bare `id` check-mode. The derivation's
   -- lookup-failure premises drive the elaborator past its lookup
   -- branch (which matches `t-embed (t-var-local/import …)`) into

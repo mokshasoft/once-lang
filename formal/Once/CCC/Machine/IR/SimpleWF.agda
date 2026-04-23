@@ -51,7 +51,7 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
 
   open import Once.CCC.Machine.ClosureWellFormed
   open ClosureWellFormedDef {FS} program-bound primSem
-    using (ValidAtWF; IRResultAWF; valid-unit-wf; valid-eff-wf;
+    using (ValidAtWF; IRResultAWF; valid-unit-wf; valid-coerce-kind-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            decomposePairWF; PairValidWF)
 
@@ -468,13 +468,13 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       frontier-stable _ _ _ _ _ = inj₁ refl
 
   ------------------------------------------------------------------------
-  -- Arr: effectful morphism coercion (A ⇒[ q ] B) to (Eff A B)
+  -- Arr: effectful morphism coercion (A ⇒[ mk-kind q pure ] B) to (A ⇒[ mk-kind Many eff ] B)
   ------------------------------------------------------------------------
 
   run-arr : ∀ {m A B q}
-    (x : ⟦ A ⇒[ q ] B ⟧) (input-loc : ValueLocation FS)
+    (x : ⟦ A ⇒[ mk-kind q pure ] B ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
-    ValidAtWF m alloc x input-loc s →
+    ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
@@ -522,11 +522,12 @@ module SimpleWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimS
       not-halted' : halted s' ≡ false
       not-halted' = subst (λ st → halted st ≡ false) (sym s'-eq) not-halted
 
-      valid-s' = subst (λ st → ValidAtWF _ alloc x input-loc st) (sym s'-eq)
+      valid-s' : ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} x input-loc s'
+      valid-s' = subst (λ st → ValidAtWF m alloc {A ⇒[ mk-kind q pure ] B} x input-loc st) (sym s'-eq)
                    (validityWF-mem-only x input-loc s (exec (mov Output Input) s) refl refl input-valid-wf)
 
-      valid-eff : ValidAtWF m alloc {Eff A B} x input-loc s'
-      valid-eff = valid-eff-wf {m} {A} {B} {q} valid-s'
+      valid-eff : ValidAtWF m alloc {A ⇒[ mk-kind Many eff ] B} x input-loc s'
+      valid-eff = valid-coerce-kind-wf valid-s'
 
       rax-eq : readReg (regs s') Output ≡ input-loc
       rax-eq = trans (cong (λ st → readReg (regs st) Output) s'-eq)

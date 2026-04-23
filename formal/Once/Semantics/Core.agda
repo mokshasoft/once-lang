@@ -101,7 +101,6 @@ open import Once.Functor.Base
 ⟦ A * B ⟧        = ⟦ A ⟧ × ⟦ B ⟧
 ⟦ A + B ⟧        = ⟦ A ⟧ ⊎ ⟦ B ⟧
 ⟦ A ⇒[ _ ] B ⟧   = ⟦ A ⟧ → ⟦ B ⟧
-⟦ Eff A B ⟧      = ⟦ A ⟧ → ⟦ B ⟧
 -- OCP-0003: Fix removed, use μ-type/ν-type
 ⟦ μ-type F ⟧     = ⟦μ⟧ F
 ⟦ ν-type F ⟧     = ⟦ν⟧ F
@@ -344,8 +343,7 @@ coerce-full-to-base Void x = x
 coerce-full-to-base (A * B) (a , b) = (coerce-full-to-base A a , coerce-full-to-base B b)
 coerce-full-to-base (A + B) (inj₁ a) = inj₁ (coerce-full-to-base A a)
 coerce-full-to-base (A + B) (inj₂ b) = inj₂ (coerce-full-to-base B b)
-coerce-full-to-base (_ ⇒[ _ ] _) _ = tt   -- Functions → ⊤
-coerce-full-to-base (Eff _ _) _ = tt       -- Effects → ⊤
+coerce-full-to-base (_ ⇒[ _ ] _) _ = tt   -- Functions (all kinds) → ⊤
 coerce-full-to-base (μ-type _) _ = tt      -- μ → ⊤
 coerce-full-to-base (ν-type _) _ = tt      -- ν → ⊤
 -- GuardedT removed: productivity follows from IR totality

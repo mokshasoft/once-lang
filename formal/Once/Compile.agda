@@ -100,7 +100,7 @@ open import Once.Surface.Elaborate using (elaborate)
 -- A would silently discard any non-Unit return and invites confusion
 -- between "exit code" and "value to compose with".
 validateMain : Type → String ⊎ ⊤
-validateMain (Eff Unit Unit) = inj₂ tt
+validateMain (Unit ⇒[ mk-kind Many eff ] Unit) = inj₂ tt
 validateMain ty = inj₁ ("main must have type IO Unit (= Eff Unit Unit), but got: " ++ showType ty)
 
 ------------------------------------------------------------------------

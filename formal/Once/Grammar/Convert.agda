@@ -61,7 +61,7 @@ gtypeToType G.TFloat  = just T.Float
 gtypeToType G.TBuffer = just T.Buffer
 gtypeToType G.TString = just T.Str
 gtypeToType (A G.⇒[ q ] B) with gtypeToType A | gtypeToType B
-... | just A' | just B' = just (A' T.⇒[ q ] B')
+... | just A' | just B' = just (A' T.⇒[ T.mk-kind q T.pure ] B')
 ... | _       | _       = nothing
 gtypeToType (A G.⊗ B) with gtypeToType A | gtypeToType B
 ... | just A' | just B' = just (A' T.* B')
@@ -70,7 +70,7 @@ gtypeToType (A G.⊕ B) with gtypeToType A | gtypeToType B
 ... | just A' | just B' = just (A' T.+ B')
 ... | _       | _       = nothing
 gtypeToType (G.TEff A B) with gtypeToType A | gtypeToType B
-... | just A' | just B' = just (T.Eff A' B')
+... | just A' | just B' = just (A' T.⇒[ T.mk-kind T.Many T.eff ] B')
 ... | _       | _       = nothing
 gtypeToType (G.TVar _) = nothing
 
@@ -87,7 +87,7 @@ typeToGType T.Int    = just G.TInt
 typeToGType T.Float  = just G.TFloat
 typeToGType T.Buffer = just G.TBuffer
 typeToGType T.Str    = just G.TString
-typeToGType (A T.⇒[ q ] B) with typeToGType A | typeToGType B
+typeToGType (A T.⇒[ T.mk-kind q T.pure ] B) with typeToGType A | typeToGType B
 ... | just A' | just B' = just (A' G.⇒[ q ] B')
 ... | _       | _       = nothing
 typeToGType (A T.* B) with typeToGType A | typeToGType B
@@ -96,9 +96,12 @@ typeToGType (A T.* B) with typeToGType A | typeToGType B
 typeToGType (A T.+ B) with typeToGType A | typeToGType B
 ... | just A' | just B' = just (A' G.⊕ B')
 ... | _       | _       = nothing
-typeToGType (T.Eff A B) with typeToGType A | typeToGType B
+typeToGType (A T.⇒[ T.mk-kind T.Many T.eff ] B) with typeToGType A | typeToGType B
 ... | just A' | just B' = just (G.TEff A' B')
 ... | _       | _       = nothing
+-- Degenerate kinds: eff + Zero/One. Grammar has no form for these.
+typeToGType (_ T.⇒[ T.mk-kind T.Zero T.eff ] _) = nothing
+typeToGType (_ T.⇒[ T.mk-kind T.One T.eff ] _) = nothing
 typeToGType (T.μ-type _) = nothing
 typeToGType (T.ν-type _) = nothing
 
@@ -119,8 +122,8 @@ typeToGType-gtypeToType T.Int    .G.TInt    refl = refl
 typeToGType-gtypeToType T.Float  .G.TFloat  refl = refl
 typeToGType-gtypeToType T.Buffer .G.TBuffer refl = refl
 typeToGType-gtypeToType T.Str    .G.TString refl = refl
-typeToGType-gtypeToType (A T.⇒[ q ] B) g eq with typeToGType A in eqA | typeToGType B in eqB
-typeToGType-gtypeToType (A T.⇒[ q ] B) .(gA G.⇒[ q ] gB) refl | just gA | just gB
+typeToGType-gtypeToType (A T.⇒[ T.mk-kind q T.pure ] B) g eq with typeToGType A in eqA | typeToGType B in eqB
+typeToGType-gtypeToType (A T.⇒[ T.mk-kind q T.pure ] B) .(gA G.⇒[ q ] gB) refl | just gA | just gB
   rewrite typeToGType-gtypeToType A gA eqA
         | typeToGType-gtypeToType B gB eqB = refl
 typeToGType-gtypeToType (A T.* B) g eq with typeToGType A in eqA | typeToGType B in eqB
@@ -131,8 +134,8 @@ typeToGType-gtypeToType (A T.+ B) g eq with typeToGType A in eqA | typeToGType B
 typeToGType-gtypeToType (A T.+ B) .(gA G.⊕ gB) refl | just gA | just gB
   rewrite typeToGType-gtypeToType A gA eqA
         | typeToGType-gtypeToType B gB eqB = refl
-typeToGType-gtypeToType (T.Eff A B) g eq with typeToGType A in eqA | typeToGType B in eqB
-typeToGType-gtypeToType (T.Eff A B) .(G.TEff gA gB) refl | just gA | just gB
+typeToGType-gtypeToType (A T.⇒[ T.mk-kind T.Many T.eff ] B) g eq with typeToGType A in eqA | typeToGType B in eqB
+typeToGType-gtypeToType (A T.⇒[ T.mk-kind T.Many T.eff ] B) .(G.TEff gA gB) refl | just gA | just gB
   rewrite typeToGType-gtypeToType A gA eqA
         | typeToGType-gtypeToType B gB eqB = refl
 
@@ -147,7 +150,7 @@ gtypeToType-typeToGType G.TFloat  .T.Float  refl = refl
 gtypeToType-typeToGType G.TBuffer .T.Buffer refl = refl
 gtypeToType-typeToGType G.TString .T.Str    refl = refl
 gtypeToType-typeToGType (A G.⇒[ q ] B) t eq with gtypeToType A in eqA | gtypeToType B in eqB
-gtypeToType-typeToGType (A G.⇒[ q ] B) .(tA T.⇒[ q ] tB) refl | just tA | just tB
+gtypeToType-typeToGType (A G.⇒[ q ] B) .(tA T.⇒[ T.mk-kind q T.pure ] tB) refl | just tA | just tB
   rewrite gtypeToType-typeToGType A tA eqA
         | gtypeToType-typeToGType B tB eqB = refl
 gtypeToType-typeToGType (A G.⊗ B) t eq with gtypeToType A in eqA | gtypeToType B in eqB
@@ -159,7 +162,7 @@ gtypeToType-typeToGType (A G.⊕ B) .(tA T.+ tB) refl | just tA | just tB
   rewrite gtypeToType-typeToGType A tA eqA
         | gtypeToType-typeToGType B tB eqB = refl
 gtypeToType-typeToGType (G.TEff A B) t eq with gtypeToType A in eqA | gtypeToType B in eqB
-gtypeToType-typeToGType (G.TEff A B) .(T.Eff tA tB) refl | just tA | just tB
+gtypeToType-typeToGType (G.TEff A B) .(tA T.⇒[ T.mk-kind T.Many T.eff ] tB) refl | just tA | just tB
   rewrite gtypeToType-typeToGType A tA eqA
         | gtypeToType-typeToGType B tB eqB = refl
 
@@ -217,7 +220,7 @@ _ = refl
 _ : typeToGType T.Str ≡ just G.TString
 _ = refl
 
-_ : gtypeToType (G.TInt G.⇒[ One ] G.TInt) ≡ just (T.Int T.⇒[ One ] T.Int)
+_ : gtypeToType (G.TInt G.⇒[ One ] G.TInt) ≡ just (T.Int T.⇒[ T.mk-kind T.One T.pure ] T.Int)
 _ = refl
 
 _ : typeToGType (T.Int T.* T.Str) ≡ just (G.TInt G.⊗ G.TString)
@@ -250,8 +253,8 @@ data NoMuNu : Type → Set where
   nmn-buffer : NoMuNu T.Buffer
   nmn-prod   : ∀ {A B} → NoMuNu A → NoMuNu B → NoMuNu (A T.* B)
   nmn-sum    : ∀ {A B} → NoMuNu A → NoMuNu B → NoMuNu (A T.+ B)
-  nmn-fun    : ∀ {A B q} → NoMuNu A → NoMuNu B → NoMuNu (A T.⇒[ q ] B)
-  nmn-eff    : ∀ {A B} → NoMuNu A → NoMuNu B → NoMuNu (T.Eff A B)
+  nmn-fun    : ∀ {A B q} → NoMuNu A → NoMuNu B → NoMuNu (A T.⇒[ T.mk-kind q T.pure ] B)
+  nmn-eff    : ∀ {A B} → NoMuNu A → NoMuNu B → NoMuNu (A T.⇒[ T.mk-kind T.Many T.eff ] B)
 
 -- | `NoMuNu t` suffices for `typeToGType t` to return `just _`.
 typeToGType-NoMuNu :

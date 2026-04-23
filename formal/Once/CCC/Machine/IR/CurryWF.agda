@@ -89,8 +89,8 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- Helper lemmas
   ------------------------------------------------------------------------
 
-  closure-slots-≤-curry-req : ∀ {A B C q} (f : IR (A * B) C) (m : AllocMode) →
-    closure-slots ≤ ir-stack-requirement (curry {q = q} f m)
+  closure-slots-≤-curry-req : ∀ {A B C k} (f : IR (A * B) C) (m : AllocMode) →
+    closure-slots ≤ ir-stack-requirement (curry {k = k} f m)
   closure-slots-≤-curry-req f Stack = ≤-refl
   closure-slots-≤-curry-req f Heap = ≤-refl
 
@@ -110,17 +110,17 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- run-curry: Clean trace-based implementation
   ------------------------------------------------------------------------
 
-  run-curry : ∀ {A B C q} (mIn : AllocMode) (f : IR (A * B) C) (m : AllocMode)
-    (ir<bound : ir-size (curry {q = q} f m) < program-bound)
-    (rec-wf : RecDispatcherWF (ir-size (curry {q = q} f m)))
+  run-curry : ∀ {A B C k} (mIn : AllocMode) (f : IR (A * B) C) (m : AllocMode)
+    (ir<bound : ir-size (curry {k = k} f m) < program-bound)
+    (rec-wf : RecDispatcherWF (ir-size (curry {k = k} f m)))
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    IRResultAWF Heap (curry {q = q} f m) x s alloc
-  run-curry {A} {B} {C} {q} mIn f m ir<bound rec-wf x input-loc s alloc
+    IRResultAWF Heap (curry {k = k} f m) x s alloc
+  run-curry {A} {B} {C} {k} mIn f m ir<bound rec-wf x input-loc s alloc
     input-valid-wf input-before not-halted rdi-eq =
     record
       { result-loc = closure-loc
@@ -172,10 +172,10 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       alloc' = record alloc { next-slot = next-slot alloc +ℕ closure-slots }
 
       -- Size bounds
-      body<bound = curry-body-bound {q = q} f {m} program-bound ir<bound
-      req-curry = ir-stack-requirement (curry {q = q} f m)
+      body<bound = curry-body-bound {k = k} f {m} program-bound ir<bound
+      req-curry = ir-stack-requirement (curry {k = k} f m)
       closure-bound : closure-slots ≤ req-curry
-      closure-bound = closure-slots-≤-curry-req {q = q} f m
+      closure-bound = closure-slots-≤-curry-req {k = k} f m
 
       ----------------------------------------------------------------------
       -- Trace properties (defined first for use in proofs)
@@ -410,12 +410,12 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
         ; body-cap-eq = refl
         -- Note: cap' parameter removed in Phase 3
         ; execute = λ arg arg-loc pair-loc s'' alloc'' mPair pair-valid-wf pair-before not-halt rdi-eq' →
-            rec-wf mPair f (curry-smaller {q = q} f {m}) (pair x arg) pair-loc s'' alloc''
+            rec-wf mPair f (curry-smaller {k = k} f {m}) (pair x arg) pair-loc s'' alloc''
               pair-valid-wf pair-before not-halt rdi-eq'
         }
 
       -- Result validity: closure with body-correct embedded
-      result-valid-wf' : ValidAtWF Heap alloc' (eval primSem (curry {q = q} f m) x) closure-loc s'
+      result-valid-wf' : ValidAtWF Heap alloc' (eval primSem (curry {k = k} f m) x) closure-loc s'
       result-valid-wf' = valid-closure-wf body<bound
         env-ptr' code-ptr' input-before' code-before' code-before'
         input-valid-wf' body-correct
@@ -430,9 +430,9 @@ module CurryWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
 
       reclaim-preserves-validity' :
         ValidAtWF Heap (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
-                  (eval primSem (curry {q = q} f m) x) closure-loc s'
+                  (eval primSem (curry {k = k} f m) x) closure-loc s'
       reclaim-preserves-validity' = validityWF-with-bf-transfer
-        (eval primSem (curry {q = q} f m) x) closure-loc s' alloc'
+        (eval primSem (curry {k = k} f m) x) closure-loc s' alloc'
         (record alloc { next-slot = next-slot alloc +ℕ closure-slots })
         (λ loc bf → bf-same-frame-slot alloc'
           (record alloc { next-slot = next-slot alloc +ℕ closure-slots })

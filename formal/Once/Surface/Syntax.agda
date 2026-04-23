@@ -151,11 +151,11 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   lam   : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {q' : Quantity} {A B} (q : Quantity)
         → (q' ≤q q) ≡ true
         → Expr (Γ , A) (q' ∷ Ψ) B
-        → Expr Γ Ψ (A ⇒[ q ] B)
+        → Expr Γ Ψ (A ⇒[ mk-kind q pure ] B)
 
   -- Application (pure function) — argument usage scales by arrow grade q.
   app   : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B} {q : Quantity}
-        → Expr Γ Ψ₁ (A ⇒[ q ] B)
+        → Expr Γ Ψ₁ (A ⇒[ mk-kind q pure ] B)
         → Expr Γ Ψ₂ A
         → Expr Γ (Ψ₁ +ᵘ (q *ᵘ Ψ₂)) B
 
@@ -173,7 +173,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   -- — see `Once.Surface.Elaborate` for the structural translation and
   -- `Once.Surface.Correct` for the correctness proof.
   effApp : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
-         → Expr Γ Ψ₁ (Eff A B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Eff Unit B)
+         → Expr Γ Ψ₁ (A ⇒[ mk-kind Many eff ] B) → Expr Γ Ψ₂ A → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit ⇒[ mk-kind Many eff ] B)
 
   -- Pair introduction — both components consumed.
   pair  : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} {A B}
@@ -233,7 +233,7 @@ data Expr : ∀ {n} → Ctx n → Usage n → Type → Set where
   ne    : ∀ {n} {Γ : Ctx n} {Ψ₁ Ψ₂ : Usage n} → Expr Γ Ψ₁ Int → Expr Γ Ψ₂ Int → Expr Γ (Ψ₁ +ᵘ Ψ₂) (Unit + Unit)
 
   -- Effect lifting — identity on usage
-  arr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A ⇒ B) → Expr Γ Ψ (Eff A B)
+  arr'  : ∀ {n} {Γ : Ctx n} {Ψ : Usage n} {A B} → Expr Γ Ψ (A ⇒ B) → Expr Γ Ψ (A ⇒[ mk-kind Many eff ] B)
 
   -- Primitive reference — uses no variables
   prim    : ∀ {n} {Γ : Ctx n} {A} → String → Expr Γ zeroUsage A

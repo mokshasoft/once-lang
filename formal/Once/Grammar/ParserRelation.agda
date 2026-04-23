@@ -16,7 +16,7 @@
 module Once.Grammar.ParserRelation where
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; Quantity; Zero; One; Many)
+                             _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff)
 
 import Once.Grammar as G
 open G using (GType)
@@ -38,5 +38,5 @@ toType c-buffer = Buffer
 toType c-string = Str
 toType (c-prod cA cB) = toType cA * toType cB
 toType (c-sum  cA cB) = toType cA + toType cB
-toType (c-fun {q = q} cA cB) = toType cA ⇒[ q ] toType cB
-toType (c-eff  cA cB) = Eff (toType cA) (toType cB)
+toType (c-fun {q = q} cA cB) = toType cA ⇒[ mk-kind q pure ] toType cB
+toType (c-eff  cA cB) = toType cA ⇒[ mk-kind Many eff ] toType cB

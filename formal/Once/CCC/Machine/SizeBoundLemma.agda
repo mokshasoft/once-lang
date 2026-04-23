@@ -48,7 +48,7 @@ open import Once.CCC.IR.Size
 ⟨,⟩-g-bound f g {m} pb ir<bound = <-trans (⟨,⟩-g-smaller f g {m}) ir<bound
 
 -- Curry body bound (quantity-polymorphic)
-curry-body-bound : ∀ {A B C q} (f : IR (A * B) C) {m : AllocMode} (program-bound : ℕ) →
-  ir-size (curry {q = q} f m) < program-bound →
+curry-body-bound : ∀ {A B C k} (f : IR (A * B) C) {m : AllocMode} (program-bound : ℕ) →
+  ir-size (curry {k = k} f m) < program-bound →
   ir-size f < program-bound
-curry-body-bound {q = q} f {m} pb ir<bound = <-trans (curry-smaller {q = q} f {m}) ir<bound
+curry-body-bound {k = k} f {m} pb ir<bound = <-trans (curry-smaller {k = k} f {m}) ir<bound

@@ -216,7 +216,7 @@ mutual
             {A B : Type} {q : Quantity}
             {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
           → classifyAppHead f ≡ nothing
-          → ctx ⊢ᵢ f ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ₁
+          → ctx ⊢ᵢ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ⨾ Ψ₁
           → ctx ⊢ᵢ x ∶ A ⨾ Ψ₂
           → ctx ⊢ᵢ RApp f x ∶ B ⨾ (Ψ₁ +ᵘ (q *ᵘ Ψ₂))
 
@@ -233,9 +233,9 @@ mutual
                {A B : Type}
                {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
              → classifyAppHead f ≡ nothing
-             → ctx ⊢ᵢ f ∶ Once.Type.Eff A B ⨾ Ψ₁
+             → ctx ⊢ᵢ f ∶ A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B ⨾ Ψ₁
              → ctx ⊢ᵢ x ∶ A ⨾ Ψ₂
-             → ctx ⊢ᵢ RApp f x ∶ Once.Type.Eff Once.Type.Unit B ⨾ (Ψ₁ +ᵘ Ψ₂)
+             → ctx ⊢ᵢ RApp f x ∶ Once.Type.Unit Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B ⨾ (Ψ₁ +ᵘ Ψ₂)
 
   -- | Check-mode judgment.
   --
@@ -258,7 +258,7 @@ mutual
             {Ψ : Surface.Usage (NamedCtx.size ctx)}
           → (q' Once.Type.≤q q) ≡ true
           → (extendNamedCtx ctx x A) ⊢ᶜ body ∶ B ⨾ (q' ∷ᵘ Ψ)
-          → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ q ] B) ⨾ Ψ
+          → ctx ⊢ᶜ RLam x body ∶ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) ⨾ Ψ
 
     -- | Bare `id` in check mode at the canonical `T → T` shape.
     -- Plan 0.6 Phase C.7 POC-1. Made **disjoint** from
@@ -272,50 +272,50 @@ mutual
     t-id-check : ∀ {ctx : NamedCtx} {T : Type}
                → lookupLocal ctx "id" ≡ nothing
                → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
-               → ctx ⊢ᶜ RVar "id" ∶ (T Once.Type.⇒[ Once.Type.Many ] T) ⨾ Surface.zeroUsage
+               → ctx ⊢ᶜ RVar "id" ∶ (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T) ⨾ Surface.zeroUsage
 
     -- | Bare `fst` check-mode at canonical `(A * B) → A` shape. Same
     -- disjointness argument as `t-id-check`. Plan 0.6 Phase C.7.
     t-fst-check : ∀ {ctx : NamedCtx} {A B : Type}
                 → lookupLocal ctx "fst" ≡ nothing
                 → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
-                → ctx ⊢ᶜ RVar "fst" ∶ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] A) ⨾ Surface.zeroUsage
+                → ctx ⊢ᶜ RVar "fst" ∶ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) ⨾ Surface.zeroUsage
 
     -- | Bare `snd` check-mode at canonical `(A * B) → B` shape.
     t-snd-check : ∀ {ctx : NamedCtx} {A B : Type}
                 → lookupLocal ctx "snd" ≡ nothing
                 → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
-                → ctx ⊢ᶜ RVar "snd" ∶ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] B) ⨾ Surface.zeroUsage
+                → ctx ⊢ᶜ RVar "snd" ∶ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Surface.zeroUsage
 
     -- | Bare `terminal` check-mode at canonical `A → Unit` shape.
     t-terminal-check : ∀ {ctx : NamedCtx} {A : Type}
                      → lookupLocal ctx "terminal" ≡ nothing
                      → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
-                     → ctx ⊢ᶜ RVar "terminal" ∶ (A Once.Type.⇒[ Once.Type.Many ] Once.Type.Unit) ⨾ Surface.zeroUsage
+                     → ctx ⊢ᶜ RVar "terminal" ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Once.Type.Unit) ⨾ Surface.zeroUsage
 
     -- | Bare `initial` check-mode at canonical `Void → A` shape.
     t-initial-check : ∀ {ctx : NamedCtx} {A : Type}
                     → lookupLocal ctx "initial" ≡ nothing
                     → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
-                    → ctx ⊢ᶜ RVar "initial" ∶ (Once.Type.Void Once.Type.⇒[ Once.Type.Many ] A) ⨾ Surface.zeroUsage
+                    → ctx ⊢ᶜ RVar "initial" ∶ (Once.Type.Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) ⨾ Surface.zeroUsage
 
     -- | Bare `inl` check-mode at canonical `A → (A + B)` shape.
     t-inl-check : ∀ {ctx : NamedCtx} {A B : Type}
                 → lookupLocal ctx "inl" ≡ nothing
                 → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
-                → ctx ⊢ᶜ RVar "inl" ∶ (A Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B)) ⨾ Surface.zeroUsage
+                → ctx ⊢ᶜ RVar "inl" ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B)) ⨾ Surface.zeroUsage
 
     -- | Bare `inr` check-mode at canonical `B → (A + B)` shape.
     t-inr-check : ∀ {ctx : NamedCtx} {A B : Type}
                 → lookupLocal ctx "inr" ≡ nothing
                 → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
-                → ctx ⊢ᶜ RVar "inr" ∶ (B Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B)) ⨾ Surface.zeroUsage
+                → ctx ⊢ᶜ RVar "inr" ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B)) ⨾ Surface.zeroUsage
 
     -- | Bare `arr` check-mode at canonical `(A → B) → Eff A B` shape.
     t-arr-check : ∀ {ctx : NamedCtx} {A B : Type}
                 → lookupLocal ctx "arr" ≡ nothing
                 → lookupImport (NamedCtx.imports ctx) "arr" ≡ nothing
-                → ctx ⊢ᶜ RVar "arr" ∶ ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.⇒[ Once.Type.Many ] Once.Type.Eff A B) ⨾ Surface.zeroUsage
+                → ctx ⊢ᶜ RVar "arr" ∶ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) ⨾ Surface.zeroUsage
 
     -- | Applied `pair f g` in check mode at the canonical
     -- `A ⇒[Many] (B * C)` shape. Plan 0.6 Phase C.7 POC-2.
@@ -329,10 +329,10 @@ mutual
     -- usage).
     t-pair-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
                    {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-                 → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.Many ] B) ⨾ Ψ₁
-                 → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.Many ] C) ⨾ Ψ₂
+                 → ctx ⊢ᶜ f ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ₁
+                 → ctx ⊢ᶜ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₂
                  → ctx ⊢ᶜ RApp (RApp (RVar "pair") f) g
-                          ∶ (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.* C))
+                          ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.* C))
                           ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                               Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
@@ -342,26 +342,26 @@ mutual
     -- with specCompose contributing zeroUsage.
     t-compose-check : ∀ {ctx : NamedCtx} {f g : RawExpr} {A B C : Type}
                       {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-                    → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.Many ] C) ⨾ Ψ₁
-                    → ctx ⊢ᵢ g ∶ (A Once.Type.⇒[ Once.Type.Many ] B) ⨾ Ψ₂
+                    → ctx ⊢ᶜ f ∶ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ₁
+                    → ctx ⊢ᵢ g ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ⨾ Ψ₂
                     → ctx ⊢ᶜ RApp (RApp (RVar "compose") f) g
-                             ∶ (A Once.Type.⇒[ Once.Type.Many ] C)
+                             ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
                              ⨾ ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                                  Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂))
 
     -- | Applied `curry f` at `A ⇒[Many] (B ⇒[Many] C)`.
     t-curry-check : ∀ {ctx : NamedCtx} {f : RawExpr} {A B C : Type}
                     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                  → ctx ⊢ᶜ f ∶ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] C) ⨾ Ψ
+                  → ctx ⊢ᶜ f ∶ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ⨾ Ψ
                   → ctx ⊢ᶜ RApp (RVar "curry") f
-                           ∶ (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.⇒[ Once.Type.Many ] C))
+                           ∶ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
                            ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))
 
     -- | Applied `apply p` at result type B; p must be inferable as
     -- `(A ⇒[Many] B) * A`.
     t-apply-check : ∀ {ctx : NamedCtx} {p : RawExpr} {A B : Type}
                     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-                  → ctx ⊢ᵢ p ∶ ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.* A) ⨾ Ψ
+                  → ctx ⊢ᵢ p ∶ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) ⨾ Ψ
                   → ctx ⊢ᶜ RApp (RVar "apply") p
                            ∶ B
                            ⨾ (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ))

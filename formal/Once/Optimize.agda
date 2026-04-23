@@ -57,7 +57,6 @@ Unit ≟Type Void = no (λ ())
 Unit ≟Type (_ * _) = no (λ ())
 Unit ≟Type (_ + _) = no (λ ())
 Unit ≟Type (_ ⇒[ _ ] _) = no (λ ())
-Unit ≟Type (Eff _ _) = no (λ ())
 Unit ≟Type Int = no (λ ())
 Unit ≟Type Float = no (λ ())
 Unit ≟Type Str = no (λ ())
@@ -67,7 +66,6 @@ Void ≟Type Void = yes refl
 Void ≟Type (_ * _) = no (λ ())
 Void ≟Type (_ + _) = no (λ ())
 Void ≟Type (_ ⇒[ _ ] _) = no (λ ())
-Void ≟Type (Eff _ _) = no (λ ())
 Void ≟Type Int = no (λ ())
 Void ≟Type Float = no (λ ())
 Void ≟Type Str = no (λ ())
@@ -80,7 +78,6 @@ Void ≟Type Buffer = no (λ ())
 ... | _       | no neq   = no (λ { refl → neq refl })
 (A * B) ≟Type (_ + _) = no (λ ())
 (A * B) ≟Type (_ ⇒[ _ ] _) = no (λ ())
-(A * B) ≟Type (Eff _ _) = no (λ ())
 (A * B) ≟Type Int = no (λ ())
 (A * B) ≟Type Float = no (λ ())
 (A * B) ≟Type Str = no (λ ())
@@ -93,7 +90,6 @@ Void ≟Type Buffer = no (λ ())
 ... | no neq  | _        = no (λ { refl → neq refl })
 ... | _       | no neq   = no (λ { refl → neq refl })
 (A + B) ≟Type (_ ⇒[ _ ] _) = no (λ ())
-(A + B) ≟Type (Eff _ _) = no (λ ())
 (A + B) ≟Type Int = no (λ ())
 (A + B) ≟Type Float = no (λ ())
 (A + B) ≟Type Str = no (λ ())
@@ -102,36 +98,21 @@ Void ≟Type Buffer = no (λ ())
 (A ⇒[ q ] B) ≟Type Void = no (λ ())
 (A ⇒[ q ] B) ≟Type (_ * _) = no (λ ())
 (A ⇒[ q ] B) ≟Type (_ + _) = no (λ ())
-(A ⇒[ q ] B) ≟Type (C ⇒[ q' ] D) with A ≟Type C | q ≟q q' | B ≟Type D
+(A ⇒[ q ] B) ≟Type (C ⇒[ q' ] D) with A ≟Type C | q ≟k q' | B ≟Type D
 ... | yes refl | yes refl | yes refl = yes refl
 ... | no neq  | _        | _         = no (λ { refl → neq refl })
 ... | _       | no neq   | _         = no (λ { refl → neq refl })
 ... | _       | _        | no neq    = no (λ { refl → neq refl })
-(A ⇒[ q ] B) ≟Type (Eff _ _) = no (λ ())
 (A ⇒[ q ] B) ≟Type Int = no (λ ())
 (A ⇒[ q ] B) ≟Type Float = no (λ ())
 (A ⇒[ q ] B) ≟Type Str = no (λ ())
 (A ⇒[ q ] B) ≟Type Buffer = no (λ ())
-(Eff A B) ≟Type Unit = no (λ ())
-(Eff A B) ≟Type Void = no (λ ())
-(Eff A B) ≟Type (_ * _) = no (λ ())
-(Eff A B) ≟Type (_ + _) = no (λ ())
-(Eff A B) ≟Type (_ ⇒[ _ ] _) = no (λ ())
-(Eff A B) ≟Type (Eff C D) with A ≟Type C | B ≟Type D
-... | yes refl | yes refl = yes refl
-... | no neq  | _        = no (λ { refl → neq refl })
-... | _       | no neq   = no (λ { refl → neq refl })
-(Eff A B) ≟Type Int = no (λ ())
-(Eff A B) ≟Type Float = no (λ ())
-(Eff A B) ≟Type Str = no (λ ())
-(Eff A B) ≟Type Buffer = no (λ ())
 -- OCP-0003: Fix removed. Use μ-type/ν-type instead.
 Int ≟Type Unit = no (λ ())
 Int ≟Type Void = no (λ ())
 Int ≟Type (_ * _) = no (λ ())
 Int ≟Type (_ + _) = no (λ ())
 Int ≟Type (_ ⇒[ _ ] _) = no (λ ())
-Int ≟Type (Eff _ _) = no (λ ())
 Int ≟Type Int = yes refl
 Int ≟Type Float = no (λ ())
 Int ≟Type Str = no (λ ())
@@ -141,7 +122,6 @@ Float ≟Type Void = no (λ ())
 Float ≟Type (_ * _) = no (λ ())
 Float ≟Type (_ + _) = no (λ ())
 Float ≟Type (_ ⇒[ _ ] _) = no (λ ())
-Float ≟Type (Eff _ _) = no (λ ())
 Float ≟Type Int = no (λ ())
 Float ≟Type Float = yes refl
 Float ≟Type Str = no (λ ())
@@ -151,7 +131,6 @@ Str ≟Type Void = no (λ ())
 Str ≟Type (_ * _) = no (λ ())
 Str ≟Type (_ + _) = no (λ ())
 Str ≟Type (_ ⇒[ _ ] _) = no (λ ())
-Str ≟Type (Eff _ _) = no (λ ())
 Str ≟Type Int = no (λ ())
 Str ≟Type Float = no (λ ())
 Str ≟Type Str = yes refl
@@ -161,7 +140,6 @@ Buffer ≟Type Void = no (λ ())
 Buffer ≟Type (_ * _) = no (λ ())
 Buffer ≟Type (_ + _) = no (λ ())
 Buffer ≟Type (_ ⇒[ _ ] _) = no (λ ())
-Buffer ≟Type (Eff _ _) = no (λ ())
 Buffer ≟Type Int = no (λ ())
 Buffer ≟Type Float = no (λ ())
 Buffer ≟Type Str = no (λ ())
@@ -173,7 +151,6 @@ Buffer ≟Type Buffer = yes refl
 (μ-type F) ≟Type (_ * _) = no (λ ())
 (μ-type F) ≟Type (_ + _) = no (λ ())
 (μ-type F) ≟Type (_ ⇒[ _ ] _) = no (λ ())
-(μ-type F) ≟Type (Eff _ _) = no (λ ())
 (μ-type F) ≟Type (μ-type G) with F ≟Functor G
 ... | yes refl = yes refl
 ... | no neq   = no (λ { refl → neq refl })
@@ -188,7 +165,6 @@ Buffer ≟Type Buffer = yes refl
 (ν-type F) ≟Type (_ * _) = no (λ ())
 (ν-type F) ≟Type (_ + _) = no (λ ())
 (ν-type F) ≟Type (_ ⇒[ _ ] _) = no (λ ())
-(ν-type F) ≟Type (Eff _ _) = no (λ ())
 (ν-type F) ≟Type (μ-type _) = no (λ ())
 (ν-type F) ≟Type (ν-type G) with F ≟Functor G
 ... | yes refl = yes refl
@@ -208,8 +184,6 @@ Void ≟Type (ν-type _) = no (λ ())
 (_ + _) ≟Type (ν-type _) = no (λ ())
 (_ ⇒[ _ ] _) ≟Type (μ-type _) = no (λ ())
 (_ ⇒[ _ ] _) ≟Type (ν-type _) = no (λ ())
-(Eff _ _) ≟Type (μ-type _) = no (λ ())
-(Eff _ _) ≟Type (ν-type _) = no (λ ())
 Int ≟Type (μ-type _) = no (λ ())
 Int ≟Type (ν-type _) = no (λ ())
 Float ≟Type (μ-type _) = no (λ ())
@@ -278,7 +252,7 @@ Id ≟Functor (_ ⊗ _) = no (λ ())
 -- IR head discriminator.
 data IRHead : Set where
   h-id h-∘ h-⟨,⟩ h-fst h-snd h-inl h-inr h-case
-    h-terminal h-initial h-curry h-apply h-arr h-applyEff
+    h-terminal h-initial h-curry h-apply h-arr
     h-In h-out-μ h-Cata h-Para h-Out h-in-ν h-Ana h-Hylo h-Fuse
     h-free-heap h-Prim : IRHead
 
@@ -301,7 +275,6 @@ headTag h-initial   = 9
 headTag h-curry     = 10
 headTag h-apply     = 11
 headTag h-arr       = 12
-headTag h-applyEff  = 13
 headTag h-In        = 14
 headTag h-out-μ     = 15
 headTag h-Cata      = 16
@@ -331,7 +304,6 @@ headTag-inj h-initial   h-initial   _ = refl
 headTag-inj h-curry     h-curry     _ = refl
 headTag-inj h-apply     h-apply     _ = refl
 headTag-inj h-arr       h-arr       _ = refl
-headTag-inj h-applyEff  h-applyEff  _ = refl
 headTag-inj h-In        h-In        _ = refl
 headTag-inj h-out-μ     h-out-μ     _ = refl
 headTag-inj h-Cata      h-Cata      _ = refl
@@ -363,7 +335,6 @@ ir-head initial = h-initial
 ir-head (curry _ _) = h-curry
 ir-head apply = h-apply
 ir-head arr = h-arr
-ir-head applyEff = h-applyEff
 ir-head (In _ _) = h-In
 ir-head (out-μ _) = h-out-μ
 ir-head (Cata _ _) = h-Cata
@@ -490,7 +461,6 @@ f ≟IR g = ≟IRH f g refl refl
 
 ≟IRH-diag apply apply _ refl refl = yes refl
 ≟IRH-diag arr arr _ refl refl = yes refl
-≟IRH-diag applyEff applyEff _ refl refl = yes refl
 
 -- In: eqB : μ-type F ≡ μ-type F' gives the Functor tag
 ≟IRH-diag (In {F} wf₁ m₁) (In {F'} wf₂ m₂) _ eqA eqB with F ≟Functor F'
@@ -864,7 +834,6 @@ mutual
   optimize-once-structural apply = apply
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
   optimize-once-structural arr = arr
-  optimize-once-structural applyEff = applyEff
   -- | Prim with Void source is equivalent to initial (no inhabitants)
   optimize-once-structural (Prim {A} n) with A ≟Type Void
   ... | yes refl = initial

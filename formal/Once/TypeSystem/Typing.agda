@@ -146,27 +146,27 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- ─────────────────────────────
   --   Γ ⊢ A ⟶ (B ⇒[ q ] C)
   --
-  ty-curry : ∀ {Γ A B C q} → Γ ⊢ (A * B) ⟶ C → Γ ⊢ A ⟶ (B ⇒[ q ] C)
+  ty-curry : ∀ {Γ A B C k} → Γ ⊢ (A * B) ⟶ C → Γ ⊢ A ⟶ (B ⇒[ k ] C)
 
   -- Apply (quantity-polymorphic)
   --
   -- ─────────────────────────────────
   -- Γ ⊢ ((A ⇒[ q ] B) * A) ⟶ B
   --
-  ty-apply : ∀ {Γ A B q} → Γ ⊢ ((A ⇒[ q ] B) * A) ⟶ B
+  ty-apply : ∀ {Γ A B k} → Γ ⊢ ((A ⇒[ k ] B) * A) ⟶ B
 
   -- OCP-0003: ty-fold/ty-unfold removed. Use ty-In/ty-Cata/ty-Out/ty-Ana instead.
 
   -- Arrow lift (D032: lift pure to effectful)
   --
   -- ─────────────────────────────
-  -- Γ ⊢ (A ⇒ B) ⟶ Eff A B
+  -- Γ ⊢ (A ⇒ B) ⟶ (A ⇒[ mk-kind Many eff ] B)
   --
   -- Note: This takes a pure function object and returns an effectful morphism.
   -- At runtime, Eff A B is represented identically to A ⇒ B.
   -- The distinction is purely for effect tracking.
   --
-  ty-arr : ∀ {Γ A B q} → Γ ⊢ (A ⇒[ q ] B) ⟶ Eff A B
+  ty-arr : ∀ {Γ A B q} → Γ ⊢ (A ⇒[ mk-kind q pure ] B) ⟶ (A ⇒[ mk-kind Many eff ] B)
 
   -- Primitive operations (opaque to optimizer)
   --
@@ -347,7 +347,7 @@ round-trip-ir (case f g) (inj₁ a) = round-trip-ir f a
 round-trip-ir (case f g) (inj₂ b) = round-trip-ir g b
 round-trip-ir terminal x = refl
 round-trip-ir initial ()
-round-trip-ir (curry {q = q} f _) x =
+round-trip-ir (curry {k = k} f _) x =
   extensionality (λ b → round-trip-ir f (x , b))
 round-trip-ir apply x = refl
 -- OCP-0003: fold/unfold removed

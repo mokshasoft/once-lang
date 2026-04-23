@@ -303,7 +303,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
       mIn , run-terminal x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
     -- Arr: effectful morphism coercion (delegated to SimpleWF module)
-    -- Converts (A ⇒[ q ] B) to (Eff A B) - semantically identity
+    -- Converts (A ⇒[ mk-kind q pure ] B) to (A ⇒[ mk-kind Many eff ] B) - semantically identity
     run-ir-wf mIn (arr {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       mIn , run-arr {mIn} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
@@ -353,8 +353,8 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
 
     -- Curry: delegated to CurryWF module (quantity-polymorphic)
     -- Output is always Heap (closure is boxed)
-    run-ir-wf mIn (curry {q = q} f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
-      Heap , run-curry {q = q} mIn f m ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
+    run-ir-wf mIn (curry {k = k} f m) ir<bound x input-loc s alloc input-valid-wf input-before not-halted rdi-eq (acc rs) =
+      Heap , run-curry {k = k} mIn f m ir<bound (make-rec-wf ir<bound rs) x input-loc s alloc
         input-valid-wf input-before not-halted rdi-eq
 
     -- Apply: uses BodyCorrect.execute from closure (quantity-polymorphic)
@@ -367,30 +367,15 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     -- Apply: CHILD FRAME EXECUTION
     -- Body executes in child frame with child-capacity (from module params).
     -- Body capacity follows from child-cap-sufficient
-    run-ir-wf Heap (apply {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-        run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    run-ir-wf Heap (apply {A} {B} {k}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+        run-apply {k = k} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    run-ir-wf Stack (apply {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+    run-ir-wf Stack (apply {A} {B} {k}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       -- Reference-based model: Stack and Heap use same pointer representation for pairs
-      run-apply {q = q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+      run-apply {k = k} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    -- ApplyEff: effectful application `f x` where `f : Eff A B`.
-    -- At runtime identical to `apply` — `Eff A B` and `A ⇒[q] B` share
-    -- the semantic interpretation `⟦A⟧ → ⟦B⟧`, and the codegen emits
-    -- the same x86 instructions (see CodeGen.Compile: `compile-ir'
-    -- applyEff = apply-instrs`).
-    --
-    -- The Dispatcher's correctness proof for this case is a follow-up
-    -- — the runtime is fully wired (MAlonzo path), but mirroring the
-    -- full IRResultAWF proof structure from `run-apply` requires
-    -- decomposing the `ValidAtWF … {Eff A B}` pair via the inverse
-    -- of `valid-eff-wf` plus rebuilding ~30 record fields. Stubbed
-    -- pending that duplication.
-    --
-    -- TODO(applyEff-dispatcher-correct): replace with structural proof.
-    run-ir-wf mIn (applyEff {A} {B}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-      applyEff-placeholder
-      where postulate applyEff-placeholder : ∃[ mOut ] IRResultAWF mOut (applyEff {A} {B}) x s alloc
+    -- D032/0.5.1: `applyEff` removed. `apply {k = effK}` covers effectful
+    -- application uniformly — the kind-polymorphic `run-apply` above.
 
     -- Free-heap: explicit heap deallocation (delegated to SimpleWF module)
     -- Semantically a no-op (returns input unchanged).

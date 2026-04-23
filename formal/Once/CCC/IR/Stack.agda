@@ -97,7 +97,6 @@ ir-stack-requirement initial = 0
 ir-stack-requirement (curry _ _) = pair-slots
 ir-stack-requirement apply = pair-slots
 ir-stack-requirement arr = 0
-ir-stack-requirement applyEff = pair-slots
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana instead.
 -- Recursion schemes (OCP-0003) - WellFormedF proofs are ignored for stack
 -- In: constructs μ-value, similar to fold

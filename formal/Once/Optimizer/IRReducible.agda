@@ -42,8 +42,8 @@ data CompReducible : ∀ {A B C} → IR B C → IR A B → Set where
                  CompReducible (case f g) (inr m)
 
   -- Exponential beta
-  red-apply-curry : ∀ {A B C q} {f : IR (A * B) C} {g : IR A B} {m₁ m₂} →
-                    CompReducible apply (⟨ curry {q = q} f m₁ , g ⟩ m₂)
+  red-apply-curry : ∀ {A B C k} {f : IR (A * B) C} {g : IR A B} {m₁ m₂} →
+                    CompReducible apply (⟨ curry {k = k} f m₁ , g ⟩ m₂)
 
   -- Dead code elimination
   red-terminal : ∀ {A B} {f : IR A B} → CompReducible terminal f
@@ -296,7 +296,7 @@ comp-reducible? unfold (fold _) = no λ ()
 comp-reducible? unfold unfold = no λ ()
 comp-reducible? unfold (Prim _) = no λ ()
 -- g = arr (non-id, non-initial f)
--- arr : IR (A ⇒ B) (Eff A B), so f must have codomain A ⇒ B
+-- arr : IR (A ⇒ B) (A ⇒[ mk-kind Many eff ] B), so f must have codomain A ⇒ B
 -- ⟨_,_⟩, inl, inr, terminal, fold, arr have wrong codomain - type-impossible
 comp-reducible? arr (_ ∘ _) = no λ ()
 comp-reducible? arr fst = no λ ()

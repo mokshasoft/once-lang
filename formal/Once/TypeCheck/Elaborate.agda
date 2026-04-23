@@ -118,15 +118,11 @@ mutual
   ... | yes refl | yes refl = yes refl
   ... | no ¬p | _ = no λ { refl → ¬p refl }
   ... | _ | no ¬q = no λ { refl → ¬q refl }
-  (A₁ ⇒[ q₁ ] B₁) ≟T (A₂ ⇒[ q₂ ] B₂) with A₁ ≟T A₂ | q₁ ≟q q₂ | B₁ ≟T B₂
+  (A₁ ⇒[ k₁ ] B₁) ≟T (A₂ ⇒[ k₂ ] B₂) with A₁ ≟T A₂ | k₁ ≟k k₂ | B₁ ≟T B₂
   ... | yes refl | yes refl | yes refl = yes refl
   ... | no ¬p | _ | _ = no λ { refl → ¬p refl }
-  ... | _ | no ¬q | _ = no λ { refl → ¬q refl }
+  ... | _ | no ¬k | _ = no λ { refl → ¬k refl }
   ... | _ | _ | no ¬r = no λ { refl → ¬r refl }
-  (Eff A₁ B₁) ≟T (Eff A₂ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-  ... | yes refl | yes refl = yes refl
-  ... | no ¬p | _ = no λ { refl → ¬p refl }
-  ... | _ | no ¬q = no λ { refl → ¬q refl }
   -- OCP-0003: Fix removed
   -- TVar removed from Type; now in PolyType (see Once.Type)
   -- All other combinations are unequal
@@ -138,7 +134,6 @@ mutual
   Unit ≟T (_ Once.Type.* _) = no λ ()
   Unit ≟T (_ Once.Type.+ _) = no λ ()
   Unit ≟T (_ ⇒[ _ ] _) = no λ ()
-  Unit ≟T Eff _ _ = no λ ()
   Void ≟T Unit = no λ ()
   Void ≟T Int = no λ ()
   Void ≟T Float = no λ ()
@@ -147,7 +142,6 @@ mutual
   Void ≟T (_ Once.Type.* _) = no λ ()
   Void ≟T (_ Once.Type.+ _) = no λ ()
   Void ≟T (_ ⇒[ _ ] _) = no λ ()
-  Void ≟T Eff _ _ = no λ ()
   Int ≟T Unit = no λ ()
   Int ≟T Void = no λ ()
   Int ≟T Float = no λ ()
@@ -156,7 +150,6 @@ mutual
   Int ≟T (_ Once.Type.* _) = no λ ()
   Int ≟T (_ Once.Type.+ _) = no λ ()
   Int ≟T (_ ⇒[ _ ] _) = no λ ()
-  Int ≟T Eff _ _ = no λ ()
   Float ≟T Unit = no λ ()
   Float ≟T Void = no λ ()
   Float ≟T Int = no λ ()
@@ -165,7 +158,6 @@ mutual
   Float ≟T (_ Once.Type.* _) = no λ ()
   Float ≟T (_ Once.Type.+ _) = no λ ()
   Float ≟T (_ ⇒[ _ ] _) = no λ ()
-  Float ≟T Eff _ _ = no λ ()
   Str ≟T Unit = no λ ()
   Str ≟T Void = no λ ()
   Str ≟T Int = no λ ()
@@ -174,7 +166,6 @@ mutual
   Str ≟T (_ Once.Type.* _) = no λ ()
   Str ≟T (_ Once.Type.+ _) = no λ ()
   Str ≟T (_ ⇒[ _ ] _) = no λ ()
-  Str ≟T Eff _ _ = no λ ()
   Buffer ≟T Unit = no λ ()
   Buffer ≟T Void = no λ ()
   Buffer ≟T Int = no λ ()
@@ -183,7 +174,6 @@ mutual
   Buffer ≟T (_ Once.Type.* _) = no λ ()
   Buffer ≟T (_ Once.Type.+ _) = no λ ()
   Buffer ≟T (_ ⇒[ _ ] _) = no λ ()
-  Buffer ≟T Eff _ _ = no λ ()
   (_ Once.Type.* _) ≟T Unit = no λ ()
   (_ Once.Type.* _) ≟T Void = no λ ()
   (_ Once.Type.* _) ≟T Int = no λ ()
@@ -192,7 +182,6 @@ mutual
   (_ Once.Type.* _) ≟T Buffer = no λ ()
   (_ Once.Type.* _) ≟T (_ Once.Type.+ _) = no λ ()
   (_ Once.Type.* _) ≟T (_ ⇒[ _ ] _) = no λ ()
-  (_ Once.Type.* _) ≟T Eff _ _ = no λ ()
   (_ Once.Type.+ _) ≟T Unit = no λ ()
   (_ Once.Type.+ _) ≟T Void = no λ ()
   (_ Once.Type.+ _) ≟T Int = no λ ()
@@ -201,7 +190,6 @@ mutual
   (_ Once.Type.+ _) ≟T Buffer = no λ ()
   (_ Once.Type.+ _) ≟T (_ Once.Type.* _) = no λ ()
   (_ Once.Type.+ _) ≟T (_ ⇒[ _ ] _) = no λ ()
-  (_ Once.Type.+ _) ≟T Eff _ _ = no λ ()
   (_ ⇒[ _ ] _) ≟T Unit = no λ ()
   (_ ⇒[ _ ] _) ≟T Void = no λ ()
   (_ ⇒[ _ ] _) ≟T Int = no λ ()
@@ -210,16 +198,6 @@ mutual
   (_ ⇒[ _ ] _) ≟T Buffer = no λ ()
   (_ ⇒[ _ ] _) ≟T (_ Once.Type.* _) = no λ ()
   (_ ⇒[ _ ] _) ≟T (_ Once.Type.+ _) = no λ ()
-  (_ ⇒[ _ ] _) ≟T Eff _ _ = no λ ()
-  Eff _ _ ≟T Unit = no λ ()
-  Eff _ _ ≟T Void = no λ ()
-  Eff _ _ ≟T Int = no λ ()
-  Eff _ _ ≟T Float = no λ ()
-  Eff _ _ ≟T Str = no λ ()
-  Eff _ _ ≟T Buffer = no λ ()
-  Eff _ _ ≟T (_ Once.Type.* _) = no λ ()
-  Eff _ _ ≟T (_ Once.Type.+ _) = no λ ()
-  Eff _ _ ≟T (_ ⇒[ _ ] _) = no λ ()
   -- TVar removed from Type; now in PolyType (see Once.Type)
   -- OCP-0003: μ-type and ν-type cases
   (μ-type F₁) ≟T (μ-type F₂) with F₁ ≟F F₂
@@ -237,7 +215,6 @@ mutual
   μ-type _ ≟T (_ Once.Type.* _) = no λ ()
   μ-type _ ≟T (_ Once.Type.+ _) = no λ ()
   μ-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
-  μ-type _ ≟T Eff _ _ = no λ ()
   μ-type _ ≟T ν-type _ = no λ ()
   ν-type _ ≟T Unit = no λ ()
   ν-type _ ≟T Void = no λ ()
@@ -248,7 +225,6 @@ mutual
   ν-type _ ≟T (_ Once.Type.* _) = no λ ()
   ν-type _ ≟T (_ Once.Type.+ _) = no λ ()
   ν-type _ ≟T (_ ⇒[ _ ] _) = no λ ()
-  ν-type _ ≟T Eff _ _ = no λ ()
   ν-type _ ≟T μ-type _ = no λ ()
   Unit ≟T μ-type _ = no λ ()
   Unit ≟T ν-type _ = no λ ()
@@ -268,8 +244,6 @@ mutual
   (_ Once.Type.+ _) ≟T ν-type _ = no λ ()
   (_ ⇒[ _ ] _) ≟T μ-type _ = no λ ()
   (_ ⇒[ _ ] _) ≟T ν-type _ = no λ ()
-  Eff _ _ ≟T μ-type _ = no λ ()
-  Eff _ _ ≟T ν-type _ = no λ ()
   -- GuardedT removed: productivity follows from IR totality
   -- TVar removed from Type; now in PolyType (see Once.Type)
 
@@ -501,7 +475,7 @@ specCompose A B C =
                  (Surface.app (Surface.var (suc zero)) (Surface.var zero)))))
 
 -- arr : (a → b) → Eff a b
-specArr : (A B : Type) → SExpr S∅ Surface.zeroUsage ((A ⇒ B) ⇒ Eff A B)
+specArr : (A B : Type) → SExpr S∅ Surface.zeroUsage ((A ⇒ B) ⇒ (A ⇒[ mk-kind Many eff ] B))
 specArr A B = Surface.lam Many refl (Surface.arr' (Surface.var zero))
 
 
@@ -621,15 +595,17 @@ matchInferResult (success T' Ψ eE d f) T with T ≟T T'
 -- rather than forcing a coercion at this layer.
 data FunProjection {n : ℕ} (Δ : SCtx n) : Set where
   isFun  : (A : Type) (q : Quantity) (B : Type) (Ψ : Surface.Usage n)
-         → SExpr Δ Ψ (A ⇒[ q ] B) → ℕ → ℕ → FunProjection Δ
+         → SExpr Δ Ψ (A ⇒[ mk-kind q pure ] B) → ℕ → ℕ → FunProjection Δ
   isEff  : (A B : Type) (Ψ : Surface.Usage n)
-         → SExpr Δ Ψ (Eff A B) → ℕ → ℕ → FunProjection Δ
+         → SExpr Δ Ψ (A ⇒[ mk-kind Many eff ] B) → ℕ → ℕ → FunProjection Δ
   notFun : TypeError → FunProjection Δ
 
 asFun : ∀ {n} {Δ : SCtx n} → InferElabResult Δ → FunProjection Δ
 asFun (failure err)                                      = notFun err
-asFun (success (A ⇒[ q ] B) Ψ se d f)                    = isFun A q B Ψ se d f
-asFun (success (Eff A B) Ψ se d f)                       = isEff A B Ψ se d f
+asFun (success (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B) Ψ se d f) = isFun A q B Ψ se d f
+asFun (success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) Ψ se d f)                       = isEff A B Ψ se d f
+asFun (success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B) _ _ _ _) = notFun (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.eff ] B))
+asFun (success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B) _ _ _ _) = notFun (NotFunction (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.eff ] B))
 asFun (success Unit Ψ _ _ _)                             = notFun (NotFunction Unit)
 asFun (success Void Ψ _ _ _)                             = notFun (NotFunction Void)
 asFun (success Int Ψ _ _ _)                              = notFun (NotFunction Int)
@@ -657,8 +633,7 @@ asInt (success Str _ _ _ _)                              = notInt (TypeMismatch 
 asInt (success Buffer _ _ _ _)                           = notInt (TypeMismatch Int Buffer)
 asInt (success (A Once.Type.* B) _ _ _ _)                = notInt (TypeMismatch Int (A Once.Type.* B))
 asInt (success (A Once.Type.+ B) _ _ _ _)                = notInt (TypeMismatch Int (A Once.Type.+ B))
-asInt (success (A ⇒[ q ] B) _ _ _ _)                     = notInt (TypeMismatch Int (A ⇒[ q ] B))
-asInt (success (Eff A B) _ _ _ _)                        = notInt (TypeMismatch Int (Eff A B))
+asInt (success (A ⇒[ k ] B) _ _ _ _)                     = notInt (TypeMismatch Int (A ⇒[ k ] B))
 asInt (success (μ-type F) _ _ _ _)                       = notInt (TypeMismatch Int (μ-type F))
 asInt (success (ν-type F) _ _ _ _)                       = notInt (TypeMismatch Int (ν-type F))
 
@@ -1062,8 +1037,8 @@ mutual
   -- via a type annotation when that's really wanted.
   inferElab ctx (Raw.RApp f x) | ahv-arr with inferElab ctx x
   ... | failure err = failure err
-  ... | success (A Once.Type.⇒[ Once.Type.Many ] B) Ψ argE d f' =
-        success (Once.Type.Eff A B) _
+  ... | success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ argE d f' =
+        success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) _
                 (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) f'
   ... | success _ _ _ _ _ = failure ArrNeedsFunction
   -- Partial / check-only builtins in infer mode: fail.
@@ -1085,7 +1060,7 @@ mutual
   -- `apply p` is inferable when p has pair-of-function type.
   inferElab ctx (Raw.RApp _ x) | ahv-apply with inferElab ctx x
   ... | failure err = failure err
-  ... | success ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.* A') Ψ argE d f' with A ≟T A'
+  ... | success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A') Ψ argE d f' with A ≟T A'
   ...   | yes refl =
           success B _ (Surface.app (weakenFromEmpty (specApply A B)) argE) (suc d) f'
   ...   | no  _ = failure (BuiltinTypeMismatch "apply")
@@ -1102,7 +1077,7 @@ mutual
   inferElab ctx (Raw.RApp f x) | ahv-other | isEff A B Ψ₁ fE df ff with inferElab ctx x
   ...   | failure err = failure err
   ...   | success A' Ψ₂ xE dx fx with A ≟T A'
-  ...     | yes refl = success (Eff Unit B) _ (Surface.effApp fE xE) (df ⊔ dx) fx
+  ...     | yes refl = success (Unit ⇒[ mk-kind Many eff ] B) _ (Surface.effApp fE xE) (df ⊔ dx) fx
   ...     | no _ = failure (ApplicationTypeMismatch A A')
 
   -- Let binding: infer e₁, then e₂ under extended context.
@@ -1178,7 +1153,7 @@ mutual
   -- Returning the decision via a `Maybe`-wrapping helper (`decideLeq`,
   -- defined above) avoids the stdlib `inspect` idiom, whose internal
   -- `with`-helper name is opaque to external proofs.
-  checkElab ctx (Raw.RLam x body) (A ⇒[ q ] B) with checkElab (extendNamedCtx ctx x A) body B
+  checkElab ctx (Raw.RLam x body) (A ⇒[ mk-kind q pure ] B) with checkElab (extendNamedCtx ctx x A) body B
   ... | failure err = failure err
   ... | success (q' ∷ᵘ Ψ) bodyE d f with decideLeq q' q
   ...   | just eq =
@@ -1216,7 +1191,6 @@ mutual
   checkElab ctx (Raw.RApp f arg) T | ahv-inl | Buffer = failure InlNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-inl | (_ Once.Type.* _) = failure InlNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-inl | (_ Once.Type.⇒[ _ ] _) = failure InlNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | ahv-inl | Eff _ _ = failure InlNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-inl | μ-type _ = failure InlNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-inl | ν-type _ = failure InlNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-inr with T
@@ -1232,7 +1206,6 @@ mutual
   checkElab ctx (Raw.RApp f arg) T | ahv-inr | Buffer = failure InrNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-inr | (_ Once.Type.* _) = failure InrNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-inr | (_ Once.Type.⇒[ _ ] _) = failure InrNeedsSumType
-  checkElab ctx (Raw.RApp f arg) T | ahv-inr | Eff _ _ = failure InrNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-inr | μ-type _ = failure InrNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-inr | ν-type _ = failure InrNeedsSumType
   checkElab ctx (Raw.RApp f arg) T | ahv-initial with checkElab ctx arg Void
@@ -1268,7 +1241,7 @@ mutual
   -- expectation — inferElab on the bare lambda would fail with
   -- LambdaInInferMode, so we don't fall through to infer here.
   checkElab ctx (Raw.RApp f arg) T | ahv-arr with T
-  ... | (Once.Type.Eff A B) with checkElab ctx arg (A Once.Type.⇒[ Once.Type.Many ] B)
+  ... | (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B) with checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
   ...     | failure err = failure err
   ...     | success Ψ argE d fr =
             success _ (Surface.app (weakenFromEmpty (specArr A B)) argE) (suc d) fr
@@ -1365,7 +1338,7 @@ mutual
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.Many ] B) | bbc-id | failure _ with A ≟T B
+  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) | bbc-id | failure _ with A ≟T B
   ... | yes refl = success _ (weakenFromEmpty (specId A)) 0 (NamedCtx.freshCounter ctx)
   ... | no _ = failure (BuiltinTypeMismatch "id")
   checkElab-RVar ctx _ _ | bbc-id | failure err = failure err
@@ -1374,7 +1347,7 @@ mutual
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] A') | bbc-fst | failure _ with A ≟T A'
+  checkElab-RVar ctx _ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A') | bbc-fst | failure _ with A ≟T A'
   ... | yes refl = success _ (weakenFromEmpty (specFst A B)) 0 (NamedCtx.freshCounter ctx)
   ... | no _ = failure (BuiltinTypeMismatch "fst")
   checkElab-RVar ctx _ _ | bbc-fst | failure err = failure err
@@ -1383,7 +1356,7 @@ mutual
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] B') | bbc-snd | failure _ with B ≟T B'
+  checkElab-RVar ctx _ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B') | bbc-snd | failure _ with B ≟T B'
   ... | yes refl = success _ (weakenFromEmpty (specSnd A B)) 0 (NamedCtx.freshCounter ctx)
   ... | no _ = failure (BuiltinTypeMismatch "snd")
   checkElab-RVar ctx _ _ | bbc-snd | failure err = failure err
@@ -1392,7 +1365,7 @@ mutual
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.Many ] Unit) | bbc-terminal | failure _ =
+  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit) | bbc-terminal | failure _ =
     success _ (weakenFromEmpty (specTerminal A)) 0 (NamedCtx.freshCounter ctx)
   checkElab-RVar ctx _ _ | bbc-terminal | failure err = failure err
   -- initial : Void → A
@@ -1400,7 +1373,7 @@ mutual
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (Void Once.Type.⇒[ Once.Type.Many ] A) | bbc-initial | failure _ =
+  checkElab-RVar ctx _ (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A) | bbc-initial | failure _ =
     success _ (weakenFromEmpty (specInitial A)) 0 (NamedCtx.freshCounter ctx)
   checkElab-RVar ctx _ _ | bbc-initial | failure err = failure err
   -- inl : A → (A + B)
@@ -1408,7 +1381,7 @@ mutual
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.Many ] (A' Once.Type.+ B)) | bbc-inl | failure _ with A ≟T A'
+  checkElab-RVar ctx _ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A' Once.Type.+ B)) | bbc-inl | failure _ with A ≟T A'
   ... | yes refl = success _ (weakenFromEmpty (specInl A B)) 0 (NamedCtx.freshCounter ctx)
   ... | no _ = failure (BuiltinTypeMismatch "inl")
   checkElab-RVar ctx _ _ | bbc-inl | failure err = failure err
@@ -1417,7 +1390,7 @@ mutual
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ (B Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B')) | bbc-inr | failure _ with B ≟T B'
+  checkElab-RVar ctx _ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B')) | bbc-inr | failure _ with B ≟T B'
   ... | yes refl = success _ (weakenFromEmpty (specInr A B)) 0 (NamedCtx.freshCounter ctx)
   ... | no _ = failure (BuiltinTypeMismatch "inr")
   checkElab-RVar ctx _ _ | bbc-inr | failure err = failure err
@@ -1426,7 +1399,7 @@ mutual
   ... | success T' Ψ eE d f with T ≟T T'
   ...   | yes refl = success _ eE d f
   ...   | no _ = failure (TypeMismatch T T')
-  checkElab-RVar ctx _ ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.⇒[ Once.Type.Many ] Eff A' B') | bbc-arr | failure _ with A ≟T A' | B ≟T B'
+  checkElab-RVar ctx _ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B')) | bbc-arr | failure _ with A ≟T A' | B ≟T B'
   ... | yes refl | yes refl = success _ (weakenFromEmpty (specArr A B)) 0 (NamedCtx.freshCounter ctx)
   ... | _ | _ = failure (BuiltinTypeMismatch "arr")
   checkElab-RVar ctx _ _ | bbc-arr | failure err = failure err
@@ -1439,10 +1412,10 @@ mutual
   -- disjointness with `t-embed (t-app …)` — t-app's premise
   -- `classifyAppHead f ≡ nothing` fails for the pair-applied shape.
   checkPair ctx (Raw.RApp (Raw.RVar "pair") f_inner) arg
-            (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.* C))
-    with checkElab ctx f_inner (A Once.Type.⇒[ Once.Type.Many ] B)
+            (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.* C))
+    with checkElab ctx f_inner (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
   ... | failure err = failure err
-  ... | success Ψf fE df frf with checkElab ctx arg (A Once.Type.⇒[ Once.Type.Many ] C)
+  ... | success Ψf fE df frf with checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ...   | failure err = failure err
   ...   | success Ψg gE dg frg =
           success _
@@ -1459,48 +1432,48 @@ mutual
   -- `composePolyArgB` (schema-instantiation at domain A), then
   -- checkElab both sub-expressions at the resolved types.
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
-               (A Once.Type.⇒[ Once.Type.Many ] C)
+               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
     with inferElab ctx arg
   ... | failure _ with composeArgB ctx arg A
   ...   | nothing = failure (BuiltinTypeMismatch "compose")
-  ...   | just B with checkElab ctx arg (A Once.Type.⇒[ Once.Type.Many ] B)
+  ...   | just B with checkElab ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
   ...     | failure err = failure err
-  ...     | success Ψg gE dg frg with checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.Many ] C)
+  ...     | success Ψg gE dg frg with checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ...       | failure err = failure err
   ...       | success Ψf fE df frf =
               success _
                 (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
                 (suc (df Data.Nat.⊔ dg)) frf
   checkCompose ctx (Raw.RApp (Raw.RVar "compose") f_inner) arg
-               (A Once.Type.⇒[ Once.Type.Many ] C)
-    | success (A' Once.Type.⇒[ Once.Type.Many ] B) Ψg gE dg frg with A ≟T A'
+               (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
+    | success (A' Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψg gE dg frg with A ≟T A'
   ...   | no _ = failure (BuiltinTypeMismatch "compose")
-  ...   | yes refl with checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.Many ] C)
+  ...   | yes refl with checkElab ctx f_inner (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ...     | failure err = failure err
   ...     | success Ψf fE df frf =
             success _
               (Surface.app (Surface.app (weakenFromEmpty (specCompose A B C)) fE) gE)
               (suc (df Data.Nat.⊔ dg)) frf
   -- Non-arrow-Many inferred types for g: compose can't proceed.
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Unit       _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Int        _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Str        _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Void       _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Float      _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success Buffer     _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (_ Once.Type.* _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (_ Once.Type.+ _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (_ Once.Type.⇒[ Once.Type.One ] _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (_ Once.Type.⇒[ Once.Type.Zero ] _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (Eff _ _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (μ-type _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
-  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.Many ] _) | success (ν-type _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Unit       _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Int        _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Str        _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Void       _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Float      _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success Buffer     _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.* _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.+ _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.One Once.Type.pure ] _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Zero Once.Type.pure ] _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (_ Once.Type.⇒[ Once.Type.mk-kind _ Once.Type.eff ] _)  _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (μ-type _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
+  checkCompose _ _ _ (_ Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] _) | success (ν-type _) _ _ _ _ = failure (BuiltinTypeMismatch "compose")
   checkCompose _ _ _ _ = failure (BuiltinTypeMismatch "compose")
 
   -- Plan 0.6 Phase C.7 POC-3: `curry f` check-mode.
   -- Expected `A ⇒[Many] (B ⇒[Many] C)`. Check f at `(A * B) ⇒[Many] C`.
-  checkCurry ctx arg (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.⇒[ Once.Type.Many ] C))
-    with checkElab ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] C)
+  checkCurry ctx arg (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
+    with checkElab ctx arg ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
   ... | failure err = failure err
   ... | success Ψ argE d fr =
         success _ (Surface.app (weakenFromEmpty (specCurry A B C)) argE) (suc d) fr
@@ -1681,7 +1654,7 @@ checkElab-fallback-RVar-id :
   → lookupLocal ctx "id" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "id" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "id") (T Once.Type.⇒[ Once.Type.Many ] T)
+      checkElab ctx (Raw.RVar "id") (T Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] T)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-id {ctx} T localN importN
   rewrite localN | importN with T ≟T T
@@ -1693,7 +1666,7 @@ checkElab-fallback-RVar-fst :
   → lookupLocal ctx "fst" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "fst" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] A)
+      checkElab ctx (Raw.RVar "fst") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-fst {ctx} A B localN importN
   rewrite localN | importN with A ≟T A
@@ -1705,7 +1678,7 @@ checkElab-fallback-RVar-snd :
   → lookupLocal ctx "snd" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "snd" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] B)
+      checkElab ctx (Raw.RVar "snd") ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-snd {ctx} A B localN importN
   rewrite localN | importN with B ≟T B
@@ -1717,7 +1690,7 @@ checkElab-fallback-RVar-terminal :
   → lookupLocal ctx "terminal" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "terminal" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.Many ] Unit)
+      checkElab ctx (Raw.RVar "terminal") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] Unit)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-terminal {ctx} A localN importN
   rewrite localN | importN = _ , _ , _ , refl
@@ -1727,7 +1700,7 @@ checkElab-fallback-RVar-initial :
   → lookupLocal ctx "initial" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "initial" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "initial") (Void Once.Type.⇒[ Once.Type.Many ] A)
+      checkElab ctx (Raw.RVar "initial") (Void Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] A)
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-initial {ctx} A localN importN
   rewrite localN | importN = _ , _ , _ , refl
@@ -1737,7 +1710,7 @@ checkElab-fallback-RVar-inl :
   → lookupLocal ctx "inl" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "inl" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "inl") (A Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B))
+      checkElab ctx (Raw.RVar "inl") (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inl {ctx} A B localN importN
   rewrite localN | importN with A ≟T A
@@ -1749,7 +1722,7 @@ checkElab-fallback-RVar-inr :
   → lookupLocal ctx "inr" ≡ nothing
   → lookupImport (NamedCtx.imports ctx) "inr" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
-      checkElab ctx (Raw.RVar "inr") (B Once.Type.⇒[ Once.Type.Many ] (A Once.Type.+ B))
+      checkElab ctx (Raw.RVar "inr") (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.+ B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-inr {ctx} A B localN importN
   rewrite localN | importN with B ≟T B
@@ -1762,7 +1735,7 @@ checkElab-fallback-RVar-arr :
   → lookupImport (NamedCtx.imports ctx) "arr" ≡ nothing
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ f →
       checkElab ctx (Raw.RVar "arr")
-                   ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.⇒[ Once.Type.Many ] Eff A B)
+                   ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B))
         ≡ success Surface.zeroUsage eE d f)))
 checkElab-fallback-RVar-arr {ctx} A B localN importN
   rewrite localN | importN with A ≟T A | B ≟T B
@@ -1779,14 +1752,14 @@ checkElab-fallback-RVar-arr {ctx} A B localN importN
 checkElab-fallback-RApp-pair :
   ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
     {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (A Once.Type.⇒[ Once.Type.Many ] B)}
-    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.Many ] C)}
+    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
+    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
     {d_f f_f d_g f_g : ℕ}
-  → checkElab ctx f (A Once.Type.⇒[ Once.Type.Many ] B) ≡ success Ψ₁ eE_f d_f f_f
-  → checkElab ctx g (A Once.Type.⇒[ Once.Type.Many ] C) ≡ success Ψ₂ eE_g d_g f_g
+  → checkElab ctx f (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) ≡ success Ψ₁ eE_f d_f f_f
+  → checkElab ctx g (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₂ eE_g d_g f_g
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "pair") f) g)
-                    (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.* C))
+                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.* C))
         ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                     Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
 checkElab-fallback-RApp-pair {ctx} f g A B C eq_f eq_g
@@ -1798,14 +1771,14 @@ checkElab-fallback-RApp-pair {ctx} f g A B C eq_f eq_g
 checkElab-fallback-RApp-compose :
   ∀ {ctx : NamedCtx} (f g : RawExpr) (A B C : Type)
     {Ψ₁ Ψ₂ : Surface.Usage (NamedCtx.size ctx)}
-    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (B Once.Type.⇒[ Once.Type.Many ] C)}
-    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.Many ] B)}
+    {eE_f : SExpr (NamedCtx.debruijn ctx) Ψ₁ (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
+    {eE_g : SExpr (NamedCtx.debruijn ctx) Ψ₂ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B)}
     {d_f f_f d_g f_g : ℕ}
-  → checkElab ctx f (B Once.Type.⇒[ Once.Type.Many ] C) ≡ success Ψ₁ eE_f d_f f_f
-  → inferElab ctx g ≡ success (A Once.Type.⇒[ Once.Type.Many ] B) Ψ₂ eE_g d_g f_g
+  → checkElab ctx f (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ₁ eE_f d_f f_f
+  → inferElab ctx g ≡ success (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Ψ₂ eE_g d_g f_g
   → ∃-syntax (λ eE → ∃-syntax (λ d → ∃-syntax (λ fr →
       checkElab ctx (Raw.RApp (Raw.RApp (Raw.RVar "compose") f) g)
-                    (A Once.Type.⇒[ Once.Type.Many ] C)
+                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)
         ≡ success ((Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₁))
                     Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ₂)) eE d fr)))
 checkElab-fallback-RApp-compose {ctx} f g A B C eq_f eq_g
@@ -1817,12 +1790,12 @@ checkElab-fallback-RApp-compose {ctx} f g A B C eq_f eq_g
 checkElab-fallback-RApp-curry :
   ∀ {ctx : NamedCtx} (f : RawExpr) (A B C : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] C)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C)}
     {d fr : ℕ}
-  → checkElab ctx f ((A Once.Type.* B) Once.Type.⇒[ Once.Type.Many ] C) ≡ success Ψ eE d fr
+  → checkElab ctx f ((A Once.Type.* B) Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C) ≡ success Ψ eE d fr
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RVar "curry") f)
-                    (A Once.Type.⇒[ Once.Type.Many ] (B Once.Type.⇒[ Once.Type.Many ] C))
+                    (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] (B Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] C))
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
 checkElab-fallback-RApp-curry {ctx} f A B C eq_f
   rewrite eq_f = _ , _ , _ , refl
@@ -1831,9 +1804,9 @@ checkElab-fallback-RApp-curry {ctx} f A B C eq_f
 checkElab-fallback-RApp-apply :
   ∀ {ctx : NamedCtx} (p : RawExpr) (A B : Type)
     {Ψ : Surface.Usage (NamedCtx.size ctx)}
-    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.* A)}
+    {eE : SExpr (NamedCtx.debruijn ctx) Ψ ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A)}
     {d fr : ℕ}
-  → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.Many ] B) Once.Type.* A) Ψ eE d fr
+  → inferElab ctx p ≡ success ((A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.pure ] B) Once.Type.* A) Ψ eE d fr
   → ∃-syntax (λ eE' → ∃-syntax (λ d' → ∃-syntax (λ f' →
       checkElab ctx (Raw.RApp (Raw.RVar "apply") p) B
         ≡ success (Surface.zeroUsage Surface.+ᵘ (Once.Type.Many Surface.*ᵘ Ψ)) eE' d' f')))
@@ -1995,7 +1968,7 @@ resolveExpr-lam _ _ _ _ _ _ = refl
 resolveExpr-app :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B q}
     (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
-    (f : Surface.Expr Γ Ψ₁ (A Once.Type.⇒[ q ] B))
+    (f : Surface.Expr Γ Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind q Once.Type.pure ] B))
     (a : Surface.Expr Γ Ψ₂ A)
   → resolveExpr polys imps fresh (Surface.app f a)
       ≡ Surface.app (resolveExpr polys imps fresh f) (resolveExpr polys imps fresh a)
@@ -2014,7 +1987,7 @@ resolveExpr-pair _ _ _ _ _ = refl
 resolveExpr-effApp :
   ∀ {n} {Γ : Surface.Ctx n} {Ψ₁ Ψ₂ : Surface.Usage n} {A B}
     (polys : PolyCtx) (imps : Imports) (fresh : ℕ)
-    (f : Surface.Expr Γ Ψ₁ (Once.Type.Eff A B)) (a : Surface.Expr Γ Ψ₂ A)
+    (f : Surface.Expr Γ Ψ₁ (A Once.Type.⇒[ Once.Type.mk-kind Once.Type.Many Once.Type.eff ] B)) (a : Surface.Expr Γ Ψ₂ A)
   → resolveExpr polys imps fresh (Surface.effApp f a)
       ≡ Surface.effApp (resolveExpr polys imps fresh f) (resolveExpr polys imps fresh a)
 resolveExpr-effApp _ _ _ _ _ = refl

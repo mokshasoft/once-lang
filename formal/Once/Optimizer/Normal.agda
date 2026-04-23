@@ -60,8 +60,8 @@ normal-pair-snd : ∀ {A B C} {f : IR C A} {g : IR C B} {m} →
 normal-pair-snd (normal-pair _ ng _) = ng
 
 -- | Extract the body's normality from a normal curry
-normal-curry-body : ∀ {A B C q} {f : IR (A * B) C} {m} →
-  IsNormal (curry {q = q} f m) → IsNormal f
+normal-curry-body : ∀ {A B C k} {f : IR (A * B) C} {m} →
+  IsNormal (curry {k = k} f m) → IsNormal f
 normal-curry-body (normal-curry nf) = nf
 
 -- | Transfer non-reducibility from h ∘ terminal at one type to another
@@ -1127,9 +1127,9 @@ optimize-complete {A} {B} t t' eq = go t' eq
 
     -- Beta: apply ∘ ⟨ curry body , arg ⟩ → body ∘ ⟨ id , arg ⟩ (cost DECREASES)
     -- Use normal-minimal: the optimizer finds the reduced form
-    go (apply ∘ (⟨ curry {q = q} body m₁ , arg ⟩ m₂)) eq' | yes red-apply-curry =
+    go (apply ∘ (⟨ curry {k = k} body m₁ , arg ⟩ m₂)) eq' | yes red-apply-curry =
       let t' : IR _ _
-          t' = apply ∘ (⟨ curry {q = q} body m₁ , arg ⟩ m₂)
+          t' = apply ∘ (⟨ curry {k = k} body m₁ , arg ⟩ m₂)
       in normal-minimal (optimize t) t'
            (optimize-normal t) (λ x → trans (optimize-correct t x) (eq' x))
 

@@ -231,24 +231,19 @@ mutual
     Void   : Type                    -- Initial object
     _*_    : Type → Type → Type      -- Product
     _+_    : Type → Type → Type      -- Coproduct (sum)
-    _⇒[_]_ : Type → Quantity → Type → Type  -- Graded function arrow (QTT)
-    Eff    : Type → Type → Type      -- Effectful morphism (D032)
-    -- Plan 0.5.1 will unify these two arrow types under a single
-    -- `_⇒[_]_ : Type → ArrowKind → Type → Type`. The vocabulary
-    -- (Purity, ArrowKind, _≟p_, _≟k_) is already in place; the
-    -- signature change is Phase 1b, deferred until the downstream
-    -- migration is scoped as its own session.
-    -- Fix removed by OCP-0003: use μ-type/ν-type instead
+    -- Kinded function arrow: single exponential with ArrowKind carrying
+    -- both quantity (QTT) and purity (D032) as orthogonal annotations.
+    -- Plan 0.5.1 unified `_⇒[_]_` (was Quantity-parameterized) and
+    -- `Eff` (was a distinct constructor) under this single type former.
+    _⇒[_]_ : Type → ArrowKind → Type → Type
     -- Polynomial functor fixed points (OCP-0003: total/productive)
     μ-type : Functor → Type          -- Initial algebra (inductive, total)
     ν-type : Functor → Type          -- Final coalgebra (coinductive, productive)
-    -- GuardedT removed: productivity follows from IR totality (see IR/Totality.agda)
     -- Base types for practical programming
     Int    : Type                    -- Machine integers
     Float  : Type                    -- IEEE 754 double-precision floats
     Str    : Type                    -- UTF-8 strings
     Buffer : Type                    -- Raw byte buffers
-    -- TVar moved to PolyType (see below)
 
 infixr 40 _⊕_
 infixr 50 _⊗_
@@ -259,13 +254,13 @@ infixr 50 _*_
 
 -- | Smart constructors for common quantity patterns
 _⊸_ : Type → Type → Type  -- Linear function (quantity = 1)
-A ⊸ B = A ⇒[ One ] B
+A ⊸ B = A ⇒[ mk-kind One pure ] B
 
 _⇒_ : Type → Type → Type  -- Unrestricted function (quantity = ω)
-A ⇒ B = A ⇒[ Many ] B
+A ⇒ B = A ⇒[ mk-kind Many pure ] B
 
 _⇒₀_ : Type → Type → Type  -- Erased function (quantity = 0)
-A ⇒₀ B = A ⇒[ Zero ] B
+A ⇒₀ B = A ⇒[ mk-kind Zero pure ] B
 
 infixr 30 _⊸_
 infixr 30 _⇒_
@@ -336,8 +331,8 @@ mutual
   showType Void = "Void"
   showType (A * B) = "(" ++ showType A ++ " * " ++ showType B ++ ")"
   showType (A + B) = "(" ++ showType A ++ " + " ++ showType B ++ ")"
-  showType (A ⇒[ q ] B) = "(" ++ showType A ++ " " ++ showQuantity q ++ "→ " ++ showType B ++ ")"
-  showType (Eff A B) = "Eff " ++ showType A ++ " " ++ showType B
+  showType (A ⇒[ mk-kind q pure ] B) = "(" ++ showType A ++ " " ++ showQuantity q ++ "→ " ++ showType B ++ ")"
+  showType (A ⇒[ mk-kind _ eff ] B)  = "Eff " ++ showType A ++ " " ++ showType B
   showType (μ-type F) = "μ " ++ showFunctor F
   showType (ν-type F) = "ν " ++ showFunctor F
   showType Int = "Int"
@@ -456,8 +451,8 @@ mutual
   extractGround PVoid            _        = Void
   extractGround (A P* B)         (gA , gB) = extractGround A gA * extractGround B gB
   extractGround (A P+ B)         (gA , gB) = extractGround A gA + extractGround B gB
-  extractGround (A P⇒[ q ] B)    (gA , gB) = extractGround A gA ⇒[ q ] extractGround B gB
-  extractGround (PEff A B)       (gA , gB) = Eff (extractGround A gA) (extractGround B gB)
+  extractGround (A P⇒[ q ] B)    (gA , gB) = extractGround A gA ⇒[ mk-kind q pure ] extractGround B gB
+  extractGround (PEff A B)       (gA , gB) = extractGround A gA ⇒[ mk-kind Many eff ] extractGround B gB
   extractGround (Pμ-type F)      g        = μ-type (extractGroundF F g)
   extractGround (Pν-type F)      g        = ν-type (extractGroundF F g)
   extractGround PInt             _        = Int
@@ -486,8 +481,8 @@ mutual
   embed Void           = PVoid
   embed (A * B)        = embed A P* embed B
   embed (A + B)        = embed A P+ embed B
-  embed (A ⇒[ q ] B)   = embed A P⇒[ q ] embed B
-  embed (Eff A B)      = PEff (embed A) (embed B)
+  embed (A ⇒[ mk-kind q pure ] B) = embed A P⇒[ q ] embed B
+  embed (A ⇒[ mk-kind _ eff ] B)  = PEff (embed A) (embed B)
   embed (μ-type F)     = Pμ-type (embedFunctor F)
   embed (ν-type F)     = Pν-type (embedFunctor F)
   embed Int            = PInt
@@ -602,9 +597,8 @@ mutual
   typeEqBool Buffer Buffer = true
   typeEqBool (a * b) (a' * b') = typeEqBool a a' ∧ typeEqBool b b'
   typeEqBool (a + b) (a' + b') = typeEqBool a a' ∧ typeEqBool b b'
-  typeEqBool (a ⇒[ q ] b) (a' ⇒[ q' ] b') =
-    quantityEqBool q q' ∧ typeEqBool a a' ∧ typeEqBool b b'
-  typeEqBool (Eff a b) (Eff a' b') = typeEqBool a a' ∧ typeEqBool b b'
+  typeEqBool (a ⇒[ mk-kind q p ] b) (a' ⇒[ mk-kind q' p' ] b') =
+    quantityEqBool q q' ∧ purityEqBool p p' ∧ typeEqBool a a' ∧ typeEqBool b b'
   typeEqBool (μ-type f) (μ-type f') = functorEqBool f f'
   typeEqBool (ν-type f) (ν-type f') = functorEqBool f f'
   typeEqBool _ _ = false
@@ -673,12 +667,12 @@ mutual
   instantiateAcc (A P+ B)        (a + b)         s with instantiateAcc A a s
   ... | nothing = nothing
   ... | just s' = instantiateAcc B b s'
-  instantiateAcc (A P⇒[ q ] B)   (a ⇒[ q' ] b)   s with quantityEqBool q q'
+  instantiateAcc (A P⇒[ q ] B)   (a ⇒[ mk-kind q' pure ] b)   s with quantityEqBool q q'
   ... | false = nothing
   ... | true  with instantiateAcc A a s
   ...   | nothing = nothing
   ...   | just s' = instantiateAcc B b s'
-  instantiateAcc (PEff A B)      (Eff a b)       s with instantiateAcc A a s
+  instantiateAcc (PEff A B)      (a ⇒[ mk-kind _ eff ] b)       s with instantiateAcc A a s
   ... | nothing = nothing
   ... | just s' = instantiateAcc B b s'
   instantiateAcc (Pμ-type F)     (μ-type f)      s = instantiateFunctor F f s
@@ -717,10 +711,10 @@ mutual
   ... | just a | just b = just (a + b)
   ... | _      | _      = nothing
   applySubst s (A P⇒[ q ] B) with applySubst s A | applySubst s B
-  ... | just a | just b = just (a ⇒[ q ] b)
+  ... | just a | just b = just (a ⇒[ mk-kind q pure ] b)
   ... | _      | _      = nothing
   applySubst s (PEff A B) with applySubst s A | applySubst s B
-  ... | just a | just b = just (Eff a b)
+  ... | just a | just b = just (a ⇒[ mk-kind Many eff ] b)
   ... | _      | _      = nothing
   applySubst s (Pμ-type F) with applySubstFunctor s F
   ... | just f = just (μ-type f)

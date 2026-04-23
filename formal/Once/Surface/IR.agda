@@ -54,7 +54,7 @@ data SurfaceIR : Type → Type → Set where
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana.
 
   -- Effect lifting (D032)
-  arr     : ∀ {A B} → SurfaceIR (A ⇒ B) (Eff A B)
+  arr     : ∀ {A B} → SurfaceIR (A ⇒ B) (A ⇒[ mk-kind Many eff ] B)
 
   --------------------------------------------------------------------------
   -- Surface-only constructs (desugared before optimization)

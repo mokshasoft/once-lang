@@ -28,7 +28,7 @@ open import Data.Nat.Properties using (≤-refl; <-trans; ≤-<-trans; <⇒≤;
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; Quantity; Zero; One; Many)
+                             _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff)
 open import Once.Parser.Token
 
 ------------------------------------------------------------------------
@@ -103,11 +103,11 @@ mutual
     pa-eff : ∀ {toks1 toks2 rest} {A B : Type}
            → ParsesAtom toks1 A toks2
            → ParsesAtom toks2 B rest
-           → ParsesAtom (TWord "Eff" ∷ toks1) (Eff A B) rest
+           → ParsesAtom (TWord "Eff" ∷ toks1) (A ⇒[ mk-kind Many eff ] B) rest
 
     pa-io : ∀ {toks1 rest} {A : Type}
           → ParsesAtom toks1 A rest
-          → ParsesAtom (TWord "IO" ∷ toks1) (Eff Unit A) rest
+          → ParsesAtom (TWord "IO" ∷ toks1) (Unit ⇒[ mk-kind Many eff ] A) rest
 
     pa-paren : ∀ {toks rest1 rest2} {T : Type}
              → ParsesType toks T rest1
@@ -158,10 +158,10 @@ mutual
                 → ParsesType toks B rest
                 → ParsesArrowTail left
                     (quantityTokenOf q ∷ TArrow ∷ toks)
-                    (left ⇒[ q ] B) rest
+                    (left ⇒[ mk-kind q pure ] B) rest
     pat-arrow : ∀ {left toks rest} {B : Type}
               → ParsesType toks B rest
-              → ParsesArrowTail left (TArrow ∷ toks) (left ⇒[ Many ] B) rest
+              → ParsesArrowTail left (TArrow ∷ toks) (left ⇒[ mk-kind Many pure ] B) rest
 
 ------------------------------------------------------------------------
 -- Shrinks: a successful derivation leaves a strictly smaller (or ≤

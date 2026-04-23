@@ -3269,3 +3269,101 @@ lifted to a **two-phase architecture** that flipped the cost:
 - Memory `feedback_load_bearing_lemma_poc.md` — the two-gate POC
   discipline that surfaced the lift-to-nested insight before the
   full refactor was committed
+
+---
+
+## D046: Kind-Unified Arrow — Eff and `_⇒[_]_` Merged
+
+**Date**: 2026-04-23
+**Status**: Accepted
+**Plan**: 0.5.1 (kind-unified arrow), supersedes the Phase C close-out in plan 0.5
+
+### Context
+
+Before this decision:
+
+- `Type` had two distinct arrow constructors: `_⇒[_]_ : Type → Quantity → Type → Type` for pure arrows and `Eff : Type → Type → Type` for effectful arrows.
+- `CCC.IR` had an `applyEff` constructor in addition to `apply`, even though the two behaved identically at runtime (`eval ps applyEff (closure, arg) = closure arg`).
+- The x86-64 dispatcher had an `applyEff-placeholder` postulate — the runtime was wired (codegen emitted the same instructions as `apply`), but the correctness proof for the effectful branch was stubbed, since mirroring the full `IRResultAWF` record meant ~30 fields of duplication.
+
+Plan 0.5 Phase C asked the principled question: is `Eff` pulling its weight as a distinct constructor, or is it redundant with the arrow?
+
+### Decision
+
+Unify `Eff` and `_⇒[_]_` via a kind-parameterised arrow:
+
+```agda
+record ArrowKind : Set where
+  constructor mk-kind
+  field
+    quantity : Quantity
+    purity   : Purity   -- pure | eff
+
+data Type : Set where
+  _⇒[_]_ : Type → ArrowKind → Type → Type
+  -- ... other constructors
+```
+
+`Eff A B` becomes `A ⇒[ mk-kind Many eff ] B`; a pure linear arrow becomes `A ⇒[ mk-kind One pure ] B`.
+
+Consequences at the IR layer:
+
+- `applyEff` removed; `apply {k = mk-kind Many eff}` handles effectful application uniformly via the same runtime path.
+- `applyEff-placeholder` postulate eliminated. The dispatcher's `run-apply` is kind-polymorphic by construction.
+- `valid-eff-wf` constructor (converted pure-arrow validity to Eff validity) replaced by `valid-coerce-kind-wf`, which names what it does.
+
+Consequences at the frontend:
+
+- Parser keeps `Eff A B` / `IO A` as surface keywords — surface language unchanged. `Once.Parser.Type` produces `A ⇒[ mk-kind Many eff ] B` directly.
+- Grammar-layer `GType.TEff` unchanged (grammar AST is a separate layer and outlives this refactor).
+
+### Rationale
+
+Quantity and purity are categorically independent dimensions of an arrow. Forcing them into separate constructors duplicated every proof that pattern-matched on the arrow shape. Once we accepted that `Eff` carried no extra runtime structure — only a type-level tag — the single-constructor form follows.
+
+The orthogonal-record design (`ArrowKind`) was the principled choice over a sum-typed `Purity = pure-p Quantity | eff-p`: there is no "linear effect" in Once, but nor is there anything in the category theory forcing quantity and purity to be dependent. Keep them independent and prove the restrictions at the use sites that need them.
+
+### Consequences
+
+**Eliminated:**
+- `applyEff : IR ((Eff A B) * A) B` — IR constructor
+- `Eff : Type → Type → Type` — synonym; surface type and `A ⇒[ mk-kind Many eff ] B` are now the same
+- `_⇒q[_]_` — synonym; use `A ⇒[ mk-kind q pure ] B` directly
+- `applyEff-placeholder` — dispatcher postulate
+- `valid-eff-wf` — ValidAtWF constructor, replaced by kind-polymorphic `valid-closure-wf` plus `valid-coerce-kind-wf` for rewrapping
+
+**Made kind-polymorphic (was pure-only):**
+- `curry : IR (A * B) C → AllocMode → IR A (B ⇒[ k ] C)`
+- `apply : IR ((A ⇒[ k ] B) * A) B`
+- `ty-curry`, `ty-apply` in `TypeSystem.Typing`
+- `decomposeClosureWF`, `closure-mode-is-heap-proof` in `ClosureWellFormed`
+- `run-apply` in the x86-64 dispatcher
+
+**Added:**
+- `ArrowKind`, `Purity`, `_≟p_`, `_≟k_`, `pureK`, `effK` vocabulary in `Once.Type`
+- `arr : IR (A ⇒[ mk-kind q pure ] B) (A ⇒[ mk-kind Many eff ] B)` — still lifts pure to eff (D032 direction unchanged), just phrased in the unified vocabulary
+
+**Proof-count delta:**
+- −1 postulate (`applyEff-placeholder`)
+- 46 files touched across the refactor
+- 5 unreachable `Eff`-success clauses in `TypeCheck.Soundness` became unreachable-with-warning, now removed
+- Zero new postulates; zero new `TERMINATING` pragmas
+
+### Surface-language impact
+
+None. `main : Eff Unit Unit` parses and typechecks as before. The surface keyword `Eff` is now sugar for `A ⇒[ mk-kind Many eff ] B` at the internal-type layer, and round-trips through the grammar printer unchanged.
+
+### Relationship to earlier decisions
+
+- **D032** (arrow-based effects): unchanged. `arr` still tags a pure function as effectful; what changes is the internal representation of the target type.
+- **Plan 0.5 Phase C** (close `applyEff-placeholder`): this decision is the principled resolution. The three options considered in Phase C (prove the placeholder, delete `applyEff`, unify at the type level) collapse to one once you admit that `Eff` is redundant — option 3 is the root cause fix, and it closes the postulate as a side effect.
+
+### Alternative considered: keep synonyms as RHS sugar
+
+After landing the refactor, `_⇒q[_]_` and `Eff` briefly remained as RHS-only synonyms (same definitionally-equal form). The argument to keep them was brevity in signatures; the argument to remove them was that two spellings of the same constructor is cognitive load with no proof benefit. The synonyms were removed (this decision); all RHS sites now write `⇒[ mk-kind q pure ]` / `⇒[ mk-kind Many eff ]` explicitly.
+
+### See Also
+
+- Plan 0.5 (IR extension hygiene), Phase C
+- Plan 0.5.1 (kind-unified arrow)
+- D032 (arrow-based effects)

@@ -36,7 +36,7 @@ open import Induction.WellFounded using (Acc; acc)
 open import Relation.Binary.PropositionalEquality using
   (_≡_; refl; cong; cong₂; sym; trans; subst)
 
-open import Once.Type using (Type; Unit; _*_; _+_; _⇒[_]_; Eff;
+open import Once.Type using (Type; Unit; _*_; _+_; _⇒[_]_;
                              Quantity; Zero; One; Many)
 open import Once.Parser.Token
 open import Once.Parser.Type

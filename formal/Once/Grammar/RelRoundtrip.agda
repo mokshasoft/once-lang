@@ -26,8 +26,8 @@ open import Data.List.Properties using (++-assoc)
 open import Data.Unit using (tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym)
 
-open import Once.Type using (Type; _*_; _+_; _⇒[_]_; Eff; Unit;
-                             Quantity; Zero; One; Many)
+open import Once.Type using (Type; _*_; _+_; _⇒[_]_; Unit;
+                             Quantity; Zero; One; Many; mk-kind; pure; eff)
 open import Once.Parser.Token
 import Once.Grammar as G
 open G using (GType)
@@ -263,7 +263,7 @@ mutual
       (rest : List Token) → NotCont rest
     → ParsesType (printGType A ++ quantityToken q ∷ TArrow
                  ∷ printGType B ++ rest)
-                 (toType cA ⇒[ q ] toType cB) rest
+                 (toType cA ⇒[ mk-kind q pure ] toType cB) rest
   rt-type-of-fun {A = A} {B = B} cA cB q rest nc
     rewrite quantityToken≡quantityTokenOf q
     = pt-mk

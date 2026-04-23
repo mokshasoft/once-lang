@@ -176,15 +176,15 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   -- run-apply: Clean trace-based implementation
   ------------------------------------------------------------------------
 
-  run-apply : ∀ {m A B q}
-    (x : ⟦ (A ⇒[ q ] B) * A ⟧) (input-loc : ValueLocation FS)
+  run-apply : ∀ {m A B k}
+    (x : ⟦ (A ⇒[ k ] B) * A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS})
     (input-valid-wf : ValidAtWF m alloc x input-loc s) →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    ∃[ mOut ] IRResultAWF mOut (apply {A} {B} {q}) x s alloc
-  run-apply {m} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
+    ∃[ mOut ] IRResultAWF mOut (apply {A} {B} {k}) x s alloc
+  run-apply {m} {A} {B} {k} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mBody , record
       { result-loc = result-loc
       ; final-state = s'
@@ -225,7 +225,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       open import Data.Nat.Properties using (*-monoʳ-≤; <⇒≤; *-monoˡ-≤; m<m+n)
 
       -- Decompose input pair
-      pair-decomp = decomposePairWF {m} {_} {A ⇒[ q ] B} {A} input-valid-wf
+      pair-decomp = decomposePairWF {m} {_} {A ⇒[ k ] B} {A} input-valid-wf
       closure-loc = PairValidWF.fst-loc pair-decomp
       arg-loc = PairValidWF.snd-loc pair-decomp
       mArg = PairValidWF.mB pair-decomp
@@ -233,11 +233,11 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       arg-valid-wf = PairValidWF.snd-valid pair-decomp
       arg-before = PairValidWF.snd-before pair-decomp
 
-      closure : ⟦ A ⇒[ q ] B ⟧
-      closure = sem-fst {A ⇒[ q ] B} {A} x
+      closure : ⟦ A ⇒[ k ] B ⟧
+      closure = sem-fst {A ⇒[ k ] B} {A} x
 
       arg : ⟦ A ⟧
-      arg = sem-snd {A ⇒[ q ] B} {A} x
+      arg = sem-snd {A ⇒[ k ] B} {A} x
 
       -- Decompose closure
       mClosure = PairValidWF.mA pair-decomp
@@ -247,7 +247,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       closure-valid-wf-heap = subst (λ m → ValidAtWF m alloc closure closure-loc s)
         closure-mode-is-heap closure-valid-wf
 
-      closure-decomp = decomposeClosureWF {_} {q} {A} {B} closure-valid-wf-heap
+      closure-decomp = decomposeClosureWF {_} {k} {A} {B} closure-valid-wf-heap
       EnvType = ClosureValidWF.EnvType closure-decomp
       body = ClosureValidWF.body closure-decomp
       env = ClosureValidWF.env closure-decomp
@@ -705,7 +705,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       result-before' = SMP.!!
 
       -- Result validity
-      result-valid-wf' : ValidAtWF mBody alloc' (eval primSem (apply {A} {B} {q}) x) result-loc s'
+      result-valid-wf' : ValidAtWF mBody alloc' (eval primSem (apply {A} {B} {k}) x) result-loc s'
       result-valid-wf' = SMP.!!
 
       -- Frontier slot stability
@@ -754,9 +754,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
 
       reclaim-preserves-validity' :
         ValidAtWF mBody (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
-                  (eval primSem (apply {A} {B} {q}) x) result-loc s'
+                  (eval primSem (apply {A} {B} {k}) x) result-loc s'
       reclaim-preserves-validity' = validityWF-with-bf-transfer
-        (eval primSem (apply {A} {B} {q}) x) result-loc s' alloc'
+        (eval primSem (apply {A} {B} {k}) x) result-loc s' alloc'
         (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
         (λ loc bf → bf-same-frame-slot alloc'
           (record alloc { next-slot = next-slot alloc +ℕ pair-slots })

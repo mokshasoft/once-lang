@@ -28,7 +28,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.Machine.Allocation
 open import Once.Type public
-  using (Type; Unit; Void; _*_; _+_; Int; Float; Str; Buffer; Eff; _⇒[_]_; _⇒_; Quantity)
+  using (Type; Unit; Void; _*_; _+_; Int; Float; Str; Buffer; _⇒[_]_; _⇒_; Quantity)
 open import Once.Semantics.Machine public
   using (⟦_⟧; sem-fst; sem-snd; sem-inl; sem-inr; sem-pair)
 pair = sem-pair
@@ -132,7 +132,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
       BeforeFrontier alloc (sucLoc closure-loc) →
       ValidAt alloc env env-loc s →
       -- The semantic value matches: closure = λ arg → eval primSem body (pair env arg)
-      ValidAt alloc {A ⇒[ q ] B} (λ arg → eval primSem body (pair env arg)) closure-loc s
+      ValidAt alloc {A ⇒[ mk-kind q pure ] B} (λ arg → eval primSem body (pair env arg)) closure-loc s
 
   ------------------------------------------------------------------------
   -- PairValid record (extracted structure from valid-pair)
@@ -159,7 +159,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
   ------------------------------------------------------------------------
 
   record ClosureValid (alloc : AllocState {FS}) {q : Quantity} {A B : Type}
-                      (f : ⟦ A ⇒[ q ] B ⟧)
+                      (f : ⟦ A ⇒[ mk-kind q pure ] B ⟧)
                       (closure-loc : ValueLocation FS)
                       (s : LocState FS) : Set where
     field
@@ -228,8 +228,8 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     ; snd-valid = sv
     }
 
-  decomposeClosure : ∀ {alloc q A B} {f : ⟦ A ⇒[ q ] B ⟧} {loc s} →
-    ValidAt alloc {A ⇒[ q ] B} f loc s → ClosureValid alloc {q} f loc s
+  decomposeClosure : ∀ {alloc q A B} {f : ⟦ A ⇒[ mk-kind q pure ] B ⟧} {loc s} →
+    ValidAt alloc {A ⇒[ mk-kind q pure ] B} f loc s → ClosureValid alloc {q} f loc s
   decomposeClosure (valid-closure {EnvType} {_} {_} {_} {body} {env}
                      bb {env-loc = el} {code-loc = cl} ep cp eb cb slb ev) = record
     { EnvType = EnvType
@@ -301,7 +301,7 @@ module ValidityDef {FS : FrameSemantics} (program-bound : ℕ) (primSem : PrimSe
     BeforeFrontier alloc code-loc →
     BeforeFrontier alloc (sucLoc closure-loc) →
     ValidAt alloc env env-loc s →
-    ValidAt alloc {A ⇒[ q ] B} (λ arg → eval primSem body (pair env arg)) closure-loc s
+    ValidAt alloc {A ⇒[ mk-kind q pure ] B} (λ arg → eval primSem body (pair env arg)) closure-loc s
   composeClosure {_} {_} {_} {_} {_} body env bb closure-loc env-loc code-loc s ep cp eb cb slb ev =
     valid-closure {body = body} {env = env} bb ep cp eb cb slb ev
 

@@ -32,7 +32,7 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong; sym;
 open import Relation.Nullary using (¬_)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Str; Buffer;
-                             _*_; _+_; _⇒[_]_; Eff; μ-type; ν-type;
+                             _*_; _+_; _⇒[_]_; μ-type; ν-type;
                              Quantity; Zero; One; Many; _≤q_)
 open import Once.TypeCheck.Raw using (BinOp; OpAdd; OpSub; OpMul; OpDiv; OpMod;
                                        OpLt; OpLe; OpGt; OpGe; OpEq; OpNe;

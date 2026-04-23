@@ -137,9 +137,10 @@ eval ps (Fuse {F} {G} wfF wfG alg transform) x =
 -- Effect lifting (D032)
 -- arr : (A ⇒ B) → Eff A B
 -- Takes a pure function and returns it as an effectful function
--- Both have the same plain function representation
+-- Both have the same plain function representation.
+-- (applyEff removed in plan 0.5.1; `apply {k = effK}` handles effectful
+-- application uniformly — same code as pure apply.)
 eval ps arr f             = f
-eval ps applyEff (f , a)  = f a
 
 -- Memory management (no-op in semantics)
 eval ps (free-heap _) x   = x

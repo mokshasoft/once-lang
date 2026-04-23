@@ -23,7 +23,7 @@ open import Data.Maybe using (Maybe; just; nothing)
 open import Data.Product using (_,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
-open import Once.Type using (Type; Unit; Int; Str; _*_; _+_; Eff;
+open import Once.Type using (Type; Unit; Int; Str; _*_; _+_;
                              _⇒[_]_; _⇒_; _⊸_; _⇒₀_;
                              Quantity; Zero; One; Many)
 open import Once.Parser.Token

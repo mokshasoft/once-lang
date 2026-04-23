@@ -28,7 +28,7 @@ open import Data.Product using (_×_; _,_)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 
 open import Once.Type using (Type; Unit; Void; Int; Float; Buffer; Str;
-                             _*_; _+_; _⇒[_]_; Eff; Quantity; Zero; One; Many)
+                             _*_; _+_; _⇒[_]_; Quantity; Zero; One; Many; mk-kind; pure; eff)
 open import Once.Parser.Token
 open import Once.Parser.Type using (parseType; parseTypeAtom)
 open import Once.Parser.TypeRelation

@@ -22,7 +22,7 @@
 module Once.CCC.Memory.TypeSlots where
 
 open import Data.Nat using (ℕ)
-open import Once.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_; Eff;
+open import Once.Type using (Type; Unit; Void; _*_; _+_; _⇒[_]_;
                              Int; Float; Str; Buffer;
                              Functor; μ-type; ν-type)
 -- TVar removed: Code generation works with concrete types only.
@@ -59,7 +59,6 @@ stack-type-slots Buffer = 1       -- pointer to buffer data
 stack-type-slots (A * B) = 2      -- ptr to fst + ptr to snd
 stack-type-slots (A + B) = 2      -- tag + ptr to payload
 stack-type-slots (_ ⇒[ _ ] _) = 2 -- closure: env-ptr + code-ptr
-stack-type-slots (Eff _ B) = stack-type-slots B
 stack-type-slots (μ-type _) = 1   -- pointer to inductive structure
 stack-type-slots (ν-type _) = 1   -- pointer to coinductive structure
 
@@ -75,7 +74,6 @@ heap-type-slots Buffer = 1
 heap-type-slots (A * B) = 2
 heap-type-slots (A + B) = 2
 heap-type-slots (_ ⇒[ _ ] _) = 2
-heap-type-slots (Eff _ B) = heap-type-slots B
 heap-type-slots (μ-type _) = 1
 heap-type-slots (ν-type _) = 1
 

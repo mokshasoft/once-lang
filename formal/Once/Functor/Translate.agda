@@ -46,8 +46,7 @@ open import Once.Functor.Base
 ⟦ IntRep ⟧-base Void = ⊥
 ⟦ IntRep ⟧-base (A * B) = ⟦ IntRep ⟧-base A × ⟦ IntRep ⟧-base B
 ⟦ IntRep ⟧-base (A + B) = ⟦ IntRep ⟧-base A ⊎ ⟦ IntRep ⟧-base B
-⟦ IntRep ⟧-base (_ ⇒[ _ ] _) = ⊤  -- Functions: return ⊤ (not used in K)
-⟦ IntRep ⟧-base (Eff _ _) = ⊤     -- Effects: return ⊤ (not used in K)
+⟦ IntRep ⟧-base (_ ⇒[ _ ] _) = ⊤  -- Functions (all kinds): return ⊤ (not used in K)
 ⟦ IntRep ⟧-base (μ-type _) = ⊤    -- Recursive: return ⊤ (not used in K)
 ⟦ IntRep ⟧-base (ν-type _) = ⊤    -- Corecursive: return ⊤ (not used in K)
 ⟦ IntRep ⟧-base Int = IntRep
