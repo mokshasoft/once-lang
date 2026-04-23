@@ -1254,37 +1254,13 @@ data InlInrView : ∀ {A B : Type} → IR A B → Set where
 -- without the trick.
 ------------------------------------------------------------------------
 
--- PairView: target is B * C (stuck unification for generic-output constructors)
+-- PairView: target is B * C (stuck unification for generic-output constructors).
+-- Specific case first; catch-all handles every other constructor uniformly
+-- via subst (plan 0.5 Phase A / F2).
 pairView-gen : ∀ {A B'} (f : IR A B') → ∀ {B C} → (eq : B' ≡ B * C)
              → PairView {A} {B} {C} (subst (IR A) eq f)
--- Stuck-unification cases: handle via subst without refl-matching
-pairView-gen (out-μ wf) eq = is-other-pair (subst (IR _) eq (out-μ wf))
-pairView-gen (Out wf) eq = is-other-pair (subst (IR _) eq (Out wf))
-pairView-gen (In wf m) eq = is-other-pair (subst (IR _) eq (In wf m))
-pairView-gen (in-ν wf m) eq = is-other-pair (subst (IR _) eq (in-ν wf m))
-pairView-gen (Cata wf alg) eq = is-other-pair (subst (IR _) eq (Cata wf alg))
-pairView-gen (Para wf alg) eq = is-other-pair (subst (IR _) eq (Para wf alg))
-pairView-gen (Ana wf coalg) eq = is-other-pair (subst (IR _) eq (Ana wf coalg))
-pairView-gen (Hylo wfF wfG alg coalg) eq = is-other-pair (subst (IR _) eq (Hylo wfF wfG alg coalg))
-pairView-gen (Fuse wfF wfG alg tr) eq = is-other-pair (subst (IR _) eq (Fuse wfF wfG alg tr))
-pairView-gen (Prim n) eq = is-other-pair (subst (IR _) eq (Prim n))
--- Concrete-output constructors: match on refl
 pairView-gen (⟨ f , g ⟩ m) refl = is-pair f g m
-pairView-gen id refl = is-other-pair id
-pairView-gen (g ∘ f) refl = is-other-pair (g ∘ f)
-pairView-gen fst refl = is-other-pair fst
-pairView-gen snd refl = is-other-pair snd
-pairView-gen (case f g) refl = is-other-pair (case f g)
-pairView-gen initial refl = is-other-pair initial
-pairView-gen apply refl = is-other-pair apply
-pairView-gen applyEff refl = is-other-pair applyEff
--- Impossible cases: target is incompatible with B * C
-pairView-gen (inl m) ()
-pairView-gen (inr m) ()
-pairView-gen terminal ()
-pairView-gen (curry f m) ()
-pairView-gen arr ()
-pairView-gen (free-heap h) ()
+pairView-gen f eq = is-other-pair (subst (IR _) eq f)
 
 pairView : ∀ {A B C} → (f : IR A (B * C)) → PairView f
 pairView f = pairView-gen f refl
@@ -1292,147 +1268,38 @@ pairView f = pairView-gen f refl
 -- CoprodView: target is A + B (same stuck-unification pattern as PairView)
 coprodView-gen : ∀ {D B'} (f : IR D B') → ∀ {A B} → (eq : B' ≡ A + B)
                → CoprodView {A} {B} {D} (subst (IR D) eq f)
-coprodView-gen (out-μ wf) eq = is-other-coprod (subst (IR _) eq (out-μ wf))
-coprodView-gen (Out wf) eq = is-other-coprod (subst (IR _) eq (Out wf))
-coprodView-gen (In wf m) eq = is-other-coprod (subst (IR _) eq (In wf m))
-coprodView-gen (in-ν wf m) eq = is-other-coprod (subst (IR _) eq (in-ν wf m))
-coprodView-gen (Cata wf alg) eq = is-other-coprod (subst (IR _) eq (Cata wf alg))
-coprodView-gen (Para wf alg) eq = is-other-coprod (subst (IR _) eq (Para wf alg))
-coprodView-gen (Ana wf coalg) eq = is-other-coprod (subst (IR _) eq (Ana wf coalg))
-coprodView-gen (Hylo wfF wfG alg coalg) eq = is-other-coprod (subst (IR _) eq (Hylo wfF wfG alg coalg))
-coprodView-gen (Fuse wfF wfG alg tr) eq = is-other-coprod (subst (IR _) eq (Fuse wfF wfG alg tr))
-coprodView-gen (Prim n) eq = is-other-coprod (subst (IR _) eq (Prim n))
 coprodView-gen (inl m) refl = is-inl m
 coprodView-gen (inr m) refl = is-inr m
-coprodView-gen id refl = is-other-coprod id
-coprodView-gen (g ∘ f) refl = is-other-coprod (g ∘ f)
-coprodView-gen (case f g) refl = is-other-coprod (case f g)
-coprodView-gen initial refl = is-other-coprod initial
-coprodView-gen apply refl = is-other-coprod apply
-coprodView-gen fst refl = is-other-coprod fst
-coprodView-gen snd refl = is-other-coprod snd
-coprodView-gen applyEff refl = is-other-coprod applyEff
--- Impossible: target shape can't match A + B
-coprodView-gen (⟨ f , g ⟩ m) ()
-coprodView-gen terminal ()
-coprodView-gen (curry f m) ()
-coprodView-gen arr ()
-coprodView-gen (free-heap h) ()
+coprodView-gen f eq = is-other-coprod (subst (IR _) eq f)
 
 coprodView : ∀ {A B D} → (f : IR D (A + B)) → CoprodView f
 coprodView f = coprodView-gen f refl
 
--- ComposeFirstView: fully generic source and target, direct matching works
+-- ComposeFirstView: fully generic source and target. Specific cases
+-- first, then catch-all; new IR constructors cost 0 lines per view
+-- (plan 0.5 Phase A / F2).
 composeFirstView : ∀ {B C} → (g : IR B C) → ComposeFirstView g
 composeFirstView id = cf-id
 composeFirstView terminal = cf-terminal
 composeFirstView fst = cf-fst
 composeFirstView snd = cf-snd
 composeFirstView (case h k) = cf-case h k
-composeFirstView (g ∘ f) = cf-other (g ∘ f)
-composeFirstView (⟨ f , g ⟩ m) = cf-other (⟨ f , g ⟩ m)
-composeFirstView (inl m) = cf-other (inl m)
-composeFirstView (inr m) = cf-other (inr m)
-composeFirstView initial = cf-other initial
-composeFirstView (curry f m) = cf-other (curry f m)
-composeFirstView apply = cf-other apply
-composeFirstView arr = cf-other arr
-composeFirstView (In wf m) = cf-other (In wf m)
-composeFirstView (out-μ wf) = cf-other (out-μ wf)
-composeFirstView (Cata wf alg) = cf-other (Cata wf alg)
-composeFirstView (Para wf alg) = cf-other (Para wf alg)
-composeFirstView (Out wf) = cf-other (Out wf)
-composeFirstView (in-ν wf m) = cf-other (in-ν wf m)
-composeFirstView (Ana wf coalg) = cf-other (Ana wf coalg)
-composeFirstView (Hylo wfF wfG alg coalg) = cf-other (Hylo wfF wfG alg coalg)
-composeFirstView (Fuse wfF wfG alg tr) = cf-other (Fuse wfF wfG alg tr)
-composeFirstView (free-heap h) = cf-other (free-heap h)
-composeFirstView (Prim n) = cf-other (Prim n)
-composeFirstView applyEff = cf-other applyEff
+composeFirstView g = cf-other g
 
--- ComposeSecondView: fully generic source and target, direct matching works
 composeSecondView : ∀ {A B} → (f : IR A B) → ComposeSecondView f
 composeSecondView id = cs-id
 composeSecondView initial = cs-initial
-composeSecondView (g ∘ f) = cs-other (g ∘ f)
-composeSecondView (⟨ f , g ⟩ m) = cs-other (⟨ f , g ⟩ m)
-composeSecondView fst = cs-other fst
-composeSecondView snd = cs-other snd
-composeSecondView (inl m) = cs-other (inl m)
-composeSecondView (inr m) = cs-other (inr m)
-composeSecondView (case f g) = cs-other (case f g)
-composeSecondView terminal = cs-other terminal
-composeSecondView (curry f m) = cs-other (curry f m)
-composeSecondView apply = cs-other apply
-composeSecondView arr = cs-other arr
-composeSecondView (In wf m) = cs-other (In wf m)
-composeSecondView (out-μ wf) = cs-other (out-μ wf)
-composeSecondView (Cata wf alg) = cs-other (Cata wf alg)
-composeSecondView (Para wf alg) = cs-other (Para wf alg)
-composeSecondView (Out wf) = cs-other (Out wf)
-composeSecondView (in-ν wf m) = cs-other (in-ν wf m)
-composeSecondView (Ana wf coalg) = cs-other (Ana wf coalg)
-composeSecondView (Hylo wfF wfG alg coalg) = cs-other (Hylo wfF wfG alg coalg)
-composeSecondView (Fuse wfF wfG alg tr) = cs-other (Fuse wfF wfG alg tr)
-composeSecondView (free-heap h) = cs-other (free-heap h)
-composeSecondView (Prim n) = cs-other (Prim n)
-composeSecondView applyEff = cs-other applyEff
+composeSecondView f = cs-other f
 
--- FstSndView: fully generic source and target, direct matching works
 fstSndView : ∀ {A B} → (f : IR A B) → FstSndView f
 fstSndView fst = fsv-fst
 fstSndView snd = fsv-snd
-fstSndView id = fsv-other id
-fstSndView (g ∘ f) = fsv-other (g ∘ f)
-fstSndView (⟨ f , g ⟩ m) = fsv-other (⟨ f , g ⟩ m)
-fstSndView (inl m) = fsv-other (inl m)
-fstSndView (inr m) = fsv-other (inr m)
-fstSndView (case f g) = fsv-other (case f g)
-fstSndView terminal = fsv-other terminal
-fstSndView initial = fsv-other initial
-fstSndView (curry f m) = fsv-other (curry f m)
-fstSndView apply = fsv-other apply
-fstSndView arr = fsv-other arr
-fstSndView (In wf m) = fsv-other (In wf m)
-fstSndView (out-μ wf) = fsv-other (out-μ wf)
-fstSndView (Cata wf alg) = fsv-other (Cata wf alg)
-fstSndView (Para wf alg) = fsv-other (Para wf alg)
-fstSndView (Out wf) = fsv-other (Out wf)
-fstSndView (in-ν wf m) = fsv-other (in-ν wf m)
-fstSndView (Ana wf coalg) = fsv-other (Ana wf coalg)
-fstSndView (Hylo wfF wfG alg coalg) = fsv-other (Hylo wfF wfG alg coalg)
-fstSndView (Fuse wfF wfG alg tr) = fsv-other (Fuse wfF wfG alg tr)
-fstSndView (free-heap h) = fsv-other (free-heap h)
-fstSndView (Prim n) = fsv-other (Prim n)
-fstSndView applyEff = fsv-other applyEff
+fstSndView f = fsv-other f
 
--- InlInrView: fully generic source and target, direct matching works
 inlInrView : ∀ {A B} → (f : IR A B) → InlInrView f
 inlInrView (inl m) = iiv-inl m
 inlInrView (inr m) = iiv-inr m
-inlInrView id = iiv-other id
-inlInrView (g ∘ f) = iiv-other (g ∘ f)
-inlInrView (⟨ f , g ⟩ m) = iiv-other (⟨ f , g ⟩ m)
-inlInrView fst = iiv-other fst
-inlInrView snd = iiv-other snd
-inlInrView (case f g) = iiv-other (case f g)
-inlInrView terminal = iiv-other terminal
-inlInrView initial = iiv-other initial
-inlInrView (curry f m) = iiv-other (curry f m)
-inlInrView apply = iiv-other apply
-inlInrView arr = iiv-other arr
-inlInrView (In wf m) = iiv-other (In wf m)
-inlInrView (out-μ wf) = iiv-other (out-μ wf)
-inlInrView (Cata wf alg) = iiv-other (Cata wf alg)
-inlInrView (Para wf alg) = iiv-other (Para wf alg)
-inlInrView (Out wf) = iiv-other (Out wf)
-inlInrView (in-ν wf m) = iiv-other (in-ν wf m)
-inlInrView (Ana wf coalg) = iiv-other (Ana wf coalg)
-inlInrView (Hylo wfF wfG alg coalg) = iiv-other (Hylo wfF wfG alg coalg)
-inlInrView (Fuse wfF wfG alg tr) = iiv-other (Fuse wfF wfG alg tr)
-inlInrView (free-heap h) = iiv-other (free-heap h)
-inlInrView (Prim n) = iiv-other (Prim n)
-inlInrView applyEff = iiv-other applyEff
+inlInrView f = iiv-other f
 
 -- Helper: beta reduction for fst ∘ f (verified given view)
 optimize-fst : ∀ {A B C} → IR A (B * C) → IR A B
