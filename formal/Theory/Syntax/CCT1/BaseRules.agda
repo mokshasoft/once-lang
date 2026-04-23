@@ -47,9 +47,11 @@ module Rules
   infix 4 _⟶β_
 
   data _⟶η_ : ∀ {A B} → Term A B → Term A B → Set where
-    curry-η     : ∀ {A B C} {f : Term A (B ⇒ C)} →
-                  curry (apply ∘ ⟨ f ∘ fst , snd ⟩) ⟶η f
-    curry-apply : ∀ {A B} →
-                  curry (apply {A = A} {B = B}) ⟶η id
+    curry-η       : ∀ {A B C} {f : Term A (B ⇒ C)} →
+                    curry (apply ∘ ⟨ f ∘ fst , snd ⟩) ⟶η f
+    curry-apply   : ∀ {A B} →
+                    curry (apply {A = A} {B = B}) ⟶η id
+    curry-compose : ∀ {A B C D} {f : Term (A × B) C} {g : Term D A} →
+                    (curry f ∘ g) ⟶η curry (f ∘ ⟨ g ∘ fst , snd ⟩)
 
   infix 4 _⟶η_

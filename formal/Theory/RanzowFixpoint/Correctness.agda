@@ -15,7 +15,7 @@
 --   Fixpoint property and encode T is in normal form, then any normal
 --   form reachable from (T ∘ encode T) is equal to encode T.
 --
--- This is a HONEST fragment of the "fixpoint ⟹ correctness" story:
+-- This is an HONEST fragment of the "fixpoint ⟹ correctness" story:
 -- it captures the uniqueness-of-the-fixpoint part. The full jump from
 -- "fixpoint on ⌜T⌝" to "correctness on arbitrary inputs" additionally
 -- requires transparency and encoding-completeness, which are not
@@ -26,6 +26,7 @@ module Theory.RanzowFixpoint.Correctness where
 
 open import Theory.CCTower using (TowerLevel; CCT3)
 open import Theory.Systems.CCT3
+open import Theory.Syntax.Reducible using (Reducible)
 open import Theory.RanzowFixpoint using (EncodingScheme; HasRanzowFixpoint)
 open import Relation.Binary.PropositionalEquality
   using (_≡_; sym; trans)
@@ -43,24 +44,27 @@ applies-to = CCT3
 -- The correctness fragment
 --
 -- Parameterized over:
---   - S : a CCT3 structure
---   - E : an encoding scheme for S
+--   - S   : a CCT3 structure (equational carrier)
+--   - Red : a Reducible carrier on S (directed reduction)
+--   - E   : an encoding scheme for S
 -- and over hypotheses that concrete instantiations discharge from
 -- Established math modules:
---   - nf-stable : normal forms do not reduce
+--   - nf-stable  : normal forms do not reduce
 --   - confluence : reduction is Church-Rosser
 ------------------------------------------------------------------------
 
-module _ (S : CCT3Structure) (E : EncodingScheme S) where
+module _ (S : CCT3Structure)
+         (Red : Reducible (CCT3Structure.Obj S) (CCT3Structure.Hom S))
+         (E : EncodingScheme S) where
   open CCT3Structure S
+  open Reducible Red
   open EncodingScheme E
 
   module _
     ------------------------------------------------------------------
     -- HYPOTHESIS (nf-stable):
     --   If t is a normal form, then anything reachable from t by
-    --   reduction is equal to t. This is a characterization of what
-    --   "normal form" means in the reduction system.
+    --   reduction is equal to t.
     ------------------------------------------------------------------
     (nf-stable :
       ∀ {A B} {t u : Hom A B} →
@@ -69,8 +73,6 @@ module _ (S : CCT3Structure) (E : EncodingScheme S) where
     ------------------------------------------------------------------
     -- HYPOTHESIS (confluence):
     --   Any two reduction paths from a common source can be joined.
-    --   Discharged from Established.LambekScott1986.confluence at
-    --   CCT1, or an analogous extension at CCT3.
     ------------------------------------------------------------------
     (confluence :
       ∀ {A B} {t u v : Hom A B} →
@@ -81,8 +83,7 @@ module _ (S : CCT3Structure) (E : EncodingScheme S) where
 
     --------------------------------------------------------------------
     -- Derived lemma: normal forms reachable from a common term are
-    -- equal. This is the direct constructive content of "confluence +
-    -- nf-stable ⟹ unique normal forms."
+    -- equal.
     --------------------------------------------------------------------
 
     nf-unique : ∀ {A B} {t u v : Hom A B} →
@@ -94,18 +95,11 @@ module _ (S : CCT3Structure) (E : EncodingScheme S) where
 
     --------------------------------------------------------------------
     -- Main theorem: the Ranzow Fixpoint is canonical.
-    --
-    -- If T has the Ranzow Fixpoint property and encode T is already in
-    -- normal form, then any normal form reachable from (T ∘ encode T)
-    -- must equal encode T.
-    --
-    -- In plain words: running T on its own encoding can only yield the
-    -- encoding itself (as a normal form).
     --------------------------------------------------------------------
 
     fixpoint-is-canonical :
       ∀ (T : Hom Code Code) →
-      HasRanzowFixpoint S E T →
+      HasRanzowFixpoint S Red E T →
       IsNormalForm (encode T) →
       ∀ {u} → (T ∘ encode T) ⟶* u →
       IsNormalForm u →
@@ -115,20 +109,11 @@ module _ (S : CCT3Structure) (E : EncodingScheme S) where
 
     --------------------------------------------------------------------
     -- Corollary: the Ranzow Fixpoint has a UNIQUE normal form.
-    --
-    -- If T has the Ranzow Fixpoint and encode T is in normal form,
-    -- then any two normal forms reachable from (T ∘ encode T) are
-    -- equal. Both are equal to encode T.
-    --
-    -- This is the "fixpoint ⟹ uniqueness" content of the Ranzow
-    -- Fixpoint: not only does T ∘ encode T reduce BACK to encode T,
-    -- but encode T is the SINGLE normal form that any reduction path
-    -- can reach.
     --------------------------------------------------------------------
 
     fixpoint-is-unique :
       ∀ (T : Hom Code Code) →
-      HasRanzowFixpoint S E T →
+      HasRanzowFixpoint S Red E T →
       IsNormalForm (encode T) →
       ∀ {u v} →
       (T ∘ encode T) ⟶* u → IsNormalForm u →

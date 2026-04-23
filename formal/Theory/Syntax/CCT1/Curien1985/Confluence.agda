@@ -15,12 +15,12 @@
 --   3. Bridges _⟶*_ ↔ Star _⟹_ transfer confluence.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCT1.Confluence where
+module Theory.Syntax.CCT1.Curien1985.Confluence where
 
-open import Theory.Syntax.CCT1
-open import Theory.Syntax.CCT1.ParallelReduction
-open import Theory.Syntax.CCT1.Diamond
-open import Theory.Syntax.CCT1.Triangle
+open import Theory.Syntax.CCT1.Curien1985
+open import Theory.Syntax.CCT1.Curien1985.ParallelReduction
+open import Theory.Syntax.CCT1.Curien1985.Diamond
+open import Theory.Syntax.CCT1.Curien1985.Triangle
 import Theory.Derived.ConfluenceFromDiamond as CFD
 open import Data.Product
   using (Σ; _,_) renaming (_×_ to _∧_)

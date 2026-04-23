@@ -9,10 +9,10 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCT1.Diamond where
+module Theory.Syntax.CCT1.Curien1985.Diamond where
 
-open import Theory.Syntax.CCT1
-open import Theory.Syntax.CCT1.ParallelReduction
+open import Theory.Syntax.CCT1.Curien1985
+open import Theory.Syntax.CCT1.Curien1985.ParallelReduction
 
 ------------------------------------------------------------------------
 -- Complete development _*

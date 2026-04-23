@@ -12,9 +12,9 @@
 -- (Theory.Syntax.CCTB.Diamond) which in turn gives CCTB confluence.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCTB.ParallelReduction where
+module Theory.Syntax.CCTB.Curien1985.ParallelReduction where
 
-open import Theory.Syntax.CCTB
+open import Theory.Syntax.CCTB.Curien1985
 
 ------------------------------------------------------------------------
 -- Parallel reduction

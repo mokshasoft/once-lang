@@ -9,11 +9,11 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCT1.Triangle where
+module Theory.Syntax.CCT1.Curien1985.Triangle where
 
-open import Theory.Syntax.CCT1
-open import Theory.Syntax.CCT1.ParallelReduction
-open import Theory.Syntax.CCT1.Diamond
+open import Theory.Syntax.CCT1.Curien1985
+open import Theory.Syntax.CCT1.Curien1985.ParallelReduction
+open import Theory.Syntax.CCT1.Curien1985.Diamond
 
 triangle : ∀ {A B} {t u : Term A B} → t ⟹ u → u ⟹ t *
 

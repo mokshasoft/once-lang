@@ -9,34 +9,23 @@
 -- bridges to the standard rewriting vocabulary:
 --
 --   (1) par-diamond : The parallel reduction _⟹_ has the DIAMOND
---       PROPERTY. This is the Takahashi-style payload — the actual
---       orthogonality of cata/ana/CCC rules. Concrete proofs: this
---       is what Lambek-Scott 1986 establishes for pure CCC, and what
---       Mendler 1987 / Abel 2012 extend for recursion schemes.
---
+--       PROPERTY.
 --   (2) ⟶*-to-par* : Every reduction sequence is a parallel-reduction
---       sequence. Structural — follows from _⟹_ including all single
---       reduction steps.
---
+--       sequence.
 --   (3) par*-to-⟶* : Every parallel-reduction sequence is a reduction
---       sequence. Structural — follows from every parallel step
---       decomposing into finitely many single steps.
+--       sequence.
 --
 -- From these, cct4-confluence is proven with zero new postulates by
 -- delegating to the abstract Takahashi lemma in ConfluenceFromDiamond.
 --
--- TOWER LEVEL: CCT4 (the IR Once is built on).
---
--- REMAINING OBLIGATION:
---   Proving (1), (2), (3) at instantiation time. (1) is the core
---   confluence work; (2) and (3) are bookkeeping the concrete syntax
---   must discharge.
+-- TOWER LEVEL: CCT4.
 ------------------------------------------------------------------------
 
 module Theory.Derived.CCT4Confluence where
 
 open import Theory.CCTower using (TowerLevel; CCT4)
 open import Theory.Systems.CCT4
+open import Theory.Syntax.Reducible using (Reducible)
 open import Theory.Derived.ConfluenceFromDiamond
   using (Star; done; _∷_; Diamond; confluence)
 open import Data.Product
@@ -50,11 +39,15 @@ applies-to : TowerLevel
 applies-to = CCT4
 
 ------------------------------------------------------------------------
--- CCT4 confluence, parameterized over a parallel reduction.
+-- CCT4 confluence, parameterized over a CCT4 structure equipped with
+-- a Reducible carrier and a parallel reduction.
 ------------------------------------------------------------------------
 
-module _ (S : CCT4Structure) where
+module _ (S   : CCT4Structure)
+         (Red : Reducible (CCT4Structure.Obj S) (CCT4Structure.Hom S))
+         where
   open CCT4Structure S
+  open Reducible Red
 
   module _
     ------------------------------------------------------------------
@@ -64,10 +57,6 @@ module _ (S : CCT4Structure) where
 
     ------------------------------------------------------------------
     -- HYPOTHESIS (par-diamond): the technical payload.
-    --
-    -- Parallel reduction has the diamond property. This is where the
-    -- orthogonality of cata, ana, and CCC β/η rules must be verified
-    -- for the concrete reduction system.
     ------------------------------------------------------------------
     (par-diamond : ∀ {A B} → Diamond (_⟹_ {A} {B}))
 
@@ -84,13 +73,6 @@ module _ (S : CCT4Structure) where
                   Star (_⟹_ {A} {B}) t u → t ⟶* u)
 
     where
-
-    ----------------------------------------------------------------------
-    -- The main theorem: CCT4 reduction is confluent.
-    --
-    -- Proof: run the abstract diamond-to-confluence lemma on the
-    -- parallel closure, then transport along the bridges.
-    ----------------------------------------------------------------------
 
     cct4-confluence :
       ∀ {A B} {t u v : Hom A B} →

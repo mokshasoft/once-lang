@@ -7,9 +7,9 @@
 -- No postulates.
 ------------------------------------------------------------------------
 
-module Theory.Syntax.CCT1.ParallelReduction where
+module Theory.Syntax.CCT1.Curien1985.ParallelReduction where
 
-open import Theory.Syntax.CCT1
+open import Theory.Syntax.CCT1.Curien1985
 
 ------------------------------------------------------------------------
 -- Parallel reduction
