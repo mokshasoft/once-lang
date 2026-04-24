@@ -37,6 +37,14 @@ open import Once.CCC.Target.X86-64.Syntax
 -- Import CCC IR
 open import Once.CCC.IR
 
+-- Imports for SigOp dispatch (plan 0.2.4.1 Phase C)
+open import Data.String as Str using (String; toList; fromList)
+open import Data.String.Properties as StrProp using ()
+open import Data.Char as Char using (Char)
+open import Data.List.Base as L using ([]; _∷_)
+open import Data.Maybe using (Maybe; just; nothing)
+import Data.Nat.Show as NatShow
+
 ------------------------------------------------------------------------
 -- Instruction sequences for each IR construct
 ------------------------------------------------------------------------
@@ -212,6 +220,58 @@ compile-length (free-heap _) = 0  -- no-op at codegen level (runtime handles act
 compile-length (SigOp _) = 1       -- primitive
 compile-length arr = length id-instrs  -- arr is identity at runtime (Eff = Arrow)
 
+------------------------------------------------------------------------
+-- SigOp dispatch (plan 0.2.4.1 Phase C)
+--
+-- The codegen inspects the SigOpInfo's `name` and emits target-specific
+-- instructions for recognized families:
+--   "lit.int.<N>"   → mov $N, %rax    (integer literal)
+-- Everything else   → ud2              (unrecognized; Phase D adds exit)
+--
+-- Negative literals are handled via name prefix "lit.int.-"; for
+-- Phase C we parse the decimal suffix as a natural number. Proper
+-- negative handling is 0.2.4.2's work.
+------------------------------------------------------------------------
+
+open import Relation.Nullary using (yes; no)
+
+-- Check if the char list starts with the given prefix (exact match on chars).
+-- Returns `just rest` if matched, `nothing` otherwise.
+strip-chars : L.List Char → L.List Char → Maybe (L.List Char)
+strip-chars []       cs       = just cs
+strip-chars (_ ∷ _)  []       = nothing
+strip-chars (p ∷ ps) (c ∷ cs) with p Char.≟ c
+... | yes _ = strip-chars ps cs
+... | no  _ = nothing
+
+-- `"lit.int."` as a char list — precomputed prefix to match against
+-- SigOp names from the IntLit family.
+lit-int-prefix : L.List Char
+lit-int-prefix = toList "lit.int."
+
+-- | Parse a SigOp name of the form `"lit.int.<N>"` where N is a
+-- non-negative integer (ℕ). Returns the numeric value on match.
+-- Negative literals (`"lit.int.-N"`) are not yet handled.
+parse-lit-int : String → Maybe ℕ
+parse-lit-int name with strip-chars lit-int-prefix (toList name)
+... | just rest = NatShow.readMaybe 10 (fromList rest)
+... | nothing   = nothing
+
+-- | Generate instructions for a SigOp given its name. Recognized
+-- families emit concrete instructions; unrecognized names keep the
+-- `ud2` trap (codegen failure is deferred to run-time SIGILL).
+compile-sigOp : String → Program
+compile-sigOp name with parse-lit-int name
+... | just v  = mov (reg rax) (imm v) ∷ []
+... | nothing = ud2 ∷ []
+
+-- | `compile-sigOp` always emits exactly one instruction — needed
+-- for `compile-ir'-length`.
+compile-sigOp-length : ∀ (name : String) → length (compile-sigOp name) ≡ 1
+compile-sigOp-length name with parse-lit-int name
+... | just _  = refl
+... | nothing = refl
+
 -- | Generate x86 code for IR with label counter
 -- Returns (program, next-label-counter)
 compile-ir' : ∀ {A B} → ℕ → IR A B → Program × ℕ
@@ -263,7 +323,7 @@ compile-ir' n (Ana _ _) = ud2 ∷ [] , n
 compile-ir' n (Hylo _ _ _ _) = ud2 ∷ [] , n
 compile-ir' n (Fuse _ _ _ _) = ud2 ∷ [] , n
 compile-ir' n (free-heap _) = [] , n
-compile-ir' n (SigOp _) = ud2 ∷ [] , n
+compile-ir' n (SigOp si) = compile-sigOp (SigOpInfo.name si) , n
 compile-ir' n arr = id-instrs , n
 
 -- | Public interface: compile IR starting with label counter 0
@@ -383,7 +443,7 @@ compile-ir'-length n (Ana _ _) = refl
 compile-ir'-length n (Hylo _ _ _ _) = refl
 compile-ir'-length n (Fuse _ _ _ _) = refl
 compile-ir'-length n (free-heap _) = refl
-compile-ir'-length n (SigOp _) = refl
+compile-ir'-length n (SigOp si) = compile-sigOp-length (SigOpInfo.name si)
 compile-ir'-length n arr = refl
 
 -- | Public interface: proof that compile-ir produces code of the expected length
