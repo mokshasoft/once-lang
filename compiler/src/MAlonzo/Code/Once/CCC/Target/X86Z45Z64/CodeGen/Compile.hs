@@ -261,7 +261,7 @@ du_curry'45'closure'45'setup_28 v0
                (coe MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_r9_30)
                (coe
                   MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_rip'43'disp_50
-                  (coe (4 :: Integer))))
+                  (coe (10 :: Integer))))
             (coe
                MAlonzo.Code.Agda.Builtin.List.C__'8759'__22
                (coe

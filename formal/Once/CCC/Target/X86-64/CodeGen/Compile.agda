@@ -133,7 +133,13 @@ curry-closure-setup : ℕ → ℕ → Program  -- takes label base and body leng
 curry-closure-setup lbl body-len =
   sub (reg rsp) (imm (slots 2)) ∷       -- allocate closure
   mov (mem (base rsp)) (reg rdi) ∷      -- [closure] = env (input)
-  lea r9 (rip+disp 4) ∷                 -- r9 = thunk address (rip + 4)
+  -- r9 = address of the thunk body. From the instruction AFTER this
+  -- `lea`, the thunk body is reached by skipping over:
+  --   mov [rsp+8], r9  (5 bytes)
+  --   mov rax, rsp     (3 bytes)
+  --   jmp <end>        (2 bytes, short jump in the common case)
+  -- = 10 bytes. So `rip+disp 10`.
+  lea r9 (rip+disp 10) ∷                -- r9 = thunk address (rip + 10)
   mov (mem (base+disp rsp slot-size)) (reg r9) ∷  -- [closure+8] = code-ptr
   mov (reg rax) (reg rsp) ∷             -- rax = closure address
   jmp (lbl +ℕ 1) ∷ []                    -- jump to end label (lbl+1)
