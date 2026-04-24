@@ -41,7 +41,7 @@ open import Once.CCC.Target.X86-64.Syntax
 open import Once.CCC.Target.X86-64.AbstractToX86
   using (compile-abstract; compile-trace; slot-to-disp)
 open import Once.CCC.IR using (IR)
-open import Once.CCC.Eval using (SigOpSem)
+open import Once.CCC.Eval using ()
 open import Once.Semantics.Machine using (⟦_⟧)
 
 ------------------------------------------------------------------------
@@ -967,13 +967,13 @@ module Simulation {FS : FrameSemantics} where
 -- Connection to IR
 ------------------------------------------------------------------------
 
-module IRConnection {FS : FrameSemantics} (bound : ℕ) (sigOpSem : SigOpSem) where
+module IRConnection {FS : FrameSemantics} (bound : ℕ) where
   open Simulation {FS}
   open FrameSemantics FS
   open MemOps {FS}
   open AbstractExec {FS}
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} bound sigOpSem using (IRResultAWF)
+  open ClosureWellFormedDef {FS} bound using (IRResultAWF)
 
   -- Simplified: we prove correspondence for the trace execution
   -- IRResultAWF.trace-correct gives us: proj₁ (exec-trace trace s alloc) ≡ final-state

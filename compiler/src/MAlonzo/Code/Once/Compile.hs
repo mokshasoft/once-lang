@@ -591,7 +591,7 @@ d_pipeline_294 v0 v1 v2
       MAlonzo.Code.Once.Escape.d_escape_120 v0 v1
       (coe
          MAlonzo.Code.Once.Optimize.d_optimize_3180 v0 v1
-         (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16
+         (MAlonzo.Code.Once.Surface.Desugar.d_desugar_18
             (coe v0) (coe v1) (coe v2)))
 -- Once.Compile.pipeline-no-escape
 d_pipeline'45'no'45'escape_302 ::
@@ -602,7 +602,7 @@ d_pipeline'45'no'45'escape_302 ::
 d_pipeline'45'no'45'escape_302 v0 v1 v2
   = coe
       MAlonzo.Code.Once.Optimize.d_optimize_3180 v0 v1
-      (MAlonzo.Code.Once.Surface.Desugar.d_desugar_16
+      (MAlonzo.Code.Once.Surface.Desugar.d_desugar_18
          (coe v0) (coe v1) (coe v2))
 -- Once.Compile.pipeline-no-opt
 d_pipeline'45'no'45'opt_310 ::
@@ -612,7 +612,7 @@ d_pipeline'45'no'45'opt_310 ::
   MAlonzo.Code.Once.CCC.IR.T_IR_12
 d_pipeline'45'no'45'opt_310 v0 v1
   = coe
-      MAlonzo.Code.Once.Surface.Desugar.d_desugar_16 (coe v0) (coe v1)
+      MAlonzo.Code.Once.Surface.Desugar.d_desugar_18 (coe v0) (coe v1)
 -- Once.Compile.Arch
 d_Arch_312 = ()
 data T_Arch_312 = C_x86'45'64_314

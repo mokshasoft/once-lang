@@ -41,7 +41,7 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.IR using (IR; Cata; ⟦_⟧T)
 open import Once.Type using (Type; Functor; K; Id; _⊕_; _⊗_; μ-type)
 open import Once.Functor.Translate using (WellFormedF; wf-K; wf-Id; wf-Sum; wf-Prod)
-open import Once.CCC.Eval using (SigOpSem; eval)
+open import Once.CCC.Eval using (eval)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR.Size
 open import Once.CCC.Machine.Allocation using (AllocMode; Stack; Heap; AllocState)
@@ -55,10 +55,10 @@ open import Once.Semantics.Core ℕ using (⟦μ⟧; ⟦_⟧F; sem-In; sem-Out; 
 -- Parameterized by FrameSemantics, program-bound, and SigOpSem.
 ------------------------------------------------------------------------
 
-module RecSchemeProofImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
+module RecSchemeProofImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrameSemantics FS
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound sigOpSem
+  open ClosureWellFormedDef {FS} program-bound
 
   ------------------------------------------------------------------------
   -- ValidAtWF Preservation
@@ -81,7 +81,7 @@ module RecSchemeProofImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem 
         → BeforeFrontier alloc input-loc
         → BeforeFrontier alloc result-loc
         -- After some trace execution, result is valid
-        → ValidAtWF Heap alloc (eval sigOpSem ir x) result-loc s'
+        → ValidAtWF Heap alloc (eval ir x) result-loc s'
 
   ------------------------------------------------------------------------
   -- Functor Layer ValidAtWF
@@ -122,7 +122,7 @@ module RecSchemeProofImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem 
   CataIH {F} {B} wf alg x =
     ∀ (alloc : AllocState {FS}) (result-loc : ValueLocation FS) (s : LocState FS)
     → BeforeFrontier alloc result-loc
-    → ValidAtWF Heap alloc (sem-cata wf (λ fa → eval sigOpSem alg fa) x) result-loc s
+    → ValidAtWF Heap alloc (sem-cata wf (λ fa → eval alg fa) x) result-loc s
 
   ------------------------------------------------------------------------
   -- Proof Sketch (to be completed)
@@ -138,7 +138,7 @@ module RecSchemeProofImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem 
   --    - Apply algebra (Dispatcher gives ValidAtWF)
   --
   -- 3. Connect to rec-scheme-semantic:
-  --    - Show eval sigOpSem (Cata wf alg) x = sem-cata wf (eval ps alg) x
+  --    - Show eval (Cata wf alg) x = sem-cata wf (eval ps alg) x
   --    - Use cata-valid to get ValidAtWF
   --
   -- The main technical challenges:

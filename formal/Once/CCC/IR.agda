@@ -34,6 +34,9 @@ open import Once.Functor.Translate using (WellFormedF)
 -- HeapRef for free-heap
 open import Once.CCC.Machine.SMCore using (HeapRef)
 
+-- SigOpInfo: the descriptor carried by every signature operation.
+open import Once.CCC.SigOp.Info public using (SigOpInfo; mk-info; name; semI; semM)
+
 ------------------------------------------------------------------------
 -- Allocation Mode
 --
@@ -186,8 +189,10 @@ data IR : Type → Type → Set where
   -- Added by escape analysis when heap values can be freed.
   free-heap : HeapRef → IR Unit Unit
 
-  -- Primitive operations (opaque)
-  SigOp : ∀ {A B} → String → IR A B
+  -- Signature operations (opaque escape hatch).
+  -- Carries a `SigOpInfo` (name + sem at both levels) so the IR
+  -- is self-describing; no external `SigOpSem` parameter needed.
+  SigOp : ∀ {A B} → SigOpInfo A B → IR A B
 
 infixr 9 _∘_
 infixr 4 ⟨_,_⟩

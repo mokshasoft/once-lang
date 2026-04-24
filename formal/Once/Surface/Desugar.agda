@@ -15,6 +15,7 @@ module Once.Surface.Desugar where
 open import Once.Type
 open import Once.Surface.IR as S using (SurfaceIR; Let; SigOp)
 open import Once.CCC.IR as C
+open import Once.Arith.SigOp.Builders using (generic-info)
 
 open import Data.String using (String)
 
@@ -35,7 +36,7 @@ open import Data.String using (String)
 --   4. proof cases in Once.Optimize.Correct (all trivial refl)
 --
 sigOp-desugar : ∀ {A B} → String → C.IR A B
-sigOp-desugar = C.SigOp
+sigOp-desugar name = C.SigOp (generic-info name)
 
 ------------------------------------------------------------------------
 -- Desugar transformation

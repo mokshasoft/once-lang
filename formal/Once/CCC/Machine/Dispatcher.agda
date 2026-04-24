@@ -34,7 +34,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.CCC.IR
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.CCC.Eval using (SigOpSem; eval)
+open import Once.CCC.Eval using (eval)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
@@ -79,8 +79,8 @@ open import Once.CCC.Machine.WriteOps public using (module WriteWithDisjoint)
 ------------------------------------------------------------------------
 
 import Once.CCC.SigOp.Contract as PrimContractModule
-module SigOpContract {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) =
-  PrimContractModule.Def {FS} program-bound sigOpSem
+module SigOpContract {FS : FrameSemantics} (program-bound : ℕ) =
+  PrimContractModule.Def {FS} program-bound
 
 ------------------------------------------------------------------------
 -- Closure IR Tracking
@@ -90,7 +90,7 @@ module SigOpContract {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : Sig
 -- KEY INSIGHT: ApplySetupResult now contains:
 --   - body : IR (EnvType * A) B
 --   - env : ⟦ EnvType ⟧
---   - closure-is-body : fst input ≡ (λ arg → eval sigOpSem body (pair env arg))
+--   - closure-is-body : fst input ≡ (λ arg → eval body (pair env arg))
 --   - env-valid, arg-valid for recursive dispatch
 --
 -- To compute (fst input) (snd input), we dispatch to body with (env, snd input).
@@ -121,7 +121,7 @@ module SigOpContract {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : Sig
 
 module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ program-bound)
   -- SigOpSem provides semantics for all primitives (required for eval)
-  (sigOpSem : SigOpSem)
+ 
   -- Child frame support for apply's hybrid frame approach
   -- get-child-frame returns a frame below the parent (child ≺ parent) for body execution
   (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
@@ -144,7 +144,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     ApplyWFModule.SurvivesFramePop (get-child-frame alloc) result-loc)
   -- REMOVED: parent-bound-eq (handled locally in ApplyWF)
   -- SigOp contract provider (from domain compilers)
-  (sigOp-proof : SigOpContract.Provider {FS} program-bound sigOpSem)
+  (sigOp-proof : SigOpContract.Provider {FS} program-bound)
   where
   open FrontierInvariant {FS}
   open WriteWithDisjoint {FS}
@@ -158,7 +158,7 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open import Data.Nat.Properties using (≤-refl; ≤-trans; ≤-reflexive; m≤m+n; m<m+n; n≤1+n; n<1+n; <-trans; m+n≤o⇒m≤o; +-suc; +-comm; +-monoˡ-≤; +-monoʳ-≤; +-assoc)
 
   -- Import WF types for termination-safe dispatch
-  open ClosureWellFormedDef {FS} program-bound sigOpSem
+  open ClosureWellFormedDef {FS} program-bound
     using (BodyCorrect; ValidAtWF; IRResultAWF; RecDispatcherWF;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            decomposeClosureWF; ClosureValidWF; decomposePairWF; PairValidWF;
@@ -174,36 +174,36 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   open FrontierLemmas {FS}
 
   -- Import simple IR implementations (id, fst, snd, terminal)
-  open SimpleWFModule.SimpleWFImpl {FS} program-bound sigOpSem
+  open SimpleWFModule.SimpleWFImpl {FS} program-bound
 
   -- Import compose IR implementation
-  open ComposeWFModule.ComposeWFImpl {FS} program-bound sigOpSem
+  open ComposeWFModule.ComposeWFImpl {FS} program-bound
 
   -- Import pair IR implementation (using PairWF2 - the new trace-based proof)
-  open PairWFModule.PairWF2Impl {FS} program-bound sigOpSem
+  open PairWFModule.PairWF2Impl {FS} program-bound
 
   -- Import curry IR implementation
-  open CurryWFModule.CurryWFImpl {FS} program-bound sigOpSem
+  open CurryWFModule.CurryWFImpl {FS} program-bound
 
   -- Import apply IR implementation (pass child-frame and escape analysis parameters)
   -- DYNAMIC CAPACITY: child-capacity and parent-bound-eq removed
-  open ApplyWFModule.ApplyWFImpl {FS} program-bound sigOpSem
+  open ApplyWFModule.ApplyWFImpl {FS} program-bound
     get-child-frame child-frame-ordered child-frame-adjacent
     escape-result-survives
 
   -- Import sum IR implementations (inl, inr, case, initial)
   -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana handlers instead.
   open import Once.CCC.Machine.IR.SumRecWF as SumRecWFModule
-  open SumRecWFModule.SumRecWFImpl {FS} program-bound sigOpSem
+  open SumRecWFModule.SumRecWFImpl {FS} program-bound
 
   -- Import recursion scheme core (Cata, Fuse, Hylo)
-  open RecCoreWFModule.RecCoreWFImpl {FS} program-bound sigOpSem
+  open RecCoreWFModule.RecCoreWFImpl {FS} program-bound
 
   -- Import paramorphism handler (Para)
-  open ParaWFModule.ParaWFImpl {FS} program-bound sigOpSem
+  open ParaWFModule.ParaWFImpl {FS} program-bound
 
   -- Import anamorphism handler (Ana)
-  open AnaWFModule.AnaWFImpl {FS} program-bound sigOpSem
+  open AnaWFModule.AnaWFImpl {FS} program-bound
 
   ------------------------------------------------------------------------
   -- Helper: get Acc for any IR size < program-bound
@@ -227,18 +227,27 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
   --   1. Get (contract, proof) from sigOp-proof
   --   2. Use proof to execute
   ------------------------------------------------------------------------
-  -- Primitives manage their own stack - no capacity precondition
-  run-sigOp : ∀ {A B} (mIn : AllocMode) (name : String)
+  -- Primitives manage their own stack - no capacity precondition.
+  --
+  -- With the partial `Provider` (D1a), `sigOp-proof` returns
+  -- `just (m , proof)` when the provider covers this SigOp, or
+  -- `nothing` otherwise. The `nothing` case is handled via
+  -- `uncovered-sigOp-placeholder` for Phase A; Phase E introduces
+  -- a coverage precondition that rules it out structurally.
+  run-sigOp : ∀ {A B} (mIn : AllocMode) (si : SigOpInfo A B)
     (x : ⟦ A ⟧) (input-loc : ValueLocation FS)
     (s : LocState FS) (alloc : AllocState {FS}) →
     ValidAtWF mIn alloc x input-loc s →
     BeforeFrontier alloc input-loc →
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
-    ∃[ m ] IRResultAWF m (SigOp {A} {B} name) x s alloc
-  run-sigOp {A} {B} mIn name x input-loc s alloc valid bf nh rdi =
-    let (m , proof) = sigOp-proof {A} {B} name
-    in m , proof mIn x input-loc s alloc valid bf nh rdi
+    ∃[ m ] IRResultAWF m (SigOp {A} {B} si) x s alloc
+  run-sigOp {A} {B} mIn si x input-loc s alloc valid bf nh rdi
+    with sigOp-proof {A} {B} si
+  ... | just (m , proof) = m , proof mIn x input-loc s alloc valid bf nh rdi
+  ... | nothing = uncovered-sigOp-placeholder
+    where postulate
+      uncovered-sigOp-placeholder : ∃[ m ] IRResultAWF m (SigOp {A} {B} si) x s alloc
 
   ------------------------------------------------------------------------
   -- Main dispatcher (recursive cases use Acc)
@@ -307,10 +316,11 @@ module Dispatcher {FS : FrameSemantics} (program-bound : ℕ) (acc-pb : Acc _<_ 
     run-ir-wf mIn (arr {A} {B} {q}) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
       mIn , run-arr {mIn} {A} {B} {q} x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
 
-    -- SigOp: primitive operations (uses proof provider)
-    -- With opaque SigOp (just name), contract comes from proof provider
-    run-ir-wf mIn (SigOp name) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
-      let (m , result) = run-sigOp mIn name x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
+    -- SigOp: signature operations (uses partial proof provider)
+    -- The SigOp carries a SigOpInfo; the provider maps the info to
+    -- its contract proof (via `run-sigOp`, which handles the Maybe).
+    run-ir-wf mIn (SigOp si) _ x input-loc s alloc input-valid-wf input-before not-halted rdi-eq _ =
+      let (m , result) = run-sigOp mIn si x input-loc s alloc input-valid-wf input-before not-halted rdi-eq
       in m , result
 
     -- Sum type: inject left (delegated to SumRecWF module)

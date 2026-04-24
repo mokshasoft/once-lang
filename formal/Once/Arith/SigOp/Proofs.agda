@@ -30,8 +30,9 @@ open import Once.CCC.Machine.SMCore
          readReg; Input; Output; AbstractTrace; mov-to-output;
          mkLocState; stackMem; heapMem; writeReg; module MemOps;
          module AbstractExec; module ExecLemmas)
-open import Once.CCC.Eval using (SigOpSem; evalSigOp)
+open import Once.CCC.Eval using ()
 open import Once.Semantics.Machine using (⟦_⟧)
+import Once.Arith.SigOp.Builders as Builders
 
 ------------------------------------------------------------------------
 -- Arithmetic Semantics
@@ -44,9 +45,9 @@ add-sem (a , b) = a +ℕ b
 -- Arithmetic Proof Module
 ------------------------------------------------------------------------
 
-module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
+module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.CCC.SigOp.Helper
-  open PrimHelper {FS} program-bound sigOpSem
+  open PrimHelper {FS} program-bound
 
   open import Once.CCC.Machine.Allocation
     using (AllocState; current-frame; next-slot; frame-capacity)
@@ -55,11 +56,11 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOp
   open FrontierInvariant {FS} using (BeforeFrontier)
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound sigOpSem
+  open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF)
 
   open import Once.CCC.SigOp.Contract using (module Def)
-  open Def {FS} program-bound sigOpSem
+  open Def {FS} program-bound
     using (Contract)
 
   open AbstractExec {FS} using (exec-trace; exec-trace-single; exec-abstract)
@@ -137,10 +138,10 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOp
   -- THE PROOF: Clean and simple
   ------------------------------------------------------------------------
 
-  add-int-proof : Contract {Int * Int} {Int} Stack (SigOp "add-int")
+  add-int-proof : Contract {Int * Int} {Int} Stack (SigOp Builders.add-info)
   add-int-proof mIn x input-loc s alloc input-valid-wf input-before not-halted rdi-eq =
     mkPurePrimResult
-      "add-int"
+      Builders.add-info
       Stack
       is-int
       x
@@ -154,8 +155,8 @@ module ArithProofs {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOp
       (λ s' loc' nh' rdi' slot-eq' → inj₂ (inj₁ (arith-frontier-stable s' loc' alloc nh' rdi' slot-eq')))
 
   ------------------------------------------------------------------------
-  -- Provider: Maps "add-int" to its proof
+  -- Provider: Maps add-info to its proof
   ------------------------------------------------------------------------
 
-  add-int-contract-proof : ∃[ m ] Contract {Int * Int} {Int} m (SigOp "add-int")
+  add-int-contract-proof : ∃[ m ] Contract {Int * Int} {Int} m (SigOp Builders.add-info)
   add-int-contract-proof = Stack , add-int-proof

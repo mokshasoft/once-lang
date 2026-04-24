@@ -30,52 +30,62 @@ open import Data.String using (String; _++_)
 --
 -- Semantics are defined by evalSigOp in Once.Semantics (trust boundary).
 
--- Literals: constant morphisms that ignore input environment
--- The value is encoded in the primitive name for runtime interpretation.
+-- SigOpInfo builders (plan 0.2.4.1 Phase A):
+-- each arithmetic / literal IR morphism now carries its SigOpInfo
+-- (name + per-layer semantic function). See
+--   `Once.Arith.SigOp.IntLit` — integer-literal family
+--   `Once.Arith.SigOp.Builders` — other arithmetic SigOpInfos
+open import Once.Arith.SigOp.IntLit using (lit-int-info)
+open import Once.Arith.SigOp.Builders
+  using (str-lit-info; add-info; sub-info; mul-info; div-info; mod-info;
+         neg-info; lt-info; le-info; gt-info; ge-info; eq-info; ne-info;
+         generic-info)
+
+-- Literals: constant morphisms that ignore input environment.
 intLit : ℤ → ∀ {Γ} → IR Γ Int
-intLit n = SigOp ("lit.int." ++ showℤ n) ∘ terminal
+intLit n = SigOp (lit-int-info n) ∘ terminal
 
 strLit : String → ∀ {Γ} → IR Γ Str
-strLit s = SigOp ("lit.str." ++ s) ∘ terminal
+strLit s = SigOp (str-lit-info s) ∘ terminal
 
 -- Arithmetic operations (Int * Int → Int)
 addIR : IR (Int * Int) Int
-addIR = SigOp "arith.add.int"
+addIR = SigOp add-info
 
 subIR : IR (Int * Int) Int
-subIR = SigOp "arith.sub.int"
+subIR = SigOp sub-info
 
 mulIR : IR (Int * Int) Int
-mulIR = SigOp "arith.mul.int"
+mulIR = SigOp mul-info
 
 divIR : IR (Int * Int) Int
-divIR = SigOp "arith.div.int"
+divIR = SigOp div-info
 
 modIR : IR (Int * Int) Int
-modIR = SigOp "arith.mod.int"
+modIR = SigOp mod-info
 
 -- Unary negation (Int → Int)
 negIR : IR Int Int
-negIR = SigOp "arith.neg.int"
+negIR = SigOp neg-info
 
 -- Comparison operations (Int * Int → Bool, where Bool = Unit + Unit)
 ltIR : IR (Int * Int) (Unit + Unit)
-ltIR = SigOp "arith.lt.int"
+ltIR = SigOp lt-info
 
 leIR : IR (Int * Int) (Unit + Unit)
-leIR = SigOp "arith.le.int"
+leIR = SigOp le-info
 
 gtIR : IR (Int * Int) (Unit + Unit)
-gtIR = SigOp "arith.gt.int"
+gtIR = SigOp gt-info
 
 geIR : IR (Int * Int) (Unit + Unit)
-geIR = SigOp "arith.ge.int"
+geIR = SigOp ge-info
 
 eqIR : IR (Int * Int) (Unit + Unit)
-eqIR = SigOp "arith.eq.int"
+eqIR = SigOp eq-info
 
 neIR : IR (Int * Int) (Unit + Unit)
-neIR = SigOp "arith.ne.int"
+neIR = SigOp ne-info
 
 -- | Interpret context as a product type (environment type)
 --
@@ -220,10 +230,10 @@ elaborate (arr' f) = arr ∘ elaborate f
 
 -- Imported primitive: call external function by name
 -- Like intLit/strLit, ignores environment and produces the result
-elaborate (sigOp name) = SigOp name ∘ terminal
+elaborate (sigOp name) = SigOp (generic-info name) ∘ terminal
 -- Unresolved polymorphic placeholder. A well-formed Surface Expr
 -- reaching elaborate has been through `resolveExpr`, so `poly` nodes
 -- only survive when resolution failed (e.g. cycle). Treat as an
 -- external SigOp with the unqualified name — matches evalSurface for
 -- the correctness theorem, and codegen will catch it as unresolved.
-elaborate (poly name _) = SigOp name ∘ terminal
+elaborate (poly name _) = SigOp (generic-info name) ∘ terminal

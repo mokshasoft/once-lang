@@ -17,8 +17,8 @@ import MAlonzo.RTE (coe, erased, AgdaAny, addInt, subInt, mulInt,
                     rem64, lt64, eq64, word64FromNat, word64ToNat)
 import qualified MAlonzo.RTE
 import qualified Data.Text
-import qualified MAlonzo.Code.Agda.Builtin.String
 import qualified MAlonzo.Code.Once.CCC.Machine.SMCore
+import qualified MAlonzo.Code.Once.CCC.SigOp.Info
 import qualified MAlonzo.Code.Once.Functor.Translate
 import qualified MAlonzo.Code.Once.Type
 
@@ -56,4 +56,4 @@ data T_IR_12
                MAlonzo.Code.Once.Functor.Translate.T_WellFormedF_174 T_IR_12
                T_IR_12 |
     C_free'45'heap_150 MAlonzo.Code.Once.CCC.Machine.SMCore.T_HeapRef_20 |
-    C_SigOp_156 MAlonzo.Code.Agda.Builtin.String.T_String_6
+    C_SigOp_156 MAlonzo.Code.Once.CCC.SigOp.Info.T_SigOpInfo_264

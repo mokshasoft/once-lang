@@ -207,8 +207,8 @@ layer-capacity (wf-Prod wfL wfR) wfG alg = 1 +ℕ layer-capacity wfL wfG alg +�
   ir-stack-requirement (⟨ f , g ⟩ m) ≡ 1 +ℕ ir-stack-requirement f +ℕ ir-stack-requirement g +ℕ pair-slots
 ⟨,⟩-stack-req f g m = refl
 
-sigOp-stack-req : ∀ {A B} (name : String) →
-  ir-stack-requirement (SigOp {A} {B} name) ≡ 0
+sigOp-stack-req : ∀ {A B} (si : SigOpInfo A B) →
+  ir-stack-requirement (SigOp {A} {B} si) ≡ 0
 sigOp-stack-req _ = refl
 
 ------------------------------------------------------------------------

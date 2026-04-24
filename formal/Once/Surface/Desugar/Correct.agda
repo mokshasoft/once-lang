@@ -16,7 +16,8 @@ open import Once.Type
 open import Once.Surface.IR as S
 open import Once.Surface.Desugar
 open import Once.CCC.IR as C
-open import Once.Semantics.IR using (⟦_⟧; eval′; defaultEvalSigOp)
+open import Once.Semantics.IR using (⟦_⟧; eval′)
+open import Once.Arith.SigOp.Builders using (generic-semI; generic-info)
 open import Once.Postulates using (extensionality)
 
 open import Data.Unit using (⊤; tt)
@@ -80,8 +81,10 @@ evalSurface S.arr f = f
 -- evalSurface (Let e1 e2) x = evalSurface e2 (x , evalSurface e1 x)
 evalSurface (S.Let e1 e2) x = evalSurface e2 (x , evalSurface e1 x)
 
--- Surface-only: Primitives
-evalSurface (S.SigOp name) x = defaultEvalSigOp name x
+-- Surface-only: Primitives. After plan 0.2.4.1 Phase A, surface
+-- primitives use `generic-semI` (per-SigOp frontend semantics)
+-- rather than the removed `defaultEvalSigOp` postulate.
+evalSurface (S.SigOp name) x = generic-semI name x
 
 ------------------------------------------------------------------------
 -- Correctness theorem
@@ -89,11 +92,12 @@ evalSurface (S.SigOp name) x = defaultEvalSigOp name x
 
 -- | Primitive correctness (definitional)
 --
--- Since sigOp-desugar = C.SigOp and eval′ (C.SigOp name) = defaultEvalSigOp name,
--- this is just refl.
+-- `sigOp-desugar name = C.SigOp (generic-info name)`, and
+-- `eval′ (C.SigOp si) = semI si`, and `semI (generic-info name)`
+-- unfolds to `generic-semI name`. All by construction → refl.
 --
 desugar-correct-sigOp : ∀ {A B} (name : String) (x : ⟦ A ⟧)
-                     → eval′ (sigOp-desugar {A} {B} name) x ≡ defaultEvalSigOp {A} {B} name x
+                     → eval′ (sigOp-desugar {A} {B} name) x ≡ generic-semI {A} {B} name x
 desugar-correct-sigOp name x = refl
 
 -- | Desugar preserves semantics

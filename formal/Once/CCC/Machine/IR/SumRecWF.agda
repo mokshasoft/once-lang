@@ -30,7 +30,7 @@ open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧; sem-inl; sem-inr)
 open import Once.CCC.IR
 open import Once.Functor.Translate using (WellFormedF)
-open import Once.CCC.Eval using (SigOpSem; eval)
+open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
@@ -49,7 +49,7 @@ import Once.CCC.Machine.IR.LambekValidity as LV
 -- Sum and Fix IR implementations
 ------------------------------------------------------------------------
 
-module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
+module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -64,7 +64,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigO
   open SMP.RecSchemeSemantics {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound sigOpSem
+  open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; valid-unit-wf;
            validityWF-mem-only; validityWF-frontier-advance;
            validityWF-alloc-advance; validityWF-mem-preserved;
@@ -1217,7 +1217,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigO
   -- Uses targeted Lambek validity lemmas instead of general postulate.
   -- See LambekValidity.agda for documentation and justification.
   ------------------------------------------------------------------------
-  open LV.LambekValidityImpl {FS} program-bound sigOpSem
+  open LV.LambekValidityImpl {FS} program-bound
     using (In-trace-valid; out-μ-trace-valid; in-ν-trace-valid; Out-trace-valid)
 
   ------------------------------------------------------------------------
@@ -1310,7 +1310,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigO
 
       -- Result validity: In semantically is identity, so input validity transfers
       -- The semantic eval (In wf m) x = InS x, which is representationally same as x
-      result-valid : ValidAtWF m alloc' (eval sigOpSem (In wf m) x) result-loc s'
+      result-valid : ValidAtWF m alloc' (eval (In wf m) x) result-loc s'
       result-valid = In-trace-valid wf m x
 
       rax-eq : readReg (regs s') Output ≡ result-loc
@@ -1399,7 +1399,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigO
       s' = proj₁ (exec-trace out-μ-trace s alloc)
 
       -- Result validity: out-μ extracts F(μF) from μF, representationally same
-      result-valid : ValidAtWF Heap alloc (eval sigOpSem (out-μ wf) x) input-loc s'
+      result-valid : ValidAtWF Heap alloc (eval (out-μ wf) x) input-loc s'
       result-valid = out-μ-trace-valid wf x
 
       -- mov-to-output sets Output := Input = input-loc
@@ -1480,7 +1480,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigO
       s' = proj₁ (exec-trace out-trace s alloc)
 
       -- Result validity: Out extracts F(νF) from νF, representationally same
-      result-valid : ValidAtWF Heap alloc (eval sigOpSem (Out wf) x) input-loc s'
+      result-valid : ValidAtWF Heap alloc (eval (Out wf) x) input-loc s'
       result-valid = Out-trace-valid wf x
 
       -- rax-eq: Output = Input (from passthrough) = input-loc (from rdi-eq)
@@ -1575,7 +1575,7 @@ module SumRecWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigO
       result-bf = stack-before refl (n<1+n (next-slot alloc))
 
       -- Result validity: in-ν semantically wraps F(νF) → νF, representationally same
-      result-valid : ValidAtWF m alloc' (eval sigOpSem (in-ν wf m) x) result-loc s'
+      result-valid : ValidAtWF m alloc' (eval (in-ν wf m) x) result-loc s'
       result-valid = in-ν-trace-valid wf m x
 
       -- suc n ≤ n + 1: ir-stack-requirement (in-ν wf m) ≡ 1 definitionally

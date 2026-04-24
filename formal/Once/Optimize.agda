@@ -34,6 +34,7 @@ import Data.Nat.Properties
 open import Data.Product using (_×_; _,_; proj₁; proj₂; Σ; ∃)
 open import Data.String using (String)
 open import Data.String.Properties using () renaming (_≟_ to _≟String_)
+open import Once.CCC.SigOp.Info using (_≟SigOpInfo_)
 open import Relation.Nullary using (Dec; yes; no; ¬_)
 open import Relation.Binary.PropositionalEquality using (_≡_; _≢_; refl; cong; cong₂; subst; sym; trans)
 open import Data.Empty using (⊥)
@@ -551,9 +552,9 @@ f ≟IR g = ≟IRH f g refl refl
 ... | yes refl = yes refl
 ... | no hne   = no (λ { refl → hne refl })
 
-≟IRH-diag (SigOp n₁) (SigOp n₂) _ refl refl with n₁ ≟String n₂
+≟IRH-diag (SigOp si₁) (SigOp si₂) _ refl refl with si₁ ≟SigOpInfo si₂
 ... | yes refl = yes refl
-... | no nne   = no (λ { refl → nne refl })
+... | no ne    = no (λ { refl → ne refl })
 
 ------------------------------------------------------------------------
 -- Helper: Check for Void types (enables dead code elimination)

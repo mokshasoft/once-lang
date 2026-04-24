@@ -228,9 +228,12 @@ library
       MAlonzo.Code.Level
       -- Frontend modules (extracted via MAlonzo from verified Agda)
       MAlonzo.Code.Once.Arith.IR
+      MAlonzo.Code.Once.Arith.SigOp.Builders
+      MAlonzo.Code.Once.Arith.SigOp.IntLit
       MAlonzo.Code.Once.Arith.Type
       MAlonzo.Code.Once.CCC.FrameSemantics
       MAlonzo.Code.Once.CCC.IR
+      MAlonzo.Code.Once.CCC.SigOp.Info
       MAlonzo.Code.Once.CCC.Machine.SMCore
       MAlonzo.Code.Once.CCC.Memory.Memory
       MAlonzo.Code.Once.CCC.Memory.MemoryLayoutSemantics

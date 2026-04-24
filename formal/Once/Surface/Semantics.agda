@@ -11,7 +11,8 @@
 module Once.Surface.Semantics where
 
 open import Once.Type
-open import Once.Semantics.IR using (⟦_⟧; defaultEvalSigOp)
+open import Once.Semantics.IR using (⟦_⟧)
+open import Once.Arith.SigOp.Builders using (generic-semI)
 open import Once.Surface.Syntax using (Ctx; ∅; lookup; Usage; Expr; var; lam; app; effApp; pair; fst'; snd'; inl'; inr'; case'; unit; absurd; let'; int; str; add; sub; mul; div; mod'; neg; lt; le; gt; ge; eq; ne; arr'; sigOp; poly) renaming (_,_ to _▸_)
 
 open import Data.Nat using (ℕ)
@@ -32,13 +33,14 @@ postulate
   modℤ : ℤ → ℤ → ℤ
 
 -- Primitive evaluation (external/opaque semantics).
--- Defined in terms of IR's `defaultEvalSigOp` so that Surface-level
--- and IR-level sigOp semantics agree by CONSTRUCTION. This eliminates
--- the `sigOp-correct` / `poly-correct` bridge postulates in
--- `Once.Surface.Correct`: both sides reduce to the same IR primitive
--- applied at Unit (matching `elaborate (sigOp name) = SigOp name ∘ terminal`).
+-- After plan 0.2.4.1 Phase A, the elaborator wraps surface `sigOp
+-- name` as `SigOp (generic-info name) ∘ terminal`, whose frontend
+-- semantics is `generic-semI name`. Defining `evalSurfaceSigOp`
+-- in terms of the same postulate keeps Surface-level and IR-level
+-- semantics identical by construction, so `sigOp-correct` /
+-- `poly-correct` bridge cases remain `refl`.
 evalSurfaceSigOp : ∀ {A} → String → ⟦ A ⟧
-evalSurfaceSigOp {A} name = defaultEvalSigOp {Once.Type.Unit} {A} name _
+evalSurfaceSigOp {A} name = generic-semI {Once.Type.Unit} {A} name _
 
 -- | Environment: maps variables to values
 --

@@ -177,7 +177,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
   -- They cannot be decomposed into categorical generators.
   -- The String names the primitive (e.g., "arith.add.int").
   --
-  ty-sigOp : ∀ {Γ A B} → String → Γ ⊢ A ⟶ B
+  ty-sigOp : ∀ {Γ A B} → SigOpInfo A B → Γ ⊢ A ⟶ B
 
   -- Memory management (explicit heap deallocation)
   ty-free-heap : ∀ {Γ} → HeapRef → Γ ⊢ Unit ⟶ Unit
@@ -278,7 +278,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌊ ty-apply ⌋ = apply
 -- OCP-0003: ty-fold/ty-unfold removed
 ⌊ ty-arr ⌋ = arr
-⌊ ty-sigOp name ⌋ = SigOp name
+⌊ ty-sigOp si ⌋ = SigOp si
 ⌊ ty-free-heap h ⌋ = free-heap h
 -- OCP-0003 recursion schemes (WellFormedF proofs preserved)
 ⌊ ty-In {F = F} wf ⌋ = In {F} wf Heap
@@ -313,7 +313,7 @@ data _⊢_⟶_ : Ctx → Type → Type → Set where
 ⌈ apply ⌉ = ty-apply
 -- OCP-0003: fold/unfold removed
 ⌈ arr ⌉ = ty-arr
-⌈ SigOp name ⌉ = ty-sigOp name
+⌈ SigOp si ⌉ = ty-sigOp si
 ⌈ free-heap h ⌉ = ty-free-heap h
 -- OCP-0003 recursion schemes (WellFormedF proofs preserved)
 ⌈ In {F} wf _ ⌉ = ty-In {F = F} wf
@@ -352,7 +352,7 @@ round-trip-ir (curry {k = k} f _) x =
 round-trip-ir apply x = refl
 -- OCP-0003: fold/unfold removed
 round-trip-ir arr x = refl
-round-trip-ir (SigOp name) x = refl
+round-trip-ir (SigOp si) x = refl
 round-trip-ir (free-heap h) x = refl
 -- OCP-0003 recursion schemes: these are refl because:
 -- 1. ⌊ ⌈ f ⌉ ⌋ produces the same IR (modulo AllocMode normalization to Heap)

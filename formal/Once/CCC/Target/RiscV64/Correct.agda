@@ -47,7 +47,7 @@ open import Once.CCC.Machine.SMCore using (LocState; ValueLocation; halted; regs
 open import Once.Type using (Type)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR using (IR; AllocMode)
-open import Once.CCC.Eval using (SigOpSem; eval)
+open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Size using (ir-size)
 open import Once.CCC.IR.Stack using (ir-stack-requirement)
 open import Once.CCC.Machine.Allocation using (AllocState; next-slot; current-frame; frame-capacity; module FrontierInvariant)
@@ -74,7 +74,7 @@ module Correctness
   -- FrameOps: calling convention (child frame creation)
   (frame-ops : FrameOps FS)
   -- SigOpSem provides semantics for all primitives (required for eval)
-  (sigOpSem : SigOpSem)
+ 
   -- Escape analysis guarantees (provided by escape analysis pass)
   (escape-result-survives : ∀ (alloc : AllocState {FS}) (body-final : AllocState {FS})
     (result-loc : ValueLocation FS) →
@@ -82,7 +82,7 @@ module Correctness
     ApplyWFModule.BeforeFrontier' body-final result-loc →
     ApplyWFModule.SurvivesFramePop (FrameOps.get-child-frame frame-ops (current-frame alloc)) result-loc)
   -- SigOp contract provider (from domain compilers)
-  (sigOp-proof : DispatcherModule.SigOpContract.Provider {FS} (RuntimeContract.program-bound runtime) sigOpSem)
+  (sigOp-proof : DispatcherModule.SigOpContract.Provider {FS} (RuntimeContract.program-bound runtime))
   where
 
   -- Extract fields from RuntimeContract
@@ -94,7 +94,7 @@ module Correctness
   open FrontierInvariant {FS} using (BeforeFrontier)
 
   open import Once.CCC.Machine.ClosureWellFormed
-  module CWF = ClosureWellFormedDef {FS} program-bound sigOpSem
+  module CWF = ClosureWellFormedDef {FS} program-bound
 
   open import Once.CCC.Machine.Dispatcher
 
@@ -113,7 +113,7 @@ module Correctness
   child-frame-adjacent' alloc = child-frame-adjacent (current-frame alloc)
 
   -- DYNAMIC CAPACITY: Each closure carries its own body-capacity
-  module D = Dispatcher {FS} program-bound acc-pb sigOpSem
+  module D = Dispatcher {FS} program-bound acc-pb
     get-child-frame' child-frame-ordered' child-frame-adjacent'
     escape-result-survives sigOp-proof
 
@@ -131,7 +131,7 @@ module Correctness
   -- COMPILER CORRECTNESS (Layer 1: IR → AbstractTrace)
   --
   -- The one theorem that matters:
-  --   If input represents x, output represents (eval sigOpSem ir x)
+  --   If input represents x, output represents (eval ir x)
   ----------------------------------------------------------------------
 
   compile-correct : ∀ {A B} (ir : IR A B)
@@ -146,9 +146,9 @@ module Correctness
     halted s ≡ false →
     readReg (regs s) Input ≡ input-loc →
     next-slot alloc +ℕ ir-stack-requirement ir ≤ frame-capacity alloc →
-    -- ...then output represents (eval sigOpSem ir x)
+    -- ...then output represents (eval ir x)
     ∃[ mOut ] ∃[ result-loc ] ∃[ s' ] ∃[ alloc' ]
-      Represents mOut alloc' (eval sigOpSem ir x) result-loc s'
+      Represents mOut alloc' (eval ir x) result-loc s'
   compile-correct ir mIn x input-loc s alloc repr before ir<bound not-halted rdi-eq capacity-ok =
     let (mOut , result) = D.run-wf mIn ir ir<bound x input-loc s alloc
           repr before not-halted rdi-eq capacity-ok
@@ -167,7 +167,7 @@ module Correctness
 --   ∧ Input = input-loc          (calling convention)
 --   ∧ capacity sufficient        (stack space)
 --     →
---   Represents (eval sigOpSem ir x) result-loc s'
+--   Represents (eval ir x) result-loc s'
 ------------------------------------------------------------------------
 
 ------------------------------------------------------------------------
@@ -216,7 +216,7 @@ import Once.CCC.Target.RiscV64.DirectSimulation as DS
 --   │     └────────────┘               └──────────────┘               │
 --   │                                                                 │
 --   │  Result: a1 holds address of value satisfying                   │
---   │          eval sigOpSem ir x                                      │
+--   │          eval ir x                                      │
 --   └─────────────────────────────────────────────────────────────────┘
 --
 ------------------------------------------------------------------------

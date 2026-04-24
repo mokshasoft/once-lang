@@ -30,20 +30,20 @@ open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans
 
 open import Once.Type using (Type; IsPrimitive)
 open import Once.CCC.FrameSemantics using (FrameSemantics)
-open import Once.CCC.IR using (IR; SigOp; AllocMode; Stack; Heap)
+open import Once.CCC.IR using (IR; SigOp; SigOpInfo; AllocMode; Stack; Heap)
 open import Once.CCC.Machine.SMCore
   using (LocState; mkLocState; ValueLocation; OnStack;
          halted; regs; stackMem; heapMem;
          readReg; writeReg; writeReg-same;
          Input; Output; AbstractTrace; mov-to-output)
 open import Once.Semantics.Machine using (⟦_⟧)
-open import Once.CCC.Eval using (SigOpSem; evalSigOp)
+open import Once.CCC.Eval using ()
 
 ------------------------------------------------------------------------
 -- X86 State (LocState + AllocState)
 ------------------------------------------------------------------------
 
-module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
+module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) where
   open import Once.CCC.Machine.Allocation
     using (AllocState; current-frame; next-slot; next-heap-ref)
   open import Once.CCC.Machine.Allocation
@@ -157,7 +157,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpS
   ------------------------------------------------------------------------
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound sigOpSem
+  open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; valid-primitive-wf)
   open import Once.CCC.IR.Stack using (ir-stack-requirement; ir-scratch-requirement; sigOp-stack-req)
 
@@ -169,7 +169,7 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpS
   -- Build IRResultAWF for a pure primitive
   -- Pure = result at input location, only Output register changes
   mkPurePrimResult : ∀ {A B : Type}
-    (name : String)
+    (si : SigOpInfo A B)
     (output-mode : AllocMode)
     (is-prim : IsPrimitive B)
     (x : ⟦ A ⟧)
@@ -190,9 +190,9 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpS
       (next-slot alloc ≡ next-slot alloc) ⊎
       ((readLoc (proj₁ (exec-trace (mov-to-output ∷ []) s' alloc))
                (OnStack (current-frame alloc) (next-slot alloc)) ≡ just input-loc') ⊎ ⊤)) →
-    IRResultAWF output-mode (SigOp {A} {B} name) x s alloc
+    IRResultAWF output-mode (SigOp {A} {B} si) x s alloc
 
-  mkPurePrimResult {A} {B} name output-mode is-prim x input-loc s alloc
+  mkPurePrimResult {A} {B} si output-mode is-prim x input-loc s alloc
     input-before not-halted rdi-eq trace-correct-pf frontier-stable-pf =
     let
       final-state = mkLocState
@@ -215,24 +215,19 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpS
       ; frame-preserved = refl
       ; slot-monotone = ≤-refl
       ; heap-monotone = ≤-refl
-      -- Phase 7: Removed reclaimable-slot, reclaim-monotone, reclaim-bounded, reclaim-size-bound
       ; reclaim-preserves-result = result-before
       ; reclaim-preserves-validity = result-valid
-      -- Pure primitives don't write to stack, so max-slot-written = next-slot alloc
       ; max-slot-written = next-slot alloc
       ; max-slot-geq-final = ≤-refl
-      -- max-slot-usage-bound: next-slot alloc ≤ next-slot alloc +ℕ ir-stack-requirement (SigOp name)
-      -- Since sigOp-stack-req proves ir-stack-requirement (SigOp name) ≡ 0, this is trivially ≤-refl
       ; max-slot-usage-bound =
           let n = next-slot alloc
-              eq : n +ℕ ir-stack-requirement (SigOp {A} {B} name) ≡ n
-              eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} name)) (+-identityʳ n)
+              eq : n +ℕ ir-stack-requirement (SigOp {A} {B} si) ≡ n
+              eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
           in subst (n ≤_) (sym eq) ≤-refl
-      -- slot-stays-in-budget: final = input for pure primitives
       ; slot-stays-in-budget =
           let n = next-slot alloc
-              eq : n +ℕ ir-stack-requirement (SigOp {A} {B} name) ≡ n
-              eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} name)) (+-identityʳ n)
+              eq : n +ℕ ir-stack-requirement (SigOp {A} {B} si) ≡ n
+              eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
           in subst (n ≤_) (sym eq) ≤-refl
       ; frontier-slot-stable = frontier-stable-pf
       ; trace-writes-above = tt
@@ -243,8 +238,8 @@ module PrimHelper {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpS
       -- ir-scratch-requirement (SigOp name) = 0, so bound is n +ℕ 0 = n
       ; scratch-bounded =
           let n = next-slot alloc
-              eq : n +ℕ ir-scratch-requirement (SigOp {A} {B} name) ≡ n
-              eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} name)) (+-identityʳ n)
+              eq : n +ℕ ir-scratch-requirement (SigOp {A} {B} si) ≡ n
+              eq = trans (cong (n +ℕ_) (sigOp-stack-req {A} {B} si)) (+-identityʳ n)
           in subst (n ≤_) (sym eq) ≤-refl
       -- Note: trace-preserves-capacity removed in Phase 3
       ; trace-no-heap-writes = tt

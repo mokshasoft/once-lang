@@ -41,7 +41,7 @@ open import Once.Semantics.Machine using (⟦_⟧; sem-fst; sem-snd; sem-pair; s
 open import Once.CCC.Memory.TypeSlots using (stack-type-slots; heap-type-slots; type-slots)
 pair = sem-pair
 open import Once.CCC.IR
-open import Once.CCC.Eval using (SigOpSem; eval)
+open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
@@ -81,7 +81,7 @@ module BFTransfer {FS : FrameSemantics} where
 -- Apply implementation with clean trace-based structure
 ------------------------------------------------------------------------
 
-module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem)
+module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ)
   (get-child-frame : ∀ (alloc : AllocState {FS}) → FrameSemantics.Frame FS)
   (child-frame-ordered : ∀ (alloc : AllocState {FS}) →
     FrameSemantics._≺_ FS (get-child-frame alloc) (current-frame alloc))
@@ -107,7 +107,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOp
   open SMP.TraceComposition {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound sigOpSem
+  open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; BodyCorrect;
            valid-unit-wf; valid-pair-wf; valid-closure-wf;
            valid-inl-wf; valid-inr-wf;
@@ -705,7 +705,7 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOp
       result-before' = SMP.!!
 
       -- Result validity
-      result-valid-wf' : ValidAtWF mBody alloc' (eval sigOpSem (apply {A} {B} {k}) x) result-loc s'
+      result-valid-wf' : ValidAtWF mBody alloc' (eval (apply {A} {B} {k}) x) result-loc s'
       result-valid-wf' = SMP.!!
 
       -- Frontier slot stability
@@ -754,9 +754,9 @@ module ApplyWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOp
 
       reclaim-preserves-validity' :
         ValidAtWF mBody (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
-                  (eval sigOpSem (apply {A} {B} {k}) x) result-loc s'
+                  (eval (apply {A} {B} {k}) x) result-loc s'
       reclaim-preserves-validity' = validityWF-with-bf-transfer
-        (eval sigOpSem (apply {A} {B} {k}) x) result-loc s' alloc'
+        (eval (apply {A} {B} {k}) x) result-loc s' alloc'
         (record alloc { next-slot = next-slot alloc +ℕ pair-slots })
         (λ loc bf → bf-same-frame-slot alloc'
           (record alloc { next-slot = next-slot alloc +ℕ pair-slots })

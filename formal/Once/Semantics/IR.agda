@@ -32,144 +32,87 @@ open import Once.Semantics.Core ℤ public
 -- Primitive Semantics (Parameterized)
 ------------------------------------------------------------------------
 
--- | Primitive semantics provider
---
--- Provides semantics for primitive operations (e.g., arithmetic).
--- This is a module parameter, making proofs cleaner.
---
-record SigOpSem : Set₁ where
-  field
-    evalSigOp : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
-
-open SigOpSem public
+-- SigOpSem record removed (plan 0.2.4.1 Phase A).
+-- The semantic function for each signature operation now lives on
+-- its `SigOpInfo` (the `semI` field for frontend semantics), so
+-- eval is direct: `eval (SigOp si) x = semI si x`.
+-- No external parameter threads through evaluation.
 
 ------------------------------------------------------------------------
 -- Evaluation of IR morphisms
 ------------------------------------------------------------------------
 
--- | Evaluation of IR morphisms (parameterized by primitive semantics)
+-- | Evaluation of IR morphisms.
 --
--- Maps IR morphisms to Agda functions.
--- This is the morphism mapping of a functor from Once's CCC to Set.
+-- Maps IR morphisms to Agda functions. The morphism mapping of a
+-- functor from Once's CCC to Set.
 --
-eval : SigOpSem → ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
+-- After plan 0.2.4.1 Phase A: `SigOp` carries a `SigOpInfo` that
+-- embeds the semantic function, so evaluation is direct — no more
+-- `SigOpSem` parameter or `defaultEvalSigOp` postulate.
+--
+eval′ : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
 
 -- Category structure
-eval ps id x              = x
-eval ps (g ∘ f) x         = eval ps g (eval ps f x)
+eval′ id x              = x
+eval′ (g ∘ f) x         = eval′ g (eval′ f x)
 
 -- Products (AllocMode ignored in semantics)
-eval ps fst (a , b)       = a
-eval ps snd (a , b)       = b
-eval ps (⟨ f , g ⟩ _) x   = (eval ps f x , eval ps g x)
+eval′ fst (a , b)       = a
+eval′ snd (a , b)       = b
+eval′ (⟨ f , g ⟩ _) x   = (eval′ f x , eval′ g x)
 
 -- Coproducts (AllocMode ignored in semantics)
-eval ps (inl _) a         = inj₁ a
-eval ps (inr _) b         = inj₂ b
-eval ps (case f g) (inj₁ a) = eval ps f a
-eval ps (case f g) (inj₂ b) = eval ps g b
+eval′ (inl _) a         = inj₁ a
+eval′ (inr _) b         = inj₂ b
+eval′ (case f g) (inj₁ a) = eval′ f a
+eval′ (case f g) (inj₂ b) = eval′ g b
 
 -- Terminal
-eval ps terminal _        = tt
+eval′ terminal _        = tt
 
 -- Initial
-eval ps initial ()
+eval′ initial ()
 
 -- Exponential (plain functions, no Closure record)
 -- curry f : IR A (B ⇒ C) creates a function capturing the input
-eval ps (curry f _) a     = λ b → eval ps f (a , b)
+eval′ (curry f _) a     = λ b → eval′ f (a , b)
 -- apply : IR ((A ⇒ B) * A) B extracts and applies the function
-eval ps apply (f , a)     = f a
+eval′ apply (f , a)     = f a
 
 -- OCP-0003: fold/unfold removed. Use In/Cata/Out/Ana.
 
 -- Recursion schemes (OCP-0003: total/productive)
---
--- These use coercions between Type-level functor (⟦_⟧T) and Set-level
--- functor (⟦_⟧F) applications. The coherence is proven in Core.agda.
--- WellFormedF proofs from IR constructors enable postulate-free evaluation.
---
--- In: ⟦ F ⟧T (μ-type F) → μ-type F
-eval ps (In {F} _ _) x = sem-In F (coerce-functor F (μ-type F) x)
---
--- out-μ: μ-type F → ⟦ F ⟧T (μ-type F) (inverse of In, by Lambek's Lemma)
-eval ps (out-μ {F} wf) x = coerce-functor⁻¹ F (μ-type F) (sem-Out wf x)
---
--- Cata: given alg : ⟦ F ⟧T A → A, produce μ-type F → A
--- Build Set-level algebra from Type-level, then apply sem-cata
-eval ps (Cata {F} wf alg) x =
-  sem-cata wf (λ fa → eval ps alg (coerce-functor⁻¹ F _ fa)) x
---
--- Para: paramorphism - fold with access to original substructure
--- Derived from Cata, total by structural recursion on μF.
-eval ps (Para {F} wf alg) x =
-  sem-para wf (λ fx → eval ps alg (coerce-functor⁻¹ F _ fx)) x
---
--- Out: ν-type F → ⟦ F ⟧T (ν-type F)
-eval ps (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
---
--- in-ν: ⟦ F ⟧T (ν-type F) → ν-type F (inverse of Out, by Lambek's Lemma)
-eval ps (in-ν {F} _ _) x = sem-CoIn F (coerce-functor F (ν-type F) x)
---
--- Ana: given coalg : A → ⟦ F ⟧T A, produce A → ν-type F
--- Productivity follows from IR totality (see IR/Totality.agda).
-eval ps (Ana {F} wf {A} coalg) x =
-  sem-ana F (λ a → coerce-functor F A (eval ps coalg a)) x
---
--- Guard/Unguard removed: GuardedT was unnecessary.
--- out-μ/in-ν: Lambek isomorphisms added for full fusion in observation primitives.
---
--- Hylo: fused cata ∘ ana (CORRECT BY CONSTRUCTION)
--- OCP-0003: Based on Fuse, no TerminatesOn needed - structural recursion on μG
-eval ps (Hylo {F} {G} wfF wfG alg coalg) x =
-  let alg-set = λ fb → eval ps alg (coerce-functor⁻¹ F _ fb)
-      coalg-set = λ μg → coerce-functor F (μ-type G) (eval ps coalg μg)
+eval′ (In {F} _ _) x = sem-In F (coerce-functor F (μ-type F) x)
+eval′ (out-μ {F} wf) x = coerce-functor⁻¹ F (μ-type F) (sem-Out wf x)
+eval′ (Cata {F} wf alg) x =
+  sem-cata wf (λ fa → eval′ alg (coerce-functor⁻¹ F _ fa)) x
+eval′ (Para {F} wf alg) x =
+  sem-para wf (λ fx → eval′ alg (coerce-functor⁻¹ F _ fx)) x
+eval′ (Out {F} wf) x = coerce-functor⁻¹ F (ν-type F) (sem-CoOut wf x)
+eval′ (in-ν {F} _ _) x = sem-CoIn F (coerce-functor F (ν-type F) x)
+eval′ (Ana {F} wf {A} coalg) x =
+  sem-ana F (λ a → coerce-functor F A (eval′ coalg a)) x
+eval′ (Hylo {F} {G} wfF wfG alg coalg) x =
+  let alg-set = λ fb → eval′ alg (coerce-functor⁻¹ F _ fb)
+      coalg-set = λ μg → coerce-functor F (μ-type G) (eval′ coalg μg)
   in sem-hylo F G wfF wfG alg-set coalg-set x
---
--- Fuse: μ-anchored fusion (correct by construction)
--- OCP-0003: Structural recursion on μG, no termination witness needed
-eval ps (Fuse {F} {G} wfF wfG alg transform) x =
+eval′ (Fuse {F} {G} wfF wfG alg transform) x =
   sem-fuse F G wfF wfG
-    (λ fb → eval ps alg (coerce-functor⁻¹ F _ fb))
-    (λ gx → coerce-functor F _ (eval ps transform (coerce-functor⁻¹ G _ gx)))
+    (λ fb → eval′ alg (coerce-functor⁻¹ F _ fb))
+    (λ gx → coerce-functor F _ (eval′ transform (coerce-functor⁻¹ G _ gx)))
     x
 
--- Effect lifting (D032)
--- arr : (A ⇒ B) → Eff A B
--- Takes a pure function and returns it as an effectful function
--- Both have the same plain function representation.
--- (applyEff removed in plan 0.5.1; `apply {k = effK}` handles effectful
--- application uniformly — same code as pure apply.)
-eval ps arr f             = f
+-- Effect lifting (D032): arr is the identity at runtime; semantics
+-- is too.
+eval′ arr f             = f
 
 -- Memory management (no-op in semantics)
-eval ps (free-heap _) x   = x
+eval′ (free-heap _) x   = x
 
--- Primitives (opaque operations)
-eval ps (SigOp name) x     = evalSigOp ps name x
-
-------------------------------------------------------------------------
--- Backward-compatible eval (using default primitive semantics)
-------------------------------------------------------------------------
-
--- | Postulated primitive semantics for backward compatibility
---
--- This allows existing proofs to use eval without passing SigOpSem.
--- New code should prefer the parameterized version.
---
-postulate
-  defaultEvalSigOp : ∀ {A B} → String → ⟦ A ⟧ → ⟦ B ⟧
-
-defaultSigOpSem : SigOpSem
-defaultSigOpSem = record { evalSigOp = defaultEvalSigOp }
-
--- | Non-parameterized eval (backward compatible)
---
--- Uses default primitive semantics.
--- Prefer the parameterized version for new code.
---
-eval′ : ∀ {A B} → IR A B → ⟦ A ⟧ → ⟦ B ⟧
-eval′ = eval defaultSigOpSem
+-- Signature operations: the `SigOpInfo` carries the semantic
+-- function (`semI` for the frontend-level semantics used here).
+eval′ (SigOp si) x      = semI si x
 
 ------------------------------------------------------------------------
 -- OCP-0003: Recursion Scheme Semantics

@@ -25,7 +25,7 @@ open import Once.CCC.FrameSemantics using (FrameSemantics)
 open import Once.CCC.Machine.SMCore hiding (AllocMode; Stack; Heap)
 open import Once.Semantics.Machine using (⟦_⟧)
 open import Once.CCC.IR
-open import Once.CCC.Eval using (SigOpSem; eval)
+open import Once.CCC.Eval using (eval)
 open import Once.CCC.IR.Size
 open import Once.CCC.IR.Stack
 open import Once.CCC.Machine.Allocation hiding (AllocMode)
@@ -40,7 +40,7 @@ import Once.ProofObligation as PO
 -- Compose implementation
 ------------------------------------------------------------------------
 
-module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : SigOpSem) where
+module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) where
   open FrontierInvariant {FS}
   open MemOps {FS}
   open WriteOps {FS}
@@ -54,7 +54,7 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : Sig
   open SMP.TraceComposition {FS}
 
   open import Once.CCC.Machine.ClosureWellFormed
-  open ClosureWellFormedDef {FS} program-bound sigOpSem
+  open ClosureWellFormedDef {FS} program-bound
     using (ValidAtWF; IRResultAWF; RecDispatcherWF; validityWF-mem-only;
            validityWF-frontier-advance; validityWF-mem-preserved;
            validityWF-with-bf-transfer)
@@ -246,11 +246,11 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : Sig
 
       -- Transfer validity from alloc₁ to alloc₁-reclaimed
       -- These allocs have: same next-slot, same frame (by frame-preserved), same heap (by heap-eq-f)
-      inter-valid-reclaimed : ValidAtWF mMid alloc₁-reclaimed (eval sigOpSem f x) inter-loc s₁
+      inter-valid-reclaimed : ValidAtWF mMid alloc₁-reclaimed (eval f x) inter-loc s₁
       inter-valid-reclaimed =
         let bf-transfer = frontier-same-heap alloc₁ alloc₁-reclaimed
                             (IRResultAWF.frame-preserved result-f) refl heap-eq-f
-        in validityWF-with-bf-transfer (eval sigOpSem f x) inter-loc s₁
+        in validityWF-with-bf-transfer (eval f x) inter-loc s₁
              alloc₁ alloc₁-reclaimed bf-transfer
              (IRResultAWF.result-valid-wf result-f)
 
@@ -259,13 +259,13 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : Sig
       rdi-eq₁ : readReg (regs s₁') Input ≡ inter-loc
       rdi-eq₁ = writeReg-same (regs s₁) Input inter-loc
 
-      inter-valid-wf' : ValidAtWF mMid alloc₁-reclaimed (eval sigOpSem f x) inter-loc s₁'
-      inter-valid-wf' = validityWF-mem-only (eval sigOpSem f x) inter-loc s₁ s₁' refl refl inter-valid-reclaimed
+      inter-valid-wf' : ValidAtWF mMid alloc₁-reclaimed (eval f x) inter-loc s₁'
+      inter-valid-wf' = validityWF-mem-only (eval f x) inter-loc s₁ s₁' refl refl inter-valid-reclaimed
 
       ------------------------------------------------------------------------
       -- Run g via recursive dispatch
       ------------------------------------------------------------------------
-      g-result-pair = rec-wf mMid g (∘-g-smaller f g) (eval sigOpSem f x) inter-loc s₁' alloc₁-reclaimed
+      g-result-pair = rec-wf mMid g (∘-g-smaller f g) (eval f x) inter-loc s₁' alloc₁-reclaimed
                         inter-valid-wf' inter-before-reclaimed not-halted₁ rdi-eq₁
       mOut = proj₁ g-result-pair
       result-g = proj₂ g-result-pair
@@ -303,8 +303,8 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : Sig
       ------------------------------------------------------------------------
       -- Transport proofs from s₂ to s-final
       ------------------------------------------------------------------------
-      result-valid-final : ValidAtWF mOut alloc₂ (eval sigOpSem (g ∘ f) x) result-loc-g s-final
-      result-valid-final = subst (λ st → ValidAtWF mOut alloc₂ (eval sigOpSem (g ∘ f) x) result-loc-g st)
+      result-valid-final : ValidAtWF mOut alloc₂ (eval (g ∘ f) x) result-loc-g s-final
+      result-valid-final = subst (λ st → ValidAtWF mOut alloc₂ (eval (g ∘ f) x) result-loc-g st)
                              (sym s-final-eq) (IRResultAWF.result-valid-wf result-g)
 
       rax-eq-final : readReg (regs s-final) Output ≡ result-loc-g
@@ -340,10 +340,10 @@ module ComposeWFImpl {FS : FrameSemantics} (program-bound : ℕ) (sigOpSem : Sig
       -- Need to transport from s₂ to s-final via s-final-eq
       compose-reclaim-preserves-validity :
         ValidAtWF mOut (record alloc { next-slot = next-slot alloc₂ })
-                  (eval sigOpSem g (eval sigOpSem f x)) (IRResultAWF.result-loc result-g) s-final
+                  (eval g (eval f x)) (IRResultAWF.result-loc result-g) s-final
       compose-reclaim-preserves-validity =
         subst (λ st → ValidAtWF mOut (record alloc { next-slot = next-slot alloc₂ })
-                        (eval sigOpSem g (eval sigOpSem f x)) (IRResultAWF.result-loc result-g) st)
+                        (eval g (eval f x)) (IRResultAWF.result-loc result-g) st)
               (sym s-final-eq)
               (IRResultAWF.reclaim-preserves-validity result-g)
 
