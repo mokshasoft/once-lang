@@ -384,8 +384,6 @@ assemble asmFile objFile = do
 link :: [FilePath] -> FilePath -> IO (Either String FilePath)
 link objFiles output = do
   ld <- maybe "ld" id <$> lookupEnv "LD"
-  -- Entry point `_start` is provided in the emitted asm header; `ld`
-  -- picks it up automatically via its default entry symbol.
   let args = objFiles ++ ["-o", output]
   result <- try $ readProcessWithExitCode ld args ""
   case result of
