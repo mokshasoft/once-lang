@@ -230,7 +230,9 @@ d_showInstr_30 v0
         -> coe ("    nop" :: Data.Text.Text)
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_ud2_90
         -> coe ("    ud2" :: Data.Text.Text)
-      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_92 v1
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_syscall_92
+        -> coe ("    syscall" :: Data.Text.Text)
+      MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Syntax.C_label_94 v1
         -> coe
              MAlonzo.Code.Data.String.Base.d__'43''43'__20
              (".L" :: Data.Text.Text)

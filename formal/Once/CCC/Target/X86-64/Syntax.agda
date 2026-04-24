@@ -127,6 +127,8 @@ data Instr : Set where
   -- Special
   nop    : Instr                        -- no operation
   ud2    : Instr                        -- undefined instruction (trap for unreachable)
+  syscall : Instr                       -- Linux syscall (syscall number in rax,
+                                        -- args in rdi, rsi, rdx, r10, r8, r9)
 
   -- Label (pseudo-instruction for assembly)
   label  : ℕ → Instr                    -- label n:

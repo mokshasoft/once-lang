@@ -68,7 +68,7 @@ d_x86'45'64'45'irToAsm_18 ::
 d_x86'45'64'45'irToAsm_18 v0 v1 v2
   = coe
       MAlonzo.Code.Once.CCC.Target.X86Z45Z64.Emit.d_programToText_82
-      (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Compile.d_compile'45'ir_248
+      (MAlonzo.Code.Once.CCC.Target.X86Z45Z64.CodeGen.Compile.d_compile'45'ir_280
          (coe v0) (coe v1) (coe v2))
 -- Once.Target.X86-64.x86-64
 d_x86'45'64_22 :: MAlonzo.Code.Once.Target.T_Target_4

@@ -45,34 +45,34 @@ data T_Instr_60
     C_test_72 T_Operand_52 T_Operand_52 | C_jmp_74 Integer |
     C_je_76 Integer | C_jne_78 Integer | C_call_80 T_Operand_52 |
     C_ret_82 | C_push_84 T_Operand_52 | C_pop_86 T_Reg_10 | C_nop_88 |
-    C_ud2_90 | C_label_92 Integer
+    C_ud2_90 | C_syscall_92 | C_label_94 Integer
 -- Once.CCC.Target.X86-64.Syntax.Program
-d_Program_94 :: ()
-d_Program_94 = erased
+d_Program_96 :: ()
+d_Program_96 = erased
 -- Once.CCC.Target.X86-64.Syntax.Function
-d_Function_96 = ()
-data T_Function_96 = C_mkfun_106 Integer [T_Instr_60]
+d_Function_98 = ()
+data T_Function_98 = C_mkfun_108 Integer [T_Instr_60]
 -- Once.CCC.Target.X86-64.Syntax.Function.name
-d_name_102 :: T_Function_96 -> Integer
-d_name_102 v0
+d_name_104 :: T_Function_98 -> Integer
+d_name_104 v0
   = case coe v0 of
-      C_mkfun_106 v1 v2 -> coe v1
+      C_mkfun_108 v1 v2 -> coe v1
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Syntax.Function.body
-d_body_104 :: T_Function_96 -> [T_Instr_60]
-d_body_104 v0
+d_body_106 :: T_Function_98 -> [T_Instr_60]
+d_body_106 v0
   = case coe v0 of
-      C_mkfun_106 v1 v2 -> coe v2
+      C_mkfun_108 v1 v2 -> coe v2
       _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.CCC.Target.X86-64.Syntax.slot-size
-d_slot'45'size_108 :: Integer
-d_slot'45'size_108 = coe (8 :: Integer)
+d_slot'45'size_110 :: Integer
+d_slot'45'size_110 = coe (8 :: Integer)
 -- Once.CCC.Target.X86-64.Syntax.slots
-d_slots_110 :: Integer -> Integer
-d_slots_110 v0 = coe mulInt (coe v0) (coe d_slot'45'size_108)
+d_slots_112 :: Integer -> Integer
+d_slots_112 v0 = coe mulInt (coe v0) (coe d_slot'45'size_110)
 -- Once.CCC.Target.X86-64.Syntax.instr-consumed-slots
-d_instr'45'consumed'45'slots_114 :: T_Instr_60 -> Integer
-d_instr'45'consumed'45'slots_114 v0
+d_instr'45'consumed'45'slots_116 :: T_Instr_60 -> Integer
+d_instr'45'consumed'45'slots_116 v0
   = let v1 = 0 :: Integer in
     coe
       (case coe v0 of
@@ -85,7 +85,7 @@ d_instr'45'consumed'45'slots_114 v0
                               C_rsp_26
                                 -> coe
                                      MAlonzo.Code.Data.Nat.Base.du__'47'__318 (coe v4)
-                                     (coe d_slot'45'size_108)
+                                     (coe d_slot'45'size_110)
                               _ -> coe (0 :: Integer)
                        _ -> coe (0 :: Integer)
                 _ -> coe v1
@@ -93,28 +93,28 @@ d_instr'45'consumed'45'slots_114 v0
          C_push_84 v2 -> coe (1 :: Integer)
          _ -> coe v1)
 -- Once.CCC.Target.X86-64.Syntax.instrs-consumed-slots
-d_instrs'45'consumed'45'slots_136 :: [T_Instr_60] -> Integer
-d_instrs'45'consumed'45'slots_136
+d_instrs'45'consumed'45'slots_138 :: [T_Instr_60] -> Integer
+d_instrs'45'consumed'45'slots_138
   = coe
       MAlonzo.Code.Data.List.Base.du_foldr_216
       (coe
-         (\ v0 -> addInt (coe d_instr'45'consumed'45'slots_114 (coe v0))))
+         (\ v0 -> addInt (coe d_instr'45'consumed'45'slots_116 (coe v0))))
       (coe (0 :: Integer))
 -- Once.CCC.Target.X86-64.Syntax.fstOffset
-d_fstOffset_142 :: Integer
-d_fstOffset_142 = coe (0 :: Integer)
+d_fstOffset_144 :: Integer
+d_fstOffset_144 = coe (0 :: Integer)
 -- Once.CCC.Target.X86-64.Syntax.sndOffset
-d_sndOffset_144 :: Integer
-d_sndOffset_144 = coe d_slot'45'size_108
+d_sndOffset_146 :: Integer
+d_sndOffset_146 = coe d_slot'45'size_110
 -- Once.CCC.Target.X86-64.Syntax.tagOffset
-d_tagOffset_146 :: Integer
-d_tagOffset_146 = coe (0 :: Integer)
+d_tagOffset_148 :: Integer
+d_tagOffset_148 = coe (0 :: Integer)
 -- Once.CCC.Target.X86-64.Syntax.valueOffset
-d_valueOffset_148 :: Integer
-d_valueOffset_148 = coe d_slot'45'size_108
+d_valueOffset_150 :: Integer
+d_valueOffset_150 = coe d_slot'45'size_110
 -- Once.CCC.Target.X86-64.Syntax.inlTag
-d_inlTag_150 :: Integer
-d_inlTag_150 = coe (0 :: Integer)
+d_inlTag_152 :: Integer
+d_inlTag_152 = coe (0 :: Integer)
 -- Once.CCC.Target.X86-64.Syntax.inrTag
-d_inrTag_152 :: Integer
-d_inrTag_152 = coe (1 :: Integer)
+d_inrTag_154 :: Integer
+d_inrTag_154 = coe (1 :: Integer)

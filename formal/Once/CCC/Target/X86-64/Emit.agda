@@ -102,6 +102,8 @@ showInstr nop =
   "    nop"
 showInstr ud2 =
   "    ud2"
+showInstr syscall =
+  "    syscall"
 showInstr (label n) =
   ".L" ++ showNat n ++ ":"
 
