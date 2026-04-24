@@ -13,6 +13,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 │   └── 0.2.2-cata-remaining (completed)
 │       └── 0.2.3-positive-invariants (completed)
 │           └── 0.2.4-categorical-layer-0 ← ACTIVE (compiler-side Layer 0 integration)
+│               └── 0.2.4.1-sigop-framework (design — unblocks Layer 0 end-to-end)
 │
 ├── 0.3-frontend-verification-gaps (completed 2026-04-19 — retained for 0.4 context)
 │   └── 0.4-frontend-completeness-and-bridges (planning)
@@ -32,6 +33,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.2.2-cata-remaining` | completed | Kept for 0.2.4 context |
 | `0.2.3-positive-invariants` | completed | Kept for 0.2.4 context |
 | `0.2.4-categorical-layer-0` | active | Compiler Layer 0 integration |
+| `0.2.4.1-sigop-framework` | design | SigOp framework for effectful ops; unblocks Layer 0's end-to-end (exit, print, readline) |
 | `0.3-frontend-verification-gaps` | completed | Kept for 0.4 context |
 | `0.4-frontend-completeness-and-bridges` | planning | T1–T4 (G2 completeness, parse→pretty, grammar conformance, surface-semantics bridges) |
 | `0.4.2-end-to-end-connector` | planning | Depends on 0.4 — composed surface→machine theorem |
