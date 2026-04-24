@@ -1,0 +1,371 @@
+------------------------------------------------------------------------
+-- Theory.Syntax.StrongCCL.CCT3
+--
+-- BCC + initial algebras (μ-types) at the CCT3 level, combining:
+--   - term algebra + CCTB/CCT1 rules from Hardin 1989 strong CCL
+--   - CCT2 coproduct rules from Seely 1984
+--   - μ-type rules from Mendler 1987,
+--     "Recursive types and type constraints in
+--      second-order lambda calculus"
+--
+-- The Mendler1987 layer contributes 3 CCT3 rules:
+--   out-in : Out ∘ In ⟶ id          (β-direction of Lambek iso)
+--   in-out : In ∘ Out ⟶ id          (η-direction)
+--   cata-β : cata alg ∘ In ⟶ alg ∘ fmap (cata alg)
+--
+-- Continues the "categorical-combinator lineage": same term algebra
+-- extended with μ, In, Out, cata, fmap.
+--
+-- PRAGMATIC NOTE ON μ:
+--   Ty has a constructor μ : (Ty → Ty) → Ty. This requires
+--   NO_POSITIVITY_CHECK because the argument type has Ty in negative
+--   position. The alternative — using explicit "functor codes" — gives
+--   up the Systems/CCT3 interface signature (which asks for μ on any
+--   (Obj → Obj), not just coded functors). We accept the positivity
+--   relaxation here at the Syntax level: adequacy (Level 1) does not
+--   need induction on Ty, and Agda's unifier is still consistent on
+--   the particular terms we construct. Meta-theory proofs that DO
+--   induct on Ty may need extra care, but that's a Level-2 concern.
+------------------------------------------------------------------------
+
+{-# OPTIONS --no-positivity-check #-}
+
+module Theory.Syntax.StrongCCL.CCT3 where
+
+open import Relation.Nullary using (¬_)
+
+------------------------------------------------------------------------
+-- Types
+------------------------------------------------------------------------
+
+data Ty : Set where
+  Unit : Ty
+  _×_  : Ty → Ty → Ty
+  _⇒_  : Ty → Ty → Ty
+  Void : Ty
+  _⊎_  : Ty → Ty → Ty
+  μ    : (Ty → Ty) → Ty
+
+infixr 7 _×_
+infixr 6 _⇒_
+infixr 5 _⊎_
+
+------------------------------------------------------------------------
+-- Terms
+------------------------------------------------------------------------
+
+data Term : Ty → Ty → Set where
+  id       : ∀ {A}     → Term A A
+  _∘_      : ∀ {A B C} → Term B C → Term A B → Term A C
+  terminal : ∀ {A}     → Term A Unit
+  fst      : ∀ {A B}   → Term (A × B) A
+  snd      : ∀ {A B}   → Term (A × B) B
+  ⟨_,_⟩    : ∀ {A B C} → Term C A → Term C B → Term C (A × B)
+  curry    : ∀ {A B C} → Term (A × B) C → Term A (B ⇒ C)
+  apply    : ∀ {A B}   → Term ((A ⇒ B) × A) B
+  initial  : ∀ {A}     → Term Void A
+  inl      : ∀ {A B}   → Term A (A ⊎ B)
+  inr      : ∀ {A B}   → Term B (A ⊎ B)
+  [_,_]    : ∀ {A B C} → Term A C → Term B C → Term (A ⊎ B) C
+  In       : ∀ {F : Ty → Ty} → Term (F (μ F)) (μ F)
+  Out      : ∀ {F : Ty → Ty} → Term (μ F) (F (μ F))
+  cata     : ∀ {F : Ty → Ty} {A} → Term (F A) A → Term (μ F) A
+  fmap     : ∀ {F : Ty → Ty} {A B} → Term A B → Term (F A) (F B)
+
+infixr 9 _∘_
+infix  4 ⟨_,_⟩
+infix  4 [_,_]
+
+------------------------------------------------------------------------
+-- β/η/s rules — inherited from PARAMETERIZED modules.
+------------------------------------------------------------------------
+
+import Theory.Syntax.StrongCCL.BaseRules.CCTB as CCTB-B
+open CCTB-B.Rules Ty Unit _×_ Term id _∘_ terminal fst snd ⟨_,_⟩ public
+  renaming (_⟶β_ to _⟶β-CCTB_; _⟶s_ to _⟶s-CCTB_)
+
+import Theory.Syntax.StrongCCL.BaseRules.CCT1 as CCT1-B
+open CCT1-B.Rules Ty Unit _×_ _⇒_ Term id _∘_ fst snd ⟨_,_⟩ curry apply public
+  renaming (_⟶β_ to _⟶β-CCT1_; _⟶η_ to _⟶η-CCT1_)
+
+import Theory.Syntax.StrongCCL.BaseRules.CCT2 as CCT2-B
+open CCT2-B.Rules Ty Unit _×_ _⇒_ Void _⊎_
+                  Term id _∘_ initial inl inr [_,_] public
+  renaming (_⟶β_ to _⟶β-CCT2_; _⟶s_ to _⟶s-CCT2_)
+
+import Theory.Syntax.StrongCCL.BaseRules.CCT3 as CCT3-B
+open CCT3-B.Rules Ty Term id _∘_ μ In Out cata fmap public
+  renaming (_⟶β_ to _⟶β-CCT3_)
+
+------------------------------------------------------------------------
+-- Union of β-rules.
+------------------------------------------------------------------------
+
+data _⟶β_ : ∀ {A B} → Term A B → Term A B → Set where
+  from-CCTB-β : ∀ {A B} {f g : Term A B} → f ⟶β-CCTB g → f ⟶β g
+  from-CCT1-β : ∀ {A B} {f g : Term A B} → f ⟶β-CCT1 g → f ⟶β g
+  from-CCT2-β : ∀ {A B} {f g : Term A B} → f ⟶β-CCT2 g → f ⟶β g
+  from-CCT3-β : ∀ {A B} {f g : Term A B} → f ⟶β-CCT3 g → f ⟶β g
+
+infix 4 _⟶β_
+
+------------------------------------------------------------------------
+-- Union of structural rules.
+------------------------------------------------------------------------
+
+data _⟶s_ : ∀ {A B} → Term A B → Term A B → Set where
+  from-CCTB-s : ∀ {A B} {f g : Term A B} → f ⟶s-CCTB g → f ⟶s g
+  from-CCT2-s : ∀ {A B} {f g : Term A B} → f ⟶s-CCT2 g → f ⟶s g
+
+infix 4 _⟶s_
+
+------------------------------------------------------------------------
+-- Full reduction.
+------------------------------------------------------------------------
+
+data _⟶βη-rules_ : ∀ {A B} → Term A B → Term A B → Set where
+  β-rule : ∀ {A B} {f g : Term A B} → f ⟶β g       → f ⟶βη-rules g
+  η-rule : ∀ {A B} {f g : Term A B} → f ⟶η-CCT1 g  → f ⟶βη-rules g
+  s-rule : ∀ {A B} {f g : Term A B} → f ⟶s g       → f ⟶βη-rules g
+
+infix 4 _⟶βη-rules_
+
+open import Theory.Syntax.CongruenceClosure
+module βη-Closure =
+  CCT3-Close Ty _×_ _⇒_ _⊎_ μ Term _∘_ ⟨_,_⟩ curry [_,_] cata fmap
+             _⟶βη-rules_
+
+_⟶βη_ : ∀ {A B} → Term A B → Term A B → Set
+_⟶βη_ = βη-Closure.Closed
+
+infix 4 _⟶βη_
+
+data _⟶βη*_ : ∀ {A B} → Term A B → Term A B → Set where
+  done : ∀ {A B} {t : Term A B} → t ⟶βη* t
+  _∷_  : ∀ {A B} {t u v : Term A B} → t ⟶βη u → u ⟶βη* v → t ⟶βη* v
+
+infix 4 _⟶βη*_
+
+IsβηNormalForm : ∀ {A B} → Term A B → Set
+IsβηNormalForm {A} {B} t = ∀ {u : Term A B} → ¬ (t ⟶βη u)
+
+------------------------------------------------------------------------
+-- Convertibility.
+------------------------------------------------------------------------
+
+import Theory.Syntax.Convertibility as Conv-Mod
+module Conv = Conv-Mod.Indexed Term _⟶βη_
+open Conv public
+  using (_≈_)
+  renaming ( ≈-refl  to ≈-refl
+           ; ≈-step  to ≈-step
+           ; ≈-back  to ≈-back
+           ; ≈-sym   to ≈-sym
+           ; ≈-trans to ≈-trans
+           ; step-to-≈ to ⟶-to-≈
+           ; back-to-≈ to ⟵-to-≈
+           )
+
+infix 4 _≈_
+
+------------------------------------------------------------------------
+-- Congruences of _≈_.
+------------------------------------------------------------------------
+
+∘-≈-congˡ : ∀ {A B C} {f f' : Term B C} {g : Term A B} →
+            f ≈ f' → (f ∘ g) ≈ (f' ∘ g)
+∘-≈-congˡ Conv.≈-refl        = Conv.≈-refl
+∘-≈-congˡ (Conv.≈-step r e)  =
+  Conv.≈-step (βη-Closure.∘-congˡ r) (∘-≈-congˡ e)
+∘-≈-congˡ (Conv.≈-back r e)  =
+  Conv.≈-back (βη-Closure.∘-congˡ r) (∘-≈-congˡ e)
+
+∘-≈-congʳ : ∀ {A B C} {f : Term B C} {g g' : Term A B} →
+            g ≈ g' → (f ∘ g) ≈ (f ∘ g')
+∘-≈-congʳ Conv.≈-refl        = Conv.≈-refl
+∘-≈-congʳ (Conv.≈-step r e)  =
+  Conv.≈-step (βη-Closure.∘-congʳ r) (∘-≈-congʳ e)
+∘-≈-congʳ (Conv.≈-back r e)  =
+  Conv.≈-back (βη-Closure.∘-congʳ r) (∘-≈-congʳ e)
+
+∘-≈-cong : ∀ {A B C} {f f' : Term B C} {g g' : Term A B} →
+           f ≈ f' → g ≈ g' → (f ∘ g) ≈ (f' ∘ g')
+∘-≈-cong f≈ g≈ = ≈-trans (∘-≈-congˡ f≈) (∘-≈-congʳ g≈)
+
+⟨,⟩-≈-congˡ : ∀ {A B C} {f f' : Term C A} {g : Term C B} →
+              f ≈ f' → ⟨ f , g ⟩ ≈ ⟨ f' , g ⟩
+⟨,⟩-≈-congˡ Conv.≈-refl        = Conv.≈-refl
+⟨,⟩-≈-congˡ (Conv.≈-step r e)  =
+  Conv.≈-step (βη-Closure.⟨,⟩-congˡ r) (⟨,⟩-≈-congˡ e)
+⟨,⟩-≈-congˡ (Conv.≈-back r e)  =
+  Conv.≈-back (βη-Closure.⟨,⟩-congˡ r) (⟨,⟩-≈-congˡ e)
+
+⟨,⟩-≈-congʳ : ∀ {A B C} {f : Term C A} {g g' : Term C B} →
+              g ≈ g' → ⟨ f , g ⟩ ≈ ⟨ f , g' ⟩
+⟨,⟩-≈-congʳ Conv.≈-refl        = Conv.≈-refl
+⟨,⟩-≈-congʳ (Conv.≈-step r e)  =
+  Conv.≈-step (βη-Closure.⟨,⟩-congʳ r) (⟨,⟩-≈-congʳ e)
+⟨,⟩-≈-congʳ (Conv.≈-back r e)  =
+  Conv.≈-back (βη-Closure.⟨,⟩-congʳ r) (⟨,⟩-≈-congʳ e)
+
+⟨,⟩-≈-cong : ∀ {A B C} {f f' : Term C A} {g g' : Term C B} →
+             f ≈ f' → g ≈ g' → ⟨ f , g ⟩ ≈ ⟨ f' , g' ⟩
+⟨,⟩-≈-cong f≈ g≈ = ≈-trans (⟨,⟩-≈-congˡ f≈) (⟨,⟩-≈-congʳ g≈)
+
+curry-≈-cong : ∀ {A B C} {f f' : Term (A × B) C} →
+               f ≈ f' → curry f ≈ curry f'
+curry-≈-cong Conv.≈-refl        = Conv.≈-refl
+curry-≈-cong (Conv.≈-step r e)  =
+  Conv.≈-step (βη-Closure.curry-cong r) (curry-≈-cong e)
+curry-≈-cong (Conv.≈-back r e)  =
+  Conv.≈-back (βη-Closure.curry-cong r) (curry-≈-cong e)
+
+[,]-≈-congˡ : ∀ {A B C} {f f' : Term A C} {g : Term B C} →
+              f ≈ f' → [ f , g ] ≈ [ f' , g ]
+[,]-≈-congˡ Conv.≈-refl        = Conv.≈-refl
+[,]-≈-congˡ (Conv.≈-step r e)  =
+  Conv.≈-step (βη-Closure.[,]-congˡ r) ([,]-≈-congˡ e)
+[,]-≈-congˡ (Conv.≈-back r e)  =
+  Conv.≈-back (βη-Closure.[,]-congˡ r) ([,]-≈-congˡ e)
+
+[,]-≈-congʳ : ∀ {A B C} {f : Term A C} {g g' : Term B C} →
+              g ≈ g' → [ f , g ] ≈ [ f , g' ]
+[,]-≈-congʳ Conv.≈-refl        = Conv.≈-refl
+[,]-≈-congʳ (Conv.≈-step r e)  =
+  Conv.≈-step (βη-Closure.[,]-congʳ r) ([,]-≈-congʳ e)
+[,]-≈-congʳ (Conv.≈-back r e)  =
+  Conv.≈-back (βη-Closure.[,]-congʳ r) ([,]-≈-congʳ e)
+
+[,]-≈-cong : ∀ {A B C} {f f' : Term A C} {g g' : Term B C} →
+             f ≈ f' → g ≈ g' → [ f , g ] ≈ [ f' , g' ]
+[,]-≈-cong f≈ g≈ = ≈-trans ([,]-≈-congˡ f≈) ([,]-≈-congʳ g≈)
+
+cata-≈-cong : ∀ {F : Ty → Ty} {A} {alg alg' : Term (F A) A} →
+              alg ≈ alg' → cata {F} alg ≈ cata {F} alg'
+cata-≈-cong Conv.≈-refl        = Conv.≈-refl
+cata-≈-cong (Conv.≈-step r e)  =
+  Conv.≈-step (βη-Closure.cata-cong r) (cata-≈-cong e)
+cata-≈-cong (Conv.≈-back r e)  =
+  Conv.≈-back (βη-Closure.cata-cong r) (cata-≈-cong e)
+
+------------------------------------------------------------------------
+-- Canonical structures.
+------------------------------------------------------------------------
+
+open import Theory.Systems.CCTB using (CCTBStructure)
+open import Theory.Systems.CCT1 using (CCT1Structure)
+open import Theory.Systems.CCT2 using (CCT2Structure)
+open import Theory.Systems.CCT3 using (CCT3Structure)
+
+private
+  cctb-β≈ : ∀ {A B} {f g : Term A B} → f ⟶β-CCTB g → f ≈ g
+  cctb-β≈ r = ⟶-to-≈ (βη-Closure.base (β-rule (from-CCTB-β r)))
+
+  cctb-s≈ : ∀ {A B} {f g : Term A B} → f ⟶s-CCTB g → f ≈ g
+  cctb-s≈ r = ⟶-to-≈ (βη-Closure.base (s-rule (from-CCTB-s r)))
+
+  cct1-β≈ : ∀ {A B} {f g : Term A B} → f ⟶β-CCT1 g → f ≈ g
+  cct1-β≈ r = ⟶-to-≈ (βη-Closure.base (β-rule (from-CCT1-β r)))
+
+  cct1-η≈ : ∀ {A B} {f g : Term A B} → f ⟶η-CCT1 g → f ≈ g
+  cct1-η≈ r = ⟶-to-≈ (βη-Closure.base (η-rule r))
+
+  cct2-β≈ : ∀ {A B} {f g : Term A B} → f ⟶β-CCT2 g → f ≈ g
+  cct2-β≈ r = ⟶-to-≈ (βη-Closure.base (β-rule (from-CCT2-β r)))
+
+  cct2-s≈ : ∀ {A B} {f g : Term A B} → f ⟶s-CCT2 g → f ≈ g
+  cct2-s≈ r = ⟶-to-≈ (βη-Closure.base (s-rule (from-CCT2-s r)))
+
+  cct3-β≈ : ∀ {A B} {f g : Term A B} → f ⟶β-CCT3 g → f ≈ g
+  cct3-β≈ r = ⟶-to-≈ (βη-Closure.base (β-rule (from-CCT3-β r)))
+
+canonical-base : CCTBStructure
+canonical-base = record
+  { Obj          = Ty
+  ; Hom          = Term
+  ; id           = id
+  ; _∘_          = _∘_
+  ; Unit         = Unit
+  ; terminal     = terminal
+  ; _×_          = _×_
+  ; fst          = fst
+  ; snd          = snd
+  ; ⟨_,_⟩        = ⟨_,_⟩
+  ; _≈_          = _≈_
+  ; ≈-refl       = ≈-refl
+  ; ≈-sym        = ≈-sym
+  ; ≈-trans      = ≈-trans
+  ; ∘-cong       = ∘-≈-cong
+  ; ⟨,⟩-cong     = ⟨,⟩-≈-cong
+  ; id-left      = cctb-β≈ id-left
+  ; id-right     = cctb-β≈ id-right
+  ; assoc        = cctb-s≈ assoc
+  ; term-unique  = cctb-s≈ term-unique
+  ; fst-pair     = cctb-β≈ fst-pair
+  ; snd-pair     = cctb-β≈ snd-pair
+  ; eta-pair     = cctb-β≈ eta-pair
+  ; eta-pair-gen = cctb-s≈ eta-pair-gen
+  ; pair-dist    = cctb-s≈ pair-dist
+  }
+
+canonical-ccc : CCT1Structure
+canonical-ccc = record
+  { base          = canonical-base
+  ; _⇒_           = _⇒_
+  ; curry         = curry
+  ; apply         = apply
+  ; curry-cong    = curry-≈-cong
+  ; curry-β       = cct1-β≈ curry-β
+  ; curry-η       = cct1-η≈ curry-η
+  ; curry-compose = cct1-η≈ curry-compose
+  ; curry-apply   = cct1-η≈ curry-apply
+  }
+
+initial-unique-≈ : ∀ {A} {f g : Term Void A} → f ≈ g
+initial-unique-≈ =
+  ≈-trans (cct2-s≈ initial-unique) (≈-sym (cct2-s≈ initial-unique))
+
+canonical-bcc : CCT2Structure
+canonical-bcc = record
+  { ccc            = canonical-ccc
+  ; Void           = Void
+  ; initial        = initial
+  ; _⊎_            = _⊎_
+  ; inl            = inl
+  ; inr            = inr
+  ; [_,_]          = [_,_]
+  ; [,]-cong       = [,]-≈-cong
+  ; initial-unique = initial-unique-≈
+  ; case-inl       = cct2-β≈ case-inl
+  ; case-inr       = cct2-β≈ case-inr
+  ; eta-case       = cct2-β≈ eta-case
+  ; eta-case-gen   = cct2-s≈ eta-case-gen
+  ; case-dist      = cct2-s≈ case-dist
+  }
+
+canonical : CCT3Structure
+canonical = record
+  { bcc       = canonical-bcc
+  ; μ         = μ
+  ; In        = In
+  ; Out       = Out
+  ; cata      = cata
+  ; fmap      = fmap
+  ; cata-cong = cata-≈-cong
+  ; out-in    = cct3-β≈ out-in
+  ; in-out    = cct3-β≈ in-out
+  ; cata-β    = cct3-β≈ cata-β
+  }
+
+------------------------------------------------------------------------
+-- Canonical Reducible carrier.
+------------------------------------------------------------------------
+
+open import Theory.Syntax.Reducible using (Reducible)
+
+canonical-reducible : Reducible Ty Term
+canonical-reducible = record
+  { _⟶_          = _⟶βη_
+  ; _⟶*_         = _⟶βη*_
+  ; IsNormalForm = IsβηNormalForm
+  }
