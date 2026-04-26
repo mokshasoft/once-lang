@@ -53,37 +53,25 @@ open import Once.Parser.Type using (parseType)
 -- | Convert a grammar-level type to an internal type.
 -- Fails if the grammar type uses `TVar`, since user-written types
 -- are not allowed to contain free type variables.
--- The inner Maybe×Maybe combinations are enumerated rather than going
--- through a `maybe-pair` helper, because downstream proofs
--- (`gtypeToType-typeToGType` etc.) pattern-match on the inner Maybes
--- and need the `nothing` branches to reduce to `nothing` definitionally.
 gtypeToType : GType → Maybe Type
-gtypeToType G.TUnit        = just T.Unit
-gtypeToType G.TVoid        = just T.Void
-gtypeToType G.TInt         = just T.Int
-gtypeToType G.TFloat       = just T.Float
-gtypeToType G.TBuffer      = just T.Buffer
-gtypeToType G.TString      = just T.Str
+gtypeToType G.TUnit   = just T.Unit
+gtypeToType G.TVoid   = just T.Void
+gtypeToType G.TInt    = just T.Int
+gtypeToType G.TFloat  = just T.Float
+gtypeToType G.TBuffer = just T.Buffer
+gtypeToType G.TString = just T.Str
 gtypeToType (A G.⇒[ q ] B) with gtypeToType A | gtypeToType B
 ... | just A' | just B' = just (A' T.⇒[ T.mk-kind q T.pure ] B')
-... | just _  | nothing = nothing
-... | nothing | just _  = nothing
-... | nothing | nothing = nothing
+... | _       | _       = nothing
 gtypeToType (A G.⊗ B) with gtypeToType A | gtypeToType B
 ... | just A' | just B' = just (A' T.* B')
-... | just _  | nothing = nothing
-... | nothing | just _  = nothing
-... | nothing | nothing = nothing
+... | _       | _       = nothing
 gtypeToType (A G.⊕ B) with gtypeToType A | gtypeToType B
 ... | just A' | just B' = just (A' T.+ B')
-... | just _  | nothing = nothing
-... | nothing | just _  = nothing
-... | nothing | nothing = nothing
+... | _       | _       = nothing
 gtypeToType (G.TEff A B) with gtypeToType A | gtypeToType B
 ... | just A' | just B' = just (A' T.⇒[ T.mk-kind T.Many T.eff ] B')
-... | just _  | nothing = nothing
-... | nothing | just _  = nothing
-... | nothing | nothing = nothing
+... | _       | _       = nothing
 gtypeToType (G.TVar _) = nothing
 
 ------------------------------------------------------------------------
@@ -101,24 +89,16 @@ typeToGType T.Buffer = just G.TBuffer
 typeToGType T.Str    = just G.TString
 typeToGType (A T.⇒[ T.mk-kind q T.pure ] B) with typeToGType A | typeToGType B
 ... | just A' | just B' = just (A' G.⇒[ q ] B')
-... | just _  | nothing = nothing
-... | nothing | just _  = nothing
-... | nothing | nothing = nothing
+... | _       | _       = nothing
 typeToGType (A T.* B) with typeToGType A | typeToGType B
 ... | just A' | just B' = just (A' G.⊗ B')
-... | just _  | nothing = nothing
-... | nothing | just _  = nothing
-... | nothing | nothing = nothing
+... | _       | _       = nothing
 typeToGType (A T.+ B) with typeToGType A | typeToGType B
 ... | just A' | just B' = just (A' G.⊕ B')
-... | just _  | nothing = nothing
-... | nothing | just _  = nothing
-... | nothing | nothing = nothing
+... | _       | _       = nothing
 typeToGType (A T.⇒[ T.mk-kind T.Many T.eff ] B) with typeToGType A | typeToGType B
 ... | just A' | just B' = just (G.TEff A' B')
-... | just _  | nothing = nothing
-... | nothing | just _  = nothing
-... | nothing | nothing = nothing
+... | _       | _       = nothing
 -- Degenerate kinds: eff + Zero/One. Grammar has no form for these.
 typeToGType (_ T.⇒[ T.mk-kind T.Zero T.eff ] _) = nothing
 typeToGType (_ T.⇒[ T.mk-kind T.One T.eff ] _) = nothing
