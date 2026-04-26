@@ -228,6 +228,30 @@ postulates-grep:
 	@grep -rn "^postulate$$\|^postulate $$" --include="*.agda" Once/ || echo "No postulates found."
 	@grep -rn "^ *postulate$$\|^ *postulate " --include="*.agda" Once/ || true
 
+# Audit surface for `{-# CATCHALL #-}` pragmas (plan 0.9).
+# Each marker silences a CoverageNoExactSplit warning on a deliberate
+# catch-all. Treat this list the way `make postulates-grep` is treated:
+# small, finite, every entry justified.
+.PHONY: catchalls
+catchalls:
+	@echo "Scanning for {-# CATCHALL #-} pragmas..."
+	@grep -rn "{-# CATCHALL #-}" --include="*.agda" Once/ | sort || echo "No CATCHALL pragmas found."
+
+# Census of remaining CoverageNoExactSplit warning sites (plan 0.9
+# discipline backlog — not promoted to error yet). Each site is a
+# catch-all that hasn't been refactored to exhaustive enumeration or
+# explicitly marked CATCHALL. None are in the bug-hiding class
+# (silent state-mutation absorption); those were closed in phases B
+# and D. Run after a fresh build; reads from $(CENSUS_LOG).
+CENSUS_LOG ?= /tmp/once-exact-split-census.log
+.PHONY: exact-split-census
+exact-split-census:
+	@echo "Building with --exact-split warnings → $(CENSUS_LOG)..."
+	@$(MAKE) compiler 2>&1 | tee $(CENSUS_LOG) > /dev/null || true
+	@echo "Unique CoverageNoExactSplit sites:"
+	@grep "warning: -W\[no\]CoverageNoExactSplit" $(CENSUS_LOG) | \
+	  sed 's|.*formal/||; s|: warning.*||' | sort -u | tee /dev/stderr | wc -l
+
 # Precise postulate detection using patched Agda (X86-64 CCC: Dispatcher + Refinement + CodeGen)
 .PHONY: postulates-ccc-x86-64
 postulates-ccc-x86-64:

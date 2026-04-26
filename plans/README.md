@@ -9,7 +9,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 ```
 0-ocp3 (active root)
 │
-├── 0.9-exhaustive-semantics (design) ← independent: enforce `--exact-split` project-wide
+├── 0.9-exhaustive-semantics (Phases A-F partial — bug-hiding class closed, see D049; ~85-site discipline backlog remains, error promotion deferred)
 │
 ├── 0.2-cata-postulates (completed — retained for 0.2.4 context)
 │   └── 0.2.2-cata-remaining (completed)
@@ -44,7 +44,7 @@ in `docs/compiler/decision-log.md` for durable records of landed work.
 | `0.6-user-polymorphism-and-strict-parser` | planning | Section A landed; B/C in progress via children |
 | `0.6.1-phase-c-design` | design | Phase C design + classifier migration |
 | `0.7-parser-strictness-relational` | planning | Relational parser + proofs |
-| `0.9-exhaustive-semantics` | design | Enforce `--exact-split` project-wide — no silent catch-alls in semantic functions (discovered via 0.2.4.1 Phase D lea-offset bug) |
+| `0.9-exhaustive-semantics` | partial | `--exact-split` enabled; bug-hiding class closed in `exec-x86` (Phase B) and `instr-consumed-slots` (Phase D). 17 CATCHALLs in DirectSim route to named postulates. ~85 safe-class warnings remain as discipline backlog. **D049** in decision log. Error promotion deferred until backlog clears. |
 
 ## Recently Closed (in git history + decision log)
 

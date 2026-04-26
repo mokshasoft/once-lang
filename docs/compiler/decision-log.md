@@ -3462,3 +3462,190 @@ The rename is purely syntactic. Every type-check, every extracted MAlonzo module
 
 - D001 (Generators as Reserved Words) — the 12 *structural* generators of the CCC; distinct from signature operations.
 - Universal algebra: an "operation" in a multi-sorted signature is exactly what this constructor encodes.
+
+## D049: `--exact-split` for Bug-Hiding Catch-All Class
+
+**Date:** 2026-04-26
+**Plan:** 0.9 (Exhaustive Semantic Case-Splits)
+**Status:** Adopted with scoped enforcement; full project-wide error
+promotion deferred.
+
+### Decision
+
+Enable Agda's `--exact-split` option project-wide via
+`formal/Once.agda-lib`'s `flags:` field. The flag emits a
+`CoverageNoExactSplit` warning whenever a clause's case-tree
+compilation can't preserve definitional equalities — i.e. whenever
+a clause sits as a catch-all relative to a more specific sibling.
+
+For the bug-hiding subset of catch-alls (those whose return type
+matches a state value and that silently absorb unmodeled cases as
+identity / zero / no-op), refactor to either:
+- explicit per-constructor enumeration, or
+- a named postulate the clause delegates to.
+
+For the safe subset of catch-alls (Bool predicates, `Maybe`-
+returning parsers, typed `failure`-returning checkers, ⊤/⊥
+inductive predicates, view-tag-returning classifiers), leave the
+warnings in place as a **discipline backlog** until they're
+addressed file-by-file. Each refactor must verify that downstream
+proofs still build — some catch-alls preserve definitional
+reductions that proofs depend on (see `Once/Type.agda`'s `_≤q_`
+and `Once/Grammar/Convert.agda`'s round-trip lemmas).
+
+`-W error=CoverageNoExactSplit` is **not** flipped on globally yet.
+It will be flipped once the discipline backlog is cleared. At that
+point, every `{-# CATCHALL #-}` pragma becomes a finite, greppable
+audit surface (analogous to `make postulates`), and every new
+catch-all without a pragma becomes a compile error.
+
+### Why
+
+The `lea r9 (rip+disp 4)` codegen bug (plan 0.2.4.1 Phase D, fixed
+in commit f00e8126) was hidden by a single line in
+`Once.CCC.Target.X86-64.DirectSimulation.exec-x86`:
+
+```agda
+exec-x86 _ xs _ = xs    -- catch-all: unmodeled instrs = identity
+```
+
+The function had explicit clauses for ~15 instructions; everything
+else fell through to the no-op catch-all. The abstract semantics
+therefore didn't constrain what `r9` held after `lea r9 …`, and
+no downstream proof could contradict the wrong byte offset. The
+bug was real, the type checker accepted it, `make postulates`
+found nothing, every proof in the `compile-correct` chain
+succeeded.
+
+This was a class of silent under-specification. The mechanism was
+already in the Agda compiler: the `--exact-split` option flags
+exactly these catch-alls. Combined with `{-# CATCHALL #-}` for
+deliberate exceptions, the catch-all surface becomes finite and
+greppable on par with the postulate surface.
+
+### What Was Done
+
+**Phase B (DirectSimulation, 3 targets — X86-64, X86-32, RiscV64).**
+The single `exec-x86 _ xs _ = xs` catch-all was split into per-Instr-
+constructor explicit clauses. Operand-shape catch-alls within
+`mov`/`lea`/`add`/`sub`/`push`/`pop` (which can't be enumerated —
+unbounded `imm n` operand) route to **named postulates**
+(`exec-x86-mov-other`, `exec-x86-lea-other`, etc.) visible in
+`make postulates-grep`. The `lea r9 (rip+disp …)` site that hid
+the original bug now produces an opaque postulated term — not
+silent identity.
+
+The CATCHALL pragma stays on those dispatch clauses (the case-tree
+overlap with explicit clauses is unavoidable given the unbounded
+operand product), but the body is no longer silent identity. 17
+CATCHALLs remain in DirectSim, all routing to postulates.
+
+**Phase C (Optimize.agda).** Zero CATCHALL, zero
+`CoverageNoExactSplit`. `_≟Type_` / `_≟Functor_` / `≟IRH-diag` with-
+blocks extracted to top-level helpers; predicates rewritten via
+`ir-head + dec-to-bool + _≟IRHead_`; views enumerate all 24 IR
+constructors.
+
+**Phase D (per-file sweep).**
+
+| File | Sites before | After | Notes |
+|---|---|---|---|
+| Once/Type.agda | 19 | 0 | Quantity ops keep `Zero op _` to preserve definitional reductions |
+| SMPrimitives | 6 | 0 | All AbstractInstr enumerated |
+| SMCore | 4 | 0 | `writeStackMem-aux` order chosen for proof reduction |
+| WriteOps | 1 | 0 | `(yes refl)` patterns for case-tree exactness |
+| RecTrace | 1 | 0 | Mechanical |
+| TypeCheck/Raw | 2 | 0 | BinOp enumeration |
+| TypeCheck/Elaborate | 33 | 23 | `≟T`/`≟F` and `classifyAppHead` done; deeper `inferElab` Type-shape and `checkElab-RVar` failure-propagation deferred |
+| Grammar/Convert | 8 | 8 | Reverted — round-trip proofs depend on the catch-all reducing definitionally |
+| X86-64/Syntax | 2 | 0 | **`instr-consumed-slots` was the last remaining bug-hiding catch-all** — silently returned 0 stack-slot consumption for unmodeled instructions, same class as the lea-offset bug |
+| Parser modules + ExprBridge | ~46 | ~46 | Mechanical Token-enumeration backlog |
+
+**Phase E (this entry).** Added `make catchalls` Makefile target —
+greps every `{-# CATCHALL #-}` pragma with file:line. Parallels
+`make postulates-grep`. Did NOT flip
+`-W error=CoverageNoExactSplit` to error globally — would block the
+build until the ~85-site discipline backlog is finished.
+
+**Phase F.** This decision log entry plus
+`docs/formal/guides/exhaustive-semantics.md`.
+
+### Bug-Hiding Class: Closed
+
+The motivating bug class — "function returns the same type as some
+state value, and the catch-all silently absorbs unmodeled cases as
+identity/zero/no-op" — is **fully closed across the codebase** as
+of this plan. The two known sites:
+
+1. `exec-x86` in three target simulators (Phase B).
+2. `instr-consumed-slots` in `X86-64/Syntax` (Phase D).
+
+both now require per-constructor explicit clauses. Adding a new
+`Instr` (or `AbstractInstr`) constructor that allocates stack /
+mutates state forces these functions to be updated — compile
+error, not silent under-modeling.
+
+### Discipline Backlog (Safe Catch-Alls)
+
+The remaining ~85 warnings are in safe shape:
+
+- **Bool predicates** with explicit "no" semantics (`isComparisonOp`,
+  parser `Not*` predicates).
+- **Maybe-returning parsers** with explicit "couldn't parse"
+  fallbacks (`parseAllocB`, `parseSignatureB`, view classifiers).
+- **Typed `failure`-returning checkers** (`checkCompose`,
+  `inferElab` shape mismatches).
+- **⊤/⊥ inductive predicates** (already enumerated for `InstrPreservesFrame`-
+  style; `NotDot`/`NotAdd`/etc. are the same shape and just need
+  Token enumeration).
+- **Proof completeness with-blocks** (`complete-cmpWFraw`).
+- **View `*-other` tags** (already done in `Optimize`; same pattern
+  in `Parser/Expr` views).
+
+None of these silently absorb state mutations. Refactoring them is
+hygiene; refactoring them carelessly can break downstream proofs
+(see Convert.agda revert). They should be addressed file-by-file
+with `make compiler` re-run between commits.
+
+### Tooling
+
+- `formal/Once.agda-lib`: `flags: --exact-split`.
+- `make catchalls`: lists every `{-# CATCHALL #-}` pragma.
+- `make postulates-grep`: lists every `postulate`.
+- `make exact-split-census` (new): rebuilds and prints the unique
+  warning sites.
+
+### Lessons
+
+1. **Catch-alls preserve reductions.** `Zero ≤q _ = true` reduces
+   `Zero ≤q q ≡ true` for any variable `q`; fully enumerating the
+   9 cases breaks proofs relying on that reduction. Structure
+   refactors so the special-case branch stays single-clause.
+
+2. **`(yes refl)` patterns.** When `Dec X` is decomposed in a
+   helper, use `(yes refl)` consistently rather than mixing
+   `(yes refl)` with `(yes _)`. The case-tree compiler can't
+   preserve overlap between the two.
+
+3. **`with`-block proofs are brittle.** The Convert.agda revert
+   showed that a function's catch-all and a downstream proof's
+   `with`-block reduction can be tightly coupled — refactoring
+   one without the other breaks the proof. Treat such pairs as a
+   single unit.
+
+4. **Postulate-bodied dispatch.** When operand-shape enumeration
+   is impossible (unbounded `imm n` operand space), routing the
+   catch-all to a named postulate is more honest than silent
+   identity. The CATCHALL pragma stays but the audit surface
+   shifts to `make postulates`.
+
+### See Also
+
+- Plan 0.9 (`plans/0.9-exhaustive-semantics.md`) — the gap-class
+  catalogue. This decision closes class **Catch-all in semantic
+  pattern**; classes A–H remain.
+- D047 (Rename `Prim` to `SigOp`) — vocabulary discipline.
+- The lea-offset bug commit (f00e8126) — the discovery that
+  motivated the plan.
+- `docs/formal/guides/exhaustive-semantics.md` — usage guide for
+  `{-# CATCHALL #-}` and the audit-surface conventions.
