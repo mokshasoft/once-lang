@@ -194,15 +194,59 @@ slots n = n *ℕ slot-size
 ------------------------------------------------------------------------
 
 -- | Stack slots consumed by a single instruction
--- Only counts allocations, not deallocations (for max depth calculation)
-instr-consumed-slots : Instr → ℕ
-instr-consumed-slots (push _) = 1
-instr-consumed-slots (sub dst (imm n)) with dst
-... | reg rsp = n / slot-size  -- sub rsp, n consumes n/8 slots
+-- Only counts allocations, not deallocations (for max depth calculation).
+--
+-- Note: catch-all-free per Plan 0.9. Adding a new Instr constructor
+-- that allocates stack would force this function to be updated
+-- (compile error) — preventing silent under-allocation, the same
+-- class of bug as the lea-offset hiding place fixed in DirectSim.
+
+-- Per-second-operand slot count for `sub <reg> _`. Only `(reg rsp, imm n)`
+-- consumes; everything else is 0.
+sub-rsp-consumed : Reg → Operand → ℕ
+sub-rsp-consumed rsp (imm n) = n / slot-size
   where open import Data.Nat using (_/_)
-... | _ = 0
-instr-consumed-slots (call _) = 1  -- call pushes return address
-instr-consumed-slots _ = 0
+sub-rsp-consumed rsp (reg _) = 0
+sub-rsp-consumed rsp (mem _) = 0
+sub-rsp-consumed rax _ = 0
+sub-rsp-consumed rbx _ = 0
+sub-rsp-consumed rcx _ = 0
+sub-rsp-consumed rdx _ = 0
+sub-rsp-consumed rsi _ = 0
+sub-rsp-consumed rdi _ = 0
+sub-rsp-consumed rbp _ = 0
+sub-rsp-consumed r8  _ = 0
+sub-rsp-consumed r9  _ = 0
+sub-rsp-consumed r10 _ = 0
+sub-rsp-consumed r11 _ = 0
+sub-rsp-consumed r12 _ = 0
+sub-rsp-consumed r13 _ = 0
+sub-rsp-consumed r14 _ = 0
+sub-rsp-consumed r15 _ = 0
+
+instr-consumed-slots : Instr → ℕ
+-- Stack-allocating instructions:
+instr-consumed-slots (push _)         = 1                  -- push allocates 1 slot
+instr-consumed-slots (sub (reg r) o)  = sub-rsp-consumed r o
+instr-consumed-slots (call _)         = 1                  -- call pushes return address
+-- `sub` with non-register destination: not a stack op.
+instr-consumed-slots (sub (mem _) _)  = 0
+instr-consumed-slots (sub (imm _) _)  = 0
+-- All other instructions don't allocate stack.
+instr-consumed-slots (mov _ _)        = 0
+instr-consumed-slots (lea _ _)        = 0
+instr-consumed-slots (add _ _)        = 0
+instr-consumed-slots (cmp _ _)        = 0
+instr-consumed-slots (test _ _)       = 0
+instr-consumed-slots (jmp _)          = 0
+instr-consumed-slots (je _)           = 0
+instr-consumed-slots (jne _)          = 0
+instr-consumed-slots ret              = 0   -- pop, but only counted as allocation
+instr-consumed-slots (pop _)          = 0   -- pop deallocates, not counted
+instr-consumed-slots nop              = 0
+instr-consumed-slots ud2              = 0
+instr-consumed-slots syscall          = 0
+instr-consumed-slots (label _)        = 0
 
 -- | Total stack slots consumed by an instruction sequence
 -- Note: This counts allocations only, not the net change (ignores pop/add/ret)
