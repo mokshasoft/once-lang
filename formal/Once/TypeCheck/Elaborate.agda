@@ -72,22 +72,72 @@ open import Once.Surface.Elaborate as Elab using (elaborate)
 -- Type Equality (Decidable with proof)
 ------------------------------------------------------------------------
 
+-- Helpers for ≟T / ≟F matching-constructor cases (avoid `with`-blocks).
+
+≟F-K-aux : ∀ {A B} → Dec (A ≡ B) → Dec (K A ≡ K B)
+≟F-K-aux (yes refl) = yes refl
+≟F-K-aux (no ¬p)    = no λ { refl → ¬p refl }
+
+≟F-⊕-aux : ∀ {F₁ G₁ F₂ G₂}
+         → Dec (F₁ ≡ F₂) → Dec (G₁ ≡ G₂)
+         → Dec ((F₁ ⊕ G₁) ≡ (F₂ ⊕ G₂))
+≟F-⊕-aux (yes refl) (yes refl) = yes refl
+≟F-⊕-aux (yes refl) (no ¬q)    = no λ { refl → ¬q refl }
+≟F-⊕-aux (no ¬p)    (yes _)    = no λ { refl → ¬p refl }
+≟F-⊕-aux (no ¬p)    (no _)     = no λ { refl → ¬p refl }
+
+≟F-⊗-aux : ∀ {F₁ G₁ F₂ G₂}
+         → Dec (F₁ ≡ F₂) → Dec (G₁ ≡ G₂)
+         → Dec ((F₁ ⊗ G₁) ≡ (F₂ ⊗ G₂))
+≟F-⊗-aux (yes refl) (yes refl) = yes refl
+≟F-⊗-aux (yes refl) (no ¬q)    = no λ { refl → ¬q refl }
+≟F-⊗-aux (no ¬p)    (yes _)    = no λ { refl → ¬p refl }
+≟F-⊗-aux (no ¬p)    (no _)     = no λ { refl → ¬p refl }
+
+≟T-*-aux : ∀ {A₁ B₁ A₂ B₂}
+         → Dec (A₁ ≡ A₂) → Dec (B₁ ≡ B₂)
+         → Dec ((A₁ Once.Type.* B₁) ≡ (A₂ Once.Type.* B₂))
+≟T-*-aux (yes refl) (yes refl) = yes refl
+≟T-*-aux (yes refl) (no ¬q)    = no λ { refl → ¬q refl }
+≟T-*-aux (no ¬p)    (yes _)    = no λ { refl → ¬p refl }
+≟T-*-aux (no ¬p)    (no _)     = no λ { refl → ¬p refl }
+
+≟T-+-aux : ∀ {A₁ B₁ A₂ B₂}
+         → Dec (A₁ ≡ A₂) → Dec (B₁ ≡ B₂)
+         → Dec ((A₁ Once.Type.+ B₁) ≡ (A₂ Once.Type.+ B₂))
+≟T-+-aux (yes refl) (yes refl) = yes refl
+≟T-+-aux (yes refl) (no ¬q)    = no λ { refl → ¬q refl }
+≟T-+-aux (no ¬p)    (yes _)    = no λ { refl → ¬p refl }
+≟T-+-aux (no ¬p)    (no _)     = no λ { refl → ¬p refl }
+
+≟T-⇒-aux : ∀ {A₁ B₁ A₂ B₂ k₁ k₂}
+         → Dec (A₁ ≡ A₂) → Dec (k₁ ≡ k₂) → Dec (B₁ ≡ B₂)
+         → Dec ((A₁ ⇒[ k₁ ] B₁) ≡ (A₂ ⇒[ k₂ ] B₂))
+≟T-⇒-aux (yes refl) (yes refl) (yes refl) = yes refl
+≟T-⇒-aux (yes refl) (yes refl) (no ¬r)    = no λ { refl → ¬r refl }
+≟T-⇒-aux (yes refl) (no ¬k)    (yes _)    = no λ { refl → ¬k refl }
+≟T-⇒-aux (yes refl) (no ¬k)    (no _)     = no λ { refl → ¬k refl }
+≟T-⇒-aux (no ¬p)    (yes _)    (yes _)    = no λ { refl → ¬p refl }
+≟T-⇒-aux (no ¬p)    (yes _)    (no _)     = no λ { refl → ¬p refl }
+≟T-⇒-aux (no ¬p)    (no _)     (yes _)    = no λ { refl → ¬p refl }
+≟T-⇒-aux (no ¬p)    (no _)     (no _)     = no λ { refl → ¬p refl }
+
+≟T-μ-aux : ∀ {F₁ F₂} → Dec (F₁ ≡ F₂) → Dec (μ-type F₁ ≡ μ-type F₂)
+≟T-μ-aux (yes refl) = yes refl
+≟T-μ-aux (no ¬p)    = no λ { refl → ¬p refl }
+
+≟T-ν-aux : ∀ {F₁ F₂} → Dec (F₁ ≡ F₂) → Dec (ν-type F₁ ≡ ν-type F₂)
+≟T-ν-aux (yes refl) = yes refl
+≟T-ν-aux (no ¬p)    = no λ { refl → ¬p refl }
+
 -- | Decidable functor and type equality (mutually recursive)
 mutual
   -- | Decidable functor equality
   _≟F_ : (F G : Functor) → Dec (F ≡ G)
-  K A ≟F K B with A ≟T B
-  ... | yes refl = yes refl
-  ... | no ¬p = no λ { refl → ¬p refl }
+  K A ≟F K B = ≟F-K-aux (A ≟T B)
   Id ≟F Id = yes refl
-  (F₁ ⊕ G₁) ≟F (F₂ ⊕ G₂) with F₁ ≟F F₂ | G₁ ≟F G₂
-  ... | yes refl | yes refl = yes refl
-  ... | no ¬p | _ = no λ { refl → ¬p refl }
-  ... | _ | no ¬q = no λ { refl → ¬q refl }
-  (F₁ ⊗ G₁) ≟F (F₂ ⊗ G₂) with F₁ ≟F F₂ | G₁ ≟F G₂
-  ... | yes refl | yes refl = yes refl
-  ... | no ¬p | _ = no λ { refl → ¬p refl }
-  ... | _ | no ¬q = no λ { refl → ¬q refl }
+  (F₁ ⊕ G₁) ≟F (F₂ ⊕ G₂) = ≟F-⊕-aux (F₁ ≟F F₂) (G₁ ≟F G₂)
+  (F₁ ⊗ G₁) ≟F (F₂ ⊗ G₂) = ≟F-⊗-aux (F₁ ≟F F₂) (G₁ ≟F G₂)
   -- Mismatched constructors
   K _ ≟F Id = no λ ()
   K _ ≟F (_ ⊕ _) = no λ ()
@@ -110,19 +160,9 @@ mutual
   Float ≟T Float = yes refl
   Str ≟T Str = yes refl
   Buffer ≟T Buffer = yes refl
-  (A₁ Once.Type.* B₁) ≟T (A₂ Once.Type.* B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-  ... | yes refl | yes refl = yes refl
-  ... | no ¬p | _ = no λ { refl → ¬p refl }
-  ... | _ | no ¬q = no λ { refl → ¬q refl }
-  (A₁ Once.Type.+ B₁) ≟T (A₂ Once.Type.+ B₂) with A₁ ≟T A₂ | B₁ ≟T B₂
-  ... | yes refl | yes refl = yes refl
-  ... | no ¬p | _ = no λ { refl → ¬p refl }
-  ... | _ | no ¬q = no λ { refl → ¬q refl }
-  (A₁ ⇒[ k₁ ] B₁) ≟T (A₂ ⇒[ k₂ ] B₂) with A₁ ≟T A₂ | k₁ ≟k k₂ | B₁ ≟T B₂
-  ... | yes refl | yes refl | yes refl = yes refl
-  ... | no ¬p | _ | _ = no λ { refl → ¬p refl }
-  ... | _ | no ¬k | _ = no λ { refl → ¬k refl }
-  ... | _ | _ | no ¬r = no λ { refl → ¬r refl }
+  (A₁ Once.Type.* B₁) ≟T (A₂ Once.Type.* B₂) = ≟T-*-aux (A₁ ≟T A₂) (B₁ ≟T B₂)
+  (A₁ Once.Type.+ B₁) ≟T (A₂ Once.Type.+ B₂) = ≟T-+-aux (A₁ ≟T A₂) (B₁ ≟T B₂)
+  (A₁ ⇒[ k₁ ] B₁) ≟T (A₂ ⇒[ k₂ ] B₂) = ≟T-⇒-aux (A₁ ≟T A₂) (k₁ ≟k k₂) (B₁ ≟T B₂)
   -- OCP-0003: Fix removed
   -- TVar removed from Type; now in PolyType (see Once.Type)
   -- All other combinations are unequal
@@ -200,12 +240,8 @@ mutual
   (_ ⇒[ _ ] _) ≟T (_ Once.Type.+ _) = no λ ()
   -- TVar removed from Type; now in PolyType (see Once.Type)
   -- OCP-0003: μ-type and ν-type cases
-  (μ-type F₁) ≟T (μ-type F₂) with F₁ ≟F F₂
-  ... | yes refl = yes refl
-  ... | no ¬p = no λ { refl → ¬p refl }
-  (ν-type F₁) ≟T (ν-type F₂) with F₁ ≟F F₂
-  ... | yes refl = yes refl
-  ... | no ¬p = no λ { refl → ¬p refl }
+  (μ-type F₁) ≟T (μ-type F₂) = ≟T-μ-aux (F₁ ≟F F₂)
+  (ν-type F₁) ≟T (ν-type F₂) = ≟T-ν-aux (F₁ ≟F F₂)
   μ-type _ ≟T Unit = no λ ()
   μ-type _ ≟T Void = no λ ()
   μ-type _ ≟T Int = no λ ()
@@ -519,8 +555,19 @@ spineOf : RawExpr → AppSpine
 spineOf e = go e []
   where
     go : RawExpr → List RawExpr → AppSpine
-    go (Raw.RApp f x) args = go f (x ∷ args)
-    go other          args = mkSpine other args
+    go (Raw.RApp f x)        args = go f (x ∷ args)
+    go (Raw.RVar n)          args = mkSpine (Raw.RVar n) args
+    go (Raw.RQualified m n)  args = mkSpine (Raw.RQualified m n) args
+    go (Raw.RLam x b)        args = mkSpine (Raw.RLam x b) args
+    go (Raw.RLet x e₁ e₂)    args = mkSpine (Raw.RLet x e₁ e₂) args
+    go (Raw.RPair x y)       args = mkSpine (Raw.RPair x y) args
+    go (Raw.RDestruct e a b c d) args = mkSpine (Raw.RDestruct e a b c d) args
+    go Raw.RUnit             args = mkSpine Raw.RUnit args
+    go (Raw.RInt n)          args = mkSpine (Raw.RInt n) args
+    go (Raw.RStringLit s)    args = mkSpine (Raw.RStringLit s) args
+    go (Raw.RAnnot e t)      args = mkSpine (Raw.RAnnot e t) args
+    go (Raw.RBinOp op x y)   args = mkSpine (Raw.RBinOp op x y) args
+    go (Raw.RUnaryOp op x)   args = mkSpine (Raw.RUnaryOp op x) args
 
 -- | Is this name one of the 13 polymorphic builtins?
 isPolyBuiltin : String → Bool
@@ -1122,21 +1169,33 @@ mutual
     where
       mkArith : ∀ {Δ : SCtx (NamedCtx.size ctx)} {Ψa Ψb : Surface.Usage (NamedCtx.size ctx)}
               → Raw.BinOp → SExpr Δ Ψa Int → SExpr Δ Ψb Int → SExpr Δ (Ψa +ᵘ Ψb) Int
+      -- Comparison ops never reach mkArith (gated by isArithmeticOp);
+      -- defensive `Surface.add` for unreachable cases preserves the
+      -- previous catch-all behavior.
       mkArith Raw.OpAdd = Surface.add
       mkArith Raw.OpSub = Surface.sub
       mkArith Raw.OpMul = Surface.mul
       mkArith Raw.OpDiv = Surface.div
       mkArith Raw.OpMod = Surface.mod'
-      mkArith _         = Surface.add
+      mkArith Raw.OpLt  = Surface.add
+      mkArith Raw.OpLe  = Surface.add
+      mkArith Raw.OpGt  = Surface.add
+      mkArith Raw.OpGe  = Surface.add
+      mkArith Raw.OpEq  = Surface.add
+      mkArith Raw.OpNe  = Surface.add
       mkCmp : ∀ {Δ : SCtx (NamedCtx.size ctx)} {Ψa Ψb : Surface.Usage (NamedCtx.size ctx)}
             → Raw.BinOp → SExpr Δ Ψa Int → SExpr Δ Ψb Int → SExpr Δ (Ψa +ᵘ Ψb) (Unit Once.Type.+ Unit)
-      mkCmp Raw.OpLt = Surface.lt
-      mkCmp Raw.OpLe = Surface.le
-      mkCmp Raw.OpGt = Surface.gt
-      mkCmp Raw.OpGe = Surface.ge
-      mkCmp Raw.OpEq = Surface.eq
-      mkCmp Raw.OpNe = Surface.ne
-      mkCmp _         = Surface.lt
+      mkCmp Raw.OpLt  = Surface.lt
+      mkCmp Raw.OpLe  = Surface.le
+      mkCmp Raw.OpGt  = Surface.gt
+      mkCmp Raw.OpGe  = Surface.ge
+      mkCmp Raw.OpEq  = Surface.eq
+      mkCmp Raw.OpNe  = Surface.ne
+      mkCmp Raw.OpAdd = Surface.lt
+      mkCmp Raw.OpSub = Surface.lt
+      mkCmp Raw.OpMul = Surface.lt
+      mkCmp Raw.OpDiv = Surface.lt
+      mkCmp Raw.OpMod = Surface.lt
 
   -- Unary negation
   inferElab ctx (Raw.RUnaryOp Raw.OpNeg e) with inferElab ctx e
