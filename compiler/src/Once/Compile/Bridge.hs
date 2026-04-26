@@ -53,7 +53,10 @@ import qualified MAlonzo.Code.Once.Type as MT
 data Stage = Parse | Check | Build
   deriving (Eq, Show)
 
-data Arch = X86_64
+data Arch
+  = X86_64   -- ^ x86-64 (full IR coverage via direct compile-ir)
+  | X86_32   -- ^ x86-32 (abstract-trace pipeline; simple-IR subset)
+  | RiscV64  -- ^ RISC-V 64 (abstract-trace pipeline; simple-IR subset)
   deriving (Eq, Show)
 
 data FunSig = FunSig
@@ -92,13 +95,15 @@ data ImportRef = ImportRef
 -- MAlonzo conversion (update suffixes after regenerating)
 ------------------------------------------------------------------------
 
-toMStage :: Stage -> MC.T_Stage_332
-toMStage Parse = MC.C_Parse_334
-toMStage Check = MC.C_Check_336
-toMStage Build = MC.C_Build_338
+toMStage :: Stage -> MC.T_Stage_336
+toMStage Parse = MC.C_Parse_338
+toMStage Check = MC.C_Check_340
+toMStage Build = MC.C_Build_342
 
 toMArch :: Arch -> MC.T_Arch_312
-toMArch X86_64 = MC.C_x86'45'64_314
+toMArch X86_64  = MC.C_x86'45'64_314
+toMArch X86_32  = MC.C_x86'45'32_316
+toMArch RiscV64 = MC.C_riscv64_318
 
 -- | Agda strings are Haskell `Text` at runtime (MAlonzo primitive binding).
 agdaToText :: a -> Text
@@ -110,21 +115,21 @@ textToAgda = unsafeCoerce
 fromMFunInfo :: MP.T_FunInfo_84 -> FunSig
 fromMFunInfo fi = FunSig
   { funSigName = agdaToText (MP.d_funName_94 fi)
-  , funSigType = agdaToText (MT.d_showType_218 (MP.d_funType_96 fi))
+  , funSigType = agdaToText (MT.d_showType_200 (MP.d_funType_96 fi))
   }
 
 fromMPolyFunInfo :: MP.T_PolyFunInfo_104 -> PolyFunSig
 fromMPolyFunInfo pfi = PolyFunSig
   { polyFunSigName = agdaToText (MP.d_pfunName_114 pfi)
-  , polyFunSigType = agdaToText (MT.d_showPolyType_596 (MP.d_pfunType_116 pfi))
+  , polyFunSigType = agdaToText (MT.d_showPolyType_462 (MP.d_pfunType_116 pfi))
   }
 
-fromMResult :: MC.T_CompileResult_340 -> CompileResult
-fromMResult (MC.C_Parsed_342 fis pfis) =
+fromMResult :: MC.T_CompileResult_344 -> CompileResult
+fromMResult (MC.C_Parsed_346 fis pfis) =
   Parsed (map fromMFunInfo fis) (map fromMPolyFunInfo pfis)
-fromMResult (MC.C_Checked_344 _)  = Checked
-fromMResult (MC.C_Built_346 asm)  = Built (agdaToText asm)
-fromMResult (MC.C_Error_348 err)  = Error (agdaToText err)
+fromMResult (MC.C_Checked_348 _)  = Checked
+fromMResult (MC.C_Built_350 asm)  = Built (agdaToText asm)
+fromMResult (MC.C_Error_352 err)  = Error (agdaToText err)
 
 ------------------------------------------------------------------------
 -- One-shot legacy pipeline
@@ -132,7 +137,7 @@ fromMResult (MC.C_Error_348 err)  = Error (agdaToText err)
 
 compile :: Stage -> Bool -> Arch -> Text -> CompileResult
 compile stage doOpt arch source =
-  fromMResult (MC.d_compile_374 (toMStage stage) doOpt (toMArch arch) (textToAgda source))
+  fromMResult (MC.d_compile_378 (toMStage stage) doOpt (toMArch arch) (textToAgda source))
 
 ------------------------------------------------------------------------
 -- AST-level pipeline
@@ -188,4 +193,4 @@ resolveImports modMap (Module userMod) =
 compileFromModule :: Stage -> Bool -> Arch -> Module -> CompileResult
 compileFromModule stage doOpt arch (Module m) =
   fromMResult
-    (MC.d_compileFromModule_436 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce m))
+    (MC.d_compileFromModule_440 (toMStage stage) doOpt (toMArch arch) (unsafeCoerce m))

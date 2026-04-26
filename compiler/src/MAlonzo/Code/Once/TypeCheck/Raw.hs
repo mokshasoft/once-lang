@@ -63,25 +63,32 @@ data T_RawType_62
 -- Once.TypeCheck.Raw.isComparisonOp
 d_isComparisonOp_88 :: T_BinOp_6 -> Bool
 d_isComparisonOp_88 v0
-  = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
-    coe
-      (case coe v0 of
-         C_OpLt_18 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_OpLe_20 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_OpGt_22 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_OpGe_24 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_OpEq_26 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         _ -> coe v1)
+  = case coe v0 of
+      C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpMul_12 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpDiv_14 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpMod_16 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpLt_18 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpLe_20 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpGt_22 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpGe_24 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpEq_26 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      _ -> MAlonzo.RTE.mazUnreachableError
 -- Once.TypeCheck.Raw.isArithmeticOp
 d_isArithmeticOp_90 :: T_BinOp_6 -> Bool
 d_isArithmeticOp_90 v0
-  = let v1 = coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8 in
-    coe
-      (case coe v0 of
-         C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_OpMul_12 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_OpDiv_14 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         C_OpMod_16 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
-         _ -> coe v1)
+  = case coe v0 of
+      C_OpAdd_8 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpSub_10 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpMul_12 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpDiv_14 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpMod_16 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_true_10
+      C_OpLt_18 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpLe_20 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpGt_22 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpGe_24 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpEq_26 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      C_OpNe_28 -> coe MAlonzo.Code.Agda.Builtin.Bool.C_false_8
+      _ -> MAlonzo.RTE.mazUnreachableError

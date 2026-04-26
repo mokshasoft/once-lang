@@ -196,16 +196,31 @@ slots n = n *ℕ slot-size
 -- Stack consumption analysis
 ------------------------------------------------------------------------
 
--- | Stack slots consumed by a single instruction
+-- | Stack slots consumed by a single instruction.
+-- Catch-all-free per Plan 0.9: adding a new Instr constructor that
+-- allocates stack would force this function to be updated (compile
+-- error). All RV64 instructions in the current model are pure-bookkeeping
+-- with respect to the abstract stack slot count — the addi sp sp ±N
+-- form that adjusts %sp is tracked elsewhere via AbstractInstr.
 instr-consumed-slots : Instr → ℕ
-instr-consumed-slots (addi rd rs imm) with rd
-... | sp = 0  -- stack adjustment handled separately
-... | _ = 0
-instr-consumed-slots (sd _ _ _) = 0  -- store doesn't consume stack
-instr-consumed-slots (jal rd _) with rd
-... | ra = 0  -- call: return address saved by callee
-... | _ = 0
-instr-consumed-slots _ = 0
+instr-consumed-slots (ld _ _ _)      = 0
+instr-consumed-slots (sd _ _ _)      = 0
+instr-consumed-slots (add _ _ _)     = 0
+instr-consumed-slots (sub _ _ _)     = 0
+instr-consumed-slots (addi _ _ _)    = 0   -- sp adjustment handled separately
+instr-consumed-slots (li _ _)        = 0
+instr-consumed-slots (auipc _ _)     = 0
+instr-consumed-slots (mv _ _)        = 0
+instr-consumed-slots (beq _ _ _)     = 0
+instr-consumed-slots (bne _ _ _)     = 0
+instr-consumed-slots (jal _ _)       = 0   -- call: return addr saved by callee
+instr-consumed-slots (jalr _ _ _)    = 0
+instr-consumed-slots (j _)           = 0
+instr-consumed-slots ret             = 0
+instr-consumed-slots (call _)        = 0
+instr-consumed-slots nop             = 0
+instr-consumed-slots unimp           = 0
+instr-consumed-slots (label _)       = 0
 
 -- | Total stack slots consumed by a program
 program-consumed-slots : Program → ℕ

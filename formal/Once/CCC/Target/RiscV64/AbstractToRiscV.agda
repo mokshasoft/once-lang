@@ -53,7 +53,8 @@ open import Once.CCC.Machine.SMCore
          lea-slot; restore-input;
          instr-alloc-stack; instr-dealloc-stack;
          instr-push-frame; instr-pop-frame; instr-call-closure;
-         worklist-init; worklist-push; worklist-pop; worklist-check)
+         worklist-init; worklist-push; worklist-pop; worklist-check;
+         instr-reclaim-to)
 
 ------------------------------------------------------------------------
 -- Slot to displacement conversion
@@ -201,6 +202,10 @@ compile-abstract (worklist-pop n) =
 -- worklist-check: Check if worklist is empty (no-op in simplified model)
 -- RV64: (empty - proofs use Star-based reasoning, not loop mechanics)
 compile-abstract (worklist-check n) = []
+
+-- instr-reclaim-to: set next-slot to n (allocation bookkeeping only)
+-- RV64: (empty - pure AllocState update, no machine effect)
+compile-abstract (instr-reclaim-to n) = []
 
 ------------------------------------------------------------------------
 -- Trace compilation: compile a whole trace to RISC-V

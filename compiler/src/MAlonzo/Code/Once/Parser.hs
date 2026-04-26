@@ -540,7 +540,7 @@ d_projectSig_124 ::
   MAlonzo.Code.Once.Type.T_PolyType_238 ->
   MAlonzo.Code.Data.Sum.Base.T__'8846'__30
 d_projectSig_124 v0 v1 v2
-  = let v3 = MAlonzo.Code.Once.Type.d_isGround_420 (coe v2) in
+  = let v3 = MAlonzo.Code.Once.Type.d_isGround_430 (coe v2) in
     coe
       (case coe v3 of
          MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v4
@@ -564,7 +564,7 @@ d_projectSig_124 v0 v1 v2
                          ("`: " :: Data.Text.Text)
                          (coe
                             MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                            (MAlonzo.Code.Once.Type.d_showPolyType_578 (coe v2))
+                            (MAlonzo.Code.Once.Type.d_showPolyType_462 (coe v2))
                             (coe
                                MAlonzo.Code.Data.String.Base.d__'43''43'__20
                                (" \8212 primitives and type aliases must be ground. "
@@ -670,7 +670,7 @@ du_go_184 v0 v1 v2
            coe
              (case coe v3 of
                 MAlonzo.Code.Once.Parser.Module.Core.C_DTypeSig_34 v6 v7
-                  -> let v8 = MAlonzo.Code.Once.Type.d_isGround_420 (coe v7) in
+                  -> let v8 = MAlonzo.Code.Once.Type.d_isGround_430 (coe v7) in
                      coe
                        (case coe v8 of
                           MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v9
@@ -779,7 +779,7 @@ du_go_184 v0 v1 v2
                 MAlonzo.Code.Once.Parser.Module.Core.C_DSignature_38 v6 v7 v8
                   -> case coe v7 of
                        MAlonzo.Code.Agda.Builtin.Maybe.C_just_16 v9
-                         -> let v10 = MAlonzo.Code.Once.Type.d_isGround_420 (coe v8) in
+                         -> let v10 = MAlonzo.Code.Once.Type.d_isGround_430 (coe v8) in
                             coe
                               (let v11
                                      = coe
@@ -834,7 +834,7 @@ du_go_184 v0 v1 v2
                                                     ("`: " :: Data.Text.Text)
                                                     (coe
                                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                       (MAlonzo.Code.Once.Type.d_showPolyType_578
+                                                       (MAlonzo.Code.Once.Type.d_showPolyType_462
                                                           (coe v8))
                                                        (coe
                                                           MAlonzo.Code.Data.String.Base.d__'43''43'__20
@@ -851,7 +851,7 @@ du_go_184 v0 v1 v2
                                                               Data.Text.Text)))))))
                                     _ -> MAlonzo.RTE.mazUnreachableError))
                        MAlonzo.Code.Agda.Builtin.Maybe.C_nothing_18
-                         -> let v9 = MAlonzo.Code.Once.Type.d_isGround_420 (coe v8) in
+                         -> let v9 = MAlonzo.Code.Once.Type.d_isGround_430 (coe v8) in
                             coe
                               (case coe v9 of
                                  MAlonzo.Code.Data.Sum.Base.C_inj'8321'_38 v10
@@ -884,7 +884,7 @@ du_go_184 v0 v1 v2
                                                  ("`: " :: Data.Text.Text)
                                                  (coe
                                                     MAlonzo.Code.Data.String.Base.d__'43''43'__20
-                                                    (MAlonzo.Code.Once.Type.d_showPolyType_578
+                                                    (MAlonzo.Code.Once.Type.d_showPolyType_462
                                                        (coe v8))
                                                     (coe
                                                        MAlonzo.Code.Data.String.Base.d__'43''43'__20

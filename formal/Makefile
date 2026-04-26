@@ -156,6 +156,16 @@ ccc-x86-64:
 	@echo "Type-checking X86-64 CCC backend (Dispatcher + Refinement + CodeGen)..."
 	@sh -c '$(AGDA_CMD) Once/CCC/Target/X86-64/Correct.agda'
 
+.PHONY: ccc-x86-32
+ccc-x86-32:
+	@echo "Type-checking X86-32 CCC backend (DirectSimulation + Target instance)..."
+	@sh -c '$(AGDA_CMD) Once/Target/X86-32.agda'
+
+.PHONY: ccc-riscv64
+ccc-riscv64:
+	@echo "Type-checking RISC-V 64 CCC backend (DirectSimulation + Target instance)..."
+	@sh -c '$(AGDA_CMD) Once/Target/RiscV64.agda'
+
 #-----------------------------------------------------------------------------
 # Pipeline: Arithmetic Primitives (target-specific)
 #-----------------------------------------------------------------------------
@@ -172,6 +182,18 @@ arith-x86-64:
 .PHONY: compiler-x86-64
 compiler-x86-64: frontend ccc-x86-64 arith-x86-64
 	@echo "X86-64 compiler proofs type-check successfully!"
+
+.PHONY: compiler-x86-32
+compiler-x86-32: frontend ccc-x86-32
+	@echo "X86-32 compiler proofs type-check successfully!"
+
+.PHONY: compiler-riscv64
+compiler-riscv64: frontend ccc-riscv64
+	@echo "RISC-V 64 compiler proofs type-check successfully!"
+
+.PHONY: compiler-all
+compiler-all: compiler-x86-64 compiler-x86-32 compiler-riscv64
+	@echo "All-arch compiler proofs type-check successfully (x86-64 + x86-32 + riscv64)!"
 
 .PHONY: compiler
 compiler: compiler-x86-64

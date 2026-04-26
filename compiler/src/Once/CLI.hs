@@ -72,15 +72,17 @@ data OutputMode
 -- | Target architecture
 data Target
   = TargetC       -- ^ C backend (not yet implemented)
-  | TargetX86_64  -- ^ x86-64 assembly (active)
+  | TargetX86_64  -- ^ x86-64 assembly (active, full IR coverage)
+  | TargetX86_32  -- ^ x86-32 assembly (active via abstract-trace, simple-IR subset)
   | TargetArm64   -- ^ ARM64 assembly (not yet implemented)
-  | TargetRiscV64 -- ^ RISC-V 64-bit (not yet implemented)
+  | TargetRiscV64 -- ^ RISC-V 64-bit (active via abstract-trace, simple-IR subset)
   deriving (Eq, Show)
 
 -- | File extension for each target
 targetExtension :: Target -> String
 targetExtension TargetC = ".c"
 targetExtension TargetX86_64 = ".s"
+targetExtension TargetX86_32 = ".s"
 targetExtension TargetArm64 = ".s"
 targetExtension TargetRiscV64 = ".s"
 
@@ -88,6 +90,7 @@ targetExtension TargetRiscV64 = ".s"
 parseTarget :: String -> Maybe Target
 parseTarget "c" = Just TargetC
 parseTarget "x86_64" = Just TargetX86_64
+parseTarget "x86_32" = Just TargetX86_32
 parseTarget "arm64" = Just TargetArm64
 parseTarget "riscv64" = Just TargetRiscV64
 parseTarget _ = Nothing
@@ -299,67 +302,68 @@ runBuild opts = do
       TIO.putStrLn $ "Error: " <> T.pack err
       exitFailure
     Right mod_ -> case target of
-      TargetX86_64 ->
-        case Bridge.compileFromModule Bridge.Build doOpt Bridge.X86_64 mod_ of
-          Built asmText -> do
-            let asmPath = outputBase ++ ".s"
-                objPath = outputBase ++ ".o"
-
-            -- Write assembly file
-            TIO.writeFile asmPath asmText
-
-            case buildMode opts of
-              Library -> do
-                TIO.putStrLn $ "Generated: " <> T.pack asmPath
-                exitSuccess
-
-              Executable -> do
-                -- Assemble .s to .o
-                asmResult <- assemble asmPath objPath
-                case asmResult of
-                  Left err -> do
-                    TIO.putStrLn $ "Assembly failed: " <> T.pack err
-                    exitFailure
-                  Right _ -> do
-                    -- Link .o to executable
-                    linkResult <- link [objPath] outputBase
-                    case linkResult of
-                      Left err -> do
-                        TIO.putStrLn $ "Link failed: " <> T.pack err
-                        exitFailure
-                      Right exePath -> do
-                        -- Clean up intermediate files unless --save-temps
-                        if buildSaveTemps opts
-                          then TIO.putStrLn $ "Generated: " <> T.pack asmPath <> ", " <> T.pack objPath <> ", " <> T.pack exePath
-                          else do
-                            removeFile asmPath
-                            removeFile objPath
-                            TIO.putStrLn $ "Generated: " <> T.pack exePath
-                        exitSuccess
-
-          Error err -> do
-            TIO.putStrLn $ "Compilation error: " <> err
-            exitFailure
-
-          _ -> do
-            TIO.putStrLn "Internal error: unexpected result from build"
-            exitFailure
+      TargetX86_64  -> runVerifiedBuild opts outputBase Bridge.X86_64  mod_
+      TargetX86_32  -> runVerifiedBuild opts outputBase Bridge.X86_32  mod_
+      TargetRiscV64 -> runVerifiedBuild opts outputBase Bridge.RiscV64 mod_
 
       -- Other targets not yet implemented
       TargetC -> do
         TIO.putStrLn "Error: C backend not yet implemented"
-        TIO.putStrLn "Use --target x86_64 for the active backend"
+        TIO.putStrLn "Use --target {x86_64|x86_32|riscv64} for the active backends"
         exitFailure
 
       TargetArm64 -> do
         TIO.putStrLn "Error: ARM64 backend not yet implemented"
-        TIO.putStrLn "Use --target x86_64 for the active backend"
+        TIO.putStrLn "Use --target {x86_64|x86_32|riscv64} for the active backends"
         exitFailure
 
-      TargetRiscV64 -> do
-        TIO.putStrLn "Error: RISC-V backend not yet implemented"
-        TIO.putStrLn "Use --target x86_64 for the active backend"
-        exitFailure
+-- | Run the verified pipeline for a Bridge.Arch and write the resulting
+-- assembly. Shared by all wired backends (x86_64, x86_32, riscv64).
+runVerifiedBuild :: BuildOptions -> FilePath -> Bridge.Arch -> Bridge.Module -> IO ()
+runVerifiedBuild opts outputBase arch mod_ =
+  case Bridge.compileFromModule Bridge.Build (buildOptimize opts) arch mod_ of
+    Built asmText -> do
+      let asmPath = outputBase ++ ".s"
+          objPath = outputBase ++ ".o"
+
+      -- Write assembly file
+      TIO.writeFile asmPath asmText
+
+      case buildMode opts of
+        Library -> do
+          TIO.putStrLn $ "Generated: " <> T.pack asmPath
+          exitSuccess
+
+        Executable -> do
+          -- Assemble .s to .o
+          asmResult <- assemble asmPath objPath
+          case asmResult of
+            Left err -> do
+              TIO.putStrLn $ "Assembly failed: " <> T.pack err
+              exitFailure
+            Right _ -> do
+              -- Link .o to executable
+              linkResult <- link [objPath] outputBase
+              case linkResult of
+                Left err -> do
+                  TIO.putStrLn $ "Link failed: " <> T.pack err
+                  exitFailure
+                Right exePath -> do
+                  if buildSaveTemps opts
+                    then TIO.putStrLn $ "Generated: " <> T.pack asmPath <> ", " <> T.pack objPath <> ", " <> T.pack exePath
+                    else do
+                      removeFile asmPath
+                      removeFile objPath
+                      TIO.putStrLn $ "Generated: " <> T.pack exePath
+                  exitSuccess
+
+    Error err -> do
+      TIO.putStrLn $ "Compilation error: " <> err
+      exitFailure
+
+    _ -> do
+      TIO.putStrLn "Internal error: unexpected result from build"
+      exitFailure
 
 ------------------------------------------------------------------------
 -- Assembler/Linker Invocation

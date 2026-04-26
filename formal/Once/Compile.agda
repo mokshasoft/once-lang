@@ -262,14 +262,20 @@ open T.Target
 
 -- Import all targets (qualified to avoid name clashes)
 import Once.Target.X86-64 as X86-64-Target
+import Once.Target.X86-32 as X86-32-Target
+import Once.Target.RiscV64 as RiscV64-Target
 
 -- | Supported architectures
 data Arch : Set where
-  x86-64 : Arch
+  x86-64  : Arch
+  x86-32  : Arch
+  riscv64 : Arch
 
 -- | Get target implementation for an architecture
 archTarget : Arch → Target
-archTarget x86-64 = X86-64-Target.x86-64
+archTarget x86-64  = X86-64-Target.x86-64
+archTarget x86-32  = X86-32-Target.x86-32
+archTarget riscv64 = RiscV64-Target.riscv64
 
 -- | Compile a single function's IR to assembly using a target
 compileFunWithTarget : Target → CompiledFun → String
